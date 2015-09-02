@@ -1,0 +1,586 @@
+html {
+  background-image: url(images/pattern-8gp3.png);
+  height: 100%;
+}
+
+body {
+  padding-top: 50px;
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  height: 100%;
+}
+
+#main {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+.placard {
+  border: 1px solid #dddddd;
+  border-radius: 5px;
+
+  -webkit-animation-duration: 0.7s;
+  -webkit-animation-delay: 0s;
+  -webkit-animation-iteration-count: 0.5;
+
+  -moz-animation-duration: 0.7s;
+  -moz-animation-delay: 0s;
+  -moz-animation-iteration-count: 0.5;
+}
+
+.fs-modal .tree {
+  height: 400px;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.fs-modal .side-panel {
+  height: 400px;
+  margin-left: -20px;
+}
+
+.fs-modal .side-panel td.description {
+  font-weight: bold;
+  color: #999999;
+  background: #eee;
+}
+
+.fs-modal div.top {
+  margin-bottom: 15px;
+} 
+
+.fs-modal .modal-dialog {
+  min-width: 800px;
+}
+
+.sidebar {
+  position: fixed;
+  top: 51px;
+  bottom: 0;
+  left: 0;
+  z-index: 1000;
+  display: block;
+  padding: 20px;
+  overflow-x: hidden;
+  overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
+  background-color: #f5f5f5;
+  border-right: 1px solid #888;
+  box-shadow: 0 0 30px;
+}
+
+.editor-container {
+  height: 100%;
+  overflow: hidden;
+}
+
+.editor-container .editor-wrapper {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background-image: url(images/pattern-8gp3.png);
+}
+
+.editor-container .editor-wrapper .editor {
+  width: 100%;
+  height: 100%;
+  margin-top: 38px;
+  padding-bottom: 52px;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.toolbar-container {
+  height: 40px;
+  width: 100%;
+  background-color: white;
+  position: absolute;
+  z-index: 1000;
+  background-color: #f5f5f5;
+  top: 0px;
+  left: -1px;
+  overflow: hidden;
+}
+
+.toolbar-container .toolbar-wrapper {
+  position: relative;
+  height: 50px;
+  width: 100%;
+}
+
+.toolbar-wrapper .toolbar {
+  width: 100%;
+  height: 100%;
+}
+
+.toolbar-container .hostbar-wrapper {
+  position: relative;
+  overflow-y: hidden;
+  overflow-x: scroll;
+  height: 40px;
+  width: 100%;
+  background-color: #f0f0f0;
+  -webkit-box-shadow: inset 0px 0px 1px 0px rgba(50, 50, 50, 0.75);
+  -moz-box-shadow:    inset 0px 0px 1px 0px rgba(50, 50, 50, 0.75);
+  box-shadow:         inset 0px 0px 1px 0px rgba(50, 50, 50, 0.75);
+}
+
+.toolbar-container .hostbar-wrapper .hostbar {
+  width: 100%;
+}
+
+ul.nav-sidebar {
+  margin-right: -21px; /* 20px padding + 1px border */
+  margin-bottom: 20px;
+  margin-left:  -20px;
+}
+
+ul.nav-sidebar > li.item > a.item {
+  padding: 5px 10px 5px 10px;
+  color: #777;
+}
+
+ul.nav-sidebar > .active > a.item,
+ul.nav-sidebar > .active > a.item:hover,
+ul.nav-sidebar > .active > a.item:focus {
+  color: #fff !important;
+  background-color: #428bca;
+}
+
+a.delete-dialog {
+  background: #e5e5e5;
+}
+
+ul.nav-sidebar > li.item > a.item > .name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.patch {
+  margin-top: 18px;
+}
+
+.patch .panel-heading h3 {
+  line-height: 30px;
+}
+
+.patch .panel-heading button.visibility i.down {
+  -moz-transform:    rotate(180deg);
+  -ms-transform:     rotate(180deg);
+  -o-transform:      rotate(180deg);
+  -webkit-transform: rotate(180deg);
+}
+
+.cuelists-editor {
+  height: 100%;
+}
+
+.cues-region {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: 1px solid #fafafa;
+}
+
+.cuelists-region {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-left: 1px solid #fafafa;
+}
+
+.edit-region-wrapper {
+  position: relative;
+  height: 100%;
+}
+
+.cue-region-wrapper {
+  overflow-x: hidden;
+}
+
+.cue-list-region ul {
+  min-height: 100%;
+}
+
+.cue-list-region {
+  position: relative;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.edit-region {
+  height: 100%;
+  overflow: hidden;
+}
+
+.edit-region span.name {
+  color: #ddd;
+}
+
+li.cue {
+  z-index: 99;
+}
+
+.light {
+  background-color: #fafafa;
+  border: 1px solid #e3e3e3;
+  border-radius: 4px;
+}
+
+.fat {
+  font-weight: bold;
+  color: black !important;
+}
+
+li.cue-stub {
+  height: 40px;
+  border: 1px solid #afafaf;
+  border-radius: 4px;
+  background-color: #fefefe;
+  margin: 5px;
+}
+
+li.cue-stub .cuelist-cue {
+  height: 100%;
+  line-height: 40px;
+  vertical-align: middle;
+}
+
+li.cue-stub .cuelist-cue span.cuelist-cue-name {
+  margin-left: 10px;
+}
+
+li.cue-stub .cuelist-cue .btn-toolbar {
+  margin: 8px 10px 0 0;
+}
+
+
+.drophover {
+  border: 1px solid #ff6347;
+}
+
+.cue-placeholder {
+  height: 40px;
+  border: 1px solid #ff6347;
+  border-radius: 4px;
+  background-color: #eeeeee;
+  margin: 6px;
+}
+
+.cue-drag {
+  z-index: 99;
+  height: 40px;
+  background-color: #eeeeee;
+  border: 1px solid #bbbbbb;
+  margin: 5px;
+  border-radius: 4px;
+}
+
+.disconnected {
+  background: red;
+  background: -webkit-linear-gradient(top,#bb0000,#cc0000 100%);
+  background: -moz-linear-gradient(top,#bb0000,#cc0000 100%);
+  background: -linear-gradient(top,#bb0000,#cc0000 100%);
+}
+
+.panel-heading {
+  padding: 0;
+  min-height: 22px;
+}
+
+.panel-title {
+  margin-left: 5px;
+}
+
+.panel-body {
+  padding: 5px;
+}
+
+.pin {
+  height: 26px;
+  margin-bottom: 4px;
+}
+
+.pin .pin-row {
+  height: 26px;
+}
+
+.pin .pin-row .pin-container {
+  height: 26px;
+}
+
+.pin .pin-row .pin-container .slices {
+  height: 26px;
+}
+
+.pin .pin-row .pin-container .checkbox {
+  margin: 0;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pin .cue-check {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pin .title {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.pin .slices {
+  height: 26px;
+  display: flex;
+  align-items: center;
+}
+
+.fast .toggle-group {
+  transition: left 0.04s;
+  -webkit-transition: left 0.04s;
+}
+
+.pin .inlay {
+  magin: 10px 0 10px 0;
+}
+
+.form-control.placard-field.glass {
+  background-color: white;
+  height: 26px;
+}
+
+button.bang i {
+  font-size: 10px;
+}
+
+button.bang {
+  border: 1px solid #aaa;
+  height: 20px;
+}
+
+.play-list {
+  padding: 5px;
+}
+
+.play-list .cue {
+  background-color: #fcfcfc;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 5px;
+  margin-bottom: 10px;
+}
+
+.play-list .cue.active {
+  background-color: #F29090;
+  -webkit-box-shadow: 0px 0px 37px -10px rgba(0,0,0,0.75);
+  -moz-box-shadow: 0px 0px 37px -10px rgba(0,0,0,0.75);
+  box-shadow: 0px 0px 37px -10px rgba(0,0,0,0.75);
+}
+
+.blur-overlay {
+  position: fixed;
+  z-index: 99999;
+  opacity: 0.5;
+  background-color: black;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.blur-overlay .message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 4em;
+  color: red;
+}
+
+.projects .current {
+}
+
+.projects .page-header .project-group {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.projects .current .inlay {
+  min-height: 128px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2em;
+  color: #efefef;
+}
+
+.projects .recent .project .controls {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2em;
+  color: #efefef;
+}
+
+.projects .recent .project.active {
+  background-color: #efefef;
+}
+
+.projects .recent {
+  margin-bottom: 50px;
+}
+
+.projects .cluster {
+  margin-bottom: 50px;
+}
+
+.player .cue span.name {
+  font-size: 2.1em;
+}
+
+.player .topbar {
+  position: fixed;
+  z-index: 666;
+  width: 100%;
+  height: 60px;
+  background-color: white;
+}
+
+.player .topbar .bar {
+  height: 100%;
+}
+
+.player .topbar .bar .item {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player .editor {
+  padding-top: 60px;
+  height: auto;
+  min-height: 100%;
+}
+
+.log-field {
+  overflow-x: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.msg {
+  padding-left: 10px;
+}
+
+#modals .status {
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#modals .status .error {
+  color: red;
+  font-size: 15px;
+}
+
+#modals .status .success {
+  color: green;
+  font-size: 15px;
+} 
+
+.patch .panel {
+  margin-bottom: 10px;
+}
+
+.patch .panel .panel-heading {
+  min-height: 13px;
+}
+
+.patch .panel .panel-heading h3.panel-title {
+  line-height: 20px;
+  font-size: 13px;
+}
+
+.patch .panel .panel-heading .btn-xs {
+  height: 20px;
+}
+
+.xslider .ui-corner-all {
+  border-bottom-right-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-top-left-radius: 0 !important;
+}
+
+.xslider .ui-spinner-input {
+  padding: 0 0 0 5px;
+  margin: 0;
+}
+
+.xslider .ui-widget {
+  height: 26px;
+}
+
+.xslider .ui-widget input.form-control {
+  height: 26px;
+  font-size: 12px;
+}
+
+.xslider .ui-widget .ui-spinner-button {
+  display: none;
+}
+
+.item.cue {
+  border-bottom: 1px solid #ddd;
+}
+
+.sp-replacer {
+  height: 26px;
+}
+
+.sp-replacer .sp-preview {
+  height: 17px;
+}
+
+.sp-replacer .sp-preview .sp-preview-inner {
+  height: 15px;
+}
+
+.filepicker input.form-control {
+  height: 22px;
+  font-size: 12px;
+  z-index: 0;
+}
+
+.hostlist select {
+  height: 23px;
+  padding: 2px 5px 2px 5px;
+  font-size: 12px;
+  min-width: 50px;
+}
+
+.hostlist select option {
+  font-size: 12px;
+  padding: 0;
+}
+
+.debug-string {
+  background-color: #efefef;
+}

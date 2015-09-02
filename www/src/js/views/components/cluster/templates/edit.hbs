@@ -1,0 +1,22 @@
+<div class="modal-dialog">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close dismiss"><span aria-hidden="true">&times;</span></button>
+      <h4 class="modal-title">Add Cluster Member</h4>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="name">Host Name</label>
+        <input class="form-control" name="hostname"type="text" value="{{HostName}}"/>
+      </div>
+      <div class="form-group">
+        <label for="tags">IP Address</label>
+        <input class="form-control" name="ip" type="text" value="{{IP}}"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="dismiss btn btn-default">Close</button>
+      <button type="button" class="save btn btn-primary">Save changes</button>
+    </div>
+  </div>
+</div>

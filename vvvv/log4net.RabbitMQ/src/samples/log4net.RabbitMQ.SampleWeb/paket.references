@@ -1,0 +1,16 @@
+Antlr
+bootstrap
+jQuery
+jQuery.Validation
+log4net
+Microsoft.AspNet.Mvc
+Microsoft.AspNet.Razor
+Microsoft.AspNet.Web.Optimization
+Microsoft.AspNet.WebPages
+Microsoft.jQuery.Unobtrusive.Validation
+Microsoft.Web.Infrastructure
+Modernizr
+Newtonsoft.Json
+RabbitMQ.Client
+Respond
+WebGrease

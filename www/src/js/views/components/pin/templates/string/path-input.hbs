@@ -1,0 +1,46 @@
+<div class="input-group">
+  <input type="text" class="form-control" readonly="true" value="{{Value}}" placeholder="Path">
+  <span class="input-group-btn">
+    <button class="open btn btn-xs btn-default" type="button">Select</button>
+  </span>
+</div>
+
+<div class="modal fade fs-modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">Select a File/Folder</h4>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="top wizard">
+              <ul class="steps">
+                <li><span id="current-path">~</span><span class="chevron"></span></li>
+              </ul>
+              <div class="actions">
+                <button type="button" class="home btn btn-default">
+                  <span class="fa fa-home"></span>
+                  Home
+                </button>
+                <button type="button" class="up btn btn-default">
+                  <span class="glyphicon glyphicon-arrow-up"></span>
+                  Up
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-8 treecup"></div>
+          <div class="col-sm-4">
+            <div class="side-panel"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="dismiss btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" disabled="disabled" class="save btn btn-primary">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,22 @@
+<h4>Processes</h4>
+<table class="table">
+  <tr>
+    <th>Name</th>
+    <th>PID</th>
+    <th>% Privileged Time</th>
+    <th>% Processor Time</th>
+    <th>% User Time</th>
+    <th>Private Bytes</th>
+    <th>Virtual Bytes</th>
+    <th>Working Set</th>
+  </tr>
+  {{#each Processes}}
+    <tr>
+      <td>{{ @key }}</td>
+      <td>{{ @key }}</td>
+      {{#each this }}
+        <td>{{ this }}</td>
+      {{/each}}
+    </tr>
+  {{/each}}
+</table>

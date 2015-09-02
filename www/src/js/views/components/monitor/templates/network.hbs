@@ -1,0 +1,9 @@
+<h4>Network</h4>
+{{#each Network }}
+<h4>{{ @key }}</h4>
+<ul>
+  {{#each this }}
+    <li{{ @key }}: {{ this }}</li>
+  {{/each}}
+</ul>
+{{/each}}

@@ -1,0 +1,19 @@
+<div class="col-xs-11">
+  <h4>{{Project.Name}}</h4>
+  {{#if detailed}}
+  <ul class="list-unstyled">
+    <li>Created on: <i>{{Project.Created}}</i></li>
+    <li>Updated on: <i>{{Project.Updated}}</i></li>
+  </ul>
+  {{/if}}
+</div>
+<div class="col-xs-1 controls">
+  <div class="btn-group project-group">
+    <button class="load btn btn-xs btn-default">
+      <i class="fa fa-cogs"></i>
+    </button>
+    <button class="delete btn btn-xs btn-default">
+      <i class="fa fa-trash"></i>
+    </button>
+  </div>
+</div>

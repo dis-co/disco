@@ -1,0 +1,38 @@
+<table class="table">
+  <tr>
+    <td class="description">Type</td>
+    <td><i class="fa fa-file"></i></td>
+  </tr>
+  <tr>
+    <td class="description">Name</td>
+    <td>{{Name}}</td>
+  </tr>
+  <tr>
+    <td class="description">Size</td>
+    <td>{{ Size }} B</td>
+  </tr>
+  <tr>
+    <td class="description">Owner</td>
+    <td>{{Owner}}</td>
+  </tr>
+  <tr>
+    <td class="description">ReadOnly</td>
+    {{#if ReadOnly}}
+      <td><input disabled type="checkbox" "checked=checked"/></td>
+    {{else}}
+      <td><input disabled type="checkbox"/></td>
+    {{/if}}
+  </tr>
+  <tr>
+    <td class="description">Created</td>
+    <td>{{Created}}</td>
+  </tr>
+  <tr>
+    <td class="description">Last Access</td>
+    <td>{{Accessed}}</td>
+  </tr>
+  <tr>
+    <td class="description">Last Write</td>
+    <td>{{Written}}</td>
+  </tr>
+</table>

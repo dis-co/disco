@@ -1,0 +1,8385 @@
+{
+  "Updated": "2015-07-29T13:40:47.7744042+02:00",
+  "Created": "2015-06-16T18:16:52.2366296+02:00",
+  "CueLists": [
+    {
+      "Cues": [
+        "82f011a1-bdf2-4647-9fa4-f1b23ae4e831",
+        "64da9e69-2272-40a1-bcef-6fe730c8c2d2",
+        "67300f7a-83c8-4e4c-ba38-c0ff0e7dc99e",
+        "c00f8cca-fd30-483b-ac1b-7c0c94fd2ca7",
+        "60c32a1d-28c2-4b52-a2aa-239d0b778750",
+        "01956eac-08a8-4264-9f1f-075b4936ae9c"
+      ],
+      "Name": "Lamellen Open",
+      "Id": "792f00ed-aefd-4c36-b8b5-e3711d405692"
+    }
+  ],
+  "Cues": [
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "-43",
+              "Behavior": 1
+            },
+            {
+              "Value": "-32",
+              "Behavior": 1
+            },
+            {
+              "Value": "-22",
+              "Behavior": 1
+            },
+            {
+              "Value": "-11",
+              "Behavior": 1
+            },
+            {
+              "Value": "-1",
+              "Behavior": 1
+            },
+            {
+              "Value": "9",
+              "Behavior": 1
+            },
+            {
+              "Value": "20",
+              "Behavior": 1
+            },
+            {
+              "Value": "30",
+              "Behavior": 1
+            },
+            {
+              "Value": "41",
+              "Behavior": 1
+            },
+            {
+              "Value": "51",
+              "Behavior": 1
+            },
+            {
+              "Value": "62",
+              "Behavior": 1
+            },
+            {
+              "Value": "72",
+              "Behavior": 1
+            },
+            {
+              "Value": "82",
+              "Behavior": 1
+            },
+            {
+              "Value": "93",
+              "Behavior": 1
+            },
+            {
+              "Value": "103",
+              "Behavior": 1
+            },
+            {
+              "Value": "114",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "463",
+              "Behavior": 1
+            },
+            {
+              "Value": "551",
+              "Behavior": 1
+            },
+            {
+              "Value": "638",
+              "Behavior": 1
+            },
+            {
+              "Value": "726",
+              "Behavior": 1
+            },
+            {
+              "Value": "813",
+              "Behavior": 1
+            },
+            {
+              "Value": "901",
+              "Behavior": 1
+            },
+            {
+              "Value": "988",
+              "Behavior": 1
+            },
+            {
+              "Value": "1076",
+              "Behavior": 1
+            },
+            {
+              "Value": "1163",
+              "Behavior": 1
+            },
+            {
+              "Value": "1251",
+              "Behavior": 1
+            },
+            {
+              "Value": "1338",
+              "Behavior": 1
+            },
+            {
+              "Value": "1426",
+              "Behavior": 1
+            },
+            {
+              "Value": "1513",
+              "Behavior": 1
+            },
+            {
+              "Value": "1601",
+              "Behavior": 1
+            },
+            {
+              "Value": "1688",
+              "Behavior": 1
+            },
+            {
+              "Value": "1776",
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 20,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Faecher",
+      "Id": "2c0d0599-463e-4bd7-8c8f-ab6d405c2358"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "502",
+              "Behavior": 1
+            },
+            {
+              "Value": "627",
+              "Behavior": 1
+            },
+            {
+              "Value": "752",
+              "Behavior": 1
+            },
+            {
+              "Value": "877",
+              "Behavior": 1
+            },
+            {
+              "Value": "1002",
+              "Behavior": 1
+            },
+            {
+              "Value": "1127",
+              "Behavior": 1
+            },
+            {
+              "Value": "1252",
+              "Behavior": 1
+            },
+            {
+              "Value": "1377",
+              "Behavior": 1
+            },
+            {
+              "Value": "1502",
+              "Behavior": 1
+            },
+            {
+              "Value": "1627",
+              "Behavior": 1
+            },
+            {
+              "Value": "1752",
+              "Behavior": 1
+            },
+            {
+              "Value": "1877",
+              "Behavior": 1
+            },
+            {
+              "Value": "2002",
+              "Behavior": 1
+            },
+            {
+              "Value": "2127",
+              "Behavior": 1
+            },
+            {
+              "Value": "2252",
+              "Behavior": 1
+            },
+            {
+              "Value": "2377",
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 20,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Aligned",
+      "Id": "884d2351-deb3-45c3-8c1a-26cd41a0790c"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": false,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "311",
+              "Behavior": 1
+            },
+            {
+              "Value": "1316",
+              "Behavior": 1
+            }
+          ],
+          "Target": "6f0de5e2-5f04-4ff5-bc0a-9ad8b43e4831",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "S_Open_10_11",
+      "Id": "35984e0c-55f6-479e-8d17-504ece238c5d"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": false,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "878",
+              "Behavior": 1
+            },
+            {
+              "Value": "1886",
+              "Behavior": 1
+            }
+          ],
+          "Target": "6f0de5e2-5f04-4ff5-bc0a-9ad8b43e4831",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "S_Open_12_13",
+      "Id": "2491d0c3-8585-4e25-8ded-46957950eafd"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 20,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Silver",
+      "Id": "7772c3eb-be75-401e-9bcd-e5ea812ddd55"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": false,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "1233",
+              "Behavior": 1
+            },
+            {
+              "Value": "2850",
+              "Behavior": 1
+            }
+          ],
+          "Target": "6f0de5e2-5f04-4ff5-bc0a-9ad8b43e4831",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "S_Open_13_14",
+      "Id": "cb3d2ba1-8488-4b40-b1c1-a7c18521f608"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1,
+              "Behavior": 4
+            }
+          ],
+          "Target": "e1f54bc9-8add-4573-aee6-9a74e0101a6d",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 250,
+              "Behavior": 1
+            },
+            {
+              "Value": 70,
+              "Behavior": 1
+            }
+          ],
+          "Target": "6f0de5e2-5f04-4ff5-bc0a-9ad8b43e4831",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1,
+              "Behavior": 4
+            }
+          ],
+          "Target": "b8b5f56b-d772-4860-bf22-1b1e7f6d1571",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "40945fc4-51d1-4899-98af-8d0db5b292a5",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "SUV_Pos1",
+      "Id": "0f845257-c5fa-4b69-bef9-7d2031c03e39"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 170,
+              "Behavior": 1
+            },
+            {
+              "Value": 130,
+              "Behavior": 1
+            }
+          ],
+          "Target": "6f0de5e2-5f04-4ff5-bc0a-9ad8b43e4831",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "40945fc4-51d1-4899-98af-8d0db5b292a5",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "SUV_Pos2",
+      "Id": "9e20c4f1-6cba-4bb4-9767-34470811dec9"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 22,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": false,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 200,
+              "Behavior": 1
+            },
+            {
+              "Value": 110,
+              "Behavior": 1
+            }
+          ],
+          "Target": "6f0de5e2-5f04-4ff5-bc0a-9ad8b43e4831",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "40945fc4-51d1-4899-98af-8d0db5b292a5",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "SUV_Pos3",
+      "Id": "b01e3666-0ea1-4aa1-9ddf-a25764b63136"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 260,
+              "Behavior": 1
+            },
+            {
+              "Value": "447",
+              "Behavior": 1
+            }
+          ],
+          "Target": "6f0de5e2-5f04-4ff5-bc0a-9ad8b43e4831",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "40945fc4-51d1-4899-98af-8d0db5b292a5",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "SUV_Pos4",
+      "Id": "bbd228fc-25df-4926-8977-aa05f8663616"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 150,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            }
+          ],
+          "Target": "6f0de5e2-5f04-4ff5-bc0a-9ad8b43e4831",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": false,
+              "Behavior": 3
+            }
+          ],
+          "Target": "40945fc4-51d1-4899-98af-8d0db5b292a5",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "S_Pos0",
+      "Id": "dac79c74-e91d-4a81-aa61-be1dfe8086df"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 150,
+              "Behavior": 1
+            },
+            {
+              "Value": 130,
+              "Behavior": 1
+            }
+          ],
+          "Target": "6f0de5e2-5f04-4ff5-bc0a-9ad8b43e4831",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "40945fc4-51d1-4899-98af-8d0db5b292a5",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "S_Pos1",
+      "Id": "48415ee6-a26d-487d-be4f-2c94263ed32f"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 130,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            }
+          ],
+          "Target": "6f0de5e2-5f04-4ff5-bc0a-9ad8b43e4831",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "40945fc4-51d1-4899-98af-8d0db5b292a5",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "S_Pos2",
+      "Id": "4e1dce0a-f5d7-4910-8e58-5abb085d9715"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Open_06_07",
+      "Id": "82f011a1-bdf2-4647-9fa4-f1b23ae4e831"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Open_07_08",
+      "Id": "64da9e69-2272-40a1-bcef-6fe730c8c2d2"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Open_08_09",
+      "Id": "bad11245-e710-4778-8c66-dd51d6e1a13e"
+    },
+    {
+      "Values": [],
+      "Trigger": false,
+      "Name": "L_Open_09_10",
+      "Id": "67300f7a-83c8-4e4c-ba38-c0ff0e7dc99e"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": null,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Open_10_11",
+      "Id": "c00f8cca-fd30-483b-ac1b-7c0c94fd2ca7"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": null,
+              "Behavior": 1
+            },
+            {
+              "Value": null,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Open_10_11",
+      "Id": "f06cef98-2216-40b0-9fb0-350f5dab0f45"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Open_11_12",
+      "Id": "8b7c4b5c-7d11-45d2-839c-0d0054bfdc45"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Open_12_13",
+      "Id": "1797e23f-0221-4a94-ba88-878a44d7b469"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Open_13_14",
+      "Id": "316cd136-940b-4c0c-8c00-383abd7d0b4c"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Open_14_15",
+      "Id": "fb38a195-307f-42fc-971a-399b2db9d580"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Open_15_16",
+      "Id": "fdf10ce3-2d5d-4084-80c1-3e30feb44912"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Open_01_02",
+      "Id": "35796db6-182e-4d63-b67d-de2fb88f808d"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Open_02_03",
+      "Id": "7ab4c5a8-ecc9-4ee1-8d9b-a2bed8db7b43"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Open_03_04",
+      "Id": "d4c5fd08-6f48-4dc6-951f-a56de7a958d9"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Open_04_05",
+      "Id": "4dbef973-2462-4d53-85eb-a85c82aa524f"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Open_05_06",
+      "Id": "2b3cefa8-efb2-40df-88e5-f5706d959a7d"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Close_01-16",
+      "Id": "e6fd5512-797e-42eb-bf3f-c36be5871413"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 4000,
+              "Behavior": 1
+            },
+            {
+              "Value": 4000,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Delay_06_07",
+      "Id": "cca78727-f351-4c89-a935-8acf772834e5"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_Delay_Reset",
+      "Id": "6ac5b8e3-6a05-4974-9e36-5475d57b70e7"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 450,
+              "Behavior": 1
+            },
+            {
+              "Value": 450,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "S_Out",
+      "Id": "2fb45db8-f6bc-4663-8e6a-2c8db66514ad"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "3215",
+              "Behavior": 1
+            },
+            {
+              "Value": "2578",
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "200_GLA_P2",
+      "Id": "4179a6b0-36b2-42e2-92e0-96c1b5131872"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "7740",
+              "Behavior": 1
+            },
+            {
+              "Value": "7240",
+              "Behavior": 1
+            },
+            {
+              "Value": "6740",
+              "Behavior": 1
+            },
+            {
+              "Value": "6240",
+              "Behavior": 1
+            },
+            {
+              "Value": "5740",
+              "Behavior": 1
+            },
+            {
+              "Value": "5240",
+              "Behavior": 1
+            },
+            {
+              "Value": "4740",
+              "Behavior": 1
+            },
+            {
+              "Value": "4240",
+              "Behavior": 1
+            },
+            {
+              "Value": "3740",
+              "Behavior": 1
+            },
+            {
+              "Value": "3240",
+              "Behavior": 1
+            },
+            {
+              "Value": "2740",
+              "Behavior": 1
+            },
+            {
+              "Value": "2240",
+              "Behavior": 1
+            },
+            {
+              "Value": "1740",
+              "Behavior": 1
+            },
+            {
+              "Value": "1240",
+              "Behavior": 1
+            },
+            {
+              "Value": "740",
+              "Behavior": 1
+            },
+            {
+              "Value": "240",
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "201_GLA_PGLA0_Pos",
+      "Id": "c4a584c5-3308-445f-8fba-ae2e12c2b978"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": false,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 2272,
+              "Behavior": 1
+            },
+            {
+              "Value": 2578,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "202_GLA_PGLA1_Open",
+      "Id": "20cbc3c4-1a2e-4a2c-99e6-574094766322"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 2425,
+              "Behavior": 1
+            },
+            {
+              "Value": 2425,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "203_GLA_PGLA0_Close",
+      "Id": "2f8c6c5a-d42a-4d54-ae03-e48c7b628ccd"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1.2,
+              "Behavior": 1
+            }
+          ],
+          "Target": "92cf2d28-093f-4395-8c21-4fd0d37b4108",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 3800,
+              "Behavior": 1
+            },
+            {
+              "Value": 4717,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "204_GLA_P13",
+      "Id": "02e10664-3278-4433-aef6-dd5f0876ce92"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": -90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "220_GLC_L_Open",
+      "Id": "cebe38d4-3ab0-475f-abae-a1d594fac691"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 4106,
+              "Behavior": 1
+            },
+            {
+              "Value": 4106,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "221_GLC_L_Close_P11",
+      "Id": "0e50726e-91a6-4469-b184-4a2df5b9427a"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 3020,
+              "Behavior": 1
+            },
+            {
+              "Value": 3020,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "230_GLE_PM0_Pos",
+      "Id": "930ddb1b-d7dc-479f-8f42-32b36a789949"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": -90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": -90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": false,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "2500",
+              "Behavior": 1
+            },
+            {
+              "Value": "3540",
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "231_GLE_PM0_Open",
+      "Id": "32b81c6e-85ca-4b4e-bcea-834768ac5440"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 3020,
+              "Behavior": 1
+            },
+            {
+              "Value": 3020,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "232_GLE_PM0_Close",
+      "Id": "ee34a604-aa8a-4c48-8466-105ac1e17ed1"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 4717,
+              "Behavior": 1
+            },
+            {
+              "Value": 4717,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "233_GLE_P13_Show",
+      "Id": "cd363627-eb27-4ae5-9930-fe987f425970"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1.8,
+              "Behavior": 1
+            }
+          ],
+          "Target": "92cf2d28-093f-4395-8c21-4fd0d37b4108",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1700,
+              "Behavior": 1
+            },
+            {
+              "Value": 1420,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "240_SUVsAuftritt_Open_P3",
+      "Id": "31836221-b461-4da7-adb9-d314a5f49700"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "241_SUVsAuftritt_Close_P3",
+      "Id": "db9170c9-5210-49cf-a113-15af766dc8d6"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "87b27691-366f-4b7e-84a3-bf05dd77ef79",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1,
+              "Behavior": 4
+            }
+          ],
+          "Target": "0f62b122-b882-487e-aaf2-4bf8d476cf34",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "Drehscheibe 0",
+      "Id": "cf67d34f-c53d-47be-8765-3fcb9ed643cb"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "90",
+              "Behavior": 1
+            }
+          ],
+          "Target": "87b27691-366f-4b7e-84a3-bf05dd77ef79",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "Drehscheibe 90",
+      "Id": "0e823ae4-7ac8-4a07-bd82-bb48a5375aac"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 450,
+              "Behavior": 1
+            },
+            {
+              "Value": 450,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "234_GLE_P0_Out",
+      "Id": "e1eb9640-af0d-4d25-9b08-ebae256c4d2d"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": -90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "300_L_09-10_Open",
+      "Id": "d4864398-057f-469c-8fed-0ba338c5bbc1"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "301_L_09-10_Close",
+      "Id": "a193e2e1-83ca-42a0-9e3f-451f361db2bc"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": -180,
+              "Behavior": 1
+            },
+            {
+              "Value": -180,
+              "Behavior": 1
+            },
+            {
+              "Value": -180,
+              "Behavior": 1
+            },
+            {
+              "Value": -180,
+              "Behavior": 1
+            },
+            {
+              "Value": -180,
+              "Behavior": 1
+            },
+            {
+              "Value": -180,
+              "Behavior": 1
+            },
+            {
+              "Value": -180,
+              "Behavior": 1
+            },
+            {
+              "Value": -180,
+              "Behavior": 1
+            },
+            {
+              "Value": -180,
+              "Behavior": 1
+            },
+            {
+              "Value": -180,
+              "Behavior": 1
+            },
+            {
+              "Value": -180,
+              "Behavior": 1
+            },
+            {
+              "Value": -180,
+              "Behavior": 1
+            },
+            {
+              "Value": -180,
+              "Behavior": 1
+            },
+            {
+              "Value": -180,
+              "Behavior": 1
+            },
+            {
+              "Value": -180,
+              "Behavior": 1
+            },
+            {
+              "Value": -180,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1,
+              "Behavior": 4
+            }
+          ],
+          "Target": "e1f54bc9-8add-4573-aee6-9a74e0101a6d",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1355,
+              "Behavior": 1
+            },
+            {
+              "Value": 1355,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "500_S_P2",
+      "Id": "c12a6e01-a8f0-4368-91b4-a10dbb334e31"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "14531",
+              "Behavior": 1
+            },
+            {
+              "Value": "13593",
+              "Behavior": 1
+            },
+            {
+              "Value": "12656",
+              "Behavior": 1
+            },
+            {
+              "Value": "11718",
+              "Behavior": 1
+            },
+            {
+              "Value": "10781",
+              "Behavior": 1
+            },
+            {
+              "Value": "9843",
+              "Behavior": 1
+            },
+            {
+              "Value": "8906",
+              "Behavior": 1
+            },
+            {
+              "Value": "7968",
+              "Behavior": 1
+            },
+            {
+              "Value": "7031",
+              "Behavior": 1
+            },
+            {
+              "Value": "6093",
+              "Behavior": 1
+            },
+            {
+              "Value": "5156",
+              "Behavior": 1
+            },
+            {
+              "Value": "4218",
+              "Behavior": 1
+            },
+            {
+              "Value": "3281",
+              "Behavior": 1
+            },
+            {
+              "Value": "2343",
+              "Behavior": 1
+            },
+            {
+              "Value": "1406",
+              "Behavior": 1
+            },
+            {
+              "Value": "468",
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 4417,
+              "Behavior": 1
+            },
+            {
+              "Value": 4417,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "501_S_P12",
+      "Id": "0d378e6a-8dc5-437f-8660-0510cd263b91"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "-20",
+              "Behavior": 1
+            },
+            {
+              "Value": "-40",
+              "Behavior": 1
+            },
+            {
+              "Value": "-60",
+              "Behavior": 1
+            },
+            {
+              "Value": "-80",
+              "Behavior": 1
+            },
+            {
+              "Value": "80",
+              "Behavior": 1
+            },
+            {
+              "Value": "60",
+              "Behavior": 1
+            },
+            {
+              "Value": "40",
+              "Behavior": 1
+            },
+            {
+              "Value": "20",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "502_S_Faecher",
+      "Id": "a01eac9b-9bc5-434e-8136-8c4ca4917077"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": -20,
+              "Behavior": 1
+            },
+            {
+              "Value": -40,
+              "Behavior": 1
+            },
+            {
+              "Value": -60,
+              "Behavior": 1
+            },
+            {
+              "Value": -80,
+              "Behavior": 1
+            },
+            {
+              "Value": 80,
+              "Behavior": 1
+            },
+            {
+              "Value": 60,
+              "Behavior": 1
+            },
+            {
+              "Value": 40,
+              "Behavior": 1
+            },
+            {
+              "Value": 20,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "503_S_Kaleidoskop",
+      "Id": "0fa1d318-228b-4b78-a431-c4feaa925116"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 5328,
+              "Behavior": 1
+            },
+            {
+              "Value": 5328,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "505_S_P15",
+      "Id": "6bb1f99f-b4ec-4730-8c68-fa7ce0134c4f"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "504_S_Kaleidoskop_Close",
+      "Id": "6e2a30ac-7e12-41e4-ac84-28f73f3116dd"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "506_S_Lamellen_Open",
+      "Id": "fda468b5-ef86-4747-a790-51c82b7e0a60"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 1,
+              "Behavior": 1
+            }
+          ],
+          "Target": "92cf2d28-093f-4395-8c21-4fd0d37b4108",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 450,
+              "Behavior": 1
+            },
+            {
+              "Value": 450,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "507_S_P0",
+      "Id": "3d5325c7-0343-4651-aba3-b0e35ffc2921"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "7750",
+              "Behavior": 1
+            },
+            {
+              "Value": "7250",
+              "Behavior": 1
+            },
+            {
+              "Value": "6750",
+              "Behavior": 1
+            },
+            {
+              "Value": "6250",
+              "Behavior": 1
+            },
+            {
+              "Value": "5750",
+              "Behavior": 1
+            },
+            {
+              "Value": "5250",
+              "Behavior": 1
+            },
+            {
+              "Value": "4750",
+              "Behavior": 1
+            },
+            {
+              "Value": "4250",
+              "Behavior": 1
+            },
+            {
+              "Value": "3750",
+              "Behavior": 1
+            },
+            {
+              "Value": "3250",
+              "Behavior": 1
+            },
+            {
+              "Value": "2750",
+              "Behavior": 1
+            },
+            {
+              "Value": "2250",
+              "Behavior": 1
+            },
+            {
+              "Value": "1750",
+              "Behavior": 1
+            },
+            {
+              "Value": "1250",
+              "Behavior": 1
+            },
+            {
+              "Value": "750",
+              "Behavior": 1
+            },
+            {
+              "Value": "250",
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "11C-1-L-Open",
+      "Id": "16e6edfd-7196-462e-8e33-5eed5cc2c796"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "2988",
+              "Behavior": 1
+            },
+            {
+              "Value": "2885",
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "11C-2-S-PM0",
+      "Id": "cce9285c-f9bf-48e6-b3f0-23a0f1de9ce0"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": -90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "11C-3-L-DrummerOpen",
+      "Id": "55c254ed-8ebb-4f13-b6d0-2c516044aaec"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": -90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": -90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "11C-4-L-CCoupeOpen",
+      "Id": "bcab6521-13ff-4140-a9af-83bdd7e0dcbd"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": false,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "2708",
+              "Behavior": 1
+            },
+            {
+              "Value": "3330",
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "11C-5-S-PM1Open",
+      "Id": "f4b7d27c-e62b-46c0-a00a-71ca6e0cbad4"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "4896",
+              "Behavior": 1
+            },
+            {
+              "Value": "4717",
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "11C-6-S-P13",
+      "Id": "3444d758-d9c9-42bf-a370-1fe38b3dffdf"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "-90",
+              "Behavior": 1
+            },
+            {
+              "Value": "-90",
+              "Behavior": 1
+            },
+            {
+              "Value": "-90",
+              "Behavior": 1
+            },
+            {
+              "Value": "-90",
+              "Behavior": 1
+            },
+            {
+              "Value": "-90",
+              "Behavior": 1
+            },
+            {
+              "Value": "90",
+              "Behavior": 1
+            },
+            {
+              "Value": "90",
+              "Behavior": 1
+            },
+            {
+              "Value": "90",
+              "Behavior": 1
+            },
+            {
+              "Value": "90",
+              "Behavior": 1
+            },
+            {
+              "Value": "90",
+              "Behavior": 1
+            },
+            {
+              "Value": "90",
+              "Behavior": 1
+            },
+            {
+              "Value": "90",
+              "Behavior": 1
+            },
+            {
+              "Value": "90",
+              "Behavior": 1
+            },
+            {
+              "Value": "90",
+              "Behavior": 1
+            },
+            {
+              "Value": "90",
+              "Behavior": 1
+            },
+            {
+              "Value": "90",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "11C-L-BckstgInsz",
+      "Id": "9440c651-ed04-4b4f-bdba-9308b63bfa02"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": -90,
+              "Behavior": 1
+            },
+            {
+              "Value": -90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "11C-7-L-234Open",
+      "Id": "1debfd95-61b7-46f5-83df-de820e903b4f"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "11C-8-L234Close",
+      "Id": "5df319d0-2c40-46fe-9648-6a1fe8e49253"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 5022,
+              "Behavior": 1
+            },
+            {
+              "Value": 5022,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "12C-1-S-P14",
+      "Id": "493364ce-54ef-4074-9c6c-d85174f6b3a7"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 2730,
+              "Behavior": 1
+            },
+            {
+              "Value": 2730,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "12C-2-S-P0",
+      "Id": "babd1d7b-25b3-4a5e-af8a-e41c34fd043d"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": -90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "12C-3-L-67Open",
+      "Id": "57920e26-509a-487a-a37e-3bc90cc97f38"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1.8,
+              "Behavior": 1
+            }
+          ],
+          "Target": "92cf2d28-093f-4395-8c21-4fd0d37b4108",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "1926",
+              "Behavior": 1
+            },
+            {
+              "Value": "1500",
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "220-GLC-ScannerRechts",
+      "Id": "b738308e-7109-4175-b997-95ac0e68fdd8"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": -90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": -90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "231b-L-OpenGLE",
+      "Id": "2c621026-4635-4c8e-a233-77b3bf9644d6"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "220-GLA-L-Open",
+      "Id": "46d49730-53b5-4c92-b8dc-ed4c218222b7"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "-180",
+              "Behavior": 1
+            },
+            {
+              "Value": "-180",
+              "Behavior": 1
+            },
+            {
+              "Value": "-180",
+              "Behavior": 1
+            },
+            {
+              "Value": "-180",
+              "Behavior": 1
+            },
+            {
+              "Value": "-180",
+              "Behavior": 1
+            },
+            {
+              "Value": "-180",
+              "Behavior": 1
+            },
+            {
+              "Value": "-180",
+              "Behavior": 1
+            },
+            {
+              "Value": "-180",
+              "Behavior": 1
+            },
+            {
+              "Value": "-180",
+              "Behavior": 1
+            },
+            {
+              "Value": "-180",
+              "Behavior": 1
+            },
+            {
+              "Value": "-180",
+              "Behavior": 1
+            },
+            {
+              "Value": "-180",
+              "Behavior": 1
+            },
+            {
+              "Value": "-180",
+              "Behavior": 1
+            },
+            {
+              "Value": "-180",
+              "Behavior": 1
+            },
+            {
+              "Value": "-180",
+              "Behavior": 1
+            },
+            {
+              "Value": "-180",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "3375",
+              "Behavior": 1
+            },
+            {
+              "Value": "4125",
+              "Behavior": 1
+            },
+            {
+              "Value": "4875",
+              "Behavior": 1
+            },
+            {
+              "Value": "5625",
+              "Behavior": 1
+            },
+            {
+              "Value": "6375",
+              "Behavior": 1
+            },
+            {
+              "Value": "7125",
+              "Behavior": 1
+            },
+            {
+              "Value": "7875",
+              "Behavior": 1
+            },
+            {
+              "Value": "8625",
+              "Behavior": 1
+            },
+            {
+              "Value": "9375",
+              "Behavior": 1
+            },
+            {
+              "Value": "10125",
+              "Behavior": 1
+            },
+            {
+              "Value": "10875",
+              "Behavior": 1
+            },
+            {
+              "Value": "11625",
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "507_L_Close",
+      "Id": "30905d8e-b2fd-44ec-a9f0-1b3f82fa0c62"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1.8,
+              "Behavior": 1
+            }
+          ],
+          "Target": "92cf2d28-093f-4395-8c21-4fd0d37b4108",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1966,
+              "Behavior": 1
+            },
+            {
+              "Value": 1966,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "800_S_P4",
+      "Id": "a4bab8c4-c3d9-4c45-8076-85ee868d4b5d"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "7750",
+              "Behavior": 1
+            },
+            {
+              "Value": "7250",
+              "Behavior": 1
+            },
+            {
+              "Value": "6750",
+              "Behavior": 1
+            },
+            {
+              "Value": "6250",
+              "Behavior": 1
+            },
+            {
+              "Value": "5750",
+              "Behavior": 1
+            },
+            {
+              "Value": "5250",
+              "Behavior": 1
+            },
+            {
+              "Value": "4750",
+              "Behavior": 1
+            },
+            {
+              "Value": "4250",
+              "Behavior": 1
+            },
+            {
+              "Value": "3750",
+              "Behavior": 1
+            },
+            {
+              "Value": "3250",
+              "Behavior": 1
+            },
+            {
+              "Value": "2750",
+              "Behavior": 1
+            },
+            {
+              "Value": "2250",
+              "Behavior": 1
+            },
+            {
+              "Value": "1750",
+              "Behavior": 1
+            },
+            {
+              "Value": "1250",
+              "Behavior": 1
+            },
+            {
+              "Value": "750",
+              "Behavior": 1
+            },
+            {
+              "Value": "250",
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "800_L_Open",
+      "Id": "9ab34c08-db9c-41c2-b234-9ba0a065a6b2"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            },
+            {
+              "Value": 180,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "000_L_Silver",
+      "Id": "903281ca-1ec0-4e47-acf7-bb497fe7b12f"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1,
+              "Behavior": 4
+            }
+          ],
+          "Target": "b8b5f56b-d772-4860-bf22-1b1e7f6d1571",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1.8,
+              "Behavior": 1
+            }
+          ],
+          "Target": "92cf2d28-093f-4395-8c21-4fd0d37b4108",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "0.36",
+              "Behavior": 1
+            }
+          ],
+          "Target": "cc6ebc13-e0e1-4504-a66a-d89bd30f6d16",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 450,
+              "Behavior": 1
+            },
+            {
+              "Value": 450,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "000_S_P0",
+      "Id": "70f3a6d0-d4b0-4101-93fa-ad19bed09818"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": -90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "800_L_ModeratorOpen",
+      "Id": "5345c1ed-cb7e-4c22-ba5e-dd5c3d142e11"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "800_L_ModeratorClose",
+      "Id": "6c93051c-75c3-443e-9a38-900d528c8325"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1.8,
+              "Behavior": 1
+            }
+          ],
+          "Target": "92cf2d28-093f-4395-8c21-4fd0d37b4108",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "0.36",
+              "Behavior": 1
+            }
+          ],
+          "Target": "cc6ebc13-e0e1-4504-a66a-d89bd30f6d16",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 4411,
+              "Behavior": 1
+            },
+            {
+              "Value": 4411,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "800_S_P12",
+      "Id": "903a1b30-79f8-4a13-a902-af12e56aade2"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": -90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "800_L_GLCOpen",
+      "Id": "7a20f3ae-cf7a-4969-ba78-6fc099301af4"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "800_L_GLCClose",
+      "Id": "da989b23-f3ca-41d7-9826-afa325901fc0"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1.8,
+              "Behavior": 1
+            }
+          ],
+          "Target": "92cf2d28-093f-4395-8c21-4fd0d37b4108",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "0.36",
+              "Behavior": 1
+            }
+          ],
+          "Target": "cc6ebc13-e0e1-4504-a66a-d89bd30f6d16",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 450,
+              "Behavior": 1
+            },
+            {
+              "Value": 450,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "800_S_P0",
+      "Id": "eb95a857-1bde-44b2-a3e2-633caa6a1902"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "L_AlignedNoDelay",
+      "Id": "c96bbdfd-0d73-4fdb-9ce5-02c8de0ce55e"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "239_SUV_AuftrittG",
+      "Id": "bcabdba2-2074-4fb8-99cf-03f5a72c9fea"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": 90,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            },
+            {
+              "Value": 0,
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "240_L_Alle",
+      "Id": "56a9eea0-d144-4548-8a40-628221d0b958"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": -80,
+              "Behavior": 1
+            },
+            {
+              "Value": 60,
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "4b2659d4-57ec-482e-82ef-4e8cabaf1cde",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            },
+            {
+              "Value": "0",
+              "Behavior": 1
+            }
+          ],
+          "Target": "2269af1b-4ff3-4fe0-8aac-060d71853923",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 19,
+              "Behavior": 1
+            }
+          ],
+          "Target": "b4a5e4c3-e1e7-43f7-88d0-080a2cb6123c",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1.8,
+              "Behavior": 1
+            }
+          ],
+          "Target": "92cf2d28-093f-4395-8c21-4fd0d37b4108",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 3000,
+              "Behavior": 1
+            },
+            {
+              "Value": "1500",
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "Drummer",
+      "Id": "e3df809b-21bb-4837-9a9e-4a80a0e08c6c"
+    },
+    {
+      "Values": [
+        {
+          "Values": [
+            {
+              "Value": true,
+              "Behavior": 3
+            }
+          ],
+          "Target": "b8e177e2-28e1-46a7-8f2e-369ba9e0493e",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 1.8,
+              "Behavior": 1
+            }
+          ],
+          "Target": "92cf2d28-093f-4395-8c21-4fd0d37b4108",
+          "Type": 0
+        },
+        {
+          "Values": [
+            {
+              "Value": 5150,
+              "Behavior": 1
+            },
+            {
+              "Value": 5000,
+              "Behavior": 1
+            }
+          ],
+          "Target": "327e8648-f291-4812-93df-9ee5d6db94ba",
+          "Type": 0
+        }
+      ],
+      "Trigger": false,
+      "Name": "S-Intelligence",
+      "Id": "3e35b8a7-98b3-4426-8d53-0c6517709410"
+    }
+  ],
+  "Patches": null,
+  "FilePath": "C:\\MBIAA15\\Patches\\IRIS\\demo.json",
+  "Dirty": false,
+  "Name": "demo"
+}
