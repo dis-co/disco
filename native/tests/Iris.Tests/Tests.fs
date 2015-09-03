@@ -1,6 +1,6 @@
 module Iris.Tests
 
-open Iris
+open Iris.Core
 open NUnit.Framework
 
 [<Test>]

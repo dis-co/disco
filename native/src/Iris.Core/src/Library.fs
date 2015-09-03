@@ -1,4 +1,4 @@
-namespace Iris
+namespace Iris.Core
 
 /// Documentation for my library
 ///
@@ -13,4 +13,4 @@ module Library =
   ///
   /// ## Parameters
   ///  - `num` - whatever
-  let hello num = 42
+  let hello num = num

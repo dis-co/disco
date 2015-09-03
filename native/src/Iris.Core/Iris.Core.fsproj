@@ -7,7 +7,7 @@
     <ProjectGuid>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Iris</RootNamespace>
-    <AssemblyName>Iris</AssemblyName>
+    <AssemblyName>Iris.Core</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.3.0.0</TargetFSharpCoreVersion>
     <Name>Iris</Name>
@@ -30,7 +30,7 @@
     <OutputPath>bin\Release</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>.\bin\Release\Iris.xml</DocumentationFile>
+    <DocumentationFile>.\bin\Release\Iris.Core.xml</DocumentationFile>
     <OtherFlags>--warnon:1182</OtherFlags>
   </PropertyGroup>
   <ItemGroup>
@@ -41,7 +41,7 @@
     <Reference Include="FSharp.Core" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Library.fs" />
+    <Compile Include="src/Library.fs" />
     <None Include="Script.fsx" />
     <None Include="paket.references" />
     <None Include="paket.template" />

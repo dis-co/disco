@@ -67,7 +67,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Iris\Iris.Core.fsproj">
+    <ProjectReference Include="..\..\src\Iris.Core\Iris.Core.fsproj">
       <Project>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</Project>
       <Name>Iris.Core</Name>
     </ProjectReference>
