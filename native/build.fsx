@@ -126,9 +126,14 @@ Target "CleanDocs" (fun _ ->
 // --------------------------------------------------------------------------------------
 // Build library & test project
 
+let FunScriptBuild (lst : string list) =
+  System.Diagnostics.Process.Start("./src/Iris.Web/bin/Release/Iris.Web.exe")
+  ()
+
 Target "Build" (fun _ ->
     !! solutionFile
     |> MSBuildRelease "" "Rebuild"
+    |> FunScriptBuild
     |> ignore
 )
 
