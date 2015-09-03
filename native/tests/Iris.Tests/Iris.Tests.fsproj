@@ -4,8 +4,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>d162bda9-7ba0-4566-bfc5-46a898c75b3e</ProjectGuid>
+    <ProjectGuid>{D162BDA9-7BA0-4566-BFC5-46A898C75B3E}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Iris.Tests</RootNamespace>
     <AssemblyName>Iris.Tests</AssemblyName>
@@ -60,18 +59,17 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
-    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-      <Private>True</Private>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
+    <Reference Include="FSharp.Core">
+      <Private>True</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Iris\Iris.fsproj">
-      <Name>Iris</Name>
-      <Project>{87a0f413-4a97-4115-bd46-fee219b15dcb}</Project>
-      <Private>True</Private>
+    <ProjectReference Include="..\..\src\Iris\Iris.Core.fsproj">
+      <Project>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</Project>
+      <Name>Iris.Core</Name>
     </ProjectReference>
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
@@ -85,7 +83,6 @@
   <ItemGroup>
     <Reference Include="nunit.framework">
       <HintPath>..\..\packages\NUnit\lib\nunit.framework.dll</HintPath>
-      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>
