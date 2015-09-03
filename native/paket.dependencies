@@ -7,5 +7,8 @@ nuget FAKE
 nuget SourceLink.Fake
 
 nuget FunScript
+nuget FunScript.TypeScript.Binding.jquery
+nuget FunScript.TypeScript.Binding.routie
+nuget FunScript.TypeScript.Binding.websocket
 
 github fsharp/FAKE modules/Octokit/Octokit.fsx
