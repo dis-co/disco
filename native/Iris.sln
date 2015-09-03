@@ -36,7 +36,7 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Tests", "tests\Iris.Te
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Service", "src\Iris.Service\Iris.Service.fsproj", "{2704F49C-2E66-4923-A4C6-9E07B05FC017}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Web", "src\Iris.Web\Iris.Web.fsproj", "{B347438F-6119-438F-8C75-11225BEAC402}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Web", "src\Iris.Web\Iris.Web.fsproj", "{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -48,14 +48,14 @@ Global
 		{2704F49C-2E66-4923-A4C6-9E07B05FC017}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2704F49C-2E66-4923-A4C6-9E07B05FC017}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2704F49C-2E66-4923-A4C6-9E07B05FC017}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Release|Any CPU.Build.0 = Release|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B347438F-6119-438F-8C75-11225BEAC402}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B347438F-6119-438F-8C75-11225BEAC402}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B347438F-6119-438F-8C75-11225BEAC402}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B347438F-6119-438F-8C75-11225BEAC402}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D162BDA9-7BA0-4566-BFC5-46A898C75B3E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D162BDA9-7BA0-4566-BFC5-46A898C75B3E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D162BDA9-7BA0-4566-BFC5-46A898C75B3E}.Release|Any CPU.ActiveCfg = Release|Any CPU
