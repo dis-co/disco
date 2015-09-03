@@ -41,10 +41,10 @@
     <Reference Include="FSharp.Core" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="src/Library.fs" />
     <None Include="Script.fsx" />
     <None Include="paket.references" />
     <None Include="paket.template" />
+    <Compile Include="src\Library.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
