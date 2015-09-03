@@ -3,21 +3,22 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{2704F49C-2E66-4923-A4C6-9E07B05FC017}</ProjectGuid>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>Iris.Service</RootNamespace>
-    <AssemblyName>Iris.Service</AssemblyName>
+    <ProjectGuid>{B347438F-6119-438F-8C75-11225BEAC402}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Iris.Web</RootNamespace>
+    <AssemblyName>Iris.Web</AssemblyName>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\Debug</OutputPath>
     <ErrorReport>prompt</ErrorReport>
-    <Externalconsole>true</Externalconsole>
+    <ConsolePause>false</ConsolePause>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release</OutputPath>
     <ErrorReport>prompt</ErrorReport>
-    <Externalconsole>true</Externalconsole>
+    <ConsolePause>false</ConsolePause>
+    <DocumentationFile>.\bin\Release\Iris.Web.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
@@ -28,7 +29,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Main.fs" />
+    <Compile Include="src/Main.fs" />
+    <Compile Include="Script.fsx" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
 </Project>

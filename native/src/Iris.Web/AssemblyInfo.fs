@@ -1,7 +1,7 @@
 ﻿namespace System
 open System.Reflection
 
-[<assembly: AssemblyTitleAttribute("Iris.Service")>]
+[<assembly: AssemblyTitleAttribute("Iris.Web")>]
 [<assembly: AssemblyProductAttribute("Iris")>]
 [<assembly: AssemblyDescriptionAttribute("VVVV Infrastructure")>]
 [<assembly: AssemblyVersionAttribute("1.0")>]
