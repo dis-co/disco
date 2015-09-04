@@ -12,7 +12,6 @@ open FunScript.TypeScript
 
 [<FunScript.JS>]
 module Main =
-  
   let main () =
     Globals.Dollar.Invoke("main").append("hello")
     Globals.alert("What is the answer?")

@@ -55,12 +55,6 @@
     <None Include="assets\dependencies\jquery\dist\jquery.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="assets\dependencies\react\JSXTransformer.js">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="assets\dependencies\react\react-with-addons.js">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Include="assets\dependencies\routie\dist\routie.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
