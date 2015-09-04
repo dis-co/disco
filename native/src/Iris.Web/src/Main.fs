@@ -1,5 +1,6 @@
 ﻿namespace Iris.Web
 
+open System
 open FunScript
 open FunScript.TypeScript
 
@@ -12,12 +13,4 @@ open FunScript.TypeScript
 
 [<FunScript.JS>]
 module Main =
-  let main () =
-    Globals.Dollar.Invoke("main")
-      .append("hello")
-      .append("hello")
-      .append("hello")
-      .append("hello")
-      .append("hello") |> ignore
-    Globals.alert("What is the answer?")
-    Globals.console.log("..the answer is: 42.")
+  let main () = Routes.start ()
