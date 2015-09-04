@@ -7,7 +7,12 @@ open System.Diagnostics
 
 [<FunScript.JS>]
 module Build = 
-
+  (*  ____        _ _     _ 
+     | __ ) _   _(_) | __| |
+     |  _ \| | | | | |/ _` |
+     | |_) | |_| | | | (_| |
+     |____/ \__,_|_|_|\__,_| javascript & output to bin/$TARGET/assets/js
+   *)
   [<EntryPoint>]
   let main argv = 
     let exePath = Process.GetCurrentProcess().MainModule.FileName

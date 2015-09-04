@@ -10,6 +10,7 @@ open Fake.ReleaseNotesHelper
 open Fake.UserInputHelper
 open System
 open System.IO
+
 #if MONO
 #else
 #load "packages/SourceLink.Fake/tools/Fake.fsx"
@@ -126,14 +127,23 @@ Target "CleanDocs" (fun _ ->
 // --------------------------------------------------------------------------------------
 // Build library & test project
 
-let FunScriptBuild (lst : string list) =
-  System.Diagnostics.Process.Start("./src/Iris.Web/bin/Release/Iris.Web.exe")
-  ()
+let BuildFrontEnd (lst : string list) =
+  let exePath = List.fold
+                  (fun p v -> Path.Combine(p, v))
+                  __SOURCE_DIRECTORY__
+                  [ "src"; "Iris.Web"; "bin"; "Release"; "Iris.Web.exe" ]
+
+  let res = ExecProcess(fun info ->
+              info.FileName         <- exePath
+              info.WorkingDirectory <- __SOURCE_DIRECTORY__)
+              (TimeSpan.FromMinutes 5.0)
+
+  printfn "Built iris.js result: %d" res
 
 Target "Build" (fun _ ->
     !! solutionFile
     |> MSBuildRelease "" "Rebuild"
-    |> FunScriptBuild
+    |> BuildFrontEnd 
     |> ignore
 )
 
