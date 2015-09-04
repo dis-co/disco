@@ -9,6 +9,8 @@ NUGET
     FSharpVSPowerTools.Core (1.8.0)
       FSharp.Compiler.Service (>= 0.0.87)
     FunScript (1.1.94)
+    FunScript.TypeScript.Binding.fabricjs (1.1.0.37)
+      FunScript.TypeScript.Binding.lib (>= 1.1.0.37)
     FunScript.TypeScript.Binding.jquery (1.1.0.37)
       FunScript.TypeScript.Binding.lib (>= 1.1.0.37)
     FunScript.TypeScript.Binding.lib (1.1.0.37)
