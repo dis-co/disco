@@ -1,4 +1,6 @@
+path := $(shell dirname $(abspath $(MAKEFILE_LIST)))
 
 all:
-	@xbuild /nologo /p:Configuration=Debug Iris.Web.fsproj
-	@./bin/Debug/Iris.Web.exe ./bin/Debug/assets/js/iris.js
+	@echo "Path: " ${path}
+	@xbuild /nologo /p:Configuration=Debug ${path}/Iris.Web.fsproj
+	@${path}/bin/Debug/Iris.Web.exe ${path}/bin/Debug/assets/js/iris.js
