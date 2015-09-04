@@ -1,0 +1,22 @@
+{
+  "name": "Iris.Web",
+  "version": "0.5.0",
+  "authors": [
+    "karsten gebbert <k@ioctl.it>"
+  ],
+  "description": "front-end to Iris written in F#",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "autobahnjs": "autobahn#~0.9.6",
+    "jquery": "~2.1.4",
+    "react": "~0.13.3",
+    "routie": "~0.3.2"
+  }
+}
