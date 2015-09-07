@@ -1,8 +1,8 @@
 ﻿namespace Iris.Web
 
-open System
 open FunScript
 open FunScript.TypeScript
+open System
 
 (* __  __       _       
   |  \/  | __ _(_)_ __  
