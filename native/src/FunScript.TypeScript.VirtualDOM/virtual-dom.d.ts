@@ -3,7 +3,7 @@
 // Definitions by: Christopher Brown <https://github.com/chbrown>
 // Definitions: https://github.com/borisyankov/DefinitelyTyped
 
-declare module VirtualDOM {
+declare module virtualDom {
   interface VHook {
     hook(node: Element, propertyName: string): void;
     unhook(node: Element, propertyName: string): void;
@@ -129,21 +129,25 @@ declare module VirtualDOM {
 
 declare module "virtual-dom/h" {
   // export = VirtualDOM.h; works just fine, but the DT checker doesn't like it
-  import h = VirtualDOM.h;
+  import h = virtualDom.h;
   export = h;
 }
 declare module "virtual-dom/create-element" {
-  import create = VirtualDOM.create;
+  import create = virtualDom.create;
   export = create;
 }
 declare module "virtual-dom/diff" {
-  import diff = VirtualDOM.diff;
+  import diff = virtualDom.diff;
   export = diff;
 }
 declare module "virtual-dom/patch" {
-  import patch = VirtualDOM.patch;
+  import patch = virtualDom.patch;
   export = patch;
 }
 declare module "virtual-dom" {
-  export = VirtualDOM;
+  export = virtualDom;
+}
+
+declare module "virtualDom" {
+  export = virtualDom;
 }

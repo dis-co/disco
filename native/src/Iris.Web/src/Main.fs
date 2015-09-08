@@ -14,6 +14,12 @@ open System
 [<FunScript.JS>]
 module Main = 
   let main() =
+
     let conn = Transport.connect "ws://localhost:9500"
-    conn._open ()
+    // conn._open ()
+
+    let hello = DOM.hello ()
+
+    Globals.console.log(hello)
+    
     Routes.start()
