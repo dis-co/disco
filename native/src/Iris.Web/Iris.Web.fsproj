@@ -25,11 +25,15 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="FSharp.Core" />
+    <Reference Include="FunScript.TypeScript.Binding.autobahn">
+      <HintPath>..\..\lib\FunScript.TypeScript.Binding.autobahn.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="src\Util.fs" />
     <Compile Include="src\Routes.fs" />
+    <Compile Include="src\Transport.fs" />
     <Compile Include="src\Main.fs" />
     <Compile Include="Build.fs" />
   </ItemGroup>
@@ -63,6 +67,16 @@
     <None Include="assets\dependencies\fabric.js\dist\fabric.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Iris.Core\Iris.Core.fsproj">
+      <Project>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</Project>
+      <Name>Iris.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\FunScript.TypeScript.autobahn\FunScript.TypeScript.autobahn.fsproj">
+      <Project>{F452678A-C0D2-479A-BC5D-C8F18249E16F}</Project>
+      <Name>FunScript.TypeScript.autobahn</Name>
+    </ProjectReference>
   </ItemGroup>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6')">
@@ -124,10 +138,4 @@
       </ItemGroup>
     </When>
   </Choose>
-  <ItemGroup>
-    <ProjectReference Include="..\Iris.Core\Iris.Core.fsproj">
-      <Project>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</Project>
-      <Name>Iris.Core</Name>
-    </ProjectReference>
-  </ItemGroup>
 </Project>

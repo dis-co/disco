@@ -12,5 +12,8 @@ open System
 *)
 
 [<FunScript.JS>]
-module Main =
-  let main () = Routes.start ()
+module Main = 
+  let main() =
+    let conn = Transport.connect "ws://localhost:9500"
+    conn._open ()
+    Routes.start()
