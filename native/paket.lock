@@ -3,12 +3,19 @@ NUGET
   specs:
     FAKE (4.3.4)
     FSharp.Compiler.Service (1.4.0.1)
+    FSharp.Control.Reactive (2.4.0)
+      Rx-Core (>= 2.2.5)
+      Rx-Interfaces (>= 2.2.5)
+      Rx-Linq (>= 2.2.5)
     FSharp.Formatting (2.10.0)
       FSharp.Compiler.Service (>= 0.0.87)
       FSharpVSPowerTools.Core (1.8.0)
     FSharpVSPowerTools.Core (1.8.0)
       FSharp.Compiler.Service (>= 0.0.87)
     FunScript (1.1.94)
+    FunScript.Rx (1.1.94)
+      FSharp.Control.Reactive (2.4.0)
+      FunScript (1.1.94)
     FunScript.TypeScript.Binding.fabricjs (1.1.0.37)
       FunScript.TypeScript.Binding.lib (>= 1.1.0.37)
     FunScript.TypeScript.Binding.jquery (1.1.0.37)
@@ -26,6 +33,12 @@ NUGET
     NUnit.Runners (2.6.4)
     Octokit (0.14.0)
       Microsoft.Net.Http
+    Rx-Core (2.2.5)
+      Rx-Interfaces (>= 2.2.5)
+    Rx-Interfaces (2.2.5)
+    Rx-Linq (2.2.5)
+      Rx-Core (>= 2.2.5)
+      Rx-Interfaces (>= 2.2.5)
     SourceLink.Fake (1.1.0)
 GITHUB
   remote: fsharp/FAKE

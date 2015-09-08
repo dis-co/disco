@@ -7,6 +7,7 @@ nuget FAKE
 nuget SourceLink.Fake
 
 nuget FunScript
+nuget FunScript.Rx
 nuget FunScript.TypeScript.Binding.jquery
 nuget FunScript.TypeScript.Binding.routie
 nuget FunScript.TypeScript.Binding.fabricjs

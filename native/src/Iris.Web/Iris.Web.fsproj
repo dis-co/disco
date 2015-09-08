@@ -67,6 +67,9 @@
     <None Include="assets\dependencies\fabric.js\dist\fabric.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="assets\dependencies\rxjs\dist\rx.all.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Iris.Core\Iris.Core.fsproj">
