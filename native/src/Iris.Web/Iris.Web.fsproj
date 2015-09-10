@@ -24,9 +24,8 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
-    <Reference Include="FSharp.Core" />
-    <Reference Include="FunScript.TypeScript.Binding.autobahn">
-      <HintPath>..\..\lib\FunScript.TypeScript.Binding.autobahn.dll</HintPath>
+    <Reference Include="FSharp.Core">
+      <Private>True</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -38,7 +37,24 @@
     <Compile Include="src\Main.fs" />
     <Compile Include="Build.fs" />
   </ItemGroup>
-  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
+  <Choose>
+    <When Condition="'$(VisualStudioVersion)' == '11.0'">
+      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')">
+        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
+      </PropertyGroup>
+    </When>
+    <When Condition="'$(NIX_CONF_DIR)' == '/etc/nix'">
+      <PropertyGroup>
+        <FSharpTargetsPath>/run/current-system/sw/lib/mono/Microsoft SDKs/F#/3.1/Framework/v4.0/Microsoft.FSharp.Targets</FSharpTargetsPath>
+      </PropertyGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets')">
+        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets</FSharpTargetsPath>
+      </PropertyGroup>
+    </Otherwise>
+  </Choose>
+  <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Folder Include="assets\" />
     <Folder Include="assets\js\" />
@@ -80,13 +96,13 @@
       <Project>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</Project>
       <Name>Iris.Core</Name>
     </ProjectReference>
-    <ProjectReference Include="..\FunScript.TypeScript.autobahn\FunScript.TypeScript.autobahn.fsproj">
-      <Project>{F452678A-C0D2-479A-BC5D-C8F18249E16F}</Project>
-      <Name>FunScript.TypeScript.autobahn</Name>
-    </ProjectReference>
     <ProjectReference Include="..\FunScript.TypeScript.VirtualDOM\FunScript.TypeScript.VirtualDOM.fsproj">
       <Project>{772E2081-AF1D-4971-A66C-034E5633DE05}</Project>
       <Name>FunScript.TypeScript.VirtualDOM</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\FunScript.TypeScript.autobahn\FunScript.TypeScript.autobahn.fsproj">
+      <Project>{F452678A-C0D2-479A-BC5D-C8F18249E16F}</Project>
+      <Name>FunScript.TypeScript.autobahn</Name>
     </ProjectReference>
   </ItemGroup>
   <Choose>

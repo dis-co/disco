@@ -2,7 +2,7 @@ namespace Iris.Web
 
 open FunScript
 open FunScript.TypeScript
-open FunScript.TypeScript.VirtualDOM
+open FunScript.TypeScript.virtualDom
 
 [<FunScript.JS>]
 module DOM =
