@@ -196,64 +196,64 @@ Target "PublishNuget" (fun _ ->
 
 // --------------------------------------------------------------------------------------
 // Generate the documentation
-
-Target "GenerateReferenceDocs" (fun _ ->
-    if not <| executeFSIWithArgs "docs/tools" "generate.fsx" ["--define:RELEASE"; "--define:REFERENCE"] [] then
-      failwith "generating reference documentation failed"
-)
-
-let generateHelp' fail debug =
-    let args =
-        if debug then ["--define:HELP"]
-        else ["--define:RELEASE"; "--define:HELP"]
-    if executeFSIWithArgs "docs/tools" "generate.fsx" args [] then
-        traceImportant "Help generated"
-    else
-        if fail then
-            failwith "generating help documentation failed"
-        else
-            traceImportant "generating help documentation failed"
-
-let generateHelp fail =
-    generateHelp' fail false
-
-Target "GenerateHelp" (fun _ ->
-    DeleteFile "docs/content/release-notes.md"
-    CopyFile "docs/content/" "RELEASE_NOTES.md"
-    Rename "docs/content/release-notes.md" "docs/content/RELEASE_NOTES.md"
-
-    DeleteFile "docs/content/license.md"
-    CopyFile "docs/content/" "LICENSE.txt"
-    Rename "docs/content/license.md" "docs/content/LICENSE.txt"
-
-    generateHelp true
-)
-
-Target "GenerateHelpDebug" (fun _ ->
-    DeleteFile "docs/content/release-notes.md"
-    CopyFile "docs/content/" "RELEASE_NOTES.md"
-    Rename "docs/content/release-notes.md" "docs/content/RELEASE_NOTES.md"
-
-    DeleteFile "docs/content/license.md"
-    CopyFile "docs/content/" "LICENSE.txt"
-    Rename "docs/content/license.md" "docs/content/LICENSE.txt"
-
-    generateHelp' true true
-)
-
-Target "KeepRunning" (fun _ ->    
-    use watcher = !! "docs/content/**/*.*" |> WatchChanges (fun changes ->
-         generateHelp false
-    )
-
-    traceImportant "Waiting for help edits. Press any key to stop."
-
-    System.Console.ReadKey() |> ignore
-
-    watcher.Dispose()
-)
-
-Target "GenerateDocs" DoNothing
+//
+// Target "GenerateReferenceDocs" (fun _ ->
+//     if not <| executeFSIWithArgs "docs/tools" "generate.fsx" ["--define:RELEASE"; "--define:REFERENCE"] [] then
+//       failwith "generating reference documentation failed"
+// )
+// 
+// let generateHelp' fail debug =
+//     let args =
+//         if debug then ["--define:HELP"]
+//         else ["--define:RELEASE"; "--define:HELP"]
+//     if executeFSIWithArgs "docs/tools" "generate.fsx" args [] then
+//         traceImportant "Help generated"
+//     else
+//         if fail then
+//             failwith "generating help documentation failed"
+//         else
+//             traceImportant "generating help documentation failed"
+// 
+// let generateHelp fail =
+//     generateHelp' fail false
+// 
+// Target "GenerateHelp" (fun _ ->
+//     DeleteFile "docs/content/release-notes.md"
+//     CopyFile "docs/content/" "RELEASE_NOTES.md"
+//     Rename "docs/content/release-notes.md" "docs/content/RELEASE_NOTES.md"
+// 
+//     DeleteFile "docs/content/license.md"
+//     CopyFile "docs/content/" "LICENSE.txt"
+//     Rename "docs/content/license.md" "docs/content/LICENSE.txt"
+// 
+//     generateHelp true
+// )
+// 
+// Target "GenerateHelpDebug" (fun _ ->
+//     DeleteFile "docs/content/release-notes.md"
+//     CopyFile "docs/content/" "RELEASE_NOTES.md"
+//     Rename "docs/content/release-notes.md" "docs/content/RELEASE_NOTES.md"
+// 
+//     DeleteFile "docs/content/license.md"
+//     CopyFile "docs/content/" "LICENSE.txt"
+//     Rename "docs/content/license.md" "docs/content/LICENSE.txt"
+// 
+//     generateHelp' true true
+// )
+//  
+// Target "KeepRunning" (fun _ ->    
+//     use watcher = !! "docs/content/**/*.*" |> WatchChanges (fun changes ->
+//          generateHelp false
+//     )
+// 
+//     traceImportant "Waiting for help edits. Press any key to stop."
+// 
+//     System.Console.ReadKey() |> ignore
+// 
+//     watcher.Dispose()
+// )
+// 
+// Target "GenerateDocs" DoNothing
 
 let createIndexFsx lang =
     let content = """(*** hide ***)
@@ -354,8 +354,8 @@ Target "All" DoNothing
   ==> "Build"
   ==> "CopyBinaries"
   ==> "RunTests"
-  ==> "GenerateReferenceDocs"
-  ==> "GenerateDocs"
+  //==> "GenerateReferenceDocs"
+  //==> "GenerateDocs"
   ==> "All"
   =?> ("ReleaseDocs",isLocalBuild)
 
@@ -367,16 +367,16 @@ Target "All" DoNothing
   ==> "NuGet"
   ==> "BuildPackage"
 
-"CleanDocs"
-  ==> "GenerateHelp"
-  ==> "GenerateReferenceDocs"
-  ==> "GenerateDocs"
-
-"CleanDocs"
-  ==> "GenerateHelpDebug"
-
-"GenerateHelp"
-  ==> "KeepRunning"
+// "CleanDocs"
+//   ==> "GenerateHelp"
+//   ==> "GenerateReferenceDocs"
+//   ==> "GenerateDocs"
+// 
+// "CleanDocs"
+//   ==> "GenerateHelpDebug"
+// 
+// "GenerateHelp"
+//   ==> "KeepRunning"
     
 "ReleaseDocs"
   ==> "Release"
