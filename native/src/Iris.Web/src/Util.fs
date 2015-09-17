@@ -1,10 +1,9 @@
-namespace Iris.Web
+[<FunScript.JS>]
+module Iris.Web.Util
 
 open FunScript
 open FunScript.TypeScript
 
-[<FunScript.JS>]
-module Util =
 
-  let log str =
-    Globals.console.log(str)
+let log str =
+  Globals.console.log(str)

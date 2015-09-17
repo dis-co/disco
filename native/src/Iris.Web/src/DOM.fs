@@ -1,11 +1,10 @@
-namespace Iris.Web
+[<FunScript.JS>]
+module Iris.Web.DOM
 
 open FunScript
 open FunScript.TypeScript
 open FunScript.TypeScript.virtualDom
 
-[<FunScript.JS>]
-module DOM =
-  let hello () =
-    let tree = virtualDom.Globals.h("div#hello", Array.empty)
-    virtualDom.Globals.create tree
+let hello () =
+  let tree = virtualDom.Globals.h("div#hello", Array.empty)
+  virtualDom.Globals.create tree

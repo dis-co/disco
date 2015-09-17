@@ -31,6 +31,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="src\Store.fsi" />
+    <Compile Include="src\Store.fs" />
     <Compile Include="src\Util.fs" />
     <Compile Include="src\DOM.fs" />
     <Compile Include="src\Routes.fs" />
