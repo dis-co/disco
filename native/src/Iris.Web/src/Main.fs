@@ -5,6 +5,8 @@ open FunScript
 open FunScript.TypeScript
 open System
 
+open Iris.Core.Types.Pin
+
 (* __  __       _       
   |  \/  | __ _(_)_ __  
   | |\/| |/ _` | | '_ \ 
@@ -13,12 +15,10 @@ open System
 *)
 
 let main() =
-
-  let conn = Transport.connect "ws://localhost:9500"
+  // let conn = Transport.connect "ws://localhost:9500"
   // conn._open ()
+  // let hello = DOM.hello ()
+  // Routes.start ()
 
-  let hello = DOM.hello ()
-
-  Globals.console.log hello
-  
-  Routes.start ()
+  let s = new Store.DataStore ()
+  Globals.console.log (s.Dispatch ())
