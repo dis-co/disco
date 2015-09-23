@@ -125,4 +125,3 @@ let parseValType str =
     | "Boolean" -> Bool
     | "Real"    -> Real
     | _         -> Int
-
