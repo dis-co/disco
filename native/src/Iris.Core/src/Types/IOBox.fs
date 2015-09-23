@@ -36,39 +36,38 @@ type StringType =
   
 type IOBox =
   | ValueBox  of
-    Name       *
-    Tag        *
-    ValType    *
-    Behavior   *
-    VectorSize *
-    Min        *
-    Max        *
-    Unit       *
-    Precision  *
-    Values
+    name      : Name       *
+    tag       : Tag        *
+    valType   : ValType    *
+    behavior  : Behavior   *
+    vecSize   : VectorSize *
+    min       : Min        *
+    max       : Max        *
+    unit      : Unit       *
+    precision : Precision  *
+    slices    : Values
 
   | StringBox of
-    Name       *
-    Tag        *
-    StringType *
-    FileMask   *
-    MaxChars   *
-    Values
+    name     : Name       *
+    tag      : Tag        *
+    strType  : StringType *
+    fileMask : FileMask   *
+    maxChars : MaxChars   *
+    slices   : Values
 
   | ColorBox  of
-    Name       *
-    Tag        *
-    Values
+    name   : Name       *
+    tag    : Tag        *
+    slices : Values
 
   | EnumBox   of
-    Name       *
-    Tag        *
-    Properties *
-    Values
+    name       : Name       *
+    tag        : Tag        *
+    properties : Properties *
+    slices     : Values
 
   | NodeBox   of
-    Name       *
-    Tag
+    name : Name * tag  : Tag
 
 let updateValues box values =
   match box with
@@ -105,7 +104,7 @@ let updateName box name =
 
 let isBehavior b box =
   match box with
-    | ValueBox(_,_,_,b',_,_,_,_,_,_) -> b = b'
+    | ValueBox(behavior = b') -> b = b'
     | _ -> false
 
 let isBang = isBehavior Bang
@@ -113,10 +112,9 @@ let isToggle = isBehavior Toggle
 
 let parseBehavior str =
   match str with
-    | "Toggle" -> Toggle
-    | "Press"  -> Bang
-    | "Bang"   -> Bang
-    | _        -> Slider
+    | "Bang" | "Press" -> Bang
+    | "Toggle"         -> Toggle
+    | _                -> Slider
 
 let parseValType str =
   match str with
