@@ -1,20 +1,7 @@
 [<ReflectedDefinition>]
 module Iris.Core.Types.IOBox
 
-type Name       = string
-type Tag        = string option
-type IrisId     = string
-type NodePath   = string
-type OSCAddress = string
-type VectorSize = int
-type Min        = int
-type Max        = int
-type Unit       = string option
-type FileMask   = string option
-type MaxChars   = int
-type Values     = string list
-type Properties = string list
-type Precision  = int option
+open Iris.Core.Types.Aliases
 
 type Behavior = 
   |  Slider
