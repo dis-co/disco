@@ -1,5 +1,5 @@
 [<ReflectedDefinition>]
-module Iris.Core.Types.Pin
+module Iris.Core.Types.IOBox
 
 type Name       = string
 type Tag        = string option
@@ -9,12 +9,12 @@ type OSCAddress = string
 type VectorSize = int
 type Min        = int
 type Max        = int
-type Unit       = string
+type Unit       = string option
 type FileMask   = string option
 type MaxChars   = int
 type Values     = string list
 type Properties = string list
-type Precision  = int
+type Precision  = int option
 
 type Behavior = 
   |  Slider
@@ -85,7 +85,7 @@ let updateValues box values =
 
     | _ as box -> box
 
-let updateName box name =
+let setName box name =
   match box with
     | ValueBox(_,ta,ty,b,vt,mi,ma,u,p,va) ->
       ValueBox(name,ta,ty,b,vt,mi,ma,u,p,va)
@@ -101,6 +101,13 @@ let updateName box name =
 
     | _ as box -> box
 
+let getName box = 
+  match box with
+    | ValueBox(name = n')  -> n'
+    | ColorBox(name = n')  -> n'
+    | EnumBox(name = n')   -> n'
+    | StringBox(name = n') -> n'
+    | NodeBox(name = n')   -> n'
 
 let isBehavior b box =
   match box with
