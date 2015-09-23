@@ -10,6 +10,18 @@ let hello () =
   virtualDom.Globals.create tree
 
 
+(*
+    ____             _ 
+   / ___| ___   __ _| |
+  | |  _ / _ \ / _` | |
+  | |_| | (_) | (_| | |
+   \____|\___/ \__,_|_|~~:w
+
+   we want a flexible, typed, set of combinators that will eventually be
+   translated straight into HTML strings or trees of VNodes for DOM patching
+   with `virtual-dom`.
+*)
+
 type Html =
   | Parent of
     name     : string *
