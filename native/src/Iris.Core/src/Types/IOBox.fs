@@ -33,85 +33,82 @@ type StringType =
   |  Directory
   |  Url
   |  IP
+
+type ValueData = {
+    name      : Name;       
+    tag       : Tag;        
+    valType   : ValType;
+    behavior  : Behavior;   
+    vecSize   : VectorSize; 
+    min       : Min;        
+    max       : Max;        
+    unit      : Unit;       
+    precision : Precision;
+    slices    : Values;
+  }
+
+type StringData = {
+    name     : Name;       
+    tag      : Tag;        
+    strType  : StringType;
+    fileMask : FileMask;   
+    maxChars : MaxChars;   
+    slices   : Values;
+  }
+
+type ColorData = {
+    name   : Name;       
+    tag    : Tag;        
+    slices : Values;
+  }
+
+type EnumData = {
+    name       : Name;       
+    tag        : Tag;        
+    properties : Properties;
+    slices     : Values;
+  }
   
+type NodeData = {
+    name : Name;
+    tag  : Tag;
+  }
+
 type IOBox =
-  | ValueBox  of
-    name      : Name       *
-    tag       : Tag        *
-    valType   : ValType    *
-    behavior  : Behavior   *
-    vecSize   : VectorSize *
-    min       : Min        *
-    max       : Max        *
-    unit      : Unit       *
-    precision : Precision  *
-    slices    : Values
+  | ValueBox  of ValueData
+  | StringBox of StringData
+  | ColorBox  of ColorData
+  | EnumBox   of EnumData
+  | NodeBox   of NodeData
 
-  | StringBox of
-    name     : Name       *
-    tag      : Tag        *
-    strType  : StringType *
-    fileMask : FileMask   *
-    maxChars : MaxChars   *
-    slices   : Values
-
-  | ColorBox  of
-    name   : Name       *
-    tag    : Tag        *
-    slices : Values
-
-  | EnumBox   of
-    name       : Name       *
-    tag        : Tag        *
-    properties : Properties *
-    slices     : Values
-
-  | NodeBox   of
-    name : Name * tag  : Tag
-
-let updateValues box values =
+let updateValues (box : IOBox) values =
   match box with
-    | ValueBox(n,ta,ty,b,vt,mi,ma,u,p,_) ->
-      ValueBox(n,ta,ty,b,vt,mi,ma,u,p,values)
+    | ValueBox  data -> ValueBox  { data with slices = values }
+    | StringBox data -> StringBox { data with slices = values }
+    | ColorBox  data -> ColorBox  { data with slices = values }
+    | EnumBox   data -> EnumBox   { data with slices = values }
+    | box -> box
 
-    | StringBox(n,ta,st,f,m,_) ->
-      StringBox(n,ta,st,f,m,values)
 
-    | ColorBox(n,ta,_) ->
-      ColorBox(n,ta,values)
-
-    | EnumBox(n,ta,p,_) ->
-      EnumBox(n,ta,p,values)
-
-    | _ as box -> box
-
-let setName box name =
+let setName (box : IOBox) n =
   match box with
-    | ValueBox(_,ta,ty,b,vt,mi,ma,u,p,va) ->
-      ValueBox(name,ta,ty,b,vt,mi,ma,u,p,va)
-
-    | StringBox(_,ta,st,f,m,va) ->
-      StringBox(name,ta,st,f,m,va)
-
-    | ColorBox(_,ta,va) ->
-      ColorBox(name,ta,va)
-
-    | EnumBox(_,ta,p,va) ->
-      EnumBox(name,ta,p,va)
-
-    | _ as box -> box
+    | ValueBox  data -> ValueBox  { data with name = n }
+    | StringBox data -> StringBox { data with name = n }
+    | ColorBox  data -> ColorBox  { data with name = n }
+    | EnumBox   data -> EnumBox   { data with name = n }
+    | NodeBox   data -> NodeBox   { data with name = n }
 
 let getName box = 
   match box with
-    | ValueBox(name = n')  -> n'
-    | ColorBox(name = n')  -> n'
-    | EnumBox(name = n')   -> n'
-    | StringBox(name = n') -> n'
-    | NodeBox(name = n')   -> n'
+    | ValueBox  { name = n } -> n
+    | StringBox { name = n } -> n
+    | ColorBox  { name = n } -> n
+    | EnumBox   { name = n } -> n
+    | NodeBox   { name = n } -> n
 
 let isBehavior b box =
   match box with
-    | ValueBox(behavior = b') -> b = b'
+    | ValueBox { behavior = b' } -> b = b'
     | _ -> false
 
 let isBang = isBehavior Bang

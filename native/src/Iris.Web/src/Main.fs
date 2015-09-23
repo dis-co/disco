@@ -22,17 +22,17 @@ let main() =
 
   // let s = new Store.DataStore ()
 
-  let box = ValueBox( name = "hello"
-                    , tag = None
-                    , valType = Bool
-                    , behavior = Toggle
-                    , vecSize = 1
-                    , min = 0
-                    , max = 1
-                    , unit = None
-                    , precision = None
-                    , slices = []
-                    )
+  let box = ValueBox { name      = "hello"
+                     ; tag       = None
+                     ; valType   = Bool
+                     ; behavior  = Toggle
+                     ; vecSize   = 1
+                     ; min       = 0
+                     ; max       = 1
+                     ; unit      = None
+                     ; precision = None
+                     ; slices    = []
+                     }
 
   Globals.console.log (box)
   
