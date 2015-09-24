@@ -21,44 +21,44 @@ type StringType =
   |  Url
   |  IP
 
-type ValueData = {
-    name      : Name;       
-    tag       : Tag;        
-    valType   : ValType;
-    behavior  : Behavior;   
-    vecSize   : VectorSize; 
-    min       : Min;        
-    max       : Max;        
-    unit      : Unit;       
-    precision : Precision;
-    slices    : Values;
+type ValueData =
+  { name      : Name
+  ; tag       : Tag
+  ; valType   : ValType
+  ; behavior  : Behavior
+  ; vecSize   : VectorSize
+  ; min       : Min
+  ; max       : Max
+  ; unit      : Unit
+  ; precision : Precision
+  ; slices    : Values
   }
 
-type StringData = {
-    name     : Name;       
-    tag      : Tag;        
-    strType  : StringType;
-    fileMask : FileMask;   
-    maxChars : MaxChars;   
-    slices   : Values;
+type StringData =
+  { name     : Name
+  ; tag      : Tag
+  ; strType  : StringType
+  ; fileMask : FileMask
+  ; maxChars : MaxChars
+  ; slices   : Values
   }
 
-type ColorData = {
-    name   : Name;       
-    tag    : Tag;        
-    slices : Values;
+type ColorData =
+  { name   : Name
+  ; tag    : Tag
+  ; slices : Values
   }
 
-type EnumData = {
-    name       : Name;       
-    tag        : Tag;        
-    properties : Properties;
-    slices     : Values;
+type EnumData =
+  { name       : Name
+  ; tag        : Tag
+  ; properties : Properties
+  ; slices     : Values
   }
   
-type NodeData = {
-    name : Name;
-    tag  : Tag;
+type NodeData =
+  { name : Name
+  ; tag  : Tag
   }
 
 type IOBox =
