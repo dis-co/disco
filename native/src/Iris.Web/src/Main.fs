@@ -6,6 +6,7 @@ open FunScript.TypeScript
 open System
 
 open Iris.Core.Types.IOBox
+open Iris.Web.Transport
 
 (* __  __       _       
   |  \/  | __ _(_)_ __  
@@ -21,6 +22,7 @@ let main() =
   // Routes.start ()
 
   // let s = new Store.DataStore ()
+
   let box = ValueBox { name      = "hello"
                      ; tag       = None
                      ; valType   = Bool
@@ -32,9 +34,10 @@ let main() =
                      ; precision = None
                      ; slices    = []
                      }
-
-  let ws = Globals.WebSocket.Create "ws://localhost:8080"
-
-  ws.onopen <- new Func<Event, obj>(fun e ->
-                                      ws.send <| Globals.JSON.stringify box
-                                      Object ())
+  async {
+    let! websocket =
+      Transport.create("ws://localhost:8080",
+                      (fun str -> Globals.console.log(str)),
+                      (fun _   -> Globals.console.log("closed..")))
+    websocket.send("hell not")
+  } |> Async.StartImmediate  

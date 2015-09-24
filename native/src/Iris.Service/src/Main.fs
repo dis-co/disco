@@ -9,9 +9,10 @@ let main argv =
   server.Start(fun socket ->
     socket.OnOpen <- (fun () -> printfn "OPEN!")
     socket.OnClose <- (fun () -> printfn "Close!")
-    socket.OnMessage <- (fun msg -> printfn "message: %s" msg))
+    socket.OnMessage <- (fun msg -> printfn "message: %s" msg
+                                    socket.Send("booooooooboooooo") |> ignore))
 
-  System.Console.ReadLine()
+  System.Console.ReadLine() |> ignore
 
   0 // return an integer exit code
 
