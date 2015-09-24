@@ -11,6 +11,10 @@ nuget Fleck
 nuget MsgPack.Cli
 nuget LibGit2Sharp
 nuget NNanomsg
+nuget Akka
+nuget Akka.Cluster
+nuget Akka.FSharp
+
 
 nuget FunScript
 nuget FunScript.Rx

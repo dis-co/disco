@@ -3,3 +3,6 @@ Fleck
 MsgPack.Cli
 LibGit2Sharp
 NNanomsg
+Akka
+Akka.Cluster
+Akka.FSharp

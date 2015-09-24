@@ -2,3 +2,6 @@ FSharp.Core
 LibGit2Sharp
 MsgPack.Cli
 NNanomsg
+Akka
+Akka.Cluster
+Akka.FSharp
