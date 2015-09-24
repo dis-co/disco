@@ -34,10 +34,10 @@ let main() =
                      ; precision = None
                      ; slices    = []
                      }
+
   async {
-    let! websocket =
-      Transport.create("ws://localhost:8080",
-                      (fun str -> Globals.console.log(str)),
-                      (fun _   -> Globals.console.log("closed..")))
+    let! websocket = Transport.create("ws://localhost:8080",
+                       (fun str -> Globals.console.log(str)),
+                       (fun _   -> Globals.console.log("closed..")))
     websocket.send("hell not")
   } |> Async.StartImmediate  
