@@ -1,0 +1,7 @@
+* Todo:
+** IN flesh out Iris.Web.Html                                      :frontend:
+** IN compiler from Html type -> VNode/VText                       :frontend:
+** IN FunScript msgpack-javascript bindings                        :frontend:
+** IN msgpack serialization/deserialization scheme         :frontend:backend:
+** IN serve mock data to browser                                    :backend:
+** IN vvvv.js integration
