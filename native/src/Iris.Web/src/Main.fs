@@ -21,7 +21,6 @@ let main() =
   // Routes.start ()
 
   // let s = new Store.DataStore ()
-
   let box = ValueBox { name      = "hello"
                      ; tag       = None
                      ; valType   = Bool
@@ -34,10 +33,8 @@ let main() =
                      ; slices    = []
                      }
 
-  Globals.console.log (box)
-  
-  Globals.console.log (getName box)
+  let ws = Globals.WebSocket.Create "ws://localhost:8080"
 
-  let box' = setName box "bye"
-
-  Globals.console.log (getName box')
+  ws.onopen <- new Func<Event, obj>(fun e ->
+                                      ws.send <| Globals.JSON.stringify box
+                                      Object ())
