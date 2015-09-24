@@ -2,397 +2,457 @@
 module Iris.Web.Html
 
 (*
-    ____             _ 
-   / ___| ___   __ _| |
-  | |  _ / _ \ / _` | |
-  | |_| | (_) | (_| | |
-   \____|\___/ \__,_|_|~~:w
-
-   we want a flexible, typed, set of combinators that will eventually be
-   translated straight into HTML strings or trees of VNodes for DOM patching
-   with `virtual-dom`.
+ _____                      
+|_   _|   _ _ __   ___  ___ 
+  | || | | | '_ \ / _ \/ __|
+  | || |_| | |_) |  __/\__ \
+  |_| \__, | .__/ \___||___/
+      |___/|_|              
 *)
+
+
+type Attribute =
+  | Single of name : string
+  | Pair   of name : string * value : string
 
 type Html =
   | Parent of
-    name     : string *
-    openTag  : string *
-    closeTag : string *
-    children : Html list
+    name     : string         *
+    attrs    : Attribute list *
+    children : Html      list
 
   | Leaf of
-    name : string *
-    tag  : string
+    name  : string    *
+    attrs : Attribute list
 
-type Attribute =
-  | SingleAttr of name : string
-  | PairedAttr of name : string * value : string
-
-
-let appendAttr tag attr =
-  match attr with
-    | SingleAttr(a)   -> tag + " " + a
-    | PairedAttr(a,v) -> tag + " " + a + "=" + v
+  | Literal of
+    tag   : string 
 
 
-let (<^>) (el : Html) (attr : Attribute) =
+type Alignment = Left | Center | Right
+
+type Draggable = True | False | Auto
+
+type InputType =
+  | TypeColor
+  | TypeDate
+  | TypeDateTimeLocal
+  | TypeDateTime
+  | TypeEMail
+  | TypeMonth
+  | TypeNumber
+  | TypeRange
+  | TypeSearch
+  | TypeTel
+  | TypeTime
+  | TypeURL
+  | TypeWeek
+  | TypeText
+  | TypePassword
+  | TypeSubmit
+  | TypeRadio
+  | TypeCheckbox
+  | TypeButton
+  | TypeReset
+  
+
+type Shape =
+  | ShpDefault
+  | ShpRect
+  | ShpCircle
+  | ShpPoly
+
+type Preload =
+  | PreloadAuto
+  | PreloadMetadata
+  | PreloadNone
+
+type Target =
+  | TargetBlank
+  | TargetParent
+  | TargetSelf
+  | TargetTop
+  | TargetFrameName of string
+  
+
+type Dir = LTR | RTL
+
+
+(*
+  ____                _     _             _                 
+ / ___|___  _ __ ___ | |__ (_)_ __   __ _| |_ ___  _ __ ___ 
+| |   / _ \| '_ ` _ \| '_ \| | '_ \ / _` | __/ _ \| '__/ __|
+| |__| (_) | | | | | | |_) | | | | | (_| | || (_) | |  \__ \
+ \____\___/|_| |_| |_|_.__/|_|_| |_|\__,_|\__\___/|_|  |___/
+
+*)
+
+// add an Attribute to an element
+let (<!>) (el : Html) (attr : Attribute) =
   match el with
-    | Parent(n,op,cl,chdr) -> Parent(n, appendAttr op attr, cl, chdr)
-    | Leaf(n, op)          -> Leaf(n, appendAttr op attr)
-    
+    | Parent(n,attrs,chdr) -> Parent(n, attr :: attrs, chdr)
+    | Leaf(n, attrs)       -> Leaf(n, attr :: attrs)
+    | item                 -> item
+
+// add more children to an element
+let (<@>) (el : Html) (els : Html list) =
+  match el with
+    | Parent(n, a, chldr) -> Parent(n, a, List.append els chldr)
+    | item                -> item 
+
+let class' n = Pair("class", n)
 
-// html 5 only bae
-let doctype =
-  Leaf("doctype", "<!DOCTYPE html>")
+let data' d n = Pair("data-" + d, n)
 
-let a children =
-  Parent("a", "<a", "</a>", children)
+let id' n = Pair("id", n)
 
-let abbr children =
-  Parent("abbr", "<abbr", "</abbr>", children)
+let style' n = Pair("style", n)
 
-let acronym children =
-  Parent("acronym", "<acronym", "</acronym>", children)
+let accesskey' n = Pair("accesskey", n)
 
-let address children =
-  Parent("address", "<address", "</address>", children)
+let align' a =
+  let a' =
+    match a with
+      | Left   -> "left"
+      | Center -> "center"
+      | Right  -> "right"
+  in Pair("align", a')
+
+let background' url = Pair("background", url)
+
+let bgcolor' clr = Pair("bgcolor", clr)
+
+let contenteditable' bl =
+  let val' = if bl then "true" else "false"
+  in Pair("contenteditable", val')
+
+let contextmenu' id = Pair("contextmenu", id)
+
+let draggable' drgbl =
+  let val' = match drgbl with
+              | True  -> "true"
+              | False -> "false"
+              | Auto  -> "auto"
+  in Pair("draggable", val')
+
+let height' i = Pair("height", i)
 
-let area children =
-  Parent("area", "<area", "</area>", children)
+let hidden' = Pair("hidden", "hidden")
 
-let article children =
-  Parent("article", "<article", "</article>", children)
+let spellcheck' bl =
+  Pair("spellcheck", if bl then "true" else "flase")
+
+let title' n = Pair("title", n)
+
+let width' i = Pair("width", i)
 
-let aside children =
-  Parent("aside", "<aside", "</aside>", children)
+let name' n  = Pair("name", n)
 
-let audio children =
-  Parent("audio", "<audio", "</audio>", children)
+let type' t =
+  let t' =
+    match t with
+      | TypeColor         -> "color"
+      | TypeDate          -> "date"
+      | TypeDateTimeLocal -> "datetime-local"
+      | TypeDateTime      -> "datetime"
+      | TypeEMail         -> "email"
+      | TypeMonth         -> "month"
+      | TypeNumber        -> "number"
+      | TypeRange         -> "range"
+      | TypeSearch        -> "search"
+      | TypeTel           -> "tel"
+      | TypeTime          -> "time"
+      | TypeURL           -> "url"
+      | TypeWeek          -> "week"
+      | TypeText          -> "text"
+      | TypePassword      -> "password"
+      | TypeSubmit        -> "submit"
+      | TypeRadio         -> "radio"
+      | TypeCheckbox      -> "checkbox"
+      | TypeButton        -> "button"
+      | TypeReset         -> "reset"
+  in Pair("type", t')
 
-let b children =
-  Parent("b", "<b", "</b>", children)
+let href' url = Pair("href", url)
 
-let baseTag children =
-  Parent("base", "<base", "</base>", children)
+let charset' str = Pair("charset", str)
 
-let basefont children =
-  Parent("basefont", "<basefont", "</basefont>", children)
+let src' url = Pair("src", url) 
 
-let bdi children =
-  Parent("bdi", "<bdi", "</bdi>", children)
+let alt' str = Pair("alt", str)
 
-let bdo children =
-  Parent("bdo", "<bdo", "</bdo>", children)
+let usemap' map = Pair("usemap", map)
 
-let big children =
-  Parent("big", "<big", "</big>", children)
+let shape' shp =
+  let shp' = 
+    match shp with
+      | ShpDefault -> "default" 
+      | ShpRect    -> "rect"
+      | ShpCircle  -> "circle"
+      | ShpPoly    -> "poly"
+  in Pair("shape", shp')
+ 
+let coords' cs = Pair("coords", cs)
 
-let blockquote children =
-  Parent("blockquote", "<blockquote", "</blockquote>", children)
+let download' str = Pair("download", str)
+  
+let autoplay' = Pair("autoplay", "autoplay")
 
-let body children =
-  Parent("body", "<body", "</body>", children)
+let controls' = Pair("controls", "controls")
 
-let br = Leaf("br", "<br")
+let loop' = Pair("loop", "loop")
 
-let button children =
-  Parent("button", "<button", "</button>", children)
+let muted' = Pair("muted", "muted")
 
-let canvas = Leaf("canvas", "<canvas")
+let preload' pl =
+  let pl' =
+    match pl with
+      | PreloadAuto     -> "auto"
+      | PreloadMetadata -> "metadata"
+      | PreloadNone     -> "none"
+  in Pair("preload", pl')
 
-let caption children =
-  Parent("caption", "<caption", "</caption>", children)
+let target' tg =
+  let tg' =
+    match tg with
+      | TargetBlank        -> "_blank"
+      | TargetParent       -> "_parent"
+      | TargetSelf         -> "_self"
+      | TargetTop          -> "_top"
+      | TargetFrameName(s) -> s
+  in Pair("target", tg')
+  
 
-let center children =
-  Parent("center", "<center", "</center>", children)
+let dir' dr =
+  let dr' =
+    match dr with
+      | LTR -> "ltr"
+      | RTL -> "rtl"
+  in Pair("dir", dr')
 
-let cite children =
-  Parent("cite", "<cite", "</cite>", children)
 
-let code children =
-  Parent("code", "<code", "</code>", children)
+let cite' url = Pair("cite", url)
 
-let col children =
-  Parent("col", "<col", "</col>", children)
+let value' txt = Pair("value", txt)
 
-let colgroup children =
-  Parent("colgroup", "<colgroup", "</colgroup>", children)
 
-let command children =
-  Parent("command", "<command", "</command>", children)
+(*
+ _   _ _____ __  __ _     
+| | | |_   _|  \/  | |    
+| |_| | | | | |\/| | |    
+|  _  | | | | |  | | |___ 
+|_| |_| |_| |_|  |_|_____|
 
-let datalist children =
-  Parent("datalist", "<datalist", "</datalist>", children)
+*)
 
-let dd children =
-  Parent("dd", "<dd", "</dd>", children)
+let doctype    = Literal("<!DOCTYPE html>")
 
-let del children =
-  Parent("del", "<del", "</del>", children)
+let a          = Parent("a", [], [])
 
-let details children =
-  Parent("details", "<details", "</details>", children)
+let abbr       = Parent("abbr", [], [])
 
-let dfn children =
-  Parent("dfn", "<dfn", "</dfn>", children)
+let address    = Parent("address", [], [])
 
-let dir children =
-  Parent("dir", "<dir", "</dir>", children)
+let area       = Parent("area", [], [])
 
-let div children =
-  Parent("div", "<div", "</div>", children)
+let article    = Parent("article", [], [])
 
-let dl children =
-  Parent("dl", "<dl", "</dl>", children)
+let aside      = Parent("aside", [], [])
 
-let dt children =
-  Parent("dt", "<dt", "</dt>", children)
+let audio      = Parent("audio", [], [])
 
-let em children =
-  Parent("em", "<em", "</em>", children)
+let b          = Parent("b", [], [])
 
-let embed children =
-  Parent("embed", "<embed", "</embed>", children)
+let basetag    = Parent("base", [], [])
 
-let fieldset children =
-  Parent("fieldset", "<fieldset", "</fieldset>", children)
+let bdi        = Parent("bdi", [], [])
 
-let figcaption children =
-  Parent("figcaption", "<figcaption", "</figcaption>", children)
+let bdo        = Parent("bdo", [], [])
 
-let figure children =
-  Parent("figure", "<figure", "</figure>", children)
+let blockquote = Parent("blockquote", [], [])
 
-let font children =
-  Parent("font", "<font", "</font>", children)
+let body       = Parent("body", [], [])
 
-let footer children =
-  Parent("footer", "<footer", "</footer>", children)
+let br         = Leaf("br", [])
 
-let form children =
-  Parent("form", "<form", "</form>", children)
+let button     = Parent("button", [], [])
 
-let frame children =
-  Parent("frame", "<frame", "</frame>", children)
+let canvas     = Leaf("canvas", [])
 
-let frameset children =
-  Parent("frameset", "<frameset", "</frameset>", children)
+let caption    = Parent("caption", [], [])
 
-let h1 children =
-  Parent("h1", "<h1", "</h1>", children)
+let cite       = Parent("cite", [], [])
 
-let h2 children =
-  Parent("h2", "<h2", "</h2>", children)
+let code       = Parent("code", [], [])
 
-let h3 children =
-  Parent("h3", "<h3", "</h3>", children)
+let col        = Parent("col", [], [])
 
-let h4 children =
-  Parent("h4", "<h4", "</h4>", children)
+let colgroup   = Parent("colgroup", [], [])
 
-let h5 children =
-  Parent("h5", "<h5", "</h5>", children)
+let command    = Parent("command", [], [])
 
-let h6 children =
-  Parent("h6", "<h6", "</h6>", children)
+let datalist   = Parent("datalist", [], [])
 
-let head children =
-  Parent("head", "<head", "</head>", children)
+let dd         = Parent("dd", [], [])
 
-let header children =
-  Parent("header", "<header", "</header>", children)
+let del        = Parent("del", [], [])
 
-let hgroup children =
-  Parent("hgroup", "<hgroup", "</hgroup>", children)
+let details    = Parent("details", [], [])
 
-let hr =
-  Leaf("hr", "<hr")
+let dfn        = Parent("dfn", [], [])
 
-let html children =
-  Parent("html", "<html", "</html>", children)
+let div        = Parent("div", [], [])
 
-let i children =
-  Parent("i", "<i", "</i>", children)
+let dl         = Parent("dl", [], [])
 
-let iframe children =
-  Parent("iframe", "<iframe", "</iframe>", children)
+let dt         = Parent("dt", [], [])
 
-let img =
-  Leaf("img", "<img")
+let em         = Parent("em", [], [])
 
-let input children =
-  Parent("input", "<input", "</input>", children)
+let embed      = Parent("embed", [], [])
 
-let ins children =
-  Parent("ins", "<ins", "</ins>", children)
+let fieldset   = Parent("fieldset", [], [])
 
-let kbd children =
-  Parent("kbd", "<kbd", "</kbd>", children)
+let figcaption = Parent("figcaption", [], [])
 
-let keygen children =
-  Parent("keygen", "<keygen", "</keygen>", children)
+let figure     = Parent("figure", [], [])
 
-let label children =
-  Parent("label", "<label", "</label>", children)
+let footer     = Parent("footer", [], [])
 
-let legend children =
-  Parent("legend", "<legend", "</legend>", children)
+let form       = Parent("form", [], [])
 
-let li children =
-  Parent("li", "<li", "</li>", children)
+let h1         = Parent("h1", [], [])
 
-let link =
-  Leaf("link", "<link")
+let h2         = Parent("h2", [], [])
 
-let map children =
-  Parent("map", "<map", "</map>", children)
+let h3         = Parent("h3", [], [])
 
-let mark children =
-  Parent("mark", "<mark", "</mark>", children)
+let h4         = Parent("h4", [], [])
 
-let menu children =
-  Parent("menu", "<menu", "</menu>", children)
+let h5         = Parent("h5", [], [])
 
-let meta =
-  Leaf("meta", "<meta")
+let h6         = Parent("h6", [], [])
 
-let meter children =
-  Parent("meter", "<meter", "</meter>", children)
+let head       = Parent("head", [], [])
 
-let nav children =
-  Parent("nav", "<nav", "</nav>", children)
+let header     = Parent("header", [], [])
 
-let noframes children =
-  Parent("noframes", "<noframes", "</noframes>", children)
+let hgroup     = Parent("hgroup", [], [])
 
-let noscript children =
-  Parent("noscript", "<noscript", "</noscript>", children)
+let hr         = Leaf("hr", [])
 
-let objectTag children =
-  Parent("object", "<object", "</object>", children)
+let html       = Parent("html", [], [])
 
-let ol children =
-  Parent("ol", "<ol", "</ol>", children)
+let i          = Parent("i", [], [])
 
-let optgroup children =
-  Parent("optgroup", "<optgroup", "</optgroup>", children)
+let iframe     = Parent("iframe", [], [])
 
-let option children =
-  Parent("option", "<option", "</option>", children)
+let img        = Leaf("img", [])
 
-let output children =
-  Parent("output", "<output", "</output>", children)
+let input      = Parent("input", [], [])
 
-let p children =
-  Parent("p", "<p", "</p>", children)
+let ins        = Parent("ins", [], [])
 
-let param children =
-  Parent("param", "<param", "</param>", children)
+let kbd        = Parent("kbd", [], [])
 
-let pre children =
-  Parent("pre", "<pre", "</pre>", children)
+let keygen     = Parent("keygen", [], [])
 
-let progress children =
-  Parent("progress", "<progress", "</progress>", children)
+let label      = Parent("label", [], [])
 
-let q children =
-  Parent("q", "<q", "</q>", children)
+let legend     = Parent("legend", [], [])
 
-let rp children =
-  Parent("rp", "<rp", "</rp>", children)
+let li         = Parent("li", [], [])
 
-let rt children =
-  Parent("rt", "<rt", "</rt>", children)
+let link       = Leaf("link", [])
 
-let s children =
-  Parent("s", "<s", "</s>", children)
+let map        = Parent("map", [], [])
 
-let samp children =
-  Parent("samp", "<samp", "</samp>", children)
+let mark       = Parent("mark", [], [])
 
-let script children =
-  Parent("script", "<script", "</script>", children)
+let menu       = Parent("menu", [], [])
 
-let section children =
-  Parent("section", "<section", "</section>", children)
+let meta       = Leaf("meta", [])
 
-let selectTag children =
-  Parent("select", "<select", "</select>", children)
+let meter      = Parent("meter", [], [])
 
-let small children =
-  Parent("small", "<small", "</small>", children)
+let nav        = Parent("nav", [], [])
 
-let source children =
-  Parent("source", "<source", "</source>", children)
+let noscript   = Parent("noscript", [], [])
 
-let span children =
-  Parent("span", "<span", "</span>", children)
+let objectTag  = Parent("object", [], [])
 
-let strike children =
-  Parent("strike", "<strike", "</strike>", children)
+let ol         = Parent("ol", [], [])
 
-let strong children =
-  Parent("strong", "<strong", "</strong>", children)
+let optgroup   = Parent("optgroup", [], [])
 
-let style children =
-  Parent("style", "<style", "</style>", children)
+let option     = Parent("option", [], [])
 
-let sub children =
-  Parent("sub", "<sub", "</sub>", children)
+let output     = Parent("output", [], [])
 
-let summary children =
-  Parent("summary", "<summary", "</summary>", children)
+let p          = Parent("p", [], [])
 
-let sup children =
-  Parent("sup", "<sup", "</sup>", children)
+let param      = Parent("param", [], [])
 
-let table children =
-  Parent("table", "<table", "</table>", children)
+let pre        = Parent("pre", [], [])
 
-let tbody children =
-  Parent("tbody", "<tbody", "</tbody>", children)
+let progress   = Parent("progress", [], [])
 
-let td children =
-  Parent("td", "<td", "</td>", children)
+let q          = Parent("q", [], [])
 
-let textarea children =
-  Parent("textarea", "<textarea", "</textarea>", children)
+let rp         = Parent("rp", [], [])
 
-let tfoot children =
-  Parent("tfoot", "<tfoot", "</tfoot>", children)
+let rt         = Parent("rt", [], [])
 
-let th children =
-  Parent("th", "<th", "</th>", children)
+let samp       = Parent("samp", [], [])
 
-let thead children =
-  Parent("thead", "<thead", "</thead>", children)
+let script     = Parent("script", [], [])
 
-let time children =
-  Parent("time", "<time", "</time>", children)
+let section    = Parent("section", [], [])
 
-let title children =
-  Parent("title", "<title", "</title>", children)
+let selectTag  = Parent("select", [], [])
 
-let tr children =
-  Parent("tr", "<tr", "</tr>", children)
+let small      = Parent("small", [], [])
 
-let track children =
-  Parent("track", "<track", "</track>", children)
+let source     = Parent("source", [], [])
 
-let tt children =
-  Parent("tt", "<tt", "</tt>", children)
+let span       = Parent("span", [], [])
 
-let u children =
-  Parent("u", "<u", "</u>", children)
+let strong     = Parent("strong", [], [])
 
-let ul children =
-  Parent("ul", "<ul", "</ul>", children)
+let style      = Parent("style", [], [])
 
-let var children =
-  Parent("var", "<var", "</var>", children)
+let sub        = Parent("sub", [], [])
 
-let video children =
-  Parent("video", "<video", "</video>", children)
+let summary    = Parent("summary", [], [])
 
-let wbr children =
-  Parent("wbr", "<wbr", "</wbr>", children)
+let sup        = Parent("sup", [], [])
+
+let table      = Parent("table", [], [])
+
+let tbody      = Parent("tbody", [], [])
+
+let td         = Parent("td", [], [])
+
+let textarea   = Parent("textarea", [], [])
+
+let tfoot      = Parent("tfoot", [], [])
+
+let th         = Parent("th", [], [])
+
+let thead      = Parent("thead", [], [])
+
+let time       = Parent("time", [], [])
+
+let title      = Parent("title", [], [])
+
+let tr         = Parent("tr", [], [])
+
+let track      = Parent("track", [], [])
+
+let ul         = Parent("ul", [], [])
+
+let var        = Parent("var", [], [])
+
+let video      = Parent("video", [], [])
+
+let wbr        = Parent("wbr", [], [])
