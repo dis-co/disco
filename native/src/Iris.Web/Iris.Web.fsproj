@@ -26,13 +26,13 @@
     <Reference Include="System.Numerics" />
     <Reference Include="FSharp.Core">
       <HintPath>..\..\packages\FSharp.Core\lib\net40\FSharp.Core.dll</HintPath>
-      <Private>True</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="src\Store.fs" />
     <Compile Include="src\Util.fs" />
+    <Compile Include="src\Html.fs" />
     <Compile Include="src\DOM.fs" />
     <Compile Include="src\Routes.fs" />
     <Compile Include="src\Transport.fs" />

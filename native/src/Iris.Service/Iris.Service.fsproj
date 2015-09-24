@@ -25,7 +25,6 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="FSharp.Core">
-      <Private>True</Private>
       <HintPath>..\..\packages\FSharp.Core\lib\net40\FSharp.Core.dll</HintPath>
     </Reference>
   </ItemGroup>
