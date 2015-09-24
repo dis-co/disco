@@ -2,3 +2,4 @@ tmp/
 Iris-Release*.zip
 Iris-*.zip
 FSharp.Formatting.svclog
+native/src/Iris.*/net40

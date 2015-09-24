@@ -7,6 +7,11 @@ nuget NUnit.Runners
 nuget FAKE
 nuget SourceLink.Fake
 
+nuget Fleck
+nuget MsgPack.Cli
+nuget LibGit2Sharp
+nuget NNanomsg
+
 nuget FunScript
 nuget FunScript.Rx
 nuget FunScript.TypeScript.Binding.jquery
