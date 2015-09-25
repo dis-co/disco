@@ -34,28 +34,27 @@ type Alignment = Left | Center | Right
 type Draggable = True | False | Auto
 
 type InputType =
-  | TypeColor
-  | TypeDate
-  | TypeDateTimeLocal
-  | TypeDateTime
-  | TypeEMail
-  | TypeMonth
-  | TypeNumber
-  | TypeRange
-  | TypeSearch
-  | TypeTel
-  | TypeTime
-  | TypeURL
-  | TypeWeek
-  | TypeText
-  | TypePassword
-  | TypeSubmit
-  | TypeRadio
-  | TypeCheckbox
-  | TypeButton
-  | TypeReset
+  | Color
+  | Date
+  | DateTimeLocal
+  | DateTime
+  | EMail
+  | Month
+  | Number
+  | Range
+  | Search
+  | Tel
+  | Time
+  | URL
+  | Week
+  | Text
+  | Password
+  | Submit
+  | Radio
+  | Checkbox
+  | Button
+  | Reset
   
-
 type Shape =
   | ShpDefault
   | ShpRect
@@ -87,18 +86,40 @@ type Dir = LTR | RTL
 
 *)
 
-// add an Attribute to an element
-let (<!>) (el : Html) (attr : Attribute) =
-  match el with
-    | Parent(n,attrs,chdr) -> Parent(n, attr :: attrs, chdr)
-    | Leaf(n, attrs)       -> Leaf(n, attr :: attrs)
-    | item                 -> item
+let renderAttr (attr : Attribute)=
+  match attr with
+    | Single(el) -> el
+    | Pair(n,v)  -> n + "=\"" + v + "\""
 
-// add more children to an element
-let (<@>) (el : Html) (els : Html list) =
+let rec renderHtml (el : Html) =
   match el with
-    | Parent(n, a, chldr) -> Parent(n, a, List.append els chldr)
+    | Literal(t)              -> t
+    | Leaf(n, attrs)          -> "<" + n + ">"
+    | Parent(t, attrs, chldr) ->
+      let children = List.map renderHtml chldr |>
+                     List.fold (fun m it -> m + it) ""
+      let attributes = List.map renderAttr attrs |>
+                       List.fold (fun m it -> m + " " + it ) ""
+      in "<" + t + attributes + ">" + children + "</" + t + ">"
+
+// add an Attribute to an element
+let (<@>) (el : Html) (attr : Attribute) =
+  match el with
+    | Parent(n,attrs,chldr) -> Parent(n, List.append attrs [attr], chldr)
+    | Leaf(n, attrs)        -> Leaf(n, List.append attrs [attr])
+    | item                  -> item
+
+// add a child to an element (I guess its a Monoid!)
+let (<|>) (el : Html) (chld : Html) =
+  match el with
+    | Parent(n, a, chldr) -> Parent(n, a, List.append chldr [chld])
     | item                -> item 
+
+// add more children to an element (I guess its a Monoid!)
+let (<||>) (el : Html) (chldr : Html list) =
+  match el with
+    | Parent(n, a, chldr') -> Parent(n, a, List.append chldr' chldr)
+    | item                 -> item 
 
 let class' n = Pair("class", n)
 
@@ -151,26 +172,26 @@ let name' n  = Pair("name", n)
 let type' t =
   let t' =
     match t with
-      | TypeColor         -> "color"
-      | TypeDate          -> "date"
-      | TypeDateTimeLocal -> "datetime-local"
-      | TypeDateTime      -> "datetime"
-      | TypeEMail         -> "email"
-      | TypeMonth         -> "month"
-      | TypeNumber        -> "number"
-      | TypeRange         -> "range"
-      | TypeSearch        -> "search"
-      | TypeTel           -> "tel"
-      | TypeTime          -> "time"
-      | TypeURL           -> "url"
-      | TypeWeek          -> "week"
-      | TypeText          -> "text"
-      | TypePassword      -> "password"
-      | TypeSubmit        -> "submit"
-      | TypeRadio         -> "radio"
-      | TypeCheckbox      -> "checkbox"
-      | TypeButton        -> "button"
-      | TypeReset         -> "reset"
+      | Color         -> "color"
+      | Date          -> "date"
+      | DateTimeLocal -> "datetime-local"
+      | DateTime      -> "datetime"
+      | EMail         -> "email"
+      | Month         -> "month"
+      | Number        -> "number"
+      | Range         -> "range"
+      | Search        -> "search"
+      | Tel           -> "tel"
+      | Time          -> "time"
+      | URL           -> "url"
+      | Week          -> "week"
+      | Text          -> "text"
+      | Password      -> "password"
+      | Submit        -> "submit"
+      | Radio         -> "radio"
+      | Checkbox      -> "checkbox"
+      | Button        -> "button"
+      | Reset         -> "reset"
   in Pair("type", t')
 
 let href' url = Pair("href", url)
@@ -222,7 +243,6 @@ let target' tg =
       | TargetFrameName(s) -> s
   in Pair("target", tg')
   
-
 let dir' dr =
   let dr' =
     match dr with
@@ -230,11 +250,9 @@ let dir' dr =
       | RTL -> "rtl"
   in Pair("dir", dr')
 
-
 let cite' url = Pair("cite", url)
 
 let value' txt = Pair("value", txt)
-
 
 (*
  _   _ _____ __  __ _     
@@ -244,6 +262,8 @@ let value' txt = Pair("value", txt)
 |_| |_| |_| |_|  |_|_____|
 
 *)
+
+let text     t = Literal(t)
 
 let doctype    = Literal("<!DOCTYPE html>")
 

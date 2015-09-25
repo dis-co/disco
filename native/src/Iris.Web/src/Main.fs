@@ -40,4 +40,4 @@ let main() =
                        (fun str -> Globals.console.log(str)),
                        (fun _   -> Globals.console.log("closed..")))
     websocket.send("hell not")
-  } |> Async.StartImmediate  
+  } |> Async.StartImmediate

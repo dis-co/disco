@@ -5,5 +5,7 @@ open NUnit.Framework
 
 [<Test>]
 let ``should emit correct html snippet for a`` () =
-  let result = "test"
+  let mylink = a <!> href' "http://localhost"
+                 <@> 
+  
   Assert.AreEqual("test",result)
