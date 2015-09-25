@@ -6,6 +6,7 @@ open FunScript.TypeScript
 open System
 
 open Iris.Core.Types.IOBox
+open Iris.Web.Html
 open Iris.Web.VirtualDom
 
 (* __  __       _       
@@ -39,8 +40,13 @@ let main() =
   // let nod1 = mkVNode "div#hell" Array.empty
   // let nod2 = mkVNode "div#heaven" [| nod1 |]
 
+  let mylist = ul <||>
+               [ li <|> text "hello"
+               ; li <|> text "bye"
+               ]
 
-  let txt = mkVText "hellalalala[:w]"
-  let node = mkVNode "div#main" [| txt |]
-  Globals.console.log(txt)
-  Globals.console.log(node)
+  Globals.console.log("plain")
+  Globals.console.log(renderHtml mylist)
+
+  Globals.console.log("virtual-dom")
+  Globals.console.log(htmlToVTree mylist |> createElement)
