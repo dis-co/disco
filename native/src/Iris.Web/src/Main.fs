@@ -14,7 +14,6 @@ open Iris.Web.VirtualDom
   | |  | | (_| | | | | |
   |_|  |_|\__,_|_|_| |_| entry point.
 *)
-
 let main() =
   // Routes.start ()
 
@@ -37,7 +36,11 @@ let main() =
   //   websocket.send("hell not")
   // } |> Async.StartImmediate
 
-  let nod1 = mkVNode "div#hell" Array.empty
-  let nod2 = mkVNode "div#heaven" [| nod1 |]
+  // let nod1 = mkVNode "div#hell" Array.empty
+  // let nod2 = mkVNode "div#heaven" [| nod1 |]
 
-  Globals.console.log(nod2)
+
+  let txt = mkVText "hellalalala[:w]"
+  let node = mkVNode "div#main" [| txt |]
+  Globals.console.log(txt)
+  Globals.console.log(node)
