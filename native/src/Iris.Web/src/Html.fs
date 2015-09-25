@@ -115,7 +115,7 @@ let (<|>) (el : Html) (chld : Html) =
     | Parent(n, a, chldr) -> Parent(n, a, List.append chldr [chld])
     | item                -> item 
 
-// add more children to an element (I guess its a Monoid!)
+// add a list of children to an element
 let (<||>) (el : Html) (chldr : Html list) =
   match el with
     | Parent(n, a, chldr') -> Parent(n, a, List.append chldr' chldr)
