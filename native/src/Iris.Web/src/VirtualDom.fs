@@ -22,7 +22,6 @@ and VNodeD (tag : string, attrs : VProperties, chdrn : VTree array) =
 and VTextD (content : string) =
   let mutable text = content
 
-
 [<JSEmit("""
          vnode = new virtualDom.VNode({0});
          vnode.properties = {1};
@@ -36,6 +35,12 @@ let mkVText txt = VText <| new VTextD(txt)
 
 [<JSEmit("""return virtualDom.create({0});""")>]
 let createElement tree = failwith "never"
+
+[<JSEmit("""return virtualDom.diff({0}, {1});""")>]
+let diff tree newtree = failwith "never"
+
+[<JSEmit("""return virtualDom.patch({0}, {1});""")>]
+let patch tree patches = failwith "never"
 
 (*
    Html -> VTree

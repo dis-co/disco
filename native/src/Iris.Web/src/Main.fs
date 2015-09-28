@@ -9,6 +9,9 @@ open Iris.Core.Types.IOBox
 open Iris.Web.Html
 open Iris.Web.VirtualDom
 
+[<JSEmit("""return JSON.stringify({0});""")>]
+let toString (i : obj) = failwith "never"
+
 (* __  __       _       
   |  \/  | __ _(_)_ __  
   | |\/| |/ _` | | '_ \ 
@@ -40,15 +43,21 @@ let main() =
   // let nod1 = mkVNode "div#hell" Array.empty
   // let nod2 = mkVNode "div#heaven" [| nod1 |]
 
-  let mylist = ul <@> class' "nostyle" <@> id' "main" <||>
-               [ li <|> text "hello"
-               ; li <|> text "bye"
-               ]
+  let render (cnt : string) =
+    ul <@> class' "nostyle" <@> id' "main" <||>
+      [ li <|> text ("current: " + cnt)
+      ]
 
-  Globals.console.log("plain")
-  Globals.console.log(renderHtml mylist)
+  let count = ref 0
+  let tree = ref (htmlToVTree (render <| toString !count)) 
+  let rootNode = ref (createElement !tree)
 
-  Globals.console.log("virtual-dom")
-  let tree = htmlToVTree mylist
-  Globals.console.log(tree)
-  Globals.console.log(createElement tree)
+  Globals.document.body.appendChild(!rootNode) |> ignore
+
+  Globals.setInterval((fun _ ->
+                         count := (!count + 1)
+                         let newtree = htmlToVTree (render <| toString !count)
+                         let patches = diff tree newtree
+                         rootNode := patch !rootNode patches
+                         tree := newtree
+                         ), 1000)
