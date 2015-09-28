@@ -1,4 +1,5 @@
 * Todo:
+** DONE complete example with rx + small view to render data from ws :frontend:
 ** DONE attributes compiler Html -> VDom
 ** DONE flesh out Iris.Web.Html                                    :frontend:
 ** DONE compiler from Html type -> VNode/VText                     :frontend:

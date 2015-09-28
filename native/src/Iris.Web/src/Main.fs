@@ -22,47 +22,28 @@ let setInterval = Globals.setInterval
   |_|  |_|\__,_|_|_| |_| entry point.
 *)
 let main() =
-  // Routes.start ()
-
-  // let box = ValueBox { name      = "hello"
-  //                    ; tag       = None
-  //                    ; valType   = Bool
-  //                    ; behavior  = Toggle
-  //                    ; vecSize   = 1
-  //                    ; min       = 0
-  //                    ; max       = 1
-  //                    ; unit      = None
-  //                    ; precision = None
-  //                    ; slices    = []
-  //                    }
-
-  // async {
-  //   let! websocket = Transport.create("ws://localhost:8080",
-  //                      (fun str -> Globals.console.log(str)),
-  //                      (fun _   -> Globals.console.log("closed..")))
-  //   websocket.send("hell not")
-  // } |> Async.StartImmediate
-
-  // let nod1 = mkVNode "div#hell" Array.empty
-  // let nod2 = mkVNode "div#heaven" [| nod1 |]
-
-  let render (cnt : int) =
-    ul <@> class' "nostyle" <@> id' "main" <||>
-      [ li <|> text ("previous: " + (toString <| cnt - 1))
-      ; li <|> text ("current: "  + (toString cnt))
-      ; li <|> text ("next: "     + (toString <| cnt + 1))
+  let render content =
+    div <@> id' "main" <||>
+      [ h1 <|> text "Content:"
+      ; p  <|> text content
+      ; hr
       ]
 
-  let count = ref 0
-  let tree = ref (htmlToVTree (render !count)) 
+  let msg = ref "not connteced"
+  let tree = ref (htmlToVTree (render !msg)) 
   let rootNode = ref (createElement !tree)
 
   document.body.appendChild(!rootNode) |> ignore
 
-  setInterval((fun _ ->
-                  count := (!count + 1)
-                  let newtree = htmlToVTree <| render !count
-                  let patches = diff tree newtree
-                  rootNode := patch !rootNode patches
-                  tree := newtree
-                  ), 1000)
+  async {
+    let! websocket = Transport.create("ws://localhost:8080",
+                       (fun str -> 
+                            msg := str
+                            let newtree = htmlToVTree <| render !msg
+                            let patches = diff tree newtree
+                            rootNode := patch !rootNode patches
+                            tree := newtree),
+                       (fun _   -> Globals.console.log("closed..")))
+    websocket.send("hello")
+  } |> Async.StartImmediate
+

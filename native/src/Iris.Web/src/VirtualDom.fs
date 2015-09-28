@@ -61,10 +61,11 @@ let parseAttrs attrs =
       | Pair(n, v) -> addAttr outp n v 
       | Single(n)  -> addAttr outp n n) (mkProperties ()) attrs
 
-let mkNode n a ch =
-  mkVNode n (parseAttrs a) (List.map htmlToVTree ch |> List.toArray)
 
 let rec htmlToVTree (html : Html) =
+  let mkNode n a ch =
+    mkVNode n (parseAttrs a) (List.map htmlToVTree ch |> List.toArray)
+
   match html with
     | Parent(n, a, ch) -> mkNode n a ch
     | Leaf(n, a)       -> mkNode n a []
