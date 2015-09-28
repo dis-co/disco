@@ -40,7 +40,7 @@ let main() =
   // let nod1 = mkVNode "div#hell" Array.empty
   // let nod2 = mkVNode "div#heaven" [| nod1 |]
 
-  let mylist = ul <||>
+  let mylist = ul <@> class' "nostyle" <@> id' "main" <||>
                [ li <|> text "hello"
                ; li <|> text "bye"
                ]
@@ -49,4 +49,6 @@ let main() =
   Globals.console.log(renderHtml mylist)
 
   Globals.console.log("virtual-dom")
-  Globals.console.log(htmlToVTree mylist |> createElement)
+  let tree = htmlToVTree mylist
+  Globals.console.log(tree)
+  Globals.console.log(createElement tree)
