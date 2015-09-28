@@ -42,10 +42,7 @@ let diff tree newtree = failwith "never"
 [<JSEmit("""return virtualDom.patch({0}, {1});""")>]
 let patch tree patches = failwith "never"
 
-(*
-   Html -> VTree
-*)
-
+(* Html -> VTree *)
 [<JSEmit("""return new Object();""")>]
 let mkProperties () = new VProperties ()
 
@@ -64,8 +61,11 @@ let parseAttrs attrs =
       | Pair(n, v) -> addAttr outp n v 
       | Single(n)  -> addAttr outp n n) (mkProperties ()) attrs
 
+let mkNode n a ch =
+  mkVNode n (parseAttrs a) (List.map htmlToVTree ch |> List.toArray)
+
 let rec htmlToVTree (html : Html) =
   match html with
-    | Parent(n, a, ch) -> mkVNode n (parseAttrs a) (List.map htmlToVTree ch |> List.toArray)
-    | Leaf(n, a)       -> mkVNode n (parseAttrs a) Array.empty
+    | Parent(n, a, ch) -> mkNode n a ch
+    | Leaf(n, a)       -> mkNode n a []
     | Literal(t)       -> mkVText t

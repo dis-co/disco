@@ -10,7 +10,7 @@ open Iris.Web.Html
 open Iris.Web.VirtualDom
 
 [<JSEmit("""return JSON.stringify({0});""")>]
-let toString (i : obj) = failwith "never"
+let toString (i : obj) = ""
 
 (* __  __       _       
   |  \/  | __ _(_)_ __  
@@ -43,20 +43,22 @@ let main() =
   // let nod1 = mkVNode "div#hell" Array.empty
   // let nod2 = mkVNode "div#heaven" [| nod1 |]
 
-  let render (cnt : string) =
+  let render (cnt : int) =
     ul <@> class' "nostyle" <@> id' "main" <||>
-      [ li <|> text ("current: " + cnt)
+      [ li <|> text ("previous: " + (toString <| cnt - 1))
+      ; li <|> text ("current: "  + (toString cnt))
+      ; li <|> text ("next: "     + (toString <| cnt + 1))
       ]
 
   let count = ref 0
-  let tree = ref (htmlToVTree (render <| toString !count)) 
+  let tree = ref (htmlToVTree (render !count)) 
   let rootNode = ref (createElement !tree)
 
   Globals.document.body.appendChild(!rootNode) |> ignore
 
   Globals.setInterval((fun _ ->
                          count := (!count + 1)
-                         let newtree = htmlToVTree (render <| toString !count)
+                         let newtree = htmlToVTree <| render !count
                          let patches = diff tree newtree
                          rootNode := patch !rootNode patches
                          tree := newtree
