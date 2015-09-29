@@ -1,5 +1,8 @@
 ﻿open Fleck
 open System.Diagnostics
+open System.IO
+
+open Iris.Service.AssetServer
 
 let rec loop (sckt : IWebSocketConnection option ref) =
   let res = System.Console.ReadLine()
@@ -13,13 +16,14 @@ let rec loop (sckt : IWebSocketConnection option ref) =
 
 [<EntryPoint>]
 let main argv = 
-  printfn "%A" argv
+  let socketServer = new WebSocketServer "ws://0.0.0.0:8080"
 
-  let server = new WebSocketServer "ws://0.0.0.0:8080"
+  let assetServer = new AssetServer("0.0.0.0", 3000)
+  assetServer.Start ()
 
   let sckt = ref Option<IWebSocketConnection>.None
 
-  server.Start(fun socket ->
+  socketServer.Start(fun socket ->
     socket.OnOpen <- (fun () -> sckt := Some(socket))
     socket.OnClose <- (fun () -> printfn "Close!")
     socket.OnMessage <- (fun msg -> socket.Send("connected!") |> ignore))

@@ -30,12 +30,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="src\Plugin.fs" />
     <Compile Include="src\Store.fs" />
     <Compile Include="src\Util.fs" />
     <Compile Include="src\Html.fs" />
     <Compile Include="src\VirtualDom.fs" />
     <Compile Include="src\Routes.fs" />
     <Compile Include="src\Transport.fs" />
+    <Compile Include="src\Index.fs" />
     <Compile Include="src\Main.fs" />
     <Compile Include="Build.fs" />
   </ItemGroup>
@@ -62,9 +64,6 @@
     <Folder Include="assets\js\" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="assets\index.html">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Include="assets\css\iris.css">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -72,6 +71,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="assets\js\iris.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="assets\js\number.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="assets\dependencies\autobahnjs\autobahn.js">

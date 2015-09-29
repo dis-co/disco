@@ -1,9 +1,10 @@
-﻿open FunScript
+﻿namespace Iris.Web
+
+open FunScript
 open FunScript.Compiler
 open Iris.Web
 open System.IO
 open System.Diagnostics
-
 
 [<FunScript.JS>]
 module Build = 
@@ -14,7 +15,7 @@ module Build =
      |____/ \__,_|_|_|\__,_| javascript & output to bin/$TARGET/assets/js
    *)
   [<EntryPoint>]
-  let main argv = 
+  let compileJS argv = 
     let exePath = Process.GetCurrentProcess().MainModule.FileName
     let destPath = Path.Combine(Path.GetDirectoryName(exePath), "assets", "js", "iris.js")
     let js = Compiler.Compile(<@ Main.main() @>, noReturn = true)

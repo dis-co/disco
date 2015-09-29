@@ -94,7 +94,10 @@ let renderAttr (attr : Attribute)=
 let rec renderHtml (el : Html) =
   match el with
     | Literal(t)              -> t
-    | Leaf(n, attrs)          -> "<" + n + ">"
+    | Leaf(t, attrs)          ->
+      let attributes = List.map renderAttr attrs |>
+                       List.fold (fun m it -> m + " " + it ) ""
+      in "<" + t + attributes + ">"
     | Parent(t, attrs, chldr) ->
       let children = List.map renderHtml chldr |>
                      List.fold (fun m it -> m + it) ""
