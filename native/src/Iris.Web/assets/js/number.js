@@ -2,6 +2,10 @@ window.IrisPlugins = window.IrisPlugins || [];
 
 (function(plugins) {
   var myplugin = function(el, pin) {
+    if(typeof el === 'undefined' ||
+       typeof pin === 'undefined')
+      throw "Must specify $el and pin to constructor";
+
     this._root = el;
     this._id = pin.Id;
     this._name = pin.Name;

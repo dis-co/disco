@@ -30,7 +30,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="src\Plugin.fs" />
+    <Compile Include="src\Plugins.fs" />
     <Compile Include="src\Store.fs" />
     <Compile Include="src\Util.fs" />
     <Compile Include="src\Html.fs" />

@@ -18,7 +18,9 @@ module Build =
   let compileJS argv = 
     let exePath = Process.GetCurrentProcess().MainModule.FileName
     let destPath = Path.Combine(Path.GetDirectoryName(exePath), "assets", "js", "iris.js")
-    let js = Compiler.Compile(<@ Main.main() @>, noReturn = true)
-    File.WriteAllText(destPath, js)
+    let source = Compiler.Compile(<@ Main.main() @>, noReturn = true)
+    let sourceWrapped = sprintf "$(document).ready(function () {\n%s\n});" source
+    File.Delete destPath
+    File.WriteAllText(destPath, sourceWrapped)
     0
 

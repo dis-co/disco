@@ -8,6 +8,7 @@ open System
 open Iris.Core.Types.IOBox
 open Iris.Web.Html
 open Iris.Web.VirtualDom
+open Iris.Web.Plugins
 
 [<JSEmit("""return JSON.stringify({0});""")>]
 let toString (i : obj) = ""
@@ -47,3 +48,6 @@ let main() =
     websocket.send("hello")
   } |> Async.StartImmediate
 
+  let ps = getPlugins ()
+  Globals.console.log(ps.[0]);
+  
