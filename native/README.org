@@ -1,7 +1,7 @@
-* Todo:
-** IN data structure for holding view-specific data                :frontend:
-** IN how to bind/manage event handlers in views?                  :frontend:
+* ToDo:
+** DONE how to bind/manage event handlers in views?                :frontend:
 ** IN do some simple rx experiments                                :frontend:
+** DONE data structure for holding view-specific data              :frontend:
 ** DONE complete example with rx + small view to render data from ws :frontend:
 ** DONE attributes compiler Html -> VDom
 ** DONE flesh out Iris.Web.Html                                    :frontend:

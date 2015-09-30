@@ -1,5 +1,3 @@
-window.IrisPlugins = window.IrisPlugins || [];
-
 (function(plugins) {
   var myplugin = function(el, pin) {
     if(typeof el === 'undefined' ||
@@ -30,10 +28,15 @@ window.IrisPlugins = window.IrisPlugins || [];
   myplugin.prototype.dispose = function() {
     // cleanup listeners
   };
+
+  // render is expected to return a VTree even for static things like canvas
+  myplugin.prototype.render = function () {
+    return virtualDom.h('h1', ['hello']);
+  };
   
   plugins.push({
     name: "test-plugin",
     type: "number",
     constructor: myplugin
   });
-})(window.IrisPlugins);
+})(window.IrisPlugins || []);
