@@ -10,4 +10,4 @@ open Iris.Web.Types
          window.IrisPlugins = window.IrisPlugins || [];
          return window.IrisPlugins;
          """)>]
-let getPlugins () : IViewPlugin array = failwith "never"
+let getPlugins () : IPluginSpec array = failwith "never"

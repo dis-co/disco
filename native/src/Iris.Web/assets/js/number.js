@@ -37,6 +37,6 @@
   plugins.push({
     name: "test-plugin",
     type: "number",
-    constructor: myplugin
+    plugin: myplugin
   });
 })(window.IrisPlugins || []);

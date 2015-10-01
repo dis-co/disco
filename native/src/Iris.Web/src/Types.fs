@@ -39,6 +39,10 @@ type Slice (name : string, value: string) =
 
 type Slices = Slice array
 
-type IViewPlugin =
-  abstract render   : unit -> VTree
-  abstract metadata : unit -> string
+type IPlugin =
+  abstract render : unit -> VTree
+
+type IPluginSpec =
+  abstract   name   : string
+  abstract ``type`` : string
+  abstract  plugin  : unit -> IPlugin
