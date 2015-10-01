@@ -42,8 +42,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="src/AssetServer.fs" />
-    <Compile Include="src/Main.fs" />
+    <Compile Include="src\AssetServer.fs" />
+    <Compile Include="src\Main.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Iris.Core\Iris.Core.fsproj">

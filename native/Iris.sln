@@ -38,10 +38,6 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Service", "src\Iris.Se
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Web", "src\Iris.Web\Iris.Web.fsproj", "{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "FunScript.TypeScript.autobahn", "src\FunScript.TypeScript.autobahn\FunScript.TypeScript.autobahn.fsproj", "{F452678A-C0D2-479A-BC5D-C8F18249E16F}"
-EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "FunScript.TypeScript.VirtualDOM", "src\FunScript.TypeScript.VirtualDOM\FunScript.TypeScript.VirtualDOM.fsproj", "{772E2081-AF1D-4971-A66C-034E5633DE05}"
-EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Nodes", "src\Iris.Nodes\Iris.Nodes.fsproj", "{FBFFB969-00ED-4568-8FD0-65A699AACA18}"
 EndProject
 Global
@@ -58,10 +54,6 @@ Global
 		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{772E2081-AF1D-4971-A66C-034E5633DE05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{772E2081-AF1D-4971-A66C-034E5633DE05}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{772E2081-AF1D-4971-A66C-034E5633DE05}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{772E2081-AF1D-4971-A66C-034E5633DE05}.Release|Any CPU.Build.0 = Release|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -70,10 +62,6 @@ Global
 		{D162BDA9-7BA0-4566-BFC5-46A898C75B3E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D162BDA9-7BA0-4566-BFC5-46A898C75B3E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D162BDA9-7BA0-4566-BFC5-46A898C75B3E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F452678A-C0D2-479A-BC5D-C8F18249E16F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F452678A-C0D2-479A-BC5D-C8F18249E16F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F452678A-C0D2-479A-BC5D-C8F18249E16F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F452678A-C0D2-479A-BC5D-C8F18249E16F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{FBFFB969-00ED-4568-8FD0-65A699AACA18}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FBFFB969-00ED-4568-8FD0-65A699AACA18}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FBFFB969-00ED-4568-8FD0-65A699AACA18}.Release|Any CPU.ActiveCfg = Release|Any CPU
