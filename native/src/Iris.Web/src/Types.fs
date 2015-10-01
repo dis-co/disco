@@ -40,7 +40,11 @@ type Slice (name : string, value: string) =
 type Slices = Slice array
 
 type IPlugin =
-  abstract render : unit -> VTree
+  abstract render   : unit   -> VTree
+  abstract dispose  : unit   -> unit
+  abstract get      : unit   -> Slices
+  abstract set      : Slices -> unit
+  abstract onUpdate : (Slices -> unit) -> unit
 
 type IPluginSpec =
   abstract   name   : string
