@@ -5,7 +5,6 @@ open FunScript
 open FunScript.VirtualDom
 open FunScript.TypeScript
 
-
 open Iris.Web.Types
 open Iris.Core.Types.Patch
 open Iris.Core.Types.IOBox

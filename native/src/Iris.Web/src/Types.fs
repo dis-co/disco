@@ -33,6 +33,12 @@ type State =
     ; View    = None
     }
 
-type ViewPlugin (name : string ) =
-  let mutable name = name
-  member this.Name with get () = name
+type Slice (name : string, value: string) =
+  let mutable name  = name
+  let mutable value = value
+
+type Slices = Slice array
+
+type IViewPlugin =
+  abstract render   : unit -> VTree
+  abstract metadata : unit -> string
