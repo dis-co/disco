@@ -28,7 +28,6 @@ type Html =
   | Literal of
     tag   : string 
 
-
 type Alignment = Left | Center | Right
 
 type Draggable = True | False | Auto
@@ -73,9 +72,7 @@ type Target =
   | TargetTop
   | TargetFrameName of string
   
-
 type Dir = LTR | RTL
-
 
 (*
   ____                _     _             _                 

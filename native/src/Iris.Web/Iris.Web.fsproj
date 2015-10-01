@@ -31,12 +31,13 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="src\Plugins.fs" />
-    <Compile Include="src\Store.fs" />
     <Compile Include="src\Util.fs" />
     <Compile Include="src\Html.fs" />
     <Compile Include="src\VirtualDom.fs" />
+    <Compile Include="src\Types.fs" />
     <Compile Include="src\Routes.fs" />
     <Compile Include="src\Transport.fs" />
+    <Compile Include="src\AppState.fs" />
     <Compile Include="src\Index.fs" />
     <Compile Include="src\Main.fs" />
     <Compile Include="Build.fs" />

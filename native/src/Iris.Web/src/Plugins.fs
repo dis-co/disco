@@ -4,10 +4,7 @@ module Iris.Web.Plugins
 open FunScript
 open FunScript.TypeScript
 
-type ViewPlugin (name : string ) =
-  let mutable name = name
-
-  member this.Name with get () = name
+open Iris.Web.Types
 
 [<JSEmit("""
          window.IrisPlugins = window.IrisPlugins || [];
