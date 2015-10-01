@@ -84,6 +84,10 @@
       <Project>{2704F49C-2E66-4923-A4C6-9E07B05FC017}</Project>
       <Name>Iris.Service</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\src\FSharp.Html\FSharp.Html.fsproj">
+      <Project>{5EC8E4A4-ADE2-429B-BC31-F29B73231BA3}</Project>
+      <Name>FSharp.Html</Name>
+    </ProjectReference>
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
@@ -96,6 +100,7 @@
   <ItemGroup>
     <Reference Include="nunit.framework">
       <HintPath>..\..\packages\NUnit\lib\nunit.framework.dll</HintPath>
+      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>

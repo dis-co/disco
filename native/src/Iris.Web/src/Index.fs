@@ -1,7 +1,7 @@
 module Iris.Web.Index
 
 open System.IO
-open Iris.Web.Html
+open FSharp.Html
 
 let charset = meta <@> charset' "utf-8" 
 let doctype = Literal("<!doctype html>")

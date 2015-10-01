@@ -1,9 +1,9 @@
 [<ReflectedDefinition>]
 module Iris.Web.Types
 
+open FunScript.VirtualDom
 open Iris.Core.Types.IOBox
 open Iris.Core.Types.Patch
-
 
 type EventType =
   | AddPin

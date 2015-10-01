@@ -2,12 +2,12 @@
 module Iris.Web.Main
 
 open FunScript
+open FunScript.VirtualDom
 open FunScript.TypeScript
 open System
 
+open FSharp.Html
 open Iris.Web.AppState
-open Iris.Web.Html
-open Iris.Web.VirtualDom
 open Iris.Web.Plugins
 
 [<JSEmit("""return JSON.stringify({0});""")>]

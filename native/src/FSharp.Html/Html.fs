@@ -1,5 +1,5 @@
 [<ReflectedDefinition>]
-module Iris.Web.Html
+module FSharp.Html
 
 (*
  _____                      

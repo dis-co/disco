@@ -1,6 +1,6 @@
 module Iris.Tests.Html
 
-open Iris.Web.Html
+open FSharp.Html
 open NUnit.Framework
 
 [<Test>]
