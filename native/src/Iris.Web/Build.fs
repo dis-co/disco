@@ -14,8 +14,12 @@ module Build =
      | |_) | |_| | | | (_| |
      |____/ \__,_|_|_|\__,_| javascript & output to bin/$TARGET/assets/js
    *)
+  let compileJSString () = 
+    let source = Compiler.Compile(<@ Main.main() @>, noReturn = true)
+    sprintf "$(document).ready(function () {\n%s\n});" source
+
   [<EntryPoint>]
-  let compileJS argv = 
+  let compileJSFile argv = 
     let exePath = Process.GetCurrentProcess().MainModule.FileName
     let destPath = Path.Combine(Path.GetDirectoryName(exePath), "assets", "js", "iris.js")
     let source = Compiler.Compile(<@ Main.main() @>, noReturn = true)

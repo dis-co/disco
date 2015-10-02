@@ -23,7 +23,7 @@ type AssetServer(addr : string, port : int) =
     Path.GetDirectoryName(fn) + "/assets"
 
   let index = compileIndex (basepath + "/js/")
-  let js = compileJS Array.empty
+  let js    = compileJSString ()
 
   // Add more mime-types here if necessary
   // the following are for fonts, source maps etc.
@@ -40,7 +40,8 @@ type AssetServer(addr : string, port : int) =
   // our application only needs to serve files off the disk
   // but we do need to specify what to do in the base case, i.e. "/"
   let app =
-    choose [ GET >>= choose [ path "/" >>= OK index
+    choose [ GET >>= choose [ path "/js/iris.js" >>= OK js
+                              path "/"           >>= OK index
                               browseHome ] ]
 
   let config =
