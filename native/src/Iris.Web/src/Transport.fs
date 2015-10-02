@@ -4,24 +4,22 @@ module Iris.Web.Transport
 open FunScript
 open FunScript.TypeScript
 
-type IWebSocket =
-    abstract send : string -> unit
-    abstract close : unit -> unit
-    
+open Iris.Web.Types
+
 [<JSEmit("""
     socket = new WebSocket({0});
     socket.onopen = function () { 
         {1}();
     };
     socket.onmessage = function (msg) {
-        {2}(msg.data);
+        {2}(JSON.parse(msg.data));
     };
     socket.onclose = function () {
         {3}();
     };
     return socket;
     """)>]
-let createImpl(host : string, onOpen : unit -> unit, onMessage : string -> unit, onClosed : unit -> unit) : IWebSocket = 
+let createImpl(host : string, onOpen : unit -> unit, onMessage : Message -> unit, onClosed : unit -> unit) : IWebSocket = 
     failwith "never"
 
 let create(host, onMessage, onClosed) =

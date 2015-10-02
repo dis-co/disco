@@ -6,8 +6,8 @@ open FunScript.VirtualDom
 open FunScript.TypeScript
 
 open Iris.Web.Types
-open Iris.Core.Types.Patch
-open Iris.Core.Types.IOBox
+// open Iris.Core.Types.Patch
+// open Iris.Core.Types.IOBox
 
 (*
    --------------------------
@@ -22,31 +22,31 @@ type AppState () =
   let notify ev =
     List.map (fun l -> l ev) listeners
 
-  let updatePins pins =
-    state <- { state with Pins = pins }
+  // let updatePins pins =
+  //   state <- { state with IOBoxes = pins }
 
-  member o.Pins with get () = state.Pins
+  member x.AddIOBox (iobox : IOBox) =
+    // iobox :: state.IOBoxes
+    // |> updatePins
+    notify { Kind = AddPin; Data = EmptyD } |> ignore
 
-  member o.Add (pin : IOBox) =
-    pin :: state.Pins
-    |> updatePins
+  member x.UpdateIOBox (iobox : IOBox) =
+    // iobox :: state.IOBoxes
+    // |> updatePins
+    notify { Kind = AddPin; Data = EmptyD } |> ignore
+    
 
-    notify { Kind = AddPin; Data = IOBoxD pin }
+  member x.RemoveIOBox (iobox : IOBox) =
+    // iobox :: state.IOBoxes
+    // |> updatePins
+    notify { Kind = AddPin; Data = EmptyD } |> ignore
 
-  member o.Update (pin : IOBox) =
-    List.map (fun p -> if p = pin then pin else p) state.Pins
-    |> updatePins
+  member x.AddPatch    (patch : Patch) = ()
+  member x.UpdatePatch (patch : Patch) = ()
+  member x.RemovePatch (patch : Patch) = () 
 
-    notify { Kind = UpdatePin; Data = IOBoxD pin }
-
-  member o.Remove (pin : IOBox) =
-    List.filter (fun p -> p <> pin) state.Pins
-    |> updatePins
-
-    notify { Kind = RemovePin; Data = IOBoxD pin }
-
-  member o.AddListener (listener : AppEvent -> unit) =
+  member x.AddListener (listener : AppEvent -> unit) =
     listeners <- listener :: listeners
 
-  member o.ClearListeners (listener : AppEvent -> unit) =
+  member x.ClearListeners (listener : AppEvent -> unit) =
     listeners <- []

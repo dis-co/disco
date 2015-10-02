@@ -24,9 +24,11 @@ let main argv =
   let sckt = ref Option<IWebSocketConnection>.None
 
   socketServer.Start(fun socket ->
-    socket.OnOpen <- (fun () -> sckt := Some(socket))
-    socket.OnClose <- (fun () -> printfn "Close!")
-    socket.OnMessage <- (fun msg -> socket.Send("connected!") |> ignore))
+    socket.OnOpen    <- (fun () -> sckt := Some(socket))
+    socket.OnClose   <- (fun () -> printfn "Close!")
+    socket.OnMessage <- (fun msg ->
+                           socket.Send "{ \"msgtype\": \"empty\" }"
+                           |> ignore))
 
   loop sckt
 

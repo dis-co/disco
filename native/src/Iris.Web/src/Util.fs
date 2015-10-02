@@ -4,5 +4,11 @@ module Iris.Web.Util
 open FunScript
 open FunScript.TypeScript
 
-let log str =
-  Globals.console.log(str)
+[<JSEmit("""return JSON.stringify({0});""")>]
+let toString (i : obj) = ""
+
+let console = Globals.console
+let document = Globals.document
+let setInterval = Globals.setInterval
+
+let JSON = Globals.JSON

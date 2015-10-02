@@ -7,29 +7,47 @@ open FunScript.TypeScript
 open System
 
 open FSharp.Html
+open Iris.Web.Util
+open Iris.Web.Types
 open Iris.Web.AppState
 open Iris.Web.Plugins
 
-[<JSEmit("""return JSON.stringify({0});""")>]
-let toString (i : obj) = ""
+let parsePatchMsg (msg : MsgPayload) = PatchP <| new Patch ()
+let parseIOBoxMsg (msg : MsgPayload) = IOBoxP <| new IOBox ()
 
-let console = Globals.console
-let document = Globals.document
-let setInterval = Globals.setInterval
+let onMsg (state : AppState) (msg : Message) =
+  match msg.Type with
+    | "iris.patch.add" ->
+      match parsePatchMsg msg.Payload with
+        | PatchP(p) -> state.AddPatch p
+        | _         -> console.log("could not add patch")
 
-let JSON = Globals.JSON
+    | "iris.patch.update" ->
+      match parsePatchMsg msg.Payload with
+        | PatchP(p) -> state.UpdatePatch p
+        | _         -> console.log("could not update patch: ")
 
-type Patch = { Name : string }
-type IOBox = { Name : string }
+    | "iris.patch.remove" ->
+      match parsePatchMsg msg.Payload with
+        | PatchP(p) -> state.RemovePatch p
+        | _         -> console.log("could not remove patch: ")
 
-let onMsg (store : AppState) (str : string) =
-  let parsed = str.Split(':') 
-  match parsed.[0] with
-    // | "add"    -> store.Add    { Name = parsed.[1] } 
-    // | "remove" -> store.Remove { Name = parsed.[1] }
-    // | "update" -> store.Update { Name = parsed.[1] }
-    | _        -> console.log("unknown command"); []
-  |> ignore
+    | "iris.iobox.add" -> 
+      match parseIOBoxMsg msg.Payload with
+        | IOBoxP(p) -> state.AddIOBox p
+        | _         -> console.log("could not update pin: ")
+
+    | "iris.iobox.update" -> 
+      match parseIOBoxMsg msg.Payload with
+        | IOBoxP(p) -> state.UpdateIOBox p
+        | _         -> console.log("could not update pin: ")
+
+    | "iris.iobox.remove" -> 
+      match parseIOBoxMsg msg.Payload with
+        | IOBoxP(p) -> state.RemoveIOBox p
+        | _         -> console.log("could not update pin: ")
+
+    | a -> console.log("Invalid message: " + a)
 
 let onClose _ = console.log("closing")
 
@@ -46,6 +64,12 @@ let view content =
 //   rootNode := patch !rootNode patches
 //   tree := newtree
 
+// let msg = ref "not connteced"
+// let tree = ref (htmlToVTree (render !msg)) 
+// let rootNode = ref (createElement !tree)
+
+// document.body.appendChild(!rootNode) |> ignore
+
 (* __  __       _       
   |  \/  | __ _(_)_ __  
   | |\/| |/ _` | | '_ \ 
@@ -53,27 +77,13 @@ let view content =
   |_|  |_|\__,_|_|_| |_| entry point.
 *)
 let main() =
+  let state = new AppState()
+  state.AddListener (fun e -> console.log(e))
 
-  // let msg = ref "not connteced"
-  // let tree = ref (htmlToVTree (render !msg)) 
-  // let rootNode = ref (createElement !tree)
-
-  // document.body.appendChild(!rootNode) |> ignore
-
-  // let store = new AppState()
-
-  // store.AddListener (fun e ->
-  //                    let res = match e.Kind with
-  //                               | AddPin -> "pin was added"
-  //                               | RemovePin -> "pin was removed"
-  //                               | UpdatePin -> "pin was updated"
-  //                    console.log("Event occurred: " + res)
-  //                    console.log(List.map (fun p -> p.Name) store.Pins |> List.toArray))
-
-  // async {
-  //   let! websocket = Transport.create("ws://localhost:8080", onMsg store, onClose)
-  //   websocket.send("start")
-  // } |> Async.StartImmediate
+  async {
+    let! websocket = Transport.create("ws://localhost:8080", onMsg state, onClose)
+    websocket.send("start")
+  } |> Async.StartImmediate
 
   let ps = viewPlugins ()
   let plug = ps.[0].Create ()
