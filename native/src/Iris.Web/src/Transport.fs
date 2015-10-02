@@ -19,7 +19,8 @@ type IWebSocket =
     socket.onclose = function () {
         {3}();
     };
-    return socket;""")>]
+    return socket;
+    """)>]
 let createImpl(host : string, onOpen : unit -> unit, onMessage : string -> unit, onClosed : unit -> unit) : IWebSocket = 
     failwith "never"
 

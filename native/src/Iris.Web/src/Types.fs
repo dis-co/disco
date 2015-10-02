@@ -40,13 +40,20 @@ type Slice (name : string, value: string) =
 type Slices = Slice array
 
 type IPlugin =
-  abstract render   : unit   -> VTree
-  abstract dispose  : unit   -> unit
-  abstract get      : unit   -> Slices
-  abstract set      : Slices -> unit
-  abstract onUpdate : (Slices -> unit) -> unit
+  abstract render  : unit   -> VTree
+  abstract dispose : unit   -> unit
+  abstract update  : IOBox  -> unit
+  abstract get     : unit   -> Slices
+  abstract set     : Slices -> unit
+  abstract on      : string -> (unit -> unit) -> unit
+  abstract off     : string -> unit
 
-type IPluginSpec =
-  abstract   name   : string
-  abstract ``type`` : string
-  abstract  plugin  : unit -> IPlugin
+type IPluginSpec () =
+  let mutable   name   = ""
+  let mutable ``type`` = ""
+  let mutable  create : (unit -> IPlugin) =
+    (fun _ -> Unchecked.defaultof<_>)
+
+  member x.Name    with get () = name
+  member x.GetType with get () = ``type``
+  member x.Create  with get () = create

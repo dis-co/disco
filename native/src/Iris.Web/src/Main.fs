@@ -60,7 +60,7 @@ let main() =
 
   // document.body.appendChild(!rootNode) |> ignore
 
-  let store = new AppState()
+  // let store = new AppState()
 
   // store.AddListener (fun e ->
   //                    let res = match e.Kind with
@@ -70,11 +70,15 @@ let main() =
   //                    console.log("Event occurred: " + res)
   //                    console.log(List.map (fun p -> p.Name) store.Pins |> List.toArray))
 
-  async {
-    let! websocket = Transport.create("ws://localhost:8080", onMsg store, onClose)
-    websocket.send("start")
-  } |> Async.StartImmediate
+  // async {
+  //   let! websocket = Transport.create("ws://localhost:8080", onMsg store, onClose)
+  //   websocket.send("start")
+  // } |> Async.StartImmediate
 
-  let ps = getPlugins ()
-  Globals.console.log(ps.[0]);
+  let ps = viewPlugins ()
+  let plug = ps.[0].Create ()
 
+  console.log(plug.set Array.empty)
+  console.log(plug.get ())
+  console.log(plug.render ())
+  console.log(plug.dispose ())

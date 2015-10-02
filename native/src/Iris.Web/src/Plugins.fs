@@ -6,8 +6,5 @@ open FunScript.TypeScript
 
 open Iris.Web.Types
 
-[<JSEmit("""
-         window.IrisPlugins = window.IrisPlugins || [];
-         return window.IrisPlugins;
-         """)>]
-let getPlugins () : IPluginSpec array = failwith "never"
+[<JSEmit("""return window.IrisPlugins;""")>]
+let viewPlugins () : IPluginSpec array = Array.empty 
