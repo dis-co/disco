@@ -23,7 +23,6 @@ let header pth =
     ; script <@> src' "dependencies/jquery/dist/jquery.js"
     ; script <@> src' "dependencies/routie/dist/routie.js"
     ; script <@> src' "dependencies/fabric.js/dist/fabric.js"
-    ; script <@> src' "dependencies/autobahnjs/autobahn.js"
     ]
   head <||> List.append std (plugins pth)
 
