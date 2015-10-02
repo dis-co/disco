@@ -6,6 +6,13 @@ open FunScript.VirtualDom
 // open Iris.Core.Types.IOBox
 // open Iris.Core.Types.Patch
 
+(*   ___ ___  ____            
+    |_ _/ _ \| __ )  _____  __
+     | | | | |  _ \ / _ \ \/ /
+     | | |_| | |_) | (_) >  < 
+    |___\___/|____/ \___/_/\_\
+*)
+
 type Slice (name : string, value: string) =
   let mutable name  = name
   let mutable value = value
@@ -13,9 +20,10 @@ type Slice (name : string, value: string) =
 type Slices = Slice array
 
 type IOBox () =
-  let mutable slices = Array.empty
+  let   id     = ""
   let   name   = ""
   let ``type`` = ""
+  let mutable slices = Array.empty
   
   member x.Name
     with get () = name
@@ -28,7 +36,15 @@ type IOBox () =
     and  set arr = slices <- arr
 
 
+(*   ____       _       _     
+    |  _ \ __ _| |_ ___| |__  
+    | |_) / _` | __/ __| '_ \ 
+    |  __/ (_| | || (__| | | |
+    |_|   \__,_|\__\___|_| |_|
+*)
+
 type Patch () =
+  let   id : string = ""
   let name : string = ""
   let mutable ioboxes : IOBox array = Array.empty
 
@@ -39,7 +55,13 @@ type Patch () =
     with get () = ioboxes
     and  set bx = ioboxes <- bx
 
-
+(*   __  __                                
+    |  \/  | ___  ___ ___  __ _  __ _  ___ 
+    | |\/| |/ _ \/ __/ __|/ _` |/ _` |/ _ \
+    | |  | |  __/\__ \__ \ (_| | (_| |  __/
+    |_|  |_|\___||___/___/\__,_|\__, |\___|
+                                |___/      
+*)
 type MsgType = string
 
 type MsgPayload =
@@ -54,6 +76,13 @@ type Message (t : MsgType, p : MsgPayload) =
   member x.Type    with get () = msgtype
   member x.Payload with get () = payload
 
+(*      _                _____                 _   
+       / \   _ __  _ __ | ____|_   _____ _ __ | |_ 
+      / _ \ | '_ \| '_ \|  _| \ \ / / _ \ '_ \| __|
+     / ___ \| |_) | |_) | |___ \ V /  __/ | | | |_ 
+    /_/   \_\ .__/| .__/|_____| \_/ \___|_| |_|\__|
+            |_|   |_|                              
+*)
 type EventType =
   |      AddPin
   |   RemovePin
@@ -74,6 +103,12 @@ type AppEvent =
 
 type Listener = (AppEvent -> unit)
 
+(*   ____  _        _       
+    / ___|| |_ __ _| |_ ___ 
+    \___ \| __/ _` | __/ _ \
+     ___) | || (_| | ||  __/
+    |____/ \__\__,_|\__\___|
+*)
 type State =
   { Patches  : Patch list
   ; ViewTree : VTree option
@@ -83,6 +118,13 @@ type State =
     ; ViewTree = None
     }
 
+(*   ____  _             _       
+    |  _ \| |_   _  __ _(_)_ __  
+    | |_) | | | | |/ _` | | '_ \ 
+    |  __/| | |_| | (_| | | | | |
+    |_|   |_|\__,_|\__, |_|_| |_| + spec
+                   |___/         
+*)
 type IPlugin =
   abstract render  : unit   -> VTree
   abstract dispose : unit   -> unit
@@ -102,6 +144,12 @@ type IPluginSpec () =
   member x.GetType with get () = ``type``
   member x.Create  with get () = create
 
+(*  __        __   _    ____             _        _   
+    \ \      / /__| |__/ ___|  ___   ___| | _____| |_ 
+     \ \ /\ / / _ \ '_ \___ \ / _ \ / __| |/ / _ \ __|
+      \ V  V /  __/ |_) |__) | (_) | (__|   <  __/ |_ 
+       \_/\_/ \___|_.__/____/ \___/ \___|_|\_\___|\__|
+*)
 type IWebSocket =
   abstract send : string -> unit
   abstract close : unit -> unit

@@ -17,7 +17,6 @@ let rec loop (sckt : IWebSocketConnection option ref) =
 [<EntryPoint>]
 let main argv = 
   let socketServer = new WebSocketServer "ws://0.0.0.0:8080"
-
   let assetServer = new AssetServer("0.0.0.0", 3000)
   assetServer.Start ()
 
