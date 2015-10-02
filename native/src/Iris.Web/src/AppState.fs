@@ -35,15 +35,19 @@ type AppState () =
     // |> updatePins
     notify { Kind = AddPin; Data = EmptyD } |> ignore
     
-
   member x.RemoveIOBox (iobox : IOBox) =
     // iobox :: state.IOBoxes
     // |> updatePins
     notify { Kind = AddPin; Data = EmptyD } |> ignore
 
-  member x.AddPatch    (patch : Patch) = ()
-  member x.UpdatePatch (patch : Patch) = ()
-  member x.RemovePatch (patch : Patch) = () 
+  member x.AddPatch (patch : Patch) =
+    notify { Kind = AddPatch; Data = EmptyD } |> ignore
+
+  member x.UpdatePatch (patch : Patch) =
+    notify { Kind = UpdatePatch; Data = EmptyD } |> ignore
+
+  member x.RemovePatch (patch : Patch) =
+    notify { Kind = RemovePatch; Data = EmptyD } |> ignore
 
   member x.AddListener (listener : AppEvent -> unit) =
     listeners <- listener :: listeners

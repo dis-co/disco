@@ -55,9 +55,12 @@ type Message (t : MsgType, p : MsgPayload) =
   member x.Payload with get () = payload
 
 type EventType =
-  | AddPin
-  | RemovePin
-  | UpdatePin
+  |      AddPin
+  |   RemovePin
+  |   UpdatePin
+  |    AddPatch
+  | UpdatePatch
+  | RemovePatch
 
 type EventData =
   | IOBoxD of IOBox
