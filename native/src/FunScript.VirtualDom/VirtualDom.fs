@@ -2,6 +2,7 @@
 module FunScript.VirtualDom
 
 open FunScript
+open FunScript.TypeScript
 
 (* Shim class type to please type checker and not have obj() everywhere *)
 type VProperties () = class end
@@ -30,13 +31,13 @@ let mkVNode tag attrs chdrn = VNode <| new VNodeD(tag, attrs, chdrn)
 let mkVText txt = VText <| new VTextD(txt)
 
 [<JSEmit("""return virtualDom.create({0});""")>]
-let createElement tree = failwith "never"
+let createElement tree : Node = failwith "never"
 
 [<JSEmit("""return virtualDom.diff({0}, {1});""")>]
 let diff tree newtree = failwith "never"
 
 [<JSEmit("""return virtualDom.patch({0}, {1});""")>]
-let patch tree patches = failwith "never"
+let patch tree patches : Node = failwith "never"
 
 (* Html -> VTree *)
 [<JSEmit("""return new Object();""")>]

@@ -25,6 +25,14 @@ type AppState () =
   // let updatePins pins =
   //   state <- { state with IOBoxes = pins }
 
+  member x.RootNode
+    with get ()   = state.RootNode
+    and  set node = state <- { state with RootNode = node }
+
+  member x.ViewState
+    with get ()   = state.ViewTree
+    and  set tree = state <- { state with ViewTree = tree }
+
   member x.AddIOBox (iobox : IOBox) =
     // iobox :: state.IOBoxes
     // |> updatePins
@@ -41,6 +49,7 @@ type AppState () =
     notify { Kind = AddPin; Data = EmptyD } |> ignore
 
   member x.AddPatch (patch : Patch) =
+    state <- { state with Patches = patch :: state.Patches }
     notify { Kind = AddPatch; Data = EmptyD } |> ignore
 
   member x.UpdatePatch (patch : Patch) =
@@ -54,3 +63,6 @@ type AppState () =
 
   member x.ClearListeners (listener : AppEvent -> unit) =
     listeners <- []
+
+  member x.Patches
+    with get () = state.Patches 

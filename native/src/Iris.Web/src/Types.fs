@@ -1,6 +1,7 @@
 [<ReflectedDefinition>]
 module Iris.Web.Types
 
+open FunScript.TypeScript
 open FunScript.VirtualDom
 
 // open Iris.Core.Types.IOBox
@@ -112,10 +113,12 @@ type Listener = (AppEvent -> unit)
 type State =
   { Patches  : Patch list
   ; ViewTree : VTree option
+  ; RootNode : Node  option
   }
   static member empty =
     { Patches  = []
     ; ViewTree = None
+    ; RootNode = None
     }
 
 (*   ____  _             _       
