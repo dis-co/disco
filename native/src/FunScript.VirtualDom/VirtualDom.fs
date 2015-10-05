@@ -39,7 +39,6 @@ let diff tree newtree = failwith "never"
 [<JSEmit("""return virtualDom.patch({0}, {1});""")>]
 let patch tree patches : Node = failwith "never"
 
-(* Html -> VTree *)
 [<JSEmit("""return new Object();""")>]
 let mkProperties () = new VProperties ()
 
@@ -52,8 +51,14 @@ let mkProperties () = new VProperties ()
          """)>]
 let addAttr (o : VProperties) (n : string) (v : string) = failwith "never"
 
-[<JSEmit("""{0}.children.push({1});""")>]
-let addChild (o : VTree) (n : VTree) = failwith "never"
+[<JSEmit("""
+         {0}.children.push({1});
+         return {0};
+         """)>]
+let addChild (o : VTree) (n : VTree) : VTree = failwith "never"
 
-[<JSEmit("""{0}.children = {0}.children.concat({1});""")>]
-let addChildren (o : VTree) (n : VTree array) = failwith "never"
+[<JSEmit("""
+         {0}.children = {0}.children.concat({1});
+         return {0};
+         """)>]
+let addChildren (o : VTree) (n : VTree array) : VTree = failwith "never"
