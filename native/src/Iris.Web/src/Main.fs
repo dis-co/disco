@@ -14,42 +14,23 @@ open Iris.Web.Types
 open Iris.Web.AppState
 open Iris.Web.Plugins
 
-let parsePatchMsg (msg : MsgPayload) = PatchP <| new Patch ()
-let parseIOBoxMsg (msg : MsgPayload) = IOBoxP <| new IOBox ()
+[<JSEmit("""return {0}.payload;""")>]
+let parsePatch (msg : Message) : Patch = failwith "never"
+
+[<JSEmit("""return {0}.payload;""")>]
+let parseIOBox (msg : Message) : IOBox = failwith "never"
 
 let onMsg (state : AppState) (msg : Message) =
-  match msg.Type with
-    | "iris.patch.add" ->
-      match parsePatchMsg msg.Payload with
-        | PatchP(p) -> state.AddPatch p; console.log(p)
-        | _         -> console.log("could not add patch")
-
-    | "iris.patch.update" ->
-      match parsePatchMsg msg.Payload with
-        | PatchP(p) -> state.UpdatePatch p
-        | _         -> console.log("could not update patch: ")
-
-    | "iris.patch.remove" ->
-      match parsePatchMsg msg.Payload with
-        | PatchP(p) -> state.RemovePatch p
-        | _         -> console.log("could not remove patch: ")
-
-    | "iris.iobox.add" -> 
-      match parseIOBoxMsg msg.Payload with
-        | IOBoxP(p) -> state.AddIOBox p
-        | _         -> console.log("could not update pin: ")
-
-    | "iris.iobox.update" -> 
-      match parseIOBoxMsg msg.Payload with
-        | IOBoxP(p) -> state.UpdateIOBox p
-        | _         -> console.log("could not update pin: ")
-
-    | "iris.iobox.remove" -> 
-      match parseIOBoxMsg msg.Payload with
-        | IOBoxP(p) -> state.RemoveIOBox p
-        | _         -> console.log("could not update pin: ")
-
-    | a -> console.log("Invalid message: " + a)
+  let ev, thing = 
+    match msg.Type with
+      | "iris.patch.add"    -> (AddPatch,     PatchD(parsePatch msg))
+      | "iris.patch.update" -> (UpdatePatch,  PatchD(parsePatch msg))
+      | "iris.patch.remove" -> (RemovePatch,  PatchD(parsePatch msg))
+      | "iris.iobox.add"    -> (AddIOBox,     IOBoxD(parseIOBox msg))
+      | "iris.iobox.update" -> (UpdateIOBox,  IOBoxD(parseIOBox msg))
+      | "iris.iobox.remove" -> (RemoveIOBox,  IOBoxD(parseIOBox msg))
+      | _                   -> (UnknownEvent, EmptyD)
+  in state.Dispatch { Kind = ev; Payload = thing }
 
 let onClose _ = console.log("closing")
 
@@ -79,7 +60,6 @@ let mainView content =
     ; content 
     ; footer
     ]
-
 
 // let render (state : AppState) =
 //   let newtree =  |> htmlToVTree

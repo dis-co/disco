@@ -1,6 +1,8 @@
 [<ReflectedDefinition>]
 module Iris.Web.Types
 
+open FSharp.Html
+
 open FunScript.TypeScript
 open FunScript.VirtualDom
 
@@ -56,6 +58,15 @@ type Patch () =
     with get () = ioboxes
     and  set bx = ioboxes <- bx
 
+(*
+
+*)
+
+type EventData =
+  | IOBoxD of IOBox
+  | PatchD of Patch
+  | EmptyD
+
 (*   __  __                                
     |  \/  | ___  ___ ___  __ _  __ _  ___ 
     | |\/| |/ _ \/ __/ __|/ _` |/ _` |/ _ \
@@ -65,12 +76,7 @@ type Patch () =
 *)
 type MsgType = string
 
-type MsgPayload =
-  | IOBoxP of IOBox
-  | PatchP of Patch
-  | EmptyP
-  
-type Message (t : MsgType, p : MsgPayload) =
+type Message (t : MsgType, p : EventData) =
   let msgtype = t
   let payload = p
 
@@ -84,22 +90,18 @@ type Message (t : MsgType, p : MsgPayload) =
     /_/   \_\ .__/| .__/|_____| \_/ \___|_| |_|\__|
             |_|   |_|                              
 *)
-type EventType =
-  |      AddPin
-  |   RemovePin
-  |   UpdatePin
-  |    AddPatch
+type AppEventT =
+  | AddIOBox
+  | RemoveIOBox
+  | UpdateIOBox
+  | AddPatch
   | UpdatePatch
   | RemovePatch
-
-type EventData =
-  | IOBoxD of IOBox
-  | PatchD of Patch
-  | EmptyD
+  | UnknownEvent
 
 type AppEvent =
-  { Kind : EventType
-  ; Data : EventData
+  { Kind    : AppEventT
+  ; Payload : EventData
   }
 
 type Listener = (AppEvent -> unit)
@@ -146,6 +148,19 @@ type IPluginSpec () =
   member x.Name    with get () = name
   member x.GetType with get () = ``type``
   member x.Create  with get () = create
+
+
+(*  __        ___     _            _   
+    \ \      / (_) __| | __ _  ___| |_ 
+     \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+      \ V  V / | | (_| | (_| |  __/ |_ 
+       \_/\_/  |_|\__,_|\__, |\___|\__|
+                        |___/          
+*)
+type IWidget =
+  abstract render : unit  -> Html 
+  abstract compile : unit -> VTree
+  
 
 (*  __        __   _    ____             _        _   
     \ \      / /__| |__/ ___|  ___   ___| | _____| |_ 

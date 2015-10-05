@@ -5,6 +5,7 @@ open FunScript
 open FunScript.VirtualDom
 open FunScript.TypeScript
 
+open Iris.Web.Util
 open Iris.Web.Types
 // open Iris.Core.Types.Patch
 // open Iris.Core.Types.IOBox
@@ -25,6 +26,28 @@ type AppState () =
   // let updatePins pins =
   //   state <- { state with IOBoxes = pins }
 
+  let addPatch (patch : Patch) = 
+    state <- { state with Patches = patch :: state.Patches }
+
+  let updatePatch (patch : Patch) = ()
+  let removePatch (patch : Patch) = ()
+
+  let addIOBox    (iobox : IOBox) = ()
+  let updateIOBox (iobox : IOBox) = ()
+  let removeIOBox (iobox : IOBox) = ()
+
+  member x.Dispatch (ev : AppEvent) =
+    match ev with
+      | { Kind = AddPatch;    Payload = PatchD(patch) } -> addPatch    patch
+      | { Kind = UpdatePatch; Payload = PatchD(patch) } -> updatePatch patch
+      | { Kind = RemovePatch; Payload = PatchD(patch) } -> removePatch patch
+      | { Kind = AddIOBox;    Payload = IOBoxD(patch) } -> addIOBox    patch
+      | { Kind = UpdateIOBox; Payload = IOBoxD(patch) } -> updateIOBox patch
+      | { Kind = RemoveIOBox; Payload = IOBoxD(patch) } -> removeIOBox patch
+      | _ -> console.log("unhandled event detected")
+
+    notify ev |> ignore
+
   member x.RootNode
     with get ()   = state.RootNode
     and  set node = state <- { state with RootNode = node }
@@ -32,31 +55,6 @@ type AppState () =
   member x.ViewState
     with get ()   = state.ViewTree
     and  set tree = state <- { state with ViewTree = tree }
-
-  member x.AddIOBox (iobox : IOBox) =
-    // iobox :: state.IOBoxes
-    // |> updatePins
-    notify { Kind = AddPin; Data = EmptyD } |> ignore
-
-  member x.UpdateIOBox (iobox : IOBox) =
-    // iobox :: state.IOBoxes
-    // |> updatePins
-    notify { Kind = AddPin; Data = EmptyD } |> ignore
-    
-  member x.RemoveIOBox (iobox : IOBox) =
-    // iobox :: state.IOBoxes
-    // |> updatePins
-    notify { Kind = AddPin; Data = EmptyD } |> ignore
-
-  member x.AddPatch (patch : Patch) =
-    state <- { state with Patches = patch :: state.Patches }
-    notify { Kind = AddPatch; Data = EmptyD } |> ignore
-
-  member x.UpdatePatch (patch : Patch) =
-    notify { Kind = UpdatePatch; Data = EmptyD } |> ignore
-
-  member x.RemovePatch (patch : Patch) =
-    notify { Kind = RemovePatch; Data = EmptyD } |> ignore
 
   member x.AddListener (listener : AppEvent -> unit) =
     listeners <- listener :: listeners
