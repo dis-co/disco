@@ -121,15 +121,8 @@ type Listener = (AppEvent -> unit)
 *)
 
 type State =
-  { Patches  : Patch list
-  ; ViewTree : VTree option
-  ; RootNode : Node  option
-  }
-  static member empty =
-    { Patches  = []
-    ; ViewTree = None
-    ; RootNode = None
-    }
+  { Patches  : Patch list }
+  static member empty = { Patches  = [] }
 
 (*
      ____  _                 
@@ -175,22 +168,14 @@ type Store () =
 
     notify ev |> ignore
 
-  member x.RootNode
-    with get ()   = state.RootNode
-    and  set node = state <- { state with RootNode = node }
-
-  member x.ViewState
-    with get ()   = state.ViewTree
-    and  set tree = state <- { state with ViewTree = tree }
-
   member x.AddListener (listener : AppEvent -> unit) =
     listeners <- listener :: listeners
 
   member x.ClearListeners (listener : AppEvent -> unit) =
     listeners <- []
 
-  member x.Patches
-    with get () = state.Patches 
+  member x.GetState
+    with get () = state
 
 (******************************************************************************)
 
@@ -220,6 +205,7 @@ type IPluginSpec () =
   member x.GetType with get () = ``type``
   member x.Create  with get () = create
 
+
 (*  
     __        ___     _            _   
     \ \      / (_) __| | __ _  ___| |_ 
@@ -229,11 +215,44 @@ type IPluginSpec () =
                         |___/          
 *)
 
-type IViewController =
-  abstract render : Store -> VTree
-
 type IWidget =
-  abstract render : unit -> VTree
+  abstract render : State -> VTree
+
+(*
+    __     ___                ____ _        _ 
+    \ \   / (_) _____      __/ ___| |_ _ __| |
+     \ \ / /| |/ _ \ \ /\ / / |   | __| '__| |
+      \ V / | |  __/\ V  V /| |___| |_| |  | |
+       \_/  |_|\___| \_/\_/  \____|\__|_|  |_|RRrrr..
+
+    ViewController orchestrates the rendering of state changes and wraps up both
+    the widget tree and the rendering context needed for virtual-dom.
+*)
+
+type ViewController (widget : IWidget) =
+  let mutable view : IWidget      = widget 
+  let mutable tree : VTree option = None
+  let mutable root : Node  option = None 
+  
+  member self.init tree = 
+    let rootNode = createElement tree
+    Globals.console.log(rootNode)
+    Globals.document.body.appendChild(rootNode) |> ignore
+    root <- Some(rootNode)
+
+  member self.render (store : Store) : unit =  
+    let newtree = view.render store.GetState
+
+    match tree with
+      | Some(oldtree) -> 
+        match root with
+          | Some(oldroot) -> 
+            let update = diff oldtree newtree
+            root <- Some(patch oldroot update)
+          | _ -> self.init newtree
+      | _ -> self.init newtree
+
+    tree <- Some(newtree)
 
 (******************************************************************************)
 

@@ -33,52 +33,39 @@ let onMsg (store : Store) (msg : Message) =
 
 let onClose _ = console.log("closing")
 
-let patchView (patch : Patch) : Html =
-  div <@> class' "patch" <||>
-    [ hr
-    ; h3 <|> text "Patch:"
-    ; p  <|> text (patch.Name)
-    ; hr
-    ]
+type PatchView () =
+  let header = h1 <|> text "All Patches"
+  
+  let footer =
+    div <@> class' "foot" <||>
+      [ hr
+      ; span <|> text "yep"
+      ]
 
-let patchList (store : Store) =
-  div <@> id' "patches" <||>
-    List.map patchView store.Patches
+  let mainView content =
+    div <@> id' "main" <||>
+      [ header
+      ; content 
+      ; footer
+      ]
 
-let header = h1 <|> text "All Patches"
+  let patchView (patch : Patch) : Html =
+    console.log(patch.Name)
+    div <@> class' "patch" <||>
+      [ h3 <|> text "Patch:"
+      ; p  <|> text (patch.Name)
+      ]
 
-let footer =
-  div <@> class' "foot" <||>
-    [ hr
-    ; span <|> text "yep"
-    ]
+  let patchList (patches : Patch list) =
+    div <@> id' "patches" <||> List.map patchView patches
 
-let mainView content =
-  div <@> id' "main" <||>
-    [ header
-    ; content 
-    ; footer
-    ]
-
-    
-let render (store : Store) (content : Html) =
-  let newtree = mainView content |> htmlToVTree
-
-  let init () = 
-    let rootNode = createElement newtree
-    document.body.appendChild(rootNode) |> ignore
-    store.RootNode  <- Some(rootNode)
-
-  match store.ViewState with
-    | Some(oldtree) -> 
-      match store.RootNode with
-        | Some(rootNode) -> 
-          let viewPatch = diff oldtree newtree
-          store.RootNode <- Some(patch rootNode viewPatch)
-        | _ -> init ()
-    | _ -> init ()
-
-  store.ViewState <- Some(newtree)
+  interface IWidget with
+    member self.render (state : State) =
+      let content =
+        if List.length state.Patches = 0
+        then p <|> text "Empty"
+        else patchList state.Patches
+      mainView content |> htmlToVTree
 
 (*   __  __       _       
     |  \/  | __ _(_)_ __  
@@ -88,12 +75,15 @@ let render (store : Store) (content : Html) =
 *)
 
 let main () : unit =
-  let store = new Store ()
+  let store  = new Store ()
+  let widget = new PatchView ()
+  let ctrl   = new ViewController (widget)
 
-  let content = p <|> text "Empty"
-  render store content
+  // initialize 
+  ctrl.render store
 
-  store.AddListener (fun e -> patchList store |> render store)
+  // register view controller with store for updates
+  store.AddListener (fun e -> ctrl.render store)
 
   async {
     let! websocket = Transport.create("ws://localhost:8080", onMsg store, onClose)
