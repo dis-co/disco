@@ -11,7 +11,6 @@ open FSharp.Html
 open Iris.Web.Util
 open Iris.Web.Dom
 open Iris.Web.Types
-open Iris.Web.AppState
 open Iris.Web.Plugins
 
 [<JSEmit("""return {0}.payload;""")>]
@@ -20,7 +19,7 @@ let parsePatch (msg : Message) : Patch = failwith "never"
 [<JSEmit("""return {0}.payload;""")>]
 let parseIOBox (msg : Message) : IOBox = failwith "never"
 
-let onMsg (state : AppState) (msg : Message) =
+let onMsg (store : Store) (msg : Message) =
   let ev, thing = 
     match msg.Type with
       | "iris.patch.add"    -> (AddPatch,     PatchD(parsePatch msg))
@@ -30,7 +29,7 @@ let onMsg (state : AppState) (msg : Message) =
       | "iris.iobox.update" -> (UpdateIOBox,  IOBoxD(parseIOBox msg))
       | "iris.iobox.remove" -> (RemoveIOBox,  IOBoxD(parseIOBox msg))
       | _                   -> (UnknownEvent, EmptyD)
-  in state.Dispatch { Kind = ev; Payload = thing }
+  in store.Dispatch { Kind = ev; Payload = thing }
 
 let onClose _ = console.log("closing")
 
@@ -42,9 +41,9 @@ let patchView (patch : Patch) : Html =
     ; hr
     ]
 
-let patchList (state : AppState) =
+let patchList (store : Store) =
   div <@> id' "patches" <||>
-    List.map patchView state.Patches
+    List.map patchView store.Patches
 
 let header = h1 <|> text "All Patches"
 
@@ -61,34 +60,25 @@ let mainView content =
     ; footer
     ]
 
-// let render (state : AppState) =
-//   let newtree =  |> htmlToVTree
-//   let patches = diff view.tree newtree
-//   rootNode := patch !rootNode patches
-//   tree := newtree
-
-// let msg = ref "not connteced"
-// let tree = ref (htmlToVTree (render !msg)) 
-// let rootNode = ref (createElement !tree)
-
-let render (state : AppState) (content : Html) =
+    
+let render (store : Store) (content : Html) =
   let newtree = mainView content |> htmlToVTree
 
   let init () = 
     let rootNode = createElement newtree
     document.body.appendChild(rootNode) |> ignore
-    state.RootNode  <- Some(rootNode)
+    store.RootNode  <- Some(rootNode)
 
-  match state.ViewState with
+  match store.ViewState with
     | Some(oldtree) -> 
-      match state.RootNode with
+      match store.RootNode with
         | Some(rootNode) -> 
           let viewPatch = diff oldtree newtree
-          state.RootNode <- Some(patch rootNode viewPatch)
+          store.RootNode <- Some(patch rootNode viewPatch)
         | _ -> init ()
     | _ -> init ()
 
-  state.ViewState <- Some(newtree)
+  store.ViewState <- Some(newtree)
 
 (*   __  __       _       
     |  \/  | __ _(_)_ __  
@@ -98,15 +88,15 @@ let render (state : AppState) (content : Html) =
 *)
 
 let main () : unit =
-  let state = new AppState()
+  let store = new Store ()
 
   let content = p <|> text "Empty"
-  render state content
+  render store content
 
-  state.AddListener (fun e -> patchList state |> render state)
+  store.AddListener (fun e -> patchList store |> render store)
 
   async {
-    let! websocket = Transport.create("ws://localhost:8080", onMsg state, onClose)
+    let! websocket = Transport.create("ws://localhost:8080", onMsg store, onClose)
     websocket.send("start")
   } |> Async.StartImmediate
 

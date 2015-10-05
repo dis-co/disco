@@ -9,6 +9,8 @@ open FunScript.VirtualDom
 // open Iris.Core.Types.IOBox
 // open Iris.Core.Types.Patch
 
+(******************************************************************************)
+
 (*   ___ ___  ____            
     |_ _/ _ \| __ )  _____  __
      | | | | |  _ \ / _ \ \/ /
@@ -58,8 +60,15 @@ type Patch () =
     with get () = ioboxes
     and  set bx = ioboxes <- bx
 
-(*
+(******************************************************************************)
 
+(*   _____                 _   ____        _        
+    | ____|_   _____ _ __ | |_|  _ \  __ _| |_ __ _ 
+    |  _| \ \ / / _ \ '_ \| __| | | |/ _` | __/ _` |
+    | |___ \ V /  __/ | | | |_| |_| | (_| | || (_| |
+    |_____| \_/ \___|_| |_|\__|____/ \__,_|\__\__,_|
+
+    Wrapper type around diffent payloads for events.
 *)
 
 type EventData =
@@ -67,29 +76,22 @@ type EventData =
   | PatchD of Patch
   | EmptyD
 
-(*   __  __                                
-    |  \/  | ___  ___ ___  __ _  __ _  ___ 
-    | |\/| |/ _ \/ __/ __|/ _` |/ _` |/ _ \
-    | |  | |  __/\__ \__ \ (_| | (_| |  __/
-    |_|  |_|\___||___/___/\__,_|\__, |\___|
-                                |___/      
-*)
-type MsgType = string
 
-type Message (t : MsgType, p : EventData) =
-  let msgtype = t
-  let payload = p
-
-  member x.Type    with get () = msgtype
-  member x.Payload with get () = payload
-
-(*      _                _____                 _   
-       / \   _ __  _ __ | ____|_   _____ _ __ | |_ 
+(*
+        _                _____                 _   
+       / \   _ __  _ __ | ____|_   _____ _ __ | |_ ™
       / _ \ | '_ \| '_ \|  _| \ \ / / _ \ '_ \| __|
      / ___ \| |_) | |_) | |___ \ V /  __/ | | | |_ 
     /_/   \_\ .__/| .__/|_____| \_/ \___|_| |_|\__|
             |_|   |_|                              
+
+    The AppEventT type models all possible state-changes the app can legally
+    undergo. Using this design, we have a clean understanding of how data flows
+    through the system, and have the compiler assist us in handling all possible
+    states with total functions.
+
 *)
+
 type AppEventT =
   | AddIOBox
   | RemoveIOBox
@@ -106,12 +108,18 @@ type AppEvent =
 
 type Listener = (AppEvent -> unit)
 
+(******************************************************************************)
+
 (*   ____  _        _       
     / ___|| |_ __ _| |_ ___ 
     \___ \| __/ _` | __/ _ \
      ___) | || (_| | ||  __/
     |____/ \__\__,_|\__\___|
+
+    Record type containing all the actual data that gets passed around in our
+    application.
 *)
+
 type State =
   { Patches  : Patch list
   ; ViewTree : VTree option
@@ -122,6 +130,69 @@ type State =
     ; ViewTree = None
     ; RootNode = None
     }
+
+(*
+     ____  _                 
+    / ___|| |_ ___  _ __ ___ 
+    \___ \| __/ _ \| '__/ _ \
+     ___) | || (_) | | |  __/
+    |____/ \__\___/|_|  \___|
+
+    The store centrally manages all state changes and notifies interested
+    parties of changes to the carried state (e.g. views, socket transport).
+
+*)
+
+type Store () =
+  let mutable state     : State = State.empty
+  let mutable listeners : Listener list = []
+
+  let notify ev =
+    List.map (fun l -> l ev) listeners
+
+  // let updatePins pins =
+  //   state <- { state with IOBoxes = pins }
+
+  let addPatch (patch : Patch) = 
+    state <- { state with Patches = patch :: state.Patches }
+
+  let updatePatch (patch : Patch) = ()
+  let removePatch (patch : Patch) = ()
+
+  let addIOBox    (iobox : IOBox) = ()
+  let updateIOBox (iobox : IOBox) = ()
+  let removeIOBox (iobox : IOBox) = ()
+
+  member x.Dispatch (ev : AppEvent) =
+    match ev with
+      | { Kind = AddPatch;    Payload = PatchD(patch) } -> addPatch    patch
+      | { Kind = UpdatePatch; Payload = PatchD(patch) } -> updatePatch patch
+      | { Kind = RemovePatch; Payload = PatchD(patch) } -> removePatch patch
+      | { Kind = AddIOBox;    Payload = IOBoxD(patch) } -> addIOBox    patch
+      | { Kind = UpdateIOBox; Payload = IOBoxD(patch) } -> updateIOBox patch
+      | { Kind = RemoveIOBox; Payload = IOBoxD(patch) } -> removeIOBox patch
+      | _ -> Globals.console.log("unhandled event detected")
+
+    notify ev |> ignore
+
+  member x.RootNode
+    with get ()   = state.RootNode
+    and  set node = state <- { state with RootNode = node }
+
+  member x.ViewState
+    with get ()   = state.ViewTree
+    and  set tree = state <- { state with ViewTree = tree }
+
+  member x.AddListener (listener : AppEvent -> unit) =
+    listeners <- listener :: listeners
+
+  member x.ClearListeners (listener : AppEvent -> unit) =
+    listeners <- []
+
+  member x.Patches
+    with get () = state.Patches 
+
+(******************************************************************************)
 
 (*   ____  _             _       
     |  _ \| |_   _  __ _(_)_ __  
@@ -149,18 +220,38 @@ type IPluginSpec () =
   member x.GetType with get () = ``type``
   member x.Create  with get () = create
 
-
-(*  __        ___     _            _   
+(*  
+    __        ___     _            _   
     \ \      / (_) __| | __ _  ___| |_ 
      \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
       \ V  V / | | (_| | (_| |  __/ |_ 
        \_/\_/  |_|\__,_|\__, |\___|\__|
                         |___/          
 *)
+
+type IViewController =
+  abstract render : Store -> VTree
+
 type IWidget =
-  abstract render : unit  -> Html 
-  abstract compile : unit -> VTree
-  
+  abstract render : unit -> VTree
+
+(******************************************************************************)
+
+(*   __  __                                
+    |  \/  | ___  ___ ___  __ _  __ _  ___ 
+    | |\/| |/ _ \/ __/ __|/ _` |/ _` |/ _ \
+    | |  | |  __/\__ \__ \ (_| | (_| |  __/
+    |_|  |_|\___||___/___/\__,_|\__, |\___|
+                                |___/      
+*)
+type MsgType = string
+
+type Message (t : MsgType, p : EventData) =
+  let msgtype = t
+  let payload = p
+
+  member x.Type    with get () = msgtype
+  member x.Payload with get () = payload
 
 (*  __        __   _    ____             _        _   
     \ \      / /__| |__/ ___|  ___   ___| | _____| |_ 
@@ -168,6 +259,7 @@ type IWidget =
       \ V  V /  __/ |_) |__) | (_) | (__|   <  __/ |_ 
        \_/\_/ \___|_.__/____/ \___/ \___|_|\_\___|\__|
 *)
+
 type IWebSocket =
   abstract send : string -> unit
   abstract close : unit -> unit

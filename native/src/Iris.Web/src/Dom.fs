@@ -18,3 +18,14 @@ let rec htmlToVTree (html : Html) =
     | Parent(n, a, ch) -> mkNode n a ch
     | Leaf(n, a)       -> mkNode n a []
     | Literal(t)       -> mkVText t
+
+
+// let render (state : AppState) =
+//   let newtree =  |> htmlToVTree
+//   let patches = diff view.tree newtree
+//   rootNode := patch !rootNode patches
+//   tree := newtree
+
+// let msg = ref "not connteced"
+// let tree = ref (htmlToVTree (render !msg)) 
+// let rootNode = ref (createElement !tree)
