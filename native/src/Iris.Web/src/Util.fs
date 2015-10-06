@@ -4,11 +4,19 @@ module Iris.Web.Util
 open FunScript
 open FunScript.TypeScript
 
-[<JSEmit("""return JSON.stringify({0});""")>]
-let toString (i : obj) = ""
+open Iris.Web.Types
 
 let console = Globals.console
 let document = Globals.document
 let setInterval = Globals.setInterval
-
 let JSON = Globals.JSON
+let Math = Globals.Math
+
+[<JSEmit("""return JSON.stringify({0});""")>]
+let toString (i : obj) : string = failwith "never"
+
+[<JSEmit("""return {0}.payload;""")>]
+let parsePatch (msg : Message) : Patch = failwith "never"
+
+[<JSEmit("""return {0}.payload;""")>]
+let parseIOBox (msg : Message) : IOBox = failwith "never"

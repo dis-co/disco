@@ -13,11 +13,7 @@ open Iris.Web.Dom
 open Iris.Web.Types
 open Iris.Web.Plugins
 
-[<JSEmit("""return {0}.payload;""")>]
-let parsePatch (msg : Message) : Patch = failwith "never"
-
-[<JSEmit("""return {0}.payload;""")>]
-let parseIOBox (msg : Message) : IOBox = failwith "never"
+open Iris.Web.Views.Patches
 
 let onMsg (store : Store) (msg : Message) =
   let ev, thing = 
@@ -32,40 +28,6 @@ let onMsg (store : Store) (msg : Message) =
   in store.Dispatch { Kind = ev; Payload = thing }
 
 let onClose _ = console.log("closing")
-
-type PatchView () =
-  let header = h1 <|> text "All Patches"
-  
-  let footer =
-    div <@> class' "foot" <||>
-      [ hr
-      ; span <|> text "yep"
-      ]
-
-  let mainView content =
-    div <@> id' "main" <||>
-      [ header
-      ; content 
-      ; footer
-      ]
-
-  let patchView (patch : Patch) : Html =
-    console.log(patch.Name)
-    div <@> class' "patch" <||>
-      [ h3 <|> text "Patch:"
-      ; p  <|> text (patch.Name)
-      ]
-
-  let patchList (patches : Patch list) =
-    div <@> id' "patches" <||> List.map patchView patches
-
-  interface IWidget with
-    member self.render (state : State) =
-      let content =
-        if List.length state.Patches = 0
-        then p <|> text "Empty"
-        else patchList state.Patches
-      mainView content |> htmlToVTree
 
 (*   __  __       _       
     |  \/  | __ _(_)_ __  

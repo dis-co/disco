@@ -1,4 +1,4 @@
-module Iris.Web.Index
+module Iris.Web.Views.Index
 
 open System.IO
 open FSharp.Html
@@ -33,8 +33,8 @@ let content =
     ]
 
 let page pth =
-  [ doctype
-  ; html
+  [ doctype;
+    html
     <|> header pth
     <|> content
   ]

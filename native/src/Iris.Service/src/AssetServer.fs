@@ -12,7 +12,7 @@ open System.Threading
 open System.IO
 open System.Diagnostics
 
-open Iris.Web.Index
+open Iris.Web.Views.Index
 open Iris.Web.Build
 
 type AssetServer(addr : string, port : int) =

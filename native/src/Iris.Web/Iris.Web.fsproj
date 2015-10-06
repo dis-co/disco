@@ -37,7 +37,8 @@
     <Compile Include="src\Routes.fs" />
     <Compile Include="src\Transport.fs" />
     <Compile Include="src\AppState.fs" />
-    <Compile Include="src\Index.fs" />
+    <Compile Include="src\Views\Patches.fs" />
+    <Compile Include="src\Views\Index.fs" />
     <Compile Include="src\Main.fs" />
     <Compile Include="Build.fs" />
   </ItemGroup>
