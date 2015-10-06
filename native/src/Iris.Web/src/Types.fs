@@ -156,7 +156,7 @@ type Store () =
   let updateIOBox (iobox : IOBox) = ()
   let removeIOBox (iobox : IOBox) = ()
 
-  member x.Dispatch (ev : AppEvent) =
+  member self.Dispatch (ev : AppEvent) =
     match ev with
       | { Kind = AddPatch;    Payload = PatchD(patch) } -> addPatch    patch
       | { Kind = UpdatePatch; Payload = PatchD(patch) } -> updatePatch patch
@@ -168,13 +168,10 @@ type Store () =
 
     notify ev |> ignore
 
-  member x.AddListener (listener : AppEvent -> unit) =
+  member self.Subscribe (listener : AppEvent -> unit) =
     listeners <- listener :: listeners
 
-  member x.ClearListeners (listener : AppEvent -> unit) =
-    listeners <- []
-
-  member x.GetState
+  member self.GetState
     with get () = state
 
 (******************************************************************************)
@@ -216,7 +213,7 @@ type IPluginSpec () =
 *)
 
 type IWidget =
-  abstract render : State -> VTree
+  abstract render : Store -> VTree
 
 (*
     __     ___                ____ _        _ 
@@ -236,12 +233,12 @@ type ViewController (widget : IWidget) =
   
   member self.init tree = 
     let rootNode = createElement tree
-    Globals.console.log(rootNode)
     Globals.document.body.appendChild(rootNode) |> ignore
     root <- Some(rootNode)
 
+  (* render and patch the DOM *)
   member self.render (store : Store) : unit =  
-    let newtree = view.render store.GetState
+    let newtree = view.render store
 
     match tree with
       | Some(oldtree) -> 

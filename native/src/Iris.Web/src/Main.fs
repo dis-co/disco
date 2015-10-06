@@ -45,17 +45,9 @@ let main () : unit =
   ctrl.render store
 
   // register view controller with store for updates
-  store.AddListener (fun e -> ctrl.render store)
+  store.Subscribe (fun e -> ctrl.render store)
 
   async {
     let! websocket = Transport.create("ws://localhost:8080", onMsg store, onClose)
     websocket.send("start")
   } |> Async.StartImmediate
-
-  let ps = viewPlugins ()
-  let plug = ps.[0].Create ()
-
-  console.log(plug.set Array.empty)
-  console.log(plug.get ())
-  console.log(plug.render ())
-  console.log(plug.dispose ())

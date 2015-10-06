@@ -8,7 +8,15 @@ open FunScript.TypeScript
 open Iris.Web.Types
 open Iris.Web.Dom
 open Iris.Web.Util
+open Iris.Web.Plugins
 
+//   let ps = viewPlugins ()
+//   let plug = ps.[0].Create ()// 
+
+//   console.log(plug.set Array.empty)
+//   console.log(plug.get ())
+//   console.log(plug.render ())
+//   console.log(plug.dispose ())// 
 
 type PatchView () =
   let header = h1 <|> text "All Patches"
@@ -37,9 +45,12 @@ type PatchView () =
     div <@> id' "patches" <||> List.map patchView patches
 
   interface IWidget with
-    member self.render (state : State) =
+    member self.render (store : Store) =
+      let patches = store.GetState.Patches
+
       let content =
-        if List.length state.Patches = 0
+        if List.length patches = 0
         then p <|> text "Empty"
-        else patchList state.Patches
+        else patchList patches
+
       mainView content |> htmlToVTree
