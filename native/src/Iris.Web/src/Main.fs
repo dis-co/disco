@@ -13,8 +13,15 @@ open Iris.Web.Dom
 open Iris.Web.Types
 open Iris.Web.Plugins
 
+
+open Iris.Web.Types.Socket
+open Iris.Web.Types.View
+open Iris.Web.Types.Store
+open Iris.Web.Types.Events
+
 open Iris.Web.Views.Patches
 
+(* FIXME: need to factor this out into a nice abstraction *)
 let onMsg (store : Store) (msg : Message) =
   let ev, thing = 
     match msg.Type with
@@ -48,6 +55,6 @@ let main () : unit =
   store.Subscribe (fun e -> ctrl.render store)
 
   async {
-    let! websocket = Transport.create("ws://localhost:8080", onMsg store, onClose)
+    let! websocket = Socket.create("ws://localhost:8080", onMsg store, onClose)
     websocket.send("start")
   } |> Async.StartImmediate

@@ -10,6 +10,10 @@ open Iris.Web.Dom
 open Iris.Web.Util
 open Iris.Web.Plugins
 
+open Iris.Web.Types.Patch
+open Iris.Web.Types.View
+open Iris.Web.Types.Store
+
 //   let ps = viewPlugins ()
 //   let plug = ps.[0].Create ()// 
 

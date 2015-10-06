@@ -30,13 +30,17 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="src\Types.fs" />
+    <Compile Include="src\Types\IOBox.fs" />
+    <Compile Include="src\Types\Patch.fs" />
+    <Compile Include="src\Types\Plugin.fs" />
+    <Compile Include="src\Types\Events.fs" />
+    <Compile Include="src\Types\Socket.fs" />
+    <Compile Include="src\Types\Store.fs" />
+    <Compile Include="src\Types\View.fs" />
     <Compile Include="src\Dom.fs" />
     <Compile Include="src\Plugins.fs" />
     <Compile Include="src\Util.fs" />
     <Compile Include="src\Routes.fs" />
-    <Compile Include="src\Transport.fs" />
-    <Compile Include="src\AppState.fs" />
     <Compile Include="src\Views\Patches.fs" />
     <Compile Include="src\Views\Index.fs" />
     <Compile Include="src\Main.fs" />
