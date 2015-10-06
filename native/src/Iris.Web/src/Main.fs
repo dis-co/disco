@@ -13,7 +13,8 @@ open Iris.Web.Dom
 open Iris.Web.Types
 open Iris.Web.Plugins
 
-
+open Iris.Web.Types.Patch
+open Iris.Web.Types.IOBox
 open Iris.Web.Types.Socket
 open Iris.Web.Types.View
 open Iris.Web.Types.Store
@@ -36,6 +37,26 @@ let onMsg (store : Store) (msg : Message) =
 
 let onClose _ = console.log("closing")
 
+let reducer ev state =
+  let addPatch (patch : Patch) = 
+    { state with Patches = patch :: state.Patches }
+
+  let updatePatch (patch : Patch) = state
+  let removePatch (patch : Patch) = state
+  let addIOBox    (iobox : IOBox) = state
+  let updateIOBox (iobox : IOBox) = state
+  let removeIOBox (iobox : IOBox) = state
+
+  match ev with
+    | { Kind = AddPatch;    Payload = PatchD(patch) } -> addPatch    patch
+    | { Kind = UpdatePatch; Payload = PatchD(patch) } -> updatePatch patch
+    | { Kind = RemovePatch; Payload = PatchD(patch) } -> removePatch patch
+    | { Kind = AddIOBox;    Payload = IOBoxD(patch) } -> addIOBox    patch
+    | { Kind = UpdateIOBox; Payload = IOBoxD(patch) } -> updateIOBox patch
+    | { Kind = RemoveIOBox; Payload = IOBoxD(patch) } -> removeIOBox patch
+    | _                                               -> state
+
+
 (*   __  __       _       
     |  \/  | __ _(_)_ __  
     | |\/| |/ _` | | '_ \ 
@@ -44,7 +65,7 @@ let onClose _ = console.log("closing")
 *)
 
 let main () : unit =
-  let store  = new Store ()
+  let store  = new Store (reducer)
   let widget = new PatchView ()
   let ctrl   = new ViewController (widget)
 

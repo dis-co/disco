@@ -27,6 +27,9 @@ type State =
   { Patches  : Patch list }
   static member empty = { Patches  = [] }
 
+(* Reducers are take a state, an action, acts and finally return the new state *)
+type Reducer = (AppEvent -> State -> State)
+
 (*
      ____  _                 
     / ___|| |_ ___  _ __ ___ 
@@ -39,36 +42,22 @@ type State =
 
 *)
 
-type Store () =
-  let mutable state     : State = State.empty
+type Store (rdcr : Reducer) =
+  let         reducer   : Reducer       = rdcr
+  let mutable state     : State         = State.empty
   let mutable listeners : Listener list = []
+
+  let mutable locked : bool = false
 
   let notify ev =
     List.map (fun l -> l ev) listeners
 
-  // let updatePins pins =
-  //   state <- { state with IOBoxes = pins }
-
-  let addPatch (patch : Patch) = 
-    state <- { state with Patches = patch :: state.Patches }
-
-  let updatePatch (patch : Patch) = ()
-  let removePatch (patch : Patch) = ()
-
-  let addIOBox    (iobox : IOBox) = ()
-  let updateIOBox (iobox : IOBox) = ()
-  let removeIOBox (iobox : IOBox) = ()
-
   member self.Dispatch (ev : AppEvent) =
-    match ev with
-      | { Kind = AddPatch;    Payload = PatchD(patch) } -> addPatch    patch
-      | { Kind = UpdatePatch; Payload = PatchD(patch) } -> updatePatch patch
-      | { Kind = RemovePatch; Payload = PatchD(patch) } -> removePatch patch
-      | { Kind = AddIOBox;    Payload = IOBoxD(patch) } -> addIOBox    patch
-      | { Kind = UpdateIOBox; Payload = IOBoxD(patch) } -> updateIOBox patch
-      | { Kind = RemoveIOBox; Payload = IOBoxD(patch) } -> removeIOBox patch
-      | _ -> Globals.console.log("unhandled event detected")
-
+    if locked
+    then Globals.console.log("oops store locked! what now?")
+    else locked <- true
+         state  <- reducer ev state
+         locked <- false
     notify ev |> ignore
 
   member self.Subscribe (listener : AppEvent -> unit) =
