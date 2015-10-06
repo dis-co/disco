@@ -1,6 +1,8 @@
 [<ReflectedDefinition>]
 module Iris.Web.Types.Patch
 
+open FunScript
+open FunScript.TypeScript
 open Iris.Web.Types.IOBox
 
 (*   ____       _       _     
@@ -13,13 +15,22 @@ open Iris.Web.Types.IOBox
 type Patch () =
   let   id : string = ""
   let name : string = ""
-  let mutable ioboxes : IOBox array = Array.empty
+  let mutable ioboxes : IOBoxes = new IOBoxes ()
+  
+  member self.Id
+    with get () = id
 
-  member x.Name
+  member self.Name
     with get () = name
 
-  member x.IOBoxes
+  member self.IOBoxes
     with get () = ioboxes
-    and  set bx = ioboxes <- bx
 
+  member self.add (iobox : IOBox) =
+    ioboxes.add (iobox.Id) iobox
 
+  member self.remove id =
+    ioboxes.remove id
+
+  member self.update (iobox : IOBox) =
+    ioboxes.add (iobox.Id) iobox

@@ -1,6 +1,9 @@
 [<ReflectedDefinition>]
 module Iris.Web.Types.IOBox
 
+open FunScript
+open FunScript.TypeScript
+
 (*   ___ ___  ____            
     |_ _/ _ \| __ )  _____  __
      | | | | |  _ \ / _ \ \/ /
@@ -14,18 +17,34 @@ type Slice (name : string, value: string) =
 
 type Slices = Slice array
 
-type IOBox () =
-  let   id     = ""
-  let   name   = ""
-  let ``type`` = ""
-  let mutable slices = Array.empty
+type IOBox (id, patch, name) =
+  let id       : string = id
+  let patch    : string = patch
+  let name     : string = name
+  let ``type`` : string = "number"
+  let mutable slices    = Array.empty
   
-  member x.Name
+  member self.Id
+    with get () = id
+
+  member self.PatchId
+    with get () = patch
+
+  member self.Name
     with get () = name
 
-  member x.Type
+  member self.Type
     with get () = ``type``
     
-  member x.Slices
+  member self.Slices
     with get ()  = slices
     and  set arr = slices <- arr
+
+
+type IOBoxes () =
+  [<JSEmit("""{0}[{1}] = {2}""")>]
+  member self.add (id : string) (box : IOBox) : unit = failwith "never"
+    
+  [<JSEmit("""arguments[0][{0}] = null""")>]
+  member self.remove (id : string) : unit = failwith "never"
+    
