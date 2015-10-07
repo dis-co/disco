@@ -10,9 +10,6 @@ open Iris.Web.Types.IOBox
 open Iris.Web.Types.Patch
 open Iris.Web.Types.Events
 
-(* Listener callback. *)
-type Listener = (AppEvent -> unit)
-
 (*   ____  _        _       
     / ___|| |_ __ _| |_ ___ 
     \___ \| __/ _` | __/ _ \
@@ -26,6 +23,45 @@ type Listener = (AppEvent -> unit)
 type State =
   { Patches  : Patch list }
   static member empty = { Patches = [] }
+
+
+let addPatch (state : State) (patch : Patch) = 
+  { state with Patches = patch :: state.Patches }
+
+
+let updatePatch (state : State) (patch : Patch) =
+  { state with
+      Patches = let mapper (oldpatch : Patch) =
+                    if patch.id = oldpatch.id
+                    then patch
+                    else oldpatch
+                 in List.map mapper state.Patches }
+
+
+let removePatch (state : State) (patch : Patch) = 
+  let pred (patch' : Patch) = patch.id <> patch'.id
+  { state with Patches = List.filter pred state.Patches }
+
+
+let addIOBox (state : State) (iobox : IOBox) =
+  let updater (patch : Patch) =
+    if iobox.patch = patch.id
+    then addIOBox patch iobox
+    else patch
+  { state with Patches = List.map updater state.Patches }
+
+
+let updateIOBox (state : State) (iobox : IOBox) =
+  let mapper (patch : Patch) = updateIOBox patch iobox
+  { state with Patches = List.map mapper state.Patches }
+
+
+let removeIOBox (state : State) (iobox : IOBox) =
+  let updater (patch : Patch) =
+    if iobox.patch = patch.id
+    then removeIOBox patch iobox
+    else patch
+  { state with Patches = List.map updater state.Patches }
 
 (* Reducers are take a state, an action, acts and finally return the new state *)
 type Reducer = (AppEvent -> State -> State)
@@ -42,61 +78,27 @@ type Reducer = (AppEvent -> State -> State)
 
 *)
 
-type Store (rdcr : Reducer) =
-  let         reducer   : Reducer       = rdcr
-  let mutable state     : State         = State.empty
-  let mutable listeners : Listener list = []
+type Store =
+  { reducer   : Reducer
+  ; state     : State
+  ; listeners : Listener list }
 
-  let mutable locked : bool = false
+and Listener = (Store -> AppEvent -> unit)
 
-  let notify ev =
-    List.map (fun l -> l ev) listeners
+let private notify (store : Store) (ev : AppEvent) =
+  List.map (fun l -> l store ev) store.listeners
 
-  member self.Dispatch (ev : AppEvent) =
-    if locked
-    then Globals.console.log("oops store locked! what now?")
-    else locked <- true
-         state  <- reducer ev state
-         locked <- false
-    notify ev |> ignore
+let dispatch (store : Store) (ev : AppEvent) =
+  let newstate = store.reducer ev store.state
+  let newstore = { store with state = newstate }
+  notify newstore ev |> ignore
+  newstore
 
-  member self.Subscribe (listener : AppEvent -> unit) =
-    listeners <- listener :: listeners
-
-  member self.GetState
-    with get () = state
+let subscribe (store : Store) (listener : Listener) =
+  { store with listeners = listener :: store.listeners }
 
 
-let addPatch (state : State) (patch : Patch) = 
-  { state with Patches = patch :: state.Patches }
-
-let updatePatch (state : State) (patch : Patch) =
-  { state with
-      Patches = let mapper (oldpatch : Patch) =
-                    if patch.id = oldpatch.id
-                    then patch
-                    else oldpatch
-                 in List.map mapper state.Patches }
-
-let removePatch (state : State) (patch : Patch) = 
-  let pred (patch' : Patch) = patch.id <> patch'.id
-  { state with Patches = List.filter pred state.Patches }
-
-
-let addIOBox (state : State) (iobox : IOBox) =
-  let updater (patch : Patch) =
-    if iobox.patch = patch.id
-    then addIOBox patch iobox
-    else patch
-  { state with Patches = List.map updater state.Patches }
-
-let updateIOBox (state : State) (iobox : IOBox) =
-  let mapper (patch : Patch) = updateIOBox patch iobox
-  { state with Patches = List.map mapper state.Patches }
-
-let removeIOBox (state : State) (iobox : IOBox) =
-  let updater (patch : Patch) =
-    if iobox.patch = patch.id
-    then removeIOBox patch iobox
-    else patch
-  { state with Patches = List.map updater state.Patches }
+let mkStore (reducer : Reducer) =
+  { reducer = reducer
+  ; state = State.empty
+  ; listeners = []  }

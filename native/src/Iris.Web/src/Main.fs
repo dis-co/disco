@@ -23,7 +23,7 @@ open Iris.Web.Types.Events
 open Iris.Web.Views.Patches
 
 (* FIXME: need to factor this out into a nice abstraction *)
-let onMsg (store : Store) (msg : Message) =
+let handler (store : Store) (msg : Message) : Store =
   let ev, thing = 
     match msg.Type with
       | "iris.patch.add"    -> (AddPatch,     PatchD(parsePatch msg))
@@ -33,7 +33,7 @@ let onMsg (store : Store) (msg : Message) =
       | "iris.iobox.update" -> (UpdateIOBox,  IOBoxD(parseIOBox msg))
       | "iris.iobox.remove" -> (RemoveIOBox,  IOBoxD(parseIOBox msg))
       | _                   -> (UnknownEvent, EmptyD)
-  in store.Dispatch { Kind = ev; Payload = thing }
+  in dispatch store { Kind = ev; Payload = thing }
 
 let onClose _ = console.log("closing")
 
@@ -70,17 +70,20 @@ let reducer ev state =
 *)
 
 let main () : unit =
-  let store  = new Store (reducer)
+  let store  = ref <| mkStore reducer
   let widget = new PatchView ()
   let ctrl   = new ViewController (widget)
 
   // initialize 
-  ctrl.render store
+  ctrl.render !store
 
   // register view controller with store for updates
-  store.Subscribe (fun e -> ctrl.render store)
+  store := subscribe !store (fun s e -> ctrl.render s)
+
+  let onMsg (msg : Message) =
+    store := handler !store msg
 
   async {
-    let! websocket = Socket.create("ws://localhost:8080", onMsg store, onClose)
+    let! websocket = Socket.create("ws://localhost:8080", onMsg, onClose)
     websocket.send("start")
   } |> Async.StartImmediate

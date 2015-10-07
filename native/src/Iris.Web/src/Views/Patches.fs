@@ -55,7 +55,7 @@ type PatchView () =
 
   interface IWidget with
     member self.render (store : Store) =
-      let patches = store.GetState.Patches
+      let patches = store.state.Patches
 
       let content =
         if List.length patches = 0
