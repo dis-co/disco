@@ -10,6 +10,7 @@ open Iris.Web.Dom
 open Iris.Web.Util
 open Iris.Web.Plugins
 
+open Iris.Web.Types.IOBox
 open Iris.Web.Types.Patch
 open Iris.Web.Types.View
 open Iris.Web.Types.Store
@@ -38,11 +39,15 @@ type PatchView () =
       ; footer
       ]
 
+  let ioboxView (iobox : IOBox) : Html =
+    li <|> text (iobox.name)
+
   let patchView (patch : Patch) : Html =
-    console.log(patch.Name)
+
     div <@> class' "patch" <||>
       [ h3 <|> text "Patch:"
-      ; p  <|> text (patch.Name)
+      ; p  <|> text (patch.name)
+      ; ul <||> (Array.toList patch.ioboxes |> List.map ioboxView)
       ]
 
   let patchList (patches : Patch list) =

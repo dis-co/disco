@@ -50,29 +50,58 @@ let reducer ev state =
   let updatePatch (patch : Patch) =
     { state with
         Patches = let mapper (oldpatch : Patch) =
-                      if patch.Id = oldpatch.Id
+                      if patch.id = oldpatch.id
                       then patch
                       else oldpatch
                    in List.map mapper state.Patches }
      
   let removePatch (patch : Patch) = 
-    { state with
-        Patches = let pred patch' = patch <> patch'
-                   in List.filter pred state.Patches }
+    let pred (patch' : Patch) = patch.id <> patch'.id
+    { state with Patches = List.filter pred state.Patches }
 
-  let addIOBox (iobox : IOBox) = state
-    // { state with Patches = updated }
+  let addIOBox (iobox : IOBox) =
+    let updater (patch : Patch) =
+      let idx =
+        try Some(Array.findIndex (fun iob -> iob.id = iobox.id) patch.ioboxes)
+        with
+          | _ -> None
 
-  let updateIOBox (iobox : IOBox) = state
-  let removeIOBox (iobox : IOBox) = state
+      match idx with
+        | Some(place) -> patch // already added
+        | None ->
+          { patch with
+              ioboxes = Array.append patch.ioboxes [|iobox|] }
+
+    let patches = List.map updater state.Patches
+    let out = { state with Patches = patches }
+    Globals.console.log(out)
+    out 
+
+  let updateIOBox (iobox : IOBox) =
+    let updater (patch : Patch) =
+      { patch with
+          ioboxes = Array.map (fun ibx -> 
+                                 if ibx.id = iobox.id
+                                 then iobox
+                                 else ibx) patch.ioboxes }
+    { state with Patches = List.map updater state.Patches }
+
+  let removeIOBox (iobox : IOBox) =
+    let updater (patch : Patch) =
+      if iobox.patch = patch.id
+      then { patch with
+               ioboxes = Array.filter (fun box -> box.id <> iobox.id) patch.ioboxes }
+      else patch
+    { state with Patches = List.map updater state.Patches }
 
   match ev with
     | { Kind = AddPatch;    Payload = PatchD(patch) } -> addPatch    patch
     | { Kind = UpdatePatch; Payload = PatchD(patch) } -> updatePatch patch
     | { Kind = RemovePatch; Payload = PatchD(patch) } -> removePatch patch
-    | { Kind = AddIOBox;    Payload = IOBoxD(patch) } -> addIOBox    patch
-    | { Kind = UpdateIOBox; Payload = IOBoxD(patch) } -> updateIOBox patch
-    | { Kind = RemoveIOBox; Payload = IOBoxD(patch) } -> removeIOBox patch
+
+    | { Kind = AddIOBox;    Payload = IOBoxD(box) } -> addIOBox    box
+    | { Kind = UpdateIOBox; Payload = IOBoxD(box) } -> updateIOBox box
+    | { Kind = RemoveIOBox; Payload = IOBoxD(box) } -> removeIOBox box
     | _                                               -> state
 
 (*   __  __       _       
@@ -81,8 +110,6 @@ let reducer ev state =
     | |  | | (_| | | | | |
     |_|  |_|\__,_|_|_| |_| entry point.
 *)
-
-type Box = { Foo : string; Age: int }
 
 let main () : unit =
   let store  = new Store (reducer)
@@ -94,12 +121,6 @@ let main () : unit =
 
   // register view controller with store for updates
   store.Subscribe (fun e -> ctrl.render store)
-
-  let b = { Foo = "hi"; Age = 43 }
-  let p = new Patch()
-  p.add(new IOBox ("1123f", "1", "hello"))
-  console.log(b)
-  console.log(p)
 
   async {
     let! websocket = Socket.create("ws://localhost:8080", onMsg store, onClose)

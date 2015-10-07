@@ -25,7 +25,7 @@ type Listener = (AppEvent -> unit)
 
 type State =
   { Patches  : Patch list }
-  static member empty = { Patches  = [] }
+  static member empty = { Patches = [] }
 
 (* Reducers are take a state, an action, acts and finally return the new state *)
 type Reducer = (AppEvent -> State -> State)

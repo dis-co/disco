@@ -12,13 +12,13 @@ open FunScript.VirtualDom
                    |___/         
 *)
 type IPlugin =
-  abstract render  : unit   -> VTree
-  abstract dispose : unit   -> unit
-  abstract update  : IOBox  -> unit
-  abstract get     : unit   -> Slices
-  abstract set     : Slices -> unit
-  abstract on      : string -> (unit -> unit) -> unit
-  abstract off     : string -> unit
+  abstract render  : unit        -> VTree
+  abstract dispose : unit        -> unit
+  abstract update  : IOBox       -> unit
+  abstract get     : unit        -> Slice array
+  abstract set     : Slice array -> unit
+  abstract on      : string      -> (unit -> unit) -> unit
+  abstract off     : string      -> unit
 
 type IPluginSpec () =
   let mutable   name   = ""
