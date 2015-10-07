@@ -66,3 +66,37 @@ type Store (rdcr : Reducer) =
   member self.GetState
     with get () = state
 
+
+let addPatch (state : State) (patch : Patch) = 
+  { state with Patches = patch :: state.Patches }
+
+let updatePatch (state : State) (patch : Patch) =
+  { state with
+      Patches = let mapper (oldpatch : Patch) =
+                    if patch.id = oldpatch.id
+                    then patch
+                    else oldpatch
+                 in List.map mapper state.Patches }
+
+let removePatch (state : State) (patch : Patch) = 
+  let pred (patch' : Patch) = patch.id <> patch'.id
+  { state with Patches = List.filter pred state.Patches }
+
+
+let addIOBox (state : State) (iobox : IOBox) =
+  let updater (patch : Patch) =
+    if iobox.patch = patch.id
+    then addIOBox patch iobox
+    else patch
+  { state with Patches = List.map updater state.Patches }
+
+let updateIOBox (state : State) (iobox : IOBox) =
+  let mapper (patch : Patch) = updateIOBox patch iobox
+  { state with Patches = List.map mapper state.Patches }
+
+let removeIOBox (state : State) (iobox : IOBox) =
+  let updater (patch : Patch) =
+    if iobox.patch = patch.id
+    then removeIOBox patch iobox
+    else patch
+  { state with Patches = List.map updater state.Patches }

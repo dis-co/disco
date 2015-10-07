@@ -44,43 +44,18 @@ let onClose _ = console.log("closing")
     |_| \_\___|\__,_|\__,_|\___\___|_|   
 *)
 let reducer ev state =
-  let addPatch (patch : Patch) = 
-    { state with Patches = patch :: state.Patches }
+  let addPatch'    = addPatch state
+  let updatePatch' = updatePatch state
+  let removePatch' = removePatch state
 
-  let updatePatch (patch : Patch) =
-    { state with
-        Patches = let mapper (oldpatch : Patch) =
-                      if patch.id = oldpatch.id
-                      then patch
-                      else oldpatch
-                   in List.map mapper state.Patches }
-     
-  let removePatch (patch : Patch) = 
-    let pred (patch' : Patch) = patch.id <> patch'.id
-    { state with Patches = List.filter pred state.Patches }
-
-  let addIOBox' (iobox : IOBox) =
-    let updater (patch : Patch) =
-      if iobox.patch = patch.id
-      then addIOBox patch iobox
-      else patch
-    let out = { state with Patches = List.map updater state.Patches }
-    Globals.console.log(out)
-    out 
-
-  let updateIOBox' (iobox : IOBox) = state
-
-  let removeIOBox' (iobox : IOBox) =
-    let updater (patch : Patch) =
-      if iobox.patch = patch.id
-      then removeIOBox patch iobox
-      else patch
-    { state with Patches = List.map updater state.Patches }
+  let addIOBox'    = addIOBox state
+  let updateIOBox' = updateIOBox state
+  let removeIOBox' = removeIOBox state
 
   match ev with
-    | { Kind = AddPatch;    Payload = PatchD(patch) } -> addPatch    patch
-    | { Kind = UpdatePatch; Payload = PatchD(patch) } -> updatePatch patch
-    | { Kind = RemovePatch; Payload = PatchD(patch) } -> removePatch patch
+    | { Kind = AddPatch;    Payload = PatchD(patch) } -> addPatch'    patch
+    | { Kind = UpdatePatch; Payload = PatchD(patch) } -> updatePatch' patch
+    | { Kind = RemovePatch; Payload = PatchD(patch) } -> removePatch' patch
 
     | { Kind = AddIOBox;    Payload = IOBoxD(box) } -> addIOBox'    box
     | { Kind = UpdateIOBox; Payload = IOBoxD(box) } -> updateIOBox' box
