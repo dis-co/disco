@@ -59,38 +59,21 @@ let reducer ev state =
     let pred (patch' : Patch) = patch.id <> patch'.id
     { state with Patches = List.filter pred state.Patches }
 
-  let addIOBox (iobox : IOBox) =
+  let addIOBox' (iobox : IOBox) =
     let updater (patch : Patch) =
-      let idx =
-        try Some(Array.findIndex (fun iob -> iob.id = iobox.id) patch.ioboxes)
-        with
-          | _ -> None
-
-      match idx with
-        | Some(place) -> patch // already added
-        | None ->
-          { patch with
-              ioboxes = Array.append patch.ioboxes [|iobox|] }
-
-    let patches = List.map updater state.Patches
-    let out = { state with Patches = patches }
+      if iobox.patch = patch.id
+      then addIOBox patch iobox
+      else patch
+    let out = { state with Patches = List.map updater state.Patches }
     Globals.console.log(out)
     out 
 
-  let updateIOBox (iobox : IOBox) =
-    let updater (patch : Patch) =
-      { patch with
-          ioboxes = Array.map (fun ibx -> 
-                                 if ibx.id = iobox.id
-                                 then iobox
-                                 else ibx) patch.ioboxes }
-    { state with Patches = List.map updater state.Patches }
+  let updateIOBox' (iobox : IOBox) = state
 
-  let removeIOBox (iobox : IOBox) =
+  let removeIOBox' (iobox : IOBox) =
     let updater (patch : Patch) =
       if iobox.patch = patch.id
-      then { patch with
-               ioboxes = Array.filter (fun box -> box.id <> iobox.id) patch.ioboxes }
+      then removeIOBox patch iobox
       else patch
     { state with Patches = List.map updater state.Patches }
 
@@ -99,10 +82,10 @@ let reducer ev state =
     | { Kind = UpdatePatch; Payload = PatchD(patch) } -> updatePatch patch
     | { Kind = RemovePatch; Payload = PatchD(patch) } -> removePatch patch
 
-    | { Kind = AddIOBox;    Payload = IOBoxD(box) } -> addIOBox    box
-    | { Kind = UpdateIOBox; Payload = IOBoxD(box) } -> updateIOBox box
-    | { Kind = RemoveIOBox; Payload = IOBoxD(box) } -> removeIOBox box
-    | _                                               -> state
+    | { Kind = AddIOBox;    Payload = IOBoxD(box) } -> addIOBox'    box
+    | { Kind = UpdateIOBox; Payload = IOBoxD(box) } -> updateIOBox' box
+    | { Kind = RemoveIOBox; Payload = IOBoxD(box) } -> removeIOBox' box
+    | _                                             -> state
 
 (*   __  __       _       
     |  \/  | __ _(_)_ __  
