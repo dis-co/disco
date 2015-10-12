@@ -52,7 +52,7 @@ window.IrisPlugins = window.IrisPlugins || [];
     // render is expected to return a VTree even for static things like canvas
     this.render = function () {
       console.log("render called");
-      return virtualDom.h('h1', ['hello']);
+      this.tree = virtualDom.h('h1', ['hello']);
     };
   };
   

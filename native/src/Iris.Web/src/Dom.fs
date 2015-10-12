@@ -4,6 +4,13 @@ module Iris.Web.Dom
 open FunScript.VirtualDom
 open FSharp.Html
 
+type CompositeDom =
+  | Pure     of Html
+  | NestedP  of Html * VTree list // Html parent with VTree children
+  | NestedR  of VTree * Html list // VTree parent with 
+  | NestedC  of Html * CompositeDom
+  | Rendered of VTree
+
 let parseAttrs attrs =
   List.fold (fun (outp : VProperties) (attr : Attribute) -> 
     match attr with
@@ -18,6 +25,14 @@ let rec htmlToVTree (html : Html) =
     | Parent(n, a, ch) -> mkNode n a ch
     | Leaf(n, a)       -> mkNode n a []
     | Literal(t)       -> mkVText t
+
+let rec compToVTree (tree : CompositeDom) : VTree =
+  match tree with
+    | Pure(html)         -> htmlToVTree html
+    | NestedP(html, vts) -> addChildren (htmlToVTree html) (List.toArray vts)
+    | NestedR(vt, html)  -> addChildren vt (List.map htmlToVTree html |> List.toArray)
+    | NestedC(html, cts) -> addChildren (htmlToVTree html) [| compToVTree cts |]
+    | Rendered(t)        -> t
 
 
 // let render (state : AppState) =

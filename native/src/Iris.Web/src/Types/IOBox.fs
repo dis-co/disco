@@ -17,8 +17,9 @@ type Slice = { idx : int; value : string; }
 
 [<NoEquality; NoComparison>]
 type IOBox =
-  { id     : string
-  ; name   : string
-  ; patch  : string
-  ; slices : Slice array
+  { id      : string
+  ; name    : string
+  ; patch   : string
+  ; kind    : string
+  ; slices  : Slice array
   }

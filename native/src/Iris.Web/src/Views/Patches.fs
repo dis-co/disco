@@ -4,6 +4,7 @@ module Iris.Web.Views.Patches
 open FSharp.Html
 open FunScript
 open FunScript.TypeScript
+open FunScript.VirtualDom
 
 open Iris.Web.Types
 open Iris.Web.Dom
@@ -14,9 +15,7 @@ open Iris.Web.Types.IOBox
 open Iris.Web.Types.Patch
 open Iris.Web.Types.View
 open Iris.Web.Types.Store
-
-//   let ps = viewPlugins ()
-//   let plug = ps.[0].Create ()// 
+open Iris.Web.Types.Plugin
 
 //   console.log(plug.set Array.empty)
 //   console.log(plug.get ())
@@ -24,42 +23,63 @@ open Iris.Web.Types.Store
 //   console.log(plug.dispose ())// 
 
 type PatchView () =
-  let header = h1 <|> text "All Patches"
+  let mutable plugins = new Plugins ()
+
+  let header : CompositeDom = h1 <|> text "All Patches" |> Pure
   
-  let footer =
+  let footer : CompositeDom =
     div <@> class' "foot" <||>
       [ hr
       ; span <|> text "yep"
       ]
-
+    |> Pure
+  
   let mainView content =
-    div <@> id' "main" <||>
-      [ header
-      ; content 
-      ; footer
-      ]
+    NestedP(div <@> id' "main",
+            List.map compToVTree
+              [ header
+              ; content 
+              ; footer
+              ])
+  
+  let sliceView (slice : Slice) =
+    li <|> text (sprintf "Index: %d Value: %s" slice.idx slice.value)
+  
+  let ioboxView (iobox : IOBox) : CompositeDom =
+    NestedP(li <|> (strong <|> text (iobox.name))
+               <|> (p  <|> text "Values:"),
+            [ plugins.tree iobox ])
+  
+  let patchView (patch : Patch) : CompositeDom =
+    for iobox in patch.ioboxes do
+      if not (plugins.has iobox)
+      then plugins.add iobox
 
-  let ioboxView (iobox : IOBox) : Html =
-    li <|> text (iobox.name)
+    let b = div <@> class' "patch" <||>
+              [ h3 <|> text "Patch:"
+              ; p  <|> text (patch.name)
+              ]
 
-  let patchView (patch : Patch) : Html =
+    let lst = addChildren (htmlToVTree ul) (Array.map (ioboxView >> compToVTree) patch.ioboxes)
 
-    div <@> class' "patch" <||>
-      [ h3 <|> text "Patch:"
-      ; p  <|> text (patch.name)
-      ; ul <||> (Array.toList patch.ioboxes |> List.map ioboxView)
-      ]
+    NestedP(b, [ lst ])
 
+  
   let patchList (patches : Patch list) =
-    div <@> id' "patches" <||> List.map patchView patches
+    NestedP(div <@> id' "patches", List.map (patchView >> compToVTree) patches)
+
+  (* RENDERER *)
 
   interface IWidget with
     member self.render (store : Store) =
       let patches = store.state.Patches
 
+      plugins.updateAll patches |> ignore
+      plugins.render () |> ignore
+
       let content =
         if List.length patches = 0
-        then p <|> text "Empty"
+        then p <|> text "Empty" |> Pure
         else patchList patches
 
-      mainView content |> htmlToVTree
+      mainView content |> compToVTree
