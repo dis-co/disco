@@ -47,7 +47,7 @@ type PatchView () =
   let ioboxView (iobox : IOBox) : CompositeDom =
     NestedP(li <|> (strong <|> text (iobox.name))
                <|> (p  <|> text "Values:"),
-            [ plugins.tree iobox ])
+            [ plugins.render iobox ])
   
   let patchView (patch : Patch) : CompositeDom =
     for iobox in patch.ioboxes do
@@ -72,9 +72,6 @@ type PatchView () =
   interface IWidget with
     member self.render (store : Store) =
       let patches = store.state.Patches
-
-      plugins.updateAll patches |> ignore
-      plugins.render () |> ignore
 
       let content =
         if List.length patches = 0

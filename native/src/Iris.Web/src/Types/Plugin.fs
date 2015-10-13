@@ -35,9 +35,6 @@ type IPluginSpec () =
   member self.Create  with get () = create
 
 
-//   let ps = viewPlugins ()
-//   let plug = ps.[0].Create ()// 
-
 type Plugins () =
   (* ------------------------ internal -------------------------- *)
 
@@ -58,20 +55,13 @@ type Plugins () =
            """)>]
   let rmImpl (id : string) = failwith "never"
 
-  [<JSEmit("""
-           Object.keys({0}).forEach(function(key) {
-             {0}[key].render();
-           });
-           """)>]
-  let renderImpl () = failwith "never"
-
-  [<JSEmit(""" return {0}[{1}].tree; """)>]
-  let treeImpl (id : string) = failwith "never"
+  [<JSEmit(""" return {0}[{1}].render({2}); """)>]
+  let renderImpl id iobox = failwith "never"
 
   [<JSEmit(""" {0}[{1}].set({2}) """)>]
   let updateImpl (id : string) (slices : Slice array) = failwith "never"
 
-  (* ------------------------ public inteface -------------------------- *)
+  (* ------------------------ public interface -------------------------- *)
   
   (* instantiate a new view plugin *)
   member self.add (iobox : IOBox) =
@@ -83,9 +73,8 @@ type Plugins () =
         | _          -> Globals.console.log("Could not instantiate view for IOBox. Type not found:  " + iobox.kind)
 
   member self.has  (iobox : IOBox) : bool  = hasImpl iobox.id
-  member self.tree (iobox : IOBox) : VTree = treeImpl iobox.id
 
-  member self.render () = renderImpl ()
+  member self.render (iobox : IOBox) : VTree = renderImpl iobox.id iobox
 
   member self.update (iobox : IOBox) : unit =
     updateImpl iobox.id iobox.slices
