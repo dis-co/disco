@@ -8,6 +8,16 @@ open System.Diagnostics
 
 [<FunScript.JS>]
 module Build = 
+  (* _____         _       
+    |_   _|__  ___| |_ ___ 
+      | |/ _ \/ __| __/ __|
+      | |  __/\__ \ |_\__ \
+      |_|\___||___/\__|___/
+   *)
+  let compileTests () = 
+    let source = Compiler.Compile(<@ Tests.main() @>, noReturn = true)
+    sprintf "$(document).ready(function () {\n%s\n});" source
+
   (*  ____        _ _     _ 
      | __ ) _   _(_) | __| |
      |  _ \| | | | | |/ _` |

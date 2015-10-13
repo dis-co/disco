@@ -19,5 +19,8 @@
     "routie": "~0.3.2",
     "rxjs": "~3.1.2",
     "virtual-dom": "~2.1.1"
+  },
+  "devDependencies": {
+    "mocha": "~2.3.3"
   }
 }

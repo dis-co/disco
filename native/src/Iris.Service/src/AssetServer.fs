@@ -22,6 +22,7 @@ type AssetServer(addr : string, port : int) =
     let fn = Process.GetCurrentProcess().MainModule.FileName
     Path.GetDirectoryName(fn) + "/assets"
 
+  let tests = compileTests ()
   let index = compileIndex (basepath + "/js/")
   let js    = compileJSString ()
 
@@ -42,6 +43,7 @@ type AssetServer(addr : string, port : int) =
   let app =
     choose [ GET >>= choose [ path "/js/iris.js" >>= OK js
                               path "/"           >>= OK index
+                              path "/tests"      >>= OK tests
                               browseHome ] ]
 
   let config =

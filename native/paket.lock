@@ -42,6 +42,8 @@ NUGET
     FunScript.TypeScript.Binding.jquery (1.1.0.37)
       FunScript.TypeScript.Binding.lib (>= 1.1.0.37)
     FunScript.TypeScript.Binding.lib (1.1.0.37)
+    FunScript.TypeScript.Binding.mocha (1.1.0.37)
+      FunScript.TypeScript.Binding.lib (>= 1.1.0.37)
     FunScript.TypeScript.Binding.routie (1.1.0.37)
       FunScript.TypeScript.Binding.lib (>= 1.1.0.37)
     Google.ProtocolBuffers (2.4.1.555)
@@ -49,7 +51,7 @@ NUGET
     LibGit2Sharp (0.21.0.176)
     Microsoft.Bcl (1.1.10)
       Microsoft.Bcl.Build (>= 1.0.14)
-    Microsoft.Bcl.Build (1.0.21)
+    Microsoft.Bcl.Build (1.0.21) - import_targets: false
     Microsoft.Bcl.Immutable (1.0.34)
     Microsoft.Net.Http (2.2.29)
       Microsoft.Bcl (>= 1.1.10)
@@ -74,5 +76,5 @@ NUGET
 GITHUB
   remote: fsharp/FAKE
   specs:
-    modules/Octokit/Octokit.fsx (97bc2451e21e3755968fa3e54d22f61d1edafd14)
+    modules/Octokit/Octokit.fsx (4982e503ccc973ed1f047a52ff69a675ec4b66e1)
       Octokit
