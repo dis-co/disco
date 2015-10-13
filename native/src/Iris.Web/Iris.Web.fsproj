@@ -38,7 +38,6 @@
     <Compile Include="src\Types\Store.fs" />
     <Compile Include="src\Types\View.fs" />
     <Compile Include="src\Dom.fs" />
-    <Compile Include="src\Plugins.fs" />
     <Compile Include="src\Util.fs" />
     <Compile Include="src\Routes.fs" />
     <Compile Include="src\Views\Patches.fs" />

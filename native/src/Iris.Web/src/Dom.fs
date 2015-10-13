@@ -34,7 +34,6 @@ let rec compToVTree (tree : CompositeDom) : VTree =
     | NestedC(html, cts) -> addChildren (htmlToVTree html) [| compToVTree cts |]
     | Rendered(t)        -> t
 
-
 // let render (state : AppState) =
 //   let newtree =  |> htmlToVTree
 //   let patches = diff view.tree newtree
