@@ -9,7 +9,6 @@ open FunScript.VirtualDom
 open Iris.Web.Types
 open Iris.Web.Dom
 open Iris.Web.Util
-open Iris.Web.Plugins
 
 open Iris.Web.Types.IOBox
 open Iris.Web.Types.Patch

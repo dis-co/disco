@@ -11,7 +11,6 @@ open FSharp.Html
 open Iris.Web.Util
 open Iris.Web.Dom
 open Iris.Web.Types
-open Iris.Web.Plugins
 
 open Iris.Web.Types.Patch
 open Iris.Web.Types.IOBox
