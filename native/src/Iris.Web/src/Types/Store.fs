@@ -25,9 +25,11 @@ type State =
   static member empty = { Patches = [] }
 
 
-let addPatch (state : State) (patch : Patch) = 
-  { state with Patches = patch :: state.Patches }
-
+let addPatch (state : State) (patch : Patch) =
+  let exists = List.exists (fun p -> p.id = patch.id) state.Patches
+  if not exists
+  then { state with Patches = patch :: state.Patches }
+  else state
 
 let updatePatch (state : State) (patch : Patch) =
   { state with
@@ -36,7 +38,6 @@ let updatePatch (state : State) (patch : Patch) =
                     then patch
                     else oldpatch
                  in List.map mapper state.Patches }
-
 
 let removePatch (state : State) (patch : Patch) = 
   let pred (patch' : Patch) = patch.id <> patch'.id
