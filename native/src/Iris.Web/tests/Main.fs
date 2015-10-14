@@ -76,6 +76,7 @@ let header =
 let content =
   body <||>
     [ h1     <|> text "Iris Tests"
+    ; div <@> id' "mocha"
 
     ; script <@> src' "dependencies/virtual-dom/dist/virtual-dom.js"
     ; script <@> src' "dependencies/rxjs/dist/rx.all.js"
@@ -86,11 +87,15 @@ let content =
     ; script <@> src' "https://cdn.rawgit.com/Automattic/expect.js/0.3.1/index.js"
     ; script <@> src' "https://cdn.rawgit.com/mochajs/mocha/2.2.5/mocha.js"
   
-    ; script <|> text "mocha.setup('bdd')"
+    (* setup *)
+    ; script <|> text "mocha.setup('qunit')"
 
     (* the actual tests *)
     ; vdom
     ; store
+
+    (* the actual tests *)
+    ; script <|> text "mocha.run()"
     ]
 
 let page =
