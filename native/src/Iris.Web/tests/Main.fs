@@ -1,6 +1,8 @@
 module Iris.Web.Test.Main
 
 open System.IO
+open System.Reflection
+open System.Text.RegularExpressions
 open FSharp.Html
 open FunScript
 open FunScript.Compiler
@@ -37,8 +39,28 @@ open FunScript.TypeScript
 
 *)
 
-let test1 = Compiler.Compile(<@ Test.Units.VirtualDom.main() @>, noReturn = true)
-let test2 = Compiler.Compile(<@ Test.Units.Store.main() @>, noReturn = true)
+// let getTestModules () : System.Type array =
+//   let regex = new Regex("^Test.Units")
+//   let path = (new System.Uri(Assembly.GetExecutingAssembly().CodeBase)).AbsolutePath;
+//   let assembly = Assembly.LoadFrom path
+//   let types = assembly.GetExportedTypes ()
+//   types
+//   // |> Array.filter
+//   //   (fun t -> CompilationMappingAttribute.GetCustomAttributes t
+//   //             |> Seq.exists (fun attr ->
+//   //                              let a = attr :?> CompilationMappingAttribute
+//   //                              a.SourceConstructFlags = SourceConstructFlags.Module))
+//   |> Array.filter
+//     (fun m -> not (regex.IsMatch <| m.ToString ())) 
+
+// let compileTests () =
+//   getTestModules ()
+//   |> Array.map (fun m -> Compiler.Compile(<@ m.InvokeMember("main", BindingFlags.InvokeMethod, null, m, Array.empty) @>, noReturn = true))
+  
+let test str = script <|> text str
+
+let vdom  = test <| Compiler.Compile(<@ Test.Units.VirtualDom.main() @>, noReturn = true)
+let store = test <| Compiler.Compile(<@ Test.Units.Store.main() @>, noReturn = true)
 
 let doctype = Literal("<!doctype html>")
 let charset = meta <@> charset' "utf-8" 
@@ -65,9 +87,10 @@ let content =
     ; script <@> src' "https://cdn.rawgit.com/mochajs/mocha/2.2.5/mocha.js"
   
     ; script <|> text "mocha.setup('bdd')"
-    ; script <|> text test1
-    ; script <|> text test2
 
+    (* the actual tests *)
+    ; vdom
+    ; store
     ]
 
 let page =
@@ -78,7 +101,3 @@ let page =
   ]
   
 let testsPage () = List.fold (fun m e -> m + renderHtml e) "" <| page
-
-// let compileTests () = 
-//   let source = Compiler.Compile(<@ Iris.Web.Test.Main.main() @>, noReturn = true)
-//    sprintf "$(document).ready(function () {\n%s\n});" source
