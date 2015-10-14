@@ -1,6 +1,8 @@
 [<FunScript.JS>]
 module Iris.Web.Views.Patches
 
+#nowarn "1182"
+
 open FSharp.Html
 open FunScript
 open FunScript.TypeScript

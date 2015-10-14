@@ -196,6 +196,8 @@ let type' t =
 
 let href' url = Pair("href", url)
 
+let rel' str = Pair("rel", str)
+
 let charset' str = Pair("charset", str)
 
 let src' url = Pair("src", url) 

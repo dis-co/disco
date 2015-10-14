@@ -2,9 +2,11 @@
 
 open FunScript
 open FunScript.Compiler
-open Iris.Web
 open System.IO
 open System.Diagnostics
+
+open Iris.Web
+open Test.Main
 
 [<FunScript.JS>]
 module Build = 
@@ -14,9 +16,7 @@ module Build =
       | |  __/\__ \ |_\__ \
       |_|\___||___/\__|___/
    *)
-  let compileTests () = 
-    let source = Compiler.Compile(<@ Tests.main() @>, noReturn = true)
-    sprintf "$(document).ready(function () {\n%s\n});" source
+  let compileTestPage () = testsPage ()
 
   (*  ____        _ _     _ 
      | __ ) _   _(_) | __| |
@@ -27,14 +27,3 @@ module Build =
   let compileJSString () = 
     let source = Compiler.Compile(<@ Main.main() @>, noReturn = true)
     sprintf "$(document).ready(function () {\n%s\n});" source
-
-  [<EntryPoint>]
-  let compileJSFile argv = 
-    let exePath = Process.GetCurrentProcess().MainModule.FileName
-    let destPath = Path.Combine(Path.GetDirectoryName(exePath), "assets", "js", "iris.js")
-    let source = Compiler.Compile(<@ Main.main() @>, noReturn = true)
-    let sourceWrapped = sprintf "$(document).ready(function () {\n%s\n});" source
-    File.Delete destPath
-    File.WriteAllText(destPath, sourceWrapped)
-    0
-

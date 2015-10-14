@@ -1,6 +1,8 @@
 ﻿[<FunScript.JS>]
 module Iris.Web.Main
 
+#nowarn "1182"
+
 open FunScript
 open FunScript.VirtualDom
 open FunScript.TypeScript

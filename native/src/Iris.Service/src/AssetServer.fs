@@ -22,9 +22,10 @@ type AssetServer(addr : string, port : int) =
     let fn = Process.GetCurrentProcess().MainModule.FileName
     Path.GetDirectoryName(fn) + "/assets"
 
-  let tests = compileTests ()
   let index = compileIndex (basepath + "/js/")
   let js    = compileJSString ()
+
+  let tests = compileTestPage ()
 
   // Add more mime-types here if necessary
   // the following are for fonts, source maps etc.

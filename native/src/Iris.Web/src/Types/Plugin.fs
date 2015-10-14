@@ -1,6 +1,8 @@
 [<ReflectedDefinition>]
 module Iris.Web.Types.Plugin
 
+#nowarn "1182"
+
 open FunScript
 open FunScript.TypeScript
 open FunScript.VirtualDom

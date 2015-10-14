@@ -1,6 +1,8 @@
 [<ReflectedDefinition>]
 module Iris.Web.Types.Socket
 
+#nowarn "1182"
+
 open FunScript
 open FunScript.TypeScript
 open Iris.Web.Types.Events
