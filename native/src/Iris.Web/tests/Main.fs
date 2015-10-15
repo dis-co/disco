@@ -39,23 +39,33 @@ open FunScript.TypeScript
 
 *)
 
-// let getTestModules () : System.Type array =
-//   let regex = new Regex("^Test.Units")
-//   let path = (new System.Uri(Assembly.GetExecutingAssembly().CodeBase)).AbsolutePath;
-//   let assembly = Assembly.LoadFrom path
-//   let types = assembly.GetExportedTypes ()
-//   types
-//   // |> Array.filter
-//   //   (fun t -> CompilationMappingAttribute.GetCustomAttributes t
-//   //             |> Seq.exists (fun attr ->
-//   //                              let a = attr :?> CompilationMappingAttribute
-//   //                              a.SourceConstructFlags = SourceConstructFlags.Module))
-//   |> Array.filter
-//     (fun m -> not (regex.IsMatch <| m.ToString ())) 
+let getTestModules () : System.Type array =
+  let regex = new Regex("^Test.Units")
+  let path = (new System.Uri(Assembly.GetExecutingAssembly().CodeBase)).AbsolutePath;
+  let assembly = Assembly.LoadFrom path
+  let types = assembly.GetExportedTypes ()
+  types
+  // |> Array.filter
+  //   (fun t -> CompilationMappingAttribute.GetCustomAttributes t
+  //             |> Seq.exists (fun attr ->
+  //                              let a = attr :?> CompilationMappingAttribute
+  //                              a.SourceConstructFlags = SourceConstructFlags.Module)):w
+  |> Array.filter
+    (fun m -> not (regex.IsMatch <| m.ToString ())) 
 
-// let compileTests () =
-//   getTestModules ()
-//   |> Array.map (fun m -> Compiler.Compile(<@ m.InvokeMember("main", BindingFlags.InvokeMethod, null, m, Array.empty) @>, noReturn = true))
+let compileTests () =
+  getTestModules ()
+  |> Array.map
+      (fun m ->
+       let meths = m.GetMethods ()
+       let info : MethodInfo option = Array.tryFind (fun mi -> mi.Name = "main") meths
+       match info with
+         | Some(mi) ->
+           match Quotations.Expr.TryGetReflectedDefinition mi with
+             | Some(def) -> Compiler.Compile(def, noReturn = true)
+             | _         -> ""
+         | _        -> "")
+  // |> Array.map (fun m -> Compiler.Compile(<@ m.InvokeMember("main", BindingFlags.InvokeMethod, null, m, Array.empty) @>, noReturn = true))
   
 let test str = script <|> text str
 
@@ -107,4 +117,9 @@ let page =
     <|> content
   ]
   
-let testsPage () = List.fold (fun m e -> m + renderHtml e) "" <| page
+let testsPage () =
+  compileTests ()
+  |> Array.map (printfn "%s")
+  |> ignore
+
+  List.fold (fun m e -> m + renderHtml e) "" <| page
