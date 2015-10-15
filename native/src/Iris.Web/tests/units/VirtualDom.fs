@@ -47,19 +47,30 @@ let main () =
             ; li <@> id' "second" <|> text secondContent
             ]
 
-       let tree = list firstContent |> htmlToVTree
-       let root = createElement tree
+       let mutable tree = list firstContent |> htmlToVTree
+       let mutable root = createElement tree
 
        content.appendChild root |> ignore
        
        let newtree = list "harrrr i got cha" |> htmlToVTree
        let newroot = patch root <| diff tree newtree
 
+       tree <- newtree
+       root <- newroot
+
        let fst = Globals.document.getElementById "first"
        let snd = Globals.document.getElementById "second"
 
        check (fst.innerText <> firstContent) "the content of the first element should different but isn't"
-       check_cc (snd.innerText = secondContent) "the content of the second elemen should be the same but isn't" cb
+       check_cc (snd.innerText = secondContent) "the content of the second element should be the same but isn't" cb
+
+       let list' = list firstContent <|> (li <|> text "hmm")
+       root <- patch root <| diff tree (htmlToVTree list')
+
+       check (fst.innerText = firstContent) "the content of the first element should be the same but isn't"
+       check (root.children.length = 3.) "the list should have 3 elements now"
+       check_cc (snd.innerText = secondContent) "the content of the second element should be the same but isn't" cb
+
        cleanup content)
   
 
