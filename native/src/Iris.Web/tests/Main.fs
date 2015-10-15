@@ -1,5 +1,6 @@
 module Iris.Web.Test.Main
 
+open Microsoft.FSharp.Quotations
 open System.IO
 open System.Reflection
 open System.Text.RegularExpressions
@@ -39,36 +40,23 @@ open FunScript.TypeScript
 
 *)
 
-let getTestModules () : System.Type array =
+let compileTests () =
   let regex = new Regex("^Test.Units")
   let path = (new System.Uri(Assembly.GetExecutingAssembly().CodeBase)).AbsolutePath;
   let assembly = Assembly.LoadFrom path
-  let types = assembly.GetExportedTypes ()
-  types
-  // |> Array.filter
-  //   (fun t -> CompilationMappingAttribute.GetCustomAttributes t
-  //             |> Seq.exists (fun attr ->
-  //                              let a = attr :?> CompilationMappingAttribute
-  //                              a.SourceConstructFlags = SourceConstructFlags.Module)):w
+  assembly.GetExportedTypes ()
   |> Array.filter
-    (fun m -> not (regex.IsMatch <| m.ToString ())) 
-
-let compileTests () =
-  getTestModules ()
+    (fun m -> regex.IsMatch <| m.ToString ()) 
   |> Array.map
       (fun m ->
        let meths = m.GetMethods ()
        let info : MethodInfo option = Array.tryFind (fun mi -> mi.Name = "main") meths
        match info with
-         | Some(mi) ->
-           match Quotations.Expr.TryGetReflectedDefinition mi with
-             | Some(def) -> Compiler.Compile(def, noReturn = true)
-             | _         -> ""
-         | _        -> "")
-  // |> Array.map (fun m -> Compiler.Compile(<@ m.InvokeMember("main", BindingFlags.InvokeMethod, null, m, Array.empty) @>, noReturn = true))
+         | Some(mi) -> (m.ToString (), Compiler.Compile(Expr.Call(mi, []), noReturn = true))
+         | _ -> (m.ToString (), ""))
+  |> Array.toList
   
-let test str = script <|> text str
-
+let test name str = script <@> class' name <|> text str
 
 let doctype = Literal("<!doctype html>")
 let charset = meta <@> charset' "utf-8" 
@@ -82,7 +70,7 @@ let header =
     ]
 
 let content =
-  body <||>
+  let tops = 
     [ h1     <|> text "Iris Tests"
     ; div <@> id' "content"
     ; div <@> id' "mocha"
@@ -98,17 +86,12 @@ let content =
   
     (* setup *)
     ; script <|> text "mocha.setup('qunit')"
-
-    (* the actual tests *)
-    ; test <| Compiler.Compile(<@ Test.Units.VirtualDom.main() @>, noReturn = true)
-    ; test <| Compiler.Compile(<@ Test.Units.Html.main()       @>, noReturn = true)
-    ; test <| Compiler.Compile(<@ Test.Units.Store.main()      @>, noReturn = true)
-    ; test <| Compiler.Compile(<@ Test.Units.Plugins.main()    @>, noReturn = true)
-    ; test <| Compiler.Compile(<@ Test.Units.Storage.main()    @>, noReturn = true)
-
-    (* the actual tests *)
-    ; script <|> text "mocha.run()"
     ]
+
+  let tests = List.map (fun (name,code) -> test name code) <| compileTests ()
+  let run = script <|> text "mocha.run()"
+
+  body <||> List.fold (fun memo t -> List.append memo t) [] [ tops; tests; [run] ]
 
 let page =
   [ doctype;
@@ -117,9 +100,4 @@ let page =
     <|> content
   ]
   
-let testsPage () =
-  compileTests ()
-  |> Array.map (printfn "%s")
-  |> ignore
-
-  List.fold (fun m e -> m + renderHtml e) "" <| page
+let testsPage () = List.fold (fun m e -> m + renderHtml e) "" <| page

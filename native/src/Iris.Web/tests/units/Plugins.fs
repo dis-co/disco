@@ -21,7 +21,7 @@ open Iris.Web.Types.Patch
              // update view
              this.render = function (iobox) {
                return h('div', { id: iobox.id }, [
-                 h('h1', ["hello"]);
+                 h('h1', ["hello"])
                ]);
              };
 
