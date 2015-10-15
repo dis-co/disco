@@ -18,4 +18,3 @@ let cleanup (el : HTMLElement) : unit =
 let withContent (wrapper : HTMLElement -> unit) : unit =
   let content = mkContent () 
   wrapper content
-  cleanup content
