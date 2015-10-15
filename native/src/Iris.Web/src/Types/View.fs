@@ -28,9 +28,9 @@ type IWidget =
 *)
 
 type ViewController (widget : IWidget) =
-  let mutable view : IWidget      = widget 
-  let mutable tree : VTree option = None
-  let mutable root : Node  option = None 
+  let mutable view : IWidget            = widget 
+  let mutable tree : VTree option       = None
+  let mutable root : HTMLElement option = None 
   
   member self.init tree = 
     let rootNode = createElement tree

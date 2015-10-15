@@ -58,6 +58,7 @@
 
     <!-- FRONT-END TESTS -->
     <Compile Include="tests\Mocha.fs" />
+    <Compile Include="tests\units\Html.fs" />
     <Compile Include="tests\units\VirtualDom.fs" />
     <Compile Include="tests\units\Store.fs" />
     <Compile Include="tests\Main.fs" />

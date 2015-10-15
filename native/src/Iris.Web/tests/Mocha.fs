@@ -6,8 +6,11 @@ module FunScript.Mocha
 open FunScript 
 open FunScript.TypeScript
 
+[<JSEmit(""" if(!{0}) { throw new Error({1}) } """)>]
+let check (res : bool) (msg : string) : unit = failwith "never"
+
 [<JSEmit(""" if(!{0}) { throw new Error({1}) } else { ({2})(); } """)>]
-let check (res : bool) (msg : string) (cb : unit -> unit) : unit = failwith "never"
+let check_cc (res : bool) (msg : string) (cb : unit -> unit) : unit = failwith "never"
 
 [<JSEmit(""" suite({0}) """)>]
 let suite (desc : string) : unit = failwith "never "

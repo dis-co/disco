@@ -59,8 +59,9 @@ open FunScript.TypeScript
   
 let test str = script <|> text str
 
-let vdom  = test <| Compiler.Compile(<@ Test.Units.VirtualDom.main() @>, noReturn = true)
-let store = test <| Compiler.Compile(<@ Test.Units.Store.main() @>, noReturn = true)
+let vdomT  = test <| Compiler.Compile(<@ Test.Units.VirtualDom.main() @>, noReturn = true)
+let htmlT  = test <| Compiler.Compile(<@ Test.Units.Html.main() @>, noReturn = true)
+let storeT = test <| Compiler.Compile(<@ Test.Units.Store.main() @>, noReturn = true)
 
 let doctype = Literal("<!doctype html>")
 let charset = meta <@> charset' "utf-8" 
@@ -76,6 +77,7 @@ let header =
 let content =
   body <||>
     [ h1     <|> text "Iris Tests"
+    ; div <@> id' "content"
     ; div <@> id' "mocha"
 
     ; script <@> src' "dependencies/virtual-dom/dist/virtual-dom.js"
@@ -91,8 +93,9 @@ let content =
     ; script <|> text "mocha.setup('qunit')"
 
     (* the actual tests *)
-    ; vdom
-    ; store
+    ; vdomT
+    ; htmlT
+    ; storeT
 
     (* the actual tests *)
     ; script <|> text "mocha.run()"
