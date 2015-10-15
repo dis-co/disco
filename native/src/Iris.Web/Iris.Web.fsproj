@@ -63,6 +63,7 @@
     <Compile Include="tests\units\VirtualDom.fs" />
     <Compile Include="tests\units\Store.fs" />
     <Compile Include="tests\units\Plugins.fs" />
+    <Compile Include="tests\units\Storage.fs" />
     <Compile Include="tests\Main.fs" />
     
     <!-- ENTRY POINT -->

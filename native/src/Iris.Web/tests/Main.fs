@@ -94,6 +94,7 @@ let content =
     ; test <| Compiler.Compile(<@ Test.Units.Html.main()       @>, noReturn = true)
     ; test <| Compiler.Compile(<@ Test.Units.Store.main()      @>, noReturn = true)
     ; test <| Compiler.Compile(<@ Test.Units.Plugins.main()    @>, noReturn = true)
+    ; test <| Compiler.Compile(<@ Test.Units.Storage.main()    @>, noReturn = true)
 
     (* the actual tests *)
     ; script <|> text "mocha.run()"
