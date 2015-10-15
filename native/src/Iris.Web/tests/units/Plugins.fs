@@ -3,6 +3,9 @@ module Test.Units.Plugins
 
 open FunScript
 open FunScript.TypeScript
+open FunScript.Mocha
 
 let main () =
-  Globals.console.log("testing plugins, yep")
+  (*--------------------------------------------------------------------------*)
+  suite "Test.Units.Plugins"
+  (*--------------------------------------------------------------------------*)

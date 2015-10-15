@@ -2,6 +2,7 @@
 ** NEXT unbox function calls to plugins                            :frontend:
 ** IN LocalStorage API Abstraction                                 :frontend:
 ** IN integrate LocalStorage into Store/State                      :frontend:
+** IN working completely offline should become possible with store :frontend:
 ** IN do some simple rx experiments                                :frontend:
 ** IN FunScript msgpack-javascript bindings                        :frontend:
 ** IN msgpack serialization/deserialization scheme         :frontend:backend:

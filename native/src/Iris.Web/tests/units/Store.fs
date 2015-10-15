@@ -2,7 +2,10 @@
 module Test.Units.Store
 
 open FunScript
+open FunScript.Mocha
 open FunScript.TypeScript
 
 let main () =
-  Globals.console.log("hi from store tests")
+  (*--------------------------------------------------------------------------*)
+  suite "Test.Units.Store"
+  (*--------------------------------------------------------------------------*)
