@@ -12,7 +12,9 @@ open FSharp.Html
 open Iris.Web.Dom
 
 let main () =
+  (*--------------------------------------------------------------------------*)
   suite "Test.Units.Html" 
+  (*--------------------------------------------------------------------------*)
 
   test "innerText should be specified with `text'` combinator" <|
     (fun cb ->
