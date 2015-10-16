@@ -89,7 +89,7 @@ and Listener = (Store -> AppEvent -> unit)
 let private notify (store : Store) (ev : AppEvent) =
   List.map (fun l -> l store ev) store.listeners
 
-let dispatch (store : Store) (ev : AppEvent) =
+let dispatch (store : Store) (ev : AppEvent) : Store =
   let newstate = store.reducer ev store.state
   let newstore = { store with state = newstate }
   notify newstore ev |> ignore
