@@ -10,34 +10,16 @@ open FunScript.Compiler
 open FunScript.TypeScript
 
 (*
+    ____                      _ _      
+   / ___|___  _ __ ___  _ __ (_) | ___ 
+  | |   / _ \| '_ ` _ \| '_ \| | |/ _ \
+  | |__| (_) | | | | | | |_) | | |  __/
+   \____\___/|_| |_| |_| .__/|_|_|\___| tests
+                       |_|             
 
-  <html>
-  <head>
-    <meta charset="utf-8">
-    <title>Mocha Tests</title>
-    <link href="https://cdn.rawgit.com/mochajs/mocha/2.2.5/mocha.css" rel="stylesheet" />
-  </head>
-  <body>
-    <div id="mocha"></div>
-  
-    <script src="https://cdn.rawgit.com/jquery/jquery/2.1.4/dist/jquery.min.js"></script>
-    <script src="https://cdn.rawgit.com/Automattic/expect.js/0.3.1/index.js"></script>
-    <script src="https://cdn.rawgit.com/mochajs/mocha/2.2.5/mocha.js"></script>
-  
-    <script>mocha.setup('bdd')</script>
-  
-    <script src="test.array.js"></script>
-    <script src="test.object.js"></script>
-    <script src="test.xhr.js"></script>
-  
-    <script>
-      mocha.checkLeaks();
-      mocha.globals(['jQuery']);
-      mocha.run();
-    </script>
-  </body>
-  </html>
-
+  Uses reflection to get and compile all modules in this assembly whose
+  namespace matches `^Test.Units.*`. The return type is a tuple module name and
+  the compiled javascript code as a regular string.
 *)
 
 let compileTests () =
@@ -71,20 +53,17 @@ let header =
 
 let content =
   let tops = 
-    [ h1     <|> text "Iris Tests"
-    ; div <@> id' "content"
-    ; div <@> id' "mocha"
-
+    [ h2 <@> style' @"margin: 50px 65px;"
+         <|> (a <@> href' "/tests" <|> text "Iris Tests")
+    ; div    <@> id' "content"
+    ; div    <@> id' "mocha"
     ; script <@> src' "dependencies/virtual-dom/dist/virtual-dom.js"
     ; script <@> src' "dependencies/rxjs/dist/rx.all.js"
     ; script <@> src' "dependencies/jquery/dist/jquery.js"
     ; script <@> src' "dependencies/routie/dist/routie.js"
     ; script <@> src' "dependencies/fabric.js/dist/fabric.js"
-
     ; script <@> src' "https://cdn.rawgit.com/Automattic/expect.js/0.3.1/index.js"
     ; script <@> src' "https://cdn.rawgit.com/mochajs/mocha/2.2.5/mocha.js"
-  
-    (* setup *)
     ; script <|> text "mocha.setup('qunit')"
     ]
 
@@ -100,4 +79,15 @@ let page =
     <|> content
   ]
   
+(*
+   _____         _   ____                  
+  |_   _|__  ___| |_|  _ \ __ _  __ _  ___ 
+    | |/ _ \/ __| __| |_) / _` |/ _` |/ _ \
+    | |  __/\__ \ |_|  __/ (_| | (_| |  __/
+    |_|\___||___/\__|_|   \__,_|\__, |\___|
+                                |___/      
+
+    Function to compile the tests page. 
+*)
+
 let testsPage () = List.fold (fun m e -> m + renderHtml e) "" <| page
