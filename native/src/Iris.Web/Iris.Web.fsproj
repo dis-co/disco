@@ -60,11 +60,12 @@
     <!-- FRONT-END TESTS -->
     <Compile Include="tests\Util.fs" />
     <Compile Include="tests\Mocha.fs" />
-    <Compile Include="tests\units\Html.fs" />
-    <Compile Include="tests\units\VirtualDom.fs" />
-    <Compile Include="tests\units\Store.fs" />
-    <Compile Include="tests\units\Plugins.fs" />
-    <Compile Include="tests\units\Storage.fs" />
+    <Compile Include="tests\Units\Html.fs" />
+    <Compile Include="tests\Units\VirtualDom.fs" />
+    <Compile Include="tests\Units\Store.fs" />
+    <Compile Include="tests\Units\ViewController.fs" />
+    <Compile Include="tests\Units\Plugins.fs" />
+    <Compile Include="tests\Units\Storage.fs" />
     <Compile Include="tests\Main.fs" />
     
     <!-- ENTRY POINT -->

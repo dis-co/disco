@@ -144,7 +144,6 @@ let main () =
 
       let store1 = dispatch store { Kind = UpdateIOBox; Payload = IOBoxD(updated1) }
 
-      Globals.console.log(store1.state.Patches)
       controller.render store1
 
       // test for the presence of the initial state
