@@ -95,8 +95,7 @@ let main () =
       cleanup content
 
 
-  (*
-
+  (*--------------------------------------------------------------------------*)
   withContent <| fun content ->
     test "should render updates on iobox to dom" <| fun cb ->
 
@@ -171,5 +170,3 @@ let main () =
           check_cc (slice.textContent = value3) "iobox slice value not present in dom (test 3)" cb)
 
       cleanup content
-
-  *)

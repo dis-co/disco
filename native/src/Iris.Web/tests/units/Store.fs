@@ -188,4 +188,3 @@ let main () =
     match findIOBox store.state.Patches boxid with
       | Some(_) -> check_cc false "iobox should be missing by now but isn't" cb
       | None    -> check_cc true "iobox was found but should be missing" cb
-
