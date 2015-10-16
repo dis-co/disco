@@ -6,11 +6,15 @@ open FunScript.TypeScript
 open FunScript.Mocha
 
 open Iris.Web.Test.Util
+
 open Iris.Web.Core.IOBox
 open Iris.Web.Core.Patch
 open Iris.Web.Core.Store
 open Iris.Web.Core.Events
 open Iris.Web.Core.Reducer
+open Iris.Web.Core.View
+
+open Iris.Web.Views.Patches
 
 [<JSEmit("""
          window.IrisPlugins = window.IrisPlugins || [];
@@ -24,7 +28,7 @@ open Iris.Web.Core.Reducer
              // update view
              this.render = function (iobox) {
                return h('div', { id: iobox.id }, [
-                 h('h1', ["hello"])
+                 h('p', { className: 'slice' }, [ iobox.slices[0].value ])
                ]);
              };
 
@@ -44,32 +48,46 @@ open Iris.Web.Core.Reducer
          """)>]
 let simpleString () = failwith "never"
 
+let document = Globals.document
+
 let main () =
   simpleString () // register the plugin
   
   (*--------------------------------------------------------------------------*)
-  suite "Test.Units.Plugins"
+  suite "Test.Units.Plugins - basic operation"
   (*--------------------------------------------------------------------------*)
 
-  withContent <| fun content ->
-    test "plugin should render iobox changes" <| fun cb ->
-      let patch : Patch =
-        { id = "0xb4d1d34"
-        ; name = "cooles patch ey"
-        ; ioboxes =
-          [| { id     = "0xd34db33f"
-             ; name   = "url input"
-             ; patch  = "0xb4d1d34"
-             ; kind   = "string"
-             ; slices = [| { idx = 0; value = "death to the confederacy" } |]
-             } |]
-        }
+  test "should render plugin for iobox" <| fun cb ->
+    let elid = "0xd34db33f"
+    let value = "death to the confederacy"
 
-      let store : Store =
-        { reducer   = reducer
-        ; state     = { Patches = [ patch ] }
-        ; listeners = []
-        }
+    let patch : Patch =
+      { id = "0xb4d1d34"
+      ; name = "cooles patch ey"
+      ; ioboxes =
+        [| { id     = elid
+           ; name   = "url input"
+           ; patch  = "0xb4d1d34"
+           ; kind   = "string"
+           ; slices = [| { idx = 0; value = value } |]
+           } |]
+      }
+
+    let store : Store =
+      { state     = { Patches = [ patch ] }
+      ; reducer   = reducer
+      ; listeners = []}
       
-        
-      failwith "oops"
+    let view = new PatchView () 
+    let controller = new ViewController (view)
+
+    controller.render store
+
+    let el = document.getElementById elid
+
+    check (el.id = elid) "element not found in dom"
+
+    let slices = el.getElementsByClassName "slice"
+    let slice = slices.item 0.0
+
+    check_cc (slice.textContent = value) "iobox slice value not present in dom" cb
