@@ -57,37 +57,39 @@ let main () =
   suite "Test.Units.Plugins - basic operation"
   (*--------------------------------------------------------------------------*)
 
-  test "should render plugin for iobox" <| fun cb ->
-    let elid = "0xd34db33f"
-    let value = "death to the confederacy"
+  withContent <| fun content -> 
+    test "should render plugin for iobox" <| fun cb ->
+      let elid = "0xd34db33f"
+      let value = "death to the confederacy"
 
-    let patch : Patch =
-      { id = "0xb4d1d34"
-      ; name = "cooles patch ey"
-      ; ioboxes =
-        [| { id     = elid
-           ; name   = "url input"
-           ; patch  = "0xb4d1d34"
-           ; kind   = "string"
-           ; slices = [| { idx = 0; value = value } |]
-           } |]
-      }
+      let patch : Patch =
+        { id = "0xb4d1d34"
+        ; name = "cooles patch ey"
+        ; ioboxes =
+          [| { id     = elid
+             ; name   = "url input"
+             ; patch  = "0xb4d1d34"
+             ; kind   = "string"
+             ; slices = [| { idx = 0; value = value } |]
+             } |]
+        }
 
-    let store : Store =
-      { state     = { Patches = [ patch ] }
-      ; reducer   = reducer
-      ; listeners = []}
-      
-    let view = new PatchView () 
-    let controller = new ViewController (view)
+      let store : Store =
+        { state     = { Patches = [ patch ] }
+        ; reducer   = reducer
+        ; listeners = []}
+        
+      let view = new PatchView () 
+      let controller = new ViewController (view)
+      controller.Container <- content
+      controller.render store
 
-    controller.render store
+      let el = document.getElementById elid
 
-    let el = document.getElementById elid
+      check (el.id = elid) "element not found in dom"
 
-    check (el.id = elid) "element not found in dom"
+      let slices = el.getElementsByClassName "slice"
+      let slice = slices.item 0.0
 
-    let slices = el.getElementsByClassName "slice"
-    let slice = slices.item 0.0
-
-    check_cc (slice.textContent = value) "iobox slice value not present in dom" cb
+      check_cc (slice.textContent = value) "iobox slice value not present in dom" cb
+      cleanup content

@@ -31,10 +31,15 @@ type ViewController (widget : IWidget) =
   let mutable view : IWidget            = widget 
   let mutable tree : VTree option       = None
   let mutable root : HTMLElement option = None 
+  let mutable container : HTMLElement   = Globals.document.body
+
+  member self.Container
+    with get () = container
+     and set (el : HTMLElement) = container <- el
   
   member self.init tree = 
     let rootNode = createElement tree
-    Globals.document.body.appendChild(rootNode) |> ignore
+    container.appendChild(rootNode) |> ignore
     root <- Some(rootNode)
 
   (* render and patch the DOM *)
