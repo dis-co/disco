@@ -8,15 +8,14 @@ open FunScript
 open FunScript.TypeScript
 open FunScript.VirtualDom
 
-open Iris.Web.Types
 open Iris.Web.Dom
 open Iris.Web.Util
 
-open Iris.Web.Types.IOBox
-open Iris.Web.Types.Patch
-open Iris.Web.Types.View
-open Iris.Web.Types.Store
-open Iris.Web.Types.Plugin
+open Iris.Web.Core.IOBox
+open Iris.Web.Core.Patch
+open Iris.Web.Core.View
+open Iris.Web.Core.Store
+open Iris.Web.Core.Plugin
 
 //   console.log(plug.set Array.empty)
 //   console.log(plug.get ())

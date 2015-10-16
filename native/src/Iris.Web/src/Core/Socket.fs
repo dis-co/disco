@@ -1,11 +1,11 @@
 [<ReflectedDefinition>]
-module Iris.Web.Types.Socket
+module Iris.Web.Core.Socket
 
 #nowarn "1182"
 
 open FunScript
 open FunScript.TypeScript
-open Iris.Web.Types.Events
+open Iris.Web.Core.Events
 
 (*   __  __
     |  \/  | ___  ___ ___  __ _  __ _  ___ 
@@ -51,7 +51,7 @@ type IWebSocket =
 let private createImpl(host : string, onOpen : unit -> unit, onMessage : Message -> unit, onClosed : unit -> unit) : IWebSocket = 
     failwith "never"
 
-let create(host, onMessage, onClosed) =
+let createSocket(host, onMessage, onClosed) =
     Async.FromContinuations (fun (callback, _, _) ->
         let socket = ref Unchecked.defaultof<_>
         socket := createImpl(host, (fun () -> callback !socket), onMessage, onClosed))

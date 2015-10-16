@@ -1,9 +1,9 @@
 [<ReflectedDefinition>]
-module Iris.Web.Types.Patch
+module Iris.Web.Core.Patch
 
 open FunScript
 open FunScript.TypeScript
-open Iris.Web.Types.IOBox
+open Iris.Web.Core.IOBox
 
 (*   ____       _       _     
     |  _ \ __ _| |_ ___| |__  

@@ -1,8 +1,8 @@
 [<ReflectedDefinition>]
-module Iris.Web.Types.Events
+module Iris.Web.Core.Events
 
-open Iris.Web.Types.IOBox
-open Iris.Web.Types.Patch
+open Iris.Web.Core.IOBox
+open Iris.Web.Core.Patch
 
 (*   _____                 _   ____        _        
     | ____|_   _____ _ __ | |_|  _ \  __ _| |_ __ _ 

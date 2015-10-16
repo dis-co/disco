@@ -42,13 +42,14 @@
     <Compile Include="AssemblyInfo.fs" />
 
     <!-- FRONT-END CODE -->
-    <Compile Include="src\Types\IOBox.fs" />
-    <Compile Include="src\Types\Patch.fs" />
-    <Compile Include="src\Types\Plugin.fs" />
-    <Compile Include="src\Types\Events.fs" />
-    <Compile Include="src\Types\Socket.fs" />
-    <Compile Include="src\Types\Store.fs" />
-    <Compile Include="src\Types\View.fs" />
+    <Compile Include="src\Core\IOBox.fs" />
+    <Compile Include="src\Core\Patch.fs" />
+    <Compile Include="src\Core\Plugin.fs" />
+    <Compile Include="src\Core\Events.fs" />
+    <Compile Include="src\Core\Socket.fs" />
+    <Compile Include="src\Core\Store.fs" />
+    <Compile Include="src\Core\Reducer.fs" />
+    <Compile Include="src\Core\View.fs" />
     <Compile Include="src\Dom.fs" />
     <Compile Include="src\Util.fs" />
     <Compile Include="src\Routes.fs" />

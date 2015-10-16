@@ -1,5 +1,5 @@
 [<ReflectedDefinition>]
-module Iris.Web.Types.Plugin
+module Iris.Web.Core.Plugin
 
 #nowarn "1182"
 
@@ -7,8 +7,8 @@ open FunScript
 open FunScript.TypeScript
 open FunScript.VirtualDom
 
-open Iris.Web.Types.IOBox
-open Iris.Web.Types.Patch
+open Iris.Web.Core.IOBox
+open Iris.Web.Core.Patch
 
 (*   ____  _             _       
     |  _ \| |_   _  __ _(_)_ __  

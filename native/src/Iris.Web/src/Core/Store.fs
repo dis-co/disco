@@ -1,14 +1,14 @@
 [<ReflectedDefinition>]
-module Iris.Web.Types.Store
+module Iris.Web.Core.Store
 
 open FSharp.Html
 
 open FunScript.TypeScript
 open FunScript.VirtualDom
 
-open Iris.Web.Types.IOBox
-open Iris.Web.Types.Patch
-open Iris.Web.Types.Events
+open Iris.Web.Core.IOBox
+open Iris.Web.Core.Patch
+open Iris.Web.Core.Events
 
 (*   ____  _        _       
     / ___|| |_ __ _| |_ ___ 
@@ -97,7 +97,6 @@ let dispatch (store : Store) (ev : AppEvent) =
 
 let subscribe (store : Store) (listener : Listener) =
   { store with listeners = listener :: store.listeners }
-
 
 let mkStore (reducer : Reducer) =
   { reducer = reducer

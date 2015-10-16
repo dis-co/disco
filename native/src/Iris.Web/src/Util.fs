@@ -6,9 +6,9 @@ module Iris.Web.Util
 open FunScript
 open FunScript.TypeScript
 
-open Iris.Web.Types.IOBox
-open Iris.Web.Types.Patch
-open Iris.Web.Types.Socket
+open Iris.Web.Core.IOBox
+open Iris.Web.Core.Patch
+open Iris.Web.Core.Socket
 
 let console = Globals.console
 let document = Globals.document

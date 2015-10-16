@@ -1,5 +1,5 @@
 [<ReflectedDefinition>]
-module Iris.Web.Types.IOBox
+module Iris.Web.Core.IOBox
 
 open FunScript
 open FunScript.TypeScript

@@ -1,7 +1,7 @@
 [<ReflectedDefinition>]
-module Iris.Web.Types.View
+module Iris.Web.Core.View
 
-open Iris.Web.Types.Store
+open Iris.Web.Core.Store
 open FunScript.VirtualDom
 open FunScript.TypeScript
 

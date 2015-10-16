@@ -12,15 +12,14 @@ open FSharp.Html
 
 open Iris.Web.Util
 open Iris.Web.Dom
-open Iris.Web.Types
 
-open Iris.Web.Types.Patch
-open Iris.Web.Types.IOBox
-open Iris.Web.Types.Socket
-open Iris.Web.Types.View
-open Iris.Web.Types.Store
-open Iris.Web.Types.Events
-
+open Iris.Web.Core.Patch
+open Iris.Web.Core.IOBox
+open Iris.Web.Core.Socket
+open Iris.Web.Core.View
+open Iris.Web.Core.Store
+open Iris.Web.Core.Events
+open Iris.Web.Core.Reducer
 open Iris.Web.Views.Patches
 
 (* FIXME: need to factor this out into a nice abstraction *)
@@ -37,31 +36,6 @@ let handler (store : Store) (msg : Message) : Store =
   in dispatch store { Kind = ev; Payload = thing }
 
 let onClose _ = console.log("closing")
-
-(*   ____          _                     
-    |  _ \ ___  __| |_   _  ___ ___ _ __ 
-    | |_) / _ \/ _` | | | |/ __/ _ \ '__|
-    |  _ <  __/ (_| | |_| | (_|  __/ |   
-    |_| \_\___|\__,_|\__,_|\___\___|_|   
-*)
-let reducer ev state =
-  let addPatch'    = addPatch state
-  let updatePatch' = updatePatch state
-  let removePatch' = removePatch state
-
-  let addIOBox'    = addIOBox state
-  let updateIOBox' = updateIOBox state
-  let removeIOBox' = removeIOBox state
-
-  match ev with
-    | { Kind = AddPatch;    Payload = PatchD(patch) } -> addPatch'    patch
-    | { Kind = UpdatePatch; Payload = PatchD(patch) } -> updatePatch' patch
-    | { Kind = RemovePatch; Payload = PatchD(patch) } -> removePatch' patch
-
-    | { Kind = AddIOBox;    Payload = IOBoxD(box) } -> addIOBox'    box
-    | { Kind = UpdateIOBox; Payload = IOBoxD(box) } -> updateIOBox' box
-    | { Kind = RemoveIOBox; Payload = IOBoxD(box) } -> removeIOBox' box
-    | _                                             -> state
 
 (*   __  __       _       
     |  \/  | __ _(_)_ __  
@@ -85,6 +59,6 @@ let main () : unit =
     store := handler !store msg
 
   async {
-    let! websocket = Socket.create("ws://localhost:8080", onMsg, onClose)
+    let! websocket = createSocket("ws://localhost:8080", onMsg, onClose)
     websocket.send("start")
   } |> Async.StartImmediate

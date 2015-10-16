@@ -6,8 +6,11 @@ open FunScript.TypeScript
 open FunScript.Mocha
 
 open Iris.Web.Test.Util
-open Iris.Web.Types.IOBox
-open Iris.Web.Types.Patch
+open Iris.Web.Core.IOBox
+open Iris.Web.Core.Patch
+open Iris.Web.Core.Store
+open Iris.Web.Core.Events
+open Iris.Web.Core.Reducer
 
 [<JSEmit("""
          window.IrisPlugins = window.IrisPlugins || [];
@@ -48,18 +51,25 @@ let main () =
   suite "Test.Units.Plugins"
   (*--------------------------------------------------------------------------*)
 
-  // withContent <| fun content ->
-  //   test "plugin should render iobox changes" <| fun cb ->
-  //     let patch : Patch =
-  //       { id = "0xb4d1d34"
-  //       ; name = "cooles patch ey"
-  //       ; ioboxes =
-  //         [| { id     = "0xd34db33f"
-  //            ; name   = "url input"
-  //            ; patch  = "0xb4d1d34"
-  //            ; kind   = "string"
-  //            ; slices = [| { idx = 0; value = "death to the confederacy" } |]
-  //            } |]
-  //       }
-  //       
-  //     failwith "oops"
+  withContent <| fun content ->
+    test "plugin should render iobox changes" <| fun cb ->
+      let patch : Patch =
+        { id = "0xb4d1d34"
+        ; name = "cooles patch ey"
+        ; ioboxes =
+          [| { id     = "0xd34db33f"
+             ; name   = "url input"
+             ; patch  = "0xb4d1d34"
+             ; kind   = "string"
+             ; slices = [| { idx = 0; value = "death to the confederacy" } |]
+             } |]
+        }
+
+      let store : Store =
+        { reducer   = reducer
+        ; state     = { Patches = [ patch ] }
+        ; listeners = []
+        }
+      
+        
+      failwith "oops"
