@@ -20,3 +20,21 @@ let test (str : string) (f : (unit -> unit) -> unit) : unit = failwith "never"
 
 [<JSEmit(""" test({0}) """)>]
 let pending (str : string) : unit = failwith "never"
+
+[<JSEmit(""" throw new Error({1}) """)>]
+let fail (msg : string) : unit = failwith "never"
+
+
+[<JSEmit(""" test({0}, {1}) """)>]
+let withTestImpl (str : string) (t : (unit -> unit) -> unit) : unit = failwith "never"
+
+let withTest (name : string) (t : unit -> unit) =
+  let worker (cont : unit -> unit, econt : exn -> unit, ccont : System.OperationCanceledException -> unit) : unit = 
+    let wrapper (cb : unit -> unit) =
+      (* error handling & order not*)
+      t ()
+      cb ()
+      cont ()
+    withTestImpl name wrapper 
+
+  Async.FromContinuations(worker) 
