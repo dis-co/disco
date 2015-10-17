@@ -49,7 +49,7 @@ let main () =
   (*--------------------------------------------------------------------------*)
 
   withContent <| fun content ->
-    test "should render a patch view" <| fun cb ->
+    test "should render successive updates of a patch view" <| fun cb ->
       let patch1 = { id = "0xb33f"
                    ; name = "patch-1"
                    ; ioboxes = Array.empty

@@ -13,7 +13,7 @@ open Iris.Web.Dom
 
 let main () =
   (*--------------------------------------------------------------------------*)
-  suite "Test.Units.Html" 
+  suite "Test.Units.Html - basic combinators" 
   (*--------------------------------------------------------------------------*)
 
   test "innerText should be specified with `text'` combinator" <|
@@ -36,3 +36,9 @@ let main () =
      let comb = h1 <@> id' eidee
      let elm = htmlToVTree comb |> createElement
      check_cc (elm.id = eidee) "id mismatch" cb)
+
+  (*--------------------------------------------------------------------------*)
+  suite "Test.Units.Html - interleaved Html & VTree" 
+  (*--------------------------------------------------------------------------*)
+
+  pending "id should should be specified with `id'` combinator"

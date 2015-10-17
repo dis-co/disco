@@ -17,3 +17,6 @@ let suite (desc : string) : unit = failwith "never "
 
 [<JSEmit(""" test({0}, {1}) """)>]
 let test (str : string) (f : (unit -> unit) -> unit) : unit = failwith "never"
+
+[<JSEmit(""" test({0}) """)>]
+let pending (str : string) : unit = failwith "never"
