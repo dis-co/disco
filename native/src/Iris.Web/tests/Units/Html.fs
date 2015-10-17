@@ -41,4 +41,9 @@ let main () =
   suite "Test.Units.Html - interleaved Html & VTree" 
   (*--------------------------------------------------------------------------*)
 
-  pending "id should should be specified with `id'` combinator"
+  pending "pure html in should be rendered as such"
+  pending "nested VTree in Html should be rendered as such"
+  pending "nested Html in VTree parent should be rendered as such"
+  pending "nested CompositeDom in Html parent should be rendered as such"
+  pending "VTree should be rendered as expected"
+
