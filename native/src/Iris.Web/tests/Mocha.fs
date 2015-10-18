@@ -24,6 +24,7 @@ let pending (str : string) : unit = failwith "never"
 [<JSEmit(""" throw new Error({1}) """)>]
 let fail (msg : string) : unit = failwith "never"
 
+(*----------------------------------------------------------------------------*)
 
 [<JSEmit(""" test({0}, {1}) """)>]
 let withTestImpl (str : string) (t : (unit -> unit) -> unit) : unit = failwith "never"

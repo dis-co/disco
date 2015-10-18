@@ -1,5 +1,6 @@
 * Todo:
 ** NEXT unbox function calls to plugins                            :frontend:
+** IN explore the idea of creating a CHROME APPs                   :frontend:
 ** IN LocalStorage API Abstraction                                 :frontend:
 ** IN integrate LocalStorage into Store/State                      :frontend:
 ** IN working completely offline should become possible with store :frontend:

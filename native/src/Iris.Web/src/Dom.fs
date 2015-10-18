@@ -6,9 +6,9 @@ open FSharp.Html
 
 type CompositeDom =
   | Pure     of Html
-  | NestedP  of Html * VTree list // Html parent with VTree children
-  | NestedR  of VTree * Html list // VTree parent with 
-  | NestedC  of Html * CompositeDom
+  | NestedP  of Html  * VTree        list // Html parent with VTree children
+  | NestedR  of VTree * Html         list // VTree parent with 
+  | NestedC  of Html  * CompositeDom list
   | Rendered of VTree
 
 let parseAttrs attrs =
@@ -31,7 +31,7 @@ let rec compToVTree (tree : CompositeDom) : VTree =
     | Pure(html)         -> htmlToVTree html
     | NestedP(html, vts) -> addChildren (htmlToVTree html) (List.toArray vts)
     | NestedR(vt, html)  -> addChildren vt (List.map htmlToVTree html |> List.toArray)
-    | NestedC(html, cts) -> addChildren (htmlToVTree html) [| compToVTree cts |]
+    | NestedC(html, cts) -> addChildren (htmlToVTree html) <| (List.toArray <| List.map compToVTree cts)
     | Rendered(t)        -> t
 
 // let render (state : AppState) =

@@ -168,4 +168,4 @@ let main () =
       |> (fun slice  ->
           check_cc (slice.textContent = value3) "iobox slice value not present in dom (test 3)" cb)
 
-      cleanup content
+    cleanup content

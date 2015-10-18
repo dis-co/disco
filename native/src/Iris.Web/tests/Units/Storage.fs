@@ -5,17 +5,9 @@ open FunScript
 open FunScript.Mocha
 open FunScript.TypeScript
 
-
-let tests = async {
+let main () =
   (*--------------------------------------------------------------------------*)
   suite "Test.Units.Storage"
   (*--------------------------------------------------------------------------*)
-  do! withTest "what a nice test"
-       (fun () -> ())
-  do! withTest "and another nice tests"
-       (fun () -> ())
-  }
 
-
-let main () =
-  Async.StartImmediate(tests)
+  pending "not yet implemented"

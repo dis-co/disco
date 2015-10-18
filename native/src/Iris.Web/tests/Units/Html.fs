@@ -23,6 +23,7 @@ let main () =
      let elm = htmlToVTree comb |> createElement
      check_cc (elm.innerText = content) "content mismatch" cb)
 
+  (*--------------------------------------------------------------------------*)
   test "class should should be specified with `class'` combinator" <|
     (fun cb ->
      let klass = "there"
@@ -30,6 +31,7 @@ let main () =
      let elm = htmlToVTree comb |> createElement
      check_cc (elm.className = klass) "class mismatch" cb)
 
+  (*--------------------------------------------------------------------------*)
   test "id should should be specified with `id'` combinator" <|
     (fun cb ->
      let eidee = "thou"
@@ -38,12 +40,79 @@ let main () =
      check_cc (elm.id = eidee) "id mismatch" cb)
 
   (*--------------------------------------------------------------------------*)
-  suite "Test.Units.Html - interleaved Html & VTree" 
+  suite "Test.Units.Html - composite Html * VTree" 
   (*--------------------------------------------------------------------------*)
 
-  pending "pure html in should be rendered as such"
-  pending "nested VTree in Html should be rendered as such"
-  pending "nested Html in VTree parent should be rendered as such"
-  pending "nested CompositeDom in Html parent should be rendered as such"
-  pending "VTree should be rendered as expected"
+  test "nested VTree in Html should be rendered as such"
+    (fun cb ->
+     let t  = div <@> class' "thing" <|> text "hello"
+     let t' = htmlToVTree <| (h1 <|> text "hallo")
 
+     let elm =
+       NestedP(t, t' :: [])
+       |> compToVTree 
+       |> createElement
+
+     check (elm.className = "thing") "should be a thing but isn't"
+
+     elm.getElementsByTagName "h1"
+     |> (fun t'' -> check_cc (t''.length = 1.0) "should have a h1 but hasn't'" cb))
+
+  (*--------------------------------------------------------------------------*)
+  test "pure html in should be rendered as such" <| 
+    (fun cb ->
+     let t  = div <@> class' "thing" <|> text "hello"
+
+     let elm =
+       Pure(t)
+       |> compToVTree 
+       |> createElement
+
+     check_cc (elm.className = "thing") "should be a thing but isn't" cb)
+
+  (*--------------------------------------------------------------------------*)
+  test "nested Html in VTree parent should be rendered as such" <|
+    (fun cb ->
+     let t = (div <@> class' "thing") |> htmlToVTree
+     let t' = h1 <|> text "hi"
+
+     let elm =
+       NestedR(t, t' :: [])
+       |> compToVTree
+       |> createElement
+
+     elm.getElementsByTagName "h1"
+     |> (fun els -> check_cc (els.length = 1.0) "should have exactly one h1" cb))
+
+  (*--------------------------------------------------------------------------*)
+  test "nested CompositeDom in Html parent should be rendered as such" <|
+    (fun cb ->
+     let thing1 =
+       NestedR((div <@> class' "thing") |> htmlToVTree, [ h1 <|> text "Hello " ])
+
+     let thing2 =
+       NestedP(div <@> class' "thing", [ (h1 <|> text "Bye") |> htmlToVTree ])
+
+     let elm =
+       NestedC(div <@> id' "super", [ thing1; thing2 ])
+       |> compToVTree
+       |> createElement
+     
+     check (elm.id = "super") "elms id should be `super`"
+
+     elm.getElementsByClassName "thing"
+     |> (fun els -> check (els.length = 2.0) "should have 2 `things`")
+
+     elm.getElementsByTagName "h1"
+     |> (fun els -> check_cc (els.length = 2.0) "should have 2 `h1` tags" cb))
+
+  (*--------------------------------------------------------------------------*)
+  test "VTree should be rendered as expected" <|
+    (fun cb ->
+     let elm =
+       Rendered((div <@> id' "hello") |> htmlToVTree)
+       |> compToVTree
+       |> createElement
+
+     check_cc (elm.id = "hello") "should have an element with id" cb)
+    
