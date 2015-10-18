@@ -21,7 +21,7 @@ let test (str : string) (f : (unit -> unit) -> unit) : unit = failwith "never"
 [<JSEmit(""" test({0}) """)>]
 let pending (str : string) : unit = failwith "never"
 
-[<JSEmit(""" throw new Error({1}) """)>]
+[<JSEmit(""" throw new Error({0}) """)>]
 let fail (msg : string) : unit = failwith "never"
 
 (*----------------------------------------------------------------------------*)

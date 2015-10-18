@@ -20,53 +20,40 @@ open Iris.Web.Core.Plugin
 //   console.log(plug.set Array.empty)
 //   console.log(plug.get ())
 //   console.log(plug.render ())
-//   console.log(plug.dispose ())// 
+//   console.log(plug.dispose ())//
 
 type PatchView () =
   let mutable plugins = new Plugins ()
 
-  let header : CompositeDom = h1 <|> text "All Patches" |> Pure
-  
-  let footer : CompositeDom =
+  let header = h1 <|> text "All Patches"
+
+  let footer =
     div <@> class' "foot" <||>
       [ hr
       ; span <|> text "yep"
       ]
-    |> Pure
-  
-  let mainView content =
-    NestedP(div <@> id' "main",
-            List.map compToVTree
-              [ header
-              ; content 
-              ; footer
-              ])
-  
-  let sliceView (slice : Slice) =
-    li <|> text (sprintf "Index: %d Value: %s" slice.idx slice.value)
-  
-  let ioboxView (iobox : IOBox) : CompositeDom =
-    NestedP(li <|> (strong <|> text (iobox.name))
-               <|> (p  <|> text "Values:"),
-            [ plugins.render iobox ])
-  
-  let patchView (patch : Patch) : CompositeDom =
-    for iobox in patch.ioboxes do
-      if not (plugins.has iobox)
-      then plugins.add iobox
 
-    let b = div <@> class' "patch" <||>
-              [ h3 <|> text "Patch:"
-              ; p  <|> text (patch.name)
-              ]
+  let sliceView (iobox : IOBox) =
+    div <@> id' iobox.id
+        <|> (p <@> class' "slice" <|> text (iobox.slices.[0].value))
 
-    let lst = addChildren (htmlToVTree ul) (Array.map (ioboxView >> compToVTree) patch.ioboxes)
+  let ioboxView1 (iobox : IOBox) : Html =
+    li <|> (strong <|> text (iobox.name))
+       <|> (p  <|> text "Values:")
+       <|> sliceView iobox
 
-    NestedP(b, [ lst ])
+  let patchView1 (patch : Patch) : Html =
+    div <@> class' "patch" <||>
+      [ h3 <|> text "Patch:"
+      ; p  <|> text (patch.name)
+      ; ul <||> (Array.map ioboxView1 patch.ioboxes |> Array.toList)
+      ]
 
-  
-  let patchList (patches : Patch list) =
-    NestedP(div <@> id' "patches", List.map (patchView >> compToVTree) patches)
+  let patchList1 (patches : Patch list) =
+    div <@> id' "patches" <||> List.map patchView1 patches
+
+  let mainView1 content =
+    div <@> id' "main" <||> [ header ; content ; footer ]
 
   (* RENDERER *)
 
@@ -76,7 +63,47 @@ type PatchView () =
 
       let content =
         if List.length patches = 0
-        then p <|> text "Empty" |> Pure
-        else patchList patches
+        then p <|> text "Empty"
+        else patchList1 patches
 
-      mainView content |> compToVTree
+      mainView1 content |> htmlToVTree
+
+(*
+
+let mainView content =
+  NestedP(div <@> id' "main",
+          List.map compToVTree
+            [ header
+            ; content
+            ; footer
+            ])
+
+let ioboxView (iobox : IOBox) : CompositeDom =
+  Globals.console.log("ioboxView function; value: " + iobox.slices.[0].value)
+  NestedP(li <|> (strong <|> text (iobox.name))
+             <|> (p  <|> text "Values:"),
+          [ sliceView iobox |> htmlToVTree ])
+          //[ plugins.render iobox ])
+
+let patchView (patch : Patch) : CompositeDom =
+  for iobox in patch.ioboxes do
+    if not (plugins.has iobox)
+    then plugins.add iobox
+  let b = div <@> class' "patch" <||>
+            [ h3 <|> text "Patch:"
+            ; p  <|> text (patch.name)
+            ]
+  let lst = addChildren (htmlToVTree ul) (Array.map (ioboxView >> compToVTree) patch.ioboxes)
+  NestedP(b, [ lst ])
+
+let patchList (patches : Patch list) =
+  NestedP(div <@> id' "patches", List.map (patchView >> compToVTree) patches)
+
+(* in rendering finally do *)
+let content =
+  if List.length patches = 0
+  then p <|> text "Empty" |> Pure
+  else patchList patches
+mainView content |> compToVTree
+
+*)

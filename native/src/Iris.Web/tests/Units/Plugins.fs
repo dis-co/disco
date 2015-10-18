@@ -27,9 +27,10 @@ open Iris.Web.Views.Patches
 
              // update view
              this.render = function (iobox) {
-               return h('div', { id: iobox.id }, [
+               var view = h('div', { id: iobox.id }, [
                  h('p', { className: 'slice' }, [ iobox.slices[0].value ])
                ]);
+               return view;
              };
 
              this.dispose = function() {
@@ -55,7 +56,7 @@ let main () =
 
   (*--------------------------------------------------------------------------*)
   suite "Test.Units.Plugins - basic operation"
-  (*--------------------------------------------------------------------------*)
+  (*--------------------------------------------------------------------------
 
   withContent <| fun content ->
     test "should render plugin for iobox" <| fun cb ->
@@ -93,6 +94,7 @@ let main () =
 
       check_cc (slice.textContent = value) "iobox slice value not present in dom" cb
       cleanup content
+  *)
 
 
   (*--------------------------------------------------------------------------*)
@@ -127,7 +129,9 @@ let main () =
       let view = new PatchView ()
       let controller = new ViewController (view)
       controller.Container <- content
+
       store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
+
       controller.render store
 
       // test for the presence of the initial state
@@ -142,15 +146,20 @@ let main () =
           slices = [| { idx = 0; value = value2 }|]
         }
 
-      let store1 = dispatch store { Kind = UpdateIOBox; Payload = IOBoxD(updated1) }
+      store <- dispatch store { Kind = UpdateIOBox; Payload = IOBoxD(updated1) }
 
-      controller.render store1
+      match findIOBox store.state.Patches elid with
+        | Some(box) -> check (box.slices.[0].value = value2) "box in updated state should have right value"
+        | None -> fail "IOBox was not found in store"
+
+      controller.render store
 
       // test for the presence of the initial state
       document.getElementById elid
-      |> (fun el     -> el.getElementsByClassName "slice")
+      |> (fun el -> el.getElementsByClassName "slice")
       |> (fun slices -> slices.item(0.0))
-      |> (fun slice  -> check (slice.textContent = value2) "iobox slice value not present in dom (test 2)")
+      |> (fun slice ->
+          check (slice.textContent = value2) "iobox slice value not present in dom (test 2)")
 
       // update the iobox slice value
       let updated2 = {
@@ -158,8 +167,13 @@ let main () =
           slices = [| { idx = 0; value = value3 }|]
         }
 
-      let store2 = dispatch store1 { Kind = UpdateIOBox; Payload = IOBoxD(updated2) }
-      controller.render store2
+      store <- dispatch store { Kind = UpdateIOBox; Payload = IOBoxD(updated2) }
+
+      match findIOBox store.state.Patches elid with
+        | Some(box) -> check (box.slices.[0].value = value3) "box in updated state should have right value"
+        | None -> fail "IOBox was not found in store"
+
+      controller.render store
 
       // test for the presence of the initial state
       document.getElementById elid
@@ -168,4 +182,4 @@ let main () =
       |> (fun slice  ->
           check_cc (slice.textContent = value3) "iobox slice value not present in dom (test 3)" cb)
 
-    cleanup content
+      cleanup content

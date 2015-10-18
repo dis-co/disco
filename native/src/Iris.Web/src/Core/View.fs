@@ -43,7 +43,7 @@ type ViewController (widget : IWidget) =
     root <- Some(rootNode)
 
   (* render and patch the DOM *)
-  member self.render (store : Store) : unit =  
+  member self.render (store : Store) : unit =
     let newtree = view.render store
 
     match tree with
