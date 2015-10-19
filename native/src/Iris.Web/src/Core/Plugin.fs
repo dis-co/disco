@@ -18,9 +18,8 @@ open Iris.Web.Core.Patch
                    |___/         
 *)
 type IPlugin =
-  abstract render  : unit        -> VTree
+  abstract render  : IOBox       -> VTree
   abstract dispose : unit        -> unit
-  abstract update  : IOBox       -> unit
   abstract get     : unit        -> Slice array
   abstract set     : Slice array -> unit
   abstract on      : string      -> (unit -> unit) -> unit
@@ -92,3 +91,16 @@ type Plugins () =
   member self.remove (iobox : IOBox) = rmImpl iobox.id
 
 
+
+[<JSEmit("""return window.IrisPlugins;""")>]
+let listPlugins () : IPluginSpec array = failwith "never"
+
+[<JSEmit(
+  """
+  var pred = function (plugin) {
+    return plugin.type === {0};
+  };
+  return window.IrisPlugins.filter(pred);
+  """
+)>]
+let findPlugins (kind : string) : IPluginSpec array = failwith "never"
