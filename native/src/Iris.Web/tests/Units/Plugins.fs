@@ -161,120 +161,163 @@ let main () =
     |> (fun els -> check_cc (els.length = 2.0) "should have two slices" cb)
 
 
-  (*
-  withContent <| fun content ->
-    test "should render plugin for iobox" <| fun cb ->
-      let elid = "0xd34db33f"
-      let value = "death to the confederacy"
-
-      let patch : Patch =
-        { id = "0xb4d1d34"
-        ; name = "cooles patch ey"
-        ; ioboxes =
-          [| { id     = elid
-             ; name   = "url input"
-             ; patch  = "0xb4d1d34"
-             ; kind   = "string"
-             ; slices = [| { idx = 0; value = value } |]
-             } |]
-        }
-
-      let store : Store =
-        { state     = { Patches = [ patch ] }
-        ; reducer   = reducer
-        ; listeners = []}
-
-      let view = new PatchView ()
-      let controller = new ViewController (view)
-      controller.Container <- content
-      controller.render store
-
-      let el = document.getElementById elid
-
-      check (el.id = elid) "element not found in dom"
-
-      let slices = el.getElementsByClassName "slice"
-      let slice = slices.item 0.0
-
-      check_cc (slice.textContent = value) "iobox slice value not present in dom" cb
-      cleanup content
-
-
   (*--------------------------------------------------------------------------*)
-  withContent <| fun content ->
-    test "should render updates on iobox to dom" <| fun cb ->
+  suite "Test.Units.Plugins - instance data structure"
+  (*--------------------------------------------------------------------------*)
 
-      let elid = "0xd34db33f"
-      let value1 = "death to the confederacy!"
-      let value2 = "the confederacy is dead!"
-      let value3 = "death to racism!"
+  test "should add and find an instance for an iobox" <| fun cb ->
+    let instances = new Plugins ()
+    let iobox =
+      { id     = "0xb33f"
+      ; name   = "url input"
+      ; patch  = "0xb4d1d34"
+      ; kind   = "string"
+      ; slices = [| { idx = 0; value = "hello" } |]
+      }
+    
+    instances.add iobox
 
-      let patch : Patch =
-        { id = "0xb4d1d34"
-        ; name = "cooles patch ey"
-        ; ioboxes = Array.empty
-        }
+    let ids = instances.ids ()
+    check (ids.length = 1.0) "should have one instance" 
 
-      let iobox : IOBox =
-        { id     = elid
-        ; name   = "url input"
-        ; patch  = "0xb4d1d34"
-        ; kind   = "string"
-        ; slices = [| { idx = 0; value = value1 } |]
-        }
+    match instances.get iobox with
+      | Some(_) -> cb ()
+      | None -> fail "instance not found"
+  
+  (*--------------------------------------------------------------------------*)
+  test "should remove an instance for an iobox" <| fun cb ->
+    let instances = new Plugins ()
+    let iobox =
+      { id     = "0xb33f"
+      ; name   = "url input"
+      ; patch  = "0xb4d1d34"
+      ; kind   = "string"
+      ; slices = [| { idx = 0; value = "hello" } |]
+      }
+    
+    instances.add iobox
+    instances.ids ()
+    |> fun ids -> check (ids.length = 1.0) "should have one instance" 
 
-      let mutable store : Store =
-        { state     = { Patches = [ patch ] }
-        ; reducer   = reducer
-        ; listeners = []}
+    instances.remove iobox
+    instances.ids ()
+    |> fun ids -> check_cc (ids.length = 0.0) "should have no instance" cb
 
-      // render initial state
-      let view = new PatchView ()
-      let controller = new ViewController (view)
-      controller.Container <- content
 
-      store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
+ (*
+ withContent <| fun content ->
+   test "should render plugin for iobox" <| fun cb ->
+     let elid = "0xd34db33f"
+     let value = "death to the confederacy"
 
-      controller.render store
+     let patch : Patch =
+       { id = "0xb4d1d34"
+       ; name = "cooles patch ey"
+       ; ioboxes =
+         [| { id     = elid
+            ; name   = "url input"
+            ; patch  = "0xb4d1d34"
+            ; kind   = "string"
+            ; slices = [| { idx = 0; value = value } |]
+            } |]
+       }
 
-      // test for the presence of the initial state
-      document.getElementById elid
-      |> (fun el -> el.getElementsByClassName "slice")
-      |> (fun slices -> slices.item(0.0))
-      |> (fun slice -> check (slice.textContent = value1) "iobox slice value not present in dom (test 1)")
+     let store : Store =
+       { state     = { Patches = [ patch ] }
+       ; reducer   = reducer
+       ; listeners = []}
 
-      // update the iobox slice value
-      let updated1 = {
-        iobox with
-          slices = [| { idx = 0; value = value2 }|]
-        }
+     let view = new PatchView ()
+     let controller = new ViewController (view)
+     controller.Container <- content
+     controller.render store
 
-      store <- dispatch store { Kind = UpdateIOBox; Payload = IOBoxD(updated1) }
+     let el = document.getElementById elid
 
-      match findIOBox store.state.Patches elid with
-        | Some(box) -> check (box.slices.[0].value = value2) "box in updated state should have right value"
-        | None -> fail "IOBox was not found in store"
+     check (el.id = elid) "element not found in dom"
 
-      controller.render store
+     let slices = el.getElementsByClassName "slice"
+     let slice = slices.item 0.0
 
-      // test for the presence of the initial state
-      document.getElementById elid
-      |> (fun el -> el.getElementsByClassName "slice")
-      |> (fun slices -> slices.item(0.0))
-      |> (fun slice ->
-          check (slice.textContent = value2) "iobox slice value not present in dom (test 2)")
+     check_cc (slice.textContent = value) "iobox slice value not present in dom" cb
+     cleanup content
 
-      // update the iobox slice value
-      let updated2 = {
-        iobox with
-          slices = [| { idx = 0; value = value3 }|]
-        }
 
-      store <- dispatch store { Kind = UpdateIOBox; Payload = IOBoxD(updated2) }
+ (*--------------------------------------------------------------------------*)
+ withContent <| fun content ->
+   test "should render updates on iobox to dom" <| fun cb ->
 
-      match findIOBox store.state.Patches elid with
-        | Some(box) -> check (box.slices.[0].value = value3) "box in updated state should have right value"
-        | None -> fail "IOBox was not found in store"
+     let elid = "0xd34db33f"
+     let value1 = "death to the confederacy!"
+     let value2 = "the confederacy is dead!"
+     let value3 = "death to racism!"
+
+     let patch : Patch =
+       { id = "0xb4d1d34"
+       ; name = "cooles patch ey"
+       ; ioboxes = Array.empty
+       }
+
+     let iobox : IOBox =
+       { id     = elid
+       ; name   = "url input"
+       ; patch  = "0xb4d1d34"
+       ; kind   = "string"
+       ; slices = [| { idx = 0; value = value1 } |]
+       }
+
+     let mutable store : Store =
+       { state     = { Patches = [ patch ] }
+       ; reducer   = reducer
+       ; listeners = []}
+
+     // render initial state
+     let view = new PatchView ()
+     let controller = new ViewController (view)
+     controller.Container <- content
+
+     store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
+
+     controller.render store
+
+     // test for the presence of the initial state
+     document.getElementById elid
+     |> (fun el -> el.getElementsByClassName "slice")
+     |> (fun slices -> slices.item(0.0))
+     |> (fun slice -> check (slice.textContent = value1) "iobox slice value not present in dom (test 1)")
+
+     // update the iobox slice value
+     let updated1 = {
+       iobox with
+         slices = [| { idx = 0; value = value2 }|]
+       }
+
+     store <- dispatch store { Kind = UpdateIOBox; Payload = IOBoxD(updated1) }
+
+     match findIOBox store.state.Patches elid with
+       | Some(box) -> check (box.slices.[0].value = value2) "box in updated state should have right value"
+       | None -> fail "IOBox was not found in store"
+
+     controller.render store
+
+     // test for the presence of the initial state
+     document.getElementById elid
+     |> (fun el -> el.getElementsByClassName "slice")
+     |> (fun slices -> slices.item(0.0))
+     |> (fun slice ->
+         check (slice.textContent = value2) "iobox slice value not present in dom (test 2)")
+
+     // update the iobox slice value
+     let updated2 = {
+       iobox with
+         slices = [| { idx = 0; value = value3 }|]
+       }
+
+     store <- dispatch store { Kind = UpdateIOBox; Payload = IOBoxD(updated2) }
+
+     match findIOBox store.state.Patches elid with
+       | Some(box) -> check (box.slices.[0].value = value3) "box in updated state should have right value"
+       | None -> fail "IOBox was not found in store"
 
       controller.render store
 

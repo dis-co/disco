@@ -36,62 +36,6 @@ type IPluginSpec () =
   member self.Create  with get () = create
 
 
-type Plugins () =
-  (* ------------------------ internal -------------------------- *)
-
-  [<JSEmit("""return window.IrisPlugins;""")>]
-  let available () : IPluginSpec array = failwith "never"
-
-  [<JSEmit("""{0}[{1}] = {2};""")>]
-  let addImpl (id : string) (inst : IPlugin) = failwith "never"
-
-  [<JSEmit("""return {0}[{1}] != null;""")>]
-  let hasImpl (id : string) : bool = failwith "never"
-
-  [<JSEmit("""
-           if({0}[{1}] != null) {
-             {0}[{1}].dispose();
-             {0}[{1}] = null;
-           }
-           """)>]
-  let rmImpl (id : string) = failwith "never"
-
-  [<JSEmit(""" return {0}[{1}].render({2}); """)>]
-  let renderImpl id iobox = failwith "never"
-
-  [<JSEmit(""" {0}[{1}].set({2}) """)>]
-  let updateImpl (id : string) (slices : Slice array) = failwith "never"
-
-  (* ------------------------ public interface -------------------------- *)
-  
-  (* instantiate a new view plugin *)
-  member self.add (iobox : IOBox) =
-    let instance =
-      available ()
-      |> Array.tryFind (fun spec -> spec.GetType = iobox.kind)
-    in match instance with
-        | Some(spec) -> addImpl iobox.id (spec.Create ())
-        | _          -> Globals.console.log("Could not instantiate view for IOBox. Type not found:  " + iobox.kind)
-
-  member self.has  (iobox : IOBox) : bool  = hasImpl iobox.id
-
-  member self.render (iobox : IOBox) : VTree = renderImpl iobox.id iobox
-
-  member self.update (iobox : IOBox) : unit =
-    updateImpl iobox.id iobox.slices
-
-  member self.updateAll (patches : Patch list) = 
-    for patch in patches do
-      for iobox in patch.ioboxes do
-        if hasImpl iobox.id
-        then updateImpl iobox.id iobox.slices
-        else self.add iobox
-
-  (* remove an instance of a view plugin *)
-  member self.remove (iobox : IOBox) = rmImpl iobox.id
-
-
-
 [<JSEmit("""return window.IrisPlugins;""")>]
 let listPlugins () : IPluginSpec array = failwith "never"
 
@@ -104,3 +48,51 @@ let listPlugins () : IPluginSpec array = failwith "never"
   """
 )>]
 let findPlugins (kind : string) : IPluginSpec array = failwith "never"
+
+[<JSEmit(""" return ({0} === null) || ({0} === undefined); """)>]
+let isNull (o : obj) : bool = failwith "never"
+
+type Plugins () =
+  (* ------------------------ internal -------------------------- *)
+  [<JSEmit("""{0}[{1}] = {2};""")>]
+  let addImpl (id : string) (inst : IPlugin) = failwith "never"
+
+  [<JSEmit("""return {0}[{1}] != null;""")>]
+  let hasImpl (id : string) : bool = failwith "never"
+
+  [<JSEmit("""
+           if({0}[{1}] != null) {
+             {0}[{1}].dispose();
+             {0}[{1}] = null;
+             delete {0}[{1}];
+           }
+           """)>]
+  let rmImpl (id : string) = failwith "never"
+
+  [<JSEmit(""" return {0}[{1}]; """)>]
+  let getImpl (id : string) = failwith "never"
+
+  [<JSEmit(""" return Object.keys({0}); """)>]
+  let idsImpl () : string array = failwith "never"
+
+  (* ------------------------ public interface -------------------------- *)
+  
+  (* instantiate a new view plugin *)
+  member self.add (iobox : IOBox) =
+    let candidates = findPlugins iobox.kind
+    in if candidates.length > 0.0
+       then addImpl iobox.id (candidates.[0].Create ())
+       else Globals.console.log("Could not instantiate view for IOBox. Type not found:  " + iobox.kind)
+
+  member self.has (iobox : IOBox) : bool = hasImpl iobox.id
+
+  member self.get (iobox : IOBox) : IPlugin option =
+    let inst = getImpl iobox.id
+    if isNull inst
+    then None
+    else Some(inst)
+
+  (* remove an instance of a view plugin *)
+  member self.remove (iobox : IOBox) = rmImpl iobox.id
+
+  member self.ids () : string array = idsImpl ()
