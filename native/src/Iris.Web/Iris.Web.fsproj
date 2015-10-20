@@ -65,6 +65,7 @@
     <Compile Include="tests\Units\Store.fs" />
     <Compile Include="tests\Units\ViewController.fs" />
     <Compile Include="tests\Units\Plugins.fs" />
+    <Compile Include="tests\Units\PatchesView.fs" />
     <Compile Include="tests\Units\Storage.fs" />
     <Compile Include="tests\Main.fs" />
     
