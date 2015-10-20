@@ -37,36 +37,35 @@ type PatchView () =
     div <@> id' iobox.id
         <|> (p <@> class' "slice" <|> text (iobox.slices.[0].value))
 
-  let ioboxView1 (iobox : IOBox) : Html =
+  let ioboxView (iobox : IOBox) : Html =
     li <|> (strong <|> text (iobox.name))
        <|> (p  <|> text "Values:")
        <|> sliceView iobox
 
-  let patchView1 (patch : Patch) : Html =
-    div <@> class' "patch" <||>
+  let patchView (patch : Patch) : Html =
+    div <@> id' patch.id <@> class' "patch" <||>
       [ h3 <|> text "Patch:"
       ; p  <|> text (patch.name)
-      ; ul <||> (Array.map ioboxView1 patch.ioboxes |> Array.toList)
+      ; ul <||> (Array.map ioboxView patch.ioboxes |> Array.toList)
       ]
 
-  let patchList1 (patches : Patch list) =
-    div <@> id' "patches" <||> List.map patchView1 patches
+  let patchList (patches : Patch list) =
+    div <@> id' "patches" <||> List.map patchView patches
 
-  let mainView1 content =
+  let mainView content =
     div <@> id' "main" <||> [ header ; content ; footer ]
 
   (* RENDERER *)
 
   interface IWidget with
     member self.render (store : Store) =
-      let patches = store.state.Patches
-
-      let content =
-        if List.length patches = 0
-        then p <|> text "Empty"
-        else patchList1 patches
-
-      mainView1 content |> htmlToVTree
+      store.state.Patches
+      |> (fun patches ->
+            if List.length patches = 0
+            then p <|> text "Empty"
+            else patchList patches)
+      |> mainView
+      |> htmlToVTree
 
 (*
 

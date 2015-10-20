@@ -70,6 +70,7 @@ open Iris.Web.Views.Patches
 )>]
 let simpleString () = failwith "never"
 
+let document = Globals.document
 
 let main () =
   simpleString ()
@@ -78,8 +79,79 @@ let main () =
   suite "Test.Units.PatchesView - patch workflow"
   (*--------------------------------------------------------------------------*)
 
-  pending "should render a patch added"
-  pending "should render correct list on patch removal"
+  test "should render a patch added" <| fun cb ->
+    withContent <| fun content ->
+      let pid = "0xb33f"
+
+      let patch : Patch =
+        { id = pid
+        ; name = "cooles patch ey"
+        ; ioboxes = Array.empty
+        }
+
+      let mutable store : Store = mkStore reducer
+
+      let view = new PatchView ()
+      let controller = new ViewController (view)
+      controller.Container <- content
+      controller.render store
+
+      document.getElementById pid
+      |> (fun el -> check (isNull el) "element should be null")
+
+      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) } 
+
+      controller.render store
+
+      document.getElementById pid
+      |> (fun el -> check_cc (el.id = pid) "patch element not found in dom" cb)
+
+      cleanup content
+
+  test "should render correct list on patch removal" <| fun cb ->
+    withContent <| fun content ->
+      let pid1 = "0xb33f"
+      let pid2 = "0xd34d"
+
+      let patch1 : Patch =
+        { id = pid1
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
+
+      let patch2 : Patch =
+        { id = pid2
+        ; name = "patch-2"
+        ; ioboxes = Array.empty
+        }
+
+      let mutable store : Store =
+        { state     = { Patches = [ patch1; patch2 ] }
+        ; reducer   = reducer
+        ; listeners = []}
+
+      let view = new PatchView ()
+      let controller = new ViewController (view)
+      controller.Container <- content
+      controller.render store
+
+      document.getElementById pid1
+      |> (fun el -> check (not (isNull el)) "element 1 should not be null")
+
+      document.getElementById pid2
+      |> (fun el -> check (not (isNull el)) "element 2 should not be null")
+
+      store <- dispatch store { Kind = RemovePatch; Payload = PatchD(patch1) } 
+
+      controller.render store
+
+      document.getElementById pid1
+      |> (fun el -> check (isNull el) "element 1 should be null")
+
+      document.getElementById pid2
+      |> (fun el -> check_cc (not (isNull el)) "element 2 should not be null" cb)
+
+      cleanup content
 
   (*--------------------------------------------------------------------------*)
   suite "Test.Units.PatchesView - iobox workflow"
