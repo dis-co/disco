@@ -4,7 +4,7 @@ open Microsoft.FSharp.Quotations
 open System.IO
 open System.Reflection
 open System.Text.RegularExpressions
-open FSharp.Html
+
 open FunScript
 open FunScript.Compiler
 open FunScript.TypeScript
@@ -38,46 +38,7 @@ let compileTests () =
          | _ -> (m.ToString (), ""))
   |> Array.toList
   
-let test name str = script <@> class' name <|> text str
-
-let doctype = Literal("<!doctype html>")
-let charset = meta <@> charset' "utf-8" 
-
-let header =
-  head <||> 
-    [ title <|> text "Iris Tests"
-    ; charset
-    ; link <@> rel'  "stylesheet"
-           <@> href' "https://cdn.rawgit.com/mochajs/mocha/2.2.5/mocha.css"
-    ]
-
-let content =
-  let tops = 
-    [ h2 <@> style' @"margin: 50px 65px;"
-         <|> (a <@> href' "/tests" <|> text "Iris Tests")
-    ; div    <@> id' "content"
-    ; div    <@> id' "mocha"
-    ; script <@> src' "dependencies/virtual-dom/dist/virtual-dom.js"
-    ; script <@> src' "dependencies/rxjs/dist/rx.all.js"
-    ; script <@> src' "dependencies/jquery/dist/jquery.js"
-    ; script <@> src' "dependencies/routie/dist/routie.js"
-    ; script <@> src' "dependencies/fabric.js/dist/fabric.js"
-    ; script <@> src' "https://cdn.rawgit.com/Automattic/expect.js/0.3.1/index.js"
-    ; script <@> src' "https://cdn.rawgit.com/mochajs/mocha/2.2.5/mocha.js"
-    ; script <|> text "mocha.setup('qunit')"
-    ]
-
-  let tests = List.map (fun (name,code) -> test name code) <| compileTests ()
-  let run = script <|> text "mocha.run()"
-
-  body <||> List.fold (fun memo t -> List.append memo t) [] [ tops; tests; [run] ]
-
-let page =
-  [ doctype;
-    html
-    <|> header
-    <|> content
-  ]
+let test name str = sprintf "<script id=\"%s\">%s</script>" name str
   
 (*
    _____         _   ____                  
@@ -90,4 +51,37 @@ let page =
     Function to compile the tests page. 
 *)
 
-let testsPage () = List.fold (fun m e -> m + renderHtml e) "" <| page
+let testsPage () = 
+  List.fold (fun m (name,code) -> m + (test name code)) "" <| compileTests ()
+  |> sprintf 
+     @"
+     <!doctype html>
+     <html>  
+       <head>
+         <title>Iris Browser Tests</title>
+         <meta charset=""utf-8"">
+         <link rel=""stylesheet"" href=""https://cdn.rawgit.com/mochajs/mocha/2.2.5/mocha.css"">
+       </head>
+       <body>
+         <h2 style=""margin: 50px 65px;"">
+           <a href=""/tests"">Iris Tests</a>
+         </h2>
+
+         <div id=""content""></div>
+         <div id=""mocha""></div>
+
+         <script src=""dependencies/virtual-dom/dist/virtual-dom.js""></script>
+         <script src=""dependencies/rxjs/dist/rx.all.js""></script>
+         <script src=""dependencies/jquery/dist/jquery.js""></script>
+         <script src=""dependencies/routie/dist/routie.js""></script>
+         <script src=""dependencies/fabric.js/dist/fabric.js""></script>
+         <script src=""https://cdn.rawgit.com/Automattic/expect.js/0.3.1/index.js""></script>
+         <script src=""https://cdn.rawgit.com/mochajs/mocha/2.2.5/mocha.js""></script>
+         <script>mocha.setup('qunit')</script>
+
+         %s
+
+         <script>mocha.run()</script>
+       </body>
+     </html>
+     "

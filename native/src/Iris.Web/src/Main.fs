@@ -4,23 +4,22 @@ module Iris.Web.Main
 #nowarn "1182"
 
 open FunScript
-open FunScript.VirtualDom
 open FunScript.TypeScript
-open System
 
-open FSharp.Html
+open System
 
 open Iris.Web.Util
 open Iris.Web.Dom
 
+open Iris.Web.Core.Html
 open Iris.Web.Core.Patch
 open Iris.Web.Core.IOBox
 open Iris.Web.Core.Socket
-open Iris.Web.Core.View
+open Iris.Web.Core.ViewController
 open Iris.Web.Core.Store
 open Iris.Web.Core.Events
 open Iris.Web.Core.Reducer
-open Iris.Web.Views.Patches
+open Iris.Web.Views.PatchesView
 
 (* FIXME: need to factor this out into a nice abstraction *)
 let handler (store : Store) (msg : Message) : Store =
@@ -46,7 +45,7 @@ let onClose _ = console.log("closing")
 
 let main () : unit =
   let store  = ref <| mkStore reducer
-  let widget = new PatchView ()
+  let widget = new PatchesView ()
   let ctrl   = new ViewController (widget)
 
   // initialize 

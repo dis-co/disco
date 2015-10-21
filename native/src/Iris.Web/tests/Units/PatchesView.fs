@@ -1,6 +1,7 @@
 [<ReflectedDefinition>]
 module Test.Units.PatchesView
 
+open System
 open FunScript
 open FunScript.TypeScript
 open FunScript.Mocha
@@ -13,10 +14,10 @@ open Iris.Web.Core.Patch
 open Iris.Web.Core.Store
 open Iris.Web.Core.Events
 open Iris.Web.Core.Reducer
-open Iris.Web.Core.View
+open Iris.Web.Core.ViewController
 open Iris.Web.Core.Plugin
 
-open Iris.Web.Views.Patches
+open Iris.Web.Views.PatchesView
 
 [<JSEmit(
   """
@@ -80,88 +81,125 @@ let main () =
   (*--------------------------------------------------------------------------*)
 
   test "should render a patch added" <| fun cb ->
-    withContent <| fun content ->
-      let pid = "0xb33f"
+    let pid = "1"
 
-      let patch : Patch =
-        { id = pid
-        ; name = "cooles patch ey"
-        ; ioboxes = Array.empty
-        }
+    let patch : Patch =
+      { id = pid
+      ; name = "cooles patch ey"
+      ; ioboxes = Array.empty
+      }
 
-      let mutable store : Store = mkStore reducer
+    let mutable store : Store = mkStore reducer
 
-      let view = new PatchView ()
-      let controller = new ViewController (view)
-      controller.Container <- content
-      controller.render store
+    let view = new PatchesView ()
+    let controller = new ViewController (view)
+    controller.render store
 
-      document.getElementById pid
-      |> (fun el -> check (isNull el) "element should be null")
+    document.getElementById pid
+    |> (fun el -> check (isNull el) "element should be null")
 
-      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) } 
+    store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) } 
 
-      controller.render store
+    controller.render store
 
-      document.getElementById pid
-      |> (fun el -> check_cc (el.id = pid) "patch element not found in dom" cb)
+    document.getElementById pid
+    |> (fun el -> check_cc (el.id = pid) "patch element not found in dom" cb)
 
-      cleanup content
+    (controller :> IDisposable).Dispose ()
+    
 
   test "should render correct list on patch removal" <| fun cb ->
-    withContent <| fun content ->
-      let pid1 = "0xb33f"
-      let pid2 = "0xd34d"
+    let pid1 = "patch-2"
+    let pid2 = "patch-3"
 
-      let patch1 : Patch =
-        { id = pid1
-        ; name = "patch-1"
-        ; ioboxes = Array.empty
-        }
+    let patch1 : Patch =
+      { id = pid1
+      ; name = "patch-1"
+      ; ioboxes = Array.empty
+      }
 
-      let patch2 : Patch =
-        { id = pid2
-        ; name = "patch-2"
-        ; ioboxes = Array.empty
-        }
+    let patch2 : Patch =
+      { id = pid2
+      ; name = "patch-2"
+      ; ioboxes = Array.empty
+      }
 
-      let mutable store : Store =
-        { state     = { Patches = [ patch1; patch2 ] }
-        ; reducer   = reducer
-        ; listeners = []}
+    let mutable store : Store =
+      { state     = { Patches = [ patch1; patch2 ] }
+      ; reducer   = reducer
+      ; listeners = []}
 
-      let view = new PatchView ()
-      let controller = new ViewController (view)
-      controller.Container <- content
-      controller.render store
+    let view = new PatchesView ()
+    use controller = new ViewController (view)
+    controller.render store
 
-      document.getElementById pid1
-      |> (fun el -> check (not (isNull el)) "element 1 should not be null")
+    document.getElementById pid1
+    |> (fun el -> check (not (isNull el)) "element 1 should not be null")
 
-      document.getElementById pid2
-      |> (fun el -> check (not (isNull el)) "element 2 should not be null")
+    document.getElementById pid2
+    |> (fun el -> check (not (isNull el)) "element 2 should not be null")
 
-      store <- dispatch store { Kind = RemovePatch; Payload = PatchD(patch1) } 
+    store <- dispatch store { Kind = RemovePatch; Payload = PatchD(patch1) } 
 
-      controller.render store
+    check (not <| hasPatch store.state.Patches patch1) "patch should be gone"
+    check (hasPatch store.state.Patches patch2) "patch should be there"
 
-      document.getElementById pid1
-      |> (fun el -> check (isNull el) "element 1 should be null")
+    controller.render store
 
-      document.getElementById pid2
-      |> (fun el -> check_cc (not (isNull el)) "element 2 should not be null" cb)
+    document.getElementById pid1
+    |> (fun el -> check (isNull el) "element 1 should be null")
 
-      cleanup content
+    document.getElementById pid2
+    |> (fun el -> check_cc (not (isNull el)) "element 2 should not be null" cb)
+
+    (controller :> IDisposable).Dispose()
 
   (*--------------------------------------------------------------------------*)
   suite "Test.Units.PatchesView - iobox workflow"
   (*--------------------------------------------------------------------------*)
 
-  pending "should render an added iobox"
+  // test "should render an added iobox" <| fun cb ->
+  //   withContent <| fun content ->
+  //     let id1 = "3"
+  //     let value = "hello"
+
+  //     let iobox =
+  //       { id     = id1
+  //       ; name   = "url input"
+  //       ; patch  = "0xb4d1d34"
+  //       ; kind   = "string"
+  //       ; slices = [| { idx = 0; value = value } |]
+  //       }
+
+  //     let patch : Patch =
+  //       { id = "0xb4d1d34"
+  //       ; name = "patch-1"
+  //       ; ioboxes = Array.empty
+  //       }
+
+  //     let mutable store : Store =
+  //       { state     = { Patches = [ patch ] }
+  //       ; reducer   = reducer
+  //       ; listeners = []}
+
+  //     let view = new PatchesView ()
+  //     let controller = new ViewController (view)
+  //     controller.Container <- content
+  //     controller.render store
+
+  //     document.getElementById id1
+  //     |> (fun el -> check (isNull el) "element should be null")
+
+  //     store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
+
+  //     document.getElementById id1
+  //     |> (fun el -> check_cc (not (isNull el)) "element should not be null" cb)
+
+  //     cleanup content
+
   pending "should render correct iobox list on iobox removal"
   pending "should render correct iobox on iobox update"
   
-
   (*
   withContent <| fun content ->
     test "should render plugin for iobox" <| fun cb ->
@@ -185,7 +223,7 @@ let main () =
         ; reducer   = reducer
         ; listeners = []}
 
-      let view = new PatchView ()
+      let view = new PatchesView ()
       let controller = new ViewController (view)
       controller.Container <- content
       controller.render store
@@ -230,7 +268,7 @@ let main () =
         ; listeners = []}
 
       // render initial state
-      let view = new PatchView ()
+      let view = new PatchesView ()
       let controller = new ViewController (view)
       controller.Container <- content
 

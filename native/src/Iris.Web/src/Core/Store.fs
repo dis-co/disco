@@ -1,11 +1,10 @@
 [<ReflectedDefinition>]
 module Iris.Web.Core.Store
 
-open FSharp.Html
-
+open FunScript
 open FunScript.TypeScript
-open FunScript.VirtualDom
 
+open Iris.Web.Core.Html
 open Iris.Web.Core.IOBox
 open Iris.Web.Core.Patch
 open Iris.Web.Core.Events

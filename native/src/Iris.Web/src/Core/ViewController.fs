@@ -1,9 +1,13 @@
 [<ReflectedDefinition>]
-module Iris.Web.Core.View
+module Iris.Web.Core.ViewController
+
+open System
+
+open FunScript
+open FunScript.TypeScript
 
 open Iris.Web.Core.Store
-open FunScript.VirtualDom
-open FunScript.TypeScript
+open Iris.Web.Core.Html
 
 (*  
     __        ___     _            _   
@@ -14,7 +18,9 @@ open FunScript.TypeScript
                         |___/          
 *)
 type IWidget =
+  inherit IDisposable
   abstract render : Store -> VTree
+
 
 (*
     __     ___                ____ _        _ 
@@ -28,19 +34,17 @@ type IWidget =
 *)
 
 type ViewController (widget : IWidget) =
-  let mutable view : IWidget            = widget 
-  let mutable tree : VTree option       = None
-  let mutable root : HTMLElement option = None 
-  let mutable container : HTMLElement   = Globals.document.body
+  let mutable view : IWidget      = widget 
+  let mutable tree : VTree option = None
+  let mutable root : HTMLElement  = Globals.document.createElement "div"
 
   member self.Container
-    with get () = container
-     and set (el : HTMLElement) = container <- el
+    with get () = root
   
   member self.init tree = 
     let rootNode = createElement tree
-    container.appendChild(rootNode) |> ignore
-    root <- Some(rootNode)
+    Globals.document.body.appendChild(rootNode) |> ignore
+    root <- rootNode
 
   (* render and patch the DOM *)
   member self.render (store : Store) : unit =
@@ -48,11 +52,14 @@ type ViewController (widget : IWidget) =
 
     match tree with
       | Some(oldtree) -> 
-        match root with
-          | Some(oldroot) -> 
-            let update = diff oldtree newtree
-            root <- Some(patch oldroot update)
-          | _ -> self.init newtree
+        let update = diff oldtree newtree
+        let newroot = patch root update
+        root <- newroot
       | _ -> self.init newtree
 
     tree <- Some(newtree)
+
+  interface IDisposable with
+    member self.Dispose () =
+      widget.Dispose ()
+      root.parentNode.removeChild root |> ignore

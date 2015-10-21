@@ -1,42 +1,35 @@
 module Iris.Web.Views.Index
 
+open System
 open System.IO
-open FSharp.Html
 
-let charset = meta <@> charset' "utf-8" 
-let doctype = Literal("<!doctype html>")
-
-let plugins basepath =
+let listPlugins basepath =
   Directory.GetFiles(basepath, "*.js")
   |> Array.toSeq
   |> Seq.map (Path.GetFileName)
   |> Seq.filter(fun item -> not (item = "iris.js"))
-  |> Seq.map (fun f -> script <@> src' ("js/" + f))
-  |> Seq.toList
+  |> Seq.map (fun f -> sprintf @"<script src=""%s""></script>" ("js/" + f))
+  |> String.concat Environment.NewLine
   
-let header pth =
-  let std = 
-    [ title <|> text "Iris"
-    ; charset
-    ; script <@> src' "dependencies/virtual-dom/dist/virtual-dom.js"
-    ; script <@> src' "dependencies/rxjs/dist/rx.all.js"
-    ; script <@> src' "dependencies/jquery/dist/jquery.js"
-    ; script <@> src' "dependencies/routie/dist/routie.js"
-    ; script <@> src' "dependencies/fabric.js/dist/fabric.js"
-    ]
-  head <||> List.append std (plugins pth)
-
-let content =
-  body <||>
-    [ h1 <|> text "Hi."
-    ; script <@> src' "js/iris.js"
-    ]
-
-let page pth =
-  [ doctype;
-    html
-    <|> header pth
-    <|> content
-  ]
-  
-let compileIndex pth = List.fold (fun m e -> m + renderHtml e) "" <| page pth
+let compileIndex pth = 
+  listPlugins pth
+  |> sprintf 
+     @"
+     <!doctype html>
+     <html>  
+       <head>
+         <title>Iris Browser Tests</title>
+         <meta charset=""utf-8"">
+         <link rel=""stylesheet"" href=""https://cdn.rawgit.com/mochajs/mocha/2.2.5/mocha.css"">
+       </head>
+       <body>
+         <script src=""dependencies/virtual-dom/dist/virtual-dom.js""></script>
+         <script src=""dependencies/rxjs/dist/rx.all.js""></script>
+         <script src=""dependencies/jquery/dist/jquery.js""></script>
+         <script src=""dependencies/routie/dist/routie.js""></script>
+         <script src=""dependencies/fabric.js/dist/fabric.js""></script>
+         %s
+         <script src=""js/iris.js""></script>
+       </body>
+     </html>
+     "

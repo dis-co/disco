@@ -1,71 +1,67 @@
 [<FunScript.JS>]
-module Iris.Web.Views.Patches
+module Iris.Web.Views.PatchesView
 
 #nowarn "1182"
 
-open FSharp.Html
 open FunScript
 open FunScript.TypeScript
-open FunScript.VirtualDom
 
-open Iris.Web.Dom
 open Iris.Web.Util
 
+open Iris.Web.Core.Html
 open Iris.Web.Core.IOBox
 open Iris.Web.Core.Patch
-open Iris.Web.Core.View
+open Iris.Web.Core.ViewController
 open Iris.Web.Core.Store
 open Iris.Web.Core.Plugin
 
-//   console.log(plug.set Array.empty)
-//   console.log(plug.get ())
-//   console.log(plug.render ())
-//   console.log(plug.dispose ())//
-
-type PatchView () =
+type PatchesView () =
   let mutable plugins = new Plugins ()
 
   let header = h1 <|> text "All Patches"
 
-  let footer =
-    div <@> class' "foot" <||>
-      [ hr
-      ; span <|> text "yep"
-      ]
-
-  let sliceView (iobox : IOBox) =
-    div <@> id' iobox.id
-        <|> (p <@> class' "slice" <|> text (iobox.slices.[0].value))
+  let footer = div <@> class' "foot" <|> hr
 
   let ioboxView (iobox : IOBox) : Html =
-    li <|> (strong <|> text (iobox.name))
-       <|> (p  <|> text "Values:")
-       <|> sliceView iobox
+    if not (plugins.has iobox)
+    then plugins.add iobox
+
+    let container = li <|> (strong <|> text (iobox.name))
+
+    match plugins.get iobox with
+      | Some(instance) -> container <|> Raw(instance.render iobox)
+      |  _             -> container 
 
   let patchView (patch : Patch) : Html =
-    div <@> id' patch.id <@> class' "patch" <||>
-      [ h3 <|> text "Patch:"
-      ; p  <|> text (patch.name)
-      ; ul <||> (Array.map ioboxView patch.ioboxes |> Array.toList)
-      ]
+    let container = 
+      div <@> id' patch.id <@> class' "patch" <||>
+        [| h3 <|> text "Patch:"
+         ; p  <|> text (patch.name)
+         |]
 
-  let patchList (patches : Patch list) =
-    div <@> id' "patches" <||> List.map patchView patches
+    container <||> Array.map ioboxView patch.ioboxes
 
-  let mainView content =
-    div <@> id' "main" <||> [ header ; content ; footer ]
+  let patchList (patches : Patch array) =
+    let container = div <@> id' "patches"
+    container <||> Array.map patchView patches
+
+  let mainView (content : Html) : Html =
+    div <@> id' "main" <||> [| header ; content ; footer |]
 
   (* RENDERER *)
 
   interface IWidget with
+    member self.Dispose () = ()
+      
     member self.render (store : Store) =
       store.state.Patches
+      |> List.toArray
       |> (fun patches ->
-            if List.length patches = 0
+            if Array.length patches = 0
             then p <|> text "Empty"
             else patchList patches)
       |> mainView
-      |> htmlToVTree
+      |> renderHtml
 
 (*
 

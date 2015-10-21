@@ -3,10 +3,11 @@ module Iris.Web.Core.Plugin
 
 #nowarn "1182"
 
+open System
 open FunScript
 open FunScript.TypeScript
-open FunScript.VirtualDom
 
+open Iris.Web.Core.Html
 open Iris.Web.Core.IOBox
 open Iris.Web.Core.Patch
 
@@ -52,6 +53,14 @@ let findPlugins (kind : string) : IPluginSpec array = failwith "never"
 [<JSEmit(""" return ({0} === null) || ({0} === undefined); """)>]
 let isNull (o : obj) : bool = failwith "never"
 
+(*
+   ____  _             _           
+  |  _ \| |_   _  __ _(_)_ __  ___ 
+  | |_) | | | | |/ _` | | '_ \/ __|
+  |  __/| | |_| | (_| | | | | \__ \
+  |_|   |_|\__,_|\__, |_|_| |_|___/ instances map
+                 |___/              
+*)
 type Plugins () =
   (* ------------------------ internal -------------------------- *)
   [<JSEmit("""{0}[{1}] = {2};""")>]
@@ -75,6 +84,18 @@ type Plugins () =
   [<JSEmit(""" return Object.keys({0}); """)>]
   let idsImpl () : string array = failwith "never"
 
+  [<JSEmit("""
+           var remove = function (id) {
+             if({0}[{1}] != null) {
+               {0}[{1}].dispose();
+               {0}[{1}] = null;
+               delete {0}[{1}];
+             }
+           };
+           Object.keys({0}).forEach(remove)
+           """)>]
+  let removeAllImpl () : unit = failwith "never"
+
   (* ------------------------ public interface -------------------------- *)
   
   (* instantiate a new view plugin *)
@@ -96,3 +117,6 @@ type Plugins () =
   member self.remove (iobox : IOBox) = rmImpl iobox.id
 
   member self.ids () : string array = idsImpl ()
+
+  interface IDisposable with
+    member self.Dispose () = removeAllImpl ()

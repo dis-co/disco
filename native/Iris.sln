@@ -40,10 +40,6 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Web", "src\Iris.Web\Ir
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Nodes", "src\Iris.Nodes\Iris.Nodes.fsproj", "{FBFFB969-00ED-4568-8FD0-65A699AACA18}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "FunScript.VirtualDom", "src\FunScript.VirtualDom\FunScript.VirtualDom.fsproj", "{8C87D709-3E9C-4D33-8E70-362F55B31ED8}"
-EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "FSharp.Html", "src\FSharp.Html\FSharp.Html.fsproj", "{5EC8E4A4-ADE2-429B-BC31-F29B73231BA3}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -58,18 +54,10 @@ Global
 		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5EC8E4A4-ADE2-429B-BC31-F29B73231BA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5EC8E4A4-ADE2-429B-BC31-F29B73231BA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5EC8E4A4-ADE2-429B-BC31-F29B73231BA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5EC8E4A4-ADE2-429B-BC31-F29B73231BA3}.Release|Any CPU.Build.0 = Release|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{8C87D709-3E9C-4D33-8E70-362F55B31ED8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8C87D709-3E9C-4D33-8E70-362F55B31ED8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8C87D709-3E9C-4D33-8E70-362F55B31ED8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8C87D709-3E9C-4D33-8E70-362F55B31ED8}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D162BDA9-7BA0-4566-BFC5-46A898C75B3E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D162BDA9-7BA0-4566-BFC5-46A898C75B3E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D162BDA9-7BA0-4566-BFC5-46A898C75B3E}.Release|Any CPU.ActiveCfg = Release|Any CPU

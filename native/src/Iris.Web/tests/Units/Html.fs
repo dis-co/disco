@@ -8,8 +8,8 @@ open FunScript.TypeScript
 open FunScript.Mocha
 open FunScript.VirtualDom
 
-open FSharp.Html
-open Iris.Web.Dom
+open Iris.Web.Test.Util
+open Iris.Web.Core.Html
 
 let main () =
   (*--------------------------------------------------------------------------*)
@@ -20,7 +20,7 @@ let main () =
     (fun cb ->
      let content = "hello there"
      let comb = h1 <|> text content
-     let elm = htmlToVTree comb |> createElement
+     let elm = renderHtml comb |> createElement
      check_cc (elm.innerText = content) "content mismatch" cb)
 
   (*--------------------------------------------------------------------------*)
@@ -28,7 +28,7 @@ let main () =
     (fun cb ->
      let klass = "there"
      let comb = h1 <@> class' klass
-     let elm = htmlToVTree comb |> createElement
+     let elm = renderHtml comb |> createElement
      check_cc (elm.className = klass) "class mismatch" cb)
 
   (*--------------------------------------------------------------------------*)
@@ -36,7 +36,7 @@ let main () =
     (fun cb ->
      let eidee = "thou"
      let comb = h1 <@> id' eidee
-     let elm = htmlToVTree comb |> createElement
+     let elm = renderHtml comb |> createElement
      check_cc (elm.id = eidee) "id mismatch" cb)
 
   (*--------------------------------------------------------------------------*)
@@ -46,11 +46,10 @@ let main () =
   test "nested VTree in Html should be rendered as such"
     (fun cb ->
      let t  = div <@> class' "thing" <|> text "hello"
-     let t' = htmlToVTree <| (h1 <|> text "hallo")
+     let t' = renderHtml <| (h1 <|> text "hallo")
 
      let elm =
-       NestedP(t, t' :: [])
-       |> compToVTree 
+       renderHtml (t <|> Raw t')
        |> createElement
 
      check (elm.className = "thing") "should be a thing but isn't"
@@ -63,56 +62,76 @@ let main () =
     (fun cb ->
      let t  = div <@> class' "thing" <|> text "hello"
 
-     let elm =
-       Pure(t)
-       |> compToVTree 
-       |> createElement
+     let elm = renderHtml t |> createElement
 
      check_cc (elm.className = "thing") "should be a thing but isn't" cb)
 
   (*--------------------------------------------------------------------------*)
-  test "nested Html in VTree parent should be rendered as such" <|
-    (fun cb ->
-     let t = (div <@> class' "thing") |> htmlToVTree
-     let t' = h1 <|> text "hi"
+  test "VTree should be rendered as expected" <| fun cb ->
+    let elm =
+      Raw((div <@> id' "hello") |> renderHtml)
+      |> renderHtml
+      |> createElement
 
-     let elm =
-       NestedR(t, t' :: [])
-       |> compToVTree
-       |> createElement
-
-     elm.getElementsByTagName "h1"
-     |> (fun els -> check_cc (els.length = 1.0) "should have exactly one h1" cb))
-
-  (*--------------------------------------------------------------------------*)
-  test "nested CompositeDom in Html parent should be rendered as such" <|
-    (fun cb ->
-     let thing1 =
-       NestedR((div <@> class' "thing") |> htmlToVTree, [ h1 <|> text "Hello " ])
-
-     let thing2 =
-       NestedP(div <@> class' "thing", [ (h1 <|> text "Bye") |> htmlToVTree ])
-
-     let elm =
-       NestedC(div <@> id' "super", [ thing1; thing2 ])
-       |> compToVTree
-       |> createElement
-     
-     check (elm.id = "super") "elms id should be `super`"
-
-     elm.getElementsByClassName "thing"
-     |> (fun els -> check (els.length = 2.0) "should have 2 `things`")
-
-     elm.getElementsByTagName "h1"
-     |> (fun els -> check_cc (els.length = 2.0) "should have 2 `h1` tags" cb))
-
-  (*--------------------------------------------------------------------------*)
-  test "VTree should be rendered as expected" <|
-    (fun cb ->
-     let elm =
-       Rendered((div <@> id' "hello") |> htmlToVTree)
-       |> compToVTree
-       |> createElement
-
-     check_cc (elm.id = "hello") "should have an element with id" cb)
+    check_cc (elm.id = "hello") "should have an element with id" cb
     
+
+  (*--------------------------------------------------------------------------*)
+  suite "Test.Units.VirtualDom - basic operations"
+  (*--------------------------------------------------------------------------*)
+
+  test "should add new element to list on diff/patch" <| fun cb ->
+    withContent <| fun content ->
+       let litem = li <|> text "an item"
+       let comb  = ul <||> [| litem |]
+
+       let tree = renderHtml comb
+       let root = createElement tree
+
+       content.appendChild root |> ignore
+
+       check (root.children.length = 1.) "ul item count does not match (expected 1)"
+
+       let newtree = renderHtml <| (comb <|> litem)
+       let newroot = patch root <| diff tree newtree
+
+       check_cc (newroot.children.length = 2.) "ul item count does not match (expected 2)" cb
+
+       cleanup content
+
+  test "patching should update only relevant bits of the dom" <| fun cb ->
+    withContent <| fun content ->
+       let firstContent = "first item in the list"
+       let secondContent = "second item in the list"
+
+       let list content =
+         ul <||>
+            [| li <@> id' "first"  <|> text content
+             ; li <@> id' "second" <|> text secondContent
+             |]
+
+       let mutable tree = list firstContent |> renderHtml
+       let mutable root = createElement tree
+
+       content.appendChild root |> ignore
+
+       let newtree = list "harrrr i got cha" |> renderHtml
+       let newroot = patch root <| diff tree newtree
+
+       tree <- newtree
+       root <- newroot
+
+       let fst = Globals.document.getElementById "first"
+       let snd = Globals.document.getElementById "second"
+
+       check (fst.innerText <> firstContent) "the content of the first element should different but isn't"
+       check_cc (snd.innerText = secondContent) "the content of the second element should be the same but isn't" cb
+
+       let list' = list firstContent <|> (li <|> text "hmm")
+       root <- patch root <| diff tree (renderHtml list')
+
+       check (fst.innerText = firstContent) "the content of the first element should be the same but isn't"
+       check (root.children.length = 3.) "the list should have 3 elements now"
+       check_cc (snd.innerText = secondContent) "the content of the second element should be the same but isn't" cb
+
+       cleanup content

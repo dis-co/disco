@@ -42,6 +42,8 @@
     <Compile Include="AssemblyInfo.fs" />
 
     <!-- FRONT-END CODE -->
+    <Compile Include="src\Core\Html.fs" />
+    <Compile Include="src\Core\VirtualDom.fs" />
     <Compile Include="src\Core\IOBox.fs" />
     <Compile Include="src\Core\Patch.fs" />
     <Compile Include="src\Core\Plugin.fs" />
@@ -49,11 +51,11 @@
     <Compile Include="src\Core\Socket.fs" />
     <Compile Include="src\Core\Store.fs" />
     <Compile Include="src\Core\Reducer.fs" />
-    <Compile Include="src\Core\View.fs" />
+    <Compile Include="src\Core\ViewController.fs" />
     <Compile Include="src\Dom.fs" />
     <Compile Include="src\Util.fs" />
     <Compile Include="src\Routes.fs" />
-    <Compile Include="src\Views\Patches.fs" />
+    <Compile Include="src\Views\PatchesView.fs" />
     <Compile Include="src\Views\Index.fs" />
     <Compile Include="src\Main.fs" />
 
@@ -61,7 +63,6 @@
     <Compile Include="tests\Util.fs" />
     <Compile Include="tests\Mocha.fs" />
     <Compile Include="tests\Units\Html.fs" />
-    <Compile Include="tests\Units\VirtualDom.fs" />
     <Compile Include="tests\Units\Store.fs" />
     <Compile Include="tests\Units\ViewController.fs" />
     <Compile Include="tests\Units\Plugins.fs" />
@@ -130,14 +131,6 @@
     <ProjectReference Include="..\Iris.Core\Iris.Core.fsproj">
       <Project>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</Project>
       <Name>Iris.Core</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\FSharp.Html\FSharp.Html.fsproj">
-      <Project>{5EC8E4A4-ADE2-429B-BC31-F29B73231BA3}</Project>
-      <Name>FSharp.Html</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\FunScript.VirtualDom\FunScript.VirtualDom.fsproj">
-      <Project>{8C87D709-3E9C-4D33-8E70-362F55B31ED8}</Project>
-      <Name>FunScript.VirtualDom</Name>
     </ProjectReference>
   </ItemGroup>
   <Choose>
