@@ -82,7 +82,7 @@ let main () =
 
     body.getElementsByClassName "patch"
     |> (fun els ->
-        check (els.length = 1.0) "should be one rendered patch template in dom")
+          check (els.length = 1.0) "should be one rendered patch template in dom")
 
     store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch2) }
 
