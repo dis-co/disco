@@ -21,7 +21,7 @@ let main () =
      let content = "hello there"
      let comb = h1 <|> text content
      let elm = renderHtml comb |> createElement
-     check_cc (elm.innerText = content) "content mismatch" cb)
+     check_cc (elm.innerHTML = content) "content mismatch" cb)
 
   (*--------------------------------------------------------------------------*)
   test "class should should be specified with `class'` combinator" <|
@@ -124,14 +124,14 @@ let main () =
        let fst = Globals.document.getElementById "first"
        let snd = Globals.document.getElementById "second"
 
-       check (fst.innerText <> firstContent) "the content of the first element should different but isn't"
-       check_cc (snd.innerText = secondContent) "the content of the second element should be the same but isn't" cb
+       check (fst.innerHTML <> firstContent) "the content of the first element should different but isn't"
+       check_cc (snd.innerHTML = secondContent) "the content of the second element should be the same but isn't" cb
 
        let list' = list firstContent <|> (li <|> text "hmm")
        root <- patch root <| diff tree (renderHtml list')
 
-       check (fst.innerText = firstContent) "the content of the first element should be the same but isn't"
+       check (fst.innerHTML = firstContent) "the content of the first element should be the same but isn't"
        check (root.children.length = 3.) "the list should have 3 elements now"
-       check_cc (snd.innerText = secondContent) "the content of the second element should be the same but isn't" cb
+       check_cc (snd.innerHTML = secondContent) "the content of the second element should be the same but isn't" cb
 
        cleanup content
