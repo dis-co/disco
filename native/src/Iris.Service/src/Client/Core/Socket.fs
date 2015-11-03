@@ -1,57 +1,45 @@
-[<ReflectedDefinition>]
-module Iris.Web.Core.Socket
+namespace Iris.Service.Client.Core
 
 #nowarn "1182"
 
-open FunScript
-open FunScript.TypeScript
-open Iris.Web.Core.Events
+open WebSharper
+open WebSharper.JavaScript
 
-(*   __  __
-    |  \/  | ___  ___ ___  __ _  __ _  ___ 
-    | |\/| |/ _ \/ __/ __|/ _` |/ _` |/ _ \
-    | |  | |  __/\__ \__ \ (_| | (_| |  __/
-    |_|  |_|\___||___/___/\__,_|\__, |\___|
-                                |___/      
-*)
-type MsgType = string
+[<JavaScript>]
+module Socket =
 
-type Message (t : MsgType, p : EventData) =
-  let msgtype = t
-  let payload = p
+  open Iris.Service.Client.Core.Events
 
-  member self.Type    with get () = msgtype
-  member self.Payload with get () = payload
+  (*   __  __
+      |  \/  | ___  ___ ___  __ _  __ _  ___
+      | |\/| |/ _ \/ __/ __|/ _` |/ _` |/ _ \
+      | |  | |  __/\__ \__ \ (_| | (_| |  __/
+      |_|  |_|\___||___/___/\__,_|\__, |\___|
+                                  |___/
+  *)
+  type MsgType = string
 
-(*  __        __   _    ____             _        _   
-    \ \      / /__| |__/ ___|  ___   ___| | _____| |_ 
-     \ \ /\ / / _ \ '_ \___ \ / _ \ / __| |/ / _ \ __|
-      \ V  V /  __/ |_) |__) | (_) | (__|   <  __/ |_ 
-       \_/\_/ \___|_.__/____/ \___/ \___|_|\_\___|\__|
-*)
+  type Message (t : MsgType, p : EventData) =
+    let msgtype = t
+    let payload = p
 
-type IWebSocket =
-  abstract send : string -> unit
-  abstract close : unit -> unit
-  
+    member self.Type    with get () = msgtype
+    member self.Payload with get () = payload
 
-[<JSEmit("""
-    socket = new WebSocket({0});
-    socket.onopen = function () { 
-        {1}();
-    };
-    socket.onmessage = function (msg) {
-        {2}(JSON.parse(msg.data));
-    };
-    socket.onclose = function () {
-        {3}();
-    };
-    return socket;
-    """)>]
-let private createImpl(host : string, onOpen : unit -> unit, onMessage : Message -> unit, onClosed : unit -> unit) : IWebSocket = 
-    failwith "never"
+  (*  __        __   _    ____             _        _
+      \ \      / /__| |__/ ___|  ___   ___| | _____| |_
+       \ \ /\ / / _ \ '_ \___ \ / _ \ / __| |/ / _ \ __|
+        \ V  V /  __/ |_) |__) | (_) | (__|   <  __/ |_
+         \_/\_/ \___|_.__/____/ \___/ \___|_|\_\___|\__|
+  *)
 
-let createSocket(host, onMessage, onClosed) =
-    Async.FromContinuations (fun (callback, _, _) ->
-        let socket = ref Unchecked.defaultof<_>
-        socket := createImpl(host, (fun () -> callback !socket), onMessage, onClosed))
+  let createSocket(host, onMessage, onClosed) = failwith "FIXEME"
+    // Async.FromContinuations
+    //   (fun (callback, _, _) ->
+    //    let sockref = ref<WebSocket>
+    //    let socket = new WebSocket(host)
+
+    //    // socket.Onopen <- (fun 
+    //    (!socket).Onmessage <- onMessage
+    //    (!socket) <- onClosed)
+    //       //socket := createImpl(host, (fun () -> callback !socket), onMessage, onClosed))

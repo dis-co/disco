@@ -1,4 +1,4 @@
-module Iris.Web.Views.Index
+module Iris.Service.Client.Views.Index
 
 open System
 open System.IO

@@ -1,122 +1,100 @@
-[<ReflectedDefinition>]
-module Iris.Web.Core.Plugin
+namespace Iris.Service.Client.Core
 
 #nowarn "1182"
 
-open System
-open FunScript
-open FunScript.TypeScript
+open WebSharper
+open WebSharper.JavaScript
 
-open Iris.Web.Core.Html
-open Iris.Web.Core.IOBox
-open Iris.Web.Core.Patch
+[<JavaScript>]
+module Plugin =
 
-(*   ____  _             _       
-    |  _ \| |_   _  __ _(_)_ __  
-    | |_) | | | | |/ _` | | '_ \ 
-    |  __/| | |_| | (_| | | | | |
-    |_|   |_|\__,_|\__, |_|_| |_| + spec
-                   |___/         
-*)
-type IPlugin =
-  abstract render  : IOBox       -> VTree
-  abstract dispose : unit        -> unit
-  abstract get     : unit        -> Slice array
-  abstract set     : Slice array -> unit
-  abstract on      : string      -> (unit -> unit) -> unit
-  abstract off     : string      -> unit
+  open System
 
-type IPluginSpec () =
-  let mutable   name   = ""
-  let mutable ``type`` = ""
-  let mutable  create : (unit -> IPlugin) =
-    (fun _ -> Unchecked.defaultof<_>)
+  open Iris.Service.Client.Core.Html
+  open Iris.Service.Client.Core.IOBox
+  open Iris.Service.Client.Core.Patch
 
-  member self.Name    with get () = name
-  member self.GetType with get () = ``type``
-  member self.Create  with get () = create
+  (*   ____  _             _
+      |  _ \| |_   _  __ _(_)_ __
+      | |_) | | | | |/ _` | | '_ \
+      |  __/| | |_| | (_| | | | | |
+      |_|   |_|\__,_|\__, |_|_| |_| + spec
+                     |___/
+  *)
+  type IPlugin =
+    abstract render  : IOBox       -> VTree
+    abstract dispose : unit        -> unit
+    abstract get     : unit        -> Slice array
+    abstract set     : Slice array -> unit
+    abstract on      : string      -> (unit -> unit) -> unit
+    abstract off     : string      -> unit
+
+  type IPluginSpec () =
+    let mutable   name   = ""
+    let mutable ``type`` = ""
+    let mutable  create : (unit -> IPlugin) = failwith "hi"
+
+    member self.Name    with get () = name
+    member self.GetType with get () = ``type``
+    member self.Create  with get () = create
 
 
-[<JSEmit("""return window.IrisPlugins;""")>]
-let listPlugins () : IPluginSpec array = failwith "never"
+  [<Direct "return window.IrisPlugins">]
+  let listPlugins () : IPluginSpec array = X<IPluginSpec array>
 
-[<JSEmit(
-  """
-  var pred = function (plugin) {
-    return plugin.type === {0};
-  };
-  return window.IrisPlugins.filter(pred);
-  """
-)>]
-let findPlugins (kind : string) : IPluginSpec array = failwith "never"
+  [<Direct "return window.IrisPlugins.filter(function (plugin) { return plugin.type === $kind; })" >]
+  let findPlugins (kind : string) : IPluginSpec array = X<IPluginSpec array>
 
-[<JSEmit(""" return ({0} === null) || ({0} === undefined); """)>]
-let isNull (o : obj) : bool = failwith "never"
+  [<Direct "return ($o === null) || ($o === undefined)">]
+  let isNull (o : obj) : bool = X<bool>
 
-(*
-   ____  _             _           
-  |  _ \| |_   _  __ _(_)_ __  ___ 
-  | |_) | | | | |/ _` | | '_ \/ __|
-  |  __/| | |_| | (_| | | | | \__ \
-  |_|   |_|\__,_|\__, |_|_| |_|___/ instances map
-                 |___/              
-*)
-type Plugins () =
-  (* ------------------------ internal -------------------------- *)
-  [<JSEmit("""{0}[{1}] = {2};""")>]
-  let addImpl (id : string) (inst : IPlugin) = failwith "never"
+  (*
+     ____  _             _
+    |  _ \| |_   _  __ _(_)_ __  ___
+    | |_) | | | | |/ _` | | '_ \/ __|
+    |  __/| | |_| | (_| | | | | \__ \
+    |_|   |_|\__,_|\__, |_|_| |_|___/ instances map
+                   |___/
+  *)
 
-  [<JSEmit("""return {0}[{1}] != null;""")>]
-  let hasImpl (id : string) : bool = failwith "never"
+  type Plugins () =
+    (* ------------------------ internal -------------------------- *)
+    [<Inline " $0[$id] = $inst ">]
+    let addImpl (id : string) (inst : IPlugin) : unit = X<unit>
 
-  [<JSEmit("""
-           if({0}[{1}] != null) {
-             {0}[{1}].dispose();
-             {0}[{1}] = null;
-             delete {0}[{1}];
-           }
-           """)>]
-  let rmImpl (id : string) = failwith "never"
+    [<Inline " $0[$id] != null ">]
+    let hasImpl (id : string) : bool = X<bool>
 
-  [<JSEmit(""" return {0}[{1}]; """)>]
-  let getImpl (id : string) = failwith "never"
+    [<Inline " $0[$id] = null ">]
+    let rmImpl (id : string) : unit = X<unit>
 
-  [<JSEmit(""" return Object.keys({0}); """)>]
-  let idsImpl () : string array = failwith "never"
+    [<Inline " $0[$id] ">]
+    let getImpl (id : string) : IPlugin = X<IPlugin>
 
-  [<JSEmit("""
-           var remove = function (id) {
-             if({0}[{1}] != null) {
-               {0}[{1}].dispose();
-               {0}[{1}] = null;
-               delete {0}[{1}];
-             }
-           };
-           Object.keys({0}).forEach(remove)
-           """)>]
-  let removeAllImpl () : unit = failwith "never"
+    [<Inline " Object.keys($0) ">]
+    let idsImpl () : string array = X<string array>
 
-  (* ------------------------ public interface -------------------------- *)
-  
-  (* instantiate a new view plugin *)
-  member self.add (iobox : IOBox) =
-    let candidates = findPlugins iobox.kind
-    in if candidates.length > 0.0
-       then addImpl iobox.id (candidates.[0].Create ())
-       else Globals.console.log("Could not instantiate view for IOBox. Type not found:  " + iobox.kind)
+    (* ------------------------ public interface -------------------------- *)
 
-  member self.has (iobox : IOBox) : bool = hasImpl iobox.id
+    (* instantiate a new view plugin *)
+    member self.add (iobox : IOBox) =
+      let candidates = findPlugins iobox.kind
+      in if candidates.Length > 0
+         then addImpl iobox.id (candidates.[0].Create ())
+         else Console.Log("Could not instantiate view for IOBox. Type not found:  " + iobox.kind)
 
-  member self.get (iobox : IOBox) : IPlugin option =
-    let inst = getImpl iobox.id
-    if isNull inst
-    then None
-    else Some(inst)
+    member self.has (iobox : IOBox) : bool = hasImpl iobox.id
 
-  (* remove an instance of a view plugin *)
-  member self.remove (iobox : IOBox) = rmImpl iobox.id
+    member self.get (iobox : IOBox) : IPlugin option =
+      let inst = getImpl iobox.id
+      if isNull inst
+      then None
+      else Some(inst)
 
-  member self.ids () : string array = idsImpl ()
+    (* remove an instance of a view plugin *)
+    member self.remove (iobox : IOBox) = rmImpl iobox.id
 
-  interface IDisposable with
-    member self.Dispose () = removeAllImpl ()
+    member self.ids () : string array = idsImpl ()
+
+    interface IDisposable with
+      member self.Dispose () = Array.map rmImpl (self.ids ()) |> ignore

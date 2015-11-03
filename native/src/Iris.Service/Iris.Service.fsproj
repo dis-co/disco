@@ -1,23 +1,29 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{2704F49C-2E66-4923-A4C6-9E07B05FC017}</ProjectGuid>
     <OutputType>Exe</OutputType>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <RootNamespace>Iris.Service</RootNamespace>
     <AssemblyName>Iris.Service</AssemblyName>
+    <WebSharperProject>Bundle</WebSharperProject>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\Debug</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <Externalconsole>true</Externalconsole>
+    <OtherFlags>--quotations-debug</OtherFlags>
+    <WebSharperSourceMap>True</WebSharperSourceMap>
+    <WebSharperBundleOutputDir>./bin/Debug/assets</WebSharperBundleOutputDir>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <Externalconsole>true</Externalconsole>
+    <WebSharperBundleOutputDir>./bin/Release/assets</WebSharperBundleOutputDir>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="net40\x64\libnanomsg.so">
@@ -41,6 +47,19 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="src\Client\Core\IOBox.fs" />
+    <Compile Include="src\Client\Core\Patch.fs" />
+    <Compile Include="src\Client\Core\Events.fs" />
+    <Compile Include="src\Client\Core\Html.fs" />
+    <Compile Include="src\Client\Core\Plugin.fs" />
+    <Compile Include="src\Client\Core\Store.fs" />
+    <Compile Include="src\Client\Core\Reducer.fs" />
+    <Compile Include="src\Client\Core\Socket.fs" />
+    <Compile Include="src\Client\Core\ViewController.fs" />
+    <Compile Include="src\Client\Views\Index.fs" />
+    <Compile Include="src\Client\Views\PatchView.fs" />
+    <Compile Include="src\Client\Client.fs" />
+
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="src\Server\AssetServer.fs" />
     <Compile Include="src\Main.fs" />
@@ -64,6 +83,7 @@
     </Otherwise>
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
+  <Import Project="..\..\packages\WebSharper\build\WebSharper.targets" Condition="Exists('..\..\packages\WebSharper\build\WebSharper.targets')" Label="Paket" />
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6')">
       <ItemGroup>

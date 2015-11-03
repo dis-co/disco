@@ -1,103 +1,105 @@
-[<ReflectedDefinition>]
-module Iris.Web.Core.Store
+namespace Iris.Service.Client.Core
 
-open FunScript
-open FunScript.TypeScript
+open WebSharper
+open WebSharper.JavaScript
 
-open Iris.Web.Core.Html
-open Iris.Web.Core.IOBox
-open Iris.Web.Core.Patch
-open Iris.Web.Core.Events
+[<JavaScript>]
+module Store =
 
-(*   ____  _        _       
-    / ___|| |_ __ _| |_ ___ 
-    \___ \| __/ _` | __/ _ \
-     ___) | || (_| | ||  __/
-    |____/ \__\__,_|\__\___|
+  open Iris.Service.Client.Core.Html
+  open Iris.Service.Client.Core.IOBox
+  open Iris.Service.Client.Core.Patch
+  open Iris.Service.Client.Core.Events
 
-    Record type containing all the actual data that gets passed around in our
-    application.
-*)
+  (*   ____  _        _
+      / ___|| |_ __ _| |_ ___
+      \___ \| __/ _` | __/ _ \
+       ___) | || (_| | ||  __/
+      |____/ \__\__,_|\__\___|
 
-type State =
-  { Patches  : Patch list }
-  static member empty = { Patches = [] }
+      Record type containing all the actual data that gets passed around in our
+      application.
+  *)
 
-
-let addPatch (state : State) (patch : Patch) =
-  let exists = List.exists (fun p -> p.id = patch.id) state.Patches
-  if not exists
-  then { state with Patches = patch :: state.Patches }
-  else state
-
-let updatePatch (state : State) (patch : Patch) =
-  { state with
-      Patches = let mapper (oldpatch : Patch) =
-                    if patch.id = oldpatch.id
-                    then patch
-                    else oldpatch
-                 in List.map mapper state.Patches }
-
-let removePatch (state : State) (patch : Patch) = 
-  let pred (patch' : Patch) = patch.id <> patch'.id
-  { state with Patches = List.filter pred state.Patches }
+  type State =
+    { Patches  : Patch list }
+    static member empty = { Patches = [] }
 
 
-let addIOBox (state : State) (iobox : IOBox) =
-  let updater (patch : Patch) =
-    if iobox.patch = patch.id
-    then addIOBox patch iobox
-    else patch
-  { state with Patches = List.map updater state.Patches }
+  let addPatch (state : State) (patch : Patch) =
+    let exists = List.exists (fun p -> p.id = patch.id) state.Patches
+    if not exists
+    then { state with Patches = patch :: state.Patches }
+    else state
+
+  let updatePatch (state : State) (patch : Patch) =
+    { state with
+        Patches = let mapper (oldpatch : Patch) =
+                      if patch.id = oldpatch.id
+                      then patch
+                      else oldpatch
+                   in List.map mapper state.Patches }
+
+  let removePatch (state : State) (patch : Patch) =
+    let pred (patch' : Patch) = patch.id <> patch'.id
+    { state with Patches = List.filter pred state.Patches }
 
 
-let updateIOBox (state : State) (iobox : IOBox) =
-  let mapper (patch : Patch) = updateIOBox patch iobox
-  { state with Patches = List.map mapper state.Patches }
+  let addIOBox (state : State) (iobox : IOBox) =
+    let updater (patch : Patch) =
+      if iobox.patch = patch.id
+      then addIOBox patch iobox
+      else patch
+    { state with Patches = List.map updater state.Patches }
 
 
-let removeIOBox (state : State) (iobox : IOBox) =
-  let updater (patch : Patch) =
-    if iobox.patch = patch.id
-    then removeIOBox patch iobox
-    else patch
-  { state with Patches = List.map updater state.Patches }
+  let updateIOBox (state : State) (iobox : IOBox) =
+    let mapper (patch : Patch) = updateIOBox patch iobox
+    { state with Patches = List.map mapper state.Patches }
 
-(* Reducers are take a state, an action, acts and finally return the new state *)
-type Reducer = (AppEvent -> State -> State)
 
-(*
-     ____  _                 
-    / ___|| |_ ___  _ __ ___ 
-    \___ \| __/ _ \| '__/ _ \
-     ___) | || (_) | | |  __/
-    |____/ \__\___/|_|  \___|
+  let removeIOBox (state : State) (iobox : IOBox) =
+    let updater (patch : Patch) =
+      if iobox.patch = patch.id
+      then removeIOBox patch iobox
+      else patch
+    { state with Patches = List.map updater state.Patches }
 
-    The store centrally manages all state changes and notifies interested
-    parties of changes to the carried state (e.g. views, socket transport).
+  (* Reducers are take a state, an action, acts and finally return the new state *)
+  type Reducer = (AppEvent -> State -> State)
 
-*)
+  (*
+       ____  _
+      / ___|| |_ ___  _ __ ___
+      \___ \| __/ _ \| '__/ _ \
+       ___) | || (_) | | |  __/
+      |____/ \__\___/|_|  \___|
 
-type Store =
-  { reducer   : Reducer
-  ; state     : State
-  ; listeners : Listener list }
+      The store centrally manages all state changes and notifies interested
+      parties of changes to the carried state (e.g. views, socket transport).
 
-and Listener = (Store -> AppEvent -> unit)
+  *)
 
-let private notify (store : Store) (ev : AppEvent) =
-  List.map (fun l -> l store ev) store.listeners
+  type Store =
+    { reducer   : Reducer
+    ; state     : State
+    ; listeners : Listener list }
 
-let dispatch (store : Store) (ev : AppEvent) : Store =
-  let newstate = store.reducer ev store.state
-  let newstore = { store with state = newstate }
-  notify newstore ev |> ignore
-  newstore
+  and Listener = (Store -> AppEvent -> unit)
 
-let subscribe (store : Store) (listener : Listener) =
-  { store with listeners = listener :: store.listeners }
+  let private notify (store : Store) (ev : AppEvent) =
+    List.map (fun l -> l store ev) store.listeners
 
-let mkStore (reducer : Reducer) =
-  { reducer = reducer
-  ; state = State.empty
-  ; listeners = []  }
+  let dispatch (store : Store) (ev : AppEvent) : Store =
+    let newstate = store.reducer ev store.state
+    let newstore = { store with state = newstate }
+    notify newstore ev |> ignore
+    newstore
+
+  let subscribe (store : Store) (listener : Listener) =
+    { store with listeners = listener :: store.listeners }
+
+  let mkStore (reducer : Reducer) =
+    { reducer = reducer
+    ; state = State.empty
+    ; listeners = []  }
