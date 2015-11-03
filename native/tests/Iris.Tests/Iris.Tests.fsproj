@@ -71,10 +71,6 @@
       <Project>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</Project>
       <Name>Iris.Core</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\src\Iris.Web\Iris.Web.fsproj">
-      <Project>{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}</Project>
-      <Name>Iris.Web</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\src\Iris.Service\Iris.Service.fsproj">
       <Project>{2704F49C-2E66-4923-A4C6-9E07B05FC017}</Project>
       <Name>Iris.Service</Name>

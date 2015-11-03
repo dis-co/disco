@@ -1,4 +1,4 @@
-namespace Iris.Service.AssetServer
+namespace Iris.Service.Server.AssetServer
 
 open Suave
 open Suave.Http;
@@ -12,20 +12,12 @@ open System.Threading
 open System.IO
 open System.Diagnostics
 
-open Iris.Web.Views.Index
-open Iris.Web.Build
-
 type AssetServer(addr : string, port : int) =
   let cts = new CancellationTokenSource()
 
   let basepath =
     let fn = Process.GetCurrentProcess().MainModule.FileName
     Path.GetDirectoryName(fn) + "/assets"
-
-  let index = compileIndex (basepath + "/js/")
-  let js    = compileJSString ()
-
-  let tests = compileTestPage ()
 
   // Add more mime-types here if necessary
   // the following are for fonts, source maps etc.
@@ -42,9 +34,8 @@ type AssetServer(addr : string, port : int) =
   // our application only needs to serve files off the disk
   // but we do need to specify what to do in the base case, i.e. "/"
   let app =
-    choose [ GET >>= choose [ path "/js/iris.js" >>= OK js
-                              path "/"           >>= OK index
-                              path "/tests"      >>= OK tests
+    choose [ GET >>= choose [ path "/"      >>= OK "should serve index"
+                              path "/tests" >>= OK "should serve tests page"
                               browseHome ] ]
 
   let config =

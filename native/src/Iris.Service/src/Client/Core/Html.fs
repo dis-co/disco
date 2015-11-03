@@ -306,7 +306,7 @@ let cite' url = Pair("cite", url)
 let value' txt = Pair("value", txt)
 
 let onClick (cb : MouseEvent -> unit) =
-  Pair("onclick", "FIXME")
+  Pair("onclick", runtimeFunName cb)
 
 //  GlobalEventHandlers.onabort
 //  GlobalEventHandlers.onblur

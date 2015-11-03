@@ -15,11 +15,6 @@ nuget Akka
 nuget Akka.Cluster
 nuget Akka.FSharp
 
-nuget FunScript
-nuget FunScript.Rx
-nuget FunScript.TypeScript.Binding.jquery
-nuget FunScript.TypeScript.Binding.routie
-nuget FunScript.TypeScript.Binding.fabricjs
-nuget FunScript.TypeScript.Binding.mocha
+nuget WebSharper
 
 github fsharp/FAKE modules/Octokit/Octokit.fsx

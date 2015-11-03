@@ -2,7 +2,7 @@
 open System.Diagnostics
 open System.IO
 
-open Iris.Service.AssetServer
+open Iris.Service.Server.AssetServer
 
 let rec loop (sckt : IWebSocketConnection option ref) =
   let res = System.Console.ReadLine()

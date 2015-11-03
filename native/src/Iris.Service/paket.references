@@ -6,7 +6,4 @@ Akka
 Akka.Cluster
 Akka.FSharp
 Suave
-FunScript
-FunScript.TypeScript.Binding.jquery
-FunScript.TypeScript.Binding.routie
-FunScript.TypeScript.Binding.fabricjs
+WebSharper
