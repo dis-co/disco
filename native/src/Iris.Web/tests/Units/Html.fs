@@ -74,8 +74,22 @@ let main () =
       |> createElement
 
     check_cc (elm.id = "hello") "should have an element with id" cb
-    
 
+  (*--------------------------------------------------------------------------*)
+  suite "Test.Units.Html - event callbacks"
+  (*--------------------------------------------------------------------------*)
+
+  test "callback function should be rendered and called" <| fun cb ->
+    let elm =
+      div <@> onClick (fun ev ->
+                         check_cc true "should have been called" cb)
+      |> renderHtml
+      |> createElement
+
+    Globals.console.log(elm)
+    Globals.jQuery.Invoke(elm).click () |> ignore
+
+    
   (*--------------------------------------------------------------------------*)
   suite "Test.Units.VirtualDom - basic operations"
   (*--------------------------------------------------------------------------*)

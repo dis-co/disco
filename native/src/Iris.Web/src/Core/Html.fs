@@ -305,6 +305,46 @@ let cite' url = Pair("cite", url)
 
 let value' txt = Pair("value", txt)
 
+let onClick (cb : MouseEvent -> unit) =
+  Pair("onclick", runtimeFunName cb)
+
+//  GlobalEventHandlers.onabort
+//  GlobalEventHandlers.onblur
+//  GlobalEventHandlers.onchange
+//  GlobalEventHandlers.onclick
+//  GlobalEventHandlers.onclose
+//  GlobalEventHandlers.oncontextmenu
+//  GlobalEventHandlers.ondblclick
+//  GlobalEventHandlers.onerror
+//  GlobalEventHandlers.onfocus
+//  GlobalEventHandlers.oninput
+//  GlobalEventHandlers.onkeydown
+//  GlobalEventHandlers.onkeypress
+//  GlobalEventHandlers.onkeyup
+//  GlobalEventHandlers.onload
+//  GlobalEventHandlers.onmousedown
+//  GlobalEventHandlers.onmousemove
+//  GlobalEventHandlers.onmouseout
+//  GlobalEventHandlers.onmouseover
+//  GlobalEventHandlers.onmouseup
+//  GlobalEventHandlers.onpointercancel
+//  GlobalEventHandlers.onpointerdown
+//  GlobalEventHandlers.onpointerenter
+//  GlobalEventHandlers.onpointerleave
+//  GlobalEventHandlers.onpointermove
+//  GlobalEventHandlers.onpointerout
+//  GlobalEventHandlers.onpointerover
+//  GlobalEventHandlers.onpointerup
+//  GlobalEventHandlers.onreset
+//  GlobalEventHandlers.onresize
+//  GlobalEventHandlers.onscroll
+//  GlobalEventHandlers.onselect
+//  GlobalEventHandlers.onselectstart
+//  GlobalEventHandlers.onsubmit
+//  GlobalEventHandlers.ontouchcancel
+//  GlobalEventHandlers.ontouchmove
+//  GlobalEventHandlers.ontouchstart
+
 (*
  _   _ _____ __  __ _     
 | | | |_   _|  \/  | |    
