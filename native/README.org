@@ -1,11 +1,10 @@
 * Todo:
-** NEXT unbox function calls to plugins                            :frontend:
+** IN convert project to WebSharper JS compiler                    :frontend:
 ** IN explore the idea of creating a CHROME APPs                   :frontend:
 ** IN LocalStorage API Abstraction                                 :frontend:
 ** IN integrate LocalStorage into Store/State                      :frontend:
 ** IN working completely offline should become possible with store :frontend:
 ** IN do some simple rx experiments                                :frontend:
-** IN FunScript msgpack-javascript bindings                        :frontend:
 ** IN msgpack serialization/deserialization scheme         :frontend:backend:
 ** IN vvvv.js integration
 ** Archive                                                          :ARCHIVE:

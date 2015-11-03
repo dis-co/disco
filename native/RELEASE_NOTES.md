@@ -1,5 +1,2 @@
-### 1.0 - Unreleased
-* Back-end rewrite with Akka.NET, nanomsg, git-based storage & more
-
-#### 0.5.1-alpha - September 3 2015
-* Improved quality of solution-wide README.md files
+#### 0.3.1-alpha - November 21 2015
+* alpha version of new native project
