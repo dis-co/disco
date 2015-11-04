@@ -1,4 +1,4 @@
-﻿namespace Iris.Service.Client
+﻿namespace Iris.Web
 
 open System
 open WebSharper

@@ -9,6 +9,7 @@
     <AssemblyName>Iris.Web</AssemblyName>
     <Name>Iris</Name>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <WebSharperProject>Bundle</WebSharperProject>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -19,6 +20,8 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>
+    <WebSharperSourceMap>True</WebSharperSourceMap>
+    <WebSharperBundleOutputDir>./bin/Debug/assets</WebSharperBundleOutputDir>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -28,6 +31,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>
+    <WebSharperBundleOutputDir>./bin/Release/assets</WebSharperBundleOutputDir>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
@@ -68,9 +72,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="assets\img\.gitkeep">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="assets\js\iris.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="assets\js\number.js">

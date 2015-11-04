@@ -1,11 +1,19 @@
-module Iris.Web.Tests.Main
+namespace Iris.Web.Tests
 
+open WebSharper
+open WebSharper.JavaScript
+open WebSharper.JQuery
+
+module Client =
+  let Main = Console.Log("helllo")
+    
+
+(*
 open Microsoft.FSharp.Quotations
 open System.IO
 open System.Reflection
 open System.Text.RegularExpressions
 
-(*
     ____                      _ _      
    / ___|___  _ __ ___  _ __ (_) | ___ 
   | |   / _ \| '_ ` _ \| '_ \| | |/ _ \
@@ -16,9 +24,8 @@ open System.Text.RegularExpressions
   Uses reflection to get and compile all modules in this assembly whose
   namespace matches `^Test.Units.*`. The return type is a tuple module name and
   the compiled javascript code as a regular string.
-*)
 
-let compileTests () = failwith "not implemented" (*
+let compileTests () = failwith "not implemented" 
   let regex = new Regex("^Test.Units")
   let path = (new System.Uri(Assembly.GetExecutingAssembly().CodeBase)).AbsolutePath;
   let assembly = Assembly.LoadFrom path
@@ -33,11 +40,9 @@ let compileTests () = failwith "not implemented" (*
          | Some(mi) -> (m.ToString (), Compiler.Compile(Expr.Call(mi, []), noReturn = true))
          | _ -> (m.ToString (), ""))
   |> Array.toList
-  *)
 
 let test name str = sprintf "<script id=\"%s\">%s</script>" name str
   
-(*
    _____         _   ____                  
   |_   _|__  ___| |_|  _ \ __ _  __ _  ___ 
     | |/ _ \/ __| __| |_) / _` |/ _` |/ _ \
@@ -46,7 +51,6 @@ let test name str = sprintf "<script id=\"%s\">%s</script>" name str
                                 |___/      
 
     Function to compile the tests page. 
-*)
 
 let testsPage () = 
   List.fold (fun m (name,code) -> m + (test name code)) "" <| compileTests ()
@@ -82,3 +86,4 @@ let testsPage () =
        </body>
      </html>
      "
+*)
