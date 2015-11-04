@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Iris.Tests</RootNamespace>
     <AssemblyName>Iris.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <Name>Iris.Tests</Name>
     <TargetFrameworkProfile />
@@ -87,7 +87,6 @@
   <ItemGroup>
     <Reference Include="nunit.framework">
       <HintPath>..\..\packages\NUnit\lib\nunit.framework.dll</HintPath>
-      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>

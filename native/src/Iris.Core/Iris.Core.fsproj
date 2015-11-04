@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Iris</RootNamespace>
     <AssemblyName>Iris.Core</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <Name>Iris</Name>
     <TargetFrameworkProfile />

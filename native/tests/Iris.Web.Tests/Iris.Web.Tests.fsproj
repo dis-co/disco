@@ -7,6 +7,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Iris.Web.Tests</RootNamespace>
     <AssemblyName>Iris.Web.Tests</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -30,13 +31,13 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Util.fs" />
     <Compile Include="Mocha.fs" />
-    <Compile Include="Units/Html.fs" />
-    <Compile Include="Units/PatchesView.fs" />
-    <Compile Include="Units/Plugins.fs" />
-    <Compile Include="Units/Storage.fs" />
-    <Compile Include="Units/Store.fs" />
-    <Compile Include="Units/ViewController.fs" />
     <Compile Include="Main.fs" />
+    <Compile Include="Units\Html.fs" />
+    <Compile Include="Units\PatchesView.fs" />
+    <Compile Include="Units\Plugins.fs" />
+    <Compile Include="Units\Storage.fs" />
+    <Compile Include="Units\Store.fs" />
+    <Compile Include="Units\ViewController.fs" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets" />
 </Project>
