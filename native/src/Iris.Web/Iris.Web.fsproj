@@ -1,10 +1,10 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <OutputType>Exe</OutputType>
     <RootNamespace>Iris.Web</RootNamespace>
     <AssemblyName>Iris.Web</AssemblyName>
     <Name>Iris</Name>
@@ -26,7 +26,6 @@
     <OutputPath>bin\Release</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>.\bin\Release\Iris.Nodes.xml</DocumentationFile>
     <OtherFlags>--warnon:1182</OtherFlags>
   </PropertyGroup>
   <ItemGroup>
@@ -35,40 +34,13 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="FSharp.Core">
+      <Private>True</Private>
       <HintPath>$(TargetFSharpCorePath)</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <!-- FRONT-END CODE -->
-    <Compile Include="src\Core\Html.fs" />
-    <Compile Include="src\Core\VirtualDom.fs" />
-    <Compile Include="src\Core\IOBox.fs" />
-    <Compile Include="src\Core\Patch.fs" />
-    <Compile Include="src\Core\Plugin.fs" />
-    <Compile Include="src\Core\Events.fs" />
-    <Compile Include="src\Core\Socket.fs" />
-    <Compile Include="src\Core\Store.fs" />
-    <Compile Include="src\Core\Reducer.fs" />
-    <Compile Include="src\Core\ViewController.fs" />
-    <Compile Include="src\Dom.fs" />
-    <Compile Include="src\Util.fs" />
-    <Compile Include="src\Routes.fs" />
-    <Compile Include="src\Views\PatchesView.fs" />
-    <Compile Include="src\Views\Index.fs" />
-    <Compile Include="src\Main.fs" />
-    <!-- FRONT-END TESTS -->
-    <Compile Include="tests\Util.fs" />
-    <Compile Include="tests\Mocha.fs" />
-    <Compile Include="tests\Units\Html.fs" />
-    <Compile Include="tests\Units\Store.fs" />
-    <Compile Include="tests\Units\ViewController.fs" />
-    <Compile Include="tests\Units\Plugins.fs" />
-    <Compile Include="tests\Units\PatchesView.fs" />
-    <Compile Include="tests\Units\Storage.fs" />
-    <Compile Include="tests\Main.fs" />
-    <!-- ENTRY POINT -->
-    <Compile Include="Build.fs" />
+    <Compile Include="Client.fs" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">

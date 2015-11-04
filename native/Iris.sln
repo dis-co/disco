@@ -34,9 +34,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{ED8079DD
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Tests", "tests\Iris.Tests\Iris.Tests.fsproj", "{D162BDA9-7BA0-4566-BFC5-46A898C75B3E}"
 EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Web.Tests", "tests\Iris.Web.Tests\Iris.Web.Tests.fsproj", "{CDC50F9D-1EFB-483B-8D14-3F2A3FD87F9D}"
+EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Service", "src\Iris.Service\Iris.Service.fsproj", "{2704F49C-2E66-4923-A4C6-9E07B05FC017}"
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Nodes", "src\Iris.Nodes\Iris.Nodes.fsproj", "{FBFFB969-00ED-4568-8FD0-65A699AACA18}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Web", "src\Iris.Web\Iris.Web.fsproj", "{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Web.Core", "src\Iris.Web.Core\Iris.Web.Core.fsproj", "{5F0370CD-9619-4815-B036-8B498FDF73C6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -48,10 +54,22 @@ Global
 		{2704F49C-2E66-4923-A4C6-9E07B05FC017}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2704F49C-2E66-4923-A4C6-9E07B05FC017}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2704F49C-2E66-4923-A4C6-9E07B05FC017}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5F0370CD-9619-4815-B036-8B498FDF73C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5F0370CD-9619-4815-B036-8B498FDF73C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5F0370CD-9619-4815-B036-8B498FDF73C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5F0370CD-9619-4815-B036-8B498FDF73C6}.Release|Any CPU.Build.0 = Release|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CDC50F9D-1EFB-483B-8D14-3F2A3FD87F9D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CDC50F9D-1EFB-483B-8D14-3F2A3FD87F9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CDC50F9D-1EFB-483B-8D14-3F2A3FD87F9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CDC50F9D-1EFB-483B-8D14-3F2A3FD87F9D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D162BDA9-7BA0-4566-BFC5-46A898C75B3E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D162BDA9-7BA0-4566-BFC5-46A898C75B3E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D162BDA9-7BA0-4566-BFC5-46A898C75B3E}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -65,6 +83,7 @@ Global
 		{83F16175-43B1-4C90-A1EE-8E351C33435D} = {A6A6AF7D-D6E3-442D-9B1E-58CC91879BE1}
 		{8E6D5255-776D-4B61-85F9-73C37AA1FB9A} = {A6A6AF7D-D6E3-442D-9B1E-58CC91879BE1}
 		{D162BDA9-7BA0-4566-BFC5-46A898C75B3E} = {ED8079DD-2B06-4030-9F0F-DC548F98E1C4}
+		{CDC50F9D-1EFB-483B-8D14-3F2A3FD87F9D} = {ED8079DD-2B06-4030-9F0F-DC548F98E1C4}
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

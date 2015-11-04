@@ -1,13 +1,9 @@
-module Iris.Web.Test.Main
+module Iris.Web.Tests.Main
 
 open Microsoft.FSharp.Quotations
 open System.IO
 open System.Reflection
 open System.Text.RegularExpressions
-
-open FunScript
-open FunScript.Compiler
-open FunScript.TypeScript
 
 (*
     ____                      _ _      
@@ -22,7 +18,7 @@ open FunScript.TypeScript
   the compiled javascript code as a regular string.
 *)
 
-let compileTests () =
+let compileTests () = failwith "not implemented" (*
   let regex = new Regex("^Test.Units")
   let path = (new System.Uri(Assembly.GetExecutingAssembly().CodeBase)).AbsolutePath;
   let assembly = Assembly.LoadFrom path
@@ -37,7 +33,8 @@ let compileTests () =
          | Some(mi) -> (m.ToString (), Compiler.Compile(Expr.Call(mi, []), noReturn = true))
          | _ -> (m.ToString (), ""))
   |> Array.toList
-  
+  *)
+
 let test name str = sprintf "<script id=\"%s\">%s</script>" name str
   
 (*

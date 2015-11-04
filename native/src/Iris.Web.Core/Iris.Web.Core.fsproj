@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{5F0370CD-9619-4815-B036-8B498FDF73C6}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Iris.Web.Core</RootNamespace>
+    <AssemblyName>Iris.Web.Core</AssemblyName>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <ConsolePause>false</ConsolePause>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <OutputPath>bin\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <ConsolePause>false</ConsolePause>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="FSharp.Core, Version=4.3.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="src/Core/Html.fs" />
+    <Compile Include="src/Core/IOBox.fs" />
+    <Compile Include="src/Core/Patch.fs" />
+    <Compile Include="src/Core/Events.fs" />
+    <Compile Include="src/Core/Plugin.fs" />
+    <Compile Include="src/Core/Store.fs" />
+    <Compile Include="src/Core/Reducer.fs" />
+    <Compile Include="src/Core/Socket.fs" />
+    <Compile Include="src/Core/ViewController.fs" />
+    <Compile Include="src/Views/Index.fs" />
+    <Compile Include="src/Views/PatchView.fs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets" />
+</Project>
