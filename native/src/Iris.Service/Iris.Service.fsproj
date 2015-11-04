@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -8,7 +8,6 @@
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <RootNamespace>Iris.Service</RootNamespace>
     <AssemblyName>Iris.Service</AssemblyName>
-    <WebSharperProject>Bundle</WebSharperProject>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -16,14 +15,11 @@
     <ErrorReport>prompt</ErrorReport>
     <Externalconsole>true</Externalconsole>
     <OtherFlags>--quotations-debug</OtherFlags>
-    <WebSharperSourceMap>True</WebSharperSourceMap>
-    <WebSharperBundleOutputDir>./bin/Debug/assets</WebSharperBundleOutputDir>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <Externalconsole>true</Externalconsole>
-    <WebSharperBundleOutputDir>./bin/Release/assets</WebSharperBundleOutputDir>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="net40\x64\libnanomsg.so">
@@ -570,66 +566,4 @@
       </ItemGroup>
     </When>
   </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6')">
-      <ItemGroup>
-        <Reference Include="WebSharper.Collections">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Collections.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.Control">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Control.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.Core.JavaScript">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Core.JavaScript.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.Core">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Core.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.InterfaceGenerator">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.InterfaceGenerator.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.JQuery">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.JQuery.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.JavaScript">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.JavaScript.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.Main">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Main.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.Sitelets">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Sitelets.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.Testing">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Testing.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.Web">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Web.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Import Project="..\..\packages\WebSharper\build\WebSharper.targets" Condition="Exists('..\..\packages\WebSharper\build\WebSharper.targets')" Label="Paket" />
 </Project>

@@ -10,7 +10,7 @@ open WebSharper.Mocha
 [<RequireQualifiedAccess>]
 module PatchesView =
 
-  open Iris.Web.Test.Util
+  open Iris.Web.Tests.Util
 
   open Iris.Web.Core.IOBox
   open Iris.Web.Core.Patch
@@ -20,7 +20,7 @@ module PatchesView =
   open Iris.Web.Core.ViewController
   open Iris.Web.Core.Plugin
 
-  open Iris.Web.Views.PatchesView
+  open Iris.Web.Views.PatchView
 
   [<Direct
     @"
@@ -94,19 +94,19 @@ module PatchesView =
 
       let mutable store : Store = mkStore reducer
 
-      let view = new PatchesView ()
+      let view = new PatchView ()
       let controller = new ViewController (view)
       controller.render store
 
-      document.getElementById pid
-      |> (fun el -> check (isNull el) "element should be null")
+      JQuery.Of(pid)
+      |> (fun el -> check (el.Length = 0) "element should be null")
 
       store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
 
       controller.render store
 
-      document.getElementById pid
-      |> (fun el -> check_cc (el.id = pid) "patch element not found in dom" cb)
+      JQuery.Of(pid)
+      |> (fun el -> check_cc (el.Attr("id") = pid) "patch element not found in dom" cb)
 
       (controller :> IDisposable).Dispose ()
 
@@ -132,15 +132,15 @@ module PatchesView =
         ; reducer   = reducer
         ; listeners = []}
 
-      let view = new PatchesView ()
+      let view = new PatchView ()
       let controller = new ViewController (view)
       controller.render store
 
-      document.getElementById pid1
-      |> (fun el -> check (not (isNull el)) "element 1 should not be null")
+      JQuery.Of(pid1)
+      |> (fun el -> check (el.Length > 0) "element 1 should not be null")
 
-      document.getElementById pid2
-      |> (fun el -> check (not (isNull el)) "element 2 should not be null")
+      JQuery.Of(pid2)
+      |> (fun el -> check (el.Length > 0) "element 2 should not be null")
 
       store <- dispatch store { Kind = RemovePatch; Payload = PatchD(patch1) }
 
@@ -149,11 +149,11 @@ module PatchesView =
 
       controller.render store
 
-      document.getElementById pid1
-      |> (fun el -> check (isNull el) "element 1 should be null")
+      JQuery.Of(pid1)
+      |> (fun el -> check (el.Length > 0) "element 1 should be null")
 
-      document.getElementById pid2
-      |> (fun el -> check_cc (not (isNull el)) "element 2 should not be null" cb)
+      JQuery.Of(pid2)
+      |> (fun el -> check_cc (el.Length > 0) "element 2 should not be null" cb)
 
       (controller :> IDisposable).Dispose()
 
@@ -184,19 +184,19 @@ module PatchesView =
         ; reducer   = reducer
         ; listeners = []}
 
-      let view = new PatchesView ()
+      let view = new PatchView ()
       let controller = new ViewController (view)
       controller.render store
 
-      document.getElementById id1
-      |> (fun el -> check (isNull el) "element should be null")
+      JQuery.Of(id1)
+      |> (fun el -> check (el.Length = 0) "element should not be")
 
       store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
 
       controller.render store
 
-      document.getElementById id1
-      |> (fun el -> check_cc (not (isNull el)) "element should not be null" cb)
+      JQuery.Of(id1)
+      |> (fun el -> check_cc (el.Length > 0) "element should not be null" cb)
 
       (controller :> IDisposable).Dispose ()
 
@@ -233,35 +233,35 @@ module PatchesView =
         ; reducer   = reducer
         ; listeners = []}
 
-      let view = new PatchesView ()
+      let view = new PatchView ()
       let controller = new ViewController (view)
 
       // add the first iobox
       store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox1) }
       controller.render store
 
-      document.getElementById id1
-      |> (fun el -> check_cc (not (isNull el)) "element should not be null" cb)
+      JQuery.Of(id1)
+      |> (fun el -> check (el.Length > 0) "element should not be null")
 
       // add the second iobox
       store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox2) }
       controller.render store
 
-      document.getElementById id1
-      |> (fun el -> check (not (isNull el)) "element 1 should not be null")
+      JQuery.Of(id1)
+      |> (fun el -> check (el.Length > 0) "element 1 should not be null")
 
-      document.getElementById id2
-      |> (fun el -> check (not (isNull el)) "element 2 should not be null")
+      JQuery.Of(id2)
+      |> (fun el -> check (el.Length > 0) "element 2 should not be null")
 
       // remove the second iobox
       store <- dispatch store { Kind = RemoveIOBox; Payload = IOBoxD(iobox2) }
       controller.render store
 
-      document.getElementById id1
-      |> (fun el -> check (not (isNull el)) "element 1 should not be null")
+      JQuery.Of(id1)
+      |> (fun el -> check (el.Length > 0) "element 1 should not be null")
 
-      document.getElementById id2
-      |> (fun el -> check_cc (isNull el) "element 2 should be null" cb)
+      JQuery.Of(id2)
+      |> (fun el -> check_cc (el.Length = 0) "element 2 should be null" cb)
 
       (controller :> IDisposable).Dispose ()
 
@@ -293,7 +293,7 @@ module PatchesView =
         ; listeners = []}
 
       // render initial state
-      let view = new PatchesView ()
+      let view = new PatchView ()
       let controller = new ViewController (view)
 
       store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
@@ -301,10 +301,9 @@ module PatchesView =
       controller.render store
 
       // test for the presence of the initial state
-      document.getElementById elid
-      |> (fun el -> el.getElementsByClassName "slice")
-      |> (fun slices -> slices.item(0.0))
-      |> (fun slice -> check (slice.textContent = value1) "iobox slice value not present in dom (test 1)")
+      JQuery.Of(elid).Children(".slices")
+      |> (fun slices -> slices.Get(0))
+      |> (fun slice -> check (slice.TextContent = value1) "iobox slice value not present in dom (test 1)")
 
       // update the iobox slice value
       let updated1 = {
@@ -321,11 +320,10 @@ module PatchesView =
       controller.render store
 
       // test for the presence of the initial state
-      document.getElementById elid
-      |> (fun el -> el.getElementsByClassName "slice")
-      |> (fun slices -> slices.item(0.0))
+      JQuery.Of(elid).Children(".slice")
+      |> (fun slices -> slices.Get(0))
       |> (fun slice ->
-          check (slice.textContent = value2) "iobox slice value not present in dom (test 2)")
+          check (slice.TextContent = value2) "iobox slice value not present in dom (test 2)")
 
       // update the iobox slice value
       let updated2 = {
@@ -342,10 +340,9 @@ module PatchesView =
       controller.render store
 
       // test for the presence of the initial state
-      document.getElementById elid
-      |> (fun el     -> el.getElementsByClassName "slice")
-      |> (fun slices -> slices.item(0.0))
+      JQuery.Of(elid).Children(".slice")
+      |> (fun slices -> slices.Get(0))
       |> (fun slice  ->
-          check_cc (slice.textContent = value3) "iobox slice value not present in dom (test 3)" cb)
+          check_cc (slice.TextContent = value3) "iobox slice value not present in dom (test 3)" cb)
 
       (controller :> IDisposable).Dispose ()

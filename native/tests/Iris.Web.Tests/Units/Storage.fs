@@ -1,13 +1,14 @@
-[<ReflectedDefinition>]
-module Test.Units.Storage
+namespace Test.Units
 
-open FunScript
-open FunScript.Mocha
-open FunScript.TypeScript
+open WebSharper
+open WebSharper.Mocha
+open WebSharper.JavaScript
 
-let main () =
-  (*--------------------------------------------------------------------------*)
-  suite "Test.Units.Storage"
-  (*--------------------------------------------------------------------------*)
-
-  pending "not yet implemented"
+[<JavaScript>]
+module Storage = 
+  let main () =
+    (*--------------------------------------------------------------------------*)
+    suite "Test.Units.Storage"
+    (*--------------------------------------------------------------------------*)
+  
+    pending "not yet implemented"

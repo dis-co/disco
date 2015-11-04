@@ -1,190 +1,193 @@
-[<ReflectedDefinition>]
-module Test.Units.Store
+namespace Test.Units
 
-open FunScript
-open FunScript.Mocha
-open FunScript.TypeScript
+open WebSharper
+open WebSharper.Mocha
+open WebSharper.JavaScript
+open WebSharper.JQuery
 
-open Iris.Web.Core.IOBox
-open Iris.Web.Core.Patch
-open Iris.Web.Core.Store
-open Iris.Web.Core.Events
-open Iris.Web.Core.Reducer
+[<JavaScript>]
+module Store =
 
-let main () =
-  (*--------------------------------------------------------------------------*)
-  suite "Test.Units.Store - Patch operations"
-  (*--------------------------------------------------------------------------*)
+  open Iris.Web.Core.IOBox
+  open Iris.Web.Core.Patch
+  open Iris.Web.Core.Store
+  open Iris.Web.Core.Events
+  open Iris.Web.Core.Reducer
 
-  test "should add a patch to the store" <| fun cb ->
-    let patch : Patch =
-      { id = "0xb4d1d34"
-      ; name = "patch-1"
-      ; ioboxes = Array.empty
-      }
+  let main () =
+    (*--------------------------------------------------------------------------*)
+    suite "Test.Units.Store - Patch operations"
+    (*--------------------------------------------------------------------------*)
 
-    let mutable store : Store = mkStore reducer
+    test "should add a patch to the store" <| fun cb ->
+      let patch : Patch =
+        { id = "0xb4d1d34"
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
 
-    check ((List.length store.state.Patches) = 0) "patches list should be empty"
+      let mutable store : Store = mkStore reducer
 
-    store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
+      check ((List.length store.state.Patches) = 0) "patches list should be empty"
 
-    check_cc ((List.length store.state.Patches) = 1) "patches list length should be 1" cb
+      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
 
-  (*--------------------------------------------------------------------------*)
-  test "should update a patch already in the store" <| fun cb ->
-    let name1 = "patch-1"
-    let name2 = "patch-2"
+      check_cc ((List.length store.state.Patches) = 1) "patches list length should be 1" cb
 
-    let patch : Patch =
-      { id = "0xb4d1d34"
-      ; name = name1
-      ; ioboxes = Array.empty
-      }
+    (*--------------------------------------------------------------------------*)
+    test "should update a patch already in the store" <| fun cb ->
+      let name1 = "patch-1"
+      let name2 = "patch-2"
 
-    let isPatch (p : Patch) : bool = p.id = patch.id
+      let patch : Patch =
+        { id = "0xb4d1d34"
+        ; name = name1
+        ; ioboxes = Array.empty
+        }
 
-    let mutable store : Store = mkStore reducer
-    store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
+      let isPatch (p : Patch) : bool = p.id = patch.id
 
-    check (List.exists isPatch store.state.Patches) "patches list should contain patch"
-    check (List.find isPatch store.state.Patches |> (fun p -> p.name = name1)) "patches list should contain patch"
+      let mutable store : Store = mkStore reducer
+      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
 
-    let updated = { patch with name = name2 }
-    store <- dispatch store { Kind = UpdatePatch; Payload = PatchD(updated) }
+      check (List.exists isPatch store.state.Patches) "patches list should contain patch"
+      check (List.find isPatch store.state.Patches |> (fun p -> p.name = name1)) "patches list should contain patch"
 
-    check_cc (List.find isPatch store.state.Patches |> (fun p -> p.name = name2)) "patches list should contain patch" cb
+      let updated = { patch with name = name2 }
+      store <- dispatch store { Kind = UpdatePatch; Payload = PatchD(updated) }
 
-  (*--------------------------------------------------------------------------*)
-  test "should remove a patch already in the store" <| fun cb ->
-    let patch : Patch =
-      { id = "0xb33f"
-      ; name = "patch-1"
-      ; ioboxes = Array.empty
-      }
+      check_cc (List.find isPatch store.state.Patches |> (fun p -> p.name = name2)) "patches list should contain patch" cb
 
-    let isPatch (p : Patch) : bool = p.id = patch.id
+    (*--------------------------------------------------------------------------*)
+    test "should remove a patch already in the store" <| fun cb ->
+      let patch : Patch =
+        { id = "0xb33f"
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
 
-    let mutable store : Store = mkStore reducer
-    store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
+      let isPatch (p : Patch) : bool = p.id = patch.id
 
-    check (List.exists isPatch store.state.Patches) "patches list should contain patch"
+      let mutable store : Store = mkStore reducer
+      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
 
-    store <- dispatch store { Kind = RemovePatch; Payload = PatchD(patch) }
+      check (List.exists isPatch store.state.Patches) "patches list should contain patch"
 
-    check_cc (not (List.exists isPatch store.state.Patches)) "patches list should not contain patch" cb
+      store <- dispatch store { Kind = RemovePatch; Payload = PatchD(patch) }
 
-  (*--------------------------------------------------------------------------*)
-  suite "Test.Units.Store - IOBox operations"
-  (*--------------------------------------------------------------------------*)
+      check_cc (not (List.exists isPatch store.state.Patches)) "patches list should not contain patch" cb
 
-  test "should add an iobox to the store if patch exists" <| fun cb ->
-    let patchid = "0xb4d1d34"
+    (*--------------------------------------------------------------------------*)
+    suite "Test.Units.Store - IOBox operations"
+    (*--------------------------------------------------------------------------*)
 
-    let patch : Patch =
-      { id = patchid
-      ; name = "patch-1"
-      ; ioboxes = Array.empty
-      }
+    test "should add an iobox to the store if patch exists" <| fun cb ->
+      let patchid = "0xb4d1d34"
 
-    let mutable store : Store = mkStore reducer
-    store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
+      let patch : Patch =
+        { id = patchid
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
 
-    match store.state.Patches with
-      | patch :: [] -> check ((Array.length patch.ioboxes) = 0) "iobox array length should be 0"
-      | _ -> check false "patches list is empty but should contain at least one patch"
+      let mutable store : Store = mkStore reducer
+      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
 
-    let iobox =
-      { id     = "0xb33f"
-      ; name   = "url input"
-      ; patch  = patchid
-      ; kind   = "string"
-      ; slices = [| { idx = 0; value = "Hey" } |]
-      }
+      match store.state.Patches with
+        | patch :: [] -> check ((Array.length patch.ioboxes) = 0) "iobox array length should be 0"
+        | _ -> check false "patches list is empty but should contain at least one patch"
 
-    store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
+      let iobox =
+        { id     = "0xb33f"
+        ; name   = "url input"
+        ; patch  = patchid
+        ; kind   = "string"
+        ; slices = [| { idx = 0; value = "Hey" } |]
+        }
 
-    match store.state.Patches with
-      | patch :: [] -> check_cc ((Array.length patch.ioboxes) = 1) "iobox array length should be 1" cb
-      | _ -> check false "patches list is empty but should contain at least one patch"
+      store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
 
-  (*--------------------------------------------------------------------------*)
-  test "should not add an iobox to the store if patch does not exists" <| fun cb ->
-    let patchid = "0xb4d1d34"
+      match store.state.Patches with
+        | patch :: [] -> check_cc ((Array.length patch.ioboxes) = 1) "iobox array length should be 1" cb
+        | _ -> check false "patches list is empty but should contain at least one patch"
 
-    let mutable store : Store = mkStore reducer
+    (*--------------------------------------------------------------------------*)
+    test "should not add an iobox to the store if patch does not exists" <| fun cb ->
+      let patchid = "0xb4d1d34"
 
-    let iobox =
-      { id     = "0xb33f"
-      ; name   = "url input"
-      ; patch  = patchid
-      ; kind   = "string"
-      ; slices = [| { idx = 0; value = "Hey" } |]
-      }
+      let mutable store : Store = mkStore reducer
 
-    store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
-    check_cc ((List.length store.state.Patches) = 0) "patches list length should be 0" cb
+      let iobox =
+        { id     = "0xb33f"
+        ; name   = "url input"
+        ; patch  = patchid
+        ; kind   = "string"
+        ; slices = [| { idx = 0; value = "Hey" } |]
+        }
 
-  (*--------------------------------------------------------------------------*)
-  test "should update an iobox in the store if it already exists" <| fun cb ->
-    let name1 = "can a cat own a cat?"
-    let name2 = "yes, cats are re-entrant."
+      store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
+      check_cc ((List.length store.state.Patches) = 0) "patches list length should be 0" cb
 
-    let iobox =
-      { id     = "0xb33f"
-      ; name   = name1
-      ; patch  = "0xb4d1d34"
-      ; kind   = "string"
-      ; slices = [| { idx = 0; value = "swell" } |]
-      }
+    (*--------------------------------------------------------------------------*)
+    test "should update an iobox in the store if it already exists" <| fun cb ->
+      let name1 = "can a cat own a cat?"
+      let name2 = "yes, cats are re-entrant."
 
-    let patch : Patch =
-      { id = "0xb4d1d34"
-      ; name = "patch-1"
-      ; ioboxes = [| iobox |]
-      }
+      let iobox =
+        { id     = "0xb33f"
+        ; name   = name1
+        ; patch  = "0xb4d1d34"
+        ; kind   = "string"
+        ; slices = [| { idx = 0; value = "swell" } |]
+        }
 
-    let mutable store : Store = mkStore reducer
-    store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
+      let patch : Patch =
+        { id = "0xb4d1d34"
+        ; name = "patch-1"
+        ; ioboxes = [| iobox |]
+        }
 
-    match findIOBox store.state.Patches iobox.id with
-      | Some(i) -> check_cc (i.name = name1) "name of iobox does not match (1)" cb
-      | None -> check_cc false "iobox is mysteriously missing" cb
+      let mutable store : Store = mkStore reducer
+      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
 
-    let updated = { iobox with name = name2 }
-    store <- dispatch store { Kind = UpdateIOBox; Payload = IOBoxD(updated) }
+      match findIOBox store.state.Patches iobox.id with
+        | Some(i) -> check_cc (i.name = name1) "name of iobox does not match (1)" cb
+        | None -> check_cc false "iobox is mysteriously missing" cb
 
-    match findIOBox store.state.Patches iobox.id with
-      | Some(i) -> check_cc (i.name = name2) "name of iobox does not match (2)" cb
-      | None -> check_cc false "iobox is mysteriously missing" cb
+      let updated = { iobox with name = name2 }
+      store <- dispatch store { Kind = UpdateIOBox; Payload = IOBoxD(updated) }
 
-  (*--------------------------------------------------------------------------*)
-  test "should remove an iobox from the store if it exists" <| fun cb ->
-    let boxid = "0xb33f"
+      match findIOBox store.state.Patches iobox.id with
+        | Some(i) -> check_cc (i.name = name2) "name of iobox does not match (2)" cb
+        | None -> check_cc false "iobox is mysteriously missing" cb
 
-    let iobox =
-      { id     = boxid
-      ; name   = "hi"
-      ; patch  = "0xb4d1d34"
-      ; kind   = "string"
-      ; slices = [| { idx = 0; value = "swell" } |]
-      }
+    (*--------------------------------------------------------------------------*)
+    test "should remove an iobox from the store if it exists" <| fun cb ->
+      let boxid = "0xb33f"
 
-    let patch : Patch =
-      { id = "0xb4d1d34"
-      ; name = "patch-1"
-      ; ioboxes = [| iobox |]
-      }
+      let iobox =
+        { id     = boxid
+        ; name   = "hi"
+        ; patch  = "0xb4d1d34"
+        ; kind   = "string"
+        ; slices = [| { idx = 0; value = "swell" } |]
+        }
 
-    let mutable store : Store = mkStore reducer
-    store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
+      let patch : Patch =
+        { id = "0xb4d1d34"
+        ; name = "patch-1"
+        ; ioboxes = [| iobox |]
+        }
 
-    match findIOBox store.state.Patches boxid with
-      | Some(_) -> check true  "iobox should be found by now"
-      | None    -> check false "iobox is mysteriously missing"
+      let mutable store : Store = mkStore reducer
+      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
 
-    store <- dispatch store { Kind = RemoveIOBox; Payload = IOBoxD(iobox) }
+      match findIOBox store.state.Patches boxid with
+        | Some(_) -> check true  "iobox should be found by now"
+        | None    -> check false "iobox is mysteriously missing"
 
-    match findIOBox store.state.Patches boxid with
-      | Some(_) -> check_cc false "iobox should be missing by now but isn't" cb
-      | None    -> check_cc true "iobox was found but should be missing" cb
+      store <- dispatch store { Kind = RemoveIOBox; Payload = IOBoxD(iobox) }
+
+      match findIOBox store.state.Patches boxid with
+        | Some(_) -> check_cc false "iobox should be missing by now but isn't" cb
+        | None    -> check_cc true "iobox was found but should be missing" cb

@@ -1,22 +1,21 @@
 ﻿namespace Iris.Service.Client
 
+open System
 open WebSharper
 open WebSharper.JavaScript
 
 [<JavaScript>]
 module Client =
-  open System
   
-  open Iris.Service.Client.Core.Html
-  open Iris.Service.Client.Core.Patch
-  open Iris.Service.Client.Core.IOBox
-  open Iris.Service.Client.Core.Socket
-  open Iris.Service.Client.Core.ViewController
-  open Iris.Service.Client.Core.Store
-  open Iris.Service.Client.Core.Events
-  open Iris.Service.Client.Core.Reducer
-
-  open Iris.Service.Client.Views.PatchView
+  open Iris.Web.Core.Html
+  open Iris.Web.Core.Patch
+  open Iris.Web.Core.IOBox
+  open Iris.Web.Core.Socket
+  open Iris.Web.Core.ViewController
+  open Iris.Web.Core.Store
+  open Iris.Web.Core.Events
+  open Iris.Web.Core.Reducer
+  open Iris.Web.Views.PatchView
 
   (* FIXME: need to factor this out into a nice abstraction *)
   let handler (store : Store) (msg : Message) : Store =
@@ -49,10 +48,10 @@ module Client =
     ctrl.render !store
   
     // register view controller with store for updates
-    store := subscribe !store (fun s e -> ctrl.render s)
+    store := subscribe !store (fun s _ -> ctrl.render s)
   
-    let onMsg (msg : Message) =
-      store := handler !store msg
+    // let onMsg (msg : Message) =
+    //   store := handler !store msg
 
     Console.Log("STARTINMG!!")
   

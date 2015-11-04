@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -23,7 +23,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
-    <Reference Include="FSharp.Core, Version=4.3.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" >
+    <Reference Include="FSharp.Core, Version=4.3.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
       <HintPath>$(TargetFSharpCorePath)</HintPath>
     </Reference>
@@ -58,6 +58,12 @@
     </Otherwise>
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
+  <ItemGroup>
+    <ProjectReference Include="..\Iris.Core\Iris.Core.fsproj">
+      <Project>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</Project>
+      <Name>Iris.Core</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6')">
       <ItemGroup>
@@ -120,10 +126,4 @@
     </When>
   </Choose>
   <Import Project="..\..\packages\WebSharper\build\WebSharper.targets" Condition="Exists('..\..\packages\WebSharper\build\WebSharper.targets')" Label="Paket" />
-  <ItemGroup>
-    <ProjectReference Include="..\Iris.Core\Iris.Core.fsproj">
-      <Project>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</Project>
-      <Name>Iris.Core</Name>
-    </ProjectReference>
-  </ItemGroup>
 </Project>

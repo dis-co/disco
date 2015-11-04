@@ -1,103 +1,101 @@
-[<ReflectedDefinition>]
-module Test.Units.ViewController
+namespace Test.Units
 
 open System
-open FunScript
-open FunScript.Mocha
-open FunScript.TypeScript
+open WebSharper
+open WebSharper.Mocha
+open WebSharper.JavaScript
+open WebSharper.JQuery
 
-open Iris.Web.Core.Html
-open Iris.Web.Test.Util
-open Iris.Web.Core.Store
-open Iris.Web.Core.ViewController
-open Iris.Web.Core.Patch
-open Iris.Web.Core.Store
-open Iris.Web.Core.Reducer
-open Iris.Web.Core.Events
+[<ReflectedDefinition>]
+module ViewController =
 
-(* ____       _       _  __     ___
-  |  _ \ __ _| |_ ___| |_\ \   / (_) _____      __
-  | |_) / _` | __/ __| '_ \ \ / /| |/ _ \ \ /\ / /
-  |  __/ (_| | || (__| | | \ V / | |  __/\ V  V /
-  |_|   \__,_|\__\___|_| |_|\_/  |_|\___| \_/\_/ replacement
-*)
+  open Iris.Web.Core.Html
+  open Iris.Web.Tests.Util
+  open Iris.Web.Core.Store
+  open Iris.Web.Core.ViewController
+  open Iris.Web.Core.Patch
+  open Iris.Web.Core.Store
+  open Iris.Web.Core.Reducer
+  open Iris.Web.Core.Events
 
-type PatchView () =
-  let patchView (patch : Patch) =
-    h1 <@> class' "patch" <|> text patch.name
+  (* ____       _       _  __     ___
+    |  _ \ __ _| |_ ___| |_\ \   / (_) _____      __
+    | |_) / _` | __/ __| '_ \ \ / /| |/ _ \ \ /\ / /
+    |  __/ (_| | || (__| | | \ V / | |  __/\ V  V /
+    |_|   \__,_|\__\___|_| |_|\_/  |_|\___| \_/\_/ replacement
+  *)
 
-  let patchList (patches : Patch array) =
-    div <||> Array.map patchView patches
+  type PatchView () =
+    let patchView (patch : Patch) =
+      h1 <@> class' "patch" <|> text patch.name
 
-  let mainView content = div <@> id' "patches" <|> content
+    let patchList (patches : Patch array) =
+      div <||> Array.map patchView patches
 
-  interface IWidget with
-    member self.render (store : Store) =
-      let patches = store.state.Patches |> List.toArray
+    let mainView content = div <@> id' "patches" <|> content
 
-      let content =
-        if Array.length patches = 0
-        then p <|> text "Empty"
-        else patchList patches
+    interface IWidget with
+      member self.render (store : Store) =
+        let patches = store.state.Patches |> List.toArray
 
-      mainView content |> renderHtml
+        let content =
+          if Array.length patches = 0
+          then p <|> text "Empty"
+          else patchList patches
 
-    member self.Dispose () = ()
+        mainView content |> renderHtml
+
+      member self.Dispose () = ()
 
 
-let body = Globals.document.body
+  let main () =
+    (*--------------------------------------------------------------------------*)
+    suite "Test.Units.ViewController - basics"
+    (*--------------------------------------------------------------------------*)
 
-let main () =
-  (*--------------------------------------------------------------------------*)
-  suite "Test.Units.ViewController - basics"
-  (*--------------------------------------------------------------------------*)
+    test "should render successive updates of a patch view" <| fun cb ->
+      let patch1 =
+        { id = "0xb33f"
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
 
-  test "should render successive updates of a patch view" <| fun cb ->
-    let patch1 =
-      { id = "0xb33f"
-      ; name = "patch-1"
-      ; ioboxes = Array.empty
-      }
+      let patch2 =
+        { id = "0xd001"
+        ; name = "patch-2"
+        ; ioboxes = Array.empty
+        }
 
-    let patch2 =
-      { id = "0xd001"
-      ; name = "patch-2"
-      ; ioboxes = Array.empty 
-      }
+      let patch3 =
+        { id = "0x400f"
+        ; name = "patch-3"
+        ; ioboxes = Array.empty
+        }
 
-    let patch3 =
-      { id = "0x400f"
-      ; name = "patch-3"
-      ; ioboxes = Array.empty
-      }
+      let mutable store = mkStore reducer
 
-    let mutable store = mkStore reducer
+      let view = new PatchView()
+      let ctrl = new ViewController(view)
 
-    let view = new PatchView()
-    let ctrl = new ViewController(view)
+      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch1) }
 
-    store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch1) }
+      ctrl.render store
 
-    ctrl.render store
+      JQuery.Of(".patch")
+      |> (fun els -> check (els.Length = 1) "should be one rendered patch template in dom")
 
-    body.getElementsByClassName "patch"
-    |> (fun els ->
-          check (els.length = 1.0) "should be one rendered patch template in dom")
+      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch2) }
 
-    store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch2) }
+      ctrl.render store
 
-    ctrl.render store
+      JQuery.Of(".patch")
+      |> (fun els -> check (els.Length = 2) "should be two rendered patch templates in dom")
 
-    body.getElementsByClassName "patch"
-    |> (fun els ->
-        check (els.length = 2.0) "should be two rendered patch templates in dom")
+      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch3) }
 
-    store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch3) }
+      ctrl.render store
 
-    ctrl.render store
+      JQuery.Of(".patch")
+      |> (fun els -> check_cc (els.Length = 3) "should be three rendered patch templates in dom" cb)
 
-    body.getElementsByClassName "patch"
-    |> (fun els ->
-        check_cc (els.length = 3.0) "should be three rendered patch templates in dom" cb)
-
-    (ctrl :> IDisposable).Dispose ()
+      (ctrl :> IDisposable).Dispose ()
