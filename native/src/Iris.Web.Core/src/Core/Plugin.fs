@@ -29,14 +29,15 @@ module Plugin =
     abstract on      : string      -> (unit -> unit) -> unit
     abstract off     : string      -> unit
 
-  type IPluginSpec () =
-    let mutable   name   = ""
-    let mutable ``type`` = ""
-    let mutable  create : (unit -> IPlugin) = failwith "hi"
+  type IPluginSpec [<Inline "{}">] ()  =
+    [<DefaultValue>]
+    val mutable name : string
 
-    member self.Name    with get () = name
-    member self.GetType with get () = ``type``
-    member self.Create  with get () = create
+    [<DefaultValue>]
+    val mutable ``type`` : string
+
+    [<DefaultValue>]
+    val mutable  create : unit -> IPlugin
 
 
   [<Direct "return window.IrisPlugins">]
@@ -80,7 +81,7 @@ module Plugin =
     member self.add (iobox : IOBox) =
       let candidates = findPlugins iobox.kind
       in if candidates.Length > 0
-         then addImpl iobox.id (candidates.[0].Create ())
+         then addImpl iobox.id (candidates.[0].create ())
          else Console.Log("Could not instantiate view for IOBox. Type not found:  " + iobox.kind)
 
     member self.has (iobox : IOBox) : bool = hasImpl iobox.id

@@ -23,7 +23,6 @@ module ViewController =
     inherit IDisposable
     abstract render : Store -> VTree
 
-
   (*
       __     ___                ____ _        _
       \ \   / (_) _____      __/ ___| |_ _ __| |

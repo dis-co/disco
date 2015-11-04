@@ -98,7 +98,7 @@ module Plugins =
     (*--------------------------------------------------------------------------*)
     test "rendering a plugin should return expected dom element" <| fun cb ->
       let plugin = findPlugins "string" |> (fun plugs -> Array.get plugs 0)
-      let inst = plugin.Create ()
+      let inst = plugin.create ()
 
       let elid = "0xb33f"
 
@@ -119,7 +119,7 @@ module Plugins =
     (*--------------------------------------------------------------------------*)
     test "re-rendering a plugin should return updated dom element" <| fun cb ->
       let plugin = findPlugins "string" |> (fun plugs -> Array.get plugs 0)
-      let inst = plugin.Create ()
+      let inst = plugin.create ()
 
       let value1 = "r4nd0m"
       let value2 = "pr1m0p"
