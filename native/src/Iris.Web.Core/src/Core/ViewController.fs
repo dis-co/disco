@@ -1,4 +1,4 @@
-namespace Iris.Service.Client.Core
+namespace Iris.Web.Core
 
 open WebSharper
 open WebSharper.JavaScript
@@ -8,8 +8,8 @@ open WebSharper.JQuery
 module ViewController =
 
   open System
-  open Iris.Service.Client.Core.Store
-  open Iris.Service.Client.Core.Html
+  open Iris.Web.Core.Store
+  open Iris.Web.Core.Html
 
   (*
       __        ___     _            _

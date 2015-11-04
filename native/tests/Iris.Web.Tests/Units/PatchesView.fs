@@ -23,7 +23,7 @@ module PatchesView =
   open Iris.Web.Views.PatchesView
 
   [<Direct
-    "
+    @"
     window.IrisPlugins = [];
     (function(plugins) {
       var h = virtualDom.h;
@@ -53,7 +53,7 @@ module PatchesView =
           return h('div', {
             id: iobox.id
           }, [
-            h('p', { className: 'name' }, [ iobox.name ]),
+            h(""p"", { className: 'name' }, [ iobox.name ]),
             slices(iobox)
           ]);
         };

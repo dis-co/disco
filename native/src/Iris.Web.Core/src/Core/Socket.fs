@@ -1,4 +1,4 @@
-namespace Iris.Service.Client.Core
+namespace Iris.Web.Core
 
 #nowarn "1182"
 
@@ -8,7 +8,7 @@ open WebSharper.JavaScript
 [<JavaScript>]
 module Socket =
 
-  open Iris.Service.Client.Core.Events
+  open Iris.Web.Core.Events
 
   (*   __  __
       |  \/  | ___  ___ ___  __ _  __ _  ___

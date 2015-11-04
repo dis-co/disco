@@ -1,12 +1,12 @@
-namespace Iris.Service.Client.Core
+namespace Iris.Web.Core
 
 open WebSharper
 
 [<JavaScript>]
 module Events = 
 
-  open Iris.Service.Client.Core.IOBox
-  open Iris.Service.Client.Core.Patch
+  open Iris.Web.Core.IOBox
+  open Iris.Web.Core.Patch
   
   (*   _____                 _   ____        _        
       | ____|_   _____ _ __ | |_|  _ \  __ _| |_ __ _ 

@@ -1,4 +1,4 @@
-namespace Iris.Service.Client.Core
+namespace Iris.Web.Core
 
 open WebSharper
 open WebSharper.JavaScript

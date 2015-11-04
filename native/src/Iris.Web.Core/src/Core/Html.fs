@@ -1,4 +1,4 @@
-namespace Iris.Service.Client.Core
+namespace Iris.Web.Core
 
 #nowarn "1182"
   
@@ -7,7 +7,6 @@ open WebSharper.JavaScript
 
 [<JavaScript>]
 module Html = 
-  
   (*
    _____                      
   |_   _|   _ _ __   ___  ___ 

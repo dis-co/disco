@@ -10,7 +10,7 @@ open WebSharper.Mocha
 [<RequireQualifiedAccess>]
 module Html =
 
-  open Iris.Web.Test.Util
+  open Iris.Web.Tests.Util
   open Iris.Web.Core.Html
 
   let main () =

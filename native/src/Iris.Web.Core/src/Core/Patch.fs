@@ -1,4 +1,4 @@
-namespace Iris.Service.Client.Core
+namespace Iris.Web.Core
 
 open WebSharper
 open WebSharper.JavaScript
@@ -6,7 +6,7 @@ open WebSharper.JavaScript
 [<JavaScript>]
 module Patch =
 
-  open Iris.Service.Client.Core.IOBox
+  open Iris.Web.Core.IOBox
   
   (*   ____       _       _     
       |  _ \ __ _| |_ ___| |__  

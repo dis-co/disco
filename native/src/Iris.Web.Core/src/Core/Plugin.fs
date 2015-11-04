@@ -1,4 +1,4 @@
-namespace Iris.Service.Client.Core
+namespace Iris.Web.Core
 
 #nowarn "1182"
 
@@ -10,9 +10,9 @@ module Plugin =
 
   open System
 
-  open Iris.Service.Client.Core.Html
-  open Iris.Service.Client.Core.IOBox
-  open Iris.Service.Client.Core.Patch
+  open Iris.Web.Core.Html
+  open Iris.Web.Core.IOBox
+  open Iris.Web.Core.Patch
 
   (*   ____  _             _
       |  _ \| |_   _  __ _(_)_ __

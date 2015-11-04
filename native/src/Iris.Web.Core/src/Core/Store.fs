@@ -1,4 +1,4 @@
-namespace Iris.Service.Client.Core
+namespace Iris.Web.Core
 
 open WebSharper
 open WebSharper.JavaScript
@@ -6,10 +6,10 @@ open WebSharper.JavaScript
 [<JavaScript>]
 module Store =
 
-  open Iris.Service.Client.Core.Html
-  open Iris.Service.Client.Core.IOBox
-  open Iris.Service.Client.Core.Patch
-  open Iris.Service.Client.Core.Events
+  open Iris.Web.Core.Html
+  open Iris.Web.Core.IOBox
+  open Iris.Web.Core.Patch
+  open Iris.Web.Core.Events
 
   (*   ____  _        _
       / ___|| |_ __ _| |_ ___

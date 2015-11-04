@@ -1,4 +1,4 @@
-namespace Iris.Service.Client.Views
+namespace Iris.Web.Views
 
 open WebSharper
 open WebSharper.JavaScript
@@ -6,12 +6,12 @@ open WebSharper.JavaScript
 [<JavaScript>]
 module PatchView =
 
-  open Iris.Service.Client.Core.Html
-  open Iris.Service.Client.Core.IOBox
-  open Iris.Service.Client.Core.Patch
-  open Iris.Service.Client.Core.ViewController
-  open Iris.Service.Client.Core.Store
-  open Iris.Service.Client.Core.Plugin
+  open Iris.Web.Core.Html
+  open Iris.Web.Core.IOBox
+  open Iris.Web.Core.Patch
+  open Iris.Web.Core.ViewController
+  open Iris.Web.Core.Store
+  open Iris.Web.Core.Plugin
 
   type PatchView () =
     let mutable plugins = new Plugins ()
