@@ -27,7 +27,7 @@ module PatchView =
       let container = li <|> (strong <|> text (iobox.name))
 
       match plugins.get iobox with
-        | Some(instance) -> container <|> Raw(instance.render iobox)
+        | Some(instance) -> container <|> Raw(instance.Render iobox)
         |  _             -> container
 
     let patchView (patch : Patch) : Html =
@@ -49,7 +49,7 @@ module PatchView =
     (* RENDERER *)
 
     interface IWidget with
-      member self.Dispose () = ()
+      member self.dispose () = ()
 
       member self.render (store : Store) =
         store.state.Patches

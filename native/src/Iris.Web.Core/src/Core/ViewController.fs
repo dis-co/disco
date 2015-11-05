@@ -20,8 +20,8 @@ module ViewController =
                           |___/
   *)
   type IWidget =
-    inherit IDisposable
     abstract render : Store -> VTree
+    abstract dispose : unit -> unit
 
   (*
       __     ___                ____ _        _
@@ -62,5 +62,5 @@ module ViewController =
 
     interface IDisposable with
       member self.Dispose () =
-        widget.Dispose ()
+        widget.dispose ()
         JQuery.RemoveData(root)

@@ -189,4 +189,4 @@ paket-files
 docs/content/license.md
 docs/content/release-notes.md
 .fake
-src/Iris.Web/assets/dependencies/
+src/Iris.Web.Core/assets/dependencies/

@@ -21,15 +21,26 @@ module Plugin =
       |_|   |_|\__,_|\__, |_|_| |_| + spec
                      |___/
   *)
-  type IPlugin =
-    abstract render  : IOBox       -> VTree
-    abstract dispose : unit        -> unit
-    abstract get     : unit        -> Slice array
-    abstract set     : Slice array -> unit
-    abstract on      : string      -> (unit -> unit) -> unit
-    abstract off     : string      -> unit
+  [<Stub>]
+  type Plugin () = class
+    [<Name "render">]
+    [<Stub>]
+    member this.Render (iobox : IOBox) : VTree = X<_>
 
-  type IPluginSpec [<Inline "{}">] ()  =
+    [<Name "dispose">]
+    [<Stub>]
+    member this.Dispose() : unit = X<_>
+
+    [<Name "get">]
+    [<Stub>]
+    member this.Get() : Slice array = X<_>
+
+    [<Name "set">]
+    [<Stub>]
+    member this.Set(slices : Slice array) : unit = X<_>
+  end
+
+  type PluginSpec [<Inline "{}">] ()  =
     [<DefaultValue>]
     val mutable name : string
 
@@ -37,14 +48,14 @@ module Plugin =
     val mutable ``type`` : string
 
     [<DefaultValue>]
-    val mutable  create : unit -> IPlugin
+    val mutable  create : unit -> Plugin
 
 
   [<Direct "return window.IrisPlugins">]
-  let listPlugins () : IPluginSpec array = X<IPluginSpec array>
+  let listPlugins () : PluginSpec array = X<PluginSpec array>
 
   [<Direct "return window.IrisPlugins.filter(function (plugin) { return plugin.type === $kind; })" >]
-  let findPlugins (kind : string) : IPluginSpec array = X<IPluginSpec array>
+  let findPlugins (kind : string) : PluginSpec array = X<PluginSpec array>
 
   [<Direct "return ($o === null) || ($o === undefined)">]
   let isNull (o : obj) : bool = X<bool>
@@ -61,7 +72,7 @@ module Plugin =
   type Plugins () =
     (* ------------------------ internal -------------------------- *)
     [<Inline " $0[$id] = $inst ">]
-    let addImpl (id : string) (inst : IPlugin) : unit = X<unit>
+    let addImpl (id : string) (inst : Plugin) : unit = X<unit>
 
     [<Inline " $0[$id] != null ">]
     let hasImpl (id : string) : bool = X<bool>
@@ -70,7 +81,7 @@ module Plugin =
     let rmImpl (id : string) : unit = X<unit>
 
     [<Inline " $0[$id] ">]
-    let getImpl (id : string) : IPlugin = X<IPlugin>
+    let getImpl (id : string) : Plugin = X<Plugin>
 
     [<Inline " Object.keys($0) ">]
     let idsImpl () : string array = X<string array>
@@ -86,7 +97,7 @@ module Plugin =
 
     member self.has (iobox : IOBox) : bool = hasImpl iobox.id
 
-    member self.get (iobox : IOBox) : IPlugin option =
+    member self.get (iobox : IOBox) : Plugin option =
       let inst = getImpl iobox.id
       if isNull inst
       then None

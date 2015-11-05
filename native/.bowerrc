@@ -1,5 +1,5 @@
 {
-  "directory": "src/Iris.Web/assets/dependencies",
+  "directory": "src/Iris.Web.Core/assets/dependencies",
   "analytics": false,
   "timeout": 120000
 }

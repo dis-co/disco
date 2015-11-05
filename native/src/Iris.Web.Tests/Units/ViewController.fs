@@ -45,7 +45,7 @@ module ViewController =
 
         mainView content |> renderHtml
 
-      member self.Dispose () = ()
+      member self.dispose () = ()
 
 
   let main () =

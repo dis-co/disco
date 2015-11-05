@@ -110,7 +110,7 @@ module Plugins =
         ; slices = [| { idx = 0; value = "oh hey" } |]
         }
 
-      inst.render iobox
+      inst.Render iobox
       |> createElement
       |> JQuery.Of
       |> (fun elm ->
@@ -132,7 +132,7 @@ module Plugins =
         ; slices = [| { idx = 0; value = value1 } |]
         }
 
-      inst.render iobox
+      inst.Render iobox
       |> createElement
       |> JQuery.Of
       |> (fun el -> el.Children("slice"))
@@ -143,7 +143,7 @@ module Plugins =
       let update =
         { iobox with slices = [| { idx = 0; value = value2 } |] }
 
-      inst.render update
+      inst.Render update
       |> createElement
       |> JQuery.Of
       |> (fun el -> el.Children("slice"))
@@ -156,7 +156,7 @@ module Plugins =
                               ;  { idx = 0; value = value2 }
                               |] }
 
-      inst.render final
+      inst.Render final
       |> createElement
       |> JQuery.Of
       |> (fun elm -> elm.Children("slice"))
