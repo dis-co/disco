@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Iris Browser Tests</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://cdn.rawgit.com/mochajs/mocha/2.2.5/mocha.css">
+  </head>
+  <body>
+    <h2 style="margin: 50px 65px;">
+      <a href="/">Iris Tests</a>
+    </h2>
+
+    <div id="content"></div>
+    <div id="mocha"></div>
+
+    <script src="dependencies/virtual-dom/dist/virtual-dom.js"></script>
+    <script src="dependencies/rxjs/dist/rx.all.js"></script>
+    <script src="dependencies/jquery/dist/jquery.js"></script>
+    <script src="dependencies/routie/dist/routie.js"></script>
+    <script src="dependencies/fabric.js/dist/fabric.js"></script>
+    <script src="https://cdn.rawgit.com/Automattic/expect.js/0.3.1/index.js"></script>
+    <script src="https://cdn.rawgit.com/mochajs/mocha/2.2.5/mocha.js"></script>
+    <script>mocha.setup('qunit')</script>
+
+    <script src="Iris.Web.Tests.js"></script>
+
+    <div style="margin: 50xpx 65px;">
+      <button onclick="mocha.run()">Run</button>
+    </div>
+  </body>
+</html>

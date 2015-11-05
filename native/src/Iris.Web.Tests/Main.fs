@@ -4,10 +4,13 @@ open WebSharper
 open WebSharper.JavaScript
 open WebSharper.JQuery
 
+[<JavaScript>]
 module Client =
-  let Main = Console.Log("helllo")
+  open Test.Units
+  
+  let Main =
+    Html.main ()
     
-
 (*
 open Microsoft.FSharp.Quotations
 open System.IO
@@ -41,49 +44,4 @@ let compileTests () = failwith "not implemented"
          | _ -> (m.ToString (), ""))
   |> Array.toList
 
-let test name str = sprintf "<script id=\"%s\">%s</script>" name str
-  
-   _____         _   ____                  
-  |_   _|__  ___| |_|  _ \ __ _  __ _  ___ 
-    | |/ _ \/ __| __| |_) / _` |/ _` |/ _ \
-    | |  __/\__ \ |_|  __/ (_| | (_| |  __/
-    |_|\___||___/\__|_|   \__,_|\__, |\___|
-                                |___/      
-
-    Function to compile the tests page. 
-
-let testsPage () = 
-  List.fold (fun m (name,code) -> m + (test name code)) "" <| compileTests ()
-  |> sprintf 
-     @"
-     <!doctype html>
-     <html>  
-       <head>
-         <title>Iris Browser Tests</title>
-         <meta charset=""utf-8"">
-         <link rel=""stylesheet"" href=""https://cdn.rawgit.com/mochajs/mocha/2.2.5/mocha.css"">
-       </head>
-       <body>
-         <h2 style=""margin: 50px 65px;"">
-           <a href=""/tests"">Iris Tests</a>
-         </h2>
-
-         <div id=""content""></div>
-         <div id=""mocha""></div>
-
-         <script src=""dependencies/virtual-dom/dist/virtual-dom.js""></script>
-         <script src=""dependencies/rxjs/dist/rx.all.js""></script>
-         <script src=""dependencies/jquery/dist/jquery.js""></script>
-         <script src=""dependencies/routie/dist/routie.js""></script>
-         <script src=""dependencies/fabric.js/dist/fabric.js""></script>
-         <script src=""https://cdn.rawgit.com/Automattic/expect.js/0.3.1/index.js""></script>
-         <script src=""https://cdn.rawgit.com/mochajs/mocha/2.2.5/mocha.js""></script>
-         <script>mocha.setup('qunit')</script>
-
-         %s
-
-         <script>mocha.run()</script>
-       </body>
-     </html>
-     "
 *)
