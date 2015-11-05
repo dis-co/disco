@@ -5,6 +5,7 @@ open WebSharper.JavaScript
 open WebSharper.JQuery
 open WebSharper.Mocha
 
+[<JavaScript>]
 module Plugins =
 
   open Iris.Web.Tests.Util

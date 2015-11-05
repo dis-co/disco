@@ -4,12 +4,25 @@ open WebSharper
 open WebSharper.JavaScript
 open WebSharper.JQuery
 
+open Microsoft.FSharp.Quotations
+open System.IO
+open System.Reflection
+open System.Text.RegularExpressions
+
 [<JavaScript>]
 module Client =
   open Test.Units
-  
+
+  let apply f = f ()
+
   let Main =
-    Html.main ()
+    [ Html.main
+    ; PatchesView.main
+    ; Plugins.main
+    ; Storage.main
+    ; Store.main 
+    ; ViewController.main
+    ] |> List.iter apply
     
 (*
 open Microsoft.FSharp.Quotations
