@@ -38,11 +38,12 @@
     <Compile Include="Util.fs" />
     <Compile Include="Mocha.fs" />
     <Compile Include="Units\Html.fs" />
-    <Compile Include="Units\PatchesView.fs" />
-    <Compile Include="Units\Plugins.fs" />
-    <Compile Include="Units\Storage.fs" />
-    <Compile Include="Units\Store.fs" />
-    <Compile Include="Units\ViewController.fs" />
+    <!-- <compile Include="Units\PatchesView.fs" /> -->
+    <!-- <Compile Include="Units\Plugins.fs" /> -->
+    <!-- <Compile Include="Units\Storage.fs" /> -->
+    <!-- <Compile Include="Units\Store.fs" /> -->
+    <!-- <Compile Include="Units\ViewController.fs" /> -->
+    <Compile Include="Units\VirtualDom.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <Choose>
