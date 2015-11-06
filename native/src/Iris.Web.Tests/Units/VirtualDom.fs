@@ -2,26 +2,56 @@ namespace Test.Units
 
 open WebSharper
 open WebSharper.JavaScript
+open WebSharper.JQuery
 open WebSharper.Mocha
 open Iris.Web.Core.Html
 
 [<JavaScript>]
+[<RequireQualifiedAccess>]
 module VirtualDom =
 
   let main () =
-    // let props = new VProperties()
-    // props.id <- "main"
-    // props.className <- "horrific"
-    // 
-    // Console.Log(new VTree ("h1", props, [| new VTree("Oh wtf"); new VTree("p", new VProperties(), [| new VTree("p content") |]) |]) |> createElement)
 
     (*------------------------------------------------------------------------*)
     suite "Test.Units.VirtualDom"
     (*------------------------------------------------------------------------*)
 
-    pending "should render dom elements correctly"
-    pending "should render updates to a dom tree correctly"
-    pending "should render id attribute"
-    pending "should render style attribute"
-    pending "should render class attribute"
+    test "should render dom elements correctly" <| fun cb ->
+      let tree =
+        new VTree("div", emptyProps,
+                  [| new VTree("My beautiful tree")
+                  ;  new VTree("p", emptyProps, [| new VTree("p content") |]) |])
+        |> createElement
+        |> JQuery.Of 
+      check_cc (tree.Children("p").Length = 1) "result should have a p" cb
 
+    test "should render class attribute" <| fun cb ->
+      let props = new VProps()
+      props.id <- "main"
+      props.className <- "container"
+
+      let tree =
+        new VTree("div", props,
+                  [| new VTree("My beautiful tree")
+                  ;  new VTree("p", emptyProps, [| new VTree("p content") |]) |])
+        |> createElement
+        |> JQuery.Of 
+
+      check_cc (tree.HasClass("container")) "result should have class container" cb
+
+    test "should render id attribute" <| fun cb -> 
+      let props = new VProps()
+      props.id <- "main"
+      props.className <- "container"
+
+      let tree =
+        new VTree("div", props,
+                  [| new VTree("My beautiful tree")
+                  ;  new VTree("p", emptyProps, [| new VTree("p content") |]) |])
+        |> createElement
+        |> JQuery.Of 
+
+      check_cc (tree.HasClass("container")) "result should have class container" cb
+
+    pending "should render style attribute"
+    pending "should patch updates in dom tree correctly"

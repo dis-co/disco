@@ -16,9 +16,8 @@ module Html =
         |___/|_|
   *)
 
-
   // for styles etc
-  type VProperties [<Inline "{}">] () =
+  type VProps [<Inline "{}">] () =
     [<DefaultValue>]
     val mutable id : string
 
@@ -31,10 +30,13 @@ module Html =
     [<DefaultValue>]
     val mutable onclick : unit -> unit
 
+
+  let emptyProps = new VProps ()
+
   [<Stub>]
   type VTree =
     [<Inline "new virtualDom.VNode($tag,$props,$children)">]
-    new (tag : string, props : VProperties, children : VTree array) = {}
+    new (tag : string, props : VProps, children : VTree array) = {}
 
     [<Inline "new virtualDom.VText($tag)">]
     new (tag : string) = {}
@@ -127,7 +129,7 @@ module Html =
   [<Inline "virtualDom.patch($root, $patch)">]
   let patch (root : Dom.Element) (patch : VPatch) : Dom.Element = X
 
-  let mkVNode (tag : string) (prop : VProperties) (children : VTree array) : VTree =
+  let mkVNode (tag : string) (prop : VProps) (children : VTree array) : VTree =
     new VTree(tag, prop, children)
 
   let mkVText (txt : string) : VTree =
@@ -146,7 +148,7 @@ module Html =
   //   | Single of name : string
   //   | Pair   of name : string * value : string
 
-  let attrToProp (p : VProperties) (a : Attribute) : VProperties =
+  let attrToProp (p : VProps) (a : Attribute) : VProps =
     match a with
       | Single(name) -> p
       | Pair("id", StrVal(value))     -> p.id        <- value; p
@@ -155,8 +157,8 @@ module Html =
       | Pair("style", StrVal(value))  -> p.style     <- value; p
       | _ -> p
 
-  let attrsToProp (attrs : Attribute array) : VProperties =
-    Array.fold attrToProp (new VProperties()) attrs
+  let attrsToProp (attrs : Attribute array) : VProps =
+    Array.fold attrToProp (new VProps()) attrs
 
   let rec renderHtml (el : Html) =
     match el with

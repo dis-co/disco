@@ -5,6 +5,7 @@ open WebSharper.Mocha
 open WebSharper.JavaScript
 
 [<JavaScript>]
+[<RequireQualifiedAccess>]
 module Storage = 
   let main () =
     (*--------------------------------------------------------------------------*)

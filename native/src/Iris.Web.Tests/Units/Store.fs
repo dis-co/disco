@@ -6,6 +6,7 @@ open WebSharper.JavaScript
 open WebSharper.JQuery
 
 [<JavaScript>]
+[<RequireQualifiedAccess>]
 module Store =
 
   open Iris.Web.Core.IOBox

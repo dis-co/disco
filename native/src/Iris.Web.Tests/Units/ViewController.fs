@@ -7,6 +7,7 @@ open WebSharper.JavaScript
 open WebSharper.JQuery
 
 [<ReflectedDefinition>]
+[<RequireQualifiedAccess>]
 module ViewController =
 
   open Iris.Web.Core.Html
