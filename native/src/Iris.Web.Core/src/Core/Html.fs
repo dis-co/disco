@@ -16,6 +16,11 @@ module Html =
         |___/|_|
   *)
 
+  type Styles [<Inline "{}">] () =
+    [<DefaultValue>] val mutable textAlign : string;
+    [<DefaultValue>] val mutable margin    : string;
+
+
   // for styles etc
   type VProps [<Inline "{}">] () =
     [<DefaultValue>]
@@ -25,7 +30,7 @@ module Html =
     val mutable className : string
 
     [<DefaultValue>]
-    val mutable style : string
+    val mutable style : Styles
 
     [<DefaultValue>]
     val mutable onclick : unit -> unit
@@ -47,6 +52,7 @@ module Html =
   type AttrVal =
     | StrVal of string
     | EvVal  of (unit -> unit)
+    | MapVal of Styles
 
   type Attribute =
     | Single of name : string
@@ -154,7 +160,7 @@ module Html =
       | Pair("id", StrVal(value))     -> p.id        <- value; p
       | Pair("class", StrVal(value))  -> p.className <- value; p
       | Pair("onClick", EvVal(value)) -> p.onclick   <- value; p
-      | Pair("style", StrVal(value))  -> p.style     <- value; p
+      | Pair("style", MapVal(value))  -> p.style     <- value; p
       | _ -> p
 
   let attrsToProp (attrs : Attribute array) : VProps =
