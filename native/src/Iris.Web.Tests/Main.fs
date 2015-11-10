@@ -19,6 +19,7 @@ module Client =
     [ Html.main
     ; Store.main
     ; VirtualDom.main
+    ; PatchesView.main
     ; ViewController.main 
     ] |> List.iter apply
     

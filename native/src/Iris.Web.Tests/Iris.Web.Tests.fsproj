@@ -38,7 +38,7 @@
     <Compile Include="Util.fs" />
     <Compile Include="Mocha.fs" />
     <Compile Include="Units\Html.fs" />
-    <!-- <compile Include="Units\PatchesView.fs" /> -->
+    <compile Include="Units\PatchesView.fs" />
     <!-- <Compile Include="Units\Plugins.fs" /> -->
     <!-- <Compile Include="Units\Storage.fs" /> -->
     <Compile Include="Units\Store.fs" />
