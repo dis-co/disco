@@ -6,7 +6,7 @@ open WebSharper.Mocha
 open WebSharper.JavaScript
 open WebSharper.JQuery
 
-[<ReflectedDefinition>]
+[<JavaScript>]
 [<RequireQualifiedAccess>]
 module ViewController =
 
@@ -100,3 +100,30 @@ module ViewController =
       |> (fun els -> check_cc (els.Length = 3) "should be three rendered patch templates in dom" cb)
 
       (ctrl :> IDisposable).Dispose ()
+
+    (*------------------------------------------------------------------------*)
+    test "should take care of removing its root element on Dispose" <| fun cb ->
+      let patch1 =
+        { id = "0xb33f"
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
+
+      let mutable store = mkStore reducer
+
+      let view = new PatchView()
+      let ctrl = new ViewController(view)
+
+      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch1) }
+
+      ctrl.render store
+
+      JQuery.Of(".patch")
+      |> (fun els -> check (els.Length = 1) "should be one patch in dom")
+
+      (ctrl :> IDisposable).Dispose ()
+
+      JQuery.Of(".patch")
+      |> (fun els -> check_cc (els.Length = 0) "should be no patch in dom" cb)
+
+      

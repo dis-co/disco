@@ -63,4 +63,4 @@ module ViewController =
     interface IDisposable with
       member self.Dispose () =
         widget.dispose ()
-        JQuery.RemoveData(root)
+        JQuery.Of(root).Remove() |> ignore

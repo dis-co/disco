@@ -16,8 +16,9 @@ module Client =
   let apply f = f ()
 
   let Main =
-    [ VirtualDom.main
-    ; Html.main
+    [ Html.main
+    ; VirtualDom.main
+    ; ViewController.main 
     ] |> List.iter apply
     
 (*
