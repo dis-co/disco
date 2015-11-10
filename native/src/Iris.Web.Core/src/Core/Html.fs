@@ -141,6 +141,10 @@ module Html =
   let mkVText (txt : string) : VTree =
     new VTree(txt)
 
+  // `this` makes me feel uneasy
+  [<Inline "$cb.apply({},arguments)">]
+  let withArgs (cb : 'a -> unit) = X
+
   (*
     ____                _     _             _
    / ___|___  _ __ ___ | |__ (_)_ __   __ _| |_ ___  _ __ ___
@@ -159,7 +163,7 @@ module Html =
       | Single(name) -> p
       | Pair("id", StrVal(value))     -> p.id        <- value; p
       | Pair("class", StrVal(value))  -> p.className <- value; p
-      | Pair("onClick", EvVal(value)) -> p.onclick   <- value; p
+      | Pair("onclick", EvVal(value)) -> p.onclick   <- value; p
       | Pair("style", MapVal(value))  -> p.style     <- value; p
       | _ -> p
 
@@ -332,44 +336,112 @@ module Html =
   let value' txt = Pair("value", txt)
 
   let onClick (cb : Dom.MouseEvent -> unit) =
-    Pair("onclick", EvVal(fun () -> Console.Log("hm click")))
+    Pair("onclick", EvVal(fun () -> withArgs cb))
 
-  //  GlobalEventHandlers.onabort
-  //  GlobalEventHandlers.onblur
-  //  GlobalEventHandlers.onchange
-  //  GlobalEventHandlers.onclick
-  //  GlobalEventHandlers.onclose
-  //  GlobalEventHandlers.oncontextmenu
-  //  GlobalEventHandlers.ondblclick
-  //  GlobalEventHandlers.onerror
-  //  GlobalEventHandlers.onfocus
-  //  GlobalEventHandlers.oninput
-  //  GlobalEventHandlers.onkeydown
-  //  GlobalEventHandlers.onkeypress
-  //  GlobalEventHandlers.onkeyup
-  //  GlobalEventHandlers.onload
-  //  GlobalEventHandlers.onmousedown
-  //  GlobalEventHandlers.onmousemove
-  //  GlobalEventHandlers.onmouseout
-  //  GlobalEventHandlers.onmouseover
-  //  GlobalEventHandlers.onmouseup
-  //  GlobalEventHandlers.onpointercancel
-  //  GlobalEventHandlers.onpointerdown
-  //  GlobalEventHandlers.onpointerenter
-  //  GlobalEventHandlers.onpointerleave
-  //  GlobalEventHandlers.onpointermove
-  //  GlobalEventHandlers.onpointerout
-  //  GlobalEventHandlers.onpointerover
-  //  GlobalEventHandlers.onpointerup
-  //  GlobalEventHandlers.onreset
-  //  GlobalEventHandlers.onresize
-  //  GlobalEventHandlers.onscroll
-  //  GlobalEventHandlers.onselect
-  //  GlobalEventHandlers.onselectstart
-  //  GlobalEventHandlers.onsubmit
-  //  GlobalEventHandlers.ontouchcancel
-  //  GlobalEventHandlers.ontouchmove
-  //  GlobalEventHandlers.ontouchstart
+  let onAbort (cb : Dom.Event -> unit) =
+    Pair("onabort", EvVal(fun () -> withArgs cb))
+
+  let onBlur (cb : Dom.Event -> unit) =
+    Pair("onblur", EvVal(fun () -> withArgs cb))
+
+  let onChange (cb : Dom.Event -> unit) =
+    Pair("onchange", EvVal(fun () -> withArgs cb))
+
+  let onClose (cb : Dom.Event -> unit) =
+    Pair("onclose", EvVal(fun () -> withArgs cb))
+
+  let onContextMenu (cb : Dom.Event -> unit) =
+    Pair("oncontextmenu", EvVal(fun () -> withArgs cb))
+
+  let onDblClick (cb : Dom.Event -> unit) =
+    Pair("ondblclick", EvVal(fun () -> withArgs cb))
+
+  let onError (cb : Dom.Event -> unit) =
+    Pair("onerror", EvVal(fun () -> withArgs cb))
+
+  let onFocus (cb : Dom.Event -> unit) =
+    Pair("onfocus", EvVal(fun () -> withArgs cb))
+
+  let onInput (cb : Dom.Event -> unit) =
+    Pair("oninput", EvVal(fun () -> withArgs cb))
+
+  let onKeyDown (cb : Dom.Event -> unit) =
+    Pair("onkeydown", EvVal(fun () -> withArgs cb))
+
+  let onKeyPress (cb : Dom.Event -> unit) =
+    Pair("onkeypress", EvVal(fun () -> withArgs cb))
+
+  let onKeyUp (cb : Dom.Event -> unit) =
+    Pair("onkeyup", EvVal(fun () -> withArgs cb))
+
+  let onLoad (cb : Dom.Event -> unit) =
+    Pair("onload", EvVal(fun () -> withArgs cb))
+
+  let onMouseDown (cb : Dom.Event -> unit) =
+    Pair("onmousedown", EvVal(fun () -> withArgs cb))
+
+  let onMouseMove (cb : Dom.Event -> unit) =
+    Pair("onmousemove", EvVal(fun () -> withArgs cb))
+
+  let onMouseOut (cb : Dom.Event -> unit) =
+    Pair("onmouseout", EvVal(fun () -> withArgs cb))
+
+  let onMouseOver (cb : Dom.Event -> unit) =
+    Pair("onmouseover", EvVal(fun () -> withArgs cb))
+
+  let onMouseUp (cb : Dom.Event -> unit) =
+    Pair("onmouseup", EvVal(fun () -> withArgs cb))
+
+  let onPointerCancel (cb : Dom.Event -> unit) =
+    Pair("onpointercancel", EvVal(fun () -> withArgs cb))
+
+  let onPointerDown (cb : Dom.Event -> unit) =
+    Pair("onpointerdown", EvVal(fun () -> withArgs cb))
+
+  let onPointerEnter (cb : Dom.Event -> unit) =
+    Pair("onpointerenter", EvVal(fun () -> withArgs cb))
+
+  let onPointerLeave (cb : Dom.Event -> unit) =
+    Pair("onpointerleave", EvVal(fun () -> withArgs cb))
+
+  let onPointerMove (cb : Dom.Event -> unit) =
+    Pair("onpointermove", EvVal(fun () -> withArgs cb))
+
+  let onPointerOut (cb : Dom.Event -> unit) =
+    Pair("onpointerout", EvVal(fun () -> withArgs cb))
+
+  let onPointerOver (cb : Dom.Event -> unit) =
+    Pair("onpointerover", EvVal(fun () -> withArgs cb))
+
+  let onPointerUp (cb : Dom.Event -> unit) =
+    Pair("onpointerup", EvVal(fun () -> withArgs cb))
+
+  let onReset (cb : Dom.Event -> unit) =
+    Pair("onreset", EvVal(fun () -> withArgs cb))
+
+  let onResize (cb : Dom.Event -> unit) =
+    Pair("onresize", EvVal(fun () -> withArgs cb))
+
+  let onScroll (cb : Dom.Event -> unit) =
+    Pair("onscroll", EvVal(fun () -> withArgs cb))
+
+  let onSelect (cb : Dom.Event -> unit) =
+    Pair("onselect", EvVal(fun () -> withArgs cb))
+
+  let onSelectStart (cb : Dom.Event -> unit) =
+    Pair("onselectstart", EvVal(fun () -> withArgs cb))
+
+  let onSubmit (cb : Dom.Event -> unit) =
+    Pair("onsubmit", EvVal(fun () -> withArgs cb))
+
+  let onTouchCancel (cb : Dom.Event -> unit) =
+    Pair("ontouchcancel", EvVal(fun () -> withArgs cb))
+
+  let onTouchMove (cb : Dom.Event -> unit) =
+    Pair("ontouchmove", EvVal(fun () -> withArgs cb))
+
+  let onTouchStart (cb : Dom.Event -> unit) =
+    Pair("ontouchstart", EvVal(fun () -> withArgs cb))
 
   (*
    _   _ _____ __  __ _

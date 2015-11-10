@@ -69,8 +69,6 @@ module VirtualDom =
         |> createElement
         |> JQuery.Of 
 
-      Console.Log(props)
-      Console.Log(tree)
       check_cc (tree.Css("margin") = "40px") "element should have style correctly" cb
 
     (*------------------------------------------------------------------------*)
@@ -108,6 +106,58 @@ module VirtualDom =
 
       check_cc (JQuery.Of(".main").Children("p").Length = 3) "should have 2 p's now" cb
       
+    (*------------------------------------------------------------------------*)
+    test "should add new element to list on diff/patch" <| fun cb ->
+      let litem = li <|> text "an item"
+      let comb  = ul <||> [| litem |]
 
+      let tree = renderHtml comb
+      let root = createElement tree
 
-      
+      JQuery.Of("body").Append(root) |> ignore
+
+      check (JQuery.Of(root).Children().Length = 1) "ul item count does not match (expected 1)"
+
+      let newtree = renderHtml <| (comb <|> litem)
+      let newroot = patch root <| diff tree newtree
+
+      check_cc (JQuery.Of(newroot).Children().Length = 2) "ul item count does not match (expected 2)" cb
+
+      JQuery.Of(newroot).Remove() |> ignore
+
+    (*------------------------------------------------------------------------*)
+    test "patching should update only relevant bits of the dom" <| fun cb ->
+      let firstContent = "first item in the list"
+      let secondContent = "second item in the list"
+
+      let list content =
+        ul <||>
+          [| li <@> id' "first"  <|> text content
+           ; li <@> id' "second" <|> text secondContent
+           |]
+
+      let mutable tree = list firstContent |> renderHtml
+      let mutable root = createElement tree
+
+      JQuery.Of("body").Append(root) |> ignore
+
+      let newtree = list "harrrr i got cha" |> renderHtml
+      let newroot = patch root <| diff tree newtree
+
+      tree <- newtree
+      root <- newroot
+
+      let fst = JQuery.Of("#first")
+      let snd = JQuery.Of("#second")
+
+      check (fst.Html() <> firstContent) "the content of the first element should different but isn't"
+      check (snd.Html() = secondContent) "the content of the second element should be the same but isn't"
+
+      let list' = list firstContent <|> (li <|> text "hmm")
+      root <- patch root <| diff tree (renderHtml list')
+
+      check (fst.Html() = firstContent) "the content of the first element should be the same but isn't"
+      check (JQuery.Of(root).Children().Length = 3) "the list should have 3 elements now"
+      check_cc (snd.Html() = secondContent) "the content of the second element should be the same but isn't" cb
+
+      JQuery.Of(root).Remove() |> ignore

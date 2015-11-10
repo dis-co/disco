@@ -17,6 +17,7 @@ module Client =
 
   let Main =
     [ VirtualDom.main
+    ; Html.main
     ] |> List.iter apply
     
 (*
