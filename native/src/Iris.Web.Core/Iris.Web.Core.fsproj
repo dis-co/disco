@@ -78,6 +78,7 @@
     <Compile Include="src\Core\Patch.fs" />
     <Compile Include="src\Core\Events.fs" />
     <Compile Include="src\Core\Plugin.fs" />
+    <Compile Include="src\Core\State.fs" />
     <Compile Include="src\Core\Store.fs" />
     <Compile Include="src\Core\Reducer.fs" />
     <Compile Include="src\Core\Socket.fs" />

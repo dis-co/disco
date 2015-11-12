@@ -16,6 +16,7 @@ module ViewController =
   open Iris.Web.Core.ViewController
   open Iris.Web.Core.Patch
   open Iris.Web.Core.Store
+  open Iris.Web.Core.State
   open Iris.Web.Core.Reducer
   open Iris.Web.Core.Events
 

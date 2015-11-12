@@ -2,6 +2,7 @@ namespace Iris.Web.Core
 
 open WebSharper
 
+[<AutoOpen>]
 [<JavaScript>]
 module Events = 
 

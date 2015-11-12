@@ -15,6 +15,7 @@ module PatchesView =
   open Iris.Web.Core.IOBox
   open Iris.Web.Core.Patch
   open Iris.Web.Core.Store
+  open Iris.Web.Core.State
   open Iris.Web.Core.Events
   open Iris.Web.Core.Reducer
   open Iris.Web.Core.ViewController
