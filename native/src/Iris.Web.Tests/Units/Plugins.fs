@@ -127,7 +127,7 @@ module Plugins =
       inst.Render iobox
       |> createElement
       |> JQuery.Of
-      |> (fun el -> el.Children("slice"))
+      |> (fun el -> el.Children(".slice"))
       |> (fun els ->
           check (els.Length = 1) "should have one slice"
           check (els.Get(0).TextContent = value1) "should have the correct inner value")
@@ -138,7 +138,7 @@ module Plugins =
       inst.Render update
       |> createElement
       |> JQuery.Of
-      |> (fun el -> el.Children("slice"))
+      |> (fun el -> el.Children(".slice"))
       |> (fun els ->
           check (els.Length = 1) "should have one slice"
           check (els.Get(0).TextContent = value2) "should have the correct inner value")
@@ -151,7 +151,7 @@ module Plugins =
       inst.Render final
       |> createElement
       |> JQuery.Of
-      |> (fun elm -> elm.Children("slice"))
+      |> (fun elm -> elm.Children(".slice"))
       |> (fun els -> check_cc (els.Length = 2) "should have two slices" cb)
 
 

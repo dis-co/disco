@@ -71,14 +71,14 @@ module Plugin =
 
   type Plugins () =
     (* ------------------------ internal -------------------------- *)
+    [<Direct " delete $ctx[$id] ">]
+    let rmImpl (ctx : obj) (id : string) : unit = X<unit>
+
     [<Inline " $0[$id] = $inst ">]
     let addImpl (id : string) (inst : Plugin) : unit = X<unit>
 
     [<Inline " $0[$id] != null ">]
     let hasImpl (id : string) : bool = X<bool>
-
-    [<Inline " $0[$id] = null ">]
-    let rmImpl (id : string) : unit = X<unit>
 
     [<Inline " $0[$id] ">]
     let getImpl (id : string) : Plugin = X<Plugin>
@@ -104,7 +104,7 @@ module Plugin =
       else Some(inst)
 
     (* remove an instance of a view plugin *)
-    member self.remove (iobox : IOBox) = rmImpl iobox.id
+    member self.remove (iobox : IOBox) = rmImpl self iobox.id
 
     member self.ids () : string array = idsImpl ()
 
