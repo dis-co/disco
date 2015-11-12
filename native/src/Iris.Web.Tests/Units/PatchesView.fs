@@ -72,18 +72,17 @@ module PatchesView =
     })(window.IrisPlugins);
     "
   >]
-  let simpleString () = X<unit>
+  let stringPlugin () = X<unit>
 
   let document = JS.Document
 
   let main () =
-    simpleString ()
-
     (*------------------------------------------------------------------------*)
     suite "Test.Units.PatchesView - patch workflow"
     (*------------------------------------------------------------------------*)
 
     test "should render a patch added" <| fun cb ->
+      stringPlugin ()
       let patchid = "patch-1"
 
       let patch : Patch =
@@ -113,6 +112,7 @@ module PatchesView =
 
     (*------------------------------------------------------------------------*)
     test "should render correct list on patch removal" <| fun cb ->
+      stringPlugin ()
       let pid1 = "patch-2"
       let pid2 = "patch-3"
 
@@ -163,6 +163,7 @@ module PatchesView =
     (*--------------------------------------------------------------------------*)
 
     test "should render an added iobox" <| fun cb ->
+      stringPlugin ()
       let id1 = "id1"
       let value = "hello"
 
@@ -203,6 +204,7 @@ module PatchesView =
 
     (*--------------------------------------------------------------------------*)
     test "should render correct iobox list on iobox removal" <| fun cb ->
+      stringPlugin ()
       let id1 = "iobox-3"
       let id2 = "iobox-4"
       let value = "hello"
@@ -269,6 +271,8 @@ module PatchesView =
 
     (*--------------------------------------------------------------------------*)
     test "should render updates on iobox to dom" <| fun cb ->
+      stringPlugin ()
+
       let elid = "0xd34db33f"
       let value1 = "death to the confederacy!"
       let value2 = "the confederacy is dead!"

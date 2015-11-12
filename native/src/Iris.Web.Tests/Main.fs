@@ -18,6 +18,8 @@ module Client =
   let Main =
     [ Html.main
     ; Store.main
+    ; Storage.main
+    ; Plugins.main
     ; VirtualDom.main
     ; PatchesView.main
     ; ViewController.main 

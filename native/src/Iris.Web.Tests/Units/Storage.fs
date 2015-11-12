@@ -12,4 +12,4 @@ module Storage =
     suite "Test.Units.Storage"
     (*--------------------------------------------------------------------------*)
   
-    pending "not yet implemented"
+    pending "NOT YET IMPLEMENTED"
