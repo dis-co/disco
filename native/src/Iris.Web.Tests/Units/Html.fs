@@ -90,6 +90,6 @@ module Html =
         |> renderHtml
         |> createElement
         |> JQuery.Of
-
+        
       elm.Click () |> ignore
 

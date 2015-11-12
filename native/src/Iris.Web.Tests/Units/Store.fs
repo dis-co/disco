@@ -15,7 +15,28 @@ module Store =
   open Iris.Web.Core.Events
   open Iris.Web.Core.Reducer
 
+  [<Direct "Object.is($o1, $o2)">]
+  let identical (o1 : obj) (o2 : obj) = X
+
   let main () =
+    (*--------------------------------------------------------------------------*)
+    suite "Test.Units.Store - Immutability"
+    (*--------------------------------------------------------------------------*)
+
+    test "store should be immutable" <| fun cb ->
+      let patch : Patch =
+        { id = "0xb4d1d34"
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
+      
+      let mutable store : Store = mkStore reducer
+
+      let newstore = dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
+
+      check_cc (identical newstore store |> not) "should be a different object altogther" cb
+      
+
     (*--------------------------------------------------------------------------*)
     suite "Test.Units.Store - Patch operations"
     (*--------------------------------------------------------------------------*)
