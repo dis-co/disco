@@ -23,8 +23,7 @@ module Store =
 
   type State =
     { Patches  : Patch list }
-    static member empty = { Patches = [] }
-
+    static member Empty = { Patches = [] }
 
   let addPatch (state : State) (patch : Patch) =
     let exists = List.exists (fun p -> p.id = patch.id) state.Patches
@@ -66,7 +65,7 @@ module Store =
     { state with Patches = List.map updater state.Patches }
 
   (* Reducers are take a state, an action, acts and finally return the new state *)
-  type Reducer = (AppEvent -> State -> State)
+  type Reducer<'a> = (AppEvent -> 'a -> 'a)
 
   (*
        ____  _
@@ -80,26 +79,27 @@ module Store =
 
   *)
 
-  type Store =
-    { reducer   : Reducer
-    ; state     : State
-    ; listeners : Listener list }
+  type Store<'a> =
+    { Reducer   : Reducer<'a>
+    ; State     : 'a
+    ; Listeners : Listener<'a> list }
 
-  and Listener = (Store -> AppEvent -> unit)
+  and Listener<'a> = (Store<'a> -> AppEvent -> unit)
 
-  let private notify (store : Store) (ev : AppEvent) =
-    List.map (fun l -> l store ev) store.listeners
+  let private notify (store : Store<'a>) (ev : AppEvent) =
+    List.map (fun l -> l store ev) store.Listeners
 
-  let dispatch (store : Store) (ev : AppEvent) : Store =
-    let newstate = store.reducer ev store.state
-    let newstore = { store with state = newstate }
+  let dispatch (store : Store<'a>) (ev : AppEvent) : Store<'a> =
+    let newstate = store.Reducer ev store.State
+    let newstore = { store with State = newstate }
     notify newstore ev |> ignore
     newstore
 
-  let subscribe (store : Store) (listener : Listener) =
-    { store with listeners = listener :: store.listeners }
+  let subscribe (store : Store<'a>) (listener : Listener<'a>) =
+    { store with Listeners = listener :: store.Listeners }
 
-  let mkStore (reducer : Reducer) =
-    { reducer = reducer
-    ; state = State.empty
-    ; listeners = []  }
+  let mkStore (reducer : Reducer<'a>) (state : 'a) =
+    { Reducer = reducer
+    ; State   = state
+    ; Listeners = []
+    }

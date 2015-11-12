@@ -19,9 +19,9 @@ module ViewController =
          \_/\_/  |_|\__,_|\__, |\___|\__|
                           |___/
   *)
-  type IWidget =
-    abstract render : Store -> VTree
-    abstract dispose : unit -> unit
+  type IWidget<'a> =
+    abstract Render  : Store<'a> -> VTree
+    abstract Dispose : unit -> unit
 
   (*
       __     ___                ____ _        _
@@ -34,33 +34,33 @@ module ViewController =
       the widget tree and the rendering context needed for virtual-dom.
   *)
 
-  type ViewController (widget : IWidget) =
-    let mutable view : IWidget      = widget
+  type ViewController<'a> (widget : IWidget<'a>) =
+    let mutable view : IWidget<'a>  = widget
     let mutable tree : VTree option = None
     let mutable root : Dom.Element  = JS.Window.Document.CreateElement "div"
 
-    member self.Container
-      with get () = root
-
-    member self.init tree =
+    let initWith tree =
       let rootNode = createElement tree
       JQuery.Of("body").Append(rootNode) |> ignore
       root <- rootNode
 
+    member self.Container
+      with get () = root
+
     (* render and patch the DOM *)
-    member self.render (store : Store) : unit =
-      let newtree = view.render store
+    member self.Render (store : Store<'a>) : unit =
+      let newtree = view.Render store
 
       match tree with
         | Some(oldtree) ->
           let update = diff oldtree newtree
           let newroot = patch root update
           root <- newroot
-        | _ -> self.init newtree
+        | _ -> initWith newtree
 
       tree <- Some(newtree)
 
     interface IDisposable with
       member self.Dispose () =
-        widget.dispose ()
+        view.Dispose ()
         JQuery.Of(root).Remove() |> ignore

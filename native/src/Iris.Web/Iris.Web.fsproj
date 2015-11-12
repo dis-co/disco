@@ -9,6 +9,7 @@
     <AssemblyName>Iris.Web</AssemblyName>
     <Name>Iris</Name>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
     <WebSharperProject>Bundle</WebSharperProject>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -115,11 +116,6 @@
         </Reference>
         <Reference Include="WebSharper.Sitelets">
           <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Sitelets.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.Testing">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Testing.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

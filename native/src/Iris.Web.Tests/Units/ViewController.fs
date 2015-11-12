@@ -35,9 +35,9 @@ module ViewController =
 
     let mainView content = div <@> id' "patches" <|> content
 
-    interface IWidget with
-      member self.render (store : Store) =
-        let patches = store.state.Patches |> List.toArray
+    interface IWidget<State> with
+      member self.Render (store : Store<State>) =
+        let patches = store.State.Patches |> List.toArray
 
         let content =
           if Array.length patches = 0
@@ -46,7 +46,7 @@ module ViewController =
 
         mainView content |> renderHtml
 
-      member self.dispose () = ()
+      member self.Dispose () = ()
 
 
   let main () =
@@ -73,28 +73,28 @@ module ViewController =
         ; ioboxes = Array.empty
         }
 
-      let mutable store = mkStore reducer
+      let mutable store = mkStore reducer State.Empty
 
       let view = new PatchView()
-      let ctrl = new ViewController(view)
+      let ctrl = new ViewController<State>(view)
 
       store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch1) }
 
-      ctrl.render store
+      ctrl.Render store
 
       JQuery.Of(".patch")
       |> (fun els -> check (els.Length = 1) "should be one rendered patch template in dom")
 
       store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch2) }
 
-      ctrl.render store
+      ctrl.Render store
 
       JQuery.Of(".patch")
       |> (fun els -> check (els.Length = 2) "should be two rendered patch templates in dom")
 
       store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch3) }
 
-      ctrl.render store
+      ctrl.Render store
 
       JQuery.Of(".patch")
       |> (fun els -> check_cc (els.Length = 3) "should be three rendered patch templates in dom" cb)
@@ -109,14 +109,14 @@ module ViewController =
         ; ioboxes = Array.empty
         }
 
-      let mutable store = mkStore reducer
+      let mutable store = mkStore reducer State.Empty
 
       let view = new PatchView()
-      let ctrl = new ViewController(view)
+      let ctrl = new ViewController<State>(view)
 
       store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch1) }
 
-      ctrl.render store
+      ctrl.Render store
 
       JQuery.Of(".patch")
       |> (fun els -> check (els.Length = 1) "should be one patch in dom")

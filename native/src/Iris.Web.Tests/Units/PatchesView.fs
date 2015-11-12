@@ -91,18 +91,18 @@ module PatchesView =
         ; ioboxes = Array.empty
         }
 
-      let mutable store : Store = mkStore reducer
+      let mutable store : Store<State> = mkStore reducer State.Empty
 
       let view = new PatchView ()
-      let controller = new ViewController (view)
-      controller.render store
+      let controller = new ViewController<State> (view)
+      controller.Render store
 
       JQuery.Of("#"+patchid)
       |> (fun el -> check (el.Length = 0) "element should be null")
 
       store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
 
-      controller.render store
+      controller.Render store
 
       JQuery.Of("#"+patchid)
       |> (fun el -> check_cc (el.Attr("id") = patchid) "patch element not found in dom" cb)
@@ -128,14 +128,14 @@ module PatchesView =
         ; ioboxes = Array.empty
         }
 
-      let mutable store : Store =
-        { state     = { Patches = [ patch1; patch2 ] }
-        ; reducer   = reducer
-        ; listeners = List.empty }
+      let mutable store : Store<State> =
+        { State     = { Patches = [ patch1; patch2 ] }
+        ; Reducer   = reducer
+        ; Listeners = List.empty }
 
       let view = new PatchView ()
-      let controller = new ViewController (view)
-      controller.render store
+      let controller = new ViewController<State> (view)
+      controller.Render store
 
       JQuery.Of("#"+pid1)
       |> (fun el -> check (el.Length > 0) "element 1 should not be null")
@@ -145,10 +145,10 @@ module PatchesView =
 
       store <- dispatch store { Kind = RemovePatch; Payload = PatchD(patch1) }
 
-      check (not <| hasPatch store.state.Patches patch1) "patch should be gone"
-      check (hasPatch store.state.Patches patch2) "patch should be there"
+      check (not <| hasPatch store.State.Patches patch1) "patch should be gone"
+      check (hasPatch store.State.Patches patch2) "patch should be there"
 
-      controller.render store
+      controller.Render store
 
       JQuery.Of("#"+pid1)
       |> (fun el -> check (el.Length = 0) "element 1 should be null")
@@ -181,21 +181,21 @@ module PatchesView =
         ; ioboxes = Array.empty
         }
 
-      let mutable store : Store =
-        { state     = { Patches = [ patch ] }
-        ; reducer   = reducer
-        ; listeners = []}
+      let mutable store : Store<State> =
+        { State     = { Patches = [ patch ] }
+        ; Reducer   = reducer
+        ; Listeners = []}
 
       let view = new PatchView ()
-      let controller = new ViewController (view)
-      controller.render store
+      let controller = new ViewController<State> (view)
+      controller.Render store
 
       JQuery.Of("#"+id1)
       |> (fun el -> check (el.Length = 0) "element should not be")
 
       store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
 
-      controller.render store
+      controller.Render store
 
       JQuery.Of("#"+id1)
       |> (fun el -> check_cc (el.Length > 0) "element should not be null" cb)
@@ -231,24 +231,24 @@ module PatchesView =
         ; ioboxes = Array.empty
         }
 
-      let mutable store : Store =
-        { state     = { Patches = [ patch ] }
-        ; reducer   = reducer
-        ; listeners = []}
+      let mutable store : Store<State> =
+        { State     = { Patches = [ patch ] }
+        ; Reducer   = reducer
+        ; Listeners = []}
 
       let view = new PatchView ()
-      let controller = new ViewController (view)
+      let controller = new ViewController<State> (view)
 
       // add the first iobox
       store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox1) }
-      controller.render store
+      controller.Render store
 
       JQuery.Of("#"+id1)
       |> (fun el -> check (el.Length > 0) "element should not be null")
 
       // add the second iobox
       store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox2) }
-      controller.render store
+      controller.Render store
 
       JQuery.Of("#"+id1)
       |> (fun el -> check (el.Length > 0) "element 1 should not be null")
@@ -258,7 +258,7 @@ module PatchesView =
 
       // remove the second iobox
       store <- dispatch store { Kind = RemoveIOBox; Payload = IOBoxD(iobox2) }
-      controller.render store
+      controller.Render store
 
       JQuery.Of("#"+id1)
       |> (fun el -> check (el.Length > 0) "element 1 should not be null")
@@ -292,18 +292,18 @@ module PatchesView =
         ; slices = [| { idx = 0; value = value1 } |]
         }
 
-      let mutable store : Store =
-        { state     = { Patches = [ patch ] }
-        ; reducer   = reducer
-        ; listeners = []}
+      let mutable store : Store<State> =
+        { State     = { Patches = [ patch ] }
+        ; Reducer   = reducer
+        ; Listeners = []}
 
       // render initial state
       let view = new PatchView ()
-      let controller = new ViewController (view)
+      let controller = new ViewController<State> (view)
 
       store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
 
-      controller.render store
+      controller.Render store
 
       // test for the presence of the initial state
       JQuery.Of("#"+elid).Children(".slices")
@@ -319,11 +319,11 @@ module PatchesView =
 
       store <- dispatch store { Kind = UpdateIOBox; Payload = IOBoxD(updated1) }
 
-      match findIOBox store.state.Patches elid with
+      match findIOBox store.State.Patches elid with
         | Some(box) -> check (box.slices.[0].value = value2) "box in updated state should have right value"
         | None -> fail "IOBox was not found in store"
 
-      controller.render store
+      controller.Render store
 
       // test for the presence of the initial state
       JQuery.Of("#"+elid).Children(".slices")
@@ -339,11 +339,11 @@ module PatchesView =
 
       store <- dispatch store { Kind = UpdateIOBox; Payload = IOBoxD(updated2) }
 
-      match findIOBox store.state.Patches elid with
+      match findIOBox store.State.Patches elid with
         | Some(box) -> check (box.slices.[0].value = value3) "box in updated state should have right value"
         | None -> fail "IOBox was not found in store"
 
-      controller.render store
+      controller.Render store
 
       // test for the presence of the initial state
       JQuery.Of("#"+elid).Children(".slices")

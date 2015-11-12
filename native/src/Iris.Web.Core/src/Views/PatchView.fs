@@ -48,11 +48,11 @@ module PatchView =
 
     (* RENDERER *)
 
-    interface IWidget with
-      member self.dispose () = ()
+    interface IWidget<State> with
+      member self.Dispose () = ()
 
-      member self.render (store : Store) =
-        store.state.Patches
+      member self.Render (store : Store<State>) =
+        store.State.Patches
         |> List.toArray
         |> (fun patches ->
               if Array.length patches = 0

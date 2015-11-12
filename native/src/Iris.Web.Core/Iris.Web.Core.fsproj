@@ -8,6 +8,7 @@
     <RootNamespace>Iris.Web.Core</RootNamespace>
     <AssemblyName>Iris.Web.Core</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
     <WebSharperProject>Library</WebSharperProject>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -36,6 +37,9 @@
     <Folder Include="assets\js\" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="assets\favicon.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="assets\Iris.Web.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -145,11 +149,6 @@
         </Reference>
         <Reference Include="WebSharper.Sitelets">
           <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Sitelets.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.Testing">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Testing.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
