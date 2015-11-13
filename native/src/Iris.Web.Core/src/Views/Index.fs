@@ -19,9 +19,8 @@ module Index =
        <!doctype html>
        <html>
          <head>
-           <title>Iris Browser Tests</title>
+           <title>Iris</title>
            <meta charset=""utf-8"">
-           <link rel=""stylesheet"" href=""https://cdn.rawgit.com/mochajs/mocha/2.2.5/mocha.css"">
          </head>
          <body>
            <script src=""dependencies/virtual-dom/dist/virtual-dom.js""></script>
@@ -30,7 +29,7 @@ module Index =
            <script src=""dependencies/routie/dist/routie.js""></script>
            <script src=""dependencies/fabric.js/dist/fabric.js""></script>
            %s
-           <script src=""js/iris.js""></script>
+           <script src=""Iris.Web.js""></script>
          </body>
        </html>
        "
