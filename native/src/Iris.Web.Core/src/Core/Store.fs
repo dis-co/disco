@@ -23,27 +23,21 @@ module Store =
 
   *)
 
-  type Store<'a> =
-    { Reducer   : Reducer<'a>
-    ; State     : 'a
-    ; Listeners : Listener<'a> list }
+  type Store<'a> (reducer : Reducer<'a>, state : 'a)=
+    let mutable listeners : Listener<'a> list = List.empty
+    let mutable state = state
+    let reducer = reducer
+
+    member private self.Notify (ev : AppEvent) =
+        List.map (fun l -> l self ev) listeners
+
+    member self.Dispatch (ev : AppEvent) : unit =
+      state <- reducer ev state
+      self.Notify ev |> ignore
+
+    member self.Subscribe (listener : Listener<'a>) =
+      listeners <- listener :: listeners
+
+    member self.State with get ()= state
 
   and Listener<'a> = (Store<'a> -> AppEvent -> unit)
-
-  let private notify (store : Store<'a>) (ev : AppEvent) =
-    List.map (fun l -> l store ev) store.Listeners
-
-  let dispatch (store : Store<'a>) (ev : AppEvent) : Store<'a> =
-    let newstate = store.Reducer ev store.State
-    let newstore = { store with State = newstate }
-    notify newstore ev |> ignore
-    newstore
-
-  let subscribe (store : Store<'a>) (listener : Listener<'a>) =
-    { store with Listeners = listener :: store.Listeners }
-
-  let mkStore (reducer : Reducer<'a>) (state : 'a) =
-    { Reducer = reducer
-    ; State   = state
-    ; Listeners = []
-    }

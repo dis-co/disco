@@ -18,7 +18,7 @@ module Client =
   open Iris.Web.Views.PatchView
 
   (* FIXME: need to factor this out into a nice abstraction *)
-  let handler (store : Store<State>) (ev : MessageEvent) : Store<State> =
+  let handler (store : Store<State>) (ev : MessageEvent) : unit =
     let msg = JSON.Parse(ev.Data :?> string) :?> Message
 
     let parsed =
@@ -27,12 +27,13 @@ module Client =
         | "iris.patch.update" -> PatchEvent (UpdatePatch, msg.Payload :?> Patch)
         | "iris.patch.remove" -> PatchEvent (RemovePatch, msg.Payload :?> Patch)
 
-        | "iris.iobox.add"    -> IOBoxEvent(AddIOBox,    msg.Payload :?> IOBox)
-        | "iris.iobox.update" -> IOBoxEvent(UpdateIOBox, msg.Payload :?> IOBox)
-        | "iris.iobox.remove" -> IOBoxEvent(RemoveIOBox, msg.Payload :?> IOBox)
+        | "iris.iobox.add"    -> IOBoxEvent (AddIOBox,    msg.Payload :?> IOBox)
+        | "iris.iobox.update" -> IOBoxEvent (UpdateIOBox, msg.Payload :?> IOBox)
+        | "iris.iobox.remove" -> IOBoxEvent (RemoveIOBox, msg.Payload :?> IOBox)
 
         | _                   -> UnknownEvent
-    in dispatch store parsed
+
+    in store.Dispatch parsed
 
   let onClose _ = Console.Log("closing")
 
@@ -44,16 +45,16 @@ module Client =
   *)
 
   let Main : unit =
-    let store  = ref <| mkStore reducer State.Empty
-    let widget = new PatchView ()
+    let store  = new Store<State>(reducer, State.Empty)
+    let widget = new PatchView()
     let ctrl   = new ViewController<State> (widget)
 
-    ctrl.Render !store
+    ctrl.Render store
 
-    store := subscribe !store (fun s _ -> ctrl.Render s)
+    store.Subscribe (fun s _ -> ctrl.Render s)
 
     let onMsg (msg : MessageEvent) =
-      store := handler !store msg
+      handler store msg
 
     Console.Log("STARTINMG!!")
 

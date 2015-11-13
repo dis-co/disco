@@ -36,4 +36,4 @@ module Reducer =
       | IOBoxEvent (Kind = UpdateIOBox; IOBox = iobox ) -> updateIOBox' iobox
       | IOBoxEvent (Kind = RemoveIOBox; IOBox = iobox ) -> removeIOBox' iobox
       
-      | _ -> state
+      | _ -> printfn "unknown event" ;state

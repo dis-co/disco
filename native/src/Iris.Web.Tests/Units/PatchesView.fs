@@ -92,7 +92,7 @@ module PatchesView =
         ; ioboxes = Array.empty
         }
 
-      let mutable store : Store<State> = mkStore reducer State.Empty
+      let store : Store<State> = new Store<State>(reducer, State.Empty)
 
       let view = new PatchView ()
       let controller = new ViewController<State> (view)
@@ -101,7 +101,7 @@ module PatchesView =
       JQuery.Of("#"+patchid)
       |> (fun el -> check (el.Length = 0) "element should be null")
 
-      store <- dispatch store <| PatchEvent(AddPatch, patch)
+      store.Dispatch <| PatchEvent(AddPatch, patch)
 
       controller.Render store
 
@@ -129,10 +129,8 @@ module PatchesView =
         ; ioboxes = Array.empty
         }
 
-      let mutable store : Store<State> =
-        { State     = { Patches = [ patch1; patch2 ] }
-        ; Reducer   = reducer
-        ; Listeners = List.empty }
+      let store : Store<State> =
+        new Store<State>(reducer, { Patches = [ patch1; patch2 ] })
 
       let view = new PatchView ()
       let controller = new ViewController<State> (view)
@@ -144,7 +142,7 @@ module PatchesView =
       JQuery.Of("#"+pid2)
       |> (fun el -> check (el.Length > 0) "element 2 should not be null")
 
-      store <- dispatch store <| PatchEvent(RemovePatch, patch1)
+      store.Dispatch <| PatchEvent(RemovePatch, patch1)
 
       check (not <| hasPatch store.State.Patches patch1) "patch should be gone"
       check (hasPatch store.State.Patches patch2) "patch should be there"
@@ -182,10 +180,8 @@ module PatchesView =
         ; ioboxes = Array.empty
         }
 
-      let mutable store : Store<State> =
-        { State     = { Patches = [ patch ] }
-        ; Reducer   = reducer
-        ; Listeners = []}
+      let store : Store<State> =
+        new Store<State>(reducer, { Patches = [ patch ] })
 
       let view = new PatchView ()
       let controller = new ViewController<State> (view)
@@ -194,7 +190,7 @@ module PatchesView =
       JQuery.Of("#"+id1)
       |> (fun el -> check (el.Length = 0) "element should not be")
 
-      store <- dispatch store <| IOBoxEvent(AddIOBox, iobox)
+      store.Dispatch <| IOBoxEvent(AddIOBox, iobox)
 
       controller.Render store
 
@@ -232,23 +228,21 @@ module PatchesView =
         ; ioboxes = Array.empty
         }
 
-      let mutable store : Store<State> =
-        { State     = { Patches = [ patch ] }
-        ; Reducer   = reducer
-        ; Listeners = []}
+      let store : Store<State> =
+        new Store<State>(reducer, { Patches = [ patch ] })
 
       let view = new PatchView ()
       let controller = new ViewController<State> (view)
 
       // add the first iobox
-      store <- dispatch store <| IOBoxEvent(AddIOBox,iobox1)
+      store.Dispatch <| IOBoxEvent(AddIOBox,iobox1)
       controller.Render store
 
       JQuery.Of("#"+id1)
       |> (fun el -> check (el.Length > 0) "element should not be null")
 
       // add the second iobox
-      store <- dispatch store <| IOBoxEvent(AddIOBox,iobox2)
+      store.Dispatch <| IOBoxEvent(AddIOBox,iobox2)
       controller.Render store
 
       JQuery.Of("#"+id1)
@@ -258,7 +252,7 @@ module PatchesView =
       |> (fun el -> check (el.Length > 0) "element 2 should not be null")
 
       // remove the second iobox
-      store <- dispatch store <| IOBoxEvent(RemoveIOBox,iobox2)
+      store.Dispatch <| IOBoxEvent(RemoveIOBox,iobox2)
       controller.Render store
 
       JQuery.Of("#"+id1)
@@ -293,16 +287,14 @@ module PatchesView =
         ; slices = [| { idx = 0; value = value1 } |]
         }
 
-      let mutable store : Store<State> =
-        { State     = { Patches = [ patch ] }
-        ; Reducer   = reducer
-        ; Listeners = []}
+      let store : Store<State> =
+        new Store<State>(reducer, { Patches = [ patch ] })
 
       // render initial state
       let view = new PatchView ()
       let controller = new ViewController<State> (view)
 
-      store <- dispatch store <| IOBoxEvent(AddIOBox, iobox)
+      store.Dispatch <| IOBoxEvent(AddIOBox, iobox)
 
       controller.Render store
 
@@ -318,7 +310,7 @@ module PatchesView =
           slices = [| { idx = 0; value = value2 }|]
         }
 
-      store <- dispatch store <| IOBoxEvent(UpdateIOBox, updated1)
+      store.Dispatch <| IOBoxEvent(UpdateIOBox, updated1)
 
       match findIOBox store.State.Patches elid with
         | Some(box) -> check (box.slices.[0].value = value2) "box in updated state should have right value"
@@ -338,7 +330,7 @@ module PatchesView =
           slices = [| { idx = 0; value = value3 }|]
         }
 
-      store <- dispatch store <| IOBoxEvent(UpdateIOBox, updated2)
+      store.Dispatch <| IOBoxEvent(UpdateIOBox, updated2)
 
       match findIOBox store.State.Patches elid with
         | Some(box) -> check (box.slices.[0].value = value3) "box in updated state should have right value"
