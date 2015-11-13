@@ -32,7 +32,7 @@ module Store =
         }
       
       let mutable store : Store<State> = mkStore reducer State.Empty
-      let newstore = dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
+      let newstore = dispatch store <| PatchEvent(AddPatch, patch)
       check_cc (identical newstore store |> not) "should be a different object altogther" cb
       
 
@@ -49,7 +49,7 @@ module Store =
 
       let mutable store : Store<State> = mkStore reducer State.Empty
       check ((List.length store.State.Patches) = 0) "patches list should be empty"
-      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
+      store <- dispatch store <| PatchEvent(AddPatch, patch)
       check_cc ((List.length store.State.Patches) = 1) "patches list length should be 1" cb
 
     (*--------------------------------------------------------------------------*)
@@ -66,12 +66,12 @@ module Store =
       let isPatch (p : Patch) : bool = p.id = patch.id
 
       let mutable store : Store<State> = mkStore reducer State.Empty
-      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
+      store <- dispatch store <| PatchEvent(AddPatch, patch)
       check (List.exists isPatch store.State.Patches) "patches list should contain patch"
       check (List.find isPatch store.State.Patches |> (fun p -> p.name = name1)) "patches list should contain patch"
 
       let updated = { patch with name = name2 }
-      store <- dispatch store { Kind = UpdatePatch; Payload = PatchD(updated) }
+      store <- dispatch store <| PatchEvent(UpdatePatch,updated)
       check_cc (List.find isPatch store.State.Patches |> (fun p -> p.name = name2)) "patches list should contain patch" cb
 
     (*--------------------------------------------------------------------------*)
@@ -85,9 +85,11 @@ module Store =
       let isPatch (p : Patch) : bool = p.id = patch.id
 
       let mutable store : Store<State> = mkStore reducer State.Empty
-      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
+
+      store <- dispatch store <| PatchEvent(AddPatch, patch)
       check (List.exists isPatch store.State.Patches) "patches list should contain patch"
-      store <- dispatch store { Kind = RemovePatch; Payload = PatchD(patch) }
+
+      store <- dispatch store <| PatchEvent(RemovePatch, patch)
       check_cc (not (List.exists isPatch store.State.Patches)) "patches list should not contain patch" cb
 
     (*--------------------------------------------------------------------------*)
@@ -104,7 +106,7 @@ module Store =
         }
 
       let mutable store : Store<State> = mkStore reducer State.Empty
-      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
+      store <- dispatch store <| PatchEvent(AddPatch, patch)
 
       match store.State.Patches with
         | patch :: [] -> check ((Array.length patch.ioboxes) = 0) "iobox array length should be 0"
@@ -118,7 +120,7 @@ module Store =
         ; slices = [| { idx = 0; value = "Hey" } |]
         }
 
-      store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
+      store <- dispatch store <| IOBoxEvent(AddIOBox, iobox)
 
       match store.State.Patches with
         | patch :: [] -> check_cc ((Array.length patch.ioboxes) = 1) "iobox array length should be 1" cb
@@ -138,7 +140,7 @@ module Store =
         ; slices = [| { idx = 0; value = "Hey" } |]
         }
 
-      store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
+      store <- dispatch store <| IOBoxEvent(AddIOBox, iobox)
       check_cc ((List.length store.State.Patches) = 0) "patches list length should be 0" cb
 
     (*--------------------------------------------------------------------------*)
@@ -161,14 +163,14 @@ module Store =
         }
 
       let mutable store : Store<State> = mkStore reducer State.Empty
-      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
+      store <- dispatch store <| PatchEvent(AddPatch, patch)
 
       match findIOBox store.State.Patches iobox.id with
         | Some(i) -> check_cc (i.name = name1) "name of iobox does not match (1)" cb
         | None -> check_cc false "iobox is mysteriously missing" cb
 
       let updated = { iobox with name = name2 }
-      store <- dispatch store { Kind = UpdateIOBox; Payload = IOBoxD(updated) }
+      store <- dispatch store <| IOBoxEvent(UpdateIOBox, updated)
 
       match findIOBox store.State.Patches iobox.id with
         | Some(i) -> check_cc (i.name = name2) "name of iobox does not match (2)" cb
@@ -193,13 +195,13 @@ module Store =
         }
 
       let mutable store : Store<State> = mkStore reducer State.Empty
-      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
+      store <- dispatch store <| PatchEvent(AddPatch, patch)
 
       match findIOBox store.State.Patches boxid with
         | Some(_) -> check true  "iobox should be found by now"
         | None    -> check false "iobox is mysteriously missing"
 
-      store <- dispatch store { Kind = RemoveIOBox; Payload = IOBoxD(iobox) }
+      store <- dispatch store <| IOBoxEvent(RemoveIOBox, iobox)
 
       match findIOBox store.State.Patches boxid with
         | Some(_) -> check_cc false "iobox should be missing by now but isn't" cb

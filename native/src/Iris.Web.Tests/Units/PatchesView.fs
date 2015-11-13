@@ -101,7 +101,7 @@ module PatchesView =
       JQuery.Of("#"+patchid)
       |> (fun el -> check (el.Length = 0) "element should be null")
 
-      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch) }
+      store <- dispatch store <| PatchEvent(AddPatch, patch)
 
       controller.Render store
 
@@ -144,7 +144,7 @@ module PatchesView =
       JQuery.Of("#"+pid2)
       |> (fun el -> check (el.Length > 0) "element 2 should not be null")
 
-      store <- dispatch store { Kind = RemovePatch; Payload = PatchD(patch1) }
+      store <- dispatch store <| PatchEvent(RemovePatch, patch1)
 
       check (not <| hasPatch store.State.Patches patch1) "patch should be gone"
       check (hasPatch store.State.Patches patch2) "patch should be there"
@@ -194,7 +194,7 @@ module PatchesView =
       JQuery.Of("#"+id1)
       |> (fun el -> check (el.Length = 0) "element should not be")
 
-      store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
+      store <- dispatch store <| IOBoxEvent(AddIOBox, iobox)
 
       controller.Render store
 
@@ -241,14 +241,14 @@ module PatchesView =
       let controller = new ViewController<State> (view)
 
       // add the first iobox
-      store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox1) }
+      store <- dispatch store <| IOBoxEvent(AddIOBox,iobox1)
       controller.Render store
 
       JQuery.Of("#"+id1)
       |> (fun el -> check (el.Length > 0) "element should not be null")
 
       // add the second iobox
-      store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox2) }
+      store <- dispatch store <| IOBoxEvent(AddIOBox,iobox2)
       controller.Render store
 
       JQuery.Of("#"+id1)
@@ -258,7 +258,7 @@ module PatchesView =
       |> (fun el -> check (el.Length > 0) "element 2 should not be null")
 
       // remove the second iobox
-      store <- dispatch store { Kind = RemoveIOBox; Payload = IOBoxD(iobox2) }
+      store <- dispatch store <| IOBoxEvent(RemoveIOBox,iobox2)
       controller.Render store
 
       JQuery.Of("#"+id1)
@@ -302,7 +302,7 @@ module PatchesView =
       let view = new PatchView ()
       let controller = new ViewController<State> (view)
 
-      store <- dispatch store { Kind = AddIOBox; Payload = IOBoxD(iobox) }
+      store <- dispatch store <| IOBoxEvent(AddIOBox, iobox)
 
       controller.Render store
 
@@ -318,7 +318,7 @@ module PatchesView =
           slices = [| { idx = 0; value = value2 }|]
         }
 
-      store <- dispatch store { Kind = UpdateIOBox; Payload = IOBoxD(updated1) }
+      store <- dispatch store <| IOBoxEvent(UpdateIOBox, updated1)
 
       match findIOBox store.State.Patches elid with
         | Some(box) -> check (box.slices.[0].value = value2) "box in updated state should have right value"
@@ -338,7 +338,7 @@ module PatchesView =
           slices = [| { idx = 0; value = value3 }|]
         }
 
-      store <- dispatch store { Kind = UpdateIOBox; Payload = IOBoxD(updated2) }
+      store <- dispatch store <| IOBoxEvent(UpdateIOBox, updated2)
 
       match findIOBox store.State.Patches elid with
         | Some(box) -> check (box.slices.[0].value = value3) "box in updated state should have right value"

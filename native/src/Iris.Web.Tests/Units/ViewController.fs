@@ -79,21 +79,21 @@ module ViewController =
       let view = new PatchView()
       let ctrl = new ViewController<State>(view)
 
-      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch1) }
+      store <- dispatch store <| PatchEvent(AddPatch, patch1)
 
       ctrl.Render store
 
       JQuery.Of(".patch")
       |> (fun els -> check (els.Length = 1) "should be one rendered patch template in dom")
 
-      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch2) }
+      store <- dispatch store <| PatchEvent(AddPatch, patch2)
 
       ctrl.Render store
 
       JQuery.Of(".patch")
       |> (fun els -> check (els.Length = 2) "should be two rendered patch templates in dom")
 
-      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch3) }
+      store <- dispatch store <| PatchEvent(AddPatch, patch3)
 
       ctrl.Render store
 
@@ -115,7 +115,7 @@ module ViewController =
       let view = new PatchView()
       let ctrl = new ViewController<State>(view)
 
-      store <- dispatch store { Kind = AddPatch; Payload = PatchD(patch1) }
+      store <- dispatch store <| PatchEvent(AddPatch, patch1)
 
       ctrl.Render store
 

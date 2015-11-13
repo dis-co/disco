@@ -1,12 +1,11 @@
 ﻿namespace Iris.Web
 
-open System
 open WebSharper
 open WebSharper.JavaScript
 
 [<JavaScript>]
 module Client =
-  
+
   open Iris.Web.Core.Html
   open Iris.Web.Core.Patch
   open Iris.Web.Core.IOBox
@@ -19,43 +18,56 @@ module Client =
   open Iris.Web.Views.PatchView
 
   (* FIXME: need to factor this out into a nice abstraction *)
-  let handler (store : Store<State>) (msg : Message) : Store<State> =
-    let ev, thing = 
+  let handler (store : Store<State>) (ev : MessageEvent) : Store<State> =
+    let msg = JSON.Parse(ev.Data :?> string) :?> Message
+
+    let parsed =
       match msg.Type with
-        | "iris.patch.add"    -> (AddPatch,     PatchD(parsePatch msg))
-        | "iris.patch.update" -> (UpdatePatch,  PatchD(parsePatch msg))
-        | "iris.patch.remove" -> (RemovePatch,  PatchD(parsePatch msg))
-        | "iris.iobox.add"    -> (AddIOBox,     IOBoxD(parseIOBox msg))
-        | "iris.iobox.update" -> (UpdateIOBox,  IOBoxD(parseIOBox msg))
-        | "iris.iobox.remove" -> (RemoveIOBox,  IOBoxD(parseIOBox msg))
-        | _                   -> (UnknownEvent, EmptyD)
-    in dispatch store { Kind = ev; Payload = thing }
-  
+        | "iris.patch.add"    -> PatchEvent (AddPatch,    msg.Payload :?> Patch)
+        | "iris.patch.update" -> PatchEvent (UpdatePatch, msg.Payload :?> Patch)
+        | "iris.patch.remove" -> PatchEvent (RemovePatch, msg.Payload :?> Patch)
+
+        | "iris.iobox.add"    -> IOBoxEvent(AddIOBox,    msg.Payload :?> IOBox)
+        | "iris.iobox.update" -> IOBoxEvent(UpdateIOBox, msg.Payload :?> IOBox)
+        | "iris.iobox.remove" -> IOBoxEvent(RemoveIOBox, msg.Payload :?> IOBox)
+
+        | _                   -> UnknownEvent
+    in dispatch store parsed
+
   let onClose _ = Console.Log("closing")
-  
-  (*   __  __       _       
-      |  \/  | __ _(_)_ __  
-      | |\/| |/ _` | | '_ \ 
+
+  (*   __  __       _
+      |  \/  | __ _(_)_ __
+      | |\/| |/ _` | | '_ \
       | |  | | (_| | | | | |
       |_|  |_|\__,_|_|_| |_| entry point.
   *)
-  
-  let Main =
+
+  let Main : unit =
     let store  = ref <| mkStore reducer State.Empty
     let widget = new PatchView ()
     let ctrl   = new ViewController<State> (widget)
-  
-    // initialize 
+
     ctrl.Render !store
-  
-    // register view controller with store for updates
+
     store := subscribe !store (fun s _ -> ctrl.Render s)
-  
-    // let onMsg (msg : Message) =
-    //   store := handler !store msg
+
+    let onMsg (msg : MessageEvent) =
+      store := handler !store msg
 
     Console.Log("STARTINMG!!")
-  
+
+    let socket = new WebSocket("ws://localhost:8080")
+
+    socket.Onopen <- (fun _ ->
+      Console.Log("on open"))
+
+    socket.Onmessage <- (fun ev ->
+      onMsg ev)
+
+    socket.Onerror <- (fun err ->
+      Console.Log("error:", err))
+
     // async {
     //   let! websocket = createSocket("ws://localhost:8080", onMsg, onClose)
     //   websocket.send("start")

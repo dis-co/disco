@@ -28,11 +28,12 @@ module Reducer =
     let removeIOBox' = removeIOBox state
 
     match ev with
-      | { Kind = AddPatch;    Payload = PatchD(patch) } -> addPatch'    patch
-      | { Kind = UpdatePatch; Payload = PatchD(patch) } -> updatePatch' patch
-      | { Kind = RemovePatch; Payload = PatchD(patch) } -> removePatch' patch
+      | PatchEvent (Kind = AddPatch;    Patch = patch) -> addPatch'    patch
+      | PatchEvent (Kind = UpdatePatch; Patch = patch) -> updatePatch' patch
+      | PatchEvent (Kind = RemovePatch; Patch = patch) -> removePatch' patch
 
-      | { Kind = AddIOBox;    Payload = IOBoxD(box) } -> addIOBox'    box
-      | { Kind = UpdateIOBox; Payload = IOBoxD(box) } -> updateIOBox' box
-      | { Kind = RemoveIOBox; Payload = IOBoxD(box) } -> removeIOBox' box
-      | _                                             -> state
+      | IOBoxEvent (Kind = AddIOBox;    IOBox = iobox ) -> addIOBox'    iobox
+      | IOBoxEvent (Kind = UpdateIOBox; IOBox = iobox ) -> updateIOBox' iobox
+      | IOBoxEvent (Kind = RemoveIOBox; IOBox = iobox ) -> removeIOBox' iobox
+      
+      | _ -> state

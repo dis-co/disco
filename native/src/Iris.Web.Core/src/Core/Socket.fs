@@ -1,14 +1,10 @@
 namespace Iris.Web.Core
 
-#nowarn "1182"
-
 open WebSharper
 open WebSharper.JavaScript
 
 [<JavaScript>]
 module Socket =
-
-  open Iris.Web.Core.Events
 
   (*   __  __
       |  \/  | ___  ___ ___  __ _  __ _  ___
@@ -19,27 +15,9 @@ module Socket =
   *)
   type MsgType = string
 
-  type Message (t : MsgType, p : EventData) =
-    let msgtype = t
-    let payload = p
+  type Message [<Inline "{}">] () =
+    [<DefaultValue>]
+    val mutable Type : string
 
-    member self.Type    with get () = msgtype
-    member self.Payload with get () = payload
-
-  (*  __        __   _    ____             _        _
-      \ \      / /__| |__/ ___|  ___   ___| | _____| |_
-       \ \ /\ / / _ \ '_ \___ \ / _ \ / __| |/ / _ \ __|
-        \ V  V /  __/ |_) |__) | (_) | (__|   <  __/ |_
-         \_/\_/ \___|_.__/____/ \___/ \___|_|\_\___|\__|
-  *)
-
-  let createSocket(host, onMessage, onClosed) = failwith "FIXEME"
-    // Async.FromContinuations
-    //   (fun (callback, _, _) ->
-    //    let sockref = ref<WebSocket>
-    //    let socket = new WebSocket(host)
-
-    //    // socket.Onopen <- (fun 
-    //    (!socket).Onmessage <- onMessage
-    //    (!socket) <- onClosed)
-    //       //socket := createImpl(host, (fun () -> callback !socket), onMessage, onClosed))
+    [<DefaultValue>]
+    val mutable Payload : obj
