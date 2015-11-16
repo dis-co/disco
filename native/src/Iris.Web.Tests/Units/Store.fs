@@ -458,3 +458,15 @@ module Store =
       store.Debug(false) 
 
       ((List.head store.State.Patches).name ==>> "patch-4") cb
+
+    (*--------------------------------------------------------------------------*)
+    suite "Test.Units.Store - Undo/Redo"
+    (*--------------------------------------------------------------------------*)
+
+    pending "should undo a change"
+    pending "should redo an undone change"
+    pending "should redo an undone change after intermittend change"
+    pending "should reflect an undo in debug history"
+    pending "should reflect an redo in debug history"
+    pending "should debug history should be append-only during undo/redo"
+    pending "should only keep specified number of undo/redo steps"
