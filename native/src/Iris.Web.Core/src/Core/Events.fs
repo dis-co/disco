@@ -9,20 +9,6 @@ module Events =
   open Iris.Web.Core.IOBox
   open Iris.Web.Core.Patch
 
-  (*   _____                 _   ____        _
-      | ____|_   _____ _ __ | |_|  _ \  __ _| |_ __ _
-      |  _| \ \ / / _ \ '_ \| __| | | |/ _` | __/ _` |
-      | |___ \ V /  __/ | | | |_| |_| | (_| | || (_| |
-      |_____| \_/ \___|_| |_|\__|____/ \__,_|\__\__,_|
-
-      Wrapper type around diffent payloads for events.
-  *)
-
-  type EventData =
-    | IOBoxD of IOBox
-    | PatchD of Patch
-    | EmptyD
-
   (*
           _                _____                 _
          / \   _ __  _ __ | ____|_   _____ _ __ | |_ ™
