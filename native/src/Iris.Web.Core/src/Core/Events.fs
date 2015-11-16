@@ -51,6 +51,8 @@ module Events =
   type AppEventT =
     | Initialize
     | SaveEvent
+    | UndoEvent
+    | RedoEvent
 
   type AppEvent =
     | AppEvent   of Kind : AppEventT
