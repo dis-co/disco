@@ -49,10 +49,11 @@ module Events =
     | RemovePatch
 
   type AppEventT =
+    | Initialize
     | SaveEvent
 
   type AppEvent =
+    | AppEvent   of Kind : AppEventT
     | IOBoxEvent of Kind : IOBoxEventT * IOBox : IOBox
     | PatchEvent of Kind : PatchEventT * Patch : Patch
-    | AppEvent   of Kind : AppEventT
     | UnknownEvent

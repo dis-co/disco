@@ -199,7 +199,7 @@ module Store =
         ; ioboxes = [| iobox |]
         }
 
-      let mutable store : Store<State> = new Store<State>(reducer, State.Empty)
+      let store : Store<State> = new Store<State>(reducer, State.Empty)
       store.Dispatch <| PatchEvent(AddPatch, patch)
 
       match findIOBox store.State.Patches boxid with
@@ -211,3 +211,250 @@ module Store =
       match findIOBox store.State.Patches boxid with
         | Some(_) -> check_cc false "iobox should be missing by now but isn't" cb
         | None    -> check_cc true "iobox was found but should be missing" cb
+
+    (*--------------------------------------------------------------------------*)
+    suite "Test.Units.Store - Debug Mode"
+    (*--------------------------------------------------------------------------*)
+
+    test "should have correct number of historic states when starting fresh" <| fun cb ->
+      let patch1 : Patch =
+        { id = "0xb4d1d34"
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
+
+      let patch2 : Patch = { patch1 with name = "patch-2" }
+      let patch3 : Patch = { patch2 with name = "patch-3" }
+      let patch4 : Patch = { patch3 with name = "patch-4" }
+
+      let store : Store<State> = new Store<State>(reducer, State.Empty)
+      store.Debug(true) 
+
+      store.Dispatch <| PatchEvent(AddPatch, patch1)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch2)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch3)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch4)
+
+      (store.Dump().Length ==>> 5) cb
+
+
+    (*------------------------------------------------------------------------*)
+    test "should have correct number of historic states when started after 1 event" <| fun cb ->
+      let patch1 : Patch =
+        { id = "0xb4d1d34"
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
+
+      let patch2 : Patch = { patch1 with name = "patch-2" }
+      let patch3 : Patch = { patch2 with name = "patch-3" }
+      let patch4 : Patch = { patch3 with name = "patch-4" }
+
+      let store : Store<State> = new Store<State>(reducer, State.Empty)
+
+      store.Dispatch <| PatchEvent(AddPatch, patch1)
+      store.Debug(true) 
+      store.Dispatch <| PatchEvent(UpdatePatch, patch2)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch3)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch4)
+
+      (store.Dump().Length ==>> 4) cb
+
+
+    (*------------------------------------------------------------------------*)
+    test "should have correct number of historic states when started after 2 events" <| fun cb ->
+      let patch1 : Patch =
+        { id = "0xb4d1d34"
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
+
+      let patch2 : Patch = { patch1 with name = "patch-2" }
+      let patch3 : Patch = { patch2 with name = "patch-3" }
+      let patch4 : Patch = { patch3 with name = "patch-4" }
+
+      let store : Store<State> = new Store<State>(reducer, State.Empty)
+
+      store.Dispatch <| PatchEvent(AddPatch, patch1)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch2)
+      store.Debug(true) 
+      store.Dispatch <| PatchEvent(UpdatePatch, patch3)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch4)
+
+      (store.Dump().Length ==>> 3) cb
+
+
+    (*------------------------------------------------------------------------*)
+    test "store should store previous states in debug mode" <| fun cb ->
+      let patch1 : Patch =
+        { id = "0xb4d1d34"
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
+
+      let patch2 : Patch = { patch1 with name = "patch-2" }
+      let patch3 : Patch = { patch2 with name = "patch-3" }
+      let patch4 : Patch = { patch3 with name = "patch-4" }
+
+      let store : Store<State> = new Store<State>(reducer, State.Empty)
+      store.Debug(true) 
+
+      store.Dispatch <| PatchEvent(AddPatch, patch1)
+
+      (List.head store.State.Patches).name |==| "patch-1"
+
+      store.Dispatch <| PatchEvent(UpdatePatch, patch2)
+      (List.head store.State.Patches).name |==| "patch-2"
+
+      store.Dispatch <| PatchEvent(UpdatePatch, patch3)
+      (List.head store.State.Patches).name |==| "patch-3"
+
+      // this is HEAD
+      store.Dispatch <| PatchEvent(UpdatePatch, patch4)
+      (List.head store.State.Patches).name |==| "patch-4"
+
+      store.Previous()
+      (List.head store.State.Patches).name |==| "patch-3"
+
+      store.Previous()
+      (List.head store.State.Patches).name |==| "patch-2"
+
+      store.Previous()
+      (List.head store.State.Patches).name |==| "patch-1"
+
+      store.Previous()
+      List.length store.State.Patches |==| 0
+                                         
+      store.Previous()                   
+      List.length store.State.Patches |==| 0
+
+      store.Next()
+      (List.head store.State.Patches).name |==| "patch-1"
+
+      store.Next()
+      (List.head store.State.Patches).name |==| "patch-2"
+
+      store.Next()
+      (List.head store.State.Patches).name |==| "patch-3"
+
+      store.Next()
+      (List.head store.State.Patches).name |==| "patch-4"
+
+      store.Next()
+      (List.head store.State.Patches).name |==| "patch-4"
+
+
+    (*--------------------------------------------------------------------------*)
+    test "store should trigger listeners on tick" <| fun cb ->
+      let patch : Patch =
+        { id = "0xb4d1d34"
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
+
+      
+
+      let store : Store<State> = new Store<State>(reducer, State.Empty)
+      store.Subscribe(fun st ev ->
+        match ev with
+          | PatchEvent(AddPatch, p) -> if p.name = "patch-1" then cb ()
+          | _ -> ())
+
+      store.Debug(true) 
+      store.Dispatch <| PatchEvent(AddPatch, patch)
+      store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-2" })
+
+      store.Dump().Length |==| 3
+      store.Previous()
+
+    (*--------------------------------------------------------------------------*)
+    test "tick should not do anything when not in debug mode" <| fun cb ->
+      let patch1 : Patch =
+        { id = "0xb4d1d34"
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
+
+      let patch2 : Patch = { patch1 with name = "patch-2" }
+      let store : Store<State> = new Store<State>(reducer, State.Empty)
+
+      store.Dispatch <| PatchEvent(AddPatch, patch1)
+      check ((List.head store.State.Patches).name = "patch-1") "State.Patches should have patch-1"
+      store.Dispatch <| PatchEvent(UpdatePatch, patch2)
+      check ((List.head store.State.Patches).name = "patch-2") "State.Patches should have patch-2"
+      store.Previous()
+      check_cc ((List.head store.State.Patches).name = "patch-2") "State.Patches should have patch-2" cb
+
+    (*--------------------------------------------------------------------------*)
+    test "store should dump previous states for inspection" <| fun cb ->
+      let patch1 : Patch =
+        { id = "0xb4d1d34"
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
+
+      let patch2 : Patch = { patch1 with name = "patch-2" }
+      let patch3 : Patch = { patch2 with name = "patch-3" }
+      let patch4 : Patch = { patch3 with name = "patch-4" }
+
+      let store : Store<State> = new Store<State>(reducer, State.Empty)
+      store.Debug(true) 
+
+      store.Dump().Length |==| 1
+
+      store.Dispatch <| PatchEvent(AddPatch, patch1)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch2)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch3)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch4)
+
+      (store.Dump().Length ==>> 5) cb
+
+    (*--------------------------------------------------------------------------*)
+    test "store should release states when turning Debug off" <| fun cb ->
+      let patch1 : Patch =
+        { id = "0xb4d1d34"
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
+
+      let patch2 : Patch = { patch1 with name = "patch-2" }
+      let patch3 : Patch = { patch2 with name = "patch-3" }
+      let patch4 : Patch = { patch3 with name = "patch-4" }
+
+      let store : Store<State> = new Store<State>(reducer, State.Empty)
+
+      store.Debug(true) 
+      store.Dispatch <| PatchEvent(AddPatch, patch1)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch2)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch3)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch4)
+      store.Debug(false) 
+
+      (store.Dump().Length ==>> 0) cb
+
+
+    test "should restore to last state added on leaving debug mode" <| fun cb -> 
+      let patch1 : Patch =
+        { id = "0xb4d1d34"
+        ; name = "patch-1"
+        ; ioboxes = Array.empty
+        }
+
+      let patch2 : Patch = { patch1 with name = "patch-2" }
+      let patch3 : Patch = { patch2 with name = "patch-3" }
+      let patch4 : Patch = { patch3 with name = "patch-4" }
+
+      let store : Store<State> = new Store<State>(reducer, State.Empty)
+      store.Debug(true) 
+      store.Dispatch <| PatchEvent(AddPatch, patch1)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch2)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch3)
+      store.Dispatch <| PatchEvent(UpdatePatch, patch4)
+      store.Previous()
+      store.Previous()
+
+      (List.head store.State.Patches).name |==| "patch-2"
+
+      store.Debug(false) 
+
+      ((List.head store.State.Patches).name ==>> "patch-4") cb

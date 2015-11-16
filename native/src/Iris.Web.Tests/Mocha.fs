@@ -21,6 +21,18 @@ module Mocha =
     then fail msg
     else cb ()
 
+  let (==>>) a b cb =
+    check_cc (a = b) (sprintf "expected to be equal but %O /= %O" a b) cb
+
+  let (/=>>) a b cb =
+    check_cc (a <> b) (sprintf "expected to be different but %O == %O" a b) cb
+
+  let (|==|) a b =
+    check (a = b) (sprintf "expected to be equal but %O /= %O" a b)
+
+  let (|/=|) a b =
+    check (a <> b) (sprintf "expected to be different but %O == %O" a b)
+
   [<Stub>]
   [<Name "window.suite">]
   let suite (desc : string) : unit = X<unit>
