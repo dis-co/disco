@@ -37,6 +37,11 @@ module Store =
     let mutable history : Array<OldState<'a>> = new Array<OldState<'a>>()
     let mutable listeners : Listener<'a> list = List.empty
 
+    (*
+       Advance the internal stepper to the state at tick specified.
+
+       Prevent over-/underflows from crashing.
+     *)
     member private self.Tick (newtick : int) = 
       if newtick >= 0 && newtick < history.Length
       then
@@ -45,9 +50,17 @@ module Store =
         state <- state'
         self.Notify(ev) |> ignore
 
+    (*
+       Notify all listeners of the AppEvent change
+     *)
     member private self.Notify (ev : AppEvent) =
       List.map (fun l -> l self ev) listeners
 
+    (*
+       Turn debugging mode on or off.
+
+       Makes sure the current state is the first element.
+     *)
     member self.Debug(debug' : bool) : unit =
       debug <- debug'
       if debug then
@@ -57,8 +70,19 @@ module Store =
         state <- snd history.[history.Length - 1]
         history <- new Array<OldState<'a>>()
 
+    (*
+       Dump all items in history since turning on Debugging.
+     *)
     member self.Dump() : Array<OldState<'a>> = history
 
+    (*
+       Dispatch an action (AppEvent) to be executed against the current
+       version of the state to produce the next state.
+
+       Notify all listeners of the change.
+
+       Create a history item for this change if debugging is enabled.
+     *)
     member self.Dispatch (ev : AppEvent) : unit =
       state <- reducer ev state // 1) create new state
       last <- (ev, state)       // 2) store this action the and state it produced
@@ -66,15 +90,34 @@ module Store =
       if debug                  // 4) save to history if debug mode is on
       then history.Push((ev,state)) |> ignore
 
+
+    (*
+       Subscribe a callback to changes on the store.
+     *)
     member self.Subscribe (listener : Listener<'a>) =
       listeners <- listener :: listeners
 
+    (*
+       Get the current version of the Store
+     *)
     member self.State with get () = state
 
+    (*
+       If in debug-mode, advance the current "play-head" to the next position in
+       in the history. 
+
+       Also triggers listeners.
+     *)
     member self.Next() =
       if debug && tick >= 0 && tick < history.Length
       then self.Tick(tick + 1)
 
+    (*
+       If in debug-mode, set the current "play-head" to the previous position in
+       in the history. 
+
+       Also triggers listeners.
+     *)
     member self.Previous() =
       // save the last state before starting to travel in time
       if debug && tick = -1 then
