@@ -12,6 +12,8 @@ module Mocha =
   [<Direct " throw new Error($msg) ">]
   let fail (msg : string) : unit = X<unit>
 
+  let success (cb : unit -> unit) : unit = cb ()
+
   let check (result : bool) (msg : string) : unit =
     if not result
     then fail msg
