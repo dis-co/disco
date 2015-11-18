@@ -28,12 +28,11 @@ module Store =
 
     let store : Store<State> = new Store<State>(reducer, State.Empty)
     wrap patch store
-      
 
   let main () =
-    (*--------------------------------------------------------------------------*)
+    (****************************************************************************)
     suite "Test.Units.Store - Immutability"
-    (*--------------------------------------------------------------------------*)
+    (****************************************************************************)
 
     withStore <| fun patch store ->
       test "store should be immutable" <| fun cb ->
@@ -41,11 +40,11 @@ module Store =
         store.Dispatch <| PatchEvent(AddPatch, patch)
         let newstate = store.State
         (identical state newstate ==>> false) cb
-      
 
-    (*--------------------------------------------------------------------------*)
+
+    (****************************************************************************)
     suite "Test.Units.Store - Patch operations"
-    (*--------------------------------------------------------------------------*)
+    (****************************************************************************)
 
     withStore <| fun patch store ->
       test "should add a patch to the store" <| fun cb ->
@@ -70,7 +69,7 @@ module Store =
         ((List.find isPatch store.State.Patches |> (fun p -> p.name = name2)) ==>> true) cb
 
     (*--------------------------------------------------------------------------*)
-    withStore <| fun patch store -> 
+    withStore <| fun patch store ->
       test "should remove a patch already in the store" <| fun cb ->
         let isPatch (p : Patch) : bool = p.id = patch.id
 
@@ -80,11 +79,11 @@ module Store =
         store.Dispatch <| PatchEvent(RemovePatch, patch)
         ((List.exists isPatch store.State.Patches) ==>> false) cb
 
-    (*--------------------------------------------------------------------------*)
+    (****************************************************************************)
     suite "Test.Units.Store - IOBox operations"
-    (*--------------------------------------------------------------------------*)
+    (****************************************************************************)
 
-    withStore <| fun patch store -> 
+    withStore <| fun patch store ->
       test "should add an iobox to the store if patch exists" <| fun cb ->
         store.Dispatch <| PatchEvent(AddPatch, patch)
 
@@ -121,7 +120,7 @@ module Store =
         ((List.length store.State.Patches) ==>> 0) cb
 
     (*--------------------------------------------------------------------------*)
-    withStore <| fun patch store -> 
+    withStore <| fun patch store ->
       test "should update an iobox in the store if it already exists" <| fun cb ->
         let name1 = "can a cat own a cat?"
         let name2 = "yes, cats are re-entrant."
@@ -149,7 +148,7 @@ module Store =
           | None -> fail "iobox is mysteriously missing"
 
     (*--------------------------------------------------------------------------*)
-    withStore <| fun patch store -> 
+    withStore <| fun patch store ->
       test "should remove an iobox from the store if it exists" <| fun cb ->
         let iobox =
           { id     = "0xb33f"
@@ -171,181 +170,181 @@ module Store =
           | Some(_) -> fail "iobox should be missing by now but isn't"
           | None    -> success cb
 
-    (*--------------------------------------------------------------------------*)
-    suite "Test.Units.Store - Debug Mode"
-    (*--------------------------------------------------------------------------*)
-
-    withStore <| fun patch store -> 
-      test "should have correct number of historic states when starting fresh" <| fun cb ->
-        let patch2 : Patch = { patch with name = "patch-2" }
-        let patch3 : Patch = { patch2 with name = "patch-3" }
-        let patch4 : Patch = { patch3 with name = "patch-4" }
-
-        store.Debug(true) 
-
-        store.Dispatch <| PatchEvent(AddPatch, patch)
-        store.Dispatch <| PatchEvent(UpdatePatch, patch2)
-        store.Dispatch <| PatchEvent(UpdatePatch, patch3)
-        store.Dispatch <| PatchEvent(UpdatePatch, patch4)
-
-        (store.Dump().Length ==>> 5) cb
-
-
-    (*------------------------------------------------------------------------*)
-    withStore <| fun patch store -> 
-      test "should have correct number of historic states when started after 1 event" <| fun cb ->
-        let patch2 : Patch = { patch with name = "patch-2" }
-        let patch3 : Patch = { patch2 with name = "patch-3" }
-        let patch4 : Patch = { patch3 with name = "patch-4" }
-
-        store.Dispatch <| PatchEvent(AddPatch, patch)
-        store.Debug(true) 
-        store.Dispatch <| PatchEvent(UpdatePatch, patch2)
-        store.Dispatch <| PatchEvent(UpdatePatch, patch3)
-        store.Dispatch <| PatchEvent(UpdatePatch, patch4)
-
-        (store.Dump().Length ==>> 4) cb
-
-
-    (*------------------------------------------------------------------------*)
-    withStore <| fun patch store -> 
-      test "should have correct number of historic states when started after 2 events" <| fun cb ->
-        let patch2 : Patch = { patch with name = "patch-2" }
-        let patch3 : Patch = { patch2 with name = "patch-3" }
-        let patch4 : Patch = { patch3 with name = "patch-4" }
-
-        store.Dispatch <| PatchEvent(AddPatch, patch)
-        store.Dispatch <| PatchEvent(UpdatePatch, patch2)
-        store.Debug(true) 
-        store.Dispatch <| PatchEvent(UpdatePatch, patch3)
-        store.Dispatch <| PatchEvent(UpdatePatch, patch4)
-
-        (store.Dump().Length ==>> 3) cb
-
-
-    (*------------------------------------------------------------------------*)
-    withStore <| fun patch store -> 
-      test "store should store previous states in debug mode" <| fun cb ->
-        let patch2 : Patch = { patch with name = "patch-2" }
-        let patch3 : Patch = { patch2 with name = "patch-3" }
-        let patch4 : Patch = { patch3 with name = "patch-4" }
-
-        store.Debug(true) 
-
-        store.Dispatch <| PatchEvent(AddPatch, patch)
-
-        (List.head store.State.Patches).name |==| "patch-1"
-
-        store.Dispatch <| PatchEvent(UpdatePatch, patch2)
-        (List.head store.State.Patches).name |==| "patch-2"
-
-        store.Dispatch <| PatchEvent(UpdatePatch, patch3)
-        (List.head store.State.Patches).name |==| "patch-3"
-
-        // this is HEAD
-        store.Dispatch <| PatchEvent(UpdatePatch, patch4)
-        (List.head store.State.Patches).name |==| "patch-4"
-
-        store.Previous()
-        (List.head store.State.Patches).name |==| "patch-3"
-
-        store.Previous()
-        (List.head store.State.Patches).name |==| "patch-2"
-
-        store.Previous()
-        (List.head store.State.Patches).name |==| "patch-1"
-
-        store.Previous()
-        List.length store.State.Patches |==| 0
-                                           
-        store.Previous()                   
-        List.length store.State.Patches |==| 0
-
-        store.Next()
-        (List.head store.State.Patches).name |==| "patch-1"
-
-        store.Next()
-        (List.head store.State.Patches).name |==| "patch-2"
-
-        store.Next()
-        (List.head store.State.Patches).name |==| "patch-3"
-
-        store.Next()
-        (List.head store.State.Patches).name |==| "patch-4"
-
-        store.Next()
-        (List.head store.State.Patches).name |==| "patch-4"
+    (****************************************************************************)
+    suite "Test.Units.Store - Undo/Redo"
+    (****************************************************************************)
 
 
     (*--------------------------------------------------------------------------*)
-    withStore <| fun patch store -> 
-      test "store should trigger listeners on tick" <| fun cb ->
+    withStore <| fun patch store ->
+      test "store should trigger listeners on undo" <| fun cb ->
         store.Subscribe(fun st ev ->
           match ev with
             | PatchEvent(AddPatch, p) -> if p.name = patch.name then cb ()
             | _ -> ())
 
-        store.Debug(true) 
         store.Dispatch <| PatchEvent(AddPatch, patch)
         store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-2" })
 
-        store.Dump().Length |==| 3
-        store.Previous()
+        store.History.Length() |==| 3
+        store.Undo()
+
 
     (*--------------------------------------------------------------------------*)
-    withStore <| fun patch store -> 
-      test "tick should not do anything when not in debug mode" <| fun cb ->
-        store.Dispatch <| PatchEvent(AddPatch, patch)
-        (List.head store.State.Patches).name |==| "patch-1"
-        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-2" })
-        (List.head store.State.Patches).name |==| "patch-2"
-        store.Previous()
-        ((List.head store.State.Patches).name ==>> "patch-2") cb
-
-    (*--------------------------------------------------------------------------*)
-    withStore <| fun patch store -> 
+    withStore <| fun patch store ->
       test "store should dump previous states for inspection" <| fun cb ->
-        store.Debug(true) 
-        store.Dump().Length |==| 1
+        store.History.Length() |==| 1
         store.Dispatch <| PatchEvent(AddPatch, patch)
         store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-2" })
         store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-3" })
         store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-4" })
-        (store.Dump().Length ==>> 5) cb
+        (store.History.Length() ==>> 5) cb
+
 
     (*--------------------------------------------------------------------------*)
-    withStore <| fun patch store -> 
-      test "store should release states when turning Debug off" <| fun cb ->
-        store.Debug(true) 
+    withStore <| fun patch store ->
+      test "should have correct number of historic states when starting fresh" <| fun cb ->
+        let patch2 : Patch = { patch with name = "patch-2" }
+        let patch3 : Patch = { patch2 with name = "patch-3" }
+        let patch4 : Patch = { patch3 with name = "patch-4" }
+
         store.Dispatch <| PatchEvent(AddPatch, patch)
-        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-2" })
-        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-3" })
-        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-4" })
-        store.Debug(false) 
-        (store.Dump().Length ==>> 0) cb
+        store.Dispatch <| PatchEvent(UpdatePatch, patch2)
+        store.Dispatch <| PatchEvent(UpdatePatch, patch3)
+        store.Dispatch <| PatchEvent(UpdatePatch, patch4)
+
+        (store.History.Length() ==>> 5) cb
+
 
     (*--------------------------------------------------------------------------*)
-    withStore <| fun patch store -> 
-      test "should restore to last state added on leaving debug mode" <| fun cb -> 
-        store.Debug(true) 
+    withStore <| fun patch store ->
+      test "should undo a single change" <| fun cb ->
         store.Dispatch <| PatchEvent(AddPatch, patch)
-        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-2" })
-        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-3" })
-        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-4" })
-        store.Previous()
-        store.Previous()
-        (List.head store.State.Patches).name |==| "patch-2"
-        store.Debug(false) 
-        ((List.head store.State.Patches).name ==>> "patch-4") cb
+        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "cats" })
+        store.Undo()
+        ((List.head store.State.Patches).name ==>> patch.name) cb
+
 
     (*--------------------------------------------------------------------------*)
-    suite "Test.Units.Store - Undo/Redo"
-    (*--------------------------------------------------------------------------*)
+    withStore <| fun patch store ->
+      test "should undo two changes" <| fun cb ->
+        store.Dispatch <| PatchEvent(AddPatch, patch)
+        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "cats" })
+        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "dogs" })
+        store.Undo()
+        store.Undo()
+        ((List.head store.State.Patches).name ==>> patch.name) cb
 
-    pending "should undo a change"
-    pending "should redo an undone change"
-    pending "should redo an undone change after intermittend change"
-    pending "should reflect an undo in debug history"
-    pending "should reflect an redo in debug history"
-    pending "should debug history should be append-only during undo/redo"
-    pending "should only keep specified number of undo/redo steps"
+
+    (*--------------------------------------------------------------------------*)
+    withStore <| fun patch store ->
+      test "should redo an undone change" <| fun cb ->
+        store.Dispatch <| PatchEvent(AddPatch, patch)
+        store.Undo()
+        List.length store.State.Patches |==| 0
+        store.Redo()
+        (List.length store.State.Patches ==>> 1) cb
+
+
+    (*--------------------------------------------------------------------------*)
+    withStore <| fun patch store ->
+      test "should redo multiple undone changes" <| fun cb ->
+        store.Dispatch <| PatchEvent(AddPatch, patch)
+        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "cats" })
+        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "dogs" })
+        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "mice" })
+        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "men"  })
+        store.Undo()
+        store.Undo()
+        (List.head store.State.Patches).name |==| "dogs"
+        store.Redo()
+        (List.head store.State.Patches).name |==| "mice"
+        store.Redo()
+        (List.head store.State.Patches).name |==| "men"
+        store.Redo()
+        ((List.head store.State.Patches).name ==>> "men") cb
+
+
+    (*--------------------------------------------------------------------------*)
+    withStore <| fun patch store ->
+      test "should undo/redo interleaved changes" <| fun cb ->
+        store.Dispatch <| PatchEvent(AddPatch, patch)
+        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "cats" })
+        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "dogs" })
+
+        store.Undo()
+        (List.head store.State.Patches).name |==| "cats"
+
+        store.Redo()
+        (List.head store.State.Patches).name |==| "dogs"
+
+        store.Undo()
+        (List.head store.State.Patches).name |==| "cats"
+
+        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "mice" })
+
+        store.Undo()
+        (List.head store.State.Patches).name |==| "dogs"
+
+        store.Redo()
+        (List.head store.State.Patches).name |==| "mice"
+
+        store.Undo()
+        store.Undo()
+        (List.head store.State.Patches).name |==| "cats"
+
+        store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "men"  })
+
+        store.Undo()
+        (List.head store.State.Patches).name |==| "mice"
+
+        store.Redo()
+        (List.head store.State.Patches).name |==| "men"
+
+        (store.History.Length() ==>> 6) cb
+
+
+    (*--------------------------------------------------------------------------*)
+    withStore <| fun patch store ->
+      test "should only keep specified number of undo-steps" <| fun cb ->
+        store.UndoSteps <- 4
+        store.Dispatch <| PatchEvent(AddPatch, patch)
+
+        ["dogs"; "cats"; "mice"; "men"; "worms"; "hens"]
+        |> List.map (fun n ->
+             store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = n }))
+        |> List.iter (fun _ -> store.Undo())
+
+        store.History.Length() |==| 4
+        ((List.head store.State.Patches).name ==>> "mice") cb
+
+
+    (*--------------------------------------------------------------------------*)
+    withStore <| fun patch store ->
+      test "should keep all state in history in debug mode" <| fun cb ->
+        store.UndoSteps <- 2
+        store.Debug(true)
+
+        store.Dispatch <| PatchEvent(AddPatch, patch)
+
+        ["dogs"; "cats"; "mice"; "men"; "worms"; "hens"]
+        |> List.iter (fun n ->
+            store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = n }))
+
+        (store.History.Length() ==>> 8) cb
+
+    (*--------------------------------------------------------------------------*)
+    withStore <| fun patch store ->
+      test "should shrink history to UndoSteps after leaving debug mode" <| fun cb ->
+        store.UndoSteps <- 3
+        store.Debug(true)
+
+        store.Dispatch <| PatchEvent(AddPatch, patch)
+
+        ["dogs"; "cats"; "mice"; "men"; "worms"; "hens"]
+        |> List.iter (fun n ->
+            store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = n }))
+
+        store.History.Length() |==| 8
+        store.Debug(false)
+        store.History.Length() ==>> 3 <| cb

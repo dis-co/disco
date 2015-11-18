@@ -45,3 +45,27 @@ module Events =
     | IOBoxEvent of Kind : IOBoxEventT * IOBox : IOBox
     | PatchEvent of Kind : PatchEventT * Patch : Patch
     | UnknownEvent
+
+    with override self.ToString() : string =
+                  match self with
+                    | AppEvent(t) ->
+                      match t with
+                        | Initialize  -> "AppEvent(Initialize)"
+                        | SaveEvent   -> "AppEvent(Save)"
+                        | UndoEvent   -> "AppEvent(Undo)"
+                        | RedoEvent   -> "RedoEvent(Redo)"
+
+                    | IOBoxEvent(t,b) -> 
+                      match t with
+                        | AddIOBox    -> "IOBoxEvent(Add)"
+                        | RemoveIOBox -> "IOBoxEvent(Remove)"
+                        | UpdateIOBox -> "IOBoxEvent(Update)"
+
+                    | PatchEvent(t,p) -> 
+                      match t with
+                        | AddPatch    -> "PatchEvent(Add)" 
+                        | UpdatePatch -> "PatchEvent(Update)"
+                        | RemovePatch -> "PatchEvent(Remove)"
+
+                    | UnknownEvent -> "UnknownEvent"
+      
