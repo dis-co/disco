@@ -16,11 +16,14 @@ module Store =
     with override self.ToString() : string =
                   sprintf "%s %s" (self.Event.ToString()) (self.State.ToString())
 
-
-  [<Inline " $o === undefined ">]
-  let private isUndefined (o : obj) : bool = X
-  (* - - - - - - - - - - History - - - - - - - - - - *)
-
+  (*  _   _ _     _                   
+   * | | | (_)___| |_ ___  _ __ _   _ 
+   * | |_| | / __| __/ _ \| '__| | | |
+   * |  _  | \__ \ || (_) | |  | |_| |
+   * |_| |_|_|___/\__\___/|_|   \__, |
+   *                            |___/ 
+   * Wrap up undo/redo logic.
+   *) 
   type History<'a> (state : 'a) =
     let mutable depth = 10
     let mutable debug = false
@@ -30,7 +33,6 @@ module Store =
     do values.Push(state) |> ignore
 
     (* - - - - - - - - - - Properties - - - - - - - - - - *)
-
     member __.Debug
       with get () = debug
        and set b  =
@@ -42,16 +44,17 @@ module Store =
       with get () = depth
        and set n  = depth <- n
 
-    (* - - - - - - - - - - Methods - - - - - - - - - - *)
+    member __.Values
+      with get () = values
 
+    member __.Length
+      with get () = values.Length
+
+    (* - - - - - - - - - - Methods - - - - - - - - - - *)
     member __.Append (value : 'a) : unit =
       head <- (values.Push(value) - 1)
       if (not debug) && values.Length > depth
       then values.Shift() |> ignore
-
-    member __.Values () : Array<'a> = values
-
-    member __.Length () : int = values.Length
 
     member __.Undo () : 'a =
       let head' =

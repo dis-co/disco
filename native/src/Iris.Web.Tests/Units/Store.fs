@@ -186,19 +186,19 @@ module Store =
         store.Dispatch <| PatchEvent(AddPatch, patch)
         store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-2" })
 
-        store.History.Length() |==| 3
+        store.History.Length |==| 3
         store.Undo()
 
 
     (*--------------------------------------------------------------------------*)
     withStore <| fun patch store ->
       test "store should dump previous states for inspection" <| fun cb ->
-        store.History.Length() |==| 1
+        store.History.Length |==| 1
         store.Dispatch <| PatchEvent(AddPatch, patch)
         store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-2" })
         store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-3" })
         store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = "patch-4" })
-        (store.History.Length() ==>> 5) cb
+        (store.History.Length ==>> 5) cb
 
 
     (*--------------------------------------------------------------------------*)
@@ -213,7 +213,7 @@ module Store =
         store.Dispatch <| PatchEvent(UpdatePatch, patch3)
         store.Dispatch <| PatchEvent(UpdatePatch, patch4)
 
-        (store.History.Length() ==>> 5) cb
+        (store.History.Length ==>> 5) cb
 
 
     (*--------------------------------------------------------------------------*)
@@ -301,7 +301,7 @@ module Store =
         store.Redo()
         (List.head store.State.Patches).name |==| "men"
 
-        (store.History.Length() ==>> 6) cb
+        (store.History.Length ==>> 6) cb
 
 
     (*--------------------------------------------------------------------------*)
@@ -315,7 +315,7 @@ module Store =
              store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = n }))
         |> List.iter (fun _ -> store.Undo())
 
-        store.History.Length() |==| 4
+        store.History.Length |==| 4
         ((List.head store.State.Patches).name ==>> "mice") cb
 
 
@@ -331,7 +331,7 @@ module Store =
         |> List.iter (fun n ->
             store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = n }))
 
-        (store.History.Length() ==>> 8) cb
+        (store.History.Length ==>> 8) cb
 
     (*--------------------------------------------------------------------------*)
     withStore <| fun patch store ->
@@ -345,6 +345,6 @@ module Store =
         |> List.iter (fun n ->
             store.Dispatch <| PatchEvent(UpdatePatch, { patch with name = n }))
 
-        store.History.Length() |==| 8
+        store.History.Length |==| 8
         store.Debug(false)
-        store.History.Length() ==>> 3 <| cb
+        store.History.Length ==>> 3 <| cb
