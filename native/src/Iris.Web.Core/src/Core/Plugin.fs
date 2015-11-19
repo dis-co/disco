@@ -5,14 +5,11 @@ namespace Iris.Web.Core
 open WebSharper
 open WebSharper.JavaScript
 
+[<AutoOpen>]
 [<JavaScript>]
 module Plugin =
 
   open System
-
-  open Iris.Web.Core.Html
-  open Iris.Web.Core.IOBox
-  open Iris.Web.Core.Patch
 
   (*   ____  _             _
       |  _ \| |_   _  __ _(_)_ __

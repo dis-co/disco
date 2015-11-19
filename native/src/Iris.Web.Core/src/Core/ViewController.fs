@@ -4,12 +4,10 @@ open WebSharper
 open WebSharper.JavaScript
 open WebSharper.JQuery
 
+[<AutoOpen>]
 [<JavaScript>]
 module ViewController =
-
   open System
-  open Iris.Web.Core.Store
-  open Iris.Web.Core.Html
 
   (*
       __        ___     _            _

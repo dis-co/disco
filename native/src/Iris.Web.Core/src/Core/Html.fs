@@ -5,6 +5,7 @@ namespace Iris.Web.Core
 open WebSharper
 open WebSharper.JavaScript
 
+[<AutoOpen>]
 [<JavaScript>]
 module Html =
   (*

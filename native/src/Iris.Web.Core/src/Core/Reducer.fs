@@ -2,14 +2,9 @@ namespace Iris.Web.Core
 
 open WebSharper
 
+[<AutoOpen>]
 [<JavaScript>]
 module Reducer =
-
-  open Iris.Web.Core.IOBox
-  open Iris.Web.Core.Patch
-  open Iris.Web.Core.Events
-  open Iris.Web.Core.Store
-  open Iris.Web.Core.State
 
   (*   ____          _
       |  _ \ ___  __| |_   _  ___ ___ _ __

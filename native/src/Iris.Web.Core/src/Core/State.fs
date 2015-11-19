@@ -7,9 +7,6 @@ open WebSharper.JavaScript
 [<JavaScript>]
 module State =
 
-  open Iris.Web.Core.IOBox
-  open Iris.Web.Core.Patch
-
   (*   ____  _        _
       / ___|| |_ __ _| |_ ___
       \___ \| __/ _` | __/ _ \

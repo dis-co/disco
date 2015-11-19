@@ -6,7 +6,7 @@ open WebSharper.JavaScript
 [<AutoOpen>]
 [<JavaScript>]
 module IrisMonad =
-type StateM<'a, 's> = 's -> ('a * 's)
+  type StateM<'a, 's> = 's -> ('a * 's)
 
   let inline (>>=) (m : StateM<'a,'s>) (f : 'a -> StateM<'b,'s>) : StateM<'b,'s> =
     fun s ->

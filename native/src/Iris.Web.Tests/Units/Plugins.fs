@@ -11,16 +11,8 @@ module Plugins =
 
   open Iris.Web.Tests.Util
 
-  open Iris.Web.Core.Html
-  open Iris.Web.Core.IOBox
-  open Iris.Web.Core.Patch
-  open Iris.Web.Core.Store
-  open Iris.Web.Core.Events
-  open Iris.Web.Core.Reducer
-  open Iris.Web.Core.ViewController
-  open Iris.Web.Core.Plugin
-
-  open Iris.Web.Views.PatchView
+  open Iris.Web.Core
+  open Iris.Web.Views
 
   [<Direct @"
     window.IrisPlugins = [];

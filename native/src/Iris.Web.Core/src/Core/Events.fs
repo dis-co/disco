@@ -6,9 +6,6 @@ open WebSharper
 [<JavaScript>]
 module Events =
 
-  open Iris.Web.Core.IOBox
-  open Iris.Web.Core.Patch
-
   (*
           _                _____                 _
          / \   _ __  _ __ | ____|_   _____ _ __ | |_ ™

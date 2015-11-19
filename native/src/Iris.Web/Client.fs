@@ -6,16 +6,8 @@ open WebSharper.JavaScript
 [<JavaScript>]
 module Client =
 
-  open Iris.Web.Core.Html
-  open Iris.Web.Core.Patch
-  open Iris.Web.Core.IOBox
-  open Iris.Web.Core.Socket
-  open Iris.Web.Core.ViewController
-  open Iris.Web.Core.State
-  open Iris.Web.Core.Store
-  open Iris.Web.Core.Events
-  open Iris.Web.Core.Reducer
-  open Iris.Web.Views.PatchView
+  open Iris.Web.Core
+  open Iris.Web.Views
 
   (* FIXME: need to factor this out into a nice abstraction *)
   let handler (store : Store<State>) (ev : MessageEvent) : unit =
@@ -46,7 +38,7 @@ module Client =
 
   let Main : unit =
     let store  = new Store<State>(reducer, State.Empty)
-    let widget = new PatchView()
+    let widget = new Patches.Root()
     let ctrl   = new ViewController<State> (widget)
 
     ctrl.Render store

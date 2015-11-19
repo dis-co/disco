@@ -3,8 +3,10 @@ namespace Iris.Web.Views
 open WebSharper
 open WebSharper.JavaScript
 
+[<AutoOpen>]
 [<JavaScript>]
-module PatchView =
+[<RequireQualifiedAccess>]
+module Patches =
 
   open Iris.Web.Core.Html
   open Iris.Web.Core.IOBox
@@ -14,7 +16,7 @@ module PatchView =
   open Iris.Web.Core.State
   open Iris.Web.Core.Plugin
 
-  type PatchView () =
+  type Root () =
     let mutable plugins = new Plugins ()
 
     let header = h1 <|> text "All Patches"
@@ -47,7 +49,7 @@ module PatchView =
     let mainView (content : Html) : Html =
       div <@> id' "main" <||> [| header ; content ; footer |]
 
-    (* RENDERER *)
+    (*-------------------- RENDERER --------------------*)
 
     interface IWidget<State> with
       member self.Dispose () = ()

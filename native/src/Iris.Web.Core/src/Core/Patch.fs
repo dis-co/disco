@@ -3,11 +3,10 @@ namespace Iris.Web.Core
 open WebSharper
 open WebSharper.JavaScript
 
+[<AutoOpen>]
 [<JavaScript>]
 module Patch =
 
-  open Iris.Web.Core.IOBox
-  
   (*   ____       _       _     
       |  _ \ __ _| |_ ___| |__  
       | |_) / _` | __/ __| '_ \ 

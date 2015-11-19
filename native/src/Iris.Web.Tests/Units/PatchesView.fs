@@ -10,18 +10,10 @@ open WebSharper.Mocha
 [<RequireQualifiedAccess>]
 module PatchesView =
 
+  open Iris.Web.Core
   open Iris.Web.Tests.Util
 
-  open Iris.Web.Core.IOBox
-  open Iris.Web.Core.Patch
-  open Iris.Web.Core.Store
-  open Iris.Web.Core.State
-  open Iris.Web.Core.Events
-  open Iris.Web.Core.Reducer
-  open Iris.Web.Core.ViewController
-  open Iris.Web.Core.Plugin
-
-  open Iris.Web.Views.PatchView
+  open Iris.Web.Views
 
   [<Direct
     @"
@@ -94,7 +86,7 @@ module PatchesView =
 
       let store : Store<State> = new Store<State>(reducer, State.Empty)
 
-      let view = new PatchView ()
+      let view = new Patches.Root ()
       let controller = new ViewController<State> (view)
       controller.Render store
 
@@ -132,7 +124,7 @@ module PatchesView =
       let store : Store<State> =
         new Store<State>(reducer, { Patches = [ patch1; patch2 ] })
 
-      let view = new PatchView ()
+      let view = new Patches.Root ()
       let controller = new ViewController<State> (view)
       controller.Render store
 
@@ -183,7 +175,7 @@ module PatchesView =
       let store : Store<State> =
         new Store<State>(reducer, { Patches = [ patch ] })
 
-      let view = new PatchView ()
+      let view = new Patches.Root ()
       let controller = new ViewController<State> (view)
       controller.Render store
 
@@ -231,7 +223,7 @@ module PatchesView =
       let store : Store<State> =
         new Store<State>(reducer, { Patches = [ patch ] })
 
-      let view = new PatchView ()
+      let view = new Patches.Root ()
       let controller = new ViewController<State> (view)
 
       // add the first iobox
@@ -291,7 +283,7 @@ module PatchesView =
         new Store<State>(reducer, { Patches = [ patch ] })
 
       // render initial state
-      let view = new PatchView ()
+      let view = new Patches.Root ()
       let controller = new ViewController<State> (view)
 
       store.Dispatch <| IOBoxEvent(AddIOBox, iobox)
