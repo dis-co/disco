@@ -9,28 +9,24 @@ open WebSharper.JQuery
 module ViewController =
   open System
 
-  (*
-      __        ___     _            _
-      \ \      / (_) __| | __ _  ___| |_
-       \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
-        \ V  V / | | (_| | (_| |  __/ |_
-         \_/\_/  |_|\__,_|\__, |\___|\__|
-                          |___/
-  *)
+  (* __        ___     _            _
+     \ \      / (_) __| | __ _  ___| |_
+      \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+       \ V  V / | | (_| | (_| |  __/ |_
+        \_/\_/  |_|\__,_|\__, |\___|\__|
+                         |___/           *)
   type IWidget<'a> =
     abstract Render  : Store<'a> -> VTree
     abstract Dispose : unit -> unit
 
-  (*
-      __     ___                ____ _        _
+  (*  __     ___                ____ _        _
       \ \   / (_) _____      __/ ___| |_ _ __| |
        \ \ / /| |/ _ \ \ /\ / / |   | __| '__| |
         \ V / | |  __/\ V  V /| |___| |_| |  | |
          \_/  |_|\___| \_/\_/  \____|\__|_|  |_|RRrrr..
 
-      ViewController orchestrates the rendering of state changes and wraps up both
-      the widget tree and the rendering context needed for virtual-dom.
-  *)
+      ViewController orchestrates the rendering of state changes and wraps up
+      both the widget tree and the rendering context needed for virtual-dom.  *)
 
   type ViewController<'a> (widget : IWidget<'a>) =
     let mutable view : IWidget<'a>  = widget

@@ -8,13 +8,7 @@ open WebSharper.JavaScript
 [<RequireQualifiedAccess>]
 module Patches =
 
-  open Iris.Web.Core.Html
-  open Iris.Web.Core.IOBox
-  open Iris.Web.Core.Patch
-  open Iris.Web.Core.ViewController
-  open Iris.Web.Core.Store
-  open Iris.Web.Core.State
-  open Iris.Web.Core.Plugin
+  open Iris.Web.Core
 
   type Root () =
     let mutable plugins = new Plugins ()

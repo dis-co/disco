@@ -84,7 +84,7 @@
     <Compile Include="src\Core\Socket.fs" />
     <Compile Include="src\Core\ViewController.fs" />
     <Compile Include="src\Views\Index.fs" />
-    <Compile Include="src\Views\PatchView.fs" />
+    <Compile Include="src\Views\Patches.fs" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">
