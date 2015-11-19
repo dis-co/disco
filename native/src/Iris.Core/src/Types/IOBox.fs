@@ -102,3 +102,60 @@ module IOBox =
         ; Properties = Array.empty
         ; Slices     = Array.empty
         }
+
+      static member ColorBox(id, name, patch) =
+        { Id         = id
+        ; Name       = name
+        ; Type       = PinType.Color
+        ; Patch      = patch
+        ; Tag        = None
+        ; Behavior   = None
+        ; VecSize    = None
+        ; Min        = None
+        ; Max        = None
+        ; Unit       = None
+        ; Precision  = None
+        ; StringType = None
+        ; FileMask   = None
+        ; MaxChars   = None
+        ; Properties = Array.empty
+        ; Slices     = Array.empty
+        }
+
+      static member EnumBox(id, name, patch) =
+        { Id         = id
+        ; Name       = name
+        ; Type       = PinType.Enum
+        ; Patch      = patch
+        ; Tag        = None
+        ; Behavior   = None
+        ; VecSize    = None
+        ; Min        = None
+        ; Max        = None
+        ; Unit       = None
+        ; Precision  = None
+        ; StringType = None
+        ; FileMask   = None
+        ; MaxChars   = None
+        ; Properties = Array.empty
+        ; Slices     = Array.empty
+        }
+
+      static member NodeBox(id, name, patch) =
+        { Id         = id
+        ; Name       = name
+        ; Type       = PinType.Node
+        ; Patch      = patch
+        ; Tag        = None
+        ; Behavior   = None
+        ; VecSize    = None
+        ; Min        = None
+        ; Max        = None
+        ; Unit       = None
+        ; Precision  = None
+        ; StringType = None
+        ; FileMask   = None
+        ; MaxChars   = None
+        ; Properties = Array.empty
+        ; Slices     = Array.empty
+        }
