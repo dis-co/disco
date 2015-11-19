@@ -291,7 +291,7 @@ module PatchesView =
       store.Dispatch <| IOBoxEvent(UpdateIOBox, updated1)
 
       match findIOBox store.State.Patches elid with
-        | Some(box) -> check (box.Slices.[0].Value = value2) "box in updated state should have right value"
+        | Some(box) -> check ((box.Slices.[0].Value :?> string) = value2) "box in updated state should have right value"
         | None -> fail "IOBox was not found in store"
 
       controller.Render store
@@ -311,7 +311,7 @@ module PatchesView =
       store.Dispatch <| IOBoxEvent(UpdateIOBox, updated2)
 
       match findIOBox store.State.Patches elid with
-        | Some(box) -> check (box.Slices.[0].Value = value3) "box in updated state should have right value"
+        | Some(box) -> check ((box.Slices.[0].Value :?> string) = value3) "box in updated state should have right value"
         | None -> fail "IOBox was not found in store"
 
       controller.Render store

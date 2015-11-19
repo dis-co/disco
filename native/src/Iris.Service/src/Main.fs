@@ -39,13 +39,31 @@ module Main =
     // let assetServer = new AssetServer("0.0.0.0", 3000)
     // assetServer.Start ()
 
-    let iob1 =
-      { IOBox.StringBox("0xb33f", "hi", "0xb4d1d34")
-          with Slices = [| { Idx = 0; Value = "swell" } |] }
+    let pid = "patch-1"
 
-    let patch = { Id       = "hello"
+    let iob1 =
+      { IOBox.ValueBox("value-box-id", "Value Box Example", pid)
+          with Slices = [| { Idx = 0; Value = 666 } |] }
+
+    let iob2 =
+      { IOBox.StringBox("string-box-id", "String Box Example", pid)
+          with Slices = [| { Idx = 0; Value = "my example string value" } |] }
+
+    let iob3 =
+      { IOBox.ColorBox("color-box-id", "Color Box Example", pid)
+          with Slices = [| { Idx = 0; Value = "#0f23ea" } |] }
+
+    let iob4 =
+      { IOBox.EnumBox("enum-box-id", "Enum Box Example", pid)
+          with Slices = [| { Idx = 0; Value = [| "value 1"; "value 2"; "value 3"; |] }
+                        |] }
+    let iob5 =
+      { IOBox.EnumBox("node-box-id", "Node Box Example", pid)
+          with Slices = [| { Idx = 0; Value = "Not supported" } |] }
+
+    let patch = { Id       = pid
                 ; Name     = "asdfas"
-                ; IOBoxes  =  [| iob1 |]
+                ; IOBoxes  =  [| iob1; iob2; iob3; iob4; iob5; |]
                 }
 
     let msg = { Type = AddPatch; Payload = patch }

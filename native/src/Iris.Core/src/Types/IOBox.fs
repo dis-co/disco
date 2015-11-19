@@ -33,7 +33,7 @@ module IOBox =
   type Slice =
     {
       [<Name "idx">]   Idx   : int;
-      [<Name "value">] Value : string;
+      [<Name "value">] Value : obj;
     }
 
   [<RequireQualifiedAccess>]

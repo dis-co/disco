@@ -9,20 +9,23 @@ window.IrisPlugins = window.IrisPlugins || [];
     });
   }
 
-  function sliceView(slice) {
-    return h('div', [
-      h('h3', ['Slice: ' + slice.idx]),
-      h('input', {
-        type: 'number',
-        onchange: function (ev) {
-          console.log("onchange!");
-        }
-      }, [slice.value])
-    ]);
+  function sliceView(ctx) {
+    console.log('value plugin', ctx);
+    return function(slice) {
+      return h('div', [
+        h('strong', [slice.idx]),
+        h('input', {
+          type: 'number',
+          onchange: function (ev) {
+            trigger(ev, ctx.listeners, ctx);
+          }
+        }, [slice.value])
+      ]);
+    };
   }
   
-  var ValuePlug = function () {
-    this.listeners = {};
+  var ValuePlug = function() {
+    this.listeners = [];
 
     // get current IOBox values
     this.get = function() {
@@ -31,27 +34,20 @@ window.IrisPlugins = window.IrisPlugins || [];
     };
 
     // register callback on update events to UI
-    this.on = function(tag, cb) {
-      console.log("on called", arguments);
-      this.listeners[tag] = cb;
-    };
-
-    // unregister callback
-    this.off = function(tag) {
-      console.log("off called", arguments);
-      this.listeners[tag] = null;
+    this.register = function(cb) {
+      this.listeners.push(cb);
     };
 
     this.dispose = function() {
-      console.log("dispose called");
+      console.log('disposing')
     };
 
     // render is expected to return a VTree even for static things like canvas
     this.render = function (iobox) {
-      return h('div', iobox.slices.map(sliceView));
+      return h('div', iobox.slices.map(sliceView(this)));
     };
   };
-  
+
   plugins.push({
     name: "Value Plugin",
     type: "value",
