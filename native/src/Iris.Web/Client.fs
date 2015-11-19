@@ -50,26 +50,10 @@ module Client =
     let ctrl   = new ViewController<State> (widget)
 
     ctrl.Render store
-
-    store.Subscribe (fun s _ -> ctrl.Render s)
-
-    let onMsg (msg : MessageEvent) =
-      handler store msg
-
-    Console.Log("STARTINMG!!")
+    store.Subscribe (fun store' _ -> ctrl.Render store')
 
     let socket = new WebSocket("ws://localhost:8080")
 
-    socket.Onopen <- (fun _ ->
-      Console.Log("on open"))
-
-    socket.Onmessage <- (fun ev ->
-      onMsg ev)
-
-    socket.Onerror <- (fun err ->
-      Console.Log("error:", err))
-
-    // async {
-    //   let! websocket = createSocket("ws://localhost:8080", onMsg, onClose)
-    //   websocket.send("start")
-    // } |> Async.StartImmediate
+    socket.Onopen    <- (fun _   -> Console.Log("on open"))
+    socket.Onerror   <- (fun err -> Console.Log("error:", err))
+    socket.Onmessage <- (fun msg -> handler store msg)
