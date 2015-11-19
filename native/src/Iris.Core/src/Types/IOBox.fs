@@ -66,41 +66,39 @@ module IOBox =
     }
     with
       static member StringBox(id, name, patch) =
-        {
-          Id         = id
-          Name       = name
-          Type       = PinType.String
-          Patch      = patch
-          Tag        = None
-          Behavior   = None
-          VecSize    = None
-          Min        = None
-          Max        = None
-          Unit       = None
-          Precision  = None
-          StringType = Some(StringType.Simple)
-          FileMask   = None
-          MaxChars   = None
-          Properties = Array.empty
-          Slices     = Array.empty
+        { Id         = id
+        ; Name       = name
+        ; Type       = PinType.String
+        ; Patch      = patch
+        ; Tag        = None
+        ; Behavior   = None
+        ; VecSize    = None
+        ; Min        = None
+        ; Max        = None
+        ; Unit       = None
+        ; Precision  = None
+        ; StringType = Some(StringType.Simple)
+        ; FileMask   = None
+        ; MaxChars   = None
+        ; Properties = Array.empty
+        ; Slices     = Array.empty
         }
 
       static member ValueBox(id, name, patch) =
-        {
-          Id         = id
-          Name       = name
-          Type       = PinType.Value
-          Patch      = patch
-          Tag        = None
-          Behavior   = Some(Behavior.Slider)
-          VecSize    = None
-          Min        = None
-          Max        = None
-          Unit       = None
-          Precision  = None
-          StringType = None
-          FileMask   = None
-          MaxChars   = None
-          Properties = Array.empty
-          Slices     = Array.empty
+        { Id         = id
+        ; Name       = name
+        ; Type       = PinType.Value
+        ; Patch      = patch
+        ; Tag        = None
+        ; Behavior   = Some(Behavior.Slider)
+        ; VecSize    = None
+        ; Min        = None
+        ; Max        = None
+        ; Unit       = None
+        ; Precision  = None
+        ; StringType = None
+        ; FileMask   = None
+        ; MaxChars   = None
+        ; Properties = Array.empty
+        ; Slices     = Array.empty
         }

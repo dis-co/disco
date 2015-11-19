@@ -21,7 +21,7 @@ window.IrisPlugins = window.IrisPlugins || [];
     ]);
   }
   
-  var number = function () {
+  var ValuePlug = function () {
     this.listeners = {};
 
     // get current IOBox values
@@ -53,10 +53,10 @@ window.IrisPlugins = window.IrisPlugins || [];
   };
   
   plugins.push({
-    name: "Number Plugin",
-    type: "number",
+    name: "Value Plugin",
+    type: "value",
     create: function() {
-      return new number(arguments);
+      return new ValuePlug(arguments);
     }
   });
 })(window.IrisPlugins);
