@@ -12,13 +12,16 @@ window.IrisPlugins = window.IrisPlugins || [];
   function sliceView(slice) {
     return h('div', [
       h('h3', ['Slice: ' + slice.idx]),
-      h('p', ['value: ' + slice.value])
+      h('input', {
+        type: 'number',
+        onchange: function (ev) {
+          console.log("onchange!");
+        }
+      }, [slice.value])
     ]);
   }
   
-  var myplugin = function () {
-    console.log('myplugin instance constructor');
-
+  var number = function () {
     this.listeners = {};
 
     // get current IOBox values
@@ -50,11 +53,10 @@ window.IrisPlugins = window.IrisPlugins || [];
   };
   
   plugins.push({
-    name: "test-plugin",
+    name: "Number Plugin",
     type: "number",
     create: function() {
-      console.log("create called");
-      return new myplugin(arguments);
+      return new number(arguments);
     }
   });
 })(window.IrisPlugins);
