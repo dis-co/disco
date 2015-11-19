@@ -10,15 +10,9 @@ open WebSharper.JQuery
 [<RequireQualifiedAccess>]
 module ViewController =
 
-  open Iris.Web.Core.Html
   open Iris.Web.Tests.Util
-  open Iris.Web.Core.Store
-  open Iris.Web.Core.ViewController
-  open Iris.Web.Core.Patch
-  open Iris.Web.Core.Store
-  open Iris.Web.Core.State
-  open Iris.Web.Core.Reducer
-  open Iris.Web.Core.Events
+  open Iris.Web.Core
+  open Iris.Core.Types
 
   (* ____       _       _  __     ___
     |  _ \ __ _| |_ ___| |_\ \   / (_) _____      __
@@ -29,7 +23,7 @@ module ViewController =
 
   type PatchView () =
     let patchView (patch : Patch) =
-      h1 <@> class' "patch" <|> text patch.name
+      h1 <@> class' "patch" <|> text patch.Name
 
     let patchList (patches : Patch array) =
       div <||> Array.map patchView patches
@@ -57,21 +51,21 @@ module ViewController =
 
     test "should render successive updates of a patch view" <| fun cb ->
       let patch1 =
-        { id = "0xb33f"
-        ; name = "patch-1"
-        ; ioboxes = Array.empty
+        { Id = "0xb33f"
+        ; Name = "patch-1"
+        ; IOBoxes = Array.empty
         }
 
       let patch2 =
-        { id = "0xd001"
-        ; name = "patch-2"
-        ; ioboxes = Array.empty
+        { Id = "0xd001"
+        ; Name = "patch-2"
+        ; IOBoxes = Array.empty
         }
 
       let patch3 =
-        { id = "0x400f"
-        ; name = "patch-3"
-        ; ioboxes = Array.empty
+        { Id = "0x400f"
+        ; Name = "patch-3"
+        ; IOBoxes = Array.empty
         }
 
       let store = new Store<State>(reducer, State.Empty)
@@ -79,21 +73,21 @@ module ViewController =
       let view = new PatchView()
       let ctrl = new ViewController<State>(view)
 
-      store.Dispatch <| PatchEvent(AddPatch, patch1)
+      store.Dispatch <| PatchEvent(PatchEventT.AddPatch, patch1)
 
       ctrl.Render store
 
       JQuery.Of(".patch")
       |> (fun els -> check (els.Length = 1) "should be one rendered patch template in dom")
 
-      store.Dispatch <| PatchEvent(AddPatch, patch2)
+      store.Dispatch <| PatchEvent(PatchEventT.AddPatch, patch2)
 
       ctrl.Render store
 
       JQuery.Of(".patch")
       |> (fun els -> check (els.Length = 2) "should be two rendered patch templates in dom")
 
-      store.Dispatch <| PatchEvent(AddPatch, patch3)
+      store.Dispatch <| PatchEvent(PatchEventT.AddPatch, patch3)
 
       ctrl.Render store
 
@@ -105,9 +99,9 @@ module ViewController =
     (*------------------------------------------------------------------------*)
     test "should take care of removing its root element on Dispose" <| fun cb ->
       let patch1 =
-        { id = "0xb33f"
-        ; name = "patch-1"
-        ; ioboxes = Array.empty
+        { Id = "0xb33f"
+        ; Name = "patch-1"
+        ; IOBoxes = Array.empty
         }
 
       let mutable store = new Store<State>(reducer, State.Empty)
@@ -115,7 +109,7 @@ module ViewController =
       let view = new PatchView()
       let ctrl = new ViewController<State>(view)
 
-      store.Dispatch <| PatchEvent(AddPatch, patch1)
+      store.Dispatch <| PatchEvent(PatchEventT.AddPatch, patch1)
 
       ctrl.Render store
 

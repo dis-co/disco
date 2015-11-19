@@ -9,6 +9,7 @@ open WebSharper.JavaScript
 module Patches =
 
   open Iris.Web.Core
+  open Iris.Core.Types
 
   type Root () =
     let mutable plugins = new Plugins ()
@@ -21,7 +22,7 @@ module Patches =
       if not (plugins.has iobox)
       then plugins.add iobox
 
-      let container = li <|> (strong <|> text (iobox.name))
+      let container = li <|> (strong <|> text (iobox.Name))
 
       match plugins.get iobox with
         | Some(instance) -> container <|> Raw(instance.Render iobox)
@@ -29,12 +30,12 @@ module Patches =
 
     let patchView (patch : Patch) : Html =
       let container =
-        div <@> id' patch.id <@> class' "patch" <||>
+        div <@> id' patch.Id <@> class' "patch" <||>
           [| h3 <|> text "Patch:"
-           ; p  <|> text (patch.name)
+           ; p  <|> text (patch.Name)
            |]
 
-      container <||> Array.map ioboxView patch.ioboxes
+      container <||> Array.map ioboxView patch.IOBoxes
 
     let patchList (patches : Patch array) =
       let container = div <@> id' "patches"

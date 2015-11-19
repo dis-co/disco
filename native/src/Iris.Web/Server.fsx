@@ -2,6 +2,7 @@
 #r @"./bin/Debug/WebSharper.Core.JavaScript.dll"
 #r @"./bin/Debug/WebSharper.JavaScript.dll"
 #r @"./bin/Debug/WebSharper.Core.dll"
+#r @"./bin/Debug/Iris.Core.dll"
 #r @"./bin/Debug/Iris.Web.Core.dll"
 
 open Suave

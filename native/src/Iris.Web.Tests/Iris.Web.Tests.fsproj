@@ -61,6 +61,11 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
+    <ProjectReference Include="..\Iris.Core\Iris.Core.fsproj">
+      <Project>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</Project>
+      <Name>Iris.Core</Name>
+      <Private>True</Private>
+    </ProjectReference>
     <ProjectReference Include="..\Iris.Web.Core\Iris.Web.Core.fsproj">
       <Project>{5F0370CD-9619-4815-B036-8B498FDF73C6}</Project>
       <Name>Iris.Web.Core</Name>

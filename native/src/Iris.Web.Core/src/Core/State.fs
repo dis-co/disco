@@ -7,6 +7,8 @@ open WebSharper.JavaScript
 [<JavaScript>]
 module State =
 
+  open Iris.Core.Types
+
   (*   ____  _        _
       / ___|| |_ __ _| |_ ___
       \___ \| __/ _` | __/ _ \
@@ -22,7 +24,7 @@ module State =
     static member Empty = { Patches = [] }
 
   let addPatch (state : State) (patch : Patch) =
-    let exists = List.exists (fun p -> p.id = patch.id) state.Patches
+    let exists = List.exists (fun (p : Patch) -> p.Id = patch.Id) state.Patches
     if not exists
     then { state with Patches = patch :: state.Patches }
     else state
@@ -30,19 +32,19 @@ module State =
   let updatePatch (state : State) (patch : Patch) =
     { state with
         Patches = let mapper (oldpatch : Patch) =
-                      if patch.id = oldpatch.id
+                      if patch.Id = oldpatch.Id
                       then patch
                       else oldpatch
                    in List.map mapper state.Patches }
 
   let removePatch (state : State) (patch : Patch) =
-    let pred (patch' : Patch) = patch.id <> patch'.id
+    let pred (patch' : Patch) = patch.Id <> patch'.Id
     { state with Patches = List.filter pred state.Patches }
 
 
   let addIOBox (state : State) (iobox : IOBox) =
     let updater (patch : Patch) =
-      if iobox.patch = patch.id
+      if iobox.Patch = patch.Id
       then addIOBox patch iobox
       else patch
     { state with Patches = List.map updater state.Patches }
@@ -55,7 +57,7 @@ module State =
 
   let removeIOBox (state : State) (iobox : IOBox) =
     let updater (patch : Patch) =
-      if iobox.patch = patch.id
+      if iobox.Patch = patch.Id
       then removeIOBox patch iobox
       else patch
     { state with Patches = List.map updater state.Patches }

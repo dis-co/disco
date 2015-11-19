@@ -6,6 +6,8 @@ open WebSharper
 [<JavaScript>]
 module Events =
 
+  open Iris.Core.Types
+
   (*
           _                _____                 _
          / \   _ __  _ __ | ____|_   _____ _ __ | |_ ™

@@ -6,6 +6,7 @@ open WebSharper.JavaScript
 [<JavaScript>]
 module Client =
 
+  open Iris.Core.Types
   open Iris.Web.Core
   open Iris.Web.Views
 
@@ -15,15 +16,15 @@ module Client =
 
     let parsed =
       match msg.Type with
-        | "iris.patch.add"    -> PatchEvent (AddPatch,    msg.Payload :?> Patch)
-        | "iris.patch.update" -> PatchEvent (UpdatePatch, msg.Payload :?> Patch)
-        | "iris.patch.remove" -> PatchEvent (RemovePatch, msg.Payload :?> Patch)
+        | Action.AddPatch    -> PatchEvent (AddPatch,    msg.Payload :?> Patch)
+        | Action.UpdatePatch -> PatchEvent (UpdatePatch, msg.Payload :?> Patch)
+        | Action.RemovePatch -> PatchEvent (RemovePatch, msg.Payload :?> Patch)
 
-        | "iris.iobox.add"    -> IOBoxEvent (AddIOBox,    msg.Payload :?> IOBox)
-        | "iris.iobox.update" -> IOBoxEvent (UpdateIOBox, msg.Payload :?> IOBox)
-        | "iris.iobox.remove" -> IOBoxEvent (RemoveIOBox, msg.Payload :?> IOBox)
+        | Action.AddIOBox    -> IOBoxEvent (AddIOBox,    msg.Payload :?> IOBox)
+        | Action.UpdateIOBox -> IOBoxEvent (UpdateIOBox, msg.Payload :?> IOBox)
+        | Action.RemoveIOBox -> IOBoxEvent (RemoveIOBox, msg.Payload :?> IOBox)
 
-        | _                   -> UnknownEvent
+        // | _            -> UnknownEvent
 
     in store.Dispatch parsed
 

@@ -74,14 +74,11 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="src\Core\Html.fs" />
-    <Compile Include="src\Core\IOBox.fs" />
-    <Compile Include="src\Core\Patch.fs" />
     <Compile Include="src\Core\Events.fs" />
     <Compile Include="src\Core\Plugin.fs" />
     <Compile Include="src\Core\State.fs" />
     <Compile Include="src\Core\Store.fs" />
     <Compile Include="src\Core\Reducer.fs" />
-    <Compile Include="src\Core\Socket.fs" />
     <Compile Include="src\Core\ViewController.fs" />
     <Compile Include="src\Views\Index.fs" />
     <Compile Include="src\Views\Patches.fs" />

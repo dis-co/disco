@@ -1,114 +1,106 @@
+namespace Iris.Core.Types
+
+open System.Runtime.Serialization
+open System.Runtime.Serialization.Json
+open WebSharper
+
+[<AutoOpen>]
 [<ReflectedDefinition>]
-module Iris.Core.Types.IOBox
+module IOBox =
 
-open Iris.Core.Types.Aliases
+  [<RequireQualifiedAccess>]
+  type Behavior =
+    | [<Constant "slider">] Slider
+    | [<Constant "toggle">] Toggle
+    | [<Constant "bang">]   Bang
 
-type Behavior = 
-  |  Slider
-  |  Toggle
-  |  Bang
+  [<RequireQualifiedAccess>]
+  type ValType =
+    | [<Constant "real">] Real
+    | [<Constant "int">]  Int
+    | [<Constant "bool">] Bool
 
-type ValType =
-  | Real
-  | Int
-  | Bool
+  [<RequireQualifiedAccess>]
+  type StringType =
+    | [<Constant "string">]    Simple
+    | [<Constant "multi">]     MultiLine
+    | [<Constant "file">]      FileName
+    | [<Constant "directory">] Directory
+    | [<Constant "url">]       Url
+    | [<Constant "ip">]        IP
 
-type StringType =
-  |  String
-  |  MultiLine
-  |  FileName
-  |  Directory
-  |  Url
-  |  IP
+  [<NoEquality; NoComparison>]
+  type Slice =
+    {
+      [<Name "idx">]   Idx   : int;
+      [<Name "value">] Value : string;
+    }
 
-type ValueData =
-  { name      : Name
-  ; tag       : Tag
-  ; valType   : ValType
-  ; behavior  : Behavior
-  ; vecSize   : VectorSize
-  ; min       : Min
-  ; max       : Max
-  ; unit      : Unit
-  ; precision : Precision
-  ; slices    : Values
-  }
+  [<RequireQualifiedAccess>]
+  type PinType =
+    | [<Constant "value">]  Value
+    | [<Constant "string">] String
+    | [<Constant "color">]  Color 
+    | [<Constant "enum">]   Enum
+    | [<Constant "node">]   Node
 
-type StringData =
-  { name     : Name
-  ; tag      : Tag
-  ; strType  : StringType
-  ; fileMask : FileMask
-  ; maxChars : MaxChars
-  ; slices   : Values
-  }
+  [<NoEquality; NoComparison>]
+  type IOBox =
+    {
+      [<Name "id">]          Id         : string;
+      [<Name "name">]        Name       : string;
+      [<Name "type">]        Type       : PinType;
+      [<Name "patch">]       Patch      : string;
+      [<Name "tag">]         Tag        : obj        option;
+      [<Name "behavior">]    Behavior   : Behavior   option;
+      [<Name "vecsize">]     VecSize    : VectorSize
+      [<Name "min">]         Min        : Min
+      [<Name "max">]         Max        : Max
+      [<Name "unit">]        Unit       : Unit
+      [<Name "precision">]   Precision  : Precision
+      [<Name "string-type">] StringType : StringType option
+      [<Name "filemask">]    FileMask   : FileMask
+      [<Name "maxchars">]    MaxChars   : MaxChars
+      [<Name "properties">]  Properties : Properties
+      [<Name "slices">]      Slices     : Slice array;
+    }
+    with
+      static member StringBox(id, name, patch) =
+        {
+          Id         = id
+          Name       = name
+          Type       = PinType.String
+          Patch      = patch
+          Tag        = None
+          Behavior   = None
+          VecSize    = None
+          Min        = None
+          Max        = None
+          Unit       = None
+          Precision  = None
+          StringType = Some(StringType.Simple)
+          FileMask   = None
+          MaxChars   = None
+          Properties = Array.empty
+          Slices     = Array.empty
+        }
 
-type ColorData =
-  { name   : Name
-  ; tag    : Tag
-  ; slices : Values
-  }
-
-type EnumData =
-  { name       : Name
-  ; tag        : Tag
-  ; properties : Properties
-  ; slices     : Values
-  }
-  
-type NodeData =
-  { name : Name
-  ; tag  : Tag
-  }
-
-type IOBox =
-  | ValueBox  of ValueData
-  | StringBox of StringData
-  | ColorBox  of ColorData
-  | EnumBox   of EnumData
-  | NodeBox   of NodeData
-
-let updateValues (box : IOBox) values =
-  match box with
-    | ValueBox  data -> ValueBox  { data with slices = values }
-    | StringBox data -> StringBox { data with slices = values }
-    | ColorBox  data -> ColorBox  { data with slices = values }
-    | EnumBox   data -> EnumBox   { data with slices = values }
-    | box -> box
-
-
-let setName (box : IOBox) n =
-  match box with
-    | ValueBox  data -> ValueBox  { data with name = n }
-    | StringBox data -> StringBox { data with name = n }
-    | ColorBox  data -> ColorBox  { data with name = n }
-    | EnumBox   data -> EnumBox   { data with name = n }
-    | NodeBox   data -> NodeBox   { data with name = n }
-
-let getName box = 
-  match box with
-    | ValueBox  { name = n } -> n
-    | StringBox { name = n } -> n
-    | ColorBox  { name = n } -> n
-    | EnumBox   { name = n } -> n
-    | NodeBox   { name = n } -> n
-
-let isBehavior b box =
-  match box with
-    | ValueBox { behavior = b' } -> b = b'
-    | _ -> false
-
-let isBang = isBehavior Bang
-let isToggle = isBehavior Toggle
-
-let parseBehavior str =
-  match str with
-    | "Bang" | "Press" -> Bang
-    | "Toggle"         -> Toggle
-    | _                -> Slider
-
-let parseValType str =
-  match str with
-    | "Boolean" -> Bool
-    | "Real"    -> Real
-    | _         -> Int
+      static member ValueBox(id, name, patch) =
+        {
+          Id         = id
+          Name       = name
+          Type       = PinType.Value
+          Patch      = patch
+          Tag        = None
+          Behavior   = Some(Behavior.Slider)
+          VecSize    = None
+          Min        = None
+          Max        = None
+          Unit       = None
+          Precision  = None
+          StringType = None
+          FileMask   = None
+          MaxChars   = None
+          Properties = Array.empty
+          Slices     = Array.empty
+        }

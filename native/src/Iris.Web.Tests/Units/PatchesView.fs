@@ -10,6 +10,7 @@ open WebSharper.Mocha
 [<RequireQualifiedAccess>]
 module PatchesView =
 
+  open Iris.Core.Types
   open Iris.Web.Core
   open Iris.Web.Tests.Util
 
@@ -79,9 +80,9 @@ module PatchesView =
       let patchid = "patch-1"
 
       let patch : Patch =
-        { id = patchid
-        ; name = "cooles patch ey"
-        ; ioboxes = Array.empty
+        { Id = patchid
+        ; Name = "cooles patch ey"
+        ; IOBoxes = Array.empty
         }
 
       let store : Store<State> = new Store<State>(reducer, State.Empty)
@@ -110,15 +111,15 @@ module PatchesView =
       let pid2 = "patch-3"
 
       let patch1 : Patch =
-        { id = pid1
-        ; name = "patch-1"
-        ; ioboxes = Array.empty
+        { Id = pid1
+        ; Name = "patch-1"
+        ; IOBoxes = Array.empty
         }
 
       let patch2 : Patch =
-        { id = pid2
-        ; name = "patch-2"
-        ; ioboxes = Array.empty
+        { Id = pid2
+        ; Name = "patch-2"
+        ; IOBoxes = Array.empty
         }
 
       let store : Store<State> =
@@ -158,18 +159,15 @@ module PatchesView =
       let id1 = "id1"
       let value = "hello"
 
-      let iobox =
-        { id     = id1
-        ; name   = "url input"
-        ; patch  = "0xb4d1d34"
-        ; kind   = "string"
-        ; slices = [| { idx = 0; value = value } |]
+      let iobox = {
+        IOBox.StringBox(id1,"url input", "0xb4d1d34") with
+          Slices = [| { Idx = 0; Value = value } |]
         }
 
       let patch : Patch =
-        { id = "0xb4d1d34"
-        ; name = "patch-1"
-        ; ioboxes = Array.empty
+        { Id = "0xb4d1d34"
+        ; Name = "patch-1"
+        ; IOBoxes = Array.empty
         }
 
       let store : Store<State> =
@@ -199,25 +197,17 @@ module PatchesView =
       let value = "hello"
 
       let iobox1 =
-        { id     = id1
-        ; name   = "url input"
-        ; patch  = "0xb4d1d34"
-        ; kind   = "string"
-        ; slices = [| { idx = 0; value = value } |]
-        }
+        { IOBox.StringBox(id1,"url input", "0xb4d1d34")
+            with Slices = [| { Idx = 0; Value = value } |] }
 
       let iobox2 =
-        { id     = id2
-        ; name   = "url input"
-        ; patch  = "0xb4d1d34"
-        ; kind   = "string"
-        ; slices = [| { idx = 0; value = value } |]
-        }
+        { IOBox.StringBox(id2,"url input", "0xb4d1d34")
+            with Slices = [| { Idx = 0; Value = value } |] }
 
       let patch : Patch =
-        { id = "0xb4d1d34"
-        ; name = "patch-1"
-        ; ioboxes = Array.empty
+        { Id = "0xb4d1d34"
+        ; Name = "patch-1"
+        ; IOBoxes = Array.empty
         }
 
       let store : Store<State> =
@@ -266,18 +256,14 @@ module PatchesView =
       let value3 = "death to racism!"
 
       let patch : Patch =
-        { id = "0xb4d1d34"
-        ; name = "cooles patch ey"
-        ; ioboxes = Array.empty
+        { Id = "0xb4d1d34"
+        ; Name = "cooles patch ey"
+        ; IOBoxes = Array.empty
         }
 
       let iobox : IOBox =
-        { id     = elid
-        ; name   = "url input"
-        ; patch  = "0xb4d1d34"
-        ; kind   = "string"
-        ; slices = [| { idx = 0; value = value1 } |]
-        }
+        { IOBox.StringBox(elid, "url input", "0xb4d1d34")
+            with Slices = [| { Idx = 0; Value = value1 } |] }
 
       let store : Store<State> =
         new Store<State>(reducer, { Patches = [ patch ] })
@@ -299,13 +285,13 @@ module PatchesView =
       // update the iobox slice value
       let updated1 = {
         iobox with
-          slices = [| { idx = 0; value = value2 }|]
+          Slices = [| { Idx = 0; Value = value2 }|]
         }
 
       store.Dispatch <| IOBoxEvent(UpdateIOBox, updated1)
 
       match findIOBox store.State.Patches elid with
-        | Some(box) -> check (box.slices.[0].value = value2) "box in updated state should have right value"
+        | Some(box) -> check (box.Slices.[0].Value = value2) "box in updated state should have right value"
         | None -> fail "IOBox was not found in store"
 
       controller.Render store
@@ -319,13 +305,13 @@ module PatchesView =
       // update the iobox slice value
       let updated2 = {
         iobox with
-          slices = [| { idx = 0; value = value3 }|]
+          Slices = [| { Idx = 0; Value = value3 }|]
         }
 
       store.Dispatch <| IOBoxEvent(UpdateIOBox, updated2)
 
       match findIOBox store.State.Patches elid with
-        | Some(box) -> check (box.slices.[0].value = value3) "box in updated state should have right value"
+        | Some(box) -> check (box.Slices.[0].Value = value3) "box in updated state should have right value"
         | None -> fail "IOBox was not found in store"
 
       controller.Render store

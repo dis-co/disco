@@ -11,6 +11,7 @@ module Plugins =
 
   open Iris.Web.Tests.Util
 
+  open Iris.Core.Types
   open Iris.Web.Core
   open Iris.Web.Views
 
@@ -51,7 +52,7 @@ module Plugins =
       
           plugins.push({
             name: ""simple-number-plugin"",
-            type: ""number"",
+            type: ""value"",
             create: function() {
                 return new numberplugin(arguments);
             }
@@ -72,25 +73,21 @@ module Plugins =
     (*--------------------------------------------------------------------------*)
     test "listing plugins by kind should show exactly one" <| fun cb ->
       setupPlugins ()
-      let plugins = findPlugins "number"
+      let plugins = findPlugins PinType.Value
       check_cc (Array.length plugins = 1) "should have one plugin but doesn't" cb
 
     (*--------------------------------------------------------------------------*)
     test "rendering a plugin should return expected dom element" <| fun cb ->
       setupPlugins ()
       
-      let plugin = findPlugins "string" |> (fun plugs -> Array.get plugs 0)
+      let plugin = findPlugins PinType.String |> (fun plugs -> Array.get plugs 0)
       let inst = plugin.create ()
 
       let elid = "0xb33f"
 
       let iobox =
-        { id     = elid
-        ; name   = "url input"
-        ; patch  = "0xb4d1d34"
-        ; kind   = "string"
-        ; slices = [| { idx = 0; value = "oh hey" } |]
-        }
+        { IOBox.StringBox(elid,"url input", "0xb4d1d34")
+            with Slices = [| { Idx = 0; Value = "oh hey" } |] }
 
       inst.Render iobox
       |> createElement
@@ -102,19 +99,15 @@ module Plugins =
     test "re-rendering a plugin should return updated dom element" <| fun cb ->
       setupPlugins () // register the plugin
       
-      let plugin = findPlugins "string" |> (fun plugs -> Array.get plugs 0)
+      let plugin = findPlugins PinType.String |> (fun plugs -> Array.get plugs 0)
       let inst = plugin.create ()
 
       let value1 = "r4nd0m"
       let value2 = "pr1m0p"
 
       let iobox =
-        { id     = "0xb33f"
-        ; name   = "url input"
-        ; patch  = "0xb4d1d34"
-        ; kind   = "string"
-        ; slices = [| { idx = 0; value = value1 } |]
-        }
+        { IOBox.StringBox("0xb33f","url input", "0xb4d1d34")
+            with Slices = [| { Idx = 0; Value = value1 } |] }
 
       inst.Render iobox
       |> createElement
@@ -125,7 +118,7 @@ module Plugins =
           check (els.Get(0).TextContent = value1) "should have the correct inner value")
 
       let update =
-        { iobox with slices = [| { idx = 0; value = value2 } |] }
+        { iobox with Slices = [| { Idx = 0; Value = value2 } |] }
 
       inst.Render update
       |> createElement
@@ -136,8 +129,8 @@ module Plugins =
           check (els.Get(0).TextContent = value2) "should have the correct inner value")
 
       let final =
-        { iobox with slices = [| { idx = 0; value = value1 }
-                              ;  { idx = 0; value = value2 }
+        { iobox with Slices = [| { Idx = 0; Value = value1 }
+                              ;  { Idx = 0; Value = value2 }
                               |] }
 
       inst.Render final
@@ -156,12 +149,8 @@ module Plugins =
       
       let instances = new Plugins ()
       let iobox =
-        { id     = "0xb33f"
-        ; name   = "url input"
-        ; patch  = "0xb4d1d34"
-        ; kind   = "string"
-        ; slices = [| { idx = 0; value = "hello" } |]
-        }
+        { IOBox.StringBox("0xb33f","url input", "0xb4d1d34")
+            with Slices = [| { Idx = 0; Value = "hello" } |] }
 
       instances.add iobox
 
@@ -178,12 +167,8 @@ module Plugins =
       
       let instances = new Plugins ()
       let iobox =
-        { id     = "0xb33f"
-        ; name   = "url input"
-        ; patch  = "0xb4d1d34"
-        ; kind   = "string"
-        ; slices = [| { idx = 0; value = "hello" } |]
-        }
+        { IOBox.StringBox("0xb33f","url input", "0xb4d1d34")
+            with Slices = [| { Idx = 0; Value = "hello" } |] }
 
       instances.add iobox
       instances.ids ()

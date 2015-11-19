@@ -10,6 +10,7 @@ open WebSharper.JavaScript
 module Plugin =
 
   open System
+  open Iris.Core.Types
 
   (*   ____  _             _
       |  _ \| |_   _  __ _(_)_ __
@@ -52,7 +53,7 @@ module Plugin =
   let listPlugins () : PluginSpec array = X<PluginSpec array>
 
   [<Direct "return window.IrisPlugins.filter(function (plugin) { return plugin.type === $kind; })" >]
-  let findPlugins (kind : string) : PluginSpec array = X<PluginSpec array>
+  let findPlugins (kind : PinType) : PluginSpec array = X<PluginSpec array>
 
   [<Direct "return ($o === null) || ($o === undefined)">]
   let isNull (o : obj) : bool = X<bool>
@@ -87,21 +88,21 @@ module Plugin =
 
     (* instantiate a new view plugin *)
     member self.add (iobox : IOBox) =
-      let candidates = findPlugins iobox.kind
+      let candidates = findPlugins iobox.Type
       in if candidates.Length > 0
-         then addImpl iobox.id (candidates.[0].create ())
-         else Console.Log("Could not instantiate view for IOBox. Type not found:  " + iobox.kind)
+         then addImpl iobox.Id (candidates.[0].create ())
+         else Console.Log("Could not instantiate view for IOBox. Type not found:  ", iobox.Type)
 
-    member self.has (iobox : IOBox) : bool = hasImpl iobox.id
+    member self.has (iobox : IOBox) : bool = hasImpl iobox.Id
 
     member self.get (iobox : IOBox) : Plugin option =
-      let inst = getImpl iobox.id
+      let inst = getImpl iobox.Id
       if isNull inst
       then None
       else Some(inst)
 
     (* remove an instance of a view plugin *)
-    member self.remove (iobox : IOBox) = rmImpl self iobox.id
+    member self.remove (iobox : IOBox) = rmImpl self iobox.Id
 
     member self.ids () : string array = idsImpl ()
 
