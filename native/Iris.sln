@@ -40,6 +40,8 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Nodes", "src\Iris.Node
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Web", "src\Iris.Web\Iris.Web.fsproj", "{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}"
 EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Web.Worker", "src\Iris.Web.Worker\Iris.Web.Worker.fsproj", "{39714BA9-31D0-4160-B0C2-5BE0AA12734E}"
+EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Web.Core", "src\Iris.Web.Core\Iris.Web.Core.fsproj", "{5F0370CD-9619-4815-B036-8B498FDF73C6}"
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Web.Tests", "src\Iris.Web.Tests\Iris.Web.Tests.fsproj", "{CDC50F9D-1EFB-483B-8D14-3F2A3FD87F9D}"
