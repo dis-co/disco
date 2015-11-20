@@ -21,13 +21,30 @@ module Plugins =
           var h = virtualDom.h;
       
           var stringplugin = function() {
+            var listeners = [];
+
+            this.register = function(cb) {
+              listeners.push(cb);
+            };
+   
             this.render = function (iobox) {
                 return h(""div"", { id: iobox.id }, iobox.slices.map(function(slice) {
-                return h(""p"", { className: 'slice' }, [ slice.value ]);
+                  return h(""input"", {
+                    value: slice.value,
+                    className: 'slice',
+                    onchange: function(ev) {
+                      listeners.forEach(function(l) {
+                        l.call(null, { idx: slice.idx, value: $(ev.target).val() });
+                      });
+                    }
+                  }, [ slice.value ]);
                 }));
             };
         
-            this.dispose = function() {};
+            this.dispose = function() {
+              while(listeners.length > 0)
+                listeners.shift();
+            };
           }
       
           plugins.push({
@@ -61,9 +78,9 @@ module Plugins =
   let setupPlugins () = X
 
   let main () =
-    (*--------------------------------------------------------------------------*)
+    (****************************************************************************)
     suite "Test.Units.Plugins - basic operation"
-    (*--------------------------------------------------------------------------*)
+    (****************************************************************************)
 
     test "listing plugins should list exactly two plugins" <| fun cb ->
       setupPlugins ()
@@ -140,9 +157,9 @@ module Plugins =
       |> (fun els -> check_cc (els.Length = 2) "should have two slices" cb)
 
 
-    (*--------------------------------------------------------------------------*)
+    (****************************************************************************)
     suite "Test.Units.Plugins - instance data structure"
-    (*--------------------------------------------------------------------------*)
+    (****************************************************************************)
 
     test "should add and find an instance for an iobox" <| fun cb ->
       setupPlugins ()
@@ -177,3 +194,38 @@ module Plugins =
       instances.remove iobox
       instances.ids ()
       |> fun ids -> check_cc (ids.Length = 0) "should have no instance" cb
+
+
+    (****************************************************************************)
+    suite "Test.Units.Plugins - Event Listeners"
+    (****************************************************************************)
+    
+    test "should fire an event listener when updated" <| fun cb ->
+      setupPlugins ()
+      
+      let plugin =
+        findPlugins PinType.String
+        |> (fun plugs -> Array.get plugs 0)
+
+      let inst = plugin.create()
+
+      let value1 = "r4nd0m"
+      let value2 = "pr1m0p"
+
+      let iobox =
+        { IOBox.StringBox("0xb33f","url input", "0xb4d1d34")
+            with Slices = [| { Idx = 0; Value = value1 } |] }
+
+      let listener (slice : Slice) : unit =
+        (slice.Value :?> string) ==>> value2 <| cb
+
+      inst.Register(listener)
+
+      inst.Render iobox
+      |> createElement
+      |> JQuery.Of
+      |> (fun el -> el.Children(".slice"))
+      |> (fun els ->
+          els.Length |==| 1
+          els.Get(0).TextContent |==| value1
+          els.First().Val(value2).Trigger("change") |> ignore)

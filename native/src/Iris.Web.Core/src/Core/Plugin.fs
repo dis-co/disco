@@ -29,13 +29,9 @@ module Plugin =
     [<Stub>]
     member this.Dispose() : unit = X<_>
 
-    [<Name "get">]
+    [<Name "register">]
     [<Stub>]
-    member this.Get() : Slice array = X<_>
-
-    [<Name "set">]
-    [<Stub>]
-    member this.Set(slices : Slice array) : unit = X<_>
+    member this.Register(listener : Slice -> unit) : unit = X<_>
   end
 
   type PluginSpec [<Inline "{}">] ()  =
