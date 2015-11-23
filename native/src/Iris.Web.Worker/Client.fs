@@ -10,10 +10,11 @@ module Client =
   open Iris.Web.Core
   open Iris.Web.Views
 
-  type WorkerEvent = { data : string }
+  type WorkerEvent = { ports : MessagePort array }
 
-  [<Direct "void (onmessage = $handler)">]
-  let setMessageHandler (handler: WorkerEvent -> unit) = ()
+  [<Direct "void (onconnect = $handler)">]
+  let onConnect (handler: WorkerEvent -> unit) = ()
+
 
   (*   __  __       _
       |  \/  | __ _(_)_ __
@@ -22,4 +23,9 @@ module Client =
       |_|  |_|\__,_|_|_| |_| entry point.
   *)
 
-  let Main : unit = setMessageHandler (fun ev -> Console.Log("Aww yeah"))
+  let Main : unit =
+    onConnect (fun ev ->
+                   let port = ev.ports.[0]
+                   port.Onmessage <- (fun msg ->
+                       port.PostMessage(msg.Data, Array.empty))
+                   port.Start())

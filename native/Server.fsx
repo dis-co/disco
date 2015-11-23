@@ -37,7 +37,19 @@ let index =
 let app =
   choose [ GET >>= choose [ path "/"                   >>= OK index
                             path "/tests"              >>= file (__SOURCE_DIRECTORY__ + "/src/Iris.Web.Tests/index.html")
-                            path "/Iris.Web.Worker.js" >>= file (__SOURCE_DIRECTORY__ + "/src/Iris.Web.Worker/bin/Debug/assets/Iris.Web.Worker.js")
+                            path "/Iris.Web.Worker.js" >>= OK @"
+var state = null;                          
+onconnect = function(e) {
+	var port = e.ports[0];
+
+	port.onmessage = function(e) {
+  SharedWorkerGlobalScope.console.log(e)
+	  var workerResult = 'Result: ' + (e.data[0] * e.data[1]);
+	  port.postMessage(workerResult + ' Previous: ' + state);
+    state = workerResult;
+	}
+
+}"
                             path "/Iris.Web.Tests.js"  >>= file (__SOURCE_DIRECTORY__ + "/src/Iris.Web.Tests/bin/Debug/assets/Iris.Web.Tests.js")
                             browseHome ] ]
 let config =
