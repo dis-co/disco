@@ -72,6 +72,11 @@
       <Private>True</Private>
       <Name>Iris.Web.Core</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Iris.Web.Worker\Iris.Web.Worker.fsproj">
+      <Project>{39714BA9-31D0-4160-B0C2-5BE0AA12734E}</Project>
+      <Private>True</Private>
+      <Name>Iris.Web.Worker</Name>
+    </ProjectReference>
   </ItemGroup>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6')">

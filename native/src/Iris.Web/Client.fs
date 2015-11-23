@@ -12,9 +12,6 @@ module Client =
 
   type WorkerEvent = { data : string }
 
-  [<Direct "void (onmessage = $handler)">]
-  let setMessageHandler (handler: WorkerEvent -> unit) = ()
-
   (* FIXME: need to factor this out into a nice abstraction *)
   let handler (store : Store<State>) (ev : MessageEvent) : unit =
     let msg = JSON.Parse(ev.Data :?> string) :?> Message
