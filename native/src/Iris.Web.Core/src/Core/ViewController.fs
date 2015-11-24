@@ -16,7 +16,7 @@ module ViewController =
         \_/\_/  |_|\__,_|\__, |\___|\__|
                          |___/           *)
   type IWidget<'a> =
-    abstract Render  : Store<'a> -> VTree
+    abstract Render  : 'a   -> VTree
     abstract Dispose : unit -> unit
 
   (*  __     ___                ____ _        _
@@ -42,7 +42,7 @@ module ViewController =
       with get () = root
 
     (* render and patch the DOM *)
-    member self.Render (store : Store<'a>) : unit =
+    member self.Render (store : 'a) : unit =
       let newtree = view.Render store
 
       match tree with

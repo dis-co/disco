@@ -49,8 +49,8 @@ module Patches =
     interface IWidget<State> with
       member self.Dispose () = ()
 
-      member self.Render (store : Store<State>) =
-        store.State.Patches
+      member self.Render (state : State) =
+        state.Patches
         |> List.toArray
         |> (fun patches ->
               if Array.length patches = 0
