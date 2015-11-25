@@ -27,6 +27,12 @@ module Client =
       [<Inline "new SharedWorker($url)">]
       new(url : string) = {}
 
+  let HandleMsg (msg : ClientEvent) : unit =
+    match msg with
+      | Render    -> Console.Log("RENDER")
+      | Connected -> Console.Log("CONNECTED")
+      | _ as a    -> Console.Log("Event", a)
+
   let Main : unit =
     let widget = new Patches.Root()
     let ctrl = new ViewController<State> (widget)

@@ -6,6 +6,15 @@ open WebSharper
 [<JavaScript>]
 module Message =
 
+  (*----------------------------------------------------------------------------
+         _          _ 
+        / \   _ __ (_)      Types for modeling communication between nodes
+       / _ \ | '_ \| |      on the network layer.
+      / ___ \| |_) | |
+     /_/   \_\ .__/|_|
+             |_|      
+   ---------------------------------------------------------------------------*)
+
   type ApiAction =
     | [<Constant "patch.add">]    AddPatch
     | [<Constant "patch.update">] UpdatePatch
@@ -14,6 +23,21 @@ module Message =
     | [<Constant "iobox.update">] UpdateIOBox
     | [<Constant "iobox.remove">] RemoveIOBox
 
+  type ApiMessage =
+    {
+      [<Name "type">]    Type    : ApiAction;
+      [<Name "payload">] Payload : obj;
+    }
+
+  (*----------------------------------------------------------------------------
+    
+      ____ _ _            _   
+     / ___| (_) ___ _ __ | |_ 
+    | |   | | |/ _ \ '_ \| __|
+    | |___| | |  __/ | | | |_ 
+     \____|_|_|\___|_| |_|\__|
+                              
+   ---------------------------------------------------------------------------*)
     
   type ClientAction =
     | [<Constant "log">]              Log
@@ -25,14 +49,8 @@ module Message =
     | [<Constant "disconnected">]     Disconnected
     | [<Constant "connection-error">] ConnectionError
 
-  type Message =
-    {
-      [<Name "type">]    Type    : ApiAction;
-      [<Name "payload">] Payload : obj;
-    }
-
-  type ClientEvent =
+  type ClientMessage =
     {
       [<Name "type">]    Type    : ClientAction;
-      [<Name "payload">] Payload : obj;
+      [<Name "payload">] Payload : obj option;
     }
