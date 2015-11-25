@@ -13,9 +13,8 @@ module Client =
   open Iris.Web.Views
 
   let initialize (context : GlobalContext) ev =
-    let port = ev.ports.[0]
-    port.Onmessage <- context.OnClientMsg
-    context.Clients.Push(port) |> ignore
+    context.Add(ev.ports.[0])
+    context.Log(JSON.Stringify(ev.ports))
 
   [<Direct "void (onconnect = $handler)">]
   let onConnect (handler: WorkerEvent -> unit) = ()

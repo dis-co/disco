@@ -56,13 +56,15 @@ module Worker =
   *----------------------------------------------------------------------------*)
   
   type GlobalContext() =
-    let mutable connections = new Array<MessagePort>()
+    let mutable connections : MessagePort array = Array.empty
     let mutable store = new Store<State>(reducer, State.Empty)
-    let mutable socket : WebSocket = Unchecked.defaultof<_>
+    let mutable socket = Option<WebSocket>.None
 
-    let broadcast (ev : ClientMessage) =
-      connections.ForEach(fun (c,_,_) -> c.PostMessage(ev, Array.empty); true)
-      |> ignore
+    let send (ev : ClientMessage) (port : MessagePort) : unit =
+      port.PostMessage(ev, Array.empty)
+
+    let broadcast (ev : ClientMessage) : unit =
+      Array.iter (send ev) connections
 
     let notify (action : ClientAction) : ClientMessage =
       { Type = action; Payload = None }
@@ -156,17 +158,21 @@ module Worker =
 
         | _ -> __.Log(parsed)
 
-    member __.Clients with get () = connections
+    member __.Add (port : MessagePort) : unit =
+      port.Onmessage <- __.OnClientMsg
+      Array.append connections [| port |]
+      |> ignore
+
     member __.Store with get () = store
     member __.Socket with get () = socket
 
     member __.Broadcast (msg : ClientMessage) : unit =
-      connections.ForEach(fun (port, _, _) ->
-                          port.PostMessage(msg, Array.empty)
-                          true) |> ignore
+      broadcast msg
 
     member __.Send (msg : ClientMessage)  : unit =
-      socket.Send(JSON.Stringify(msg))
+      match socket with
+        | Some(thing) -> thing.Send(JSON.Stringify(msg))
+        | None -> __.Log("Not connected")
 
     member __.Log (thing : obj) : unit =
       broadcast { Type = Log; Payload = Some(thing) }
