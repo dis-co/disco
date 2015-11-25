@@ -51,7 +51,6 @@ module Patches =
 
       member self.Render (state : State) =
         state.Patches
-        |> List.toArray
         |> (fun patches ->
               if Array.length patches = 0
               then p <|> text "Empty"

@@ -22,19 +22,19 @@ module Patch =
       | Some(_) -> true
       | _       -> false
   
-  let findIOBox (patches : Patch list) (id : string) : IOBox option =
+  let findIOBox (patches : Patch array) (id : string) : IOBox option =
     let folder (m : IOBox option) (p : Patch) =
       match m with
         | Some(iobox) -> Some(iobox)
         | None -> Array.tryFind (fun iob -> iob.Id = id) p.IOBoxes
-    List.fold folder None patches
+    Array.fold folder None patches
   
-  let containsIOBox (patches : Patch list) (iobox : IOBox) : bool =
+  let containsIOBox (patches : Patch array) (iobox : IOBox) : bool =
     let folder m p =
       if hasIOBox p iobox || m
       then true
       else false
-    List.fold folder false patches
+    Array.fold folder false patches
   
   let addIOBox (patch : Patch) (iobox : IOBox) : Patch=
     if hasIOBox patch iobox
@@ -54,5 +54,5 @@ module Patch =
     { patch with
         IOBoxes = Array.filter (fun box -> box.Id <> iobox.Id) patch.IOBoxes }
   
-  let hasPatch (patches : Patch list) (patch : Patch) : bool =
-    List.exists (fun p -> p.Id = patch.Id) patches
+  let hasPatch (patches : Patch array) (patch : Patch) : bool =
+    Array.exists (fun p -> p.Id = patch.Id) patches

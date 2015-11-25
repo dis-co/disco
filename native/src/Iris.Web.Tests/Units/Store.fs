@@ -44,9 +44,9 @@ module Store =
 
     withStore <| fun patch store ->
       test "should add a patch to the store" <| fun cb ->
-        (List.length store.State.Patches) |==| 0
+        (Array.length store.State.Patches) |==| 0
         store.Dispatch <| PatchEvent(AddPatch, patch)
-        ((List.length store.State.Patches) ==>> 1) cb
+        ((Array.length store.State.Patches) ==>> 1) cb
 
     (*--------------------------------------------------------------------------*)
     withStore <| fun patch store ->
@@ -57,12 +57,12 @@ module Store =
         let isPatch (p : Patch) : bool = p.Id = patch.Id
 
         store.Dispatch <| PatchEvent(AddPatch, patch)
-        (List.exists isPatch store.State.Patches) |==| true
-        (List.find isPatch store.State.Patches |> (fun p -> p.Name = name1)) |==| true
+        (Array.exists isPatch store.State.Patches) |==| true
+        (Array.find isPatch store.State.Patches |> (fun p -> p.Name = name1)) |==| true
 
         let updated = { patch with Name = name2 }
         store.Dispatch <| PatchEvent(UpdatePatch,updated)
-        ((List.find isPatch store.State.Patches |> (fun p -> p.Name = name2)) ==>> true) cb
+        ((Array.find isPatch store.State.Patches |> (fun p -> p.Name = name2)) ==>> true) cb
 
     (*--------------------------------------------------------------------------*)
     withStore <| fun patch store ->
@@ -70,10 +70,10 @@ module Store =
         let isPatch (p : Patch) : bool = p.Id = patch.Id
 
         store.Dispatch <| PatchEvent(AddPatch, patch)
-        (List.exists isPatch store.State.Patches) |==| true
+        (Array.exists isPatch store.State.Patches) |==| true
 
         store.Dispatch <| PatchEvent(RemovePatch, patch)
-        ((List.exists isPatch store.State.Patches) ==>> false) cb
+        ((Array.exists isPatch store.State.Patches) ==>> false) cb
 
     (****************************************************************************)
     suite "Test.Units.Store - IOBox operations"
@@ -83,9 +83,8 @@ module Store =
       test "should add an iobox to the store if patch exists" <| fun cb ->
         store.Dispatch <| PatchEvent(AddPatch, patch)
 
-        match store.State.Patches with
-          | patch :: [] -> check ((Array.length patch.IOBoxes) = 0) "iobox array length should be 0"
-          | _ -> check false "patches list is empty but should contain at least one patch"
+        Array.get store.State.Patches 0
+        |> (fun patch -> check ((Array.length patch.IOBoxes) = 0) "iobox array length should be 0")
 
         let iobox =
           { IOBox.StringBox("0xb33f","url input", patch.Id)
@@ -93,9 +92,8 @@ module Store =
 
         store.Dispatch <| IOBoxEvent(AddIOBox, iobox)
 
-        match store.State.Patches with
-          | patch :: [] -> ((Array.length patch.IOBoxes) ==>> 1) cb
-          | _ -> fail "patches list is empty but should contain at least one patch"
+        Array.get store.State.Patches 0
+        |> (fun patch -> ((Array.length patch.IOBoxes) ==>> 1) cb)
 
     (*--------------------------------------------------------------------------*)
     withStore <| fun patch store ->
@@ -105,7 +103,7 @@ module Store =
               with Slices = [| { Idx = 0; Value = "Hey" } |] }
 
         store.Dispatch <| IOBoxEvent(AddIOBox, iobox)
-        ((List.length store.State.Patches) ==>> 0) cb
+        ((Array.length store.State.Patches) ==>> 0) cb
 
     (*--------------------------------------------------------------------------*)
     withStore <| fun patch store ->
@@ -203,7 +201,7 @@ module Store =
         store.Dispatch <| PatchEvent(AddPatch, patch)
         store.Dispatch <| PatchEvent(UpdatePatch, { patch with Name = "cats" })
         store.Undo()
-        ((List.head store.State.Patches).Name ==>> patch.Name) cb
+        ((Array.get store.State.Patches 0).Name ==>> patch.Name) cb
 
 
     (*--------------------------------------------------------------------------*)
@@ -214,7 +212,7 @@ module Store =
         store.Dispatch <| PatchEvent(UpdatePatch, { patch with Name = "dogs" })
         store.Undo()
         store.Undo()
-        ((List.head store.State.Patches).Name ==>> patch.Name) cb
+        ((Array.get store.State.Patches 0).Name ==>> patch.Name) cb
 
 
     (*--------------------------------------------------------------------------*)
@@ -222,9 +220,9 @@ module Store =
       test "should redo an undone change" <| fun cb ->
         store.Dispatch <| PatchEvent(AddPatch, patch)
         store.Undo()
-        List.length store.State.Patches |==| 0
+        Array.length store.State.Patches |==| 0
         store.Redo()
-        (List.length store.State.Patches ==>> 1) cb
+        (Array.length store.State.Patches ==>> 1) cb
 
 
     (*--------------------------------------------------------------------------*)
@@ -237,13 +235,13 @@ module Store =
         store.Dispatch <| PatchEvent(UpdatePatch, { patch with Name = "men"  })
         store.Undo()
         store.Undo()
-        (List.head store.State.Patches).Name |==| "dogs"
+        (Array.get store.State.Patches 0).Name |==| "dogs"
         store.Redo()
-        (List.head store.State.Patches).Name |==| "mice"
+        (Array.get store.State.Patches 0).Name |==| "mice"
         store.Redo()
-        (List.head store.State.Patches).Name |==| "men"
+        (Array.get store.State.Patches 0).Name |==| "men"
         store.Redo()
-        ((List.head store.State.Patches).Name ==>> "men") cb
+        ((Array.get store.State.Patches 0).Name ==>> "men") cb
 
 
     (*--------------------------------------------------------------------------*)
@@ -254,33 +252,33 @@ module Store =
         store.Dispatch <| PatchEvent(UpdatePatch, { patch with Name = "dogs" })
 
         store.Undo()
-        (List.head store.State.Patches).Name |==| "cats"
+        (Array.get store.State.Patches 0).Name |==| "cats"
 
         store.Redo()
-        (List.head store.State.Patches).Name |==| "dogs"
+        (Array.get store.State.Patches 0).Name |==| "dogs"
 
         store.Undo()
-        (List.head store.State.Patches).Name |==| "cats"
+        (Array.get store.State.Patches 0).Name |==| "cats"
 
         store.Dispatch <| PatchEvent(UpdatePatch, { patch with Name = "mice" })
 
         store.Undo()
-        (List.head store.State.Patches).Name |==| "dogs"
+        (Array.get store.State.Patches 0).Name |==| "dogs"
 
         store.Redo()
-        (List.head store.State.Patches).Name |==| "mice"
+        (Array.get store.State.Patches 0).Name |==| "mice"
 
         store.Undo()
         store.Undo()
-        (List.head store.State.Patches).Name |==| "cats"
+        (Array.get store.State.Patches 0).Name |==| "cats"
 
         store.Dispatch <| PatchEvent(UpdatePatch, { patch with Name = "men"  })
 
         store.Undo()
-        (List.head store.State.Patches).Name |==| "mice"
+        (Array.get store.State.Patches 0).Name |==| "mice"
 
         store.Redo()
-        (List.head store.State.Patches).Name |==| "men"
+        (Array.get store.State.Patches 0).Name |==| "men"
 
         (store.History.Length ==>> 6) cb
 
@@ -297,7 +295,7 @@ module Store =
         |> List.iter (fun _ -> store.Undo())
 
         store.History.Length |==| 4
-        ((List.head store.State.Patches).Name ==>> "mice") cb
+        ((Array.get store.State.Patches 0).Name ==>> "mice") cb
 
 
     (*--------------------------------------------------------------------------*)

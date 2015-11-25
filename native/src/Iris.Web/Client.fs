@@ -16,20 +16,10 @@ module Client =
       | |  | | (_| | | | | |
       |_|  |_|\__,_|_|_| |_| entry point.
   *)
-  [<Stub>]
-  type SharedWorker =
-      [<DefaultValue>]
-      val mutable onerror : (obj -> unit)
-
-      [<DefaultValue>]
-      val mutable port : MessagePort
-
-      [<Inline "new SharedWorker($url)">]
-      new(url : string) = {}
-
-  let HandleMsg (msg : ClientEvent) : unit =
-    match msg with
-      | Render    -> Console.Log("RENDER")
+  let HandleMsg (ctrl : ViewController<State>) (msg : ClientMessage) : unit =
+    Console.Log(msg)
+    match msg.Type with
+      | Render    -> ctrl.Render (Option.get(msg.Payload) :?> State)
       | Connected -> Console.Log("CONNECTED")
       | _ as a    -> Console.Log("Event", a)
 
@@ -40,7 +30,7 @@ module Client =
     let worker = new SharedWorker("Iris.Web.Worker.js")
 
     worker.onerror <- (fun e -> Console.Log("error: ", e))
-    worker.port.Onmessage <- (fun msg -> Console.Log("onmessage!", msg.Data))
+    worker.port.Onmessage <- (fun msg -> HandleMsg ctrl (msg.Data :?> ClientMessage))
     worker.port.Start()
 
     // ctrl.Render store

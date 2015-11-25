@@ -66,7 +66,7 @@ module Main =
                 ; IOBoxes  =  [| iob1; iob2; iob3; iob4; iob5; |]
                 }
 
-    let msg = { Type = AddPatch; Payload = patch }
+    let msg : ApiMessage = { Type = AddPatch; Payload = patch }
 
     let sckt = ref Option<IWebSocketConnection>.None
 

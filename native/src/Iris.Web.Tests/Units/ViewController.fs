@@ -31,13 +31,11 @@ module ViewController =
     let mainView content = div <@> id' "patches" <|> content
 
     interface IWidget<State> with
-      member self.Render (store : Store<State>) =
-        let patches = store.State.Patches |> List.toArray
-
+      member self.Render (state : State) =
         let content =
-          if Array.length patches = 0
+          if Array.length state.Patches = 0
           then p <|> text "Empty"
-          else patchList patches
+          else patchList state.Patches
 
         mainView content |> renderHtml
 
@@ -75,21 +73,21 @@ module ViewController =
 
       store.Dispatch <| PatchEvent(PatchEventT.AddPatch, patch1)
 
-      ctrl.Render store
+      ctrl.Render store.State
 
       JQuery.Of(".patch")
       |> (fun els -> check (els.Length = 1) "should be one rendered patch template in dom")
 
       store.Dispatch <| PatchEvent(PatchEventT.AddPatch, patch2)
 
-      ctrl.Render store
+      ctrl.Render store.State
 
       JQuery.Of(".patch")
       |> (fun els -> check (els.Length = 2) "should be two rendered patch templates in dom")
 
       store.Dispatch <| PatchEvent(PatchEventT.AddPatch, patch3)
 
-      ctrl.Render store
+      ctrl.Render store.State
 
       JQuery.Of(".patch")
       |> (fun els -> check_cc (els.Length = 3) "should be three rendered patch templates in dom" cb)
@@ -111,7 +109,7 @@ module ViewController =
 
       store.Dispatch <| PatchEvent(PatchEventT.AddPatch, patch1)
 
-      ctrl.Render store
+      ctrl.Render store.State
 
       JQuery.Of(".patch")
       |> (fun els -> check (els.Length = 1) "should be one patch in dom")

@@ -20,14 +20,16 @@ module State =
   *)
 
   type State =
-    { Patches  : Patch list }
-    static member Empty = { Patches = [] }
+    { Patches  : Patch array }
+    static member Empty = { Patches = Array.empty }
 
   let addPatch (state : State) (patch : Patch) =
-    let exists = List.exists (fun (p : Patch) -> p.Id = patch.Id) state.Patches
-    if not exists
-    then { state with Patches = patch :: state.Patches }
-    else state
+    let exists = Array.exists (fun (p : Patch) -> p.Id = patch.Id) state.Patches
+    if exists
+    then state
+    else
+      let patches' = Array.map id state.Patches // copy the array
+      { state with Patches = Array.append patches' [| patch |]  }
 
   let updatePatch (state : State) (patch : Patch) =
     { state with
@@ -35,11 +37,11 @@ module State =
                       if patch.Id = oldpatch.Id
                       then patch
                       else oldpatch
-                   in List.map mapper state.Patches }
+                   in Array.map mapper state.Patches }
 
   let removePatch (state : State) (patch : Patch) =
     let pred (patch' : Patch) = patch.Id <> patch'.Id
-    { state with Patches = List.filter pred state.Patches }
+    { state with Patches = Array.filter pred state.Patches }
 
 
   let addIOBox (state : State) (iobox : IOBox) =
@@ -47,12 +49,12 @@ module State =
       if iobox.Patch = patch.Id
       then addIOBox patch iobox
       else patch
-    { state with Patches = List.map updater state.Patches }
+    { state with Patches = Array.map updater state.Patches }
 
 
   let updateIOBox (state : State) (iobox : IOBox) =
     let mapper (patch : Patch) = updateIOBox patch iobox
-    { state with Patches = List.map mapper state.Patches }
+    { state with Patches = Array.map mapper state.Patches }
 
 
   let removeIOBox (state : State) (iobox : IOBox) =
@@ -60,4 +62,4 @@ module State =
       if iobox.Patch = patch.Id
       then removeIOBox patch iobox
       else patch
-    { state with Patches = List.map updater state.Patches }
+    { state with Patches = Array.map updater state.Patches }
