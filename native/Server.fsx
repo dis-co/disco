@@ -32,6 +32,12 @@ let mimeTypes =
 let index =
   Index.compileIndex (__SOURCE_DIRECTORY__ + "/src/Iris.Web/bin/Debug/assets/js")
 
+let noCache = 
+  setHeader "Cache-Control" "no-cache, no-store, must-revalidate"
+  >>= setHeader "Need-Help" "k@ioct.it"
+  >>= setHeader "Pragma" "no-cache"
+  >>= setHeader "Expires" "0"
+
 // @"
 // var conns = [];                          
 // onconnect = function(e1) {
@@ -56,10 +62,10 @@ let index =
 // our application only needs to serve files off the disk
 // but we do need to specify what to do in the base case, i.e. "/"
 let app =
-  choose [ GET >>= choose [ path "/"                   >>= OK index
-                            path "/tests"              >>= file (__SOURCE_DIRECTORY__ + "/src/Iris.Web.Tests/index.html")
-                            path "/Iris.Web.Worker.js" >>= file (__SOURCE_DIRECTORY__ + "/src/Iris.Web.Worker/bin/Debug/assets/Iris.Web.Worker.js")
-                            path "/Iris.Web.Tests.js"  >>= file (__SOURCE_DIRECTORY__ + "/src/Iris.Web.Tests/bin/Debug/assets/Iris.Web.Tests.js")
+  choose [ GET >>= choose [ path "/"                   >>= noCache >>= OK index
+                            path "/tests"              >>= noCache >>= file (__SOURCE_DIRECTORY__ + "/src/Iris.Web.Tests/index.html")
+                            path "/Iris.Web.Worker.js" >>= noCache >>= file (__SOURCE_DIRECTORY__ + "/src/Iris.Web.Worker/bin/Debug/assets/Iris.Web.Worker.js")
+                            path "/Iris.Web.Tests.js"  >>= noCache >>= file (__SOURCE_DIRECTORY__ + "/src/Iris.Web.Tests/bin/Debug/assets/Iris.Web.Tests.js")
                             browseHome ] ]
 let config =
   { defaultConfig
