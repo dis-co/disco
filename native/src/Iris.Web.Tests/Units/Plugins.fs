@@ -98,7 +98,7 @@ module Plugins =
       setupPlugins ()
       
       let plugin = findPlugins PinType.String |> (fun plugs -> Array.get plugs 0)
-      let inst = plugin.create ()
+      let inst = plugin.create(fun _ -> ())
 
       let elid = "0xb33f"
 
@@ -117,7 +117,7 @@ module Plugins =
       setupPlugins () // register the plugin
       
       let plugin = findPlugins PinType.String |> (fun plugs -> Array.get plugs 0)
-      let inst = plugin.create ()
+      let inst = plugin.create (fun _ -> ())
 
       let value1 = "r4nd0m"
       let value2 = "pr1m0p"
@@ -169,12 +169,12 @@ module Plugins =
         { IOBox.StringBox("0xb33f","url input", "0xb4d1d34")
             with Slices = [| { Idx = 0; Value = "hello" } |] }
 
-      instances.add iobox
+      instances.Add iobox (fun _ -> ())
 
-      instances.ids ()
+      instances.Ids ()
       |> (fun ids -> check (ids.Length = 1) "should have one instance")
 
-      match instances.get iobox with
+      match instances.Get iobox with
         | Some(_) -> cb ()
         | None -> fail "instance not found"
 
@@ -187,12 +187,12 @@ module Plugins =
         { IOBox.StringBox("0xb33f","url input", "0xb4d1d34")
             with Slices = [| { Idx = 0; Value = "hello" } |] }
 
-      instances.add iobox
-      instances.ids ()
+      instances.Add iobox (fun _ -> ())
+      instances.Ids ()
       |> fun ids -> check (ids.Length = 1) "should have one instance"
 
-      instances.remove iobox
-      instances.ids ()
+      instances.Remove iobox
+      instances.Ids ()
       |> fun ids -> check_cc (ids.Length = 0) "should have no instance" cb
 
 
@@ -207,8 +207,6 @@ module Plugins =
         findPlugins PinType.String
         |> (fun plugs -> Array.get plugs 0)
 
-      let inst = plugin.create()
-
       let value1 = "r4nd0m"
       let value2 = "pr1m0p"
 
@@ -216,10 +214,10 @@ module Plugins =
         { IOBox.StringBox("0xb33f","url input", "0xb4d1d34")
             with Slices = [| { Idx = 0; Value = value1 } |] }
 
-      let listener (slice : Slice) : unit =
-        (slice.Value :?> string) ==>> value2 <| cb
+      let listener (iobox : IOBox) : unit =
+        (iobox.Slices.[0].Value :?> string) ==>> value2 <| cb
 
-      inst.Register(listener)
+      let inst = plugin.create(listener)
 
       inst.Render iobox
       |> createElement

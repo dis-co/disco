@@ -15,6 +15,9 @@ module Client =
 
     let worker = new SharedWorker("Iris.Web.Worker.js")
 
+    member self.Session
+      with get () = session
+
     member self.Controller
       with set c  = ctrl <- Some(c)
 
@@ -30,6 +33,9 @@ module Client =
       then let msg = ClientMessage.Close(Option.get session)
             in worker.port.PostMessage(msg, Array.empty)
 
+    member self.Trigger(msg : ClientMessage<State>) =
+      worker.port.PostMessage(msg, Array.empty)
+      
     member self.HandleMsg (msg : ClientMessage<State>) : unit =
       match ctrl with
         | Some(ctrl') ->
@@ -45,6 +51,7 @@ module Client =
 
             // Re-render the current view tree with a new state
             | ClientMessage.Render(state) ->
+              Console.Log("Render", state.Patches)
               ctrl'.Render state self
 
             // Log a message from Worker on this client

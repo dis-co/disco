@@ -19,12 +19,19 @@ module Patches =
     let footer = div <@> class' "foot" <|> hr
 
     let ioboxView (context : ClientContext) (iobox : IOBox) : Html =
-      if not (plugins.has iobox)
-      then plugins.add iobox
+      if not (plugins.Has iobox)
+      then plugins.Add iobox
+             (fun iobox' ->
+              match context.Session with
+                | Some(session) ->
+                  Console.Log("in cb", iobox'.Slices);
+                  ClientMessage.Event(session,IOBoxEvent(Update,iobox'))
+                  |> context.Trigger
+                | _ -> Console.Log("no worker session found."))
 
       let container = li <|> (strong <|> text (iobox.Name))
 
-      match plugins.get iobox with
+      match plugins.Get iobox with
         | Some(instance) -> container <|> Raw(instance.Render iobox)
         |  _             -> container
 

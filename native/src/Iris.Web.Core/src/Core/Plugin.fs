@@ -19,6 +19,9 @@ module Plugin =
       |_|   |_|\__,_|\__, |_|_| |_| + spec
                      |___/
   *)
+
+  type EventCallback = IOBox -> unit
+                     
   [<Stub>]
   type Plugin () = class
     [<Name "render">]
@@ -28,10 +31,6 @@ module Plugin =
     [<Name "dispose">]
     [<Stub>]
     member this.Dispose() : unit = X<_>
-
-    [<Name "register">]
-    [<Stub>]
-    member this.Register(listener : Slice -> unit) : unit = X<_>
   end
 
   type PluginSpec [<Inline "{}">] ()  =
@@ -42,7 +41,7 @@ module Plugin =
     val mutable ``type`` : string
 
     [<DefaultValue>]
-    val mutable  create : unit -> Plugin
+    val mutable  create : EventCallback -> Plugin
 
 
   [<Direct "return window.IrisPlugins">]
@@ -83,24 +82,24 @@ module Plugin =
     (* ------------------------ public interface -------------------------- *)
 
     (* instantiate a new view plugin *)
-    member self.add (iobox : IOBox) =
+    member self.Add (iobox : IOBox) (onupdate : EventCallback) =
       let candidates = findPlugins iobox.Type
       in if candidates.Length > 0
-         then addImpl iobox.Id (candidates.[0].create ())
+         then addImpl iobox.Id (candidates.[0].create(onupdate))
          else Console.Log("Could not instantiate view for IOBox. Type not found:  ", iobox.Type)
 
-    member self.has (iobox : IOBox) : bool = hasImpl iobox.Id
+    member self.Has (iobox : IOBox) : bool = hasImpl iobox.Id
 
-    member self.get (iobox : IOBox) : Plugin option =
+    member self.Get (iobox : IOBox) : Plugin option =
       let inst = getImpl iobox.Id
       if isNull inst
       then None
       else Some(inst)
 
     (* remove an instance of a view plugin *)
-    member self.remove (iobox : IOBox) = rmImpl self iobox.Id
+    member self.Remove (iobox : IOBox) = rmImpl self iobox.Id
 
-    member self.ids () : string array = idsImpl ()
+    member self.Ids () : string array = idsImpl ()
 
     interface IDisposable with
-      member self.Dispose () = Array.map rmImpl (self.ids ()) |> ignore
+      member self.Dispose () = Array.map rmImpl (self.Ids ()) |> ignore
