@@ -30,12 +30,12 @@ module ViewController =
 
     let mainView content = div <@> id' "patches" <|> content
 
-    interface IWidget<State> with
-      member self.Render (state : State) =
+    interface IWidget<State,ClientContext> with
+      member self.Render (state : State) (context : ClientContext) =
         let content =
           if Array.length state.Patches = 0
           then p <|> text "Empty"
-          else patchList state.Patches
+          else patchList state.Patches 
 
         mainView content |> renderHtml
 
@@ -69,25 +69,26 @@ module ViewController =
       let store = new Store<State>(Reducer, State.Empty)
 
       let view = new PatchView()
-      let ctrl = new ViewController<State>(view)
+      let ctx = new ClientContext()
+      let ctrl = new ViewController<State,ClientContext>(view)
 
       store.Dispatch <| PatchEvent(Create, patch1)
 
-      ctrl.Render store.State
+      ctrl.Render store.State ctx
 
       JQuery.Of(".patch")
       |> (fun els -> check (els.Length = 1) "should be one rendered patch template in dom")
 
       store.Dispatch <| PatchEvent(Create, patch2)
 
-      ctrl.Render store.State
+      ctrl.Render store.State ctx
 
       JQuery.Of(".patch")
       |> (fun els -> check (els.Length = 2) "should be two rendered patch templates in dom")
 
       store.Dispatch <| PatchEvent(Create, patch3)
 
-      ctrl.Render store.State
+      ctrl.Render store.State ctx
 
       JQuery.Of(".patch")
       |> (fun els -> check_cc (els.Length = 3) "should be three rendered patch templates in dom" cb)
@@ -105,11 +106,12 @@ module ViewController =
       let mutable store = new Store<State>(Reducer, State.Empty)
 
       let view = new PatchView()
-      let ctrl = new ViewController<State>(view)
+      let ctx = new ClientContext()
+      let ctrl = new ViewController<State,ClientContext>(view)
 
       store.Dispatch <| PatchEvent(Create, patch1)
 
-      ctrl.Render store.State
+      ctrl.Render store.State ctx
 
       JQuery.Of(".patch")
       |> (fun els -> check (els.Length = 1) "should be one patch in dom")

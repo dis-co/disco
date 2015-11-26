@@ -15,8 +15,8 @@ module ViewController =
        \ V  V / | | (_| | (_| |  __/ |_
         \_/\_/  |_|\__,_|\__, |\___|\__|
                          |___/           *)
-  type IWidget<'a> =
-    abstract Render  : 'a   -> VTree
+  type IWidget<'store,'context> =
+    abstract Render  : 'store -> 'context -> VTree
     abstract Dispose : unit -> unit
 
   (*  __     ___                ____ _        _
@@ -28,8 +28,8 @@ module ViewController =
       ViewController orchestrates the rendering of state changes and wraps up
       both the widget tree and the rendering context needed for virtual-dom.  *)
 
-  type ViewController<'a> (widget : IWidget<'a>) =
-    let mutable view : IWidget<'a>  = widget
+  type ViewController<'store,'context> (widget : IWidget<'store,'context>) =
+    let mutable view : IWidget<'store,'context>  = widget
     let mutable tree : VTree option = None
     let mutable root : Dom.Element  = JS.Window.Document.CreateElement "div"
 
@@ -42,8 +42,8 @@ module ViewController =
       with get () = root
 
     (* render and patch the DOM *)
-    member self.Render (store : 'a) : unit =
-      let newtree = view.Render store
+    member self.Render (store : 'store) (context : 'context) : unit =
+      let newtree = view.Render store context
 
       match tree with
         | Some(oldtree) ->

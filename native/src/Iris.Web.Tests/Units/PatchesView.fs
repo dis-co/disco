@@ -88,15 +88,16 @@ module PatchesView =
       let store : Store<State> = new Store<State>(Reducer, State.Empty)
 
       let view = new Patches.Root ()
-      let controller = new ViewController<State> (view)
-      controller.Render store.State
+      let controller = new ViewController<State,ClientContext> (view)
+      let ctx = new ClientContext()
+      controller.Render store.State ctx 
 
       JQuery.Of("#"+patchid)
       |> (fun el -> check (el.Length = 0) "element should be null")
 
       store.Dispatch <| PatchEvent(Create, patch)
 
-      controller.Render store.State
+      controller.Render store.State ctx
 
       JQuery.Of("#"+patchid)
       |> (fun el -> check_cc (el.Attr("id") = patchid) "patch element not found in dom" cb)
@@ -126,8 +127,9 @@ module PatchesView =
         new Store<State>(Reducer, { Patches = [| patch1; patch2 |] })
 
       let view = new Patches.Root ()
-      let controller = new ViewController<State> (view)
-      controller.Render store.State
+      let controller = new ViewController<State,ClientContext> (view)
+      let ctx = new ClientContext()
+      controller.Render store.State ctx
 
       JQuery.Of("#"+pid1)
       |> (fun el -> check (el.Length > 0) "element 1 should not be null")
@@ -140,7 +142,7 @@ module PatchesView =
       check (not <| hasPatch store.State.Patches patch1) "patch should be gone"
       check (hasPatch store.State.Patches patch2) "patch should be there"
 
-      controller.Render store.State
+      controller.Render store.State ctx
 
       JQuery.Of("#"+pid1)
       |> (fun el -> check (el.Length = 0) "element 1 should be null")
@@ -174,15 +176,16 @@ module PatchesView =
         new Store<State>(Reducer, { Patches = [| patch |] })
 
       let view = new Patches.Root ()
-      let controller = new ViewController<State> (view)
-      controller.Render store.State
+      let ctx = new ClientContext()
+      let controller = new ViewController<State,ClientContext> (view)
+      controller.Render store.State ctx
 
       JQuery.Of("#"+id1)
       |> (fun el -> check (el.Length = 0) "element should not be")
 
       store.Dispatch <| IOBoxEvent(Create, iobox)
 
-      controller.Render store.State
+      controller.Render store.State ctx
 
       JQuery.Of("#"+id1)
       |> (fun el -> check_cc (el.Length > 0) "element should not be null" cb)
@@ -214,18 +217,19 @@ module PatchesView =
         new Store<State>(Reducer, { Patches = [| patch |] })
 
       let view = new Patches.Root ()
-      let controller = new ViewController<State> (view)
+      let ctx = new ClientContext()
+      let controller = new ViewController<State,ClientContext> (view)
 
       // add the first iobox
       store.Dispatch <| IOBoxEvent(Create,iobox1)
-      controller.Render store.State
+      controller.Render store.State ctx
 
       JQuery.Of("#"+id1)
       |> (fun el -> check (el.Length > 0) "element should not be null")
 
       // add the second iobox
       store.Dispatch <| IOBoxEvent(Create,iobox2)
-      controller.Render store.State
+      controller.Render store.State ctx
 
       JQuery.Of("#"+id1)
       |> (fun el -> check (el.Length > 0) "element 1 should not be null")
@@ -235,7 +239,7 @@ module PatchesView =
 
       // remove the second iobox
       store.Dispatch <| IOBoxEvent(Delete,iobox2)
-      controller.Render store.State
+      controller.Render store.State ctx
 
       JQuery.Of("#"+id1)
       |> (fun el -> check (el.Length > 0) "element 1 should not be null")
@@ -269,12 +273,13 @@ module PatchesView =
         new Store<State>(Reducer, { Patches = [| patch |] })
 
       // render initial state
-      let view = new Patches.Root ()
-      let controller = new ViewController<State> (view)
+      let view = new Patches.Root()
+      let ctx = new ClientContext()
+      let controller = new ViewController<State,ClientContext> (view)
 
       store.Dispatch <| IOBoxEvent(Create, iobox)
 
-      controller.Render store.State
+      controller.Render store.State ctx
 
       // test for the presence of the initial state
       JQuery.Of("#"+elid).Children(".slices")
@@ -294,7 +299,7 @@ module PatchesView =
         | Some(box) -> check ((box.Slices.[0].Value :?> string) = value2) "box in updated state should have right value"
         | None -> fail "IOBox was not found in store"
 
-      controller.Render store.State
+      controller.Render store.State ctx
 
       // test for the presence of the initial state
       JQuery.Of("#"+elid).Children(".slices")
@@ -314,7 +319,7 @@ module PatchesView =
         | Some(box) -> check ((box.Slices.[0].Value :?> string) = value3) "box in updated state should have right value"
         | None -> fail "IOBox was not found in store"
 
-      controller.Render store.State
+      controller.Render store.State ctx
 
       // test for the presence of the initial state
       JQuery.Of("#"+elid).Children(".slices")
