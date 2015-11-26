@@ -86,7 +86,6 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="src\Core\Html.fs" />
-    <Compile Include="src\Core\Events.fs" />
     <Compile Include="src\Core\Plugin.fs" />
     <Compile Include="src\Core\State.fs" />
     <Compile Include="src\Core\Store.fs" />

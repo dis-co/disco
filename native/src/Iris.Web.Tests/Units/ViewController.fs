@@ -66,26 +66,26 @@ module ViewController =
         ; IOBoxes = Array.empty
         }
 
-      let store = new Store<State>(reducer, State.Empty)
+      let store = new Store<State>(Reducer, State.Empty)
 
       let view = new PatchView()
       let ctrl = new ViewController<State>(view)
 
-      store.Dispatch <| PatchEvent(PatchEventT.AddPatch, patch1)
+      store.Dispatch <| PatchEvent(Create, patch1)
 
       ctrl.Render store.State
 
       JQuery.Of(".patch")
       |> (fun els -> check (els.Length = 1) "should be one rendered patch template in dom")
 
-      store.Dispatch <| PatchEvent(PatchEventT.AddPatch, patch2)
+      store.Dispatch <| PatchEvent(Create, patch2)
 
       ctrl.Render store.State
 
       JQuery.Of(".patch")
       |> (fun els -> check (els.Length = 2) "should be two rendered patch templates in dom")
 
-      store.Dispatch <| PatchEvent(PatchEventT.AddPatch, patch3)
+      store.Dispatch <| PatchEvent(Create, patch3)
 
       ctrl.Render store.State
 
@@ -102,12 +102,12 @@ module ViewController =
         ; IOBoxes = Array.empty
         }
 
-      let mutable store = new Store<State>(reducer, State.Empty)
+      let mutable store = new Store<State>(Reducer, State.Empty)
 
       let view = new PatchView()
       let ctrl = new ViewController<State>(view)
 
-      store.Dispatch <| PatchEvent(PatchEventT.AddPatch, patch1)
+      store.Dispatch <| PatchEvent(Create, patch1)
 
       ctrl.Render store.State
 

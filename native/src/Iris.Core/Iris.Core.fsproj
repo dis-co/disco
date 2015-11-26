@@ -48,9 +48,9 @@
     <None Include="paket.references" />
     <None Include="paket.template" />
     <Compile Include="src\Types\Aliases.fs" />
-    <Compile Include="src\Types\Message.fs" />
     <Compile Include="src\Types\IOBox.fs" />
     <Compile Include="src\Types\Patch.fs" />
+    <Compile Include="src\Types\Message.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

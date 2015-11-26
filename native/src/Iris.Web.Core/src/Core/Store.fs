@@ -7,6 +7,8 @@ open WebSharper.JavaScript
 [<JavaScript>]
 module Store =
 
+  open Iris.Core.Types
+
   (* Reducers are take a state, an action, acts and finally return the new state *)
   type Reducer<'a> = (AppEvent -> 'a -> 'a)
 

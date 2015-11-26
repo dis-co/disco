@@ -1,5 +1,7 @@
 namespace Iris.Web.Core
 
+#nowarn "1182"
+
 open WebSharper
 open WebSharper.JavaScript
 
@@ -41,33 +43,58 @@ module Worker =
 
                                                      +-----------------+
                                                      |                 |
-                                                     |  BROWSER        |
-     +---------------+      +-----------------+      |  WINDOW         |
+                                                     |     BROWSER     |
+     +---------------+      +-----------------+      |     WINDOW      |
      |               |      |                 |<---->|                 |
-     |  IRIS         |      |  SHARED WORKER  |      +-----------------+
-     |  SERVICE      +<---->+                 |
-     |               |      |                 |<---->+-----------------+
-     +---------------+      +-----------------+      |                 |
-                                                     |  BROWSER        |
-                                                     |  WINDOW         |
+     |     IRIS      |----->|     SHARED      |      +-----------------+
+     |    SERVICE    +<-----+     WORKER      |      +-----------------+
+     |               |      |                 |<---->|                 |
+     +---------------+      +-----------------+      |     BROWSER     |
+                                                     |     WINDOW      |
                                                      |                 |
                                                      +-----------------+
 
   *----------------------------------------------------------------------------*)
+
+  let flip f b a = f a b
+
+  let mkSession () =
+    let time = (new Date()).GetTime()
+    let fac = Math.Random()
+    JSON.Stringify(Math.Floor(float(time) * fac))
+
+  type Ports [<Inline "{}">]() = class end
   
   type GlobalContext() =
-    let mutable connections : MessagePort array = Array.empty
-    let mutable store = new Store<State>(reducer, State.Empty)
+    let mutable count = 0
+    let mutable ports = new Ports()
+    let mutable store = new Store<State>(Reducer, State.Empty)
     let mutable socket = Option<WebSocket>.None
 
-    let send (ev : ClientMessage) (port : MessagePort) : unit =
-      port.PostMessage(ev, Array.empty)
+    [<Direct "$ports[$id] = $port">]
+    let addImpl (ports : Ports) id port : unit = X
 
-    let broadcast (ev : ClientMessage) : unit =
-      Array.iter (send ev) connections
+    [<Direct "delete $ports[$id]">]
+    let rmImpl (ports : Ports) id : unit = X
 
-    let notify (action : ClientAction) : ClientMessage =
-      { Type = action; Payload = None }
+    [<Direct "Object.keys($ports)">]
+    let allKeysImpl (ports : Ports) : string array = X
+
+    [<Direct "$ports[$key]">]
+    let getImpl (ports : Ports) (key : string) : MessagePort = X
+
+    let send (msg : ClientMessage<State>) (port : MessagePort) : unit =
+      port.PostMessage(msg, Array.empty)
+
+    let broadcast (msg : ClientMessage<State>) : unit =
+      Array.map (getImpl ports) (allKeysImpl ports)
+      |> Array.iter (send msg)
+
+    let multicast (id : Session) (msg : ClientMessage<State>) : unit =
+      allKeysImpl ports
+      |> Array.filter (fun str -> id <> str)
+      |> Array.map (getImpl ports)
+      |> Array.iter (send msg)
 
     (*
 
@@ -106,16 +133,16 @@ module Worker =
       let msg = JSON.Parse(ev.Data :?> string) :?> ApiMessage
       let parsed =
         match msg.Type with
-          | ApiAction.AddPatch    -> PatchEvent (AddPatch,    msg.Payload :?> Patch)
-          | ApiAction.UpdatePatch -> PatchEvent (UpdatePatch, msg.Payload :?> Patch)
-          | ApiAction.RemovePatch -> PatchEvent (RemovePatch, msg.Payload :?> Patch)
+          | ApiAction.AddPatch    -> PatchEvent(Create, msg.Payload :?> Patch)
+          | ApiAction.UpdatePatch -> PatchEvent(Update, msg.Payload :?> Patch)
+          | ApiAction.RemovePatch -> PatchEvent(Delete, msg.Payload :?> Patch)
 
-          | ApiAction.AddIOBox    -> IOBoxEvent (AddIOBox,    msg.Payload :?> IOBox)
-          | ApiAction.UpdateIOBox -> IOBoxEvent (UpdateIOBox, msg.Payload :?> IOBox)
-          | ApiAction.RemoveIOBox -> IOBoxEvent (RemoveIOBox, msg.Payload :?> IOBox)
+          | ApiAction.AddIOBox    -> IOBoxEvent(Create, msg.Payload :?> IOBox)
+          | ApiAction.UpdateIOBox -> IOBoxEvent(Update, msg.Payload :?> IOBox)
+          | ApiAction.RemoveIOBox -> IOBoxEvent(Delete, msg.Payload :?> IOBox)
 
       in store.Dispatch parsed
-      broadcast { Type = Render; Payload = Some(store.State :> obj) }
+      broadcast <| ClientMessage.Render(store.State)
 
     (*                      _                   _             
          ___ ___  _ __  ___| |_ _ __ _   _  ___| |_ ___  _ __ 
@@ -125,54 +152,60 @@ module Worker =
     *)
     do
       let s = new WebSocket("ws://localhost:8080")
-      s.Onopen  <- (fun _ -> broadcast <| notify Connected)
-      s.Onclose <- (fun _ -> broadcast <| notify Disconnected)
-      s.Onerror <- (fun _ -> broadcast <| notify ConnectionError)
+      s.Onopen  <- (fun _ -> broadcast <| ClientMessage.Connected)
+      s.Onclose <- (fun _ -> broadcast <| ClientMessage.Disconnected)
+      s.Onerror <- (fun e -> broadcast <| ClientMessage.Error(JSON.Stringify(e)))
       s.Onmessage <- (fun msg -> onSocketMessage msg)
+      socket <- Some(s)
 
     (*--------------------------------------------------------------------------
 
                  +-------------+                  +-------------+
-                 |             |   ClientAction   |             |
+                 |             |                  |             |
                  |  SHARED     | ---------------> | BROWSER     |
                  |  WORKER     | <--------------- | WINDOW      |
                  |             |                  |             |
                  +-------------+                  +-------------+
 
     ---------------------------------------------------------------------------*)
-    
-    member __.OnClientMsg (msg : MessageEvent) : unit =
-      let parsed = msg.Data :?> ClientMessage
-      match parsed.Type with
-        | Add    ->
-          let data = Option.get(parsed.Payload) :?> int
-          broadcast { Type = Render; Payload = Some(data :> obj) }
 
-        | Update ->
-          let data = Option.get(parsed.Payload) :?> string
-          broadcast { Type = Render; Payload = Some(data :> obj) }
+    member __.Add (port : MessagePort) =
+      count <- count + 1                    // increase the connection count
+      let id = mkSession()                  // create a session id
+      port.Onmessage <- __.OnClientMsg      // register callback on port
+      addImpl ports id port                 // add port to ports object
 
-        | Remove ->
-          let data = Option.get(parsed.Payload) :?> string
-          broadcast { Type = Render; Payload = Some(data :> obj) }
-
-        | _ -> __.Log(parsed)
-
-    member __.Add (port : MessagePort) : unit =
-      port.Onmessage <- __.OnClientMsg
-      Array.append connections [| port |]
+      [ ClientMessage.Initialized(id)       // tell client all is good
+      ; ClientMessage.Render(store.State) ] // tell client to render
+      |> List.map (flip send port)
       |> ignore
 
-    member __.Store with get () = store
+    member __.Remove (id : Session) =
+      count <- count - 1
+      rmImpl ports id
+      broadcast <| ClientMessage.Closed(id)
+
+    member __.OnClientMsg (msg : MessageEvent) : unit =
+      let parsed = msg.Data :?> ClientMessage<State>
+      match parsed with
+        | ClientMessage.Close(session) -> __.Remove(session)
+
+        | ClientMessage.Event(session, event') ->
+          match event' with
+            | IOBoxEvent(_,_) as ev -> store.Dispatch ev
+            | PatchEvent(_,_) as ev -> store.Dispatch ev
+            | _ -> __.Log("other are not supported in-worker")
+          multicast session <| ClientMessage.Render(store.State)
+
+        | _ -> __.Log("clients-only message ignored")
+
+    member __.Store  with get () = store
     member __.Socket with get () = socket
 
-    member __.Broadcast (msg : ClientMessage) : unit =
-      broadcast msg
-
-    member __.Send (msg : ClientMessage)  : unit =
+    member __.Send (msg : ClientMessage<State>)  : unit =
       match socket with
         | Some(thing) -> thing.Send(JSON.Stringify(msg))
         | None -> __.Log("Not connected")
 
     member __.Log (thing : obj) : unit =
-      broadcast { Type = Log; Payload = Some(thing) }
+      broadcast <| ClientMessage.Log(thing)

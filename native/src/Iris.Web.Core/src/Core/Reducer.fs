@@ -6,6 +6,8 @@ open WebSharper
 [<JavaScript>]
 module Reducer =
 
+  open Iris.Core.Types
+
   (*   ____          _
       |  _ \ ___  __| |_   _  ___ ___ _ __
       | |_) / _ \/ _` | | | |/ __/ _ \ '__|
@@ -13,22 +15,20 @@ module Reducer =
       |_| \_\___|\__,_|\__,_|\___\___|_|
   *)
 
-  let reducer ev state =
-    let addPatch'    = addPatch state
-    let updatePatch' = updatePatch state
-    let removePatch' = removePatch state
-
-    let addIOBox'    = addIOBox state
-    let updateIOBox' = updateIOBox state
-    let removeIOBox' = removeIOBox state
-
+  let Reducer (ev : AppEvent) (state : State) =
     match ev with
-      | PatchEvent (Kind = AddPatch;    Patch = patch) -> addPatch'    patch
-      | PatchEvent (Kind = UpdatePatch; Patch = patch) -> updatePatch' patch
-      | PatchEvent (Kind = RemovePatch; Patch = patch) -> removePatch' patch
+      | PatchEvent(action, patch) ->
+          match action with
+              | Create -> state.Add patch
+              | Update -> state.Update patch
+              | Delete -> state.Remove patch
+              | _ -> state
 
-      | IOBoxEvent (Kind = AddIOBox;    IOBox = iobox ) -> addIOBox'    iobox
-      | IOBoxEvent (Kind = UpdateIOBox; IOBox = iobox ) -> updateIOBox' iobox
-      | IOBoxEvent (Kind = RemoveIOBox; IOBox = iobox ) -> removeIOBox' iobox
+      | IOBoxEvent(action, iobox) ->
+          match action with
+              | Create -> state.Add iobox
+              | Update -> state.Update iobox
+              | Delete -> state.Remove iobox
+              | _ -> state
       
       | _ -> printfn "unknown event" ;state
