@@ -19,7 +19,13 @@ module Patches =
         h1 <|> text "All Patches";
         button
            <@> onClick (fun _ -> ctx.Trigger(ClientMessage.Stop))
-           <|> text "stop"
+           <|> text "Restart Worker";
+        button
+           <@> onClick (fun _ -> ctx.Trigger(ClientMessage.Undo))
+           <|> text "Undo";
+        button
+           <@> onClick (fun _ -> ctx.Trigger(ClientMessage.Redo))
+           <|> text "Redo";
         |]
 
     let footer = div <@> class' "foot" <|> hr

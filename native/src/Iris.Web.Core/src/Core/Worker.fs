@@ -176,6 +176,14 @@ module Worker =
       match parsed with
         | ClientMessage.Close(session) -> remove(session)
 
+        | ClientMessage.Undo ->
+          store.Undo()
+          broadcast <| ClientMessage.Render(store.State)
+
+        | ClientMessage.Redo ->
+          store.Redo()
+          broadcast <| ClientMessage.Render(store.State)
+
         | ClientMessage.Stop ->
           broadcast <| ClientMessage.Stopped
           close ()

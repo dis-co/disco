@@ -138,6 +138,9 @@ module Message =
     | Closed      of Session            // other client tab/window notified of close
     | Stop                              // SharedWorker is requested to stop
     | Stopped                           // SharedWorker process has stopped
+    | Undo                              // Undo last step 
+    | Redo                              // Redo last undo step
+    | Save                              // Save current state
     | Log         of obj                // logs a piece of data to all connected clients
     | Error       of Error              // an error occuring inside the worker
     | Render      of 'state             // instruct all clients to render new state
