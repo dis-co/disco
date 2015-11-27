@@ -10,10 +10,18 @@ module Client =
   open Iris.Core.Types
 
   type ClientContext() =
+    let resource = "Iris.Web.Worker.js"
+
     let mutable session = Option<Session>.None
     let mutable ctrl = Option<ViewController<State,ClientContext>>.None 
+    let mutable worker = new SharedWorker(resource)
 
-    let worker = new SharedWorker("Iris.Web.Worker.js")
+    let close _ =
+      if (Option.isSome session)
+      then let msg = ClientMessage.Close(Option.get session)
+            in worker.port.PostMessage(msg, Array.empty)
+
+    do JS.Window.Onunload <- close
 
     member self.Session
       with get () = session
@@ -22,16 +30,10 @@ module Client =
       with set c  = ctrl <- Some(c)
 
     member self.Start() =
-      worker.onerror <- (fun e -> Console.Log("error: ", e))
-      worker.port.Onmessage <- (fun msg -> self.HandleMsg (msg.Data :?> ClientMessage<State>))
+      worker.onerror <- (fun e -> Console.Log("SharedWorker Error: " + JSON.Stringify(e)))
+      worker.port.Onmessage <- (fun msg ->
+        self.HandleMsg (msg.Data :?> ClientMessage<State>))
       worker.port.Start()
-
-      JS.Window.Onunload <- (fun _ -> self.Close())
-
-    member self.Close() =
-      if (Option.isSome session)
-      then let msg = ClientMessage.Close(Option.get session)
-            in worker.port.PostMessage(msg, Array.empty)
 
     member self.Trigger(msg : ClientMessage<State>) =
       worker.port.PostMessage(msg, Array.empty)
@@ -49,9 +51,13 @@ module Client =
             | ClientMessage.Closed(session') ->
               Console.Log("A client closed its session: ", session')
 
+            | ClientMessage.Stopped ->
+              Console.Log("Worker stopped, restarting...")
+              worker <- new SharedWorker(resource)
+              self.Start()
+
             // Re-render the current view tree with a new state
             | ClientMessage.Render(state) ->
-              Console.Log("Render", state.Patches)
               ctrl'.Render state self
 
             // Log a message from Worker on this client

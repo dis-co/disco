@@ -54,49 +54,6 @@ module Worker =
                                                      |                 |
                                                      +-----------------+
 
-  *----------------------------------------------------------------------------*)
-
-  let flip f b a = f a b
-
-  let mkSession () =
-    let time = (new Date()).GetTime()
-    let fac = Math.Random()
-    JSON.Stringify(Math.Floor(float(time) * fac))
-
-  type Ports [<Inline "{}">]() = class end
-  
-  type GlobalContext() =
-    let mutable count = 0
-    let mutable ports = new Ports()
-    let mutable store = new Store<State>(Reducer, State.Empty)
-    let mutable socket = Option<WebSocket>.None
-
-    [<Direct "$ports[$id] = $port">]
-    let addImpl (ports : Ports) id port : unit = X
-
-    [<Direct "delete $ports[$id]">]
-    let rmImpl (ports : Ports) id : unit = X
-
-    [<Direct "Object.keys($ports)">]
-    let allKeysImpl (ports : Ports) : string array = X
-
-    [<Direct "$ports[$key]">]
-    let getImpl (ports : Ports) (key : string) : MessagePort = X
-
-    let send (msg : ClientMessage<State>) (port : MessagePort) : unit =
-      port.PostMessage(msg, Array.empty)
-
-    let broadcast (msg : ClientMessage<State>) : unit =
-      Array.map (getImpl ports) (allKeysImpl ports)
-      |> Array.iter (send msg)
-
-    let multicast (id : Session) (msg : ClientMessage<State>) : unit =
-      allKeysImpl ports
-      |> Array.filter (fun str -> id <> str)
-      |> Array.map (getImpl ports)
-      |> Array.iter (send msg)
-
-    (*
 
      +--------------+               +---------------+              +----------------+
      | IRIS SERVICE |   ApiAction   | SHARED WORKER | ClientAction | BROWSER WINDOW |
@@ -127,7 +84,68 @@ module Worker =
      |              |               |               |              |                |
      +--------------+               +---------------+              +----------------+
 
-    *)
+  *----------------------------------------------------------------------------*)
+
+  let flip f b a = f a b
+
+  let mkSession () =
+    let time = (new Date()).GetTime()
+    let fac = Math.Random()
+    JSON.Stringify(Math.Floor(float(time) * fac))
+
+  type Ports [<Inline "{}">]() = class end
+  
+  type GlobalContext() =
+    let mutable count = 0
+    let mutable ports = new Ports()
+    let mutable store = new Store<State>(Reducer, State.Empty)
+    let mutable socket = Option<WebSocket>.None
+
+    [<Direct "$ports[$id] = $port">]
+    let addImpl (ports : Ports) id port : unit = X
+
+    [<Direct "delete $ports[$id]">]
+    let rmImpl (ports : Ports) id : unit = X
+
+    [<Direct "Object.keys($ports)">]
+    let allKeysImpl (ports : Ports) : string array = X
+
+    [<Direct "$ports[$key]">]
+    let getImpl (ports : Ports) (key : string) : MessagePort = X
+
+    [<Inline "void(self.close())">]
+    let close () = X
+
+    let send (msg : ClientMessage<State>) (port : MessagePort) : unit =
+      port.PostMessage(msg, Array.empty)
+
+    let broadcast (msg : ClientMessage<State>) : unit =
+      Array.map (getImpl ports) (allKeysImpl ports)
+      |> Array.iter (send msg)
+
+    let multicast (id : Session) (msg : ClientMessage<State>) : unit =
+      allKeysImpl ports
+      |> Array.filter (fun str -> id <> str)
+      |> Array.map (getImpl ports)
+      |> Array.iter (send msg)
+
+    let remove (id : Session) =
+      count <- count - 1
+      rmImpl ports id
+      broadcast <| ClientMessage.Closed(id)
+
+    let log (o : obj) =
+      Console.Log(o)
+      broadcast <| ClientMessage.Log(o)
+
+    (*-------------------------------------------------------------------------*
+        ____             _        _   
+       / ___|  ___   ___| | _____| |_ 
+       \___ \ / _ \ / __| |/ / _ \ __|
+        ___) | (_) | (__|   <  __/ |_ 
+       |____/ \___/ \___|_|\_\___|\__| Message Handler
+
+     *-------------------------------------------------------------------------*)
 
     let onSocketMessage (ev : MessageEvent) : unit = 
       let msg = JSON.Parse(ev.Data :?> string) :?> ApiMessage
@@ -143,6 +161,44 @@ module Worker =
 
       in store.Dispatch parsed
       broadcast <| ClientMessage.Render(store.State)
+
+    (*-------------------------------------------------------------------------*
+        ____ _ _            _   
+       / ___| (_) ___ _ __ | |_ 
+      | |   | | |/ _ \ '_ \| __|
+      | |___| | |  __/ | | | |_ 
+       \____|_|_|\___|_| |_|\__| Message Handler
+
+     *------------------------------------------------------------------------*)
+
+    let onClientMessage (msg : MessageEvent) : unit =
+      let parsed = msg.Data :?> ClientMessage<State>
+      match parsed with
+        | ClientMessage.Close(session) -> remove(session)
+
+        | ClientMessage.Stop ->
+          broadcast <| ClientMessage.Stopped
+          close ()
+
+        | ClientMessage.Event(session, event') ->
+          match event' with
+            | IOBoxEvent(_,_) as ev -> store.Dispatch ev
+            | PatchEvent(_,_) as ev -> store.Dispatch ev
+            | _ -> log "other are not supported in-worker" 
+          multicast session <| ClientMessage.Render(store.State)
+
+        | _ -> log "clients-only message ignored" 
+
+    let add (port : MessagePort) =
+      count <- count + 1                    // increase the connection count
+      let id = mkSession()                  // create a session id
+      port.Onmessage <- onClientMessage     // register callback on port
+      addImpl ports id port                 // add port to ports object
+
+      [ ClientMessage.Initialized(id)       // tell client all is good
+      ; ClientMessage.Render(store.State) ] // tell client to render
+      |> List.map (flip send port)
+      |> ignore
 
     (*                      _                   _             
          ___ ___  _ __  ___| |_ _ __ _   _  ___| |_ ___  _ __ 
@@ -169,36 +225,7 @@ module Worker =
 
     ---------------------------------------------------------------------------*)
 
-    member __.Add (port : MessagePort) =
-      count <- count + 1                    // increase the connection count
-      let id = mkSession()                  // create a session id
-      port.Onmessage <- __.OnClientMsg      // register callback on port
-      addImpl ports id port                 // add port to ports object
-
-      [ ClientMessage.Initialized(id)       // tell client all is good
-      ; ClientMessage.Render(store.State) ] // tell client to render
-      |> List.map (flip send port)
-      |> ignore
-
-    member __.Remove (id : Session) =
-      count <- count - 1
-      rmImpl ports id
-      broadcast <| ClientMessage.Closed(id)
-
-    member __.OnClientMsg (msg : MessageEvent) : unit =
-      let parsed = msg.Data :?> ClientMessage<State>
-      match parsed with
-        | ClientMessage.Close(session) -> __.Remove(session)
-
-        | ClientMessage.Event(session, event') ->
-          match event' with
-            | IOBoxEvent(_,_) as ev -> store.Dispatch ev
-            | PatchEvent(_,_) as ev -> store.Dispatch ev
-            | _ -> __.Log("other are not supported in-worker")
-          multicast session <| ClientMessage.Render(store.State)
-
-        | _ -> __.Log("clients-only message ignored")
-
+    member __.Add (port : MessagePort) = add port
     member __.Store  with get () = store
     member __.Socket with get () = socket
 

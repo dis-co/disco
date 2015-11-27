@@ -136,6 +136,8 @@ module Message =
     | Initialized of Session            // the worker has created a session for this tab/window
     | Close       of Session            // client tab/window was closed, so request to remove session
     | Closed      of Session            // other client tab/window notified of close
+    | Stop                              // SharedWorker is requested to stop
+    | Stopped                           // SharedWorker process has stopped
     | Log         of obj                // logs a piece of data to all connected clients
     | Error       of Error              // an error occuring inside the worker
     | Render      of 'state             // instruct all clients to render new state

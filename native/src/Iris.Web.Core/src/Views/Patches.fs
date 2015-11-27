@@ -14,7 +14,13 @@ module Patches =
   type Root () =
     let mutable plugins = new Plugins ()
 
-    let header = h1 <|> text "All Patches"
+    let header (ctx : ClientContext) =
+      div <||> [|
+        h1 <|> text "All Patches";
+        button
+           <@> onClick (fun _ -> ctx.Trigger(ClientMessage.Stop))
+           <|> text "stop"
+        |]
 
     let footer = div <@> class' "foot" <|> hr
 
@@ -24,7 +30,6 @@ module Patches =
              (fun iobox' ->
               match context.Session with
                 | Some(session) ->
-                  Console.Log("in cb", iobox'.Slices);
                   ClientMessage.Event(session,IOBoxEvent(Update,iobox'))
                   |> context.Trigger
                 | _ -> Console.Log("no worker session found."))
@@ -48,8 +53,8 @@ module Patches =
       let container = div <@> id' "patches"
       container <||> Array.map (patchView context) patches
 
-    let mainView (content : Html) : Html =
-      div <@> id' "main" <||> [| header ; content ; footer |]
+    let mainView (context : ClientContext) (content : Html) : Html =
+      div <@> id' "main" <||> [| header context; content ; footer |]
 
     (*-------------------- RENDERER --------------------*)
 
@@ -62,5 +67,5 @@ module Patches =
               if Array.length patches = 0
               then p <|> text "Empty"
               else patchList context patches)
-        |> mainView
+        |> mainView context
         |> renderHtml
