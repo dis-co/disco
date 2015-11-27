@@ -141,6 +141,7 @@ module Message =
     | Undo                              // Undo last step 
     | Redo                              // Redo last undo step
     | Save                              // Save current state
+    | Open                              // Open a project
     | Log         of obj                // logs a piece of data to all connected clients
     | Error       of Error              // an error occuring inside the worker
     | Render      of 'state             // instruct all clients to render new state

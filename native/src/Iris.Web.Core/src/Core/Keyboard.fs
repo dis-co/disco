@@ -29,21 +29,27 @@ module Keyboard =
     [<Name "preventDefault">]
     member __.PreventDefault (arg : bool) : unit = X
 
+  type KeyBinding = (bool * bool * int * ClientMessage<State>)
+
+  let knownActions : KeyBinding array =
+    //  ctrl, shift, key, action
+    [| (true, false, 90,  ClientMessage.Undo)
+     ; (true, true,  90,  ClientMessage.Redo)
+     ; (true, false, 83,  ClientMessage.Save)
+     ; (true, false, 79,  ClientMessage.Open)
+     |]
     
+  let matches (ctx : ClientContext) (kev : KeyboardEvent) ((ctrl, shift, key, msg) : KeyBinding) : unit =
+    if kev.KeyCode  = key   &&
+       kev.ShiftKey = shift &&
+       kev.CtrlKey  = ctrl
+    then
+       ctx.Trigger(msg)
+       kev.PreventDefault true 
+
   let keydownHandler (ctx : ClientContext) (ev : obj) = 
     let kev = ev :?> KeyboardEvent
-
-    if kev.CtrlKey && not kev.ShiftKey && kev.KeyCode = 90
-    then ctx.Trigger(ClientMessage.Undo)
-
-    if kev.CtrlKey && kev.ShiftKey && kev.KeyCode = 90
-    then ctx.Trigger(ClientMessage.Redo)
-
-    if kev.CtrlKey && kev.KeyCode = 83
-    then ctx.Trigger(ClientMessage.Save)
-
-    kev.PreventDefault true 
-
+    Array.iter (matches ctx kev) knownActions
 
   let registerKeyHandlers (ctx : ClientContext) = 
     JS.Window.Onkeydown <- keydownHandler ctx
