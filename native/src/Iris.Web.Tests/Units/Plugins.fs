@@ -20,58 +20,47 @@ module Plugins =
       (function(plugins) {
           var h = virtualDom.h;
       
-          var stringplugin = function() {
-            var listeners = [];
-
-            this.register = function(cb) {
-              listeners.push(cb);
-            };
-   
+          var stringplugin = function(cb) {
             this.render = function (iobox) {
                 return h(""div"", { id: iobox.id }, iobox.slices.map(function(slice) {
                   return h(""input"", {
                     value: slice.value,
                     className: 'slice',
                     onchange: function(ev) {
-                      listeners.forEach(function(l) {
-                        l.call(null, { idx: slice.idx, value: $(ev.target).val() });
-                      });
+                      // mutate slices array
+                      iobox.slices[slice.idx] = { idx: slice.idx, value: $(ev.target).val() };
+                      cb(iobox);
                     }
                   }, [ slice.value ]);
                 }));
             };
         
-            this.dispose = function() {
-              while(listeners.length > 0)
-                listeners.shift();
-            };
+            this.dispose = function() {};
           }
       
           plugins.push({
             name: ""simple-string-plugin"",
             type: ""string"",
-            create: function() {
-                return new stringplugin(arguments);
+            create: function(cb) {
+              return new stringplugin(cb);
             }
           });
 
-          var numberplugin = function() {
+          var numberplugin = function(cb) {
             this.render = function (iobox) {
                 var view = h(""div"", { id: iobox.id }, [
-                h(""p"", { className: ""slice"" }, [ iobox.slices[0].value ])
+                  h(""p"", { className: ""slice"" }, [ iobox.slices[0].value ])
                 ]);
                 return view;
             };
-        
-            this.dispose = function() {
-            };
+            this.dispose = function() {};
           }
       
           plugins.push({
             name: ""simple-number-plugin"",
             type: ""value"",
-            create: function() {
-                return new numberplugin(arguments);
+            create: function(cb) {
+              return new numberplugin(cb);
             }
           });
       })(window.IrisPlugins);">]
@@ -214,8 +203,8 @@ module Plugins =
         { IOBox.StringBox("0xb33f","url input", "0xb4d1d34")
             with Slices = [| { Idx = 0; Value = value1 } |] }
 
-      let listener (iobox : IOBox) : unit =
-        (iobox.Slices.[0].Value :?> string) ==>> value2 <| cb
+      let listener (box' : IOBox) : unit =
+        (box'.Slices.[0].Value :?> string) ==>> value2 <| cb
 
       let inst = plugin.create(listener)
 
