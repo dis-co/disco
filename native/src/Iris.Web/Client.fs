@@ -10,7 +10,7 @@ module Client =
   open Iris.Core.Types
   open Iris.Web.Core
   open Iris.Web.Views
-
+    
   (*   __  __       _
       |  \/  | __ _(_)_ __
       | |\/| |/ _` | | '_ \
@@ -26,5 +26,5 @@ module Client =
     context.Controller <- ctrl
     context.Start()
 
-    // ctrl.Render store
-    // store.Subscribe (fun store' _ -> ctrl.Render store')
+    registerKeyHandlers context
+    

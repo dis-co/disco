@@ -96,6 +96,7 @@
     <Compile Include="src\Core\ViewController.fs" />
     <Compile Include="src\Core\Worker.fs" />
     <Compile Include="src\Core\Client.fs" />
+    <Compile Include="src\Core\Keyboard.fs" />
     <Compile Include="src\Views\Index.fs" />
     <Compile Include="src\Views\Patches.fs" />
   </ItemGroup>
