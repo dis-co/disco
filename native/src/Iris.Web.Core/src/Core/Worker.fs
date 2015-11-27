@@ -13,11 +13,11 @@ module Worker =
   open Iris.Web.Core
 
   (*---------------------------------------------------------------------------*
-       _        __         _             
-      \ \      / /__  _ __| | _____ _ __ 
+       _        __         _
+      \ \      / /__  _ __| | _____ _ __
        \ \ /\ / / _ \| '__| |/ / _ \ '__|
-        \ V  V / (_) | |  |   <  __/ |   
-         \_/\_/ \___/|_|  |_|\_\___|_|   
+        \ V  V / (_) | |  |   <  __/ |
+         \_/\_/ \___/|_|  |_|\_\___|_|
 
   *----------------------------------------------------------------------------*)
   [<Stub>]
@@ -35,10 +35,10 @@ module Worker =
   type WorkerEvent = { ports : MessagePort array }
 
   (*---------------------------------------------------------------------------*
-       ____ _       _           _  ____            _            _   
-      / ___| | ___ | |__   __ _| |/ ___|___  _ __ | |_ _____  _| |_ 
+       ____ _       _           _  ____            _            _
+      / ___| | ___ | |__   __ _| |/ ___|___  _ __ | |_ _____  _| |_
      | |  _| |/ _ \| '_ \ / _` | | |   / _ \| '_ \| __/ _ \ \/ / __|
-     | |_| | | (_) | |_) | (_| | | |__| (_) | | | | ||  __/>  <| |_ 
+     | |_| | | (_) | |_) | (_| | | |__| (_) | | | | ||  __/>  <| |_
       \____|_|\___/|_.__/ \__,_|_|\____\___/|_| |_|\__\___/_/\_\\__|
 
                                                      +-----------------+
@@ -94,7 +94,7 @@ module Worker =
     JSON.Stringify(Math.Floor(float(time) * fac))
 
   type Ports [<Inline "{}">]() = class end
-  
+
   type GlobalContext() =
     let mutable count = 0
     let mutable ports = new Ports()
@@ -139,15 +139,15 @@ module Worker =
       broadcast <| ClientMessage.Log(o)
 
     (*-------------------------------------------------------------------------*
-        ____             _        _   
-       / ___|  ___   ___| | _____| |_ 
+        ____             _        _
+       / ___|  ___   ___| | _____| |_
        \___ \ / _ \ / __| |/ / _ \ __|
-        ___) | (_) | (__|   <  __/ |_ 
+        ___) | (_) | (__|   <  __/ |_
        |____/ \___/ \___|_|\_\___|\__| Message Handler
 
      *-------------------------------------------------------------------------*)
 
-    let onSocketMessage (ev : MessageEvent) : unit = 
+    let onSocketMessage (ev : MessageEvent) : unit =
       let msg = JSON.Parse(ev.Data :?> string) :?> ApiMessage
       let parsed =
         match msg.Type with
@@ -163,10 +163,10 @@ module Worker =
       broadcast <| ClientMessage.Render(store.State)
 
     (*-------------------------------------------------------------------------*
-        ____ _ _            _   
-       / ___| (_) ___ _ __ | |_ 
+        ____ _ _            _
+       / ___| (_) ___ _ __ | |_
       | |   | | |/ _ \ '_ \| __|
-      | |___| | |  __/ | | | |_ 
+      | |___| | |  __/ | | | |_
        \____|_|_|\___|_| |_|\__| Message Handler
 
      *------------------------------------------------------------------------*)
@@ -190,12 +190,18 @@ module Worker =
 
         | ClientMessage.Event(session, event') ->
           match event' with
-            | IOBoxEvent(_,_) as ev -> store.Dispatch ev
-            | PatchEvent(_,_) as ev -> store.Dispatch ev
-            | _ -> log "other are not supported in-worker" 
-          multicast session <| ClientMessage.Render(store.State)
+            | IOBoxEvent(_,_) as ev ->
+              store.Dispatch ev
+              multicast session <| ClientMessage.Render(store.State)
+            | PatchEvent(_,_) as ev ->
+              store.Dispatch ev
+              multicast session <| ClientMessage.Render(store.State)
+            | CueEvent(_,_)   as ev ->
+              store.Dispatch ev
+              broadcast <| ClientMessage.Render(store.State)
+            | _ -> log "other are not supported in-worker"
 
-        | _ -> log "clients-only message ignored" 
+        | _ -> log "clients-only message ignored"
 
     let add (port : MessagePort) =
       count <- count + 1                    // increase the connection count
@@ -208,11 +214,11 @@ module Worker =
       |> List.map (flip send port)
       |> ignore
 
-    (*                      _                   _             
-         ___ ___  _ __  ___| |_ _ __ _   _  ___| |_ ___  _ __ 
+    (*                      _                   _
+         ___ ___  _ __  ___| |_ _ __ _   _  ___| |_ ___  _ __
         / __/ _ \| '_ \/ __| __| '__| | | |/ __| __/ _ \| '__|
-       | (_| (_) | | | \__ \ |_| |  | |_| | (__| || (_) | |   
-        \___\___/|_| |_|___/\__|_|   \__,_|\___|\__\___/|_|   
+       | (_| (_) | | | \__ \ |_| |  | |_| | (__| || (_) | |
+        \___\___/|_| |_|___/\__|_|   \__,_|\___|\__\___/|_|
     *)
     do
       let s = new WebSocket("ws://localhost:8080")
@@ -244,3 +250,13 @@ module Worker =
 
     member __.Log (thing : obj) : unit =
       broadcast <| ClientMessage.Log(thing)
+
+
+  let initialize (ctx : GlobalContext) (ev : WorkerEvent) : unit =
+    ctx.Add(ev.ports.[0])
+
+  [<Direct "void(importScripts ? importScripts($script) : console.log('not in worker'))">]
+  let importScript (script : string) : unit = X
+
+  [<Direct "void (onconnect = $handler)">]
+  let onConnect (handler: WorkerEvent -> unit) = ()

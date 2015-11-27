@@ -1,7 +1,5 @@
 namespace Iris.Core.Types
 
-open System.Runtime.Serialization
-open System.Runtime.Serialization.Json
 open WebSharper
 
 [<AutoOpen>]

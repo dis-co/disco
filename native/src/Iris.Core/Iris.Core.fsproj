@@ -50,6 +50,7 @@
     <Compile Include="src\Types\Aliases.fs" />
     <Compile Include="src\Types\IOBox.fs" />
     <Compile Include="src\Types\Patch.fs" />
+    <Compile Include="src\Types\Cue.fs" />
     <Compile Include="src\Types\Message.fs" />
   </ItemGroup>
   <PropertyGroup>

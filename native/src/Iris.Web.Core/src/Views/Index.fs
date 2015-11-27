@@ -28,6 +28,7 @@ module Index =
            <script src=""dependencies/jquery/dist/jquery.js""></script>
            <script src=""dependencies/routie/dist/routie.js""></script>
            <script src=""dependencies/fabric.js/dist/fabric.js""></script>
+           <script src=""dependencies/AutoAnimations.js""></script>
            %s
            <script src=""Iris.Web.js""></script>
          </body>

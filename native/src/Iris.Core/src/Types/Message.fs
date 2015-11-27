@@ -61,6 +61,7 @@ module Message =
     | AppEvent   of AppEventT
     | IOBoxEvent of Crud * IOBox
     | PatchEvent of Crud * Patch
+    | CueEvent   of Crud * Cue option
     | UnknownEvent
 
     with override self.ToString() : string =

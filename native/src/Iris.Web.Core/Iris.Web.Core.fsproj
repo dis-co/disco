@@ -67,6 +67,9 @@
     <None Include="assets\js\node.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="assets\dependencies\asmcrypto.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="assets\dependencies\AutoAnimations.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -88,6 +91,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="src\Core\Crypto.fs" />
     <Compile Include="src\Core\Html.fs" />
     <Compile Include="src\Core\Plugin.fs" />
     <Compile Include="src\Core\State.fs" />

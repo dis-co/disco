@@ -11,17 +11,7 @@ module Client =
   open Iris.Core.Types
   open Iris.Web.Core
   open Iris.Web.Views
-
-  // let initialize (context : GlobalContext) ev =
-  //   context.Add(ev.ports.[0])
-  //   context.Log(JSON.Stringify(ev.ports))
-
-  let initialize (ctx : GlobalContext) (ev : WorkerEvent) : unit =
-    ctx.Add(ev.ports.[0])
-
-  [<Direct "void (onconnect = $handler)">]
-  let onConnect (handler: WorkerEvent -> unit) = ()
-
+  
   (*  __  __       _
      |  \/  | __ _(_)_ __
      | |\/| |/ _` | | '_ \
@@ -29,5 +19,7 @@ module Client =
      |_|  |_|\__,_|_|_| |_| entry point. *)
 
   let Main : unit =
+    importScript "dependencies/asmcrypto.js"
+
     let context = new GlobalContext()
     onConnect (initialize context)

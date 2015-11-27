@@ -124,7 +124,7 @@ module PatchesView =
         }
 
       let store : Store<State> =
-        new Store<State>(Reducer, { Patches = [| patch1; patch2 |] })
+        new Store<State>(Reducer, { State.Empty with Patches = [| patch1; patch2 |] })
 
       let view = new Patches.Root ()
       let controller = new ViewController<State,ClientContext> (view)
@@ -173,7 +173,7 @@ module PatchesView =
         }
 
       let store : Store<State> =
-        new Store<State>(Reducer, { Patches = [| patch |] })
+        new Store<State>(Reducer, { State.Empty with Patches = [| patch |] })
 
       let view = new Patches.Root ()
       let ctx = new ClientContext()
@@ -214,7 +214,7 @@ module PatchesView =
         }
 
       let store : Store<State> =
-        new Store<State>(Reducer, { Patches = [| patch |] })
+        new Store<State>(Reducer, { State.Empty with Patches = [| patch |] })
 
       let view = new Patches.Root ()
       let ctx = new ClientContext()
@@ -270,7 +270,7 @@ module PatchesView =
             with Slices = [| { Idx = 0; Value = value1 } |] }
 
       let store : Store<State> =
-        new Store<State>(Reducer, { Patches = [| patch |] })
+        new Store<State>(Reducer, { State.Empty with Patches = [| patch |] })
 
       // render initial state
       let view = new Patches.Root()

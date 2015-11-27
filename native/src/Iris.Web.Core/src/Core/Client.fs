@@ -74,3 +74,13 @@ module Client =
             | _ -> Console.Log("Unknown Event:", msg)
 
         | _ -> Console.Log("no controller set")
+
+
+  let initialize (ctx : GlobalContext) (ev : WorkerEvent) : unit =
+    ctx.Add(ev.ports.[0])
+
+  [<Direct "void(importScripts ? importScripts($script) : console.log('not in worker'))">]
+  let importScript (script : string) : unit = X
+
+  [<Direct "void (onconnect = $handler)">]
+  let onConnect (handler: WorkerEvent -> unit) = ()

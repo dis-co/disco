@@ -26,6 +26,14 @@ module Patches =
         button
            <@> onClick (fun _ -> ctx.Trigger(ClientMessage.Redo))
            <|> text "Redo";
+        button
+           <@> onClick (fun _ ->
+                        match ctx.Session with
+                          | Some(session) ->
+                             let ev = (session, CueEvent(Create, None))
+                             in ctx.Trigger(ClientMessage.Event(ev))
+                          | _ -> Console.Log("Cannot create cue. No worker?"))
+           <|> text "Create Cue";
         |]
 
     let footer = div <@> class' "foot" <|> hr
@@ -62,16 +70,59 @@ module Patches =
     let mainView (context : ClientContext) (content : Html) : Html =
       div <@> id' "main" <||> [| header context; content ; footer |]
 
+
+    let patches (context : ClientContext) (state : State)  : Html =
+      state.Patches
+      |> (fun patches ->
+            if Array.length patches = 0
+            then p <|> text "Empty"
+            else patchList context patches)
+
+
+    let destroy (context : ClientContext) (cue : Cue) =
+      let handler (_ : Dom.Event) = 
+        match context.Session with
+          | Some(session) -> 
+            let ev = ClientMessage<State>.Event(session, CueEvent(Delete, Some(cue)))
+            context.Trigger(ev)
+          | _ -> Console.Log("Cannot delete cue. No Worker?")
+
+      button <@> onClick handler
+             <|> text "x"
+
+
+    let cueView (context : ClientContext) (cue : Cue) =
+      div <@> id' cue.Id <@> class' "cue"
+          <|> text cue.Name
+          <|> destroy context cue 
+
+    let cueList (context : ClientContext) (cues : Cue array) : Html =
+      div <@> id' "cues"
+          <||> Array.map (cueView context) cues
+
+    let cues (context : ClientContext) (state : State) : Html =
+      div <||>
+        [| h3 <|> text "Cues";
+           state.Cues
+           |> (fun cues ->
+                 if Array.length cues = 0
+                 then p <|> text "No cues"
+                 else cueList context cues);
+         |]
+
+    let content (context : ClientContext) (state : State) : Html =
+      div <||>
+        [| patches context state
+         ; hr
+         ; cues context state
+         |]
+      
     (*-------------------- RENDERER --------------------*)
 
     interface IWidget<State,ClientContext> with
       member self.Dispose () = ()
 
       member self.Render (state : State) (context : ClientContext) =
-        state.Patches
-        |> (fun patches ->
-              if Array.length patches = 0
-              then p <|> text "Empty"
-              else patchList context patches)
+        content context state
         |> mainView context
         |> renderHtml
