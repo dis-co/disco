@@ -8,8 +8,12 @@ window.IrisPlugins = window.IrisPlugins || [];
       return h('div', [
         h('h3', ['Slice: ' + slice.idx]),
         h('input', {
+          value: slice.value,
           onchange: function (ev) {
-            iobox.slices[slice.idx] = { idx: slice.idx, value: ev.target.value };
+            iobox.slices[slice.idx] = {
+              idx: slice.idx,
+              value: $(ev.target).val()
+            };
             cb(iobox);
           }
         }, [slice.value])

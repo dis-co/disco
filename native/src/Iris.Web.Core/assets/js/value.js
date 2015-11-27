@@ -11,10 +11,12 @@ window.IrisPlugins = window.IrisPlugins || [];
           h('strong', [slice.idx]),
           h('input', {
             type: 'number',
+            value: slice.value,
             onchange: function (ev) {
-              var val = { idx: slice.idx, value: $(ev.target).val() };
-              iobox.slices[slice.idx] = val;
-              console.log("hcange", val);
+              iobox.slices[slice.idx] = {
+                idx: slice.idx,
+                value: $(ev.target).val()
+              };
               cb(iobox);
             }
           }, [slice.value])

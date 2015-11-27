@@ -17,5 +17,5 @@ module Aliases =
   type Precision  = int    option
   type MaxChars   = int    option
   type FilePath   = string
-  type Properties = string array
+  type Properties = (string * string) array
   

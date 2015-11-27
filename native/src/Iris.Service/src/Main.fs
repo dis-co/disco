@@ -55,15 +55,18 @@ module Main =
 
     let iob4 =
       { IOBox.EnumBox("enum-box-id", "Enum Box Example", pid)
-          with Slices = [| { Idx = 0; Value = [| "value 1"; "value 2"; "value 3"; |] }
-                        |] }
-    let iob5 =
-      { IOBox.EnumBox("node-box-id", "Node Box Example", pid)
-          with Slices = [| { Idx = 0; Value = "Not supported" } |] }
-
+          with
+            Properties =
+              [| ("0", "zero")
+               ; ("1", "one")
+               ; ("2", "two")
+               ; ("3", "three")
+               |];
+            Slices = [| { Idx = 0; Value = "2";  } |]
+      }
     let patch = { Id       = pid
                 ; Name     = "asdfas"
-                ; IOBoxes  =  [| iob1; iob2; iob3; iob4; iob5; |]
+                ; IOBoxes  =  [| iob1; iob2; iob3; iob4; |]
                 }
 
     let msg : ApiMessage = { Type = AddPatch; Payload = patch }

@@ -4,15 +4,26 @@ window.IrisPlugins = window.IrisPlugins || [];
   var h = virtualDom.h;
 
   function sliceView(iobox, cb) {
+    var options = function(selected) {
+      return iobox.properties.map(function(prop) {
+        var opts = { value: prop[0] };
+        if(prop[0] == selected) opts['selected'] = 'selected';
+        return h('option', opts, [ prop[1] ]);
+      });
+    };
+
     return function(slice) {
       return h('div', [
         h('h3', ['Slice: ' + slice.idx]),
-        h('input', {
+        h('select', {
           onchange: function (ev) {
-            iobox.slices[slice.idx] = { idx: slice.idx, value: ev.target.value };
+            iobox.slices[slice.idx] = {
+              idx: slice.idx,
+              value: $(ev.target).val()
+            };
             cb(iobox);
           }
-        }, [slice.value])
+        }, options(slice.value))
       ]);
     };
   }

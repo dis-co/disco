@@ -5,12 +5,7 @@ window.IrisPlugins = window.IrisPlugins || [];
 
   function sliceView(slice) {
     return h('div', [
-      h('h3', ['Slice: ' + slice.idx]),
-      h('input', {
-        onchange: function (ev) {
-          console.log("onchange!");
-        }
-      }, [slice.value])
+      h('h3', [ 'Not supported.' ]),
     ]);
   }
   
