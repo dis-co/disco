@@ -66,11 +66,11 @@ module State =
 
       (* REMOVE *)
       member state.Remove (patch : Patch) =
-        let pred (patch' : Patch) = patch.Id = patch'.Id
+        let pred (patch' : Patch) = patch.Id <> patch'.Id
         { state with Patches = Array.filter pred state.Patches }
 
       member state.Remove (cue : Cue) =
-        let pred (cue' : Cue) = cue.Id = cue'.Id
+        let pred (cue' : Cue) = cue.Id <> cue'.Id
         { state with Cues = Array.filter pred state.Cues }
 
       member state.Remove (iobox : IOBox) =

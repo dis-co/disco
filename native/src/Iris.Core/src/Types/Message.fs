@@ -88,9 +88,16 @@ module Message =
                         | Update -> "PatchEvent(Update)"
                         | Read   -> "PatchEvent(Read)"
 
+                    | CueEvent(t,_) -> 
+                      match t with
+                        | Create -> "CueEvent(Create)" 
+                        | Delete -> "CueEvent(Delete)"
+                        | Update -> "CueEvent(Update)"
+                        | Read   -> "CueEvent(Read)"
+
                     | UnknownEvent -> "UnknownEvent"
       
-  (*---------------------------------------------------------------------------*
+  (*---------------
       ____ _ _            _
      / ___| (_) ___ _ __ | |_
     | |   | | |/ _ \ '_ \| __|
