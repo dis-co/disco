@@ -54,16 +54,16 @@
       <Project>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</Project>
       <Name>Iris.Core</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Iris.Web.Core\Iris.Web.Core.fsproj">
-      <Project>{5F0370CD-9619-4815-B036-8B498FDF73C6}</Project>
-      <Name>Iris.Web.Core</Name>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\Iris.Web.Tests\Iris.Web.Tests.fsproj">
-      <Project>{CDC50F9D-1EFB-483B-8D14-3F2A3FD87F9D}</Project>
-      <Name>Iris.Web.Tests</Name>
-      <Private>True</Private>
-    </ProjectReference>
+    <!-- <ProjectReference Include="..\Iris.Web.Core\Iris.Web.Core.fsproj"> -->
+    <!--   <Project>{5F0370CD-9619-4815-B036-8B498FDF73C6}</Project> -->
+    <!--   <Name>Iris.Web.Core</Name> -->
+    <!--   <Private>True</Private> -->
+    <!-- </ProjectReference> -->
+    <!-- <ProjectReference Include="..\Iris.Web.Tests\Iris.Web.Tests.fsproj"> -->
+    <!--   <Project>{CDC50F9D-1EFB-483B-8D14-3F2A3FD87F9D}</Project> -->
+    <!--   <Name>Iris.Web.Tests</Name> -->
+    <!--   <Private>True</Private> -->
+    <!-- </ProjectReference> -->
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">
