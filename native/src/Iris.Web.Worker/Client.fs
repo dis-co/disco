@@ -18,6 +18,15 @@ module Client =
      | |  | | (_| | | | | |
      |_|  |_|\__,_|_|_| |_| entry point. *)
 
+  let initialize (ctx : GlobalContext) (ev : WorkerEvent) : unit =
+    ctx.Add(ev.ports.[0])
+
+  [<Direct "void(importScripts ? importScripts($script) : null)">]
+  let importScript (script : string) : unit = X
+
+  [<Direct "void (onconnect = $handler)">]
+  let onConnect (handler: WorkerEvent -> unit) = ()
+
   let Main : unit =
     importScript "dependencies/asmcrypto.js"
 
