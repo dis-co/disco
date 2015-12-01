@@ -47,6 +47,7 @@
   <ItemGroup>
     <None Include="paket.references" />
     <None Include="paket.template" />
+    <Compile Include="src\Serialization.fs" />
     <Compile Include="src\Types\Aliases.fs" />
     <Compile Include="src\Types\IOBox.fs" />
     <Compile Include="src\Types\Patch.fs" />

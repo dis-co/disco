@@ -3,8 +3,6 @@
 open Fleck
 open System.Diagnostics
 open System
-open System.IO
-open WebSharper
 
 open Akka
 open Akka.Actor
@@ -14,30 +12,6 @@ open Iris.Core.Types
 open Iris.Service.Types
 
 module Main =
-
-  // let rec loop (sckt : IWebSocketConnection option ref) =
-  //   let res = System.Console.ReadLine()
-
-  //   match !sckt with
-  //     | Some(s) -> s.Send(res) |> ignore
-  //     | _ -> printfn "not connected"
-
-  //   if not <| (res = "quit") then loop sckt
-  //
-  // let toString = System.Text.Encoding.ASCII.GetString
-
-  // let serialize (value : 'U) : string =
-  //   let JsonProvider = Core.Json.Provider.Create()
-  //   let encoder = JsonProvider.GetEncoder<'U>()
-  //   use writer = new StringWriter()
-
-  //   value
-  //   |> encoder.Encode
-  //   |> JsonProvider.Pack
-  //   |> WebSharper.Core.Json.Write writer
-
-  //   writer.ToString()
-
   type SessionId = string
 
   type WsMsg =
