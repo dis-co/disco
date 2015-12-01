@@ -46,8 +46,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="src\Server\AssetServer.fs" />
-    <Compile Include="src\Test.fs" />
+    <Compile Include="src\Types\AssetServer.fs" />
+    <Compile Include="src\Types\WebSockets.fs" />
+    <Compile Include="src\TestData.fs" />
     <Compile Include="src\Main.fs" />
   </ItemGroup>
   <ItemGroup>
