@@ -1,86 +1,164 @@
 ﻿namespace Iris.Service
 
+open Fleck
+open System.Diagnostics
+open System
+open System.IO
+open WebSharper
+
+open Akka
+open Akka.Actor
+open Akka.FSharp
+
+open Iris.Core.Types
+open Iris.Service.Types
+
 module Main =
+    
+  // let rec loop (sckt : IWebSocketConnection option ref) =
+  //   let res = System.Console.ReadLine()
 
-  open Fleck
-  open System.Diagnostics
-  open System.IO
-  open Iris.Core.Types
-  open WebSharper
+  //   match !sckt with
+  //     | Some(s) -> s.Send(res) |> ignore
+  //     | _ -> printfn "not connected"
 
-  open Iris.Service.Server.AssetServer
+  //   if not <| (res = "quit") then loop sckt
+  // 
+  // let toString = System.Text.Encoding.ASCII.GetString
 
-  let rec loop (sckt : IWebSocketConnection option ref) =
-    let res = System.Console.ReadLine()
+  // let serialize (value : 'U) : string =
+  //   let JsonProvider = Core.Json.Provider.Create()
+  //   let encoder = JsonProvider.GetEncoder<'U>()
+  //   use writer = new StringWriter()
 
-    match !sckt with
-      | Some(s) -> s.Send(res) |> ignore
-      | _ -> printfn "not connected"
+  //   value
+  //   |> encoder.Encode
+  //   |> JsonProvider.Pack
+  //   |> WebSharper.Core.Json.Write writer
 
-    if not <| (res = "quit") then loop sckt
-  
-  let toString = System.Text.Encoding.ASCII.GetString
+  //   writer.ToString()
 
-  let serialize (value : 'U) : string =
-    let JsonProvider = Core.Json.Provider.Create()
-    let encoder = JsonProvider.GetEncoder<'U>()
-    use writer = new StringWriter()
+  type SessionId = string
 
-    value
-    |> encoder.Encode
-    |> JsonProvider.Pack
-    |> WebSharper.Core.Json.Write writer
+  type WsMsg =
+    | Broadcast of string
+    | Multicast of SessionId * string
 
-    writer.ToString()
+  exception ConnectionException
 
+  let makeSession (socket : IWebSocketConnection) =
+    socket.ConnectionInfo.Id.ToString()
+
+  let applyTo a f = f a
+
+  (*--------------------------------------------------------------------------* 
+    not ever called for some reaon
+   *--------------------------------------------------------------------------*)
+  let openHandler : Action =
+    new Action(fun _ -> printfn "socket now open")
+
+  (*--------------------------------------------------------------------------*)
+  let closeHandler (session : SessionId) (mailbox : Actor<WsMsg>) : Action =
+    let handler _ =
+      let msg = Multicast(session,sprintf "session %s was closed" session)
+       in mailbox.ActorSelection("../*") <! msg
+      mailbox.Context.Stop(mailbox.Self)
+      printfn "socket closed"
+    new Action(handler)
+
+  (*--------------------------------------------------------------------------*)
+  let msgHandler (session : SessionId) (mailbox : Actor<WsMsg>) : Action<string> =
+    let handler str =
+      // take the payload and wrap it up for sending to everybody else
+      mailbox.ActorSelection("../*") <! Multicast(session,str)
+    new Action<string>(handler)
+
+  (*--------------------------------------------------------------------------*)
+  let errHandler : Action<exn> =
+    let handler (exn : Exception) =
+      printfn "Exception: %s" exn.Message
+    new Action<exn>(handler)
+
+  (*--------------------------------------------------------------------------*)
+  let binHandler : Action<byte[]> = 
+    let handler (bytes : byte []) =
+      printfn "Received %d bytes in binary message" bytes.Length
+    new Action<byte[]>(handler)
+
+  (*--------------------------------------------------------------------------*)
+  let mkWorker (session : SessionId) (socket : IWebSocketConnection) =
+    fun (mailbox : Actor<WsMsg>) ->
+      socket.OnOpen    <- openHandler
+      socket.OnClose   <- closeHandler session mailbox
+      socket.OnMessage <- msgHandler session mailbox
+      socket.OnError   <- errHandler
+      socket.OnBinary  <- binHandler
+
+      mailbox.Context.Self.Path.ToSerializationFormat()
+      |> printfn "socket connection worker path: %s"
+
+      let rec loop() = actor {
+        let! msg = mailbox.Receive()
+        match msg with 
+          | Broadcast(payload) ->
+            socket.Send(payload) 
+            |> ignore
+          | Multicast(sess,payload) -> 
+            if sess <> session
+            then socket.Send(payload) |> ignore
+        return! loop()
+      }
+      loop()
+
+  (*--------------------------------------------------------------------------*)
+  let spawnSocket (parent : IActorRefFactory) =
+    new Action<IWebSocketConnection>(
+      fun (socket : IWebSocketConnection) ->
+        let sid = makeSession socket
+        spawn parent sid
+        |> applyTo (mkWorker sid socket)
+        |> ignore)
+
+    
   [<EntryPoint>]
   let main argv =
-    let socketServer = new WebSocketServer "ws://0.0.0.0:8080"
+
+    let system = ActorSystem.Create "iris"
+    let scktSrv = new WebSocketServer "ws://0.0.0.0:8080"
+
     // let assetServer = new AssetServer("0.0.0.0", 3000)
     // assetServer.Start ()
 
-    let pid = "patch-1"
+    let hdl = ref Option<IActorRef>.None
+ 
+    let strategy =
+      Strategy.OneForOne <| fun excp ->
+        match excp with
+          | :? ConnectionException -> Directive.Stop
+          | _ -> Directive.Escalate
 
-    let iob1 =
-      { IOBox.ValueBox("value-box-id", "Value Box Example", pid)
-          with Slices = [| { Idx = 0; Value = 666 } |] }
+    let rec supervisor =
+      spawnOpt system "clients"
+        (fun mailbox ->
 
-    let iob2 =
-      { IOBox.StringBox("string-box-id", "String Box Example", pid)
-          with Slices = [| { Idx = 0; Value = "my example string value" } |] }
+          scktSrv.Start(spawnSocket mailbox)
 
-    let iob3 =
-      { IOBox.ColorBox("color-box-id", "Color Box Example", pid)
-          with Slices = [| { Idx = 0; Value = "#0f23ea" } |] }
+          mailbox.Self.Path.ToSerializationFormat()
+          |> printfn "supervisor path: %s" 
 
-    let iob4 =
-      { IOBox.EnumBox("enum-box-id", "Enum Box Example", pid)
-          with
-            Properties =
-              [| ("0", "zero")
-               ; ("1", "one")
-               ; ("2", "two")
-               ; ("3", "three")
-               |];
-            Slices = [| { Idx = 0; Value = "2";  } |]
-      }
-    let patch = { Id       = pid
-                ; Name     = "asdfas"
-                ; IOBoxes  =  [| iob1; iob2; iob3; iob4; |]
-                }
+          let rec loop () =
+            actor {
+              let! msg = mailbox.Receive()
+              mailbox.ActorSelection("*") <! msg
+              return! loop()
+            }
+          loop())
+        [ SupervisorStrategy(strategy) ]
+ 
+    (*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*)
 
-    let msg : ApiMessage = { Type = AddPatch; Payload = patch }
-
-    let sckt = ref Option<IWebSocketConnection>.None
-
-    socketServer.Start(fun socket ->
-      socket.OnOpen    <- (fun () -> sckt := Some(socket)
-                                     serialize msg
-                                     |> socket.Send
-                                     |> ignore)
-      socket.OnClose   <- (fun () -> printfn "Close!")
-      socket.OnMessage <- (fun msg -> printfn "message: %s" msg))
-
-    loop sckt
+    while true do
+      let cmd = Console.ReadLine()
+      supervisor <! Broadcast cmd
 
     0 // return an integer exit code

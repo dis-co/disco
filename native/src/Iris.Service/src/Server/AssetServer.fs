@@ -1,4 +1,4 @@
-namespace Iris.Service.Server.AssetServer
+namespace Iris.Service.Types
 
 open Suave
 open Suave.Http;
@@ -12,47 +12,51 @@ open System.Threading
 open System.IO
 open System.Diagnostics
 
-type AssetServer(addr : string, port : int) =
-  let cts = new CancellationTokenSource()
 
-  let basepath =
-    let fn = Process.GetCurrentProcess().MainModule.FileName
-    Path.GetDirectoryName(fn) + "/assets"
+[<AutoOpen>]
+module AssetServer =
 
-  // Add more mime-types here if necessary
-  // the following are for fonts, source maps etc.
-  let mimeTypes =
-    defaultMimeTypesMap >=> (function
-    | ".map"   -> mkMimeType "text/plain"                    false
-    | ".svg"   -> mkMimeType "image/svg+xml"                 false
-    | ".otf"   -> mkMimeType "application/font-sfnt"         false
-    | ".eot"   -> mkMimeType "application/vnd.ms-fontobject" false
-    | ".woff"  -> mkMimeType "application/font-woff"         false
-    | ".woff2" -> mkMimeType "application/font-woff"         false
-    | _ -> None)
+  type AssetServer(addr : string, port : int) =
+    let cts = new CancellationTokenSource()
 
-  // our application only needs to serve files off the disk
-  // but we do need to specify what to do in the base case, i.e. "/"
-  let app =
-    choose [ GET >>= choose [ path "/"      >>= OK "should serve index"
-                              path "/tests" >>= OK "should serve tests page"
-                              browseHome ] ]
+    let basepath =
+      let fn = Process.GetCurrentProcess().MainModule.FileName
+      Path.GetDirectoryName(fn) + "/assets"
 
-  let config =
-    { defaultConfig with cancellationToken = cts.Token
-                         homeFolder        = Some(basepath)
-                         bindings          = [ HttpBinding.mk' HTTP addr port ]
-                         mimeTypesMap      = mimeTypes }
+    // Add more mime-types here if necessary
+    // the following are for fonts, source maps etc.
+    let mimeTypes =
+      defaultMimeTypesMap >=> (function
+      | ".map"   -> mkMimeType "text/plain"                    false
+      | ".svg"   -> mkMimeType "image/svg+xml"                 false
+      | ".otf"   -> mkMimeType "application/font-sfnt"         false
+      | ".eot"   -> mkMimeType "application/vnd.ms-fontobject" false
+      | ".woff"  -> mkMimeType "application/font-woff"         false
+      | ".woff2" -> mkMimeType "application/font-woff"         false
+      | _ -> None)
 
-  let thread = new Thread(new ThreadStart(fun _ ->
-    try startWebServer config app
-    with
-      | :? System.OperationCanceledException -> ()
-      | ex -> printfn "Exception: %s" ex.Message))
+    // our application only needs to serve files off the disk
+    // but we do need to specify what to do in the base case, i.e. "/"
+    let app =
+      choose [ GET >>= choose [ path "/"      >>= OK "should serve index"
+                                path "/tests" >>= OK "should serve tests page"
+                                browseHome ] ]
 
-  member this.Dispose() : unit =
-    cts.Cancel ()
-    cts.Dispose ()
+    let config =
+      { defaultConfig with cancellationToken = cts.Token
+                           homeFolder        = Some(basepath)
+                           bindings          = [ HttpBinding.mk' HTTP addr port ]
+                           mimeTypesMap      = mimeTypes }
 
-  member this.Start() : unit =
-    thread.Start ()
+    let thread = new Thread(new ThreadStart(fun _ ->
+      try startWebServer config app
+      with
+        | :? System.OperationCanceledException -> ()
+        | ex -> printfn "Exception: %s" ex.Message))
+
+    member this.Dispose() : unit =
+      cts.Cancel ()
+      cts.Dispose ()
+
+    member this.Start() : unit =
+      thread.Start ()
