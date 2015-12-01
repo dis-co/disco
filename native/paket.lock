@@ -16,7 +16,12 @@ NUGET
       Akka (>= 1.0.4)
       Google.ProtocolBuffers (>= 2.4.1.521)
       Helios (>= 1.4.1)
-    FAKE (4.9.7)
+    Akka.TestKit (1.0.4)
+      Akka (>= 1.0.4)
+    Akka.TestKit.NUnit (1.0.4)
+      Akka.TestKit (>= 1.0.4)
+      NUnit (>= 2.6.4)
+    FAKE (4.10.1)
     Fleck (0.13.0.57)
     FSharp.Compiler.Service (1.4.0.6)
     FSharp.Core (4.0.0.1)
@@ -26,8 +31,8 @@ NUGET
     FSharpVSPowerTools.Core (2.1.0)
       FSharp.Compiler.Service (>= 1.4.0.6)
     FsPickler (1.6.2)
-    FSPowerPack.Core.Community (3.0.0.0)
-    FSPowerPack.Linq.Community (3.0.0.0)
+    FSPowerPack.Core.Community (3.0.0)
+    FSPowerPack.Linq.Community (3.0.0)
       FSPowerPack.Core.Community
     Google.ProtocolBuffers (2.4.1.555)
     Helios (1.4.1)
@@ -55,5 +60,5 @@ NUGET
 GITHUB
   remote: fsharp/FAKE
   specs:
-    modules/Octokit/Octokit.fsx (9eeb0227311e02be823eb904ea05fa1d70d10892)
+    modules/Octokit/Octokit.fsx (1de1e288ca37a162b4b8d086b28153aac551c3db)
       Octokit

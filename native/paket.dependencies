@@ -14,6 +14,8 @@ nuget NNanomsg
 nuget Akka
 nuget Akka.Cluster
 nuget Akka.FSharp
+nuget Akka.TestKit
+nuget Akka.TestKit.NUnit
 
 nuget WebSharper
 
