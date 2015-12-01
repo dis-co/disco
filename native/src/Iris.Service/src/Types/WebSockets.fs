@@ -115,12 +115,12 @@ module WebSockets =
         | :? ConnectionException -> Directive.Stop
         | _ -> Directive.Escalate
 
-  let Create system =
+  let Create system port =
     spawnOpt system "clients"
       (fun mailbox ->
 
         // FIXME: leaky leak detected
-        let server = new WebSocketServer "ws://0.0.0.0:8080"
+        let server = new WebSocketServer("ws://0.0.0.0:" + (port.ToString()))
         mailbox.Watch(spawn mailbox "logger" logger) |> ignore
         server.Start(spawnSocket mailbox)
 
