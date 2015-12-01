@@ -15,7 +15,7 @@ module Main =
   [<EntryPoint>]
   let main argv =
 
-    let system = ActorSystem.Create "iris"
+    use system = ActorSystem.Create "iris"
 
     let websockets = WebSockets.Create system
 
