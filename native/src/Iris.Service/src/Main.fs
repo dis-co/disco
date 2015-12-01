@@ -14,7 +14,7 @@ open Iris.Core.Types
 open Iris.Service.Types
 
 module Main =
-    
+
   // let rec loop (sckt : IWebSocketConnection option ref) =
   //   let res = System.Console.ReadLine()
 
@@ -23,7 +23,7 @@ module Main =
   //     | _ -> printfn "not connected"
 
   //   if not <| (res = "quit") then loop sckt
-  // 
+  //
   // let toString = System.Text.Encoding.ASCII.GetString
 
   // let serialize (value : 'U) : string =
@@ -44,6 +44,12 @@ module Main =
     | Broadcast of string
     | Multicast of SessionId * string
 
+    with
+      override self.ToString() =
+        match self with
+          | Broadcast(str) -> sprintf "Broadcast: %s" str
+          | Multicast(ses, str) -> sprintf "Multicast %s %s" ses str
+
   exception ConnectionException
 
   let makeSession (socket : IWebSocketConnection) =
@@ -51,9 +57,9 @@ module Main =
 
   let applyTo a f = f a
 
-  (*--------------------------------------------------------------------------* 
+  (*--------------------------------------------------------------------------*
     not ever called for some reaon
-   *--------------------------------------------------------------------------*)
+    *--------------------------------------------------------------------------*)
   let openHandler : Action =
     new Action(fun _ -> printfn "socket now open")
 
@@ -81,7 +87,7 @@ module Main =
     new Action<exn>(handler)
 
   (*--------------------------------------------------------------------------*)
-  let binHandler : Action<byte[]> = 
+  let binHandler : Action<byte[]> =
     let handler (bytes : byte []) =
       printfn "Received %d bytes in binary message" bytes.Length
     new Action<byte[]>(handler)
@@ -100,11 +106,11 @@ module Main =
 
       let rec loop() = actor {
         let! msg = mailbox.Receive()
-        match msg with 
+        match msg with
           | Broadcast(payload) ->
-            socket.Send(payload) 
+            socket.Send(payload)
             |> ignore
-          | Multicast(sess,payload) -> 
+          | Multicast(sess,payload) ->
             if sess <> session
             then socket.Send(payload) |> ignore
         return! loop()
@@ -117,11 +123,21 @@ module Main =
       let sid = makeSession socket
       spawn parent sid
       |> applyTo (mkWorker sid socket)
-      |> parent.Context.Watch
       |> ignore
     new Action<IWebSocketConnection>(handler)
 
-    
+
+  let logger (mailbox : Actor<obj>) =
+    let rec loop () =
+      actor {
+        let! msg = mailbox.Receive()
+        match msg with
+          | :? string -> printfn "Logger: %s" (msg :?> string)
+          | _ -> printfn @"Logger (ToString) ""%s""" <| msg.ToString()
+        return! loop()
+      }
+    loop()
+
   [<EntryPoint>]
   let main argv =
 
@@ -131,8 +147,6 @@ module Main =
     // let assetServer = new AssetServer("0.0.0.0", 3000)
     // assetServer.Start ()
 
-    let hdl = ref Option<IActorRef>.None
- 
     let strategy =
       Strategy.OneForOne <| fun excp ->
         match excp with
@@ -143,10 +157,11 @@ module Main =
       spawnOpt system "clients"
         (fun mailbox ->
 
+          mailbox.Watch(spawn mailbox "logger" logger) |> ignore
           scktSrv.Start(spawnSocket mailbox)
 
           mailbox.Self.Path.ToSerializationFormat()
-          |> printfn "supervisor path: %s" 
+          |> printfn "supervisor path: %s"
 
           let rec loop () =
             actor {
@@ -156,7 +171,7 @@ module Main =
             }
           loop())
         [ SupervisorStrategy(strategy) ]
- 
+
     (*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*)
 
     while true do
