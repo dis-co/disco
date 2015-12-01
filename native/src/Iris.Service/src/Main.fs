@@ -62,13 +62,14 @@ module Main =
     let handler _ =
       let msg = Multicast(session,sprintf "session %s was closed" session)
        in mailbox.ActorSelection("../*") <! msg
+      printfn "%s left" session
       mailbox.Context.Stop(mailbox.Self)
-      printfn "socket closed"
     new Action(handler)
 
   (*--------------------------------------------------------------------------*)
   let msgHandler (session : SessionId) (mailbox : Actor<WsMsg>) : Action<string> =
     let handler str =
+      printfn "%s said: %s" session str
       // take the payload and wrap it up for sending to everybody else
       mailbox.ActorSelection("../*") <! Multicast(session,str)
     new Action<string>(handler)
@@ -111,13 +112,14 @@ module Main =
       loop()
 
   (*--------------------------------------------------------------------------*)
-  let spawnSocket (parent : IActorRefFactory) =
-    new Action<IWebSocketConnection>(
-      fun (socket : IWebSocketConnection) ->
-        let sid = makeSession socket
-        spawn parent sid
-        |> applyTo (mkWorker sid socket)
-        |> ignore)
+  let spawnSocket (parent : Actor<WsMsg>) =
+    let handler (socket : IWebSocketConnection) =
+      let sid = makeSession socket
+      spawn parent sid
+      |> applyTo (mkWorker sid socket)
+      |> parent.Context.Watch
+      |> ignore
+    new Action<IWebSocketConnection>(handler)
 
     
   [<EntryPoint>]
@@ -137,7 +139,7 @@ module Main =
           | :? ConnectionException -> Directive.Stop
           | _ -> Directive.Escalate
 
-    let rec supervisor =
+    let supervisor =
       spawnOpt system "clients"
         (fun mailbox ->
 
