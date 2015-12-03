@@ -5,6 +5,7 @@ open System
 open Akka
 open Akka.Actor
 open Akka.FSharp
+open Akka.Routing
 
 [<RequireQualifiedAccess>]
 module WebSockets =
@@ -12,14 +13,16 @@ module WebSockets =
   type SessionId = string
 
   type WsMsg =
-    | Broadcast of string
-    | Multicast of SessionId * string
+    | Broadcast        of string
+    | Multicast        of SessionId * string
+    | ClientDisconnect of SessionId
 
     with
       override self.ToString() =
         match self with
-          | Broadcast(str) -> sprintf "Broadcast: %s" str
-          | Multicast(ses, str) -> sprintf "Multicast %s %s" ses str
+          | Broadcast(str)        -> sprintf "Broadcast: %s" str
+          | Multicast(ses, str)   -> sprintf "Multicast %s %s" ses str
+          | ClientDisconnect(str) -> sprintf "ClientDisconnect %s" str
 
   exception ConnectionException
 
@@ -35,20 +38,16 @@ module WebSockets =
     new Action(fun _ -> printfn "socket now open")
 
   (*--------------------------------------------------------------------------*)
-  let private closeHandler (session : SessionId) (mailbox : Actor<WsMsg>) : Action =
-    let handler _ =
-      let msg = Multicast(session,sprintf "session %s was closed" session)
-       in mailbox.ActorSelection("../*") <! msg
-      printfn "%s left" session
-      mailbox.Context.Stop(mailbox.Self)
+  let private closeHandler (session : SessionId) (router : IActorRef) : Action =
+    let handler _ = router <! ClientDisconnect session
     new Action(handler)
 
   (*--------------------------------------------------------------------------*)
-  let private msgHandler (session : SessionId) (mailbox : Actor<WsMsg>) : Action<string> =
+  let private msgHandler (session : SessionId) (router : IActorRef) : Action<string> =
     let handler str =
       printfn "%s said: %s" session str
       // take the payload and wrap it up for sending to everybody else
-      mailbox.ActorSelection("../*") <! Multicast(session,str)
+      router <! Multicast(session,str)
     new Action<string>(handler)
 
   (*--------------------------------------------------------------------------*)
@@ -66,9 +65,11 @@ module WebSockets =
   (*--------------------------------------------------------------------------*)
   let private mkWorker (session : SessionId) (socket : IWebSocketConnection) =
     fun (mailbox : Actor<WsMsg>) ->
+      let router = Routes.getRouter mailbox Routes.clients
+      
       socket.OnOpen    <- openHandler
-      socket.OnClose   <- closeHandler session mailbox
-      socket.OnMessage <- msgHandler session mailbox
+      socket.OnClose   <- closeHandler session router
+      socket.OnMessage <- msgHandler   session router
       socket.OnError   <- errHandler
       socket.OnBinary  <- binHandler
 
@@ -84,6 +85,10 @@ module WebSockets =
           | Multicast(sess,payload) ->
             if sess <> session
             then socket.Send(payload) |> ignore
+          | ClientDisconnect(sess) ->
+            if sess <> session
+            then socket.Send(sprintf "%s exited" sess) |> ignore
+            else mailbox.Context.Stop(mailbox.Self)
         return! loop()
       }
       loop()
@@ -111,17 +116,18 @@ module WebSockets =
 
   let private strategy =
     Strategy.OneForOne <| fun excp ->
+      Console.WriteLine("something happened here: " + excp.Message)
       match excp with
         | :? ConnectionException -> Directive.Stop
         | _ -> Directive.Escalate
 
   let Create system port =
-    spawnOpt system "clients"
+    spawnOpt system Routes.websocket
       (fun mailbox ->
-
-        // FIXME: leaky leak detected
         let server = new WebSocketServer("ws://0.0.0.0:" + (port.ToString()))
-        mailbox.Watch(spawn mailbox "logger" logger) |> ignore
+        mailbox.Defer <| fun () -> server.Dispose()
+
+        // mailbox.Watch(spawn mailbox "logger" logger) |> ignore
         server.Start(spawnSocket mailbox)
 
         mailbox.Self.Path.ToSerializationFormat()
@@ -130,7 +136,6 @@ module WebSockets =
         let rec loop () =
           actor {
             let! msg = mailbox.Receive()
-            mailbox.ActorSelection("*") <! msg
             return! loop()
           }
         loop())

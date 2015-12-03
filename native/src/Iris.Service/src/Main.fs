@@ -23,6 +23,11 @@ akka {
         provider = ""Akka.Cluster.ClusterActorRefProvider, Akka.Cluster""
 
         deployment {
+            /clients {
+                router = broadcast-group
+                routees.paths = [""/user/websocket/*""]
+            }
+
             /workers {
                 router = broadcast-group
                 routees.paths = [""/user/w1"", ""/user/w2"", ""/user/w3""]
