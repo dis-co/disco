@@ -3,12 +3,9 @@
 open System.Diagnostics
 open System
 
-open Akka
 open Akka.Actor
 open Akka.FSharp
-open Akka.Remote
 open Akka.Routing
-open Akka.Configuration
 
 open Iris.Core.Types
 open Iris.Service.Types
@@ -25,14 +22,20 @@ akka {
     actor {
         provider = ""Akka.Cluster.ClusterActorRefProvider, Akka.Cluster""
 
-        deployment = {
-            /as = {
+        deployment {
+            /workers {
                 router = broadcast-group
-                routees.paths = [""../../a1"", ""../../a2"", ""../../a3""]
-                cluster = {
-										enabled = on
-										allow-local-routees = on
-										use-role = broker
+                routees.paths = [""/user/w1"", ""/user/w2"", ""/user/w3""]
+            }
+
+            /remote-workers {
+                router = broadcast-group
+                routees.paths = [""/user/workers""]
+                cluster {
+                  enabled = on
+                  nr-of-instances = 99
+                  allow-local-routees = off
+                  use-role = backend
                 }
             }
         }
@@ -40,6 +43,8 @@ akka {
 
     remote {
         log-remote-lifecycle-events = DEBUG
+        log-received-messages = on
+
         helios.tcp {
             port = %localport%
             hostname = localhost
@@ -51,7 +56,7 @@ akka {
             ""akka.tcp://iris@localhost:%localport%"",
             ""akka.tcp://iris@localhost:%remoteport%""
         ]
-        roles = [ ""broker"" ]
+        roles = [ backend ]
     }
 }"
            
@@ -60,14 +65,15 @@ akka {
         .Replace("%localport%", localPort.ToString())
         .Replace("%remoteport%", remotePort.ToString())
 
-    let config = ConfigurationFactory.ParseString(cnfstr)
+    let config = Configuration.parse(cnfstr)
     let wsport = localPort + 1
 
-    use system = ActorSystem.Create("iris", config)
+    use system = System.create "iris" config
 
-    let remote = system.ActorOf(Props.Empty.WithRouter(FromConfig.Instance), "as")
+    let router = system.ActorOf(Props.Empty.WithRouter(FromConfig.Instance), "workers");
+    let remote = system.ActorOf(Props.Empty.WithRouter(FromConfig.Instance), "remote-workers");
 
-    ["a1"; "a2"; "a3"]
+    ["w1"; "w2"; "w3"]
     |> List.map (fun name -> spawn system name <| fun mailbox ->
                  let rec loop () = actor {
                    let! msg = mailbox.Receive()
@@ -85,6 +91,7 @@ akka {
     while true do
       let cmd = Console.ReadLine()
       // websockets <! WebSockets.Broadcast cmd
+      router <! cmd
       remote <! cmd
 
     0

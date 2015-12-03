@@ -1,4 +1,5 @@
 source https://nuget.org/api/v2
+source https://www.myget.org/F/akkadotnet/api/v2
 
 nuget FSharp.Core
 nuget FSharp.Formatting
@@ -11,10 +12,10 @@ nuget Fleck
 nuget MsgPack.Cli
 nuget LibGit2Sharp
 nuget NNanomsg
-nuget Akka
-nuget Akka.Cluster prerelease
-nuget Akka.FSharp
-nuget Akka.TestKit
+nuget Akka         >= 1.0.5
+nuget Akka.Cluster >= 1.0.5
+nuget Akka.FSharp  >= 1.0.5
+nuget Akka.TestKit  >= 1.0.5 
 nuget Akka.TestKit.NUnit
 
 nuget WebSharper

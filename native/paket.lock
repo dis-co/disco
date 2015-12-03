@@ -1,22 +1,29 @@
 NUGET
-  remote: https://nuget.org/api/v2
+  remote: https://www.myget.org/F/akkadotnet/api/v2
   specs:
-    Akka (1.0.4)
+    Akka (1.0.5.119-beta)
       Newtonsoft.Json (>= 7.0.1)
-    Akka.Cluster (1.0.4.12-beta)
-      Akka.Remote (>= 1.0.4)
+    Akka.Cluster (1.0.5.119-beta)
+      Akka.Remote (>= 1.0.5.119-beta)
       Google.ProtocolBuffers (>= 2.4.1.521)
-      Microsoft.Bcl.Immutable (>= 1.0.34)
-    Akka.FSharp (1.0.4)
-      Akka (>= 1.0.4)
+      System.Collections.Immutable (>= 1.1.37)
+    Akka.FSharp (1.0.5.119-beta)
+      Akka (>= 1.0.5.119-beta)
       FsPickler (>= 1.2.21)
       FSPowerPack.Core.Community (>= 3.0.0.0)
       FSPowerPack.Linq.Community (>= 3.0.0.0)
-    Akka.Remote (1.0.4)
-      Akka (>= 1.0.4)
+    Akka.Remote (1.0.5.119-beta)
+      Akka (>= 1.0.5.119-beta)
       Google.ProtocolBuffers (>= 2.4.1.521)
       Helios (>= 1.4.1)
-    FAKE (4.10.1)
+  remote: https://nuget.org/api/v2
+  specs:
+    Akka.TestKit (1.0.4)
+      Akka (>= 1.0.4)
+    Akka.TestKit.NUnit (1.0.4)
+      Akka.TestKit (>= 1.0.4)
+      NUnit (>= 2.6.4)
+    FAKE (4.10.3)
     Fleck (0.13.0.57)
     FSharp.Compiler.Service (1.4.0.6)
     FSharp.Core (4.0.0.1)
@@ -35,7 +42,6 @@ NUGET
     Microsoft.Bcl (1.1.10)
       Microsoft.Bcl.Build (>= 1.0.14)
     Microsoft.Bcl.Build (1.0.21) - import_targets: false
-    Microsoft.Bcl.Immutable (1.0.34)
     Microsoft.Net.Http (2.2.29)
       Microsoft.Bcl (>= 1.1.10)
       Microsoft.Bcl.Build (>= 1.0.14)
@@ -43,17 +49,79 @@ NUGET
     Newtonsoft.Json (7.0.1)
     NNanomsg (0.5.2)
     NUnit (3.0.1)
-    NUnit.Console (3.0.0)
-    NUnit.Runners (3.0.0)
-      NUnit.Console (3.0.0)
+    NUnit.Console (3.0.1)
+    NUnit.Runners (3.0.1)
+      NUnit.Console (3.0.1)
     Octokit (0.16.0)
       Microsoft.Net.Http
     SourceLink.Fake (1.1.0)
     Suave (0.33.0)
       FSharp.Core (>= 3.1.2.5)
+    System.Collections (4.0.10) - framework: dnxcore50
+      System.Diagnostics.Debug (>= 4.0.0) - framework: dnxcore50
+      System.Resources.ResourceManager (>= 4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.20) - framework: dnxcore50
+      System.Runtime.Extensions (>= 4.0.0) - framework: dnxcore50
+      System.Threading (>= 4.0.0) - framework: dnxcore50
+    System.Collections.Immutable (1.1.37)
+      System.Collections (>= 4.0.0) - framework: dnxcore50
+      System.Diagnostics.Debug (>= 4.0.0) - framework: dnxcore50
+      System.Globalization (>= 4.0.0) - framework: dnxcore50
+      System.Linq (>= 4.0.0) - framework: dnxcore50
+      System.Resources.ResourceManager (>= 4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+      System.Runtime.Extensions (>= 4.0.0) - framework: dnxcore50
+      System.Threading (>= 4.0.0) - framework: dnxcore50
+    System.Diagnostics.Debug (4.0.10) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+    System.Globalization (4.0.10) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+    System.IO (4.0.10) - framework: dnxcore50
+      System.Globalization (>= 4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.20) - framework: dnxcore50
+      System.Text.Encoding (>= 4.0.0) - framework: dnxcore50
+      System.Text.Encoding (>= 4.0.10) - framework: dnxcore50
+      System.Text.Encoding.Extensions (>= 4.0.0) - framework: dnxcore50
+      System.Threading (>= 4.0.0) - framework: dnxcore50
+      System.Threading.Tasks (>= 4.0.0) - framework: dnxcore50
+    System.Linq (4.0.0) - framework: dnxcore50
+      System.Collections (>= 4.0.10) - framework: dnxcore50
+      System.Diagnostics.Debug (>= 4.0.10) - framework: dnxcore50
+      System.Resources.ResourceManager (>= 4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.20) - framework: dnxcore50
+      System.Runtime.Extensions (>= 4.0.10) - framework: dnxcore50
+    System.Private.Uri (4.0.0) - framework: dnxcore50
+    System.Reflection (4.0.10) - framework: dnxcore50
+      System.IO (>= 4.0.0) - framework: dnxcore50
+      System.Reflection.Primitives (>= 4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.20) - framework: dnxcore50
+    System.Reflection.Primitives (4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+      System.Threading (>= 4.0.0) - framework: dnxcore50
+    System.Resources.ResourceManager (4.0.0) - framework: dnxcore50
+      System.Globalization (>= 4.0.0) - framework: dnxcore50
+      System.Reflection (>= 4.0.0) - framework: dnxcore50
+      System.Reflection (>= 4.0.10) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.20) - framework: dnxcore50
+    System.Runtime (4.0.20) - framework: dnxcore50
+      System.Private.Uri (>= 4.0.0) - framework: dnxcore50
+    System.Runtime.Extensions (4.0.10) - framework: dnxcore50
+      System.Runtime (>= 4.0.20) - framework: dnxcore50
+    System.Text.Encoding (4.0.10) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+    System.Text.Encoding.Extensions (4.0.10) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+      System.Text.Encoding (>= 4.0.10) - framework: dnxcore50
+    System.Threading (4.0.10) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+      System.Threading.Tasks (>= 4.0.0) - framework: dnxcore50
+    System.Threading.Tasks (4.0.10) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
     WebSharper (3.6.2.220)
 GITHUB
   remote: fsharp/FAKE
   specs:
-    modules/Octokit/Octokit.fsx (1de1e288ca37a162b4b8d086b28153aac551c3db)
+    modules/Octokit/Octokit.fsx (917a86046700e4eaaa2aa09de7895e048eaaa1b1)
       Octokit
