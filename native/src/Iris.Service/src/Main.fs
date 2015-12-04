@@ -75,8 +75,8 @@ akka {
 
     use system = System.create "iris" config
 
-    let router = system.ActorOf(Props.Empty.WithRouter(FromConfig.Instance), "workers");
-    let remote = system.ActorOf(Props.Empty.WithRouter(FromConfig.Instance), "remote-workers");
+    let router = Routes.GetRouter system "workers"
+    let remote = Routes.GetRouter system "remote-workers"
 
     ["w1"; "w2"; "w3"]
     |> List.map (fun name -> spawn system name <| fun mailbox ->

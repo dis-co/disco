@@ -66,7 +66,7 @@ module WebSockets =
   let private mkWorker (session : SessionId) (socket : IWebSocketConnection) =
     fun (mailbox : Actor<WsMsg>) ->
 
-      let router = Routes.GetRouter mailbox Routes.clients
+      let router = Routes.GetRouter mailbox.Context.System Routes.clients
 
       socket.OnOpen    <- openHandler
       socket.OnClose   <- closeHandler session router
