@@ -88,7 +88,7 @@ akka {
                  loop())
     |> ignore
 
-    // let websockets = WebSockets.Create system wsport
+    let websockets = WebSockets.Create system wsport
 
     // let assetServer = new AssetServer("0.0.0.0", 3000)
     // assetServer.Start ()

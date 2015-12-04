@@ -65,8 +65,9 @@ module WebSockets =
   (*--------------------------------------------------------------------------*)
   let private mkWorker (session : SessionId) (socket : IWebSocketConnection) =
     fun (mailbox : Actor<WsMsg>) ->
-      let router = Routes.getRouter mailbox Routes.clients
-      
+
+      let router = Routes.GetRouter mailbox Routes.clients
+
       socket.OnOpen    <- openHandler
       socket.OnClose   <- closeHandler session router
       socket.OnMessage <- msgHandler   session router
@@ -91,6 +92,7 @@ module WebSockets =
             else mailbox.Context.Stop(mailbox.Self)
         return! loop()
       }
+
       loop()
 
   (*--------------------------------------------------------------------------*)

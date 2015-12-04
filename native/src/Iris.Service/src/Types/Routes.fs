@@ -11,8 +11,11 @@ module Routes =
   let clients = "clients"
   let websocket = "websocket"
 
-  let getRouter (mbx : Actor<'a>) cnf =
-    if   mbx.Context.Child(cnf).Equals(ActorRefs.Nobody) 
-    then mbx.Context.ActorOf(Props.Empty.WithRouter(FromConfig.Instance), cnf)
-    else mbx.Context.Child(cnf)
-    
+  let GetRouter (actor : Actor<'a>) cnf =
+    let sel = select ("/user/" + cnf) actor.Context.System
+    try 
+      Async.AwaitTask<IActorRef>(sel.ResolveOne(System.TimeSpan.FromSeconds(1.)))
+      |> Async.RunSynchronously
+    with
+      | _ ->
+        actor.Context.System.ActorOf(Props.Empty.WithRouter(FromConfig.Instance), cnf)
