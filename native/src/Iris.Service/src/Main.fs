@@ -39,6 +39,17 @@ akka {
                 }
             }
         }
+
+        serialize-messages = on
+        serialize-creators = on
+
+        serializers {
+            my-serializer = ""Iris.Core.Serialization.IrisSerializer, Iris.Service""
+        }
+
+        serialization-bindings {
+            ""Iris.Service.Types.WebSockets.WsMsg, Iris.Service"" = my-serializer
+        }
     }
 
     remote {
@@ -64,7 +75,6 @@ akka {
       tmpl
         .Replace("%localport%", localPort.ToString())
         .Replace("%remoteport%", remotePort.ToString())
-
 
     let config = Configuration.parse(cnfstr)
     let wsport = localPort + 1
