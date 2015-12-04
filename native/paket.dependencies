@@ -1,5 +1,4 @@
 source https://nuget.org/api/v2
-source https://www.myget.org/F/akkadotnet/api/v2
 
 nuget FSharp.Core
 nuget FSharp.Formatting

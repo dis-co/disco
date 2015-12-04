@@ -28,14 +28,9 @@ akka {
                 routees.paths = [""/user/websocket/*""]
             }
 
-            /workers {
+            /remotes {
                 router = broadcast-group
-                routees.paths = [""/user/w1"", ""/user/w2"", ""/user/w3""]
-            }
-
-            /remote-workers {
-                router = broadcast-group
-                routees.paths = [""/user/workers""]
+                routees.paths = [""/user/clients""]
                 cluster {
                   enabled = on
                   nr-of-instances = 99
@@ -70,33 +65,21 @@ akka {
         .Replace("%localport%", localPort.ToString())
         .Replace("%remoteport%", remotePort.ToString())
 
+
     let config = Configuration.parse(cnfstr)
     let wsport = localPort + 1
 
     use system = System.create "iris" config
 
-    let router = Routes.GetRouter system "workers"
-    let remote = Routes.GetRouter system "remote-workers"
-
-    ["w1"; "w2"; "w3"]
-    |> List.map (fun name -> spawn system name <| fun mailbox ->
-                 let rec loop () = actor {
-                   let! msg = mailbox.Receive()
-                   printfn "%s received a message: %s" name msg
-                   return! loop()
-                 }
-                 loop())
-    |> ignore
+    let router = Routes.GetRouter system "clients"
+    let remote = Routes.GetRouter system "remotes"
 
     let websockets = WebSockets.Create system wsport
-
-    // let assetServer = new AssetServer("0.0.0.0", 3000)
-    // assetServer.Start ()
 
     while true do
       let cmd = Console.ReadLine()
       // websockets <! WebSockets.Broadcast cmd
-      router <! cmd
-      remote <! cmd
+      router <! WebSockets.Broadcast cmd
+      remote <! WebSockets.Broadcast cmd
 
     0

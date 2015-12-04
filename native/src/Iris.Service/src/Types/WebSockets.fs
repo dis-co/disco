@@ -111,7 +111,7 @@ module WebSockets =
         let! msg = mailbox.Receive()
         match msg with
           | :? string -> printfn "Logger: %s" (msg :?> string)
-          | _ -> printfn @"Logger (ToString) ""%s""" <| msg.ToString()
+          | _ -> printfn @"Logger (type: %s) ""%s""" (msg.GetType().ToString()) (msg.ToString())
         return! loop()
       }
     loop()
@@ -134,6 +134,9 @@ module WebSockets =
 
         mailbox.Self.Path.ToSerializationFormat()
         |> printfn "supervisor path: %s"
+
+        spawn mailbox "logger" logger
+        |> ignore
 
         let rec loop () =
           actor {
