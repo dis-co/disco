@@ -9,6 +9,7 @@ open Akka.Routing
 
 open Iris.Core.Types
 open Iris.Service.Types
+open Iris.Service.Serialization
 
 module Main =
 
@@ -39,17 +40,6 @@ akka {
                 }
             }
         }
-
-        serialize-messages = on
-        serialize-creators = on
-
-        serializers {
-            my-serializer = ""Iris.Core.Serialization.IrisSerializer, Iris.Service""
-        }
-
-        serialization-bindings {
-            ""Iris.Service.Types.WebSockets.WsMsg, Iris.Service"" = my-serializer
-        }
     }
 
     remote {
@@ -76,10 +66,15 @@ akka {
         .Replace("%localport%", localPort.ToString())
         .Replace("%remoteport%", remotePort.ToString())
 
+    
     let config = Configuration.parse(cnfstr)
     let wsport = localPort + 1
 
     use system = System.create "iris" config
+
+    let serializer = IrisSerializer (system  :?> ExtendedActorSystem)
+    system.Serialization.AddSerializer(serializer)
+    system.Serialization.AddSerializationMap(typeof<WsMsg>, serializer)
 
     let router = Routes.GetRouter system "clients"
     let remote = Routes.GetRouter system "remotes"

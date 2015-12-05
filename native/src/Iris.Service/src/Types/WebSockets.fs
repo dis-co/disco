@@ -7,7 +7,8 @@ open Akka.Actor
 open Akka.FSharp
 open Akka.Routing
 
-[<RequireQualifiedAccess>]
+[<AutoOpen>]
+//[<RequireQualifiedAccess>]
 module WebSockets =
 
   type SessionId = string
