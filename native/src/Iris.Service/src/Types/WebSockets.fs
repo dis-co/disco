@@ -7,23 +7,11 @@ open Akka.Actor
 open Akka.FSharp
 open Akka.Routing
 
+open Iris.Core.Types
+
 [<AutoOpen>]
 //[<RequireQualifiedAccess>]
 module WebSockets =
-
-  type SessionId = string
-
-  type WsMsg =
-    | Broadcast        of string
-    | Multicast        of SessionId * string
-    | ClientDisconnect of SessionId
-
-    with
-      override self.ToString() =
-        match self with
-          | Broadcast(str)        -> sprintf "Broadcast: %s" str
-          | Multicast(ses, str)   -> sprintf "Multicast %s %s" ses str
-          | ClientDisconnect(str) -> sprintf "ClientDisconnect %s" str
 
   exception ConnectionException
 

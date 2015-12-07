@@ -34,16 +34,14 @@ module Serialization =
     stream.Flush()
     stream.ToArray()
 
-  let unserializeBytes (bytes : byte[]) : 'U =
+  let unserializeBytes (bytes : byte[]) (_ : System.Type) : 'U =
     let JsonProvider = Core.Json.Provider.Create()
     let decoder = JsonProvider.GetDecoder<'U>()
 
-    use stream = new MemoryStream()
+    use stream = new MemoryStream(bytes)
     use reader = new StreamReader(stream)
 
-    stream.Read(bytes, 0, bytes.Length) |> ignore
+    stream.Seek(0L, SeekOrigin.Begin) |> ignore
 
     WebSharper.Core.Json.Read reader
     |> decoder.Decode
-    
-    

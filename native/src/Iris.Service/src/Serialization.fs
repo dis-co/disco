@@ -1,5 +1,7 @@
 namespace Iris.Service
 
+open Iris.Core.Types
+open Iris.Core.Serialization
 open Akka.Actor
 open Akka.Serialization
 
@@ -15,9 +17,8 @@ module Serialization =
       with get () : bool = false
 
     override self.ToBinary(o : obj) : byte [] =
-      printfn "ToBinary called"
-      Array.empty
+      serializeBytes (o :?> WsMsg)
 
     override self.FromBinary(bytes : byte [], t : System.Type) : obj =
-      printfn "FromBinary called"
-      Array.empty :> obj
+      let msg : WsMsg = unserializeBytes bytes t
+      msg :> obj

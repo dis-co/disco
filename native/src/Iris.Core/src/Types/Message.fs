@@ -156,3 +156,18 @@ module Message =
     | Event       of Session * AppEvent // encapsulates an action or event that happened on the client
     | Connected                         // worker websocket is connected to service
     | Disconnected                      // worker websocket was disconnected from service
+
+
+  type SessionId = string
+
+  type WsMsg =
+    | Broadcast        of string
+    | Multicast        of SessionId * string
+    | ClientDisconnect of SessionId
+
+    with
+      override self.ToString() =
+        match self with
+          | Broadcast(str)        -> sprintf "Broadcast: %s" str
+          | Multicast(ses, str)   -> sprintf "Multicast %s %s" ses str
+          | ClientDisconnect(str) -> sprintf "ClientDisconnect %s" str

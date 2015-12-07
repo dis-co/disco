@@ -84,7 +84,7 @@ akka {
     while true do
       let cmd = Console.ReadLine()
       // websockets <! WebSockets.Broadcast cmd
-      router <! WebSockets.Broadcast cmd
-      remote <! WebSockets.Broadcast cmd
+      router <! Broadcast cmd
+      remote <! Broadcast cmd
 
     0
