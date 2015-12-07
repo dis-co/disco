@@ -48,6 +48,7 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="src\Serialization.fs" />
     <Compile Include="src\Types\Routes.fs" />
+    <Compile Include="src\Types\Serialization.fs" />
     <Compile Include="src\Types\AssetServer.fs" />
     <Compile Include="src\Types\WebSockets.fs" />
     <Compile Include="src\TestData.fs" />
