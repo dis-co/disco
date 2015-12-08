@@ -19,6 +19,7 @@ module Serialization =
     override self.ToBinary(o : obj) : byte [] =
       serializeBytes (o :?> WsMsg)
 
-    override self.FromBinary(bytes : byte [], t : System.Type) : obj =
-      let msg : WsMsg = unserializeBytes bytes t
+    override self.FromBinary(bytes : byte [], _) : obj =
+      // need this construct to provide it with the result type
+      let msg : WsMsg = unserializeBytes bytes
       msg :> obj

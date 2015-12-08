@@ -34,7 +34,7 @@ module Serialization =
     stream.Flush()
     stream.ToArray()
 
-  let unserializeBytes (bytes : byte[]) (_ : System.Type) : 'U =
+  let unserializeBytes (bytes : byte[]) : 'U =
     let JsonProvider = Core.Json.Provider.Create()
     let decoder = JsonProvider.GetDecoder<'U>()
 
