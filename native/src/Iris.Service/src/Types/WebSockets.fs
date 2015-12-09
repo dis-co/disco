@@ -27,16 +27,18 @@ module WebSockets =
     new Action(fun _ -> printfn "socket now open")
 
   (*--------------------------------------------------------------------------*)
-  let private closeHandler (session : SessionId) (router : IActorRef) : Action =
-    let handler _ = router <! ClientDisconnect session
+  let private closeHandler (session : SessionId) (ctx : Ctx) : Action =
+    let handler _ =
+      ctx.clients <! ClientDisconnect session
     new Action(handler)
 
   (*--------------------------------------------------------------------------*)
-  let private msgHandler (session : SessionId) (router : IActorRef) : Action<string> =
+  let private msgHandler (session : SessionId) (ctx : Ctx) : Action<string> =
     let handler str =
       printfn "%s said: %s" session str
       // take the payload and wrap it up for sending to everybody else
-      router <! Multicast(session,str)
+      ctx.clients <! Multicast(session,str)
+      ctx.remotes <! Broadcast(str)
     new Action<string>(handler)
 
   (*--------------------------------------------------------------------------*)
@@ -52,14 +54,11 @@ module WebSockets =
     new Action<byte[]>(handler)
 
   (*--------------------------------------------------------------------------*)
-  let private mkWorker (session : SessionId) (socket : IWebSocketConnection) =
+  let private mkWorker (session : SessionId) (ctx : Ctx) (socket : IWebSocketConnection) =
     fun (mailbox : Actor<WsMsg>) ->
-
-      let router = Routes.GetRouter mailbox.Context.System Routes.clients
-
       socket.OnOpen    <- openHandler
-      socket.OnClose   <- closeHandler session router
-      socket.OnMessage <- msgHandler   session router
+      socket.OnClose   <- closeHandler session ctx
+      socket.OnMessage <- msgHandler   session ctx
       socket.OnError   <- errHandler
       socket.OnBinary  <- binHandler
 
@@ -85,11 +84,11 @@ module WebSockets =
       loop()
 
   (*--------------------------------------------------------------------------*)
-  let private spawnSocket (parent : Actor<WsMsg>) =
+  let private spawnSocket (parent : Actor<WsMsg>) ctx =
     let handler (socket : IWebSocketConnection) =
       let sid = makeSession socket
       spawn parent sid
-      |> applyTo (mkWorker sid socket)
+      |> applyTo (mkWorker sid ctx socket)
       |> ignore
     new Action<IWebSocketConnection>(handler)
 
@@ -112,14 +111,14 @@ module WebSockets =
         | :? ConnectionException -> Directive.Stop
         | _ -> Directive.Escalate
 
-  let Create system port =
-    spawnOpt system Routes.websocket
+  let Create ctx port =
+    spawnOpt ctx.system Routes.websocket
       (fun mailbox ->
         let server = new WebSocketServer("ws://0.0.0.0:" + (port.ToString()))
         mailbox.Defer <| fun () -> server.Dispose()
 
         // mailbox.Watch(spawn mailbox "logger" logger) |> ignore
-        server.Start(spawnSocket mailbox)
+        server.Start(spawnSocket mailbox ctx)
 
         mailbox.Self.Path.ToSerializationFormat()
         |> printfn "supervisor path: %s"

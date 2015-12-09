@@ -59,22 +59,24 @@ akka {
 }"
            
     let cnfstr = tmpl.Replace("%seedport%", seedPort)
-    
     let config = Configuration.parse(cnfstr)
     use system = System.create "iris" config
-
+  
     let serializer = IrisSerializer (system  :?> ExtendedActorSystem)
     system.Serialization.AddSerializer(serializer)
     system.Serialization.AddSerializationMap(typeof<WsMsg>, serializer)
 
-    let router = Routes.GetRouter system "clients"
-    let remote = Routes.GetRouter system "remotes"
+    let ctx =
+      { system = system
+      ; clients = Routes.GetRouter system "clients"
+      ; remotes = Routes.GetRouter system "remotes"
+      }
 
-    let websockets = WebSockets.Create system wsPort
+    let websockets = WebSockets.Create ctx wsPort
 
     while true do
       let cmd = Console.ReadLine()
-      router <! Broadcast cmd
-      remote <! Broadcast cmd
+      ctx.clients <! Broadcast cmd
+      ctx.remotes <! Broadcast cmd
 
     0
