@@ -15,8 +15,8 @@ module Main =
 
   [<EntryPoint>]
   let main argv =
-    let localPort  = int(Environment.GetEnvironmentVariable("LOCAL_PORT"))
-    let remotePort = Environment.GetEnvironmentVariable("REMOTE_PORT")
+    let seedPort = Environment.GetEnvironmentVariable("SEED_PORT")
+    let wsPort = int(Environment.GetEnvironmentVariable("WS_PORT"))
 
     let tmpl = @"
 akka {
@@ -47,29 +47,20 @@ akka {
         log-received-messages = on
 
         helios.tcp {
-            port = %localport%
+            port = 0
             hostname = localhost
         }
     }
 
     cluster {
-        seed-nodes = [
-            ""akka.tcp://iris@localhost:%localport%"",
-            ""akka.tcp://iris@localhost:%remoteport%""
-        ]
+        seed-nodes = [ ""akka.tcp://iris@localhost:%seedport%"" ]
         roles = [ backend ]
     }
 }"
            
-    let cnfstr =
-      tmpl
-        .Replace("%localport%", localPort.ToString())
-        .Replace("%remoteport%", remotePort.ToString())
-
+    let cnfstr = tmpl.Replace("%seedport%", seedPort)
     
     let config = Configuration.parse(cnfstr)
-    let wsport = localPort + 1
-
     use system = System.create "iris" config
 
     let serializer = IrisSerializer (system  :?> ExtendedActorSystem)
@@ -79,11 +70,10 @@ akka {
     let router = Routes.GetRouter system "clients"
     let remote = Routes.GetRouter system "remotes"
 
-    let websockets = WebSockets.Create system wsport
+    let websockets = WebSockets.Create system wsPort
 
     while true do
       let cmd = Console.ReadLine()
-      // websockets <! WebSockets.Broadcast cmd
       router <! Broadcast cmd
       remote <! Broadcast cmd
 
