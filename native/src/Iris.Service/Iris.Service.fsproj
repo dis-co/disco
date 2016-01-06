@@ -55,6 +55,10 @@
       <Project>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</Project>
       <Name>Iris.Core</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Vsync\Vsync.csproj">
+      <Project>{6C867E53-6228-4FA0-9943-3C8CC11D74BC}</Project>
+      <Name>Iris.Core</Name>
+    </ProjectReference>
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">

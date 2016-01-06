@@ -6,6 +6,8 @@ open System
 open Iris.Core.Types
 open Iris.Service.Types
 
+open Vsync
+
 module Main =
 
   [<EntryPoint>]
