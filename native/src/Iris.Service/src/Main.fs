@@ -13,7 +13,16 @@ type LookUpHandler = delegate of string -> unit
 
 module Main =
 
-  let HELLO = 1
+  type IrisActions =
+    | Init
+    | Update
+    | Close
+    interface Intable with
+      member self.ToInt() =
+        match self with
+          | Init   -> 1
+          | Update -> 2
+          | Close  -> 3
 
   [<EntryPoint>]
   let main argv =
@@ -24,16 +33,13 @@ module Main =
     
     VsyncSystem.Start()
 
-    let g = new Group("test")
+    let g = new IrisGroup<string,unit> "test"
 
-    let del = new LookUpHandler(fun (str : string) ->
-                             printfn "thing: %s" str)
-
-    g.Handlers.[HELLO] <- g.Handlers.[HELLO] + del
+    g.AddHandler(Init, new Handler<string,unit>(fun str -> printfn "%s" str))
 
     g.Join()
-
-    g.Send(HELLO, "me")
+    
+    g.Send(Init, "me")
 
     VsyncSystem.WaitForever()
 

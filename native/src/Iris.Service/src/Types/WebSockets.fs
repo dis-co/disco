@@ -99,13 +99,6 @@ module WebSockets =
       }
     loop()
 
-  let private strategy =
-    Strategy.OneForOne <| fun excp ->
-      Console.WriteLine("something happened here: " + excp.Message)
-      match excp with
-        | :? ConnectionException -> Directive.Stop
-        | _ -> Directive.Escalate
-
   let Create ctx port =
     spawnOpt ctx.system Routes.websocket
       (fun mailbox ->
