@@ -11,12 +11,8 @@ nuget Fleck
 nuget MsgPack.Cli
 nuget LibGit2Sharp
 nuget NNanomsg
-nuget Akka         >= 1.0.5
-nuget Akka.Cluster >= 1.0.5
-nuget Akka.FSharp  >= 1.0.5
-nuget Akka.TestKit  >= 1.0.5 
-nuget Akka.TestKit.NUnit
-
 nuget WebSharper
+nuget FsPickler
+nuget FsPickler.Json
 
 github fsharp/FAKE modules/Octokit/Octokit.fsx

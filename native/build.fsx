@@ -143,7 +143,7 @@ let BuildFrontEnd (lst : string list) =
 Target "Build" (fun _ ->
     !! solutionFile
     |> MSBuildRelease "" "Rebuild"
-    |> BuildFrontEnd 
+    // |> BuildFrontEnd 
     |> ignore
 )
 

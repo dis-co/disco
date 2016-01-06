@@ -1,3 +1,4 @@
 MsgPack.Cli
 FsPickler
+FsPickler.Json
 WebSharper

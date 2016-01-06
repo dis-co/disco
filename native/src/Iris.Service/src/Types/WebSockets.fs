@@ -2,11 +2,6 @@ namespace Iris.Service.Types
 
 open Fleck
 open System
-open Akka
-open Akka.Actor
-open Akka.FSharp
-open Akka.Routing
-
 open Iris.Core.Types
 
 [<AutoOpen>]
