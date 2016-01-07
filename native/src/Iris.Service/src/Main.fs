@@ -58,9 +58,9 @@ module Main =
     
     VsyncSystem.Start()
 
-    let g = new IrisGroup<IrisActions,byte[]> "test"
+    let g = new IrisGroup<IrisActions> "test"
 
-    g.AddHandler(Init, new Handler<byte[]>(initialize))
+    g.AddHandler(Init, new Handler(initialize))
     g.AddViewHandler(fun view -> printfn "new view: %s" <| view.ToString())
     g.Join()
 
