@@ -43,7 +43,7 @@ module PinGroup =
   (* ---------- PinGroup ---------- *)
 
   type PinGroup(grpname) as self = 
-    let group = new IrisGroup("iris.pins")
+    [<DefaultValue>] val mutable group : IrisGroup
 
     let pins : Dictionary<Id, Pin> = new Dictionary<Id,Pin>()
 
@@ -62,21 +62,21 @@ module PinGroup =
       ]
 
     do
-      group.AddViewHandler(self.ViewChanged)
-      List.iter (fun (a,cb) -> group.AddHandler(toI a, mkHandler(bToP cb))) AllHandlers
+      self.group <- new IrisGroup(grpname)
+      self.group.AddViewHandler(self.ViewChanged)
+      List.iter (fun (a,cb) -> self.group.AddHandler(toI a, mkHandler(bToP cb))) AllHandlers
 
-    member self.Join() = group.Join()
+    member self.Join() = self.group.Join()
 
     member self.Dump() =
       for pin in pins do
         printfn "pin id: %s" pin.Key
 
     member self.Send(action : PinAction, p : Pin) =
-      group.Send(toI action, p.ToBytes())
+      self.group.Send(toI action, p.ToBytes())
 
     member self.Add(p : Pin) =
       pins.Add(p.Id, p)
-      self.Send(PinAction.Add, p)
 
     member self.ViewChanged(view : View) : unit =
       printfn "viewid: %d" <| view.GetViewid() 

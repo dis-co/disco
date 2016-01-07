@@ -48,7 +48,7 @@ module Main =
     VsyncSystem.Start()
 
     let g = new PinGroup("iris.pins")
-    g.Join()
+    g.group.Join()
 
     let p : Pin =
       { Id = System.Guid.NewGuid().ToString()
@@ -57,6 +57,7 @@ module Main =
       }
 
     g.Add(p)
+    g.Send(PinAction.Add, p)
     g.Dump()
 
     VsyncSystem.WaitForever()
