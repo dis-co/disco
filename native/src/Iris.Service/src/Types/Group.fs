@@ -20,5 +20,5 @@ module Groups =
     member self.AddHandler(i : Intable<'a>, v : Handler<'b>) =
       self.Handlers.[i.ToInt()] <- self.Handlers.[i.ToInt()] + v
 
-    member self.Send(i : Intable<'a>, thing : 'b) =
+    member self.MySend(i : Intable<'a>, thing : 'b) =
       self.Send(i.ToInt(), thing)

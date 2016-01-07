@@ -4,6 +4,7 @@ open System.Diagnostics
 open System
 open System.Threading
 
+open Nessos.FsPickler
 open Iris.Core.Types
 open Iris.Service.Types
 
@@ -12,6 +13,26 @@ open Vsync
 type LookUpHandler = delegate of string -> unit
 
 module Main =
+
+  type IrisMsg(name') =
+    let mutable name = name'
+  
+    do printfn "name is: %s" name
+  
+    member self.Name
+      with get () = name
+      and  set n  = name <- n
+  
+    override self.ToString () =
+      sprintf "IrisMsg: %s" name
+
+    member self.ToBytes() : byte[] =
+      let s = FsPickler.CreateBinarySerializer()
+      s.Pickle self
+
+    static member FromBytes(data : byte[]) : IrisMsg =
+      let s = FsPickler.CreateBinarySerializer()
+      s.UnPickle<IrisMsg> data
 
   type IrisActions =
     | Init
@@ -24,8 +45,9 @@ module Main =
           | Update -> 2
           | Close  -> 3
 
-  let initialize str = 
-    printfn "%s" str
+  let initialize (msg : byte [])= 
+    let s = IrisMsg.FromBytes msg
+    printfn "%s" <| s.ToString()
  
   [<EntryPoint>]
   let main argv =
@@ -36,13 +58,15 @@ module Main =
     
     VsyncSystem.Start()
 
-    let g = new IrisGroup<IrisActions,string> "test"
+    let g = new IrisGroup<IrisActions,byte[]> "test"
 
-    g.AddHandler(Init, new Handler<string>(initialize))
+    g.AddHandler(Init, new Handler<byte[]>(initialize))
     g.AddViewHandler(fun view -> printfn "new view: %s" <| view.ToString())
     g.Join()
-    g.Send(Init, "me")
 
+    let k = new IrisMsg("karsten")
+
+    g.MySend(Init, k.ToBytes())
 
     VsyncSystem.WaitForever()
 
