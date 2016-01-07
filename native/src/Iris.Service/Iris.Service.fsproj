@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="src\TestData.fs" />
+    <Compile Include="src\Types\WebSockets.fs" />
     <Compile Include="src\Types\Group.fs" />
     <Compile Include="src\Main.fs" />
   </ItemGroup>
