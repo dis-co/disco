@@ -12,13 +12,13 @@ module Groups =
   type Handler<'a> = delegate of 'a -> unit
  
   type IrisGroup<'a,'b>(name : string) =
-    let group = new Vsync.Group(name)
+    inherit Vsync.Group(name)
+
+    member self.AddViewHandler(handler : Vsync.View -> unit) =
+      self.ViewHandlers <- self.ViewHandlers + new Vsync.ViewHandler(handler)
 
     member self.AddHandler(i : Intable<'a>, v : Handler<'b>) =
-      group.Handlers.[i.ToInt()] <- group.Handlers.[i.ToInt()] + v
-
-    member self.Join() =
-      group.Join()
+      self.Handlers.[i.ToInt()] <- self.Handlers.[i.ToInt()] + v
 
     member self.Send(i : Intable<'a>, thing : 'b) =
-      group.Send(i.ToInt(), thing)
+      self.Send(i.ToInt(), thing)

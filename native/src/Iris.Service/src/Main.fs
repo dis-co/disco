@@ -39,8 +39,10 @@ module Main =
     let g = new IrisGroup<IrisActions,string> "test"
 
     g.AddHandler(Init, new Handler<string>(initialize))
+    g.AddViewHandler(fun view -> printfn "new view: %s" <| view.ToString())
     g.Join()
     g.Send(Init, "me")
+
 
     VsyncSystem.WaitForever()
 
