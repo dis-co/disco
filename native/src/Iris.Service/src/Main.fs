@@ -34,17 +34,6 @@ module Main =
       let s = FsPickler.CreateBinarySerializer()
       s.UnPickle<IrisMsg> data
 
-  type IrisActions =
-    | Init
-    | Update
-    | Close
-    interface Intable<IrisActions> with
-      member self.ToInt() =
-        match self with
-          | Init   -> 1
-          | Update -> 2
-          | Close  -> 3
-
   let initialize (msg : byte [])= 
     let s = IrisMsg.FromBytes msg
     printfn "%s" <| s.ToString()
@@ -58,15 +47,17 @@ module Main =
     
     VsyncSystem.Start()
 
-    let g = new IrisGroup<IrisActions> "test"
-
-    g.AddHandler(Init, new Handler(initialize))
-    g.AddViewHandler(fun view -> printfn "new view: %s" <| view.ToString())
+    let g = new PinGroup("iris.pins")
     g.Join()
 
-    let k = new IrisMsg("karsten")
+    let p : Pin =
+      { Id = System.Guid.NewGuid().ToString()
+      ; Name = "YeahPin"
+      ; IOBoxes = Array.empty
+      }
 
-    g.MySend(Init, k.ToBytes())
+    g.Add(p)
+    g.Dump()
 
     VsyncSystem.WaitForever()
 

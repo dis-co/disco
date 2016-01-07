@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -48,8 +48,9 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="src\TestData.fs" />
-    <Compile Include="src\Types\WebSockets.fs" />
     <Compile Include="src\Types\Group.fs" />
+    <Compile Include="src\Types\PinGroup.fs" />
+    <Compile Include="src\Types\WebSockets.fs" />
     <Compile Include="src\Main.fs" />
   </ItemGroup>
   <ItemGroup>
