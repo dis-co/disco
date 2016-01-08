@@ -2,12 +2,15 @@ namespace Iris.Service.Types
 
 open System
 open System.IO
+open System.Text.RegularExpressions
 open System.Collections.Generic
 open Nessos.FsPickler
+open LibGit2Sharp
 open Vsync
 
 [<AutoOpen>]
 module ProjectGroup =
+  type FilePath = string
 
   (* Workspace:
    *
@@ -26,8 +29,23 @@ module ProjectGroup =
     if not <| workspaceExists()
     then Directory.CreateDirectory WORKSPACE
          |> ignore
-  
-  type FilePath = string
+
+  let sanitizeName (name : string) =
+    let regex = new Regex("(\.|\ |\*|\^)")
+    if regex.IsMatch(name)
+    then regex.Replace(name, "_")
+    else name
+
+  let createProject (name : string) =
+    let targetPath = Path.Combine(WORKSPACE, sanitizeName name)
+    if not <| Directory.Exists targetPath
+    then
+      Directory.CreateDirectory targetPath
+      |> ignore
+      Repository.Init(targetPath)
+      |> ignore
+    else
+      printfn "there already is a project at that location."
 
   type CueList =
     { Id   : Id
