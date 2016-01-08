@@ -1,0 +1,9 @@
+
+* Project Creation/Bootstrap
+** settings.xml type parsing serialization + file writer code
+** project.xml serialization + file writer code
+** do we even need separate settings/project files??
+** initial commit of data
+* Project Loading
+** Load Project + Settings from Disk
+** Which peers do clone/pull (because cluster does not yet exist right)?

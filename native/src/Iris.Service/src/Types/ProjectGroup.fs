@@ -12,41 +12,6 @@ open Vsync
 module ProjectGroup =
   type FilePath = string
 
-  (* Workspace:
-   *
-   * the standard location projects are create/cloned to.
-   * Settable it via environment variable.
-   *)
-  let WORKSPACE =
-    let wsp = Environment.GetEnvironmentVariable("IRIS_WORKSPACE")
-    if isNull wsp
-    then "/home/k/iris/"
-    else wsp
-
-  let workspaceExists () = Directory.Exists WORKSPACE
-
-  let createWorkspace () =
-    if not <| workspaceExists()
-    then Directory.CreateDirectory WORKSPACE
-         |> ignore
-
-  let sanitizeName (name : string) =
-    let regex = new Regex("(\.|\ |\*|\^)")
-    if regex.IsMatch(name)
-    then regex.Replace(name, "_")
-    else name
-
-  let createProject (name : string) =
-    let targetPath = Path.Combine(WORKSPACE, sanitizeName name)
-    if not <| Directory.Exists targetPath
-    then
-      Directory.CreateDirectory targetPath
-      |> ignore
-      Repository.Init(targetPath)
-      |> ignore
-    else
-      printfn "there already is a project at that location."
-
   type CueList =
     { Id   : Id
     ; Name : string
@@ -69,6 +34,45 @@ module ProjectGroup =
     member self.ToBytes() =
       let s = FsPickler.CreateBinarySerializer()
       s.Pickle self
+
+  (* Workspace Path:
+   *
+   * the standard location projects are create/cloned to.
+   * Settable it via environment variable.
+   *)
+  let WORKSPACE =
+    let wsp = Environment.GetEnvironmentVariable("IRIS_WORKSPACE")
+    if isNull wsp
+    then "/home/k/iris/"
+    else wsp
+
+  let CONFIG = "settings.xml"
+
+  let PROJECT = "project.iris"
+
+  let workspaceExists () = Directory.Exists WORKSPACE
+
+  let createWorkspace () =
+    if not <| workspaceExists()
+    then Directory.CreateDirectory WORKSPACE
+         |> ignore
+
+  let sanitizeName (name : string) =
+    let regex = new Regex("(\.|\ |\*|\^)")
+    if regex.IsMatch(name)
+    then regex.Replace(name, "_")
+    else name
+
+  let createProject (name : string) =
+    let targetPath = Path.Combine(WORKSPACE, sanitizeName name)
+    if not <| Directory.Exists targetPath
+    then
+      Directory.CreateDirectory targetPath |> ignore
+      // write project file
+      // write settings file (see that xml thingy..)
+      Repository.Init(targetPath)          |> ignore
+    else
+      printfn "there already is a project at that location."
 
   (* ---------- ProjectAction ---------- *)
 
