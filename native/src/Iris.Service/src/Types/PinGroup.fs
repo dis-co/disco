@@ -26,15 +26,6 @@ module PinGroup =
 
   type PinDict = Dictionary<Id,Pin>
 
-  (* ---------- Host ---------- *)
-
-  type Host =
-    { Id   : string
-    ; Pins : Dictionary<Id,Pin>
-    }
-    static member Create(id : Id) =
-      { Id = id; Pins = new Dictionary<Id, Pin>() }
-
   (* ---------- PinAction ---------- *)
 
   type PinAction =
