@@ -8,9 +8,8 @@ nuget FAKE
 nuget SourceLink.Fake
 nuget Suave
 nuget Fleck
-nuget MsgPack.Cli
 nuget LibGit2Sharp
-nuget NNanomsg
+nuget LibGit2Sharp.NativeBinaries
 nuget WebSharper
 nuget FsPickler
 nuget FsPickler.Json

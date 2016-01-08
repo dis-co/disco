@@ -1,7 +1,6 @@
 Fleck
-MsgPack.Cli
 LibGit2Sharp
-NNanomsg
+LibGit2Sharp.NativeBinaries
 Suave
 WebSharper
 FsPickler

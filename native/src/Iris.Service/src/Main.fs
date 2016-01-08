@@ -38,8 +38,7 @@ module Main =
     let s = IrisMsg.FromBytes msg
     printfn "%s" <| s.ToString()
  
-  [<EntryPoint>]
-  let main argv =
+  let oldman () =
     printfn "starting engine"
 
     Environment.SetEnvironmentVariable("VSYNC_UNICAST_ONLY", "true")
@@ -62,4 +61,10 @@ module Main =
 
     VsyncSystem.WaitForever()
 
+    0
+
+  [<EntryPoint>]
+  let main argv =
+    printfn "workspace: %s" WORKSPACE
+    createProject "yea I am super awesome"
     0
