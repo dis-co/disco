@@ -22,5 +22,8 @@ module Groups =
     member self.AddViewHandler(handler : Vsync.View -> unit) =
       self.ViewHandlers <- self.ViewHandlers + new Vsync.ViewHandler(handler)
 
+    member self.AddInitializer(handler : unit -> unit) =
+      self.RegisterInitializer(new Vsync.Initializer(handler))
+
     member self.AddHandler(action : int, v : Handler) =
       self.Handlers.[action] <- self.Handlers.[action] + v

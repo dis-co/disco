@@ -57,6 +57,9 @@ module PinGroup =
     let pToB (p : Pin) : byte[] =
       p.ToBytes()
 
+    let AddHandler(action, cb) =
+      self.group.AddHandler(toI action, mkHandler(bToP cb))
+
     let AllHandlers =
       [ (PinAction.Add,    self.PinAdded)
       ; (PinAction.Update, self.PinUpdated)
@@ -65,22 +68,29 @@ module PinGroup =
 
     do
       self.group <- new IrisGroup(grpname)
+      self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
       self.group.AddCheckpointMaker(self.MakeCheckpoint)
       self.group.AddCheckpointLoader(self.LoadCheckpoint)
-      List.iter (fun (a,cb) -> self.group.AddHandler(toI a, mkHandler(bToP cb))) AllHandlers
-
-    member self.Join() = self.group.Join()
+      List.iter AddHandler AllHandlers
 
     member self.Dump() =
       for pin in pins do
         printfn "pin id: %s" pin.Key
 
+    member self.Add(p : Pin) =
+      pins.Add(p.Id, p)
+
+    (* Become member of group *)
+    member self.Join() = self.group.Join()
+
+    (* PinAction on the group *)
     member self.Send(action : PinAction, p : Pin) =
       self.group.Send(toI action, p.ToBytes())
 
-    member self.Add(p : Pin) =
-      pins.Add(p.Id, p)
+    (* State initialization and transfer *)
+    member self.Initialize() =
+      printfn "should load state from disk/vvvv now"
 
     member self.MakeCheckpoint(view : View) =
       printfn "makeing a snapshot. %d pins in it" pins.Count
@@ -93,17 +103,17 @@ module PinGroup =
       pins <- s.UnPickle<PinDict> bytes
       printfn "loaded a snapshot. %d pins in it" pins.Count
 
+    (* View changes *)
     member self.ViewChanged(view : View) : unit =
       printfn "viewid: %d" <| view.GetViewid() 
 
+    (* Event Handlers for PinAction *)
     member self.PinAdded(pin : Pin) : unit =
       if not <| pins.ContainsKey(pin.Id)
       then
         self.Add(pin)
         printfn "pin added cb: "
         self.Dump()
-      else
-        printfn "pin already present"
 
     member self.PinUpdated(pin : Pin) : unit =
       printfn "%s updated" pin.Name
