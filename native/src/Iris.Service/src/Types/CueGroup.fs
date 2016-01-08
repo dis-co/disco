@@ -38,7 +38,7 @@ module CueGroup =
   type CueGroup(grpname) as self = 
     [<DefaultValue>] val mutable group : IrisGroup
 
-    let mutable cues : CueDict = new Dictionary<Id,Cue>()
+    let mutable cues : CueDict = new CueDict()
 
     let toI (pa : CueAction) : int = int pa
 

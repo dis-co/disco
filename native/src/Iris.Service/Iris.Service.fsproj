@@ -51,6 +51,7 @@
     <Compile Include="src\Types\Group.fs" />
     <Compile Include="src\Types\PinGroup.fs" />
     <Compile Include="src\Types\CueGroup.fs" />
+    <Compile Include="src\Types\ProjectGroup.fs" />
     <Compile Include="src\Types\WebSockets.fs" />
     <Compile Include="src\Main.fs" />
   </ItemGroup>
