@@ -13,6 +13,12 @@ module Groups =
   type IrisGroup(name : string) =
     inherit Vsync.Group(name)
 
+    member self.AddCheckpointMaker(handler : Vsync.View -> unit) =
+      self.RegisterMakeChkpt(new Vsync.ChkptMaker(handler))
+
+    member self.AddCheckpointLoader(handler : byte[] -> unit) =
+      self.RegisterLoadChkpt(mkHandler handler)
+
     member self.AddViewHandler(handler : Vsync.View -> unit) =
       self.ViewHandlers <- self.ViewHandlers + new Vsync.ViewHandler(handler)
 
