@@ -1,5 +1,7 @@
 namespace Iris.Service.Types
 
+open System
+open System.IO
 open System.Collections.Generic
 open Nessos.FsPickler
 open Vsync
@@ -7,9 +9,24 @@ open Vsync
 [<AutoOpen>]
 module ProjectGroup =
 
-  (* standard location to clone repo to *)
-  let WORKSPACE = "/home/k/Iris/"
+  (* Workspace:
+   *
+   * the standard location projects are create/cloned to.
+   * Settable it via environment variable.
+   *)
+  let WORKSPACE =
+    let wsp = Environment.GetEnvironmentVariable("IRIS_WORKSPACE")
+    if isNull wsp
+    then "/home/k/iris/"
+    else wsp
 
+  let workspaceExists () = Directory.Exists WORKSPACE
+
+  let createWorkspace () =
+    if not <| workspaceExists()
+    then Directory.CreateDirectory WORKSPACE
+         |> ignore
+  
   type FilePath = string
 
   type CueList =
