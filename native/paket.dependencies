@@ -8,7 +8,7 @@ nuget FAKE
 nuget SourceLink.Fake
 nuget Suave
 nuget Fleck
-nuget LibGit2Sharp
+nuget LibGit2Sharp >= 0.22.0-pre20151023210959 prerelease
 nuget LibGit2Sharp.NativeBinaries
 nuget WebSharper
 nuget FsPickler

@@ -14,8 +14,9 @@ NUGET
     FsPickler.Json (1.7.1)
       FsPickler (1.7.1)
       Newtonsoft.Json (>= 6.0.5)
-    LibGit2Sharp (0.21.0.176)
-    LibGit2Sharp.NativeBinaries (1.0.119)
+    LibGit2Sharp (0.22.0-pre20151023210959)
+      LibGit2Sharp.NativeBinaries (1.0.106)
+    LibGit2Sharp.NativeBinaries (1.0.106)
     Microsoft.Bcl (1.1.10)
       Microsoft.Bcl.Build (>= 1.0.14)
     Microsoft.Bcl.Build (1.0.21) - import_targets: false

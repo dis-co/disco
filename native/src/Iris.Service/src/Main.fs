@@ -66,5 +66,5 @@ module Main =
   [<EntryPoint>]
   let main argv =
     printfn "workspace: %s" WORKSPACE
-    createProject "yea I am super awesome"
+    createProject "super awesome"
     0
