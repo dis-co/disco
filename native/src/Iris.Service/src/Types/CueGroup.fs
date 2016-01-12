@@ -42,14 +42,14 @@ module CueGroup =
 
     let toI (pa : CueAction) : int = int pa
 
-    let bToP (f : Cue -> unit) (bytes : byte[]) =
+    let bToC (f : Cue -> unit) (bytes : byte[]) =
       f <| Cue.FromBytes(bytes)
       
-    let pToB (c : Cue) : byte[] =
+    let cToB (c : Cue) : byte[] =
       c.ToBytes()
 
     let AddHandler(action, cb) =
-      self.group.AddHandler(toI action, mkHandler(bToP cb))
+      self.group.AddHandler(toI action, mkHandler(bToC cb))
 
     let AllHandlers =
       [ (CueAction.Add,    self.CueAdded)
@@ -57,6 +57,7 @@ module CueGroup =
       ; (CueAction.Delete, self.CueDeleted)
       ]
 
+    (* constructor *)
     do
       self.group <- new IrisGroup(grpname)
       self.group.AddInitializer(self.Initialize)

@@ -14,6 +14,8 @@ type LookUpHandler = delegate of string -> unit
 
 module Main =
 
+  (* IrisMsg *)
+
   type IrisMsg(name') =
     let mutable name = name'
   
@@ -27,44 +29,41 @@ module Main =
       sprintf "IrisMsg: %s" name
 
     member self.ToBytes() : byte[] =
-      let s = FsPickler.CreateBinarySerializer()
-      s.Pickle self
+      let pickler = FsPickler.CreateBinarySerializer()
+      pickler.Pickle self
 
     static member FromBytes(data : byte[]) : IrisMsg =
-      let s = FsPickler.CreateBinarySerializer()
-      s.UnPickle<IrisMsg> data
+      let pickler = FsPickler.CreateBinarySerializer()
+      pickler.UnPickle<IrisMsg> data
 
   let initialize (msg : byte [])= 
     let s = IrisMsg.FromBytes msg
     printfn "%s" <| s.ToString()
  
-  let oldman () =
-    printfn "starting engine"
+  [<EntryPoint>]
+  let main argv =
+    printfn "starting engine.."
 
     Environment.SetEnvironmentVariable("VSYNC_UNICAST_ONLY", "true")
     Environment.SetEnvironmentVariable("VSYNC_HOSTS", "localhost")
     
     VsyncSystem.Start()
 
-    let g = new PinGroup("iris.pins")
-    g.group.Join()
+    printfn "done."
 
-    let p : Pin =
+    let pins = new PinGroup("iris.pins")
+    pins.group.Join()
+
+    let pin : Pin =
       { Id = System.Guid.NewGuid().ToString()
       ; Name = "YeahPin"
       ; IOBoxes = Array.empty
       }
 
-    g.Add(p)
-    g.Send(PinAction.Add, p)
-    g.Dump()
+    pins.Add(pin)
+    pins.Send(PinAction.Add, pin)
+    pins.Dump()
 
     VsyncSystem.WaitForever()
 
-    0
-
-  [<EntryPoint>]
-  let main argv =
-    printfn "workspace: %s" WORKSPACE
-    createProject "super awesome"
     0
