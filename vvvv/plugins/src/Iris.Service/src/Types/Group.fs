@@ -1,23 +1,45 @@
 namespace Iris.Service.Types
 
 open System
+open Nessos.FsPickler
 open Vsync
 
 [<AutoOpen>]
 module Groups =
 
-  type Handler = delegate of byte[] -> unit
+  type Handler<'a> = 'a -> unit
 
-  let mkHandler (f : byte[] -> unit) = new Handler(f)
+  type RawHandler = delegate of byte[] -> unit
 
-  type IrisGroup(name : string) =
+
+  let mkRawHandler (f : byte[] -> unit) = new RawHandler(f)
+
+  type IEnum =
+    abstract member ToInt : unit -> int
+    
+  type IrisGroup<'action,'data when 'action :> IEnum>(name : string) =
     inherit Vsync.Group(name)
 
-    member self.AddCheckpointMaker(handler : Vsync.View -> unit) =
+    let pickler = FsPickler.CreateBinarySerializer()
+
+    member self.ToBytes(thing : 'data) : byte[] =
+      pickler.Pickle(thing)
+
+    member self.FromBytes(data : byte[]) : 'data =
+      pickler.UnPickle<'data>(data)
+
+    member self.CheckpointMaker(handler : Vsync.View -> unit) =
       self.RegisterMakeChkpt(new Vsync.ChkptMaker(handler))
 
-    member self.AddCheckpointLoader(handler : byte[] -> unit) =
-      self.RegisterLoadChkpt(mkHandler handler)
+    member self.CheckpointLoader(handler : 'data -> unit) =
+      let wrapped = fun data -> self.FromBytes(data) |> handler
+       in self.RegisterLoadChkpt(mkRawHandler wrapped)
+
+    member self.SendCheckpoint(thing : 'data) =
+      self.SendChkpt(self.ToBytes(thing))
+
+    member self.DoneCheckpoint() =
+      self.EndOfChkpt()
 
     member self.AddViewHandler(handler : Vsync.View -> unit) =
       self.ViewHandlers <- self.ViewHandlers + new Vsync.ViewHandler(handler)
@@ -25,5 +47,7 @@ module Groups =
     member self.AddInitializer(handler : unit -> unit) =
       self.RegisterInitializer(new Vsync.Initializer(handler))
 
-    member self.AddHandler(action : int, v : Handler) =
-      self.Handlers.[action] <- self.Handlers.[action] + v
+    member self.AddHandler(action : 'action, handler : Handler<'data>) =
+      let wrapped = mkRawHandler <| fun data ->
+        handler <| self.FromBytes(data)
+      in self.Handlers.[action.ToInt()] <- self.Handlers.[action.ToInt()] + wrapped

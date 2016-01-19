@@ -1,11 +1,8 @@
 * Todo:
-** IN convert project to WebSharper JS compiler                    :frontend:
 ** IN explore the idea of creating a CHROME APPs                   :frontend:
 ** IN LocalStorage API Abstraction                                 :frontend:
 ** IN integrate LocalStorage into Store/State                      :frontend:
 ** IN working completely offline should become possible with store :frontend:
-** IN do some simple rx experiments                                :frontend:
-** IN msgpack serialization/deserialization scheme         :frontend:backend:
 ** IN vvvv.js integration
 ** Archive                                                          :ARCHIVE:
 *** DONE compiler from Html type -> VNode/VText                    :frontend:
@@ -39,4 +36,16 @@
 *** DONE serve mock data to browser                                 :backend:
     :PROPERTIES:
     :ARCHIVE_TIME: 2015-10-13 Tue 10:22
+    :END:
+*** IN convert project to WebSharper JS compiler                   :frontend:
+    :PROPERTIES:
+    :ARCHIVE_TIME: 2016-01-19 Tue 13:27
+    :END:
+*** IN do some simple rx experiments                               :frontend:
+    :PROPERTIES:
+    :ARCHIVE_TIME: 2016-01-19 Tue 13:27
+    :END:
+*** IN msgpack serialization/deserialization scheme        :frontend:backend:
+    :PROPERTIES:
+    :ARCHIVE_TIME: 2016-01-19 Tue 13:27
     :END:
