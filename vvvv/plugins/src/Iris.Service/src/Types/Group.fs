@@ -9,10 +9,9 @@ module Groups =
 
   type Handler<'a> = 'a -> unit
 
-  type RawHandler = delegate of byte[] -> unit
+  type private RawHandler = delegate of byte[] -> unit
 
-
-  let mkRawHandler (f : byte[] -> unit) = new RawHandler(f)
+  let private mkRawHandler (f : byte[] -> unit) = new RawHandler(f)
 
   type IEnum =
     abstract member ToInt : unit -> int
@@ -21,6 +20,9 @@ module Groups =
     inherit Vsync.Group(name)
 
     let pickler = FsPickler.CreateBinarySerializer()
+
+    member self.Send(action : 'action, thing : 'data) : unit =
+      self.Send(action.ToInt(), pickler.Pickle(thing))
 
     member self.ToBytes(thing : 'data) : byte[] =
       pickler.Pickle(thing)

@@ -16,40 +16,30 @@ module PinGroup =
     ; IOBoxes : string array
     }
 
-    static member FromBytes(data : byte[]) : Pin =
-      let s = FsPickler.CreateBinarySerializer()
-      s.UnPickle<Pin> data
-    
-    member self.ToBytes() =
-      let s = FsPickler.CreateBinarySerializer()
-      s.Pickle self
-
   type PinDict = Dictionary<Id,Pin>
 
   (* ---------- PinAction ---------- *)
 
   type PinAction =
-    | Add    = 1
-    | Update = 2
-    | Delete = 3
+    | Add
+    | Update
+    | Delete
+    interface IEnum with
+      member self.ToInt() : int =
+        match self with
+          | Add    -> 1
+          | Update -> 2
+          | Delete -> 3
 
   (* ---------- PinGroup ---------- *)
 
   type PinGroup(grpname) as self = 
-    [<DefaultValue>] val mutable group : IrisGroup
+    [<DefaultValue>] val mutable group : IrisGroup<PinAction, Pin>
 
     let mutable pins : PinDict = new Dictionary<Id,Pin>()
 
-    let toI (pa : PinAction) : int = int pa
-
-    let bToP (f : Pin -> unit) (bytes : byte[]) =
-      f <| Pin.FromBytes(bytes)
-      
-    let pToB (p : Pin) : byte[] =
-      p.ToBytes()
-
     let AddHandler(action, cb) =
-      self.group.AddHandler(toI action, mkHandler(bToP cb))
+      self.group.AddHandler(action, cb)
 
     let AllHandlers =
       [ (PinAction.Add,    self.PinAdded)
@@ -58,11 +48,11 @@ module PinGroup =
       ]
 
     do
-      self.group <- new IrisGroup(grpname)
+      self.group <- new IrisGroup<PinAction,Pin>(grpname)
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
-      self.group.AddCheckpointMaker(self.MakeCheckpoint)
-      self.group.AddCheckpointLoader(self.LoadCheckpoint)
+      self.group.CheckpointMaker(self.MakeCheckpoint)
+      self.group.CheckpointLoader(self.LoadCheckpoint)
       List.iter AddHandler AllHandlers
 
     member self.Dump() =
@@ -77,7 +67,7 @@ module PinGroup =
 
     (* PinAction on the group *)
     member self.Send(action : PinAction, p : Pin) =
-      self.group.Send(toI action, p.ToBytes())
+      self.group.Send(action, p)
 
     (* State initialization and transfer *)
     member self.Initialize() =
@@ -85,13 +75,15 @@ module PinGroup =
 
     member self.MakeCheckpoint(view : View) =
       printfn "makeing a snapshot. %d pins in it" pins.Count
-      let s = FsPickler.CreateBinarySerializer()
-      self.group.SendChkpt(s.Pickle pins)
-      self.group.EndOfChkpt()
+      for pair in pins do
+        self.group.SendCheckpoint(pair.Value)
+      self.group.DoneCheckpoint()
 
-    member self.LoadCheckpoint(bytes : byte[]) =
-      let s = FsPickler.CreateBinarySerializer()
-      pins <- s.UnPickle<PinDict> bytes
+    member self.LoadCheckpoint(pin : Pin) =
+      if not <| pins.ContainsKey pin.Id
+      then pins.Add(pin.Id, pin)
+      else pins.[pin.Id] <- pin
+
       printfn "loaded a snapshot. %d pins in it" pins.Count
 
     (* View changes *)

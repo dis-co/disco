@@ -29,27 +29,25 @@ module CueGroup =
   (* ---------- CueAction ---------- *)
 
   type CueAction =
-    | Add    = 1
-    | Update = 2
-    | Delete = 3
+    | Add 
+    | Update 
+    | Delete 
+    interface IEnum with
+      member self.ToInt() : int =
+        match self with
+          | Add    -> 1
+          | Update -> 2 
+          | Delete -> 3 
 
   (* ---------- CueGroup ---------- *)
 
   type CueGroup(grpname) as self = 
-    [<DefaultValue>] val mutable group : IrisGroup
+    [<DefaultValue>] val mutable group : IrisGroup<CueAction,Cue>
 
     let mutable cues : CueDict = new CueDict()
 
-    let toI (pa : CueAction) : int = int pa
-
-    let bToC (f : Cue -> unit) (bytes : byte[]) =
-      f <| Cue.FromBytes(bytes)
-      
-    let cToB (c : Cue) : byte[] =
-      c.ToBytes()
-
     let AddHandler(action, cb) =
-      self.group.AddHandler(toI action, mkHandler(bToC cb))
+      self.group.AddHandler(action, cb)
 
     let AllHandlers =
       [ (CueAction.Add,    self.CueAdded)
@@ -59,11 +57,11 @@ module CueGroup =
 
     (* constructor *)
     do
-      self.group <- new IrisGroup(grpname)
+      self.group <- new IrisGroup<CueAction,Cue>(grpname)
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
-      self.group.AddCheckpointMaker(self.MakeCheckpoint)
-      self.group.AddCheckpointLoader(self.LoadCheckpoint)
+      self.group.CheckpointMaker(self.MakeCheckpoint)
+      self.group.CheckpointLoader(self.LoadCheckpoint)
       List.iter AddHandler AllHandlers
 
     member self.Dump() =
@@ -77,8 +75,8 @@ module CueGroup =
     member self.Join() = self.group.Join()
 
     (* CueAction on the group *)
-    member self.Send(action : CueAction, c : Cue) =
-      self.group.Send(toI action, c.ToBytes())
+    member self.Send(action : CueAction, cue : Cue) =
+      self.group.Send(action, cue)
 
     (* State initialization and transfer *)
     member self.Initialize() =
@@ -86,13 +84,14 @@ module CueGroup =
 
     member self.MakeCheckpoint(view : View) =
       printfn "makeing a snapshot. %d cues in it" cues.Count
-      let s = FsPickler.CreateBinarySerializer()
-      self.group.SendChkpt(s.Pickle cues)
-      self.group.EndOfChkpt()
+      for pair in cues do
+        self.group.SendCheckpoint(pair.Value)
+      self.group.DoneCheckpoint()
 
-    member self.LoadCheckpoint(bytes : byte[]) =
-      let s = FsPickler.CreateBinarySerializer()
-      cues <- s.UnPickle<CueDict> bytes
+    member self.LoadCheckpoint(cue : Cue) =
+      if cues.ContainsKey(cue.Id)
+      then cues.[cue.Id] <- cue
+      else cues.Add(cue.Id, cue)
       printfn "loaded a snapshot. %d cues in it" cues.Count
 
     (* View changes *)

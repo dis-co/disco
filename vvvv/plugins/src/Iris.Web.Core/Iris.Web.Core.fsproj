@@ -68,7 +68,7 @@
     <None Include="assets\js\node.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="assets\dependencies\asmcrypto.js">
+    <None Include="assets\dependencies\asmcrypto\asmcrypto.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="assets\dependencies\jquery\dist\jquery.js">

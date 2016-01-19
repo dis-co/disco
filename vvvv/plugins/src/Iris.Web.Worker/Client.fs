@@ -28,7 +28,7 @@ module Client =
   let onConnect (handler: WorkerEvent -> unit) = ()
 
   let Main : unit =
-    importScript "dependencies/asmcrypto.js"
+    importScript "dependencies/asmcrypto/asmcrypto.js"
 
     let context = new GlobalContext()
     onConnect (initialize context)

@@ -77,28 +77,29 @@ module ProjectGroup =
   (* ---------- ProjectAction ---------- *)
 
   type ProjectAction =
-    | Create  = 1
-    | Load    = 2
-    | Save    = 3
-    | Clone   = 4
-    | Pull    = 5
-
+    | Create 
+    | Load 
+    | Save
+    | Clone  
+    | Pull
+    
+    interface IEnum with
+      member self.ToInt() : int =
+        match self with
+          | Create -> 1
+          | Load   -> 2
+          | Save   -> 3
+          | Clone  -> 4
+          | Pull   -> 5
+          
   (* ---------- ProjectGroup ---------- *)
 
   type ProjectGroup(grpname : string) as self = 
-    [<DefaultValue>] val mutable group   : IrisGroup
+    [<DefaultValue>] val mutable group   : IrisGroup<ProjectAction,Project>
     [<DefaultValue>] val mutable project : Project option
 
-    let toI (pa : ProjectAction) : int = int pa
-
-    let bToP (f : Project -> unit) (bytes : byte[]) =
-      f <| Project.FromBytes(bytes)
-      
-    let pToB (p : Project) : byte[] =
-      p.ToBytes()
-
     let AddHandler(action, cb) =
-      self.group.AddHandler(toI action, mkHandler(bToP cb))
+      self.group.AddHandler(action, cb)
 
     let AllHandlers =
       [ (ProjectAction.Load,  self.ProjectLoaded)
@@ -108,11 +109,11 @@ module ProjectGroup =
       ]
 
     do
-      self.group <- new IrisGroup(grpname)
+      self.group <- new IrisGroup<ProjectAction,Project>(grpname)
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
-      self.group.AddCheckpointMaker(self.MakeCheckpoint)
-      self.group.AddCheckpointLoader(self.LoadCheckpoint)
+      self.group.CheckpointMaker(self.MakeCheckpoint)
+      self.group.CheckpointLoader(self.LoadCheckpoint)
       List.iter AddHandler AllHandlers
 
     member self.Dump() =
@@ -138,25 +139,23 @@ module ProjectGroup =
     member self.Join() = self.group.Join()
 
     (* ProjectAction on the group *)
-    member self.Send(action : ProjectAction, p : Project) =
-      self.group.Send(toI action, p.ToBytes())
+    member self.Send(action : ProjectAction, project : Project) =
+      self.group.Send(action, project)
 
     (* State initialization and transfer *)
     member self.Initialize() =
       printfn "should load state from disk/vvvv now"
 
     member self.MakeCheckpoint(view : View) =
-      let s = FsPickler.CreateBinarySerializer()
       match self.project with
         | Some(project) -> 
           printfn "makeing a snapshot. %s" project.Name
-          self.group.SendChkpt(s.Pickle project)
-        | _ -> self.group.SendChkpt(s.Pickle None)
-      self.group.EndOfChkpt()
+          self.group.SendCheckpoint(project)
+        | _ -> printfn "no project loaded. nothing to checkpoint"
+      self.group.DoneCheckpoint()
 
-    member self.LoadCheckpoint(bytes : byte[]) =
-      let s = FsPickler.CreateBinarySerializer()
-      self.project <- s.UnPickle<Project option> bytes
+    member self.LoadCheckpoint(project : Project) =
+      self.project <- Some(project)
 
       match self.project with
         | Some(p) -> printfn "loaded a snapshot. project: %s" p.Name
