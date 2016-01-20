@@ -1,4 +1,4 @@
-namespace Iris.Service.Types
+namespace Iris.Service
 
 open System
 open System.IO
@@ -6,55 +6,32 @@ open System.Text.RegularExpressions
 open System.Collections.Generic
 open Nessos.FsPickler
 open LibGit2Sharp
+open Iris.Core.Types
 open Vsync
 
 [<AutoOpen>]
 module ProjectGroup =
   type FilePath = string
 
-  type CueList =
-    { Id   : Id
-    ; Name : string
-    ; Cues : Id array
-    }
-
-  (* ---------- Project ---------- *)
-  type Project =
-    { Id       : Id
-    ; Name     : string
-    ; Path     : FilePath
-    ; Cues     : Cue array
-    ; CueLists : CueList array
-    }
-
-    static member FromBytes(data : byte[]) : Project =
-      let s = FsPickler.CreateBinarySerializer()
-      s.UnPickle<Project> data
-    
-    member self.ToBytes() =
-      let s = FsPickler.CreateBinarySerializer()
-      s.Pickle self
-
   (* Workspace Path:
    *
    * the standard location projects are create/cloned to.
    * Settable it via environment variable.
    *)
-  let WORKSPACE =
-    let wsp = Environment.GetEnvironmentVariable("IRIS_WORKSPACE")
+  let Workspace =
+    let wsp = Environment.GetEnvironmentVariable("IRIS_Workspace")
     if isNull wsp
     then "/home/k/iris/"
     else wsp
 
-  let CONFIG = "settings.xml"
+  let Config = "settings.yml"
+  let PROJECT = "project.yml"
 
-  let PROJECT = "project.iris"
-
-  let workspaceExists () = Directory.Exists WORKSPACE
+  let workspaceExists () = Directory.Exists Workspace
 
   let createWorkspace () =
     if not <| workspaceExists()
-    then Directory.CreateDirectory WORKSPACE
+    then Directory.CreateDirectory Workspace
          |> ignore
 
   let sanitizeName (name : string) =
@@ -64,7 +41,7 @@ module ProjectGroup =
     else name
 
   let createProject (name : string) =
-    let targetPath = Path.Combine(WORKSPACE, sanitizeName name)
+    let targetPath = Path.Combine(Workspace, sanitizeName name)
     if not <| Directory.Exists targetPath
     then
       Directory.CreateDirectory targetPath |> ignore

@@ -4,12 +4,14 @@ namespace Iris.Service
 [<AutoOpen>]
 module Config =
 
+  /// internal model wrap multiple option types
   type private vsyncopt =
     | VsInt  of uint32       option
     | VsStr  of string       option
     | VsBool of bool         option
     | VsList of List<string> option
 
+  /// check whether the wrapped inner type is a Some
   let inline private isSome (v : vsyncopt) : bool =
     match v with
       | VsInt(value)  -> Option.isSome value
@@ -17,13 +19,14 @@ module Config =
       | VsBool(value) -> Option.isSome value
       | VsList(value) -> Option.isSome value
 
+  /// shortcut to set an environment variable
   let inline private setVar var value : unit =
-    printfn "var=%s value=%s" var value
+    //printfn "var=%s value=%s" var value
     System.Environment.SetEnvironmentVariable(var, value)
 
   /// Vsync engine-specific configuration options record
   type VsyncConfig =
-    { AesKey                : string       option
+    { AesKey                : string       option /// AesKey yeah!
     ; DefaultTimeout        : uint32       option
     ; DontCompress          : bool         option
     ; FastEthernet          : bool         option 
@@ -60,6 +63,8 @@ module Config =
     ; UserDMA               : bool         option
     }
     with
+
+      /// Default configuration options
       static member Default =
         { AesKey                = None
         ; DefaultTimeout        = None
@@ -98,6 +103,7 @@ module Config =
         ; UserDMA               = None
         }
 
+      /// Apply all configuration options to current environment
       member self.Apply() =
         [ ("VSYNC_DEFAULTTIMEOUT"        , VsInt(self.DefaultTimeout))
         ; ("VSYNC_MAXASYNCMTOTAL"        , VsInt(self.MaxAsyncMTotal))

@@ -1,28 +1,14 @@
-namespace Iris.Service.Types
+namespace Iris.Service
 
 open System.Collections.Generic
 open Nessos.FsPickler
+open Iris.Core.Types
 open Vsync
 
 [<AutoOpen>]
 module CueGroup =
 
   type Id = string
-
-  (* ---------- Cue ---------- *)
-  type Cue =
-    { Id   : Id
-    ; Name : string
-    ; Pins : string array
-    }
-
-    static member FromBytes(data : byte[]) : Cue =
-      let s = FsPickler.CreateBinarySerializer()
-      s.UnPickle<Cue> data
-    
-    member self.ToBytes() =
-      let s = FsPickler.CreateBinarySerializer()
-      s.Pickle self
 
   type CueDict = Dictionary<Id,Cue>
 

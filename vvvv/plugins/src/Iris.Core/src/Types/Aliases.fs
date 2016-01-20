@@ -3,6 +3,7 @@ namespace Iris.Core.Types
 [<AutoOpen>]
 [<ReflectedDefinition>]
 module Aliases =
+  type Id         = string
   type Name       = string
   type Tag        = string option
   type IrisId     = string

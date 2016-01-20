@@ -1,4 +1,4 @@
-namespace Iris.Service.Types
+namespace Iris.Service
 
 open System
 open Nessos.FsPickler

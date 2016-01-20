@@ -29,18 +29,18 @@ module Main =
 
     printfn "done."
 
-    let pins = new PinGroup("iris.pins")
-    pins.group.Join()
+    // let pins = new PinGroup("iris.pins")
+    // pins.group.Join()
 
-    let pin : Pin =
-      { Id = System.Guid.NewGuid().ToString()
-      ; Name = "YeahPin"
-      ; IOBoxes = Array.empty
-      }
+    // let pin : Pin =
+    //   { Id = System.Guid.NewGuid().ToString()
+    //   ; Name = "YeahPin"
+    //   ; IOBoxes = Array.empty
+    //   }
 
-    pins.Add(pin)
-    pins.Send(PinAction.Add, pin)
-    pins.Dump()
+    // pins.Add(pin)
+    // pins.Send(PinAction.Add, pin)
+    // pins.Dump()
 
     VsyncSystem.WaitForever()
 
