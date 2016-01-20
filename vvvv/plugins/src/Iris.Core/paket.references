@@ -1,3 +1,5 @@
+FSharp.Core
+FSharp.Configuration
 FsPickler
 FsPickler.Json
 WebSharper

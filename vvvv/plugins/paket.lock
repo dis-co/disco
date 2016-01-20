@@ -4,6 +4,7 @@ NUGET
     FAKE (4.12.2)
     Fleck (0.13.0.57)
     FSharp.Compiler.Service (1.4.2.3)
+    FSharp.Configuration (0.5.9)
     FSharp.Core (4.0.0.1)
     FSharp.Formatting (2.13.0)
       FSharp.Compiler.Service (>= 1.4.2 < 1.5.0)
@@ -37,5 +38,5 @@ NUGET
 GITHUB
   remote: fsharp/FAKE
   specs:
-    modules/Octokit/Octokit.fsx (25f012022dcefdf72f4dd342d08075161512d76a)
+    modules/Octokit/Octokit.fsx (627d68727518ef0c013d0dfbb0260aba84de98e1)
       Octokit

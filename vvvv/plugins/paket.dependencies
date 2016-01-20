@@ -2,6 +2,7 @@ source https://nuget.org/api/v2
 
 nuget FSharp.Core
 nuget FSharp.Formatting
+nuget FSharp.Configuration
 nuget NUnit 
 nuget NUnit.Runners
 nuget FAKE

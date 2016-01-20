@@ -62,11 +62,6 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
-    <Reference Include="FSharp.Core">
-      <Private>True</Private>
-      <HintPath>../../packages/FSharp.Core/lib/net40/FSharp.Core.dll</HintPath>
-      <Paket>True</Paket>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Iris.Core\Iris.Core.fsproj">

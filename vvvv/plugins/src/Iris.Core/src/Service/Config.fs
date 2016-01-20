@@ -2,7 +2,7 @@ namespace Iris.Service
 
 /// Configuration type and logic for the Iris service.
 [<AutoOpen>]
-module Config =
+module VsyncConfig =
 
   /// internal model wrap multiple option types
   type private vsyncopt =
