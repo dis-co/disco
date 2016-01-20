@@ -1,0 +1,141 @@
+namespace Iris.Service
+
+open FSharp.Configuration
+
+[<AutoOpen>]
+module IrisConfig =
+  
+  [<Literal>]
+  let private config = """
+Project:
+  Metadata: 
+    Year: 2016
+    Copyright: NSYNK
+    Author: Karsten Gebbert
+    Name: Template Project
+    LastSaved: 
+
+  VVVV: 
+    Executables: 
+      - Path: ..\..\vvvv\vvvv.exe
+        Version: 33.7x_86
+        Required: true
+      - Path: ..\..\vvvv\vvvv.exe
+        Version: 33.7x_64
+        Required: true
+    Plugins:
+      - Name: iris
+        Path: ..\..\Iris\Nodes
+
+  Ports:
+    WebSocket:
+    IrisService:
+    UDPCues:
+
+  Timing:
+    Framebase: 50
+    Input: Iris Freerun
+    Servers:
+      - 192.168.2.2
+      - 192.168.2.3
+      - 192.168.2.4
+    UDPPort: 8090
+    TCPPort: 8091
+
+  Audio:
+    SampleRate: 48000
+
+  ViewPorts:
+    - ViewPort:
+        Id: 0
+        Name: ViewPort 1
+        Position:
+          X: 0
+          Y: 0
+        Size:
+          X: 1200
+          Y: 800
+        OutputPosition:
+          X: 200
+          Y: 200
+        OutputSize:
+          X: 1000
+          Y: 300
+        Overlap:
+          X: 10
+          Y: 5
+        Description: A nice ViewPort indeed.
+
+  Displays:
+    - Display:
+      Id: 1
+      Name: DP1
+      Size:
+        X: 5760
+        Y: 1080
+      Signals:
+        - Signal:
+            Size:
+              X: 1920
+              Y: 1080
+            Position:
+              X: 0
+              Y: 0
+      RegionMap:
+        SrcViewportId: 0 
+        Regions:
+          - Region:
+            Id: 0
+            Name: eins
+            SrcPosition:
+              X: 0
+              Y: 0
+            SrcSize:
+              X: 400
+              Y: 100
+            OutputPosition:
+              X: 0
+              Y: 0
+            OutputSize:
+              X: 0
+              Y: 0
+  Tasks:
+    - Task:
+      Id: TEC
+      Description: Tec L
+      Render:
+        DisplayId: 1
+      AudioStream: ""
+      Arguments:
+        - Argument:
+            Key: Wall
+            Value: 1
+
+  Cluster:
+    Name:  MainStage
+    Nodes:
+      - Node:
+          Id: 0
+          HostName: CO-10-TEC-L
+          Ip: 192.168.100.10
+          Task: TEC
+
+    Groups:
+      - Group:
+          Name: Main
+          Members:
+            - Member:
+                NodeId: 0
+
+      - Group:
+          Name: TEC
+          Members:
+            - Member:
+                NodeId: 0
+            - Member:
+                NodeId: 1
+  """
+    
+  type ConfigFile = YamlConfig<"",false,config>
+
+  let IrisConfig = ConfigFile()
