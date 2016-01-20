@@ -14,38 +14,16 @@ type LookUpHandler = delegate of string -> unit
 
 module Main =
 
-  (* IrisMsg *)
-
-  type IrisMsg(name') =
-    let mutable name = name'
-  
-    do printfn "name is: %s" name
-  
-    member self.Name
-      with get () = name
-      and  set n  = name <- n
-  
-    override self.ToString () =
-      sprintf "IrisMsg: %s" name
-
-    member self.ToBytes() : byte[] =
-      let pickler = FsPickler.CreateBinarySerializer()
-      pickler.Pickle self
-
-    static member FromBytes(data : byte[]) : IrisMsg =
-      let pickler = FsPickler.CreateBinarySerializer()
-      pickler.UnPickle<IrisMsg> data
-
-  let initialize (msg : byte [])= 
-    let s = IrisMsg.FromBytes msg
-    printfn "%s" <| s.ToString()
- 
   [<EntryPoint>]
   let main argv =
     printfn "starting engine.."
 
-    Environment.SetEnvironmentVariable("VSYNC_UNICAST_ONLY", "true")
-    Environment.SetEnvironmentVariable("VSYNC_HOSTS", "localhost")
+    let options =
+     { VsyncConfig.Default with
+         UnicastOnly = Some(true);
+         Hosts = Some([ "localhost" ]) }
+
+    options.Apply()
     
     VsyncSystem.Start()
 
