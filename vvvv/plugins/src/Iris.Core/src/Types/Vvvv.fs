@@ -57,6 +57,9 @@ module Vvvv =
 
   type AudioConfig =
     { SampleRate : uint32 }
+    with
+      static member Default =
+        { SampleRate = 48000u }
 
   type ViewPort =
     { Id             : Id

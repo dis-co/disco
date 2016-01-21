@@ -36,6 +36,7 @@ module ProjectUtil =
     project.Copyright <- None
     project.LastSaved <- None
     project.Year      <- System.DateTime.Now.Year
+    project.Audio     <- AudioConfig.Default
     project.Vvvv      <- VvvvConfig.Default
     project.Engine    <- VsyncConfig.Default
     project.Timing    <- TimingConfig.Default
@@ -58,10 +59,10 @@ module ProjectUtil =
 
       let project = createProject IrisConfig.Project.Metadata.Name
       project.Path <- Some(path)
-
+      // project.LastSaved <- Some(IrisConfig.Project.Metadata.LastSaved)
+      
       Some(project)
 
-      
 
   let saveProject (project : Project) =
     if Option.isSome project.Path
