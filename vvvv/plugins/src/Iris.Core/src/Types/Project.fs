@@ -1,6 +1,7 @@
 namespace Iris.Core.Types
 
 open System
+open System.IO
 
 [<AutoOpen>]
 [<ReflectedDefinition>]
@@ -14,6 +15,7 @@ module Project =
     [<DefaultValue>] val mutable  Copyright : string   option
     [<DefaultValue>] val mutable  Author    : string   option
     [<DefaultValue>] val mutable  Year      : int
+    [<DefaultValue>] val mutable  Audio     : AudioConfig
     [<DefaultValue>] val mutable  Vvvv      : VvvvConfig
     [<DefaultValue>] val mutable  Engine    : VsyncConfig
     [<DefaultValue>] val mutable  Timing    : TimingConfig
@@ -48,8 +50,18 @@ module ProjectUtil =
       }
     project
   
-  let loadProject (path : FilePath) : Project =
-    failwith "IMPLEMENT ME"
+  let loadProject (path : FilePath) : Project option =
+    if not <| File.Exists(path)
+    then None
+    else
+      IrisConfig.Load(path)
+
+      let project = createProject IrisConfig.Project.Metadata.Name
+      project.Path <- Some(path)
+
+      Some(project)
+
+      
 
   let saveProject (project : Project) =
     if Option.isSome project.Path
@@ -211,6 +223,9 @@ module ProjectUtil =
       IrisConfig.Project.Ports.IrisService <- int (project.Port.Iris)
       IrisConfig.Project.Ports.UDPCues <- int (project.Port.UDPCue)
       IrisConfig.Project.Ports.WebSocket <- int (project.Port.WebSocket)
+
+      // Audio
+      IrisConfig.Project.Audio.SampleRate <- int (project.Audio.SampleRate)
 
       // ViewPorts
       IrisConfig.Project.ViewPorts.Clear()
