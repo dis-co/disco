@@ -23,6 +23,45 @@ Project:
     IrisService:
     UDPCues:
 
+  Engine:
+    AesKey: JlUx4rYQUklINytFjzDre/4GoLA8xwjYnj6cOPgfcaeh8pabcdgb+NP1....
+    DefaultTimeout: default
+    DontCompress: false
+    FastEthernet: false
+    GracefulShutdown: true
+    Hosts: localhost
+    IgnorePartitions: true
+    IgnoreSmallPartitions: true
+    InfiniBand: false
+    Large: false
+    LogDir: Logs
+    Logged: true
+    MCMDReportRate: -1
+    MCRangeHigh: default
+    MCRangeLow: default
+    MaxAsyncMTotal: -1
+    MaxIPMCAddrs: -1
+    MaxMsgLen: -1
+    Mute: false
+    Netmask: default
+    NetworkInterfaces:
+      - lo
+      - enp5s0
+    OOBViaTCP: true
+    Port: -1
+    PortP2P: -1
+    RateLim: false
+    Sigs: false
+    SkipFirstInterface: false
+    Subnet: default
+    TTL: -1
+    TokenDelay: -1
+    UDPChkSum: false
+    UnicastOnly: false
+    UseIPv4: true
+    UseIPv6: false
+    UserDMA: false
+
   Timing:
     Framebase: 50
     Input: Iris Freerun
