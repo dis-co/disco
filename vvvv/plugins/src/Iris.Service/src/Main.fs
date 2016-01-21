@@ -18,16 +18,20 @@ module Main =
   let main argv =
     printfn "starting engine.."
 
-    let options =
-     { VsyncConfig.Default with
-         UnicastOnly = Some(true);
-         Hosts = Some([ "localhost" ]) }
+    let project = createProject "silly me"
+    project.Path <- Some("./project.yml")
+    saveProject project
 
-    options.Apply()
+    // let options =
+    //  { VsyncConfig.Default with
+    //      UnicastOnly = Some(true);
+    //      Hosts = Some([ "localhost" ]) }
+
+    // options.Apply()
     
-    VsyncSystem.Start()
+    // VsyncSystem.Start()
 
-    printfn "done."
+    // printfn "done."
 
     // let pins = new PinGroup("iris.pins")
     // pins.group.Join()
@@ -42,6 +46,6 @@ module Main =
     // pins.Send(PinAction.Add, pin)
     // pins.Dump()
 
-    VsyncSystem.WaitForever()
+    // VsyncSystem.WaitForever()
 
     0

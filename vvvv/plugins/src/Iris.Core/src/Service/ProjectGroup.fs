@@ -96,7 +96,9 @@ module ProjectGroup =
     member self.Dump() =
       match self.project with
         | Some(project) -> 
-          printfn "[project] name=%s path=%s" project.Name project.Path
+          if Option.isSome project.Path
+          then printfn "[project] name=%s path=%s" project.Name (Option.get project.Path)
+          else printfn "[project] name=%s path=<empty>" project.Name
         | None -> 
           printfn "[project] not loaded."
 

@@ -56,11 +56,11 @@
     <Compile Include="src\Types\Cue.fs" />
     <Compile Include="src\Types\CueList.fs" />
     <Compile Include="src\Types\Message.fs" />
-    <Compile Include="src\Types\Project.fs" />
     <Compile Include="src\Types\Vvvv.fs" />
+    <Compile Include="src\Types\VsyncConfig.fs" />
+    <Compile Include="src\Types\IrisConfig.fs" />
+    <Compile Include="src\Types\Project.fs" />
     <Compile Include="src\Serialization.fs" />
-    <Compile Include="src\Service\VsyncConfig.fs" />
-    <Compile Include="src\Service\IrisConfig.fs" />
     <Compile Include="src\Service\Group.fs" />
     <Compile Include="src\Service\PinGroup.fs" />
     <Compile Include="src\Service\CueGroup.fs" />

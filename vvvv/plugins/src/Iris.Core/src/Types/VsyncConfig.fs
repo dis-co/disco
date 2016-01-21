@@ -1,4 +1,4 @@
-namespace Iris.Service
+namespace Iris.Core.Types
 
 /// Configuration type and logic for the Iris service.
 [<AutoOpen>]

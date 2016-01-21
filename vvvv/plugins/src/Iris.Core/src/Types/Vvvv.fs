@@ -20,12 +20,24 @@ module Vvvv =
     { Executables : VvvvExe list
     ; Plugins     : VvvvPlugin list
     }
+    with
+      static member Default =
+        { Executables = List.empty
+        ; Plugins     = List.empty
+        }
 
   type PortConfig =
     { WebSocket : uint32
     ; UDPCue    : uint32
     ; Iris      : uint32
     }
+    with
+      static member Default =
+        { WebSocket = 8080u
+        ; UDPCue    = 8075u
+        ; Iris      = 9090u
+        }
+        
 
   type TimingConfig =
     { Framebase : uint32
@@ -34,6 +46,14 @@ module Vvvv =
     ; UDPPort   : uint32
     ; TCPPort   : uint32
     }
+    with
+      static member Default =
+        { Framebase = 50u
+        ; Input     = "Iris Freerun"
+        ; Servers   = List.empty
+        ; UDPPort   = 8071u
+        ; TCPPort   = 8072u
+        }
 
   type AudioConfig =
     { SampleRate : uint32 }
@@ -93,7 +113,7 @@ module Vvvv =
     ; Task     : Id
     }
 
-  type Group =
+  type HostGroup =
     { Name    : Name
     ; Members : Id list
     }
@@ -101,5 +121,5 @@ module Vvvv =
   type Cluster =
     { Name   : Name
     ; Nodes  : Node list
-    ; Groups : Group list
+    ; Groups : HostGroup list
     }
