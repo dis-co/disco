@@ -6,10 +6,9 @@ module Project =
 
   (* ---------- Project ---------- *)
   type Project =
-    { Id       : Id
-    ; Name     : string
-    ; Path     : FilePath
-    ; Cues     : Cue array
-    ; CueLists : CueList array
+    { Name      : string
+    ; Path      : FilePath
+    ; Copyright : string
+    ; Author    : string
+    ; Year      : uint32
     }
-

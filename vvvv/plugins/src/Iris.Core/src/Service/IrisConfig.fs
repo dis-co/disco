@@ -1,5 +1,6 @@
 namespace Iris.Service
 
+open Iris.Core.Types
 open FSharp.Configuration
 
 [<AutoOpen>]
@@ -174,7 +175,19 @@ Project:
             - Member:
                 NodeId: 1
 """
-    
-  type ConfigFile = YamlConfig<"",false,config>
 
-  let IrisConfig = ConfigFile()
+  type private ConfigFile = YamlConfig<"",false,config>
+
+  let private ConfigHandler = ConfigFile()
+
+  type IrisConfig =
+    { Project   : Project
+    ; Vvvv      : VvvvConfig
+    ; Engine    : VsyncConfig
+    ; Timing    : TimingConfig
+    ; Port      : PortConfig
+    ; ViewPorts : ViewPort list
+    ; Displays  : Display list
+    ; Tasks     : Task list
+    ; Cluster   : Cluster
+    }
