@@ -49,6 +49,7 @@
   <ItemGroup>
     <None Include="paket.references" />
     <None Include="paket.template" />
+    <None Include="assets/example-project.yml" />
     <Compile Include="src\Types\Aliases.fs" />
     <Compile Include="src\Types\IOBox.fs" />
     <Compile Include="src\Types\Patch.fs" />
