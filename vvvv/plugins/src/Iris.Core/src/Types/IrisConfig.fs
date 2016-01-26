@@ -12,7 +12,7 @@ Project:
     Copyright: NSYNK
     Author: Karsten Gebbert
     Name: Template Project
-    LastSaved: 
+    LastSaved:
 
   VVVV: 
     Executables: 
@@ -110,8 +110,7 @@ Project:
   Tasks:
     - Id: 
       Description: 
-      Render:
-        DisplayId: 
+      DisplayId: 
       AudioStream: 
       Arguments:
         - Key: 

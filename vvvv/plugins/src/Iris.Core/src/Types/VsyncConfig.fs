@@ -6,10 +6,10 @@ module VsyncConfig =
 
   /// internal model wrap multiple option types
   type private vsyncopt =
-    | VsInt  of uint32       option
-    | VsStr  of string       option
-    | VsBool of bool         option
-    | VsList of List<string> option
+    | VsInt  of uint32      option
+    | VsStr  of string      option
+    | VsBool of bool        option
+    | VsList of string list option
 
   /// check whether the wrapped inner type is a Some
   let inline private isSome (v : vsyncopt) : bool =
@@ -26,41 +26,41 @@ module VsyncConfig =
 
   /// Vsync engine-specific configuration options record
   type VsyncConfig =
-    { AesKey                : string       option /// AesKey yeah!
-    ; DefaultTimeout        : uint32       option
-    ; DontCompress          : bool         option
-    ; FastEthernet          : bool         option 
-    ; GracefulShutdown      : bool         option 
-    ; Hosts                 : List<string> option
-    ; IgnorePartitions      : bool         option 
-    ; IgnoreSmallPartitions : bool         option 
-    ; InfiniBand            : bool         option
-    ; Large                 : bool         option
-    ; LogDir                : string       option
-    ; Logged                : bool         option
-    ; MCMDReportRate        : uint32       option
-    ; MCRangeHigh           : string       option
-    ; MCRangeLow            : string       option
-    ; MaxAsyncMTotal        : uint32       option
-    ; MaxIPMCAddrs          : uint32       option
-    ; MaxMsgLen             : uint32       option
-    ; Mute                  : bool         option
-    ; Netmask               : string       option
-    ; NetworkInterfaces     : List<string> option
-    ; OOBViaTCP             : bool         option
-    ; Port                  : uint32       option
-    ; PortP2P               : uint32       option
-    ; RateLim               : uint32       option
-    ; Sigs                  : bool         option
-    ; SkipFirstInterface    : bool         option
-    ; Subnet                : string       option
-    ; TTL                   : uint32       option
-    ; TokenDelay            : uint32       option
-    ; UDPChkSum             : bool         option 
-    ; UnicastOnly           : bool         option
-    ; UseIPv4               : bool         option
-    ; UseIPv6               : bool         option
-    ; UserDMA               : bool         option
+    { AesKey                : string      option /// AesKey yeah!
+    ; DefaultTimeout        : uint32      option
+    ; DontCompress          : bool        option
+    ; FastEthernet          : bool        option 
+    ; GracefulShutdown      : bool        option 
+    ; Hosts                 : string list option
+    ; IgnorePartitions      : bool        option 
+    ; IgnoreSmallPartitions : bool        option 
+    ; InfiniBand            : bool        option
+    ; Large                 : bool        option
+    ; LogDir                : string      option
+    ; Logged                : bool        option
+    ; MCMDReportRate        : uint32      option
+    ; MCRangeHigh           : string      option
+    ; MCRangeLow            : string      option
+    ; MaxAsyncMTotal        : uint32      option
+    ; MaxIPMCAddrs          : uint32      option
+    ; MaxMsgLen             : uint32      option
+    ; Mute                  : bool        option
+    ; Netmask               : string      option
+    ; NetworkInterfaces     : string list option
+    ; OOBViaTCP             : bool        option
+    ; Port                  : uint32      option
+    ; PortP2P               : uint32      option
+    ; RateLim               : uint32      option
+    ; Sigs                  : bool        option
+    ; SkipFirstInterface    : bool        option
+    ; Subnet                : string      option
+    ; TTL                   : uint32      option
+    ; TokenDelay            : uint32      option
+    ; UDPChkSum             : bool        option 
+    ; UnicastOnly           : bool        option
+    ; UseIPv4               : bool        option
+    ; UseIPv6               : bool        option
+    ; UserDMA               : bool        option
     }
     with
 
