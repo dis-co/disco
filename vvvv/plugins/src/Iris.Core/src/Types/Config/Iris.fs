@@ -3,7 +3,7 @@ namespace Iris.Core.Types.Config
 open FSharp.Configuration
 
 [<AutoOpen>]
-module internal Iris =
+module Iris =
   
   [<Literal>]
   let private config = """
@@ -131,6 +131,6 @@ Project:
           - 
 """
 
-  type internal ConfigFile = YamlConfig<"",false,config>
+  type ConfigFile = YamlConfig<"",false,config>
 
-  let internal IrisConfig = ConfigFile()
+  let IrisConfig = ConfigFile()
