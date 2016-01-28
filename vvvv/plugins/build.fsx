@@ -48,9 +48,6 @@ let tags = "cool funky special shiny"
 // File system information 
 let solutionFile  = "Iris.sln"
 
-// Pattern specifying assemblies to be tested using NUnit
-let testAssemblies = "tests/**/bin/Release/*Tests*.dll"
-
 // Git configuration (used for publishing documentation in gh-pages branch)
 // The profile where the project is posted
 let gitOwner = "krgn" 
@@ -145,18 +142,6 @@ Target "Build" (fun _ ->
     |> MSBuildRelease "" "Rebuild"
     // |> BuildFrontEnd 
     |> ignore
-)
-
-// --------------------------------------------------------------------------------------
-// Run the unit tests using test runner
-
-Target "RunTests" (fun _ ->
-    !! testAssemblies
-    |> NUnit (fun p ->
-        { p with
-            DisableShadowCopy = true
-            TimeOut = TimeSpan.FromMinutes 20.
-            OutputFile = "TestResults.xml" })
 )
 
 #if MONO
@@ -353,7 +338,6 @@ Target "All" DoNothing
   ==> "AssemblyInfo"
   ==> "Build"
   ==> "CopyBinaries"
-  ==> "RunTests"
   //==> "GenerateReferenceDocs"
   //==> "GenerateDocs"
   ==> "All"
