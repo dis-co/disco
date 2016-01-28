@@ -1,8 +1,8 @@
-namespace Iris.Core.Types
+namespace Iris.Core.Types.Config
 
 /// Configuration type and logic for the Iris service.
 [<AutoOpen>]
-module VsyncConfig =
+module Vsync =
 
   /// internal model wrap multiple option types
   type private vsyncopt =

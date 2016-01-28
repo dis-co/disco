@@ -4,6 +4,7 @@ open System
 open System.IO
 open System.Linq
 open System.Collections.Generic
+open Iris.Core.Types.Config
 
 [<AutoOpen>]
 [<ReflectedDefinition>]

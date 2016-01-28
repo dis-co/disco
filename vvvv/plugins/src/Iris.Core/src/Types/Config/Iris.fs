@@ -1,8 +1,9 @@
-namespace Iris.Core.Types
+namespace Iris.Core.Types.Config
+
 open FSharp.Configuration
 
 [<AutoOpen>]
-module internal IrisConfig =
+module internal Iris =
   
   [<Literal>]
   let private config = """

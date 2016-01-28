@@ -1,4 +1,6 @@
-namespace Iris.Core.Types
+namespace Iris.Core.Types.Config
+
+open Iris.Core.Types
 
 /// Models 
 [<AutoOpen>]
@@ -38,7 +40,6 @@ module Vvvv =
         ; Iris      = 9090u
         }
         
-
   type TimingConfig =
     { Framebase : uint32
     ; Input     : string
