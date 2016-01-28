@@ -3,8 +3,6 @@ source https://nuget.org/api/v2
 nuget FSharp.Core
 nuget FSharp.Formatting
 nuget FSharp.Configuration
-nuget NUnit 
-nuget NUnit.Runners
 nuget FAKE
 nuget SourceLink.Fake
 nuget Suave
@@ -14,5 +12,7 @@ nuget LibGit2Sharp.NativeBinaries
 nuget WebSharper
 nuget FsPickler
 nuget FsPickler.Json
+nuget Fuchu
+nuget FsCheck
 
 github fsharp/FAKE modules/Octokit/Octokit.fsx

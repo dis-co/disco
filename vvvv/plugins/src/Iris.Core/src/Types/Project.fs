@@ -32,6 +32,8 @@ module Project =
 [<AutoOpen>]
 /// utility functions only needed in native code
 module ProjectUtil =
+  let private IrisExt = ".iris"
+
   //    ____                _       
   //   / ___|_ __ ___  __ _| |_ ___ 
   //  | |   | '__/ _ \/ _` | __/ _ \
@@ -346,4 +348,5 @@ module ProjectUtil =
         IrisConfig.Project.Cluster.Groups.Add(g)
 
       // finally save everything!
-      IrisConfig.Save(Option.get project.Path)
+      let destPath = Path.Combine(Option.get project.Path, project.Name + IrisExt)
+      IrisConfig.Save(destPath)

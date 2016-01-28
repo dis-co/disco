@@ -17,7 +17,7 @@ module Util =
     else None
 
   let private getOptUInt (t : string) : uint32 option =
-    if t.Length >= 0
+    if t.Length > 0
     then Some(UInt32.Parse(t))
     else None
 
