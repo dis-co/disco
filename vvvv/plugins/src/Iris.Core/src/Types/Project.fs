@@ -79,7 +79,7 @@ module ProjectUtil =
       let Meta = IrisConfig.Project.Metadata
 
       let project = createProject Meta.Name
-      project.Path <- Some(path)
+      project.Path      <- Some(Path.GetDirectoryName(path))
       project.LastSaved <- Some(DateTime.Parse(Meta.LastSaved))
       project.Copyright <- Some(Meta.Copyright)
       project.Author    <- Some(Meta.Author)
