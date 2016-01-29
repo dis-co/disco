@@ -64,76 +64,76 @@ module Vsync =
     }
     with
       override self.ToString() =
-        sprintf "AesKey                : %s
-                 DefaultTimeout        : %s
-                 DontCompress          : %s
-                 FastEthernet          : %s
-                 GracefulShutdown      : %s
-                 Hosts                 : %s
-                 IgnorePartitions      : %s
-                 IgnoreSmallPartitions : %s
-                 InfiniBand            : %s
-                 Large                 : %s
-                 LogDir                : %s
-                 Logged                : %s
-                 MCMDReportRate        : %s
-                 MCRangeHigh           : %s
-                 MCRangeLow            : %s
-                 MaxAsyncMTotal        : %s
-                 MaxIPMCAddrs          : %s
-                 MaxMsgLen             : %s
-                 Mute                  : %s
-                 Netmask               : %s
-                 NetworkInterfaces     : %s
-                 OOBViaTCP             : %s
-                 Port                  : %s
-                 PortP2P               : %s
-                 RateLim               : %s
-                 Sigs                  : %s
-                 SkipFirstInterface    : %s
-                 Subnet                : %s
-                 TTL                   : %s
-                 TokenDelay            : %s
-                 UDPChkSum             : %s
-                 UnicastOnly           : %s
-                 UseIPv4               : %s
-                 UseIPv6               : %s
-                 UserDMA               : %s"
-                 (self.AesKey.ToString())
-                 (self.DefaultTimeout.ToString())
-                 (self.DontCompress.ToString())
-                 (self.FastEthernet.ToString())
-                 (self.GracefulShutdown.ToString())
-                 (self.Hosts.ToString())
-                 (self.IgnorePartitions.ToString())
-                 (self.IgnoreSmallPartitions.ToString())
-                 (self.InfiniBand.ToString())
-                 (self.Large.ToString())
-                 (self.LogDir.ToString())
-                 (self.Logged.ToString())
-                 (self.MCMDReportRate.ToString())
-                 (self.MCRangeHigh.ToString())
-                 (self.MCRangeLow.ToString())
-                 (self.MaxAsyncMTotal.ToString())
-                 (self.MaxIPMCAddrs.ToString())
-                 (self.MaxMsgLen.ToString())
-                 (self.Mute.ToString())
-                 (self.Netmask.ToString())
-                 (self.NetworkInterfaces.ToString())
-                 (self.OOBViaTCP.ToString())
-                 (self.Port.ToString())
-                 (self.PortP2P.ToString())
-                 (self.RateLim.ToString())
-                 (self.Sigs.ToString())
-                 (self.SkipFirstInterface.ToString())
-                 (self.Subnet.ToString())
-                 (self.TTL.ToString())
-                 (self.TokenDelay.ToString())
-                 (self.UDPChkSum.ToString())
-                 (self.UnicastOnly.ToString())
-                 (self.UseIPv4.ToString())
-                 (self.UseIPv6.ToString())
-                 (self.UserDMA.ToString())
+        sprintf "AesKey                : %A
+                 DefaultTimeout        : %A
+                 DontCompress          : %A
+                 FastEthernet          : %A
+                 GracefulShutdown      : %A
+                 Hosts                 : %A
+                 IgnorePartitions      : %A
+                 IgnoreSmallPartitions : %A
+                 InfiniBand            : %A
+                 Large                 : %A
+                 LogDir                : %A
+                 Logged                : %A
+                 MCMDReportRate        : %A
+                 MCRangeHigh           : %A
+                 MCRangeLow            : %A
+                 MaxAsyncMTotal        : %A
+                 MaxIPMCAddrs          : %A
+                 MaxMsgLen             : %A
+                 Mute                  : %A
+                 Netmask               : %A
+                 NetworkInterfaces     : %A
+                 OOBViaTCP             : %A
+                 Port                  : %A
+                 PortP2P               : %A
+                 RateLim               : %A
+                 Sigs                  : %A
+                 SkipFirstInterface    : %A
+                 Subnet                : %A
+                 TTL                   : %A
+                 TokenDelay            : %A
+                 UDPChkSum             : %A
+                 UnicastOnly           : %A
+                 UseIPv4               : %A
+                 UseIPv6               : %A
+                 UserDMA               : %A"
+                 self.AesKey
+                 self.DefaultTimeout
+                 self.DontCompress
+                 self.FastEthernet
+                 self.GracefulShutdown
+                 self.Hosts
+                 self.IgnorePartitions
+                 self.IgnoreSmallPartitions
+                 self.InfiniBand
+                 self.Large
+                 self.LogDir
+                 self.Logged
+                 self.MCMDReportRate
+                 self.MCRangeHigh
+                 self.MCRangeLow
+                 self.MaxAsyncMTotal
+                 self.MaxIPMCAddrs
+                 self.MaxMsgLen
+                 self.Mute
+                 self.Netmask
+                 self.NetworkInterfaces
+                 self.OOBViaTCP
+                 self.Port
+                 self.PortP2P
+                 self.RateLim
+                 self.Sigs
+                 self.SkipFirstInterface
+                 self.Subnet
+                 self.TTL
+                 self.TokenDelay
+                 self.UDPChkSum
+                 self.UnicastOnly
+                 self.UseIPv4
+                 self.UseIPv6
+                 self.UserDMA
 
 
       /// Default configuration options
