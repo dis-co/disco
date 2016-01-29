@@ -36,6 +36,10 @@ module Util =
   let private parseRect (str : string) : Rect = parseTuple str
   let private parseCoordinate (str : string) : Coordinate = parseTuple str
 
+  let private reverse (lst : 'a list) : 'a list =
+    let reverser acc elm = List.concat [[elm]; acc]
+    List.fold reverser List.empty lst
+
   let parseStringProp (str : string) : string option =
     if str.Length > 0
     then Some(str)
@@ -79,8 +83,8 @@ module Util =
     for plg in cfg.Project.VVVV.Plugins do
       plugs := ((ctop plg) :: !plugs)
 
-    { Executables = !exes
-    ; Plugins     = !plugs
+    { Executables = reverse !exes
+    ; Plugins     = reverse !plugs
     }
 
   //  __     __
@@ -103,13 +107,21 @@ module Util =
         let hosts' = !hosts
         match hosts' with
           | Some(list) -> hosts := Some(host :: list)
-          | _ -> hosts := Some([ host ])
+          | _          -> hosts := Some([ host ])
+
+    match !hosts with
+      | Some(list) -> hosts := Some(reverse list)
+      | None       -> hosts := None
 
     for iface in cfg.Project.Engine.NetworkInterfaces do
       let ifaces' = !ifaces
       match ifaces' with
         | Some(list) -> ifaces := Some(iface :: list)
-        | _ -> ifaces := Some([ iface ])
+        | _          -> ifaces := Some([ iface ])
+
+    match !ifaces with
+      | Some(list) -> ifaces := Some(reverse list)
+      | None       -> ifaces := None
 
     { AesKey                = getOptStr eng.AesKey
     ; DefaultTimeout        = getOptUInt eng.DefaultTimeout
@@ -164,7 +176,7 @@ module Util =
 
     { Framebase = uint32 cnf.Project.Timing.Framebase
     ; Input     = cnf.Project.Timing.Input
-    ; Servers   = !servers
+    ; Servers   = reverse !servers
     ; UDPPort   = uint32 cnf.Project.Timing.UDPPort
     ; TCPPort   = uint32 cnf.Project.Timing.TCPPort
     }
@@ -205,7 +217,7 @@ module Util =
         }
       vports := (viewport' :: !vports)
 
-    !vports
+    reverse !vports
 
   //   ____  _           _
   //  |  _ \(_)___ _ __ | | __ _ _   _ ___
@@ -244,15 +256,15 @@ module Util =
         { Id        = display.Id
         ; Name      = display.Name
         ; Size      = parseRect display.Size
-        ; Signals   = !signals
+        ; Signals   = reverse !signals
         ; RegionMap =
           { SrcViewportId = display.RegionMap.SrcViewportId
-          ; Regions       = !regions
+          ; Regions       = reverse !regions
           }
         }
       displays := (display' :: !displays)
 
-    !displays
+    reverse !displays
 
   //   _____         _
   //  |_   _|_ _ ___| | _____
@@ -268,7 +280,8 @@ module Util =
       let arguments : Argument list ref = ref List.empty
 
       for argument in task.Arguments do
-        arguments := ((argument.Key, argument.Value) :: !arguments)
+        if (argument.Key.Length > 0) && (argument.Value.Length > 0)
+        then arguments := ((argument.Key, argument.Value) :: !arguments)
 
       let task' =
         { Id          = task.Id
@@ -279,7 +292,7 @@ module Util =
         }
       tasks := (task' :: !tasks)
 
-    !tasks
+    reverse !tasks
 
   //    ____ _           _
   //   / ___| |_   _ ___| |_ ___ _ __
@@ -302,19 +315,21 @@ module Util =
       nodes := (node' :: !nodes)
 
     for group in cfg.Project.Cluster.Groups do
-      let ids : Id list ref = ref List.empty
+      if group.Name.Length > 0
+      then 
+        let ids : Id list ref = ref List.empty
 
-      for id in group.Members do
-        ids := (id :: !ids)
+        for mid in group.Members do
+          if mid.Length > 0
+          then ids := (mid :: !ids)
 
-      let group' =
-        { Name    = group.Name
-        ; Members = !ids
-        }
-
-      groups := (group' :: !groups)
+        let group' =
+          { Name    = group.Name
+          ; Members = !ids
+          }
+        groups := (group' :: !groups)
 
     { Name   = cfg.Project.Cluster.Name
-    ; Nodes  = !nodes
-    ; Groups = !groups
+    ; Nodes  = reverse !nodes
+    ; Groups = reverse !groups
     }

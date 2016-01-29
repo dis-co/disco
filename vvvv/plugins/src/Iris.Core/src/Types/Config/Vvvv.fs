@@ -116,14 +116,41 @@ module Vvvv =
     ; Ip       : IP
     ; Task     : Id
     }
+    with
+      override self.ToString() =
+        sprintf "Node:
+                 Id: %A
+                 HostName: %A
+                 Ip: %A
+                 Task: %A"
+                self.Id
+                self.HostName
+                self.Ip
+                self.Task
 
   type HostGroup =
     { Name    : Name
     ; Members : Id list
     }
+    with
+      override self.ToString() =
+        sprintf "HostGroup:
+                 Name: %A
+                 Members: %A"
+                self.Name
+                (List.fold (fun m s -> m + " " + s) "" self.Members)
 
   type Cluster =
     { Name   : Name
     ; Nodes  : Node list
     ; Groups : HostGroup list
     }
+    with 
+      override self.ToString() =
+        sprintf "Cluster:
+                 Name: %A
+                 Nodes: %A
+                 Groups: %A"
+                self.Name
+                self.Nodes
+                self.Groups
