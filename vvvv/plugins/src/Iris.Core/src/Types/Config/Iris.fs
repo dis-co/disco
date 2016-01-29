@@ -10,22 +10,19 @@ module Iris =
 Project:
   Metadata: 
     Year: 2016
-    Copyright: NSYNK
-    Author: Karsten Gebbert
-    Name: Template Project
+    Copyright: 
+    Author: 
+    Name: 
     LastSaved:
 
   VVVV: 
     Executables: 
-      - Path: ..\..\vvvv\vvvv.exe
-        Version: 33.7x_86
-        Required: true
-      - Path: ..\..\vvvv\vvvv.exe
-        Version: 33.7x_64
+      - Path: 
+        Version: 
         Required: true
     Plugins:
-      - Name: iris
-        Path: ..\..\Iris\Nodes
+      - Name: 
+        Path: 
 
   Ports:
     WebSocket:   -1
@@ -39,12 +36,12 @@ Project:
     FastEthernet: false
     GracefulShutdown: true
     Hosts:
-      - localhost
+      - 
     IgnorePartitions: true
     IgnoreSmallPartitions: true
     InfiniBand: false
     Large: false
-    LogDir: Logs
+    LogDir: 
     Logged: true
     MCMDReportRate: -1
     MCRangeHigh:
@@ -55,7 +52,7 @@ Project:
     Mute: false
     Netmask:
     NetworkInterfaces:
-      - lo
+      - 
     OOBViaTCP: true
     Port: -1
     PortP2P: -1
