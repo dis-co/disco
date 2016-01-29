@@ -63,8 +63,10 @@ module Vsync =
     ; UserDMA               : bool        option
     }
     with
+
       override self.ToString() =
-        sprintf "AesKey                : %A
+        sprintf "
+                 AesKey                : %A
                  DefaultTimeout        : %A
                  DontCompress          : %A
                  FastEthernet          : %A
@@ -140,39 +142,39 @@ module Vsync =
       static member Default =
         { AesKey                = None
         ; DefaultTimeout        = None
-        ; DontCompress          = None
-        ; FastEthernet          = None
-        ; GracefulShutdown      = None
+        ; DontCompress          = Some false
+        ; FastEthernet          = Some false
+        ; GracefulShutdown      = Some true
         ; Hosts                 = None
-        ; IgnorePartitions      = None
-        ; IgnoreSmallPartitions = None
-        ; InfiniBand            = None
-        ; Large                 = None
+        ; IgnorePartitions      = Some true
+        ; IgnoreSmallPartitions = Some true
+        ; InfiniBand            = Some false
+        ; Large                 = Some false
         ; LogDir                = None 
-        ; Logged                = None
+        ; Logged                = Some true
         ; MCMDReportRate        = None
         ; MCRangeHigh           = None
         ; MCRangeLow            = None
         ; MaxAsyncMTotal        = None
         ; MaxIPMCAddrs          = None
         ; MaxMsgLen             = None
-        ; Mute                  = None
+        ; Mute                  = Some false
         ; Netmask               = None
         ; NetworkInterfaces     = None
-        ; OOBViaTCP             = None
+        ; OOBViaTCP             = Some true
         ; Port                  = None
         ; PortP2P               = None
         ; RateLim               = None
-        ; Sigs                  = None
-        ; SkipFirstInterface    = None
+        ; Sigs                  = Some false
+        ; SkipFirstInterface    = Some false
         ; Subnet                = None
         ; TTL                   = None
         ; TokenDelay            = None
-        ; UDPChkSum             = None
-        ; UnicastOnly           = None
-        ; UseIPv4               = None
-        ; UseIPv6               = None
-        ; UserDMA               = None
+        ; UDPChkSum             = Some false
+        ; UnicastOnly           = Some false
+        ; UseIPv4               = Some true
+        ; UseIPv6               = Some false
+        ; UserDMA               = Some false
         }
 
       /// Apply all configuration options to current environment

@@ -93,10 +93,12 @@ module Util =
     let hosts  : string list option ref = ref None
 
     for host in cfg.Project.Engine.Hosts do
-      let hosts' = !hosts
-      match hosts' with
-        | Some(list) -> hosts := Some(host :: list)
-        | _ -> hosts := Some([ host ])
+      if host.Length > 0 
+      then
+        let hosts' = !hosts
+        match hosts' with
+          | Some(list) -> hosts := Some(host :: list)
+          | _ -> hosts := Some([ host ])
 
     for iface in cfg.Project.Engine.NetworkInterfaces do
       let ifaces' = !ifaces
