@@ -28,6 +28,28 @@ module Project =
     [<DefaultValue>] val mutable  Tasks     : Task list
     [<DefaultValue>] val mutable  Cluster   : Cluster
 
+    override self.GetHashCode() =
+      hash self
+
+    override self.Equals(other) =
+      match other with
+        | :? Project as p ->
+          (p.Name      = self.Name)      &&
+          (p.Path      = self.Path)      &&
+          (p.LastSaved = self.LastSaved) &&
+          (p.Copyright = self.Copyright) &&
+          (p.Author    = self.Author)    &&
+          (p.Year      = self.Year)      &&
+          (p.Audio     = self.Audio)     &&
+          (p.Vvvv      = self.Vvvv)      &&
+          (p.Engine    = self.Engine)    &&
+          (p.Timing    = self.Timing)    &&
+          (p.Port      = self.Port)      &&
+          (p.ViewPorts = self.ViewPorts) &&
+          (p.Displays  = self.Displays)  &&
+          (p.Tasks     = self.Tasks)     &&
+          (p.Cluster   = self.Cluster)
+        | _ -> false
 
 [<AutoOpen>]
 /// utility functions only needed in native code
@@ -78,11 +100,20 @@ module ProjectUtil =
 
       let Meta = IrisConfig.Project.Metadata
 
+      let date =
+        if Meta.LastSaved.Length > 0
+        then
+          try
+            Some(DateTime.Parse(Meta.LastSaved))
+          with
+            | _ -> None
+        else None
+
       let project = createProject Meta.Name
       project.Path      <- Some(Path.GetDirectoryName(path))
-      project.LastSaved <- Some(DateTime.Parse(Meta.LastSaved))
-      project.Copyright <- Some(Meta.Copyright)
-      project.Author    <- Some(Meta.Author)
+      project.LastSaved <- date
+      project.Copyright <- parseStringProp Meta.Copyright
+      project.Author    <- parseStringProp Meta.Author
       project.Year      <- Meta.Year
       project.Audio     <- parseAudioCfg  IrisConfig
       project.Vvvv      <- parseVvvvCfg   IrisConfig

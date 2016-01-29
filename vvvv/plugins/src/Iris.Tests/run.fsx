@@ -1,8 +1,5 @@
 #I @"./bin/Debug/"
 #r @"./bin/Debug/SharpYaml.dll"
-#r @"./bin/Debug/WebSharper.Core.JavaScript.dll"
-#r @"./bin/Debug/WebSharper.JavaScript.dll"
-#r @"./bin/Debug/WebSharper.Core.dll"
 #r @"./bin/Debug/FsCheck.dll"
 #r @"./bin/Debug/FsPickler.dll"
 #r @"./bin/Debug/Vsync.dll"

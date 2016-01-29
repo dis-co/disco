@@ -36,6 +36,11 @@ module Util =
   let private parseRect (str : string) : Rect = parseTuple str
   let private parseCoordinate (str : string) : Coordinate = parseTuple str
 
+  let parseStringProp (str : string) : string option =
+    if str.Length > 0
+    then Some(str)
+    else None
+
   //      _             _ _
   //     / \  _   _  __| (_) ___
   //    / _ \| | | |/ _` | |/ _ \
