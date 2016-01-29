@@ -64,12 +64,12 @@ module ProjectUtil =
         (Directory.Exists <| Path.Combine(path, ".git"))
       | _ -> false
 
-  //    ____                _       
-  //   / ___|_ __ ___  __ _| |_ ___ 
+  //    ____                _
+  //   / ___|_ __ ___  __ _| |_ ___
   //  | |   | '__/ _ \/ _` | __/ _ \
   //  | |___| | |  __/ (_| | ||  __/
   //   \____|_|  \___|\__,_|\__\___|
-  //                                
+  //
   /// Create a new project
   let createProject(name : string) : Project =
     let project = new Project()
@@ -93,12 +93,12 @@ module ProjectUtil =
       }
     project
 
-  //   _                    _ 
+  //   _                    _
   //  | |    ___   __ _  __| |
   //  | |   / _ \ / _` |/ _` |
   //  | |__| (_) | (_| | (_| |
   //  |_____\___/ \__,_|\__,_|
-  //                          
+  //
   /// Load a Project from Disk
   let loadProject (path : FilePath) : Project option =
     if not <| File.Exists(path)
@@ -135,12 +135,12 @@ module ProjectUtil =
 
       Some(project)
 
-  //   ____                  
-  //  / ___|  __ ___   _____ 
+  //   ____
+  //  / ___|  __ ___   _____
   //  \___ \ / _` \ \ / / _ \
   //   ___) | (_| |\ V /  __/
   //  |____/ \__,_| \_/ \___|
-  //                         
+  //
   /// Save a Project to Disk
   let saveProject (project : Project) =
     if Option.isSome project.Path
