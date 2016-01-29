@@ -11,4 +11,16 @@
 open Fuchu
 open Iris.Tests.Project
 
+
+(*
+   Working with libgit2 native libraries:
+   
+   - see ldd bin/Debug/NativeBinaries/linux/amd64/libgit...so for dependencies
+   - set MONO_LOG_LEVEL=debug for more VM info
+   - ln -s bin/Debug/NativeBinaries bin/Debug/libNativeBinaries
+   - set LD_LIBRARY_PATH=....:/run/current-system/sw/lib/ 
+
+   now it *should* work. YMMV.
+*)
+
 run configTests

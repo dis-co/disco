@@ -5,6 +5,7 @@ open System.IO
 open System.Linq
 open System.Collections.Generic
 open Iris.Core.Types.Config
+open LibGit2Sharp
 
 [<AutoOpen>]
 [<ReflectedDefinition>]
@@ -55,6 +56,13 @@ module Project =
 /// utility functions only needed in native code
 module ProjectUtil =
   let private IrisExt = ".iris"
+
+  let projectSaved (p : Project) =
+    match p.Path with
+      | Some(path) ->
+        (Directory.Exists path) &&
+        (Directory.Exists <| Path.Combine(path, ".git"))
+      | _ -> false
 
   //    ____                _       
   //   / ___|_ __ ___  __ _| |_ ___ 
@@ -137,6 +145,13 @@ module ProjectUtil =
   let saveProject (project : Project) =
     if Option.isSome project.Path
     then
+      Directory.CreateDirectory (Option.get project.Path) |> ignore
+
+      if not <| projectSaved project
+      then
+        let res = Repository.Init(Option.get project.Path)
+        printfn "result: %s" res
+
       // Project metadata
       IrisConfig.Project.Metadata.Name <- project.Name
 

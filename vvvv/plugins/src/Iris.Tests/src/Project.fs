@@ -18,8 +18,6 @@ module Project =
         let name = "test"
         let path = "./tmp"
 
-        Directory.CreateDirectory path |> ignore
-
         let project = createProject name
         project.Path <- Some(path)
         saveProject project
@@ -203,8 +201,6 @@ module Project =
           ; Groups = [ groupA; groupB ]
           }
 
-        Directory.CreateDirectory path |> ignore
-
         let project = createProject name
         project.Path <- Some(path)
 
@@ -228,9 +224,36 @@ module Project =
 
         Assert.Equal("Projects should be structurally equal", true, (project = project'))
 
+  //    ____ _ _   
+  //   / ___(_) |_ 
+  //  | |  _| | __|
+  //  | |_| | | |_ 
+  //   \____|_|\__| initialzation
+  //               
+  let createInitsGit =
+    testCase "Saved Project should be a git repository with yaml file." <|
+      fun _ ->
+        let name = "test"
+        let path = "./tmp"
+
+        if Directory.Exists path
+        then Directory.Delete(path, true) |> ignore
+
+        let project = createProject name
+        project.Path <- Some(path)
+        saveProject project
+
+        Assert.Equal("Projects should be a folder", true, Directory.Exists path)
+        Assert.Equal("Projects should be a git repo", true, Directory.Exists    (path + "/.git"))
+        Assert.Equal("Projects should have project yml", true, File.Exists (path + "/" + name + ".iris"))
+        Assert.Equal("Projects should not be dirty", true, false)
+        Assert.Equal("Projects should have one initial commit", true, false)
+
+  
   [<Tests>]
   let configTests =
     testList "Config tests" [
         loadSaveTest
         testCustomizedCfg
+        createInitsGit
       ]
