@@ -60,6 +60,7 @@
     <Compile Include="src\Types\Config\Vsync.fs" />
     <Compile Include="src\Types\Config\Iris.fs" />
     <Compile Include="src\Types\Config\Util.fs" />
+    <Compile Include="src\Types\Config\Config.fs" />
     <Compile Include="src\Types\Project.fs" />
     <Compile Include="src\Serialization.fs" />
     <Compile Include="src\Service\Group.fs" />

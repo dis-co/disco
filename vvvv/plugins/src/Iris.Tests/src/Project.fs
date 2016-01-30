@@ -204,14 +204,16 @@ module Project =
         let project = createProject name
         project.Path <- Some(path)
 
-        project.Engine <- engineCfg
-        project.Port   <- portCfg
-        project.Vvvv   <- vvvvCfg
-        
-        project.ViewPorts <- [ viewPort1; viewPort2 ]
-        project.Displays  <- [ display1;  display2  ]
-        project.Tasks     <- [ task1;     task2     ]
-        project.Cluster   <- cluster
+        project.Config <-
+          { project.Config with
+              Engine    = engineCfg
+              Port      = portCfg
+              Vvvv      = vvvvCfg
+              ViewPorts = [ viewPort1; viewPort2 ]
+              Displays  = [ display1;  display2  ]
+              Tasks     = [ task1;     task2     ]
+              Cluster   = cluster
+          }
 
         saveProject project
 

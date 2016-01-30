@@ -19,15 +19,7 @@ module Project =
     [<DefaultValue>] val mutable  Copyright : string   option
     [<DefaultValue>] val mutable  Author    : string   option
     [<DefaultValue>] val mutable  Year      : int
-    [<DefaultValue>] val mutable  Audio     : AudioConfig
-    [<DefaultValue>] val mutable  Vvvv      : VvvvConfig
-    [<DefaultValue>] val mutable  Engine    : VsyncConfig
-    [<DefaultValue>] val mutable  Timing    : TimingConfig
-    [<DefaultValue>] val mutable  Port      : PortConfig
-    [<DefaultValue>] val mutable  ViewPorts : ViewPort list
-    [<DefaultValue>] val mutable  Displays  : Display list
-    [<DefaultValue>] val mutable  Tasks     : Task list
-    [<DefaultValue>] val mutable  Cluster   : Cluster
+    [<DefaultValue>] val mutable  Config    : Config
 
     override self.GetHashCode() =
       hash self
@@ -35,21 +27,21 @@ module Project =
     override self.Equals(other) =
       match other with
         | :? Project as p ->
-          (p.Name      = self.Name)      &&
-          (p.Path      = self.Path)      &&
-          (p.LastSaved = self.LastSaved) &&
-          (p.Copyright = self.Copyright) &&
-          (p.Author    = self.Author)    &&
-          (p.Year      = self.Year)      &&
-          (p.Audio     = self.Audio)     &&
-          (p.Vvvv      = self.Vvvv)      &&
-          (p.Engine    = self.Engine)    &&
-          (p.Timing    = self.Timing)    &&
-          (p.Port      = self.Port)      &&
-          (p.ViewPorts = self.ViewPorts) &&
-          (p.Displays  = self.Displays)  &&
-          (p.Tasks     = self.Tasks)     &&
-          (p.Cluster   = self.Cluster)
+          (p.Name             = self.Name)             &&
+          (p.Path             = self.Path)             &&
+          (p.LastSaved        = self.LastSaved)        &&
+          (p.Copyright        = self.Copyright)        &&
+          (p.Author           = self.Author)           &&
+          (p.Year             = self.Year)             &&
+          (p.Config.Audio     = self.Config.Audio)     &&
+          (p.Config.Vvvv      = self.Config.Vvvv)      &&
+          (p.Config.Engine    = self.Config.Engine)    &&
+          (p.Config.Timing    = self.Config.Timing)    &&
+          (p.Config.Port      = self.Config.Port)      &&
+          (p.Config.ViewPorts = self.Config.ViewPorts) &&
+          (p.Config.Displays  = self.Config.Displays)  &&
+          (p.Config.Tasks     = self.Config.Tasks)     &&
+          (p.Config.Cluster   = self.Config.Cluster)
         | _ -> false
 
 [<AutoOpen>]
@@ -78,18 +70,20 @@ module ProjectUtil =
     project.Copyright <- None
     project.LastSaved <- None
     project.Year      <- System.DateTime.Now.Year
-    project.Audio     <- AudioConfig.Default
-    project.Vvvv      <- VvvvConfig.Default
-    project.Engine    <- VsyncConfig.Default
-    project.Timing    <- TimingConfig.Default
-    project.Port      <- PortConfig.Default
-    project.ViewPorts <- List.empty
-    project.Displays  <- List.empty
-    project.Tasks     <- List.empty
-    project.Cluster   <- {
-      Name   = name + " cluster";
-      Nodes  = List.empty;
-      Groups = List.empty;
+    project.Config    <-
+      { Audio     =  AudioConfig.Default
+      ; Vvvv      =  VvvvConfig.Default
+      ; Engine    =  VsyncConfig.Default
+      ; Timing    =  TimingConfig.Default
+      ; Port      =  PortConfig.Default
+      ; ViewPorts =  List.empty
+      ; Displays  =  List.empty
+      ; Tasks     =  List.empty
+      ; Cluster   =
+          { Name   = name + " cluster"
+          ; Nodes  = List.empty
+          ; Groups = List.empty
+          }
       }
     project
 
@@ -123,16 +117,17 @@ module ProjectUtil =
       project.Copyright <- parseStringProp Meta.Copyright
       project.Author    <- parseStringProp Meta.Author
       project.Year      <- Meta.Year
-      project.Audio     <- parseAudioCfg  IrisConfig
-      project.Vvvv      <- parseVvvvCfg   IrisConfig
-      project.Engine    <- parseVsyncCfg  IrisConfig
-      project.Timing    <- parseTimingCnf IrisConfig
-      project.Port      <- parsePortCnf   IrisConfig
-      project.ViewPorts <- parseViewports IrisConfig
-      project.Displays  <- parseDisplays  IrisConfig
-      project.Tasks     <- parseTasks     IrisConfig
-      project.Cluster   <- parseCluster   IrisConfig
-
+      project.Config    <-
+        { Audio     = parseAudioCfg  IrisConfig
+        ; Vvvv      = parseVvvvCfg   IrisConfig
+        ; Engine    = parseVsyncCfg  IrisConfig
+        ; Timing    = parseTimingCnf IrisConfig
+        ; Port      = parsePortCnf   IrisConfig
+        ; ViewPorts = parseViewports IrisConfig
+        ; Displays  = parseDisplays  IrisConfig
+        ; Tasks     = parseTasks     IrisConfig
+        ; Cluster   = parseCluster   IrisConfig
+        }
       Some(project)
 
   //   ____
@@ -168,7 +163,7 @@ module ProjectUtil =
 
       // VVVV related information
       IrisConfig.Project.VVVV.Executables.Clear()
-      for exe in project.Vvvv.Executables do
+      for exe in project.Config.Vvvv.Executables do
         let entry = new ConfigFile.Project_Type.VVVV_Type.Executables_Item_Type()
         entry.Path <- exe.Executable;
         entry.Version <- exe.Version;
@@ -176,146 +171,210 @@ module ProjectUtil =
         IrisConfig.Project.VVVV.Executables.Add(entry)
 
       IrisConfig.Project.VVVV.Plugins.Clear()
-      for plug in project.Vvvv.Plugins do
+      for plug in project.Config.Vvvv.Plugins do
         let entry = new ConfigFile.Project_Type.VVVV_Type.Plugins_Item_Type ()
         entry.Name <- plug.Name
         entry.Path <- plug.Path
         IrisConfig.Project.VVVV.Plugins.Add(entry)
 
       // Engine related configuration
-      if Option.isSome project.Engine.AesKey
-      then IrisConfig.Project.Engine.AesKey <- Option.get project.Engine.AesKey
+      if Option.isSome project.Config.Engine.AesKey
+      then IrisConfig.Project.Engine.AesKey <- Option.get project.Config.Engine.AesKey
 
-      if Option.isSome project.Engine.DefaultTimeout
-      then IrisConfig.Project.Engine.DefaultTimeout <- string (Option.get project.Engine.DefaultTimeout)
+      if Option.isSome project.Config.Engine.DefaultTimeout
+      then
+        let value = string (Option.get project.Config.Engine.DefaultTimeout)
+        IrisConfig.Project.Engine.DefaultTimeout <- value
 
-      if Option.isSome project.Engine.DontCompress
-      then IrisConfig.Project.Engine.DontCompress <- Option.get project.Engine.DontCompress
+      if Option.isSome project.Config.Engine.DontCompress
+      then
+        let value = Option.get project.Config.Engine.DontCompress
+        IrisConfig.Project.Engine.DontCompress <- value
 
-      if Option.isSome project.Engine.FastEthernet
-      then IrisConfig.Project.Engine.FastEthernet <- Option.get project.Engine.FastEthernet
+      if Option.isSome project.Config.Engine.FastEthernet
+      then
+        let value = Option.get project.Config.Engine.FastEthernet
+        IrisConfig.Project.Engine.FastEthernet <- value
 
-      if Option.isSome project.Engine.GracefulShutdown
-      then IrisConfig.Project.Engine.GracefulShutdown <- Option.get project.Engine.GracefulShutdown
+      if Option.isSome project.Config.Engine.GracefulShutdown
+      then
+        let value = Option.get project.Config.Engine.GracefulShutdown
+        IrisConfig.Project.Engine.GracefulShutdown <- value
 
-      if Option.isSome project.Engine.Hosts
+      if Option.isSome project.Config.Engine.Hosts
       then
         IrisConfig.Project.Engine.Hosts.Clear()
-        for host in Option.get project.Engine.Hosts do
+        for host in Option.get project.Config.Engine.Hosts do
           IrisConfig.Project.Engine.Hosts.Add(host)
 
-      if Option.isSome project.Engine.IgnorePartitions
-      then IrisConfig.Project.Engine.IgnorePartitions <- Option.get project.Engine.IgnorePartitions
+      if Option.isSome project.Config.Engine.IgnorePartitions
+      then
+        let value = Option.get project.Config.Engine.IgnorePartitions
+        IrisConfig.Project.Engine.IgnorePartitions <- value
 
-      if Option.isSome project.Engine.IgnoreSmallPartitions
-      then IrisConfig.Project.Engine.IgnoreSmallPartitions <- Option.get project.Engine.IgnoreSmallPartitions
+      if Option.isSome project.Config.Engine.IgnoreSmallPartitions
+      then
+        let value = Option.get project.Config.Engine.IgnoreSmallPartitions
+        IrisConfig.Project.Engine.IgnoreSmallPartitions <- value
 
-      if Option.isSome project.Engine.InfiniBand
-      then IrisConfig.Project.Engine.InfiniBand <- Option.get project.Engine.InfiniBand
+      if Option.isSome project.Config.Engine.InfiniBand
+      then
+        let value = Option.get project.Config.Engine.InfiniBand
+        IrisConfig.Project.Engine.InfiniBand <- value
 
-      if Option.isSome project.Engine.Large
-      then IrisConfig.Project.Engine.Large <- Option.get project.Engine.Large
+      if Option.isSome project.Config.Engine.Large
+      then
+        let value = Option.get project.Config.Engine.Large
+        IrisConfig.Project.Engine.Large <- value
 
-      if Option.isSome project.Engine.LogDir
-      then IrisConfig.Project.Engine.LogDir <- Option.get project.Engine.LogDir
+      if Option.isSome project.Config.Engine.LogDir
+      then
+        let value = Option.get project.Config.Engine.LogDir
+        IrisConfig.Project.Engine.LogDir <- value
 
-      if Option.isSome project.Engine.Logged
-      then IrisConfig.Project.Engine.Logged <- Option.get project.Engine.Logged
+      if Option.isSome project.Config.Engine.Logged
+      then
+        let value = Option.get project.Config.Engine.Logged
+        IrisConfig.Project.Engine.Logged <- value
 
-      if Option.isSome project.Engine.MCMDReportRate
-      then IrisConfig.Project.Engine.MCMDReportRate <- int (Option.get project.Engine.MCMDReportRate)
+      if Option.isSome project.Config.Engine.MCMDReportRate
+      then
+        let value = int (Option.get project.Config.Engine.MCMDReportRate)
+        IrisConfig.Project.Engine.MCMDReportRate <- value
 
-      if Option.isSome project.Engine.MCRangeHigh
-      then IrisConfig.Project.Engine.MCRangeHigh <- Option.get project.Engine.MCRangeHigh
+      if Option.isSome project.Config.Engine.MCRangeHigh
+      then
+        let value = Option.get project.Config.Engine.MCRangeHigh
+        IrisConfig.Project.Engine.MCRangeHigh <- value
 
-      if Option.isSome project.Engine.MCRangeLow
-      then IrisConfig.Project.Engine.MCRangeLow <- Option.get project.Engine.MCRangeLow
+      if Option.isSome project.Config.Engine.MCRangeLow
+      then
+        let value = Option.get project.Config.Engine.MCRangeLow
+        IrisConfig.Project.Engine.MCRangeLow <- value
 
-      if Option.isSome project.Engine.MaxAsyncMTotal
-      then IrisConfig.Project.Engine.MaxAsyncMTotal <- int (Option.get project.Engine.MaxAsyncMTotal)
+      if Option.isSome project.Config.Engine.MaxAsyncMTotal
+      then
+        let value = int (Option.get project.Config.Engine.MaxAsyncMTotal)
+        IrisConfig.Project.Engine.MaxAsyncMTotal <- value
 
-      if Option.isSome project.Engine.MaxIPMCAddrs
-      then IrisConfig.Project.Engine.MaxIPMCAddrs <- int (Option.get project.Engine.MaxIPMCAddrs)
+      if Option.isSome project.Config.Engine.MaxIPMCAddrs
+      then
+        let value = int (Option.get project.Config.Engine.MaxIPMCAddrs)
+        IrisConfig.Project.Engine.MaxIPMCAddrs <- value
 
-      if Option.isSome project.Engine.MaxMsgLen
-      then IrisConfig.Project.Engine.MaxMsgLen <- int (Option.get project.Engine.MaxMsgLen)
+      if Option.isSome project.Config.Engine.MaxMsgLen
+      then
+        let value = int (Option.get project.Config.Engine.MaxMsgLen)
+        IrisConfig.Project.Engine.MaxMsgLen <- value
 
-      if Option.isSome project.Engine.Mute
-      then IrisConfig.Project.Engine.Mute <- Option.get project.Engine.Mute
+      if Option.isSome project.Config.Engine.Mute
+      then
+        let value = Option.get project.Config.Engine.Mute
+        IrisConfig.Project.Engine.Mute <- value
 
-      if Option.isSome project.Engine.Netmask
-      then IrisConfig.Project.Engine.Netmask <- Option.get project.Engine.Netmask
+      if Option.isSome project.Config.Engine.Netmask
+      then
+        let value = Option.get project.Config.Engine.Netmask
+        IrisConfig.Project.Engine.Netmask <- value
 
       IrisConfig.Project.Engine.NetworkInterfaces.Clear()
-      if Option.isSome project.Engine.NetworkInterfaces
+      if Option.isSome project.Config.Engine.NetworkInterfaces
       then
-        for iface in Option.get project.Engine.NetworkInterfaces do
+        for iface in Option.get project.Config.Engine.NetworkInterfaces do
           IrisConfig.Project.Engine.NetworkInterfaces.Add(iface)
 
-      if Option.isSome project.Engine.OOBViaTCP
-      then IrisConfig.Project.Engine.OOBViaTCP <- Option.get project.Engine.OOBViaTCP
+      if Option.isSome project.Config.Engine.OOBViaTCP
+      then
+        let value = Option.get project.Config.Engine.OOBViaTCP
+        IrisConfig.Project.Engine.OOBViaTCP <- value
 
-      if Option.isSome project.Engine.Port
-      then IrisConfig.Project.Engine.Port <- int (Option.get project.Engine.Port)
+      if Option.isSome project.Config.Engine.Port
+      then
+        let value = int (Option.get project.Config.Engine.Port)
+        IrisConfig.Project.Engine.Port <- value
 
-      if Option.isSome project.Engine.PortP2P
-      then IrisConfig.Project.Engine.PortP2P <- int (Option.get project.Engine.PortP2P)
+      if Option.isSome project.Config.Engine.PortP2P
+      then
+        let value = int (Option.get project.Config.Engine.PortP2P)
+        IrisConfig.Project.Engine.PortP2P <- value
 
-      if Option.isSome project.Engine.RateLim
-      then IrisConfig.Project.Engine.RateLim <- int (Option.get project.Engine.RateLim)
+      if Option.isSome project.Config.Engine.RateLim
+      then
+        let value = int (Option.get project.Config.Engine.RateLim)
+        IrisConfig.Project.Engine.RateLim <- value
 
-      if Option.isSome project.Engine.Sigs
-      then IrisConfig.Project.Engine.Sigs <- Option.get project.Engine.Sigs
+      if Option.isSome project.Config.Engine.Sigs
+      then
+        let value = Option.get project.Config.Engine.Sigs
+        IrisConfig.Project.Engine.Sigs <- value
 
-      if Option.isSome project.Engine.SkipFirstInterface
-      then IrisConfig.Project.Engine.SkipFirstInterface <- Option.get project.Engine.SkipFirstInterface
+      if Option.isSome project.Config.Engine.SkipFirstInterface
+      then
+        let value = Option.get project.Config.Engine.SkipFirstInterface
+        IrisConfig.Project.Engine.SkipFirstInterface <- value
 
-      if Option.isSome project.Engine.Subnet
-      then IrisConfig.Project.Engine.Subnet <- Option.get project.Engine.Subnet
+      if Option.isSome project.Config.Engine.Subnet
+      then
+        let value = Option.get project.Config.Engine.Subnet
+        IrisConfig.Project.Engine.Subnet <- value
 
-      if Option.isSome project.Engine.TTL
-      then IrisConfig.Project.Engine.TTL <- int (Option.get project.Engine.TTL)
+      if Option.isSome project.Config.Engine.TTL
+      then
+        let value = int (Option.get project.Config.Engine.TTL)
+        IrisConfig.Project.Engine.TTL <- value
 
-      if Option.isSome project.Engine.TokenDelay
-      then IrisConfig.Project.Engine.TokenDelay <- int (Option.get project.Engine.TokenDelay)
+      if Option.isSome project.Config.Engine.TokenDelay
+      then
+        let value = int (Option.get project.Config.Engine.TokenDelay)
+        IrisConfig.Project.Engine.TokenDelay <- value
 
-      if Option.isSome project.Engine.UDPChkSum
-      then IrisConfig.Project.Engine.UDPChkSum <- Option.get project.Engine.UDPChkSum
+      if Option.isSome project.Config.Engine.UDPChkSum
+      then
+        let value = Option.get project.Config.Engine.UDPChkSum
+        IrisConfig.Project.Engine.UDPChkSum <- value
 
-      if Option.isSome project.Engine.UnicastOnly
-      then IrisConfig.Project.Engine.UnicastOnly <- Option.get project.Engine.UnicastOnly
+      if Option.isSome project.Config.Engine.UnicastOnly
+      then
+        let value = Option.get project.Config.Engine.UnicastOnly
+        IrisConfig.Project.Engine.UnicastOnly <- value
 
-      if Option.isSome project.Engine.UseIPv4
-      then IrisConfig.Project.Engine.UseIPv4 <- Option.get project.Engine.UseIPv4
+      if Option.isSome project.Config.Engine.UseIPv4
+      then
+        let value = Option.get project.Config.Engine.UseIPv4
+        IrisConfig.Project.Engine.UseIPv4 <- value
 
-      if Option.isSome project.Engine.UseIPv6
-      then IrisConfig.Project.Engine.UseIPv6 <- Option.get project.Engine.UseIPv6
+      if Option.isSome project.Config.Engine.UseIPv6
+      then
+        let value = Option.get project.Config.Engine.UseIPv6
+        IrisConfig.Project.Engine.UseIPv6 <- value
 
-      if Option.isSome project.Engine.UserDMA
-      then IrisConfig.Project.Engine.UserDMA <- Option.get project.Engine.UserDMA
+      if Option.isSome project.Config.Engine.UserDMA
+      then
+        let value = Option.get project.Config.Engine.UserDMA
+        IrisConfig.Project.Engine.UserDMA <- value
 
       // Timing
-      IrisConfig.Project.Timing.Framebase <- int (project.Timing.Framebase)
-      IrisConfig.Project.Timing.Input <- project.Timing.Input
+      IrisConfig.Project.Timing.Framebase <- int (project.Config.Timing.Framebase)
+      IrisConfig.Project.Timing.Input <- project.Config.Timing.Input
 
       IrisConfig.Project.Timing.Servers.Clear()
-      for srv in project.Timing.Servers do
+      for srv in project.Config.Timing.Servers do
         IrisConfig.Project.Timing.Servers.Add(srv)
 
-      IrisConfig.Project.Timing.TCPPort <- int (project.Timing.TCPPort)
-      IrisConfig.Project.Timing.UDPPort <- int (project.Timing.UDPPort)
+      IrisConfig.Project.Timing.TCPPort <- int (project.Config.Timing.TCPPort)
+      IrisConfig.Project.Timing.UDPPort <- int (project.Config.Timing.UDPPort)
 
       // Ports
-      IrisConfig.Project.Ports.IrisService <- int (project.Port.Iris)
-      IrisConfig.Project.Ports.UDPCues <- int (project.Port.UDPCue)
-      IrisConfig.Project.Ports.WebSocket <- int (project.Port.WebSocket)
+      IrisConfig.Project.Ports.IrisService <- int (project.Config.Port.Iris)
+      IrisConfig.Project.Ports.UDPCues <- int (project.Config.Port.UDPCue)
+      IrisConfig.Project.Ports.WebSocket <- int (project.Config.Port.WebSocket)
 
       // Audio
-      IrisConfig.Project.Audio.SampleRate <- int (project.Audio.SampleRate)
+      IrisConfig.Project.Audio.SampleRate <- int (project.Config.Audio.SampleRate)
 
       // ViewPorts
       IrisConfig.Project.ViewPorts.Clear()
-      for vp in project.ViewPorts do
+      for vp in project.Config.ViewPorts do
         let item = new ConfigFile.Project_Type.ViewPorts_Item_Type()
         item.Id <- vp.Id
         item.Name <- vp.Name
@@ -329,7 +388,7 @@ module ProjectUtil =
 
       // Displays
       IrisConfig.Project.Displays.Clear()
-      for dp in project.Displays do
+      for dp in project.Config.Displays do
         let item = new ConfigFile.Project_Type.Displays_Item_Type()
         item.Id <- dp.Id
         item.Name <- dp.Name
@@ -358,7 +417,7 @@ module ProjectUtil =
 
       // Tasks
       IrisConfig.Project.Tasks.Clear()
-      for task in project.Tasks do
+      for task in project.Config.Tasks do
         let t = new ConfigFile.Project_Type.Tasks_Item_Type()
         t.Id <- task.Id
         t.AudioStream <- task.AudioStream
@@ -374,9 +433,9 @@ module ProjectUtil =
       // Cluster
       IrisConfig.Project.Cluster.Nodes.Clear()
       IrisConfig.Project.Cluster.Groups.Clear()
-      IrisConfig.Project.Cluster.Name <- project.Cluster.Name
+      IrisConfig.Project.Cluster.Name <- project.Config.Cluster.Name
 
-      for node in project.Cluster.Nodes do
+      for node in project.Config.Cluster.Nodes do
         let n = new ConfigFile.Project_Type.Cluster_Type.Nodes_Item_Type()
         n.Id       <- node.Id
         n.Ip       <- node.Ip
@@ -384,7 +443,7 @@ module ProjectUtil =
         n.Task     <- node.Task
         IrisConfig.Project.Cluster.Nodes.Add(n)
 
-      for group in project.Cluster.Groups do
+      for group in project.Config.Cluster.Groups do
         let g = new ConfigFile.Project_Type.Cluster_Type.Groups_Item_Type()
         g.Name <- group.Name
 
