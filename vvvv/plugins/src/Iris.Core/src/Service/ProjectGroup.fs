@@ -19,9 +19,14 @@ module ProjectGroup =
    * Settable it via environment variable.
    *)
   let Workspace =
-    let wsp = Environment.GetEnvironmentVariable("IRIS_Workspace")
+    let wsp = Environment.GetEnvironmentVariable("IRIS_WORKSPACE")
     if isNull wsp
-    then "/home/k/iris/"
+    then
+      if int Environment.OSVersion.Platform |> fun p -> (p = 4) || (p = 6) || (p = 128)
+      then
+        let usr = Security.Principal.WindowsIdentity.GetCurrent().Name
+        sprintf @"/home/%s/iris" usr 
+      else @"C:\\Iris\"
     else wsp
 
   let Config = "settings.yml"
