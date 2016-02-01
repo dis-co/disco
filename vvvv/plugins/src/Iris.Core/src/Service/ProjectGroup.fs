@@ -40,17 +40,6 @@ module ProjectGroup =
     then regex.Replace(name, "_")
     else name
 
-  let createProject (name : string) =
-    let targetPath = Path.Combine(Workspace, sanitizeName name)
-    if not <| Directory.Exists targetPath
-    then
-      Directory.CreateDirectory targetPath |> ignore
-      // write project file
-      // write settings file (see that xml thingy..)
-      Repository.Init(targetPath)          |> ignore
-    else
-      printfn "there already is a project at that location."
-
   (* ---------- ProjectAction ---------- *)
 
   type ProjectAction =
