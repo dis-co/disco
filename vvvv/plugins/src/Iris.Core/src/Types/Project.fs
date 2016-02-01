@@ -21,6 +21,8 @@ module Project =
     [<DefaultValue>] val mutable  Year      : int
     [<DefaultValue>] val mutable  Config    : Config
 
+    [<DefaultValue>] val mutable  Repo      : Repository
+
     override self.GetHashCode() =
       hash self
 
@@ -48,13 +50,6 @@ module Project =
 /// utility functions only needed in native code
 module ProjectUtil =
   let private IrisExt = ".iris"
-
-  let projectSaved (p : Project) =
-    match p.Path with
-      | Some(path) ->
-        (Directory.Exists path) &&
-        (Directory.Exists <| Path.Combine(path, ".git"))
-      | _ -> false
 
   //    ____                _
   //   / ___|_ __ ___  __ _| |_ ___
@@ -95,7 +90,7 @@ module ProjectUtil =
   //
   /// Load a Project from Disk
   let loadProject (path : FilePath) : Project option =
-    if not <| File.Exists(path)
+    if not <| File.Exists(path) // must be a *File*
     then None
     else
       IrisConfig.Load(path)
@@ -112,6 +107,9 @@ module ProjectUtil =
         else None
 
       let project = createProject Meta.Name
+      let basedir = Path.GetDirectoryName(path)
+      
+      project.Repo      <- new Repository(Path.Combine(basedir, ".git"))
       project.Path      <- Some(Path.GetDirectoryName(path))
       project.LastSaved <- date
       project.Copyright <- parseStringProp Meta.Copyright
@@ -142,10 +140,10 @@ module ProjectUtil =
     then
       Directory.CreateDirectory (Option.get project.Path) |> ignore
 
-      if not <| projectSaved project
-      then
-        let res = Repository.Init(Option.get project.Path)
-        printfn "result: %s" res
+      if isNull project.Repo
+      then 
+        let path = Repository.Init(Option.get project.Path)
+        project.Repo <- new Repository(path)
 
       // Project metadata
       IrisConfig.Project.Metadata.Name <- project.Name
@@ -452,6 +450,15 @@ module ProjectUtil =
 
         IrisConfig.Project.Cluster.Groups.Add(g)
 
-      // finally save everything!
+      // save everything!
       let destPath = Path.Combine(Option.get project.Path, project.Name + IrisExt)
       IrisConfig.Save(destPath)
+
+      // commit project to git.
+      project.Repo
+      |> (fun repo ->
+          let msg  = "Project saved."
+          let sign = new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
+          repo.Stage(destPath)
+          repo.Commit(msg, sign, sign)
+          |> ignore)

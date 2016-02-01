@@ -11,7 +11,6 @@
 open Fuchu
 open Iris.Tests.Project
 
-
 (*
    Working with libgit2 native libraries:
    
@@ -21,6 +20,8 @@ open Iris.Tests.Project
    - set LD_LIBRARY_PATH=....:/run/current-system/sw/lib/ 
 
    now it *should* work. YMMV.
+
+   Good Fix: use a nix-shell environment that exposes LD_LIBRARY_PATH correctly.
 *)
 
 run configTests

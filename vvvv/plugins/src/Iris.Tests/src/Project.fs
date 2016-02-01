@@ -1,9 +1,12 @@
 ﻿namespace Iris.Tests
 
+open System
 open System.IO
+open System.Linq
 open Fuchu
 open Iris.Core.Types
 open Iris.Core.Types.Config
+open LibGit2Sharp
 
 module Project =
   //   _                    _    ______                  
@@ -15,15 +18,15 @@ module Project =
   let loadSaveTest =
     testCase "Save/Load Project should render equal project values" <|
       fun _ ->
-        let name = "test"
-        let path = "./tmp"
+        let name = "test1"
+        let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
         let project = createProject name
         project.Path <- Some(path)
         saveProject project
 
         let project' =
-          loadProject (path + "/test.iris")
+          loadProject (path + (sprintf "/%s.iris" name))
           |> Option.get
 
         // the only difference will be the automatically assigned timestamp
@@ -40,8 +43,8 @@ module Project =
   let testCustomizedCfg =
     testCase "Save/Load of Project with customized configs should render structurally equal values" <|
       fun _ ->
-        let name = "test"
-        let path = "./tmp"
+        let name = "test2"
+        let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
         let engineCfg = 
           { VsyncConfig.Default with
@@ -218,7 +221,7 @@ module Project =
         saveProject project
 
         let project' =
-          loadProject (path + "/test.iris")
+          loadProject (path + sprintf "/%s.iris" name)
           |> Option.get
 
         // the only difference will be the automatically assigned timestamp
@@ -232,11 +235,11 @@ module Project =
   //  | |_| | | |_ 
   //   \____|_|\__| initialzation
   //               
-  let createInitsGit =
+  let saveInitsGit =
     testCase "Saved Project should be a git repository with yaml file." <|
       fun _ ->
-        let name = "test"
-        let path = "./tmp"
+        let name = "test3"
+        let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
         if Directory.Exists path
         then Directory.Delete(path, true) |> ignore
@@ -245,17 +248,21 @@ module Project =
         project.Path <- Some(path)
         saveProject project
 
+        let loaded = 
+          Path.Combine(path, sprintf "%s.iris" name)
+          |> loadProject
+          |> Option.get
+
         Assert.Equal("Projects should be a folder", true, Directory.Exists path)
         Assert.Equal("Projects should be a git repo", true, Directory.Exists    (path + "/.git"))
         Assert.Equal("Projects should have project yml", true, File.Exists (path + "/" + name + ".iris"))
-        Assert.Equal("Projects should not be dirty", true, false)
-        Assert.Equal("Projects should have one initial commit", true, false)
+        Assert.Equal("Projects should not be dirty", false, loaded.Repo.RetrieveStatus().IsDirty)
+        Assert.Equal("Projects should have one initial commit", true, loaded.Repo.Commits.Count() = 1)
 
-  
   [<Tests>]
   let configTests =
     testList "Config tests" [
         loadSaveTest
         testCustomizedCfg
-        createInitsGit
+        saveInitsGit
       ]
