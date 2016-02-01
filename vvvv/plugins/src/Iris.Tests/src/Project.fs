@@ -259,10 +259,62 @@ module Project =
         Assert.Equal("Projects should not be dirty", false, loaded.Repo.RetrieveStatus().IsDirty)
         Assert.Equal("Projects should have one initial commit", true, loaded.Repo.Commits.Count() = 1)
 
+  let savesMultipleCommits =
+    testCase "Saved Project should be a git repository with yaml file." <|
+      fun _ ->
+        let name    = "test4"
+        let author1 = "karsten"
+
+        let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
+
+        if Directory.Exists path
+        then Directory.Delete(path, true) |> ignore
+
+        let project = createProject name
+        project.Path   <- Some(path)
+        project.Author <- Some(author1)
+
+        saveProject project
+
+        Path.Combine(path, sprintf "%s.iris" name)
+        |> loadProject
+        |> Option.get
+        |> (fun p ->
+            Assert.Equal("Authors should be equal", true, (Option.get p.Author) = author1)
+            Assert.Equal("Project should have one initial commit", true, p.Repo.Commits.Count() = 1))
+
+        let author2 = "ingolf"
+
+        project.Author <- Some(author2)
+
+        saveProject project
+
+        Path.Combine(path, sprintf "%s.iris" name)
+        |> loadProject
+        |> Option.get
+        |> (fun p ->
+            Assert.Equal("Authors should be equal", true, (Option.get p.Author) = author2)
+            Assert.Equal("Projects should two commits", true, p.Repo.Commits.Count() = 2))
+
+        let author3 = "eno"
+
+        project.Author <- Some(author3)
+
+        saveProject project
+
+        Path.Combine(path, sprintf "%s.iris" name)
+        |> loadProject
+        |> Option.get
+        |> (fun p ->
+            Assert.Equal("Authors should be equal", true, (Option.get p.Author) = author3)
+            Assert.Equal("Projects should have three commits", true, p.Repo.Commits.Count() = 3))
+
+
   [<Tests>]
   let configTests =
     testList "Config tests" [
         loadSaveTest
         testCustomizedCfg
         saveInitsGit
+        savesMultipleCommits
       ]
