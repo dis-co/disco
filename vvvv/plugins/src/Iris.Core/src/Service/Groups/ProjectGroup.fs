@@ -11,40 +11,31 @@ open Iris.Core
 
 [<AutoOpen>]
 module ProjectGroup =
+
   (* ---------- ProjectAction ---------- *)
-  type ProjectAction =
-    | Create 
-    | Load 
-    | Save
-    | Clone  
+  [<RequireQualifiedAccess>]
+  type Actions =
     | Pull
-    
+
     interface IEnum with
       member self.ToInt() : int =
         match self with
-          | Create -> 1
-          | Load   -> 2
-          | Save   -> 3
-          | Clone  -> 4
-          | Pull   -> 5
-          
+          | Pull -> 1
+
   (* ---------- ProjectGroup ---------- *)
-  type ProjectGroup(grpname : string) as self = 
-    [<DefaultValue>] val mutable group   : IrisGroup<ProjectAction,Project>
+  type ProjectGroup(grpname : string) as self =
+    [<DefaultValue>] val mutable group   : IrisGroup<Actions,Project>
     [<DefaultValue>] val mutable project : Project option
 
     let AddHandler(action, cb) =
       self.group.AddHandler(action, cb)
 
     let AllHandlers =
-      [ (ProjectAction.Load,  self.ProjectLoaded)
-      ; (ProjectAction.Save,  self.ProjectSaved)
-      ; (ProjectAction.Clone, self.ProjectCloned)
-      ; (ProjectAction.Pull,  self.ProjectPull)
+      [ (Actions.Pull,  self.ProjectPull)
       ]
 
     do
-      self.group <- new IrisGroup<ProjectAction,Project>(grpname)
+      self.group <- new IrisGroup<Actions,Project>(grpname)
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
       self.group.CheckpointMaker(self.MakeCheckpoint)
@@ -53,11 +44,11 @@ module ProjectGroup =
 
     member self.Dump() =
       match self.project with
-        | Some(project) -> 
+        | Some(project) ->
           if Option.isSome project.Path
           then printfn "[project] name=%s path=%s" project.Name (Option.get project.Path)
           else printfn "[project] name=%s path=<empty>" project.Name
-        | None -> 
+        | None ->
           printfn "[project] not loaded."
 
     member self.Load(p : Project) =
@@ -75,8 +66,8 @@ module ProjectGroup =
     (* Become member of group *)
     member self.Join() = self.group.Join()
 
-    (* ProjectAction on the group *)
-    member self.Send(action : ProjectAction, project : Project) =
+    (* Actions on the group *)
+    member self.Send(action : Actions, project : Project) =
       self.group.Send(action, project)
 
     (* State initialization and transfer *)
@@ -85,7 +76,7 @@ module ProjectGroup =
 
     member self.MakeCheckpoint(view : View) =
       match self.project with
-        | Some(project) -> 
+        | Some(project) ->
           printfn "makeing a snapshot. %s" project.Name
           self.group.SendCheckpoint(project)
         | _ -> printfn "no project loaded. nothing to checkpoint"
@@ -100,9 +91,9 @@ module ProjectGroup =
 
     (* View changes *)
     member self.ViewChanged(view : View) : unit =
-      printfn "viewid: %d" <| view.GetViewid() 
+      printfn "viewid: %d" <| view.GetViewid()
 
-    (* Event Handlers for ProjectAction *)
+    (* Event Handlers for Actions *)
     member self.ProjectLoaded(project : Project) : unit =
       printfn "project loaded "
 
