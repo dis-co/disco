@@ -1,11 +1,11 @@
-namespace Iris.Core.Types.Config
+namespace Iris.Core.Config
 
 open Iris.Core.Types
 
 /// Models 
 [<AutoOpen>]
 [<ReflectedDefinition>]
-module Vvvv =
+module Types =
 
   type VvvvExe =
     { Executable : FilePath

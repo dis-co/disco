@@ -18,10 +18,6 @@ module Main =
   let main argv =
     printfn "starting engine.."
 
-    let project = createProject "silly me"
-    project.Path <- Some("./project.yml")
-    saveProject project
-
     // let options =
     //  { VsyncConfig.Default with
     //      UnicastOnly = Some(true);

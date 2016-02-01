@@ -1,52 +1,17 @@
-namespace Iris.Service
+namespace Iris.Service.Groups
 
 open System
 open System.IO
-open System.Text.RegularExpressions
 open System.Collections.Generic
 open Nessos.FsPickler
 open LibGit2Sharp
 open Iris.Core.Types
 open Vsync
+open Iris.Core
 
 [<AutoOpen>]
 module ProjectGroup =
-  type FilePath = string
-
-  (* Workspace Path:
-   *
-   * the standard location projects are create/cloned to.
-   * Settable it via environment variable.
-   *)
-  let Workspace =
-    let wsp = Environment.GetEnvironmentVariable("IRIS_WORKSPACE")
-    if isNull wsp
-    then
-      if int Environment.OSVersion.Platform |> fun p -> (p = 4) || (p = 6) || (p = 128)
-      then
-        let usr = Security.Principal.WindowsIdentity.GetCurrent().Name
-        sprintf @"/home/%s/iris" usr 
-      else @"C:\\Iris\"
-    else wsp
-
-  let Config = "settings.yml"
-  let PROJECT = "project.yml"
-
-  let workspaceExists () = Directory.Exists Workspace
-
-  let createWorkspace () =
-    if not <| workspaceExists()
-    then Directory.CreateDirectory Workspace
-         |> ignore
-
-  let sanitizeName (name : string) =
-    let regex = new Regex("(\.|\ |\*|\^)")
-    if regex.IsMatch(name)
-    then regex.Replace(name, "_")
-    else name
-
   (* ---------- ProjectAction ---------- *)
-
   type ProjectAction =
     | Create 
     | Load 
@@ -64,7 +29,6 @@ module ProjectGroup =
           | Pull   -> 5
           
   (* ---------- ProjectGroup ---------- *)
-
   type ProjectGroup(grpname : string) as self = 
     [<DefaultValue>] val mutable group   : IrisGroup<ProjectAction,Project>
     [<DefaultValue>] val mutable project : Project option

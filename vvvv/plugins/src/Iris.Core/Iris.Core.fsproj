@@ -50,23 +50,23 @@
     <None Include="paket.references" />
     <None Include="paket.template" />
     <None Include="assets/example-project.yml" />
+    <Compile Include="src\Util.fs" />
     <Compile Include="src\Types\Aliases.fs" />
     <Compile Include="src\Types\IOBox.fs" />
     <Compile Include="src\Types\Patch.fs" />
     <Compile Include="src\Types\Cue.fs" />
     <Compile Include="src\Types\CueList.fs" />
     <Compile Include="src\Types\Message.fs" />
-    <Compile Include="src\Types\Config\Vvvv.fs" />
-    <Compile Include="src\Types\Config\Vsync.fs" />
-    <Compile Include="src\Types\Config\Iris.fs" />
-    <Compile Include="src\Types\Config\Util.fs" />
-    <Compile Include="src\Types\Config\Config.fs" />
+    <Compile Include="src\Config\Types.fs" />
+    <Compile Include="src\Config\Vsync.fs" />
+    <Compile Include="src\Config\Yaml.fs" />
+    <Compile Include="src\Config\Config.fs" />
     <Compile Include="src\Types\Project.fs" />
-    <Compile Include="src\Serialization.fs" />
-    <Compile Include="src\Service\Group.fs" />
-    <Compile Include="src\Service\PinGroup.fs" />
-    <Compile Include="src\Service\CueGroup.fs" />
-    <Compile Include="src\Service\ProjectGroup.fs" />
+    <Compile Include="src\Service\Groups\Group.fs" />
+    <Compile Include="src\Service\Groups\PinGroup.fs" />
+    <Compile Include="src\Service\Groups\CueGroup.fs" />
+    <Compile Include="src\Service\Groups\ProjectGroup.fs" />
+    <Compile Include="src\Service\Groups\ControlGroup.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

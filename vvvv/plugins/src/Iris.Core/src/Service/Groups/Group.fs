@@ -1,11 +1,11 @@
-namespace Iris.Service
+namespace Iris.Service.Groups
 
 open System
 open Nessos.FsPickler
 open Vsync
 
 [<AutoOpen>]
-module Groups =
+module Base =
 
   type Handler<'a> = 'a -> unit
 

@@ -5,8 +5,9 @@ open System.IO
 open System.Linq
 open System.Net
 open System.Collections.Generic
-open Iris.Core.Types.Config
+open Iris.Core.Config
 open LibGit2Sharp
+
 
 [<AutoOpen>]
 [<ReflectedDefinition>]
@@ -50,7 +51,7 @@ module Project =
 [<AutoOpen>]
 /// utility functions only needed in native code
 module ProjectUtil =
-  let private IrisExt = ".iris"
+  open Iris.Core.Util
 
   let private Committer =
     let hostname = Dns.GetHostName()

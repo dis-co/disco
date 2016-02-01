@@ -1,4 +1,4 @@
-namespace Iris.Service
+namespace Iris.Service.Groups
 
 open System.Collections.Generic
 open Iris.Core.Types

@@ -1,10 +1,23 @@
-namespace Iris.Core.Types.Config
+namespace Iris.Core.Config
 
 open System
 open Iris.Core.Types
 
 [<AutoOpen>]
-module Util =
+module Config =
+
+  type Config =
+    {  Audio     : AudioConfig
+    ;  Vvvv      : VvvvConfig
+    ;  Engine    : VsyncConfig
+    ;  Timing    : TimingConfig
+    ;  Port      : PortConfig
+    ;  ViewPorts : ViewPort list
+    ;  Displays  : Display  list
+    ;  Tasks     : Task     list
+    ;  Cluster   : Cluster
+    }
+
   //   ____       _            _
   //  |  _ \ _ __(_)_   ____ _| |_ ___
   //  | |_) | '__| \ \ / / _` | __/ _ \

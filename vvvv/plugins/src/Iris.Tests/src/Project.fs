@@ -7,7 +7,7 @@ open System.Threading
 open Fuchu
 open Fuchu.Test
 open Iris.Core.Types
-open Iris.Core.Types.Config
+open Iris.Core.Config
 open LibGit2Sharp
 
 module Project =
