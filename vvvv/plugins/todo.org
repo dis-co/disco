@@ -1,0 +1,24 @@
+
+* DONE Project Creation/Bootstrap
+  CLOSED: [2016-02-01 Mon 15:00]
+** DONE settings.xml type parsing serialization + file writer code
+   CLOSED: [2016-02-01 Mon 14:59]
+** DONE project.xml serialization + file writer code
+   CLOSED: [2016-02-01 Mon 14:59]
+** DONE do we even need separate settings/project files??
+   CLOSED: [2016-02-01 Mon 14:59]
+   no.
+** DONE initial commit of data
+   CLOSED: [2016-02-01 Mon 14:59]
+* DONE Project Loading
+  CLOSED: [2016-02-01 Mon 15:00]
+** DONE Load Project + Settings from Disk
+   CLOSED: [2016-02-01 Mon 14:59]
+* DONE Project saving
+  CLOSED: [2016-02-01 Mon 15:00]
+* NEXT ControlGroup
+** project create/load/save
+** peers do clone/pull
+* IDEA Iris Service setup app
+** sets registry keys
+   - hostname
