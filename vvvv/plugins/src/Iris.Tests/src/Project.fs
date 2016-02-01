@@ -9,6 +9,8 @@ open Iris.Core.Types.Config
 open LibGit2Sharp
 
 module Project =
+  let signature =
+    new Signature("Karsten Gebbert", "karsten@nsynk.de", new DateTimeOffset(DateTime.Now))
   //   _                    _    ______                  
   //  | |    ___   __ _  __| |  / / ___|  __ ___   _____ 
   //  | |   / _ \ / _` |/ _` | / /\___ \ / _` \ \ / / _ \
@@ -23,7 +25,7 @@ module Project =
 
         let project = createProject name
         project.Path <- Some(path)
-        saveProject project
+        saveProject project signature "Initial project save."
 
         let project' =
           loadProject (path + (sprintf "/%s.iris" name))
@@ -218,7 +220,7 @@ module Project =
               Cluster   = cluster
           }
 
-        saveProject project
+        saveProject project signature "Initial project save."
 
         let project' =
           loadProject (path + sprintf "/%s.iris" name)
@@ -246,7 +248,7 @@ module Project =
 
         let project = createProject name
         project.Path <- Some(path)
-        saveProject project
+        saveProject project signature "Initial commit."
 
         let loaded = 
           Path.Combine(path, sprintf "%s.iris" name)
@@ -274,40 +276,55 @@ module Project =
         project.Path   <- Some(path)
         project.Author <- Some(author1)
 
-        saveProject project
+        let msg1 = "Commit 1"
+        saveProject project signature msg1
 
         Path.Combine(path, sprintf "%s.iris" name)
         |> loadProject
         |> Option.get
         |> (fun p ->
+            let c = p.Repo.Commits.ElementAt(0)
             Assert.Equal("Authors should be equal", true, (Option.get p.Author) = author1)
-            Assert.Equal("Project should have one initial commit", true, p.Repo.Commits.Count() = 1))
+            Assert.Equal("Project should have one initial commit", true, p.Repo.Commits.Count() = 1)
+            Assert.Equal("Project should have commit message", true, c.MessageShort = msg1))
 
         let author2 = "ingolf"
 
         project.Author <- Some(author2)
 
-        saveProject project
+        let msg2 = "Commit 2"
+        saveProject project signature msg2
 
         Path.Combine(path, sprintf "%s.iris" name)
         |> loadProject
         |> Option.get
         |> (fun p ->
+            let c1 = p.Repo.Commits.ElementAt(0)
+            let c2 = p.Repo.Commits.ElementAt(1)
             Assert.Equal("Authors should be equal", true, (Option.get p.Author) = author2)
-            Assert.Equal("Projects should two commits", true, p.Repo.Commits.Count() = 2))
+            Assert.Equal("Projects should two commits", true, p.Repo.Commits.Count() = 2)
+            Assert.Equal("Project should have current commit message at the start of the log", true, c1.MessageShort = msg2)
+            Assert.Equal("Project should have old commit message at 2nd position", true, c2.MessageShort = msg1))
 
         let author3 = "eno"
 
         project.Author <- Some(author3)
 
-        saveProject project
+        let msg3 = "Commit 3"
+        saveProject project signature msg3
 
         Path.Combine(path, sprintf "%s.iris" name)
         |> loadProject
         |> Option.get
         |> (fun p ->
+            let c1 = p.Repo.Commits.ElementAt(0)
+            let c2 = p.Repo.Commits.ElementAt(1)
+            let c3 = p.Repo.Commits.ElementAt(2)
             Assert.Equal("Authors should be equal", true, (Option.get p.Author) = author3)
-            Assert.Equal("Projects should have three commits", true, p.Repo.Commits.Count() = 3))
+            Assert.Equal("Projects should have three commits", true, p.Repo.Commits.Count() = 3)
+            Assert.Equal("Project should have current commit message", true, c1.MessageShort = msg3)
+            Assert.Equal("Project should have old commit message", true, c2.MessageShort = msg2)
+            Assert.Equal("Project should have oldest commit message", true, c3.MessageShort = msg1))
 
 
   [<Tests>]

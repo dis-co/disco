@@ -3,6 +3,7 @@ namespace Iris.Core.Types
 open System
 open System.IO
 open System.Linq
+open System.Net
 open System.Collections.Generic
 open Iris.Core.Types.Config
 open LibGit2Sharp
@@ -50,6 +51,10 @@ module Project =
 /// utility functions only needed in native code
 module ProjectUtil =
   let private IrisExt = ".iris"
+
+  let private Committer =
+    let hostname = Dns.GetHostName()
+    new Signature("Iris", "iris@" + hostname, new DateTimeOffset(DateTime.Now))
 
   //    ____                _
   //   / ___|_ __ ___  __ _| |_ ___
@@ -135,7 +140,7 @@ module ProjectUtil =
   //  |____/ \__,_| \_/ \___|
   //
   /// Save a Project to Disk
-  let saveProject (project : Project) =
+  let saveProject (project : Project) (sign : Signature) (msg : string) =
     if Option.isSome project.Path
     then
       Directory.CreateDirectory (Option.get project.Path) |> ignore
@@ -457,8 +462,6 @@ module ProjectUtil =
       // commit project to git.
       project.Repo
       |> (fun repo ->
-          let msg  = "Project saved."
-          let sign = new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
           repo.Stage(destPath)
-          repo.Commit(msg, sign, sign)
+          repo.Commit(msg, sign, Committer)
           |> ignore)
