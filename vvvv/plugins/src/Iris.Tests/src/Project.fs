@@ -3,7 +3,9 @@
 open System
 open System.IO
 open System.Linq
+open System.Threading
 open Fuchu
+open Fuchu.Test
 open Iris.Core.Types
 open Iris.Core.Types.Config
 open LibGit2Sharp
@@ -326,6 +328,13 @@ module Project =
             Assert.Equal("Project should have old commit message", true, c2.MessageShort = msg2)
             Assert.Equal("Project should have oldest commit message", true, c3.MessageShort = msg1))
 
+  // For tests async stuff:
+  //
+  // let testTests =
+  //   testCase "making a case" <| (timeout 1000 
+  //     (fun _ ->
+  //       Thread.Sleep(900)
+  //       failtest "nop"))
 
   [<Tests>]
   let configTests =
