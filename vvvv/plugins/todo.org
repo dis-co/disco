@@ -1,4 +1,3 @@
-
 * DONE Project Creation/Bootstrap
   CLOSED: [2016-02-01 Mon 15:00]
 ** DONE settings.xml type parsing serialization + file writer code
@@ -17,8 +16,11 @@
 * DONE Project saving
   CLOSED: [2016-02-01 Mon 15:00]
 * NEXT ControlGroup
-** project create/load/save
-** peers do clone/pull
+** create/load/save project 
+** only peers who find themselves in project config will join the groups
+** peers do clone/pull (or should this be the project group?)
+** creates all groups necessary for project according to specs in project config
+** shuts down all groups for project should project be closed
 * IDEA Iris Service setup app
 ** sets registry keys
    - hostname
