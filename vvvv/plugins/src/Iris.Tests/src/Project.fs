@@ -13,12 +13,12 @@ open LibGit2Sharp
 module Project =
   let signature =
     new Signature("Karsten Gebbert", "karsten@nsynk.de", new DateTimeOffset(DateTime.Now))
-  //   _                    _    ______                  
-  //  | |    ___   __ _  __| |  / / ___|  __ ___   _____ 
+  //   _                    _    ______
+  //  | |    ___   __ _  __| |  / / ___|  __ ___   _____
   //  | |   / _ \ / _` |/ _` | / /\___ \ / _` \ \ / / _ \
   //  | |__| (_) | (_| | (_| |/ /  ___) | (_| |\ V /  __/
   //  |_____\___/ \__,_|\__,_/_/  |____/ \__,_| \_/ \___|ed
-  //                                                     
+  //
   let loadSaveTest =
     testCase "Save/Load Project should render equal project values" <|
       fun _ ->
@@ -38,19 +38,19 @@ module Project =
 
         Assert.Equal("Projects should be structurally equal", true, (project = project'))
 
-  //    ____          _                  _             _ 
+  //    ____          _                  _             _
   //   / ___|   _ ___| |_ ___  _ __ ___ (_)_______  __| |
   //  | |  | | | / __| __/ _ \| '_ ` _ \| |_  / _ \/ _` |
   //  | |__| |_| \__ \ || (_) | | | | | | |/ /  __/ (_| |
   //   \____\__,_|___/\__\___/|_| |_| |_|_/___\___|\__,_| load/saved
-  //                                                     
+  //
   let testCustomizedCfg =
     testCase "Save/Load of Project with customized configs should render structurally equal values" <|
       fun _ ->
         let name = "test2"
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
-        let engineCfg = 
+        let engineCfg =
           { VsyncConfig.Default with
               Hosts      = Some(["localhost"; "otherhost"]);
               InfiniBand = Some true;
@@ -233,12 +233,12 @@ module Project =
 
         Assert.Equal("Projects should be structurally equal", true, (project = project'))
 
-  //    ____ _ _   
-  //   / ___(_) |_ 
+  //    ____ _ _
+  //   / ___(_) |_
   //  | |  _| | __|
-  //  | |_| | | |_ 
+  //  | |_| | | |_
   //   \____|_|\__| initialzation
-  //               
+  //
   let saveInitsGit =
     testCase "Saved Project should be a git repository with yaml file." <|
       fun _ ->
@@ -252,7 +252,7 @@ module Project =
         project.Path <- Some(path)
         saveProject project signature "Initial commit."
 
-        let loaded = 
+        let loaded =
           Path.Combine(path, sprintf "%s.iris" name)
           |> loadProject
           |> Option.get
@@ -263,6 +263,12 @@ module Project =
         Assert.Equal("Projects should not be dirty", false, loaded.Repo.RetrieveStatus().IsDirty)
         Assert.Equal("Projects should have one initial commit", true, loaded.Repo.Commits.Count() = 1)
 
+  //    ____                          _ _
+  //   / ___|___  _ __ ___  _ __ ___ (_) |_ ___
+  //  | |   / _ \| '_ ` _ \| '_ ` _ \| | __/ __|
+  //  | |__| (_) | | | | | | | | | | | | |_\__ \
+  //   \____\___/|_| |_| |_|_| |_| |_|_|\__|___/ per save
+  //
   let savesMultipleCommits =
     testCase "Saved Project should be a git repository with yaml file." <|
       fun _ ->
@@ -331,7 +337,7 @@ module Project =
   // For tests async stuff:
   //
   // let testTests =
-  //   testCase "making a case" <| (timeout 1000 
+  //   testCase "making a case" <| (timeout 1000
   //     (fun _ ->
   //       Thread.Sleep(900)
   //       failtest "nop"))
