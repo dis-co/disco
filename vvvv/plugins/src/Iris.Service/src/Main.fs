@@ -6,6 +6,7 @@ open System.Threading
 
 open Nessos.FsPickler
 open Iris.Core.Types
+open Iris.Core.Config
 open Iris.Service.Types
 
 open Vsync
@@ -18,16 +19,16 @@ module Main =
   let main argv =
     printfn "starting engine.."
 
-    // let options =
-    //  { VsyncConfig.Default with
-    //      UnicastOnly = Some(true);
-    //      Hosts = Some([ "localhost" ]) }
+    let options =
+      { VsyncConfig.Default with
+          UnicastOnly = Some(true);
+          Hosts = Some([ "localhost" ]) }
 
-    // options.Apply()
+    options.Apply()
     
-    // VsyncSystem.Start()
+    VsyncSystem.Start()
 
-    // printfn "done."
+    printfn "done."
 
     // let pins = new PinGroup("iris.pins")
     // pins.group.Join()
@@ -42,6 +43,6 @@ module Main =
     // pins.Send(PinAction.Add, pin)
     // pins.Dump()
 
-    // VsyncSystem.WaitForever()
+    VsyncSystem.WaitForever()
 
     0

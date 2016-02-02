@@ -24,3 +24,5 @@
 * IDEA Iris Service setup app
 ** sets registry keys
    - hostname
+   - auto-load project
+   - workspace path

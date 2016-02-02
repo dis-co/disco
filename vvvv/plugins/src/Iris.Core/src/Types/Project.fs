@@ -51,7 +51,7 @@ module Project =
 [<AutoOpen>]
 /// utility functions only needed in native code
 module ProjectUtil =
-  open Iris.Core.Util
+  open Iris.Core.Utils
 
   let private Committer =
     let hostname = Dns.GetHostName()
