@@ -7,19 +7,20 @@ open Nessos.FsPickler
 open Iris.Core.Types
 open Iris.Core.Config
 open Iris.Service.Types
+open Iris.Service.Core
 open LibGit2Sharp
 open Vsync
 
-type LookUpHandler = delegate of string -> unit
-
 module Main =
 
-  let (|Create|Load|Save|Help|) (str : string) =
+  let (|Create|Load|Save|Start|Stop|Help|) (str : string) =
     let parsed = str.Split(' ')
     match parsed with
       | [| "create"; name; path |] -> Create(name, path)
       | [| "load";         path |] -> Load(path)
       | [| "save";         msg  |] -> Save(msg)
+      | [| "start";             |] -> Start
+      | [| "stop";              |] -> Stop
       | _ -> Help
 
   [<EntryPoint>]
@@ -33,8 +34,9 @@ module Main =
 
     options.Apply()
     
-    VsyncSystem.Start()
+    // VsyncSystem.Start()
 
+    let mutable daemon : Git.Daemon option = None
     let signature = new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
     let Context = new Context()
     Context.Signature <- Some(signature)
@@ -48,8 +50,13 @@ module Main =
         | Load(path)         -> Context.LoadProject(path)
         | Save(msg)          -> Context.SaveProject(msg)
         | Create(name, path) -> Context.CreateProject(name, path)
-        | Help               -> printfn "help requested.."
-
+        | Start -> let d = new Git.Daemon("")
+                   d.Start()
+                   daemon <- Some(d)
+        | Stop -> match daemon with
+                    | Some(d) -> d.Stop()
+                    | None -> printfn "no daemon running"
+        | Help -> printfn "help requested.."
 
     // VsyncSystem.WaitForever()
 

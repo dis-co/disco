@@ -8,7 +8,7 @@ with import <nixpkgs> {}; {
       if [ ! -L NativeBinaries ]; then
         ln -s src/Iris.Service/bin/Debug/NativeBinaries .
       fi
-      $run 
+      $run
     '';
   };
 }
