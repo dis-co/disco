@@ -13,13 +13,12 @@ open Vsync
 
 module Main =
 
-  let (|Create|Load|Save|Start|Stop|Help|) (str : string) =
+  let (|Create|Load|Save|Stop|Help|) (str : string) =
     let parsed = str.Split(' ')
     match parsed with
       | [| "create"; name; path |] -> Create(name, path)
       | [| "load";         path |] -> Load(path)
       | [| "save";         msg  |] -> Save(msg)
-      | [| "start";             |] -> Start
       | [| "stop";              |] -> Stop
       | _ -> Help
 
@@ -50,26 +49,7 @@ module Main =
         | Load(path)         -> Context.LoadProject(path)
         | Save(msg)          -> Context.SaveProject(msg)
         | Create(name, path) -> Context.CreateProject(name, path)
-        | Start ->
-          if Option.isSome Context.Project
-          then
-            match daemon with
-              | Some(d) -> if d.Running()
-                           then printfn "already running"
-                           else d.Start()
-              | None ->
-                match Context.Project with
-                  | Some(p) ->
-                    match p.Path with
-                      | Some path -> 
-                         let d = new Git.Daemon(path)
-                         d.Start()
-                         daemon <- Some(d)
-                      | _ -> printfn "project has no path"
-                  | None -> printfn "no project yet"
-        | Stop -> match daemon with
-                    | Some(d) -> d.Stop()
-                    | None -> printfn "no daemon running"
+        | Stop               -> Context.StopDaemon()
         | Help -> printfn "help requested.."
 
     // VsyncSystem.WaitForever()
