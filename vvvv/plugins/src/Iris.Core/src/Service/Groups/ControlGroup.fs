@@ -14,7 +14,7 @@ module ControlGroup =
   //  /_/   \_\___|\__|_|\___/|_| |_|___/
   //
   [<RequireQualifiedAccess>]
-  type Actions =
+  type CtrlActions =
     | Load
     | Save
     | Clone
@@ -33,20 +33,20 @@ module ControlGroup =
   //   \____|_|  \___/ \__,_| .__/
   //                        |_|
   type ControlGroup() as self =
-    [<DefaultValue>] val mutable group   : IrisGroup<Actions,Context>
+    [<DefaultValue>] val mutable group   : IrisGroup<CtrlActions,Context>
     [<DefaultValue>] val mutable Context : Context
 
-    let AddHandler(action, cb) =
+    let AddHandler(action : CtrlActions, cb : Context -> unit) =
       self.group.AddHandler(action, cb)
 
     let AllHandlers =
-      [ (Actions.Load,  self.OnLoad)
-      ; (Actions.Save,  self.OnSave)
-      ; (Actions.Clone, self.OnClone)
+      [ (CtrlActions.Load,  self.OnLoad)
+      ; (CtrlActions.Save,  self.OnSave)
+      ; (CtrlActions.Clone, self.OnClone)
       ]
 
     do
-      self.group <- new IrisGroup<Actions,Context>("iris.control")
+      self.group <- new IrisGroup<CtrlActions,Context>("iris.control")
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
       self.group.CheckpointMaker(self.MakeCheckpoint)
