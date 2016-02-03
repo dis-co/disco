@@ -39,17 +39,17 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
+    <Reference Include="System.Management" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Vsync\Vsync.csproj">
       <Project>{6C867E53-6228-4FA0-9943-3C8CC11D74BC}</Project>
-      <Name>Iris.Core</Name>
+      <Name>Vsync</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="paket.references" />
     <None Include="paket.template" />
-    <None Include="assets/example-project.yml" />
     <Compile Include="src\Util.fs" />
     <Compile Include="src\Types\Aliases.fs" />
     <Compile Include="src\Types\IOBox.fs" />
@@ -69,6 +69,7 @@
     <Compile Include="src\Service\Groups\CueGroup.fs" />
     <Compile Include="src\Service\Groups\ProjectGroup.fs" />
     <Compile Include="src\Service\Groups\ControlGroup.fs" />
+    <None Include="assets\example-project.yml" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
