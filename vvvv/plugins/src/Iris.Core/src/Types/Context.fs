@@ -26,8 +26,7 @@ module Context =
         | Some(daemon) -> daemon.Stop()
         | _ -> ()
 
-    member self.LoadProject(path : FilePath) : unit =
-      self.Project <- loadProject path
+    member self.StartDaemon() =
       match self.Project with
         | Some(project) ->
           self.StopDaemon()
@@ -36,6 +35,11 @@ module Context =
             daemon.Start()
             self.GitDaemon <- Some(daemon)
         | None -> printfn "project not found"
+
+    member self.LoadProject(path : FilePath) : unit =
+      self.StopDaemon()
+      self.Project <- loadProject path
+      self.StartDaemon()
 
     member self.SaveProject(msg : string) : unit =
       if Option.isSome self.Signature
@@ -47,7 +51,9 @@ module Context =
       else printfn "Unable to save project. No signature supplied."
 
     member self.CreateProject(name : Name, path : FilePath) =
+      self.StopDaemon()
       let project = createProject name
       project.Path <- Some(path)
       self.Project <- Some(project)
       self.SaveProject(sprintf "Created %s" name)
+      self.StartDaemon()

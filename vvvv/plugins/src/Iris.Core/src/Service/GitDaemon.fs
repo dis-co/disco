@@ -2,7 +2,9 @@ namespace Iris.Service.Core
 
 open Iris.Core.Utils
 open Iris.Core.Types
+
 open System
+open System.IO
 open System.Threading
 open System.Diagnostics
 open System.Management
@@ -30,7 +32,13 @@ module Git =
     let mutable Worker  : Thread option = None
 
     member self.Runner () =
-      let args = sprintf "daemon --reuseaddr --strict-paths --base-path=%s %s/.git" path path
+      let basedir = Workspace
+
+      //  if Directory.Exists(Path.Combine(path, ".git"))
+      //  then Path.GetDirectoryName(path)
+      //  else path
+
+      let args = sprintf "daemon --reuseaddr --strict-paths --base-path=%s %s/.git" basedir path
       let proc = Process.Start("git", args)
 
       lock loco <| fun _ ->
