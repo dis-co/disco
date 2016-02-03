@@ -51,13 +51,22 @@ module Main =
         | Save(msg)          -> Context.SaveProject(msg)
         | Create(name, path) -> Context.CreateProject(name, path)
         | Start ->
-          match daemon with
-            | Some(d) -> if d.Running()
-                         then printfn "already running"
-                         else d.Start()
-            | None -> let d = new Git.Daemon("")
-                      d.Start()
-                      daemon <- Some(d)
+          if Option.isSome Context.Project
+          then
+            match daemon with
+              | Some(d) -> if d.Running()
+                           then printfn "already running"
+                           else d.Start()
+              | None ->
+                match Context.Project with
+                  | Some(p) ->
+                    match p.Path with
+                      | Some path -> 
+                         let d = new Git.Daemon(path)
+                         d.Start()
+                         daemon <- Some(d)
+                      | _ -> printfn "project has no path"
+                  | None -> printfn "no project yet"
         | Stop -> match daemon with
                     | Some(d) -> d.Stop()
                     | None -> printfn "no daemon running"

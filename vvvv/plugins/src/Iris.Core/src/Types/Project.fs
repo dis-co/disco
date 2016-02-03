@@ -149,6 +149,7 @@ module ProjectUtil =
       if isNull project.Repo
       then 
         let path = Repository.Init(Option.get project.Path)
+        File.WriteAllText(Path.Combine(path, "git-daemon-export-ok"), "")
         project.Repo <- new Repository(path)
 
       // Project metadata

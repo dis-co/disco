@@ -30,7 +30,8 @@ module Git =
     let mutable Worker  : Thread option = None
 
     member self.Runner () =
-      let proc = Process.Start("git", "daemon") // add base path arg
+      let args = sprintf "daemon --reuseaddr --strict-paths --base-path=%s %s/.git" path path
+      let proc = Process.Start("git", args)
 
       lock loco <| fun _ ->
         while running do
