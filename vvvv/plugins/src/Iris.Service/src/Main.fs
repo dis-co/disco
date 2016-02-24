@@ -62,4 +62,5 @@ module Main =
 
     VsyncSystem.WaitForever()
 
+    (Context :> IDisposable).Dispose()
     0
