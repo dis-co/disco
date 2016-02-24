@@ -32,7 +32,7 @@ module Git =
     let mutable Worker  : Thread option = None
 
     member self.Runner () =
-      let basedir = Workspace
+      let basedir = Workspace()
 
       //  if Directory.Exists(Path.Combine(path, ".git"))
       //  then Path.GetDirectoryName(path)

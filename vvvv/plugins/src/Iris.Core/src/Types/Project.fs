@@ -114,7 +114,7 @@ module ProjectUtil =
 
       let project = createProject Meta.Name
       let basedir = Path.GetDirectoryName(path)
-      
+
       project.Repo      <- new Repository(Path.Combine(basedir, ".git"))
       project.Path      <- Some(Path.GetDirectoryName(path))
       project.LastSaved <- date
@@ -147,7 +147,7 @@ module ProjectUtil =
       Directory.CreateDirectory (Option.get project.Path) |> ignore
 
       if isNull project.Repo
-      then 
+      then
         let path = Repository.Init(Option.get project.Path)
         File.WriteAllText(Path.Combine(path, "git-daemon-export-ok"), "")
         project.Repo <- new Repository(path)
@@ -467,3 +467,20 @@ module ProjectUtil =
           repo.Stage(destPath)
           repo.Commit(msg, sign, Committer)
           |> ignore)
+
+
+  //   ____ _
+  //  / ___| | ___  _ __   ___
+  // | |   | |/ _ \| '_ \ / _ \
+  // | |___| | (_) | | | |  __/
+  //  \____|_|\___/|_| |_|\___|
+  // clone a project from a different host
+  let cloneProject (host : string) (name : string) : FilePath option =
+    let url = sprintf "git://%s/%s/.git" host name
+    try
+      let res = Repository.Clone(url, Path.Combine(Workspace(), name))
+      printfn "clone result: %s" res
+      Some(Path.Combine(Workspace(), name))
+    with
+      | _ -> None
+

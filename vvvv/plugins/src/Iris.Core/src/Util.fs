@@ -2,6 +2,8 @@ namespace Iris.Core
 
 open System
 open System.IO
+open System.Net
+open System.Net.NetworkInformation
 open System.Text.RegularExpressions
 
 module Utils =
@@ -21,9 +23,9 @@ module Utils =
   //
   // the standard location projects are create/cloned to.
   // Settable it via environment variable.
-  let Workspace =
+  let Workspace (_ : unit) : string =
     let wsp = Environment.GetEnvironmentVariable("IRIS_WORKSPACE")
-    if isNull wsp
+    if isNull wsp || wsp.Length = 0 
     then
       if isLinux
       then
@@ -36,11 +38,11 @@ module Utils =
   let IrisExt = ".iris"
 
   let workspaceExists () =
-    Directory.Exists Workspace
+    Directory.Exists <| Workspace()
 
   let createWorkspace () =
     if not <| workspaceExists()
-    then Directory.CreateDirectory Workspace
+    then Directory.CreateDirectory <| Workspace()
          |> ignore
 
   let sanitizeName (name : string) =
@@ -48,3 +50,14 @@ module Utils =
     if regex.IsMatch(name)
     then regex.Replace(name, "_")
     else name
+
+  let getIpAddress (_ : unit) : IPAddress option =
+    let mutable outip : IPAddress option = None
+    for iface in NetworkInterface.GetAllNetworkInterfaces() do
+      if iface.NetworkInterfaceType = NetworkInterfaceType.Wireless80211 ||
+         iface.NetworkInterfaceType = NetworkInterfaceType.Ethernet
+      then
+        for ip in iface.GetIPProperties().UnicastAddresses do
+           if ip.Address.AddressFamily = Sockets.AddressFamily.InterNetwork
+           then outip <- Some(ip.Address)
+    outip

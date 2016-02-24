@@ -9,7 +9,7 @@ module Base =
 
   type Handler<'a> = 'a -> unit
 
-  type private RawHandler = delegate of byte[] -> unit
+  type RawHandler = delegate of byte[] -> unit
 
   let private mkRawHandler (f : byte[] -> unit) = new RawHandler(f)
 
@@ -48,6 +48,10 @@ module Base =
 
     member self.AddInitializer(handler : unit -> unit) =
       self.RegisterInitializer(new Vsync.Initializer(handler))
+
+    member self.AddRawHandler(action : 'action, handler : Handler<byte[]>) =
+      let wrapped = mkRawHandler handler
+      in self.Handlers.[action.ToInt()] <- self.Handlers.[action.ToInt()] + wrapped
 
     member self.AddHandler(action : 'action, handler : Handler<'data>) =
       let wrapped = mkRawHandler <| fun data ->
