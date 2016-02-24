@@ -2,14 +2,16 @@ namespace Iris.Service.Types
 
 open Suave
 open Suave.Http;
-open Suave.Http.Applicatives
-open Suave.Http.Files
-open Suave.Http.Successful
-open Suave.Http.Writers
-open Suave.Types
+open Suave.Files
+open Suave.Filters
+open Suave.Operators
+open Suave.Successful
+open Suave.Writers
 open Suave.Web
 open System.Threading
 open System.IO
+open System.Net
+open System.Net.Sockets
 open System.Diagnostics
 
 
@@ -19,33 +21,28 @@ module AssetServer =
   type AssetServer(addr : string, port : int) =
     let cts = new CancellationTokenSource()
 
+    let Port = Sockets.Port.Parse (string port)
+    let IpAddr = IPAddress.Parse addr
+
     let basepath =
       let fn = Process.GetCurrentProcess().MainModule.FileName
       Path.GetDirectoryName(fn) + "/assets"
 
     // Add more mime-types here if necessary
     // the following are for fonts, source maps etc.
-    let mimeTypes =
-      defaultMimeTypesMap >=> (function
-      | ".map"   -> mkMimeType "text/plain"                    false
-      | ".svg"   -> mkMimeType "image/svg+xml"                 false
-      | ".otf"   -> mkMimeType "application/font-sfnt"         false
-      | ".eot"   -> mkMimeType "application/vnd.ms-fontobject" false
-      | ".woff"  -> mkMimeType "application/font-woff"         false
-      | ".woff2" -> mkMimeType "application/font-woff"         false
-      | _ -> None)
+    let mimeTypes = defaultMimeTypesMap
 
     // our application only needs to serve files off the disk
     // but we do need to specify what to do in the base case, i.e. "/"
     let app =
-      choose [ GET >>= choose [ path "/"      >>= OK "should serve index"
-                                path "/tests" >>= OK "should serve tests page"
+      choose [ GET >=> choose [ path "/"      >=> OK "should serve index"
+                                path "/tests" >=> OK "should serve tests page"
                                 browseHome ] ]
 
     let config =
       { defaultConfig with cancellationToken = cts.Token
                            homeFolder        = Some(basepath)
-                           bindings          = [ HttpBinding.mk' HTTP addr port ]
+                           bindings          = [ HttpBinding.mk HTTP IpAddr Port ]
                            mimeTypesMap      = mimeTypes }
 
     let thread = new Thread(new ThreadStart(fun _ ->
