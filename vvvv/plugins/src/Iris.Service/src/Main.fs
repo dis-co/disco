@@ -35,7 +35,6 @@ module Main =
     
     // VsyncSystem.Start()
 
-    let mutable daemon : Git.Daemon option = None
     let signature = new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
     let Context = new Context()
     Context.Signature <- Some(signature)
