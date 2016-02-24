@@ -1,21 +1,21 @@
 NUGET
   remote: https://www.nuget.org/api/v2
   specs:
-    FAKE (4.12.2)
+    FAKE (4.20.0)
     Fleck (0.13.0.57)
     FsCheck (2.2.4)
       FSharp.Core (>= 3.1.2.5)
-    FSharp.Compiler.Service (1.4.2.3)
-    FSharp.Configuration (0.5.9)
+    FSharp.Compiler.Service (2.0.0.6)
+    FSharp.Configuration (0.5.10)
     FSharp.Core (4.0.0.1)
-    FSharp.Formatting (2.13.0)
-      FSharp.Compiler.Service (>= 1.4.2 < 1.5.0)
-      FSharpVSPowerTools.Core (>= 2.2.0 < 2.3.0)
-    FSharpVSPowerTools.Core (2.2.0)
-      FSharp.Compiler.Service (>= 1.4.2.0)
-    FsPickler (1.7.1)
-    FsPickler.Json (1.7.1)
-      FsPickler (1.7.1)
+    FSharp.Formatting (2.14.0)
+      FSharp.Compiler.Service (>= 2.0.0.3 < 2.1.0)
+      FSharpVSPowerTools.Core (>= 2.3.0 < 2.4.0)
+    FSharpVSPowerTools.Core (2.3.0)
+      FSharp.Compiler.Service (>= 2.0.0.3)
+    FsPickler (1.8.0)
+    FsPickler.Json (1.8.0)
+      FsPickler (1.8.0)
       Newtonsoft.Json (>= 6.0.5)
     Fuchu (1.0.3)
       FSharp.Core (>= 3.1.2.1)
@@ -28,15 +28,15 @@ NUGET
     Microsoft.Net.Http (2.2.29)
       Microsoft.Bcl (>= 1.1.10)
       Microsoft.Bcl.Build (>= 1.0.14)
-    Newtonsoft.Json (8.0.1)
-    Octokit (0.17.0)
+    Newtonsoft.Json (8.0.2)
+    Octokit (0.18.0)
       Microsoft.Net.Http
     SourceLink.Fake (1.1.0)
-    Suave (1.0.0)
+    Suave (1.1.1)
       FSharp.Core (>= 3.1.2.5)
-    WebSharper (3.6.6.225)
+    WebSharper (3.6.10.230)
 GITHUB
   remote: fsharp/FAKE
   specs:
-    modules/Octokit/Octokit.fsx (e537d90b050d02cc287cb64e18b72a8b7e984805)
+    modules/Octokit/Octokit.fsx (43c4800c5f132d2c2d6832a3a59232a64d83d4c0)
       Octokit
