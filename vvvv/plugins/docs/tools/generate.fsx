@@ -13,14 +13,11 @@ let referenceBinaries = []
 // Web site location for the generated documentation
 let website = "/Iris"
 
-let githubLink = "http://github.com/krgn/Iris"
-
 // Specify more information about your project
 let info =
   [ "project-name", "Iris.Core"
     "project-author", "Karsten Gebbert"
     "project-summary", "VVVV Infrastructure"
-    "project-github", githubLink
     "project-nuget", "http://nuget.org/packages/Iris" ]
 
 // --------------------------------------------------------------------------------------
@@ -102,47 +99,9 @@ let buildReference () =
   MetadataFormat.Generate
     ( binaries, output @@ "reference", layoutRootsAll.["en"],
       parameters = ("root", root)::info,
-      sourceRepo = githubLink @@ "tree/master",
+      sourceRepo = "",
       sourceFolder = __SOURCE_DIRECTORY__ @@ ".." @@ "..",
       publicOnly = true,libDirs = libDirs )
 
-// Build documentation from `fsx` and `md` files in `docs/content`
-let buildDocumentation () =
-
-  // First, process files which are placed in the content root directory.
-
-  Literate.ProcessDirectory
-    ( content, docTemplate, output, replacements = ("root", root)::info,
-      layoutRoots = layoutRootsAll.["en"],
-      generateAnchors = true,
-      processRecursive = true)
-
-  // And then process files which are placed in the sub directories
-  // (some sub directories might be for specific language).
-
-  let subdirs = Directory.EnumerateDirectories(content, "*", SearchOption.TopDirectoryOnly)
-  for dir in subdirs do
-    let dirname = (new DirectoryInfo(dir)).Name
-    let layoutRoots =
-        // Check whether this directory name is for specific language
-        let key = layoutRootsAll.Keys
-                  |> Seq.tryFind (fun i -> i = dirname)
-        match key with
-        | Some lang -> layoutRootsAll.[lang]
-        | None -> layoutRootsAll.["en"] // "en" is the default language
-
-    Literate.ProcessDirectory
-      ( dir, docTemplate, output @@ dirname, replacements = ("root", root)::info,
-        layoutRoots = layoutRoots,
-        generateAnchors = true )
-
-// Generate
 copyFiles()
-// #if HELP
-// buildDocumentation()
-// #endif
-// #if REFERENCE
-// buildReference()
-// #endif
-
 buildReference()

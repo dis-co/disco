@@ -16,7 +16,8 @@
 * DONE Project saving
   CLOSED: [2016-02-01 Mon 15:00]
 * NEXT ControlGroup
-** create/load/save project 
+** DONE create/load/save project 
+   CLOSED: [2016-02-24 Wed 10:44]
 ** only peers who find themselves in project config will join the groups
 ** peers do clone/pull (or should this be the project group?)
 ** creates all groups necessary for project according to specs in project config
