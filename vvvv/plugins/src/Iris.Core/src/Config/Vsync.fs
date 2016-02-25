@@ -21,7 +21,7 @@ module Vsync =
 
   /// shortcut to set an environment variable
   let inline private setVar var value : unit =
-    //printfn "var=%s value=%s" var value
+    printfn "var=%s value=%s" var value
     System.Environment.SetEnvironmentVariable(var, value)
 
   /// Vsync engine-specific configuration options record

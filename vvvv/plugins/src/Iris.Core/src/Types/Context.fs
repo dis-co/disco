@@ -7,13 +7,13 @@ open Iris.Service.Core
 [<AutoOpen>]
 module Context =
 
-  type Context() as self =
+  type Context(signature) as self =
     [<DefaultValue>] val mutable Signature : Signature  option
     [<DefaultValue>] val mutable Project   : Project    option
     [<DefaultValue>] val mutable GitDaemon : Git.Daemon option
 
     do
-      self.Signature <- None
+      self.Signature <- Some(signature)
       self.Project   <- None
       self.GitDaemon <- None
 

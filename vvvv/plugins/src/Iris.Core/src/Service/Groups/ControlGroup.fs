@@ -65,7 +65,8 @@ module ControlGroup =
       self.group.CheckpointLoader(self.LoadCheckpoint)
       List.iter AddHandler AllHandlers
 
-    member self.Join() = self.group.Join()
+    member self.Join()  = self.group.Join()
+    member self.Leave() = self.group.Leave()
 
     member self.Send(action : CtrlAction, raw : byte array) =
       self.group.Send((action :> IEnum).ToInt(), raw)
