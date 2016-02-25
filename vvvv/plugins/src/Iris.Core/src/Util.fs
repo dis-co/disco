@@ -63,6 +63,24 @@ module Utils =
     outip
 
   let logger (tag : string) (str : string) : unit =
-    let verbose = System.Environment.GetEnvironmentVariable("IRIS_VERBOSE")
+    let def = tag.Length + 2
+    let verbose = Environment.GetEnvironmentVariable("IRIS_VERBOSE")
     if not (isNull verbose) && bool.Parse(verbose)
-    then printfn "[%s] \t\t %s" tag str
+    then 
+      let var = "IRIS_LOGGING_OFFSET"
+      let mutable offset = 0
+
+      try
+        offset <- int (Environment.GetEnvironmentVariable(var))
+      with
+        | _ ->
+          offset <- def
+          Environment.SetEnvironmentVariable(var, string offset)
+
+      if def > offset
+      then
+        offset <- def
+        Environment.SetEnvironmentVariable(var, string offset)
+
+      let ws = Array.fold (fun m _ -> m + " ") "" [| 0 .. (offset - def) |]
+      printfn "[%s]%s%s" tag ws str
