@@ -27,7 +27,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "project", "project", "{BF60
 	ProjectSection(SolutionItems) = preProject
 		build.fsx = build.fsx
 		README.md = README.md
-		RELEASE_NOTES.md = RELEASE_NOTES.md
+		CHANGELOG.md = CHANGELOG.md
 	EndProjectSection
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Tests", "src\Iris.Tests\Iris.Tests.fsproj", "{D89C8286-2978-465B-89C9-8836A837C06B}"

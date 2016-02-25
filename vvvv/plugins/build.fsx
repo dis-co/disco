@@ -64,7 +64,7 @@ let gitRaw = environVarOrDefault "gitRaw" "https://raw.github.com/krgn"
 // --------------------------------------------------------------------------------------
 
 // Read additional information from the release notes document
-let release = LoadReleaseNotes "RELEASE_NOTES.md"
+let release = LoadReleaseNotes "CHANGELOG.md"
 
 // Helper active pattern for project types
 let (|Fsproj|Csproj|Vbproj|) (projFileName:string) = 
@@ -204,7 +204,7 @@ Target "PublishNuget" (fun _ ->
 // 
 // Target "GenerateHelp" (fun _ ->
 //     DeleteFile "docs/content/release-notes.md"
-//     CopyFile "docs/content/" "RELEASE_NOTES.md"
+//     CopyFile "docs/content/" "CHANGELOG.md"
 //     Rename "docs/content/release-notes.md" "docs/content/RELEASE_NOTES.md"
 // 
 //     DeleteFile "docs/content/license.md"
@@ -216,7 +216,7 @@ Target "PublishNuget" (fun _ ->
 // 
 // Target "GenerateHelpDebug" (fun _ ->
 //     DeleteFile "docs/content/release-notes.md"
-//     CopyFile "docs/content/" "RELEASE_NOTES.md"
+//     CopyFile "docs/content/" "CHANGELOG.md"
 //     Rename "docs/content/release-notes.md" "docs/content/RELEASE_NOTES.md"
 // 
 //     DeleteFile "docs/content/license.md"
