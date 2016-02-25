@@ -11,6 +11,12 @@ open System.Management
 
 module Git =
 
+  //  _    _ _ _ 
+  // | | _(_) | |
+  // | |/ / | | |
+  // |   <| | | |
+  // |_|\_\_|_|_|
+  //             
   let rec kill (pid : int) =
     if isLinux
     then
@@ -25,6 +31,12 @@ module Git =
       let proc = Process.GetProcessById(pid)
       proc.Kill();
 
+  //  ____                                   
+  // |  _ \  __ _  ___ _ __ ___   ___  _ __  
+  // | | | |/ _` |/ _ \ '_ ` _ \ / _ \| '_ \ 
+  // | |_| | (_| |  __/ | | | | | (_) | | | |
+  // |____/ \__,_|\___|_| |_| |_|\___/|_| |_|
+  //                                         
   type Daemon(path : FilePath) =
     let loco : obj  = new obj()
     let mutable started : bool = false
@@ -33,10 +45,6 @@ module Git =
 
     member self.Runner () =
       let basedir = Workspace()
-
-      //  if Directory.Exists(Path.Combine(path, ".git"))
-      //  then Path.GetDirectoryName(path)
-      //  else path
 
       let args = sprintf "daemon --reuseaddr --strict-paths --base-path=%s %s/.git" basedir path
       let proc = Process.Start("git", args)

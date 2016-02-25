@@ -26,7 +26,6 @@ module ControlGroup =
   [<RequireQualifiedAccess>]
   type CtrlAction =
     | Load
-    | Save
     | Close
     | MemberAdd
     | MemberUpdate
@@ -36,7 +35,6 @@ module ControlGroup =
       member self.ToInt() : int =
         match self with
           | Load         -> 1
-          | Save         -> 2
           | Close        -> 3
           | MemberAdd    -> 4
           | MemberUpdate -> 5
@@ -62,7 +60,6 @@ module ControlGroup =
 
     let ProjHandlers =
       [ (CtrlAction.Load,  self.OnLoad)
-      ; (CtrlAction.Save,  self.OnSave)
       ; (CtrlAction.Close, self.OnClose)
       ]
 
@@ -111,25 +108,16 @@ module ControlGroup =
       let pth = Path.Combine(Workspace(), job.Name)
       if File.Exists pth || Directory.Exists pth
       then
-        match self.context.Project with
-          | Some project ->
-            if project.Name = job.Name
-            then logger tag"project already loaded."
-            else
-              self.context.StopDaemon()
-              self.context.LoadProject(pth)
-          | None -> self.context.LoadProject(pth)
+        if not <| self.context.ProjectLoaded(job.Name)
+        then self.context.LoadProject(pth)
       else
         logger tag <| sprintf "address toString: %s" job.Host
         match cloneProject "localhost" job.Name with
           | Some pth -> logger tag <| sprintf "%s" pth
           | None -> logger tag"something went wrong"
 
-    member self.OnSave(ctx : ProjectMsg) =
-      logger tag "OnSave"
-
-    member self.OnClose(ctx : ProjectMsg) = 
-      logger tag "OnClose"
+    member self.OnClose(msg : ProjectMsg) = 
+      self.context.CloseProject(msg.Name)
 
     member self.OnMemberAdd(mem : Member) =
       self.context.AddMember(mem)

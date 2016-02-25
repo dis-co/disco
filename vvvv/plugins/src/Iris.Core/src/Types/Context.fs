@@ -72,6 +72,15 @@ module Context =
       self.SaveProject(sprintf "Created %s" name)
       self.StartDaemon()
 
+    member self.CloseProject(name : Name) =
+      if self.ProjectLoaded(name)
+      then
+        self.StopDaemon()
+        self.Project <- None
+      
+    member self.ProjectLoaded(name : Name) = 
+      Option.isSome self.Project && (Option.get self.Project).Name = name
+    
     //  __  __                _
     // |  \/  | ___ _ __ ___ | |__   ___ _ __ ___
     // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__/ __|
