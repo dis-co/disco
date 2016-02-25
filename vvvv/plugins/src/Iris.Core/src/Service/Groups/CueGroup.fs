@@ -2,6 +2,7 @@ namespace Iris.Service.Groups
 
 open System.Collections.Generic
 open Nessos.FsPickler
+open Iris.Core.Utils
 open Iris.Core.Types
 open Vsync
 
@@ -28,6 +29,8 @@ module CueGroup =
   (* ---------- CueGroup ---------- *)
 
   type CueGroup(grpname) as self = 
+    let tag = "CueGroup"
+ 
     [<DefaultValue>] val mutable group : IrisGroup<CueAction,Cue>
 
     let mutable cues : CueDict = new CueDict()
@@ -52,7 +55,7 @@ module CueGroup =
 
     member self.Dump() =
       for cue in cues do
-        printfn "cue id: %s" cue.Key
+        logger tag <| sprintf "cue id: %s" cue.Key
 
     member self.Add(c : Cue) =
       cues.Add(c.Id, c)
@@ -66,10 +69,10 @@ module CueGroup =
 
     (* State initialization and transfer *)
     member self.Initialize() =
-      printfn "should load state from disk/vvvv now"
+      logger tag <| sprintf "should load state from disk/vvvv now"
 
     member self.MakeCheckpoint(view : View) =
-      printfn "makeing a snapshot. %d cues in it" cues.Count
+      logger tag <| sprintf "makeing a snapshot. %d cues in it" cues.Count
       for pair in cues do
         self.group.SendCheckpoint(pair.Value)
       self.group.DoneCheckpoint()
@@ -78,22 +81,22 @@ module CueGroup =
       if cues.ContainsKey(cue.Id)
       then cues.[cue.Id] <- cue
       else cues.Add(cue.Id, cue)
-      printfn "loaded a snapshot. %d cues in it" cues.Count
+      logger tag <| sprintf "loaded a snapshot. %d cues in it" cues.Count
 
     (* View changes *)
     member self.ViewChanged(view : View) : unit =
-      printfn "viewid: %d" <| view.GetViewid() 
+      logger tag <| sprintf "viewid: %d" (view.GetViewid()) 
 
     (* Event Handlers for CueAction *)
     member self.CueAdded(cue : Cue) : unit =
       if not <| cues.ContainsKey(cue.Id)
       then
         self.Add(cue)
-        printfn "cue added cb: "
+        logger tag "cue added cb"
         self.Dump()
 
     member self.CueUpdated(cue : Cue) : unit =
-      printfn "%s updated" cue.Name
+      logger tag <| sprintf "%s updated" cue.Name
 
     member self.CueDeleted(cue : Cue) : unit =
-      printfn "%s removed" cue.Name
+      logger tag <| sprintf "%s removed" cue.Name

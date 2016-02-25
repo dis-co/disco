@@ -5,6 +5,7 @@ open System
 open System.Threading
 open Nessos.FsPickler
 open Iris.Core
+open Iris.Core.Utils
 open Iris.Core.Types
 open Iris.Core.Config
 open Iris.Service.Types
@@ -30,27 +31,39 @@ module Main =
 
   [<EntryPoint>]
   let main argv =
-    printf "starting.."
 
-    let mutable run = true
+    let cli     = Array.contains "-r" argv || Array.contains "--repl"    argv
+    let oracle  = Array.contains "-o" argv || Array.contains "--oracle"  argv
+    let verbose = Array.contains "-v" argv || Array.contains "--verbose" argv
 
-    let Iris = new IrisService()
-    Iris.Start()
+    if verbose
+    then Environment.SetEnvironmentVariable("IRIS_VERBOSE", "True")
 
-    while run do
-      printf "> "
-      let cmd = Console.ReadLine()
-      match cmd with
-        | Load(path)         -> Iris.LoadProject(path)
-        | Save(msg)          -> Iris.SaveProject(msg)
-        | Create(name, path) -> Iris.CreateProject(name, path)
-        | Close              -> Iris.CloseProject()
-        | Set(path)          -> Environment.SetEnvironmentVariable("IRIS_WORKSPACE", path)
-        | Help               -> help()
-        | Quit               -> run <- false
+    if oracle
+    then
+      logger "Main" "Starting Oracle"
+      Oracle.Start()
+      Oracle.Wait()
+    else
+      logger "Main" "Starting Iris"
+      let Iris = new IrisService()
+      Iris.Start()
 
-    printfn "Disposing now.."
-
-    (Iris :> IDisposable).Dispose()
-
+      if cli
+      then
+        let mutable run = true
+        while run do
+          printf "> "
+          let cmd = Console.ReadLine()
+          match cmd with
+            | Load(path)         -> Iris.LoadProject(path)
+            | Save(msg)          -> Iris.SaveProject(msg)
+            | Create(name, path) -> Iris.CreateProject(name, path)
+            | Close              -> Iris.CloseProject()
+            | Set(path)          -> Environment.SetEnvironmentVariable("IRIS_WORKSPACE", path)
+            | Help               -> help()
+            | Quit               -> run <- false
+        (Iris :> IDisposable).Dispose()
+      else
+        Iris.Wait()
     0

@@ -5,6 +5,7 @@ open System.IO
 open System.Linq
 open System.Net
 open System.Collections.Generic
+open Iris.Core.Utils
 open Iris.Core.Config
 open LibGit2Sharp
 
@@ -479,7 +480,7 @@ module ProjectUtil =
     let url = sprintf "git://%s/%s/.git" host name
     try
       let res = Repository.Clone(url, Path.Combine(Workspace(), name))
-      printfn "clone result: %s" res
+      logger "cloneProject" <| sprintf "clone result: %s" res
       Some(Path.Combine(Workspace(), name))
     with
       | _ -> None

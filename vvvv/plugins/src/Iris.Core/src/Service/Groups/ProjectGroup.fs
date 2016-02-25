@@ -8,6 +8,7 @@ open LibGit2Sharp
 open Iris.Core.Types
 open Vsync
 open Iris.Core
+open Iris.Core.Utils
 
 [<AutoOpen>]
 module ProjectGroup =
@@ -24,6 +25,8 @@ module ProjectGroup =
 
   (* ---------- ProjectGroup ---------- *)
   type ProjectGroup(grpname : string) as self =
+    let tag = "ProjectGroup"
+    
     [<DefaultValue>] val mutable group   : IrisGroup<Actions,Project>
     [<DefaultValue>] val mutable project : Project option
 
@@ -46,22 +49,22 @@ module ProjectGroup =
       match self.project with
         | Some(project) ->
           if Option.isSome project.Path
-          then printfn "[project] name=%s path=%s" project.Name (Option.get project.Path)
-          else printfn "[project] name=%s path=<empty>" project.Name
+          then logger tag <| sprintf "[project Dump] name=%s path=%s" project.Name (Option.get project.Path)
+          else logger tag <| sprintf "[project Dump] name=%s path=<empty>" project.Name
         | None ->
-          printfn "[project] not loaded."
+          logger tag "[project Dump] not loaded."
 
     member self.Load(p : Project) =
-      printfn "should load project now"
+      logger tag "should load project now"
 
     member self.Save(p : Project) =
-      printfn "should save project now"
+      logger tag "should save project now"
 
     member self.Clone(p : Project) =
-      printfn "should clone project now"
+      logger tag "should clone project now"
 
     member self.Pull(p : Project) =
-      printfn "should pull project from remote now"
+      logger tag "should pull project from remote now"
 
     (* Become member of group *)
     member self.Join() = self.group.Join()
@@ -72,36 +75,36 @@ module ProjectGroup =
 
     (* State initialization and transfer *)
     member self.Initialize() =
-      printfn "should load state from disk/vvvv now"
+      logger tag "should load state from disk/vvvv now"
 
     member self.MakeCheckpoint(view : View) =
       match self.project with
         | Some(project) ->
-          printfn "makeing a snapshot. %s" project.Name
+          logger tag <| sprintf "makeing a snapshot. %s" project.Name
           self.group.SendCheckpoint(project)
-        | _ -> printfn "no project loaded. nothing to checkpoint"
+        | _ -> logger tag "no project loaded. nothing to checkpoint"
       self.group.DoneCheckpoint()
 
     member self.LoadCheckpoint(project : Project) =
       self.project <- Some(project)
 
       match self.project with
-        | Some(p) -> printfn "loaded a snapshot. project: %s" p.Name
-        | None -> printfn "loaded snapshot. no project loaded yet."
+        | Some(p) -> logger tag <| sprintf "loaded a snapshot. project: %s" p.Name
+        | None -> logger tag "loaded snapshot. no project loaded yet."
 
     (* View changes *)
     member self.ViewChanged(view : View) : unit =
-      printfn "viewid: %d" <| view.GetViewid()
+      logger tag <| sprintf "viewid: %d" (view.GetViewid())
 
     (* Event Handlers for Actions *)
     member self.ProjectLoaded(project : Project) : unit =
-      printfn "project loaded "
+      logger tag "project loaded "
 
     member self.ProjectSaved(project : Project) : unit =
-      printfn "project saved"
+      logger tag "project saved"
 
     member self.ProjectCloned(project : Project) : unit =
-      printfn "project cloned"
+      logger tag "project cloned"
 
     member self.ProjectPull(project : Project) : unit =
-      printfn "project pull"
+      logger tag "project pull"

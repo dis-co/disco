@@ -2,6 +2,7 @@ namespace Iris.Core
 
 open System
 open Iris.Core
+open Iris.Core.Utils
 open Iris.Core.Types
 open Iris.Core.Config
 open Iris.Service.Core
@@ -12,8 +13,39 @@ open Vsync
 
 [<AutoOpen>]
 module IrisService =
+  //   ___                 _      
+  //  / _ \ _ __ __ _  ___| | ___ 
+  // | | | | '__/ _` |/ __| |/ _ \
+  // | |_| | | | (_| | (__| |  __/
+  //  \___/|_|  \__,_|\___|_|\___|
+  //                              
+  type Oracle =
+    static member Start() =
+      let options =
+        { VsyncConfig.Default with
+            GracefulShutdown = Some(true);
+            UnicastOnly = Some(true);
+            Hosts = Some([ "localhost" ]) }
 
+      options.Apply()
+      VsyncSystem.Start()
+
+    static member Stop() =
+      VsyncSystem.Shutdown()
+      
+    static member Wait() =
+      VsyncSystem.WaitForever()
+    
+
+  //  ___      _     ____                  _          
+  // |_ _|_ __(_)___/ ___|  ___ _ ____   _(_) ___ ___ 
+  //  | || '__| / __\___ \ / _ \ '__\ \ / / |/ __/ _ \
+  //  | || |  | \__ \___) |  __/ |   \ V /| | (_|  __/
+  // |___|_|  |_|___/____/ \___|_|    \_/ |_|\___\___|
+  //                                                  
   type IrisService() as this =
+    let tag = "IrisService"
+
     [<DefaultValue>] val mutable Ready   : bool
     [<DefaultValue>] val mutable Context : Context
     [<DefaultValue>] val mutable Ctrl    : ControlGroup
@@ -61,7 +93,7 @@ module IrisService =
         try VsyncSystem.Shutdown()
         with
           | :? System.InvalidOperationException as exn ->
-            printfn "Shutdown: %s" exn.Message
+            logger tag exn.Message
       finally 
         self.Ready <- false
 
@@ -77,7 +109,7 @@ module IrisService =
       self.Context.LoadProject(path)
       match self.Context.Project with      
         | Some project -> self.Ctrl.LoadProject(project.Name)
-        | _ -> printfn "no project was loaded. path correct?"
+        | _ -> logger tag "no project was loaded. path correct?"
 
     member self.SaveProject(msg) =
       self.Context.SaveProject(msg)

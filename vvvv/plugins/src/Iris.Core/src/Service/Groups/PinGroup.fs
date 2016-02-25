@@ -1,6 +1,7 @@
 namespace Iris.Service.Groups
 
 open System.Collections.Generic
+open Iris.Core.Utils
 open Iris.Core.Types
 open Nessos.FsPickler
 open Vsync
@@ -25,6 +26,8 @@ module PinGroup =
 
   /// Group to manage all replicated IOBox state in the distributed app
   type PinGroup(grpname) as self = 
+    let tag = "PinGroup"
+ 
     [<DefaultValue>] val mutable group : IrisGroup<BoxAction, IOBox>
 
     let mutable boxes : IOBoxDict = new IOBoxDict()
@@ -48,7 +51,7 @@ module PinGroup =
 
     member self.Dump() =
       for box in boxes do
-        printfn "pin id: %s" box.Key
+        logger tag <| sprintf "pin id: %s" box.Key
 
     member self.Add(box : IOBox) =
       boxes.Add(box.Id, box)
@@ -62,10 +65,10 @@ module PinGroup =
 
     (* State initialization and transfer *)
     member self.Initialize() =
-      printfn "should load state from disk/vvvv now"
+      logger tag "should load state from disk/vvvv now"
 
     member self.MakeCheckpoint(view : View) =
-      printfn "makeing a snapshot. %d pins in it" boxes.Count
+      logger tag <| sprintf "makeing a snapshot. %d pins in it" boxes.Count
       for pair in boxes do
         self.group.SendCheckpoint(pair.Value)
       self.group.DoneCheckpoint()
@@ -75,22 +78,22 @@ module PinGroup =
       then boxes.Add(box.Id, box)
       else boxes.[box.Id] <- box
 
-      printfn "loaded a snapshot. %d pins in it" boxes.Count
+      logger tag <| sprintf "loaded a snapshot. %d pins in it" boxes.Count
 
     (* View changes *)
     member self.ViewChanged(view : View) : unit =
-      printfn "viewid: %d" <| view.GetViewid() 
+      logger tag <| sprintf "viewid: %d" (view.GetViewid()) 
 
     (* Event Handlers for BoxAction *)
     member self.PinAdded(box : IOBox) : unit =
       if not <| boxes.ContainsKey(box.Id)
       then
         self.Add(box)
-        printfn "pin added cb: "
+        logger tag "pin added cb: "
         self.Dump()
 
     member self.PinUpdated(box : IOBox) : unit =
-      printfn "%s updated" box.Name
+      logger tag <| sprintf "%s updated" box.Name
 
     member self.PinDeleted(box : IOBox) : unit =
-      printfn "%s removed" box.Name
+      logger tag <| sprintf "%s removed" box.Name

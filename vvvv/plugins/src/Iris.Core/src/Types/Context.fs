@@ -2,12 +2,15 @@ namespace Iris.Core.Types
 
 open System
 open LibGit2Sharp
+open Iris.Core.Utils
 open Iris.Service.Core
 
 [<AutoOpen>]
 module Context =
 
   type Context(signature) as self =
+    let tag = "Context"
+
     [<DefaultValue>] val mutable Signature : Signature  option
     [<DefaultValue>] val mutable Project   : Project    option
     [<DefaultValue>] val mutable GitDaemon : Git.Daemon option
@@ -34,7 +37,7 @@ module Context =
           |> fun daemon ->
             daemon.Start()
             self.GitDaemon <- Some(daemon)
-        | None -> printfn "project not found"
+        | None -> logger tag "project not found"
 
     member self.LoadProject(path : FilePath) : unit =
       self.StopDaemon()
@@ -47,8 +50,8 @@ module Context =
         let signature = Option.get self.Signature
         match self.Project with
           | Some(project) -> saveProject project signature msg
-          | _ -> printfn "No project loaded."
-      else printfn "Unable to save project. No signature supplied."
+          | _ -> logger tag "No project loaded."
+      else logger tag "Unable to save project. No signature supplied."
 
     member self.CreateProject(name : Name, path : FilePath) =
       self.StopDaemon()

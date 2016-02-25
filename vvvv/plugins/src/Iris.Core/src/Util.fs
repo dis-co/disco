@@ -61,3 +61,8 @@ module Utils =
            if ip.Address.AddressFamily = Sockets.AddressFamily.InterNetwork
            then outip <- Some(ip.Address)
     outip
+
+  let logger (tag : string) (str : string) : unit =
+    let verbose = System.Environment.GetEnvironmentVariable("IRIS_VERBOSE")
+    if not (isNull verbose) && bool.Parse(verbose)
+    then printfn "[%s] \t\t %s" tag str
