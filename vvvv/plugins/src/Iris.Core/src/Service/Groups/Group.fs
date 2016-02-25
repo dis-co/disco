@@ -33,7 +33,7 @@ module Base =
     member self.CheckpointMaker(handler : Vsync.View -> unit) =
       self.RegisterMakeChkpt(new Vsync.ChkptMaker(handler))
 
-    member self.CheckpointLoader(handler : 'data -> unit) =
+    member self.CheckpointLoader<'data>(handler : 'data -> unit) =
       let wrapped = fun data -> self.FromBytes(data) |> handler
        in self.RegisterLoadChkpt(mkRawHandler wrapped)
 

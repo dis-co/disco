@@ -55,7 +55,7 @@ module ControlGroup =
     [<DefaultValue>] val mutable context : Context
 
     let host = System.Guid.NewGuid().ToString();
-    let ip = getIpAddress()
+    let ip = Option.get <| getIpAddress()
 
     let AddHandler (action : CtrlAction, cb : 'data -> unit) =
       self.group.AddHandler<'data>(action, cb)
@@ -69,7 +69,7 @@ module ControlGroup =
     let MemHandlers =
       [ (CtrlAction.MemberAdd,    self.OnMemberAdd)
       ; (CtrlAction.MemberUpdate, self.OnMemberUpdate)
-      ; (CtrlAction.MemberAdd,    self.OnMemberRemove)
+      ; (CtrlAction.MemberRemove, self.OnMemberRemove)
       ]
 
     do
@@ -79,14 +79,17 @@ module ControlGroup =
       self.group.AddViewHandler(self.ViewChanged)
       self.group.CheckpointMaker(self.MakeCheckpoint)
       self.group.CheckpointLoader(self.LoadCheckpoint)
+
       List.iter AddHandler ProjHandlers
       List.iter AddHandler MemHandlers
 
-    member self.Join()  = self.group.Join()
-    member self.Leave() = self.group.Leave()
+    member self.Join()  =
+      self.group.Join()
+      self.group.Send<Member>(CtrlAction.MemberAdd, { Name = host; IP = ip })
 
-    member self.Send(action : CtrlAction, raw : byte array) =
-      self.group.Send((action :> IEnum).ToInt(), raw)
+    member self.Leave() =
+      self.group.Send<Member>(CtrlAction.MemberRemove, { Name = host; IP = ip })
+      self.group.Leave()
 
     member self.Initialize() =
       logger tag "Initialize"
@@ -96,9 +99,13 @@ module ControlGroup =
 
     member self.MakeCheckpoint(view : View) =
       logger tag "MakeCheckpoint"
+      for mem in self.GetMembers() do
+        self.group.SendCheckpoint<Member>(mem)
+      self.group.DoneCheckpoint()
 
-    member self.LoadCheckpoint(pth : ProjectMsg) =
+    member self.LoadCheckpoint(mem : Member) =
       logger tag "LoadCheckpoint"
+      self.context.AddMember(mem)
 
     member self.OnLoad(job : ProjectMsg) =
       let pth = Path.Combine(Workspace(), job.Name)
@@ -125,19 +132,18 @@ module ControlGroup =
       logger tag "OnClose"
 
     member self.OnMemberAdd(mem : Member) =
-      logger tag <| sprintf "OnMemberAdd %s" mem.Name
+      self.context.AddMember(mem)
       
     member self.OnMemberUpdate(mem : Member) =
-      logger tag <| sprintf "OnMemberUpdate %s" mem.Name
+      self.context.UpdateMember(mem)
 
     member self.OnMemberRemove(mem : Member) =
-      logger tag <| sprintf "OnMemberRemove %s" mem.Name
+      self.context.RemoveMember(mem)
 
     member self.GetMembers() : Member array =
-      Array.empty
+      self.context.GetMembers()
       
     (* load a project and notify everybody *)
     member self.LoadProject(name : string) =
       logger tag <| sprintf "load: %s" name
-      let pickler = FsPickler.CreateBinarySerializer()
-      self.Send(CtrlAction.Load, pickler.Pickle({ Host = ip.ToString(); Name = name }))
+      self.group.Send<ProjectMsg>(CtrlAction.Load, { Host = ip.ToString(); Name = name })

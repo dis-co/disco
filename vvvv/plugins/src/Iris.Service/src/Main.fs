@@ -77,7 +77,7 @@ module Main =
             | Help               -> help()
             | Info               -> Iris.Dump()
             | Quit               -> run <- false
-            | Error              -> logger "[cli]" "<error>"
+            | Error              -> printfn "command not recognized"
         (Iris :> IDisposable).Dispose()
       else
         Iris.Wait()

@@ -7,8 +7,11 @@ open System.Net
 module Member =
 
   type Member =
-    { Name    : string
-    ; Address : Address
-    ; IP      : IPAddress
+    { Name : string
+    ; IP   : IPAddress
     }
   
+    with
+      override self.ToString() =
+        sprintf "Name: %s IP: %s" self.Name (self.IP.ToString())
+      
