@@ -120,3 +120,9 @@ module IrisService =
     member self.CloseProject() =
       self.Context.StopDaemon()
       self.Context.Project <- None
+
+
+    member self.Dump() =
+      self.Ctrl.GetMembers()
+      |> Array.iter (fun (mem : IrisMember) ->
+                       printfn "%s" <| mem.ToString())

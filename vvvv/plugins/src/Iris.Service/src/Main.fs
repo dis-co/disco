@@ -15,17 +15,30 @@ open LibGit2Sharp
 
 module Main =
 
-  let (|Create|Load|Save|Close|Set|Quit|Help|) (str : string) =
+  type CliCmd =
+    | Create of name : string * path : string
+    | Load   of path : FilePath
+    | Save   of msg  : string
+    | Close
+    | Set    of variable : string * value : string
+    | Info
+    | Help
+    | Error
+    | Quit
+    
+  let parseLine (str : string) : CliCmd =
     let parsed = str.Split(' ')
     match parsed with
       | [| "create"; name; path |] -> Create(name, path)
-      | [| "load";         path |] -> Load(path)
-      | [| "save";         msg  |] -> Save(msg)
+      | [| "load";   path       |] -> Load(path)
+      | [| "save";   msg        |] -> Save(msg)
+      | [| "set";    var;  vl   |] -> Set(var, vl)
       | [| "close";             |] -> Close
-      | [| "set";    path       |] -> Set(path)
+      | [| "info";              |] -> Info
+      | [| "help";              |] -> Help
       | [| "exit";              |] -> Quit
       | [| "quit";              |] -> Quit
-      | _ -> Help
+      | _ -> Error
 
   let help _ = printfn "Iris™, 2016, NSynk GmbH"
 
@@ -55,14 +68,16 @@ module Main =
         while run do
           printf "> "
           let cmd = Console.ReadLine()
-          match cmd with
+          match parseLine cmd with
             | Load(path)         -> Iris.LoadProject(path)
             | Save(msg)          -> Iris.SaveProject(msg)
             | Create(name, path) -> Iris.CreateProject(name, path)
             | Close              -> Iris.CloseProject()
-            | Set(path)          -> Environment.SetEnvironmentVariable("IRIS_WORKSPACE", path)
+            | Set(var, vl)       -> Environment.SetEnvironmentVariable(var, vl)
             | Help               -> help()
+            | Info               -> Iris.Dump()
             | Quit               -> run <- false
+            | Error              -> logger "[cli]" "<error>"
         (Iris :> IDisposable).Dispose()
       else
         Iris.Wait()
