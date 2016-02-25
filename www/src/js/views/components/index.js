@@ -1,9 +1,0 @@
-module.exports.Base    = require('./base');
-module.exports.Cue     = require('./cue');
-module.exports.Cuelist = require('./cuelist');
-module.exports.Monitor = require('./monitor');
-module.exports.Patch   = require('./patch');
-module.exports.Pin     = require('./pin');
-module.exports.Blur    = require('./blur');
-module.exports.Project = require('./project');
-module.exports.Cluster = require('./cluster');
