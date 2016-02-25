@@ -3,7 +3,7 @@ with import <nixpkgs> {}; {
     name = "IrisServiceEnv";
     buildInputs = [ stdenv fsharp curl openssl ];
     LD_LIBRARY_PATH="${curl}/lib:${openssl}/lib";
-    run = "mono src/Iris.Service/bin/Debug/Iris.Service.exe -r";
+    run = "mono src/Iris.Service/bin/Debug/Iris.Service.exe -r -v";
     shellHook = ''
       if [ ! -L NativeBinaries ]; then
         ln -s src/Iris.Service/bin/Debug/NativeBinaries .

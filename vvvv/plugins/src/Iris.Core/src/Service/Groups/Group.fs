@@ -16,18 +16,18 @@ module Base =
   type IEnum =
     abstract member ToInt : unit -> int
     
-  type IrisGroup<'action,'data when 'action :> IEnum>(name : string) =
+  type IrisGroup<'action when 'action :> IEnum>(name : string) =
     inherit Vsync.Group(name)
 
     let pickler = FsPickler.CreateBinarySerializer()
 
-    member self.Send(action : 'action, thing : 'data) : unit =
+    member self.Send<'data>(action : 'action, thing : 'data) : unit =
       self.Send(action.ToInt(), pickler.Pickle(thing))
 
-    member self.ToBytes(thing : 'data) : byte[] =
+    member self.ToBytes<'data>(thing : 'data) : byte[] =
       pickler.Pickle(thing)
 
-    member self.FromBytes(data : byte[]) : 'data =
+    member self.FromBytes<'data>(data : byte[]) : 'data =
       pickler.UnPickle<'data>(data)
 
     member self.CheckpointMaker(handler : Vsync.View -> unit) =
@@ -37,8 +37,8 @@ module Base =
       let wrapped = fun data -> self.FromBytes(data) |> handler
        in self.RegisterLoadChkpt(mkRawHandler wrapped)
 
-    member self.SendCheckpoint(thing : 'data) =
-      self.SendChkpt(self.ToBytes(thing))
+    member self.SendCheckpoint<'data>(thing : 'data) =
+      self.SendChkpt(self.ToBytes<'data>(thing))
 
     member self.DoneCheckpoint() =
       self.EndOfChkpt()
@@ -53,7 +53,7 @@ module Base =
       let wrapped = mkRawHandler handler
       in self.Handlers.[action.ToInt()] <- self.Handlers.[action.ToInt()] + wrapped
 
-    member self.AddHandler(action : 'action, handler : Handler<'data>) =
+    member self.AddHandler<'data>(action : 'action, handler : Handler<'data>) =
       let wrapped = mkRawHandler <| fun data ->
         handler <| self.FromBytes(data)
       in self.Handlers.[action.ToInt()] <- self.Handlers.[action.ToInt()] + wrapped

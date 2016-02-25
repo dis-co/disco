@@ -31,12 +31,12 @@ module CueGroup =
   type CueGroup(grpname) as self = 
     let tag = "CueGroup"
  
-    [<DefaultValue>] val mutable group : IrisGroup<CueAction,Cue>
+    [<DefaultValue>] val mutable group : IrisGroup<CueAction>
 
     let mutable cues : CueDict = new CueDict()
 
     let AddHandler(action, cb) =
-      self.group.AddHandler(action, cb)
+      self.group.AddHandler<Cue>(action, cb)
 
     let AllHandlers =
       [ (CueAction.Add,    self.CueAdded)
@@ -46,7 +46,7 @@ module CueGroup =
 
     (* constructor *)
     do
-      self.group <- new IrisGroup<CueAction,Cue>(grpname)
+      self.group <- new IrisGroup<CueAction>(grpname)
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
       self.group.CheckpointMaker(self.MakeCheckpoint)

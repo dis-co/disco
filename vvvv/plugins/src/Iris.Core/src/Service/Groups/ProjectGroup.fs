@@ -27,18 +27,18 @@ module ProjectGroup =
   type ProjectGroup(grpname : string) as self =
     let tag = "ProjectGroup"
     
-    [<DefaultValue>] val mutable group   : IrisGroup<Actions,Project>
+    [<DefaultValue>] val mutable group   : IrisGroup<Actions>
     [<DefaultValue>] val mutable project : Project option
 
     let AddHandler(action, cb) =
-      self.group.AddHandler(action, cb)
+      self.group.AddHandler<Project>(action, cb)
 
     let AllHandlers =
       [ (Actions.Pull,  self.ProjectPull)
       ]
 
     do
-      self.group <- new IrisGroup<Actions,Project>(grpname)
+      self.group <- new IrisGroup<Actions>(grpname)
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
       self.group.CheckpointMaker(self.MakeCheckpoint)
