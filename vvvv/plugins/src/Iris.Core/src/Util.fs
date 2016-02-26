@@ -62,6 +62,12 @@ module Utils =
            then outip <- Some(ip.Address)
     outip
 
+  //  _                             
+  // | | ___   __ _  __ _  ___ _ __ 
+  // | |/ _ \ / _` |/ _` |/ _ \ '__|
+  // | | (_) | (_| | (_| |  __/ |   
+  // |_|\___/ \__, |\__, |\___|_|   
+  //          |___/ |___/           
   let logger (tag : string) (str : string) : unit =
     let def = tag.Length + 2
     let verbose = Environment.GetEnvironmentVariable("IRIS_VERBOSE")
@@ -84,3 +90,4 @@ module Utils =
 
       let ws = Array.fold (fun m _ -> m + " ") "" [| 0 .. (offset - def) |]
       printfn "[%s]%s%s" tag ws str
+

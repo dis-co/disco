@@ -9,11 +9,17 @@ open Iris.Core.Types
 open Vsync
 open Iris.Core
 open Iris.Core.Utils
+open Iris.Service.Core
 
 [<AutoOpen>]
 module ProjectGroup =
 
-  (* ---------- ProjectAction ---------- *)
+  //     _        _   _                 
+  //    / \   ___| |_(_) ___  _ __  ___ 
+  //   / _ \ / __| __| |/ _ \| '_ \/ __|
+  //  / ___ \ (__| |_| | (_) | | | \__ \
+  // /_/   \_\___|\__|_|\___/|_| |_|___/
+  //                                    
   [<RequireQualifiedAccess>]
   type Actions =
     | Pull
@@ -23,36 +29,42 @@ module ProjectGroup =
         match self with
           | Pull -> 1
 
-  (* ---------- ProjectGroup ---------- *)
-  type ProjectGroup(grpname : string) as self =
+  //   ____                       
+  //  / ___|_ __ ___  _   _ _ __  
+  // | |  _| '__/ _ \| | | | '_ \ 
+  // | |_| | | | (_) | |_| | |_) |
+  //  \____|_|  \___/ \__,_| .__/ 
+  //                       |_|    
+  type ProjectGroup(project : Project) as self =
     let tag = "ProjectGroup"
     
     [<DefaultValue>] val mutable group   : IrisGroup<Actions>
-    [<DefaultValue>] val mutable project : Project option
+    [<DefaultValue>] val mutable Project : Project
 
     let AddHandler(action, cb) =
       self.group.AddHandler<Project>(action, cb)
 
-    let AllHandlers =
-      [ (Actions.Pull,  self.ProjectPull)
-      ]
+    let AllHandlers = [ (Actions.Pull,  self.ProjectPull) ]
 
     do
-      self.group <- new IrisGroup<Actions>(grpname)
+      self.Project <- project
+      self.group <- new IrisGroup<Actions>(Uri.mkProjectUri project)
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
       self.group.CheckpointMaker(self.MakeCheckpoint)
       self.group.CheckpointLoader(self.LoadCheckpoint)
       List.iter AddHandler AllHandlers
-
+    //  ____       _                 
+    // |  _ \  ___| |__  _   _  __ _ 
+    // | | | |/ _ \ '_ \| | | |/ _` |
+    // | |_| |  __/ |_) | |_| | (_| |
+    // |____/ \___|_.__/ \__,_|\__, |
+    //                         |___/ 
     member self.Dump() =
-      match self.project with
-        | Some(project) ->
-          if Option.isSome project.Path
-          then logger tag <| sprintf "[project Dump] name=%s path=%s" project.Name (Option.get project.Path)
-          else logger tag <| sprintf "[project Dump] name=%s path=<empty>" project.Name
-        | None ->
-          logger tag "[project Dump] not loaded."
+      if Option.isSome project.Path
+        then sprintf "[project Dump] name=%s path=%s" project.Name (Option.get project.Path)
+        else sprintf "[project Dump] name=%s path=<empty>" project.Name
+      |> logger tag 
 
     member self.Load(p : Project) =
       logger tag "should load project now"
@@ -78,23 +90,22 @@ module ProjectGroup =
       logger tag "should load state from disk/vvvv now"
 
     member self.MakeCheckpoint(view : View) =
-      match self.project with
-        | Some(project) ->
-          logger tag <| sprintf "makeing a snapshot. %s" project.Name
-          self.group.SendCheckpoint(project)
-        | _ -> logger tag "no project loaded. nothing to checkpoint"
+      self.group.SendCheckpoint(project)
       self.group.DoneCheckpoint()
 
-    member self.LoadCheckpoint(project : Project) =
-      self.project <- Some(project)
+      sprintf "made a snapshot. %s" project.Name
+      |> logger tag
 
-      match self.project with
-        | Some(p) -> logger tag <| sprintf "loaded a snapshot. project: %s" p.Name
-        | None -> logger tag "loaded snapshot. no project loaded yet."
+    member self.LoadCheckpoint(project : Project) =
+      self.Project <- project
+
+      sprintf "loaded a snapshot. project: %s" project.Name
+      |> logger tag
 
     (* View changes *)
     member self.ViewChanged(view : View) : unit =
-      logger tag <| sprintf "viewid: %d" (view.GetViewid())
+      sprintf "viewid: %d" (view.GetViewid())
+      |> logger tag
 
     (* Event Handlers for Actions *)
     member self.ProjectLoaded(project : Project) : unit =

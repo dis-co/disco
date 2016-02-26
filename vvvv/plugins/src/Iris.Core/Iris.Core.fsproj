@@ -64,7 +64,9 @@
     <Compile Include="src\Types\Project.fs" />
     <Compile Include="src\Service\GitDaemon.fs" />
     <Compile Include="src\Service\Member.fs" />
-    <Compile Include="src\Types\Context.fs" />
+    <Compile Include="src\Uri.fs" />
+    <Compile Include="src\Service\Contexts\ProjectContext.fs" />
+    <Compile Include="src\Service\Contexts\ServiceContext.fs" />
     <Compile Include="src\Service\Groups\Group.fs" />
     <Compile Include="src\Service\Groups\PinGroup.fs" />
     <Compile Include="src\Service\Groups\CueGroup.fs" />

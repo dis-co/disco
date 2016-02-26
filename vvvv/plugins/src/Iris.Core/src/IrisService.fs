@@ -7,6 +7,7 @@ open Iris.Core.Types
 open Iris.Core.Config
 open Iris.Service.Core
 open Iris.Service.Groups
+open Iris.Service.Contexts
 open LibGit2Sharp
 
 open Vsync
@@ -46,12 +47,12 @@ module IrisService =
     let tag = "IrisService"
 
     [<DefaultValue>] val mutable Ready   : bool
-    [<DefaultValue>] val mutable Context : Context
+    [<DefaultValue>] val mutable Context : ServiceContext
     [<DefaultValue>] val mutable Ctrl    : ControlGroup
 
     do
       let signature = new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
-      this.Context <- new Context(signature)
+      this.Context <- new ServiceContext(signature)
       this.Ready <- false
 
     //  ___       _             __
@@ -117,7 +118,6 @@ module IrisService =
       self.Context.CreateProject(name, path)
 
     member self.CloseProject() =
-      self.Context.StopDaemon()
       self.Context.Project <- None
 
     member self.Dump() =

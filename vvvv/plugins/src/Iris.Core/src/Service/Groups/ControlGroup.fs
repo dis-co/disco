@@ -6,6 +6,7 @@ open System.Net
 open Iris.Core.Types
 open Iris.Core.Utils
 open Iris.Service.Core
+open Iris.Service.Contexts
 open Nessos.FsPickler
 
 
@@ -46,11 +47,11 @@ module ControlGroup =
   //  | |_| | | | (_) | |_| | |_) |
   //   \____|_|  \___/ \__,_| .__/
   //                        |_|
-  type ControlGroup(context' : Context) as self =
+  type ControlGroup(context' : ServiceContext) as self =
     let tag = "ControlGroup"
 
     [<DefaultValue>] val mutable group   : IrisGroup<CtrlAction>
-    [<DefaultValue>] val mutable context : Context
+    [<DefaultValue>] val mutable context : ServiceContext
 
     let host = System.Guid.NewGuid().ToString();
     let ip = Option.get <| getIpAddress()
