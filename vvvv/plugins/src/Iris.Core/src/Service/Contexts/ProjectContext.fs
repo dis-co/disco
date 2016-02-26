@@ -8,7 +8,7 @@ open Iris.Service.Groups
 
 [<AutoOpen>]
 module Project =
-  
+
   type ProjectContext(project : Project) =
     let tag = "ProjectContext"
 

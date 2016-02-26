@@ -106,9 +106,9 @@ module IrisService =
     // |_|   |_|  \___// |\___|\___|\__|
     //               |__/
     member self.LoadProject(path : FilePath) =
-      self.Context.LoadProject(path)
-      match self.Context.Project with
-        | Some project -> self.Ctrl.LoadProject(project.Name)
+      
+      match self.Context.LoadProject(path) with
+        | Some project -> self.Ctrl.LoadProject(project.Id)
         | _ -> logger tag "no project was loaded. path correct?"
 
     member self.SaveProject(msg) =
@@ -117,10 +117,14 @@ module IrisService =
     member self.CreateProject(name, path) =
       self.Context.CreateProject(name, path)
 
-    member self.CloseProject() =
-      self.Context.Project <- None
+    member self.CloseProject(id' : string) =
+      self.Context.CloseProject(id')
 
     member self.Dump() =
+      printfn "Members:"
       self.Ctrl.GetMembers()
       |> Array.iter (fun (mem : Member) ->
-                       printfn "%s" <| mem.ToString())
+                       printfn "  %s" <| mem.ToString())
+
+      printfn "Projects:"
+      pritnfn "  Fixme..."

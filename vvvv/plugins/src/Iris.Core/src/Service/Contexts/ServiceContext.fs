@@ -14,18 +14,15 @@ module Service =
   // \___ \ / _ \ '__\ \ / / |/ __/ _ \ |   / _ \| '_ \| __/ _ \ \/ / __|
   //  ___) |  __/ |   \ V /| | (_|  __/ |__| (_) | | | | ||  __/>  <| |_
   // |____/ \___|_|    \_/ |_|\___\___|\____\___/|_| |_|\__\___/_/\_\\__|
-  type ServiceContext(signature) as this =
-    let tag = "Context"
+  type ServiceContext(signature) =
+    let tag = "ServiceContext"
 
-    let mutable Signature : Signature option   = Some(signature)
-    let mutable Members   : Map<string,Member> = Map.empty
-
-    [<DefaultValue>] val mutable Project : Project option
+    let mutable Signature : Signature option     = Some(signature)
+    let mutable Members   : Map<string,Member>   = Map.empty
+    let mutable Projects  : Map<string, Project> = Map.empty
 
     interface IDisposable with
       member self.Dispose() = ()
-
-    do this.Project <- None
 
     //  ____            _           _
     // |  _ \ _ __ ___ (_) ___  ___| |_
@@ -33,30 +30,35 @@ module Service =
     // |  __/| | | (_) | |  __/ (__| |_
     // |_|   |_|  \___// |\___|\___|\__|
     //               |__/
-    member self.LoadProject(path : FilePath) : unit =
-      self.Project <- Project.Load path
+    member self.LoadProject(path : FilePath) : Project option =
+      let result = Project.Load path
+      match result with
+        | Some project -> Projects <- Map.add project.Id project Projects
+        | None -> logger tag "project could not be loaded"
+      result
 
-    member self.SaveProject(msg : string) : unit =
-      if Option.isSome Signature
-      then
-        let signature = Option.get Signature
-        match self.Project with
-          | Some(project) -> project.Save(signature, msg)
-          | _ -> logger tag "No project loaded."
-      else logger tag "Unable to save project. No signature supplied."
+    member self.SaveProject(id' : string, msg : string) : unit =
+      match Signature with
+        | Some (signature) ->
+          try
+            let project = Map.find id' Projects 
+            project.Save(signature, msg)
+          with
+            | exn -> logger tag "Unable to save project. Project not found."
+        | _ -> logger tag "Unable to save project. No signature supplied."
 
     member self.CreateProject(name : Name, path : FilePath) =
       let project = Project.Create name
       project.Path <- Some(path)
-      self.Project <- Some(project)
-      self.SaveProject(sprintf "Created %s" name)
+      Projects <- Map.add project.Id project Projects
+      self.SaveProject(project.Id, sprintf "Created %s" name)
 
-    member self.CloseProject(name : Name) =
-      if self.ProjectLoaded(name)
-      then self.Project <- None
+    member self.CloseProject(id' : string) =
+      if self.ProjectLoaded(id')
+      then Projects <- Map.remove id' Projects
       
-    member self.ProjectLoaded(name : Name) = 
-      Option.isSome self.Project && (Option.get self.Project).Name = name
+    member self.ProjectLoaded(id' : string) = 
+      Map.containsKey id' Projects
     
     //  __  __                _
     // |  \/  | ___ _ __ ___ | |__   ___ _ __ ___

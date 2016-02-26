@@ -18,8 +18,8 @@ module Main =
   type CliCmd =
     | Create of name : string * path : string
     | Load   of path : FilePath
-    | Save   of msg  : string
-    | Close
+    | Save   of id'  : string * msg  : string
+    | Close  of id'  : string
     | Set    of variable : string * value : string
     | Info
     | Help
@@ -31,9 +31,9 @@ module Main =
     match parsed with
       | [| "create"; name; path |] -> Create(name, path)
       | [| "load";   path       |] -> Load(path)
-      | [| "save";   msg        |] -> Save(msg)
+      | [| "save";   id;   msg  |] -> Save(id, msg)
       | [| "set";    var;  vl   |] -> Set(var, vl)
-      | [| "close";             |] -> Close
+      | [| "close";  id;        |] -> Close(id)
       | [| "info";              |] -> Info
       | [| "help";              |] -> Help
       | [| "exit";              |] -> Quit
@@ -70,9 +70,9 @@ module Main =
           let cmd = Console.ReadLine()
           match parseLine cmd with
             | Load(path)         -> Iris.LoadProject(path)
-            | Save(msg)          -> Iris.SaveProject(msg)
+            | Save(id',msg)      -> Iris.SaveProject(id',msg)
             | Create(name, path) -> Iris.CreateProject(name, path)
-            | Close              -> Iris.CloseProject()
+            | Close(id')         -> Iris.CloseProject(id')
             | Set(var, vl)       -> Environment.SetEnvironmentVariable(var, vl)
             | Help               -> help()
             | Info               -> Iris.Dump()

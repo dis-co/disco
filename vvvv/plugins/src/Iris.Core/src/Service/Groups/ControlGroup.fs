@@ -110,7 +110,9 @@ module ControlGroup =
       if File.Exists pth || Directory.Exists pth
       then
         if not <| self.context.ProjectLoaded(job.Name)
-        then self.context.LoadProject(pth)
+        then
+          self.context.LoadProject(pth)
+          |> ignore
       else
         logger tag <| sprintf "address toString: %s" job.Host
         match Project.Clone("localhost", job.Name) with

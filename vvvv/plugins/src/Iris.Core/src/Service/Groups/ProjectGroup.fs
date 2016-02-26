@@ -44,7 +44,7 @@ module ProjectGroup =
     let AddHandler(action, cb) =
       self.group.AddHandler<Project>(action, cb)
 
-    let AllHandlers = [ (Actions.Pull,  self.ProjectPull) ]
+    let AllHandlers = [ (Actions.Pull, self.Pull) ]
 
     do
       self.Project <- project
@@ -66,6 +66,12 @@ module ProjectGroup =
         else sprintf "[project Dump] name=%s path=<empty>" project.Name
       |> logger tag 
 
+    //  ____            _           _
+    // |  _ \ _ __ ___ (_) ___  ___| |_
+    // | |_) | '__/ _ \| |/ _ \/ __| __|
+    // |  __/| | | (_) | |  __/ (__| |_
+    // |_|   |_|  \___// |\___|\___|\__|
+    //               |__/
     member self.Load(p : Project) =
       logger tag "should load project now"
 
@@ -78,7 +84,12 @@ module ProjectGroup =
     member self.Pull(p : Project) =
       logger tag "should pull project from remote now"
 
-    (* group membership *)
+    //  __  __                _                   _     _
+    // |  \/  | ___ _ __ ___ | |__   ___ _ __ ___| |__ (_)_ __
+    // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__/ __| '_ \| | '_ \
+    // | |  | |  __/ | | | | | |_) |  __/ |  \__ \ | | | | |_) |
+    // |_|  |_|\___|_| |_| |_|_.__/ \___|_|  |___/_| |_|_| .__/
+    //                                                   |_|
     member self.Join() = self.group.Join()
     member self.Leave() = self.group.Leave()
 
@@ -108,15 +119,3 @@ module ProjectGroup =
       sprintf "viewid: %d" (view.GetViewid())
       |> logger tag
 
-    (* Event Handlers for Actions *)
-    member self.ProjectLoaded(project : Project) : unit =
-      logger tag "project loaded "
-
-    member self.ProjectSaved(project : Project) : unit =
-      logger tag "project saved"
-
-    member self.ProjectCloned(project : Project) : unit =
-      logger tag "project cloned"
-
-    member self.ProjectPull(project : Project) : unit =
-      logger tag "project pull"
