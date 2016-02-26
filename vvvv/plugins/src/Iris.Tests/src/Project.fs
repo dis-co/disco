@@ -260,7 +260,7 @@ module Project =
         Assert.Equal("Projects should be a folder", true, Directory.Exists path)
         Assert.Equal("Projects should be a git repo", true, Directory.Exists    (path + "/.git"))
         Assert.Equal("Projects should have project yml", true, File.Exists (path + "/" + name + ".iris"))
-        Assert.Equal("Projects should have repo", false, Option.isSome loaded.Repo)
+        Assert.Equal("Projects should have repo", true, Option.isSome loaded.Repo)
         Assert.Equal("Projects should not be dirty", false, (Option.get loaded.Repo).RetrieveStatus().IsDirty)
         Assert.Equal("Projects should have one initial commit", true, (Option.get loaded.Repo).Commits.Count() = 1)
 

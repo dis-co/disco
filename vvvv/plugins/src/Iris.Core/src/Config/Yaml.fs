@@ -9,6 +9,7 @@ module Yaml =
   let private config = """
 Project:
   Metadata: 
+    Id:
     Year: 2016
     Copyright: 
     Author: 

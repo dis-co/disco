@@ -19,13 +19,14 @@ module Project =
   //               |__/
   [<ReflectedDefinition>]
   type ProjectData() =
-    [<DefaultValue>] val mutable  Name      : string
-    [<DefaultValue>] val mutable  Path      : FilePath option
-    [<DefaultValue>] val mutable  LastSaved : DateTime option
-    [<DefaultValue>] val mutable  Copyright : string   option
-    [<DefaultValue>] val mutable  Author    : string   option
-    [<DefaultValue>] val mutable  Year      : int
-    [<DefaultValue>] val mutable  Config    : Config
+    [<DefaultValue>] val mutable Id        : string
+    [<DefaultValue>] val mutable Name      : string
+    [<DefaultValue>] val mutable Path      : FilePath option
+    [<DefaultValue>] val mutable LastSaved : DateTime option
+    [<DefaultValue>] val mutable Copyright : string   option
+    [<DefaultValue>] val mutable Author    : string   option
+    [<DefaultValue>] val mutable Year      : int
+    [<DefaultValue>] val mutable Config    : Config
 
     override self.GetHashCode() =
       hash self
@@ -33,6 +34,7 @@ module Project =
     override self.Equals(other) =
       match other with
         | :? ProjectData as p ->
+          (p.Id               = self.Id)               &&
           (p.Name             = self.Name)             &&
           (p.Path             = self.Path)             &&
           (p.LastSaved        = self.LastSaved)        &&
@@ -68,6 +70,7 @@ module Project =
     let Committer =
       let hostname = Dns.GetHostName()
       new Signature("Iris", "iris@" + hostname, new DateTimeOffset(DateTime.Now))
+      
 
     new (data : ProjectData) = new Project(None, data)
 
@@ -77,6 +80,10 @@ module Project =
     // |  __/| | | (_) | |_) |  __/ |  | |  __/\__ \
     // |_|   |_|  \___/| .__/ \___|_|  |_|\___||___/
     //                 |_|
+    member self.Id
+      with get()    = data.Id
+      and  set(id') = data.Id <- id'
+
     member self.Name
       with get()     = data.Name
       and  set(name) = data.Name <- name
@@ -113,15 +120,9 @@ module Project =
       with get()      = data
       and  set(data') = data <- data'
 
-    // Static:
-    //    ____                _
-    //   / ___|_ __ ___  __ _| |_ ___
-    //  | |   | '__/ _ \/ _` | __/ _ \
-    //  | |___| | |  __/ (_| | ||  __/
-    //   \____|_|  \___|\__,_|\__\___|
-    //
-    static member Create(name : string) =
+     static member private Build(id' : string, name : string) : Project =
       let data = new ProjectData()
+      data.Name      <- id'
       data.Name      <- name
       data.Path      <- None
       data.Copyright <- None
@@ -143,6 +144,31 @@ module Project =
             }
         }
       new Project(data)
+
+    //  _____                  _ _ _
+    // | ____|__ _ _   _  __ _| (_) |_ _   _
+    // |  _| / _` | | | |/ _` | | | __| | | |
+    // | |__| (_| | |_| | (_| | | | |_| |_| |
+    // |_____\__, |\__,_|\__,_|_|_|\__|\__, |
+    //          |_|                    |___/
+    override self.GetHashCode() =
+      hash self
+
+    override self.Equals(other) =
+      match other with
+        | :? Project as p -> p.Data = self.Data
+        | _ -> false
+
+    // Static:
+    //    ____                _
+    //   / ___|_ __ ___  __ _| |_ ___
+    //  | |   | '__/ _ \/ _` | __/ _ \
+    //  | |___| | |  __/ (_| | ||  __/
+    //   \____|_|  \___|\__,_|\__\___|
+    //
+    static member Create(name : string) =
+      let guid = System.Guid.NewGuid.ToString()
+      Project.Build(guid, name)
 
     //   _                    _
     //  | |    ___   __ _  __| |
@@ -168,7 +194,7 @@ module Project =
               | _ -> None
           else None
 
-        let project = Project.Create Meta.Name
+        let project = Project.Build(Meta.Id, Meta.Name)
         let basedir = Path.GetDirectoryName(path)
 
         project.Repo      <- Some(new Repository(Path.Combine(basedir, ".git")))
@@ -209,6 +235,7 @@ module Project =
           self.Repo <- Some(new Repository(path))
 
         // Project metadata
+        IrisConfig.Project.Metadata.Id   <- self.Id
         IrisConfig.Project.Metadata.Name <- self.Name
 
         if Option.isSome self.Author

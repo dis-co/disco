@@ -14,5 +14,8 @@ nuget FsPickler
 nuget FsPickler.Json
 nuget Fuchu
 nuget FsCheck
+nuget Gallio
+nuget NUnit
+nuget XUnit
 
 github fsharp/FAKE modules/Octokit/Octokit.fsx
