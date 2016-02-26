@@ -127,4 +127,4 @@ module IrisService =
                        printfn "  %s" <| mem.ToString())
 
       printfn "Projects:"
-      pritnfn "  Fixme..."
+      printfn "  Fixme..."
