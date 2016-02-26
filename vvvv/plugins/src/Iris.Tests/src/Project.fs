@@ -25,12 +25,12 @@ module Project =
         let name = "test1"
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
-        let project = createProject name
+        let project = Project.Create name
         project.Path <- Some(path)
-        saveProject project signature "Initial project save."
+        project.Save(signature, "Initial project save.")
 
         let project' =
-          loadProject (path + (sprintf "/%s.iris" name))
+          Project.Load(path + (sprintf "/%s.iris" name))
           |> Option.get
 
         // the only difference will be the automatically assigned timestamp
@@ -208,7 +208,7 @@ module Project =
           ; Groups = [ groupA; groupB ]
           }
 
-        let project = createProject name
+        let project = Project.Create name
         project.Path <- Some(path)
 
         project.Config <-
@@ -222,10 +222,10 @@ module Project =
               Cluster   = cluster
           }
 
-        saveProject project signature "Initial project save."
+        project.Save(signature, "Initial project save.")
 
         let project' =
-          loadProject (path + sprintf "/%s.iris" name)
+          Project.Load(path + sprintf "/%s.iris" name)
           |> Option.get
 
         // the only difference will be the automatically assigned timestamp
@@ -248,20 +248,21 @@ module Project =
         if Directory.Exists path
         then Directory.Delete(path, true) |> ignore
 
-        let project = createProject name
+        let project = Project.Create name
         project.Path <- Some(path)
-        saveProject project signature "Initial commit."
+        project.Save(signature, "Initial commit.")
 
         let loaded =
           Path.Combine(path, sprintf "%s.iris" name)
-          |> loadProject
+          |> Project.Load
           |> Option.get
 
         Assert.Equal("Projects should be a folder", true, Directory.Exists path)
         Assert.Equal("Projects should be a git repo", true, Directory.Exists    (path + "/.git"))
         Assert.Equal("Projects should have project yml", true, File.Exists (path + "/" + name + ".iris"))
-        Assert.Equal("Projects should not be dirty", false, loaded.Repo.RetrieveStatus().IsDirty)
-        Assert.Equal("Projects should have one initial commit", true, loaded.Repo.Commits.Count() = 1)
+        Assert.Equal("Projects should have repo", false, Option.isSome loaded.Repo)
+        Assert.Equal("Projects should not be dirty", false, (Option.get loaded.Repo).RetrieveStatus().IsDirty)
+        Assert.Equal("Projects should have one initial commit", true, (Option.get loaded.Repo).Commits.Count() = 1)
 
   //    ____                          _ _
   //   / ___|___  _ __ ___  _ __ ___ (_) |_ ___
@@ -280,20 +281,20 @@ module Project =
         if Directory.Exists path
         then Directory.Delete(path, true) |> ignore
 
-        let project = createProject name
+        let project = Project.Create name
         project.Path   <- Some(path)
         project.Author <- Some(author1)
 
         let msg1 = "Commit 1"
-        saveProject project signature msg1
+        project.Save(signature, msg1)
 
         Path.Combine(path, sprintf "%s.iris" name)
-        |> loadProject
+        |> Project.Load
         |> Option.get
         |> (fun p ->
-            let c = p.Repo.Commits.ElementAt(0)
+            let c = (Option.get p.Repo).Commits.ElementAt(0)
             Assert.Equal("Authors should be equal", true, (Option.get p.Author) = author1)
-            Assert.Equal("Project should have one initial commit", true, p.Repo.Commits.Count() = 1)
+            Assert.Equal("Project should have one initial commit", true, (Option.get p.Repo).Commits.Count() = 1)
             Assert.Equal("Project should have commit message", true, c.MessageShort = msg1))
 
         let author2 = "ingolf"
@@ -301,16 +302,16 @@ module Project =
         project.Author <- Some(author2)
 
         let msg2 = "Commit 2"
-        saveProject project signature msg2
+        project.Save(signature, msg2)
 
         Path.Combine(path, sprintf "%s.iris" name)
-        |> loadProject
+        |> Project.Load
         |> Option.get
         |> (fun p ->
-            let c1 = p.Repo.Commits.ElementAt(0)
-            let c2 = p.Repo.Commits.ElementAt(1)
+            let c1 = (Option.get p.Repo).Commits.ElementAt(0)
+            let c2 = (Option.get p.Repo).Commits.ElementAt(1)
             Assert.Equal("Authors should be equal", true, (Option.get p.Author) = author2)
-            Assert.Equal("Projects should two commits", true, p.Repo.Commits.Count() = 2)
+            Assert.Equal("Projects should two commits", true, (Option.get p.Repo).Commits.Count() = 2)
             Assert.Equal("Project should have current commit message at the start of the log", true, c1.MessageShort = msg2)
             Assert.Equal("Project should have old commit message at 2nd position", true, c2.MessageShort = msg1))
 
@@ -319,17 +320,17 @@ module Project =
         project.Author <- Some(author3)
 
         let msg3 = "Commit 3"
-        saveProject project signature msg3
+        project.Save(signature, msg3)
 
         Path.Combine(path, sprintf "%s.iris" name)
-        |> loadProject
+        |> Project.Load
         |> Option.get
         |> (fun p ->
-            let c1 = p.Repo.Commits.ElementAt(0)
-            let c2 = p.Repo.Commits.ElementAt(1)
-            let c3 = p.Repo.Commits.ElementAt(2)
+            let c1 = (Option.get p.Repo).Commits.ElementAt(0)
+            let c2 = (Option.get p.Repo).Commits.ElementAt(1)
+            let c3 = (Option.get p.Repo).Commits.ElementAt(2)
             Assert.Equal("Authors should be equal", true, (Option.get p.Author) = author3)
-            Assert.Equal("Projects should have three commits", true, p.Repo.Commits.Count() = 3)
+            Assert.Equal("Projects should have three commits", true, (Option.get p.Repo).Commits.Count() = 3)
             Assert.Equal("Project should have current commit message", true, c1.MessageShort = msg3)
             Assert.Equal("Project should have old commit message", true, c2.MessageShort = msg2)
             Assert.Equal("Project should have oldest commit message", true, c3.MessageShort = msg1))

@@ -78,8 +78,9 @@ module ProjectGroup =
     member self.Pull(p : Project) =
       logger tag "should pull project from remote now"
 
-    (* Become member of group *)
+    (* group membership *)
     member self.Join() = self.group.Join()
+    member self.Leave() = self.group.Leave()
 
     (* Actions on the group *)
     member self.Send(action : Actions, project : Project) =

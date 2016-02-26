@@ -34,27 +34,26 @@ module Service =
     // |_|   |_|  \___// |\___|\___|\__|
     //               |__/
     member self.LoadProject(path : FilePath) : unit =
-      self.Project <- loadProject path
+      self.Project <- Project.Load path
 
     member self.SaveProject(msg : string) : unit =
       if Option.isSome Signature
       then
         let signature = Option.get Signature
         match self.Project with
-          | Some(project) -> saveProject project signature msg
+          | Some(project) -> project.Save(signature, msg)
           | _ -> logger tag "No project loaded."
       else logger tag "Unable to save project. No signature supplied."
 
     member self.CreateProject(name : Name, path : FilePath) =
-      let project = createProject name
+      let project = Project.Create name
       project.Path <- Some(path)
       self.Project <- Some(project)
       self.SaveProject(sprintf "Created %s" name)
 
     member self.CloseProject(name : Name) =
       if self.ProjectLoaded(name)
-      then
-        self.Project <- None
+      then self.Project <- None
       
     member self.ProjectLoaded(name : Name) = 
       Option.isSome self.Project && (Option.get self.Project).Name = name

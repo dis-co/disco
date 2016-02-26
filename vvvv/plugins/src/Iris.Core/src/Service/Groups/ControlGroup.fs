@@ -113,7 +113,7 @@ module ControlGroup =
         then self.context.LoadProject(pth)
       else
         logger tag <| sprintf "address toString: %s" job.Host
-        match cloneProject "localhost" job.Name with
+        match Project.Clone("localhost", job.Name) with
           | Some pth -> logger tag <| sprintf "%s" pth
           | None -> logger tag"something went wrong"
 
