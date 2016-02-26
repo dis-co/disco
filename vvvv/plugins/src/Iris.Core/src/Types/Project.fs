@@ -109,6 +109,10 @@ module Project =
       with get()     = data.Config
       and  set(conf) = data.Config <- conf
 
+    member self.Data
+      with get()      = data
+      and  set(data') = data <- data'
+
     // Static:
     //    ____                _
     //   / ___|_ __ ___  __ _| |_ ___
@@ -537,3 +541,15 @@ module Project =
       with
         | _ -> None
 
+    //  _   _           _       _
+    // | | | |_ __   __| | __ _| |_ ___
+    // | | | | '_ \ / _` |/ _` | __/ _ \
+    // | |_| | |_) | (_| | (_| | ||  __/
+    //  \___/| .__/ \__,_|\__,_|\__\___|
+    //       |_|
+
+    member self.Update(project : Project) =
+      self.Data <- project.Data
+
+    member self.Update(data : ProjectData) =
+      self.Data <- data
