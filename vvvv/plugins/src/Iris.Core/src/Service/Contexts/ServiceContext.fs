@@ -30,6 +30,11 @@ module Service =
     // |  __/| | | (_) | |  __/ (__| |_
     // |_|   |_|  \___// |\___|\___|\__|
     //               |__/
+    member self.GetProjects
+      with get() : ProjectData array =
+        Map.toArray Projects
+        |> Array.map (fun (id', ctx) -> ctx.Project.Data) 
+
     member self.LoadProject(path : FilePath) : Project option =
       let result = Project.Load path
       match result with

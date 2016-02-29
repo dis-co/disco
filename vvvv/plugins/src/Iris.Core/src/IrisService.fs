@@ -124,5 +124,3 @@ module IrisService =
       self.Ctrl.GetMembers()
       |> Array.iter (fun (mem : Member) ->
                        printfn "  %s" <| mem.ToString())
-      printfn "Projects:"
-      printfn "  Fixme..."

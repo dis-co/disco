@@ -83,10 +83,18 @@ module ControlGroup =
 
     member self.Join()  =
       self.group.Join()
-      self.group.Send<Member>(CtrlAction.MemberAdd, { Name = host; IP = ip })
+      let mem =
+        { Name     = host
+        ; IP       = ip
+        ; Projects = self.context.GetProjects }
+      self.group.Send<Member>(CtrlAction.MemberAdd, mem)
 
     member self.Leave() =
-      self.group.Send<Member>(CtrlAction.MemberRemove, { Name = host; IP = ip })
+      let mem =
+        { Name     = host
+        ; IP       = ip
+        ; Projects = self.context.GetProjects }
+      self.group.Send<Member>(CtrlAction.MemberRemove, mem)
       self.group.Leave()
 
     member self.Initialize() =
