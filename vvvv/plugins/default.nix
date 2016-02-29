@@ -1,7 +1,7 @@
 with import <nixpkgs> {}; {
   IrisServiceEnv =  stdenv.mkDerivation {
     name = "IrisServiceEnv";
-    buildInputs = [ stdenv fsharp curl openssl ];
+    buildInputs = [ stdenv curl openssl ];
     LD_LIBRARY_PATH="${curl}/lib:${openssl}/lib";
     run = "mono src/Iris.Service/bin/Debug/Iris.Service.exe -r -v";
     shellHook = ''

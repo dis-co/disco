@@ -14,12 +14,12 @@ open Iris.Service.Core
 [<AutoOpen>]
 module ProjectGroup =
 
-  //     _        _   _                 
-  //    / \   ___| |_(_) ___  _ __  ___ 
+  //     _        _   _
+  //    / \   ___| |_(_) ___  _ __  ___
   //   / _ \ / __| __| |/ _ \| '_ \/ __|
   //  / ___ \ (__| |_| | (_) | | | \__ \
   // /_/   \_\___|\__|_|\___/|_| |_|___/
-  //                                    
+  //
   [<RequireQualifiedAccess>]
   type Actions =
     | Pull
@@ -29,15 +29,16 @@ module ProjectGroup =
         match self with
           | Pull -> 1
 
-  //   ____                       
-  //  / ___|_ __ ___  _   _ _ __  
-  // | |  _| '__/ _ \| | | | '_ \ 
+  //   ____
+  //  / ___|_ __ ___  _   _ _ __
+  // | |  _| '__/ _ \| | | | '_ \
   // | |_| | | | (_) | |_| | |_) |
-  //  \____|_|  \___/ \__,_| .__/ 
-  //                       |_|    
+  //  \____|_|  \___/ \__,_| .__/
+  //                       |_|
   type ProjectGroup(project : Project) as self =
     let tag = "ProjectGroup"
-    
+
+    [<DefaultValue>] val mutable uri     : string
     [<DefaultValue>] val mutable group   : VsyncGroup<Actions>
     [<DefaultValue>] val mutable Project : Project
 
@@ -48,23 +49,25 @@ module ProjectGroup =
 
     do
       self.Project <- project
-      self.group <- new VsyncGroup<Actions>(Uri.mkProjectUri project)
+      self.uri <- Uri.mkProjectUri project
+      self.group <- new VsyncGroup<Actions>(self.uri)
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
       self.group.CheckpointMaker(self.MakeCheckpoint)
       self.group.CheckpointLoader(self.LoadCheckpoint)
       List.iter AddHandler AllHandlers
-    //  ____       _                 
-    // |  _ \  ___| |__  _   _  __ _ 
+
+    //  ____       _
+    // |  _ \  ___| |__  _   _  __ _
     // | | | |/ _ \ '_ \| | | |/ _` |
     // | |_| |  __/ |_) | |_| | (_| |
     // |____/ \___|_.__/ \__,_|\__, |
-    //                         |___/ 
+    //                         |___/
     member self.Dump() =
       if Option.isSome project.Path
         then sprintf "[project Dump] name=%s path=%s" project.Name (Option.get project.Path)
         else sprintf "[project Dump] name=%s path=<empty>" project.Name
-      |> logger tag 
+      |> logger tag
 
     //  ____            _           _
     // |  _ \ _ __ ___ (_) ___  ___| |_
@@ -84,12 +87,9 @@ module ProjectGroup =
     member self.Pull(p : Project) =
       logger tag "should pull project from remote now"
 
-    //  __  __                _                   _     _
-    // |  \/  | ___ _ __ ___ | |__   ___ _ __ ___| |__ (_)_ __
-    // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__/ __| '_ \| | '_ \
-    // | |  | |  __/ | | | | | |_) |  __/ |  \__ \ | | | | |_) |
-    // |_|  |_|\___|_| |_| |_|_.__/ \___|_|  |___/_| |_|_| .__/
-    //                                                   |_|
+    member self.ChangeBranch(name : string) =
+      logger tag "change branch now"
+
     member self.Join() = self.group.Join()
     member self.Leave() = self.group.Leave()
 
@@ -118,4 +118,3 @@ module ProjectGroup =
     member self.ViewChanged(view : View) : unit =
       sprintf "viewid: %d" (view.GetViewid())
       |> logger tag
-

@@ -17,9 +17,9 @@ module Service =
   type ServiceContext(signature) =
     let tag = "ServiceContext"
 
-    let mutable Signature : Signature option     = Some(signature)
-    let mutable Members   : Map<string,Member>   = Map.empty
-    let mutable Projects  : Map<string, Project> = Map.empty
+    let mutable Signature : Signature option            = Some(signature)
+    let mutable Members   : Map<string,Member>          = Map.empty
+    let mutable Projects  : Map<string, ProjectContext> = Map.empty
 
     interface IDisposable with
       member self.Dispose() = ()
@@ -33,7 +33,9 @@ module Service =
     member self.LoadProject(path : FilePath) : Project option =
       let result = Project.Load path
       match result with
-        | Some project -> Projects <- Map.add project.Id project Projects
+        | Some project ->
+          let ctx = new ProjectContext(project)
+          Projects <- Map.add project.Id ctx Projects
         | None -> logger tag "project could not be loaded"
       result
 
@@ -41,8 +43,8 @@ module Service =
       match Signature with
         | Some (signature) ->
           try
-            let project = Map.find id' Projects 
-            project.Save(signature, msg)
+            let ctx = Map.find id' Projects 
+            ctx.Project.Save(signature, msg)
           with
             | exn -> logger tag "Unable to save project. Project not found."
         | _ -> logger tag "Unable to save project. No signature supplied."
@@ -50,12 +52,17 @@ module Service =
     member self.CreateProject(name : Name, path : FilePath) =
       let project = Project.Create name
       project.Path <- Some(path)
-      Projects <- Map.add project.Id project Projects
-      self.SaveProject(project.Id, sprintf "Created %s" name)
+      project.Save(Option.get Signature, sprintf "Created %s" name)
+      let ctx = new ProjectContext(project)
+      Projects <- Map.add project.Id ctx Projects
 
     member self.CloseProject(id' : string) =
-      if self.ProjectLoaded(id')
-      then Projects <- Map.remove id' Projects
+      try
+        let ctx = Map.find id' Projects
+        (ctx :> IDisposable).Dispose()
+        Projects <- Map.remove id' Projects
+      with
+        | _ -> logger tag "project not loaded"
       
     member self.ProjectLoaded(id' : string) = 
       Map.containsKey id' Projects

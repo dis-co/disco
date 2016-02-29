@@ -65,13 +65,14 @@
     <Compile Include="src\Service\GitDaemon.fs" />
     <Compile Include="src\Service\Member.fs" />
     <Compile Include="src\Uri.fs" />
-    <Compile Include="src\Service\Contexts\ServiceContext.fs" />
     <Compile Include="src\Service\Groups\VsyncGroup.fs" />
     <Compile Include="src\Service\Groups\PinGroup.fs" />
     <Compile Include="src\Service\Groups\CueGroup.fs" />
     <Compile Include="src\Service\Groups\ProjectGroup.fs" />
-    <Compile Include="src\Service\Groups\ControlGroup.fs" />
     <Compile Include="src\Service\Contexts\ProjectContext.fs" />
+    <Compile Include="src\Service\Contexts\ServiceContext.fs" />
+    <Compile Include="src\Service\Groups\ControlGroup.fs" />
+    <Compile Include="src\Service\IrisGroup.fs" />
     <Compile Include="src\IrisService.fs" />
     <None Include="assets\example-project.yml" />
   </ItemGroup>

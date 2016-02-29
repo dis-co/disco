@@ -59,6 +59,8 @@ module Project =
   // |_|   |_|  \___// |\___|\___|\__|
   //               |__/
   type Project(repo, data) =
+    let tag = "Project"
+
     let mutable repo : Repository option = repo
     let mutable data : ProjectData = data
 
@@ -120,7 +122,24 @@ module Project =
       with get()      = data
       and  set(data') = data <- data'
 
-     static member private Build(id' : string, name : string) : Project =
+    member self.CurrentBranch
+      with get() : Branch option =
+        match repo with
+          | Some(repo') -> Some repo'.Head
+          | _           -> None
+
+    member self.SetBranch(name) : unit =
+      match repo with
+        | Some(repo') ->
+          try 
+            let branch = repo'.Branches.First(fun b -> b.CanonicalName = name)
+            repo'.Checkout branch
+            |> ignore
+          with
+            | _ -> ()
+        | _ -> ()
+
+    static member private Build(id' : string, name : string) : Project =
       let data = new ProjectData()
       data.Name      <- id'
       data.Name      <- name

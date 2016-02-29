@@ -1,6 +1,7 @@
 namespace Iris.Service.Groups
 
 open System.Collections.Generic
+open Iris.Core
 open Iris.Core.Utils
 open Iris.Core.Types
 open Nessos.FsPickler
@@ -25,9 +26,10 @@ module PinGroup =
           | Delete -> 3
 
   /// Group to manage all replicated IOBox state in the distributed app
-  type PinGroup(grpname) as self = 
+  type PinGroup(project : Project, grpname) as self = 
     let tag = "PinGroup"
  
+    [<DefaultValue>] val mutable uri   : string
     [<DefaultValue>] val mutable group : VsyncGroup<BoxAction>
 
     let mutable boxes : IOBoxDict = new IOBoxDict()
@@ -42,7 +44,8 @@ module PinGroup =
       ]
 
     do
-      self.group <- new VsyncGroup<BoxAction>(grpname)
+      self.uri <- Uri.mkCueUri project grpname 
+      self.group <- new VsyncGroup<BoxAction>(self.uri)
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
       self.group.CheckpointMaker(self.MakeCheckpoint)
@@ -57,7 +60,8 @@ module PinGroup =
       boxes.Add(box.Id, box)
 
     (* Become member of group *)
-    member self.Join() = self.group.Join()
+    member self.Join()  = self.group.Join()
+    member self.Leave() = self.group.Leave()
 
     (* BoxAction on the group *)
     member self.Send(action : BoxAction, box : IOBox) =

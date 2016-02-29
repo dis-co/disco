@@ -14,10 +14,14 @@ module Project =
 
     let projectGroup = new ProjectGroup(project)
     let gitDaemon = new Git.Daemon(Option.get project.Path)
+    let irisGroups = Map.empty
 
     do
       gitDaemon.Start()
       projectGroup.Join()
+
+    member self.Project
+      with get() = project
 
     interface IDisposable with
       member self.Dispose() =

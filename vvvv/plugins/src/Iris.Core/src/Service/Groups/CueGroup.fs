@@ -2,6 +2,7 @@ namespace Iris.Service.Groups
 
 open System.Collections.Generic
 open Nessos.FsPickler
+open Iris.Core
 open Iris.Core.Utils
 open Iris.Core.Types
 open Vsync
@@ -28,9 +29,10 @@ module CueGroup =
 
   (* ---------- CueGroup ---------- *)
 
-  type CueGroup(grpname) as self = 
+  type CueGroup(project : Project, grpname) as self = 
     let tag = "CueGroup"
  
+    [<DefaultValue>] val mutable uri   : string
     [<DefaultValue>] val mutable group : VsyncGroup<CueAction>
 
     let mutable cues : CueDict = new CueDict()
@@ -46,7 +48,8 @@ module CueGroup =
 
     (* constructor *)
     do
-      self.group <- new VsyncGroup<CueAction>(grpname)
+      self.uri <- Uri.mkCueUri project grpname
+      self.group <- new VsyncGroup<CueAction>(self.uri)
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
       self.group.CheckpointMaker(self.MakeCheckpoint)
@@ -62,6 +65,7 @@ module CueGroup =
 
     (* Become member of group *)
     member self.Join() = self.group.Join()
+    member self.Leave() = self.group.Leave()
 
     (* CueAction on the group *)
     member self.Send(action : CueAction, cue : Cue) =
