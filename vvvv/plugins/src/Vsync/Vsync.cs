@@ -1143,12 +1143,12 @@ namespace Vsync
         internal static string RIPListState()
         {
             string s;
-            using (new LockAndElevate(RIPLock))
+            using (var tmpLockObj = new LockAndElevate(RIPLock))
             {
                 s = "RIPList = " + Address.VectorToString(RIPList.ToArray());
             }
 
-            using (new LockAndElevate(Group.GroupRIPLock))
+            using (var tmpLockObj = new LockAndElevate(Group.GroupRIPLock))
             {
                 s += "; Group RIPList = " + Address.VectorToString(Group.GroupRIPList.ToArray()) + Environment.NewLine;
             }
@@ -1490,7 +1490,7 @@ namespace Vsync
 
         private static int InsertOnTimerQueue(TCB newtcb)
         {
-            using (new LockAndElevate(timer_lock))
+            using (var tmpLockObj = new LockAndElevate(timer_lock))
             {
                 bool new_first = true;
                 for (LinkedListNode<TCB> tcbnode = timer_list.First; tcbnode != null; tcbnode = tcbnode.Next)
@@ -1540,7 +1540,7 @@ namespace Vsync
 
             LinkedListNode<TCB> tcbnode;
             newDeadline += NOW;
-            using (new LockAndElevate(timer_lock))
+            using (var tmpLockObj = new LockAndElevate(timer_lock))
             {
                 for (tcbnode = timer_list.First; tcbnode != null; tcbnode = tcbnode.Next)
                 {
@@ -1566,7 +1566,7 @@ namespace Vsync
                 return;
             }
 
-            using (new LockAndElevate(timer_lock))
+            using (var tmpLockObj = new LockAndElevate(timer_lock))
             {
                 for (LinkedListNode<TCB> tcb = timer_list.First; tcb != null; tcb = tcb.Next)
                 {
@@ -1593,7 +1593,7 @@ namespace Vsync
                     VsyncSystem.RTS.ThreadCntrs[2]++;
                     List<TimerCallback> cbs = new List<TimerCallback>();
                     VsyncSystem.CheckParentThread();
-                    using (new LockAndElevate(timer_lock))
+                    using (var tmpLockObj = new LockAndElevate(timer_lock))
                     {
                         LinkedListNode<TCB> tcb;
                         while ((tcb = timer_list.First).Value.when <= NOW)
@@ -1620,7 +1620,7 @@ namespace Vsync
                     }
 
                     int delay;
-                    using (new LockAndElevate(timer_lock))
+                    using (var tmpLockObj = new LockAndElevate(timer_lock))
                     {
                         delay = (int)Math.Min(2500, timer_list.First.Value.when - NOW);
                     }
@@ -1644,7 +1644,7 @@ namespace Vsync
             // Omit unless explictly requested: too verbose...
             if ((VsyncSystem.Debug & VsyncSystem.TIMERS) != 0)
             {
-                using (new LockAndElevate(timer_lock))
+                using (var tmpLockObj = new LockAndElevate(timer_lock))
                 {
                     for (LinkedListNode<TCB> tcb = timer_list.First; tcb != null; tcb = tcb.Next)
                     {
@@ -1679,7 +1679,7 @@ namespace Vsync
                 throw new VsyncException("Lost connection to Vsync system during startup.");
             }
 
-            using (new LockAndElevate(Vsync.RIPLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
             {
                 if (!Vsync.RIPList.Contains(which))
                 {
@@ -1729,7 +1729,7 @@ namespace Vsync
             }
 
             // Clean up the CanBeOracleList to make sure we don't try to add a deceased process to the ORACLE
-            using (new LockAndElevate(CanBeOracleListLock))
+            using (var tmpLockObj = new LockAndElevate(CanBeOracleListLock))
             {
                 CanBeOracleList.Remove(which);
             }
@@ -1806,7 +1806,7 @@ namespace Vsync
 
         private static bool IsAlive(Address m)
         {
-            using (new LockAndElevate(Vsync.RIPLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
             {
                 if (Vsync.RIPList.Contains(m))
                 {
@@ -2424,7 +2424,7 @@ namespace Vsync
         internal static IPAddress LastIPv4(string hname)
         {
             IPAddress theIPAddr;
-            using (new LockAndElevate(IPv4MapLock))
+            using (var tmpLockObj = new LockAndElevate(IPv4MapLock))
             {
                 if (IPv4Map.ContainsKey(hname))
                 {
@@ -2680,7 +2680,7 @@ namespace Vsync
 
         internal static string GetPLLState()
         {
-            using (new LockAndElevate(PendingLeaderOpsLock))
+            using (var tmpLockObj = new LockAndElevate(PendingLeaderOpsLock))
             {
                 if (PendingLeaderOpsList.Count == 0)
                 {
@@ -2710,7 +2710,7 @@ namespace Vsync
             // confused (in the VUProtocol) by entries that aren't actually valid candidates
             if (v.joiners.Length > 0)
             {
-                using (new LockAndElevate(CanBeOracleListLock))
+                using (var tmpLockObj = new LockAndElevate(CanBeOracleListLock))
                 {
                     foreach (Address who in v.joiners)
                     {
@@ -2725,7 +2725,7 @@ namespace Vsync
             }
 
             List<PendingLeaderOps> callbackList = new List<PendingLeaderOps>();
-            using (new LockAndElevate(PendingLeaderOpsLock))
+            using (var tmpLockObj = new LockAndElevate(PendingLeaderOpsLock))
             {
                 List<PendingLeaderOps> newPendingLeaderOpsList = new List<PendingLeaderOps>();
                 foreach (PendingLeaderOps outerPlo in PendingLeaderOpsList)
@@ -2809,7 +2809,7 @@ namespace Vsync
 
         internal static void DALReplyNotify(Group g, Msg rmsg, PendingLeaderOps plos, Msg replyTo)
         {
-            using (new LockAndElevate(g.groupLock))
+            using (var tmpLockObj = new LockAndElevate(g.groupLock))
             {
                 g.NotifyDALOnReply = null;
             }
@@ -2844,7 +2844,7 @@ namespace Vsync
             PendingLeaderOps plos = new PendingLeaderOps(g, Sender, uid, theAction);
             if (!g.theView.IAmLeader())
             {
-                using (new LockAndElevate(PendingLeaderOpsLock))
+                using (var tmpLockObj = new LockAndElevate(PendingLeaderOpsLock))
                 {
                     foreach (PendingLeaderOps plo in PendingLeaderOpsList)
                     {
@@ -2864,7 +2864,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(ORACLE.groupLock))
+            using (var tmpLockObj = new LockAndElevate(ORACLE.groupLock))
             {
                 ORACLE.NotifyDALOnReply = plos;
             }
@@ -2921,7 +2921,7 @@ namespace Vsync
                     Vsync.WriteLine("DALdone: Received a DAL done(1) event from " + sender + " for " + gaddr + ", sender=" + rqInitiator + ", uid=" + uid);
                 }
 
-                using (new LockAndElevate(PendingLeaderOpsLock))
+                using (var tmpLockObj = new LockAndElevate(PendingLeaderOpsLock))
                 {
                     bool fnd = false;
                     foreach (PendingLeaderOps plo in PendingLeaderOpsList)
@@ -2958,7 +2958,7 @@ namespace Vsync
                     Vsync.WriteLine("DALdone(2): sender " + sender + " gaddr " + gaddr + ", uid=" + uid);
                 }
 
-                using (new LockAndElevate(PendingLeaderOpsLock))
+                using (var tmpLockObj = new LockAndElevate(PendingLeaderOpsLock))
                 {
                     List<PendingLeaderOps> newPendingLeaderOpsList = new List<PendingLeaderOps>();
                     foreach (PendingLeaderOps plo in PendingLeaderOpsList)
@@ -2994,7 +2994,7 @@ namespace Vsync
             {
                 Vsync.WriteLine("ORACLERUNNING: " + who);
                 View theView;
-                using (new LockAndElevate(ORACLE.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(ORACLE.ViewLock))
                     theView = ORACLE.theView;
                 if (!VsyncSystem.VsyncActive || !ORACLE.IAmLeader() || my_address.CompareTo(who) <= 0 || theView == null || theView.leavers.Contains(who))
                 {
@@ -3063,7 +3063,7 @@ namespace Vsync
                         return;
                     }
 
-                    using (new LockAndElevate(recent_inquiries_lock))
+                    using (var tmpLockObj = new LockAndElevate(recent_inquiries_lock))
                     {
                         foreach (Address a in recent_inquiries)
                         {
@@ -3079,7 +3079,7 @@ namespace Vsync
                             Address ri = who;
                             Vsync.OnTimer(5000, () =>
                             {
-                                using (new LockAndElevate(recent_inquiries_lock))
+                                using (var tmpLockObj1 = new LockAndElevate(recent_inquiries_lock))
                                 {
                                     recent_inquiries.Remove(ri);
                                 }
@@ -3089,7 +3089,7 @@ namespace Vsync
 
                     bool coreOracleJoiner = false;
                     bool isACandidate = false;
-                    using (new LockAndElevate(Vsync.ORACLE.groupLock))
+                    using (var tmpLockObj = new LockAndElevate(Vsync.ORACLE.groupLock))
                     {
                         if (ORACLE.HasFirstView && (mode & Group.CANBEORACLE) != 0)
                         {
@@ -3188,7 +3188,7 @@ namespace Vsync
 
             ORACLE.RegisterHandler(Vsync.CANBEORACLE, new Action<Address>(who =>
             {
-                using (new LockAndElevate(CanBeOracleListLock))
+                using (var tmpLockObj = new LockAndElevate(CanBeOracleListLock))
                 {
                     if (!CanBeOracleList.Contains(who))
                     {
@@ -3250,7 +3250,7 @@ namespace Vsync
                         continue;
                     }
 
-                    using (new LockAndElevate(Group.TPGroupsLock))
+                    using (var tmpLockObj = new LockAndElevate(Group.TPGroupsLock))
                     {
                         Group.TPGroups.Remove(g.gaddr);
                     }
@@ -3362,7 +3362,7 @@ namespace Vsync
                 if (Vsync.ClientOf == null && ORACLE.IAmLeader())
                 {
                     View v;
-                    using (new LockAndElevate(ORACLE.ViewLock))
+                    using (var tmpLockObj = new LockAndElevate(ORACLE.ViewLock))
                     {
                         v = ORACLE.theView;
                     }
@@ -3670,7 +3670,7 @@ namespace Vsync
         internal static string GetGVEState()
         {
             string s = "Group view events list:" + Environment.NewLine;
-            using (new LockAndElevate(GVELock))
+            using (var tmpLockObj = new LockAndElevate(GVELock))
             {
                 if (GVEList.Count > 0)
                 {
@@ -3693,7 +3693,7 @@ namespace Vsync
             // Omit unless debugging the GVE logic
             if ((VsyncSystem.Debug & VsyncSystem.GVELOGIC) != 0)
             {
-                using (new LockAndElevate(AGVELock))
+                using (var tmpLockObj = new LockAndElevate(AGVELock))
                 {
                     if (AGVEList.Count > 0)
                     {
@@ -3983,7 +3983,7 @@ namespace Vsync
         {
             if (uid != -1)
             {
-                using (new LockAndElevate(AGVELock))
+                using (var tmpLockObj = new LockAndElevate(AGVELock))
                 {
                     foreach (GVEvent agve in AGVEList)
                     {
@@ -4011,7 +4011,7 @@ namespace Vsync
                 gaddrs = new Address[0];
             }
 
-            using (new LockAndElevate(GVELock))
+            using (var tmpLockObj = new LockAndElevate(GVELock))
             {
                 bool fnd = false;
                 GVEvent gve = new GVEvent(request, who, mode, gnames, gaddrs, offset, tsigs, flags, uid);
@@ -4082,7 +4082,7 @@ namespace Vsync
                 return;
             }
 
-            using (new LockAndElevate(GVELock))
+            using (var tmpLockObj = new LockAndElevate(GVELock))
             {
                 foreach (GVEvent gve in GVEList)
                 {
@@ -4100,14 +4100,14 @@ namespace Vsync
             }
 
             GVEvent agve = new GVEvent(0, who, 0, null, null, 0L, null, null, uid);
-            using (new LockAndElevate(AGVELock))
+            using (var tmpLockObj = new LockAndElevate(AGVELock))
             {
                 AGVEList.Add(agve);
             }
 
             Vsync.OnTimer(120000, () =>
             {
-                using (new LockAndElevate(AGVELock))
+                using (var tmpLockObj = new LockAndElevate(AGVELock))
                 {
                     foreach (GVEvent gve in AGVEList)
                     {
@@ -4135,7 +4135,7 @@ namespace Vsync
 
         internal static void OracleViewTask()
         {
-            using (new LockAndElevate(OracleViewTaskLock))
+            using (var tmpLockObj = new LockAndElevate(OracleViewTaskLock))
             {
                 if (OracleViewTaskRunning)
                 {
@@ -4193,7 +4193,7 @@ namespace Vsync
                         Vsync.WriteLine("OracleViewTask: After BarrierWait for LLWAIT/LGVEUPDATE");
                     }
 
-                    using (new LockAndElevate(GVELock))
+                    using (var tmpLockObj = new LockAndElevate(GVELock))
                     {
                         if (GVEList.Count == 0)
                         {
@@ -4260,7 +4260,7 @@ namespace Vsync
                     }
 
                     bool sendIt = false;
-                    using (new LockAndElevate(GVELock))
+                    using (var tmpLockObj = new LockAndElevate(GVELock))
                     {
                         if (GVEList.Count == 0 && Vsync.VSYNCMEMBERS.HasFirstView)
                         {
@@ -4359,7 +4359,7 @@ namespace Vsync
                         ProposeGlist.Add(ORACLE);
                     }
 
-                    using (new LockAndElevate(Group.TPGroupsLock))
+                    using (var tmpLockObj = new LockAndElevate(Group.TPGroupsLock))
                     {
                         foreach (KeyValuePair<Address, Group> kvp in Group.TPGroups)
                         {
@@ -4575,13 +4575,13 @@ namespace Vsync
                 // that could replace the departing members(s) and if so, add them to a list of proposed joiners.
                 if (gve.gaddrs.Length == 1 && gve.gaddrs[0] == ORACLE.gaddr && wantLeave != null && wantLeave.Length > 0)
                 {
-                    using (new LockAndElevate(CanBeOracleListLock))
+                    using (var tmpLockObj = new LockAndElevate(CanBeOracleListLock))
                     {
                         while (CanBeOracleList.Count > 0)
                         {
                             Address a = CanBeOracleList.First();
                             CanBeOracleList.Remove(a);
-                            using (new LockAndElevate(RIPLock))
+                            using (var tmpLockObj1 = new LockAndElevate(RIPLock))
                             {
                                 if (ORACLE.GetRankOf(a) != -1 || RIPList.Contains(a))
                                 {
@@ -4883,7 +4883,7 @@ namespace Vsync
                         throw new VsyncException("Can't find the group in VUCommit");
                     }
 
-                    using (new LockAndElevate(g.ViewLock))
+                    using (var tmpLockObj = new LockAndElevate(g.ViewLock))
                     {
                         theView = g.theView;
                     }
@@ -4925,7 +4925,7 @@ namespace Vsync
             }
 
             int n;
-            using (new LockAndElevate(Group.TPGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(Group.TPGroupsLock))
             {
                 int ng = Group.TPGroups.Count + 1;
                 foreach (KeyValuePair<Address, Group> kvp in Group.TPGroups)
@@ -4963,7 +4963,7 @@ namespace Vsync
 
             int[,] mms = MCMDSocket.GetMap(gaddrs);
             Address[] CBMs;
-            using (new LockAndElevate(Vsync.CanBeOracleListLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.CanBeOracleListLock))
             {
                 CBMs = Vsync.CanBeOracleList.ToArray();
             }
@@ -5099,7 +5099,7 @@ namespace Vsync
         private static void AddVD(List<ViewDelta> vdlist, Address[] wantJoin, Address[] wantLeave, Group g, long offset)
         {
             View theView;
-            using (new LockAndElevate(g.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(g.ViewLock))
             {
                 theView = g.theView;
             }
@@ -5150,7 +5150,7 @@ namespace Vsync
 
         internal static void clearOldVDS(Address gaddr, int StableTo)
         {
-            using (new LockAndElevate(oldVDSlock))
+            using (var tmpLockObj = new LockAndElevate(oldVDSlock))
             {
                 // First count the ones to keep
                 int cnt = 0;
@@ -5186,7 +5186,7 @@ namespace Vsync
         {
             ViewDelta[] vdsToApply;
             int cnt = 0;
-            using (new LockAndElevate(oldVDSlock))
+            using (var tmpLockObj = new LockAndElevate(oldVDSlock))
             {
                 // Count the number of ViewDeltas to send.  First any lingering old ones
                 if (includePrev && oldVDS != null)
@@ -5339,7 +5339,7 @@ namespace Vsync
                 {
                     if (!g.theView.hasFailed[m])
                     {
-                        using (new LockAndElevate(Vsync.RIPLock))
+                        using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
                         {
                             if (!Vsync.RIPList.Contains(g.theView.members[m]))
                             {
@@ -5364,7 +5364,7 @@ namespace Vsync
 
         internal static int CountLive(List<Address> alist)
         {
-            using (new LockAndElevate(Vsync.RIPLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
                 return alist.Count(a => !Vsync.RIPList.Contains(a));
         }
 
@@ -5385,7 +5385,7 @@ namespace Vsync
             for (gn = 0; gn < ngroups; gn++)
             {
                 Group g = garray[gn];
-                using (new LockAndElevate(g.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(g.ViewLock))
                 {
                     UnstableMsgs[gn] = new UnstableList[g.theView.members.Length];
                     for (int who = 0; who < g.theView.members.Length; who++)
@@ -5576,7 +5576,7 @@ namespace Vsync
                     vdsApplied.Add(vd);
                 }
 
-                using (new LockAndElevate(GVELock))
+                using (var tmpLockObj = new LockAndElevate(GVELock))
                 {
                     List<GVEvent> newGVEList = new List<GVEvent>();
                     foreach (GVEvent gve in GVEList)
@@ -5654,7 +5654,7 @@ namespace Vsync
 
             if (GroupIsReal)
             {
-                using (new LockAndElevate(g.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(g.ViewLock))
                 {
                     nv = g.theView;
                 }
@@ -5773,7 +5773,7 @@ namespace Vsync
             if (newView.Count == 0 && g.isTrackingProxy)
             {
                 g.GroupClose();
-                using (new LockAndElevate(Group.TPGroupsLock))
+                using (var tmpLockObj = new LockAndElevate(Group.TPGroupsLock))
                 {
                     Group.TPGroups.Remove(g.gaddr);
                 }
@@ -5822,7 +5822,7 @@ namespace Vsync
             else
             {
                 // Tracking Proxy in the ORACLE
-                using (new LockAndElevate(g.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(g.ViewLock))
                 {
                     g.theView = nextView;
                     nv = nextView;
@@ -6127,7 +6127,7 @@ namespace Vsync
         {
             if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
             {
-                using (new LockAndElevate(ReliableSender.ackInfoLock))
+                using (var tmpLockObj = new LockAndElevate(ReliableSender.ackInfoLock))
                 {
                     foreach (string aks in ReliableSender.ackInfo)
                     {
@@ -6280,7 +6280,7 @@ namespace Vsync
                 long rdelay = 0;
                 long a0delay = 0;
                 long a1delay = 0;
-                using (new LockAndElevate(this.Lock))
+                using (var tmpLockObj = new LockAndElevate(this.Lock))
                 {
                     if (RTS.rcvProcessingBeganAt > 0)
                     {
@@ -6351,7 +6351,7 @@ namespace Vsync
         internal static string RunTimeStatsState()
         {
             string s = "Summary of network statistics:" + Environment.NewLine + "    ";
-            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+            using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
             {
                 s += "SENT: " + RTS.UDPsent + " UDP (" + RTS.UDPBsent + " non-duplicated bytes), " + RTS.TokensSent + " tokens, " + RTS.IPMCsent + " IPMC (" + RTS.IPMCBsent + " bytes; " + RTS.StabilitySent + " were stability packets), ";
                 s += RTS.ACKsent + " Acks, " + RTS.NACKsent + " Nacks, " + RTS.Discarded + " Discards." + Environment.NewLine + "    ";
@@ -6801,7 +6801,7 @@ namespace Vsync
             }
 
             Dictionary<Address, Group> GClone = new Dictionary<Address, Group>();
-            using (new LockAndElevate(Group.VsyncGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(Group.VsyncGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in Group.VsyncGroups)
                 {
@@ -7014,7 +7014,7 @@ namespace Vsync
                 throw new VsyncException(" New Client operation was requested but Vsync wasn't running yet");
             }
 
-            using (new LockAndElevate(ClientsLock))
+            using (var tmpLockObj = new LockAndElevate(ClientsLock))
             {
                 foreach (Client cl in Clients)
                 {
@@ -7036,7 +7036,7 @@ namespace Vsync
             // This won't cause harm: VSYNCMEMBERS is only called from the Vsync library and usually in type-checked mode
             // and the client's actual RPC call is type-checked in the Client class library
             Vsync.VSYNCMEMBERS.isClientProxy = true;
-            using (new LockAndElevate(ClientsLock))
+            using (var tmpLockObj = new LockAndElevate(ClientsLock))
             {
                 Clients.Add(this);
             }
@@ -7049,7 +7049,7 @@ namespace Vsync
         /// <returns>Client object if any, null if not known</returns>
         public static Client Lookup(string gname)
         {
-            using (new LockAndElevate(ClientsLock))
+            using (var tmpLockObj = new LockAndElevate(ClientsLock))
             {
                 foreach (Client cl in Clients)
                 {
@@ -7065,13 +7065,13 @@ namespace Vsync
 
         internal static void ResetRep(string gname, Address newRep)
         {
-            using (new LockAndElevate(ClientsLock))
+            using (var tmpLockObj = new LockAndElevate(ClientsLock))
             {
                 foreach (Client cg in Clients)
                 {
                     if (cg.gname.Equals(gname, StringComparison.Ordinal))
                     {
-                        using (new LockAndElevate(cg.myRepLock))
+                        using (var tmpLockObj1 = new LockAndElevate(cg.myRepLock))
                         {
                             cg.myRep = newRep;
                         }
@@ -7085,7 +7085,7 @@ namespace Vsync
         private bool refreshRep()
         {
             byte[] ba;
-            using (new LockAndElevate(this.myRepLock))
+            using (var tmpLockObj = new LockAndElevate(this.myRepLock))
             {
                 this.myRep = null;
             }
@@ -7095,7 +7095,7 @@ namespace Vsync
                 ba = Vsync.ORACLE.doP2PQuery(Vsync.ClientOf, new Timeout(Vsync.VSYNC_DEFAULTTIMEOUT, Timeout.TO_FAILURE, "BECLIENT"), Vsync.BECLIENT, this.gname);
                 if (ba.Length > 0)
                 {
-                    using (new LockAndElevate(this.myRepLock))
+                    using (var tmpLockObj = new LockAndElevate(this.myRepLock))
                     {
                         this.myRep = (Address)Msg.BArrayToObjects(ba, typeof(Address))[0];
                     }
@@ -7103,7 +7103,7 @@ namespace Vsync
             }
             else
             {
-                using (new LockAndElevate(this.myRepLock))
+                using (var tmpLockObj = new LockAndElevate(this.myRepLock))
                 {
                     this.myRep = SelectHisRep(this.gname);
                     this.tsigs = GetTSigs(this.gname);
@@ -7119,7 +7119,7 @@ namespace Vsync
                 }
                 else
                 {
-                    using (new LockAndElevate(this.myRepLock))
+                    using (var tmpLockObj = new LockAndElevate(this.myRepLock))
                     {
                         this.myRep = null;
                     }
@@ -7304,7 +7304,7 @@ namespace Vsync
         internal bool findRep(ref Address rep, ref int ntries)
         {
             Address oldRep = rep;
-            using (new LockAndElevate(this.myRepLock))
+            using (var tmpLockObj = new LockAndElevate(this.myRepLock))
             {
                 rep = this.myRep;
             }
@@ -7323,7 +7323,7 @@ namespace Vsync
                     return false;
                 }
 
-                using (new LockAndElevate(this.myRepLock))
+                using (var tmpLockObj = new LockAndElevate(this.myRepLock))
                 {
                     rep = this.myRep;
                 }
@@ -7401,7 +7401,7 @@ namespace Vsync
             using (MemoryStream ms = new MemoryStream(Msg.StringToBytes(sig)))
             {
                 using (HMAC hm = new HMACSHA256(new byte[] { 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11 }))
-                using (new LockAndElevate(Msg.VerifyLock))
+                using (var tmpLockObj = new LockAndElevate(Msg.VerifyLock))
                 {
                     byte[] ba = hm.ComputeHash(ms);
                     long rval = 0;
@@ -7553,7 +7553,7 @@ namespace Vsync
         {
             while (true)
             {
-                using (new LockAndElevate(this.opLock))
+                using (var tmpLockObj = new LockAndElevate(this.opLock))
                 {
                     if (vid == this.oldVid && this.oldParticipants != null)
                     {
@@ -7574,12 +7574,12 @@ namespace Vsync
         public List<Address> GetDests(Group dht)
         {
             View theView;
-            using (new LockAndElevate(dht.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(dht.ViewLock))
             {
                 theView = dht.theView;
             }
 
-            using (new LockAndElevate(this.opLock))
+            using (var tmpLockObj = new LockAndElevate(this.opLock))
             {
                 if (theView.viewid == this.oldVid && this.oldParticipants != null)
                 {
@@ -7627,7 +7627,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(this.opLock))
+            using (var tmpLockObj = new LockAndElevate(this.opLock))
             {
                 this.oldVid = theView.viewid;
                 this.oldParticipants = dests;
@@ -8490,7 +8490,7 @@ namespace Vsync
             /// </exclude>
             public static myVHandlers operator +(myVHandlers a, ViewHandler b)
             {
-                using (new LockAndElevate(a.vhListLock))
+                using (var tmpLockObj = new LockAndElevate(a.vhListLock))
                 {
                     a.vhList.Add(new VHCallBack(false, b));
                 }
@@ -8505,7 +8505,7 @@ namespace Vsync
             /// </exclude>
             public static myVHandlers operator -(myVHandlers a, ViewHandler b)
             {
-                using (new LockAndElevate(a.vhListLock))
+                using (var tmpLockObj = new LockAndElevate(a.vhListLock))
                 {
                     foreach (VHCallBack v in a.vhList)
                     {
@@ -8534,7 +8534,7 @@ namespace Vsync
                     newList.Add(vhcb);
                 }
 
-                using (new LockAndElevate(a.vhListLock))
+                using (var tmpLockObj = new LockAndElevate(a.vhListLock))
                 {
                     a.vhList = newList;
                 }
@@ -8568,7 +8568,7 @@ namespace Vsync
                     throw new VsyncException("Illegal attempt to register a handler after calling Group.Join()");
                 }
 
-                using (new LockAndElevate(a.uhListLock))
+                using (var tmpLockObj = new LockAndElevate(a.uhListLock))
                 {
                     a.uhList.Add(new UHCallBack(false, b));
                 }
@@ -8612,7 +8612,7 @@ namespace Vsync
                     throw new VsyncException("Illegal attempt to register a handler after calling Group.Join()");
                 }
 
-                using (new LockAndElevate(a.uhListLock))
+                using (var tmpLockObj = new LockAndElevate(a.uhListLock))
                 {
                     a.uhList.Add(new UHCallBack(false, b));
                 }
@@ -8707,7 +8707,7 @@ namespace Vsync
             {
                 get
                 {
-                    using (new LockAndElevate(this.ListofwListsLock))
+                    using (var tmpLockObj = new LockAndElevate(this.ListofwListsLock))
                     {
                         myWatches mw;
                         if (this.ListofwLists.TryGetValue(who, out mw))
@@ -8722,7 +8722,7 @@ namespace Vsync
 
                 set
                 {
-                    using (new LockAndElevate(this.ListofwListsLock))
+                    using (var tmpLockObj = new LockAndElevate(this.ListofwListsLock))
                     {
                         if (this.ListofwLists.ContainsKey(who))
                         {
@@ -8808,7 +8808,7 @@ namespace Vsync
             this.Initializer = new Initer(this);
             this.gname = gname ?? "<unknown>";
             this.gaddr = gaddr;
-            using (new LockAndElevate(Group.GroupRIPLock))
+            using (var tmpLockObj = new LockAndElevate(Group.GroupRIPLock))
             {
                 if (Group.GroupRIPList.Contains(gaddr))
                 {
@@ -8823,7 +8823,7 @@ namespace Vsync
 
         private void AddToGroupsList(string gname, Address gaddr)
         {
-            using (new LockAndElevate(VsyncGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(VsyncGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in VsyncGroups)
                 {
@@ -8869,7 +8869,7 @@ namespace Vsync
             // to this group (or to some set of groups that includes this one)
             long addr = (Vsync.CLASSD + Vsync.VSYNC_MCRANGE_LOW + Address.GroupNameHash(this.gname)) & 0xFFFFFFFFL;
             this.gaddr = new Address(Vsync.LastIPv4(MCMDSocket.PMCAddr((int)addr)), 0);
-            using (new LockAndElevate(Group.GroupRIPLock))
+            using (var tmpLockObj = new LockAndElevate(Group.GroupRIPLock))
             {
                 if (Group.GroupRIPList.Contains(this.gaddr))
                 {
@@ -8951,20 +8951,20 @@ namespace Vsync
                 g.myPhysIPAddr = mm[MCMDSocket.PHYSICAL];
             }
 
-            using (new LockAndElevate(g.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(g.ViewLock))
             {
                 g.theView = v;
             }
 
             g.GroupOpen = g.WasOpen = true;
-            using (new LockAndElevate(TPGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(TPGroupsLock))
             {
                 if (TPGroups.ContainsKey(g.gaddr))
                 {
                     Group oldGroup = TPGroups[g.gaddr];
                     if (oldGroup.theView == null || (v != null && v.viewid > oldGroup.theView.viewid))
                     {
-                        using (new LockAndElevate(oldGroup.ViewLock))
+                        using (var tmpLockObj1 = new LockAndElevate(oldGroup.ViewLock))
                         {
                             oldGroup.theView = v;
                         }
@@ -8989,7 +8989,7 @@ namespace Vsync
 
         internal static Group TrackingProxyLookup(string gname)
         {
-            using (new LockAndElevate(TPGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(TPGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in TPGroups)
                 {
@@ -9005,7 +9005,7 @@ namespace Vsync
 
         internal static Group TrackingProxyLookup(Address gaddr)
         {
-            using (new LockAndElevate(TPGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(TPGroupsLock))
             {
                 Group g;
                 if (TPGroups.TryGetValue(gaddr, out g))
@@ -9019,7 +9019,7 @@ namespace Vsync
 
         internal static void TrackingProxyDelete(Address gaddr)
         {
-            using (new LockAndElevate(TPGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(TPGroupsLock))
             {
                 TPGroups.Remove(gaddr);
             }
@@ -9027,7 +9027,7 @@ namespace Vsync
 
         internal void TPGroupsLearnedMM(int[] mm)
         {
-            using (new LockAndElevate(TPGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(TPGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in TPGroups)
                 {
@@ -9059,7 +9059,7 @@ namespace Vsync
         internal static List<Group> VsyncGroupsClone()
         {
             List<Group> theClone = new List<Group>();
-            using (new LockAndElevate(VsyncGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(VsyncGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in VsyncGroups)
                 {
@@ -9073,7 +9073,7 @@ namespace Vsync
         internal static List<Group> VsyncAllGroupsClone(bool removeDups)
         {
             List<Group> theClone = new List<Group>();
-            using (new LockAndElevate(TPGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(TPGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in TPGroups)
                 {
@@ -9081,7 +9081,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(VsyncGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(VsyncGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in VsyncGroups)
                 {
@@ -9626,7 +9626,7 @@ namespace Vsync
                     throw new VsyncException("Got Vsync.PROPOSED in ORACLE before receiving the first ORACLE view");
                 }
 
-                using (new LockAndElevate(this.ProposeLock))
+                using (var tmpLockObj = new LockAndElevate(this.ProposeLock))
                 {
                     bool mustWait = false;
 
@@ -9635,7 +9635,7 @@ namespace Vsync
                     // that would be a different story, but it doesn't and we're not going to add any
                     if (this != Vsync.ORACLE)
                     {
-                        using (new LockAndElevate(this.GroupFlagsLock))
+                        using (var tmpLockObj1 = new LockAndElevate(this.GroupFlagsLock))
                         {
                             if ((this.flags & G_WEDGED) == 0)
                             {
@@ -9745,12 +9745,12 @@ namespace Vsync
                                 }
 
                                 // Give the application a chance to flush, if using the new FlushHandler upcalls
-                                using (new LockAndElevate(this.FlushHandlers.vhListLock))
+                                using (var tmpLockObj1 = new LockAndElevate(this.FlushHandlers.vhListLock))
                                 {
                                     if (this.FlushHandlers.vhList.Count > 0)
                                     {
                                         View v;
-                                        using (new LockAndElevate(this.ViewLock))
+                                        using (var tmpLockObj2 = new LockAndElevate(this.ViewLock))
                                         {
                                             v = new View(this.theView.gname, this.theView.gaddr, this.theView.members, this.theView.viewid, this.theView.isLarge);
                                         }
@@ -9849,8 +9849,8 @@ namespace Vsync
                     throw new VsyncException("Got Vsync.PROPOSED in ORACLE before receiving the first ORACLE view");
                 }
 
-                using (new LockAndElevate(this.groupLock))
-                using (new LockAndElevate(this.CommitLock))
+                using (var tmpLockObj = new LockAndElevate(this.groupLock))
+                using (var tmpLockObj1 = new LockAndElevate(this.CommitLock))
                 {
                     if ((VsyncSystem.Debug & VsyncSystem.GROUPEVENTS) != 0)
                     {
@@ -9903,7 +9903,7 @@ namespace Vsync
 
                             if (vds[n].gaddr == Vsync.ORACLE.gaddr && vds[n].joiners.Length > 0)
                             {
-                                using (new LockAndElevate(this.ViewLock))
+                                using (var tmpLockObj2 = new LockAndElevate(this.ViewLock))
                                 {
                                     if (this.theView != null)
                                     {
@@ -9941,7 +9941,7 @@ namespace Vsync
                         if (this != Vsync.ORACLE)
                         {
                             int myVid = 0;
-                            using (new LockAndElevate(this.ViewLock))
+                            using (var tmpLockObj2 = new LockAndElevate(this.ViewLock))
                             {
                                 if (this.theView != null)
                                 {
@@ -9969,7 +9969,7 @@ namespace Vsync
                         Vsync.Proposed = null;
                         if (this == Vsync.ORACLE)
                         {
-                            using (new LockAndElevate(Vsync.ORACLE.groupLock))
+                            using (var tmpLockObj2 = new LockAndElevate(Vsync.ORACLE.groupLock))
                             {
                                 foreach (Vsync.ViewDelta vd in vds)
                                 {
@@ -9995,7 +9995,7 @@ namespace Vsync
 
                         if (this != Vsync.ORACLE)
                         {
-                            using (new LockAndElevate(this.GroupFlagsLock))
+                            using (var tmpLockObj2 = new LockAndElevate(this.GroupFlagsLock))
                             {
                                 if ((this.flags & G_WEDGED) != 0)
                                 {
@@ -10009,7 +10009,7 @@ namespace Vsync
                 }
 
                 List<Address> ripdup = new List<Address>();
-                using (new LockAndElevate(Vsync.RIPLock))
+                using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
                 {
                     foreach (Address rip in Vsync.RIPList)
                     {
@@ -10040,7 +10040,7 @@ namespace Vsync
             this.doRegister(Vsync.COMMIT, new Action<Vsync.ViewDelta[]>(vds =>
             {
                 View theView;
-                using (new LockAndElevate(this.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(this.ViewLock))
                 {
                     theView = this.theView;
                 }
@@ -10072,7 +10072,7 @@ namespace Vsync
                     this.theToken.resetStableByLevel(this);
                 }
 
-                using (new LockAndElevate(this.CommitLock))
+                using (var tmpLockObj = new LockAndElevate(this.CommitLock))
                 {
                     Vsync.CommitGVUpdates(this, vds, ref theView);
                 }
@@ -10184,7 +10184,7 @@ namespace Vsync
                     throw new VsyncException("ORACLE initial-view event unexpected when in client-of mode");
                 }
 
-                using (new LockAndElevate(Vsync.CanBeOracleListLock))
+                using (var tmpLockObj = new LockAndElevate(Vsync.CanBeOracleListLock))
                 {
                     foreach (Address a in CBMs)
                     {
@@ -10335,7 +10335,7 @@ namespace Vsync
                 }
                 else
                 {
-                    using (new LockAndElevate(this.GroupFlagsLock))
+                    using (var tmpLockObj = new LockAndElevate(this.GroupFlagsLock))
                     {
                         if ((this.flags & G_NEEDSTATEXFER) != 0)
                         {
@@ -10395,7 +10395,7 @@ namespace Vsync
 
             this.doRegister(Vsync.REMAP, new Action<int[,]>(ma =>
             {
-                using (new LockAndElevate(Group.VsyncGroupsLock))
+                using (var tmpLockObj = new LockAndElevate(Group.VsyncGroupsLock))
                 {
                     foreach (KeyValuePair<Address, Group> kvp in VsyncGroups)
                     {
@@ -10470,7 +10470,7 @@ namespace Vsync
             this.doRegister(Vsync.CAUSALSEND, new Action<int, int[], Msg>((vid, theVT, theMsg) =>
             {
                 View theView;
-                using (new LockAndElevate(this.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(this.ViewLock))
                 {
                     theView = this.theView;
                 }
@@ -10498,7 +10498,7 @@ namespace Vsync
                 List<ctuple> newCList = new List<ctuple>();
                 List<ctuple> toDeliver = new List<ctuple>();
                 ctuple myCT = new ctuple(senderRank, theVT, theMsg);
-                using (new LockAndElevate(this.CausalOrderListLock))
+                using (var tmpLockObj = new LockAndElevate(this.CausalOrderListLock))
                 {
                     bool inserted = false;
                     foreach (ctuple ct in this.CausalOrderList)
@@ -10574,7 +10574,7 @@ namespace Vsync
                     Vsync.WriteLine("Vsync.ORDEREDSEND[" + this.curMsg().sender + "::" + this.curMsg().vid + ":" + this.curMsg().msgid + "]: Request to establish ordering for  " + theMsg.sender + "::" + theMsg.vid + ":" + theMsg.msgid);
                 }
 
-                using (new LockAndElevate(this.OutOfOrderQueueLock))
+                using (var tmpLockObj = new LockAndElevate(this.OutOfOrderQueueLock))
                 {
                     this.OutOfOrderQueue.Add(theMsg);
                     ++this.OutOfOrderQueueCount;
@@ -10616,7 +10616,7 @@ namespace Vsync
                     Vsync.WriteLine("ORDEREDSEND==> Got dests=" + Address.VectorToString(dests.ToArray()) + ", id=" + m.sender + "::" + m.vid + ":" + m.msgid + ", m=" + m);
                 }
 
-                using (new LockAndElevate(this.OrderedSubsetListLock))
+                using (var tmpLockObj = new LockAndElevate(this.OrderedSubsetListLock))
                 {
                     if (hisTS > this.myTS)
                     {
@@ -10668,7 +10668,7 @@ namespace Vsync
             this.FlushHandlers += view =>
             {
                 Dictionary<Address, List<osspq>> toSend = new Dictionary<Address, List<osspq>>(100);
-                using (new LockAndElevate(this.RecentOpqNodesLock))
+                using (var tmpLockObj = new LockAndElevate(this.RecentOpqNodesLock))
                 {
                     foreach (osspq opq in this.RecentOpqNodes)
                     {
@@ -10711,7 +10711,7 @@ namespace Vsync
             this.doRegister(Vsync.SAFESEND, new Action<Address, int, Msg>((sender, Uid, sMsg) =>
             {
                 int myTS;
-                using (new LockAndElevate(this.SSLock))
+                using (var tmpLockObj = new LockAndElevate(this.SSLock))
                 {
                     myTS = ++this.logicalTS;
                     this.SSList.Add(new SUTW(sender, Uid, myTS, Vsync.my_address), sMsg);
@@ -10745,7 +10745,7 @@ namespace Vsync
                 }
 
                 bool fnd = false;
-                using (new LockAndElevate(this.SSLock))
+                using (var tmpLockObj = new LockAndElevate(this.SSLock))
                 {
                     foreach (KeyValuePair<SUTW, Msg> kvp in this.SSList)
                     {
@@ -10780,7 +10780,7 @@ namespace Vsync
                 LockInfo lstate;
                 bool grantIt = false;
                 bool cancelIt = false;
-                using (new LockAndElevate(this.LocksListLock))
+                using (var tmpLockObj = new LockAndElevate(this.LocksListLock))
                 {
                     if (!this.LocksList.TryGetValue(lockName, out lstate))
                     {
@@ -10890,7 +10890,7 @@ namespace Vsync
                         Vsync.Sleep(1000);
                     }
 
-                    using (new LockAndElevate(this.ViewLock))
+                    using (var tmpLockObj = new LockAndElevate(this.ViewLock))
                     {
                         thevid = this.theView.viewid;
                     }
@@ -10907,7 +10907,7 @@ namespace Vsync
                 }
 
                 IAggregateEventHandler callme = null;
-                using (new LockAndElevate(this.AggListLock))
+                using (var tmpLockObj = new LockAndElevate(this.AggListLock))
                 {
                     if (level > this.AggList.Length)
                     {
@@ -10944,7 +10944,7 @@ namespace Vsync
                 string[] lnames, wnames = null;
                 LockInfo[] linfo = null;
                 LockReq[] reqs = null;
-                using (new LockAndElevate(this.LocksListLock))
+                using (var tmpLockObj = new LockAndElevate(this.LocksListLock))
                 {
                     lnames = this.LocksList.Keys.ToArray();
                     if (lnames != null)
@@ -10984,7 +10984,7 @@ namespace Vsync
             this.RegisterLoadChkpt(new Action<string[], LockInfo[], string[], LockReq[]>((keys, linfo, names, reqs) =>
             {
                 this.LockingInUse = true;
-                using (new LockAndElevate(this.LocksListLock))
+                using (var tmpLockObj = new LockAndElevate(this.LocksListLock))
                 {
                     for (int n = 0; n < keys.Length; n++)
                     {
@@ -11023,7 +11023,7 @@ namespace Vsync
                 }
 
                 List<Msg> newRelayedLGSends = new List<Msg>();
-                using (new LockAndElevate(this.RelayedLGSendsLock))
+                using (var tmpLockObj = new LockAndElevate(this.RelayedLGSendsLock))
                 {
                     foreach (Msg rm in this.RelayedLGSends)
                     {
@@ -11049,7 +11049,7 @@ namespace Vsync
                 this.RegisterViewHandler(view =>
                 {
                     tokenInfo theToken;
-                    using (new LockAndElevate(this.TokenLock))
+                    using (var tmpLockObj = new LockAndElevate(this.TokenLock))
                     {
                         theToken = this.theToken;
                     }
@@ -11063,7 +11063,7 @@ namespace Vsync
 
                         this.prevLGOwner = theToken.groupOwner;
                         List<Msg> LGResendList = new List<Msg>();
-                        using (new LockAndElevate(this.RelayedLGSendsLock))
+                        using (var tmpLockObj = new LockAndElevate(this.RelayedLGSendsLock))
                         {
                             foreach (Msg rm in this.RelayedLGSends)
                             {
@@ -11153,7 +11153,7 @@ namespace Vsync
                     this.InitializeGroup(theView);
                 }
 
-                using (new LockAndElevate(this.GroupFlagsLock))
+                using (var tmpLockObj = new LockAndElevate(this.GroupFlagsLock))
                 {
                     if ((this.flags & G_NEEDSTATEXFER) != 0)
                     {
@@ -11176,13 +11176,13 @@ namespace Vsync
         private void opqDrain()
         {
             this.opqDeliver(Vsync.NULLADDRESS, 0, 0, 0, Vsync.NULLADDRESS, true);
-            using (new LockAndElevate(this.OrderedSubsetListLock))
+            using (var tmpLockObj = new LockAndElevate(this.OrderedSubsetListLock))
             {
                 this.OrderedSubsetPQ = new SortedList<osspq, Msg>();
                 this.OrderedSubsetPQCount = 0;
             }
 
-            using (new LockAndElevate(this.RecentOpqNodesLock))
+            using (var tmpLockObj = new LockAndElevate(this.RecentOpqNodesLock))
             {
                 this.RecentOpqNodes = new List<osspq>();
             }
@@ -11195,7 +11195,7 @@ namespace Vsync
             this.myTS = Math.Max(this.myTS, cts);
             List<Msg> msgs = new List<Msg>();
             List<osspq> keys = new List<osspq>();
-            using (new LockAndElevate(this.OrderedSubsetListLock))
+            using (var tmpLockObj = new LockAndElevate(this.OrderedSubsetListLock))
             {
                 if (!sentBy.isNull())
                 {
@@ -11258,7 +11258,7 @@ namespace Vsync
                 this.incomingP2P.put(msg);
             }
 
-            using (new LockAndElevate(this.RecentOpqNodesLock))
+            using (var tmpLockObj = new LockAndElevate(this.RecentOpqNodesLock))
             {
                 foreach (osspq key in keys)
                 {
@@ -11334,7 +11334,7 @@ namespace Vsync
         internal void CheckRetainedOpqINodes()
         {
             List<osspq> newropq = new List<osspq>();
-            using (new LockAndElevate(this.RecentOpqNodesLock))
+            using (var tmpLockObj = new LockAndElevate(this.RecentOpqNodesLock))
             {
                 foreach (osspq opq in this.RecentOpqNodes)
                 {
@@ -11363,7 +11363,7 @@ namespace Vsync
 
         private void EndStateXfer()
         {
-            using (new LockAndElevate(this.GroupFlagsLock))
+            using (var tmpLockObj = new LockAndElevate(this.GroupFlagsLock))
             {
                 if ((this.flags & G_NEEDSTATEXFER) != 0)
                 {
@@ -11379,7 +11379,7 @@ namespace Vsync
         internal static void GroupNoteFailure(Group g, Address which)
         {
             int r = -1;
-            using (new LockAndElevate(g.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(g.ViewLock))
             {
                 if (g.theView != null)
                 {
@@ -11390,7 +11390,7 @@ namespace Vsync
             if (r != -1)
             {
                 bool doCB = false;
-                using (new LockAndElevate(Vsync.RIPLock))
+                using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
                 {
                     if (!Vsync.RIPList.Contains(which))
                     {
@@ -11466,7 +11466,7 @@ namespace Vsync
         // and all causally prior messages have been delivered
         internal bool isDeliverable(int senderRank, int[] VT)
         {
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewLock))
             {
                 if (VT.Length != this.theView.myVT.Length || (senderRank < 0 || senderRank >= this.theView.myVT.Length))
                 {
@@ -11491,7 +11491,7 @@ namespace Vsync
 
         internal void PrepareForTermination()
         {
-            using (new LockAndElevate(this.quiesceLock))
+            using (var tmpLockObj = new LockAndElevate(this.quiesceLock))
             {
                 if ((this.flags & G_TERMINATING) != 0)
                 {
@@ -11521,7 +11521,7 @@ namespace Vsync
                 Thread.CurrentThread.IsBackground = true;
             }
 
-            using (new LockAndElevate(this.quiesceLock))
+            using (var tmpLockObj = new LockAndElevate(this.quiesceLock))
             {
                 if ((this.flags & G_TERMINATING) != 0)
                 {
@@ -11542,7 +11542,7 @@ namespace Vsync
 
         internal void VsyncCallDone()
         {
-            using (new LockAndElevate(this.quiesceLock))
+            using (var tmpLockObj = new LockAndElevate(this.quiesceLock))
             {
                 if ((this.flags & G_TERMINATING) != 0)
                 {
@@ -11559,7 +11559,7 @@ namespace Vsync
         {
             if (this.isTrackingProxy)
             {
-                using (new LockAndElevate(TPGroupsLock))
+                using (var tmpLockObj = new LockAndElevate(TPGroupsLock))
                 {
                     TPGroups.Remove(this.gaddr);
                 }
@@ -11572,7 +11572,7 @@ namespace Vsync
                 return;
             }
 
-            using (new LockAndElevate(ReliableSender.PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(ReliableSender.PendingSendBufferLock))
             {
                 this.GroupOpen = false;
                 this.WasOpen = true;
@@ -11583,7 +11583,7 @@ namespace Vsync
                 this.durabilityMethod.Shutdown();
             }
 
-            using (new LockAndElevate(VsyncGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(VsyncGroupsLock))
             {
                 VsyncGroups.Remove(this.gaddr);
             }
@@ -11611,14 +11611,14 @@ namespace Vsync
 
             if (!this.gname.Equals("ORACLE", StringComparison.Ordinal))
             {
-                using (new LockAndElevate(Group.GroupRIPLock))
+                using (var tmpLockObj = new LockAndElevate(Group.GroupRIPLock))
                 {
                     if (!Group.GroupRIPList.Contains(this.gaddr))
                     {
                         Group.GroupRIPList.Add(this.gaddr);
                         Vsync.OnTimer(Vsync.VSYNC_DEFAULTTIMEOUT * ((this.flags & G_ISLARGE) != 0 ? 10 : 2), () =>
                         {
-                            using (new LockAndElevate(Group.GroupRIPLock))
+                            using (var tmpLockObj1 = new LockAndElevate(Group.GroupRIPLock))
                             {
                                 Group.GroupRIPList.Remove(this.gaddr);
                             }
@@ -11823,7 +11823,7 @@ namespace Vsync
             }
 
             List<LockInfo> toGrant = new List<LockInfo>();
-            using (new LockAndElevate(this.LocksListLock))
+            using (var tmpLockObj = new LockAndElevate(this.LocksListLock))
             {
                 foreach (KeyValuePair<string, LockInfo> kvp in this.LocksList)
                 {
@@ -12010,7 +12010,7 @@ namespace Vsync
             this.LockingInUse = true;
             int tid = -1;
             LockInfo lstate;
-            using (new LockAndElevate(this.LocksListLock))
+            using (var tmpLockObj = new LockAndElevate(this.LocksListLock))
             {
                 if (!this.LocksList.TryGetValue(lockName, out lstate))
                 {
@@ -12060,7 +12060,7 @@ namespace Vsync
                 Vsync.WriteLine("After Lock(" + lockName + "): got-lock=" + (lstate.islocked && lstate.holders.Contains(Vsync.my_address)) + ":" + Environment.NewLine + this.GetLockState());
             }
 
-            using (new LockAndElevate(this.LocksListLock))
+            using (var tmpLockObj = new LockAndElevate(this.LocksListLock))
             {
                 if (tid != -1)
                 {
@@ -12100,7 +12100,7 @@ namespace Vsync
                 Vsync.WriteLine("UnLock[" + this.gname + "](" + lockName + ")");
             }
 
-            using (new LockAndElevate(this.LocksListLock))
+            using (var tmpLockObj = new LockAndElevate(this.LocksListLock))
             {
                 LockInfo lstate;
                 if (!this.LocksList.TryGetValue(lockName, out lstate) || !lstate.islocked)
@@ -12141,7 +12141,7 @@ namespace Vsync
         {
             string toWhom;
 
-            using (new LockAndElevate(this.LocksListLock))
+            using (var tmpLockObj = new LockAndElevate(this.LocksListLock))
             {
                 LockReq lr = lstate.wantLock.First();
                 if (!lstate.wantLock.Remove(lr))
@@ -12181,7 +12181,7 @@ namespace Vsync
                 Vsync.WriteLine("-------CANCEL " + LockName + " request by " + who);
             }
 
-            using (new LockAndElevate(this.LocksListLock))
+            using (var tmpLockObj = new LockAndElevate(this.LocksListLock))
             {
                 foreach (LockReq wl in lstate.wantLock)
                 {
@@ -12221,7 +12221,7 @@ namespace Vsync
                 throw new VsyncException("Locking: Not support in large groups");
             }
 
-            using (new LockAndElevate(this.LocksListLock))
+            using (var tmpLockObj = new LockAndElevate(this.LocksListLock))
             {
                 LockInfo state;
                 if (this.LocksList.TryGetValue(lockName, out state) && state.islocked)
@@ -12237,7 +12237,7 @@ namespace Vsync
         {
             int cnt = 0;
             string s = string.Empty;
-            using (new LockAndElevate(this.LocksListLock))
+            using (var tmpLockObj = new LockAndElevate(this.LocksListLock))
             {
                 foreach (KeyValuePair<string, LockInfo> kvp in this.LocksList)
                 {
@@ -12293,7 +12293,7 @@ namespace Vsync
                 Vsync.WriteLine("WARNING: Lock policy inconsistency: LOCK_RELEASE for lock " + lockName + " in LOCK_RECOVER_EXTERN mode!");
             }
 
-            using (new LockAndElevate(this.LocksListLock))
+            using (var tmpLockObj = new LockAndElevate(this.LocksListLock))
             {
                 LockInfo lstate;
                 if (!this.LocksList.TryGetValue(lockName, out lstate))
@@ -12444,7 +12444,7 @@ namespace Vsync
                 return rval;
             }
 
-            using (new LockAndElevate(this.DHTDictLock))
+            using (var tmpLockObj = new LockAndElevate(this.DHTDictLock))
             {
                 foreach (KeyValuePair<object, DHTItem> kvp in this.DHTContents)
                 {
@@ -12470,7 +12470,7 @@ namespace Vsync
                 return rval;
             }
 
-            using (new LockAndElevate(this.DHTDictLock))
+            using (var tmpLockObj = new LockAndElevate(this.DHTDictLock))
             {
                 foreach (KeyValuePair<object, DHTItem> kvp in this.DHTContents)
                 {
@@ -12498,7 +12498,7 @@ namespace Vsync
         public int DHTGetPartitionRank()
         {
             View theView;
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewLock))
             {
                 theView = this.theView;
             }
@@ -12648,7 +12648,7 @@ namespace Vsync
         internal object DHTReader(object key)
         {
             DHTItem dhi;
-            using (new LockAndElevate(this.DHTDictLock))
+            using (var tmpLockObj = new LockAndElevate(this.DHTDictLock))
             {
                 this.DHTContents.TryGetValue(key, out dhi);
             }
@@ -12829,7 +12829,7 @@ namespace Vsync
                     // Filter if not for my affinity group; shouldn't happen at all
                     if (this.GetAffinityGroup(khash) == myAg && this.theView.GetMyRank() < this.theView.members.Length)
                     {
-                        using (new LockAndElevate(this.DHTDictLock))
+                        using (var tmpLockObj = new LockAndElevate(this.DHTDictLock))
                         {
                             object value;
                             if ((value = this.DHTReader(key)) != null)
@@ -12876,7 +12876,7 @@ namespace Vsync
                     return;
                 }
 
-                using (new LockAndElevate(this.DHTViewLock))
+                using (var tmpLockObj = new LockAndElevate(this.DHTViewLock))
                 {
                     this.curDHTView = v;
                 }
@@ -12908,7 +12908,7 @@ namespace Vsync
             this.RegisterChkptChoser((v, who) =>
             {
                 View prevView;
-                using (new LockAndElevate(this.DHTViewLock))
+                using (var tmpLockObj = new LockAndElevate(this.DHTViewLock))
                 {
                     prevView = this.curDHTView;
                 }
@@ -12950,7 +12950,7 @@ namespace Vsync
             });
             this.RegisterMakeChkpt(view =>
             {
-                using (new LockAndElevate(this.DHTDictLock))
+                using (var tmpLockObj = new LockAndElevate(this.DHTDictLock))
                 {
                     if (this.DHTContents.Count > 0)
                     {
@@ -12978,7 +12978,7 @@ namespace Vsync
             {
                 object[] keys = Msg.BArrayToObjects(kba);
                 object[] values = Msg.BArrayToObjects(vba);
-                using (new LockAndElevate(this.DHTDictLock))
+                using (var tmpLockObj = new LockAndElevate(this.DHTDictLock))
                 {
                     for (int i = 0; i < keys.Length; i++)
                     {
@@ -13018,11 +13018,11 @@ namespace Vsync
         private void doDHTPut(object kvps, int sendingShard, int versionId, int viewId)
         {
             int myAg = this.GetAffinityGroup(Vsync.my_address);
-            using (new LockAndElevate(this.myDHTGetHashCodeVIDLock))
+            using (var tmpLockObj = new LockAndElevate(this.myDHTGetHashCodeVIDLock))
             {
                 if (viewId > this.myDHTLastViewId)
                 {
-                    using (new LockAndElevate(this.lastSTKVPSLock))
+                    using (var tmpLockObj1 = new LockAndElevate(this.lastSTKVPSLock))
                     {
                         this.lastSTKVPS.Add(new[] { kvps, sendingShard, versionId, viewId });
                     }
@@ -13095,14 +13095,14 @@ namespace Vsync
 
                     // Filter if not for my affinity group
                     View theView;
-                    using (new LockAndElevate(this.ViewLock))
+                    using (var tmpLockObj = new LockAndElevate(this.ViewLock))
                     {
                         theView = this.theView;
                     }
 
                     if (this.GetAffinityGroup(khash) == this.GetAffinityGroup(Vsync.my_address) && theView.GetMyRank() < theView.members.Length)
                     {
-                        using (new LockAndElevate(this.DHTDictLock))
+                        using (var tmpLockObj = new LockAndElevate(this.DHTDictLock))
                         {
                             this.DHTWriter(key, value);
                         }
@@ -13129,7 +13129,7 @@ namespace Vsync
 
             this.myDHTLastViewId = vid;
             List<object[]> old;
-            using (new LockAndElevate(this.lastSTKVPSLock))
+            using (var tmpLockObj = new LockAndElevate(this.lastSTKVPSLock))
             {
                 old = this.lastSTKVPS;
                 this.lastSTKVPS = new List<object[]>();
@@ -13144,7 +13144,7 @@ namespace Vsync
                 int viewid = (int)oo[idx];
                 if (viewid > vid)
                 {
-                    using (new LockAndElevate(this.lastSTKVPSLock))
+                    using (var tmpLockObj = new LockAndElevate(this.lastSTKVPSLock))
                     {
                         this.lastSTKVPS.Add(oo);
                     }
@@ -13167,7 +13167,7 @@ namespace Vsync
         public void DHTGetHashCodeChanged(int versionId)
         {
             View theView;
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewLock))
             {
                 theView = this.theView;
             }
@@ -13177,7 +13177,7 @@ namespace Vsync
                 throw new VsyncDHTException("DHTGetHashCodeChanged: version number must be > 0, and must increase each time this method is called in a given view");
             }
 
-            using (new LockAndElevate(this.myDHTGetHashCodeVIDLock))
+            using (var tmpLockObj = new LockAndElevate(this.myDHTGetHashCodeVIDLock))
             {
                 this.myDHTGetHashCodeVID = versionId;
             }
@@ -13186,7 +13186,7 @@ namespace Vsync
             for (int i = 0; i < this.myDHTnShards; i++)
             {
                 List<object[]> kvpsl;
-                using (new LockAndElevate(this.myDHTGetHashCodeVIDLock))
+                using (var tmpLockObj = new LockAndElevate(this.myDHTGetHashCodeVIDLock))
                 {
                     kvpsl = this.retainedKVPS[i];
                     this.retainedKVPS[i] = new List<object[]>();
@@ -13228,7 +13228,7 @@ namespace Vsync
             }
 
             View theView;
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewLock))
             {
                 theView = this.theView;
             }
@@ -13271,7 +13271,7 @@ namespace Vsync
                         // We found someone who will be in "our" affinity group but isn't currently there
                         ++fnd;
                         List<KeyValuePair<object, DHTItem>> kvps = new List<KeyValuePair<object, DHTItem>>();
-                        using (new LockAndElevate(this.DHTDictLock))
+                        using (var tmpLockObj = new LockAndElevate(this.DHTDictLock))
                         {
                             foreach (KeyValuePair<object, DHTItem> item in this.DHTContents)
                             {
@@ -13296,7 +13296,7 @@ namespace Vsync
                     kvpsl[n] = new List<KeyValuePair<object, DHTItem>>();
                 }
 
-                using (new LockAndElevate(this.DHTDictLock))
+                using (var tmpLockObj = new LockAndElevate(this.DHTDictLock))
                 {
                     foreach (KeyValuePair<object, DHTItem> item in this.DHTContents)
                     {
@@ -13323,7 +13323,7 @@ namespace Vsync
 
             if (this.GetAffinityGroup(myOldRank) != this.GetAffinityGroup(myNewRank) || shuffleMode)
             {
-                using (new LockAndElevate(this.DHTDictLock))
+                using (var tmpLockObj = new LockAndElevate(this.DHTDictLock))
                 {
                     Dictionary<object, DHTItem> old = this.DHTContents;
                     this.DHTContents = new Dictionary<object, DHTItem>(1000);
@@ -13341,7 +13341,7 @@ namespace Vsync
         private void DHTCleanup()
         {
             List<object> toDelete = new List<object>();
-            using (new LockAndElevate(this.DHTDictLock))
+            using (var tmpLockObj = new LockAndElevate(this.DHTDictLock))
             {
                 long now = DateTime.UtcNow.Ticks;
                 foreach (KeyValuePair<object, DHTItem> kvp in this.DHTContents)
@@ -13371,7 +13371,7 @@ namespace Vsync
 
         private int GetAffinityGroup(Address a)
         {
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewLock))
             {
                 return (this.theView == null) ? -1 : this.GetAffinityGroup(this.theView, a);
             }
@@ -13402,7 +13402,7 @@ namespace Vsync
             }
 
             View theView;
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewLock))
             {
                 theView = this.theView;
             }
@@ -13504,7 +13504,7 @@ namespace Vsync
         public void DHTPut<KT, VT>(List<KeyValuePair<KT, VT>> kvps)
         {
             View theView;
-            using(new LockAndElevate(this.ViewLock))
+            using(var tmpLockObj = new LockAndElevate(this.ViewLock))
             {
                 theView = this.theView;
             }
@@ -13616,7 +13616,7 @@ namespace Vsync
             }
 
             View theView;
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewLock))
             {
                 theView = this.theView;
             }
@@ -13719,7 +13719,7 @@ namespace Vsync
                             if (!this.P2PQuery(whoToAsk, DHTTimeout, Vsync.IM_DHT_GET, gk, EOL, partialResults))
                             {
                                 // Two cases: He may have done a nullreply, or he may have actually failed.
-                                using (new LockAndElevate(this.ViewLock))
+                                using (var tmpLockObj = new LockAndElevate(this.ViewLock))
                                 {
                                     theView = this.theView;
                                 }
@@ -14033,7 +14033,7 @@ namespace Vsync
 
         internal static int nInUDPTunnel()
         {
-            using (new LockAndElevate(ddhLock))
+            using (var tmpLockObj = new LockAndElevate(ddhLock))
             {
                 return ddhList.Count;
             }
@@ -14041,7 +14041,7 @@ namespace Vsync
 
         internal static int nInIPMCTunnel()
         {
-            using (new LockAndElevate(gsdhLock))
+            using (var tmpLockObj = new LockAndElevate(gsdhLock))
             {
                 return gsdhList.Count;
             }
@@ -14077,13 +14077,13 @@ namespace Vsync
                     Vsync.WriteLine("UDP Tunnel event handler: got a new UDP packet tunnelling to dest=" + dest + ", data.Length=" + data.Length + ", hopcount is " + hopcnt);
                 }
 
-                using (new LockAndElevate(ddhLock))
+                using (var tmpLockObj = new LockAndElevate(ddhLock))
                 {
                     ddhList.Add(new ddh(dest, data, hopcnt));
                     this.ddhNotEmpty.Release();
                 }
 
-                using (new LockAndElevate(TunnelThreadsLock))
+                using (var tmpLockObj = new LockAndElevate(TunnelThreadsLock))
                 {
                     if (UDPTunnelThread == null)
                     {
@@ -14101,7 +14101,7 @@ namespace Vsync
                                     VsyncSystem.RTS.ThreadCntrs[6]++;
                                     this.ddhNotEmpty.WaitOne(1000);
                                     ddh dh;
-                                    using (new LockAndElevate(ddhLock))
+                                    using (var tmpLockObj1 = new LockAndElevate(ddhLock))
                                     {
                                         dh = ddhList.FirstOrDefault();
                                         if (dh != null)
@@ -14139,13 +14139,13 @@ namespace Vsync
                     Vsync.WriteLine("IPMC Tunnel[ql=" + gsdhList.Count + "] got a new incoming request: this.gaddr=" + this.gaddr + ", dest gaddr=" + gaddr + ", sender=" + sender + ", data length=" + data.Length + ", hopcnt=" + hopcnt);
                 }
 
-                using (new LockAndElevate(gsdhLock))
+                using (var tmpLockObj = new LockAndElevate(gsdhLock))
                 {
                     gsdhList.Add(new gsdh(gaddr, sender, data, hopcnt));
                 }
 
                 this.gsdhNotEmpty.Release();
-                using (new LockAndElevate(TunnelThreadsLock))
+                using (var tmpLockObj = new LockAndElevate(TunnelThreadsLock))
                 {
                     if (IPMCTunnelThread == null)
                     {
@@ -14163,7 +14163,7 @@ namespace Vsync
                                     VsyncSystem.RTS.ThreadCntrs[7]++;
                                     this.gsdhNotEmpty.WaitOne(1000);
                                     gsdh gdh;
-                                    using (new LockAndElevate(gsdhLock))
+                                    using (var tmpLockObj1 = new LockAndElevate(gsdhLock))
                                     {
                                         gdh = gsdhList.FirstOrDefault();
                                     }
@@ -14243,7 +14243,7 @@ namespace Vsync
                 }
                 else if (!Vsync.VSYNCMEMBERS.HasFirstView || Vsync.VSYNCMEMBERS.theView.viewid < IMVid)
                 {
-                    using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+                    using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
                     {
                         Vsync.VSYNCMEMBERS.stashedIPMCviews.Add(new IPMCVinfo(IMVid, gaddr, sender, v));
                     }
@@ -14264,7 +14264,7 @@ namespace Vsync
         internal void replayStashedVinfo()
         {
             List<IPMCVinfo> newstash = new List<IPMCVinfo>(), toReplay = new List<IPMCVinfo>();
-            using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
             {
                 View IMv = Vsync.VSYNCMEMBERS.theView;
                 foreach (IPMCVinfo vi in this.stashedIPMCviews)
@@ -14350,7 +14350,7 @@ namespace Vsync
             else
             {
                 tokenInfo theToken;
-                using (new LockAndElevate(g.TokenLock))
+                using (var tmpLockObj = new LockAndElevate(g.TokenLock))
                 {
                     theToken = g.theToken;
                 }
@@ -14372,7 +14372,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(ShortCutsLock))
+            using (var tmpLockObj = new LockAndElevate(ShortCutsLock))
             {
                 this.ShortCuts = new Dictionary<Address, bool>(1000);
                 foreach (ShortCutInfo sci in scl)
@@ -14405,7 +14405,7 @@ namespace Vsync
                     Vsync.WriteLine("WARNING: Discarding a packet in UDPTunnel: hopcnt>10");
                 }
 
-                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                 {
                     ++VsyncSystem.RTS.Discarded;
                 }
@@ -14416,14 +14416,14 @@ namespace Vsync
             View v = null;
             if (!Vsync.VSYNC_LARGE)
             {
-                using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
                 {
                     v = Vsync.VSYNCMEMBERS.theView;
                 }
             }
             else
             {
-                using (new LockAndElevate(Vsync.VSYNCMEMBERS.TokenLock))
+                using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.TokenLock))
                 {
                     if (Vsync.VSYNCMEMBERS.theToken != null)
                     {
@@ -14439,7 +14439,7 @@ namespace Vsync
                     Vsync.WriteLine("WARNING: Discarding a packet in UDPTunnel: the working view is null");
                 }
 
-                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                 {
                     ++VsyncSystem.RTS.Discarded;
                 }
@@ -14506,7 +14506,7 @@ namespace Vsync
 
             // Now apply the selected target offset to my own base rank, mod N, and that gives the node to which we'll send the UDP packet
             bool isShortCut;
-            using (new LockAndElevate(ShortCutsLock))
+            using (var tmpLockObj = new LockAndElevate(ShortCutsLock))
             {
                 this.ShortCuts.TryGetValue(dest, out isShortCut);
             }
@@ -14566,14 +14566,14 @@ namespace Vsync
             View IMv = null;
             if (!Vsync.VSYNC_LARGE)
             {
-                using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
                 {
                     IMv = Vsync.VSYNCMEMBERS.theView;
                 }
             }
             else
             {
-                using (new LockAndElevate(Vsync.VSYNCMEMBERS.TokenLock))
+                using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.TokenLock))
                 {
                     if (Vsync.VSYNCMEMBERS.theToken != null)
                     {
@@ -14593,7 +14593,7 @@ namespace Vsync
                 if (Vsync.ClientOf == null && Vsync.ORACLE.HasFirstView && Vsync.ORACLE.theView.GetMyRank() == 0)
                 {
                     List<View> theViews = new List<View>();
-                    using (new LockAndElevate(Group.TPGroupsLock))
+                    using (var tmpLockObj = new LockAndElevate(Group.TPGroupsLock))
                     {
                         foreach (KeyValuePair<Address, Group> kvp in Group.TPGroups)
                         {
@@ -14650,7 +14650,7 @@ namespace Vsync
             }
 
             View v = null;
-            using (new LockAndElevate(Vsync.VSYNCMEMBERS.TokenLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.TokenLock))
             {
                 if (Vsync.VSYNCMEMBERS.theToken != null)
                 {
@@ -14660,7 +14660,7 @@ namespace Vsync
 
             if (v == null)
             {
-                using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
                 {
                     v = Vsync.VSYNCMEMBERS.theView;
                 }
@@ -14717,7 +14717,7 @@ namespace Vsync
             else
             {
                 bool[] hmm;
-                using (new LockAndElevate(hmLock))
+                using (var tmpLockObj = new LockAndElevate(hmLock))
                 {
                     hmInfo.TryGetValue(gaddr, out hmm);
                 }
@@ -14749,7 +14749,7 @@ namespace Vsync
                     Vsync.WriteLine("WARNING: IPMC tunnel ignoring a packet with gaddr=" + gaddr + ", sender=" + sender + ", pseudoDepth=" + nToScan + " (couldn't find the group, or my own rank)");
                 }
 
-                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                 {
                     VsyncSystem.RTS.Discarded++;
                 }
@@ -14801,7 +14801,7 @@ namespace Vsync
 
         internal static void IPMCNewView(Address gaddr, View v)
         {
-            using (new LockAndElevate(IPMCNewViewLock))
+            using (var tmpLockObj = new LockAndElevate(IPMCNewViewLock))
             {
                 if (gaddr == Vsync.VSYNCMEMBERS.gaddr)
                 {
@@ -14814,7 +14814,7 @@ namespace Vsync
 
                     // VSYNCMEMBERS view changed: recompute everything
                     Dictionary<Address, bool[]> oldhmInfo;
-                    using (new LockAndElevate(hmLock))
+                    using (var tmpLockObj1 = new LockAndElevate(hmLock))
                     {
                         hmInfo = new Dictionary<Address, bool[]>(1000);
                         oldhmInfo = hmInfo;
@@ -14850,7 +14850,7 @@ namespace Vsync
             int N = v.members.Length;
             if (myBase == -1)
             {
-                using (new LockAndElevate(hmLock))
+                using (var tmpLockObj = new LockAndElevate(hmLock))
                 {
                     if (hmInfo.ContainsKey(gaddr))
                     {
@@ -14877,7 +14877,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(hmLock))
+            using (var tmpLockObj = new LockAndElevate(hmLock))
             {
                 // Safely delete the old map if it had one, then remember this new mapping
                 if (hmInfo.ContainsKey(gaddr))
@@ -14899,7 +14899,7 @@ namespace Vsync
 
             if (Vsync.ClientOf != null && Vsync.ClientOf != who)
             {
-                using (new LockAndElevate(Vsync.RIPLock))
+                using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
                 {
                     if (!Vsync.RIPList.Contains(Vsync.ClientOf))
                     {
@@ -14929,7 +14929,7 @@ namespace Vsync
 
         private void GenerateOrdering(out Address[] senders, out int[] vids, out int[] msgids, bool flushing)
         {
-            using (new LockAndElevate(this.OutOfOrderQueueLock))
+            using (var tmpLockObj = new LockAndElevate(this.OutOfOrderQueueLock))
             {
                 if ((VsyncSystem.Debug & VsyncSystem.ORDEREDSEND) != 0)
                 {
@@ -15009,7 +15009,7 @@ namespace Vsync
 
                 this.DeliverInOrder("Vsync.SortThenDeliverInOrder", senders, vids, msgids);
                 this.desiredOrderQueue = new List<svi>();
-                using (new LockAndElevate(this.OutOfOrderQueueLock))
+                using (var tmpLockObj = new LockAndElevate(this.OutOfOrderQueueLock))
                 {
                     this.OutOfOrderQueue = new List<Msg>();
                     this.OutOfOrderQueueCount = 0;
@@ -15023,7 +15023,7 @@ namespace Vsync
 
         internal bool onDOQ(Msg m)
         {
-            using (new LockAndElevate(this.OutOfOrderQueueLock))
+            using (var tmpLockObj = new LockAndElevate(this.OutOfOrderQueueLock))
             {
                 foreach (svi sviQE in this.desiredOrderQueue)
                 {
@@ -15040,7 +15040,7 @@ namespace Vsync
         internal void DeliverInOrder(string cfrom, Address[] senders, int[] vids, int[] msgids)
         {
             int vid = -1;
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewLock))
             {
                 if (this.theView != null)
                 {
@@ -15048,7 +15048,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(this.OutOfOrderQueueLock))
+            using (var tmpLockObj = new LockAndElevate(this.OutOfOrderQueueLock))
             {
                 for (int n = 0; n < senders.Length; n++)
                 {
@@ -15123,7 +15123,7 @@ namespace Vsync
                 return;
             }
 
-            using (new LockAndElevate(this.PendingQueueLock))
+            using (var tmpLockObj = new LockAndElevate(this.PendingQueueLock))
             {
                 if (this.theView.viewid != vid)
                 {
@@ -15147,7 +15147,7 @@ namespace Vsync
 
                 if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                 {
-                    using (new LockAndElevate(ReliableSender.ackInfoLock))
+                    using (var tmpLockObj1 = new LockAndElevate(ReliableSender.ackInfoLock))
                     {
                         ReliableSender.ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: GotLastSeqns: nullify PendingQueue for <" + this.gname + ">" + Environment.NewLine);
                     }
@@ -15158,7 +15158,7 @@ namespace Vsync
         internal bool IAmLeader()
         {
             View theView;
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewLock))
             {
                 theView = this.theView;
             }
@@ -15174,7 +15174,7 @@ namespace Vsync
         internal bool IAmRank0()
         {
             View theView;
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewLock))
             {
                 theView = this.theView;
             }
@@ -15219,7 +15219,7 @@ namespace Vsync
                 return null;
             }
 
-            using (new LockAndElevate(VsyncGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(VsyncGroupsLock))
             {
                 Group g;
                 if (VsyncGroups.TryGetValue(gaddr, out g))
@@ -15233,7 +15233,7 @@ namespace Vsync
 
         internal static Group Lookup(int vaddr)
         {
-            using (new LockAndElevate(VsyncGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(VsyncGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in VsyncGroups)
                 {
@@ -15254,7 +15254,7 @@ namespace Vsync
                 return null;
             }
 
-            using (new LockAndElevate(VsyncGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(VsyncGroupsLock))
             {
                 Group g;
                 if (VsyncGroups.TryGetValue(gaddr, out g))
@@ -15288,7 +15288,7 @@ namespace Vsync
                 return null;
             }
 
-            using (new LockAndElevate(VsyncGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(VsyncGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in VsyncGroups)
                 {
@@ -15304,7 +15304,7 @@ namespace Vsync
 
         internal static Group doLookup(string gname)
         {
-            using (new LockAndElevate(VsyncGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(VsyncGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in VsyncGroups)
                 {
@@ -15383,8 +15383,8 @@ namespace Vsync
                 tokenInfo theToken;
                 View theView;
                 int msgid;
-                using (new LockAndElevate(this.TokenLock))
-                using (new LockAndElevate(this.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(this.TokenLock))
+                using (var tmpLockObj1 = new LockAndElevate(this.ViewLock))
                 {
                     theToken = this.theToken;
                     theView = this.theView;
@@ -15393,7 +15393,7 @@ namespace Vsync
 
                 int f;
                 string ssNeeded = string.Empty;
-                using (new LockAndElevate(this.GroupFlagsLock))
+                using (var tmpLockObj = new LockAndElevate(this.GroupFlagsLock))
                 {
                     f = this.flags;
                     if (this.HasFirstView)
@@ -15425,8 +15425,8 @@ namespace Vsync
                     s += Environment.NewLine + "      Large-group garbage collection has collected messages with (vid:id) in range (*:[0-" + this.gcollectedTo + "])";
                 }
 
-                using (new LockAndElevate(this.groupLock))
-                using (new LockAndElevate(this.curMsgListLock))
+                using (var tmpLockObj = new LockAndElevate(this.groupLock))
+                using (var tmpLockObj1 = new LockAndElevate(this.curMsgListLock))
                 {
                     foreach (KeyValuePair<Thread, Msg> kvp in this.curMsgList)
                     {
@@ -15436,7 +15436,7 @@ namespace Vsync
 
                 if (this.incomingSends != null)
                 {
-                    using (new LockAndElevate(this.incomingSends.Lock))
+                    using (var tmpLockObj = new LockAndElevate(this.incomingSends.Lock))
                     {
                         if (this.incomingSends.fullSlots > 0)
                         {
@@ -15463,7 +15463,7 @@ namespace Vsync
 
                 if (this.incomingP2P != null)
                 {
-                    using (new LockAndElevate(this.incomingP2P.Lock))
+                    using (var tmpLockObj = new LockAndElevate(this.incomingP2P.Lock))
                     {
                         if (this.incomingP2P.fullSlots > 0)
                         {
@@ -15488,7 +15488,7 @@ namespace Vsync
                     }
                 }
 
-                using (new LockAndElevate(this.ToDoLock))
+                using (var tmpLockObj = new LockAndElevate(this.ToDoLock))
                 {
                     foreach (Msg m in this.ToDo)
                     {
@@ -15496,7 +15496,7 @@ namespace Vsync
                     }
                 }
 
-                using (new LockAndElevate(this.P2PStashLock))
+                using (var tmpLockObj = new LockAndElevate(this.P2PStashLock))
                 {
                     foreach (Msg m in this.P2PStash)
                     {
@@ -15506,7 +15506,7 @@ namespace Vsync
 
                 if (this.PendingQueue != null)
                 {
-                    using (new LockAndElevate(this.PendingQueueLock))
+                    using (var tmpLockObj = new LockAndElevate(this.PendingQueueLock))
                     {
                         for (int i = 0; i < this.PendingQueue.Length; i++)
                         {
@@ -15537,7 +15537,7 @@ namespace Vsync
                     }
                 }
 
-                using (new LockAndElevate(this.CausalOrderListLock))
+                using (var tmpLockObj = new LockAndElevate(this.CausalOrderListLock))
                 {
                     if (this.CausalOrderList.Count > 0)
                     {
@@ -15549,7 +15549,7 @@ namespace Vsync
                     }
                 }
 
-                using (new LockAndElevate(this.OutOfOrderQueueLock))
+                using (var tmpLockObj = new LockAndElevate(this.OutOfOrderQueueLock))
                 {
                     if (this.OutOfOrderQueue.Count > 0)
                     {
@@ -15567,7 +15567,7 @@ namespace Vsync
                     }
                 }
 
-                using (new LockAndElevate(this.OrderedSubsetListLock))
+                using (var tmpLockObj = new LockAndElevate(this.OrderedSubsetListLock))
                 {
                     if (this.OrderedSubsetPQ.Count > 0)
                     {
@@ -15579,7 +15579,7 @@ namespace Vsync
                     }
                 }
 
-                using (new LockAndElevate(this.UnstableLock))
+                using (var tmpLockObj = new LockAndElevate(this.UnstableLock))
                 {
                     if (this.Unstable != null && this.Unstable.Count > 0)
                     {
@@ -15611,7 +15611,7 @@ namespace Vsync
         {
             string state = string.Empty;
             List<Group> isClone = new List<Group>();
-            using (new LockAndElevate(VsyncGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(VsyncGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in VsyncGroups)
                 {
@@ -15642,7 +15642,7 @@ namespace Vsync
             }
 
             state += "MEMBERSHIP ORACLE:" + Environment.NewLine + (Vsync.ORACLE == null ? "NO ORACLE" : GetGroupState(Vsync.ORACLE));
-            using (new LockAndElevate(TPGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(TPGroupsLock))
             {
                 if (TPGroups.Count != 0)
                 {
@@ -15752,7 +15752,7 @@ namespace Vsync
             {
                 // These are used only by the ORACLE to track groups on behalf of their members
                 // and by clients to track the ORACLE itself
-                using (new LockAndElevate(this.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(this.ViewLock))
                 {
                     this.theView = v;
                     this.nextMsgid = 0;
@@ -15773,7 +15773,7 @@ namespace Vsync
                 this.drainEarlyArrivalMsgQ(mae);
                 if (v.members.Length == 0)
                 {
-                    using (new LockAndElevate(TPGroupsLock))
+                    using (var tmpLockObj = new LockAndElevate(TPGroupsLock))
                     {
                         TPGroups.Remove(this.gaddr);
                     }
@@ -15790,7 +15790,7 @@ namespace Vsync
                     return;
                 }
 
-                using (new LockAndElevate(this.ToDoLock))
+                using (var tmpLockObj = new LockAndElevate(this.ToDoLock))
                 {
                     if (this.ToDo.Count > 0)
                     {
@@ -15811,7 +15811,7 @@ namespace Vsync
 
             if ((this.flags & G_ISLARGE) == 0 || !this.HasFirstView)
             {
-                using (new LockAndElevate(this.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(this.ViewLock))
                 {
                     this.nextMsgid = 0;
                 }
@@ -15866,7 +15866,7 @@ namespace Vsync
                 PQlen = v.members.Length + 1;
 
                 // In small groups, we flush when changing views, hence Unstable can be discarded.  In large groups, the rule is different
-                using (new LockAndElevate(this.UnstableLock))
+                using (var tmpLockObj = new LockAndElevate(this.UnstableLock))
                 {
                     this.Unstable = new List<Msg>();
                     this.UnstableCount = 0;
@@ -15879,14 +15879,14 @@ namespace Vsync
 
             if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
             {
-                using (new LockAndElevate(ReliableSender.ackInfoLock))
+                using (var tmpLockObj = new LockAndElevate(ReliableSender.ackInfoLock))
                 {
                     ReliableSender.ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: newview: reinitialize PendingQueue for <" + this.gname + ">" + Environment.NewLine);
                 }
             }
 
-            using (new LockAndElevate(this.PendingQueueLock)) // Synchronized with GotAMsg, which is a real-time procedure that needs to be rather nimble...
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.PendingQueueLock)) // Synchronized with GotAMsg, which is a real-time procedure that needs to be rather nimble...
+            using (var tmpLockObj1 = new LockAndElevate(this.ViewLock))
             {
                 this.sortThenDeliverInOrder();
                 this.finalizePendingSafeSends(v);
@@ -15894,7 +15894,7 @@ namespace Vsync
                 {
                     if (this.theChkptChoser == null && v.IAmLeader())
                     {
-                        using (new LockAndElevate(this.theChkptMakersLock))
+                        using (var tmpLockObj2 = new LockAndElevate(this.theChkptMakersLock))
                         {
                             v.theChkptMakers = this.theChkptMakers;
                         }
@@ -15905,7 +15905,7 @@ namespace Vsync
                         {
                             if (this.theChkptChoser(v, who))
                             {
-                                using (new LockAndElevate(this.theChkptMakersLock))
+                                using (var tmpLockObj2 = new LockAndElevate(this.theChkptMakersLock))
                                 {
                                     v.theChkptMakers = this.theChkptMakers;
                                 }
@@ -15952,7 +15952,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(this.CausalOrderListLock))
+            using (var tmpLockObj = new LockAndElevate(this.CausalOrderListLock))
             {
                 this.CausalOrderList = new List<ctuple>();
                 this.CausalOrderListCount = 0;
@@ -15987,7 +15987,7 @@ namespace Vsync
                                             Vsync.WriteLine("Discarding a duplicate in NewView: message had a stale viewid");
                                         }
 
-                                        using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                                        using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                                         {
                                             ++VsyncSystem.RTS.Discarded;
                                         }
@@ -16047,7 +16047,7 @@ namespace Vsync
             }
 
             View theView;
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewLock))
             {
                 theView = this.theView;
             }
@@ -16059,7 +16059,7 @@ namespace Vsync
             }
 
             LinkedList<object>[] oldAggList;
-            using (new LockAndElevate(this.AggListLock))
+            using (var tmpLockObj = new LockAndElevate(this.AggListLock))
             {
                 oldAggList = this.AggList;
                 int nlevels = log2RU(N) + 1;
@@ -16104,7 +16104,7 @@ namespace Vsync
         private void finalizePendingSafeSends(View v)
         {
             SortedList<SUTW, Msg> newSSList = new SortedList<SUTW, Msg>();
-            using (new LockAndElevate(this.SSLock))
+            using (var tmpLockObj = new LockAndElevate(this.SSLock))
             {
                 foreach (KeyValuePair<SUTW, Msg> ss in this.SSList)
                 {
@@ -16246,7 +16246,7 @@ namespace Vsync
         /// <param name="maker">checkpoint making procedure, of type ChkptMaker</param>
         public void RegisterMakeChkpt(ChkptMaker maker)
         {
-            using (new LockAndElevate(this.theChkptMakersLock))
+            using (var tmpLockObj = new LockAndElevate(this.theChkptMakersLock))
             {
                 this.theChkptMakers.Add(maker);
             }
@@ -16259,7 +16259,7 @@ namespace Vsync
         /// <param name="maker">checkpoint making procedure, of type ChkptMaker</param>
         public void UnRegisterMakeChkpt(ChkptMaker maker)
         {
-            using (new LockAndElevate(this.theChkptMakersLock))
+            using (var tmpLockObj = new LockAndElevate(this.theChkptMakersLock))
             {
                 this.theChkptMakers.Remove(maker);
             }
@@ -16679,7 +16679,7 @@ namespace Vsync
             this.makingCheckpoint = true;
             this.myChkptStream = new FileStream(this.myCheckpointFile + ".tmp", FileMode.Create);
             this.inhibitEOC = true;
-            using (new LockAndElevate(this.theChkptMakersLock))
+            using (var tmpLockObj = new LockAndElevate(this.theChkptMakersLock))
             {
                 if (this.theChkptMakers.Count > 0)
                 {
@@ -17024,7 +17024,7 @@ namespace Vsync
             {
                 if (disposing)
                 {
-                    using (new LockAndElevate(this.theLock))
+                    using (var tmpLockObj = new LockAndElevate(this.theLock))
                     {
                         if (this.disposed)
                         {
@@ -17048,7 +17048,7 @@ namespace Vsync
             /// <exclude></exclude>
             public CompletionTag LogMsg(Msg m)
             {
-                using (new LockAndElevate(this.theLock))
+                using (var tmpLockObj = new LockAndElevate(this.theLock))
                 {
                     this.dirty = true;
                     return this.LogMsg(this.theFileStream, m);
@@ -17064,7 +17064,7 @@ namespace Vsync
                 }
 
                 CompletionTag ct = new CompletionTag(m);
-                using (new LockAndElevate(this.theLock))
+                using (var tmpLockObj = new LockAndElevate(this.theLock))
                 {
                     if (whichFileStream == null)
                     {
@@ -17133,7 +17133,7 @@ namespace Vsync
                     throw new VsyncException("ct null in SetOrder");
                 }
 
-                using (new LockAndElevate(this.theLock))
+                using (var tmpLockObj = new LockAndElevate(this.theLock))
                 {
                     List<CompletionTag> newPendingList = new List<CompletionTag>();
                     foreach (CompletionTag ct in this.PendingList)
@@ -17180,7 +17180,7 @@ namespace Vsync
             /// <exclude></exclude>
             public void BeginAsyncUpdate(CompletionTag ct)
             {
-                using (new LockAndElevate(this.theLock))
+                using (var tmpLockObj = new LockAndElevate(this.theLock))
                 {
                     this.AsyncList.Add(ct);
                 }
@@ -17189,7 +17189,7 @@ namespace Vsync
             /// <exclude></exclude>
             public void Done(CompletionTag ct)
             {
-                using (new LockAndElevate(this.theLock))
+                using (var tmpLockObj = new LockAndElevate(this.theLock))
                 {
                     if (this.AsyncList.Contains(ct))
                     {
@@ -17217,7 +17217,7 @@ namespace Vsync
             /// <exclude></exclude>
             public void NewView(View v)
             {
-                using (new LockAndElevate(this.theLock))
+                using (var tmpLockObj = new LockAndElevate(this.theLock))
                 {
                     int rank = v.GetMyRank();
                     if (rank == -1 || rank >= this.theGroup.GetSafeSendThreshold())
@@ -17292,7 +17292,7 @@ namespace Vsync
                                     List<bool[]> status = new List<bool[]>();
 
                                     // First, construct a list of completion tags that should be checked, in delivery order
-                                    using (new LockAndElevate(this.theLock))
+                                    using (var tmpLockObj1 = new LockAndElevate(this.theLock))
                                     {
                                         if (!this.dirty)
                                         {
@@ -17345,7 +17345,7 @@ namespace Vsync
                                             Vsync.ArrayResize(ref senders, ndx);
                                             Vsync.ArrayResize(ref vids, ndx);
                                             Vsync.ArrayResize(ref msgids, ndx);
-                                            using (new LockAndElevate(this.theLock))
+                                            using (var tmpLockObj1 = new LockAndElevate(this.theLock))
                                             {
                                                 this.SetDoneBit(senders, vids, msgids);
                                             }
@@ -17398,7 +17398,7 @@ namespace Vsync
                     }
 
                     bool[] myStatus = new bool[senders.Length];
-                    using (new LockAndElevate(this.theLock))
+                    using (var tmpLockObj = new LockAndElevate(this.theLock))
                     {
                         foreach (CompletionTag ct in this.PendingList)
                         {
@@ -17454,7 +17454,7 @@ namespace Vsync
                         inq += senders[i] + "::" + vids[i] + ":" + msgids[i] + " ";
                     }
 
-                    using (new LockAndElevate(this.theLock))
+                    using (var tmpLockObj = new LockAndElevate(this.theLock))
                     {
                         this.SetDoneBit(senders, vids, msgids);
                         this.WriteObjects(howMany, senders, vids, msgids);
@@ -17488,7 +17488,7 @@ namespace Vsync
 
             internal void RewriteLog(bool verbose)
             {
-                using (new LockAndElevate(this.theLock))
+                using (var tmpLockObj = new LockAndElevate(this.theLock))
                 {
                     try
                     {
@@ -17579,7 +17579,7 @@ namespace Vsync
                     Vsync.WriteLine("** Disklogger: entering PlayBack");
                 }
 
-                using (new LockAndElevate(this.theLock))
+                using (var tmpLockObj = new LockAndElevate(this.theLock))
                 {
                     if (this.theFileStream == null)
                     {
@@ -17587,7 +17587,7 @@ namespace Vsync
                     }
 
                     View theView;
-                    using (new LockAndElevate(this.theGroup.ViewLock))
+                    using (var tmpLockObj1 = new LockAndElevate(this.theGroup.ViewLock))
                     {
                         theView = this.theGroup.theView;
                     }
@@ -17747,7 +17747,7 @@ namespace Vsync
         public void RegisterViewHandler(ViewHandler cbproc)
         {
             VHCallBack vcb = new VHCallBack(false, cbproc);
-            using (new LockAndElevate(this.ViewHandlers.vhListLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewHandlers.vhListLock))
             {
                 this.ViewHandlers.vhList.Add(vcb);
             }
@@ -17782,7 +17782,7 @@ namespace Vsync
 
         internal void doRegisterViewCB(VHCallBack vcb)
         {
-            using (new LockAndElevate(this.ViewHandlers.vhListLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewHandlers.vhListLock))
             {
                 this.ViewHandlers.vhList.Add(vcb);
             }
@@ -17910,7 +17910,7 @@ namespace Vsync
             }
 
             tokenInfo theToken;
-            using (new LockAndElevate(g.TokenLock))
+            using (var tmpLockObj = new LockAndElevate(g.TokenLock))
             {
                 theToken = g.theToken;
             }
@@ -17943,7 +17943,7 @@ namespace Vsync
 
             using (MemoryStream ms = new MemoryStream(Msg.StringToBytes(sig)))
             using (HMAC hm = new HMACSHA256(new byte[] { 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11 }))
-            using (new LockAndElevate(Msg.VerifyLock))
+            using (var tmpLockObj = new LockAndElevate(Msg.VerifyLock))
             {
                 byte[] ba = hm.ComputeHash(ms);
                 long rval = 0;
@@ -17992,8 +17992,8 @@ namespace Vsync
             }
 
             this.ThrashingCheck();
-            using (new LockAndElevate(this.UniversalP2PHandlers.uhListLock))
-            using (new LockAndElevate(this.UniversalMHandlers.uhListLock))
+            using (var tmpLockObj = new LockAndElevate(this.UniversalP2PHandlers.uhListLock))
+            using (var tmpLockObj1 = new LockAndElevate(this.UniversalMHandlers.uhListLock))
             {
                 if (this.UniversalP2PHandlers.uhList.Count > 0 || this.UniversalMHandlers.uhList.Count > 0)
                 {
@@ -18058,7 +18058,7 @@ namespace Vsync
 
         private void ThrashingCheck()
         {
-            using (new LockAndElevate(this.RecentlyLeftLock))
+            using (var tmpLockObj = new LockAndElevate(this.RecentlyLeftLock))
             {
                 if (RecentlyLeft.Contains(this.gaddr))
                 {
@@ -18319,7 +18319,7 @@ namespace Vsync
 
         internal static Address virtualGroup(Address[] members)
         {
-            using (new LockAndElevate(vGLock))
+            using (var tmpLockObj = new LockAndElevate(vGLock))
             {
                 foreach (vGroup vg in vGList)
                 {
@@ -18331,7 +18331,7 @@ namespace Vsync
             }
 
             vGroup nvg = new vGroup(newVGAddress(members), members);
-            using (new LockAndElevate(vGLock))
+            using (var tmpLockObj = new LockAndElevate(vGLock))
             {
                 vGList.Add(nvg);
             }
@@ -18383,7 +18383,7 @@ namespace Vsync
             }
 
             vGroup nvg = new vGroup(newVGAddress(members), members);
-            using (new LockAndElevate(vGLock))
+            using (var tmpLockObj = new LockAndElevate(vGLock))
             {
                 foreach (vGroup vg in vGList)
                 {
@@ -18398,7 +18398,7 @@ namespace Vsync
 
             Vsync.VSYNCMEMBERS.Watch[master] += ev =>
             {
-                using (new LockAndElevate(vGLock))
+                using (var tmpLockObj = new LockAndElevate(vGLock))
                 {
                     vGList.Remove(nvg);
                 }
@@ -18407,7 +18407,7 @@ namespace Vsync
 
         internal static vGroup vGLookup(Address vga)
         {
-            using (new LockAndElevate(vGLock))
+            using (var tmpLockObj = new LockAndElevate(vGLock))
             {
                 foreach (vGroup vg in vGList)
                 {
@@ -18424,7 +18424,7 @@ namespace Vsync
         internal static string vgGetState()
         {
             string s = "MEMBER-SET SHORTCUTS: ";
-            using (new LockAndElevate(vGLock))
+            using (var tmpLockObj = new LockAndElevate(vGLock))
             {
                 if (vGList.Count == 0)
                 {
@@ -18584,7 +18584,7 @@ namespace Vsync
                     VsyncSystem.RTS.ThreadCntrs[9]++;
                     Random rand = new Random();
                     List<Address> alist = new List<Address>();
-                    using (new LockAndElevate(VsyncGroupsLock))
+                    using (var tmpLockObj = new LockAndElevate(VsyncGroupsLock))
                     {
                         int N = 0;
                         foreach (KeyValuePair<Address, Group> kvp in VsyncGroups)
@@ -18641,7 +18641,7 @@ namespace Vsync
         internal static MCMDSocket.GRPair[] GroupRates()
         {
             List<MCMDSocket.GRPair> GRPList = new List<MCMDSocket.GRPair>();
-            using (new LockAndElevate(VsyncGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(VsyncGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in VsyncGroups)
                 {
@@ -18674,7 +18674,7 @@ namespace Vsync
                     Vsync.Sleep(1000);
                     View theView;
                     Address sendTo = null;
-                    using (new LockAndElevate(this.ViewLock))
+                    using (var tmpLockObj = new LockAndElevate(this.ViewLock))
                     {
                         theView = this.theView;
                     }
@@ -18729,7 +18729,7 @@ namespace Vsync
                         if ((counter % 1) == 0)
                         {
                             // Every second, the Oracle members....
-                            using (new LockAndElevate(TPGroupsLock))
+                            using (var tmpLockObj = new LockAndElevate(TPGroupsLock))
                             {
                                 foreach (KeyValuePair<Address, Group> kvp in TPGroups)
                                 {
@@ -18764,7 +18764,7 @@ namespace Vsync
                     if (++counter % 600 == 0)
                     {
                         /* Every five minutes */
-                        using (new LockAndElevate(Vsync.RIPLock))
+                        using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
                         {
                             foreach (Address a in CleanUp)
                             {
@@ -18799,13 +18799,13 @@ namespace Vsync
             bool fnd = false;
             if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
             {
-                using (new LockAndElevate(ReliableSender.ackInfoLock))
+                using (var tmpLockObj = new LockAndElevate(ReliableSender.ackInfoLock))
                 {
                     ReliableSender.ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: SendPing to " + sendTo + Environment.NewLine);
                 }
             }
 
-            using (new LockAndElevate(ReliableSender.PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(ReliableSender.PendingSendBufferLock))
             {
                 if (ReliableSender.PendingSendBuffer.Count + ReliableSender.P2PPendingSendBuffer.Count > Vsync.VSYNC_ASYNCMTOTALLIMIT * 2)
                 {
@@ -18873,7 +18873,7 @@ namespace Vsync
         /// <param name="timeunit">Time unit for the limits in milliseconds</param>
         public void SetRateLimit(int msgspertimeunit, int bytespertimeunit, int timeunit)
         {
-            using (new LockAndElevate(this.RateLock))
+            using (var tmpLockObj = new LockAndElevate(this.RateLock))
             {
                 this.msgTokenRate = msgspertimeunit;
                 this.byteTokenRate = bytespertimeunit;
@@ -18954,7 +18954,7 @@ namespace Vsync
         internal long newLoggingId()
         {
             long myId;
-            using (new LockAndElevate(this.IdsByThreadIdLock))
+            using (var tmpLockObj = new LockAndElevate(this.IdsByThreadIdLock))
             {
                 myId = this.myLoggingId++;
                 foreach (KeyValuePair<int, long> kvp in this.IdsByThreadId)
@@ -18974,7 +18974,7 @@ namespace Vsync
 
         internal long lookupLoggingId()
         {
-            using (new LockAndElevate(this.IdsByThreadIdLock))
+            using (var tmpLockObj = new LockAndElevate(this.IdsByThreadIdLock))
             {
                 foreach (KeyValuePair<int, long> kvp in this.IdsByThreadId)
                 {
@@ -19194,8 +19194,8 @@ namespace Vsync
                     ILock.NoteThreadState("Wedged(OrderedSendWidth).WaitOne()");
                     this.Wedged.WaitOne();
                     ILock.NoteThreadState(null);
-                    using (new LockAndElevate(this.CommitLock))
-                    using (new LockAndElevate(this.ViewLock))
+                    using (var tmpLockObj = new LockAndElevate(this.CommitLock))
+                    using (var tmpLockObj1 = new LockAndElevate(this.ViewLock))
                     {
                         m.vid = this.theView == null ? -1 : this.theView.viewid;
                         m.msgid = this.nextMsgid++;
@@ -19286,7 +19286,7 @@ namespace Vsync
         internal int GetSafeSendThreshold()
         {
             View theView;
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewLock))
             {
                 theView = this.theView;
             }
@@ -19341,8 +19341,8 @@ namespace Vsync
                     ILock.NoteThreadState("Wedged(doSafeSend).WaitOne()");
                     this.Wedged.WaitOne();
                     ILock.NoteThreadState(null);
-                    using (new LockAndElevate(this.groupLock))
-                    using (new LockAndElevate(this.CommitLock))
+                    using (var tmpLockObj = new LockAndElevate(this.groupLock))
+                    using (var tmpLockObj1 = new LockAndElevate(this.CommitLock))
                     {
                         m.vid = this.theView.viewid;
                         m.msgid = this.nextMsgid++;
@@ -19576,7 +19576,7 @@ namespace Vsync
             {
                 int[] myVT;
                 int theVid;
-                using (new LockAndElevate(this.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(this.ViewLock))
                 {
                     theVid = this.theView.viewid;
                     myVT = new int[this.theView.myVT.Length];
@@ -19616,7 +19616,7 @@ namespace Vsync
         internal string LGRelayGetState()
         {
             string s = string.Empty;
-            using (new LockAndElevate(this.RelayedLGSendsLock))
+            using (var tmpLockObj = new LockAndElevate(this.RelayedLGSendsLock))
             {
                 if (this.RelayedLGSends.Count == 0)
                 {
@@ -19642,7 +19642,7 @@ namespace Vsync
 
             this.LGSetupDone = true;
             tokenInfo outerToken;
-            using (new LockAndElevate(this.TokenLock))
+            using (var tmpLockObj = new LockAndElevate(this.TokenLock))
             {
                 outerToken = this.theToken;
             }
@@ -19659,14 +19659,14 @@ namespace Vsync
                 View theView = null;
                 if (!this.HasFirstView)
                 {
-                    using (new LockAndElevate(this.CommitLock))
+                    using (var tmpLockObj = new LockAndElevate(this.CommitLock))
                     {
                         Vsync.CommitGVUpdates(this, vds, ref theView);
                     }
                 }
 
-                using (new LockAndElevate(this.TokenLock))
-                using (new LockAndElevate(this.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(this.TokenLock))
+                using (var tmpLockObj1 = new LockAndElevate(this.ViewLock))
                 {
                     theToken = this.theToken;
                     theView = this.theView;
@@ -19708,7 +19708,7 @@ namespace Vsync
                             Vsync.WriteLine("In RELAYSEND relaying COMMIT in <" + this.gname + "> for ViewDelta " + vd);
                         }
 
-                        using (new LockAndElevate(theToken.slock))
+                        using (var tmpLockObj = new LockAndElevate(theToken.slock))
                         {
                             if (theToken.unstableVIDMID == 0)
                             {
@@ -19723,7 +19723,7 @@ namespace Vsync
                 }
 
                 List<Msg> toRelay;
-                using (new LockAndElevate(this.RelayedLGSendsLock))
+                using (var tmpLockObj = new LockAndElevate(this.RelayedLGSendsLock))
                 {
                     toRelay = this.RelayedLGSends;
                     this.RelayedLGSends = new List<Msg>();
@@ -19736,7 +19736,7 @@ namespace Vsync
 
                 // Asynchronously send off a message to the ORACLE: I'm stable up to whatever the current viewid shows
                 int stableVID;
-                using (new LockAndElevate(theToken.slock))
+                using (var tmpLockObj = new LockAndElevate(theToken.slock))
                 {
                     stableVID = theToken.stableVID;
                 }
@@ -19845,11 +19845,11 @@ namespace Vsync
                 // last fragment, we hold the SIFLock, preventing anyone else from touching the multicast send id# counter
                 // The down side is that for Vsync, this is a fairly long-held lock and may be implicated in a multi-thread deadlock
                 // involving the CommitLock
-                using (new LockAndElevate(this.SIFLock))
+                using (var tmpLockObj = new LockAndElevate(this.SIFLock))
                 {
                     Msg m;
                     int xvid = -1;
-                    using (new LockAndElevate(this.ViewLock))
+                    using (var tmpLockObj1 = new LockAndElevate(this.ViewLock))
                     {
                         if (this.theView != null)
                         {
@@ -19921,7 +19921,7 @@ namespace Vsync
                     if ((this.flags & G_ISLARGE) != 0)
                     {
                         tokenInfo theToken;
-                        using (new LockAndElevate(this.TokenLock))
+                        using (var tmpLockObj1 = new LockAndElevate(this.TokenLock))
                         {
                             theToken = this.theToken;
                         }
@@ -19930,7 +19930,7 @@ namespace Vsync
                         {
                             if (m.vid != -1 && m.msgid != -1)
                             {
-                                using (new LockAndElevate(this.RelayedLGSendsLock))
+                                using (var tmpLockObj2 = new LockAndElevate(this.RelayedLGSendsLock))
                                 {
                                     this.RelayedLGSends.Add(m);
                                 }
@@ -19987,7 +19987,7 @@ namespace Vsync
         internal void SetMsgIds(Msg m, bool sentByOracle, bool isRaw)
         {
             tokenInfo theToken;
-            using (new LockAndElevate(this.TokenLock))
+            using (var tmpLockObj = new LockAndElevate(this.TokenLock))
             {
                 theToken = this.theToken;
             }
@@ -20002,7 +20002,7 @@ namespace Vsync
                 if (theToken != null)
                 {
                     ILock lgb;
-                    using (new LockAndElevate(theToken.FlushingBarrierLock))
+                    using (var tmpLockObj = new LockAndElevate(theToken.FlushingBarrierLock))
                     {
                         lgb = theToken.FlushingBarrier;
                     }
@@ -20035,8 +20035,8 @@ namespace Vsync
                         ILock.NoteThreadState("Wedged(SetMsgIds).WaitOne()");
                         this.Wedged.WaitOne();
                         ILock.NoteThreadState(null);
-                        using (new LockAndElevate(this.CommitLock))
-                        using (new LockAndElevate(this.ViewLock))
+                        using (var tmpLockObj = new LockAndElevate(this.CommitLock))
+                        using (var tmpLockObj1 = new LockAndElevate(this.ViewLock))
                         {
                             m.vid = this.theView.viewid;
                             m.msgid = this.nextMsgid++;
@@ -20072,8 +20072,8 @@ namespace Vsync
                 Group tp = TrackingProxyLookup(this.gaddr);
                 if (tp != null && tp.HasFirstView)
                 {
-                    using (new LockAndElevate(this.CommitLock))
-                    using (new LockAndElevate(tp.ViewLock))
+                    using (var tmpLockObj = new LockAndElevate(this.CommitLock))
+                    using (var tmpLockObj1 = new LockAndElevate(tp.ViewLock))
                     {
                         m.vid = tp.theView.viewid;
                         m.msgid = tp.nextMsgid++;
@@ -20183,7 +20183,7 @@ namespace Vsync
         internal void startFlush(int k, Vsync.UnstableList[] usl, out List<Msg> mustSend, out int cpscnt, Semaphore CPSSema)
         {
             mustSend = new List<Msg>();
-            using (new LockAndElevate(this.UnstableLock))
+            using (var tmpLockObj = new LockAndElevate(this.UnstableLock))
             {
                 foreach (Vsync.UnstableList us in usl)
                 {
@@ -20204,7 +20204,7 @@ namespace Vsync
             }
 
             cpscnt = 0;
-            using (new LockAndElevate(ReliableSender.PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(ReliableSender.PendingSendBufferLock))
             {
                 foreach (ReliableSender.MsgDesc md in ReliableSender.PendingSendBuffer)
                 {
@@ -20313,7 +20313,7 @@ namespace Vsync
         internal static string deFragState()
         {
             string s = "Defragmentation in progress:" + Environment.NewLine;
-            using (new LockAndElevate(dfLock))
+            using (var tmpLockObj = new LockAndElevate(dfLock))
             {
                 if (dfList.Count == 0)
                 {
@@ -20322,7 +20322,7 @@ namespace Vsync
 
                 foreach (FragInfo fi in dfList)
                 {
-                    using (new LockAndElevate(fi.Lock))
+                    using (var tmpLockObj1 = new LockAndElevate(fi.Lock))
                     {
                         string got = " ";
                         foreach (bool b in fi.gotFrag)
@@ -20348,7 +20348,7 @@ namespace Vsync
 
         internal static void fiCleanup(Address gaddr)
         {
-            using (new LockAndElevate(dfLock))
+            using (var tmpLockObj = new LockAndElevate(dfLock))
             {
                 if (dfList.Count == 0)
                 {
@@ -20370,7 +20370,7 @@ namespace Vsync
 
         internal static void fiCleanup()
         {
-            using (new LockAndElevate(dfLock))
+            using (var tmpLockObj = new LockAndElevate(dfLock))
             {
                 if (dfList.Count == 0)
                 {
@@ -20394,7 +20394,7 @@ namespace Vsync
 
         internal static FragInfo deFragLookup(Group g, Address sender, int fid, long tl, int nf, bool iscomp, bool isRaw)
         {
-            using (new LockAndElevate(dfLock))
+            using (var tmpLockObj = new LockAndElevate(dfLock))
             {
                 foreach (FragInfo dfi in dfList)
                 {
@@ -20405,7 +20405,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(Vsync.RIPLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
             {
                 if (Vsync.RIPList.Contains(sender))
                 {
@@ -20414,7 +20414,7 @@ namespace Vsync
             }
 
             FragInfo fi = new FragInfo(sender, fid, tl, nf, iscomp, isRaw);
-            using (new LockAndElevate(dfLock))
+            using (var tmpLockObj = new LockAndElevate(dfLock))
             {
                 dfList.Add(fi);
             }
@@ -20467,7 +20467,7 @@ namespace Vsync
 
             bool doDelivery = false;
             List<FragInfo> toRemove = new List<FragInfo>();
-            using (new LockAndElevate(fi.Lock))
+            using (var tmpLockObj = new LockAndElevate(fi.Lock))
             {
                 if (fi.gotFrag[fragN])
                 {
@@ -20489,7 +20489,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(dfLock))
+            using (var tmpLockObj = new LockAndElevate(dfLock))
             {
                 foreach (FragInfo rfi in toRemove)
                 {
@@ -20521,7 +20521,7 @@ namespace Vsync
             }
 
             bool doDelivery = false;
-            using (new LockAndElevate(fi.Lock))
+            using (var tmpLockObj = new LockAndElevate(fi.Lock))
             {
                 if ((VsyncSystem.Debug & VsyncSystem.FRAGER) != 0)
                 {
@@ -20544,7 +20544,7 @@ namespace Vsync
         private static void fragDoDelivery(Group g, FragInfo fi)
         {
             Msg m;
-            using (new LockAndElevate(dfLock))
+            using (var tmpLockObj = new LockAndElevate(dfLock))
             {
                 dfList.Remove(fi);
             }
@@ -20554,7 +20554,7 @@ namespace Vsync
                 throw new VsyncException("Fragger: Rdv failure");
             }
 
-            using (new LockAndElevate(fi.Lock))
+            using (var tmpLockObj = new LockAndElevate(fi.Lock))
             {
                 if (fi.iscomp)
                 {
@@ -20598,7 +20598,7 @@ namespace Vsync
 
         internal static void deFragNoteFailure(Address who)
         {
-            using (new LockAndElevate(dfLock))
+            using (var tmpLockObj = new LockAndElevate(dfLock))
             {
                 List<FragInfo> newList = new List<FragInfo>();
                 foreach (FragInfo fi in dfList)
@@ -20618,7 +20618,7 @@ namespace Vsync
         internal static byte[] SendInFrags(bool p2p, bool isRaw, Address dest, Group g, byte[] buffer, byte[] bufferAsGiven)
         {
             bool ic = bufferAsGiven != null;
-            using (new LockAndElevate(sendInFragsLock))
+            using (var tmpLockObj = new LockAndElevate(sendInFragsLock))
             {
                 if (reEnteredSIF)
                 {
@@ -20722,7 +20722,7 @@ namespace Vsync
 
         internal void cipherMsg(Msg m)
         {
-            using (new LockAndElevate(m.Lock))
+            using (var tmpLockObj = new LockAndElevate(m.Lock))
             {
                 if (m.vid < 0 || m.msgid < 0 || this.myAes == null || m.cipherPayload != null)
                 {
@@ -20730,7 +20730,7 @@ namespace Vsync
                 }
 
                 m.myObs = null;
-                using (new LockAndElevate(this.myAesLock))
+                using (var tmpLockObj1 = new LockAndElevate(this.myAesLock))
                 {
                     m.cipherPayload = this.encipher(m.payload);
                 }
@@ -20761,7 +20761,7 @@ namespace Vsync
                 return;
             }
 
-            using (new LockAndElevate(m.Lock))
+            using (var tmpLockObj = new LockAndElevate(m.Lock))
             {
                 m.myObs = null;
                 if (m.cipherPayload == null && m.payload != null)
@@ -20769,7 +20769,7 @@ namespace Vsync
                     m.cipherPayload = m.payload;
                 }
 
-                using (new LockAndElevate(this.myAesLock))
+                using (var tmpLockObj1 = new LockAndElevate(this.myAesLock))
                 {
                     m.payload = this.decipher(m.cipherPayload);
                 }
@@ -20786,7 +20786,7 @@ namespace Vsync
 
         internal static byte[] encipher(Group g, Aes myAes, LockObject myAesLock, byte[] iv, byte[] buffer)
         {
-            using (new LockAndElevate(myAesLock))
+            using (var tmpLockObj = new LockAndElevate(myAesLock))
             {
                 int nb = myAes.BlockSize >> 3;
                 myAes.IV = iv;
@@ -20856,7 +20856,7 @@ namespace Vsync
         // Caller has a lock on myAes
         private byte[] decipher(byte[] buffer)
         {
-            using (new LockAndElevate(this.myAesLock))
+            using (var tmpLockObj = new LockAndElevate(this.myAesLock))
             {
                 int nb = this.myAes.BlockSize >> 3;
                 byte[] iv = new byte[nb];
@@ -21345,7 +21345,7 @@ namespace Vsync
             }
 
             Msg replyTo;
-            using (new LockAndElevate(Rlock))
+            using (var tmpLockObj = new LockAndElevate(Rlock))
             {
                 replyTo = this.getReplyToAndClear();
             }
@@ -21371,7 +21371,7 @@ namespace Vsync
             bool deliverToOracle = (replyTo.flags & Msg.SENTBYORACLE) != 0;
             byte[] buffer = Msg.toBArray(RT_REPLY, replyTo.vid, replyTo.msgid, deliverToOracle, enciphered, result);
             Vsync.PendingLeaderOps plos;
-            using (new LockAndElevate(this.groupLock))
+            using (var tmpLockObj = new LockAndElevate(this.groupLock))
             {
                 plos = this.NotifyDALOnReply;
             }
@@ -22202,7 +22202,7 @@ namespace Vsync
             var gClone = VsyncGroupsClone();
             foreach(var g in gClone)
             {
-                using (new LockAndElevate(g.ToDoLock))
+                using (var tmpLockObj = new LockAndElevate(g.ToDoLock))
                 {
                     foreach (var m in g.ToDo)
                     {
@@ -22224,7 +22224,7 @@ namespace Vsync
 
             using (Semaphore ReplayWait = new Semaphore(0, int.MaxValue))
             {
-                using (new LockAndElevate(this.ToDoLock))
+                using (var tmpLockObj = new LockAndElevate(this.ToDoLock))
                 {
                     new Thread(() =>
                     {
@@ -22232,7 +22232,7 @@ namespace Vsync
                         {
                             List<Msg> oldToDo;
                             int vid = 0;
-                            using (new LockAndElevate(this.ToDoLock))
+                            using (var tmpLockObj1 = new LockAndElevate(this.ToDoLock))
                             {
                                 oldToDo = this.ToDo;
                                 this.ToDo = new List<Msg>();
@@ -22248,7 +22248,7 @@ namespace Vsync
                                         m.sender = Vsync.MY_MASTER;
                                     }
 
-                                    using (new LockAndElevate(this.ViewLock))
+                                    using (var tmpLockObj1 = new LockAndElevate(this.ViewLock))
                                     {
                                         if (this.theView != null)
                                         {
@@ -22258,7 +22258,7 @@ namespace Vsync
 
                                     if (m.vid > vid || !this.GotAMsg(m, Msg.MULTICAST, "replayToDo"))
                                     {
-                                        using (new LockAndElevate(this.ToDoLock))
+                                        using (var tmpLockObj1 = new LockAndElevate(this.ToDoLock))
                                         {
                                             if (m.toDoTime == 0)
                                             {
@@ -22294,7 +22294,7 @@ namespace Vsync
 
         internal void CheckCausalWaitQueue()
         {
-            using (new LockAndElevate(this.CausalOrderListLock))
+            using (var tmpLockObj = new LockAndElevate(this.CausalOrderListLock))
             {
                 ctuple ct = this.CausalOrderList.FirstOrDefault();
                 if (ct != null && (Vsync.NOW - ct.whenEnqueued) > Vsync.VSYNC_DEFAULTTIMEOUT * 6)
@@ -22313,7 +22313,7 @@ namespace Vsync
                 return;
             }
 
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewLock))
             {
                 if (this.theView != null)
                 {
@@ -22325,7 +22325,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(this.UnstableLock))
+            using (var tmpLockObj = new LockAndElevate(this.UnstableLock))
             {
                 List<Msg> tmpUnstable = new List<Msg>();
                 foreach (Msg m in this.Unstable)
@@ -22349,7 +22349,7 @@ namespace Vsync
             List<Group> wantsStabilitySent = new List<Group>();
             List<Group> igc = Group.VsyncGroupsClone();
             // Make sure we don't launch too many of these threads at a time
-            using (new LockAndElevate(slock))
+            using (var tmpLockObj = new LockAndElevate(slock))
             {
                 if (sending)
                 {
@@ -22365,7 +22365,7 @@ namespace Vsync
                     foreach (Group g in igc)
                     {
                         View theView;
-                        using (new LockAndElevate(g.ViewLock))
+                        using (var tmpLockObj = new LockAndElevate(g.ViewLock))
                         {
                             theView = g.theView;
                         }
@@ -22375,7 +22375,7 @@ namespace Vsync
                             continue;
                         }
 
-                        using (new LockAndElevate(g.GroupFlagsLock))
+                        using (var tmpLockObj = new LockAndElevate(g.GroupFlagsLock))
                         {
                             if (((g.flags & Group.G_SENDINGSTABILITY) == 0 && ((theView.minStable < theView.lastStabilitySent || g.CurrentBacklog != g.PreviousBacklog) && (Vsync.NOW - g.SentStableAt) > 100)) || ((FlowControl.Waiting > 0 || ReliableSender.rWaiting > 0) && (Vsync.NOW - g.SentStableAt) > 1000))
                             {
@@ -22388,7 +22388,7 @@ namespace Vsync
                     {
                         if (ReliableSender.doSendStability(g))
                         {
-                            using (new LockAndElevate(g.GroupFlagsLock))
+                            using (var tmpLockObj = new LockAndElevate(g.GroupFlagsLock))
                             {
                                 g.CurrentBacklog = 0;
                             }
@@ -22399,7 +22399,7 @@ namespace Vsync
                 {
                     VsyncSystem.CheckLocksHeld();
                 }
-                using (new LockAndElevate(slock))
+                using (var tmpLockObj = new LockAndElevate(slock))
                 {
                     sending = false;
                 }
@@ -22734,7 +22734,7 @@ namespace Vsync
                 this.sentAToken = new bool[this.nlevels];
                 this.pinged = new bool[this.nlevels];
                 ReliableSender.CleanLgCallbacks(g);
-                using (new LockAndElevate(this.tokenInMotionLock))
+                using (var tmpLockObj = new LockAndElevate(this.tokenInMotionLock))
                 {
                     this.tokenInMotion = new int[this.nlevels];
                 }
@@ -22750,7 +22750,7 @@ namespace Vsync
 
                 this.theGroup.AggList = new LinkedList<object>[this.nlevels];
                 this.viewid = this.WorkingView.viewid;
-                using (new LockAndElevate(this.theGroup.AggListLock))
+                using (var tmpLockObj = new LockAndElevate(this.theGroup.AggListLock))
                 {
                     binfo.resetBarrierList();
                     for (int n = 0; n < this.nlevels; n++)
@@ -22879,8 +22879,8 @@ namespace Vsync
             // Returns the first group view in which I am the leader (or -1, if none); used in flush
             internal void applyViewDeltas(Group parentGroup, Vsync.ViewDelta[] newvds)
             {
-                using (new LockAndElevate(parentGroup.TokenLock))
-                using (new LockAndElevate(parentGroup.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(parentGroup.TokenLock))
+                using (var tmpLockObj1 = new LockAndElevate(parentGroup.ViewLock))
                 {
                     int priorView = -1;
                     if (this.WorkingView != null)
@@ -22894,7 +22894,7 @@ namespace Vsync
                         g.AggTypes = parentGroup.AggTypes;
                         g.gaddr = parentGroup.gaddr;
                         g.gname = parentGroup.gname;
-                        using (new LockAndElevate(g.ViewLock))
+                        using (var tmpLockObj2 = new LockAndElevate(g.ViewLock))
                         {
                             g.theView = this.WorkingView;
                         }
@@ -23000,7 +23000,7 @@ namespace Vsync
                     return;
                 }
 
-                using (new LockAndElevate(this.slock))
+                using (var tmpLockObj = new LockAndElevate(this.slock))
                 {
                     Vsync.ViewDelta[] mergedVds = new Vsync.ViewDelta[this.viewDeltas.Length + newvdlist.Count];
                     int idx = 0;
@@ -23069,13 +23069,13 @@ namespace Vsync
                 }
 
                 tokenInfo theToken;
-                using (new LockAndElevate(g.TokenLock))
+                using (var tmpLockObj = new LockAndElevate(g.TokenLock))
                 {
                     theToken = g.theToken;
                 }
 
                 View theView;
-                using (new LockAndElevate(g.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(g.ViewLock))
                 {
                     theView = g.theView;
                 }
@@ -23136,7 +23136,7 @@ namespace Vsync
                 this.incomingValuesArray = (byte[][])obs[idx];
                 if (this.theGroup != null && this.theGroup.myAes != null)
                 {
-                    using (new LockAndElevate(this.theGroup.myAesLock))
+                    using (var tmpLockObj = new LockAndElevate(this.theGroup.myAesLock))
                     {
                         if ((VsyncSystem.Debug & VsyncSystem.CIPHER) != 0)
                         {
@@ -23184,7 +23184,7 @@ namespace Vsync
 
                 if (this.theGroup != null && this.theGroup.myAes != null)
                 {
-                    using (new LockAndElevate(this.theGroup.myAesLock))
+                    using (var tmpLockObj = new LockAndElevate(this.theGroup.myAesLock))
                     {
                         if ((VsyncSystem.Debug & VsyncSystem.CIPHER) != 0)
                         {
@@ -23217,7 +23217,7 @@ namespace Vsync
             internal byte[][] aggsToBArray(int level, bool fromRank0Member)
             {
                 List<byte[]> bas = new List<byte[]>();
-                using (new LockAndElevate(this.theGroup.AggListLock))
+                using (var tmpLockObj = new LockAndElevate(this.theGroup.AggListLock))
                 {
                     if (this.theGroup.AggList[level] != null)
                     {
@@ -23314,7 +23314,7 @@ namespace Vsync
 
         internal void becomeGroupOwner()
         {
-            using (new LockAndElevate(this.TokenLock))
+            using (var tmpLockObj = new LockAndElevate(this.TokenLock))
             {
                 if (this.theToken.IAmLgOwner)
                 {
@@ -23383,7 +23383,7 @@ namespace Vsync
         internal void LgFlush(bool becomeOwner)
         {
             tokenInfo theToken;
-            using (new LockAndElevate(this.TokenLock))
+            using (var tmpLockObj = new LockAndElevate(this.TokenLock))
             {
                 theToken = this.theToken;
             }
@@ -23402,12 +23402,12 @@ namespace Vsync
                         Vsync.WriteLine("BEFORE LgFlush **************************************************" + VsyncSystem.GetState());
                     }
 
-                    using (new LockAndElevate(theToken.FlushingBarrierLock))
+                    using (var tmpLockObj = new LockAndElevate(theToken.FlushingBarrierLock))
                     {
                         theToken.FlushingBarrier = ILock.IlockRef(ILock.LLLARGEBW, this.gaddr);
                     }
 
-                    using (new LockAndElevate(this.TokenLock))
+                    using (var tmpLockObj = new LockAndElevate(this.TokenLock))
                     {
                         // Set up for initial flush
                         theToken.logicalClock++;
@@ -23469,7 +23469,7 @@ namespace Vsync
                         Vsync.WriteLine("LgFlush: After Flush[INQUIRY]!");
                     }
 
-                    using (new LockAndElevate(this.TokenLock))
+                    using (var tmpLockObj = new LockAndElevate(this.TokenLock))
                     {
                         theToken.stableTo = theToken.StableByLevel[theToken.nlevels - 1];
                     }
@@ -23482,7 +23482,7 @@ namespace Vsync
                         throw new VsyncException("In LgFlush[1] had nextMsgid=" + this.nextMsgid + ", but after protocol setting it DOWN to " + this.theView.NextIncomingMsgID[1] + " in state " + VsyncSystem.GetState());
                     }
 
-                    using (new LockAndElevate(this.ViewLock))
+                    using (var tmpLockObj = new LockAndElevate(this.ViewLock))
                     {
                         this.nextMsgid = this.theView.NextIncomingMsgID[1];
                     }
@@ -23493,7 +23493,7 @@ namespace Vsync
                     }
 
                     // Wait for them to all learn the value of stableTo
-                    using (new LockAndElevate(this.TokenLock))
+                    using (var tmpLockObj = new LockAndElevate(this.TokenLock))
                     {
                         theToken.logicalClock++;
                     }
@@ -23508,7 +23508,7 @@ namespace Vsync
                         try
                         {
                             doAgain = false;
-                            using (new LockAndElevate(this.TokenLock))
+                            using (var tmpLockObj = new LockAndElevate(this.TokenLock))
                             {
                                 theToken.state = tokenInfo.SETSTABLETO;
                             }
@@ -23542,7 +23542,7 @@ namespace Vsync
                         Vsync.WriteLine("LgFlush: After Flush[SETSTABLETO]!");
                     }
 
-                    using (new LockAndElevate(theToken.FlushingBarrierLock))
+                    using (var tmpLockObj = new LockAndElevate(theToken.FlushingBarrierLock))
                     {
                         theToken.FlushingBarrier.BarrierReleaseAll();
                         theToken.FlushingBarrier = null;
@@ -23553,7 +23553,7 @@ namespace Vsync
                         Vsync.WriteLine("AFTER LgFlush **************************************************" + VsyncSystem.GetState());
                     }
 
-                    using (new LockAndElevate(this.TokenLock))
+                    using (var tmpLockObj = new LockAndElevate(this.TokenLock))
                     {
                         theToken.logicalClock++;
                         theToken.state = tokenInfo.NORMAL;
@@ -23573,7 +23573,7 @@ namespace Vsync
                         throw new VsyncException("In LgFlush[2] had nextMsgid=" + this.nextMsgid + ", but skipping protocol and setting it DOWN to " + this.theView.NextIncomingMsgID[1] + " in state " + VsyncSystem.GetState());
                     }
 
-                    using (new LockAndElevate(this.ViewLock))
+                    using (var tmpLockObj = new LockAndElevate(this.ViewLock))
                     {
                         this.nextMsgid = this.theView.NextIncomingMsgID[1];
                         theToken.stableTo = this.nextMsgid - 1;
@@ -23593,7 +23593,7 @@ namespace Vsync
         internal void resetAggregates()
         {
             tokenInfo theToken;
-            using (new LockAndElevate(this.TokenLock))
+            using (var tmpLockObj = new LockAndElevate(this.TokenLock))
             {
                 theToken = this.theToken;
             }
@@ -23613,8 +23613,8 @@ namespace Vsync
         {
             tokenInfo theToken;
             View theView;
-            using (new LockAndElevate(this.TokenLock))
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.TokenLock))
+            using (var tmpLockObj1 = new LockAndElevate(this.ViewLock))
             {
                 theToken = this.theToken;
                 theView = this.theView;
@@ -23629,7 +23629,7 @@ namespace Vsync
             }
             else
             {
-                using (new LockAndElevate(ReliableSender.PendingSendBufferLock))
+                using (var tmpLockObj = new LockAndElevate(ReliableSender.PendingSendBufferLock))
                 {
                     myStable = theView.NextIncomingMsgID[1] - 1;
                     alsoSeenBase = theToken.stableTo;
@@ -23668,7 +23668,7 @@ namespace Vsync
         internal void processIncoming(Address who, tokenInfo toke)
         {
             List<ReliableSender.MsgDesc> toForwardFromPSB = new List<ReliableSender.MsgDesc>();
-            using (new LockAndElevate(ReliableSender.PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(ReliableSender.PendingSendBufferLock))
             {
                 foreach (ReliableSender.MsgDesc lgmd in ReliableSender.LgPendingSendBuffer)
                 {
@@ -23688,12 +23688,12 @@ namespace Vsync
                     this.gotNewViewDeltas(toke.viewDeltas);
                 }
 
-                using (new LockAndElevate(this.TokenLock))
+                using (var tmpLockObj = new LockAndElevate(this.TokenLock))
                 {
                     bool valid = true;
                     string because = string.Empty;
                     View theView;
-                    using (new LockAndElevate(this.ViewLock))
+                    using (var tmpLockObj1 = new LockAndElevate(this.ViewLock))
                     {
                         theView = this.theView;
                     }
@@ -23909,7 +23909,7 @@ namespace Vsync
                             }
                         }
 
-                        using (new LockAndElevate(this.theToken.slock))
+                        using (var tmpLockObj1 = new LockAndElevate(this.theToken.slock))
                         {
                             this.theToken.stableTo = Math.Max(toke.stableTo, this.theToken.stableTo);
                             this.theToken.stableVID = Math.Max(toke.stableVID, this.theToken.stableVID);
@@ -23931,7 +23931,7 @@ namespace Vsync
                         }
                     }
 
-                    using (new LockAndElevate(this.UnstableLock))
+                    using (var tmpLockObj1 = new LockAndElevate(this.UnstableLock))
                     {
                         if (valid && this.watchingForStableTo && toke.stableTo != -1)
                         {
@@ -24001,8 +24001,8 @@ namespace Vsync
         {
             tokenInfo theToken;
             View theView;
-            using (new LockAndElevate(this.TokenLock))
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.TokenLock))
+            using (var tmpLockObj1 = new LockAndElevate(this.ViewLock))
             {
                 theToken = this.theToken;
                 theView = this.theView;
@@ -24065,7 +24065,7 @@ namespace Vsync
         internal void switchToNewOwner(tokenInfo toke)
         {
             tokenInfo theToken;
-            using (new LockAndElevate(this.TokenLock))
+            using (var tmpLockObj = new LockAndElevate(this.TokenLock))
             {
                 theToken = this.theToken;
             }
@@ -24113,7 +24113,7 @@ namespace Vsync
             }
 
             int cnt = 0;
-            using (new LockAndElevate(flock))
+            using (var tmpLockObj = new LockAndElevate(flock))
             {
                 foreach (ReliableSender.MsgDesc md in mds)
                 {
@@ -24124,7 +24124,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+            using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
             {
                 VsyncSystem.RTS.TTRet += cnt;
             }
@@ -24182,13 +24182,13 @@ namespace Vsync
         internal void checkLastToken(Msg m)
         {
             tokenInfo theToken;
-            using (new LockAndElevate(this.TokenLock))
+            using (var tmpLockObj = new LockAndElevate(this.TokenLock))
             {
                 theToken = this.theToken;
             }
 
             List<tokenInfo> ForwardTo = new List<tokenInfo>();
-            using (new LockAndElevate(this.UnstableLock))
+            using (var tmpLockObj = new LockAndElevate(this.UnstableLock))
             {
                 if (theToken == null)
                 {
@@ -24219,7 +24219,7 @@ namespace Vsync
         {
             m.toDoTime = Vsync.NOW;
             bool rval;
-            using (new LockAndElevate(this.GotAMsgLock))
+            using (var tmpLockObj = new LockAndElevate(this.GotAMsgLock))
             {
                 try
                 {
@@ -24248,14 +24248,14 @@ namespace Vsync
         {
             List<Msg> willDeliver = new List<Msg>();
 
-            using (new LockAndElevate(this.PendingQueueLock))
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.PendingQueueLock))
+            using (var tmpLockObj1 = new LockAndElevate(this.ViewLock))
             {
                 int which = -1;
                 int vid = m.vid - 2;
                 if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                 {
-                    using (new LockAndElevate(ReliableSender.ackInfoLock))
+                    using (var tmpLockObj2 = new LockAndElevate(ReliableSender.ackInfoLock))
                     {
                         ReliableSender.ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: GotAMsg(type=" + type + "): " + m + Environment.NewLine);
                     }
@@ -24322,7 +24322,7 @@ namespace Vsync
                         if (m.vid > 0 && m.msgid >= 0)
                         {
                             // Arises when a message to v:id arrives in a joining process before initial view for ORACLE was seen
-                            using (new LockAndElevate(this.ToDoLock))
+                            using (var tmpLockObj2 = new LockAndElevate(this.ToDoLock))
                             {
                                 this.ToDo.Add(m);
                                 this.ToDoCount++;
@@ -24339,7 +24339,7 @@ namespace Vsync
                             Vsync.WriteLine("WARNING: VSYNC ignoring a duplicate ORACLE.JOIN: " + m);
                         }
 
-                        using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                        using (var tmpLockObj2 = new LockAndElevate(VsyncSystem.RTS.Lock))
                         {
                             VsyncSystem.RTS.Discarded++;
                         }
@@ -24349,7 +24349,7 @@ namespace Vsync
                 }
 
                 bool needsxfer;
-                using (new LockAndElevate(this.GroupFlagsLock))
+                using (var tmpLockObj2 = new LockAndElevate(this.GroupFlagsLock))
                 {
                     needsxfer = (this.flags & G_NEEDSTATEXFER) != 0 && (m.flags & Msg.SENTBYORACLE) == 0;
                 }
@@ -24357,7 +24357,7 @@ namespace Vsync
                 if (!this.HasFirstView || (needsxfer && m.vid > 0))
                 {
                     List<Msg> newToDo = new List<Msg>();
-                    using (new LockAndElevate(this.ToDoLock))
+                    using (var tmpLockObj2 = new LockAndElevate(this.ToDoLock))
                     {
                         foreach (Msg lm in this.ToDo)
                         {
@@ -24372,7 +24372,7 @@ namespace Vsync
                                     Vsync.WriteLine("WARNING: VSYNC ignoring a duplicate multicast already on ToDo list -- case 1 (" + m.sender + " sent to " + m.vid + ":" + m.msgid + ")");
                                 }
 
-                                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                                using (var tmpLockObj3 = new LockAndElevate(VsyncSystem.RTS.Lock))
                                 {
                                     VsyncSystem.RTS.Discarded++;
                                 }
@@ -24405,7 +24405,7 @@ namespace Vsync
 
                 if (m.vid == 0)
                 {
-                    using (new LockAndElevate(this.GroupFlagsLock))
+                    using (var tmpLockObj2 = new LockAndElevate(this.GroupFlagsLock))
                     {
                         if ((this.flags & G_NEEDSTATEXFER) != 0)
                         {
@@ -24425,7 +24425,7 @@ namespace Vsync
                             Vsync.WriteLine("WARNING: VSYNC ignoring a multicast to an old view (" + m.sender + " sent to " + m.vid + ":" + m.msgid + " but current viewid is " + vid + ")" + m);
                         }
 
-                        using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                        using (var tmpLockObj2 = new LockAndElevate(VsyncSystem.RTS.Lock))
                         {
                             VsyncSystem.RTS.Discarded++;
                         }
@@ -24433,7 +24433,7 @@ namespace Vsync
                         return true;
                     }
 
-                    using (new LockAndElevate(this.ToDoLock))
+                    using (var tmpLockObj2 = new LockAndElevate(this.ToDoLock))
                     {
                         List<Msg> newToDo = new List<Msg>();
                         foreach (Msg lm in this.ToDo)
@@ -24449,7 +24449,7 @@ namespace Vsync
                                     Vsync.WriteLine("WARNING: VSYNC ignoring a multicast already on ToDo list -- case 2 (" + m.sender + " sent to " + m.vid + ":" + m.msgid + ")");
                                 }
 
-                                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                                using (var tmpLockObj3 = new LockAndElevate(VsyncSystem.RTS.Lock))
                                 {
                                     VsyncSystem.RTS.Discarded++;
                                 }
@@ -24486,7 +24486,7 @@ namespace Vsync
                     {
                         if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                         {
-                            using (new LockAndElevate(ReliableSender.ackInfoLock))
+                            using (var tmpLockObj2 = new LockAndElevate(ReliableSender.ackInfoLock))
                             {
                                 ReliableSender.ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: GotAMsg -- willDeliver(1) " + m.sender + "::" + m.vid + ":" + m.msgid + Environment.NewLine);
                             }
@@ -24515,7 +24515,7 @@ namespace Vsync
                         Vsync.WriteLine("WARNING: VSYNC ignoring an unexpected multicast[PendingQueue null] (" + m.sender + "sent to " + m.vid + ":" + m.msgid + ", but NextIncomingMsgID is " + vid + ":" + this.theView.NextIncomingMsgID[1 + which] + ").... " + m);
                     }
 
-                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                    using (var tmpLockObj2 = new LockAndElevate(VsyncSystem.RTS.Lock))
                     {
                         VsyncSystem.RTS.Discarded++;
                     }
@@ -24545,7 +24545,7 @@ namespace Vsync
                     ++this.PendingQueueCount;
                     if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                     {
-                        using (new LockAndElevate(ReliableSender.ackInfoLock))
+                        using (var tmpLockObj2 = new LockAndElevate(ReliableSender.ackInfoLock))
                         {
                             ReliableSender.ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: GotAMsg added to MsgQ[" + (1 + which) + "], new count=" + MsgQ.Count + Environment.NewLine);
                         }
@@ -24564,7 +24564,7 @@ namespace Vsync
                         Vsync.WriteLine("WARNING: VSYNC ignoring a duplicate multicast[2] (" + m.sender + " sent to " + m.vid + ":" + m.msgid + ", but NextIncomingMsgID is " + vid + ":" + this.theView.NextIncomingMsgID[1 + which] + "); known = " + Known);
                     }
 
-                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                    using (var tmpLockObj2 = new LockAndElevate(VsyncSystem.RTS.Lock))
                     {
                         VsyncSystem.RTS.Discarded++;
                     }
@@ -24580,7 +24580,7 @@ namespace Vsync
                     {
                         if ((VsyncSystem.Debug & (VsyncSystem.MESSAGELAYER | VsyncSystem.DISCARDS)) != 0)
                         {
-                            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                            using (var tmpLockObj2 = new LockAndElevate(VsyncSystem.RTS.Lock))
                             {
                                 VsyncSystem.RTS.Discarded++;
                             }
@@ -24649,7 +24649,7 @@ namespace Vsync
                 }
 
                 willDeliver = new List<Msg>();
-                using (new LockAndElevate(this.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(this.ViewLock))
                 {
                     for (int w = 0; w < this.PendingQueue.Length; w++)
                     {
@@ -24707,7 +24707,7 @@ namespace Vsync
                                 this.xferWait.Release();
                             }
 
-                            using (new LockAndElevate(this.ViewHandlers.vhListLock))
+                            using (var tmpLockObj = new LockAndElevate(this.ViewHandlers.vhListLock))
                             {
                                 foreach (VHCallBack vhcb in this.ViewHandlers.vhList)
                                 {
@@ -24865,7 +24865,7 @@ namespace Vsync
 
             if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
             {
-                using (new LockAndElevate(ReliableSender.ackInfoLock))
+                using (var tmpLockObj = new LockAndElevate(ReliableSender.ackInfoLock))
                 {
                     ReliableSender.ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: DequeueDeliverableMsgs -- MsgQ count=" + MsgQ.Count + Environment.NewLine);
                 }
@@ -24885,7 +24885,7 @@ namespace Vsync
                             Vsync.WriteLine("WARNING<" + this.gname + ">: VSYNC ignoring a duplicate multicast[3] (" + m.sender + " sent to " + m.vid + ":" + m.msgid + ", but NextIncomingMsgID is " + this.theView.viewid + ":" + this.theView.NextIncomingMsgID[1 + which] + ")");
                         }
 
-                        using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                        using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                         {
                             VsyncSystem.RTS.Discarded++;
                         }
@@ -24895,7 +24895,7 @@ namespace Vsync
                         v.NextIncomingMsgID[1 + which] = m.msgid + 1;
                         if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                         {
-                            using (new LockAndElevate(ReliableSender.ackInfoLock))
+                            using (var tmpLockObj = new LockAndElevate(ReliableSender.ackInfoLock))
                             {
                                 ReliableSender.ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: DequeueDeliverableMsgs -- willDeliver " + m.sender + "::" + m.vid + ":" + m.msgid + Environment.NewLine);
                             }
@@ -24925,7 +24925,7 @@ namespace Vsync
 
                     if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                     {
-                        using (new LockAndElevate(ReliableSender.ackInfoLock))
+                        using (var tmpLockObj = new LockAndElevate(ReliableSender.ackInfoLock))
                         {
                             ReliableSender.ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: DequeueDeliverableMsgs, unexpectedly dequeued message with msgid=" + m.sender + " sent to " + m.vid + ":" + m.msgid + ", yet expected " + this.theView.viewid + ":" + v.NextIncomingMsgID[1 + which] + Environment.NewLine);
                         }
@@ -24947,7 +24947,7 @@ namespace Vsync
 
             if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
             {
-                using (new LockAndElevate(ReliableSender.ackInfoLock))
+                using (var tmpLockObj = new LockAndElevate(ReliableSender.ackInfoLock))
                 {
                     if (m != null)
                     {
@@ -24978,7 +24978,7 @@ namespace Vsync
                 return;
             }
 
-            using (new LockAndElevate(this.LockIt))
+            using (var tmpLockObj = new LockAndElevate(this.LockIt))
             {
                 if (this.replyMsgs.ContainsKey(t.ManagedThreadId))
                 {
@@ -24994,7 +24994,7 @@ namespace Vsync
         internal void clearReplyTo()
         {
             // DumpReplyTo("clearReplyTo");
-            using (new LockAndElevate(this.LockIt))
+            using (var tmpLockObj = new LockAndElevate(this.LockIt))
             {
                 if (this.replyMsgs.ContainsKey(Thread.CurrentThread.ManagedThreadId))
                 {
@@ -25007,7 +25007,7 @@ namespace Vsync
         {
             // DumpReplyTo("getReplyTo::" + Thread.CurrentThread.ManagedThreadId);
             Msg rmsg;
-            using (new LockAndElevate(this.LockIt))
+            using (var tmpLockObj = new LockAndElevate(this.LockIt))
             {
                 this.replyMsgs.TryGetValue(Thread.CurrentThread.ManagedThreadId, out rmsg);
             }
@@ -25019,7 +25019,7 @@ namespace Vsync
         {
             // DumpReplyTo("getReplyToAndClear::" + Thread.CurrentThread.ManagedThreadId);
             Msg rmsg;
-            using (new LockAndElevate(this.LockIt))
+            using (var tmpLockObj = new LockAndElevate(this.LockIt))
             {
                 if (this.replyMsgs.TryGetValue(Thread.CurrentThread.ManagedThreadId, out rmsg))
                 {
@@ -25032,7 +25032,7 @@ namespace Vsync
 
         internal void DumpReplyTo(string where)
         {
-            using (new LockAndElevate(this.LockIt))
+            using (var tmpLockObj = new LockAndElevate(this.LockIt))
             {
                 string s = " ";
                 foreach (KeyValuePair<int, Msg> kvp in this.replyMsgs)
@@ -25118,7 +25118,7 @@ namespace Vsync
 
             if (m.vid != -1 && m.msgid != -1 && !m.sender.isMyAddress() && (m.flags & Msg.DEFRAGGED) == 0 && m.type != Msg.REDELIVERY && m.type != Msg.RAWMULTICAST && m.type != Msg.ISRAWGRPP2P && m.type != Msg.ISRAWREPLY)
             {
-                using (new LockAndElevate(this.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(this.ViewLock))
                 {
                     int rank = -1;
                     if (this.theView != null)
@@ -25128,7 +25128,7 @@ namespace Vsync
 
                     if (rank != -1 && m.msgid > this.theView.StableTo[rank + 1])
                     {
-                        using (new LockAndElevate(this.UnstableLock))
+                        using (var tmpLockObj1 = new LockAndElevate(this.UnstableLock))
                         {
                             this.Unstable.Add(m);
                             this.UnstableCount++;
@@ -25202,7 +25202,7 @@ namespace Vsync
 
         internal void inquireMinStable()
         {
-            using (new LockAndElevate(this.GroupFlagsLock))
+            using (var tmpLockObj = new LockAndElevate(this.GroupFlagsLock))
             {
                 if ((this.flags & G_GETTINGMINSTABLE) == 0)
                 {
@@ -25216,7 +25216,7 @@ namespace Vsync
                             {
                                 this.RequestedMinStableAt = Vsync.NOW;
                                 int vid;
-                                using (new LockAndElevate(this.ViewLock))
+                                using (var tmpLockObj1 = new LockAndElevate(this.ViewLock))
                                 {
                                     vid = this.theView.viewid;
                                 }
@@ -25236,7 +25236,7 @@ namespace Vsync
                                 }
                             }
 
-                            using (new LockAndElevate(this.GroupFlagsLock))
+                            using (var tmpLockObj1 = new LockAndElevate(this.GroupFlagsLock))
                             {
                                 this.flags &= ~G_GETTINGMINSTABLE;
                             }
@@ -25254,7 +25254,7 @@ namespace Vsync
 
         internal void SetCurMsg(Msg m)
         {
-            using (new LockAndElevate(this.curMsgListLock))
+            using (var tmpLockObj = new LockAndElevate(this.curMsgListLock))
             {
                 foreach (KeyValuePair<Thread, Msg> kvp in this.curMsgList)
                 {
@@ -25278,7 +25278,7 @@ namespace Vsync
         /// <returns>Current message, or null if none</returns>
         public Msg curMsg()
         {
-            using (new LockAndElevate(this.curMsgListLock))
+            using (var tmpLockObj = new LockAndElevate(this.curMsgListLock))
             {
                 foreach (KeyValuePair<Thread, Msg> kvp in this.curMsgList)
                 {
@@ -25299,7 +25299,7 @@ namespace Vsync
         /// <remarks>The message id and viewid are set when the message is sent, and the view may have changed by the time delivery occurs</remarks>
         public int curMsgId()
         {
-            using (new LockAndElevate(this.curMsgListLock))
+            using (var tmpLockObj = new LockAndElevate(this.curMsgListLock))
             {
                 foreach (KeyValuePair<Thread, Msg> kvp in this.curMsgList)
                 {
@@ -25322,7 +25322,7 @@ namespace Vsync
             List<Group> clone = VsyncGroupsClone();
             foreach (Group g in clone)
             {
-                using (new LockAndElevate(g.curMsgListLock))
+                using (var tmpLockObj = new LockAndElevate(g.curMsgListLock))
                 {
                     foreach (KeyValuePair<Thread, Msg> kvp in g.curMsgList)
                     {
@@ -25344,7 +25344,7 @@ namespace Vsync
         /// <remarks>The message id and viewid are set when the message is sent, and the view may have changed by the time delivery occurs</remarks>
         public int curMsgVid()
         {
-            using (new LockAndElevate(this.curMsgListLock))
+            using (var tmpLockObj = new LockAndElevate(this.curMsgListLock))
             {
                 foreach (KeyValuePair<Thread, Msg> kvp in this.curMsgList)
                 {
@@ -25363,7 +25363,7 @@ namespace Vsync
             if (Vsync.ClientOf != null && this == Vsync.ORACLE && this.incomingP2P == null)
             {
                 Vsync.ClientOf = null;
-                using (new LockAndElevate(VsyncGroupsLock))
+                using (var tmpLockObj = new LockAndElevate(VsyncGroupsLock))
                 {
                     VsyncGroups.Remove(this.gaddr);
                 }
@@ -25395,7 +25395,7 @@ namespace Vsync
             }
             else
             {
-                using (new LockAndElevate(this.P2PStashLock))
+                using (var tmpLockObj = new LockAndElevate(this.P2PStashLock))
                 {
                     this.P2PStash.Add(m);
                 }
@@ -25588,7 +25588,7 @@ namespace Vsync
         private void Redeliver(byte[] barray, LockObject theRdiLock, List<redeliveryInfo> theRdiList)
         {
             redeliveryInfo myRdi = null;
-            using (new LockAndElevate(theRdiLock))
+            using (var tmpLockObj = new LockAndElevate(theRdiLock))
             {
                 foreach (redeliveryInfo rdi in theRdiList)
                 {
@@ -25641,7 +25641,7 @@ namespace Vsync
                 {
                     if (this.rcode(obs) >= 0)
                     {
-                        using (new LockAndElevate(this.UniversalP2PHandlers.uhListLock))
+                        using (var tmpLockObj = new LockAndElevate(this.UniversalP2PHandlers.uhListLock))
                         {
                             foreach (UHCallBack uc in this.UniversalP2PHandlers.uhList)
                             {
@@ -25654,7 +25654,7 @@ namespace Vsync
                 {
                     if (this.rcode(obs) >= 0)
                     {
-                        using (new LockAndElevate(this.UniversalMHandlers.uhListLock))
+                        using (var tmpLockObj = new LockAndElevate(this.UniversalMHandlers.uhListLock))
                         {
                             foreach (UHCallBack uc in this.UniversalMHandlers.uhList)
                             {
@@ -25669,7 +25669,7 @@ namespace Vsync
                 int cbCnt = 0;
                 if (request == Vsync.CRYPTOWRAPPED || request == Vsync.CLIENTWRAPPED)
                 {
-                    using (new LockAndElevate(this.rdiLock))
+                    using (var tmpLockObj = new LockAndElevate(this.rdiLock))
                     {
                         this.rdiList.Add(new redeliveryInfo(vid, msgid, sender, Thread.CurrentThread));
                     }
@@ -25691,7 +25691,7 @@ namespace Vsync
                         Vsync.WriteLine("WARNING: no registered callbacks known for request " + Vsync.rToString((int)obs[0]) + ", msg " + vid + ":" + msgid + " from " + sender);
                     }
 
-                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                    using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                     {
                         VsyncSystem.RTS.Discarded++;
                     }
@@ -25842,7 +25842,7 @@ namespace Vsync
                 }
 
             Msg replyTo;
-            using (new LockAndElevate(Rlock))
+            using (var tmpLockObj = new LockAndElevate(Rlock))
             {
                 replyTo = this.getReplyToAndClear();
             }
@@ -25874,7 +25874,7 @@ namespace Vsync
             bool deliverToOracle = (replyTo.flags & Msg.SENTBYORACLE) != 0;
             byte[] buffer = Msg.toBArray(RT_REPLY, replyTo.vid, replyTo.msgid, deliverToOracle, enciphered, result);
             Vsync.PendingLeaderOps plos;
-            using (new LockAndElevate(this.groupLock))
+            using (var tmpLockObj = new LockAndElevate(this.groupLock))
             {
                 plos = this.NotifyDALOnReply;
             }
@@ -25992,14 +25992,14 @@ namespace Vsync
                 throw new VsyncShutdownException("Vsync inactive");
             }
 
-            using (new LockAndElevate(this.RecentlyLeftLock))
+            using (var tmpLockObj = new LockAndElevate(this.RecentlyLeftLock))
             {
                 RecentlyLeft.Add(this.gaddr);
             }
 
             Vsync.OnTimer(5 * 60 * 1000, () =>
             {
-                using (new LockAndElevate(this.RecentlyLeftLock))
+                using (var tmpLockObj = new LockAndElevate(this.RecentlyLeftLock))
                 {
                     RecentlyLeft.Remove(this.gaddr);
                 }
@@ -26171,7 +26171,7 @@ namespace Vsync
 
         internal static void stashMsg(Address sender, Address gaddr, int minStable, Msg m)
         {
-            using (new LockAndElevate(stashLock))
+            using (var tmpLockObj = new LockAndElevate(stashLock))
             {
                 stash.Add(new gStashNode(sender, gaddr, minStable, m));
                 stashNonEmpty = true;
@@ -26182,7 +26182,7 @@ namespace Vsync
         {
             bool nullGroup = false;
             List<Group> replayList = new List<Group>();
-            using (new LockAndElevate(stashLock))
+            using (var tmpLockObj = new LockAndElevate(stashLock))
             {
                 foreach (gStashNode gsn in stash)
                 {
@@ -26212,7 +26212,7 @@ namespace Vsync
 
         internal void replayP2PStash()
         {
-            using (new LockAndElevate(this.P2PStashLock))
+            using (var tmpLockObj = new LockAndElevate(this.P2PStashLock))
             {
                 List<Msg> newList = new List<Msg>();
                 foreach (Msg m in this.P2PStash)
@@ -26236,7 +26236,7 @@ namespace Vsync
             int ms = -1;
             List<gStashNode> cblist = new List<gStashNode>();
             List<gStashNode> nstash = new List<gStashNode>();
-            using (new LockAndElevate(stashLock))
+            using (var tmpLockObj = new LockAndElevate(stashLock))
             {
                 foreach (gStashNode gsn in stash)
                 {
@@ -26259,7 +26259,7 @@ namespace Vsync
             {
                 if (!ReliableSender.doGotIncoming(Msg.ISGRPP2P, gsn.gaddr, gsn.sender, ms, gsn.m, g, false))
                 {
-                    using (new LockAndElevate(stashLock))
+                    using (var tmpLockObj = new LockAndElevate(stashLock))
                     {
                         if (++gsn.deliveryAttempts > 10)
                         {
@@ -26277,8 +26277,8 @@ namespace Vsync
             if ((g.flags & G_ISLARGE) != 0)
             {
                 List<ReliableSender.MsgDesc> toReplay = new List<ReliableSender.MsgDesc>();
-                using (new LockAndElevate(g.GotAMsgLock))
-                using (new LockAndElevate(ReliableSender.PendingSendBufferLock))
+                using (var tmpLockObj = new LockAndElevate(g.GotAMsgLock))
+                using (var tmpLockObj1 = new LockAndElevate(ReliableSender.PendingSendBufferLock))
                 {
                     foreach (ReliableSender.MsgDesc lgmd in ReliableSender.LgPendingSendBuffer)
                     {
@@ -26304,7 +26304,7 @@ namespace Vsync
             }
 
             string s = "LIST OF EARLY-RECEIVED GRP P2P MSGS:" + Environment.NewLine;
-            using (new LockAndElevate(stashLock))
+            using (var tmpLockObj = new LockAndElevate(stashLock))
             {
                 foreach (gStashNode gsn in stash)
                 {
@@ -26405,7 +26405,7 @@ namespace Vsync
         internal string AggState()
         {
             string s = string.Empty;
-            using (new LockAndElevate(this.AggListLock))
+            using (var tmpLockObj = new LockAndElevate(this.AggListLock))
             {
                 if (this.AggList != null)
                 {
@@ -26436,7 +26436,7 @@ namespace Vsync
             if ((this.flags & G_ISLARGE) != 0)
             {
                 tokenInfo theToken;
-                using (new LockAndElevate(this.TokenLock))
+                using (var tmpLockObj = new LockAndElevate(this.TokenLock))
                 {
                     theToken = this.theToken;
                 }
@@ -26463,7 +26463,7 @@ namespace Vsync
             }
             else
             {
-                using (new LockAndElevate(this.AggListLock))
+                using (var tmpLockObj = new LockAndElevate(this.AggListLock))
                 {
                     if (this.AggList != null)
                     {
@@ -26518,7 +26518,7 @@ namespace Vsync
             tokenInfo theToken = null;
             if ((this.flags & G_ISLARGE) != 0)
             {
-                using (new LockAndElevate(this.TokenLock))
+                using (var tmpLockObj = new LockAndElevate(this.TokenLock))
                 {
                     theToken = this.theToken;
                 }
@@ -26546,7 +26546,7 @@ namespace Vsync
                     }
                     else
                     {
-                        using (new LockAndElevate(this.AggListLock))
+                        using (var tmpLockObj = new LockAndElevate(this.AggListLock))
                         {
                             ((Aggregation<KeyType, ValueType>)this.AggList[0].ElementAt(idx)).Set(vid, key, val);
                         }
@@ -26588,7 +26588,7 @@ namespace Vsync
             tokenInfo theToken = null;
             if ((this.flags & G_ISLARGE) != 0)
             {
-                using (new LockAndElevate(this.TokenLock))
+                using (var tmpLockObj = new LockAndElevate(this.TokenLock))
                 {
                     theToken = this.theToken;
                 }
@@ -26620,7 +26620,7 @@ namespace Vsync
                         else
                         {
                             Aggregation<KeyType, ValueType> ag;
-                            using (new LockAndElevate(this.AggListLock))
+                            using (var tmpLockObj = new LockAndElevate(this.AggListLock))
                             {
                                 ag = (Aggregation<KeyType, ValueType>)this.AggList[this.AggList.Length - 1].ElementAt(idx);
                             }
@@ -26740,7 +26740,7 @@ namespace Vsync
 
             internal static binfo getBarrierObject(Type kt, Type vt)
             {
-                using (new LockAndElevate(theBarrierLock))
+                using (var tmpLockObj = new LockAndElevate(theBarrierLock))
                 {
                     foreach (binfo bi in theBarrierList)
                     {
@@ -26758,7 +26758,7 @@ namespace Vsync
 
             internal static void resetBarrierList()
             {
-                using (new LockAndElevate(theBarrierLock))
+                using (var tmpLockObj = new LockAndElevate(theBarrierLock))
                 {
                     theBarrierList = new List<binfo>();
                 }
@@ -26854,7 +26854,7 @@ namespace Vsync
             {
                 Dictionary<int, ldTuple<KeyType, ValueType>> belowldValues = (Dictionary<int, ldTuple<KeyType, ValueType>>)fromBelow;
                 List<KeyValuePair<int, ldTuple<KeyType, ValueType>>> needDValue = new List<KeyValuePair<int, ldTuple<KeyType, ValueType>>>();
-                using (new LockAndElevate(this.Alock))
+                using (var tmpLockObj = new LockAndElevate(this.Alock))
                 {
                     foreach (KeyValuePair<int, ldTuple<KeyType, ValueType>> kvp in belowldValues)
                     {
@@ -26946,7 +26946,7 @@ namespace Vsync
                         // Send known dvalues, and garbage collect them
                         int idx = 0;
                         List<KeyValuePair<int, ldTuple<KeyType, ValueType>>> toSend = new List<KeyValuePair<int, ldTuple<KeyType, ValueType>>>();
-                        using (new LockAndElevate(this.Alock))
+                        using (var tmpLockObj = new LockAndElevate(this.Alock))
                         {
                             Dictionary<int, ldTuple<KeyType, ValueType>> nldValues = new Dictionary<int, ldTuple<KeyType, ValueType>>(Group.tokenInfo.RINGSIZE * 2);
 
@@ -27003,7 +27003,7 @@ namespace Vsync
                         // Send values for which we know both the lvalue and the dvalue, and garbage collect them
                         idx = 0;
                         toSend = new List<KeyValuePair<int, ldTuple<KeyType, ValueType>>>();
-                        using (new LockAndElevate(this.Alock))
+                        using (var tmpLockObj = new LockAndElevate(this.Alock))
                         {
                             Dictionary<int, ldTuple<KeyType, ValueType>> nldValues = new Dictionary<int, ldTuple<KeyType, ValueType>>(Group.tokenInfo.RINGSIZE * 2);
 
@@ -27110,7 +27110,7 @@ namespace Vsync
             public string AggState()
             {
                 string s = string.Empty;
-                using (new LockAndElevate(this.Alock))
+                using (var tmpLockObj = new LockAndElevate(this.Alock))
                 {
                     foreach (wTI wti in this.WaitingThreads)
                     {
@@ -27214,7 +27214,7 @@ namespace Vsync
                     Vsync.WriteLine("Aggregation: SetRValue for id=" + id + "(hashcode=" + id.GetHashCode() + "), vid = " + vid + ", level=" + level + ", value=" + lValue);
                 }
 
-                using (new LockAndElevate(this.Alock))
+                using (var tmpLockObj = new LockAndElevate(this.Alock))
                 {
                     ldTuple<KeyType, ValueType> ldp;
                     if (this.ldValues.TryGetValue(hc, out ldp))
@@ -27244,7 +27244,7 @@ namespace Vsync
                     Vsync.WriteLine("Aggregation: SetDValue for id=" + id + ", level=" + level + ", value=" + dValue);
                 }
 
-                using (new LockAndElevate(this.Alock))
+                using (var tmpLockObj = new LockAndElevate(this.Alock))
                 {
                     ldTuple<KeyType, ValueType> ldp;
                     if (this.ldValues.TryGetValue(hc, out ldp))
@@ -27343,7 +27343,7 @@ namespace Vsync
                 }
 
                 View theView;
-                using (new LockAndElevate(this.myGroup.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(this.myGroup.ViewLock))
                 {
                     theView = this.myGroup.theView;
                 }
@@ -27360,7 +27360,7 @@ namespace Vsync
                     throw new VsyncException("SendAggIfBothReady: I'm not in participant list!");
                 }
 
-                using (new LockAndElevate(this.Alock))
+                using (var tmpLockObj = new LockAndElevate(this.Alock))
                 {
                     ldTuple<KeyType, ValueType> ldp;
                     int id = key.GetHashCode();
@@ -27428,7 +27428,7 @@ namespace Vsync
             internal bool IAmRightMost(KeyType key, int level)
             {
                 View theView;
-                using (new LockAndElevate(this.myGroup.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(this.myGroup.ViewLock))
                 {
                     theView = this.myGroup.theView;
                 }
@@ -27452,7 +27452,7 @@ namespace Vsync
                 if (participants == null)
                 {
                     View theView;
-                    using (new LockAndElevate(this.myGroup.ViewLock))
+                    using (var tmpLockObj = new LockAndElevate(this.myGroup.ViewLock))
                     {
                         theView = this.myGroup.theView;
                     }
@@ -27562,7 +27562,7 @@ namespace Vsync
                 }
 
                 Address[] participants;
-                using (new LockAndElevate(this.myGroup.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(this.myGroup.ViewLock))
                 {
                     participants = this.Participants(id, this.myGroup.theView);
                 }
@@ -27583,7 +27583,7 @@ namespace Vsync
                 ValueType v = default(ValueType);
                 try
                 {
-                    using (new LockAndElevate(this.Alock))
+                    using (var tmpLockObj = new LockAndElevate(this.Alock))
                     {
                         this.WaitingThreads.Add(wti);
                     }
@@ -27635,7 +27635,7 @@ namespace Vsync
                 }
                 finally
                 {
-                    using (new LockAndElevate(this.Alock))
+                    using (var tmpLockObj = new LockAndElevate(this.Alock))
                     {
                         this.WaitingThreads.Remove(wti);
                     }
@@ -27724,12 +27724,12 @@ namespace Vsync
             {
                 get
                 {
-                    using (new LockAndElevate(wmmfLock))
+                    using (var tmpLockObj = new LockAndElevate(wmmfLock))
                         return wmmf == null? null: wmmf.mmf;
                 }
                 set
                 {
-                    using (new LockAndElevate(wmmfLock))
+                    using (var tmpLockObj = new LockAndElevate(wmmfLock))
                     {
                         if (wmmf == null)
                             return;
@@ -27756,12 +27756,12 @@ namespace Vsync
             {
                 get
                 {
-                    using (new LockAndElevate(wmmfLock))
+                    using (var tmpLockObj = new LockAndElevate(wmmfLock))
                         return wmmf == null ? null : wmmf.mmva;
                 }
                 set
                 {
-                    using (new LockAndElevate(wmmfLock))
+                    using (var tmpLockObj = new LockAndElevate(wmmfLock))
                         if (wmmf != null)
                             wmmf.mmva = value;
                 }
@@ -27988,12 +27988,12 @@ namespace Vsync
             }
 
             View theView;
-            using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
             {
                 theView = Vsync.VSYNCMEMBERS.theView;
             }
 
-            using (new LockAndElevate(OOBMapLock))
+            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
             {
 
                 if ((VsyncSystem.Debug & VsyncSystem.OOBXFERS) != 0)
@@ -28145,7 +28145,7 @@ namespace Vsync
 
             foreach (OOBRepInfo ri in repInfo)
             {
-                using (new LockAndElevate(OOBMapLock))
+                using (var tmpLockObj = new LockAndElevate(OOBMapLock))
                 {
                     OOBInfo obi;
                     if (OOBMap.TryGetValue(ri.OOBFname, out obi))
@@ -28186,7 +28186,7 @@ namespace Vsync
         internal void doOOBUpdateRegistry(List<OOBRepInfo> repInfo)
         {
             View theView;
-            using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
             {
                 theView = Vsync.VSYNCMEMBERS.theView;
             }
@@ -28199,7 +28199,7 @@ namespace Vsync
                 List<IPAddress> unNeeded = new List<IPAddress>();
                 // We do use the OOBMapLock but keep in mind that the thing that really matters is that the fields
                 // of the obi object are updated state-machine style triggered by totally ordered multicasts
-                using (new LockAndElevate(OOBMapLock))
+                using (var tmpLockObj = new LockAndElevate(OOBMapLock))
                 {
                     OOBInfo obi;
                     if (!OOBMap.TryGetValue(ri.OOBFname, out obi))
@@ -28287,7 +28287,7 @@ namespace Vsync
 
         private static void OOBWhenDoneCallback(OOBInfo obi)
         {
-            using(new LockAndElevate(obiCBLock))
+            using(var tmpLockObj = new LockAndElevate(obiCBLock))
             {
                 if (obi.WhenDone != null)
                 {
@@ -28346,7 +28346,7 @@ namespace Vsync
                         Thread.CurrentThread.Name = "OOBMapCloner";
                         try
                         {
-                            using (new LockAndElevate(OOBMapLock))
+                            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
                             {
                                 copyOfOOBMap = new Dictionary<string, OOBInfo>(OOBMap);
                                 copyOfOOBWaitList = new List<OOBInfo>(OOBWaitList);
@@ -28425,12 +28425,12 @@ namespace Vsync
         {
             List<Address> newOwners;
             View theView;
-            using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
             {
                 theView = Vsync.VSYNCMEMBERS.theView;
             }
 
-            using (new LockAndElevate(OOBMapLock))
+            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
             {
                 if ((VsyncSystem.Debug & VsyncSystem.OOBXFERS) != 0)
                 {
@@ -28517,7 +28517,7 @@ namespace Vsync
                     }
 
                     // If we reach this line, a failure of the owner changed the replication pattern.  Recheck the replication pattern (after checking for a new view)
-                    using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+                    using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
                     {
                         theView = Vsync.VSYNCMEMBERS.theView;
                     }
@@ -28772,7 +28772,7 @@ namespace Vsync
                     Address a = theView.members[r];
                     if (a.home.Equals(ipa) && !theView.hasFailed[r])
                     {
-                        using(new LockAndElevate(Vsync.RIPLock))
+                        using(var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
                             if (Vsync.RIPList.Contains(a))
                             {
                                 // In fact this should never happen and it seems a bit paranoid to even check.  Remove this if the warning never prints... fix it
@@ -28898,7 +28898,7 @@ namespace Vsync
             }
 
             View theView;
-            using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
             {
                 theView = Vsync.VSYNCMEMBERS.theView;
             }
@@ -29037,7 +29037,7 @@ namespace Vsync
 
         internal static void doOOBSetupTCPListener()
         {
-            using (new LockAndElevate(rtcpcLock))
+            using (var tmpLockObj = new LockAndElevate(rtcpcLock))
                 if (tcpListener == null)
                 {
                     try
@@ -29442,7 +29442,7 @@ namespace Vsync
 
         private static void OOBFetchWait(OOBInfo obi)
         {
-            using (new LockAndElevate(OOBMapLock))
+            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
             {
                 if (obi.mmf == null && obi.replicaHomes.Contains(Vsync.my_IPaddress))
                 {
@@ -29455,7 +29455,7 @@ namespace Vsync
             ILock.NoteThreadState("mmfReady.WaitOne()");
             obi.mmfReady.WaitOne();
             ILock.NoteThreadState(null);
-            using (new LockAndElevate(OOBMapLock))
+            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
                 obi.flags &= ~OOBInfo.OBI_FETCHWAIT;
             obi.mmfReady.Release();
         }
@@ -29479,7 +29479,7 @@ namespace Vsync
             ILock.NoteThreadState("ibcntr.WaitOne()");
             IB.ibcntr.WaitOne();
             ILock.NoteThreadState(null);
-            using (new LockAndElevate(IB.ibgrouplock))
+            using (var tmpLockObj = new LockAndElevate(IB.ibgrouplock))
             {
                 int max = IB.IB_maxqpgroups();
                 for (int n = 2; n < max; n++)
@@ -29565,7 +29565,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(OOBMapLock))
+            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
                 obi.OOBStatus = chunkAcked;
             if ((VsyncSystem.Debug & VsyncSystem.OOBXFERS) != 0)
             {
@@ -29592,7 +29592,7 @@ namespace Vsync
         // Called at the end of a transfer 
         private void doOOBDone(string OOBFname)
         {
-            using (new LockAndElevate(OOBMapLock))
+            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
             {
                 OOBInfo obi;
                 if (!OOBMap.TryGetValue(OOBFname, out obi))
@@ -29630,7 +29630,7 @@ namespace Vsync
         // the semaphore could actually increment to a larger value, but this has no significance in those cases
         private void doOOBDone(string OOBFname, bool done)
         {
-            using (new LockAndElevate(OOBMapLock))
+            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
             {
                 OOBInfo obi;
                 if (OOBMap.TryGetValue(OOBFname, out obi) && obi.xfDone != null)
@@ -29649,7 +29649,7 @@ namespace Vsync
             }
 
             OOBInfo obi = null;
-            using (new LockAndElevate(OOBMapLock))
+            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
             {
                 OOBMap.TryGetValue(OOBFname, out obi);
             }
@@ -29714,12 +29714,12 @@ namespace Vsync
             int allRcvd = 0;
             OOBInfo obi;
             View theView;
-            using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
             {
                 theView = Vsync.VSYNCMEMBERS.theView;
             }
 
-            using (new LockAndElevate(OOBMapLock))
+            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
             {
                 if (!OOBMap.TryGetValue(OOBFname, out obi))
                 {
@@ -29784,7 +29784,7 @@ namespace Vsync
             ibqgrp = PickIBGroupNo();
             ibqp = IB.IB_create_qp(ibqgrp, 0, nchunks);
             View theView;
-            using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
             {
                 theView = Vsync.VSYNCMEMBERS.theView;
             }
@@ -29962,7 +29962,7 @@ namespace Vsync
             }
 
             OOBInfo obi;
-            using (new LockAndElevate(OOBMapLock))
+            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
             {
                 if (!OOBMap.TryGetValue(OOBFname, out obi))
                 {
@@ -30033,7 +30033,7 @@ namespace Vsync
                             for (int n = 0; n < lim; n++)
                             {
                                 byte[] buffer;
-                                using (new LockAndElevate(OOBMapLock))
+                                using (var tmpLockObj = new LockAndElevate(OOBMapLock))
                                 {
                                     if (this.RecycledBuffers.Count == 0)
                                     {
@@ -30270,7 +30270,7 @@ namespace Vsync
             {
             }
 
-            using (new LockAndElevate(OOBMapLock))
+            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
             {
                 this.RecycledBuffers.Add(buffer);
             }
@@ -30306,7 +30306,7 @@ namespace Vsync
         internal static void doOOBGotChunk(string OOBFname, long offset, long len, byte[] data, bool isLast)
         {
             OOBInfo obi;
-            using (new LockAndElevate(OOBMapLock))
+            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
                 if (!OOBMap.TryGetValue(OOBFname, out obi))
                     throw new VsyncException("doOOBGotChunk");
             doOOBGotChunk(obi, OOBFname, offset, len, data, isLast);
@@ -30359,13 +30359,13 @@ namespace Vsync
             }
 
             View theView;
-            using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
             {
                 theView = Vsync.VSYNCMEMBERS.theView;
             }
 
             OOBInfo obi;
-            using (new LockAndElevate(OOBMapLock))
+            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
             {
                 if (!OOBMap.TryGetValue(OOBFname, out obi))
                 {
@@ -30481,7 +30481,7 @@ namespace Vsync
             }
 
             View theView;
-            using (new LockAndElevate(this.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(this.ViewLock))
             {
                 theView = this.theView;
             }
@@ -30492,7 +30492,7 @@ namespace Vsync
             }
 
             List<OOBRepInfo> theRes = new List<OOBRepInfo>();
-            using (new LockAndElevate(OOBMapLock))
+            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
             {
                 foreach (KeyValuePair<string, OOBInfo> oobi in OOBMap)
                 {
@@ -30508,7 +30508,7 @@ namespace Vsync
         {
             bool recheck = false;
             OOBInfo obi = null;
-            using (new LockAndElevate(OOBMapLock))
+            using (var tmpLockObj = new LockAndElevate(OOBMapLock))
             {
                 foreach (KeyValuePair<string, OOBInfo> kvp in OOBMap)
                 {
@@ -30565,7 +30565,7 @@ namespace Vsync
             {
                 for (int retry = 0; retry < 5; retry++)
                 {
-                    using (new LockAndElevate(OOBMapLock))
+                    using (var tmpLockObj = new LockAndElevate(OOBMapLock))
                     {
                         OOBInfo obi;
                         if (OOBMap.TryGetValue(OOBFname, out obi))
@@ -32004,7 +32004,7 @@ namespace Vsync
         {
             // A bit cautious due to possible races against changing views
             View v;
-            using (new LockAndElevate(g.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(g.ViewLock))
             {
                 v = g.theView;
             }
@@ -32019,7 +32019,7 @@ namespace Vsync
                     return;
                 }
 
-                using (new LockAndElevate(tpg.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(tpg.ViewLock))
                 {
                     v = tpg.theView;
                 }
@@ -32199,7 +32199,7 @@ namespace Vsync
 
             internal ReplyInfo(Group g, int vid, int mid, bool sentByOracle, bool crypto, View v, List<Address> dests, int nr, int d, Group.VHCallBack vcb)
             {
-                using (new LockAndElevate(UIDLock))
+                using (var tmpLockObj = new LockAndElevate(UIDLock))
                 {
                     this.uid = UID++;
                 }
@@ -32313,11 +32313,11 @@ namespace Vsync
         internal static string GetState()
         {
             string s = "AwaitReplies State:" + Environment.NewLine;
-            using (new LockAndElevate(RendezVousLock))
+            using (var tmpLockObj = new LockAndElevate(RendezVousLock))
             {
                 foreach (ReplyInfo ri in RendezVous)
                 {
-                    using (new LockAndElevate(ri.Lock))
+                    using (var tmpLockObj1 = new LockAndElevate(ri.Lock))
                     {
                         string from = string.Empty, needed = string.Empty;
                         if (ri.rdvView.members.Length == ri.gotReply.Length)
@@ -32373,7 +32373,7 @@ namespace Vsync
             View theView = null;
             if (who != null)
             {
-                using (new LockAndElevate(who.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(who.ViewLock))
                 {
                     theView = who.theView;
                 }
@@ -32387,7 +32387,7 @@ namespace Vsync
                     throw new VsyncException("View Callback in registerWait: ri unexpectedly null");
                 }
 
-                using (new LockAndElevate(ri.Lock))
+                using (var tmpLockObj = new LockAndElevate(ri.Lock))
                 {
                     if (v.gaddr != ri.gaddr)
                     {
@@ -32412,13 +32412,13 @@ namespace Vsync
             }));
 
             View whoView;
-            using (new LockAndElevate(who.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(who.ViewLock))
             {
                 whoView = who.theView;
             }
 
-            using (new LockAndElevate(RendezVousLock))
-            using (new LockAndElevate(ri.Lock))
+            using (var tmpLockObj = new LockAndElevate(RendezVousLock))
+            using (var tmpLockObj1 = new LockAndElevate(ri.Lock))
             {
                 if (dests == null)
                 {
@@ -32487,7 +32487,7 @@ namespace Vsync
         // destList is only non-null for subset Query operations
         internal static void awaitReplies(ReplyInfo ri, Group g, Timeout timeout, List<Address> destList)
         {
-            using (new LockAndElevate(Vsync.RIPLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
             {
                 if (destList != null)
                 {
@@ -32513,7 +32513,7 @@ namespace Vsync
             }
 
             ILock theILock;
-            using (new LockAndElevate(ri.Lock))
+            using (var tmpLockObj = new LockAndElevate(ri.Lock))
             {
                 if ((VsyncSystem.Debug & VsyncSystem.REPLYWAIT) != 0)
                 {
@@ -32555,13 +32555,13 @@ namespace Vsync
                 Vsync.WriteLine("AFTER rdvWait[" + ri.ricntr + "]: " + ri.rdvVid + ":" + ri.rdvMid + " in group " + ri.gaddr + ".... ri.wanted=" + ri.replies_wanted + ", ri.replies_received=" + ri.replies_received);
             }
 
-            using (new LockAndElevate(RendezVousLock))
-            using (new LockAndElevate(ri.Lock))
+            using (var tmpLockObj = new LockAndElevate(RendezVousLock))
+            using (var tmpLockObj1 = new LockAndElevate(ri.Lock))
             {
                 RendezVous.Remove(ri);
             }
 
-            using (new LockAndElevate(g.ViewHandlers.vhListLock))
+            using (var tmpLockObj = new LockAndElevate(g.ViewHandlers.vhListLock))
             {
                 g.ViewHandlers.vhList.Remove(ri.vhcb);
             }
@@ -32586,7 +32586,7 @@ namespace Vsync
                 return;
             }
 
-            using (new LockAndElevate(RendezVousLock))
+            using (var tmpLockObj = new LockAndElevate(RendezVousLock))
             {
                 object[] obs = Msg.BArrayToObjects(rm.payload);
                 if (obs.Length < 5 || obs.Length > 6 || obs[0].GetType() != typeof(int) || obs[1].GetType() != typeof(int) || obs[2].GetType() != typeof(int) || obs[3].GetType() != typeof(bool) || obs[4].GetType() != typeof(bool) || (obs.Length == 6 && obs[5].GetType() != typeof(byte[]) && obs[5].GetType() != typeof(string)))
@@ -32609,7 +32609,7 @@ namespace Vsync
                 ReplyInfo theRi = null;
                 foreach (ReplyInfo ri in RendezVous)
                 {
-                    using (new LockAndElevate(ri.Lock))
+                    using (var tmpLockObj1 = new LockAndElevate(ri.Lock))
                     {
                         if ((VsyncSystem.Debug & VsyncSystem.REPLYWAIT) != 0)
                         {
@@ -32630,7 +32630,7 @@ namespace Vsync
                         Vsync.WriteLine("... a match!");
                     }
 
-                    using (new LockAndElevate(theRi.Lock))
+                    using (var tmpLockObj1 = new LockAndElevate(theRi.Lock))
                     {
                         doGotReply(theRi, rm.dest, rm.sender, rtype, vid, msgid, enciphered, theReply);
                     }
@@ -32735,11 +32735,11 @@ namespace Vsync
 
         internal static void doNoteFailure(Address who)
         {
-            using (new LockAndElevate(RendezVousLock))
+            using (var tmpLockObj = new LockAndElevate(RendezVousLock))
             {
                 foreach (ReplyInfo ri in RendezVous)
                 {
-                    using (new LockAndElevate(ri.Lock))
+                    using (var tmpLockObj1 = new LockAndElevate(ri.Lock))
                     {
                         int i = ri.rdvView.GetRawRankOf(who);
                         if (i != -1 && !ri.gotReply[i])
@@ -32759,7 +32759,7 @@ namespace Vsync
 
         internal static void InterruptReplyWaits(Group g)
         {
-            using (new LockAndElevate(RendezVousLock))
+            using (var tmpLockObj = new LockAndElevate(RendezVousLock))
             {
                 foreach (ReplyInfo ri in RendezVous)
                 {
@@ -32768,7 +32768,7 @@ namespace Vsync
                         continue;
                     }
 
-                    using (new LockAndElevate(ri.Lock))
+                    using (var tmpLockObj1 = new LockAndElevate(ri.Lock))
                     {
                         if ((VsyncSystem.Debug & VsyncSystem.REPLYWAIT) != 0)
                         {
@@ -32791,7 +32791,7 @@ namespace Vsync
         internal static void rdvTimeout(ReplyInfo ri, int action, string origin)
         {
             List<Address> hasFailed = new List<Address>();
-            using (new LockAndElevate(ri.Lock))
+            using (var tmpLockObj = new LockAndElevate(ri.Lock))
             {
                 for (int i = 0; i < ri.rdvView.members.Length && ri.replies_wanted > 0; i++)
                 {
@@ -32849,7 +32849,7 @@ namespace Vsync
                 Vsync.NodeHasFailed(who, where + ": <" + ri.gname + ">:" + ri.rdvVid + ":" + ri.rdvMid + "; delay=" + ri.delay + ")", false);
             }
 
-            using (new LockAndElevate(ri.Lock))
+            using (var tmpLockObj = new LockAndElevate(ri.Lock))
             {
                 for (int i = 0; i < ri.rdvView.members.Length; i++)
                 {
@@ -32925,7 +32925,7 @@ namespace Vsync
 
         internal static void FCStartSend(int num, int denom)
         {
-            using (new LockAndElevate(FCLock))
+            using (var tmpLockObj = new LockAndElevate(FCLock))
             {
                 UpdateMsgCount(num, denom);
             }
@@ -32939,7 +32939,7 @@ namespace Vsync
         internal static void FCEndSend(int num, int denom)
         {
             int toAwaken;
-            using (new LockAndElevate(FCLock))
+            using (var tmpLockObj = new LockAndElevate(FCLock))
             {
                 if (num > 0)
                 {
@@ -32954,7 +32954,7 @@ namespace Vsync
             {
                 if (FCMustBlock(2, 3))
                 {
-                    using (new LockAndElevate(FCLock))
+                    using (var tmpLockObj = new LockAndElevate(FCLock))
                     {
                         Waiting += toAwaken; // No luck for them: we're still above the low-water mark
                     }
@@ -32980,7 +32980,7 @@ namespace Vsync
         {
             ReliableSender.RemoteBacklogWait(dests);
             bool mustBlock = FCMustBlock(1, 1);
-            using (new LockAndElevate(FCLock))
+            using (var tmpLockObj = new LockAndElevate(FCLock))
             {
                 if ((VsyncSystem.Debug & VsyncSystem.FLOWCONTROL) != 0)
                 {
@@ -33019,7 +33019,7 @@ namespace Vsync
             int bl = CountBacklogs();
             if (g != null)
             {
-                using (new LockAndElevate(g.GroupFlagsLock))
+                using (var tmpLockObj = new LockAndElevate(g.GroupFlagsLock))
                 {
                     g.CurrentBacklog = Math.Max(g.CurrentBacklog, bl);
                 }
@@ -33176,7 +33176,7 @@ namespace Vsync
                 FlowControl.FCStartSend(num, denom);
                 if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                 {
-                    using (new LockAndElevate(ackInfoLock))
+                    using (var tmpLockObj = new LockAndElevate(ackInfoLock))
                     {
                         ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: Remember " + dest + "::" + this.MsgVid + ":" + this.MsgId + " -- UID " + uid + Environment.NewLine);
                     }
@@ -33203,7 +33203,7 @@ namespace Vsync
             bool showRecords = (VsyncSystem.Debug & VsyncSystem.PENDINGSENDS) != 0;
             if (!showRecords)
             {
-                using (new LockAndElevate(PendingSendBufferLock))
+                using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
                 {
                     showRecords = P2PPendingSendBuffer.Count + PendingSendBuffer.Count + LgPendingSendBuffer.Count < 15;
                 }
@@ -33214,7 +33214,7 @@ namespace Vsync
                 // This part of the report can be bulky and slow to generate if there are a lot of pending sends; enable the PENDINGSENDS flag only if genuinely needed
                 s = "Pending Send Buffer: " + Environment.NewLine;
                 List<MsgDesc> ps = new List<MsgDesc>(), pls = new List<MsgDesc>();
-                using (new LockAndElevate(PendingSendBufferLock))
+                using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
                 {
                     foreach (MsgDesc md in P2PPendingSendBuffer)
                     {
@@ -33246,7 +33246,7 @@ namespace Vsync
             else
             {
                 int nps;
-                using (new LockAndElevate(PendingSendBufferLock))
+                using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
                 {
                     nps = PendingSendBuffer.Count + P2PPendingSendBuffer.Count + LgPendingSendBuffer.Count;
                 }
@@ -33273,7 +33273,7 @@ namespace Vsync
         {
             if (limitRate)
             {
-                using (new LockAndElevate(RateLimLock))
+                using (var tmpLockObj = new LockAndElevate(RateLimLock))
                 {
                     if (lastSendTime > 0 && Vsync.VSYNC_RATELIM > 0)
                     {
@@ -33306,7 +33306,7 @@ namespace Vsync
         {
             int ms = 0;
             List<P2PSequencer> currentP2PDests = new List<P2PSequencer>();
-            using (new LockAndElevate(P2PSequencer.PSListLock))
+            using (var tmpLockObj = new LockAndElevate(P2PSequencer.PSListLock))
             {
                 if (dests == null)
                 {
@@ -33319,7 +33319,7 @@ namespace Vsync
                         P2PSequencer p2ps;
                         if (P2PSequencer.PSIndex.TryGetValue(dest, out p2ps))
                         {
-                            using (new LockAndElevate(p2ps.Lock))
+                            using (var tmpLockObj1 = new LockAndElevate(p2ps.Lock))
                             {
                                 currentP2PDests.Add(p2ps);
                             }
@@ -33340,12 +33340,12 @@ namespace Vsync
         {
             long now = Vsync.NOW;
             int gap;
-            using (new LockAndElevate(P2PSequencer.PSListLock))
+            using (var tmpLockObj = new LockAndElevate(P2PSequencer.PSListLock))
             {
                 gap = EstimatedRemoteBacklog(p2ps);
             }
 
-            using (new LockAndElevate(PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
             {
                 foreach (MsgDesc md in P2PPendingSendBuffer)
                 {
@@ -33381,12 +33381,12 @@ namespace Vsync
                 return;
             }
 
-            using (new LockAndElevate(P2PSequencer.PSListLock))
+            using (var tmpLockObj = new LockAndElevate(P2PSequencer.PSListLock))
             {
                 P2PSequencer p2ps;
                 if (P2PSequencer.PSIndex.TryGetValue(who, out p2ps))
                 {
-                    using (new LockAndElevate(p2ps.Lock))
+                    using (var tmpLockObj1 = new LockAndElevate(p2ps.Lock))
                     {
                         p2ps.remoteBacklog = remoteBacklog;
                         p2ps.whenReported = Vsync.NOW;
@@ -33450,7 +33450,7 @@ namespace Vsync
 
         internal static int getPendingIPMCCount()
         {
-            using (new LockAndElevate(PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
             {
                 foreach (MsgDesc md in PendingSendBuffer)
                 {
@@ -33468,7 +33468,7 @@ namespace Vsync
         {
             int sum = 0;
             List<int> WorkingVidList = new List<int>();
-            using (new LockAndElevate(PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
             {
                 foreach (MsgDesc md in PendingSendBuffer)
                 {
@@ -33507,7 +33507,7 @@ namespace Vsync
 
         internal static void CleanLgCallbacks(Group g)
         {
-            using (new LockAndElevate(PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
             {
                 foreach (MsgDesc lgmd in LgPendingSendBuffer)
                 {
@@ -33557,7 +33557,7 @@ namespace Vsync
                     return;
                 }
 
-                using (new LockAndElevate(rWaitLock))
+                using (var tmpLockObj = new LockAndElevate(rWaitLock))
                 {
                     if (!shouldWait)
                     {
@@ -33572,7 +33572,7 @@ namespace Vsync
                 }
 
                 ILock.Barrier(ILock.LLWAIT, ILock.LFLOWCNTRLB).BarrierWait();
-                using (new LockAndElevate(rWaitLock))
+                using (var tmpLockObj = new LockAndElevate(rWaitLock))
                 {
                     --rWaiting;
                 }
@@ -33581,7 +33581,7 @@ namespace Vsync
 
         internal static void recheckRwaiting()
         {
-            using (new LockAndElevate(ReliableSender.rWaitLock))
+            using (var tmpLockObj = new LockAndElevate(ReliableSender.rWaitLock))
             {
                 if (rWaiting > 0 && RemoteBacklogCount() < Vsync.VSYNC_MAXRBACKLOG * 7 / 10)
                 {
@@ -33606,7 +33606,7 @@ namespace Vsync
             string rw = string.Empty;
             int worst = -1;
             List<P2PSequencer> currentP2PDests = new List<P2PSequencer>();
-            using (new LockAndElevate(P2PSequencer.PSListLock))
+            using (var tmpLockObj = new LockAndElevate(P2PSequencer.PSListLock))
             {
                 currentP2PDests = P2PSequencer.PSIndex.Values.ToList();
             }
@@ -33657,7 +33657,7 @@ namespace Vsync
         internal static void PendingSendCleanup(Group g, Address[] goodbye)
         {
             List<MsgDesc> cleanup = new List<MsgDesc>();
-            using (new LockAndElevate(PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
             {
                 doPSCleanup(g, goodbye, cleanup, PendingSendBuffer);
                 doPSCleanup(g, goodbye, cleanup, P2PPendingSendBuffer);
@@ -33705,7 +33705,7 @@ namespace Vsync
         internal static void lgPendingSendCleanup(Group g)
         {
             List<MsgDesc> cleanup = new List<MsgDesc>();
-            using (new LockAndElevate(PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
             {
                 LinkedList<MsgDesc> newPSB = new LinkedList<MsgDesc>();
                 foreach (MsgDesc lgmd in LgPendingSendBuffer)
@@ -33731,7 +33731,7 @@ namespace Vsync
 
         internal static void LgAdd(Group g, Msg m, byte type)
         {
-            using (new LockAndElevate(Group.GroupRIPLock))
+            using (var tmpLockObj = new LockAndElevate(Group.GroupRIPLock))
             {
                 if (Group.GroupRIPList.Contains(g.gaddr))
                 {
@@ -33739,7 +33739,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
             {
                 bool copyAll = false;
                 LinkedList<MsgDesc> newLgPendingSendBuffer = new LinkedList<MsgDesc>();
@@ -34216,7 +34216,7 @@ namespace Vsync
                     List<MsgDesc> ToResend, lgToResend, toRemove;
                     int sleep_until = 1000;
                     List<MsgDesc> destDied = new List<MsgDesc>();
-                    using (new LockAndElevate(PendingSendBufferLock))
+                    using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
                     {
                         ToResend = new List<MsgDesc>();
                         long now = Vsync.NOW;
@@ -34241,7 +34241,7 @@ namespace Vsync
                         lgToResend = new List<MsgDesc>();
                         LinkedList<MsgDesc> newLgPSB = new LinkedList<MsgDesc>();
                         toRemove = new List<MsgDesc>();
-                        using (new LockAndElevate(Group.GroupRIPLock))
+                        using (var tmpLockObj1 = new LockAndElevate(Group.GroupRIPLock))
                         {
                             foreach (MsgDesc md in LgPendingSendBuffer)
                             {
@@ -34412,7 +34412,7 @@ namespace Vsync
             LinkedList<MsgDesc> newPSB = new LinkedList<MsgDesc>();
             foreach (MsgDesc md in psb)
             {
-                using (new LockAndElevate(Vsync.RIPLock))
+                using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
                 {
                     if (Vsync.RIPList.Contains(md.dest))
                     {
@@ -34423,7 +34423,7 @@ namespace Vsync
 
                 if (md.group != null && (md.type == Msg.STABILITYINFO || !md.isP2POrGroup))
                 {
-                    using (new LockAndElevate(Group.GroupRIPLock))
+                    using (var tmpLockObj = new LockAndElevate(Group.GroupRIPLock))
                     {
                         if (Group.GroupRIPList.Contains(md.group.gaddr))
                         {
@@ -34505,7 +34505,7 @@ namespace Vsync
                 if (which == RECVBB)
                 {
                     int bs = ReliableSender.my_p2psocket.SendTo(data, remoteEP);
-                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                    using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                     {
                         VsyncSystem.RTS.UDPBsent += bs;
                         VsyncSystem.RTS.UDPsent++;
@@ -34519,7 +34519,7 @@ namespace Vsync
                         ReliableSender.my_acksocket.SendTo(data, remoteEP);
                     }
 
-                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                    using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                     {
                         VsyncSystem.RTS.ACKsent++;
                     }
@@ -34534,7 +34534,7 @@ namespace Vsync
 
         internal static bool Resend(MsgDesc md)
         {
-            using (new LockAndElevate(ResendLock))
+            using (var tmpLockObj = new LockAndElevate(ResendLock))
             {
                 if (Vsync.NOW - md.lastSentAt < 150)
                 {
@@ -34556,13 +34556,13 @@ namespace Vsync
 
                 if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                 {
-                    using (new LockAndElevate(ackInfoLock))
+                    using (var tmpLockObj = new LockAndElevate(ackInfoLock))
                     {
                         ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: Resend to " + target + " for " + md.dest + " UID " + md.UID + Environment.NewLine);
                     }
                 }
 
-                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                 {
                     VsyncSystem.RTS.UDPBsent += bs;
                     VsyncSystem.RTS.UDPsent++;
@@ -34594,7 +34594,7 @@ namespace Vsync
                     bs = ReliableSender.my_p2psocket.SendTo(md.theBytes, remoteEP);
                 }
 
-                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                 {
                     VsyncSystem.RTS.UDPBsent += bs;
                     VsyncSystem.RTS.UDPsent++;
@@ -34646,7 +34646,7 @@ namespace Vsync
                 IPEndPoint remoteEP = new IPEndPoint(dest.home, dest.p2pPort);
                 ReliableSender.CheckLenAndRate(ba);
                 int bs = my_p2psocket.SendTo(ba, remoteEP);
-                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                 {
                     VsyncSystem.RTS.UDPBsent += bs;
                     VsyncSystem.RTS.UDPsent++;
@@ -34663,7 +34663,7 @@ namespace Vsync
             if ((g.flags & Group.G_ISLARGE) != 0)
             {
                 Group.tokenInfo theToken;
-                using (new LockAndElevate(g.TokenLock))
+                using (var tmpLockObj = new LockAndElevate(g.TokenLock))
                 {
                     Group.tokenInfo.newToken(g);
                     theToken = g.theToken;
@@ -34678,7 +34678,7 @@ namespace Vsync
                 theToken.gotAllAt = 0;
                 theToken.logicalClock++;
                 theToken.resetStableByLevel(g);
-                using (new LockAndElevate(PendingSendBufferLock))
+                using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
                 {
                     foreach (MsgDesc md in LgPendingSendBuffer)
                     {
@@ -34774,7 +34774,7 @@ namespace Vsync
                             {
                                 Group.tokenInfo theToken;
                                 g.interesting = false;
-                                using (new LockAndElevate(g.TokenLock))
+                                using (var tmpLockObj = new LockAndElevate(g.TokenLock))
                                 {
                                     theToken = g.theToken;
                                 }
@@ -34783,7 +34783,7 @@ namespace Vsync
                                 {
                                     g.updateSeenInfo();
                                     int nm = g.theView.NextIncomingMsgID[1];
-                                    using (new LockAndElevate(g.ViewLock))
+                                    using (var tmpLockObj = new LockAndElevate(g.ViewLock))
                                     {
                                         if (g.nextMsgid != -1)
                                         {
@@ -34800,8 +34800,8 @@ namespace Vsync
                     foreach (TThreadTuple ttt in tokenList)
                     {
                         Group.tokenInfo theToken;
-                        using (new LockAndElevate(ttt.theGroup.TokenLock))
-                        using (new LockAndElevate(ttt.theGroup.ViewLock))
+                        using (var tmpLockObj = new LockAndElevate(ttt.theGroup.TokenLock))
+                        using (var tmpLockObj1 = new LockAndElevate(ttt.theGroup.ViewLock))
                         {
                             theToken = ttt.theToken;
                             View theView = ttt.theGroup.theView;
@@ -34854,7 +34854,7 @@ namespace Vsync
 
                         for (int slevel = 0; slevel < theToken.next.Length; slevel++)
                         {
-                            using (new LockAndElevate(theToken.tokenInMotionLock))
+                            using (var tmpLockObj = new LockAndElevate(theToken.tokenInMotionLock))
                             {
                                 if (theToken.tokenInMotion[slevel] > 2)
                                 {
@@ -34959,7 +34959,7 @@ namespace Vsync
                                 Vsync.WriteLine("Sending tp.token with callback requested for level " + slevel + " to " + nextInRing + ", value " + theToken);
                             }
 
-                            using (new LockAndElevate(theToken.tokenInMotionLock))
+                            using (var tmpLockObj = new LockAndElevate(theToken.tokenInMotionLock))
                             {
                                 theToken.tokenInMotion[slevel]++;
                             }
@@ -34974,12 +34974,12 @@ namespace Vsync
                                         Vsync.WriteLine("Token-sent callback for group <" + theToken.theGroup.gname + ">, level " + mylevel + " (legal range: 0.." + theToken.tokenInMotion.Length + ")");
                                     }
 
-                                    using (new LockAndElevate(theToken.tokenInMotionLock))
+                                    using (var tmpLockObj = new LockAndElevate(theToken.tokenInMotionLock))
                                     {
                                         theToken.tokenInMotion[mylevel]--;
                                     }
                                 });
-                                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                                using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                                 {
                                     VsyncSystem.RTS.TokensSent++;
                                 }
@@ -35034,7 +35034,7 @@ namespace Vsync
         internal static void gotToken(Msg m)
         {
             Group g;
-            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+            using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
             {
                 VsyncSystem.RTS.TokensRcvd++;
             }
@@ -35064,7 +35064,7 @@ namespace Vsync
             Group.tokenInfo theToken = null;
             if (g != null)
             {
-                using (new LockAndElevate(g.TokenLock))
+                using (var tmpLockObj = new LockAndElevate(g.TokenLock))
                 {
                     theToken = g.theToken;
                 }
@@ -35077,7 +35077,7 @@ namespace Vsync
                     Vsync.WriteLine("gotToken: I'm not in group " + toke.gaddr + "(or it has no token)!");
                 }
 
-                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                 {
                     VsyncSystem.RTS.Discarded++;
                 }
@@ -35096,7 +35096,7 @@ namespace Vsync
         internal static void NodeHasFailed(Address who)
         {
             List<MsgDesc> toRemove = new List<MsgDesc>();
-            using (new LockAndElevate(PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
             {
                 PendingSendBuffer = PSBRemoveFailedDest(who, toRemove, PendingSendBuffer);
                 P2PPendingSendBuffer = PSBRemoveFailedDest(who, toRemove, P2PPendingSendBuffer);
@@ -35146,7 +35146,7 @@ namespace Vsync
 
             g.lastLgAckID = low;
             List<MsgDesc> toRemove = new List<MsgDesc>();
-            using (new LockAndElevate(PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
             {
                 LinkedList<MsgDesc> newLgPendingSendBuffer = new LinkedList<MsgDesc>();
                 foreach (MsgDesc lgmd in LgPendingSendBuffer)
@@ -35210,7 +35210,7 @@ namespace Vsync
 
             if (checkBarrier)
             {
-                using (new LockAndElevate(ReliableSender.rWaitLock))
+                using (var tmpLockObj = new LockAndElevate(ReliableSender.rWaitLock))
                 {
                     int rbc = RemoteBacklogCount();
                     if (rWaiting > 0 && rbc < Vsync.VSYNC_MAXRBACKLOG * 7 / 10)
@@ -35222,7 +35222,7 @@ namespace Vsync
 
             if (md.am != null)
             {
-                using (new LockAndElevate(activeMsgLock))
+                using (var tmpLockObj = new LockAndElevate(activeMsgLock))
                 {
                     md.am.StableCnt++;
                     List<msgWaiter> newList = new List<msgWaiter>();
@@ -35268,7 +35268,7 @@ namespace Vsync
                 return;
             }
 
-            using (new LockAndElevate(g.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(g.ViewLock))
             {
                 if (g.theView.viewid > vid || !g.HasFirstView || (g.theView.members.Length == 1 && g.theView.members[0].isMyAddress()))
                 {
@@ -35308,7 +35308,7 @@ namespace Vsync
                 return;
             }
 
-            using (new LockAndElevate(g.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(g.ViewLock))
             {
                 if (g.theView.viewid > vid)
                 {
@@ -35337,7 +35337,7 @@ namespace Vsync
             Group g = Group.doLookup(gaddr);
             if (g != null && g.HasFirstView)
             {
-                using (new LockAndElevate(g.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(g.ViewLock))
                 {
                     if (g.theView.viewid == vid)
                     {
@@ -35354,7 +35354,7 @@ namespace Vsync
             List<Semaphore> slist = new List<Semaphore>();
             try
             {
-                using (new LockAndElevate(activeMsgLock))
+                using (var tmpLockObj = new LockAndElevate(activeMsgLock))
                 {
                     foreach (activeMsg am in activeMsgs)
                     {
@@ -35464,7 +35464,7 @@ namespace Vsync
 
             internal static string GetState()
             {
-                using (new LockAndElevate(PSListLock))
+                using (var tmpLockObj = new LockAndElevate(PSListLock))
                 {
                     if (PSIndex.Count == 0)
                     {
@@ -35483,12 +35483,12 @@ namespace Vsync
 
             internal static void Failed(Address who)
             {
-                using (new LockAndElevate(PSListLock))
+                using (var tmpLockObj = new LockAndElevate(PSListLock))
                 {
                     P2PSequencer p2ps;
                     if (P2PSequencer.PSIndex.TryGetValue(who, out p2ps))
                     {
-                        using (new LockAndElevate(p2ps.Lock))
+                        using (var tmpLockObj1 = new LockAndElevate(p2ps.Lock))
                         {
                             PSIndex.Remove(p2ps.dest);
                         }
@@ -35503,12 +35503,12 @@ namespace Vsync
                     return;
                 }
 
-                using (new LockAndElevate(PSListLock))
+                using (var tmpLockObj = new LockAndElevate(PSListLock))
                 {
                     P2PSequencer p2ps;
                     if (oldAddr != null && PSIndex != null && PSIndex.TryGetValue(oldAddr, out p2ps))
                     {
-                        using (new LockAndElevate(p2ps.Lock))
+                        using (var tmpLockObj1 = new LockAndElevate(p2ps.Lock))
                         {
                             PSIndex.Remove(oldAddr);
                             if (!PSIndex.ContainsKey(newAddr))
@@ -35537,7 +35537,7 @@ namespace Vsync
                     }
                 }
 
-                using (new LockAndElevate(PendingSendBufferLock))
+                using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
                 {
                     foreach (MsgDesc md in PendingSendBuffer)
                     {
@@ -35567,7 +35567,7 @@ namespace Vsync
 
             internal static int NextP2PSeqn(string why, Address who)
             {
-                using (new LockAndElevate(Vsync.RIPLock))
+                using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
                 {
                     if (Vsync.RIPList.Contains(who))
                     {
@@ -35575,7 +35575,7 @@ namespace Vsync
                     }
                 }
 
-                using (new LockAndElevate(PSListLock))
+                using (var tmpLockObj = new LockAndElevate(PSListLock))
                 {
                     P2PSequencer p2ps;
                     if (!PSIndex.TryGetValue(who, out p2ps))
@@ -35583,7 +35583,7 @@ namespace Vsync
                         PSIndex.Add(who, p2ps = new P2PSequencer(who));
                     }
 
-                    using (new LockAndElevate(p2ps.Lock))
+                    using (var tmpLockObj1 = new LockAndElevate(p2ps.Lock))
                     {
                         if ((VsyncSystem.Debug & (VsyncSystem.MESSAGELAYER | VsyncSystem.P2PLAYER)) != 0)
                         {
@@ -35598,12 +35598,12 @@ namespace Vsync
             internal static void CheckP2PSeqn()
             {
                 List<Address> nhf = new List<Address>();
-                using (new LockAndElevate(PSListLock))
+                using (var tmpLockObj = new LockAndElevate(PSListLock))
                 {
                     foreach (KeyValuePair<Address, P2PSequencer> kvp in PSIndex)
                     {
                         P2PSequencer p2ps = kvp.Value;
-                        using (new LockAndElevate(p2ps.Lock))
+                        using (var tmpLockObj1 = new LockAndElevate(p2ps.Lock))
                         {
                             if (p2ps.outOfOrder.Count > 0 && p2ps.lastCallbackTime > 0 && (Vsync.NOW - p2ps.lastCallbackTime) > Vsync.VSYNC_DEFAULTTIMEOUT * 2 && !HeardFromRecently(kvp.Value.dest))
                             {
@@ -35622,11 +35622,11 @@ namespace Vsync
             internal static int CountP2PSeqn()
             {
                 int cnt = 0;
-                using (new LockAndElevate(PSListLock))
+                using (var tmpLockObj = new LockAndElevate(PSListLock))
                 {
                     foreach (KeyValuePair<Address, P2PSequencer> kvp in PSIndex)
                     {
-                        using (new LockAndElevate(kvp.Value.Lock))
+                        using (var tmpLockObj1 = new LockAndElevate(kvp.Value.Lock))
                         {
                             cnt += kvp.Value.outOfOrder.Count + kvp.Value.callbacksToDo.Count;
                         }
@@ -35644,7 +35644,7 @@ namespace Vsync
 
             internal static void P2PCBWhenReady(Address sender, Msg m, P2PCB cb)
             {
-                using (new LockAndElevate(Vsync.RIPLock))
+                using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
                 {
                     if (Vsync.RIPList.Contains(sender))
                     {
@@ -35653,7 +35653,7 @@ namespace Vsync
                             Vsync.WriteLine("Discarding a message in P2PCBWhenReady: sender " + sender + " is on RIP list");
                         }
 
-                        using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                        using (var tmpLockObj1 = new LockAndElevate(VsyncSystem.RTS.Lock))
                         {
                             VsyncSystem.RTS.Discarded++;
                         }
@@ -35662,7 +35662,7 @@ namespace Vsync
                     }
                 }
 
-                using (new LockAndElevate(P2PCBLock))
+                using (var tmpLockObj = new LockAndElevate(P2PCBLock))
                 {
                     if ((VsyncSystem.Debug & (VsyncSystem.MESSAGELAYER | VsyncSystem.P2PLAYER)) != 0)
                     {
@@ -35670,7 +35670,7 @@ namespace Vsync
                     }
 
                     P2PSequencer p2ps;
-                    using (new LockAndElevate(PSListLock))
+                    using (var tmpLockObj1 = new LockAndElevate(PSListLock))
                     {
                         if (!P2PSequencer.PSIndex.TryGetValue(sender, out p2ps))
                         {
@@ -35678,7 +35678,7 @@ namespace Vsync
                         }
                     }
 
-                    using (new LockAndElevate(p2ps.Lock))
+                    using (var tmpLockObj1 = new LockAndElevate(p2ps.Lock))
                     {
                         if (m.msgid < p2ps.inSeqn)
                         {
@@ -35687,7 +35687,7 @@ namespace Vsync
                                 Vsync.WriteLine("CBWhenReady ignoring this message: p2ps.inSeqn was " + p2ps.inSeqn + Environment.NewLine + " --" + m);
                             }
 
-                            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                            using (var tmpLockObj2 = new LockAndElevate(VsyncSystem.RTS.Lock))
                             {
                                 VsyncSystem.RTS.Discarded++;
                             }
@@ -35702,7 +35702,7 @@ namespace Vsync
                                 Vsync.WriteLine("CBWhenReady ignoring this message: p2ps.inSeqn already lists it" + Environment.NewLine + " --" + m);
                             }
 
-                            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                            using (var tmpLockObj2 = new LockAndElevate(VsyncSystem.RTS.Lock))
                             {
                                 VsyncSystem.RTS.Discarded++;
                             }
@@ -35775,7 +35775,7 @@ namespace Vsync
                     while (true)
                     {
                         List<KeyValuePair<int, P2PCBList>> cblist;
-                        using (new LockAndElevate(p2ps.Lock))
+                        using (var tmpLockObj1 = new LockAndElevate(p2ps.Lock))
                         {
                             cblist = p2ps.callbacksToDo;
                             if (cblist.Count == 0)
@@ -35793,7 +35793,7 @@ namespace Vsync
                                 Vsync.WriteLine("CBWhenReady calling " + kvp.Value.theCB.Method.Name + " (p2p sequencer for sender " + sender + "): msgid " + kvp.Value.theMsg.vid + ":" + kvp.Value.theMsg.msgid + ", p2ps.inseqn " + p2ps.inSeqn);
                             }
 
-                            using (new LockAndElevate(p2ps.Lock))
+                            using (var tmpLockObj1= new LockAndElevate(p2ps.Lock))
                             {
                                 p2ps.lastCallbackTime = Vsync.NOW;
                             }
@@ -35801,7 +35801,7 @@ namespace Vsync
                             kvp.Value.theCB(kvp.Value.theMsg);
                         }
 
-                        using (new LockAndElevate(p2ps.Lock))
+                        using (var tmpLockObj1 = new LockAndElevate(p2ps.Lock))
                         {
                             if (p2ps.outOfOrder.Count == 0)
                             {
@@ -35819,7 +35819,7 @@ namespace Vsync
                     Vsync.WriteLine("remoteFailed called for " + who);
                 }
 
-                using (new LockAndElevate(PSListLock))
+                using (var tmpLockObj = new LockAndElevate(PSListLock))
                 {
                     PSIndex.Remove(who);
                 }
@@ -35959,7 +35959,7 @@ namespace Vsync
 
             if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
             {
-                using (new LockAndElevate(ackInfoLock))
+                using (var tmpLockObj = new LockAndElevate(ackInfoLock))
                 {
                     ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: doSend p2p=" + p2p + ", g=" + (g == null ? "null" : g.gname) + ", " + dest + "::" + vid + ":" + MsgID + Environment.NewLine);
                 }
@@ -35979,7 +35979,7 @@ namespace Vsync
             if (g != null)
             {
                 Group.tokenInfo theToken;
-                using (new LockAndElevate(g.TokenLock))
+                using (var tmpLockObj = new LockAndElevate(g.TokenLock))
                 {
                     theToken = g.theToken;
                 }
@@ -36009,7 +36009,7 @@ namespace Vsync
 
                 if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                 {
-                    using (new LockAndElevate(ackInfoLock))
+                    using (var tmpLockObj = new LockAndElevate(ackInfoLock))
                     {
                         ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: doSend loopback case" + Environment.NewLine);
                     }
@@ -36065,7 +36065,7 @@ namespace Vsync
                 return true;
             }
 
-            using (new LockAndElevate(g.GroupFlagsLock))
+            using (var tmpLockObj = new LockAndElevate(g.GroupFlagsLock))
             {
                 if ((g.flags & Group.G_SENDINGSTABILITY) != 0 || (Vsync.NOW - g.SentStableAt) < 100)
                 {
@@ -36079,13 +36079,13 @@ namespace Vsync
             if ((g.GroupOpen || !g.WasOpen) && s != null)
             {
                 View v;
-                using (new LockAndElevate(g.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(g.ViewLock))
                 {
                     v = g.theView;
                 }
 
                 byte[] mba = Msg.NewMsgAsBArray(Vsync.my_address, g.gaddr, 0, -1, 0L, 0, 0, 0, new byte[0]);
-                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                 {
                     VsyncSystem.RTS.StabilitySent++;
                 }
@@ -36105,7 +36105,7 @@ namespace Vsync
                     }
                 }
 
-                using (new LockAndElevate(g.GroupFlagsLock))
+                using (var tmpLockObj = new LockAndElevate(g.GroupFlagsLock))
                 {
                     g.flags &= ~Group.G_SENDINGSTABILITY;
                     g.CurrentBacklog = 0;
@@ -36161,7 +36161,7 @@ namespace Vsync
                 if (g.HasFirstView)
                 {
                     // Reliable FIFO multicast carries stability to all members...
-                    using (new LockAndElevate(g.ViewLock))
+                    using (var tmpLockObj = new LockAndElevate(g.ViewLock))
                     {
                         if (g.theView.viewid == vid || type == Msg.STABILITYINFO)
                         {
@@ -36184,14 +36184,14 @@ namespace Vsync
 
             int myCounter;
 
-            using (new LockAndElevate(PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
             {
                 myCounter = ++Counter;
             }
 
             if (g != null)
             {
-                using (new LockAndElevate(g.SIFListLock))
+                using (var tmpLockObj = new LockAndElevate(g.SIFListLock))
                 {
                     if (g.SIFList != null)
                     {
@@ -36216,7 +36216,7 @@ namespace Vsync
 
                 if (g != null)
                 {
-                    using (new LockAndElevate(g.SIFListLock))
+                    using (var tmpLockObj = new LockAndElevate(g.SIFListLock))
                     {
                         if (g.SIFList != null)
                         {
@@ -36232,7 +36232,7 @@ namespace Vsync
                 if (g != null)
                 {
                     List<object[]> toSend;
-                    using (new LockAndElevate(g.SIFListLock))
+                    using (var tmpLockObj = new LockAndElevate(g.SIFListLock))
                     {
                         g.SIFList.Add(new[] { p2p, os, dest, g, type, code, originalBuffer, vid, MsgID, localSender, dcb, isGroupAddress, sType, gaddr, minStable, myCounter });
                         toSend = g.SIFList;
@@ -36280,7 +36280,7 @@ namespace Vsync
             byte[] buffer = Msg.toBArray(type, code, myCounter, Vsync.my_address, dest, gaddr, minStable, mbl, originalBuffer);
             if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
             {
-                using (new LockAndElevate(ackInfoLock))
+                using (var tmpLockObj = new LockAndElevate(ackInfoLock))
                 {
                     ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: socketSend " + ((vid != 0 || MsgID != -1) ? " calling " : " skipping ") + " remember for " + dest + "::" + vid + ":" + MsgID + Environment.NewLine);
                 }
@@ -36331,7 +36331,7 @@ namespace Vsync
 
                             if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                             {
-                                using (new LockAndElevate(ackInfoLock))
+                                using (var tmpLockObj = new LockAndElevate(ackInfoLock))
                                 {
                                     ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: Primary Send to " + remoteEP + " for " + dest + Environment.NewLine);
                                 }
@@ -36339,7 +36339,7 @@ namespace Vsync
 
                             if (os != my_acksocket)
                             {
-                                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                                using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                                 {
                                     VsyncSystem.RTS.UDPBsent += bs;
                                     VsyncSystem.RTS.UDPsent++;
@@ -36391,7 +36391,7 @@ namespace Vsync
 
                         if (os != my_acksocket)
                         {
-                            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                            using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                             {
                                 VsyncSystem.RTS.UDPBsent += bs;
                                 VsyncSystem.RTS.UDPsent++;
@@ -36451,7 +36451,7 @@ namespace Vsync
                             }
                         }
 
-                        using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                        using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                         {
                             VsyncSystem.RTS.UDPBsent += bs;
                             VsyncSystem.RTS.UDPsent++;
@@ -36478,7 +36478,7 @@ namespace Vsync
         internal static void Multicast(Group g, byte[] buffer)
         {
             View theView;
-            using (new LockAndElevate(g.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(g.ViewLock))
             {
                 theView = g.theView;
             }
@@ -36506,7 +36506,7 @@ namespace Vsync
                         bs = my_p2psocket.SendTo(buffer, remoteEP);
                     }
 
-                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                    using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                     {
                         VsyncSystem.RTS.UDPBsent += bs;
                         VsyncSystem.RTS.UDPsent++;
@@ -36535,7 +36535,7 @@ namespace Vsync
             }
 
             int cnt = 0;
-            using (new LockAndElevate(Group.GroupRIPLock))
+            using (var tmpLockObj = new LockAndElevate(Group.GroupRIPLock))
             {
                 if ((!p2p && g != null && Group.GroupRIPList.Contains(g.gaddr)) || (isGroupAddress && Group.GroupRIPList.Contains(dest)))
                 {
@@ -36565,17 +36565,17 @@ namespace Vsync
 
             if (p2p)
             {
-                using (new LockAndElevate(PendingSendBufferLock))
+                using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
                 {
                     if (dest != null && !isGroupAddress)
                     {
-                        using (new LockAndElevate(Vsync.RIPLock))
+                        using (var tmpLockObj1 = new LockAndElevate(Vsync.RIPLock))
                         {
                             if (!Vsync.RIPList.Contains(dest))
                             {
                                 if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                                 {
-                                    using (new LockAndElevate(ackInfoLock))
+                                    using (var tmpLockObj2 = new LockAndElevate(ackInfoLock))
                                     {
                                         ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: Remember appending to P2PPendingSendBuffer " + dest + "::" + vid + ":" + MsgID + Environment.NewLine);
                                     }
@@ -36615,7 +36615,7 @@ namespace Vsync
 
                 if (am != null)
                 {
-                    using (new LockAndElevate(activeMsgLock))
+                    using (var tmpLockObj = new LockAndElevate(activeMsgLock))
                     {
                         activeMsgs.Add(am);
                     }
@@ -36623,7 +36623,7 @@ namespace Vsync
 
                 if (!dest.isNull())
                 {
-                    using (new LockAndElevate(P2PSequencer.PSListLock))
+                    using (var tmpLockObj = new LockAndElevate(P2PSequencer.PSListLock))
                     {
                         P2PSequencer p2ps;
                         if (P2PSequencer.PSIndex.TryGetValue(dest, out p2ps))
@@ -36654,7 +36654,7 @@ namespace Vsync
             View v = g.theView;
             if ((g.flags & Group.G_ISLARGE) != 0)
             {
-                using (new LockAndElevate(Group.GroupRIPLock))
+                using (var tmpLockObj = new LockAndElevate(Group.GroupRIPLock))
                 {
                     if (Group.GroupRIPList.Contains(g.gaddr))
                     {
@@ -36669,7 +36669,7 @@ namespace Vsync
                         Vsync.WriteLine("Add to LgPending Send Buffer: msgid=" + MsgID);
                     }
 
-                    using (new LockAndElevate(PendingSendBufferLock))
+                    using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
                     {
                         if (g.GroupOpen || !g.WasOpen)
                         {
@@ -36704,7 +36704,7 @@ namespace Vsync
             }
 
             Address[] dests = v.members;
-            using (new LockAndElevate(PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
             {
                 LinkedListNode<MsgDesc> mdnode = PendingSendBuffer.Last;
                 while (mdnode != null && mdnode.Value.UID > UID)
@@ -36712,7 +36712,7 @@ namespace Vsync
                     mdnode = mdnode.Previous;
                 }
 
-                using (new LockAndElevate(Vsync.RIPLock))
+                using (var tmpLockObj1 = new LockAndElevate(Vsync.RIPLock))
                 {
                     for (int i = 0; i < dests.Length; i++)
                     {
@@ -36753,7 +36753,7 @@ namespace Vsync
 
             if (am != null)
             {
-                using (new LockAndElevate(activeMsgLock))
+                using (var tmpLockObj = new LockAndElevate(activeMsgLock))
                 {
                     activeMsgs.Add(am);
                 }
@@ -36870,7 +36870,7 @@ namespace Vsync
             while (!Msg.VerifySignature(buffer, 0, len));
             VsyncSystem.RTS.ThreadCntrs[31]++;
 
-            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+            using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
             {
                 VsyncSystem.RTS.UDPrcvd++;
                 VsyncSystem.RTS.UDPBrcvd += len;
@@ -36889,7 +36889,7 @@ namespace Vsync
 
             if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
             {
-                using (new LockAndElevate(ackInfoLock))
+                using (var tmpLockObj = new LockAndElevate(ackInfoLock))
                 {
                     IPEndPoint remoteEP = new IPEndPoint(Vsync.my_address.home, Vsync.my_address.p2pPort);
                     ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: Receive(" + (((Socket)os == my_p2psocket) ? "p2p-socket" : "group-socket") + "): my IP " + remoteEP + " my addr " + Vsync.my_address + Environment.NewLine);
@@ -36940,7 +36940,7 @@ namespace Vsync
             Vsync.receiveThread = Thread.CurrentThread;
             if (g == null)
             {
-                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                 {
                     VsyncSystem.RTS.rcvProcessingBeganAt = 0;
                 }
@@ -36966,7 +36966,7 @@ namespace Vsync
             {
                 if (g == null)
                 {
-                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                    using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                     {
                         VsyncSystem.RTS.rcvProcessingBeganAt = 0;
                     }
@@ -36978,7 +36978,7 @@ namespace Vsync
 
             if (g == null)
             {
-                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                 {
                     if (VsyncSystem.RTS.rcvProcessingBeganAt != 0)
                     {
@@ -36999,7 +36999,7 @@ namespace Vsync
                     ReliableSender.noteRemoteBacklog(sender, remoteBacklog);
                     if (sender == null || dest == null || gaddr == null || buf == null || (g != null && !g.GroupOpen && g.WasOpen))
                     {
-                        using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                        using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                         {
                             VsyncSystem.RTS.Discarded++;
                             if (g == null)
@@ -37025,7 +37025,7 @@ namespace Vsync
                     }
 
                     bool fnd = false;
-                    using (new LockAndElevate(Vsync.RIPLock))
+                    using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
                     {
                         if (Vsync.RIPList != null && Vsync.RIPList.Contains(sender))
                         {
@@ -37054,7 +37054,7 @@ namespace Vsync
                         }
                         else
                         {
-                            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                            using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                             {
                                 VsyncSystem.RTS.Discarded++;
                                 if (g == null)
@@ -37095,7 +37095,7 @@ namespace Vsync
                             // Ack unless it was discarded
                             if (g == null)
                             {
-                                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                                using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                                 {
                                     VsyncSystem.RTS.rcvProcessingBeganAt = 0;
                                 }
@@ -37109,7 +37109,7 @@ namespace Vsync
                             {
                                 if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                                 {
-                                    using (new LockAndElevate(ackInfoLock))
+                                    using (var tmpLockObj = new LockAndElevate(ackInfoLock))
                                     {
                                         ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: Send Ack " + sender + "::" + m.vid + ":" + m.msgid + " -- UID " + UID + ", type=" + type + Environment.NewLine);
                                     }
@@ -37123,7 +37123,7 @@ namespace Vsync
                     {
                         if (g == null)
                         {
-                            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                            using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                             {
                                 VsyncSystem.RTS.rcvProcessingBeganAt = 0;
                             }
@@ -37142,7 +37142,7 @@ namespace Vsync
                 }));
                 if (g == null)
                 {
-                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                    using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                     {
                         VsyncSystem.RTS.rcvProcessingBeganAt = 0;
                     }
@@ -37160,7 +37160,7 @@ namespace Vsync
                     Vsync.WriteLine("Instantly discarding an incoming multicast: misformatted");
                 }
 
-                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                 {
                     VsyncSystem.RTS.Discarded++;
                     VsyncSystem.RTS.rcvProcessingBeganAt = 0;
@@ -37205,7 +37205,7 @@ namespace Vsync
                 Vsync.WriteLine("LoopBack: type=" + type + ", gaddr=" + gaddr + ", " + sender + "::" + m.vid + ":" + m.msgid + ", minStable=" + minStable + Environment.NewLine + "  " + m);
             }
 
-            using (new LockAndElevate(lbBufferLock))
+            using (var tmpLockObj = new LockAndElevate(lbBufferLock))
             {
                 if (lbThread == null)
                 {
@@ -37274,7 +37274,7 @@ namespace Vsync
 
         internal static void ReplaySavedWorkers()
         {
-            using (new LockAndElevate(workersLock))
+            using (var tmpLockObj = new LockAndElevate(workersLock))
             {
                 foreach (Address worker in savedWorkers)
                 {
@@ -37322,7 +37322,7 @@ namespace Vsync
                     {
                         P2PSequencer.P2PCBWhenReady(m.sender, m, null);
                         bool stashIt = false;
-                        using (new LockAndElevate(Group.GroupRIPLock))
+                        using (var tmpLockObj = new LockAndElevate(Group.GroupRIPLock))
                         {
                             if (!Group.GroupRIPList.Contains(gaddr))
                             {
@@ -37374,7 +37374,7 @@ namespace Vsync
                             Vsync.WriteLine("Discarding a looped-back message: this member no longer belongs to the group");
                         }
 
-                        using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                        using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                         {
                             VsyncSystem.RTS.Discarded++;
                         }
@@ -37383,7 +37383,7 @@ namespace Vsync
                     break;
 
                 case Msg.STABILITYINFO:
-                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                    using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                     {
                         VsyncSystem.RTS.StabilityRcvd++;
                     }
@@ -37399,7 +37399,7 @@ namespace Vsync
                             Vsync.WriteLine("Discarding an incoming STABILITYINFO message: I'm not a member of group " + gaddr);
                         }
 
-                        using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                        using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                         {
                             VsyncSystem.RTS.Discarded++;
                         }
@@ -37414,7 +37414,7 @@ namespace Vsync
                 case Msg.UNORDERED:
                     if (!VsyncSystem.VsyncRestarting)
                     {
-                        using (new LockAndElevate(Group.GroupRIPLock))
+                        using (var tmpLockObj = new LockAndElevate(Group.GroupRIPLock))
                         {
                             if (Group.GroupRIPList.Contains(gaddr))
                             {
@@ -37454,7 +37454,7 @@ namespace Vsync
                         Vsync.WriteLine("Discarding an incoming CAST: I'm not a member of group " + gaddr + ", message was " + m);
                     }
 
-                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                    using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                     {
                         VsyncSystem.RTS.Discarded++;
                     }
@@ -37466,7 +37466,7 @@ namespace Vsync
                     if (!Vsync.WORKER_MODE)
                     {
                         ReliableSender.SendP2P(Msg.YOURMASTERIS, m.sender, null, new byte[0], true);
-                        using (new LockAndElevate(workersLock))
+                        using (var tmpLockObj = new LockAndElevate(workersLock))
                         {
                             if (VsyncSystem.MasterCallBack == null)
                             {
@@ -37528,7 +37528,7 @@ namespace Vsync
                     continue;
                 }
 
-                using (new LockAndElevate(gr.UnstableLock))
+                using (var tmpLockObj = new LockAndElevate(gr.UnstableLock))
                 {
                     if (gr.Unstable.Count > 0 && Math.Abs(gr.Unstable.First().UID - AckID) > 32)
                     {
@@ -37562,7 +37562,7 @@ namespace Vsync
                     ids += uid + " ";
                 }
 
-                using (new LockAndElevate(ackInfoLock))
+                using (var tmpLockObj = new LockAndElevate(ackInfoLock))
                 {
                     ackInfo.Add("Sending ack: to " + dest + " ids = {" + ids + "}");
                 }
@@ -37610,7 +37610,7 @@ namespace Vsync
                 my_acksocket.SendTo(b, remoteEP);
             }
 
-            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+            using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
             {
                 VsyncSystem.RTS.ACKsent++;
             }
@@ -37671,7 +37671,7 @@ namespace Vsync
                 return;
             }
 
-            using (new LockAndElevate(Vsync.RIPLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
             {
                 if (Vsync.RIPList.Contains(SendTo))
                 {
@@ -37679,7 +37679,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(SentNacksLock))
+            using (var tmpLockObj = new LockAndElevate(SentNacksLock))
             {
                 foreach (SentNack sn in SentNacksTo)
                 {
@@ -37699,14 +37699,14 @@ namespace Vsync
 
             if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
             {
-                using (new LockAndElevate(ackInfoLock))
+                using (var tmpLockObj = new LockAndElevate(ackInfoLock))
                 {
                     ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: Send NACK to " + SendTo + " nacking " + Vsync.my_address + "::" + MsgVid + ":" + MsgMsgid + Environment.NewLine);
                 }
             }
 
             byte[] b = Msg.toBArray(Vsync.VSYNC_HDR, Vsync.my_address, g.gaddr, MsgSender, MsgVid, MsgMsgid);
-            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+            using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
             {
                 VsyncSystem.RTS.NACKsent++;
             }
@@ -37716,7 +37716,7 @@ namespace Vsync
 
         internal static void SendP2PNack(Address sender, int p2pseqn)
         {
-            using (new LockAndElevate(Vsync.RIPLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.RIPLock))
             {
                 if (Vsync.RIPList.Contains(sender))
                 {
@@ -37724,7 +37724,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(SentNacksLock))
+            using (var tmpLockObj = new LockAndElevate(SentNacksLock))
             {
                 foreach (SentP2PNack sn in SentP2PNacksTo)
                 {
@@ -37744,7 +37744,7 @@ namespace Vsync
 
             if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
             {
-                using (new LockAndElevate(ackInfoLock))
+                using (var tmpLockObj = new LockAndElevate(ackInfoLock))
                 {
                     ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: Send P2PNACK to " + sender + " nacking " + p2pseqn + Environment.NewLine);
                 }
@@ -37756,7 +37756,7 @@ namespace Vsync
 
         internal static void CleanSentNack()
         {
-            using (new LockAndElevate(SentNacksLock))
+            using (var tmpLockObj = new LockAndElevate(SentNacksLock))
             {
                 List<SentNack> newSNList = new List<SentNack>();
                 foreach (SentNack sn in SentNacksTo)
@@ -37795,7 +37795,7 @@ namespace Vsync
 
             byte[] b = Msg.toBArray(Vsync.VSYNC_HDR, Vsync.NULLADDRESS, -1, why);
             P2PSend(dest, dest.ackPort, b, ACKBB);
-            using (new LockAndElevate(HeardFromLock))
+            using (var tmpLockObj = new LockAndElevate(HeardFromLock))
             {
                 if (HeardFrom.ContainsKey(dest))
                 {
@@ -37847,7 +37847,7 @@ namespace Vsync
 
         internal static void AckNoteFailure(Address who)
         {
-            using (new LockAndElevate(ackHashLock))
+            using (var tmpLockObj = new LockAndElevate(ackHashLock))
             {
                 if (ackHash.ContainsKey(who))
                 {
@@ -37867,7 +37867,7 @@ namespace Vsync
             Socket s = (Socket)os;
             if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
             {
-                using (new LockAndElevate(ackInfoLock))
+                using (var tmpLockObj = new LockAndElevate(ackInfoLock))
                 {
                     ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: {Creating ack thread at time " + Vsync.MsToSecs(Vsync.NOW) + "}" + Environment.NewLine);
                 }
@@ -37880,7 +37880,7 @@ namespace Vsync
                 {
                     if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                     {
-                        using (new LockAndElevate(ackInfoLock))
+                        using (var tmpLockObj = new LockAndElevate(ackInfoLock))
                         {
                             ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: {Ack thread running at time " + Vsync.MsToSecs(Vsync.NOW) + "}" + Environment.NewLine);
                         }
@@ -37895,7 +37895,7 @@ namespace Vsync
                             List<AckInfoItem> p2pNackList = new List<AckInfoItem>();
                             List<NackInfoItem> nackList = new List<NackInfoItem>();
                             int cnt;
-                            using (new LockAndElevate(AckBB.Lock))
+                            using (var tmpLockObj = new LockAndElevate(AckBB.Lock))
                             {
                                 cnt = Math.Min(Math.Max(1, AckBB.fullSlots), 256);
                             }
@@ -37939,7 +37939,7 @@ namespace Vsync
                                             Vsync.WriteLine("Ignoring a malformed POISON message");
                                         }
 
-                                        using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                                        using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                                         {
                                             VsyncSystem.RTS.Discarded++;
                                         }
@@ -37971,7 +37971,7 @@ namespace Vsync
                                     }
 
                                     SlidingBitBucket sbb;
-                                    using (new LockAndElevate(ackHashLock))
+                                    using (var tmpLockObj = new LockAndElevate(ackHashLock))
                                     {
                                         if (!ackHash.TryGetValue(sender, out sbb))
                                         {
@@ -38007,13 +38007,13 @@ namespace Vsync
                                             }
                                         }
 
-                                        using (new LockAndElevate(ackInfoLock))
+                                        using (var tmpLockObj = new LockAndElevate(ackInfoLock))
                                         {
                                             ackInfo.Add("Ack from " + sender + " ids = {" + ids + "}");
                                         }
 
                                         ids = " ";
-                                        using (new LockAndElevate(PendingSendBufferLock))
+                                        using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
                                         {
                                             foreach (MsgDesc md in P2PPendingSendBuffer)
                                             {
@@ -38032,13 +38032,13 @@ namespace Vsync
                                             }
                                         }
 
-                                        using (new LockAndElevate(ackInfoLock))
+                                        using (var tmpLockObj = new LockAndElevate(ackInfoLock))
                                         {
                                             ackInfo.Add("... need: " + sender + " ids = {" + ids + "}");
                                         }
                                     }
 
-                                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                                    using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                                     {
                                         ++VsyncSystem.RTS.ACKrcvd;
                                     }
@@ -38071,7 +38071,7 @@ namespace Vsync
                                         nackList.Add(new NackInfoItem(from, gaddr, msgsender, viewid, msgid));
                                     }
 
-                                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                                    using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                                     {
                                         ++VsyncSystem.RTS.NACKrcvd;
                                     }
@@ -38108,7 +38108,7 @@ namespace Vsync
                                         p2pNackList.Add(new AckInfoItem(requestedBy, p2pseqn));
                                     }
 
-                                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                                    using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                                     {
                                         ++VsyncSystem.RTS.ACKrcvd;
                                     }
@@ -38126,7 +38126,7 @@ namespace Vsync
                                         Vsync.WriteLine("WARNING: Discarding an ack/nack because its type signature didn't match any known signature!  TS={" + tsig + "}");
                                     }
 
-                                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                                    using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                                     {
                                         VsyncSystem.RTS.Discarded++;
                                     }
@@ -38135,10 +38135,10 @@ namespace Vsync
 
                             if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                             {
-                                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                                using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                                 {
                                     string acks = " ";
-                                    using (new LockAndElevate(ackHashLock))
+                                    using (var tmpLockObj1 = new LockAndElevate(ackHashLock))
                                     {
                                         foreach (KeyValuePair<Address, SlidingBitBucket> kvp in ackHash)
                                         {
@@ -38152,21 +38152,21 @@ namespace Vsync
                                         }
                                     }
 
-                                    using (new LockAndElevate(ackInfoLock))
+                                    using (var tmpLockObj1 = new LockAndElevate(ackInfoLock))
                                     {
                                         ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: Got acks for " + acks + Environment.NewLine);
                                     }
                                 }
                             }
 
-                            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                            using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                             {
                                 VsyncSystem.RTS.ackProcessingBeganAt = Vsync.NOW;
                             }
 
                             // Acks are common, so process as a list.  Nacks and P2P nacks are rare and often an Ack renders the action unneeded by the time we see the Nack
                             Dictionary<Address, SlidingBitBucket> oldackHash;
-                            using (new LockAndElevate(ackHashLock))
+                            using (var tmpLockObj = new LockAndElevate(ackHashLock))
                             {
                                 oldackHash = ackHash;
                                 ackHash = new Dictionary<Address, SlidingBitBucket>(5000);
@@ -38183,7 +38183,7 @@ namespace Vsync
                                 GotNack(nacki.from, nacki.gaddr, nacki.msgsender, nacki.viewid, nacki.msgid);
                             }
 
-                            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                            using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                             {
                                 VsyncSystem.RTS.ackProcessingBeganAt = 0;
                             }
@@ -38266,12 +38266,12 @@ namespace Vsync
                     if (rlen > 4)
                     {
                         Vsync.ArrayResize(ref b, rlen);
-                        using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                        using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                         {
                             VsyncSystem.RTS.ackedAt = Vsync.NOW;
                             if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                             {
-                                using (new LockAndElevate(ackInfoLock))
+                                using (var tmpLockObj1 = new LockAndElevate(ackInfoLock))
                                 {
                                     ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: Receive(ack-socket)" + Environment.NewLine);
                                 }
@@ -38280,7 +38280,7 @@ namespace Vsync
 
                         AckBB.put(b, true);
                         VsyncSystem.RTS.check();
-                        using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                        using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                         {
                             VsyncSystem.RTS.ackedAt = 0;
                         }
@@ -38324,7 +38324,7 @@ namespace Vsync
                 Vsync.WriteLine("WARNING: discarding an ack/nack because it didn't have the correct Vsync header");
             }
 
-            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+            using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
             {
                 VsyncSystem.RTS.Discarded++;
             }
@@ -38339,7 +38339,7 @@ namespace Vsync
         internal static string HeardFromState()
         {
             string s = "Heard from recently: {";
-            using (new LockAndElevate(HeardFromLock))
+            using (var tmpLockObj = new LockAndElevate(HeardFromLock))
             {
                 foreach (KeyValuePair<Address, long> kvp in HeardFrom)
                 {
@@ -38361,7 +38361,7 @@ namespace Vsync
                 return true;
             }
 
-            using (new LockAndElevate(HeardFromLock))
+            using (var tmpLockObj = new LockAndElevate(HeardFromLock))
             {
                 HeardFrom.TryGetValue(who, out when);
             }
@@ -38371,7 +38371,7 @@ namespace Vsync
 
         internal static void justHeardFrom(Address who)
         {
-            using (new LockAndElevate(HeardFromLock))
+            using (var tmpLockObj = new LockAndElevate(HeardFromLock))
             {
                 if (HeardFrom.ContainsKey(who))
                 {
@@ -38385,7 +38385,7 @@ namespace Vsync
         internal static void nodeInStartup(Address who)
         {
             // Special case: give 20 seconds of grace, because C# class loader can lock out I/O during the startup period
-            using (new LockAndElevate(HeardFromLock))
+            using (var tmpLockObj = new LockAndElevate(HeardFromLock))
             {
                 HeardFrom[who] = Vsync.NOW + Vsync.GRACEPERIOD;
             }
@@ -38530,7 +38530,7 @@ namespace Vsync
 
         internal static void GotAnAck(Address sender, int AckID)
         {
-            using (new LockAndElevate(SingletonLock))
+            using (var tmpLockObj = new LockAndElevate(SingletonLock))
             {
                 sbb.singleSet(AckID);
                 singleton.Add(sender, sbb);
@@ -38542,7 +38542,7 @@ namespace Vsync
         internal static void GotAnAck(Dictionary<Address, SlidingBitBucket> alist)
         {
             List<MsgDesc> toRemove = new List<MsgDesc>();
-            using (new LockAndElevate(PendingSendBufferLock))
+            using (var tmpLockObj = new LockAndElevate(PendingSendBufferLock))
             {
                 PendingSendBuffer = PSBApplyAck(alist, toRemove, PendingSendBuffer);
                 P2PPendingSendBuffer = PSBApplyAck(alist, toRemove, P2PPendingSendBuffer);
@@ -38606,7 +38606,7 @@ namespace Vsync
         internal static void GotNack(Address from, Address gaddr, Address MsgSender, int MsgVid, int MsgMsgid)
         {
             bool launchThread = false;
-            using (new LockAndElevate(toResendLock))
+            using (var tmpLockObj = new LockAndElevate(toResendLock))
             {
                 if (!resenderRunning)
                 {
@@ -38633,7 +38633,7 @@ namespace Vsync
                             ILock.NoteThreadState("toResendSema.WaitOne()");
                             toResendSema.WaitOne();
                             ILock.NoteThreadState(null);
-                            using (new LockAndElevate(toResendLock))
+                            using (var tmpLockObj = new LockAndElevate(toResendLock))
                             {
                                 if (toResend.Count == 0)
                                 {
@@ -38673,7 +38673,7 @@ namespace Vsync
                                         bs = my_p2psocket.SendTo(md.theBytes, target);
                                     }
 
-                                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                                    using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                                     {
                                         VsyncSystem.RTS.UDPBsent += bs;
                                         VsyncSystem.RTS.UDPsent++;
@@ -38708,7 +38708,7 @@ namespace Vsync
                 ackNackResenderThread.Start();
             }
 
-            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+            using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
             {
                 VsyncSystem.RTS.NACKrcvd++;
             }
@@ -38719,7 +38719,7 @@ namespace Vsync
                 return;
             }
 
-            using (new LockAndElevate(AckLock))
+            using (var tmpLockObj = new LockAndElevate(AckLock))
             {
                 if ((VsyncSystem.Debug & VsyncSystem.NACKS) != 0)
                 {
@@ -38728,7 +38728,7 @@ namespace Vsync
 
                 if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                 {
-                    using (new LockAndElevate(ackInfoLock))
+                    using (var tmpLockObj1 = new LockAndElevate(ackInfoLock))
                     {
                         ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: Got nack from " + from + " requesting " + MsgSender + "::" + MsgVid + ":" + MsgMsgid + Environment.NewLine);
                     }
@@ -38739,7 +38739,7 @@ namespace Vsync
                     MsgDesc mdfnd = null;
                     if (MsgSender.isMyAddress())
                     {
-                        using (new LockAndElevate(ReliableSender.PendingSendBufferLock))
+                        using (var tmpLockObj1 = new LockAndElevate(ReliableSender.PendingSendBufferLock))
                         {
                             foreach (MsgDesc md in P2PPendingSendBuffer)
                             {
@@ -38765,7 +38765,7 @@ namespace Vsync
 
                         if (mdfnd != null)
                         {
-                            using (new LockAndElevate(toResendLock))
+                            using (var tmpLockObj1 = new LockAndElevate(toResendLock))
                             {
                                 if (!toResend.Contains(mdfnd))
                                 {
@@ -38779,7 +38779,7 @@ namespace Vsync
                     }
 
                     List<Msg> resendList = new List<Msg>();
-                    using (new LockAndElevate(g.UnstableLock))
+                    using (var tmpLockObj1 = new LockAndElevate(g.UnstableLock))
                     {
                         foreach (Msg m in g.Unstable)
                         {
@@ -38803,7 +38803,7 @@ namespace Vsync
                     foreach (Msg mtrs in resendList)
                     {
                         mtrs.gaddr = g.gaddr;
-                        using (new LockAndElevate(toResendLock))
+                        using (var tmpLockObj1 = new LockAndElevate(toResendLock))
                         {
                             if (!toResend.Contains(mtrs))
                             {
@@ -38818,7 +38818,7 @@ namespace Vsync
 
                 // Large group case: Messages identified ONLY by msgid here (vid may have a nonsense value) and will be found on the LgPendingSendBuffer list
                 MsgDesc theLgMd = null;
-                using (new LockAndElevate(ReliableSender.PendingSendBufferLock))
+                using (var tmpLockObj1 = new LockAndElevate(ReliableSender.PendingSendBufferLock))
                 {
                     foreach (MsgDesc lgmd in LgPendingSendBuffer)
                     {
@@ -38832,7 +38832,7 @@ namespace Vsync
 
                 if (theLgMd != null)
                 {
-                    using (new LockAndElevate(toResendLock))
+                    using (var tmpLockObj1 = new LockAndElevate(toResendLock))
                     {
                         if (!toResend.Contains(theLgMd))
                         {
@@ -38857,10 +38857,10 @@ namespace Vsync
 
         internal static void GotP2PNack(Address requestedBy, int p2pseqn)
         {
-            using (new LockAndElevate(AckLock))
+            using (var tmpLockObj = new LockAndElevate(AckLock))
             {
                 MsgDesc md = null;
-                using (new LockAndElevate(PendingSendBufferLock))
+                using (var tmpLockObj1 = new LockAndElevate(PendingSendBufferLock))
                 {
                     foreach (MsgDesc psmd in P2PPendingSendBuffer)
                     {
@@ -38874,7 +38874,7 @@ namespace Vsync
 
                 if ((VsyncSystem.Debug & VsyncSystem.LOWLEVELMSGS) != 0)
                 {
-                    using (new LockAndElevate(ackInfoLock))
+                    using (var tmpLockObj1 = new LockAndElevate(ackInfoLock))
                     {
                         ackInfo.Add("[" + Vsync.MsToSecs(Vsync.NOW) + "]: Received a P2P NACK from " + requestedBy + " for p2pSeqn = " + p2pseqn + Environment.NewLine);
                     }
@@ -38906,7 +38906,7 @@ namespace Vsync
 
                 if (md != null)
                 {
-                    using (new LockAndElevate(toResendLock))
+                    using (var tmpLockObj1 = new LockAndElevate(toResendLock))
                     {
                         if (!toResend.Contains(md))
                         {
@@ -38928,7 +38928,7 @@ namespace Vsync
 
         internal static bool genFiller(Address who, int seqn)
         {
-            /*using (new LockAndElevate(P2PSequencer.PSListLock))
+            /*using (var tmpLockObj = new LockAndElevate(P2PSequencer.PSListLock))
             {
                 foreach (P2PSequencer p2ps in P2PSequencer.PSList)
                 {
@@ -39319,7 +39319,7 @@ namespace Vsync
         /// <returns>String representation of the message</returns>
         public override string ToString()
         {
-            using (new LockAndElevate(this.Lock))
+            using (var tmpLockObj = new LockAndElevate(this.Lock))
             {
                 return "Msg<" + this.sender + "::" + this.vid + ":" + this.msgid + (this.nRaw == 0 ? string.Empty : (", nRaw=" + this.nRaw)) + ((this.flags & SENTBYORACLE) == 0 ? string.Empty : " as ORACLE") + ", dest=" + this.dest + (this.gaddr == null ? string.Empty : (", gaddr=" + this.gaddr)) + (this.Lid <= 0 ? string.Empty : (", Logging-id=" + this.Lid)) + ", flags = {" + Msg.pflags(this.flags) + "}" + ((VsyncSystem.Debug & VsyncSystem.PPAYLOADS) != 0 ? ", Payload=" + PPayload(this.payload) : string.Empty) + ">";
             }
@@ -39751,7 +39751,7 @@ namespace Vsync
 
         internal static void doRegisterType(Type type, byte TID)
         {
-            using (new LockAndElevate(UDTLock))
+            using (var tmpLockObj = new LockAndElevate(UDTLock))
             {
                 if (UserDefinedTypesTable[TID] != null)
                 {
@@ -40717,7 +40717,7 @@ namespace Vsync
             {
                 using (MemoryStream ms = new MemoryStream(payload, 0, pln - Vsync.VSYNC_MSGPADDING))
                 using (HMAC hm = new HMACSHA256(new byte[] { 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11 }))
-                using (new LockAndElevate(VerifyLock))
+                using (var tmpLockObj = new LockAndElevate(VerifyLock))
                 {
                     byte[] hash = hm.ComputeHash(ms);
                     if (Vsync.VSYNC_AES != null)
@@ -41006,7 +41006,7 @@ namespace Vsync
         /// <returns></returns>
         public static object[] MsgToObjects(Msg m, params Type[] types)
         {
-            using (new LockAndElevate(m.Lock))
+            using (var tmpLockObj = new LockAndElevate(m.Lock))
             {
                 object[] obs = m.myObs ?? BArrayToObjects(m.payload);
                 if (obs.Length != types.Length)
@@ -41034,7 +41034,7 @@ namespace Vsync
         /// <returns></returns>
         public static object[] MsgToObjects(Msg m)
         {
-            using (new LockAndElevate(m.Lock))
+            using (var tmpLockObj = new LockAndElevate(m.Lock))
             {
                 if (m.myObs != null)
                 {
@@ -41204,7 +41204,7 @@ namespace Vsync
                 return new object[0];
             }
 
-            using (new LockAndElevate(cacheLock))
+            using (var tmpLockObj = new LockAndElevate(cacheLock))
             {
                 if (lastPayloadArg == payload && lastPayloadLen == payload.Length && lastStart == start && lastLen == len)
                 {
@@ -41835,7 +41835,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(cacheLock))
+            using (var tmpLockObj = new LockAndElevate(cacheLock))
             {
                 lastPayloadArg = payload;
                 lastStart = start;
@@ -41877,7 +41877,7 @@ namespace Vsync
             {
                 using (MemoryStream ms = new MemoryStream(payload, start, len - Vsync.VSYNC_MSGPADDING))
                 using (HMAC hm = new HMACSHA256(new byte[] { 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11, 56, 78, 9, 23, 10, 87, 33, 11 }))
-                using (new LockAndElevate(VerifyLock))
+                using (var tmpLockObj = new LockAndElevate(VerifyLock))
                 {
                     int x = start + len - Vsync.VSYNC_MSGPADDING;
                     byte[] hash = hm.ComputeHash(ms);
@@ -41983,7 +41983,7 @@ namespace Vsync
                 return true;
             }
 
-            using (new LockAndElevate(m.theGroup.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(m.theGroup.ViewLock))
             {
                 return m.theGroup.theView.viewid >= m.vid;
             }
@@ -42384,7 +42384,7 @@ namespace Vsync
             }
 
             int rv;
-            using (new LockAndElevate(cmapLock))
+            using (var tmpLockObj = new LockAndElevate(cmapLock))
             {
                 if (cmap.ContainsKey(qp))
                 {
@@ -42821,7 +42821,7 @@ namespace Vsync
                         ba[b] = IB_readAt(dp + b);
                     }
 
-                    using (new LockAndElevate(IBMapLock))
+                    using (var tmpLockObj = new LockAndElevate(IBMapLock))
                     {
                         key = BTK[dp];
                     }
@@ -42833,7 +42833,7 @@ namespace Vsync
                     }
 
                     Vsync.VSYNC_USERDMA = true;
-                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                    using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                     {
                         VsyncSystem.RTS.IBrcvd++;
                         VsyncSystem.RTS.IBBrcvd += ba.Length;
@@ -42862,7 +42862,7 @@ namespace Vsync
                     IntPtr copy, key;
                     int status = IB_statusAt(dpa, k);
                     Address dest;
-                    using (new LockAndElevate(IBMapLock))
+                    using (var tmpLockObj = new LockAndElevate(IBMapLock))
                     {
                         key = BTK[copy = IB_dpAt(dpa, k)];
                         BTK.Remove(copy);
@@ -42896,7 +42896,7 @@ namespace Vsync
         {
             bool success = true;
             View theView;
-            using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
             {
                 theView = Vsync.VSYNCMEMBERS.theView;
             }
@@ -42933,7 +42933,7 @@ namespace Vsync
                 Vsync.VSYNCMEMBERS.Query(Group.ALL, new Timeout(Vsync.VSYNC_DEFAULTTIMEOUT, Timeout.TO_FAILURE), Vsync.IBADDRS, Vsync.my_address, theView.members, rqps, aqps, Vsync.VSYNC_LID, Group.EOL, who, p2pqpns, aqpns);
 
                 // By now the view may have changed...
-                using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
                 {
                     theView = Vsync.VSYNCMEMBERS.theView;
                     for (int n = 0; n < who.Count; n++)
@@ -42973,7 +42973,7 @@ namespace Vsync
                 return string.Empty;
             }
 
-            using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
             {
                 if (Vsync.VSYNCMEMBERS.theView.members.Length == 1)
                 {
@@ -43011,7 +43011,7 @@ namespace Vsync
             int p2p = IB_create_qp(P2PQ, NIBBUFS, NIBBUFS);
             int ack = IB_create_qp(ACKQ, NIBBUFS, NIBBUFS);
 
-            using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
             {
                 int rank;
                 if (!Vsync.VSYNCMEMBERS.HasFirstView || (rank = Vsync.VSYNCMEMBERS.GetRankOf(who)) == -1)
@@ -43039,7 +43039,7 @@ namespace Vsync
             }
             else
             {
-                using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+                using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
                 {
                     int rank = Vsync.VSYNCMEMBERS.GetRankOf(who);
                     connected[rank] = true;
@@ -43059,7 +43059,7 @@ namespace Vsync
             {
                 IntPtr buf = IB_malloc((int)Vsync.VSYNC_MAXMSGLEN);
                 IntPtr key = IB_register(buf, (int)Vsync.VSYNC_MAXMSGLEN);
-                using (new LockAndElevate(IBMapLock))
+                using (var tmpLockObj = new LockAndElevate(IBMapLock))
                 {
                     BTK[buf] = key;
                 }
@@ -43067,7 +43067,7 @@ namespace Vsync
                 IB_post_recv(P2PQ, buf, key, (int)Vsync.VSYNC_MAXMSGLEN);
                 buf = IB_malloc((int)Vsync.VSYNC_MAXMSGLEN);
                 key = IB_register(buf, (int)Vsync.VSYNC_MAXMSGLEN);
-                using (new LockAndElevate(IBMapLock))
+                using (var tmpLockObj = new LockAndElevate(IBMapLock))
                 {
                     BTK[buf] = key;
                 }
@@ -43089,7 +43089,7 @@ namespace Vsync
             ILock.NoteThreadState(null);
             IBSetupDone.Release();
 
-            using (new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(Vsync.VSYNCMEMBERS.ViewLock))
             {
                 int r = Vsync.VSYNCMEMBERS.theView.GetRankOf(dest);
                 if (remotelids == null || connected == null || r == -1 || r >= remotelids.Length || remotelids[r] == 0 || !connected[r])
@@ -43102,7 +43102,7 @@ namespace Vsync
                     Vsync.WriteLine("====> IB send group=" + which + ", dest=" + dest + ", ba.Length=" + ba.Length);
                 }
 
-                using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                using (var tmpLockObj1 = new LockAndElevate(VsyncSystem.RTS.Lock))
                 {
                     VsyncSystem.RTS.IBsent++;
                     VsyncSystem.RTS.IBBsent += ba.Length;
@@ -43116,7 +43116,7 @@ namespace Vsync
 
                 int qp = which == ReliableSender.ACKBB ? remoteACKqps[r] : remoteP2Pqps[r];
                 IntPtr key = IB_register(copy, ba.Length);
-                using (new LockAndElevate(IBMapLock))
+                using (var tmpLockObj1 = new LockAndElevate(IBMapLock))
                 {
                     BTK[copy] = key;
                     BTA[copy] = dest;
@@ -43392,7 +43392,7 @@ namespace Vsync
             {
                 int[,] theMap = new int[MappingLen, 2];
                 int n = 0;
-                using (new LockAndElevate(MappingLock))
+                using (var tmpLockObj = new LockAndElevate(MappingLock))
                 {
                     for (int i = 0; i < MappingLen; i++)
                     {
@@ -43482,7 +43482,7 @@ namespace Vsync
 
                 int[,] theMap = new int[theVirtAddrs.Length, 2];
                 next = 0;
-                using (new LockAndElevate(MappingLock))
+                using (var tmpLockObj = new LockAndElevate(MappingLock))
                 {
                     for (int i = 0; i < MappingLen; i++)
                     {
@@ -43543,7 +43543,7 @@ namespace Vsync
         internal static string GetState()
         {
             string s = GetMCMDMap() + Environment.NewLine + "MCMD VIRTUAL SLOTS" + Environment.NewLine;
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 for (int i = 0; i < theMapping.Length; i++)
                 {
@@ -43568,7 +43568,7 @@ namespace Vsync
 
         internal static void Shutdown()
         {
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 if (theMapping == null)
                 {
@@ -43606,7 +43606,7 @@ namespace Vsync
 
         private static void UpdateMCMDMapping(int[,] mms)
         {
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 foreach (MCMDvirtual item in theMapping)
                 {
@@ -43628,7 +43628,7 @@ namespace Vsync
         private static void AssignMapInfo(Dictionary<Address, Group> grps, LockObject lo, int[,] mms)
         {
             List<int[]> mmList = new List<int[]>();
-            using (new LockAndElevate(lo))
+            using (var tmpLockObj = new LockAndElevate(lo))
             {
                 foreach (KeyValuePair<Address, Group> kvp in grps)
                 {
@@ -43670,7 +43670,7 @@ namespace Vsync
 
         internal static int AllocateAddr()
         {
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 for (int i = 0; i < Vsync.OOBMAXIPMCADDRS; i++)
                 {
@@ -43688,7 +43688,7 @@ namespace Vsync
 
         internal static void DeAllocateAddr(int mcaddr)
         {
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 OOBAllocation.Remove(mcaddr);
             }
@@ -43697,7 +43697,7 @@ namespace Vsync
         internal MCMDSocket(string gname, bool isTrackingProxy, int VirtIPAddr)
         {
             int PhysIPAddr = MCMDSocket.UNKNOWN;
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 this.isTrackingProxy = isTrackingProxy;
                 for (int i = 0; i < MappingLen; i++)
@@ -43710,7 +43710,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(Group.TPGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(Group.TPGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in Group.TPGroups)
                 {
@@ -43729,7 +43729,7 @@ namespace Vsync
         {
             this.isTrackingProxy = isTrackingProxy;
             SetMap("MCMDSocket(2)", gname, isTrackingProxy, new[] { VirtIPAddr, PhysIPAddr });
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 for (int i = 0; i < MappingLen; i++)
                 {
@@ -43744,7 +43744,7 @@ namespace Vsync
         // Looks up the physical IP address to use for a given slot in the mapping table
         internal IPEndPoint GetRemoteEP()
         {
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 IPAddress physIP = new IPAddress(theMapping[this.mySlot].PhysIPAddr & 0xFFFFFFFFL);
                 return MCMDSocket.GetIPEndPoint(physIP);
@@ -43755,7 +43755,7 @@ namespace Vsync
         // Same information is available in g.myPhysIPAddr
         internal static IPEndPoint GetRemoteEP(Address gaddr)
         {
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 int i = MCMDLookup(gaddr);
                 if (i >= 0)
@@ -43788,7 +43788,7 @@ namespace Vsync
         internal static void SetMap(string where, string gname, bool isTrackingProxy, int[] mMap)
         {
             int VirtIPAddr = mMap[VIRTUAL], PhysIPAddr = mMap[PHYSICAL], firstUnusedSlot = -1;
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 int ListeningOn = -1;
                 int mySlot = -1;
@@ -43960,7 +43960,7 @@ namespace Vsync
                         byte[] buffer = (byte[])bb.get();
                         if (buffer == null)
                         {
-                            using (new LockAndElevate(MappingLock))
+                            using (var tmpLockObj = new LockAndElevate(MappingLock))
                             {
                                 outBufs[myOutbufSlot] = null;
                             }
@@ -43988,7 +43988,7 @@ namespace Vsync
                             Vsync.WriteLine("WARNING: Sending an IPMC took " + Vsync.MsToSecs(after - before) + "s");
                         }
 
-                        using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                        using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                         {
                             VsyncSystem.RTS.IPMCBsent += bs;
                             VsyncSystem.RTS.IPMCsent++;
@@ -44036,7 +44036,7 @@ namespace Vsync
                     {
                         VsyncSystem.RTS.ThreadCntrs[28]++;
                         int[] myVSocks = null;
-                        using (new LockAndElevate(MappingLock))
+                        using (var tmpLockObj = new LockAndElevate(MappingLock))
                         {
                             if (MapUID != -1)
                             {
@@ -44053,7 +44053,7 @@ namespace Vsync
                         {
                             len = theSocket.Receive(buffer);
                             VsyncSystem.RTS.ThreadCntrs[32]++;
-                            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                            using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                             {
                                 VsyncSystem.RTS.IPMCBrcvd += len;
                                 VsyncSystem.RTS.IPMCrcvd++;
@@ -44112,7 +44112,7 @@ namespace Vsync
                                         Vsync.WriteLine("WARNING: Dr. Multicast filtering a incoming multicast: not a member of VirtIP=" + PMCAddr(VAddr));
                                     }
 
-                                    using (new LockAndElevate(VsyncSystem.RTS.Lock))
+                                    using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
                                     {
                                         VsyncSystem.RTS.Discarded++;
                                     }
@@ -44190,13 +44190,13 @@ namespace Vsync
         private static bool AcceptIncoming(int[] myVSocks, byte[] buffer, int VAddr)
         {
             BoundedBuffer bb = null;
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 for (int j = 0; j < myVSocks.Length && bb == null; j++)
                 {
                     if (theMapping[myVSocks[j]] != null && VAddr == theMapping[myVSocks[j]].VirtIPAddr)
                     {
-                        using (new LockAndElevate(Group.VsyncGroupsLock))
+                        using (var tmpLockObj1 = new LockAndElevate(Group.VsyncGroupsLock))
                         {
                             foreach (KeyValuePair<Address, Group> kvp in Group.VsyncGroups)
                             {
@@ -44253,7 +44253,7 @@ namespace Vsync
         internal static void DeleteMapping(int VirtIPAddr, int PhysIPAddr)
         {
             int fndIdx = -1;
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 for (int i = 0; i < MappingLen; i++)
                 {
@@ -44309,7 +44309,7 @@ namespace Vsync
                 return true;
             }
 
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 return theMapping[this.mySlot] == null || theMapping[this.mySlot].PhysIPAddr == USEUNICAST;
             }
@@ -44338,7 +44338,7 @@ namespace Vsync
                 if (epochId > Vsync.MapperEpochId)
                 {
                     Vsync.MapperEpochId = epochId;
-                    using (new LockAndElevate(Group.TPGroupsLock))
+                    using (var tmpLockObj = new LockAndElevate(Group.TPGroupsLock))
                     {
                         foreach (KeyValuePair<Address, Group> kvp in Group.TPGroups)
                         {
@@ -44367,7 +44367,7 @@ namespace Vsync
                     }
 
                     Group[] tpgs;
-                    using (new LockAndElevate(Group.TPGroupsLock))
+                    using (var tmpLockObj = new LockAndElevate(Group.TPGroupsLock))
                     {
                         tpgs = Group.TPGroups.Values.ToArray();
                     }
@@ -44581,12 +44581,12 @@ namespace Vsync
             }
 
             View va, vb;
-            using (new LockAndElevate(a.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(a.ViewLock))
             {
                 va = a.theView;
             }
 
-            using (new LockAndElevate(b.ViewLock))
+            using (var tmpLockObj = new LockAndElevate(b.ViewLock))
             {
                 vb = b.theView;
             }
@@ -44635,7 +44635,7 @@ namespace Vsync
         // WARNING: During the switch-over twice VSYNC_MAXIPMCADDRS will temporarily be in use
         internal static void AllocateMCResources(Group[] tpgs)
         {
-            using (new LockAndElevate(Group.TPGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(Group.TPGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in Group.TPGroups)
                 {
@@ -44694,7 +44694,7 @@ namespace Vsync
             }
 
             List<int> inUse = new List<int> { Vsync.ORACLE.myPhysIPAddr };
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 foreach (int a in OOBAllocation)
                 {
@@ -44710,7 +44710,7 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(Group.TPGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(Group.TPGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in Group.TPGroups)
                 {
@@ -44900,7 +44900,7 @@ namespace Vsync
         internal static int[] GetMap(Address gaddr, bool allocateMapIfUnknown)
         {
             int v;
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 v = AddressToVirtual(gaddr);
                 for (int i = 0; i < MappingLen; i++)
@@ -44920,7 +44920,7 @@ namespace Vsync
             Group g = Group.TrackingProxyLookup(gaddr);
             if (!g.hasPhysMapping)
             {
-                using (new LockAndElevate(Group.TPGroupsLock))
+                using (var tmpLockObj = new LockAndElevate(Group.TPGroupsLock))
                 {
                     foreach (KeyValuePair<Address, Group> kvp in Group.TPGroups)
                     {
@@ -45005,7 +45005,7 @@ namespace Vsync
             for (int i = 0; i < mms.GetLength(0); i++)
             {
                 bool fnd = false;
-                using (new LockAndElevate(Group.VsyncGroupsLock))
+                using (var tmpLockObj = new LockAndElevate(Group.VsyncGroupsLock))
                 {
                     foreach (KeyValuePair<Address, Group> kvp in Group.VsyncGroups)
                     {
@@ -45047,7 +45047,7 @@ namespace Vsync
             // Use lists to avoid calls from inside the locked code block
             List<int> disposeEm = new List<int>();
             List<int[]> mapEm = new List<int[]>();
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 // Install the new map, then get everyone to switch to it
                 for (int i = 0; i < MappingLen; i++)
@@ -45105,7 +45105,7 @@ namespace Vsync
                 return;
             }
 
-            using (new LockAndElevate(Group.VsyncGroupsLock))
+            using (var tmpLockObj = new LockAndElevate(Group.VsyncGroupsLock))
             {
                 foreach (KeyValuePair<Address, Group> kvp in Group.VsyncGroups)
                 {
@@ -45175,7 +45175,7 @@ namespace Vsync
 
         private static void MCMDDisposeMapping(int n)
         {
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 // Dispose of the mapping entry and associated input buffer
                 if (theMapping[n] == null)
@@ -45197,7 +45197,7 @@ namespace Vsync
         {
             // This reduced the number of references to the associated output
             // buffer.  Dispose of it if this was the last reference
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 for (int i = 0; i < nOutBufs; i++)
                 {
@@ -45263,7 +45263,7 @@ namespace Vsync
             ReliableSender.CheckLenAndRate(buffer, false);
             BoundedBuffer bb;
             int[] mm = null;
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 if (theMapping[this.mySlot] == null)
                 {
@@ -45281,7 +45281,7 @@ namespace Vsync
                 SetMap("SendTo", "SendTo", false, mm);
             }
 
-            using (new LockAndElevate(MappingLock))
+            using (var tmpLockObj = new LockAndElevate(MappingLock))
             {
                 if (theMapping[this.mySlot] == null || theMapping[this.mySlot].outBufPtr == -1)
                 {
@@ -45325,7 +45325,7 @@ namespace Vsync
             {
                 BoundedBuffer bb;
                 VsyncSystem.RTS.ThreadCntrs[29]++;
-                using (new LockAndElevate(MappingLock))
+                using (var tmpLockObj = new LockAndElevate(MappingLock))
                 {
                     if (theMapping[this.mySlot] == null)
                     {
@@ -45521,7 +45521,7 @@ namespace Vsync
         {
             if (Vsync.VSYNC_TRACKTHREADWAITS)
             {
-                using (new LockAndElevate(TSLock))
+                using (var tmpLockObj = new LockAndElevate(TSLock))
                 {
                     if (s != null)
                     {
@@ -45540,7 +45540,7 @@ namespace Vsync
             if (Vsync.VSYNC_TRACKTHREADWAITS)
             {
                 string s = string.Empty;
-                using (new LockAndElevate(TSLock))
+                using (var tmpLockObj = new LockAndElevate(TSLock))
                     foreach (var kvp in ThreadStates)
                         if (kvp.Value != null)
                         {
@@ -45592,7 +45592,7 @@ namespace Vsync
                     {
                         if (kvp.Value.Id == sublevel)
                         {
-                            using (new LockAndElevate(Group.VsyncGroupsLock))
+                            using (var tmpLockObj = new LockAndElevate(Group.VsyncGroupsLock))
                             {
                                 foreach (KeyValuePair<Address, Group> gkvp in Group.VsyncGroups)
                                 {
@@ -45609,7 +45609,7 @@ namespace Vsync
                                 break;
                             }
 
-                            using (new LockAndElevate(Group.TPGroupsLock))
+                            using (var tmpLockObj = new LockAndElevate(Group.TPGroupsLock))
                             {
                                 foreach (KeyValuePair<Address, Group> gkvp in Group.TPGroups)
                                 {
@@ -45641,7 +45641,7 @@ namespace Vsync
 
         internal static void Shutdown()
         {
-            using (new LockAndElevate(SemaphoresLock))
+            using (var tmpLockObj = new LockAndElevate(SemaphoresLock))
             {
                 for (int i = 0; i < Semaphores.Length; i++)
                 {
@@ -45668,7 +45668,7 @@ namespace Vsync
         public static string GetState()
         {
             string s = LockObject.GetState() + "THREAD ILOCK STATE:" + Environment.NewLine;
-            using (new LockAndElevate(VsyncSystem.RTS.Lock))
+            using (var tmpLockObj = new LockAndElevate(VsyncSystem.RTS.Lock))
             {
                 if (VsyncSystem.RTS.ackProcessingBeganAt > 0)
                 {
@@ -45689,11 +45689,11 @@ namespace Vsync
                 }
             }
 
-            using (new LockAndElevate(SemaphoresLock))
+            using (var tmpLockObj = new LockAndElevate(SemaphoresLock))
             {
                 for (int id = 0; id < LILEN; id++)
                 {
-                    using (new LockAndElevate(LInfoLock))
+                    using (var tmpLockObj1 = new LockAndElevate(LInfoLock))
                     {
                         if (LInfo[id] == null)
                         {
@@ -45776,7 +45776,7 @@ namespace Vsync
         internal static void ScanPWaits()
         {
             List<int> toWake = new List<int>();
-            using (new LockAndElevate(Group.GroupRIPLock))
+            using (var tmpLockObj = new LockAndElevate(Group.GroupRIPLock))
             {
                 for (int id = 0; id < ProcessWait.Length; id++)
                 {
@@ -45789,7 +45789,7 @@ namespace Vsync
 
             foreach (int id in toWake)
             {
-                using (new LockAndElevate(BarriersLock))
+                using (var tmpLockObj = new LockAndElevate(BarriersLock))
                 {
                     if (Barriers[id] != null)
                     {
@@ -45879,11 +45879,11 @@ namespace Vsync
         {
             bool[,] hflag = new bool[16, 4096];
 
-            using (new LockAndElevate(SemaphoresLock))
+            using (var tmpLockObj = new LockAndElevate(SemaphoresLock))
             {
                 for (int id = 0; id < LILEN; id++)
                 {
-                    using (new LockAndElevate(LInfoLock))
+                    using (var tmpLockObj1 = new LockAndElevate(LInfoLock))
                     {
                         if (LInfo[id] == null)
                         {
@@ -45928,7 +45928,7 @@ namespace Vsync
 
             this.level = level;
             this.lockId = lockId;
-            using (new LockAndElevate(SemaphoresLock))
+            using (var tmpLockObj = new LockAndElevate(SemaphoresLock))
             {
                 int n = 1;
                 while (n <= lockId)
@@ -45970,7 +45970,7 @@ namespace Vsync
 
         internal static ILock IlockResetAndRef(int level, int lockId, bool grabLock, int init)
         {
-            using (new LockAndElevate(SemaphoresLock))
+            using (var tmpLockObj = new LockAndElevate(SemaphoresLock))
             {
                 if (level >= Semaphores.Length || lockId == -1)
                 {
@@ -46014,14 +46014,14 @@ namespace Vsync
         {
             int theIndex = this.LookupMyIndex();
             LockInfo li = new LockInfo(this.level, this.lockId, true);
-            using (new LockAndElevate(LInfoLock))
+            using (var tmpLockObj = new LockAndElevate(LInfoLock))
             {
                 li.Next = LInfo[theIndex].First;
                 LInfo[theIndex].First = li;
             }
 
             Semaphore theSema;
-            using (new LockAndElevate(SemaphoresLock))
+            using (var tmpLockObj = new LockAndElevate(SemaphoresLock))
             {
                 theSema = Semaphores[this.level][this.lockId];
                 ++nWaiters[this.level][this.lockId];
@@ -46048,7 +46048,7 @@ namespace Vsync
                     throw new VsyncShutdownException("Vsync Inactive");
                 }
 
-                using (new LockAndElevate(SemaphoresLock))
+                using (var tmpLockObj = new LockAndElevate(SemaphoresLock))
                 {
                     if (Semaphores[this.level][this.lockId] == theSema)
                     {
@@ -46056,7 +46056,7 @@ namespace Vsync
                     }
                 }
 
-                using (new LockAndElevate(LInfoLock))
+                using (var tmpLockObj = new LockAndElevate(LInfoLock))
                 {
                     LInfo[theIndex].First = li.Next;
                 }
@@ -46092,7 +46092,7 @@ namespace Vsync
             }
 
             LockInfo nli;
-            using (new LockAndElevate(LInfoLock))
+            using (var tmpLockObj = new LockAndElevate(LInfoLock))
             {
                 LockInfo li = LInfo[this.myIndex].First;
                 nli = new LockInfo(this.level, this.lockId);
@@ -46152,7 +46152,7 @@ namespace Vsync
                     Vsync.WriteLine("Semaphore wait: [" + this.level + "][" + this.lockId + "]");
                 }
 
-                using (new LockAndElevate(SemaphoresLock))
+                using (var tmpLockObj = new LockAndElevate(SemaphoresLock))
                 {
                     ++nWaiters[this.level][this.lockId];
                 }
@@ -46168,7 +46168,7 @@ namespace Vsync
                         throw new VsyncShutdownException("Vsync Inactive");
                     }
 
-                    using (new LockAndElevate(SemaphoresLock))
+                    using (var tmpLockObj = new LockAndElevate(SemaphoresLock))
                     {
                         if ((VsyncSystem.Debug & VsyncSystem.LOCKSTATE) != 0)
                         {
@@ -46176,7 +46176,7 @@ namespace Vsync
                         }
 
                         --nWaiters[this.level][this.lockId];
-                        using (new LockAndElevate(LInfoLock))
+                        using (var tmpLockObj1 = new LockAndElevate(LInfoLock))
                         {
                             nli.WaitingFor = false;
                             if (willHold)
@@ -46205,7 +46205,7 @@ namespace Vsync
             }
             else if (willHold)
             {
-                using (new LockAndElevate(SemaphoresLock))
+                using (var tmpLockObj = new LockAndElevate(SemaphoresLock))
                 {
                     ++Holding[this.level][this.lockId];
                 }
@@ -46219,7 +46219,7 @@ namespace Vsync
         internal static int GetLockId(int level, int hashcode)
         {
             int rval;
-            using (new LockAndElevate(LockIdsLock))
+            using (var tmpLockObj = new LockAndElevate(LockIdsLock))
             {
                 if (LockIds[level] == null)
                 {
@@ -46277,7 +46277,7 @@ namespace Vsync
         private int LookupMyIndex()
         {
             int theIndex;
-            using (new LockAndElevate(LInfoLock))
+            using (var tmpLockObj = new LockAndElevate(LInfoLock))
             {
                 int id = Thread.CurrentThread.ManagedThreadId;
                 if (Waiting.TryGetValue(id, out theIndex) && theIndex >= 0 && theIndex < LInfo.Length)
@@ -46326,7 +46326,7 @@ namespace Vsync
                 return;
             }
 
-            using (new LockAndElevate(SemaphoresLock))
+            using (var tmpLockObj = new LockAndElevate(SemaphoresLock))
             {
                 int nw = nWaiters[this.level][this.lockId];
                 if (nw > 0 || Holding[this.level][this.lockId] > 0)
@@ -46341,7 +46341,7 @@ namespace Vsync
                         Vsync.WriteLine("Lock Release for lock[" + this.level + "][" + this.lockId + "]");
                     }
 
-                    using (new LockAndElevate(LInfoLock))
+                    using (var tmpLockObj1 = new LockAndElevate(LInfoLock))
                     {
                         if (this.myIndex == -1)
                         {
@@ -46372,13 +46372,13 @@ namespace Vsync
             }
 
             int theIndex = this.LookupMyIndex();
-            using (new LockAndElevate(BarriersLock))
+            using (var tmpLockObj = new LockAndElevate(BarriersLock))
             {
                 Barriers[theIndex] = Semaphores[this.level][this.lockId];
             }
 
             this.LockIt(false);
-            using (new LockAndElevate(BarriersLock))
+            using (var tmpLockObj = new LockAndElevate(BarriersLock))
             {
                 Barriers[theIndex] = null;
             }
@@ -46402,23 +46402,23 @@ namespace Vsync
             }
 
             int theIndex = this.LookupMyIndex();
-            using (new LockAndElevate(BarriersLock))
+            using (var tmpLockObj = new LockAndElevate(BarriersLock))
             {
                 Barriers[theIndex] = Semaphores[this.level][this.lockId];
             }
 
-            using (new LockAndElevate(ProcessWaitLock))
+            using (var tmpLockObj = new LockAndElevate(ProcessWaitLock))
             {
                 ProcessWait[theIndex] = new PWaitInfo(g.gaddr, waitingFor);
             }
 
             this.LockIt(false);
-            using (new LockAndElevate(ProcessWaitLock))
+            using (var tmpLockObj = new LockAndElevate(ProcessWaitLock))
             {
                 ProcessWait[theIndex] = null;
             }
 
-            using (new LockAndElevate(BarriersLock))
+            using (var tmpLockObj = new LockAndElevate(BarriersLock))
             {
                 Barriers[theIndex] = null;
             }
@@ -46448,7 +46448,7 @@ namespace Vsync
             }
 
             int nw;
-            using (new LockAndElevate(SemaphoresLock))
+            using (var tmpLockObj = new LockAndElevate(SemaphoresLock))
             {
                 nw = nWaiters[this.level][this.lockId];
             }
@@ -46470,7 +46470,7 @@ namespace Vsync
 
             RIP = rip;
 
-            using (new LockAndElevate(ProcessWaitLock))
+            using (var tmpLockObj = new LockAndElevate(ProcessWaitLock))
             {
                 for (int id = 0; id < ProcessWait.Length; id++)
                 {
@@ -46496,7 +46496,7 @@ namespace Vsync
 
                     if (pwi.plist.Length == 1)
                     {
-                        using (new LockAndElevate(BarriersLock))
+                        using (var tmpLockObj1 = new LockAndElevate(BarriersLock))
                         {
                             if (Barriers[id] != null)
                             {
@@ -46537,7 +46537,7 @@ namespace Vsync
                     if (disposing)
                     {
                         // Dispose managed resources.
-                        using (new LockAndElevate(LockIdsLock))
+                        using (var tmpLockObj = new LockAndElevate(LockIdsLock))
                         {
                             if (this.insideUsing)
                             {
@@ -46633,7 +46633,7 @@ namespace Vsync
         /// <param name="pri"></param>
         public BoundedBuffer(string s, int sz, int lockLevel, int plockId, int glockId, ThreadPriority pri)
         {
-            using (new LockAndElevate(BBListLock))
+            using (var tmpLockObj = new LockAndElevate(BBListLock))
             {
                 if (plockId == -1)
                 {
@@ -46682,7 +46682,7 @@ namespace Vsync
         /// <param name="bb"></param>
         public static void unregister(BoundedBuffer bb)
         {
-            using (new LockAndElevate(BBListLock))
+            using (var tmpLockObj = new LockAndElevate(BBListLock))
             {
                 BBList.Remove(bb);
             }
@@ -46695,7 +46695,7 @@ namespace Vsync
         /// </summary>
         public static void ShutDown()
         {
-            using (new LockAndElevate(BBListLock))
+            using (var tmpLockObj = new LockAndElevate(BBListLock))
             {
                 foreach (BoundedBuffer bb in BBList)
                 {
@@ -46711,11 +46711,11 @@ namespace Vsync
         public static string GetState()
         {
             string bs = "BOUNDED BUFFERS:" + Environment.NewLine;
-            using (new LockAndElevate(BBListLock))
+            using (var tmpLockObj = new LockAndElevate(BBListLock))
             {
                 foreach (BoundedBuffer bb in BBList)
                 {
-                    using (new LockAndElevate(bb.Lock))
+                    using (var tmpLockObj1 = new LockAndElevate(bb.Lock))
                     {
                         bs += "  <" + bb.name + ">  size=" + (bb.size - 1) + " (" + (bb.fullSlots < bb.size ? bb.fullSlots.ToString(CultureInfo.InvariantCulture) : "all") + " full)" + (bb.lockedAgainstPut ? " locked" : string.Empty) + ", GetLock=" + ILock.PLock(bb.gettingLock) + ", PutLock=" + ILock.PLock(bb.puttingLock);
                         if (bb.delayedNotifyCnt > 0)
@@ -46738,7 +46738,7 @@ namespace Vsync
         /// <returns></returns>
         public bool putWillBlock(int howMany)
         {
-            using (new LockAndElevate(this.Lock))
+            using (var tmpLockObj = new LockAndElevate(this.Lock))
             {
                 return this.size < (this.fullSlots + howMany);
             }
@@ -46765,7 +46765,7 @@ namespace Vsync
         /// <returns>Number of full slots</returns>
         public int FullSlots()
         {
-            using (new LockAndElevate(this.Lock))
+            using (var tmpLockObj = new LockAndElevate(this.Lock))
             {
                 return this.fullSlots;
             }
@@ -46787,7 +46787,7 @@ namespace Vsync
         /// <param name="nonBlocking">NonBlocking mode indication</param>
         public void put(object o, bool nonBlocking)
         {
-            using (new LockAndElevate(this.Lock))
+            using (var tmpLockObj = new LockAndElevate(this.Lock))
             {
                 if (nonBlocking && this.fullSlots == this.size)
                 {
@@ -46800,7 +46800,7 @@ namespace Vsync
                 this.puttingLock.BBDecCntr();
             }
 
-            using (new LockAndElevate(this.Lock))
+            using (var tmpLockObj = new LockAndElevate(this.Lock))
             {
                 if (this.lockedAgainstPut)
                 {
@@ -46861,7 +46861,7 @@ namespace Vsync
         public void putFront(object o)
         {
             this.puttingLock.BBDecCntr();
-            using (new LockAndElevate(this.Lock))
+            using (var tmpLockObj = new LockAndElevate(this.Lock))
             {
                 if (this.lockedAgainstPut)
                 {
@@ -46906,7 +46906,7 @@ namespace Vsync
             bool delayedNotify = false;
             int delayednotifies = 0;
             this.gettingLock.BBDecCntr();
-            using (new LockAndElevate(this.Lock))
+            using (var tmpLockObj = new LockAndElevate(this.Lock))
             {
                 int idx = (this.gNext++) % this.size;
                 o = this.theBuffer[idx];
