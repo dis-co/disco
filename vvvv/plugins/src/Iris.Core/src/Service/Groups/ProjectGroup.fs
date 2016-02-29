@@ -53,8 +53,6 @@ module ProjectGroup =
       self.group <- new VsyncGroup<Actions>(self.uri)
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
-      self.group.CheckpointMaker(self.MakeCheckpoint)
-      self.group.CheckpointLoader(self.LoadCheckpoint)
       List.iter AddHandler AllHandlers
 
     //  ____       _
@@ -100,19 +98,6 @@ module ProjectGroup =
     (* State initialization and transfer *)
     member self.Initialize() =
       logger tag "should load state from disk/vvvv now"
-
-    member self.MakeCheckpoint(view : View) =
-      self.group.SendCheckpoint(project)
-      self.group.DoneCheckpoint()
-
-      sprintf "made a snapshot. %s" project.Name
-      |> logger tag
-
-    member self.LoadCheckpoint(project : Project) =
-      self.Project <- project
-
-      sprintf "loaded a snapshot. project: %s" project.Name
-      |> logger tag
 
     (* View changes *)
     member self.ViewChanged(view : View) : unit =

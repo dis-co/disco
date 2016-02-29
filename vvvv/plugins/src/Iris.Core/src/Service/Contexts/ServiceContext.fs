@@ -18,7 +18,7 @@ module Service =
     let tag = "ServiceContext"
 
     let mutable Signature : Signature option            = Some(signature)
-    let mutable Members   : Map<string,Member>          = Map.empty
+    let mutable Members   : Map<string, Member>         = Map.empty
     let mutable Projects  : Map<string, ProjectContext> = Map.empty
 
     interface IDisposable with
