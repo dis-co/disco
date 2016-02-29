@@ -50,7 +50,7 @@ module ControlGroup =
   type ControlGroup(context' : ServiceContext) as self =
     let tag = "ControlGroup"
 
-    [<DefaultValue>] val mutable group   : IrisGroup<CtrlAction>
+    [<DefaultValue>] val mutable group   : VsyncGroup<CtrlAction>
     [<DefaultValue>] val mutable context : ServiceContext
 
     let host = System.Guid.NewGuid().ToString();
@@ -72,7 +72,7 @@ module ControlGroup =
 
     do
       self.context <- context'
-      self.group <- new IrisGroup<CtrlAction>("iris.control")
+      self.group <- new VsyncGroup<CtrlAction>("iris.control")
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
       self.group.CheckpointMaker(self.MakeCheckpoint)

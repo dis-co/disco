@@ -31,7 +31,7 @@ module CueGroup =
   type CueGroup(grpname) as self = 
     let tag = "CueGroup"
  
-    [<DefaultValue>] val mutable group : IrisGroup<CueAction>
+    [<DefaultValue>] val mutable group : VsyncGroup<CueAction>
 
     let mutable cues : CueDict = new CueDict()
 
@@ -46,7 +46,7 @@ module CueGroup =
 
     (* constructor *)
     do
-      self.group <- new IrisGroup<CueAction>(grpname)
+      self.group <- new VsyncGroup<CueAction>(grpname)
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
       self.group.CheckpointMaker(self.MakeCheckpoint)

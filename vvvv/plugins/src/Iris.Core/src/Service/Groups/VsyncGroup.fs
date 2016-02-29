@@ -6,17 +6,28 @@ open Vsync
 
 [<AutoOpen>]
 module Base =
-
+  
   type Handler<'a> = 'a -> unit
 
-  type RawHandler = delegate of byte[] -> unit
+  type private RawHandler = delegate of byte[] -> unit
 
   let private mkRawHandler (f : byte[] -> unit) = new RawHandler(f)
 
+  //  ___ _____
+  // |_ _| ____|_ __  _   _ _ __ ___
+  //  | ||  _| | '_ \| | | | '_ ` _ \
+  //  | || |___| | | | |_| | | | | | |
+  // |___|_____|_| |_|\__,_|_| |_| |_|
   type IEnum =
     abstract member ToInt : unit -> int
-    
-  type IrisGroup<'action when 'action :> IEnum>(name : string) =
+
+  // __     __                     ____
+  // \ \   / /__ _   _ _ __   ___ / ___|_ __ ___  _   _ _ __
+  //  \ \ / / __| | | | '_ \ / __| |  _| '__/ _ \| | | | '_ \
+  //   \ V /\__ \ |_| | | | | (__| |_| | | | (_) | |_| | |_) |
+  //    \_/ |___/\__, |_| |_|\___|\____|_|  \___/ \__,_| .__/
+  //             |___/                                 |_|
+  type VsyncGroup<'action when 'action :> IEnum>(name : string) =
     inherit Vsync.Group(name)
 
     let pickler = FsPickler.CreateBinarySerializer()

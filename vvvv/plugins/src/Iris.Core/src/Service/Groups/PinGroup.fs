@@ -28,7 +28,7 @@ module PinGroup =
   type PinGroup(grpname) as self = 
     let tag = "PinGroup"
  
-    [<DefaultValue>] val mutable group : IrisGroup<BoxAction>
+    [<DefaultValue>] val mutable group : VsyncGroup<BoxAction>
 
     let mutable boxes : IOBoxDict = new IOBoxDict()
 
@@ -42,7 +42,7 @@ module PinGroup =
       ]
 
     do
-      self.group <- new IrisGroup<BoxAction>(grpname)
+      self.group <- new VsyncGroup<BoxAction>(grpname)
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
       self.group.CheckpointMaker(self.MakeCheckpoint)

@@ -38,7 +38,7 @@ module ProjectGroup =
   type ProjectGroup(project : Project) as self =
     let tag = "ProjectGroup"
     
-    [<DefaultValue>] val mutable group   : IrisGroup<Actions>
+    [<DefaultValue>] val mutable group   : VsyncGroup<Actions>
     [<DefaultValue>] val mutable Project : Project
 
     let AddHandler(action, cb) =
@@ -48,7 +48,7 @@ module ProjectGroup =
 
     do
       self.Project <- project
-      self.group <- new IrisGroup<Actions>(Uri.mkProjectUri project)
+      self.group <- new VsyncGroup<Actions>(Uri.mkProjectUri project)
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
       self.group.CheckpointMaker(self.MakeCheckpoint)
