@@ -1,6 +1,7 @@
 namespace Iris.Service.Core
 
 open System
+open Iris.Core.Utils
 open Iris.Core.Types
 
 [<AutoOpen>]
@@ -13,6 +14,8 @@ module AppState =
   // /_/   \_\ .__/| .__/____/ \__\__,_|\__\___|
   //         |_|   |_|
   type AppState() as self =
+    let tag = "AppState"
+
     [<DefaultValue>] val mutable Members  : Member list
     [<DefaultValue>] val mutable Projects : Map<Guid, Project>
 
@@ -31,12 +34,12 @@ module AppState =
     member self.Add(project : Project) =
       self.Projects <- Map.add project.Id project self.Projects
 
-    member self.Load(path) : Project option =
+    member self.Load(path) : Either<string, Project> =
       match Project.Load path with
-        | Some project as result ->
+        | Right project as result->
           self.Add project
           result
-        | none -> none
+        | err -> err
 
     member self.Find(pid : Guid) =
       Map.tryFind pid self.Projects
@@ -46,19 +49,23 @@ module AppState =
         | Some(project) -> project.Save(sign, msg)
         | _ -> ()
 
-    member self.Create(name, path, sign) =
+    member self.Create(name, path, sign) : Either<string, Project> =
       let now = System.DateTime.Now.ToLongTimeString()
       let project = Project.Create name
       project.Path <- Some(path)
-      project.Save(sign, sprintf "On %s, %s created %s" now sign.Name name)
-      self.Add(project)
+      try 
+        project.Save(sign, sprintf "On %s, %s created %s" now sign.Name name)
+        self.Add(project)
+        Right(project)
+      with
+        | exn -> Left exn.Message
 
-    member self.Close(pid) =
+    member self.Close(pid) : Either<string, Project> =
       match self.Find(pid) with
-        | Some project as result -> 
+        | Some project -> 
           self.Projects <- Map.remove pid self.Projects
-          result
-        | none -> none
+          Right project
+        | _ -> Left "Project not found."
 
     member self.Loaded(pid) =
       Map.toList self.Projects

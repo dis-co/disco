@@ -196,9 +196,9 @@ module Project =
     //  |_____\___/ \__,_|\__,_|
     //
     /// Load a Project from Disk
-    static member Load(path : FilePath) : Project option =
+    static member Load(path : FilePath) : Either<string, Project> =
       if not <| File.Exists(path) // must be a *File*
-      then None
+      then Left("File not found!")
       else
         IrisConfig.Load(path)
 
@@ -233,7 +233,7 @@ module Project =
           ; Tasks     = parseTasks     IrisConfig
           ; Cluster   = parseCluster   IrisConfig
           }
-        Some(project)
+        Right(project)
 
     //   ____
     //  / ___|  __ ___   _____
@@ -242,7 +242,7 @@ module Project =
     //  |____/ \__,_| \_/ \___|
     //
     /// Save a Project to Disk
-    member self.Save(sign : Signature, msg : string) =
+    member self.Save(sign : Signature, msg : string) : Either<string,Commit> =
       if Option.isSome self.Path
       then
         Directory.CreateDirectory (Option.get self.Path) |> ignore
@@ -561,16 +561,21 @@ module Project =
 
         // save everything!
         let destPath = Path.Combine(Option.get self.Path, self.Name + IrisExt)
-        IrisConfig.Save(destPath)
 
-        // commit project to git.
-        match self.Repo with
-          | Some(repo') ->
-            repo'.Stage(destPath)
-            repo'.Commit(msg, sign, Committer)
-            |> ignore
-          | None -> failwith "Saving without repository is unsupported. Aborting"
+        try 
+          IrisConfig.Save(destPath)
 
+          // commit project to git.
+          match self.Repo with
+            | Some(repo') ->
+              repo'.Stage(destPath)
+              repo'.Commit(msg, sign, Committer)
+              |> Right
+            | _ ->
+              Left "Saving without repository is unsupported. Aborting"
+        with
+          | exn -> Left exn.Message
+      else Left "Cannot save without path."
 
     //   ____ _
     //  / ___| | ___  _ __   ___

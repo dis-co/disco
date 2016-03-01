@@ -51,6 +51,7 @@
     <None Include="paket.references" />
     <None Include="paket.template" />
     <Compile Include="src\Util.fs" />
+    <Compile Include="src\Types\Either.fs" />
     <Compile Include="src\Types\Aliases.fs" />
     <Compile Include="src\Types\IOBox.fs" />
     <Compile Include="src\Types\Patch.fs" />

@@ -48,8 +48,11 @@ module IrisService =
     let signature = new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
 
     let mutable Ready : bool = false
-    let mutable State = AppState.empty
+    let mutable State : AppState = AppState.empty
+    let mutable Projects : Map<Guid,ProjectController> = Map.empty
+
     [<DefaultValue>] val mutable Ctrl  : ControlGroup
+
 
     do Ready <- false
 
@@ -106,12 +109,14 @@ module IrisService =
       State.Save(id, signature, msg)
 
     member self.CreateProject(name, path) =
-      State.Create(name, path, signature)
+      match State.Create(name, path, signature) with
+        | Right project -> self.Ctrl.Load(project.Id, project.Name)
+        | Left err -> logger tag err
 
     member self.CloseProject(pid) =
       match State.Close(pid) with
-        | Some project -> self.Ctrl.Close(project.Id, project.Name)
-        | _ -> logger tag "cannot close, project not loaded."
+        | Right project -> self.Ctrl.Close(project.Id, project.Name)
+        | Left err -> logger tag err
 
     member self.LoadProject(path : FilePath) =
       match State.Load(path) with
