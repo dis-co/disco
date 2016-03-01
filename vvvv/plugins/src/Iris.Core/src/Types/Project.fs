@@ -19,7 +19,7 @@ module Project =
   //               |__/
   [<ReflectedDefinition>]
   type ProjectData() =
-    [<DefaultValue>] val mutable Id        : string
+    [<DefaultValue>] val mutable Id        : Guid
     [<DefaultValue>] val mutable Name      : string
     [<DefaultValue>] val mutable Path      : FilePath option
     [<DefaultValue>] val mutable LastSaved : DateTime option
@@ -141,7 +141,7 @@ module Project =
 
     static member private Build(pid : string, name : string) : Project =
       let data = new ProjectData()
-      data.Id        <- pid
+      data.Id        <- Guid.Parse(pid)
       data.Name      <- name
       data.Path      <- None
       data.Copyright <- None
@@ -186,7 +186,7 @@ module Project =
     //   \____|_|  \___|\__,_|\__\___|
     //
     static member Create(name : string) =
-      let guid = System.Guid.NewGuid().ToString()
+      let guid = mkGuid()
       Project.Build(guid, name)
 
     //   _                    _
@@ -254,7 +254,7 @@ module Project =
           self.Repo <- Some(new Repository(path))
 
         // Project metadata
-        IrisConfig.Project.Metadata.Id   <- self.Id
+        IrisConfig.Project.Metadata.Id   <- self.Id.ToString()
         IrisConfig.Project.Metadata.Name <- self.Name
 
         if Option.isSome self.Author

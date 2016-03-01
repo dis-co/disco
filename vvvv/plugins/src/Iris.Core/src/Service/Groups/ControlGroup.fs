@@ -1,6 +1,7 @@
 namespace Iris.Service.Groups
 
 open Vsync
+open System
 open System.IO
 open System.Net
 open Iris.Core.Types
@@ -15,7 +16,7 @@ module ControlGroup =
 
   type ProjectMsg =
     { Host : string
-    ; Id   : string
+    ; Id   : Guid
     ; Name : string
     }
 
@@ -116,8 +117,8 @@ module ControlGroup =
     //       |_____/ / Remote
     //            /_/
        
-    member self.Load(pid, name) =
-      logger tag <| sprintf "Please load: %s %s" pid name
+    member self.Load(pid : Guid, name) =
+      logger tag <| sprintf "Please load: %s %s" (pid.ToString()) name
       let msg =
         { Id   = pid
         ; Name = name
@@ -126,7 +127,7 @@ module ControlGroup =
       self.group.Send<ProjectMsg>(CtrlAction.Load, msg)
 
     member self.Close(pid, name) =
-      logger tag <| sprintf "load: %s" name
+      logger tag <| sprintf "Please close: %s %s" (pid.ToString()) name
       let msg = 
         { Id   = pid
         ; Name = name
@@ -141,7 +142,7 @@ module ControlGroup =
     //        \_\
 
     member self.OnLoad(msg : ProjectMsg) =
-      sprintf "[OnLoad] Id: %s Name: %s" msg.Id msg.Name
+      sprintf "[OnLoad] Id: %s Name: %s" (msg.Id.ToString()) msg.Name
       |> logger tag 
       // let pth = Path.Combine(Workspace(), msg.Name)
       // if File.Exists pth || Directory.Exists pth
@@ -155,7 +156,7 @@ module ControlGroup =
       //     | None -> logger tag"something went wrong"
 
     member self.OnClose(msg : ProjectMsg) =
-      sprintf "[OnClose] Id: %s Name: %s" msg.Id msg.Name
+      sprintf "[OnClose] Id: %s Name: %s" (msg.Id.ToString()) msg.Name
       |> logger tag 
 
     //  __  __                _

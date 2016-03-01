@@ -108,7 +108,7 @@ module IrisService =
       State.Save(id, signature, msg)
 
     member self.CreateProject(name, path) =
-      State.Create(name, path)
+      State.Create(name, path, signature)
 
     member self.CloseProject(pid) =
       match State.Close(pid) with
@@ -130,4 +130,4 @@ module IrisService =
       State.Projects
       |> Map.toList
       |> List.iter (fun (id, p : Project) ->
-                      printfn "  Id: %s Name: %s" p.Id p.Name)
+                      printfn "  Id: %s Name: %s" (p.Id.ToString()) p.Name)

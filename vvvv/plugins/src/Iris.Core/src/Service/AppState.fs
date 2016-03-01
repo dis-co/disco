@@ -1,5 +1,6 @@
 namespace Iris.Service.Core
 
+open System
 open Iris.Core.Types
 
 [<AutoOpen>]
@@ -13,7 +14,7 @@ module AppState =
   //         |_|   |_|
   type AppState() as self =
     [<DefaultValue>] val mutable Members  : Member list
-    [<DefaultValue>] val mutable Projects : Map<string, Project>
+    [<DefaultValue>] val mutable Projects : Map<Guid, Project>
 
     do self.Members  <- List.empty
        self.Projects <- Map.empty
@@ -37,7 +38,7 @@ module AppState =
           result
         | none -> none
 
-    member self.Find(pid : string) =
+    member self.Find(pid : Guid) =
       Map.tryFind pid self.Projects
 
     member self.Save(pid, sign, msg) =
@@ -45,9 +46,11 @@ module AppState =
         | Some(project) -> project.Save(sign, msg)
         | _ -> ()
 
-    member self.Create(name, path) =
+    member self.Create(name, path, sign) =
+      let now = System.DateTime.Now.ToLongTimeString()
       let project = Project.Create name
       project.Path <- Some(path)
+      project.Save(sign, sprintf "On %s, %s created %s" now sign.Name name)
       self.Add(project)
 
     member self.Close(pid) =

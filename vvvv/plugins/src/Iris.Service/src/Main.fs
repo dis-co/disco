@@ -70,9 +70,9 @@ module Main =
           let cmd = Console.ReadLine()
           match parseLine cmd with
             | Load(path)         -> Iris.LoadProject(path)
-            | Save(id',msg)      -> Iris.SaveProject(id',msg)
+            | Save(pid,msg)      -> Iris.SaveProject(Guid.Parse(pid),msg)
             | Create(name, path) -> Iris.CreateProject(name, path)
-            | Close(id')         -> Iris.CloseProject(id')
+            | Close(pid)         -> Iris.CloseProject(Guid.Parse(pid))
             | Set(var, vl)       -> Environment.SetEnvironmentVariable(var, vl)
             | Help               -> help()
             | Info               -> Iris.Dump()

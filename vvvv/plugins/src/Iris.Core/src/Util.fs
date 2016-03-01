@@ -91,3 +91,11 @@ module Utils =
       let ws = Array.fold (fun m _ -> m + " ") "" [| 0 .. (offset - def) |]
       printfn "[%s]%s%s" tag ws str
 
+
+  //   ____ _   _ ___ ____
+  //  / ___| | | |_ _|  _ \
+  // | |  _| | | || || | | |
+  // | |_| | |_| || || |_| |
+  //  \____|\___/|___|____/
+  let mkGuid () = System.Guid.NewGuid().ToString()
+
