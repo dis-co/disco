@@ -65,6 +65,7 @@
     <Compile Include="src\Service\GitDaemon.fs" />
     <Compile Include="src\Service\Member.fs" />
     <Compile Include="src\Uri.fs" />
+    <Compile Include="src\Service\AppState.fs" />
     <Compile Include="src\Service\Groups\VsyncGroup.fs" />
     <Compile Include="src\Service\Groups\PinGroup.fs" />
     <Compile Include="src\Service\Groups\CueGroup.fs" />
@@ -73,7 +74,7 @@
     <Compile Include="src\Service\Contexts\ServiceContext.fs" />
     <Compile Include="src\Service\Groups\ControlGroup.fs" />
     <Compile Include="src\Service\IrisGroup.fs" />
-    <Compile Include="src\IrisService.fs" />
+    <Compile Include="src\Service\IrisService.fs" />
     <None Include="assets\example-project.yml" />
   </ItemGroup>
   <PropertyGroup>

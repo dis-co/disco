@@ -1,7 +1,7 @@
 with import <nixpkgs> {}; {
   fsiEnv =  stdenv.mkDerivation {
     name = "fsiEnv";
-    buildInputs = [ stdenv fsharp curl openssl ];
+    buildInputs = [ stdenv curl openssl ];
     LD_LIBRARY_PATH="${curl}/lib:${openssl}/lib";
     shellHook = ''
       if [ ! -L $PWD/bin/Debug/NUnit.Framework.dll ]; then

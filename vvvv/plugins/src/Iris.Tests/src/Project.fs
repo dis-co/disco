@@ -37,6 +37,8 @@ module Project =
         project.LastSaved <- project'.LastSaved
 
         Assert.Equal("Projects should be structurally equal", true, (project = project'))
+        Assert.Equal("Project should have an Id", true, not <| isNull project.Id)
+        Assert.Equal("Projects should have same Id", true, project.Id = project'.Id)
 
   //    ____          _                  _             _
   //   / ___|   _ ___| |_ ___  _ __ ___ (_)_______  __| |

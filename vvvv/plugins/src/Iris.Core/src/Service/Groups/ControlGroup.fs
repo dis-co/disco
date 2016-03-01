@@ -15,6 +15,7 @@ module ControlGroup =
 
   type ProjectMsg =
     { Host : string
+    ; Id   : string
     ; Name : string
     }
 
@@ -47,11 +48,10 @@ module ControlGroup =
   //  | |_| | | | (_) | |_| | |_) |
   //   \____|_|  \___/ \__,_| .__/
   //                        |_|
-  type ControlGroup(context' : ServiceContext) as self =
+  type ControlGroup(state : AppState) as self =
     let tag = "ControlGroup"
 
-    [<DefaultValue>] val mutable group   : VsyncGroup<CtrlAction>
-    [<DefaultValue>] val mutable context : ServiceContext
+    [<DefaultValue>] val mutable group : VsyncGroup<CtrlAction>
 
     let host = System.Guid.NewGuid().ToString();
     let ip = Option.get <| getIpAddress()
@@ -71,7 +71,6 @@ module ControlGroup =
       ]
 
     do
-      self.context <- context'
       self.group <- new VsyncGroup<CtrlAction>("iris.control")
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
@@ -86,14 +85,14 @@ module ControlGroup =
       let mem =
         { Name     = host
         ; IP       = ip
-        ; Projects = self.context.GetProjects }
+        ; Projects = Array.empty }
       self.group.Send<Member>(CtrlAction.MemberAdd, mem)
 
     member self.Leave() =
       let mem =
         { Name     = host
         ; IP       = ip
-        ; Projects = self.context.GetProjects }
+        ; Projects = Array.empty }
       self.group.Send<Member>(CtrlAction.MemberRemove, mem)
       self.group.Leave()
 
@@ -104,45 +103,72 @@ module ControlGroup =
       logger tag "ViewChanged"
 
     member self.MakeCheckpoint(view : View) =
-      logger tag "MakeCheckpoint"
-      for mem in self.GetMembers() do
+      for mem in state.Members do
         self.group.SendCheckpoint<Member>(mem)
       self.group.DoneCheckpoint()
 
     member self.LoadCheckpoint(mem : Member) =
-      logger tag "LoadCheckpoint"
-      self.context.AddMember(mem)
+      self.OnMemberAdd(mem)
 
-    member self.OnLoad(job : ProjectMsg) =
-      let pth = Path.Combine(Workspace(), job.Name)
-      if File.Exists pth || Directory.Exists pth
-      then
-        if not <| self.context.ProjectLoaded(job.Name)
-        then
-          self.context.LoadProject(pth)
-          |> ignore
-      else
-        logger tag <| sprintf "address toString: %s" job.Host
-        match Project.Clone("localhost", job.Name) with
-          | Some pth -> logger tag <| sprintf "%s" pth
-          | None -> logger tag"something went wrong"
+    //            __
+    //        ____\ \
+    // Local |_____\ \  
+    //       |_____/ / Remote
+    //            /_/
+       
+    member self.Load(pid, name) =
+      logger tag <| sprintf "Please load: %s %s" pid name
+      let msg =
+        { Id   = pid
+        ; Name = name
+        ; Host = ip.ToString()
+        }
+      self.group.Send<ProjectMsg>(CtrlAction.Load, msg)
 
-    member self.OnClose(msg : ProjectMsg) = 
-      self.context.CloseProject(msg.Name)
+    member self.Close(pid, name) =
+      logger tag <| sprintf "load: %s" name
+      let msg = 
+        { Id   = pid
+        ; Name = name
+        ; Host = ip.ToString()
+        }
+      self.group.Send<ProjectMsg>(CtrlAction.Close, msg)
 
+    //         __
+    //        / /____
+    // Local / /_____|
+    //       \ \_____| Remote
+    //        \_\
+
+    member self.OnLoad(msg : ProjectMsg) =
+      sprintf "[OnLoad] Id: %s Name: %s" msg.Id msg.Name
+      |> logger tag 
+      // let pth = Path.Combine(Workspace(), msg.Name)
+      // if File.Exists pth || Directory.Exists pth
+      // then
+      //   if not <| state.Loaded msg.Name
+      //   then state.Load(pth) |> ignore
+      // else
+      //   logger tag <| sprintf "address toString: %s" msg.Host
+      //   match Project.Clone("localhost", msg.Name) with
+      //     | Some pth -> logger tag <| sprintf "%s" pth
+      //     | None -> logger tag"something went wrong"
+
+    member self.OnClose(msg : ProjectMsg) =
+      sprintf "[OnClose] Id: %s Name: %s" msg.Id msg.Name
+      |> logger tag 
+
+    //  __  __                _
+    // |  \/  | ___ _ __ ___ | |__   ___ _ __ ___
+    // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__/ __|
+    // | |  | |  __/ | | | | | |_) |  __/ |  \__ \
+    // |_|  |_|\___|_| |_| |_|_.__/ \___|_|  |___/
+    //
     member self.OnMemberAdd(mem : Member) =
-      self.context.AddMember(mem)
-      
+      state.Add(mem)
+
     member self.OnMemberUpdate(mem : Member) =
-      self.context.UpdateMember(mem)
+      state.Update(mem)
 
     member self.OnMemberRemove(mem : Member) =
-      self.context.RemoveMember(mem)
-
-    member self.GetMembers() : Member array =
-      self.context.GetMembers()
-      
-    (* load a project and notify everybody *)
-    member self.LoadProject(name : string) =
-      logger tag <| sprintf "load: %s" name
-      self.group.Send<ProjectMsg>(CtrlAction.Load, { Host = ip.ToString(); Name = name })
+      state.Remove(mem)

@@ -139,9 +139,9 @@ module Project =
             | _ -> ()
         | _ -> ()
 
-    static member private Build(id' : string, name : string) : Project =
+    static member private Build(pid : string, name : string) : Project =
       let data = new ProjectData()
-      data.Name      <- id'
+      data.Id        <- pid
       data.Name      <- name
       data.Path      <- None
       data.Copyright <- None
@@ -186,7 +186,7 @@ module Project =
     //   \____|_|  \___|\__,_|\__\___|
     //
     static member Create(name : string) =
-      let guid = System.Guid.NewGuid.ToString()
+      let guid = System.Guid.NewGuid().ToString()
       Project.Build(guid, name)
 
     //   _                    _

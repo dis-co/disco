@@ -72,21 +72,3 @@ module Service =
     member self.ProjectLoaded(id' : string) = 
       Map.containsKey id' Projects
     
-    //  __  __                _
-    // |  \/  | ___ _ __ ___ | |__   ___ _ __ ___
-    // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__/ __|
-    // | |  | |  __/ | | | | | |_) |  __/ |  \__ \
-    // |_|  |_|\___|_| |_| |_|_.__/ \___|_|  |___/
-    //
-    member self.AddMember(mem : Member) =
-      Members <- Map.add mem.Name mem Members
-
-    member self.UpdateMember(mem : Member) =
-      Members <- Map.add mem.Name mem Members
-
-    member self.RemoveMember(mem : Member) =
-      Members <- Map.remove mem.Name Members
-
-    member self.GetMembers() : Member [] =
-      Map.toArray Members
-      |> Array.map snd 
