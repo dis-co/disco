@@ -1,4 +1,4 @@
-namespace Iris.Service.Contexts
+namespace Iris.Service.Core
 
 open System
 open Iris.Core.Types
@@ -9,8 +9,8 @@ open Iris.Service.Groups
 [<AutoOpen>]
 module Project =
 
-  type ProjectContext(project : Project) =
-    let tag = "ProjectContext"
+  type ProjectController(project : Project) =
+    let tag = "ProjectController"
 
     let projectGroup = new ProjectGroup(project)
     let gitDaemon = new Git.Daemon(Option.get project.Path)

@@ -1,25 +1,26 @@
 namespace Iris.Service.Core
 
 open Vsync
+open System
 open System.Net
 open Iris.Core.Types
 
 [<AutoOpen>]
 module Member =
 
-  let private formatProject (project : ProjectData) : string =
-    project.Path.ToString()
-    |> sprintf "Name: %s Path: %s" project.Name
+  let private formatProject (pid : Guid, name : string) : string =
+    sprintf "Project Id: %s Name: %s" (pid.ToString()) name
 
   type Member =
-    { Name     : string
+    { MemberId : Guid
+    ; Name     : string
     ; IP       : IPAddress
-    ; Projects : ProjectData array
+    ; Projects : (Guid * string) array
     }
   
     with
       override self.ToString() =
         Array.map formatProject self.Projects
         |> Array.fold (fun m s -> m + "\n  " + s) ""
-        |> sprintf "Name: %s IP: %s\n%s" self.Name (self.IP.ToString())
+        |> sprintf "Id: %s Name: %s IP: %s\n%s" (self.MemberId.ToString()) self.Name (self.IP.ToString())
       

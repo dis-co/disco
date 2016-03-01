@@ -7,9 +7,7 @@ open System.Net
 open Iris.Core.Types
 open Iris.Core.Utils
 open Iris.Service.Core
-open Iris.Service.Contexts
 open Nessos.FsPickler
-
 
 [<AutoOpen>]
 module ControlGroup =
@@ -54,7 +52,7 @@ module ControlGroup =
 
     [<DefaultValue>] val mutable group : VsyncGroup<CtrlAction>
 
-    let host = System.Guid.NewGuid().ToString();
+    let host = System.Guid.NewGuid();
     let ip = Option.get <| getIpAddress()
 
     let AddHandler (action : CtrlAction, cb : 'data -> unit) =
@@ -84,15 +82,17 @@ module ControlGroup =
     member self.Join()  =
       self.group.Join()
       let mem =
-        { Name     = host
+        { MemberId = host
         ; IP       = ip
+        ; Name     = "Iris ControlGroup"
         ; Projects = Array.empty }
       self.group.Send<Member>(CtrlAction.MemberAdd, mem)
 
     member self.Leave() =
       let mem =
-        { Name     = host
+        { MemberId = host
         ; IP       = ip
+        ; Name     = "Iris ControlGroup"
         ; Projects = Array.empty }
       self.group.Send<Member>(CtrlAction.MemberRemove, mem)
       self.group.Leave()

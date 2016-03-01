@@ -8,9 +8,7 @@ open Iris.Core.Types
 open Iris.Core.Config
 open Iris.Service.Core
 open Iris.Service.Groups
-open Iris.Service.Contexts
 open LibGit2Sharp
-
 open Vsync
 
 [<AutoOpen>]
