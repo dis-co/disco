@@ -198,7 +198,7 @@ module Project =
     /// Load a Project from Disk
     static member Load(path : FilePath) : Either<string, Project> =
       if not <| File.Exists(path) // must be a *File*
-      then Left("File not found!")
+      then Fail("File not found!")
       else
         IrisConfig.Load(path)
 
@@ -233,7 +233,7 @@ module Project =
           ; Tasks     = parseTasks     IrisConfig
           ; Cluster   = parseCluster   IrisConfig
           }
-        Right(project)
+        Success(project)
 
     //   ____
     //  / ___|  __ ___   _____
@@ -570,12 +570,12 @@ module Project =
             | Some(repo') ->
               repo'.Stage(destPath)
               repo'.Commit(msg, sign, Committer)
-              |> Right
+              |> Success
             | _ ->
-              Left "Saving without repository is unsupported. Aborting"
+              Fail "Saving without repository is unsupported. Aborting"
         with
-          | exn -> Left exn.Message
-      else Left "Cannot save without path."
+          | exn -> Fail exn.Message
+      else Fail "Cannot save without path."
 
     //   ____ _
     //  / ___| | ___  _ __   ___

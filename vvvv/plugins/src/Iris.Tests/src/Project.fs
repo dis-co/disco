@@ -27,13 +27,12 @@ module Project =
 
         let project = Project.Create name
         project.Path <- Some(path)
-        project.Save(signature, "Initial project save.")
+        project.Save(signature, "Initial project save.") |> ignore
 
-        let project' =
-          Project.Load(path + (sprintf "/%s.iris" name))
-          |> Option.get
+        let result = Project.Load(path + (sprintf "/%s.iris" name))
+        Assert.Equal("Projects should be loaded", true, isSuccess result)
 
-        // the only difference will be the automatically assigned timestamp
+        let project' = Either.get result
         project.LastSaved <- project'.LastSaved
 
         Assert.Equal("Projects should be structurally equal", true, (project = project'))
@@ -224,11 +223,11 @@ module Project =
               Cluster   = cluster
           }
 
-        project.Save(signature, "Initial project save.")
+        project.Save(signature, "Initial project save.") |> ignore
 
         let project' =
           Project.Load(path + sprintf "/%s.iris" name)
-          |> Option.get
+          |> Either.get
 
         // the only difference will be the automatically assigned timestamp
         project.LastSaved <- project'.LastSaved
@@ -252,12 +251,12 @@ module Project =
 
         let project = Project.Create name
         project.Path <- Some(path)
-        project.Save(signature, "Initial commit.")
+        project.Save(signature, "Initial commit.") |> ignore
 
         let loaded =
           Path.Combine(path, sprintf "%s.iris" name)
           |> Project.Load
-          |> Option.get
+          |> Either.get
 
         Assert.Equal("Projects should be a folder", true, Directory.Exists path)
         Assert.Equal("Projects should be a git repo", true, Directory.Exists    (path + "/.git"))
@@ -288,11 +287,11 @@ module Project =
         project.Author <- Some(author1)
 
         let msg1 = "Commit 1"
-        project.Save(signature, msg1)
+        project.Save(signature, msg1) |> ignore
 
         Path.Combine(path, sprintf "%s.iris" name)
         |> Project.Load
-        |> Option.get
+        |> Either.get
         |> (fun p ->
             let c = (Option.get p.Repo).Commits.ElementAt(0)
             Assert.Equal("Authors should be equal", true, (Option.get p.Author) = author1)
@@ -304,11 +303,11 @@ module Project =
         project.Author <- Some(author2)
 
         let msg2 = "Commit 2"
-        project.Save(signature, msg2)
+        project.Save(signature, msg2) |> ignore
 
         Path.Combine(path, sprintf "%s.iris" name)
         |> Project.Load
-        |> Option.get
+        |> Either.get
         |> (fun p ->
             let c1 = (Option.get p.Repo).Commits.ElementAt(0)
             let c2 = (Option.get p.Repo).Commits.ElementAt(1)
@@ -322,11 +321,11 @@ module Project =
         project.Author <- Some(author3)
 
         let msg3 = "Commit 3"
-        project.Save(signature, msg3)
+        project.Save(signature, msg3) |> ignore
 
         Path.Combine(path, sprintf "%s.iris" name)
         |> Project.Load
-        |> Option.get
+        |> Either.get
         |> (fun p ->
             let c1 = (Option.get p.Repo).Commits.ElementAt(0)
             let c2 = (Option.get p.Repo).Commits.ElementAt(1)

@@ -110,18 +110,18 @@ module IrisService =
 
     member self.CreateProject(name, path) =
       match State.Create(name, path, signature) with
-        | Right project -> self.Ctrl.Load(project.Id, project.Name)
-        | Left err -> logger tag err
+        | Success project -> self.Ctrl.Load(project.Id, project.Name)
+        | Fail err -> logger tag err
 
     member self.CloseProject(pid) =
       match State.Close(pid) with
-        | Right project -> self.Ctrl.Close(project.Id, project.Name)
-        | Left err -> logger tag err
+        | Success project -> self.Ctrl.Close(project.Id, project.Name)
+        | Fail err -> logger tag err
 
     member self.LoadProject(path : FilePath) =
       match State.Load(path) with
-        | Some project -> self.Ctrl.Load(project.Id, project.Name)
-        | _ -> logger tag "no project could be loaded. path correct?"
+        | Success project -> self.Ctrl.Load(project.Id, project.Name)
+        | Fail err -> logger tag err
 
     member self.Dump() =
       printfn "Members:"

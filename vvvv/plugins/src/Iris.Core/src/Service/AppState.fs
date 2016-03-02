@@ -1,6 +1,7 @@
 namespace Iris.Service.Core
 
 open System
+open LibGit2Sharp
 open Iris.Core.Utils
 open Iris.Core.Types
 
@@ -36,7 +37,7 @@ module AppState =
 
     member self.Load(path) : Either<string, Project> =
       match Project.Load path with
-        | Right project as result->
+        | Success project as result->
           self.Add project
           result
         | err -> err
@@ -44,28 +45,29 @@ module AppState =
     member self.Find(pid : Guid) =
       Map.tryFind pid self.Projects
 
-    member self.Save(pid, sign, msg) =
+    member self.Save(pid, sign, msg) : Either<string,Commit> =
       match self.Find(pid) with
         | Some(project) -> project.Save(sign, msg)
-        | _ -> ()
+        | _ -> Fail "project not found"
 
-    member self.Create(name, path, sign) : Either<string, Project> =
+    member self.Create(name, path, sign : Signature) : Either<string, Project> =
       let now = System.DateTime.Now.ToLongTimeString()
       let project = Project.Create name
       project.Path <- Some(path)
       try 
-        project.Save(sign, sprintf "On %s, %s created %s" now sign.Name name)
+        let msg = sprintf "On %s, %s created %s" now sign.Name name
+        project.Save(sign, msg) |> ignore
         self.Add(project)
-        Right(project)
+        Success(project)
       with
-        | exn -> Left exn.Message
+        | exn -> Fail(exn.Message)
 
     member self.Close(pid) : Either<string, Project> =
       match self.Find(pid) with
         | Some project -> 
           self.Projects <- Map.remove pid self.Projects
-          Right project
-        | _ -> Left "Project not found."
+          Success project
+        | _ -> Fail("Project not found.")
 
     member self.Loaded(pid) =
       Map.toList self.Projects
@@ -84,15 +86,3 @@ module AppState =
 
     member self.Remove (mem : Member) =
       self.Members <- List.filter ((=) mem) self.Members
-
-  // Option_  ___  _   _    _    ____  _
-  // |  \/  |/ _ \| \ | |  / \  |  _ \| |
-  // | |\/| | | | |  \| | / _ \ | | | | |
-  // | |  | | |_| | |\  |/ ___ \| |_| |_|
-  // |_|  |_|\___/|_| \_/_/   \_\____/(_)ish
-  let (>>=) (a : 'a option) (f : 'a -> 'b option) =
-    match a with
-      | Some(t) -> f t
-      | None    -> None
-
-  let returnO a = Some(a)
