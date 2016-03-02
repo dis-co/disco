@@ -17,11 +17,14 @@ module AppState =
   // /_/   \_\ .__/| .__/____/ \__\__,_|\__\___|
   //         |_|   |_|
   type AppState =
-    { Members  : Member list
-    ; Projects : Map<Guid,Project>
+    { Members   : Member list
+    ; Projects  : Map<Guid, Project>
     }
     static member empty
-      with get () =  { Members = List.empty; Projects = Map.empty }
+      with get () =
+        { Members   = List.empty
+        ; Projects  = Map.empty
+        }
 
   let addProject (project : Project) (state : AppState) : Either<string,AppState> =
     { state with Projects = Map.add project.Id project state.Projects }

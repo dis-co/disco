@@ -165,7 +165,7 @@ module Plugins =
 
       match instances.Get iobox with
         | Some(_) -> cb ()
-        | None -> fail "instance not found"
+        | None -> bail "instance not found"
 
     (*--------------------------------------------------------------------------*)
     test "should remove an instance for an iobox" <| fun cb ->

@@ -40,7 +40,6 @@ module ProjectGroup =
 
     [<DefaultValue>] val mutable uri     : string
     [<DefaultValue>] val mutable group   : VsyncGroup<Actions>
-    [<DefaultValue>] val mutable Project : Project
 
     let AddHandler(action, cb) =
       self.group.AddHandler<Project>(action, cb)
@@ -48,7 +47,6 @@ module ProjectGroup =
     let AllHandlers = [ (Actions.Pull, self.Pull) ]
 
     do
-      self.Project <- project
       self.uri <- Uri.mkProjectUri project
       self.group <- new VsyncGroup<Actions>(self.uri)
       self.group.AddInitializer(self.Initialize)

@@ -71,9 +71,9 @@
     <Compile Include="src\Service\Groups\PinGroup.fs" />
     <Compile Include="src\Service\Groups\CueGroup.fs" />
     <Compile Include="src\Service\Groups\ProjectGroup.fs" />
-    <Compile Include="src\Service\ProjectController.fs" />
-    <Compile Include="src\Service\Groups\ControlGroup.fs" />
     <Compile Include="src\Service\IrisGroup.fs" />
+    <Compile Include="src\Service\ProjectProcess.fs" />
+    <Compile Include="src\Service\Groups\ControlGroup.fs" />
     <Compile Include="src\Service\IrisService.fs" />
     <None Include="assets\example-project.yml" />
   </ItemGroup>

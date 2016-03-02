@@ -14,8 +14,14 @@ module Either =
 
     static member get(v : Either<'err,'a>) : 'a =
       match v with
-        | Success v -> v
+        | Success v1 -> v1
         | _ -> failwith "Either: cannot get on a Fail value"
+
+    static member error(v : Either<'err,'a>) : 'err =
+      match v with
+        | Fail v1 -> v1
+        | _ -> failwith "Either: cannot get error from Success Value"
+      
 
     //   __                  _
     //  / _|_   _ _ __   ___| |_ ___  _ __

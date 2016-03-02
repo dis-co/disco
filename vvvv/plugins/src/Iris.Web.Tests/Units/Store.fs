@@ -120,14 +120,14 @@ module Store =
 
         match findIOBox store.State.Patches iobox.Id with
           | Some(i) -> i.Name |==| name1
-          | None -> fail "iobox is mysteriously missing"
+          | None -> bail "iobox is mysteriously missing"
 
         let updated = { iobox with Name = name2 }
         store.Dispatch <| IOBoxEvent(Update, updated)
 
         match findIOBox store.State.Patches iobox.Id with
           | Some(i) -> (i.Name ==>> name2) cb
-          | None -> fail "iobox is mysteriously missing"
+          | None -> bail "iobox is mysteriously missing"
 
     (*--------------------------------------------------------------------------*)
     withStore <| fun patch store ->
@@ -141,12 +141,12 @@ module Store =
 
         match findIOBox store.State.Patches iobox.Id with
           | Some(_) -> ()
-          | None    -> fail "iobox is mysteriously missing"
+          | None    -> bail "iobox is mysteriously missing"
 
         store.Dispatch <| IOBoxEvent(Delete, iobox)
 
         match findIOBox store.State.Patches iobox.Id with
-          | Some(_) -> fail "iobox should be missing by now but isn't"
+          | Some(_) -> bail "iobox should be missing by now but isn't"
           | None    -> success cb
 
     (****************************************************************************)

@@ -11,8 +11,6 @@ open Vsync
 [<AutoOpen>]
 module PinGroup =
 
-  type IOBoxDict = Dictionary<Id,IOBox>
-
   /// Actions defined for 
   type BoxAction =
     | Add
@@ -32,8 +30,6 @@ module PinGroup =
     [<DefaultValue>] val mutable uri   : string
     [<DefaultValue>] val mutable group : VsyncGroup<BoxAction>
 
-    let mutable boxes : IOBoxDict = new IOBoxDict()
-
     let AddHandler(action, cb) =
       self.group.AddHandler<IOBox>(action, cb)
 
@@ -44,7 +40,7 @@ module PinGroup =
       ]
 
     do
-      self.uri <- Uri.mkCueUri project grpname 
+      self.uri <- Uri.mkPinUri project grpname 
       self.group <- new VsyncGroup<BoxAction>(self.uri)
       self.group.AddInitializer(self.Initialize)
       self.group.AddViewHandler(self.ViewChanged)
@@ -52,12 +48,12 @@ module PinGroup =
       self.group.CheckpointLoader(self.LoadCheckpoint)
       List.iter AddHandler AllHandlers
 
-    member self.Dump() =
-      for box in boxes do
-        logger tag <| sprintf "pin id: %s" box.Key
+    // member self.Dump() =
+    //   for box in boxes do
+    //     logger tag <| sprintf "pin id: %s" box.Key
 
     member self.Add(box : IOBox) =
-      boxes.Add(box.Id, box)
+      logger tag "add box"
 
     (* Become member of group *)
     member self.Join()  = self.group.Join()
@@ -72,17 +68,16 @@ module PinGroup =
       logger tag "should load state from disk/vvvv now"
 
     member self.MakeCheckpoint(view : View) =
-      logger tag <| sprintf "makeing a snapshot. %d pins in it" boxes.Count
-      for pair in boxes do
-        self.group.SendCheckpoint(pair.Value)
+      logger tag <| sprintf "makeing a snapshot. %d pins in it" 0
+      // for pair in boxes do
+      //   self.group.SendCheckpoint(pair.Value)
       self.group.DoneCheckpoint()
 
     member self.LoadCheckpoint(box : IOBox) =
-      if not <| boxes.ContainsKey box.Id
-      then boxes.Add(box.Id, box)
-      else boxes.[box.Id] <- box
-
-      logger tag <| sprintf "loaded a snapshot. %d pins in it" boxes.Count
+      // if not <| boxes.ContainsKey box.Id
+      // then boxes.Add(box.Id, box)
+      // else boxes.[box.Id] <- box
+      logger tag <| sprintf "loaded a snapshot. %d pins in it" 0
 
     (* View changes *)
     member self.ViewChanged(view : View) : unit =
@@ -90,11 +85,12 @@ module PinGroup =
 
     (* Event Handlers for BoxAction *)
     member self.PinAdded(box : IOBox) : unit =
-      if not <| boxes.ContainsKey(box.Id)
-      then
-        self.Add(box)
-        logger tag "pin added cb: "
-        self.Dump()
+      logger tag "pin added"
+      // if not <| boxes.ContainsKey(box.Id)
+      // then
+      //   self.Add(box)
+      //   logger tag "pin added cb: "
+      //   self.Dump()
 
     member self.PinUpdated(box : IOBox) : unit =
       logger tag <| sprintf "%s updated" box.Name

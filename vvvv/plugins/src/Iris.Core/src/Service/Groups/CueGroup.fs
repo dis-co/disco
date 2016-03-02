@@ -35,8 +35,6 @@ module CueGroup =
     [<DefaultValue>] val mutable uri   : string
     [<DefaultValue>] val mutable group : VsyncGroup<CueAction>
 
-    let mutable cues : CueDict = new CueDict()
-
     let AddHandler(action, cb) =
       self.group.AddHandler<Cue>(action, cb)
 
@@ -56,12 +54,13 @@ module CueGroup =
       self.group.CheckpointLoader(self.LoadCheckpoint)
       List.iter AddHandler AllHandlers
 
-    member self.Dump() =
-      for cue in cues do
-        logger tag <| sprintf "cue id: %s" cue.Key
+    // member self.Dump() =
+    //   for cue in cues do
+    //     logger tag <| sprintf "cue id: %s" cue.Key
 
     member self.Add(c : Cue) =
-      cues.Add(c.Id, c)
+      //cues.Add(c.Id, c)
+      logger tag "add"
 
     (* Become member of group *)
     member self.Join() = self.group.Join()
@@ -76,16 +75,16 @@ module CueGroup =
       logger tag <| sprintf "should load state from disk/vvvv now"
 
     member self.MakeCheckpoint(view : View) =
-      logger tag <| sprintf "makeing a snapshot. %d cues in it" cues.Count
-      for pair in cues do
-        self.group.SendCheckpoint(pair.Value)
-      self.group.DoneCheckpoint()
+      logger tag <| sprintf "makeing a snapshot. %d cues in it" 0
+      // for pair in cues do
+      //   self.group.SendCheckpoint(pair.Value)
+      // self.group.DoneCheckpoint()
 
     member self.LoadCheckpoint(cue : Cue) =
-      if cues.ContainsKey(cue.Id)
-      then cues.[cue.Id] <- cue
-      else cues.Add(cue.Id, cue)
-      logger tag <| sprintf "loaded a snapshot. %d cues in it" cues.Count
+      // if cues.ContainsKey(cue.Id)
+      // then cues.[cue.Id] <- cue
+      // else cues.Add(cue.Id, cue)
+      logger tag <| sprintf "loaded a snapshot. %d cues in it" 0
 
     (* View changes *)
     member self.ViewChanged(view : View) : unit =
@@ -93,11 +92,12 @@ module CueGroup =
 
     (* Event Handlers for CueAction *)
     member self.CueAdded(cue : Cue) : unit =
-      if not <| cues.ContainsKey(cue.Id)
-      then
-        self.Add(cue)
-        logger tag "cue added cb"
-        self.Dump()
+      // if not <| cues.ContainsKey(cue.Id)
+      // then
+      //   self.Add(cue)
+      //   logger tag "cue added cb"
+      //   self.Dump()
+      logger tag "cue added"
 
     member self.CueUpdated(cue : Cue) : unit =
       logger tag <| sprintf "%s updated" cue.Name

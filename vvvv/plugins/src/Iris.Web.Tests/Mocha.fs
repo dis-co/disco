@@ -10,17 +10,17 @@ open WebSharper.JavaScript
 module Mocha =
 
   [<Direct " throw new Error($msg) ">]
-  let fail (msg : string) : unit = X<unit>
+  let bail (msg : string) : unit = X<unit>
 
   let success (cb : unit -> unit) : unit = cb ()
 
   let check (result : bool) (msg : string) : unit =
     if not result
-    then fail msg
+    then bail msg
 
   let check_cc (result : bool) (msg : string) (cb : unit -> unit) : unit =
     if not result
-    then fail msg
+    then bail msg
     else cb ()
 
   let (==>>) a b cb =
