@@ -47,7 +47,7 @@ module ControlGroup =
   //  | |_| | | | (_) | |_| | |_) |
   //   \____|_|  \___/ \__,_| .__/
   //                        |_|
-  type ControlGroup(state : AppState) as self =
+  type ControlGroup(state : AppState ref) as self =
     let tag = "ControlGroup"
 
     [<DefaultValue>] val mutable group : VsyncGroup<CtrlAction>
@@ -104,8 +104,8 @@ module ControlGroup =
       logger tag "ViewChanged"
 
     member self.MakeCheckpoint(view : View) =
-      for mem in state.Members do
-        self.group.SendCheckpoint<Member>(mem)
+      let send mem = self.group.SendCheckpoint<Member>(mem)
+      !state |> fun s -> List.iter send s.Members
       self.group.DoneCheckpoint()
 
     member self.LoadCheckpoint(mem : Member) =
@@ -166,10 +166,10 @@ module ControlGroup =
     // |_|  |_|\___|_| |_| |_|_.__/ \___|_|  |___/
     //
     member self.OnMemberAdd(mem : Member) =
-      state.Add(mem)
+      state := addMember mem !state
 
     member self.OnMemberUpdate(mem : Member) =
-      state.Update(mem)
+      state := updateMember mem !state
 
     member self.OnMemberRemove(mem : Member) =
-      state.Remove(mem)
+      state := removeMember mem !state

@@ -47,14 +47,11 @@ module IrisService =
 
     let signature = new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
 
-    let mutable Ready : bool = false
-    let mutable State : AppState = AppState.empty
+    let mutable state : AppState ref = ref AppState.empty
     let mutable Projects : Map<Guid,ProjectController> = Map.empty
 
     [<DefaultValue>] val mutable Ctrl  : ControlGroup
 
-
-    do Ready <- false
 
     //  ___       _             __
     // |_ _|_ __ | |_ ___ _ __ / _| __ _  ___ ___  ___
@@ -82,20 +79,16 @@ module IrisService =
       options.Apply()
       VsyncSystem.Start()
 
-      self.Ctrl <- new ControlGroup(State)
+      self.Ctrl <- new ControlGroup(state)
       self.Ctrl.Join()
 
-      Ready <- true
 
     member self.Stop() =
-      try
-        self.Ctrl.Leave()
-        try VsyncSystem.Shutdown()
-        with
-          | :? System.InvalidOperationException as exn ->
-            logger tag exn.Message
-      finally
-        Ready <- false
+      self.Ctrl.Leave()
+      try VsyncSystem.Shutdown()
+      with
+        | :? System.InvalidOperationException as exn ->
+          logger tag exn.Message
 
     member self.Wait() = VsyncSystem.WaitForever()
 
@@ -106,31 +99,45 @@ module IrisService =
     // |_|   |_|  \___// |\___|\___|\__|
     //               |__/
     member self.SaveProject(id, msg) =
-      State.Save(id, signature, msg)
+      saveProject id signature msg !state
+        >>= fun (commit, state') -> 
+          state := state'
+          succeed commit
 
     member self.CreateProject(name, path) =
-      match State.Create(name, path, signature) with
-        | Success project -> self.Ctrl.Load(project.Id, project.Name)
-        | Fail err -> logger tag err
+      createProject name path signature !state
+        >>= fun (project, state') ->
+          state := state'
+          self.Ctrl.Load(project.Id, project.Name)
+          succeed project
 
     member self.CloseProject(pid) =
-      match State.Close(pid) with
-        | Success project -> self.Ctrl.Close(project.Id, project.Name)
-        | Fail err -> logger tag err
+      findProject pid !state
+        >>= fun project ->
+          combine project (closeProject pid !state)
+        >>= fun (project, state') ->
+          state := state'
+          self.Ctrl.Close(pid, project.Name)
+          succeed project
 
     member self.LoadProject(path : FilePath) =
-      match State.Load(path) with
-        | Success project -> self.Ctrl.Load(project.Id, project.Name)
-        | Fail err -> logger tag err
+      loadProject path !state
+        >>= fun (project, state') -> 
+          self.Ctrl.Load(project.Id, project.Name)
+          state := state'
+          succeed project
 
     member self.Dump() =
       printfn "Members:"
-      State.Members
+
+      !state
+      |> fun s -> s.Members
       |> List.iter (fun (mem : Member) ->
                       printfn "  %s" <| mem.ToString())
 
       printfn "Projects:"
-      State.Projects
+      !state
+      |> fun s -> s.Projects
       |> Map.toList
       |> List.iter (fun (id, p : Project) ->
                       printfn "  Id: %s Name: %s" (p.Id.ToString()) p.Name)

@@ -23,4 +23,6 @@ module Member =
         Array.map formatProject self.Projects
         |> Array.fold (fun m s -> m + "\n  " + s) ""
         |> sprintf "Id: %s Name: %s IP: %s\n%s" (self.MemberId.ToString()) self.Name (self.IP.ToString())
-      
+
+  let sameAs mem1 mem2 : bool =
+    mem1.MemberId = mem2.MemberId
