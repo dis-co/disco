@@ -69,15 +69,32 @@ module Main =
           printf "> "
           let cmd = Console.ReadLine()
           match parseLine cmd with
-            | Load(path)         -> Iris.LoadProject(path)
-            | Save(pid,msg)      -> Iris.SaveProject(Guid.Parse(pid),msg) |> ignore
-            | Create(name, path) -> Iris.CreateProject(name, path)
-            | Close(pid)         -> Iris.CloseProject(Guid.Parse(pid))
-            | Set(var, vl)       -> Environment.SetEnvironmentVariable(var, vl)
-            | Help               -> help()
-            | Info               -> Iris.Dump()
-            | Quit               -> run <- false
-            | Error              -> printfn "command not recognized"
+            | Load(path) ->
+              match Iris.LoadProject(path) with
+                | Success p -> printfn "Loaded %s: %s" p.Name <| p.Id.ToString()
+                | Fail err -> printfn "Error loading: %s" err
+
+            | Save(pid,msg) ->
+              match Iris.SaveProject(Guid.Parse(pid),msg) with
+                | Success c -> printfn "Saved! Commit Sha: %s" c.Sha
+                | Fail err -> printfn "Error saving: %s" err
+
+            | Create(name, path) ->
+              match  Iris.CreateProject(name, path) with
+                | Success p -> printfn "Created Project: %s" <| p.Id.ToString()
+                | Fail err -> printfn "Could not create project: %s" err
+
+            | Close(pid) ->
+              match Iris.CloseProject(Guid.Parse(pid)) with
+                | Success p -> printfn "Closed project %s." p.Name
+                | Fail err -> printfn "Could not close project: %s" err
+
+            | Set(var, vl) -> Environment.SetEnvironmentVariable(var, vl)
+
+            | Help  -> help()
+            | Info  -> Iris.Dump()
+            | Quit  -> run <- false
+            | Error -> printfn "command not recognized"
         (Iris :> IDisposable).Dispose()
       else
         Iris.Wait()

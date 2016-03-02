@@ -129,7 +129,6 @@ module IrisService =
 
     member self.Dump() =
       printfn "Members:"
-
       !state
       |> fun s -> s.Members
       |> List.iter (fun (mem : Member) ->
