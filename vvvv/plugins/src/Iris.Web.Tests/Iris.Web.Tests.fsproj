@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -10,6 +10,7 @@
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <WebSharperProject>Bundle</WebSharperProject>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -61,12 +62,10 @@
     <ProjectReference Include="..\Iris.Core\Iris.Core.fsproj">
       <Project>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</Project>
       <Name>Iris.Core</Name>
-      <Private>True</Private>
     </ProjectReference>
     <ProjectReference Include="..\Iris.Web.Core\Iris.Web.Core.fsproj">
       <Project>{5F0370CD-9619-4815-B036-8B498FDF73C6}</Project>
       <Name>Iris.Web.Core</Name>
-      <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
   <Choose>

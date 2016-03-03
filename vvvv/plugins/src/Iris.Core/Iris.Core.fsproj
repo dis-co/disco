@@ -6,6 +6,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</ProjectGuid>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <OutputType>Library</OutputType>
     <RootNamespace>Iris.Core</RootNamespace>
     <AssemblyName>Iris.Core</AssemblyName>
@@ -13,7 +14,6 @@
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <WebSharperProject>Library</WebSharperProject>
     <Name>Iris.Core</Name>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -59,10 +59,10 @@
     <Compile Include="Iris.Core\Types\Cue.fs" />
     <Compile Include="Iris.Core\Types\CueList.fs" />
     <Compile Include="Iris.Core\Types\Message.fs" />
-    <Compile Include="Iris.Core\Config\Types.fs" />
-    <Compile Include="Iris.Core\Config\Vsync.fs" />
-    <Compile Include="Iris.Core\Config\Yaml.fs" />
-    <Compile Include="Iris.Core\Config\Config.fs" />
+    <Compile Include="Iris.Core\Types\Config\Types.fs" />
+    <Compile Include="Iris.Core\Types\Config\Vsync.fs" />
+    <Compile Include="Iris.Core\Types\Config\Yaml.fs" />
+    <Compile Include="Iris.Core\Types\Config\Config.fs" />
     <Compile Include="Iris.Core\Types\Project.fs" />
     <Compile Include="Iris.Core\Uri.fs" />
     <Compile Include="Iris.Service\GitDaemon.fs" />

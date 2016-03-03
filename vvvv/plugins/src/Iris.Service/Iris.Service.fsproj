@@ -18,32 +18,18 @@
     <ErrorReport>prompt</ErrorReport>
     <Externalconsole>true</Externalconsole>
     <OtherFlags>--quotations-debug</OtherFlags>
+    <DocumentationFile>
+    </DocumentationFile>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <Prefer32Bit>false</Prefer32Bit>
+    <Optimize>false</Optimize>
+    <Tailcalls>false</Tailcalls>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <Externalconsole>true</Externalconsole>
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="mscorlib" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Main.fs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Iris.Core\Iris.Core.fsproj">
-      <Project>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</Project>
-      <Name>Iris.Core</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Vsync\Vsync.csproj">
-      <Project>{6C867E53-6228-4FA0-9943-3C8CC11D74BC}</Project>
-      <Name>Iris.Core</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">
       <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')">
@@ -259,4 +245,25 @@
     </When>
   </Choose>
   <Import Project="..\..\packages\WebSharper\build\WebSharper.targets" Condition="Exists('..\..\packages\WebSharper\build\WebSharper.targets')" Label="Paket" />
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Main.fs" />
+    <Content Include="App.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <ProjectReference Include="..\Iris.Core\Iris.Core.fsproj">
+      <Project>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</Project>
+      <Name>Iris.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Vsync\Vsync.csproj">
+      <Project>{6C867E53-6228-4FA0-9943-3C8CC11D74BC}</Project>
+      <Name>Vsync</Name>
+    </ProjectReference>
+  </ItemGroup>
 </Project>

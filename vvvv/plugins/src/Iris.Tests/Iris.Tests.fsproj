@@ -49,8 +49,8 @@
   <ItemGroup>
     <None Include="paket.references" />
     <None Include="paket.template" />
-    <None Include="assets/example-project.yml" />
     <Compile Include="Iris.Tests\ProjectTests.fs" />
+    <None Include="assets\example-project.yml" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
@@ -181,7 +181,6 @@
   <ItemGroup>
     <Reference Include="Fuchu">
       <HintPath>..\..\packages\Fuchu\lib\Fuchu.dll</HintPath>
-      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>
