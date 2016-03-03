@@ -72,8 +72,8 @@
     <Compile Include="Iris.Service\Groups\PinGroup.fs" />
     <Compile Include="Iris.Service\Groups\CueGroup.fs" />
     <Compile Include="Iris.Service\Groups\ProjectGroup.fs" />
-    <Compile Include="Iris.Service\IrisGroup.fs" />
-    <Compile Include="Iris.Service\ProjectProcess.fs" />
+    <Compile Include="Iris.Service\Groups\IrisGroup.fs" />
+    <Compile Include="Iris.Service\Groups\ProjectProcess.fs" />
     <Compile Include="Iris.Service\Groups\ControlGroup.fs" />
     <Compile Include="Iris.Service\IrisService.fs" />
     <Compile Include="Iris.Service\AssetServer.fs" />
