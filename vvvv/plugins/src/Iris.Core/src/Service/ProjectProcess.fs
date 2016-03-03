@@ -47,11 +47,19 @@ module ProjectProcess =
         logger tag "Oop"
         fail exn.Message
 
+  //  ____    _    _   _  ____ _____ ____
+  // |  _ \  / \  | \ | |/ ___| ____|  _ \
+  // | | | |/ _ \ |  \| | |  _|  _| | |_) |
+  // | |_| / ___ \| |\  | |_| | |___|  _ <
+  // |____/_/   \_\_| \_|\____|_____|_| \_\
+  //
+  // deedlocks on mono!
+  //
   let stopProcess (proc : ProjectProcess) : Either<string,ProjectProcess> =
     try
+      proc.PinGroup.Leave()
       proc.GitDaemon.Stop()
       proc.CueGroup.Leave()
-      proc.PinGroup.Leave()
       proc.ProjectGroup.Leave()
       succeed proc
     with

@@ -87,7 +87,9 @@ module ProjectGroup =
       logger tag "change branch now"
 
     member self.Join() = self.group.Join()
-    member self.Leave() = self.group.Leave()
+    member self.Leave() =
+      self.group.Leave()
+      self.group.Dispose()
 
     (* Actions on the group *)
     member self.Send(action : Actions, project : Project) =

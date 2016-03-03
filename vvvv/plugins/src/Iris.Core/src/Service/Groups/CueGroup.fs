@@ -64,7 +64,10 @@ module CueGroup =
 
     (* Become member of group *)
     member self.Join() = self.group.Join()
-    member self.Leave() = self.group.Leave()
+
+    member self.Leave() =
+      self.group.Leave()
+      self.group.Dispose()
 
     (* CueAction on the group *)
     member self.Send(action : CueAction, cue : Cue) =
