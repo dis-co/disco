@@ -7,12 +7,13 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{87A0F413-4A97-4115-BD46-FEE219B15DCB}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>Iris</RootNamespace>
+    <RootNamespace>Iris.Core</RootNamespace>
     <AssemblyName>Iris.Core</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <WebSharperProject>Library</WebSharperProject>
-    <Name>Iris</Name>
+    <Name>Iris.Core</Name>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -50,31 +51,33 @@
   <ItemGroup>
     <None Include="paket.references" />
     <None Include="paket.template" />
-    <Compile Include="src\Util.fs" />
-    <Compile Include="src\Types\Either.fs" />
-    <Compile Include="src\Types\Aliases.fs" />
-    <Compile Include="src\Types\IOBox.fs" />
-    <Compile Include="src\Types\Patch.fs" />
-    <Compile Include="src\Types\Cue.fs" />
-    <Compile Include="src\Types\CueList.fs" />
-    <Compile Include="src\Types\Message.fs" />
-    <Compile Include="src\Config\Types.fs" />
-    <Compile Include="src\Config\Vsync.fs" />
-    <Compile Include="src\Config\Yaml.fs" />
-    <Compile Include="src\Config\Config.fs" />
-    <Compile Include="src\Types\Project.fs" />
-    <Compile Include="src\Service\GitDaemon.fs" />
-    <Compile Include="src\Service\Member.fs" />
-    <Compile Include="src\Uri.fs" />
-    <Compile Include="src\Service\AppState.fs" />
-    <Compile Include="src\Service\Groups\VsyncGroup.fs" />
-    <Compile Include="src\Service\Groups\PinGroup.fs" />
-    <Compile Include="src\Service\Groups\CueGroup.fs" />
-    <Compile Include="src\Service\Groups\ProjectGroup.fs" />
-    <Compile Include="src\Service\IrisGroup.fs" />
-    <Compile Include="src\Service\ProjectProcess.fs" />
-    <Compile Include="src\Service\Groups\ControlGroup.fs" />
-    <Compile Include="src\Service\IrisService.fs" />
+    <Compile Include="Iris.Core\Util.fs" />
+    <Compile Include="Iris.Core\Types\Either.fs" />
+    <Compile Include="Iris.Core\Types\Aliases.fs" />
+    <Compile Include="Iris.Core\Types\IOBox.fs" />
+    <Compile Include="Iris.Core\Types\Patch.fs" />
+    <Compile Include="Iris.Core\Types\Cue.fs" />
+    <Compile Include="Iris.Core\Types\CueList.fs" />
+    <Compile Include="Iris.Core\Types\Message.fs" />
+    <Compile Include="Iris.Core\Config\Types.fs" />
+    <Compile Include="Iris.Core\Config\Vsync.fs" />
+    <Compile Include="Iris.Core\Config\Yaml.fs" />
+    <Compile Include="Iris.Core\Config\Config.fs" />
+    <Compile Include="Iris.Core\Types\Project.fs" />
+    <Compile Include="Iris.Core\Uri.fs" />
+    <Compile Include="Iris.Service\GitDaemon.fs" />
+    <Compile Include="Iris.Service\Member.fs" />
+    <Compile Include="Iris.Service\AppState.fs" />
+    <Compile Include="Iris.Service\Groups\VsyncGroup.fs" />
+    <Compile Include="Iris.Service\Groups\PinGroup.fs" />
+    <Compile Include="Iris.Service\Groups\CueGroup.fs" />
+    <Compile Include="Iris.Service\Groups\ProjectGroup.fs" />
+    <Compile Include="Iris.Service\IrisGroup.fs" />
+    <Compile Include="Iris.Service\ProjectProcess.fs" />
+    <Compile Include="Iris.Service\Groups\ControlGroup.fs" />
+    <Compile Include="Iris.Service\IrisService.fs" />
+    <Compile Include="Iris.Service\AssetServer.fs" />
+    <Compile Include="Iris.Service\WebSockets.fs" />
     <None Include="assets\example-project.yml" />
   </ItemGroup>
   <PropertyGroup>
@@ -101,6 +104,17 @@
   </Target>
   -->
   <Import Project="..\..\.paket\paket.targets" />
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1')">
+      <ItemGroup>
+        <Reference Include="Fleck">
+          <HintPath>..\..\packages\Fleck\lib\net40\Fleck.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
@@ -319,6 +333,17 @@
       <ItemGroup>
         <Reference Include="Newtonsoft.Json">
           <HintPath>..\..\packages\Newtonsoft.Json\lib\portable-net40+sl5+wp80+win8+wpa81\Newtonsoft.Json.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1')">
+      <ItemGroup>
+        <Reference Include="Suave">
+          <HintPath>..\..\packages\Suave\lib\net40\Suave.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

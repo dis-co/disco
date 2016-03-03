@@ -21,11 +21,11 @@ module IrisService =
   //
   type Oracle =
     static member Start() =
-      let options =
-        { VsyncConfig.Default with
-            GracefulShutdown = Some(true);
-            UnicastOnly = Some(true);
-            Hosts = Some([ "localhost" ]) }
+      let options = VsyncConfig.Default
+        // { VsyncConfig.Default with
+        //     GracefulShutdown = Some(true);
+        //     UnicastOnly = Some(true);
+        //     Hosts = Some([ "localhost" ]) }
 
       options.Apply()
       VsyncSystem.Start()
@@ -82,11 +82,11 @@ module IrisService =
     // |_____|_|_|  \___|\____\__, |\___|_|\___|
     //                        |___/
     member self.Start() =
-      let options =
-        { VsyncConfig.Default with
-            GracefulShutdown = Some(true);
-            UnicastOnly = Some(true);
-            Hosts = Some([ "localhost" ]) }
+      let options = VsyncConfig.Default
+        // { VsyncConfig.Default with
+        //     GracefulShutdown = Some(true);
+        //     UnicastOnly = Some(true);
+        //     Hosts = Some([ "localhost" ]) }
 
       options.Apply()
       VsyncSystem.Start()

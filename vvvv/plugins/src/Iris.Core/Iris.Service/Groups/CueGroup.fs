@@ -54,12 +54,7 @@ module CueGroup =
       self.group.CheckpointLoader(self.LoadCheckpoint)
       List.iter AddHandler AllHandlers
 
-    // member self.Dump() =
-    //   for cue in cues do
-    //     logger tag <| sprintf "cue id: %s" cue.Key
-
     member self.Add(c : Cue) =
-      //cues.Add(c.Id, c)
       logger tag "add"
 
     (* Become member of group *)
@@ -79,14 +74,10 @@ module CueGroup =
 
     member self.MakeCheckpoint(view : View) =
       logger tag <| sprintf "makeing a snapshot. %d cues in it" 0
-      // for pair in cues do
-      //   self.group.SendCheckpoint(pair.Value)
-      // self.group.DoneCheckpoint()
+      // self.group.SendCheckpoint()
+      self.group.DoneCheckpoint()
 
     member self.LoadCheckpoint(cue : Cue) =
-      // if cues.ContainsKey(cue.Id)
-      // then cues.[cue.Id] <- cue
-      // else cues.Add(cue.Id, cue)
       logger tag <| sprintf "loaded a snapshot. %d cues in it" 0
 
     (* View changes *)
@@ -95,11 +86,6 @@ module CueGroup =
 
     (* Event Handlers for CueAction *)
     member self.CueAdded(cue : Cue) : unit =
-      // if not <| cues.ContainsKey(cue.Id)
-      // then
-      //   self.Add(cue)
-      //   logger tag "cue added cb"
-      //   self.Dump()
       logger tag "cue added"
 
     member self.CueUpdated(cue : Cue) : unit =

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -85,18 +85,18 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="src\Core\Crypto.fs" />
-    <Compile Include="src\Core\Html.fs" />
-    <Compile Include="src\Core\Plugin.fs" />
-    <Compile Include="src\Core\State.fs" />
-    <Compile Include="src\Core\Store.fs" />
-    <Compile Include="src\Core\Reducer.fs" />
-    <Compile Include="src\Core\ViewController.fs" />
-    <Compile Include="src\Core\Worker.fs" />
-    <Compile Include="src\Core\Client.fs" />
-    <Compile Include="src\Core\Keyboard.fs" />
-    <Compile Include="src\Views\Index.fs" />
-    <Compile Include="src\Views\Patches.fs" />
+    <Compile Include="Iris.Web\Core\Crypto.fs" />
+    <Compile Include="Iris.Web\Core\Html.fs" />
+    <Compile Include="Iris.Web\Core\Plugin.fs" />
+    <Compile Include="Iris.Web\Core\State.fs" />
+    <Compile Include="Iris.Web\Core\Store.fs" />
+    <Compile Include="Iris.Web\Core\Reducer.fs" />
+    <Compile Include="Iris.Web\Core\ViewController.fs" />
+    <Compile Include="Iris.Web\Core\Worker.fs" />
+    <Compile Include="Iris.Web\Core\Client.fs" />
+    <Compile Include="Iris.Web\Core\Keyboard.fs" />
+    <Compile Include="Iris.Web\Views\Index.fs" />
+    <Compile Include="Iris.Web\Views\Patches.fs" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">
