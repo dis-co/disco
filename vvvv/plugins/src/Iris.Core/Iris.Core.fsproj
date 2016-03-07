@@ -51,6 +51,7 @@
   <ItemGroup>
     <None Include="paket.references" />
     <None Include="paket.template" />
+    <Compile Include="Iris.Raft\Raft.fs" />
     <Compile Include="Iris.Core\Util.fs" />
     <Compile Include="Iris.Core\Types\Either.fs" />
     <Compile Include="Iris.Core\Types\Aliases.fs" />
@@ -79,6 +80,10 @@
     <Compile Include="Iris.Service\AssetServer.fs" />
     <Compile Include="Iris.Service\WebSockets.fs" />
     <None Include="assets\example-project.yml" />
+    <None Include="lib\linux\x64\libcraft.a" />
+    <None Include="lib\linux\x64\libcraft.so">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
