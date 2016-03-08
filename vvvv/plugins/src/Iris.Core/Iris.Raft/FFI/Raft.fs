@@ -1,10 +1,11 @@
-namespace Iris.Raft
+namespace Iris.Raft.FFI
 
 open System
 open System.Runtime.InteropServices
 open Microsoft.FSharp.NativeInterop
 
-module private RawRaft =
+[<AutoOpen>]
+module internal Raft =
 
   type Server = IntPtr
   type Node = IntPtr
@@ -74,7 +75,7 @@ module private RawRaft =
     delegate of Server * UserData * Node -> unit
 
   [<UnmanagedFunctionPointer(CallingConvention.Cdecl)>]
-  type Log =
+  type LogIt =
     delegate of Server * Node * UserData * String -> unit
 
   [<UnmanagedFunctionPointer(CallingConvention.Cdecl)>]
@@ -100,7 +101,7 @@ module private RawRaft =
     val LogPoll           : LogEntryEvent
     val LogPop            : LogEntryEvent
     val HasSufficientLogs : NodeHasSufficientLogs
-    val Log               : Log
+    val Log               : LogIt
 
   [<Struct>]
   type NodeConfig =
@@ -291,4 +292,4 @@ module private RawRaft =
   extern Int32 EntryIsVotingCfgChange(Entry entry)
 
   [<DllImport(@"libcraft.so", EntryPoint="raft_entry_is_cfg_change")>]
-  extern Int32 EntryIsVotingCfgChange(Entry entry)
+  extern Int32 EntryIsCfgChange(Entry entry)

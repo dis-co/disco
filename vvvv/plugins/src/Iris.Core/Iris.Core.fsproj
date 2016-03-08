@@ -51,7 +51,8 @@
   <ItemGroup>
     <None Include="paket.references" />
     <None Include="paket.template" />
-    <Compile Include="Iris.Raft\Raft.fs" />
+    <Compile Include="Iris.Raft\FFI\Raft.fs" />
+    <Compile Include="Iris.Raft\FFI\Log.fs" />
     <Compile Include="Iris.Core\Util.fs" />
     <Compile Include="Iris.Core\Types\Either.fs" />
     <Compile Include="Iris.Core\Types\Aliases.fs" />
