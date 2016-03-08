@@ -123,173 +123,173 @@ module internal Raft =
     | REMOVE_NODE        = 3
     | NUM                = 4
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_new")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_new")>]
   extern Server CreateServer()
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_free")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_free")>]
   extern unit DestroyServer(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_set_callbacks")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_set_callbacks")>]
   extern unit SetCallbacks(Server me, RaftCallbacks funcs, UserData data)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_add_node")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_add_node")>]
   extern Node AddNode(Server me, UserData data, Int32 id, bool is_me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_add_node")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_add_node")>]
   extern Node AddPeer(Server me, UserData data, Int32 id, bool is_me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_add_non_voting_node")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_add_non_voting_node")>]
   extern Node AddNonVotingNode(Server me, UserData data, Int32 id, bool is_me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_remove_node")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_remove_node")>]
   extern unit RemoveNode(Server me, Node node)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_set_election_timeout")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_set_election_timeout")>]
   extern unit SetElectionTimeout(Server me, Int32 msec)
   
-  [<DllImport(@"libcraft.so", EntryPoint="raft_set_request_timeout")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_set_request_timeout")>]
   extern unit SetRequestTimeout(Server me, Int32 msec)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_periodic")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_periodic")>]
   extern Int32 Periodic(Server me, Int32 msec_elapsed)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_recv_appendentries")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_appendentries")>]
   extern Int32 RecvAppendEntries(Server me, Node node, AppendEntries e, AppendEntriesReponse r)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_recv_appendentries_response")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_appendentries_response")>]
   extern Int32 RecvAppendEntriesResponse(Server me, Node node, AppendEntriesReponse r)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_recv_requestvote")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_requestvote")>]
   extern Int32 RecvRequestVote(Server me, Node node, VoteRequest r1, VoteResponse r2)
   
-  [<DllImport(@"libcraft.so", EntryPoint="raft_recv_requestvote_response")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_requestvote_response")>]
   extern Int32 RecvRequestVoteResponse(Server me, Node node, VoteResponse r2)
   
-  [<DllImport(@"libcraft.so", EntryPoint="raft_recv_entry")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_entry")>]
   extern Int32 RecvEntry(Server me, Entry e1, MsgResponse e2)
   
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_nodeid")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_nodeid")>]
   extern Int32 GetNodeId(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_election_timeout")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_election_timeout")>]
   extern Int32 GetElectionTimeout(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_num_nodes")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_num_nodes")>]
   extern Int32 GetNumNodes(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_log_count")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_log_count")>]
   extern Int32 GetLogCount(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_current_term")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_current_term")>]
   extern Int32 GetCurrentTerm(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_current_idx")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_current_idx")>]
   extern Int32 GetCurrentIdx(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_commit_idx")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_commit_idx")>]
   extern Int32 GetCommitIdx(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_is_follower")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_is_follower")>]
   extern Int32 IsFollower(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_is_leader")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_is_leader")>]
   extern Int32 IsLeader(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_is_candidate")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_is_candidate")>]
   extern Int32 IsCandidate(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_timeout_elapsed")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_timeout_elapsed")>]
   extern Int32 GetTimeoutElapsed(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_request_timeout")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_request_timeout")>]
   extern Int32 GetRequestTimeout(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_last_applied_idx")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_last_applied_idx")>]
   extern Int32 GetLastAppliedIdx(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_node_is_leader")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_node_is_leader")>]
   extern Int32 NodeIsLeader(Node node)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_node_get_next_index")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_node_get_next_index")>]
   extern Int32 NodeGetNextIdx(Node node)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_node_get_match_index")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_node_get_match_index")>]
   extern Int32 NodeGetMatchIdx(Node node)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_node_get_udata")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_node_get_udata")>]
   extern UserData NodeGetUserData(Node node)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_node_set_udata")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_node_set_udata")>]
   extern UserData NodeSetUserData(Node node, UserData data)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_entry_from_idx")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_entry_from_idx")>]
   extern Entry GetEntryFromIdx(Server me, Int32 idx)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_node")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_node")>]
   extern Node GetNode(Server me, Int32 node_id)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_node_from_idx")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_node_from_idx")>]
   extern Node GetNodeFromIdx(Server me, Int32 idx)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_nvotes_for_me")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_nvotes_for_me")>]
   extern Int32 GetNVotesForMe(Server me, Int32 idx)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_voted_for")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_voted_for")>]
   extern Int32 GetVotedFor(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_current_leader")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_current_leader")>]
   extern Int32 GetCurrentLeader(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_current_leader_node")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_current_leader_node")>]
   extern Node GetCurrentLeaderNode(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_udata")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_udata")>]
   extern UserData GetUserData(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_my_id")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_my_id")>]
   extern Int32 GetMyId(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_vote")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_vote")>]
   extern unit Vote(Server me, Node node)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_vote_for_nodeid")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_vote_for_nodeid")>]
   extern unit VoteForNodeId(Server me, Int32 node_id)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_set_current_term")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_set_current_term")>]
   extern unit SetCurrentTerm(Server me, Int32 term)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_set_commit_idx")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_set_commit_idx")>]
   extern unit SetCommitIdx(Server me, Int32 idx)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_append_entry")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_append_entry")>]
   extern Int32 AppendEntry(Server me, Entry entry)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_msg_entry_response_committed")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_msg_entry_response_committed")>]
   extern Int32 MsgEntryResponseCommitted(Server me, MsgResponse resp)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_node_get_id")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_node_get_id")>]
   extern Int32 NodeGetId(Node node)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_state")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_state")>]
   extern State GetState(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_get_last_log_term")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_last_log_term")>]
   extern Int32 GetLastLogTerm(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_node_set_voting")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_node_set_voting")>]
   extern unit NodeSetVoting(Node node, Int32 voting)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_node_is_voting")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_node_is_voting")>]
   extern Int32 NodeIsVoting(Node node)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_apply_all")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_apply_all")>]
   extern unit ApplyAll(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_become_leader")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_become_leader")>]
   extern unit BecomeLeader(Server me)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_entry_is_voting_cfg_change")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_entry_is_voting_cfg_change")>]
   extern Int32 EntryIsVotingCfgChange(Entry entry)
 
-  [<DllImport(@"libcraft.so", EntryPoint="raft_entry_is_cfg_change")>]
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_entry_is_cfg_change")>]
   extern Int32 EntryIsCfgChange(Entry entry)

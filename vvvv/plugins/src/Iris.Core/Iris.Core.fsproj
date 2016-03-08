@@ -81,8 +81,8 @@
     <Compile Include="Iris.Service\AssetServer.fs" />
     <Compile Include="Iris.Service\WebSockets.fs" />
     <None Include="assets\example-project.yml" />
-    <None Include="lib\linux\x64\libcraft.a" />
-    <None Include="lib\linux\x64\libcraft.so">
+    <None Include="NativeBinaries\linux\amd64\libcraft.a" />
+    <None Include="NativeBinaries\linux\amd64\libcraft.so">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
@@ -412,5 +412,4 @@
       </ItemGroup>
     </When>
   </Choose>
-  <Import Project="..\..\packages\WebSharper\build\WebSharper.targets" Condition="Exists('..\..\packages\WebSharper\build\WebSharper.targets')" Label="Paket" />
 </Project>
