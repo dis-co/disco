@@ -7,6 +7,34 @@ open Microsoft.FSharp.NativeInterop
 [<AutoOpen>]
 module internal Raft =
 
+  //  ____  _        _
+  // / ___|| |_ __ _| |_ ___
+  // \___ \| __/ _` | __/ _ \
+  //  ___) | || (_| | ||  __/
+  // |____/ \__\__,_|\__\___|
+
+  [<RequireQualifiedAccess>]
+  type State =
+    | NONE      = 0
+    | FOLLOWER  = 1
+    | CANDIDATE = 2
+    | LEADER    = 3
+
+  //  _               _____
+  // | |    ___   __ |_   _|   _ _ __   ___
+  // | |   / _ \ / _` || || | | | '_ \ / _ \
+  // | |__| (_) | (_| || || |_| | |_) |  __/
+  // |_____\___/ \__, ||_| \__, | .__/ \___|
+  //             |___/     |___/|_|
+
+  [<RequireQualifiedAccess>]
+  type LogType =
+    | NORMAL             = 0
+    | ADD_NONVOTING_NODE = 1
+    | ADD_NODE           = 2 
+    | REMOVE_NODE        = 3
+    | NUM                = 4
+
   type Server = IntPtr
   type Node = IntPtr
 
@@ -80,7 +108,7 @@ module internal Raft =
 
   [<UnmanagedFunctionPointer(CallingConvention.Cdecl)>]
   type ApplyLog =
-    delegate of Server * UserData * Entry -> int
+    delegate of Server * UserData * Entry byref -> int
 
   [<UnmanagedFunctionPointer(CallingConvention.Cdecl)>]
   type PersistInt =
@@ -106,37 +134,21 @@ module internal Raft =
   [<Struct>]
   type NodeConfig =
     val udata_address : IntPtr 
-  
-
-  [<RequireQualifiedAccess>]
-  type State =
-    | NONE      = 0
-    | FOLLOWER  = 1
-    | CANDIDATE = 2
-    | LEADER    = 3
-
-  [<RequireQualifiedAccess>]
-  type LogType =
-    | NORMAL             = 0
-    | ADD_NONVOTING_NODE = 1
-    | ADD_NODE           = 2 
-    | REMOVE_NODE        = 3
-    | NUM                = 4
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_new")>]
-  extern Server CreateServer()
+  extern Server RaftNew()
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_free")>]
-  extern unit DestroyServer(Server me)
+  extern unit DestroyRaft(Server me)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_set_callbacks")>]
-  extern unit SetCallbacks(Server me, RaftCallbacks funcs, UserData data)
+  extern unit SetCallbacks(Server me, RaftCallbacks& funcs, UserData data)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_add_node")>]
-  extern Node AddNode(Server me, UserData data, Int32 id, bool is_me)
+  extern Node AddNode(Server me, UserData data, Int32 id, Int32 is_me)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_add_node")>]
-  extern Node AddPeer(Server me, UserData data, Int32 id, bool is_me)
+  extern Node AddPeer(Server me, UserData data, Int32 id, Int32 is_me)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_add_non_voting_node")>]
   extern Node AddNonVotingNode(Server me, UserData data, Int32 id, bool is_me)
@@ -154,19 +166,19 @@ module internal Raft =
   extern Int32 Periodic(Server me, Int32 msec_elapsed)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_appendentries")>]
-  extern Int32 RecvAppendEntries(Server me, Node node, AppendEntries e, AppendEntriesReponse r)
+  extern Int32 RecvAppendEntries(Server me, Node node, AppendEntries& e, AppendEntriesReponse& r)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_appendentries_response")>]
-  extern Int32 RecvAppendEntriesResponse(Server me, Node node, AppendEntriesReponse r)
+  extern Int32 RecvAppendEntriesResponse(Server me, Node node, AppendEntriesReponse& r)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_requestvote")>]
-  extern Int32 RecvRequestVote(Server me, Node node, VoteRequest r1, VoteResponse r2)
+  extern Int32 RecvRequestVote(Server me, Node node, VoteRequest& r1, VoteResponse& r2)
   
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_requestvote_response")>]
-  extern Int32 RecvRequestVoteResponse(Server me, Node node, VoteResponse r2)
+  extern Int32 RecvRequestVoteResponse(Server me, Node node, VoteResponse& r2)
   
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_entry")>]
-  extern Int32 RecvEntry(Server me, Entry e1, MsgResponse e2)
+  extern Int32 RecvEntry(Server me, Entry& e1, MsgResponse& e2)
   
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_nodeid")>]
   extern Int32 GetNodeId(Server me)
@@ -223,7 +235,7 @@ module internal Raft =
   extern UserData NodeSetUserData(Node node, UserData data)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_entry_from_idx")>]
-  extern Entry GetEntryFromIdx(Server me, Int32 idx)
+  extern Entry* GetEntryFromIdx(Server me, Int32 idx)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_node")>]
   extern Node GetNode(Server me, Int32 node_id)
@@ -262,10 +274,10 @@ module internal Raft =
   extern unit SetCommitIdx(Server me, Int32 idx)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_append_entry")>]
-  extern Int32 AppendEntry(Server me, Entry entry)
+  extern Int32 AppendEntry(Server me, Entry& entry)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_msg_entry_response_committed")>]
-  extern Int32 MsgEntryResponseCommitted(Server me, MsgResponse resp)
+  extern Int32 MsgEntryResponseCommitted(Server me, MsgResponse& resp)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_node_get_id")>]
   extern Int32 NodeGetId(Node node)
@@ -289,7 +301,7 @@ module internal Raft =
   extern unit BecomeLeader(Server me)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_entry_is_voting_cfg_change")>]
-  extern Int32 EntryIsVotingCfgChange(Entry entry)
+  extern Int32 EntryIsVotingCfgChange(Entry& entry)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_entry_is_cfg_change")>]
-  extern Int32 EntryIsCfgChange(Entry entry)
+  extern Int32 EntryIsCfgChange(Entry& entry)

@@ -13,13 +13,13 @@ module internal Log =
   extern Log LogNew()
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="log_set_callbacks")>]
-  extern unit SetCallbacks(Log log, RaftCallbacks funcs, Server srv)
+  extern unit SetCallbacks(Log log, RaftCallbacks& funcs, Server srv)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="log_free")>]
   extern unit LogFree(Log log)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="log_append_entry")>]
-  extern Int32 AppendLogEntry(Log log, Entry entry)
+  extern Int32 AppendLogEntry(Log log, Entry& entry)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="log_count")>]
   extern Int32 LogCount(Log log)
@@ -34,13 +34,13 @@ module internal Log =
   extern void LogPoll(Log log)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="log_get_from_idx")>]
-  extern Entry LogGetFromIdx(Log log, Int32 idx, Int32 n_entries)
+  extern Entry* LogGetFromIdx(Log log, Int32 idx, Int32 n_entries)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="log_get_at_idx")>]
-  extern Entry LogGetAtIdx(Log log, Int32 idx)
+  extern Entry* LogGetAtIdx(Log log, Int32 idx)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="log_peektail")>]
-  extern Entry LogPeekTail(Log log)
+  extern Entry* LogPeekTail(Log log)
 
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="log_get_current_idx")>]
   extern Int32 LogGetCurrentIdx(Log log)
