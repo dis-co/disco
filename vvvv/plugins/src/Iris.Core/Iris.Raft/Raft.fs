@@ -74,11 +74,39 @@ module private RawRaft =
     delegate of Server * UserData * Node -> unit
 
   [<UnmanagedFunctionPointer(CallingConvention.Cdecl)>]
-  type FuncLog =
+  type Log =
     delegate of Server * Node * UserData * String -> unit
-    
-    
+
+  [<UnmanagedFunctionPointer(CallingConvention.Cdecl)>]
+  type ApplyLog =
+    delegate of Server * UserData * Entry -> int
+
+  [<UnmanagedFunctionPointer(CallingConvention.Cdecl)>]
+  type PersistInt =
+    delegate of Server * UserData * Int32 -> int
+
+  [<UnmanagedFunctionPointer(CallingConvention.Cdecl)>]
+  type LogEntryEvent =
+    delegate of Server * UserData * Entry * Int32 -> int
+
+  [<Struct>]
+  type RaftCallbacks =
+    val SendRequestVote   : SendRequestVote
+    val SendAppendEntries : SendAppendEntries
+    val ApplyLog          : ApplyLog
+    val PersistVote       : PersistInt
+    val PersistTerm       : PersistInt
+    val LogOffer          : LogEntryEvent    
+    val LogPoll           : LogEntryEvent
+    val LogPop            : LogEntryEvent
+    val HasSufficientLogs : NodeHasSufficientLogs
+    val Log               : Log
+
+  [<Struct>]
+  type NodeConfig =
+    val udata_address : IntPtr 
   
+
   [<RequireQualifiedAccess>]
   type State =
     | NONE      = 0
@@ -96,6 +124,9 @@ module private RawRaft =
 
   [<DllImport(@"libcraft.so", EntryPoint="raft_new")>]
   extern Server CreateServer()
+
+  [<DllImport(@"libcraft.so", EntryPoint="raft_free")>]
+  extern unit DestroyServer(Server me)
 
   [<DllImport(@"libcraft.so", EntryPoint="raft_add_node")>]
   extern Node AddNode(Server me, IntPtr user_data, Int32 id, bool is_me)
