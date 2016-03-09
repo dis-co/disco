@@ -6,9 +6,12 @@ open System.Linq
 open System.Threading
 open Fuchu
 open Fuchu.Test
-open Iris.Raft
+open Iris.Raft.FFI
 
-module RaftTests =
+open System.Runtime.InteropServices
+open Microsoft.FSharp.NativeInterop
+
+module Raft =
 
   //   _                    _    ______
   //  | |    ___   __ _  __| |  / / ___|  __ ___   _____
@@ -17,10 +20,15 @@ module RaftTests =
   //  |_____\___/ \__,_|\__,_/_/  |____/ \__,_| \_/ \___|ed
   //
   let createRaftTest =
-    failwith "whatever"
+    let raft = RaftNew()
+    let mutable funcs = new RaftCallbacks()
+    let mutable data : UserData = NativePtr. &"hell"
+      
+    SetCallbacks(raft, &funcs, data)
+
 
   [<Tests>]
   let raftTests =
     testList "Raft Tests" [
-        loadSaveTest
+        createRaftTest
       ]

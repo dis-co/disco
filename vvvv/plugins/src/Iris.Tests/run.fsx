@@ -10,6 +10,7 @@
 
 open Fuchu
 open Iris.Tests.Project
+open Iris.Tests.Raft
 
 (*
    Working with libgit2 native libraries:
@@ -24,4 +25,5 @@ open Iris.Tests.Project
    Good Fix: use a nix-shell environment that exposes LD_LIBRARY_PATH correctly.
 *)
 
-run configTests
+//run configTests
+run raftTests

@@ -5,7 +5,7 @@ open System.Runtime.InteropServices
 open Microsoft.FSharp.NativeInterop
 
 [<AutoOpen>]
-module internal Raft =
+module Raft =
 
   //  ____  _        _
   // / ___|| |_ __ _| |_ ___
@@ -209,7 +209,6 @@ module internal Raft =
      * @note If memory was malloc'd in log_offer then this should be the right
      *  time to free the memory. *)
     val LogPoll           : LogEntryEvent
-
     (* Callback for removing the youngest entry from the log
      * For safety reasons this callback MUST flush the change to disk.
      * @note If memory was malloc'd in log_offer then this should be the right
