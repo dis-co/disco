@@ -49,6 +49,7 @@
   <ItemGroup>
     <None Include="paket.references" />
     <None Include="paket.template" />
+    <Compile Include="Iris.Tests\RaftTests.fs" />
     <Compile Include="Iris.Tests\ProjectTests.fs" />
     <None Include="assets\example-project.yml" />
   </ItemGroup>
@@ -181,6 +182,7 @@
   <ItemGroup>
     <Reference Include="Fuchu">
       <HintPath>..\..\packages\Fuchu\lib\Fuchu.dll</HintPath>
+      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>

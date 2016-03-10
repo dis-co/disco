@@ -5,7 +5,7 @@ open System.Runtime.InteropServices
 open Microsoft.FSharp.NativeInterop
 
 [<AutoOpen>]
-module internal Raft =
+module Raft =
 
   //  ____  _        _
   // / ___|| |_ __ _| |_ ___
@@ -51,7 +51,7 @@ module internal Raft =
     val mutable   term   : UInt32 // the entry's term at the point it was created 
     val mutable   id     : UInt32 // the entry's unique ID
     val mutable ``type`` : Int32  // type of entry
-    val mutable   data   : EntryData
+    val mutable   data   : IntPtr // pointer to EntryData
 
   (* Message sent from client to server.
      The client sends this message to a server with the intention of having it
@@ -153,7 +153,7 @@ module internal Raft =
     * @return 0 on success *)
   [<UnmanagedFunctionPointer(CallingConvention.Cdecl)>]
   type ApplyLog =
-    delegate of Server * UserData * Entry byref -> int
+    delegate of Server * UserData * IntPtr -> int
 
   (** Callback for saving who we voted for to disk.
     * For safety reasons this callback MUST flush the change to disk.
@@ -185,41 +185,60 @@ module internal Raft =
     * @return 0 on success *)
   [<UnmanagedFunctionPointer(CallingConvention.Cdecl)>]
   type LogEntryEvent =
-    delegate of Server * UserData * Entry * Int32 -> int
+    delegate of Server * UserData * IntPtr * Int32 -> int
 
   [<Struct>]
+  [<StructLayout(LayoutKind.Sequential)>]
   type RaftCallbacks =
     (* Callback for sending request vote messages *)
-    val SendRequestVote   : SendRequestVote
+    [<MarshalAsAttribute(UnmanagedType.FunctionPtr)>]
+    val mutable SendRequestVote : SendRequestVote
+
     (* Callback for sending appendentries messages *)
-    val SendAppendEntries : SendAppendEntries
+    [<MarshalAsAttribute(UnmanagedType.FunctionPtr)>]
+    val mutable SendAppendEntries : SendAppendEntries
+
     (* Callback for finite state machine application *)
-    val ApplyLog          : ApplyLog
+    [<MarshalAsAttribute(UnmanagedType.FunctionPtr)>]
+    val mutable ApplyLog : ApplyLog
+
     (* Callback for persisting vote data
      * For safety reasons this callback MUST flush the change to disk. *)
-    val PersistVote       : PersistInt
+    [<MarshalAsAttribute(UnmanagedType.FunctionPtr)>]
+    val mutable PersistVote : PersistInt
+
     (* Callback for persisting term data
      * For safety reasons this callback MUST flush the change to disk. *)
-    val PersistTerm       : PersistInt
+    [<MarshalAsAttribute(UnmanagedType.FunctionPtr)>]
+    val mutable PersistTerm : PersistInt
+
     (* Callback for adding an entry to the log
      * For safety reasons this callback MUST flush the change to disk. *)
-    val LogOffer          : LogEntryEvent    
+    [<MarshalAsAttribute(UnmanagedType.FunctionPtr)>]
+    val mutable LogOffer : LogEntryEvent    
+    
     (* Callback for removing the oldest entry from the log
      * For safety reasons this callback MUST flush the change to disk.
      * @note If memory was malloc'd in log_offer then this should be the right
      *  time to free the memory. *)
-    val LogPoll           : LogEntryEvent
+    [<MarshalAsAttribute(UnmanagedType.FunctionPtr)>]
+    val mutable LogPoll : LogEntryEvent
 
     (* Callback for removing the youngest entry from the log
      * For safety reasons this callback MUST flush the change to disk.
      * @note If memory was malloc'd in log_offer then this should be the right
      *  time to free the memory. *)
-    val LogPop            : LogEntryEvent
+    [<MarshalAsAttribute(UnmanagedType.FunctionPtr)>]
+    val mutable LogPop : LogEntryEvent
+
     (* Callback for detecting when a non-voting node has sufficient logs. *)
-    val HasSufficientLogs : NodeHasSufficientLogs
+    [<MarshalAsAttribute(UnmanagedType.FunctionPtr)>]
+    val mutable HasSufficientLogs : NodeHasSufficientLogs
+
     (* Callback for catching debugging log messages
      * This callback is optional *)
-    val Log               : LogIt
+    [<MarshalAsAttribute(UnmanagedType.FunctionPtr)>]
+    val mutable Log : LogIt
 
   [<Struct>]
   type NodeConfig =
@@ -248,7 +267,7 @@ module internal Raft =
     * @param[in] funcs Callbacks
     * @param[in] user_data "User data" - user's context that's included in a callback *)
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_set_callbacks")>]
-  extern unit SetCallbacks(Server me, RaftCallbacks& funcs, UserData data)
+  extern unit SetCallbacks(Server me, IntPtr funcs, UserData data)
 
   (** Add node.
     *
@@ -271,33 +290,36 @@ module internal Raft =
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_add_node")>]
   extern Node AddNode(Server me, UserData data, Int32 id, Int32 is_me)
 
-  (** Add a node which does not participate in voting.
-    * Parameters are identical to raft_add_node *)
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_add_node")>]
   extern Node AddPeer(Server me, UserData data, Int32 id, Int32 is_me)
 
-  (** Remove node.
-    * @param node The node to be removed. *)
+  (** Add a node which does not participate in voting.
+    * Parameters are identical to raft_add_node *)
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_add_non_voting_node")>]
   extern Node AddNonVotingNode(Server me, UserData data, Int32 id, bool is_me)
+
+  (** Remove node.
+    * @param node The node to be removed. *)
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_remove_node")>]
+  extern unit RemoveNode(Server me, Node node)
 
   (** Set election timeout.
     * The amount of time that needs to elapse before we assume the leader is down
     * @param[in] msec Election timeout in milliseconds *)
-  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_remove_node")>]
-  extern unit RemoveNode(Server me, Node node)
-
-  (** Set request timeout in milliseconds.
-    * The amount of time before we resend an appendentries message
-    * @param[in] msec Request timeout in milliseconds *)
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_set_election_timeout")>]
   extern unit SetElectionTimeout(Server me, Int32 msec)
   
+  (** Set request timeout in milliseconds.
+    * The amount of time before we resend an appendentries message
+    * @param[in] msec Request timeout in milliseconds *)
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_set_request_timeout")>]
+  extern unit SetRequestTimeout(Server me, Int32 msec)
+
   (** Process events that are dependent on time passing.
     * @param[in] msec_elapsed Time in milliseconds since the last call
     * @return 0 on success *)
-  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_set_request_timeout")>]
-  extern unit SetRequestTimeout(Server me, Int32 msec)
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_periodic")>]
+  extern Int32 Periodic(Server me, Int32 msec_elapsed)
 
   (** Receive an appendentries message.
     *
@@ -316,30 +338,30 @@ module internal Raft =
     * @param[in] ae The appendentries message
     * @param[out] r The resulting response
     * @return 0 on success *)
-  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_periodic")>]
-  extern Int32 Periodic(Server me, Int32 msec_elapsed)
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_appendentries")>]
+  extern Int32 RecvAppendEntries(Server me, Node node, IntPtr appendEntries, IntPtr appendEntriesReponse)
 
   (** Receive a response from an appendentries message we sent.
     * @param[in] node Index of the node who sent us this message
     * @param[in] r The appendentries response message
     * @return 0 on success *)
-  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_appendentries")>]
-  extern Int32 RecvAppendEntries(Server me, Node node, AppendEntries& e, AppendEntriesReponse& r)
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_appendentries_response")>]
+  extern Int32 RecvAppendEntriesResponse(Server me, Node node, IntPtr appendEntriesReponse)
 
   (** Receive a requestvote message.
     * @param[in] node Index of the node who sent us this message
     * @param[in] vr The requestvote message
     * @param[out] r The resulting response
     * @return 0 on success *)
-  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_appendentries_response")>]
-  extern Int32 RecvAppendEntriesResponse(Server me, Node node, AppendEntriesReponse& r)
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_requestvote")>]
+  extern Int32 RecvRequestVote(Server me, Node node, IntPtr voteRequest, IntPtr voteResponse)
 
   (** Receive a response from a requestvote message we sent.
     * @param[in] node The node this response was sent by
     * @param[in] r The requestvote response message
     * @return 0 on success *)
-  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_requestvote")>]
-  extern Int32 RecvRequestVote(Server me, Node node, VoteRequest& r1, VoteResponse& r2)
+  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_requestvote_response")>]
+  extern Int32 RecvRequestVoteResponse(Server me, Node node, IntPtr voteResponse)
   
   (** Receive an entry message from the client.
     *
@@ -366,15 +388,8 @@ module internal Raft =
     * @param[out] r The resulting response
     * @return 0 on success, -1 on failure *)
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_entry")>]
-  extern Int32 RecvEntry(Server me, Entry& e1, MsgResponse& e2)
+  extern Int32 RecvEntry(Server me, IntPtr entry, IntPtr msgResponse)
 
-  (** Receive a response from a requestvote message we sent.
-    * @param[in] node The node this response was sent by
-    * @param[in] r The requestvote response message
-    * @return 0 on success *)
-  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_recv_requestvote_response")>]
-  extern Int32 RecvRequestVoteResponse(Server me, Node node, VoteResponse& r2)
-  
   (* @return the server's node ID *)
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_nodeid")>]
   extern Int32 GetNodeId(Server me)
@@ -530,7 +545,7 @@ module internal Raft =
   (** Confirm if a msg_entry_response has been committed.
     * @param[in] r The response we want to check *)
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_msg_entry_response_committed")>]
-  extern Int32 MsgEntryResponseCommitted(Server me, MsgResponse& resp)
+  extern Int32 MsgEntryResponseCommitted(Server me, IntPtr msgResponse)
 
   (** Get node's ID.
     * @return ID of node *)
@@ -569,15 +584,14 @@ module internal Raft =
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_become_leader")>]
   extern unit BecomeLeader(Server me)
 
-
   (** Determine if entry is voting configuration change.
     * @param[in] ety The entry to query.
     * @return 1 if this is a voting configuration change. *)
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_entry_is_voting_cfg_change")>]
-  extern Int32 EntryIsVotingCfgChange(Entry& entry)
+  extern Int32 EntryIsVotingCfgChange(IntPtr entry)
 
   (** Determine if entry is configuration change.
     * @param[in] ety The entry to query.
     * @return 1 if this is a configuration change. *)
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_entry_is_cfg_change")>]
-  extern Int32 EntryIsCfgChange(Entry& entry)
+  extern Int32 EntryIsCfgChange(IntPtr entry)
