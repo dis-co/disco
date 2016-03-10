@@ -12,10 +12,10 @@ open System.Runtime.InteropServices
 open Microsoft.FSharp.NativeInterop
 
 module Raft =
-  
+
   let inline addr (data : GCHandle) = data.AddrOfPinnedObject()
   let inline free (ptr  : GCHandle) = ptr.Free()
-  
+
   let pin (data : 'a) = GCHandle.Alloc(data,GCHandleType.Pinned)
 
   //  ___           _              _   _       _
@@ -23,7 +23,7 @@ module Raft =
   //  | || '_ \/ __| __/ _` | '_ \| __| |/ _` | __/ _ \
   //  | || | | \__ \ || (_| | | | | |_| | (_| | ||  __/
   // |___|_| |_|___/\__\__,_|_| |_|\__|_|\__,_|\__\___|
- 
+
   let createRaftTest =
     testCase "Instantiate Raft" <|
       fun _ ->
@@ -34,7 +34,7 @@ module Raft =
   // | |   / _ \/ _` |/ _` |/ _ \ '__|
   // | |__|  __/ (_| | (_| |  __/ |
   // |_____\___|\__,_|\__,_|\___|_|
- 
+
   let becomeLeaderTest =
     testCase "Becoming leader" <|
       fun _ ->
@@ -46,7 +46,7 @@ module Raft =
                      IsLeader(raft) = 0)
 
         BecomeLeader(raft)
-        
+
         Assert.Equal("Should be leader now", true,
                      IsLeader(raft) = 1)
 
@@ -67,7 +67,7 @@ module Raft =
 
         let mutable cpsh = pin cbs
         let mutable datah = pin data
-        
+
         Marshal.StructureToPtr<RaftCallbacks>(cbs, addr(cpsh), true)
         SetCallbacks(raft, addr(cpsh), addr(datah))
 
@@ -101,6 +101,50 @@ module Raft =
         Assert.Equal("GetNumNodes should return correct value", true,
                      GetNumNodes(raft) = 3)
 
+  //   ____  __         _
+  //  / ___|/ _| __ _  | |    ___   __ _
+  // | |   | |_ / _` | | |   / _ \ / _` |
+  // | |___|  _| (_| | | |__| (_) | (_| |
+  //  \____|_|  \__, | |_____\___/ \__, |
+  //            |___/              |___/
+
+  let addInitialLog =
+    testCase "Add initial cfg log entry" <|
+      fun _ ->
+        let raft = RaftNew()
+        let self = AddNode(raft, 0n, 1, 1)
+
+        BecomeLeader(raft) // raft_recv_entry will fail if we are not leader
+
+        let msg = "First node added"
+        let msgH = pin msg
+
+        let mutable entry = new Entry()
+        entry.``type`` <- int LogType.ADD_NONVOTING_NODE
+        entry.id <- 1u
+        entry.term <- 0u
+        entry.data <- addr msgH
+
+        let mutable resp = new MsgResponse()
+
+        let entryH = pin entry
+        let respH = pin resp
+
+        Assert.Equal("Log count should be 0", true,
+                      GetLogCount(raft) = 0)
+
+        let res = RecvEntry(raft, addr entryH, addr respH)
+
+        Assert.Equal("RecvEntry should be successful", true,
+                     int res = 0)
+
+        Assert.Equal("Log count should be 1", true,
+                      GetLogCount(raft) = 1)
+
+        free entryH
+        free respH
+
+
   [<Tests>]
   let raftTests =
     testList "Raft Tests" [
@@ -108,4 +152,5 @@ module Raft =
         createSelfNodeTest
         addMoreNodesTest
         becomeLeaderTest
+        addInitialLog
       ]
