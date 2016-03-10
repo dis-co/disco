@@ -14,6 +14,7 @@ with import <nixpkgs> {}; {
         ln -s $PWD/bin/Debug/NativeBinaries .
       fi
       fsi run.fsx
+      exit
     '';
   };
 }

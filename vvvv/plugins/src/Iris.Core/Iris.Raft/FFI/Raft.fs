@@ -507,10 +507,6 @@ module Raft =
   [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_udata")>]
   extern UserData GetUserData(Server me)
 
-  (** @return this server's node ID *)
-  [<DllImport(@"NativeBinaries/linux/amd64/libcraft.so", EntryPoint="raft_get_my_id")>]
-  extern Int32 GetMyId(Server me)
-
   (** Vote for a server.
     * This should be used to reload persistent state, ie. the voted-for field.
     * @param[in] node The server to vote for *)
