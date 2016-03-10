@@ -29,6 +29,27 @@ module Raft =
       fun _ ->
         RaftNew() |> ignore
 
+  //  _                   _
+  // | |    ___  __ _  __| | ___ _ __
+  // | |   / _ \/ _` |/ _` |/ _ \ '__|
+  // | |__|  __/ (_| | (_| |  __/ |
+  // |_____\___|\__,_|\__,_|\___|_|
+ 
+  let becomeLeaderTest =
+    testCase "Becoming leader" <|
+      fun _ ->
+        let myid = 1
+        let raft = RaftNew()
+        let node = AddNode(raft, 0n, 1, 1)
+
+        Assert.Equal("Should not be leader yet", true,
+                     IsLeader(raft) = 0)
+
+        BecomeLeader(raft)
+        
+        Assert.Equal("Should be leader now", true,
+                     IsLeader(raft) = 1)
+
   //  ____       _  __   _   _           _
   // / ___|  ___| |/ _| | \ | | ___   __| | ___
   // \___ \ / _ \ | |_  |  \| |/ _ \ / _` |/ _ \
@@ -86,4 +107,5 @@ module Raft =
         createRaftTest
         createSelfNodeTest
         addMoreNodesTest
+        becomeLeaderTest
       ]
