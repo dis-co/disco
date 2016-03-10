@@ -8,6 +8,9 @@ MANIFEST="Iris Version: $(VERSTR)"
 
 DEVBUILD=xbuild /nologo /p:Configuration=Debug
 
+debug.tests:
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Tests/Iris.Tests.fsproj
+
 debug.nodes:
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Nodes/Iris.Nodes.fsproj
 
@@ -21,16 +24,13 @@ debug.web.core:
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Web.Core/Iris.Web.Core.fsproj
 
 debug.web.tests:
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Web.Tests/Iris.Web.Tests.fsproj
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Irisjjeb.Tests/Iris.Web.Tests.fsproj
 
 debug.web.worker:
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Web.Worker/Iris.Web.Worker.fsproj
 
 debug.vsync:
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Vsync/Vsync.csproj
-
-debug.tests:
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Tests/Iris.Tests.fsproj
 
 debug.service:
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Service/Iris.Service.fsproj
