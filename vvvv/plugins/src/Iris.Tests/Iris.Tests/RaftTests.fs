@@ -11,7 +11,13 @@ open Iris.Raft.FFI
 open System.Runtime.InteropServices
 open Microsoft.FSharp.NativeInterop
 
-module RaftTests =
+module Raft =
+
+  
+  let inline (~~) (data : GCHandle) = data.AddrOfPinnedObject()
+  let inline (!~) (ptr  : GCHandle) = ptr.Free()
+  
+  let pin (data : 'a) = GCHandle.Alloc(data,GCHandleType.Pinned)
 
   //   _                    _    ______
   //  | |    ___   __ _  __| |  / / ___|  __ ___   _____
@@ -20,14 +26,21 @@ module RaftTests =
   //  |_____\___/ \__,_|\__,_/_/  |____/ \__,_| \_/ \___|ed
   //
   let createRaftTest =
-    let raft = RaftNew()
-    let mutable cbs = new RaftCallbacks()
-    let mutable data = "hfh"
+    testCase "Instantiate Raft" <|
+      fun _ ->
+        let raft = RaftNew()
+        let mutable data = "hfh"
+        let mutable cbs = new RaftCallbacks()
 
-    SetCallbacks(raft, NativePtr.toNativeInt &&cbs, NativePtr.toNativeInt &&data)
+        let mutable cpsptr = ~~(pin cbs)
+        let mutable dataptr = ~~(pin data)
+
+        Marshal.StructureToPtr<RaftCallbacks>(cbs, cpsptr, true)
+
+        SetCallbacks(raft, cpsptr, dataptr)
 
   [<Tests>]
   let raftTests =
     testList "Raft Tests" [
-        loadSaveTest
+        createRaftTest
       ]
