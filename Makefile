@@ -1,5 +1,5 @@
 WWW_BASEDIR=www
-VVVV_BASEDIR=vvvv/plugins
+VVVV_BASEDIR=dotnet
 DOC_BASEDIR=wiki/docs
 OPTS=/nologo /verbosity:minimal /p:Configuration=Release
 RELEASE_DIR=tmp/Release
