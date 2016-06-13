@@ -1,23 +1,55 @@
 redirects: on
 source https://nuget.org/api/v2
 
-nuget FSharp.Core ~> 4.0 redirects:force
-nuget FSharp.Formatting
-nuget FSharp.Configuration
-nuget FAKE
-nuget SourceLink.Fake
-nuget Suave
-nuget Fleck
-nuget LibGit2Sharp >= 0.22.0-pre20151023210959 prerelease
-nuget LibGit2Sharp.NativeBinaries
-nuget WebSharper
-nuget FsPickler
-nuget FsPickler.Json
-nuget Fuchu
-nuget FsCheck
-nuget Gallio
-nuget NUnit
-nuget XUnit
-nuget ZeroMQ
+group Main
+  source https://nuget.org/api/v2
+  nuget FSharp.Core
+  nuget Fuchu
+  nuget FsCheck
+  nuget XUnit
+  nuget NUnit
+  nuget Gallio
+  nuget FsPickler
+  nuget FSharpx.Extras
+  nuget FsControl
+  nuget ZeroMQ
+  nuget Argu
+  nuget FsPickler
+  nuget FsPickler.Json
+  nuget Suave
+  nuget Fleck
+  nuget LibGit2Sharp >= 0.22.0-pre20151023210959 prerelease
+  nuget LibGit2Sharp.NativeBinaries
+  nuget WebSharper
+  nuget FSharp.Configuration
 
-github fsharp/FAKE modules/Octokit/Octokit.fsx
+group Build
+  source https://nuget.org/api/v2
+  
+  nuget SourceLink.Fake
+  nuget FAKE
+  nuget FSharp.Formatting
+  nuget FSharp.Core
+  nuget FsPickler
+  nuget FSharpx.Extras
+  nuget FSharpPlus
+  nuget FsControl
+  nuget ZeroMQ
+  nuget Argu
+  nuget FsPickler
+
+  github fsharp/FAKE modules/Octokit/Octokit.fsx
+
+group Test
+  source https://nuget.org/api/v2
+  
+  nuget FSharp.Core
+  nuget Fuchu
+  nuget Fuchu.FsCheck
+  nuget XUnit
+  nuget NUnit
+  nuget Gallio
+  nuget FsPickler
+  nuget FSharpx.Extras
+  nuget FSharpPlus
+  nuget FsControl

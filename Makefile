@@ -8,6 +8,13 @@ MANIFEST="Iris Version: $(VERSTR)"
 
 DEVBUILD=xbuild /nologo /p:Configuration=Debug
 
+pallet:
+	$(DEVBUILD) $(VVVV_BASEDIR)/src/Pallet/Pallet.fsproj
+
+pallet.tests:
+	$(DEVBUILD) $(VVVV_BASEDIR)/src/Pallet.Tests/Pallet.Tests.fsproj
+	@sh -c 'fsi $(VVVV_BASEDIR)/src//Pallet.Tests/run.fsx'
+
 debug.tests:
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Tests/Iris.Tests.fsproj
 
@@ -28,9 +35,6 @@ debug.web.tests:
 
 debug.web.worker:
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Web.Worker/Iris.Web.Worker.fsproj
-
-debug.vsync:
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Vsync/Vsync.csproj
 
 debug.service:
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Service/Iris.Service.fsproj
@@ -89,3 +93,12 @@ release.build:
 	@cd $(VVVV_BASEDIR); xbuild Iris.sln $(OPTS) /p:Platform=x86
 	@echo "building x64"
 	@cd $(VVVV_BASEDIR); xbuild Iris.sln $(OPTS) /p:Platform=x64
+
+paket.restore:
+	@cd $(VVVV_BASEDIR); mono .paket/paket.exe restore
+
+paket.update:
+	@cd $(VVVV_BASEDIR); mono .paket/paket.exe update
+
+paket.install:
+	@cd $(VVVV_BASEDIR); mono .paket/paket.exe install

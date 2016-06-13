@@ -1,0 +1,11 @@
+group Test
+FSharp.Core
+Fuchu
+Fuchu.FsCheck
+XUnit
+NUnit
+Gallio
+FsPickler
+FsControl
+FSharpPlus
+FSharpx.Extras

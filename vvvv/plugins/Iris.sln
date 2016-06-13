@@ -44,7 +44,9 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Web.Core", "src\Iris.W
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Iris.Web.Tests", "src\Iris.Web.Tests\Iris.Web.Tests.fsproj", "{CDC50F9D-1EFB-483B-8D14-3F2A3FD87F9D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vsync", "src\Vsync\Vsync.csproj", "{6C867E53-6228-4FA0-9943-3C8CC11D74BC}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Pallet", "src\Pallet\Pallet.fsproj", "{36b5fcc9-e784-41b0-873c-77150cce0c7e}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Pallet.Tests", "src\Pallet.Tests\Pallet.Tests.fsproj", "{6eccd0ec-3f65-4968-84a9-1987b58214ad}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -72,10 +74,14 @@ Global
 		{5F0370CD-9619-4815-B036-8B498FDF73C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5F0370CD-9619-4815-B036-8B498FDF73C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5F0370CD-9619-4815-B036-8B498FDF73C6}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6C867E53-6228-4FA0-9943-3C8CC11D74BC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6C867E53-6228-4FA0-9943-3C8CC11D74BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6C867E53-6228-4FA0-9943-3C8CC11D74BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6C867E53-6228-4FA0-9943-3C8CC11D74BC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{36b5fcc9-e784-41b0-873c-77150cce0c7e}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36b5fcc9-e784-41b0-873c-77150cce0c7e}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36b5fcc9-e784-41b0-873c-77150cce0c7e}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36b5fcc9-e784-41b0-873c-77150cce0c7e}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6eccd0ec-3f65-4968-84a9-1987b58214ad}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6eccd0ec-3f65-4968-84a9-1987b58214ad}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6eccd0ec-3f65-4968-84a9-1987b58214ad}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6eccd0ec-3f65-4968-84a9-1987b58214ad}.Release|Any CPU.Build.0 = Release|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{87A0F413-4A97-4115-BD46-FEE219B15DCB}.Release|Any CPU.ActiveCfg = Release|Any CPU

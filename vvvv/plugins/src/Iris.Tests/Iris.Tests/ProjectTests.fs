@@ -51,13 +51,7 @@ module Project =
         let name = "test2"
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
-        let engineCfg =
-          { VsyncConfig.Default with
-              Hosts      = Some(["localhost"; "otherhost"]);
-              InfiniBand = Some true;
-              TTL        = Some(0u);
-              LogDir     = Some("otherplace")
-            }
+        let engineCfg = RaftConfig.Default
 
         let vvvvCfg =
           { VvvvConfig.Default with

@@ -10,7 +10,6 @@ open Iris.Core.Types
 open Iris.Core.Config
 open Iris.Service.Types
 open Iris.Service.Core
-open Iris.Service.Groups
 open LibGit2Sharp
 
 module Main =
@@ -55,8 +54,6 @@ module Main =
     if oracle
     then
       logger "Main" "Starting Oracle"
-      Oracle.Start()
-      Oracle.Wait()
     else
       logger "Main" "Starting Iris"
       let Iris = new IrisService()
@@ -70,24 +67,28 @@ module Main =
           let cmd = Console.ReadLine()
           match parseLine cmd with
             | Load(path) ->
-              match Iris.LoadProject(path) with
-                | Success p -> printfn "Loaded %s: %s" p.Name <| p.Id.ToString()
-                | Fail err -> printfn "Error loading: %s" err
+              // match Iris.LoadProject(path) with
+              //   | Success p -> printfn "Loaded %s: %s" p.Name <| p.Id.ToString()
+              //   | Fail err -> printfn "Error loading: %s" err
+              printfn "fix loading"
 
             | Save(pid,msg) ->
-              match Iris.SaveProject(Guid.Parse(pid),msg) with
-                | Success c -> printfn "Saved! Commit Sha: %s" c.Sha
-                | Fail err -> printfn "Error saving: %s" err
+              // match Iris.SaveProject(Guid.Parse(pid),msg) with
+              //   | Success c -> printfn "Saved! Commit Sha: %s" c.Sha
+              //   | Fail err -> printfn "Error saving: %s" err
+              printfn "fix saving"
 
             | Create(name, path) ->
-              match  Iris.CreateProject(name, path) with
-                | Success p -> printfn "Created Project: %s" <| p.Id.ToString()
-                | Fail err -> printfn "Could not create project: %s" err
+              // match  Iris.CreateProject(name, path) with
+              //   | Success p -> printfn "Created Project: %s" <| p.Id.ToString()
+              //   | Fail err -> printfn "Could not create project: %s" err
+              printfn "fix creating"
 
             | Close(pid) ->
-              match Iris.CloseProject(Guid.Parse(pid)) with
-                | Success p -> printfn "Closed project %s." p.Name
-                | Fail err -> printfn "Could not close project: %s" err
+              // match Iris.CloseProject(Guid.Parse(pid)) with
+              //   | Success p -> printfn "Closed project %s." p.Name
+              //   | Fail err -> printfn "Could not close project: %s" err
+              printfn "fix closing"
 
             | Set(var, vl) -> Environment.SetEnvironmentVariable(var, vl)
 

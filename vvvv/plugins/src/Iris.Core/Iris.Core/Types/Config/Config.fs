@@ -9,7 +9,7 @@ module Config =
   type Config =
     {  Audio     : AudioConfig
     ;  Vvvv      : VvvvConfig
-    ;  Engine    : VsyncConfig
+    ;  Engine    : RaftConfig
     ;  Timing    : TimingConfig
     ;  Port      : PortConfig
     ;  ViewPorts : ViewPort list
@@ -108,7 +108,7 @@ module Config =
   //              |___/
   //
   /// Parse Vsync configuration section
-  let parseVsyncCfg (cfg : ConfigFile) : VsyncConfig =
+  let parseVsyncCfg (cfg : ConfigFile) : RaftConfig =
     let eng = cfg.Project.Engine
 
     let ifaces : string list option ref = ref None
@@ -136,41 +136,8 @@ module Config =
       | Some(list) -> ifaces := Some(reverse list)
       | None       -> ifaces := None
 
-    { AesKey                = getOptStr eng.AesKey
-    ; DefaultTimeout        = getOptUInt eng.DefaultTimeout
-    ; DontCompress          = Some(eng.DontCompress)
-    ; FastEthernet          = Some(eng.FastEthernet)
-    ; GracefulShutdown      = Some(eng.GracefulShutdown)
-    ; Hosts                 = !hosts
-    ; IgnorePartitions      = Some(eng.IgnorePartitions)
-    ; IgnoreSmallPartitions = Some(eng.IgnoreSmallPartitions)
-    ; InfiniBand            = Some(eng.InfiniBand)
-    ; Large                 = Some(eng.Large)
-    ; LogDir                = getOptStr eng.LogDir
-    ; Logged                = Some(eng.Logged)
-    ; MCMDReportRate        = getOptInt eng.MCMDReportRate
-    ; MCRangeHigh           = getOptStr eng.MCRangeHigh
-    ; MCRangeLow            = getOptStr eng.MCRangeLow
-    ; MaxAsyncMTotal        = getOptInt eng.MaxAsyncMTotal
-    ; MaxIPMCAddrs          = getOptInt eng.MaxIPMCAddrs
-    ; MaxMsgLen             = getOptInt eng.MaxMsgLen
-    ; Mute                  = Some(eng.Mute)
-    ; Netmask               = getOptStr eng.Netmask
-    ; NetworkInterfaces     = !ifaces
-    ; OOBViaTCP             = Some(eng.OOBViaTCP)
-    ; Port                  = getOptInt eng.Port
-    ; PortP2P               = getOptInt eng.PortP2P
-    ; RateLim               = getOptInt eng.RateLim
-    ; Sigs                  = Some(eng.Sigs)
-    ; SkipFirstInterface    = Some(eng.SkipFirstInterface)
-    ; Subnet                = getOptStr eng.Subnet
-    ; TTL                   = getOptInt eng.TTL
-    ; TokenDelay            = getOptInt eng.TokenDelay
-    ; UDPChkSum             = Some(eng.UDPChkSum)
-    ; UnicastOnly           = Some(eng.UnicastOnly)
-    ; UseIPv4               = Some(eng.UseIPv4)
-    ; UseIPv6               = Some(eng.UseIPv6)
-    ; UserDMA               = Some(eng.UserDMA)
+    { RequestTimeout = 0u
+    ; TempDir = "hahhah"
     }
 
   //   _____ _           _

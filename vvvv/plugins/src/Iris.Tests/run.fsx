@@ -2,7 +2,6 @@
 #r @"./bin/Debug/SharpYaml.dll"
 #r @"./bin/Debug/FsCheck.dll"
 #r @"./bin/Debug/FsPickler.dll"
-#r @"./bin/Debug/Vsync.dll"
 #r @"./bin/Debug/Iris.Core.dll"
 #r @"./bin/Debug/FSharp.Configuration.dll"
 #r @"./bin/Debug/Fuchu.dll"

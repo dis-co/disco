@@ -150,7 +150,7 @@ module Project =
       data.Config    <-
         { Audio     =  AudioConfig.Default
         ; Vvvv      =  VvvvConfig.Default
-        ; Engine    =  VsyncConfig.Default
+        ; Engine    =  RaftConfig.Default
         ; Timing    =  TimingConfig.Default
         ; Port      =  PortConfig.Default
         ; ViewPorts =  List.empty
@@ -284,182 +284,6 @@ module Project =
           entry.Path <- plug.Path
           IrisConfig.Project.VVVV.Plugins.Add(entry)
 
-        // Engine related configuration
-        if Option.isSome self.Config.Engine.AesKey
-        then IrisConfig.Project.Engine.AesKey <- Option.get self.Config.Engine.AesKey
-
-        if Option.isSome self.Config.Engine.DefaultTimeout
-        then
-          let value = string (Option.get self.Config.Engine.DefaultTimeout)
-          IrisConfig.Project.Engine.DefaultTimeout <- value
-
-        if Option.isSome self.Config.Engine.DontCompress
-        then
-          let value = Option.get self.Config.Engine.DontCompress
-          IrisConfig.Project.Engine.DontCompress <- value
-
-        if Option.isSome self.Config.Engine.FastEthernet
-        then
-          let value = Option.get self.Config.Engine.FastEthernet
-          IrisConfig.Project.Engine.FastEthernet <- value
-
-        if Option.isSome self.Config.Engine.GracefulShutdown
-        then
-          let value = Option.get self.Config.Engine.GracefulShutdown
-          IrisConfig.Project.Engine.GracefulShutdown <- value
-
-        if Option.isSome self.Config.Engine.Hosts
-        then
-          IrisConfig.Project.Engine.Hosts.Clear()
-          for host in Option.get self.Config.Engine.Hosts do
-            IrisConfig.Project.Engine.Hosts.Add(host)
-
-        if Option.isSome self.Config.Engine.IgnorePartitions
-        then
-          let value = Option.get self.Config.Engine.IgnorePartitions
-          IrisConfig.Project.Engine.IgnorePartitions <- value
-
-        if Option.isSome self.Config.Engine.IgnoreSmallPartitions
-        then
-          let value = Option.get self.Config.Engine.IgnoreSmallPartitions
-          IrisConfig.Project.Engine.IgnoreSmallPartitions <- value
-
-        if Option.isSome self.Config.Engine.InfiniBand
-        then
-          let value = Option.get self.Config.Engine.InfiniBand
-          IrisConfig.Project.Engine.InfiniBand <- value
-
-        if Option.isSome self.Config.Engine.Large
-        then
-          let value = Option.get self.Config.Engine.Large
-          IrisConfig.Project.Engine.Large <- value
-
-        if Option.isSome self.Config.Engine.LogDir
-        then
-          let value = Option.get self.Config.Engine.LogDir
-          IrisConfig.Project.Engine.LogDir <- value
-
-        if Option.isSome self.Config.Engine.Logged
-        then
-          let value = Option.get self.Config.Engine.Logged
-          IrisConfig.Project.Engine.Logged <- value
-
-        if Option.isSome self.Config.Engine.MCMDReportRate
-        then
-          let value = int (Option.get self.Config.Engine.MCMDReportRate)
-          IrisConfig.Project.Engine.MCMDReportRate <- value
-
-        if Option.isSome self.Config.Engine.MCRangeHigh
-        then
-          let value = Option.get self.Config.Engine.MCRangeHigh
-          IrisConfig.Project.Engine.MCRangeHigh <- value
-
-        if Option.isSome self.Config.Engine.MCRangeLow
-        then
-          let value = Option.get self.Config.Engine.MCRangeLow
-          IrisConfig.Project.Engine.MCRangeLow <- value
-
-        if Option.isSome self.Config.Engine.MaxAsyncMTotal
-        then
-          let value = int (Option.get self.Config.Engine.MaxAsyncMTotal)
-          IrisConfig.Project.Engine.MaxAsyncMTotal <- value
-
-        if Option.isSome self.Config.Engine.MaxIPMCAddrs
-        then
-          let value = int (Option.get self.Config.Engine.MaxIPMCAddrs)
-          IrisConfig.Project.Engine.MaxIPMCAddrs <- value
-
-        if Option.isSome self.Config.Engine.MaxMsgLen
-        then
-          let value = int (Option.get self.Config.Engine.MaxMsgLen)
-          IrisConfig.Project.Engine.MaxMsgLen <- value
-
-        if Option.isSome self.Config.Engine.Mute
-        then
-          let value = Option.get self.Config.Engine.Mute
-          IrisConfig.Project.Engine.Mute <- value
-
-        if Option.isSome self.Config.Engine.Netmask
-        then
-          let value = Option.get self.Config.Engine.Netmask
-          IrisConfig.Project.Engine.Netmask <- value
-
-        IrisConfig.Project.Engine.NetworkInterfaces.Clear()
-        if Option.isSome self.Config.Engine.NetworkInterfaces
-        then
-          for iface in Option.get self.Config.Engine.NetworkInterfaces do
-            IrisConfig.Project.Engine.NetworkInterfaces.Add(iface)
-
-        if Option.isSome self.Config.Engine.OOBViaTCP
-        then
-          let value = Option.get self.Config.Engine.OOBViaTCP
-          IrisConfig.Project.Engine.OOBViaTCP <- value
-
-        if Option.isSome self.Config.Engine.Port
-        then
-          let value = int (Option.get self.Config.Engine.Port)
-          IrisConfig.Project.Engine.Port <- value
-
-        if Option.isSome self.Config.Engine.PortP2P
-        then
-          let value = int (Option.get self.Config.Engine.PortP2P)
-          IrisConfig.Project.Engine.PortP2P <- value
-
-        if Option.isSome self.Config.Engine.RateLim
-        then
-          let value = int (Option.get self.Config.Engine.RateLim)
-          IrisConfig.Project.Engine.RateLim <- value
-
-        if Option.isSome self.Config.Engine.Sigs
-        then
-          let value = Option.get self.Config.Engine.Sigs
-          IrisConfig.Project.Engine.Sigs <- value
-
-        if Option.isSome self.Config.Engine.SkipFirstInterface
-        then
-          let value = Option.get self.Config.Engine.SkipFirstInterface
-          IrisConfig.Project.Engine.SkipFirstInterface <- value
-
-        if Option.isSome self.Config.Engine.Subnet
-        then
-          let value = Option.get self.Config.Engine.Subnet
-          IrisConfig.Project.Engine.Subnet <- value
-
-        if Option.isSome self.Config.Engine.TTL
-        then
-          let value = int (Option.get self.Config.Engine.TTL)
-          IrisConfig.Project.Engine.TTL <- value
-
-        if Option.isSome self.Config.Engine.TokenDelay
-        then
-          let value = int (Option.get self.Config.Engine.TokenDelay)
-          IrisConfig.Project.Engine.TokenDelay <- value
-
-        if Option.isSome self.Config.Engine.UDPChkSum
-        then
-          let value = Option.get self.Config.Engine.UDPChkSum
-          IrisConfig.Project.Engine.UDPChkSum <- value
-
-        if Option.isSome self.Config.Engine.UnicastOnly
-        then
-          let value = Option.get self.Config.Engine.UnicastOnly
-          IrisConfig.Project.Engine.UnicastOnly <- value
-
-        if Option.isSome self.Config.Engine.UseIPv4
-        then
-          let value = Option.get self.Config.Engine.UseIPv4
-          IrisConfig.Project.Engine.UseIPv4 <- value
-
-        if Option.isSome self.Config.Engine.UseIPv6
-        then
-          let value = Option.get self.Config.Engine.UseIPv6
-          IrisConfig.Project.Engine.UseIPv6 <- value
-
-        if Option.isSome self.Config.Engine.UserDMA
-        then
-          let value = Option.get self.Config.Engine.UserDMA
-          IrisConfig.Project.Engine.UserDMA <- value
-
         // Timing
         IrisConfig.Project.Timing.Framebase <- int (self.Config.Timing.Framebase)
         IrisConfig.Project.Timing.Input <- self.Config.Timing.Input
@@ -568,7 +392,7 @@ module Project =
           // commit project to git.
           match self.Repo with
             | Some(repo') ->
-              repo'.Stage(destPath)
+              Commands.Stage(repo',destPath)
               repo'.Commit(msg, sign, Committer)
               |> Success
             | _ ->

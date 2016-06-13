@@ -7,35 +7,10 @@ open Iris.Core.Utils
 open Iris.Core.Types
 open Iris.Core.Config
 open Iris.Service.Core
-open Iris.Service.Groups
 open LibGit2Sharp
-open Vsync
 
 [<AutoOpen>]
 module IrisService =
-  //   ___                 _
-  //  / _ \ _ __ __ _  ___| | ___
-  // | | | | '__/ _` |/ __| |/ _ \
-  // | |_| | | | (_| | (__| |  __/
-  //  \___/|_|  \__,_|\___|_|\___|
-  //
-  type Oracle =
-    static member Start() =
-      let options = VsyncConfig.Default
-        // { VsyncConfig.Default with
-        //     GracefulShutdown = Some(true);
-        //     UnicastOnly = Some(true);
-        //     Hosts = Some([ "localhost" ]) }
-
-      options.Apply()
-      VsyncSystem.Start()
-
-    static member Stop() =
-      VsyncSystem.Shutdown()
-
-    static member Wait() =
-      VsyncSystem.WaitForever()
-
   //  ___      _     ____                  _
   // |_ _|_ __(_)___/ ___|  ___ _ ____   _(_) ___ ___
   //  | || '__| / __\___ \ / _ \ '__\ \ / / |/ __/ _ \
@@ -48,10 +23,16 @@ module IrisService =
     let signature = new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
 
     let mutable state     : AppState ref = ref AppState.empty
-    let mutable processes : Map<Guid,ProjectProcess> = Map.empty
+    let mutable processes : Map<Guid,string> = Map.empty
 
     let addProcess guid proc =
       processes <- Map.add guid proc processes
+
+    let startProcess proc =
+      printfn "bla"
+
+    let stopProcess guid proc =
+      printfn "stopping"
 
     let removeProcess guid =
       match Map.tryFind guid processes with
@@ -62,8 +43,6 @@ module IrisService =
           guid.ToString()
           |> sprintf "process not found for guid %s"
           |> fail
-
-    [<DefaultValue>] val mutable Ctrl  : ControlGroup
 
     //  ___       _             __
     // |_ _|_ __ | |_ ___ _ __ / _| __ _  ___ ___  ___
@@ -82,30 +61,21 @@ module IrisService =
     // |_____|_|_|  \___|\____\__, |\___|_|\___|
     //                        |___/
     member self.Start() =
-      let options = VsyncConfig.Default
+      let options = RaftConfig.Default
         // { VsyncConfig.Default with
         //     GracefulShutdown = Some(true);
         //     UnicastOnly = Some(true);
         //     Hosts = Some([ "localhost" ]) }
 
-      options.Apply()
-      VsyncSystem.Start()
-
-      self.Ctrl <- new ControlGroup(state)
-      self.Ctrl.Join()
+      printfn "hi"
 
 
     member self.Stop() =
       Map.toList processes
       |> List.iter (snd >> stopProcess >> ignore)
 
-      self.Ctrl.Leave()
-      try VsyncSystem.Shutdown()
-      with
-        | :? System.InvalidOperationException as exn ->
-          logger tag exn.Message
 
-    member self.Wait() = VsyncSystem.WaitForever()
+    member self.Wait() = ()
 
     //  ____            _           _
     // |  _ \ _ __ ___ (_) ___  ___| |_
@@ -125,20 +95,21 @@ module IrisService =
     // | |___| | |  __/ (_| | ||  __/
     //  \____|_|  \___|\__,_|\__\___|
     member self.CreateProject(name, path) =
-      createProject name path signature !state
-        >>= fun (project, state') ->
-          // add and start the process groups for this project
-          let result =
-            ProjectProcess.Create project
-              >>= startProcess
-              >>= (addProcess project.Id >> succeed)
+      // createProject name path signature !state
+      //   >>= fun (project, state') ->
+      //     // add and start the process groups for this project
+      //     let result =
+      //       project.Name
+      //         >>= startProcess
+      //         >>= (addProcess project.Id >> succeed)
 
-          match result with
-            | Success _ -> state := state'                          // replace current state with new project state
-                           self.Ctrl.Load(project.Id, project.Name) // notify everybody in the cluster that we loaded this project
-                           succeed project
-            | Fail err  -> logger tag err
-                           fail err
+      //     match result with
+      //       | Success _ -> state := state'                          // replace current state with new project state
+      //                      self.Ctrl.Load(project.Id, project.Name) // notify everybody in the cluster that we loaded this project
+      //                      succeed project
+      //       | Fail err  -> logger tag err
+      //                      fail err
+      printfn "hm"
 
     //   ____ _
     //  / ___| | ___  ___  ___
@@ -146,18 +117,20 @@ module IrisService =
     // | |___| | (_) \__ \  __/
     //  \____|_|\___/|___/\___|
     member self.CloseProject(pid) =
-      findProject pid !state
-        >>= fun project ->
-          combine project (closeProject pid !state)
-        >>= fun (project, state') ->
-          // remove and stop process groups
-          let result = removeProcess project.Id >>= stopProcess
-          match result with
-            | Success _ -> state := state'                    // save global state
-                           self.Ctrl.Close(pid, project.Name) // notify everybody
-                           succeed project
-            | Fail err  -> logger tag err
-                           fail err
+      // findProject pid !state
+      //   >>= fun project ->
+      //     combine project (closeProject pid !state)
+      //   >>= fun (project, state') ->
+      //     // remove and stop process groups
+      //     let result = removeProcess project.Id >>= stopProcess
+      //     match result with
+      //       | Success _ -> state := state'                    // save global state
+      //                      self.Ctrl.Close(pid, project.Name) // notify everybody
+      //                      succeed project
+      //       | Fail err  -> logger tag err
+      //                      fail err
+
+      printfn "fm"
 
     //  _                    _
     // | |    ___   __ _  __| |
@@ -165,31 +138,35 @@ module IrisService =
     // | |__| (_) | (_| | (_| |
     // |_____\___/ \__,_|\__,_|
     member self.LoadProject(path : FilePath) =
-      loadProject path !state
-        >>= fun (project, state') ->
-          // add and start the process groups for this project
-          let result =
-            ProjectProcess.Create project
-              >>= startProcess
-              >>= (addProcess project.Id >> succeed)
+      // loadProject path !state
+      //   >>= fun (project, state') ->
+      //     // add and start the process groups for this project
+      //     let result =
+      //       ProjectProcess.Create project
+      //         >>= startProcess
+      //         >>= (addProcess project.Id >> succeed)
 
-          match result with
-            | Success _ -> self.Ctrl.Load(project.Id, project.Name)
-                           state := state'
-                           succeed project
-            | Fail err  -> logger tag err
-                           fail err
+      //     match result with
+      //       | Success _ -> self.Ctrl.Load(project.Id, project.Name)
+      //                      state := state'
+      //                      succeed project
+      //       | Fail err  -> logger tag err
+      //                      fail err
+
+      printfn "oh"
 
     member self.Dump() =
-      printfn "Members:"
-      !state
-      |> fun s -> s.Members
-      |> List.iter (fun (mem : Member) ->
-                      printfn "  %s" <| mem.ToString())
+      // printfn "Members:"
+      // !state
+      // |> fun s -> s.Members
+      // |> List.iter (fun (mem : Member) ->
+      //                 printfn "  %s" <| mem.ToString())
 
-      printfn "Projects:"
-      !state
-      |> fun s -> s.Projects
-      |> Map.toList
-      |> List.iter (fun (id, p : Project) ->
-                      printfn "  Id: %s Name: %s" (p.Id.ToString()) p.Name)
+      // printfn "Projects:"
+      // !state
+      // |> fun s -> s.Projects
+      // |> Map.toList
+      // |> List.iter (fun (id, p : Project) ->
+      //                 printfn "  Id: %s Name: %s" (p.Id.ToString()) p.Name)
+
+      printfn "hm"

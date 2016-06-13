@@ -1,6 +1,5 @@
 namespace Iris.Service.Core
 
-open Vsync
 open System
 open System.Net
 open Iris.Core.Types
