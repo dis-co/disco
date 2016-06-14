@@ -9,23 +9,24 @@ namespace fszmq
 open System
 open System.Runtime.InteropServices
 
+open ZeroMQ
+open ZeroMQ.lib
+
+
 /// Provides a memory-managed wrapper over ZMQ message operations
-[<Sealed>]
-type Message private(?source:byte array) =
+type Message private(?source: byte array) =
+  inherit ZMessage()
+  
   let mutable disposed  = false
-  let mutable handle    = Marshal.AllocHGlobal(ZMQ.ZMQ_MSG_T_SIZE)
 
   let (|Source|_|) = function
     | None
-    | Some null ->  None
-    | Some data ->  let size = (Array.length >> unativeint) data
-                    Some(size,data)
+    | Some null -> None
+    | Some data -> let size (Array.length >> unativeint) data
+                   Some(size,data)
 
-  do (* ctor *)
-    match source with
-    | Source(size,data) ->  if C.zmq_msg_init_size(handle,size) <> 0 then ZMQ.error()
-                            Marshal.Copy(data,0,C.zmq_msg_data(handle),int size)
-    | _                 ->  if C.zmq_msg_init(handle) <> 0 then ZMQ.error()
+  do match source with 
+  
 
   /// Creates a new Message from the given byte array
   new (source) = new Message (?source=Some source)

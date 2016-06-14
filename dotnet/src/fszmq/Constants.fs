@@ -10,6 +10,9 @@ open System
 open System.Globalization
 open System.Runtime.InteropServices
 
+open ZeroMQ
+open ZeroMQ.lib
+
 /// Report the version of the underlying (native) ZMQ library
 [<StructuredFormatDisplay("{Text}")>]
 type Version = 
@@ -60,7 +63,7 @@ module ZMQ =
   let version =
     try
       let mutable major,minor,patch = 0,0,0
-      C.zmq_version(&major,&minor,&patch)
+      zmq.version.Invoke(&major,&minor,&patch)
       match (major,minor,patch) with
       | 0,0,0 -> Version.Unknown
       | m,n,b -> Version(m,n,b)
@@ -70,14 +73,13 @@ module ZMQ =
 
   /// Tests if the underlying (native) ZMQ library supports a given capability
   [<CompiledName("Has")>]
-  let has capability =
+  let has (capability: int) =
     try
-      Supported (capability,C.zmq_has(capability) = 1)
+      Supported (string capability,zmq.has.Invoke(nativeint capability) = 1)
     with
       | _ -> Capability.Unknown
 
-
-(* capabilities *)
+  (* capabilities *)
   /// Used to test if library supports the IPC transport protocol
   let [<Literal>] CAP_IPC     = "ipc"
   /// Used to test if library supports the PGM transport protocol
@@ -92,41 +94,41 @@ module ZMQ =
   let [<Literal>] CAP_GSSAPI  = "gssapi"
 
 
-(* error codes *)
-  let [<Literal>] internal EINTR        =  4
-  let [<Literal>] internal EFAULT       = 14 
-  let [<Literal>] internal POSIX_EAGAIN = 11
-  let [<Literal>] internal BSD_EAGAIN   = 35
-  // !!! HACK !!! This whole setup is bad and wrong and should be replaced
-  let internal eagain =
-    try
-      let mutable info = C.utsname()
-      C.uname (&info) |> ignore //TODO: handle this better
-      match info.sysname.ToLowerInvariant () with
-      | "linux"   -> POSIX_EAGAIN  // Linux
-      | "darwin"  -> BSD_EAGAIN   // Mac OS X
-      //NOTE: this assumes all Unixes are BSD-derived, which is bad and wrong
-      | _         -> BSD_EAGAIN
-      //TODO: extend this to include other OSes
-    with
-      | _ -> POSIX_EAGAIN  // Windows
-    (* :: NOTE ::
-    if _anything_ goes wrong, we assume "libc::uname" doesn't exist (i.e. we're on Windows);
-    this is probably bad and wrong and really ought to be replaced with _something_ else.*)
+  // (* error codes *)
+  // let [<Literal>] internal EINTR        =  4
+  // let [<Literal>] internal EFAULT       = 14 
+  // let [<Literal>] internal POSIX_EAGAIN = 11
+  // let [<Literal>] internal BSD_EAGAIN   = 35
+  // // !!! HACK !!! This whole setup is bad and wrong and should be replaced
+  // let internal eagain =
+  //   try
+  //     let mutable info = lib.Platform.e
+  //     C.uname (&info) |> ignore //TODO: handle this better
+  //     match info.sysname.ToLowerInvariant () with
+  //     | "linux"   -> POSIX_EAGAIN  // Linux
+  //     | "darwin"  -> BSD_EAGAIN   // Mac OS X
+  //     //NOTE: this assumes all Unixes are BSD-derived, which is bad and wrong
+  //     | _         -> BSD_EAGAIN
+  //     //TODO: extend this to include other OSes
+  //   with
+  //     | _ -> POSIX_EAGAIN  // Windows
+  //   (* :: NOTE ::
+  //   if _anything_ goes wrong, we assume "libc::uname" doesn't exist (i.e. we're on Windows);
+  //   this is probably bad and wrong and really ought to be replaced with _something_ else.*)
 
-  // helper function for build native-to-managed errors
-  let inline internal buildError num = ZMQError(num,Marshal.PtrToStringAnsi(C.zmq_strerror(num)))
-  // constructs and raises native-to-managed errors
-  let inline internal error() = (buildError >> raise) <| C.zmq_errno()
-  // helpers for "faking" native errors
-  let inline internal einval msg = raise <| ZMQError(22,msg)
+  // // helper function for build native-to-managed errors
+  // let inline internal buildError num = ZMQError(num,Marshal.PtrToStringAnsi(C.zmq_strerror(num)))
+  // // constructs and raises native-to-managed errors
+  // let inline internal error() = (buildError >> raise) <| C.zmq_errno()
+  // // helpers for "faking" native errors
+  // let inline internal einval msg = raise <| ZMQError(22,msg)
 
-  /// Non-blocking mode was requested and the message cannot be sent at the moment
-  let (|EAGAIN|_|) errno =
-    if errno = eagain then Some () else None
+  // /// Non-blocking mode was requested and the message cannot be sent at the moment
+  // let (|EAGAIN|_|) errno =
+  //   if errno = eagain then Some () else None
 
-
-(* message size *)
+  
+  (* message size *)
   let internal ZMQ_MSG_T_SIZE = match version with
                                 | Version(m,n,_) when m >= 4 && n > 0 -> 64
                                 | _                                   -> 32
