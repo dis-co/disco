@@ -11,6 +11,9 @@ open System.Collections.Generic
 open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
 
+open ZeroMQ
+open ZeroMQ.lib
+
 /// For use with the Polling module...
 ///
 /// Associates a callback with a Socket instance and one or more events,
@@ -32,7 +35,9 @@ module Polling =
   /// Creates a Poll item for the socket which will
   /// invoke the callback when the socket receives a message
   [<CompiledName("PollIn")>]
-  let pollIn fn socket = Poll(ZMQ.POLLIN,socket,fn)
+  let pollIn fn socket =
+    let item = ZPollItem.Create()
+    ZPollItems.PollIn(socket, item)
 
   /// Creates a Poll item for the socket which will
   /// invoke the callback when the socket sends a message

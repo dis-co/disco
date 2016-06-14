@@ -10,6 +10,10 @@ open System
 open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
 
+open ZeroMQ
+open ZeroMQ.lib
+open ZeroMQ.Monitoring
+
 /// Contains methods for working with Socket instances
 [<Extension;CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Socket =
@@ -19,30 +23,26 @@ module Socket =
   /// Causes an endpoint to start accepting
   /// connections at the given address
   [<Extension;CompiledName("Bind")>]
-  let bind (socket:Socket) address =
-    if C.zmq_bind(socket.Handle,address) <> 0 then ZMQ.error()
+  let bind (socket:Socket) address = socket.Bind address
 
   /// Causes an endpoint to stop accepting
   /// connections at the given address
   [<Extension;CompiledName("Unbind")>]
-  let unbind (socket:Socket) address =
-    if C.zmq_unbind(socket.Handle,address) <> 0 then ZMQ.error()
+  let unbind (socket:Socket) address = socket.Unbind address
 
   /// Connects to an endpoint to the given address
   [<Extension;CompiledName("Connect")>]
-  let connect (socket:Socket) address =
-    if C.zmq_connect(socket.Handle,address) <> 0 then ZMQ.error()
+  let connect (socket:Socket) address = socket.Connect address
 
   /// Disconnects to an endpoint from the given address
   [<Extension;CompiledName("Disconnect")>]
-  let disconnect (socket:Socket) address =
-    if C.zmq_disconnect(socket.Handle,address) <> 0 then ZMQ.error()
+  let disconnect (socket:Socket) address = socket.Disconnect address
 
-(* socket options *)
+  (* socket options *)
 
   /// Gets the value of the given option for the given Socket
   [<Extension;CompiledName("GetOption")>]
-  let getOption<'t> (socket:Socket) socketOption : 't =
+  let getOption<'t> (socket:Socket) (opts: ZSocketOption) : 't =
     let size,read =
       let   t = typeof<'t>
       if    t = typeof<int>     then   4,(snd >> readInt32  >> box)
@@ -53,15 +53,15 @@ module Socket =
       elif  t = typeof<byte[]>  then 255,(       readBytes  >> box)
                                 else invalidOp "Invalid data type"
     let getter (size,buffer) =
-      let mutable size' = unativeint size
-      match C.zmq_getsockopt(socket.Handle,socketOption,buffer,&size') with
-      | 0 -> downcast read (size',buffer)
-      | _ -> ZMQ.error()
+      let size' = nativeint size
+      match zmq.getsockopt.Invoke(socket.SocketPtr,(int)opts,buffer,size') with
+      | 0 -> downcast read (size,buffer)
+      | _ -> new ZException() |> raise
     useBuffer size getter
 
   /// Sets the given option value for the given Socket
   [<Extension;CompiledName("SetOption")>]
-  let setOption (socket:Socket) (socketOption,value:'t) =
+  let setOption (socket:Socket) (opts: ZSocketOption,value:'t) =
     let size,write =
       match box value with
       | :? (int32 ) as v  -> sizeof<Int32>,(writeInt32  v)
@@ -73,16 +73,17 @@ module Socket =
       | _                 -> invalidOp "Invalid data type"
     let setter (size,buffer) =
       write buffer
-      let okay = C.zmq_setsockopt(socket.Handle,socketOption,buffer,size)
-      if  okay <> 0 then ZMQ.error()
+      let size' = int size
+      let okay = zmq.setsockopt.Invoke(socket.SocketPtr,(int)opts,buffer,size')
+      if  okay <> 0 then new ZException() |> raise 
     useBuffer size setter
 
   /// Sets the given block of option values for the given Socket
   [<Extension;CompiledName("Configure")>]
   let configure socket socketOptions =
-    Seq.iter (fun (opt:int * obj) -> setOption socket opt) socketOptions
+    Seq.iter (fun (opt:ZSocketOption * obj) -> setOption socket opt) socketOptions
 
-(* subscriptions *)
+  (* subscriptions *)
 
   /// Adds one subscription for each of the given topics
   [<Extension;CompiledName("Subscribe")>]
@@ -94,16 +95,16 @@ module Socket =
   let unsubscribe socket topics =
     Seq.iter (fun (t:byte[]) -> setOption socket (ZMQ.UNSUBSCRIBE,t)) topics
 
-(* message sending *)
+    (* message sending *)
 
   /// Sends a frame, with the given flags, returning true (or false)
   /// if the send was successful (or should be re-tried)
   [<Extension;CompiledName("TrySend")>]
-  let trySend (socket:Socket) (frame:byte[]) flags =
-    match C.zmq_send(socket.Handle,frame,unativeint frame.Length,flags) with
-    | Message.Okay -> true
-    | Message.Busy -> false
-    | Message.Fail -> ZMQ.error()
+  let trySend (socket:Socket) (frame:byte[]) (flags: ZSocketFlags) : bool =
+    let mutable err = ZError.None
+    match socket.Send(new ZFrame(frame), flags, &err) with
+      | true  -> true
+      | false -> new ZException(err) |> raise
 
   /// Sends a frame (blocking), indicating no more frames will follow
   [<Extension;CompiledName("Send")>]
@@ -145,11 +146,12 @@ module Socket =
   /// where None indicates the operation should be re-attempted
   [<Extension;CompiledName("TryRecv")>]
   let tryRecv (socket:Socket) length flags =
+    let mutable err = ZError.None
     let buffer = Array.zeroCreate length
-    match C.zmq_recv(socket.Handle,buffer,unativeint length,flags) with
+    match socket.ReceiveBytes(buffer, 0, length, flags, &err) with
     | Message.Okay -> Some(buffer)
     | Message.Busy -> None
-    | Message.Fail -> ZMQ.error()
+    | Message.Fail -> new ZException(err) |> raise
 
   /// Gets the next available frame from a socket, 
   /// returning false if the operation should be re-attempted
@@ -181,10 +183,14 @@ module Socket =
     [|  yield socket |> recv
         while socket |> recvMore do yield socket |> recv  |]
 
-(* monitoring *)
+  (* monitoring *)
+
   /// Creates a `ZMQ.PAIR` socket, bound to the given address, which broadcasts
   /// events for the given socket. These events should be consumed by another `ZMQ.PAIR` socket
   /// connected to the given address (preferably on a background thread).
   [<Extension;CompiledName("Monitor")>]
   let monitor (socket:Socket) address events =
-    if C.zmq_socket_monitor(socket.Handle,address,events) < 0 then ZMQ.error()
+    let mutable err = ZError.None
+    let good = ZMonitors.Monitor(socket, address, events, &err)
+    if not good then
+      new ZException(err) |> raise

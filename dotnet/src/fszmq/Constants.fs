@@ -11,6 +11,7 @@ open System.Globalization
 open System.Runtime.InteropServices
 
 open ZeroMQ
+open ZeroMQ.Monitoring
 open ZeroMQ.lib
 
 /// Report the version of the underlying (native) ZMQ library
@@ -116,12 +117,15 @@ module ZMQ =
   //   if _anything_ goes wrong, we assume "libc::uname" doesn't exist (i.e. we're on Windows);
   //   this is probably bad and wrong and really ought to be replaced with _something_ else.*)
 
-  // // helper function for build native-to-managed errors
-  // let inline internal buildError num = ZMQError(num,Marshal.PtrToStringAnsi(C.zmq_strerror(num)))
-  // // constructs and raises native-to-managed errors
-  // let inline internal error() = (buildError >> raise) <| C.zmq_errno()
-  // // helpers for "faking" native errors
-  // let inline internal einval msg = raise <| ZMQError(22,msg)
+  // helper function for build native-to-managed errors
+  let inline internal buildError (num: int) = new ZError(num)
+
+  // constructs and raises native-to-managed errors
+  let inline internal error() =
+    new ZException(zmq.errno.Invoke()) |> raise
+
+  // helpers for "faking" native errors
+  let inline internal einval msg = new ZException(22,msg) |> raise
 
   // /// Non-blocking mode was requested and the message cannot be sent at the moment
   // let (|EAGAIN|_|) errno =
@@ -133,17 +137,17 @@ module ZMQ =
                                 | Version(m,n,_) when m >= 4 && n > 0 -> 64
                                 | _                                   -> 32
 
-(* context options *)
+  (* context options *)
   /// (Int32) Set number of OS-level I/O threads
-  let [<Literal>] IO_THREADS          = 1
+  let [<Literal>] IO_THREADS          =  ZContextOption.IO_THREADS
   /// (Int32) Set maximum number of sockets for a context
-  let [<Literal>] MAX_SOCKETS         = 2
+  let [<Literal>] MAX_SOCKETS         =  ZContextOption.MAX_SOCKETS
   /// (Int32) Get largest configurable number of sockets
-  let [<Literal>] SOCKET_LIMIT        = 3
+  let [<Literal>] SOCKET_LIMIT        =  ZContextOption.SOCKET_LIMIT
   /// (Int32) Change thread scheduling priority (only valid on systems which use pthread)
-  let [<Literal>] THREAD_PRIORITY     = 3
+  let [<Literal>] THREAD_PRIORITY     =  ZContextOption.THREAD_PRIORITY
   /// (Int32) Set thread scheduling policy (only valid on systems which use pthread)
-  let [<Literal>] THREAD_SCHED_POLICY = 4
+  let [<Literal>] THREAD_SCHED_POLICY =  ZContextOption.THREAD_SCHED_POLICY
 
   (* default for new contexts *)
   /// Default number of OS-level I/O threads (1)
@@ -155,181 +159,173 @@ module ZMQ =
   /// Default thread scheduling policy (-1)
   let [<Literal>] THREAD_SCHED_POLICY_DFLT  = -1
 
-(* event codes *)
+  (* event codes *)
   let internal EVENT_DETAIL_SIZE = sizeof<uint16> + sizeof<int32>
 
   /// Socket connection established
-  let [<Literal>] EVENT_CONNECTED       = 0x0001us
+  let [<Literal>] EVENT_CONNECTED       = ZMonitorEvents.Connected
   /// Synchronous connection failed; socket is being polled
-  let [<Literal>] EVENT_CONNECT_DELAYED = 0x0002us
+  let [<Literal>] EVENT_CONNECT_DELAYED = ZMonitorEvents.ConnectDelayed
   /// Asynchronous (re)connection attempt
-  let [<Literal>] EVENT_CONNECT_RETRIED = 0x0004us
+  let [<Literal>] EVENT_CONNECT_RETRIED = ZMonitorEvents.ConnectRetried
   /// Socket bound to address; ready to accept connections
-  let [<Literal>] EVENT_LISTENING       = 0x0008us
+  let [<Literal>] EVENT_LISTENING       = ZMonitorEvents.Listening
   /// Socket could not bind to address
-  let [<Literal>] EVENT_BIND_FAILED     = 0x0010us
+  let [<Literal>] EVENT_BIND_FAILED     = ZMonitorEvents.BindFailed
   /// Connection accepted to bound interface
-  let [<Literal>] EVENT_ACCEPTED        = 0x0020us
+  let [<Literal>] EVENT_ACCEPTED        = ZMonitorEvents.Accepted
   /// Could not accept client connection
-  let [<Literal>] EVENT_ACCEPT_FAILED   = 0x0040us
+  let [<Literal>] EVENT_ACCEPT_FAILED   = ZMonitorEvents.AcceptFailed
   /// Socket connection closed
-  let [<Literal>] EVENT_CLOSED          = 0x0080us
+  let [<Literal>] EVENT_CLOSED          = ZMonitorEvents.Closed
   /// Connection could not be closed (only for ipc transport)
-  let [<Literal>] EVENT_CLOSE_FAILED    = 0x0100us
+  let [<Literal>] EVENT_CLOSE_FAILED    = ZMonitorEvents.CloseFailed
   /// Broken session (specific to ipc and tcp transports)
-  let [<Literal>] EVENT_DISCONNECTED    = 0x0200us
+  let [<Literal>] EVENT_DISCONNECTED    = ZMonitorEvents.Disconnected
   /// Event monitoring has been disabled
-  let [<Literal>] EVENT_MONITOR_STOPPED = 0x0400us
+  let [<Literal>] EVENT_MONITOR_STOPPED = ZMonitorEvents.Stopped
   /// Monitor all possible events
-  let [<Literal>] EVENT_ALL             = 0xFFFFus
+  let [<Literal>] EVENT_ALL             = ZMonitorEvents.AllEvents
 
+  (* socket types *)
 
-(* socket types *)
   /// An exclusive pair of two sockets (primarily for use with inproc transport)
-  let [<Literal>] PAIR    =  0
+  let [<Literal>] PAIR    =  ZSocketType.PAIR
   /// A publisher which broadcasts topic-prefixed messages
-  let [<Literal>] PUB     =  1
+  let [<Literal>] PUB     =  ZSocketType.PUB
   /// A subscribe which receives topic-prefixed messages
-  let [<Literal>] SUB     =  2
+  let [<Literal>] SUB     =  ZSocketType.SUB
   /// Makes synchronous requests of a server (i.e. ZMQ.REP, ZMQ.ROUTER), awaits replies
-  let [<Literal>] REQ     =  3
+  let [<Literal>] REQ     =  ZSocketType.REQ
   /// Awaits synchronous requests of a client (i.e. ZMQ.REQ, ZMQ.DEALER), makes replies
-  let [<Literal>] REP     =  4
+  let [<Literal>] REP     =  ZSocketType.REP
   /// Participates in asynchronous request/reply exchanges with compatible peers (i.e. ZMQ.REP, ZMQ.DEALER, ZMQ.ROUTER)
-  let [<Literal>] DEALER  =  5
+  let [<Literal>] DEALER  =  ZSocketType.DEALER
   /// Participates in asynchronous request/reply exchanges with compatible peers (i.e. ZMQ.REQ, ZMQ.DEALER, ZMQ.ROUTER)
-  let [<Literal>] ROUTER  =  6
+  let [<Literal>] ROUTER  =  ZSocketType.ROUTER
   /// Collects messages in a fair-queued fashion from across all upstream (i.e. ZMQ.PUSH) nodes
-  let [<Literal>] PULL    =  7
+  let [<Literal>] PULL    =  ZSocketType.PULL
   /// Delivers messages in a round-robin fashion to across all downstream (i.e. ZMQ.PULL) nodes
-  let [<Literal>] PUSH    =  8
+  let [<Literal>] PUSH    =  ZSocketType.XPUB
   /// A publisher like ZMQ.PUB, but does not automatically receive forwarded topic subscriptions
-  let [<Literal>] XPUB    =  9
+  let [<Literal>] XPUB    =  ZSocketType.XPUB
   /// A publisher like ZMQ.SUB, but does not automatically forward topic subscriptions
-  let [<Literal>] XSUB    = 10
+  let [<Literal>] XSUB    =  ZSocketType.XSUB
   /// Exchanges raw data with a non-ZeroMQ peer via the tcp transport
-  let [<Literal>] STREAM  = 11
+  let [<Literal>] STREAM  =  ZSocketType.STREAM
 
-  (* deprecated socket types *)
-
-  /// Deprecated. Use ZMQ.DEALER
-  let [<Obsolete;Literal>] XREQ = DEALER
-  /// Deprecated. Use ZMQ.ROUTER
-  let [<Obsolete;Literal>] XREP = ROUTER
-
-
-(* socket options *)
+  (* socket options *)
 
   /// (UInt64) I/O thread affinity bit-mask
-  let [<Literal>] AFFINITY                  =  4
+  let [<Literal>] AFFINITY                  =  ZSocketOption.AFFINITY
   /// (Byte[]) Socket identifier
-  let [<Literal>] IDENTITY                  =  5
+  let [<Literal>] IDENTITY                  =  ZSocketOption.IDENTITY
   /// (Byte[]) Add subscription filter
-  let [<Literal>] SUBSCRIBE                 =  6
+  let [<Literal>] SUBSCRIBE                 =  ZSocketOption.SUBSCRIBE
   /// (Byte[]) Remove subscription filter
-  let [<Literal>] UNSUBSCRIBE               =  7
+  let [<Literal>] UNSUBSCRIBE               =  ZSocketOption.UNSUBSCRIBE
   /// (Int32) Multicast data rate in kilobits per second
-  let [<Literal>] RATE                      =  8
+  let [<Literal>] RATE                      =  ZSocketOption.RATE
   /// (Int32) Multicast recovery period in milliseconds
-  let [<Literal>] RECOVERY_IVL              =  9
+  let [<Literal>] RECOVERY_IVL              =  ZSocketOption.RECOVERY_IVL
   /// (Int32) Send-message buffer size in bytes
-  let [<Literal>] SNDBUF                    = 11
+  let [<Literal>] SNDBUF                    =  ZSocketOption.SNDBUF
   /// (Int32) Receive-message buffer size in bytes
-  let [<Literal>] RCVBUF                    = 12
+  let [<Literal>] RCVBUF                    =  ZSocketOption.RCVBUF
   /// (Int32) 1 if more message frames are available, 0 otherwise
-  let [<Literal>] RCVMORE                   = 13
+  let [<Literal>] RCVMORE                   =  ZSocketOption.RCVMORE
   /// (IntPtr) native file descriptor
-  let [<Literal>] FD                        = 14
+  let [<Literal>] FD                        =  ZSocketOption.FD
   /// (Int32) Socket event state, see all: Polling
-  let [<Literal>] EVENTS                    = 15
+  let [<Literal>] EVENTS                    =  ZSocketOption.EVENTS
   /// (Int32) Socket type
-  let [<Literal>] TYPE                      = 16
+  let [<Literal>] TYPE                      =  ZSocketOption.TYPE
   /// (Int32) Pause before shutdown in milliseconds
-  let [<Literal>] LINGER                    = 17
+  let [<Literal>] LINGER                    =  ZSocketOption.LINGER
   /// (Int32) Pause before reconnect in milliseconds
-  let [<Literal>] RECONNECT_IVL             = 18
-  /// (Int32) Maximum number of queued peers
-  let [<Literal>] BACKLOG                   = 19
+  let [<Literal>] RECONNECT_IVL             =  ZSocketOption.RECONNECT_IVL
   /// (Int32) Maximum reconnection interval in milliseconds
-  let [<Literal>] RECONNECT_IVL_MAX         = 21
+  let [<Literal>] RECONNECT_IVL_MAX         =  ZSocketOption.RECONNECT_IVL_MAX
+  /// (Int32) Maximum number of queued peers
+  let [<Literal>] BACKLOG                   =  ZSocketOption.BACKLOG
   /// (Int64) Maximum inbound message size in bytes
-  let [<Literal>] MAXMSGSIZE                = 22
+  let [<Literal>] MAXMSGSIZE                =  ZSocketOption.MAX_MSG_SIZE
   /// (Int32) Maximum number of outbound queued messages
-  let [<Literal>] SNDHWM                    = 23
+  let [<Literal>] SNDHWM                    =  ZSocketOption.SNDHWM
   /// (Int32) Maximum number of inbound queued messages
-  let [<Literal>] RCVHWM                    = 24
+  let [<Literal>] RCVHWM                    =  ZSocketOption.RCVHWM
   /// (Int32) Time-to-live for each multicast packet in network-hops
-  let [<Literal>] MULTICAST_HOPS            = 25
+  let [<Literal>] MULTICAST_HOPS            =  ZSocketOption.MULTICAST_HOPS
   /// (Int32) Timeout period for inbound messages in milliseconds
-  let [<Literal>] RCVTIMEO                  = 27
+  let [<Literal>] RCVTIMEO                  =  ZSocketOption.RCVTIMEO
   /// (Int32) Timeout period for outbound messages in milliseconds
-  let [<Literal>] SNDTIMEO                  = 28
+  let [<Literal>] SNDTIMEO                  =  ZSocketOption.SNDTIMEO
   /// (String) Last address bound to endpoint
-  let [<Literal>] LAST_ENDPOINT             = 32
+  let [<Literal>] LAST_ENDPOINT             =  ZSocketOption.LAST_ENDPOINT
   /// (Int32) 1 to error on unroutable messages, 0 to silently ignore
-  let [<Literal>] ROUTER_MANDATORY          = 33
+  let [<Literal>] ROUTER_MANDATORY          =  ZSocketOption.ROUTER_MANDATORY
   /// (Int32) Override OS-level TCP keep-alive
-  let [<Literal>] TCP_KEEPALIVE             = 34
+  let [<Literal>] TCP_KEEPALIVE             =  ZSocketOption.TCP_KEEPALIVE
   /// (Int32) Override OS-level TCP keep-alive
-  let [<Literal>] TCP_KEEPALIVE_CNT         = 35
+  let [<Literal>] TCP_KEEPALIVE_CNT         =  ZSocketOption.TCP_KEEPALIVE_CNT
   /// (Int32) Override OS-level TCP keep-alive
-  let [<Literal>] TCP_KEEPALIVE_IDLE        = 36
+  let [<Literal>] TCP_KEEPALIVE_IDLE        =  ZSocketOption.TCP_KEEPALIVE_IDLE
   /// (Int32) Override OS-level TCP keep-alive
-  let [<Literal>] TCP_KEEPALIVE_INTVL       = 37
+  let [<Literal>] TCP_KEEPALIVE_INTVL       =  ZSocketOption.TCP_KEEPALIVE_INTVL
   /// (Int32) 1 to limit queuing to only completed connections, 0 otherwise
-  let [<Literal>] IMMEDIATE                 = 39
+  let [<Literal>] IMMEDIATE                 =  ZSocketOption.IMMEDIATE
   /// (Int32) 1 will resend duplicate messages
-  let [<Literal>] XPUB_VERBOSE              = 40
+  let [<Literal>] XPUB_VERBOSE              =  ZSocketOption.XPUB_VERBOSE
   /// (Int32) 1 to enable IPv6 on the socket, 0 to restrict to only IPv4
-  let [<Literal>] IPV6                      = 42
+  let [<Literal>] IPV6                      =  ZSocketOption.IPV6
   /// (Int32) Returns the current security mechanism
-  let [<Literal>] MECHANISM                 = 43
+  let [<Literal>] MECHANISM                 =  ZSocketOption.MECHANISM
   /// (Int32) 1 to make socket act as server for PLAIN security, 0 otherwise
-  let [<Literal>] PLAIN_SERVER              = 44
+  let [<Literal>] PLAIN_SERVER              =  ZSocketOption.PLAIN_SERVER
   /// (String) Sets the user name for outgoing connections over TCP or IPC
-  let [<Literal>] PLAIN_USERNAME            = 45
+  let [<Literal>] PLAIN_USERNAME            =  ZSocketOption.PLAIN_USERNAME
   /// (String) Sets the password for outgoing connections over TCP or IPC
-  let [<Literal>] PLAIN_PASSWORD            = 46
+  let [<Literal>] PLAIN_PASSWORD            =  ZSocketOption.PLAIN_PASSWORD
   /// (Int32) 1 to make socket act as server for CURVE security, 0 otherwise
-  let [<Literal>] CURVE_SERVER              = 47
+  let [<Literal>] CURVE_SERVER              =  ZSocketOption.CURVE_SERVER
   /// (String or Byte[]) sets the long-term public key on a client or server socket
-  let [<Literal>] CURVE_PUBLICKEY           = 48
+  let [<Literal>] CURVE_PUBLICKEY           =  ZSocketOption.CURVE_PUBLICKEY
   /// (String or Byte[]) sets the long-term secret key on a client socket
-  let [<Literal>] CURVE_SECRETKEY           = 49
+  let [<Literal>] CURVE_SECRETKEY           =  ZSocketOption.CURVE_SECRETKEY
   /// (String or Byte[]) sets the long-term server key on a client socket
-  let [<Literal>] CURVE_SERVERKEY           = 50
+  let [<Literal>] CURVE_SERVERKEY           =  ZSocketOption.CURVE_SERVERKEY
   /// (Int32) 1 to automatically send an empty message on new connection, 0 otherwise
-  let [<Literal>] PROBE_ROUTER              = 51
+  let [<Literal>] PROBE_ROUTER              =  ZSocketOption.PROBE_ROUTER
   /// (Int32) 1 to prefix messages with explicit request ID, 0 otherwise
-  let [<Literal>] REQ_CORRELATE             = 52
+  let [<Literal>] REQ_CORRELATE             =  ZSocketOption.REQ_CORRELATE
   /// (Int32) 1 to relax strict alternation between ZMQ.REQ and ZMQ.REP, 0 otherwise
-  let [<Literal>] REQ_RELAXED               = 53
+  let [<Literal>] REQ_RELAXED               =  ZSocketOption.REQ_RELAXED
   /// (Int32) 1 to keep last message in queue (ignores high-water mark options), 0 otherwise
-  let [<Literal>] CONFLATE                  = 54
+  let [<Literal>] CONFLATE                  =  ZSocketOption.CONFLATE
   /// (String) Sets authentication domain
-  let [<Literal>] ZAP_DOMAIN                = 55
+  let [<Literal>] ZAP_DOMAIN                =  ZSocketOption.ZAP_DOMAIN
   /// (Int32) 0 to reject clients which use an existing identity, 1 to transfer the connection
-  let [<Literal>] ROUTER_HANDOVER           = 56
+  let [<Literal>] ROUTER_HANDOVER           =  ZSocketOption.ROUTER_HANDOVER
   /// (Int32) ToS field is typically used to specify a packets priority; 
   /// The availability of this option is dependent on intermediate network equipment
-  let [<Literal>] TOS                       = 57
+  let [<Literal>] TOS                       =  ZSocketOption.TOS
   /// (Byte[]) Sets the peer ID of the next connected host, and immediately 
   /// readies that connection for data transfer with the named ID
-  let [<Literal>] CONNECT_RID               = 61
+  let [<Literal>] CONNECT_RID               =  ZSocketOption.CONNECT_RID
   /// (Int32) 1 means the socket will act as GSSAPI server; 0 means the socket will act as GSSAPI client
-  let [<Literal>] GSSAPI_SERVER             = 62
+  let [<Literal>] GSSAPI_SERVER             =  ZSocketOption.GSSAPI_SERVER
   /// (String) The name of the pricipal for whom GSSAPI credentials should be acquired
-  let [<Literal>] GSSAPI_PRINCIPAL          = 63
+  let [<Literal>] GSSAPI_PRINCIPAL          =  ZSocketOption.GSSAPI_PRINCIPAL
   /// (String) The name of the pricipal of the GSSAPI server to which a GSSAPI client intends to connect
-  let [<Literal>] GSSAPI_SERVICE_PRINCIPAL  = 64
+  let [<Literal>] GSSAPI_SERVICE_PRINCIPAL  =  ZSocketOption.GSSAPI_SERVICE_PRINCIPAL
   /// (Int32) 1 means that GSSAPI communication will be plaintext, 0 means communications will be encrypted
-  let [<Literal>] GSSAPI_PLAINTEXT          = 65
+  let [<Literal>] GSSAPI_PLAINTEXT          =  ZSocketOption.GSSAPI_PLAINTEXT
   /// (Int32) The maximum handshake interval in milliseconds for the specified socket
-  let [<Literal>] HANDSHAKE_IVL             = 66
+  let [<Literal>] HANDSHAKE_IVL             =  ZSocketOption.HANDSHAKE_IVL
   /// (String) SOCKS5 proxy
-  let [<Literal>] SOCKS_PROXY               = 68
+  let [<Literal>] SOCKS_PROXY               =  ZSocketOption.SOCKS_PROXY
   /// (Int32) 0 drops the message silently when the peers SNDHWM is reached, 1 returns an 'EAGAIN' error code (if ZMQ_DONTWAIT was used)
-  let [<Literal>] XPUB_NODROP               = 69
+  let [<Literal>] XPUB_NODROP               =  ZSocketOption.XPUB_NODROP
 
   (* security mechanisms *)
   /// Indicates there is currently no security mechanism in use
@@ -342,72 +338,47 @@ module ZMQ =
   let [<Literal>] SECURITY_GSSAPI = 3
 
   (* common values *)
+
   /// (Int32) the value needed to disable lingering on a socket's outbound queue
   let [<Literal>] NO_LINGER = 0
 
-  (* deprecated socket options *)
- 
-  /// Deprecated. Do not use.
-  let [<Obsolete;Literal>] IPV4ONLY           = 31
-  /// Deprecated. Do not use.
-  let [<Obsolete;Literal>] TCP_ACCEPT_FILTER  = 38
-  /// Deprecated. Do not use.
-  let [<Obsolete;Literal>] IPC_FILTER_PID     = 58
-  /// Deprecated. Do not use.
-  let [<Obsolete;Literal>] IPC_FILTER_UID     = 59
-  /// Deprecated. Do not use.
-  let [<Obsolete;Literal>] IPC_FILTER_GID     = 60
-  /// Deprecated. Use ZMQ.STREAM socket instead
-  let [<Obsolete;Literal>] ROUTER_RAW         = 41
-
-  /// Deprecated. Use ZMQ.IMMEDAITE
-  let [<Obsolete;Literal>] DELAY_ATTACH_ON_CONNECT  = IMMEDIATE
-  /// Deprecated. Use ZMQ.ROUTER_MANDATORY
-  let [<Obsolete;Literal>] FAIL_UNROUTABLE          = ROUTER_MANDATORY
-  /// Deprecated. Use ZMQ.ROUTER_MANDATORY
-  let [<Obsolete;Literal>] ROUTER_BEHAVIOR          = ROUTER_MANDATORY
-
-
-(* message options *)
+  (* message options *)
 
   /// (Int32) 1 if more message frames are available, 0 otherwise
-  let [<Literal>] MORE    = 1
+  let [<Literal>] MORE    = ZFrameOption.MORE
   /// (IntPtr) The file descriptor of the socket from which the 'message' was read
-  let [<Literal>] SRCFD   = 2
+  let [<Literal>] SRCFD   = ZFrameOption.SRCFD
   /// (Int32) 1 indicates that a message MAY share underlying storage, 0 otherwise
-  let [<Literal>] SHARED  = 3
+  let [<Literal>] SHARED  = ZFrameOption.SHARED
 
-
-(* transmission options *)
+  (* transmission options *)
 
   /// Block thread until message frame is sent
-  let [<Literal>] WAIT      =   0
+  let [<Literal>] WAIT      =   ZSocketFlags.None
   /// Queue message frame for sending (return immediately)
-  let [<Literal>] DONTWAIT  =   1
+  let [<Literal>] DONTWAIT  =   ZSocketFlags.DontWait
   /// More message frames will follow the current frame
-  let [<Literal>] SNDMORE   =   2
+  let [<Literal>] SNDMORE   =   ZSocketFlags.More
 
-  (* deprecated transmission options *)
-  /// Deprecated. Use ZMQ.DONTWAIT
-  let [<Obsolete;Literal>] NOBLOCK = DONTWAIT
-
-
-(* polling *)
+  (* polling *)
+  /// no polling 
+  let [<Literal>] POLLNONE = ZPoll.None
   /// poll for inbound messages
-  let [<Literal>] POLLIN  = 1s
+  let [<Literal>] POLLIN   = ZPoll.In
   /// poll for outbound messages
-  let [<Literal>] POLLOUT = 2s
+  let [<Literal>] POLLOUT  = ZPoll.Out
   /// poll for messages on stderr (for use with file descriptors)
-  let [<Literal>] POLLERR = 4s
+  let [<Literal>] POLLERR  = ZPoll.Err
 
   (* common timeout lengths for polling *)
+
   /// indicates polling should exit immediately
   let [<Literal>] NOW     =  0L
   /// indicates polling should wait indefinitely
   let [<Literal>] FOREVER = -1L
 
+  (* proxying *)
 
-(* proxying *)
   /// Command used to temporarily suspend a steerable proxy
   let PAUSE     = "PAUSE"B
   /// Command used to resume a suspended steerable proxy

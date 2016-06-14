@@ -10,23 +10,27 @@ open System
 open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
 
+open ZeroMQ
+open ZeroMQ.lib
+
 /// Contains methods for working with Message instances
 [<Extension;CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
 
-(* message options *)
+  (* message options *)
 
   /// Gets the value of the given option for the given Message
   [<Extension;CompiledName("GetOption")>]
-  let getOption (message:Message) messageOption =
-    match C.zmq_msg_get(message.Handle,messageOption) with
-    |    -1 -> ZMQ.error()
-    | value -> value
+  let getOption (message:Message) (messageOption: ZFrameOption) =
+    message.GetOption(messageOption)
 
   /// Sets the given option value for the given Message
   [<Extension;CompiledName("SetOption")>]
   let setOption (message:Message) (messageOption,value) =
-    if C.zmq_msg_set(message.Handle,messageOption,value) <> 0 then ZMQ.error()
+    let result = zmq.msg_set.Invoke(message.DataPtr(),messageOption, value)
+    if result <> 0 then
+      new ZException(result)
+      |> raise
 
   /// Sets the given block of option values for the given Message
   [<Extension;CompiledName("Configure")>]
@@ -36,19 +40,17 @@ module Message =
   /// Returns the content of the given Message
   [<Extension;CompiledName("Data")>]
   let data (message:Message) =
-    let size = C.zmq_msg_size(message.Handle) |> int
-    let data = C.zmq_msg_data(message.Handle)
-    let output = Array.zeroCreate<byte> size
-    Marshal.Copy(data,output,0,size)
-    output
+    message.Read()
 
   /// Returns the size (in bytes) of the given Message
   [<Extension;CompiledName("Size")>]
-  let size (message:Message) = C.zmq_msg_size(message.Handle) |> int
+  let size (message:Message) =
+    int message.Length
 
   /// Returns true if the given message is a frame in a multi-part message and more frames are available
   [<Extension;CompiledName("HasMore")>]
-  let hasMore (message:Message) = C.zmq_msg_more(message.Handle) |> bool
+  let hasMore (message:Message) =
+    zmq.msg_more.Invoke(message.DataPtr()) |> bool
 
   /// Tests if two `Message` instances have the same size and data
   [<Extension;CompiledName("IsMatch")>]
@@ -60,7 +62,7 @@ module Message =
   let tryGetMetadata (message:Message) name =
     match ZMQ.version with
     | Version (m,n,_) 
-      when m >= 4 && n >= 1 ->  match C.zmq_msg_gets(message.Handle,name) with
+      when m >= 4 && n >= 1 ->  match zmq.msg_gets.Invoke(message.DataPtr(),name) with
                                 |   0n -> None
                                 | addr -> Some (Marshal.PtrToStringAnsi addr)
     | _                     ->  None
@@ -86,8 +88,10 @@ module Message =
   /// </summary>
   [<Extension;CompiledName("Copy")>]
   let copy (source:Message) (target:Message) =
-    if source.Handle = target.Handle then ZMQ.einval "Can not copy message to itself"
-    if C.zmq_msg_copy(target.Handle,source.Handle) <> 0 then ZMQ.error()
+    if source = target then
+      new ZException(ZError.EINVAL,"Can not copy message to itself")
+      |> raise
+    source.CopyZeroTo(target)
 
   /// <summary>
   /// Moves the content from one message to another message.
@@ -97,8 +101,10 @@ module Message =
   /// </summary>
   [<Extension;CompiledName("Move")>]
   let move (source:Message) (target:Message) =
-    if source.Handle = target.Handle then ZMQ.einval "Can not move message to itself"
-    if C.zmq_msg_move(target.Handle,source.Handle) <> 0 then ZMQ.error()
+    if source = target then
+      new ZException(ZError.EINVAL,"Can not move message to itself")
+      |> raise
+    source.MoveZeroTo(target)
 
   /// Makes a new instance of the Message type, with an independent copy of the source content.
   [<Extension;CompiledName("Clone")>]
@@ -108,11 +114,12 @@ module Message =
     target
 
   (* message sending *)
-
   let internal (|Okay|Busy|Fail|) = function
-    | -1  ->  match C.zmq_errno() with
-              | ZMQ.EAGAIN  -> Busy
-              | _           -> Fail
+    | -1  ->
+      let eagain = ZError.EAGAIN.Number
+      match zmq.errno.Invoke() with
+              | err when err = eagain -> Busy
+              | _                     -> Fail
     | _   ->  Okay
 
   let internal waitForOkay fn =
@@ -125,21 +132,19 @@ module Message =
   /// Sends a message, with the given flags, returning true (or false)
   /// if the send was successful (or should be re-tried)
   [<Extension;CompiledName("TrySend")>]
-  let trySend (message:Message) (socket:Socket)  flags =
-    match C.zmq_msg_send(message.Handle,socket.Handle,flags) with
-    | Okay  -> true
-    | Busy  -> false
-    | Fail  -> ZMQ.error()
+  let trySend (message:Message) (socket:Socket) (flags: ZSocketFlags) : bool =
+    let mutable err = ZError.None
+    socket.SendFrame(message, flags, &err)
 
   /// Sends a message, indicating no more messages will follow
   [<Extension;CompiledName("Send")>]
   let send message socket  = 
-    waitForOkay (fun () -> trySend message socket ZMQ.WAIT)
+    waitForOkay (fun () -> trySend message socket ZSocketFlags.None)
 
   /// Sends a message, indicating more messages will follow
   [<Extension;CompiledName("SendMore")>]
   let sendMore message socket  = 
-    waitForOkay (fun () -> trySend message socket (ZMQ.WAIT ||| ZMQ.SNDMORE))
+    waitForOkay (fun () -> trySend message socket ZSocketFlags.More)
 
   /// Operator equivalent to `Message.send`
   let (<<-) socket message = send message socket
@@ -151,22 +156,27 @@ module Message =
   /// Operator equivalent to `Message.sendMore` (with arguments reversed)
   let (+>>) message socket = socket <<+ message
 
-(* message receiving *)
+  (* message receiving *)
 
   /// Updates the given `Message` instance with the next available message from a socket, 
   /// returning true (or false) if the recv was successful (or should be re-tried)
   [<Extension;CompiledName("TryRecv")>]
   let tryRecv (message:Message) (socket:Socket) flags =
-    match C.zmq_msg_recv(message.Handle,socket.Handle,flags) with
-    | Okay -> true
-    | Busy -> false
-    | Fail -> ZMQ.error()
+    let mutable err = ZError.None
+    let msg = socket.ReceiveFrame(flags, &err) :?> Message
 
+    match err.Number with
+      | err when err = ZError.None.Number -> 
+        copy msg message
+        true
+      | other -> new ZException(other) |> raise
+        
   /// Updates the given `Message` instance with the next available message from a socket;
   /// If no message is received before RCVTIMEO expires, throws a TimeoutException
   [<Extension;CompiledName("Recv")>]
   let recv message socket =
-    if not <| tryRecv message socket ZMQ.WAIT then raise <| TimeoutException ()
+    if not <| tryRecv message socket ZSocketFlags.None then
+      raise <| TimeoutException ()
 
   /// Operator equivalent to `Message.recv`
   let (|<<) message socket = recv message socket

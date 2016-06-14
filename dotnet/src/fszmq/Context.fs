@@ -10,6 +10,8 @@ open System
 open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
 
+open ZeroMQ
+
 /// Contains methods for working with Context instances
 [<Extension;CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Context =
@@ -19,8 +21,7 @@ module Context =
   /// Creates a Socket, of the given type, within the given context
   [<Extension;CompiledName("Socket")>]
   let newSocket (context:Context) socketType =
-    let socket = new Socket (context.Handle,socketType)
-    context.Attach socket
+    let socket = new Socket (context,socketType)
     socket
 
   /// <summary>
@@ -128,17 +129,15 @@ module Context =
 
   /// Gets the value of the given option for the given Context
   [<Extension;CompiledName("GetOption")>]
-  let getOption (context:Context) contextOption =
-    match C.zmq_ctx_get(context.Handle,contextOption) with
-    |    -1 -> ZMQ.error()
-    | value -> value
+  let getOption (context:Context) opt =
+    context.GetOption(opt)
 
    /// Sets the given option value for the given Context
   [<Extension;CompiledName("SetOption")>]
-  let setOption (context:Context) (contextOption,value) =
-    if C.zmq_ctx_set(context.Handle,contextOption,value) <> 0 then ZMQ.error()
+  let setOption (context:Context) (opt,value) =
+    context.SetOption(opt,value)
 
   /// Sets the given block of option values for the given Context
   [<Extension;CompiledName("Configure")>]
   let configure context options =
-    Seq.iter (fun (input:int * int) -> setOption context input) options
+    Seq.iter (fun (input:ZContextOption * int) -> setOption context input) options
