@@ -102,3 +102,6 @@ paket.update:
 
 paket.install:
 	@cd $(VVVV_BASEDIR); mono .paket/paket.exe install
+
+fszmq.debug:
+	$(DEVBUILD) $(VVVV_BASEDIR)/src/fszmq/fszmq.fsproj

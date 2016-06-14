@@ -48,6 +48,8 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Pallet", "src\Pallet\Pallet
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Pallet.Tests", "src\Pallet.Tests\Pallet.Tests.fsproj", "{6eccd0ec-3f65-4968-84a9-1987b58214ad}"
 EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "fszmq", "src\fszmq\fszmq.fsproj", "{FDA50C33-B288-4E42-9141-D78BDDEF9466}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
