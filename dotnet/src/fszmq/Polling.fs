@@ -21,12 +21,15 @@ open ZeroMQ.lib
 ///
 /// ** Note: all sockets passed to Polling.poll MUST share the same context
 /// and belong to the thread calling Polling.poll **
-type Poll = 
-  /// Creates a new poll item, associating the given events, socket, and callback
-  | Poll of events:int16 * socket:Socket * callback:(Socket -> unit) with
 
-  /// Creates a poll item in a way friendly to languages other then F#
-  static member Create(events,socket,callback:Action<Socket>) = Poll(events,socket,fun s -> callback.Invoke(s))
+type PollItem = ZPollItem
+
+type Callback = Socket -> Message array -> unit
+
+type Poll =
+  | PollIn  of PollItem * Socket * Callback
+  | PollOut of PollItem * Socket * Callback
+  | PollIO  of PollItem * Socket * Callback
 
 /// Contains methods for working with ZMQ's polling capabilities
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -36,19 +39,64 @@ module Polling =
   /// invoke the callback when the socket receives a message
   [<CompiledName("PollIn")>]
   let pollIn fn socket =
-    let item = ZPollItem.Create()
-    ZPollItems.PollIn(socket, item)
+    PollIn(PollItem.CreateReceiver(), socket, fn)
 
   /// Creates a Poll item for the socket which will
   /// invoke the callback when the socket sends a message
   [<CompiledName("PollOut")>]
-  let pollOut fn socket = Poll(ZMQ.POLLOUT,socket,fn)
+  let pollOut fn socket =
+    PollOut(PollItem.CreateSender(), socket, fn)
 
   /// Creates a Poll item for the socket which will
   /// invoke the callback when the socket sends or receives messages
   ///
   [<CompiledName("PollIO")>]
-  let pollIO fn socket = Poll(ZMQ.POLLIN ||| ZMQ.POLLOUT,socket,fn)
+  let pollIO fn socket =
+    PollIO(PollItem.CreateReceiverSender(), socket, fn)
+
+  let inline private third (_,_,c) = c
+  let inline private _combine a b c = (a, b, c)
+  let inline private _call (s, f : Callback,_) msg = f s msg
+
+  let private _poll timeout m p = 
+    let mutable err = new ZError(0)
+    use mutable msg = new ZMessage()
+
+    let timeout' =
+      match timeout with
+        | Some t -> new Nullable<TimeSpan>(TimeSpan.FromMilliseconds(float t))
+        | _ -> new Nullable<TimeSpan>()
+
+    let result =
+      match p with
+        | PollIn(item, socket, fn) ->
+          if Option.isSome timeout
+            then socket.PollIn(item, &msg, &err, timeout')
+            else socket.PollIn(item, &msg, &err)
+          |> _combine socket fn
+        | PollOut(item, socket, fn) ->
+          if Option.isSome timeout
+            then socket.PollOut(item, msg, &err, timeout')
+            else socket.PollOut(item, msg, &err) 
+          |> _combine socket fn
+        | PollIO(item, socket, fn) ->
+          if Option.isSome timeout
+            then socket.Poll(item,ZPoll.In ||| ZPoll.Out, &msg, &err, timeout')
+            else socket.Poll(item,ZPoll.In ||| ZPoll.Out, &msg, &err)
+          |> _combine socket fn
+
+    if third result
+      then
+        let output = Array.zeroCreate msg.Count
+        let i = ref 0
+
+        for item in msg do
+          output.[!i] <- new Message(item.Read())
+          i := !i + 1
+
+        _call result output
+        third result
+      else m
 
   /// Performs a single polling run
   /// across the given sequence of Poll items, waiting up to the given timeout.
@@ -60,33 +108,30 @@ module Polling =
   /// This function is named DoPoll in compiled assemblies.
   /// If you are accessing the function from a language other than F#, or through reflection, use this name.
   [<CompiledName("DoPoll")>]
-  let poll<[<Measure>]'unit> (timeout:int64<'unit>) items =
-    let items  = items |> Array.ofSeq
-    let items' = items |> Array.map (fun (Poll(v,s,_)) -> C.zmq_pollitem_t(s.Handle,v))
-    match C.zmq_poll(items',items'.Length,int64 timeout) with
-    | 0             ->  false (* pass *)
-    | n when n > 0  ->  for i in 0 .. items'.GetUpperBound(0) do
-                          let e,r = items'.[i].events
-                                   ,items'.[i].revents
-                          if e &&& r = e then items.[i] |> (fun (Poll(_,s,f)) -> f s)
-                        true
-    | _             ->  ZMQ.error()
+  let poll (timeout:int64) items =
+    Seq.toArray items |> Array.fold (Some timeout |> _poll) false
 
   /// Calls `Polling.poll` with the given sequence of Poll items and 0 microseconds timeout
   [<CompiledName("PollNow")>]
-  let pollNow items = poll ZMQ.NOW items
+  let pollNow items =
+    Seq.toArray items |> Array.fold (Some ZMQ.NOW |> _poll) false
 
   /// Calls `Polling.poll` with the given sequence of Poll items and no timeout,
   /// effectively causing the polling loop to block indefinitely.
   [<CompiledName("PollForever")>]
-  let pollForever items = poll ZMQ.FOREVER items
+  let pollForever items =
+    Seq.toArray items |> Array.fold (Some ZMQ.FOREVER |> _poll) false
 
   /// Polls the given socket, up to the given timeout, for an input message.
   /// Returns a byte[][] option, where None indicates no message was received.
   [<CompiledName("TryPollInput")>]
-  let tryPollInput<[<Measure>]'unit> (timeout:int64<'unit>) socket =
-    let msg   = ref Array.empty
-    let items = [socket |> pollIn (Socket.recvAll >> ((:=) msg))]
+  let tryPollInput (timeout:int64) socket =
+    let msg = ref Array.empty
+
+    let cb (_: Socket) (messages: Message array) =
+      msg := Array.append !msg messages
+
+    let items = [ pollIn cb socket ]
     match poll timeout items with
     | true  -> Some !msg
     | false -> None
@@ -100,24 +145,24 @@ type PollingExtensions =
   /// invoke the callback when the socket receives a message
   [<Extension>]
   static member AsPollIn (socket,callback:Action<_>) =
-    socket |> Polling.pollIn (fun s -> callback.Invoke(s))
+    socket |> Polling.pollIn (fun s msgs -> callback.Invoke(s, msgs))
 
   /// Creates a Poll item for the socket which will
   /// invoke the callback when the socket receives a message
   [<Extension>]
   static member AsPollOut (socket,callback:Action<_>) =
-    socket |> Polling.pollOut (fun s -> callback.Invoke(s))
+    socket |> Polling.pollOut (fun s msgs -> callback.Invoke(s, msgs))
 
   /// Creates a Poll item for the socket which will
   /// invoke the callback when the socket sends or receives a message
   [<Extension>]
   static member AsPollIO (socket,callback:Action<_>) =
-    socket |> Polling.pollIO (fun s -> callback.Invoke(s))
+    socket |> Polling.pollIO (fun s msgs -> callback.Invoke(s, msgs))
 
   /// Polls the given socket, up to the given timeout, for an input message.
   /// Retuns true if input was received, in which case the message is assigned to the out parameter.
   [<Extension>]
-  static member TryGetInput (socket,timeout:int64,[<Out>]message:byref<byte[][]>) =
+  static member TryGetInput (socket,timeout:int64,[<Out>]message:byref<Message []>) =
     match Polling.tryPollInput timeout socket with
     | Some msg  -> message <- msg;  true
     | None      -> message <- [||]; false
