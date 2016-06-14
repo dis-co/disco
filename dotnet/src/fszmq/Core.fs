@@ -22,7 +22,7 @@ type Message private(?source: byte array) =
   let (|Source|_|) = function
     | None
     | Some null -> None
-    | Some data -> let size (Array.length >> unativeint) data
+    | Some data -> let size = (Array.length >> unativeint) data
                    Some(size,data)
 
   do match source with 
