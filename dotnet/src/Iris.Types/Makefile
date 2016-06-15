@@ -1,13 +1,14 @@
+CPATH := $(shell pwd)
+
 gen:
-	@flatc -I ./Schema --csharp ./Schema/*.fbs
-	@cat Properties/top.tmpl > Iris.Types.csproj
-	@find Iris -type f -exec echo '<Compile Include="'\{\}'" />' \; >> Iris.Types.csproj
-	@cat Properties/bottom.tmpl >> Iris.Types.csproj
+	@flatc -I $(CPATH)/Schema --csharp $(CPATH)/Schema/*.fbs
+	@cat $(CPATH)/Properties/top.tmpl > $(CPATH)/Iris.Types.csproj
+	@find $(CPATH)/Iris -type f -exec echo '<Compile Include="'\{\}'" />' \; >> $(CPATH)/Iris.Types.csproj
+	@cat $(CPATH)/Properties/bottom.tmpl >> $(CPATH)/Iris.Types.csproj
 
 clean:
-	@rm -rf Iris
+	@rm -rf $(CPATH)/Iris.Types.csproj
+	@rm -rf $(CPATH)/Iris
 
-build:
-	@xbuild Iris.Types.csproj
-
-all: clean gen build
+build: clean gen
+	@xbuild $(CPATH)/Iris.Types.csproj
