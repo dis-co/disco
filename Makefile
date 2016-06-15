@@ -8,6 +8,9 @@ MANIFEST="Iris Version: $(VERSTR)"
 
 DEVBUILD=xbuild /nologo /p:Configuration=Debug
 
+prepare.types:
+	@make -f ${VVVV_BASEDIR}/src/Iris.Types/Makefile gen
+
 pallet:
 	$(DEVBUILD) $(VVVV_BASEDIR)/src/Pallet/Pallet.fsproj
 
@@ -15,34 +18,35 @@ pallet.tests:
 	$(DEVBUILD) $(VVVV_BASEDIR)/src/Pallet.Tests/Pallet.Tests.fsproj
 	@sh -c 'fsi $(VVVV_BASEDIR)/src//Pallet.Tests/run.fsx'
 
-debug.tests:
+debug.tests: prepare.types
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Tests/Iris.Tests.fsproj
 
-debug.nodes:
+debug.nodes: prepare.types
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Nodes/Iris.Nodes.fsproj
 
-debug.core:
+debug.core: prepare.types
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Core/Iris.Core.fsproj
 
-debug.web:
+debug.web: prepare.types
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Web/Iris.Web.fsproj
 
-debug.web.core:
+debug.web.core: prepare.types
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Web.Core/Iris.Web.Core.fsproj
 
-debug.web.tests:
+debug.web.tests: prepare.types
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Irisjjeb.Tests/Iris.Web.Tests.fsproj
 
-debug.web.worker:
+debug.web.worker: prepare.types
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Web.Worker/Iris.Web.Worker.fsproj
 
-debug.service:
+debug.service: prepare.types
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Service/Iris.Service.fsproj
 
-debug.all:
+debug.all: prepare.types
 	${DEVBUILD} ${VVVV_BASEDIR}/Iris.sln
 
 clean:
+	@make -f ${VVVV_BASEDIR}/src/Iris.Types/Makefile clean
 	@rm -f Iris-*.zip
 	@rm -rf $(VVVV_BASEDIR)/build/*
 	@rm -rf tmp/*
