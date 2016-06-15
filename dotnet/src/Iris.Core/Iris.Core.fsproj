@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <Import Project="..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
@@ -41,6 +41,10 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Management" />
+    <ProjectReference Include="..\Iris.Types\Iris.Types.csproj">
+      <Project>{28C00774-1E73-4A75-AD8F-844CD21A064D}</Project>
+      <Name>Iris.Types</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="paket.references" />
@@ -354,62 +358,6 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2')">
       <ItemGroup>
-        <Reference Include="WebSharper.Collections">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Collections.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.Control">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Control.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.Core.JavaScript">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Core.JavaScript.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.Core">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Core.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.InterfaceGenerator">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.InterfaceGenerator.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.JQuery">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.JQuery.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.JavaScript">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.JavaScript.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.Main">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Main.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.Sitelets">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Sitelets.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="WebSharper.Web">
-          <HintPath>..\..\packages\WebSharper\lib\net40\WebSharper.Web.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2')">
-      <ItemGroup>
         <Reference Include="ZeroMQ">
           <HintPath>..\..\packages\ZeroMQ\lib\net40\ZeroMQ.dll</HintPath>
           <Private>True</Private>
@@ -418,6 +366,5 @@
       </ItemGroup>
     </When>
   </Choose>
-  <Import Project="..\..\packages\WebSharper\build\WebSharper.targets" Condition="Exists('..\..\packages\WebSharper\build\WebSharper.targets')" Label="Paket" />
   <Import Project="..\..\packages\ZeroMQ\build\$(__paket__ZeroMQ_targets).targets" Condition="Exists('..\..\packages\ZeroMQ\build\$(__paket__ZeroMQ_targets).targets')" Label="Paket" />
 </Project>

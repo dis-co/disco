@@ -1,66 +1,63 @@
 namespace Iris.Core.Types
 
-open WebSharper
-
 [<AutoOpen>]
-[<ReflectedDefinition>]
 module IOBox =
 
   [<RequireQualifiedAccess>]
   type Behavior =
-    | [<Constant "slider">] Slider
-    | [<Constant "toggle">] Toggle
-    | [<Constant "bang">]   Bang
+    | Slider
+    | Toggle
+    | Bang
 
   [<RequireQualifiedAccess>]
   type ValType =
-    | [<Constant "real">] Real
-    | [<Constant "int">]  Int
-    | [<Constant "bool">] Bool
+    | Real
+    | Int
+    | Bool
 
   [<RequireQualifiedAccess>]
   type StringType =
-    | [<Constant "string">]    Simple
-    | [<Constant "multi">]     MultiLine
-    | [<Constant "file">]      FileName
-    | [<Constant "directory">] Directory
-    | [<Constant "url">]       Url
-    | [<Constant "ip">]        IP
+    | Simple
+    | MultiLine
+    | FileName
+    | Directory
+    | Url
+    | IP
 
   [<NoEquality; NoComparison>]
   type Slice =
     {
-      [<Name "idx">]   Idx   : int;
-      [<Name "value">] Value : obj;
+      Idx   : int;
+      Value : obj;
     }
 
   [<RequireQualifiedAccess>]
   type PinType =
-    | [<Constant "value">]  Value
-    | [<Constant "string">] String
-    | [<Constant "color">]  Color 
-    | [<Constant "enum">]   Enum
-    | [<Constant "node">]   Node
+    | Value
+    | String
+    | Color 
+    | Enum
+    | Node
 
   [<NoEquality; NoComparison>]
   type IOBox =
     {
-      [<Name "id">]          Id         : string;
-      [<Name "name">]        Name       : string;
-      [<Name "type">]        Type       : PinType;
-      [<Name "patch">]       Patch      : string;
-      [<Name "tag">]         Tag        : obj        option;
-      [<Name "behavior">]    Behavior   : Behavior   option;
-      [<Name "vecsize">]     VecSize    : VectorSize
-      [<Name "min">]         Min        : Min
-      [<Name "max">]         Max        : Max
-      [<Name "unit">]        Unit       : Unit
-      [<Name "precision">]   Precision  : Precision
-      [<Name "string-type">] StringType : StringType option
-      [<Name "filemask">]    FileMask   : FileMask
-      [<Name "maxchars">]    MaxChars   : MaxChars
-      [<Name "properties">]  Properties : Properties
-      [<Name "slices">]      Slices     : Slice array;
+      Id         : string;
+      Name       : string;
+      Type       : PinType;
+      Patch      : string;
+      Tag        : obj        option;
+      Behavior   : Behavior   option;
+      VecSize    : VectorSize
+      Min        : Min
+      Max        : Max
+      Unit       : Unit
+      Precision  : Precision
+      StringType : StringType option
+      FileMask   : FileMask
+      MaxChars   : MaxChars
+      Properties : Properties
+      Slices     : Slice array;
     }
     with
       static member StringBox(id, name, patch) =

@@ -4,7 +4,6 @@ open Iris.Core.Types
 
 /// Models 
 [<AutoOpen>]
-[<ReflectedDefinition>]
 module Types =
 
   type VvvvExe =

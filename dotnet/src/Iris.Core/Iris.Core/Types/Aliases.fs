@@ -1,7 +1,6 @@
 namespace Iris.Core.Types
 
 [<AutoOpen>]
-[<ReflectedDefinition>]
 module Aliases =
 
   type Id         = string

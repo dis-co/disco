@@ -17,7 +17,6 @@ module Project =
   // |  __/| | | (_) | |  __/ (__| |_| |_| | (_| | || (_| |
   // |_|   |_|  \___// |\___|\___|\__|____/ \__,_|\__\__,_|
   //               |__/
-  [<ReflectedDefinition>]
   type ProjectData() =
     [<DefaultValue>] val mutable Id        : Guid
     [<DefaultValue>] val mutable Name      : string

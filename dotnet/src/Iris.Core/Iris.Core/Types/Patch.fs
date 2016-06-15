@@ -1,15 +1,12 @@
 namespace Iris.Core.Types
 
-open WebSharper
-
 [<AutoOpen>]
-[<ReflectedDefinition>]
 module Patch =
 
   type Patch = {
-      [<Name "id">]      Id      : IrisId;
-      [<Name "name">]    Name    : Name;
-      [<Name "ioboxes">] IOBoxes : IOBox array;
+      Id      : IrisId;
+      Name    : Name;
+      IOBoxes : IOBox array;
     }
 
   

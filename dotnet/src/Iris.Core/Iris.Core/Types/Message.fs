@@ -1,9 +1,6 @@
 namespace Iris.Core.Types
 
-open WebSharper
-
 [<AutoOpen>]
-[<JavaScript>]
 module Message =
 
   (*----------------------------------------------------------------------------
@@ -16,17 +13,17 @@ module Message =
    ---------------------------------------------------------------------------*)
 
   type ApiAction =
-    | [<Constant "patch.add">]    AddPatch
-    | [<Constant "patch.update">] UpdatePatch
-    | [<Constant "patch.remove">] RemovePatch
-    | [<Constant "iobox.add">]    AddIOBox
-    | [<Constant "iobox.update">] UpdateIOBox
-    | [<Constant "iobox.remove">] RemoveIOBox
+    | AddPatch
+    | UpdatePatch
+    | RemovePatch
+    | AddIOBox
+    | UpdateIOBox
+    | RemoveIOBox
 
   type ApiMessage =
     {
-      [<Name "type">]    Type    : ApiAction;
-      [<Name "payload">] Payload : obj;
+      Type    : ApiAction;
+      Payload : obj;
     }
 
   (*
@@ -45,10 +42,10 @@ module Message =
   *)
 
   type Crud =
-    | [<Constant "create">] Create
-    | [<Constant "read">]   Read
-    | [<Constant "update">] Update
-    | [<Constant "delete">] Delete
+    | Create
+    | Read
+    | Update
+    | Delete
   
   type AppEventT =
     | Initialize

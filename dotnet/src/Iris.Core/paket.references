@@ -2,7 +2,6 @@ FSharp.Core
 FSharp.Configuration
 FsPickler
 FsPickler.Json
-WebSharper
 LibGit2Sharp
 LibGit2Sharp.NativeBinaries
 Fleck

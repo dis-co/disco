@@ -4,7 +4,6 @@ open Iris.Core.Types
 
 /// Models 
 [<AutoOpen>]
-[<ReflectedDefinition>]
 module Raft =
 
   type RaftConfig =
