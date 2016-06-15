@@ -12,6 +12,8 @@ open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
 open System.Text
 
+open ZeroMQ
+open ZeroMQ.lib
 
 /// Contains methods for working with ZMQ's proxying capabilities
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -22,8 +24,8 @@ module Proxying =
   [<CompiledName("Proxy")>]
   let proxy (frontend:Socket) (backend:Socket) (capture:Socket option) =
     match capture with
-    | Some capture -> C.zmq_proxy(frontend.Handle,backend.Handle,capture.Handle)
-    | _            -> C.zmq_proxy(frontend.Handle,backend.Handle,            0n)
+    | Some capture -> zmq.proxy.Invoke(frontend.SocketPtr,backend.SocketPtr,capture.SocketPtr)
+    | _            -> zmq.proxy.Invoke(frontend.SocketPtr,backend.SocketPtr,0n)
     |> ignore
 
   /// creates a proxy connection passing messages between two sockets,
@@ -35,11 +37,11 @@ module Proxying =
                       (capture  :Socket option) 
                       (control  :Socket option) =
     let capture,control = match capture,control with 
-                          | Some p,Some t ->  p.Handle,t.Handle
-                          | Some p,None   ->  p.Handle,      0n
-                          | None  ,Some t ->        0n,t.Handle
-                          | None  ,None   ->        0n,      0n
-    C.zmq_proxy_steerable (frontend.Handle,backend.Handle,capture,control) |> ignore
+                          | Some p,Some t ->  p.SocketPtr,t.SocketPtr
+                          | Some p,None   ->  p.SocketPtr,  0n
+                          | None  ,Some t ->           0n,t.SocketPtr
+                          | None  ,None   ->           0n,  0n
+    zmq.proxy_steerable.Invoke (frontend.SocketPtr,backend.SocketPtr,capture,control) |> ignore
 
 
 /// Utilities for working with Polling from languages other than F#
@@ -77,25 +79,16 @@ module Z85 =
   ///
   /// ** Note: the size of the binary block MUST be divisible be 4. **
   [<CompiledName("Encode")>]
-  let encode data =
-    if data = null || Array.length data = 0
-      then  ""
-      else  let datalen = Array.length data
-            let buffer  = StringBuilder (datalen * 5 / 4 + 1)
-            if C.zmq_z85_encode(buffer,data,unativeint datalen) = 0n then ZMQ.error()
-            string buffer
+  let encode (data: byte []) =
+    Z85.Encode(data)
+    |> System.Text.Encoding.UTF8.GetString
 
   /// Decodes ZeroMQ Base-85 encoded string to a binary block.
   ///
   /// ** Note: the size of the string MUST be divisible be 5. **
   [<CompiledName("Decode")>]
   let decode data =
-    let datalen = String.length data
-    if  datalen = 0 
-      then  [||]
-      else  let buffer  = Array.zeroCreate (datalen * 4 / 5)
-            if C.zmq_z85_decode(buffer,data) = 0n then ZMQ.error()
-            buffer
+    Z85.DecodeBytes(data,Encoding.UTF8) 
 
 
 /// Utilities for working with the CurveZMQ security protocol
@@ -109,8 +102,8 @@ module Curve =
   /// The keys are encoded using ZeroMQ Base-85 Encoding.
   [<CompiledName("MakeCurveKeyPair")>]
   let curveKeyPair () =
-    let publicKey,secretKey = StringBuilder(KEY_SIZE),StringBuilder(KEY_SIZE)
-    if C.zmq_curve_keypair(publicKey,secretKey) <> 0 then ZMQ.error()
+    let mutable publicKey,secretKey = Array.zeroCreate(KEY_SIZE),Array.zeroCreate(KEY_SIZE)
+    Z85.CurveKeypair(&publicKey,&secretKey)
     (string publicKey),(string secretKey)
 
 
