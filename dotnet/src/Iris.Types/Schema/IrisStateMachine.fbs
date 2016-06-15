@@ -1,0 +1,48 @@
+include "Cue.fbs";
+include "Client.fbs";
+
+namespace Iris.Types;
+
+union StateMachineCommand {
+      AddCue,
+      UpdateCue,
+      RemoveCue,
+
+      AddClient,
+      StartClient,
+      StopClient,
+      UpdateClient,
+      RemoveClient
+}
+
+table AddCue {
+      Payload: Cue;
+}
+
+table UpdateCue {
+      Payload: Cue;
+}
+
+table RemoveCue {
+      Payload: Cue;
+}
+
+table AddClient {
+      Payload: Client;
+}
+
+table StartClient {
+      Payload: Client;
+}
+
+table StopClient {
+      Payload: Client;
+}
+
+table UpdateClient {
+      Payload: Client;
+}
+
+table RemoveClient {
+      Payload: Client;
+}

@@ -105,3 +105,6 @@ paket.install:
 
 fszmq.debug:
 	$(DEVBUILD) $(VVVV_BASEDIR)/src/fszmq/fszmq.fsproj
+
+types.debug:
+	$(DEVBUILD) $(VVVV_BASEDIR)/src/Iris.Types/Iris.Types.csproj
