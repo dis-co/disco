@@ -1,5 +1,6 @@
 include "Cue.fbs";
 include "Client.fbs";
+include "Snapshot.fbs";
 
 namespace Iris.Types;
 
@@ -12,7 +13,9 @@ union ReplicatedCommand {
       StartClient,
       StopClient,
       UpdateClient,
-      RemoveClient
+      RemoveClient,
+
+      LoadSnapshot
 }
 
 table AddCue {
@@ -45,4 +48,8 @@ table UpdateClient {
 
 table RemoveClient {
       Payload: Client;
+}
+
+table LoadSnapshot {
+      Payload: Snapshot;
 }

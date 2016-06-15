@@ -1,0 +1,6 @@
+namespace Iris.Types;
+
+table Snapshot {
+      Checksum: string;
+      TimeStamp: string;             
+}
