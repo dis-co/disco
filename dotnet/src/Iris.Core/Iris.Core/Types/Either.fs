@@ -22,12 +22,11 @@ module Either =
         | Fail v1 -> v1
         | _ -> failwith "Either: cannot get error from Success Value"
       
-
     //   __                  _
     //  / _|_   _ _ __   ___| |_ ___  _ __
     // | |_| | | | '_ \ / __| __/ _ \| '__|
     // |  _| |_| | | | | (__| || (_) | |
-    // |_|  \__,_|_| |_|\___|\__\___/|_|!!!!!!!!!!!
+    // |_|  \__,_|_| |_|\___|\__\___/|_|
     static member map(f : 'a -> Either<'err,'b>) (v : Either<'err,'a>) : Either<'err, 'b> =
       match v with
         | Success value -> f value

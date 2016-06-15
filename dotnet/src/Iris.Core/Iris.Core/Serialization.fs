@@ -5,6 +5,7 @@ open System.Text
 open WebSharper
 
 /// provides JSON serialization for communication 
+[<AutoOpen>]
 module Serialization = 
   let toString = Encoding.ASCII.GetString
 
