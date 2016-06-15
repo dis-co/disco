@@ -3,7 +3,7 @@ include "Client.fbs";
 
 namespace Iris.Types;
 
-union StateMachineCommand {
+union ReplicatedCommand {
       AddCue,
       UpdateCue,
       RemoveCue,

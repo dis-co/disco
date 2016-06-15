@@ -12,3 +12,6 @@ gen: clean
 
 build: clean gen
 	@xbuild $(CPATH)/Iris.Types.csproj
+
+
+all: clean gen build

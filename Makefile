@@ -9,7 +9,7 @@ MANIFEST="Iris Version: $(VERSTR)"
 DEVBUILD=xbuild /nologo /p:Configuration=Debug
 
 prepare.types:
-	@make -f ${VVVV_BASEDIR}/src/Iris.Types/Makefile gen
+	@make -f ${VVVV_BASEDIR}/src/Iris.Types/Makefile all
 
 pallet:
 	$(DEVBUILD) $(VVVV_BASEDIR)/src/Pallet/Pallet.fsproj
