@@ -1,10 +1,7 @@
-namespace Iris.Core.Types
+namespace Iris.Core
 
-[<AutoOpen>]
-module CueList =
-
-  type CueList =
-    { Id   : Id
-    ; Name : Name
-    ; Cues : Cue array
-    }
+type CueList =
+  { Id   : Id
+  ; Name : Name
+  ; Cues : Cue array
+  }

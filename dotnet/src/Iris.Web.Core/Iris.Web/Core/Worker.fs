@@ -1,15 +1,14 @@
 namespace Iris.Web.Core
 
-#nowarn "1182"
-
-open WebSharper
-open WebSharper.JavaScript
-
 [<AutoOpen>]
-[<JavaScript>]
 module Worker =
 
-  open Iris.Core.Types
+  open Fable.Core
+  open Fable.Import
+  open Fable.Import.Browser
+  open Fable.Import.JS
+
+  open Iris.Core
   open Iris.Web.Core
 
   (*---------------------------------------------------------------------------*
@@ -20,7 +19,6 @@ module Worker =
          \_/\_/ \___/|_|  |_|\_\___|_|
 
   *----------------------------------------------------------------------------*)
-  [<Stub>]
   type SharedWorker =
       [<DefaultValue>]
       val mutable onerror : (obj -> unit)
@@ -28,7 +26,7 @@ module Worker =
       [<DefaultValue>]
       val mutable port : MessagePort
 
-      [<Inline "new SharedWorker($url)">]
+      [<Emit "new SharedWorker($url)">]
       new(url : string) = {}
 
 
@@ -89,53 +87,54 @@ module Worker =
   let flip f b a = f a b
 
   let mkSession () =
-    let time = (new Date()).GetTime()
-    let fac = Math.Random()
-    JSON.Stringify(Math.Floor(float(time) * fac))
+    let time = JS.Date.now()
+    let fac = Math.random()
+    JSON.stringify(Math.floor(float(time) * fac))
 
-  type Ports [<Inline "{}">]() = class end
+  type Ports [<Emit "{}">]() = class end
 
   type GlobalContext() =
     let mutable count = 0
     let mutable ports = new Ports()
     let mutable store = new Store<State>(Reducer, State.Empty)
-    let mutable socket = Option<WebSocket>.None
+    let mutable socket = None
 
-    [<Direct "$ports[$id] = $port">]
-    let addImpl (ports : Ports) id port : unit = X
+    [<Emit "$ports[$id] = $port">]
+    let addImpl (ports : Ports) id port : unit = failwith "JS Only"
 
-    [<Direct "delete $ports[$id]">]
-    let rmImpl (ports : Ports) id : unit = X
+    [<Emit "delete $ports[$id]">]
+    let rmImpl (ports : Ports) id : unit = failwith "JS Only"
 
-    [<Direct "Object.keys($ports)">]
-    let allKeysImpl (ports : Ports) : string array = X
+    [<Emit "Object.keys($0)">]
+    let allKeysImpl (ports : Ports) : string array = failwith "JS Only"
 
-    [<Direct "$ports[$key]">]
-    let getImpl (ports : Ports) (key : string) : MessagePort = X
+    [<Emit "$ports[$key]">]
+    let getImpl (ports : Ports) (key : string) : MessagePort = failwith "JS Only"
 
-    [<Inline "void(self.close())">]
-    let close () = X
+    [<Emit "void(self.close())">]
+    let close () = failwith "JS Only"
 
     let send (msg : ClientMessage<State>) (port : MessagePort) : unit =
-      port.PostMessage(msg, Array.empty)
+      port.postMessage(msg, [| |])
 
     let broadcast (msg : ClientMessage<State>) : unit =
-      Array.map (getImpl ports) (allKeysImpl ports)
-      |> Array.iter (send msg)
+      for k in allKeysImpl ports do
+        let p = getImpl ports k
+        send msg p
 
     let multicast (id : Session) (msg : ClientMessage<State>) : unit =
-      allKeysImpl ports
-      |> Array.filter (fun str -> id <> str)
-      |> Array.map (getImpl ports)
-      |> Array.iter (send msg)
-
+      for k in allKeysImpl ports do
+        if id <> k then
+          let p = getImpl ports k
+          send msg p
+         
     let remove (id : Session) =
       count <- count - 1
       rmImpl ports id
       broadcast <| ClientMessage.Closed(id)
 
     let log (o : obj) =
-      Console.Log(o)
+      printfn "%A" o
       broadcast <| ClientMessage.Log(o)
 
     (*-------------------------------------------------------------------------*
@@ -148,7 +147,7 @@ module Worker =
      *-------------------------------------------------------------------------*)
 
     let onSocketMessage (ev : MessageEvent) : unit =
-      let msg = JSON.Parse(ev.Data :?> string) :?> ApiMessage
+      let msg = JSON.parse(ev.data :?> string) :?> ApiMessage
       let parsed =
         match msg.Type with
           | ApiAction.AddPatch    -> PatchEvent(Create, msg.Payload :?> Patch)
@@ -172,7 +171,7 @@ module Worker =
      *------------------------------------------------------------------------*)
 
     let onClientMessage (msg : MessageEvent) : unit =
-      let parsed = msg.Data :?> ClientMessage<State>
+      let parsed = msg.data :?> ClientMessage<State>
       match parsed with
         | ClientMessage.Close(session) -> remove(session)
 
@@ -206,7 +205,7 @@ module Worker =
     let add (port : MessagePort) =
       count <- count + 1                    // increase the connection count
       let id = mkSession()                  // create a session id
-      port.Onmessage <- onClientMessage     // register callback on port
+      port.onmessage <- (fun msg -> onClientMessage msg; failwith "hm") // register callback on port
       addImpl ports id port                 // add port to ports object
 
       [ ClientMessage.Initialized(id)       // tell client all is good
@@ -221,11 +220,11 @@ module Worker =
         \___\___/|_| |_|___/\__|_|   \__,_|\___|\__\___/|_|
     *)
     do
-      let s = new WebSocket("ws://localhost:8080")
-      s.Onopen  <- (fun _ -> broadcast <| ClientMessage.Connected)
-      s.Onclose <- (fun _ -> broadcast <| ClientMessage.Disconnected)
-      s.Onerror <- (fun e -> broadcast <| ClientMessage.Error(JSON.Stringify(e)))
-      s.Onmessage <- (fun msg -> onSocketMessage msg)
+      let s = WebSocket.Create("ws://localhost:8080")
+      s.onopen  <- (fun _ -> broadcast <| ClientMessage.Connected; failwith "obj")
+      s.onclose <- (fun _ -> broadcast <| ClientMessage.Disconnected; failwith "obj")
+      s.onerror <- (fun e -> broadcast <| ClientMessage.Error(JSON.stringify(e)); failwith "obj";)
+      s.onmessage <- (fun msg -> onSocketMessage msg; failwith "obj")
       socket <- Some(s)
 
     (*--------------------------------------------------------------------------
@@ -245,7 +244,7 @@ module Worker =
 
     member __.Send (msg : ClientMessage<State>)  : unit =
       match socket with
-        | Some(thing) -> thing.Send(JSON.Stringify(msg))
+        | Some(thing) -> thing.send(JSON.stringify(msg))
         | None -> __.Log("Not connected")
 
     member __.Log (thing : obj) : unit =

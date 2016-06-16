@@ -1,16 +1,12 @@
 namespace Test.Units
 
-#nowarn "1182"
-
-open WebSharper
-open WebSharper.JavaScript
-open WebSharper.JQuery
-open WebSharper.Mocha
-
-[<JavaScript>]
 [<RequireQualifiedAccess>]
 module Html =
 
+  open Fable.Core
+  open Fable.Import
+  open Fable.Import.Browser
+  
   open Iris.Web.Tests.Util
   open Iris.Web.Core.Html
 

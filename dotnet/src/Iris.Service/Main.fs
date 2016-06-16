@@ -6,8 +6,6 @@ open System.Threading
 open Nessos.FsPickler
 open Iris.Core
 open Iris.Core.Utils
-open Iris.Core.Types
-open Iris.Core.Config
 open Iris.Service.Types
 open Iris.Service.Core
 open LibGit2Sharp

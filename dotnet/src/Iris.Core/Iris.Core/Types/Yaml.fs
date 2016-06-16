@@ -1,10 +1,10 @@
-namespace Iris.Core.Config
+namespace Iris.Core
 
 open FSharp.Configuration
 
 [<AutoOpen>]
 module Yaml =
-  
+
   [<Literal>]
   let private config = """
 Project:

@@ -6,8 +6,7 @@ open System.Linq
 open System.Threading
 open Fuchu
 open Fuchu.Test
-open Iris.Core.Types
-open Iris.Core.Config
+open Iris.Core
 open LibGit2Sharp
 
 module Project =
@@ -30,7 +29,7 @@ module Project =
         project.Save(signature, "Initial project save.") |> ignore
 
         let result = Project.Load(path + (sprintf "/%s.iris" name))
-        Assert.Equal("Projects should be loaded", true, isSuccess result)
+        Assert.Equal("Projects should be loaded", true, Either.isSuccess result)
 
         let project' = Either.get result
         project.LastSaved <- project'.LastSaved
@@ -206,16 +205,13 @@ module Project =
         let project = Project.Create name
         project.Path <- Some(path)
 
-        project.Config <-
-          { project.Config with
-              Engine    = engineCfg
-              Port      = portCfg
-              Vvvv      = vvvvCfg
-              ViewPorts = [ viewPort1; viewPort2 ]
-              Displays  = [ display1;  display2  ]
-              Tasks     = [ task1;     task2     ]
-              Cluster   = cluster
-          }
+        project.Config.RaftConfig    <- engineCfg
+        project.Config.PortConfig    <- portCfg
+        project.Config.VvvvConfig    <- vvvvCfg
+        project.Config.ViewPorts     <- [ viewPort1; viewPort2 ]
+        project.Config.Displays      <- [ display1;  display2  ]
+        project.Config.Tasks         <- [ task1;     task2     ]
+        project.Config.ClusterConfig <- cluster
 
         project.Save(signature, "Initial project save.") |> ignore
 

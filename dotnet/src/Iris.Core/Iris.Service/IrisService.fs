@@ -4,8 +4,6 @@ open System
 open System.IO
 open Iris.Core
 open Iris.Core.Utils
-open Iris.Core.Types
-open Iris.Core.Config
 open Iris.Service.Core
 open LibGit2Sharp
 
@@ -38,11 +36,11 @@ module IrisService =
       match Map.tryFind guid processes with
         | Some proc ->
           processes <- Map.remove guid processes
-          succeed proc
+          Either.succeed proc
         | _ ->
           guid.ToString()
           |> sprintf "process not found for guid %s"
-          |> fail
+          |> Either.fail
 
     //  ___       _             __
     // |_ _|_ __ | |_ ___ _ __ / _| __ _  ___ ___  ___
@@ -84,10 +82,11 @@ module IrisService =
     // |_|   |_|  \___// |\___|\___|\__|
     //               |__/
     member self.SaveProject(id, msg) =
-      saveProject id signature msg !state
-        >>= fun (commit, state') ->
-          state := state'
-          succeed commit
+      match saveProject id signature msg !state with
+        | Success (commit, newstate) ->
+          state := newstate
+          Either.succeed commit
+        | Fail err -> Either.fail err
 
     //   ____                _
     //  / ___|_ __ ___  __ _| |_ ___

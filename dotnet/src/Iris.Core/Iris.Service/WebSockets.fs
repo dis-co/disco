@@ -2,7 +2,7 @@ namespace Iris.Service.Types
 
 open Fleck
 open System
-open Iris.Core.Types
+open Iris.Core
 
 [<AutoOpen>]
 //[<RequireQualifiedAccess>]

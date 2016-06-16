@@ -1,13 +1,13 @@
 namespace Iris.Web.Core
 
-open WebSharper
-open WebSharper.JavaScript
-open WebSharper.JQuery
-
 [<AutoOpen>]
-[<JavaScript>]
 module ViewController =
+
   open System
+  open Fable.Core
+  open Fable.Import
+  open Fable.Import.JS
+  open Fable.Import.Browser
 
   (* __        ___     _            _
      \ \      / (_) __| | __ _  ___| |_
@@ -31,11 +31,13 @@ module ViewController =
   type ViewController<'store,'context> (widget : IWidget<'store,'context>) =
     let mutable view : IWidget<'store,'context>  = widget
     let mutable tree : VTree option = None
-    let mutable root : Dom.Element  = JS.Window.Document.CreateElement "div"
+
+    let mutable root : HTMLElement = window.document.createElement "div"
 
     let initWith tree =
       let rootNode = createElement tree
-      JQuery.Of("body").Append(rootNode) |> ignore
+      let body = document.getElementsByTagName_body().[0]
+      body.appendChild rootNode |> ignore
       root <- rootNode
 
     member self.Container
@@ -57,4 +59,4 @@ module ViewController =
     interface IDisposable with
       member self.Dispose () =
         view.Dispose ()
-        JQuery.Of(root).Remove() |> ignore
+        root.remove ()

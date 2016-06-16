@@ -1,12 +1,10 @@
 namespace Iris.Web.Core
 
-#nowarn "1182"
-
-open WebSharper
-open WebSharper.JavaScript
+open Fable.Core
+open Fable.Import
+open Fable.Import.Browser
 
 [<AutoOpen>]
-[<JavaScript>]
 module Html =
   (*
    _____
@@ -17,13 +15,13 @@ module Html =
         |___/|_|
   *)
 
-  type Styles [<Inline "{}">] () =
+  type Styles [<Emit "{}">] () =
     [<DefaultValue>] val mutable textAlign : string;
     [<DefaultValue>] val mutable margin    : string;
 
 
   // for styles etc
-  type VProps [<Inline "{}">] () =
+  type VProps [<Emit "{}">] () =
     [<DefaultValue>]
     val mutable id : string
 
@@ -39,15 +37,13 @@ module Html =
 
   let emptyProps = new VProps ()
 
-  [<Stub>]
   type VTree =
-    [<Inline "new virtualDom.VNode($tag,$props,$children)">]
+    [<Emit "new virtualDom.VNode($tag,$props,$children)">]
     new (tag : string, props : VProps, children : VTree array) = {}
 
-    [<Inline "new virtualDom.VText($tag)">]
+    [<Emit "new virtualDom.VText($tag)">]
     new (tag : string) = {}
 
-  [<Stub>]
   type VPatch = class end
 
   type AttrVal =
@@ -127,14 +123,14 @@ module Html =
        \_/  |_|_|   \__|\__,_|\__,_|_|____/ \___/|_| |_| |_|
   *)
 
-  [<Inline "virtualDom.create($tree)">]
-  let createElement (tree : VTree) : Dom.Element = X
+  [<Emit "virtualDom.create($tree)">]
+  let createElement (tree : VTree) : HTMLElement = failwith "JS Only"
 
-  [<Inline "virtualDom.diff($oldtree,$newtree)">]
-  let diff (oldtree : VTree) (newtree : VTree) : VPatch = X
+  [<Emit "virtualDom.diff($oldtree,$newtree)">]
+  let diff (oldtree : VTree) (newtree : VTree) : VPatch = failwith "JS Only"
 
-  [<Inline "virtualDom.patch($root, $patch)">]
-  let patch (root : Dom.Element) (patch : VPatch) : Dom.Element = X
+  [<Emit "virtualDom.patch($root, $patch)">]
+  let patch (root : HTMLElement) (patch : VPatch) : HTMLElement = failwith "JS Only"
 
   let mkVNode (tag : string) (prop : VProps) (children : VTree array) : VTree =
     new VTree(tag, prop, children)
@@ -143,8 +139,8 @@ module Html =
     new VTree(txt)
 
   // `this` makes me feel uneasy
-  [<Inline "$cb.apply({},arguments)">]
-  let withArgs (cb : 'a -> unit) = X
+  [<Emit "$cb.apply({},arguments)">]
+  let withArgs (cb : 'a -> unit) = failwith "JS Only"
 
   (*
     ____                _     _             _
@@ -336,112 +332,112 @@ module Html =
 
   let value' txt = Pair("value", txt)
 
-  let onClick (cb : Dom.MouseEvent -> unit) =
+  let onClick (cb : MouseEvent -> unit) =
     Pair("onclick", EvVal(fun () -> withArgs cb))
 
-  let onAbort (cb : Dom.Event -> unit) =
+  let onAbort (cb : Event -> unit) =
     Pair("onabort", EvVal(fun () -> withArgs cb))
 
-  let onBlur (cb : Dom.Event -> unit) =
+  let onBlur (cb : Event -> unit) =
     Pair("onblur", EvVal(fun () -> withArgs cb))
 
-  let onChange (cb : Dom.Event -> unit) =
+  let onChange (cb : Event -> unit) =
     Pair("onchange", EvVal(fun () -> withArgs cb))
 
-  let onClose (cb : Dom.Event -> unit) =
+  let onClose (cb : Event -> unit) =
     Pair("onclose", EvVal(fun () -> withArgs cb))
 
-  let onContextMenu (cb : Dom.Event -> unit) =
+  let onContextMenu (cb : Event -> unit) =
     Pair("oncontextmenu", EvVal(fun () -> withArgs cb))
 
-  let onDblClick (cb : Dom.Event -> unit) =
+  let onDblClick (cb : Event -> unit) =
     Pair("ondblclick", EvVal(fun () -> withArgs cb))
 
-  let onError (cb : Dom.Event -> unit) =
+  let onError (cb : Event -> unit) =
     Pair("onerror", EvVal(fun () -> withArgs cb))
 
-  let onFocus (cb : Dom.Event -> unit) =
+  let onFocus (cb : Event -> unit) =
     Pair("onfocus", EvVal(fun () -> withArgs cb))
 
-  let onInput (cb : Dom.Event -> unit) =
+  let onInput (cb : Event -> unit) =
     Pair("oninput", EvVal(fun () -> withArgs cb))
 
-  let onKeyDown (cb : Dom.Event -> unit) =
+  let onKeyDown (cb : Event -> unit) =
     Pair("onkeydown", EvVal(fun () -> withArgs cb))
 
-  let onKeyPress (cb : Dom.Event -> unit) =
+  let onKeyPress (cb : Event -> unit) =
     Pair("onkeypress", EvVal(fun () -> withArgs cb))
 
-  let onKeyUp (cb : Dom.Event -> unit) =
+  let onKeyUp (cb : Event -> unit) =
     Pair("onkeyup", EvVal(fun () -> withArgs cb))
 
-  let onLoad (cb : Dom.Event -> unit) =
+  let onLoad (cb : Event -> unit) =
     Pair("onload", EvVal(fun () -> withArgs cb))
 
-  let onMouseDown (cb : Dom.Event -> unit) =
+  let onMouseDown (cb : Event -> unit) =
     Pair("onmousedown", EvVal(fun () -> withArgs cb))
 
-  let onMouseMove (cb : Dom.Event -> unit) =
+  let onMouseMove (cb : Event -> unit) =
     Pair("onmousemove", EvVal(fun () -> withArgs cb))
 
-  let onMouseOut (cb : Dom.Event -> unit) =
+  let onMouseOut (cb : Event -> unit) =
     Pair("onmouseout", EvVal(fun () -> withArgs cb))
 
-  let onMouseOver (cb : Dom.Event -> unit) =
+  let onMouseOver (cb : Event -> unit) =
     Pair("onmouseover", EvVal(fun () -> withArgs cb))
 
-  let onMouseUp (cb : Dom.Event -> unit) =
+  let onMouseUp (cb : Event -> unit) =
     Pair("onmouseup", EvVal(fun () -> withArgs cb))
 
-  let onPointerCancel (cb : Dom.Event -> unit) =
+  let onPointerCancel (cb : Event -> unit) =
     Pair("onpointercancel", EvVal(fun () -> withArgs cb))
 
-  let onPointerDown (cb : Dom.Event -> unit) =
+  let onPointerDown (cb : Event -> unit) =
     Pair("onpointerdown", EvVal(fun () -> withArgs cb))
 
-  let onPointerEnter (cb : Dom.Event -> unit) =
+  let onPointerEnter (cb : Event -> unit) =
     Pair("onpointerenter", EvVal(fun () -> withArgs cb))
 
-  let onPointerLeave (cb : Dom.Event -> unit) =
+  let onPointerLeave (cb : Event -> unit) =
     Pair("onpointerleave", EvVal(fun () -> withArgs cb))
 
-  let onPointerMove (cb : Dom.Event -> unit) =
+  let onPointerMove (cb : Event -> unit) =
     Pair("onpointermove", EvVal(fun () -> withArgs cb))
 
-  let onPointerOut (cb : Dom.Event -> unit) =
+  let onPointerOut (cb : Event -> unit) =
     Pair("onpointerout", EvVal(fun () -> withArgs cb))
 
-  let onPointerOver (cb : Dom.Event -> unit) =
+  let onPointerOver (cb : Event -> unit) =
     Pair("onpointerover", EvVal(fun () -> withArgs cb))
 
-  let onPointerUp (cb : Dom.Event -> unit) =
+  let onPointerUp (cb : Event -> unit) =
     Pair("onpointerup", EvVal(fun () -> withArgs cb))
 
-  let onReset (cb : Dom.Event -> unit) =
+  let onReset (cb : Event -> unit) =
     Pair("onreset", EvVal(fun () -> withArgs cb))
 
-  let onResize (cb : Dom.Event -> unit) =
+  let onResize (cb : Event -> unit) =
     Pair("onresize", EvVal(fun () -> withArgs cb))
 
-  let onScroll (cb : Dom.Event -> unit) =
+  let onScroll (cb : Event -> unit) =
     Pair("onscroll", EvVal(fun () -> withArgs cb))
 
-  let onSelect (cb : Dom.Event -> unit) =
+  let onSelect (cb : Event -> unit) =
     Pair("onselect", EvVal(fun () -> withArgs cb))
 
-  let onSelectStart (cb : Dom.Event -> unit) =
+  let onSelectStart (cb : Event -> unit) =
     Pair("onselectstart", EvVal(fun () -> withArgs cb))
 
-  let onSubmit (cb : Dom.Event -> unit) =
+  let onSubmit (cb : Event -> unit) =
     Pair("onsubmit", EvVal(fun () -> withArgs cb))
 
-  let onTouchCancel (cb : Dom.Event -> unit) =
+  let onTouchCancel (cb : Event -> unit) =
     Pair("ontouchcancel", EvVal(fun () -> withArgs cb))
 
-  let onTouchMove (cb : Dom.Event -> unit) =
+  let onTouchMove (cb : Event -> unit) =
     Pair("ontouchmove", EvVal(fun () -> withArgs cb))
 
-  let onTouchStart (cb : Dom.Event -> unit) =
+  let onTouchStart (cb : Event -> unit) =
     Pair("ontouchstart", EvVal(fun () -> withArgs cb))
 
   (*

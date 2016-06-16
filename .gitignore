@@ -5,3 +5,4 @@ FSharp.Formatting.svclog
 native/src/Iris.*/net40
 /vvvv/plugins/NativeBinaries
 /vvvv/plugins/src/Iris.Tests/NativeBinaries
+node_modules

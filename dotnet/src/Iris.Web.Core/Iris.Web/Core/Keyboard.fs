@@ -1,55 +1,36 @@
 namespace Iris.Web.Core
 
-open WebSharper
-open WebSharper.JQuery
-open WebSharper.JavaScript
-
 [<AutoOpen>]
-[<JavaScript>]
 module Keyboard = 
 
-  open Iris.Core.Types
+  open Fable.Core
+  open Fable.Import
+  open Fable.Import.Browser
+  open Iris.Core
   open Iris.Web.Core
 
-  [<Stub>]
-  type KeyboardEvent() =
-    [<DefaultValue>]
-    [<Name "ctrlKey">]
-    val mutable CtrlKey  : bool
-
-    [<DefaultValue>]
-    [<Name "shiftKey">]
-    val mutable ShiftKey : bool
-    
-    [<DefaultValue>]
-    [<Name "keyCode">]
-    val mutable KeyCode  : int
-
-    [<Stub>]
-    [<Name "preventDefault">]
-    member __.PreventDefault (arg : bool) : unit = X
-
-  type KeyBinding = (bool * bool * int * ClientMessage<State>)
+  type KeyBinding = (bool * bool * float * ClientMessage<State>)
 
   let knownActions : KeyBinding array =
     //  ctrl, shift, key, action
-    [| (true, false, 90,  ClientMessage.Undo)
-     ; (true, true,  90,  ClientMessage.Redo)
-     ; (true, false, 83,  ClientMessage.Save)
-     ; (true, false, 79,  ClientMessage.Open)
+    [| (true, false, 90.0,  ClientMessage.Undo)
+     ; (true, true,  90.0,  ClientMessage.Redo)
+     ; (true, false, 83.0,  ClientMessage.Save)
+     ; (true, false, 79.0,  ClientMessage.Open)
      |]
     
   let matches (ctx : ClientContext) (kev : KeyboardEvent) ((ctrl, shift, key, msg) : KeyBinding) : unit =
-    if kev.KeyCode  = key   &&
-       kev.ShiftKey = shift &&
-       kev.CtrlKey  = ctrl
+    if kev.keyCode  = key   &&
+       kev.shiftKey = shift &&
+       kev.ctrlKey  = ctrl
     then
        ctx.Trigger(msg)
-       kev.PreventDefault true 
+       kev.preventDefault()
 
-  let keydownHandler (ctx : ClientContext) (ev : obj) = 
-    let kev = ev :?> KeyboardEvent
-    Array.iter (matches ctx kev) knownActions
+  let keydownHandler (ctx : ClientContext) (ev : KeyboardEvent) = 
+    Array.iter (matches ctx ev) knownActions
 
   let registerKeyHandlers (ctx : ClientContext) = 
-    JS.Window.Onkeydown <- keydownHandler ctx
+    Browser.window.onkeydown <- fun e ->
+      keydownHandler ctx e
+      failwith "oh ho ho ho"

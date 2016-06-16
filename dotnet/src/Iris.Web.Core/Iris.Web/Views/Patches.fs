@@ -1,15 +1,15 @@
 namespace Iris.Web.Views
 
-open WebSharper
-open WebSharper.JavaScript
-
 [<AutoOpen>]
-[<JavaScript>]
 [<RequireQualifiedAccess>]
 module Patches =
 
+  open Fable.Core
+  open Fable.Import
+  open Fable.Import.Browser
+
   open Iris.Web.Core
-  open Iris.Core.Types
+  open Iris.Core
 
   type Root () =
     let mutable plugins = new Plugins ()
@@ -32,7 +32,7 @@ module Patches =
                           | Some(session) ->
                              let ev = (session, CueEvent(Create, None))
                              in ctx.Trigger(ClientMessage.Event(ev))
-                          | _ -> Console.Log("Cannot create cue. No worker?"))
+                          | _ -> printfn "Cannot create cue. No worker?")
            <|> text "Create Cue";
         |]
 
@@ -46,7 +46,7 @@ module Patches =
                 | Some(session) ->
                   ClientMessage.Event(session,IOBoxEvent(Update,iobox'))
                   |> context.Trigger
-                | _ -> Console.Log("no worker session found."))
+                | _ -> printfn "no worker session found.")
 
       let container = li <|> (strong <|> text (iobox.Name))
 
@@ -80,12 +80,12 @@ module Patches =
 
 
     let destroy (context : ClientContext) (cue : Cue) =
-      let handler (_ : Dom.Event) = 
+      let handler (_ : Event) = 
         match context.Session with
           | Some(session) -> 
             let ev = ClientMessage<State>.Event(session, CueEvent(Delete, Some(cue)))
             context.Trigger(ev)
-          | _ -> Console.Log("Cannot delete cue. No Worker?")
+          | _ -> printfn "Cannot delete cue. No Worker?"
 
       button <@> onClick handler
              <|> text "x"

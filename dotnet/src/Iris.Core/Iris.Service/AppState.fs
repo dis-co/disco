@@ -3,7 +3,7 @@ namespace Iris.Service.Core
 open System
 open LibGit2Sharp
 open Iris.Core.Utils
-open Iris.Core.Types
+open Iris.Core
 
 [<AutoOpen>]
 module AppState =
@@ -28,48 +28,53 @@ module AppState =
 
   let addProject (project : Project) (state : AppState) : Either<string,AppState> =
     { state with Projects = Map.add project.Id project state.Projects }
-    |> succeed
+    |> Either.succeed
 
   let findProject guid state : Either<string, Project> =
     match Map.tryFind guid state.Projects with
-      | Some project -> succeed project
-      | _ -> fail "Project not found"
+      | Some project -> Either.succeed project
+      | _ -> Either.fail "Project not found"
     
   let loadProject path state : Either<string,(Project * AppState)> =
-    Project.Load path
-      >>= fun project -> combine project (addProject project state)
+    match Project.Load path with
+      | Success project -> Either.combine project (addProject project state)
+      | Fail err        -> Either.fail err
 
   let saveProject (guid : Guid) (sign : Signature) msg state : Either<string,(Commit * AppState)> =
-    findProject guid state
-      >>= fun project ->
-        try
-          project.Save(sign, msg)
-            >>= (fun commit -> succeed (commit, state))
-        with
-          | exn -> fail exn.Message
-
+    match findProject guid state with
+      | Success project ->
+          try match project.Save(sign, msg) with
+                | Success commit -> Either.succeed (commit, state)
+                | Fail err       -> Either.fail err
+          with
+            | exn -> Either.fail exn.Message
+      | Fail err -> Either.fail err
+        
   let createProject name path (sign : Signature) state : Either<string,(Project * AppState)> = 
     let now = System.DateTime.Now.ToLongTimeString()
     let msg = sprintf "On %s, %s created %s" now sign.Name name
     let project = Project.Create name
     project.Path <- Some(path)
-    addProject project state 
-      >>= saveProject project.Id sign msg
-      >>= (fun (_,s) -> succeed (project, s))
-  
+    match addProject project state with
+      | Success state' ->
+        match saveProject project.Id sign msg state' with
+          | Success(commit, state'') -> Either.succeed (project, state'')
+          | Fail err                 -> Either.fail err
+      | Fail err -> Either.fail err
+
   let closeProject (guid : Guid) (state : AppState) : Either<string, AppState> =
     { state with Projects = Map.remove guid state.Projects }
-    |> succeed
+    |> Either.succeed
   
   let projectLoaded (guid : Guid) (state : AppState) : bool =
-    isSuccess (findProject guid state)
+    Either.isSuccess (findProject guid state)
 
   let addMember (mem: Member) (state: AppState) : AppState =
     { state with Members = mem :: state.Members }
   
   let updateMember (newmem: Member) (state: AppState) : AppState =
-    let helper old = if sameAs old newmem then newmem else old
+    let helper old = if Member.sameAs old newmem then newmem else old
     { state with Members = List.map helper state.Members  }
 
   let removeMember (mem: Member) (state: AppState) : AppState = 
-    { state with Members = List.filter (not << sameAs mem) state.Members  }
+    { state with Members = List.filter (not << Member.sameAs mem) state.Members  }

@@ -1,11 +1,7 @@
-namespace Iris.Core.Types
+namespace Iris.Core
 
-[<AutoOpen>]
-module Cue =
-
-  type Cue =
-    {
-      Id      : string;
-      Name    : string;
-      IOBoxes : IOBox array;
-    }
+type Cue =
+  { Id:      string
+  ; Name:    string
+  ; IOBoxes: IOBox array
+  }

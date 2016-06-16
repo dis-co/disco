@@ -6,6 +6,12 @@ open System.Net
 open System.Net.NetworkInformation
 open System.Text.RegularExpressions
 
+[<RequireQualifiedAccess>]
+module List =
+  let reverse (lst : 'a list) : 'a list =
+    let reverser acc elm = List.concat [[elm]; acc]
+    List.fold reverser List.empty lst
+
 module Utils =
 
   let isLinux : bool =

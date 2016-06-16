@@ -1,16 +1,13 @@
 namespace Iris.Web.Core
 
-#nowarn "1182"
-
-open WebSharper
-open WebSharper.JavaScript
+open Fable.Core
+open Fable.Import
 
 [<AutoOpen>]
-[<JavaScript>]
 module Plugin =
 
   open System
-  open Iris.Core.Types
+  open Iris.Core
 
   (*   ____  _             _
       |  _ \| |_   _  __ _(_)_ __
@@ -22,36 +19,28 @@ module Plugin =
 
   type EventCallback = IOBox -> unit
                      
-  [<Stub>]
   type Plugin () = class
-    [<Name "render">]
-    [<Stub>]
-    member this.Render (iobox : IOBox) : VTree = X<_>
+    [<Emit "render">]
+    member this.Render (iobox : IOBox) : VTree = failwith "JS Only"
 
-    [<Name "dispose">]
-    [<Stub>]
-    member this.Dispose() : unit = X<_>
+    [<Emit "dispose">]
+    member this.Dispose() : unit = failwith "JS Only"
   end
 
-  type PluginSpec [<Inline "{}">] ()  =
-    [<DefaultValue>]
-    val mutable name : string
-
-    [<DefaultValue>]
-    val mutable ``type`` : string
-
-    [<DefaultValue>]
-    val mutable  create : EventCallback -> Plugin
+  type PluginSpec [<Emit "{}">] ()  =
+    [<DefaultValue>] val mutable name : string
+    [<DefaultValue>] val mutable ``type`` : string
+    [<DefaultValue>] val mutable  create : EventCallback -> Plugin
 
 
-  [<Direct "return window.IrisPlugins">]
-  let listPlugins () : PluginSpec array = X<PluginSpec array>
+  [<Emit "return window.IrisPlugins">]
+  let listPlugins () : PluginSpec array = failwith "JS Only"
 
-  [<Direct "return window.IrisPlugins.filter(function (plugin) { return plugin.type === $kind; })" >]
-  let findPlugins (kind : PinType) : PluginSpec array = X<PluginSpec array>
+  [<Emit "return window.IrisPlugins.filter(function (plugin) { return plugin.type === $kind; })" >]
+  let findPlugins (kind : PinType) : PluginSpec array = failwith "JS Only"
 
-  [<Direct "return ($o === null) || ($o === undefined)">]
-  let isNull (o : obj) : bool = X<bool>
+  [<Emit "return ($o === null) || ($o === undefined)">]
+  let isNull (o : obj) : bool = failwith "JS Only"
 
   (*
      ____  _             _
@@ -64,20 +53,20 @@ module Plugin =
 
   type Plugins () =
     (* ------------------------ internal -------------------------- *)
-    [<Direct " delete $ctx[$id] ">]
-    let rmImpl (ctx : obj) (id : string) : unit = X<unit>
+    [<Emit " delete $ctx[$id] ">]
+    let rmImpl (ctx : obj) (id : string) : unit = failwith "JS Only"
 
-    [<Inline " $0[$id] = $inst ">]
-    let addImpl (id : string) (inst : Plugin) : unit = X<unit>
+    [<Emit " $0[$id] = $inst ">]
+    let addImpl (id : string) (inst : Plugin) : unit = failwith "JS Only"
 
-    [<Inline " $0[$id] != null ">]
-    let hasImpl (id : string) : bool = X<bool>
+    [<Emit " $0[$id] != null ">]
+    let hasImpl (id : string) : bool = failwith "JS Only"
 
-    [<Inline " $0[$id] ">]
-    let getImpl (id : string) : Plugin = X<Plugin>
+    [<Emit " $0[$id] ">]
+    let getImpl (id : string) : Plugin = failwith "JS Only"
 
-    [<Inline " Object.keys($0) ">]
-    let idsImpl () : string array = X<string array>
+    [<Emit " Object.keys($0) ">]
+    let idsImpl () : string array = failwith "JS Only"
 
     (* ------------------------ public interface -------------------------- *)
 
@@ -86,7 +75,7 @@ module Plugin =
       let candidates = findPlugins iobox.Type
       in if candidates.Length > 0
          then addImpl iobox.Id (candidates.[0].create(onupdate))
-         else Console.Log("Could not instantiate view for IOBox. Type not found:  ", iobox.Type)
+         else printfn "Could not instantiate view for IOBox. Type not found: %A" iobox.Type
 
     member self.Has (iobox : IOBox) : bool = hasImpl iobox.Id
 

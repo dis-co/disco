@@ -1,14 +1,12 @@
 ﻿namespace Iris.Web.Worker
 
-#nowarn "1182"
 
-open WebSharper
-open WebSharper.JavaScript
-
-[<JavaScript>]
 module Client =
 
-  open Iris.Core.Types
+  open Fable.Core
+  open Fable.Import
+  
+  open Iris.Core
   open Iris.Web.Core
   open Iris.Web.Views
   
@@ -21,11 +19,11 @@ module Client =
   let initialize (ctx : GlobalContext) (ev : WorkerEvent) : unit =
     ctx.Add(ev.ports.[0])
 
-  [<Direct "void(importScripts ? importScripts($script) : null)">]
-  let importScript (script : string) : unit = X
+  [<Emit "void(importScripts ? importScripts($script) : null)">]
+  let importScript (script : string) : unit = failwith "oh no jS"
 
-  [<Direct "void (onconnect = $handler)">]
-  let onConnect (handler: WorkerEvent -> unit) = ()
+  [<Emit "void (onconnect = $handler)">]
+  let onConnect (handler: WorkerEvent -> unit) = failwith "hohoho"
 
   let Main : unit =
     importScript "dependencies/asmcrypto/asmcrypto.js"

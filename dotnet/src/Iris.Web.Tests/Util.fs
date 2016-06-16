@@ -1,22 +1,22 @@
 namespace Iris.Web.Tests
 
-open WebSharper
-open WebSharper.JavaScript
-open WebSharper.JQuery
-
-[<JavaScript>]
 module Util = 
+
+  open Fable.Core
+  open Fable.Import
+  open Fable.Import.Browser
   
-  let elById (id : string) : Dom.Element = JS.Document.GetElementById id
+  let elById (id : string) : HTMLElement = document.getElementById id
   
-  let mkContent () : JQuery =
-    let el = JQuery.Of("div#content")
-    JQuery.Of("body").Append el |> ignore
+  let mkContent () : HTMLElement =
+    let el = elById "content"
+    let body = document.getElementsByTagName_body().[0]
+    body.appendChild el |> ignore
     el
     
-  let cleanup (el : Dom.Element) : unit =
-    failwith "cleanup needs implementing"
+  let cleanup (el : HTMLElement) : unit =
+    el.remove()
   
-  let withContent (wrapper : JQuery -> unit) : unit =
+  let withContent (wrapper : HTMLElement -> unit) : unit =
     let content = mkContent () 
     wrapper content

@@ -147,7 +147,6 @@ NUGET
       System.Threading.Tasks (>= 4.0) - framework: dnxcore50
     System.Threading.Tasks (4.0.10) - framework: dnxcore50
       System.Runtime (>= 4.0) - framework: dnxcore50
-    WebSharper (3.6.14.237)
     xunit (2.1)
       xunit.assert (2.1)
       xunit.core (2.1)

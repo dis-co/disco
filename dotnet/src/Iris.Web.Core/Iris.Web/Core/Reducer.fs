@@ -1,13 +1,13 @@
 namespace Iris.Web.Core
 
-open WebSharper
-open WebSharper.JavaScript
-
 [<AutoOpen>]
-[<JavaScript>]
 module Reducer =
 
-  open Iris.Core.Types
+  open Fable.Core
+  open Fable.Import
+  open Fable.Import.JS
+
+  open Iris.Core
 
   (*   ____          _
       |  _ \ ___  __| |_   _  ___ ___ _ __
@@ -35,11 +35,10 @@ module Reducer =
       | CueEvent(action, cueish) ->
           match action with
               | Create ->
-                let input = JSON.Stringify(float((new Date()).GetTime()) * Math.Random())
+                let input = JSON.stringify(Date.now() * Math.random())
                 let cue = { Id = sha1sum input
                           ; Name = "Cue-" + input
-                          ; IOBoxes = Array.fold (fun m (ps : Patch) -> Array.append m ps.IOBoxes)
-                                      Array.empty state.Patches }
+                          ; IOBoxes = [||] }
                 in state.Add cue
               | Update ->
                 if Option.isSome cueish

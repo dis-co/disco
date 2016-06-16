@@ -3,14 +3,15 @@ namespace WebSharper
 #nowarn "1182"
 
 open System
-open WebSharper
-open WebSharper.JavaScript
 
-[<JavaScript>]
 module Mocha =
 
-  [<Direct " throw new Error($msg) ">]
-  let bail (msg : string) : unit = X<unit>
+  open Fable.Core
+  open Fable.Import
+  open Fable.Import.Browser
+
+  [<Emit "throw new Error($msg) ">]
+  let bail (msg : string) : unit = failwith "ONLY JS"
 
   let success (cb : unit -> unit) : unit = cb ()
 
@@ -35,15 +36,12 @@ module Mocha =
   let (|/=|) a b =
     check (a <> b) (sprintf "expected to be different but %O == %O" a b)
 
-  [<Stub>]
-  [<Name "window.suite">]
-  let suite (desc : string) : unit = X<unit>
+  [<Emit "window.suite($0)">]
+  let suite (desc : string) : unit = failwith "ONLY JS"
 
-  [<Stub>]
-  [<Name "window.test">]
-  let test (str : string) (t : (unit -> unit) -> unit) : unit = X<unit>
+  [<Emit "window.test($0,$1)">]
+  let test (str : string) (t : (unit -> unit) -> unit) : unit = failwith "ONLY JS"
 
-  [<Stub>]
-  [<Name "window.test">]
-  let pending (str : string) : unit = X<unit>
+  [<Emit "window.test($0)">]
+  let pending (str : string) : unit = failwith "ONLY JS"
 

@@ -1,13 +1,11 @@
 namespace Iris.Web.Core
 
-open WebSharper
-open WebSharper.JavaScript
-
 [<AutoOpen>]
-[<JavaScript>]
 module Store =
 
-  open Iris.Core.Types
+  open Fable.Core
+  open Fable.Import
+  open Iris.Core
 
   (* Reducers are take a state, an action, acts and finally return the new state *)
   type Reducer<'a> = (AppEvent -> 'a -> 'a)
@@ -29,17 +27,16 @@ module Store =
     let mutable depth = 10
     let mutable debug = false
     let mutable head = 1
-    let mutable values = new Array<'a>()
-
-    do values.Push(state) |> ignore
+    let mutable values = [ state ]
 
     (* - - - - - - - - - - Properties - - - - - - - - - - *)
     member __.Debug
       with get () = debug
-       and set b  =
-         debug <- b
-         if not debug then
-           while values.Length > depth do values.Shift() |> ignore
+      and  set b  =
+        debug <- b
+        if not debug then
+          let n = List.length values - depth
+          values <- List.take n values
 
     member __.Depth
       with get () = depth
@@ -49,31 +46,39 @@ module Store =
       with get () = values
 
     member __.Length
-      with get () = values.Length
+      with get () = Array.length
 
     (* - - - - - - - - - - Methods - - - - - - - - - - *)
     member __.Append (value : 'a) : unit =
-      head <- (values.Push(value) - 1)
-      if (not debug) && values.Length > depth
-      then values.Shift() |> ignore
+      head <- 0
+      let newvalues = value :: values
+      if (not debug) && List.length newvalues > depth then
+        values <- List.take depth newvalues
+      else 
+        values <- newvalues
 
-    member __.Undo () : 'a =
+    member __.Undo () : 'a option =
       let head' =
-        if   (head - 1) < 0
+        if (head - 1) > (List.length values) then
+          List.length values
+        else
+          head + 1
+
+      if head <> head' then
+        head <- head'
+
+      List.tryItem head values
+
+    member __.Redo () : 'a option =
+      let head' =
+        if   head - 1 < 0
         then 0
         else head - 1
 
-      head <- head'
-      values.[head']
+      if head <> head' then
+        head <- head'
 
-    member __.Redo () : 'a =
-      let head' =
-        if   (head + 1) > (values.Length - 1)
-        then values.Length - 1
-        else head + 1
-
-      head <- head'
-      values.[head']
+      List.tryItem head values
 
 
   (*   ____  _
@@ -150,15 +155,18 @@ module Store =
     member __.History with get () = history
 
     member __.Redo() = 
-      let log = history.Redo()
-      state <- log.State
-      __.Notify log.Event |> ignore
+      match history.Redo() with
+        | Some log ->
+          state <- log.State
+          __.Notify log.Event |> ignore
+        | _ -> ()
 
     member __.Undo() =
-      let log = history.Undo()
-      state <- log.State
-      __.Notify log.Event |> ignore
+      match history.Undo() with
+        | Some log -> 
+          state <- log.State
+          __.Notify log.Event |> ignore
+        | _ -> ()
 
-      
   and Listener<'a> = (Store<'a> -> AppEvent -> unit)
 
