@@ -1,0 +1,11 @@
+include "IOBox.fbs";
+
+namespace Iris.Types;
+
+table Patch {
+    Id: string (required);
+    Name: string (required);
+    IOBoxes: [IOBox] (required);
+}
+
+root_type Patch;

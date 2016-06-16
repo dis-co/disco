@@ -1,7 +1,7 @@
 namespace Iris.Service.Core
 
+open Iris.Core
 open Iris.Core.Utils
-open Iris.Core.Types
 
 open System
 open System.IO

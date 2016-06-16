@@ -1,6 +1,6 @@
 namespace Iris.Core
 
-open Iris.Core.Types
+open Iris.Types
 
 [<RequireQualifiedAccess>]
 module Uri =

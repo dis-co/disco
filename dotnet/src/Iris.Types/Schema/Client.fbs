@@ -3,3 +3,5 @@ namespace Iris.Types;
 table Client {
      Name: string;
 }
+
+root_type Client;
