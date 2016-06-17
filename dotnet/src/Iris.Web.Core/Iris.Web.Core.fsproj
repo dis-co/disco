@@ -87,18 +87,19 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Iris.Web\Core\Crypto.fs" />
-    <Compile Include="Iris.Web\Core\Html.fs" />
-    <Compile Include="Iris.Web\Core\Plugin.fs" />
-    <Compile Include="Iris.Web\Core\State.fs" />
-    <Compile Include="Iris.Web\Core\Store.fs" />
-    <Compile Include="Iris.Web\Core\Reducer.fs" />
-    <Compile Include="Iris.Web\Core\ViewController.fs" />
-    <Compile Include="Iris.Web\Core\Worker.fs" />
-    <Compile Include="Iris.Web\Core\Client.fs" />
-    <Compile Include="Iris.Web\Core\Keyboard.fs" />
-    <Compile Include="Iris.Web\Views\Index.fs" />
-    <Compile Include="Iris.Web\Views\Patches.fs" />
+    <Compile Include="Iris\Web\Core\Util.fs" />
+    <Compile Include="Iris\Web\Core\Crypto.fs" />
+    <Compile Include="Iris\Web\Core\Html.fs" />
+    <Compile Include="Iris\Web\Core\Plugin.fs" />
+    <Compile Include="Iris\Web\Core\State.fs" />
+    <Compile Include="Iris\Web\Core\Store.fs" />
+    <Compile Include="Iris\Web\Core\Reducer.fs" />
+    <Compile Include="Iris\Web\Core\ViewController.fs" />
+    <Compile Include="Iris\Web\Core\Worker.fs" />
+    <Compile Include="Iris\Web\Core\Client.fs" />
+    <Compile Include="Iris\Web\Core\Keyboard.fs" />
+    <Compile Include="Iris\Web\Views\Index.fs" />
+    <Compile Include="Iris\Web\Views\Patches.fs" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">

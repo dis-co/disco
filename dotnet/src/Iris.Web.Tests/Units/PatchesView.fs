@@ -7,8 +7,6 @@ module PatchesView =
 
   open Fable.Core
   open Fable.Import
-  open Fable.Import.JS
-  open Fable.Import.Browser
 
   open Iris.Core
   open Iris.Web.Core
@@ -69,9 +67,9 @@ module PatchesView =
   let stringPlugin () = failwith "OH HAY JS"
 
   let main () =
-    (*------------------------------------------------------------------------*)
+    (* ------------------------------------------------------------------------ *)
     suite "Test.Units.PatchesView - patch workflow"
-    (*------------------------------------------------------------------------*)
+    (* ------------------------------------------------------------------------ *)
 
     test "should render a patch added" <| fun cb ->
       stringPlugin ()
@@ -80,7 +78,7 @@ module PatchesView =
       let patch : Patch =
         { Id = patchid
         ; Name = "cooles patch ey"
-        ; IOBoxes = Array.empty
+        ; IOBoxes = [||]
         }
 
       let store : Store<State> = new Store<State>(Reducer, State.Empty)
@@ -90,20 +88,18 @@ module PatchesView =
       let ctx = new ClientContext()
       controller.Render store.State ctx 
 
-      JQuery.Of("#"+patchid)
-      |> (fun el -> check (el.Length = 0) "element should be null")
+      check (getById patchid |> Option.isNone) "element should be null"
 
       store.Dispatch <| PatchEvent(Create, patch)
 
       controller.Render store.State ctx
 
-      JQuery.Of("#"+patchid)
-      |> (fun el -> check_cc (el.Attr("id") = patchid) "patch element not found in dom" cb)
+      check_cc (getById patchid |> Option.isSome) "patch element not found in dom" cb
 
       (controller :> IDisposable).Dispose ()
 
 
-    (*------------------------------------------------------------------------*)
+    (* ------------------------------------------------------------------------ *)
     test "should render correct list on patch removal" <| fun cb ->
       stringPlugin ()
       let pid1 = "patch-2"
@@ -112,13 +108,13 @@ module PatchesView =
       let patch1 : Patch =
         { Id = pid1
         ; Name = "patch-1"
-        ; IOBoxes = Array.empty
+        ; IOBoxes = [||]
         }
 
       let patch2 : Patch =
         { Id = pid2
         ; Name = "patch-2"
-        ; IOBoxes = Array.empty
+        ; IOBoxes = [||]
         }
 
       let store : Store<State> =
@@ -129,30 +125,25 @@ module PatchesView =
       let ctx = new ClientContext()
       controller.Render store.State ctx
 
-      JQuery.Of("#"+pid1)
-      |> (fun el -> check (el.Length > 0) "element 1 should not be null")
-
-      JQuery.Of("#"+pid2)
-      |> (fun el -> check (el.Length > 0) "element 2 should not be null")
+      check (getById pid1 |> Option.isSome) "element 1 should not be null"
+      check (getById pid2 |> Option.isSome) "element 2 should not be null"
 
       store.Dispatch <| PatchEvent(Delete, patch1)
 
-      check (not <| hasPatch store.State.Patches patch1) "patch should be gone"
-      check (hasPatch store.State.Patches patch2) "patch should be there"
+      check (not <| Patch.hasPatch store.State.Patches patch1) "patch should be gone"
+      check (Patch.hasPatch store.State.Patches patch2) "patch should be there"
 
       controller.Render store.State ctx
+      
+      check (getById pid1 |> Option.isNone) "element 1 should be null"
 
-      JQuery.Of("#"+pid1)
-      |> (fun el -> check (el.Length = 0) "element 1 should be null")
-
-      JQuery.Of("#"+pid2)
-      |> (fun el -> check_cc (el.Length > 0) "element 2 should not be null" cb)
+      check_cc (getById pid2 |> Option.isSome) "element 2 should not be null" cb
 
       (controller :> IDisposable).Dispose()
 
-    (*--------------------------------------------------------------------------*)
+    (* -------------------------------------------------------------------------- *)
     suite "Test.Units.PatchesView - iobox workflow"
-    (*--------------------------------------------------------------------------*)
+    (* -------------------------------------------------------------------------- *)
 
     test "should render an added iobox" <| fun cb ->
       stringPlugin ()
@@ -161,13 +152,13 @@ module PatchesView =
 
       let iobox = {
         IOBox.StringBox(id1,"url input", "0xb4d1d34") with
-          Slices = [| { Idx = 0; Value = value } |]
+          Slices = [| StringSlice(0,value) |]
         }
 
       let patch : Patch =
         { Id = "0xb4d1d34"
         ; Name = "patch-1"
-        ; IOBoxes = Array.empty
+        ; IOBoxes = [||]
         }
 
       let store : Store<State> =
@@ -178,19 +169,17 @@ module PatchesView =
       let controller = new ViewController<State,ClientContext> (view)
       controller.Render store.State ctx
 
-      JQuery.Of("#"+id1)
-      |> (fun el -> check (el.Length = 0) "element should not be")
+      check (getById id1 |> Option.isSome) "element should not be null"
 
       store.Dispatch <| IOBoxEvent(Create, iobox)
 
       controller.Render store.State ctx
 
-      JQuery.Of("#"+id1)
-      |> (fun el -> check_cc (el.Length > 0) "element should not be null" cb)
+      check_cc (getById id1 |> Option.isSome) "element should not be null" cb
 
       (controller :> IDisposable).Dispose ()
 
-    (*--------------------------------------------------------------------------*)
+    (* -------------------------------------------------------------------------- *)
     test "should render correct iobox list on iobox removal" <| fun cb ->
       stringPlugin ()
       let id1 = "iobox-3"
@@ -199,16 +188,16 @@ module PatchesView =
 
       let iobox1 =
         { IOBox.StringBox(id1,"url input", "0xb4d1d34")
-            with Slices = [| { Idx = 0; Value = value } |] }
+            with Slices = [| StringSlice(0, value) |] }
 
       let iobox2 =
         { IOBox.StringBox(id2,"url input", "0xb4d1d34")
-            with Slices = [| { Idx = 0; Value = value } |] }
+            with Slices = [| StringSlice(0, value) |] }
 
       let patch : Patch =
         { Id = "0xb4d1d34"
         ; Name = "patch-1"
-        ; IOBoxes = Array.empty
+        ; IOBoxes = [||]
         }
 
       let store : Store<State> =
@@ -222,33 +211,26 @@ module PatchesView =
       store.Dispatch <| IOBoxEvent(Create,iobox1)
       controller.Render store.State ctx
 
-      JQuery.Of("#"+id1)
-      |> (fun el -> check (el.Length > 0) "element should not be null")
+      check (getById id1 |> Option.isSome) "element should not be null"
 
       // add the second iobox
       store.Dispatch <| IOBoxEvent(Create,iobox2)
       controller.Render store.State ctx
 
-      JQuery.Of("#"+id1)
-      |> (fun el -> check (el.Length > 0) "element 1 should not be null")
-
-      JQuery.Of("#"+id2)
-      |> (fun el -> check (el.Length > 0) "element 2 should not be null")
+      check (getById id1 |> Option.isSome) "element 1 should not be null"
+      check (getById id2 |> Option.isSome) "element 2 should not be null"
 
       // remove the second iobox
       store.Dispatch <| IOBoxEvent(Delete,iobox2)
       controller.Render store.State ctx
 
-      JQuery.Of("#"+id1)
-      |> (fun el -> check (el.Length > 0) "element 1 should not be null")
-
-      JQuery.Of("#"+id2)
-      |> (fun el -> check_cc (el.Length = 0) "element 2 should be null" cb)
+      check (getById id1 |> Option.isSome) "element 1 should not be null"
+      check_cc (getById id2 |> Option.isSome) "element 2 should not be null" cb
 
       (controller :> IDisposable).Dispose ()
 
 
-    (*--------------------------------------------------------------------------*)
+    (* -------------------------------------------------------------------------- *)
     test "should render updates on iobox to dom" <| fun cb ->
       stringPlugin ()
 
@@ -260,12 +242,12 @@ module PatchesView =
       let patch : Patch =
         { Id = "0xb4d1d34"
         ; Name = "cooles patch ey"
-        ; IOBoxes = Array.empty
+        ; IOBoxes = [||]
         }
 
       let iobox : IOBox =
         { IOBox.StringBox(elid, "url input", "0xb4d1d34")
-            with Slices = [| { Idx = 0; Value = value1 } |] }
+            with Slices = [|  StringSlice(0, value1) |] }
 
       let store : Store<State> =
         new Store<State>(Reducer, { State.Empty with Patches = [| patch |] })
@@ -280,49 +262,55 @@ module PatchesView =
       controller.Render store.State ctx
 
       // test for the presence of the initial state
-      JQuery.Of("#"+elid).Children(".slices")
-      |> (fun slices -> slices.Get(0))
+      getById elid
+      |> Option.get
+      |> childrenByClass "slices"
+      |> nthElement 0
       |> (fun slice ->
-          check (slice.TextContent = value1) "iobox slice value not present in dom (test 1)")
+          check (slice.textContent = value1) "iobox slice value not present in dom (test 1)")
 
       // update the iobox slice value
       let updated1 = {
         iobox with
-          Slices = [| { Idx = 0; Value = value2 }|]
+          Slices = [| StringSlice(0,value2) |]
         }
 
       store.Dispatch <| IOBoxEvent(Update, updated1)
 
-      match findIOBox store.State.Patches elid with
-        | Some(box) -> check ((box.Slices.[0].Value :?> string) = value2) "box in updated state should have right value"
+      match Patch.findIOBox store.State.Patches elid with
+        | Some(box) -> check (box.Slices.[0].StringValue = value2) "box in updated state should have right value"
         | None -> bail "IOBox was not found in store"
 
       controller.Render store.State ctx
 
       // test for the presence of the initial state
-      JQuery.Of("#"+elid).Children(".slices")
-      |> (fun slices -> slices.Get(0))
+      getById elid
+      |> Option.get
+      |> childrenByClass "slices"
+      |> nthElement 0
       |> (fun slice ->
-          check (slice.TextContent = value2) "iobox slice value not present in dom (test 2)")
+          check (slice.textContent = value2) "iobox slice value not present in dom (test 2)")
 
       // update the iobox slice value
       let updated2 = {
         iobox with
-          Slices = [| { Idx = 0; Value = value3 }|]
+          Slices = [| StringSlice(0, value3) |]
         }
 
       store.Dispatch <| IOBoxEvent(Update, updated2)
 
-      match findIOBox store.State.Patches elid with
-        | Some(box) -> check ((box.Slices.[0].Value :?> string) = value3) "box in updated state should have right value"
+      match Patch.findIOBox store.State.Patches elid with
+        | Some(box) -> check (box.Slices.[0].StringValue = value3) "box in updated state should have right value"
         | None -> bail "IOBox was not found in store"
 
       controller.Render store.State ctx
 
       // test for the presence of the initial state
-      JQuery.Of("#"+elid).Children(".slices")
-      |> (fun slices -> slices.Get(0))
+      getById elid
+      |> Option.get
+      |> childrenByClass "slices"
+      |> nthElement 0
       |> (fun slice  ->
-          check_cc (slice.TextContent = value3) "iobox slice value not present in dom (test 3)" cb)
+          check_cc (slice.textContent = value3) "iobox slice value not present in dom (test 3)" cb)
 
       (controller :> IDisposable).Dispose ()

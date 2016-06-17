@@ -46,7 +46,7 @@ module Store =
       with get () = values
 
     member __.Length
-      with get () = Array.length
+      with get () = List.length values
 
     (* - - - - - - - - - - Methods - - - - - - - - - - *)
     member __.Append (value : 'a) : unit =

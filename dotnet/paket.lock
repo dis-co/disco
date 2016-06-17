@@ -9,7 +9,7 @@ NUGET
     FsControl (1.0.13)
     FSharp.Configuration (0.6.1)
     FSharp.Control.AsyncSeq (2.0.8)
-    FSharp.Core (4.0.0.1)
+    FSharp.Core (4.0.0.1) - redirects: force
     FSharpx.Async (1.12)
       FSharp.Control.AsyncSeq
     FSharpx.Collections (1.15.1)
@@ -205,7 +205,7 @@ NUGET
     FsControl (1.0.13)
     FSharp.Compiler.Service (2.0.0.6)
     FSharp.Control.AsyncSeq (2.0.8)
-    FSharp.Core (4.0.0.1)
+    FSharp.Core (4.0.0.1) - redirects: force
     FSharp.Formatting (2.14.4)
       FSharp.Compiler.Service (2.0.0.6)
       FSharpVSPowerTools.Core (>= 2.3 < 2.4)
@@ -234,7 +234,7 @@ NUGET
 GITHUB
   remote: fsharp/FAKE
   specs:
-    modules/Octokit/Octokit.fsx (60acb2f035cb39f2bd40a6c58a4de10d915da248)
+    modules/Octokit/Octokit.fsx (5a9789b05e5713b55ea996baf8feb3561b6b926d)
       Octokit
 GROUP Test
 NUGET
@@ -244,7 +244,7 @@ NUGET
       FSharp.Core (>= 3.1.2.5)
     FsControl (1.0.13)
     FSharp.Control.AsyncSeq (2.0.8)
-    FSharp.Core (4.0.0.1)
+    FSharp.Core (4.0.0.1) - redirects: force
     FSharpPlus (0.0.4)
       FsControl (>= 1.0.9)
     FSharpx.Async (1.12)

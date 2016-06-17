@@ -62,7 +62,7 @@ module Plugins =
             }
           });
       })(window.IrisPlugins);">]
-  let setupPlugins () = X
+  let setupPlugins () = failwith "OHNLY JSSS"
 
   let main () =
     (****************************************************************************)
@@ -91,13 +91,12 @@ module Plugins =
 
       let iobox =
         { IOBox.StringBox(elid,"url input", "0xb4d1d34")
-            with Slices = [| { Idx = 0; Value = "oh hey" } |] }
+            with Slices = [| StringSlice(0,"oh hey") |] }
 
       inst.Render iobox
       |> createElement
-      |> JQuery.Of
       |> (fun elm ->
-          check_cc (elm.Attr("id") = elid) "element should have correct id" cb)
+          check_cc (elm.id = elid) "element should have correct id" cb)
 
     (*--------------------------------------------------------------------------*)
     test "re-rendering a plugin should return updated dom element" <| fun cb ->
@@ -111,37 +110,33 @@ module Plugins =
 
       let iobox =
         { IOBox.StringBox("0xb33f","url input", "0xb4d1d34")
-            with Slices = [| { Idx = 0; Value = value1 } |] }
+            with Slices = [| StringSlice(0,value1) |] }
 
       inst.Render iobox
       |> createElement
-      |> JQuery.Of
-      |> (fun el -> el.Children(".slice"))
+      |> childrenByClass "slice"
       |> (fun els ->
-          check (els.Length = 1) "should have one slice"
-          check (els.Get(0).TextContent = value1) "should have the correct inner value")
+          check (els.length = 1.0) "should have one slice"
+          check (els.[0].textContent = value1) "should have the correct inner value")
 
       let update =
-        { iobox with Slices = [| { Idx = 0; Value = value2 } |] }
+        { iobox with Slices = [| StringSlice(0, value2) |] }
 
       inst.Render update
       |> createElement
-      |> JQuery.Of
-      |> (fun el -> el.Children(".slice"))
+      |> childrenByClass "slice"
       |> (fun els ->
-          check (els.Length = 1) "should have one slice"
-          check (els.Get(0).TextContent = value2) "should have the correct inner value")
+          check (els.length = 1.0) "should have one slice"
+          check (els.[0].textContent = value2) "should have the correct inner value")
 
       let final =
-        { iobox with Slices = [| { Idx = 0; Value = value1 }
-                              ;  { Idx = 0; Value = value2 }
-                              |] }
+        { iobox with Slices = [| StringSlice(0,value1)
+                              ;  StringSlice(0,value2) |] }
 
       inst.Render final
       |> createElement
-      |> JQuery.Of
-      |> (fun elm -> elm.Children(".slice"))
-      |> (fun els -> check_cc (els.Length = 2) "should have two slices" cb)
+      |> childrenByClass "slice"
+      |> (fun els -> check_cc (els.length = 2.0) "should have two slices" cb)
 
 
     (****************************************************************************)
@@ -154,7 +149,7 @@ module Plugins =
       let instances = new Plugins ()
       let iobox =
         { IOBox.StringBox("0xb33f","url input", "0xb4d1d34")
-            with Slices = [| { Idx = 0; Value = "hello" } |] }
+            with Slices = [| StringSlice(0,"hello")  |] }
 
       instances.Add iobox (fun _ -> ())
 
@@ -172,7 +167,7 @@ module Plugins =
       let instances = new Plugins ()
       let iobox =
         { IOBox.StringBox("0xb33f","url input", "0xb4d1d34")
-            with Slices = [| { Idx = 0; Value = "hello" } |] }
+            with Slices = [| StringSlice(0,"hello") |] }
 
       instances.Add iobox (fun _ -> ())
       instances.Ids ()
@@ -199,18 +194,17 @@ module Plugins =
 
       let iobox =
         { IOBox.StringBox("0xb33f","url input", "0xb4d1d34")
-            with Slices = [| { Idx = 0; Value = value1 } |] }
+            with Slices = [| StringSlice(0,value1) |] }
 
       let listener (box' : IOBox) : unit =
-        (box'.Slices.[0].Value :?> string) ==>> value2 <| cb
+        box'.Slices.[0].StringValue ==>> value2 <| cb
 
       let inst = plugin.create(listener)
 
       inst.Render iobox
       |> createElement
-      |> JQuery.Of
-      |> (fun el -> el.Children(".slice"))
+      |> childrenByClass "slice"
       |> (fun els ->
-          els.Length |==| 1
-          els.Get(0).TextContent |==| value1
-          els.First().Val(value2).Trigger("change") |> ignore)
+          els.length |==| 1.0
+          els.[0].textContent |==| value1)
+          // els.First().Val(value2).Trigger("change") |> ignore)

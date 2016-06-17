@@ -10,9 +10,6 @@ module Store =
   open Iris.Web.Core
   open Iris.Web.Tests
 
-  [<Emit "Object.is($o1, $o2)">]
-  let identical (o1 : obj) (o2 : obj) = X
-
   let withStore (wrap : Patch -> Store<State> -> unit) =
     let patch : Patch =
       { Id = "0xb4d1d34"
@@ -86,7 +83,7 @@ module Store =
 
         let iobox =
           { IOBox.StringBox("0xb33f","url input", patch.Id)
-              with Slices = [| { Idx = 0; Value = "Hey" } |] }
+              with Slices = [| StringSlice(0,"Hey") |] }
 
         store.Dispatch <| IOBoxEvent(Create, iobox)
 
@@ -98,7 +95,7 @@ module Store =
       test "should not add an iobox to the store if patch does not exists" <| fun cb ->
         let iobox =
           { IOBox.StringBox("0xb33f","url input", patch.Id)
-              with Slices = [| { Idx = 0; Value = "Hey" } |] }
+              with Slices = [| StringSlice(0, "Hey")  |] }
 
         store.Dispatch <| IOBoxEvent(Create, iobox)
         ((Array.length store.State.Patches) ==>> 0) cb
@@ -111,19 +108,19 @@ module Store =
 
         let iobox =
           { IOBox.StringBox("0xb33f", name1, patch.Id)
-              with Slices = [| { Idx = 0; Value = "swell" } |] }
+              with Slices = [| StringSlice(0, "swell") |] }
 
         store.Dispatch <| PatchEvent(Create, patch)
         store.Dispatch <| IOBoxEvent(Create, iobox)
 
-        match findIOBox store.State.Patches iobox.Id with
+        match Patch.findIOBox store.State.Patches iobox.Id with
           | Some(i) -> i.Name |==| name1
           | None -> bail "iobox is mysteriously missing"
 
         let updated = { iobox with Name = name2 }
         store.Dispatch <| IOBoxEvent(Update, updated)
 
-        match findIOBox store.State.Patches iobox.Id with
+        match Patch.findIOBox store.State.Patches iobox.Id with
           | Some(i) -> (i.Name ==>> name2) cb
           | None -> bail "iobox is mysteriously missing"
 
@@ -132,18 +129,18 @@ module Store =
       test "should remove an iobox from the store if it exists" <| fun cb ->
         let iobox =
           { IOBox.StringBox("0xb33f", "hi", "0xb4d1d34")
-              with Slices = [| { Idx = 0; Value = "swell" } |] }
+              with Slices = [| StringSlice(0, "swell") |] }
 
         store.Dispatch <| PatchEvent(Create, patch)
         store.Dispatch <| IOBoxEvent(Create, iobox)
 
-        match findIOBox store.State.Patches iobox.Id with
+        match Patch.findIOBox store.State.Patches iobox.Id with
           | Some(_) -> ()
           | None    -> bail "iobox is mysteriously missing"
 
         store.Dispatch <| IOBoxEvent(Delete, iobox)
 
-        match findIOBox store.State.Patches iobox.Id with
+        match Patch.findIOBox store.State.Patches iobox.Id with
           | Some(_) -> bail "iobox should be missing by now but isn't"
           | None    -> success cb
 

@@ -5,6 +5,7 @@ module VirtualDom =
 
   open Iris.Web.Tests
   open Iris.Web.Core.Html
+  open Iris.Web.Core.Util
   open Fable.Core
   open Fable.Import
 
@@ -21,9 +22,8 @@ module VirtualDom =
                   [| new VTree("p", props,
                                [| new VTree("p content") |]) |])
         |> createElement
-        |> JQuery.Of 
 
-      check_cc (tree.Children("p").Length = 1) "result should have a p" cb
+      check_cc (childrenByTag "p" tree |> fun els -> els.length = 1.0) "result should have a p" cb
 
     (*------------------------------------------------------------------------*)
     test "should render class attribute" <| fun cb ->
@@ -35,9 +35,8 @@ module VirtualDom =
                   [| new VTree("p", emptyProps,
                                [| new VTree("p content") |]) |])
         |> createElement
-        |> JQuery.Of 
 
-      check_cc (tree.HasClass("container")) "result should have class container" cb
+      check_cc (hasClass "container" tree) "result should have class container" cb
 
     (*------------------------------------------------------------------------*)
     test "should render id attribute" <| fun cb -> 
@@ -49,9 +48,8 @@ module VirtualDom =
                   [| new VTree("p", emptyProps,
                                [| new VTree("p content") |]) |])
         |> createElement
-        |> JQuery.Of 
 
-      check_cc (tree.Attr("id") = "main") "result should have id main" cb
+      check_cc (tree.id = "main") "result should have id main" cb
 
     (*------------------------------------------------------------------------*)
     test "should render style attribute" <| fun cb ->
@@ -65,9 +63,8 @@ module VirtualDom =
                   [| new VTree("p", emptyProps,
                                [| new VTree("p content") |]) |])
         |> createElement
-        |> JQuery.Of 
 
-      check_cc (tree.Css("margin") = "40px") "element should have style correctly" cb
+      check_cc (getStyle "margin" tree = Some "40px") "element should have style correctly" cb
 
     (*------------------------------------------------------------------------*)
     test "should patch updates in dom tree correctly" <| fun cb ->
@@ -81,7 +78,10 @@ module VirtualDom =
                   [| new VTree("p", emptyProps, Array.empty) |])
       let root = createElement tree
 
-      JQuery.Of("body").Append(root) |> ignore
+      getByTag "body"
+      |> nthElement 0
+      |> appendChild root
+      |> ignore
 
       let newtree =
         new VTree("div", main,
@@ -91,7 +91,7 @@ module VirtualDom =
       let p1 = diff tree newtree
       let newroot = patch root p1
 
-      check (JQuery.Of(".main").Children("p").Length = 2) "should have 2 p's now"
+      check (getByClass "main" |> nthElement 0 |> childrenByTag "p" |> fun els -> els.length = 2.0) "should have 2 p's now"
 
       let anothertree =
         new VTree("div", main,
@@ -102,7 +102,7 @@ module VirtualDom =
       let p2 = diff newtree anothertree
       let lastroot = patch newroot p2
 
-      check_cc (JQuery.Of(".main").Children("p").Length = 3) "should have 2 p's now" cb
+      check_cc (getByClass "main"|> nthElement 0 |> childrenByTag "p" |> fun els -> els.length = 3.0) "should have 2 p's now" cb
       
     (*------------------------------------------------------------------------*)
     test "should add new element to list on diff/patch" <| fun cb ->
@@ -112,16 +112,19 @@ module VirtualDom =
       let tree = renderHtml comb
       let root = createElement tree
 
-      JQuery.Of("body").Append(root) |> ignore
+      getByTag "body"
+      |> nthElement 0
+      |> appendChild root
+      |> ignore
 
-      check (JQuery.Of(root).Children().Length = 1) "ul item count does not match (expected 1)"
+      check (root.children.length = 1.0) "ul item count does not match (expected 1)"
 
       let newtree = renderHtml <| (comb <|> litem)
       let newroot = patch root <| diff tree newtree
 
-      check_cc (JQuery.Of(newroot).Children().Length = 2) "ul item count does not match (expected 2)" cb
+      check_cc (newroot.children.length = 2.0) "ul item count does not match (expected 2)" cb
 
-      JQuery.Of(newroot).Remove() |> ignore
+      newroot.remove() |> ignore
 
     (*------------------------------------------------------------------------*)
     test "patching should update only relevant bits of the dom" <| fun cb ->
@@ -137,7 +140,10 @@ module VirtualDom =
       let mutable tree = list firstContent |> renderHtml
       let mutable root = createElement tree
 
-      JQuery.Of("body").Append(root) |> ignore
+      getByTag "body"
+      |> nthElement 0
+      |> appendChild root
+      |> ignore
 
       let newtree = list "harrrr i got cha" |> renderHtml
       let newroot = patch root <| diff tree newtree
@@ -145,17 +151,17 @@ module VirtualDom =
       tree <- newtree
       root <- newroot
 
-      let fst = JQuery.Of("#first")
-      let snd = JQuery.Of("#second")
+      let fst = getById "first" |> Option.get
+      let snd = getById "second" |> Option.get
 
-      check (fst.Html() <> firstContent) "the content of the first element should different but isn't"
-      check (snd.Html() = secondContent) "the content of the second element should be the same but isn't"
+      check (fst.innerHTML <> firstContent) "the content of the first element should different but isn't"
+      check (snd.innerHTML = secondContent) "the content of the second element should be the same but isn't"
 
       let list' = list firstContent <|> (li <|> text "hmm")
       root <- patch root <| diff tree (renderHtml list')
 
-      check (fst.Html() = firstContent) "the content of the first element should be the same but isn't"
-      check (JQuery.Of(root).Children().Length = 3) "the list should have 3 elements now"
-      check_cc (snd.Html() = secondContent) "the content of the second element should be the same but isn't" cb
+      check (fst.innerHTML = firstContent) "the content of the first element should be the same but isn't"
+      check (root.children.length = 3.0) "the list should have 3 elements now"
+      check_cc (snd.innerHTML = secondContent) "the content of the second element should be the same but isn't" cb
 
-      JQuery.Of(root).Remove() |> ignore
+      root.remove()

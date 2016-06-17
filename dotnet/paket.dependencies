@@ -3,7 +3,7 @@ source https://nuget.org/api/v2
 
 group Main
   source https://nuget.org/api/v2
-  nuget FSharp.Core
+  nuget FSharp.Core redirects:force
   nuget Fuchu
   nuget FsCheck
   nuget XUnit
@@ -28,7 +28,7 @@ group Build
   nuget SourceLink.Fake
   nuget FAKE
   nuget FSharp.Formatting
-  nuget FSharp.Core
+  nuget FSharp.Core redirects:force
   nuget FsPickler
   nuget FSharpx.Extras
   nuget FSharpPlus
@@ -42,7 +42,7 @@ group Build
 group Test
   source https://nuget.org/api/v2
   
-  nuget FSharp.Core
+  nuget FSharp.Core redirects:force
   nuget Fuchu
   nuget Fuchu.FsCheck
   nuget XUnit

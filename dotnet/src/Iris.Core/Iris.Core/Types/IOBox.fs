@@ -38,7 +38,43 @@ type Slice =
           | DoubleSlice(idx,_) -> idx
           | BoolSlice(idx,_)   -> idx
 
+    member self.StringValue
+      with get () =
+        match self with
+          | StringSlice(_,value) -> value
+          | _                    -> failwith "no a string slice"
+
+    member self.IntValue
+      with get () =
+        match self with
+          | IntSlice(_,value) -> value
+          | _                 -> failwith "no an int slice"
+
+    member self.FloatValue
+      with get () =
+        match self with
+          | FloatSlice(_,value) -> value
+          | _                   -> failwith "no a float slice"
+
+    member self.DoubleValue
+      with get () =
+        match self with
+          | DoubleSlice(_,value) -> value
+          | _                    -> failwith "no a double slice"
+
+    member self.BoolValue
+      with get () =
+        match self with
+          | BoolSlice(_,value) -> value
+          | _                  -> failwith "no a bool slice"
+
     static member index (slice: Slice) = slice.Index
+
+    static member stringValue (slice: Slice) = slice.StringValue
+    static member intValue    (slice: Slice) = slice.IntValue
+    static member floatValue  (slice: Slice) = slice.FloatValue
+    static member doubleValue (slice: Slice) = slice.DoubleValue
+    static member boolValue   (slice: Slice) = slice.BoolValue
 
 [<RequireQualifiedAccess>]
 type PinType =

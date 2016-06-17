@@ -75,22 +75,19 @@ module ViewController =
 
       ctrl.Render store.State ctx
 
-      JQuery.Of(".patch")
-      |> (fun els -> check (els.Length = 1) "should be one rendered patch template in dom")
+      check (getByClass "patch" |> fun els -> els.length = 1.0) "should be one rendered patch template in dom"
 
       store.Dispatch <| PatchEvent(Create, patch2)
 
       ctrl.Render store.State ctx
 
-      JQuery.Of(".patch")
-      |> (fun els -> check (els.Length = 2) "should be two rendered patch templates in dom")
+      check (getByClass "patch" |> fun els -> els.length = 2.0) "should be two rendered patch templates in dom"
 
       store.Dispatch <| PatchEvent(Create, patch3)
 
       ctrl.Render store.State ctx
 
-      JQuery.Of(".patch")
-      |> (fun els -> check_cc (els.Length = 3) "should be three rendered patch templates in dom" cb)
+      check_cc (getByClass "patch"|> fun els -> els.length = 3.0) "should be three rendered patch templates in dom" cb
 
       (ctrl :> IDisposable).Dispose ()
 
@@ -112,12 +109,8 @@ module ViewController =
 
       ctrl.Render store.State ctx
 
-      JQuery.Of(".patch")
-      |> (fun els -> check (els.Length = 1) "should be one patch in dom")
+      check (getByClass "patch" |> fun els -> els.length = 1.0) "should be one patch in dom"
 
       (ctrl :> IDisposable).Dispose ()
 
-      JQuery.Of(".patch")
-      |> (fun els -> check_cc (els.Length = 0) "should be no patch in dom" cb)
-
-      
+      check_cc (getByClass "patch" |> fun els -> els.length = 0.0) "should be no patch in dom" cb
