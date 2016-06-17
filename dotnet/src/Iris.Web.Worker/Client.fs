@@ -20,10 +20,10 @@ module Client =
     ctx.Add(ev.ports.[0])
 
   [<Emit "void(importScripts ? importScripts($script) : null)">]
-  let importScript (script : string) : unit = failwith "oh no jS"
+  let importScript (_: string) : unit = failwith "oh no jS"
 
   [<Emit "void (onconnect = $handler)">]
-  let onConnect (handler: WorkerEvent -> unit) = failwith "hohoho"
+  let onConnect (_: WorkerEvent -> unit) = failwith "hohoho"
 
   let Main : unit =
     importScript "dependencies/asmcrypto/asmcrypto.js"
