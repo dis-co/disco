@@ -1,12 +1,10 @@
 namespace Test.Units
 
-open WebSharper
-open WebSharper.Mocha
-open WebSharper.JavaScript
-
-[<JavaScript>]
 [<RequireQualifiedAccess>]
 module Storage = 
+
+  open Iris.Web.Tests
+
   let main () =
     (*--------------------------------------------------------------------------*)
     suite "Test.Units.Storage"

@@ -1,9 +1,8 @@
-namespace WebSharper
-
-#nowarn "1182"
+namespace Iris.Web.Tests
 
 open System
 
+[<AutoOpen>]
 module Mocha =
 
   open Fable.Core

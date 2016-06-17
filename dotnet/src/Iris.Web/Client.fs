@@ -1,13 +1,8 @@
 ﻿namespace Iris.Web
 
-open WebSharper
-open WebSharper.JQuery
-open WebSharper.JavaScript
-
-[<JavaScript>]
 module Client =
 
-  open Iris.Core.Types
+  open Iris.Core
   open Iris.Web.Core
   open Iris.Web.Views
     

@@ -1,18 +1,17 @@
 namespace Test.Units
 
 open System
-open WebSharper
-open WebSharper.Mocha
-open WebSharper.JavaScript
-open WebSharper.JQuery
 
-[<JavaScript>]
 [<RequireQualifiedAccess>]
 module ViewController =
 
+  open Fable.Core
+  open Fable.Import
+
+  open Iris.Web.Tests
   open Iris.Web.Tests.Util
   open Iris.Web.Core
-  open Iris.Core.Types
+  open Iris.Core
 
   (* ____       _       _  __     ___
     |  _ \ __ _| |_ ___| |_\ \   / (_) _____      __

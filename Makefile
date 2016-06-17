@@ -31,7 +31,7 @@ debug.web.core: prepare.types
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Web.Core/Iris.Web.Core.fsproj
 
 debug.web.tests: prepare.types
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Irisjjeb.Tests/Iris.Web.Tests.fsproj
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Web.Tests/Iris.Web.Tests.fsproj
 
 debug.web.worker: prepare.types
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Web.Worker/Iris.Web.Worker.fsproj

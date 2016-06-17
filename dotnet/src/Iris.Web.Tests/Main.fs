@@ -1,15 +1,13 @@
 namespace Iris.Web.Tests
 
-open WebSharper
-open WebSharper.JavaScript
-open WebSharper.JQuery
-
 open Microsoft.FSharp.Quotations
 open System.IO
 open System.Reflection
 open System.Text.RegularExpressions
 
-[<JavaScript>]
+open Fable.Core
+open Fable.Import
+
 module Client =
   open Test.Units
 

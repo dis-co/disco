@@ -1,14 +1,12 @@
 namespace Test.Units
 
-open WebSharper
-open WebSharper.JavaScript
-open WebSharper.JQuery
-open WebSharper.Mocha
-open Iris.Web.Core.Html
-
-[<JavaScript>]
 [<RequireQualifiedAccess>]
 module VirtualDom =
+
+  open Iris.Web.Tests
+  open Iris.Web.Core.Html
+  open Fable.Core
+  open Fable.Import
 
   let main () =
 

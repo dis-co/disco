@@ -1,18 +1,16 @@
 namespace Test.Units
 
-open WebSharper
-open WebSharper.Mocha
-open WebSharper.JavaScript
-open WebSharper.JQuery
-
-[<JavaScript>]
 [<RequireQualifiedAccess>]
 module Store =
 
-  open Iris.Core.Types
-  open Iris.Web.Core
+  open Fable.Core
+  open Fable.Import
 
-  [<Direct "Object.is($o1, $o2)">]
+  open Iris.Core
+  open Iris.Web.Core
+  open Iris.Web.Tests
+
+  [<Emit "Object.is($o1, $o2)">]
   let identical (o1 : obj) (o2 : obj) = X
 
   let withStore (wrap : Patch -> Store<State> -> unit) =

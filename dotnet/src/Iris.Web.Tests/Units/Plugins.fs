@@ -1,21 +1,19 @@
 namespace Test.Units
 
-open WebSharper
-open WebSharper.JavaScript
-open WebSharper.JQuery
-open WebSharper.Mocha
-
-[<JavaScript>]
 [<RequireQualifiedAccess>]
 module Plugins =
 
   open Iris.Web.Tests.Util
 
-  open Iris.Core.Types
+  open Fable.Core
+  open Fable.Import
+
+  open Iris.Core
   open Iris.Web.Core
   open Iris.Web.Views
+  open Iris.Web.Tests
 
-  [<Direct @"
+  [<Emit @"
     window.IrisPlugins = [];
       (function(plugins) {
           var h = virtualDom.h;

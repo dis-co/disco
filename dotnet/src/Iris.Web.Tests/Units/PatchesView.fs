@@ -1,22 +1,22 @@
 namespace Test.Units
 
 open System
-open WebSharper
-open WebSharper.JavaScript
-open WebSharper.JQuery
-open WebSharper.Mocha
 
-[<JavaScript>]
 [<RequireQualifiedAccess>]
 module PatchesView =
 
-  open Iris.Core.Types
-  open Iris.Web.Core
-  open Iris.Web.Tests.Util
+  open Fable.Core
+  open Fable.Import
+  open Fable.Import.JS
+  open Fable.Import.Browser
 
+  open Iris.Core
+  open Iris.Web.Core
+  open Iris.Web.Tests
+  open Iris.Web.Tests.Util
   open Iris.Web.Views
 
-  [<Direct
+  [<Emit
     @"
     window.IrisPlugins = [];
     (function(plugins) {
@@ -66,9 +66,7 @@ module PatchesView =
     })(window.IrisPlugins);
     "
   >]
-  let stringPlugin () = X<unit>
-
-  let document = JS.Document
+  let stringPlugin () = failwith "OH HAY JS"
 
   let main () =
     (*------------------------------------------------------------------------*)
