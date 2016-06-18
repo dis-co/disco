@@ -39,10 +39,10 @@ module Html =
 
   type VTree =
     [<Emit "new virtualDom.VNode($tag,$props,$children)">]
-    new (tag : string, props : VProps, children : VTree array) = {}
+    new (_: string,_: VProps,_: VTree array) = {}
 
     [<Emit "new virtualDom.VText($tag)">]
-    new (tag : string) = {}
+    new (_: string) = {}
 
   type VPatch = class end
 
@@ -124,13 +124,13 @@ module Html =
   *)
 
   [<Emit "virtualDom.create($tree)">]
-  let createElement (tree : VTree) : HTMLElement = failwith "JS Only"
+  let createElement (_: VTree) : HTMLElement = failwith "JS Only"
 
   [<Emit "virtualDom.diff($oldtree,$newtree)">]
-  let diff (oldtree : VTree) (newtree : VTree) : VPatch = failwith "JS Only"
+  let diff (_: VTree) (_: VTree) : VPatch = failwith "JS Only"
 
   [<Emit "virtualDom.patch($root, $patch)">]
-  let patch (root : HTMLElement) (patch : VPatch) : HTMLElement = failwith "JS Only"
+  let patch (_: HTMLElement) (_: VPatch) : HTMLElement = failwith "JS Only"
 
   let mkVNode (tag : string) (prop : VProps) (children : VTree array) : VTree =
     new VTree(tag, prop, children)
@@ -140,7 +140,7 @@ module Html =
 
   // `this` makes me feel uneasy
   [<Emit "$cb.apply({},arguments)">]
-  let withArgs (cb : 'a -> unit) = failwith "JS Only"
+  let withArgs (_: 'a -> unit) = failwith "JS Only"
 
   (*
     ____                _     _             _
@@ -157,7 +157,7 @@ module Html =
 
   let attrToProp (p : VProps) (a : Attribute) : VProps =
     match a with
-      | Single(name) -> p
+      | Single _ -> p
       | Pair("id", StrVal(value))     -> p.id        <- value; p
       | Pair("class", StrVal(value))  -> p.className <- value; p
       | Pair("onclick", EvVal(value)) -> p.onclick   <- value; p

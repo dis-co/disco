@@ -36,9 +36,9 @@ module Reducer =
           match action with
               | Create ->
                 let input = JSON.stringify(Date.now() * Math.random())
-                let cue = { Id = sha1sum input
-                          ; Name = "Cue-" + input
-                          ; IOBoxes = [||] }
+                let cue : Cue  = { Id = sha1sum input
+                                 ; Name = "Cue-" + input
+                                 ; IOBoxes = [||] }
                 in state.Add cue
               | Update ->
                 if Option.isSome cueish

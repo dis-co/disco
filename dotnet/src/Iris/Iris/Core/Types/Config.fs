@@ -185,21 +185,6 @@ type Config () =
   // |_| |_|\___|_| .__/ \___|_|  |___/
   //              |_|
 
-  let getOptStr (t : string) : string option =
-    if t.Length > 0
-    then Some(t)
-    else None
-
-  let getOptUInt (t : string) : uint32 option =
-    if t.Length > 0
-    then Some(UInt32.Parse(t))
-    else None
-
-  let getOptInt (t : int) : uint32 option =
-    if t >= 0
-    then Some(uint32 t)
-    else None
-
   static member ParseTuple (s : string) : (int * int) =
     let nonEmpty (s : string) : bool = s.Length > 0
     let parsed =
@@ -267,7 +252,7 @@ type Config () =
 
   /// Parse Vsync configuration section
   static member ParseRaft (cfg : ConfigFile) : RaftConfig =
-    let eng = cfg.Project.Engine
+    // let eng = cfg.Project.Engine
 
     let ifaces : string list option ref = ref None
     let hosts  : string list option ref = ref None

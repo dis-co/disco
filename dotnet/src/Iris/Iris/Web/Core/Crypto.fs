@@ -7,7 +7,7 @@ open Fable.Import
 module Crypto =
 
   [<Emit "asmCrypto.SHA1.hex($input)">]
-  let sha1sum (input : string) : string = failwith "JS Only"
+  let sha1sum (_: string) : string = failwith "JS Only"
 
   [<Emit "asmCrypto.SHA256.hex($input)">]
-  let sha256sum (input : string) : string = failwith "JS Only"
+  let sha256sum (_: string) : string = failwith "JS Only"

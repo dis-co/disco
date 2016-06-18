@@ -57,7 +57,6 @@ type ProjectData() =
 //               |__/
 
 type Project(repo, data) =
-  let tag = "Project"
 
   let mutable repo : Repository option = repo
   let mutable data : ProjectData = data

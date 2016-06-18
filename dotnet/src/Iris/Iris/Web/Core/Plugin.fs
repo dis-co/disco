@@ -21,7 +21,7 @@ module Plugin =
                      
   type Plugin () = class
     [<Emit "render">]
-    member this.Render (iobox : IOBox) : VTree = failwith "JS Only"
+    member this.Render (_: IOBox) : VTree = failwith "JS Only"
 
     [<Emit "dispose">]
     member this.Dispose() : unit = failwith "JS Only"
@@ -37,10 +37,10 @@ module Plugin =
   let listPlugins () : PluginSpec array = failwith "JS Only"
 
   [<Emit "return window.IrisPlugins.filter(function (plugin) { return plugin.type === $kind; })" >]
-  let findPlugins (kind : PinType) : PluginSpec array = failwith "JS Only"
+  let findPlugins (_: PinType) : PluginSpec array = failwith "JS Only"
 
   [<Emit "return ($o === null) || ($o === undefined)">]
-  let isNull (o : obj) : bool = failwith "JS Only"
+  let isNull (_: obj) : bool = failwith "JS Only"
 
   (*
      ____  _             _
@@ -54,16 +54,16 @@ module Plugin =
   type Plugins () =
     (* ------------------------ internal -------------------------- *)
     [<Emit " delete $ctx[$id] ">]
-    let rmImpl (ctx : obj) (id : string) : unit = failwith "JS Only"
+    let rmImpl (_: obj) (_: string) : unit = failwith "JS Only"
 
     [<Emit " $0[$id] = $inst ">]
-    let addImpl (id : string) (inst : Plugin) : unit = failwith "JS Only"
+    let addImpl (_: string) (_: Plugin) : unit = failwith "JS Only"
 
     [<Emit " $0[$id] != null ">]
-    let hasImpl (id : string) : bool = failwith "JS Only"
+    let hasImpl (_: string) : bool = failwith "JS Only"
 
     [<Emit " $0[$id] ">]
-    let getImpl (id : string) : Plugin = failwith "JS Only"
+    let getImpl (_: string) : Plugin = failwith "JS Only"
 
     [<Emit " Object.keys($0) ">]
     let idsImpl () : string array = failwith "JS Only"

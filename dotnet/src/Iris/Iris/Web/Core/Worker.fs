@@ -27,7 +27,7 @@ module Worker =
       val mutable port : MessagePort
 
       [<Emit "new SharedWorker($url)">]
-      new(url : string) = {}
+      new(_: string) = {}
 
 
   type WorkerEvent = { ports : MessagePort array }
@@ -100,16 +100,16 @@ module Worker =
     let mutable socket = None
 
     [<Emit "$ports[$id] = $port">]
-    let addImpl (ports : Ports) id port : unit = failwith "JS Only"
+    let addImpl (_: Ports) _ _ : unit = failwith "JS Only"
 
     [<Emit "delete $ports[$id]">]
-    let rmImpl (ports : Ports) id : unit = failwith "JS Only"
+    let rmImpl (_: Ports) _ : unit = failwith "JS Only"
 
     [<Emit "Object.keys($0)">]
-    let allKeysImpl (ports : Ports) : string array = failwith "JS Only"
+    let allKeysImpl (_: Ports) : string array = failwith "JS Only"
 
     [<Emit "$ports[$key]">]
-    let getImpl (ports : Ports) (key : string) : MessagePort = failwith "JS Only"
+    let getImpl (_: Ports) (_: string) : MessagePort = failwith "JS Only"
 
     [<Emit "void(self.close())">]
     let close () = failwith "JS Only"

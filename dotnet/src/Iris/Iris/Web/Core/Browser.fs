@@ -7,13 +7,13 @@ namespace Iris.Web.Core
 //  \___/ \__|_|_|_|\__|_|\___||___/
 
 [<AutoOpen>]
-module Util =
+module Browser =
 
   open Fable.Core
   open Fable.Import
  
   [<Emit("$0 === null || $0 === undefined")>]
-  let isNullValue (el: 't) : bool = failwith "JS ONLY"
+  let isNullValue (_: 't) : bool = failwith "JS ONLY"
 
   //  ____   ___  __  __
   // |  _ \ / _ \|  \/  |
@@ -68,6 +68,6 @@ module Util =
     target.appendChild el
 
   [<Emit "Object.is($o1, $o2)">]
-  let identical (o1 : obj) (o2 : obj) = failwith "OH NO ITS ITS ITS JS"
+  let identical (_: obj) (_: obj) = failwith "OH NO ITS ITS ITS JS"
     
   let asHtml (el: 'a when 'a :> Browser.HTMLElement) = el :> Browser.HTMLElement

@@ -60,7 +60,7 @@
     <Compile Include="Iris\Core\Types\Project.fs" />
     <Compile Include="Iris\Core\Uri.fs" />
 
-    <Compile Include="Iris\Web\Core\Util.fs" />
+    <Compile Include="Iris\Web\Core\Browser.fs" />
     <Compile Include="Iris\Web\Core\Crypto.fs" />
     <Compile Include="Iris\Web\Core\Html.fs" />
     <Compile Include="Iris\Web\Core\Plugin.fs" />
