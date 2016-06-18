@@ -73,7 +73,7 @@
     <Compile Include="Iris\Web\Core\Keyboard.fs" />
     <Compile Include="Iris\Web\Views\Index.fs" />
     <Compile Include="Iris\Web\Views\Patches.fs" />
-    <Compile Include="Iris\Web\Main.fs" />
+    <Compile Include="Iris\Web\WebMain.fs" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">

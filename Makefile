@@ -13,43 +13,36 @@ pallet:
 
 pallet.tests:
 	$(DEVBUILD) $(VVVV_BASEDIR)/src/Pallet.Tests/Pallet.Tests.fsproj
-	@sh -c 'fsi $(VVVV_BASEDIR)/src//Pallet.Tests/run.fsx'
+	@sh -c 'fsi $(VVVV_BASEDIR)/src/Pallet.Tests/run.fsx'
 
-debug.tests: prepare.types
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Tests/Iris.Tests.fsproj
+debug.tests: prepare.serialization
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Tests/Iris.Tests.fsproj
 
-debug.nodes: prepare.types
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Nodes/Iris.Nodes.fsproj
+debug.nodes: prepare.serialization
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Nodes/Iris.Nodes.fsproj
 
-debug.core: prepare.types
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Core/Iris.Core.fsproj
+debug.web: prepare.serialization
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Web/Iris.Web.fsproj
 
-debug.web: prepare.types
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Web/Iris.Web.fsproj
+debug.web.tests: prepare.serialization
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Web.Tests/Iris.Web.Tests.fsproj
 
-debug.web.core: prepare.types
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Web.Core/Iris.Web.Core.fsproj
+debug.web.worker: prepare.serialization
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Web.Worker/Iris.Web.Worker.fsproj
 
-debug.web.tests: prepare.types
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Web.Tests/Iris.Web.Tests.fsproj
+debug.service: prepare.serialization
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Service/Iris.Service.fsproj
 
-debug.web.worker: prepare.types
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Web.Worker/Iris.Web.Worker.fsproj
-
-debug.service: prepare.types
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris.Service/Iris.Service.fsproj
-
-debug.all: prepare.types
+debug.all: prepare.serialization
 	${DEVBUILD} ${VVVV_BASEDIR}/Iris.sln
 
 clean:
-	@make -f ${VVVV_BASEDIR}/src/Iris.Types/Makefile clean
+	@make -f ${VVVV_BASEDIR}/src/Iris/Serialization/Serialization.mk clean
 	@rm -f Iris-*.zip
 	@rm -rf $(VVVV_BASEDIR)/build/*
 	@rm -rf tmp/*
 	@find ${VVVV_BASEDIR} -type d -name bin -prune -exec rm -rf '{}' \;
 	@find ${VVVV_BASEDIR} -type d -name obj -prune -exec rm -rf '{}' \;
-
 
 release.all: release.prepare clean release.build release.copy
 
@@ -107,5 +100,5 @@ paket.install:
 fszmq.debug:
 	$(DEVBUILD) $(VVVV_BASEDIR)/src/fszmq/fszmq.fsproj
 
-prepare.types:
-	@make -f ${VVVV_BASEDIR}/src/Iris.Types/Makefile all
+prepare.serialization:
+	@make -f ${VVVV_BASEDIR}/src/Iris/Serialization.mk all
