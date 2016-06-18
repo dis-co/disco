@@ -1,0 +1,17 @@
+ {
+   "module": "commonjs",
+   "sourceMaps": true,
+   "projFile": "../../../Web.Worker.fsproj",
+   "outDir": "../../../bin/Debug",
+   "scripts": {
+       "prebuild": "npm install",
+       "postbuild": "webpack"
+   },
+   "targets": {
+       "watch": {
+             "scripts": {
+                     "postbuild": "webpack --watch"
+                   }
+           }
+     }
+ }
