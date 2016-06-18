@@ -1,0 +1,7 @@
+namespace Iris.Serialization;
+
+table Client {
+     Name: string;
+}
+
+root_type Client;

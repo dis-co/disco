@@ -1,0 +1,8 @@
+namespace Iris.Serialization;
+
+table Snapshot {
+      Checksum: string;
+      TimeStamp: string;             
+}
+
+root_type Snapshot;

@@ -1,9 +1,0 @@
-FSharp.Core
-FSharp.Configuration
-FsPickler
-FsPickler.Json
-LibGit2Sharp
-LibGit2Sharp.NativeBinaries
-Fleck
-Suave
-ZeroMQ

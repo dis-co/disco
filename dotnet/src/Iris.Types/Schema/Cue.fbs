@@ -1,8 +1,0 @@
-namespace Iris.Types;
-
-table Cue {
-      Id:   string;
-      Name: string;
-}
- 
-root_type Cue;

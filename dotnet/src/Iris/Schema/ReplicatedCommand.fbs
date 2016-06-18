@@ -1,0 +1,55 @@
+include "Cue.fbs";
+include "Client.fbs";
+include "Snapshot.fbs";
+
+namespace Iris.Serialization;
+
+table AddCue {
+      Payload: Cue;
+}
+
+table UpdateCue {
+      Payload: Cue;
+}
+
+table RemoveCue {
+      Payload: Cue;
+}
+
+table AddClient {
+      Payload: Client;
+}
+
+table StartClient {
+      Payload: Client;
+}
+
+table StopClient {
+      Payload: Client;
+}
+
+table UpdateClient {
+      Payload: Client;
+}
+
+table RemoveClient {
+      Payload: Client;
+}
+
+table LoadSnapshot {
+      Payload: Snapshot;
+}
+
+union ReplicatedCommand {
+      AddCue,
+      UpdateCue,
+      RemoveCue,
+
+      AddClient,
+      StartClient,
+      StopClient,
+      UpdateClient,
+      RemoveClient,
+
+      LoadSnapshot
+}

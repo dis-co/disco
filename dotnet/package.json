@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+    "build": "fable",
+    "watch": "fable -w --target watch"
+    },
   "author": "",
   "license": "ISC",
   "devDependencies": {
@@ -14,6 +15,7 @@
     "webpack": "^1.13.1"
   },
   "dependencies": {
+    "core-js": "^2.4.0",
     "fable-core": "^0.1.6"
   }
 }

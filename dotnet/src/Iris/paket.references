@@ -1,0 +1,16 @@
+FSharp.Core
+Argu
+FsPickler
+FsPickler.Json
+FSharpx.Extras
+LibGit2Sharp
+LibGit2Sharp.NativeBinaries
+FSharp.Configuration
+Fleck
+Suave
+ZeroMQ
+Fuchu
+FsCheck
+XUnit
+NUnit
+Gallio
