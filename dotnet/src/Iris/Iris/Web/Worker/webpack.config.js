@@ -3,7 +3,7 @@ var webpack = require("webpack");
 
 var cfg = {
   devtool: "source-map",
-  entry: "../../../bin/Debug/src/Iris/Web/Worker/Main.js",
+  entry: "../../../bin/Debug/Iris/Web/Worker/Main.js",
   output: {
       path: path.join(__dirname, "../../../bin/Debug"),
       filename: "worker.js"

@@ -197,17 +197,17 @@ module Html =
       | Parent(n, a, chldr') -> Parent(n, a, Array.append chldr' chldr)
       | item                 -> item
 
-  let class' n = Pair("class", StrVal(n))
+  let _klass n = Pair("class", StrVal(n))
 
-  let data' d n = Pair("data-" + d, StrVal(n))
+  let _data d n = Pair("data-" + d, StrVal(n))
 
-  let id' n = Pair("id", StrVal(n))
+  let _id n = Pair("id", StrVal(n))
 
-  let style' n = Pair("style", StrVal(n))
+  let _style n = Pair("style", StrVal(n))
 
-  let accesskey' n = Pair("accesskey", StrVal(n))
+  let _accesskey n = Pair("accesskey", StrVal(n))
 
-  let align' a =
+  let _align a =
     let a' =
       match a with
         | Left   -> "left"
@@ -215,37 +215,37 @@ module Html =
         | Right  -> "right"
     in Pair("align", StrVal(a'))
 
-  let background' url = Pair("background", url)
+  let _background url = Pair("background", url)
 
-  let bgcolor' clr = Pair("bgcolor", clr)
+  let _bgcolor clr = Pair("bgcolor", clr)
 
-  let contenteditable' bl =
+  let _contenteditable bl =
     let val' = if bl then "true" else "false"
     in Pair("contenteditable", StrVal(val'))
 
-  let contextmenu' id = Pair("contextmenu", id)
+  let _contextmenu id = Pair("contextmenu", id)
 
-  let draggable' drgbl =
+  let _draggable drgbl =
     let val' = match drgbl with
                 | True  -> "true"
                 | False -> "false"
                 | Auto  -> "auto"
     in Pair("draggable", StrVal(val'))
 
-  let height' i = Pair("height", i)
+  let _height i = Pair("height", i)
 
-  let hidden' = Pair("hidden", StrVal("hidden"))
+  let _hidden = Pair("hidden", StrVal("hidden"))
 
-  let spellcheck' bl =
+  let _spellcheck bl =
     Pair("spellcheck", if bl then StrVal("true") else StrVal("false"))
 
-  let title' n = Pair("title", n)
+  let _title n = Pair("title", n)
 
-  let width' i = Pair("width", i)
+  let _width i = Pair("width", i)
 
-  let name' n  = Pair("name", n)
+  let _name n  = Pair("name", n)
 
-  let type' t =
+  let _type t =
     let t' =
       match t with
         | Color         -> "color"
@@ -270,19 +270,19 @@ module Html =
         | Reset         -> "reset"
     in Pair("type", StrVal(t'))
 
-  let href' url = Pair("href", url)
+  let _href url = Pair("href", url)
 
-  let rel' str = Pair("rel", str)
+  let _rel str = Pair("rel", str)
 
-  let charset' str = Pair("charset", str)
+  let _charset str = Pair("charset", str)
 
-  let src' url = Pair("src", url)
+  let _src url = Pair("src", url)
 
-  let alt' str = Pair("alt", str)
+  let _alt str = Pair("alt", str)
 
-  let usemap' map = Pair("usemap", map)
+  let _usemap map = Pair("usemap", map)
 
-  let shape' shp =
+  let _shape shp =
     let shp' =
       match shp with
         | ShpDefault -> "default"
@@ -291,19 +291,19 @@ module Html =
         | ShpPoly    -> "poly"
     in Pair("shape", StrVal(shp'))
 
-  let coords' cs = Pair("coords", cs)
+  let _coords cs = Pair("coords", cs)
 
-  let download' str = Pair("download", str)
+  let _download str = Pair("download", str)
 
-  let autoplay' = Pair("autoplay", StrVal("autoplay"))
+  let _autoplay = Pair("autoplay", StrVal("autoplay"))
 
-  let controls' = Pair("controls", StrVal("controls"))
+  let _controls = Pair("controls", StrVal("controls"))
 
-  let loop' = Pair("loop", StrVal("loop"))
+  let _loop = Pair("loop", StrVal("loop"))
 
-  let muted' = Pair("muted", StrVal("muted"))
+  let _muted = Pair("muted", StrVal("muted"))
 
-  let preload' pl =
+  let _preload pl =
     let pl' =
       match pl with
         | PreloadAuto     -> "auto"
@@ -311,7 +311,7 @@ module Html =
         | PreloadNone     -> "none"
     in Pair("preload", StrVal(pl'))
 
-  let target' tg =
+  let _target tg =
     let tg' =
       match tg with
         | TargetBlank        -> "_blank"
@@ -321,16 +321,16 @@ module Html =
         | TargetFrameName(s) -> s
     in Pair("target", StrVal(tg'))
 
-  let dir' dr =
+  let _dir dr =
     let dr' =
       match dr with
         | LTR -> "ltr"
         | RTL -> "rtl"
     in Pair("dir", StrVal(dr'))
 
-  let cite' url = Pair("cite", url)
+  let _cite url = Pair("cite", url)
 
-  let value' txt = Pair("value", txt)
+  let _value txt = Pair("value", txt)
 
   let onClick (cb : MouseEvent -> unit) =
     Pair("onclick", EvVal(fun () -> withArgs cb))

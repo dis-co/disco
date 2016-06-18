@@ -11,6 +11,7 @@ module Plugins =
   open Iris.Web.Views
   open Iris.Web.Tests
 
+  (*
   [<Emit @"
     window.IrisPlugins = [];
       (function(plugins) {
@@ -61,6 +62,10 @@ module Plugins =
           });
       })(window.IrisPlugins);">]
   let setupPlugins () = failwith "OHNLY JSSS"
+  *)
+
+  [<Emit("console.log('setupPlubins FIXME')")>]
+  let setupPlugins () = failwith "OHNLY JSSS"
 
   let main () =
     (****************************************************************************)
@@ -82,7 +87,7 @@ module Plugins =
     test "rendering a plugin should return expected dom element" <| fun cb ->
       setupPlugins ()
       
-      let plugin = findPlugins PinType.String |> (fun plugs -> Array.get plugs 0)
+      let plugin = findPlugins PinType.String |> (fun plugs -> plugs.[0])
       let inst = plugin.create(fun _ -> ())
 
       let elid = "0xb33f"
@@ -100,7 +105,7 @@ module Plugins =
     test "re-rendering a plugin should return updated dom element" <| fun cb ->
       setupPlugins () // register the plugin
       
-      let plugin = findPlugins PinType.String |> (fun plugs -> Array.get plugs 0)
+      let plugin = findPlugins PinType.String |> (fun plugs -> plugs.[0])
       let inst = plugin.create (fun _ -> ())
 
       let value1 = "r4nd0m"
@@ -185,7 +190,7 @@ module Plugins =
       
       let plugin =
         findPlugins PinType.String
-        |> (fun plugs -> Array.get plugs 0)
+        |> (fun plugs -> plugs.[0])
 
       let value1 = "r4nd0m"
       let value2 = "pr1m0p"

@@ -21,12 +21,12 @@ module ViewController =
 
   type PatchView () =
     let patchView (patch : Patch) =
-      h1 <@> class' "patch" <|> text patch.Name
+      h1 <@> _klass "patch" <|> text patch.Name
 
     let patchList (patches : Patch array) =
       div <||> Array.map patchView patches
 
-    let mainView content = div <@> id' "patches" <|> content
+    let mainView content = div <@> _id "patches" <|> content
 
     interface IWidget<State,ClientContext> with
       member self.Render (state : State) (context : ClientContext) =

@@ -32,24 +32,12 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo/Web.Tests.fs" />
 
-    <Compile Include="Iris\Core\Util.fs" />
-    <Compile Include="Iris\Core\Types\Either.fs" />
     <Compile Include="Iris\Core\Types\Aliases.fs" />
     <Compile Include="Iris\Core\Types\IOBox.fs" />
     <Compile Include="Iris\Core\Types\Patch.fs" />
     <Compile Include="Iris\Core\Types\Cue.fs" />
     <Compile Include="Iris\Core\Types\CueList.fs" />
     <Compile Include="Iris\Core\Types\Message.fs" />
-    <Compile Include="Iris\Core\Types\Region.fs" />
-    <Compile Include="Iris\Core\Types\Signal.fs" />
-    <Compile Include="Iris\Core\Types\Display.fs" />
-    <Compile Include="Iris\Core\Types\Task.fs" />
-    <Compile Include="Iris\Core\Types\ViewPort.fs" />
-    <Compile Include="Iris\Core\Types\Vvvv.fs" />
-    <Compile Include="Iris\Core\Types\Yaml.fs" />
-    <Compile Include="Iris\Core\Types\Config.fs" />
-    <Compile Include="Iris\Core\Types\Project.fs" />
-    <Compile Include="Iris\Core\Uri.fs" />
 
     <Compile Include="Iris\Web\Core\Browser.fs" />
     <Compile Include="Iris\Web\Core\Crypto.fs" />
@@ -62,7 +50,6 @@
     <Compile Include="Iris\Web\Core\Worker.fs" />
     <Compile Include="Iris\Web\Core\Client.fs" />
     <Compile Include="Iris\Web\Core\Keyboard.fs" />
-    <Compile Include="Iris\Web\Views\Index.fs" />
     <Compile Include="Iris\Web\Views\Patches.fs" />
 
     <Compile Include=".\Iris\Tests\Web\TestUtilities.fs" />

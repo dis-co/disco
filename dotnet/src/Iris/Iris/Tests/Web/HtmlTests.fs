@@ -26,7 +26,7 @@ module Html =
     test "class should should be specified with `class'` combinator" <|
       (fun cb ->
        let klass = "there"
-       let comb = h1 <@> class' klass
+       let comb = h1 <@> _klass klass
        let elm = renderHtml comb |> createElement
        check_cc (elm.getAttribute("class") = klass) "class mismatch" cb)
 
@@ -34,7 +34,7 @@ module Html =
     test "id should should be specified with `id'` combinator" <|
       (fun cb ->
        let eidee = "thou"
-       let comb = h1 <@> id' eidee
+       let comb = h1 <@> _id eidee
        let elm = renderHtml comb |> createElement 
        check_cc (elm.getAttribute("id") = eidee) "id mismatch" cb)
 
@@ -44,7 +44,7 @@ module Html =
 
     test "nested VTree in Html should be rendered as such"
       (fun cb ->
-       let t  = div <@> class' "thing" <|> text "hello"
+       let t  = div <@> _klass "thing" <|> text "hello"
        let t' = renderHtml <| (h1 <|> text "hallo")
 
        let elm = renderHtml (t <|> Raw t') |> createElement
@@ -57,7 +57,7 @@ module Html =
     (*--------------------------------------------------------------------------*)
     test "pure html in should be rendered as such" <|
       (fun cb ->
-       let t  = div <@> class' "thing" <|> text "hello"
+       let t  = div <@> _klass "thing" <|> text "hello"
 
        let elm = renderHtml t |> createElement 
 
@@ -66,7 +66,7 @@ module Html =
     (*--------------------------------------------------------------------------*)
     test "VTree should be rendered as expected" <| fun cb ->
       let elm =
-        Raw((div <@> id' "hello") |> renderHtml)
+        Raw((div <@> _id "hello") |> renderHtml)
         |> renderHtml
         |> createElement
         

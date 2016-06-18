@@ -78,7 +78,7 @@ module Store =
       test "should add an iobox to the store if patch exists" <| fun cb ->
         store.Dispatch <| PatchEvent(Create, patch)
 
-        Array.get store.State.Patches 0
+        store.State.Patches.[0]
         |> (fun patch -> check ((Array.length patch.IOBoxes) = 0) "iobox array length should be 0")
 
         let iobox =
@@ -87,7 +87,7 @@ module Store =
 
         store.Dispatch <| IOBoxEvent(Create, iobox)
 
-        Array.get store.State.Patches 0
+        store.State.Patches.[0]
         |> (fun patch -> ((Array.length patch.IOBoxes) ==>> 1) cb)
 
     (*--------------------------------------------------------------------------*)
@@ -196,7 +196,7 @@ module Store =
         store.Dispatch <| PatchEvent(Create, patch)
         store.Dispatch <| PatchEvent(Update, { patch with Name = "cats" })
         store.Undo()
-        ((Array.get store.State.Patches 0).Name ==>> patch.Name) cb
+        ((store.State.Patches.[0]).Name ==>> patch.Name) cb
 
 
     (*--------------------------------------------------------------------------*)
@@ -207,7 +207,7 @@ module Store =
         store.Dispatch <| PatchEvent(Update, { patch with Name = "dogs" })
         store.Undo()
         store.Undo()
-        ((Array.get store.State.Patches 0).Name ==>> patch.Name) cb
+        ((store.State.Patches.[0]).Name ==>> patch.Name) cb
 
 
     (*--------------------------------------------------------------------------*)
@@ -230,13 +230,13 @@ module Store =
         store.Dispatch <| PatchEvent(Update, { patch with Name = "men"  })
         store.Undo()
         store.Undo()
-        (Array.get store.State.Patches 0).Name |==| "dogs"
+        (store.State.Patches.[0]).Name |==| "dogs"
         store.Redo()
-        (Array.get store.State.Patches 0).Name |==| "mice"
+        (store.State.Patches.[0]).Name |==| "mice"
         store.Redo()
-        (Array.get store.State.Patches 0).Name |==| "men"
+        (store.State.Patches.[0]).Name |==| "men"
         store.Redo()
-        ((Array.get store.State.Patches 0).Name ==>> "men") cb
+        ((store.State.Patches.[0]).Name ==>> "men") cb
 
 
     (*--------------------------------------------------------------------------*)
@@ -247,33 +247,33 @@ module Store =
         store.Dispatch <| PatchEvent(Update, { patch with Name = "dogs" })
 
         store.Undo()
-        (Array.get store.State.Patches 0).Name |==| "cats"
+        (store.State.Patches.[0]).Name |==| "cats"
 
         store.Redo()
-        (Array.get store.State.Patches 0).Name |==| "dogs"
+        (store.State.Patches.[0]).Name |==| "dogs"
 
         store.Undo()
-        (Array.get store.State.Patches 0).Name |==| "cats"
+        (store.State.Patches.[0]).Name |==| "cats"
 
         store.Dispatch <| PatchEvent(Update, { patch with Name = "mice" })
 
         store.Undo()
-        (Array.get store.State.Patches 0).Name |==| "dogs"
+        (store.State.Patches.[0]).Name |==| "dogs"
 
         store.Redo()
-        (Array.get store.State.Patches 0).Name |==| "mice"
+        (store.State.Patches.[0]).Name |==| "mice"
 
         store.Undo()
         store.Undo()
-        (Array.get store.State.Patches 0).Name |==| "cats"
+        (store.State.Patches.[0]).Name |==| "cats"
 
         store.Dispatch <| PatchEvent(Update, { patch with Name = "men"  })
 
         store.Undo()
-        (Array.get store.State.Patches 0).Name |==| "mice"
+        (store.State.Patches.[0]).Name |==| "mice"
 
         store.Redo()
-        (Array.get store.State.Patches 0).Name |==| "men"
+        (store.State.Patches.[0]).Name |==| "men"
 
         (store.History.Length ==>> 6) cb
 
@@ -290,7 +290,7 @@ module Store =
         |> List.iter (fun _ -> store.Undo())
 
         store.History.Length |==| 4
-        ((Array.get store.State.Patches 0).Name ==>> "mice") cb
+        ((store.State.Patches.[0]).Name ==>> "mice") cb
 
 
     (*--------------------------------------------------------------------------*)

@@ -36,7 +36,7 @@ module Patches =
            <|> text "Create Cue";
         |]
 
-    let footer = div <@> class' "foot" <|> hr
+    let footer = div <@> _klass "foot" <|> hr
 
     let ioboxView (context : ClientContext) (iobox : IOBox) : Html =
       if not (plugins.Has iobox)
@@ -56,7 +56,7 @@ module Patches =
 
     let patchView (context : ClientContext) (patch : Patch) : Html =
       let container =
-        div <@> id' patch.Id <@> class' "patch" <||>
+        div <@> _id patch.Id <@> _klass "patch" <||>
           [| h3 <|> text "Patch:"
            ; p  <|> text (patch.Name)
            |]
@@ -64,11 +64,11 @@ module Patches =
       container <||> Array.map (ioboxView context) patch.IOBoxes
 
     let patchList (context : ClientContext) (patches : Patch array) =
-      let container = div <@> id' "patches"
+      let container = div <@> _id "patches"
       container <||> Array.map (patchView context) patches
 
     let mainView (context : ClientContext) (content : Html) : Html =
-      div <@> id' "main" <||> [| header context; content ; footer |]
+      div <@> _id "main" <||> [| header context; content ; footer |]
 
 
     let patches (context : ClientContext) (state : State)  : Html =
@@ -92,12 +92,12 @@ module Patches =
 
 
     let cueView (context : ClientContext) (cue : Cue) =
-      div <@> id' cue.Id <@> class' "cue"
+      div <@> _id cue.Id <@> _klass "cue"
           <|> text cue.Name
           <|> destroy context cue 
 
     let cueList (context : ClientContext) (cues : Cue array) : Html =
-      div <@> id' "cues"
+      div <@> _id "cues"
           <||> Array.map (cueView context) cues
 
     let cues (context : ClientContext) (state : State) : Html =

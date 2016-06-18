@@ -33,7 +33,9 @@ debug.web.worker: prepare.serialization
 debug.service: prepare.serialization
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Service.fsproj
 
-debug.all: prepare.serialization
+debug.all: prepare.serialization debug.tests debug.nodes debug.web debug.web.tests debug.web.worker debug.service
+
+sln: prepare.serialization
 	${DEVBUILD} ${VVVV_BASEDIR}/Iris.sln
 
 clean:

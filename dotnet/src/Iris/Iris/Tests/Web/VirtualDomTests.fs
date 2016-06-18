@@ -133,8 +133,8 @@ module VirtualDom =
 
       let list content =
         ul <||>
-          [| li <@> id' "first"  <|> text content
-           ; li <@> id' "second" <|> text secondContent
+          [| li <@> _id "first"  <|> text content
+           ; li <@> _id "second" <|> text secondContent
            |]
 
       let mutable tree = list firstContent |> renderHtml
