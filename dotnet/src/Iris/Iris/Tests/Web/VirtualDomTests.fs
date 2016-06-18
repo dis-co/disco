@@ -11,9 +11,9 @@ module VirtualDom =
 
   let main () =
 
-    (*------------------------------------------------------------------------*)
+    (* ------------------------------------------------------------------------ *)
     suite "Test.Units.VirtualDom"
-    (*------------------------------------------------------------------------*)
+    (* ------------------------------------------------------------------------ *)
 
     test "should render dom elements correctly" <| fun cb ->
       let props = emptyProps
@@ -25,7 +25,7 @@ module VirtualDom =
 
       check_cc (childrenByTag "p" tree |> fun els -> els.length = 1.0) "result should have a p" cb
 
-    (*------------------------------------------------------------------------*)
+    (* ------------------------------------------------------------------------ *)
     test "should render class attribute" <| fun cb ->
       let props = new VProps()
       props.className <- "container"
@@ -38,7 +38,7 @@ module VirtualDom =
 
       check_cc (hasClass "container" tree) "result should have class container" cb
 
-    (*------------------------------------------------------------------------*)
+    (* ------------------------------------------------------------------------ *)
     test "should render id attribute" <| fun cb -> 
       let props = new VProps()
       props.id <- "main"
@@ -51,7 +51,7 @@ module VirtualDom =
 
       check_cc (tree.id = "main") "result should have id main" cb
 
-    (*------------------------------------------------------------------------*)
+    (* ------------------------------------------------------------------------ *)
     test "should render style attribute" <| fun cb ->
       let props = new VProps()
       let styles = new Styles()
@@ -66,7 +66,7 @@ module VirtualDom =
 
       check_cc (getStyle "margin" tree = Some "40px") "element should have style correctly" cb
 
-    (*------------------------------------------------------------------------*)
+    (* ------------------------------------------------------------------------ *)
     test "should patch updates in dom tree correctly" <| fun cb ->
       let props = emptyProps
 
@@ -104,7 +104,7 @@ module VirtualDom =
 
       check_cc (getByClass "main"|> nthElement 0 |> childrenByTag "p" |> fun els -> els.length = 3.0) "should have 2 p's now" cb
       
-    (*------------------------------------------------------------------------*)
+    (* ------------------------------------------------------------------------ *)
     test "should add new element to list on diff/patch" <| fun cb ->
       let litem = li <|> text "an item"
       let comb  = ul <||> [| litem |]
@@ -126,7 +126,7 @@ module VirtualDom =
 
       newroot.remove() |> ignore
 
-    (*------------------------------------------------------------------------*)
+    (* ------------------------------------------------------------------------ *)
     test "patching should update only relevant bits of the dom" <| fun cb ->
       let firstContent = "first item in the list"
       let secondContent = "second item in the list"
