@@ -74,7 +74,14 @@
     <Compile Include=".\Iris\Tests\Web\StoreTests.fs" />
     <compile Include=".\Iris\Tests\Web\ViewControllerTests.fs" />
     <Compile Include=".\Iris\Tests\Web\VirtualDomTests.fs" />
-    <Compile Include=".\Iris\Tests\Web\TestsMain.fs" />
+
+    <!--  __  __       _        -->
+    <!-- |  \/  | __ _(_)_ __   -->
+    <!-- | |\/| |/ _` | | '_ \  -->
+    <!-- | |  | | (_| | | | | | -->
+    <!-- |_|  |_|\__,_|_|_| |_| -->
+
+    <Compile Include=".\Iris\Tests\Web\Main.fs" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">

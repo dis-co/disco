@@ -73,9 +73,14 @@
     <Compile Include="Iris\Web\Core\Keyboard.fs" />
     <Compile Include="Iris\Web\Views\Index.fs" />
     <Compile Include="Iris\Web\Views\Patches.fs" />
+    
+    <!--  __  __       _        -->
+    <!-- |  \/  | __ _(_)_ __   -->
+    <!-- | |\/| |/ _` | | '_ \  -->
+    <!-- | |  | | (_| | | | | | -->
+    <!-- |_|  |_|\__,_|_|_| |_| -->
 
-    <Compile Include="Iris\Web\WorkerMain.fs" />
-
+    <Compile Include="Iris\Web\Worker\Main.fs" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">

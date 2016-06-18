@@ -16,22 +16,22 @@ pallet.tests:
 	@sh -c 'fsi $(VVVV_BASEDIR)/src/Pallet.Tests/run.fsx'
 
 debug.tests: prepare.serialization
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Tests/Iris.Tests.fsproj
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Tests.fsproj
 
 debug.nodes: prepare.serialization
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Nodes/Iris.Nodes.fsproj
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Nodes.fsproj
 
 debug.web: prepare.serialization
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Web/Iris.Web.fsproj
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Web.fsproj
 
 debug.web.tests: prepare.serialization
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Web.Tests/Iris.Web.Tests.fsproj
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Web.Tests.fsproj
 
 debug.web.worker: prepare.serialization
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Web.Worker/Iris.Web.Worker.fsproj
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Web.Worker.fsproj
 
 debug.service: prepare.serialization
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Service/Iris.Service.fsproj
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Service.fsproj
 
 debug.all: prepare.serialization
 	${DEVBUILD} ${VVVV_BASEDIR}/Iris.sln

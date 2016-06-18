@@ -1,6 +1,6 @@
-﻿namespace Iris.Web
+﻿namespace Iris.Web.Frontend
 
-module Client =
+module Main =
 
   open Iris.Core
   open Iris.Web.Core
