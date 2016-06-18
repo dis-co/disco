@@ -34,12 +34,17 @@ module Browser =
   let getByTag<'T when 'T :> Browser.HTMLElement> tag =
     Browser.document.getElementsByTagName tag
 
+  [<Emit("$0.split($1)")>]
+  let split (_: string) (_: string) : string array = failwith "ONLY JS"
+
+  [<Emit("$1.indexOf($0) != -1")>]
+  let contains (_: 'a) (_: 'a array) : bool = failwith "ONLY JS"
+
   let hasClass klass (el: Browser.HTMLElement) =
     let attr = el.getAttribute "class"
     if isNullValue attr then false
     else 
-      attr.Split(' ')
-      |> Array.contains klass
+      split " " attr |> contains klass
 
   let parseStyle (style: string) =
     let parsed = style.Split(':')
@@ -67,7 +72,7 @@ module Browser =
   let appendChild (el: Browser.Element) (target: Browser.Element) =
     target.appendChild el
 
-  [<Emit "Object.is($o1, $o2)">]
+  [<Emit "Object.is($0, $1)">]
   let identical (_: obj) (_: obj) = failwith "OH NO ITS ITS ITS JS"
     
   let asHtml (el: 'a when 'a :> Browser.HTMLElement) = el :> Browser.HTMLElement
