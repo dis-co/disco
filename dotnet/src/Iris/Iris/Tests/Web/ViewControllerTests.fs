@@ -9,7 +9,6 @@ module ViewController =
   open Fable.Import
 
   open Iris.Web.Tests
-  open Iris.Web.Tests.Util
   open Iris.Web.Core
   open Iris.Core
 

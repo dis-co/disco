@@ -4,8 +4,8 @@ namespace Test.Units
 module VirtualDom =
 
   open Iris.Web.Tests
+  open Iris.Web.Core
   open Iris.Web.Core.Html
-  open Iris.Web.Core.Util
   open Fable.Core
   open Fable.Import
 

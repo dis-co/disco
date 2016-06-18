@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
   <PropertyGroup>
@@ -31,16 +31,50 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo/Web.Tests.fs" />
-    <Compile Include="Util.fs" />
-    <Compile Include="Mocha.fs" />
-    <Compile Include="Units\Html.fs" />
-    <compile Include="Units\PatchesView.fs" />
-    <Compile Include="Units\Plugins.fs" />
-    <Compile Include="Units\Storage.fs" />
-    <Compile Include="Units\Store.fs" />
-    <compile Include="Units\ViewController.fs" />
-    <Compile Include="Units\VirtualDom.fs" />
-    <Compile Include="Main.fs" />
+
+    <Compile Include="Iris\Core\Util.fs" />
+    <Compile Include="Iris\Core\Types\Either.fs" />
+    <Compile Include="Iris\Core\Types\Aliases.fs" />
+    <Compile Include="Iris\Core\Types\IOBox.fs" />
+    <Compile Include="Iris\Core\Types\Patch.fs" />
+    <Compile Include="Iris\Core\Types\Cue.fs" />
+    <Compile Include="Iris\Core\Types\CueList.fs" />
+    <Compile Include="Iris\Core\Types\Message.fs" />
+    <Compile Include="Iris\Core\Types\Region.fs" />
+    <Compile Include="Iris\Core\Types\Signal.fs" />
+    <Compile Include="Iris\Core\Types\Display.fs" />
+    <Compile Include="Iris\Core\Types\Task.fs" />
+    <Compile Include="Iris\Core\Types\ViewPort.fs" />
+    <Compile Include="Iris\Core\Types\Vvvv.fs" />
+    <Compile Include="Iris\Core\Types\Yaml.fs" />
+    <Compile Include="Iris\Core\Types\Config.fs" />
+    <Compile Include="Iris\Core\Types\Project.fs" />
+    <Compile Include="Iris\Core\Uri.fs" />
+
+    <Compile Include="Iris\Web\Core\Browser.fs" />
+    <Compile Include="Iris\Web\Core\Crypto.fs" />
+    <Compile Include="Iris\Web\Core\Html.fs" />
+    <Compile Include="Iris\Web\Core\Plugin.fs" />
+    <Compile Include="Iris\Web\Core\State.fs" />
+    <Compile Include="Iris\Web\Core\Store.fs" />
+    <Compile Include="Iris\Web\Core\Reducer.fs" />
+    <Compile Include="Iris\Web\Core\ViewController.fs" />
+    <Compile Include="Iris\Web\Core\Worker.fs" />
+    <Compile Include="Iris\Web\Core\Client.fs" />
+    <Compile Include="Iris\Web\Core\Keyboard.fs" />
+    <Compile Include="Iris\Web\Views\Index.fs" />
+    <Compile Include="Iris\Web\Views\Patches.fs" />
+
+    <Compile Include=".\Iris\Tests\Web\TestUtilities.fs" />
+    <Compile Include=".\Iris\Tests\Web\Mocha.fs" />
+    <Compile Include=".\Iris\Tests\Web\HtmlTests.fs" />
+    <compile Include=".\Iris\Tests\Web\PatchesViewTests.fs" />
+    <Compile Include=".\Iris\Tests\Web\PluginsTests.fs" />
+    <Compile Include=".\Iris\Tests\Web\StorageTests.fs" />
+    <Compile Include=".\Iris\Tests\Web\StoreTests.fs" />
+    <compile Include=".\Iris\Tests\Web\ViewControllerTests.fs" />
+    <Compile Include=".\Iris\Tests\Web\VirtualDomTests.fs" />
+    <Compile Include=".\Iris\Tests\Web\TestsMain.fs" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">

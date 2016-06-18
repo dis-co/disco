@@ -1,6 +1,7 @@
 namespace Iris.Web.Tests
 
-module Util = 
+[<AutoOpen>]
+module TestUtilities = 
 
   open Fable.Core
   open Fable.Import

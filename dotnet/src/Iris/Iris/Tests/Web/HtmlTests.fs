@@ -8,7 +8,6 @@ module Html =
   open Fable.Import.Browser
   
   open Iris.Web.Tests
-  open Iris.Web.Tests.Util
   open Iris.Web.Core.Html
 
   let main () =

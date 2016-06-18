@@ -3,8 +3,6 @@ namespace Test.Units
 [<RequireQualifiedAccess>]
 module Plugins =
 
-  open Iris.Web.Tests.Util
-
   open Fable.Core
   open Fable.Import
 

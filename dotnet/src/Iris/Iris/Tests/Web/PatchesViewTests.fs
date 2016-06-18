@@ -11,7 +11,6 @@ module PatchesView =
   open Iris.Core
   open Iris.Web.Core
   open Iris.Web.Tests
-  open Iris.Web.Tests.Util
   open Iris.Web.Views
 
   [<Emit
