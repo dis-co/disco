@@ -31,7 +31,6 @@ pallet.tests:
 
 tests: prepare.serialization
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Tests.fsproj
-	@mono ${VVVV_BASEDIR}/src/Iris/bin/Debug/Iris.Tests.exe
 
 service: prepare.serialization
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Service.fsproj
