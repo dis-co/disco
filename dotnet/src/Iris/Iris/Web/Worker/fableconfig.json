@@ -1,7 +1,7 @@
  {
    "module": "commonjs",
    "sourceMaps": true,
-   "projFile": "../../../Web.Worker.fsproj",
+   "projFile": "../../../Worker.fsproj",
    "outDir": "../../../bin/Debug",
    "symbols": ["JAVASCRIPT"],
    "scripts": {

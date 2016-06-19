@@ -34,9 +34,9 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Service", "src\Iris\Service
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Nodes", "src\Iris\Nodes.fsproj", "{FBFFB969-00ED-4568-8FD0-65A699AACA18}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Web", "src\Iris\Web.fsproj", "{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Frontend", "src\Iris\Frontend.fsproj", "{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Web.Worker", "src\Iris\Web.Worker.fsproj", "{39714BA9-31D0-4160-B0C2-5BE0AA12734E}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Worker", "src\Iris\Worker.fsproj", "{39714BA9-31D0-4160-B0C2-5BE0AA12734E}"
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Web.Tests", "src\Iris\Web.Tests.fsproj", "{CDC50F9D-1EFB-483B-8D14-3F2A3FD87F9D}"
 EndProject

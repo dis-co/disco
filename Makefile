@@ -7,6 +7,7 @@ VERSTR := $(shell head -n1 $(VVVV_BASEDIR)/CHANGELOG.md | sed -e 's/[^0-9\.]//g'
 MANIFEST="Iris Version: $(VERSTR)"
 
 DEVBUILD=xbuild /nologo /p:Configuration=Debug
+JSBUILD=cd $(VVVV_BASEDIR) && npm run
 
 pallet:
 	$(DEVBUILD) $(VVVV_BASEDIR)/src/Pallet/Pallet.fsproj
@@ -15,25 +16,35 @@ pallet.tests:
 	$(DEVBUILD) $(VVVV_BASEDIR)/src/Pallet.Tests/Pallet.Tests.fsproj
 	@sh -c 'fsi $(VVVV_BASEDIR)/src/Pallet.Tests/run.fsx'
 
-debug.tests: prepare.serialization
+tests: prepare.serialization
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Tests.fsproj
+	@mono ${VVVV_BASEDIR}/src/Iris/bin/Debug/Iris.Tests.exe
 
-debug.nodes: prepare.serialization
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Nodes.fsproj
-
-debug.web: prepare.serialization
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Web.fsproj
-
-debug.web.tests: prepare.serialization
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Web.Tests.fsproj
-
-debug.web.worker: prepare.serialization
-	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Web.Worker.fsproj
-
-debug.service: prepare.serialization
+service: prepare.serialization
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Service.fsproj
 
-debug.all: prepare.serialization debug.tests debug.nodes debug.web debug.web.tests debug.web.worker debug.service
+nodes: prepare.serialization
+	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Nodes.fsproj
+
+frontend: prepare.serialization
+	${JSBUILD} build-frontend
+
+frontend.watch: prepare.serialization
+	${JSBUILD} watch-frontend
+
+web.tests: prepare.serialization
+	${JSBUILD} build-tests
+
+web.tests.watch: prepare.serialization
+	${JSBUILD} watch-tests
+
+worker: prepare.serialization
+	${JSBUILD} build-worker
+
+worker.watch: prepare.serialization
+	${JSBUILD} watch-worker
+
+debug.all: prepare.serialization tests nodes frontend web.tests worker service
 
 sln: prepare.serialization
 	${DEVBUILD} ${VVVV_BASEDIR}/Iris.sln
@@ -53,6 +64,8 @@ release.copy: zip
 	@cp $(RELEASE_DIR)/$(VERSTR)/x64/Iris-$(VERSTR)_x64.zip .
 
 release.release: build
+	@echo "FIXME"
+	@exit 1
 	@echo "building release packages"
 	@mkdir -p $(RELEASE_DIR)/$(VERSTR)/x86/Iris/nodes $(RELEASE_DIR)/$(VERSTR)/x64/Iris
 	@echo "copying nodes"

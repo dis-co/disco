@@ -1,0 +1,25 @@
+{
+  "name": "Iris",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build-frontend": "cd src/Iris/Iris/Web/Frontend/ && fable",
+    "watch-frontend": "cd src/Iris/Iris/Web/Frontend/ && fable -w --target watch",
+    "build-worker":   "cd src/Iris/Iris/Web/Worker/ && fable",
+    "watch-worker":   "cd src/Iris/Iris/Web/Worker/ && fable -w --target watch",
+    "build-tests":    "cd src/Iris/Iris/Tests/Web/ && fable",
+    "watch-tests":    "cd src/Iris/Iris/Tests/Web/ && fable -w --target watch"
+  },
+  "author": "Karsten Gebbert, 2016, Nsynk Gmbh",
+  "license": "ISC",
+  "devDependencies": {
+    "fable-compiler": "^0.3.22",
+    "source-map-loader": "^0.1.5",
+    "webpack": "^1.13.1"
+  },
+  "dependencies": {
+    "core-js": "^2.4.0",
+    "fable-core": "^0.1.6"
+  }
+}
