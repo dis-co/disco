@@ -9,12 +9,25 @@ MANIFEST="Iris Version: $(VERSTR)"
 DEVBUILD=xbuild /nologo /p:Configuration=Debug
 JSBUILD=cd $(VVVV_BASEDIR) && npm run
 
+#              _ _      _
+#  _ __   __ _| | | ___| |_
+# | '_ \ / _` | | |/ _ \ __|
+# | |_) | (_| | | |  __/ |_
+# | .__/ \__,_|_|_|\___|\__|
+# |_|
+
 pallet:
 	$(DEVBUILD) $(VVVV_BASEDIR)/src/Pallet/Pallet.fsproj
 
 pallet.tests:
 	$(DEVBUILD) $(VVVV_BASEDIR)/src/Pallet.Tests/Pallet.Tests.fsproj
 	@sh -c 'fsi $(VVVV_BASEDIR)/src/Pallet.Tests/run.fsx'
+
+#              _   _
+#  _ __   __ _| |_(_)_   _____
+# | '_ \ / _` | __| \ \ / / _ \
+# | | | | (_| | |_| |\ V /  __/
+# |_| |_|\__,_|\__|_| \_/ \___|
 
 tests: prepare.serialization
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Tests.fsproj
@@ -25,6 +38,12 @@ service: prepare.serialization
 
 nodes: prepare.serialization
 	${DEVBUILD} ${VVVV_BASEDIR}/src/Iris/Nodes.fsproj
+
+#   __                 _                 _
+#  / _|_ __ ___  _ __ | |_ ___ _ __   __| |
+# | |_| '__/ _ \| '_ \| __/ _ \ '_ \ / _` |
+# |  _| | | (_) | | | | ||  __/ | | | (_| |
+# |_| |_|  \___/|_| |_|\__\___|_| |_|\__,_|
 
 frontend: prepare.serialization
 	${JSBUILD} build-frontend
@@ -44,6 +63,12 @@ worker: prepare.serialization
 worker.watch: prepare.serialization
 	${JSBUILD} watch-worker
 
+#        _ _
+#   __ _| | |
+#  / _` | | |
+# | (_| | | |
+#  \__,_|_|_|
+
 debug.all: prepare.serialization tests nodes frontend web.tests worker service
 
 sln: prepare.serialization
@@ -56,6 +81,12 @@ clean:
 	@rm -rf tmp/*
 	@find ${VVVV_BASEDIR} -type d -name bin -prune -exec rm -rf '{}' \;
 	@find ${VVVV_BASEDIR} -type d -name obj -prune -exec rm -rf '{}' \;
+
+#           _
+#  _ __ ___| | ___  __ _ ___  ___
+# | '__/ _ \ |/ _ \/ _` / __|/ _ \
+# | | |  __/ |  __/ (_| \__ \  __/
+# |_|  \___|_|\___|\__,_|___/\___|
 
 release.all: release.prepare clean release.build release.copy
 
@@ -103,6 +134,13 @@ release.build:
 	@echo "building x64"
 	@cd $(VVVV_BASEDIR); xbuild Iris.sln $(OPTS) /p:Platform=x64
 
+#              _        _
+#  _ __   __ _| | _____| |_
+# | '_ \ / _` | |/ / _ \ __|
+# | |_) | (_| |   <  __/ |_
+# | .__/ \__,_|_|\_\___|\__|
+# |_|
+
 paket.restore:
 	@cd $(VVVV_BASEDIR); mono .paket/paket.exe restore
 
@@ -111,6 +149,13 @@ paket.update:
 
 paket.install:
 	@cd $(VVVV_BASEDIR); mono .paket/paket.exe install
+
+#   __
+#  / _|___ _____ __ ___   __ _
+# | |_/ __|_  / '_ ` _ \ / _` |
+# |  _\__ \/ /| | | | | | (_| |
+# |_| |___/___|_| |_| |_|\__, |
+#                           |_|
 
 fszmq.debug:
 	$(DEVBUILD) $(VVVV_BASEDIR)/src/fszmq/fszmq.fsproj
