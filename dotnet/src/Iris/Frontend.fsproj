@@ -18,7 +18,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <Tailcalls>false</Tailcalls>
-    <OutputPath>bin\Debug\Web</OutputPath>
+    <OutputPath>bin\Debug\Frontend</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>
@@ -27,7 +27,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
-    <OutputPath>bin\Release\Web</OutputPath>
+    <OutputPath>bin\Release\Frontend</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>
@@ -39,7 +39,7 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AssemblyInfo/Web.fs" />
+    <Compile Include="AssemblyInfo/Frontend.fs" />
 
     <Compile Include="Iris\Core\Types\Aliases.fs" />
     <Compile Include="Iris\Core\Types\IOBox.fs" />
@@ -68,6 +68,11 @@
     <!-- |_|  |_|\__,_|_|_| |_| -->
 
     <Compile Include="Iris\Web\Frontend\Main.fs" />
+
+    <None Include="../../node_modules/virtual-dom/dist/virtual-dom.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">

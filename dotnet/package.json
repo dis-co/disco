@@ -11,7 +11,7 @@
     "build-tests": "cd src/Iris/Iris/Tests/Web/ && fable",
     "watch-tests": "cd src/Iris/Iris/Tests/Web/ && fable -w --target watch"
   },
-  "author": "Karsten Gebbert, 2016, Nsynk Gmbh",
+  "author": "Karsten Gebbert, 2016, Nsynk GmbH",
   "license": "ISC",
   "readme": "README.org",
   "repository": "https://bitbucket.com/nsynk/iris.git",

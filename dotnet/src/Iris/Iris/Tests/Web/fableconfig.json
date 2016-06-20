@@ -1,18 +1,18 @@
  {
-   "module": "commonjs",
-   "sourceMaps": true,
-   "projFile": "../../../Web.Tests.fsproj",
-   "outDir": "../../../bin/Debug",
-   "symbols": ["JAVASCRIPT"],
-   "scripts": {
-       "prebuild": "npm install",
-       "postbuild": "webpack"
-   },
-   "targets": {
-       "watch": {
+     "module": "commonjs",
+     "sourceMaps": true,
+     "projFile": "../../../Web.Tests.fsproj",
+     "outDir": "../../../bin/Debug",
+     "symbols": ["JAVASCRIPT"],
+     "scripts": {
+         "prebuild": "npm install",
+         "postbuild": "webpack"
+     },
+     "targets": {
+         "watch": {
              "scripts": {
-                     "postbuild": "webpack --watch"
-                   }
-           }
+                 "postbuild": "webpack --watch"
+             }
+         }
      }
  }

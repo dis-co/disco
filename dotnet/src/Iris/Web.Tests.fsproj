@@ -30,7 +30,7 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AssemblyInfo/Web.Tests.fs" />
+    <Compile Include="AssemblyInfo\Web.Tests.fs" />
 
     <Compile Include="Iris\Core\Types\Aliases.fs" />
     <Compile Include="Iris\Core\Types\IOBox.fs" />
