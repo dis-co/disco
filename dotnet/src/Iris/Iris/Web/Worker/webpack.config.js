@@ -5,7 +5,7 @@ var cfg = {
   devtool: "source-map",
   entry: "../../../bin/Debug/Iris/Web/Worker/Main.js",
   output: {
-    path: path.join(__dirname, "../../../bin/Debug/Worker"),
+    path: path.join(__dirname, "../../../bin/"),
     filename: "worker.js"
   },
   module: {

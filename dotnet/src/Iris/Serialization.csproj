@@ -33,7 +33,7 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AssemblyInfo/Serialization.cs" />
+    <Compile Include="AssemblyInfo/SerializationInfo.cs" />
     <Compile Include="FlatBuffers\ByteBuffer.cs" />
     <Compile Include="FlatBuffers\FlatBufferBuilder.cs" />
     <Compile Include="FlatBuffers\FlatBufferConstants.cs" />

@@ -7,6 +7,7 @@
 open Fake
 open Fake.Git
 open Fake.NpmHelper
+open Fake.ZipHelper
 open Fake.FuchuHelper
 open Fake.AssemblyInfoFile
 open Fake.ReleaseNotesHelper
@@ -14,6 +15,8 @@ open Fake.UserInputHelper
 open System
 open System.IO
 open System.Diagnostics
+
+let konst x _ = x
 
 // The name of the project
 // (used by attributes in AssemblyInfo, name of a NuGet package and directory in 'src')
@@ -82,8 +85,13 @@ let (|Fsproj|Csproj|) (projFileName:string) =
     | f when f.EndsWith("csproj") -> Csproj
     | _                           -> failwith (sprintf "Project file %s not supported. Unknown project type." projFileName)
 
+//     _                           _     _       ___        __
+//    / \   ___ ___  ___ _ __ ___ | |__ | |_   _|_ _|_ __  / _| ___
+//   / _ \ / __/ __|/ _ \ '_ ` _ \| '_ \| | | | || || '_ \| |_ / _ \
+//  / ___ \\__ \__ \  __/ | | | | | |_) | | |_| || || | | |  _| (_) |
+// /_/   \_\___/___/\___|_| |_| |_|_.__/|_|\__, |___|_| |_|_|  \___/
+//                                         |___/
 
-// Generate assembly info files with the right version & up-to-date information
 Target "AssemblyInfo" (fun _ ->
     let getAssemblyInfoAttributes projectName =
         [ Attribute.Title (projectName)
@@ -101,7 +109,7 @@ Target "AssemblyInfo" (fun _ ->
         )
 
     let assemblyFileName (fn: string) (suffix: string) =
-      fn.Substring(0,fn.Length - 6)  + suffix
+      fn.Substring(0,fn.Length - 7) + "Info." + suffix
 
     !! "src/**/*.??proj"
     |> Seq.map getProjectDetails
@@ -114,15 +122,74 @@ Target "AssemblyInfo" (fun _ ->
         | Fsproj -> CreateFSharpAssemblyInfo (createPath "fs") attributes
         | Csproj -> CreateCSharpAssemblyInfo (createPath "cs") attributes))
 
+//   ____
+//  / ___|___  _ __  _   _
+// | |   / _ \| '_ \| | | |
+// | |__| (_) | |_) | |_| |
+//  \____\___/| .__/ \__, |
+//            |_|    |___/
 
-// Copies binaries from default VS location to expected bin folder
-// But keeps a subdirectory structure for each project in the 
-// src folder to support multiple project outputs
-Target "CopyBinaries" (fun _ ->
-    !! "src/**/*.??proj"
-    |>  Seq.map (fun f -> ((System.IO.Path.GetDirectoryName f) @@ "bin/Release", "bin/Release" @@ (System.IO.Path.GetFileNameWithoutExtension f)))
-    |>  Seq.iter (fun (fromDir, toDir) -> CopyDir toDir fromDir (fun _ -> true)))
+Target "CopyBinaries"
+  (fun _ ->
+    CopyDir "bin/Iris"  (baseDir @@ "bin/Release/Iris")  (konst true) |> ignore
+    CopyDir "bin/Nodes" (baseDir @@ "bin/Release/Nodes") (konst true) |> ignore)
 
+Target "CopyAssets"
+  (fun _ ->
+    CopyDir "bin/Iris/assets" (baseDir @@ "assets/frontend") (konst true)
+
+    !! (baseDir @@ "bin/*.js")
+    |> CopyFiles "bin/Iris/assets/js"
+    |> ignore
+
+    !! (baseDir @@ "bin/*.map")
+    |> CopyFiles "bin/Iris/assets/js"
+    |> ignore)
+
+
+//     _             _     _
+//    / \   _ __ ___| |__ (_)_   _____
+//   / _ \ | '__/ __| '_ \| \ \ / / _ \
+//  / ___ \| | | (__| | | | |\ V /  __/
+// /_/   \_\_|  \___|_| |_|_| \_/ \___|
+
+let comment = @"
+//  ___      _
+// |_ _|_ __(_)___
+//  | || '__| / __|
+//  | || |  | \__ \
+// |___|_|  |_|___/ Automation Toolkit
+// NsynK GmbH, 2016
+"
+
+Target "CreateArchive"
+  (fun _ ->
+     let nameWithVersion = "Iris-" + release.NugetVersion
+     let target = "temp" @@ nameWithVersion
+
+     if Directory.Exists target |> not then
+       CreateDir target
+     else 
+       CleanDir target
+    
+     CopyDir (target @@ "Iris")  "bin/Iris" (konst true)
+     CopyDir (target @@ "Nodes") "bin/Nodes" (konst true)
+     let files = !!(target @@ "**")
+     CreateZip "temp" (nameWithVersion + ".zip") comment 7 false files
+     |> ignore)
+
+// Target "CreateArchive" (fun _ ->
+//     [   "", !! "bin/Iris/**"
+//             ++ "bin/Nodes/**"
+//     ]
+//     |> ZipOfIncludes (sprintf @"tests.%s.zip" "hahahahah")
+// )
+
+//   ____ _
+//  / ___| | ___  __ _ _ __
+// | |   | |/ _ \/ _` | '_ \
+// | |___| |  __/ (_| | | | |
+//  \____|_|\___|\__,_|_| |_|
 
 Target "Clean" (fun _ ->
     CleanDirs [
@@ -132,6 +199,12 @@ Target "Clean" (fun _ ->
       "src/Iris/bin"
       "src/Iris/obj"
       ])
+
+//  ____            _       _ _          _   _
+// / ___|  ___ _ __(_) __ _| (_)______ _| |_(_) ___  _ __
+// \___ \ / _ \ '__| |/ _` | | |_  / _` | __| |/ _ \| '_ \
+//  ___) |  __/ |  | | (_| | | |/ / (_| | |_| | (_) | | | |
+// |____/ \___|_|  |_|\__,_|_|_/___\__,_|\__|_|\___/|_| |_|
 
 Target "GenerateSerialization"
   (fun _ ->
@@ -189,6 +262,14 @@ Target "BuildFrontend" (fun _ ->
         { p with
             NpmFilePath = npmPath
             Command = (Run "build-frontend")
+            WorkingDirectory = baseDir })
+    |> ignore)
+
+Target "BuildWorker" (fun _ ->
+    Npm(fun p ->
+        { p with
+            NpmFilePath = npmPath
+            Command = (Run "build-worker")
             WorkingDirectory = baseDir })
     |> ignore)
 
@@ -258,6 +339,20 @@ Target "RunTests"
     failwith "FIX THE TESTS ON NIXOS DUDE")
 
 //  ____
+// / ___|  ___ _ ____   _____ _ __
+// \___ \ / _ \ '__\ \ / / _ \ '__|
+//  ___) |  __/ |   \ V /  __/ |
+// |____/ \___|_|    \_/ \___|_|
+
+Target "DevServer"
+  (fun _ ->
+    let info = new ProcessStartInfo("fsi", "DevServer.fsx")
+    info.UseShellExecute <- false
+    let proc = Process.Start(info)
+    proc.WaitForExit()
+    printfn "done.")
+
+//  ____
 // |  _ \  ___   ___ ___
 // | | | |/ _ \ / __/ __|
 // | |_| | (_) | (__\__ \
@@ -324,6 +419,20 @@ Target "RunTests"
 
 // --------------------------------------------------------------------------------------
 // Run all targets by default. Invoke 'build <Target>' to override
+
+Target "Release" DoNothing
+
+"Clean"
+==> "GenerateSerialization"
+==> "BuildFrontend"
+==> "BuildWorker"
+==> "BuildWebTests"
+==> "BuildReleaseService"
+==> "BuildReleaseNodes"
+==> "CopyBinaries"
+==> "CopyAssets"
+==> "CreateArchive"
+==> "Release"
 
 Target "All" DoNothing
 

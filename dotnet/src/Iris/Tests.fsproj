@@ -44,7 +44,7 @@
     <None Include="paket.references" />
     <None Include="paket.template" />
     <None Include="assets\example-project.yml" />
-    <Compile Include="AssemblyInfo\Tests.fs" />
+    <Compile Include="AssemblyInfo\TestsInfo.fs" />
     <Compile Include="Iris\Core\Util.fs" />
     <Compile Include="Iris\Core\Types\Either.fs" />
     <Compile Include="Iris\Core\Types\Aliases.fs" />
