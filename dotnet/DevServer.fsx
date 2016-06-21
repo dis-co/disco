@@ -31,14 +31,14 @@ let noCache =
 let app =
   choose [
     GET >=> choose [
-      path "/"                    >=> noCache >=> file (assetsDir + "/index.html")
-      path "/tests"               >=> noCache >=> file (assetsDir + "/tests.html")
-      path "/js/iris.js"          >=> noCache >=> file (baseDir   + "/bin/iris.js")
-      path "/js/iris.js.map"      >=> noCache >=> file (baseDir   + "/bin/iris.js.map")
-      path "/js/worker.js"        >=> noCache >=> file (baseDir   + "/bin/worker.js")
-      path "/js/worker.js.map"    >=> noCache >=> file (baseDir   + "/bin/worker.js.map")
-      path "/js/web.tests.js"     >=> noCache >=> file (baseDir   + "/bin/web.tests.js")
-      path "/js/web.tests.js.map" >=> noCache >=> file (baseDir   + "/bin/web.tests.js.map")
+      path "/"                     >=> noCache >=> file (assetsDir + "/index.html")
+      path "/tests"                >=> noCache >=> file (assetsDir + "/tests.html")
+      path "/js/iris.js"           >=> noCache >=> file (baseDir   + "/bin/iris.js")
+      path "/js/iris.js.map"       >=> noCache >=> file (baseDir   + "/bin/iris.js.map")
+      path "/js/worker.js"         >=> noCache >=> file (baseDir   + "/bin/worker.js")
+      path "/js/worker.js.map"     >=> noCache >=> file (baseDir   + "/bin/worker.js.map")
+      path "/js/iris.tests.js"     >=> noCache >=> file (baseDir   + "/bin/iris.tests.js")
+      path "/js/iris.tests.js.map" >=> noCache >=> file (baseDir   + "/bin/iris.tests.js.map")
       browseHome ] ]
 
 let ip = IPAddress.Parse "127.0.0.1"

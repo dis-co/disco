@@ -171,12 +171,27 @@ Target "CopyAssets"
 // /_/   \_\_|  \___|_| |_|_| \_/ \___|
 
 let comment = @"
-//  ___      _
-// |_ _|_ __(_)___
-//  | || '__| / __|
-//  | || |  | \__ \
-// |___|_|  |_|___/ Automation Toolkit
-// NsynK GmbH, 2016
+##  ___      _
+## |_ _|_ __(_)___
+##  | || '__| / __|
+##  | || |  | \__ \
+## |___|_|  |_|___/ Automation Toolkit
+## NsynK GmbH, 2016
+
+Let us do something, while we have the chance! It is not every day that we are
+needed. Not indeed that we personally are needed. Others would meet the case
+equally well, if not better. To all mankind they were addressed, those cries for
+help still ringing in our ears! But at this place, at this moment of time, all
+mankind is us, whether we like it or not. Let us make the most of it, before it
+is too late! Let us represent worthily for one the foul brood to which a cruel
+fate consigned us! What do you say? It is true that when with folded arms we
+weigh the pros and cons we are no less a credit to our species. The tiger bounds
+to the help of his congeners without the least reflexion, or else he slinks away
+into the depths of the thickets. But that is not the question. What are we doing
+here, that is the question. And we are blessed in this, that we happen to know
+the answer. Yes, in the immense confusion one thing alone is clear. We are
+waiting for Godot to come --
+
 "
 
 Target "CreateArchive"
@@ -195,12 +210,6 @@ Target "CreateArchive"
      CreateZip "temp" (nameWithVersion + ".zip") comment 7 false files
      |> ignore)
 
-// Target "CreateArchive" (fun _ ->
-//     [   "", !! "bin/Iris/**"
-//             ++ "bin/Nodes/**"
-//     ]
-//     |> ZipOfIncludes (sprintf @"tests.%s.zip" "hahahahah")
-// )
 
 //   ____ _
 //  / ___| | ___  __ _ _ __
@@ -441,17 +450,41 @@ Target "Release" DoNothing
 
 "Clean"
 ==> "GenerateSerialization"
-==> "BuildFrontend"
-==> "BuildWorker"
+
+"GenerateSerialization"
 ==> "BuildWebTests"
+
+"GenerateSerialization"
+==> "BuildFrontend"
+
+"GenerateSerialization"
+==> "BuildWorker"
+
+"GenerateSerialization"
 ==> "BuildReleaseService"
+
+"GenerateSerialization"
 ==> "BuildReleaseNodes"
+
+"BuildReleaseNodes"
+==> "BuildReleaseService"
 ==> "CopyBinaries"
+
+"BuildWorker"
+==> "CopyAssets"
+
+"BuildWebTests"
+==> "CopyAssets"
+
+"BuildFrontend"
+==> "CopyAssets"
+
+"CopyBinaries"
 ==> "CopyAssets"
 ==> "CreateArchive"
-==> "Release"
 
-Target "All" DoNothing
+"CreateArchive"
+==> "Release"
 
 // "CleanDocs"
 //   ==> "GenerateHelp"
@@ -464,4 +497,4 @@ Target "All" DoNothing
 // "GenerateHelp"
 //   ==> "KeepRunning"
     
-RunTargetOrDefault "All"
+RunTargetOrDefault "Release"

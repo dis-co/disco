@@ -27,4 +27,4 @@ then
   mozroots --import --sync --quiet
 fi
 
-run packages/build/FAKE/tools/FAKE.exe "$@" $FSIARGS build.fsx
+run packages/build/FAKE/tools/FAKE.exe build.fsx "$@" "parallel-jobs=4" $FSIARGS
