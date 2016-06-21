@@ -78,10 +78,6 @@ module Store =
       test "should add an iobox to the store if patch exists" <| fun cb ->
         store.Dispatch <| PatchEvent(Create, patch)
 
-        printfn "------------------------------------------------------------"
-
-        printfn "%A" store.State.Patches
-
         store.State.Patches.[0]
         |> (fun patch -> check ((Array.length patch.IOBoxes) = 0) "iobox array length should be 0")
 
@@ -90,8 +86,6 @@ module Store =
               with Slices = [| StringSlice(0,"Hey") |] }
 
         store.Dispatch <| IOBoxEvent(Create, iobox)
-
-        printfn "%A" store.State.Patches
 
         store.State.Patches.[0]
         |> (fun patch -> ((Array.length patch.IOBoxes) ==>> 1) cb)
@@ -158,17 +152,17 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->
       test "store should trigger listeners on undo" <| fun cb ->
+        store.Dispatch <| PatchEvent(Create, patch)
+        store.Dispatch <| PatchEvent(Update, { patch with Name = "patch-2" })
+
+        // subscribe now, so as to not fire too early ;)
         store.Subscribe(fun st ev ->
           match ev with
             | PatchEvent(Create, p) -> if p.Name = patch.Name then cb ()
             | _ -> ())
 
-        store.Dispatch <| PatchEvent(Create, patch)
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "patch-2" })
-
         store.History.Length |==| 3
         store.Undo()
-
 
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->

@@ -107,8 +107,8 @@ module Store =
     (*
      * Notify all listeners of the AppEvent change
      *)
-    member private __.Notify (ev : AppEvent) =
-      List.map (fun l -> l __ ev) listeners
+    member private store.Notify (ev : AppEvent) =
+      List.iter (fun f -> f store ev) listeners
 
     (*
      * Turn debugging mode on or off.
@@ -136,8 +136,8 @@ module Store =
        Create a history item for this change if debugging is enabled.
      *)
     member __.Dispatch (ev : AppEvent) : unit =
-      state <- reducer ev state    // 1) create new state
-      __.Notify ev |> ignore       // 2) notify all listeners (render as soon as possible)
+      state <- reducer ev state         // 1) create new state
+      __.Notify ev                      // 2) notify all listeners (render as soon as possible)
       history.Append({ Event = ev       // 3) store this action the and state it produced
                      ; State = state }) // 4) append to undo history
 
