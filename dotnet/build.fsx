@@ -9,6 +9,7 @@ open Fake.Git
 open Fake.NpmHelper
 open Fake.ZipHelper
 open Fake.FuchuHelper
+open Fake.Paket
 open Fake.AssemblyInfoFile
 open Fake.ReleaseNotesHelper
 open Fake.UserInputHelper
@@ -84,6 +85,22 @@ let (|Fsproj|Csproj|) (projFileName:string) =
     | f when f.EndsWith("fsproj") -> Fsproj
     | f when f.EndsWith("csproj") -> Csproj
     | _                           -> failwith (sprintf "Project file %s not supported. Unknown project type." projFileName)
+
+//  ____              _       _
+// | __ )  ___   ___ | |_ ___| |_ _ __ __ _ _ __
+// |  _ \ / _ \ / _ \| __/ __| __| '__/ _` | '_ \
+// | |_) | (_) | (_) | |_\__ \ |_| | | (_| | |_) |
+// |____/ \___/ \___/ \__|___/\__|_|  \__,_| .__/
+//                                         |_|
+
+Target "Bootstrap"
+  (fun _ ->
+    Restore(id)                         // restore Paket packages
+    Npm(fun p -> 
+        { p with
+            NpmFilePath = npmPath
+            Command = Install Standard
+            WorkingDirectory = "" }))
 
 //     _                           _     _       ___        __
 //    / \   ___ ___  ___ _ __ ___ | |__ | |_   _|_ _|_ __  / _| ___
