@@ -9,7 +9,7 @@ module Mocha =
   open Fable.Import
   open Fable.Import.Browser
 
-  [<Emit "throw new Error($msg) ">]
+  [<Emit "throw new Error($0) ">]
   let bail (msg : string) : unit = failwith "ONLY JS"
 
   let success (cb : unit -> unit) : unit = cb ()

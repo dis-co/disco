@@ -1,28 +1,32 @@
-namespace Iris.Web.Tests
-
-open Microsoft.FSharp.Quotations
-open System.IO
-open System.Reflection
-open System.Text.RegularExpressions
-
 open Fable.Core
 open Fable.Import
+open Test.Units
 
-module Client =
-  open Test.Units
+[<Emit("$0.apply()")>]
+let apply f = failwith "ONLY IN JS"
 
-  let apply f = f ()
+let main _ =
+  [ Html.main
+  ; Store.main
+  ; Storage.main
+  ; Plugins.main
+  ; VirtualDom.main
+  ; PatchesView.main
+  ; ViewController.main 
+  ] |> List.iter apply
 
-  let Main =
-    [ Html.main
-    ; Store.main
-    ; Storage.main
-    ; Plugins.main
-    ; VirtualDom.main
-    ; PatchesView.main
-    ; ViewController.main 
-    ] |> List.iter apply
-    
+@"
+//  _   _                 _
+// | \ | |___ _   _ _ __ | | __
+// |  \| / __| | | | '_ \| |/ /
+// | |\  \__ \ |_| | | | |   <
+// |_| \_|___/\__, |_| |_|_|\_\
+// © 2016     |___/
+
+" |> printfn "%s"
+
+main()
+
 (*
 open Microsoft.FSharp.Quotations
 open System.IO

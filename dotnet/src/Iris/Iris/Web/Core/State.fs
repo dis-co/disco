@@ -35,9 +35,11 @@ module State =
 
     member state.Add (iobox : IOBox) =
       let updater (patch : Patch) =
-        if iobox.Patch = patch.Id
-        then Patch.addIOBox patch iobox
-        else patch
+        printfn "PaTHC: %A ID %A" iobox.Patch patch.Id
+        if iobox.Patch = patch.Id then
+          Patch.addIOBox patch iobox
+        else
+          patch
       { state with Patches = Array.map updater state.Patches }
 
     member state.Add (cue : Cue) =

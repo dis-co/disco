@@ -8,12 +8,9 @@ type Patch =
 
   static member hasIOBox (patch : Patch) (iobox : IOBox) : bool =
     let pred (iob : IOBox) = iob.Id = iobox.Id
-    let idx = try Some(Array.findIndex pred patch.IOBoxes)
-              with
-                | _ -> None
-    match idx with
-      | Some(_) -> true
-      | _       -> false
+    match Array.findIndex pred patch.IOBoxes with
+      | i when i > -1 -> true
+      | _             -> false
   
   static member findIOBox (patches : Patch array) (id : string) : IOBox option =
     let folder (m : IOBox option) (p : Patch) =

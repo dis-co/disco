@@ -1,10 +1,6 @@
 namespace Iris.Web.Core
 
-open WebSharper
-open WebSharper.JavaScript
-
 [<AutoOpen>]
-[<JavaScript>]
 module IrisMonad =
   type StateM<'a, 's> = 's -> ('a * 's)
 

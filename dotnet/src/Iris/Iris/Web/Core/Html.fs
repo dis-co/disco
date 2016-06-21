@@ -15,13 +15,13 @@ module Html =
         |___/|_|
   *)
 
-  type Styles [<Emit "{}">] () =
+  type Styles () =
     [<DefaultValue>] val mutable textAlign : string;
     [<DefaultValue>] val mutable margin    : string;
 
 
   // for styles etc
-  type VProps [<Emit "{}">] () =
+  type VProps () =
     [<DefaultValue>]
     val mutable id : string
 
@@ -34,14 +34,13 @@ module Html =
     [<DefaultValue>]
     val mutable onclick : unit -> unit
 
-
   let emptyProps = new VProps ()
 
   type VTree =
-    [<Emit "new virtualDom.VNode($tag,$props,$children)">]
+    [<Emit "new virtualDom.VNode($0,$1,$2)">]
     new (_: string,_: VProps,_: VTree array) = {}
 
-    [<Emit "new virtualDom.VText($tag)">]
+    [<Emit "new virtualDom.VText($0)">]
     new (_: string) = {}
 
   type VPatch = class end
@@ -57,7 +56,7 @@ module Html =
 
   type Html =
     | Parent of
-      name     : string         *
+      name     : string          *
       attrs    : Attribute array *
       children : Html array
 
@@ -123,13 +122,13 @@ module Html =
        \_/  |_|_|   \__|\__,_|\__,_|_|____/ \___/|_| |_| |_|
   *)
 
-  [<Emit "virtualDom.create($tree)">]
+  [<Emit "virtualDom.create($0)">]
   let createElement (_: VTree) : HTMLElement = failwith "JS Only"
 
-  [<Emit "virtualDom.diff($oldtree,$newtree)">]
+  [<Emit "virtualDom.diff($0,$1)">]
   let diff (_: VTree) (_: VTree) : VPatch = failwith "JS Only"
 
-  [<Emit "virtualDom.patch($root, $patch)">]
+  [<Emit "virtualDom.patch($0, $1)">]
   let patch (_: HTMLElement) (_: VPatch) : HTMLElement = failwith "JS Only"
 
   let mkVNode (tag : string) (prop : VProps) (children : VTree array) : VTree =
@@ -139,7 +138,7 @@ module Html =
     new VTree(txt)
 
   // `this` makes me feel uneasy
-  [<Emit "$cb.apply({},arguments)">]
+  [<Emit "$0.apply({},arguments)">]
   let withArgs (_: 'a -> unit) = failwith "JS Only"
 
   (*

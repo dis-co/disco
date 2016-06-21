@@ -19,15 +19,11 @@ module Plugin =
 
   type EventCallback = IOBox -> unit
                      
-  type Plugin () = class
-    [<Emit "render">]
+  type Plugin () =
     member this.Render (_: IOBox) : VTree = failwith "JS Only"
-
-    [<Emit "dispose">]
     member this.Dispose() : unit = failwith "JS Only"
-  end
 
-  type PluginSpec [<Emit "{}">] ()  =
+  type PluginSpec ()  =
     [<DefaultValue>] val mutable name : string
     [<DefaultValue>] val mutable ``type`` : string
     [<DefaultValue>] val mutable  create : EventCallback -> Plugin
@@ -36,37 +32,35 @@ module Plugin =
   [<Emit "return window.IrisPlugins">]
   let listPlugins () : PluginSpec array = failwith "JS Only"
 
-  [<Emit "return window.IrisPlugins.filter(function (plugin) { return plugin.type === $kind; })" >]
+  [<Emit "return window.IrisPlugins.filter(function (plugin) { return plugin.type === $0; })" >]
   let findPlugins (_: PinType) : PluginSpec array = failwith "JS Only"
 
-  [<Emit "return ($o === null) || ($o === undefined)">]
+  [<Emit "return ($0 === null) || ($0 === undefined)">]
   let isNull (_: obj) : bool = failwith "JS Only"
 
-  (*
-     ____  _             _
-    |  _ \| |_   _  __ _(_)_ __  ___
-    | |_) | | | | |/ _` | | '_ \/ __|
-    |  __/| | |_| | (_| | | | | \__ \
-    |_|   |_|\__,_|\__, |_|_| |_|___/ instances map
-                   |___/
-  *)
+  //  ____  _             _
+  // |  _ \| |_   _  __ _(_)_ __  ___
+  // | |_) | | | | |/ _` | | '_ \/ __|
+  // |  __/| | |_| | (_| | | | | \__ \
+  // |_|   |_|\__,_|\__, |_|_| |_|___/ instances map
+  //                |___/
 
   type Plugins () =
     (* ------------------------ internal -------------------------- *)
-    [<Emit " delete $ctx[$id] ">]
-    let rmImpl (_: obj) (_: string) : unit = failwith "JS Only"
+    [<Emit "$0[$1]">]
+    member private __.GetImpl (_: string) : Plugin = failwith "JS Only"
 
-    [<Emit " $0[$id] = $inst ">]
-    let addImpl (_: string) (_: Plugin) : unit = failwith "JS Only"
+    [<Emit "Object.keys($0)">]
+    member private __.IdsImpl () : string array = failwith "ONLY IN JS"
 
-    [<Emit " $0[$id] != null ">]
-    let hasImpl (_: string) : bool = failwith "JS Only"
+    [<Emit("$0[$1] = $2")>]
+    member private __.AddImpl(_: string, _: Plugin) = failwith "ONLY IN JS"
 
-    [<Emit " $0[$id] ">]
-    let getImpl (_: string) : Plugin = failwith "JS Only"
+    [<Emit "delete $0[$1] ">]
+    member private __.RmImpl(_: string) = failwith "ONLY IN JS"
 
-    [<Emit " Object.keys($0) ">]
-    let idsImpl () : string array = failwith "JS Only"
+    [<Emit " $0[$1] != null ">]
+    member private __.HasImpl (_: string) : bool = failwith "ONLY IN JS"
 
     (* ------------------------ public interface -------------------------- *)
 
@@ -74,21 +68,23 @@ module Plugin =
     member self.Add (iobox : IOBox) (onupdate : EventCallback) =
       let candidates = findPlugins iobox.Type
       in if candidates.Length > 0
-         then addImpl iobox.Id (candidates.[0].create(onupdate))
+         then self.AddImpl(iobox.Id, candidates.[0].create(onupdate))
          else printfn "Could not instantiate view for IOBox. Type not found: %A" iobox.Type
 
-    member self.Has (iobox : IOBox) : bool = hasImpl iobox.Id
+    member self.Has (iobox : IOBox) : bool = self.HasImpl(iobox.Id)
 
     member self.Get (iobox : IOBox) : Plugin option =
-      let inst = getImpl iobox.Id
+      let inst = self.GetImpl(iobox.Id)
       if isNull inst
       then None
       else Some(inst)
 
     (* remove an instance of a view plugin *)
-    member self.Remove (iobox : IOBox) = rmImpl self iobox.Id
+    member self.Remove (iobox : IOBox) = self.RmImpl(iobox.Id)
 
-    member self.Ids () : string array = idsImpl ()
+    member self.Ids () : string array = self.IdsImpl()
 
     interface IDisposable with
-      member self.Dispose () = Array.map rmImpl (self.Ids ()) |> ignore
+      member self.Dispose () =
+        // FIXME should also call Dispose on the Plugin instance
+        Array.map self.RmImpl (self.Ids ()) |> ignore
