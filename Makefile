@@ -49,7 +49,7 @@ web.tests.watch:
 	${BUILD} WatchWebTests
 
 web.tests:
-	${BUILD} BuildTests
+	${BUILD} BuildWebTests
 
 worker.watch:
 	${BUILD} WatchWorker
