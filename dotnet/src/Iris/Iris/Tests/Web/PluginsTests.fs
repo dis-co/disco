@@ -11,58 +11,6 @@ module Plugins =
   open Iris.Web.Views
   open Iris.Web.Tests
 
-  (*
-  [<Emit @"
-    window.IrisPlugins = [];
-      (function(plugins) {
-          var h = virtualDom.h;
-      
-          var stringplugin = function(cb) {
-            this.render = function (iobox) {
-                return h(""div"", { id: iobox.id }, iobox.slices.map(function(slice) {
-                  return h(""input"", {
-                    value: slice.value,
-                    className: 'slice',
-                    onchange: function(ev) {
-                      // mutate slices array
-                      iobox.slices[slice.idx] = { idx: slice.idx, value: $(ev.target).val() };
-                      cb(iobox);
-                    }
-                  }, [ slice.value ]);
-                }));
-            };
-        
-            this.dispose = function() {};
-          }
-      
-          plugins.push({
-            name: ""simple-string-plugin"",
-            type: ""string"",
-            create: function(cb) {
-              return new stringplugin(cb);
-            }
-          });
-
-          var numberplugin = function(cb) {
-            this.render = function (iobox) {
-                var view = h(""div"", { id: iobox.id }, [
-                  h(""p"", { className: ""slice"" }, [ iobox.slices[0].value ])
-                ]);
-                return view;
-            };
-            this.dispose = function() {};
-          }
-      
-          plugins.push({
-            name: ""simple-number-plugin"",
-            type: ""value"",
-            create: function(cb) {
-              return new numberplugin(cb);
-            }
-          });
-      })(window.IrisPlugins);">]
-  let setupPlugins () = failwith "OHNLY JSSS"
-  *)
 
   [<Emit("console.log('setupPlubins FIXME')")>]
   let setupPlugins () = failwith "OHNLY JSSS"
