@@ -26,7 +26,7 @@ module Worker =
       [<DefaultValue>]
       val mutable port : MessagePort
 
-      [<Emit "new SharedWorker($url)">]
+      [<Emit "new SharedWorker($0)">]
       new(_: string) = {}
 
 
@@ -91,51 +91,67 @@ module Worker =
     let fac = Math.random()
     JSON.stringify(Math.floor(float(time) * fac))
 
-  type Ports [<Emit "{}">]() = class end
+  type Ports() =
+    member __.ToString() = failwith "ONLY IN JS"
 
-  type GlobalContext() =
+  type GlobalContext() as this =
     let mutable count = 0
     let mutable ports = new Ports()
     let mutable store = new Store<State>(Reducer, State.Empty)
     let mutable socket = None
 
-    [<Emit "$ports[$id] = $port">]
-    let addImpl (_: Ports) _ _ : unit = failwith "JS Only"
+    (*                      _                   _
+         ___ ___  _ __  ___| |_ _ __ _   _  ___| |_ ___  _ __
+        / __/ _ \| '_ \/ __| __| '__| | | |/ __| __/ _ \| '__|
+       | (_| (_) | | | \__ \ |_| |  | |_| | (__| || (_) | |
+        \___\___/|_| |_|___/\__|_|   \__,_|\___|\__\___/|_|
+    *)
+    do
+      let s = WebSocket.Create("ws://localhost:8080")
+      s.onopen  <- (fun _ -> this.Broadcast <| ClientMessage.Connected; failwith "obj")
+      s.onclose <- (fun _ -> this.Broadcast <| ClientMessage.Disconnected; failwith "obj")
+      s.onerror <- (fun e -> this.Broadcast <| ClientMessage.Error(JSON.stringify(e)); failwith "obj";)
+      s.onmessage <- (fun msg -> this.OnSocketMessage msg; failwith "obj")
+      socket <- Some(s)
 
-    [<Emit "delete $ports[$id]">]
-    let rmImpl (_: Ports) _ : unit = failwith "JS Only"
+
+    [<Emit "$0[$1] = $2">]
+    member private __.AddImpl (_: string, _: MessagePort) : unit = failwith "JS Only"
+
+    [<Emit "delete $0[$1]">]
+    member private __.RmImpl (_: string) : unit = failwith "JS Only"
 
     [<Emit "Object.keys($0)">]
-    let allKeysImpl (_: Ports) : string array = failwith "JS Only"
+    member private __.AllKeysImpl () : string array = failwith "JS Only"
 
-    [<Emit "$ports[$key]">]
-    let getImpl (_: Ports) (_: string) : MessagePort = failwith "JS Only"
+    [<Emit "$0[$1]">]
+    member private __.GetImpl (_: string) : MessagePort = failwith "JS Only"
 
-    [<Emit "void(self.close())">]
-    let close () = failwith "JS Only"
+    [<Emit "$0.close()">]
+    member __.Close () = failwith "JS Only"
 
-    let send (msg : ClientMessage<State>) (port : MessagePort) : unit =
+    member __.Send (msg : ClientMessage<State>, port : MessagePort) : unit =
       port.postMessage(msg, [| |])
 
-    let broadcast (msg : ClientMessage<State>) : unit =
-      for k in allKeysImpl ports do
-        let p = getImpl ports k
-        send msg p
+    member __.Broadcast (msg : ClientMessage<State>) : unit =
+      for k in __.AllKeysImpl() do
+        let p = __.GetImpl(k)
+        __.Send(msg, p)
 
-    let multicast (id : Session) (msg : ClientMessage<State>) : unit =
-      for k in allKeysImpl ports do
+    member __.Multicast (id: Session, msg: ClientMessage<State>) : unit =
+      for k in __.AllKeysImpl() do
         if id <> k then
-          let p = getImpl ports k
-          send msg p
+          let p = __.GetImpl(k)
+          __.Send(msg, p)
          
-    let remove (id : Session) =
+    member __.Remove (id : Session) =
       count <- count - 1
-      rmImpl ports id
-      broadcast <| ClientMessage.Closed(id)
+      __.RmImpl(id)
+      __.Broadcast <| ClientMessage.Closed(id)
 
-    let log (o : obj) =
+    member __.Log o  =
       printfn "%A" o
-      broadcast <| ClientMessage.Log(o)
+      __.Broadcast <| ClientMessage.Log(o)
 
     (*-------------------------------------------------------------------------*
         ____             _        _
@@ -146,7 +162,7 @@ module Worker =
 
      *-------------------------------------------------------------------------*)
 
-    let onSocketMessage (ev : MessageEvent) : unit =
+    member __.OnSocketMessage (ev : MessageEvent) : unit =
       let msg = JSON.parse(ev.data :?> string) :?> ApiMessage
       let parsed =
         match msg.Type with
@@ -159,7 +175,7 @@ module Worker =
           | ApiAction.RemoveIOBox -> IOBoxEvent(Delete, msg.Payload :?> IOBox)
 
       in store.Dispatch parsed
-      broadcast <| ClientMessage.Render(store.State)
+      __.Broadcast <| ClientMessage.Render(store.State)
 
     (*-------------------------------------------------------------------------*
         ____ _ _            _
@@ -170,62 +186,48 @@ module Worker =
 
      *------------------------------------------------------------------------*)
 
-    let onClientMessage (msg : MessageEvent) : unit =
+    member __.OnClientMessage (msg : MessageEvent) : unit =
       let parsed = msg.data :?> ClientMessage<State>
       match parsed with
-        | ClientMessage.Close(session) -> remove(session)
+        | ClientMessage.Close(session) -> __.Remove(session)
 
         | ClientMessage.Undo ->
           store.Undo()
-          broadcast <| ClientMessage.Render(store.State)
+          __.Broadcast <| ClientMessage.Render(store.State)
 
         | ClientMessage.Redo ->
           store.Redo()
-          broadcast <| ClientMessage.Render(store.State)
+          __.Broadcast <| ClientMessage.Render(store.State)
 
         | ClientMessage.Stop ->
-          broadcast <| ClientMessage.Stopped
-          close ()
+          __.Broadcast <| ClientMessage.Stopped
+          __.Close ()
 
         | ClientMessage.Event(session, event') ->
           match event' with
             | IOBoxEvent(_,_) as ev ->
               store.Dispatch ev
-              multicast session <| ClientMessage.Render(store.State)
+              __.Multicast(session, ClientMessage.Render(store.State))
             | PatchEvent(_,_) as ev ->
               store.Dispatch ev
-              multicast session <| ClientMessage.Render(store.State)
+              __.Multicast(session, ClientMessage.Render(store.State))
             | CueEvent(_,_)   as ev ->
               store.Dispatch ev
-              broadcast <| ClientMessage.Render(store.State)
-            | _ -> log "other are not supported in-worker"
+              __.Broadcast <| ClientMessage.Render(store.State)
+            | _ -> __.Log "other are not supported in-worker"
 
-        | _ -> log "clients-only message ignored"
+        | _ -> __.Log "clients-only message ignored"
 
-    let add (port : MessagePort) =
+    member __.Add (port : MessagePort) =
       count <- count + 1                    // increase the connection count
       let id = mkSession()                  // create a session id
-      port.onmessage <- (fun msg -> onClientMessage msg; failwith "hm") // register callback on port
-      addImpl ports id port                 // add port to ports object
+      port.onmessage <- (fun msg -> __.OnClientMessage msg; failwith "hm") // register callback on port
+      __.AddImpl(id, port)                 // add port to ports object
 
       [ ClientMessage.Initialized(id)       // tell client all is good
       ; ClientMessage.Render(store.State) ] // tell client to render
-      |> List.map (flip send port)
+      |> List.map __.Send
       |> ignore
-
-    (*                      _                   _
-         ___ ___  _ __  ___| |_ _ __ _   _  ___| |_ ___  _ __
-        / __/ _ \| '_ \/ __| __| '__| | | |/ __| __/ _ \| '__|
-       | (_| (_) | | | \__ \ |_| |  | |_| | (__| || (_) | |
-        \___\___/|_| |_|___/\__|_|   \__,_|\___|\__\___/|_|
-    *)
-    do
-      let s = WebSocket.Create("ws://localhost:8080")
-      s.onopen  <- (fun _ -> broadcast <| ClientMessage.Connected; failwith "obj")
-      s.onclose <- (fun _ -> broadcast <| ClientMessage.Disconnected; failwith "obj")
-      s.onerror <- (fun e -> broadcast <| ClientMessage.Error(JSON.stringify(e)); failwith "obj";)
-      s.onmessage <- (fun msg -> onSocketMessage msg; failwith "obj")
-      socket <- Some(s)
 
     (*--------------------------------------------------------------------------
 
@@ -238,7 +240,6 @@ module Worker =
 
     ---------------------------------------------------------------------------*)
 
-    member __.Add (port : MessagePort) = add port
     member __.Store  with get () = store
     member __.Socket with get () = socket
 
@@ -248,4 +249,4 @@ module Worker =
         | None -> __.Log("Not connected")
 
     member __.Log (thing : obj) : unit =
-      broadcast <| ClientMessage.Log(thing)
+      __.Broadcast <| ClientMessage.Log(thing)
