@@ -35,8 +35,7 @@ module Store =
       and  set b  =
         debug <- b
         if not debug then
-          let n = List.length values - depth
-          values <- List.take n values
+          values <- List.take depth values
 
     member __.Depth
       with get () = depth
@@ -115,8 +114,9 @@ module Store =
      *
      * Makes sure the current state is the first element.
      *)
-    member __.Debug(debug' : bool) : unit =
-      history.Debug <- debug'
+    member __.Debug
+      with get ()  = history.Debug
+       and set dbg = history.Debug <- dbg
 
     (*
      * Number of undo steps to keep around.

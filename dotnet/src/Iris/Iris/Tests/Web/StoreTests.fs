@@ -297,7 +297,7 @@ module Store =
     withStore <| fun patch store ->
       test "should keep all state in history in debug mode" <| fun cb ->
         store.UndoSteps <- 2
-        store.Debug(true)
+        store.Debug <- true
 
         store.Dispatch <| PatchEvent(Create, patch)
 
@@ -311,7 +311,7 @@ module Store =
     withStore <| fun patch store ->
       test "should shrink history to UndoSteps after leaving debug mode" <| fun cb ->
         store.UndoSteps <- 3
-        store.Debug(true)
+        store.Debug <- true
 
         store.Dispatch <| PatchEvent(Create, patch)
 
@@ -320,5 +320,5 @@ module Store =
             store.Dispatch <| PatchEvent(Update, { patch with Name = n }))
 
         store.History.Length |==| 8
-        store.Debug(false)
+        store.Debug <- false
         store.History.Length ==>> 3 <| cb
