@@ -72,7 +72,30 @@ module Browser =
   let appendChild (el: Browser.Element) (target: Browser.Element) =
     target.appendChild el
 
-  [<Emit "Object.is($0, $1)">]
+  [<Emit("Object.is($0, $1)")>]
   let identical (_: obj) (_: obj) = failwith "OH NO ITS ITS ITS JS"
     
-  let asHtml (el: 'a when 'a :> Browser.HTMLElement) = el :> Browser.HTMLElement
+  [<Emit("return $0")>]
+  let asHtml (el: 'a when 'a :> Browser.Node) : Browser.HTMLElement =
+    failwith "ITS JAVASCRIPT ONLY"
+
+  [<Emit("return $0")>]
+  let asHtmlInput (el: 'a when 'a :> Browser.Node) : Browser.HTMLInputElement =
+    failwith "ITS JAVASCRIPT ONLY"
+
+  //  _____                 _
+  // | ____|_   _____ _ __ | |_ ___
+  // |  _| \ \ / / _ \ '_ \| __/ __|
+  // | |___ \ V /  __/ | | | |_\__ \
+  // |_____| \_/ \___|_| |_|\__|___/
+
+  let trigger (t: 'a when 'a :> Browser.Event) (el: 'e when 'e :> Browser.Element) =
+    el.dispatchEvent(t)
+
+  let click (el: 'e when 'e :> Browser.Element) =
+    let ev = Browser.MouseEvent.Create("click")
+    trigger ev el
+
+  let change (el: 'e when 'e :> Browser.Element) =
+    let ev = Browser.Event.Create("change")
+    trigger ev el

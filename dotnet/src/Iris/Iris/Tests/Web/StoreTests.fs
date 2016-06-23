@@ -81,9 +81,8 @@ module Store =
         store.State.Patches.[0]
         |> (fun patch -> check ((Array.length patch.IOBoxes) = 0) "iobox array length should be 0")
 
-        let iobox : IOBox =
-          { IOBox.StringBox("0xb33f","url input", patch.Id)
-              with Slices = [| StringSlice(0,"Hey") |] }
+        let slice : StringSliceD = { Index = 0u; Value = "Hey" }
+        let iobox : IOBox = IOBox.String("0xb33f","url input", patch.Id, Array.empty, [| slice |])
 
         store.Dispatch <| IOBoxEvent(Create, iobox)
 
@@ -93,9 +92,8 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->
       test "should not add an iobox to the store if patch does not exists" <| fun cb ->
-        let iobox =
-          { IOBox.StringBox("0xb33f","url input", patch.Id)
-              with Slices = [| StringSlice(0, "Hey")  |] }
+        let slice : StringSliceD = { Index = 0u; Value =  "Hey" }
+        let iobox = IOBox.String("0xb33f","url input", patch.Id, Array.empty, [| slice |])
 
         store.Dispatch <| IOBoxEvent(Create, iobox)
         ((Array.length store.State.Patches) ==>> 0) cb
@@ -106,9 +104,8 @@ module Store =
         let name1 = "can a cat own a cat?"
         let name2 = "yes, cats are re-entrant."
 
-        let iobox =
-          { IOBox.StringBox("0xb33f", name1, patch.Id)
-              with Slices = [| StringSlice(0, "swell") |] }
+        let slice : StringSliceD = { Index = 0u; Value = "swell" } 
+        let iobox = IOBox.String("0xb33f", name1, patch.Id, Array.empty, [| slice |])
 
         store.Dispatch <| PatchEvent(Create, patch)
         store.Dispatch <| IOBoxEvent(Create, iobox)
@@ -117,7 +114,7 @@ module Store =
           | Some(i) -> i.Name |==| name1
           | None -> bail "iobox is mysteriously missing"
 
-        let updated = { iobox with Name = name2 }
+        let updated = iobox.SetName name2
         store.Dispatch <| IOBoxEvent(Update, updated)
 
         match Patch.findIOBox store.State.Patches iobox.Id with
@@ -127,9 +124,8 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->
       test "should remove an iobox from the store if it exists" <| fun cb ->
-        let iobox =
-          { IOBox.StringBox("0xb33f", "hi", "0xb4d1d34")
-              with Slices = [| StringSlice(0, "swell") |] }
+        let slice : StringSliceD = { Index = 0u; Value = "swell" }
+        let iobox = IOBox.String("0xb33f", "hi", "0xb4d1d34", Array.empty, [| slice |])
 
         store.Dispatch <| PatchEvent(Create, patch)
         store.Dispatch <| IOBoxEvent(Create, iobox)

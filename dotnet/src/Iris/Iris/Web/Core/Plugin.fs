@@ -9,25 +9,44 @@ module Plugin =
   open System
   open Iris.Core
 
-  (*   ____  _             _
-      |  _ \| |_   _  __ _(_)_ __
-      | |_) | | | | |/ _` | | '_ \
-      |  __/| | |_| | (_| | | | | |
-      |_|   |_|\__,_|\__, |_|_| |_| + spec
-                     |___/
-  *)
-
   type EventCallback = IOBox -> unit
-                     
+
+  //  ____  _             _
+  // |  _ \| |_   _  __ _(_)_ __
+  // | |_) | | | | |/ _` | | '_ \
+  // |  __/| | |_| | (_| | | | | |
+  // |_|   |_|\__,_|\__, |_|_| |_| + spec
+  //                |___/
+
   type Plugin () =
+    [<Emit("$0.render($1)")>]
     member this.Render (_: IOBox) : VTree = failwith "JS Only"
-    member this.Dispose() : unit = failwith "JS Only"
+
+    [<Emit("$0.dispose()")>]
+    member this.Dispose() : unit = failwith "ONLY IN JS"
+
+  //  ____  _             _       ____
+  // |  _ \| |_   _  __ _(_)_ __ / ___| _ __   ___  ___
+  // | |_) | | | | |/ _` | | '_ \\___ \| '_ \ / _ \/ __|
+  // |  __/| | |_| | (_| | | | | |___) | |_) |  __/ (__
+  // |_|   |_|\__,_|\__, |_|_| |_|____/| .__/ \___|\___|
+  //                |___/              |_|
 
   type PluginSpec ()  =
-    [<DefaultValue>] val mutable name : string
-    [<DefaultValue>] val mutable ``type`` : string
-    [<DefaultValue>] val mutable  create : EventCallback -> Plugin
+    [<Emit("$0.name")>]
+    member __.Name () : string = failwith "ONLY IN JS"
 
+    [<Emit("$0.type")>]
+    member __.PinType () : PinType = failwith "ONLY IN JS"
+
+    [<Emit("$0.create($1)")>]
+    member __.Create (_: EventCallback) : Plugin = failwith "ONLY IN JS"
+
+  //  _   _ _   _ _ _ _   _
+  // | | | | |_(_) (_) |_(_) ___  ___
+  // | | | | __| | | | __| |/ _ \/ __|
+  // | |_| | |_| | | | |_| |  __/\__ \
+  //  \___/ \__|_|_|_|\__|_|\___||___/
 
   [<Emit "return window.IrisPlugins">]
   let listPlugins () : PluginSpec array = failwith "JS Only"
@@ -66,10 +85,10 @@ module Plugin =
 
     (* instantiate a new view plugin *)
     member self.Add (iobox : IOBox) (onupdate : EventCallback) =
-      let candidates = findPlugins iobox.Type
+      let candidates = getType iobox |> findPlugins 
       in if candidates.Length > 0
-         then self.AddImpl(iobox.Id, candidates.[0].create(onupdate))
-         else printfn "Could not instantiate view for IOBox. Type not found: %A" iobox.Type
+         then self.AddImpl(iobox.Id, candidates.[0].Create(onupdate))
+         else printfn "Could not instantiate view for IOBox. Type not found: %A" iobox
 
     member self.Has (iobox : IOBox) : bool = self.HasImpl(iobox.Id)
 

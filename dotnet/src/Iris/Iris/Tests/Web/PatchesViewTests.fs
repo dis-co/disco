@@ -149,10 +149,8 @@ module PatchesView =
       let id1 = "id1"
       let value = "hello"
 
-      let iobox = {
-        IOBox.StringBox(id1,"url input", "0xb4d1d34") with
-          Slices = [| StringSlice(0,value) |]
-        }
+      let slice : StringSliceD = { Index = 0u; Value = value }
+      let iobox = IOBox.String(id1,"url input", "0xb4d1d34", Array.empty, [| slice |])
 
       let patch : Patch =
         { Id = "0xb4d1d34"
@@ -185,13 +183,11 @@ module PatchesView =
       let id2 = "iobox-4"
       let value = "hello"
 
-      let iobox1 =
-        { IOBox.StringBox(id1,"url input", "0xb4d1d34")
-            with Slices = [| StringSlice(0, value) |] }
+      let slice1 : StringSliceD = { Index = 0u; Value = value }
+      let iobox1 = IOBox.String(id1,"url input", "0xb4d1d34", Array.empty, [| slice1 |])
 
-      let iobox2 =
-        { IOBox.StringBox(id2,"url input", "0xb4d1d34")
-            with Slices = [| StringSlice(0, value) |] }
+      let slice2 : StringSliceD = { Index = 0u; Value = value }
+      let iobox2 = IOBox.String(id2,"url input", "0xb4d1d34", Array.empty, [| slice2 |])
 
       let patch : Patch =
         { Id = "0xb4d1d34"
@@ -244,9 +240,8 @@ module PatchesView =
         ; IOBoxes = [||]
         }
 
-      let iobox : IOBox =
-        { IOBox.StringBox(elid, "url input", "0xb4d1d34")
-            with Slices = [|  StringSlice(0, value1) |] }
+      let slice : StringSliceD = { Index = 0u; Value = value1 }
+      let iobox = IOBox.String(elid, "url input", "0xb4d1d34", Array.empty, [| slice |])
 
       let store : Store<State> =
         new Store<State>(Reducer, { State.Empty with Patches = [| patch |] })
@@ -269,10 +264,9 @@ module PatchesView =
           check (slice.textContent = value1) "iobox slice value not present in dom (test 1)")
 
       // update the iobox slice value
-      let updated1 = {
-        iobox with
-          Slices = [| StringSlice(0,value2) |]
-        }
+      let updated1 =
+        StringSlices [| { Index = 0u; Value = value2 } |]
+        |> iobox.SetSlices 
 
       store.Dispatch <| IOBoxEvent(Update, updated1)
 
@@ -291,10 +285,9 @@ module PatchesView =
           check (slice.textContent = value2) "iobox slice value not present in dom (test 2)")
 
       // update the iobox slice value
-      let updated2 = {
-        iobox with
-          Slices = [| StringSlice(0, value3) |]
-        }
+      let updated2 =
+        StringSlices [| { Index = 0u; Value = value3 } |]
+        |> iobox.SetSlices
 
       store.Dispatch <| IOBoxEvent(Update, updated2)
 

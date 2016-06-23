@@ -17,10 +17,10 @@
     <!-- <script src="dependencies/jquery/dist/jquery.js"></script> -->
     <!-- <script src="dependencies/routie/dist/routie.js"></script> -->
     <!-- <script src="dependencies/fabric.js/dist/fabric.js"></script> -->
+
     <script src="js/virtual-dom.js"></script>
     <script src="js/expect.js"></script>
     <script src="js/mocha.js"></script>
-
 
     <script>
     window.IrisPlugins = [];
@@ -29,24 +29,26 @@
 
         var stringplugin = function(cb) {
             this.render = function (iobox) {
-                return h("div", { id: iobox.id }, iobox.slices.map(function(slice) {
+                return h("div", { id: iobox.Id }, iobox.Slices.map(function(slice) {
                     return h("input", {
-                        value: slice.value,
+                        value: slice.Value,
                         className: "slice",
                         onchange: function(ev) {
-                            iobox.slices[slice.idx] = { idx: slice.idx, value: $(ev.target).val() };
+                            iobox.Slices[slice.Index] = {
+                                Index: slice.Index,
+                                Value: ev.target.value
+                            };
                             cb(iobox);
                         }
-                    }, [ slice.value ]);
+                    }, [ slice.Value ]);
                 }));
             };
-
             this.dispose = function() {};
         };
 
         plugins.push({
             name: "simple-string-plugin",
-            type: "string",
+            type: "StringPin",
             create: function(cb) {
                 return new stringplugin(cb);
             }
@@ -54,8 +56,8 @@
 
         var numberplugin = function(cb) {
             this.render = function (iobox) {
-                var view = h("div", { id: iobox.id }, [
-                    h("p", { className: "slice" }, [ iobox.slices[0].value ])
+                var view = h("div", { id: iobox.Id }, [
+                    h("p", { className: "slice" }, [ iobox.Slices[0].Value ])
                 ]);
                 return view;
             };
@@ -64,7 +66,7 @@
 
         plugins.push({
             name: "simple-number-plugin",
-            type: "value",
+            type: "ValuePin",
             create: function(cb) {
                 return new numberplugin(cb);
             }

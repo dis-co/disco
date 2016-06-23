@@ -36,7 +36,6 @@ module Html =
        let eidee = "thou"
        let comb = h1 <@> _id eidee
        let elm = renderHtml comb |> createElement 
-       printfn "%A" elm
        check_cc (elm.getAttribute("id") = eidee) "id mismatch" cb)
 
     (* -------------------------------------------------------------------------- *)
