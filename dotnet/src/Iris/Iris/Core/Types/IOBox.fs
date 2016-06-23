@@ -70,7 +70,7 @@ type IOBox =
       | EnumBox   data -> EnumBox   { data with Name = name }
       | ColorBox  data -> ColorBox  { data with Name = name }
       | Compound  data -> Compound  { data with Name = name }
-      
+
     member self.Patch
       with get () =
         match self with
@@ -97,52 +97,91 @@ type IOBox =
           | ColorBox  data -> ColorSlices    data.Slices
           | Compound  data -> CompoundSlices data.Slices
 
+    member self.SetSlice (value: Slice) =
+      let updater value = fun i el -> if i = value.Index then value else el
+      let update arr data =
+        if value.Index > Array.length arr then
+
+#if JAVASCRIPT
+          /// Rationale:
+          /// 
+          /// in JavaScript an array will re-allocate automatically under the hood
+          /// hence we don't need to worry about out-of-bounds errors.
+
+          let newarr = Array.map id arr
+          newarr.[value.Index] <- data
+          newarr
+#else
+          /// Rationale:
+          /// 
+          /// in .NET, we need to worry about out-of-bounds errors, and we
+          /// detected that we are about to run into one, hence re-alloc, copy
+          /// and finally set the value at the correct index.
+  
+          let newarr = Array.zeroCreate (value.Index + 1)
+          arr.CopyTo(newarr, 0)
+          newarr.[value.Index] <- data
+          newarr
+#endif
+        else
+          Array.mapi (updater data) arr
+      match self with
+      | StringBox   data -> StringBox { data with Slices = update data.Slices value.StringData   }
+      | IntBox      data -> IntBox    { data with Slices = update data.Slices value.IntData      }
+      | FloatBox    data -> FloatBox  { data with Slices = update data.Slices value.FloatData    }
+      | DoubleBox   data -> DoubleBox { data with Slices = update data.Slices value.DoubleData   }
+      | BoolBox     data -> BoolBox   { data with Slices = update data.Slices value.BoolData     }
+      | ByteBox     data -> ByteBox   { data with Slices = update data.Slices value.ByteData     }
+      | EnumBox     data -> EnumBox   { data with Slices = update data.Slices value.EnumData     }
+      | ColorBox    data -> ColorBox  { data with Slices = update data.Slices value.ColorData    }
+      | Compound    data -> Compound  { data with Slices = update data.Slices value.CompoundData }
+
     member self.SetSlices slices =
-        match self with
-          | StringBox data as value ->
-            match slices with
-            | StringSlices arr -> StringBox { data with Slices = arr }
-            | _ -> value
+      match self with
+      | StringBox data as value ->
+        match slices with
+        | StringSlices arr -> StringBox { data with Slices = arr }
+        | _ -> value
 
-          | IntBox data as value ->
-            match slices with
-            | IntSlices arr -> IntBox { data with Slices = arr }  
-            | _ -> value
+      | IntBox data as value ->
+        match slices with
+        | IntSlices arr -> IntBox { data with Slices = arr }
+        | _ -> value
 
-          | FloatBox data as value ->
-            match slices with
-            | FloatSlices  arr -> FloatBox { data with Slices = arr }   
-            | _ -> value
+      | FloatBox data as value ->
+        match slices with
+        | FloatSlices  arr -> FloatBox { data with Slices = arr }
+        | _ -> value
 
-          | DoubleBox data as value ->
-            match slices with
-            | DoubleSlices arr -> DoubleBox { data with Slices = arr }
-            | _ -> value
+      | DoubleBox data as value ->
+        match slices with
+        | DoubleSlices arr -> DoubleBox { data with Slices = arr }
+        | _ -> value
 
-          | BoolBox data as value ->
-            match slices with
-            | BoolSlices arr -> BoolBox { data with Slices = arr }
-            | _ -> value
+      | BoolBox data as value ->
+        match slices with
+        | BoolSlices arr -> BoolBox { data with Slices = arr }
+        | _ -> value
 
-          | ByteBox data as value ->
-            match slices with
-            | ByteSlices arr -> ByteBox { data with Slices = arr }
-            | _ -> value
-          
-          | EnumBox data as value ->
-            match slices with
-            | EnumSlices arr -> EnumBox { data with Slices = arr }
-            | _ -> value
+      | ByteBox data as value ->
+        match slices with
+        | ByteSlices arr -> ByteBox { data with Slices = arr }
+        | _ -> value
 
-          | ColorBox data as value ->
-            match slices with 
-            | ColorSlices arr -> ColorBox { data with Slices = arr }
-            | _ -> value
+      | EnumBox data as value ->
+        match slices with
+        | EnumSlices arr -> EnumBox { data with Slices = arr }
+        | _ -> value
 
-          | Compound data as value ->
-            match slices with 
-            | CompoundSlices arr -> Compound { data with Slices = arr }
-            | _ -> value
+      | ColorBox data as value ->
+        match slices with
+        | ColorSlices arr -> ColorBox { data with Slices = arr }
+        | _ -> value
+
+      | Compound data as value ->
+        match slices with
+        | CompoundSlices arr -> Compound { data with Slices = arr }
+        | _ -> value
 
     static member Toggle(id, name, patch, tags, values) =
       BoolBox { Id         = id
@@ -379,7 +418,7 @@ and CompoundBoxD =
 
 and CompoundSliceD =
   { Index      : Index
-  ; Value      : IOBox }
+  ; Value      : IOBox array }
 
 //  ____  _ _
 // / ___|| (_) ___ ___
@@ -412,10 +451,29 @@ and Slice =
         | ColorSlice    data -> data.Index
         | CompoundSlice data -> data.Index
 
+    member self.Value
+      with get () = 
+        match self with
+        | StringSlice   data -> data.Value :> obj
+        | IntSlice      data -> data.Value :> obj
+        | FloatSlice    data -> data.Value :> obj
+        | DoubleSlice   data -> data.Value :> obj
+        | BoolSlice     data -> data.Value :> obj
+        | ByteSlice     data -> data.Value :> obj
+        | EnumSlice     data -> data.Value :> obj
+        | ColorSlice    data -> data.Value :> obj
+        | CompoundSlice data -> data.Value :> obj
+
     member self.StringValue
       with get () =
         match self with
         | StringSlice data -> data.Value
+        | _                -> failwith "Slice is not a string value type"
+
+    member self.StringData
+      with get () =
+        match self with
+        | StringSlice data -> data
         | _                -> failwith "Slice is not a string value type"
 
     member self.IntValue
@@ -424,10 +482,22 @@ and Slice =
         | IntSlice data -> data.Value
         | _             -> failwith "Slice is not an int value type"
 
+    member self.IntData
+      with get () =
+        match self with
+        | IntSlice data -> data
+        | _             -> failwith "Slice is not an int value type"
+
     member self.FloatValue
       with get () =
         match self with
         | FloatSlice data -> data.Value
+        | _               -> failwith "Slice is not a float value type"
+
+    member self.FloatData
+      with get () =
+        match self with
+        | FloatSlice data -> data
         | _               -> failwith "Slice is not a float value type"
 
     member self.DoubleValue
@@ -436,10 +506,22 @@ and Slice =
         | DoubleSlice data -> data.Value
         | _                -> failwith "Slice is not a double value type"
 
+    member self.DoubleData
+      with get () =
+        match self with
+        | DoubleSlice data -> data
+        | _                -> failwith "Slice is not a double value type"
+
     member self.BoolValue
       with get () =
         match self with
         | BoolSlice data -> data.Value
+        | _              -> failwith "Slice is not a boolean value type"
+
+    member self.BoolData
+      with get () =
+        match self with
+        | BoolSlice data -> data
         | _              -> failwith "Slice is not a boolean value type"
 
     member self.ByteValue
@@ -448,10 +530,22 @@ and Slice =
         | ByteSlice data -> data.Value
         | _              -> failwith "Slice is not a byte value type"
 
+    member self.ByteData
+      with get () =
+        match self with
+        | ByteSlice data -> data
+        | _              -> failwith "Slice is not a byte value type"
+
     member self.EnumValue
       with get () =
         match self with
         | EnumSlice data -> data.Value
+        | _              -> failwith "Slice is not an enum value type"
+
+    member self.EnumData
+      with get () =
+        match self with
+        | EnumSlice data -> data
         | _              -> failwith "Slice is not an enum value type"
 
     member self.ColorValue
@@ -460,14 +554,31 @@ and Slice =
         | ColorSlice data -> data.Value
         | _               -> failwith "Slice is not a color value type"
 
+    member self.ColorData
+      with get () =
+        match self with
+        | ColorSlice data -> data
+        | _               -> failwith "Slice is not a color value type"
+
     member self.CompoundValue
       with get () =
         match self with
         | CompoundSlice data -> data.Value
         | _                  -> failwith "Slice is not a compound value type"
 
+    member self.CompoundData
+      with get () =
+        match self with
+        | CompoundSlice data -> data
+        | _                  -> failwith "Slice is not a compound value type"
+//  ____  _ _
+// / ___|| (_) ___ ___  ___
+// \___ \| | |/ __/ _ \/ __|
+//  ___) | | | (_|  __/\__ \
+// |____/|_|_|\___\___||___/
+
 and Slices =
-  | StringSlices   of StringSliceD   array 
+  | StringSlices   of StringSliceD   array
   | IntSlices      of IntSliceD      array
   | FloatSlices    of FloatSliceD    array
   | DoubleSlices   of DoubleSliceD   array
@@ -478,6 +589,66 @@ and Slices =
   | CompoundSlices of CompoundSliceD array
 
   with
+    member self.IsString
+      with get () =
+        match self with
+        | StringSlices _ -> true
+        |              _ -> false
+
+    member self.IsInt
+      with get () =
+        match self with
+        | IntSlices _ -> true
+        |           _ -> false
+
+    member self.IsFloat
+      with get () =
+        match self with
+        | FloatSlices _ -> true
+        |           _ -> false
+
+    member self.IsDouble
+      with get () =
+        match self with
+        | DoubleSlices _ -> true
+        |              _ -> false
+
+    member self.IsBool
+      with get () =
+        match self with
+        | BoolSlices _ -> true
+        |            _ -> false
+
+    member self.IsByte
+      with get () =
+        match self with
+        | ByteSlices _ -> true
+        |            _ -> false
+
+    member self.IsEnum
+      with get () =
+        match self with
+        | EnumSlices _ -> true
+        |            _ -> false
+
+    member self.IsColor
+      with get () =
+        match self with
+        | ColorSlices _ -> true
+        |             _ -> false
+
+    member self.IsCompound
+      with get () =
+        match self with
+        | CompoundSlices _ -> true
+        |                _ -> false
+
+    //  ___ _
+    // |_ _| |_ ___ _ __ ___
+    //  | || __/ _ \ '_ ` _ \
+    //  | || ||  __/ | | | | |
+    // |___|\__\___|_| |_| |_|
+
     member self.Item (idx: int) =
       match self with
       | StringSlices    arr -> StringSlice   arr.[idx]
@@ -489,7 +660,61 @@ and Slices =
       | EnumSlices      arr -> EnumSlice     arr.[idx]
       | ColorSlices     arr -> ColorSlice    arr.[idx]
       | CompoundSlices  arr -> CompoundSlice arr.[idx]
-  
+
+    member self.At (idx: int) = self.Item idx
+
+    //  __  __
+    // |  \/  | __ _ _ __
+    // | |\/| |/ _` | '_ \
+    // | |  | | (_| | |_) |
+    // |_|  |_|\__,_| .__/
+    //              |_|
+
+    member self.Map (f: Slice -> 'a) : 'a array =
+      match self with
+      | StringSlices    arr -> Array.map (StringSlice   >> f) arr
+      | IntSlices       arr -> Array.map (IntSlice      >> f) arr
+      | FloatSlices     arr -> Array.map (FloatSlice    >> f) arr
+      | DoubleSlices    arr -> Array.map (DoubleSlice   >> f) arr
+      | BoolSlices      arr -> Array.map (BoolSlice     >> f) arr
+      | ByteSlices      arr -> Array.map (ByteSlice     >> f) arr
+      | EnumSlices      arr -> Array.map (EnumSlice     >> f) arr
+      | ColorSlices     arr -> Array.map (ColorSlice    >> f) arr
+      | CompoundSlices  arr -> Array.map (CompoundSlice >> f) arr
+
+    //  _   _      _
+    // | | | | ___| |_ __   ___ _ __ ___
+    // | |_| |/ _ \ | '_ \ / _ \ '__/ __|
+    // |  _  |  __/ | |_) |  __/ |  \__ \
+    // |_| |_|\___|_| .__/ \___|_|  |___/
+    //              |_|
+
+    member __.CreateString (idx: uint32) (value: string) =
+      StringSlice { Index = idx; Value = value }
+
+    member __.CreateInt (idx: uint32) (value: int) =
+      IntSlice { Index = idx; Value = value }
+
+    member __.CreateFloat (idx: uint32) (value: float) =
+      FloatSlice { Index = idx; Value = value }
+
+    member __.CreateDouble (idx: uint32) (value: double) =
+      DoubleSlice { Index = idx; Value = value }
+
+    member __.CreateBool (idx: uint32) (value: bool) =
+      BoolSlice { Index = idx; Value = value }
+
+    member __.CreateByte (idx: uint32) (value: byte array) =
+      ByteSlice { Index = idx; Value = value }
+
+    member __.CreateEnum (idx: uint32) (value: Property) =
+      EnumSlice { Index = idx; Value = value }
+
+    member __.CreateColor (idx: uint32) (value: ColorSpace) =
+      ColorSlice { Index = idx; Value = value }
+
+    member __.CreateCompound (idx: uint32) (value: IOBox array) =
+      CompoundSlice { Index = idx; Value = value }
 
 [<StringEnum>]
 type PinType =

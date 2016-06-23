@@ -29,16 +29,15 @@
 
         var stringplugin = function(cb) {
             this.render = function (iobox) {
-                return h("div", { id: iobox.Id }, iobox.Slices.map(function(slice) {
+                return h("div", { id: iobox.Id }, iobox.Slices.Map(function(slice) {
                     return h("input", {
                         value: slice.Value,
                         className: "slice",
                         onchange: function(ev) {
-                            iobox.Slices[slice.Index] = {
-                                Index: slice.Index,
-                                Value: ev.target.value
-                            };
-                            cb(iobox);
+                            // immutability
+                            var newslice = iobox.Slices.CreateString(slice.Index, ev.target.value);
+                            var newbox = iobox.SetSlice(slice.Index, newslice);
+                            cb(newbox);
                         }
                     }, [ slice.Value ]);
                 }));
@@ -57,7 +56,7 @@
         var numberplugin = function(cb) {
             this.render = function (iobox) {
                 var view = h("div", { id: iobox.Id }, [
-                    h("p", { className: "slice" }, [ iobox.Slices[0].Value ])
+                    h("p", { className: "slice" }, [ iobox.Slices.At(0).Value ])
                 ]);
                 return view;
             };

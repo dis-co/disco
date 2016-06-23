@@ -51,7 +51,7 @@ module Plugin =
   [<Emit "return window.IrisPlugins">]
   let listPlugins () : PluginSpec array = failwith "JS Only"
 
-  [<Emit "return window.IrisPlugins.filter(function (plugin) { return plugin.type === $0; })" >]
+  [<Emit("return window.IrisPlugins.filter(function (plugin) { return plugin.type === $0; })")>]
   let findPlugins (_: PinType) : PluginSpec array = failwith "JS Only"
 
   [<Emit "return ($0 === null) || ($0 === undefined)">]

@@ -137,10 +137,6 @@ module Plugins =
       let listener (box' : IOBox) : unit =
         match box'.Slices.[0] with
           | StringSlice data -> data.Value ==>> value2 <| cb
-          | IntSlice       _ -> bail "its what, an int somehow?"
-          | DoubleSlice    _ -> bail "its a doubl???"
-          | BoolSlice      _ -> bail "its a what, a boo.?"
-          | FloatSlice     _ -> bail "its a what, a float?"
           |                _ -> bail "its not a string slice?"
 
       let inst = plugin.Create(listener)
