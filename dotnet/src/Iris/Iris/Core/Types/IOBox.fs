@@ -97,44 +97,86 @@ type IOBox =
           | ColorBox  data -> ColorSlices    data.Slices
           | Compound  data -> CompoundSlices data.Slices
 
+    //  ____       _   ____  _ _
+    // / ___|  ___| |_/ ___|| (_) ___ ___
+    // \___ \ / _ \ __\___ \| | |/ __/ _ \
+    //  ___) |  __/ |_ ___) | | | (_|  __/
+    // |____/ \___|\__|____/|_|_|\___\___|
+
     member self.SetSlice (value: Slice) =
-      let updater value = fun i el -> if i = value.Index then value else el
-      let update arr data =
-        if value.Index > Array.length arr then
+      let update (arr : 'a array) (data: 'a) =
+        if int value.Index > Array.length arr then
 
 #if JAVASCRIPT
           /// Rationale:
-          /// 
+          ///
           /// in JavaScript an array will re-allocate automatically under the hood
           /// hence we don't need to worry about out-of-bounds errors.
 
           let newarr = Array.map id arr
-          newarr.[value.Index] <- data
+          newarr.[int value.Index] <- data
           newarr
 #else
           /// Rationale:
-          /// 
+          ///
           /// in .NET, we need to worry about out-of-bounds errors, and we
           /// detected that we are about to run into one, hence re-alloc, copy
           /// and finally set the value at the correct index.
-  
-          let newarr = Array.zeroCreate (value.Index + 1)
+
+          let newarr = Array.zeroCreate (int value.Index + 1)
           arr.CopyTo(newarr, 0)
-          newarr.[value.Index] <- data
+          newarr.[int value.Index] <- data
           newarr
 #endif
         else
-          Array.mapi (updater data) arr
+          Array.mapi (fun i d -> if i = int value.Index then data else d) arr
+
       match self with
-      | StringBox   data -> StringBox { data with Slices = update data.Slices value.StringData   }
-      | IntBox      data -> IntBox    { data with Slices = update data.Slices value.IntData      }
-      | FloatBox    data -> FloatBox  { data with Slices = update data.Slices value.FloatData    }
-      | DoubleBox   data -> DoubleBox { data with Slices = update data.Slices value.DoubleData   }
-      | BoolBox     data -> BoolBox   { data with Slices = update data.Slices value.BoolData     }
-      | ByteBox     data -> ByteBox   { data with Slices = update data.Slices value.ByteData     }
-      | EnumBox     data -> EnumBox   { data with Slices = update data.Slices value.EnumData     }
-      | ColorBox    data -> ColorBox  { data with Slices = update data.Slices value.ColorData    }
-      | Compound    data -> Compound  { data with Slices = update data.Slices value.CompoundData }
+      | StringBox data as current ->
+        match value with
+          | StringSlice slice     -> StringBox { data with Slices = update data.Slices slice }
+          | _                     -> current
+
+      | IntBox data as current    -> 
+        match value with
+          | IntSlice slice        -> IntBox { data with Slices = update data.Slices slice }
+          | _                     -> current
+
+      | FloatBox data as current  ->
+        match value with
+          | FloatSlice slice      -> FloatBox { data with Slices = update data.Slices slice }
+          | _                     -> current
+
+      | DoubleBox data as current ->
+        match value with
+          | DoubleSlice slice     -> DoubleBox { data with Slices = update data.Slices slice }
+          | _                     -> current
+
+      | BoolBox data as current   ->
+        match value with
+          | BoolSlice slice       -> BoolBox { data with Slices = update data.Slices slice }
+          | _                     -> current
+
+      | ByteBox data as current   ->
+        match value with
+          | ByteSlice slice       -> ByteBox { data with Slices = update data.Slices slice }
+          | _                     -> current
+
+      | EnumBox data as current   ->
+        match value with
+          | EnumSlice slice       -> EnumBox { data with Slices = update data.Slices slice }
+          | _                     -> current
+
+      | ColorBox data as current  ->
+        match value with
+          | ColorSlice slice      -> ColorBox { data with Slices = update data.Slices slice }
+          | _                     -> current
+
+      | Compound data as current  ->
+        match value with
+          | CompoundSlice slice   -> Compound { data with Slices = update data.Slices slice }
+          | _                     -> current
+
 
     member self.SetSlices slices =
       match self with
@@ -399,7 +441,7 @@ and StringBoxD =
   ; Slices     : StringSliceD array }
 
 and StringSliceD =
-  { Index      : uint32
+  { Index      : Index
   ; Value      : string }
 
 //   ____                                            _
@@ -452,7 +494,7 @@ and Slice =
         | CompoundSlice data -> data.Index
 
     member self.Value
-      with get () = 
+      with get () =
         match self with
         | StringSlice   data -> data.Value :> obj
         | IntSlice      data -> data.Value :> obj
@@ -689,31 +731,31 @@ and Slices =
     // |_| |_|\___|_| .__/ \___|_|  |___/
     //              |_|
 
-    member __.CreateString (idx: uint32) (value: string) =
+    member __.CreateString (idx: Index) (value: string) =
       StringSlice { Index = idx; Value = value }
 
-    member __.CreateInt (idx: uint32) (value: int) =
+    member __.CreateInt (idx: Index) (value: int) =
       IntSlice { Index = idx; Value = value }
 
-    member __.CreateFloat (idx: uint32) (value: float) =
+    member __.CreateFloat (idx: Index) (value: float) =
       FloatSlice { Index = idx; Value = value }
 
-    member __.CreateDouble (idx: uint32) (value: double) =
+    member __.CreateDouble (idx: Index) (value: double) =
       DoubleSlice { Index = idx; Value = value }
 
-    member __.CreateBool (idx: uint32) (value: bool) =
+    member __.CreateBool (idx: Index) (value: bool) =
       BoolSlice { Index = idx; Value = value }
 
-    member __.CreateByte (idx: uint32) (value: byte array) =
+    member __.CreateByte (idx: Index) (value: byte array) =
       ByteSlice { Index = idx; Value = value }
 
-    member __.CreateEnum (idx: uint32) (value: Property) =
+    member __.CreateEnum (idx: Index) (value: Property) =
       EnumSlice { Index = idx; Value = value }
 
-    member __.CreateColor (idx: uint32) (value: ColorSpace) =
+    member __.CreateColor (idx: Index) (value: ColorSpace) =
       ColorSlice { Index = idx; Value = value }
 
-    member __.CreateCompound (idx: uint32) (value: IOBox array) =
+    member __.CreateCompound (idx: Index) (value: IOBox array) =
       CompoundSlice { Index = idx; Value = value }
 
 [<StringEnum>]

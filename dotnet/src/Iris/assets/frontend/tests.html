@@ -34,9 +34,9 @@
                         value: slice.Value,
                         className: "slice",
                         onchange: function(ev) {
-                            // immutability
+                            // strive for immutability
                             var newslice = iobox.Slices.CreateString(slice.Index, ev.target.value);
-                            var newbox = iobox.SetSlice(slice.Index, newslice);
+                            var newbox = iobox.SetSlice(newslice);
                             cb(newbox);
                         }
                     }, [ slice.Value ]);
