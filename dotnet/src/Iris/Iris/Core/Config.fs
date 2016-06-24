@@ -193,15 +193,13 @@ type Config () =
     (int parsed.[0], int parsed.[1])
 
   static member ParseRect (str : string) : Rect =
-    Config.ParseTuple str
+    Config.ParseTuple str |> Rect
 
   static member ParseCoordinate (str : string) : Coordinate =
-    Config.ParseTuple str
+    Config.ParseTuple str |> Coordinate
 
   static member ParseStringProp (str : string) : string option =
-    if str.Length > 0
-    then Some(str)
-    else None
+    if str.Length > 0 then Some(str) else None
 
   //      _             _ _
   //     / \  _   _  __| (_) ___

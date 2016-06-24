@@ -103,5 +103,36 @@ module Utils =
   // | |  _| | | || || | | |
   // | |_| | |_| || || |_| |
   //  \____|\___/|___|____/
+
   let mkGuid () = System.Guid.NewGuid().ToString()
 
+  ////////////////////////////////////////
+  //  _   _ _   _ _                     //
+  // | | | | |_(_) |___                 //
+  // | | | | __| | / __|                //
+  // | |_| | |_| | \__ \                //
+  //  \___/ \__|_|_|___/                //
+  ////////////////////////////////////////
+  
+  let dispose (o : 't when 't :> IDisposable) =
+    if o <> null then o.Dispose()
+
+  // let dispatch (raft : Raft<_,_> ref) (inbox: Actor<_>) =
+  //   let rec loop () =
+  //     async {
+  //         let! msg = inbox.Receive()
+  //         printfn "[dispatch] received: %A" msg
+  //         return! loop ()
+  //       }
+  //   loop ()
+
+  // let quit () =
+  //   printfn "Quitting."
+
+  // let rec infLoop (client:Actor<string>) =
+  //   let inp = Console.ReadLine().Trim()
+  //   if inp = "exit" || inp = "quit"
+  //   then quit()
+  //   else
+  //     client.Post(inp)
+  //     infLoop client

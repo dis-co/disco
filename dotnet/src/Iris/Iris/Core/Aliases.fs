@@ -46,8 +46,10 @@ type FilePath   = string
 type Property   = (string * string)
 
 type Coordinate = Coordinate of (int * int)
-type Rect       = Rect of (int * int)
+type Rect       = Rect       of (int * int)
 
+
+type Actor<'t> = MailboxProcessor<'t>
 
 //   ____      _
 //  / ___|___ | | ___  _ __ ___
