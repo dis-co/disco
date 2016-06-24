@@ -13,6 +13,9 @@ module PatchesView =
   open Iris.Web.Tests
   open Iris.Web.Views
 
+  [<Emit("console.log($0, $1)")>]
+  let show str a = failwith "ONLY IN JS"
+
   let main () =
     (* ------------------------------------------------------------------------ *)
     suite "Test.Units.PatchesView - patch workflow"
@@ -175,11 +178,10 @@ module PatchesView =
       store.Dispatch <| IOBoxEvent(Delete,iobox2)
       controller.Render store.State ctx
 
-      check (getById id1 |> Option.isSome) "element 1 should not be null"
-      check_cc (getById id2 |> Option.isSome) "element 2 should not be null" cb
+      check    (getById id1 |> Option.isSome) "element 1 should not be null"
+      check_cc (getById id2 |> Option.isNone) "element 2 should not be null" cb
 
       (controller :> IDisposable).Dispose ()
-
 
     (* -------------------------------------------------------------------------- *)
     test "should render updates on iobox to dom" <| fun cb ->
