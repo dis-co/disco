@@ -120,7 +120,7 @@ module PatchesView =
       let controller = new ViewController<State,ClientContext> (view)
       controller.Render store.State ctx
 
-      check (getById id1 |> Option.isSome) "element should not be null"
+      check (getById id1 |> Option.isNone) "element should not exist"
 
       store.Dispatch <| IOBoxEvent(Create, iobox)
 

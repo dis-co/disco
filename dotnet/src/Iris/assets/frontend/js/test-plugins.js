@@ -91,7 +91,7 @@ window.simpleString2 = function() {
 
   window.IrisPlugins.push({
     name: "simple-string-plugin",
-    type: "string",
+    type: "StringPin",
     create: function() {
       return new myplugin(arguments);
     }

@@ -85,10 +85,11 @@ module Plugin =
 
     (* instantiate a new view plugin *)
     member self.Add (iobox : IOBox) (onupdate : EventCallback) =
-      let candidates = getType iobox |> findPlugins 
+      let t = getType iobox
+      let candidates = findPlugins t
       in if candidates.Length > 0
          then self.AddImpl(iobox.Id, candidates.[0].Create(onupdate))
-         else printfn "Could not instantiate view for IOBox. Type not found: %A" iobox
+         else printfn "Could not instantiate view for IOBox. Type not found: %A" t
 
     member self.Has (iobox : IOBox) : bool = self.HasImpl(iobox.Id)
 
