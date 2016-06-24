@@ -6,94 +6,69 @@ open Fable.Import.Browser
 
 [<AutoOpen>]
 module Html =
-  (*
-   _____
-  |_   _|   _ _ __   ___  ___
-    | || | | | '_ \ / _ \/ __|
-    | || |_| | |_) |  __/\__ \
-    |_| \__, | .__/ \___||___/
-        |___/|_|
-  *)
+  
+  //  _____
+  // |_   _|   _ _ __   ___  ___
+  //   | || | | | '_ \ / _ \/ __|
+  //   | || |_| | |_) |  __/\__ \
+  //   |_| \__, | .__/ \___||___/
+  //       |___/|_|
 
-  type Styles () =
-    [<DefaultValue>] val mutable textAlign : string;
-    [<DefaultValue>] val mutable margin    : string;
+  [<StringEnum>]
+  type InputType =
+    | [<CompiledName "color">]          Color
+    | [<CompiledName "date">]           Date
+    | [<CompiledName "datetime-local">] DateTimeLocal
+    | [<CompiledName "datetime">]       DateTime
+    | [<CompiledName "email">]          EMail
+    | [<CompiledName "month">]          Month
+    | [<CompiledName "number">]         Number
+    | [<CompiledName "range">]          Range
+    | [<CompiledName "search">]         Search
+    | [<CompiledName "tel">]            Tel
+    | [<CompiledName "time">]           Time
+    | [<CompiledName "url">]            URL
+    | [<CompiledName "week">]           Week
+    | [<CompiledName "text">]           Text
+    | [<CompiledName "password">]       Password
+    | [<CompiledName "submit">]         Submit
+    | [<CompiledName "radio">]          Radio
+    | [<CompiledName "checkbox">]       Checkbox
+    | [<CompiledName "button">]         Button
+    | [<CompiledName "reset">]          Reset
 
+  [<KeyValueList>]
+  type CSSProperty =
+    | TextAlign of string
+    | Margin    of string
 
-  // for styles etc
-  type VProps () =
-    [<DefaultValue>]
-    val mutable id : string
+  [<KeyValueList>]
+  type ElementProperty =
+    | [<CompiledName("id")>]        ElmId   of string
+    | [<CompiledName("href")>]      Href    of string
+    | [<CompiledName("className")>] Class   of string
+    | [<CompiledName("type")>]      Type    of InputType
+    | [<CompiledName("style")>]     Style   of CSSProperty list
+    | [<CompiledName("onclick")>]   OnClick of (MouseEvent -> unit)
 
-    [<DefaultValue>]
-    val mutable className : string
+  type Properties = ElementProperty list
 
-    [<DefaultValue>]
-    val mutable style : Styles
-
-    [<DefaultValue>]
-    val mutable onclick : unit -> unit
-
-  let emptyProps = new VProps ()
-
-  type VTree =
-    [<Emit "new virtualDom.VNode($0,$1,$2)">]
-    new (_: string,_: VProps,_: VTree array) = {}
-
-    [<Emit "new virtualDom.VText($0)">]
-    new (_: string) = {}
+  [<Emit("Object.assign({}, $0, $1)")>]
+  let (++) (a:'a list) (b:'a list) : 'a list = failwith "JS Only"
+  
+  type VTree = class end
 
   type VPatch = class end
 
-  type AttrVal =
-    | StrVal of string
-    | EvVal  of (unit -> unit)
-    | MapVal of Styles
-
-  type Attribute =
-    | Single of name : string
-    | Pair   of name : string * value : AttrVal
-
   type Html =
-    | Parent of
-      name     : string          *
-      attrs    : Attribute array *
-      children : Html array
-
-    | Leaf of
-      name  : string    *
-      attrs : Attribute array
-
-    | Literal of
-      tag   : string
-
-    | Raw of VTree
+    | Parent  of name: string * attrs: Properties * children: Html array
+    | Leaf    of name: string * attrs: Properties 
+    | Literal of tag: string
+    | Raw     of VTree
 
   type Alignment = Left | Center | Right
 
   type Draggable = True | False | Auto
-
-  type InputType =
-    | Color
-    | Date
-    | DateTimeLocal
-    | DateTime
-    | EMail
-    | Month
-    | Number
-    | Range
-    | Search
-    | Tel
-    | Time
-    | URL
-    | Week
-    | Text
-    | Password
-    | Submit
-    | Radio
-    | Checkbox
-    | Button
-    | Reset
 
   type Shape =
     | ShpDefault
@@ -115,6 +90,32 @@ module Html =
 
   type Dir = LTR | RTL
 
+  let (+@) (elm: Html) (prop: Properties) =
+    match elm with
+      | Parent(t,p,children) -> Parent(t,p ++ prop,children)
+      | Leaf(t,p) -> Leaf(t,p ++ prop)
+      | _ -> elm
+
+  let (<+) (parent: Html) (newkids: Html) =
+    match parent with
+      | Parent(t,p,children) -> Parent(t,p,Array.append children [| newkids |])
+      | _ -> parent
+
+  let (<++) (parent: Html) (newkids: Html array) =
+    match parent with
+      | Parent(t,p,children) -> Parent(t,p,Array.append children newkids)
+      | _ -> parent
+
+  let (+>) (parent: Html) (kid: Html) =
+    match parent with
+      | Parent(t,p,children) -> Parent(t,p, Array.append [| kid |] children)
+      | _ -> parent
+
+  let (++>) (parent: Html) (newkids: Html array) =
+    match parent with
+      | Parent(t,p,children) -> Parent(t,p, Array.append newkids children)
+      | _ -> parent
+
   (*__     ___      _               _ ____
     \ \   / (_)_ __| |_ _   _  __ _| |  _ \  ___  _ __ ___
      \ \ / /| | '__| __| | | |/ _` | | | | |/ _ \| '_ ` _ \
@@ -131,11 +132,11 @@ module Html =
   [<Emit "virtualDom.patch($0, $1)">]
   let patch (_: HTMLElement) (_: VPatch) : HTMLElement = failwith "JS Only"
 
-  let mkVNode (tag : string) (prop : VProps) (children : VTree array) : VTree =
-    new VTree(tag, prop, children)
+  [<Emit "new virtualDom.VNode($0,$1,$2)">]
+  let VNode (_: string) (_: Properties) (_: VTree array) : VTree = failwith "ONLY IN JS"
 
-  let mkVText (txt : string) : VTree =
-    new VTree(txt)
+  [<Emit "new virtualDom.VText($0)">]
+  let VText (_: string) : VTree = failwith "ONLY IN JS"
 
   // `this` makes me feel uneasy
   [<Emit "$0.apply({},arguments)">]
@@ -150,57 +151,40 @@ module Html =
 
   *)
 
-  // type Attribute =
-  //   | Single of name : string
-  //   | Pair   of name : string * value : string
-
-  let attrToProp (p : VProps) (a : Attribute) : VProps =
-    match a with
-      | Single _ -> p
-      | Pair("id", StrVal(value))     -> p.id        <- value; p
-      | Pair("class", StrVal(value))  -> p.className <- value; p
-      | Pair("onclick", EvVal(value)) -> p.onclick   <- value; p
-      | Pair("style", MapVal(value))  -> p.style     <- value; p
-      | _ -> p
-
-  let attrsToProp (attrs : Attribute array) : VProps =
-    Array.fold attrToProp (new VProps()) attrs
-
   let rec renderHtml (el : Html) =
     match el with
       | Raw(vtree) -> vtree
-      | Literal(t) -> mkVText t
+      | Literal(t) -> VText t
 
       | Leaf(t, attrs) ->
-        mkVNode t (attrsToProp attrs) Array.empty
+        VNode t attrs Array.empty
 
       | Parent(t, attrs, ch) ->
-        mkVNode t (attrsToProp attrs) (Array.map renderHtml ch)
+        VNode t attrs (Array.map renderHtml ch)
 
-  // add an Attribute to an element
-  let (<@>) (el : Html) (attr : Attribute) =
-    match el with
-      | Parent(n,attrs,chldr) -> Parent(n, Array.append attrs [| attr |], chldr)
-      | Leaf(n, attrs)        -> Leaf(n, Array.append attrs [| attr |])
-      | item                  -> item
+  // // add an Attribute to an element
+  // let (<@>) (el : Html) (attrs : Properties) =
+  //   match el with
+  //     | Parent(n,attributes,chldr) -> Parent(n, attrs ++ attributes, chldr)
+  //     | Leaf(n, attributes)        -> Leaf(n, attrs ++ attributes)
+  //     | item                       -> item
 
-  // add a child to an element (I guess its a Monoid!)
-  let (<|>) (el : Html) (chld : Html) =
-    match el with
-      | Parent(n, a, chldr) -> Parent(n, a, Array.append chldr [| chld |])
-      | item                -> item
+  // // add a child to an element (I guess its a Monoid!)
+  // let (<|>) (el : Html) (chld : Html) =
+  //   match el with
+  //     | Parent(n, a, chldr) -> Parent(n, a, List.append chldr [ chld ])
+  //     | item                -> item
 
-  // add a list of children to an element
-  let (<||>) (el : Html) (chldr : Html array) =
-    match el with
-      | Parent(n, a, chldr') -> Parent(n, a, Array.append chldr' chldr)
-      | item                 -> item
+  // // add a list of children to an element
+  // let (<||>) (el : Html) (chldr : Html list) =
+  //   match el with
+  //     | Parent(n, a, chldr') -> Parent(n, a, List.append chldr' chldr)
+  //     | item                 -> item
 
-  let _klass n = Pair("class", StrVal(n))
+  (*
+  let _klass n = ClassName n
 
-  let _data d n = Pair("data-" + d, StrVal(n))
-
-  let _id n = Pair("id", StrVal(n))
+  let _id n = Id n
 
   let _style n = Pair("style", StrVal(n))
 
@@ -439,6 +423,8 @@ module Html =
   let onTouchStart (cb : Event -> unit) =
     Pair("ontouchstart", EvVal(fun () -> withArgs cb))
 
+  *)
+
   (*
    _   _ _____ __  __ _
   | | | |_   _|  \/  | |
@@ -448,216 +434,217 @@ module Html =
 
   *)
 
-  let text     t = Literal(t)
+  let Text            text = Literal(text)
+                          
+  let DocType              = Literal("<!DOCTYPE html>")
 
-  let doctype    = Literal("<!DOCTYPE html>")
+  let A          props chd = Parent("a", props, chd)
 
-  let a          = Parent("a",  Array.empty, Array.empty)
+  let Abbr       props chd = Parent("abbr", props, chd)
 
-  let abbr       = Parent("abbr",  Array.empty, Array.empty)
+  let Address    props chd = Parent("address", props, chd)
 
-  let address    = Parent("address",  Array.empty, Array.empty)
+  let Area       props chd = Parent("area", props, chd)
 
-  let area       = Parent("area",  Array.empty, Array.empty)
+  let Article    props chd = Parent("article", props, chd)
 
-  let article    = Parent("article",  Array.empty, Array.empty)
+  let Aside      props chd = Parent("aside", props, chd)
 
-  let aside      = Parent("aside",  Array.empty, Array.empty)
+  let Audio      props chd = Parent("audio", props, chd)
 
-  let audio      = Parent("audio",  Array.empty, Array.empty)
+  let B          props chd = Parent("b", props, chd)
 
-  let b          = Parent("b",  Array.empty, Array.empty)
+  let BaseTag    props chd = Parent("base", props, chd)
 
-  let basetag    = Parent("base",  Array.empty, Array.empty)
+  let Bdi        props chd = Parent("bdi", props, chd)
 
-  let bdi        = Parent("bdi",  Array.empty, Array.empty)
+  let Bdo        props chd = Parent("bdo", props, chd)
 
-  let bdo        = Parent("bdo",  Array.empty, Array.empty)
+  let BlockQuote props chd = Parent("blockquote", props, chd)
 
-  let blockquote = Parent("blockquote",  Array.empty, Array.empty)
+  let Body       props chd = Parent("body", props, chd)
 
-  let body       = Parent("body",  Array.empty, Array.empty)
+  let Br         props     = Leaf("br", props)
 
-  let br         = Leaf("br", Array.empty)
+  let Button     props chd = Parent("button", props, chd)
 
-  let button     = Parent("button",  Array.empty, Array.empty)
+  let Canvas     props     = Leaf("canvas", props)
 
-  let canvas     = Leaf("canvas", Array.empty)
+  let Caption    props chd = Parent("caption", props, chd)
 
-  let caption    = Parent("caption",  Array.empty, Array.empty)
+  let Cite       props chd = Parent("cite", props, chd)
 
-  let cite       = Parent("cite",  Array.empty, Array.empty)
+  let Code       props chd = Parent("code", props, chd)
 
-  let code       = Parent("code",  Array.empty, Array.empty)
+  let Col        props chd = Parent("col", props, chd)
 
-  let col        = Parent("col",  Array.empty, Array.empty)
+  let Colgroup   props chd = Parent("colgroup", props, chd)
 
-  let colgroup   = Parent("colgroup",  Array.empty, Array.empty)
+  let Command    props chd = Parent("command", props, chd)
 
-  let command    = Parent("command",  Array.empty, Array.empty)
+  let Datalist   props chd = Parent("datalist", props, chd)
 
-  let datalist   = Parent("datalist",  Array.empty, Array.empty)
+  let Dd         props chd = Parent("dd", props, chd)
 
-  let dd         = Parent("dd",  Array.empty, Array.empty)
+  let Del        props chd = Parent("del", props, chd)
 
-  let del        = Parent("del",  Array.empty, Array.empty)
+  let Details    props chd = Parent("details", props, chd)
 
-  let details    = Parent("details",  Array.empty, Array.empty)
+  let Dfn        props chd = Parent("dfn", props, chd)
 
-  let dfn        = Parent("dfn",  Array.empty, Array.empty)
+  let Div        props chd = Parent("div", props, chd)
 
-  let div        = Parent("div",  Array.empty, Array.empty)
+  let Dl         props chd = Parent("dl", props, chd)
 
-  let dl         = Parent("dl",  Array.empty, Array.empty)
+  let Dt         props chd = Parent("dt", props, chd)
 
-  let dt         = Parent("dt",  Array.empty, Array.empty)
+  let Em         props chd = Parent("em", props, chd)
 
-  let em         = Parent("em",  Array.empty, Array.empty)
+  let Embed      props chd = Parent("embed", props, chd)
 
-  let embed      = Parent("embed",  Array.empty, Array.empty)
+  let Fieldset   props chd = Parent("fieldset", props, chd)
 
-  let fieldset   = Parent("fieldset",  Array.empty, Array.empty)
+  let Figcaption props chd = Parent("figcaption", props, chd)
 
-  let figcaption = Parent("figcaption",  Array.empty, Array.empty)
+  let Figure     props chd  = Parent("figure", props, chd)
 
-  let figure     = Parent("figure",  Array.empty, Array.empty)
+  let Footer     props chd  = Parent("footer", props, chd)
 
-  let footer     = Parent("footer",  Array.empty, Array.empty)
+  let Form       props chd  = Parent("form", props, chd)
 
-  let form       = Parent("form",  Array.empty, Array.empty)
+  let H1         props chd  = Parent("h1", props, chd)
 
-  let h1         = Parent("h1",  Array.empty, Array.empty)
+  let H2         props chd  = Parent("h2", props, chd)
 
-  let h2         = Parent("h2",  Array.empty, Array.empty)
+  let H3         props chd  = Parent("h3", props, chd)
 
-  let h3         = Parent("h3",  Array.empty, Array.empty)
+  let H4         props chd  = Parent("h4", props, chd)
 
-  let h4         = Parent("h4",  Array.empty, Array.empty)
+  let H5         props chd  = Parent("h5", props, chd)
 
-  let h5         = Parent("h5",  Array.empty, Array.empty)
+  let H6         props chd  = Parent("h6", props, chd)
 
-  let h6         = Parent("h6",  Array.empty, Array.empty)
+  let Head       props chd  = Parent("head", props, chd)
 
-  let head       = Parent("head",  Array.empty, Array.empty)
+  let Header     props chd  = Parent("header", props, chd)
 
-  let header     = Parent("header",  Array.empty, Array.empty)
+  let Hgroup     props chd  = Parent("hgroup", props, chd)
 
-  let hgroup     = Parent("hgroup",  Array.empty, Array.empty)
+  let Hr         props      = Leaf("hr", props)
 
-  let hr         = Leaf("hr", Array.empty)
+  let HtmlElm    props chd  = Parent("html", props, chd)
 
-  let html       = Parent("html",  Array.empty, Array.empty)
+  let I          props chd  = Parent("i", props, chd)
 
-  let i          = Parent("i",  Array.empty, Array.empty)
+  let Iframe     props chd  = Parent("iframe", props, chd)
 
-  let iframe     = Parent("iframe",  Array.empty, Array.empty)
+  let Img        props      = Leaf("img", props)
 
-  let img        = Leaf("img", Array.empty)
+  let Input      props chd  = Parent("input", props, chd)
 
-  let input      = Parent("input",  Array.empty, Array.empty)
+  let Ins        props chd  = Parent("ins", props, chd)
 
-  let ins        = Parent("ins",  Array.empty, Array.empty)
+  let Kbd        props chd  = Parent("kbd", props, chd)
 
-  let kbd        = Parent("kbd",  Array.empty, Array.empty)
+  let Keygen     props chd  = Parent("keygen", props, chd)
 
-  let keygen     = Parent("keygen",  Array.empty, Array.empty)
+  let Label      props chd  = Parent("label", props, chd)
 
-  let label      = Parent("label",  Array.empty, Array.empty)
+  let Legend     props chd  = Parent("legend", props, chd)
 
-  let legend     = Parent("legend",  Array.empty, Array.empty)
+  let Li         props chd  = Parent("li", props, chd)
 
-  let li         = Parent("li",  Array.empty, Array.empty)
+  let Link       props      = Leaf("link", props)
 
-  let link       = Leaf("link", Array.empty)
+  let Map        props chd  = Parent("map", props, chd)
 
-  let map        = Parent("map",  Array.empty, Array.empty)
+  let Mark       props chd  = Parent("mark", props, chd)
 
-  let mark       = Parent("mark",  Array.empty, Array.empty)
+  let Menu       props chd  = Parent("menu", props, chd)
 
-  let menu       = Parent("menu",  Array.empty, Array.empty)
+  let Meta       props      = Leaf("meta", props)
 
-  let meta       = Leaf("meta", Array.empty)
+  let Meter      props chd  = Parent("meter", props, chd)
 
-  let meter      = Parent("meter",  Array.empty, Array.empty)
+  let Nav        props chd  = Parent("nav", props, chd)
 
-  let nav        = Parent("nav",  Array.empty, Array.empty)
+  let Noscript   props chd  = Parent("noscript", props, chd)
 
-  let noscript   = Parent("noscript",  Array.empty, Array.empty)
+  let ObjectTag  props chd  = Parent("object", props, chd)
 
-  let objectTag  = Parent("object",  Array.empty, Array.empty)
+  let Ol         props chd  = Parent("ol", props, chd)
 
-  let ol         = Parent("ol",  Array.empty, Array.empty)
+  let Optgroup   props chd  = Parent("optgroup", props, chd)
 
-  let optgroup   = Parent("optgroup",  Array.empty, Array.empty)
+  let OptionElm  props chd  = Parent("option", props, chd)
 
-  let option     = Parent("option",  Array.empty, Array.empty)
+  let Output     props chd  = Parent("output", props, chd)
 
-  let output     = Parent("output",  Array.empty, Array.empty)
+  let P          props chd  = Parent("p", props, chd)
 
-  let p          = Parent("p",  Array.empty, Array.empty)
+  let Param      props chd  = Parent("param", props, chd)
 
-  let param      = Parent("param",  Array.empty, Array.empty)
+  let Pre        props chd  = Parent("pre", props, chd)
 
-  let pre        = Parent("pre",  Array.empty, Array.empty)
+  let Progress   props chd  = Parent("progress", props, chd)
 
-  let progress   = Parent("progress",  Array.empty, Array.empty)
+  let Q          props chd  = Parent("q", props, chd)
 
-  let q          = Parent("q",  Array.empty, Array.empty)
+  let Rp         props chd  = Parent("rp", props, chd)
 
-  let rp         = Parent("rp",  Array.empty, Array.empty)
+  let Rt         props chd  = Parent("rt", props, chd)
 
-  let rt         = Parent("rt",  Array.empty, Array.empty)
+  let Samp       props chd  = Parent("samp", props, chd)
 
-  let samp       = Parent("samp",  Array.empty, Array.empty)
+  let Script     props chd  = Parent("script", props, chd)
 
-  let script     = Parent("script",  Array.empty, Array.empty)
+  let Section    props chd  = Parent("section", props, chd)
 
-  let section    = Parent("section",  Array.empty, Array.empty)
+  let SelectTag  props chd  = Parent("select", props, chd)
 
-  let selectTag  = Parent("select",  Array.empty, Array.empty)
+  let Small      props chd  = Parent("small", props, chd)
 
-  let small      = Parent("small",  Array.empty, Array.empty)
+  let Source     props chd  = Parent("source", props, chd)
 
-  let source     = Parent("source",  Array.empty, Array.empty)
+  let Span       props chd  = Parent("span", props, chd)
 
-  let span       = Parent("span",  Array.empty, Array.empty)
+  let Strong     props chd  = Parent("strong", props, chd)
 
-  let strong     = Parent("strong",  Array.empty, Array.empty)
+  let StyleElm   props chd  = Parent("style", props, chd)
 
-  let style      = Parent("style",  Array.empty, Array.empty)
+  let Sub        props chd  = Parent("sub", props, chd)
 
-  let sub        = Parent("sub",  Array.empty, Array.empty)
+  let Summary    props chd  = Parent("summary", props, chd)
 
-  let summary    = Parent("summary",  Array.empty, Array.empty)
+  let Sup        props chd  = Parent("sup", props, chd)
 
-  let sup        = Parent("sup",  Array.empty, Array.empty)
+  let Table      props chd  = Parent("table", props, chd)
 
-  let table      = Parent("table",  Array.empty, Array.empty)
+  let Tbody      props chd  = Parent("tbody", props, chd)
 
-  let tbody      = Parent("tbody",  Array.empty, Array.empty)
+  let Td         props chd  = Parent("td", props, chd)
 
-  let td         = Parent("td",  Array.empty, Array.empty)
+  let Textarea   props chd  = Parent("textarea", props, chd)
 
-  let textarea   = Parent("textarea",  Array.empty, Array.empty)
+  let Tfoot      props chd  = Parent("tfoot", props, chd)
 
-  let tfoot      = Parent("tfoot",  Array.empty, Array.empty)
+  let Th         props chd  = Parent("th", props, chd)
 
-  let th         = Parent("th",  Array.empty, Array.empty)
+  let Thead      props chd  = Parent("thead", props, chd)
 
-  let thead      = Parent("thead",  Array.empty, Array.empty)
+  let Time       props chd  = Parent("time", props, chd)
 
-  let time       = Parent("time",  Array.empty, Array.empty)
+  let Title      props chd  = Parent("title", props, chd)
 
-  let title      = Parent("title",  Array.empty, Array.empty)
+  let Tr         props chd  = Parent("tr", props, chd)
 
-  let tr         = Parent("tr",  Array.empty, Array.empty)
+  let Track      props chd  = Parent("track", props, chd)
 
-  let track      = Parent("track",  Array.empty, Array.empty)
+  let Ul         props chd  = Parent("ul", props, chd)
 
-  let ul         = Parent("ul",  Array.empty, Array.empty)
+  let Var        props chd  = Parent("var", props, chd)
 
-  let var        = Parent("var",  Array.empty, Array.empty)
+  let Video      props chd  = Parent("video", props, chd)
 
-  let video      = Parent("video",  Array.empty, Array.empty)
+  let Wbr        props chd  = Parent("wbr", props, chd)
 
-  let wbr        = Parent("wbr",  Array.empty, Array.empty)

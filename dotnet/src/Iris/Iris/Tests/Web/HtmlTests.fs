@@ -18,7 +18,7 @@ module Html =
     test "innerText should be specified with `text'` combinator" <|
       (fun cb ->
        let content = "hello there"
-       let comb = h1 <|> text content
+       let comb = H1 [] [| Text content |]
        let elm = renderHtml comb |> createElement
        check_cc (elm.innerHTML = content) "content mismatch" cb)
 
@@ -26,7 +26,7 @@ module Html =
     test "class should shouLD BE SPECIFIED with `class'` combinator" <|
       (fun cb ->
        let klass = "there"
-       let comb = h1 <@> _klass klass
+       let comb = H1 [ Class klass ] Array.empty
        let elm = renderHtml comb |> createElement
        check_cc (elm.className = klass) "class mismatch" cb)
 
@@ -34,7 +34,7 @@ module Html =
     test "id should should be specified with `id'` combinator" <|
       (fun cb ->
        let eidee = "thou"
-       let comb = h1 <@> _id eidee
+       let comb = H1 [ ElmId eidee ] Array.empty
        let elm = renderHtml comb |> createElement 
        check_cc (elm.getAttribute("id") = eidee) "id mismatch" cb)
 
@@ -44,10 +44,10 @@ module Html =
 
     test "nested VTree in Html should be rendered as such"
       (fun cb ->
-       let t  = div <@> _klass "thing" <|> text "hello"
-       let t' = renderHtml <| (h1 <|> text "hallo")
+       let t  = Div [ Class "thing" ] [| Text "hello" |]
+       let t' = renderHtml <| H1 [] [| Text "hallo" |]
 
-       let elm = renderHtml (t <|> Raw t') |> createElement
+       let elm = renderHtml (t <+ Raw t') |> createElement
          
        check (elm.getAttribute("class") = "thing") "should be a thing but isn't"
 
@@ -57,7 +57,7 @@ module Html =
     (* -------------------------------------------------------------------------- *)
     test "pure html in should be rendered as such" <|
       (fun cb ->
-       let t  = div <@> _klass "thing" <|> text "hello"
+       let t  = Div [ Class "thing" ] [| Text "hello" |]
 
        let elm = renderHtml t |> createElement 
 
@@ -66,7 +66,7 @@ module Html =
     (* -------------------------------------------------------------------------- *)
     test "VTree should be rendered as expected" <| fun cb ->
       let elm =
-        Raw((div <@> _id "hello") |> renderHtml)
+        Raw((Div [ ElmId "hello" ] Array.empty) |> renderHtml)
         |> renderHtml
         |> createElement
         
@@ -79,7 +79,7 @@ module Html =
 
     test "callback function should be rendered and called" <| fun cb ->
       let elm =
-        div <@> onClick (fun ev -> check_cc true "should have been called" cb)
+        Div [ OnClick (fun ev -> check_cc true "should have been called" cb) ] Array.empty
         |> renderHtml
         |> createElement
         

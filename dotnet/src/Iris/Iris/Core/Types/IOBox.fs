@@ -105,14 +105,13 @@ type IOBox =
 
     member self.SetSlice (value: Slice) =
       let update (arr : 'a array) (data: 'a) =
-        if int value.Index > Array.length arr then
 
+        if int value.Index > Array.length arr then
 #if JAVASCRIPT
           /// Rationale:
           ///
           /// in JavaScript an array will re-allocate automatically under the hood
           /// hence we don't need to worry about out-of-bounds errors.
-
           let newarr = Array.map id arr
           newarr.[int value.Index] <- data
           newarr
@@ -122,7 +121,6 @@ type IOBox =
           /// in .NET, we need to worry about out-of-bounds errors, and we
           /// detected that we are about to run into one, hence re-alloc, copy
           /// and finally set the value at the correct index.
-
           let newarr = Array.zeroCreate (int value.Index + 1)
           arr.CopyTo(newarr, 0)
           newarr.[int value.Index] <- data

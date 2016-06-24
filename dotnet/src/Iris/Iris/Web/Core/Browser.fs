@@ -34,24 +34,22 @@ module Browser =
   let getByTag<'T when 'T :> Browser.HTMLElement> tag =
     Browser.document.getElementsByTagName tag
 
-  [<Emit("$0.split($1)")>]
-  let split (_: string) (_: string) : string array = failwith "ONLY JS"
+  [<Emit("$1.split($0)")>]
+  let split (_: char) (_: string) : string array = failwith "ONLY JS"
 
-  [<Emit("$1.indexOf($0) != -1")>]
+  [<Emit("$1.indexOf($0) > -1")>]
   let contains (_: 'a) (_: 'a array) : bool = failwith "ONLY JS"
 
   let hasClass klass (el: Browser.HTMLElement) =
-    let attr = el.getAttribute "class"
-    if isNullValue attr then false
-    else 
-      split " " attr |> contains klass
+    split ' ' el.className |> contains klass
 
   let parseStyle (style: string) =
-    let parsed = style.Split(':')
-    in  (parsed.[0].Trim(), parsed.[1].Trim())
+    let parsed = split ':' style
+    (parsed.[0].Trim(), parsed.[1].Trim())
 
   let parseStyles (str: string) =
-     str.Split(';') |> Array.map parseStyle
+    Array.filter ((<>) "") (split ';' str)
+    |> Array.map parseStyle
 
   let getStyle style (el: Browser.Element) =
     let attr = el.getAttribute "style"

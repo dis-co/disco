@@ -21,19 +21,20 @@ module ViewController =
 
   type PatchView () =
     let patchView (patch : Patch) =
-      h1 <@> _klass "patch" <|> text patch.Name
+      H1 [ Class "patch" ] [| Text patch.Name |]
 
-    let patchList (patches : Patch array) =
-      div <||> Array.map patchView patches
+    let patchList (patches : Patch array) = 
+      Div [] <| Array.map patchView patches
 
-    let mainView content = div <@> _id "patches" <|> content
+    let mainView content =
+      Div [ ElmId "patches" ] [| content |]
 
     interface IWidget<State,ClientContext> with
       member self.Render (state : State) (context : ClientContext) =
         let content =
           if Array.length state.Patches = 0
-          then p <|> text "Empty"
-          else patchList state.Patches 
+          then P [] [| Text "Empty" |]
+          else patchList state.Patches
 
         mainView content |> renderHtml
 
@@ -41,9 +42,9 @@ module ViewController =
 
 
   let main () =
-    (*--------------------------------------------------------------------------*)
+    (* -------------------------------------------------------------------------- *)
     suite "Test.Units.ViewController - basics"
-    (*--------------------------------------------------------------------------*)
+    (* -------------------------------------------------------------------------- *)
 
     test "should render successive updates of a patch view" <| fun cb ->
       let patch1 : Patch =
@@ -90,7 +91,7 @@ module ViewController =
 
       (ctrl :> IDisposable).Dispose ()
 
-    (*------------------------------------------------------------------------*)
+    (* ------------------------------------------------------------------------ *)
     test "should take care of removing its root element on Dispose" <| fun cb ->
       let patch1 : Patch =
         { Id = "0xb33f"
