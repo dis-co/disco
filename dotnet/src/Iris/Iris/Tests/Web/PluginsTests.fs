@@ -17,16 +17,28 @@ module Plugins =
     (* ----------------------------------------------------------------------- *)
 
     test "listing plugins should list exactly two plugins" <| fun cb ->
+      resetPlugins ()
+      addString1Plug ()
+      addNumberPlug ()
+
       let plugins = listPlugins ()
       check_cc (Array.length plugins = 2) "should have two plugins but doesn't" cb
 
     (* ------------------------------------------------------------------------ *)
     test "listing plugins by kind should show exactly one" <| fun cb ->
+      resetPlugins ()
+      addString1Plug ()
+      addNumberPlug ()
+
       let plugins = findPlugins ValuePin
       check_cc (Array.length plugins = 1) "should have one plugin but doesn't" cb
 
     (* ------------------------------------------------------------------------ *)
     test "rendering a plugin should return expected dom element" <| fun cb ->
+      resetPlugins ()
+      addString1Plug ()
+      addNumberPlug ()
+
       let plugin = findPlugins StringPin |> (fun plugs -> plugs.[0])
       let inst = plugin.Create(fun _ -> ())
 
@@ -42,6 +54,9 @@ module Plugins =
 
     (* ------------------------------------------------------------------------ *)
     test "re-rendering a plugin should return updated dom element" <| fun cb ->
+      resetPlugins ()
+      addString1Plug ()
+      addNumberPlug ()
 
       let plugin = findPlugins StringPin |> (fun plugs -> plugs.[0])
       let inst = plugin.Create (fun _ -> ())
@@ -86,6 +101,9 @@ module Plugins =
     (* ------------------------------------------------------------------------ *)
 
     test "should add and find an instance for an iobox" <| fun cb ->
+      resetPlugins ()
+      addString1Plug ()
+      addNumberPlug ()
 
       let instances = new Plugins ()
 
@@ -103,6 +121,9 @@ module Plugins =
 
     (* ------------------------------------------------------------------------ *)
     test "should remove an instance for an iobox" <| fun cb ->
+      resetPlugins ()
+      addString1Plug ()
+      addNumberPlug ()
 
       let instances = new Plugins ()
 
@@ -123,6 +144,9 @@ module Plugins =
     (* ------------------------------------------------------------------------ *)
 
     test "should fire an event listener when updated" <| fun cb ->
+      resetPlugins ()
+      addString1Plug ()
+      addNumberPlug ()
 
       let plugin =
         findPlugins StringPin

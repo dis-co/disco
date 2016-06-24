@@ -4,6 +4,12 @@
     <title>Iris Browser Tests</title>
     <meta charset="utf-8">
     <link rel="stylesheet" href="css/mocha.css">
+
+    <script src="js/virtual-dom.js"></script>
+    <script src="js/test-plugins.js"></script>
+    <script src="js/expect.js"></script>
+    <script src="js/mocha.js"></script>
+
   </head>
   <body>
     <h2 style="margin: 50px 65px;">
@@ -18,63 +24,8 @@
     <!-- <script src="dependencies/routie/dist/routie.js"></script> -->
     <!-- <script src="dependencies/fabric.js/dist/fabric.js"></script> -->
 
-    <script src="js/virtual-dom.js"></script>
-    <script src="js/expect.js"></script>
-    <script src="js/mocha.js"></script>
-
-    <script>
-    window.IrisPlugins = [];
-    (function(plugins) {
-        var h = virtualDom.h;
-
-        var stringplugin = function(cb) {
-            this.render = function (iobox) {
-                return h("div", { id: iobox.Id }, iobox.Slices.Map(function(slice) {
-                    return h("input", {
-                        value: slice.Value,
-                        className: "slice",
-                        onchange: function(ev) {
-                            // strive for immutability
-                            var newslice = iobox.Slices.CreateString(slice.Index, ev.target.value);
-                            var newbox = iobox.SetSlice(newslice);
-                            cb(newbox);
-                        }
-                    }, [ slice.Value ]);
-                }));
-            };
-            this.dispose = function() {};
-        };
-
-        plugins.push({
-            name: "simple-string-plugin",
-            type: "StringPin",
-            create: function(cb) {
-                return new stringplugin(cb);
-            }
-        });
-
-        var numberplugin = function(cb) {
-            this.render = function (iobox) {
-                var view = h("div", { id: iobox.Id }, [
-                    h("p", { className: "slice" }, [ iobox.Slices.At(0).Value ])
-                ]);
-                return view;
-            };
-            this.dispose = function() {};
-        };
-
-        plugins.push({
-            name: "simple-number-plugin",
-            type: "ValuePin",
-            create: function(cb) {
-                return new numberplugin(cb);
-            }
-        });
-    })(window.IrisPlugins);
-    </script>
     <script>mocha.setup('qunit')</script>
     <script src="js/iris.tests.js"></script>
-
     <script>mocha.run()</script>
   </body>
 </html>

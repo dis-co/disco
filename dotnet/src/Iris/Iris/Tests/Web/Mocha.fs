@@ -44,3 +44,14 @@ module Mocha =
   [<Emit "window.test($0)">]
   let pending (str : string) : unit = failwith "ONLY JS"
 
+  [<Emit("window.resetPlugins()")>]
+  let resetPlugins () = failwith "OH HAY JS"
+
+  [<Emit("window.simpleString1()")>]
+  let addString1Plug () = failwith "OH HAY JS"
+
+  [<Emit("window.simpleString2()")>]
+  let addString2Plug () = failwith "OH HAY JS"
+
+  [<Emit("window.numberPlugin()")>]
+  let addNumberPlug () = failwith "OH HAY JS"

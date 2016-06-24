@@ -13,65 +13,15 @@ module PatchesView =
   open Iris.Web.Tests
   open Iris.Web.Views
 
-  [<Emit
-    @"
-    window.IrisPlugins = [];
-    (function(plugins) {
-      var h = virtualDom.h;
-
-      var sliceView = function(slice) {
-        return h('li', [
-          h('input', {
-            className: 'slice',
-            type: 'text',
-            name: 'slice',
-            value: slice.value
-          }, [ slice.value ])
-         ]);
-      };
-
-      var slices = function (iobox) {
-        return h('ul', {
-          className: 'slices'
-        }, iobox.slices.map(sliceView))
-      };
-
-      // plugin constructor
-      var myplugin = function() {
-
-        // update view
-        this.render = function (iobox) {
-          return h('div', {
-            id: iobox.id
-          }, [
-            h(""p"", { className: 'name' }, [ iobox.name ]),
-            slices(iobox)
-          ]);
-        };
-
-        this.dispose = function() {
-        };
-      }
-
-      plugins.push({
-        name: ""simple-number-plugin"",
-        type: ""string"",
-        create: function() {
-          return new myplugin(arguments);
-        }
-      });
-    })(window.IrisPlugins);
-    "
-  >]
-  let stringPlugin () = failwith "OH HAY JS"
-
   let main () =
     (* ------------------------------------------------------------------------ *)
     suite "Test.Units.PatchesView - patch workflow"
     (* ------------------------------------------------------------------------ *)
 
     test "should render a patch added" <| fun cb ->
-      stringPlugin ()
+      resetPlugins()
+      addString2Plug ()
+
       let patchid = "patch-1"
 
       let patch : Patch =
@@ -100,7 +50,9 @@ module PatchesView =
 
     (* ------------------------------------------------------------------------ *)
     test "should render correct list on patch removal" <| fun cb ->
-      stringPlugin ()
+      resetPlugins()
+      addString2Plug ()
+
       let pid1 = "patch-2"
       let pid2 = "patch-3"
 
@@ -145,7 +97,9 @@ module PatchesView =
     (* -------------------------------------------------------------------------- *)
 
     test "should render an added iobox" <| fun cb ->
-      stringPlugin ()
+      resetPlugins ()
+      addString2Plug ()
+
       let id1 = "id1"
       let value = "hello"
 
@@ -178,7 +132,9 @@ module PatchesView =
 
     (* -------------------------------------------------------------------------- *)
     test "should render correct iobox list on iobox removal" <| fun cb ->
-      stringPlugin ()
+      resetPlugins ()
+      addString2Plug ()
+
       let id1 = "iobox-3"
       let id2 = "iobox-4"
       let value = "hello"
@@ -227,7 +183,8 @@ module PatchesView =
 
     (* -------------------------------------------------------------------------- *)
     test "should render updates on iobox to dom" <| fun cb ->
-      stringPlugin ()
+      resetPlugins ()
+      addString2Plug ()
 
       let elid = "0xd34db33f"
       let value1 = "death to the confederacy!"
