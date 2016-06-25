@@ -1,0 +1,139 @@
+namespace Iris.Serialization;
+
+table IrisNodeFB {
+      Name: string;
+}
+
+table AlreadyVotedFB {
+}
+
+table AppendEntryFailedFB{
+}
+
+table CandidateUnknownFB{
+}
+
+table EntryInvalidatedFB{
+}
+
+table InvalidCurrentIndexFB{
+}
+
+table InvalidLastLogFB{
+}
+
+table InvalidLastLogTermFB{
+}
+
+table InvalidTermFB{
+}
+
+table LogFormatErrorFB{
+}
+
+table LogIncompleteFB{
+}
+
+table NoErrorFB{
+}
+
+table NoNodeFB{
+}
+
+table NotCandidateFB{
+}
+
+table NotLeaderFB{
+}
+
+table NotVotingStateFB{
+}
+
+table ResponseTimeoutFB{
+}
+
+table SnapshotFormatErrorFB{
+}
+
+table StaleResponseFB{
+}
+
+table UnexpectedVotingChangeFB{
+}
+
+table VoteTermMismatchFB{
+}
+
+table OtherErrorFB{
+      Message: string;
+}
+
+union RaftErrorFB {
+      AlreadyVotedFB,
+      AppendEntryFailedFB,
+      CandidateUnknownFB,
+      EntryInvalidatedFB,
+      InvalidCurrentIndexFB,
+      InvalidLastLogFB,
+      InvalidLastLogTermFB,
+      InvalidTermFB,
+      LogFormatErrorFB,
+      LogIncompleteFB,
+      NoErrorFB,
+      NoNodeFB,
+      NotCandidateFB,
+      NotLeaderFB,
+      NotVotingStateFB,
+      ResponseTimeoutFB,
+      SnapshotFormatErrorFB,
+      StaleResponseFB,
+      UnexpectedVotingChangeFB,
+      VoteTermMismatchFB,
+      OtherErrorFB
+}
+
+enum NodeStateFB:ubyte {
+     JoiningFB = 0,
+     RunningFB = 1,
+     FailedFB  = 2
+}
+
+table NodeFB {
+      Id         : string;
+      Data       : IrisNodeFB;
+      Voting     : bool;
+      VotedForMe : bool;
+      State      : NodeStateFB;
+      nextIndex  : ulong;
+      matchIndex : ulong;
+}
+
+table VoteRequestFB {
+      Term         : ulong;
+      Candidate    : NodeFB;
+      LastLogIndex : ulong;
+      LastLogTerm  : ulong;
+}
+
+table VoteResponseFB {
+      Term    : ulong;
+      Granted : bool;
+      Reason  : RaftErrorFB;
+}
+
+table RequestVoteFB {
+      NodeId  : string;
+      Request : VoteRequestFB;
+}
+
+union RaftMsgFB {
+      RequestVoteFB,
+      // RequestVoteResponseFB,
+      // AppendEntriesFB,
+      // AppendEntriesResponseFB,
+      // InstallSnapshotFB,
+      // InstallSnapshotResponseFB,
+      // HandShakeFB,
+      // HandWaiveFB,
+      // ErrorResponseFB
+}

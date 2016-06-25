@@ -3,6 +3,9 @@ namespace Iris.Core
 open Argu
 open Pallet.Core
 
+open Iris.Serialization
+open FlatBuffers
+
 ///////////////////////////////////////////////
 //   ____ _     ___      _                   //
 //  / ___| |   |_ _|    / \   _ __ __ _ ___  //
@@ -69,9 +72,10 @@ type RaftMsg =
   | ErrorResponse           of RaftError
   | EmptyResponse
 
-
   with
     member self.Encode () =
+      let builder = new FlatBufferBuilder(1)
+      
       failwith "TODO: RaftMsg needs to implement Encode"
 
     static member Decode (bytes: byte array) : RaftMsg option =
