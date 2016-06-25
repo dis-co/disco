@@ -18,8 +18,8 @@ module Serialization =
   /// not require the interface type to be used in type signatures throughout
   /// the program. This is much cleaner, and makes up for the ugly signature and
   /// implementation here.
-  let inline encode< ^T when ^T : (member Flatten : unit -> byte array)> (value: ^T) : byte array = 
-    (^T : (member Flatten : unit -> byte array) value)
+  let inline encode< ^T when ^T : (member Encode : unit -> byte array)> (value: ^T) : byte array = 
+    (^T : (member Encode : unit -> byte array) value)
 
   //  ____                     _
   // |  _ \  ___  ___ ___   __| | ___
@@ -34,5 +34,5 @@ module Serialization =
   /// benefits of this approach are clear. Additionally, since there is no way
   /// to enforce the presence of a static member on a type via intefaces, this
   /// great since it allows us to do just that.
-  let inline decode< ^T when ^T : (static member Inflate : byte array -> ^T option)> (b: byte array) : ^T option =
-    (^T : (static member Inflate : byte array -> ^T option) b)
+  let inline decode< ^T when ^T : (static member Decode : byte array -> ^T option)> bytes : ^T option =
+    (^T : (static member Decode : byte array -> ^T option) bytes)

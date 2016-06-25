@@ -114,8 +114,7 @@ module Utils =
   //  \___/ \__|_|_|___/                //
   ////////////////////////////////////////
   
-  let dispose (o : 't when 't :> IDisposable) =
-    if o <> null then o.Dispose()
+  let dispose (o : 't when 't :> IDisposable) = o.Dispose()
 
   // let dispatch (raft : Raft<_,_> ref) (inbox: Actor<_>) =
   //   let rec loop () =

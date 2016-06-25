@@ -68,3 +68,11 @@ type RaftMsg =
   | HandWaive               of sender:Node<IrisNode>
   | ErrorResponse           of RaftError
   | EmptyResponse
+
+
+  with
+    member self.Encode () =
+      failwith "TODO: RaftMsg needs to implement Encode"
+
+    static member Decode (bytes: byte array) : RaftMsg option =
+      failwith "TODO: RaftMsg needs to implement Decode"

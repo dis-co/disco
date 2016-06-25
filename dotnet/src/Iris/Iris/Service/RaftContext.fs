@@ -3,12 +3,17 @@ namespace Iris.Service
 open System
 open System.Net
 open System.Threading
+
 open Iris.Core
+open Iris.Core.Utils
+
 open Pallet.Core
+
 open fszmq
 open fszmq.Context
 open fszmq.Socket
 open fszmq.Polling
+
 open FSharpx.Stm
 
 [<AutoOpen>]
@@ -34,9 +39,6 @@ module AppContext =
       ; Port     = options.RaftPort }
       |> Node.create options.RaftId
     Raft.create node
-
-  let decode _ = failwith "FIXME"
-  let encode _ = failwith "FIXME"
 
   /////////////////////////////////////////////////////////////
   //     _                 ____            _            _    //
@@ -89,7 +91,7 @@ module AppContext =
               stm {
                 let result : RaftMsg option =
                   withConnection (this.State.RequestTimeout) node msg
-                  |> Option.map decode
+                  |> Option.bind decode
 
                 let! raft' = readTVar RaftState
 
@@ -129,9 +131,9 @@ module AppContext =
           |> this.Log
 
           let msg = HandShake(raft'.Node)
-          let result : RaftMsg option =
+          let result =
             withConnection 2000u node' msg
-            |> Option.map decode
+            |> Option.bind decode
 
           match result with
             | Some response ->
@@ -169,7 +171,7 @@ module AppContext =
         let msg = HandWaive(raft'.Node)
         let result : RaftMsg option =
           withConnection 2000u node msg
-          |> Option.map decode
+          |> Option.bind decode
 
         match result with
           | Some response ->
@@ -426,17 +428,22 @@ module AppContext =
 
       } |> atomically
 
-    ////////////////////////////////////////////////////
-    //  _       _             __                      //
-    // (_)_ __ | |_ ___ _ __ / _| __ _  ___ ___  ___  //
-    // | | '_ \| __/ _ \ '__| |_ / _` |/ __/ _ \/ __| //
-    // | | | | | ||  __/ |  |  _| (_| | (_|  __/\__ \ //
-    // |_|_| |_|\__\___|_|  |_|  \__,_|\___\___||___/ //
-    ////////////////////////////////////////////////////
+    //  ____  _                           _     _
+    // |  _ \(_)___ _ __   ___  ___  __ _| |__ | | ___
+    // | | | | / __| '_ \ / _ \/ __|/ _` | '_ \| |/ _ \
+    // | |_| | \__ \ |_) | (_) \__ \ (_| | |_) | |  __/
+    // |____/|_|___/ .__/ \___/|___/\__,_|_.__/|_|\___|
+    //             |_|
 
     interface IDisposable with
       member self.Dispose() =
         dispose context
+
+    //  ____        __ _     ___       _             __
+    // |  _ \ __ _ / _| |_  |_ _|_ __ | |_ ___ _ __ / _| __ _  ___ ___
+    // | |_) / _` | |_| __|  | || '_ \| __/ _ \ '__| |_ / _` |/ __/ _ \
+    // |  _ < (_| |  _| |_   | || | | | ||  __/ |  |  _| (_| | (_|  __/
+    // |_| \_\__,_|_|  \__| |___|_| |_|\__\___|_|  |_|  \__,_|\___\___|
 
     interface IRaftCallbacks<StateMachine,IrisNode> with
       member self.SendRequestVote node req  =
