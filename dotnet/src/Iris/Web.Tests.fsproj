@@ -31,12 +31,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo\Web.TestsInfo.fs" />
-    <Compile Include="Iris\Core\Types\Aliases.fs" />
-    <Compile Include="Iris\Core\Types\IOBox.fs" />
-    <Compile Include="Iris\Core\Types\Patch.fs" />
-    <Compile Include="Iris\Core\Types\Cue.fs" />
-    <Compile Include="Iris\Core\Types\CueList.fs" />
-    <Compile Include="Iris\Core\Types\Message.fs" />
+    <Compile Include="Iris\Core\Aliases.fs" />
+    <Compile Include="Iris\Core\IOBox.fs" />
+    <Compile Include="Iris\Core\Patch.fs" />
+    <Compile Include="Iris\Core\Cue.fs" />
+    <Compile Include="Iris\Core\CueList.fs" />
+    <Compile Include="Iris\Core\Message.fs" />
     <Compile Include="Iris\Web\Core\Browser.fs" />
     <Compile Include="Iris\Web\Core\Crypto.fs" />
     <Compile Include="Iris\Web\Core\Html.fs" />
@@ -58,11 +58,13 @@
     <Compile Include=".\Iris\Tests\Web\StoreTests.fs" />
     <compile Include=".\Iris\Tests\Web\ViewControllerTests.fs" />
     <Compile Include=".\Iris\Tests\Web\VirtualDomTests.fs" />
+
     <!--  __  __       _        -->
     <!-- |  \/  | __ _(_)_ __   -->
     <!-- | |\/| |/ _` | | '_ \  -->
     <!-- | |  | | (_| | | | | | -->
     <!-- |_|  |_|\__,_|_|_| |_| -->
+    
     <Compile Include=".\Iris\Tests\Web\Main.fs" />
   </ItemGroup>
   <Choose>
