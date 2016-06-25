@@ -103,6 +103,8 @@
     <!-- <Compile Include="Iris.Service\Groups\ProjectProcess.fs" /> -->
     <!-- <Compile Include="Iris.Service\Groups\ControlGroup.fs" /> -->
 
+    <Compile Include="Iris\Core\Serialization.fs" />
+
     <Compile Include="Iris\Core\StateMachine.fs" />
     <Compile Include="Iris\Core\IrisNode.fs" />
     <Compile Include="Iris\Core\Raft.fs" />
