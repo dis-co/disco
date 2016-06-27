@@ -240,7 +240,7 @@ Target "GenerateSerialization"
    CleanDirs [ baseDir @@ "Iris/Serialization" ]
     
    let fbs = 
-      !! (baseDir @@ "Schema/*.fbs")
+      !! (baseDir @@ "Schema/**/*.fbs")
       |> Seq.map (fun p -> " " + p)
       |> Seq.fold ((+)) "" 
 
@@ -254,7 +254,7 @@ Target "GenerateSerialization"
    |> ignore
 
    let files = 
-      !! (baseDir @@ "Iris/Serialization/*.cs")
+      !! (baseDir @@ "Iris/Serialization/**/*.cs")
       |> Seq.map (fun p -> "    <Compile Include=\"" + p + "\" />" + Environment.NewLine)
       |> Seq.fold ((+)) "" 
    

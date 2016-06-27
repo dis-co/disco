@@ -30,6 +30,9 @@ service:
 nodes:
 	${BUILD} BuildDebugNodes
 
+serialization:
+	${BUILD} GenerateSerialization
+
 #   __                 _                 _
 #  / _|_ __ ___  _ __ | |_ ___ _ __   __| |
 # | |_| '__/ _ \| '_ \| __/ _ \ '_ \ / _` |
