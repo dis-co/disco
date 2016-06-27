@@ -3,9 +3,6 @@ namespace Iris.Core
 open Argu
 open Pallet.Core
 
-open Iris.Serialization
-open FlatBuffers
-
 ///////////////////////////////////////////////
 //   ____ _     ___      _                   //
 //  / ___| |   |_ _|    / \   _ __ __ _ ___  //
@@ -53,12 +50,13 @@ type GeneralArgs =
         | Leader_Ip   _ -> "Ip address of leader when joining a cluster"
         | Leader_Port _ -> "Port of leader when joining a cluster"
 
-//  __  __
-// |  \/  |___  __ _
-// | |\/| / __|/ _` |
-// | |  | \__ \ (_| |
-// |_|  |_|___/\__, |
-//             |___/
+
+//  ____        __ _     __  __
+// |  _ \ __ _ / _| |_  |  \/  |___  __ _
+// | |_) / _` | |_| __| | |\/| / __|/ _` |
+// |  _ < (_| |  _| |_  | |  | \__ \ (_| |
+// |_| \_\__,_|_|  \__| |_|  |_|___/\__, |
+//                                  |___/
 
 type RaftMsg =
   | RequestVote             of sender:NodeId * req:VoteRequest<IrisNode>
@@ -72,11 +70,42 @@ type RaftMsg =
   | ErrorResponse           of RaftError
   | EmptyResponse
 
-  with
-    member self.Encode () =
-      let builder = new FlatBufferBuilder(1)
-      
-      failwith "TODO: RaftMsg needs to implement Encode"
+[<RequireQualifiedAccess>]
+module Raft =
 
-    static member Decode (bytes: byte array) : RaftMsg option =
-      failwith "TODO: RaftMsg needs to implement Decode"
+  //  __  __
+  // |  \/  |___  __ _
+  // | |\/| / __|/ _` |
+  // | |  | \__ \ (_| |
+  // |_|  |_|___/\__, |
+  //             |___/
+
+  open System
+  open FlatBuffers
+  open Iris.Serialization.Raft
+
+  let private RaftMsgEncoder : RaftMsg encoder =
+    let builder = new FlatBufferBuilder(1)
+
+    let encoder = function
+      | RequestVote             _ as value -> Array.empty
+      | RequestVoteResponse     _ as value -> Array.empty
+      | AppendEntries           _ as value -> Array.empty
+      | AppendEntriesResponse   _ as value -> Array.empty
+      | InstallSnapshot         _ as value -> Array.empty
+      | InstallSnapshotResponse _ as value -> Array.empty
+      | HandShake               _ as value -> Array.empty
+      | HandWaive               _ as value -> Array.empty
+      | ErrorResponse           _ as value -> Array.empty
+      | EmptyResponse           _ as value -> Array.empty
+
+    Encoder encoder
+
+  let private RaftMsgDecoder : RaftMsg decoder =
+    let builder = new FlatBufferBuilder(1)
+    let decoder (bytes: byte array) = None
+    Decoder decoder
+
+  let encode (value: RaftMsg) : byte array = withEncoder RaftMsgEncoder value
+
+  let decode (arr: byte array) : RaftMsg option = withDecoder RaftMsgDecoder arr

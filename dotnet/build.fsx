@@ -269,6 +269,29 @@ Target "GenerateSerialization"
    MSBuildRelease "" "Build" [ baseDir @@ "Serialization.csproj" ]
    |> ignore)
 
+//   __
+//  / _|___ _____ __ ___   __ _
+// | |_/ __|_  / '_ ` _ \ / _` |
+// |  _\__ \/ /| | | | | | (_| |
+// |_| |___/___|_| |_| |_|\__, |
+//                           |_|
+
+Target "FsZMQ"
+  (fun _ ->
+   MSBuildDebug   "" "Build" [ "src/fszmq/fszmq.fsproj" ] |> ignore
+   MSBuildRelease "" "Build" [ "src/fszmq/fszmq.fsproj" ] |> ignore)
+
+//  ____       _ _      _
+// |  _ \ __ _| | | ___| |_
+// | |_) / _` | | |/ _ \ __|
+// |  __/ (_| | | |  __/ |_
+// |_|   \__,_|_|_|\___|\__|
+
+Target "Pallet"
+  (fun _ ->
+   MSBuildDebug   "" "Build" [ "src/Pallet/Pallet.fsproj" ] |> ignore
+   MSBuildRelease "" "Build" [ "src/Pallet/Pallet.fsproj" ] |> ignore)
+
 //  _____                _                 _
 // |  ___| __ ___  _ __ | |_ ___ _ __   __| |
 // | |_ | '__/ _ \| '_ \| __/ _ \ '_ \ / _` |
@@ -359,10 +382,33 @@ Target "BuildReleaseNodes"
 //   | |  __/\__ \ |_\__ \
 //   |_|\___||___/\__|___/
 
-Target "RunTests"
+(*
+   Working with libgit2 native libraries:
+   
+   - see ldd bin/Debug/NativeBinaries/linux/amd64/libgit...so for dependencies
+   - set MONO_LOG_LEVEL=debug for more VM info
+   - ln -s bin/Debug/NativeBinaries bin/Debug/libNativeBinaries
+   - set LD_LIBRARY_PATH=....:/run/current-system/sw/lib/ 
+
+   now it *should* work. YMMV.
+
+   Good Fix: use a nix-shell environment that exposes LD_LIBRARY_PATH correctly.
+*)
+
+Target "BuildTests"
   (fun _ ->
     MSBuildDebug "" "Rebuild" [ baseDir @@ "Tests.fsproj" ] |> ignore
-    failwith "FIX THE TESTS ON NIXOS DUDE")
+    |> ignore)
+
+Target "RunTests"
+  (fun _ ->
+    let testsDir = baseDir @@ "bin/Debug/Tests"
+    ExecProcess (fun info ->
+                    info.FileName <- "mono"
+                    info.Arguments <- "Iris.Tests.exe"
+                    info.WorkingDirectory <- testsDir)
+                (TimeSpan.FromMinutes 5.0)
+    |> ignore)
 
 //  ____
 // / ___|  ___ _ ____   _____ _ __
@@ -451,6 +497,8 @@ Target "Release" DoNothing
 "Clean"
 ==> "GenerateSerialization"
 
+// Serialization 
+
 "GenerateSerialization"
 ==> "BuildWebTests"
 
@@ -465,6 +513,38 @@ Target "Release" DoNothing
 
 "GenerateSerialization"
 ==> "BuildReleaseNodes"
+
+// fszmq
+
+"FsZMQ"
+==> "BuildReleaseService"
+
+"FsZMQ"
+==> "BuildReleaseNodes"
+
+// Pallet
+
+"Pallet"
+==> "BuildReleaseService"
+
+"Pallet"
+==> "BuildReleaseNodes"
+
+// Tests
+
+"GenerateSerialization"
+==> "BuildTests"
+
+"FsZMQ"
+==> "BuildTests"
+
+"Pallet"
+==> "BuildTests"
+
+"BuildTests"
+==> "RunTests"
+
+// ONWARDS!
 
 "BuildReleaseNodes"
 ==> "BuildReleaseService"

@@ -21,7 +21,7 @@ pallet.tests:
 # | | | | (_| | |_| |\ V /  __/
 # |_| |_|\__,_|\__|_| \_/ \___|
 
-tests:
+runtests:
 	${BUILD} RunTests
 
 service:

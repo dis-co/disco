@@ -1,7 +1,7 @@
 open Fuchu
-open Iris.Tests.Project
+open Iris.Tests
 
 [<EntryPoint>]
 let main _ =
-  run configTests
+  run serializationTests
   

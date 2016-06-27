@@ -126,22 +126,22 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Management" />
-    <ProjectReference Include=".\Serialization.csproj">
-      <Project>{28C00774-1E73-4A75-AD8F-844CD21A064D}</Project>
-      <Name>Iris.Serialization</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Pallet\Pallet.fsproj">
-      <Project>{36b5fcc9-e784-41b0-873c-77150cce0c7e}</Project>
-      <Name>Pallet</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\fszmq\fszmq.fsproj">
-      <Project>{FDA50C33-B288-4E42-9141-D78BDDEF9466}</Project>
-      <Name>fszmq</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Fable.Core">
       <HintPath>..\..\node_modules\fable-core\Fable.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Iris.Serialization">
+      <HintPath>.\bin\Release\Iris.Serialization.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include=Pallet.Core">
+      <HintPath>..\Pallet\bin\Release\Pallet.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="fszmq">
+      <HintPath>..\fszmq\bin\Release\fszmq.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>

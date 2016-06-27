@@ -46,23 +46,28 @@
     <None Include="assets\example-project.yml" />
     <Compile Include="AssemblyInfo\TestsInfo.fs" />
     <Compile Include="Iris\Core\Util.fs" />
-    <Compile Include="Iris\Core\Types\Either.fs" />
-    <Compile Include="Iris\Core\Types\Aliases.fs" />
-    <Compile Include="Iris\Core\Types\IOBox.fs" />
-    <Compile Include="Iris\Core\Types\Patch.fs" />
-    <Compile Include="Iris\Core\Types\Cue.fs" />
-    <Compile Include="Iris\Core\Types\CueList.fs" />
-    <Compile Include="Iris\Core\Types\Message.fs" />
-    <Compile Include="Iris\Core\Types\Region.fs" />
-    <Compile Include="Iris\Core\Types\Signal.fs" />
-    <Compile Include="Iris\Core\Types\Display.fs" />
-    <Compile Include="Iris\Core\Types\Task.fs" />
-    <Compile Include="Iris\Core\Types\ViewPort.fs" />
-    <Compile Include="Iris\Core\Types\Vvvv.fs" />
-    <Compile Include="Iris\Core\Types\Yaml.fs" />
-    <Compile Include="Iris\Core\Types\Config.fs" />
-    <Compile Include="Iris\Core\Types\Project.fs" />
+    <Compile Include="Iris\Core\Either.fs" />
+    <Compile Include="Iris\Core\Aliases.fs" />
+    <Compile Include="Iris\Core\IOBox.fs" />
+    <Compile Include="Iris\Core\Patch.fs" />
+    <Compile Include="Iris\Core\Cue.fs" />
+    <Compile Include="Iris\Core\CueList.fs" />
+    <Compile Include="Iris\Core\Message.fs" />
+    <Compile Include="Iris\Core\Region.fs" />
+    <Compile Include="Iris\Core\Signal.fs" />
+    <Compile Include="Iris\Core\Display.fs" />
+    <Compile Include="Iris\Core\Task.fs" />
+    <Compile Include="Iris\Core\ViewPort.fs" />
+    <Compile Include="Iris\Core\Vvvv.fs" />
+    <Compile Include="Iris\Core\Yaml.fs" />
+    <Compile Include="Iris\Core\Config.fs" />
+    <Compile Include="Iris\Core\Project.fs" />
     <Compile Include="Iris\Core\Uri.fs" />
+
+    <Compile Include="Iris\Core\Serialization.fs" />
+    <Compile Include="Iris\Core\IrisNode.fs" />
+    <Compile Include="Iris\Core\StateMachine.fs" />
+    <Compile Include="Iris\Core\Raft.fs" />
     <Compile Include="Iris\Service\GitDaemon.fs" />
     <Compile Include="Iris\Service\Member.fs" />
     <Compile Include="Iris\Service\AppState.fs" />
@@ -70,12 +75,41 @@
     <Compile Include="Iris\Service\AssetServer.fs" />
     <Compile Include="Iris\Service\WebSockets.fs" />
 
-    <Compile Include="Iris\Tests\Core\ProjectTests.fs" />
-    <Compile Include="Iris\Tests\Core\Main.fs" />
+     <!-- <Compile Include="Iris\Tests\Core\ProjectTests.fs" /> -->
+     <Compile Include="Iris\Tests\TestUtilities.fs" />
+     <Compile Include="Iris\Tests\Core\SerializationTests.fs" />
+
+    <!--  __  __       _        -->
+    <!-- |  \/  | __ _(_)_ __   -->
+    <!-- | |\/| |/ _` | | '_ \  -->
+    <!-- | |  | | (_| | | | | | -->
+    <!-- |_|  |_|\__,_|_|_| |_| -->
+    
+     <Compile Include="Iris\Tests\Core\Main.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Fable.Core">
+      <HintPath>..\..\node_modules\fable-core\Fable.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Iris.Serialization">
+      <HintPath>.\bin\Release\Serialization\Iris.Serialization.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Pallet.Core">
+      <HintPath>..\Pallet\bin\Release\Pallet.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="fszmq">
+      <HintPath>..\fszmq\bin\Release\fszmq.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">
       <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')">
