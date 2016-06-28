@@ -15,30 +15,27 @@ public sealed class EntryFB : Table {
   public ArraySegment<byte>? GetIdBytes() { return __vector_as_arraysegment(4); }
   public ulong Index { get { int o = __offset(6); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
   public ulong Term { get { int o = __offset(8); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public StateMachineFB DataType { get { int o = __offset(10); return o != 0 ? (StateMachineFB)bb.Get(o + bb_pos) : StateMachineFB.NONE; } }
-  public TTable GetData<TTable>(TTable obj) where TTable : Table { int o = __offset(12); return o != 0 ? __union(obj, o) : null; }
+  public StateMachineFB Data { get { return GetData(new StateMachineFB()); } }
+  public StateMachineFB GetData(StateMachineFB obj) { int o = __offset(10); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
 
   public static Offset<EntryFB> CreateEntryFB(FlatBufferBuilder builder,
       StringOffset IdOffset = default(StringOffset),
       ulong Index = 0,
       ulong Term = 0,
-      StateMachineFB Data_type = StateMachineFB.NONE,
-      int DataOffset = 0) {
-    builder.StartObject(5);
+      Offset<StateMachineFB> DataOffset = default(Offset<StateMachineFB>)) {
+    builder.StartObject(4);
     EntryFB.AddTerm(builder, Term);
     EntryFB.AddIndex(builder, Index);
     EntryFB.AddData(builder, DataOffset);
     EntryFB.AddId(builder, IdOffset);
-    EntryFB.AddDataType(builder, Data_type);
     return EntryFB.EndEntryFB(builder);
   }
 
-  public static void StartEntryFB(FlatBufferBuilder builder) { builder.StartObject(5); }
+  public static void StartEntryFB(FlatBufferBuilder builder) { builder.StartObject(4); }
   public static void AddId(FlatBufferBuilder builder, StringOffset IdOffset) { builder.AddOffset(0, IdOffset.Value, 0); }
   public static void AddIndex(FlatBufferBuilder builder, ulong Index) { builder.AddUlong(1, Index, 0); }
   public static void AddTerm(FlatBufferBuilder builder, ulong Term) { builder.AddUlong(2, Term, 0); }
-  public static void AddDataType(FlatBufferBuilder builder, StateMachineFB DataType) { builder.AddByte(3, (byte)DataType, 0); }
-  public static void AddData(FlatBufferBuilder builder, int DataOffset) { builder.AddOffset(4, DataOffset, 0); }
+  public static void AddData(FlatBufferBuilder builder, Offset<StateMachineFB> DataOffset) { builder.AddOffset(3, DataOffset.Value, 0); }
   public static Offset<EntryFB> EndEntryFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
     return new Offset<EntryFB>(o);

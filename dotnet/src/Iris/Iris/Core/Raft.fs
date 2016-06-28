@@ -6,15 +6,26 @@ open FlatBuffers
 open Pallet.Core
 open Iris.Serialization.Raft
 
+//     _    _ _
+//    / \  | (_) __ _ ___  ___  ___
+//   / _ \ | | |/ _` / __|/ _ \/ __|
+//  / ___ \| | | (_| \__ \  __/\__ \
+// /_/   \_\_|_|\__,_|___/\___||___/
 
-///////////////////////////////////////////////
-//   ____ _     ___      _                   //
-//  / ___| |   |_ _|    / \   _ __ __ _ ___  //
-// | |   | |    | |    / _ \ | '__/ _` / __| //
-// | |___| |___ | |   / ___ \| | | (_| \__ \ //
-//  \____|_____|___| /_/   \_\_|  \__, |___/ //
-//                                |___/      //
-///////////////////////////////////////////////
+type ConfigChange = ConfigChange<IrisNode>
+type Log = Log<StateMachine,IrisNode>
+type LogEntry = LogEntry<StateMachine,IrisNode>
+type Raft = Raft<StateMachine,IrisNode>
+type AppendEntries = AppendEntries<StateMachine,IrisNode>
+type VoteRequest = VoteRequest<IrisNode>
+type Node = Node<IrisNode>
+
+//  ____        __ _      ___        _   _
+// |  _ \ __ _ / _| |_   / _ \ _ __ | |_(_) ___  _ __  ___
+// | |_) / _` | |_| __| | | | | '_ \| __| |/ _ \| '_ \/ __|
+// |  _ < (_| |  _| |_  | |_| | |_) | |_| | (_) | | | \__ \
+// |_| \_\__,_|_|  \__|  \___/| .__/ \__|_|\___/|_| |_|___/
+//                            |_|
 
 type RaftOptions =
   { RaftId           : uint32
@@ -27,6 +38,14 @@ type RaftOptions =
   ; LeaderIp         : string option
   ; LeaderPort       : uint32 option
   }
+
+
+//   ____ _     ___      _
+//  / ___| |   |_ _|    / \   _ __ __ _ ___
+// | |   | |    | |    / _ \ | '__/ _` / __|
+// | |___| |___ | |   / ___ \| | | (_| \__ \
+//  \____|_____|___| /_/   \_\_|  \__, |___/
+//                                |___/
 
 type GeneralArgs =
   | [<Mandatory>][<EqualsAssignment>] Bind        of string
@@ -75,127 +94,6 @@ type RaftMsg =
   | EmptyResponse
 
 
-[<RequireQualifiedAccess>]
-module Log =
-
-  let private encoder : LogEntry<'a,'n> encoder =
-    let encode (log: LogEntry<'a,'n>) : byte array =
-      failwith "TODO: LOG ENCODER"
-    Encoder encode
-
-  let private decoder : LogEntry<'a,'n> decoder =
-    let decode (bytes: byte array) : LogEntry<'a,'n> option =
-      failwith "TODO: LOG DECODER"
-    Decoder decode
-
-  let encode = withEncoder encoder
-  let decode = withDecoder decoder
-
-[<RequireQualifiedAccess>]
-module AppendEntries =
-
-  let private encoder : AppendEntries<'a,'n> encoder =
-    let encode (log: AppendEntries<'a,'n>) : byte array =
-      failwith "TODO: AE ENCODER"
-    Encoder encode
-
-
-[<RequireQualifiedAccess>]
-module IrisNode =
-
-  let toOffset (builder: FlatBufferBuilder) node =
-    IrisNodeFB.StartIrisNodeFB(builder)
-    IrisNodeFB.AddHostName(builder, node.HostName |> builder.CreateString)
-    IrisNodeFB.AddIpAddr(builder, node.IpAddr.ToString() |> builder.CreateString)
-    IrisNodeFB.AddPort(builder, uint32 node.Port)
-    IrisNodeFB.EndIrisNodeFB(builder)
-
-[<RequireQualifiedAccess>]
-module NodeState =
-
-  let toOffset (state: NodeState) =
-    match state with
-      | Running -> NodeStateFB.RunningFB
-      | Joining -> NodeStateFB.JoiningFB
-      | Failed  -> NodeStateFB.FailedFB
-
-
-[<RequireQualifiedAccess>]
-module Node =
-
-  let toOffset (builder: FlatBufferBuilder) (node: Node<IrisNode>) =
-    let info = IrisNode.toOffset builder node.Data
-    NodeFB.StartNodeFB(builder)
-    NodeFB.AddId(builder, string node.Id |> builder.CreateString)
-    NodeFB.AddVoting(builder, node.Voting)
-    NodeFB.AddVotedForMe(builder, node.VotedForMe)
-    NodeFB.AddState(builder, NodeState.toOffset node.State)
-    NodeFB.AddNextIndex(builder, uint64 node.nextIndex)
-    NodeFB.AddMatchIndex(builder, uint64 node.matchIndex)
-    NodeFB.AddData(builder, info)
-    NodeFB.EndNodeFB(builder)
-
-
-[<RequireQualifiedAccess>]
-module RaftError =
-
-  let toOffset (builder: FlatBufferBuilder) (err: RaftError) =
-    let tipe =
-      match err with
-        | AlreadyVoted           -> RaftErrorTypeFB.AlreadyVotedFB
-        | AppendEntryFailed      -> RaftErrorTypeFB.AppendEntryFailedFB
-        | CandidateUnknown       -> RaftErrorTypeFB.CandidateUnknownFB
-        | EntryInvalidated       -> RaftErrorTypeFB.EntryInvalidatedFB
-        | InvalidCurrentIndex    -> RaftErrorTypeFB.InvalidCurrentIndexFB
-        | InvalidLastLog         -> RaftErrorTypeFB.InvalidLastLogFB
-        | InvalidLastLogTerm     -> RaftErrorTypeFB.InvalidLastLogTermFB
-        | InvalidTerm            -> RaftErrorTypeFB.InvalidTermFB
-        | LogFormatError         -> RaftErrorTypeFB.LogFormatErrorFB
-        | LogIncomplete          -> RaftErrorTypeFB.LogIncompleteFB
-        | NoError                -> RaftErrorTypeFB.NoErrorFB
-        | NoNode                 -> RaftErrorTypeFB.NoNodeFB
-        | NotCandidate           -> RaftErrorTypeFB.NotCandidateFB
-        | NotLeader              -> RaftErrorTypeFB.NotLeaderFB
-        | NotVotingState         -> RaftErrorTypeFB.NotVotingStateFB
-        | ResponseTimeout        -> RaftErrorTypeFB.ResponseTimeoutFB
-        | SnapshotFormatError    -> RaftErrorTypeFB.SnapshotFormatErrorFB
-        | StaleResponse          -> RaftErrorTypeFB.StaleResponseFB
-        | UnexpectedVotingChange -> RaftErrorTypeFB.UnexpectedVotingChangeFB
-        | VoteTermMismatch       -> RaftErrorTypeFB.VoteTermMismatchFB
-        | OtherError           _ -> RaftErrorTypeFB.OtherErrorFB
-    
-    match err with
-      | OtherError msg ->
-        let message = builder.CreateString msg
-        RaftErrorFB.CreateRaftErrorFB(builder, tipe, message)
-      | _ -> 
-        RaftErrorFB.CreateRaftErrorFB(builder, tipe)
-
-[<RequireQualifiedAccess>]
-module VoteRequest =
-
-  let toOffset (builder: FlatBufferBuilder) (request: VoteRequest<IrisNode>) =
-    let node = Node.toOffset builder request.Candidate
-    VoteRequestFB.StartVoteRequestFB(builder)
-    VoteRequestFB.AddTerm(builder, uint64 request.Term)
-    VoteRequestFB.AddLastLogTerm(builder, uint64 request.LastLogTerm)
-    VoteRequestFB.AddLastLogIndex(builder, uint64 request.LastLogIndex)
-    VoteRequestFB.AddCandidate(builder, node)
-    VoteRequestFB.EndVoteRequestFB(builder)
-
-
-module VoteResponse =
-
-  let toOffset (builder: FlatBufferBuilder) (response: VoteResponse) =
-    let err = Option.map (RaftError.toOffset builder) response.Reason
-    VoteResponseFB.StartVoteResponseFB(builder)
-    VoteResponseFB.AddTerm(builder, uint64 response.Term)
-    match err with
-      | Some offset -> VoteResponseFB.AddReason(builder, offset)
-      | _ -> ()
-    VoteResponseFB.AddGranted(builder, response.Granted)
-    VoteResponseFB.EndVoteResponseFB(builder)
-
 
 [<RequireQualifiedAccess>]
 module Raft =
@@ -210,7 +108,15 @@ module Raft =
   let private encoder : RaftMsg encoder =
     let encoder msg =
       let builder = new FlatBufferBuilder(1)
+
       match msg with
+      //  ____                            _ __     __    _
+      // |  _ \ ___  __ _ _   _  ___  ___| |\ \   / /__ | |_ ___
+      // | |_) / _ \/ _` | | | |/ _ \/ __| __\ \ / / _ \| __/ _ \
+      // |  _ <  __/ (_| | |_| |  __/\__ \ |_ \ V / (_) | ||  __/
+      // |_| \_\___|\__, |\__,_|\___||___/\__| \_/ \___/ \__\___|
+      //               |_|
+
       | RequestVote(nid, req) ->
         let nodeid = string nid |> builder.CreateString
         let request = VoteRequest.toOffset builder req
@@ -227,12 +133,48 @@ module Raft =
         builder.Finish(fb.Value)
         builder.DataBuffer.Data
 
-      | AppendEntries           _ as value -> Array.empty
+      //     _                               _ _____       _        _
+      //    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
+      //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |  _| | '_ \| __| '__| |/ _ \/ __|
+      //  / ___ \| |_) | |_) |  __/ | | | (_| | |___| | | | |_| |  | |  __/\__ \
+      // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|  |_|\___||___/
+      //         |_|   |_|
+
+      | AppendEntries(nid, ae) ->
+        let nodeid = string nid |> builder.CreateString
+        let appendentries = ae.ToOffset builder
+        let fb = RequestAppendEntriesFB.CreateRequestAppendEntriesFB(builder, nodeid, appendentries)
+
+        builder.Finish(fb.Value)
+        builder.DataBuffer.Data
+
       | AppendEntriesResponse   _ as value -> Array.empty
+
+      //  ___           _        _ _ ____                        _           _
+      // |_ _|_ __  ___| |_ __ _| | / ___| _ __   __ _ _ __  ___| |__   ___ | |_
+      //  | || '_ \/ __| __/ _` | | \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __|
+      //  | || | | \__ \ || (_| | | |___) | | | | (_| | |_) \__ \ | | | (_) | |_
+      // |___|_| |_|___/\__\__,_|_|_|____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
+      //                                              |_|
+
       | InstallSnapshot         _ as value -> Array.empty
       | InstallSnapshotResponse _ as value -> Array.empty
+
+      //  _   _                 _ ____  _           _
+      // | | | | __ _ _ __   __| / ___|| |__   __ _| | _____
+      // | |_| |/ _` | '_ \ / _` \___ \| '_ \ / _` | |/ / _ \
+      // |  _  | (_| | | | | (_| |___) | | | | (_| |   <  __/
+      // |_| |_|\__,_|_| |_|\__,_|____/|_| |_|\__,_|_|\_\___|
+
       | HandShake               _ as value -> Array.empty
       | HandWaive               _ as value -> Array.empty
+
+      //  _____
+      // | ____|_ __ _ __ ___  _ __
+      // |  _| | '__| '__/ _ \| '__|
+      // | |___| |  | | | (_) | |
+      // |_____|_|  |_|  \___/|_|
+
       | ErrorResponse           _ as value -> Array.empty
       | EmptyResponse           _ as value -> Array.empty
 

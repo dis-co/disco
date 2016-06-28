@@ -15,12 +15,12 @@ public sealed class IrisNodeFB : Table {
   public ArraySegment<byte>? GetHostNameBytes() { return __vector_as_arraysegment(4); }
   public string IpAddr { get { int o = __offset(6); return o != 0 ? __string(o + bb_pos) : null; } }
   public ArraySegment<byte>? GetIpAddrBytes() { return __vector_as_arraysegment(6); }
-  public uint Port { get { int o = __offset(8); return o != 0 ? bb.GetUint(o + bb_pos) : (uint)0; } }
+  public int Port { get { int o = __offset(8); return o != 0 ? bb.GetInt(o + bb_pos) : (int)0; } }
 
   public static Offset<IrisNodeFB> CreateIrisNodeFB(FlatBufferBuilder builder,
       StringOffset HostNameOffset = default(StringOffset),
       StringOffset IpAddrOffset = default(StringOffset),
-      uint Port = 0) {
+      int Port = 0) {
     builder.StartObject(3);
     IrisNodeFB.AddPort(builder, Port);
     IrisNodeFB.AddIpAddr(builder, IpAddrOffset);
@@ -31,7 +31,7 @@ public sealed class IrisNodeFB : Table {
   public static void StartIrisNodeFB(FlatBufferBuilder builder) { builder.StartObject(3); }
   public static void AddHostName(FlatBufferBuilder builder, StringOffset HostNameOffset) { builder.AddOffset(0, HostNameOffset.Value, 0); }
   public static void AddIpAddr(FlatBufferBuilder builder, StringOffset IpAddrOffset) { builder.AddOffset(1, IpAddrOffset.Value, 0); }
-  public static void AddPort(FlatBufferBuilder builder, uint Port) { builder.AddUint(2, Port, 0); }
+  public static void AddPort(FlatBufferBuilder builder, int Port) { builder.AddInt(2, Port, 0); }
   public static Offset<IrisNodeFB> EndIrisNodeFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
     return new Offset<IrisNodeFB>(o);

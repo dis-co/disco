@@ -43,7 +43,6 @@
     <Compile Include="FlatBuffers\Table.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/AppendEntriesFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/AppendResponseFB.cs" />
-    <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/Bye.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/ConfigChangeFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/ConfigChangeTypeFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/ConfigurationFB.cs" />
@@ -51,7 +50,6 @@
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/ErrorResponseFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/HandShakeFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/HandWaiveFB.cs" />
-    <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/Hello.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/InstallSnapshotFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/IrisNodeFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/JointConsensusFB.cs" />
@@ -71,6 +69,7 @@
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/SnapshotFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/SnapshotResponseFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/StateMachineFB.cs" />
+    <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/StateMachineTypeFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/VoteRequestFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/VoteResponseFB.cs" />
   </ItemGroup>

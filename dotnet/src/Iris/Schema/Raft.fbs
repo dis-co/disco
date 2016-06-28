@@ -3,7 +3,7 @@ namespace Iris.Serialization.Raft;
 table IrisNodeFB {
       HostName: string;
       IpAddr:   string;
-      Port:     uint;
+      Port:     int;
 }
 
 //  ____  _        _         __  __            _     _
@@ -12,16 +12,52 @@ table IrisNodeFB {
 //  ___) | || (_| | ||  __/ | |  | | (_| | (__| | | | | | | |  __/
 // |____/ \__\__,_|\__\___| |_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
-table Hello {
-      Name: string;
+// table OpenProjectFB {
+//       Name: string;
+// }
+
+// table SaveProjectFB {
+//       Name: string;
+// }
+
+// table CreateProjectFB {
+//       Name: string;
+// }
+
+// table CloseProjectFB {
+//       Name: string;
+// }
+
+// table AddClientFB {
+//       Name: string;
+// }
+
+// table UpdateClientFB {
+//       Name: string;
+// }
+
+// table RemoveClientFB {
+//       Name: string;
+// }
+
+// table DataSnapshotFB {
+//       Data: string;
+// }
+
+enum StateMachineTypeFB:ushort {
+      OpenProjectTypeFB,
+      SaveProjectTypeFB,
+      CreateProjectTypeFB,
+      CloseProjectTypeFB,
+      AddClientTypeFB,
+      UpdateClientTypeFB,
+      RemoveClientTypeFB,
+      DataSnapshotTypeFB
 }
 
-table Bye {
-      Name: string;
-}
-
-union StateMachineFB {
-     Hello, Bye
+table StateMachineFB {
+      Type: StateMachineTypeFB;
+      Command: string;
 }
 
 //  ____        __ _   _____

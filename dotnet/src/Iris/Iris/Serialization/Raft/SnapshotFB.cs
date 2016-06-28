@@ -20,8 +20,8 @@ public sealed class SnapshotFB : Table {
   public NodeFB GetNodes(int j) { return GetNodes(new NodeFB(), j); }
   public NodeFB GetNodes(NodeFB obj, int j) { int o = __offset(14); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
   public int NodesLength { get { int o = __offset(14); return o != 0 ? __vector_len(o) : 0; } }
-  public StateMachineFB DataType { get { int o = __offset(16); return o != 0 ? (StateMachineFB)bb.Get(o + bb_pos) : StateMachineFB.NONE; } }
-  public TTable GetData<TTable>(TTable obj) where TTable : Table { int o = __offset(18); return o != 0 ? __union(obj, o) : null; }
+  public StateMachineFB Data { get { return GetData(new StateMachineFB()); } }
+  public StateMachineFB GetData(StateMachineFB obj) { int o = __offset(16); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
 
   public static Offset<SnapshotFB> CreateSnapshotFB(FlatBufferBuilder builder,
       StringOffset IdOffset = default(StringOffset),
@@ -30,9 +30,8 @@ public sealed class SnapshotFB : Table {
       ulong LastIndex = 0,
       ulong LastTerm = 0,
       VectorOffset NodesOffset = default(VectorOffset),
-      StateMachineFB Data_type = StateMachineFB.NONE,
-      int DataOffset = 0) {
-    builder.StartObject(8);
+      Offset<StateMachineFB> DataOffset = default(Offset<StateMachineFB>)) {
+    builder.StartObject(7);
     SnapshotFB.AddLastTerm(builder, LastTerm);
     SnapshotFB.AddLastIndex(builder, LastIndex);
     SnapshotFB.AddTerm(builder, Term);
@@ -40,11 +39,10 @@ public sealed class SnapshotFB : Table {
     SnapshotFB.AddData(builder, DataOffset);
     SnapshotFB.AddNodes(builder, NodesOffset);
     SnapshotFB.AddId(builder, IdOffset);
-    SnapshotFB.AddDataType(builder, Data_type);
     return SnapshotFB.EndSnapshotFB(builder);
   }
 
-  public static void StartSnapshotFB(FlatBufferBuilder builder) { builder.StartObject(8); }
+  public static void StartSnapshotFB(FlatBufferBuilder builder) { builder.StartObject(7); }
   public static void AddId(FlatBufferBuilder builder, StringOffset IdOffset) { builder.AddOffset(0, IdOffset.Value, 0); }
   public static void AddIndex(FlatBufferBuilder builder, ulong Index) { builder.AddUlong(1, Index, 0); }
   public static void AddTerm(FlatBufferBuilder builder, ulong Term) { builder.AddUlong(2, Term, 0); }
@@ -53,8 +51,7 @@ public sealed class SnapshotFB : Table {
   public static void AddNodes(FlatBufferBuilder builder, VectorOffset NodesOffset) { builder.AddOffset(5, NodesOffset.Value, 0); }
   public static VectorOffset CreateNodesVector(FlatBufferBuilder builder, Offset<NodeFB>[] data) { builder.StartVector(4, data.Length, 4); for (int i = data.Length - 1; i >= 0; i--) builder.AddOffset(data[i].Value); return builder.EndVector(); }
   public static void StartNodesVector(FlatBufferBuilder builder, int numElems) { builder.StartVector(4, numElems, 4); }
-  public static void AddDataType(FlatBufferBuilder builder, StateMachineFB DataType) { builder.AddByte(6, (byte)DataType, 0); }
-  public static void AddData(FlatBufferBuilder builder, int DataOffset) { builder.AddOffset(7, DataOffset, 0); }
+  public static void AddData(FlatBufferBuilder builder, Offset<StateMachineFB> DataOffset) { builder.AddOffset(6, DataOffset.Value, 0); }
   public static Offset<SnapshotFB> EndSnapshotFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
     return new Offset<SnapshotFB>(o);

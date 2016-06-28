@@ -1,63 +1,296 @@
 namespace Iris.Core
 
-type 't encoder = Encoder of ('t -> byte array)
-type 't decoder = Decoder of (byte array -> 't option)
+//  ____            _       _ _          _   _
+// / ___|  ___ _ __(_) __ _| (_)______ _| |_(_) ___  _ __
+// \___ \ / _ \ '__| |/ _` | | |_  / _` | __| |/ _ \| '_ \
+//  ___) |  __/ |  | | (_| | | |/ / (_| | |_| | (_) | | | |
+// |____/ \___|_|  |_|\__,_|_|_/___\__,_|\__|_|\___/|_| |_|
 
 [<AutoOpen>]
 module Serialization =
+
+  type 't encoder = Encoder of ('t -> byte array)
+
+  type 't decoder = Decoder of (byte array -> 't option)
 
   let withEncoder (coder: 't encoder) (value: 't) : byte array =
     match coder with | Encoder f -> f value
 
   let withDecoder (coder: 't decoder) (value: byte array) : 't option =
     match coder with | Decoder f -> f value
-    
-  //  _____                     _
-  // | ____|_ __   ___ ___   __| | ___
-  // |  _| | '_ \ / __/ _ \ / _` |/ _ \
-  // | |___| | | | (_| (_) | (_| |  __/
-  // |_____|_| |_|\___\___/ \__,_|\___|
 
-  /// Using static constraints, we can enforce that given types must implement a
-  /// member to convert itself into a byte buffer. The compiler will throw
-  /// errors if we don't supply it with values that implement that member. This
-  /// is like using an interface, with the added benefit that this solution does
-  /// not require the interface type to be used in type signatures throughout
-  /// the program. This is much cleaner, and makes up for the ugly signature and
-  /// implementation here.
 
-  /// let inline encode< ^T when ^T : (member Encode : unit -> byte array)> (value: ^T) : byte array = 
-  ///   (^T : (member Encode : unit -> byte array) value)
 
-  //  ____                     _
-  // |  _ \  ___  ___ ___   __| | ___
-  // | | | |/ _ \/ __/ _ \ / _` |/ _ \
-  // | |_| |  __/ (_| (_) | (_| |  __/
-  // |____/ \___|\___\___/ \__,_|\___|
 
-  /// Decode requires any passed type to implement a static member called
-  /// Inflate that attempts converting a passed byte buffer into the type
-  /// specifyed in the ambient code. If the conversion succeeds, the result is
-  /// a value of type ^T wrappend in Some, else None. As with `encode` the
-  /// benefits of this approach are clear. Additionally, since there is no way
-  /// to enforce the presence of a static member on a type via intefaces, this
-  /// great since it allows us to do just that.
+//  _____      _                 _
+// | ____|_  _| |_ ___ _ __  ___(_) ___  _ __  ___
+// |  _| \ \/ / __/ _ \ '_ \/ __| |/ _ \| '_ \/ __|
+// | |___ >  <| ||  __/ | | \__ \ | (_) | | | \__ \
+// |_____/_/\_\\__\___|_| |_|___/_|\___/|_| |_|___/
 
-  /// let inline decode< ^T when ^T : (static member Decode : byte array -> ^T option)> bytes : ^T option =
-  ///   (^T : (static member Decode : byte array -> ^T option) bytes)
+open System.Runtime.CompilerServices
+open Iris.Serialization.Raft
+open Pallet.Core
+open FlatBuffers
 
-  // type Msg = Hello | Bye
+[<Extension>]
+type NodeStateExtensions() =
 
-  // type Gender = Male | Female | Cosmic
+  //  _   _           _      ____  _        _
+  // | \ | | ___   __| | ___/ ___|| |_ __ _| |_ ___
+  // |  \| |/ _ \ / _` |/ _ \___ \| __/ _` | __/ _ \
+  // | |\  | (_) | (_| |  __/___) | || (_| | ||  __/
+  // |_| \_|\___/ \__,_|\___|____/ \__\__,_|\__\___|
 
-  // let msg_encoder = Encoder (fun (m : Msg) -> [| byte 0 |])
+  [<Extension>]
+  static member inline ToOffset (state: NodeState, _: unit) =
+    match state with
+      | Running -> NodeStateFB.RunningFB
+      | Joining -> NodeStateFB.JoiningFB
+      | Failed  -> NodeStateFB.FailedFB
 
-  // let msg_decoder = Decoder (fun (bytes: byte array) -> match bytes with _ -> Some Bye)
 
-  // let msgEncode msg = enc msg_encoder msg
+[<Extension>]
+type NodeExtensions() =
+  //  _   _           _
+  // | \ | | ___   __| | ___
+  // |  \| |/ _ \ / _` |/ _ \
+  // | |\  | (_) | (_| |  __/
+  // |_| \_|\___/ \__,_|\___|
 
-  // let msgDecode bytes = dec msg_decoder bytes
+  [<Extension>]
+  static member inline ToOffset (node: Node, builder: FlatBufferBuilder) =
+    let id = string node.Id |> builder.CreateString
+    let info = node.Data.ToOffset(builder)
+    let state = node.State.ToOffset()
+    NodeFB.StartNodeFB(builder)
+    NodeFB.AddId(builder, id)
+    NodeFB.AddVoting(builder, node.Voting)
+    NodeFB.AddVotedForMe(builder, node.VotedForMe)
+    NodeFB.AddState(builder, state)
+    NodeFB.AddNextIndex(builder, uint64 node.nextIndex)
+    NodeFB.AddMatchIndex(builder, uint64 node.matchIndex)
+    NodeFB.AddData(builder, info)
+    NodeFB.EndNodeFB(builder)
 
-  // let gen_encoder = Encoder (fun (g: Gender) -> [| byte 13234 |])
 
-  // let genderEncode gen = enc gen_encoder gen
+[<Extension>]
+type ConfigChangeExtensions() =
+  //   ____             __ _        ____ _
+  //  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
+  // | |   / _ \| '_ \| |_| |/ _` | |   | '_ \ / _` | '_ \ / _` |/ _ \
+  // | |__| (_) | | | |  _| | (_| | |___| | | | (_| | | | | (_| |  __/
+  //  \____\___/|_| |_|_| |_|\__, |\____|_| |_|\__,_|_| |_|\__, |\___|
+  //                         |___/                         |___/
+  [<Extension>]
+  static member inline ToOffset (change: ConfigChange, builder: FlatBufferBuilder) =
+    match change with
+      | NodeAdded node ->
+        let node = node.ToOffset(builder)
+        ConfigChangeFB.StartConfigChangeFB(builder)
+        ConfigChangeFB.AddType(builder, ConfigChangeTypeFB.NodeAdded)
+        ConfigChangeFB.AddNode(builder, node)
+        ConfigChangeFB.EndConfigChangeFB(builder)
+      | NodeRemoved node ->
+        let node = node.ToOffset(builder)
+        ConfigChangeFB.StartConfigChangeFB(builder)
+        ConfigChangeFB.AddType(builder, ConfigChangeTypeFB.NodeRemoved)
+        ConfigChangeFB.AddNode(builder, node)
+        ConfigChangeFB.EndConfigChangeFB(builder)
+
+[<Extension>]
+type LogExentions() =
+  //  _
+  // | |    ___   __ _
+  // | |   / _ \ / _` |
+  // | |__| (_) | (_| |
+  // |_____\___/ \__, |
+  //             |___/
+
+  [<Extension>]
+  static member inline ToOffset (entries: LogEntry, builder: FlatBufferBuilder) =
+    let toOffset (log: LogEntry) =
+      match log with
+      //   ____             __ _                       _   _
+      //  / ___|___  _ __  / _(_) __ _ _   _ _ __ __ _| |_(_) ___  _ __
+      // | |   / _ \| '_ \| |_| |/ _` | | | | '__/ _` | __| |/ _ \| '_ \
+      // | |__| (_) | | | |  _| | (_| | |_| | | | (_| | |_| | (_) | | | |
+      //  \____\___/|_| |_|_| |_|\__, |\__,_|_|  \__,_|\__|_|\___/|_| |_|
+      //                         |___/
+      | Configuration(id,index,term,nodes,_)          ->
+        let id = string id |> builder.CreateString
+        let nodes = Array.map (fun (node: Node) -> node.ToOffset(builder)) nodes
+        let nvec = ConfigurationFB.CreateNodesVector(builder, nodes)
+
+        ConfigurationFB.StartConfigurationFB(builder)
+        ConfigurationFB.AddId(builder, id)
+        ConfigurationFB.AddIndex(builder, uint64 index)
+        ConfigurationFB.AddTerm(builder, uint64 term)
+        ConfigurationFB.AddNodes(builder, nvec)
+
+        let config = ConfigurationFB.EndConfigurationFB(builder)
+
+        LogFB.StartLogFB(builder)
+        LogFB.AddEntryType(builder, LogTypeFB.ConfigChangeFB)
+        LogFB.AddEntry(builder,config.Value)
+        LogFB.EndLogFB(builder)
+
+      //      _       _       _    ____
+      //     | | ___ (_)_ __ | |_ / ___|___  _ __  ___  ___ _ __  ___ _   _ ___
+      //  _  | |/ _ \| | '_ \| __| |   / _ \| '_ \/ __|/ _ \ '_ \/ __| | | / __|
+      // | |_| | (_) | | | | | |_| |__| (_) | | | \__ \  __/ | | \__ \ |_| \__ \
+      //  \___/ \___/|_|_| |_|\__|\____\___/|_| |_|___/\___|_| |_|___/\__,_|___/
+      | JointConsensus(id,index,term,changes,nodes,_) ->
+        let id = string id |> builder.CreateString
+        let changes = Array.map (fun (change: ConfigChange) -> change.ToOffset(builder)) changes
+        let chvec = JointConsensusFB.CreateChangesVector(builder, changes)
+        let nodes = Array.map (fun (node: Node) -> nodes.ToOffset()) nodes
+        let nvec = JointConsensusFB.CreateNodesVector(builder, nodes)
+
+        JointConsensusFB.StartJointConsensusFB(builder)
+        JointConsensusFB.AddId(builder, id)
+        JointConsensusFB.AddIndex(builder, uint64 index)
+        JointConsensusFB.AddTerm(builder, uint64 term)
+        JointConsensusFB.AddChanges(builder, chvec)
+        JointConsensusFB.AddNodes(builder, nvec)
+
+        let config = JointConsensusFB.EndJointConsensusFB(builder)
+
+        LogFB.StartLogFB(builder)
+        LogFB.AddEntryType(builder, LogTypeFB.JointConsensusFB)
+        LogFB.AddEntry(builder,config.Value)
+        LogFB.EndLogFB(builder)
+
+      //  _                _____       _
+      // | |    ___   __ _| ____|_ __ | |_ _ __ _   _
+      // | |   / _ \ / _` |  _| | '_ \| __| '__| | | |
+      // | |__| (_) | (_| | |___| | | | |_| |  | |_| |
+      // |_____\___/ \__, |_____|_| |_|\__|_|   \__, |
+      //             |___/                      |___/
+      | LogEntry(id,index,term,data,_) ->
+        let id = string id |> builder.CreateString
+        let data = data.ToOffset(builder)
+
+        EntryFB.StartEntryFB(builder)
+        EntryFB.AddId(builder, id)
+        EntryFB.AddIndex(builder, uint64 index)
+        EntryFB.AddTerm(builder, uint64 term)
+        EntryFB.AddData(builder, data)
+
+        let config = EntryFB.EndEntryFB(builder)
+
+        LogFB.StartLogFB(builder)
+        LogFB.AddEntryType(builder, LogTypeFB.EntryFB)
+        LogFB.AddEntry(builder,config.Value)
+        LogFB.EndLogFB(builder)
+
+      //  ____                        _           _
+      // / ___| _ __   __ _ _ __  ___| |__   ___ | |_
+      // \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __|
+      //  ___) | | | | (_| | |_) \__ \ | | | (_) | |_
+      // |____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
+      //                   |_|
+      | Snapshot(id,index,term,lidx,lterm,nodes,data) ->
+        let id = string id |> builder.CreateString
+        let nodes = Array.map (fun (node: Node) -> node.ToOffset(builder)) nodes
+        let nvec = SnapshotFB.CreateNodesVector(builder, nodes)
+        let data = data.ToOffset(builder)
+
+        SnapshotFB.StartSnapshotFB(builder)
+        SnapshotFB.AddId(builder, id)
+        SnapshotFB.AddIndex(builder, uint64 index)
+        SnapshotFB.AddTerm(builder, uint64 term)
+        SnapshotFB.AddLastIndex(builder, uint64 lidx)
+        SnapshotFB.AddLastTerm(builder, uint64 lterm)
+        SnapshotFB.AddNodes(builder, nvec)
+        SnapshotFB.AddData(builder, data)
+
+        let config = SnapshotFB.EndSnapshotFB(builder)
+
+        LogFB.StartLogFB(builder)
+        LogFB.AddEntryType(builder, LogTypeFB.SnapshotFB)
+        LogFB.AddEntry(builder,config.Value)
+        LogFB.EndLogFB(builder)
+
+    let arr = Array.zeroCreate (Log.depth entries |> int)
+    Log.iter (fun i (log: LogEntry) -> arr.[int i] <- toOffset log) entries
+
+[<Extension>]
+type RaftExentions() =
+  //  ____        __ _   _____
+  // |  _ \ __ _ / _| |_| ____|_ __ _ __ ___  _ __
+  // | |_) / _` | |_| __|  _| | '__| '__/ _ \| '__|
+  // |  _ < (_| |  _| |_| |___| |  | | | (_) | |
+  // |_| \_\__,_|_|  \__|_____|_|  |_|  \___/|_|
+
+  [<Extension>]
+  static member inline ToOffset (error: RaftError, builder: FlatBufferBuilder) =
+    let tipe =
+      match error with
+        | AlreadyVoted           -> RaftErrorTypeFB.AlreadyVotedFB
+        | AppendEntryFailed      -> RaftErrorTypeFB.AppendEntryFailedFB
+        | CandidateUnknown       -> RaftErrorTypeFB.CandidateUnknownFB
+        | EntryInvalidated       -> RaftErrorTypeFB.EntryInvalidatedFB
+        | InvalidCurrentIndex    -> RaftErrorTypeFB.InvalidCurrentIndexFB
+        | InvalidLastLog         -> RaftErrorTypeFB.InvalidLastLogFB
+        | InvalidLastLogTerm     -> RaftErrorTypeFB.InvalidLastLogTermFB
+        | InvalidTerm            -> RaftErrorTypeFB.InvalidTermFB
+        | LogFormatError         -> RaftErrorTypeFB.LogFormatErrorFB
+        | LogIncomplete          -> RaftErrorTypeFB.LogIncompleteFB
+        | NoError                -> RaftErrorTypeFB.NoErrorFB
+        | NoNode                 -> RaftErrorTypeFB.NoNodeFB
+        | NotCandidate           -> RaftErrorTypeFB.NotCandidateFB
+        | NotLeader              -> RaftErrorTypeFB.NotLeaderFB
+        | NotVotingState         -> RaftErrorTypeFB.NotVotingStateFB
+        | ResponseTimeout        -> RaftErrorTypeFB.ResponseTimeoutFB
+        | SnapshotFormatError    -> RaftErrorTypeFB.SnapshotFormatErrorFB
+        | StaleResponse          -> RaftErrorTypeFB.StaleResponseFB
+        | UnexpectedVotingChange -> RaftErrorTypeFB.UnexpectedVotingChangeFB
+        | VoteTermMismatch       -> RaftErrorTypeFB.VoteTermMismatchFB
+        | OtherError           _ -> RaftErrorTypeFB.OtherErrorFB
+
+    match error with
+      | OtherError msg ->
+        let message = builder.CreateString msg
+        RaftErrorFB.CreateRaftErrorFB(builder, tipe, message)
+      | _ ->
+        RaftErrorFB.CreateRaftErrorFB(builder, tipe)
+
+  // __     __    _       ____                            _
+  // \ \   / /__ | |_ ___|  _ \ ___  __ _ _   _  ___  ___| |_
+  //  \ \ / / _ \| __/ _ \ |_) / _ \/ _` | | | |/ _ \/ __| __|
+  //   \ V / (_) | ||  __/  _ <  __/ (_| | |_| |  __/\__ \ |_
+  //    \_/ \___/ \__\___|_| \_\___|\__, |\__,_|\___||___/\__|
+  //                                   |_|
+
+  [<Extension>]
+  static member inline ToOffset (request: VoteRequest<IrisNode>, builder: FlatBufferBuilder) =
+    let node = request.Candidate.ToOffset(builder)
+    VoteRequestFB.StartVoteRequestFB(builder)
+    VoteRequestFB.AddTerm(builder, uint64 request.Term)
+    VoteRequestFB.AddLastLogTerm(builder, uint64 request.LastLogTerm)
+    VoteRequestFB.AddLastLogIndex(builder, uint64 request.LastLogIndex)
+    VoteRequestFB.AddCandidate(builder, node)
+    VoteRequestFB.EndVoteRequestFB(builder)
+
+  [<Extension>]
+  static member inline ToOffset (response: VoteResponse, builder: FlatBufferBuilder) =
+    let err = Option.map (fun (r: RaftError) -> r.ToOffset(builder)) response.Reason
+    VoteResponseFB.StartVoteResponseFB(builder)
+    VoteResponseFB.AddTerm(builder, uint64 response.Term)
+    match err with
+      | Some offset -> VoteResponseFB.AddReason(builder, offset)
+      | _ -> ()
+    VoteResponseFB.AddGranted(builder, response.Granted)
+    VoteResponseFB.EndVoteResponseFB(builder)
+
+  //     _                               _ _____       _        _
+  //    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
+  //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |  _| | '_ \| __| '__| |/ _ \/ __|
+  //  / ___ \| |_) | |_) |  __/ | | | (_| | |___| | | | |_| |  | |  __/\__ \
+  // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|  |_|\___||___/
+  //         |_|   |_|
+
+  [<Extension>]
+  static member inline ToOffset (ae: AppendEntries, builder: FlatBufferBuilder) =
+    failwith "DO IT MATE"
