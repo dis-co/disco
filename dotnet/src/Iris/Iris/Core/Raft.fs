@@ -1,7 +1,11 @@
 namespace Iris.Core
 
 open Argu
+open System
+open FlatBuffers
 open Pallet.Core
+open Iris.Serialization.Raft
+
 
 ///////////////////////////////////////////////
 //   ____ _     ___      _                   //
@@ -70,6 +74,129 @@ type RaftMsg =
   | ErrorResponse           of RaftError
   | EmptyResponse
 
+
+[<RequireQualifiedAccess>]
+module Log =
+
+  let private encoder : LogEntry<'a,'n> encoder =
+    let encode (log: LogEntry<'a,'n>) : byte array =
+      failwith "TODO: LOG ENCODER"
+    Encoder encode
+
+  let private decoder : LogEntry<'a,'n> decoder =
+    let decode (bytes: byte array) : LogEntry<'a,'n> option =
+      failwith "TODO: LOG DECODER"
+    Decoder decode
+
+  let encode = withEncoder encoder
+  let decode = withDecoder decoder
+
+[<RequireQualifiedAccess>]
+module AppendEntries =
+
+  let private encoder : AppendEntries<'a,'n> encoder =
+    let encode (log: AppendEntries<'a,'n>) : byte array =
+      failwith "TODO: AE ENCODER"
+    Encoder encode
+
+
+[<RequireQualifiedAccess>]
+module IrisNode =
+
+  let toOffset (builder: FlatBufferBuilder) node =
+    IrisNodeFB.StartIrisNodeFB(builder)
+    IrisNodeFB.AddHostName(builder, node.HostName |> builder.CreateString)
+    IrisNodeFB.AddIpAddr(builder, node.IpAddr.ToString() |> builder.CreateString)
+    IrisNodeFB.AddPort(builder, uint32 node.Port)
+    IrisNodeFB.EndIrisNodeFB(builder)
+
+[<RequireQualifiedAccess>]
+module NodeState =
+
+  let toOffset (state: NodeState) =
+    match state with
+      | Running -> NodeStateFB.RunningFB
+      | Joining -> NodeStateFB.JoiningFB
+      | Failed  -> NodeStateFB.FailedFB
+
+
+[<RequireQualifiedAccess>]
+module Node =
+
+  let toOffset (builder: FlatBufferBuilder) (node: Node<IrisNode>) =
+    let info = IrisNode.toOffset builder node.Data
+    NodeFB.StartNodeFB(builder)
+    NodeFB.AddId(builder, string node.Id |> builder.CreateString)
+    NodeFB.AddVoting(builder, node.Voting)
+    NodeFB.AddVotedForMe(builder, node.VotedForMe)
+    NodeFB.AddState(builder, NodeState.toOffset node.State)
+    NodeFB.AddNextIndex(builder, uint64 node.nextIndex)
+    NodeFB.AddMatchIndex(builder, uint64 node.matchIndex)
+    NodeFB.AddData(builder, info)
+    NodeFB.EndNodeFB(builder)
+
+
+[<RequireQualifiedAccess>]
+module RaftError =
+
+  let toOffset (builder: FlatBufferBuilder) (err: RaftError) =
+    let tipe =
+      match err with
+        | AlreadyVoted           -> RaftErrorTypeFB.AlreadyVotedFB
+        | AppendEntryFailed      -> RaftErrorTypeFB.AppendEntryFailedFB
+        | CandidateUnknown       -> RaftErrorTypeFB.CandidateUnknownFB
+        | EntryInvalidated       -> RaftErrorTypeFB.EntryInvalidatedFB
+        | InvalidCurrentIndex    -> RaftErrorTypeFB.InvalidCurrentIndexFB
+        | InvalidLastLog         -> RaftErrorTypeFB.InvalidLastLogFB
+        | InvalidLastLogTerm     -> RaftErrorTypeFB.InvalidLastLogTermFB
+        | InvalidTerm            -> RaftErrorTypeFB.InvalidTermFB
+        | LogFormatError         -> RaftErrorTypeFB.LogFormatErrorFB
+        | LogIncomplete          -> RaftErrorTypeFB.LogIncompleteFB
+        | NoError                -> RaftErrorTypeFB.NoErrorFB
+        | NoNode                 -> RaftErrorTypeFB.NoNodeFB
+        | NotCandidate           -> RaftErrorTypeFB.NotCandidateFB
+        | NotLeader              -> RaftErrorTypeFB.NotLeaderFB
+        | NotVotingState         -> RaftErrorTypeFB.NotVotingStateFB
+        | ResponseTimeout        -> RaftErrorTypeFB.ResponseTimeoutFB
+        | SnapshotFormatError    -> RaftErrorTypeFB.SnapshotFormatErrorFB
+        | StaleResponse          -> RaftErrorTypeFB.StaleResponseFB
+        | UnexpectedVotingChange -> RaftErrorTypeFB.UnexpectedVotingChangeFB
+        | VoteTermMismatch       -> RaftErrorTypeFB.VoteTermMismatchFB
+        | OtherError           _ -> RaftErrorTypeFB.OtherErrorFB
+    
+    match err with
+      | OtherError msg ->
+        let message = builder.CreateString msg
+        RaftErrorFB.CreateRaftErrorFB(builder, tipe, message)
+      | _ -> 
+        RaftErrorFB.CreateRaftErrorFB(builder, tipe)
+
+[<RequireQualifiedAccess>]
+module VoteRequest =
+
+  let toOffset (builder: FlatBufferBuilder) (request: VoteRequest<IrisNode>) =
+    let node = Node.toOffset builder request.Candidate
+    VoteRequestFB.StartVoteRequestFB(builder)
+    VoteRequestFB.AddTerm(builder, uint64 request.Term)
+    VoteRequestFB.AddLastLogTerm(builder, uint64 request.LastLogTerm)
+    VoteRequestFB.AddLastLogIndex(builder, uint64 request.LastLogIndex)
+    VoteRequestFB.AddCandidate(builder, node)
+    VoteRequestFB.EndVoteRequestFB(builder)
+
+
+module VoteResponse =
+
+  let toOffset (builder: FlatBufferBuilder) (response: VoteResponse) =
+    let err = Option.map (RaftError.toOffset builder) response.Reason
+    VoteResponseFB.StartVoteResponseFB(builder)
+    VoteResponseFB.AddTerm(builder, uint64 response.Term)
+    match err with
+      | Some offset -> VoteResponseFB.AddReason(builder, offset)
+      | _ -> ()
+    VoteResponseFB.AddGranted(builder, response.Granted)
+    VoteResponseFB.EndVoteResponseFB(builder)
+
+
 [<RequireQualifiedAccess>]
 module Raft =
 
@@ -80,16 +207,26 @@ module Raft =
   // |_|  |_|___/\__, |
   //             |___/
 
-  open System
-  open FlatBuffers
-  open Iris.Serialization.Raft
+  let private encoder : RaftMsg encoder =
+    let encoder msg =
+      let builder = new FlatBufferBuilder(1)
+      match msg with
+      | RequestVote(nid, req) ->
+        let nodeid = string nid |> builder.CreateString
+        let request = VoteRequest.toOffset builder req
+        let fb = RequestVoteFB.CreateRequestVoteFB(builder, nodeid, request)
 
-  let private RaftMsgEncoder : RaftMsg encoder =
-    let builder = new FlatBufferBuilder(1)
+        builder.Finish(fb.Value)
+        builder.DataBuffer.Data
 
-    let encoder = function
-      | RequestVote             _ as value -> Array.empty
-      | RequestVoteResponse     _ as value -> Array.empty
+      | RequestVoteResponse(nid, resp) ->
+        let nodeid = string nid |> builder.CreateString
+        let response = VoteResponse.toOffset builder resp
+        let fb = RequestVoteResponseFB.CreateRequestVoteResponseFB(builder, nodeid, response)
+
+        builder.Finish(fb.Value)
+        builder.DataBuffer.Data
+
       | AppendEntries           _ as value -> Array.empty
       | AppendEntriesResponse   _ as value -> Array.empty
       | InstallSnapshot         _ as value -> Array.empty
@@ -101,11 +238,11 @@ module Raft =
 
     Encoder encoder
 
-  let private RaftMsgDecoder : RaftMsg decoder =
+  let private decoder : RaftMsg decoder =
     let builder = new FlatBufferBuilder(1)
     let decoder (bytes: byte array) = None
     Decoder decoder
 
-  let encode (value: RaftMsg) : byte array = withEncoder RaftMsgEncoder value
+  let encode (value: RaftMsg) : byte array = withEncoder encoder value
 
-  let decode (arr: byte array) : RaftMsg option = withDecoder RaftMsgDecoder arr
+  let decode (arr: byte array) : RaftMsg option = withDecoder decoder arr
