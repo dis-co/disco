@@ -214,9 +214,11 @@ type LogExentions() =
 
     let arr = Array.zeroCreate (Log.depth entries |> int)
     Log.iter (fun i (log: LogEntry) -> arr.[int i] <- toOffset log) entries
+    arr
+
 
 [<Extension>]
-type RaftExentions() =
+type RaftErrorExentions() =
   //  ____        __ _   _____
   // |  _ \ __ _ / _| |_| ____|_ __ _ __ ___  _ __
   // | |_) / _` | |_| __|  _| | '__| '__/ _ \| '__|
@@ -256,12 +258,22 @@ type RaftExentions() =
       | _ ->
         RaftErrorFB.CreateRaftErrorFB(builder, tipe)
 
-  // __     __    _       ____                            _
-  // \ \   / /__ | |_ ___|  _ \ ___  __ _ _   _  ___  ___| |_
-  //  \ \ / / _ \| __/ _ \ |_) / _ \/ _` | | | |/ _ \/ __| __|
-  //   \ V / (_) | ||  __/  _ <  __/ (_| | |_| |  __/\__ \ |_
-  //    \_/ \___/ \__\___|_| \_\___|\__, |\__,_|\___||___/\__|
-  //                                   |_|
+// __     __    _   _
+// \ \   / /__ | |_(_)_ __   __ _
+//  \ \ / / _ \| __| | '_ \ / _` |
+//   \ V / (_) | |_| | | | | (_| |
+//    \_/ \___/ \__|_|_| |_|\__, |
+//                          |___/
+
+[<Extension>]
+type VotingExentions() =
+
+  //  ____                            _
+  // |  _ \ ___  __ _ _   _  ___  ___| |_
+  // | |_) / _ \/ _` | | | |/ _ \/ __| __|
+  // |  _ <  __/ (_| | |_| |  __/\__ \ |_
+  // |_| \_\___|\__, |\__,_|\___||___/\__|
+  //               |_|
 
   [<Extension>]
   static member inline ToOffset (request: VoteRequest<IrisNode>, builder: FlatBufferBuilder) =
@@ -272,6 +284,13 @@ type RaftExentions() =
     VoteRequestFB.AddLastLogIndex(builder, uint64 request.LastLogIndex)
     VoteRequestFB.AddCandidate(builder, node)
     VoteRequestFB.EndVoteRequestFB(builder)
+
+  //  ____
+  // |  _ \ ___  ___ _ __   ___  _ __  ___  ___
+  // | |_) / _ \/ __| '_ \ / _ \| '_ \/ __|/ _ \
+  // |  _ <  __/\__ \ |_) | (_) | | | \__ \  __/
+  // |_| \_\___||___/ .__/ \___/|_| |_|___/\___|
+  //                |_|
 
   [<Extension>]
   static member inline ToOffset (response: VoteResponse, builder: FlatBufferBuilder) =
@@ -284,13 +303,47 @@ type RaftExentions() =
     VoteResponseFB.AddGranted(builder, response.Granted)
     VoteResponseFB.EndVoteResponseFB(builder)
 
-  //     _                               _ _____       _        _
-  //    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
-  //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |  _| | '_ \| __| '__| |/ _ \/ __|
-  //  / ___ \| |_) | |_) |  __/ | | | (_| | |___| | | | |_| |  | |  __/\__ \
-  // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|  |_|\___||___/
-  //         |_|   |_|
+//     _                               _ _____       _        _
+//    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
+//   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |  _| | '_ \| __| '__| |/ _ \/ __|
+//  / ___ \| |_) | |_) |  __/ | | | (_| | |___| | | | |_| |  | |  __/\__ \
+// /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|  |_|\___||___/
+//         |_|   |_|
+
+[<Extension>]
+type AppendEntriesExentions() =
+
+  //  ____                            _
+  // |  _ \ ___  __ _ _   _  ___  ___| |_
+  // | |_) / _ \/ _` | | | |/ _ \/ __| __|
+  // |  _ <  __/ (_| | |_| |  __/\__ \ |_
+  // |_| \_\___|\__, |\__,_|\___||___/\__|
+  //               |_|
 
   [<Extension>]
   static member inline ToOffset (ae: AppendEntries, builder: FlatBufferBuilder) =
-    failwith "DO IT MATE"
+    let entries =
+      Option.map
+        (fun (entries: LogEntry) -> entries.ToOffset(builder))
+        ae.Entries
+
+    AppendEntriesFB.StartAppendEntriesFB(builder)
+    AppendEntriesFB.AddTerm(builder, uint64 ae.Term)
+    AppendEntriesFB.AddPrevLogTerm(builder, uint64 ae.PrevLogTerm)
+    AppendEntriesFB.AddPrevLogIdx(builder, uint64 ae.PrevLogIdx)
+    AppendEntriesFB.AddLeaderCommit(builder, uint64 ae.LeaderCommit)
+
+    match entries with
+      | Some etr ->
+        let etrvec = AppendEntriesFB.CreateEntriesVector(builder, etr)
+        AppendEntriesFB.AddEntries(builder, etrvec)
+      | _ -> ()
+
+    AppendEntriesFB.EndAppendEntriesFB(builder)
+
+  //  ____
+  // |  _ \ ___  ___ _ __   ___  _ __  ___  ___
+  // | |_) / _ \/ __| '_ \ / _ \| '_ \/ __|/ _ \
+  // |  _ <  __/\__ \ |_) | (_) | | | \__ \  __/
+  // |_| \_\___||___/ .__/ \___/|_| |_|___/\___|
+  //                |_|
