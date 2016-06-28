@@ -66,8 +66,8 @@
 
     <Compile Include="Iris\Core\IrisNode.fs" />
     <Compile Include="Iris\Core\StateMachine.fs" />
-    <Compile Include="Iris\Core\Raft.fs" />
     <Compile Include="Iris\Core\Serialization.fs" />
+    <Compile Include="Iris\Core\Raft.fs" />
     <Compile Include="Iris\Service\GitDaemon.fs" />
     <Compile Include="Iris\Service\Member.fs" />
     <Compile Include="Iris\Service\AppState.fs" />

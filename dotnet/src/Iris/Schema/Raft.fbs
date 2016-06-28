@@ -296,6 +296,9 @@ table ErrorResponseFB {
       Error: RaftErrorFB;
 }
 
+table EmptyResponseFB {
+}
+
 union RaftMsgFB {
       RequestVoteFB,
       RequestVoteResponseFB,
@@ -305,5 +308,6 @@ union RaftMsgFB {
       RequestSnapshotResponseFB,
       HandShakeFB,
       HandWaiveFB,
-      ErrorResponseFB
+      ErrorResponseFB,
+      EmptyResponseFB
 }

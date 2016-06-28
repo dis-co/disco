@@ -19,6 +19,7 @@ module Replacements =
   let sizeof<'t> : int = failwith "ONLY IN JS"
 #endif
 
+
 //     _    _ _
 //    / \  | (_) __ _ ___  ___  ___
 //   / _ \ | | |/ _` / __|/ _ \/ __|
@@ -47,7 +48,6 @@ type Property   = (string * string)
 
 type Coordinate = Coordinate of (int * int)
 type Rect       = Rect       of (int * int)
-
 
 type Actor<'t> = MailboxProcessor<'t>
 

@@ -11,9 +11,9 @@ module SerializationTests =
   let test_raft_msg_serialization =
     testCase "validate raft msg serialization" <| fun _ ->
       let msg : RaftMsg = EmptyResponse
-      let bytes = Raft.encode msg
+      let bytes = msg.ToBytes()
 
-      expect "Should deserialize correctly" true (Raft.decode >> Option.isSome) bytes 
+      expect "Should deserialize correctly" true (RaftMsg.FromBytes >> Option.isSome) bytes 
 
 
   let serializationTests =

@@ -6,20 +6,6 @@ open FlatBuffers
 open Pallet.Core
 open Iris.Serialization.Raft
 
-//     _    _ _
-//    / \  | (_) __ _ ___  ___  ___
-//   / _ \ | | |/ _` / __|/ _ \/ __|
-//  / ___ \| | | (_| \__ \  __/\__ \
-// /_/   \_\_|_|\__,_|___/\___||___/
-
-type ConfigChange = ConfigChange<IrisNode>
-type Log = Log<StateMachine,IrisNode>
-type LogEntry = LogEntry<StateMachine,IrisNode>
-type Raft = Raft<StateMachine,IrisNode>
-type AppendEntries = AppendEntries<StateMachine,IrisNode>
-type VoteRequest = VoteRequest<IrisNode>
-type Node = Node<IrisNode>
-
 //  ____        __ _      ___        _   _
 // |  _ \ __ _ / _| |_   / _ \ _ __ | |_(_) ___  _ __  ___
 // | |_) / _` | |_| __| | | | | '_ \| __| |/ _ \| '_ \/ __|
@@ -87,29 +73,17 @@ type RaftMsg =
   | AppendEntries           of sender:NodeId * ae:AppendEntries<StateMachine,IrisNode>
   | AppendEntriesResponse   of sender:NodeId * ar:AppendResponse
   | InstallSnapshot         of sender:NodeId * is:InstallSnapshot<StateMachine,IrisNode>
-  | InstallSnapshotResponse of sender:NodeId * bool
+  | InstallSnapshotResponse of sender:NodeId * ir:SnapshotResponse
   | HandShake               of sender:Node<IrisNode>
   | HandWaive               of sender:Node<IrisNode>
   | ErrorResponse           of RaftError
   | EmptyResponse
 
-
-
-[<RequireQualifiedAccess>]
-module Raft =
-
-  //  __  __
-  // |  \/  |___  __ _
-  // | |\/| / __|/ _` |
-  // | |  | \__ \ (_| |
-  // |_|  |_|___/\__, |
-  //             |___/
-
-  let private encoder : RaftMsg encoder =
-    let encoder msg =
+  with
+    member self.ToBytes () : byte array =
       let builder = new FlatBufferBuilder(1)
 
-      match msg with
+      match self with
       //  ____                            _ __     __    _
       // |  _ \ ___  __ _ _   _  ___  ___| |\ \   / /__ | |_ ___
       // | |_) / _ \/ _` | | | |/ _ \/ __| __\ \ / / _ \| __/ _ \
@@ -119,19 +93,15 @@ module Raft =
 
       | RequestVote(nid, req) ->
         let nodeid = string nid |> builder.CreateString
-        let request = VoteRequest.toOffset builder req
+        let request = req.ToOffset(builder)
         let fb = RequestVoteFB.CreateRequestVoteFB(builder, nodeid, request)
-
         builder.Finish(fb.Value)
-        builder.DataBuffer.Data
 
       | RequestVoteResponse(nid, resp) ->
         let nodeid = string nid |> builder.CreateString
-        let response = VoteResponse.toOffset builder resp
+        let response = resp.ToOffset(builder)
         let fb = RequestVoteResponseFB.CreateRequestVoteResponseFB(builder, nodeid, response)
-
         builder.Finish(fb.Value)
-        builder.DataBuffer.Data
 
       //     _                               _ _____       _        _
       //    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
@@ -142,13 +112,15 @@ module Raft =
 
       | AppendEntries(nid, ae) ->
         let nodeid = string nid |> builder.CreateString
-        let appendentries = ae.ToOffset builder
+        let appendentries = ae.ToOffset(builder)
         let fb = RequestAppendEntriesFB.CreateRequestAppendEntriesFB(builder, nodeid, appendentries)
-
         builder.Finish(fb.Value)
-        builder.DataBuffer.Data
 
-      | AppendEntriesResponse   _ as value -> Array.empty
+      | AppendEntriesResponse(nid, ar) ->
+        let nodeid = string nid |> builder.CreateString
+        let response = ar.ToOffset(builder)
+        let fb = RequestAppendResponseFB.CreateRequestAppendResponseFB(builder, nodeid, response)
+        builder.Finish(fb.Value)
 
       //  ___           _        _ _ ____                        _           _
       // |_ _|_ __  ___| |_ __ _| | / ___| _ __   __ _ _ __  ___| |__   ___ | |_
@@ -157,8 +129,17 @@ module Raft =
       // |___|_| |_|___/\__\__,_|_|_|____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
       //                                              |_|
 
-      | InstallSnapshot         _ as value -> Array.empty
-      | InstallSnapshotResponse _ as value -> Array.empty
+      | InstallSnapshot(nid, is) ->
+        let nodeid = string id |> builder.CreateString
+        let request = is.ToOffset(builder)
+        let fb = RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(builder, nodeid, request)
+        builder.Finish(fb.Value)
+
+      | InstallSnapshotResponse(nid, ir) ->
+        let nodeid = string id |> builder.CreateString
+        let response = ir.ToOffset(builder)
+        let fb = RequestSnapshotResponseFB.CreateRequestSnapshotResponseFB(builder, nodeid, response)
+        builder.Finish(fb.Value)
 
       //  _   _                 _ ____  _           _
       // | | | | __ _ _ __   __| / ___|| |__   __ _| | _____
@@ -166,8 +147,15 @@ module Raft =
       // |  _  | (_| | | | | (_| |___) | | | | (_| |   <  __/
       // |_| |_|\__,_|_| |_|\__,_|____/|_| |_|\__,_|_|\_\___|
 
-      | HandShake               _ as value -> Array.empty
-      | HandWaive               _ as value -> Array.empty
+      | HandShake node ->
+        let node = node.ToOffset(builder)
+        let shake = HandShakeFB.CreateHandShakeFB(builder, node)
+        builder.Finish(shake.Value)
+        
+      | HandWaive node ->
+        let node = node.ToOffset(builder)
+        let waive = HandWaiveFB.CreateHandWaiveFB(builder, node)
+        builder.Finish(waive.Value)
 
       //  _____
       // | ____|_ __ _ __ ___  _ __
@@ -175,16 +163,23 @@ module Raft =
       // | |___| |  | | | (_) | |
       // |_____|_|  |_|  \___/|_|
 
-      | ErrorResponse           _ as value -> Array.empty
-      | EmptyResponse           _ as value -> Array.empty
+      | ErrorResponse err ->
+        let error = err.ToOffset(builder)
+        let fb = ErrorResponseFB.CreateErrorResponseFB(builder, error)
+        builder.Finish(fb.Value)
+       
+      | EmptyResponse ->
+        EmptyResponseFB.StartEmptyResponseFB(builder)
+        let fb = EmptyResponseFB.EndEmptyResponseFB(builder)
+        builder.Finish(fb.Value)
 
-    Encoder encoder
+      //  ____                 _ _
+      // |  _ \ ___  ___ _   _| | |_
+      // | |_) / _ \/ __| | | | | __|
+      // |  _ <  __/\__ \ |_| | | |_
+      // |_| \_\___||___/\__,_|_|\__|
+ 
+      builder.DataBuffer.Data
 
-  let private decoder : RaftMsg decoder =
-    let builder = new FlatBufferBuilder(1)
-    let decoder (bytes: byte array) = None
-    Decoder decoder
-
-  let encode (value: RaftMsg) : byte array = withEncoder encoder value
-
-  let decode (arr: byte array) : RaftMsg option = withDecoder decoder arr
+    static member FromBytes (bytes: byte array) : RaftMsg option =
+      failwith "nope"

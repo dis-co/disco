@@ -28,5 +28,5 @@ type IrisNode =
     IrisNodeFB.StartIrisNodeFB(builder)
     IrisNodeFB.AddHostName(builder, hostname)
     IrisNodeFB.AddIpAddr(builder, ip)
-    IrisNodeFB.AddPort(builder, uint32 self.Port)
+    IrisNodeFB.AddPort(builder, self.Port)
     IrisNodeFB.EndIrisNodeFB(builder)

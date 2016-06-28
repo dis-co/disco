@@ -15,6 +15,7 @@ public enum RaftMsgFB : byte
  HandShakeFB = 7,
  HandWaiveFB = 8,
  ErrorResponseFB = 9,
+ EmptyResponseFB = 10,
 };
 
 

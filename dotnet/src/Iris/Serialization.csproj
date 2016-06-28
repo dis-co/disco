@@ -46,6 +46,7 @@
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/ConfigChangeFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/ConfigChangeTypeFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/ConfigurationFB.cs" />
+    <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/EmptyResponseFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/EntryFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/ErrorResponseFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/HandShakeFB.cs" />

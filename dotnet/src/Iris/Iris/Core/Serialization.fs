@@ -144,7 +144,7 @@ type LogExentions() =
         let id = string id |> builder.CreateString
         let changes = Array.map (fun (change: ConfigChange) -> change.ToOffset(builder)) changes
         let chvec = JointConsensusFB.CreateChangesVector(builder, changes)
-        let nodes = Array.map (fun (node: Node) -> nodes.ToOffset()) nodes
+        let nodes = Array.map (fun (node: Node) -> node.ToOffset(builder)) nodes
         let nvec = JointConsensusFB.CreateNodesVector(builder, nodes)
 
         JointConsensusFB.StartJointConsensusFB(builder)
@@ -258,12 +258,14 @@ type RaftErrorExentions() =
       | _ ->
         RaftErrorFB.CreateRaftErrorFB(builder, tipe)
 
-// __     __    _   _
-// \ \   / /__ | |_(_)_ __   __ _
-//  \ \ / / _ \| __| | '_ \ / _` |
-//   \ V / (_) | |_| | | | | (_| |
-//    \_/ \___/ \__|_|_| |_|\__, |
-//                          |___/
+//----------------------------------------------------------------------------//
+// __     __    _   _                                                         //
+// \ \   / /__ | |_(_)_ __   __ _                                             //
+//  \ \ / / _ \| __| | '_ \ / _` |                                            //
+//   \ V / (_) | |_| | | | | (_| |                                            //
+//    \_/ \___/ \__|_|_| |_|\__, |                                            //
+//                          |___/                                             //
+//----------------------------------------------------------------------------//
 
 [<Extension>]
 type VotingExentions() =
@@ -303,12 +305,14 @@ type VotingExentions() =
     VoteResponseFB.AddGranted(builder, response.Granted)
     VoteResponseFB.EndVoteResponseFB(builder)
 
-//     _                               _ _____       _        _
-//    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
-//   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |  _| | '_ \| __| '__| |/ _ \/ __|
-//  / ___ \| |_) | |_) |  __/ | | | (_| | |___| | | | |_| |  | |  __/\__ \
-// /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|  |_|\___||___/
-//         |_|   |_|
+//-----------------------------------------------------------------------------//
+//     _                               _ _____       _        _                //
+//    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___      //
+//   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |  _| | '_ \| __| '__| |/ _ \/ __|     //
+//  / ___ \| |_) | |_) |  __/ | | | (_| | |___| | | | |_| |  | |  __/\__ \     //
+// /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|  |_|\___||___/     //
+//         |_|   |_|                                                           //
+//-----------------------------------------------------------------------------//
 
 [<Extension>]
 type AppendEntriesExentions() =
@@ -347,3 +351,39 @@ type AppendEntriesExentions() =
   // |  _ <  __/\__ \ |_) | (_) | | | \__ \  __/
   // |_| \_\___||___/ .__/ \___/|_| |_|___/\___|
   //                |_|
+
+  [<Extension>]
+  static member inline ToOffset (ar: AppendResponse, builder: FlatBufferBuilder) =
+    AppendResponseFB.StartAppendResponseFB(builder)
+    AppendResponseFB.AddTerm(builder, uint64 ar.Term)
+    AppendResponseFB.AddSuccess(builder, ar.Success)
+    AppendResponseFB.AddFirstIndex(builder, uint64 ar.FirstIndex)
+    AppendResponseFB.AddCurrentIndex(builder, uint64 ar.CurrentIndex)
+    AppendResponseFB.EndAppendResponseFB(builder)
+
+//  ____                        _           _
+// / ___| _ __   __ _ _ __  ___| |__   ___ | |_
+// \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __|
+//  ___) | | | | (_| | |_) \__ \ | | | (_) | |_
+// |____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
+//                   |_|
+
+[<Extension>]
+type InstallSnapshotExtensions() =
+
+  [<Extension>]
+  static member inline ToOffset (is: InstallSnapshot, builder: FlatBufferBuilder) =
+    let leader = string is.LeaderId |> builder.CreateString
+    let data = InstallSnapshotFB.CreateDataVector(builder, is.Data.ToOffset(builder))
+
+    InstallSnapshotFB.StartInstallSnapshotFB(builder)
+    InstallSnapshotFB.AddTerm(builder, uint64 is.Term)
+    InstallSnapshotFB.AddLeaderId(builder, leader)
+    InstallSnapshotFB.AddLastTerm(builder, uint64 is.LastTerm)
+    InstallSnapshotFB.AddLastIndex(builder, uint64 is.LastIndex)
+    InstallSnapshotFB.AddData(builder, data)
+    InstallSnapshotFB.EndInstallSnapshotFB(builder)
+
+  [<Extension>]
+  static member inline ToOffset (ir: SnapshotResponse, builder: FlatBufferBuilder) =
+    SnapshotResponseFB.CreateSnapshotResponseFB(builder, uint64 ir.Term)
