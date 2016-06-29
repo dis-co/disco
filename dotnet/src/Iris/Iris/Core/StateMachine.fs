@@ -16,6 +16,18 @@ type StateMachine =
 
   with
 
+    static member FromFB (fb: StateMachineFB) =
+      match fb.Type with
+        | StateMachineTypeFB.OpenProjectTypeFB   -> Open         fb.Command
+        | StateMachineTypeFB.SaveProjectTypeFB   -> Save         fb.Command
+        | StateMachineTypeFB.CreateProjectTypeFB -> Create       fb.Command
+        | StateMachineTypeFB.CloseProjectTypeFB  -> Close        fb.Command
+        | StateMachineTypeFB.AddClientTypeFB     -> AddClient    fb.Command
+        | StateMachineTypeFB.UpdateClientTypeFB  -> UpdateClient fb.Command
+        | StateMachineTypeFB.RemoveClientTypeFB  -> RemoveClient fb.Command
+        | StateMachineTypeFB.DataSnapshotTypeFB  -> DataSnapshot fb.Command
+        | _ -> failwith "could not de-serialize garbage StateMachineTypeFB command"
+
     member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateMachineFB> =
       match self with
       | Open str ->

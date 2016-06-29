@@ -170,7 +170,7 @@ type LogExentions() =
         let config = ConfigurationFB.EndConfigurationFB(builder)
 
         LogFB.StartLogFB(builder)
-        LogFB.AddEntryType(builder, LogTypeFB.ConfigChangeFB)
+        LogFB.AddEntryType(builder, LogTypeFB.ConfigurationFB)
         LogFB.AddEntry(builder,config.Value)
         LogFB.EndLogFB(builder)
 
@@ -210,16 +210,16 @@ type LogExentions() =
         let id = string id |> builder.CreateString
         let data = data.ToOffset(builder)
 
-        EntryFB.StartEntryFB(builder)
-        EntryFB.AddId(builder, id)
-        EntryFB.AddIndex(builder, uint64 index)
-        EntryFB.AddTerm(builder, uint64 term)
-        EntryFB.AddData(builder, data)
+        LogEntryFB.StartLogEntryFB(builder)
+        LogEntryFB.AddId(builder, id)
+        LogEntryFB.AddIndex(builder, uint64 index)
+        LogEntryFB.AddTerm(builder, uint64 term)
+        LogEntryFB.AddData(builder, data)
 
-        let config = EntryFB.EndEntryFB(builder)
+        let config = LogEntryFB.EndLogEntryFB(builder)
 
         LogFB.StartLogFB(builder)
-        LogFB.AddEntryType(builder, LogTypeFB.EntryFB)
+        LogFB.AddEntryType(builder, LogTypeFB.LogEntryFB)
         LogFB.AddEntry(builder,config.Value)
         LogFB.EndLogFB(builder)
 
@@ -565,3 +565,30 @@ type InstallSnapshotExtensions() =
   [<Extension>]
   static member inline ToOffset (ir: SnapshotResponse, builder: FlatBufferBuilder) =
     SnapshotResponseFB.CreateSnapshotResponseFB(builder, uint64 ir.Term)
+
+
+[<AutoOpen>]
+module StaticIntsallSnapshotExtensions =
+
+  type InstallSnapshot<'a,'n> with
+    static member FromFB (fb: InstallSnapshotFB) =
+      let entries =
+        if fb.DataLength > 0
+        then None
+        else
+          let raw = Array.zeroCreate fb.DataLength
+          for i in 0 .. fb.DataLength do
+            raw.[i] <- fb.GetData(i)
+          Log.FromFB raw
+
+      { Term      = uint32 fb.Term
+      ; LeaderId  = uint32 fb.LeaderId
+      ; LastIndex = uint32 fb.LastIndex
+      ; LastTerm  = uint32 fb.LastTerm
+      ; Data      = Option.get entries
+      }
+
+  type SnapshotResponse with
+    static member FromFB (fb: SnapshotResponseFB) : SnapshotResponse =
+      { Term = uint32 fb.Term }
+      

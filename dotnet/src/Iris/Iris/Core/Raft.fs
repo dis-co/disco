@@ -226,6 +226,6 @@ type RaftMsg =
       match msg.MsgType with
         | RaftMsgTypeFB.RequestVoteFB ->
           let entry : RequestVoteFB = msg.GetMsg(new RequestVoteFB())
-          let request = VoteRequest.FromFB(entry.GetRequest())
+          let request = VoteRequest<IrisNode>.FromFB(entry.Request)
           RequestVote(uint32 entry.NodeId, request) |> Some
         | _ -> None
