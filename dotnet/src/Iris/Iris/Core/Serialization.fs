@@ -49,8 +49,8 @@ module NodeStateExtensions =
         | Joining -> NodeStateFB.JoiningFB
         | Failed  -> NodeStateFB.FailedFB
 
-    static member FromFB (fb: LogFB array: NodeStateFB) =
-      match fb: LogFB array with
+    static member FromFB (fb: NodeStateFB) =
+      match fb with
         | NodeStateFB.JoiningFB -> Joining
         | NodeStateFB.RunningFB -> Running
         | NodeStateFB.FailedFB  -> Failed
@@ -85,15 +85,15 @@ type NodeExtensions() =
 module StaticNodeExtensions =
 
   type Node<'t> with
-    static member FromFB (fb: LogFB array: NodeFB) : Node =
-      let info = fb: LogFB array.GetData(new IrisNodeFB()) |> IrisNode.FromFB 
-      { Id = uint32 fb: LogFB array.Id
-      ; State = fb: LogFB array.State |> NodeState.FromFB
+    static member FromFB (fb: NodeFB) : Node =
+      let info = fb.GetData(new IrisNodeFB()) |> IrisNode.FromFB
+      { Id = uint32 fb.Id
+      ; State = fb.State |> NodeState.FromFB
       ; Data = info
-      ; Voting = fb: LogFB array.Voting
-      ; VotedForMe = fb: LogFB array.VotedForMe
-      ; nextIndex = uint32 fb: LogFB array.NextIndex
-      ; matchIndex = uint32 fb: LogFB array.MatchIndex
+      ; Voting = fb.Voting
+      ; VotedForMe = fb.VotedForMe
+      ; nextIndex = uint32 fb.NextIndex
+      ; matchIndex = uint32 fb.MatchIndex
       }
 
 
@@ -128,9 +128,9 @@ type ConfigChangeExtensions() =
 module StaticConfigChangeExtensions =
 
   type ConfigChange<'t> with
-    static member FromFB (fb: LogFB array: ConfigChangeFB) : ConfigChange =
-      let node = fb: LogFB array.Node |> Node.FromFB
-      match fb: LogFB array.Type with
+    static member FromFB (fb: ConfigChangeFB) : ConfigChange =
+      let node = fb.Node |> Node.FromFB
+      match fb.Type with
         | ConfigChangeTypeFB.NodeAdded   -> NodeAdded   node
         | ConfigChangeTypeFB.NodeRemoved -> NodeRemoved node
         | _                              ->
@@ -257,12 +257,66 @@ type LogExentions() =
 
 [<AutoOpen>]
 module StaticLogExtensions =
-  
-  type Log<'a,'n> with
 
-    static member FromFB (fb: LogFB array) =
-      failwith "nope"
-      
+  let private fb2Log (fb: LogFB) (log: LogEntry option) : LogEntry option =
+    match fb.EntryType with
+      | LogTypeFB.ConfigurationFB ->
+        let entry = fb.GetEntry(new ConfigurationFB())
+        let id = System.Guid.Parse entry.Id
+        let index = uint32 entry.Index
+        let term = uint32 entry.Term
+        let nodes = Array.zeroCreate entry.NodesLength
+
+        for i in 0 .. entry.NodesLength do
+          nodes.[i] <- entry.GetNodes(i) |> Node.FromFB
+
+        Some <| Configuration(id, index, term, nodes, log)
+
+      | LogTypeFB.JointConsensusFB ->
+        let entry = fb.GetEntry(new JointConsensusFB())
+        let id = System.Guid.Parse entry.Id
+        let index = uint32 entry.Index
+        let term = uint32 entry.Term
+        let changes = Array.zeroCreate entry.ChangesLength
+        let nodes = Array.zeroCreate entry.NodesLength
+
+        for i in 0 .. entry.NodesLength do
+          nodes.[i] <- entry.GetNodes(i) |> Node.FromFB
+
+        for i in 0 .. entry.ChangesLength do
+          changes.[i] <- entry.GetChanges(i) |> ConfigChange.FromFB
+
+        Some <| JointConsensus(id, index, term, changes, nodes, log)
+
+      | LogTypeFB.LogEntryFB ->
+        let entry = fb.GetEntry(new LogEntryFB())
+        let id = System.Guid.Parse entry.Id
+        let index = uint32 entry.Index
+        let term = uint32 entry.Term
+        let data = StateMachine.FromFB entry.Data
+
+        Some <| LogEntry(id, index, term, data, log)
+
+      | LogTypeFB.SnapshotFB ->
+        let entry = fb.GetEntry(new SnapshotFB())
+        let id = System.Guid.Parse entry.Id
+        let index = uint32 entry.Index
+        let term = uint32 entry.Term
+        let lindex = uint32 entry.LastIndex
+        let lterm = uint32 entry.LastTerm
+
+        let data = StateMachine.FromFB entry.Data
+
+        Some <| LogEntry(id, index, term, data, log)
+
+      | _ ->
+        failwith "unable to de-serialize garbage LogTypeFB value"
+
+
+  type Log<'a,'n> with
+    static member FromFB (logs: LogFB array) : LogEntry option =
+      Array.foldBack fb2Log logs None
+
 
 //  ____        __ _   _____
 // |  _ \ __ _ / _| |_| ____|_ __ _ __ ___  _ __
@@ -270,41 +324,66 @@ module StaticLogExtensions =
 // |  _ < (_| |  _| |_| |___| |  | | | (_) | |
 // |_| \_\__,_|_|  \__|_____|_|  |_|  \___/|_|
 
-[<Extension>]
-type RaftErrorExentions() =
+[<AutoOpen>]
+module StaticRaftErrorExtensions =
 
-  [<Extension>]
-  static member inline ToOffset (error: RaftError, builder: FlatBufferBuilder) =
-    let tipe =
+  type RaftError with
+    member error.ToOffset (builder: FlatBufferBuilder) =
+      let tipe =
+        match error with
+          | AlreadyVoted           -> RaftErrorTypeFB.AlreadyVotedFB
+          | AppendEntryFailed      -> RaftErrorTypeFB.AppendEntryFailedFB
+          | CandidateUnknown       -> RaftErrorTypeFB.CandidateUnknownFB
+          | EntryInvalidated       -> RaftErrorTypeFB.EntryInvalidatedFB
+          | InvalidCurrentIndex    -> RaftErrorTypeFB.InvalidCurrentIndexFB
+          | InvalidLastLog         -> RaftErrorTypeFB.InvalidLastLogFB
+          | InvalidLastLogTerm     -> RaftErrorTypeFB.InvalidLastLogTermFB
+          | InvalidTerm            -> RaftErrorTypeFB.InvalidTermFB
+          | LogFormatError         -> RaftErrorTypeFB.LogFormatErrorFB
+          | LogIncomplete          -> RaftErrorTypeFB.LogIncompleteFB
+          | NoError                -> RaftErrorTypeFB.NoErrorFB
+          | NoNode                 -> RaftErrorTypeFB.NoNodeFB
+          | NotCandidate           -> RaftErrorTypeFB.NotCandidateFB
+          | NotLeader              -> RaftErrorTypeFB.NotLeaderFB
+          | NotVotingState         -> RaftErrorTypeFB.NotVotingStateFB
+          | ResponseTimeout        -> RaftErrorTypeFB.ResponseTimeoutFB
+          | SnapshotFormatError    -> RaftErrorTypeFB.SnapshotFormatErrorFB
+          | StaleResponse          -> RaftErrorTypeFB.StaleResponseFB
+          | UnexpectedVotingChange -> RaftErrorTypeFB.UnexpectedVotingChangeFB
+          | VoteTermMismatch       -> RaftErrorTypeFB.VoteTermMismatchFB
+          | OtherError           _ -> RaftErrorTypeFB.OtherErrorFB
+
       match error with
-        | AlreadyVoted           -> RaftErrorTypeFB.AlreadyVotedFB
-        | AppendEntryFailed      -> RaftErrorTypeFB.AppendEntryFailedFB
-        | CandidateUnknown       -> RaftErrorTypeFB.CandidateUnknownFB
-        | EntryInvalidated       -> RaftErrorTypeFB.EntryInvalidatedFB
-        | InvalidCurrentIndex    -> RaftErrorTypeFB.InvalidCurrentIndexFB
-        | InvalidLastLog         -> RaftErrorTypeFB.InvalidLastLogFB
-        | InvalidLastLogTerm     -> RaftErrorTypeFB.InvalidLastLogTermFB
-        | InvalidTerm            -> RaftErrorTypeFB.InvalidTermFB
-        | LogFormatError         -> RaftErrorTypeFB.LogFormatErrorFB
-        | LogIncomplete          -> RaftErrorTypeFB.LogIncompleteFB
-        | NoError                -> RaftErrorTypeFB.NoErrorFB
-        | NoNode                 -> RaftErrorTypeFB.NoNodeFB
-        | NotCandidate           -> RaftErrorTypeFB.NotCandidateFB
-        | NotLeader              -> RaftErrorTypeFB.NotLeaderFB
-        | NotVotingState         -> RaftErrorTypeFB.NotVotingStateFB
-        | ResponseTimeout        -> RaftErrorTypeFB.ResponseTimeoutFB
-        | SnapshotFormatError    -> RaftErrorTypeFB.SnapshotFormatErrorFB
-        | StaleResponse          -> RaftErrorTypeFB.StaleResponseFB
-        | UnexpectedVotingChange -> RaftErrorTypeFB.UnexpectedVotingChangeFB
-        | VoteTermMismatch       -> RaftErrorTypeFB.VoteTermMismatchFB
-        | OtherError           _ -> RaftErrorTypeFB.OtherErrorFB
+        | OtherError msg ->
+          let message = builder.CreateString msg
+          RaftErrorFB.CreateRaftErrorFB(builder, tipe, message)
+        | _ ->
+          RaftErrorFB.CreateRaftErrorFB(builder, tipe)
 
-    match error with
-      | OtherError msg ->
-        let message = builder.CreateString msg
-        RaftErrorFB.CreateRaftErrorFB(builder, tipe, message)
-      | _ ->
-        RaftErrorFB.CreateRaftErrorFB(builder, tipe)
+    static member FromFB (fb: RaftErrorFB) =
+      match fb.Type with
+      | RaftErrorTypeFB.AlreadyVotedFB           -> AlreadyVoted
+      | RaftErrorTypeFB.AppendEntryFailedFB      -> AppendEntryFailed
+      | RaftErrorTypeFB.CandidateUnknownFB       -> CandidateUnknown
+      | RaftErrorTypeFB.EntryInvalidatedFB       -> EntryInvalidated
+      | RaftErrorTypeFB.InvalidCurrentIndexFB    -> InvalidCurrentIndex
+      | RaftErrorTypeFB.InvalidLastLogFB         -> InvalidLastLog
+      | RaftErrorTypeFB.InvalidLastLogTermFB     -> InvalidLastLogTerm
+      | RaftErrorTypeFB.InvalidTermFB            -> InvalidTerm
+      | RaftErrorTypeFB.LogFormatErrorFB         -> LogFormatError
+      | RaftErrorTypeFB.LogIncompleteFB          -> LogIncomplete
+      | RaftErrorTypeFB.NoErrorFB                -> NoError
+      | RaftErrorTypeFB.NoNodeFB                 -> NoNode
+      | RaftErrorTypeFB.NotCandidateFB           -> NotCandidate
+      | RaftErrorTypeFB.NotLeaderFB              -> NotLeader
+      | RaftErrorTypeFB.NotVotingStateFB         -> NotVotingState
+      | RaftErrorTypeFB.ResponseTimeoutFB        -> ResponseTimeout
+      | RaftErrorTypeFB.SnapshotFormatErrorFB    -> SnapshotFormatError
+      | RaftErrorTypeFB.StaleResponseFB          -> StaleResponse
+      | RaftErrorTypeFB.UnexpectedVotingChangeFB -> UnexpectedVotingChange
+      | RaftErrorTypeFB.VoteTermMismatchFB       -> VoteTermMismatch
+      | RaftErrorTypeFB.OtherErrorFB             -> OtherError(fb.Message)
+      | _ -> failwith "could not de-serialize garbage RaftErrorTypeFB"
 
 //----------------------------------------------------------------------------//
 // __     __    _   _                                                         //
@@ -352,6 +431,28 @@ type VotingExentions() =
       | _ -> ()
     VoteResponseFB.AddGranted(builder, response.Granted)
     VoteResponseFB.EndVoteResponseFB(builder)
+
+[<AutoOpen>]
+module StaticVotingExtensions =
+
+  type VoteRequest<'t> with
+    static member FromFB (fb: VoteRequestFB) : VoteRequest =
+      { Term         = uint32 fb.Term
+      ; Candidate    = fb.Candidate |> Node.FromFB
+      ; LastLogIndex = uint32 fb.LastLogIndex
+      ; LastLogTerm  = uint32 fb.LastLogTerm
+      }
+
+  type VoteResponse with
+    static member FromFB (fb: VoteResponseFB) : VoteResponse =
+      let reason =
+        if fb.Reason <> null
+        then Some(RaftError.FromFB fb.Reason)
+        else None
+
+      { Term    = uint32 fb.Term
+      ; Granted = fb.Granted
+      ; Reason  = reason }
 
 //-----------------------------------------------------------------------------//
 //     _                               _ _____       _        _                //
@@ -408,6 +509,35 @@ type AppendEntriesExentions() =
     AppendResponseFB.AddFirstIndex(builder, uint64 ar.FirstIndex)
     AppendResponseFB.AddCurrentIndex(builder, uint64 ar.CurrentIndex)
     AppendResponseFB.EndAppendResponseFB(builder)
+
+[<AutoOpen>]
+module StaticAppendEntriesExtensions =
+
+  type AppendEntries<'a,'n> with
+    static member FromFB (fb: AppendEntriesFB) : AppendEntries =
+      let entries =
+        if fb.EntriesLength = 0
+        then None
+        else
+          let raw = Array.zeroCreate fb.EntriesLength
+          for i in 0 .. fb.EntriesLength do
+            raw.[i] <- fb.GetEntries(i)
+          Log.FromFB raw
+
+      { Term         = uint32 fb.Term
+      ; PrevLogIdx   = uint32 fb.PrevLogIdx
+      ; PrevLogTerm  = uint32 fb.PrevLogTerm
+      ; LeaderCommit = uint32 fb.LeaderCommit
+      ; Entries      = entries
+      }
+
+  type AppendResponse with
+    static member FromFB (fb: AppendResponseFB) : AppendResponse =
+      { Term         = uint32 fb.Term
+      ; Success      = fb.Success
+      ; CurrentIndex = uint32 fb.CurrentIndex
+      ; FirstIndex   = uint32 fb.FirstIndex
+      }
 
 //  ____                        _           _
 // / ___| _ __   __ _ _ __  ___| |__   ___ | |_

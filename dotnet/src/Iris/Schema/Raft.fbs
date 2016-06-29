@@ -156,7 +156,7 @@ table JointConsensusFB {
       Nodes:   [ NodeFB ];
 }
 
-table EntryFB {
+table LogEntryFB {
       Id:    string;
       Index: ulong;
       Term:  ulong;
@@ -174,9 +174,9 @@ table SnapshotFB {
 }
 
 union LogTypeFB {
-      ConfigChangeFB,
+      ConfigurationFB,
       JointConsensusFB,
-      EntryFB,
+      LogEntryFB,
       SnapshotFB
 }
 

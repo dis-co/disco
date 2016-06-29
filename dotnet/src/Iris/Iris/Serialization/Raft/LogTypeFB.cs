@@ -6,9 +6,9 @@ namespace Iris.Serialization.Raft
 public enum LogTypeFB : byte
 {
  NONE = 0,
- ConfigChangeFB = 1,
+ ConfigurationFB = 1,
  JointConsensusFB = 2,
- EntryFB = 3,
+ LogEntryFB = 3,
  SnapshotFB = 4,
 };
 

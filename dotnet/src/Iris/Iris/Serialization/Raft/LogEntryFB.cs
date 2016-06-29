@@ -6,10 +6,10 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class EntryFB : Table {
-  public static EntryFB GetRootAsEntryFB(ByteBuffer _bb) { return GetRootAsEntryFB(_bb, new EntryFB()); }
-  public static EntryFB GetRootAsEntryFB(ByteBuffer _bb, EntryFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public EntryFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+public sealed class LogEntryFB : Table {
+  public static LogEntryFB GetRootAsLogEntryFB(ByteBuffer _bb) { return GetRootAsLogEntryFB(_bb, new LogEntryFB()); }
+  public static LogEntryFB GetRootAsLogEntryFB(ByteBuffer _bb, LogEntryFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public LogEntryFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
   public string Id { get { int o = __offset(4); return o != 0 ? __string(o + bb_pos) : null; } }
   public ArraySegment<byte>? GetIdBytes() { return __vector_as_arraysegment(4); }
@@ -18,27 +18,27 @@ public sealed class EntryFB : Table {
   public StateMachineFB Data { get { return GetData(new StateMachineFB()); } }
   public StateMachineFB GetData(StateMachineFB obj) { int o = __offset(10); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
 
-  public static Offset<EntryFB> CreateEntryFB(FlatBufferBuilder builder,
+  public static Offset<LogEntryFB> CreateLogEntryFB(FlatBufferBuilder builder,
       StringOffset IdOffset = default(StringOffset),
       ulong Index = 0,
       ulong Term = 0,
       Offset<StateMachineFB> DataOffset = default(Offset<StateMachineFB>)) {
     builder.StartObject(4);
-    EntryFB.AddTerm(builder, Term);
-    EntryFB.AddIndex(builder, Index);
-    EntryFB.AddData(builder, DataOffset);
-    EntryFB.AddId(builder, IdOffset);
-    return EntryFB.EndEntryFB(builder);
+    LogEntryFB.AddTerm(builder, Term);
+    LogEntryFB.AddIndex(builder, Index);
+    LogEntryFB.AddData(builder, DataOffset);
+    LogEntryFB.AddId(builder, IdOffset);
+    return LogEntryFB.EndLogEntryFB(builder);
   }
 
-  public static void StartEntryFB(FlatBufferBuilder builder) { builder.StartObject(4); }
+  public static void StartLogEntryFB(FlatBufferBuilder builder) { builder.StartObject(4); }
   public static void AddId(FlatBufferBuilder builder, StringOffset IdOffset) { builder.AddOffset(0, IdOffset.Value, 0); }
   public static void AddIndex(FlatBufferBuilder builder, ulong Index) { builder.AddUlong(1, Index, 0); }
   public static void AddTerm(FlatBufferBuilder builder, ulong Term) { builder.AddUlong(2, Term, 0); }
   public static void AddData(FlatBufferBuilder builder, Offset<StateMachineFB> DataOffset) { builder.AddOffset(3, DataOffset.Value, 0); }
-  public static Offset<EntryFB> EndEntryFB(FlatBufferBuilder builder) {
+  public static Offset<LogEntryFB> EndLogEntryFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
-    return new Offset<EntryFB>(o);
+    return new Offset<LogEntryFB>(o);
   }
 };
 
