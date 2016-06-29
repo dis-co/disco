@@ -33,30 +33,38 @@ open Iris.Serialization.Raft
 open Pallet.Core
 open FlatBuffers
 
-[<Extension>]
-type NodeStateExtensions() =
+//  _   _           _      ____  _        _
+// | \ | | ___   __| | ___/ ___|| |_ __ _| |_ ___
+// |  \| |/ _ \ / _` |/ _ \___ \| __/ _` | __/ _ \
+// | |\  | (_) | (_| |  __/___) | || (_| | ||  __/
+// |_| \_|\___/ \__,_|\___|____/ \__\__,_|\__\___|
 
-  //  _   _           _      ____  _        _
-  // | \ | | ___   __| | ___/ ___|| |_ __ _| |_ ___
-  // |  \| |/ _ \ / _` |/ _ \___ \| __/ _` | __/ _ \
-  // | |\  | (_) | (_| |  __/___) | || (_| | ||  __/
-  // |_| \_|\___/ \__,_|\___|____/ \__\__,_|\__\___|
+[<AutoOpen>]
+module NodeStateExtensions =
 
-  [<Extension>]
-  static member inline ToOffset (state: NodeState, _: unit) =
-    match state with
-      | Running -> NodeStateFB.RunningFB
-      | Joining -> NodeStateFB.JoiningFB
-      | Failed  -> NodeStateFB.FailedFB
+  type NodeState with
+    member self.ToOffset () =
+      match self with
+        | Running -> NodeStateFB.RunningFB
+        | Joining -> NodeStateFB.JoiningFB
+        | Failed  -> NodeStateFB.FailedFB
 
+    static member FromFB (fb: LogFB array: NodeStateFB) =
+      match fb: LogFB array with
+        | NodeStateFB.JoiningFB -> Joining
+        | NodeStateFB.RunningFB -> Running
+        | NodeStateFB.FailedFB  -> Failed
+        | _                     ->
+          failwith "unable to de-serialize garbage NodeState case"
+
+//  _   _           _
+// | \ | | ___   __| | ___
+// |  \| |/ _ \ / _` |/ _ \
+// | |\  | (_) | (_| |  __/
+// |_| \_|\___/ \__,_|\___|
 
 [<Extension>]
 type NodeExtensions() =
-  //  _   _           _
-  // | \ | | ___   __| | ___
-  // |  \| |/ _ \ / _` |/ _ \
-  // | |\  | (_) | (_| |  __/
-  // |_| \_|\___/ \__,_|\___|
 
   [<Extension>]
   static member inline ToOffset (node: Node, builder: FlatBufferBuilder) =
@@ -73,15 +81,33 @@ type NodeExtensions() =
     NodeFB.AddData(builder, info)
     NodeFB.EndNodeFB(builder)
 
+[<AutoOpen>]
+module StaticNodeExtensions =
+
+  type Node<'t> with
+    static member FromFB (fb: LogFB array: NodeFB) : Node =
+      let info = fb: LogFB array.GetData(new IrisNodeFB()) |> IrisNode.FromFB 
+      { Id = uint32 fb: LogFB array.Id
+      ; State = fb: LogFB array.State |> NodeState.FromFB
+      ; Data = info
+      ; Voting = fb: LogFB array.Voting
+      ; VotedForMe = fb: LogFB array.VotedForMe
+      ; nextIndex = uint32 fb: LogFB array.NextIndex
+      ; matchIndex = uint32 fb: LogFB array.MatchIndex
+      }
+
+
+
+//   ____             __ _        ____ _
+//  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
+// | |   / _ \| '_ \| |_| |/ _` | |   | '_ \ / _` | '_ \ / _` |/ _ \
+// | |__| (_) | | | |  _| | (_| | |___| | | | (_| | | | | (_| |  __/
+//  \____\___/|_| |_|_| |_|\__, |\____|_| |_|\__,_|_| |_|\__, |\___|
+//                         |___/                         |___/
 
 [<Extension>]
 type ConfigChangeExtensions() =
-  //   ____             __ _        ____ _
-  //  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
-  // | |   / _ \| '_ \| |_| |/ _` | |   | '_ \ / _` | '_ \ / _` |/ _ \
-  // | |__| (_) | | | |  _| | (_| | |___| | | | (_| | | | | (_| |  __/
-  //  \____\___/|_| |_|_| |_|\__, |\____|_| |_|\__,_|_| |_|\__, |\___|
-  //                         |___/                         |___/
+
   [<Extension>]
   static member inline ToOffset (change: ConfigChange, builder: FlatBufferBuilder) =
     match change with
@@ -98,14 +124,27 @@ type ConfigChangeExtensions() =
         ConfigChangeFB.AddNode(builder, node)
         ConfigChangeFB.EndConfigChangeFB(builder)
 
+[<AutoOpen>]
+module StaticConfigChangeExtensions =
+
+  type ConfigChange<'t> with
+    static member FromFB (fb: LogFB array: ConfigChangeFB) : ConfigChange =
+      let node = fb: LogFB array.Node |> Node.FromFB
+      match fb: LogFB array.Type with
+        | ConfigChangeTypeFB.NodeAdded   -> NodeAdded   node
+        | ConfigChangeTypeFB.NodeRemoved -> NodeRemoved node
+        | _                              ->
+          failwith "unable to de-serialie garbage ConfigChange"
+
+//  _
+// | |    ___   __ _
+// | |   / _ \ / _` |
+// | |__| (_) | (_| |
+// |_____\___/ \__, |
+//             |___/
+
 [<Extension>]
 type LogExentions() =
-  //  _
-  // | |    ___   __ _
-  // | |   / _ \ / _` |
-  // | |__| (_) | (_| |
-  // |_____\___/ \__, |
-  //             |___/
 
   [<Extension>]
   static member inline ToOffset (entries: LogEntry, builder: FlatBufferBuilder) =
@@ -216,14 +255,23 @@ type LogExentions() =
     Log.iter (fun i (log: LogEntry) -> arr.[int i] <- toOffset log) entries
     arr
 
+[<AutoOpen>]
+module StaticLogExtensions =
+  
+  type Log<'a,'n> with
+
+    static member FromFB (fb: LogFB array) =
+      failwith "nope"
+      
+
+//  ____        __ _   _____
+// |  _ \ __ _ / _| |_| ____|_ __ _ __ ___  _ __
+// | |_) / _` | |_| __|  _| | '__| '__/ _ \| '__|
+// |  _ < (_| |  _| |_| |___| |  | | | (_) | |
+// |_| \_\__,_|_|  \__|_____|_|  |_|  \___/|_|
 
 [<Extension>]
 type RaftErrorExentions() =
-  //  ____        __ _   _____
-  // |  _ \ __ _ / _| |_| ____|_ __ _ __ ___  _ __
-  // | |_) / _` | |_| __|  _| | '__| '__/ _ \| '__|
-  // |  _ < (_| |  _| |_| |___| |  | | | (_) | |
-  // |_| \_\__,_|_|  \__|_____|_|  |_|  \___/|_|
 
   [<Extension>]
   static member inline ToOffset (error: RaftError, builder: FlatBufferBuilder) =

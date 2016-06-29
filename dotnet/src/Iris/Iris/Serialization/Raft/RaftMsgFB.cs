@@ -3,19 +3,34 @@
 namespace Iris.Serialization.Raft
 {
 
-public enum RaftMsgFB : byte
-{
- NONE = 0,
- RequestVoteFB = 1,
- RequestVoteResponseFB = 2,
- RequestAppendEntriesFB = 3,
- RequestAppendResponseFB = 4,
- RequestInstallSnapshotFB = 5,
- RequestSnapshotResponseFB = 6,
- HandShakeFB = 7,
- HandWaiveFB = 8,
- ErrorResponseFB = 9,
- EmptyResponseFB = 10,
+using System;
+using FlatBuffers;
+
+public sealed class RaftMsgFB : Table {
+  public static RaftMsgFB GetRootAsRaftMsgFB(ByteBuffer _bb) { return GetRootAsRaftMsgFB(_bb, new RaftMsgFB()); }
+  public static RaftMsgFB GetRootAsRaftMsgFB(ByteBuffer _bb, RaftMsgFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public RaftMsgFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+
+  public RaftMsgTypeFB MsgType { get { int o = __offset(4); return o != 0 ? (RaftMsgTypeFB)bb.Get(o + bb_pos) : RaftMsgTypeFB.NONE; } }
+  public TTable GetMsg<TTable>(TTable obj) where TTable : Table { int o = __offset(6); return o != 0 ? __union(obj, o) : null; }
+
+  public static Offset<RaftMsgFB> CreateRaftMsgFB(FlatBufferBuilder builder,
+      RaftMsgTypeFB Msg_type = RaftMsgTypeFB.NONE,
+      int MsgOffset = 0) {
+    builder.StartObject(2);
+    RaftMsgFB.AddMsg(builder, MsgOffset);
+    RaftMsgFB.AddMsgType(builder, Msg_type);
+    return RaftMsgFB.EndRaftMsgFB(builder);
+  }
+
+  public static void StartRaftMsgFB(FlatBufferBuilder builder) { builder.StartObject(2); }
+  public static void AddMsgType(FlatBufferBuilder builder, RaftMsgTypeFB MsgType) { builder.AddByte(0, (byte)MsgType, 0); }
+  public static void AddMsg(FlatBufferBuilder builder, int MsgOffset) { builder.AddOffset(1, MsgOffset, 0); }
+  public static Offset<RaftMsgFB> EndRaftMsgFB(FlatBufferBuilder builder) {
+    int o = builder.EndObject();
+    return new Offset<RaftMsgFB>(o);
+  }
+  public static void FinishRaftMsgFBBuffer(FlatBufferBuilder builder, Offset<RaftMsgFB> offset) { builder.Finish(offset.Value); }
 };
 
 

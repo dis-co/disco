@@ -30,3 +30,9 @@ type IrisNode =
     IrisNodeFB.AddIpAddr(builder, ip)
     IrisNodeFB.AddPort(builder, self.Port)
     IrisNodeFB.EndIrisNodeFB(builder)
+
+
+  static member FromFB (fb: IrisNodeFB) =
+    { HostName = fb.HostName
+    ; IpAddr   = IPAddress.Parse fb.IpAddr
+    ; Port     = fb.Port }

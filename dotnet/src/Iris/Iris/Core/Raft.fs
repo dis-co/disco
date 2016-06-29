@@ -94,14 +94,22 @@ type RaftMsg =
       | RequestVote(nid, req) ->
         let nodeid = string nid |> builder.CreateString
         let request = req.ToOffset(builder)
-        let fb = RequestVoteFB.CreateRequestVoteFB(builder, nodeid, request)
-        builder.Finish(fb.Value)
+        let rv = RequestVoteFB.CreateRequestVoteFB(builder, nodeid, request)
+        RaftMsgFB.StartRaftMsgFB(builder)
+        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestVoteFB)
+        RaftMsgFB.AddMsg(builder, rv.Value)
+        let msg = RaftMsgFB.EndRaftMsgFB(builder)
+        builder.Finish(msg.Value)
 
       | RequestVoteResponse(nid, resp) ->
         let nodeid = string nid |> builder.CreateString
         let response = resp.ToOffset(builder)
-        let fb = RequestVoteResponseFB.CreateRequestVoteResponseFB(builder, nodeid, response)
-        builder.Finish(fb.Value)
+        let rvp = RequestVoteResponseFB.CreateRequestVoteResponseFB(builder, nodeid, response)
+        RaftMsgFB.StartRaftMsgFB(builder)
+        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestVoteResponseFB)
+        RaftMsgFB.AddMsg(builder, rvp.Value)
+        let msg = RaftMsgFB.EndRaftMsgFB(builder)
+        builder.Finish(msg.Value)
 
       //     _                               _ _____       _        _
       //    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
@@ -113,14 +121,22 @@ type RaftMsg =
       | AppendEntries(nid, ae) ->
         let nodeid = string nid |> builder.CreateString
         let appendentries = ae.ToOffset(builder)
-        let fb = RequestAppendEntriesFB.CreateRequestAppendEntriesFB(builder, nodeid, appendentries)
-        builder.Finish(fb.Value)
+        let rae = RequestAppendEntriesFB.CreateRequestAppendEntriesFB(builder, nodeid, appendentries)
+        RaftMsgFB.StartRaftMsgFB(builder)
+        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestAppendEntriesFB)
+        RaftMsgFB.AddMsg(builder, rae.Value)
+        let msg = RaftMsgFB.EndRaftMsgFB(builder)
+        builder.Finish(msg.Value)
 
       | AppendEntriesResponse(nid, ar) ->
         let nodeid = string nid |> builder.CreateString
         let response = ar.ToOffset(builder)
-        let fb = RequestAppendResponseFB.CreateRequestAppendResponseFB(builder, nodeid, response)
-        builder.Finish(fb.Value)
+        let aer = RequestAppendResponseFB.CreateRequestAppendResponseFB(builder, nodeid, response)
+        RaftMsgFB.StartRaftMsgFB(builder)
+        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestAppendResponseFB)
+        RaftMsgFB.AddMsg(builder, aer.Value)
+        let msg = RaftMsgFB.EndRaftMsgFB(builder)
+        builder.Finish(msg.Value)
 
       //  ___           _        _ _ ____                        _           _
       // |_ _|_ __  ___| |_ __ _| | / ___| _ __   __ _ _ __  ___| |__   ___ | |_
@@ -132,14 +148,22 @@ type RaftMsg =
       | InstallSnapshot(nid, is) ->
         let nodeid = string id |> builder.CreateString
         let request = is.ToOffset(builder)
-        let fb = RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(builder, nodeid, request)
-        builder.Finish(fb.Value)
+        let ris = RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(builder, nodeid, request)
+        RaftMsgFB.StartRaftMsgFB(builder)
+        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestInstallSnapshotFB)
+        RaftMsgFB.AddMsg(builder, ris.Value)
+        let msg = RaftMsgFB.EndRaftMsgFB(builder)
+        builder.Finish(msg.Value)
 
       | InstallSnapshotResponse(nid, ir) ->
         let nodeid = string id |> builder.CreateString
         let response = ir.ToOffset(builder)
-        let fb = RequestSnapshotResponseFB.CreateRequestSnapshotResponseFB(builder, nodeid, response)
-        builder.Finish(fb.Value)
+        let risr = RequestSnapshotResponseFB.CreateRequestSnapshotResponseFB(builder, nodeid, response)
+        RaftMsgFB.StartRaftMsgFB(builder)
+        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestSnapshotResponseFB)
+        RaftMsgFB.AddMsg(builder, risr.Value)
+        let msg = RaftMsgFB.EndRaftMsgFB(builder)
+        builder.Finish(msg.Value)
 
       //  _   _                 _ ____  _           _
       // | | | | __ _ _ __   __| / ___|| |__   __ _| | _____
@@ -150,12 +174,20 @@ type RaftMsg =
       | HandShake node ->
         let node = node.ToOffset(builder)
         let shake = HandShakeFB.CreateHandShakeFB(builder, node)
-        builder.Finish(shake.Value)
+        RaftMsgFB.StartRaftMsgFB(builder)
+        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.HandShakeFB)
+        RaftMsgFB.AddMsg(builder, shake.Value)
+        let msg = RaftMsgFB.EndRaftMsgFB(builder)
+        builder.Finish(msg.Value)
         
       | HandWaive node ->
         let node = node.ToOffset(builder)
         let waive = HandWaiveFB.CreateHandWaiveFB(builder, node)
-        builder.Finish(waive.Value)
+        RaftMsgFB.StartRaftMsgFB(builder)
+        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.HandWaiveFB)
+        RaftMsgFB.AddMsg(builder, waive.Value)
+        let msg = RaftMsgFB.EndRaftMsgFB(builder)
+        builder.Finish(msg.Value)
 
       //  _____
       // | ____|_ __ _ __ ___  _ __
@@ -166,12 +198,20 @@ type RaftMsg =
       | ErrorResponse err ->
         let error = err.ToOffset(builder)
         let fb = ErrorResponseFB.CreateErrorResponseFB(builder, error)
-        builder.Finish(fb.Value)
+        RaftMsgFB.StartRaftMsgFB(builder)
+        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.ErrorResponseFB)
+        RaftMsgFB.AddMsg(builder, fb.Value)
+        let msg = RaftMsgFB.EndRaftMsgFB(builder)
+        builder.Finish(msg.Value)
        
       | EmptyResponse ->
         EmptyResponseFB.StartEmptyResponseFB(builder)
         let fb = EmptyResponseFB.EndEmptyResponseFB(builder)
-        builder.Finish(fb.Value)
+        RaftMsgFB.StartRaftMsgFB(builder)
+        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.EmptyResponseFB)
+        RaftMsgFB.AddMsg(builder, fb.Value)
+        let msg = RaftMsgFB.EndRaftMsgFB(builder)
+        builder.Finish(msg.Value)
 
       //  ____                 _ _
       // |  _ \ ___  ___ _   _| | |_
@@ -179,7 +219,13 @@ type RaftMsg =
       // |  _ <  __/\__ \ |_| | | |_
       // |_| \_\___||___/\__,_|_|\__|
  
-      builder.DataBuffer.Data
+      builder.SizedByteArray()
 
     static member FromBytes (bytes: byte array) : RaftMsg option =
-      failwith "nope"
+      let msg = RaftMsgFB.GetRootAsRaftMsgFB(new ByteBuffer(bytes))
+      match msg.MsgType with
+        | RaftMsgTypeFB.RequestVoteFB ->
+          let entry : RequestVoteFB = msg.GetMsg(new RequestVoteFB())
+          let request = VoteRequest.FromFB(entry.GetRequest())
+          RequestVote(uint32 entry.NodeId, request) |> Some
+        | _ -> None

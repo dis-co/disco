@@ -299,7 +299,7 @@ table ErrorResponseFB {
 table EmptyResponseFB {
 }
 
-union RaftMsgFB {
+union RaftMsgTypeFB {
       RequestVoteFB,
       RequestVoteResponseFB,
       RequestAppendEntriesFB,
@@ -311,3 +311,9 @@ union RaftMsgFB {
       ErrorResponseFB,
       EmptyResponseFB
 }
+
+table RaftMsgFB {
+      Msg: RaftMsgTypeFB;
+}
+
+root_type RaftMsgFB;
