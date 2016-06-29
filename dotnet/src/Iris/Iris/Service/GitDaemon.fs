@@ -41,7 +41,7 @@ module Git =
     let loco : obj  = new obj()
     let mutable started : bool = false
     let mutable running : bool = false
-    let mutable Worker  : Thread option = None
+    let mutable worker  : Thread option = None
 
     member self.Runner () =
       let basedir = Workspace()
@@ -59,9 +59,9 @@ module Git =
       if not started
       then
         running <- true
-        let worker = new Thread(new ThreadStart(self.Runner))
-        worker.Start()
-        Worker <- Some(worker)
+        let thread = new Thread(new ThreadStart(self.Runner))
+        thread.Start()
+        worker <- Some(thread)
         started <- true
 
     member self.Stop() =
@@ -75,5 +75,5 @@ module Git =
     member self.Running() =
       started
       && running
-      && Option.isSome Worker
-      && Option.get(Worker).IsAlive
+      && Option.isSome worker
+      && Option.get(worker).IsAlive

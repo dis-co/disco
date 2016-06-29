@@ -11,22 +11,21 @@ public sealed class RequestVoteResponseFB : Table {
   public static RequestVoteResponseFB GetRootAsRequestVoteResponseFB(ByteBuffer _bb, RequestVoteResponseFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
   public RequestVoteResponseFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
-  public string NodeId { get { int o = __offset(4); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetNodeIdBytes() { return __vector_as_arraysegment(4); }
+  public ulong NodeId { get { int o = __offset(4); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
   public VoteResponseFB Response { get { return GetResponse(new VoteResponseFB()); } }
   public VoteResponseFB GetResponse(VoteResponseFB obj) { int o = __offset(6); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
 
   public static Offset<RequestVoteResponseFB> CreateRequestVoteResponseFB(FlatBufferBuilder builder,
-      StringOffset NodeIdOffset = default(StringOffset),
+      ulong NodeId = 0,
       Offset<VoteResponseFB> ResponseOffset = default(Offset<VoteResponseFB>)) {
     builder.StartObject(2);
+    RequestVoteResponseFB.AddNodeId(builder, NodeId);
     RequestVoteResponseFB.AddResponse(builder, ResponseOffset);
-    RequestVoteResponseFB.AddNodeId(builder, NodeIdOffset);
     return RequestVoteResponseFB.EndRequestVoteResponseFB(builder);
   }
 
   public static void StartRequestVoteResponseFB(FlatBufferBuilder builder) { builder.StartObject(2); }
-  public static void AddNodeId(FlatBufferBuilder builder, StringOffset NodeIdOffset) { builder.AddOffset(0, NodeIdOffset.Value, 0); }
+  public static void AddNodeId(FlatBufferBuilder builder, ulong NodeId) { builder.AddUlong(0, NodeId, 0); }
   public static void AddResponse(FlatBufferBuilder builder, Offset<VoteResponseFB> ResponseOffset) { builder.AddOffset(1, ResponseOffset.Value, 0); }
   public static Offset<RequestVoteResponseFB> EndRequestVoteResponseFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();

@@ -10,7 +10,7 @@ open System.Text.RegularExpressions
 module List =
   let reverse (lst : 'a list) : 'a list =
     let reverser acc elm = List.concat [[elm]; acc]
-    List.fold reverser List.empty lst
+    List.fold reverser [] lst
 
 module Utils =
 

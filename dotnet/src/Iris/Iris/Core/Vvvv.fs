@@ -16,4 +16,3 @@ type VvvvPlugin =
   { Name : Name
   ; Path : FilePath
   }
-

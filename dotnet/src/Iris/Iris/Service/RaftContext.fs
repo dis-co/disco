@@ -56,17 +56,17 @@ module AppContext =
     let mutable options = opts
     let mutable updateCount = 0UL
 
-    let AppState = newTVar 0
-    let RaftState = mkRaft opts |> newTVar
+    let appState = newTVar 0
+    let raftState = mkRaft opts |> newTVar
 
     // -------------------------------------------------------------------------
     let withConnection timeout (node: Node<IrisNode>) (thing: RaftMsg) =
       use client = req context
       let addr = formatUri node.Data
       connect client addr
-      thing |> encode |>> client
+      thing.ToBytes() |>> client
 
-      let mutable bytes : byte array = Array.empty
+      let mutable bytes : byte array = [||]
 
       let handler _ (msg : Message array) =
         // bytes <- msg.Unwrap().Read()
@@ -91,9 +91,9 @@ module AppContext =
               stm {
                 let result : RaftMsg option =
                   withConnection (this.State.RequestTimeout) node msg
-                  |> Option.bind decode
+                  |> Option.bind RaftMsg.FromBytes
 
-                let! raft' = readTVar RaftState
+                let! raft' = readTVar raftState
 
                 match result with
                   | Some response ->
@@ -101,15 +101,15 @@ module AppContext =
                       | AppendEntriesResponse(nid,resp) ->
                         do! receiveAppendEntriesResponse nid resp
                             |> evalRaft raft' (this :> IRaftCallbacks<_,_>)
-                            |> writeTVar RaftState
+                            |> writeTVar raftState
                       | RequestVoteResponse(nid,vote) ->
                         do! receiveVoteResponse nid vote
                             |> evalRaft raft' (this :> IRaftCallbacks<_,_>)
-                            |> writeTVar RaftState
+                            |> writeTVar raftState
                       | ErrorResponse err ->
                         sprintf "ERROR: %A" err
                         |> this.Log
-                      | _ as resp ->
+                      | resp ->
                         sprintf "UNEXPECTED RESPONSE: %A" resp
                         |> this.Log
                   | None ->
@@ -123,7 +123,7 @@ module AppContext =
 
     // -------------------------------------------------------------------------
     let tryJoin (leader: Node<IrisNode>) =
-      let raft' = readTVar RaftState |> atomically
+      let raft' = readTVar raftState |> atomically
 
       let rec _tryJoin retry node' =
         if retry < max_retry then
@@ -133,7 +133,7 @@ module AppContext =
           let msg = HandShake(raft'.Node)
           let result =
             withConnection 2000u node' msg
-            |> Option.bind decode
+            |> Option.bind RaftMsg.FromBytes
 
           match result with
             | Some response ->
@@ -147,7 +147,7 @@ module AppContext =
                 | ErrorResponse err ->
                   sprintf "Unexpected error occurred. %A" err |> this.Log
                   exit 1
-                | _ as resp ->
+                | resp ->
                   sprintf "Unexpected response. Aborting.\n%A" resp |> this.Log
                   exit 1
             | _ ->
@@ -162,7 +162,7 @@ module AppContext =
 
     // -------------------------------------------------------------------------
     let tryLeave _ =
-      let raft' = readTVar RaftState |> atomically
+      let raft' = readTVar raftState |> atomically
 
       let rec _tryLeave retry (node: Node<IrisNode>) =
         sprintf "Trying to join cluster. [retry: %d] [node: %A]" retry node
@@ -171,7 +171,7 @@ module AppContext =
         let msg = HandWaive(raft'.Node)
         let result : RaftMsg option =
           withConnection 2000u node msg
-          |> Option.bind decode
+          |> Option.bind RaftMsg.FromBytes
 
         match result with
           | Some response ->
@@ -185,7 +185,7 @@ module AppContext =
               | ErrorResponse err ->
                 sprintf "Unexpected error occurred. %A" err |> this.Log
                 exit 1
-              | _ as resp ->
+              | resp ->
                 sprintf "Unexpected response. Aborting.\n%A" resp |> this.Log
                 exit 1
           | _ ->
@@ -203,22 +203,22 @@ module AppContext =
             this.Log "Leader not found. Exiting without saying goodbye."
       else
         let term = currentTerm raft'
-        let entry = JointConsensus(Guid.NewGuid(),0u,term ,[| NodeRemoved raft'.Node |], Array.empty,None)
+        let entry = JointConsensus(Guid.NewGuid(),0u,term ,[| NodeRemoved raft'.Node |], [||],None)
         receiveEntry entry
         |> evalRaft raft' (this :> IRaftCallbacks<_,_>)
-        |> writeTVar RaftState
+        |> writeTVar raftState
         |> atomically
         Thread.Sleep(3000)
 
     // -------------------------------------------------------------------------
     let initialise _ =
       stm {
-        let! s = readTVar RaftState
+        let! s = readTVar raftState
 
         let term = 0u // this likely needs to be adjusted when
                       // loading state from disk
 
-        let entry = JointConsensus(Guid.NewGuid(),0u,term,[| NodeAdded s.Node |], Array.empty,None)
+        let entry = JointConsensus(Guid.NewGuid(),0u,term,[| NodeAdded s.Node |], [||],None)
 
         let s' =
           raft {
@@ -241,7 +241,7 @@ module AppContext =
             }
           |> evalRaft s (this :> IRaftCallbacks<_,_>)
 
-        do! writeTVar RaftState s'
+        do! writeTVar raftState s'
       } |> atomically
 
     ////////////////////////////////////
@@ -277,7 +277,7 @@ module AppContext =
     /// We can *LOOK* at the current state, but *HAVE* to use the Funnel to set
     /// it. This gives us the benefit of linearizabilty of transactions.
     member self.State
-      with get () = readTVar RaftState |> atomically
+      with get () = readTVar raftState |> atomically
 
     member self.Log msg =
       let state = self.State
@@ -285,19 +285,19 @@ module AppContext =
 
     member self.Append entry =
       stm {
-        let! raft' = readTVar RaftState
+        let! raft' = readTVar raftState
         do! raft {
               let! result = receiveEntry entry
               do! periodic 1001u
               return result
             }
             |> evalRaft raft' (self :> IRaftCallbacks<_,_>)
-            |> writeTVar RaftState
+            |> writeTVar raftState
       } |> atomically
 
     member self.Timeout _ =
       stm {
-        let! raft' = readTVar RaftState
+        let! raft' = readTVar raftState
 
         do! raft {
               let! timeout = electionTimeoutM ()
@@ -305,12 +305,12 @@ module AppContext =
               do! periodic timeout
             }
             |> evalRaft raft' (self :> IRaftCallbacks<_,_>)
-            |> writeTVar RaftState
+            |> writeTVar raftState
       } |> atomically
 
     member self.ReceiveVoteRequest sender req =
       stm {
-        let! raft' = readTVar RaftState
+        let! raft' = readTVar raftState
 
         let result =
           receiveVoteRequest sender req
@@ -318,26 +318,26 @@ module AppContext =
 
         match result with
           | Right  (resp, state) ->
-            do! writeTVar RaftState state
+            do! writeTVar raftState state
             return RequestVoteResponse(raft'.Node.Id, resp)
 
           | Middle (resp, state) ->
-            do! writeTVar RaftState state
+            do! writeTVar raftState state
             return RequestVoteResponse(raft'.Node.Id, resp)
 
           | Left (err,  state) ->
-            do! writeTVar RaftState state
+            do! writeTVar raftState state
             return ErrorResponse err
 
       } |> atomically
 
     member self.ReceiveVoteResponse sender rep =
       stm {
-        let! raft' = readTVar RaftState
+        let! raft' = readTVar raftState
 
         do! receiveVoteResponse sender rep
             |> evalRaft raft' (self :> IRaftCallbacks<_,_>)
-            |> writeTVar RaftState
+            |> writeTVar raftState
 
         return EmptyResponse
       } |> atomically
@@ -345,7 +345,7 @@ module AppContext =
 
     member self.ReceiveAppendEntries sender ae =
       stm {
-        let! raft' = readTVar RaftState
+        let! raft' = readTVar raftState
 
         let result =
           receiveAppendEntries (Some sender) ae
@@ -353,26 +353,26 @@ module AppContext =
 
         match result with
           | Right  (resp, state) ->
-            do! writeTVar RaftState state
+            do! writeTVar raftState state
             return AppendEntriesResponse(raft'.Node.Id, resp)
 
           | Middle (resp, state) ->
-            do! writeTVar RaftState state
+            do! writeTVar raftState state
             return AppendEntriesResponse(raft'.Node.Id, resp)
 
           | Left (err, state) ->
-            do! writeTVar RaftState state
+            do! writeTVar raftState state
             return ErrorResponse err
 
       } |> atomically
 
     member self.ReceiveAppendResponse sender ar =
       stm {
-        let! raft' = readTVar RaftState
+        let! raft' = readTVar raftState
 
         do! receiveAppendEntriesResponse sender ar
             |> evalRaft raft' (self :> IRaftCallbacks<_,_>)
-            |> writeTVar RaftState
+            |> writeTVar raftState
 
         return EmptyResponse
       } |> atomically
@@ -380,51 +380,51 @@ module AppContext =
 
     member self.AddNode node =
       stm {
-        let! raft' = readTVar RaftState
+        let! raft' = readTVar raftState
         let term = currentTerm raft'
-        let entry = JointConsensus(Guid.NewGuid(),0u,term,[| NodeAdded node |],Array.empty,None)
+        let entry = JointConsensus(Guid.NewGuid(),0u,term,[| NodeAdded node |],[||],None)
         let response = receiveEntry entry
                        |> runRaft raft' (self :> IRaftCallbacks<_,_>)
 
         match response with
           | Left(err, r) ->
             printfn "error %A" err
-            do! writeTVar RaftState r
+            do! writeTVar raftState r
           | Middle(_, r) ->
             printfn "<Middle>"
-            do! writeTVar RaftState r
+            do! writeTVar raftState r
           | Right(resp, r) ->
             printfn "response %A" resp
-            do! writeTVar RaftState r
+            do! writeTVar raftState r
 
       } |> atomically
 
     member self.RemoveNode node =
       stm {
-        let! raft' = readTVar RaftState
+        let! raft' = readTVar raftState
         let term = currentTerm raft'
-        let entry = JointConsensus(Guid.NewGuid(),0u,term,[| NodeRemoved node |],Array.empty,None)
+        let entry = JointConsensus(Guid.NewGuid(),0u,term,[| NodeRemoved node |],[||],None)
         do! receiveEntry entry
             |> evalRaft raft' (self :> IRaftCallbacks<_,_>)
-            |> writeTVar RaftState
+            |> writeTVar raftState
       } |> atomically
 
     member self.InstallSnapshot node snapshot =
       stm {
-        let! raft' = readTVar RaftState
+        let! raft' = readTVar raftState
         // do! createSnapshot ()
         //     |> evalRaft raft' (self :> IRaftCallbacks<_,_>)
-        //     |> writeTVar RaftState
-        return InstallSnapshotResponse (raft'.Node.Id, true)
+        //     |> writeTVar raftState
+        return InstallSnapshotResponse (raft'.Node.Id, { Term = raft'.CurrentTerm })
       } |> atomically
 
     member self.Periodic elapsed =
       stm {
-        let! raft' = readTVar RaftState
+        let! raft' = readTVar raftState
 
         do! periodic elapsed
             |> evalRaft raft' (self :> IRaftCallbacks<_,_>)
-            |> writeTVar RaftState
+            |> writeTVar raftState
 
       } |> atomically
 
@@ -463,8 +463,8 @@ module AppContext =
 
       member self.PrepareSnapshot raft =
         stm {
-          let! s = readTVar AppState
-          let snapshot = createSnapshot DataSnapshot raft
+          let! s = readTVar appState
+          let snapshot = createSnapshot (DataSnapshot "snip snap snapshot") raft
           return snapshot
         } |> atomically
 

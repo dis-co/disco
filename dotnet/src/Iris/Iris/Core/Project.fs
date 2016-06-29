@@ -66,7 +66,7 @@ type Project(repo, data) =
   // | |   / _ \| '_ ` _ \| '_ ` _ \| | __| __/ _ \ '__|
   // | |__| (_) | | | | | | | | | | | | |_| ||  __/ |
   //  \____\___/|_| |_| |_|_| |_| |_|_|\__|\__\___|_| is Iris
-  let Committer =
+  let committer =
     let hostname = Dns.GetHostName()
     new Signature("Iris", "iris@" + hostname, new DateTimeOffset(DateTime.Now))
 
@@ -185,26 +185,26 @@ type Project(repo, data) =
     else
       IrisConfig.Load(path)
 
-      let Meta = IrisConfig.Project.Metadata
+      let meta = IrisConfig.Project.Metadata
 
       let date =
-        if Meta.LastSaved.Length > 0
+        if meta.LastSaved.Length > 0
         then
           try
-            Some(DateTime.Parse(Meta.LastSaved))
+            Some(DateTime.Parse(meta.LastSaved))
           with
             | _ -> None
         else None
 
-      let project = Project.Build(Meta.Id, Meta.Name)
+      let project = Project.Build(meta.Id, meta.Name)
       let basedir = Path.GetDirectoryName(path)
 
       project.Repo      <- Some(new Repository(Path.Combine(basedir, ".git")))
       project.Path      <- Some(Path.GetDirectoryName(path))
       project.LastSaved <- date
-      project.Copyright <- Config.ParseStringProp Meta.Copyright
-      project.Author    <- Config.ParseStringProp Meta.Author
-      project.Year      <- Meta.Year
+      project.Copyright <- Config.ParseStringProp meta.Copyright
+      project.Author    <- Config.ParseStringProp meta.Author
+      project.Year      <- meta.Year
       project.Config    <- Config.FromFile(IrisConfig)
       Success(project)
 
@@ -366,7 +366,7 @@ type Project(repo, data) =
         match self.Repo with
           | Some(repo') ->
             Commands.Stage(repo',destPath)
-            repo'.Commit(msg, sign, Committer)
+            repo'.Commit(msg, sign, committer)
             |> Success
           | _ ->
             Fail "Saving without repository is unsupported. Aborting"

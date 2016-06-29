@@ -230,8 +230,8 @@ type Config () =
       ; Path = i.Path
       }
 
-    let exes  : VvvvExe list ref = ref List.empty
-    let plugs : VvvvPlugin list ref = ref List.empty
+    let exes  : VvvvExe list ref = ref []
+    let plugs : VvvvPlugin list ref = ref []
 
     for exe in cfg.Project.VVVV.Executables do
       exes := ((ctoe exe) :: !exes)
@@ -289,7 +289,7 @@ type Config () =
   //
   /// Parse Timing Configuration Section
   static member ParseTiming (cnf : ConfigFile) : TimingConfig =
-    let servers : string list ref = ref List.empty
+    let servers : string list ref = ref []
 
     for server in cnf.Project.Timing.Servers do
       servers := (server :: !servers)
@@ -320,7 +320,7 @@ type Config () =
   //
   /// Parse ViewPort Configuration Section
   static member ParseViewports (cnf : ConfigFile) : ViewPort list =
-    let vports : ViewPort list ref = ref List.empty
+    let vports : ViewPort list ref = ref []
 
     for vp in cnf.Project.ViewPorts do
       let viewport' =
@@ -345,19 +345,19 @@ type Config () =
   //              |_|            |___/
   /// Parse Displays Configuration Section
   static member ParseDisplays (cnf : ConfigFile) : Display list =
-    let displays : Display list ref = ref List.empty
+    let displays : Display list ref = ref []
 
     for display in cnf.Project.Displays do
 
       /// scrape all signal defs out of the config
-      let signals : Signal list ref = ref List.empty
+      let signals : Signal list ref = ref []
       for signal in display.Signals do
         let signal' : Signal =
           { Size     = Config.ParseRect signal.Size
           ; Position = Config.ParseCoordinate signal.Position }
         signals := (signal' :: !signals)
 
-      let regions : Region list ref = ref List.empty
+      let regions : Region list ref = ref []
 
       for region in display.RegionMap.Regions do
         let region' =
@@ -391,10 +391,10 @@ type Config () =
   //
   /// Parse Task Configuration Section
   static member ParseTasks (cfg : ConfigFile) : Task list =
-    let tasks : Task list ref = ref List.empty
+    let tasks : Task list ref = ref []
 
     for task in cfg.Project.Tasks do
-      let arguments : Argument list ref = ref List.empty
+      let arguments : Argument list ref = ref []
 
       for argument in task.Arguments do
         if (argument.Key.Length > 0) && (argument.Value.Length > 0)
@@ -419,8 +419,8 @@ type Config () =
   //
   /// Parse Cluster Configuration Section
   static member ParseCluster (cfg : ConfigFile) : Cluster =
-    let nodes  : NodeConfig list ref = ref List.empty
-    let groups : HostGroup list ref = ref List.empty
+    let nodes  : NodeConfig list ref = ref []
+    let groups : HostGroup list ref = ref []
 
     for node in cfg.Project.Cluster.Nodes do
       let node' =
@@ -434,7 +434,7 @@ type Config () =
     for group in cfg.Project.Cluster.Groups do
       if group.Name.Length > 0
       then 
-        let ids : Id list ref = ref List.empty
+        let ids : Id list ref = ref []
 
         for mid in group.Members do
           if mid.Length > 0
@@ -472,10 +472,10 @@ type Config () =
     cfg.RaftConfig     <- RaftConfig.Default
     cfg.TimingConfig   <- TimingConfig.Default
     cfg.PortConfig     <- PortConfig.Default
-    cfg.ViewPorts      <- List.empty
-    cfg.Displays       <- List.empty
-    cfg.Tasks          <- List.empty
+    cfg.ViewPorts      <- []
+    cfg.Displays       <- []
+    cfg.Tasks          <- []
     cfg.ClusterConfig  <- { Name   = name + " cluster"
-                          ; Nodes  = List.empty                     
-                          ; Groups = List.empty}
+                          ; Nodes  = []                     
+                          ; Groups = []}
     cfg

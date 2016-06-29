@@ -12,15 +12,13 @@ type Member =
   }
 
   with
-    static member formatProject (pid : Guid, name : string) : string =
+    static member FormatProject (pid : Guid, name : string) : string =
       sprintf "Project Id: %s Name: %s" (pid.ToString()) name
 
-    static member sameAs mem1 mem2 : bool =
+    static member SameAs mem1 mem2 : bool =
       mem1.MemberId = mem2.MemberId
 
     override self.ToString() =
-      Array.map Member.formatProject self.Projects
+      Array.map Member.FormatProject self.Projects
       |> Array.fold (fun m s -> m + "\n  " + s) ""
       |> sprintf "Id: %s Name: %s IP: %s\n%s" (self.MemberId.ToString()) self.Name (self.IP.ToString())
-
-

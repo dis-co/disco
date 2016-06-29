@@ -6,7 +6,7 @@ open FSharp.Configuration
 module Yaml =
 
   [<Literal>]
-  let private config = """
+  let private Config = """
 Project:
   Metadata: 
     Id:
@@ -129,6 +129,6 @@ Project:
           - 
 """
 
-  type ConfigFile = YamlConfig<"",false,config>
+  type ConfigFile = YamlConfig<"",false,Config>
 
   let IrisConfig = ConfigFile()

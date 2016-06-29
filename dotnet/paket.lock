@@ -9,6 +9,7 @@ NUGET
     FSharp.Configuration (0.6.1)
     FSharp.Control.AsyncSeq (2.0.8)
     FSharp.Core (4.0.0.1) - redirects: force
+    FSharpLint (0.2.8)
     FSharpx.Async (1.12)
       FSharp.Control.AsyncSeq
     FSharpx.Collections (1.15.1)
@@ -231,7 +232,7 @@ NUGET
     ZeroMQ (4.1.0.21)
 GITHUB
   remote: fsharp/FAKE
-    modules/Octokit/Octokit.fsx (c063bf415dac7f7d4df4c37fe76badce76cae3c3)
+    modules/Octokit/Octokit.fsx (c56456abac6b744c3bb95b217687db19fd19b367)
       Octokit
 GROUP Test
 NUGET

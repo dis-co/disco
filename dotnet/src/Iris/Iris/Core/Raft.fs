@@ -35,29 +35,30 @@ type RaftOptions =
 
 type GeneralArgs =
   | [<Mandatory>][<EqualsAssignment>] Bind        of string
-  | [<Mandatory>][<EqualsAssignment>] Raft_Id     of uint32
-  | [<Mandatory>][<EqualsAssignment>] Raft_Port   of uint32
-  | [<Mandatory>][<EqualsAssignment>] Web_Port    of uint32
+  | [<Mandatory>][<EqualsAssignment>] RaftId     of uint32
+  | [<Mandatory>][<EqualsAssignment>] RaftPort   of uint32
+  | [<Mandatory>][<EqualsAssignment>] WebPort    of uint32
   |                                   Debug
   |                                   Start
   |                                   Join
-  |              [<EqualsAssignment>] Leader_Id   of uint32
-  |              [<EqualsAssignment>] Leader_Ip   of string
-  |              [<EqualsAssignment>] Leader_Port of uint32
+  |              [<EqualsAssignment>] LeaderId   of uint32
+  |              [<EqualsAssignment>] LeaderIp   of string
+  |              [<EqualsAssignment>] LeaderPort of uint32
 
   interface IArgParserTemplate with
+
     member self.Usage =
       match self with
         | Bind        _ -> "Specify a valid IP address."
-        | Web_Port    _ -> "Http server port."
-        | Raft_Port   _ -> "Raft server port (internal)."
-        | Raft_Id     _ -> "Raft server ID (internal)."
+        | WebPort    _ -> "Http server port."
+        | RaftPort   _ -> "Raft server port (internal)."
+        | RaftId     _ -> "Raft server ID (internal)."
         | Debug         -> "Log output to console."
         | Start         -> "Start a new cluster"
         | Join          -> "Join an existing cluster"
-        | Leader_Id   _ -> "Leader id when joining an existing cluster"
-        | Leader_Ip   _ -> "Ip address of leader when joining a cluster"
-        | Leader_Port _ -> "Port of leader when joining a cluster"
+        | LeaderId   _ -> "Leader id when joining an existing cluster"
+        | LeaderIp   _ -> "Ip address of leader when joining a cluster"
+        | LeaderPort _ -> "Port of leader when joining a cluster"
 
 
 //  ____        __ _     __  __
@@ -92,9 +93,8 @@ type RaftMsg =
       //               |_|
 
       | RequestVote(nid, req) ->
-        let nodeid = string nid |> builder.CreateString
         let request = req.ToOffset(builder)
-        let rv = RequestVoteFB.CreateRequestVoteFB(builder, nodeid, request)
+        let rv = RequestVoteFB.CreateRequestVoteFB(builder, uint64 nid, request)
         RaftMsgFB.StartRaftMsgFB(builder)
         RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestVoteFB)
         RaftMsgFB.AddMsg(builder, rv.Value)
@@ -102,9 +102,8 @@ type RaftMsg =
         builder.Finish(msg.Value)
 
       | RequestVoteResponse(nid, resp) ->
-        let nodeid = string nid |> builder.CreateString
         let response = resp.ToOffset(builder)
-        let rvp = RequestVoteResponseFB.CreateRequestVoteResponseFB(builder, nodeid, response)
+        let rvp = RequestVoteResponseFB.CreateRequestVoteResponseFB(builder, uint64 nid, response)
         RaftMsgFB.StartRaftMsgFB(builder)
         RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestVoteResponseFB)
         RaftMsgFB.AddMsg(builder, rvp.Value)
@@ -119,9 +118,8 @@ type RaftMsg =
       //         |_|   |_|
 
       | AppendEntries(nid, ae) ->
-        let nodeid = string nid |> builder.CreateString
         let appendentries = ae.ToOffset(builder)
-        let rae = RequestAppendEntriesFB.CreateRequestAppendEntriesFB(builder, nodeid, appendentries)
+        let rae = RequestAppendEntriesFB.CreateRequestAppendEntriesFB(builder, uint64 nid, appendentries)
         RaftMsgFB.StartRaftMsgFB(builder)
         RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestAppendEntriesFB)
         RaftMsgFB.AddMsg(builder, rae.Value)
@@ -129,9 +127,8 @@ type RaftMsg =
         builder.Finish(msg.Value)
 
       | AppendEntriesResponse(nid, ar) ->
-        let nodeid = string nid |> builder.CreateString
         let response = ar.ToOffset(builder)
-        let aer = RequestAppendResponseFB.CreateRequestAppendResponseFB(builder, nodeid, response)
+        let aer = RequestAppendResponseFB.CreateRequestAppendResponseFB(builder, uint64 nid, response)
         RaftMsgFB.StartRaftMsgFB(builder)
         RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestAppendResponseFB)
         RaftMsgFB.AddMsg(builder, aer.Value)
@@ -146,9 +143,8 @@ type RaftMsg =
       //                                              |_|
 
       | InstallSnapshot(nid, is) ->
-        let nodeid = string id |> builder.CreateString
         let request = is.ToOffset(builder)
-        let ris = RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(builder, nodeid, request)
+        let ris = RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(builder, uint64 nid, request)
         RaftMsgFB.StartRaftMsgFB(builder)
         RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestInstallSnapshotFB)
         RaftMsgFB.AddMsg(builder, ris.Value)
@@ -156,9 +152,8 @@ type RaftMsg =
         builder.Finish(msg.Value)
 
       | InstallSnapshotResponse(nid, ir) ->
-        let nodeid = string id |> builder.CreateString
         let response = ir.ToOffset(builder)
-        let risr = RequestSnapshotResponseFB.CreateRequestSnapshotResponseFB(builder, nodeid, response)
+        let risr = RequestSnapshotResponseFB.CreateRequestSnapshotResponseFB(builder, uint64 nid, response)
         RaftMsgFB.StartRaftMsgFB(builder)
         RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestSnapshotResponseFB)
         RaftMsgFB.AddMsg(builder, risr.Value)
@@ -286,4 +281,5 @@ type RaftMsg =
 
         | RaftMsgTypeFB.EmptyResponseFB -> Some EmptyResponse
 
-        | _ -> failwith "unable to de-serialize unknown garbage RaftMsgTypeFB"
+        | _ ->
+          failwith "unable to de-serialize unknown garbage RaftMsgTypeFB"

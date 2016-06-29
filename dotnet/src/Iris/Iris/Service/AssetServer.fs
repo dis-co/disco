@@ -21,8 +21,8 @@ module AssetServer =
   type AssetServer(addr : string, port : int) =
     let cts = new CancellationTokenSource()
 
-    let Port = Sockets.Port.Parse (string port)
-    let IpAddr = IPAddress.Parse addr
+    let port = Sockets.Port.Parse (string port)
+    let ipAddr = IPAddress.Parse addr
 
     let basepath =
       let fn = Process.GetCurrentProcess().MainModule.FileName
@@ -42,7 +42,7 @@ module AssetServer =
     let config =
       { defaultConfig with cancellationToken = cts.Token
                            homeFolder        = Some(basepath)
-                           bindings          = [ HttpBinding.mk HTTP IpAddr Port ]
+                           bindings          = [ HttpBinding.mk HTTP ipAddr port ]
                            mimeTypesMap      = mimeTypes }
 
     let thread = new Thread(new ThreadStart(fun _ ->

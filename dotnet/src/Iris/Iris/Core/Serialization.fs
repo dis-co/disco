@@ -9,14 +9,14 @@ namespace Iris.Core
 [<AutoOpen>]
 module Serialization =
 
-  type 't encoder = Encoder of ('t -> byte array)
+  type Encoder<'t> = Encoder of ('t -> byte array)
 
-  type 't decoder = Decoder of (byte array -> 't option)
+  type Decoder<'t> = Decoder of (byte array -> 't option)
 
-  let withEncoder (coder: 't encoder) (value: 't) : byte array =
+  let withEncoder (coder: Encoder<'t>) (value: 't) : byte array =
     match coder with | Encoder f -> f value
 
-  let withDecoder (coder: 't decoder) (value: byte array) : 't option =
+  let withDecoder (coder: Decoder<'t>) (value: byte array) : 't option =
     match coder with | Decoder f -> f value
 
 
@@ -68,11 +68,10 @@ type NodeExtensions() =
 
   [<Extension>]
   static member inline ToOffset (node: Node, builder: FlatBufferBuilder) =
-    let id = string node.Id |> builder.CreateString
     let info = node.Data.ToOffset(builder)
     let state = node.State.ToOffset()
     NodeFB.StartNodeFB(builder)
-    NodeFB.AddId(builder, id)
+    NodeFB.AddId(builder, uint64 node.Id)
     NodeFB.AddVoting(builder, node.Voting)
     NodeFB.AddVotedForMe(builder, node.VotedForMe)
     NodeFB.AddState(builder, state)
@@ -86,7 +85,7 @@ module StaticNodeExtensions =
 
   type Node<'t> with
     static member FromFB (fb: NodeFB) : Node =
-      let info = fb.GetData(new IrisNodeFB()) |> IrisNode.FromFB
+      let info = fb.Data |> IrisNode.FromFB
       { Id = uint32 fb.Id
       ; State = fb.State |> NodeState.FromFB
       ; Data = info
@@ -267,7 +266,7 @@ module StaticLogExtensions =
         let term = uint32 entry.Term
         let nodes = Array.zeroCreate entry.NodesLength
 
-        for i in 0 .. entry.NodesLength do
+        for i in 0 .. (entry.NodesLength - 1) do
           nodes.[i] <- entry.GetNodes(i) |> Node.FromFB
 
         Some <| Configuration(id, index, term, nodes, log)
@@ -280,10 +279,10 @@ module StaticLogExtensions =
         let changes = Array.zeroCreate entry.ChangesLength
         let nodes = Array.zeroCreate entry.NodesLength
 
-        for i in 0 .. entry.NodesLength do
+        for i in 0 .. (entry.NodesLength - 1) do
           nodes.[i] <- entry.GetNodes(i) |> Node.FromFB
 
-        for i in 0 .. entry.ChangesLength do
+        for i in 0 .. (entry.ChangesLength - 1) do
           changes.[i] <- entry.GetChanges(i) |> ConfigChange.FromFB
 
         Some <| JointConsensus(id, index, term, changes, nodes, log)
@@ -304,10 +303,13 @@ module StaticLogExtensions =
         let term = uint32 entry.Term
         let lindex = uint32 entry.LastIndex
         let lterm = uint32 entry.LastTerm
-
         let data = StateMachine.FromFB entry.Data
+        let nodes = Array.zeroCreate entry.NodesLength
 
-        Some <| LogEntry(id, index, term, data, log)
+        for i in 0..(entry.NodesLength - 1) do
+          nodes.[i] <- entry.GetNodes(i) |> Node.FromFB
+
+        Some <| Snapshot(id, index, term, lindex, lterm, nodes, data)
 
       | _ ->
         failwith "unable to de-serialize garbage LogTypeFB value"
@@ -446,8 +448,8 @@ module StaticVotingExtensions =
   type VoteResponse with
     static member FromFB (fb: VoteResponseFB) : VoteResponse =
       let reason =
-        if fb.Reason <> null
-        then Some(RaftError.FromFB fb.Reason)
+        if isNull fb.Reason |> not then
+          Some(RaftError.FromFB fb.Reason)
         else None
 
       { Term    = uint32 fb.Term
@@ -477,7 +479,9 @@ type AppendEntriesExentions() =
   static member inline ToOffset (ae: AppendEntries, builder: FlatBufferBuilder) =
     let entries =
       Option.map
-        (fun (entries: LogEntry) -> entries.ToOffset(builder))
+        (fun (entries: LogEntry) ->
+           let offsets = entries.ToOffset(builder)
+           AppendEntriesFB.CreateEntriesVector(builder, offsets))
         ae.Entries
 
     AppendEntriesFB.StartAppendEntriesFB(builder)
@@ -486,11 +490,8 @@ type AppendEntriesExentions() =
     AppendEntriesFB.AddPrevLogIdx(builder, uint64 ae.PrevLogIdx)
     AppendEntriesFB.AddLeaderCommit(builder, uint64 ae.LeaderCommit)
 
-    match entries with
-      | Some etr ->
-        let etrvec = AppendEntriesFB.CreateEntriesVector(builder, etr)
-        AppendEntriesFB.AddEntries(builder, etrvec)
-      | _ -> ()
+    Option.map (fun offset -> AppendEntriesFB.AddEntries(builder, offset)) entries
+    |> ignore
 
     AppendEntriesFB.EndAppendEntriesFB(builder)
 
@@ -520,7 +521,7 @@ module StaticAppendEntriesExtensions =
         then None
         else
           let raw = Array.zeroCreate fb.EntriesLength
-          for i in 0 .. fb.EntriesLength do
+          for i in 0 .. (fb.EntriesLength - 1) do
             raw.[i] <- fb.GetEntries(i)
           Log.FromFB raw
 
@@ -551,12 +552,11 @@ type InstallSnapshotExtensions() =
 
   [<Extension>]
   static member inline ToOffset (is: InstallSnapshot, builder: FlatBufferBuilder) =
-    let leader = string is.LeaderId |> builder.CreateString
     let data = InstallSnapshotFB.CreateDataVector(builder, is.Data.ToOffset(builder))
 
     InstallSnapshotFB.StartInstallSnapshotFB(builder)
     InstallSnapshotFB.AddTerm(builder, uint64 is.Term)
-    InstallSnapshotFB.AddLeaderId(builder, leader)
+    InstallSnapshotFB.AddLeaderId(builder, uint64 is.LeaderId)
     InstallSnapshotFB.AddLastTerm(builder, uint64 is.LastTerm)
     InstallSnapshotFB.AddLastIndex(builder, uint64 is.LastIndex)
     InstallSnapshotFB.AddData(builder, data)
@@ -573,13 +573,12 @@ module StaticIntsallSnapshotExtensions =
   type InstallSnapshot<'a,'n> with
     static member FromFB (fb: InstallSnapshotFB) =
       let entries =
-        if fb.DataLength > 0
-        then None
-        else
+        if fb.DataLength > 0 then
           let raw = Array.zeroCreate fb.DataLength
-          for i in 0 .. fb.DataLength do
+          for i in 0 .. (fb.DataLength - 1) do
             raw.[i] <- fb.GetData(i)
           Log.FromFB raw
+        else None
 
       { Term      = uint32 fb.Term
       ; LeaderId  = uint32 fb.LeaderId
@@ -591,4 +590,3 @@ module StaticIntsallSnapshotExtensions =
   type SnapshotResponse with
     static member FromFB (fb: SnapshotResponseFB) : SnapshotResponse =
       { Term = uint32 fb.Term }
-      

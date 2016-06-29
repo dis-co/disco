@@ -20,7 +20,7 @@ module AppState =
     { Members   : Member list
     ; Projects  : Map<Guid, Project>
     }
-    static member empty
+    static member Empty
       with get () =
         { Members   = List.empty
         ; Projects  = Map.empty
@@ -73,8 +73,8 @@ module AppState =
     { state with Members = mem :: state.Members }
   
   let updateMember (newmem: Member) (state: AppState) : AppState =
-    let helper old = if Member.sameAs old newmem then newmem else old
+    let helper old = if Member.SameAs old newmem then newmem else old
     { state with Members = List.map helper state.Members  }
 
   let removeMember (mem: Member) (state: AppState) : AppState = 
-    { state with Members = List.filter (not << Member.sameAs mem) state.Members  }
+    { state with Members = List.filter (not << Member.SameAs mem) state.Members  }

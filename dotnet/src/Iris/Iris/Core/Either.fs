@@ -10,17 +10,17 @@ type Either<'err,'a> =
   | Success of 'a
   | Fail    of 'err
 
-  static member get(v : Either<'err,'a>) : 'a =
+  static member Get(v : Either<'err,'a>) : 'a =
     match v with
       | Success v1 -> v1
       | _ -> failwith "Either: cannot get on a Fail value"
 
-  static member error(v : Either<'err,'a>) : 'err =
+  static member Error(v : Either<'err,'a>) : 'err =
     match v with
       | Fail v1 -> v1
       | _ -> failwith "Either: cannot get error from Success Value"
 
-  static member map(f : 'a -> Either<'err,'b>) (v : Either<'err,'a>) : Either<'err, 'b> =
+  static member Map(f : 'a -> Either<'err,'b>) (v : Either<'err,'a>) : Either<'err, 'b> =
     match v with
       | Success value -> f value
       | Fail err -> Fail err

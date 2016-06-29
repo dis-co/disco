@@ -20,7 +20,7 @@ module IrisService =
 
     let signature = new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
 
-    let mutable state     : AppState ref = ref AppState.empty
+    let mutable state     : AppState ref = ref AppState.Empty
     let mutable processes : Map<Guid,string> = Map.empty
 
     let addProcess guid proc =

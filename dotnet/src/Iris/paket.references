@@ -3,6 +3,7 @@ Argu
 FsPickler
 FsPickler.Json
 FSharpx.Extras
+FSharpLint
 LibGit2Sharp
 LibGit2Sharp.NativeBinaries
 FSharp.Configuration

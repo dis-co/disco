@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
+  <UsingTask AssemblyFile="..\..\packages\FSharpLint\FSharpLint.MSBuildIntegration.dll" TaskName="FSharpLintTask" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -29,6 +30,8 @@
     <OutputPath>bin\Release\Iris</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <Externalconsole>true</Externalconsole>
+    <Optimize>true</Optimize>
+    <Tailcalls>true</Tailcalls>
   </PropertyGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">
@@ -44,9 +47,6 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <UsingTask TaskName="CopyRuntimeDependencies" AssemblyFile="..\..\.paket\paket.exe" />
-  <Target Name="AfterBuild" Condition="Exists('..\..\.paket\paket.exe')">
-    <CopyRuntimeDependencies OutputPath="$(OutputPath)" ProjectsWithRuntimeLibs="System.Collections;System.Diagnostics.Contracts;System.Diagnostics.Debug;System.Globalization;System.IO;System.Linq.Expressions;System.Private.Uri;System.Reflection;System.Reflection.Extensions;System.Reflection.Primitives;System.Reflection.TypeExtensions;System.Resources.ResourceManager;System.Runtime;System.Runtime.Extensions;System.Text.Encoding;System.Text.Encoding.Extensions;System.Threading;System.Threading.Tasks" />
-  </Target>
   <Choose>
     <When Condition="($(TargetFrameworkIdentifier) == '.NETStandard' And ($(TargetFrameworkVersion) == 'v1.0' Or $(TargetFrameworkVersion) == 'v1.1' Or $(TargetFrameworkVersion) == 'v1.2' Or $(TargetFrameworkVersion) == 'v1.3' Or $(TargetFrameworkVersion) == 'v1.4' Or $(TargetFrameworkVersion) == 'v1.5')) Or ($(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2'))">
       <PropertyGroup>
@@ -72,6 +72,11 @@
     </When>
   </Choose>
   <Import Project="..\..\packages\xunit.core\build\$(__paket__xunit_core_props).props" Condition="Exists('..\..\packages\xunit.core\build\$(__paket__xunit_core_props).props')" Label="Paket" />
+  <Target Name="AfterBuild">
+    <FSharpLintTask Project="$(MSBuildProjectFullPath)" Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' " />
+    <FSharpLintTask Project="$(MSBuildProjectFullPath)" TreatWarningsAsErrors="true" Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' " />
+    <CopyRuntimeDependencies OutputPath="$(OutputPath)" ProjectsWithRuntimeLibs="System.Collections;System.Diagnostics.Contracts;System.Diagnostics.Debug;System.Globalization;System.IO;System.Linq.Expressions;System.Private.Uri;System.Reflection;System.Reflection.Extensions;System.Reflection.Primitives;System.Reflection.TypeExtensions;System.Resources.ResourceManager;System.Runtime;System.Runtime.Extensions;System.Text.Encoding;System.Text.Encoding.Extensions;System.Threading;System.Threading.Tasks" />
+  </Target>
   <ItemGroup>
     <Compile Include="AssemblyInfo\ServiceInfo.fs" />
     <Compile Include="Iris\Core\Util.fs" />
@@ -102,15 +107,11 @@
     <!-- <Compile Include="Iris.Service\Groups\IrisGroup.fs" /> -->
     <!-- <Compile Include="Iris.Service\Groups\ProjectProcess.fs" /> -->
     <!-- <Compile Include="Iris.Service\Groups\ControlGroup.fs" /> -->
-
-    <Compile Include="Iris\Core\Serialization.fs" />
-
-    <Compile Include="Iris\Core\StateMachine.fs" />
     <Compile Include="Iris\Core\IrisNode.fs" />
+    <Compile Include="Iris\Core\StateMachine.fs" />
+    <Compile Include="Iris\Core\Serialization.fs" />
     <Compile Include="Iris\Core\Raft.fs" />
-
     <Compile Include="Iris\Service\RaftContext.fs" />
-
     <Compile Include="Iris\Service\IrisService.fs" />
     <Compile Include="Iris\Service\AssetServer.fs" />
     <Compile Include="Iris\Service\WebSockets.fs" />
@@ -133,10 +134,10 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Iris.Serialization">
-      <HintPath>.\bin\Release\Iris.Serialization.dll</HintPath>
+      <HintPath>.\bin\Release\Serialization\Iris.Serialization.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include=Pallet.Core">
+    <Reference Include="Pallet.Core">
       <HintPath>..\Pallet\bin\Release\Pallet.dll</HintPath>
       <Private>True</Private>
     </Reference>
@@ -747,5 +748,6 @@
       </ItemGroup>
     </When>
   </Choose>
+  <Import Project="..\..\packages\FSharpLint\build\FSharpLint.targets" Condition="Exists('..\..\packages\FSharpLint\build\FSharpLint.targets')" Label="Paket" />
   <Import Project="..\..\packages\ZeroMQ\build\$(__paket__ZeroMQ_targets).targets" Condition="Exists('..\..\packages\ZeroMQ\build\$(__paket__ZeroMQ_targets).targets')" Label="Paket" />
 </Project>

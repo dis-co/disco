@@ -11,4 +11,3 @@ type Signal =
   { Size     : Rect
   ; Position : Coordinate
   }
-
