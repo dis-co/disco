@@ -179,7 +179,7 @@ type RaftMsg =
         RaftMsgFB.AddMsg(builder, shake.Value)
         let msg = RaftMsgFB.EndRaftMsgFB(builder)
         builder.Finish(msg.Value)
-        
+
       | HandWaive node ->
         let node = node.ToOffset(builder)
         let waive = HandWaiveFB.CreateHandWaiveFB(builder, node)
@@ -203,7 +203,7 @@ type RaftMsg =
         RaftMsgFB.AddMsg(builder, fb.Value)
         let msg = RaftMsgFB.EndRaftMsgFB(builder)
         builder.Finish(msg.Value)
-       
+
       | EmptyResponse ->
         EmptyResponseFB.StartEmptyResponseFB(builder)
         let fb = EmptyResponseFB.EndEmptyResponseFB(builder)
@@ -218,14 +218,72 @@ type RaftMsg =
       // | |_) / _ \/ __| | | | | __|
       // |  _ <  __/\__ \ |_| | | |_
       // |_| \_\___||___/\__,_|_|\__|
- 
+
       builder.SizedByteArray()
 
     static member FromBytes (bytes: byte array) : RaftMsg option =
       let msg = RaftMsgFB.GetRootAsRaftMsgFB(new ByteBuffer(bytes))
       match msg.MsgType with
         | RaftMsgTypeFB.RequestVoteFB ->
-          let entry : RequestVoteFB = msg.GetMsg(new RequestVoteFB())
+          let entry = msg.GetMsg(new RequestVoteFB())
           let request = VoteRequest<IrisNode>.FromFB(entry.Request)
-          RequestVote(uint32 entry.NodeId, request) |> Some
-        | _ -> None
+
+          RequestVote(uint32 entry.NodeId, request)
+          |> Some
+
+        | RaftMsgTypeFB.RequestVoteResponseFB ->
+          let entry = msg.GetMsg(new RequestVoteResponseFB())
+          let response = VoteResponse.FromFB entry.Response
+
+          RequestVoteResponse(uint32 entry.NodeId, response)
+          |> Some
+
+        | RaftMsgTypeFB.RequestAppendEntriesFB ->
+          let entry = msg.GetMsg(new RequestAppendEntriesFB())
+          let request = AppendEntries.FromFB entry.Request
+
+          AppendEntries(uint32 entry.NodeId, request)
+          |> Some
+
+        | RaftMsgTypeFB.RequestAppendResponseFB ->
+          let entry = msg.GetMsg(new RequestAppendResponseFB())
+          let response = AppendResponse.FromFB entry.Response
+
+          AppendEntriesResponse(uint32 entry.NodeId, response)
+          |> Some
+
+        | RaftMsgTypeFB.RequestInstallSnapshotFB ->
+          let entry = msg.GetMsg(new RequestInstallSnapshotFB())
+          let request = InstallSnapshot.FromFB entry.Request
+
+          InstallSnapshot(uint32 entry.NodeId, request)
+          |> Some
+          
+        | RaftMsgTypeFB.RequestSnapshotResponseFB ->
+          let entry = msg.GetMsg(new RequestSnapshotResponseFB())
+          let response = SnapshotResponse.FromFB entry.Response
+
+          InstallSnapshotResponse(uint32 entry.NodeId, response)
+          |> Some
+
+        | RaftMsgTypeFB.HandShakeFB ->
+          let entry = msg.GetMsg(new HandShakeFB())
+          let node = Node.FromFB entry.Node
+
+          HandShake(node) |> Some
+
+        | RaftMsgTypeFB.HandWaiveFB ->
+          let entry = msg.GetMsg(new HandWaiveFB())
+          let node = Node.FromFB entry.Node
+
+          HandWaive(node) |> Some
+
+        | RaftMsgTypeFB.ErrorResponseFB ->
+          let entry = msg.GetMsg(new ErrorResponseFB())
+
+          ErrorResponse(RaftError.FromFB entry.Error)
+          |> Some
+
+        | RaftMsgTypeFB.EmptyResponseFB -> Some EmptyResponse
+
+        | _ -> failwith "unable to de-serialize unknown garbage RaftMsgTypeFB"
