@@ -54,7 +54,7 @@ module State =
                     in Array.map mapper state.Patches }
 
     member state.Update (iobox : IOBox) =
-      let mapper (patch : Patch) = Patch.updateIOBox patch iobox
+      let mapper (patch : Patch) = Patch.UpdateIOBox patch iobox
       { state with Patches = Array.map mapper state.Patches }
 
     member state.Update (cue : Cue) =
@@ -74,6 +74,6 @@ module State =
     member state.Remove (iobox : IOBox) =
       let updater (patch : Patch) =
         if iobox.Patch = patch.Id
-        then Patch.removeIOBox patch iobox
+        then Patch.RemoveIOBox patch iobox
         else patch
       { state with Patches = Array.map updater state.Patches }
