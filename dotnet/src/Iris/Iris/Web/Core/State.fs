@@ -10,7 +10,7 @@ module State =
   (*   ____  _        _
       / ___|| |_ __ _| |_ ___
       \___ \| __/ _` | __/ _ \
-        ___) | || (_| | ||  __/
+       ___) | || (_| | ||  __/
       |____/ \__\__,_|\__\___|
 
       Record type containing all the actual data that gets passed around in our
