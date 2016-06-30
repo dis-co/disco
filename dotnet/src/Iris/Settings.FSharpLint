@@ -201,7 +201,7 @@
 
         <MaxLinesInValue>
           <Enabled>true</Enabled>
-          <Lines>100</Lines>
+          <Lines>200</Lines>
         </MaxLinesInValue>
 
         <MaxLinesInConstructor>
@@ -244,7 +244,7 @@
           <Lines>1000</Lines>
         </MaxLinesInModule>
       </Rules>
-      <Enabled>false</Enabled>
+      <Enabled>true</Enabled>
     </SourceLength>
 
     <Typography>

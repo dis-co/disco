@@ -33,28 +33,16 @@ Project:
   Engine:
     AesKey:
     DefaultTimeout:
-    DontCompress: false
-    FastEthernet: false
-    GracefulShutdown: true
     Hosts:
       -
     IgnorePartitions: true
     IgnoreSmallPartitions: true
     InfiniBand: false
-    Large: false
     LogDir:
     Logged: true
-    MCMDReportRate: -1
-    MCRangeHigh:
-    MCRangeLow:
-    MaxAsyncMTotal: -1
-    MaxIPMCAddrs: -1
-    MaxMsgLen: -1
-    Mute: false
     Netmask:
     NetworkInterfaces:
       -
-    OOBViaTCP: true
     Port: -1
     PortP2P: -1
     RateLim: -1
@@ -63,11 +51,8 @@ Project:
     Subnet:
     TTL: -1
     TokenDelay: -1
-    UDPChkSum: false
-    UnicastOnly: false
     UseIPv4: true
     UseIPv6: false
-    UserDMA: false
 
   Timing:
     Framebase: 50

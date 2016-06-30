@@ -147,6 +147,12 @@ type LogExentions() =
 
   [<Extension>]
   static member inline ToOffset (entries: LogEntry, builder: FlatBufferBuilder) =
+    let buildLogFB tipe value =
+      LogFB.StartLogFB(builder)
+      LogFB.AddEntryType(builder, tipe)
+      LogFB.AddEntry(builder, value)
+      LogFB.EndLogFB(builder)
+
     let toOffset (log: LogEntry) =
       match log with
       //   ____             __ _                       _   _
@@ -166,12 +172,9 @@ type LogExentions() =
         ConfigurationFB.AddTerm(builder, uint64 term)
         ConfigurationFB.AddNodes(builder, nvec)
 
-        let config = ConfigurationFB.EndConfigurationFB(builder)
+        let entry = ConfigurationFB.EndConfigurationFB(builder)
 
-        LogFB.StartLogFB(builder)
-        LogFB.AddEntryType(builder, LogTypeFB.ConfigurationFB)
-        LogFB.AddEntry(builder,config.Value)
-        LogFB.EndLogFB(builder)
+        buildLogFB LogTypeFB.ConfigurationFB entry.Value
 
       //      _       _       _    ____
       //     | | ___ (_)_ __ | |_ / ___|___  _ __  ___  ___ _ __  ___ _   _ ___
@@ -192,12 +195,9 @@ type LogExentions() =
         JointConsensusFB.AddChanges(builder, chvec)
         JointConsensusFB.AddNodes(builder, nvec)
 
-        let config = JointConsensusFB.EndJointConsensusFB(builder)
+        let entry = JointConsensusFB.EndJointConsensusFB(builder)
 
-        LogFB.StartLogFB(builder)
-        LogFB.AddEntryType(builder, LogTypeFB.JointConsensusFB)
-        LogFB.AddEntry(builder,config.Value)
-        LogFB.EndLogFB(builder)
+        buildLogFB LogTypeFB.JointConsensusFB entry.Value
 
       //  _                _____       _
       // | |    ___   __ _| ____|_ __ | |_ _ __ _   _
@@ -215,12 +215,9 @@ type LogExentions() =
         LogEntryFB.AddTerm(builder, uint64 term)
         LogEntryFB.AddData(builder, data)
 
-        let config = LogEntryFB.EndLogEntryFB(builder)
+        let entry = LogEntryFB.EndLogEntryFB(builder)
 
-        LogFB.StartLogFB(builder)
-        LogFB.AddEntryType(builder, LogTypeFB.LogEntryFB)
-        LogFB.AddEntry(builder,config.Value)
-        LogFB.EndLogFB(builder)
+        buildLogFB LogTypeFB.LogEntryFB entry.Value
 
       //  ____                        _           _
       // / ___| _ __   __ _ _ __  ___| |__   ___ | |_
@@ -243,12 +240,9 @@ type LogExentions() =
         SnapshotFB.AddNodes(builder, nvec)
         SnapshotFB.AddData(builder, data)
 
-        let config = SnapshotFB.EndSnapshotFB(builder)
+        let entry = SnapshotFB.EndSnapshotFB(builder)
 
-        LogFB.StartLogFB(builder)
-        LogFB.AddEntryType(builder, LogTypeFB.SnapshotFB)
-        LogFB.AddEntry(builder,config.Value)
-        LogFB.EndLogFB(builder)
+        buildLogFB LogTypeFB.SnapshotFB entry.Value
 
     let arr = Array.zeroCreate (Log.depth entries |> int)
     Log.iter (fun i (log: LogEntry) -> arr.[int i] <- toOffset log) entries

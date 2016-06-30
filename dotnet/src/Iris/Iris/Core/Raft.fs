@@ -67,6 +67,41 @@ type GeneralArgs =
 // |  _ < (_| |  _| |_  | |  | \__ \ (_| |
 // |_| \_\__,_|_|  \__| |_|  |_|___/\__, |
 //                                  |___/
+[<AutoOpen>]
+module RaftMsgFB = 
+
+  let getValue (t : Offset<'a>) : int = t.Value
+
+  let build builder tipe value =
+    RaftMsgFB.StartRaftMsgFB(builder)
+    RaftMsgFB.AddMsgType(builder, tipe)
+    RaftMsgFB.AddMsg(builder, value)
+    RaftMsgFB.EndRaftMsgFB(builder)
+    |> getValue
+
+  let createAppendEntriesFB builder nid (ar: AppendEntries) =
+    RequestAppendEntriesFB.CreateRequestAppendEntriesFB(builder, uint64 nid, ar.ToOffset builder)
+    |> getValue
+
+  let createAppendResponseFB builder nid (ar: AppendResponse) =
+    RequestAppendResponseFB.CreateRequestAppendResponseFB(builder, uint64 nid, ar.ToOffset builder)
+    |> getValue
+
+  let createRequestVoteFB builder nid (vr: VoteRequest) =
+    RequestVoteFB.CreateRequestVoteFB(builder, uint64 nid, vr.ToOffset builder)
+    |> getValue
+
+  let createRequestVoteResponseFB builder nid (vr: VoteResponse) =
+    RequestVoteResponseFB.CreateRequestVoteResponseFB(builder, uint64 nid, vr.ToOffset builder)
+    |> getValue
+
+  let createInstallSnapshotFB bldr id (is: InstallSnapshot) =
+    RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(bldr, uint64 id, is.ToOffset bldr)
+    |> getValue
+
+  let createSnapshotResponseFB bldr id (sr: SnapshotResponse) =
+    RequestSnapshotResponseFB.CreateRequestSnapshotResponseFB(bldr, uint64 id, sr.ToOffset bldr)
+    |> getValue
 
 type RaftMsg =
   | RequestVote             of sender:NodeId * req:VoteRequest<IrisNode>
@@ -81,6 +116,7 @@ type RaftMsg =
   | EmptyResponse
 
   with
+
     member self.ToBytes () : byte array =
       let builder = new FlatBufferBuilder(1)
 
@@ -91,24 +127,16 @@ type RaftMsg =
       // |  _ <  __/ (_| | |_| |  __/\__ \ |_ \ V / (_) | ||  __/
       // |_| \_\___|\__, |\__,_|\___||___/\__| \_/ \___/ \__\___|
       //               |_|
-
+      
       | RequestVote(nid, req) ->
-        let request = req.ToOffset(builder)
-        let rv = RequestVoteFB.CreateRequestVoteFB(builder, uint64 nid, request)
-        RaftMsgFB.StartRaftMsgFB(builder)
-        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestVoteFB)
-        RaftMsgFB.AddMsg(builder, rv.Value)
-        let msg = RaftMsgFB.EndRaftMsgFB(builder)
-        builder.Finish(msg.Value)
+        createRequestVoteFB builder nid req
+        |> build builder RaftMsgTypeFB.RequestVoteFB
+        |> builder.Finish
 
       | RequestVoteResponse(nid, resp) ->
-        let response = resp.ToOffset(builder)
-        let rvp = RequestVoteResponseFB.CreateRequestVoteResponseFB(builder, uint64 nid, response)
-        RaftMsgFB.StartRaftMsgFB(builder)
-        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestVoteResponseFB)
-        RaftMsgFB.AddMsg(builder, rvp.Value)
-        let msg = RaftMsgFB.EndRaftMsgFB(builder)
-        builder.Finish(msg.Value)
+        createRequestVoteResponseFB builder nid resp
+        |> build builder RaftMsgTypeFB.RequestVoteResponseFB
+        |> builder.Finish
 
       //     _                               _ _____       _        _
       //    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
@@ -118,22 +146,14 @@ type RaftMsg =
       //         |_|   |_|
 
       | AppendEntries(nid, ae) ->
-        let ae = ae.ToOffset(builder)
-        let rae = RequestAppendEntriesFB.CreateRequestAppendEntriesFB(builder, uint64 nid, ae)
-        RaftMsgFB.StartRaftMsgFB(builder)
-        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestAppendEntriesFB)
-        RaftMsgFB.AddMsg(builder, rae.Value)
-        let msg = RaftMsgFB.EndRaftMsgFB(builder)
-        builder.Finish(msg.Value)
+        createAppendEntriesFB builder nid ae
+        |> build builder RaftMsgTypeFB.RequestAppendEntriesFB
+        |> builder.Finish
 
       | AppendEntriesResponse(nid, ar) ->
-        let resp = ar.ToOffset(builder)
-        let aer = RequestAppendResponseFB.CreateRequestAppendResponseFB(builder, uint64 nid, resp)
-        RaftMsgFB.StartRaftMsgFB(builder)
-        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestAppendResponseFB)
-        RaftMsgFB.AddMsg(builder, aer.Value)
-        let msg = RaftMsgFB.EndRaftMsgFB(builder)
-        builder.Finish(msg.Value)
+        createAppendResponseFB builder nid ar
+        |> build builder RaftMsgTypeFB.RequestAppendResponseFB
+        |> builder.Finish
 
       //  ___           _        _ _ ____                        _           _
       // |_ _|_ __  ___| |_ __ _| | / ___| _ __   __ _ _ __  ___| |__   ___ | |_
@@ -143,23 +163,14 @@ type RaftMsg =
       //                                              |_|
 
       | InstallSnapshot(nid, is) ->
-        let req = is.ToOffset(builder)
-        let ris = RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(builder, uint64 nid, req)
-        RaftMsgFB.StartRaftMsgFB(builder)
-        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestInstallSnapshotFB)
-        RaftMsgFB.AddMsg(builder, ris.Value)
-        let msg = RaftMsgFB.EndRaftMsgFB(builder)
-        builder.Finish(msg.Value)
+        createInstallSnapshotFB builder nid is
+        |> build builder RaftMsgTypeFB.RequestInstallSnapshotFB
+        |> builder.Finish
 
       | InstallSnapshotResponse(nid, ir) ->
-        let id = uint64 nid
-        let resp = ir.ToOffset(builder)
-        let risr = RequestSnapshotResponseFB.CreateRequestSnapshotResponseFB(builder, id, resp)
-        RaftMsgFB.StartRaftMsgFB(builder)
-        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestSnapshotResponseFB)
-        RaftMsgFB.AddMsg(builder, risr.Value)
-        let msg = RaftMsgFB.EndRaftMsgFB(builder)
-        builder.Finish(msg.Value)
+        createSnapshotResponseFB builder nid ir
+        |> build builder RaftMsgTypeFB.RequestSnapshotResponseFB
+        |> builder.Finish
 
       //  _   _                 _ ____  _           _
       // | | | | __ _ _ __   __| / ___|| |__   __ _| | _____
@@ -168,22 +179,16 @@ type RaftMsg =
       // |_| |_|\__,_|_| |_|\__,_|____/|_| |_|\__,_|_|\_\___|
 
       | HandShake node ->
-        let node = node.ToOffset(builder)
-        let shake = HandShakeFB.CreateHandShakeFB(builder, node)
-        RaftMsgFB.StartRaftMsgFB(builder)
-        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.HandShakeFB)
-        RaftMsgFB.AddMsg(builder, shake.Value)
-        let msg = RaftMsgFB.EndRaftMsgFB(builder)
-        builder.Finish(msg.Value)
+        HandShakeFB.CreateHandShakeFB(builder, node.ToOffset builder)
+        |> getValue
+        |> build builder RaftMsgTypeFB.HandShakeFB
+        |> builder.Finish
 
       | HandWaive node ->
-        let node = node.ToOffset(builder)
-        let waive = HandWaiveFB.CreateHandWaiveFB(builder, node)
-        RaftMsgFB.StartRaftMsgFB(builder)
-        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.HandWaiveFB)
-        RaftMsgFB.AddMsg(builder, waive.Value)
-        let msg = RaftMsgFB.EndRaftMsgFB(builder)
-        builder.Finish(msg.Value)
+        HandWaiveFB.CreateHandWaiveFB(builder, node.ToOffset builder)
+        |> getValue
+        |> build builder RaftMsgTypeFB.HandWaiveFB
+        |> builder.Finish
 
       //  _____
       // | ____|_ __ _ __ ___  _ __
@@ -192,22 +197,17 @@ type RaftMsg =
       // |_____|_|  |_|  \___/|_|
 
       | ErrorResponse err ->
-        let error = err.ToOffset(builder)
-        let fb = ErrorResponseFB.CreateErrorResponseFB(builder, error)
-        RaftMsgFB.StartRaftMsgFB(builder)
-        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.ErrorResponseFB)
-        RaftMsgFB.AddMsg(builder, fb.Value)
-        let msg = RaftMsgFB.EndRaftMsgFB(builder)
-        builder.Finish(msg.Value)
+        ErrorResponseFB.CreateErrorResponseFB(builder, err.ToOffset builder)
+        |> getValue
+        |> build builder RaftMsgTypeFB.ErrorResponseFB
+        |> builder.Finish
 
       | EmptyResponse ->
         EmptyResponseFB.StartEmptyResponseFB(builder)
-        let fb = EmptyResponseFB.EndEmptyResponseFB(builder)
-        RaftMsgFB.StartRaftMsgFB(builder)
-        RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.EmptyResponseFB)
-        RaftMsgFB.AddMsg(builder, fb.Value)
-        let msg = RaftMsgFB.EndRaftMsgFB(builder)
-        builder.Finish(msg.Value)
+        EmptyResponseFB.EndEmptyResponseFB(builder)
+        |> getValue
+        |> build builder RaftMsgTypeFB.EmptyResponseFB
+        |> builder.Finish
 
       //  ____                 _ _
       // |  _ \ ___  ___ _   _| | |_
