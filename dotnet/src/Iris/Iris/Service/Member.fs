@@ -19,6 +19,8 @@ type Member =
       mem1.MemberId = mem2.MemberId
 
     override self.ToString() =
+      let ip = self.IP.ToString()
+      let mid = self.MemberId.ToString()
       Array.map Member.FormatProject self.Projects
       |> Array.fold (fun m s -> m + "\n  " + s) ""
-      |> sprintf "Id: %s Name: %s IP: %s\n%s" (self.MemberId.ToString()) self.Name (self.IP.ToString())
+      |> sprintf "Id: %s Name: %s IP: %s\n%s" mid self.Name ip

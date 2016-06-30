@@ -8,22 +8,22 @@ module Yaml =
   [<Literal>]
   let private Config = """
 Project:
-  Metadata: 
+  Metadata:
     Id:
     Year: 2016
-    Copyright: 
-    Author: 
-    Name: 
+    Copyright:
+    Author:
+    Name:
     LastSaved:
 
-  VVVV: 
-    Executables: 
-      - Path: 
-        Version: 
+  VVVV:
+    Executables:
+      - Path:
+        Version:
         Required: true
     Plugins:
-      - Name: 
-        Path: 
+      - Name:
+        Path:
 
   Ports:
     WebSocket:   -1
@@ -31,18 +31,18 @@ Project:
     UDPCues:     -1
 
   Engine:
-    AesKey: 
-    DefaultTimeout: 
+    AesKey:
+    DefaultTimeout:
     DontCompress: false
     FastEthernet: false
     GracefulShutdown: true
     Hosts:
-      - 
+      -
     IgnorePartitions: true
     IgnoreSmallPartitions: true
     InfiniBand: false
     Large: false
-    LogDir: 
+    LogDir:
     Logged: true
     MCMDReportRate: -1
     MCRangeHigh:
@@ -53,14 +53,14 @@ Project:
     Mute: false
     Netmask:
     NetworkInterfaces:
-      - 
+      -
     OOBViaTCP: true
     Port: -1
     PortP2P: -1
     RateLim: -1
     Sigs: false
     SkipFirstInterface: false
-    Subnet: 
+    Subnet:
     TTL: -1
     TokenDelay: -1
     UDPChkSum: false
@@ -71,9 +71,9 @@ Project:
 
   Timing:
     Framebase: 50
-    Input: 
+    Input:
     Servers:
-      - 
+      -
     UDPPort: 8090
     TCPPort: 8091
 
@@ -81,24 +81,24 @@ Project:
     SampleRate: 48000
 
   ViewPorts:
-    - Id: 
-      Name: 
+    - Id:
+      Name:
       Position:
       Size:
       OutputPosition:
       OutputSize:
       Overlap:
-      Description: 
+      Description:
 
   Displays:
-    - Id: 
-      Name: 
+    - Id:
+      Name:
       Size:
       Signals:
         - Size:
           Position:
       RegionMap:
-        SrcViewportId: 
+        SrcViewportId:
         Regions:
           - Id:
             Name:
@@ -107,26 +107,26 @@ Project:
             OutputPosition:
             OutputSize:
   Tasks:
-    - Id: 
-      Description: 
-      DisplayId: 
-      AudioStream: 
+    - Id:
+      Description:
+      DisplayId:
+      AudioStream:
       Arguments:
-        - Key: 
-          Value: 
+        - Key:
+          Value:
 
   Cluster:
-    Name:  
+    Name:
     Nodes:
       - Id:
-        HostName: 
-        Ip: 
-        Task: 
+        HostName:
+        Ip:
+        Task:
 
     Groups:
-      - Name: 
+      - Name:
         Members:
-          - 
+          -
 """
 
   type ConfigFile = YamlConfig<"",false,Config>

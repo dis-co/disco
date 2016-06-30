@@ -2,14 +2,14 @@ namespace Iris.Core
 
 [<RequireQualifiedAccess>]
 module Uri =
-  //  _   _      _ 
+  //  _   _      _
   // | | | |_ __(_)
   // | | | | '__| |
   // | |_| | |  | |
   //  \___/|_|  |_|
-  //               
+  //
   let mkUri resource project group =
-    sprintf "iris.%s/%s/%s" resource project group 
+    sprintf "iris.%s/%s/%s" resource project group
 
   let mkProjectUri (project : Project) =
     match project.CurrentBranch with

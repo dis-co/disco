@@ -31,7 +31,7 @@ module Utils =
   // Settable it via environment variable.
   let Workspace (_ : unit) : string =
     let wsp = Environment.GetEnvironmentVariable("IRIS_WORKSPACE")
-    if isNull wsp || wsp.Length = 0 
+    if isNull wsp || wsp.Length = 0
     then
       if isLinux
       then
@@ -68,17 +68,17 @@ module Utils =
            then outip <- Some(ip.Address)
     outip
 
-  //  _                             
-  // | | ___   __ _  __ _  ___ _ __ 
+  //  _
+  // | | ___   __ _  __ _  ___ _ __
   // | |/ _ \ / _` |/ _` |/ _ \ '__|
-  // | | (_) | (_| | (_| |  __/ |   
-  // |_|\___/ \__, |\__, |\___|_|   
-  //          |___/ |___/           
+  // | | (_) | (_| | (_| |  __/ |
+  // |_|\___/ \__, |\__, |\___|_|
+  //          |___/ |___/
   let logger (tag : string) (str : string) : unit =
     let def = tag.Length + 2
     let verbose = Environment.GetEnvironmentVariable("IRIS_VERBOSE")
     if not (isNull verbose) && bool.Parse(verbose)
-    then 
+    then
       let var = "IRIS_LOGGING_OFFSET"
       let mutable offset = 0
 
@@ -113,7 +113,7 @@ module Utils =
   // | |_| | |_| | \__ \                //
   //  \___/ \__|_|_|___/                //
   ////////////////////////////////////////
-  
+
   let dispose (o : 't when 't :> IDisposable) = o.Dispose()
 
   // let dispatch (raft : Raft<_,_> ref) (inbox: Actor<_>) =

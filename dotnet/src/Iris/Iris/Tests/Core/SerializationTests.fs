@@ -66,22 +66,28 @@ module SerializationTests =
 
   let test_validate_appendentries_serialization =
     testCase "Validate RequestVote Response Serialization" <| fun _ ->
-      let node1 = Node.create 1u { HostName = "Hans";  IpAddr = IPAddress.Parse "192.168.1.20"; Port = 8080 }
-      let node2 = Node.create 2u { HostName = "Klaus"; IpAddr = IPAddress.Parse "192.168.1.22"; Port = 8080 }
+      let info1 = { HostName = "Hans";  IpAddr = IPAddress.Parse "192.168.1.20"; Port = 8080 }
+      let info2 = { HostName = "Klaus"; IpAddr = IPAddress.Parse "192.168.1.22"; Port = 8080 }
+
+      let node1 = Node.create 1u info1
+      let node2 = Node.create 2u info2
+
+      let changes = [| NodeRemoved node2 |]
+      let nodes = [| node1; node2 |]
 
       let log =
-        LogEntry(Guid.NewGuid(), 8u, 1u, Open "latest",
-                 Some <| LogEntry(Guid.NewGuid(), 7u, 1u, Close "cccc",
-                                  Some <| LogEntry(Guid.NewGuid(), 6u, 1u, AddClient "bbbb",
-                                                   Some <| Configuration(Guid.NewGuid(), 5u, 1u, [| node1 |],
-                                                                         Some <| JointConsensus(Guid.NewGuid(), 4u, 1u, [| NodeRemoved node2 |], [| node1; node2 |],
-                                                                                                Some <| Snapshot(Guid.NewGuid(), 3u, 1u, 2u, 1u, [| node1; node2 |],  DataSnapshot "aaaa"))))))
+        Some <| LogEntry(Guid.NewGuid(), 7u, 1u, Close "cccc",
+          Some <| LogEntry(Guid.NewGuid(), 6u, 1u, AddClient "bbbb",
+            Some <| Configuration(Guid.NewGuid(), 5u, 1u, [| node1 |],
+              Some <| JointConsensus(Guid.NewGuid(), 4u, 1u, changes, nodes,
+                Some <| Snapshot(Guid.NewGuid(), 3u, 1u, 2u, 1u, nodes, DataSnapshot "aaaa")))))
+
       let ae : AppendEntries =
         { Term = 8u
         ; PrevLogIdx = 192u
         ; PrevLogTerm = 87u
         ; LeaderCommit = 182u
-        ; Entries = Some log }
+        ; Entries = log }
 
       let msg   = AppendEntries(18u, ae)
       let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
@@ -99,7 +105,7 @@ module SerializationTests =
   //  / ___ \| |_) | |_) |  __/ | | | (_| |  _ <  __/\__ \ |_) | (_) | | | \__ \  __/
   // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_| \_\___||___/ .__/ \___/|_| |_|___/\___|
   //         |_|   |_|                                   |_|
-   
+
   let test_validate_appendentries_response_serialization =
     testCase "Validate RequestVote Response Serialization" <| fun _ ->
       let response : AppendResponse =
@@ -123,14 +129,15 @@ module SerializationTests =
 
   let test_validate_installsnapshot_serialization =
     testCase "Validate InstallSnapshot Serialization" <| fun _ ->
-      let node1 = Node.create 1u { HostName = "Hans"; IpAddr = IPAddress.Parse "123.23.21.1"; Port = 124 }
+      let info = { HostName = "Hans"; IpAddr = IPAddress.Parse "123.23.21.1"; Port = 124 }
+      let node1 = [| Node.create 1u info |]
 
       let is : InstallSnapshot =
         { Term = 2134u
         ; LeaderId = 1230u
         ; LastIndex = 242u
         ; LastTerm = 124242u
-        ; Data = Snapshot(Guid.NewGuid(), 12u, 3414u, 241u, 422u, [| node1 |], DataSnapshot "hahahah")
+        ; Data = Snapshot(Guid.NewGuid(), 12u, 3414u, 241u, 422u, node1, DataSnapshot "hahahah")
         }
 
       let msg = InstallSnapshot(2134u, is)
@@ -148,7 +155,7 @@ module SerializationTests =
   let test_validate_installsnapshot_response_serialization =
     testCase "Validate InstallSnapshot Response Serialization" <| fun _ ->
       let response : SnapshotResponse = { Term = 92381u }
-      
+
       let msg = InstallSnapshotResponse(32423u, response)
       let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
 

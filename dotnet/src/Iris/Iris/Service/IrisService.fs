@@ -103,8 +103,8 @@ module IrisService =
       //         >>= (addProcess project.Id >> succeed)
 
       //     match result with
-      //       | Success _ -> state := state'                          // replace current state with new project state
-      //                      self.Ctrl.Load(project.Id, project.Name) // notify everybody in the cluster that we loaded this project
+      //       | Success _ -> state := state'
+      //                      self.Ctrl.Load(project.Id, project.Name)
       //                      succeed project
       //       | Fail err  -> logger tag err
       //                      fail err

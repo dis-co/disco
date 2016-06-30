@@ -250,13 +250,13 @@
     <Typography>
       <Rules>
         <MaxLinesInFile>
-          <Enabled>false</Enabled>
+          <Enabled>true</Enabled>
           <Lines>1000</Lines>
         </MaxLinesInFile>
 
         <MaxCharactersOnLine>
-          <Enabled>false</Enabled>
-          <Length>120</Length>
+          <Enabled>true</Enabled>
+          <Length>100</Length>
         </MaxCharactersOnLine>
 
         <NoTabCharacters>
@@ -268,7 +268,7 @@
         </TrailingNewLineInFile>
 
         <TrailingWhitespaceOnLine>
-          <Enabled>false</Enabled>
+          <Enabled>true</Enabled>
           <NumberOfSpacesAllowed>1</NumberOfSpacesAllowed>
           <OneSpaceAllowedAfterOperator>true</OneSpaceAllowedAfterOperator>
           <IgnoreBlankLines>true</IgnoreBlankLines>
@@ -278,7 +278,7 @@
     </Typography>
 
     <NestedStatements>
-      <Enabled>false</Enabled>
+      <Enabled>true</Enabled>
       <Depth>8</Depth>
     </NestedStatements>
 
@@ -304,7 +304,7 @@
           <MaxItems>4</MaxItems>
         </MaxNumberOfBooleanOperatorsInCondition>
       </Rules>
-      <Enabled>false</Enabled>
+      <Enabled>true</Enabled>
     </NumberOfItems>
 
     <RaiseWithTooManyArguments>
@@ -413,7 +413,7 @@
     </XmlDocumentation>
 
     <CyclomaticComplexity>
-      <Enabled>false</Enabled>
+      <Enabled>true</Enabled>
       <MaxCyclomaticComplexity>10</MaxCyclomaticComplexity>
       <IncludeMatchStatements>false</IncludeMatchStatements>
     </CyclomaticComplexity>

@@ -118,8 +118,8 @@ type RaftMsg =
       //         |_|   |_|
 
       | AppendEntries(nid, ae) ->
-        let appendentries = ae.ToOffset(builder)
-        let rae = RequestAppendEntriesFB.CreateRequestAppendEntriesFB(builder, uint64 nid, appendentries)
+        let ae = ae.ToOffset(builder)
+        let rae = RequestAppendEntriesFB.CreateRequestAppendEntriesFB(builder, uint64 nid, ae)
         RaftMsgFB.StartRaftMsgFB(builder)
         RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestAppendEntriesFB)
         RaftMsgFB.AddMsg(builder, rae.Value)
@@ -127,8 +127,8 @@ type RaftMsg =
         builder.Finish(msg.Value)
 
       | AppendEntriesResponse(nid, ar) ->
-        let response = ar.ToOffset(builder)
-        let aer = RequestAppendResponseFB.CreateRequestAppendResponseFB(builder, uint64 nid, response)
+        let resp = ar.ToOffset(builder)
+        let aer = RequestAppendResponseFB.CreateRequestAppendResponseFB(builder, uint64 nid, resp)
         RaftMsgFB.StartRaftMsgFB(builder)
         RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestAppendResponseFB)
         RaftMsgFB.AddMsg(builder, aer.Value)
@@ -143,8 +143,8 @@ type RaftMsg =
       //                                              |_|
 
       | InstallSnapshot(nid, is) ->
-        let request = is.ToOffset(builder)
-        let ris = RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(builder, uint64 nid, request)
+        let req = is.ToOffset(builder)
+        let ris = RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(builder, uint64 nid, req)
         RaftMsgFB.StartRaftMsgFB(builder)
         RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestInstallSnapshotFB)
         RaftMsgFB.AddMsg(builder, ris.Value)
@@ -152,8 +152,9 @@ type RaftMsg =
         builder.Finish(msg.Value)
 
       | InstallSnapshotResponse(nid, ir) ->
-        let response = ir.ToOffset(builder)
-        let risr = RequestSnapshotResponseFB.CreateRequestSnapshotResponseFB(builder, uint64 nid, response)
+        let id = uint64 nid
+        let resp = ir.ToOffset(builder)
+        let risr = RequestSnapshotResponseFB.CreateRequestSnapshotResponseFB(builder, id, resp)
         RaftMsgFB.StartRaftMsgFB(builder)
         RaftMsgFB.AddMsgType(builder, RaftMsgTypeFB.RequestSnapshotResponseFB)
         RaftMsgFB.AddMsg(builder, risr.Value)

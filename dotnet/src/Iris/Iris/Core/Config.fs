@@ -147,7 +147,7 @@ type Cluster =
   ; Nodes  : NodeConfig list
   ; Groups : HostGroup list
   }
-  with 
+  with
     override self.ToString() =
       sprintf "Cluster:
                 Name: %A
@@ -168,16 +168,16 @@ type Cluster =
 
 type Config () =
 
-  [<DefaultValue>] val mutable AudioConfig    : AudioConfig   
-  [<DefaultValue>] val mutable VvvvConfig     : VvvvConfig    
-  [<DefaultValue>] val mutable RaftConfig     : RaftConfig    
-  [<DefaultValue>] val mutable TimingConfig   : TimingConfig  
-  [<DefaultValue>] val mutable PortConfig     : PortConfig    
-  [<DefaultValue>] val mutable ClusterConfig  : Cluster       
-  [<DefaultValue>] val mutable ViewPorts      : ViewPort list 
-  [<DefaultValue>] val mutable Displays       : Display  list 
-  [<DefaultValue>] val mutable Tasks          : Task     list 
-   
+  [<DefaultValue>] val mutable AudioConfig    : AudioConfig
+  [<DefaultValue>] val mutable VvvvConfig     : VvvvConfig
+  [<DefaultValue>] val mutable RaftConfig     : RaftConfig
+  [<DefaultValue>] val mutable TimingConfig   : TimingConfig
+  [<DefaultValue>] val mutable PortConfig     : PortConfig
+  [<DefaultValue>] val mutable ClusterConfig  : Cluster
+  [<DefaultValue>] val mutable ViewPorts      : ViewPort list
+  [<DefaultValue>] val mutable Displays       : Display  list
+  [<DefaultValue>] val mutable Tasks          : Task     list
+
   //  _   _      _
   // | | | | ___| |_ __   ___ _ __ ___
   // | |_| |/ _ \ | '_ \ / _ \ '__/ __|
@@ -256,7 +256,7 @@ type Config () =
     let hosts  : string list option ref = ref None
 
     for host in cfg.Project.Engine.Hosts do
-      if host.Length > 0 
+      if host.Length > 0
       then
         let hosts' = !hosts
         match hosts' with
@@ -433,7 +433,7 @@ type Config () =
 
     for group in cfg.Project.Cluster.Groups do
       if group.Name.Length > 0
-      then 
+      then
         let ids : Id list ref = ref []
 
         for mid in group.Members do
@@ -476,6 +476,6 @@ type Config () =
     cfg.Displays       <- []
     cfg.Tasks          <- []
     cfg.ClusterConfig  <- { Name   = name + " cluster"
-                          ; Nodes  = []                     
+                          ; Nodes  = []
                           ; Groups = []}
     cfg

@@ -128,7 +128,7 @@ type Project(repo, data) =
   member self.SetBranch(name) : unit =
     match repo with
       | Some(repo') ->
-        try 
+        try
           let branch = repo'.Branches.First(fun b -> b.CanonicalName = name)
           repo'.Checkout branch
           |> ignore
@@ -359,7 +359,7 @@ type Project(repo, data) =
       // save everything!
       let destPath = Path.Combine(Option.get self.Path, self.Name + IrisExt)
 
-      try 
+      try
         IrisConfig.Save(destPath)
 
         // commit project to git.
