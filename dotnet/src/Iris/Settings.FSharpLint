@@ -291,7 +291,7 @@
 
         <MaxNumberOfMembers>
           <Enabled>true</Enabled>
-          <MaxItems>32</MaxItems>
+          <MaxItems>100</MaxItems>
         </MaxNumberOfMembers>
 
         <MaxNumberOfItemsInTuple>

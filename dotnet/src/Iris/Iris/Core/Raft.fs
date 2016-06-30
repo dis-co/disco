@@ -49,13 +49,13 @@ type GeneralArgs =
 
     member self.Usage =
       match self with
-        | Bind        _ -> "Specify a valid IP address."
+        | Bind       _ -> "Specify a valid IP address."
         | WebPort    _ -> "Http server port."
         | RaftPort   _ -> "Raft server port (internal)."
         | RaftId     _ -> "Raft server ID (internal)."
-        | Debug         -> "Log output to console."
-        | Start         -> "Start a new cluster"
-        | Join          -> "Join an existing cluster"
+        | Debug        -> "Log output to console."
+        | Start        -> "Start a new cluster"
+        | Join         -> "Join an existing cluster"
         | LeaderId   _ -> "Leader id when joining an existing cluster"
         | LeaderIp   _ -> "Ip address of leader when joining a cluster"
         | LeaderPort _ -> "Port of leader when joining a cluster"
