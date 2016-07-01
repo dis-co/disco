@@ -2,31 +2,26 @@ namespace Iris.Core
 
 (*----------------------------------------------------------------------------
         _          _
-      / \   _ __ (_)      Types for modeling communication between nodes
+       / \   _ __ (_)      Types for modeling communication between nodes
       / _ \ | '_ \| |      on the network layer.
-    / ___ \| |_) | |
+     / ___ \| |_) | |
     /_/   \_\ .__/|_|
             |_|
   ---------------------------------------------------------------------------*)
 
 type ApiAction =
-  | AddPatch
-  | UpdatePatch
-  | RemovePatch
-  | AddIOBox
-  | UpdateIOBox
-  | RemoveIOBox
-
-type ApiMessage =
-  { Type    : ApiAction
-  ; Payload : obj
-  }
+  | AddPatch    of Patch
+  | UpdatePatch of Patch
+  | RemovePatch of Patch
+  | AddIOBox    of IOBox
+  | UpdateIOBox of IOBox
+  | RemoveIOBox of IOBox
 
 (*
         _                _____                 _
-        / \   _ __  _ __ | ____|_   _____ _ __ | |_ ™
+       / \   _ __  _ __ | ____|_   _____ _ __ | |_ ™
       / _ \ | '_ \| '_ \|  _| \ \ / / _ \ '_ \| __|
-      / ___ \| |_) | |_) | |___ \ V /  __/ | | | |_
+     / ___ \| |_) | |_) | |___ \ V /  __/ | | | |_
     /_/   \_\ .__/| .__/|_____| \_/ \___|_| |_|\__|
             |_|   |_|
 
@@ -92,10 +87,10 @@ type AppEvent =
 
 (*---------------
     ____ _ _            _
-    / ___| (_) ___ _ __ | |_
+   / ___| (_) ___ _ __ | |_
   | |   | | |/ _ \ '_ \| __|
   | |___| | |  __/ | | | |_
-    \____|_|_|\___|_| |_|\__|
+   \____|_|_|\___|_| |_|\__|
 
   The client state machine:
 
@@ -129,8 +124,6 @@ type AppEvent =
   +------------------+               +------------------------+               +------------------+
 
   *--------------------------------------------------------------------------*)
-type Session = string
-type Error = string
 
 [<RequireQualifiedAccess>]
 type ClientMessage<'state> =
@@ -143,7 +136,7 @@ type ClientMessage<'state> =
   | Redo                              // Redo last undo step
   | Save                              // Save current state
   | Open                              // Open a project
-  | Log         of obj                // logs a piece of data to all connected clients
+  | Log         of ClientLog          // logs a piece of data to all connected clients
   | Error       of Error              // an error occuring inside the worker
   | Render      of 'state             // instruct all clients to render new state
   | Event       of Session * AppEvent // encapsulates an action or event that happened on the client
@@ -151,16 +144,3 @@ type ClientMessage<'state> =
   | Disconnected                      // worker websocket was disconnected from service
 
 
-type SessionId = string
-
-type WsMsg =
-  | Broadcast        of string
-  | Multicast        of SessionId * string
-  | ClientDisconnect of SessionId
-
-  with
-    override self.ToString() =
-      match self with
-        | Broadcast(str)        -> sprintf "Broadcast: %s" str
-        | Multicast(ses, str)   -> sprintf "Multicast %s %s" ses str
-        | ClientDisconnect(str) -> sprintf "ClientDisconnect %s" str

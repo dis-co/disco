@@ -163,16 +163,16 @@ module Worker =
      *-------------------------------------------------------------------------*)
 
     member __.OnSocketMessage (ev : MessageEvent) : unit =
-      let msg = JSON.parse(ev.data :?> string) :?> ApiMessage
+      let msg = JSON.parse(ev.data :?> string) :?> ApiAction
       let parsed =
-        match msg.Type with
-          | ApiAction.AddPatch    -> PatchEvent(Create, msg.Payload :?> Patch)
-          | ApiAction.UpdatePatch -> PatchEvent(Update, msg.Payload :?> Patch)
-          | ApiAction.RemovePatch -> PatchEvent(Delete, msg.Payload :?> Patch)
+        match msg with
+          | AddPatch    patch -> PatchEvent(Create, patch)
+          | UpdatePatch patch -> PatchEvent(Update, patch)
+          | RemovePatch patch -> PatchEvent(Delete, patch)
 
-          | ApiAction.AddIOBox    -> IOBoxEvent(Create, msg.Payload :?> IOBox)
-          | ApiAction.UpdateIOBox -> IOBoxEvent(Update, msg.Payload :?> IOBox)
-          | ApiAction.RemoveIOBox -> IOBoxEvent(Delete, msg.Payload :?> IOBox)
+          | AddIOBox    iobox -> IOBoxEvent(Create, iobox)
+          | UpdateIOBox iobox -> IOBoxEvent(Update, iobox)
+          | RemoveIOBox iobox -> IOBoxEvent(Delete, iobox)
 
       in store.Dispatch parsed
       __.Broadcast <| ClientMessage.Render(store.State)

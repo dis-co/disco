@@ -1,30 +1,27 @@
-namespace Iris.Service.Core
+namespace Iris.Service
 
 open System
 open LibGit2Sharp
 open Iris.Core.Utils
 open Iris.Core
+open Pallet.Core
+
+//     _               ____  _        _
+//    / \   _ __  _ __/ ___|| |_ __ _| |_ ___
+//   / _ \ | '_ \| '_ \___ \| __/ _` | __/ _ \
+//  / ___ \| |_) | |_) |__) | || (_| | ||  __/
+// /_/   \_\ .__/| .__/____/ \__\__,_|\__\___|
+//         |_|   |_|
+
+type AppState =
+  { Clients:  IrisNode       list
+  ; Sessions: BrowserSession list
+  ; Projects: Map<Guid, Project>
+  ; Raft:     Raft
+  }
 
 [<AutoOpen>]
-module AppState =
-
-  let flip (f : 'a -> 'b -> 'c) (b : 'b) (a : 'a) = f a b
- 
-  //     _               ____  _        _
-  //    / \   _ __  _ __/ ___|| |_ __ _| |_ ___
-  //   / _ \ | '_ \| '_ \___ \| __/ _` | __/ _ \
-  //  / ___ \| |_) | |_) |__) | || (_| | ||  __/
-  // /_/   \_\ .__/| .__/____/ \__\__,_|\__\___|
-  //         |_|   |_|
-  type AppState =
-    { Members   : Member list
-    ; Projects  : Map<Guid, Project>
-    }
-    static member Empty
-      with get () =
-        { Members   = List.empty
-        ; Projects  = Map.empty
-        }
+module AppStateUtils =
 
   let addProject (project : Project) (state : AppState) : Either<string,AppState> =
     { state with Projects = Map.add project.Id project state.Projects }
@@ -51,8 +48,8 @@ module AppState =
       | Fail err -> Either.fail err
         
   let createProject name path (sign : Signature) state : Either<string,(Project * AppState)> = 
-    let now = System.DateTime.Now.ToLongTimeString()
-    let msg = sprintf "On %s, %s created %s" now sign.Name name
+    let now = System.DateTime.Now
+    let msg = sprintf "On %s, %s created %s" (now.ToLongTimeString()) sign.Name name
     let project = Project.Create name
     project.Path <- Some(path)
     match addProject project state with
@@ -69,12 +66,26 @@ module AppState =
   let projectLoaded (guid : Guid) (state : AppState) : bool =
     Either.isSuccess (findProject guid state)
 
-  let addMember (mem: Member) (state: AppState) : AppState =
-    { state with Members = mem :: state.Members }
-  
-  let updateMember (newmem: Member) (state: AppState) : AppState =
-    let helper old = if Member.SameAs old newmem then newmem else old
-    { state with Members = List.map helper state.Members  }
+  //  ____        __ _
+  // |  _ \ __ _ / _| |_
+  // | |_) / _` | |_| __|
+  // |  _ < (_| |  _| |_
+  // |_| \_\__,_|_|  \__|
 
-  let removeMember (mem: Member) (state: AppState) : AppState = 
-    { state with Members = List.filter (not << Member.SameAs mem) state.Members  }
+  let updateRaft (state: AppState) (raft: Raft) : AppState =
+    { state with Raft = raft }
+
+  //  _   _           _
+  // | \ | | ___   __| | ___  ___
+  // |  \| |/ _ \ / _` |/ _ \/ __|
+  // | |\  | (_) | (_| |  __/\__ \
+  // |_| \_|\___/ \__,_|\___||___/
+
+  let addNode (node: IrisNode) (state: AppState) : AppState =
+    failwith "FIXME: implement addNode AppState"
+  
+  let updateMember (newmem: IrisNode) (state: AppState) : AppState =
+    failwith "FIXME: implement updateMember AppState"
+
+  let removeMember (mem: IrisNode) (state: AppState) : AppState = 
+    failwith "FIXME: implement removeNode AppState"

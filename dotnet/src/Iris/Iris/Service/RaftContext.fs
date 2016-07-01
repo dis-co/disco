@@ -19,8 +19,16 @@ open FSharpx.Stm
 [<AutoOpen>]
 module AppContext =
 
+  /// validates an IP address by parsing it
   let parseIp str =
-    try IPAddress.Parse str
+    try
+      let addr = IPAddress.Parse str
+      match addr.AddressFamily with
+        | Sockets.AddressFamily.InterNetwork   -> IPv4Address str
+        | Sockets.AddressFamily.InterNetworkV6 -> IPv6Address str
+        | _ ->
+          printfn "Address family unsupported. Use IPv4 or IPv6."
+          exit 1
     with
       | ex ->
         printfn "Error parsing IP address: %s" ex.Message
@@ -34,11 +42,19 @@ module AppContext =
 
   let mkRaft (options: RaftOptions) =
     let node =
-      { HostName = getHostName()
+      { MemberId = Guid.NewGuid()
+      ; HostName = getHostName()
       ; IpAddr   = parseIp options.IpAddr
       ; Port     = options.RaftPort }
       |> Node.create options.RaftId
     Raft.create node
+
+  let mkState (options: RaftOptions) : AppState =
+    { Clients  = []
+    ; Sessions = []
+    ; Projects = Map.empty
+    ; Raft     = mkRaft options
+    }
 
   /////////////////////////////////////////////////////////////
   //     _                 ____            _            _    //
@@ -51,17 +67,16 @@ module AppContext =
 
   type AppContext(opts: RaftOptions) as this =
     let max_retry = 5
-    let context = new Context()
+    let zmqContext = new fszmq.Context()
 
     let mutable options = opts
     let mutable updateCount = 0UL
 
-    let appState = newTVar 0
-    let raftState = mkRaft opts |> newTVar
+    let appState = mkState opts |> newTVar
 
     // -------------------------------------------------------------------------
     let withConnection timeout (node: Node<IrisNode>) (thing: RaftMsg) =
-      use client = req context
+      use client = req zmqContext
       let addr = formatUri node.Data
       connect client addr
       thing.ToBytes() |>> client
@@ -70,7 +85,7 @@ module AppContext =
 
       let handler _ (msg : Message array) =
         // bytes <- msg.Unwrap().Read()
-        failwith "UH OH"
+        failwith "FIXME: handle incoming messages properly"
 
       let result =
         [ pollIn handler client ]
@@ -90,22 +105,24 @@ module AppContext =
 
               stm {
                 let result : RaftMsg option =
-                  withConnection (this.State.RequestTimeout) node msg
+                  withConnection (this.State.Raft.RequestTimeout) node msg
                   |> Option.bind RaftMsg.FromBytes
 
-                let! raft' = readTVar raftState
+                let! state = readTVar appState
 
                 match result with
                   | Some response ->
                     match response with
                       | AppendEntriesResponse(nid,resp) ->
                         do! receiveAppendEntriesResponse nid resp
-                            |> evalRaft raft' (this :> IRaftCallbacks<_,_>)
-                            |> writeTVar raftState
+                            |> evalRaft state.Raft (this :> IRaftCallbacks<_,_>)
+                            |> updateRaft state
+                            |> writeTVar appState
                       | RequestVoteResponse(nid,vote) ->
                         do! receiveVoteResponse nid vote
-                            |> evalRaft raft' (this :> IRaftCallbacks<_,_>)
-                            |> writeTVar raftState
+                            |> evalRaft state.Raft (this :> IRaftCallbacks<_,_>)
+                            |> updateRaft state
+                            |> writeTVar appState
                       | ErrorResponse err ->
                         sprintf "ERROR: %A" err
                         |> this.Log
@@ -123,14 +140,14 @@ module AppContext =
 
     // -------------------------------------------------------------------------
     let tryJoin (leader: Node<IrisNode>) =
-      let raft' = readTVar raftState |> atomically
+      let state = readTVar appState |> atomically
 
       let rec _tryJoin retry node' =
         if retry < max_retry then
           sprintf "Trying to join cluster. [retry: %d] [node: %A]" retry node'
           |> this.Log
 
-          let msg = HandShake(raft'.Node)
+          let msg = HandShake(state.Raft.Node)
           let result =
             withConnection 2000u node' msg
             |> Option.bind RaftMsg.FromBytes
@@ -162,13 +179,13 @@ module AppContext =
 
     // -------------------------------------------------------------------------
     let tryLeave _ =
-      let raft' = readTVar raftState |> atomically
+      let state = readTVar appState |> atomically
 
       let rec _tryLeave retry (node: Node<IrisNode>) =
         sprintf "Trying to join cluster. [retry: %d] [node: %A]" retry node
         |> this.Log
 
-        let msg = HandWaive(raft'.Node)
+        let msg = HandWaive(state.Raft.Node)
         let result : RaftMsg option =
           withConnection 2000u node msg
           |> Option.bind RaftMsg.FromBytes
@@ -192,35 +209,36 @@ module AppContext =
             this.Log "Node unreachable. Aborting."
             exit 1
 
-      if not <| isLeader raft' then
-        match raft'.CurrentLeader with
+      if not <| isLeader state.Raft then
+        match state.Raft.CurrentLeader with
           | Some lid ->
-          match getNode lid raft' with
+          match getNode lid state.Raft with
             | Some node -> _tryLeave max_retry node
             | _ ->
               this.Log "Leader not found. Exiting without saying goodbye."
           | _ ->
             this.Log "Leader not found. Exiting without saying goodbye."
       else
-        let term = currentTerm raft'
-        let entry = JointConsensus(Guid.NewGuid(),0u,term ,[| NodeRemoved raft'.Node |], [||],None)
+        let term = currentTerm state.Raft
+        let entry = JointConsensus(Guid.NewGuid(),0u,term ,[| NodeRemoved state.Raft.Node |], [||],None)
         receiveEntry entry
-        |> evalRaft raft' (this :> IRaftCallbacks<_,_>)
-        |> writeTVar raftState
+        |> evalRaft state.Raft (this :> IRaftCallbacks<_,_>)
+        |> updateRaft state
+        |> writeTVar appState
         |> atomically
         Thread.Sleep(3000)
 
     // -------------------------------------------------------------------------
     let initialise _ =
       stm {
-        let! s = readTVar raftState
+        let! state = readTVar appState
 
         let term = 0u // this likely needs to be adjusted when
                       // loading state from disk
 
-        let entry = JointConsensus(Guid.NewGuid(),0u,term,[| NodeAdded s.Node |], [||],None)
+        let entry = JointConsensus(Guid.NewGuid(),0u,term,[| NodeAdded state.Raft.Node |], [||],None)
 
-        let s' =
+        let newstate =
           raft {
             do! setTermM term
             do! setRequestTimeoutM 500u
@@ -232,16 +250,17 @@ module AppContext =
               do! periodic 1001u
             else
               let leader =
-                { HostName = "<empty>"
-                ; IpAddr = Option.get options.LeaderIp |> parseIp
+                { MemberId = Guid.NewGuid()
+                ; HostName = "<empty>"
+                ; IpAddr = Option.get options.LeaderIp   |> parseIp
                 ; Port   = Option.get options.LeaderPort |> int
                 }
                 |> Node.create (Option.get options.LeaderId)
               tryJoin leader
-            }
-          |> evalRaft s (this :> IRaftCallbacks<_,_>)
+          }
+          |> evalRaft state.Raft (this :> IRaftCallbacks<_,_>)
 
-        do! writeTVar raftState s'
+        do! writeTVar appState (updateRaft state newstate)
       } |> atomically
 
     ////////////////////////////////////
@@ -272,72 +291,76 @@ module AppContext =
       and  set o  = options <- o
 
     member self.Context
-      with get () = context
+      with get () = zmqContext
 
     /// We can *LOOK* at the current state, but *HAVE* to use the Funnel to set
     /// it. This gives us the benefit of linearizabilty of transactions.
     member self.State
-      with get () = readTVar raftState |> atomically
+      with get () = readTVar appState |> atomically
 
     member self.Log msg =
       let state = self.State
-      (self :> IRaftCallbacks<StateMachine,IrisNode>).LogMsg state.Node msg
+      (self :> IRaftCallbacks<StateMachine,IrisNode>).LogMsg state.Raft.Node msg
 
     member self.Append entry =
       stm {
-        let! raft' = readTVar raftState
+        let! state = readTVar appState
         do! raft {
               let! result = receiveEntry entry
               do! periodic 1001u
               return result
             }
-            |> evalRaft raft' (self :> IRaftCallbacks<_,_>)
-            |> writeTVar raftState
+            |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
+            |> updateRaft state
+            |> writeTVar appState 
       } |> atomically
 
     member self.Timeout _ =
       stm {
-        let! raft' = readTVar raftState
+        let! state = readTVar appState
 
         do! raft {
               let! timeout = electionTimeoutM ()
               do! setTimeoutElapsedM timeout
               do! periodic timeout
             }
-            |> evalRaft raft' (self :> IRaftCallbacks<_,_>)
-            |> writeTVar raftState
+            |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
+            |> updateRaft state
+            |> writeTVar appState
+
       } |> atomically
 
     member self.ReceiveVoteRequest sender req =
       stm {
-        let! raft' = readTVar raftState
+        let! state = readTVar appState
 
         let result =
           receiveVoteRequest sender req
-          |> runRaft raft' (self :> IRaftCallbacks<_,_>)
+          |> runRaft state.Raft (self :> IRaftCallbacks<_,_>)
 
         match result with
-          | Right  (resp, state) ->
-            do! writeTVar raftState state
-            return RequestVoteResponse(raft'.Node.Id, resp)
+          | Right  (resp, raft) ->
+            do! writeTVar appState (updateRaft state raft)
+            return RequestVoteResponse(raft.Node.Id, resp)
 
-          | Middle (resp, state) ->
-            do! writeTVar raftState state
-            return RequestVoteResponse(raft'.Node.Id, resp)
+          | Middle (resp, raft) ->
+            do! writeTVar appState (updateRaft state raft)
+            return RequestVoteResponse(raft.Node.Id, resp)
 
-          | Left (err,  state) ->
-            do! writeTVar raftState state
+          | Left (err, raft) ->
+            do! writeTVar appState (updateRaft state raft)
             return ErrorResponse err
 
       } |> atomically
 
     member self.ReceiveVoteResponse sender rep =
       stm {
-        let! raft' = readTVar raftState
+        let! state = readTVar appState
 
         do! receiveVoteResponse sender rep
-            |> evalRaft raft' (self :> IRaftCallbacks<_,_>)
-            |> writeTVar raftState
+            |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
+            |> updateRaft state
+            |> writeTVar appState
 
         return EmptyResponse
       } |> atomically
@@ -345,34 +368,35 @@ module AppContext =
 
     member self.ReceiveAppendEntries sender ae =
       stm {
-        let! raft' = readTVar raftState
+        let! state = readTVar appState
 
         let result =
           receiveAppendEntries (Some sender) ae
-          |> runRaft raft' (self :> IRaftCallbacks<_,_>)
+          |> runRaft state.Raft (self :> IRaftCallbacks<_,_>)
 
         match result with
-          | Right  (resp, state) ->
-            do! writeTVar raftState state
-            return AppendEntriesResponse(raft'.Node.Id, resp)
+          | Right (resp, raft) ->
+            do! writeTVar appState (updateRaft state raft)
+            return AppendEntriesResponse(raft.Node.Id, resp)
 
-          | Middle (resp, state) ->
-            do! writeTVar raftState state
-            return AppendEntriesResponse(raft'.Node.Id, resp)
+          | Middle (resp, raft) ->
+            do! writeTVar appState (updateRaft state raft)
+            return AppendEntriesResponse(raft.Node.Id, resp)
 
-          | Left (err, state) ->
-            do! writeTVar raftState state
+          | Left (err, raft) ->
+            do! writeTVar appState (updateRaft state raft)
             return ErrorResponse err
 
       } |> atomically
 
     member self.ReceiveAppendResponse sender ar =
       stm {
-        let! raft' = readTVar raftState
+        let! state = readTVar appState
 
         do! receiveAppendEntriesResponse sender ar
-            |> evalRaft raft' (self :> IRaftCallbacks<_,_>)
-            |> writeTVar raftState
+            |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
+            |> updateRaft state
+            |> writeTVar appState
 
         return EmptyResponse
       } |> atomically
@@ -380,51 +404,54 @@ module AppContext =
 
     member self.AddNode node =
       stm {
-        let! raft' = readTVar raftState
-        let term = currentTerm raft'
+        let! state = readTVar appState
+
+        let term = currentTerm state.Raft
         let entry = JointConsensus(Guid.NewGuid(),0u,term,[| NodeAdded node |],[||],None)
         let response = receiveEntry entry
-                       |> runRaft raft' (self :> IRaftCallbacks<_,_>)
+                       |> runRaft state.Raft (self :> IRaftCallbacks<_,_>)
 
         match response with
-          | Left(err, r) ->
-            printfn "error %A" err
-            do! writeTVar raftState r
-          | Middle(_, r) ->
-            printfn "<Middle>"
-            do! writeTVar raftState r
-          | Right(resp, r) ->
-            printfn "response %A" resp
-            do! writeTVar raftState r
+          | Right(resp, raft) ->
+            do! writeTVar appState (updateRaft state raft)
+
+          | Middle(_, raft) ->
+            do! writeTVar appState (updateRaft state raft)
+
+          | Left(err, raft) ->
+            do! writeTVar appState (updateRaft state raft)
 
       } |> atomically
 
     member self.RemoveNode node =
       stm {
-        let! raft' = readTVar raftState
-        let term = currentTerm raft'
+        let! state = readTVar appState
+
+        let term = currentTerm state.Raft
         let entry = JointConsensus(Guid.NewGuid(),0u,term,[| NodeRemoved node |],[||],None)
         do! receiveEntry entry
-            |> evalRaft raft' (self :> IRaftCallbacks<_,_>)
-            |> writeTVar raftState
+            |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
+            |> updateRaft state
+            |> writeTVar appState
       } |> atomically
 
     member self.InstallSnapshot node snapshot =
       stm {
-        let! raft' = readTVar raftState
+        let! state = readTVar appState
         // do! createSnapshot ()
         //     |> evalRaft raft' (self :> IRaftCallbacks<_,_>)
         //     |> writeTVar raftState
-        return InstallSnapshotResponse (raft'.Node.Id, { Term = raft'.CurrentTerm })
+        return InstallSnapshotResponse (state.Raft.Node.Id, { Term = state.Raft.CurrentTerm })
       } |> atomically
 
     member self.Periodic elapsed =
       stm {
-        let! raft' = readTVar raftState
+        let! state = readTVar appState
 
         do! periodic elapsed
-            |> evalRaft raft' (self :> IRaftCallbacks<_,_>)
-            |> writeTVar raftState
+            |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
+            |> updateRaft state
+            |> writeTVar appState
 
       } |> atomically
 
@@ -437,7 +464,7 @@ module AppContext =
 
     interface IDisposable with
       member self.Dispose() =
-        dispose context
+        dispose zmqContext
 
     //  ____        __ _     ___       _             __
     // |  _ \ __ _ / _| |_  |_ _|_ __ | |_ ___ _ __ / _| __ _  ___ ___
@@ -448,23 +475,23 @@ module AppContext =
     interface IRaftCallbacks<StateMachine,IrisNode> with
       member self.SendRequestVote node req  =
         let state = self.State
-        (node, RequestVote(state.Node.Id,req))
+        (node, RequestVote(state.Raft.Node.Id,req))
         |> requestWorker.Post
 
       member self.SendAppendEntries node ae =
         let state = self.State
-        (node, AppendEntries(state.Node.Id, ae))
+        (node, AppendEntries(state.Raft.Node.Id, ae))
         |> requestWorker.Post
 
       member self.SendInstallSnapshot node is =
         let state = self.State
-        (node, InstallSnapshot(state.Node.Id, is))
+        (node, InstallSnapshot(state.Raft.Node.Id, is))
         |> requestWorker.Post
 
       member self.PrepareSnapshot raft =
         stm {
-          let! s = readTVar appState
-          let snapshot = createSnapshot (DataSnapshot "snip snap snapshot") raft
+          let! state = readTVar appState
+          let snapshot = createSnapshot (DataSnapshot "snip snap snapshot") state.Raft
           return snapshot
         } |> atomically
 

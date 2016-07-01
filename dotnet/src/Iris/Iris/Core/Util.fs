@@ -104,7 +104,9 @@ module Utils =
   // | |_| | |_| || || |_| |
   //  \____|\___/|___|____/
 
-  let mkGuid () = System.Guid.NewGuid().ToString()
+  let mkGuid () =
+    let guid = System.Guid.NewGuid()
+    string guid
 
   ////////////////////////////////////////
   //  _   _ _   _ _                     //

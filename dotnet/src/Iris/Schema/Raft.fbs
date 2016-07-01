@@ -1,6 +1,7 @@
 namespace Iris.Serialization.Raft;
 
 table IrisNodeFB {
+      MemberId: string;
       HostName: string;
       IpAddr:   string;
       Port:     int;

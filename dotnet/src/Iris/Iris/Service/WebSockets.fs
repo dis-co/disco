@@ -11,7 +11,7 @@ module WebSockets =
   exception ConnectionException
 
   let private makeSession (socket : IWebSocketConnection) =
-    socket.ConnectionInfo.Id.ToString()
+    string socket.ConnectionInfo.Id
 
   (*--------------------------------------------------------------------------*
     not ever called for some reaon

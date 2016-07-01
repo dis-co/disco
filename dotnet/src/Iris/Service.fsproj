@@ -25,6 +25,7 @@
     <Prefer32Bit>false</Prefer32Bit>
     <Optimize>false</Optimize>
     <Tailcalls>false</Tailcalls>
+    <WarningLevel>5</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release\Iris</OutputPath>
@@ -32,6 +33,8 @@
     <Externalconsole>true</Externalconsole>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
+    <WarningLevel>5</WarningLevel>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">
@@ -86,6 +89,7 @@
     <Compile Include="Iris\Core\Patch.fs" />
     <Compile Include="Iris\Core\Cue.fs" />
     <Compile Include="Iris\Core\CueList.fs" />
+    <Compile Include="Iris\Core\IpAddress.fs" />
     <Compile Include="Iris\Core\Message.fs" />
     <Compile Include="Iris\Core\Region.fs" />
     <Compile Include="Iris\Core\Signal.fs" />
@@ -98,21 +102,15 @@
     <Compile Include="Iris\Core\Project.fs" />
     <Compile Include="Iris\Core\Uri.fs" />
     <Compile Include="Iris\Service\GitDaemon.fs" />
-    <Compile Include="Iris\Service\Member.fs" />
-    <Compile Include="Iris\Service\AppState.fs" />
-    <!-- <Compile Include="Iris.Service\Groups\VsyncGroup.fs" /> -->
-    <!-- <Compile Include="Iris.Service\Groups\PinGroup.fs" /> -->
-    <!-- <Compile Include="Iris.Service\Groups\CueGroup.fs" /> -->
-    <!-- <Compile Include="Iris.Service\Groups\ProjectGroup.fs" /> -->
-    <!-- <Compile Include="Iris.Service\Groups\IrisGroup.fs" /> -->
-    <!-- <Compile Include="Iris.Service\Groups\ProjectProcess.fs" /> -->
-    <!-- <Compile Include="Iris.Service\Groups\ControlGroup.fs" /> -->
+
+    <Compile Include="Iris\Core\BrowserSession.fs" />
     <Compile Include="Iris\Core\IrisNode.fs" />
     <Compile Include="Iris\Core\StateMachine.fs" />
     <Compile Include="Iris\Core\Serialization.fs" />
     <Compile Include="Iris\Core\Raft.fs" />
+    <Compile Include="Iris\Service\AppState.fs" />
+
     <Compile Include="Iris\Service\RaftContext.fs" />
-    <Compile Include="Iris\Service\IrisService.fs" />
     <Compile Include="Iris\Service\AssetServer.fs" />
     <Compile Include="Iris\Service\WebSockets.fs" />
     <Compile Include="Iris\Service\Main.fs" />

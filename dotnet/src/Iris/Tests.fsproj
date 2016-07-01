@@ -22,7 +22,7 @@
     <Tailcalls>false</Tailcalls>
     <OutputPath>bin\Debug\Tests</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <WarningLevel>3</WarningLevel>
+    <WarningLevel>5</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -118,6 +118,9 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <UsingTask TaskName="CopyRuntimeDependencies" AssemblyFile="..\..\.paket\paket.exe" />
+  <Target Name="AfterBuild" Condition="Exists('..\..\.paket\paket.exe')">
+    <CopyRuntimeDependencies OutputPath="$(OutputPath)" ProjectsWithRuntimeLibs="System.Collections;System.Diagnostics.Contracts;System.Diagnostics.Debug;System.Globalization;System.IO;System.Linq.Expressions;System.Private.Uri;System.Reflection;System.Reflection.Extensions;System.Reflection.Primitives;System.Reflection.TypeExtensions;System.Resources.ResourceManager;System.Runtime;System.Runtime.Extensions;System.Text.Encoding;System.Text.Encoding.Extensions;System.Threading;System.Threading.Tasks" />
+  </Target>
   <Choose>
     <When Condition="($(TargetFrameworkIdentifier) == '.NETStandard' And ($(TargetFrameworkVersion) == 'v1.0' Or $(TargetFrameworkVersion) == 'v1.1' Or $(TargetFrameworkVersion) == 'v1.2' Or $(TargetFrameworkVersion) == 'v1.3' Or $(TargetFrameworkVersion) == 'v1.4' Or $(TargetFrameworkVersion) == 'v1.5')) Or ($(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2'))">
       <PropertyGroup>
@@ -143,9 +146,6 @@
     </When>
   </Choose>
   <Import Project="..\..\packages\xunit.core\build\$(__paket__xunit_core_props).props" Condition="Exists('..\..\packages\xunit.core\build\$(__paket__xunit_core_props).props')" Label="Paket" />
-  <Target Name="AfterBuild" >
-    <CopyRuntimeDependencies OutputPath="$(OutputPath)" ProjectsWithRuntimeLibs="System.Collections;System.Diagnostics.Contracts;System.Diagnostics.Debug;System.Globalization;System.IO;System.Linq.Expressions;System.Private.Uri;System.Reflection;System.Reflection.Extensions;System.Reflection.Primitives;System.Reflection.TypeExtensions;System.Resources.ResourceManager;System.Runtime;System.Runtime.Extensions;System.Text.Encoding;System.Text.Encoding.Extensions;System.Threading;System.Threading.Tasks" />
-  </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

@@ -138,13 +138,14 @@ type Project(repo, data) =
       | _ -> ()
 
   static member private Build(pid : string, name : string) : Project =
+    let now = System.DateTime.Now
     let data = new ProjectData()
     data.Id        <- Guid.Parse(pid)
     data.Name      <- name
     data.Path      <- None
     data.Copyright <- None
     data.LastSaved <- None
-    data.Year      <- System.DateTime.Now.Year
+    data.Year      <- now.Year
     data.Config    <- Config.Create(name)
     new Project(data)
 
@@ -229,7 +230,7 @@ type Project(repo, data) =
 
   member private self.SaveMetadata () =
     // Project metadata
-    IrisConfig.Project.Metadata.Id   <- self.Id.ToString()
+    IrisConfig.Project.Metadata.Id   <- string self.Id
     IrisConfig.Project.Metadata.Name <- self.Name
 
     if Option.isSome self.Author
@@ -241,7 +242,7 @@ type Project(repo, data) =
     IrisConfig.Project.Metadata.Year <- self.Year
 
     self.LastSaved <- Some(DateTime.Now)
-    IrisConfig.Project.Metadata.LastSaved <- DateTime.Now.ToString()
+    IrisConfig.Project.Metadata.LastSaved <- string DateTime.Now
 
   //  ____                   __     ____     ____     ____     __
   // / ___|  __ ___   _____  \ \   / /\ \   / /\ \   / /\ \   / /
@@ -316,14 +317,14 @@ type Project(repo, data) =
     IrisConfig.Project.ViewPorts.Clear()
     for vp in self.Config.ViewPorts do
       let item = new ConfigFile.Project_Type.ViewPorts_Item_Type()
-      item.Id <- vp.Id
-      item.Name <- vp.Name
-      item.Size <- vp.Size.ToString()
-      item.Position <- vp.Position.ToString()
-      item.Overlap <- vp.Overlap.ToString()
-      item.OutputPosition <- vp.OutputPosition.ToString()
-      item.OutputSize <- vp.OutputSize.ToString()
-      item.Description <- vp.Description
+      item.Id             <- vp.Id
+      item.Name           <- vp.Name
+      item.Size           <- string vp.Size
+      item.Position       <- string vp.Position
+      item.Overlap        <- string vp.Overlap
+      item.OutputPosition <- string vp.OutputPosition
+      item.OutputSize     <- string vp.OutputSize
+      item.Description    <- vp.Description
       IrisConfig.Project.ViewPorts.Add(item)
 
   //  ____                    ____  _           _

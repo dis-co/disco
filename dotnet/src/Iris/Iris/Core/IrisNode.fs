@@ -1,31 +1,36 @@
 namespace Iris.Core
 
-open System.Net
+open System
 open FlatBuffers
 open Iris.Serialization.Raft
 
 type IrisNode =
-  { HostName : string
-  ; IpAddr   : IPAddress
+  { MemberId : Guid
+  ; HostName : string
+  ; IpAddr   : IpAddress
   ; Port     : int
   }
 
   static member Create name host port =
-    { HostName = name
-    ; IpAddr = IPAddress.Parse host
-    ; Port = port
+    { MemberId = Guid.NewGuid()
+    ; HostName = name
+    ; IpAddr   = IPv4Address host
+    ; Port     = port
     }
 
   override self.ToString() =
-    sprintf "[hostname: %s] [Ip: %A] [port: %A]"
+    sprintf "[id: %A] [hostname: %s] [Ip: %A] [port: %A]"
+      self.MemberId
       self.HostName
       self.IpAddr
       self.Port
 
   member self.ToOffset (builder: FlatBufferBuilder) =
+    let id = string self.MemberId |> builder.CreateString
     let hostname = self.HostName |> builder.CreateString
     let ip = self.IpAddr.ToString() |> builder.CreateString
     IrisNodeFB.StartIrisNodeFB(builder)
+    IrisNodeFB.AddMemberId(builder, id)
     IrisNodeFB.AddHostName(builder, hostname)
     IrisNodeFB.AddIpAddr(builder, ip)
     IrisNodeFB.AddPort(builder, self.Port)
@@ -33,6 +38,7 @@ type IrisNode =
 
 
   static member FromFB (fb: IrisNodeFB) =
-    { HostName = fb.HostName
-    ; IpAddr   = IPAddress.Parse fb.IpAddr
+    { MemberId = Guid.Parse fb.MemberId
+    ; HostName = fb.HostName
+    ; IpAddr   = IPv4Address fb.IpAddr
     ; Port     = fb.Port }

@@ -45,6 +45,13 @@ type Precision  = int    option
 type MaxChars   = int
 type FilePath   = string
 type Property   = (string * string)
+type UserName   = string
+type UserAgent  = string
+
+type ClientLog = string
+type SessionId = string
+type Session   = string
+type Error     = string
 
 type Coordinate = Coordinate of (int * int)
 type Rect       = Rect       of (int * int)

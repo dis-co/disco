@@ -9,8 +9,10 @@ namespace Iris.Core
 [<AutoOpen>]
 module Serialization =
 
+  [<NoComparison;NoEquality>]
   type Encoder<'t> = Encoder of ('t -> byte array)
 
+  [<NoComparison;NoEquality>]
   type Decoder<'t> = Decoder of (byte array -> 't option)
 
   let withEncoder (coder: Encoder<'t>) (value: 't) : byte array =
@@ -18,8 +20,6 @@ module Serialization =
 
   let withDecoder (coder: Decoder<'t>) (value: byte array) : 't option =
     match coder with | Decoder f -> f value
-
-
 
 
 //  _____      _                 _
