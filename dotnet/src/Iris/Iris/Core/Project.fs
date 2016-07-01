@@ -16,7 +16,7 @@ open LibGit2Sharp
 //               |__/
 
 type ProjectData() =
-  [<DefaultValue>] val mutable Id        : Guid
+  [<DefaultValue>] val mutable Id        : ProjectId
   [<DefaultValue>] val mutable Name      : string
   [<DefaultValue>] val mutable Path      : FilePath option
   [<DefaultValue>] val mutable LastSaved : DateTime option
@@ -140,7 +140,7 @@ type Project(repo, data) =
   static member private Build(pid : string, name : string) : Project =
     let now = System.DateTime.Now
     let data = new ProjectData()
-    data.Id        <- Guid.Parse(pid)
+    data.Id        <- Id.Parse(pid)
     data.Name      <- name
     data.Path      <- None
     data.Copyright <- None
@@ -281,7 +281,7 @@ type Project(repo, data) =
 
     IrisConfig.Project.Timing.Servers.Clear()
     for srv in self.Config.TimingConfig.Servers do
-      IrisConfig.Project.Timing.Servers.Add(srv)
+      IrisConfig.Project.Timing.Servers.Add(string srv)
 
     IrisConfig.Project.Timing.TCPPort <- int (self.Config.TimingConfig.TCPPort)
     IrisConfig.Project.Timing.UDPPort <- int (self.Config.TimingConfig.UDPPort)
@@ -317,7 +317,7 @@ type Project(repo, data) =
     IrisConfig.Project.ViewPorts.Clear()
     for vp in self.Config.ViewPorts do
       let item = new ConfigFile.Project_Type.ViewPorts_Item_Type()
-      item.Id             <- vp.Id
+      item.Id             <- string vp.Id
       item.Name           <- vp.Name
       item.Size           <- string vp.Size
       item.Position       <- string vp.Position
@@ -339,15 +339,16 @@ type Project(repo, data) =
     IrisConfig.Project.Displays.Clear()
     for dp in self.Config.Displays do
       let item = new ConfigFile.Project_Type.Displays_Item_Type()
-      item.Id <- dp.Id
+      item.Id <- string dp.Id
       item.Name <- dp.Name
       item.Size <- dp.Size.ToString()
 
-      item.RegionMap.SrcViewportId <- dp.RegionMap.SrcViewportId
+      item.RegionMap.SrcViewportId <- string dp.RegionMap.SrcViewportId
       item.RegionMap.Regions.Clear()
+
       for region in dp.RegionMap.Regions do
         let r = new ConfigFile.Project_Type.Displays_Item_Type.RegionMap_Type.Regions_Item_Type()
-        r.Id <- region.Id
+        r.Id <- string region.Id
         r.Name <- region.Name
         r.OutputPosition <- region.OutputPosition.ToString()
         r.OutputSize <- region.OutputSize.ToString()
@@ -356,6 +357,7 @@ type Project(repo, data) =
         item.RegionMap.Regions.Add(r)
 
       item.Signals.Clear()
+
       for signal in dp.Signals do
         let s = new ConfigFile.Project_Type.Displays_Item_Type.Signals_Item_Type()
         s.Position <- signal.Position.ToString()
@@ -375,15 +377,17 @@ type Project(repo, data) =
     IrisConfig.Project.Tasks.Clear()
     for task in self.Config.Tasks do
       let t = new ConfigFile.Project_Type.Tasks_Item_Type()
-      t.Id <- task.Id
+      t.Id <- string task.Id
       t.AudioStream <- task.AudioStream
       t.Description <- task.Description
-      t.DisplayId   <- task.DisplayId
+      t.DisplayId   <- string task.DisplayId
+
       for arg in task.Arguments do
         let a = new ConfigFile.Project_Type.Tasks_Item_Type.Arguments_Item_Type()
         a.Key <- fst arg
         a.Value <- snd arg
         t.Arguments.Add(a)
+
       IrisConfig.Project.Tasks.Add(t)
 
   //  ____                     ____ _           _
@@ -399,10 +403,10 @@ type Project(repo, data) =
 
       for node in self.Config.ClusterConfig.Nodes do
         let n = new ConfigFile.Project_Type.Cluster_Type.Nodes_Item_Type()
-        n.Id       <- node.Id
-        n.Ip       <- node.Ip
+        n.Id       <- string node.Id
+        n.Ip       <- string node.Ip
         n.HostName <- node.HostName
-        n.Task     <- node.Task
+        n.Task     <- string node.Task
         IrisConfig.Project.Cluster.Nodes.Add(n)
 
       for group in self.Config.ClusterConfig.Groups do
@@ -410,7 +414,7 @@ type Project(repo, data) =
         g.Name <- group.Name
 
         for mem in group.Members do
-          g.Members.Add(mem)
+          g.Members.Add(string mem)
 
         IrisConfig.Project.Cluster.Groups.Add(g)
 

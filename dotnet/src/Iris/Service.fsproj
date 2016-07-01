@@ -82,14 +82,15 @@
   </Target>
   <ItemGroup>
     <Compile Include="AssemblyInfo\ServiceInfo.fs" />
-    <Compile Include="Iris\Core\Util.fs" />
+    <Compile Include="Iris\Core\Guid.fs" />
+    <Compile Include="Iris\Core\IpAddress.fs" />
     <Compile Include="Iris\Core\Either.fs" />
     <Compile Include="Iris\Core\Aliases.fs" />
+    <Compile Include="Iris\Core\Util.fs" />
     <Compile Include="Iris\Core\IOBox.fs" />
     <Compile Include="Iris\Core\Patch.fs" />
     <Compile Include="Iris\Core\Cue.fs" />
     <Compile Include="Iris\Core\CueList.fs" />
-    <Compile Include="Iris\Core\IpAddress.fs" />
     <Compile Include="Iris\Core\Message.fs" />
     <Compile Include="Iris\Core\Region.fs" />
     <Compile Include="Iris\Core\Signal.fs" />

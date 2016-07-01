@@ -19,20 +19,16 @@ module Replacements =
   let sizeof<'t> : int = failwith "ONLY IN JS"
 #endif
 
-
 //     _    _ _
 //    / \  | (_) __ _ ___  ___  ___
 //   / _ \ | | |/ _` / __|/ _ \/ __|
 //  / ___ \| | | (_| \__ \  __/\__ \
 // /_/   \_\_|_|\__,_|___/\___||___/
 
-type Id         = string
-type IP         = string
+type Id         = Guid
 type Index      = uint32
 type Name       = string
 type Tag        = string
-type IrisId     = string
-type IrisIP     = string
 type NodePath   = string
 type OSCAddress = string
 type Version    = string
@@ -49,7 +45,9 @@ type UserName   = string
 type UserAgent  = string
 
 type ClientLog = string
-type SessionId = string
+type ProjectId = Guid
+type MemberId  = Guid
+type SessionId = Guid
 type Session   = string
 type Error     = string
 

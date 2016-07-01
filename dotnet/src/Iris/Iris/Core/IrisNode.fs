@@ -8,15 +8,13 @@ type IrisNode =
   { MemberId : Guid
   ; HostName : string
   ; IpAddr   : IpAddress
-  ; Port     : int
-  }
+  ; Port     : int }
 
   static member Create name host port =
     { MemberId = Guid.NewGuid()
     ; HostName = name
     ; IpAddr   = IPv4Address host
-    ; Port     = port
-    }
+    ; Port     = port }
 
   override self.ToString() =
     sprintf "[id: %A] [hostname: %s] [Ip: %A] [port: %A]"
@@ -27,14 +25,15 @@ type IrisNode =
 
   member self.ToOffset (builder: FlatBufferBuilder) =
     let id = string self.MemberId |> builder.CreateString
-    let hostname = self.HostName |> builder.CreateString
-    let ip = self.IpAddr.ToString() |> builder.CreateString
-    IrisNodeFB.StartIrisNodeFB(builder)
-    IrisNodeFB.AddMemberId(builder, id)
-    IrisNodeFB.AddHostName(builder, hostname)
-    IrisNodeFB.AddIpAddr(builder, ip)
-    IrisNodeFB.AddPort(builder, self.Port)
-    IrisNodeFB.EndIrisNodeFB(builder)
+    let ip = string self.IpAddr   |> builder.CreateString
+    let hn = self.HostName        |> builder.CreateString
+
+    IrisNodeFB.StartIrisNodeFB (builder)
+    IrisNodeFB.AddMemberId     (builder, id)
+    IrisNodeFB.AddHostName     (builder, hn)
+    IrisNodeFB.AddIpAddr       (builder, ip)
+    IrisNodeFB.AddPort         (builder, self.Port)
+    IrisNodeFB.EndIrisNodeFB   (builder)
 
 
   static member FromFB (fb: IrisNodeFB) =

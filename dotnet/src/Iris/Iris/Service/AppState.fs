@@ -1,6 +1,6 @@
 namespace Iris.Service
 
-open System
+open fszmq
 open LibGit2Sharp
 open Iris.Core.Utils
 open Iris.Core
@@ -16,7 +16,8 @@ open Pallet.Core
 type AppState =
   { Clients:  IrisNode       list
   ; Sessions: BrowserSession list
-  ; Projects: Map<Guid, Project>
+  ; Projects: Map<ProjectId, Project>
+  ; Peers:    Map<MemberId, Socket>
   ; Raft:     Raft
   }
 

@@ -1,7 +1,6 @@
 namespace Iris.Service
 
 open System
-open System.Net
 open System.Threading
 
 open Iris.Core
@@ -21,17 +20,10 @@ module AppContext =
 
   /// validates an IP address by parsing it
   let parseIp str =
-    try
-      let addr = IPAddress.Parse str
-      match addr.AddressFamily with
-        | Sockets.AddressFamily.InterNetwork   -> IPv4Address str
-        | Sockets.AddressFamily.InterNetworkV6 -> IPv6Address str
-        | _ ->
-          printfn "Address family unsupported. Use IPv4 or IPv6."
-          exit 1
-    with
-      | ex ->
-        printfn "Error parsing IP address: %s" ex.Message
+    match IpAddress.TryParse str with
+      | Some ip -> ip
+      | _ ->
+        printfn "IP address could not be parsed or address family unsupported."
         exit 1
 
   let getHostName () =
@@ -53,6 +45,7 @@ module AppContext =
     { Clients  = []
     ; Sessions = []
     ; Projects = Map.empty
+    ; Peers    = Map.empty
     ; Raft     = mkRaft options
     }
 

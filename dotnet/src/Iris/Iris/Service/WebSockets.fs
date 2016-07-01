@@ -11,7 +11,7 @@ module WebSockets =
   exception ConnectionException
 
   let private makeSession (socket : IWebSocketConnection) =
-    string socket.ConnectionInfo.Id
+    Id.Parse <| string socket.ConnectionInfo.Id
 
   (*--------------------------------------------------------------------------*
     not ever called for some reaon
@@ -21,12 +21,12 @@ module WebSockets =
 
   (*--------------------------------------------------------------------------*)
   let private closeHandler (session : SessionId) : Action =
-    new Action(fun _ -> printfn "%s closed" session)
+    new Action(fun _ -> printfn "%A closed" session)
 
   (*--------------------------------------------------------------------------*)
   let private msgHandler (session : SessionId) : Action<string> =
     let handler str =
-      printfn "%s said: %s" session str
+      printfn "%A said: %s" session str
     new Action<string>(handler)
 
   (*--------------------------------------------------------------------------*)

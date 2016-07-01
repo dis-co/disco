@@ -1,9 +1,6 @@
 namespace Iris.Core
 
 
-open System
-
-
 //  ____        __ _    ____             __ _
 // |  _ \ __ _ / _| |_ / ___|___  _ __  / _(_) __ _
 // | |_) / _` | |_| __| |   / _ \| '_ \| |_| |/ _` |
@@ -12,8 +9,8 @@ open System
 //                                            |___/
 
 type RaftConfig =
-  { RequestTimeout : uint32
-  ; TempDir : string
+  { RequestTimeout: uint32
+  ; TempDir:        string
   }
   with
     static member Default =
@@ -66,7 +63,7 @@ type PortConfig =
 type TimingConfig =
   { Framebase : uint32
   ; Input     : string
-  ; Servers   : IP list
+  ; Servers   : IpAddress list
   ; UDPPort   : uint32
   ; TCPPort   : uint32
   }
@@ -102,7 +99,7 @@ type AudioConfig =
 type NodeConfig =
   { Id       : Id
   ; HostName : Name
-  ; Ip       : IP
+  ; Ip       : IpAddress
   ; Task     : Id
   }
   with
@@ -134,7 +131,7 @@ type HostGroup =
                 Name: %A
                 Members: %A"
               self.Name
-              (List.fold (fun m s -> m + " " + s) "" self.Members)
+              (List.fold (fun m s -> m + " " + string s) "" self.Members)
 
 //   ____ _           _
 //  / ___| |_   _ ___| |_ ___ _ __
@@ -289,10 +286,10 @@ type Config () =
   //
   /// Parse Timing Configuration Section
   static member ParseTiming (cnf : ConfigFile) : TimingConfig =
-    let servers : string list ref = ref []
+    let servers : IpAddress list ref = ref []
 
     for server in cnf.Project.Timing.Servers do
-      servers := (server :: !servers)
+      servers := (IpAddress.Parse server :: !servers)
 
     { Framebase = uint32 cnf.Project.Timing.Framebase
     ; Input     = cnf.Project.Timing.Input
@@ -324,7 +321,7 @@ type Config () =
 
     for vp in cnf.Project.ViewPorts do
       let viewport' =
-        { Id             = vp.Id
+        { Id             = Id.Parse vp.Id
         ; Name           = vp.Name
         ; Position       = Config.ParseCoordinate vp.Position
         ; Size           = Config.ParseRect       vp.Size
@@ -361,7 +358,7 @@ type Config () =
 
       for region in display.RegionMap.Regions do
         let region' =
-          { Id             = region.Id
+          { Id             = Id.Parse region.Id
           ; Name           = region.Name
           ; SrcPosition    = Config.ParseCoordinate region.SrcPosition
           ; SrcSize        = Config.ParseRect region.SrcSize
@@ -371,12 +368,12 @@ type Config () =
         regions := (region' :: !regions)
 
       let display' =
-        { Id        = display.Id
+        { Id        = Id.Parse display.Id
         ; Name      = display.Name
         ; Size      = Config.ParseRect display.Size
         ; Signals   = List.reverse !signals
         ; RegionMap =
-          { SrcViewportId = display.RegionMap.SrcViewportId
+          { SrcViewportId = Id.Parse display.RegionMap.SrcViewportId
           ; Regions       = List.reverse !regions }
         }
       displays := (display' :: !displays)
@@ -401,9 +398,9 @@ type Config () =
         then arguments := ((argument.Key, argument.Value) :: !arguments)
 
       let task' =
-        { Id          = task.Id
+        { Id          = Id.Parse task.Id
         ; Description = task.Description
-        ; DisplayId   = task.DisplayId
+        ; DisplayId   = Id.Parse task.DisplayId
         ; AudioStream = task.AudioStream
         ; Arguments   = !arguments
         }
@@ -424,10 +421,10 @@ type Config () =
 
     for node in cfg.Project.Cluster.Nodes do
       let node' =
-        { Id       = node.Id
+        { Id       = Id.Parse node.Id
         ; HostName = node.HostName
-        ; Ip       = node.Ip
-        ; Task     = node.Task
+        ; Ip       = IpAddress.Parse node.Ip
+        ; Task     = Id.Parse node.Task
         }
       nodes := (node' :: !nodes)
 
@@ -438,7 +435,7 @@ type Config () =
 
         for mid in group.Members do
           if mid.Length > 0
-          then ids := (mid :: !ids)
+          then ids := (Id.Parse mid :: !ids)
 
         let group' =
           { Name    = group.Name

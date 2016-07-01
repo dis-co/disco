@@ -1,7 +1,7 @@
 namespace Iris.Core
 
 type Patch =
-  { Id      : IrisId
+  { Id      : Id
   ; Name    : Name
   ; IOBoxes : IOBox array
   }
@@ -12,7 +12,7 @@ type Patch =
       | i when i > -1 -> true
       | _             -> false
   
-  static member FindIOBox (patches : Patch array) (id : string) : IOBox option =
+  static member FindIOBox (patches : Patch array) (id : Id) : IOBox option =
     let folder (m : IOBox option) (p : Patch) =
       match m with
         | Some(iobox) -> Some(iobox)
