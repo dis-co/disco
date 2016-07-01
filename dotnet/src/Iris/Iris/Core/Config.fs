@@ -1,6 +1,5 @@
 namespace Iris.Core
 
-
 //  ____        __ _    ____             __ _
 // |  _ \ __ _ / _| |_ / ___|___  _ __  / _(_) __ _
 // | |_) / _` | |_| __| |   / _ \| '_ \| |_| |/ _` |
@@ -154,8 +153,6 @@ type Cluster =
               self.Nodes
               self.Groups
 
-
-
 //   ____             __ _
 //  / ___|___  _ __  / _(_) __ _
 // | |   / _ \| '_ \| |_| |/ _` |
@@ -163,39 +160,41 @@ type Cluster =
 //  \____\___/|_| |_|_| |_|\__, |
 //                         |___/
 
-type Config () =
+type Config =
+  { AudioConfig    : AudioConfig
+  ; VvvvConfig     : VvvvConfig
+  ; RaftConfig     : RaftConfig
+  ; TimingConfig   : TimingConfig
+  ; PortConfig     : PortConfig
+  ; ClusterConfig  : Cluster
+  ; ViewPorts      : ViewPort list
+  ; Displays       : Display  list
+  ; Tasks          : Task     list }
 
-  [<DefaultValue>] val mutable AudioConfig    : AudioConfig
-  [<DefaultValue>] val mutable VvvvConfig     : VvvvConfig
-  [<DefaultValue>] val mutable RaftConfig     : RaftConfig
-  [<DefaultValue>] val mutable TimingConfig   : TimingConfig
-  [<DefaultValue>] val mutable PortConfig     : PortConfig
-  [<DefaultValue>] val mutable ClusterConfig  : Cluster
-  [<DefaultValue>] val mutable ViewPorts      : ViewPort list
-  [<DefaultValue>] val mutable Displays       : Display  list
-  [<DefaultValue>] val mutable Tasks          : Task     list
+//  _   _      _
+// | | | | ___| |_ __   ___ _ __ ___
+// | |_| |/ _ \ | '_ \ / _ \ '__/ __|
+// |  _  |  __/ | |_) |  __/ |  \__ \
+// |_| |_|\___|_| .__/ \___|_|  |___/
+//              |_|
 
-  //  _   _      _
-  // | | | | ___| |_ __   ___ _ __ ___
-  // | |_| |/ _ \ | '_ \ / _ \ '__/ __|
-  // |  _  |  __/ | |_) |  __/ |  \__ \
-  // |_| |_|\___|_| .__/ \___|_|  |___/
-  //              |_|
+[<AutoOpen>]
+module Configuration =
 
-  static member ParseTuple (s : string) : (int * int) =
+  let private parseTuple (s : string) : (int * int) =
     let nonEmpty (s : string) : bool = s.Length > 0
     let parsed =
       s.Split([| '('; ','; ' '; ')' |])
       |> Array.filter nonEmpty
     (int parsed.[0], int parsed.[1])
 
-  static member ParseRect (str : string) : Rect =
-    Config.ParseTuple str |> Rect
+  let private parseRect (str : string) : Rect =
+    parseTuple str |> Rect
 
-  static member ParseCoordinate (str : string) : Coordinate =
-    Config.ParseTuple str |> Coordinate
+  let private parseCoordinate (str : string) : Coordinate =
+    parseTuple str |> Coordinate
 
-  static member ParseStringProp (str : string) : string option =
+  let parseStringProp (str : string) : string option =
     if str.Length > 0 then Some(str) else None
 
   //      _             _ _
@@ -205,7 +204,7 @@ type Config () =
   //  /_/   \_\__,_|\__,_|_|\___/
   //
   /// Parse Audio Configuration Section
-  static member ParseAudio (cfg : ConfigFile)  : AudioConfig =
+  let private parseAudio (cfg : ConfigFile)  : AudioConfig =
     { SampleRate = uint32 cfg.Project.Audio.SampleRate }
 
   //  __     __
@@ -215,7 +214,7 @@ type Config () =
   //     \_/    \_/    \_/    \_/
   //
   /// Parse VVvV configuration section
-  static member ParseVvvv (cfg : ConfigFile) : VvvvConfig =
+  let private parseVvvv (cfg : ConfigFile) : VvvvConfig =
     let ctoe (i : ConfigFile.Project_Type.VVVV_Type.Executables_Item_Type) =
       { Executable = i.Path
       ; Version    = i.Version
@@ -246,7 +245,7 @@ type Config () =
   // |_| \_\__,_|_|  \__|
 
   /// Parse Vsync configuration section
-  static member ParseRaft (cfg : ConfigFile) : RaftConfig =
+  let private parseRaft (cfg : ConfigFile) : RaftConfig =
     // let eng = cfg.Project.Engine
 
     let ifaces : string list option ref = ref None
@@ -285,7 +284,7 @@ type Config () =
   //                             |___/
   //
   /// Parse Timing Configuration Section
-  static member ParseTiming (cnf : ConfigFile) : TimingConfig =
+  let private parseTiming (cnf : ConfigFile) : TimingConfig =
     let servers : IpAddress list ref = ref []
 
     for server in cnf.Project.Timing.Servers do
@@ -304,7 +303,7 @@ type Config () =
   //  |_|   \___/|_|   \__|
   //
   /// Parse Port Configuration Section
-  static member ParsePort (cnf : ConfigFile) : PortConfig =
+  let private parsePort (cnf : ConfigFile) : PortConfig =
     { WebSocket = uint32 cnf.Project.Ports.WebSocket
     ; UDPCue    = uint32 cnf.Project.Ports.UDPCues
     ; Iris      = uint32 cnf.Project.Ports.IrisService }
@@ -316,18 +315,18 @@ type Config () =
   //     \_/  |_|\___| \_/\_/ |_|   \___/|_|   \__|
   //
   /// Parse ViewPort Configuration Section
-  static member ParseViewports (cnf : ConfigFile) : ViewPort list =
+  let private parseViewports (cnf : ConfigFile) : ViewPort list =
     let vports : ViewPort list ref = ref []
 
     for vp in cnf.Project.ViewPorts do
       let viewport' =
         { Id             = Id.Parse vp.Id
         ; Name           = vp.Name
-        ; Position       = Config.ParseCoordinate vp.Position
-        ; Size           = Config.ParseRect       vp.Size
-        ; OutputPosition = Config.ParseCoordinate vp.OutputPosition
-        ; OutputSize     = Config.ParseRect       vp.OutputSize
-        ; Overlap        = Config.ParseRect       vp.Overlap
+        ; Position       = parseCoordinate vp.Position
+        ; Size           = parseRect       vp.Size
+        ; OutputPosition = parseCoordinate vp.OutputPosition
+        ; OutputSize     = parseRect       vp.OutputSize
+        ; Overlap        = parseRect       vp.Overlap
         ; Description    = vp.Description }
 
       vports := (viewport' :: !vports)
@@ -341,7 +340,7 @@ type Config () =
   //  |____/|_|___/ .__/|_|\__,_|\__, |___/
   //              |_|            |___/
   /// Parse Displays Configuration Section
-  static member ParseDisplays (cnf : ConfigFile) : Display list =
+  let private parseDisplays (cnf : ConfigFile) : Display list =
     let displays : Display list ref = ref []
 
     for display in cnf.Project.Displays do
@@ -350,27 +349,25 @@ type Config () =
       let signals : Signal list ref = ref []
       for signal in display.Signals do
         let signal' : Signal =
-          { Size     = Config.ParseRect signal.Size
-          ; Position = Config.ParseCoordinate signal.Position }
+          { Size     = parseRect       signal.Size
+          ; Position = parseCoordinate signal.Position }
         signals := (signal' :: !signals)
 
       let regions : Region list ref = ref []
-
       for region in display.RegionMap.Regions do
         let region' =
           { Id             = Id.Parse region.Id
           ; Name           = region.Name
-          ; SrcPosition    = Config.ParseCoordinate region.SrcPosition
-          ; SrcSize        = Config.ParseRect region.SrcSize
-          ; OutputPosition = Config.ParseCoordinate region.OutputPosition
-          ; OutputSize     = Config.ParseRect region.OutputSize
-          }
+          ; SrcPosition    = parseCoordinate region.SrcPosition
+          ; SrcSize        = parseRect       region.SrcSize
+          ; OutputPosition = parseCoordinate region.OutputPosition
+          ; OutputSize     = parseRect       region.OutputSize }
         regions := (region' :: !regions)
 
       let display' =
         { Id        = Id.Parse display.Id
         ; Name      = display.Name
-        ; Size      = Config.ParseRect display.Size
+        ; Size      = parseRect display.Size
         ; Signals   = List.reverse !signals
         ; RegionMap =
           { SrcViewportId = Id.Parse display.RegionMap.SrcViewportId
@@ -387,7 +384,7 @@ type Config () =
   //    |_|\__,_|___/_|\_\___/
   //
   /// Parse Task Configuration Section
-  static member ParseTasks (cfg : ConfigFile) : Task list =
+  let private parseTasks (cfg : ConfigFile) : Task list =
     let tasks : Task list ref = ref []
 
     for task in cfg.Project.Tasks do
@@ -415,7 +412,7 @@ type Config () =
   //   \____|_|\__,_|___/\__\___|_|
   //
   /// Parse Cluster Configuration Section
-  static member ParseCluster (cfg : ConfigFile) : Cluster =
+  let private parseCluster (cfg : ConfigFile) : Cluster =
     let nodes  : NodeConfig list ref = ref []
     let groups : HostGroup list ref = ref []
 
@@ -448,31 +445,39 @@ type Config () =
     ; Groups = List.reverse !groups
     }
 
-  static member FromFile (file: ConfigFile) =
-    let cfg = new Config()
-    cfg.VvvvConfig     <- Config.ParseVvvv(file)
-    cfg.AudioConfig    <- Config.ParseAudio(file)
-    cfg.RaftConfig     <- Config.ParseRaft(file)
-    cfg.TimingConfig   <- Config.ParseTiming(file)
-    cfg.PortConfig     <- Config.ParsePort(file)
-    cfg.ViewPorts      <- Config.ParseViewports(file)
-    cfg.Displays       <- Config.ParseDisplays(file)
-    cfg.Tasks          <- Config.ParseTasks(file)
-    cfg.ClusterConfig  <- Config.ParseCluster(file)
-    cfg
+  let fromFile (file: ConfigFile) =
+    { VvvvConfig     = parseVvvv      file
+    ; AudioConfig    = parseAudio     file
+    ; RaftConfig     = parseRaft      file
+    ; TimingConfig   = parseTiming    file
+    ; PortConfig     = parsePort      file
+    ; ViewPorts      = parseViewports file
+    ; Displays       = parseDisplays  file
+    ; Tasks          = parseTasks     file
+    ; ClusterConfig  = parseCluster   file  }
 
+  let create (name: string) =
+    { VvvvConfig     = VvvvConfig.Default
+    ; AudioConfig    = AudioConfig.Default
+    ; RaftConfig     = RaftConfig.Default
+    ; TimingConfig   = TimingConfig.Default
+    ; PortConfig     = PortConfig.Default
+    ; ViewPorts      = []
+    ; Displays       = []
+    ; Tasks          = []
+    ; ClusterConfig  = { Name   = name + " cluster"
+                       ; Nodes  = []
+                       ; Groups = [] } }
 
-  static member Create (name: string) =
-    let cfg = new Config()
-    cfg.VvvvConfig     <- VvvvConfig.Default
-    cfg.AudioConfig    <- AudioConfig.Default
-    cfg.RaftConfig     <- RaftConfig.Default
-    cfg.TimingConfig   <- TimingConfig.Default
-    cfg.PortConfig     <- PortConfig.Default
-    cfg.ViewPorts      <- []
-    cfg.Displays       <- []
-    cfg.Tasks          <- []
-    cfg.ClusterConfig  <- { Name   = name + " cluster"
-                          ; Nodes  = []
-                          ; Groups = []}
-    cfg
+  //  __  __                _
+  // |  \/  | ___ _ __ ___ | |__   ___ _ __ ___
+  // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__/ __|
+  // | |  | |  __/ | | | | | |_) |  __/ |  \__ \
+  // |_|  |_|\___|_| |_| |_|_.__/ \___|_|  |___/
+
+  type Config with
+
+    static member Create (name: string) : Config = create name
+
+    static member FromFile (file: ConfigFile) : Config = fromFile file
+

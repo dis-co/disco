@@ -204,8 +204,8 @@ type Project(repo, data) =
       project.Repo      <- Some(new Repository(Path.Combine(basedir, ".git")))
       project.Path      <- Some(Path.GetDirectoryName(path))
       project.LastSaved <- date
-      project.Copyright <- Config.ParseStringProp meta.Copyright
-      project.Author    <- Config.ParseStringProp meta.Author
+      project.Copyright <- parseStringProp meta.Copyright
+      project.Author    <- parseStringProp meta.Author
       project.Year      <- meta.Year
       project.Config    <- Config.FromFile(IrisConfig)
       Success(project)
