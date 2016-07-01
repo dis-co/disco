@@ -20,22 +20,16 @@ type NodeState =
 // | |\  | (_) | (_| |  __/
 // |_| \_|\___/ \__,_|\___|
 
-type Node<'node> =
-  { Id         : NodeId
+type Node< 'node, ^id when ^id : (static member Create : unit -> ^id) > =
+  { Id         : ^id
   ; Data       : 'node
   ; Voting     : bool
   ; VotedForMe : bool
   ; State      : NodeState
-  ; nextIndex  : Index
-  ; matchIndex : Index
+  ; NextIndex  : Index
+  ; MatchIndex : Index
   }
 
-  override self.ToString() =
-    sprintf "Node: [id: %d] [state: %A] [voting: %b] [voted for me: %b]"
-      self.Id
-      self.State
-      self.Voting
-      self.VotedForMe
 
 //   ____             __ _          ____ _
 //  / ___|___  _ __  / _(_) __ _   / ___| |__   __ _ _ __   __ _  ___
@@ -44,66 +38,67 @@ type Node<'node> =
 //  \____\___/|_| |_|_| |_|\__, |  \____|_| |_|\__,_|_| |_|\__, |\___|
 //                         |___/                           |___/
 
-type ConfigChange<'n> =
-  | NodeAdded   of Node<'n>
-  | NodeRemoved of Node<'n>
+type ConfigChange<'node, ^id when ^id : (static member Create : unit -> ^id)> =
+  | NodeAdded   of Node<'node,^id>
+  | NodeRemoved of Node<'node,^id>
 
 [<RequireQualifiedAccess>]
 module Node =
 
-  let create id data =
+  let inline create data =
+    let id = (^id : (static member Create : unit -> ^id) ())
     { Id         = id
     ; Data       = data
     ; State      = Running
     ; Voting     = true
     ; VotedForMe = false
-    ; nextIndex  = 1u
-    ; matchIndex = 0u
+    ; NextIndex  = 1UL
+    ; MatchIndex = 0UL
     }
 
-  let isVoting (node : Node<'node>) : bool =
+  let inline isVoting (node : Node<_,_>) : bool =
     node.State = Running && node.Voting
 
-  let setVoting node voting =
+  let inline setVoting node voting =
     { node with Voting = voting }
 
-  let voteForMe node vote =
+  let inline voteForMe node vote =
     { node with VotedForMe = vote }
 
-  let hasVoteForMe node = node.VotedForMe
+  let inline hasVoteForMe node = node.VotedForMe
 
-  let setHasSufficientLogs node =
+  let inline setHasSufficientLogs node =
     { node with
         State = Running
         Voting = true }
 
-  let hasSufficientLogs node =
+  let inline hasSufficientLogs node =
     node.State = Running
 
-  let canVote peer =
+  let inline canVote peer =
     isVoting peer && hasVoteForMe peer && peer.State = Running
 
-  let getId node = node.Id
-  let getData node = node.Data
-  let getState node = node.State
-  let getNextIndex  node = node.nextIndex
-  let getMatchIndex node = node.matchIndex
+  let inline getId node = node.Id
+  let inline getData node = node.Data
+  let inline getState node = node.State
+  let inline getNextIndex  node = node.NextIndex
+  let inline getMatchIndex node = node.MatchIndex
 
-  let private added oldnodes newnodes =
-    let folder changes (node: Node<_>) =
+  let inline private added oldnodes newnodes =
+    let folder changes (node: Node<_,_>) =
       match Array.tryFind (getId >> ((=) node.Id)) oldnodes with
         | Some _ -> changes
         | _ -> NodeAdded(node) :: changes
     Array.fold folder List.empty newnodes
 
-  let private removed oldnodes newnodes =
-    let folder changes (node: Node<_>) =
+  let inline private removed oldnodes newnodes =
+    let folder changes (node: Node<_,_>) =
       match Array.tryFind (getId >> ((=) node.Id)) newnodes with
         | Some _ -> changes
         | _ -> NodeAdded(node) :: changes
     Array.fold folder List.empty oldnodes
 
-  let changes (oldnodes: Node<_> array) (newnodes: Node<_> array) =
+  let inline changes (oldnodes: Node<_,_> array) (newnodes: Node<_,_> array) =
     List.empty
     |> List.append (added oldnodes newnodes)
     |> List.append (removed oldnodes newnodes)

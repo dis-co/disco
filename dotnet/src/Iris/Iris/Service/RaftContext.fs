@@ -14,6 +14,7 @@ open fszmq.Socket
 open fszmq.Polling
 
 open FSharpx.Stm
+open FSharpx.Functional
 
 [<AutoOpen>]
 module AppContext =
