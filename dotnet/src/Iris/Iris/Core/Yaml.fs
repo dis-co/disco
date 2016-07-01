@@ -10,7 +10,7 @@ module Yaml =
 Project:
   Metadata:
     Id:
-    Year: 2016
+    CreatedOn:
     Copyright:
     Author:
     Name:

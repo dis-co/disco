@@ -202,10 +202,24 @@ module Configuration =
   //    / _ \| | | |/ _` | |/ _ \
   //   / ___ \ |_| | (_| | | (_) |
   //  /_/   \_\__,_|\__,_|_|\___/
-  //
-  /// Parse Audio Configuration Section
+
+
+  /// ### Parse the Audio configuration section
+  ///
+  /// Parses the Audio configuration section of the passed-in configuration file.
+  ///
+  /// # Returns: AudioConfig
   let private parseAudio (cfg : ConfigFile)  : AudioConfig =
     { SampleRate = uint32 cfg.Project.Audio.SampleRate }
+
+  /// ### Save the AudioConfig value
+  ///
+  /// Transfer the configuration from `AudioConfig` values to a given config file.
+  ///
+  /// # Returns: ConfigFile
+  let private saveAudio (file: ConfigFile, config: Config) =
+    file.Project.Audio.SampleRate <- int (config.AudioConfig.SampleRate)
+    (file, config)
 
   //  __     __
   //  \ \   / /_   ____   ____   __
@@ -213,7 +227,12 @@ module Configuration =
   //    \ V /  \ V /  \ V /  \ V /
   //     \_/    \_/    \_/    \_/
   //
-  /// Parse VVvV configuration section
+
+  /// ### Parses the VVVV configuration
+  ///
+  /// Constructs the VVVV configuration values from the handed config file value.
+  ///
+  /// # Returns: VvvvConfig
   let private parseVvvv (cfg : ConfigFile) : VvvvConfig =
     let ctoe (i : ConfigFile.Project_Type.VVVV_Type.Executables_Item_Type) =
       { Executable = i.Path
@@ -238,13 +257,40 @@ module Configuration =
     { Executables = List.reverse !exes
     ; Plugins     = List.reverse !plugs }
 
+  /// ### Save the VVVV configuration
+  ///
+  /// Translate the values from Config into the passed in configuration file.
+  ///
+  /// # Returns: ConfigFile
+  let private saveVvvv (file: ConfigFile, config: Config) =
+    file.Project.VVVV.Executables.Clear()
+    for exe in config.VvvvConfig.Executables do
+      let entry = new ConfigFile.Project_Type.VVVV_Type.Executables_Item_Type()
+      entry.Path <- exe.Executable;
+      entry.Version <- exe.Version;
+      entry.Required <- exe.Required
+      file.Project.VVVV.Executables.Add(entry)
+
+    file.Project.VVVV.Plugins.Clear()
+    for plug in config.VvvvConfig.Plugins do
+      let entry = new ConfigFile.Project_Type.VVVV_Type.Plugins_Item_Type ()
+      entry.Name <- plug.Name
+      entry.Path <- plug.Path
+      file.Project.VVVV.Plugins.Add(entry)
+
+    (file, config)
+
   //  ____        __ _
   // |  _ \ __ _ / _| |_
   // | |_) / _` | |_| __|
   // |  _ < (_| |  _| |_
   // |_| \_\__,_|_|  \__|
 
-  /// Parse Vsync configuration section
+  /// ### Parses Raft-related values in passed configuration
+  ///
+  /// Parses the passed-in configuration file contents and returns a `RaftConfig` value.
+  ///
+  /// # Returns: RaftConfig
   let private parseRaft (cfg : ConfigFile) : RaftConfig =
     // let eng = cfg.Project.Engine
 
@@ -276,14 +322,26 @@ module Configuration =
     { RequestTimeout = 0u
     ; TempDir = "hahhah" }
 
+  /// ### Save the passed RaftConfig to the configuration file
+  ///
+  /// Save Raft algorithm specific configuration options to the configuration file object.
+  ///
+  /// # Returns: ConfigFile
+  let private saveRaft (file: ConfigFile, config: Config) =
+    (file, config)
+
   //   _____ _           _
   //  |_   _(_)_ __ ___ (_)_ __   __ _
   //    | | | | '_ ` _ \| | '_ \ / _` |
   //    | | | | | | | | | | | | | (_| |
   //    |_| |_|_| |_| |_|_|_| |_|\__, |
   //                             |___/
-  //
-  /// Parse Timing Configuration Section
+
+  /// ### Parse the timing related configuration options
+  ///
+  /// Parse TimingConfig related values into a TimingConfig value and return it.
+  ///
+  /// # Returns: TimingConfig
   let private parseTiming (cnf : ConfigFile) : TimingConfig =
     let servers : IpAddress list ref = ref []
 
@@ -296,26 +354,64 @@ module Configuration =
     ; UDPPort   = uint32 cnf.Project.Timing.UDPPort
     ; TCPPort   = uint32 cnf.Project.Timing.TCPPort }
 
+
+  /// ### Transfer the TimingConfig options to the passed configuration file
+  ///
+  ///
+  ///
+  /// # Returns: ConfigFile
+  let private saveTiming (file: ConfigFile, config: Config) =
+    file.Project.Timing.Framebase <- int (config.TimingConfig.Framebase)
+    file.Project.Timing.Input     <- config.TimingConfig.Input
+
+    file.Project.Timing.Servers.Clear()
+    for srv in config.TimingConfig.Servers do
+      file.Project.Timing.Servers.Add(string srv)
+
+    file.Project.Timing.TCPPort <- int (config.TimingConfig.TCPPort)
+    file.Project.Timing.UDPPort <- int (config.TimingConfig.UDPPort)
+
+    (file, config)
+
   //   ____            _
   //  |  _ \ ___  _ __| |_
   //  | |_) / _ \| '__| __|
   //  |  __/ (_) | |  | |_
   //  |_|   \___/|_|   \__|
-  //
-  /// Parse Port Configuration Section
+
+  /// ### Parse the Port configuration
+  ///
+  /// Parse the port configuration in a given config file into a `PortConfig` value.
+  ///
+  /// # Returns: PortConfig
   let private parsePort (cnf : ConfigFile) : PortConfig =
     { WebSocket = uint32 cnf.Project.Ports.WebSocket
     ; UDPCue    = uint32 cnf.Project.Ports.UDPCues
     ; Iris      = uint32 cnf.Project.Ports.IrisService }
+
+  /// ### Transfer the PortConfig configuration
+  ///
+  /// Save all values in the PortConfig to the passed configuration file instance.
+  ///
+  /// # Returns: ConfigFile
+  let private savePort (file: ConfigFile, config: Config) =
+    file.Project.Ports.IrisService <- int (config.PortConfig.Iris)
+    file.Project.Ports.UDPCues     <- int (config.PortConfig.UDPCue)
+    file.Project.Ports.WebSocket   <- int (config.PortConfig.WebSocket)
+    (file, config)
 
   //  __     ___               ____            _
   //  \ \   / (_) _____      _|  _ \ ___  _ __| |_
   //   \ \ / /| |/ _ \ \ /\ / / |_) / _ \| '__| __|
   //    \ V / | |  __/\ V  V /|  __/ (_) | |  | |_
   //     \_/  |_|\___| \_/\_/ |_|   \___/|_|   \__|
-  //
-  /// Parse ViewPort Configuration Section
-  let private parseViewports (cnf : ConfigFile) : ViewPort list =
+
+  /// ### Parse all Viewport configs listed in a config file
+  ///
+  /// Parses the ViewPort config section and returns a list of `ViewPort` values.
+  ///
+  /// # Returns: ViewPort list
+  let private parseViewPorts (cnf : ConfigFile) : ViewPort list =
     let vports : ViewPort list ref = ref []
 
     for vp in cnf.Project.ViewPorts do
@@ -333,13 +429,39 @@ module Configuration =
 
     List.reverse !vports
 
+  /// ### Transfers the passed list of ViewPort values
+  ///
+  /// Adds a config section for each ViewPort value in the passed in Config to the configuration
+  /// file.
+  ///
+  /// # Returns: ConfigFile
+  let private saveViewPorts (file: ConfigFile, config: Config) =
+    file.Project.ViewPorts.Clear()
+    for vp in config.ViewPorts do
+      let item = new ConfigFile.Project_Type.ViewPorts_Item_Type()
+      item.Id             <- string vp.Id
+      item.Name           <- vp.Name
+      item.Size           <- string vp.Size
+      item.Position       <- string vp.Position
+      item.Overlap        <- string vp.Overlap
+      item.OutputPosition <- string vp.OutputPosition
+      item.OutputSize     <- string vp.OutputSize
+      item.Description    <- vp.Description
+      file.Project.ViewPorts.Add(item)
+    (file, config)
+
   //   ____  _           _
   //  |  _ \(_)___ _ __ | | __ _ _   _ ___
   //  | | | | / __| '_ \| |/ _` | | | / __|
   //  | |_| | \__ \ |_) | | (_| | |_| \__ \
   //  |____/|_|___/ .__/|_|\__,_|\__, |___/
   //              |_|            |___/
-  /// Parse Displays Configuration Section
+
+  /// ### Parse the Display section of a configuration file
+  ///
+  /// Construct a list of `Display` values from the given configuration file.
+  ///
+  /// # Returns: Display list
   let private parseDisplays (cnf : ConfigFile) : Display list =
     let displays : Display list ref = ref []
 
@@ -377,13 +499,55 @@ module Configuration =
 
     List.reverse !displays
 
+  /// ### Transfer the Display config to a configuration file
+  ///
+  /// Save all `Display` values in `Config` to the passed configuration file.
+  ///
+  /// # Returns: ConfigFile
+  let private saveDisplays (file: ConfigFile, config: Config) =
+    file.Project.Displays.Clear()
+    for dp in config.Displays do
+      let item = new ConfigFile.Project_Type.Displays_Item_Type()
+      item.Id <- string dp.Id
+      item.Name <- dp.Name
+      item.Size <- dp.Size.ToString()
+
+      item.RegionMap.SrcViewportId <- string dp.RegionMap.SrcViewportId
+      item.RegionMap.Regions.Clear()
+
+      for region in dp.RegionMap.Regions do
+        let r = new ConfigFile.Project_Type.Displays_Item_Type.RegionMap_Type.Regions_Item_Type()
+        r.Id <- string region.Id
+        r.Name <- region.Name
+        r.OutputPosition <- region.OutputPosition.ToString()
+        r.OutputSize <- region.OutputSize.ToString()
+        r.SrcPosition <- region.SrcPosition.ToString()
+        r.SrcSize <- region.SrcSize.ToString()
+        item.RegionMap.Regions.Add(r)
+
+      item.Signals.Clear()
+
+      for signal in dp.Signals do
+        let s = new ConfigFile.Project_Type.Displays_Item_Type.Signals_Item_Type()
+        s.Position <- signal.Position.ToString()
+        s.Size <- signal.Size.ToString()
+        item.Signals.Add(s)
+
+      file.Project.Displays.Add(item)
+    (file, config)
+
   //   _____         _
   //  |_   _|_ _ ___| | _____
   //    | |/ _` / __| |/ / __|
   //    | | (_| \__ \   <\__ \
   //    |_|\__,_|___/_|\_\___/
   //
-  /// Parse Task Configuration Section
+
+  /// ### Parse Task configuration section
+  ///
+  /// Create `Task` values for each entry in the Task config section.
+  ///
+  /// # Returns: Task list
   let private parseTasks (cfg : ConfigFile) : Task list =
     let tasks : Task list ref = ref []
 
@@ -405,13 +569,41 @@ module Configuration =
 
     List.reverse !tasks
 
+  /// ### Save the Tasks to a config file
+  ///
+  /// Transfers all `Task` values into the configuration file.
+  ///
+  /// # Returns: ConfigFile
+  let private saveTasks (file: ConfigFile, config: Config) =
+    file.Project.Tasks.Clear()
+    for task in config.Tasks do
+      let t = new ConfigFile.Project_Type.Tasks_Item_Type()
+      t.Id <- string task.Id
+      t.AudioStream <- task.AudioStream
+      t.Description <- task.Description
+      t.DisplayId   <- string task.DisplayId
+
+      for arg in task.Arguments do
+        let a = new ConfigFile.Project_Type.Tasks_Item_Type.Arguments_Item_Type()
+        a.Key <- fst arg
+        a.Value <- snd arg
+        t.Arguments.Add(a)
+
+      file.Project.Tasks.Add(t)
+    (file, config)
+
   //    ____ _           _
   //   / ___| |_   _ ___| |_ ___ _ __
   //  | |   | | | | / __| __/ _ \ '__|
   //  | |___| | |_| \__ \ ||  __/ |
   //   \____|_|\__,_|___/\__\___|_|
   //
-  /// Parse Cluster Configuration Section
+
+  /// ### Parse the Cluster configuration section
+  ///
+  /// Parse the cluster configuration section of a given configuration file into a `Cluster` value.
+  ///
+  /// # Returns: Cluster
   let private parseCluster (cfg : ConfigFile) : Cluster =
     let nodes  : NodeConfig list ref = ref []
     let groups : HostGroup list ref = ref []
@@ -442,8 +634,35 @@ module Configuration =
 
     { Name   = cfg.Project.Cluster.Name
     ; Nodes  = List.reverse !nodes
-    ; Groups = List.reverse !groups
-    }
+    ; Groups = List.reverse !groups }
+
+  /// ### Save a Cluster value to a configuration file
+  ///
+  /// Saves the passed `Cluster` value to the passed config file.
+  ///
+  /// # Returns: ConfigFile
+  let saveCluster (file: ConfigFile, config: Config) =
+    file.Project.Cluster.Nodes.Clear()
+    file.Project.Cluster.Groups.Clear()
+    file.Project.Cluster.Name <- config.ClusterConfig.Name
+
+    for node in config.ClusterConfig.Nodes do
+      let n = new ConfigFile.Project_Type.Cluster_Type.Nodes_Item_Type()
+      n.Id       <- string node.Id
+      n.Ip       <- string node.Ip
+      n.HostName <- node.HostName
+      n.Task     <- string node.Task
+      file.Project.Cluster.Nodes.Add(n)
+
+    for group in config.ClusterConfig.Groups do
+      let g = new ConfigFile.Project_Type.Cluster_Type.Groups_Item_Type()
+      g.Name <- group.Name
+
+      for mem in group.Members do
+        g.Members.Add(string mem)
+
+      file.Project.Cluster.Groups.Add(g)
+    (file, config)
 
   let fromFile (file: ConfigFile) =
     { VvvvConfig     = parseVvvv      file
@@ -451,10 +670,23 @@ module Configuration =
     ; RaftConfig     = parseRaft      file
     ; TimingConfig   = parseTiming    file
     ; PortConfig     = parsePort      file
-    ; ViewPorts      = parseViewports file
+    ; ViewPorts      = parseViewPorts file
     ; Displays       = parseDisplays  file
     ; Tasks          = parseTasks     file
     ; ClusterConfig  = parseCluster   file  }
+
+  let toFile (config: Config) (file: ConfigFile) =
+    (file, config)
+    |> saveVvvv
+    |> saveAudio
+    |> saveRaft
+    |> saveTiming
+    |> savePort
+    |> saveViewPorts
+    |> saveDisplays
+    |> saveTasks
+    |> saveCluster
+    |> fst
 
   let create (name: string) =
     { VvvvConfig     = VvvvConfig.Default
@@ -481,3 +713,4 @@ module Configuration =
 
     static member FromFile (file: ConfigFile) : Config = fromFile file
 
+    static member ToFile (file: ConfigFile) (config: Config) = toFile config file

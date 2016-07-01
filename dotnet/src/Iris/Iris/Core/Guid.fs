@@ -18,10 +18,14 @@ type Guid =
     static member Parse (str: string) =
       System.Guid.Parse str |> ignore
       Guid str
-  
+
     static member TryParse (str: string) =
-      try 
+      try
         System.Guid.Parse str |> ignore
         Some (Guid str)
       with
         | _ -> None
+
+    static member Create () =
+      let guid = System.Guid.NewGuid()
+      Guid (string guid)

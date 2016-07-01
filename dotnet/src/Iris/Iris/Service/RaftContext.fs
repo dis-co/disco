@@ -109,12 +109,12 @@ module AppContext =
                       | AppendEntriesResponse(nid,resp) ->
                         do! receiveAppendEntriesResponse nid resp
                             |> evalRaft state.Raft (this :> IRaftCallbacks<_,_>)
-                            |> updateRaft state
+                            |> flip updateRaft state
                             |> writeTVar appState
                       | RequestVoteResponse(nid,vote) ->
                         do! receiveVoteResponse nid vote
                             |> evalRaft state.Raft (this :> IRaftCallbacks<_,_>)
-                            |> updateRaft state
+                            |> flip updateRaft state
                             |> writeTVar appState
                       | ErrorResponse err ->
                         sprintf "ERROR: %A" err
@@ -216,7 +216,7 @@ module AppContext =
         let entry = JointConsensus(Guid.NewGuid(),0u,term ,[| NodeRemoved state.Raft.Node |], [||],None)
         receiveEntry entry
         |> evalRaft state.Raft (this :> IRaftCallbacks<_,_>)
-        |> updateRaft state
+        |> flip updateRaft state
         |> writeTVar appState
         |> atomically
         Thread.Sleep(3000)
@@ -253,7 +253,7 @@ module AppContext =
           }
           |> evalRaft state.Raft (this :> IRaftCallbacks<_,_>)
 
-        do! writeTVar appState (updateRaft state newstate)
+        do! writeTVar appState (updateRaft newstate state)
       } |> atomically
 
     ////////////////////////////////////
@@ -304,8 +304,8 @@ module AppContext =
               return result
             }
             |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
-            |> updateRaft state
-            |> writeTVar appState 
+            |> flip updateRaft state
+            |> writeTVar appState
       } |> atomically
 
     member self.Timeout _ =
@@ -318,7 +318,7 @@ module AppContext =
               do! periodic timeout
             }
             |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
-            |> updateRaft state
+            |> flip updateRaft state
             |> writeTVar appState
 
       } |> atomically
@@ -333,15 +333,15 @@ module AppContext =
 
         match result with
           | Right  (resp, raft) ->
-            do! writeTVar appState (updateRaft state raft)
+            do! writeTVar appState (updateRaft raft state)
             return RequestVoteResponse(raft.Node.Id, resp)
 
           | Middle (resp, raft) ->
-            do! writeTVar appState (updateRaft state raft)
+            do! writeTVar appState (updateRaft raft state)
             return RequestVoteResponse(raft.Node.Id, resp)
 
           | Left (err, raft) ->
-            do! writeTVar appState (updateRaft state raft)
+            do! writeTVar appState (updateRaft raft state)
             return ErrorResponse err
 
       } |> atomically
@@ -352,7 +352,7 @@ module AppContext =
 
         do! receiveVoteResponse sender rep
             |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
-            |> updateRaft state
+            |> flip updateRaft state
             |> writeTVar appState
 
         return EmptyResponse
@@ -369,15 +369,15 @@ module AppContext =
 
         match result with
           | Right (resp, raft) ->
-            do! writeTVar appState (updateRaft state raft)
+            do! writeTVar appState (updateRaft raft state)
             return AppendEntriesResponse(raft.Node.Id, resp)
 
           | Middle (resp, raft) ->
-            do! writeTVar appState (updateRaft state raft)
+            do! writeTVar appState (updateRaft raft state)
             return AppendEntriesResponse(raft.Node.Id, resp)
 
           | Left (err, raft) ->
-            do! writeTVar appState (updateRaft state raft)
+            do! writeTVar appState (updateRaft raft state)
             return ErrorResponse err
 
       } |> atomically
@@ -388,7 +388,7 @@ module AppContext =
 
         do! receiveAppendEntriesResponse sender ar
             |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
-            |> updateRaft state
+            |> flip updateRaft state
             |> writeTVar appState
 
         return EmptyResponse
@@ -406,13 +406,13 @@ module AppContext =
 
         match response with
           | Right(resp, raft) ->
-            do! writeTVar appState (updateRaft state raft)
+            do! writeTVar appState (updateRaft raft state)
 
           | Middle(_, raft) ->
-            do! writeTVar appState (updateRaft state raft)
+            do! writeTVar appState (updateRaft raft state)
 
           | Left(err, raft) ->
-            do! writeTVar appState (updateRaft state raft)
+            do! writeTVar appState (updateRaft raft state)
 
       } |> atomically
 
@@ -424,7 +424,7 @@ module AppContext =
         let entry = JointConsensus(Guid.NewGuid(),0u,term,[| NodeRemoved node |],[||],None)
         do! receiveEntry entry
             |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
-            |> updateRaft state
+            |> flip updateRaft state
             |> writeTVar appState
       } |> atomically
 
@@ -443,7 +443,7 @@ module AppContext =
 
         do! periodic elapsed
             |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
-            |> updateRaft state
+            |> flip updateRaft state
             |> writeTVar appState
 
       } |> atomically
