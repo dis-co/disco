@@ -66,17 +66,17 @@ type RaftState =
 ///  - `Id`    - the generated unique identified for the entry
 ///  - `Term`  - the entry's term
 ///  - `Index` - the entry's index in the log
-type EntryResponse< ^id when ^id : (static member Create : unit -> ^id) > =
-  {  Id    : ^id
+type EntryResponse =
+  {  Id    : Id
   ;  Term  : Term
   ;  Index : Index
   }
 
 [<RequireQualifiedAccess>]
 module Entry =
-  let inline id    (er : EntryResponse<_>) = er.Id
-  let inline term  (er : EntryResponse<_>) = er.Term
-  let inline index (er : EntryResponse<_>) = er.Index
+  let inline id    (er : EntryResponse) = er.Id
+  let inline term  (er : EntryResponse) = er.Term
+  let inline index (er : EntryResponse) = er.Index
 
 /// Request to Vote for a new Leader
 ///
@@ -85,11 +85,12 @@ module Entry =
 ///  - `Candidate`    -  the unique node id of candidate for leadership
 ///  - `LastLogIndex` -  the index of the candidates last log entry
 ///  - `LastLogTerm`  -  the index of the candidates last log entry
-type VoteRequest<'n,^id when ^id : (static member Create : unit -> ^id)> =
+type VoteRequest<'n> =
   { Term         : Term
-  ; Candidate    : Node<'n,^id>
+  ; Candidate    : Node<'n>
   ; LastLogIndex : Index
-  ; LastLogTerm  : Term }
+  ; LastLogTerm  : Term
+  }
 
 /// Result of a vote
 ///
@@ -105,10 +106,10 @@ type VoteResponse =
 [<RequireQualifiedAccess>]
 module Vote =
   // requests
-  let inline term         (vote : VoteRequest<_,_>) = vote.Term
-  let inline candidate    (vote : VoteRequest<_,_>) = vote.Candidate
-  let inline lastLogIndex (vote : VoteRequest<_,_>) = vote.LastLogIndex
-  let inline lastLogTerm  (vote : VoteRequest<_,_>) = vote.LastLogTerm
+  let inline term         (vote : VoteRequest<_>) = vote.Term
+  let inline candidate    (vote : VoteRequest<_>) = vote.Candidate
+  let inline lastLogIndex (vote : VoteRequest<_>) = vote.LastLogIndex
+  let inline lastLogTerm  (vote : VoteRequest<_>) = vote.LastLogTerm
 
   // responses
   let inline granted  (vote : VoteResponse) = vote.Granted
@@ -125,12 +126,13 @@ module Vote =
 ///  - `PrevLogIdx`  - the index of the log just before the newest entry for the node who receive this message
 ///  - `PrevLogTerm` - the term of the log just before the newest entry for the node who receives this message
 ///  - `LeaderCommit`- the index of the entry that has been appended to the majority of the cluster. Entries up to this index will be applied to the FSM
-type AppendEntries<'a,'n,^id when ^id : (static member Create : unit -> ^id)> =
+type AppendEntries<'a,'n> =
   { Term         : Term
   ; PrevLogIdx   : Index
   ; PrevLogTerm  : Term
   ; LeaderCommit : Index
-  ; Entries      : LogEntry<'a,'n,^id> option }
+  ; Entries      : LogEntry<'a,'n> option
+  }
 
 /// Appendentries response message.
 ///
@@ -146,7 +148,8 @@ type AppendResponse =
   { Term         : Term
   ; Success      : bool
   ; CurrentIndex : Index
-  ; FirstIndex   : Index }
+  ; FirstIndex   : Index
+  }
 
 [<RequireQualifiedAccess>]
 module AppendRequest =
@@ -173,12 +176,12 @@ module AppendRequest =
 //                                              |_|                         //
 //////////////////////////////////////////////////////////////////////////////
 
-type InstallSnapshot<'node,'data,^id when ^id : (static member Create : unit -> ^id)> =
+type InstallSnapshot<'node,'data> =
   { Term      : Term
-  ; LeaderId  : ^id
+  ; LeaderId  : NodeId
   ; LastIndex : Index
   ; LastTerm  : Term
-  ; Data      : LogEntry<'node,'data,^id>
+  ; Data      : LogEntry<'node,'data>
   }
 
 type SnapshotResponse = { Term : Term }
@@ -197,10 +200,10 @@ type SnapshotResponse = { Term : Term }
 // |___|_| |_|\__\___|_|  |_|  \__,_|\___\___| //
 /////////////////////////////////////////////////
 
-type IRaftCallbacks<'a,'b,^id when ^id : (static member Create : unit -> ^id)> =
+type IRaftCallbacks<'a,'b> =
 
   /// Request a vote from given Raft server
-  abstract member SendRequestVote:     Node<'b,^id>    -> VoteRequest<'b,^id>    -> unit
+  abstract member SendRequestVote:     Node<'b>        -> VoteRequest<'b>        -> unit
 
   /// Send AppendEntries message to given server
   abstract member SendAppendEntries:   Node<'b>        -> AppendEntries<'a,'b>   -> unit
@@ -213,13 +216,13 @@ type IRaftCallbacks<'a,'b,^id when ^id : (static member Create : unit -> ^id)> =
   abstract member PrepareSnapshot:     Raft<'a,'b>     -> Log<'a,'b>
 
   /// perist the given Snapshot value to disk. For safety reasons this MUST
-  /// flush all changes to disk.
+  /// flush all changes to disk. 
   abstract member PersistSnapshot:     LogEntry<'a,'b> -> unit
 
   /// attempt to load a snapshot from disk. return None if no snapshot was found
   abstract member RetrieveSnapshot:    unit            -> LogEntry<'a,'b> option
 
-  /// apply the given command to state machine
+  /// apply the given command to state machine 
   abstract member ApplyLog:            'a              -> unit
 
   /// a new server was added to the configuration

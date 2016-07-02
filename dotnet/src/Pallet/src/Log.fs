@@ -10,59 +10,114 @@ open System.Collections
 // |_____\___/ \__, |\_\  \__,_( ) |_| |_/_/
 //             |___/           |/
 //
-
-type LogEntry<'state,'node,^id when ^id : (static member Create : unit -> ^id) > =
-  /// ## Configuration
-  ///
-  /// The Configuration constructor differentiates log entries that represent cluster
-  /// configurations. They appear at the end of a joint-consensus re-configuration cycle.
-  ///
-  /// ### Signature:
-  /// - Id:       unique idenfiert for this log entry. The type must support the static `Create` member.
-  /// - Index:    index of this entry in the logs. Usually 0UL when initially created.
-  /// - Term:     the term during which this entry was added
-  /// - Nodes:    Array of Nodes that constitutes the active cluster configuration
-  /// - Previous: the previous log entry
-  ///
-  /// Returns: LogEntry
+/// Linked-list like type for fast access to most recent elements and their
+/// properties.
+///
+/// type LogEntry<'a,'n> =
+///   // Node Configuration Entry
+///   | Configuration of
+///     Id       : Id              *        // unique id of configuration entry
+///     Index    : Index           *        // index in log
+///     Term     : Term            *        // term when entry was added to log
+///     Nodes    : Node<'n> array  *        // new node configuration
+///     Previous : LogEntry<'a,'n> option   // previous log entry, if applicable
+///
+///   // Entry type for configuration changes
+///   | JointConsensus of
+///     Id       : Id                     * // unique identified of entry
+///     Index    : Index                  * // index of entry in log
+///     Term     : Term                   * // term in which entry was added to the log
+///     Changes  : ConfigChange<'n> array * // changes to be applied to node configuration
+///     Nodes    : Node<'n> array         * // old configuration the changes will be applied against
+///     Previous : LogEntry<'a,'n> option   // previous element, if any
+///
+///   // Regular Log Entries
+///   | LogEntry   of
+///     Id       : Id              *        // unique identifier of entry
+///     Index    : Index           *        // index of entry in log
+///     Term     : Term            *        // temr in which entry was added to log
+///     Data     : 'a              *        // state machine data field
+///     Previous : LogEntry<'a,'n> option   // previous element, if any
+///
+///   | Snapshot   of
+///     Id        : Id             *        // unique identifier of entry
+///     Index     : Index          *        // index of entry in log
+///     Term      : Term           *        // term the entry was added in to log
+///     LastIndex : Index          *        // last included index
+///     LastTerm  : Term           *        // last included term
+///     Nodes     : Node<'n> array *        // node configuration
+///     Data      : 'a                      // state machine data
+///
+type LogEntry<'a,'n> =
+  // Node Configuration Entry
   | Configuration of
-    Id       : ^id                          *
-    Index    : Index                        *
-    Term     : Term                         *
-    Nodes    : Node<'node,^id> array        *
-    Previous : LogEntry<'state,'node,^id> option
+    Id       : Id              *
+    Index    : Index           *
+    Term     : Term            *
+    Nodes    : Node<'n> array  *
+    Previous : LogEntry<'a,'n> option
 
   // Entry type for configuration changes
   | JointConsensus of
-    Id       : ^id                             *
-    Index    : Index                           *
-    Term     : Term                            *
-    Changes  : ConfigChange<'node,^id> array   *
-    Nodes    : Node<'node,^id > array          *
-    Previous : LogEntry<'state,'node,^id> option
+    Id       : Id                     *
+    Index    : Index                  *
+    Term     : Term                   *
+    Changes  : ConfigChange<'n> array *
+    Nodes    : Node<'n> array         *
+    Previous : LogEntry<'a,'n> option
 
   // Regular Log Entries
   | LogEntry   of
-    Id       : ^id                         *
-    Index    : Index                       *
-    Term     : Term                        *
-    Data     : 'state                      *
-    Previous : LogEntry<'state,'node,^id > option
+    Id       : Id              *
+    Index    : Index           *
+    Term     : Term            *
+    Data     : 'a              *
+    Previous : LogEntry<'a,'n> option
 
   | Snapshot   of
-    Id        : ^id                    *
-    Index     : Index                  *
-    Term      : Term                   *
-    LastIndex : Index                  *
-    LastTerm  : Term                   *
-    Nodes     : Node<'node,^id > array *
-    Data      : 'state
+    Id        : Id             *
+    Index     : Index          *
+    Term      : Term           *
+    LastIndex : Index          *
+    LastTerm  : Term           *
+    Nodes     : Node<'n> array *
+    Data      : 'a
 
+  override self.ToString() =
+    match self with
+      | Configuration(id,idx,term,nodes,_) ->
+        sprintf "Configuration [id: %A] [idx: %A] [term: %A]\nnodes: %s"
+          id
+          idx
+          term
+          (Array.fold (fun m n -> m + "\n    " + n.ToString()) "" nodes)
 
-type Log<'state,'node,^id when ^id : (static member Create : unit -> ^id)> =
-  { Data  : LogEntry<'state,'node,^id> option
-  ; Depth : Long
-  ; Index : Index
+      | JointConsensus(id,idx,term,changes,_,_) ->
+        sprintf "UpdateNode [id: %A] [idx: %A] [term: %A]\nchanges: %s"
+          id
+          idx
+          term
+          (Array.fold (fun m n -> m + (sprintf "\n    %A" n)) "" changes)
+
+      | LogEntry(id,idx,term,data,_) ->
+        sprintf "LogEntry [id: %A] [idx: %A] [term: %A] [data: %A]"
+          id
+          idx
+          term
+          data
+
+      | Snapshot(id,idx,term,lidx,ltrm,_,_) ->
+        sprintf "Snapshot [id: %A] [idx: %A] [last idx: %A] [term: %A] [last term: %A]"
+          id
+          idx
+          lidx
+          term
+          ltrm
+
+type Log<'a,'n> =
+  { Data  : LogEntry<'a,'n> option
+  ; Depth : uint32
+  ; Index : uint32
   }
 
 
@@ -75,9 +130,9 @@ module private LogEntry =
   //  | | (_| |
   //  |_|\__,_|
   //
+  /// Return the current log entry id.
 
-  let inline id log =
-    match log with
+  let id = function
     | Configuration(id,_,_,_,_)    -> id
     | JointConsensus(id,_,_,_,_,_) -> id
     | LogEntry(id,_,_,_,_)         -> id
@@ -90,8 +145,7 @@ module private LogEntry =
   // |_|___/\____\___/|_| |_|_| |_|\__, |\____|_| |_|\__,_|_| |_|\__, |\___|
   //                               |___/                         |___/
 
-  let inline isConfigChange log =
-    match log with
+  let isConfigChange = function
     | JointConsensus _ -> true
     |                _ -> false
 
@@ -102,8 +156,7 @@ module private LogEntry =
   // |_|___/\____\___/|_| |_|_| |_|\__, |\__,_|_|  \__,_|\__|_|\___/|_| |_|
   //                               |___/
 
-  let inline isConfiguration log =
-    match log with
+  let isConfiguration = function
     | Configuration _ -> true
     |               _ -> false
 
@@ -116,10 +169,10 @@ module private LogEntry =
   //
   /// compute the actual depth of the log (e.g. for compacting)
 
-  let inline depth log : Long =
+  let depth log =
     let rec _depth i thing =
       let inline count i prev =
-        let cnt = i + 1UL
+        let cnt = i + 1u
         match prev with
           | Some other -> _depth cnt other
           |          _ -> cnt
@@ -127,8 +180,8 @@ module private LogEntry =
         | Configuration(_,_,_,_,prev)    -> count i prev
         | JointConsensus(_,_,_,_,_,prev) -> count i prev
         | LogEntry(_,_,_,_,prev)         -> count i prev
-        | Snapshot _                     -> i + 1UL
-    _depth 0UL log
+        | Snapshot _                     -> i + 1u
+    _depth 0u log
 
   //   _           _
   //  (_)_ __   __| | _____  __
@@ -138,8 +191,7 @@ module private LogEntry =
   //
   /// Return the index of the current log entry.
 
-  let inline index log =
-    match log with
+  let index = function
     | Configuration(_,idx,_,_,_)    -> idx
     | JointConsensus(_,idx,_,_,_,_) -> idx
     | LogEntry(_,idx,_,_,_)         -> idx
@@ -154,8 +206,7 @@ module private LogEntry =
   //
   /// Return the index of the previous element if present.
 
-  let inline prevIndex log =
-    match log with
+  let prevIndex = function
     | Configuration(_,_,_,_,Some prev)    -> Some (index prev)
     | JointConsensus(_,_,_,_,_,Some prev) -> Some (index prev)
     | LogEntry(_,_,_,_,Some prev)         -> Some (index prev)
@@ -170,8 +221,7 @@ module private LogEntry =
   //
   /// Extract the `Term` field from a LogEntry
 
-  let inline term log =
-    match log with
+  let term = function
     | Configuration(_,_,term,_,_)    -> term
     | JointConsensus(_,_,term,_,_,_) -> term
     | LogEntry(_,_,term,_,_)         -> term
@@ -186,8 +236,7 @@ module private LogEntry =
   //
   /// Return the previous elements' term, if present.
 
-  let inline prevTerm log =
-    match log with
+  let prevTerm = function
     | Configuration(_,_,_,_,Some prev)    -> Some (term prev)
     | JointConsensus(_,_,_,_,_,Some prev) -> Some (term prev)
     | LogEntry(_,_,_,_,Some prev)         -> Some (term prev)
@@ -203,8 +252,7 @@ module private LogEntry =
   //
   /// Return the previous entry, should there be one.
 
-  let inline prevEntry log =
-    match log with
+  let prevEntry = function
     | Configuration(_,_,_,_,prev)    -> prev
     | JointConsensus(_,_,_,_,_,prev) -> prev
     | LogEntry(_,_,_,_,prev)         -> prev
@@ -218,8 +266,7 @@ module private LogEntry =
   //
   /// Get the data payload from log entry
 
-  let inline data log =
-    match log with
+  let data = function
     | LogEntry(_,_,_,d,_)     -> Some d
     | Snapshot(_,_,_,_,_,_,d) -> Some d
     | _                       -> None
@@ -232,8 +279,7 @@ module private LogEntry =
   //
   /// Return the current log entry's nodes property, should it have one
 
-  let inline nodes log =
-    match log with
+  let nodes = function
     | Configuration(_,_,_,d,_)    -> Some d
     | JointConsensus(_,_,_,_,d,_) -> Some d
     | Snapshot(_,_,_,_,_,d,_)     -> Some d
@@ -249,8 +295,7 @@ module private LogEntry =
   /// Return the old nodes property (or nothing) of the current JointConsensus
   /// log entry.
 
-  let inline changes log =
-    match log with
+  let changes = function
     | JointConsensus(_,_,_,c,_,_) -> Some c
     | _                           -> None
 
@@ -262,7 +307,7 @@ module private LogEntry =
   //
   /// ### Complexity: 0(n)
 
-  let rec inline at idx log =
+  let rec at idx log =
     let _extract idx' curr' prev' =
       match idx' with
         | _  when idx > idx' -> None
@@ -290,8 +335,7 @@ module private LogEntry =
   //
   /// ### Complexity: 0(n)
 
-  let rec inline until idx log =
-    match log with
+  let rec until idx = function
     | Snapshot(_,_,_,_,_,_,_) as curr -> Some curr
 
     | Configuration(_,idx',_,_,None) as curr ->
@@ -337,8 +381,7 @@ module private LogEntry =
   ///                                                           |___/
   /// ### Complextiy: O(n)
 
-  let rec inline untilExcluding idx log =
-    match log with
+  let rec untilExcluding idx = function
     | Snapshot _ as curr -> Some curr
 
     | Configuration(id,index,term,nodes,Some prev) ->
@@ -363,7 +406,7 @@ module private LogEntry =
   ///
   /// Find an entry by its ID. Returns an option value.
 
-  let rec inline find id log =
+  let rec find id log =
     let _extract id' curr' prev' =
       if id <> id' then
         match prev' with
@@ -384,26 +427,24 @@ module private LogEntry =
   /// | |  | | (_| |   <  __/
   /// |_|  |_|\__,_|_|\_\___|
 
-  let inline make term data =
-    let id = (^id : (static member Create : unit -> ^id) ())
-    LogEntry(id, 0UL, term, data, None)
+  let make term data =
+    LogEntry(Guid.NewGuid(),0u,term,data,None)
 
 
   /// Add an Configuration log entry onto the queue
   ///
   /// ### Complexity: 0(1)
 
-  let inline mkConfig term nodes =
-    let id = (^id : (static member Create : unit -> ^id) ())
-    Configuration(id, 0UL, term, nodes, None)
+  let mkConfig term nodes =
+    Configuration(Guid.NewGuid(), 0u, term, nodes, None)
 
   /// Add an intermediate configuration entry for 2-phase commit onto the log queue
   ///
   /// ### Complexity: 0(1)
 
-  let inline mkConfigChange term oldnodes newnodes =
+  let mkConfigChange term oldnodes newnodes =
     let changes =
-      let additions =
+      let additions = 
         Array.fold
           (fun lst newnode ->
             match Array.tryFind (Node.getId >> (=) newnode.Id) oldnodes with
@@ -416,9 +457,8 @@ module private LogEntry =
             | Some _ -> lst
             | _ -> NodeRemoved(oldnode) :: lst) additions oldnodes
       |> List.toArray
-
-    let id = (^id : (static member Create : unit -> ^id) ())
-    JointConsensus(id, 0UL, term, changes, oldnodes, None)
+               
+    JointConsensus(Guid.NewGuid(), 0u, term, changes, oldnodes, None)
 
   ///  _ __   ___  _ __
   /// | '_ \ / _ \| '_ \
@@ -431,12 +471,11 @@ module private LogEntry =
   ///
   /// ### Complexity: 0(1)
 
-  let inline pop log =
-    match log with
-    | Configuration(_,_,_,_,prev)    -> prev
+  let pop = function
+    | Configuration(_,_,_,_,prev)  -> prev
     | JointConsensus(_,_,_,_,_,prev) -> prev
-    | LogEntry(_,_,_,_,prev)         -> prev
-    | Snapshot _                     -> None
+    | LogEntry(_,_,_,_,prev)       -> prev
+    | Snapshot _                   -> None
 
   ///                            _           _
   ///  ___ _ __   __ _ _ __  ___| |__   ___ | |_
@@ -447,20 +486,11 @@ module private LogEntry =
   ///
   /// Compact the log database
 
-  let inline snapshot nodes data log =
-    let id = (^id : (static member Create : unit -> ^id) ())
-
-    let mk idx term =
-      Snapshot(id,idx + 1UL,term,idx,term,nodes,data)
-
-    let inline _snapshot log =
-      match log with
-      | LogEntry(_,idx,term,_,_)         -> mk idx term
-      | Configuration(_,idx,term,_,_)    -> mk idx term
-      | JointConsensus(_,idx,term,_,_,_) -> mk idx term
-      | Snapshot(_,idx,term,_,_,_,_)     -> mk idx term
-
-    _snapshot log
+  let snapshot nodes data = function
+    | LogEntry(_,idx,term,_,_)         -> Snapshot(Guid.NewGuid(),idx + 1u,term,idx,term,nodes,data)
+    | Configuration(_,idx,term,_,_)    -> Snapshot(Guid.NewGuid(),idx + 1u,term,idx,term,nodes,data)
+    | JointConsensus(_,idx,term,_,_,_) -> Snapshot(Guid.NewGuid(),idx + 1u,term,idx,term,nodes,data)
+    | Snapshot(_,idx,term,_,_,_,_)     -> Snapshot(Guid.NewGuid(),idx + 1u,term,idx,term,nodes,data)
 
   ///  _ __ ___   __ _ _ __
   /// | '_ ` _ \ / _` | '_ \
@@ -470,7 +500,7 @@ module private LogEntry =
   ///
   /// Map over a Logs<'a,'n> and return a list of results
 
-  let rec inline map (f : LogEntry<_,_,_> -> 'b) entry =
+  let rec map (f : LogEntry<_,_> -> 'b) entry =
     let _map curr prev =
       match prev with
         | Some previous -> f curr :: map f previous
@@ -490,7 +520,7 @@ module private LogEntry =
   ///
   /// Fold over a Log<'a,'n> and return an aggregate value
 
-  let rec inline foldl (f : 'm -> LogEntry<_,_,_> -> 'm) (m : 'm) log =
+  let rec foldl (f : 'm -> LogEntry<'a,'n> -> 'm) (m : 'm) log =
     let _fold m curr prev =
       let _m = f m curr
       match prev with
@@ -511,8 +541,7 @@ module private LogEntry =
   ///
   /// Fold over a Log<'a,'n> and return an aggregate value
 
-  let rec inline foldr (f : 'm -> LogEntry<_,_,_> -> 'm) (m : 'm) log =
-    match log with
+  let rec foldr (f : 'm -> LogEntry<'a,'n> -> 'm) (m : 'm)  = function
     | Configuration(_,_,_,_,Some prev)    as curr -> f (foldr f m prev) curr
     | Configuration(_,_,_,_,None)         as curr -> f m curr
     | JointConsensus(_,_,_,_,_,Some prev) as curr -> f (foldr f m prev) curr
@@ -528,7 +557,7 @@ module private LogEntry =
   /// |_|\__\___|_|
   ///
   /// Iterate over a log from the newest entry to the oldest.
-  let inline iter (f : uint32 -> LogEntry<_,_,_> -> unit) (log : LogEntry<_,_,_>) =
+  let iter (f : uint32 -> LogEntry<'a,'n> -> unit) (log : LogEntry<'a,'n>) =
     let rec _iter  _start _log =
       match _log with
         | Configuration(_,_,_,_,Some prev)    as curr -> f _start curr; _iter (_start + 1u) prev
@@ -550,7 +579,7 @@ module private LogEntry =
   /// Version of left-fold that implements short-circuiting by requiring the
   /// return value to be wrapped in `Continue<'a>`.
 
-  let inline aggregate (f : 'm -> LogEntry<_,_,_> -> Continue<'m>) (m : 'm) log =
+  let aggregate (f : 'm -> LogEntry<'a,'n> -> Continue<'m>) (m : 'm) log =
     // wrap the supplied function such that it takes a value lifted to
     // Continue to proactively stop calculating (what about passing a
     // closure instead?)
@@ -560,7 +589,7 @@ module private LogEntry =
         | _ as v -> v
 
     // short-circuiting inner function
-    let rec _resFold (m : Continue<'m>) (_log : LogEntry<_,_,_>) : Continue<'m> =
+    let rec _resFold (m : Continue<'m>) (_log : LogEntry<'a,'n>) : Continue<'m> =
       let _do curr prev =
         match m with
           | Cont _ ->
@@ -593,8 +622,7 @@ module private LogEntry =
   ///
   /// Return the last (oldest) element of a log.
 
-  let rec inline last log =
-    match log with
+  let rec last = function
     | LogEntry(_,_,_,_,None)            as curr -> curr
     | LogEntry(_,_,_,_,Some prev)               -> last prev
     | Configuration(_,_,_,_,None)       as curr -> curr
@@ -609,8 +637,7 @@ module private LogEntry =
   // | | | |  __/ (_| | (_| |
   // |_| |_|\___|\__,_|\__,_|
 
-  let inline head log =
-    match log with
+  let head = function
     | LogEntry(id,idx,term,data,Some _) ->
       LogEntry(id,idx,term,data,None)
 
@@ -628,31 +655,31 @@ module private LogEntry =
   // | | |  __/\ V  V /| |  | | ||  __/
   // |_|  \___| \_/\_/ |_|  |_|\__\___|
 
-  let rec inline rewrite entry =
+  let rec rewrite entry =
     match entry with
       | Configuration(id, _, _, nodes, None) ->
-        Configuration(id, 1UL, 1UL, nodes, None)
+        Configuration(id, 1u, 1u, nodes, None)
 
       | Configuration(id, _, term, nodes, Some prev) ->
         let previous = rewrite prev
-        Configuration(id, index previous + 1UL, term, nodes, Some previous)
+        Configuration(id, index previous + 1u, term, nodes, Some previous)
 
       | JointConsensus(id, _, term, changes, nodes, None) ->
-        JointConsensus(id, 1UL, term, changes, nodes, None)
+        JointConsensus(id, 1u, term, changes, nodes, None)
 
       | JointConsensus(id, _, term, changes, nodes, Some prev) ->
         let previous = rewrite prev
-        JointConsensus(id, index previous + 1UL, term, changes, nodes, Some previous)
+        JointConsensus(id, index previous + 1u, term, changes, nodes, Some previous)
 
       | LogEntry(id, _, term, data, None) ->
-        LogEntry(id, 1UL, term, data, None)
+        LogEntry(id, 1u, term, data, None)
 
       | LogEntry(id, _, term, data, Some prev) ->
         let previous = rewrite prev
-        LogEntry(id, index previous + 1UL, term, data, Some previous)
+        LogEntry(id, index previous + 1u, term, data, Some previous)
 
       | Snapshot(id, _, term, _, pterm, nodes, data) ->
-        Snapshot(id, 2UL, term, 1UL, pterm, nodes, data)
+        Snapshot(id, 2u, term, 1u, pterm, nodes, data)
 
   ///                                   _
   ///   __ _ _ __  _ __   ___ _ __   __| |
@@ -663,12 +690,12 @@ module private LogEntry =
   ///
   /// Append newer entries to older entries
 
-  let inline append (newer : LogEntry<_,_,_>) (older : LogEntry<_,_,_>) =
-    let _aggregator (_log : LogEntry<_,_,_>) (_entry : LogEntry<_,_,_>) =
+  let append (newer : LogEntry<'a,'n>) (older : LogEntry<'a,'n>) =
+    let _aggregator (_log : LogEntry<'a,'n>) (_entry : LogEntry<'a,'n>) =
       if id _log = id _entry
       then _log
       else
-        let nextIdx = index _log + 1UL
+        let nextIdx = index _log + 1u
         match _entry with
           | Configuration(id, _, term, nodes, _) ->
             Configuration(id, nextIdx, term, nodes, Some _log)
@@ -703,8 +730,7 @@ module private LogEntry =
   // | | (_| \__ \ |_ | || | | | (_| |  __/>  <
   // |_|\__,_|___/\__|___|_| |_|\__,_|\___/_/\_\
 
-  let inline lastIndex log =
-    match log with
+  let lastIndex = function
     | Snapshot(_,_,_,idx,_,_,_) -> Some idx
     | _                         -> None
 
@@ -714,8 +740,7 @@ module private LogEntry =
   // | | (_| \__ \ |_ | |  __/ |  | | | | | |
   // |_|\__,_|___/\__||_|\___|_|  |_| |_| |_|
 
-  let inline lastTerm log =
-    match log with
+  let lastTerm = function
     | Snapshot(_,_,_,_,term,_,_) -> Some term
     | _                          -> None
 
@@ -725,7 +750,7 @@ module private LogEntry =
   // |  _| | |  \__ \ |_ | || | | | (_| |  __/>  <
   // |_| |_|_|  |___/\__|___|_| |_|\__,_|\___/_/\_\
 
-  let rec inline firstIndex (t: Term) (entry: LogEntry<_,_,_>) =
+  let rec firstIndex (t: Term) (entry: LogEntry<_,_>) =
     let getIdx idx term prev =
       match prev with
         | Some log ->
@@ -763,7 +788,7 @@ module private LogEntry =
   //  \__, |\___|\__|_| |_|
   //  |___/
 
-  let rec inline getn count log =
+  let rec getn count log =
     if count = 0u then
       None
     else
@@ -792,8 +817,7 @@ module private LogEntry =
   // | (_| (_) | | | | || (_| | | | | \__ \
   //  \___\___/|_| |_|\__\__,_|_|_| |_|___/
 
-  let rec inline contains (f: LogEntry<_,_,_> -> bool) log =
-    match log with
+  let rec contains (f: LogEntry<_,_> -> bool) = function
     | LogEntry(_,_,_,_,Some prev) as this ->
       if f this then true else contains f prev
     | LogEntry(_,_,_,_,None) as this -> f this
@@ -801,7 +825,7 @@ module private LogEntry =
     | Configuration(_,_,_,_,Some prev) as this ->
       if f this then true else contains f prev
     | Configuration(_,_,_,_,None) as this -> f this
-
+    
     | JointConsensus(_,_,_,_,_,Some prev) as this ->
       if f this then true else contains f prev
     | JointConsensus(_,_,_,_,_,None) as this -> f this
@@ -811,26 +835,26 @@ module private LogEntry =
 [<RequireQualifiedAccess>]
 module Log =
   /// Construct an empty Log
-  let inline empty _ =
-    { Depth = 0UL
-    ; Index = 0UL
+  let empty =
+    { Depth = 0u
+    ; Index = 0u
     ; Data  = None
     }
 
-  let inline fromEntries (entries: LogEntry<_,_,_>) =
+  let fromEntries (entries: LogEntry<_,_>) =
     { Depth = LogEntry.depth entries
     ; Index = LogEntry.index entries
     ; Data  = Some entries
     }
 
   /// compute the actual depth of the log (e.g. for compacting)
-  let inline length log = log.Depth
+  let length log = log.Depth
 
   /// Return the the current Index in the log
-  let inline index log = log.Index
+  let index log = log.Index
 
   /// Return the index of the previous element
-  let inline prevIndex log =
+  let prevIndex log =
     match log.Data with
       | Some entries -> LogEntry.prevIndex entries
       | _            -> None
@@ -838,15 +862,15 @@ module Log =
   /// Return the Term of the latest log entry
   ///
   /// ### Complexity: 0(1)
-  let inline term log =
+  let term log =
     match log.Data with
       | Some entries -> LogEntry.term entries
-      | _            -> 0UL
+      | _            -> 0u
 
   /// Return the Term of the previous entry
   ///
   /// ### Complexity: 0(1)
-  let inline prevTerm log =
+  let prevTerm log =
     match log.Data with
       | Some entries -> LogEntry.prevTerm entries
       | _            -> None
@@ -854,7 +878,7 @@ module Log =
   /// Return the last Entry, if it exists
   ///
   /// ### Complexity: 0(1)
-  let inline previous log =
+  let previous log =
     match log.Data with
       | Some entries ->
         match LogEntry.prevEntry entries with
@@ -866,40 +890,40 @@ module Log =
           | _ -> None
       | _ -> None
 
-  let inline prevEntry log =
+  let prevEntry log =
     match log.Data with
       | Some entries -> LogEntry.prevEntry entries
       | _            -> None
 
-  let inline foldl f m log = LogEntry.foldl f m log
-  let inline foldr f m log = LogEntry.foldr f m log
+  let foldl f m log = LogEntry.foldl f m log
+  let foldr f m log = LogEntry.foldr f m log
 
-  let inline foldLogL f m log =
+  let foldLogL f m log =
     match log.Data with
       | Some entries -> LogEntry.foldl f m entries
       | _            -> m
 
-  let inline foldLogR f m log =
+  let foldLogR f m log =
     match log.Data with
       | Some entries -> LogEntry.foldr f m entries
       | _            -> m
 
-  let inline at idx log =
+  let at idx log =
     match log.Data with
       | Some entries -> LogEntry.at idx entries
       | _            -> None
 
-  let inline until idx log =
+  let until idx log =
     match log.Data with
       | Some entries -> LogEntry.until idx entries
       | _            -> None
 
-  let inline untilExcluding idx log =
+  let untilExcluding idx log =
     match log.Data with
       | Some entries -> LogEntry.untilExcluding idx entries
       | _            -> None
 
-  let inline append newentries log : Log<_,_,_> =
+  let append newentries log : Log<_,_> =
     match log.Data with
       | Some entries ->
         let newlog = LogEntry.append newentries entries
@@ -912,96 +936,94 @@ module Log =
           Depth = LogEntry.depth entries'
           Data  = Some           entries' }
 
-  let inline find id log =
+  let find id log =
     match log.Data with
       | Some entries -> LogEntry.find id entries
       | _ -> None
 
-  let inline size log = log.Depth
+  let size log = log.Depth
 
-  let inline depth entries = LogEntry.depth entries
+  let depth entries = LogEntry.depth entries
 
-  let inline make term data = LogEntry.make term data
-  let inline mkConfig term nodes = LogEntry.mkConfig term nodes
-  let inline mkConfigChange term old newer = LogEntry.mkConfigChange term old newer
+  let make term data = LogEntry.make term data
+  let mkConfig term nodes = LogEntry.mkConfig term nodes
+  let mkConfigChange term old newer = LogEntry.mkConfigChange term old newer
 
-  let inline id log = LogEntry.id log
+  let id log = LogEntry.id log
 
-  let inline data log = LogEntry.data log
+  let data log = LogEntry.data log
 
-  let inline entries log = log.Data
+  let entries log = log.Data
 
-  let inline aggregate f m log = LogEntry.aggregate f m log
+  let aggregate f m log = LogEntry.aggregate f m log
 
-  let inline snapshot nodes data log =
+  let snapshot nodes data log =
     match log.Data with
       | Some entries ->
         let snapshot = LogEntry.snapshot nodes data entries
         { Index = LogEntry.index snapshot
-          Depth = 1UL
+          Depth = 1u
           Data = Some snapshot }
       | _ -> log
 
-  let inline map f log      = LogEntry.map f log
-  let inline entryTerm log  = LogEntry.term  log
-  let inline entryIndex log = LogEntry.index log
-
+  let entryTerm = LogEntry.term
+  let entryIndex = LogEntry.index
   let next = LogEntry.next
   let finish = LogEntry.finish
+  let map = LogEntry.map
 
-  let inline head log =
+  let head log =
     match log.Data with
       | Some entries -> Some (LogEntry.head entries)
       | _            -> None
 
-  let inline lastTerm log =
+  let lastTerm log =
     match log.Data with
       | Some data -> LogEntry.lastTerm data
       | _ -> None
 
-  let inline lastIndex log =
+  let lastIndex log =
     match log.Data with
       | Some data -> LogEntry.lastIndex data
       | _ -> None
 
-  let inline last log = LogEntry.last log
+  let last log = LogEntry.last log
 
   /// Return the last entry in the chain of logs.
-  let inline lastEntry log =
+  let lastEntry log =
     match log.Data with
       | Some  entries -> LogEntry.last entries |> Some
       | _             -> None
 
   /// Make sure the current log entry is a singleton (followed by no entries).
-  let inline sanitize term log =
-    match log with
-    | Configuration(id,_,term,nodes,_)          -> Configuration(id,0UL,term,nodes,None)
-    | JointConsensus(id,_,term,changes,nodes,_) -> JointConsensus(id,0UL,term,changes,nodes,None)
-    | LogEntry(id,_,_,data,_)                   -> LogEntry(id,0UL,term,data,None)
+  let sanitize term = function
+    | Configuration(id,_,term,nodes,_)          -> Configuration(id,0u,term,nodes,None)
+    | JointConsensus(id,_,term,changes,nodes,_) -> JointConsensus(id,0u,term,changes,nodes,None)
+    | LogEntry(id,_,_,data,_)                   -> LogEntry(id,0u,term,data,None)
     | Snapshot _ as snapshot                    -> snapshot
 
   /// Iterate over log entries, in order of newsest to oldest.
-  let inline iter f log = LogEntry.iter f log
+  let iter f log = LogEntry.iter f log
 
   /// Retrieve the index of the first log entry for the given term. Return None
   /// if no result was found;
-  let inline firstIndex term log =
+  let firstIndex term log =
     match log.Data with
       | Some log -> LogEntry.firstIndex term log
       | _        -> None
 
   /// Retrieve the last n entries
-  let inline getn count log =
+  let getn count log =
     match log.Data with
       | Some log -> LogEntry.getn count log
       | _        -> None
 
-  let inline containsEntry (f: LogEntry<_,_,_> -> bool) log =
+  let containsEntry (f: LogEntry<_,_> -> bool) log =
     LogEntry.contains f log
 
-  let inline contains (f: LogEntry<_,_,_> -> bool) log =
+  let contains (f: LogEntry<_,_> -> bool) log =
     match log.Data with
       | Some entries -> LogEntry.contains f entries
       | _ -> false
 
-  let inline isConfiguration log = LogEntry.isConfiguration log
+  let isConfiguration log = LogEntry.isConfiguration log
