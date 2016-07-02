@@ -26,12 +26,12 @@ type Node<'node> =
   ; Voting     : bool
   ; VotedForMe : bool
   ; State      : NodeState
-  ; nextIndex  : Index
-  ; matchIndex : Index
+  ; NextIndex  : Index
+  ; MatchIndex : Index
   }
 
   override self.ToString() =
-    sprintf "Node: [id: %d] [state: %A] [voting: %b] [voted for me: %b]"
+    sprintf "Node: [id: %A] [state: %A] [voting: %b] [voted for me: %b]"
       self.Id
       self.State
       self.Voting
@@ -57,8 +57,8 @@ module Node =
     ; State      = Running
     ; Voting     = true
     ; VotedForMe = false
-    ; nextIndex  = 1u
-    ; matchIndex = 0u
+    ; NextIndex  = 1UL
+    ; MatchIndex = 0UL
     }
 
   let isVoting (node : Node<'node>) : bool =
@@ -86,8 +86,8 @@ module Node =
   let getId node = node.Id
   let getData node = node.Data
   let getState node = node.State
-  let getNextIndex  node = node.nextIndex
-  let getMatchIndex node = node.matchIndex
+  let getNextIndex  node = node.NextIndex
+  let getMatchIndex node = node.MatchIndex
 
   let private added oldnodes newnodes =
     let folder changes (node: Node<_>) =

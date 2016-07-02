@@ -116,10 +116,9 @@ type LogEntry<'a,'n> =
 
 type Log<'a,'n> =
   { Data  : LogEntry<'a,'n> option
-  ; Depth : uint32
-  ; Index : uint32
+  ; Depth : Long
+  ; Index : Index
   }
-
 
 [<RequireQualifiedAccess>]
 module private LogEntry =
@@ -172,7 +171,7 @@ module private LogEntry =
   let depth log =
     let rec _depth i thing =
       let inline count i prev =
-        let cnt = i + 1u
+        let cnt = i + 1UL
         match prev with
           | Some other -> _depth cnt other
           |          _ -> cnt
@@ -180,8 +179,8 @@ module private LogEntry =
         | Configuration(_,_,_,_,prev)    -> count i prev
         | JointConsensus(_,_,_,_,_,prev) -> count i prev
         | LogEntry(_,_,_,_,prev)         -> count i prev
-        | Snapshot _                     -> i + 1u
-    _depth 0u log
+        | Snapshot _                     -> i + 1UL
+    _depth 0UL log
 
   //   _           _
   //  (_)_ __   __| | _____  __
@@ -428,7 +427,7 @@ module private LogEntry =
   /// |_|  |_|\__,_|_|\_\___|
 
   let make term data =
-    LogEntry(Guid.NewGuid(),0u,term,data,None)
+    LogEntry(Guid.Create(), 0UL, term, data, None)
 
 
   /// Add an Configuration log entry onto the queue
@@ -436,7 +435,7 @@ module private LogEntry =
   /// ### Complexity: 0(1)
 
   let mkConfig term nodes =
-    Configuration(Guid.NewGuid(), 0u, term, nodes, None)
+    Configuration(Guid.Create(), 0UL, term, nodes, None)
 
   /// Add an intermediate configuration entry for 2-phase commit onto the log queue
   ///
@@ -444,7 +443,7 @@ module private LogEntry =
 
   let mkConfigChange term oldnodes newnodes =
     let changes =
-      let additions = 
+      let additions =
         Array.fold
           (fun lst newnode ->
             match Array.tryFind (Node.getId >> (=) newnode.Id) oldnodes with
@@ -457,8 +456,8 @@ module private LogEntry =
             | Some _ -> lst
             | _ -> NodeRemoved(oldnode) :: lst) additions oldnodes
       |> List.toArray
-               
-    JointConsensus(Guid.NewGuid(), 0u, term, changes, oldnodes, None)
+
+    JointConsensus(Guid.Create(), 0UL, term, changes, oldnodes, None)
 
   ///  _ __   ___  _ __
   /// | '_ \ / _ \| '_ \
@@ -487,10 +486,10 @@ module private LogEntry =
   /// Compact the log database
 
   let snapshot nodes data = function
-    | LogEntry(_,idx,term,_,_)         -> Snapshot(Guid.NewGuid(),idx + 1u,term,idx,term,nodes,data)
-    | Configuration(_,idx,term,_,_)    -> Snapshot(Guid.NewGuid(),idx + 1u,term,idx,term,nodes,data)
-    | JointConsensus(_,idx,term,_,_,_) -> Snapshot(Guid.NewGuid(),idx + 1u,term,idx,term,nodes,data)
-    | Snapshot(_,idx,term,_,_,_,_)     -> Snapshot(Guid.NewGuid(),idx + 1u,term,idx,term,nodes,data)
+    | LogEntry(_,idx,term,_,_)         -> Snapshot(Guid.Create(),idx + 1UL,term,idx,term,nodes,data)
+    | Configuration(_,idx,term,_,_)    -> Snapshot(Guid.Create(),idx + 1UL,term,idx,term,nodes,data)
+    | JointConsensus(_,idx,term,_,_,_) -> Snapshot(Guid.Create(),idx + 1UL,term,idx,term,nodes,data)
+    | Snapshot(_,idx,term,_,_,_,_)     -> Snapshot(Guid.Create(),idx + 1UL,term,idx,term,nodes,data)
 
   ///  _ __ ___   __ _ _ __
   /// | '_ ` _ \ / _` | '_ \
@@ -658,28 +657,28 @@ module private LogEntry =
   let rec rewrite entry =
     match entry with
       | Configuration(id, _, _, nodes, None) ->
-        Configuration(id, 1u, 1u, nodes, None)
+        Configuration(id, 1UL, 1UL, nodes, None)
 
       | Configuration(id, _, term, nodes, Some prev) ->
         let previous = rewrite prev
-        Configuration(id, index previous + 1u, term, nodes, Some previous)
+        Configuration(id, index previous + 1UL, term, nodes, Some previous)
 
       | JointConsensus(id, _, term, changes, nodes, None) ->
-        JointConsensus(id, 1u, term, changes, nodes, None)
+        JointConsensus(id, 1UL, term, changes, nodes, None)
 
       | JointConsensus(id, _, term, changes, nodes, Some prev) ->
         let previous = rewrite prev
-        JointConsensus(id, index previous + 1u, term, changes, nodes, Some previous)
+        JointConsensus(id, index previous + 1UL, term, changes, nodes, Some previous)
 
       | LogEntry(id, _, term, data, None) ->
-        LogEntry(id, 1u, term, data, None)
+        LogEntry(id, 1UL, term, data, None)
 
       | LogEntry(id, _, term, data, Some prev) ->
         let previous = rewrite prev
-        LogEntry(id, index previous + 1u, term, data, Some previous)
+        LogEntry(id, index previous + 1UL, term, data, Some previous)
 
       | Snapshot(id, _, term, _, pterm, nodes, data) ->
-        Snapshot(id, 2u, term, 1u, pterm, nodes, data)
+        Snapshot(id, 2UL, term, 1UL, pterm, nodes, data)
 
   ///                                   _
   ///   __ _ _ __  _ __   ___ _ __   __| |
@@ -695,7 +694,7 @@ module private LogEntry =
       if id _log = id _entry
       then _log
       else
-        let nextIdx = index _log + 1u
+        let nextIdx = index _log + 1UL
         match _entry with
           | Configuration(id, _, term, nodes, _) ->
             Configuration(id, nextIdx, term, nodes, Some _log)
@@ -789,10 +788,10 @@ module private LogEntry =
   //  |___/
 
   let rec getn count log =
-    if count = 0u then
+    if count = 0UL then
       None
     else
-      let newcnt = count - 1u
+      let newcnt = count - 1UL
       match log with
         | Configuration(_,_,_,_, None)   as curr -> Some curr
         | JointConsensus(_,_,_,_,_,None) as curr -> Some curr
@@ -825,7 +824,7 @@ module private LogEntry =
     | Configuration(_,_,_,_,Some prev) as this ->
       if f this then true else contains f prev
     | Configuration(_,_,_,_,None) as this -> f this
-    
+
     | JointConsensus(_,_,_,_,_,Some prev) as this ->
       if f this then true else contains f prev
     | JointConsensus(_,_,_,_,_,None) as this -> f this
@@ -836,8 +835,8 @@ module private LogEntry =
 module Log =
   /// Construct an empty Log
   let empty =
-    { Depth = 0u
-    ; Index = 0u
+    { Depth = 0UL
+    ; Index = 0UL
     ; Data  = None
     }
 
@@ -865,7 +864,7 @@ module Log =
   let term log =
     match log.Data with
       | Some entries -> LogEntry.term entries
-      | _            -> 0u
+      | _            -> 0UL
 
   /// Return the Term of the previous entry
   ///
@@ -962,7 +961,7 @@ module Log =
       | Some entries ->
         let snapshot = LogEntry.snapshot nodes data entries
         { Index = LogEntry.index snapshot
-          Depth = 1u
+          Depth = 1UL
           Data = Some snapshot }
       | _ -> log
 
@@ -997,9 +996,9 @@ module Log =
 
   /// Make sure the current log entry is a singleton (followed by no entries).
   let sanitize term = function
-    | Configuration(id,_,term,nodes,_)          -> Configuration(id,0u,term,nodes,None)
-    | JointConsensus(id,_,term,changes,nodes,_) -> JointConsensus(id,0u,term,changes,nodes,None)
-    | LogEntry(id,_,_,data,_)                   -> LogEntry(id,0u,term,data,None)
+    | Configuration(id,_,term,nodes,_)          -> Configuration(id,0UL,term,nodes,None)
+    | JointConsensus(id,_,term,changes,nodes,_) -> JointConsensus(id,0UL,term,changes,nodes,None)
+    | LogEntry(id,_,_,data,_)                   -> LogEntry(id,0UL,term,data,None)
     | Snapshot _ as snapshot                    -> snapshot
 
   /// Iterate over log entries, in order of newsest to oldest.

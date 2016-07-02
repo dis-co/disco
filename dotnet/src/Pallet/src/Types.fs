@@ -162,7 +162,7 @@ module AppendRequest =
   let inline numEntries ar =
     match ar.Entries with
       | Some entries -> Log.depth entries
-      | _ -> 0u
+      | _ -> 0UL
 
   let inline prevLogIndex ae = ae.PrevLogIdx
   let inline prevLogTerm ae = ae.PrevLogTerm
@@ -216,13 +216,13 @@ type IRaftCallbacks<'a,'b> =
   abstract member PrepareSnapshot:     Raft<'a,'b>     -> Log<'a,'b>
 
   /// perist the given Snapshot value to disk. For safety reasons this MUST
-  /// flush all changes to disk. 
+  /// flush all changes to disk.
   abstract member PersistSnapshot:     LogEntry<'a,'b> -> unit
 
   /// attempt to load a snapshot from disk. return None if no snapshot was found
   abstract member RetrieveSnapshot:    unit            -> LogEntry<'a,'b> option
 
-  /// apply the given command to state machine 
+  /// apply the given command to state machine
   abstract member ApplyLog:            'a              -> unit
 
   /// a new server was added to the configuration
@@ -296,15 +296,15 @@ and Raft<'d,'n> =
   ; CurrentLeader     : NodeId option
   ; Peers             : Map<NodeId,Node<'n>>
   ; OldPeers          : Map<NodeId,Node<'n>> option
-  ; NumNodes          : uint32
+  ; NumNodes          : Long
   ; VotedFor          : NodeId option
   ; Log               : Log<'d,'n>
   ; CommitIndex       : Index
   ; LastAppliedIdx    : Index
-  ; TimeoutElapsed    : uint32
-  ; ElectionTimeout   : uint32
-  ; RequestTimeout    : uint32
-  ; MaxLogDepth       : uint32
+  ; TimeoutElapsed    : Long
+  ; ElectionTimeout   : Long
+  ; RequestTimeout    : Long
+  ; MaxLogDepth       : Long
   ; ConfigChangeEntry : LogEntry<'d,'n> option
   }
   override self.ToString() =

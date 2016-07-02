@@ -1,18 +1,24 @@
 namespace Pallet.Core
 
-open System
+//   ____       _     _
+//  / ___|_   _(_) __| |
+// | |  _| | | | |/ _` |
+// | |_| | |_| | | (_| |
+//  \____|\__,_|_|\__,_|
 
-[<AutoOpen>]
-module Aliases = 
+type Guid = Guid of string
+  with
+    static member Create () =
+      let stripEquals (str: string) =
+        str.Substring(0, str.Length - 2)
 
-  type Id     = Guid
-  type Index  = uint32
-  type Term   = uint32
-  type NodeId = uint32
-  type Err    = string
+      System.Guid.NewGuid().ToByteArray()
+      |> System.Convert.ToBase64String
+      |> stripEquals
+      |> Guid
 
-  let (|+) = (|>)
-
-  let inline flip f b a = f a b
-  let inline constant a _ = a
-  let inline uncurry f (a,b) = f a b
+type Long   = uint64
+type Id     = Guid
+type NodeId = Guid
+type Index  = Long
+type Term   = Long
