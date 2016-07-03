@@ -11,8 +11,8 @@ type Guid = Guid of string
     static member Create () =
       let stripEquals (str: string) =
         str.Substring(0, str.Length - 2)
-
-      System.Guid.NewGuid().ToByteArray()
+      let guid = System.Guid.NewGuid()
+      guid.ToByteArray()
       |> System.Convert.ToBase64String
       |> stripEquals
       |> Guid

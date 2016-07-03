@@ -365,6 +365,7 @@ type PersistVote<'n> = Node<'n> option -> unit
 // |_|  |_|\___/|_| |_|\__,_|\__,_|   //
 ////////////////////////////////////////
 
+[<NoComparison;NoEquality>]
 type RaftMonad<'Env,'State,'T,'M,'Error> =
   MkRM of ('Env -> 'State -> Either<'Error * 'State,'M * 'State,'T * 'State>)
 
