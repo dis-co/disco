@@ -9,17 +9,8 @@ namespace Iris.Core
 [<AutoOpen>]
 module Serialization =
 
-  [<NoComparison;NoEquality>]
-  type Encoder<'t> = Encoder of ('t -> byte array)
-
-  [<NoComparison;NoEquality>]
-  type Decoder<'t> = Decoder of (byte array -> 't option)
-
-  let withEncoder (coder: Encoder<'t>) (value: 't) : byte array =
-    match coder with | Encoder f -> f value
-
-  let withDecoder (coder: Decoder<'t>) (value: byte array) : 't option =
-    match coder with | Decoder f -> f value
+  let inline encode (value : ^t when ^t : (member ToBytes : unit -> byte array)) =
+    (^t : (member ToBytes : unit -> byte array) value)
 
 
 //  _____      _                 _
@@ -252,6 +243,16 @@ type LogExentions() =
 [<AutoOpen>]
 module StaticLogExtensions =
 
+  /// ## Decode a FlatBuffer into a Log structure
+  ///
+  /// Decodes a single FlatBuffer encoded log entry into its corresponding Raft LogEntry type and
+  /// adds passed-in `LogEntry option` as previous field value. Indicates failure by returning None.
+  ///
+  /// ### Signature:
+  /// - fb: LogFB FlatBuffer object to parse
+  /// - log: previous LogEntry value to reconstruct the chain of events
+  ///
+  /// Returns: LogEntry option
   let private fb2Log (fb: LogFB) (log: LogEntry option) : LogEntry option =
     match fb.EntryType with
       | LogTypeFB.ConfigurationFB ->
@@ -290,10 +291,12 @@ module StaticLogExtensions =
         let data = StateMachine.FromFB entry.Data
         let nodes = Array.zeroCreate entry.NodesLength
 
+        let id = RaftId entry.Id
+
         for i in 0..(entry.NodesLength - 1) do
           nodes.[i] <- entry.GetNodes(i) |> Node.FromFB
 
-        Snapshot(RaftId entry.Id, entry.Index, entry.Term, entry.LastIndex, entry.LastTerm, nodes, data)
+        Snapshot(id, entry.Index, entry.Term, entry.LastIndex, entry.LastTerm, nodes, data)
         |> Some
 
       | _ ->

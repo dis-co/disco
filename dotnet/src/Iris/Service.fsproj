@@ -111,10 +111,10 @@
     <Compile Include="Iris\Core\Serialization.fs" />
     <Compile Include="Iris\Core\Raft.fs" />
     <Compile Include="Iris\Service\AppState.fs" />
-
     <Compile Include="Iris\Service\RaftContext.fs" />
     <Compile Include="Iris\Service\AssetServer.fs" />
     <Compile Include="Iris\Service\WebSockets.fs" />
+    <Compile Include="Iris\Service\CommandLine.fs" />
     <Compile Include="Iris\Service\Main.fs" />
     <None Include="assets\example-project.yml" />
     <Content Include="Service.config">

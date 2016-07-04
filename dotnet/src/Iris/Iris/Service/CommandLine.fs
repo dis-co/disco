@@ -2,10 +2,11 @@ namespace Iris.Service
 
 open Argu
 open System
+open Iris.Core
 open Pallet.Core
 
 [<AutoOpen>]
-module CLI =
+module CommandLine =
 
   ////////////////////////////////////////
   //     _                              //
@@ -26,30 +27,30 @@ module CLI =
       exit 1
 
     if opts.Contains <@ Join @> then
-      if not <| opts.Contains <@ Leader_Id @> then
+      if not <| opts.Contains <@ LeaderId @> then
         missing "--leader-id"
         exit 1
-      elif not <| opts.Contains <@ Leader_Ip @> then
+      elif not <| opts.Contains <@ LeaderIp @> then
         missing "--leader-ip"
         exit 1
-      elif not <| opts.Contains <@ Leader_Port @> then
+      elif not <| opts.Contains <@ LeaderPort @> then
         missing "--leader-port"
         exit 1
 
-  let parseOptions args = 
+  let parseOptions args =
     (* Get all mandatory options sorted out and initialize context *)
     try
       let opts = parser.Parse args
       validateOptions opts
-      { RaftId = opts.GetResult <@ Raft_Id @>
-      ; Debug = opts.Contains <@ Debug @>
-      ; IpAddr = opts.GetResult <@ Bind @>
-      ; WebPort = opts.GetResult <@ Web_Port @> |> int
-      ; RaftPort = opts.GetResult <@ Raft_Port @> |> int
-      ; Start = opts.Contains <@ Start @>
-      ; LeaderId = opts.TryGetResult <@ Leader_Id @>
-      ; LeaderIp = opts.TryGetResult <@ Leader_Ip @>
-      ; LeaderPort = opts.TryGetResult <@ Leader_Port @> }
+      { RaftId     = opts.GetResult    <@ RaftNodeId @>
+      ; Debug      = opts.Contains     <@ Debug      @>
+      ; IpAddr     = opts.GetResult    <@ Bind       @>
+      ; WebPort    = opts.GetResult    <@ WebPort    @> |> int
+      ; RaftPort   = opts.GetResult    <@ RaftPort   @> |> int
+      ; Start      = opts.Contains     <@ Start      @>
+      ; LeaderId   = opts.TryGetResult <@ LeaderId   @>
+      ; LeaderIp   = opts.TryGetResult <@ LeaderIp   @>
+      ; LeaderPort = opts.TryGetResult <@ LeaderPort @> }
     with
       | ex ->
         printfn "Error: %s" ex.Message
@@ -76,7 +77,7 @@ module CLI =
 
 
   let tryAppendEntry (ctx: AppContext) str =
-    let entry = Log.make ctx.State.CurrentTerm <| OP(Add,int str)
+    let entry = Log.make ctx.State.Raft.CurrentTerm <| AddClient "hello"
     ctx.Append entry
 
   let timeoutRaft (ctx: AppContext) =

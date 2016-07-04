@@ -35,11 +35,11 @@ module AppContext =
 
   let mkRaft (options: RaftOptions) =
     let node =
-      { MemberId = Guid.NewGuid()
+      { MemberId = Guid.Create()
       ; HostName = getHostName()
       ; IpAddr   = parseIp options.IpAddr
       ; Port     = options.RaftPort }
-      |> Node.create options.RaftId
+      |> Node.create (RaftId options.RaftId)
     Raft.create node
 
   let mkState (options: RaftOptions) : AppState =
@@ -216,7 +216,7 @@ module AppContext =
         let term = currentTerm state.Raft
         let changes = [| NodeRemoved state.Raft.Node |]
         let nodes =  [||]
-        let entry = JointConsensus(RaftId.create(), 0UL, term , changes, nodes, None)
+        let entry = JointConsensus(RaftId.Create(), 0UL, term , changes, nodes, None)
         receiveEntry entry
         |> evalRaft state.Raft (this :> IRaftCallbacks<_,_>)
         |> flip updateRaft state
@@ -234,7 +234,7 @@ module AppContext =
 
         let changes = [| NodeAdded state.Raft.Node |]
         let nodes =  [||]
-        let entry = JointConsensus(RaftId.create(), 0UL, term, changes, nodes, None)
+        let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, nodes, None)
 
         let newstate =
           raft {
@@ -248,12 +248,12 @@ module AppContext =
               do! periodic 1001UL
             else
               let leader =
-                { MemberId = Guid.NewGuid()
+                { MemberId = Guid.Create()
                 ; HostName = "<empty>"
                 ; IpAddr = Option.get options.LeaderIp   |> parseIp
                 ; Port   = Option.get options.LeaderPort |> int
                 }
-                |> Node.create (Option.get options.LeaderId)
+                |> Node.create (Option.get options.LeaderId |> RaftId)
               tryJoin leader
           }
           |> evalRaft state.Raft (this :> IRaftCallbacks<_,_>)
@@ -406,7 +406,7 @@ module AppContext =
 
         let term = currentTerm state.Raft
         let changes = [| NodeAdded node |]
-        let entry = JointConsensus(RaftId.create(), 0UL, term, changes, [||], None)
+        let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, [||], None)
         let response = receiveEntry entry
                        |> runRaft state.Raft (self :> IRaftCallbacks<_,_>)
 
@@ -428,7 +428,7 @@ module AppContext =
 
         let term = currentTerm state.Raft
         let changes = [| NodeRemoved node |]
-        let entry = JointConsensus(RaftId.create(), 0UL, term, changes, [||], None)
+        let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, [||], None)
         do! receiveEntry entry
             |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
             |> flip updateRaft state
