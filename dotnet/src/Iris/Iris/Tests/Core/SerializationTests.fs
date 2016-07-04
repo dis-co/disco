@@ -21,19 +21,20 @@ module SerializationTests =
   let test_validate_requestvote_serialization =
     testCase "Validate RequestVote Serialization" <| fun _ ->
       let info =
-        { HostName = "test-host"
-        ; IpAddr = IPAddress.Parse "192.168.2.10"
+        { MemberId = Guid.Create ()
+        ; HostName = "test-host"
+        ; IpAddr = IpAddress.Parse "192.168.2.10"
         ; Port = 8080 }
 
-      let node = Node.create 18u info
+      let node = Node.create (RaftId.Create()) info
 
       let vr : VoteRequest =
-        { Term = 8u
-        ; LastLogIndex = 128u
-        ; LastLogTerm = 7u
+        { Term = 8UL
+        ; LastLogIndex = 128UL
+        ; LastLogTerm = 7UL
         ; Candidate = node }
 
-      let msg   = RequestVote(18u, vr)
+      let msg   = RequestVote(RaftId.Create(), vr)
       let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
 
       expect "Should be structurally the same" msg id remsg
@@ -48,11 +49,11 @@ module SerializationTests =
   let test_validate_requestvote_response_serialization =
     testCase "Validate RequestVote Response Serialization" <| fun _ ->
       let vr : VoteResponse =
-        { Term = 8u
+        { Term = 8UL
         ; Granted = false
         ; Reason = Some VoteTermMismatch }
 
-      let msg   = RequestVoteResponse(18u, vr)
+      let msg   = RequestVoteResponse(RaftId.Create(), vr)
       let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
 
       expect "Should be structurally the same" msg id remsg
@@ -66,35 +67,44 @@ module SerializationTests =
 
   let test_validate_appendentries_serialization =
     testCase "Validate RequestVote Response Serialization" <| fun _ ->
-      let info1 = { HostName = "Hans";  IpAddr = IPAddress.Parse "192.168.1.20"; Port = 8080 }
-      let info2 = { HostName = "Klaus"; IpAddr = IPAddress.Parse "192.168.1.22"; Port = 8080 }
+      let info1 =
+        { MemberId = Guid.Create()
+        ; HostName = "Hans"
+        ; IpAddr = IpAddress.Parse "192.168.1.20"
+        ; Port = 8080 }
 
-      let node1 = Node.create 1u info1
-      let node2 = Node.create 2u info2
+      let info2 =
+        { MemberId = Guid.Create()
+        ; HostName = "Klaus"
+        ; IpAddr = IpAddress.Parse "192.168.1.22"
+        ; Port = 8080 }
+
+      let node1 = Node.create (RaftId.Create()) info1
+      let node2 = Node.create (RaftId.Create()) info2
 
       let changes = [| NodeRemoved node2 |]
       let nodes = [| node1; node2 |]
 
       let log =
-        Some <| LogEntry(Guid.NewGuid(), 7u, 1u, Close "cccc",
-          Some <| LogEntry(Guid.NewGuid(), 6u, 1u, AddClient "bbbb",
-            Some <| Configuration(Guid.NewGuid(), 5u, 1u, [| node1 |],
-              Some <| JointConsensus(Guid.NewGuid(), 4u, 1u, changes, nodes,
-                Some <| Snapshot(Guid.NewGuid(), 3u, 1u, 2u, 1u, nodes, DataSnapshot "aaaa")))))
+        Some <| LogEntry(RaftId.Create(), 7UL, 1UL, Close "cccc",
+          Some <| LogEntry(RaftId.Create(), 6UL, 1UL, AddClient "bbbb",
+            Some <| Configuration(RaftId.Create(), 5UL, 1UL, [| node1 |],
+              Some <| JointConsensus(RaftId.Create(), 4UL, 1UL, changes, nodes,
+                Some <| Snapshot(RaftId.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
 
       let ae : AppendEntries =
-        { Term = 8u
-        ; PrevLogIdx = 192u
-        ; PrevLogTerm = 87u
-        ; LeaderCommit = 182u
+        { Term = 8UL
+        ; PrevLogIdx = 192UL
+        ; PrevLogTerm = 87UL
+        ; LeaderCommit = 182UL
         ; Entries = log }
 
-      let msg   = AppendEntries(18u, ae)
+      let msg   = AppendEntries(RaftId.Create(), ae)
       let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
-      let msg   = AppendEntries(18u, { ae with Entries = None })
+      let msg   = AppendEntries(RaftId.Create(), { ae with Entries = None })
       let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
 
       expect "Should be structurally the same" msg id remsg
@@ -109,13 +119,13 @@ module SerializationTests =
   let test_validate_appendentries_response_serialization =
     testCase "Validate RequestVote Response Serialization" <| fun _ ->
       let response : AppendResponse =
-        { Term         = 38u
+        { Term         = 38UL
         ; Success      = true
-        ; CurrentIndex = 1234u
-        ; FirstIndex   = 8942u
+        ; CurrentIndex = 1234UL
+        ; FirstIndex   = 8942UL
         }
 
-      let msg = AppendEntriesResponse(12341u, response)
+      let msg = AppendEntriesResponse(RaftId.Create(), response)
       let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
 
       expect "Should be structurally the same" msg id remsg
@@ -129,18 +139,23 @@ module SerializationTests =
 
   let test_validate_installsnapshot_serialization =
     testCase "Validate InstallSnapshot Serialization" <| fun _ ->
-      let info = { HostName = "Hans"; IpAddr = IPAddress.Parse "123.23.21.1"; Port = 124 }
-      let node1 = [| Node.create 1u info |]
+      let info =
+        { MemberId = Guid.Create()
+        ; HostName = "Hans"
+        ; IpAddr = IpAddress.Parse "123.23.21.1"
+        ; Port = 124 }
+
+      let node1 = [| Node.create (RaftId.Create()) info |]
 
       let is : InstallSnapshot =
-        { Term = 2134u
-        ; LeaderId = 1230u
-        ; LastIndex = 242u
-        ; LastTerm = 124242u
-        ; Data = Snapshot(Guid.NewGuid(), 12u, 3414u, 241u, 422u, node1, DataSnapshot "hahahah")
+        { Term = 2134UL
+        ; LeaderId = RaftId.Create()
+        ; LastIndex = 242UL
+        ; LastTerm = 124242UL
+        ; Data = Snapshot(RaftId.Create(), 12UL, 3414UL, 241UL, 422UL, node1, DataSnapshot "hahahah")
         }
 
-      let msg = InstallSnapshot(2134u, is)
+      let msg = InstallSnapshot(RaftId.Create(), is)
       let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
 
       expect "Should be structurally the same" msg id remsg
@@ -154,9 +169,9 @@ module SerializationTests =
 
   let test_validate_installsnapshot_response_serialization =
     testCase "Validate InstallSnapshot Response Serialization" <| fun _ ->
-      let response : SnapshotResponse = { Term = 92381u }
+      let response : SnapshotResponse = { Term = 92381UL }
 
-      let msg = InstallSnapshotResponse(32423u, response)
+      let msg = InstallSnapshotResponse(RaftId.Create(), response)
       let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
 
       expect "Should be structurally the same" msg id remsg
@@ -169,11 +184,13 @@ module SerializationTests =
 
   let test_validate_handshake_serialization =
     testCase "Validate HandShake Serialization" <| fun _ ->
-      let info = { HostName = "horst"
-                 ; IpAddr = IPAddress.Parse "127.0.0.1"
-                 ; Port = 8080 }
+      let info =
+        { MemberId = Guid.Create()
+        ; HostName = "horst"
+        ; IpAddr = IpAddress.Parse "127.0.0.1"
+        ; Port = 8080 }
 
-      let msg = HandShake(Node.create 1u info)
+      let msg = HandShake(Node.create (RaftId.Create()) info)
       let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
 
       expect "Should be structurally the same" msg id remsg
@@ -186,11 +203,13 @@ module SerializationTests =
 
   let test_validate_handwaive_serialization =
     testCase "Validate HandWaive Serialization" <| fun _ ->
-      let info = { HostName = "horst"
-                 ; IpAddr = IPAddress.Parse "127.0.0.1"
-                 ; Port = 8080 }
+      let info =
+        { MemberId = Guid.Create()
+        ; HostName = "horst"
+        ; IpAddr = IpAddress.Parse "127.0.0.1"
+        ; Port = 8080 }
 
-      let msg = HandWaive(Node.create 1u info)
+      let msg = HandWaive(Node.create (RaftId.Create()) info)
       let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
 
       expect "Should be structurally the same" msg id remsg
@@ -203,6 +222,7 @@ module SerializationTests =
 
   let test_validate_errorresponse_serialization =
     testCase "Validate ErrorResponse Serialization" <| fun _ ->
+
       let errors = [
           AlreadyVoted
           AppendEntryFailed

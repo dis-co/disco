@@ -427,7 +427,7 @@ module private LogEntry =
   /// |_|  |_|\__,_|_|\_\___|
 
   let make term data =
-    LogEntry(Guid.Create(), 0UL, term, data, None)
+    LogEntry(RaftId.Create(), 0UL, term, data, None)
 
 
   /// Add an Configuration log entry onto the queue
@@ -435,7 +435,7 @@ module private LogEntry =
   /// ### Complexity: 0(1)
 
   let mkConfig term nodes =
-    Configuration(Guid.Create(), 0UL, term, nodes, None)
+    Configuration(RaftId.Create(), 0UL, term, nodes, None)
 
   /// Add an intermediate configuration entry for 2-phase commit onto the log queue
   ///
@@ -457,7 +457,7 @@ module private LogEntry =
             | _ -> NodeRemoved(oldnode) :: lst) additions oldnodes
       |> List.toArray
 
-    JointConsensus(Guid.Create(), 0UL, term, changes, oldnodes, None)
+    JointConsensus(RaftId.Create(), 0UL, term, changes, oldnodes, None)
 
   ///  _ __   ___  _ __
   /// | '_ \ / _ \| '_ \
@@ -486,10 +486,10 @@ module private LogEntry =
   /// Compact the log database
 
   let snapshot nodes data = function
-    | LogEntry(_,idx,term,_,_)         -> Snapshot(Guid.Create(),idx + 1UL,term,idx,term,nodes,data)
-    | Configuration(_,idx,term,_,_)    -> Snapshot(Guid.Create(),idx + 1UL,term,idx,term,nodes,data)
-    | JointConsensus(_,idx,term,_,_,_) -> Snapshot(Guid.Create(),idx + 1UL,term,idx,term,nodes,data)
-    | Snapshot(_,idx,term,_,_,_,_)     -> Snapshot(Guid.Create(),idx + 1UL,term,idx,term,nodes,data)
+    | LogEntry(_,idx,term,_,_)         -> Snapshot(RaftId.Create(),idx + 1UL,term,idx,term,nodes,data)
+    | Configuration(_,idx,term,_,_)    -> Snapshot(RaftId.Create(),idx + 1UL,term,idx,term,nodes,data)
+    | JointConsensus(_,idx,term,_,_,_) -> Snapshot(RaftId.Create(),idx + 1UL,term,idx,term,nodes,data)
+    | Snapshot(_,idx,term,_,_,_,_)     -> Snapshot(RaftId.Create(),idx + 1UL,term,idx,term,nodes,data)
 
   ///  _ __ ___   __ _ _ __
   /// | '_ ` _ \ / _` | '_ \

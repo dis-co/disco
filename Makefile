@@ -64,7 +64,7 @@ worker:
 #  \__,_|_|_|
 
 debug.all:
-	${BUILD} Debug
+	${BUILD} DebugAll
 
 clean:
 	${BUILD} Clean

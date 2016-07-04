@@ -1,6 +1,5 @@
 namespace Iris.Core
 
-open System
 open FlatBuffers
 open Iris.Serialization.Raft
 
@@ -11,7 +10,7 @@ type IrisNode =
   ; Port     : int }
 
   static member Create name host port =
-    { MemberId = Guid.NewGuid()
+    { MemberId = Guid.Create()
     ; HostName = name
     ; IpAddr   = IPv4Address host
     ; Port     = port }

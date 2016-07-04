@@ -102,6 +102,7 @@
     <Compile Include="Iris\Core\Config.fs" />
     <Compile Include="Iris\Core\Project.fs" />
     <Compile Include="Iris\Core\Uri.fs" />
+
     <Compile Include="Iris\Service\GitDaemon.fs" />
 
     <Compile Include="Iris\Core\BrowserSession.fs" />

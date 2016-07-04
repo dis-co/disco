@@ -109,13 +109,13 @@ enum NodeStateFB:ubyte {
 }
 
 table NodeFB {
-      Id         : ulong;
+      Id         : string;
       Data       : IrisNodeFB;
       Voting     : bool;
       VotedForMe : bool;
       State      : NodeStateFB;
-      nextIndex  : ulong;
-      matchIndex : ulong;
+      NextIndex  : ulong;
+      MatchIndex : ulong;
 }
 
 //   ____             __ _        ____ _
@@ -237,7 +237,7 @@ table AppendResponseFB {
 
 table InstallSnapshotFB {
       Term      : ulong;
-      LeaderId  : ulong;
+      LeaderId  : string;
       LastIndex : ulong;
       LastTerm  : ulong;
       Data      : [ LogFB ];
@@ -256,32 +256,32 @@ table SnapshotResponseFB {
 //                                |___/
 
 table RequestVoteFB {
-      NodeId:  ulong;
+      NodeId:  string;
       Request: VoteRequestFB;
 }
 
 table RequestVoteResponseFB {
-      NodeId:   ulong;
+      NodeId:   string;
       Response: VoteResponseFB;
 }
 
 table RequestAppendEntriesFB {
-      NodeId:  ulong;
+      NodeId:  string;
       Request: AppendEntriesFB;
 }
 
 table RequestAppendResponseFB {
-      NodeId:   ulong;
+      NodeId:   string;
       Response: AppendResponseFB;
 }
 
 table RequestInstallSnapshotFB {
-      NodeId:  ulong;
+      NodeId:  string;
       Request: InstallSnapshotFB;
 }
 
 table RequestSnapshotResponseFB {
-      NodeId:   ulong;
+      NodeId:   string;
       Response: SnapshotResponseFB;
 }
 

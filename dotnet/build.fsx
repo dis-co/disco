@@ -37,7 +37,7 @@ let authors = [ "Karsten Gebbert <karsten@nsynk.de>" ]
 // Tags for your project (for NuGet package)
 let tags = "cool funky special shiny"
 
-// File system information 
+// File system information
 let solutionFile  = "Iris.sln"
 
 // Project code base directory
@@ -52,8 +52,8 @@ let npmPath =
     "/usr/local/bin/npm"
   else // this might work on windows...
     "./packages/Npm.js/tools/npm.cmd"
-    
-let flatcPath : string = 
+
+let flatcPath : string =
   let info = new ProcessStartInfo("which","flatc")
   info.StandardOutputEncoding <- System.Text.Encoding.UTF8
   info.RedirectStandardOutput <- true
@@ -80,7 +80,7 @@ let jsProjects =
     baseDir @@ "Web.Tests.fsproj" ]
 
 // Helper active pattern for project types
-let (|Fsproj|Csproj|) (projFileName:string) = 
+let (|Fsproj|Csproj|) (projFileName:string) =
     match projFileName with
     | f when f.EndsWith("fsproj") -> Fsproj
     | f when f.EndsWith("csproj") -> Csproj
@@ -96,7 +96,7 @@ let (|Fsproj|Csproj|) (projFileName:string) =
 Target "Bootstrap"
   (fun _ ->
     Restore(id)                         // restore Paket packages
-    Npm(fun p -> 
+    Npm(fun p ->
         { p with
             NpmFilePath = npmPath
             Command = Install Standard
@@ -119,7 +119,7 @@ Target "AssemblyInfo" (fun _ ->
 
     let getProjectDetails projectPath =
         let projectName = System.IO.Path.GetFileNameWithoutExtension(projectPath)
-        ( projectPath, 
+        ( projectPath,
           projectName,
           System.IO.Path.GetDirectoryName(projectPath),
           (getAssemblyInfoAttributes projectName)
@@ -201,9 +201,9 @@ Target "CreateArchive"
 
      if Directory.Exists target |> not then
        CreateDir target
-     else 
+     else
        CleanDir target
-    
+
      CopyDir (target @@ "Iris")  "bin/Iris" (konst true)
      CopyDir (target @@ "Nodes") "bin/Nodes" (konst true)
      let files = !!(target @@ "**")
@@ -238,11 +238,11 @@ Target "GenerateSerialization"
 
    DeleteFile (baseDir @@ "Serialization.csproj")
    CleanDirs [ baseDir @@ "Iris/Serialization" ]
-    
-   let fbs = 
+
+   let fbs =
       !! (baseDir @@ "Schema/**/*.fbs")
       |> Seq.map (fun p -> " " + p)
-      |> Seq.fold ((+)) "" 
+      |> Seq.fold ((+)) ""
 
    let args = "-I " + (baseDir @@ "Schema") + " --csharp " + fbs
 
@@ -253,14 +253,14 @@ Target "GenerateSerialization"
                (TimeSpan.FromMinutes 5.0)
    |> ignore
 
-   let files = 
+   let files =
       !! (baseDir @@ "Iris/Serialization/**/*.cs")
       |> Seq.map (fun p -> "    <Compile Include=\"" + p + "\" />" + Environment.NewLine)
-      |> Seq.fold ((+)) "" 
-   
+      |> Seq.fold ((+)) ""
+
    let top = File.ReadAllText (baseDir @@ "assets/csproj/Serialization.top.xml")
    let bot = File.ReadAllText (baseDir @@ "assets/csproj/Serialization.bottom.xml")
-   
+
    File.WriteAllText((baseDir @@ "Serialization.csproj"), top + files + bot)
 
    MSBuildDebug "" "Build" [ baseDir @@ "Serialization.csproj" ]
@@ -355,25 +355,25 @@ Target "WatchWebTests" (fun _ ->
 Target "BuildDebugService"
   (fun _ ->
     MSBuildDebug "" "Rebuild" [ baseDir @@ "Service.fsproj" ]
-    // |> BuildFrontEnd 
+    // |> BuildFrontEnd
     |> ignore)
 
 Target "BuildReleaseService"
   (fun _ ->
     MSBuildRelease "" "Rebuild" [ baseDir @@ "Service.fsproj" ]
-    // |> BuildFrontEnd 
+    // |> BuildFrontEnd
     |> ignore)
 
 Target "BuildDebugNodes"
   (fun _ ->
     MSBuildDebug "" "Rebuild" [ baseDir @@ "Nodes.fsproj" ]
-    // |> BuildFrontEnd 
+    // |> BuildFrontEnd
     |> ignore)
 
 Target "BuildReleaseNodes"
   (fun _ ->
     MSBuildRelease "" "Rebuild" [ baseDir @@ "Nodes.fsproj" ]
-    // |> BuildFrontEnd 
+    // |> BuildFrontEnd
     |> ignore)
 
 //  _____         _
@@ -384,11 +384,11 @@ Target "BuildReleaseNodes"
 
 (*
    Working with libgit2 native libraries:
-   
+
    - see ldd bin/Debug/NativeBinaries/linux/amd64/libgit...so for dependencies
    - set MONO_LOG_LEVEL=debug for more VM info
    - ln -s bin/Debug/NativeBinaries bin/Debug/libNativeBinaries
-   - set LD_LIBRARY_PATH=....:/run/current-system/sw/lib/ 
+   - set LD_LIBRARY_PATH=....:/run/current-system/sw/lib/
 
    now it *should* work. YMMV.
 
@@ -434,7 +434,7 @@ Target "DevServer"
 //     if not <| executeFSIWithArgs "docs/tools" "generate.fsx" ["--define:RELEASE"; "--define:REFERENCE"] [] then
 //       failwith "generating reference documentation failed"
 // )
-// 
+//
 // let generateHelp' fail debug =
 //     let args =
 //         if debug then ["--define:HELP"]
@@ -446,46 +446,46 @@ Target "DevServer"
 //             failwith "generating help documentation failed"
 //         else
 //             traceImportant "generating help documentation failed"
-// 
+//
 // let generateHelp fail =
 //     generateHelp' fail false
-// 
+//
 // Target "GenerateHelp" (fun _ ->
 //     DeleteFile "docs/content/release-notes.md"
 //     CopyFile "docs/content/" "CHANGELOG.md"
 //     Rename "docs/content/release-notes.md" "docs/content/RELEASE_NOTES.md"
-// 
+//
 //     DeleteFile "docs/content/license.md"
 //     CopyFile "docs/content/" "LICENSE.txt"
 //     Rename "docs/content/license.md" "docs/content/LICENSE.txt"
-// 
+//
 //     generateHelp true
 // )
-// 
+//
 // Target "GenerateHelpDebug" (fun _ ->
 //     DeleteFile "docs/content/release-notes.md"
 //     CopyFile "docs/content/" "CHANGELOG.md"
 //     Rename "docs/content/release-notes.md" "docs/content/RELEASE_NOTES.md"
-// 
+//
 //     DeleteFile "docs/content/license.md"
 //     CopyFile "docs/content/" "LICENSE.txt"
 //     Rename "docs/content/license.md" "docs/content/LICENSE.txt"
-// 
+//
 //     generateHelp' true true
 // )
-//  
-// Target "KeepRunning" (fun _ ->    
+//
+// Target "KeepRunning" (fun _ ->
 //     use watcher = !! "docs/content/**/*.*" |> WatchChanges (fun changes ->
 //          generateHelp false
 //     )
-// 
+//
 //     traceImportant "Waiting for help edits. Press any key to stop."
-// 
+//
 //     System.Console.ReadKey() |> ignore
-// 
+//
 //     watcher.Dispose()
 // )
-// 
+//
 // Target "GenerateDocs" DoNothing
 
 
@@ -497,7 +497,7 @@ Target "Release" DoNothing
 "Clean"
 ==> "GenerateSerialization"
 
-// Serialization 
+// Serialization
 
 "GenerateSerialization"
 ==> "BuildWebTests"
@@ -566,15 +566,45 @@ Target "Release" DoNothing
 "CreateArchive"
 ==> "Release"
 
+//  ____       _                    _    _ _
+// |  _ \  ___| |__  _   _  __ _   / \  | | |
+// | | | |/ _ \ '_ \| | | |/ _` | / _ \ | | |
+// | |_| |  __/ |_) | |_| | (_| |/ ___ \| | |
+// |____/ \___|_.__/ \__,_|\__, /_/   \_\_|_|
+//                         |___/
+
+Target "DebugAll" DoNothing
+
+"BuildWebTests"
+==> "DebugAll"
+
+"BuildWorker"
+==> "DebugAll"
+
+"BuildFrontend"
+==> "DebugAll"
+
+"BuildDebugService"
+==> "DebugAll"
+
+"BuildDebugNodes"
+==> "DebugAll"
+
+"BuildTests"
+==> "DebugAll"
+
+"BuildTests"
+==> "DebugAll"
+
 // "CleanDocs"
 //   ==> "GenerateHelp"
 //   ==> "GenerateReferenceDocs"
 //   ==> "GenerateDocs"
-// 
+//
 // "CleanDocs"
 //   ==> "GenerateHelpDebug"
-// 
+//
 // "GenerateHelp"
 //   ==> "KeepRunning"
-    
+
 RunTargetOrDefault "Release"

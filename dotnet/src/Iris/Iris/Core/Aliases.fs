@@ -26,7 +26,8 @@ module Replacements =
 // /_/   \_\_|_|\__,_|___/\___||___/
 
 type Id         = Guid
-type Index      = uint32
+type Long       = uint64
+type Index      = Long
 type Name       = string
 type Tag        = string
 type NodePath   = string
@@ -45,9 +46,9 @@ type UserName   = string
 type UserAgent  = string
 
 type ClientLog = string
-type ProjectId = Guid
-type MemberId  = Guid
-type SessionId = Guid
+type ProjectId = Id
+type MemberId  = Id
+type SessionId = Id
 type Session   = string
 type Error     = string
 
@@ -63,7 +64,7 @@ type Actor<'t> = MailboxProcessor<'t>
 //  \____\___/|_|\___/|_|  |___/
 
 [<Struct>]
-type RGBAValue = 
+type RGBAValue =
   val Red   : uint8
   val Green : uint8
   val Blue  : uint8
@@ -82,7 +83,7 @@ type RGBAValue =
     ; Alpha = a }
 
 [<Struct>]
-type HSLAValue = 
+type HSLAValue =
   val Hue        : uint8
   val Saturation : uint8
   val Lightness  : uint8

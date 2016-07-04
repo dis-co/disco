@@ -45,9 +45,12 @@
     <None Include="paket.template" />
     <None Include="assets\example-project.yml" />
     <Compile Include="AssemblyInfo\TestsInfo.fs" />
-    <Compile Include="Iris\Core\Util.fs" />
+
+    <Compile Include="Iris\Core\Guid.fs" />
+    <Compile Include="Iris\Core\IpAddress.fs" />
     <Compile Include="Iris\Core\Either.fs" />
     <Compile Include="Iris\Core\Aliases.fs" />
+    <Compile Include="Iris\Core\Util.fs" />
     <Compile Include="Iris\Core\IOBox.fs" />
     <Compile Include="Iris\Core\Patch.fs" />
     <Compile Include="Iris\Core\Cue.fs" />
@@ -63,16 +66,17 @@
     <Compile Include="Iris\Core\Config.fs" />
     <Compile Include="Iris\Core\Project.fs" />
     <Compile Include="Iris\Core\Uri.fs" />
+
+    <Compile Include="Iris\Service\GitDaemon.fs" />
+
+    <Compile Include="Iris\Core\BrowserSession.fs" />
     <Compile Include="Iris\Core\IrisNode.fs" />
     <Compile Include="Iris\Core\StateMachine.fs" />
     <Compile Include="Iris\Core\Serialization.fs" />
     <Compile Include="Iris\Core\Raft.fs" />
-    <Compile Include="Iris\Service\GitDaemon.fs" />
-    <Compile Include="Iris\Service\Member.fs" />
     <Compile Include="Iris\Service\AppState.fs" />
-    <Compile Include="Iris\Service\IrisService.fs" />
-    <Compile Include="Iris\Service\AssetServer.fs" />
-    <Compile Include="Iris\Service\WebSockets.fs" />
+
+
     <!-- <Compile Include="Iris\Tests\Core\ProjectTests.fs" /> -->
     <Compile Include="Iris\Tests\TestUtilities.fs" />
     <Compile Include="Iris\Tests\Core\SerializationTests.fs" />

@@ -14,13 +14,13 @@ open Iris.Serialization.Raft
 //                            |_|
 
 type RaftOptions =
-  { RaftId           : uint32
+  { RaftId           : string
   ; Debug            : bool
   ; IpAddr           : string
   ; WebPort          : int
   ; RaftPort         : int
   ; Start            : bool
-  ; LeaderId         : uint32 option
+  ; LeaderId         : string option
   ; LeaderIp         : string option
   ; LeaderPort       : uint32 option
   }
@@ -34,14 +34,14 @@ type RaftOptions =
 //                                |___/
 
 type GeneralArgs =
-  | [<Mandatory>][<EqualsAssignment>] Bind        of string
-  | [<Mandatory>][<EqualsAssignment>] RaftId     of uint32
+  | [<Mandatory>][<EqualsAssignment>] Bind       of string
+  | [<Mandatory>][<EqualsAssignment>] RaftNodeId of string
   | [<Mandatory>][<EqualsAssignment>] RaftPort   of uint32
   | [<Mandatory>][<EqualsAssignment>] WebPort    of uint32
   |                                   Debug
   |                                   Start
   |                                   Join
-  |              [<EqualsAssignment>] LeaderId   of uint32
+  |              [<EqualsAssignment>] LeaderId   of string
   |              [<EqualsAssignment>] LeaderIp   of string
   |              [<EqualsAssignment>] LeaderPort of uint32
 
@@ -52,7 +52,7 @@ type GeneralArgs =
         | Bind       _ -> "Specify a valid IP address."
         | WebPort    _ -> "Http server port."
         | RaftPort   _ -> "Raft server port (internal)."
-        | RaftId     _ -> "Raft server ID (internal)."
+        | RaftNodeId _ -> "Raft server ID (internal)."
         | Debug        -> "Log output to console."
         | Start        -> "Start a new cluster"
         | Join         -> "Join an existing cluster"
@@ -68,7 +68,7 @@ type GeneralArgs =
 // |_| \_\__,_|_|  \__| |_|  |_|___/\__, |
 //                                  |___/
 [<AutoOpen>]
-module RaftMsgFB = 
+module RaftMsgFB =
 
   let getValue (t : Offset<'a>) : int = t.Value
 
@@ -79,28 +79,34 @@ module RaftMsgFB =
     RaftMsgFB.EndRaftMsgFB(builder)
     |> getValue
 
-  let createAppendEntriesFB builder nid (ar: AppendEntries) =
-    RequestAppendEntriesFB.CreateRequestAppendEntriesFB(builder, uint64 nid, ar.ToOffset builder)
+  let createAppendEntriesFB (builder: FlatBufferBuilder) (nid: NodeId) (ar: AppendEntries) =
+    let sid = string nid |> builder.CreateString
+    RequestAppendEntriesFB.CreateRequestAppendEntriesFB(builder, sid, ar.ToOffset builder)
     |> getValue
 
-  let createAppendResponseFB builder nid (ar: AppendResponse) =
-    RequestAppendResponseFB.CreateRequestAppendResponseFB(builder, uint64 nid, ar.ToOffset builder)
+  let createAppendResponseFB (builder: FlatBufferBuilder) (nid: NodeId) (ar: AppendResponse) =
+    let id = string nid |> builder.CreateString
+    RequestAppendResponseFB.CreateRequestAppendResponseFB(builder, id, ar.ToOffset builder)
     |> getValue
 
-  let createRequestVoteFB builder nid (vr: VoteRequest) =
-    RequestVoteFB.CreateRequestVoteFB(builder, uint64 nid, vr.ToOffset builder)
+  let createRequestVoteFB (builder: FlatBufferBuilder) (nid: NodeId) (vr: VoteRequest) =
+    let id = string nid |> builder.CreateString
+    RequestVoteFB.CreateRequestVoteFB(builder, id, vr.ToOffset builder)
     |> getValue
 
-  let createRequestVoteResponseFB builder nid (vr: VoteResponse) =
-    RequestVoteResponseFB.CreateRequestVoteResponseFB(builder, uint64 nid, vr.ToOffset builder)
+  let createRequestVoteResponseFB (builder: FlatBufferBuilder) (nid: NodeId) (vr: VoteResponse) =
+    let id = string nid |> builder.CreateString
+    RequestVoteResponseFB.CreateRequestVoteResponseFB(builder, id, vr.ToOffset builder)
     |> getValue
 
-  let createInstallSnapshotFB bldr id (is: InstallSnapshot) =
-    RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(bldr, uint64 id, is.ToOffset bldr)
+  let createInstallSnapshotFB (builder: FlatBufferBuilder) (nid: NodeId) (is: InstallSnapshot) =
+    let id = string nid |> builder.CreateString
+    RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(builder, id, is.ToOffset builder)
     |> getValue
 
-  let createSnapshotResponseFB bldr id (sr: SnapshotResponse) =
-    RequestSnapshotResponseFB.CreateRequestSnapshotResponseFB(bldr, uint64 id, sr.ToOffset bldr)
+  let createSnapshotResponseFB (builder: FlatBufferBuilder) (nid: NodeId) (sr: SnapshotResponse) =
+    let id = string nid |> builder.CreateString
+    RequestSnapshotResponseFB.CreateRequestSnapshotResponseFB(builder, id, sr.ToOffset builder)
     |> getValue
 
 type RaftMsg =
@@ -127,7 +133,7 @@ type RaftMsg =
       // |  _ <  __/ (_| | |_| |  __/\__ \ |_ \ V / (_) | ||  __/
       // |_| \_\___|\__, |\__,_|\___||___/\__| \_/ \___/ \__\___|
       //               |_|
-      
+
       | RequestVote(nid, req) ->
         createRequestVoteFB builder nid req
         |> build builder RaftMsgTypeFB.RequestVoteFB
@@ -224,42 +230,42 @@ type RaftMsg =
           let entry = msg.GetMsg(new RequestVoteFB())
           let request = VoteRequest<IrisNode>.FromFB(entry.Request)
 
-          RequestVote(uint32 entry.NodeId, request)
+          RequestVote(RaftId entry.NodeId, request)
           |> Some
 
         | RaftMsgTypeFB.RequestVoteResponseFB ->
           let entry = msg.GetMsg(new RequestVoteResponseFB())
           let response = VoteResponse.FromFB entry.Response
 
-          RequestVoteResponse(uint32 entry.NodeId, response)
+          RequestVoteResponse(RaftId entry.NodeId, response)
           |> Some
 
         | RaftMsgTypeFB.RequestAppendEntriesFB ->
           let entry = msg.GetMsg(new RequestAppendEntriesFB())
           let request = AppendEntries.FromFB entry.Request
 
-          AppendEntries(uint32 entry.NodeId, request)
+          AppendEntries(RaftId entry.NodeId, request)
           |> Some
 
         | RaftMsgTypeFB.RequestAppendResponseFB ->
           let entry = msg.GetMsg(new RequestAppendResponseFB())
           let response = AppendResponse.FromFB entry.Response
 
-          AppendEntriesResponse(uint32 entry.NodeId, response)
+          AppendEntriesResponse(RaftId entry.NodeId, response)
           |> Some
 
         | RaftMsgTypeFB.RequestInstallSnapshotFB ->
           let entry = msg.GetMsg(new RequestInstallSnapshotFB())
           let request = InstallSnapshot.FromFB entry.Request
 
-          InstallSnapshot(uint32 entry.NodeId, request)
+          InstallSnapshot(RaftId entry.NodeId, request)
           |> Some
-          
+
         | RaftMsgTypeFB.RequestSnapshotResponseFB ->
           let entry = msg.GetMsg(new RequestSnapshotResponseFB())
           let response = SnapshotResponse.FromFB entry.Response
 
-          InstallSnapshotResponse(uint32 entry.NodeId, response)
+          InstallSnapshotResponse(RaftId entry.NodeId, response)
           |> Some
 
         | RaftMsgTypeFB.HandShakeFB ->

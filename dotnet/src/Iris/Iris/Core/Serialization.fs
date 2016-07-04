@@ -68,15 +68,16 @@ type NodeExtensions() =
 
   [<Extension>]
   static member inline ToOffset (node: Node, builder: FlatBufferBuilder) =
+    let id = string node.Id |> builder.CreateString
     let info = node.Data.ToOffset(builder)
     let state = node.State.ToOffset()
     NodeFB.StartNodeFB(builder)
-    NodeFB.AddId(builder, uint64 node.Id)
+    NodeFB.AddId(builder, id)
     NodeFB.AddVoting(builder, node.Voting)
     NodeFB.AddVotedForMe(builder, node.VotedForMe)
     NodeFB.AddState(builder, state)
-    NodeFB.AddNextIndex(builder, uint64 node.nextIndex)
-    NodeFB.AddMatchIndex(builder, uint64 node.matchIndex)
+    NodeFB.AddNextIndex(builder, node.NextIndex)
+    NodeFB.AddMatchIndex(builder, node.MatchIndex)
     NodeFB.AddData(builder, info)
     NodeFB.EndNodeFB(builder)
 
@@ -86,13 +87,13 @@ module StaticNodeExtensions =
   type Node<'t> with
     static member FromFB (fb: NodeFB) : Node =
       let info = fb.Data |> IrisNode.FromFB
-      { Id = uint32 fb.Id
+      { Id = RaftId fb.Id
       ; State = fb.State |> NodeState.FromFB
       ; Data = info
       ; Voting = fb.Voting
       ; VotedForMe = fb.VotedForMe
-      ; nextIndex = uint32 fb.NextIndex
-      ; matchIndex = uint32 fb.MatchIndex
+      ; NextIndex = fb.NextIndex
+      ; MatchIndex = fb.MatchIndex
       }
 
 
@@ -255,21 +256,16 @@ module StaticLogExtensions =
     match fb.EntryType with
       | LogTypeFB.ConfigurationFB ->
         let entry = fb.GetEntry(new ConfigurationFB())
-        let id = System.Guid.Parse entry.Id
-        let index = uint32 entry.Index
-        let term = uint32 entry.Term
         let nodes = Array.zeroCreate entry.NodesLength
 
         for i in 0 .. (entry.NodesLength - 1) do
           nodes.[i] <- entry.GetNodes(i) |> Node.FromFB
 
-        Some <| Configuration(id, index, term, nodes, log)
+        Configuration(RaftId entry.Id, entry.Index, entry.Term, nodes, log)
+        |> Some
 
       | LogTypeFB.JointConsensusFB ->
         let entry = fb.GetEntry(new JointConsensusFB())
-        let id = System.Guid.Parse entry.Id
-        let index = uint32 entry.Index
-        let term = uint32 entry.Term
         let changes = Array.zeroCreate entry.ChangesLength
         let nodes = Array.zeroCreate entry.NodesLength
 
@@ -279,31 +275,26 @@ module StaticLogExtensions =
         for i in 0 .. (entry.ChangesLength - 1) do
           changes.[i] <- entry.GetChanges(i) |> ConfigChange.FromFB
 
-        Some <| JointConsensus(id, index, term, changes, nodes, log)
+        JointConsensus(RaftId entry.Id, entry.Index, entry.Term, changes, nodes, log)
+        |> Some
 
       | LogTypeFB.LogEntryFB ->
         let entry = fb.GetEntry(new LogEntryFB())
-        let id = System.Guid.Parse entry.Id
-        let index = uint32 entry.Index
-        let term = uint32 entry.Term
         let data = StateMachine.FromFB entry.Data
 
-        Some <| LogEntry(id, index, term, data, log)
+        LogEntry(RaftId entry.Id, entry.Index, entry.Term, data, log)
+        |> Some
 
       | LogTypeFB.SnapshotFB ->
         let entry = fb.GetEntry(new SnapshotFB())
-        let id = System.Guid.Parse entry.Id
-        let index = uint32 entry.Index
-        let term = uint32 entry.Term
-        let lindex = uint32 entry.LastIndex
-        let lterm = uint32 entry.LastTerm
         let data = StateMachine.FromFB entry.Data
         let nodes = Array.zeroCreate entry.NodesLength
 
         for i in 0..(entry.NodesLength - 1) do
           nodes.[i] <- entry.GetNodes(i) |> Node.FromFB
 
-        Some <| Snapshot(id, index, term, lindex, lterm, nodes, data)
+        Snapshot(RaftId entry.Id, entry.Index, entry.Term, entry.LastIndex, entry.LastTerm, nodes, data)
+        |> Some
 
       | _ ->
         failwith "unable to de-serialize garbage LogTypeFB value"
@@ -433,10 +424,10 @@ module StaticVotingExtensions =
 
   type VoteRequest<'t> with
     static member FromFB (fb: VoteRequestFB) : VoteRequest =
-      { Term         = uint32 fb.Term
+      { Term         = fb.Term
       ; Candidate    = fb.Candidate |> Node.FromFB
-      ; LastLogIndex = uint32 fb.LastLogIndex
-      ; LastLogTerm  = uint32 fb.LastLogTerm
+      ; LastLogIndex = fb.LastLogIndex
+      ; LastLogTerm  = fb.LastLogTerm
       }
 
   type VoteResponse with
@@ -446,7 +437,7 @@ module StaticVotingExtensions =
           Some(RaftError.FromFB fb.Reason)
         else None
 
-      { Term    = uint32 fb.Term
+      { Term    = fb.Term
       ; Granted = fb.Granted
       ; Reason  = reason }
 
@@ -519,19 +510,19 @@ module StaticAppendEntriesExtensions =
             raw.[i] <- fb.GetEntries(i)
           Log.FromFB raw
 
-      { Term         = uint32 fb.Term
-      ; PrevLogIdx   = uint32 fb.PrevLogIdx
-      ; PrevLogTerm  = uint32 fb.PrevLogTerm
-      ; LeaderCommit = uint32 fb.LeaderCommit
+      { Term         = fb.Term
+      ; PrevLogIdx   = fb.PrevLogIdx
+      ; PrevLogTerm  = fb.PrevLogTerm
+      ; LeaderCommit = fb.LeaderCommit
       ; Entries      = entries
       }
 
   type AppendResponse with
     static member FromFB (fb: AppendResponseFB) : AppendResponse =
-      { Term         = uint32 fb.Term
+      { Term         = fb.Term
       ; Success      = fb.Success
-      ; CurrentIndex = uint32 fb.CurrentIndex
-      ; FirstIndex   = uint32 fb.FirstIndex
+      ; CurrentIndex = fb.CurrentIndex
+      ; FirstIndex   = fb.FirstIndex
       }
 
 //  ____                        _           _
@@ -547,12 +538,13 @@ type InstallSnapshotExtensions() =
   [<Extension>]
   static member inline ToOffset (is: InstallSnapshot, builder: FlatBufferBuilder) =
     let data = InstallSnapshotFB.CreateDataVector(builder, is.Data.ToOffset(builder))
+    let leaderid = string is.LeaderId |> builder.CreateString
 
     InstallSnapshotFB.StartInstallSnapshotFB(builder)
-    InstallSnapshotFB.AddTerm(builder, uint64 is.Term)
-    InstallSnapshotFB.AddLeaderId(builder, uint64 is.LeaderId)
-    InstallSnapshotFB.AddLastTerm(builder, uint64 is.LastTerm)
-    InstallSnapshotFB.AddLastIndex(builder, uint64 is.LastIndex)
+    InstallSnapshotFB.AddTerm(builder, is.Term)
+    InstallSnapshotFB.AddLeaderId(builder, leaderid)
+    InstallSnapshotFB.AddLastTerm(builder, is.LastTerm)
+    InstallSnapshotFB.AddLastIndex(builder, is.LastIndex)
     InstallSnapshotFB.AddData(builder, data)
     InstallSnapshotFB.EndInstallSnapshotFB(builder)
 
@@ -574,13 +566,13 @@ module StaticIntsallSnapshotExtensions =
           Log.FromFB raw
         else None
 
-      { Term      = uint32 fb.Term
-      ; LeaderId  = uint32 fb.LeaderId
-      ; LastIndex = uint32 fb.LastIndex
-      ; LastTerm  = uint32 fb.LastTerm
+      { Term      = fb.Term
+      ; LeaderId  = RaftId fb.LeaderId
+      ; LastIndex = fb.LastIndex
+      ; LastTerm  = fb.LastTerm
       ; Data      = Option.get entries
       }
 
   type SnapshotResponse with
     static member FromFB (fb: SnapshotResponseFB) : SnapshotResponse =
-      { Term = uint32 fb.Term }
+      { Term = fb.Term }

@@ -143,7 +143,7 @@ module AppContext =
 
           let msg = HandShake(state.Raft.Node)
           let result =
-            withConnection 2000u node' msg
+            withConnection 2000UL node' msg
             |> Option.bind RaftMsg.FromBytes
 
           match result with
@@ -181,7 +181,7 @@ module AppContext =
 
         let msg = HandWaive(state.Raft.Node)
         let result : RaftMsg option =
-          withConnection 2000u node msg
+          withConnection 2000UL node msg
           |> Option.bind RaftMsg.FromBytes
 
         match result with
@@ -214,7 +214,9 @@ module AppContext =
             this.Log "Leader not found. Exiting without saying goodbye."
       else
         let term = currentTerm state.Raft
-        let entry = JointConsensus(Guid.NewGuid(),0u,term ,[| NodeRemoved state.Raft.Node |], [||],None)
+        let changes = [| NodeRemoved state.Raft.Node |]
+        let nodes =  [||]
+        let entry = JointConsensus(RaftId.create(), 0UL, term , changes, nodes, None)
         receiveEntry entry
         |> evalRaft state.Raft (this :> IRaftCallbacks<_,_>)
         |> flip updateRaft state
@@ -227,21 +229,23 @@ module AppContext =
       stm {
         let! state = readTVar appState
 
-        let term = 0u // this likely needs to be adjusted when
-                      // loading state from disk
+        let term = 0UL // this likely needs to be adjusted when
+                       // loading state from disk
 
-        let entry = JointConsensus(Guid.NewGuid(),0u,term,[| NodeAdded state.Raft.Node |], [||],None)
+        let changes = [| NodeAdded state.Raft.Node |]
+        let nodes =  [||]
+        let entry = JointConsensus(RaftId.create(), 0UL, term, changes, nodes, None)
 
         let newstate =
           raft {
             do! setTermM term
-            do! setRequestTimeoutM 500u
-            do! setElectionTimeoutM 1000u
+            do! setRequestTimeoutM 500UL
+            do! setElectionTimeoutM 1000UL
 
             if options.Start then
               let! result = appendEntryM entry
               do! becomeLeader ()
-              do! periodic 1001u
+              do! periodic 1001UL
             else
               let leader =
                 { MemberId = Guid.NewGuid()
@@ -301,7 +305,7 @@ module AppContext =
         let! state = readTVar appState
         do! raft {
               let! result = receiveEntry entry
-              do! periodic 1001u
+              do! periodic 1001UL
               return result
             }
             |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
@@ -401,7 +405,8 @@ module AppContext =
         let! state = readTVar appState
 
         let term = currentTerm state.Raft
-        let entry = JointConsensus(Guid.NewGuid(),0u,term,[| NodeAdded node |],[||],None)
+        let changes = [| NodeAdded node |]
+        let entry = JointConsensus(RaftId.create(), 0UL, term, changes, [||], None)
         let response = receiveEntry entry
                        |> runRaft state.Raft (self :> IRaftCallbacks<_,_>)
 
@@ -422,7 +427,8 @@ module AppContext =
         let! state = readTVar appState
 
         let term = currentTerm state.Raft
-        let entry = JointConsensus(Guid.NewGuid(),0u,term,[| NodeRemoved node |],[||],None)
+        let changes = [| NodeRemoved node |]
+        let entry = JointConsensus(RaftId.create(), 0UL, term, changes, [||], None)
         do! receiveEntry entry
             |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
             |> flip updateRaft state

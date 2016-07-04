@@ -22,10 +22,10 @@ type Guid =
     static member TryParse (str: string) =
       try
         System.Guid.Parse str |> ignore
-        Some (Guid str)
+        Guid str |> Some
       with
         | _ -> None
 
     static member Create () =
       let guid = System.Guid.NewGuid()
-      Guid (string guid)
+      string guid |> Guid

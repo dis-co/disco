@@ -11,7 +11,8 @@ public sealed class NodeFB : Table {
   public static NodeFB GetRootAsNodeFB(ByteBuffer _bb, NodeFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
   public NodeFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
-  public ulong Id { get { int o = __offset(4); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
+  public string Id { get { int o = __offset(4); return o != 0 ? __string(o + bb_pos) : null; } }
+  public ArraySegment<byte>? GetIdBytes() { return __vector_as_arraysegment(4); }
   public IrisNodeFB Data { get { return GetData(new IrisNodeFB()); } }
   public IrisNodeFB GetData(IrisNodeFB obj) { int o = __offset(6); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
   public bool Voting { get { int o = __offset(8); return o != 0 ? 0!=bb.Get(o + bb_pos) : (bool)false; } }
@@ -21,18 +22,18 @@ public sealed class NodeFB : Table {
   public ulong MatchIndex { get { int o = __offset(16); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
 
   public static Offset<NodeFB> CreateNodeFB(FlatBufferBuilder builder,
-      ulong Id = 0,
+      StringOffset IdOffset = default(StringOffset),
       Offset<IrisNodeFB> DataOffset = default(Offset<IrisNodeFB>),
       bool Voting = false,
       bool VotedForMe = false,
       NodeStateFB State = NodeStateFB.JoiningFB,
-      ulong nextIndex = 0,
-      ulong matchIndex = 0) {
+      ulong NextIndex = 0,
+      ulong MatchIndex = 0) {
     builder.StartObject(7);
-    NodeFB.AddMatchIndex(builder, matchIndex);
-    NodeFB.AddNextIndex(builder, nextIndex);
-    NodeFB.AddId(builder, Id);
+    NodeFB.AddMatchIndex(builder, MatchIndex);
+    NodeFB.AddNextIndex(builder, NextIndex);
     NodeFB.AddData(builder, DataOffset);
+    NodeFB.AddId(builder, IdOffset);
     NodeFB.AddState(builder, State);
     NodeFB.AddVotedForMe(builder, VotedForMe);
     NodeFB.AddVoting(builder, Voting);
@@ -40,13 +41,13 @@ public sealed class NodeFB : Table {
   }
 
   public static void StartNodeFB(FlatBufferBuilder builder) { builder.StartObject(7); }
-  public static void AddId(FlatBufferBuilder builder, ulong Id) { builder.AddUlong(0, Id, 0); }
+  public static void AddId(FlatBufferBuilder builder, StringOffset IdOffset) { builder.AddOffset(0, IdOffset.Value, 0); }
   public static void AddData(FlatBufferBuilder builder, Offset<IrisNodeFB> DataOffset) { builder.AddOffset(1, DataOffset.Value, 0); }
   public static void AddVoting(FlatBufferBuilder builder, bool Voting) { builder.AddBool(2, Voting, false); }
   public static void AddVotedForMe(FlatBufferBuilder builder, bool VotedForMe) { builder.AddBool(3, VotedForMe, false); }
   public static void AddState(FlatBufferBuilder builder, NodeStateFB State) { builder.AddByte(4, (byte)State, 0); }
-  public static void AddNextIndex(FlatBufferBuilder builder, ulong nextIndex) { builder.AddUlong(5, nextIndex, 0); }
-  public static void AddMatchIndex(FlatBufferBuilder builder, ulong matchIndex) { builder.AddUlong(6, matchIndex, 0); }
+  public static void AddNextIndex(FlatBufferBuilder builder, ulong NextIndex) { builder.AddUlong(5, NextIndex, 0); }
+  public static void AddMatchIndex(FlatBufferBuilder builder, ulong MatchIndex) { builder.AddUlong(6, MatchIndex, 0); }
   public static Offset<NodeFB> EndNodeFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
     return new Offset<NodeFB>(o);
