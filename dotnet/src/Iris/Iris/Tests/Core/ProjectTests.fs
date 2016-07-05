@@ -31,13 +31,14 @@ module ProjectTests =
           |> Option.get
 
         let result = Project.Load(path + (sprintf "/%s.iris" name))
+
         expect "Projects should be loaded" true Option.isSome result
 
         let loaded = Option.get result
 
         expect "Projects should be structurally equal" true ((=) project) loaded
-        expect "Project should have an Id" true ((>) (string project.Id |> String.length)) 0
-        expect "Projects should have same Id" true ((=) project.Id) loaded.Id
+        expect "Project should have an Id"             true ((>) (string project.Id |> String.length)) 0
+        expect "Projects should have same Id"          true ((=) project.Id) loaded.Id
 
   //    ____          _                  _             _
   //   / ___|   _ ___| |_ ___  _ __ ___ (_)_______  __| |

@@ -404,8 +404,8 @@ Target "RunTests"
   (fun _ ->
     let testsDir = baseDir @@ "bin/Debug/Tests"
     ExecProcess (fun info ->
-                    info.FileName <- "mono"
-                    info.Arguments <- "Iris.Tests.exe"
+                    info.FileName <- "nix-shell"
+                    info.Arguments <- "assets/nix/runtests.nix"
                     info.WorkingDirectory <- testsDir)
                 (TimeSpan.FromMinutes 5.0)
     |> ignore)

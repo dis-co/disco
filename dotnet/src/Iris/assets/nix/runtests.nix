@@ -2,8 +2,9 @@ with import <nixpkgs> {}; {
   fsiEnv =  stdenv.mkDerivation {
     name = "testEnv";
     buildInputs = [ stdenv curl openssl ];
-    LD_LIBRARY_PATH="${curl}/lib:${openssl}/lib";
+    libpath="${curl}/lib:${openssl}/lib";
     shellHook = ''
+      export LD_LIBRARY_PATH="$libpath":$LD_LIBRARY_PATH
       mono Iris.Tests.exe
       exit
     '';

@@ -43,7 +43,11 @@
   <ItemGroup>
     <None Include="paket.references" />
     <None Include="paket.template" />
-    <None Include="assets\example-project.yml" />
+
+    <Content Include="assets\nix\runtests.nix">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+
     <Compile Include="AssemblyInfo\TestsInfo.fs" />
 
     <Compile Include="Iris\Core\Guid.fs" />
@@ -51,6 +55,7 @@
     <Compile Include="Iris\Core\Either.fs" />
     <Compile Include="Iris\Core\Aliases.fs" />
     <Compile Include="Iris\Core\Util.fs" />
+    <Compile Include="Iris\Core\Git.fs" />
     <Compile Include="Iris\Core\IOBox.fs" />
     <Compile Include="Iris\Core\Patch.fs" />
     <Compile Include="Iris\Core\Cue.fs" />
@@ -67,6 +72,7 @@
     <Compile Include="Iris\Core\Project.fs" />
     <Compile Include="Iris\Core\Uri.fs" />
 
+
     <Compile Include="Iris\Service\GitDaemon.fs" />
 
     <Compile Include="Iris\Core\BrowserSession.fs" />
@@ -76,10 +82,10 @@
     <Compile Include="Iris\Core\Raft.fs" />
     <Compile Include="Iris\Service\AppState.fs" />
 
-
     <Compile Include="Iris\Tests\TestUtilities.fs" />
     <Compile Include="Iris\Tests\Core\SerializationTests.fs" />
     <Compile Include="Iris\Tests\Core\ProjectTests.fs" />
+
     <!--  __  __       _        -->
     <!-- |  \/  | __ _(_)_ __   -->
     <!-- | |\/| |/ _` | | '_ \  -->

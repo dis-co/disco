@@ -5,8 +5,8 @@ open System.IO
 open System.Linq
 open System.Net
 open System.Collections.Generic
-open Iris.Core.Utils
 open LibGit2Sharp
+open Iris.Core.Utils
 
 (***************************************************************************************************
 
@@ -51,29 +51,16 @@ module ProjectHelper =
     match project.Path with
       | Some path ->
         let basedir = Path.GetDirectoryName(path)
-        match Directory.Exists basedir with
-          | true ->
-            new Repository(Path.Combine(basedir, ".git")) |> Some
-          | _ -> None
+        Git.Repo.repository basedir
       | _ -> None
-
-  let branch (repo: Repository) = repo.Head
 
   let currentBranch (project: Project) =
     repository project
-    |> Option.map branch
-
-  let checkout (name: string) (repo: Repository) =
-    try
-      repo.Branches.First(fun b -> b.CanonicalName = name)
-      |> repo.Checkout
-      |> Some
-    with
-      | _ -> None
+    |> Option.map Git.Branch.current
 
   let checkoutBranch (name: string) (project: Project) =
     repository project
-    |> Option.bind (checkout name)
+    |> Option.bind (Git.Repo.checkout name)
 
   /// ### Create a new project with the given name
   ///
@@ -128,7 +115,7 @@ module ProjectHelper =
   ///
   /// # Returns: Project option
   let load (path : FilePath) : Project option =
-    if not <| File.Exists(path) then
+    if not (File.Exists path) then
       None
     else
       IrisConfig.Load(path)
@@ -154,16 +141,10 @@ module ProjectHelper =
   ///
   /// # Returns: Repository
   let initRepo (project: Project) : Repository option =
-    match project.Path with
-      | Some path ->
-        try
-          Repository.Init path
-          |> fun rpath ->
-            File.WriteAllText(Path.Combine(rpath, "git-daemon-export-ok"), "")
-            new Repository(rpath)
-            |> Some
-        with
-          | _ -> None
+    match Option.bind Git.Repo.init project.Path with
+      | Some repo as result->
+        File.WriteAllText(Path.Combine(repo.Info.Path, ".git", "git-daemon-export-ok"), "")
+        result
       | _ -> None
 
   //   ____             __ _                       _   _
