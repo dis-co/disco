@@ -19,27 +19,19 @@ open FSharpx.Functional
 [<AutoOpen>]
 module AppContext =
 
-  /// validates an IP address by parsing it
-  let parseIp str =
-    match IpAddress.TryParse str with
-      | Some ip -> ip
-      | _ ->
-        printfn "IP address could not be parsed or address family unsupported."
-        exit 1
-
   let getHostName () =
     System.Net.Dns.GetHostName()
 
   let formatUri (data: IrisNode) =
-    sprintf "tcp://%A:%d" data.IpAddr data.Port
+    sprintf "tcp://%s:%d" (string data.IpAddr) data.Port
 
   let mkRaft (options: RaftOptions) =
     let node =
       { MemberId = Guid.Create()
       ; HostName = getHostName()
-      ; IpAddr   = parseIp options.IpAddr
-      ; Port     = options.RaftPort }
-      |> Node.create (RaftId options.RaftId)
+      ; IpAddr   = IpAddress.Parse options.IpAddr
+      ; Port     = options.RaftPort
+      } |> Node.create (RaftId options.RaftId)
     Raft.create node
 
   let mkState (options: RaftOptions) : AppState =
@@ -68,6 +60,8 @@ module AppContext =
 
     let appState = mkState opts |> newTVar
 
+    let cbs = this :> IRaftCallbacks<_,_>
+
     // -------------------------------------------------------------------------
     let withConnection timeout (node: Node<IrisNode>) (thing: RaftMsg) =
       use client = req zmqContext
@@ -75,18 +69,17 @@ module AppContext =
       connect client addr
       thing.ToBytes() |>> client
 
-      let mutable bytes : byte array = [||]
+      let mutable frames = [| |]
 
-      let handler _ (msg : Message array) =
-        // bytes <- msg.Unwrap().Read()
-        failwith "FIXME: handle incoming messages properly"
+      let handler _ (msgs : Message array) =
+        frames <- Array.map (Message.data >> decode<RaftMsg>) msgs
 
       let result =
         [ pollIn handler client ]
         |> poll (int64 timeout)
 
       if result then
-        Some bytes
+        Some frames
       else None
 
     // -------------------------------------------------------------------------
@@ -98,34 +91,34 @@ module AppContext =
               let! (node, msg) = inbox.Receive()
 
               stm {
-                let result : RaftMsg option =
-                  withConnection (this.State.Raft.RequestTimeout) node msg
-                  |> Option.bind RaftMsg.FromBytes
+                let results = withConnection (this.State.Raft.RequestTimeout) node msg
 
                 let! state = readTVar appState
 
-                match result with
-                  | Some response ->
-                    match response with
-                      | AppendEntriesResponse(nid,resp) ->
-                        do! receiveAppendEntriesResponse nid resp
-                            |> evalRaft state.Raft (this :> IRaftCallbacks<_,_>)
-                            |> flip updateRaft state
-                            |> writeTVar appState
-                      | RequestVoteResponse(nid,vote) ->
-                        do! receiveVoteResponse nid vote
-                            |> evalRaft state.Raft (this :> IRaftCallbacks<_,_>)
-                            |> flip updateRaft state
-                            |> writeTVar appState
-                      | ErrorResponse err ->
-                        sprintf "ERROR: %A" err
-                        |> this.Log
-                      | resp ->
-                        sprintf "UNEXPECTED RESPONSE: %A" resp
-                        |> this.Log
-                  | None ->
+                // a little awkward, innit
+                match results with
+                  | Some [| Some (AppendEntriesResponse(nid,resp)) |] ->
+                    do! receiveAppendEntriesResponse nid resp
+                        |> evalRaft state.Raft cbs
+                        |> flip updateRaft state
+                        |> writeTVar appState
+
+                  | Some [| Some (RequestVoteResponse(nid,vote)) |] ->
+                    do! receiveVoteResponse nid vote
+                        |> evalRaft state.Raft cbs
+                        |> flip updateRaft state
+                        |> writeTVar appState
+
+                  | Some [| Some (ErrorResponse err) |] ->
+                    sprintf "ERROR: %A" err |> this.Log
+
+                  | Some [| Some (resp) |] ->
+                    sprintf "UNEXPECTED RESPONSE: %A" resp
+                    |> this.Log
+                  | _ ->
                     printfn "must mark node as failed now and possibly fire a callback"
                     this.Log "Request timeout! Marking s Failed"
+
               } |> atomically
 
               return! loop ()
@@ -142,25 +135,21 @@ module AppContext =
           |> this.Log
 
           let msg = HandShake(state.Raft.Node)
-          let result =
-            withConnection 2000UL node' msg
-            |> Option.bind RaftMsg.FromBytes
+          let result = withConnection 2000UL node' msg
 
           match result with
-            | Some response ->
-              match response with
-                // | MembershipResponse (Redirect, Some other) -> _tryJoin (retry + 1) other
-                // | MembershipResponse (Redirect, None) ->
-                //   this.Log "Node reachable but could not redirect to Leader. Aborting."
-                //   exit 1
-                // | MembershipResponse (Hello, _) ->
-                //   this.Log "HandShake successful. Waiting to be updated"
-                | ErrorResponse err ->
-                  sprintf "Unexpected error occurred. %A" err |> this.Log
-                  exit 1
-                | resp ->
-                  sprintf "Unexpected response. Aborting.\n%A" resp |> this.Log
-                  exit 1
+            | Some [| Some (ErrorResponse err) |] ->
+              // | MembershipResponse (Redirect, Some other) -> _tryJoin (retry + 1) other
+              // | MembershipResponse (Redirect, None) ->
+              //   this.Log "Node reachable but could not redirect to Leader. Aborting."
+              //   exit 1
+              // | MembershipResponse (Hello, _) ->
+              //   this.Log "HandShake successful. Waiting to be updated"
+              sprintf "Unexpected error occurred. %A" err |> this.Log
+              exit 1
+            | Some res ->
+              sprintf "Unexpected response. Aborting.\n%A" res |> this.Log
+              exit 1
             | _ ->
               this.Log "Node unreachable. Aborting."
               exit 1
@@ -180,30 +169,26 @@ module AppContext =
         |> this.Log
 
         let msg = HandWaive(state.Raft.Node)
-        let result : RaftMsg option =
-          withConnection 2000UL node msg
-          |> Option.bind RaftMsg.FromBytes
+        let result = withConnection 2000UL node msg
 
         match result with
-          | Some response ->
-            match response with
+          | Some [| Some (ErrorResponse err) |] ->
               // | MembershipResponse (Redirect, Some other) -> _tryLeave (retry + 1) other
               // | MembershipResponse (Redirect, None) ->
               //   this.Log "Node reachable but could not redirect to Leader. Aborting."
               //   exit 1
               // | MembershipResponse (ByeBye, _) ->
               //   this.Log "HandWaive successful."
-              | ErrorResponse err ->
-                sprintf "Unexpected error occurred. %A" err |> this.Log
-                exit 1
-              | resp ->
-                sprintf "Unexpected response. Aborting.\n%A" resp |> this.Log
-                exit 1
+            sprintf "Unexpected error occurred. %A" err |> this.Log
+            exit 1
+          | Some resp ->
+            sprintf "Unexpected response. Aborting.\n%A" resp |> this.Log
+            exit 1
           | _ ->
             this.Log "Node unreachable. Aborting."
             exit 1
 
-      if not <| isLeader state.Raft then
+      if not (isLeader state.Raft) then
         match state.Raft.CurrentLeader with
           | Some lid ->
           match getNode lid state.Raft with
@@ -218,7 +203,7 @@ module AppContext =
         let nodes =  [||]
         let entry = JointConsensus(RaftId.Create(), 0UL, term , changes, nodes, None)
         receiveEntry entry
-        |> evalRaft state.Raft (this :> IRaftCallbacks<_,_>)
+        |> evalRaft state.Raft cbs
         |> flip updateRaft state
         |> writeTVar appState
         |> atomically
@@ -250,13 +235,13 @@ module AppContext =
               let leader =
                 { MemberId = Guid.Create()
                 ; HostName = "<empty>"
-                ; IpAddr = Option.get options.LeaderIp   |> parseIp
+                ; IpAddr = Option.get options.LeaderIp   |> IpAddress.Parse
                 ; Port   = Option.get options.LeaderPort |> int
                 }
                 |> Node.create (Option.get options.LeaderId |> RaftId)
               tryJoin leader
           }
-          |> evalRaft state.Raft (this :> IRaftCallbacks<_,_>)
+          |> evalRaft state.Raft cbs
 
         do! writeTVar appState (updateRaft newstate state)
       } |> atomically
@@ -298,7 +283,7 @@ module AppContext =
 
     member self.Log msg =
       let state = self.State
-      (self :> IRaftCallbacks<StateMachine,IrisNode>).LogMsg state.Raft.Node msg
+      cbs.LogMsg state.Raft.Node msg
 
     member self.Append entry =
       stm {
@@ -308,7 +293,7 @@ module AppContext =
               do! periodic 1001UL
               return result
             }
-            |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
+            |> evalRaft state.Raft cbs
             |> flip updateRaft state
             |> writeTVar appState
       } |> atomically
@@ -322,7 +307,7 @@ module AppContext =
               do! setTimeoutElapsedM timeout
               do! periodic timeout
             }
-            |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
+            |> evalRaft state.Raft cbs
             |> flip updateRaft state
             |> writeTVar appState
 
@@ -334,7 +319,7 @@ module AppContext =
 
         let result =
           receiveVoteRequest sender req
-          |> runRaft state.Raft (self :> IRaftCallbacks<_,_>)
+          |> runRaft state.Raft cbs
 
         match result with
           | Right  (resp, raft) ->
@@ -356,7 +341,7 @@ module AppContext =
         let! state = readTVar appState
 
         do! receiveVoteResponse sender rep
-            |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
+            |> evalRaft state.Raft cbs
             |> flip updateRaft state
             |> writeTVar appState
 
@@ -370,7 +355,7 @@ module AppContext =
 
         let result =
           receiveAppendEntries (Some sender) ae
-          |> runRaft state.Raft (self :> IRaftCallbacks<_,_>)
+          |> runRaft state.Raft cbs
 
         match result with
           | Right (resp, raft) ->
@@ -392,7 +377,7 @@ module AppContext =
         let! state = readTVar appState
 
         do! receiveAppendEntriesResponse sender ar
-            |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
+            |> evalRaft state.Raft cbs
             |> flip updateRaft state
             |> writeTVar appState
 
@@ -407,8 +392,7 @@ module AppContext =
         let term = currentTerm state.Raft
         let changes = [| NodeAdded node |]
         let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, [||], None)
-        let response = receiveEntry entry
-                       |> runRaft state.Raft (self :> IRaftCallbacks<_,_>)
+        let response = receiveEntry entry |> runRaft state.Raft cbs
 
         match response with
           | Right(resp, raft) ->
@@ -430,7 +414,7 @@ module AppContext =
         let changes = [| NodeRemoved node |]
         let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, [||], None)
         do! receiveEntry entry
-            |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
+            |> evalRaft state.Raft cbs
             |> flip updateRaft state
             |> writeTVar appState
       } |> atomically
@@ -439,7 +423,7 @@ module AppContext =
       stm {
         let! state = readTVar appState
         // do! createSnapshot ()
-        //     |> evalRaft raft' (self :> IRaftCallbacks<_,_>)
+        //     |> evalRaft raft' cbs
         //     |> writeTVar raftState
         return InstallSnapshotResponse (state.Raft.Node.Id, { Term = state.Raft.CurrentTerm })
       } |> atomically
@@ -449,7 +433,7 @@ module AppContext =
         let! state = readTVar appState
 
         do! periodic elapsed
-            |> evalRaft state.Raft (self :> IRaftCallbacks<_,_>)
+            |> evalRaft state.Raft cbs
             |> flip updateRaft state
             |> writeTVar appState
 

@@ -35,7 +35,7 @@ module SerializationTests =
         ; Candidate = node }
 
       let msg   = RequestVote(RaftId.Create(), vr)
-      let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
+      let remsg = msg.ToBytes() |> decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -54,7 +54,7 @@ module SerializationTests =
         ; Reason = Some VoteTermMismatch }
 
       let msg   = RequestVoteResponse(RaftId.Create(), vr)
-      let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
+      let remsg = msg.ToBytes() |> decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -100,12 +100,12 @@ module SerializationTests =
         ; Entries = log }
 
       let msg   = AppendEntries(RaftId.Create(), ae)
-      let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
+      let remsg = msg.ToBytes() |> decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
       let msg   = AppendEntries(RaftId.Create(), { ae with Entries = None })
-      let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
+      let remsg = msg.ToBytes() |> decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -126,7 +126,7 @@ module SerializationTests =
         }
 
       let msg = AppendEntriesResponse(RaftId.Create(), response)
-      let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
+      let remsg = msg.ToBytes() |> decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -156,7 +156,7 @@ module SerializationTests =
         }
 
       let msg = InstallSnapshot(RaftId.Create(), is)
-      let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
+      let remsg = msg.ToBytes() |> decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -172,7 +172,7 @@ module SerializationTests =
       let response : SnapshotResponse = { Term = 92381UL }
 
       let msg = InstallSnapshotResponse(RaftId.Create(), response)
-      let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
+      let remsg = msg.ToBytes() |> decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -191,7 +191,7 @@ module SerializationTests =
         ; Port = 8080 }
 
       let msg = HandShake(Node.create (RaftId.Create()) info)
-      let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
+      let remsg = msg.ToBytes() |> decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -210,7 +210,7 @@ module SerializationTests =
         ; Port = 8080 }
 
       let msg = HandWaive(Node.create (RaftId.Create()) info)
-      let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
+      let remsg = msg.ToBytes() |> decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -248,7 +248,7 @@ module SerializationTests =
         ]
       List.iter (fun err ->
                   let msg = ErrorResponse(err)
-                  let remsg = msg.ToBytes() |> RaftMsg.FromBytes |> Option.get
+                  let remsg = msg.ToBytes() |> decode |> Option.get
                   expect "Should be structurally the same" msg id remsg)
                 errors
 

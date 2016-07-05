@@ -116,7 +116,7 @@ module Main =
     let rec proc () =
       async {
         let msg : RaftMsg option =
-          recv server |> RaftMsg.FromBytes
+          recv server |> decode
 
         match msg with
         | Some message -> handleMessage context message

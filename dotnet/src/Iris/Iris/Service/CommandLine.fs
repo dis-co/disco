@@ -42,13 +42,13 @@ module CommandLine =
     try
       let opts = parser.Parse args
       validateOptions opts
-      { RaftId     = opts.GetResult    <@ RaftNodeId @>
-      ; Debug      = opts.Contains     <@ Debug      @>
-      ; IpAddr     = opts.GetResult    <@ Bind       @>
+      { RaftId     = opts.GetResult    <@ RaftNodeId @> |> trim
+      ; IpAddr     = opts.GetResult    <@ Bind       @> |> trim
       ; WebPort    = opts.GetResult    <@ WebPort    @> |> int
       ; RaftPort   = opts.GetResult    <@ RaftPort   @> |> int
+      ; Debug      = opts.Contains     <@ Debug      @>
       ; Start      = opts.Contains     <@ Start      @>
-      ; LeaderId   = opts.TryGetResult <@ LeaderId   @>
+      ; LeaderId   = opts.TryGetResult <@ LeaderId   @> |> Option.map trim
       ; LeaderIp   = opts.TryGetResult <@ LeaderIp   @>
       ; LeaderPort = opts.TryGetResult <@ LeaderPort @> }
     with

@@ -12,6 +12,7 @@ module List =
     let reverser acc elm = List.concat [[elm]; acc]
     List.fold reverser [] lst
 
+[<AutoOpen>]
 module Utils =
 
   let isLinux : bool =
@@ -98,16 +99,6 @@ module Utils =
       printfn "[%s]%s%s" tag ws str
 
 
-  //   ____ _   _ ___ ____
-  //  / ___| | | |_ _|  _ \
-  // | |  _| | | || || | | |
-  // | |_| | |_| || || |_| |
-  //  \____|\___/|___|____/
-
-  let mkGuid () =
-    let guid = System.Guid.NewGuid()
-    string guid
-
   ////////////////////////////////////////
   //  _   _ _   _ _                     //
   // | | | | |_(_) |___                 //
@@ -117,6 +108,8 @@ module Utils =
   ////////////////////////////////////////
 
   let dispose (o : 't when 't :> IDisposable) = o.Dispose()
+
+  let trim (str: string) = str.Trim()
 
   // let dispatch (raft : Raft<_,_> ref) (inbox: Actor<_>) =
   //   let rec loop () =

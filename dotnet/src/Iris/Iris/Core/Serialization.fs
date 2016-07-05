@@ -13,6 +13,9 @@ module Serialization =
     (^t : (member ToBytes : unit -> byte array) value)
 
 
+  let inline decode< ^t when ^t :  (static member FromBytes : byte array -> ^t option)> (bytes: byte array) : ^t option  =
+    (^t : (static member FromBytes : byte array -> ^t option) bytes)
+
 //  _____      _                 _
 // | ____|_  _| |_ ___ _ __  ___(_) ___  _ __  ___
 // |  _| \ \/ / __/ _ \ '_ \/ __| |/ _ \| '_ \/ __|
