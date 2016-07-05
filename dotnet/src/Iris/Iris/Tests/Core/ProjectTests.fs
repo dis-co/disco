@@ -9,7 +9,8 @@ open Fuchu.Test
 open Iris.Core
 open LibGit2Sharp
 
-module Project =
+[<AutoOpen>]
+module ProjectTests =
   let signature =
     new Signature("Karsten Gebbert", "karsten@nsynk.de", new DateTimeOffset(DateTime.Now))
   //   _                    _    ______
@@ -216,7 +217,9 @@ module Project =
                     Tasks         = [ task1;     task2     ]
                     ClusterConfig = cluster } }
 
-        let saved = project.Save(signature, "Initial project save.") |> ignore
+        let (_,saved) =
+          project.Save(signature, "Initial project save.")
+          |> Option.get
 
         let loaded =
           Project.Load(path + sprintf "/%s.iris" name)
@@ -250,12 +253,12 @@ module Project =
           |> Project.Load
           |> Option.get
 
-        expect "Projects should be a folder" true Directory.Exists path
-        expect "Projects should be a git repo" true Directory.Exists (path + "/.git")
-        expect "Projects should have project yml" true File.Exists (path + "/" + name + ".iris")
-        expect "Projects should have repo" true (repository >> Option.isSome) loaded
-        expect "Projects should not be dirty" false (repository >> Option.get >> isDirty) loaded
-        expect "Projects should have one initial commit" 1 (repository >> Option.get >> commitCount) loaded
+        expect "Projects should be a folder"         true  Directory.Exists path
+        expect "Projects should be a git repo"       true  Directory.Exists (path + "/.git")
+        expect "Projects should have project yml"    true  File.Exists (path + "/" + name + ".iris")
+        expect "Projects should have repo"           true  (repository >> Option.isSome) loaded
+        expect "Projects should not be dirty"        false (repository >> Option.get >> isDirty) loaded
+        expect "Projects should have initial commit" 1     (repository >> Option.get >> commitCount) loaded
 
   //    ____                          _ _
   //   / ___|___  _ __ ___  _ __ ___ (_) |_ ___
@@ -276,58 +279,66 @@ module Project =
 
         let msg1 = "Commit 1"
 
-        let project =
+        let (commit1, project) =
           { Project.Create name with
               Path = Some(path)
               Author = Some(author1) }
           |> save signature msg1
+          |> Option.get
 
         Path.Combine(path, sprintf "%s.iris" name)
         |> Project.Load
         |> Option.get
-        |> (fun loaded ->
-            let c = repository loaded |> Option.get |> commits |> elementAt 0
-            Assert.Equal("Authors should be equal", true, (Option.get p.Author) = author1)
-            Assert.Equal("Project should have one initial commit", true, (Option.get p.Repo).Commits.Count() = 1)
-            Assert.Equal("Project should have commit message", true, c.MessageShort = msg1))
+        |> fun p ->
+            let repo = repository p |> Option.get
+            let c =  commits repo |> elementAt 0
+            expect "Authors should be equal"                true ((Option.get >> (=)) p.Author) author1
+            expect "Project should have one initial commit" true ((=) (commitCount repo)) 1
+            expect "Project should have commit message"     true ((=) c.MessageShort) msg1
 
         let author2 = "ingolf"
-
-        project.Author <- Some(author2)
-
         let msg2 = "Commit 2"
-        project.Save(signature, msg2) |> ignore
+
+        let (commit2, project) =
+          { project with Author = Some author2 }
+          |> save signature msg2
+          |> Option.get
 
         Path.Combine(path, sprintf "%s.iris" name)
         |> Project.Load
-        |> Either.get
-        |> (fun p ->
-            let c1 = (Option.get p.Repo).Commits.ElementAt(0)
-            let c2 = (Option.get p.Repo).Commits.ElementAt(1)
-            Assert.Equal("Authors should be equal", true, (Option.get p.Author) = author2)
-            Assert.Equal("Projects should two commits", true, (Option.get p.Repo).Commits.Count() = 2)
-            Assert.Equal("Project should have current commit message at the start of the log", true, c1.MessageShort = msg2)
-            Assert.Equal("Project should have old commit message at 2nd position", true, c2.MessageShort = msg1))
-
-        let author3 = "eno"
-
-        project.Author <- Some(author3)
+        |> Option.get
+        |> fun p ->
+            let repo = repository p |> Option.get
+            let cs = commits repo
+            let c1 = elementAt 0 cs
+            let c2 = elementAt 1 cs
+            expect "Authors should be equal"                    true ((=) (Option.get p.Author)) author2
+            expect "Projects should two commits"                true ((=) (commitCount repo)) 2
+            expect "Project should have current commit message" true ((=) c1.MessageShort) msg2
+            expect "Project should have old commit message"     true ((=) c2.MessageShort) msg1
 
         let msg3 = "Commit 3"
-        project.Save(signature, msg3) |> ignore
+        let author3 = "eno"
+
+        let (commit3, project) =
+           { project with Author = Some author3 }
+           |> save signature msg3
+           |> Option.get
 
         Path.Combine(path, sprintf "%s.iris" name)
         |> Project.Load
-        |> Either.get
-        |> (fun p ->
-            let c1 = (Option.get p.Repo).Commits.ElementAt(0)
-            let c2 = (Option.get p.Repo).Commits.ElementAt(1)
-            let c3 = (Option.get p.Repo).Commits.ElementAt(2)
-            Assert.Equal("Authors should be equal", true, (Option.get p.Author) = author3)
-            Assert.Equal("Projects should have three commits", true, (Option.get p.Repo).Commits.Count() = 3)
-            Assert.Equal("Project should have current commit message", true, c1.MessageShort = msg3)
-            Assert.Equal("Project should have old commit message", true, c2.MessageShort = msg2)
-            Assert.Equal("Project should have oldest commit message", true, c3.MessageShort = msg1))
+        |> Option.get
+        |> fun p ->
+            let repo = repository p |> Option.get
+            let cs = commits repo
+            let c1 = elementAt 0 cs
+            let c2 = elementAt 1 cs
+            let c3 = elementAt 2 cs
+            expect "Authors should be equal"                    true ((=) (Option.get p.Author)) author3
+            expect "Projects should have three commits"         true ((=) (commitCount repo)) 3
+            expect "Project should have current commit message" true ((=) c1.MessageShort) msg3
+            expect "Project should have old commit message"     true ((=) c2.MessageShort) msg2
+            expect "Project should have oldest commit message"  true ((=) c3.MessageShort) msg1
 
   // For tests async stuff:
   //
@@ -338,8 +349,8 @@ module Project =
   //       failtest "nop"))
 
   [<Tests>]
-  let configTests =
-    testList "Config tests" [
+  let projectTests =
+    testList "Load/Save tests" [
         loadSaveTest
         testCustomizedCfg
         saveInitsGit
