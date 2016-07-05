@@ -24,19 +24,19 @@ module Project =
         let name = "test1"
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
-        let project = Project.Create name
-        project.Path <- Some(path)
-        project.Save(signature, "Initial project save.") |> ignore
+        let (commit, project) =
+          { Project.Create name with Path = Some(path) }
+          |> save signature "Initial project save."
+          |> Option.get
 
         let result = Project.Load(path + (sprintf "/%s.iris" name))
-        Assert.Equal("Projects should be loaded", true, Either.isSuccess result)
+        expect "Projects should be loaded" true Option.isSome result
 
-        let project' = Either.get result
-        project.LastSaved <- project'.LastSaved
+        let loaded = Option.get result
 
-        Assert.Equal("Projects should be structurally equal", true, (project = project'))
-        Assert.Equal("Project should have an Id", true, project.Id.ToString().Length > 0)
-        Assert.Equal("Projects should have same Id", true, project.Id = project'.Id)
+        expect "Projects should be structurally equal" true ((=) project) loaded
+        expect "Project should have an Id" true ((>) (string project.Id |> String.length)) 0
+        expect "Projects should have same Id" true ((=) project.Id) loaded.Id
 
   //    ____          _                  _             _
   //   / ___|   _ ___| |_ ___  _ __ ___ (_)_______  __| |
@@ -71,129 +71,129 @@ module Project =
             }
 
         let display1 =
-          { Id        = "02fa2b"
+          { Id        = Guid.Create()
           ; Name      = "Nice Display"
-          ; Size      = (1280,1080)
+          ; Size      = Rect (1280,1080)
           ; Signals   =
-              [{ Size     = (500,500)
-               ; Position = (0,0)
+              [{ Size     = Rect (500,500)
+               ; Position = Coordinate (0,0)
                };
-               { Size     = (800,800)
-               ; Position = (29, 13)
+               { Size     = Rect (800,800)
+               ; Position = Coordinate (29, 13)
                }]
           ; RegionMap =
             {
-              SrcViewportId = "3fad6b";
+              SrcViewportId = Guid.Create()
               Regions =
-                [{ Id             = "f90121"
+                [{ Id             = Guid.Create()
                  ; Name           = "A Cool Region"
-                 ; SrcPosition    = (0,0)
-                 ; SrcSize        = (50,50)
-                 ; OutputPosition = (50,50)
-                 ; OutputSize     = (100,100)
+                 ; SrcPosition    = Coordinate (0,0)
+                 ; SrcSize        = Rect       (50,50)
+                 ; OutputPosition = Coordinate (50,50)
+                 ; OutputSize     = Rect       (100,100)
                  };
-                 { Id             = "alskdjflaskd"
+                 { Id             = Guid.Create()
                  ; Name           = "Another Cool Region"
-                 ; SrcPosition    = (8,67)
-                 ; SrcSize        = (588,5130)
-                 ; OutputPosition = (10,5300)
-                 ; OutputSize     = (800,900)
+                 ; SrcPosition    = Coordinate (8,67)
+                 ; SrcSize        = Rect       (588,5130)
+                 ; OutputPosition = Coordinate (10,5300)
+                 ; OutputSize     = Rect       (800,900)
                  }]
             }
           }
 
         let display2 =
-          { Id        = "209f2"
+          { Id        = Guid.Create()
           ; Name      = "Cool Display"
-          ; Size      = (180,12080)
+          ; Size      = Rect (180,12080)
           ; Signals   =
-              [{ Size     = (800,200)
-               ; Position = (3,8)
+              [{ Size     = Rect (800,200)
+               ; Position = Coordinate (3,8)
                };
-               { Size     = (1800,8800)
-               ; Position = (2900, 130)
+               { Size     = Rect (1800,8800)
+               ; Position = Coordinate (2900, 130)
                }]
           ; RegionMap =
             {
-              SrcViewportId = "i1203r";
+              SrcViewportId = Guid.Create();
               Regions =
-                [{ Id             = "1al0b2312"
+                [{ Id             = Guid.Create()
                  ; Name           = "One Region"
-                 ; SrcPosition    = (0,8)
-                 ; SrcSize        = (50,52)
-                 ; OutputPosition = (53,50)
-                 ; OutputSize     = (103,800)
+                 ; SrcPosition    = Coordinate (0,8)
+                 ; SrcSize        = Rect       (50,52)
+                 ; OutputPosition = Coordinate (53,50)
+                 ; OutputSize     = Rect       (103,800)
                  };
-                 { Id             = "rrrr1331"
+                 { Id             = Guid.Create()
                  ; Name           = "Premium Region"
-                 ; SrcPosition    = (8333,897)
-                 ; SrcSize        = (83,510)
-                 ; OutputPosition = (1580,50)
-                 ; OutputSize     = (1800,890)
+                 ; SrcPosition    = Coordinate (8333,897)
+                 ; SrcSize        = Rect       (83,510)
+                 ; OutputPosition = Coordinate (1580,50)
+                 ; OutputSize     = Rect       (1800,890)
                  }]
             }
           }
 
         let viewPort1 =
-          { Id             = "23f09a8f"
+          { Id             = Guid.Create()
           ; Name           = "One fine viewport"
-          ; Position       = (22,22)
-          ; Size           = (666,666)
-          ; OutputPosition = (0,0)
-          ; OutputSize     = (98327,121)
-          ; Overlap        = (0,0)
+          ; Position       = Coordinate (22,22)
+          ; Size           = Rect       (666,666)
+          ; OutputPosition = Coordinate (0,0)
+          ; OutputSize     = Rect       (98327,121)
+          ; Overlap        = Rect       (0,0)
           ; Description    = "Its better than bad, its good."
           }
 
         let viewPort2 =
-          { Id             = "akjsdlfksj"
+          { Id             = Guid.Create()
           ; Name           = "Another fine viewport"
-          ; Position       = (82,2)
-          ; Size           = (466,86)
-          ; OutputPosition = (12310,80)
-          ; OutputSize     = (98,89121)
-          ; Overlap        = (0,33)
+          ; Position       = Coordinate (82,2)
+          ; Size           = Rect       (466,86)
+          ; OutputPosition = Coordinate (12310,80)
+          ; OutputSize     = Rect       (98,89121)
+          ; Overlap        = Rect       (0,33)
           ; Description    = "Its awesome actually"
           }
 
         let task1 =
-          { Id             = "9213f22"
+          { Id             = Guid.Create()
           ; Description    = "A very important task, indeed."
-          ; DisplayId      = "02fa2b"
+          ; DisplayId      = Guid.Create()
           ; AudioStream    = "hm"
           ; Arguments      = [("key", "to you heart")]
           }
 
         let task2 =
-          { Id             = "a929132"
+          { Id             = Guid.Create()
           ; Description    = "yay, its another task"
-          ; DisplayId      = "02fa2b"
+          ; DisplayId      = Guid.Create()
           ; AudioStream    = "hoho"
           ; Arguments      = [("mykey", "to my heart")]
           }
 
         let nodeA =
-          { Id       = "10f23r1"
+          { Id       = Guid.Create()
           ; HostName = "moomoo"
-          ; Ip       = "182.123.18.2"
-          ; Task     = "9213f22"
+          ; Ip       = IpAddress.Parse "182.123.18.2"
+          ; Task     = Guid.Create()
           }
 
         let nodeB =
-          { Id       = "af2hmse"
+          { Id       = Guid.Create()
           ; HostName = "taataaa"
-          ; Ip       = "118.223.8.12"
-          ; Task     = "9213f22"
+          ; Ip       = IpAddress.Parse "118.223.8.12"
+          ; Task     = Guid.Create()
           }
 
         let groupA =
           { Name    = "Group A"
-          ; Members = [ "10f23r1" ]
+          ; Members = [ Guid.Create() ]
           }
 
         let groupB =
           { Name    = "Group B"
-          ; Members = [ "af2hmse" ]
+          ; Members = [ Guid.Create() ]
           }
 
         let cluster =
@@ -202,27 +202,29 @@ module Project =
           ; Groups = [ groupA; groupB ]
           }
 
-        let project = Project.Create name
-        project.Path <- Some(path)
+        let project =
+          let prj = Project.Create name
+          { prj with
+              Path = Some(path)
+              Config =
+                { prj.Config with
+                    RaftConfig    = engineCfg
+                    PortConfig    = portCfg
+                    VvvvConfig    = vvvvCfg
+                    ViewPorts     = [ viewPort1; viewPort2 ]
+                    Displays      = [ display1;  display2  ]
+                    Tasks         = [ task1;     task2     ]
+                    ClusterConfig = cluster } }
 
-        project.Config.RaftConfig    <- engineCfg
-        project.Config.PortConfig    <- portCfg
-        project.Config.VvvvConfig    <- vvvvCfg
-        project.Config.ViewPorts     <- [ viewPort1; viewPort2 ]
-        project.Config.Displays      <- [ display1;  display2  ]
-        project.Config.Tasks         <- [ task1;     task2     ]
-        project.Config.ClusterConfig <- cluster
+        let saved = project.Save(signature, "Initial project save.") |> ignore
 
-        project.Save(signature, "Initial project save.") |> ignore
-
-        let project' =
+        let loaded =
           Project.Load(path + sprintf "/%s.iris" name)
-          |> Either.get
+          |> Option.get
 
         // the only difference will be the automatically assigned timestamp
-        project.LastSaved <- project'.LastSaved
 
-        Assert.Equal("Projects should be structurally equal", true, (project = project'))
+        expect "Projects should be structurally equal" true ((=) loaded) saved
 
   //    ____ _ _
   //   / ___(_) |_
@@ -239,21 +241,21 @@ module Project =
         if Directory.Exists path
         then Directory.Delete(path, true) |> ignore
 
-        let project = Project.Create name
-        project.Path <- Some(path)
-        project.Save(signature, "Initial commit.") |> ignore
+        let project =
+          { Project.Create name with Path = Some(path) }
+          |> save signature "Initial commit."
 
         let loaded =
           Path.Combine(path, sprintf "%s.iris" name)
           |> Project.Load
-          |> Either.get
+          |> Option.get
 
-        Assert.Equal("Projects should be a folder", true, Directory.Exists path)
-        Assert.Equal("Projects should be a git repo", true, Directory.Exists    (path + "/.git"))
-        Assert.Equal("Projects should have project yml", true, File.Exists (path + "/" + name + ".iris"))
-        Assert.Equal("Projects should have repo", true, Option.isSome loaded.Repo)
-        Assert.Equal("Projects should not be dirty", false, (Option.get loaded.Repo).RetrieveStatus().IsDirty)
-        Assert.Equal("Projects should have one initial commit", true, (Option.get loaded.Repo).Commits.Count() = 1)
+        expect "Projects should be a folder" true Directory.Exists path
+        expect "Projects should be a git repo" true Directory.Exists (path + "/.git")
+        expect "Projects should have project yml" true File.Exists (path + "/" + name + ".iris")
+        expect "Projects should have repo" true (repository >> Option.isSome) loaded
+        expect "Projects should not be dirty" false (repository >> Option.get >> isDirty) loaded
+        expect "Projects should have one initial commit" 1 (repository >> Option.get >> commitCount) loaded
 
   //    ____                          _ _
   //   / ___|___  _ __ ___  _ __ ___ (_) |_ ___
@@ -269,21 +271,22 @@ module Project =
 
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
-        if Directory.Exists path
-        then Directory.Delete(path, true) |> ignore
-
-        let project = Project.Create name
-        project.Path   <- Some(path)
-        project.Author <- Some(author1)
+        if Directory.Exists path then
+          Directory.Delete(path, true) |> ignore
 
         let msg1 = "Commit 1"
-        project.Save(signature, msg1) |> ignore
+
+        let project =
+          { Project.Create name with
+              Path = Some(path)
+              Author = Some(author1) }
+          |> save signature msg1
 
         Path.Combine(path, sprintf "%s.iris" name)
         |> Project.Load
-        |> Either.get
-        |> (fun p ->
-            let c = (Option.get p.Repo).Commits.ElementAt(0)
+        |> Option.get
+        |> (fun loaded ->
+            let c = repository loaded |> Option.get |> commits |> elementAt 0
             Assert.Equal("Authors should be equal", true, (Option.get p.Author) = author1)
             Assert.Equal("Project should have one initial commit", true, (Option.get p.Repo).Commits.Count() = 1)
             Assert.Equal("Project should have commit message", true, c.MessageShort = msg1))

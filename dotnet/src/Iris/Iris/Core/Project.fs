@@ -253,6 +253,47 @@ module ProjectHelper =
       | _ -> None
 
 
+  /// ## Retrieve current repository status object
+  ///
+  /// Retrieve status information on the current repository
+  ///
+  /// ### Signature:
+  /// - repo: Repository to fetch status for
+  ///
+  /// Returns: RepositoryStatus
+  let retrieveStatus (repo: Repository) : RepositoryStatus =
+    repo.RetrieveStatus()
+
+
+  /// ## Check if repository is currently dirty
+  ///
+  /// Check if the current repository is dirty or nor.
+  ///
+  /// ### Signature:
+  /// - repo: Repository to check
+  ///
+  /// Returns: boolean
+  let isDirty (repo: Repository) : bool =
+    retrieveStatus repo |> fun status -> status.IsDirty
+
+
+  /// ## Shorthand to work with the commit log of a repository
+  ///
+  /// Get the list of commits for a repository.
+  ///
+  /// ### Signature:
+  /// - repo: Repository to get commits for
+  ///
+  /// Returns: IQueryableCommitLog
+  let commits (repo: Repository) : IQueryableCommitLog =
+    repo.Commits
+
+  let elementAt (idx: int) (t: IQueryableCommitLog) : Commit =
+    t.ElementAt(idx)
+
+  let commitCount (repo: Repository) =
+    commits repo |> fun lst -> lst.Count()
+
   //  _____      _                 _
   // | ____|_  _| |_ ___ _ __  ___(_) ___  _ __  ___
   // |  _| \ \/ / __/ _ \ '_ \/ __| |/ _ \| '_ \/ __|
@@ -262,3 +303,8 @@ module ProjectHelper =
   type Project with
 
     static member Create (name: string) = create name
+
+    static member Load (path: FilePath) = load path
+
+    member self.Save (committer: Signature, msg : string) : (Commit * Project) option =
+      save committer msg self
