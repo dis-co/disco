@@ -52,10 +52,27 @@ type SessionId = Id
 type Session   = string
 type Error     = string
 
-type Coordinate = Coordinate of (int * int)
-type Rect       = Rect       of (int * int)
-
 type Actor<'t> = MailboxProcessor<'t>
+
+/// ## Coordinate
+///
+/// Represents a point in Euclidian space
+///
+type Coordinate = Coordinate of (int * int)
+  with
+    override self.ToString() =
+      match self with
+      | Coordinate (x, y) -> "(" + string x + ", " + string y + ")"
+
+/// ## Rect
+///
+/// Represents a rectangle in by width * height
+///
+type Rect = Rect of (int * int)
+  with
+    override self.ToString() =
+      match self with
+      | Rect (x, y) -> "(" + string x + ", " + string y + ")"
 
 //   ____      _
 //  / ___|___ | | ___  _ __ ___

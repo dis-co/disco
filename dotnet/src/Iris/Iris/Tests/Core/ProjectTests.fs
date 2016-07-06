@@ -59,30 +59,26 @@ module ProjectTests =
               Executables =
                 [{ Executable = "/pth/to/nowhere"
                  ; Version    = "0.0.0.0.0.0.1"
-                 ; Required   = true
-                 };
+                 ; Required   = true }
                  { Executable = "/antoher/path"
                  ; Version    = "1.2.34.4"
-                 ; Required   = false
-                 }]
+                 ; Required   = false }
+                ]
             }
 
         let portCfg =
           { PortConfig.Default with
-              WebSocket = 666u;
-            }
+              WebSocket = 666u }
 
         let display1 =
           { Id        = Guid.Create()
           ; Name      = "Nice Display"
           ; Size      = Rect (1280,1080)
           ; Signals   =
-              [{ Size     = Rect (500,500)
-               ; Position = Coordinate (0,0)
-               };
-               { Size     = Rect (800,800)
-               ; Position = Coordinate (29, 13)
-               }]
+              [{ Size     = Rect       (500,500)
+               ; Position = Coordinate (0,0) }
+               { Size     = Rect       (800,800)
+               ; Position = Coordinate (29, 13) }]
           ; RegionMap =
             {
               SrcViewportId = Guid.Create()

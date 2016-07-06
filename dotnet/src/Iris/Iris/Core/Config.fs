@@ -181,12 +181,12 @@ type Config =
 [<AutoOpen>]
 module Configuration =
 
-  let private parseTuple (s : string) : (int * int) =
-    let nonEmpty (s : string) : bool = s.Length > 0
-    let parsed =
-      s.Split([| '('; ','; ' '; ')' |])
-      |> Array.filter nonEmpty
-    (int parsed.[0], int parsed.[1])
+  let private parseTuple (input: string) : (int * int) =
+    input.Split [| '('; ','; ' '; ')' |]       // split the string according to the specified chars
+    |> Array.filter (String.length >> ((<) 0)) // filter out elements that have zero length
+    |> function
+      | [| x; y |] -> (int x, int y)
+      | _        -> failwithf "failed to parse tuple: %s" input
 
   let private parseRect (str : string) : Rect =
     parseTuple str |> Rect
@@ -202,7 +202,6 @@ module Configuration =
   //    / _ \| | | |/ _` | |/ _ \
   //   / ___ \ |_| | (_| | | (_) |
   //  /_/   \_\__,_|\__,_|_|\___/
-
 
   /// ### Parse the Audio configuration section
   ///
