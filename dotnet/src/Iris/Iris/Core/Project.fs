@@ -143,7 +143,7 @@ module ProjectHelper =
   let initRepo (project: Project) : Repository option =
     match Option.bind Git.Repo.init project.Path with
       | Some repo as result->
-        File.WriteAllText(Path.Combine(repo.Info.Path, ".git", "git-daemon-export-ok"), "")
+        File.WriteAllText(Path.Combine(repo.Info.Path, "git-daemon-export-ok"), "")
         result
       | _ -> None
 
