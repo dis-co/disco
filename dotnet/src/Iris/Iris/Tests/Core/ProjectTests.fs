@@ -225,8 +225,16 @@ module ProjectTests =
           |> Option.get
 
         // the only difference will be the automatically assigned timestamp
-
-        expect "Projects should be structurally equal" true ((=) loaded) saved
+        expect "CreatedOn should be structurally equal"  true ((=) loaded.CreatedOn) saved.CreatedOn
+        expect "LastSaved should be structurally equal"  true ((=) loaded.LastSaved) saved.LastSaved
+        expect "VVVVConfig should be structurally equal" true ((=) loaded.Config.VvvvConfig) saved.Config.VvvvConfig
+        expect "RaftCofnig should be structurally equal" true ((=) loaded.Config.RaftConfig) saved.Config.RaftConfig
+        expect "ViewPorts should be structurally equal"  true ((=) loaded.Config.ViewPorts) saved.Config.ViewPorts
+        expect "Timing should be structurally equal"     true ((=) loaded.Config.TimingConfig) saved.Config.TimingConfig
+        expect "Displays should be structurally equal"   true ((=) loaded.Config.Displays) saved.Config.Displays
+        expect "Tasks should be structurally equal"      true ((=) loaded.Config.Tasks) saved.Config.Tasks
+        expect "Cluster should be structurally equal"    true ((=) loaded.Config.ClusterConfig) saved.Config.ClusterConfig
+        expect "Projects should be structurally equal"   true ((=) loaded) saved
 
   //    ____ _ _
   //   / ___(_) |_

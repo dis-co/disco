@@ -113,7 +113,7 @@ module Utils =
 
   let createTimestamp () =
     let now = DateTime.Now
-    now.ToLongTimeString()
+    now.ToString("u")
 
   // let dispatch (raft : Raft<_,_> ref) (inbox: Actor<_>) =
   //   let rec loop () =

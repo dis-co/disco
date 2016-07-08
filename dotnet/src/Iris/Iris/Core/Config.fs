@@ -620,7 +620,10 @@ module Configuration =
       n.Id       <- string node.MemberId
       n.Ip       <- string node.IpAddr
       n.HostName <- node.HostName
-      n.TaskId   <- string node.TaskId
+      n.Port     <- node.Port
+      match node.TaskId with
+        | Some tid -> n.TaskId <- string tid
+        | _        -> ()
       n.Status   <- string node.Status
       file.Project.Cluster.Nodes.Add(n)
 
