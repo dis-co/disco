@@ -22,6 +22,11 @@ open Pallet.Core
 [<AutoOpen>]
 module Main =
 
+  let maybeRedirect (ctx: AppContext) =
+    match getLeader ctx.State.Raft with
+    | Some node -> Redirect node
+    | _         -> ErrorResponse (OtherError "No known leader")
+
   ///////////////////////////////////////////
   //  _                     _ _            //
   // | |__   __ _ _ __   __| | | ___ _ __  //
@@ -32,31 +37,31 @@ module Main =
 
   let handleMessage (ctx: AppContext) msg : RaftMsg =
     match msg with
-      | RequestVote (sender,req) -> ctx.ReceiveVoteRequest sender req
-      | RequestVoteResponse (sender,rep) -> ctx.ReceiveVoteResponse sender rep
-      | AppendEntries (sender,ae) -> ctx.ReceiveAppendEntries sender ae
-      | AppendEntriesResponse (sender,ar) -> ctx.ReceiveAppendResponse sender ar
+      | RequestVote (sender,req) ->
+        ctx.ReceiveVoteRequest sender req
+
+      | RequestVoteResponse (sender,rep) ->
+        ctx.ReceiveVoteResponse sender rep
+
+      | AppendEntries (sender,ae) ->
+        ctx.ReceiveAppendEntries sender ae
+
+      | AppendEntriesResponse (sender,ar) ->
+        ctx.ReceiveAppendResponse sender ar
+
       | HandShake node ->
         if isLeader ctx.State.Raft then
           ctx.AddNode node
           Welcome
-        else
-          match getLeader ctx.State.Raft with
-            | Some node -> Redirect node
-            | _         -> ErrorResponse (OtherError "No known leader")
+        else maybeRedirect ctx
 
-      // ------------------------------------------------------------
       | HandWaive node ->
         if isLeader ctx.State.Raft then
           ctx.RemoveNode node
           Arrivederci
-        else
-          match getLeader ctx.State.Raft with
-            | Some node -> Redirect node
-            | _         -> ErrorResponse (OtherError "No known leader")
+        else maybeRedirect ctx
 
-      // ------------------------------------------------------------
-      | InstallSnapshot (sender, snapshot) -> //
+      | InstallSnapshot (sender, snapshot) ->
         ctx.Log (sprintf "[InstallSnapshot RPC] installing")
         ctx.InstallSnapshot sender snapshot
 
@@ -64,13 +69,11 @@ module Main =
         ctx.Log (sprintf "[InstallSnapshot RPC] done")
         EmptyResponse
 
-      // ------------------------------------------------------------
       | Redirect node ->
         ctx.Log (sprintf "[HandShake] redirected us to %A" node)
         failwith "FIXME: redirects not working"
         EmptyResponse
 
-      // ------------------------------------------------------------
       | Welcome ->
         ctx.Log (sprintf "[HandShake] welcome to the fold")
         EmptyResponse
@@ -79,12 +82,10 @@ module Main =
         ctx.Log (sprintf "[HandShake] bye bye ")
         EmptyResponse
 
-      // ------------------------------------------------------------
       | ErrorResponse err ->
         ctx.Log (sprintf "[ERROR] %A" err)
         EmptyResponse
 
-      // ------------------------------------------------------------
       | EmptyResponse -> EmptyResponse
 
 
