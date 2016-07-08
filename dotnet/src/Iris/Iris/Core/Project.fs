@@ -32,7 +32,7 @@ open Iris.Core.Utils
 type Project =
   { Id        : ProjectId
   ; Name      : Name
-  ; Path      : FilePath  option
+  ; Path      : FilePath  option        // Project path should always be the path containing '.git'
   ; CreatedOn : TimeStamp
   ; LastSaved : TimeStamp option
   ; Copyright : string    option
@@ -50,10 +50,8 @@ module ProjectHelper =
   /// # Returns: Repository option
   let repository (project: Project) =
     match project.Path with
-      | Some path ->
-        let basedir = Path.GetDirectoryName(path)
-        Git.Repo.repository basedir
-      | _ -> None
+      | Some path -> Git.Repo.repository path
+      | _         -> None
 
   let currentBranch (project: Project) =
     repository project

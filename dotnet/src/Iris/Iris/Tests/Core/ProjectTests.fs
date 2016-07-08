@@ -276,7 +276,7 @@ module ProjectTests =
   let savesMultipleCommits =
     testCase "Saving project should contain multiple commits" <|
       fun _ ->
-        let name    = "test4"
+        let name = "test4"
         let author1 = "karsten"
 
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
