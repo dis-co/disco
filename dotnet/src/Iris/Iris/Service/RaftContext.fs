@@ -68,8 +68,9 @@ module AppContext =
     let withConnection timeout (node: Node<IrisNode>) (thing: RaftMsg) =
       use client = req zmqContext
       let addr = formatUri node.Data
+
       connect client addr
-      thing.ToBytes() |>> client
+      thing |> encode |>> client
 
       let mutable frames = [| |]
 
@@ -80,52 +81,57 @@ module AppContext =
         [ pollIn handler client ]
         |> poll (int64 timeout)
 
-      if result then
-        Some frames
+      if result && Array.length frames > 0 then
+        frames.[0]                      // for now we only process single-ZFrame messages in Raft
       else None
 
-    // -------------------------------------------------------------------------
-    let requestWorker =
-      new Actor<(Node<IrisNode> * RaftMsg)>
-        (fun inbox ->
-          let rec loop () =
-            async {
-              let! (node, msg) = inbox.Receive()
+    // --------------------------------------------------------------------------------------------
 
-              stm {
-                let results = withConnection (this.State.Raft.RequestTimeout) node msg
+    /// ## requestLoop
+    ///
+    /// Request loop.
+    ///
+    /// ### Signature:
+    /// - inbox: MailboxProcessor
+    ///
+    /// Returns: Async<(Node<IrisNode> * RaftMsg)>
+    let rec requestLoop (inbox: Actor<(Node<IrisNode> * RaftMsg)>) =
+      async {
+        let! (node, msg) = inbox.Receive()
+        stm {
+          let! state = readTVar appState
 
-                let! state = readTVar appState
+          let results = withConnection state.Raft.RequestTimeout node msg
 
-                // a little awkward, innit
-                match results with
-                  | Some [| Some (AppendEntriesResponse(nid,resp)) |] ->
-                    do! receiveAppendEntriesResponse nid resp
-                        |> evalRaft state.Raft cbs
-                        |> flip updateRaft state
-                        |> writeTVar appState
+          match results with
+            | Some message ->
+              match message with
+                | AppendEntriesResponse (nid,resp) ->
+                  do! receiveAppendEntriesResponse nid resp
+                      |> evalRaft state.Raft cbs
+                      |> flip updateRaft state
+                      |> writeTVar appState
 
-                  | Some [| Some (RequestVoteResponse(nid,vote)) |] ->
-                    do! receiveVoteResponse nid vote
-                        |> evalRaft state.Raft cbs
-                        |> flip updateRaft state
-                        |> writeTVar appState
+                | RequestVoteResponse(nid,vote) ->
+                  do! receiveVoteResponse nid vote
+                      |> evalRaft state.Raft cbs
+                      |> flip updateRaft state
+                      |> writeTVar appState
 
-                  | Some [| Some (ErrorResponse err) |] ->
-                    sprintf "ERROR: %A" err |> this.Log
+                | ErrorResponse err ->
+                  sprintf "ERROR: %A" err |> this.Log
 
-                  | Some [| Some (resp) |] ->
-                    sprintf "UNEXPECTED RESPONSE: %A" resp
-                    |> this.Log
-                  | _ ->
-                    printfn "must mark node as failed now and possibly fire a callback"
-                    this.Log "Request timeout! Marking s Failed"
+                | resp ->
+                  sprintf "UNEXPECTED RESPONSE: %A" resp
+                  |> this.Log
 
-              } |> atomically
+            | _ ->
+              this.Log "[REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
+        } |> atomically
+        return! requestLoop inbox
+      }
 
-              return! loop ()
-            }
-          loop ())
+    let requestWorker = new Actor<(Node<IrisNode> * RaftMsg)> (requestLoop)
 
     // -------------------------------------------------------------------------
     let tryJoin (leader: Node<IrisNode>) =
@@ -137,29 +143,32 @@ module AppContext =
           |> this.Log
 
           let msg = HandShake(state.Raft.Node)
-          let result = withConnection 2000UL node' msg
+          let result = withConnection state.Raft.RequestTimeout node' msg
 
           match result with
-            | Some [| Some (ErrorResponse err) |] ->
-              // | MembershipResponse (Redirect, Some other) -> _tryJoin (retry + 1) other
-              // | MembershipResponse (Redirect, None) ->
-              //   this.Log "Node reachable but could not redirect to Leader. Aborting."
-              //   exit 1
-              // | MembershipResponse (Hello, _) ->
-              //   this.Log "HandShake successful. Waiting to be updated"
-              sprintf "Unexpected error occurred. %A" err |> this.Log
-              exit 1
-            | Some res ->
-              sprintf "Unexpected response. Aborting.\n%A" res |> this.Log
-              exit 1
+            | Some message ->
+              match message with
+                | Welcome ->
+                  this.Log "HandShake successful. Waiting to be updated"
+
+                | Redirect next ->
+                  _tryJoin (retry + 1) next
+
+                | ErrorResponse err ->
+                  sprintf "Unexpected error occurred. %A" err |> this.Log
+                  exit 1
+
+                | res ->
+                  sprintf "Unexpected response. Aborting.\n%A" res |> this.Log
+                  exit 1
             | _ ->
               this.Log "Node unreachable. Aborting."
               exit 1
         else
-          sprintf "Connection attempts unsuccesful. Aborting." |> this.Log
+          sprintf "Too many connection attempts unsuccesful. Aborting." |> this.Log
           exit 1
 
-      printfn "joining leader %A now" leader
+      this.Log <| sprintf "joining leader %A now" leader
       _tryJoin 0 leader
 
     // -------------------------------------------------------------------------
@@ -171,21 +180,24 @@ module AppContext =
         |> this.Log
 
         let msg = HandWaive(state.Raft.Node)
-        let result = withConnection 2000UL node msg
+        let result = withConnection state.Raft.RequestTimeout node msg
 
         match result with
-          | Some [| Some (ErrorResponse err) |] ->
-              // | MembershipResponse (Redirect, Some other) -> _tryLeave (retry + 1) other
-              // | MembershipResponse (Redirect, None) ->
-              //   this.Log "Node reachable but could not redirect to Leader. Aborting."
-              //   exit 1
-              // | MembershipResponse (ByeBye, _) ->
-              //   this.Log "HandWaive successful."
-            sprintf "Unexpected error occurred. %A" err |> this.Log
-            exit 1
-          | Some resp ->
-            sprintf "Unexpected response. Aborting.\n%A" resp |> this.Log
-            exit 1
+          | Some message ->
+            match message with
+              | Redirect other ->
+                _tryLeave (retry + 1) other
+
+              | Arrivederci ->
+                this.Log "HandWaive successful."
+
+              | ErrorResponse err ->
+                sprintf "Unexpected error occurred. %A" err |> this.Log
+                exit 1
+
+              | resp ->
+                sprintf "Unexpected response. Aborting.\n%A" resp |> this.Log
+                exit 1
           | _ ->
             this.Log "Node unreachable. Aborting."
             exit 1
@@ -314,7 +326,6 @@ module AppContext =
             |> evalRaft state.Raft cbs
             |> flip updateRaft state
             |> writeTVar appState
-
       } |> atomically
 
     member self.ReceiveVoteRequest sender req =
