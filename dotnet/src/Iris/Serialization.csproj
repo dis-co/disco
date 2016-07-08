@@ -52,6 +52,7 @@
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/HandWaiveFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/InstallSnapshotFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/IrisNodeFB.cs" />
+    <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/IrisNodeStatusFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/JointConsensusFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/LogEntryFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/LogFB.cs" />

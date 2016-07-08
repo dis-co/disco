@@ -31,28 +31,10 @@ Project:
     UDPCues:     -1
 
   Engine:
-    AesKey:
-    DefaultTimeout:
-    Hosts:
-      -
-    IgnorePartitions: true
-    IgnoreSmallPartitions: true
-    InfiniBand: false
-    LogDir:
-    Logged: true
-    Netmask:
-    NetworkInterfaces:
-      -
-    Port: -1
-    PortP2P: -1
-    RateLim: -1
-    Sigs: false
-    SkipFirstInterface: false
-    Subnet:
-    TTL: -1
-    TokenDelay: -1
-    UseIPv4: true
-    UseIPv6: false
+    RequestTimeout:  -1
+    ElectionTimeout: -1
+    MaxLogDepth:     -1
+    LogLevel: 5
 
   Timing:
     Framebase: 50
@@ -106,7 +88,9 @@ Project:
       - Id:
         HostName:
         Ip:
-        Task:
+        Port: -1
+        Status:
+        TaskId:
 
     Groups:
       - Name:

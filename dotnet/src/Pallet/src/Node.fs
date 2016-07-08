@@ -14,6 +14,20 @@ type NodeState =
   | Running                             // normal execution state
   | Failed                              // node has failed for some reason
 
+  with
+    override self.ToString() =
+      match self with
+      | Joining -> "Joining"
+      | Running -> "Running"
+      | Failed  -> "Failed"
+
+    static member Parse (str: string) =
+      match str with
+      | "Joining" -> Joining
+      | "Running" -> Running
+      | "Failed"  -> Failed
+      | _         -> failwithf "NodeState: failed to parse %s" str
+
 //  _   _           _
 // | \ | | ___   __| | ___
 // |  \| |/ _ \ / _` |/ _ \

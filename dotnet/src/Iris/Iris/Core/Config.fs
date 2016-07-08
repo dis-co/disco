@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+open Pallet.Core
+
 //  ____        __ _    ____             __ _
 // |  _ \ __ _ / _| |_ / ___|___  _ __  / _(_) __ _
 // | |_) / _` | |_| __| |   / _ \| '_ \| |_| |/ _` |
@@ -7,15 +9,23 @@ namespace Iris.Core
 // |_| \_\__,_|_|  \__|\____\___/|_| |_|_| |_|\__, |
 //                                            |___/
 
+/// ## RaftConfig
+///
+/// Configuration for Raft-specific, user-facing values.
+///
 type RaftConfig =
-  { RequestTimeout: uint32
-  ; TempDir:        string
+  { RequestTimeout:   Long
+  ; ElectionTimeout:  Long
+  ; MaxLogDepth:      Long
+  ; LogLevel:         int8
   }
   with
     static member Default =
-      { RequestTimeout = 1000u
-      ; TempDir        = "ohai"
-      }
+      { RequestTimeout  = 2000UL
+      ; ElectionTimeout = 2000UL
+      ; MaxLogDepth     = 20UL
+      ; LogLevel        = 5y }
+
 // __     __                     ____             __ _
 // \ \   / /_   ____   ____   __/ ___|___  _ __  / _(_) __ _
 //  \ \ / /\ \ / /\ \ / /\ \ / / |   / _ \| '_ \| |_| |/ _` |
@@ -25,13 +35,11 @@ type RaftConfig =
 
 type VvvvConfig =
   { Executables : VvvvExe list
-  ; Plugins     : VvvvPlugin list
-  }
+  ; Plugins     : VvvvPlugin list }
   with
     static member Default =
       { Executables = List.empty
-      ; Plugins     = List.empty
-      }
+      ; Plugins     = List.empty }
 
 //  ____            _    ____             __ _
 // |  _ \ ___  _ __| |_ / ___|___  _ __  / _(_) __ _
@@ -88,31 +96,6 @@ type AudioConfig =
     static member Default =
       { SampleRate = 48000u }
 
-//  _   _           _       ____             __ _
-// | \ | | ___   __| | ___ / ___|___  _ __  / _(_) __ _
-// |  \| |/ _ \ / _` |/ _ \ |   / _ \| '_ \| |_| |/ _` |
-// | |\  | (_) | (_| |  __/ |__| (_) | | | |  _| | (_| |
-// |_| \_|\___/ \__,_|\___|\____\___/|_| |_|_| |_|\__, |
-//                                                |___/
-
-type NodeConfig =
-  { Id       : Id
-  ; HostName : Name
-  ; Ip       : IpAddress
-  ; Task     : Id
-  }
-  with
-    override self.ToString() =
-      sprintf "NodeConfig:
-                Id: %A
-                HostName: %A
-                Ip: %A
-                Task: %A"
-              self.Id
-              self.HostName
-              self.Ip
-              self.Task
-
 //  _   _           _    ____
 // | | | | ___  ___| |_ / ___|_ __ ___  _   _ _ __
 // | |_| |/ _ \/ __| __| |  _| '__/ _ \| | | | '_ \
@@ -122,7 +105,7 @@ type NodeConfig =
 
 type HostGroup =
   { Name    : Name
-  ; Members : Id list
+  ; Members : Guid list
   }
   with
     override self.ToString() =
@@ -140,7 +123,7 @@ type HostGroup =
 
 type Cluster =
   { Name   : Name
-  ; Nodes  : NodeConfig list
+  ; Nodes  : IrisNode  list
   ; Groups : HostGroup list
   }
   with
@@ -285,41 +268,17 @@ module Configuration =
   // |  _ < (_| |  _| |_
   // |_| \_\__,_|_|  \__|
 
-  /// ### Parses Raft-related values in passed configuration
+  /// ## Parses Raft-related values in passed configuration
   ///
   /// Parses the passed-in configuration file contents and returns a `RaftConfig` value.
   ///
-  /// # Returns: RaftConfig
+  /// Returns: RaftConfig
   let private parseRaft (cfg : ConfigFile) : RaftConfig =
     // let eng = cfg.Project.Engine
-
-    let ifaces : string list option ref = ref None
-    let hosts  : string list option ref = ref None
-
-    for host in cfg.Project.Engine.Hosts do
-      if host.Length > 0
-      then
-        let hosts' = !hosts
-        match hosts' with
-          | Some(list) -> hosts := Some(host :: list)
-          | _          -> hosts := Some([ host ])
-
-    match !hosts with
-      | Some(list) -> hosts := Some(List.reverse list)
-      | None       -> hosts := None
-
-    for iface in cfg.Project.Engine.NetworkInterfaces do
-      let ifaces' = !ifaces
-      match ifaces' with
-        | Some(list) -> ifaces := Some(iface :: list)
-        | _          -> ifaces := Some([ iface ])
-
-    match !ifaces with
-      | Some(list) -> ifaces := Some(List.reverse list)
-      | None       -> ifaces := None
-
-    { RequestTimeout = 0u
-    ; TempDir = "hahhah" }
+    { RequestTimeout  = uint64 cfg.Project.Engine.RequestTimeout
+    ; ElectionTimeout = uint64 cfg.Project.Engine.ElectionTimeout
+    ; MaxLogDepth     = uint64 cfg.Project.Engine.MaxLogDepth
+    ; LogLevel        = int8 cfg.Project.Engine.LogLevel }
 
   /// ### Save the passed RaftConfig to the configuration file
   ///
@@ -327,6 +286,10 @@ module Configuration =
   ///
   /// # Returns: ConfigFile
   let private saveRaft (file: ConfigFile, config: Config) =
+    file.Project.Engine.RequestTimeout  <- int config.RaftConfig.RequestTimeout
+    file.Project.Engine.ElectionTimeout <- int config.RaftConfig.ElectionTimeout
+    file.Project.Engine.MaxLogDepth     <- int config.RaftConfig.MaxLogDepth
+    file.Project.Engine.LogLevel        <- int config.RaftConfig.LogLevel
     (file, config)
 
   //   _____ _           _
@@ -604,22 +567,29 @@ module Configuration =
   ///
   /// # Returns: Cluster
   let private parseCluster (cfg : ConfigFile) : Cluster =
-    let nodes  : NodeConfig list ref = ref []
+    let nodes  : IrisNode list ref = ref []
     let groups : HostGroup list ref = ref []
 
     for node in cfg.Project.Cluster.Nodes do
+      let tid =
+        match node.TaskId with
+        | null | "" -> None
+        | str    -> Id.TryParse str
+
       let node' =
-        { Id       = Id.Parse node.Id
+        { MemberId = Id.Parse node.Id
         ; HostName = node.HostName
-        ; Ip       = IpAddress.Parse node.Ip
-        ; Task     = Id.Parse node.Task
+        ; IpAddr   = IpAddress.Parse node.Ip
+        ; Port     = node.Port
+        ; Status   = IrisNodeStatus.Parse node.Status
+        ; TaskId   = tid
         }
       nodes := (node' :: !nodes)
 
     for group in cfg.Project.Cluster.Groups do
       if group.Name.Length > 0
       then
-        let ids : Id list ref = ref []
+        let ids : Guid list ref = ref []
 
         for mid in group.Members do
           if mid.Length > 0
@@ -647,10 +617,11 @@ module Configuration =
 
     for node in config.ClusterConfig.Nodes do
       let n = new ConfigFile.Project_Type.Cluster_Type.Nodes_Item_Type()
-      n.Id       <- string node.Id
-      n.Ip       <- string node.Ip
+      n.Id       <- string node.MemberId
+      n.Ip       <- string node.IpAddr
       n.HostName <- node.HostName
-      n.Task     <- string node.Task
+      n.TaskId   <- string node.TaskId
+      n.Status   <- string node.Status
       file.Project.Cluster.Nodes.Add(n)
 
     for group in config.ClusterConfig.Groups do

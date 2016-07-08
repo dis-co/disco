@@ -18,25 +18,34 @@ public sealed class IrisNodeFB : Table {
   public string IpAddr { get { int o = __offset(8); return o != 0 ? __string(o + bb_pos) : null; } }
   public ArraySegment<byte>? GetIpAddrBytes() { return __vector_as_arraysegment(8); }
   public int Port { get { int o = __offset(10); return o != 0 ? bb.GetInt(o + bb_pos) : (int)0; } }
+  public IrisNodeStatusFB Status { get { int o = __offset(12); return o != 0 ? (IrisNodeStatusFB)bb.GetUshort(o + bb_pos) : IrisNodeStatusFB.Running; } }
+  public string TaskId { get { int o = __offset(14); return o != 0 ? __string(o + bb_pos) : null; } }
+  public ArraySegment<byte>? GetTaskIdBytes() { return __vector_as_arraysegment(14); }
 
   public static Offset<IrisNodeFB> CreateIrisNodeFB(FlatBufferBuilder builder,
       StringOffset MemberIdOffset = default(StringOffset),
       StringOffset HostNameOffset = default(StringOffset),
       StringOffset IpAddrOffset = default(StringOffset),
-      int Port = 0) {
-    builder.StartObject(4);
+      int Port = 0,
+      IrisNodeStatusFB Status = IrisNodeStatusFB.Running,
+      StringOffset TaskIdOffset = default(StringOffset)) {
+    builder.StartObject(6);
+    IrisNodeFB.AddTaskId(builder, TaskIdOffset);
     IrisNodeFB.AddPort(builder, Port);
     IrisNodeFB.AddIpAddr(builder, IpAddrOffset);
     IrisNodeFB.AddHostName(builder, HostNameOffset);
     IrisNodeFB.AddMemberId(builder, MemberIdOffset);
+    IrisNodeFB.AddStatus(builder, Status);
     return IrisNodeFB.EndIrisNodeFB(builder);
   }
 
-  public static void StartIrisNodeFB(FlatBufferBuilder builder) { builder.StartObject(4); }
+  public static void StartIrisNodeFB(FlatBufferBuilder builder) { builder.StartObject(6); }
   public static void AddMemberId(FlatBufferBuilder builder, StringOffset MemberIdOffset) { builder.AddOffset(0, MemberIdOffset.Value, 0); }
   public static void AddHostName(FlatBufferBuilder builder, StringOffset HostNameOffset) { builder.AddOffset(1, HostNameOffset.Value, 0); }
   public static void AddIpAddr(FlatBufferBuilder builder, StringOffset IpAddrOffset) { builder.AddOffset(2, IpAddrOffset.Value, 0); }
   public static void AddPort(FlatBufferBuilder builder, int Port) { builder.AddInt(3, Port, 0); }
+  public static void AddStatus(FlatBufferBuilder builder, IrisNodeStatusFB Status) { builder.AddUshort(4, (ushort)Status, 0); }
+  public static void AddTaskId(FlatBufferBuilder builder, StringOffset TaskIdOffset) { builder.AddOffset(5, TaskIdOffset.Value, 0); }
   public static Offset<IrisNodeFB> EndIrisNodeFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
     return new Offset<IrisNodeFB>(o);

@@ -36,9 +36,7 @@ module ProjectTests =
 
         let loaded = Option.get result
 
-        expect "Projects should be structurally equal" true ((=) project) loaded
-        expect "Project should have an Id"             true ((>) (string project.Id |> String.length)) 0
-        expect "Projects should have same Id"          true ((=) project.Id) loaded.Id
+        expect "Projects should be equal" true ((=) project) loaded
 
   //    ____          _                  _             _
   //   / ___|   _ ___| |_ ___  _ __ ___ (_)_______  __| |
@@ -171,17 +169,21 @@ module ProjectTests =
           }
 
         let nodeA =
-          { Id       = Guid.Create()
+          { MemberId = Guid.Create()
           ; HostName = "moomoo"
-          ; Ip       = IpAddress.Parse "182.123.18.2"
-          ; Task     = Guid.Create()
+          ; IpAddr   = IpAddress.Parse "182.123.18.2"
+          ; TaskId   = Guid.Create() |> Some
+          ; Status   = Running
+          ; Port     = 1234
           }
 
         let nodeB =
-          { Id       = Guid.Create()
+          { MemberId = Guid.Create()
           ; HostName = "taataaa"
-          ; Ip       = IpAddress.Parse "118.223.8.12"
-          ; Task     = Guid.Create()
+          ; IpAddr   = IpAddress.Parse "118.223.8.12"
+          ; TaskId   = Guid.Create() |> Some
+          ; Status   = Paused
+          ; Port     = 1234
           }
 
         let groupA =
@@ -264,7 +266,7 @@ module ProjectTests =
   //   \____\___/|_| |_| |_|_| |_| |_|_|\__|___/ per save
   //
   let savesMultipleCommits =
-    testCase "Saved Project should be a git repository with yaml file." <|
+    testCase "Saving project should contain multiple commits" <|
       fun _ ->
         let name    = "test4"
         let author1 = "karsten"

@@ -23,8 +23,10 @@ module SerializationTests =
       let info =
         { MemberId = Guid.Create ()
         ; HostName = "test-host"
-        ; IpAddr = IpAddress.Parse "192.168.2.10"
-        ; Port = 8080 }
+        ; IpAddr   = IpAddress.Parse "192.168.2.10"
+        ; Port     = 8080
+        ; Status   = Paused
+        ; TaskId   = Guid.Create() |> Some }
 
       let node = Node.create (RaftId.Create()) info
 
@@ -71,13 +73,17 @@ module SerializationTests =
         { MemberId = Guid.Create()
         ; HostName = "Hans"
         ; IpAddr = IpAddress.Parse "192.168.1.20"
-        ; Port = 8080 }
+        ; Port = 8080
+        ; Status = IrisNodeStatus.Running
+        ; TaskId = None }
 
       let info2 =
         { MemberId = Guid.Create()
         ; HostName = "Klaus"
         ; IpAddr = IpAddress.Parse "192.168.1.22"
-        ; Port = 8080 }
+        ; Port = 8080
+        ; Status = IrisNodeStatus.Failed
+        ; TaskId = Guid.Create() |> Some }
 
       let node1 = Node.create (RaftId.Create()) info1
       let node2 = Node.create (RaftId.Create()) info2
@@ -143,7 +149,9 @@ module SerializationTests =
         { MemberId = Guid.Create()
         ; HostName = "Hans"
         ; IpAddr = IpAddress.Parse "123.23.21.1"
-        ; Port = 124 }
+        ; Port = 124
+        ; Status = IrisNodeStatus.Running
+        ; TaskId = None }
 
       let node1 = [| Node.create (RaftId.Create()) info |]
 
@@ -187,8 +195,10 @@ module SerializationTests =
       let info =
         { MemberId = Guid.Create()
         ; HostName = "horst"
-        ; IpAddr = IpAddress.Parse "127.0.0.1"
-        ; Port = 8080 }
+        ; IpAddr   = IpAddress.Parse "127.0.0.1"
+        ; Port     = 8080
+        ; Status   = IrisNodeStatus.Paused
+        ; TaskId   = None }
 
       let msg = HandShake(Node.create (RaftId.Create()) info)
       let remsg = msg |> encode |> decode |> Option.get
@@ -207,7 +217,9 @@ module SerializationTests =
         { MemberId = Guid.Create()
         ; HostName = "horst"
         ; IpAddr = IpAddress.Parse "127.0.0.1"
-        ; Port = 8080 }
+        ; Port = 8080
+        ; Status = IrisNodeStatus.Failed
+        ; TaskId = Guid.Create() |> Some }
 
       let msg = HandWaive(Node.create (RaftId.Create()) info)
       let remsg = msg |> encode |> decode |> Option.get

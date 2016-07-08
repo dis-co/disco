@@ -91,5 +91,4 @@ type LogEntry = LogEntry<StateMachine,IrisNode>
 type Raft = Raft<StateMachine,IrisNode>
 type AppendEntries = AppendEntries<StateMachine,IrisNode>
 type VoteRequest = VoteRequest<IrisNode>
-type Node = Node<IrisNode>
 type InstallSnapshot = InstallSnapshot<StateMachine,IrisNode>

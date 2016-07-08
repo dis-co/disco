@@ -28,14 +28,15 @@ open Iris.Core.Utils
 // |_|   |_|  \___// |\___|\___|\__|
 //               |__/
 
+// [<NoComparison;NoEquality>]
 type Project =
   { Id        : ProjectId
   ; Name      : Name
-  ; Path      : FilePath option
-  ; CreatedOn : DateTime
-  ; LastSaved : DateTime option
-  ; Copyright : string   option
-  ; Author    : string   option
+  ; Path      : FilePath  option
+  ; CreatedOn : TimeStamp
+  ; LastSaved : TimeStamp option
+  ; Copyright : string    option
+  ; Author    : string    option
   ; Config    : Config }
 
 [<AutoOpen>]
@@ -72,7 +73,7 @@ module ProjectHelper =
     { Id        = Id.Create()
     ; Name      = name
     ; Path      = None
-    ; CreatedOn = now
+    ; CreatedOn = now.ToLongTimeString()
     ; LastSaved = None
     ; Copyright = None
     ; Author    = None
@@ -121,13 +122,20 @@ module ProjectHelper =
       IrisConfig.Load(path)
 
       let meta = IrisConfig.Project.Metadata
-      let lastSaved = parseLastSaved IrisConfig
-      let createdOn = parseCreatedOn IrisConfig
+      let lastSaved =
+        match meta.LastSaved with
+          | null | "" -> None
+          | str ->
+            try
+              DateTime.Parse str |> ignore
+              Some str
+            with
+              | _ -> None
 
       { Id        = Id.Parse meta.Id
       ; Name      = meta.Name
       ; Path      = Some <| Path.GetDirectoryName(path)
-      ; CreatedOn = createdOn
+      ; CreatedOn = meta.CreatedOn
       ; LastSaved = lastSaved
       ; Copyright = parseStringProp meta.Copyright
       ; Author    = parseStringProp meta.Author
@@ -172,12 +180,12 @@ module ProjectHelper =
     if Option.isSome project.Copyright then
       config.Project.Metadata.Copyright <- Option.get project.Copyright
 
-    config.Project.Metadata.CreatedOn <- project.CreatedOn.ToLongTimeString()
+    config.Project.Metadata.CreatedOn <- project.CreatedOn
 
     let now = DateTime.Now
     config.Project.Metadata.LastSaved <- string now
 
-    { project with LastSaved = Some now }
+    { project with LastSaved = Some(now.ToLongTimeString()) }
 
   //   ____
   //  / ___|  __ ___   _____
