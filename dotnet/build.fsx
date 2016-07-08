@@ -292,6 +292,20 @@ Target "Pallet"
    MSBuildDebug   "" "Build" [ "src/Pallet/Pallet.fsproj" ] |> ignore
    MSBuildRelease "" "Build" [ "src/Pallet/Pallet.fsproj" ] |> ignore)
 
+Target "PalletTests"
+  (fun _ ->
+   MSBuildDebug   "" "Build" [ "src/Pallet.Tests/Pallet.Tests.fsproj" ] |> ignore)
+
+Target "RunPalletTests"
+  (fun _ ->
+    let testsDir = "src/Pallet.Tests"
+    ExecProcess (fun info ->
+                    info.FileName <- "fsi"
+                    info.Arguments <- "run.fsx"
+                    info.WorkingDirectory <- testsDir)
+                (TimeSpan.FromMinutes 5.0)
+   |> ignore)
+
 //  _____                _                 _
 // |  ___| __ ___  _ __ | |_ ___ _ __   __| |
 // | |_ | '__/ _ \| '_ \| __/ _ \ '_ \ / _` |
@@ -491,6 +505,10 @@ Target "DevServer"
 
 // --------------------------------------------------------------------------------------
 // Run all targets by default. Invoke 'build <Target>' to override
+
+"Pallet"
+==> "PalletTests"
+==> "RunPalletTests"
 
 Target "Release" DoNothing
 
