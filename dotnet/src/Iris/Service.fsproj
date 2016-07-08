@@ -88,6 +88,7 @@
     <Compile Include="Iris\Core\Either.fs" />
     <Compile Include="Iris\Core\Aliases.fs" />
     <Compile Include="Iris\Core\Util.fs" />
+    <Compile Include="Iris\Core\IrisNode.fs" />
     <Compile Include="Iris\Core\Git.fs" />
     <Compile Include="Iris\Core\IOBox.fs" />
     <Compile Include="Iris\Core\Patch.fs" />
@@ -108,7 +109,6 @@
     <Compile Include="Iris\Service\GitDaemon.fs" />
 
     <Compile Include="Iris\Core\BrowserSession.fs" />
-    <Compile Include="Iris\Core\IrisNode.fs" />
     <Compile Include="Iris\Core\StateMachine.fs" />
     <Compile Include="Iris\Core\Serialization.fs" />
     <Compile Include="Iris\Core\Raft.fs" />

@@ -1,6 +1,7 @@
 namespace Pallet.Core
 
 open System
+open FSharpx.Functional
 
 [<AutoOpen>]
 module RaftMonad =
@@ -651,6 +652,9 @@ module Raft =
     state.CurrentLeader
 
   let currentLeaderM _ = zoomM currentLeader
+
+  let getLeader (state: Raft<_,_>) =
+    currentLeader state |> Option.bind (flip getNode state)
 
   let commitIndex (state: Raft<'d,'n>) =
     state.CommitIndex

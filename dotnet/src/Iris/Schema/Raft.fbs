@@ -301,6 +301,16 @@ table HandWaiveFB {
       Node: NodeFB;
 }
 
+table RedirectFB {
+      Node: NodeFB;
+}
+
+table WelcomeFB {
+}
+
+table ArrivederciFB {
+}
+
 table ErrorResponseFB {
       Error: RaftErrorFB;
 }
@@ -317,6 +327,9 @@ union RaftMsgTypeFB {
       RequestSnapshotResponseFB,
       HandShakeFB,
       HandWaiveFB,
+      RedirectFB,
+      WelcomeFB,
+      ArrivederciFB,
       ErrorResponseFB,
       EmptyResponseFB
 }

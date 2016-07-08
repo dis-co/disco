@@ -14,8 +14,11 @@ public enum RaftMsgTypeFB : byte
  RequestSnapshotResponseFB = 6,
  HandShakeFB = 7,
  HandWaiveFB = 8,
- ErrorResponseFB = 9,
- EmptyResponseFB = 10,
+ RedirectFB = 9,
+ WelcomeFB = 10,
+ ArrivederciFB = 11,
+ ErrorResponseFB = 12,
+ EmptyResponseFB = 13,
 };
 
 

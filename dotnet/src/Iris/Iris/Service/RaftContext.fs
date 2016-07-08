@@ -31,7 +31,9 @@ module AppContext =
       ; HostName = getHostName()
       ; IpAddr   = IpAddress.Parse options.IpAddr
       ; Port     = options.RaftPort
-      } |> Node.create (RaftId options.RaftId)
+      ; TaskId   = None
+      ; Status   = IrisNodeStatus.Running }
+      |> Node.create (RaftId options.RaftId)
     Raft.create node
 
   let mkState (options: RaftOptions) : AppState =
@@ -237,6 +239,8 @@ module AppContext =
                 ; HostName = "<empty>"
                 ; IpAddr = Option.get options.LeaderIp   |> IpAddress.Parse
                 ; Port   = Option.get options.LeaderPort |> int
+                ; TaskId = None
+                ; Status = IrisNodeStatus.Running
                 }
                 |> Node.create (Option.get options.LeaderId |> RaftId)
               tryJoin leader

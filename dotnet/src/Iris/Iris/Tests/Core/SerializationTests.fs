@@ -226,6 +226,51 @@ module SerializationTests =
 
       expect "Should be structurally the same" msg id remsg
 
+  //  ____          _ _               _
+  // |  _ \ ___  __| (_)_ __ ___  ___| |_
+  // | |_) / _ \/ _` | | '__/ _ \/ __| __|
+  // |  _ <  __/ (_| | | | |  __/ (__| |_
+  // |_| \_\___|\__,_|_|_|  \___|\___|\__|
+
+  let test_validate_redirect_serialization =
+    testCase "Validate Redirect Serialization" <| fun _ ->
+      let info =
+        { MemberId = Guid.Create()
+        ; HostName = "horst"
+        ; IpAddr = IpAddress.Parse "127.0.0.1"
+        ; Port = 8080
+        ; Status = IrisNodeStatus.Failed
+        ; TaskId = Guid.Create() |> Some }
+
+      let msg = Redirect(Node.create (RaftId.Create()) info)
+      let remsg = msg |> encode |> decode |> Option.get
+
+      expect "Should be structurally the same" msg id remsg
+
+  // __        __   _
+  // \ \      / /__| | ___ ___  _ __ ___   ___
+  //  \ \ /\ / / _ \ |/ __/ _ \| '_ ` _ \ / _ \
+  //   \ V  V /  __/ | (_| (_) | | | | | |  __/
+  //    \_/\_/ \___|_|\___\___/|_| |_| |_|\___|
+
+  let test_validate_welcome_serialization =
+    testCase "Validate Welcome Serialization" <| fun _ ->
+      let msg = Welcome
+      let remsg = msg |> encode |> decode |> Option.get
+      expect "Should be structurally the same" msg id remsg
+
+  //     _              _               _               _
+  //    / \   _ __ _ __(_)_   _____  __| | ___ _ __ ___(_)
+  //   / _ \ | '__| '__| \ \ / / _ \/ _` |/ _ \ '__/ __| |
+  //  / ___ \| |  | |  | |\ V /  __/ (_| |  __/ | | (__| |
+  // /_/   \_\_|  |_|  |_| \_/ \___|\__,_|\___|_|  \___|_|
+
+  let test_validate_arrivederci_serialization =
+    testCase "Validate Arrivederci Serialization" <| fun _ ->
+      let msg = Arrivederci
+      let remsg = msg |> encode |> decode |> Option.get
+      expect "Should be structurally the same" msg id remsg
+
   //  _____
   // | ____|_ __ _ __ ___  _ __
   // |  _| | '__| '__/ _ \| '__|
@@ -280,5 +325,8 @@ module SerializationTests =
         test_validate_installsnapshot_response_serialization
         test_validate_handshake_serialization
         test_validate_handwaive_serialization
+        test_validate_redirect_serialization
+        test_validate_welcome_serialization
+        test_validate_arrivederci_serialization
         test_validate_errorresponse_serialization
       ]

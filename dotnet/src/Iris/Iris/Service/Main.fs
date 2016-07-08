@@ -12,6 +12,7 @@ open Iris.Service.Types
 open Iris.Service.Core
 open LibGit2Sharp
 
+open FSharpx.Functional
 open Argu
 open fszmq
 open fszmq.Context
@@ -38,33 +39,21 @@ module Main =
       | HandShake node ->
         if isLeader ctx.State.Raft then
           ctx.AddNode node
-          //MembershipResponse(Hello, None)
-          EmptyResponse
+          Welcome
         else
-          match currentLeader ctx.State.Raft with
-            | Some nid ->
-              let node = getNode nid ctx.State.Raft
-              // MembershipResponse(Redirect, node)
-              EmptyResponse
-            | _ ->
-              // MembershipResponse(Redirect, None)
-              EmptyResponse
+          match getLeader ctx.State.Raft with
+            | Some node -> Redirect node
+            | _         -> ErrorResponse (OtherError "No known leader")
 
       // ------------------------------------------------------------
       | HandWaive node ->
         if isLeader ctx.State.Raft then
           ctx.RemoveNode node
-          //MembershipResponse(ByeBye, None)
-          EmptyResponse
+          Arrivederci
         else
-          match currentLeader ctx.State.Raft with
-            | Some nid ->
-              let node = getNode nid ctx.State.Raft
-              // MembershipResponse(Redirect, node)
-              EmptyResponse
-            | _ ->
-              // MembershipResponse(Redirect, None)
-              EmptyResponse
+          match getLeader ctx.State.Raft with
+            | Some node -> Redirect node
+            | _         -> ErrorResponse (OtherError "No known leader")
 
       // ------------------------------------------------------------
       | InstallSnapshot (sender, snapshot) -> //
@@ -75,28 +64,24 @@ module Main =
         ctx.Log (sprintf "[InstallSnapshot RPC] done")
         EmptyResponse
 
-      // // ------------------------------------------------------------
-      // | MembershipResponse (Redirect, None) ->
-      //   ctx.Log (sprintf "[HandShake] failed. No known leader.")
-      //   exit 1
-
-      // // ------------------------------------------------------------
-      // | MembershipResponse (Redirect, Some node) ->
-      //   ctx.Log (sprintf "[HandShake] redirect to %A" node)
-      //   EmptyResponse
+      // ------------------------------------------------------------
+      | Redirect node ->
+        ctx.Log (sprintf "[HandShake] redirected us to %A" node)
+        failwith "FIXME: redirects not working"
+        EmptyResponse
 
       // ------------------------------------------------------------
-      // | MembershipResponse (Hello, _) ->
-      //   ctx.Log (sprintf "[HandShake] all good ")
-      //   EmptyResponse
+      | Welcome ->
+        ctx.Log (sprintf "[HandShake] welcome to the fold")
+        EmptyResponse
 
-      // | MembershipResponse (ByeBye, _) ->
-      //   ctx.Log (sprintf "[HandShake] bye bye ")
-      //   EmptyResponse
+      | Arrivederci ->
+        ctx.Log (sprintf "[HandShake] bye bye ")
+        EmptyResponse
 
       // ------------------------------------------------------------
       | ErrorResponse err ->
-        ctx.Log (sprintf "[error] %A" err)
+        ctx.Log (sprintf "[ERROR] %A" err)
         EmptyResponse
 
       // ------------------------------------------------------------

@@ -61,12 +61,12 @@ type GeneralArgs =
         | LeaderPort _ -> "Port of leader when joining a cluster"
 
 
-//  ____        __ _     __  __
-// |  _ \ __ _ / _| |_  |  \/  |___  __ _
-// | |_) / _` | |_| __| | |\/| / __|/ _` |
-// |  _ < (_| |  _| |_  | |  | \__ \ (_| |
-// |_| \_\__,_|_|  \__| |_|  |_|___/\__, |
-//                                  |___/
+//  _____ ____    _   _      _
+// |  ___| __ )  | | | | ___| |_ __   ___ _ __ ___
+// | |_  |  _ \  | |_| |/ _ \ | '_ \ / _ \ '__/ __|
+// |  _| | |_) | |  _  |  __/ | |_) |  __/ |  \__ \
+// |_|   |____/  |_| |_|\___|_| .__/ \___|_|  |___/
+//                            |_|
 [<AutoOpen>]
 module RaftMsgFB =
 
@@ -109,15 +109,24 @@ module RaftMsgFB =
     RequestSnapshotResponseFB.CreateRequestSnapshotResponseFB(builder, id, sr.ToOffset builder)
     |> getValue
 
+//  ____        __ _     __  __
+// |  _ \ __ _ / _| |_  |  \/  |___  __ _
+// | |_) / _` | |_| __| | |\/| / __|/ _` |
+// |  _ < (_| |  _| |_  | |  | \__ \ (_| |
+// |_| \_\__,_|_|  \__| |_|  |_|___/\__, |
+//                                  |___/
 type RaftMsg =
-  | RequestVote             of sender:NodeId * req:VoteRequest<IrisNode>
+  | RequestVote             of sender:NodeId * req:VoteRequest
   | RequestVoteResponse     of sender:NodeId * vote:VoteResponse
-  | AppendEntries           of sender:NodeId * ae:AppendEntries<StateMachine,IrisNode>
+  | AppendEntries           of sender:NodeId * ae:AppendEntries
   | AppendEntriesResponse   of sender:NodeId * ar:AppendResponse
-  | InstallSnapshot         of sender:NodeId * is:InstallSnapshot<StateMachine,IrisNode>
+  | InstallSnapshot         of sender:NodeId * is:InstallSnapshot
   | InstallSnapshotResponse of sender:NodeId * ir:SnapshotResponse
-  | HandShake               of sender:Node<IrisNode>
-  | HandWaive               of sender:Node<IrisNode>
+  | HandShake               of sender:Node
+  | HandWaive               of sender:Node
+  | Redirect                of leader:Node
+  | Welcome
+  | Arrivederci
   | ErrorResponse           of RaftError
   | EmptyResponse
 
@@ -127,13 +136,6 @@ type RaftMsg =
       let builder = new FlatBufferBuilder(1)
 
       match self with
-      //  ____                            _ __     __    _
-      // |  _ \ ___  __ _ _   _  ___  ___| |\ \   / /__ | |_ ___
-      // | |_) / _ \/ _` | | | |/ _ \/ __| __\ \ / / _ \| __/ _ \
-      // |  _ <  __/ (_| | |_| |  __/\__ \ |_ \ V / (_) | ||  __/
-      // |_| \_\___|\__, |\__,_|\___||___/\__| \_/ \___/ \__\___|
-      //               |_|
-
       | RequestVote(nid, req) ->
         createRequestVoteFB builder nid req
         |> build builder RaftMsgTypeFB.RequestVoteFB
@@ -143,13 +145,6 @@ type RaftMsg =
         createRequestVoteResponseFB builder nid resp
         |> build builder RaftMsgTypeFB.RequestVoteResponseFB
         |> builder.Finish
-
-      //     _                               _ _____       _        _
-      //    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
-      //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |  _| | '_ \| __| '__| |/ _ \/ __|
-      //  / ___ \| |_) | |_) |  __/ | | | (_| | |___| | | | |_| |  | |  __/\__ \
-      // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|  |_|\___||___/
-      //         |_|   |_|
 
       | AppendEntries(nid, ae) ->
         createAppendEntriesFB builder nid ae
@@ -161,13 +156,6 @@ type RaftMsg =
         |> build builder RaftMsgTypeFB.RequestAppendResponseFB
         |> builder.Finish
 
-      //  ___           _        _ _ ____                        _           _
-      // |_ _|_ __  ___| |_ __ _| | / ___| _ __   __ _ _ __  ___| |__   ___ | |_
-      //  | || '_ \/ __| __/ _` | | \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __|
-      //  | || | | \__ \ || (_| | | |___) | | | | (_| | |_) \__ \ | | | (_) | |_
-      // |___|_| |_|___/\__\__,_|_|_|____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
-      //                                              |_|
-
       | InstallSnapshot(nid, is) ->
         createInstallSnapshotFB builder nid is
         |> build builder RaftMsgTypeFB.RequestInstallSnapshotFB
@@ -177,12 +165,6 @@ type RaftMsg =
         createSnapshotResponseFB builder nid ir
         |> build builder RaftMsgTypeFB.RequestSnapshotResponseFB
         |> builder.Finish
-
-      //  _   _                 _ ____  _           _
-      // | | | | __ _ _ __   __| / ___|| |__   __ _| | _____
-      // | |_| |/ _` | '_ \ / _` \___ \| '_ \ / _` | |/ / _ \
-      // |  _  | (_| | | | | (_| |___) | | | | (_| |   <  __/
-      // |_| |_|\__,_|_| |_|\__,_|____/|_| |_|\__,_|_|\_\___|
 
       | HandShake node ->
         HandShakeFB.CreateHandShakeFB(builder, node.ToOffset builder)
@@ -196,11 +178,25 @@ type RaftMsg =
         |> build builder RaftMsgTypeFB.HandWaiveFB
         |> builder.Finish
 
-      //  _____
-      // | ____|_ __ _ __ ___  _ __
-      // |  _| | '__| '__/ _ \| '__|
-      // | |___| |  | | | (_) | |
-      // |_____|_|  |_|  \___/|_|
+      | Redirect node ->
+        RedirectFB.CreateRedirectFB(builder, node.ToOffset builder)
+        |> getValue
+        |> build builder RaftMsgTypeFB.RedirectFB
+        |> builder.Finish
+
+      | Welcome ->
+        WelcomeFB.StartWelcomeFB(builder)
+        WelcomeFB.EndWelcomeFB(builder)
+        |> getValue
+        |> build builder RaftMsgTypeFB.WelcomeFB
+        |> builder.Finish
+
+      | Arrivederci ->
+        ArrivederciFB.StartArrivederciFB(builder)
+        ArrivederciFB.EndArrivederciFB(builder)
+        |> getValue
+        |> build builder RaftMsgTypeFB.ArrivederciFB
+        |> builder.Finish
 
       | ErrorResponse err ->
         ErrorResponseFB.CreateErrorResponseFB(builder, err.ToOffset builder)
@@ -214,12 +210,6 @@ type RaftMsg =
         |> getValue
         |> build builder RaftMsgTypeFB.EmptyResponseFB
         |> builder.Finish
-
-      //  ____                 _ _
-      // |  _ \ ___  ___ _   _| | |_
-      // | |_) / _ \/ __| | | | | __|
-      // |  _ <  __/\__ \ |_| | | |_
-      // |_| \_\___||___/\__,_|_|\__|
 
       builder.SizedByteArray()
 
@@ -279,6 +269,18 @@ type RaftMsg =
           let node = Node.FromFB entry.Node
 
           HandWaive(node) |> Some
+
+        | RaftMsgTypeFB.RedirectFB ->
+          let entry = msg.GetMsg(new RedirectFB())
+          let node = Node.FromFB entry.Node
+
+          Redirect(node) |> Some
+
+        | RaftMsgTypeFB.WelcomeFB ->
+          Welcome |> Some
+
+        | RaftMsgTypeFB.ArrivederciFB ->
+          Arrivederci |> Some
 
         | RaftMsgTypeFB.ErrorResponseFB ->
           let entry = msg.GetMsg(new ErrorResponseFB())
