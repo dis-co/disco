@@ -69,11 +69,10 @@ module ProjectHelper =
   ///
   /// # Returns: Project
   let create (name : string) : Project =
-    let now = System.DateTime.Now
     { Id        = Id.Create()
     ; Name      = name
     ; Path      = None
-    ; CreatedOn = now.ToLongTimeString()
+    ; CreatedOn = createTimestamp()
     ; LastSaved = None
     ; Copyright = None
     ; Author    = None
@@ -182,10 +181,10 @@ module ProjectHelper =
 
     config.Project.Metadata.CreatedOn <- project.CreatedOn
 
-    let now = DateTime.Now
-    config.Project.Metadata.LastSaved <- string now
+    let ts = createTimestamp()
+    config.Project.Metadata.LastSaved <- ts
 
-    { project with LastSaved = Some(now.ToLongTimeString()) }
+    { project with LastSaved = Some ts }
 
   //   ____
   //  / ___|  __ ___   _____

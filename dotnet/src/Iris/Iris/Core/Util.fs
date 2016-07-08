@@ -111,6 +111,10 @@ module Utils =
 
   let trim (str: string) = str.Trim()
 
+  let createTimestamp () =
+    let now = DateTime.Now
+    now.ToLongTimeString()
+
   // let dispatch (raft : Raft<_,_> ref) (inbox: Actor<_>) =
   //   let rec loop () =
   //     async {
