@@ -63,7 +63,6 @@ type LogEntry<'a,'n> =
     Index    : Index                  *
     Term     : Term                   *
     Changes  : ConfigChange<'n> array *
-    Nodes    : Node<'n> array         *
     Previous : LogEntry<'a,'n> option
 
   // Regular Log Entries
@@ -92,7 +91,7 @@ type LogEntry<'a,'n> =
           term
           (Array.fold (fun m n -> m + "\n    " + n.ToString()) "" nodes)
 
-      | JointConsensus(id,idx,term,changes,_,_) ->
+      | JointConsensus(id,idx,term,changes,_) ->
         sprintf "UpdateNode [id: %A] [idx: %A] [term: %A]\nchanges: %s"
           id
           idx
@@ -133,7 +132,7 @@ module private LogEntry =
 
   let id = function
     | Configuration(id,_,_,_,_)    -> id
-    | JointConsensus(id,_,_,_,_,_) -> id
+    | JointConsensus(id,_,_,_,_) -> id
     | LogEntry(id,_,_,_,_)         -> id
     | Snapshot(id,_,_,_,_,_,_)     -> id
 
@@ -176,10 +175,10 @@ module private LogEntry =
           | Some other -> _depth cnt other
           |          _ -> cnt
       match thing with
-        | Configuration(_,_,_,_,prev)    -> count i prev
-        | JointConsensus(_,_,_,_,_,prev) -> count i prev
-        | LogEntry(_,_,_,_,prev)         -> count i prev
-        | Snapshot _                     -> i + 1UL
+        | Configuration(_,_,_,_,prev)  -> count i prev
+        | JointConsensus(_,_,_,_,prev) -> count i prev
+        | LogEntry(_,_,_,_,prev)       -> count i prev
+        | Snapshot _                   -> i + 1UL
     _depth 0UL log
 
   //   _           _
@@ -191,10 +190,10 @@ module private LogEntry =
   /// Return the index of the current log entry.
 
   let index = function
-    | Configuration(_,idx,_,_,_)    -> idx
-    | JointConsensus(_,idx,_,_,_,_) -> idx
-    | LogEntry(_,idx,_,_,_)         -> idx
-    | Snapshot(_,idx,_,_,_,_,_)     -> idx
+    | Configuration(_,idx,_,_,_)  -> idx
+    | JointConsensus(_,idx,_,_,_) -> idx
+    | LogEntry(_,idx,_,_,_)       -> idx
+    | Snapshot(_,idx,_,_,_,_,_)   -> idx
 
   //                        ___           _
   //   _ __  _ __ _____   _|_ _|_ __   __| | _____  __
@@ -206,11 +205,11 @@ module private LogEntry =
   /// Return the index of the previous element if present.
 
   let prevIndex = function
-    | Configuration(_,_,_,_,Some prev)    -> Some (index prev)
-    | JointConsensus(_,_,_,_,_,Some prev) -> Some (index prev)
-    | LogEntry(_,_,_,_,Some prev)         -> Some (index prev)
-    | Snapshot(_,_,_,idx,__,_,_)          -> Some idx
-    | _                                   -> None
+    | Configuration(_,_,_,_,Some prev)  -> Some (index prev)
+    | JointConsensus(_,_,_,_,Some prev) -> Some (index prev)
+    | LogEntry(_,_,_,_,Some prev)       -> Some (index prev)
+    | Snapshot(_,_,_,idx,__,_,_)        -> Some idx
+    | _                                 -> None
 
   //   _
   //  | |_ ___ _ __ _ __ ___
@@ -221,10 +220,10 @@ module private LogEntry =
   /// Extract the `Term` field from a LogEntry
 
   let term = function
-    | Configuration(_,_,term,_,_)    -> term
-    | JointConsensus(_,_,term,_,_,_) -> term
-    | LogEntry(_,_,term,_,_)         -> term
-    | Snapshot(_,_,term,_,_,_,_)     -> term
+    | Configuration(_,_,term,_,_)  -> term
+    | JointConsensus(_,_,term,_,_) -> term
+    | LogEntry(_,_,term,_,_)       -> term
+    | Snapshot(_,_,term,_,_,_,_)   -> term
 
   //                        _____
   //   _ __  _ __ _____   _|_   _|__ _ __ _ __ ___
@@ -236,11 +235,11 @@ module private LogEntry =
   /// Return the previous elements' term, if present.
 
   let prevTerm = function
-    | Configuration(_,_,_,_,Some prev)    -> Some (term prev)
-    | JointConsensus(_,_,_,_,_,Some prev) -> Some (term prev)
-    | LogEntry(_,_,_,_,Some prev)         -> Some (term prev)
-    | Snapshot(_,_,_,_,term,_,_)          -> Some term
-    | _                                   -> None
+    | Configuration(_,_,_,_,Some prev)  -> Some (term prev)
+    | JointConsensus(_,_,_,_,Some prev) -> Some (term prev)
+    | LogEntry(_,_,_,_,Some prev)       -> Some (term prev)
+    | Snapshot(_,_,_,_,term,_,_)        -> Some term
+    | _                                 -> None
 
   //                        _____       _
   //   _ __  _ __ _____   _| ____|_ __ | |_ _ __ _   _
@@ -252,10 +251,10 @@ module private LogEntry =
   /// Return the previous entry, should there be one.
 
   let prevEntry = function
-    | Configuration(_,_,_,_,prev)    -> prev
-    | JointConsensus(_,_,_,_,_,prev) -> prev
-    | LogEntry(_,_,_,_,prev)         -> prev
-    | Snapshot _                     -> None
+    | Configuration(_,_,_,_,prev)  -> prev
+    | JointConsensus(_,_,_,_,prev) -> prev
+    | LogEntry(_,_,_,_,prev)       -> prev
+    | Snapshot _                   -> None
 
   //       _       _
   //    __| | __ _| |_ __ _
@@ -279,10 +278,9 @@ module private LogEntry =
   /// Return the current log entry's nodes property, should it have one
 
   let nodes = function
-    | Configuration(_,_,_,d,_)    -> Some d
-    | JointConsensus(_,_,_,_,d,_) -> Some d
-    | Snapshot(_,_,_,_,_,d,_)     -> Some d
-    | _                           -> None
+    | Configuration(_,_,_,d,_)  -> Some d
+    | Snapshot(_,_,_,_,_,d,_)   -> Some d
+    | _                         -> None
 
   //        _
   //    ___| |__   __ _ _ __   __ _  ___  ___
@@ -295,8 +293,8 @@ module private LogEntry =
   /// log entry.
 
   let changes = function
-    | JointConsensus(_,_,_,c,_,_) -> Some c
-    | _                           -> None
+    | JointConsensus(_,_,_,c,_) -> Some c
+    | _                         -> None
 
   //         _
   //    __ _| |_
@@ -317,10 +315,10 @@ module private LogEntry =
             | _         -> None
 
     match log with
-      | Configuration(_,idx',_,_,prev)    as curr -> _extract idx' curr prev
-      | JointConsensus(_,idx',_,_,_,prev) as curr -> _extract idx' curr prev
-      | LogEntry(_,idx',_,_,prev)         as curr -> _extract idx' curr prev
-      | Snapshot(_,idx',_,lidx',_,_,_)    as curr ->
+      | Configuration(_,idx',_,_,prev)  as curr -> _extract idx' curr prev
+      | JointConsensus(_,idx',_,_,prev) as curr -> _extract idx' curr prev
+      | LogEntry(_,idx',_,_,prev)       as curr -> _extract idx' curr prev
+      | Snapshot(_,idx',_,lidx',_,_,_)  as curr ->
         match (idx',lidx') with
           | _ when idx <= idx'  -> Some curr
           | _ when idx <= lidx' -> Some curr
@@ -348,17 +346,17 @@ module private LogEntry =
         | _ when idx < index -> Configuration(id,index,term,nodes,until idx prev) |> Some
         | _                  -> None
 
-    | JointConsensus(_,index,_,_,_,None) as curr ->
+    | JointConsensus(_,index,_,_,None) as curr ->
       match idx with
        | _ when idx = index -> Some curr
        | _                  -> None
 
-    | JointConsensus(id,index,term,changes,nodes,Some prev) ->
+    | JointConsensus(id,index,term,changes,Some prev) ->
       match idx with
         | _ when idx = index ->
-          JointConsensus(id,index,term,changes,nodes,None) |> Some
+          JointConsensus(id,index,term,changes,None) |> Some
         | _ when idx < index ->
-          JointConsensus(id,index,term,changes,nodes,until idx prev) |> Some
+          JointConsensus(id,index,term,changes,until idx prev) |> Some
         | _                  -> None
 
     | LogEntry(_,index,_,_,None) as curr ->
@@ -387,9 +385,9 @@ module private LogEntry =
       if idx >= index then None
       else  Configuration(id,index,term,nodes,untilExcluding idx prev) |> Some
 
-    | JointConsensus(id,index,term,changes,nodes,Some prev) ->
+    | JointConsensus(id,index,term,changes,Some prev) ->
       if idx >= index then None
-      else JointConsensus(id,index,term,changes,nodes,untilExcluding idx prev) |> Some
+      else JointConsensus(id,index,term,changes,untilExcluding idx prev) |> Some
 
     | LogEntry(id,index,term,data,Some prev) ->
       if idx >= index then None
@@ -414,10 +412,10 @@ module private LogEntry =
       else Some curr'
 
     match log with
-      | LogEntry(id',_,_,_,prev)         as curr -> _extract id' curr prev
-      | Configuration(id',_,_,_,prev)    as curr -> _extract id' curr prev
-      | JointConsensus(id',_,_,_,_,prev) as curr -> _extract id' curr prev
-      | Snapshot(id',_,_,_,_,_,_)        as curr ->
+      | LogEntry(id',_,_,_,prev)       as curr -> _extract id' curr prev
+      | Configuration(id',_,_,_,prev)  as curr -> _extract id' curr prev
+      | JointConsensus(id',_,_,_,prev) as curr -> _extract id' curr prev
+      | Snapshot(id',_,_,_,_,_,_)      as curr ->
         if id' <> id then None else Some curr
 
   ///  __  __       _
@@ -457,7 +455,7 @@ module private LogEntry =
             | _ -> NodeRemoved(oldnode) :: lst) additions oldnodes
       |> List.toArray
 
-    JointConsensus(RaftId.Create(), 0UL, term, changes, oldnodes, None)
+    JointConsensus(RaftId.Create(), 0UL, term, changes, None)
 
   ///  _ __   ___  _ __
   /// | '_ \ / _ \| '_ \
@@ -472,7 +470,7 @@ module private LogEntry =
 
   let pop = function
     | Configuration(_,_,_,_,prev)  -> prev
-    | JointConsensus(_,_,_,_,_,prev) -> prev
+    | JointConsensus(_,_,_,_,prev) -> prev
     | LogEntry(_,_,_,_,prev)       -> prev
     | Snapshot _                   -> None
 
@@ -486,10 +484,10 @@ module private LogEntry =
   /// Compact the log database
 
   let snapshot nodes data = function
-    | LogEntry(_,idx,term,_,_)         -> Snapshot(RaftId.Create(),idx + 1UL,term,idx,term,nodes,data)
-    | Configuration(_,idx,term,_,_)    -> Snapshot(RaftId.Create(),idx + 1UL,term,idx,term,nodes,data)
-    | JointConsensus(_,idx,term,_,_,_) -> Snapshot(RaftId.Create(),idx + 1UL,term,idx,term,nodes,data)
-    | Snapshot(_,idx,term,_,_,_,_)     -> Snapshot(RaftId.Create(),idx + 1UL,term,idx,term,nodes,data)
+    | LogEntry(_,idx,term,_,_)       -> Snapshot(RaftId.Create(),idx + 1UL,term,idx,term,nodes,data)
+    | Configuration(_,idx,term,_,_)  -> Snapshot(RaftId.Create(),idx + 1UL,term,idx,term,nodes,data)
+    | JointConsensus(_,idx,term,_,_) -> Snapshot(RaftId.Create(),idx + 1UL,term,idx,term,nodes,data)
+    | Snapshot(_,idx,term,_,_,_,_)   -> Snapshot(RaftId.Create(),idx + 1UL,term,idx,term,nodes,data)
 
   ///  _ __ ___   __ _ _ __
   /// | '_ ` _ \ / _` | '_ \
@@ -506,10 +504,10 @@ module private LogEntry =
         | _             -> f curr :: []
 
     match entry with
-      | Configuration(_,_,_,_,prev)    as curr -> _map curr prev
-      | JointConsensus(_,_,_,_,_,prev) as curr -> _map curr prev
-      | LogEntry(_,_,_,_,prev)         as curr -> _map curr prev
-      | Snapshot _                     as curr -> _map curr None
+      | Configuration(_,_,_,_,prev)  as curr -> _map curr prev
+      | JointConsensus(_,_,_,_,prev) as curr -> _map curr prev
+      | LogEntry(_,_,_,_,prev)       as curr -> _map curr prev
+      | Snapshot _                   as curr -> _map curr None
 
   ///   __       _     _ _
   ///  / _| ___ | | __| | |
@@ -527,10 +525,10 @@ module private LogEntry =
         | _             -> _m
 
     match log with
-      | JointConsensus(_,_,_,_,_,prev) as curr -> _fold m curr prev
-      | Configuration(_,_,_,_,prev)    as curr -> _fold m curr prev
-      | LogEntry(_,_,_,_,prev)         as curr -> _fold m curr prev
-      | Snapshot _                     as curr -> f m curr
+      | JointConsensus(_,_,_,_,prev) as curr -> _fold m curr prev
+      | Configuration(_,_,_,_,prev)  as curr -> _fold m curr prev
+      | LogEntry(_,_,_,_,prev)       as curr -> _fold m curr prev
+      | Snapshot _                   as curr -> f m curr
 
   ///   __       _     _
   ///  / _| ___ | | __| |_ __
@@ -541,13 +539,13 @@ module private LogEntry =
   /// Fold over a Log<'a,'n> and return an aggregate value
 
   let rec foldr (f : 'm -> LogEntry<'a,'n> -> 'm) (m : 'm)  = function
-    | Configuration(_,_,_,_,Some prev)    as curr -> f (foldr f m prev) curr
-    | Configuration(_,_,_,_,None)         as curr -> f m curr
-    | JointConsensus(_,_,_,_,_,Some prev) as curr -> f (foldr f m prev) curr
-    | JointConsensus(_,_,_,_,_,None)      as curr -> f m curr
-    | LogEntry(_,_,_,_,Some prev)         as curr -> f (foldr f m prev) curr
-    | LogEntry(_,_,_,_,None)              as curr -> f m curr
-    | Snapshot _                          as curr -> f m curr
+    | Configuration(_,_,_,_,Some prev)  as curr -> f (foldr f m prev) curr
+    | Configuration(_,_,_,_,None)       as curr -> f m curr
+    | JointConsensus(_,_,_,_,Some prev) as curr -> f (foldr f m prev) curr
+    | JointConsensus(_,_,_,_,None)      as curr -> f m curr
+    | LogEntry(_,_,_,_,Some prev)       as curr -> f (foldr f m prev) curr
+    | LogEntry(_,_,_,_,None)            as curr -> f m curr
+    | Snapshot _                        as curr -> f m curr
 
   ///  _ _
   /// (_) |_ ___ _ __
@@ -559,13 +557,13 @@ module private LogEntry =
   let iter (f : uint32 -> LogEntry<'a,'n> -> unit) (log : LogEntry<'a,'n>) =
     let rec _iter  _start _log =
       match _log with
-        | Configuration(_,_,_,_,Some prev)    as curr -> f _start curr; _iter (_start + 1u) prev
-        | Configuration(_,_,_,_,None)         as curr -> f _start curr
-        | JointConsensus(_,_,_,_,_,Some prev) as curr -> f _start curr; _iter (_start + 1u) prev
-        | JointConsensus(_,_,_,_,_,None)      as curr -> f _start curr
-        | LogEntry(_,_,_,_,Some prev)         as curr -> f _start curr; _iter (_start + 1u) prev
-        | LogEntry(_,_,_,_,None)              as curr -> f _start curr
-        | Snapshot _                          as curr -> f _start curr
+        | Configuration(_,_,_,_,Some prev)  as curr -> f _start curr; _iter (_start + 1u) prev
+        | Configuration(_,_,_,_,None)       as curr -> f _start curr
+        | JointConsensus(_,_,_,_,Some prev) as curr -> f _start curr; _iter (_start + 1u) prev
+        | JointConsensus(_,_,_,_,None)      as curr -> f _start curr
+        | LogEntry(_,_,_,_,Some prev)       as curr -> f _start curr; _iter (_start + 1u) prev
+        | LogEntry(_,_,_,_,None)            as curr -> f _start curr
+        | Snapshot _                        as curr -> f _start curr
     _iter 0u log
 
   ///     _                                    _
@@ -600,9 +598,9 @@ module private LogEntry =
           | _ -> m
 
       match _log with
-        | Configuration(_,_,_,_,Some prev)    as curr -> _do curr prev
-        | JointConsensus(_,_,_,_,_,Some prev) as curr -> _do curr prev
-        | LogEntry(_,_,_,_,Some prev)         as curr -> _do curr prev
+        | Configuration(_,_,_,_,Some prev)  as curr -> _do curr prev
+        | JointConsensus(_,_,_,_,Some prev) as curr -> _do curr prev
+        | LogEntry(_,_,_,_,Some prev)       as curr -> _do curr prev
         | _  -> m
 
     // run and extract inner value
@@ -622,13 +620,13 @@ module private LogEntry =
   /// Return the last (oldest) element of a log.
 
   let rec last = function
-    | LogEntry(_,_,_,_,None)            as curr -> curr
-    | LogEntry(_,_,_,_,Some prev)               -> last prev
-    | Configuration(_,_,_,_,None)       as curr -> curr
-    | Configuration(_,_,_,_,Some prev)          -> last prev
-    | JointConsensus(_,_,_,_,_,None)    as curr -> curr
-    | JointConsensus(_,_,_,_,_,Some prev)       -> last prev
-    | Snapshot _                        as curr -> curr
+    | LogEntry(_,_,_,_,None)          as curr -> curr
+    | LogEntry(_,_,_,_,Some prev)             -> last prev
+    | Configuration(_,_,_,_,None)     as curr -> curr
+    | Configuration(_,_,_,_,Some prev)        -> last prev
+    | JointConsensus(_,_,_,_,None)    as curr -> curr
+    | JointConsensus(_,_,_,_,Some prev)       -> last prev
+    | Snapshot _                      as curr -> curr
 
   //  _                    _
   // | |__   ___  __ _  __| |
@@ -643,8 +641,8 @@ module private LogEntry =
     | Configuration(id,idx,term,nodes,Some _) ->
       Configuration(id,idx,term,nodes,None)
 
-    | JointConsensus(id,idx,term,changes,nodes,Some _) ->
-      JointConsensus(id,idx,term,changes,nodes,None)
+    | JointConsensus(id,idx,term,changes,Some _) ->
+      JointConsensus(id,idx,term,changes,None)
 
     | _ as curr -> curr
 
@@ -663,12 +661,12 @@ module private LogEntry =
         let previous = rewrite prev
         Configuration(id, index previous + 1UL, term, nodes, Some previous)
 
-      | JointConsensus(id, _, term, changes, nodes, None) ->
-        JointConsensus(id, 1UL, term, changes, nodes, None)
+      | JointConsensus(id, _, term, changes, None) ->
+        JointConsensus(id, 1UL, term, changes, None)
 
-      | JointConsensus(id, _, term, changes, nodes, Some prev) ->
+      | JointConsensus(id, _, term, changes, Some prev) ->
         let previous = rewrite prev
-        JointConsensus(id, index previous + 1UL, term, changes, nodes, Some previous)
+        JointConsensus(id, index previous + 1UL, term, changes, Some previous)
 
       | LogEntry(id, _, term, data, None) ->
         LogEntry(id, 1UL, term, data, None)
@@ -699,8 +697,8 @@ module private LogEntry =
           | Configuration(id, _, term, nodes, _) ->
             Configuration(id, nextIdx, term, nodes, Some _log)
 
-          | JointConsensus(id, _, term, changes, nodes, _) ->
-            JointConsensus(id, nextIdx, term, changes, nodes, Some _log)
+          | JointConsensus(id, _, term, changes, _) ->
+            JointConsensus(id, nextIdx, term, changes, Some _log)
 
           | LogEntry(id, _, term, data, _)    ->
             LogEntry(id, nextIdx, term, data, Some _log)
@@ -771,7 +769,7 @@ module private LogEntry =
     match entry with
       | LogEntry(_,idx,term,_, prev)        -> getIdx idx term prev
       | Configuration(_,idx,term,_, prev)   -> getIdx idx term prev
-      | JointConsensus(_,idx,term,_,_,prev) -> getIdx idx term prev
+      | JointConsensus(_,idx,term,_,prev)   -> getIdx idx term prev
       | Snapshot(_,idx,term,lidx,lterm,_,_) ->
         if term = t then
           Some idx
@@ -793,17 +791,17 @@ module private LogEntry =
     else
       let newcnt = count - 1UL
       match log with
-        | Configuration(_,_,_,_, None)   as curr -> Some curr
-        | JointConsensus(_,_,_,_,_,None) as curr -> Some curr
-        | LogEntry(_,_,_,_, None)        as curr -> Some curr
-        | Snapshot(_,_,_,_,_,_,_)        as curr -> Some curr
+        | Configuration(_,_,_,_, None) as curr -> Some curr
+        | JointConsensus(_,_,_,_,None) as curr -> Some curr
+        | LogEntry(_,_,_,_, None)      as curr -> Some curr
+        | Snapshot(_,_,_,_,_,_,_)      as curr -> Some curr
 
         | Configuration(id,idx,term,nodes, Some prev) ->
           Configuration(id,idx,term,nodes, getn newcnt prev)
           |> Some
 
-        | JointConsensus(id,idx,term,changes,nodes,Some prev) ->
-          JointConsensus(id,idx,term,changes,nodes,getn newcnt prev)
+        | JointConsensus(id,idx,term,changes,Some prev) ->
+          JointConsensus(id,idx,term,changes,getn newcnt prev)
           |> Some
 
         | LogEntry(id,idx,term,data, Some prev) ->
@@ -825,9 +823,9 @@ module private LogEntry =
       if f this then true else contains f prev
     | Configuration(_,_,_,_,None) as this -> f this
 
-    | JointConsensus(_,_,_,_,_,Some prev) as this ->
+    | JointConsensus(_,_,_,_,Some prev) as this ->
       if f this then true else contains f prev
-    | JointConsensus(_,_,_,_,_,None) as this -> f this
+    | JointConsensus(_,_,_,_,None) as this -> f this
 
     | Snapshot _ as this -> f this
 
@@ -996,10 +994,10 @@ module Log =
 
   /// Make sure the current log entry is a singleton (followed by no entries).
   let sanitize term = function
-    | Configuration(id,_,term,nodes,_)          -> Configuration(id,0UL,term,nodes,None)
-    | JointConsensus(id,_,term,changes,nodes,_) -> JointConsensus(id,0UL,term,changes,nodes,None)
-    | LogEntry(id,_,_,data,_)                   -> LogEntry(id,0UL,term,data,None)
-    | Snapshot _ as snapshot                    -> snapshot
+    | Configuration(id,_,term,nodes,_)    -> Configuration(id,0UL,term,nodes,None)
+    | JointConsensus(id,_,term,changes,_) -> JointConsensus(id,0UL,term,changes,None)
+    | LogEntry(id,_,_,data,_)             -> LogEntry(id,0UL,term,data,None)
+    | Snapshot _ as snapshot              -> snapshot
 
   /// Iterate over log entries, in order of newsest to oldest.
   let iter f log = LogEntry.iter f log

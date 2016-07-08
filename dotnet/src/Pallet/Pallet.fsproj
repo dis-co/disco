@@ -196,4 +196,5 @@
       </ItemGroup>
     </When>
   </Choose>
+  <Import Project="..\..\packages\FSharpLint\build\FSharpLint.targets" Condition="Exists('..\..\packages\FSharpLint\build\FSharpLint.targets')" Label="Paket" />
 </Project>

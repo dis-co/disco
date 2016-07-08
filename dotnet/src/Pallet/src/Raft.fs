@@ -244,7 +244,7 @@ module Raft =
 
   let getChanges (state: Raft<_,_>) =
     match state.ConfigChangeEntry with
-      | Some (JointConsensus(_,_,_,changes,_,_)) -> Some changes
+      | Some (JointConsensus(_,_,_,changes,_)) -> Some changes
       | _ -> None
 
   let logicalPeers (state: Raft<_,_>) =
@@ -765,7 +765,7 @@ module Raft =
   let handleConfigChange (log: LogEntry<_,_>) (state: Raft<_,_>) =
     match log with
       | Configuration _ -> setOldPeers None state
-      | JointConsensus(_,_,_,changes,_,_) ->
+      | JointConsensus(_,_,_,changes,_) ->
         let old = state.Peers
         applyChanges changes state
         |> setOldPeers (Some old)
@@ -1389,8 +1389,8 @@ module Raft =
           let log = Configuration(id, 0UL, term, nodes, None)
           return! handleLog log resp
 
-        | JointConsensus(id,_,_,changes,nodes,_) ->
-          let log = JointConsensus(id, 0UL, term, changes, nodes, None)
+        | JointConsensus(id,_,_,changes,_) ->
+          let log = JointConsensus(id, 0UL, term, changes, None)
           return! handleLog log resp
 
         | _ -> return! failM LogFormatError
@@ -1427,7 +1427,7 @@ module Raft =
     updateLogIdx logIdx |> modify
 
   let applyEntry (cbs: IRaftCallbacks<_,_>) _ = function
-    | JointConsensus(_,_,_,changes,_,_) ->
+    | JointConsensus(_,_,_,changes,_) ->
       let inline applyChange change =
         match change with
           | NodeAdded(node)   -> cbs.NodeAdded   node
