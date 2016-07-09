@@ -108,17 +108,17 @@ module Node =
       match Array.tryFind (getId >> ((=) node.Id)) oldnodes with
         | Some _ -> changes
         | _ -> NodeAdded(node) :: changes
-    Array.fold folder List.empty newnodes
+    Array.fold folder [] newnodes
 
   let private removed oldnodes newnodes =
     let folder changes (node: Node<_>) =
       match Array.tryFind (getId >> ((=) node.Id)) newnodes with
         | Some _ -> changes
         | _ -> NodeAdded(node) :: changes
-    Array.fold folder List.empty oldnodes
+    Array.fold folder [] oldnodes
 
   let changes (oldnodes: Node<_> array) (newnodes: Node<_> array) =
-    List.empty
+    []
     |> List.append (added oldnodes newnodes)
     |> List.append (removed oldnodes newnodes)
     |> Array.ofList

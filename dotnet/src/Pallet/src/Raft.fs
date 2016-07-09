@@ -3,6 +3,8 @@ namespace Pallet.Core
 open System
 open FSharpx.Functional
 
+#nowarn "77"
+
 [<AutoOpen>]
 module RaftMonad =
 
@@ -71,10 +73,10 @@ module RaftMonad =
 
   let (>>=) = bindM
 
-  let combineM (m1: RaftMonad<_,_,_,_,_>) (m2: RaftMonad<_,_,_,_,_>) : RaftMonad<_,_,_,_,_> =
+  let combineM (m1: RaftMonad<_,_,_,_,_>) (m2: RaftMonad<_,_,_,_,_>) =
     bindM m1 (fun _ -> m2)
 
-  let tryWithM (body: RaftMonad<_,_,_,_,_>) (handler: exn -> RaftMonad<_,_,_,_,_>) : RaftMonad<_,_,_,_,_> =
+  let tryWithM (body: RaftMonad<_,_,_,_,_>) (handler: exn -> RaftMonad<_,_,_,_,_>) =
     MkRM (fun env state ->
           try apply env state body
           with ex -> apply env state (handler ex))
@@ -84,12 +86,12 @@ module RaftMonad =
           try apply env state body
           finally handler ())
 
-  let usingM (resource: ('a :> System.IDisposable)) (body: 'a -> RaftMonad<_,_,_,_,_>) : RaftMonad<_,_,_,_,_> =
+  let usingM (resource: ('a :> System.IDisposable)) (body: 'a -> RaftMonad<_,_,_,_,_>) =
     tryFinallyM (body resource)
       (fun _ -> if not <| isNull (box resource)
                 then resource.Dispose())
 
-  let rec whileM (guard: unit -> bool) (body: RaftMonad<_,_,_,_,_>) : RaftMonad<_,_,_,_,_> =
+  let rec whileM (guard: unit -> bool) (body: RaftMonad<_,_,_,_,_>) =
     match guard () with
       | true -> bindM body (fun _ -> whileM guard body)
       | _ -> zeroM ()
@@ -169,7 +171,7 @@ module Raft =
     get >>= (f >> put)
 
   let zoomM (f: Raft<'d,'n> -> 'a) =
-    get >>= fun r -> f r |> returnM
+    get >>= (f >> returnM)
 
   ///////////////////////////////////////
   //  ____       _            _        //
@@ -283,8 +285,7 @@ module Raft =
             else state.NumNodes + 1UL }
 
   let addNodeM (node: Node<'n>) =
-    get >>= fun state ->
-      addNode node state |> put
+    get >>= (addNode node >> put)
 
   /// Alias for `addNode`
   let addPeer = addNode
@@ -349,26 +350,22 @@ module Raft =
 
   let updateNodeM (node: Node<'n>) =
     read >>= fun env ->
-      get >>= fun state ->
-        updateNode node env state |> put
+      get >>= (updateNode node env >> put)
 
   let addNodes (nodes : Node<'n> array) (state: Raft<'d,'n>) =
     Array.fold (fun m n -> addNode n m) state nodes
 
   let addNodesM (nodes: Node<'n> array) =
-    get >>= fun state ->
-      addNodes nodes state |> put
+    get >>= (addNodes nodes >> put)
 
   let addPeers = addNodes
   let addPeersM = addNodesM
 
   let addNonVotingNodeM (node: Node<'n>) =
-    get >>= fun state ->
-      addNonVotingNode node state |> put
+    get >>= (addNonVotingNode node >> put)
 
   let removeNodeM (node: Node<'n>) =
-    get >>= fun state ->
-      removeNode node state |> put
+    get >>= (removeNode node >> put)
 
   let hasNode (nid : NodeId) (state: Raft<'d,'n>) =
     Map.containsKey nid state.Peers
@@ -424,8 +421,7 @@ module Raft =
 
   /// Set current RaftState to supplied state. Monadic action.
   let setStateM (state : RaftState) =
-    read >>= fun env ->
-      setState state env |> modify
+    read >>= (setState state >> modify)
 
   /// Get current RaftState: Leader, Candidate or Follower
   let state (state: Raft<'d,'n>) =
@@ -482,8 +478,7 @@ module Raft =
   /// Set the nextIndex field on Node corresponding to supplied Id (should it
   /// exist, that is) and supplied index. Monadic action.
   let setNextIndexM (nid : NodeId) idx =
-    read >>= fun env ->
-      setNextIndex nid idx env |> modify
+    read >>= (setNextIndex nid idx >> modify)
 
   /// Set the nextIndex field on all Nodes to supplied index.
   let setAllNextIndex idx (state: Raft<'d,'n>) =
@@ -512,8 +507,7 @@ module Raft =
       | _ -> state
 
   let setMatchIndexM nid idx =
-    read >>= fun env ->
-      setMatchIndex nid idx env |> modify
+    read >>= (setMatchIndex nid idx >> modify)
 
   /// Set the matchIndex field on all Nodes to supplied index.
   let setAllMatchIndex idx (state: Raft<'d,'n>) =
@@ -610,15 +604,15 @@ module Raft =
 
   let numOldPeers (state: Raft<_,_>) =
     match state.OldPeers with
-      | Some peers -> Map.fold (fun m _ _ -> m + 1u) 0u peers
-      | _ -> 0u
+      | Some peers -> Map.fold (fun m _ _ -> m + 1UL) 0UL peers
+      |      _     -> 0UL
 
   let numOldPeersM _ = zoomM numOldPeers
 
   let votingNodesForConfig peers =
     let counter r _ n =
-      if Node.isVoting n then r + 1u else r
-    Map.fold counter 0u peers
+      if Node.isVoting n then r + 1UL else r
+    Map.fold counter 0UL peers
 
   let votingNodes (state: Raft<_,_>) =
     votingNodesForConfig state.Peers
@@ -628,7 +622,7 @@ module Raft =
   let votingNodesForOldConfig (state: Raft<_,_>) =
     match state.OldPeers with
       | Some peers -> votingNodesForConfig peers
-      | _ -> 0u
+      | _ -> 0UL
 
   let votingNodesForOldConfigM _ = zoomM votingNodesForOldConfig
 
@@ -1115,11 +1109,12 @@ module Raft =
             NextIndex  = resp.CurrentIndex + 1UL
             MatchIndex = resp.CurrentIndex }
 
-      if not (Node.isVoting peer)                     &&
-        Option.isNone state.ConfigChangeEntry         &&
-        currentIndex state <= resp.CurrentIndex + 1UL &&
-        not (Node.hasSufficientLogs peer)
-      then
+      let notVoting = not (Node.isVoting peer)
+      let notLogs   = not (Node.hasSufficientLogs peer)
+      let notCfg    = Option.isNone state.ConfigChangeEntry
+      let idxOk     = currentIndex state <= resp.CurrentIndex + 1UL
+
+      if notVoting && notCfg && idxOk && notLogs then
         let updated = Node.setHasSufficientLogs peer
         do! hasSufficientLogs updated
         do! updateNodeM updated
@@ -1335,7 +1330,7 @@ module Raft =
               let nxtidx = Node.getNextIndex node
               let! cidx = currentIndexM ()
 
-              if not (cidx - nxtidx > (state.MaxLogDepth + 1UL)) then
+              if (state.MaxLogDepth + 1UL) <= cidx - nxtidx then
                 // Only send new entries. Don't send the entry to peers who are
                 // behind, to prevent them from becoming congested.
                 do! sendAppendEntry node
@@ -1557,14 +1552,26 @@ module Raft =
   // |_____|_|\___|\___|\__|_|\___/|_| |_|___/ //
   ///////////////////////////////////////////////
 
-  /// determine the majority from a total number of eligible voters and their votes
+  /// ## majority
+  ///
+  /// Determine the majority from a total number of eligible voters and their respective votes. This
+  /// function is generic and should expect any numeric types.
+  ///
+  /// Turning off the warning about the cast due to sufficiently constrained requirements on the
+  /// input type (op_Explicit, comparison and division).
+  ///
+  /// ### Signature:
+  /// - total: the total number of votes cast
+  /// - yays: the number of yays in this election
+  ///
+  /// Returns: boolean
   let majority total yays =
-    if total = 0u || yays = 0u then
+    if total = 0UL || yays = 0UL then
       false
     elif yays > total then
       false
     else
-      yays > (total / 2u)
+      yays > (total / 2UL)
 
   /// Determine whether a vote count constitutes a majority in the *regular*
   /// configuration (does not cover the joint consensus state).
@@ -1579,13 +1586,13 @@ module Raft =
   let numVotesForConfig (self: Node<_>) (votedFor: NodeId option) peers =
     let counter m _ (peer : Node<'n>) =
         if (peer.Id <> self.Id) && Node.canVote peer
-          then m + 1u
+          then m + 1UL
           else m
 
     let start =
       match votedFor with
-        | Some(nid) -> if nid = self.Id then 1u else 0u
-        | _         -> 0u
+        | Some(nid) -> if nid = self.Id then 1UL else 0UL
+        | _         -> 0UL
 
     Map.fold counter start peers
 
@@ -1597,7 +1604,7 @@ module Raft =
   let numVotesForMeOldConfig (state: Raft<_,_>) =
     match state.OldPeers with
       | Some peers -> numVotesForConfig state.Node state.VotedFor peers
-      | _ -> 0u
+      |      _     -> 0UL
 
   let numVotesForMeOldConfigM _ = zoomM numVotesForMeOldConfig
 
@@ -1680,12 +1687,10 @@ module Raft =
                   //
                   // we probe for a majority in both configurations
                   let! newConfig =
-                    numVotesForMeM () >>= fun votes ->
-                      regularMajorityM votes
+                    numVotesForMeM () >>= regularMajorityM
 
                   let! oldConfig =
-                    numVotesForMeOldConfigM () >>= fun votes ->
-                      oldConfigMajorityM votes
+                    numVotesForMeOldConfigM () >>= oldConfigMajorityM
 
                   // and finally, become leader if we have a majority in either
                   // configuration
@@ -1701,8 +1706,7 @@ module Raft =
                   // the base case: we are not in joint consensus so we just use
                   // regular configuration functions
                   let! majority =
-                    numVotesForMeM () >>= fun votes ->
-                      regularMajorityM votes
+                    numVotesForMeM () >>= regularMajorityM
 
                   if majority then
                     do! becomeLeader ()

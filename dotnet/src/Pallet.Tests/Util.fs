@@ -49,7 +49,7 @@ module Util =
       member self.NodeAdded node              = self.NodeAdded node
       member self.NodeUpdated node            = self.NodeUpdated node
       member self.NodeRemoved node            = self.NodeRemoved node
-      member self.Configured nodes            = self.Configured nodes 
+      member self.Configured nodes            = self.Configured nodes
       member self.StateChanged olds news      = self.StateChanged olds news
       member self.PersistVote node            = self.PersistVote node
       member self.PersistTerm node            = self.PersistTerm node
@@ -126,7 +126,7 @@ module Util =
     let OnPersistSnapshot (entry: LogEntry<_,_>) =
       sprintf "Perisisting Snapshot: %A" entry
       |> log
-      
+
     let OnRetrieveSnapshot _ =
       "Asked to retrieve last snapshot"
       |> log
@@ -151,7 +151,7 @@ module Util =
     let OnStateChanged olds news =
       sprintf "state changed"
       |> log
-      
+
     { SendRequestVote     = OnSendRequestVote
     ; SendAppendEntries   = OnSendAppendEntries
     ; SendInstallSnapshot = OnSendInstallSnapshot
@@ -173,14 +173,14 @@ module Util =
     }
 
   let defaultServer (data : 'v) =
-    let self : Node<'v> = Node.create 0u data
+    let self : Node<'v> = Node.create (RaftId.Create()) data
     Raft.create self
 
   let runWithData data action =
-    let self = Node.create 0u ()
+    let self = Node.create (RaftId.Create()) ()
     let raft = Raft.create self
     let cbs = mk_cbs data :> IRaftCallbacks<_,_>
-    runRaft raft cbs action 
+    runRaft raft cbs action
 
   let runWithDefaults action = runWithData (ref ()) action
 
@@ -213,7 +213,7 @@ module Util =
   let senderAppendEntries (sender:Sender<_,_>) (node:Node<_>) ae =
     let msg = AppendEntries(node.Id, ae)
     __append_msg sender msg
-        
+
   let getVote = function
     | RequestVote(_,req) -> req
     | _ -> failwith "not a vote request"
@@ -226,7 +226,7 @@ module Util =
 
   let konst a _ = a
 
-  let runWithRaft r c m = runRaft r c m 
+  let runWithRaft r c m = runRaft r c m
 
   let expectError e = function
     | Left (e',_) -> if e <> e' then failwithf "Unexpected error: %A" e'

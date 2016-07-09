@@ -208,7 +208,7 @@ module private LogEntry =
     | Configuration(_,_,_,_,Some prev)  -> Some (index prev)
     | JointConsensus(_,_,_,_,Some prev) -> Some (index prev)
     | LogEntry(_,_,_,_,Some prev)       -> Some (index prev)
-    | Snapshot(_,_,_,idx,__,_,_)        -> Some idx
+    | Snapshot(_,_,_,idx,_,_,_)         -> Some idx
     | _                                 -> None
 
   //   _
@@ -333,7 +333,7 @@ module private LogEntry =
   /// ### Complexity: 0(n)
 
   let rec until idx = function
-    | Snapshot(_,_,_,_,_,_,_) as curr -> Some curr
+    | Snapshot _ as curr -> Some curr
 
     | Configuration(_,idx',_,_,None) as curr ->
       match idx with
@@ -446,7 +446,7 @@ module private LogEntry =
           (fun lst newnode ->
             match Array.tryFind (Node.getId >> (=) newnode.Id) oldnodes with
               | Some _ -> lst
-              | _ -> NodeAdded(newnode) :: lst) List.empty newnodes
+              |      _ -> NodeAdded(newnode) :: lst) [] newnodes
 
       Array.fold
         (fun lst oldnode ->
@@ -501,7 +501,7 @@ module private LogEntry =
     let _map curr prev =
       match prev with
         | Some previous -> f curr :: map f previous
-        | _             -> f curr :: []
+        | _             -> [f curr]
 
     match entry with
       | Configuration(_,_,_,_,prev)  as curr -> _map curr prev
@@ -583,7 +583,7 @@ module private LogEntry =
     let _folder (m : Continue<'m>) _log =
       match m with
         | Cont v -> f v _log
-        | _ as v -> v
+        |      v -> v
 
     // short-circuiting inner function
     let rec _resFold (m : Continue<'m>) (_log : LogEntry<'a,'n>) : Continue<'m> =
@@ -594,7 +594,7 @@ module private LogEntry =
             // first, then the inner one (but stop once Ret comes along).
             match _folder m curr with
               | Cont _ as a -> _resFold a prev
-              |      _ as a -> a
+              |           a -> a
           | _ -> m
 
       match _log with
@@ -644,7 +644,7 @@ module private LogEntry =
     | JointConsensus(id,idx,term,changes,Some _) ->
       JointConsensus(id,idx,term,changes,None)
 
-    | _ as curr -> curr
+    | curr -> curr
 
   //                         _ _
   //  _ __ _____      ___ __(_) |_ ___
@@ -784,7 +784,6 @@ module private LogEntry =
   // | (_| |  __/ |_| | | |
   //  \__, |\___|\__|_| |_|
   //  |___/
-
   let rec getn count log =
     if count = 0UL then
       None
@@ -794,7 +793,7 @@ module private LogEntry =
         | Configuration(_,_,_,_, None) as curr -> Some curr
         | JointConsensus(_,_,_,_,None) as curr -> Some curr
         | LogEntry(_,_,_,_, None)      as curr -> Some curr
-        | Snapshot(_,_,_,_,_,_,_)      as curr -> Some curr
+        | Snapshot _                   as curr -> Some curr
 
         | Configuration(id,idx,term,nodes, Some prev) ->
           Configuration(id,idx,term,nodes, getn newcnt prev)
@@ -807,6 +806,7 @@ module private LogEntry =
         | LogEntry(id,idx,term,data, Some prev) ->
           LogEntry(id,idx,term,data, getn newcnt prev)
           |> Some
+
 
   //                  _        _
   //   ___ ___  _ __ | |_ __ _(_)_ __  ___
@@ -1009,7 +1009,6 @@ module Log =
       | Some log -> LogEntry.firstIndex term log
       | _        -> None
 
-  /// Retrieve the last n entries
   let getn count log =
     match log.Data with
       | Some log -> LogEntry.getn count log

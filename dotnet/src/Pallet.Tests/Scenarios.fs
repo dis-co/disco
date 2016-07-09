@@ -51,12 +51,12 @@ module Scenarios =
     receiver := { !receiver with Inbox  = msg :: (!receiver).Inbox }
 
   let testRequestVote (peers: Map<NodeId,Sender ref>) (sender:Node<_>) (receiver:Node<_>) req =
-    __logg <| sprintf "testRequestVote [sender: %d] [receiver: %d]" sender.Id receiver.Id
+    __logg <| sprintf "testRequestVote [sender: %A] [receiver: %A]" sender.Id receiver.Id
     RequestVote(sender.Id,req)
     |> __append_msgs peers sender.Id receiver.Id
 
   let testRequestVoteResponse (peers: Map<NodeId,Sender ref>) (sender:Node<_>) (receiver:Node<_>) resp =
-    __logg <| sprintf "testRequestVoteResponse [sender: %d] [receiver: %d]" sender.Id receiver.Id
+    __logg <| sprintf "testRequestVoteResponse [sender: %A] [receiver: %A]" sender.Id receiver.Id
     RequestVoteResponse(sender.Id,resp)
     |> __append_msgs peers sender.Id receiver.Id
 
@@ -150,22 +150,27 @@ module Scenarios =
 
   let scenario_leader_appears =
     testPropertyWithConfig config "leader appears" <| fun _ ->
-      let numPeers = 3u
+      let numPeers = 3UL
+
+      let ids =
+        [| for n in 0UL .. (numPeers - 1UL) do
+            yield RaftId.Create() |]
 
       let senders =
-        [| for n in 0u .. (numPeers - 1u) do
-            yield (n, ref create) |]
+        [| for n in 0UL .. (numPeers - 1UL) do
+            yield (ids.[int n], ref create) |]
         |> Map.ofArray
 
       let servers =
-        [| for n in 0u .. (numPeers - 1u) do
+        [| for n in 0UL .. (numPeers - 1UL) do
             let peers =
-              [| for pid in 0u .. (numPeers - 1u) do
-                  yield Node.create pid () |]
+              [| for pid in 0UL .. (numPeers - 1UL) do
+                  let nid = ids.[int pid]
+                  yield Node.create nid () |]
 
             let callbacks =
-              { SendRequestVote     = testRequestVote   senders peers.[int n]
-              ; SendAppendEntries   = testAppendEntries senders peers.[int n]
+              { SendRequestVote     = testRequestVote     senders peers.[int n]
+              ; SendAppendEntries   = testAppendEntries   senders peers.[int n]
               ; SendInstallSnapshot = testInstallSnapshot senders peers.[int n]
               ; PersistSnapshot     = ignore
               ; PrepareSnapshot     = konst Log.empty
@@ -186,13 +191,13 @@ module Scenarios =
 
             let raft =
               Raft.create peers.[int n]
-              |> setElectionTimeout 500u
+              |> setElectionTimeout 500UL
               |> addNodes peers
 
             yield (raft,callbacks) |]
 
       // First node starts election.
-      periodic 1000u
+      periodic 1000UL
       |> evalRaft  (fst servers.[0]) (snd servers.[0])
       |> fun result ->
         Array.set servers 0 (result, snd servers.[0])
@@ -205,7 +210,7 @@ module Scenarios =
         |> __logg
 
         while anyMsgs senders do
-          for idx in 0u .. (numPeers - 1u) do
+          for idx in 0UL .. (numPeers - 1UL) do
             let srv = servers.[int idx]
             __logg <| sprintf "[raft: %d] [state: %A]" idx (fst srv).State
 
@@ -214,9 +219,9 @@ module Scenarios =
             |> fun r -> Array.set servers (int idx) (r, snd srv)
 
         __logg "Running periodic"
-        for n in 0u .. (numPeers - 1u) do
+        for n in 0UL .. (numPeers - 1UL) do
           let srv = servers.[int n]
-          periodic 100u
+          periodic 100UL
           |> evalRaft (fst srv) (snd srv)
           |> fun r -> Array.set servers (int n) (r, snd srv)
 

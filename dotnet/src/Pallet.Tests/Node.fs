@@ -7,7 +7,7 @@ open Fuchu.Test
 open Pallet.Core
 
 [<AutoOpen>]
-module Node = 
+module Node =
   ////////////////////////////////////////
   //  _   _           _                 //
   // | \ | | ___   __| | ___            //
@@ -18,5 +18,5 @@ module Node =
 
   let node_init_test =
     testCase "When created, Node should be in Voting state" <| fun _ ->
-      let node : Node<unit> = Node.create 1u ()
+      let node : Node<unit> = Node.create (RaftId.Create()) ()
       Assert.Equal("Should be voting", true, Node.isVoting node)
