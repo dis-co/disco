@@ -95,7 +95,7 @@ module SerializationTests =
         Some <| LogEntry(RaftId.Create(), 7UL, 1UL, Close "cccc",
           Some <| LogEntry(RaftId.Create(), 6UL, 1UL, AddClient "bbbb",
             Some <| Configuration(RaftId.Create(), 5UL, 1UL, [| node1 |],
-              Some <| JointConsensus(RaftId.Create(), 4UL, 1UL, changes, nodes,
+              Some <| JointConsensus(RaftId.Create(), 4UL, 1UL, changes,
                 Some <| Snapshot(RaftId.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
 
       let ae : AppendEntries =

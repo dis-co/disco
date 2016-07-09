@@ -215,7 +215,7 @@ module AppContext =
         let term = currentTerm state.Raft
         let changes = [| NodeRemoved state.Raft.Node |]
         let nodes =  [||]
-        let entry = JointConsensus(RaftId.Create(), 0UL, term , changes, nodes, None)
+        let entry = JointConsensus(RaftId.Create(), 0UL, term , changes, None)
         receiveEntry entry
         |> evalRaft state.Raft cbs
         |> flip updateRaft state
@@ -233,7 +233,7 @@ module AppContext =
 
         let changes = [| NodeAdded state.Raft.Node |]
         let nodes =  [||]
-        let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, nodes, None)
+        let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, None)
 
         let newstate =
           raft {
@@ -406,7 +406,7 @@ module AppContext =
 
         let term = currentTerm state.Raft
         let changes = [| NodeAdded node |]
-        let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, [||], None)
+        let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, None)
         let response = receiveEntry entry |> runRaft state.Raft cbs
 
         match response with
@@ -427,7 +427,7 @@ module AppContext =
 
         let term = currentTerm state.Raft
         let changes = [| NodeRemoved node |]
-        let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, [||], None)
+        let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, None)
         do! receiveEntry entry
             |> evalRaft state.Raft cbs
             |> flip updateRaft state

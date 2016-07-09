@@ -18,35 +18,27 @@ public sealed class JointConsensusFB : Table {
   public ConfigChangeFB GetChanges(int j) { return GetChanges(new ConfigChangeFB(), j); }
   public ConfigChangeFB GetChanges(ConfigChangeFB obj, int j) { int o = __offset(10); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
   public int ChangesLength { get { int o = __offset(10); return o != 0 ? __vector_len(o) : 0; } }
-  public NodeFB GetNodes(int j) { return GetNodes(new NodeFB(), j); }
-  public NodeFB GetNodes(NodeFB obj, int j) { int o = __offset(12); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
-  public int NodesLength { get { int o = __offset(12); return o != 0 ? __vector_len(o) : 0; } }
 
   public static Offset<JointConsensusFB> CreateJointConsensusFB(FlatBufferBuilder builder,
       StringOffset IdOffset = default(StringOffset),
       ulong Index = 0,
       ulong Term = 0,
-      VectorOffset ChangesOffset = default(VectorOffset),
-      VectorOffset NodesOffset = default(VectorOffset)) {
-    builder.StartObject(5);
+      VectorOffset ChangesOffset = default(VectorOffset)) {
+    builder.StartObject(4);
     JointConsensusFB.AddTerm(builder, Term);
     JointConsensusFB.AddIndex(builder, Index);
-    JointConsensusFB.AddNodes(builder, NodesOffset);
     JointConsensusFB.AddChanges(builder, ChangesOffset);
     JointConsensusFB.AddId(builder, IdOffset);
     return JointConsensusFB.EndJointConsensusFB(builder);
   }
 
-  public static void StartJointConsensusFB(FlatBufferBuilder builder) { builder.StartObject(5); }
+  public static void StartJointConsensusFB(FlatBufferBuilder builder) { builder.StartObject(4); }
   public static void AddId(FlatBufferBuilder builder, StringOffset IdOffset) { builder.AddOffset(0, IdOffset.Value, 0); }
   public static void AddIndex(FlatBufferBuilder builder, ulong Index) { builder.AddUlong(1, Index, 0); }
   public static void AddTerm(FlatBufferBuilder builder, ulong Term) { builder.AddUlong(2, Term, 0); }
   public static void AddChanges(FlatBufferBuilder builder, VectorOffset ChangesOffset) { builder.AddOffset(3, ChangesOffset.Value, 0); }
   public static VectorOffset CreateChangesVector(FlatBufferBuilder builder, Offset<ConfigChangeFB>[] data) { builder.StartVector(4, data.Length, 4); for (int i = data.Length - 1; i >= 0; i--) builder.AddOffset(data[i].Value); return builder.EndVector(); }
   public static void StartChangesVector(FlatBufferBuilder builder, int numElems) { builder.StartVector(4, numElems, 4); }
-  public static void AddNodes(FlatBufferBuilder builder, VectorOffset NodesOffset) { builder.AddOffset(4, NodesOffset.Value, 0); }
-  public static VectorOffset CreateNodesVector(FlatBufferBuilder builder, Offset<NodeFB>[] data) { builder.StartVector(4, data.Length, 4); for (int i = data.Length - 1; i >= 0; i--) builder.AddOffset(data[i].Value); return builder.EndVector(); }
-  public static void StartNodesVector(FlatBufferBuilder builder, int numElems) { builder.StartVector(4, numElems, 4); }
   public static Offset<JointConsensusFB> EndJointConsensusFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
     return new Offset<JointConsensusFB>(o);

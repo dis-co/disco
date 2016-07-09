@@ -178,19 +178,16 @@ type LogExentions() =
       //  _  | |/ _ \| | '_ \| __| |   / _ \| '_ \/ __|/ _ \ '_ \/ __| | | / __|
       // | |_| | (_) | | | | | |_| |__| (_) | | | \__ \  __/ | | \__ \ |_| \__ \
       //  \___/ \___/|_|_| |_|\__|\____\___/|_| |_|___/\___|_| |_|___/\__,_|___/
-      | JointConsensus(id,index,term,changes,nodes,_) ->
+      | JointConsensus(id,index,term,changes,_) ->
         let id = string id |> builder.CreateString
         let changes = Array.map (fun (change: ConfigChange) -> change.ToOffset(builder)) changes
         let chvec = JointConsensusFB.CreateChangesVector(builder, changes)
-        let nodes = Array.map (fun (node: Node) -> node.ToOffset(builder)) nodes
-        let nvec = JointConsensusFB.CreateNodesVector(builder, nodes)
 
         JointConsensusFB.StartJointConsensusFB(builder)
         JointConsensusFB.AddId(builder, id)
         JointConsensusFB.AddIndex(builder, uint64 index)
         JointConsensusFB.AddTerm(builder, uint64 term)
         JointConsensusFB.AddChanges(builder, chvec)
-        JointConsensusFB.AddNodes(builder, nvec)
 
         let entry = JointConsensusFB.EndJointConsensusFB(builder)
 
@@ -273,15 +270,11 @@ module StaticLogExtensions =
       | LogTypeFB.JointConsensusFB ->
         let entry = fb.GetEntry(new JointConsensusFB())
         let changes = Array.zeroCreate entry.ChangesLength
-        let nodes = Array.zeroCreate entry.NodesLength
-
-        for i in 0 .. (entry.NodesLength - 1) do
-          nodes.[i] <- entry.GetNodes(i) |> Node.FromFB
 
         for i in 0 .. (entry.ChangesLength - 1) do
           changes.[i] <- entry.GetChanges(i) |> ConfigChange.FromFB
 
-        JointConsensus(RaftId entry.Id, entry.Index, entry.Term, changes, nodes, log)
+        JointConsensus(RaftId entry.Id, entry.Index, entry.Term, changes, log)
         |> Some
 
       | LogTypeFB.LogEntryFB ->
