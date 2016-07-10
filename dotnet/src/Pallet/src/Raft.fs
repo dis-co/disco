@@ -3,8 +3,6 @@ namespace Pallet.Core
 open System
 open FSharpx.Functional
 
-#nowarn "77"
-
 [<AutoOpen>]
 module RaftMonad =
 
@@ -386,6 +384,12 @@ module Raft =
 
   let getSelf (state: Raft<_,_>) = state.Node
   let getSelfM _ = zoomM getSelf
+
+  let setSelf (node: Node<_>) (state: Raft<_,_>) =
+    { state with Node = node }
+
+  let setSelfM node =
+    setSelf node |> modify
 
   let lastConfigChange (state: Raft<_,_>) =
     state.ConfigChangeEntry
@@ -1330,7 +1334,7 @@ module Raft =
               let nxtidx = Node.getNextIndex node
               let! cidx = currentIndexM ()
 
-              if (state.MaxLogDepth + 1UL) <= cidx - nxtidx then
+              if cidx - nxtidx <= (state.MaxLogDepth + 1UL) then
                 // Only send new entries. Don't send the entry to peers who are
                 // behind, to prevent them from becoming congested.
                 do! sendAppendEntry node

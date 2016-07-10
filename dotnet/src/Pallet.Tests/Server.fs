@@ -2087,7 +2087,10 @@ module Server =
                 Some <| JointConsensus(RaftId.Create(), 2UL, 0UL, [| NodeRemoved node1 |],
                            Some <| JointConsensus(RaftId.Create(), 1UL, 0UL, [| NodeAdded node1 |], None)))
 
-      let getstuff r = Map.toList r.Peers |> List.map (snd >> Node.getId)
+      let getstuff r =
+        Map.toList r.Peers
+        |> List.map (snd >> Node.getId)
+        |> List.sort
 
       raft {
         do! becomeLeader ()
@@ -2095,7 +2098,7 @@ module Server =
         let! me = selfM()
 
         do! expectM "Should have 2 nodes" 2UL numNodes
-        do! expectM "Should have correct nodes" [me.Id; node2.Id] getstuff
+        do! expectM "Should have correct nodes" (List.sort [me.Id; node2.Id]) getstuff
       }
       |> runWithDefaults
       |> noError
@@ -2349,20 +2352,20 @@ module Server =
 
   let server_should_use_old_and_new_config_during_intermittend_elections =
     testCase "should use old and new config during intermittend elections" <| fun _ ->
-
-      let n = 10UL                       // we want ten nodes overall
+      let n = 10UL                      // we want ten nodes overall
 
       let nodes =
-        [| for n in 1UL .. (n - 1UL) do      // subtract one for the implicitly
+        [| for n in 0UL .. (n - 1UL) do      // subtract one for the implicitly
             let nid = RaftId.Create()
             yield (nid, Node.create nid ()) |] // create node in the Raft state
 
       let vote = { Granted = true; Term = 0UL; Reason = None }
 
       raft {
-        let! self = getSelfM ()
-
+        let me = snd nodes.[0]
+        do! setSelfM me
         do! setPeersM (nodes |> Map.ofArray)
+
         do! becomeCandidate ()          // increases term!
 
         do! expectM "Should have be candidate" Candidate Raft.state
@@ -2395,12 +2398,10 @@ module Server =
         let! peers = getNodesM () >>= (Map.toArray >> Array.map snd >> returnM)
 
         // we establish a new cluster configuration *without* the last 5 nodes
-        // with node id's 5 - 9
         let entry =
           nodes
+          |> Array.take (int <| n / 2UL)
           |> Array.map snd
-          |> Array.filter (fun node -> uint64 <| Array.IndexOf(nodes, node) < (n / 2UL))
-          |> Array.append [| self |]
           |> Log.mkConfigChange 1UL peers
 
         let! response = receiveEntry entry
@@ -2424,8 +2425,9 @@ module Server =
         // testing with the new configuration (the nodes with the lower id values)
         // We only need the votes from 2 more nodes out of the old configuration
         // to form a majority.
-        for nid in 1UL .. ((n / 2UL) / 2UL) do
-          do! receiveVoteResponse (fst nodes.[int nid]) { vote with Term = term }
+        for idx in 1UL .. ((n / 2UL) / 2UL) do
+          let nid = fst <| nodes.[int idx]
+          do! receiveVoteResponse nid { vote with Term = term }
 
         do! expectM "Should be leader in joint consensus with votes from the new configuration" Leader Raft.state
 
@@ -2442,8 +2444,9 @@ module Server =
 
         // testing with the old configuration (the nodes with the higher id
         // values that have been removed with the joint consensus entry)
-        for nid in (n / 2UL) .. (n - 1UL) do
-          do! receiveVoteResponse (fst nodes.[int nid]) { vote with Term = term }
+        for idx in (n / 2UL) .. (n - 1UL) do
+          let nid = fst nodes.[int idx]
+          do! receiveVoteResponse nid { vote with Term = term }
 
         do! expectM "Should be leader in joint consensus with votes from the old configuration" Leader Raft.state
 
@@ -2491,7 +2494,6 @@ module Server =
         let entry =
           nodes
           |> Array.map snd
-          |> Array.append [| self |]
           |> Log.mkConfigChange 1UL peers
 
         let! response = receiveEntry entry
@@ -2561,18 +2563,18 @@ module Server =
 
   let server_should_revert_to_follower_state_on_config_change_removal =
     testCase "should revert to follower state on config change removal" <| fun _ ->
-
-      let n = 10UL                       // we want ten nodes overall
+      let n = 10UL                      // we want ten nodes overall
 
       let nodes =
-        [| for n in 1UL .. (n - 1UL) do      // subtract one for the implicitly
+        [| for n in 0UL .. (n - 1UL) do      // subtract one for the implicitly
             let nid = RaftId.Create()
             yield (nid, Node.create nid ()) |] // create node in the Raft state
 
       let vote = { Granted = true; Term = 0UL; Reason = None }
 
       raft {
-        let! self = getSelfM ()
+        let self = snd nodes.[0]
+        do! setSelfM self
 
         do! setPeersM (nodes |> Map.ofArray)
         do! becomeCandidate ()          // increases term!
@@ -2608,22 +2610,20 @@ module Server =
         let! peers = getNodesM () >>= (Map.toArray >> Array.map snd >> returnM)
 
         // we establish a new cluster configuration *without* the last 5 nodes
-        // with node id's 5 - 9
         let entry =
           nodes
           |> Array.map snd
-          |> Array.filter (fun node -> uint64 <| Array.IndexOf(nodes,node) >= (uint64 n / 2UL))
+          |> Array.skip (int <| n / 2UL)
           |> Log.mkConfigChange term peers
 
         let! response = receiveEntry entry
-        let! my = selfM()
 
         do! expectM "Should still have correct node count for new configuration" (n / 2UL) numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" n numOldPeers
         do! expectM "Should have JointConsensus entry as ConfigChange" (Log.id entry) (lastConfigChange >> Option.get >> Log.id)
 
-        do! expectM "Should be found in joint consensus configuration myself" true (getNode my.Id >> Option.isSome)
+        do! expectM "Should be found in joint consensus configuration myself" true (getNode self.Id >> Option.isSome)
 
         //                                  __ _                       _   _
         //  _ __ ___        ___ ___  _ __  / _(_) __ _ _   _ _ __ __ _| |_(_) ___  _ __
@@ -2635,11 +2635,10 @@ module Server =
         let! term = currentTermM ()
         let entry = Log.mkConfig term Array.empty
         let! response = receiveEntry entry
-        let! my = selfM()
 
         do! expectM "Should only have half the nodes" (n / 2UL) numNodes
         do! expectM "Should have None as ConfigChange" None lastConfigChange
-        do! expectM "Should be able to find myself" false (getNode my.Id >> Option.isSome)
+        do! expectM "Should be able to find myself" false (getNode self.Id >> Option.isSome)
         do! expectM "Should still be leader" Leader Raft.state
 
         let! result = responseCommitted response
@@ -2647,10 +2646,11 @@ module Server =
 
         let! idx = currentIndexM ()
 
-        let aer = { Term         = term
-                    Success      = true
-                    CurrentIndex = idx
-                    FirstIndex   = 1UL }
+        let aer =
+          { Term         = term
+            Success      = true
+            CurrentIndex = idx
+            FirstIndex   = 1UL }
 
         for nid in (n / 2UL) .. (n - 1UL) do
           do! receiveAppendEntriesResponse (fst nodes.[int nid]) aer
@@ -2778,22 +2778,22 @@ module Server =
 
   let server_should_use_old_and_new_config_during_intermittend_appendentries =
     testCase "should use old and new config during intermittend appendentries" <| fun _ ->
+      let n = 10UL                       // we want ten nodes overall
+
+      let nodes =
+        [| for n in 0UL .. (n - 1UL) do      // subtract one for the implicitly
+            let nid = RaftId.Create()
+            yield (nid, Node.create nid ()) |] // create node in the Raft state
+
+      let self = snd nodes.[0]
+
       let count = ref 0
-      let init = Raft.create (Node.create (RaftId.Create()) ())
+      let init = Raft.create self
       let cbs = { mk_cbs (ref()) with
                    SendAppendEntries = fun _ _ -> count := 1 + !count }
                 :> IRaftCallbacks<_,_>
 
-      let n = 10UL                       // we want ten nodes overall
-
-      let nodes =
-        [| for n in 1UL .. (n - 1UL) do      // subtract one for the implicitly
-            let nid = RaftId.Create()
-            yield (nid, Node.create nid ()) |] // create node in the Raft state
-
       raft {
-        let! self = getSelfM ()
-
         do! setPeersM (nodes |> Map.ofArray)
         do! becomeLeader ()          // increases term!
 
@@ -2814,8 +2814,7 @@ module Server =
         let entry =
           nodes
           |> Array.map snd
-          |> Array.filter (fun node -> uint64 <| Array.IndexOf(nodes, node) < (n / 2UL))
-          |> Array.append [| self |]
+          |> Array.take (int <| n / 2UL)
           |> Log.mkConfigChange 1UL peers
 
         let! response = receiveEntry entry
