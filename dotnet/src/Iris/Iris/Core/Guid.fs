@@ -21,6 +21,9 @@ type Guid =
 
     static member TryParse (str: string) = Guid str |> Some
 
+[<AutoOpen>]
+module GuidHelpers =
+
     /// ## Create
     ///
     /// Create a new globally unique identifie
@@ -29,23 +32,10 @@ type Guid =
     /// - unit: unit
     ///
     /// Returns: Guid
-    static member Create () =
+    let createGuid () =
 #if JAVASCRIPT
-      //      _                  ____            _       _
-      //     | | __ ___   ____ _/ ___|  ___ _ __(_)_ __ | |_
-      //  _  | |/ _` \ \ / / _` \___ \ / __| '__| | '_ \| __|
-      // | |_| | (_| |\ V / (_| |___) | (__| |  | | |_) | |_
-      //  \___/ \__,_| \_/ \__,_|____/ \___|_|  |_| .__/ \__|
-      //                                          |_|
-
-      Guid "JS GUID FIXME"
+      Guid "FIXME"
 #else
-      //    _   _ _____ _____
-      //   | \ | | ____|_   _|
-      //   |  \| |  _|   | |
-      //  _| |\  | |___  | |
-      // (_)_| \_|_____| |_|
-
       let stripEquals (str: string) =
         str.Substring(0, str.Length - 2)
 

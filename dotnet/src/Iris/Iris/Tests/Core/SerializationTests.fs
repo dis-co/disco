@@ -21,12 +21,12 @@ module SerializationTests =
   let test_validate_requestvote_serialization =
     testCase "Validate RequestVote Serialization" <| fun _ ->
       let info =
-        { MemberId = Guid.Create ()
+        { MemberId = createGuid ()
         ; HostName = "test-host"
         ; IpAddr   = IpAddress.Parse "192.168.2.10"
         ; Port     = 8080
         ; Status   = Paused
-        ; TaskId   = Guid.Create() |> Some }
+        ; TaskId   = createGuid() |> Some }
 
       let node = Node.create (RaftId.Create()) info
 
@@ -70,7 +70,7 @@ module SerializationTests =
   let test_validate_appendentries_serialization =
     testCase "Validate RequestVote Response Serialization" <| fun _ ->
       let info1 =
-        { MemberId = Guid.Create()
+        { MemberId = createGuid()
         ; HostName = "Hans"
         ; IpAddr = IpAddress.Parse "192.168.1.20"
         ; Port = 8080
@@ -78,12 +78,12 @@ module SerializationTests =
         ; TaskId = None }
 
       let info2 =
-        { MemberId = Guid.Create()
+        { MemberId = createGuid()
         ; HostName = "Klaus"
         ; IpAddr = IpAddress.Parse "192.168.1.22"
         ; Port = 8080
         ; Status = IrisNodeStatus.Failed
-        ; TaskId = Guid.Create() |> Some }
+        ; TaskId = createGuid() |> Some }
 
       let node1 = Node.create (RaftId.Create()) info1
       let node2 = Node.create (RaftId.Create()) info2
@@ -146,7 +146,7 @@ module SerializationTests =
   let test_validate_installsnapshot_serialization =
     testCase "Validate InstallSnapshot Serialization" <| fun _ ->
       let info =
-        { MemberId = Guid.Create()
+        { MemberId = createGuid()
         ; HostName = "Hans"
         ; IpAddr = IpAddress.Parse "123.23.21.1"
         ; Port = 124
@@ -193,7 +193,7 @@ module SerializationTests =
   let test_validate_handshake_serialization =
     testCase "Validate HandShake Serialization" <| fun _ ->
       let info =
-        { MemberId = Guid.Create()
+        { MemberId = createGuid()
         ; HostName = "horst"
         ; IpAddr   = IpAddress.Parse "127.0.0.1"
         ; Port     = 8080
@@ -214,12 +214,12 @@ module SerializationTests =
   let test_validate_handwaive_serialization =
     testCase "Validate HandWaive Serialization" <| fun _ ->
       let info =
-        { MemberId = Guid.Create()
+        { MemberId = createGuid()
         ; HostName = "horst"
         ; IpAddr = IpAddress.Parse "127.0.0.1"
         ; Port = 8080
         ; Status = IrisNodeStatus.Failed
-        ; TaskId = Guid.Create() |> Some }
+        ; TaskId = createGuid() |> Some }
 
       let msg = HandWaive(Node.create (RaftId.Create()) info)
       let remsg = msg |> encode |> decode |> Option.get
@@ -235,12 +235,12 @@ module SerializationTests =
   let test_validate_redirect_serialization =
     testCase "Validate Redirect Serialization" <| fun _ ->
       let info =
-        { MemberId = Guid.Create()
+        { MemberId = createGuid()
         ; HostName = "horst"
         ; IpAddr = IpAddress.Parse "127.0.0.1"
         ; Port = 8080
         ; Status = IrisNodeStatus.Failed
-        ; TaskId = Guid.Create() |> Some }
+        ; TaskId = createGuid() |> Some }
 
       let msg = Redirect(Node.create (RaftId.Create()) info)
       let remsg = msg |> encode |> decode |> Option.get

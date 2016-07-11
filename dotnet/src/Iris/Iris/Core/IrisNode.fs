@@ -64,7 +64,7 @@ type IrisNode =
   ; TaskId   : TaskId option }
 
   static member Create name host port =
-    { MemberId = Guid.Create()
+    { MemberId = createGuid()
     ; HostName = name
     ; IpAddr   = IPv4Address host
     ; Port     = port

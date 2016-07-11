@@ -27,7 +27,7 @@ module AppContext =
 
   let mkRaft (options: RaftOptions) =
     let node =
-      { MemberId = Guid.Create()
+      { MemberId = createGuid()
       ; HostName = getHostName()
       ; IpAddr   = IpAddress.Parse options.IpAddr
       ; Port     = options.RaftPort
@@ -247,7 +247,7 @@ module AppContext =
               do! periodic 1001UL
             else
               let leader =
-                { MemberId = Guid.Create()
+                { MemberId = createGuid()
                 ; HostName = "<empty>"
                 ; IpAddr = Option.get options.LeaderIp   |> IpAddress.Parse
                 ; Port   = Option.get options.LeaderPort |> int
