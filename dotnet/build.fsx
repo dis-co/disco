@@ -328,6 +328,10 @@ Target "BuildFrontend" (fun _ ->
             WorkingDirectory = baseDir })
     |> ignore)
 
+Target "BuildFrontendFsProj" (fun _ ->
+    MSBuildRelease "" "Rebuild" [ baseDir @@ "Frontend.fsproj" ]
+    |> ignore)
+
 Target "BuildWorker" (fun _ ->
     Npm(fun p ->
         { p with
@@ -344,6 +348,10 @@ Target "WatchWorker" (fun _ ->
             WorkingDirectory = baseDir })
     |> ignore)
 
+Target "BuildWorkerFsProj" (fun _ ->
+    MSBuildRelease "" "Rebuild" [ baseDir @@ "Worker.fsproj" ]
+    |> ignore)
+
 Target "BuildWebTests" (fun _ ->
     Npm(fun p ->
         { p with
@@ -358,6 +366,10 @@ Target "WatchWebTests" (fun _ ->
             NpmFilePath = npmPath
             Command = (Run "watch-tests")
             WorkingDirectory = baseDir })
+    |> ignore)
+
+Target "BuildWebTestsFsProj" (fun _ ->
+    MSBuildRelease "" "Rebuild" [ baseDir @@ "Web.Tests.fsproj" ]
     |> ignore)
 
 //    _   _ _____ _____

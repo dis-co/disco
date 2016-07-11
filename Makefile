@@ -42,17 +42,26 @@ serialization:
 frontend.watch:
 	${BUILD} WatchFrontend
 
+frontend.fsproj:
+	${BUILD} BuildFrontendFsProj
+
 frontend:
 	${BUILD} BuildFrontend
 
 web.tests.watch:
 	${BUILD} WatchWebTests
 
+web.tests.fsproj:
+	${BUILD} BuildWebTestsFsProj
+
 web.tests:
 	${BUILD} BuildWebTests
 
 worker.watch:
 	${BUILD} WatchWorker
+
+worker.fsproj:
+	${BUILD} BuildWorkerFsProj
 
 worker:
 	${BUILD} BuildWorker
