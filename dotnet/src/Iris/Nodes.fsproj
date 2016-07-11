@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <Import Project="..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
@@ -91,7 +91,7 @@
   <Import Project="..\..\packages\xunit.core\build\$(__paket__xunit_core_props).props" Condition="Exists('..\..\packages\xunit.core\build\$(__paket__xunit_core_props).props')" Label="Paket" />
   <Target Name="AfterBuild">
     <FSharpLintTask Project="$(MSBuildProjectFullPath)" Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' " />
-    <FSharpLintTask Project="$(MSBuildProjectFullPath)" TreatWarningsAsErrors="true" Condition=" '$(Configuration)|$(Platform)' == Release|AnyCPU' " />
+    <FSharpLintTask Project="$(MSBuildProjectFullPath)" TreatWarningsAsErrors="true" Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' " />
     <CopyRuntimeDependencies OutputPath="$(OutputPath)" ProjectsWithRuntimeLibs="System.Collections;System.Diagnostics.Contracts;System.Diagnostics.Debug;System.Globalization;System.IO;System.Linq.Expressions;System.Private.Uri;System.Reflection;System.Reflection.Extensions;System.Reflection.Primitives;System.Reflection.TypeExtensions;System.Resources.ResourceManager;System.Runtime;System.Runtime.Extensions;System.Text.Encoding;System.Text.Encoding.Extensions;System.Threading;System.Threading.Tasks" />
   </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.

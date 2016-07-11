@@ -632,7 +632,7 @@ Target "Release" DoNothing
 
 Target "DebugAll" DoNothing
 
-"BuildWebTests"
+"RunWebTests"
 ==> "DebugAll"
 
 "BuildWorker"
@@ -647,10 +647,10 @@ Target "DebugAll" DoNothing
 "BuildDebugNodes"
 ==> "DebugAll"
 
-"BuildTests"
+"RunTests"
 ==> "DebugAll"
 
-"BuildTests"
+"RunPalletTests"
 ==> "DebugAll"
 
 // "CleanDocs"
