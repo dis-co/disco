@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
   <PropertyGroup>
@@ -15,6 +15,8 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\Debug\Web.Tests</OutputPath>
+    <DefineConstants>DEBUG;TRACE;JAVASCRIPT</DefineConstants>
+    <WarningLevel>5</WarningLevel>
     <ErrorReport>prompt</ErrorReport>
     <Externalconsole>true</Externalconsole>
   </PropertyGroup>
@@ -22,6 +24,8 @@
     <OutputPath>bin\Release\Web.Tests</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <Externalconsole>true</Externalconsole>
+    <DefineConstants>TRACE;JAVASCRIPT</DefineConstants>
+    <WarningLevel>5</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
@@ -31,12 +35,18 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo\Web.TestsInfo.fs" />
+
+    <Compile Include="Iris\Core\Guid.fs" />
+    <Compile Include="Iris\Core\IpAddress.fs" />
     <Compile Include="Iris\Core\Aliases.fs" />
+    <Compile Include="Iris\Core\Util.fs" />
+    <Compile Include="Iris\Core\IrisNode.fs" />
     <Compile Include="Iris\Core\IOBox.fs" />
     <Compile Include="Iris\Core\Patch.fs" />
     <Compile Include="Iris\Core\Cue.fs" />
     <Compile Include="Iris\Core\CueList.fs" />
     <Compile Include="Iris\Core\Message.fs" />
+
     <Compile Include="Iris\Web\Core\Browser.fs" />
     <Compile Include="Iris\Web\Core\Crypto.fs" />
     <Compile Include="Iris\Web\Core\Html.fs" />
@@ -49,6 +59,7 @@
     <Compile Include="Iris\Web\Core\Client.fs" />
     <Compile Include="Iris\Web\Core\Keyboard.fs" />
     <Compile Include="Iris\Web\Views\Patches.fs" />
+
     <Compile Include=".\Iris\Tests\Web\TestUtilities.fs" />
     <Compile Include=".\Iris\Tests\Web\Mocha.fs" />
     <Compile Include=".\Iris\Tests\Web\HtmlTests.fs" />
@@ -58,6 +69,7 @@
     <Compile Include=".\Iris\Tests\Web\StoreTests.fs" />
     <compile Include=".\Iris\Tests\Web\ViewControllerTests.fs" />
     <Compile Include=".\Iris\Tests\Web\VirtualDomTests.fs" />
+
     <!--  __  __       _        -->
     <!-- |  \/  | __ _(_)_ __   -->
     <!-- | |\/| |/ _` | | '_ \  -->
