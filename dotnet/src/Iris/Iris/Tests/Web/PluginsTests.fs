@@ -42,15 +42,15 @@ module Plugins =
       let plugin = findPlugins StringPin |> (fun plugs -> plugs.[0])
       let inst = plugin.Create(fun _ -> ())
 
-      let elid = "0xb33f"
+      let elid = Guid "0xb33f"
 
-      let slice : StringSliceD = { Index = 0u; Value = "oh hey" }
-      let iobox = IOBox.String(elid,"url input", "0xb4d1d34", Array.empty, [| slice |])
+      let slice : StringSliceD = { Index = 0UL; Value = "oh hey" }
+      let iobox = IOBox.String(elid,"url input", Guid "0xb4d1d34", Array.empty, [| slice |])
 
       inst.Render iobox
       |> createElement
       |> (fun elm ->
-          check_cc (elm.id = elid) "element should have correct id" cb)
+          check_cc (elm.id = (string elid)) "element should have correct id" cb)
 
     (* ------------------------------------------------------------------------ *)
     test "re-rendering a plugin should return updated dom element" <| fun cb ->
@@ -64,8 +64,8 @@ module Plugins =
       let value1 = "r4nd0m"
       let value2 = "pr1m0p"
 
-      let slice : StringSliceD = { Index = 0u; Value = value1 }
-      let iobox = IOBox.String("0xb33f","url input", "0xb4d1d34", Array.empty, [| slice |])
+      let slice : StringSliceD = { Index = 0UL; Value = value1 }
+      let iobox = IOBox.String(Guid "0xb33f","url input", Guid "0xb4d1d34", Array.empty, [| slice |])
 
       inst.Render iobox
       |> createElement
@@ -75,7 +75,7 @@ module Plugins =
           check (els.[0].textContent = value1) "should have the correct inner value")
 
       let update =
-        StringSlices [| { Index = 0u; Value = value2 } |]
+        StringSlices [| { Index = 0UL; Value = value2 } |]
         |> iobox.SetSlices
 
       inst.Render update
@@ -86,8 +86,8 @@ module Plugins =
           check (els.[0].textContent = value2) "should have the correct inner value")
 
       let final =
-        StringSlices [| { Index = 0u; Value = value1 }
-                     ;  { Index = 0u; Value = value2 } |]
+        StringSlices [| { Index = 0UL; Value = value1 }
+                     ; { Index = 0UL; Value = value2 } |]
         |> iobox.SetSlices
 
       inst.Render final
@@ -107,8 +107,8 @@ module Plugins =
 
       let instances = new Plugins ()
 
-      let slice : StringSliceD = { Index = 0u; Value = "hello" }
-      let iobox = IOBox.String("0xb33f","url input", "0xb4d1d34", Array.empty, [| slice |])
+      let slice : StringSliceD = { Index = 0UL; Value = "hello" }
+      let iobox = IOBox.String(Guid "0xb33f","url input", Guid "0xb4d1d34", Array.empty, [| slice |])
 
       instances.Add iobox (fun _ -> ())
 
@@ -127,8 +127,8 @@ module Plugins =
 
       let instances = new Plugins ()
 
-      let slice : StringSliceD = { Index = 0u; Value = "hello" }
-      let iobox = IOBox.String("0xb33f","url input", "0xb4d1d34",Array.empty, [| slice |])
+      let slice : StringSliceD = { Index = 0UL; Value = "hello" }
+      let iobox = IOBox.String(Guid "0xb33f","url input", Guid "0xb4d1d34",Array.empty, [| slice |])
 
       instances.Add iobox (fun _ -> ())
       instances.Ids ()
@@ -155,8 +155,8 @@ module Plugins =
       let value1 = "r4nd0m"
       let value2 = "pr1m0p"
 
-      let slice : StringSliceD = { Index = 0u; Value = value1 }
-      let iobox = IOBox.String("0xb33f","url input", "0xb4d1d34", Array.empty, [| slice |])
+      let slice : StringSliceD = { Index = 0UL; Value = value1 }
+      let iobox = IOBox.String(Guid "0xb33f","url input", Guid "0xb4d1d34", Array.empty, [| slice |])
 
       let listener (box' : IOBox) : unit =
         match box'.Slices.[0] with

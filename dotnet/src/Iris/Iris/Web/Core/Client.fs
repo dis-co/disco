@@ -13,12 +13,12 @@ module Client =
     let resource = "Iris.Web.Worker.js"
 
     let mutable session : Session option = None
-    let mutable ctrl : ViewController<State,ClientContext> option = None 
+    let mutable ctrl : ViewController<State,ClientContext> option = None
     let mutable worker = new SharedWorker(resource)
 
     let close _ =
       match session with
-        | Some session' -> 
+        | Some session' ->
           let msg = ClientMessage.Close(session')
            in worker.port.postMessage(msg, [||])
         | _ -> ()
@@ -37,12 +37,12 @@ module Client =
       worker.onerror <- (fun e -> printfn "SharedWorker Error: %s" <| JSON.stringify(e))
       worker.port.onmessage <- (fun msg ->
         self.HandleMsg (msg.data :?> ClientMessage<State>)
-        failwith "oops")
+        createObj [])
       worker.port.start()
 
     member self.Trigger(msg : ClientMessage<State>) =
       worker.port.postMessage(msg, [||]) //
-      
+
     member self.HandleMsg (msg : ClientMessage<State>) : unit =
       match ctrl with
         | Some(ctrl') ->
@@ -82,4 +82,3 @@ module Client =
             | _ -> printfn "Unknown Event: %A" msg
 
         | _ -> printfn "no controller set"
-

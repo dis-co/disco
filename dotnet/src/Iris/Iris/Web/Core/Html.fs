@@ -6,7 +6,7 @@ open Fable.Import.Browser
 
 [<AutoOpen>]
 module Html =
-  
+
   //  _____
   // |_   _|   _ _ __   ___  ___
   //   | || | | | '_ \ / _ \/ __|
@@ -42,7 +42,7 @@ module Html =
     | TextAlign of string
     | Margin    of string
 
-  [<KeyValueList>]
+  [<KeyValueList;NoComparison;NoEquality>]
   type ElementProperty =
     | [<CompiledName("id")>]        ElmId   of string
     | [<CompiledName("href")>]      Href    of string
@@ -54,15 +54,16 @@ module Html =
   type Properties = ElementProperty list
 
   [<Emit("Object.assign({}, $0, $1)")>]
-  let (++) (a:'a list) (b:'a list) : 'a list = failwith "JS Only"
-  
+  let (++) (a:'a list) (b:'a list) : 'a list = failwithf "(++): JS Only %A %A" a b
+
   type VTree = class end
 
   type VPatch = class end
 
+  [<NoComparison;NoEquality>]
   type Html =
     | Parent  of name: string * attrs: Properties * children: Html array
-    | Leaf    of name: string * attrs: Properties 
+    | Leaf    of name: string * attrs: Properties
     | Literal of tag: string
     | Raw     of VTree
 
@@ -157,7 +158,7 @@ module Html =
       | Literal(t) -> VText t
 
       | Leaf(t, attrs) ->
-        VNode t attrs Array.empty
+        VNode t attrs [| |]
 
       | Parent(t, attrs, ch) ->
         VNode t attrs (Array.map renderHtml ch)
@@ -435,7 +436,7 @@ module Html =
   *)
 
   let Text            text = Literal(text)
-                          
+
   let DocType              = Literal("<!DOCTYPE html>")
 
   let A          props chd = Parent("a", props, chd)
@@ -647,4 +648,3 @@ module Html =
   let Video      props chd  = Parent("video", props, chd)
 
   let Wbr        props chd  = Parent("wbr", props, chd)
-

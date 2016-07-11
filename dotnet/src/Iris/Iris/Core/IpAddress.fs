@@ -12,6 +12,14 @@ type IpAddress =
         | IPv4Address str -> str
         | IPv6Address str -> str
 
+#if JAVASCRIPT
+#else
+      //    _   _ _____ _____
+      //   | \ | | ____|_   _|
+      //   |  \| |  _|   | |
+      //  _| |\  | |___  | |
+      // (_)_| \_|_____| |_|
+
     static member Parse (str: string) =
       let ip = IPAddress.Parse str
       match ip.AddressFamily with
@@ -28,3 +36,5 @@ type IpAddress =
             | Sockets.AddressFamily.InterNetworkV6 -> IPv6Address str |> Some
             | _ -> None
         | _ -> None
+
+#endif

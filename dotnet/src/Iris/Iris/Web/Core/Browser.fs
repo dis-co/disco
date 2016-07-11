@@ -11,7 +11,7 @@ module Browser =
 
   open Fable.Core
   open Fable.Import
- 
+
   [<Emit("$0 === null || $0 === undefined")>]
   let isNullValue (_: 't) : bool = failwith "JS ONLY"
 
@@ -72,14 +72,14 @@ module Browser =
 
   [<Emit("Object.is($0, $1)")>]
   let identical (_: obj) (_: obj) = failwith "OH NO ITS ITS ITS JS"
-    
+
   [<Emit("return $0")>]
   let asHtml (el: 'a when 'a :> Browser.Node) : Browser.HTMLElement =
-    failwith "ITS JAVASCRIPT ONLY"
+    failwithf "asHtml: JAVASCRIPT ONLY %A" el
 
   [<Emit("return $0")>]
   let asHtmlInput (el: 'a when 'a :> Browser.Node) : Browser.HTMLInputElement =
-    failwith "ITS JAVASCRIPT ONLY"
+    failwithf "asHtmlInput: JAVASCRIPT ONLY %A" el
 
   //  _____                 _
   // | ____|_   _____ _ __ | |_ ___

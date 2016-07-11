@@ -28,10 +28,11 @@ module State =
     (*  ADD  *)
     member state.Add (patch : Patch) =
       let exists = Array.exists (fun (p : Patch) -> p.Id = patch.Id) state.Patches
-      if exists
-      then state
-      else let patches' = Array.map id state.Patches // copy the array
-           { state with Patches = Array.append patches' [| patch |]  }
+      if exists then
+        state
+      else
+        let patches' = Array.copy state.Patches // copy the array
+        { state with Patches = Array.append patches' [| patch |]  }
 
     member state.Add (iobox : IOBox) =
       let updater (patch : Patch) =
@@ -41,7 +42,7 @@ module State =
       { state with Patches = Array.map updater state.Patches }
 
     member state.Add (cue : Cue) =
-      let copy = Array.map id state.Cues
+      let copy = Array.copy state.Cues
       { state with Cues =  Array.append copy [|cue|] }
 
     (*  UPDATE  *)

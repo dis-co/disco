@@ -15,14 +15,14 @@ module Store =
     with override self.ToString() : string =
                   sprintf "%s %s" (self.Event.ToString()) (self.State.ToString())
 
-  (*  _   _ _     _                   
-   * | | | (_)___| |_ ___  _ __ _   _ 
+  (*  _   _ _     _
+   * | | | (_)___| |_ ___  _ __ _   _
    * | |_| | / __| __/ _ \| '__| | | |
    * |  _  | \__ \ || (_) | |  | |_| |
    * |_| |_|_|___/\__\___/|_|   \__, |
-   *                            |___/ 
+   *                            |___/
    * Wrap up undo/redo logic.
-   *) 
+   *)
   type History<'a> (state : 'a) =
     let mutable depth = 10
     let mutable debug = false
@@ -53,7 +53,7 @@ module Store =
       let newvalues = value :: values
       if (not debug) && List.length newvalues > depth then
         values <- List.take depth newvalues
-      else 
+      else
         values <- newvalues
 
     member __.Undo () : 'a option =
@@ -101,7 +101,7 @@ module Store =
     let mutable history =
       new History<Action<'a>>({ State = state; Event = AppEvent(Initialize) })
 
-    let mutable listeners : Listener<'a> list = List.empty
+    let mutable listeners : Listener<'a> list = []
 
     (*
      * Notify all listeners of the AppEvent change
@@ -154,7 +154,7 @@ module Store =
 
     member __.History with get () = history
 
-    member __.Redo() = 
+    member __.Redo() =
       match history.Redo() with
         | Some log ->
           state <- log.State
@@ -163,10 +163,9 @@ module Store =
 
     member __.Undo() =
       match history.Undo() with
-        | Some log -> 
+        | Some log ->
           state <- log.State
           __.Notify log.Event |> ignore
         | _ -> ()
 
   and Listener<'a> = (Store<'a> -> AppEvent -> unit)
-

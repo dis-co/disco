@@ -1,9 +1,9 @@
 ﻿module Main =
 
-  // open Iris.Core
-  // open Iris.Web.Core
-  // open Iris.Web.Views
-    
+  open Iris.Core
+  open Iris.Web.Core
+  open Iris.Web.Views
+
   (*   __  __       _
       |  \/  | __ _(_)_ __
       | |\/| |/ _` | | '_ \
@@ -21,6 +21,6 @@
 
     // registerKeyHandlers context
     printfn "from main"
-    
+
 
 Main.main ()

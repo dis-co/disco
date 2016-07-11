@@ -12,7 +12,7 @@ module Store =
 
   let withStore (wrap : Patch -> Store<State> -> unit) =
     let patch : Patch =
-      { Id = "0xb4d1d34"
+      { Id = Guid "0xb4d1d34"
       ; Name = "patch-1"
       ; IOBoxes = Array.empty
       }
@@ -81,8 +81,8 @@ module Store =
         store.State.Patches.[0]
         |> (fun patch -> check ((Array.length patch.IOBoxes) = 0) "iobox array length should be 0")
 
-        let slice : StringSliceD = { Index = 0u; Value = "Hey" }
-        let iobox : IOBox = IOBox.String("0xb33f","url input", patch.Id, Array.empty, [| slice |])
+        let slice : StringSliceD = { Index = 0UL; Value = "Hey" }
+        let iobox : IOBox = IOBox.String(Guid "0xb33f","url input", patch.Id, Array.empty, [| slice |])
 
         store.Dispatch <| IOBoxEvent(Create, iobox)
 
@@ -92,8 +92,8 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->
       test "should not add an iobox to the store if patch does not exists" <| fun cb ->
-        let slice : StringSliceD = { Index = 0u; Value =  "Hey" }
-        let iobox = IOBox.String("0xb33f","url input", patch.Id, Array.empty, [| slice |])
+        let slice : StringSliceD = { Index = 0UL; Value =  "Hey" }
+        let iobox = IOBox.String(Guid "0xb33f","url input", patch.Id, Array.empty, [| slice |])
 
         store.Dispatch <| IOBoxEvent(Create, iobox)
         ((Array.length store.State.Patches) ==>> 0) cb
@@ -104,39 +104,39 @@ module Store =
         let name1 = "can a cat own a cat?"
         let name2 = "yes, cats are re-entrant."
 
-        let slice : StringSliceD = { Index = 0u; Value = "swell" } 
-        let iobox = IOBox.String("0xb33f", name1, patch.Id, Array.empty, [| slice |])
+        let slice : StringSliceD = { Index = 0UL; Value = "swell" }
+        let iobox = IOBox.String(Guid "0xb33f", name1, patch.Id, Array.empty, [| slice |])
 
         store.Dispatch <| PatchEvent(Create, patch)
         store.Dispatch <| IOBoxEvent(Create, iobox)
 
-        match Patch.findIOBox store.State.Patches iobox.Id with
+        match Patch.FindIOBox store.State.Patches iobox.Id with
           | Some(i) -> i.Name |==| name1
           | None -> bail "iobox is mysteriously missing"
 
         let updated = iobox.SetName name2
         store.Dispatch <| IOBoxEvent(Update, updated)
 
-        match Patch.findIOBox store.State.Patches iobox.Id with
+        match Patch.FindIOBox store.State.Patches iobox.Id with
           | Some(i) -> (i.Name ==>> name2) cb
           | None -> bail "iobox is mysteriously missing"
 
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->
       test "should remove an iobox from the store if it exists" <| fun cb ->
-        let slice : StringSliceD = { Index = 0u; Value = "swell" }
-        let iobox = IOBox.String("0xb33f", "hi", "0xb4d1d34", Array.empty, [| slice |])
+        let slice : StringSliceD = { Index = 0UL; Value = "swell" }
+        let iobox = IOBox.String(Guid "0xb33f", "hi", Guid "0xb4d1d34", Array.empty, [| slice |])
 
         store.Dispatch <| PatchEvent(Create, patch)
         store.Dispatch <| IOBoxEvent(Create, iobox)
 
-        match Patch.findIOBox store.State.Patches iobox.Id with
+        match Patch.FindIOBox store.State.Patches iobox.Id with
           | Some(_) -> ()
           | None    -> bail "iobox is mysteriously missing"
 
         store.Dispatch <| IOBoxEvent(Delete, iobox)
 
-        match Patch.findIOBox store.State.Patches iobox.Id with
+        match Patch.FindIOBox store.State.Patches iobox.Id with
           | Some(_) -> bail "iobox should be missing by now but isn't"
           | None    -> success cb
 

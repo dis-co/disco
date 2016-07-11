@@ -30,6 +30,7 @@ module Worker =
       new(_: string) = {}
 
 
+  [<NoComparison;NoEquality>]
   type WorkerEvent = { ports : MessagePort array }
 
   (*---------------------------------------------------------------------------*
@@ -91,12 +92,8 @@ module Worker =
     let fac = Math.random()
     JSON.stringify(Math.floor(float(time) * fac))
 
-  type Ports() =
-    member __.ToString() = failwith "ONLY IN JS"
-
   type GlobalContext() as this =
     let mutable count = 0
-    let mutable ports = new Ports()
     let mutable store = new Store<State>(Reducer, State.Empty)
     let mutable socket = None
 
@@ -107,12 +104,12 @@ module Worker =
         \___\___/|_| |_|___/\__|_|   \__,_|\___|\__\___/|_|
     *)
     do
-      let s = WebSocket.Create("ws://localhost:8080")
-      s.onopen  <- (fun _ -> this.Broadcast <| ClientMessage.Connected; failwith "obj")
-      s.onclose <- (fun _ -> this.Broadcast <| ClientMessage.Disconnected; failwith "obj")
-      s.onerror <- (fun e -> this.Broadcast <| ClientMessage.Error(JSON.stringify(e)); failwith "obj";)
-      s.onmessage <- (fun msg -> this.OnSocketMessage msg; failwith "obj")
-      socket <- Some(s)
+      let sock = WebSocket.Create("ws://localhost:8080")
+      sock.addEventListener_open((System.Func<Event,obj> (fun _ -> this.Broadcast <| ClientMessage.Connected; createObj [])), true)
+      sock.addEventListener_close((System.Func<CloseEvent,obj> (fun _ -> this.Broadcast <| ClientMessage.Disconnected; createObj [])), true)
+      sock.addEventListener_error((System.Func<ErrorEvent,obj> (fun e -> this.Broadcast <| ClientMessage.Error(JSON.stringify(e)); createObj [])), true)
+      sock.addEventListener_message((System.Func<MessageEvent,obj> (fun msg -> this.OnSocketMessage msg; createObj [])), true)
+      socket <- Some sock
 
 
     [<Emit "$0[$1] = $2">]
@@ -143,15 +140,11 @@ module Worker =
         if id <> k then
           let p = __.GetImpl(k)
           __.Send(msg, p)
-         
+
     member __.Remove (id : Session) =
       count <- count - 1
       __.RmImpl(id)
       __.Broadcast <| ClientMessage.Closed(id)
-
-    member __.Log o  =
-      printfn "%A" o
-      __.Broadcast <| ClientMessage.Log(o)
 
     (*-------------------------------------------------------------------------*
         ____             _        _
@@ -205,13 +198,13 @@ module Worker =
 
         | ClientMessage.Event(session, event') ->
           match event' with
-            | IOBoxEvent(_,_) as ev ->
+            | IOBoxEvent _    as ev ->
               store.Dispatch ev
               __.Multicast(session, ClientMessage.Render(store.State))
-            | PatchEvent(_,_) as ev ->
+            | PatchEvent _    as ev ->
               store.Dispatch ev
               __.Multicast(session, ClientMessage.Render(store.State))
-            | CueEvent(_,_)   as ev ->
+            | CueEvent _      as ev ->
               store.Dispatch ev
               __.Broadcast <| ClientMessage.Render(store.State)
             | _ -> __.Log "other are not supported in-worker"
@@ -248,5 +241,5 @@ module Worker =
         | Some(thing) -> thing.send(JSON.stringify(msg))
         | None -> __.Log("Not connected")
 
-    member __.Log (thing : obj) : unit =
+    member __.Log (thing : ClientLog) : unit =
       __.Broadcast <| ClientMessage.Log(thing)

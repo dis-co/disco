@@ -67,19 +67,19 @@ module Plugin =
   type Plugins () =
     (* ------------------------ internal -------------------------- *)
     [<Emit "$0[$1]">]
-    member private __.GetImpl (_: string) : Plugin = failwith "JS Only"
+    member private __.GetImpl (_: Id) : Plugin = failwith "JS Only"
 
     [<Emit "Object.keys($0)">]
-    member private __.IdsImpl () : string array = failwith "ONLY IN JS"
+    member private __.IdsImpl () : Id array = failwith "ONLY IN JS"
 
     [<Emit("$0[$1] = $2")>]
-    member private __.AddImpl(_: string, _: Plugin) = failwith "ONLY IN JS"
+    member private __.AddImpl(_: Id, _: Plugin) = failwith "ONLY IN JS"
 
     [<Emit "delete $0[$1] ">]
-    member private __.RmImpl(_: string) = failwith "ONLY IN JS"
+    member private __.RmImpl(_: Id) = failwith "ONLY IN JS"
 
     [<Emit " $0[$1] != null ">]
-    member private __.HasImpl (_: string) : bool = failwith "ONLY IN JS"
+    member private __.HasImpl (_: Id) : bool = failwith "ONLY IN JS"
 
     (* ------------------------ public interface -------------------------- *)
 
@@ -102,7 +102,7 @@ module Plugin =
     (* remove an instance of a view plugin *)
     member self.Remove (iobox : IOBox) = self.RmImpl(iobox.Id)
 
-    member self.Ids () : string array = self.IdsImpl()
+    member self.Ids () : Id array = self.IdsImpl()
 
     interface IDisposable with
       member self.Dispose () =

@@ -21,7 +21,7 @@ module Patches =
         Button
           [ OnClick (fun _ -> ctx.Trigger(ClientMessage.Stop)) ]
           [| Text "Restart Worker" |]
-        
+
         Button
           [ OnClick (fun _ -> ctx.Trigger(ClientMessage.Undo)) ]
           [| Text "Undo" |]
@@ -54,7 +54,7 @@ module Patches =
 
       let container =
         Li [] [|
-          Strong [] [| Text iobox.Name |] 
+          Strong [] [| Text iobox.Name |]
         |]
 
       match plugins.Get iobox with
@@ -63,7 +63,7 @@ module Patches =
 
     let patchView (context : ClientContext) (patch : Patch) : Html =
       let container =
-        Div [ ElmId patch.Id;  Class "patch" ] [|
+        Div [ ElmId (string patch.Id);  Class "patch" ] [|
           H3 [] [| Text "Patch:" |]
           P  [] [| Text patch.Name |]
         |]
@@ -71,7 +71,7 @@ module Patches =
       container <++ Array.map (ioboxView context) patch.IOBoxes
 
     let patchList (context : ClientContext) (patches : Patch array) =
-      let container = Div [ ElmId "patches" ] Array.empty
+      let container = Div [ ElmId "patches" ] [| |]
       container <++ Array.map (patchView context) patches
 
     let mainView (context : ClientContext) (content : Html) : Html =
@@ -84,14 +84,14 @@ module Patches =
     let patches (context : ClientContext) (state : State)  : Html =
       state.Patches
       |> (fun patches ->
-            if Array.length patches = 0
+            if Array.isEmpty patches
             then P [] [| Text "Empty" |]
             else patchList context patches)
 
     let destroy (context : ClientContext) (cue : Cue) =
-      let handler (_ : MouseEvent) = 
+      let handler (_ : MouseEvent) =
         match context.Session with
-          | Some(session) -> 
+          | Some(session) ->
             let ev = ClientMessage<State>.Event(session, CueEvent(Delete, Some(cue)))
             context.Trigger(ev)
           | _ -> printfn "Cannot delete cue. No Worker?"
@@ -106,7 +106,7 @@ module Patches =
              destroy context cue |]
 
     let cueList (context : ClientContext) (cues : Cue array) : Html =
-      Array.map (cueView context) cues 
+      Array.map (cueView context) cues
       |> Div [ ElmId "cues" ]
 
     let cues (context : ClientContext) (state : State) : Html =
@@ -117,7 +117,7 @@ module Patches =
         // List of cues
         state.Cues
         |> (fun cues ->
-              if Array.length cues = 0 then
+              if Array.isEmpty cues then
                 P [] [| Text "No cues" |]
               else
                 cueList context cues);
@@ -129,7 +129,7 @@ module Patches =
         Hr []
         cues context state
       |]
-      
+
     (*-------------------- RENDERER --------------------*)
 
     interface IWidget<State,ClientContext> with

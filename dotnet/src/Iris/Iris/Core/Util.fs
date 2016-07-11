@@ -6,6 +6,21 @@ open System.Net
 open System.Net.NetworkInformation
 open System.Text.RegularExpressions
 
+#if JAVASCRIPT
+//      _                  ____            _       _
+//     | | __ ___   ____ _/ ___|  ___ _ __(_)_ __ | |_
+//  _  | |/ _` \ \ / / _` \___ \ / __| '__| | '_ \| __|
+// | |_| | (_| |\ V / (_| |___) | (__| |  | | |_) | |_
+//  \___/ \__,_| \_/ \__,_|____/ \___|_|  |_| .__/ \__|
+//                                          |_|
+
+#else
+//    _   _ _____ _____
+//   | \ | | ____|_   _|
+//   |  \| |  _|   | |
+//  _| |\  | |___  | |
+// (_)_| \_|_____| |_|
+
 [<RequireQualifiedAccess>]
 module List =
   let reverse (lst : 'a list) : 'a list =
@@ -134,3 +149,5 @@ module Utils =
   //   else
   //     client.Post(inp)
   //     infLoop client
+
+#endif

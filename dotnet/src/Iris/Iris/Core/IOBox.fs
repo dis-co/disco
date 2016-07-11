@@ -112,7 +112,7 @@ type IOBox =
           ///
           /// in JavaScript an array will re-allocate automatically under the hood
           /// hence we don't need to worry about out-of-bounds errors.
-          let newarr = Array.map id arr
+          let newarr = Array.copy arr
           newarr.[int value.Index] <- data
           newarr
 #else
@@ -135,7 +135,7 @@ type IOBox =
           | StringSlice slice     -> StringBox { data with Slices = update data.Slices slice }
           | _                     -> current
 
-      | IntBox data as current    -> 
+      | IntBox data as current    ->
         match value with
           | IntSlice slice        -> IntBox { data with Slices = update data.Slices slice }
           | _                     -> current

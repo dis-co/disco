@@ -62,23 +62,23 @@ type AppEvent =
                       | AppEventT.Redo        -> "AppEvent(Redo)"
                       | AppEventT.Reset       -> "AppEvent(Reset)"
 
-                  | IOBoxEvent(t,_) -> 
+                  | IOBoxEvent(t,_) ->
                     match t with
                       | Create -> "IOBoxEvent(Create)"
                       | Delete -> "IOBoxEvent(Delete)"
                       | Update -> "IOBoxEvent(Update)"
                       | Read   -> "IOBoxEvent(Read)"
 
-                  | PatchEvent(t,_) -> 
+                  | PatchEvent(t,_) ->
                     match t with
-                      | Create -> "PatchEvent(Create)" 
+                      | Create -> "PatchEvent(Create)"
                       | Delete -> "PatchEvent(Delete)"
                       | Update -> "PatchEvent(Update)"
                       | Read   -> "PatchEvent(Read)"
 
-                  | CueEvent(t,_) -> 
+                  | CueEvent(t,_) ->
                     match t with
-                      | Create -> "CueEvent(Create)" 
+                      | Create -> "CueEvent(Create)"
                       | Delete -> "CueEvent(Delete)"
                       | Update -> "CueEvent(Update)"
                       | Read   -> "CueEvent(Read)"
@@ -132,7 +132,7 @@ type ClientMessage<'state> =
   | Closed      of Session            // other client tab/window notified of close
   | Stop                              // SharedWorker is requested to stop
   | Stopped                           // SharedWorker process has stopped
-  | Undo                              // Undo last step 
+  | Undo                              // Undo last step
   | Redo                              // Redo last undo step
   | Save                              // Save current state
   | Open                              // Open a project
@@ -142,5 +142,3 @@ type ClientMessage<'state> =
   | Event       of Session * AppEvent // encapsulates an action or event that happened on the client
   | Connected                         // worker websocket is connected to service
   | Disconnected                      // worker websocket was disconnected from service
-
-

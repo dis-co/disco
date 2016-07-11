@@ -1,7 +1,11 @@
 namespace Iris.Core
 
+#if JAVASCRIPT
+
+#else
 open FlatBuffers
 open Iris.Serialization.Raft
+#endif
 
 //  _   _           _        ____  _        _
 // | \ | | ___   __| | ___  / ___|| |_ __ _| |_ _   _ ___
@@ -28,6 +32,8 @@ type IrisNodeStatus =
       | "Paused"  -> Paused
       | _         -> failwithf "IrisNodeStatus: failed to parse %s" str
 
+#if JAVASCRIPT
+#else
     member self.ToOffset() =
       match self with
       | Running -> IrisNodeStatusFB.Running
@@ -40,6 +46,7 @@ type IrisNodeStatus =
       | IrisNodeStatusFB.Failed  -> Failed
       | IrisNodeStatusFB.Paused  -> Paused
       | v                        -> failwithf "IrisNodeState: failed to parse fb %A" v
+#endif
 
 
 //  ___      _       _   _           _
@@ -71,6 +78,21 @@ type IrisNode =
       self.IpAddr
       self.Port
       self.Status
+
+#if JAVASCRIPT
+  //      _                  ____            _       _
+  //     | | __ ___   ____ _/ ___|  ___ _ __(_)_ __ | |_
+  //  _  | |/ _` \ \ / / _` \___ \ / __| '__| | '_ \| __|
+  // | |_| | (_| |\ V / (_| |___) | (__| |  | | |_) | |_
+  //  \___/ \__,_| \_/ \__,_|____/ \___|_|  |_| .__/ \__| specific
+  //                                          |_|
+
+#else
+  //    _   _ _____ _____
+  //   | \ | | ____|_   _|
+  //   |  \| |  _|   | |
+  //  _| |\  | |___  | |
+  // (_)_| \_|_____| |_| specific
 
   member self.ToOffset (builder: FlatBufferBuilder) =
     let id = string self.MemberId |> builder.CreateString
@@ -106,3 +128,5 @@ type IrisNode =
     ; TaskId   = tid }
 
 type Node = Pallet.Core.Node<IrisNode>
+
+#endif

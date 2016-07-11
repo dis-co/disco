@@ -23,7 +23,7 @@ module ViewController =
     let patchView (patch : Patch) =
       H1 [ Class "patch" ] [| Text patch.Name |]
 
-    let patchList (patches : Patch array) = 
+    let patchList (patches : Patch array) =
       Div [] <| Array.map patchView patches
 
     let mainView content =
@@ -48,19 +48,19 @@ module ViewController =
 
     test "should render successive updates of a patch view" <| fun cb ->
       let patch1 : Patch =
-        { Id = "0xb33f"
+        { Id = Guid "0xb33f"
         ; Name = "patch-1"
         ; IOBoxes = Array.empty
         }
 
       let patch2 : Patch =
-        { Id = "0xd001"
+        { Id = Guid "0xd001"
         ; Name = "patch-2"
         ; IOBoxes = Array.empty
         }
 
       let patch3 : Patch =
-        { Id = "0x400f"
+        { Id = Guid "0x400f"
         ; Name = "patch-3"
         ; IOBoxes = Array.empty
         }
@@ -94,7 +94,7 @@ module ViewController =
     (* ------------------------------------------------------------------------ *)
     test "should take care of removing its root element on Dispose" <| fun cb ->
       let patch1 : Patch =
-        { Id = "0xb33f"
+        { Id = Guid "0xb33f"
         ; Name = "patch-1"
         ; IOBoxes = Array.empty
         }
