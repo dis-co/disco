@@ -21,6 +21,15 @@ type AppState =
   ; Raft:     Raft
   }
 
+  with
+    override self.ToString() =
+      sprintf "Clients: %A\nSessions: %A\nProjects: %A\nPeers: %A\nRaft: %A"
+        self.Clients
+        self.Sessions
+        self.Projects
+        self.Peers
+        self.Raft
+
 [<AutoOpen>]
 module AppStateUtils =
 
