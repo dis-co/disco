@@ -6,17 +6,15 @@ var cfg = {
   entry: "./Main.js",
   context: path.join(__dirname, "..", "..", "..", "bin", "Debug", "Iris", "Tests", "Web"),
   output: {
-    path: path.join(__dirname, "..", "..", "..","bin"),
+    path: path.join(__dirname, "..", "..", "..","bin","Debug","Web.Tests","js"),
     filename: "iris.tests.js"
   },
   module: {
-    preLoaders: [
-      {
-        test: /\.js$/,
-        exclude: /node_modules/,
-        loader: "source-map-loader"
-      }
-    ]
+    preLoaders: [{
+      test: /\.js$/,
+      exclude: /node_modules/,
+      loader: "source-map-loader"
+    }]
   }
 };
 

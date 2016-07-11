@@ -21,7 +21,7 @@ pallet.tests:
 # | | | | (_| | |_| |\ V /  __/
 # |_| |_|\__,_|\__|_| \_/ \___|
 
-runtests:
+run.tests:
 	${BUILD} RunTests
 
 service:
@@ -54,6 +54,9 @@ web.tests.watch:
 web.tests.fsproj:
 	${BUILD} BuildWebTestsFsProj
 
+run.web.tests:
+	${BUILD} RunWebTests
+
 web.tests:
 	${BUILD} BuildWebTests
 
@@ -71,6 +74,8 @@ worker:
 #  / _` | | |
 # | (_| | | |
 #  \__,_|_|_|
+
+tests.all: run.web.tests pallet.tests run.tests
 
 debug.all:
 	${BUILD} DebugAll

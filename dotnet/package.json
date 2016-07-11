@@ -16,6 +16,7 @@
   "readme": "README.org",
   "repository": "https://bitbucket.com/nsynk/iris.git",
   "devDependencies": {
+    "babel-polyfill": "^6.9.1",
     "fable-compiler": "^0.3.22",
     "source-map-loader": "^0.1.5",
     "webpack": "^1.13.1"

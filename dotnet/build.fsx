@@ -86,6 +86,13 @@ let (|Fsproj|Csproj|) (projFileName:string) =
     | f when f.EndsWith("csproj") -> Csproj
     | _                           -> failwith (sprintf "Project file %s not supported. Unknown project type." projFileName)
 
+
+let setParams cfg defaults =
+  { defaults with
+      Verbosity = Some(Quiet)
+      Targets = ["Build"]
+      Properties = [ "Configuration", cfg ] }
+
 //  ____              _       _
 // | __ )  ___   ___ | |_ ___| |_ _ __ __ _ _ __
 // |  _ \ / _ \ / _ \| __/ __| __| '__/ _` | '_ \
@@ -100,7 +107,14 @@ Target "Bootstrap"
         { p with
             NpmFilePath = npmPath
             Command = Install Standard
-            WorkingDirectory = "" }))
+            WorkingDirectory = "" }) |> ignore
+
+    ExecProcess (fun info ->
+                    info.FileName <- "npm"
+                    info.Arguments <- "-g install mocha-phantomjs"
+                    info.WorkingDirectory <- "$HOME")
+                (TimeSpan.FromMinutes 5.0)
+    |> ignore)
 
 //     _                           _     _       ___        __
 //    / \   ___ ___  ___ _ __ ___ | |__ | |_   _|_ _|_ __  / _| ___
@@ -263,11 +277,8 @@ Target "GenerateSerialization"
 
    File.WriteAllText((baseDir @@ "Serialization.csproj"), top + files + bot)
 
-   MSBuildDebug "" "Build" [ baseDir @@ "Serialization.csproj" ]
-   |> ignore
-
-   MSBuildRelease "" "Build" [ baseDir @@ "Serialization.csproj" ]
-   |> ignore)
+   build (setParams "Debug")   (baseDir @@ "Serialization.csproj") |> DoNothing
+   build (setParams "Release") (baseDir @@ "Serialization.csproj") |> DoNothing)
 
 //   __
 //  / _|___ _____ __ ___   __ _
@@ -278,8 +289,8 @@ Target "GenerateSerialization"
 
 Target "FsZMQ"
   (fun _ ->
-   MSBuildDebug   "" "Build" [ "src/fszmq/fszmq.fsproj" ] |> ignore
-   MSBuildRelease "" "Build" [ "src/fszmq/fszmq.fsproj" ] |> ignore)
+   build (setParams "Debug")   "src/fszmq/fszmq.fsproj" |> ignore
+   build (setParams "Release") "src/fszmq/fszmq.fsproj" |> ignore)
 
 //  ____       _ _      _
 // |  _ \ __ _| | | ___| |_
@@ -289,12 +300,12 @@ Target "FsZMQ"
 
 Target "Pallet"
   (fun _ ->
-   MSBuildDebug   "" "Build" [ "src/Pallet/Pallet.fsproj" ] |> ignore
-   MSBuildRelease "" "Build" [ "src/Pallet/Pallet.fsproj" ] |> ignore)
+   build (setParams "Debug")   "src/Pallet/Pallet.fsproj" |> ignore
+   build (setParams "Release") "src/Pallet/Pallet.fsproj" |> ignore)
 
 Target "PalletTests"
   (fun _ ->
-   MSBuildDebug   "" "Build" [ "src/Pallet.Tests/Pallet.Tests.fsproj" ] |> ignore)
+    build (setParams "Debug") "src/Pallet.Tests/Pallet.Tests.fsproj" |> ignore)
 
 Target "RunPalletTests"
   (fun _ ->
@@ -329,8 +340,7 @@ Target "BuildFrontend" (fun _ ->
     |> ignore)
 
 Target "BuildFrontendFsProj" (fun _ ->
-    MSBuildRelease "" "Rebuild" [ baseDir @@ "Frontend.fsproj" ]
-    |> ignore)
+    build (setParams "Debug") (baseDir @@ "Frontend.fsproj") |> ignore)
 
 Target "BuildWorker" (fun _ ->
     Npm(fun p ->
@@ -349,10 +359,28 @@ Target "WatchWorker" (fun _ ->
     |> ignore)
 
 Target "BuildWorkerFsProj" (fun _ ->
-    MSBuildRelease "" "Rebuild" [ baseDir @@ "Worker.fsproj" ]
-    |> ignore)
+    build (setParams "Debug") (baseDir @@ "Frontend.fsproj") |> ignore)
+
+//  _____         _
+// |_   _|__  ___| |_ ___
+//   | |/ _ \/ __| __/ __|
+//   | |  __/\__ \ |_\__ \
+// JS|_|\___||___/\__|___/
 
 Target "BuildWebTests" (fun _ ->
+    let testsDir = baseDir @@ "bin/Debug/Web.Tests"
+    let jsDir = testsDir @@ "js"
+    let cssDir = testsDir @@ "css"
+    let npmMods = "./node_modules"
+    let assetsDir = baseDir @@ "/assets/frontend"
+
+    CopyDir testsDir assetsDir (konst true) |> ignore
+    CopyFile cssDir (npmMods @@ "/mocha/mocha.css")
+    CopyFile jsDir  (npmMods @@ "/mocha/mocha.js")
+    CopyFile jsDir  (npmMods @@ "/babel-polyfill/dist/polyfill.js")
+    CopyFile jsDir  (npmMods @@ "/virtual-dom/dist/virtual-dom.js")
+    CopyFile (jsDir @@ "expect.js") (npmMods @@ "/expect.js/index.js")
+
     Npm(fun p ->
         { p with
             NpmFilePath = npmPath
@@ -369,8 +397,18 @@ Target "WatchWebTests" (fun _ ->
     |> ignore)
 
 Target "BuildWebTestsFsProj" (fun _ ->
-    MSBuildRelease "" "Rebuild" [ baseDir @@ "Web.Tests.fsproj" ]
-    |> ignore)
+    build (setParams "Debug") (baseDir @@ "Web.Tests.fsproj") |> ignore)
+
+Target "RunWebTests" (fun _ ->
+    ExecProcess (fun info ->
+                    info.FileName <- "mocha-phantomjs"
+                    info.Arguments <- "-p /home/k/.nix-profile/bin/phantomjs -R dot tests.html"
+                    info.WorkingDirectory <- "src/Iris/bin/Debug/Web.Tests")
+                (TimeSpan.FromMinutes 5.0)
+    |> fun code ->
+      match code with
+      | 0 -> printfn "ALL GOOD"
+      | _ -> exit 1)
 
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
@@ -379,28 +417,16 @@ Target "BuildWebTestsFsProj" (fun _ ->
 // (_)_| \_|_____| |_|
 
 Target "BuildDebugService"
-  (fun _ ->
-    MSBuildDebug "" "Rebuild" [ baseDir @@ "Service.fsproj" ]
-    // |> BuildFrontEnd
-    |> ignore)
+  (fun _ -> build (setParams "Debug") (baseDir @@ "Service.fsproj") |> ignore)
 
 Target "BuildReleaseService"
-  (fun _ ->
-    MSBuildRelease "" "Rebuild" [ baseDir @@ "Service.fsproj" ]
-    // |> BuildFrontEnd
-    |> ignore)
+  (fun _ -> build (setParams "Release") (baseDir @@ "Service.fsproj") |> ignore)
 
 Target "BuildDebugNodes"
-  (fun _ ->
-    MSBuildDebug "" "Rebuild" [ baseDir @@ "Nodes.fsproj" ]
-    // |> BuildFrontEnd
-    |> ignore)
+  (fun _ -> build (setParams "Debug") (baseDir @@ "Nodes.fsproj") |> ignore)
 
 Target "BuildReleaseNodes"
-  (fun _ ->
-    MSBuildRelease "" "Rebuild" [ baseDir @@ "Nodes.fsproj" ]
-    // |> BuildFrontEnd
-    |> ignore)
+  (fun _ -> build (setParams "Release") (baseDir @@ "Nodes.fsproj") |> ignore)
 
 //  _____         _
 // |_   _|__  ___| |_ ___
@@ -422,9 +448,7 @@ Target "BuildReleaseNodes"
 *)
 
 Target "BuildTests"
-  (fun _ ->
-    MSBuildDebug "" "Rebuild" [ baseDir @@ "Tests.fsproj" ] |> ignore
-    |> ignore)
+  (fun _ -> build (setParams "Debug") (baseDir @@ "Tests.fsproj") |> ignore)
 
 Target "RunTests"
   (fun _ ->
@@ -595,6 +619,9 @@ Target "Release" DoNothing
 
 "CreateArchive"
 ==> "Release"
+
+"BuildWebTests"
+==> "RunWebTests"
 
 //  ____       _                    _    _ _
 // |  _ \  ___| |__  _   _  __ _   / \  | | |
