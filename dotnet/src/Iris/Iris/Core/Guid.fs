@@ -1,6 +1,7 @@
 namespace Iris.Core
 
 open System
+open Fable.Core
 
 //   ____       _     _
 //  / ___|_   _(_) __| |
@@ -8,6 +9,7 @@ open System
 // | |_| | |_| | | (_| |
 //  \____|\__,_|_|\__,_|
 
+[<Erase>]
 type Guid =
   | Guid of string
 
