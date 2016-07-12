@@ -13,12 +13,16 @@ open Pallet.Core
 // /_/   \_\ .__/| .__/____/ \__\__,_|\__\___|
 //         |_|   |_|
 
+[<NoComparison;NoEquality>]
 type AppState =
-  { Clients:  IrisNode       list
-  ; Sessions: BrowserSession list
-  ; Projects: Map<ProjectId, Project>
-  ; Peers:    Map<MemberId, string>
-  ; Raft:     Raft
+  { Clients:     IrisNode       list
+  ; Sessions:    BrowserSession list
+  ; Projects:    Map<ProjectId, Project>
+  ; Peers:       Map<MemberId, string>
+  ; Connections: Map<MemberId, Socket>
+  ; Context:     Context
+  ; Raft:        Raft
+  ; Options:     RaftOptions
   }
 
   with

@@ -50,7 +50,8 @@ module CommandLine =
       ; Start      = opts.Contains     <@ Start      @>
       ; LeaderId   = opts.TryGetResult <@ LeaderId   @> |> Option.map trim
       ; LeaderIp   = opts.TryGetResult <@ LeaderIp   @>
-      ; LeaderPort = opts.TryGetResult <@ LeaderPort @> }
+      ; LeaderPort = opts.TryGetResult <@ LeaderPort @>
+      ; MaxRetries = 5u }
     with
       | ex ->
         printfn "Error: %s" ex.Message
@@ -76,12 +77,12 @@ module CommandLine =
       | _ -> None
 
 
-  let tryAppendEntry (ctx: AppContext) str =
+  let tryAppendEntry (ctx: RaftServer) str =
     let entry = Log.make ctx.State.Raft.CurrentTerm <| AddClient "hello"
     ctx.Append entry
 
-  let timeoutRaft (ctx: AppContext) =
-    ctx.Timeout()
+  let timeoutRaft (ctx: RaftServer) =
+    ctx.ForceTimeout()
 
   /////////////////////////////////////////
   //   ____                      _       //
@@ -146,14 +147,13 @@ module CommandLine =
   //                  |_|               //
   ////////////////////////////////////////
 
-  let consoleLoop (context: AppContext) =
+  let consoleLoop (context: RaftServer) =
     let kont = ref true
     let rec proc kontinue =
       printf "~> "
       let input = Console.ReadLine()
       match input with
-        | Exit        -> context.Stop()
-                         kontinue := false
+        | Exit        -> context.Stop(); kontinue := false
         | Debug opt   -> context.Options <- { context.Options with Debug = opt }
         | Nodes       -> Map.iter (fun _ a -> printfn "Node: %A" a) context.State.Peers
         | Append ety  -> tryAppendEntry context ety

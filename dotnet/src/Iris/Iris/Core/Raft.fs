@@ -23,6 +23,7 @@ type RaftOptions =
   ; LeaderId         : string option
   ; LeaderIp         : string option
   ; LeaderPort       : uint32 option
+  ; MaxRetries       : uint32
   }
 
 
