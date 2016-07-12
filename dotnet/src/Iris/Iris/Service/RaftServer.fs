@@ -96,12 +96,12 @@ module RaftServer =
   /// - appState: application state TVar
   ///
   /// Returns: RaftMsg option
-  let performRequest (thing: RaftMsg) (node: Node<IrisNode>) appState =
+  let performRequest (thing: RaftRequest) (node: Node<IrisNode>) appState =
     stm {
       let mutable frames = [| |]
 
       let handler _ (msgs : Message array) =
-        frames <- Array.map (Message.data >> decode<RaftMsg>) msgs
+        frames <- Array.map (Message.data >> decode<RaftResponse>) msgs
 
       let! state = readTVar appState
       let! client = getSocket node appState
@@ -303,7 +303,7 @@ module RaftServer =
         return! redirectR state
     }
 
-  let receiveEntry entry appState cbs =
+  let appendEntry entry appState cbs =
     stm {
       let! state = readTVar appState
 
@@ -352,8 +352,6 @@ module RaftServer =
 
         | InstallSnapshot (sender, snapshot) ->
           return! handleInstallSnapshot sender snapshot appState cbs
-
-        | _ -> return EmptyResponse
     }
 
   let handleResponse msg appState cbs =
@@ -379,9 +377,6 @@ module RaftServer =
 
         | ErrorResponse err ->
           failwithf "[ERROR] %A" err
-
-        | resp ->
-          failwithf "Unknown response; %A" resp
     }
 
   let startServer appState cbs =
@@ -396,7 +391,7 @@ module RaftServer =
 
       let rec proc () =
         async {
-          let msg : RaftMsg option =
+          let msg : RaftRequest option =
             recv server |> decode
 
           let response =
@@ -544,7 +539,7 @@ module RaftServer =
         let changes = [| NodeRemoved state.Raft.Node |]
         let entry = JointConsensus(RaftId.Create(), 0UL, term , changes, None)
 
-        let! response = receiveEntry entry appState cbs
+        let! response = appendEntry entry appState cbs
 
         failwith "FIXME: must now block to await the committed state for response"
     }
@@ -558,7 +553,7 @@ module RaftServer =
   /// - inbox: MailboxProcessor
   ///
   /// Returns: Async<(Node<IrisNode> * RaftMsg)>
-  let rec requestLoop appState cbs (inbox: Actor<(Node<IrisNode> * RaftMsg)>) =
+  let rec requestLoop appState cbs (inbox: Actor<(Node<IrisNode> * RaftRequest)>) =
     async {
       // block until there is a new message in my inbox
       let! (node, msg) = inbox.Receive()
@@ -656,23 +651,13 @@ module RaftServer =
     let requestWorker =
       let cts = new CancellationTokenSource()
       workertoken := Some cts
-      new Actor<(Node<IrisNode> * RaftMsg)> (requestLoop appState cbs, cts.Token)
+      new Actor<(Node<IrisNode> * RaftRequest)> (requestLoop appState cbs, cts.Token)
 
-    ////////////////////////////////////
-    //  _       _ _                   //
-    // (_)_ __ (_) |_                 //
-    // | | '_ \| | __|                //
-    // | | | | | | |_                 //
-    // |_|_| |_|_|\__| the machine.   //
-    ////////////////////////////////////
-
-    ////////////////////////////////////////////////////
-    //                           _                    //
-    //  _ __ ___   ___ _ __ ___ | |__   ___ _ __ ___  //
-    // | '_ ` _ \ / _ \ '_ ` _ \| '_ \ / _ \ '__/ __| //
-    // | | | | | |  __/ | | | | | |_) |  __/ |  \__ \ //
-    // |_| |_| |_|\___|_| |_| |_|_.__/ \___|_|  |___/ //
-    ////////////////////////////////////////////////////
+    //                           _
+    //  _ __ ___   ___ _ __ ___ | |__   ___ _ __ ___
+    // | '_ ` _ \ / _ \ '_ ` _ \| '_ \ / _ \ '__/ __|
+    // | | | | | |  __/ | | | | | |_) |  __/ |  \__ \
+    // |_| |_| |_|\___|_| |_| |_|_.__/ \___|_|  |___/
 
     /// ## Start the Raft engine
     ///
@@ -694,11 +679,36 @@ module RaftServer =
         periodictoken := Some prdtkn
       } |> atomically
 
+    /// ## Stop the Raft engine, sockets and all.
+    ///
+    /// Description
+    ///
+    /// ### Signature:
+    /// - arg: arg
+    /// - arg: arg
+    /// - arg: arg
+    ///
+    /// Returns: Type
     member self.Stop() =
       stm {
+        // cancel the running async tasks
         cancelToken periodictoken
         cancelToken servertoken
         cancelToken workertoken
+
+        let! state = readTVar appState
+
+        // disconnect all cached sockets
+        state.Connections
+        |> Map.iter (fun (mid: MemberId) (sock: Socket) ->
+                    let nodeinfo = List.tryFind (fun client -> client.MemberId = mid) state.Clients
+                    match nodeinfo with
+                      | Some info -> formatUri info |> disconnect sock
+                      | _         -> ())
+
+
+        do! writeTVar appState { state with Connections = Map.empty }
+
 
         failwith "FIXME: STOP SHOULD ALSO PERSIST LAST STATE TO DISK"
       } |> atomically
@@ -721,8 +731,20 @@ module RaftServer =
       with get () = atomically (readTVar appState)
 
     member self.Append entry =
+      appendEntry entry appState cbs
+      |> atomically
 
-      receiveEntry
+    member self.EntryCommitted resp =
+      stm {
+        let! state = readTVar appState
+
+        let committed =
+          match responseCommitted resp |> runRaft state.Raft cbs with
+          | Right (committed, _) -> committed
+          | _                    -> false
+
+        return committed
+      } |> atomically
 
     member self.ForceTimeout() =
       failwith "FIXME: ForceTimeout"

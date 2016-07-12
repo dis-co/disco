@@ -156,7 +156,10 @@ module CommandLine =
         | Exit        -> context.Stop(); kontinue := false
         | Debug opt   -> context.Options <- { context.Options with Debug = opt }
         | Nodes       -> Map.iter (fun _ a -> printfn "Node: %A" a) context.State.Peers
-        | Append ety  -> tryAppendEntry context ety
+        | Append ety  ->
+          match tryAppendEntry context ety with
+            | Some response -> failwith "FIXME: should now loop and wait while the request is being committed"
+            | _ -> failwith "FIXME: should handle case when appending new entry was not possible"
         | Timeout     -> timeoutRaft context
         | Status      -> printfn "Status:\n%s" <| context.State.ToString ()
         | _           -> printfn "unknown command"

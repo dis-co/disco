@@ -110,28 +110,27 @@ module RaftMsgFB =
     RequestSnapshotResponseFB.CreateRequestSnapshotResponseFB(builder, id, sr.ToOffset builder)
     |> getValue
 
-//  ____        __ _     __  __
-// |  _ \ __ _ / _| |_  |  \/  |___  __ _
-// | |_) / _` | |_| __| | |\/| / __|/ _` |
-// |  _ < (_| |  _| |_  | |  | \__ \ (_| |
-// |_| \_\__,_|_|  \__| |_|  |_|___/\__, |
-//                                  |___/
-type RaftMsg =
+//  ____        __ _     ____                            _
+// |  _ \ __ _ / _| |_  |  _ \ ___  __ _ _   _  ___  ___| |_
+// | |_) / _` | |_| __| | |_) / _ \/ _` | | | |/ _ \/ __| __|
+// |  _ < (_| |  _| |_  |  _ <  __/ (_| | |_| |  __/\__ \ |_
+// |_| \_\__,_|_|  \__| |_| \_\___|\__, |\__,_|\___||___/\__|
+//                                    |_|
+
+type RaftRequest =
   | RequestVote             of sender:NodeId * req:VoteRequest
-  | RequestVoteResponse     of sender:NodeId * vote:VoteResponse
   | AppendEntries           of sender:NodeId * ae:AppendEntries
-  | AppendEntriesResponse   of sender:NodeId * ar:AppendResponse
   | InstallSnapshot         of sender:NodeId * is:InstallSnapshot
-  | InstallSnapshotResponse of sender:NodeId * ir:SnapshotResponse
   | HandShake               of sender:Node
   | HandWaive               of sender:Node
-  | Redirect                of leader:Node
-  | Welcome
-  | Arrivederci
-  | ErrorResponse           of RaftError
-  | EmptyResponse
-
   with
+
+    //  _____     ____        _
+    // |_   _|__ | __ ) _   _| |_ ___  ___
+    //   | |/ _ \|  _ \| | | | __/ _ \/ __|
+    //   | | (_) | |_) | |_| | ||  __/\__ \
+    //   |_|\___/|____/ \__, |\__\___||___/
+    //                  |___/
 
     member self.ToBytes () : byte array =
       let builder = new FlatBufferBuilder(1)
@@ -142,29 +141,14 @@ type RaftMsg =
         |> build builder RaftMsgTypeFB.RequestVoteFB
         |> builder.Finish
 
-      | RequestVoteResponse(nid, resp) ->
-        createRequestVoteResponseFB builder nid resp
-        |> build builder RaftMsgTypeFB.RequestVoteResponseFB
-        |> builder.Finish
-
       | AppendEntries(nid, ae) ->
         createAppendEntriesFB builder nid ae
         |> build builder RaftMsgTypeFB.RequestAppendEntriesFB
         |> builder.Finish
 
-      | AppendEntriesResponse(nid, ar) ->
-        createAppendResponseFB builder nid ar
-        |> build builder RaftMsgTypeFB.RequestAppendResponseFB
-        |> builder.Finish
-
       | InstallSnapshot(nid, is) ->
         createInstallSnapshotFB builder nid is
         |> build builder RaftMsgTypeFB.RequestInstallSnapshotFB
-        |> builder.Finish
-
-      | InstallSnapshotResponse(nid, ir) ->
-        createSnapshotResponseFB builder nid ir
-        |> build builder RaftMsgTypeFB.RequestSnapshotResponseFB
         |> builder.Finish
 
       | HandShake node ->
@@ -177,6 +161,98 @@ type RaftMsg =
         HandWaiveFB.CreateHandWaiveFB(builder, node.ToOffset builder)
         |> getValue
         |> build builder RaftMsgTypeFB.HandWaiveFB
+        |> builder.Finish
+
+      builder.SizedByteArray()
+
+    //  _____                    ____        _
+    // |  ___| __ ___  _ __ ___ | __ ) _   _| |_ ___  ___
+    // | |_ | '__/ _ \| '_ ` _ \|  _ \| | | | __/ _ \/ __|
+    // |  _|| | | (_) | | | | | | |_) | |_| | ||  __/\__ \
+    // |_|  |_|  \___/|_| |_| |_|____/ \__, |\__\___||___/
+    //                                 |___/
+
+    static member FromBytes (bytes: byte array) : RaftRequest option =
+      let msg = RaftMsgFB.GetRootAsRaftMsgFB(new ByteBuffer(bytes))
+      match msg.MsgType with
+        | RaftMsgTypeFB.RequestVoteFB ->
+          let entry = msg.GetMsg(new RequestVoteFB())
+          let request = VoteRequest<IrisNode>.FromFB(entry.Request)
+
+          RequestVote(RaftId entry.NodeId, request)
+          |> Some
+
+        | RaftMsgTypeFB.RequestAppendEntriesFB ->
+          let entry = msg.GetMsg(new RequestAppendEntriesFB())
+          let request = AppendEntries.FromFB entry.Request
+
+          AppendEntries(RaftId entry.NodeId, request)
+          |> Some
+
+        | RaftMsgTypeFB.RequestInstallSnapshotFB ->
+          let entry = msg.GetMsg(new RequestInstallSnapshotFB())
+          let request = InstallSnapshot.FromFB entry.Request
+
+          InstallSnapshot(RaftId entry.NodeId, request)
+          |> Some
+
+        | RaftMsgTypeFB.HandShakeFB ->
+          let entry = msg.GetMsg(new HandShakeFB())
+          let node = Node.FromFB entry.Node
+
+          HandShake(node) |> Some
+
+        | RaftMsgTypeFB.HandWaiveFB ->
+          let entry = msg.GetMsg(new HandWaiveFB())
+          let node = Node.FromFB entry.Node
+
+          HandWaive(node) |> Some
+
+        | _ ->
+          failwith "unable to de-serialize unknown garbage RaftMsgTypeFB"
+
+//  ____        __ _     ____
+// |  _ \ __ _ / _| |_  |  _ \ ___  ___ _ __   ___  _ __  ___  ___
+// | |_) / _` | |_| __| | |_) / _ \/ __| '_ \ / _ \| '_ \/ __|/ _ \
+// |  _ < (_| |  _| |_  |  _ <  __/\__ \ |_) | (_) | | | \__ \  __/
+// |_| \_\__,_|_|  \__| |_| \_\___||___/ .__/ \___/|_| |_|___/\___|
+//                                     |_|
+
+type RaftResponse =
+  | RequestVoteResponse     of sender:NodeId * vote:VoteResponse
+  | AppendEntriesResponse   of sender:NodeId * ar:AppendResponse
+  | InstallSnapshotResponse of sender:NodeId * ir:SnapshotResponse
+  | Redirect                of leader:Node
+  | Welcome
+  | Arrivederci
+  | ErrorResponse           of RaftError
+
+  with
+
+    //  _____     ____        _
+    // |_   _|__ | __ ) _   _| |_ ___  ___
+    //   | |/ _ \|  _ \| | | | __/ _ \/ __|
+    //   | | (_) | |_) | |_| | ||  __/\__ \
+    //   |_|\___/|____/ \__, |\__\___||___/
+    //                  |___/
+
+    member self.ToBytes () : byte array =
+      let builder = new FlatBufferBuilder(1)
+
+      match self with
+      | RequestVoteResponse(nid, resp) ->
+        createRequestVoteResponseFB builder nid resp
+        |> build builder RaftMsgTypeFB.RequestVoteResponseFB
+        |> builder.Finish
+
+      | AppendEntriesResponse(nid, ar) ->
+        createAppendResponseFB builder nid ar
+        |> build builder RaftMsgTypeFB.RequestAppendResponseFB
+        |> builder.Finish
+
+      | InstallSnapshotResponse(nid, ir) ->
+        createSnapshotResponseFB builder nid ir
+        |> build builder RaftMsgTypeFB.RequestSnapshotResponseFB
         |> builder.Finish
 
       | Redirect node ->
@@ -205,37 +281,23 @@ type RaftMsg =
         |> build builder RaftMsgTypeFB.ErrorResponseFB
         |> builder.Finish
 
-      | EmptyResponse ->
-        EmptyResponseFB.StartEmptyResponseFB(builder)
-        EmptyResponseFB.EndEmptyResponseFB(builder)
-        |> getValue
-        |> build builder RaftMsgTypeFB.EmptyResponseFB
-        |> builder.Finish
-
       builder.SizedByteArray()
 
-    static member FromBytes (bytes: byte array) : RaftMsg option =
+    //  _____                    ____        _
+    // |  ___| __ ___  _ __ ___ | __ ) _   _| |_ ___  ___
+    // | |_ | '__/ _ \| '_ ` _ \|  _ \| | | | __/ _ \/ __|
+    // |  _|| | | (_) | | | | | | |_) | |_| | ||  __/\__ \
+    // |_|  |_|  \___/|_| |_| |_|____/ \__, |\__\___||___/
+    //                                 |___/
+
+    static member FromBytes (bytes: byte array) : RaftResponse option =
       let msg = RaftMsgFB.GetRootAsRaftMsgFB(new ByteBuffer(bytes))
       match msg.MsgType with
-        | RaftMsgTypeFB.RequestVoteFB ->
-          let entry = msg.GetMsg(new RequestVoteFB())
-          let request = VoteRequest<IrisNode>.FromFB(entry.Request)
-
-          RequestVote(RaftId entry.NodeId, request)
-          |> Some
-
         | RaftMsgTypeFB.RequestVoteResponseFB ->
           let entry = msg.GetMsg(new RequestVoteResponseFB())
           let response = VoteResponse.FromFB entry.Response
 
           RequestVoteResponse(RaftId entry.NodeId, response)
-          |> Some
-
-        | RaftMsgTypeFB.RequestAppendEntriesFB ->
-          let entry = msg.GetMsg(new RequestAppendEntriesFB())
-          let request = AppendEntries.FromFB entry.Request
-
-          AppendEntries(RaftId entry.NodeId, request)
           |> Some
 
         | RaftMsgTypeFB.RequestAppendResponseFB ->
@@ -245,31 +307,12 @@ type RaftMsg =
           AppendEntriesResponse(RaftId entry.NodeId, response)
           |> Some
 
-        | RaftMsgTypeFB.RequestInstallSnapshotFB ->
-          let entry = msg.GetMsg(new RequestInstallSnapshotFB())
-          let request = InstallSnapshot.FromFB entry.Request
-
-          InstallSnapshot(RaftId entry.NodeId, request)
-          |> Some
-
         | RaftMsgTypeFB.RequestSnapshotResponseFB ->
           let entry = msg.GetMsg(new RequestSnapshotResponseFB())
           let response = SnapshotResponse.FromFB entry.Response
 
           InstallSnapshotResponse(RaftId entry.NodeId, response)
           |> Some
-
-        | RaftMsgTypeFB.HandShakeFB ->
-          let entry = msg.GetMsg(new HandShakeFB())
-          let node = Node.FromFB entry.Node
-
-          HandShake(node) |> Some
-
-        | RaftMsgTypeFB.HandWaiveFB ->
-          let entry = msg.GetMsg(new HandWaiveFB())
-          let node = Node.FromFB entry.Node
-
-          HandWaive(node) |> Some
 
         | RaftMsgTypeFB.RedirectFB ->
           let entry = msg.GetMsg(new RedirectFB())
@@ -288,8 +331,6 @@ type RaftMsg =
 
           ErrorResponse(RaftError.FromFB entry.Error)
           |> Some
-
-        | RaftMsgTypeFB.EmptyResponseFB -> Some EmptyResponse
 
         | _ ->
           failwith "unable to de-serialize unknown garbage RaftMsgTypeFB"
