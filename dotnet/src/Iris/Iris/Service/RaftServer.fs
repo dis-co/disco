@@ -373,10 +373,9 @@ module RaftServer =
 
       let! state = readTVar appState
       let server = rep state.Context
+      let uri = state.Raft.Node.Data |> formatUri
 
-      state.Raft.Node.Data
-      |> formatUri
-      |> bind server
+      bind server uri
 
       let rec proc () =
         async {
@@ -393,7 +392,11 @@ module RaftServer =
 
           response |> encode |> send server
 
-          return! proc ()
+          if token.IsCancellationRequested then
+            unbind server uri
+            dispose server
+          else
+            return! proc ()
         }
 
       Async.Start(proc (), token.Token)
@@ -545,7 +548,7 @@ module RaftServer =
       return! requestLoop appState cbs inbox
     }
 
-  let forceElections appState cbs =
+  let forceElection appState cbs =
     stm {
       let! state = readTVar appState
 
