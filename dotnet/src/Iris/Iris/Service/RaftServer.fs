@@ -47,6 +47,13 @@ module RaftServer =
     ; Options     = options
     }
 
+  let cancelToken (cts: CancellationTokenSource option ref) =
+    match !cts with
+    | Some token ->
+      token.Cancel()
+      cts := None
+    | _ -> ()
+
   /// ## getSocket for Member
   ///
   /// Gets the socket we memoized for given MemberId, else creates one and instantiates a
@@ -299,14 +306,24 @@ module RaftServer =
   let receiveEntry entry appState cbs =
     stm {
       let! state = readTVar appState
-      do! raft {
-            let! result = receiveEntry entry
-            do! periodic 1001UL
-            return result
-          }
-          |> evalRaft state.Raft cbs
-          |> flip updateRaft state
-          |> writeTVar appState
+
+      let result =
+        raft {
+          let! result = receiveEntry entry
+          // do! periodic 1001UL
+          return result
+        }
+        |> runRaft state.Raft cbs
+
+      let (response, newstate) =
+        match result with
+          | Right  (response, newstate) -> (Some response, newstate)
+          | Middle (_, newstate)        -> (None, newstate)
+          | Left   (err, newstate)      -> (None, newstate)
+
+      do! writeTVar appState (updateRaft newstate state)
+
+      return response
     }
 
   let handleInstallSnapshot node snapshot appState cbs =
@@ -471,7 +488,16 @@ module RaftServer =
     printfn "joining leader %A now" leader
     _tryJoin 0 leader
 
-  // -------------------------------------------------------------------------
+  /// ## Attempt to leave a Raft cluster
+  ///
+  /// Attempt to leave a Raft cluster by identifying the current cluster leader and sending an
+  /// AppendEntries request with a JointConsensus entry.
+  ///
+  /// ### Signature:
+  /// - appState: AppState TVar
+  /// - cbs: Raft callbacks
+  ///
+  /// Returns: unit
   let tryLeave appState cbs =
     let rec _tryLeave retry (node: Node<IrisNode>) =
       stm {
@@ -518,7 +544,9 @@ module RaftServer =
         let changes = [| NodeRemoved state.Raft.Node |]
         let entry = JointConsensus(RaftId.Create(), 0UL, term , changes, None)
 
-        do! receiveEntry entry appState cbs
+        let! response = receiveEntry entry appState cbs
+
+        failwith "FIXME: must now block to await the committed state for response"
     }
 
 
@@ -569,7 +597,7 @@ module RaftServer =
       return snapshot
     }
 
-  let initialise appState cbs =
+  let initialize appState cbs =
     stm {
       let! state = readTVar appState
 
@@ -614,20 +642,21 @@ module RaftServer =
   // |  _ < (_| |  _| |_   ___) |  __/ |   \ V /  __/ |
   // |_| \_\__,_|_|  \__| |____/ \___|_|    \_/ \___|_|
 
-  type RaftServer(opts: RaftOptions, zmqContext: fszmq.Context) as this =
+  type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
     let max_retry = 5
-
-    let mutable options = opts
-    let mutable updateCount = 0UL
-
-
-    let appState = mkState zmqContext opts |> newTVar
-
-    let cbs = this :> IRaftCallbacks<_,_>
-
     let timeout = 10UL
 
-    let requestWorker = new Actor<(Node<IrisNode> * RaftMsg)> (requestLoop appState cbs)
+    let servertoken   = ref None
+    let workertoken   = ref None
+    let periodictoken = ref None
+
+    let cbs = this :> IRaftCallbacks<_,_>
+    let appState = mkState context options |> newTVar
+
+    let requestWorker =
+      let cts = new CancellationTokenSource()
+      workertoken := Some cts
+      new Actor<(Node<IrisNode> * RaftMsg)> (requestLoop appState cbs, cts.Token)
 
     ////////////////////////////////////
     //  _       _ _                   //
@@ -637,13 +666,6 @@ module RaftServer =
     // |_|_| |_|_|\__| the machine.   //
     ////////////////////////////////////
 
-    // do
-      // requestWorker.Start()
-
-
-      // 3. Enter the server loop to begin listening for incoming messages
-      // serverLoop context server
-
     ////////////////////////////////////////////////////
     //                           _                    //
     //  _ __ ___   ___ _ __ ___ | |__   ___ _ __ ___  //
@@ -652,27 +674,55 @@ module RaftServer =
     // |_| |_| |_|\___|_| |_| |_|_.__/ \___|_|  |___/ //
     ////////////////////////////////////////////////////
 
+    /// ## Start the Raft engine
+    ///
+    /// Start the Raft engine and start processing requests.
+    ///
+    /// ### Signature:
+    /// - unit: unit
+    ///
+    /// Returns: unit
     member self.Start() =
-      failwith "FIXME: start"
+      stm {
+        requestWorker.Start()
+
+        do!  initialize appState cbs
+        let! srvtkn = startServer appState cbs
+        let! prdtkn = startPeriodic timeout appState cbs
+
+        servertoken   := Some srvtkn
+        periodictoken := Some prdtkn
+      } |> atomically
 
     member self.Stop() =
-      // tryLeave ()
-      failwith "FIXME: stop"
+      stm {
+        cancelToken periodictoken
+        cancelToken servertoken
+        cancelToken workertoken
+
+        failwith "FIXME: STOP SHOULD ALSO PERSIST LAST STATE TO DISK"
+      } |> atomically
 
     member self.Options
-      with get () = options
-      and  set o  = options <- o
+      with get () =
+        let state = readTVar appState |> atomically
+        state.Options
+      and set opts =
+        stm {
+          let! state = readTVar appState
+          do! writeTVar appState { state with Options = opts }
+        } |> atomically
 
     member self.Context
-      with get () = zmqContext
+      with get () = context
 
-    /// We can *LOOK* at the current state, but *HAVE* to use the Funnel to set
-    /// it. This gives us the benefit of linearizabilty of transactions.
+    /// Alas, we may only *look* at the current state.
     member self.State
-      with get () = readTVar appState |> atomically
+      with get () = atomically (readTVar appState)
 
     member self.Append entry =
-      failwith "FIXME: Append"
+
+      receiveEntry
 
     member self.ForceTimeout() =
       failwith "FIXME: ForceTimeout"
@@ -689,8 +739,8 @@ module RaftServer =
     //             |_|
 
     interface IDisposable with
-      member self.Dispose() =
-        dispose zmqContext
+      member self.Dispose() = failwith "FIXME: DISPOSE"
+
 
     //  ____        __ _     ___       _             __
     // |  _ \ __ _ / _| |_  |_ _|_ __ | |_ ___ _ __ / _| __ _  ___ ___
