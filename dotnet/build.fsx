@@ -344,6 +344,8 @@ Target "BuildFrontendFsProj" (fun _ ->
     build (setParams "Debug") (baseDir @@ "Frontend.fsproj") |> ignore)
 
 Target "BuildWorker" (fun _ ->
+    printfn "npmPath: %A" npmPath
+    printfn "baseDir: %A" baseDir
     Npm(fun p ->
         { p with
             NpmFilePath = npmPath
