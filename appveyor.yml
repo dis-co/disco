@@ -19,14 +19,10 @@ install:
   - npm install -g mocha-phantomjs
 
 build_script:
-  - ps: cd dotnet
-  - .paket\paket-bootstrapper.exe
-  - .paket\paket.exe restore
-  - build.cmd Release
+  - ps: build.cmd Release
 
 test_script:
-  - ps: cd dotnet
-  - build.cmd AllTests
+  - ps: build.cmd AllTests
   
 version: 0.0.1.{build}
 artifacts:
