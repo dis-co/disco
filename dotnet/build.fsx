@@ -51,7 +51,7 @@ let npmPath =
   elif File.Exists "/usr/local/bin/npm" then
     "/usr/local/bin/npm"
   else
-    "C:\Users\appveyor\AppData\Roaming\npm\npm"
+    @"C:\Users\appveyor\AppData\Roaming\npm\npm"
 
 let flatcPath : string =
   if System.Environment.OSVersion.Platform = System.PlatformID.Unix then
@@ -344,8 +344,6 @@ Target "BuildFrontendFsProj" (fun _ ->
     build (setParams "Debug") (baseDir @@ "Frontend.fsproj") |> ignore)
 
 Target "BuildWorker" (fun _ ->
-    printfn "npmPath: %A" npmPath
-    printfn "baseDir: %A" baseDir
     Npm(fun p ->
         { p with
             NpmFilePath = npmPath
