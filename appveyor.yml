@@ -19,10 +19,14 @@ install:
   - npm install -g mocha-phantomjs
 
 build_script:
-  - ps: build.cmd Release
+  - ps:
+  - dir
+  - .\build.cmd Release
 
 test_script:
-  - ps: build.cmd AllTests
+  - ps:
+  - dir
+  - .\build.cmd AllTests
   
 version: 0.0.1.{build}
 artifacts:
