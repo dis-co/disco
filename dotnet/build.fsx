@@ -41,7 +41,7 @@ let tags = "cool funky special shiny"
 let solutionFile  = "Iris.sln"
 
 // Project code base directory
-let baseDir = "src/Iris"
+let baseDir = "src" @@ "Iris"
 
 let npmPath =
   if File.Exists "/run/current-system/sw/bin/npm" then
@@ -113,8 +113,7 @@ Target "Bootstrap"
 
     ExecProcess (fun info ->
                     info.FileName <- "npm"
-                    info.Arguments <- "-g install mocha-phantomjs"
-                    info.WorkingDirectory <- "$HOME")
+                    info.Arguments <- "-g install mocha-phantomjs")
                 (TimeSpan.FromMinutes 5.0)
     |> ignore)
 
