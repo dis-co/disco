@@ -50,8 +50,8 @@ let npmPath =
     "/usr/bin/npm"
   elif File.Exists "/usr/local/bin/npm" then
     "/usr/local/bin/npm"
-  else // this might work on windows...
-    "./packages/Npm.js/tools/npm.cmd"
+  else // this might work on windows if node/npm is in path
+    "npm"
 
 let flatcPath : string =
   if System.Environment.OSVersion.Platform = System.PlatformID.Unix then
