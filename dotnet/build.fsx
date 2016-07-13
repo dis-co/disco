@@ -50,10 +50,8 @@ let npmPath =
     "/usr/bin/npm"
   elif File.Exists "/usr/local/bin/npm" then
     "/usr/local/bin/npm"
-  elif System.Security.Principal.WindowsIdentity.GetCurrent().Name = "appveyor"  then
+  else
     "C:\Users\appveyor\AppData\Roaming\npm\npm"
-  else // this might work on windows if node/npm iis
-    "npm"
 
 let flatcPath : string =
   if System.Environment.OSVersion.Platform = System.PlatformID.Unix then
