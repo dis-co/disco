@@ -54,17 +54,19 @@ let npmPath =
     "./packages/Npm.js/tools/npm.cmd"
 
 let flatcPath : string =
-  let info = new ProcessStartInfo("which","flatc")
-  info.StandardOutputEncoding <- System.Text.Encoding.UTF8
-  info.RedirectStandardOutput <- true
-  info.UseShellExecute        <- false
-  info.CreateNoWindow         <- true
-  use proc = Process.Start info
-  proc.WaitForExit()
-  match proc.ExitCode with
-    | 0 when not proc.StandardOutput.EndOfStream ->
-      proc.StandardOutput.ReadLine()
-    | _ -> failwith "flatc was not found. Please install FlatBuffers first"
+  if System.Environment.OSVersion.Platform = System.PlatformID.Unix then
+    let info = new ProcessStartInfo("which","flatc")
+    info.StandardOutputEncoding <- System.Text.Encoding.UTF8
+    info.RedirectStandardOutput <- true
+    info.UseShellExecute        <- false
+    info.CreateNoWindow         <- true
+    use proc = Process.Start info
+    proc.WaitForExit()
+    match proc.ExitCode with
+      | 0 when not proc.StandardOutput.EndOfStream ->
+        proc.StandardOutput.ReadLine()
+      | _ -> failwith "flatc was not found. Please install FlatBuffers first"
+  else "flatc.exe"
 
 // Read additional information from the release notes document
 let release = LoadReleaseNotes "CHANGELOG.md"
@@ -666,9 +668,9 @@ Target "DebugAll" DoNothing
 
 Target "AllTests" DoNothing
 
-"RunWebTests"
+"RunTests"
+==> "RunWebTests"
 ==> "RunPalletTests"
-==> "RunTests"
 ==> "AllTests"
 
 RunTargetOrDefault "Release"
