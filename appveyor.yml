@@ -1,8 +1,33 @@
 init:
   - git config --global core.autocrlf input
+
+environment:
+  matrix:
+    - nodejs_version: "4.4.5"
+
+install:
+  - ps: Install-Product node $env:nodejs_version
+  - choco install phantomjs --version 2.1.1
+  - set path=%path%;C:\ProgramData\chocolatey\lib\PhantomJS\tools\
+  - md C:\nc
+  - npm install -g npm@^2
+  - set PATH=%APPDATA%\npm;%PATH%
+  - npm config set cache C:\nc
+  - npm version
+  - cd dotnet
+  - npm install --no-optional
+  - npm install -g mocha-phantomjs
+
 build_script:
-  - cmd: dotnet\build.cmd Release
-test: off
+  - ps: cd dotnet
+  - .paket\paket-bootstrapper.exe
+  - .paket\paket.exe restore
+  - build.cmd Release
+
+test_script:
+  - ps: cd dotnet
+  - build.cmd AllTests
+  
 version: 0.0.1.{build}
 artifacts:
   - path: bin

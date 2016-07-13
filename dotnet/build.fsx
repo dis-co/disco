@@ -664,4 +664,11 @@ Target "DebugAll" DoNothing
 // "GenerateHelp"
 //   ==> "KeepRunning"
 
+Target "AllTests" DoNothing
+
+"RunWebTests"
+==> "RunPalletTests"
+==> "RunTests"
+==> "AllTests"
+
 RunTargetOrDefault "Release"

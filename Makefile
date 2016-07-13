@@ -75,7 +75,8 @@ worker:
 # | (_| | | |
 #  \__,_|_|_|
 
-tests.all: run.web.tests pallet.tests run.tests
+tests.all:
+	${BUILD} AllTests
 
 debug.all:
 	${BUILD} DebugAll
