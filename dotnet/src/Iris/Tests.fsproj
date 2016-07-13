@@ -75,6 +75,7 @@
     <Compile Include="Iris\Core\Serialization.fs" />
     <Compile Include="Iris\Core\Raft.fs" />
     <Compile Include="Iris\Service\AppState.fs" />
+    <Compile Include="Iris\Service\RaftServer.fs" />
 
     <!--  _____         _        -->
     <!-- |_   _|__  ___| |_ ___  -->
