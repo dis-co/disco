@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <Import Project="..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
@@ -30,7 +30,7 @@
     <Tailcalls>true</Tailcalls>
     <OutputPath>bin\Release\Tests</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
-    <WarningLevel>3</WarningLevel>
+    <WarningLevel>5</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>
   </PropertyGroup>
   <ItemGroup>
@@ -75,14 +75,24 @@
     <Compile Include="Iris\Core\Serialization.fs" />
     <Compile Include="Iris\Core\Raft.fs" />
     <Compile Include="Iris\Service\AppState.fs" />
+
+    <!--  _____         _        -->
+    <!-- |_   _|__  ___| |_ ___  -->
+    <!--   | |/ _ \/ __| __/ __| -->
+    <!--   | |  __/\__ \ |_\__ \ -->
+    <!--   |_|\___||___/\__|___/ -->
+
     <Compile Include="Iris\Tests\TestUtilities.fs" />
     <Compile Include="Iris\Tests\Core\SerializationTests.fs" />
     <Compile Include="Iris\Tests\Core\ProjectTests.fs" />
+    <Compile Include="Iris\Tests\Core\RaftIntegrationTests.fs" />
+
     <!--  __  __       _        -->
     <!-- |  \/  | __ _(_)_ __   -->
     <!-- | |\/| |/ _` | | '_ \  -->
     <!-- | |  | | (_| | | | | | -->
     <!-- |_|  |_|\__,_|_|_| |_| -->
+
     <Compile Include="Iris\Tests\Core\Main.fs" />
   </ItemGroup>
   <PropertyGroup>
@@ -757,6 +767,5 @@
       </ItemGroup>
     </When>
   </Choose>
-  <Import Project="..\..\packages\FSharpLint\build\FSharpLint.targets" Condition="Exists('..\..\packages\FSharpLint\build\FSharpLint.targets')" Label="Paket" />
   <Import Project="..\..\packages\ZeroMQ\build\$(__paket__ZeroMQ_targets).targets" Condition="Exists('..\..\packages\ZeroMQ\build\$(__paket__ZeroMQ_targets).targets')" Label="Paket" />
 </Project>

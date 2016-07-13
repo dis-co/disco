@@ -3,8 +3,9 @@ open Iris.Tests
 
 let all =
   testList "All tests" [
-      projectTests
+      raftIntegrationTests
       serializationTests
+      projectTests
     ]
 
 [<EntryPoint>]
