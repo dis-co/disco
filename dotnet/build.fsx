@@ -96,7 +96,11 @@ let setParams cfg defaults =
 
 let runNpm cmd workdir =
   ExecProcess (fun info ->
-                info.FileName <- "npm"
+                let npm =
+                  match Environment.OSVersion.Platform with
+                    | PlatformID.Unix -> "npm"
+                    | _               -> "npm.exe"
+                info.FileName <- npm
                 info.Arguments <- cmd
                 info.WorkingDirectory <- workdir)
               (TimeSpan.FromMinutes 5.0)
