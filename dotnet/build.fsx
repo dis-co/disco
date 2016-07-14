@@ -50,7 +50,7 @@ let npmPath =
   elif File.Exists "/usr/local/bin/npm" then
     "/usr/local/bin/npm"
   else
-    @"C:\Users\appveyor\AppData\Roaming\npm\node_modules\npm\bin\npm.cmd"
+    @"C:\Users\appveyor\AppData\Roamiug\npm\node_modules\npm\bin\npm.cmd"
 
 let flatcPath : string =
   if System.Environment.OSVersion.Platform = System.PlatformID.Unix then
@@ -99,7 +99,8 @@ let runNpm cmd workdir =
                 let npm =
                   match Environment.OSVersion.Platform with
                     | PlatformID.Unix -> "npm"
-                    | _               -> "npm.exe"
+                    | _               ->
+                      @"C:\Users\appveyor\AppData\Roaming\npm\node_modules\npm\bin\npm.cmd"
                 info.FileName <- npm
                 info.Arguments <- cmd
                 info.WorkingDirectory <- workdir)
