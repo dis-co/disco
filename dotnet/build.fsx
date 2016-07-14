@@ -103,6 +103,7 @@ let runNpm cmd workdir =
                       @"C:\Users\appveyor\AppData\Roaming\npm\node_modules\npm\bin\npm.cmd"
                 info.FileName <- npm
                 info.Arguments <- cmd
+                info.UseShellExecute <- true
                 info.WorkingDirectory <- workdir)
               (TimeSpan.FromMinutes 5.0)
 
