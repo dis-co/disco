@@ -51,7 +51,7 @@ let npmPath =
   elif File.Exists "/usr/local/bin/npm" then
     "/usr/local/bin/npm"
   else
-    @"C:\Users\appveyor\AppData\Roaming\npm\npm"
+    "npm.exe"
 
 let flatcPath : string =
   if System.Environment.OSVersion.Platform = System.PlatformID.Unix then
