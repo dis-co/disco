@@ -42,6 +42,10 @@ let solutionFile  = "Iris.sln"
 // Project code base directory
 let baseDir =  __SOURCE_DIRECTORY__ @@ "src" @@ "Iris"
 
+let maybeFail = function
+  | 0    -> ()
+  | code -> failwithf "Command failed with exit code %d" code
+
 let npmPath =
   if File.Exists "/run/current-system/sw/bin/npm" then
     "/run/current-system/sw/bin/npm"
@@ -49,11 +53,13 @@ let npmPath =
     "/usr/bin/npm"
   elif File.Exists "/usr/local/bin/npm" then
     "/usr/local/bin/npm"
-  else
+  elif Environment.GetEnvironmentVariable("APPVEYOR_CI_BUILD") = "true" then
     @"C:\Users\appveyor\AppData\Roamiug\npm\node_modules\npm\bin\npm.cmd"
+  else
+    "npm"
 
 let flatcPath : string =
-  if System.Environment.OSVersion.Platform = System.PlatformID.Unix then
+  if Environment.OSVersion.Platform = PlatformID.Unix then
     let info = new ProcessStartInfo("which","flatc")
     info.StandardOutputEncoding <- System.Text.Encoding.UTF8
     info.RedirectStandardOutput <- true
@@ -106,7 +112,38 @@ let runNpm cmd workdir =
                 info.UseShellExecute <- true
                 info.WorkingDirectory <- workdir)
               (TimeSpan.FromMinutes 5.0)
+  |> maybeFail
 
+let useNix _ = Directory.Exists("/nix")
+
+let isUnix _ = Environment.OSVersion.Platform = PlatformID.Unix
+
+let runNixShell filepath workdir =
+  ExecProcess (fun info ->
+                  info.FileName <- "nix-shell"
+                  info.Arguments <- filepath
+                  info.UseShellExecute <- true
+                  info.WorkingDirectory <- workdir)
+              (TimeSpan.FromMinutes 5.0)
+  |> maybeFail
+
+let runMono filepath workdir =
+  ExecProcess (fun info ->
+                  info.FileName <- "mono"
+                  info.Arguments <- filepath
+                  info.UseShellExecute <- true
+                  info.WorkingDirectory <- workdir)
+              (TimeSpan.FromMinutes 5.0)
+  |> maybeFail
+
+let runExec filepath args workdir =
+  ExecProcess (fun info ->
+                  info.FileName <- filepath
+                  info.Arguments <- args
+                  info.UseShellExecute <- true
+                  info.WorkingDirectory <- workdir)
+              (TimeSpan.FromMinutes 5.0)
+  |> maybeFail
 
 //  ____              _       _
 // | __ )  ___   ___ | |_ ___| |_ _ __ __ _ _ __
@@ -118,8 +155,8 @@ let runNpm cmd workdir =
 Target "Bootstrap"
   (fun _ ->
     Restore(id)                         // restore Paket packages
-    runNpm "install" __SOURCE_DIRECTORY__ |> ignore
-    runNpm "-g install mocha-phantomjs" __SOURCE_DIRECTORY__ |> ignore)
+    runNpm "install" __SOURCE_DIRECTORY__
+    runNpm "-g install mocha-phantomjs" __SOURCE_DIRECTORY__)
 
 //     _                           _     _       ___        __
 //    / \   ___ ___  ___ _ __ ___ | |__ | |_   _|_ _|_ __  / _| ___
@@ -167,8 +204,8 @@ Target "AssemblyInfo" (fun _ ->
 
 Target "CopyBinaries"
   (fun _ ->
-    CopyDir "bin/Iris"  (baseDir @@ "bin/Release/Iris")  (konst true) |> ignore
-    CopyDir "bin/Nodes" (baseDir @@ "bin/Release/Nodes") (konst true) |> ignore)
+    CopyDir "bin/Iris"  (baseDir @@ "bin/Release/Iris")  (konst true)
+    CopyDir "bin/Nodes" (baseDir @@ "bin/Release/Nodes") (konst true))
 
 Target "CopyAssets"
   (fun _ ->
@@ -176,11 +213,9 @@ Target "CopyAssets"
 
     !! (baseDir @@ "bin/*.js")
     |> CopyFiles "bin/Iris/assets/js"
-    |> ignore
 
     !! (baseDir @@ "bin/*.map")
-    |> CopyFiles "bin/Iris/assets/js"
-    |> ignore)
+    |> CopyFiles "bin/Iris/assets/js")
 
 
 //     _             _     _
@@ -226,8 +261,7 @@ Target "CreateArchive"
      CopyDir (target @@ "Iris")  "bin/Iris" (konst true)
      CopyDir (target @@ "Nodes") "bin/Nodes" (konst true)
      let files = !!(target @@ "**")
-     CreateZip "temp" (nameWithVersion + ".zip") comment 7 false files
-     |> ignore)
+     CreateZip "temp" (nameWithVersion + ".zip") comment 7 false files)
 
 
 //   ____ _
@@ -265,12 +299,7 @@ Target "GenerateSerialization"
 
    let args = "-I " + (baseDir @@ "Schema") + " --csharp " + fbs
 
-   ExecProcess (fun info ->
-                  info.FileName  <- flatcPath
-                  info.Arguments <- args
-                  info.WorkingDirectory <- baseDir)
-               (TimeSpan.FromMinutes 5.0)
-   |> ignore
+   runExec flatcPath args baseDir
 
    let files =
       !! (baseDir @@ "Iris/Serialization/**/*.cs")
@@ -282,8 +311,8 @@ Target "GenerateSerialization"
 
    File.WriteAllText((baseDir @@ "Serialization.csproj"), top + files + bot)
 
-   build (setParams "Debug")   (baseDir @@ "Serialization.csproj") |> DoNothing
-   build (setParams "Release") (baseDir @@ "Serialization.csproj") |> DoNothing)
+   build (setParams "Debug")   (baseDir @@ "Serialization.csproj")
+   build (setParams "Release") (baseDir @@ "Serialization.csproj"))
 
 //   __
 //  / _|___ _____ __ ___   __ _
@@ -294,8 +323,8 @@ Target "GenerateSerialization"
 
 Target "FsZMQ"
   (fun _ ->
-   build (setParams "Debug")   "src/fszmq/fszmq.fsproj" |> ignore
-   build (setParams "Release") "src/fszmq/fszmq.fsproj" |> ignore)
+   build (setParams "Debug")   "src/fszmq/fszmq.fsproj"
+   build (setParams "Release") "src/fszmq/fszmq.fsproj")
 
 //  ____       _ _      _
 // |  _ \ __ _| | | ___| |_
@@ -305,22 +334,17 @@ Target "FsZMQ"
 
 Target "Pallet"
   (fun _ ->
-   build (setParams "Debug")   "src/Pallet/Pallet.fsproj" |> ignore
-   build (setParams "Release") "src/Pallet/Pallet.fsproj" |> ignore)
+   build (setParams "Debug")   "src/Pallet/Pallet.fsproj"
+   build (setParams "Release") "src/Pallet/Pallet.fsproj")
 
 Target "PalletTests"
   (fun _ ->
-    build (setParams "Debug") "src/Pallet.Tests/Pallet.Tests.fsproj" |> ignore)
+    build (setParams "Debug") "src/Pallet.Tests/Pallet.Tests.fsproj")
 
 Target "RunPalletTests"
   (fun _ ->
-    let testsDir = "src/Pallet.Tests"
-    ExecProcess (fun info ->
-                    info.FileName <- "fsi"
-                    info.Arguments <- "run.fsx"
-                    info.WorkingDirectory <- testsDir)
-                (TimeSpan.FromMinutes 5.0)
-   |> ignore)
+    let testsDir = "src" @@ "Pallet.Tests"
+    runExec "fsi" "run.fsx" testsDir)
 
 //  _____                _                 _
 // |  ___| __ ___  _ __ | |_ ___ _ __   __| |
@@ -329,26 +353,22 @@ Target "RunPalletTests"
 // |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| JS!
 
 Target "WatchFrontend" (fun _ ->
-    runNpm "run watch-frontend" baseDir
-    |> ignore)
+    runNpm "run watch-frontend" baseDir)
 
 Target "BuildFrontend" (fun _ ->
-    runNpm "run build-frontend" baseDir
-    |> ignore)
+    runNpm "run build-frontend" baseDir)
 
 Target "BuildFrontendFsProj" (fun _ ->
-    build (setParams "Debug") (baseDir @@ "Frontend.fsproj") |> ignore)
+    build (setParams "Debug") (baseDir @@ "Frontend.fsproj"))
 
 Target "BuildWorker" (fun _ ->
-    runNpm "run build-worker" baseDir
-    |> ignore)
+    runNpm "run build-worker" baseDir)
 
 Target "WatchWorker" (fun _ ->
-    runNpm "run watch-worker" baseDir
-    |> ignore)
+    runNpm "run watch-worker" baseDir)
 
 Target "BuildWorkerFsProj" (fun _ ->
-    build (setParams "Debug") (baseDir @@ "Frontend.fsproj") |> ignore)
+    build (setParams "Debug") (baseDir @@ "Frontend.fsproj"))
 
 //  _____         _
 // |_   _|__  ___| |_ ___
@@ -357,38 +377,35 @@ Target "BuildWorkerFsProj" (fun _ ->
 // JS|_|\___||___/\__|___/
 
 Target "BuildWebTests" (fun _ ->
-    let testsDir = baseDir @@ "bin/Debug/Web.Tests"
+    let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Web.Tests"
     let jsDir = testsDir @@ "js"
     let cssDir = testsDir @@ "css"
-    let npmMods = "./node_modules"
-    let assetsDir = baseDir @@ "/assets/frontend"
+    let npmMods = if isUnix() then "./node_modules" else @".\node_modules"
+    let assetsDir = baseDir @@ "assets" @@ "frontend"
 
-    CopyDir testsDir assetsDir (konst true) |> ignore
-    CopyFile cssDir (npmMods @@ "/mocha/mocha.css")
-    CopyFile jsDir  (npmMods @@ "/mocha/mocha.js")
-    CopyFile jsDir  (npmMods @@ "/babel-polyfill/dist/polyfill.js")
-    CopyFile jsDir  (npmMods @@ "/virtual-dom/dist/virtual-dom.js")
-    CopyFile (jsDir @@ "expect.js") (npmMods @@ "/expect.js/index.js")
+    CopyDir testsDir assetsDir (konst true)
+    CopyFile cssDir (npmMods @@ "mocha" @@ "mocha.css")
+    CopyFile jsDir  (npmMods @@ "mocha" @@ "mocha.js")
+    CopyFile jsDir  (npmMods @@ "babel-polyfill" @@ "dist" @@ "polyfill.js")
+    CopyFile jsDir  (npmMods @@ "virtual-dom" @@ "dist" @@ "virtual-dom.js")
+    CopyFile (jsDir @@ "expect.js") (npmMods @@ "expect.js" @@ "index.js")
 
-    runNpm "run build-tests" baseDir |> ignore)
+    runNpm "run build-tests" baseDir)
 
-Target "WatchWebTests" (fun _ ->
-    runNpm "run watch-tests" baseDir
-    |> ignore)
+Target "WatchWebTests" (fun _ -> runNpm "run watch-tests" baseDir)
 
 Target "BuildWebTestsFsProj" (fun _ ->
-    build (setParams "Debug") (baseDir @@ "Web.Tests.fsproj") |> ignore)
+    build (setParams "Debug") (baseDir @@ "Web.Tests.fsproj"))
 
 Target "RunWebTests" (fun _ ->
-    ExecProcess (fun info ->
-                    info.FileName <- "mocha-phantomjs"
-                    info.Arguments <- "-p /home/k/.nix-profile/bin/phantomjs -R dot tests.html"
-                    info.WorkingDirectory <- "src/Iris/bin/Debug/Web.Tests")
-                (TimeSpan.FromMinutes 5.0)
-    |> fun code ->
-      match code with
-      | 0 -> printfn "ALL GOOD"
-      | _ -> exit 1)
+    let args =
+      if useNix() then
+        "-p /home/k/.nix-profile/bin/phantomjs -R dot tests.html"
+      else
+        "-R dot tests.html"
+
+    let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Web.Tests"
+    runExec "mocha-phantomjs" args testsDir)
 
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
@@ -396,17 +413,13 @@ Target "RunWebTests" (fun _ ->
 //  _| |\  | |___  | |
 // (_)_| \_|_____| |_|
 
-Target "BuildDebugService"
-  (fun _ -> build (setParams "Debug") (baseDir @@ "Service.fsproj") |> ignore)
+Target "BuildDebugService" (fun _ -> build (setParams "Debug") (baseDir @@ "Service.fsproj"))
 
-Target "BuildReleaseService"
-  (fun _ -> build (setParams "Release") (baseDir @@ "Service.fsproj") |> ignore)
+Target "BuildReleaseService" (fun _ -> build (setParams "Release") (baseDir @@ "Service.fsproj"))
 
-Target "BuildDebugNodes"
-  (fun _ -> build (setParams "Debug") (baseDir @@ "Nodes.fsproj") |> ignore)
+Target "BuildDebugNodes" (fun _ -> build (setParams "Debug") (baseDir @@ "Nodes.fsproj"))
 
-Target "BuildReleaseNodes"
-  (fun _ -> build (setParams "Release") (baseDir @@ "Nodes.fsproj") |> ignore)
+Target "BuildReleaseNodes" (fun _ -> build (setParams "Release") (baseDir @@ "Nodes.fsproj"))
 
 //  _____         _
 // |_   _|__  ___| |_ ___
@@ -428,17 +441,17 @@ Target "BuildReleaseNodes"
 *)
 
 Target "BuildTests"
-  (fun _ -> build (setParams "Debug") (baseDir @@ "Tests.fsproj") |> ignore)
+  (fun _ -> build (setParams "Debug") (baseDir @@ "Tests.fsproj"))
 
 Target "RunTests"
   (fun _ ->
     let testsDir = baseDir @@ "bin/Debug/Tests"
-    ExecProcess (fun info ->
-                    info.FileName <- "nix-shell"
-                    info.Arguments <- "assets/nix/runtests.nix"
-                    info.WorkingDirectory <- testsDir)
-                (TimeSpan.FromMinutes 5.0)
-    |> ignore)
+    if useNix () then
+      runNixShell "assets/nix/runtests.nix" testsDir
+    elif isUnix() then
+      runMono "Tests.exe" testsDir
+    else
+      runExec "Tests.exe" "" testsDir)
 
 //  ____
 // / ___|  ___ _ ____   _____ _ __
