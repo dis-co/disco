@@ -6,7 +6,6 @@
 
 open Fake
 open Fake.Git
-open Fake.NpmHelper
 open Fake.ZipHelper
 open Fake.FuchuHelper
 open Fake.Paket
@@ -41,7 +40,7 @@ let tags = "cool funky special shiny"
 let solutionFile  = "Iris.sln"
 
 // Project code base directory
-let baseDir = "src" @@ "Iris"
+let baseDir =  __SOURCE_DIRECTORY__ @@ "src" @@ "Iris"
 
 let npmPath =
   if File.Exists "/run/current-system/sw/bin/npm" then
@@ -86,14 +85,22 @@ let (|Fsproj|Csproj|) (projFileName:string) =
     match projFileName with
     | f when f.EndsWith("fsproj") -> Fsproj
     | f when f.EndsWith("csproj") -> Csproj
-    | _                           -> failwith (sprintf "Project file %s not supported. Unknown project type." projFileName)
-
+    | _                           ->
+      failwith (sprintf "Project file %s not supported. Unknown project type." projFileName)
 
 let setParams cfg defaults =
   { defaults with
       Verbosity = Some(Quiet)
       Targets = ["Build"]
       Properties = [ "Configuration", cfg ] }
+
+let runNpm cmd workdir =
+  ExecProcess (fun info ->
+                info.FileName <- "npm"
+                info.Arguments <- cmd
+                info.WorkingDirectory <- workdir)
+              (TimeSpan.FromMinutes 5.0)
+
 
 //  ____              _       _
 // | __ )  ___   ___ | |_ ___| |_ _ __ __ _ _ __
@@ -105,17 +112,8 @@ let setParams cfg defaults =
 Target "Bootstrap"
   (fun _ ->
     Restore(id)                         // restore Paket packages
-    Npm(fun p ->
-        { p with
-            NpmFilePath = npmPath
-            Command = Install Standard
-            WorkingDirectory = "" }) |> ignore
-
-    ExecProcess (fun info ->
-                    info.FileName <- "npm"
-                    info.Arguments <- "-g install mocha-phantomjs")
-                (TimeSpan.FromMinutes 5.0)
-    |> ignore)
+    runNpm "install" __SOURCE_DIRECTORY__ |> ignore
+    runNpm "-g install mocha-phantomjs" __SOURCE_DIRECTORY__ |> ignore)
 
 //     _                           _     _       ___        __
 //    / \   ___ ___  ___ _ __ ___ | |__ | |_   _|_ _|_ __  / _| ___
@@ -325,38 +323,22 @@ Target "RunPalletTests"
 // |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| JS!
 
 Target "WatchFrontend" (fun _ ->
-    Npm(fun p ->
-        { p with
-            NpmFilePath = npmPath
-            Command = (Run "watch-frontend")
-            WorkingDirectory = baseDir })
+    runNpm "run watch-frontend" baseDir
     |> ignore)
 
 Target "BuildFrontend" (fun _ ->
-    Npm(fun p ->
-        { p with
-            NpmFilePath = npmPath
-            Command = (Run "build-frontend")
-            WorkingDirectory = baseDir })
+    runNpm "run build-frontend" baseDir
     |> ignore)
 
 Target "BuildFrontendFsProj" (fun _ ->
     build (setParams "Debug") (baseDir @@ "Frontend.fsproj") |> ignore)
 
 Target "BuildWorker" (fun _ ->
-    Npm(fun p ->
-        { p with
-            NpmFilePath = npmPath
-            Command = (Run "build-worker")
-            WorkingDirectory = baseDir })
+    runNpm "run build-worker" baseDir
     |> ignore)
 
 Target "WatchWorker" (fun _ ->
-    Npm(fun p ->
-        { p with
-            NpmFilePath = npmPath
-            Command = (Run "watch-worker")
-            WorkingDirectory = baseDir })
+    runNpm "run watch-worker" baseDir
     |> ignore)
 
 Target "BuildWorkerFsProj" (fun _ ->
@@ -382,19 +364,10 @@ Target "BuildWebTests" (fun _ ->
     CopyFile jsDir  (npmMods @@ "/virtual-dom/dist/virtual-dom.js")
     CopyFile (jsDir @@ "expect.js") (npmMods @@ "/expect.js/index.js")
 
-    Npm(fun p ->
-        { p with
-            NpmFilePath = npmPath
-            Command = (Run "build-tests")
-            WorkingDirectory = baseDir })
-    |> ignore)
+    runNpm "run build-tests" baseDir |> ignore)
 
 Target "WatchWebTests" (fun _ ->
-    Npm(fun p ->
-        { p with
-            NpmFilePath = npmPath
-            Command = (Run "watch-tests")
-            WorkingDirectory = baseDir })
+    runNpm "run watch-tests" baseDir
     |> ignore)
 
 Target "BuildWebTestsFsProj" (fun _ ->
