@@ -106,7 +106,7 @@ let runNpm cmd workdir _ =
                   match Environment.OSVersion.Platform with
                     | PlatformID.Unix ->  "npm"
                     | _               -> @"C:\Program Files\nodejs\npm.cmd"
-                info.FileName <- npm
+                info.FileName <- "npm"
                 info.Arguments <- cmd
                 info.UseShellExecute <- true
                 info.WorkingDirectory <- workdir)
