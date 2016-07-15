@@ -101,19 +101,22 @@ let setParams cfg defaults =
       Properties = [ "Configuration", cfg ] }
 
 let runNpm cmd workdir _ =
-  ExecProcess (fun info ->
-                let npm =
-                  match Environment.OSVersion.Platform with
-                    | PlatformID.Unix ->  "npm" // use the platform npm/node
-                    | _               ->        // use the nuget/paket npm
-                      __SOURCE_DIRECTORY__ @@  @"\packages\Npm.js\tools\npm.cmd"
+  ExecProcessWithLambdas (fun info ->
+                           let npm =
+                             match Environment.OSVersion.Platform with
+                               | PlatformID.Unix ->  "npm" // use the platform npm/node
+                               | _               ->        // use the nuget/paket npm
+                                 __SOURCE_DIRECTORY__ @@  @"\packages\Npm.js\tools\npm.cmd"
 
-                info.FileName <- npm
-                info.Arguments <- cmd
-                info.UseShellExecute <- true
-                info.WorkingDirectory <- workdir)
-              (TimeSpan.FromMinutes 5.0)
-  |> ignore
+                           info.FileName <- npm
+                           info.Arguments <- cmd
+                           info.UseShellExecute <- false
+                           info.WorkingDirectory <- workdir)
+                         (TimeSpan.MaxValue)
+                         true
+                         (printfn "error: %A")
+                         (printfn "message: %A")
+  |> maybeFail
 
 let useNix _ = Directory.Exists("/nix")
 
