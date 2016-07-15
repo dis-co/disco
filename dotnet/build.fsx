@@ -166,7 +166,9 @@ Target "Bootstrap"
   (fun _ ->
     Restore(id)                         // restore Paket packages
     runNpm "install"                    __SOURCE_DIRECTORY__ ()
-    runNpm "-g install mocha-phantomjs" __SOURCE_DIRECTORY__ ())
+    runNpm
+      "-g install fable-compiler mocha-phantomjs webpack"
+      __SOURCE_DIRECTORY__ ())
 
 //     _                           _     _       ___        __
 //    / \   ___ ___  ___ _ __ ___ | |__ | |_   _|_ _|_ __  / _| ___
@@ -360,15 +362,19 @@ Target "RunPalletTests"
 // |  _|| | | (_) | | | | ||  __/ | | | (_| |
 // |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| JS!
 
-Target "WatchFrontend" (runNpm "run watch-frontend" baseDir)
+let frontendDir = baseDir @@ "Iris" @@ "Web" @@ "Frontend"
 
-Target "BuildFrontend" (runNpm "run build-frontend" baseDir)
+Target "WatchFrontend" (runNpm "run watch-frontend" frontendDir)
+
+Target "BuildFrontend" (runNpm "run build-frontend" frontendDir)
 
 Target "BuildFrontendFsProj" (buildDebug "Frontend.fsproj")
 
-Target "BuildWorker" (runNpm "run build-worker" baseDir)
+let workerDir = baseDir @@ "Iris" @@ "Web" @@ "Worker"
 
-Target "WatchWorker" (runNpm "run watch-worker" baseDir)
+Target "BuildWorker" (runNpm "run build-worker" workerDir)
+
+Target "WatchWorker" (runNpm "run watch-worker" workerDir)
 
 Target "BuildWorkerFsProj" (buildDebug "Frontend.fsproj")
 
