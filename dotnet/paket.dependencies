@@ -3,6 +3,7 @@ source https://nuget.org/api/v2
 
 group Main
   source https://nuget.org/api/v2
+  nuget Npm.js
   nuget FSharp.Core redirects:force
   nuget Fuchu
   nuget FsCheck

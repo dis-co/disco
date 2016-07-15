@@ -104,9 +104,11 @@ let runNpm cmd workdir _ =
   ExecProcess (fun info ->
                 let npm =
                   match Environment.OSVersion.Platform with
-                    | PlatformID.Unix ->  "npm"
-                    | _               -> @"C:\Program Files\nodejs\npm.cmd"
-                info.FileName <- "npm"
+                    | PlatformID.Unix ->  "npm" // use the platform npm/node
+                    | _               ->        // use the nuget/paket npm
+                      __SOURCE_DIRECTORY__ @@  @"\packages\Npm.js\tools\npm.cmd"
+
+                info.FileName <- npm
                 info.Arguments <- cmd
                 info.UseShellExecute <- true
                 info.WorkingDirectory <- workdir)
