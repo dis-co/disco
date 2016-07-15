@@ -113,7 +113,7 @@ let runNpm cmd workdir _ =
                 info.UseShellExecute <- true
                 info.WorkingDirectory <- workdir)
               (TimeSpan.FromMinutes 5.0)
-  |> maybeFail
+  |> ignore
 
 let useNix _ = Directory.Exists("/nix")
 
