@@ -100,13 +100,12 @@ let setParams cfg defaults =
       Targets = ["Build"]
       Properties = [ "Configuration", cfg ] }
 
-let runNpm cmd workdir =
+let runNpm cmd workdir _ =
   ExecProcess (fun info ->
                 let npm =
                   match Environment.OSVersion.Platform with
-                    | PlatformID.Unix -> "npm"
-                    | _               ->
-                      @"C:\Users\appveyor\AppData\Roaming\npm\node_modules\npm\bin\npm.cmd"
+                    | PlatformID.Unix ->  "npm"
+                    | _               -> @"C:\Program Files\nodejs\npm.cmd"
                 info.FileName <- npm
                 info.Arguments <- cmd
                 info.UseShellExecute <- true
@@ -145,6 +144,12 @@ let runExec filepath args workdir =
               (TimeSpan.FromMinutes 5.0)
   |> maybeFail
 
+let buildDebug fsproj _ =
+  build (setParams "Debug") (baseDir @@ fsproj)
+
+let buildRelease fsproj _ =
+  build (setParams "Release") (baseDir @@ fsproj)
+
 //  ____              _       _
 // | __ )  ___   ___ | |_ ___| |_ _ __ __ _ _ __
 // |  _ \ / _ \ / _ \| __/ __| __| '__/ _` | '_ \
@@ -155,8 +160,8 @@ let runExec filepath args workdir =
 Target "Bootstrap"
   (fun _ ->
     Restore(id)                         // restore Paket packages
-    runNpm "install" __SOURCE_DIRECTORY__
-    runNpm "-g install mocha-phantomjs" __SOURCE_DIRECTORY__)
+    runNpm "install"                    __SOURCE_DIRECTORY__ ()
+    runNpm "-g install mocha-phantomjs" __SOURCE_DIRECTORY__ ())
 
 //     _                           _     _       ___        __
 //    / \   ___ ___  ___ _ __ ___ | |__ | |_   _|_ _|_ __  / _| ___
@@ -311,8 +316,8 @@ Target "GenerateSerialization"
 
    File.WriteAllText((baseDir @@ "Serialization.csproj"), top + files + bot)
 
-   build (setParams "Debug")   (baseDir @@ "Serialization.csproj")
-   build (setParams "Release") (baseDir @@ "Serialization.csproj"))
+   buildDebug "Serialization.csproj" ()
+   buildRelease "Serialization.csproj" ())
 
 //   __
 //  / _|___ _____ __ ___   __ _
@@ -323,7 +328,7 @@ Target "GenerateSerialization"
 
 Target "FsZMQ"
   (fun _ ->
-   build (setParams "Debug")   "src/fszmq/fszmq.fsproj"
+   build (setParams "Debug") "src/fszmq/fszmq.fsproj"
    build (setParams "Release") "src/fszmq/fszmq.fsproj")
 
 //  ____       _ _      _
@@ -334,12 +339,10 @@ Target "FsZMQ"
 
 Target "Pallet"
   (fun _ ->
-   build (setParams "Debug")   "src/Pallet/Pallet.fsproj"
+   build (setParams "Debug") "src/Pallet/Pallet.fsproj"
    build (setParams "Release") "src/Pallet/Pallet.fsproj")
 
-Target "PalletTests"
-  (fun _ ->
-    build (setParams "Debug") "src/Pallet.Tests/Pallet.Tests.fsproj")
+Target "PalletTests" (buildDebug "src/Pallet.Tests/Pallet.Tests.fsproj")
 
 Target "RunPalletTests"
   (fun _ ->
@@ -352,23 +355,17 @@ Target "RunPalletTests"
 // |  _|| | | (_) | | | | ||  __/ | | | (_| |
 // |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| JS!
 
-Target "WatchFrontend" (fun _ ->
-    runNpm "run watch-frontend" baseDir)
+Target "WatchFrontend" (runNpm "run watch-frontend" baseDir)
 
-Target "BuildFrontend" (fun _ ->
-    runNpm "run build-frontend" baseDir)
+Target "BuildFrontend" (runNpm "run build-frontend" baseDir)
 
-Target "BuildFrontendFsProj" (fun _ ->
-    build (setParams "Debug") (baseDir @@ "Frontend.fsproj"))
+Target "BuildFrontendFsProj" (buildDebug "Frontend.fsproj")
 
-Target "BuildWorker" (fun _ ->
-    runNpm "run build-worker" baseDir)
+Target "BuildWorker" (runNpm "run build-worker" baseDir)
 
-Target "WatchWorker" (fun _ ->
-    runNpm "run watch-worker" baseDir)
+Target "WatchWorker" (runNpm "run watch-worker" baseDir)
 
-Target "BuildWorkerFsProj" (fun _ ->
-    build (setParams "Debug") (baseDir @@ "Frontend.fsproj"))
+Target "BuildWorkerFsProj" (buildDebug "Frontend.fsproj")
 
 //  _____         _
 // |_   _|__  ___| |_ ___
@@ -390,12 +387,11 @@ Target "BuildWebTests" (fun _ ->
     CopyFile jsDir  (npmMods @@ "virtual-dom" @@ "dist" @@ "virtual-dom.js")
     CopyFile (jsDir @@ "expect.js") (npmMods @@ "expect.js" @@ "index.js")
 
-    runNpm "run build-tests" baseDir)
+    runNpm "run build-tests" baseDir ())
 
-Target "WatchWebTests" (fun _ -> runNpm "run watch-tests" baseDir)
+Target "WatchWebTests" (runNpm "run watch-tests" baseDir)
 
-Target "BuildWebTestsFsProj" (fun _ ->
-    build (setParams "Debug") (baseDir @@ "Web.Tests.fsproj"))
+Target "BuildWebTestsFsProj" (buildDebug "Web.Tests.fsproj")
 
 Target "RunWebTests" (fun _ ->
     let args =
@@ -413,13 +409,13 @@ Target "RunWebTests" (fun _ ->
 //  _| |\  | |___  | |
 // (_)_| \_|_____| |_|
 
-Target "BuildDebugService" (fun _ -> build (setParams "Debug") (baseDir @@ "Service.fsproj"))
+Target "BuildDebugService" (buildDebug "Service.fsproj")
 
-Target "BuildReleaseService" (fun _ -> build (setParams "Release") (baseDir @@ "Service.fsproj"))
+Target "BuildReleaseService" (buildRelease "Service.fsproj")
 
-Target "BuildDebugNodes" (fun _ -> build (setParams "Debug") (baseDir @@ "Nodes.fsproj"))
+Target "BuildDebugNodes" (buildDebug "Nodes.fsproj")
 
-Target "BuildReleaseNodes" (fun _ -> build (setParams "Release") (baseDir @@ "Nodes.fsproj"))
+Target "BuildReleaseNodes" (buildRelease "Nodes.fsproj")
 
 //  _____         _
 // |_   _|__  ___| |_ ___
@@ -440,8 +436,7 @@ Target "BuildReleaseNodes" (fun _ -> build (setParams "Release") (baseDir @@ "No
    Good Fix: use a nix-shell environment that exposes LD_LIBRARY_PATH correctly.
 *)
 
-Target "BuildTests"
-  (fun _ -> build (setParams "Debug") (baseDir @@ "Tests.fsproj"))
+Target "BuildTests" (buildDebug "Tests.fsproj")
 
 Target "RunTests"
   (fun _ ->
