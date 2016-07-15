@@ -42,6 +42,10 @@ let solutionFile  = "Iris.sln"
 // Project code base directory
 let baseDir =  __SOURCE_DIRECTORY__ @@ "src" @@ "Iris"
 
+let useNix = Directory.Exists("/nix")
+
+let isUnix = Environment.OSVersion.Platform = PlatformID.Unix
+
 let maybeFail = function
   | 0    -> ()
   | code -> failwithf "Command failed with exit code %d" code
@@ -118,9 +122,11 @@ let runNpm cmd workdir _ =
                          (printfn "message: %A")
   |> maybeFail
 
-let useNix _ = Directory.Exists("/nix")
-
-let isUnix _ = Environment.OSVersion.Platform = PlatformID.Unix
+let runFable cmd workdir _ =
+  if not isUnix then
+    DeleteFile (workdir @@ "package.json")
+    CopyFile workdir (__SOURCE_DIRECTORY__ @@ "package.json")
+  runNpm cmd workdir ()
 
 let runNixShell filepath workdir =
   ExecProcess (fun info ->
@@ -364,17 +370,17 @@ Target "RunPalletTests"
 
 let frontendDir = baseDir @@ "Iris" @@ "Web" @@ "Frontend"
 
-Target "WatchFrontend" (runNpm "run watch-frontend" frontendDir)
+Target "WatchFrontend" (runFable "run watch-frontend" frontendDir)
 
-Target "BuildFrontend" (runNpm "run build-frontend" frontendDir)
+Target "BuildFrontend" (runFable "run build-frontend" frontendDir)
 
 Target "BuildFrontendFsProj" (buildDebug "Frontend.fsproj")
 
 let workerDir = baseDir @@ "Iris" @@ "Web" @@ "Worker"
 
-Target "BuildWorker" (runNpm "run build-worker" workerDir)
+Target "BuildWorker" (runFable "run build-worker" workerDir)
 
-Target "WatchWorker" (runNpm "run watch-worker" workerDir)
+Target "WatchWorker" (runFable "run watch-worker" workerDir)
 
 Target "BuildWorkerFsProj" (buildDebug "Frontend.fsproj")
 
@@ -388,7 +394,7 @@ Target "BuildWebTests" (fun _ ->
     let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Web.Tests"
     let jsDir = testsDir @@ "js"
     let cssDir = testsDir @@ "css"
-    let npmMods = if isUnix() then "./node_modules" else @".\node_modules"
+    let npmMods = if isUnix then "./node_modules" else @".\node_modules"
     let assetsDir = baseDir @@ "assets" @@ "frontend"
 
     CopyDir testsDir assetsDir (konst true)
@@ -406,7 +412,7 @@ Target "BuildWebTestsFsProj" (buildDebug "Web.Tests.fsproj")
 
 Target "RunWebTests" (fun _ ->
     let args =
-      if useNix() then
+      if useNix then
         "-p /home/k/.nix-profile/bin/phantomjs -R dot tests.html"
       else
         "-R dot tests.html"
@@ -452,9 +458,9 @@ Target "BuildTests" (buildDebug "Tests.fsproj")
 Target "RunTests"
   (fun _ ->
     let testsDir = baseDir @@ "bin/Debug/Tests"
-    if useNix () then
+    if useNix then
       runNixShell "assets/nix/runtests.nix" testsDir
-    elif isUnix() then
+    elif isUnix then
       runMono "Tests.exe" testsDir
     else
       runExec "Tests.exe" "" testsDir)
