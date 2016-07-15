@@ -389,6 +389,7 @@ Target "BuildWorkerFsProj" (buildDebug "Frontend.fsproj")
 //   | |/ _ \/ __| __/ __|
 //   | |  __/\__ \ |_\__ \
 // JS|_|\___||___/\__|___/
+let webtestsdir = baseDir @@ "Iris" @@ "Tests" @@ "Web"
 
 Target "BuildWebTests" (fun _ ->
     let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Web.Tests"
@@ -404,9 +405,9 @@ Target "BuildWebTests" (fun _ ->
     CopyFile jsDir  (npmMods @@ "virtual-dom" @@ "dist" @@ "virtual-dom.js")
     CopyFile (jsDir @@ "expect.js") (npmMods @@ "expect.js" @@ "index.js")
 
-    runNpm "run build-tests" baseDir ())
+    runFable "run build-tests" webtestsdir ())
 
-Target "WatchWebTests" (runNpm "run watch-tests" baseDir)
+Target "WatchWebTests" (runFable "run watch-tests" webtestsdir)
 
 Target "BuildWebTestsFsProj" (buildDebug "Web.Tests.fsproj")
 
