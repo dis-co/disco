@@ -623,8 +623,8 @@ Target "Release" DoNothing
 "BuildWorkerRelease"
 ==> "CopyAssets"
 
-"BuildWebTests"
-==> "CopyAssets"
+// "BuildWebTests"
+// ==> "CopyAssets"
 
 "BuildFrontendRelease"
 ==> "CopyAssets"
