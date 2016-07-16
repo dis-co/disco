@@ -126,7 +126,7 @@ let runFable cmd workdir _ =
   if not isUnix then
     DeleteFile (workdir @@ "package.json")
     CopyFile workdir (__SOURCE_DIRECTORY__ @@ "package.json")
-  runNpm cmd workdir ()
+  runNpm ("run " + cmd) workdir ()
 
 let runNixShell filepath workdir =
   ExecProcess (fun info ->
@@ -370,17 +370,21 @@ Target "RunPalletTests"
 
 let frontendDir = baseDir @@ "Iris" @@ "Web" @@ "Frontend"
 
-Target "WatchFrontend" (runFable "run watch-frontend" frontendDir)
+Target "WatchFrontendDebug" (runFable "watch-frontend-debug" frontendDir)
+Target "WatchFrontendRelease" (runFable "watch-frontend-release" frontendDir)
 
-Target "BuildFrontend" (runFable "run build-frontend" frontendDir)
+Target "BuildFrontendDebug" (runFable "build-frontend-debug" frontendDir)
+Target "BuildFrontendRelease" (runFable "build-frontend-release" frontendDir)
 
 Target "BuildFrontendFsProj" (buildDebug "Frontend.fsproj")
 
 let workerDir = baseDir @@ "Iris" @@ "Web" @@ "Worker"
 
-Target "BuildWorker" (runFable "run build-worker" workerDir)
+Target "BuildWorkerDebug" (runFable "build-worker-debug" workerDir)
+Target "BuildWorkerRelease" (runFable "build-worker-release" workerDir)
 
-Target "WatchWorker" (runFable "run watch-worker" workerDir)
+Target "WatchWorkerDebug" (runFable "watch-worker-debug" workerDir)
+Target "WatchWorkerRelease" (runFable "watch-worker-release" workerDir)
 
 Target "BuildWorkerFsProj" (buildDebug "Frontend.fsproj")
 
@@ -405,7 +409,7 @@ Target "BuildWebTests" (fun _ ->
     CopyFile jsDir  (npmMods @@ "virtual-dom" @@ "dist" @@ "virtual-dom.js")
     CopyFile (jsDir @@ "expect.js") (npmMods @@ "expect.js" @@ "index.js")
 
-    runFable "run build-tests" webtestsdir ())
+    runFable "build-tests-release" webtestsdir ())
 
 Target "WatchWebTests" (runFable "run watch-tests" webtestsdir)
 
@@ -563,10 +567,16 @@ Target "Release" DoNothing
 ==> "BuildWebTests"
 
 "GenerateSerialization"
-==> "BuildFrontend"
+==> "BuildFrontendRelease"
 
 "GenerateSerialization"
-==> "BuildWorker"
+==> "BuildFrontendDebug"
+
+"GenerateSerialization"
+==> "BuildWorkerDebug"
+
+"GenerateSerialization"
+==> "BuildWorkerRelease"
 
 "GenerateSerialization"
 ==> "BuildReleaseService"
@@ -610,13 +620,13 @@ Target "Release" DoNothing
 ==> "BuildReleaseService"
 ==> "CopyBinaries"
 
-"BuildWorker"
+"BuildWorkerRelease"
 ==> "CopyAssets"
 
 "BuildWebTests"
 ==> "CopyAssets"
 
-"BuildFrontend"
+"BuildFrontendRelease"
 ==> "CopyAssets"
 
 "CopyBinaries"
@@ -641,10 +651,10 @@ Target "DebugAll" DoNothing
 "RunWebTests"
 ==> "DebugAll"
 
-"BuildWorker"
+"BuildWorkerDebug"
 ==> "DebugAll"
 
-"BuildFrontend"
+"BuildFrontendDebug"
 ==> "DebugAll"
 
 "BuildDebugService"
