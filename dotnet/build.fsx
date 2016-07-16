@@ -355,7 +355,8 @@ Target "Pallet"
    build (setParams "Debug") "src/Pallet/Pallet.fsproj"
    build (setParams "Release") "src/Pallet/Pallet.fsproj")
 
-Target "PalletTests" (buildDebug ("src" @@ "Pallet.Tests" @@ "Pallet.Tests.fsproj"))
+Target "PalletTests"
+  (build (setParams "Debug") ("src" @@ "Pallet.Tests" @@ "Pallet.Tests.fsproj"))
 
 Target "RunPalletTests"
   (fun _ ->
