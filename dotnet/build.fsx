@@ -463,13 +463,14 @@ Target "BuildTests" (buildDebug "Tests.fsproj")
 
 Target "RunTests"
   (fun _ ->
-    let testsDir = baseDir @@ "bin/Debug/Tests"
+    let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Tests"
+
     if useNix then
       runNixShell "assets/nix/runtests.nix" testsDir
     elif isUnix then
-      runMono "Tests.exe" testsDir
+      runMono "Iris.Tests.exe" testsDir
     else
-      runExec "Tests.exe" "" testsDir)
+      runExec "Iris.Tests.exe" "" testsDir)
 
 //  ____
 // / ___|  ___ _ ____   _____ _ __
