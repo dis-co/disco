@@ -273,12 +273,12 @@ type NodeMetaData() =
   static member FromNode (node: Node) =
     let coder = FsPickler.CreateBinarySerializer()
     let meta = new NodeMetaData()
-    meta._id   <- string node.Id
-    meta.State <- string node.State
-    meta.Data  <- coder.Pickle(node.Data)
-    meta.Voting <- node.Voting
+    meta._id        <- string node.Id
+    meta.State      <- string node.State
+    meta.Data       <- coder.Pickle(node.Data)
+    meta.Voting     <- node.Voting
     meta.VotedForMe <- node.VotedForMe
-    meta.NextIndex <- int64 node.NextIndex
+    meta.NextIndex  <- int64 node.NextIndex
     meta.MatchIndex <- int64 node.MatchIndex
     meta
 
@@ -536,9 +536,22 @@ let findAll<'t when 't : (new : unit -> 't) and 't : null> (collection: LiteColl
 /// - collection: collection the document lives in
 ///
 /// Returns: bool
-let deleteById<'t when 't : (new : unit -> 't)> (id: string) (collection: LiteCollection<'t>) =
-  let bson = new BsonValue(id)
-  collection.Delete(bson)
+let inline deleteById< ^a, 't when 't : (new : unit -> 't)> (id: ^a) (collection: LiteCollection<'t>) =
+  collection.Delete(new BsonValue(id))
+
+/// ## Delete many documents by id
+///
+/// Description
+///
+/// ### Signature:
+/// - arg: arg
+/// - arg: arg
+/// - arg: arg
+///
+/// Returns: Type
+let inline deleteMany< ^a, 't when 't : (new : unit -> 't)> (ids: ^a array) (collection: LiteCollection<'t>) =
+  let folder m id = deleteById id collection && m
+  Array.fold folder true ids
 
 /// ## Clear an entire database
 ///
@@ -665,7 +678,49 @@ let findLog (id: Id) (db: LiteDatabase) =
   logCollection db
   |> ensureIndex "_id"
   |> findById (string id)
-  |> Option.map (fun meta -> meta.ToLog())
+  |> Option.map (fun (meta: LogData) -> meta.ToLog())
+
+/// ## Insert a log sequence into given database
+///
+/// Inserts a log chain into the given database
+///
+/// ### Signature:
+/// - log: LogEntry to insert into database
+/// - db: LiteDatabase to insert log into
+///
+/// Returns: unit
+let insertLogs (log: LogEntry) (db: LiteDatabase) =
+  logCollection db |> insertMany (LogData.FromLog log)
+
+/// ## Delete the given log from the database
+///
+/// Deletes the top-most log entry from the given database
+///
+/// ### Signature:
+/// - log: LogEntry to delete
+/// - db: LiteDatabase
+///
+/// Returns: bool
+let deleteLog (log: LogEntry) (db: LiteDatabase) =
+  logCollection db |> deleteById (Log.id log |> string)
+
+/// ## Delete all logs in passed log chain
+///
+/// Delete all logs in the passed log chain.
+///
+/// ### Signature:
+/// - log: LogEntry list to delete
+/// - db: LiteDatabase to delete entries from
+///
+/// Returns: bool
+let deleteLogs (log: LogEntry) (db: LiteDatabase) =
+  let ids =
+    Log.map (Log.id >> string) log
+    |> Array.ofList
+  logCollection db |> deleteMany ids
+
+let countLogs (db: LiteDatabase) =
+  logCollection db |> countEntries
 
 /// ## Enumerate all logs in order of insertion
 ///

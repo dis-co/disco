@@ -108,7 +108,6 @@ module RaftIntegrationTests =
       let col = getCollection<RaftMetaData> "metadata" db
       let loaded = findById meta._id col |> Option.get
 
-
       expect "_id should be the same"    meta._id  id loaded._id
       expect "Term should be the same"   meta.Term id loaded.Term
       expect "RaftId should be the same" rid       id loaded.RaftId
@@ -244,6 +243,76 @@ module RaftIntegrationTests =
       delete path
 
 
+  let test_validate_logs_get_deleted_correctly =
+    testCase "validate logs get deleted correctly" <| fun _ ->
+      let info1 =
+        { MemberId = createGuid()
+        ; HostName = "Hans"
+        ; IpAddr = IpAddress.Parse "192.168.1.20"
+        ; Port = 8080
+        ; Status = IrisNodeStatus.Running
+        ; TaskId = None }
+
+      let info2 =
+        { MemberId = createGuid()
+        ; HostName = "Klaus"
+        ; IpAddr = IpAddress.Parse "192.168.1.22"
+        ; Port = 8080
+        ; Status = IrisNodeStatus.Failed
+        ; TaskId = createGuid() |> Some }
+
+      let node1 = Node.create (RaftId.Create()) info1
+      let node2 = Node.create (RaftId.Create()) info2
+
+      let changes = [| NodeRemoved node2 |]
+      let nodes = [| node1; node2 |]
+
+      let log =
+        LogEntry(RaftId.Create(), 7UL, 1UL, Close "cccc",
+          Some <| LogEntry(RaftId.Create(), 6UL, 1UL, AddClient "bbbb",
+            Some <| Configuration(RaftId.Create(), 5UL, 1UL, [| node1 |],
+              Some <| JointConsensus(RaftId.Create(), 4UL, 1UL, changes,
+                Some <| Snapshot(RaftId.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
+
+      let count = int <| Log.depth log
+
+      let path = mkTmpPath "test_validate_logs_get_deleted_correctly"
+      let db = createDB path |> Option.get
+
+      insertLogs log db
+
+      expect "Should have correct number of logs" (countLogs db) id count
+
+      let result = deleteLog log db
+
+      expect "Should have succeeded" true id result
+      expect "Should have correct number of logs" (countLogs db) id (count - 1)
+
+      let result = deleteLog (log) db
+
+      expect "Should have failed" false id result
+      expect "Should have correct number of logs" (countLogs db) id (count - 1)
+
+      let result = deleteLog (Log.fromEntries log |> Log.prevEntry  |> Option.get) db
+
+      expect "Should have correct number of logs" (countLogs db) id (count - 2)
+
+      truncateLog db
+
+      expect "Should have no logs" (countLogs db) id 0
+
+      insertLogs log db
+
+      expect "Should have correct number of logs" (countLogs db) id count
+
+      let result = deleteLogs log db
+
+      expect "Should have no logs" (countLogs db) id 0
+      expect "Should have succeeded" true id result
+
+      dispose db
+      delete path
+
   //  ____        __ _     _____         _
   // |  _ \ __ _ / _| |_  |_   _|__  ___| |_ ___
   // | |_) / _` | |_| __|   | |/ _ \/ __| __/ __|
@@ -282,6 +351,7 @@ module RaftIntegrationTests =
         test_should_store_load_raftmetadata_correctly
         test_save_restore_log_values_correctly
         test_save_restore_raft_value_correctly
+        test_validate_logs_get_deleted_correctly
 
         test_validate_raft_service_bind_correct_port
       ]
