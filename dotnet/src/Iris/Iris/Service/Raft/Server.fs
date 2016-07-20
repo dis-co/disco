@@ -228,8 +228,17 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
     member self.RetrieveSnapshot ()  = failwith "FIXME: RetrieveSnapshot"
     member self.PersistSnapshot log  = failwith "FIXME: PersistSnapshot"
 
-    member self.StateChanged o n =
-      printfn "[StateChanged] from %A to %A" o n
+    /// ## Raft state changed
+    ///
+    /// Signals the Raft instance has changed its State.
+    ///
+    /// ### Signature:
+    /// - old: old Raft state
+    /// - new: new Raft state
+    ///
+    /// Returns: unit
+    member self.StateChanged old current =
+      printfn "[StateChanged] from %A to %A" old current
 
     /// ## Persist the vote for passed node to disk.
     ///
