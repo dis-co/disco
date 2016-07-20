@@ -78,6 +78,24 @@ type StateMachine =
           StateMachineTypeFB.DataSnapshotTypeFB,
           builder.CreateString str)
 
+    member self.ToBytes () =
+      let builder = new FlatBufferBuilder(1)
+      let offset = self.ToOffset(builder)
+      builder.Finish(offset.Value)
+      builder.SizedByteArray()
+
+    static member FromBytes (bytes: byte array) : StateMachine option =
+      let msg = StateMachineFB.GetRootAsStateMachineFB(new ByteBuffer(bytes))
+      match msg.Type with
+        | StateMachineTypeFB.OpenProjectTypeFB   -> Open         msg.Command |> Some
+        | StateMachineTypeFB.SaveProjectTypeFB   -> Save         msg.Command |> Some
+        | StateMachineTypeFB.CreateProjectTypeFB -> Create       msg.Command |> Some
+        | StateMachineTypeFB.CloseProjectTypeFB  -> Close        msg.Command |> Some
+        | StateMachineTypeFB.AddClientTypeFB     -> AddClient    msg.Command |> Some
+        | StateMachineTypeFB.UpdateClientTypeFB  -> UpdateClient msg.Command |> Some
+        | StateMachineTypeFB.RemoveClientTypeFB  -> RemoveClient msg.Command |> Some
+        | StateMachineTypeFB.DataSnapshotTypeFB  -> DataSnapshot msg.Command |> Some
+        | _                                      -> None
 
 //     _    _ _
 //    / \  | (_) __ _ ___  ___  ___

@@ -118,8 +118,8 @@ let runNpm cmd workdir _ =
                            info.WorkingDirectory <- workdir)
                          (TimeSpan.MaxValue)
                          true
-                         (printfn "error: %A")
-                         (printfn "message: %A")
+                         (printfn "error: %s")
+                         (printfn "%s")
   |> maybeFail
 
 let runFable cmd workdir _ =

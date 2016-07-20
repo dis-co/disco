@@ -15,3 +15,4 @@ FsCheck
 XUnit
 NUnit
 Gallio
+LiteDB

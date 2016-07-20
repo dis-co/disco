@@ -24,6 +24,7 @@ type RaftOptions =
   ; LeaderIp         : string option
   ; LeaderPort       : uint32 option
   ; MaxRetries       : uint32
+  ; DataDir          : FilePath
   }
 
 
@@ -39,6 +40,7 @@ type GeneralArgs =
   | [<Mandatory>][<EqualsAssignment>] RaftNodeId of string
   | [<Mandatory>][<EqualsAssignment>] RaftPort   of uint32
   | [<Mandatory>][<EqualsAssignment>] WebPort    of uint32
+  | [<Mandatory>][<EqualsAssignment>] DataDir    of string
   |                                   Debug
   |                                   Start
   |                                   Join
@@ -50,6 +52,7 @@ type GeneralArgs =
 
     member self.Usage =
       match self with
+        | DataDir     _ -> "Temporary directory to place the database in"
         | Bind       _ -> "Specify a valid IP address."
         | WebPort    _ -> "Http server port."
         | RaftPort   _ -> "Raft server port (internal)."

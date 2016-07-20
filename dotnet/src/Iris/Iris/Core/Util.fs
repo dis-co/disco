@@ -121,6 +121,9 @@ module Utils =
   // | |_| | |_| | \__ \                //
   //  \___/ \__|_|_|___/                //
   ////////////////////////////////////////
+  let (</>) p1 p2 = System.IO.Path.Combine(p1, p2)
+
+  let warn = printfn "[WARNING] %s"
 
   let dispose (o : 't when 't :> IDisposable) = o.Dispose()
 

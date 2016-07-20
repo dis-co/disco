@@ -51,6 +51,7 @@ module CommandLine =
       ; LeaderId   = opts.TryGetResult <@ LeaderId   @> |> Option.map trim
       ; LeaderIp   = opts.TryGetResult <@ LeaderIp   @>
       ; LeaderPort = opts.TryGetResult <@ LeaderPort @>
+      ; DataDir     = opts.GetResult   <@ DataDir    @>
       ; MaxRetries = 5u }
     with
       | ex ->
@@ -158,7 +159,7 @@ module CommandLine =
         | Nodes       -> Map.iter (fun _ a -> printfn "Node: %A" a) context.State.Peers
         | Append ety  ->
           match tryAppendEntry context ety with
-            | Some response -> failwith "FIXME: should now loop and wait while the request is being committed"
+            | Some response -> failwith "FIXME: should now loop & wait while the request committed"
             | _ -> failwith "FIXME: should handle case when appending new entry was not possible"
         | Timeout     -> timeoutRaft context
         | Status      -> printfn "Status:\n%s" <| context.State.ToString ()
