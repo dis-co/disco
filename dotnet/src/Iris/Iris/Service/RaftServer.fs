@@ -395,83 +395,247 @@ module RaftServer =
               with
                 | _ -> None
 
+    /// ## Get a collection for a type
+    ///
+    /// Get a collection for storing/querying a perticular type.
+    ///
+    /// ### Signature:
+    /// - name: the name of the collection
+    /// - db: the LiteDatabase holding the collection
+    ///
+    /// Returns: LiteCollection<'t>
     let getCollection<'t when 't : (new : unit -> 't)> (name: string) (db: LiteDatabase) =
       db.GetCollection<'t> name
 
+    /// ## Add/update an index
+    ///
+    /// Add an index to a collection (or update if it already exists).
+    ///
+    /// ### Signature:
+    /// - field: string name of field to index
+    /// - collection: collection to create index on
+    ///
+    /// Returns: LiteCollection<'t>
     let ensureIndex field (collection: LiteCollection<'t>) =
       collection.EnsureIndex(field) |> ignore
       collection
 
+    /// ## Count entries in a collection
+    ///
+    /// Count all entries in a collection
+    ///
+    /// ### Signature:
+    /// - collection: collection to count entries for
+    ///
+    /// Returns: int
     let countEntries (collection: LiteCollection<'t>) =
       collection.Count()
 
+    /// ## Insert a new record into a collection
+    ///
+    /// Insert a new document into the collection specified.
+    ///
+    /// ### Signature:
+    /// - thing: document to insert
+    /// - collection: collection to add document to
+    ///
+    /// Returns: unit
     let insert<'t when 't : (new : unit -> 't)> (thing: 't) (collection: LiteCollection<'t>) =
-      collection.Insert thing
+      collection.Insert thing |> ignore
 
+    /// ## Insert many documents in bulk
+    ///
+    /// Insert an array of documents in bulk in the collection supplied.
+    ///
+    /// ### Signature:
+    /// - things: array of documents to add
+    /// - collection: collection to add documents to
+    ///
+    /// Returns: unit
     let insertMany<'t when 't : (new : unit -> 't)> (things: 't array) (collection: LiteCollection<'t>) =
-      collection.InsertBulk things
+      collection.InsertBulk things |> ignore
 
+    /// ## Update a document
+    ///
+    /// Update a document in the given collection.
+    ///
+    /// ### Signature:
+    /// - thing: document to update
+    /// - collection: collection the document lives in
+    ///
+    /// Returns: unit
     let update<'t when 't : (new : unit -> 't)> (thing: 't) (collection: LiteCollection<'t>) =
       collection.Update thing
 
+    /// ## Find a document by its id
+    ///
+    /// Find a document by its id. Indicates failure to find it by returning None.
+    ///
+    /// ### Signature:
+    /// - id: string id to search for
+    /// - collection: collection to search in
+    ///
+    /// Returns: 't option
     let findById<'t when 't : (new : unit -> 't) and 't : null> (id: string) (collection: LiteCollection<'t>) =
       let result = collection.FindById(new BsonValue(id))
       if isNull result then
         None
       else Some result
 
+    /// ## List all documents in a collection
+    ///
+    /// Finds all documents in a given collection.
+    ///
+    /// ### Signature:
+    /// - collection: collection to enumerate entries of
+    ///
+    /// Returns: 't list
     let findAll<'t when 't : (new : unit -> 't) and 't : null> (collection: LiteCollection<'t>) =
       collection.FindAll()
       |> List.ofSeq
 
+    /// ## Delete a document by its id
+    ///
+    /// Delete a document by its ID.
+    ///
+    /// ### Signature:
+    /// - id: string id of document to delete
+    /// - collection: collection the document lives in
+    ///
+    /// Returns: bool
     let deleteById<'t when 't : (new : unit -> 't)> (id: string) (collection: LiteCollection<'t>) =
       let bson = new BsonValue(id)
       collection.Delete(bson)
 
+    /// ## Clear an entire database
+    ///
+    /// Clear a database of all its entries.
+    ///
+    /// ### Signature:
+    /// - db: LiteDatabase to truncate
+    ///
+    /// Returns: unit
     let truncateDB (db: LiteDatabase)  =
       for name in db.GetCollectionNames() do
         let col = db.GetCollection(name)
         col.Drop() |> ignore
 
+    /// ## Initialize the metadata document
+    ///
+    /// Initialize the metadata document in the given LiteDatabase.
+    ///
+    /// ### Signature:
+    /// - db: LiteDatabase
+    ///
+    /// Returns: unit
     let initMetadata (db: LiteDatabase) =
       let metadata = new RaftMetaData()
       getCollection<RaftMetaData> "metadata" db
       |> insert metadata
       |> ignore
 
+    /// ## Get metadata
+    ///
+    /// Get the raft metadata document from this database.
+    ///
+    /// ### Signature:
+    /// - db: LiteDatabase
+    ///
+    /// Returns: RaftMetadata option
     let getMetadata (db: LiteDatabase) =
       getCollection<RaftMetaData> "metadata" db
       |> findById RaftMetaData.Id
 
+    /// ## Get the log collection
+    ///
+    /// Get the LogData collection from given database.
+    ///
+    /// ### Signature:
+    /// - db: LiteDatabase
+    ///
+    /// Returns: LiteCollection<LogData>
     let logCollection (db: LiteDatabase) =
       getCollection<LogData> "logs" db
 
+    /// ## Get the node collecti
+    ///
+    /// Get the node collection from given database.
+    ///
+    /// ### Signature:
+    /// - db: LiteDatabase
+    ///
+    /// Returns: LiteCollection<NodeMetaData>
     let nodeCollection (db: LiteDatabase) =
       getCollection<NodeMetaData> "nodes" db
 
+    /// ## Find a node by its id.
+    ///
+    /// Find a node by its ID. Indicates failure by returning None.
+    ///
+    /// ### Signature:
+    /// - id: NodeId to search for
+    /// - db: LiteDatabase
+    ///
+    /// Returns: Node option
     let findNode (id: NodeId) (db: LiteDatabase) =
       nodeCollection db
       |> ensureIndex "_id"
       |> findById (string id)
       |> Option.map (fun meta -> meta.ToNode())
 
+    /// ## list all nodes in database
+    ///
+    /// List all nodes saved in a database.
+    ///
+    /// ### Signature:
+    /// - db: LiteDatabase
+    ///
+    /// Returns: Node list
     let allNodes db =
       nodeCollection db
       |> findAll
       |> List.map (fun meta -> meta.ToNode())
 
+    /// ## find a log by its id
+    ///
+    /// Description
+    ///
+    /// ### Signature:
+    /// - arg: arg
+    /// - arg: arg
+    /// - arg: arg
+    ///
+    /// Returns: LogEntry option
     let findLog (id: Id) (db: LiteDatabase) =
       logCollection db
       |> ensureIndex "_id"
       |> findById (string id)
       |> Option.map (fun meta -> meta.ToLog())
 
+    /// ## Enumerate all logs in order of insertion
+    ///
+    /// Enumerate all logs in their respective order of insertion.
+    ///
+    /// ### Signature:
+    /// - db: LiteDatabase
+    ///
+    /// Returns: LogData list
     let allLogs (db: LiteDatabase) =
       logCollection db
       |> ensureIndex "_id"
       |> findAll
       |> List.sort
 
+    /// ## Get the actual LogEntry
+    ///
+    /// Get the entire LogEntry value from the database. This is the entire chain of logs present,
+    /// in the order entry. This function does not yet check for consistency when log entries are
+    /// present that have already been deleted in practice [FIXME].
+    ///
+    /// ### Signature:
+    /// - db: LiteDatabase
+    ///
+    /// Returns: LogEntry option
     let getLogs (db: LiteDatabase) =
       let folder (prev: LogEntry option) (d: LogData) =
         match d.ToLog() with
@@ -485,7 +649,14 @@ module RaftServer =
         | []  -> None
         | lst -> List.fold folder None lst
 
-
+    /// ## Get the saved Raft instance from the log.
+    ///
+    /// Construct a raft value from the current state in the database.
+    ///
+    /// ### Signature:
+    /// - db:  LiteDatabase
+    ///
+    /// Returns: Raft option
     let getRaft db =
       match (getLogs db, allNodes db, getMetadata db) with
         | (Some log, nodes, Some meta) ->

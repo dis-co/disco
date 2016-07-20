@@ -167,9 +167,6 @@ module RaftIntegrationTests =
       let depth = log |> Option.get |> Log.depth |> int
       let path = mkTmpPath "test_save_restore_log_values_correctly"
 
-      // delete afterwards
-      try delete path with | _ -> ()
-
       let db = createDB path |> Option.get
       let col = logCollection db
 
@@ -194,7 +191,9 @@ module RaftIntegrationTests =
 
   let test_save_restore_raft_value_correctly =
     testCase "save/restore raft value correctly" <| fun _ ->
-      printfn "<empty>"
+      failwith "not implemented"
+
+
 
   //  ____        __ _     _____         _
   // |  _ \ __ _ / _| |_  |_   _|__  ___| |_ ___
@@ -233,6 +232,6 @@ module RaftIntegrationTests =
         test_should_create_database
         test_should_store_load_raftmetadata_correctly
         test_save_restore_log_values_correctly
-        // test_save_restore_raft_value_correctly
+        test_save_restore_raft_value_correctly
         // test_validate_raft_service_bind_correct_port
       ]
