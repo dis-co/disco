@@ -223,11 +223,13 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
     member self.NodeUpdated node = failwith "FIXME: Node was updated."
     member self.NodeRemoved node = failwith "FIXME: Node was removed."
     member self.Configured nodes = failwith "FIXME: Cluster configuration done."
-    member self.StateChanged o n = failwithf "FIXME: State changed from %A to %A" o n
 
     member self.PrepareSnapshot raft = failwith "FIXME: PrepareSnapshot"
-    member self.RetrieveSnapshot () = failwith "FIXME: RetrieveSnapshot"
-    member self.PersistSnapshot log = failwith "FIXME: PersistSnapshot"
+    member self.RetrieveSnapshot ()  = failwith "FIXME: RetrieveSnapshot"
+    member self.PersistSnapshot log  = failwith "FIXME: PersistSnapshot"
+
+    member self.StateChanged o n =
+      printfn "[StateChanged] from %A to %A" o n
 
     /// ## Persist the vote for passed node to disk.
     ///
