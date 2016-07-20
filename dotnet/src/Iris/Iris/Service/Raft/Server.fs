@@ -43,10 +43,18 @@ module RaftServerStateHelpers =
 // |_| \_\__,_|_|  \__| |____/ \___|_|    \_/ \___|_|
 
 type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
-  let max_retry = 5
   let timeout = 10UL
 
-  let database = openDB (options.DataDir </> DB_NAME)
+  let database =
+    let path = options.DataDir </> DB_NAME
+    match openDB path with
+      | Some db -> db
+      | _       ->
+        match createDB path with
+          | Some db -> db
+          | _       ->
+            printfn "[RaftServer] unable to open Database. Aborting."
+            exit 1
 
   let serverState = ref Stopped
 
@@ -169,7 +177,7 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
     } |> atomically
 
   member self.ForceTimeout() =
-    failwith "FIXME: ForceTimeout"
+    forceElection appState cbs |> atomically
 
   member self.Log msg =
     let state = self.State
@@ -220,10 +228,94 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
     member self.PrepareSnapshot raft = failwith "FIXME: PrepareSnapshot"
     member self.RetrieveSnapshot () = failwith "FIXME: RetrieveSnapshot"
     member self.PersistSnapshot log = failwith "FIXME: PersistSnapshot"
-    member self.PersistVote node = failwith "FIXME: PersistVote"
-    member self.PersistTerm node = failwith "FIXME: PersistTerm"
-    member self.PersistLog log   = failwith "FIXME: LogOffer"
-    member self.DeleteLog log    = failwith "FIXME: LogPoll"
+
+    /// ## Persist the vote for passed node to disk.
+    ///
+    /// Persist the vote for the passed node to disk.
+    ///
+    /// ### Signature:
+    /// - node: Node to persist
+    ///
+    /// Returns: unit
+    member self.PersistVote (node: Node option) =
+      try
+        let meta =
+          match getMetadata database with
+            | Some meta -> meta
+            | _         ->
+              initMetadata database |> ignore
+              let state = readTVar appState |> atomically
+              saveMetadata state.Raft database
+
+        match node with
+          | Some peer ->
+            meta.VotedFor <- string peer.Id
+            saveRaftMetadata meta database
+            sprintf "[PersistVote] persisted vote for node: %A" (string peer.Id) |> self.Log
+          | _         ->
+            meta.VotedFor <- null
+            saveRaftMetadata meta database
+            sprintf "[PersistVote] persisted reset of VotedFor" |> self.Log
+      with
+        | exn -> handleException "PersistTerm" exn
+
+    /// ## Persit the new term into the database
+    ///
+    /// Save the current term to the database.
+    ///
+    /// ### Signature:
+    /// - arg: arg
+    /// - arg: arg
+    /// - arg: arg
+    ///
+    /// Returns: unit
+    member self.PersistTerm term =
+      try
+        let meta =
+          match getMetadata database with
+            | Some meta -> meta
+            | _         ->
+              initMetadata database |> ignore
+              let state = readTVar appState |> atomically
+              saveMetadata state.Raft database
+
+        meta.Term <- int64 term
+        saveRaftMetadata meta database
+        sprintf "[PersistTerm] saved term: %A" term |> self.Log
+      with
+        | exn -> handleException "PersistTerm" exn
+
+    /// ## Persist a log to disk
+    ///
+    /// Save a log to the database.
+    ///
+    /// ### Signature:
+    /// - log: Log to persist
+    ///
+    /// Returns: unit
+    member self.PersistLog log =
+      try
+        insertLogs log database
+        sprintf "[PersistLog] id: %A" (Log.id log |> string)
+        |> self.Log
+      with
+        | exn -> handleException "PersistLog" exn
+
+    /// ## Callback to delete a log entry from database
+    ///
+    /// Delete a log entry from the database.
+    ///
+    /// ### Signature:
+    /// - log: LogEntry to delete
+    ///
+    /// Returns: unit
+    member self.DeleteLog log =
+      try
+        deleteLogs log database
+        |> sprintf "[DeleteLog] id: %A result: %b" (Log.id log |> string)
+        |> self.Log
+      with
+        | exn -> handleException "DeleteLog" exn
 
     member self.HasSufficientLogs node = failwith "FIXME: HasSufficientLogs"
 

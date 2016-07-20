@@ -106,3 +106,12 @@ let cancelToken (cts: CancellationTokenSource option ref) =
     finally
       cts := None
   | _ -> ()
+
+let handleException (tag: string) (exn: 't when 't :> Exception) =
+  printfn "[%s]"          tag
+  printfn "Exception: %s" exn.Message
+  printfn "Source: %s"    exn.Source
+  printfn "StackTrace:"
+  printfn "%s"            exn.StackTrace
+  printfn "Aborting."
+  exit 1

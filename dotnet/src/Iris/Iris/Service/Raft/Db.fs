@@ -759,6 +759,18 @@ let getLogs (db: LiteDatabase) =
     | []  -> None
     | lst -> List.fold folder None lst
 
+/// ## Save the raw RaftMetaData document to disk
+///
+/// Save the raw RaftMetaData document to disk
+///
+/// ### Signature:
+/// - meta: RaftMetaData
+/// - db: LiteDatabase
+///
+/// Returns: unit
+let saveRaftMetadata (meta: RaftMetaData) (db: LiteDatabase) =
+  raftCollection db |> update meta |> ignore
+
 /// ## Save Raft metadata
 ///
 /// Save the Raft metadata
@@ -806,9 +818,9 @@ let saveMetadata (raft: Raft) (db: LiteDatabase) =
     | _ ->
       meta.VotedFor <- null
 
-  raftCollection db
-  |> update meta
-  |> ignore
+  saveRaftMetadata meta db
+  meta
+
 
 /// ## Save a set of log entries
 ///
@@ -878,7 +890,7 @@ let truncateLog (db: LiteDatabase) =
 let saveRaft (raft: Raft) (db: LiteDatabase) =
   truncateLog   db
   truncateNodes db
-  saveMetadata raft db
+  saveMetadata raft db |> ignore
   saveLog      raft db
   saveNodes    raft db
 
