@@ -16,9 +16,9 @@ open ZeroMQ.lib
 /// Provides a memory-managed wrapper over ZMQ message operations
 type Message() as this =
   inherit ZFrame()
-  
+
   let mutable disposed  = false
-       
+
   /// Creates a new Message from the given byte array
   new (source: byte array) = new Message (source)
 
@@ -39,10 +39,10 @@ type Message() as this =
 [<Sealed>]
 type Socket internal(context,socketType) =
   inherit ZSocket(context,socketType)
-  
+
   let mutable disposed  = false
 
-  override this.ToString () = sprintf "Socket(%A)" this
+  override this.ToString () = sprintf "Socket(%A)" <| this.GetHashCode()
 
   override this.Finalize() =
     if not disposed then
@@ -51,12 +51,12 @@ type Socket internal(context,socketType) =
 
 /// Represents the container for a group of sockets in a node
 [<Sealed>]
-type Context() = 
+type Context() =
   inherit ZContext()
 
   let mutable disposed  = false
 
-  override this.ToString () = sprintf "Context(%A)" this 
+  override this.ToString () = sprintf "Context(%A)" <| this.GetHashCode()
 
   override this.Finalize() =
     if not disposed then
