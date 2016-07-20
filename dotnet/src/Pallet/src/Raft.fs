@@ -145,9 +145,9 @@ module Raft =
       cbs.PersistVote node
       |> returnM
 
-  let persistTerm node =
+  let persistTerm term =
     read >>= fun cbs ->
-      cbs.PersistTerm node
+      cbs.PersistTerm term
       |> returnM
 
   let persistLog log =
@@ -411,7 +411,10 @@ module Raft =
 
   /// Set CurrentTerm to supplied value. Monadic action.
   let setTermM (term : Term) =
-    setTerm term |> modify
+    raft {
+      do! setTerm term |> modify
+      do! persistTerm term
+    }
 
   /// Set current RaftState to supplied state.
   let setState (rs : RaftState) (env: IRaftCallbacks<_,_>) (state: Raft<'d,'n>) =

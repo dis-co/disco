@@ -188,8 +188,7 @@ type InstallSnapshot<'node,'data> =
   ; LeaderId  : NodeId
   ; LastIndex : Index
   ; LastTerm  : Term
-  ; Data      : LogEntry<'node,'data>
-  }
+  ; Data      : LogEntry<'node,'data> }
 
 type SnapshotResponse = { Term : Term }
 
@@ -253,7 +252,7 @@ type IRaftCallbacks<'a,'b> =
 
   /// persist term data to disk. For safety reasons this callback MUST flush
   /// the change to disk>
-  abstract member PersistTerm:         Node<'b>        -> unit
+  abstract member PersistTerm:         Term            -> unit
 
   /// persist an entry added to the log to disk. For safety reasons this
   /// callback MUST flush the change to disk.

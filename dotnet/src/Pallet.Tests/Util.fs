@@ -31,7 +31,7 @@ module Util =
     ; Configured          : Node<'b> array  -> unit
     ; StateChanged        : RaftState       -> RaftState              -> unit
     ; PersistVote         : Node<'b> option -> unit
-    ; PersistTerm         : Node<'b>        -> unit
+    ; PersistTerm         : Term            -> unit
     ; PersistLog          : LogEntry<'a,'b> -> unit
     ; DeleteLog           : LogEntry<'a,'b> -> unit
     ; HasSufficientLogs   : Node<'b>        -> unit

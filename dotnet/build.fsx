@@ -685,8 +685,12 @@ Target "DebugAll" DoNothing
 Target "AllTests" DoNothing
 
 "RunTests"
-==> "RunWebTests"
-==> "RunPalletTests"
+==> "AllTests"
+
+"RunWebTests"
+==> "AllTests"
+
+"RunPalletTests"
 ==> "AllTests"
 
 RunTargetOrDefault "Release"
