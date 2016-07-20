@@ -77,8 +77,9 @@ module RaftIntegrationTests =
   // | |_| | |_) |   | |  __/\__ \ |_\__ \
   // |____/|____/    |_|\___||___/\__|___/
 
-  open Iris.Service.RaftServer.Utilities
-  open Iris.Service.RaftServer.DB
+  open Iris.Service.Raft.Utilities
+  open Iris.Service.Raft.Db
+  open Iris.Service.Raft.Server
 
   let test_should_create_database =
     testCase "should store load raft correctly" <| fun _ ->

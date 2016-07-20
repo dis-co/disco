@@ -10,6 +10,8 @@ open Iris.Core
 open Iris.Core.Utils
 open Iris.Service.Types
 open Iris.Service.Core
+open Iris.Service.CommandLine
+open Iris.Service.Raft.Server
 open LibGit2Sharp
 
 open FSharpx.Functional
