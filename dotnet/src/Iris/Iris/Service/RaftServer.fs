@@ -323,25 +323,75 @@ module RaftServer =
 
     [<AllowNullLiteral>]
     type RaftMetaData() =
-      let mutable term              = 0L
-      let mutable raftid   : string = null
-      let mutable votedfor : string = null
+      let mutable raftid           : string       = null
+      let mutable state            : string       = null
+      let mutable term             : int64        = 0L
+      let mutable leaderid         : string       = null
+      let mutable oldpeers         : string array = null
+      let mutable votedfor         : string       = null
+      let mutable timeout_elapsed  : int64        = 0L
+      let mutable election_timeout : int64        = 0L
+      let mutable request_timeout  : int64        = 0L
+      let mutable max_log_depth    : int64        = 0L
+      let mutable commitidx        : int64        = 0L
+      let mutable last_applied_idx : int64        = 0L
+      let mutable config_change    : string       = null
+
+      member __._id
+        with get ()          = METADATA_ID
+         and set (_: string) = ()
 
       member __.RaftId
         with get () = raftid
          and set s  = raftid <- s
 
+      member __.State
+        with get () = state
+         and set s  = state <- s
+
       member __.Term
         with get () = term
          and set t  = term <- t
+
+      member __.LeaderId
+        with get () = leaderid
+         and set t  = leaderid <- t
+
+      member __.OldPeers
+        with get () = oldpeers
+         and set t  = oldpeers <- t
 
       member __.VotedFor
         with get () = votedfor
          and set v  = votedfor <- v
 
-      member __._id
-        with get ()          = METADATA_ID
-         and set (_: string) = ()
+      member __.CommitIndex
+        with get () = commitidx
+         and set v  = commitidx <- v
+
+      member __.LastAppliedIndex
+        with get () = last_applied_idx
+         and set v  = last_applied_idx <- v
+
+      member __.TimeoutElapsed
+        with get () = timeout_elapsed
+         and set t  = timeout_elapsed <- t
+
+      member __.ElectionTimeout
+        with get () = election_timeout
+         and set t  = election_timeout <- t
+
+      member __.RequestTimeout
+        with get () = request_timeout
+         and set t  = request_timeout <- t
+
+      member __.MaxLogDepth
+        with get () = max_log_depth
+         and set t  = max_log_depth <- t
+
+      member __.ConfigChangeEntry
+        with get () = config_change
+         and set t  = config_change <- t
 
       static member Id = METADATA_ID
 
@@ -520,6 +570,17 @@ module RaftServer =
         let col = db.GetCollection(name)
         col.Drop() |> ignore
 
+    /// ## Clear a collections records
+    ///
+    /// Clear a collection from all documents.
+    ///
+    /// ### Signature:
+    /// - collection: collection to clear
+    ///
+    /// Returns: unit
+    let truncateCollection (collection: LiteCollection<'t>) =
+      collection.Drop() |> ignore
+
     /// ## Initialize the metadata document
     ///
     /// Initialize the metadata document in the given LiteDatabase.
@@ -532,7 +593,18 @@ module RaftServer =
       let metadata = new RaftMetaData()
       getCollection<RaftMetaData> "metadata" db
       |> insert metadata
-      |> ignore
+      metadata
+
+    /// ## Get the collection for the Raft metadata document
+    ///
+    /// Get the collection the metadata doc is stored in.
+    ///
+    /// ### Signature:
+    /// - db: LiteDatabase
+    ///
+    /// Returns: LiteCollectio<RaftMetadata>
+    let raftCollection (db: LiteDatabase) =
+      getCollection<RaftMetaData> "metadata" db
 
     /// ## Get metadata
     ///
@@ -543,7 +615,7 @@ module RaftServer =
     ///
     /// Returns: RaftMetadata option
     let getMetadata (db: LiteDatabase) =
-      getCollection<RaftMetaData> "metadata" db
+      raftCollection db
       |> findById RaftMetaData.Id
 
     /// ## Get the log collection
@@ -649,6 +721,129 @@ module RaftServer =
         | []  -> None
         | lst -> List.fold folder None lst
 
+    /// ## Save Raft metadata
+    ///
+    /// Save the Raft metadata
+    ///
+    /// ### Signature:
+    /// - raft: RAft value to save
+    /// - db: LiteDatabase
+    ///
+    /// Returns: unit
+    let saveMetadata (raft: Raft) (db: LiteDatabase) =
+      let meta =
+        match getMetadata db with
+          | Some m -> m
+          | _      -> initMetadata db
+
+      meta.RaftId <- string raft.Node.Id
+      meta.Term   <- int64  raft.CurrentTerm
+      meta.State  <- string raft.State
+
+      match raft.CurrentLeader with
+        | Some nid -> meta.LeaderId <- string nid
+        | _        -> meta.LeaderId <- null
+
+      match raft.OldPeers with
+        | Some peers ->
+          let nids = Map.toArray peers |> Array.map (fst >> string)
+          meta.OldPeers <- nids
+        | _ ->
+          meta.OldPeers <- null
+
+      meta.TimeoutElapsed   <- int64 raft.TimeoutElapsed
+      meta.ElectionTimeout  <- int64 raft.ElectionTimeout
+      meta.RequestTimeout   <- int64 raft.RequestTimeout
+      meta.MaxLogDepth      <- int64 raft.MaxLogDepth
+      meta.CommitIndex      <- int64 raft.CommitIndex
+      meta.LastAppliedIndex <- int64 raft.LastAppliedIdx
+
+      match raft.ConfigChangeEntry with
+        | Some entry -> meta.ConfigChangeEntry <- string <| Log.id entry
+        | _          -> meta.ConfigChangeEntry <- null
+
+      match raft.VotedFor with
+        | Some nid ->
+          meta.VotedFor <- string nid
+        | _ ->
+          meta.VotedFor <- null
+
+      raftCollection db
+      |> update meta
+      |> ignore
+
+    /// ## Save a set of log entries
+    ///
+    /// Save a set of log entries to a database
+    ///
+    /// ### Signature:
+    /// - raft: Raft value to save log of
+    /// - db: LiteDatabase
+    ///
+    /// Returns: unit
+    let saveLog (raft: Raft) (db: LiteDatabase) =
+      match Log.entries raft.Log with
+        | Some entries ->
+          logCollection db
+          |> insertMany (LogData.FromLog entries)
+          |> ignore
+        | _ -> ()
+
+    /// ## Save all nodes to database
+    ///
+    /// Save nodes to the database.
+    ///
+    /// ### Signature:
+    /// - raft: Raft value to save nodes from
+    /// - db: LiteDatabase
+    ///
+    /// Returns: unit
+    let saveNodes (raft: Raft) (db: LiteDatabase) =
+      let col = nodeCollection db
+      Map.iter (fun _ node ->
+                  NodeMetaData.FromNode(node)
+                  |> flip insert col)
+                raft.Peers
+
+    /// ## Truncate all nodes in database
+    ///
+    /// Remove all nodes from database
+    ///
+    /// ### Signature:
+    /// - db: LiteDatabase
+    ///
+    /// Returns: unit
+    let truncateNodes (db: LiteDatabase) =
+      nodeCollection db |> truncateCollection
+
+    /// ## Remove all log entries
+    ///
+    /// Remove all log entries from database.
+    ///
+    /// ### Signature:
+    /// - db: LiteDatabase
+    ///
+    /// Returns: unit
+    let truncateLog (db: LiteDatabase) =
+      logCollection db |> truncateCollection
+
+    /// ## summary
+    ///
+    /// Description
+    ///
+    /// ### Signature:
+    /// - arg: arg
+    /// - arg: arg
+    /// - arg: arg
+    ///
+    /// Returns: Type
+    let saveRaft (raft: Raft) (db: LiteDatabase) =
+      truncateLog   db
+      truncateNodes db
+      saveMetadata raft db
+      saveLog      raft db
+      saveNodes    raft db
+
     /// ## Get the saved Raft instance from the log.
     ///
     /// Construct a raft value from the current state in the database.
@@ -657,35 +852,63 @@ module RaftServer =
     /// - db:  LiteDatabase
     ///
     /// Returns: Raft option
-    let getRaft db =
-      match (getLogs db, allNodes db, getMetadata db) with
-        | (Some log, nodes, Some meta) ->
-          let node =
-            { MemberId = failwith "FIXME: MemberId"
-            ; HostName = failwith "FIXME: Hostname"
-            ; IpAddr   = failwith "FIXME: IPAddr"
-            ; Port     = failwith "FIXME: port"
-            ; TaskId   = failwith "FIXME: taskid"
-            ; Status   = failwith "FIXME: status"  }
-            |> Node.create (failwith "FIXME: RaftId")
+    let loadRaft db =
+      match getMetadata db with
+        | Some meta ->
+          let log =
+            match getLogs db with
+              | Some entries -> Log.fromEntries entries
+              | _            -> Log.empty
 
-          { Node              = node
-          ; State             = failwith "FIXME: "
-          ; CurrentTerm       = failwith "FIXME: "
-          ; CurrentLeader     = failwith "FIXME: "
-          ; Peers             = failwith "FIXME: "
-          ; OldPeers          = failwith "FIXME: "
-          ; NumNodes          = failwith "FIXME: "
-          ; VotedFor          = failwith "FIXME: "
-          ; Log               = failwith "FIXME: "
-          ; CommitIndex       = failwith "FIXME: "
-          ; LastAppliedIdx    = failwith "FIXME: "
-          ; TimeoutElapsed    = failwith "FIXME: "
-          ; ElectionTimeout   = failwith "FIXME: "
-          ; RequestTimeout    = failwith "FIXME: "
-          ; MaxLogDepth       = failwith "FIXME: "
-          ; ConfigChangeEntry = failwith "FIXME: "
-          } |> Some
+          let nodes = allNodes db
+          let self = List.tryFind (Node.getId >> ((=) (RaftId meta.RaftId))) nodes
+          let votedfor =
+            match meta.VotedFor with
+              | null   -> None
+              | str -> RaftId str |> Some
+
+          let state = RaftState.Parse meta.State
+
+          let leader =
+            match meta.LeaderId with
+              | null   -> None
+              | str -> RaftId str |> Some
+
+          let oldpeers =
+            match meta.OldPeers with
+              | null   -> None
+              | arr -> List.fold (fun lst (n: Node) ->
+                                 if Array.contains (string n.Id) arr then
+                                   (n.Id, n)  :: lst
+                                 else lst) [] nodes
+                      |> Map.ofList
+                      |> Some
+
+          let configchange =
+            match meta.ConfigChangeEntry with
+              | null   -> None
+              | str -> Log.find (RaftId str) log
+
+          match self with
+            | Some node ->
+              { Node              = node
+              ; State             = state
+              ; CurrentTerm       = uint64 meta.Term
+              ; CurrentLeader     = leader
+              ; Peers             = List.map (fun (n: Node)-> (n.Id,n)) nodes |> Map.ofList
+              ; OldPeers          = oldpeers
+              ; NumNodes          = List.length nodes |> uint64
+              ; VotedFor          = votedfor
+              ; Log               = log
+              ; CommitIndex       = uint64 meta.CommitIndex
+              ; LastAppliedIdx    = uint64 meta.LastAppliedIndex
+              ; TimeoutElapsed    = uint64 meta.TimeoutElapsed
+              ; ElectionTimeout   = uint64 meta.ElectionTimeout
+              ; RequestTimeout    = uint64 meta.RequestTimeout
+              ; MaxLogDepth       = uint64 meta.MaxLogDepth
+              ; ConfigChangeEntry = configchange
+              } |> Some
+            | _ -> None
         | _ -> None
 
 
@@ -743,7 +966,7 @@ module RaftServer =
     let loadRaft (options: RaftOptions) =
       let dir = options.DataDir </> DB.DB_NAME
       match IO.Directory.Exists dir with
-        | true -> DB.openDB dir |> Option.bind DB.getRaft
+        | true -> DB.openDB dir |> Option.bind DB.loadRaft
         | _    -> None
 
     let mkRaft (options: RaftOptions) =

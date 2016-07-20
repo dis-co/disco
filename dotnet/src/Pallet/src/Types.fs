@@ -60,6 +60,13 @@ type RaftState =
   override self.ToString() =
     sprintf "%A" self
 
+  static member Parse str =
+    match str with
+      | "Follower"  -> Follower
+      | "Candidate" -> Candidate
+      | "Leader"    -> Leader
+      | _           -> failwithf "unable to parse %A as RaftState" str
+
 /// Response to an AppendEntry request
 ///
 /// ## Constructor:

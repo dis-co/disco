@@ -191,8 +191,56 @@ module RaftIntegrationTests =
 
   let test_save_restore_raft_value_correctly =
     testCase "save/restore raft value correctly" <| fun _ ->
-      failwith "not implemented"
+      let info1 =
+        { MemberId = createGuid()
+        ; HostName = "Hans"
+        ; IpAddr = IpAddress.Parse "192.168.1.20"
+        ; Port = 8080
+        ; Status = IrisNodeStatus.Running
+        ; TaskId = None }
 
+      let info2 =
+        { MemberId = createGuid()
+        ; HostName = "Klaus"
+        ; IpAddr = IpAddress.Parse "192.168.1.22"
+        ; Port = 8080
+        ; Status = IrisNodeStatus.Failed
+        ; TaskId = createGuid() |> Some }
+
+      let node1 = Node.create (RaftId.Create()) info1
+      let node2 = Node.create (RaftId.Create()) info2
+
+      let changes = [| NodeRemoved node2 |]
+      let nodes = [| node1; node2 |]
+
+      let log =
+        LogEntry(RaftId.Create(), 7UL, 1UL, Close "cccc",
+          Some <| LogEntry(RaftId.Create(), 6UL, 1UL, AddClient "bbbb",
+            Some <| Configuration(RaftId.Create(), 5UL, 1UL, [| node1 |],
+              Some <| JointConsensus(RaftId.Create(), 4UL, 1UL, changes,
+                Some <| Snapshot(RaftId.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
+        |> Log.fromEntries
+
+      let raft =
+        { (createLeader "0x01" 1 |> createRaft) with
+            Log = log
+            CurrentTerm = 666UL }
+
+      let path = mkTmpPath "save_restore-raft_value-correctly"
+      let db = createDB path |> Option.get
+
+      saveRaft raft db
+
+      dispose db
+
+      let db = openDB path |> Option.get
+
+      let loaded = loadRaft db
+
+      expect "Values should be equal" (Some raft) id loaded
+
+      dispose db
+      delete path
 
 
   //  ____        __ _     _____         _
@@ -233,5 +281,6 @@ module RaftIntegrationTests =
         test_should_store_load_raftmetadata_correctly
         test_save_restore_log_values_correctly
         test_save_restore_raft_value_correctly
-        // test_validate_raft_service_bind_correct_port
+
+        test_validate_raft_service_bind_correct_port
       ]
