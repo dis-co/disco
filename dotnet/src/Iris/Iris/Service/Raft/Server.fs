@@ -90,26 +90,24 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
   /// Returns: unit
   member self.Start() =
     try
-      stm {
-        serverState := Starting
+      serverState := Starting
 
-        let cts = new CancellationTokenSource()
-        workertoken := Some cts
+      let cts = new CancellationTokenSource()
+      workertoken := Some cts
 
-        let worker = new Actor<RequestWorkerType> (requestLoop appState cbs, cts.Token)
-        worker.Start()
-        requestWorker := Some worker
+      let worker = new Actor<RequestWorkerType> (requestLoop appState cbs, cts.Token)
+      worker.Start()
+      requestWorker := Some worker
 
-        do!  initialize appState cbs
-        let! srvtkn = startServer appState cbs
-        let! prdtkn = startPeriodic timeout appState cbs
+      initialize appState cbs |> atomically
 
-        servertoken   := Some srvtkn
-        periodictoken := Some prdtkn
+      let srvtkn = startServer appState cbs |> atomically
+      let prdtkn = startPeriodic timeout appState cbs |> atomically
 
-        serverState := Running
+      servertoken   := Some srvtkn
+      periodictoken := Some prdtkn
 
-      } |> atomically
+      serverState := Running
     with
       | :? ZMQError as exn ->
         serverState := Failed
@@ -128,30 +126,21 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
     match !serverState with
       | Starting | Stopping | Stopped | Failed _ -> ()
       | Running ->
-        stm {
-          serverState := Stopping
+        serverState := Stopping
 
-          // cancel the running async tasks
-          cancelToken periodictoken
-          cancelToken servertoken
-          cancelToken workertoken
+        // cancel the running async tasks
+        cancelToken periodictoken
+        cancelToken servertoken
+        cancelToken workertoken
 
-          let! state = readTVar appState
+        resetConnections appState |> atomically
 
-          // disconnect all cached sockets
-          state.Connections
-          |> Map.iter (fun (mid: MemberId) (sock: Socket) ->
-                      let nodeinfo = List.tryFind (fun c -> c.MemberId = mid) state.Clients
-                      match nodeinfo with
-                        | Some info -> formatUri info |> disconnect sock
-                        | _         -> ())
+        let state = readTVar appState |> atomically
+        saveRaft state.Raft database
 
-          do! writeTVar appState { state with Connections = Map.empty }
+        serverState := Stopped
 
-          serverState := Stopped
-
-          failwith "STOP SHOULD ALSO PERSIST LAST STATE TO DISK"
-        } |> atomically
+    dispose database
 
   member self.Options
     with get () =

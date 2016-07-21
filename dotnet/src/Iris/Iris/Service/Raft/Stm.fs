@@ -644,6 +644,26 @@ let prepareSnapshot appState =
     return snapshot
   }
 
+let resetConnections appState =
+  let closeSocket state (mid: MemberId) (sock: Socket) =
+    let nodeinfo = List.tryFind (fun c -> c.MemberId = mid) state.Clients
+    match nodeinfo with
+      | Some info ->
+        try
+          formatUri info |> Socket.disconnect sock
+          dispose sock
+        with
+          | exn ->
+            printfn "%s.\nCould not close socket for %A" exn.Message (string info.MemberId)
+      | _ -> ()
+
+  stm {
+    let! state = readTVar appState
+    // disconnect all cached sockets
+    Map.iter (closeSocket state) state.Connections
+    do! writeTVar appState { state with Connections = Map.empty }
+  }
+
 let initialize appState cbs =
   stm {
     let! state = readTVar appState
