@@ -147,6 +147,9 @@ let runMono filepath workdir =
   |> maybeFail
 
 let runExec filepath args workdir =
+  System.IO.File.Exists(workdir </> filepath)
+  |> printfn "%s exists: %b" (workdir </> filepath)
+
   ExecProcess (fun info ->
                   info.FileName <- filepath
                   info.Arguments <- args
