@@ -8,8 +8,6 @@ open Iris.Service
 open Pallet.Core
 open FSharpx.Functional
 open fszmq
-open fszmq.Context
-open fszmq.Socket
 
 [<AutoOpen>]
 module RaftIntegrationTests =
@@ -321,22 +319,19 @@ module RaftIntegrationTests =
 
   let test_validate_raft_service_bind_correct_port =
     testCase "validate raft service bind correct port" <| fun _ ->
-      use context = new Context()
+      let ctx1 = new Context()
+      let ctx2 = new Context()
 
       let leadercfg = createLeader "0x01" 1
-      use leader = new RaftServer(leadercfg, context)
-
+      let leader = new RaftServer(leadercfg, ctx1)
       leader.Start()
 
-      let follower = new RaftServer(leadercfg, context)
+      let follower = new RaftServer(leadercfg, ctx2)
+      follower.Start()
+      expect "Should be in failed state" true hasFailed follower.ServerState
 
-      try
-        follower.Start()
-        failwith "Should have already thrown an exception due to already bound port."
-      with
-        | exn ->
-          printfn "%A" exn.Message
-          expect "Should be in failed state" true hasFailed follower.ServerState
+      dispose leader
+      dispose follower
 
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___

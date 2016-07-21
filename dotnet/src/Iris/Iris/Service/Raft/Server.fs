@@ -110,8 +110,9 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
         serverState := Running
 
       } |> atomically
-    finally
-      serverState := Failed
+    with
+      | :? ZMQError as exn ->
+        serverState := Failed
 
   /// ## Stop the Raft engine, sockets and all.
   ///

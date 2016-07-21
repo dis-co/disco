@@ -437,24 +437,31 @@ let startServer appState cbs =
 
     let rec proc () =
       async {
-        use msg = new Message()
-        Message.recv msg server
+        try
+          let msg = new Message()
+          Message.recv msg server
 
-        let msg : RaftRequest option =
-          Message.data msg |> decode
+          let request : RaftRequest option =
+            Message.data msg |> decode
 
-        let response =
-          match msg with
-          | Some message -> handleRequest message appState cbs |> atomically
-          | None         -> ErrorResponse <| OtherError "Unable to decipher request"
+          let response =
+            match request with
+            | Some message -> handleRequest message appState cbs |> atomically
+            | None         -> ErrorResponse <| OtherError "Unable to decipher request"
 
-        response |> encode |> Socket.send server
+          response |> encode |> Socket.send server
 
-        if token.IsCancellationRequested then
-          Socket.unbind server uri
-          dispose server
-        else
-          return! proc ()
+          dispose msg
+
+          if token.IsCancellationRequested then
+            Socket.unbind server uri
+            dispose server
+          else
+            return! proc ()
+        with
+          | exn ->
+            Socket.unbind server uri
+            dispose server
       }
 
     Async.Start(proc (), token.Token)
