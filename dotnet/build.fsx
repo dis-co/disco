@@ -146,16 +146,18 @@ let runMono filepath workdir =
               (TimeSpan.FromMinutes 5.0)
   |> maybeFail
 
-let runExec filepath args workdir =
+let runExec filepath args workdir shell =
   System.IO.File.Exists(workdir </> filepath)
   |> printfn "%s exists: %b" (workdir </> filepath)
-
-  ExecProcess (fun info ->
-                  info.FileName <- filepath
-                  info.Arguments <- args
-                  info.UseShellExecute <- true
-                  info.WorkingDirectory <- workdir)
-              (TimeSpan.FromMinutes 5.0)
+  ExecProcessWithLambdas (fun info ->
+                             info.FileName <- filepath
+                             info.Arguments <- if String.length args > 0 then args else info.Arguments
+                             info.UseShellExecute <- shell
+                             info.WorkingDirectory <- workdir)
+                         TimeSpan.MaxValue
+                         true
+                         (printfn "error: %s")
+                         (printfn "message: %s")
   |> maybeFail
 
 let buildDebug fsproj _ =
@@ -320,7 +322,7 @@ Target "GenerateSerialization"
 
    let args = "-I " + (baseDir @@ "Schema") + " --csharp " + fbs
 
-   runExec flatcPath args baseDir
+   runExec flatcPath args baseDir true
 
    let files =
       !! (baseDir @@ "Iris/Serialization/**/*.cs")
@@ -364,7 +366,7 @@ Target "PalletTests"
 Target "RunPalletTests"
   (fun _ ->
     let testsDir = "src" @@ "Pallet.Tests"
-    runExec "fsi" "run.fsx" testsDir)
+    runExec "fsi" "run.fsx" testsDir true)
 
 //  _____                _                 _
 // |  ___| __ ___  _ __ | |_ ___ _ __   __| |
@@ -427,7 +429,7 @@ Target "RunWebTests" (fun _ ->
         "-R dot tests.html"
 
     let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Web.Tests"
-    runExec "mocha-phantomjs" args testsDir)
+    runExec "mocha-phantomjs" args testsDir true)
 
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
@@ -473,7 +475,7 @@ Target "RunTests"
     elif isUnix then
       runMono "Iris.Tests.exe" testsDir
     else
-      runExec "Iris.Tests.exe" "" testsDir)
+      runExec "Iris.Tests.exe" "" testsDir false)
 
 //  ____
 // / ___|  ___ _ ____   _____ _ __
