@@ -21,6 +21,8 @@ NUGET
     FsPickler.Json (2.3)
       FsPickler (2.3)
       Newtonsoft.Json (>= 6.0.5)
+    fszmq (12.2.1)
+      FSharp.Core
     Fuchu (1.0.3)
       FSharp.Core (>= 3.1.2.1)
     Gallio (3.3.1)
@@ -198,7 +200,6 @@ NUGET
       System.Threading.Tasks (>= 4.0) - framework: dnxcore50
       xunit.abstractions (>= 2.0) - framework: dnxcore50
       xunit.extensibility.core (2.1) - framework: >= net45, dnx451, dnxcore50, monoandroid, monotouch, xamarinios, winv4.5, wpv8.0, wpav8.1
-    ZeroMQ (4.1.0.21)
 
 GROUP Build
 NUGET
@@ -233,10 +234,9 @@ NUGET
     Octokit (0.20)
       Microsoft.Net.Http  - framework: net10, net11, net20, net30, net35, net40, net40-full
     SourceLink.Fake (1.1)
-    ZeroMQ (4.1.0.21)
 GITHUB
   remote: fsharp/FAKE
-    modules/Octokit/Octokit.fsx (c56456abac6b744c3bb95b217687db19fd19b367)
+    modules/Octokit/Octokit.fsx (573a4dc3d2be229d55a4935136f393d1f1d683c1)
       Octokit
 GROUP Test
 NUGET

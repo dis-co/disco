@@ -586,14 +586,6 @@ Target "Release" DoNothing
 "GenerateSerialization"
 ==> "BuildReleaseNodes"
 
-// fszmq
-
-"FsZMQ"
-==> "BuildReleaseService"
-
-"FsZMQ"
-==> "BuildReleaseNodes"
-
 // Pallet
 
 "Pallet"
@@ -605,9 +597,6 @@ Target "Release" DoNothing
 // Tests
 
 "GenerateSerialization"
-==> "BuildTests"
-
-"FsZMQ"
 ==> "BuildTests"
 
 "Pallet"

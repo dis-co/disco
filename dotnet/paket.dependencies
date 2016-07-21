@@ -14,7 +14,6 @@ group Main
   nuget FsPickler
   nuget FSharpx.Extras
   nuget FsControl
-  nuget ZeroMQ
   nuget Argu
   nuget FsPickler
   nuget FsPickler.Json
@@ -24,6 +23,7 @@ group Main
   nuget LibGit2Sharp.NativeBinaries
   nuget FSharp.Configuration
   nuget LiteDB
+  nuget fszmq
 
 group Build
   source https://nuget.org/api/v2
@@ -36,7 +36,6 @@ group Build
   nuget FSharpx.Extras
   nuget FSharpPlus
   nuget FsControl
-  nuget ZeroMQ
   nuget Argu
   nuget FsPickler
 

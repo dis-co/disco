@@ -6,7 +6,6 @@ open Iris.Core
 open Iris.Service
 open Pallet.Core
 open fszmq
-open fszmq.Context
 open Db
 
 // ------------------------------------------------------------------------------------- //

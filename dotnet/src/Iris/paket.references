@@ -9,10 +9,10 @@ LibGit2Sharp.NativeBinaries
 FSharp.Configuration
 Fleck
 Suave
-ZeroMQ
 Fuchu
 FsCheck
 XUnit
 NUnit
 Gallio
 LiteDB
+fszmq

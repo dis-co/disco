@@ -46,8 +46,6 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Pallet", "src\Pallet\Pallet
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Pallet.Tests", "src\Pallet.Tests\Pallet.Tests.fsproj", "{6eccd0ec-3f65-4968-84a9-1987b58214ad}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "fszmq", "src\fszmq\fszmq.fsproj", "{FDA50C33-B288-4E42-9141-D78BDDEF9466}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -90,10 +88,6 @@ Global
 		{FBFFB969-00ED-4568-8FD0-65A699AACA18}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FBFFB969-00ED-4568-8FD0-65A699AACA18}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FBFFB969-00ED-4568-8FD0-65A699AACA18}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FDA50C33-B288-4E42-9141-D78BDDEF9466}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FDA50C33-B288-4E42-9141-D78BDDEF9466}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FDA50C33-B288-4E42-9141-D78BDDEF9466}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FDA50C33-B288-4E42-9141-D78BDDEF9466}.Release|Any CPU.Build.0 = Release|Any CPU
 		{28C00774-1E73-4A75-AD8F-844CD21A064D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{28C00774-1E73-4A75-AD8F-844CD21A064D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{28C00774-1E73-4A75-AD8F-844CD21A064D}.Release|Any CPU.ActiveCfg = Release|Any CPU

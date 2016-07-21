@@ -8,17 +8,15 @@ module Iris.Service.Raft.Stm
 //                                   |____/ |_| |_|  |_|                                     //
 // ----------------------------------------------------------------------------------------- //
 
+open fszmq
 open Iris.Core
 open Iris.Service
 open Pallet.Core
 open FSharpx.Stm
-open fszmq
-open fszmq.Context
-open fszmq.Socket
-open fszmq.Polling
 open FSharpx.Functional
 open System.Threading
 open Utilities
+open System
 open Db
 
 /// ## getSocket for Member
@@ -37,33 +35,76 @@ let getSocket (node: Node) appState =
     match Map.tryFind node.Data.MemberId state.Connections with
     | Some client -> return client
     | _           ->
-      let sock = req state.Context
+      let! state = readTVar appState
+
+      let socket = Context.req state.Context
+      Socket.setOption socket (ZMQ.RCVTIMEO,int state.Raft.RequestTimeout)
+
       let addr = formatUri node.Data
 
-      connect sock addr
+      Socket.connect socket addr
 
       let newstate =
         { state with
-            Connections = Map.add node.Data.MemberId sock state.Connections }
+            Connections = Map.add node.Data.MemberId socket state.Connections }
 
       do! writeTVar appState newstate
 
-      return sock
+      return socket
   }
 
-/// ## Send RaftMsg to node
+/// ## Dispose of a client socket
 ///
-/// Sends given RaftMsg to node. If the request times out, None is return to indicate
-/// failure. Otherwise the de-serialized RaftMsg response is returned, wrapped in option to
+/// Dispose of a client socket that we don't need anymore.
+///
+/// ### Signature:
+/// - node: Node whose socket should be disposed of.
+/// - appState: AppState TVar
+///
+/// Returns: unit
+let disposeSocket (node: Node) appState =
+  stm {
+    let! state = readTVar appState
+
+    match Map.tryFind node.Data.MemberId state.Connections with
+    | Some client ->
+      dispose client
+      let state = { state with Connections = Map.remove node.Data.MemberId state.Connections }
+      do! writeTVar appState state
+    | _  -> ()
+  }
+
+/// ## Receive a reply
+///
+/// Block until we receive a reply on client Socket. If operation times out, Dispose of the socket
+/// (such that it can be re-created next time around).
+///
+/// ### Signature:
+/// - client: Socket
+///
+/// Returns: RaftResponse option
+let receiveReply (node: Node) (client: Socket) appState : RaftResponse option =
+  try
+    Socket.recv client |> decode
+  with
+    | :? TimeoutException ->
+      disposeSocket node appState |> atomically
+      None
+    | exn -> handleException "receiveReply" exn
+
+/// ## Send RaftRequest to node
+///
+/// Sends given RaftRequest to node. If the request times out, None is return to indicate
+/// failure. Otherwise the de-serialized RaftResponse is returned, wrapped in option to
 /// indicate whether de-serialization was successful.
 ///
 /// ### Signature:
-/// - thing:    RaftMsg to send
+/// - thing:    RaftRequest to send
 /// - node:     node to send the message to
 /// - appState: application state TVar
 ///
-/// Returns: RaftMsg option
-let performRequest (thing: RaftRequest) (node: Node<IrisNode>) appState =
+/// Returns: RaftResponse option
+let performRequest (request: RaftRequest) (node: Node<IrisNode>) appState =
   stm {
     let mutable frames = [| |]
 
@@ -73,16 +114,11 @@ let performRequest (thing: RaftRequest) (node: Node<IrisNode>) appState =
     let! state = readTVar appState
     let! client = getSocket node appState
 
-    thing |> encode |>> client
+    request |> encode |> Socket.send client
 
-    let result =
-      [ pollIn handler client ]
-      |> poll (int64 state.Raft.RequestTimeout)
+    let reply = receiveReply node client appState
 
-    if result && Array.isEmpty frames |> not then
-      return frames.[0]               // for now we only process single-ZFrame messages in Raft
-    else
-      return None
+    return reply
   }
 
 /// ## Run Raft periodic functions with AppState
@@ -162,12 +198,12 @@ let removeNodeR node appState cbs =
 
 /// ## Redirect to leader
 ///
-/// Gets the current leader node from the Raft state and returns a corresponding RaftMsg response.
+/// Gets the current leader node from the Raft state and returns a corresponding RaftResponse.
 ///
 /// ### Signature:
 /// - state: AppState
 ///
-/// Returns: Stm<RaftMsg>
+/// Returns: Stm<RaftResponse>
 let redirectR state =
   stm {
     match getLeader state.Raft with
@@ -185,7 +221,7 @@ let redirectR state =
 /// - appState: AppState TVar
 /// - cbs:      Raft callbacks
 ///
-/// Returns: Stm<RaftMsg>
+/// Returns: Stm<RaftResponse>
 let handleAppendEntries sender ae appState cbs =
   stm {
     let! state = readTVar appState
@@ -208,6 +244,17 @@ let handleAppendEntries sender ae appState cbs =
         return ErrorResponse err
   }
 
+/// ## Handle the AppendEntries request response.
+///
+/// Handle the request entries response.
+///
+/// ### Signature:
+/// - sender: Node who replied
+/// - ar: AppendResponse to process
+/// - appState: TVar<AppState>
+/// - cbs: IRaftCallbacks
+///
+/// Returns: unit
 let handleAppendResponse sender ar appState cbs =
   stm {
     let! state = readTVar appState
@@ -218,6 +265,17 @@ let handleAppendResponse sender ar appState cbs =
         |> writeTVar appState
   }
 
+/// ## Handle a vote request.
+///
+/// Handle a vote request and return a response.
+///
+/// ### Signature:
+/// - sender: Node which sent request
+/// - req: the `VoteRequest`
+/// - appState: current TVar<AppState>
+/// - cbs: IRaftCallbacks
+///
+/// Returns: unit
 let handleVoteRequest sender req appState cbs =
   stm {
     let! state = readTVar appState
@@ -240,6 +298,16 @@ let handleVoteRequest sender req appState cbs =
         return ErrorResponse err
   }
 
+/// ## Handle the response to a vote request.
+///
+/// Handle the response to a vote request.
+///
+/// ### Signature:
+/// - sender: Node which sent the response
+/// - resp: VoteResponse to process
+/// - appState: current TVar<AppState>
+///
+/// Returns: unit
 let handleVoteResponse sender rep appState cbs =
   stm {
     let! state = readTVar appState
@@ -250,6 +318,17 @@ let handleVoteResponse sender rep appState cbs =
         |> writeTVar appState
   }
 
+/// ## Handle a HandShake request by a certain Node.
+///
+/// Handle a request to join the cluster. Respond with Welcome if everything is OK. Redirect to
+/// leader if we are currently not Leader.
+///
+/// ### Signature:
+/// - node: Node which wants to join the cluster
+/// - appState: current TVar<AppState>
+/// - cbs: IRaftCallbacks
+///
+/// Returns: RaftResponse
 let handleHandshake node appState cbs =
   stm {
     let! state = readTVar appState
@@ -351,28 +430,28 @@ let startServer appState cbs =
     let token = new CancellationTokenSource()
 
     let! state = readTVar appState
-    let server = rep state.Context
+    let server = Context.rep state.Context
     let uri = state.Raft.Node.Data |> formatUri
 
-    bind server uri
+    Socket.bind server uri
 
     let rec proc () =
       async {
+        use msg = new Message()
+        Message.recv msg server
+
         let msg : RaftRequest option =
-          recv server |> decode
+          Message.data msg |> decode
 
         let response =
           match msg with
-          | Some message ->
-            handleRequest message appState cbs
-            |> atomically
-          | None ->
-            ErrorResponse <| OtherError "Unable to decipher request"
+          | Some message -> handleRequest message appState cbs |> atomically
+          | None         -> ErrorResponse <| OtherError "Unable to decipher request"
 
-        response |> encode |> send server
+        response |> encode |> Socket.send server
 
         if token.IsCancellationRequested then
-          unbind server uri
+          Socket.unbind server uri
           dispose server
         else
           return! proc ()
@@ -518,7 +597,7 @@ let tryLeave appState cbs =
 /// ### Signature:
 /// - inbox: MailboxProcessor
 ///
-/// Returns: Async<(Node<IrisNode> * RaftMsg)>
+/// Returns: Async<(Node<IrisNode> * RaftRequest)>
 let rec requestLoop appState cbs (inbox: Actor<(Node<IrisNode> * RaftRequest)>) =
   async {
     // block until there is a new message in my inbox
