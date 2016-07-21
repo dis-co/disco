@@ -15,6 +15,8 @@ open Utilities
 open Stm
 open Db
 
+type RequestWorkerType = Node<IrisNode> * RaftRequest
+
 //  ____        __ _     ____                             ____  _        _
 // |  _ \ __ _ / _| |_  / ___|  ___ _ ____   _____ _ __  / ___|| |_ __ _| |_ ___
 // | |_) / _` | |_| __| \___ \ / _ \ '__\ \ / / _ \ '__| \___ \| __/ _` | __/ _ \
@@ -65,10 +67,12 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
   let cbs = this :> IRaftCallbacks<_,_>
   let appState = mkState context options |> newTVar
 
-  let requestWorker =
-    let cts = new CancellationTokenSource()
-    workertoken := Some cts
-    new Actor<(Node<IrisNode> * RaftRequest)> (requestLoop appState cbs, cts.Token)
+  let requestWorker : Actor<RequestWorkerType> option ref = ref None
+
+  let post (msg: RequestWorkerType) =
+    match !requestWorker with
+      | Some worker -> worker.Post msg
+      | _           -> printfn "[WARNING] requestWorker was not initalized properly yet"
 
   //                           _
   //  _ __ ___   ___ _ __ ___ | |__   ___ _ __ ___
@@ -89,7 +93,12 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
       stm {
         serverState := Starting
 
-        requestWorker.Start()
+        let cts = new CancellationTokenSource()
+        workertoken := Some cts
+
+        let worker = new Actor<RequestWorkerType> (requestLoop appState cbs, cts.Token)
+        worker.Start()
+        requestWorker := Some worker
 
         do!  initialize appState cbs
         let! srvtkn = startServer appState cbs
@@ -205,18 +214,15 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
   interface IRaftCallbacks<StateMachine,IrisNode> with
     member self.SendRequestVote node req  =
       let state = self.State
-      (node, RequestVote(state.Raft.Node.Id,req))
-      |> requestWorker.Post
+      (node, RequestVote(state.Raft.Node.Id,req)) |> post
 
     member self.SendAppendEntries node ae =
       let state = self.State
-      (node, AppendEntries(state.Raft.Node.Id, ae))
-      |> requestWorker.Post
+      (node, AppendEntries(state.Raft.Node.Id, ae)) |> post
 
     member self.SendInstallSnapshot node is =
       let state = self.State
-      (node, InstallSnapshot(state.Raft.Node.Id, is))
-      |> requestWorker.Post
+      (node, InstallSnapshot(state.Raft.Node.Id, is)) |> post
 
     member self.ApplyLog sm      = failwith "FIXME: ApplyLog"
     member self.NodeAdded node   = failwith "FIXME: Node was added."
