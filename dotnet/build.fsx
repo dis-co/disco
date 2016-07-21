@@ -322,7 +322,7 @@ Target "GenerateSerialization"
 
    let args = "-I " + (baseDir @@ "Schema") + " --csharp " + fbs
 
-   runExec flatcPath args baseDir true
+   runExec flatcPath args baseDir false
 
    let files =
       !! (baseDir @@ "Iris/Serialization/**/*.cs")
