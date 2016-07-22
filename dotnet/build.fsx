@@ -157,32 +157,18 @@ let runExec filepath args workdir shell =
 
 let runTests filepath workdir =
   let arch =
-    if Environment.Is64BitOperatingSystem then
-      "amd64"
-    else
-      "i386"
+    if Environment.Is64BitOperatingSystem
+    then "amd64"
+    else "i386"
 
   CopyFile workdir (workdir @@ arch @@ "libzmq.dll")
   CopyFile workdir (workdir @@ arch @@ "libsodium.dll")
 
-  ExecProcessWithLambdas (fun info ->
-                             info.FileName <- "dir"
-                             info.UseShellExecute <- false
-                             info.WorkingDirectory <- workdir)
-                         TimeSpan.MaxValue
-                         true
-                         (printfn "error: %s")
-                         (printfn "msg: %s")
-  |> ignore
-
-  ExecProcessWithLambdas (fun info ->
-                             info.FileName <- (workdir </> filepath)
-                             info.UseShellExecute <- false
-                             info.WorkingDirectory <- workdir)
-                         TimeSpan.MaxValue
-                         true
-                         (printfn "error: %s")
-                         (printfn "msg: %s")
+  ExecProcess (fun info ->
+                  info.FileName <- (workdir </> filepath)
+                  info.UseShellExecute <- false
+                  info.WorkingDirectory <- workdir)
+              TimeSpan.MaxValue
   |> maybeFail
 
 let buildDebug fsproj _ =
