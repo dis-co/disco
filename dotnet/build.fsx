@@ -149,6 +149,9 @@ let runMono filepath workdir =
 let runExec filepath args workdir shell =
   System.IO.File.Exists(workdir </> filepath)
   |> printfn "%s exists: %b" (workdir </> filepath)
+
+  printfn "Directory: %s" workdir
+
   ExecProcessWithLambdas (fun info ->
                              info.FileName <- filepath
                              info.Arguments <- if String.length args > 0 then args else info.Arguments
