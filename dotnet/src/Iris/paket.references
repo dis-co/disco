@@ -16,3 +16,4 @@ NUnit
 Gallio
 LiteDB
 fszmq
+ZeroMQ

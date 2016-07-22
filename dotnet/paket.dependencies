@@ -12,11 +12,10 @@ group Main
   nuget NUnit
   nuget Gallio
   nuget FsPickler
+  nuget FsPickler.Json
   nuget FSharpx.Extras
   nuget FsControl
   nuget Argu
-  nuget FsPickler
-  nuget FsPickler.Json
   nuget Suave
   nuget Fleck
   nuget LibGit2Sharp >= 0.22.0-pre20151023210959 prerelease
@@ -24,6 +23,7 @@ group Main
   nuget FSharp.Configuration
   nuget LiteDB
   nuget fszmq
+  nuget ZeroMQ
 
 group Build
   source https://nuget.org/api/v2
@@ -33,11 +33,11 @@ group Build
   nuget FSharp.Formatting
   nuget FSharp.Core redirects:force
   nuget FsPickler
+  nuget FsPickler.Json
   nuget FSharpx.Extras
   nuget FSharpPlus
   nuget FsControl
   nuget Argu
-  nuget FsPickler
 
   github fsharp/FAKE modules/Octokit/Octokit.fsx
 
@@ -51,6 +51,7 @@ group Test
   nuget NUnit
   nuget Gallio
   nuget FsPickler
+  nuget FsPickler.Json
   nuget FSharpx.Extras
   nuget FSharpPlus
   nuget FsControl
