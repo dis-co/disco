@@ -4,18 +4,18 @@
   "description": "Fable build stuff",
   "main": "index.js",
   "scripts": {
-    "build-frontend-debug":   "fable --msbuild Configuration=Debug",
-    "watch-frontend-debug":   "fable --msbuild Configuration=Debug -w --target watch",
+    "build-frontend-debug": "fable --msbuild Configuration=Debug",
+    "watch-frontend-debug": "fable --msbuild Configuration=Debug -w --target watch",
     "build-frontend-release": "fable --msbuild Configuration=Release",
     "watch-frontend-release": "fable --msbuild Configuration=Release -w --target watch",
-    "build-worker-debug":     "fable --msbuild Configuration=Debug",
-    "watch-worker-debug":     "fable --msbuild Configuration=Debug -w --target watch",
-    "build-worker-release":   "fable --msbuild Configuration=Release",
-    "watch-worker-release":   "fable --msbuild Configuration=Release -w --target watch",
-    "build-tests-debug":      "fable --msbuild Configuration=Debug",
-    "watch-tests-debug":      "fable --msbuild Configuration=Debug -w --target watch",
-    "build-tests-release":    "fable --msbuild Configuration=Release",
-    "watch-tests-release":    "fable --msbuild Configuration=Release -w --target watch"
+    "build-worker-debug": "fable --msbuild Configuration=Debug",
+    "watch-worker-debug": "fable --msbuild Configuration=Debug -w --target watch",
+    "build-worker-release": "fable --msbuild Configuration=Release",
+    "watch-worker-release": "fable --msbuild Configuration=Release -w --target watch",
+    "build-tests-debug": "fable --msbuild Configuration=Debug",
+    "watch-tests-debug": "fable --msbuild Configuration=Debug -w --target watch",
+    "build-tests-release": "fable --msbuild Configuration=Release",
+    "watch-tests-release": "fable --msbuild Configuration=Release -w --target watch"
   },
   "author": "Karsten Gebbert, 2016, Nsynk GmbH",
   "license": "ISC",
@@ -24,6 +24,7 @@
   "devDependencies": {
     "babel-polyfill": "^6.9.1",
     "fable-compiler": "^0.4.0-alpha",
+    "mocha-phantomjs": "^4.1.0",
     "source-map-loader": "^0.1.5",
     "webpack": "^1.13.1"
   },
