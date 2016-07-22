@@ -147,18 +147,8 @@ let runMono filepath workdir =
   |> maybeFail
 
 let runExec filepath args workdir shell =
-  System.IO.File.Exists(workdir </> filepath)
-  |> printfn "%s exists: %b" (workdir </> filepath)
-
-
-  ExecProcess (fun info ->
-                  info.FileName <- "dir"
-                  info.WorkingDirectory <- workdir)
-              TimeSpan.MaxValue
-  |> ignore
-
   ExecProcessWithLambdas (fun info ->
-                             info.FileName <- filepath
+                             info.FileName <- workdir </> filepath
                              info.Arguments <- if String.length args > 0 then args else info.Arguments
                              info.UseShellExecute <- shell
                              info.WorkingDirectory <- workdir)
@@ -573,8 +563,8 @@ Target "DevServer"
 
 Target "Release" DoNothing
 
-"Clean"
-==> "GenerateSerialization"
+// "Clean"
+// ==> "GenerateSerialization"
 
 // Serialization
 
