@@ -446,7 +446,7 @@ Target "RunWebTests" (fun _ ->
                           info.WorkingDirectory <- testsDir)
                       TimeSpan.MaxValue
         |> maybeFail
-    | _ -> runNpm "tests" __SOURCE_DIRECTORY__ ())
+    | _ -> runFable "tests" __SOURCE_DIRECTORY__ ())
 
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
