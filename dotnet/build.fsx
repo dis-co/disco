@@ -156,11 +156,27 @@ let runExec filepath args workdir shell =
   |> maybeFail
 
 let runTests filepath workdir =
-  ExecProcess (fun info ->
-                  info.FileName <- (workdir </> filepath)
-                  info.UseShellExecute <- false
-                  info.WorkingDirectory <- workdir)
-              TimeSpan.MaxValue
+  printfn "================================================================================"
+  ExecProcessWithLambdas (fun info ->
+                             info.FileName <- "dir"
+                             info.UseShellExecute <- false
+                             info.WorkingDirectory <- workdir)
+                         TimeSpan.MaxValue
+                         true
+                         (printfn "error: %s")
+                         (printfn "msg: %s")
+  |> ignore
+
+  printfn "================================================================================"
+
+  ExecProcessWithLambdas (fun info ->
+                             info.FileName <- (workdir </> filepath)
+                             info.UseShellExecute <- false
+                             info.WorkingDirectory <- workdir)
+                         TimeSpan.MaxValue
+                         true
+                         (printfn "error: %s")
+                         (printfn "msg: %s")
   |> maybeFail
 
 let buildDebug fsproj _ =
