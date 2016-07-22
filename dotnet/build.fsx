@@ -147,15 +147,20 @@ let runMono filepath workdir =
   |> maybeFail
 
 let runExec filepath args workdir shell =
-  ExecProcessWithLambdas (fun info ->
-                             info.FileName <- workdir </> filepath
-                             info.Arguments <- if String.length args > 0 then args else info.Arguments
-                             info.UseShellExecute <- shell
-                             info.WorkingDirectory <- workdir)
-                         TimeSpan.MaxValue
-                         true
-                         (printfn "error: %s")
-                         (printfn "message: %s")
+  ExecProcess (fun info ->
+                  info.FileName <- filepath
+                  info.Arguments <- if String.length args > 0 then args else info.Arguments
+                  info.UseShellExecute <- shell
+                  info.WorkingDirectory <- workdir)
+              TimeSpan.MaxValue
+  |> maybeFail
+
+let runTests filepath workdir =
+  ExecProcess (fun info ->
+                  info.FileName <- (workdir </> filepath)
+                  info.UseShellExecute <- false
+                  info.WorkingDirectory <- workdir)
+              TimeSpan.MaxValue
   |> maybeFail
 
 let buildDebug fsproj _ =
@@ -473,7 +478,7 @@ Target "RunTests"
     elif isUnix then
       runMono "Iris.Tests.exe" testsDir
     else
-      runExec "Iris.Tests.exe" "" testsDir false)
+      runTests "Iris.Tests.exe" testsDir)
 
 //  ____
 // / ___|  ___ _ ____   _____ _ __
