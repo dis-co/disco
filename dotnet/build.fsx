@@ -438,7 +438,7 @@ Target "RunWebTests" (fun _ ->
 
     match useNix with
     | true ->
-        let args = "-p /home/k/.nix-profile/bin/phantomjs -R dot tests.html"
+        let args = "-p /home/k/.nix-profile/bin/phantomjs -R spec tests.html"
         ExecProcess (fun info ->
                           info.FileName <- "mocha-phantomjs"
                           info.Arguments <- args
