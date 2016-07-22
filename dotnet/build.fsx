@@ -156,7 +156,15 @@ let runExec filepath args workdir shell =
   |> maybeFail
 
 let runTests filepath workdir =
-  printfn "================================================================================"
+  let arch =
+    if Environment.Is64BitOperatingSystem then
+      "amd64"
+    else
+      "i386"
+
+  CopyFile workdir (workdir @@ arch @@ "libzmq.dll")
+  CopyFile workdir (workdir @@ arch @@ "libsodium.dll")
+
   ExecProcessWithLambdas (fun info ->
                              info.FileName <- "dir"
                              info.UseShellExecute <- false
@@ -166,8 +174,6 @@ let runTests filepath workdir =
                          (printfn "error: %s")
                          (printfn "msg: %s")
   |> ignore
-
-  printfn "================================================================================"
 
   ExecProcessWithLambdas (fun info ->
                              info.FileName <- (workdir </> filepath)
