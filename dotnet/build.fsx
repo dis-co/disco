@@ -155,6 +155,7 @@ let runExec filepath args workdir shell =
               TimeSpan.MaxValue
   |> maybeFail
 
+
 let runTests filepath workdir =
   let arch =
     if Environment.Is64BitOperatingSystem
@@ -433,15 +434,19 @@ Target "WatchWebTests" (runFable "run watch-tests" webtestsdir)
 Target "BuildWebTestsFsProj" (buildDebug "Web.Tests.fsproj")
 
 Target "RunWebTests" (fun _ ->
-    let args =
-      if useNix then
-        "-p /home/k/.nix-profile/bin/phantomjs -R dot tests.html"
-      else
-        "-R dot tests.html"
-
     let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Web.Tests"
-    let cmd = if isUnix then "mocha-phantomjs" else "mocha-phantomjs.cmd"
-    runExec cmd args testsDir true)
+
+    match useNix with
+    | true ->
+        let args = "-p /home/k/.nix-profile/bin/phantomjs -R dot tests.html"
+        ExecProcess (fun info ->
+                          info.FileName <- "mocha-phantomjs"
+                          info.Arguments <- args
+                          info.UseShellExecute <- true
+                          info.WorkingDirectory <- testsDir)
+                      TimeSpan.MaxValue
+        |> maybeFail
+    | _ -> runNpm "tests" __SOURCE_DIRECTORY__ ())
 
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
