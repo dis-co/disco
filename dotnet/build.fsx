@@ -150,7 +150,12 @@ let runExec filepath args workdir shell =
   System.IO.File.Exists(workdir </> filepath)
   |> printfn "%s exists: %b" (workdir </> filepath)
 
-  printfn "Directory: %s" workdir
+
+  ExecProcess (fun info ->
+                  info.FileName <- "dir"
+                  info.WorkingDirectory <- workdir)
+              TimeSpan.MaxValue
+  |> ignore
 
   ExecProcessWithLambdas (fun info ->
                              info.FileName <- filepath
