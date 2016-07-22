@@ -440,7 +440,8 @@ Target "RunWebTests" (fun _ ->
         "-R dot tests.html"
 
     let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Web.Tests"
-    runExec "mocha-phantomjs" args testsDir true)
+    let cmd = if isUnix then "mocha-phantomjs" else "mocha-phantomjs.cmd"
+    runExec cmd args testsDir true)
 
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
