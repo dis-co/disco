@@ -95,6 +95,9 @@
     <!-- | |  | | (_| | | | | | -->
     <!-- |_|  |_|\__,_|_|_| |_| -->
     <Compile Include="Iris\Tests\Core\Main.fs" />
+    <Content Include="app.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Iris.exe.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <Link>Iris.Tests.exe.config</Link>
