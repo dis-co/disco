@@ -447,7 +447,7 @@ Target "RunWebTests" (fun _ ->
                       TimeSpan.MaxValue
         |> maybeFail
     | _ ->
-        runNpm "run tests" testsDir ())
+        runNpm "run appveyor-tests" testsDir ())
 
 //    _   _ _____ _____
 //   | \ | | ____|_   _|

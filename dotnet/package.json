@@ -16,7 +16,7 @@
     "watch-tests-debug": "fable --msbuild Configuration=Debug -w --target watch",
     "build-tests-release": "fable --msbuild Configuration=Release",
     "watch-tests-release": "fable --msbuild Configuration=Release -w --target watch",
-    "tests": "mocha-phantomjs -R tap src/Iris/bin/Debug/Web.Tests/tests.html"
+    "appveyor-tests": "mocha-phantomjs -p C:/ProgramData/chocolatey/bin/phantomjs.exe -R tap src/Iris/bin/Debug/Web.Tests/tests.html"
   },
   "author": "Karsten Gebbert, 2016, Nsynk GmbH",
   "license": "ISC",
