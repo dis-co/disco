@@ -378,7 +378,8 @@ Target "PalletTests"
 Target "RunPalletTests"
   (fun _ ->
     let testsDir = "src" @@ "Pallet.Tests"
-    runExec "fsi" "run.fsx" testsDir true)
+    executeFSIWithArgs testsDir "run.fsx" ["--define:RELEASE"; "--define:REFERENCE"] []
+    |> fun result -> if not result then failwith "fsi failed")
 
 //  _____                _                 _
 // |  ___| __ ___  _ __ | |_ ___ _ __   __| |
