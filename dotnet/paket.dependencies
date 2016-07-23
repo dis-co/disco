@@ -23,7 +23,6 @@ group Main
   nuget FSharp.Configuration
   nuget LiteDB
   nuget fszmq
-  nuget ZeroMQ
 
 group Build
   source https://nuget.org/api/v2
