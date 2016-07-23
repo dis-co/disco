@@ -102,6 +102,12 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <Link>Iris.Tests.exe.config</Link>
     </Content>
+    <None Include="i386/libsodium.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="amd64/libsodium.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="i386/libzmq.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

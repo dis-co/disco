@@ -122,6 +122,12 @@
     <None Include="amd64/libzmq.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="i386/libsodium.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="amd64/libsodium.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
