@@ -12,7 +12,7 @@ let main _ =
   ; Plugins.main
   ; VirtualDom.main
   ; PatchesView.main
-  ; ViewController.main 
+  ; ViewController.main
   ] |> List.iter apply
 
 @"
@@ -33,24 +33,24 @@ open System.IO
 open System.Reflection
 open System.Text.RegularExpressions
 
-    ____                      _ _      
-   / ___|___  _ __ ___  _ __ (_) | ___ 
+    ____                      _ _
+   / ___|___  _ __ ___  _ __ (_) | ___
   | |   / _ \| '_ ` _ \| '_ \| | |/ _ \
   | |__| (_) | | | | | | |_) | | |  __/
    \____\___/|_| |_| |_| .__/|_|_|\___| tests
-                       |_|             
+                       |_|
 
   Uses reflection to get and compile all modules in this assembly whose
   namespace matches `^Test.Units.*`. The return type is a tuple module name and
   the compiled javascript code as a regular string.
 
-let compileTests () = failwith "not implemented" 
+let compileTests () = failwith "not implemented"
   let regex = new Regex("^Test.Units")
   let path = (new System.Uri(Assembly.GetExecutingAssembly().CodeBase)).AbsolutePath;
   let assembly = Assembly.LoadFrom path
   assembly.GetExportedTypes ()
   |> Array.filter
-    (fun m -> regex.IsMatch <| m.ToString ()) 
+    (fun m -> regex.IsMatch <| m.ToString ())
   |> Array.map
       (fun m ->
        let meths = m.GetMethods ()

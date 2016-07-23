@@ -15,7 +15,7 @@ module VirtualDom =
     suite "Test.Units.VirtualDom"
     (* ------------------------------------------------------------------------ *)
 
-    test "should render dom elements correctly" <| fun cb ->
+    test "should render dom elements correctly" <| fun finish ->
       let tree =
         VNode "div" [] [|
           VNode "p" [] [|
@@ -24,10 +24,11 @@ module VirtualDom =
         |]
         |> createElement
 
-      check_cc (childrenByTag "p" tree |> fun els -> els.length = 1.0) "result should have a p" cb
+      equals 1.0 (childrenByTag "p" tree |> fun els -> els.length)
+      finish()
 
     (* ------------------------------------------------------------------------ *)
-    test "should render class attribute" <| fun cb ->
+    test "should render class attribute" <| fun finish ->
       let tree =
         VNode "div" [ Class "container" ] [|
           VNode "p" [] [|
@@ -36,10 +37,11 @@ module VirtualDom =
         |]
         |> createElement
 
-      check_cc (hasClass "container" tree) "result should have class container" cb
+      equals true (hasClass "container" tree)
+      finish()
 
     (* ------------------------------------------------------------------------ *)
-    test "should render id attribute" <| fun cb ->
+    test "should render id attribute" <| fun finish ->
       let tree =
         VNode "div" [ ElmId "main" ] [|
           VNode "p" [] [|
@@ -48,10 +50,11 @@ module VirtualDom =
         |]
         |> createElement
 
-      check_cc (tree.id = "main") "result should have id main" cb
+      equals "main" tree.id
+      finish()
 
     (* ------------------------------------------------------------------------ *)
-    test "should render style attribute" <| fun cb ->
+    test "should render style attribute" <| fun finish ->
       let tree =
         VNode "div" [ Style [ Margin "40px"] ] [|
           VNode "p" [] [|
@@ -60,10 +63,11 @@ module VirtualDom =
         |]
         |> createElement
 
-      check_cc (getStyle "margin" tree = Some "40px") "element should have style correctly" cb
+      equals (Some "40px") (getStyle "margin" tree)
+      finish()
 
     (* ------------------------------------------------------------------------ *)
-    test "should patch updates in dom tree correctly" <| fun cb ->
+    test "should patch updates in dom tree correctly" <| fun finish ->
       let tree =
         VNode "div" [ Class "main" ] [|
           VNode "p" [] Array.empty
@@ -84,7 +88,7 @@ module VirtualDom =
       let p1 = diff tree newtree
       let newroot = patch root p1
 
-      check (getByClass "main" |> nthElement 0 |> childrenByTag "p" |> fun els -> els.length = 2.0) "should have 2 p's now"
+      equals 2.0 (getByClass "main" |> nthElement 0 |> childrenByTag "p" |> fun els -> els.length)
 
       let anothertree =
         VNode "div" [ Class "main"]
@@ -95,10 +99,11 @@ module VirtualDom =
       let p2 = diff newtree anothertree
       let lastroot = patch newroot p2
 
-      check_cc (getByClass "main"|> nthElement 0 |> childrenByTag "p" |> fun els -> els.length = 3.0) "should have 2 p's now" cb
+      equals 3.0 (getByClass "main"|> nthElement 0 |> childrenByTag "p" |> fun els -> els.length)
+      finish()
 
     (* ------------------------------------------------------------------------ *)
-    test "should add new element to list on diff/patch" <| fun cb ->
+    test "should add new element to list on diff/patch" <| fun finish ->
       let litem = Li [] [| Text "an item" |]
       let comb  = Ul [] [| litem |]
 
@@ -110,17 +115,17 @@ module VirtualDom =
       |> appendChild root
       |> ignore
 
-      check (root.children.length = 1.0) "ul item count does not match (expected 1)"
+      equals 1.0 root.children.length
 
       let newtree = renderHtml <| (comb <+ litem )
       let newroot = patch root <| diff tree newtree
 
-      check_cc (newroot.children.length = 2.0) "ul item count does not match (expected 2)" cb
-
+      equals 2.0 newroot.children.length
       newroot.remove() |> ignore
+      finish()
 
     (* ------------------------------------------------------------------------ *)
-    test "patching should update only relevant bits of the dom" <| fun cb ->
+    test "patching should update only relevant bits of the dom" <| fun finish ->
       let firstContent = "first item in the list"
       let secondContent = "second item in the list"
 
@@ -145,14 +150,14 @@ module VirtualDom =
       let fst = getById "first" |> Option.get
       let snd = getById "second" |> Option.get
 
-      check (fst.innerHTML <> firstContent) "the content of the first element should different but isn't"
-      check (snd.innerHTML = secondContent) "the content of the second element should be the same but isn't"
+      equals true (fst.innerHTML <> firstContent)
+      equals true (snd.innerHTML = secondContent)
 
       let list' = list firstContent <+ Li [] [| Text "hmm" |]
       root <- patch root <| diff tree (renderHtml list')
 
-      check (fst.innerHTML = firstContent) "the content of the first element should be the same but isn't"
-      check (root.children.length = 3.0) "the list should have 3 elements now"
-      check_cc (snd.innerHTML = secondContent) "the content of the second element should be the same but isn't" cb
-
+      equals firstContent  fst.innerHTML
+      equals 3.0           root.children.length
+      equals secondContent snd.innerHTML
       root.remove()
+      finish()

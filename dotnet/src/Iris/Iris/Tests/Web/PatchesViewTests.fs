@@ -11,6 +11,9 @@ module PatchesView =
   open Iris.Web.Tests
   open Iris.Web.Views
 
+  [<Emit("btoa((new Date().getTime() * Math.random()).toString())")>]
+  let hash _ : string = failwith "onlyjs"
+
   [<Emit("console.log($0, $1)")>]
   let show str a = failwith "ONLY IN JS"
 
@@ -19,11 +22,11 @@ module PatchesView =
     suite "Test.Units.PatchesView - patch workflow"
     (* ------------------------------------------------------------------------ *)
 
-    test "should render a patch added" <| fun cb ->
+    test "should render a patch added" <| fun finished ->
       resetPlugins()
       addString2Plug ()
 
-      let patchid = Guid "patch-1"
+      let patchid = hash () |> Guid
 
       let patch : Patch =
         { Id = patchid
@@ -32,22 +35,21 @@ module PatchesView =
         }
 
       let store : Store<State> = new Store<State>(Reducer, State.Empty)
-
       let view = new Patches.Root ()
-      use controller = new ViewController<State,ClientContext> (view)
+      let controller = new ViewController<State,ClientContext> (view)
       let ctx = new ClientContext()
+
+      equals None (getById (string patchid))
       controller.Render store.State ctx
-
-      check (getById (string patchid) |> Option.isNone) "element should be null"
-
+      equals None (getById (string patchid))
       store.Dispatch <| PatchEvent(Create, patch)
-
       controller.Render store.State ctx
-
-      check_cc (getById (string patchid) |> Option.isSome) "patch element not found in dom" cb
+      equals true (getById (string patchid) |> Option.isSome)
+      dispose controller
+      finished()
 
     (* ------------------------------------------------------------------------ *)
-    test "should render correct list on patch removal" <| fun cb ->
+    test "should render correct list on patch removal" <| fun finished ->
       resetPlugins()
       addString2Plug ()
 
@@ -70,29 +72,31 @@ module PatchesView =
         new Store<State>(Reducer, { State.Empty with Patches = [| patch1; patch2 |] })
 
       let view = new Patches.Root ()
-      use controller = new ViewController<State,ClientContext> (view)
+      let controller = new ViewController<State,ClientContext> (view)
       let ctx = new ClientContext()
       controller.Render store.State ctx
 
-      check (getById (string pid1) |> Option.isSome) "element 1 should not be null"
-      check (getById (string pid2) |> Option.isSome) "element 2 should not be null"
+      equals true (getById (string pid1) |> Option.isSome)
+      equals true (getById (string pid2) |> Option.isSome)
 
       store.Dispatch <| PatchEvent(Delete, patch1)
 
-      check (not <| Patch.HasPatch store.State.Patches patch1) "patch should be gone"
-      check (Patch.HasPatch store.State.Patches patch2) "patch should be there"
+      equals false (Patch.HasPatch store.State.Patches patch1)
+      equals true  (Patch.HasPatch store.State.Patches patch2)
 
       controller.Render store.State ctx
 
-      check (getById (string pid1) |> Option.isNone) "element 1 should be null"
+      equals None (getById (string pid1))
+      equals true (getById (string pid2) |> Option.isSome)
 
-      check_cc (getById (string pid2) |> Option.isSome) "element 2 should not be null" cb
+      dispose controller
+      finished ()
 
     (* -------------------------------------------------------------------------- *)
     suite "Test.Units.PatchesView - iobox workflow"
     (* -------------------------------------------------------------------------- *)
 
-    test "should render an added iobox" <| fun cb ->
+    test "should render an added iobox" <| fun finished ->
       resetPlugins ()
       addString2Plug ()
 
@@ -113,19 +117,19 @@ module PatchesView =
 
       let view = new Patches.Root ()
       let ctx = new ClientContext()
-      use controller = new ViewController<State,ClientContext> (view)
+      let controller = new ViewController<State,ClientContext> (view)
       controller.Render store.State ctx
 
-      check (getById (string id1) |> Option.isNone) "element should not exist"
-
+      equals None (getById (string id1))
       store.Dispatch <| IOBoxEvent(Create, iobox)
-
       controller.Render store.State ctx
+      equals true (getById (string id1) |> Option.isSome)
 
-      check_cc (getById (string id1) |> Option.isSome) "element should not be null" cb
+      dispose controller
+      finished ()
 
     (* -------------------------------------------------------------------------- *)
-    test "should render correct iobox list on iobox removal" <| fun cb ->
+    test "should render correct iobox list on iobox removal" <| fun finished ->
       resetPlugins ()
       addString2Plug ()
 
@@ -150,30 +154,33 @@ module PatchesView =
 
       let view = new Patches.Root ()
       let ctx = new ClientContext()
-      use controller = new ViewController<State,ClientContext> (view)
+      let controller = new ViewController<State,ClientContext> (view)
 
       // add the first iobox
       store.Dispatch <| IOBoxEvent(Create,iobox1)
       controller.Render store.State ctx
 
-      check (getById (string id1) |> Option.isSome) "element should not be null"
+      equals true (getById (string id1) |> Option.isSome)
 
       // add the second iobox
       store.Dispatch <| IOBoxEvent(Create,iobox2)
       controller.Render store.State ctx
 
-      check (getById (string id1) |> Option.isSome) "element 1 should not be null"
-      check (getById (string id2) |> Option.isSome) "element 2 should not be null"
+      equals true (getById (string id1) |> Option.isSome)
+      equals true (getById (string id2) |> Option.isSome)
 
       // remove the second iobox
       store.Dispatch <| IOBoxEvent(Delete,iobox2)
       controller.Render store.State ctx
 
-      check    (getById (string id1) |> Option.isSome) "element 1 should not be null"
-      check_cc (getById (string id2) |> Option.isNone) "element 2 should not be null" cb
+      equals true (getById (string id1) |> Option.isSome)
+      equals true (getById (string id2) |> Option.isNone)
+
+      dispose controller
+      finished ()
 
     (* -------------------------------------------------------------------------- *)
-    test "should render updates on iobox to dom" <| fun cb ->
+    test "should render updates on iobox to dom" <| fun finished ->
       resetPlugins ()
       addString2Plug ()
 
@@ -197,7 +204,7 @@ module PatchesView =
       // render initial state
       let view = new Patches.Root()
       let ctx = new ClientContext()
-      use controller = new ViewController<State,ClientContext> (view)
+      let controller = new ViewController<State,ClientContext> (view)
 
       store.Dispatch <| IOBoxEvent(Create, iobox)
 
@@ -208,8 +215,7 @@ module PatchesView =
       |> Option.get
       |> childrenByClass "slices"
       |> nthElement 0
-      |> (fun slice ->
-          check (slice.textContent = value1) "iobox slice value not present in dom (test 1)")
+      |> (fun slice -> equals value1 slice.textContent)
 
       // update the iobox slice value
       let updated1 =
@@ -219,8 +225,8 @@ module PatchesView =
       store.Dispatch <| IOBoxEvent(Update, updated1)
 
       match Patch.FindIOBox store.State.Patches elid with
-        | Some(box) -> check (box.Slices.[0].StringValue = value2) "box in updated state should have right value"
-        | None -> bail "IOBox was not found in store"
+        | Some(box) -> equals value2 box.Slices.[0].StringValue
+        | None      -> failwith "IOBox was not found in store"
 
       controller.Render store.State ctx
 
@@ -229,8 +235,7 @@ module PatchesView =
       |> Option.get
       |> childrenByClass "slices"
       |> nthElement 0
-      |> (fun slice ->
-          check (slice.textContent = value2) "iobox slice value not present in dom (test 2)")
+      |> (fun slice -> equals value2 slice.textContent)
 
       // update the iobox slice value
       let updated2 =
@@ -240,8 +245,8 @@ module PatchesView =
       store.Dispatch <| IOBoxEvent(Update, updated2)
 
       match Patch.FindIOBox store.State.Patches elid with
-        | Some(box) -> check (box.Slices.[0].StringValue = value3) "box in updated state should have right value"
-        | None -> bail "IOBox was not found in store"
+        | Some(box) -> equals value3 box.Slices.[0].StringValue
+        | None      -> failwith "IOBox was not found in store"
 
       controller.Render store.State ctx
 
@@ -251,4 +256,6 @@ module PatchesView =
       |> childrenByClass "slices"
       |> nthElement 0
       |> (fun slice  ->
-          check_cc (slice.textContent = value3) "iobox slice value not present in dom (test 3)" cb)
+          equals value3 slice.textContent
+          dispose controller
+          finished ())

@@ -16,25 +16,27 @@ module Plugins =
     suite "Test.Units.Plugins - basic operation"
     (* ----------------------------------------------------------------------- *)
 
-    test "listing plugins should list exactly two plugins" <| fun cb ->
+    test "listing plugins should list exactly two plugins" <| fun finish ->
       resetPlugins ()
       addString1Plug ()
       addNumberPlug ()
 
       let plugins = listPlugins ()
-      check_cc (Array.length plugins = 2) "should have two plugins but doesn't" cb
+      equals 2 (Array.length plugins)
+      finish()
 
     (* ------------------------------------------------------------------------ *)
-    test "listing plugins by kind should show exactly one" <| fun cb ->
+    test "listing plugins by kind should show exactly one" <| fun finish ->
       resetPlugins ()
       addString1Plug ()
       addNumberPlug ()
 
       let plugins = findPlugins ValuePin
-      check_cc (Array.length plugins = 1) "should have one plugin but doesn't" cb
+      equals 1 (Array.length plugins)
+      finish()
 
     (* ------------------------------------------------------------------------ *)
-    test "rendering a plugin should return expected dom element" <| fun cb ->
+    test "rendering a plugin should return expected dom element" <| fun finish ->
       resetPlugins ()
       addString1Plug ()
       addNumberPlug ()
@@ -49,11 +51,12 @@ module Plugins =
 
       inst.Render iobox
       |> createElement
-      |> (fun elm ->
-          check_cc (elm.id = (string elid)) "element should have correct id" cb)
+      |> (fun elm -> equals (string elid) elm.id)
+
+      finish ()
 
     (* ------------------------------------------------------------------------ *)
-    test "re-rendering a plugin should return updated dom element" <| fun cb ->
+    test "re-rendering a plugin should return updated dom element" <| fun finish ->
       resetPlugins ()
       addString1Plug ()
       addNumberPlug ()
@@ -71,8 +74,8 @@ module Plugins =
       |> createElement
       |> childrenByClass "slice"
       |> (fun els ->
-          check (els.length = 1.0) "should have one slice"
-          check (els.[0].textContent = value1) "should have the correct inner value")
+          equals 1.0    els.length
+          equals value1 els.[0].textContent)
 
       let update =
         StringSlices [| { Index = 0UL; Value = value2 } |]
@@ -82,8 +85,8 @@ module Plugins =
       |> createElement
       |> childrenByClass "slice"
       |> (fun els ->
-          check (els.length = 1.0) "should have one slice"
-          check (els.[0].textContent = value2) "should have the correct inner value")
+          equals 1.0    els.length
+          equals value2 els.[0].textContent)
 
       let final =
         StringSlices [| { Index = 0UL; Value = value1 }
@@ -93,14 +96,16 @@ module Plugins =
       inst.Render final
       |> createElement
       |> childrenByClass "slice"
-      |> (fun els -> check_cc (els.length = 2.0) "should have two slices" cb)
+      |> (fun els -> equals 2.0 els.length)
+
+      finish()
 
 
     (* ------------------------------------------------------------------------ *)
     suite "Test.Units.Plugins - instance data structure"
     (* ------------------------------------------------------------------------ *)
 
-    test "should add and find an instance for an iobox" <| fun cb ->
+    test "should add and find an instance for an iobox" <| fun finish ->
       resetPlugins ()
       addString1Plug ()
       addNumberPlug ()
@@ -111,16 +116,14 @@ module Plugins =
       let iobox = IOBox.String(Guid "0xb33f","url input", Guid "0xb4d1d34", Array.empty, [| slice |])
 
       instances.Add iobox (fun _ -> ())
-
-      instances.Ids ()
-      |> (fun ids -> check (ids.Length = 1) "should have one instance")
+      equals 1 <| instances.Ids().Length
 
       match instances.Get iobox with
-        | Some(_) -> cb ()
-        | None -> bail "instance not found"
+        | Some(_) -> finish ()
+        | None    -> failwith "instance not found"
 
     (* ------------------------------------------------------------------------ *)
-    test "should remove an instance for an iobox" <| fun cb ->
+    test "should remove an instance for an iobox" <| fun finish ->
       resetPlugins ()
       addString1Plug ()
       addNumberPlug ()
@@ -131,19 +134,18 @@ module Plugins =
       let iobox = IOBox.String(Guid "0xb33f","url input", Guid "0xb4d1d34",Array.empty, [| slice |])
 
       instances.Add iobox (fun _ -> ())
-      instances.Ids ()
-      |> fun ids -> check (ids.Length = 1) "should have one instance"
+      equals 1 <| instances.Ids().Length
 
       instances.Remove iobox
-      instances.Ids ()
-      |> fun ids -> check_cc (ids.Length = 0) "should have no instance" cb
+      equals 0 <| instances.Ids().Length
 
+      finish()
 
     (* ------------------------------------------------------------------------ *)
     suite "Test.Units.Plugins - Event Listeners"
     (* ------------------------------------------------------------------------ *)
 
-    test "should fire an event listener when updated" <| fun cb ->
+    test "should fire an event listener when updated" <| fun finish ->
       resetPlugins ()
       addString1Plug ()
       addNumberPlug ()
@@ -160,8 +162,11 @@ module Plugins =
 
       let listener (box' : IOBox) : unit =
         match box'.Slices.[0] with
-          | StringSlice data -> data.Value ==>> value2 <| cb
-          |                _ -> bail "its not a string slice?"
+          | StringSlice data ->
+            equals value2 data.Value
+            finish()
+          | _ ->
+            failwith "its not a string slice?"
 
       let inst = plugin.Create(listener)
 
@@ -169,9 +174,9 @@ module Plugins =
       |> createElement
       |> childrenByClass "slice"
       |> (fun els ->
-          els.length |==| 1.0
+          equals 1.0 els.length
           let el = asHtmlInput els.[0]
           el.value <- value2
-          el.textContent |==| value1
+          equals value1 el.textContent
           change el
           |> ignore)

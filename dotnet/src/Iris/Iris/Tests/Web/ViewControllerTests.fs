@@ -46,7 +46,7 @@ module ViewController =
     suite "Test.Units.ViewController - basics"
     (* -------------------------------------------------------------------------- *)
 
-    test "should render successive updates of a patch view" <| fun cb ->
+    test "should render successive updates of a patch view" <| fun finished ->
       let patch1 : Patch =
         { Id = Guid "0xb33f"
         ; Name = "patch-1"
@@ -75,24 +75,25 @@ module ViewController =
 
       ctrl.Render store.State ctx
 
-      check (getByClass "patch" |> fun els -> els.length = 1.0) "should be one rendered patch template in dom"
+      equals 1.0 (getByClass "patch" |> fun els -> els.length)
 
       store.Dispatch <| PatchEvent(Create, patch2)
 
       ctrl.Render store.State ctx
 
-      check (getByClass "patch" |> fun els -> els.length = 2.0) "should be two rendered patch templates in dom"
+      equals 2.0 (getByClass "patch" |> fun els -> els.length)
 
       store.Dispatch <| PatchEvent(Create, patch3)
 
       ctrl.Render store.State ctx
 
-      check_cc (getByClass "patch"|> fun els -> els.length = 3.0) "should be three rendered patch templates in dom" cb
+      equals 3.0 (getByClass "patch"|> fun els -> els.length)
 
-      (ctrl :> IDisposable).Dispose ()
+      dispose ctrl
+      finished()
 
     (* ------------------------------------------------------------------------ *)
-    test "should take care of removing its root element on Dispose" <| fun cb ->
+    test "should take care of removing its root element on Dispose" <| fun finished ->
       let patch1 : Patch =
         { Id = Guid "0xb33f"
         ; Name = "patch-1"
@@ -109,8 +110,7 @@ module ViewController =
 
       ctrl.Render store.State ctx
 
-      check (getByClass "patch" |> fun els -> els.length = 1.0) "should be one patch in dom"
-
-      (ctrl :> IDisposable).Dispose ()
-
-      check_cc (getByClass "patch" |> fun els -> els.length = 0.0) "should be no patch in dom" cb
+      equals 1.0 (getByClass "patch" |> fun els -> els.length)
+      dispose ctrl
+      equals 0.0 (getByClass "patch" |> fun els -> els.length)
+      finished ()

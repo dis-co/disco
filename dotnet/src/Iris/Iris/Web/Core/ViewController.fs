@@ -34,7 +34,7 @@ module ViewController =
 
     let mutable root : HTMLElement = window.document.createElement "div"
 
-    let initWith tree =
+    member self.InitWith tree =
       let rootNode = createElement tree
       let body = document.getElementsByTagName_body().[0]
       body.appendChild rootNode |> ignore
@@ -52,11 +52,10 @@ module ViewController =
           let update = diff oldtree newtree
           let newroot = patch root update
           root <- newroot
-        | _ -> initWith newtree
+        | _ -> self.InitWith newtree
 
       tree <- Some(newtree)
 
-    interface IDisposable with
-      member self.Dispose () =
-        view.Dispose ()
-        root.remove ()
+    member self.Dispose () =
+      view.Dispose ()
+      root.remove ()

@@ -6,21 +6,6 @@ open System.Net
 open System.Net.NetworkInformation
 open System.Text.RegularExpressions
 
-#if JAVASCRIPT
-//      _                  ____            _       _
-//     | | __ ___   ____ _/ ___|  ___ _ __(_)_ __ | |_
-//  _  | |/ _` \ \ / / _` \___ \ / __| '__| | '_ \| __|
-// | |_| | (_| |\ V / (_| |___) | (__| |  | | |_) | |_
-//  \___/ \__,_| \_/ \__,_|____/ \___|_|  |_| .__/ \__|
-//                                          |_|
-
-#else
-//    _   _ _____ _____
-//   | \ | | ____|_   _|
-//   |  \| |  _|   | |
-//  _| |\  | |___  | |
-// (_)_| \_|_____| |_|
-
 [<RequireQualifiedAccess>]
 module List =
   let reverse (lst : 'a list) : 'a list =
@@ -30,10 +15,51 @@ module List =
 [<AutoOpen>]
 module Utils =
 
+#if JAVASCRIPT
+  //      _                  ____            _       _
+  //     | | __ ___   ____ _/ ___|  ___ _ __(_)_ __ | |_
+  //  _  | |/ _` \ \ / / _` \___ \ / __| '__| | '_ \| __|
+  // | |_| | (_| |\ V / (_| |___) | (__| |  | | |_) | |_
+  //  \___/ \__,_| \_/ \__,_|____/ \___|_|  |_| .__/ \__|
+  //                                          |_|
+
+
+  /// ## Dispose of an object that implements the method Dispose
+  ///
+  /// This is slightly different to the .NET based version, as I have discovered problems with the
+  /// `use` keyword of IDisposable members in JAVASCRIPT. Hence we manage manualy and ensure that
+  /// dispose reminds us that the object needs to have the member, not interface implemented.
+  ///
+  /// ### Signature:
+  /// - unit: unit
+  ///
+  /// Returns: unit
+  let inline dispose< ^t when ^t : (member Dispose : unit -> unit)> (o : ^t) =
+    (^t : (member Dispose : unit -> unit) o)
+
+#else
+  //    _   _ _____ _____
+  //   | \ | | ____|_   _|
+  //   |  \| |  _|   | |
+  //  _| |\  | |___  | |
+  // (_)_| \_|_____| |_|
+
   let isLinux : bool =
     int Environment.OSVersion.Platform
     |> fun p ->
       (p = 4) || (p = 6) || (p = 128)
+
+  let warn = printfn "[warning] %s"
+
+  /// ## Dispose of an IDisposable object.
+  ///
+  /// Convenience function to call Dispose on an IDisposable.
+  ///
+  /// ### Signature:
+  /// - unit: unit
+  ///
+  /// Returns: unit
+  let dispose (o : 't when 't :> IDisposable) = o.Dispose()
 
   // __        __         _     ____
   // \ \      / /__  _ __| | __/ ___| _ __   __ _  ___ ___
@@ -122,10 +148,6 @@ module Utils =
   //  \___/ \__|_|_|___/                //
   ////////////////////////////////////////
   let (</>) p1 p2 = System.IO.Path.Combine(p1, p2)
-
-  let warn = printfn "[WARNING] %s"
-
-  let dispose (o : 't when 't :> IDisposable) = o.Dispose()
 
   let trim (str: string) = str.Trim()
 
