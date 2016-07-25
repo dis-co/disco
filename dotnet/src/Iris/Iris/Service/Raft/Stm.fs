@@ -440,25 +440,17 @@ let startServer appState cbs =
     let server = Context.rep state.Context
     let uri = state.Raft.Node.Data |> formatUri
 
-    // STARTING THE SERVER BY BINDING TO ADDRESS
-    Thread.CurrentThread.ManagedThreadId
-    |> printfn "Starting listener for %s on thread %d" uri
-
     Socket.bind server uri
 
     // DISPOSE SERVER
     let disposeServer _ =
-      Thread.CurrentThread.ManagedThreadId
-      |> printfn "Cancellation requested on thread %d"
       Socket.unbind server uri
       dispose server
 
     let rec proc () =
       async {
         try
-          Thread.CurrentThread.ManagedThreadId
-          |> printfn "Server loop. Thread %d"
-
+          // IMPORTANT: disposes the socket on the original, spawning thread.
           use! holder = Async.OnCancel(disposeServer)
 
           let msg = new Message()
@@ -665,9 +657,6 @@ let resetConnections appState =
     match nodeinfo with
       | Some info ->
         try
-          Thread.CurrentThread.ManagedThreadId
-          |> printfn "Connection reset/dispose for socket %s on %d" (formatUri info)
-
           formatUri info |> Socket.disconnect sock
           dispose sock
         with
