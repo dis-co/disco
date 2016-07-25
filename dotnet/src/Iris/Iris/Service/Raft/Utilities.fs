@@ -101,7 +101,10 @@ let cancelToken (cts: CancellationTokenSource option ref) =
   match !cts with
   | Some token ->
     try
+      System.Threading.Thread.CurrentThread.ManagedThreadId
+      |> printfn "Cancelling token in thread: %d"
       token.Cancel()
+      printfn "no exception, phew"
     finally
       cts := None
   | _ -> ()

@@ -333,8 +333,15 @@ module RaftIntegrationTests =
       System.Threading.Thread.CurrentThread.ManagedThreadId
       |> printfn "Disposing of leader and follower %d"
 
+      printfn "Dispose leader"
       dispose leader
+      printfn "Dispose follower"
       dispose follower
+
+      printfn "Dispose ctx1"
+      dispose ctx1
+      printfn "Dispose ctx2"
+      dispose ctx2
 
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___

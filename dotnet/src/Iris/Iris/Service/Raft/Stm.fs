@@ -440,14 +440,27 @@ let startServer appState cbs =
     let server = Context.rep state.Context
     let uri = state.Raft.Node.Data |> formatUri
 
-    Socket.bind server uri
-
+    // STARTING THE SERVER BY BINDING TO ADDRESS
     Thread.CurrentThread.ManagedThreadId
     |> printfn "Starting listener for %s on thread %d" uri
+
+    Socket.bind server uri
+
+    // DISPOSE SERVER
+    let disposeServer _ =
+      Thread.CurrentThread.ManagedThreadId
+      |> printfn "Cancellation requested on thread %d"
+      Socket.unbind server uri
+      dispose server
 
     let rec proc () =
       async {
         try
+          Thread.CurrentThread.ManagedThreadId
+          |> printfn "Server loop. Thread %d"
+
+          use! holder = Async.OnCancel(disposeServer)
+
           let msg = new Message()
           Message.recv msg server
 
@@ -460,26 +473,10 @@ let startServer appState cbs =
             | None         -> ErrorResponse <| OtherError "Unable to decipher request"
 
           response |> encode |> Socket.send server
-
           dispose msg
-
-          if token.IsCancellationRequested then
-
-            Thread.CurrentThread.ManagedThreadId
-            |> printfn "Cancellation requested. Disposing listener for %s on thread %d" uri
-
-            Socket.unbind server uri
-            dispose server
-          else
-            return! proc ()
+          return! proc ()
         with
-          | exn ->
-
-            Thread.CurrentThread.ManagedThreadId
-            |> printfn "Disposing listener for %s on thread %d" uri
-
-            Socket.unbind server uri
-            dispose server
+          | _ -> disposeServer ()
       }
 
     Async.Start(proc (), token.Token)
