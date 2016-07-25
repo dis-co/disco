@@ -330,6 +330,9 @@ module RaftIntegrationTests =
       follower.Start()
       expect "Should be in failed state" true hasFailed follower.ServerState
 
+      System.Threading.Thread.CurrentThread.ManagedThreadId
+      |> printfn "Disposing of leader and follower %d"
+
       dispose leader
       dispose follower
 

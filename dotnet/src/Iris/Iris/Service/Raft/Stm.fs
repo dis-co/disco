@@ -44,6 +44,9 @@ let getSocket (node: Node) appState =
 
       Socket.connect socket addr
 
+      Thread.CurrentThread.ManagedThreadId
+      |> printfn "Connected Socket for %s on thread %d" addr
+
       let newstate =
         { state with
             Connections = Map.add node.Data.MemberId socket state.Connections }
@@ -68,6 +71,10 @@ let disposeSocket (node: Node) appState =
 
     match Map.tryFind node.Data.MemberId state.Connections with
     | Some client ->
+
+      Thread.CurrentThread.ManagedThreadId
+      |> printfn "Disposing Socket for %s on thread %d" (formatUri node.Data)
+
       dispose client
       let state = { state with Connections = Map.remove node.Data.MemberId state.Connections }
       do! writeTVar appState state
@@ -435,6 +442,9 @@ let startServer appState cbs =
 
     Socket.bind server uri
 
+    Thread.CurrentThread.ManagedThreadId
+    |> printfn "Starting listener for %s on thread %d" uri
+
     let rec proc () =
       async {
         try
@@ -454,12 +464,20 @@ let startServer appState cbs =
           dispose msg
 
           if token.IsCancellationRequested then
+
+            Thread.CurrentThread.ManagedThreadId
+            |> printfn "Cancellation requested. Disposing listener for %s on thread %d" uri
+
             Socket.unbind server uri
             dispose server
           else
             return! proc ()
         with
           | exn ->
+
+            Thread.CurrentThread.ManagedThreadId
+            |> printfn "Disposing listener for %s on thread %d" uri
+
             Socket.unbind server uri
             dispose server
       }
@@ -650,6 +668,9 @@ let resetConnections appState =
     match nodeinfo with
       | Some info ->
         try
+          Thread.CurrentThread.ManagedThreadId
+          |> printfn "Connection reset/dispose for socket %s on %d" (formatUri info)
+
           formatUri info |> Socket.disconnect sock
           dispose sock
         with

@@ -5,10 +5,6 @@ open System.Threading
 open Iris.Core
 open Iris.Core.Utils
 open Pallet.Core
-open fszmq
-open fszmq.Context
-open fszmq.Socket
-open fszmq.Polling
 open FSharpx.Stm
 open FSharpx.Functional
 open Utilities
@@ -109,7 +105,7 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
 
       serverState := Running
     with
-      | :? ZMQError as exn ->
+      | :? fszmq.ZMQError as exn ->
         serverState := Failed
 
   /// ## Stop the Raft engine, sockets and all.
@@ -127,6 +123,9 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
       | Starting | Stopping | Stopped | Failed _ -> ()
       | Running ->
         serverState := Stopping
+
+        System.Threading.Thread.CurrentThread.ManagedThreadId
+        |> printfn "Disposing on thread %d"
 
         // cancel the running async tasks
         cancelToken periodictoken
