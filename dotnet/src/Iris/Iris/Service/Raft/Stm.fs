@@ -9,6 +9,9 @@ module Iris.Service.Raft.Stm
 // ----------------------------------------------------------------------------------------- //
 
 open fszmq
+open fszmq.Context
+open fszmq.Socket
+
 open Iris.Core
 open Iris.Service
 open Pallet.Core
@@ -19,114 +22,9 @@ open Utilities
 open System
 open Db
 
-/// ## getSocket for Member
-///
-/// Gets the socket we memoized for given MemberId, else creates one and instantiates a
-/// connection.
-///
-/// ### Signature:
-/// - appState: current TVar<AppState>
-///
-/// Returns: Socket
-let getSocket (node: Node) appState =
-  stm {
-    let! state = readTVar appState
 
-    match Map.tryFind node.Data.MemberId state.Connections with
-    | Some client -> return client
-    | _           ->
-      let! state = readTVar appState
-
-      let socket = Context.req state.Context
-      Socket.setOption socket (ZMQ.RCVTIMEO,int state.Raft.RequestTimeout)
-
-      let addr = formatUri node.Data
-
-      Socket.connect socket addr
-
-      Thread.CurrentThread.ManagedThreadId
-      |> printfn "Connected Socket for %s on thread %d" addr
-
-      let newstate =
-        { state with
-            Connections = Map.add node.Data.MemberId socket state.Connections }
-
-      do! writeTVar appState newstate
-
-      return socket
-  }
-
-/// ## Dispose of a client socket
-///
-/// Dispose of a client socket that we don't need anymore.
-///
-/// ### Signature:
-/// - node: Node whose socket should be disposed of.
-/// - appState: AppState TVar
-///
-/// Returns: unit
-let disposeSocket (node: Node) appState =
-  stm {
-    let! state = readTVar appState
-
-    match Map.tryFind node.Data.MemberId state.Connections with
-    | Some client ->
-
-      Thread.CurrentThread.ManagedThreadId
-      |> printfn "Disposing Socket for %s on thread %d" (formatUri node.Data)
-
-      dispose client
-      let state = { state with Connections = Map.remove node.Data.MemberId state.Connections }
-      do! writeTVar appState state
-    | _  -> ()
-  }
-
-/// ## Receive a reply
-///
-/// Block until we receive a reply on client Socket. If operation times out, Dispose of the socket
-/// (such that it can be re-created next time around).
-///
-/// ### Signature:
-/// - client: Socket
-///
-/// Returns: RaftResponse option
-let receiveReply (node: Node) (client: Socket) appState : RaftResponse option =
-  try
-    Socket.recv client |> decode
-  with
-    | :? TimeoutException ->
-      disposeSocket node appState |> atomically
-      None
-    | exn -> handleException "receiveReply" exn
-
-/// ## Send RaftRequest to node
-///
-/// Sends given RaftRequest to node. If the request times out, None is return to indicate
-/// failure. Otherwise the de-serialized RaftResponse is returned, wrapped in option to
-/// indicate whether de-serialization was successful.
-///
-/// ### Signature:
-/// - thing:    RaftRequest to send
-/// - node:     node to send the message to
-/// - appState: application state TVar
-///
-/// Returns: RaftResponse option
-let performRequest (request: RaftRequest) (node: Node<IrisNode>) appState =
-  stm {
-    let mutable frames = [| |]
-
-    let handler _ (msgs : Message array) =
-      frames <- Array.map (Message.data >> decode<RaftResponse>) msgs
-
-    let! state = readTVar appState
-    let! client = getSocket node appState
-
-    request |> encode |> Socket.send client
-
-    let reply = receiveReply node client appState
-
-    return reply
-  }
+let log (cbs: IRaftCallbacks<_,_>) (state: AppState) (msg: string) =
+  cbs.LogMsg state.Raft.Node msg
 
 /// ## Run Raft periodic functions with AppState
 ///
@@ -159,25 +57,16 @@ let periodicR elapsed appState cbs =
 /// - cbs: Raft callbacks
 ///
 /// Returns: unit
-let addNodeR node appState cbs =
-  stm {
-    let! state = readTVar appState
+let addNodeR node state cbs =
+  let term = currentTerm state.Raft
+  let changes = [| NodeAdded node |]
+  let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, None)
+  let response = receiveEntry entry |> runRaft state.Raft cbs
 
-    let term = currentTerm state.Raft
-    let changes = [| NodeAdded node |]
-    let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, None)
-    let response = receiveEntry entry |> runRaft state.Raft cbs
-
-    match response with
-      | Right(resp, raft) ->
-        do! writeTVar appState (updateRaft raft state)
-
-      | Middle(_, raft) ->
-        do! writeTVar appState (updateRaft raft state)
-
-      | Left(err, raft) ->
-        do! writeTVar appState (updateRaft raft state)
-  }
+  match response with
+  | Right(resp, raft) -> updateRaft raft state
+  | Middle(_, raft)   -> updateRaft raft state
+  | Left(err, raft)   -> updateRaft raft state
 
 /// ## Remove a node from the Raft cluster
 ///
@@ -190,18 +79,13 @@ let addNodeR node appState cbs =
 /// - cbs: Raft callbacks
 ///
 /// Returns: unit
-let removeNodeR node appState cbs =
-  stm {
-    let! state = readTVar appState
-
-    let term = currentTerm state.Raft
-    let changes = [| NodeRemoved node |]
-    let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, None)
-    do! receiveEntry entry
-        |> evalRaft state.Raft cbs
-        |> flip updateRaft state
-        |> writeTVar appState
-  }
+let removeNodeR node state cbs =
+  let term = currentTerm state.Raft
+  let changes = [| NodeRemoved node |]
+  let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, None)
+  receiveEntry entry
+  |> evalRaft state.Raft cbs
+  |> flip updateRaft state
 
 /// ## Redirect to leader
 ///
@@ -211,12 +95,10 @@ let removeNodeR node appState cbs =
 /// - state: AppState
 ///
 /// Returns: Stm<RaftResponse>
-let redirectR state =
-  stm {
-    match getLeader state.Raft with
-    | Some node -> return Redirect node
-    | _         -> return ErrorResponse (OtherError "No known leader")
-  }
+let doRedirect state =
+  match getLeader state.Raft with
+  | Some node -> Redirect node
+  | _         -> ErrorResponse (OtherError "No known leader")
 
 /// ## Handle AppendEntries requests
 ///
@@ -229,27 +111,25 @@ let redirectR state =
 /// - cbs:      Raft callbacks
 ///
 /// Returns: Stm<RaftResponse>
-let handleAppendEntries sender ae appState cbs =
-  stm {
-    let! state = readTVar appState
+let handleAppendEntries sender ae state cbs =
+  let result =
+    receiveAppendEntries (Some sender) ae
+    |> runRaft state.Raft cbs
 
-    let result =
-      receiveAppendEntries (Some sender) ae
-      |> runRaft state.Raft cbs
+  match result with
+  | Right (resp, raft) ->
+    let state = updateRaft raft state
+    let response = AppendEntriesResponse(raft.Node.Id, resp)
+    (response, state)
 
-    match result with
-      | Right (resp, raft) ->
-        do! writeTVar appState (updateRaft raft state)
-        return AppendEntriesResponse(raft.Node.Id, resp)
+  | Middle (resp, raft) ->
+    let state = updateRaft raft state
+    let response = AppendEntriesResponse(raft.Node.Id, resp)
+    (response, state)
 
-      | Middle (resp, raft) ->
-        do! writeTVar appState (updateRaft raft state)
-        return AppendEntriesResponse(raft.Node.Id, resp)
-
-      | Left (err, raft) ->
-        do! writeTVar appState (updateRaft raft state)
-        return ErrorResponse err
-  }
+  | Left (err, raft) ->
+    let state = updateRaft raft state
+    (ErrorResponse err, state)
 
 /// ## Handle the AppendEntries request response.
 ///
@@ -262,15 +142,10 @@ let handleAppendEntries sender ae appState cbs =
 /// - cbs: IRaftCallbacks
 ///
 /// Returns: unit
-let handleAppendResponse sender ar appState cbs =
-  stm {
-    let! state = readTVar appState
-
-    do! receiveAppendEntriesResponse sender ar
-        |> evalRaft state.Raft cbs
-        |> flip updateRaft state
-        |> writeTVar appState
-  }
+let handleAppendResponse sender ar state cbs =
+  receiveAppendEntriesResponse sender ar
+  |> evalRaft state.Raft cbs
+  |> flip updateRaft state
 
 /// ## Handle a vote request.
 ///
@@ -283,27 +158,34 @@ let handleAppendResponse sender ar appState cbs =
 /// - cbs: IRaftCallbacks
 ///
 /// Returns: unit
-let handleVoteRequest sender req appState cbs =
-  stm {
-    let! state = readTVar appState
+let handleVoteRequest sender req state cbs =
+  let result =
+    Raft.receiveVoteRequest sender req
+    |> runRaft state.Raft cbs
 
-    let result =
-      Raft.receiveVoteRequest sender req
-      |> runRaft state.Raft cbs
+  match result with
+  | Right (resp, raft) ->
+    sprintf "processed vote request. RIGHT result: %s" (if resp.Granted then "granted" else "NOT granted")
+    |> log cbs state
 
-    match result with
-      | Right  (resp, raft) ->
-        do! writeTVar appState (updateRaft raft state)
-        return RequestVoteResponse(raft.Node.Id, resp)
+    let state = updateRaft raft state
+    let response = RequestVoteResponse(raft.Node.Id, resp)
+    (response, state)
 
-      | Middle (resp, raft) ->
-        do! writeTVar appState (updateRaft raft state)
-        return RequestVoteResponse(raft.Node.Id, resp)
+  | Middle (resp, raft) ->
+    sprintf "processed vote request. MIDDLE result: %s" (if resp.Granted then "granted" else "NOT granted")
+    |> log cbs state
 
-      | Left (err, raft) ->
-        do! writeTVar appState (updateRaft raft state)
-        return ErrorResponse err
-  }
+    let state = updateRaft raft state
+    let response = RequestVoteResponse(raft.Node.Id, resp)
+    (response, state)
+
+  | Left (err, raft) ->
+    sprintf "processed vote request. LEFT error: %A" err
+    |> log cbs state
+
+    let state = updateRaft raft state
+    (ErrorResponse err, state)
 
 /// ## Handle the response to a vote request.
 ///
@@ -315,15 +197,10 @@ let handleVoteRequest sender req appState cbs =
 /// - appState: current TVar<AppState>
 ///
 /// Returns: unit
-let handleVoteResponse sender rep appState cbs =
-  stm {
-    let! state = readTVar appState
-
-    do! receiveVoteResponse sender rep
-        |> evalRaft state.Raft cbs
-        |> flip updateRaft state
-        |> writeTVar appState
-  }
+let handleVoteResponse sender rep state cbs =
+  receiveVoteResponse sender rep
+  |> evalRaft state.Raft cbs
+  |> flip updateRaft state
 
 /// ## Handle a HandShake request by a certain Node.
 ///
@@ -336,25 +213,39 @@ let handleVoteResponse sender rep appState cbs =
 /// - cbs: IRaftCallbacks
 ///
 /// Returns: RaftResponse
-let handleHandshake node appState cbs =
-  stm {
-    let! state = readTVar appState
-    if isLeader state.Raft then
-      do! addNodeR node appState cbs
-      return Welcome
-    else
-      return! redirectR state
-  }
+let handleHandshake node state cbs =
+  if isLeader state.Raft then
 
-let handleHandwaive node appState cbs =
-  stm {
-    let! state = readTVar appState
-    if isLeader state.Raft then
-      do! removeNodeR node appState cbs
-      return Arrivederci
-    else
-      return! redirectR state
-  }
+    let result =
+      raft {
+        let! term = currentTermM ()
+        let changes = [| NodeAdded node |]
+        let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, None)
+
+        sprintf "initialize: appending entry to enter joint-consensus"
+        |> log cbs state
+
+        let! appended = appendEntryM entry
+
+        warn "Should I send a snapshot now?"
+
+      } |> runRaft state.Raft cbs
+
+    let response = Welcome state.Raft.Node
+
+    match result with
+    | Right (_,raft) -> (response, updateRaft raft state)
+    | Middle(_,raft) -> (response, updateRaft raft state)
+    | Left(err,raft) -> (ErrorResponse err, updateRaft raft state)
+  else
+    (doRedirect state, state)
+
+let handleHandwaive node state cbs =
+  if isLeader state.Raft then
+    let state = removeNodeR node state cbs
+    (Arrivederci, state)
+  else
+    (doRedirect state, state)
 
 let appendEntry entry appState cbs =
   stm {
@@ -379,96 +270,129 @@ let appendEntry entry appState cbs =
     return response
   }
 
-let handleInstallSnapshot node snapshot appState cbs =
-  stm {
-    let! state = readTVar appState
-    // do! createSnapshot ()
-    //     |> evalRaft raft' cbs
-    //     |> writeTVar raftState
-    return InstallSnapshotResponse (state.Raft.Node.Id, { Term = state.Raft.CurrentTerm })
-  }
+let handleInstallSnapshot node snapshot state cbs =
+  // let snapshot = createSnapshot () |> runRaft raft' cbs
+  let response = InstallSnapshotResponse (state.Raft.Node.Id, { Term = state.Raft.CurrentTerm })
+  (response, state)
 
-let handleRequest msg appState cbs =
-  stm {
-    match msg with
-      | RequestVote (sender, req) ->
-        return! handleVoteRequest sender req appState cbs
+let handleRequest msg state cbs : (RaftResponse * AppState) =
+  match msg with
+  | RequestVote (sender, req) ->
+    handleVoteRequest sender req state cbs
 
-      | AppendEntries (sender, ae) ->
-        return! handleAppendEntries  sender ae appState cbs
+  | AppendEntries (sender, ae) ->
+    handleAppendEntries  sender ae state cbs
 
-      | HandShake node ->
-        return! handleHandshake node appState cbs
+  | HandShake node ->
+    handleHandshake node state cbs
 
-      | HandWaive node ->
-        return! handleHandwaive node appState cbs
+  | HandWaive node ->
+    handleHandwaive node state cbs
 
-      | InstallSnapshot (sender, snapshot) ->
-        return! handleInstallSnapshot sender snapshot appState cbs
-  }
+  | InstallSnapshot (sender, snapshot) ->
+    handleInstallSnapshot sender snapshot state cbs
 
-let handleResponse msg appState cbs =
-  stm {
-    match msg with
-      | RequestVoteResponse (sender, rep)  ->
-        do! handleVoteResponse sender rep appState cbs
+let handleResponse msg state cbs =
+  match msg with
+  | RequestVoteResponse (sender, rep)  ->
+    handleVoteResponse sender rep state cbs
 
-      | AppendEntriesResponse (sender, ar) ->
-        do! handleAppendResponse sender ar appState cbs
+  | AppendEntriesResponse (sender, ar) ->
+    handleAppendResponse sender ar state cbs
 
-      | InstallSnapshotResponse (sender, snapshot) ->
-        printfn "[InstallSnapshotResponse RPC] done"
+  | InstallSnapshotResponse (sender, snapshot) ->
+    printfn "[InstallSnapshotResponse RPC] done"
+    state
 
-      | Redirect node ->
-        failwithf "[HandShake] redirected us to %A" node
+  | Redirect _ | Welcome _ | Arrivederci ->
+    printfn "[HandleResponse] unexpected response to regular request. Aborting."
+    exit 1
 
-      | Welcome ->
-        failwith "[HandShake] welcome to the fold"
+  | ErrorResponse err ->
+    failwithf "[ERROR] %A" err
 
-      | Arrivederci ->
-        failwith "[HandShake] bye bye "
-
-      | ErrorResponse err ->
-        failwithf "[ERROR] %A" err
-  }
-
-let startServer appState cbs =
+let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks<_,_>) =
   stm {
     let token = new CancellationTokenSource()
 
     let! state = readTVar appState
-    let server = Context.rep state.Context
-    let uri = state.Raft.Node.Data |> formatUri
+    let server = rep state.Context
+    let uri = state.Raft.Node.Data |> nodeUri
 
-    Socket.bind server uri
+    Thread.CurrentThread.ManagedThreadId
+    |> sprintf "binding to %A on thread: %d" uri
+    |> log cbs state
+
+    bind server uri
 
     // DISPOSE SERVER
     let disposeServer _ =
-      Socket.unbind server uri
+      Thread.CurrentThread.ManagedThreadId
+      |> sprintf "dispose server bound to %A on thread: %d" uri
+      |> log cbs state
+
+      unbind server uri
       dispose server
 
     let rec proc () =
       async {
         try
+          "server loop: entering loop"
+          |> log cbs state
+
           // IMPORTANT: disposes the socket on the original, spawning thread.
           use! holder = Async.OnCancel(disposeServer)
 
-          let msg = new Message()
-          Message.recv msg server
+          log cbs state "server loop: waiting for message"
+
+          // let msg = new Message()
+          // Message.recv msg server
 
           let request : RaftRequest option =
-            Message.data msg |> decode
+            // Message.data msg |> decode
+            server |> recv |> decode
+
+          sprintf "server loop: got a Message. calculating response"
+          |> log cbs state
 
           let response =
             match request with
-            | Some message -> handleRequest message appState cbs |> atomically
-            | None         -> ErrorResponse <| OtherError "Unable to decipher request"
+            | Some message ->
+              "server loop: computing response"
+              |> log cbs state
+
+              let state = readTVar appState |> atomically
+              let response, state = handleRequest message state cbs
+              writeTVar appState state |> atomically
+              response
+            | None ->
+              "server loop: could not decode response"
+              |> log cbs state
+              ErrorResponse <| OtherError "Unable to decipher request"
+
+          sprintf "server loop: responding" |> log cbs state
 
           response |> encode |> Socket.send server
-          dispose msg
+
+          sprintf "server loop: done" |> log cbs state
+
+          // dispose msg
           return! proc ()
         with
-          | _ -> disposeServer ()
+          | :? fszmq.ZMQError as exn when exn.ErrorNumber = 4 ->
+            sprintf "ZMQ EXCEPTION EINTR - %A" exn.Message
+            |> log cbs state
+            return! proc ()
+
+          | :? fszmq.ZMQError as exn ->
+            sprintf "ZMQ EXCEPTION %A - %A" exn.ErrorNumber exn.Message
+            |> log cbs state
+            return! proc ()
+
+          | exn ->
+            sprintf "UNEXPECTED EXCEPTION %A" exn.Message
+            |> log cbs state
+            disposeServer ()
       }
 
     Async.Start(proc (), token.Token)
@@ -505,43 +429,54 @@ let startPeriodic timeout appState cbs =
 
 
 // -------------------------------------------------------------------------
-let tryJoin (leader: Node<IrisNode>) appState =
-  let rec _tryJoin retry node' =
-    stm {
-      let! state = readTVar appState
+let tryJoin (ip: IpAddress) (port: uint32) cbs (state: AppState) =
+  let rec _tryJoin retry uri =
+    if retry < int state.Options.MaxRetries then
+      let client = mkClientSocket uri state
 
-      if retry < int state.Options.MaxRetries then
-        printfn "Trying to join cluster. [retry: %d] [node: %A]" retry node'
+      Thread.CurrentThread.ManagedThreadId
+      |> sprintf "TRYING TO JOIN CLUSTER. [retry: %d] [thread: %d]" retry
+      |> log cbs state
 
-        let msg = HandShake(state.Raft.Node)
-        let! result = performRequest msg node' appState
+      let request = HandShake(state.Raft.Node)
+      let result = performRawRequest request client state
 
-        match result with
-          | Some message ->
-            match message with
-              | Welcome ->
-                printfn "HandShake successful. Waiting to be updated"
+      sprintf "TRYJOIN RESPONSE: %A" result
+      |> log cbs state
 
-              | Redirect next ->
-                do! _tryJoin (retry + 1) next
+      Socket.disconnect client uri
+      dispose client
 
-              | ErrorResponse err ->
-                printfn "Unexpected error occurred. %A" err
-                exit 1
+      match result with
+        | Some (Welcome node) ->
+          sprintf "Received Welcome from %A" node.Id
+          |> log cbs state
+          node
 
-              | res ->
-                printfn "Unexpected response. Aborting.\n%A" res
-                exit 1
-          | _ ->
-            printfn "Node: %A unreachable. Aborting." node'.Id
-            exit 1
-      else
-        printfn "Too many connection attempts unsuccesful. Aborting."
-        exit 1
-    }
+        | Some (Redirect next) ->
+          sprintf "Got redirected to %A" (nodeUri next.Data)
+          |> log cbs state
+          _tryJoin (retry + 1) (nodeUri next.Data)
 
-  printfn "joining leader %A now" leader
-  _tryJoin 0 leader
+        | Some (ErrorResponse err) ->
+          sprintf "Unexpected error occurred. %A Aborting." err
+          |> log cbs state
+          exit 1
+
+        | Some resp ->
+          sprintf "Unexpected response. %A Aborting." resp
+          |> log cbs state
+          exit 1
+        | _ ->
+          sprintf "Node: %A unreachable. Aborting." uri
+          |> log cbs state
+          exit 1
+    else
+      "Too many unsuccesful connection attempts. Aborting."
+      |> log cbs state
+      exit 1
+
+  formatUri ip (int port) |> _tryJoin 0
 
 /// ## Attempt to leave a Raft cluster
 ///
@@ -554,46 +489,47 @@ let tryJoin (leader: Node<IrisNode>) appState =
 ///
 /// Returns: unit
 let tryLeave appState cbs =
-  let rec _tryLeave retry (node: Node<IrisNode>) =
-    stm {
-      printfn "Trying to join cluster. [retry: %A] [node: %A]" retry node
-      let! state = readTVar appState
-      let msg = HandWaive(state.Raft.Node)
-      let! result = performRequest msg node appState
+  let rec _tryLeave retry (node: Node<IrisNode>) (state: AppState) =
+    printfn "Trying to join cluster. [retry: %A] [node: %A]" retry node
 
-      match result with
-        | Some message ->
-          match message with
-            | Redirect other ->
-              if retry <= int state.Options.MaxRetries then
-                do! _tryLeave (retry + 1) other
-              else
-                failwith "too many retries. aborting"
+    let uri = nodeUri node.Data
+    let client = mkClientSocket uri state
+    let request = HandWaive(state.Raft.Node)
+    let result = performRawRequest request client state
 
-            | Arrivederci ->
-              printfn "HandWaive successful."
+    Socket.disconnect client uri
+    dispose client
 
-            | ErrorResponse err ->
-              printfn "Unexpected error occurred. %A" err
-              exit 1
+    match result with
+    | Some (Redirect other) ->
+      if retry <= int state.Options.MaxRetries then
+        _tryLeave (retry + 1) other state
+      else
+        printfn "Too many retries. aborting"
+        exit 1
 
-            | resp ->
-              printfn "Unexpected response. Aborting.\n%A" resp
-              exit 1
-        | _ ->
-          printfn "Node unreachable. Aborting."
-          exit 1
-    }
+    | Some Arrivederci ->
+      printfn "HandWaive successful."
+
+    | Some (ErrorResponse err) ->
+      printfn "Unexpected error occurred. %A" err
+      exit 1
+
+    | Some resp ->
+      printfn "Unexpected response. Aborting.\n%A" resp
+      exit 1
+
+    | _ ->
+      printfn "Node unreachable. Aborting."
+      exit 1
 
   stm {
     let! state = readTVar appState
 
     if not (isLeader state.Raft) then
       match Option.bind (flip getNode state.Raft) state.Raft.CurrentLeader with
-        | Some node ->
-          do! _tryLeave 0 node
-        | _ ->
-          printfn "Leader not found. Exiting without saying goodbye."
+        | Some node -> _tryLeave 0 node state
+        | _         -> printfn "Leader not found. Exiting without saying goodbye."
     else
       let term = currentTerm state.Raft
       let changes = [| NodeRemoved state.Raft.Node |]
@@ -618,12 +554,15 @@ let rec requestLoop appState cbs (inbox: Actor<(Node<IrisNode> * RaftRequest)>) 
     let! (node, msg) = inbox.Receive()
 
     stm {
-      let! response = performRequest msg node appState
+      let! state = readTVar appState
+      let response, state = performRequest msg node state
 
       match response with
         | Some message ->
-          do! handleResponse message appState cbs
+          let state = handleResponse message state cbs
+          do! writeTVar appState state
         | _ ->
+          do! writeTVar appState state
           printfn "[REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
     } |> atomically
 
@@ -657,7 +596,7 @@ let resetConnections appState =
     match nodeinfo with
       | Some info ->
         try
-          formatUri info |> Socket.disconnect sock
+          nodeUri info |> Socket.disconnect sock
           dispose sock
         with
           | exn ->
@@ -672,40 +611,46 @@ let resetConnections appState =
   }
 
 let initialize appState cbs =
-  stm {
-    let! state = readTVar appState
+  let state = readTVar appState |> atomically
 
-    let term = 0UL                    // this likely needs to be adjusted when
-                                      // loading state from disk
+  sprintf "initializing raft" |> log cbs state
 
-    let changes = [| NodeAdded state.Raft.Node |]
-    let nodes =  [||]
-    let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, None)
+  let newstate =
+    raft {
+      warn "should read term from disk on startup"
+      let term = 0UL
 
-    let newstate =
-      raft {
-        do! setTermM term
-        do! setRequestTimeoutM 500UL
-        do! setElectionTimeoutM 1000UL
+      do! setTermM term
+      do! setRequestTimeoutM 500UL
+      do! setElectionTimeoutM 1000UL
 
-        if state.Options.Start then
-          let! result = appendEntryM entry
-          do! becomeLeader ()
-          do! periodic 1001UL
-        else
-          let leader =
-            { MemberId = createGuid()
-            ; HostName = "<empty>"
-            ; IpAddr = Option.get state.Options.LeaderIp   |> IpAddress.Parse
-            ; Port   = Option.get state.Options.LeaderPort |> int
-            ; TaskId = None
-            ; Status = IrisNodeStatus.Running
-            }
-            |> Node.create (Option.get state.Options.LeaderId |> RaftId)
-          failwith "FIXME: call tryJoin now"
-      }
-      |> evalRaft state.Raft cbs
+      if state.Options.Start then
+        sprintf "initialize: becoming leader" |> log cbs state
+        do! becomeLeader ()
+      else
+        sprintf "initialize: requesting to join" |> log cbs state
+        match state.Options.LeaderIp, state.Options.LeaderPort with
+          | (Some ip, Some port) ->
+            let leader = tryJoin (IpAddress.Parse ip) port cbs state
+            sprintf "Reached leader: %A Adding to nodes." leader.Id
+            |> log cbs state
+            do! addNodeM leader
 
-    // tryJoin leader
-    do! writeTVar appState (updateRaft newstate state)
-  }
+          | (None, _) ->
+            "When joining a cluster, the leader's IP must be specified. Aborting."
+            |> log cbs state
+            exit 1
+
+          | (_, None) ->
+            "When joining a cluster, the leader's port must be specified. Aborting."
+            |> log cbs state
+            exit 1
+
+    } |> evalRaft state.Raft cbs
+
+  sprintf "initialize: save new state"
+  |> log cbs state
+
+  // tryJoin leader
+  writeTVar appState (updateRaft newstate state)
+  |> atomically

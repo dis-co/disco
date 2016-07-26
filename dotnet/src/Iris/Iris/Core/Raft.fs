@@ -20,7 +20,6 @@ type RaftOptions =
   ; WebPort          : int
   ; RaftPort         : int
   ; Start            : bool
-  ; LeaderId         : string option
   ; LeaderIp         : string option
   ; LeaderPort       : uint32 option
   ; MaxRetries       : uint32
@@ -44,7 +43,6 @@ type GeneralArgs =
   |                                   Debug
   |                                   Start
   |                                   Join
-  |              [<EqualsAssignment>] LeaderId   of string
   |              [<EqualsAssignment>] LeaderIp   of string
   |              [<EqualsAssignment>] LeaderPort of uint32
 
@@ -60,7 +58,6 @@ type GeneralArgs =
         | Debug        -> "Log output to console."
         | Start        -> "Start a new cluster"
         | Join         -> "Join an existing cluster"
-        | LeaderId   _ -> "Leader id when joining an existing cluster"
         | LeaderIp   _ -> "Ip address of leader when joining a cluster"
         | LeaderPort _ -> "Port of leader when joining a cluster"
 
@@ -226,7 +223,7 @@ type RaftResponse =
   | AppendEntriesResponse   of sender:NodeId * ar:AppendResponse
   | InstallSnapshotResponse of sender:NodeId * ir:SnapshotResponse
   | Redirect                of leader:Node
-  | Welcome
+  | Welcome                 of leader:Node
   | Arrivederci
   | ErrorResponse           of RaftError
 
@@ -264,9 +261,8 @@ type RaftResponse =
         |> build builder RaftMsgTypeFB.RedirectFB
         |> builder.Finish
 
-      | Welcome ->
-        WelcomeFB.StartWelcomeFB(builder)
-        WelcomeFB.EndWelcomeFB(builder)
+      | Welcome node ->
+        WelcomeFB.CreateWelcomeFB(builder, node.ToOffset builder)
         |> getValue
         |> build builder RaftMsgTypeFB.WelcomeFB
         |> builder.Finish
@@ -324,7 +320,10 @@ type RaftResponse =
           Redirect(node) |> Some
 
         | RaftMsgTypeFB.WelcomeFB ->
-          Welcome |> Some
+          let entry = msg.GetMsg(new WelcomeFB())
+          let node = Node.FromFB entry.Node
+
+          Welcome(node) |> Some
 
         | RaftMsgTypeFB.ArrivederciFB ->
           Arrivederci |> Some

@@ -13,3 +13,6 @@ module TestUtilities =
   let assume (msg : string) (a : 'a) (b : 't -> 'a) (t : 't) =
     Assert.Equal(msg, a, b t) // apply t to b
     t
+
+  let pending (msg: string) =
+    testCase msg <| fun _ -> skiptest "NOT YET IMPLEMENTED"

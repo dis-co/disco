@@ -305,6 +305,7 @@ table RedirectFB {
 }
 
 table WelcomeFB {
+      Node: NodeFB;
 }
 
 table ArrivederciFB {

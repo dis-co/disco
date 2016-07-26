@@ -1,6 +1,7 @@
 namespace Iris.Tests
 
 open System
+open System.Threading
 open Fuchu
 open Fuchu.Test
 open Iris.Core
@@ -25,7 +26,7 @@ module RaftIntegrationTests =
         | _   -> System.IO.Path.GetTempPath()
     basePath </> snip
 
-  let createConfig rid idx start lid lip lport  =
+  let createConfig rid idx start lip lpidx  =
     let portbase = 8000
     { RaftId     = rid
     ; Debug      = true
@@ -33,18 +34,17 @@ module RaftIntegrationTests =
     ; WebPort    = (portbase - 1000) + idx
     ; RaftPort   = portbase + idx
     ; Start      = start
-    ; LeaderId   = lid
     ; LeaderIp   = lip
-    ; LeaderPort = lport
+    ; LeaderPort = Option.map (fun n -> uint32 portbase + n) lpidx
     ; MaxRetries = 5u
     ; DataDir    = createGuid() |> string |> mkTmpPath
     }
 
-  let createFollower (rid: string) (portidx: int) lid lport =
-    createConfig rid portidx false (Some lid) (Some "127.0.0.1") (Some lport)
+  let createFollower (rid: string) (portidx: int) lid lpidx =
+    createConfig rid portidx false (Some "127.0.0.1") (Some (uint32 lpidx))
 
   let createLeader (rid: string) (portidx: int) =
-    createConfig rid portidx true None None None
+    createConfig rid portidx true None None
 
   open System.Linq
 
@@ -311,6 +311,9 @@ module RaftIntegrationTests =
       dispose db
       delete path
 
+  let test_log_snapshotting_should_clean_all_logs =
+    pending "log snapshotting should clean all logs"
+
   //  ____        __ _     _____         _
   // |  _ \ __ _ / _| |_  |_   _|__  ___| |_ ___
   // | |_) / _` | |_| __|   | |/ _ \/ __| __/ __|
@@ -319,22 +322,61 @@ module RaftIntegrationTests =
 
   let test_validate_raft_service_bind_correct_port =
     testCase "validate raft service bind correct port" <| fun _ ->
-      let ctx1 = new Context()
-      let ctx2 = new Context()
+      let ctx = new Context()
 
       let leadercfg = createLeader "0x01" 1
-      let leader = new RaftServer(leadercfg, ctx1)
+      let leader = new RaftServer(leadercfg, ctx)
       leader.Start()
 
-      let follower = new RaftServer(leadercfg, ctx2)
+      let follower = new RaftServer(leadercfg, ctx)
       follower.Start()
       expect "Should be in failed state" true hasFailed follower.ServerState
 
       dispose leader
       dispose follower
 
-      dispose ctx1
-      dispose ctx2
+      dispose ctx
+
+  let test_validate_follower_joins_leader_after_startup =
+    testCase "validate follower joins leader after startup" <| fun _ ->
+      let ctx = new Context()
+
+      let leaderid = "0x01"
+      let followerid = "0x02"
+
+      printfn "((----STARTING LEADER----))"
+
+      let leadercfg = createLeader leaderid 1
+      let leader = new RaftServer(leadercfg, ctx)
+      leader.Start()
+
+      printfn "((---- WAITING 5 SECS ----))"
+      Thread.Sleep(5000)
+
+      expect "Should be in a good state" false hasFailed leader.ServerState
+
+      printfn "((----STARTING FOLLOWER----))"
+
+      let followercfg = createFollower followerid 2 leaderid 1
+      let follower = new RaftServer(followercfg, ctx)
+      follower.Start()
+
+      printfn "((<<<<<<<<<<<<<<---- WAITING 60 SECS ---->>>>>>>>>>>>>>))"
+      Thread.Sleep(60000)
+
+      printfn "((---- DISPOSING ----))"
+
+      dispose leader
+      dispose follower
+
+      dispose ctx
+
+
+  let test_follower_join_should_fail_on_duplicate_raftid =
+    pending "follower join should fail on duplicate raftid"
+
+  let test_all_rafts_should_share_a_common_distributed_event_log =
+    pending "all rafts should share a common distributed event log"
 
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
@@ -345,11 +387,16 @@ module RaftIntegrationTests =
   let raftIntegrationTests =
     testList "Raft Integration Tests" [
         // db
-        test_should_create_database
-        test_should_store_load_raftmetadata_correctly
-        test_save_restore_log_values_correctly
-        test_save_restore_raft_value_correctly
-        test_validate_logs_get_deleted_correctly
+        // test_should_create_database
+        // test_should_store_load_raftmetadata_correctly
+        // test_save_restore_log_values_correctly
+        // test_save_restore_raft_value_correctly
+        // test_validate_logs_get_deleted_correctly
+        // test_log_snapshotting_should_clean_all_logs
 
-        test_validate_raft_service_bind_correct_port
+        // raft
+        // test_validate_raft_service_bind_correct_port
+        test_validate_follower_joins_leader_after_startup
+        // test_follower_join_should_fail_on_duplicate_raftid
+        // test_all_rafts_should_share_a_common_distributed_event_log
       ]

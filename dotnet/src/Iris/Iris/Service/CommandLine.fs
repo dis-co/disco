@@ -26,10 +26,7 @@ let validateOptions (opts: ParseResults<GeneralArgs>) =
     exit 1
 
   if opts.Contains <@ Join @> then
-    if not <| opts.Contains <@ LeaderId @> then
-      missing "--leader-id"
-      exit 1
-    elif not <| opts.Contains <@ LeaderIp @> then
+    if not <| opts.Contains <@ LeaderIp @> then
       missing "--leader-ip"
       exit 1
     elif not <| opts.Contains <@ LeaderPort @> then
@@ -47,7 +44,6 @@ let parseOptions args =
     ; RaftPort   = opts.GetResult    <@ RaftPort   @> |> int
     ; Debug      = opts.Contains     <@ Debug      @>
     ; Start      = opts.Contains     <@ Start      @>
-    ; LeaderId   = opts.TryGetResult <@ LeaderId   @> |> Option.map trim
     ; LeaderIp   = opts.TryGetResult <@ LeaderIp   @>
     ; LeaderPort = opts.TryGetResult <@ LeaderPort @>
     ; DataDir     = opts.GetResult   <@ DataDir    @>

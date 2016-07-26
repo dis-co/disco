@@ -255,7 +255,15 @@ module SerializationTests =
 
   let test_validate_welcome_serialization =
     testCase "Validate Welcome Serialization" <| fun _ ->
-      let msg = Welcome
+      let info =
+        { MemberId = createGuid()
+        ; HostName = "horst"
+        ; IpAddr = IpAddress.Parse "127.0.0.1"
+        ; Port = 8080
+        ; Status = IrisNodeStatus.Failed
+        ; TaskId = createGuid() |> Some }
+
+      let msg = Welcome(Node.create (RaftId.Create()) info)
       let remsg = msg |> encode |> decode |> Option.get
       expect "Should be structurally the same" msg id remsg
 

@@ -33,7 +33,6 @@ module RaftServerStateHelpers =
     | Failed -> true
     | _      -> false
 
-
 //  ____        __ _     ____
 // |  _ \ __ _ / _| |_  / ___|  ___ _ ____   _____ _ __
 // | |_) / _` | |_| __| \___ \ / _ \ '__\ \ / / _ \ '__|
@@ -70,6 +69,7 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
       | Some worker -> worker.Post msg
       | _           -> printfn "[WARNING] requestWorker was not initalized properly yet"
 
+
   //                           _
   //  _ __ ___   ___ _ __ ___ | |__   ___ _ __ ___
   // | '_ ` _ \ / _ \ '_ ` _ \| '_ \ / _ \ '__/ __|
@@ -95,10 +95,21 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
       worker.Start()
       requestWorker := Some worker
 
-      initialize appState cbs |> atomically
+      let self = readTVar appState |> atomically
+
+      printfn "[Raft: %A] START before intitialize" self.Raft.Node.Id
+
+      initialize appState cbs
+
+      printfn "[Raft: %A] START starting server" self.Raft.Node.Id
 
       let srvtkn = startServer appState cbs |> atomically
+
+      printfn "[Raft: %A] START starting periodic loop" self.Raft.Node.Id
+
       let prdtkn = startPeriodic timeout appState cbs |> atomically
+
+      printfn "[Raft: %A] START done" self.Raft.Node.Id
 
       servertoken   := Some srvtkn
       periodictoken := Some prdtkn
@@ -123,9 +134,6 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
       | Starting | Stopping | Stopped | Failed _ -> ()
       | Running ->
         serverState := Stopping
-
-        System.Threading.Thread.CurrentThread.ManagedThreadId
-        |> printfn "Disposing on thread %d"
 
         // cancel the running async tasks
         cancelToken periodictoken
@@ -204,14 +212,17 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
     member self.SendRequestVote node req  =
       let state = self.State
       (node, RequestVote(state.Raft.Node.Id,req)) |> post
+      self.Log <| sprintf "SendRequestVote to %A" (nodeUri node.Data)
 
     member self.SendAppendEntries node ae =
       let state = self.State
       (node, AppendEntries(state.Raft.Node.Id, ae)) |> post
+      self.Log <| sprintf "SendAppendEntries to %A" (nodeUri node.Data)
 
     member self.SendInstallSnapshot node is =
       let state = self.State
       (node, InstallSnapshot(state.Raft.Node.Id, is)) |> post
+      self.Log <| sprintf "SendInstallSnapshot to %A" (nodeUri node.Data)
 
     member self.ApplyLog sm      = failwith "FIXME: ApplyLog"
     member self.NodeAdded node   = failwith "FIXME: Node was added."
@@ -233,7 +244,8 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
     ///
     /// Returns: unit
     member self.StateChanged old current =
-      printfn "[StateChanged] from %A to %A" old current
+      sprintf "state changed from %A to %A" old current
+      |> self.Log
 
     /// ## Persist the vote for passed node to disk.
     ///
@@ -257,11 +269,12 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
           | Some peer ->
             meta.VotedFor <- string peer.Id
             saveRaftMetadata meta database
-            sprintf "[PersistVote] persisted vote for node: %A" (string peer.Id) |> self.Log
+            sprintf "[Raft: %A] PersistVote persisted vote for node: %A" self.State.Raft.Node.Id (string peer.Id) |> self.Log
           | _         ->
             meta.VotedFor <- null
             saveRaftMetadata meta database
-            sprintf "[PersistVote] persisted reset of VotedFor" |> self.Log
+            sprintf "[Raft: %A] PersistVote persisted reset of VotedFor" self.State.Raft.Node.Id
+            |> self.Log
       with
         | exn -> handleException "PersistTerm" exn
 
@@ -327,4 +340,4 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
 
     member self.LogMsg node str =
       if options.Debug then
-        printfn "%s" str
+        printfn "[Raft: %A] %s" node.Id str

@@ -11,8 +11,18 @@ public sealed class WelcomeFB : Table {
   public static WelcomeFB GetRootAsWelcomeFB(ByteBuffer _bb, WelcomeFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
   public WelcomeFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
+  public NodeFB Node { get { return GetNode(new NodeFB()); } }
+  public NodeFB GetNode(NodeFB obj) { int o = __offset(4); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
 
-  public static void StartWelcomeFB(FlatBufferBuilder builder) { builder.StartObject(0); }
+  public static Offset<WelcomeFB> CreateWelcomeFB(FlatBufferBuilder builder,
+      Offset<NodeFB> NodeOffset = default(Offset<NodeFB>)) {
+    builder.StartObject(1);
+    WelcomeFB.AddNode(builder, NodeOffset);
+    return WelcomeFB.EndWelcomeFB(builder);
+  }
+
+  public static void StartWelcomeFB(FlatBufferBuilder builder) { builder.StartObject(1); }
+  public static void AddNode(FlatBufferBuilder builder, Offset<NodeFB> NodeOffset) { builder.AddOffset(0, NodeOffset.Value, 0); }
   public static Offset<WelcomeFB> EndWelcomeFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
     return new Offset<WelcomeFB>(o);
