@@ -8,10 +8,6 @@ module Iris.Service.Raft.Stm
 //                                   |____/ |_| |_|  |_|                                     //
 // ----------------------------------------------------------------------------------------- //
 
-open fszmq
-open fszmq.Context
-open fszmq.Socket
-
 open Iris.Core
 open Iris.Service
 open Pallet.Core
@@ -20,6 +16,7 @@ open FSharpx.Functional
 open System.Threading
 open Utilities
 open System
+open Zmq
 open Db
 
 
@@ -37,14 +34,13 @@ let log (cbs: IRaftCallbacks<_,_>) (state: AppState) (msg: string) =
 ///
 /// Returns: unit
 let periodicR elapsed appState cbs =
-  stm {
-    let! state = readTVar appState
+  let state = readTVar appState |> atomically
 
-    do! periodic elapsed
-        |> evalRaft state.Raft cbs
-        |> flip updateRaft state
-        |> writeTVar appState
-  }
+  periodic elapsed
+  |> evalRaft state.Raft cbs
+  |> flip updateRaft state
+  |> writeTVar appState
+  |> atomically
 
 /// ## Add a new node to the Raft cluster
 ///
@@ -312,93 +308,40 @@ let handleResponse msg state cbs =
     failwithf "[ERROR] %A" err
 
 let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks<_,_>) =
-  stm {
-    let token = new CancellationTokenSource()
+  let ctx =
+    readTVar appState
+    |> atomically
+    |> fun state -> state.Context
 
-    let! state = readTVar appState
-    let server = rep state.Context
-    let uri = state.Raft.Node.Data |> nodeUri
+  let uri =
+    readTVar appState
+    |> atomically
+    |> fun state -> state.Raft.Node.Data
+    |> nodeUri
 
-    Thread.CurrentThread.ManagedThreadId
-    |> sprintf "binding to %A on thread: %d" uri
-    |> log cbs state
+  let handler (request: byte array) : byte array =
+    let state = readTVar appState |> atomically
+    let request : RaftRequest option = decode request
 
-    bind server uri
+    let response =
+      match request with
+      | Some message ->
+        "server loop: computing response"
+        |> log cbs state
+        let response, state = handleRequest message state cbs
+        writeTVar appState state |> atomically
+        response
+      | None ->
+        "server loop: could not decode response"
+        |> log cbs state
+        ErrorResponse <| OtherError "Unable to decipher request"
 
-    // DISPOSE SERVER
-    let disposeServer _ =
-      Thread.CurrentThread.ManagedThreadId
-      |> sprintf "dispose server bound to %A on thread: %d" uri
-      |> log cbs state
+    response |> encode
 
-      unbind server uri
-      dispose server
+  let server = new Rep(uri, ctx, handler)
+  server.Start()
+  server
 
-    let rec proc () =
-      async {
-        try
-          "server loop: entering loop"
-          |> log cbs state
-
-          // IMPORTANT: disposes the socket on the original, spawning thread.
-          use! holder = Async.OnCancel(disposeServer)
-
-          log cbs state "server loop: waiting for message"
-
-          // let msg = new Message()
-          // Message.recv msg server
-
-          let request : RaftRequest option =
-            // Message.data msg |> decode
-            server |> recv |> decode
-
-          sprintf "server loop: got a Message. calculating response"
-          |> log cbs state
-
-          let response =
-            match request with
-            | Some message ->
-              "server loop: computing response"
-              |> log cbs state
-
-              let state = readTVar appState |> atomically
-              let response, state = handleRequest message state cbs
-              writeTVar appState state |> atomically
-              response
-            | None ->
-              "server loop: could not decode response"
-              |> log cbs state
-              ErrorResponse <| OtherError "Unable to decipher request"
-
-          sprintf "server loop: responding" |> log cbs state
-
-          response |> encode |> Socket.send server
-
-          sprintf "server loop: done" |> log cbs state
-
-          // dispose msg
-          return! proc ()
-        with
-          | :? fszmq.ZMQError as exn when exn.ErrorNumber = 4 ->
-            sprintf "ZMQ EXCEPTION EINTR - %A" exn.Message
-            |> log cbs state
-            return! proc ()
-
-          | :? fszmq.ZMQError as exn ->
-            sprintf "ZMQ EXCEPTION %A - %A" exn.ErrorNumber exn.Message
-            |> log cbs state
-            return! proc ()
-
-          | exn ->
-            sprintf "UNEXPECTED EXCEPTION %A" exn.Message
-            |> log cbs state
-            disposeServer ()
-      }
-
-    Async.Start(proc (), token.Token)
-
-    return token
-  }
 
 /// ## startPeriodic
 ///
@@ -412,20 +355,15 @@ let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks<_,_>) =
 ///
 /// Returns: CancellationTokenSource
 let startPeriodic timeout appState cbs =
-  stm {
-    let token = new CancellationTokenSource()
-
-    let rec proc () =
-      async {
-          Thread.Sleep(int timeout)                   // sleep for 100ms
-          periodicR timeout appState cbs |> atomically // kick the machine
-          return! proc ()                             // recurse
-        }
-
-    Async.Start(proc(), token.Token)
-
-    return token                      // return the cancellation token source so this loop can be
-  }                                   // stopped at a  later time
+  let token = new CancellationTokenSource()
+  let rec proc () =
+    async {
+      periodicR timeout appState cbs    // kick the machine
+      Thread.Sleep(int timeout)          // sleep for 100ms
+      return! proc ()                   // recurse
+    }
+  Async.Start(proc(), token.Token)
+  token                               // return the cancellation token source so this loop can be
 
 
 // -------------------------------------------------------------------------
@@ -439,38 +377,37 @@ let tryJoin (ip: IpAddress) (port: uint32) cbs (state: AppState) =
       |> log cbs state
 
       let request = HandShake(state.Raft.Node)
-      let result = performRawRequest request client state
+      let result = rawRequest request client state
 
       sprintf "TRYJOIN RESPONSE: %A" result
       |> log cbs state
 
-      Socket.disconnect client uri
       dispose client
 
       match result with
-        | Some (Welcome node) ->
-          sprintf "Received Welcome from %A" node.Id
-          |> log cbs state
-          node
+      | Some (Welcome node) ->
+        sprintf "Received Welcome from %A" node.Id
+        |> log cbs state
+        node
 
-        | Some (Redirect next) ->
-          sprintf "Got redirected to %A" (nodeUri next.Data)
-          |> log cbs state
-          _tryJoin (retry + 1) (nodeUri next.Data)
+      | Some (Redirect next) ->
+        sprintf "Got redirected to %A" (nodeUri next.Data)
+        |> log cbs state
+        _tryJoin (retry + 1) (nodeUri next.Data)
 
-        | Some (ErrorResponse err) ->
-          sprintf "Unexpected error occurred. %A Aborting." err
-          |> log cbs state
-          exit 1
+      | Some (ErrorResponse err) ->
+        sprintf "Unexpected error occurred. %A Aborting." err
+        |> log cbs state
+        exit 1
 
-        | Some resp ->
-          sprintf "Unexpected response. %A Aborting." resp
-          |> log cbs state
-          exit 1
-        | _ ->
-          sprintf "Node: %A unreachable. Aborting." uri
-          |> log cbs state
-          exit 1
+      | Some resp ->
+        sprintf "Unexpected response. %A Aborting." resp
+        |> log cbs state
+        exit 1
+      | _ ->
+        sprintf "Node: %A unreachable. Aborting." uri
+        |> log cbs state
+        exit 1
     else
       "Too many unsuccesful connection attempts. Aborting."
       |> log cbs state
@@ -495,9 +432,8 @@ let tryLeave appState cbs =
     let uri = nodeUri node.Data
     let client = mkClientSocket uri state
     let request = HandWaive(state.Raft.Node)
-    let result = performRawRequest request client state
+    let result = rawRequest request client state
 
-    Socket.disconnect client uri
     dispose client
 
     match result with
@@ -553,18 +489,16 @@ let rec requestLoop appState cbs (inbox: Actor<(Node<IrisNode> * RaftRequest)>) 
     // block until there is a new message in my inbox
     let! (node, msg) = inbox.Receive()
 
-    stm {
-      let! state = readTVar appState
-      let response, state = performRequest msg node state
+    let state = readTVar appState |> atomically
+    let response, state = performRequest msg node state
 
-      match response with
-        | Some message ->
-          let state = handleResponse message state cbs
-          do! writeTVar appState state
-        | _ ->
-          do! writeTVar appState state
-          printfn "[REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
-    } |> atomically
+    match response with
+      | Some message ->
+        let state = handleResponse message state cbs
+        writeTVar appState state |> atomically
+      | _ ->
+        writeTVar appState state |> atomically
+        printfn "[REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
 
     return! requestLoop appState cbs inbox
   }
@@ -591,12 +525,11 @@ let prepareSnapshot appState =
   }
 
 let resetConnections appState =
-  let closeSocket state (mid: MemberId) (sock: Socket) =
+  let closeSocket state (mid: MemberId) (sock: Req) =
     let nodeinfo = List.tryFind (fun c -> c.MemberId = mid) state.Clients
     match nodeinfo with
       | Some info ->
         try
-          nodeUri info |> Socket.disconnect sock
           dispose sock
         with
           | exn ->
@@ -621,8 +554,7 @@ let initialize appState cbs =
       let term = 0UL
 
       do! setTermM term
-      do! setRequestTimeoutM 500UL
-      do! setElectionTimeoutM 1000UL
+      do! setTimeoutElapsedM 0UL
 
       if state.Options.Start then
         sprintf "initialize: becoming leader" |> log cbs state
@@ -649,6 +581,9 @@ let initialize appState cbs =
     } |> evalRaft state.Raft cbs
 
   sprintf "initialize: save new state"
+  |> log cbs state
+
+  sprintf "initialize: req-timeout: %A elec-timeout: %A" state.Raft.RequestTimeout state.Raft.ElectionTimeout
   |> log cbs state
 
   // tryJoin leader

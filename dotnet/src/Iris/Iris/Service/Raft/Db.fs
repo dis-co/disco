@@ -473,7 +473,9 @@ let countEntries (collection: LiteCollection<'t>) =
 /// - collection: collection to add document to
 ///
 /// Returns: unit
-let insert<'t when 't : (new : unit -> 't)> (thing: 't) (collection: LiteCollection<'t>) =
+let insert<'t when 't : (new : unit -> 't)>
+          (thing: 't)
+          (collection: LiteCollection<'t>) =
   collection.Insert thing |> ignore
 
 /// ## Insert many documents in bulk
@@ -485,8 +487,10 @@ let insert<'t when 't : (new : unit -> 't)> (thing: 't) (collection: LiteCollect
 /// - collection: collection to add documents to
 ///
 /// Returns: unit
-let insertMany<'t when 't : (new : unit -> 't)> (arr: 't array) (collection: LiteCollection<'t>) =
-  collection.InsertBulk arr |> ignore
+let insertMany<'t when 't : (new : unit -> 't)>
+              (things: 't array)
+              (collection: LiteCollection<'t>) =
+  collection.InsertBulk things |> ignore
 
 /// ## Update a document
 ///
@@ -497,7 +501,9 @@ let insertMany<'t when 't : (new : unit -> 't)> (arr: 't array) (collection: Lit
 /// - collection: collection the document lives in
 ///
 /// Returns: unit
-let update<'t when 't : (new : unit -> 't)> (thing: 't) (collection: LiteCollection<'t>) =
+let update<'t when 't : (new : unit -> 't)>
+          (thing: 't)
+          (collection: LiteCollection<'t>) =
   collection.Update thing
 
 /// ## Find a document by its id
@@ -509,8 +515,10 @@ let update<'t when 't : (new : unit -> 't)> (thing: 't) (collection: LiteCollect
 /// - collection: collection to search in
 ///
 /// Returns: 't option
-let findById<'t when 't : (new : unit -> 't) and 't : null> (id: string) (col: LiteCollection<'t>) =
-  let result = col.FindById(new BsonValue(id))
+let findById<'t when 't : (new : unit -> 't) and 't : null>
+            (id: string)
+            (collection: LiteCollection<'t>) =
+  let result = collection.FindById(new BsonValue(id))
   if isNull result then
     None
   else Some result
@@ -523,7 +531,8 @@ let findById<'t when 't : (new : unit -> 't) and 't : null> (id: string) (col: L
 /// - collection: collection to enumerate entries of
 ///
 /// Returns: 't list
-let findAll<'t when 't : (new : unit -> 't) and 't : null> (collection: LiteCollection<'t>) =
+let findAll<'t when 't : (new : unit -> 't) and 't : null>
+           (collection: LiteCollection<'t>) =
   collection.FindAll()
   |> List.ofSeq
 
@@ -536,7 +545,9 @@ let findAll<'t when 't : (new : unit -> 't) and 't : null> (collection: LiteColl
 /// - collection: collection the document lives in
 ///
 /// Returns: bool
-let inline deleteById< ^a, 't when 't : (new : unit -> 't)> (id: ^a) (collection: LiteCollection<'t>) =
+let inline deleteById< ^a, 't when 't : (new : unit -> 't)>
+                    (id: ^a)
+                    (collection: LiteCollection<'t>) =
   collection.Delete(new BsonValue(id))
 
 /// ## Delete many documents by id
@@ -549,7 +560,9 @@ let inline deleteById< ^a, 't when 't : (new : unit -> 't)> (id: ^a) (collection
 /// - arg: arg
 ///
 /// Returns: Type
-let inline deleteMany< ^a, 't when 't : (new : unit -> 't)> (ids: ^a array) (collection: LiteCollection<'t>) =
+let inline deleteMany< ^a, 't when 't : (new : unit -> 't)>
+                     (ids: ^a array)
+                     (collection: LiteCollection<'t>) =
   let folder m id = deleteById id collection && m
   Array.fold folder true ids
 
@@ -563,8 +576,8 @@ let inline deleteMany< ^a, 't when 't : (new : unit -> 't)> (ids: ^a array) (col
 /// Returns: unit
 let truncateDB (db: LiteDatabase)  =
   for name in db.GetCollectionNames() do
-    let col = db.GetCollection(name)
-    col.Drop() |> ignore
+    let collection = db.GetCollection(name)
+    collection.Drop() |> ignore
 
 /// ## Clear a collections records
 ///
@@ -849,10 +862,10 @@ let saveLog (raft: Raft) (db: LiteDatabase) =
 ///
 /// Returns: unit
 let saveNodes (raft: Raft) (db: LiteDatabase) =
-  let col = nodeCollection db
+  let collection = nodeCollection db
   Map.iter (fun _ node ->
               NodeMetaData.FromNode(node)
-              |> flip insert col)
+              |> flip insert collection)
             raft.Peers
 
 /// ## Truncate all nodes in database

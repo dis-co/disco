@@ -1,10 +1,10 @@
 namespace Iris.Service
 
-open fszmq
 open LibGit2Sharp
 open Iris.Core.Utils
 open Iris.Core
 open Pallet.Core
+open Iris.Service.Raft
 
 //     _               ____  _        _
 //    / \   _ __  _ __/ ___|| |_ __ _| |_ ___
@@ -19,8 +19,8 @@ type AppState =
   ; Sessions:    BrowserSession list
   ; Projects:    Map<ProjectId, Project>
   ; Peers:       Map<MemberId, string>
-  ; Connections: Map<MemberId, Socket>
-  ; Context:     Context
+  ; Connections: Map<MemberId, Zmq.Req>
+  ; Context:     ZeroMQ.ZContext
   ; Raft:        Raft
   ; Options:     RaftOptions
   }

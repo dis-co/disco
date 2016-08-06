@@ -15,4 +15,4 @@ XUnit
 NUnit
 Gallio
 LiteDB
-fszmq
+ZeroMQ

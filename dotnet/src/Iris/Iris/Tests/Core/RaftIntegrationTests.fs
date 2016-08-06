@@ -8,7 +8,7 @@ open Iris.Core
 open Iris.Service
 open Pallet.Core
 open FSharpx.Functional
-open fszmq
+open ZeroMQ
 
 [<AutoOpen>]
 module RaftIntegrationTests =
@@ -322,7 +322,7 @@ module RaftIntegrationTests =
 
   let test_validate_raft_service_bind_correct_port =
     testCase "validate raft service bind correct port" <| fun _ ->
-      let ctx = new Context()
+      let ctx = new ZContext()
 
       let leadercfg = createLeader "0x01" 1
       let leader = new RaftServer(leadercfg, ctx)
@@ -339,37 +339,44 @@ module RaftIntegrationTests =
 
   let test_validate_follower_joins_leader_after_startup =
     testCase "validate follower joins leader after startup" <| fun _ ->
-      let ctx = new Context()
-
       let leaderid = "0x01"
-      let followerid = "0x02"
+      let followerid1 = "0x02"
+      let followerid2 = "0x03"
 
-      printfn "((----STARTING LEADER----))"
+      let mutable stop = false
 
       let leadercfg = createLeader leaderid 1
-      let leader = new RaftServer(leadercfg, ctx)
+      let followercfg1 = createFollower followerid1 2 leaderid 1
+      let followercfg2 = createFollower followerid2 3 leaderid 1
+
+      let makeServer cfg _ =
+        let tid = Thread.CurrentThread.ManagedThreadId
+        printfn "PRIMARY THREAD FOR %A is %d" cfg.RaftId tid
+        let ctx = new ZContext()
+        let server = new RaftServer(cfg, ctx)
+        server.Start()
+
+        while not stop do
+          Thread.Sleep(10)
+
+        dispose server
+        dispose ctx
+
+
+      let leader = new Thread(new ThreadStart(makeServer leadercfg))
       leader.Start()
 
-      printfn "((---- WAITING 5 SECS ----))"
-      Thread.Sleep(5000)
+      Thread.Sleep(1000)
 
-      expect "Should be in a good state" false hasFailed leader.ServerState
+      let follower1 = new Thread(new ThreadStart(makeServer followercfg1))
+      follower1.Start()
 
-      printfn "((----STARTING FOLLOWER----))"
+      // let follower2 = new Thread(new ThreadStart(makeServer followercfg2))
+      // follower2.Start()
 
-      let followercfg = createFollower followerid 2 leaderid 1
-      let follower = new RaftServer(followercfg, ctx)
-      follower.Start()
-
-      printfn "((<<<<<<<<<<<<<<---- WAITING 60 SECS ---->>>>>>>>>>>>>>))"
       Thread.Sleep(60000)
 
-      printfn "((---- DISPOSING ----))"
-
-      dispose leader
-      dispose follower
-
-      dispose ctx
+      stop <- true
 
 
   let test_follower_join_should_fail_on_duplicate_raftid =

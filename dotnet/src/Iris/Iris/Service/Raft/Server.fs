@@ -39,7 +39,7 @@ module RaftServerStateHelpers =
 // |  _ < (_| |  _| |_   ___) |  __/ |   \ V /  __/ |
 // |_| \_\__,_|_|  \__| |____/ \___|_|    \_/ \___|_|
 
-type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
+type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   let timeout = 10UL
 
   let database =
@@ -50,14 +50,14 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
         match createDB path with
           | Some db -> db
           | _       ->
-            printfn "[RaftServer] unable to open Database. Aborting."
+            this.Log "unable to open Database. Aborting."
             exit 1
 
   let serverState = ref Stopped
 
-  let servertoken   = ref None
-  let workertoken   = ref None
-  let periodictoken = ref None
+  let server : Zmq.Rep option ref = ref None
+  let workertoken                 = ref None
+  let periodictoken               = ref None
 
   let cbs = this :> IRaftCallbacks<_,_>
   let appState = mkState context options |> newTVar
@@ -65,9 +65,11 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
   let requestWorker : Actor<RequestWorkerType> option ref = ref None
 
   let post (msg: RequestWorkerType) =
+    sprintf "Post a new request to: %s" (fst msg |> string)
+    |> this.Log
     match !requestWorker with
       | Some worker -> worker.Post msg
-      | _           -> printfn "[WARNING] requestWorker was not initalized properly yet"
+      | _           -> this.Log "[WARNING] requestWorker not initalized"
 
 
   //                           _
@@ -97,27 +99,27 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
 
       let self = readTVar appState |> atomically
 
-      printfn "[Raft: %A] START before intitialize" self.Raft.Node.Id
+      this.Log "START starting server"
+
+      server := startServer appState cbs |> Some
+
+      this.Log "START intitializing"
 
       initialize appState cbs
 
-      printfn "[Raft: %A] START starting server" self.Raft.Node.Id
+      this.Log "START starting periodic loop"
 
-      let srvtkn = startServer appState cbs |> atomically
+      let prdtkn = startPeriodic timeout appState cbs
 
-      printfn "[Raft: %A] START starting periodic loop" self.Raft.Node.Id
+      this.Log "START done"
 
-      let prdtkn = startPeriodic timeout appState cbs |> atomically
-
-      printfn "[Raft: %A] START done" self.Raft.Node.Id
-
-      servertoken   := Some srvtkn
       periodictoken := Some prdtkn
 
       serverState := Running
     with
-      | :? fszmq.ZMQError as exn ->
+      | :? ZeroMQ.ZException as exn ->
         serverState := Failed
+      | exn -> handleException "self.Start" exn
 
   /// ## Stop the Raft engine, sockets and all.
   ///
@@ -135,9 +137,10 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
       | Running ->
         serverState := Stopping
 
+        Option.bind (dispose >> Some) (!server) |> ignore
+
         // cancel the running async tasks
         cancelToken periodictoken
-        cancelToken servertoken
         cancelToken workertoken
 
         resetConnections appState |> atomically
@@ -340,4 +343,6 @@ type RaftServer(options: RaftOptions, context: fszmq.Context) as this =
 
     member self.LogMsg node str =
       if options.Debug then
-        printfn "[Raft: %A] %s" node.Id str
+        let now = DateTime.Now
+        let tid = Thread.CurrentThread.ManagedThreadId
+        printfn "[%d / %s / %s] %s" (unixTime now) (String.Format("{0,2}", string tid)) (string node.Id) str

@@ -12,13 +12,10 @@ open Iris.Service.Types
 open Iris.Service.Core
 open Iris.Service.CommandLine
 open Iris.Service.Raft.Server
-open LibGit2Sharp
-
 open FSharpx.Functional
+open LibGit2Sharp
 open Argu
-open fszmq
-open fszmq.Context
-open fszmq.Socket
+open ZeroMQ
 open Pallet.Core
 
 [<AutoOpen>]
@@ -33,15 +30,15 @@ module Main =
   ////////////////////////////////////////
   [<EntryPoint>]
   let main args =
-    let zmqContext = new fszmq.Context()
+    use kontext = new ZContext()
 
-    // 1. Initialise the application context from the supplied options
+    // 1. Initialise the application server from the supplied options
     let options = parseOptions args
-    use context = new RaftServer(options, zmqContext)
-    context.Start()
+    use server = new RaftServer(options, kontext)
+    server.Start()
 
     // 6. Start the console input loop.
     printfn "Welcome to the Raft REPL. Type help to see all commands."
-    consoleLoop context
+    consoleLoop server
 
     0

@@ -125,9 +125,7 @@ module Raft =
   /////////////////////////////////////////////
 
   let log node str =
-    read >>= fun cbs ->
-      cbs.LogMsg node (sprintf "[RAFT: %A] %s" node.Id str)
-      |> returnM
+    read >>= fun cbs -> cbs.LogMsg node str |> returnM
 
   let sendRequestVote (cbs: IRaftCallbacks<_,_>) node req =
     cbs.SendRequestVote node req
@@ -202,9 +200,9 @@ module Raft =
     ; CommitIndex       = 0UL
     ; LastAppliedIdx    = 0UL
     ; TimeoutElapsed    = 0UL
-    ; ElectionTimeout   = 1000UL // msec
-    ; RequestTimeout    = 200UL  // msec
-    ; MaxLogDepth       = 40UL   // items
+    ; ElectionTimeout   = 6000UL // msec
+    ; RequestTimeout    = 1000UL // msec
+    ; MaxLogDepth       = 50UL   // items
     ; ConfigChangeEntry = None
     }
 
@@ -1927,13 +1925,28 @@ module Raft =
         | _ ->
           let! num = numNodesM ()
           let! timedout = electionTimedOutM ()
+
           if timedout && num > 1UL then
+
+            let! state = get
+
+            do! "-------------------------------------------------------------------------"
+                |> log state.Node
+            do! sprintf "ELECTION TIMED OUT"
+                |> log state.Node
+            do! sprintf "elapsed: %A req-timeout: %A elec-timeout: %A" state.TimeoutElapsed state.RequestTimeout state.ElectionTimeout
+                |> log state.Node
+
             do! startElection ()
     }
 
   let periodic (elapsed : Long) =
     raft {
       let! state = get
+
+      // do! sprintf "elapsed: %A req-timeout: %A elec-timeout: %A" state.TimeoutElapsed state.RequestTimeout state.ElectionTimeout
+      //     |> log state.Node
+
       do! setTimeoutElapsedM (state.TimeoutElapsed + elapsed)
       do! checkIsLeader state.State
       let! coi = commitIndexM ()

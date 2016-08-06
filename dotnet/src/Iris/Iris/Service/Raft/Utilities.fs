@@ -2,12 +2,13 @@ module Iris.Service.Raft.Utilities
 
 open System
 open System.Threading
-open Iris.Core
+open FSharpx.Functional
 open Iris.Service
 open Pallet.Core
-open fszmq
+open Iris.Core
+open Zmq
 open Db
-open FSharpx.Functional
+
 
 // ------------------------------------------------------------------------------------- //
 //                            _   _ _   _ _ _ _   _                                      //
@@ -16,6 +17,9 @@ open FSharpx.Functional
 //                           | |_| | |_| | | | |_| |  __/\__ \                           //
 //                            \___/ \__|_|_|_|\__|_|\___||___/                           //
 // ------------------------------------------------------------------------------------- //
+let unixTime (date: DateTime) =
+  let epoch = new DateTime(1970, 1, 1)
+  (date.Ticks - epoch.Ticks) / TimeSpan.TicksPerMillisecond
 
 /// ## Get the current machine's host name
 ///
@@ -68,7 +72,7 @@ let mkRaft (options: RaftOptions) =
 /// - options: `RaftOptions`
 ///
 /// Returns: AppState
-let mkState (context: Context) (options: RaftOptions) : AppState =
+let mkState (context: ZeroMQ.ZContext) (options: RaftOptions) : AppState =
   { Clients     = []
   ; Sessions    = []
   ; Projects    = Map.empty
@@ -156,10 +160,17 @@ let nodeUri (data: IrisNode) =
 ///
 /// Returns: fszmq.Socket
 let mkClientSocket (uri: string) (state: AppState) =
-  let socket = Context.req state.Context
-  Socket.setOption socket (ZMQ.RCVTIMEO,int state.Raft.RequestTimeout)
-  Socket.connect socket uri
+  let socket = new Req(uri, state.Context, int state.Raft.RequestTimeout)
+  socket.Start()
   socket
+
+// let send (socket: ZSocket) (bytes: byte array) =
+//   use msg = new ZFrame(bytes)
+//   socket.Send(msg)
+
+// let recv (socket: ZSocket) : byte array =
+//   use frame = socket.ReceiveFrame()
+//   frame.Read()
 
 /// ## getSocket for Member
 ///
@@ -211,26 +222,21 @@ let disposeSocket (node: Node) state =
     { state with Connections = Map.remove node.Data.MemberId state.Connections }
   | _  -> state
 
-let performRawRequest (request: RaftRequest) (client: Socket) (state: AppState)=
-  Thread.CurrentThread.ManagedThreadId
-  |> printfn "[Raft: %A] performRawRequest: before request. thread: %d" state.Raft.Node.Id
-
-  // SEND THE REQUEST
-  request |> encode |> Socket.send client
-
-  Thread.CurrentThread.ManagedThreadId
-  |> printfn "[Raft: %A] performRawRequest: after request. thread: %d" state.Raft.Node.Id
-
-  // BLOCK FOR RESPONSE AND DECODE
-  let msg = new Message()
-  Message.recv msg client
-
-  Thread.CurrentThread.ManagedThreadId
-  |> printfn "[Raft: %A] performRawRequest: got response. thread: %d" state.Raft.Node.Id
-
-  let response = Message.data msg |> decode<RaftResponse>
-  dispose msg
-  response
+/// ## Perform a raw request cycle on a request socket
+///
+/// Request a resource and return its response.
+///
+/// ### Signature:
+/// - request: RaftRequest to perform
+/// - client: Req socket object
+/// - state: AppState to perform request against
+///
+/// Returns: RaftResponse option
+let rawRequest (request: RaftRequest) (client: Req) (state: AppState)=
+  request
+  |> encode
+  |> client.Request
+  |> Option.bind decode<RaftResponse>
 
 /// ## Send RaftRequest to node
 ///
@@ -248,7 +254,7 @@ let performRequest (request: RaftRequest) (node: Node<IrisNode>) (state: AppStat
     let client, state = getSocket node state
     try
       client
-      |> flip (performRawRequest request) state
+      |> flip (rawRequest request) state
       |> fun response ->
         (response, state)
     with

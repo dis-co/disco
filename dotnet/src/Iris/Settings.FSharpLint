@@ -255,7 +255,7 @@
         </MaxLinesInFile>
 
         <MaxCharactersOnLine>
-          <Enabled>true</Enabled>
+          <Enabled>false</Enabled>
           <Length>100</Length>
         </MaxCharactersOnLine>
 
