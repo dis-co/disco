@@ -376,8 +376,7 @@ module RaftIntegrationTests =
 
       Thread.Sleep(10000)
 
-      leader.Stop()
-      follower.Stop()
+      stop <- false
 
 
   let test_follower_join_should_fail_on_duplicate_raftid =
