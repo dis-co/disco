@@ -374,9 +374,10 @@ module RaftIntegrationTests =
       // let follower2 = new Thread(new ThreadStart(makeServer followercfg2))
       // follower2.Start()
 
-      Thread.Sleep(60000)
+      Thread.Sleep(10000)
 
-      stop <- true
+      leader.Stop()
+      follower.Stop()
 
 
   let test_follower_join_should_fail_on_duplicate_raftid =
