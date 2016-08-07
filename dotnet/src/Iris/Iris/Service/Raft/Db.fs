@@ -492,6 +492,22 @@ let insertMany<'t when 't : (new : unit -> 't)>
               (collection: LiteCollection<'t>) =
   collection.InsertBulk things |> ignore
 
+
+/// ## Update many
+///
+/// Description
+///
+/// ### Signature:
+/// - arg: arg
+/// - arg: arg
+/// - arg: arg
+///
+/// Returns: Type
+let updateMany<'t when 't : (new : unit -> 't)>
+              (things: 't array)
+              (collection: LiteCollection<'t>) =
+  Array.iter (collection.Update >> ignore) things
+
 /// ## Update a document
 ///
 /// Update a document in the given collection.
@@ -704,6 +720,18 @@ let findLog (id: Id) (db: LiteDatabase) =
 /// Returns: unit
 let insertLogs (log: LogEntry) (db: LiteDatabase) =
   logCollection db |> insertMany (LogData.FromLog log)
+
+/// ## Insert a log sequence into given database
+///
+/// Inserts a log chain into the given database
+///
+/// ### Signature:
+/// - log: LogEntry to insert into database
+/// - db: LiteDatabase to insert log into
+///
+/// Returns: unit
+let updateLogs (log: LogEntry) (db: LiteDatabase) =
+  logCollection db |> updateMany (LogData.FromLog log)
 
 /// ## Delete the given log from the database
 ///

@@ -11,7 +11,6 @@ open Utilities
 open Stm
 open Db
 
-type RequestWorkerType = Node<IrisNode> * RaftRequest
 
 //  ____        __ _     ____                             ____  _        _
 // |  _ \ __ _ / _| |_  / ___|  ___ _ ____   _____ _ __  / ___|| |_ __ _| |_ ___
@@ -56,21 +55,10 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   let serverState = ref Stopped
 
   let server : Zmq.Rep option ref = ref None
-  let workertoken                 = ref None
   let periodictoken               = ref None
 
   let cbs = this :> IRaftCallbacks<_,_>
   let appState = mkState context options |> newTVar
-
-  let requestWorker : Actor<RequestWorkerType> option ref = ref None
-
-  let post (msg: RequestWorkerType) =
-    sprintf "Post a new request to: %s" (fst msg |> string)
-    |> this.Log
-    match !requestWorker with
-      | Some worker -> worker.Post msg
-      | _           -> this.Log "[WARNING] requestWorker not initalized"
-
 
   //                           _
   //  _ __ ___   ___ _ __ ___ | |__   ___ _ __ ___
@@ -89,13 +77,6 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   member self.Start() =
     try
       serverState := Starting
-
-      let cts = new CancellationTokenSource()
-      workertoken := Some cts
-
-      let worker = new Actor<RequestWorkerType> (requestLoop appState cbs, cts.Token)
-      worker.Start()
-      requestWorker := Some worker
 
       let self = readTVar appState |> atomically
 
@@ -141,7 +122,6 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
         // cancel the running async tasks
         cancelToken periodictoken
-        cancelToken workertoken
 
         resetConnections appState |> atomically
 
@@ -194,6 +174,18 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
   member self.ServerState with get () = !serverState
 
+  member self.Request (node, msg) =
+    let state = readTVar appState |> atomically
+    let response, state = performRequest msg node state
+
+    match response with
+      | Some message ->
+        let state = handleResponse message state cbs
+        writeTVar appState state |> atomically
+      | _ ->
+        writeTVar appState state |> atomically
+        printfn "[REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
+
   //  ____  _                           _     _
   // |  _ \(_)___ _ __   ___  ___  __ _| |__ | | ___
   // | | | | / __| '_ \ / _ \/ __|/ _` | '_ \| |/ _ \
@@ -214,22 +206,25 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   interface IRaftCallbacks<StateMachine,IrisNode> with
     member self.SendRequestVote node req  =
       let state = self.State
-      (node, RequestVote(state.Raft.Node.Id,req)) |> post
+      self.Request(node, RequestVote(state.Raft.Node.Id,req))
       self.Log <| sprintf "SendRequestVote to %A" (nodeUri node.Data)
 
     member self.SendAppendEntries node ae =
       let state = self.State
-      (node, AppendEntries(state.Raft.Node.Id, ae)) |> post
+      self.Request(node, AppendEntries(state.Raft.Node.Id, ae))
       self.Log <| sprintf "SendAppendEntries to %A" (nodeUri node.Data)
 
     member self.SendInstallSnapshot node is =
       let state = self.State
-      (node, InstallSnapshot(state.Raft.Node.Id, is)) |> post
+      self.Request(node, InstallSnapshot(state.Raft.Node.Id, is))
       self.Log <| sprintf "SendInstallSnapshot to %A" (nodeUri node.Data)
 
     member self.ApplyLog sm      = failwith "FIXME: ApplyLog"
     member self.NodeAdded node   = failwith "FIXME: Node was added."
-    member self.NodeUpdated node = failwith "FIXME: Node was updated."
+
+    member self.NodeUpdated node =
+      warn <| sprintf "Node was updated %A" node
+
     member self.NodeRemoved node = failwith "FIXME: Node was removed."
     member self.Configured nodes = failwith "FIXME: Cluster configuration done."
 
@@ -318,10 +313,16 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
     member self.PersistLog log =
       try
         insertLogs log database
-        sprintf "[PersistLog] id: %A" (Log.id log |> string)
+        sprintf "[PersistLog] insert id: %A" (Log.id log |> string)
         |> self.Log
       with
-        | exn -> handleException "PersistLog" exn
+        | _ ->
+          try
+            updateLogs log database
+            sprintf "[PersistLog] update id: %A" (Log.id log |> string)
+            |> self.Log
+          with
+            | exn -> handleException "PersistLog" exn
 
     /// ## Callback to delete a log entry from database
     ///
