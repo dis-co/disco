@@ -42,11 +42,10 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   let timeout = 10UL
 
   let database =
-    let path = options.DataDir </> DB_NAME
-    match openDB path with
+    match openDB options.DataDir with
       | Some db -> db
       | _       ->
-        match createDB path with
+        match createDB options.DataDir with
           | Some db -> db
           | _       ->
             this.Log "unable to open Database. Aborting."
@@ -211,7 +210,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
     member self.NodeAdded node   = failwith "FIXME: Node was added."
 
     member self.NodeUpdated node =
-      warn <| sprintf "Node was updated %A" node.Id
+      warn <| sprintf "Node was updated %A" node
 
     member self.NodeRemoved node = failwith "FIXME: Node was removed."
     member self.Configured nodes = failwith "FIXME: Cluster configuration done."
