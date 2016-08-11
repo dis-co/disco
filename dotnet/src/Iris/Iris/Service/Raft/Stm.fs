@@ -484,33 +484,6 @@ let tryLeave appState cbs =
       failwith "FIXME: must now block to await the committed state for response"
   }
 
-/// ## requestLoop
-///
-/// Request loop.
-///
-/// ### Signature:
-/// - inbox: MailboxProcessor
-///
-/// Returns: Async<(Node<IrisNode> * RaftRequest)>
-let rec requestLoop appState cbs (inbox: Actor<(Node<IrisNode> * RaftRequest)>) =
-  async {
-    // block until there is a new message in my inbox
-    let! (node, msg) = inbox.Receive()
-
-    let state = readTVar appState |> atomically
-    let response, newstate = performRequest msg node state
-
-    match response with
-      | Some message ->
-        let finalstate = handleResponse message newstate cbs
-        writeTVar appState finalstate |> atomically
-      | _ ->
-        writeTVar appState state |> atomically
-        printfn "[REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
-
-    return! requestLoop appState cbs inbox
-  }
-
 let forceElection appState cbs =
   stm {
     let! state = readTVar appState
