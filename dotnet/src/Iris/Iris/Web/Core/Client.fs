@@ -37,7 +37,7 @@ module Client =
       worker.onerror <- (fun e -> printfn "SharedWorker Error: %s" <| JSON.stringify(e))
       worker.port.onmessage <- (fun msg ->
         self.HandleMsg (msg.data :?> ClientMessage<State>)
-        createObj [])
+        failwith "should return object here")
       worker.port.start()
 
     member self.Trigger(msg : ClientMessage<State>) =

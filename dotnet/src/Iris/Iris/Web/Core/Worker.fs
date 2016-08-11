@@ -105,10 +105,10 @@ module Worker =
     *)
     do
       let sock = WebSocket.Create("ws://localhost:8080")
-      sock.addEventListener_open((System.Func<Event,obj> (fun _ -> this.Broadcast <| ClientMessage.Connected; createObj [])), true)
-      sock.addEventListener_close((System.Func<CloseEvent,obj> (fun _ -> this.Broadcast <| ClientMessage.Disconnected; createObj [])), true)
-      sock.addEventListener_error((System.Func<ErrorEvent,obj> (fun e -> this.Broadcast <| ClientMessage.Error(JSON.stringify(e)); createObj [])), true)
-      sock.addEventListener_message((System.Func<MessageEvent,obj> (fun msg -> this.OnSocketMessage msg; createObj [])), true)
+      sock.addEventListener_open((System.Func<Event,obj> (fun _ -> this.Broadcast <| ClientMessage.Connected; failwith "should return obj?")), true)
+      sock.addEventListener_close((System.Func<CloseEvent,obj> (fun _ -> this.Broadcast <| ClientMessage.Disconnected; failwith "should return obj?")), true)
+      sock.addEventListener_error((System.Func<ErrorEvent,obj> (fun e -> this.Broadcast <| ClientMessage.Error(JSON.stringify(e)); failwith "should return obj?")), true)
+      sock.addEventListener_message((System.Func<MessageEvent,obj> (fun msg -> this.OnSocketMessage msg; failwith "should return obj?")), true)
       socket <- Some sock
 
 
