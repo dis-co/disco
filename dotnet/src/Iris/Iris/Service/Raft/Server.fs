@@ -80,19 +80,11 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
       let self = readTVar appState |> atomically
 
-      this.Log "START starting server"
-
       server := startServer appState cbs |> Some
-
-      this.Log "START intitializing"
 
       initialize appState cbs
 
-      this.Log "START starting periodic loop"
-
       let prdtkn = startPeriodic timeout appState cbs
-
-      this.Log "START done"
 
       periodictoken := Some prdtkn
 
@@ -104,14 +96,12 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
   /// ## Stop the Raft engine, sockets and all.
   ///
-  /// Description
+  /// Stop the Raft engine
   ///
   /// ### Signature:
-  /// - arg: arg
-  /// - arg: arg
-  /// - arg: arg
+  /// - unit: unit
   ///
-  /// Returns: Type
+  /// Returns: unit
   member self.Stop() =
     match !serverState with
       | Starting | Stopping | Stopped | Failed _ -> ()
@@ -129,7 +119,6 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
         saveRaft state.Raft database
 
         serverState := Stopped
-
     dispose database
 
   member self.Options
@@ -180,8 +169,8 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
     match response with
       | Some message ->
-        let state = handleResponse message state cbs
-        writeTVar appState state |> atomically
+        let newstate = handleResponse message state cbs
+        writeTVar appState newstate |> atomically
       | _ ->
         writeTVar appState state |> atomically
         printfn "[REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
@@ -212,7 +201,6 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
     member self.SendAppendEntries node ae =
       let state = self.State
       self.Request(node, AppendEntries(state.Raft.Node.Id, ae))
-      self.Log <| sprintf "SendAppendEntries to %A" (nodeUri node.Data)
 
     member self.SendInstallSnapshot node is =
       let state = self.State
@@ -223,7 +211,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
     member self.NodeAdded node   = failwith "FIXME: Node was added."
 
     member self.NodeUpdated node =
-      warn <| sprintf "Node was updated %A" node
+      warn <| sprintf "Node was updated %A" node.Id
 
     member self.NodeRemoved node = failwith "FIXME: Node was removed."
     member self.Configured nodes = failwith "FIXME: Cluster configuration done."
@@ -316,13 +304,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
         sprintf "[PersistLog] insert id: %A" (Log.id log |> string)
         |> self.Log
       with
-        | _ ->
-          try
-            updateLogs log database
-            sprintf "[PersistLog] update id: %A" (Log.id log |> string)
-            |> self.Log
-          with
-            | exn -> handleException "PersistLog" exn
+        | exn -> handleException "PersistLog" exn
 
     /// ## Callback to delete a log entry from database
     ///
@@ -340,7 +322,8 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
       with
         | exn -> handleException "DeleteLog" exn
 
-    member self.HasSufficientLogs node = failwith "FIXME: HasSufficientLogs"
+    member self.HasSufficientLogs node =
+      self.Log "FIXME: HasSufficientLogs"
 
     member self.LogMsg node str =
       if options.Debug then

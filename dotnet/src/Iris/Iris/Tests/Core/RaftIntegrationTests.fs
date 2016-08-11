@@ -351,7 +351,6 @@ module RaftIntegrationTests =
 
       let makeServer cfg _ =
         let tid = Thread.CurrentThread.ManagedThreadId
-        printfn "PRIMARY THREAD FOR %A is %d" cfg.RaftId tid
         let ctx = new ZContext()
         let server = new RaftServer(cfg, ctx)
         server.Start()
