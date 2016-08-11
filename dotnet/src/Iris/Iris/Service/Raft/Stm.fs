@@ -221,7 +221,16 @@ let handleHandshake node state cbs =
         sprintf "initialize: appending entry to enter joint-consensus"
         |> log cbs state
 
-        let! appended = appendEntryM entry
+        let! appended = receiveEntry entry
+
+        // let r = ref true
+
+        // while !r do
+        //   let! committed = responseCommitted appended
+        //   if committed then
+        //     r := false
+        //   else
+        //     printfn "not committed"
 
         warn "Should I send a snapshot now?"
 
@@ -234,7 +243,7 @@ let handleHandshake node state cbs =
     | Middle(_,raft) -> (response, updateRaft raft state)
     | Left(err,raft) -> (ErrorResponse err, updateRaft raft state)
   else
-    (doRedirect state, state)
+    doRedirect state, state
 
 let handleHandwaive node state cbs =
   if isLeader state.Raft then
@@ -364,7 +373,6 @@ let startPeriodic timeout appState cbs =
     }
   Async.Start(proc(), token.Token)
   token                               // return the cancellation token source so this loop can be
-
 
 // -------------------------------------------------------------------------
 let tryJoin (ip: IpAddress) (port: uint32) cbs (state: AppState) =

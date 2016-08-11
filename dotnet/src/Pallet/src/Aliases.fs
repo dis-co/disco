@@ -1,5 +1,6 @@
 namespace Pallet.Core
 
+open System
 open System.Text.RegularExpressions
 
 //  ____        __ _   ___    _
@@ -27,7 +28,7 @@ type RaftId = RaftId of string
 
       let guid = System.Guid.NewGuid()
       guid.ToByteArray()
-      |> System.Convert.ToBase64String
+      |> Convert.ToBase64String
       |> sanitize
       |> RaftId
 
