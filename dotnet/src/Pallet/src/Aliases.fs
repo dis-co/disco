@@ -1,5 +1,7 @@
 namespace Pallet.Core
 
+open System.Text.RegularExpressions
+
 //  ____        __ _   ___    _
 // |  _ \ __ _ / _| |_|_ _|__| |
 // | |_) / _` | |_| __|| |/ _` |
@@ -20,14 +22,13 @@ type RaftId = RaftId of string
     ///
     /// Returns: Guid
     static member Create () =
-      let stripEquals (str: string) =
-        str.Substring(0, str.Length - 2)
+      let sanitize (str: string) =
+        Regex.Replace(str, "[\+|\/|\=]","").ToLower()
 
       let guid = System.Guid.NewGuid()
-
       guid.ToByteArray()
       |> System.Convert.ToBase64String
-      |> stripEquals
+      |> sanitize
       |> RaftId
 
 type Long   = uint64

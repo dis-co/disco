@@ -1,6 +1,7 @@
 namespace Iris.Core
 
 open System
+open System.Text.RegularExpressions
 open Fable.Core
 
 //   ____       _     _
@@ -36,13 +37,13 @@ module GuidHelpers =
 #if JAVASCRIPT
       Guid "FIXME"
 #else
-      let stripEquals (str: string) =
-        str.Substring(0, str.Length - 2)
+      let sanitize (str: string) =
+        Regex.Replace(str, "[\+|\/|\=]","").ToLower()
 
       let guid = System.Guid.NewGuid()
 
       guid.ToByteArray()
-      |> System.Convert.ToBase64String
-      |> stripEquals
+      |> Convert.ToBase64String
+      |> sanitize
       |> Guid
 #endif
