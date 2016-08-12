@@ -190,8 +190,6 @@ type InstallSnapshot<'node,'data> =
   ; LastTerm  : Term
   ; Data      : LogEntry<'node,'data> }
 
-type SnapshotResponse = { Term : Term }
-
 /////////////////////////////////////////////////
 //   ____      _ _ _                _          //
 //  / ___|__ _| | | |__   __ _  ___| | __      //
@@ -209,13 +207,13 @@ type SnapshotResponse = { Term : Term }
 type IRaftCallbacks<'a,'b> =
 
   /// Request a vote from given Raft server
-  abstract member SendRequestVote:     Node<'b>        -> VoteRequest<'b>        -> unit
+  abstract member SendRequestVote:     Node<'b>  -> VoteRequest<'b>        -> VoteResponse option
 
   /// Send AppendEntries message to given server
-  abstract member SendAppendEntries:   Node<'b>        -> AppendEntries<'a,'b>   -> unit
+  abstract member SendAppendEntries:   Node<'b>  -> AppendEntries<'a,'b>   -> AppendResponse option
 
-  /// Send InstallSnapshot command to given server
-  abstract member SendInstallSnapshot: Node<'b>        -> InstallSnapshot<'a,'b> -> unit
+  /// Send InstallSnapshot command to given serve
+  abstract member SendInstallSnapshot: Node<'b>  -> InstallSnapshot<'a,'b> -> AppendResponse option
 
   /// given the current state of Raft, prepare and return a snapshot value of
   /// current application state

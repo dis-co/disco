@@ -135,7 +135,10 @@ module Raft =
 
   let sendAppendEntriesM node request =
     read >>= fun cbs ->
-      cbs.SendAppendEntries node request
+      async {
+        let result = cbs.SendAppendEntries node request
+        return result
+      }
       |> returnM
 
   let persistVote node =
@@ -1173,7 +1176,7 @@ module Raft =
       let nextIdx = peer.NextIndex
       let! request = makeRequest nextIdx
       do! logRequest peer request
-      do! sendAppendEntriesM peer request
+      return! sendAppendEntriesM peer request
     }
 
   let inline private sendRemainingEntries peerid =
@@ -1183,8 +1186,12 @@ module Raft =
         | Some node ->
           let! entry = getEntryAtM (Node.getNextIndex node)
           if Option.isSome entry then
-            do! sendAppendEntry node
-        | _ -> ()
+            let! request = sendAppendEntry node
+            return Async.RunSynchronously(request)
+          else
+            return None
+        | _ ->
+          return None
     }
 
   let inline private maybeFailNotLeader _ =
@@ -1213,7 +1220,11 @@ module Raft =
           return! handleUnsuccessful resp peer
           do! updateNodeIndices resp peer
           do! updateCommitIndex resp
-          do! sendRemainingEntries peer.Id
+          let! response = sendRemainingEntries peer.Id
+          match response with
+          | Some nextresp ->
+            do! receiveAppendEntriesResponse nid nextresp
+          | _  -> ()
     }
 
   and handleUnsuccessful (resp : AppendResponse) node =
@@ -1328,6 +1339,8 @@ module Raft =
           let! state = get
           let! peers = logicalPeersM ()
 
+          let requests = ref Array.empty
+
           // iterate through all peers and call sendAppendEntries to each
           for peer in peers do
             let node = peer.Value
@@ -1335,14 +1348,29 @@ module Raft =
               let nxtidx = Node.getNextIndex node
               let! cidx = currentIndexM ()
 
-              if cidx - nxtidx <= (state.MaxLogDepth + 1UL) then
+              // if cidx - nxtidx <= (state.MaxLogDepth + 1UL) then
                 // Only send new entries. Don't send the entry to peers who are
                 // behind, to prevent them from becoming congested.
-                do! sendAppendEntry node
-              else
-                // because this is a new node in the cluster get it up to speed
-                // with a snapshot
-                do! sendInstallSnapshot node
+              let! request = sendAppendEntry node
+              requests := Array.append [| (node,request) |] requests
+
+              // else
+              //   // because this is a new node in the cluster get it up to speed
+              //   // with a snapshot
+              //   do! sendInstallSnapshot node
+
+          let results =
+            Array.map snd !requests
+            |> Async.Parallel
+            |> Async.RunSynchronously
+            |> Array.zip (Array.map fst !requests)
+
+          for (node, response) in results do
+            match response with
+            | Some resp ->
+              do! receiveAppendEntriesResponse Node.Id resp
+            | _ ->
+              do! updateNodeM { node with State = Failed }
 
           do! updateCommitIdx appended |> modify
 
