@@ -114,20 +114,18 @@ type LogEntry<'a,'n> =
           term
           (Array.fold (fun m n -> sprintf "%s\n    %s" m (string n)) "" changes)
 
-      | LogEntry(id,idx,term,data,Some prev) ->
-        sprintf "LogEntry(id: %s idx: %A term: %A data: %s)\n%s"
+      | LogEntry(id,idx,term,_,Some prev) ->
+        sprintf "LogEntry(id: %s idx: %A term: %A)\n%s"
           (string id)
           idx
           term
-          (data.ToString())
           (string prev)
 
-      | LogEntry(id,idx,term,data,_) ->
-        sprintf "LogEntry(id: %s idx: %A term: %A data: %s)"
+      | LogEntry(id,idx,term,_,_) ->
+        sprintf "LogEntry(id: %s idx: %A term: %A)"
           (string id)
           idx
           term
-          (data.ToString())
 
       | Snapshot(id,idx,term,lidx,ltrm,_,_) ->
         sprintf "Snapshot(id: %s idx: %A lidx: %A term: %A lterm: %A)"
