@@ -45,11 +45,11 @@ type Node<'node> =
   }
 
   override self.ToString() =
-    sprintf "Node: [id: %A] [state: %A] [voting: %b] [voted for me: %b]"
-      self.Id
-      self.State
-      self.Voting
-      self.VotedForMe
+    sprintf "%s %s %s %s"
+      (string self.Id)
+      (string self.State)
+      (sprintf "(NxtIdx %A)" self.NextIndex)
+      (sprintf "(MtchIdx %A)" self.MatchIndex)
 
 //   ____             __ _          ____ _
 //  / ___|___  _ __  / _(_) __ _   / ___| |__   __ _ _ __   __ _  ___
@@ -61,6 +61,11 @@ type Node<'node> =
 type ConfigChange<'n> =
   | NodeAdded   of Node<'n>
   | NodeRemoved of Node<'n>
+
+  override self.ToString() =
+    match self with
+    | NodeAdded   n -> sprintf "NodeAdded (%s)" (string n.Id)
+    | NodeRemoved n ->sprintf "NodeRemoved (%s)" (string n.Id)
 
 [<RequireQualifiedAccess>]
 module Node =

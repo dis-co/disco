@@ -19,7 +19,6 @@ open System
 open Zmq
 open Db
 
-
 let log (cbs: IRaftCallbacks<_,_>) (state: AppState) (msg: string) =
   cbs.LogMsg state.Raft.Node msg
 

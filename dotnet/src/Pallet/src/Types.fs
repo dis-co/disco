@@ -313,39 +313,39 @@ and Raft<'d,'n> =
   ; MaxLogDepth       : Long
   ; ConfigChangeEntry : LogEntry<'d,'n> option
   }
+
   override self.ToString() =
-    sprintf "
-Node              = %s (%s)
+    sprintf "Node              = %s
+                    %s
 State             = %A
 CurrentTerm       = %A
 CurrentLeader     = %A
-Peers             = %s
-NumNodes          = %s
+NumNodes          = %A
 VotedFor          = %A
-Log               = %s
 MaxLogDepth       = %A
 CommitIndex       = %A
 LastAppliedIdx    = %A
 TimeoutElapsed    = %A
 ElectionTimeout   = %A
 RequestTimeout    = %A
-ConfigChangeEntry = %A
+ConfigChangeEntry = %s
 "
-      (self.Node.ToString()) (self.Node.Data.ToString())
+      (self.Node.ToString())
+      (self.Node.Data.ToString())
       self.State
       self.CurrentTerm
       self.CurrentLeader
-      (Map.fold (fun m _ peer -> sprintf "%s\n    %s" m (peer.ToString())) "" self.Peers)
-      (self.NumNodes.ToString())
+      self.NumNodes
       self.VotedFor
-      (Log.foldLogL (fun m log -> sprintf "%s\n    %s" m (log.ToString())) "" self.Log)
       self.MaxLogDepth
       self.CommitIndex
       self.LastAppliedIdx
       self.TimeoutElapsed
       self.ElectionTimeout
       self.RequestTimeout
-      self.ConfigChangeEntry
+      (if Option.isSome self.ConfigChangeEntry then
+        Option.get self.ConfigChangeEntry |> string
+       else "<empty>")
 
 ////////////////////////////////////////////////
 //   ____      _ _ _                _         //

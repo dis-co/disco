@@ -128,6 +128,12 @@ let (|Debug|_|) (str: string) =
     | [| "debug"; "false" |] -> Some false
     | _ -> None
 
+let (|Periodic|_|) (str: string) =
+  let trimmed = str.Trim()
+  if trimmed = "step" then
+    Some ()
+  else None
+
 let (|Timeout|_|) (str: string) =
   let trimmed = str.Trim()
   if trimmed = "timeout" then
@@ -150,6 +156,7 @@ let consoleLoop (context: RaftServer) =
     let input = Console.ReadLine()
     match input with
       | Exit        -> context.Stop(); kontinue := false
+      | Periodic    -> context.Periodic()
       | Debug opt   -> context.Options <- { context.Options with Debug = opt }
       | Nodes       -> Map.iter (fun _ a -> printfn "Node: %A" a) context.State.Peers
       | Append ety  ->
@@ -157,7 +164,7 @@ let consoleLoop (context: RaftServer) =
           | Some response -> failwith "FIXME: should now loop & wait while the request committed"
           | _ -> failwith "FIXME: should handle case when appending new entry was not possible"
       | Timeout     -> timeoutRaft context
-      | Status      -> printfn "Status:\n%s" <| context.State.ToString ()
+      | Status      -> printfn "%s" <| context.ToString()
       | _           -> printfn "unknown command"
     if !kontinue then
       proc kontinue

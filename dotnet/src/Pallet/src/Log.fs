@@ -84,30 +84,54 @@ type LogEntry<'a,'n> =
 
   override self.ToString() =
     match self with
-      | Configuration(id,idx,term,nodes,_) ->
-        sprintf "Configuration [id: %A] [idx: %A] [term: %A]\nnodes: %s"
-          id
+      | Configuration(id,idx,term,nodes,Some prev) ->
+        sprintf "Configuration(id: %s idx: %A term: %A nodes: %s)\n%s"
+          (string id)
           idx
           term
-          (Array.fold (fun m n -> m + "\n    " + n.ToString()) "" nodes)
+          (Array.fold (fun m n -> sprintf "%s\n    %s" m (string n.Id)) "" nodes)
+          (string prev)
+
+      | Configuration(id,idx,term,nodes,_) ->
+        sprintf "Configuration(id: %s idx: %A term: %A nodes: %s)"
+          (string id)
+          idx
+          term
+          (Array.fold (fun m n -> sprintf "%s\n    %s" m (string n.Id)) "" nodes)
+
+      | JointConsensus(id,idx,term,changes,Some prev) ->
+        sprintf "JointConsensus(id: %s idx: %A term: %A changes: %s)\n%s"
+          (string id)
+          idx
+          term
+          (Array.fold (fun m n -> sprintf "%s\n    %s" m (string n)) "" changes)
+          (string prev)
 
       | JointConsensus(id,idx,term,changes,_) ->
-        sprintf "UpdateNode [id: %A] [idx: %A] [term: %A]\nchanges: %s"
-          id
+        sprintf "JointConsensus(id: %s idx: %A term: %A changes: %s)"
+          (string id)
           idx
           term
-          (Array.fold (fun m n -> m + (sprintf "\n    %A" n)) "" changes)
+          (Array.fold (fun m n -> sprintf "%s\n    %s" m (string n)) "" changes)
+
+      | LogEntry(id,idx,term,data,Some prev) ->
+        sprintf "LogEntry(id: %s idx: %A term: %A data: %s)\n%s"
+          (string id)
+          idx
+          term
+          (data.ToString())
+          (string prev)
 
       | LogEntry(id,idx,term,data,_) ->
-        sprintf "LogEntry [id: %A] [idx: %A] [term: %A] [data: %A]"
-          id
+        sprintf "LogEntry(id: %s idx: %A term: %A data: %s)"
+          (string id)
           idx
           term
-          data
+          (data.ToString())
 
       | Snapshot(id,idx,term,lidx,ltrm,_,_) ->
-        sprintf "Snapshot [id: %A] [idx: %A] [last idx: %A] [term: %A] [last term: %A]"
-          id
+        sprintf "Snapshot(id: %s idx: %A lidx: %A term: %A lterm: %A)"
+          (string id)
           idx
           lidx
           term
@@ -118,6 +142,18 @@ type Log<'a,'n> =
   ; Depth : Long
   ; Index : Index
   }
+
+  override self.ToString() =
+    let logstr =
+      match self.Data with
+      | Some data -> string data
+      | _ -> "<empty>"
+
+    sprintf "Index: %A Depth: %A\n%s"
+      self.Index
+      self.Depth
+      logstr
+
 
 [<RequireQualifiedAccess>]
 module private LogEntry =

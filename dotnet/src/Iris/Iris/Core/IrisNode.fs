@@ -72,12 +72,12 @@ type IrisNode =
     ; TaskId   = None }
 
   override self.ToString() =
-    sprintf "[id: %A] [hostname: %s] [Ip: %A] [port: %A] [status: %A]"
-      self.MemberId
+    sprintf "%s(%s:%A) %A %s"
       self.HostName
-      self.IpAddr
+      (string self.IpAddr)
       self.Port
       self.Status
+      (string self.MemberId)
 
 #if JAVASCRIPT
   //      _                  ____            _       _

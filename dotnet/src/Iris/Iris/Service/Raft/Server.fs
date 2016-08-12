@@ -65,6 +65,9 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   // | | | | | |  __/ | | | | | |_) |  __/ |  \__ \
   // |_| |_| |_|\___|_| |_| |_|_.__/ \___|_|  |___/
 
+  member self.Periodic() =
+    periodicR 500UL appState cbs
+
   /// ## Start the Raft engine
   ///
   /// Start the Raft engine and start processing requests.
@@ -83,7 +86,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
       initialize appState cbs
 
-      let prdtkn = startPeriodic timeout appState cbs
+      let prdtkn = new CancellationTokenSource() // startPeriodic timeout appState cbs
 
       periodictoken := Some prdtkn
 
@@ -303,7 +306,12 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
         sprintf "[PersistLog] insert id: %A" (Log.id log |> string)
         |> self.Log
       with
-        | exn -> handleException "PersistLog" exn
+        | _ ->
+          try
+            updateLogs log database
+          with
+            | exn ->
+              handleException "PersistLog" exn
 
     /// ## Callback to delete a log entry from database
     ///
@@ -329,3 +337,11 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
         let now = DateTime.Now
         let tid = Thread.CurrentThread.ManagedThreadId
         printfn "[%d / %s / %s] %s" (unixTime now) (String.Format("{0,2}", string tid)) (string node.Id) str
+
+  override self.ToString() =
+    sprintf "Database:%s\nConnections:%s\nNodes:%s\nRaft:%s\nLog:%s"
+      (dumpDb database |> indent 4)
+      (string self.State.Connections |> indent 4)
+      (Map.fold (fun m _ t -> sprintf "%s\n%s" m (string t)) "" self.State.Raft.Peers |> indent 4)
+      (self.State.Raft.ToString() |> indent 4)
+      (string self.State.Raft.Log |> indent 4)
