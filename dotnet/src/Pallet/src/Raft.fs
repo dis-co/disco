@@ -5,6 +5,7 @@ open FSharpx.Functional
 
 [<AutoOpen>]
 module RaftMonad =
+  let warn str = printfn "[RAFT WARNING] %s" str
 
   /// get current Raft state
   let get = MkRM (fun _ s -> Right (s, s))
@@ -123,23 +124,31 @@ module Raft =
   // | |  | | (_) | | | | (_| | (_| | | (__  //
   // |_|  |_|\___/|_| |_|\__,_|\__,_|_|\___| //
   /////////////////////////////////////////////
+  let currentIndex (state: Raft<'d,'n>) =
+    Log.index state.Log
 
   let log node str =
     read >>= fun cbs -> cbs.LogMsg node str |> returnM
 
-  let sendRequestVote (cbs: IRaftCallbacks<_,_>) node req =
-    cbs.SendRequestVote node req
+  let sendAppendEntriesM (node: Node<_>) (request: AppendEntries<_,_>) =
+    get >>= fun state ->
+      read >>= fun cbs ->
+        async {
+          let msg =
+            sprintf "sending appendentries [node: %A] [ci: %d] [term: %d] [leader commit: %d] [prv log idx: %d] [prev log term: %d]"
+              node.Id
+              (currentIndex state)
+              request.Term
+              request.LeaderCommit
+              request.PrevLogIdx
+              request.PrevLogTerm
 
-  let sendAppendEntries (cbs: IRaftCallbacks<_,_>) node ae =
-    cbs.SendAppendEntries node ae
+          cbs.LogMsg state.Node msg
 
-  let sendAppendEntriesM node request =
-    read >>= fun cbs ->
-      async {
-        let result = cbs.SendAppendEntries node request
-        return result
-      }
-      |> returnM
+          let result = cbs.SendAppendEntries node request
+          return result
+        }
+        |> returnM
 
   let persistVote node =
     read >>= fun cbs ->
@@ -380,6 +389,13 @@ module Raft =
   /// Find a peer by its Id. Return None if not found.
   let getNodeM nid = getNode nid |> zoomM
 
+  let setNodeStateM (nid: NodeId) state =
+    getNodeM nid >>=
+      fun result ->
+        match result with
+        | Some node -> updateNodeM { node with State = state }
+        | _         -> returnM ()
+
   let getNodes (state: Raft<_,_>) = state.Peers
   let getNodesM _ = zoomM getNodes
 
@@ -597,8 +613,6 @@ module Raft =
   let setVotingM node vote =
     setVoting node vote |> modify
 
-  let currentIndex (state: Raft<'d,'n>) =
-    Log.index state.Log
 
   let currentIndexM _ = zoomM currentIndex
 
@@ -793,19 +807,19 @@ module Raft =
       match appended with
         | Some entries ->
           // hanlde configuration changes and keep track of the most recent one
-          let state, change =
+          let change =
             LogEntry.foldr
-              (fun (state, chng) lg ->
+              (fun current lg ->
                 match lg with
-                  | Configuration _ as config ->
-                    (handleConfigChange config state, None)
-                  | JointConsensus _ as config ->
-                    (handleConfigChange config state, Some config)
-                  | _ -> (state, chng)) (state, state.ConfigChangeEntry) entries
+                  | Configuration  _           -> None
+                  | JointConsensus _ as config -> Some config
+                  |                _           -> current)
+              state.ConfigChangeEntry
+              entries
 
           do! put { state with Log = newlog; ConfigChangeEntry = change }
         | None ->
-          printfn "[WARNING] appended log entries are gone. This is bad."
+          failwith "[FATAL] appended log entries are gone. This is bad."
 
       return appended
     }
@@ -962,11 +976,11 @@ module Raft =
         do! setCommitIndexM newIndex
     }
 
-  let inline private logNodeNotFound msg =
+  let inline private logLogNotFound msg =
     sprintf "AE no log at prev_idx %d" msg.PrevLogIdx
 
   let inline private _logPrevLogTermMismatch msg =
-    sprintf "term mismatch at PrevLogIdx %d" msg.PrevLogIdx
+    sprintf "AE term mismatch at PrevLogIdx %d" msg.PrevLogIdx
 
   let inline private logPrevTermMismatch term msg raft =
     sprintf "AE term doesn't match prev_term (ie. %d vs %d) ci:%d pli:%d"
@@ -1036,7 +1050,7 @@ module Raft =
               | Some entry ->
                 return! checkAndProcess entry nid msg resp
               | None ->
-                do! log state.Node (logNodeNotFound msg)
+                do! log state.Node (logLogNotFound msg)
                 return resp
           else
             return! processEntry nid msg resp
@@ -1074,21 +1088,6 @@ module Raft =
       else
         return response
     }
-
-  let inline private logRequest (node : Node<'n>) (request: AppendEntries<'d,'n>) =
-    raft {
-        let! state = get
-        let msg =
-          sprintf "sending appendentries [node: %A] [ci: %d] [term: %d] [lc: %d] [pli: %d] [plt: %d]"
-            node.Id
-            (currentIndex state)
-            request.Term
-            request.LeaderCommit
-            request.PrevLogIdx
-            request.PrevLogTerm
-        do! log state.Node msg
-      }
-
 
   let inline private maybeFailStaleResponse (resp : AppendResponse) node =
     raft {
@@ -1175,7 +1174,6 @@ module Raft =
     raft {
       let nextIdx = peer.NextIndex
       let! request = makeRequest nextIdx
-      do! logRequest peer request
       return! sendAppendEntriesM peer request
     }
 
@@ -1220,28 +1218,32 @@ module Raft =
           return! handleUnsuccessful resp peer
           do! updateNodeIndices resp peer
           do! updateCommitIndex resp
-          let! response = sendRemainingEntries peer.Id
-          match response with
-          | Some nextresp ->
-            do! receiveAppendEntriesResponse nid nextresp
-          | _  -> ()
+
+          warn "should I send remaining entries now or is this obsolete?"
+          // let! response = sendRemainingEntries peer.Id
+          // match response with
+          // | Some nextresp ->
+          //   do! receiveAppendEntriesResponse nid nextresp
+          // | _  -> ()
     }
 
-  and handleUnsuccessful (resp : AppendResponse) node =
+  and handleUnsuccessful (resp : AppendResponse) (_: Node<_>) =
     raft {
       if not resp.Success then
 
-        // If AppendEntries fails because of log inconsistency:
-        // decrement nextIndex and retry (§5.3)
-        if resp.CurrentIndex < node.NextIndex - 1UL then
-          let! idx = currentIndexM ()
-          let nextIndex = min (resp.CurrentIndex + 1UL) idx
-          do! setNextIndexM node.Id nextIndex
-          do! sendAppendEntry { node with NextIndex = nextIndex }
-        else
-          let nextIndex = node.NextIndex - 1UL
-          do! setNextIndexM node.Id nextIndex
-          do! sendAppendEntry { node with NextIndex = nextIndex }
+        // // If AppendEntries fails because of log inconsistency:
+        // // decrement nextIndex and retry (§5.3)
+        // if resp.CurrentIndex < node.NextIndex - 1UL then
+        //   let! idx = currentIndexM ()
+        //   let nextIndex = min (resp.CurrentIndex + 1UL) idx
+        //   do! setNextIndexM node.Id nextIndex
+        //   do! sendAppendEntry { node with NextIndex = nextIndex }
+        // else
+        //   let nextIndex = node.NextIndex - 1UL
+        //   do! setNextIndexM node.Id nextIndex
+        //   do! sendAppendEntry { node with NextIndex = nextIndex }
+
+        warn "should retry unsuccessful AppendEntries"
 
         return! stopM ()
     }
@@ -1250,9 +1252,29 @@ module Raft =
     raft {
       let! self = getSelfM ()
       let! peers = logicalPeersM ()
+
+      let requests = ref Array.empty
+
       for peer in peers do
         if peer.Value.Id <> self.Id then
-          do! sendAppendEntry peer.Value
+          let! request = sendAppendEntry peer.Value
+          requests := Array.append [| (peer.Value, request) |] !requests
+
+      let responses =
+        !requests
+        |> Array.map snd
+        |> Async.Parallel
+        |> Async.RunSynchronously
+        |> Array.zip (Array.map fst !requests)
+
+      for (node, response) in responses do
+        match response with
+        | Some resp ->
+          do! receiveAppendEntriesResponse node.Id resp
+          do! setNodeStateM node.Id Running
+        | _ ->
+          do! setNodeStateM node.Id Failed
+
       do! setTimeoutElapsedM 0UL
     }
 
@@ -1271,21 +1293,23 @@ module Raft =
     Log.snapshot peers data state.Log
 
   let sendInstallSnapshot node =
-    raft {
-      let! cbs = read
-      let! state = get
-      match cbs.RetrieveSnapshot () with
-        | Some (Snapshot(_,idx,term,_,_,_,_) as snapshot) ->
-          let is =
-            { Term      = state.CurrentTerm
-            ; LeaderId  = state.Node.Id
-            ; LastIndex = idx
-            ; LastTerm  = term
-            ; Data      = snapshot
-            }
-          cbs.SendInstallSnapshot node is
-        | _ -> ()
-    }
+    get >>= fun state ->
+      read >>= fun cbs ->
+        async {
+          match cbs.RetrieveSnapshot () with
+            | Some (Snapshot(_,idx,term,_,_,_,_) as snapshot) ->
+              let is =
+                { Term      = state.CurrentTerm
+                ; LeaderId  = state.Node.Id
+                ; LastIndex = idx
+                ; LastTerm  = term
+                ; Data      = snapshot
+                }
+              return cbs.SendInstallSnapshot node is
+            | _ -> return None
+        }
+        |> returnM
+
 
   ///////////////////////////////////////////////////////////////////
   //  ____               _             _____       _               //
@@ -1348,16 +1372,16 @@ module Raft =
               let nxtidx = Node.getNextIndex node
               let! cidx = currentIndexM ()
 
-              // if cidx - nxtidx <= (state.MaxLogDepth + 1UL) then
+              if cidx - nxtidx <= (state.MaxLogDepth + 1UL) then
                 // Only send new entries. Don't send the entry to peers who are
                 // behind, to prevent them from becoming congested.
-              let! request = sendAppendEntry node
-              requests := Array.append [| (node,request) |] requests
-
-              // else
-              //   // because this is a new node in the cluster get it up to speed
-              //   // with a snapshot
-              //   do! sendInstallSnapshot node
+                let! request = sendAppendEntry node
+                requests := Array.append [| (node,request) |] !requests
+              else
+                // because this is a new node in the cluster get it up to speed
+                // with a snapshot
+                let! request = sendInstallSnapshot node
+                requests := Array.append [| (node,request) |] !requests
 
           let results =
             Array.map snd !requests
@@ -1368,9 +1392,10 @@ module Raft =
           for (node, response) in results do
             match response with
             | Some resp ->
-              do! receiveAppendEntriesResponse Node.Id resp
+              do! receiveAppendEntriesResponse node.Id resp
+              do! setNodeStateM node.Id Running
             | _ ->
-              do! updateNodeM { node with State = Failed }
+              do! setNodeStateM node.Id Failed
 
           do! updateCommitIdx appended |> modify
 
@@ -1454,7 +1479,7 @@ module Raft =
   let updateLogIdxM logIdx =
     updateLogIdx logIdx |> modify
 
-  let applyEntry (cbs: IRaftCallbacks<_,_>) _ = function
+  let applyEntry (cbs: IRaftCallbacks<_,_>) = function
     | JointConsensus(_,_,_,changes,_) ->
       let inline applyChange change =
         match change with
@@ -1477,8 +1502,26 @@ module Raft =
           | Some entries ->
             do! log state.Node "Applying Entries"
             let! cbs = read
-            // Apply log chaihn in the order it arrived
-            Log.foldr (applyEntry cbs) () entries
+
+            // Apply log chain in the order it arrived
+            let state, change =
+              LogEntry.foldr
+                (fun (state, chng) lg ->
+                  match lg with
+                    | Configuration _ as config ->
+                      let state = handleConfigChange config state
+                      applyEntry cbs config
+                      (state, None)
+                    | JointConsensus _ as config ->
+                      let state = handleConfigChange config state
+                      applyEntry cbs config
+                      (state, Some config)
+                    | _ ->
+                      (state, chng))
+                (state, state.ConfigChangeEntry)
+                entries
+
+            do! put { state with ConfigChangeEntry = change }
             do! maybeResetFollowerM entries
             do! updateLogIdxM (Log.entryIndex entries)
           | _ -> ()
@@ -1552,7 +1595,7 @@ module Raft =
           let! state = get
           match state.Log.Data with
             | Some data ->
-              Log.foldr (applyEntry cbs) () data
+              Log.foldr (fun _ entry -> applyEntry cbs entry) () data
             | _ -> failwith "Fatal. Snapshot applied, but log is empty. Aborting."
 
           // reset the counters,to apply all entries in the log
@@ -1562,7 +1605,18 @@ module Raft =
 
           // cosntruct reply
           let! term = currentTermM ()
-          return { Term = term }
+          let! ci = currentIndexM ()
+          let! fi = firstIndexM term
+
+          let ar : AppendResponse =
+            { Term         = term
+            ; Success      = true
+            ; CurrentIndex = ci
+            ; FirstIndex   = match fi with
+                             | Some i -> i
+                             | _      -> 0UL }
+
+          return ar
         | _ -> return! failM SnapshotFormatError
     }
 
@@ -1751,26 +1805,34 @@ module Raft =
 
   /// Request a from a given peer
   let sendVoteRequest (node : Node<'n>) =
-    raft {
-        if Node.isVoting node && node.State = Running then
-          let! state = get
-          let! cbs = read
+    get >>= fun state ->
+      read >>= fun cbs ->
+        async {
+          if Node.isVoting node (*&& node.State = Running *) then
+            let vote =
+              { Term         = state.CurrentTerm
+              ; Candidate    = state.Node
+              ; LastLogIndex = Log.index state.Log
+              ; LastLogTerm  = Log.term  state.Log
+              }
 
-          let vote =
-            { Term         = state.CurrentTerm
-            ; Candidate    = state.Node
-            ; LastLogIndex = Log.index state.Log
-            ; LastLogTerm  = Log.term  state.Log
-            }
+            sprintf "sending vote request to: %s [node state: %A]"
+              (string node.Id)
+              (node.State)
+            |> cbs.LogMsg state.Node
 
-          do! log state.Node
-            <| sprintf "sending requestvote for %s (me) to: %s [status: %A]"
-                (state.Node.Id.ToString())
-                (node.Id.ToString())
-                (node.State)
+            let result = cbs.SendRequestVote node vote
+            return result
+          else
+            sprintf "not requesting vote from %s: [is voting: %b] [node state: %A]"
+              (string node.Id)
+              (Node.isVoting node)
+              (node.State)
+            |> cbs.LogMsg state.Node
 
-          sendRequestVote cbs node vote
-      }
+            return None
+        }
+        |> returnM
 
   let requestAllVotes _ =
     raft {
@@ -1779,9 +1841,27 @@ module Raft =
 
         do! log self "requesting all votes"
 
+        let requests = ref Array.empty
+
         for peer in peers do
           if self.Id <> peer.Value.Id then
-            do! sendVoteRequest peer.Value
+            let! request = sendVoteRequest peer.Value
+            requests := Array.append [| (peer.Value, request) |] !requests
+
+        let responses =
+          !requests
+          |> Array.map snd
+          |> Async.Parallel
+          |> Async.RunSynchronously
+          |> Array.zip (Array.map fst !requests)
+
+        for (node, response) in responses do
+          match response with
+          | Some resp ->
+            do! receiveVoteResponse node.Id resp
+            do! setNodeStateM node.Id Running
+          | _ ->
+            do! setNodeStateM node.Id Failed
       }
 
   ///////////////////////////////////////////////////////
