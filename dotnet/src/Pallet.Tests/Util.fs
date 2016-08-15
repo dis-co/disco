@@ -18,9 +18,9 @@ module Util =
 
   /// Callbacks fired when instantiating the Raft
   type Callbacks<'a,'b> =
-    { SendRequestVote     : Node<'b>        -> VoteRequest<'b>        -> unit
-    ; SendAppendEntries   : Node<'b>        -> AppendEntries<'a,'b>   -> unit
-    ; SendInstallSnapshot : Node<'b>        -> InstallSnapshot<'a,'b> -> unit
+    { SendRequestVote     : Node<'b>        -> VoteRequest<'b>        -> VoteResponse option
+    ; SendAppendEntries   : Node<'b>        -> AppendEntries<'a,'b>   -> AppendResponse option
+    ; SendInstallSnapshot : Node<'b>        -> InstallSnapshot<'a,'b> -> AppendResponse option
     ; PersistSnapshot     : LogEntry<'a,'b> -> unit
     ; PrepareSnapshot     : Raft<'a,'b>     -> Log<'a,'b>
     ; RetrieveSnapshot    : unit            -> LogEntry<'a,'b> option
@@ -75,114 +75,121 @@ module Util =
       Assert.Equal(msg, a, b thing)
       returnM ()
 
-  let mk_cbs (data: 'd ref) =
-    let OnSendRequestVote n v =
+  let mkcbs (data: 'd ref) =
+    let onSendRequestVote n v =
       sprintf "SendRequestVote: %A" v |> log
+      None
 
-    let OnSendAppendEntries n ae =
-      ae.ToString()
+    let onSendAppendEntries n ae =
+      string ae
       |> sprintf "SendAppendEntries: %s"
       |> log
+      None
 
-    let OnSendInstallSnapshot n is =
-      is.ToString()
+    let onSendInstallSnapshot n is =
+      string is
       |> sprintf "SendInstall: %s"
       |> log
+      None
 
-    let OnApplyLog en =
+    let onApplyLog en =
       sprintf "ApplyLog: %A" en
       |> log
 
-    let OnPersistVote (n : Node<'node> option) =
+    let onPersistVote (n : Node<'node> option) =
       sprintf "PeristVote: %A" n
       |> log
 
-    let OnPersistTerm n =
+    let onPersistTerm n =
       sprintf "PeristVote: %A" n
       |> log
 
-    let OnPersistLog (l : LogEntry<'data,'node>) =
+    let onPersistLog (l : LogEntry<'data,'node>) =
       l.ToString()
       |> sprintf "LogOffer: %s"
       |> log
 
-    let OnDeleteLog (l : LogEntry<'data,'node>) =
+    let onDeleteLog (l : LogEntry<'data,'node>) =
       l.ToString()
       |> sprintf "LogPoll: %s"
       |> log
 
-    let OnHasSufficientLogs n =
+    let onHasSufficientLogs n =
       n.ToString()
       |> sprintf "HasSufficientLogs: %s"
       |> log
 
-    let OnLogMsg n s =
+    let onLogMsg n s =
       sprintf "logMsg: %s" s
       |> log
 
-    let OnPrepareSnapshot raft =
+    let onPrepareSnapshot raft =
       createSnapshot !data raft
 
-    let OnPersistSnapshot (entry: LogEntry<_,_>) =
+    let onPersistSnapshot (entry: LogEntry<_,_>) =
       sprintf "Perisisting Snapshot: %A" entry
       |> log
 
-    let OnRetrieveSnapshot _ =
+    let onRetrieveSnapshot _ =
       "Asked to retrieve last snapshot"
       |> log
       None
 
-    let OnNodeAdded node =
+    let onNodeAdded node =
       sprintf "Node added: %A" node
       |> log
 
-    let OnNodeRemoved node =
+    let onNodeRemoved node =
       sprintf "Node removed: %A" node
       |> log
 
-    let OnNodeUpdated node =
+    let onNodeUpdated node =
       sprintf "Node updated: %A" node
       |> log
 
-    let OnConfigured nodes =
+    let onConfigured nodes =
       sprintf "Cluster configuration applied:\n%A" nodes
       |> log
 
-    let OnStateChanged olds news =
+    let onStateChanged olds news =
       sprintf "state changed"
       |> log
 
-    { SendRequestVote     = OnSendRequestVote
-    ; SendAppendEntries   = OnSendAppendEntries
-    ; SendInstallSnapshot = OnSendInstallSnapshot
-    ; PrepareSnapshot     = OnPrepareSnapshot
-    ; PersistSnapshot     = OnPersistSnapshot
-    ; RetrieveSnapshot    = OnRetrieveSnapshot
-    ; ApplyLog            = OnApplyLog
-    ; NodeAdded           = OnNodeAdded
-    ; NodeUpdated         = OnNodeUpdated
-    ; NodeRemoved         = OnNodeRemoved
-    ; Configured          = OnConfigured
-    ; StateChanged        = OnStateChanged
-    ; PersistVote         = OnPersistVote
-    ; PersistTerm         = OnPersistTerm
-    ; PersistLog          = OnPersistLog
-    ; DeleteLog           = OnDeleteLog
-    ; HasSufficientLogs   = OnHasSufficientLogs
-    ; LogMsg              = OnLogMsg
+    { SendRequestVote     = onSendRequestVote
+    ; SendAppendEntries   = onSendAppendEntries
+    ; SendInstallSnapshot = onSendInstallSnapshot
+    ; PrepareSnapshot     = onPrepareSnapshot
+    ; PersistSnapshot     = onPersistSnapshot
+    ; RetrieveSnapshot    = onRetrieveSnapshot
+    ; ApplyLog            = onApplyLog
+    ; NodeAdded           = onNodeAdded
+    ; NodeUpdated         = onNodeUpdated
+    ; NodeRemoved         = onNodeRemoved
+    ; Configured          = onConfigured
+    ; StateChanged        = onStateChanged
+    ; PersistVote         = onPersistVote
+    ; PersistTerm         = onPersistTerm
+    ; PersistLog          = onPersistLog
+    ; DeleteLog           = onDeleteLog
+    ; HasSufficientLogs   = onHasSufficientLogs
+    ; LogMsg              = onLogMsg
     }
 
   let defaultServer (data : 'v) =
     let self : Node<'v> = Node.create (RaftId.Create()) data
     Raft.create self
 
-  let runWithData data action =
+  let runWithData (data, orv, oae, ois) action =
     let self = Node.create (RaftId.Create()) ()
     let raft = Raft.create self
-    let cbs = mk_cbs data :> IRaftCallbacks<_,_>
+    let cbs = mkcbs data :> IRaftCallbacks<_,_>
     runRaft raft cbs action
 
-  let runWithDefaults action = runWithData (ref ()) action
+  let runWithDefaults action =
+    let orv _ _ = None
+    let oae _ _ = None
+    let ois _ _ = None
+    runWithData (ref (), orv, oae, ois) action
 
   type Msg<'data,'node> =
     | RequestVote           of sender:NodeId * req:VoteRequest<'node>
@@ -199,20 +206,21 @@ module Util =
   module Sender =
     let create<'a,'b> =
       { Inbox  = ref List.empty<Msg<'a,'b>>
-      ; Outbox = ref List.empty<Msg<'a,'b>>
-      }
+      ; Outbox = ref List.empty<Msg<'a,'b>> }
 
   let __append_msg (sender:Sender<_,_>) (msg:Msg<_,_>) =
     sender.Inbox := msg :: !sender.Inbox
     sender.Outbox := msg :: !sender.Outbox
 
-  let senderRequestVote (sender:Sender<_,_>) (node:Node<_>) req =
+  let senderRequestVote (sender:Sender<_,_>) (resp: VoteResponse option) (node:Node<_>) req =
     let msg = RequestVote(node.Id, req)
     __append_msg sender msg
+    resp
 
-  let senderAppendEntries (sender:Sender<_,_>) (node:Node<_>) ae =
+  let senderAppendEntries (sender:Sender<_,_>) (resp: AppendResponse option) (node:Node<_>) ae =
     let msg = AppendEntries(node.Id, ae)
     __append_msg sender msg
+    resp
 
   let getVote = function
     | RequestVote(_,req) -> req

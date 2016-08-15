@@ -54,6 +54,7 @@ module Scenarios =
     __logg <| sprintf "testRequestVote [sender: %A] [receiver: %A]" sender.Id receiver.Id
     RequestVote(sender.Id,req)
     |> __append_msgs peers sender.Id receiver.Id
+    None
 
   let testRequestVoteResponse (peers: Map<NodeId,Sender ref>) (sender:Node<_>) (receiver:Node<_>) resp =
     __logg <| sprintf "testRequestVoteResponse [sender: %A] [receiver: %A]" sender.Id receiver.Id
@@ -64,6 +65,7 @@ module Scenarios =
     __logg <| sprintf "testAppendEntries"
     AppendEntries(sender.Id,ae)
     |> __append_msgs peers sender.Id receiver.Id
+    None
 
   let testAppendEntriesResponse (peers: Map<NodeId,Sender ref>) (sender:Node<_>) (receiver:Node<_>) resp =
     __logg <| sprintf "testAppendEntriesResponse"
@@ -72,6 +74,7 @@ module Scenarios =
 
   let testInstallSnapshot (peers: Map<NodeId,Sender ref>) (sender: Node<_>) (receiver: Node<_>) is =
     __logg <| sprintf "testInstallSnapshot"
+    None
 
   let pollMsgs peers =
     let _process msg =

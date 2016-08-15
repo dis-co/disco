@@ -156,7 +156,7 @@ module AppendEntries =
   let follower_recv_appendentries_delete_entries_if_conflict_with_new_entries =
     testCase "follower recv appendentries delete entries if conflict with new entries" <| fun _ ->
       let raft' = defaultServer "string tango"
-      let cbs = mk_cbs (ref "please") :> IRaftCallbacks<_,_>
+      let cbs = mkcbs (ref "please") :> IRaftCallbacks<_,_>
 
       raft {
         let getNth n =
@@ -203,7 +203,7 @@ module AppendEntries =
       let data = [| "one"; "two"; "three"; |]
       let peer = Node.create (RaftId.Create()) "peer"
       let raft' = defaultServer "string tango"
-      let cbs = mk_cbs (ref "let go") :> IRaftCallbacks<_,_>
+      let cbs = mkcbs (ref "let go") :> IRaftCallbacks<_,_>
 
       raft {
         do! addNodeM peer
@@ -271,7 +271,7 @@ module AppendEntries =
 
       let raft' = defaultServer "server"
 
-      let cbs = mk_cbs (ref "fucking hell") :> IRaftCallbacks<_,_>
+      let cbs = mkcbs (ref "fucking hell") :> IRaftCallbacks<_,_>
 
       raft {
         do! addNodeM peer
