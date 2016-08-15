@@ -105,9 +105,9 @@ module RaftMsgFB =
     RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(builder, id, is.ToOffset builder)
     |> getValue
 
-  let createSnapshotResponseFB (builder: FlatBufferBuilder) (nid: NodeId) (sr: SnapshotResponse) =
+  let createSnapshotResponseFB (builder: FlatBufferBuilder) (nid: NodeId) (ar: AppendResponse) =
     let id = string nid |> builder.CreateString
-    RequestSnapshotResponseFB.CreateRequestSnapshotResponseFB(builder, id, sr.ToOffset builder)
+    RequestSnapshotResponseFB.CreateRequestSnapshotResponseFB(builder, id, ar.ToOffset builder)
     |> getValue
 
 //  ____        __ _     ____                            _
@@ -221,7 +221,7 @@ type RaftRequest =
 type RaftResponse =
   | RequestVoteResponse     of sender:NodeId * vote:VoteResponse
   | AppendEntriesResponse   of sender:NodeId * ar:AppendResponse
-  | InstallSnapshotResponse of sender:NodeId * ir:SnapshotResponse
+  | InstallSnapshotResponse of sender:NodeId * ar:AppendResponse
   | Redirect                of leader:Node
   | Welcome                 of leader:Node
   | Arrivederci
@@ -308,7 +308,7 @@ type RaftResponse =
 
         | RaftMsgTypeFB.RequestSnapshotResponseFB ->
           let entry = msg.GetMsg(new RequestSnapshotResponseFB())
-          let response = SnapshotResponse.FromFB entry.Response
+          let response = AppendResponse.FromFB entry.Response
 
           InstallSnapshotResponse(RaftId entry.NodeId, response)
           |> Some

@@ -165,17 +165,6 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
   member self.ServerState with get () = !serverState
 
-  member self.Request (node, msg) =
-    let state = readTVar appState |> atomically
-    let response, state = performRequest msg node state
-
-    match response with
-      | Some message ->
-        let newstate = handleResponse message state cbs
-        writeTVar appState newstate |> atomically
-      | _ ->
-        writeTVar appState state |> atomically
-        printfn "[REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
 
   //  ____  _                           _     _
   // |  _ \(_)___ _ __   ___  ___  __ _| |__ | | ___
@@ -197,25 +186,75 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   interface IRaftCallbacks<StateMachine,IrisNode> with
     member self.SendRequestVote node req  =
       let state = self.State
-      self.Request(node, RequestVote(state.Raft.Node.Id,req))
+      let request = RequestVote(state.Raft.Node.Id,req)
+
       self.Log <| sprintf "SendRequestVote to %A" (nodeUri node.Data)
+
+      let response, state = performRequest request node state
+
+      match response with
+        | Some message ->
+          match message with
+            | RequestVoteResponse(sender, vote) -> Some vote
+            | resp ->
+              failwithf "Expected VoteResponse but got: %A" resp
+        | _ ->
+          printfn "[VOTE REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
+          None
 
     member self.SendAppendEntries node ae =
       let state = self.State
-      self.Request(node, AppendEntries(state.Raft.Node.Id, ae))
+      let request = AppendEntries(state.Raft.Node.Id, ae)
+
+      self.Log <| sprintf "SendAppendEntries to %A" (nodeUri node.Data)
+
+      let response, state = performRequest request node state
+
+      match response with
+        | Some message ->
+          match message with
+            | AppendEntriesResponse(sender, ar) -> Some ar
+            | resp ->
+              failwithf "Expected AppendEntriesResponse but got: %A" resp
+        | _ ->
+          printfn "[APPEND REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
+          None
 
     member self.SendInstallSnapshot node is =
       let state = self.State
-      self.Request(node, InstallSnapshot(state.Raft.Node.Id, is))
+      let request = InstallSnapshot(state.Raft.Node.Id, is)
+
       self.Log <| sprintf "SendInstallSnapshot to %A" (nodeUri node.Data)
 
+      let response, state = performRequest request node state
+
+      match response with
+        | Some message ->
+          match message with
+            | InstallSnapshotResponse(sender, ar) -> Some ar
+            | resp ->
+              failwithf "Expected InstallSnapshotResponse but got: %A" resp
+        | _ ->
+          printfn "[APPEND REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
+          None
+
     member self.ApplyLog sm      = failwith "FIXME: ApplyLog"
-    member self.NodeAdded node   = failwith "FIXME: Node was added."
+
+    //  _   _           _
+    // | \ | | ___   __| | ___  ___
+    // |  \| |/ _ \ / _` |/ _ \/ __|
+    // | |\  | (_) | (_| |  __/\__ \
+    // |_| \_|\___/ \__,_|\___||___/
+
+    member self.NodeAdded node   =
+      warn <| sprintf "Node was added. %s" (string node.Id)
 
     member self.NodeUpdated node =
-      warn <| sprintf "Node was updated %A" node
+      warn <| sprintf "Node was updated. %s" (string node.Id)
 
-    member self.NodeRemoved node = failwith "FIXME: Node was removed."
+    member self.NodeRemoved node =
+      warn <| sprintf "Node was removed. %s" (string node.Id)
+
     member self.Configured nodes = failwith "FIXME: Cluster configuration done."
 
     member self.PrepareSnapshot raft = failwith "FIXME: PrepareSnapshot"

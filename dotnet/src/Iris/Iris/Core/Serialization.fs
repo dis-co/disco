@@ -550,9 +550,13 @@ type InstallSnapshotExtensions() =
     InstallSnapshotFB.EndInstallSnapshotFB(builder)
 
   [<Extension>]
-  static member inline ToOffset (ir: SnapshotResponse, builder: FlatBufferBuilder) =
-    SnapshotResponseFB.CreateSnapshotResponseFB(builder, uint64 ir.Term)
-
+  static member inline ToOffset (ar: AppendResponse, builder: FlatBufferBuilder) =
+    AppendResponseFB.StartAppendResponseFB(builder)
+    AppendResponseFB.AddTerm(builder, uint64 ar.Term)
+    AppendResponseFB.AddSuccess(builder, ar.Success)
+    AppendResponseFB.AddFirstIndex(builder, uint64 ar.FirstIndex)
+    AppendResponseFB.AddCurrentIndex(builder, uint64 ar.CurrentIndex)
+    AppendResponseFB.EndAppendResponseFB(builder)
 
 [<AutoOpen>]
 module StaticIntsallSnapshotExtensions =
@@ -573,7 +577,3 @@ module StaticIntsallSnapshotExtensions =
       ; LastTerm  = fb.LastTerm
       ; Data      = Option.get entries
       }
-
-  type SnapshotResponse with
-    static member FromFB (fb: SnapshotResponseFB) : SnapshotResponse =
-      { Term = fb.Term }

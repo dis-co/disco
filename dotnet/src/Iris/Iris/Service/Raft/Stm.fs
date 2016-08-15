@@ -276,8 +276,14 @@ let appendEntry entry appState cbs =
 
 let handleInstallSnapshot node snapshot state cbs =
   // let snapshot = createSnapshot () |> runRaft raft' cbs
-  let response = InstallSnapshotResponse (state.Raft.Node.Id, { Term = state.Raft.CurrentTerm })
-  (response, state)
+  let ar = { Term         = state.Raft.CurrentTerm
+           ; Success      = true
+           ; CurrentIndex = currentIndex state.Raft
+           ; FirstIndex   = match firstIndex state.Raft.CurrentTerm state.Raft with
+                            | Some idx -> idx
+                            | _        -> 0UL }
+
+  (InstallSnapshotResponse(state.Raft.Node.Id, ar), state)
 
 let handleRequest msg state cbs : (RaftResponse * AppState) =
   match msg with
@@ -295,25 +301,6 @@ let handleRequest msg state cbs : (RaftResponse * AppState) =
 
   | InstallSnapshot (sender, snapshot) ->
     handleInstallSnapshot sender snapshot state cbs
-
-let handleResponse msg state cbs =
-  match msg with
-  | RequestVoteResponse (sender, rep)  ->
-    handleVoteResponse sender rep state cbs
-
-  | AppendEntriesResponse (sender, ar) ->
-    handleAppendResponse sender ar state cbs
-
-  | InstallSnapshotResponse (sender, snapshot) ->
-    printfn "[InstallSnapshotResponse RPC] done"
-    state
-
-  | Redirect _ | Welcome _ | Arrivederci ->
-    printfn "[HandleResponse] unexpected response to regular request. Aborting."
-    exit 1
-
-  | ErrorResponse err ->
-    failwithf "[ERROR] %A" err
 
 let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks<_,_>) =
   let ctx =
@@ -334,14 +321,13 @@ let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks<_,_>) =
     let response =
       match request with
       | Some message ->
-        "server loop: computing response"
-        |> log cbs state
+        printfn "request: %A" message
+        "server loop: computing response" |> log cbs state
         let response, state = handleRequest message state cbs
         writeTVar appState state |> atomically
         response
       | None ->
-        "server loop: could not decode response"
-        |> log cbs state
+        "server loop: could not decode response" |> log cbs state
         ErrorResponse <| OtherError "Unable to decipher request"
 
     response |> encode
