@@ -129,7 +129,7 @@ module Server =
     testCase "Raft set state should set supplied state" <| fun _ ->
       raft {
         do! setStateM Leader
-        do! expectM "Raft should be leader now" Leader state
+        do! expectM "Raft should be leader now" Leader getState
       }
       |> runWithDefaults
       |> noError
@@ -137,23 +137,23 @@ module Server =
   let server_starts_as_follower =
     testCase "Raft starts as follower" <| fun _ ->
       raft {
-        do! expectM "Raft state should be Follower" Follower state
+        do! expectM "Raft state should be Follower" Follower getState
       }
       |> runWithDefaults
       |> noError
 
-  let server_starts_with_election_timeout_of_1000m =
-    testCase "Raft should start with election timeout of 1000ms" <| fun _ ->
+  let server_starts_with_election_timeout_of_6000m =
+    testCase "Raft should start with election timeout of 6000ms" <| fun _ ->
       raft {
-        do! expectM "Raft election timeout should be 1000ms" 1000UL electionTimeout
+        do! expectM "Raft election timeout should be 6000ms" 6000UL electionTimeout
       }
       |> runWithDefaults
       |> noError
 
-  let server_starts_with_request_timeout_of_200ms =
-    testCase "Raft should start with request timeout of 200ms" <| fun _ ->
+  let server_starts_with_request_timeout_of_1000ms =
+    testCase "Raft should start with request timeout of 1000ms" <| fun _ ->
       raft {
-        do! expectM "Raft request timeout should be 200ms" 200UL requestTimeout
+        do! expectM "Raft request timeout should be 1000ms" 1000UL requestTimeout
       }
       |> runWithDefaults
       |> noError
@@ -301,6 +301,8 @@ module Server =
         let! term = currentTermM ()
         let! result = receiveEntry (mklog term)
 
+        do! periodic 1000UL             // important, as only now the changes take effect
+
         do! expectM "Should have log count of one" 1UL numLogs
 
         let! term = currentTermM ()
@@ -312,6 +314,7 @@ module Server =
   let server_recv_entry_adds_missing_node_on_addnode =
     testCase "recv entry adds missing node on addnode" <| fun _ ->
       let node = Node.create (RaftId.Create()) ()
+
       let mklog term =
         JointConsensus(RaftId.Create(), 1UL, term, [| NodeAdded(node) |] , None)
 
@@ -320,17 +323,16 @@ module Server =
         do! becomeLeader ()
         do! expectM "Should have commit idx of zero" 0UL commitIndex
         do! expectM "Should have node count of one" 1UL numNodes
-
         let! term = currentTermM ()
         let! result = receiveEntry (mklog term)
-
+        do! periodic 10UL
         do! expectM "Should have node count of two" 2UL numNodes
       }
       |> runWithDefaults
       |> noError
 
   let server_recv_entry_added_node_should_be_nonvoting =
-    testCase "recv entry adds missing node on addnode" <| fun _ ->
+    testCase "recv entry added node should be nonvoting" <| fun _ ->
       let nid = RaftId.Create()
       let node = Node.create nid ()
       let mklog term =
@@ -345,6 +347,8 @@ module Server =
         let! term = currentTermM ()
         let! result = receiveEntry (mklog term)
 
+        do! periodic 10UL
+
         do! expectM "Should be non-voting node for start" false (getNode nid >> Option.get >> Node.isVoting)
       }
       |> runWithDefaults
@@ -352,84 +356,137 @@ module Server =
 
   let server_recv_entry_removes_node_on_removenode =
     testCase "recv entry removes node on removenode" <| fun _ ->
+      let term = ref 0UL
+      let ci = ref 0UL
+
+      let cbs =
+        { mkcbs (ref ()) with
+            SendAppendEntries = fun _ _ ->
+              Some  { Term = !term; Success = true; CurrentIndex = !ci; FirstIndex = 1UL } }
+        :> IRaftCallbacks<_,_>
+
       let node = Node.create (RaftId.Create()) ()
+
       let mklog term =
         JointConsensus(RaftId.Create(), 1UL, term, [| NodeRemoved node |] , None)
 
       raft {
         do! setElectionTimeoutM 1000UL
-        do! becomeLeader ()
         do! addNodeM node
+        do! becomeLeader ()
         do! expectM "Should have node count of two" 2UL numNodes
 
-        let! term = currentTermM ()
-        let! result = receiveEntry (mklog term)
+        ci := 1UL
 
+        let! result = receiveEntry (mklog !term)
+        let! committed = responseCommitted result
+
+        ci := 2UL
+
+        do! periodic 1000UL
+
+        // after entry was applied, we'll see the change
         do! expectM "Should have node count of one" 1UL numNodes
       }
-      |> runWithDefaults
+      |> runWithCBS cbs
       |> noError
 
   let server_added_node_should_become_voting_once_it_caught_up =
-    testCase "recv entry adds missing node on addnode" <| fun _ ->
+    testCase "added node should become voting once it caught up" <| fun _ ->
       let nid2 = RaftId.Create()
       let node = Node.create nid2 ()
+
       let mkjc term =
         JointConsensus(RaftId.Create(), 1UL, term, [| NodeAdded(node) |] , None)
 
-      let ae_resp = ref None
+      let mkcnf term nodes =
+        Configuration(RaftId.Create(), 1UL, term, nodes , None)
+
+      let ci = ref 0UL
       let state = Raft.create (Node.create (RaftId.Create()) ())
       let count = ref 0
       let cbs = { mkcbs (ref ()) with
-                    SendAppendEntries = fun _ _ -> !ae_resp
+                    SendAppendEntries = fun _ _ ->
+                      Some { Term = 0UL; Success = true; CurrentIndex = !ci; FirstIndex = 1UL }
                     HasSufficientLogs = fun _   -> count := 1 + !count }
                   :> IRaftCallbacks<_,_>
+
       raft {
         do! setElectionTimeoutM 1000UL
         do! becomeLeader ()
         do! expectM "Should have commit idx of zero" 0UL commitIndex
         do! expectM "Should have node count of one" 1UL numNodes
-
         let! term = currentTermM ()
 
+        let! idx = currentIndexM ()
+        ci := idx                       // otherwise we get a StaleResponse error
         let! one = receiveEntry (Log.make term ())
+
+        let! idx = currentIndexM ()
+        ci := idx
         let! two = receiveEntry (Log.make term ())
 
         let! r1 = responseCommitted one
         let! r2 = responseCommitted two
 
-        expect "'r1' should be committed" true id r1
-        expect "'r2' should be committed" true id r2
+        do! expectM "'one' should be committed" true (konst r1)
+        do! expectM "'two' should be committed" true (konst r2)
 
-        let! result = receiveEntry (mkjc term)
-        let! r3 = responseCommitted result
+        let! idx = currentIndexM ()
+        ci := idx
+        let! three = receiveEntry (mkjc term)
+        let! r3 = responseCommitted three
+        do! expectM "'three' should be committed" true (konst r3)
 
-        expect "'r3' should not be committed" false id r3
+        do! expectM "Should not be in joint-consensus yet" false inJointConsensus
+        let! idx = currentIndexM ()
+        ci := idx
+        do! periodic 1000UL
+        do! expectM "Should be in joint-consensus now" true inJointConsensus
 
-        let! three = receiveEntry (Log.make term ())
-        let! four  = receiveEntry (Log.make term ())
+        let! idx = currentIndexM ()
+        ci := idx
+        let! four = receiveEntry (Log.make term ())
+        let! r4 = responseCommitted four
+        do! expectM "'four' should not be committed" false (konst r4)
 
-        let! r4 = responseCommitted three
-        let! r5 = responseCommitted four
-
-        expect "'r4' should not be committed" false id r4
-        expect "'r5' should not be committed" false id r5
+        let! idx = currentIndexM ()
+        ci := idx
+        let! five  = receiveEntry (Log.make term ())
+        let! r5 = responseCommitted five
+        do! expectM "'five' should not be committed" false (konst r5)
 
         do! expectM "Should be non-voting node for start" false (getNode nid2 >> Option.get >> Node.isVoting)
         do! expectM "Should be in joining state for start" Joining (getNode nid2 >> Option.get >> Node.getState)
 
-        ae_resp := Some { Term = 0UL; Success = true; CurrentIndex = 5UL; FirstIndex = 1UL }
+        let! idx = currentIndexM ()
+        ci := idx
+        do! periodic 1000UL
 
-        let! r6 = responseCommitted result
-        let! r7 = responseCommitted three
-        let! r8 = responseCommitted four
+        let! r6 = responseCommitted three
+        let! r7 = responseCommitted four
+        let! r8 = responseCommitted five
 
-        expect "'r6' should be committed" true id r6
-        expect "'r7' should be committed" true id r7
-        expect "'r8' should be committed" true id r8
+        do! expectM "'three' should be committed" true (konst r6)
+        do! expectM "'four' should be committed"  true (konst r7)
+        do! expectM "'five' should be committed"  true (konst r8)
 
-        expect "should have called the 'hassufficientlogs' callback" 1 id !count
+        let! idx = currentIndexM ()
+        ci := idx + 1UL
+        do! periodic 1000UL
 
+        let! idx = currentIndexM ()
+        ci := idx
+        let! term = currentTermM ()
+        let! nodes = getNodesM () >>= (Map.toArray >> returnM) >>= (Array.map snd >> returnM)
+        let! six  = receiveEntry (mkcnf term nodes)
+        let! r6 = responseCommitted six
+
+        let! idx = currentIndexM ()
+        ci := idx + 1UL
+        do! periodic 1000UL
+
+        do! expectM "should have called the 'hassufficientlogs' callback" 1 (konst !count)
         do! expectM "Should be voting node now" true (getNode nid2 >> Option.get >> Node.isVoting)
         do! expectM "Should be in running state now" Running (getNode nid2 >> Option.get >> Node.getState)
       }
@@ -509,15 +566,19 @@ module Server =
   let recv_requestvote_response_increase_votes_for_me =
     testCase "Recv requestvote response increase votes for me" <| fun _ ->
       let node = Node.create (RaftId.Create()) ()
+      let cbs =
+        { mkcbs (ref ()) with
+            SendRequestVote = fun _ _ -> Some { Term = 2UL; Granted = true; Reason = None } }
+        :> IRaftCallbacks<_,_>
+
       raft {
         do! addNodeM node
         do! setTermM 1UL
         do! expectM "Should have zero votes for me" 0UL numVotesForMe
         do! becomeCandidate ()
-        do! receiveVoteResponse node.Id { Term = 2UL; Granted = true; Reason = None }
         do! expectM "Should have two votes for me" 2UL numVotesForMe
       }
-      |> runWithDefaults
+      |> runWithCBS cbs
       |> noError
 
   let recv_requestvote_response_must_be_candidate_to_receive =
@@ -677,7 +738,7 @@ module Server =
         do! setTermM 1UL
         do! voteForMyself ()
         do! becomeLeader ()
-        do! expectM "Should be leader" Leader state
+        do! expectM "Should be leader" Leader getState
         let request =
           { Term = 1UL
           ; Candidate = peer
@@ -685,7 +746,7 @@ module Server =
           ; LastLogTerm = 1UL
           }
         let! resp = receiveVoteRequest peer.Id request
-        do! expectM "Should be leader" Leader state
+        do! expectM "Should be leader" Leader getState
       }
       |> runWithDefaults
       |> noError
@@ -749,7 +810,7 @@ module Server =
           ; LastLogTerm = 1UL
           }
         let! resp = receiveVoteRequest peer.Id request
-        do! expectM "Should now be Follower" Follower state
+        do! expectM "Should now be Follower" Follower getState
         do! expectM "Should have term 2" 2UL currentTerm
         do! expectM "Should have voted for peer" peer.Id (votedFor >> Option.get)
       }
@@ -811,9 +872,9 @@ module Server =
     testCase "follower becomes follower is follower" <| fun _ ->
       raft {
         do! becomeLeader ()
-        do! expectM "Should be leader now" Leader state
+        do! expectM "Should be leader now" Leader getState
         do! becomeFollower ()
-        do! expectM "Should be follower now" Follower state
+        do! expectM "Should be follower now" Follower getState
       }
       |> runWithDefaults
       |> noError
@@ -865,7 +926,7 @@ module Server =
         do! setElectionTimeoutM 1000UL
         do! addNodeM peer
         do! periodic 1001UL
-        do! expectM "Should be candidate now" Candidate state
+        do! expectM "Should be candidate now" Candidate getState
       }
       |> runWithDefaults
       |> noError
@@ -970,15 +1031,18 @@ module Server =
       let peer3 = Node.create (RaftId.Create()) ()
       let peer4 = Node.create (RaftId.Create()) ()
 
+      let cbs =
+        { mkcbs (ref ()) with
+            SendRequestVote = fun n _ -> Some { Term = 1UL; Granted = true; Reason = None } }
+        :> IRaftCallbacks<_,_>
+
       raft {
         do! addPeersM [| peer1; peer2; peer3; peer4 |]
         do! expectM "Should have 5 nodes" 5UL numNodes
         do! becomeCandidate ()
-        do! receiveVoteResponse peer1.Id { Term = 1UL; Granted = true; Reason = None }
-        do! receiveVoteResponse peer2.Id { Term = 1UL; Granted = true; Reason = None }
         do! expectM "Should be leader" true isLeader
       }
-      |> runWithDefaults
+      |> runWithCBS cbs
       |> noError
 
   let candidate_will_not_respond_to_voterequest_if_it_has_already_voted =
@@ -988,7 +1052,7 @@ module Server =
         let peer = Node.create (RaftId.Create()) ()
         let vote : VoteRequest<unit> =
           { Term = 0UL                // term must be equal or lower that raft's
-          ; Candidate = raft'.Node   // term for this to work
+          ; Candidate = raft'.Node    // term for this to work
           ; LastLogIndex = 0UL
           ; LastLogTerm = 0UL
           }
@@ -1053,7 +1117,7 @@ module Server =
         do! expectM "Should not *have* a leader" None currentLeader
         do! expectM "Should have term 1" 1UL currentTerm
         do! receiveVoteResponse peer.Id response
-        do! expectM "Should be Follower" Follower state
+        do! expectM "Should be Follower" Follower getState
         do! expectM "Should have term 2" 2UL currentTerm
         do! expectM "Should have voted for nobody" None votedFor
       }
@@ -1080,7 +1144,7 @@ module Server =
         do! expectM "Should have no leader" None currentLeader
         do! expectM "Should have term 0UL" 0UL currentTerm
         let! resp = receiveAppendEntries (Some peer.Id) ae
-        do! expectM "Should be follower" Follower state
+        do! expectM "Should be follower" Follower getState
         do! expectM "Should have peer as leader" (Some peer.Id) currentLeader
         do! expectM "Should have term 1" 1UL currentTerm
         do! expectM "Should have voted for noone" None votedFor
@@ -1115,7 +1179,7 @@ module Server =
     testCase "leader becomes leader is leader" <| fun _ ->
       raft {
         do! becomeLeader ()
-        do! expectM "Should be leader" Leader state
+        do! expectM "Should be leader" Leader getState
       }
       |> runWithDefaults
       |> noError
@@ -1769,7 +1833,7 @@ module Server =
       raft {
         do! setElectionTimeoutM 1000UL
         do! setStateM Leader
-        do! periodic 900UL
+        do! periodic 1000UL
         let! response = receiveEntry log
         do! expectM "Should have reset timeout elapsed" 0UL timeoutElapsed
       }
@@ -2011,11 +2075,11 @@ module Server =
       let raft' = defaultServer "localhost"
       let sender = Sender.create<_,_>
 
-      let response = ref { Term = 0UL
-                         ; Success = true
-                         ; CurrentIndex = 1UL
-                         ; FirstIndex = 1UL
-                         }
+      let response =
+        ref { Term = 0UL
+            ; Success = true
+            ; CurrentIndex = 1UL
+            ; FirstIndex = 1UL }
 
       let vote = { Term = 0UL; Granted = true; Reason = None }
 
@@ -2070,7 +2134,7 @@ module Server =
         do! expectM "Should have timout elapsed 0" 0UL timeoutElapsed
         do! startElection ()
         do! receiveVoteResponse peer1.Id resp
-        do! expectM "Should be leader" Leader state
+        do! expectM "Should be leader" Leader getState
         let! resp = receiveVoteRequest peer2.Id vote
         expect "Should have declined vote" true Vote.declined resp
       }
@@ -2107,8 +2171,14 @@ module Server =
       |> runWithDefaults
       |> noError
 
-  let server_recv_appendentry_executes_all_cfg_changes =
-    testCase "recv appendentry executes all cfg changes" <| fun _ ->
+  let server_periodic_executes_all_cfg_changes =
+    testCase "periodic executes all cfg changes" <| fun _ ->
+      let term = 1UL
+
+      let cbs =
+        { mkcbs (ref ()) with
+            SendRequestVote = fun _ _ -> Some { Term = term; Granted = true; Reason = None } }
+
       let node1 = Node.create (RaftId.Create()) ()
       let node2 = Node.create (RaftId.Create()) ()
 
@@ -2124,15 +2194,16 @@ module Server =
 
       raft {
         do! becomeLeader ()
-        do! appendEntryM log >>= ignoreM
+        do! receiveEntry log >>= ignoreM
         let! me = selfM()
 
+        do! expectM "Should have 1 nodes" 1UL numNodes
+        do! periodic 10UL
         do! expectM "Should have 2 nodes" 2UL numNodes
         do! expectM "Should have correct nodes" (List.sort [me.Id; node2.Id]) getstuff
       }
       |> runWithDefaults
       |> noError
-
 
   let server_should_not_request_vote_from_failed_nodes =
     testCase "should not request vote from failed nodes" <| fun _ ->
@@ -2174,7 +2245,7 @@ module Server =
         do! setElectionTimeoutM 1000UL
         do! periodic 1001UL
         do! receiveVoteResponse node1.Id resp
-        do! expectM "Should be leader now" Leader state
+        do! expectM "Should be leader now" Leader getState
       }
       |> runWithDefaults
       |> noError
@@ -2183,12 +2254,18 @@ module Server =
   let server_periodic_should_trigger_snapshotting =
     testCase "periodic should trigger snapshotting when MaxLogDepth is reached" <| fun _ ->
       raft {
-        let! state = get
-        for n in 0UL .. state.MaxLogDepth do
-          do! appendEntryM (Log.make state.CurrentTerm ()) >>= ignoreM
+        let term = 1UL
+        let depth = 40UL
+        let! me = selfM ()
 
-        do! setLeaderM (Some state.Node.Id)
-        do! expectM "Should have correct number of entries" 41UL numLogs
+        do! setMaxLogDepthM depth
+        do! setTermM term
+
+        for n in 0UL .. depth do
+          do! appendEntryM (Log.make term ()) >>= ignoreM
+
+        do! setLeaderM (Some me.Id)
+        do! expectM "Should have correct number of entries" (depth + 1UL) numLogs
         do! periodic 10UL
         do! expectM "Should have correct number of entries" 1UL numLogs
       }
@@ -2215,8 +2292,7 @@ module Server =
         ; LeaderId = RaftId.Create()
         ; LastTerm = term
         ; LastIndex = idx
-        ; Data = Snapshot(RaftId.Create(), idx, term, idx, term, nodes, "state")
-        }
+        ; Data = Snapshot(RaftId.Create(), idx, term, idx, term, nodes, "state") }
 
       raft {
         do! setTermM term
@@ -2396,9 +2472,13 @@ module Server =
         do! setSelfM me
         do! setPeersM (nodes |> Map.ofArray)
 
-        do! becomeCandidate ()          // increases term!
+        // same as calling becomeCandidate but not circumventing requestAllVotes
+        do! setTermM 1UL
+        do! resetVotesM ()
+        do! voteForMyself ()
+        do! setLeaderM None
+        do! setStateM Candidate
 
-        do! expectM "Should have be candidate" Candidate Raft.state
         do! expectM "Should have $n nodes" n numNodes
 
         //       _           _   _               _
@@ -2416,7 +2496,7 @@ module Server =
         for nid in 1UL .. (n / 2UL) do
           do! receiveVoteResponse (fst nodes.[int nid]) { vote with Term = term }
 
-        do! expectM "Should be leader in base configuration" Leader Raft.state
+        do! expectM "Should be leader in base configuration" Leader getState
 
         //                                         __ _
         //  _ __   _____      __   ___ ___  _ __  / _(_) __ _
@@ -2459,7 +2539,7 @@ module Server =
           let nid = fst <| nodes.[int idx]
           do! receiveVoteResponse nid { vote with Term = term }
 
-        do! expectM "Should be leader in joint consensus with votes from the new configuration" Leader Raft.state
+        do! expectM "Should be leader in joint consensus with votes from the new configuration" Leader getState
 
         //       _           _   _               _____
         //   ___| | ___  ___| |_(_) ___  _ __   |___ /
@@ -2478,7 +2558,7 @@ module Server =
           let nid = fst nodes.[int idx]
           do! receiveVoteResponse nid { vote with Term = term }
 
-        do! expectM "Should be leader in joint consensus with votes from the old configuration" Leader Raft.state
+        do! expectM "Should be leader in joint consensus with votes from the old configuration" Leader getState
 
         //                                  __ _                       _   _
         //  _ __ ___        ___ ___  _ __  / _(_) __ _ _   _ _ __ __ _| |_(_) ___  _ __
@@ -2510,7 +2590,7 @@ module Server =
         for nid in 1UL .. ((n / 2UL) / 2UL) do
           do! receiveVoteResponse (fst nodes.[int nid]) { vote with Term = term }
 
-        do! expectM "Should be leader in election with regular configuration" Leader Raft.state
+        do! expectM "Should be leader in election with regular configuration" Leader getState
 
         //            _     _                   _
         //   __ _  __| | __| |  _ __   ___   __| | ___  ___
@@ -2546,7 +2626,7 @@ module Server =
         for nid in 1UL .. ((n / 2UL) / 2UL) do
           do! receiveVoteResponse (fst nodes.[int nid]) { vote with Term = term }
 
-        do! expectM "Should be leader in election in joint consensus with old configuration" Leader Raft.state
+        do! expectM "Should be leader in election in joint consensus with old configuration" Leader getState
 
         //       _           _   _                __
         //   ___| | ___  ___| |_(_) ___  _ __    / /_
@@ -2569,7 +2649,7 @@ module Server =
               do! receiveVoteResponse nid { vote with Term = term }
             | _ -> failwith "Node not found. :("
 
-        do! expectM "Should be leader in election in joint consensus with new configuration" Leader Raft.state
+        do! expectM "Should be leader in election in joint consensus with new configuration" Leader getState
 
         //                                  __ _                       _   _
         //  _ __ ___        ___ ___  _ __  / _(_) __ _ _   _ _ __ __ _| |_(_) ___  _ __
@@ -2607,9 +2687,14 @@ module Server =
         do! setSelfM self
 
         do! setPeersM (nodes |> Map.ofArray)
-        do! becomeCandidate ()          // increases term!
 
-        do! expectM "Should have be candidate" Candidate Raft.state
+        do! setTermM 1UL
+        do! resetVotesM ()
+        do! voteForMyself ()
+        do! setLeaderM None
+        do! setStateM Candidate
+
+        do! expectM "Should have be candidate" Candidate getState
         do! expectM "Should have $n nodes" n numNodes
 
         //       _           _   _               _
@@ -2627,7 +2712,7 @@ module Server =
         for nid in 1UL .. (n / 2UL) do
           do! receiveVoteResponse (fst nodes.[int nid]) { vote with Term = term }
 
-        do! expectM "Should be leader in base configuration" Leader Raft.state
+        do! expectM "Should be leader in base configuration" Leader getState
 
         //                                         __ _
         //  _ __   _____      __   ___ ___  _ __  / _(_) __ _
@@ -2669,7 +2754,7 @@ module Server =
         do! expectM "Should only have half the nodes" (n / 2UL) numNodes
         do! expectM "Should have None as ConfigChange" None lastConfigChange
         do! expectM "Should be able to find myself" false (getNode self.Id >> Option.isSome)
-        do! expectM "Should still be leader" Leader Raft.state
+        do! expectM "Should still be leader" Leader getState
 
         let! result = responseCommitted response
         expect "Should not be committed yet" false id result
@@ -2689,7 +2774,7 @@ module Server =
         expect "Should be committed now" true id result
 
         do! periodic 1001UL
-        do! expectM "Should be follower now" Follower Raft.state
+        do! expectM "Should be follower now" Follower getState
       }
       |> runWithDefaults
       |> noError
@@ -2713,7 +2798,7 @@ module Server =
       raft {
         let! self = getSelfM ()
         do! becomeLeader ()             // increases term!
-        do! expectM "Should have be Leader" Leader Raft.state
+        do! expectM "Should have be Leader" Leader getState
 
         //                                         __ _
         //  _ __   _____      __   ___ ___  _ __  / _(_) __ _
@@ -2767,7 +2852,7 @@ module Server =
         let! self = getSelfM ()
 
         do! becomeLeader ()             // increases term!
-        do! expectM "Should have be Leader" Leader Raft.state
+        do! expectM "Should have be Leader" Leader getState
 
         //                                         __ _
         //  _ __   _____      __   ___ ___  _ __  / _(_) __ _
@@ -2827,7 +2912,7 @@ module Server =
         do! setPeersM (nodes |> Map.ofArray)
         do! becomeLeader ()          // increases term!
 
-        do! expectM "Should have be Leader" Leader Raft.state
+        do! expectM "Should have be Leader" Leader getState
         do! expectM "Should have $n nodes" n numNodes
 
         //                                         __ _

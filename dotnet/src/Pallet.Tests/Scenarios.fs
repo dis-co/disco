@@ -205,7 +205,7 @@ module Scenarios =
       |> fun result ->
         Array.set servers 0 (result, snd servers.[0])
 
-      expect "Should be candidate now" Candidate state (fst servers.[0])
+      expect "Should be candidate now" Candidate getState (fst servers.[0])
 
       for j in 0..19  do
         Map.fold totalMsgs 0 senders

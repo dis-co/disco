@@ -125,11 +125,13 @@ module Tests =
 
         server_periodic_elapses_election_timeout
         server_periodic_should_trigger_snapshotting
+        server_periodic_executes_all_cfg_changes
+
         server_should_apply_each_log_when_receiving_a_snapshot
         server_should_merge_snaphot_and_existing_log_when_receiving_a_snapshot
         server_should_fire_node_callbacks_on_config_change
 
-        server_recv_appendentry_executes_all_cfg_changes
+
         server_recv_entry_adds_missing_node_on_addnode
         server_recv_entry_added_node_should_be_nonvoting
         server_recv_entry_auto_commits_if_we_are_the_only_node
@@ -146,8 +148,8 @@ module Tests =
         server_should_call_delete_callback_for_each_deleted_log
 
         server_starts_as_follower
-        server_starts_with_election_timeout_of_1000m
-        server_starts_with_request_timeout_of_200ms
+        server_starts_with_election_timeout_of_6000m
+        server_starts_with_request_timeout_of_1000ms
         server_voted_for_records_who_we_voted_for
         server_votes_are_majority_is_true
         server_voting_results_in_voting

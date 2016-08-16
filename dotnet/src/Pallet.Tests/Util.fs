@@ -179,7 +179,12 @@ module Util =
     let self : Node<'v> = Node.create (RaftId.Create()) data
     Raft.create self
 
-  let runWithData (data, orv, oae, ois) action =
+  let runWithCBS cbs action =
+    let self = Node.create (RaftId.Create()) ()
+    let raft = Raft.create self
+    runRaft raft cbs action
+
+  let runWithData data action =
     let self = Node.create (RaftId.Create()) ()
     let raft = Raft.create self
     let cbs = mkcbs data :> IRaftCallbacks<_,_>
@@ -189,7 +194,7 @@ module Util =
     let orv _ _ = None
     let oae _ _ = None
     let ois _ _ = None
-    runWithData (ref (), orv, oae, ois) action
+    runWithData (ref ()) action
 
   type Msg<'data,'node> =
     | RequestVote           of sender:NodeId * req:VoteRequest<'node>
