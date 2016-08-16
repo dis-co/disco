@@ -1008,6 +1008,8 @@ module Log =
       | Some entries -> Some (LogEntry.head entries)
       | _            -> None
 
+  let first log = LogEntry.head log
+
   let lastTerm log =
     match log.Data with
       | Some data -> LogEntry.lastTerm data
