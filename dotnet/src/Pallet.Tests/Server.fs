@@ -406,8 +406,7 @@ module Server =
       let state = Raft.create (Node.create (RaftId.Create()) ())
       let count = ref 0
       let cbs = { mkcbs (ref ()) with
-                    SendAppendEntries = fun _ _ ->
-                      Some { Term = 0UL; Success = true; CurrentIndex = !ci; FirstIndex = 1UL }
+                    SendAppendEntries = fun _ _ -> Some { Term = 0UL; Success = true; CurrentIndex = !ci; FirstIndex = 1UL }
                     HasSufficientLogs = fun _   -> count := 1 + !count }
                   :> IRaftCallbacks<_,_>
 
@@ -418,10 +417,12 @@ module Server =
         do! expectM "Should have node count of one" 1UL numNodes
         let! term = currentTermM ()
 
+        // Add the first entry
         let! idx = currentIndexM ()
         ci := idx                       // otherwise we get a StaleResponse error
         let! one = receiveEntry (Log.make term ())
 
+        // Add another entry
         let! idx = currentIndexM ()
         ci := idx
         let! two = receiveEntry (Log.make term ())
@@ -432,24 +433,28 @@ module Server =
         do! expectM "'one' should be committed" true (konst r1)
         do! expectM "'two' should be committed" true (konst r2)
 
+        // enter the 2-phase commit for configuration change
         let! idx = currentIndexM ()
         ci := idx
         let! three = receiveEntry (mkjc term)
         let! r3 = responseCommitted three
         do! expectM "'three' should be committed" true (konst r3)
 
+        // call periodic to apply join consensus entry
         do! expectM "Should not be in joint-consensus yet" false inJointConsensus
         let! idx = currentIndexM ()
         ci := idx
         do! periodic 1000UL
         do! expectM "Should be in joint-consensus now" true inJointConsensus
 
+        // add another regular entry
         let! idx = currentIndexM ()
         ci := idx
         let! four = receiveEntry (Log.make term ())
         let! r4 = responseCommitted four
         do! expectM "'four' should not be committed" false (konst r4)
 
+        // and another
         let! idx = currentIndexM ()
         ci := idx
         let! five  = receiveEntry (Log.make term ())
@@ -459,8 +464,9 @@ module Server =
         do! expectM "Should be non-voting node for start" false (getNode nid2 >> Option.get >> Node.isVoting)
         do! expectM "Should be in joining state for start" Joining (getNode nid2 >> Option.get >> Node.getState)
 
+        // call periodic to ensure these are applied
         let! idx = currentIndexM ()
-        ci := idx
+        ci := idx + 1UL
         do! periodic 1000UL
 
         let! r6 = responseCommitted three
@@ -471,19 +477,28 @@ module Server =
         do! expectM "'four' should be committed"  true (konst r7)
         do! expectM "'five' should be committed"  true (konst r8)
 
+        // call periodic again to ensure that all are committed and applied
         let! idx = currentIndexM ()
-        ci := idx + 1UL
+        ci := idx + 2UL
         do! periodic 1000UL
 
+        // since all are applied we append the configuration change to end joint consensus
         let! idx = currentIndexM ()
-        ci := idx
+        ci := idx + 3UL
         let! term = currentTermM ()
         let! nodes = getNodesM () >>= (Map.toArray >> returnM) >>= (Array.map snd >> returnM)
         let! six  = receiveEntry (mkcnf term nodes)
-        let! r6 = responseCommitted six
+        let! r9 = responseCommitted six
+        do! expectM "'six' should be committed"  true (konst r9)
 
+        // the Configuration entry needs to be applied
         let! idx = currentIndexM ()
-        ci := idx + 1UL
+        ci := idx + 3UL
+        do! periodic 1000UL
+
+        // one last time to ensure the node has be updated to Running
+        let! idx = currentIndexM ()
+        ci := idx + 4UL
         do! periodic 1000UL
 
         do! expectM "should have called the 'hassufficientlogs' callback" 1 (konst !count)
@@ -2688,6 +2703,7 @@ module Server =
 
         do! setPeersM (nodes |> Map.ofArray)
 
+        // same as calling becomeCandidate, but w/o the IO
         do! setTermM 1UL
         do! resetVotesM ()
         do! voteForMyself ()

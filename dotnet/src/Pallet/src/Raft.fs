@@ -1266,7 +1266,9 @@ module Raft =
         match response with
         | Some resp ->
           do! receiveAppendEntriesResponse node.Id resp
-          do! setNodeStateM node.Id Running
+          let! peer = getNodeM node.Id >>= (Option.get >> returnM)
+          if peer.State = Failed then
+            do! setNodeStateM node.Id Running
         | _ ->
           do! setNodeStateM node.Id Failed
 
@@ -1363,7 +1365,13 @@ module Raft =
               let nxtidx = Node.getNextIndex node
               let! cidx = currentIndexM ()
 
-              if cidx - nxtidx <= (state.MaxLogDepth + 1UL) then
+              // calculate whether we need to send a snapshot or not
+              // uint64's wrap around, so normalize to int first (might this cause trouble?)
+              let difference =
+                let d = int cidx - int nxtidx
+                if d < 0 then 0UL else uint64 d
+
+              if difference <= (state.MaxLogDepth + 1UL) then
                 // Only send new entries. Don't send the entry to peers who are
                 // behind, to prevent them from becoming congested.
                 let! request = sendAppendEntry node
@@ -1384,12 +1392,9 @@ module Raft =
             match response with
             | Some resp ->
               do! receiveAppendEntriesResponse node.Id resp
-              let! peer = getNodeM node.Id
-              match peer with
-                | Some node ->
-                  if node.State = Failed then
-                    do! setNodeStateM node.Id Running
-                | _ -> ()
+              let! peer = getNodeM node.Id >>= (Option.get >> returnM)
+              if peer.State = Failed then
+                do! setNodeStateM node.Id Running
             | _ ->
               do! setNodeStateM node.Id Failed
 
