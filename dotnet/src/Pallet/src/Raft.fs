@@ -963,8 +963,7 @@ module Raft =
   let private maybeSetCommitIdx (msg : AppendEntries<'d,'n>) =
     raft {
       let! state = get
-      if commitIndex state < msg.LeaderCommit
-      then
+      if commitIndex state < msg.LeaderCommit then
         let lastLogIdx = max (currentIndex state) 1UL
         let newIndex = min lastLogIdx msg.LeaderCommit
         do! setCommitIndexM newIndex
@@ -1366,7 +1365,7 @@ module Raft =
               let! cidx = currentIndexM ()
 
               // calculate whether we need to send a snapshot or not
-              // uint64's wrap around, so normalize to int first (might this cause trouble?)
+              // uint's wrap around, so normalize to int first (might cause trouble with big numbers)
               let difference =
                 let d = int cidx - int nxtidx
                 if d < 0 then 0UL else uint64 d
@@ -1377,7 +1376,7 @@ module Raft =
                 let! request = sendAppendEntry node
                 requests := Array.append [| (node,request) |] !requests
               else
-                // because this is a new node in the cluster get it up to speed
+                // because this node is way behind in the cluster, get it up to speed
                 // with a snapshot
                 let! request = sendInstallSnapshot node
                 requests := Array.append [| (node,request) |] !requests
