@@ -1457,7 +1457,7 @@ module Server =
         do! expectM "Should still have matchIdx 1" 1UL (getNode peer1.Id >> Option.get >> Node.getMatchIndex)
       }
       |> runWithRaft raft' cbs
-      |> expectError StaleResponse
+      |> noError
 
   let leader_recv_appendentries_response_do_not_increase_commit_idx_because_of_old_terms_with_majority =
     testCase "leader recv appendentries response do not increase commit idx because of old terms with majority" <| fun _ ->

@@ -503,12 +503,10 @@ module Raft =
   /// exist, that is).
   let setNextIndex (nid : NodeId) idx cbs (state: Raft<'d,'n>) =
     let node = getNode nid state
+    let nextidx = if idx < 1UL then 1UL else idx
     match node with
-      | Some node ->
-        { node with NextIndex = if idx < 1UL then 1UL else idx }
-        |> fun node ->
-          updateNode node cbs state
-      | None -> state
+      | Some node -> updateNode { node with NextIndex = nextidx } cbs state
+      | _         -> state
 
   /// Set the nextIndex field on Node corresponding to supplied Id (should it
   /// exist, that is) and supplied index. Monadic action.
@@ -535,11 +533,8 @@ module Raft =
   let setMatchIndex nid idx env (state: Raft<_,_>) =
     let node = getNode nid state
     match node with
-      | Some peer ->
-        { peer with MatchIndex = idx }
-        |> fun node ->
-          updateNode node env state
-      | _ -> state
+      | Some peer -> updateNode { peer with MatchIndex = idx } env state
+      | _         -> state
 
   let setMatchIndexM nid idx =
     read >>= (setMatchIndex nid idx >> modify)
@@ -963,7 +958,9 @@ module Raft =
   let private maybeSetCommitIdx (msg : AppendEntries<'d,'n>) =
     raft {
       let! state = get
-      if commitIndex state < msg.LeaderCommit then
+      let cmmtidx = commitIndex state
+      let ldridx = msg.LeaderCommit
+      if cmmtidx < ldridx then
         let lastLogIdx = max (currentIndex state) 1UL
         let newIndex = min lastLogIdx msg.LeaderCommit
         do! setCommitIndexM newIndex
@@ -1082,20 +1079,15 @@ module Raft =
         return response
     }
 
-  let private maybeFailStaleResponse (resp : AppendResponse) node =
-    raft {
-        if resp.CurrentIndex <> 0UL && resp.CurrentIndex <= node.MatchIndex then
-          return! failM StaleResponse
-      }
-
   //  If response contains term T > currentTerm: set currentTerm = T
   //  and convert to follower (§5.3)
-  let private maybeFailWrongTerm (resp : AppendResponse) =
+  let private stopWrongTerm (resp : AppendResponse) =
     raft {
         let! state = get
         if currentTerm state < resp.Term then
           do! setTermM resp.Term
           do! becomeFollower ()
+          return! stopM ()
         else if currentTerm state <> resp.Term then
           return! stopM ()
       }
@@ -1129,8 +1121,7 @@ module Raft =
       elif node.MatchIndex > 0UL then
         match getEntryAt node.MatchIndex state with
           | Some entry ->
-            if LogEntry.term entry = state.CurrentTerm &&
-              resp.CurrentIndex <= node.MatchIndex
+            if LogEntry.term entry = state.CurrentTerm && resp.CurrentIndex <= node.MatchIndex
             then votes + 1UL
             else votes
           | _ -> votes
@@ -1154,7 +1145,8 @@ module Raft =
               let older = shouldCommit peers       state resp
               let newer = shouldCommit state.Peers state resp
               older || newer
-            | _ -> shouldCommit state.Peers state resp
+            | _ ->
+              shouldCommit state.Peers state resp
         else
           // the base case, not in joint consensus
           shouldCommit state.Peers state resp
@@ -1185,7 +1177,7 @@ module Raft =
           return None
     }
 
-  let private maybeFailNotLeader _ =
+  let private failNotLeader _ =
     raft {
       let! leader = isLeaderM ()
       if not leader then
@@ -1205,12 +1197,14 @@ module Raft =
       match node with
         | None -> return! failM NoNode
         | Some peer ->
-          return! maybeFailNotLeader ()
-          return! maybeFailStaleResponse resp peer
-          return! maybeFailWrongTerm resp
-          return! handleUnsuccessful resp peer
-          do! updateNodeIndices resp peer
-          do! updateCommitIndex resp
+          if resp.CurrentIndex <> 0UL && resp.CurrentIndex <= peer.MatchIndex then
+            return ()
+          else
+            return! failNotLeader ()
+            return! stopWrongTerm resp
+            return! handleUnsuccessful resp peer
+            do! updateNodeIndices resp peer
+            do! updateCommitIndex resp
 
           // warn "should I send remaining entries now or is this obsolete?"
 
@@ -1324,8 +1318,7 @@ module Raft =
       match entry with
         | None -> return false
         | Some entry ->
-          if resp.Term <> LogEntry.term entry
-          then return! failM EntryInvalidated
+          if resp.Term <> LogEntry.term entry then return! failM EntryInvalidated
           else
             let! cidx = commitIndexM ()
             return resp.Index <= cidx
@@ -1421,7 +1414,7 @@ module Raft =
       let resp = { Id = RaftId.Create(); Term = 0UL; Index = 0UL }
 
       return! maybeUnexpectedConfigChange entry
-      return! maybeFailNotLeader ()
+      return! failNotLeader ()
 
       let msg =
         sprintf "received entry t:%d id: %s idx: %d"
@@ -1468,12 +1461,6 @@ module Raft =
           do! becomeFollower ()
     }
 
-  let updateLogIdx logIdx (state: Raft<'d,'n>) =
-    { state with LastAppliedIdx = logIdx }
-
-  let updateLogIdxM logIdx =
-    updateLogIdx logIdx |> modify
-
   let applyEntry (cbs: IRaftCallbacks<_,_>) = function
     | JointConsensus(_,_,_,changes,_) ->
       let applyChange change =
@@ -1518,7 +1505,7 @@ module Raft =
 
             do! put { state with ConfigChangeEntry = change }
             do! maybeResetFollowerM entries
-            do! updateLogIdxM (Log.entryIndex entries)
+            do! setLastAppliedIdxM (Log.entryIndex entries)
           | _ -> ()
     }
 
@@ -1594,8 +1581,7 @@ module Raft =
             | _ -> failwith "Fatal. Snapshot applied, but log is empty. Aborting."
 
           // reset the counters,to apply all entries in the log
-          do! setLastAppliedIdxM 0UL
-          do! updateLogIdxM (Log.index state.Log)
+          do! setLastAppliedIdxM (Log.index state.Log)
           do! setCommitIndexM (Log.index state.Log)
 
           // cosntruct reply
