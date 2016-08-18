@@ -131,7 +131,6 @@ module Tests =
         server_should_merge_snaphot_and_existing_log_when_receiving_a_snapshot
         server_should_fire_node_callbacks_on_config_change
 
-
         server_recv_entry_adds_missing_node_on_addnode
         server_recv_entry_added_node_should_be_nonvoting
         server_recv_entry_auto_commits_if_we_are_the_only_node
@@ -172,6 +171,7 @@ module Tests =
         shouldgrantvote_raft_log_term_smaller_vote_logterm
         shouldgrantvote_vote_term_too_small
 
+        should_respond_to_appendentries_with_correct_next_idx
         ///////////////////////////////////////////////////
         //  ____                            _            //
         // / ___|  ___ ___ _ __   __ _ _ __(_) ___  ___  //

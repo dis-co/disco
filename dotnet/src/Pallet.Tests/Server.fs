@@ -2372,3 +2372,46 @@ module Server =
       }
       |> runWithRaft init cbs
       |> noError
+
+  let should_respond_to_appendentries_with_correct_next_idx =
+    testCase "respond to appendentries with correct next idx" <| fun _ ->
+      let term = 1UL
+
+      raft {
+        do! setTermM term
+        do! becomeLeader ()
+
+        let! response = Log.make term () |> receiveEntry
+        let! committed = responseCommitted response
+
+        do! expectM "Should be committed" true (konst committed)
+
+        let! response = Log.make term () |> receiveEntry
+        let! committed = responseCommitted response
+
+        do! expectM "Should be committed" true (konst committed)
+
+        let peer = Node.create (RaftId "0xdeadbeef") ()
+        do! becomeFollower ()
+        do! addNodeM peer
+
+        let! term = currentTermM ()
+        let! ci = currentIndexM ()
+        let! fi = firstIndexM term
+
+        let ping : AppendEntries<_,_> =
+          { Term         = term
+          ; PrevLogIdx   = ci
+          ; PrevLogTerm  = term
+          ; LeaderCommit = ci
+          ; Entries      = None }
+
+        let! response = receiveAppendEntries (Some peer.Id) ping
+
+        do! expectM "Should have correct CurrentIndex" ci (konst response.CurrentIndex)
+        do! expectM "Should have correct FirstIndex" fi (konst response.FirstIndex >> Some)
+        do! expectM "Should have correct Term" term (konst response.Term)
+        do! expectM "Should be success" true (konst response.Success)
+      }
+      |> runWithDefaults
+      |> noError

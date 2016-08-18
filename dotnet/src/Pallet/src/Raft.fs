@@ -884,12 +884,18 @@ module Raft =
     raft {
       let! state = get
 
+      let term = currentTerm state
+      let current = currentIndex state
+      let first =
+        match firstIndex term state with
+        | Some idx -> idx
+        | _        -> 0UL
+
       let resp =
-        { Term         = currentTerm state
+        { Term         = term
         ; Success      = false
-        ; CurrentIndex = 0UL
-        ; FirstIndex   = 0UL
-        }
+        ; CurrentIndex = current
+        ; FirstIndex   = first }
 
       // 1) If this node is currently candidate and both its and the requests
       // term are equal, we become follower and reset VotedFor.
