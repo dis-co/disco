@@ -735,9 +735,6 @@ module JointConsensus =
 
   let server_should_use_old_and_new_config_during_intermittend_appendentries =
     testCase "should use old and new config during intermittend appendentries" <| fun _ ->
-      skiptest "NOOOOT WOOORKING YETTTTTT!@"
-
-      printfn "-------------------------------------------------------------------------"
       let n = 10UL                       // we want ten nodes overall
 
       let nodes =
@@ -759,17 +756,14 @@ module JointConsensus =
                 Some { Success = true; Term = !term; CurrentIndex = !ci; FirstIndex = 1UL } }
         :> IRaftCallbacks<_,_>
 
-      printfn "-------------------------------------------------------------------------"
       raft {
-        printfn "~~!!~~~~~~~~~~~~~~~~~~"
         do! setPeersM (nodes |> Map.ofArray)
-        printfn "~~!!~~~~~~~~~~~~~~~~~~"
+        do! setStateM Candidate
+        do! setTermM !term
         do! becomeLeader ()          // increases term!
 
-        printfn "~~!!~~~~~~~~~~~~~~~~~~"
         let! t = currentTermM ()
         term := t
-        printfn "-2-2-2"
 
         do! expectM "Should have be Leader" Leader getState
         do! expectM "Should have $n nodes" n numNodes
@@ -782,8 +776,6 @@ module JointConsensus =
         //                                              |___/
 
         let! peers = getNodesM () >>= (Map.toArray >> Array.map snd >> returnM)
-
-        printfn "-1-1-1"
 
         // we establish a new cluster configuration *without* the last 5 nodes
         // with node id's 5 - 9
@@ -798,8 +790,12 @@ module JointConsensus =
         let! idx = currentIndexM ()
         ci := idx
 
-        printfn "000"
-        do! periodic 1000UL
+        do! expectM "This count should be correct" ((n - 1UL) * 2UL) (uint64 !count |> konst)
+
+        let! committed = responseCommitted response
+        do! expectM "should not have been committed" false (konst committed)
+
+        do! periodic 1000UL             // now the new configuration should be committed
 
         do! expectM "Should still have correct node count for new configuration" (n / 2UL) numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
@@ -807,31 +803,8 @@ module JointConsensus =
         do! expectM "Should have JointConsensus entry as ConfigChange" (Log.id entry) (lastConfigChange >> Option.get >> Log.id)
         do! expectM "Should be in joint consensus configuration" true inJointConsensus
 
-        expect "Count should be correct" ((n - 1UL) * 2UL) uint64 !count
-
-        //                    _                    _        _             _
-        //   __ _ _ __  _ __ | |_   _    ___ _ __ | |_ _ __(_) ___  ___  / |
-        //  / _` | '_ \| '_ \| | | | |  / _ \ '_ \| __| '__| |/ _ \/ __| | |
-        // | (_| | |_) | |_) | | |_| | |  __/ | | | |_| |  | |  __/\__ \ | |
-        //  \__,_| .__/| .__/|_|\__, |  \___|_| |_|\__|_|  |_|\___||___/ |_|
-        //       |_|   |_|      |___/  in a joint consensus configuration
-
-        printfn "111"
         let! committed = responseCommitted response
-        expect "should not have been committed" false id committed
-
-        let! term = currentTermM ()
-        let! idx = currentIndexM ()
-        let aer = { Success      = true
-                    Term         = term
-                    CurrentIndex = idx
-                    FirstIndex   = 1UL }
-
-        for nid in (n / 2UL) .. (n - 1UL) do
-          do! receiveAppendEntriesResponse (fst nodes.[int nid]) aer
-
-        let! committed = responseCommitted response
-        expect "should be committed" true id committed
+        do! expectM "should have been committed" true (konst committed)
 
         //                                  __ _                       _   _
         //  _ __ ___        ___ ___  _ __  / _(_) __ _ _   _ _ __ __ _| |_(_) ___  _ __
@@ -842,7 +815,13 @@ module JointConsensus =
 
         let! term = currentTermM ()
         let entry = Log.mkConfig term Array.empty
+
         let! response = receiveEntry entry
+
+        let! idx = currentIndexM ()
+        ci := idx
+
+        do! periodic 1000UL
 
         do! expectM "Should only have half the nodes" (n / 2UL) numNodes
         do! expectM "Should have None as ConfigChange" None lastConfigChange
@@ -864,34 +843,21 @@ module JointConsensus =
 
         let! response = receiveEntry entry
 
+        let! idx = currentIndexM ()
+        ci := idx
+
+        let! result = responseCommitted response
+        do! expectM "Should not be committed" false (konst result)
+
+        do! periodic 1000UL
+
         do! expectM "Should still have correct node count for new configuration" n numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" (n / 2UL) numOldPeers
         do! expectM "Should have JointConsensus entry as ConfigChange" (Log.id entry) (lastConfigChange >> Option.get >> Log.id)
 
-        //                    _                    _        _             ____
-        //   __ _ _ __  _ __ | |_   _    ___ _ __ | |_ _ __(_) ___  ___  |___ \
-        //  / _` | '_ \| '_ \| | | | |  / _ \ '_ \| __| '__| |/ _ \/ __|   __) |
-        // | (_| | |_) | |_) | | |_| | |  __/ | | | |_| |  | |  __/\__ \  / __/
-        //  \__,_| .__/| .__/|_|\__, |  \___|_| |_|\__|_|  |_|\___||___/ |_____|
-        //       |_|   |_|      |___/
-
         let! result = responseCommitted response
-        expect "Should not be committed" false id result
-
-        let! term = currentTermM ()
-        let! idx = currentIndexM ()
-        let aer = { Success      = true
-                    Term         = term
-                    CurrentIndex = idx
-                    FirstIndex   = 1UL }
-
-        for nid in 1UL .. (n / 2UL) do
-          do! receiveAppendEntriesResponse (fst nodes.[int nid]) aer
-
-        let! result = responseCommitted response
-        expect "Should be committed" true id result
-
+        do! expectM "Should be committed" true (konst result)
       }
       |> runWithRaft init cbs
       |> noError

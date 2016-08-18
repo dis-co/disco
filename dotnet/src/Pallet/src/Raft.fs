@@ -1694,13 +1694,13 @@ module Raft =
   /// Become leader afer a successful election
   let becomeLeader _ =
     raft {
-        let! state = get
-        do! log state.Node "Becoming Leader"
-        let nid = currentIndex state + 1UL
-        do! setStateM Leader
-        do! maybeSetIndex state.Node.Id nid 0UL
-        do! sendAllAppendEntriesM ()
-      }
+      let! state = get
+      do! log state.Node "becoming leader"
+      let nid = currentIndex state + 1UL
+      do! setStateM Leader
+      do! maybeSetIndex state.Node.Id nid 0UL
+      do! sendAllAppendEntriesM ()
+    }
 
   ///////////////////////////////////////////////////////////////
   // __     __    _       ____ Send ->                    _    //
