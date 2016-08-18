@@ -222,16 +222,34 @@ let handleHandshake node state cbs =
 
         let! appended = receiveEntry entry
 
-        // let r = ref true
+        let r = ref true
 
-        // while !r do
-        //   let! committed = responseCommitted appended
-        //   if committed then
-        //     r := false
-        //   else
-        //     printfn "not committed"
+        while !r do
+          let! committed = responseCommitted appended
+          if committed then
+            r := false
+          else
+            printfn "Joint-Consensus not committed"
+
+        r := true
+
+        sprintf "initialize: appending entry to exit joint-consensus into regular configuration"
+        |> log cbs state
+
+        let! term = currentTermM ()
+        let! nodes = getNodesM () >>= (Map.toArray >> Array.map snd >> returnM)
+        let entry = Log.mkConfig term nodes
+        let! appended = receiveEntry entry
+
+        while !r do
+          let! committed = responseCommitted appended
+          if committed then
+            r := false
+          else
+            printfn "Configuration not committed"
 
         warn "Should I send a snapshot now?"
+        warn "Also, should I implement timout logic at this level?"
 
       } |> runRaft state.Raft cbs
 
@@ -258,7 +276,6 @@ let appendEntry entry appState cbs =
     let result =
       raft {
         let! result = receiveEntry entry
-        // do! periodic 1001UL
         return result
       }
       |> runRaft state.Raft cbs
@@ -303,11 +320,6 @@ let handleRequest msg state cbs : (RaftResponse * AppState) =
     handleInstallSnapshot sender snapshot state cbs
 
 let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks<_,_>) =
-  let ctx =
-    readTVar appState
-    |> atomically
-    |> fun state -> state.Context
-
   let uri =
     readTVar appState
     |> atomically
@@ -332,7 +344,7 @@ let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks<_,_>) =
 
     response |> encode
 
-  let server = new Rep(uri, ctx, handler)
+  let server = new Rep(uri, handler)
   server.Start()
   server
 

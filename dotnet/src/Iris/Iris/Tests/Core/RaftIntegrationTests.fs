@@ -330,11 +330,11 @@ module RaftIntegrationTests =
 
       let follower = new RaftServer(leadercfg, ctx)
       follower.Start()
+
       expect "Should be in failed state" true hasFailed follower.ServerState
 
-      dispose leader
       dispose follower
-
+      dispose leader
       dispose ctx
 
   let test_validate_follower_joins_leader_after_startup =
@@ -343,31 +343,17 @@ module RaftIntegrationTests =
       let followerid1 = "0x02"
       let followerid2 = "0x03"
 
-      let mutable stop = false
-
       let leadercfg = createLeader leaderid 1
       let followercfg1 = createFollower followerid1 2 leaderid 1
       let followercfg2 = createFollower followerid2 3 leaderid 1
 
-      let makeServer cfg _ =
-        let tid = Thread.CurrentThread.ManagedThreadId
-        let ctx = new ZContext()
-        let server = new RaftServer(cfg, ctx)
-        server.Start()
-
-        while not stop do
-          Thread.Sleep(10)
-
-        dispose server
-        dispose ctx
-
-
-      let leader = new Thread(new ThreadStart(makeServer leadercfg))
+      let ctx = new ZContext()
+      let leader = new RaftServer(leadercfg, ctx)
       leader.Start()
 
-      Thread.Sleep(1000)
+      printfn "starting follower"
 
-      let follower1 = new Thread(new ThreadStart(makeServer followercfg1))
+      let follower1 = new RaftServer(followercfg1, ctx)
       follower1.Start()
 
       // let follower2 = new Thread(new ThreadStart(makeServer followercfg2))
@@ -375,8 +361,9 @@ module RaftIntegrationTests =
 
       Thread.Sleep(10000)
 
-      stop <- false
-
+      dispose leader
+      dispose follower1
+      dispose ctx
 
   let test_follower_join_should_fail_on_duplicate_raftid =
     pending "follower join should fail on duplicate raftid"
@@ -393,15 +380,15 @@ module RaftIntegrationTests =
   let raftIntegrationTests =
     testList "Raft Integration Tests" [
         // db
-        // test_should_create_database
-        // test_should_store_load_raftmetadata_correctly
-        // test_save_restore_log_values_correctly
-        // test_save_restore_raft_value_correctly
-        // test_validate_logs_get_deleted_correctly
-        // test_log_snapshotting_should_clean_all_logs
+        test_should_create_database
+        test_should_store_load_raftmetadata_correctly
+        test_save_restore_log_values_correctly
+        test_save_restore_raft_value_correctly
+        test_validate_logs_get_deleted_correctly
+        test_log_snapshotting_should_clean_all_logs
 
         // raft
-        // test_validate_raft_service_bind_correct_port
+        test_validate_raft_service_bind_correct_port
         test_validate_follower_joins_leader_after_startup
         // test_follower_join_should_fail_on_duplicate_raftid
         // test_all_rafts_should_share_a_common_distributed_event_log

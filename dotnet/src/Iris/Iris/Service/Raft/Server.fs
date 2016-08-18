@@ -23,14 +23,14 @@ type RaftServerState =
   | Running
   | Stopping
   | Stopped
-  | Failed
+  | Failed  of string
 
 [<AutoOpen>]
 module RaftServerStateHelpers =
 
   let hasFailed = function
-    | Failed -> true
-    | _      -> false
+    | Failed _ -> true
+    |        _ -> false
 
 //  ____        __ _     ____
 // |  _ \ __ _ / _| |_  / ___|  ___ _ ____   _____ _ __
@@ -82,19 +82,19 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
       let self = readTVar appState |> atomically
 
-      server := startServer appState cbs |> Some
+      server := Some (startServer appState cbs)
 
       initialize appState cbs
 
-      let prdtkn = new CancellationTokenSource() // startPeriodic timeout appState cbs
-
-      periodictoken := Some prdtkn
+      let tkn = new CancellationTokenSource() // (startPeriodic timeout appState cbs)
+      periodictoken := Some tkn
 
       serverState := Running
     with
       | :? ZeroMQ.ZException as exn ->
-        serverState := Failed
-      | exn -> handleException "self.Start" exn
+        serverState := Failed (sprintf "[ZMQ Exception] %A" exn.Message)
+      | exn ->
+        serverState := Failed exn.Message
 
   /// ## Stop the Raft engine, sockets and all.
   ///
@@ -202,18 +202,33 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
           printfn "[VOTE REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
           None
 
-    member self.SendAppendEntries node ae =
-      let state = self.State
-      let request = AppendEntries(state.Raft.Node.Id, ae)
+    member self.SendAppendEntries (node: Node) (request: AppendEntries) =
+      sprintf "AppendEntries request: (term %A) (leader commit: %A) (prev idx: %A) (prev term: %A) (entries: %s)"
+        request.Term
+        request.LeaderCommit
+        request.PrevLogIdx
+        request.PrevLogTerm
+        (if Option.isSome request.Entries then "LOG" else "<empty>")
+      |> self.Log
 
-      self.Log <| sprintf "SendAppendEntries to %A" (nodeUri node.Data)
+      let state = self.State
+      let request = AppendEntries(state.Raft.Node.Id, request)
 
       let response, state = performRequest request node state
 
       match response with
         | Some message ->
           match message with
-            | AppendEntriesResponse(sender, ar) -> Some ar
+            | AppendEntriesResponse(sender, ar) ->
+
+              sprintf "AppendEntries response: (success: %b) (term: %A) (current idx: %A) (first idx: %A)"
+                ar.Success
+                ar.Term
+                ar.CurrentIndex
+                ar.FirstIndex
+              |> self.Log
+
+              Some ar
             | resp ->
               failwithf "Expected AppendEntriesResponse but got: %A" resp
         | _ ->
@@ -255,7 +270,8 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
     member self.NodeRemoved node =
       warn <| sprintf "Node was removed. %s" (string node.Id)
 
-    member self.Configured nodes = failwith "FIXME: Cluster configuration done."
+    member self.Configured nodes =
+      warn <| sprintf "Cluster configuration done!"
 
     member self.PrepareSnapshot raft = failwith "FIXME: PrepareSnapshot"
     member self.RetrieveSnapshot ()  = failwith "FIXME: RetrieveSnapshot"
