@@ -80,8 +80,6 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
     try
       serverState := Starting
 
-      let self = readTVar appState |> atomically
-
       server := Some (startServer appState cbs)
 
       initialize appState cbs
@@ -109,6 +107,8 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
       | Starting | Stopping | Stopped | Failed _ -> ()
       | Running ->
         serverState := Stopping
+
+        let _ = tryLeave appState cbs
 
         Option.bind (dispose >> Some) (!server) |> ignore
 
@@ -184,6 +184,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   // |_| \_\__,_|_|  \__| |___|_| |_|\__\___|_|  |_|  \__,_|\___\___|
 
   interface IRaftCallbacks<StateMachine,IrisNode> with
+
     member self.SendRequestVote node req  =
       let state = self.State
       let request = RequestVote(state.Raft.Node.Id,req)

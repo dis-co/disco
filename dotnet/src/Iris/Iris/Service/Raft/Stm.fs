@@ -213,6 +213,7 @@ let handleHandshake node state cbs =
 
     let result =
       raft {
+        let run = ref true
         let! term = currentTermM ()
         let changes = [| NodeAdded node |]
         let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, None)
@@ -222,31 +223,32 @@ let handleHandshake node state cbs =
 
         let! appended = receiveEntry entry
 
-        let r = ref true
-
-        while !r do
+        // wait for the entry to be committed by everybody
+        while !run do
           let! committed = responseCommitted appended
           if committed then
-            r := false
-          else
-            printfn "Joint-Consensus not committed"
+            run := false
+          else printfn "Joint-Consensus not committed"
 
-        r := true
+        run := true                     // reset
 
         sprintf "initialize: appending entry to exit joint-consensus into regular configuration"
         |> log cbs state
+
+        // now that all nodes are in joint-consensus we finalize the 2-phase
+        // config change process by appending the Configuration entry
 
         let! term = currentTermM ()
         let! nodes = getNodesM () >>= (Map.toArray >> Array.map snd >> returnM)
         let entry = Log.mkConfig term nodes
         let! appended = receiveEntry entry
 
-        while !r do
+        // wait for the entry to be committed by everybody
+        while !run do
           let! committed = responseCommitted appended
           if committed then
-            r := false
-          else
-            printfn "Configuration not committed"
+            run := false
+          else printfn "Configuration not committed"
 
         warn "Should I send a snapshot now?"
         warn "Also, should I implement timout logic at this level?"
@@ -264,10 +266,55 @@ let handleHandshake node state cbs =
 
 let handleHandwaive node state cbs =
   if isLeader state.Raft then
-    let state = removeNodeR node state cbs
-    (Arrivederci, state)
+    let result =
+      raft {
+        let run = ref true
+        let! term = currentTermM ()
+        let changes = [| NodeRemoved node |]
+        let entry = JointConsensus(RaftId.Create(), 0UL, term, changes, None)
+
+        sprintf "appending entry to enter joint-consensus"
+        |> log cbs state
+
+        let! appended = receiveEntry entry
+
+        // wait for the entry to be committed by everybody
+        while !run do
+          let! committed = responseCommitted appended
+          if committed then
+            run := false
+          else printfn "Joint-Consensus not committed"
+
+        run := true                     // reset
+
+        sprintf "appending entry to exit joint-consensus into regular configuration"
+        |> log cbs state
+
+        // now that all nodes are in joint-consensus we finalize the 2-phase
+        // config change process by appending the Configuration entry
+
+        let! term = currentTermM ()
+        let! nodes = getNodesM () >>= (Map.toArray >> Array.map snd >> returnM)
+        let entry = Log.mkConfig term nodes
+        let! appended = receiveEntry entry
+
+        // wait for the entry to be committed by everybody
+        while !run do
+          let! committed = responseCommitted appended
+          if committed then
+            run := false
+          else printfn "Configuration not committed"
+
+        warn "Also, should I implement timout logic at this level?"
+
+      } |> runRaft state.Raft cbs
+
+    match result with
+    | Right (_,raft) -> (Arrivederci, updateRaft raft state)
+    | Middle(_,raft) -> (Arrivederci, updateRaft raft state)
+    | Left(err,raft) -> (ErrorResponse err, updateRaft raft state)
   else
-    (doRedirect state, state)
+    doRedirect state, state
 
 let appendEntry entry appState cbs =
   stm {
@@ -430,56 +477,55 @@ let tryJoin (ip: IpAddress) (port: uint32) cbs (state: AppState) =
 /// - cbs: Raft callbacks
 ///
 /// Returns: unit
-let tryLeave appState cbs =
-  let rec _tryLeave retry (node: Node<IrisNode>) (state: AppState) =
-    printfn "Trying to join cluster. [retry: %A] [node: %A]" retry node
+let tryLeave (appState: TVar<AppState>) cbs : bool option =
+  let state = readTVar appState |> atomically
 
-    let uri = nodeUri node.Data
-    let client = mkClientSocket uri state
-    let request = HandWaive(state.Raft.Node)
-    let result = rawRequest request client state
+  let rec _tryLeave retry (uri: string) =
+    if retry < int state.Options.MaxRetries then
+      let client = mkClientSocket uri state
+      let request = HandWaive(state.Raft.Node)
+      let result = rawRequest request client state
 
-    dispose client
+      dispose client
 
-    match result with
-    | Some (Redirect other) ->
-      if retry <= int state.Options.MaxRetries then
-        _tryLeave (retry + 1) other state
-      else
-        printfn "Too many retries. aborting"
-        exit 1
+      match result with
+      | Some (Redirect other) ->
+        if retry <= int state.Options.MaxRetries then
+          nodeUri other.Data |> _tryLeave (retry + 1)
+        else
+          printfn "Too many retries. aborting"
+          None
 
-    | Some Arrivederci ->
-      printfn "HandWaive successful."
+      | Some Arrivederci ->
+        Some true
 
-    | Some (ErrorResponse err) ->
-      printfn "Unexpected error occurred. %A" err
-      exit 1
+      | Some (ErrorResponse err) ->
+        printfn "Unexpected error occurred. %A" err
+        None
 
-    | Some resp ->
-      printfn "Unexpected response. Aborting.\n%A" resp
-      exit 1
+      | Some resp ->
+        printfn "Unexpected response. Aborting.\n%A" resp
+        None
 
-    | _ ->
-      printfn "Node unreachable. Aborting."
-      exit 1
-
-  stm {
-    let! state = readTVar appState
-
-    if not (isLeader state.Raft) then
-      match Option.bind (flip getNode state.Raft) state.Raft.CurrentLeader with
-        | Some node -> _tryLeave 0 node state
-        | _         -> printfn "Leader not found. Exiting without saying goodbye."
+      | _ ->
+        printfn "Node unreachable. Aborting."
+        None
     else
-      let term = currentTerm state.Raft
-      let changes = [| NodeRemoved state.Raft.Node |]
-      let entry = JointConsensus(RaftId.Create(), 0UL, term , changes, None)
+      "Too many unsuccesful connection attempts."
+      |> log cbs state
+      None
 
-      let! response = appendEntry entry appState cbs
+  match state.Raft.CurrentLeader with
+    | Some nid ->
+      match Map.tryFind nid state.Raft.Peers with
+        | Some node -> nodeUri node.Data |> _tryLeave 0
+        | _         ->
+          printfn "Node data for leader id not found"
+          None
+    | _ ->
+      printfn "no known leader"
+      None
 
-      failwith "FIXME: must now block to await the committed state for response"
-  }
 
 let forceElection appState cbs =
   stm {
