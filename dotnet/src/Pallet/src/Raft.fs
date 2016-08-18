@@ -1026,7 +1026,7 @@ module Raft =
 
   let receiveAppendEntries (nid: NodeId option) (msg: AppendEntries<'d,'n>) =
     raft {
-      do! setTimeoutElapsedM 0UL      // reset, so we don't start election
+      do! setTimeoutElapsedM 0UL      // reset timer, so we don't start an election
       do! logAppendEntries nid msg    // let the world know
       let! result = makeResponse msg  // check terms et al match, fail otherwise
 

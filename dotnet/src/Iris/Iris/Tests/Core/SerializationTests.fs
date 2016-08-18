@@ -168,22 +168,6 @@ module SerializationTests =
 
       expect "Should be structurally the same" msg id remsg
 
-  //  ____                        _           _   ____
-  // / ___| _ __   __ _ _ __  ___| |__   ___ | |_|  _ \ ___  ___ _ __   ___  _ __   ___  ___
-  // \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __| |_) / _ \/ __| '_ \ / _ \| '_ \ / __|/ _ \
-  //  ___) | | | | (_| | |_) \__ \ | | | (_) | |_|  _ <  __/\__ \ |_) | (_) | | | |\__ \  __/
-  // |____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|_| \_\___||___/ .__/ \___/|_| |_||___/\___|
-  //                   |_|                                      |_|
-
-  let test_validate_installsnapshot_response_serialization =
-    testCase "Validate InstallSnapshot Response Serialization" <| fun _ ->
-      let response : SnapshotResponse = { Term = 92381UL }
-
-      let msg = InstallSnapshotResponse(RaftId.Create(), response)
-      let remsg = msg |> encode |> decode |> Option.get
-
-      expect "Should be structurally the same" msg id remsg
-
   //  _   _                 _ ____  _           _
   // | | | | __ _ _ __   __| / ___|| |__   __ _| | _____
   // | |_| |/ _` | '_ \ / _` \___ \| '_ \ / _` | |/ / _ \
@@ -330,7 +314,6 @@ module SerializationTests =
         test_validate_appendentries_serialization
         test_validate_appendentries_response_serialization
         test_validate_installsnapshot_serialization
-        test_validate_installsnapshot_response_serialization
         test_validate_handshake_serialization
         test_validate_handwaive_serialization
         test_validate_redirect_serialization
