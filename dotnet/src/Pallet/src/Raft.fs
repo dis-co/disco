@@ -127,8 +127,10 @@ module Raft =
   let currentIndex (state: Raft<'d,'n>) =
     Log.index state.Log
 
-  let log node str =
-    read >>= fun cbs -> cbs.LogMsg node str |> returnM
+  let log str =
+    read >>= fun cbs ->
+      get >>= fun state ->
+        cbs.LogMsg state.Node str |> returnM
 
   let sendAppendEntriesM (node: Node<_>) (request: AppendEntries<_,_>) =
     get >>= fun state ->
@@ -709,11 +711,11 @@ module Raft =
 
   let timeoutElapsedM _ = zoomM timeoutElapsed
 
-  let setTimeoutElapsed (timeout : Long) (state: Raft<'d,'n>) =
-    { state with TimeoutElapsed = timeout }
+  let setTimeoutElapsed (elapsed: Long) (state: Raft<'d,'n>) =
+    { state with TimeoutElapsed = elapsed }
 
-  let setTimeoutElapsedM (timeout: Long) =
-    setTimeoutElapsed timeout |> modify
+  let setTimeoutElapsedM (elapsed: Long) =
+    setTimeoutElapsed elapsed |> modify
 
   let requestTimeout (state: Raft<'d,'n>) =
     state.RequestTimeout
@@ -749,8 +751,7 @@ module Raft =
 
   let becomeFollower _ =
     raft {
-      let! state = get
-      do! log state.Node "Becoming Follower"
+      do! log "becoming follower"
       do! setStateM Follower
     }
 
@@ -972,11 +973,11 @@ module Raft =
   let private _logPrevLogTermMismatch msg =
     sprintf "AE term mismatch at PrevLogIdx %d" msg.PrevLogIdx
 
-  let private logPrevTermMismatch term msg raft =
+  let private logPrevTermMismatch term msg idx =
     sprintf "AE term doesn't match prev_term (ie. %d vs %d) ci:%d pli:%d"
       term
       msg.PrevLogTerm
-      (currentIndex raft)
+      idx
       msg.PrevLogIdx
 
   let private processEntry nid msg resp =
@@ -993,15 +994,15 @@ module Raft =
   /// term matches prevLogTerm (§5.3)
   let private checkAndProcess entry nid msg resp =
     raft {
-      let! state = get
+      let! current = currentIndexM ()
 
-      if currentIndex state < msg.PrevLogIdx then
-        do! log state.Node (_logPrevLogTermMismatch msg)
+      if current < msg.PrevLogIdx then
+        do! log (_logPrevLogTermMismatch msg)
         return resp
       else
         let term = LogEntry.term entry
         if term <> msg.PrevLogTerm then
-          do! log state.Node (logPrevTermMismatch term msg state)
+          do! log (logPrevTermMismatch term msg current)
           let response = { resp with CurrentIndex = msg.PrevLogIdx - 1UL }
           do! removeEntryM msg.PrevLogIdx
           return response
@@ -1012,17 +1013,15 @@ module Raft =
   let private logAppendEntries node msg =
     raft {
       if Option.isSome msg.Entries then
-        let! state = get
-        let dbg =
-          sprintf "recvd appendentries from: %A, t:%d ci:%d lc:%d pli:%d plt:%d #%d"
-            node
-            msg.Term
-            (currentIndex state)
-            msg.LeaderCommit
-            msg.PrevLogIdx
-            msg.PrevLogTerm
-            (Option.get msg.Entries |> LogEntry.depth)
-        do! log state.Node dbg
+        let! current = currentIndexM ()
+        do! log <| sprintf "recvd appendentries from: %A, t:%d ci:%d lc:%d pli:%d plt:%d #%d"
+                     node
+                     msg.Term
+                     current
+                     msg.LeaderCommit
+                     msg.PrevLogIdx
+                     msg.PrevLogTerm
+                     (Option.get msg.Entries |> LogEntry.depth)
     }
 
   let receiveAppendEntries (nid: NodeId option) (msg: AppendEntries<'d,'n>) =
@@ -1033,14 +1032,13 @@ module Raft =
 
       match result with
         | Right resp ->
-          let! state = get
           // this is not the first AppendEntry we're reeiving
           if msg.PrevLogIdx > 0UL then
-            match getEntryAt msg.PrevLogIdx state with
-              | Some entry ->
-                return! checkAndProcess entry nid msg resp
-              | None ->
-                do! log state.Node (logLogNotFound msg)
+            let! entry = getEntryAtM msg.PrevLogIdx
+            match entry with
+              | Some log -> return! checkAndProcess log nid msg resp
+              | _        ->
+                do! log (logLogNotFound msg)
                 return resp
           else
             return! processEntry nid msg resp
@@ -1186,12 +1184,8 @@ module Raft =
 
   let rec receiveAppendEntriesResponse (nid : NodeId) resp =
     raft {
-      let! state = get
-
-      let msg =
-        sprintf "appendentries response [status: %s]"
-          (if resp.Success then "SUCCESS" else "fail")
-      do! log state.Node msg
+      do! log <| sprintf "appendentries response [status: %s]"
+                   (if resp.Success then "SUCCESS" else "fail")
 
       let! node = getNodeM nid
       match node with
@@ -1416,13 +1410,10 @@ module Raft =
       return! maybeUnexpectedConfigChange entry
       return! failNotLeader ()
 
-      let msg =
-        sprintf "received entry t:%d id: %s idx: %d"
-          state.CurrentTerm
-          ((LogEntry.id entry).ToString() )
-          (Log.index state.Log + 1UL)
-
-      do! log state.Node msg
+      do! log <| sprintf "received entry t:%d id: %s idx: %d"
+                  state.CurrentTerm
+                  ((LogEntry.id entry).ToString() )
+                  (Log.index state.Log + 1UL)
 
       let! term = currentTermM ()
 
@@ -1482,7 +1473,7 @@ module Raft =
         let! result = getEntriesUntilM logIdx
         match result with
           | Some entries ->
-            do! log state.Node "Applying Entries"
+            do! log "applying entries"
             let! cbs = read
 
             // Apply log chain in the order it arrived
@@ -1695,7 +1686,7 @@ module Raft =
   let becomeLeader _ =
     raft {
       let! state = get
-      do! log state.Node "becoming leader"
+      do! log "becoming leader"
       let nid = currentIndex state + 1UL
       do! setStateM Leader
       do! maybeSetIndex state.Node.Id nid 0UL
@@ -1718,7 +1709,7 @@ module Raft =
             (if vote.Granted then "granted" else "not granted")
 
         let! state = get
-        do! log state.Node msg
+        do! log msg
 
         /// The term must not be bigger than current raft term,
         /// otherwise set term to vote term become follower.
@@ -1820,7 +1811,7 @@ module Raft =
         let! self = getSelfM ()
         let! peers = logicalPeersM ()
 
-        do! log self "requesting all votes"
+        do! log "requesting all votes"
 
         let requests = ref Array.empty
 
@@ -1892,7 +1883,7 @@ module Raft =
           return (false, LogIncomplete)
         }
         |> runValidation
-      do! log state.Node (sprintf "grant vote result: %b" (fst result))
+      do! log (sprintf "grant vote result: %b" (fst result))
       return result
     }
 
@@ -1945,8 +1936,7 @@ module Raft =
         | Some _ ->
           do! maybeResetFollower vote
           let! result = processVoteRequest vote
-          let! state = get
-          do! log state.Node (sprintf "node requested vote: %A granted: true" nid)
+          do! log (sprintf "node requested vote: %A granted: true" nid)
           return result
         | _ ->
           let! term = currentTermM ()
@@ -1970,7 +1960,7 @@ module Raft =
   let becomeCandidate _ =
     raft {
       let! state = get
-      do! log state.Node "Becoming candidate."
+      do! log "becoming candidate"
       do! setTermM (state.CurrentTerm + 1UL)
       do! resetVotesM ()
       do! voteForMyself ()
@@ -1990,13 +1980,11 @@ module Raft =
   let startElection _ =
     raft {
       let! state = get
-      let msg =
-        sprintf "election starting: %d %d, term: %d ci: %d"
-          state.ElectionTimeout
-          state.TimeoutElapsed
-          state.CurrentTerm
-          (currentIndex state)
-      do! log state.Node msg
+      do! log <| sprintf "election starting: %d %d, term: %d ci: %d"
+                  state.ElectionTimeout
+                  state.TimeoutElapsed
+                  state.CurrentTerm
+                  (currentIndex state)
       do! becomeCandidate ()
     }
 
@@ -2009,35 +1997,21 @@ module Raft =
   let private checkIsLeader state =
     raft {
       match state with
-        | Leader ->
-          let! timedout = requestTimedOutM ()
-          if timedout then
-            do! sendAllAppendEntriesM ()
-        | _ ->
-          let! num = numNodesM ()
-          let! timedout = electionTimedOutM ()
+      | Leader ->
+        let! timedout = requestTimedOutM ()
+        if timedout then
+          do! sendAllAppendEntriesM ()
+      | _ ->
+        let! num = numNodesM ()
+        let! timedout = electionTimedOutM ()
 
-          if timedout && num > 1UL then
-
-            let! state = get
-
-            do! "-------------------------------------------------------------------------"
-                |> log state.Node
-            do! sprintf "ELECTION TIMED OUT"
-                |> log state.Node
-            do! sprintf "elapsed: %A req-timeout: %A elec-timeout: %A" state.TimeoutElapsed state.RequestTimeout state.ElectionTimeout
-                |> log state.Node
-
-            do! startElection ()
+        if timedout && num > 1UL then
+          do! startElection ()
     }
 
   let periodic (elapsed : Long) =
     raft {
       let! state = get
-
-      // do! sprintf "elapsed: %A req-timeout: %A elec-timeout: %A" state.TimeoutElapsed state.RequestTimeout state.ElectionTimeout
-      //     |> log state.Node
-
       do! setTimeoutElapsedM (state.TimeoutElapsed + elapsed)
       do! checkIsLeader state.State
       let! coi = commitIndexM ()
