@@ -246,7 +246,7 @@ let performRequest (request: RaftRequest) (node: Node<IrisNode>) (state: AppStat
     (response, connections)
   with
     | :? TimeoutException ->
-      printfn "Operation timed"
+      printfn "Operation timed out"
       None, disposeSocket node connections
     | exn ->
       printfn "performRequest exception: %s" exn.Message

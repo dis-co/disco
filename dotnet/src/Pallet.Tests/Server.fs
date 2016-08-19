@@ -2436,7 +2436,7 @@ module Server =
         do! periodic 10UL
 
         let! committed = responseCommitted result
-
+        
         do! expectM "Should have committed entry" true (konst committed)
         do! expectM "Should have called callback" 1 (konst !count)
       }

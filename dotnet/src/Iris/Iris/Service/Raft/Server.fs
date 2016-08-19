@@ -255,7 +255,9 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
           printfn "[APPEND REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
           None
 
-    member self.ApplyLog sm = failwith "FIXME: ApplyLog"
+    member self.ApplyLog sm =
+      sprintf "Applying state machine command (%A)" sm
+      |> warn
 
     //  _   _           _
     // | \ | | ___   __| | ___  ___
@@ -265,19 +267,19 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
     member self.NodeAdded node   =
       sprintf "Node was added. %s" (string node.Id)
-      |> self.Log
+      |> warn
 
     member self.NodeUpdated node =
       sprintf "Node was updated. %s" (string node.Id)
-      |> self.Log
+      |> warn
 
     member self.NodeRemoved node =
       sprintf "Node was removed. %s" (string node.Id)
-      |> self.Log
+      |> warn
 
     member self.Configured nodes =
       sprintf "Cluster configuration done!"
-      |> self.Log
+      |> warn
 
     member self.PrepareSnapshot raft = failwith "FIXME: PrepareSnapshot"
     member self.RetrieveSnapshot ()  = failwith "FIXME: RetrieveSnapshot"
@@ -394,7 +396,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
       self.Log "FIXME: HasSufficientLogs"
 
     member self.LogMsg node str =
-      if options.Debug then
+      if self.State.Options.Debug then
         let now = DateTime.Now
         let tid = Thread.CurrentThread.ManagedThreadId
         printfn "[%d / %s / %s] %s" (unixTime now) (String.Format("{0,2}", string tid)) (string node.Id) str
