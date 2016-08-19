@@ -1467,7 +1467,9 @@ module Raft =
       Array.iter applyChange changes
     | Configuration(_,_,_,nodes,_) -> cbs.Configured nodes
     | LogEntry(_,_,_,data,_)       -> cbs.ApplyLog data
-    | Snapshot(_,_,_,_,_,_,data)   -> cbs.ApplyLog data
+    | Snapshot(_,_,_,_,_,_,data) as snapshot  ->
+      cbs.PersistSnapshot snapshot
+      cbs.ApplyLog data
 
   let applyEntries _ =
     raft {
@@ -1495,7 +1497,8 @@ module Raft =
                       let state = handleConfigChange config state
                       applyEntry cbs config
                       (state, Some config)
-                    | _ ->
+                    | entry ->
+                      applyEntry cbs entry
                       (state, current))
                 (state, state.ConfigChangeEntry)
                 entries

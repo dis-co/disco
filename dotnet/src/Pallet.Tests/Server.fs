@@ -2415,3 +2415,30 @@ module Server =
       }
       |> runWithDefaults
       |> noError
+
+  let should_call_apply_entries_callback =
+    testCase "call apply entries callback" <| fun _ ->
+      let count = ref 0
+
+      let cbs =
+        { mkcbs (ref ()) with ApplyLog = fun _ -> count := !count + 1 }
+        :> IRaftCallbacks<_,_>
+
+      raft {
+        do! setTermM 1UL
+        do! becomeLeader ()
+
+        let! term = currentTermM ()
+
+        let log = Log.make term ()
+        let! result = receiveEntry log
+
+        do! periodic 10UL
+
+        let! committed = responseCommitted result
+
+        do! expectM "Should have committed entry" true (konst committed)
+        do! expectM "Should have called callback" 1 (konst !count)
+      }
+      |> runWithCBS cbs
+      |> noError

@@ -172,6 +172,8 @@ module Tests =
         shouldgrantvote_vote_term_too_small
 
         should_respond_to_appendentries_with_correct_next_idx
+        should_call_apply_entries_callback
+
         ///////////////////////////////////////////////////
         //  ____                            _            //
         // / ___|  ___ ___ _ __   __ _ _ __(_) ___  ___  //
