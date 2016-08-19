@@ -58,6 +58,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
   let cbs = this :> IRaftCallbacks<_,_>
   let appState = mkState context options |> newTVar
+  let connections = newTVar Map.empty
 
   //                           _
   //  _ __ ___   ___ _ __ ___ | |__   ___ _ __ ___
@@ -115,7 +116,9 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
         // cancel the running async tasks
         cancelToken periodictoken
 
-        resetConnections appState |> atomically
+        readTVar connections
+        |> atomically
+        |> resetConnections
 
         let state = readTVar appState |> atomically
         saveRaft state.Raft database
@@ -142,18 +145,6 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
   member self.Append (entry: StateMachine) =
     appendEntry entry appState cbs
-
-  member self.EntryCommitted resp =
-    stm {
-      let! state = readTVar appState
-
-      let committed =
-        match responseCommitted resp |> runRaft state.Raft cbs with
-        | Right (committed, _) -> committed
-        | _                    -> false
-
-      return committed
-    } |> atomically
 
   member self.ForceTimeout() =
     forceElection appState cbs |> atomically
@@ -190,7 +181,11 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
       self.Log <| sprintf "SendRequestVote to %A" (nodeUri node.Data)
 
-      let response, state = performRequest request node state
+      let conns = readTVar connections |> atomically
+
+      let response, conns = performRequest request node state conns
+
+      writeTVar connections conns |> atomically
 
       match response with
         | Some message ->
@@ -212,9 +207,12 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
       |> self.Log
 
       let state = self.State
+      let conns = readTVar connections |> atomically
       let request = AppendEntries(state.Raft.Node.Id, request)
 
-      let response, state = performRequest request node state
+      let response, conns = performRequest request node state conns
+
+      writeTVar connections conns |> atomically
 
       match response with
         | Some message ->
@@ -237,11 +235,15 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
     member self.SendInstallSnapshot node is =
       let state = self.State
+      let conns = readTVar connections |> atomically
+
       let request = InstallSnapshot(state.Raft.Node.Id, is)
 
       self.Log <| sprintf "SendInstallSnapshot to %A" (nodeUri node.Data)
 
-      let response, state = performRequest request node state
+      let response, conns = performRequest request node state conns
+
+      writeTVar connections conns |> atomically
 
       match response with
         | Some message ->
@@ -253,7 +255,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
           printfn "[APPEND REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
           None
 
-    member self.ApplyLog sm      = failwith "FIXME: ApplyLog"
+    member self.ApplyLog sm = failwith "FIXME: ApplyLog"
 
     //  _   _           _
     // | \ | | ___   __| | ___  ___
@@ -262,16 +264,20 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
     // |_| \_|\___/ \__,_|\___||___/
 
     member self.NodeAdded node   =
-      warn <| sprintf "Node was added. %s" (string node.Id)
+      sprintf "Node was added. %s" (string node.Id)
+      |> self.Log
 
     member self.NodeUpdated node =
-      warn <| sprintf "Node was updated. %s" (string node.Id)
+      sprintf "Node was updated. %s" (string node.Id)
+      |> self.Log
 
     member self.NodeRemoved node =
-      warn <| sprintf "Node was removed. %s" (string node.Id)
+      sprintf "Node was removed. %s" (string node.Id)
+      |> self.Log
 
     member self.Configured nodes =
-      warn <| sprintf "Cluster configuration done!"
+      sprintf "Cluster configuration done!"
+      |> self.Log
 
     member self.PrepareSnapshot raft = failwith "FIXME: PrepareSnapshot"
     member self.RetrieveSnapshot ()  = failwith "FIXME: RetrieveSnapshot"
@@ -396,7 +402,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   override self.ToString() =
     sprintf "Database:%s\nConnections:%s\nNodes:%s\nRaft:%s\nLog:%s"
       (dumpDb database |> indent 4)
-      (string self.State.Connections |> indent 4)
+      (readTVar connections |> atomically |> string |> indent 4)
       (Map.fold (fun m _ t -> sprintf "%s\n%s" m (string t)) "" self.State.Raft.Peers |> indent 4)
       (self.State.Raft.ToString() |> indent 4)
       (string self.State.Raft.Log |> indent 4)

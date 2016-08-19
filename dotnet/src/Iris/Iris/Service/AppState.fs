@@ -19,7 +19,6 @@ type AppState =
   ; Sessions:    BrowserSession list
   ; Projects:    Map<ProjectId, Project>
   ; Peers:       Map<MemberId, string>
-  ; Connections: Map<MemberId, Zmq.Req>
   ; Context:     ZeroMQ.ZContext
   ; Raft:        Raft
   ; Options:     RaftOptions

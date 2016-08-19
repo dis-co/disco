@@ -387,14 +387,13 @@ let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks<_,_>) =
     let response =
       match request with
       | Some message ->
-        printfn "request: %A" message
         "server loop: computing response" |> log cbs state
         let response, state = handleRequest message state cbs
         writeTVar appState state |> atomically
         response
       | None ->
         "server loop: could not decode response" |> log cbs state
-        ErrorResponse <| OtherError "Unable to decipher request"
+        ErrorResponse (OtherError "Unable to decipher request")
 
     response |> encode
 
@@ -436,7 +435,7 @@ let tryJoin (ip: IpAddress) (port: uint32) cbs (state: AppState) =
       |> log cbs state
 
       let request = HandShake(state.Raft.Node)
-      let result = rawRequest request client state
+      let result = rawRequest request client
 
       sprintf "TRYJOIN RESPONSE: %A" result
       |> log cbs state
@@ -491,7 +490,7 @@ let tryLeave (appState: TVar<AppState>) cbs : bool option =
     if retry < int state.Options.MaxRetries then
       let client = mkClientSocket uri state
       let request = HandWaive(state.Raft.Node)
-      let result = rawRequest request client state
+      let result = rawRequest request client
 
       dispose client
 
@@ -555,24 +554,8 @@ let prepareSnapshot appState =
     return snapshot
   }
 
-let resetConnections appState =
-  let closeSocket state (mid: MemberId) (sock: Req) =
-    let nodeinfo = List.tryFind (fun c -> c.MemberId = mid) state.Clients
-    match nodeinfo with
-      | Some info ->
-        try
-          dispose sock
-        with
-          | exn ->
-            printfn "%s.\nCould not close socket for %A" exn.Message (string info.MemberId)
-      | _ -> ()
-
-  stm {
-    let! state = readTVar appState
-    // disconnect all cached sockets
-    Map.iter (closeSocket state) state.Connections
-    do! writeTVar appState { state with Connections = Map.empty }
-  }
+let resetConnections (connections: Map<MemberId,Zmq.Req>) =
+  Map.iter (fun _ sock -> dispose sock) connections
 
 let initialize appState cbs =
   let state = readTVar appState |> atomically

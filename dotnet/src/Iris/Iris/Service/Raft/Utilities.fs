@@ -83,7 +83,6 @@ let mkState (context: ZeroMQ.ZContext) (options: RaftOptions) : AppState =
   ; Sessions    = []
   ; Projects    = Map.empty
   ; Peers       = Map.empty
-  ; Connections = Map.empty
   ; Raft        = mkRaft options
   ; Context     = context
   ; Options     = options
@@ -187,25 +186,13 @@ let mkClientSocket (uri: string) (state: AppState) =
 /// - appState: current TVar<AppState>
 ///
 /// Returns: Socket
-let getSocket (node: Node) (state: AppState) =
-  match Map.tryFind node.Data.MemberId state.Connections with
-  | Some client ->
-    Thread.CurrentThread.ManagedThreadId
-    |> printfn "[Raft: %A] Found Socket for %s on thread %d" state.Raft.Node.Id (nodeUri node.Data)
-
-    (client, state)
+let getSocket (node: Node) (state: AppState) (connections: Map<MemberId,Zmq.Req>) =
+  match Map.tryFind node.Data.MemberId connections with
+  | Some client -> (client, connections)
   | _  ->
     let addr = nodeUri node.Data
     let socket = mkClientSocket addr state
-
-    Thread.CurrentThread.ManagedThreadId
-    |> printfn "[Raft: %A] Created Socket for %s on thread %d" state.Raft.Node.Id addr
-
-    let newstate =
-      { state with
-          Connections = Map.add node.Data.MemberId socket state.Connections }
-
-    (socket, newstate)
+    (socket, Map.add node.Data.MemberId socket connections)
 
 /// ## Dispose of a client socket
 ///
@@ -216,17 +203,12 @@ let getSocket (node: Node) (state: AppState) =
 /// - appState: AppState TVar
 ///
 /// Returns: unit
-let disposeSocket (node: Node) state =
-  match Map.tryFind node.Data.MemberId state.Connections with
+let disposeSocket (node: Node) (connections: Map<MemberId,Zmq.Req>) =
+  match Map.tryFind node.Data.MemberId connections with
   | Some client ->
-
-    Thread.CurrentThread.ManagedThreadId
-    |> printfn "[Raft: %A] Disposing Socket for %s on thread %d" state.Raft.Node.Id (nodeUri node.Data)
-
     dispose client
-
-    { state with Connections = Map.remove node.Data.MemberId state.Connections }
-  | _  -> state
+    Map.remove node.Data.MemberId connections
+  | _  -> connections
 
 /// ## Perform a raw request cycle on a request socket
 ///
@@ -238,7 +220,7 @@ let disposeSocket (node: Node) state =
 /// - state: AppState to perform request against
 ///
 /// Returns: RaftResponse option
-let rawRequest (request: RaftRequest) (client: Req) (state: AppState)=
+let rawRequest (request: RaftRequest) (client: Req) =
   request
   |> encode
   |> client.Request
@@ -256,15 +238,16 @@ let rawRequest (request: RaftRequest) (client: Req) (state: AppState)=
 /// - appState: application state TVar
 ///
 /// Returns: RaftResponse option
-let performRequest (request: RaftRequest) (node: Node<IrisNode>) (state: AppState) =
-    let client, state = getSocket node state
-    try
-      client
-      |> flip (rawRequest request) state
-      |> fun response ->
-        (response, state)
-    with
-      | :? TimeoutException ->
-        let state = disposeSocket node state
-        None, state
-      | exn -> handleException "receiveReply" exn
+let performRequest (request: RaftRequest) (node: Node<IrisNode>) (state: AppState) (connections: Map<MemberId,Zmq.Req>) =
+  let client, connections = getSocket node state connections
+
+  try
+    let response = rawRequest request client
+    (response, connections)
+  with
+    | :? TimeoutException ->
+      printfn "Operation timed"
+      None, disposeSocket node connections
+    | exn ->
+      printfn "performRequest exception: %s" exn.Message
+      None, disposeSocket node connections
