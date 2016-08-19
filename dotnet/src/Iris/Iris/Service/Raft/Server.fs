@@ -257,7 +257,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
     member self.ApplyLog sm =
       sprintf "Applying state machine command (%A)" sm
-      |> warn
+      |> self.Log
 
     //  _   _           _
     // | \ | | ___   __| | ___  ___
@@ -267,19 +267,19 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
     member self.NodeAdded node   =
       sprintf "Node was added. %s" (string node.Id)
-      |> warn
+      |> self.Log
 
     member self.NodeUpdated node =
       sprintf "Node was updated. %s" (string node.Id)
-      |> warn
+      |> self.Log
 
     member self.NodeRemoved node =
       sprintf "Node was removed. %s" (string node.Id)
-      |> warn
+      |> self.Log
 
     member self.Configured nodes =
       sprintf "Cluster configuration done!"
-      |> warn
+      |> self.Log
 
     member self.PrepareSnapshot raft = failwith "FIXME: PrepareSnapshot"
     member self.RetrieveSnapshot ()  = failwith "FIXME: RetrieveSnapshot"
