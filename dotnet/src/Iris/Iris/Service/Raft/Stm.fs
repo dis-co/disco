@@ -316,27 +316,34 @@ let handleHandwaive node state cbs =
   else
     doRedirect state, state
 
-let appendEntry entry appState cbs =
-  stm {
-    let! state = readTVar appState
+let appendEntry (cmd: StateMachine) appState cbs =
+  let state = readTVar appState |> atomically
 
-    let result =
-      raft {
-        let! result = receiveEntry entry
-        return result
-      }
-      |> runRaft state.Raft cbs
+  let result =
+    raft {
+      let entry = Log.make (currentTerm state.Raft) cmd
+      let! result = receiveEntry entry
+      let run = ref true
 
-    let (response, newstate) =
-      match result with
-        | Right  (response, newstate) -> (Some response, newstate)
-        | Middle (_, newstate)        -> (None, newstate)
-        | Left   (err, newstate)      -> (None, newstate)
+      while !run do
+        let! committed = responseCommitted result
+        if committed then
+          run := false
 
-    do! writeTVar appState (updateRaft newstate state)
+      return result
+    }
+    |> runRaft state.Raft cbs
 
-    return response
-  }
+  let (response, newstate) =
+    match result with
+      | Right  (result, newstate) -> (Some result, newstate)
+      | Middle (_,      newstate) -> (None,        newstate)
+      | Left   (err,    newstate) -> failwithf "Raft Error: %A" err
+
+  writeTVar appState (updateRaft newstate state)
+  |> atomically
+
+  response
 
 let handleInstallSnapshot node snapshot state cbs =
   // let snapshot = createSnapshot () |> runRaft raft' cbs

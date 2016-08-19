@@ -84,7 +84,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
       initialize appState cbs
 
-      let tkn = new CancellationTokenSource() // (startPeriodic timeout appState cbs)
+      let tkn = startPeriodic timeout appState cbs
       periodictoken := Some tkn
 
       serverState := Running
@@ -140,9 +140,8 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   member self.State
     with get () = atomically (readTVar appState)
 
-  member self.Append entry =
+  member self.Append (entry: StateMachine) =
     appendEntry entry appState cbs
-    |> atomically
 
   member self.EntryCommitted resp =
     stm {
