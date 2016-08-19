@@ -38,16 +38,17 @@ let parseOptions args =
   try
     let opts = parser.Parse args
     validateOptions opts
-    { RaftId     = opts.GetResult    <@ RaftNodeId @> |> trim
-    ; IpAddr     = opts.GetResult    <@ Bind       @> |> trim
-    ; WebPort    = opts.GetResult    <@ WebPort    @> |> int
-    ; RaftPort   = opts.GetResult    <@ RaftPort   @> |> int
-    ; Debug      = opts.Contains     <@ Debug      @>
-    ; Start      = opts.Contains     <@ Start      @>
-    ; LeaderIp   = opts.TryGetResult <@ LeaderIp   @>
-    ; LeaderPort = opts.TryGetResult <@ LeaderPort @>
-    ; DataDir     = opts.GetResult   <@ DataDir    @>
-    ; MaxRetries = 5u }
+    { RaftId           = opts.GetResult    <@ RaftNodeId @> |> trim
+    ; IpAddr           = opts.GetResult    <@ Bind       @> |> trim
+    ; WebPort          = opts.GetResult    <@ WebPort    @> |> int
+    ; RaftPort         = opts.GetResult    <@ RaftPort   @> |> int
+    ; Debug            = opts.Contains     <@ Debug      @>
+    ; Start            = opts.Contains     <@ Start      @>
+    ; LeaderIp         = opts.TryGetResult <@ LeaderIp   @>
+    ; LeaderPort       = opts.TryGetResult <@ LeaderPort @>
+    ; DataDir          = opts.GetResult    <@ DataDir    @>
+    ; PeriodicInterval = 10UL
+    ; MaxRetries       = 5u }
   with
     | ex ->
       printfn "Error: %s" ex.Message
@@ -118,6 +119,16 @@ let (|Append|_|) (str: string) =
     Some <| trimmed.Substring(6).Trim()
   else None
 
+let (|Interval|_|) (str: string) =
+  let trimmed = str.Trim()
+  match trimmed.Split(' ') with
+  | [| "interval"; x |] ->
+    try
+      UInt64.Parse x |> Some
+    with
+      | _ -> None
+  | _ -> None
+
 let (|Debug|_|) (str: string) =
   let parsed = str.Trim().Split(' ')
   match parsed with
@@ -154,9 +165,10 @@ let consoleLoop (context: RaftServer) =
     printf "~> "
     let input = Console.ReadLine()
     match input with
+      | Debug opt   -> context.Options <- { context.Options with Debug = opt }
+      | Interval  i -> context.Options <- { context.Options with PeriodicInterval = i }
       | Exit        -> context.Stop(); kontinue := false
       | Periodic    -> context.Periodic()
-      | Debug opt   -> context.Options <- { context.Options with Debug = opt }
       | Nodes       -> Map.iter (fun _ a -> printfn "Node: %A" a) context.State.Peers
       | Append ety  ->
         match tryAppendEntry context ety with

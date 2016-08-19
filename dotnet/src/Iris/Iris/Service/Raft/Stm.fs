@@ -22,25 +22,6 @@ open Db
 let log (cbs: IRaftCallbacks<_,_>) (state: AppState) (msg: string) =
   cbs.LogMsg state.Raft.Node msg
 
-/// ## Run Raft periodic functions with AppState
-///
-/// Runs Raft's periodic function with the current AppState.
-///
-/// ### Signature:
-/// - elapsed: seconds elapsed
-/// - appState: AppState TVar
-/// - cbs: Raft callbacks
-///
-/// Returns: unit
-let periodicR elapsed appState cbs =
-  let state = readTVar appState |> atomically
-
-  periodic elapsed
-  |> evalRaft state.Raft cbs
-  |> flip updateRaft state
-  |> writeTVar appState
-  |> atomically
-
 /// ## Add a new node to the Raft cluster
 ///
 /// Adds a new node the Raft cluster. This is done in the 2-phase commit model described in the
@@ -401,6 +382,10 @@ let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks<_,_>) =
   server.Start()
   server
 
+let periodicR (state: AppState) cbs =
+  periodic state.Options.PeriodicInterval
+  |> evalRaft state.Raft cbs
+  |> flip updateRaft state
 
 /// ## startPeriodic
 ///
@@ -413,13 +398,18 @@ let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks<_,_>) =
 /// - cbs: Raft Callbacks
 ///
 /// Returns: CancellationTokenSource
-let startPeriodic timeout appState cbs =
+let startPeriodic appState cbs =
   let token = new CancellationTokenSource()
   let rec proc () =
     async {
-      periodicR timeout appState cbs    // kick the machine
-      Thread.Sleep(int timeout)          // sleep for 100ms
-      return! proc ()                   // recurse
+      let state = readTVar appState |> atomically
+
+      periodicR state cbs
+      |> writeTVar appState
+      |> atomically
+
+      Thread.Sleep(int state.Options.PeriodicInterval) // sleep for 100ms
+      return! proc ()                                  // recurse
     }
   Async.Start(proc(), token.Token)
   token                               // return the cancellation token source so this loop can be

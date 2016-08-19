@@ -29,16 +29,17 @@ module Main =
 
   let createConfig rid idx start lip lpidx  =
     let portbase = 8000
-    { RaftId     = rid
-    ; Debug      = false
-    ; IpAddr     = "127.0.0.1"
-    ; WebPort    = (portbase - 1000) + idx
-    ; RaftPort   = portbase + idx
-    ; Start      = start
-    ; LeaderIp   = lip
-    ; LeaderPort = Option.map (fun n -> uint32 portbase + n) lpidx
-    ; MaxRetries = 5u
-    ; DataDir    = createGuid() |> string |> mkTmpPath
+    { RaftId           = rid
+    ; Debug            = false
+    ; IpAddr           = "127.0.0.1"
+    ; WebPort          = (portbase - 1000) + idx
+    ; RaftPort         = portbase + idx
+    ; Start            = start
+    ; LeaderIp         = lip
+    ; LeaderPort       = Option.map (fun n -> uint32 portbase + n) lpidx
+    ; MaxRetries       = 5u
+    ; DataDir          = createGuid() |> string |> mkTmpPath
+    ; PeriodicInterval = 50UL
     }
 
   let createFollower (rid: string) (portidx: int) lid lpidx =

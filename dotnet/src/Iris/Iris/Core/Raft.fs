@@ -23,6 +23,7 @@ type RaftOptions =
   ; LeaderIp         : string option
   ; LeaderPort       : uint32 option
   ; MaxRetries       : uint32
+  ; PeriodicInterval : uint64
   ; DataDir          : FilePath
   }
 

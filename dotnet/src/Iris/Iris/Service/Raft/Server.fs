@@ -39,8 +39,6 @@ module RaftServerStateHelpers =
 // |_| \_\__,_|_|  \__| |____/ \___|_|    \_/ \___|_|
 
 type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
-  let timeout = 10UL
-
   let database =
     match openDB options.DataDir with
       | Some db -> db
@@ -67,7 +65,11 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   // |_| |_| |_|\___|_| |_| |_|_.__/ \___|_|  |___/
 
   member self.Periodic() =
-    periodicR 500UL appState cbs
+    warn "remove this method when not needed anymore"
+    let state = readTVar appState |> atomically
+    periodicR state cbs
+    |> writeTVar appState
+    |> atomically
 
   /// ## Start the Raft engine
   ///
@@ -85,7 +87,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
       initialize appState cbs
 
-      let tkn = startPeriodic timeout appState cbs
+      let tkn = startPeriodic appState cbs
       periodictoken := Some tkn
 
       serverState := Running
