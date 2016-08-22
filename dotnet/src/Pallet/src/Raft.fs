@@ -214,9 +214,9 @@ module Raft =
     ; CommitIndex       = 0UL
     ; LastAppliedIdx    = 0UL
     ; TimeoutElapsed    = 0UL
-    ; ElectionTimeout   = 6000UL // msec
-    ; RequestTimeout    = 1000UL // msec
-    ; MaxLogDepth       = 50UL   // items
+    ; ElectionTimeout   = 1500UL         // msec
+    ; RequestTimeout    = 400UL          // msec
+    ; MaxLogDepth       = 50UL           // items
     ; ConfigChangeEntry = None
     }
 
@@ -906,10 +906,9 @@ module Raft =
       // 2) Else, if the current node's term value is lower than the requests
       // term, we take become follower and set our own term to higher value.
       elif currentTerm state < msg.Term then
-        let resp' = { resp with Term = msg.Term } // set response term
         do! setTermM msg.Term
         do! becomeFollower ()
-        return Right resp'
+        return Right { resp with Term = msg.Term }
       // 3) Else, finally, if the msg's Term is lower than our own we reject the
       // the request entirely.
       elif msg.Term < currentTerm state then
@@ -973,19 +972,6 @@ module Raft =
         do! setCommitIndexM newIndex
     }
 
-  let private logLogNotFound msg =
-    sprintf "AE no log at prev_idx %d" msg.PrevLogIdx
-
-  let private _logPrevLogTermMismatch msg =
-    sprintf "AE term mismatch at PrevLogIdx %d" msg.PrevLogIdx
-
-  let private logPrevTermMismatch term msg idx =
-    sprintf "AE term doesn't match prev_term (ie. %d vs %d) ci:%d pli:%d"
-      term
-      msg.PrevLogTerm
-      idx
-      msg.PrevLogIdx
-
   let private processEntry nid msg resp =
     raft {
       do! handleConflicts msg
@@ -1003,12 +989,19 @@ module Raft =
       let! current = currentIndexM ()
 
       if current < msg.PrevLogIdx then
-        do! log (_logPrevLogTermMismatch msg)
+
+        do! log <| sprintf "receiveAppendEntries: term mismatch at PrevLogIdx %d"
+                    msg.PrevLogIdx
+
         return resp
       else
         let term = LogEntry.term entry
         if term <> msg.PrevLogTerm then
-          do! log (logPrevTermMismatch term msg current)
+          do! log <| sprintf "AE term doesn't match prev_term (ie. %d vs %d) ci:%d pli:%d"
+                      term
+                      msg.PrevLogTerm
+                      current
+                      msg.PrevLogIdx
           let response = { resp with CurrentIndex = msg.PrevLogIdx - 1UL }
           do! removeEntryM msg.PrevLogIdx
           return response
@@ -1016,24 +1009,22 @@ module Raft =
           return! processEntry nid msg resp
     }
 
-  let private logAppendEntries node msg =
-    raft {
-      if Option.isSome msg.Entries then
-        let! current = currentIndexM ()
-        do! log <| sprintf "recvd appendentries from: %A, t:%d ci:%d lc:%d pli:%d plt:%d #%d"
-                     node
-                     msg.Term
-                     current
-                     msg.LeaderCommit
-                     msg.PrevLogIdx
-                     msg.PrevLogTerm
-                     (Option.get msg.Entries |> LogEntry.depth)
-    }
-
   let receiveAppendEntries (nid: NodeId option) (msg: AppendEntries<'d,'n>) =
     raft {
       do! setTimeoutElapsedM 0UL      // reset timer, so we don't start an election
-      do! logAppendEntries nid msg    // let the world know
+
+      // log this if any entries are to be processed
+      if Option.isSome msg.Entries then
+        let! current = currentIndexM ()
+        do! log <| sprintf "receiveAppendEntries: node %s: term:%d ci:%d lc-idx:%d pli:%d plt:%d #%d"
+               (string nid)
+               msg.Term
+               current
+               msg.LeaderCommit
+               msg.PrevLogIdx
+               msg.PrevLogTerm
+               (Option.get msg.Entries |> LogEntry.depth)    // let the world know
+
       let! result = makeResponse msg  // check terms et al match, fail otherwise
 
       match result with
@@ -1044,7 +1035,7 @@ module Raft =
             match entry with
               | Some log -> return! checkAndProcess log nid msg resp
               | _        ->
-                do! log (logLogNotFound msg)
+                do! log <| sprintf "receiveAppendEntries: no log at prev_idx %d" msg.PrevLogIdx
                 return resp
           else
             return! processEntry nid msg resp
@@ -1205,8 +1196,6 @@ module Raft =
             return! handleUnsuccessful resp peer
             do! updateNodeIndices resp peer
             do! updateCommitIndex resp
-
-          // warn "should I send remaining entries now or is this obsolete?"
 
           // let! response = sendRemainingEntries peer.Id
           // match response with
@@ -1463,7 +1452,8 @@ module Raft =
       let! state = get
       if not (isLeader state) && Log.containsEntry Log.isConfiguration entries then
         for kv in state.Peers do
-          do! updateNodeM { kv.Value with State = Running }
+          if kv.Value.State <> Running then
+            do! updateNodeM { kv.Value with State = Running; Voting = true }
     }
 
   let applyEntry (cbs: IRaftCallbacks<_,_>) = function
@@ -1489,8 +1479,9 @@ module Raft =
         let! result = getEntriesUntilM logIdx
         match result with
           | Some entries ->
-            do! log "applying entries"
             let! cbs = read
+
+            do! log <| sprintf "applying %d entries to state machine" (Log.depth entries)
 
             // Apply log chain in the order it arrived
             let state, change =
@@ -1901,7 +1892,15 @@ module Raft =
           return (false, LogIncomplete)
         }
         |> runValidation
-      do! log (sprintf "grant vote result: %b" (fst result))
+
+      if fst result then
+        do! log <| sprintf "granted vote to %s"
+                    (string vote.Candidate.Id)
+      else
+        do! log <| sprintf "did not grant vote to %s. reason: %A"
+                    (string vote.Candidate.Id)
+                    (snd result)
+
       return result
     }
 
@@ -1939,6 +1938,7 @@ module Raft =
                      Granted = true
                      Reason  = None }
           else
+            do! log "vote request failed: NotVotingState"
             return! failM NotVotingState
         | (false, err) ->
           let! term = currentTermM ()
@@ -1954,7 +1954,11 @@ module Raft =
         | Some _ ->
           do! maybeResetFollower vote
           let! result = processVoteRequest vote
-          do! log (sprintf "node requested vote: %A granted: true" nid)
+
+          do! log <| sprintf "node %s requested vote. granted: %b"
+                      (string nid)
+                      result.Granted
+
           return result
         | _ ->
           let! term = currentTermM ()
@@ -1984,7 +1988,7 @@ module Raft =
       do! voteForMyself ()
       do! setLeaderM None
       do! setStateM Candidate
-      do! setTimeoutElapsedM (uint64(_rand.Next()) % state.ElectionTimeout)
+      do! setTimeoutElapsedM (uint64(_rand.Next(15, int state.ElectionTimeout)))
       do! requestAllVotes ()
     }
 
@@ -1998,7 +2002,7 @@ module Raft =
   let startElection _ =
     raft {
       let! state = get
-      do! log <| sprintf "election starting: %d %d, term: %d ci: %d"
+      do! log <| sprintf "starting election: elec-timeout: %d elapsed: %d, term: %d ci: %d"
                   state.ElectionTimeout
                   state.TimeoutElapsed
                   state.CurrentTerm

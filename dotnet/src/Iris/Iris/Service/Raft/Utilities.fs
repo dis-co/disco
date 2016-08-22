@@ -68,6 +68,7 @@ let mkRaft (options: RaftOptions) =
     | Some raft -> raft
     | _         -> createRaft options
 
+
 /// ## Create an AppState value
 ///
 /// Given the `RaftOptions`, create or load data and construct a new `AppState` for the

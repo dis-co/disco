@@ -193,21 +193,10 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
         | Some message ->
           match message with
             | RequestVoteResponse(sender, vote) -> Some vote
-            | resp ->
-              failwithf "Expected VoteResponse but got: %A" resp
-        | _ ->
-          printfn "[VOTE REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
-          None
+            | resp -> failwithf "Expected VoteResponse but got: %A" resp
+        | _ -> None
 
     member self.SendAppendEntries (node: Node) (request: AppendEntries) =
-      sprintf "AppendEntries request: (term %A) (leader commit: %A) (prev idx: %A) (prev term: %A) (entries: %s)"
-        request.Term
-        request.LeaderCommit
-        request.PrevLogIdx
-        request.PrevLogTerm
-        (if Option.isSome request.Entries then "LOG" else "<empty>")
-      |> self.Log
-
       let state = self.State
       let conns = readTVar connections |> atomically
       let request = AppendEntries(state.Raft.Node.Id, request)
@@ -219,21 +208,9 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
       match response with
         | Some message ->
           match message with
-            | AppendEntriesResponse(sender, ar) ->
-
-              sprintf "AppendEntries response: (success: %b) (term: %A) (current idx: %A) (first idx: %A)"
-                ar.Success
-                ar.Term
-                ar.CurrentIndex
-                ar.FirstIndex
-              |> self.Log
-
-              Some ar
-            | resp ->
-              failwithf "Expected AppendEntriesResponse but got: %A" resp
-        | _ ->
-          printfn "[APPEND REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
-          None
+            | AppendEntriesResponse(sender, ar) -> Some ar
+            | resp -> failwithf "Expected AppendEntriesResponse but got: %A" resp
+        | _ -> None
 
     member self.SendInstallSnapshot node is =
       let state = self.State
@@ -251,11 +228,8 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
         | Some message ->
           match message with
             | InstallSnapshotResponse(sender, ar) -> Some ar
-            | resp ->
-              failwithf "Expected InstallSnapshotResponse but got: %A" resp
-        | _ ->
-          printfn "[APPEND REQUEST TIMEOUT]: must mark node as failed now and fire a callback"
-          None
+            | resp -> failwithf "Expected InstallSnapshotResponse but got: %A" resp
+        | _ -> None
 
     member self.ApplyLog sm =
       sprintf "Applying state machine command (%A)" sm

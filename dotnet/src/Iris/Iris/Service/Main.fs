@@ -27,10 +27,10 @@ module Main =
         | _   -> System.IO.Path.GetTempPath()
     basePath </> snip
 
-  let createConfig rid idx start lip lpidx  =
+  let createConfig debug rid idx start lip lpidx  =
     let portbase = 8000
     { RaftId           = rid
-    ; Debug            = false
+    ; Debug            = debug
     ; IpAddr           = "127.0.0.1"
     ; WebPort          = (portbase - 1000) + idx
     ; RaftPort         = portbase + idx
@@ -42,11 +42,11 @@ module Main =
     ; PeriodicInterval = 50UL
     }
 
-  let createFollower (rid: string) (portidx: int) lid lpidx =
-    createConfig rid portidx false (Some "127.0.0.1") (Some (uint32 lpidx))
+  let createFollower debug (rid: string) (portidx: int) lid lpidx =
+    createConfig debug rid portidx false (Some "127.0.0.1") (Some (uint32 lpidx))
 
-  let createLeader (rid: string) (portidx: int) =
-    createConfig rid portidx true None None
+  let createLeader debug (rid: string) (portidx: int) =
+    createConfig debug rid portidx true None None
 
   ////////////////////////////////////////
   //  __  __       _                    //
@@ -58,11 +58,13 @@ module Main =
   [<EntryPoint>]
   let main args =
 
+    let debug = Array.contains "--debug" args
+
     let options =
-      if Array.length args = 2 then
-        createLeader args.[0] (int args.[1])
+      if Array.length args = 2 || Array.length args = 3 then
+        createLeader debug args.[0] (int args.[1])
       else
-        createFollower args.[0] (int args.[1]) args.[2] (int args.[3])
+        createFollower debug args.[0] (int args.[1]) args.[2] (int args.[3])
 
     use kontext = new ZContext()
 
