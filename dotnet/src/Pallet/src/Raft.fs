@@ -1204,23 +1204,19 @@ module Raft =
           // | _  -> ()
     }
 
-  and handleUnsuccessful (resp : AppendResponse) (_: Node<_>) =
+  and handleUnsuccessful (resp : AppendResponse) (node: Node<_>) =
     raft {
       if not resp.Success then
 
-        // // If AppendEntries fails because of log inconsistency:
-        // // decrement nextIndex and retry (§5.3)
-        // if resp.CurrentIndex < node.NextIndex - 1UL then
-        //   let! idx = currentIndexM ()
-        //   let nextIndex = min (resp.CurrentIndex + 1UL) idx
-        //   do! setNextIndexM node.Id nextIndex
-        //   do! sendAppendEntry { node with NextIndex = nextIndex }
-        // else
-        //   let nextIndex = node.NextIndex - 1UL
-        //   do! setNextIndexM node.Id nextIndex
-        //   do! sendAppendEntry { node with NextIndex = nextIndex }
-
-        // warn "should retry unsuccessful AppendEntries"
+        // If AppendEntries fails because of log inconsistency:
+        // decrement nextIndex and retry (§5.3)
+        if resp.CurrentIndex < node.NextIndex - 1UL then
+          let! idx = currentIndexM ()
+          let nextIndex = min (resp.CurrentIndex + 1UL) idx
+          do! setNextIndexM node.Id nextIndex
+        else
+          let nextIndex = node.NextIndex - 1UL
+          do! setNextIndexM node.Id nextIndex
 
         return! stopM ()
     }
