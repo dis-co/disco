@@ -1458,6 +1458,14 @@ module Raft =
           do! becomeFollower ()
     }
 
+  let maybeUpdateNodesM entries =
+    raft {
+      let! state = get
+      if not (isLeader state) && Log.containsEntry Log.isConfiguration entries then
+        for kv in state.Peers do
+          do! updateNodeM { kv.Value with State = Running }
+    }
+
   let applyEntry (cbs: IRaftCallbacks<_,_>) = function
     | JointConsensus(_,_,_,changes,_) ->
       let applyChange change =
@@ -1505,6 +1513,7 @@ module Raft =
 
             do! put { state with ConfigChangeEntry = change }
             do! maybeResetFollowerM entries
+            do! maybeUpdateNodesM entries
             do! setLastAppliedIdxM (Log.entryIndex entries)
           | _ -> ()
     }
