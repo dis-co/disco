@@ -1,6 +1,6 @@
 namespace Iris.Core
 
-open Pallet.Core
+open Iris.Raft
 open Iris.Serialization.Raft
 open FlatBuffers
 

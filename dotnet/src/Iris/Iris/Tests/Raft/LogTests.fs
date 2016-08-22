@@ -1,9 +1,10 @@
-namespace Pallet.Tests
+namespace Iris.Tests.Raft
 
 open System.Net
 open Fuchu
 open Fuchu.Test
-open Pallet.Core
+open Iris.Raft
+open Iris.Core
 
 [<AutoOpen>]
 module Log =
@@ -53,9 +54,9 @@ module Log =
 
   let log_get_at_index =
     testCase "When I get an entry by index, it should be equal" <| fun _ ->
-      let id1 = RaftId.Create()
-      let id2 = RaftId.Create()
-      let id3 = RaftId.Create()
+      let id1 = Guid.Create()
+      let id2 = Guid.Create()
+      let id3 = Guid.Create()
 
       let log =
         Log.empty
@@ -79,9 +80,9 @@ module Log =
 
   let log_find_by_id =
     testCase "When I get an entry by index, it should be equal" <| fun _ ->
-      let id1 = RaftId.Create()
-      let id2 = RaftId.Create()
-      let id3 = RaftId.Create()
+      let id1 = Guid.Create()
+      let id2 = Guid.Create()
+      let id3 = Guid.Create()
 
       let log =
         Log.empty
@@ -101,7 +102,7 @@ module Log =
       |> assume "Should also be correct one" id3 (Log.id << Option.get)
       |> ignore
 
-      Log.find (RaftId.Create()) log
+      Log.find (Guid.Create()) log
       |> assume "Should find none at invalid index" true Option.isNone
       |> ignore
 
@@ -191,8 +192,8 @@ module Log =
 
   let log_concat_ensure_no_duplicate_entries =
     testCase "concat ensure no duplicate entires" <| fun _ ->
-      let id1 = RaftId.Create()
-      let id2 = RaftId.Create()
+      let id1 = Guid.Create()
+      let id2 = Guid.Create()
 
       let term = 1UL
 
@@ -210,8 +211,8 @@ module Log =
 
   let log_append_ensure_no_duplicate_entries =
     testCase "append ensure no duplicate entires" <| fun _ ->
-      let id1 = RaftId.Create()
-      let id2 = RaftId.Create()
+      let id1 = Guid.Create()
+      let id2 = Guid.Create()
 
       let term = 1UL
       let idx1 = 1UL
@@ -228,9 +229,9 @@ module Log =
 
   let log_concat_ensure_no_duplicate_but_unique_entries =
     testCase "concat ensure no duplicate but unique entries" <| fun _ ->
-      let id1 = RaftId.Create()
-      let id2 = RaftId.Create()
-      let id3 = RaftId.Create()
+      let id1 = Guid.Create()
+      let id2 = Guid.Create()
+      let id3 = Guid.Create()
 
       let term = 1UL
       let idx1 = 1UL
@@ -260,7 +261,7 @@ module Log =
 
       let nodes =
         [ for n in 0UL .. 5UL do
-            yield Node.create (RaftId.Create()) ("Client " + string n) ]
+            yield Node.create (Guid.Create()) ("Client " + string n) ]
         |> Array.ofList
 
       let log =
@@ -285,7 +286,7 @@ module Log =
 
   let log_append_should_work_with_snapshots_too =
     testCase "append should work with snapshots too" <| fun _ ->
-      let log = Log.empty |> Log.append (Snapshot(RaftId.Create(), 0UL, 0UL, 9UL, 1UL, Array.empty, "hello"))
+      let log = Log.empty |> Log.append (Snapshot(Guid.Create(), 0UL, 0UL, 9UL, 1UL, Array.empty, "hello"))
       expect "Log should be size 1" 1UL Log.size log
 
   let log_firstIndex_should_return_correct_results =
@@ -297,7 +298,7 @@ module Log =
 
         let combine a b = (a, b)
 
-        let def = LogEntry(RaftId.Create(),0UL,0UL,(),None)
+        let def = LogEntry(Guid.Create(),0UL,0UL,(),None)
 
         let folder log (id,term,index) =
           LogEntry(id,index,term,(),Some log)
@@ -305,7 +306,7 @@ module Log =
         [ for term in 1UL .. 4UL do
             let offset = random.Next(1,60)
             for index in uint64(offset) .. uint64(offset + random.Next(10,70)) do
-              let (_,t,i) as result = (RaftId.Create(), term, index)
+              let (_,t,i) as result = (Guid.Create(), term, index)
               if index = uint64(offset) then
                 fidxs := (t,i) :: !fidxs
               yield result ]

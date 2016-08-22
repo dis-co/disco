@@ -10,6 +10,7 @@ FSharp.Configuration
 Fleck
 Suave
 Fuchu
+Fuchu.FsCheck
 FsCheck
 XUnit
 NUnit

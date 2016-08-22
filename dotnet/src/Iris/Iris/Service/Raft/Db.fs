@@ -11,7 +11,7 @@ module Iris.Service.Raft.Db
 open System
 open LiteDB
 open Iris.Core
-open Pallet.Core
+open Iris.Raft
 open Nessos.FsPickler
 open FSharpx.Functional
 
@@ -97,7 +97,7 @@ type LogData() =
   member self.ToLog () : LogEntry =
     let coder = FsPickler.CreateBinarySerializer()
 
-    let id   = RaftId self._id
+    let id   = Guid self._id
     let idx  = uint64 self.Index
     let term = uint64 self.Term
 
@@ -290,7 +290,7 @@ type NodeMetaData() =
 
   member self.ToNode () : Node =
     let coder = FsPickler.CreateBinarySerializer()
-    { Id         = RaftId self._id
+    { Id         = Guid self._id
     ; Data       = coder.UnPickle<IrisNode>(self.Data)
     ; Voting     = self.Voting
     ; VotedForMe = self.VotedForMe
@@ -324,7 +324,7 @@ type RaftMetaData() =
     with get ()          = METADATA_ID
       and set (_: string) = ()
 
-  member __.RaftId
+  member __.Guid
     with get () = raftid
       and set s  = raftid <- s
 
@@ -827,7 +827,7 @@ let saveMetadata (raft: Raft) (db: LiteDatabase) =
       | Some m -> m
       | _      -> initMetadata db
 
-  meta.RaftId <- string raft.Node.Id
+  meta.Guid <- string raft.Node.Id
   meta.Term   <- int64  raft.CurrentTerm
   meta.State  <- string raft.State
 
@@ -952,18 +952,18 @@ let loadRaft db =
           | _            -> Log.empty
 
       let nodes = allNodes db
-      let self = List.tryFind (Node.getId >> ((=) (RaftId meta.RaftId))) nodes
+      let self = List.tryFind (Node.getId >> ((=) (Guid meta.Guid))) nodes
       let votedfor =
         match meta.VotedFor with
           | null   -> None
-          | str -> RaftId str |> Some
+          | str -> Guid str |> Some
 
       let state = RaftState.Parse meta.State
 
       let leader =
         match meta.LeaderId with
           | null   -> None
-          | str -> RaftId str |> Some
+          | str -> Guid str |> Some
 
       let oldpeers =
         match meta.OldPeers with
@@ -978,7 +978,7 @@ let loadRaft db =
       let configchange =
         match meta.ConfigChangeEntry with
           | null   -> None
-          | str -> Log.find (RaftId str) log
+          | str -> Log.find (Guid str) log
 
       match self with
         | Some node ->

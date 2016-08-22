@@ -1,7 +1,8 @@
-namespace Pallet.Core
+namespace Iris.Raft
 
 open System
 open System.Net
+open Iris.Core
 
 ///  _____ _ _   _
 /// | ____(_) |_| |__   ___ _ __

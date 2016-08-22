@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
   <UsingTask AssemblyFile="..\..\packages\FSharpLint\FSharpLint.MSBuildIntegration.dll" TaskName="FSharpLintTask" />
@@ -85,6 +85,12 @@
     <Compile Include="Iris\Core\Either.fs" />
     <Compile Include="Iris\Core\Aliases.fs" />
     <Compile Include="Iris\Core\Util.fs" />
+    <Compile Include="Iris\Raft\Validation.fs" />
+    <Compile Include="Iris\Raft\Continue.fs" />
+    <Compile Include="Iris\Raft\Node.fs" />
+    <Compile Include="Iris\Raft\Log.fs" />
+    <Compile Include="Iris\Raft\Types.fs" />
+    <Compile Include="Iris\Raft\Raft.fs" />
     <Compile Include="Iris\Core\IrisNode.fs" />
     <Compile Include="Iris\Core\Git.fs" />
     <Compile Include="Iris\Core\IOBox.fs" />
@@ -106,8 +112,7 @@
     <Compile Include="Iris\Core\BrowserSession.fs" />
     <Compile Include="Iris\Core\StateMachine.fs" />
     <Compile Include="Iris\Core\Serialization.fs" />
-    <Compile Include="Iris\Core\Raft.fs" />
-
+    <Compile Include="Iris\Core\RaftUtils.fs" />
     <Compile Include="Iris\Service\Raft\Zmq.fs" />
     <Compile Include="Iris\Service\AppState.fs" />
     <Compile Include="Iris\Service\Raft\Db.fs" />
@@ -118,7 +123,6 @@
     <Compile Include="Iris\Service\WebSockets.fs" />
     <Compile Include="Iris\Service\CommandLine.fs" />
     <Compile Include="Iris\Service\Main.fs" />
-
     <None Include="assets\example-project.yml" />
     <Content Include="Iris.exe.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -153,10 +157,6 @@
     </Reference>
     <Reference Include="Iris.Serialization">
       <HintPath>.\bin\Release\Serialization\Iris.Serialization.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Pallet.Core">
-      <HintPath>..\Pallet\bin\Release\Pallet.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
@@ -442,6 +442,13 @@
   <ItemGroup>
     <Reference Include="Fuchu">
       <HintPath>..\..\packages\Fuchu\lib\Fuchu.dll</HintPath>
+      <Private>True</Private>
+      <Paket>True</Paket>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Fuchu.FsCheck">
+      <HintPath>..\..\packages\Fuchu.FsCheck\lib\Fuchu.FsCheck.dll</HintPath>
       <Private>True</Private>
       <Paket>True</Paket>
     </Reference>

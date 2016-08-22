@@ -1,13 +1,12 @@
-namespace Pallet.Tests
+namespace Iris.Tests.Raft
 
-open System
-open System.Net
 open Fuchu
 open Fuchu.Test
-open Pallet.Core
+open Iris.Core
+open Iris.Raft
 
 [<AutoOpen>]
-module Node =
+module NodeTests =
   ////////////////////////////////////////
   //  _   _           _                 //
   // | \ | | ___   __| | ___            //
@@ -18,5 +17,5 @@ module Node =
 
   let node_init_test =
     testCase "When created, Node should be in Voting state" <| fun _ ->
-      let node : Node<unit> = Node.create (RaftId.Create()) ()
+      let node : Node<unit> = Node.create (Guid.Create()) ()
       Assert.Equal("Should be voting", true, Node.isVoting node)

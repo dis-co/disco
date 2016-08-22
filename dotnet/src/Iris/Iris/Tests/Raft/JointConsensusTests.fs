@@ -1,10 +1,10 @@
-namespace Pallet.Tests
+namespace Iris.Tests.Raft
 
-open System
 open System.Net
 open Fuchu
 open Fuchu.Test
-open Pallet.Core
+open Iris.Core
+open Iris.Raft
 
 [<AutoOpen>]
 module JointConsensus =
@@ -23,13 +23,13 @@ module JointConsensus =
         { mkcbs (ref ()) with
             SendRequestVote = fun _ _ -> Some { Term = term; Granted = true; Reason = None } }
 
-      let node1 = Node.create (RaftId.Create()) ()
-      let node2 = Node.create (RaftId.Create()) ()
+      let node1 = Node.create (Guid.Create()) ()
+      let node2 = Node.create (Guid.Create()) ()
 
       let log =
-        JointConsensus(RaftId.Create(), 3UL, 0UL, [| NodeAdded node2 |],
-                Some <| JointConsensus(RaftId.Create(), 2UL, 0UL, [| NodeRemoved node1 |],
-                           Some <| JointConsensus(RaftId.Create(), 1UL, 0UL, [| NodeAdded node1 |], None)))
+        JointConsensus(Guid.Create(), 3UL, 0UL, [| NodeAdded node2 |],
+                Some <| JointConsensus(Guid.Create(), 2UL, 0UL, [| NodeRemoved node1 |],
+                           Some <| JointConsensus(Guid.Create(), 1UL, 0UL, [| NodeAdded node1 |], None)))
 
       let getstuff r =
         Map.toList r.Peers
@@ -51,17 +51,17 @@ module JointConsensus =
 
   let server_added_node_should_become_voting_once_it_caught_up =
     testCase "added node should become voting once it caught up" <| fun _ ->
-      let nid2 = RaftId.Create()
+      let nid2 = Guid.Create()
       let node = Node.create nid2 ()
 
       let mkjc term =
-        JointConsensus(RaftId.Create(), 1UL, term, [| NodeAdded(node) |] , None)
+        JointConsensus(Guid.Create(), 1UL, term, [| NodeAdded(node) |] , None)
 
       let mkcnf term nodes =
-        Configuration(RaftId.Create(), 1UL, term, nodes , None)
+        Configuration(Guid.Create(), 1UL, term, nodes , None)
 
       let ci = ref 0UL
-      let state = Raft.create (Node.create (RaftId.Create()) ())
+      let state = Raft.create (Node.create (Guid.Create()) ())
       let count = ref 0
       let cbs = { mkcbs (ref ()) with
                     SendAppendEntries = fun _ _ -> Some { Term = 0UL; Success = true; CurrentIndex = !ci; FirstIndex = 1UL }
@@ -174,13 +174,13 @@ module JointConsensus =
 
       let nodes =
         [| for n in 0UL .. (n - 1UL) do      // subtract one for the implicitly
-            let nid = RaftId.Create()
+            let nid = Guid.Create()
             yield (nid, Node.create nid ()) |] // create node in the Raft state
 
       let ci = ref 0UL
       let term = ref 1UL
 
-      let lokk = new Object()
+      let lokk = new System.Object()
       let vote = { Granted = true; Term = !term; Reason = None }
 
       let cbs =
@@ -481,11 +481,11 @@ module JointConsensus =
 
       let ci = ref 0UL
       let term = ref 1UL
-      let lokk = new Object()
+      let lokk = new System.Object()
 
       let nodes =
         [| for n in 0UL .. (n - 1UL) do      // subtract one for the implicitly
-            let nid = RaftId.Create()
+            let nid = Guid.Create()
             yield (nid, Node.create nid ()) |] // create node in the Raft state
 
       let vote = { Granted = true; Term = !term; Reason = None }
@@ -596,11 +596,11 @@ module JointConsensus =
 
   let server_should_send_appendentries_to_all_servers_in_joint_consensus =
     testCase "should send appendentries to all servers in joint consensus" <| fun _ ->
-      let lokk = new Object()
+      let lokk = new System.Object()
       let count = ref 0
       let ci = ref 0UL
       let term = ref 1UL
-      let init = Raft.create (Node.create (RaftId.Create()) ())
+      let init = Raft.create (Node.create (Guid.Create()) ())
       let cbs = { mkcbs (ref ()) with
                     SendAppendEntries = fun _ _ ->
                       lock lokk <| fun _ ->
@@ -612,7 +612,7 @@ module JointConsensus =
 
       let nodes =
         [| for n in 1UL .. (n - 1UL) do      // subtract one for the implicitly
-            let nid = RaftId.Create()
+            let nid = Guid.Create()
             yield (nid, Node.create nid ()) |] // create node in the Raft state
         |> Map.ofArray
 
@@ -670,10 +670,10 @@ module JointConsensus =
 
   let server_should_send_requestvote_to_all_servers_in_joint_consensus =
     testCase "should send appendentries to all servers in joint consensus" <| fun _ ->
-      let lokk = new Object()
+      let lokk = new System.Object()
       let count = ref 0
       let term = ref 1UL
-      let init = Raft.create (Node.create (RaftId.Create()) ())
+      let init = Raft.create (Node.create (Guid.Create()) ())
       let cbs = { mkcbs (ref ()) with
                     SendRequestVote = fun _ _ ->
                       lock lokk <| fun _ ->
@@ -685,7 +685,7 @@ module JointConsensus =
 
       let nodes =
         [| for n in 1UL .. (n - 1UL) do      // subtract one for the implicitly
-            let nid = RaftId.Create()
+            let nid = Guid.Create()
             yield (nid, Node.create nid ()) |] // create node in the Raft state
 
       raft {
@@ -739,11 +739,11 @@ module JointConsensus =
 
       let nodes =
         [| for n in 0UL .. (n - 1UL) do      // subtract one for the implicitly
-            let nid = RaftId.Create()
+            let nid = Guid.Create()
             yield (nid, Node.create nid ()) |] // create node in the Raft state
 
       let self = snd nodes.[0]
-      let lokk = new Object()
+      let lokk = new System.Object()
       let ci = ref 0UL
       let term = ref 1UL
       let count = ref 0

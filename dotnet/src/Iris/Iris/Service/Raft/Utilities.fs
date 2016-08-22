@@ -4,7 +4,7 @@ open System
 open System.Threading
 open FSharpx.Functional
 open Iris.Service
-open Pallet.Core
+open Iris.Raft
 open Iris.Core
 open Zmq
 open Db
@@ -48,13 +48,13 @@ let getHostName () =
 /// Returns: Raft<StateMachine,IrisNode>
 let createRaft (options: RaftOptions) =
   let node =
-    { MemberId = createGuid()
+    { MemberId = Guid.Create()
     ; HostName = getHostName()
     ; IpAddr   = IpAddress.Parse options.IpAddr
     ; Port     = options.RaftPort
     ; TaskId   = None
     ; Status   = IrisNodeStatus.Running }
-    |> Node.create (RaftId options.RaftId)
+    |> Node.create (Guid options.Guid)
   Raft.create node
 
 let loadRaft (options: RaftOptions) =

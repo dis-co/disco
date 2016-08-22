@@ -6,6 +6,7 @@ group Main
   nuget Npm.js
   nuget FSharp.Core redirects:force
   nuget Fuchu
+  nuget Fuchu.FsCheck
   nuget FsCheck
   nuget FSharpLint
   nuget XUnit

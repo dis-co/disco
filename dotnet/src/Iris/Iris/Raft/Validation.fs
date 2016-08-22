@@ -1,4 +1,4 @@
-namespace Pallet.Core
+namespace Iris.Raft
 
 type ValidationStep<'a,'err> =
   | ContinueValidation of 'a

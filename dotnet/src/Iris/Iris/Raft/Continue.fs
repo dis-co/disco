@@ -1,4 +1,4 @@
-namespace Pallet.Core
+namespace Iris.Raft
 
 type Continue<'a> =
   | Cont of 'a

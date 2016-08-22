@@ -69,7 +69,7 @@ module ProjectTests =
               WebSocket = 666u }
 
         let display1 =
-          { Id        = createGuid()
+          { Id        = Guid.Create()
           ; Name      = "Nice Display"
           ; Size      = Rect (1280,1080)
           ; Signals   =
@@ -79,16 +79,16 @@ module ProjectTests =
                ; Position = Coordinate (29, 13) }]
           ; RegionMap =
             {
-              SrcViewportId = createGuid()
+              SrcViewportId = Guid.Create()
               Regions =
-                [{ Id             = createGuid()
+                [{ Id             = Guid.Create()
                  ; Name           = "A Cool Region"
                  ; SrcPosition    = Coordinate (0,0)
                  ; SrcSize        = Rect       (50,50)
                  ; OutputPosition = Coordinate (50,50)
                  ; OutputSize     = Rect       (100,100)
                  };
-                 { Id             = createGuid()
+                 { Id             = Guid.Create()
                  ; Name           = "Another Cool Region"
                  ; SrcPosition    = Coordinate (8,67)
                  ; SrcSize        = Rect       (588,5130)
@@ -99,7 +99,7 @@ module ProjectTests =
           }
 
         let display2 =
-          { Id        = createGuid()
+          { Id        = Guid.Create()
           ; Name      = "Cool Display"
           ; Size      = Rect (180,12080)
           ; Signals   =
@@ -111,16 +111,16 @@ module ProjectTests =
                }]
           ; RegionMap =
             {
-              SrcViewportId = createGuid();
+              SrcViewportId = Guid.Create();
               Regions =
-                [{ Id             = createGuid()
+                [{ Id             = Guid.Create()
                  ; Name           = "One Region"
                  ; SrcPosition    = Coordinate (0,8)
                  ; SrcSize        = Rect       (50,52)
                  ; OutputPosition = Coordinate (53,50)
                  ; OutputSize     = Rect       (103,800)
                  };
-                 { Id             = createGuid()
+                 { Id             = Guid.Create()
                  ; Name           = "Premium Region"
                  ; SrcPosition    = Coordinate (8333,897)
                  ; SrcSize        = Rect       (83,510)
@@ -131,7 +131,7 @@ module ProjectTests =
           }
 
         let viewPort1 =
-          { Id             = createGuid()
+          { Id             = Guid.Create()
           ; Name           = "One fine viewport"
           ; Position       = Coordinate (22,22)
           ; Size           = Rect       (666,666)
@@ -142,7 +142,7 @@ module ProjectTests =
           }
 
         let viewPort2 =
-          { Id             = createGuid()
+          { Id             = Guid.Create()
           ; Name           = "Another fine viewport"
           ; Position       = Coordinate (82,2)
           ; Size           = Rect       (466,86)
@@ -153,47 +153,47 @@ module ProjectTests =
           }
 
         let task1 =
-          { Id             = createGuid()
+          { Id             = Guid.Create()
           ; Description    = "A very important task, indeed."
-          ; DisplayId      = createGuid()
+          ; DisplayId      = Guid.Create()
           ; AudioStream    = "hm"
           ; Arguments      = [("key", "to you heart")]
           }
 
         let task2 =
-          { Id             = createGuid()
+          { Id             = Guid.Create()
           ; Description    = "yay, its another task"
-          ; DisplayId      = createGuid()
+          ; DisplayId      = Guid.Create()
           ; AudioStream    = "hoho"
           ; Arguments      = [("mykey", "to my heart")]
           }
 
         let nodeA =
-          { MemberId = createGuid()
+          { MemberId = Guid.Create()
           ; HostName = "moomoo"
           ; IpAddr   = IpAddress.Parse "182.123.18.2"
-          ; TaskId   = createGuid() |> Some
+          ; TaskId   = Guid.Create() |> Some
           ; Status   = Running
           ; Port     = 1234
           }
 
         let nodeB =
-          { MemberId = createGuid()
+          { MemberId = Guid.Create()
           ; HostName = "taataaa"
           ; IpAddr   = IpAddress.Parse "118.223.8.12"
-          ; TaskId   = createGuid() |> Some
+          ; TaskId   = Guid.Create() |> Some
           ; Status   = Paused
           ; Port     = 1234
           }
 
         let groupA =
           { Name    = "Group A"
-          ; Members = [ createGuid() ]
+          ; Members = [ Guid.Create() ]
           }
 
         let groupB =
           { Name    = "Group B"
-          ; Members = [ createGuid() ]
+          ; Members = [ Guid.Create() ]
           }
 
         let cluster =

@@ -1,10 +1,10 @@
-namespace Pallet.Tests
+namespace Iris.Tests.Raft
 
-open System
 open System.Net
 open Fuchu
 open Fuchu.Test
-open Pallet.Core
+open Iris.Core
+open Iris.Raft
 
 [<AutoOpen>]
 module Scenarios =
@@ -157,7 +157,7 @@ module Scenarios =
 
       let ids =
         [| for n in 0UL .. (numPeers - 1UL) do
-            yield RaftId.Create() |]
+            yield Guid.Create() |]
 
       let senders =
         [| for n in 0UL .. (numPeers - 1UL) do

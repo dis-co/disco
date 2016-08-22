@@ -1,12 +1,11 @@
 namespace Iris.Tests
 
-open System
 open System.Threading
 open Fuchu
 open Fuchu.Test
 open Iris.Core
 open Iris.Service
-open Pallet.Core
+open Iris.Raft
 open FSharpx.Functional
 open ZeroMQ
 
@@ -21,23 +20,24 @@ module RaftIntegrationTests =
 
   let mkTmpPath snip =
     let basePath =
-      match Environment.GetEnvironmentVariable("IN_NIX_SHELL") with
+      match System.Environment.GetEnvironmentVariable("IN_NIX_SHELL") with
         | "1" -> "/tmp/"
         | _   -> System.IO.Path.GetTempPath()
     basePath </> snip
 
   let createConfig rid idx start lip lpidx  =
     let portbase = 8000
-    { RaftId     = rid
-    ; Debug      = true
-    ; IpAddr     = "127.0.0.1"
-    ; WebPort    = (portbase - 1000) + idx
-    ; RaftPort   = portbase + idx
-    ; Start      = start
-    ; LeaderIp   = lip
-    ; LeaderPort = Option.map (fun n -> uint32 portbase + n) lpidx
-    ; MaxRetries = 5u
-    ; DataDir    = createGuid() |> string |> mkTmpPath
+    { Guid             = rid
+    ; Debug            = true
+    ; IpAddr           = "127.0.0.1"
+    ; WebPort          = (portbase - 1000) + idx
+    ; RaftPort         = portbase + idx
+    ; Start            = start
+    ; LeaderIp         = lip
+    ; LeaderPort       = Option.map (fun n -> uint32 portbase + n) lpidx
+    ; MaxRetries       = 5u
+    ; DataDir          = Guid.Create() |> string |> mkTmpPath
+    ; PeriodicInterval = 10UL
     }
 
   let createFollower (rid: string) (portidx: int) lid lpidx =
@@ -57,17 +57,17 @@ module RaftIntegrationTests =
   ///
   /// Returns: unit
   let rec delete path =
-    match IO.DirectoryInfo(path).Attributes with
-      | IO.FileAttributes.Directory ->
-        let children = IO.DirectoryInfo(path).EnumerateFileSystemInfos()
+    match System.IO.DirectoryInfo(path).Attributes with
+      | System.IO.FileAttributes.Directory ->
+        let children = System.IO.DirectoryInfo(path).EnumerateFileSystemInfos()
         if children.Count() > 0 then
           for child in children do
             delete child.FullName
-          IO.Directory.Delete(path)
+          System.IO.Directory.Delete(path)
         else
-          IO.Directory.Delete(path)
+          System.IO.Directory.Delete(path)
       | _ ->
-        IO.File.Delete path
+        System.IO.File.Delete path
 
   //  ____  ____    _____         _
   // |  _ \| __ )  |_   _|__  ___| |_ ___
@@ -95,7 +95,7 @@ module RaftIntegrationTests =
       let col = getCollection<RaftMetaData> "metadata" db
 
       let meta = new RaftMetaData()
-      meta.RaftId <- rid
+      meta.Guid <- rid
       meta.Term <- 666L
 
       insert meta col |> ignore
@@ -108,9 +108,9 @@ module RaftIntegrationTests =
 
       expect "_id should be the same"    meta._id  id loaded._id
       expect "Term should be the same"   meta.Term id loaded.Term
-      expect "RaftId should be the same" rid       id loaded.RaftId
+      expect "Guid should be the same" rid       id loaded.Guid
 
-      loaded.RaftId <- "hi"
+      loaded.Guid <- "hi"
       loaded.Term <- 800L
 
       let result = update loaded col
@@ -126,7 +126,7 @@ module RaftIntegrationTests =
 
       expect "_id should be the same"    updated._id    id meta._id
       expect "Term should be the same"   updated.Term   id loaded.Term
-      expect "RaftId should be the same" updated.RaftId id loaded.RaftId
+      expect "Guid should be the same" updated.Guid id loaded.Guid
 
       closeDB db
       delete path
@@ -134,7 +134,7 @@ module RaftIntegrationTests =
   let test_save_restore_log_values_correctly =
     testCase "save/restore log values correctly" <| fun _ ->
       let info1 =
-        { MemberId = createGuid()
+        { MemberId = Guid.Create()
         ; HostName = "Hans"
         ; IpAddr = IpAddress.Parse "192.168.1.20"
         ; Port = 8080
@@ -142,25 +142,25 @@ module RaftIntegrationTests =
         ; TaskId = None }
 
       let info2 =
-        { MemberId = createGuid()
+        { MemberId = Guid.Create()
         ; HostName = "Klaus"
         ; IpAddr = IpAddress.Parse "192.168.1.22"
         ; Port = 8080
         ; Status = IrisNodeStatus.Failed
-        ; TaskId = createGuid() |> Some }
+        ; TaskId = Guid.Create() |> Some }
 
-      let node1 = Node.create (RaftId.Create()) info1
-      let node2 = Node.create (RaftId.Create()) info2
+      let node1 = Node.create (Guid.Create()) info1
+      let node2 = Node.create (Guid.Create()) info2
 
       let changes = [| NodeRemoved node2 |]
       let nodes = [| node1; node2 |]
 
       let log =
-        Some <| LogEntry(RaftId.Create(), 7UL, 1UL, Close "cccc",
-          Some <| LogEntry(RaftId.Create(), 6UL, 1UL, AddClient "bbbb",
-            Some <| Configuration(RaftId.Create(), 5UL, 1UL, [| node1 |],
-              Some <| JointConsensus(RaftId.Create(), 4UL, 1UL, changes,
-                Some <| Snapshot(RaftId.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
+        Some <| LogEntry(Guid.Create(), 7UL, 1UL, Close "cccc",
+          Some <| LogEntry(Guid.Create(), 6UL, 1UL, AddClient "bbbb",
+            Some <| Configuration(Guid.Create(), 5UL, 1UL, [| node1 |],
+              Some <| JointConsensus(Guid.Create(), 4UL, 1UL, changes,
+                Some <| Snapshot(Guid.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
 
       let depth = log |> Option.get |> Log.depth |> int
       let path = mkTmpPath "test_save_restore_log_values_correctly"
@@ -190,7 +190,7 @@ module RaftIntegrationTests =
   let test_save_restore_raft_value_correctly =
     testCase "save/restore raft value correctly" <| fun _ ->
       let info1 =
-        { MemberId = createGuid()
+        { MemberId = Guid.Create()
         ; HostName = "Hans"
         ; IpAddr = IpAddress.Parse "192.168.1.20"
         ; Port = 8080
@@ -198,25 +198,25 @@ module RaftIntegrationTests =
         ; TaskId = None }
 
       let info2 =
-        { MemberId = createGuid()
+        { MemberId = Guid.Create()
         ; HostName = "Klaus"
         ; IpAddr = IpAddress.Parse "192.168.1.22"
         ; Port = 8080
         ; Status = IrisNodeStatus.Failed
-        ; TaskId = createGuid() |> Some }
+        ; TaskId = Guid.Create() |> Some }
 
-      let node1 = Node.create (RaftId.Create()) info1
-      let node2 = Node.create (RaftId.Create()) info2
+      let node1 = Node.create (Guid.Create()) info1
+      let node2 = Node.create (Guid.Create()) info2
 
       let changes = [| NodeRemoved node2 |]
       let nodes = [| node1; node2 |]
 
       let log =
-        LogEntry(RaftId.Create(), 7UL, 1UL, Close "cccc",
-          Some <| LogEntry(RaftId.Create(), 6UL, 1UL, AddClient "bbbb",
-            Some <| Configuration(RaftId.Create(), 5UL, 1UL, [| node1 |],
-              Some <| JointConsensus(RaftId.Create(), 4UL, 1UL, changes,
-                Some <| Snapshot(RaftId.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
+        LogEntry(Guid.Create(), 7UL, 1UL, Close "cccc",
+          Some <| LogEntry(Guid.Create(), 6UL, 1UL, AddClient "bbbb",
+            Some <| Configuration(Guid.Create(), 5UL, 1UL, [| node1 |],
+              Some <| JointConsensus(Guid.Create(), 4UL, 1UL, changes,
+                Some <| Snapshot(Guid.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
         |> Log.fromEntries
 
       let raft =
@@ -244,7 +244,7 @@ module RaftIntegrationTests =
   let test_validate_logs_get_deleted_correctly =
     testCase "validate logs get deleted correctly" <| fun _ ->
       let info1 =
-        { MemberId = createGuid()
+        { MemberId = Guid.Create()
         ; HostName = "Hans"
         ; IpAddr = IpAddress.Parse "192.168.1.20"
         ; Port = 8080
@@ -252,25 +252,25 @@ module RaftIntegrationTests =
         ; TaskId = None }
 
       let info2 =
-        { MemberId = createGuid()
+        { MemberId = Guid.Create()
         ; HostName = "Klaus"
         ; IpAddr = IpAddress.Parse "192.168.1.22"
         ; Port = 8080
         ; Status = IrisNodeStatus.Failed
-        ; TaskId = createGuid() |> Some }
+        ; TaskId = Guid.Create() |> Some }
 
-      let node1 = Node.create (RaftId.Create()) info1
-      let node2 = Node.create (RaftId.Create()) info2
+      let node1 = Node.create (Guid.Create()) info1
+      let node2 = Node.create (Guid.Create()) info2
 
       let changes = [| NodeRemoved node2 |]
       let nodes = [| node1; node2 |]
 
       let log =
-        LogEntry(RaftId.Create(), 7UL, 1UL, Close "cccc",
-          Some <| LogEntry(RaftId.Create(), 6UL, 1UL, AddClient "bbbb",
-            Some <| Configuration(RaftId.Create(), 5UL, 1UL, [| node1 |],
-              Some <| JointConsensus(RaftId.Create(), 4UL, 1UL, changes,
-                Some <| Snapshot(RaftId.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
+        LogEntry(Guid.Create(), 7UL, 1UL, Close "cccc",
+          Some <| LogEntry(Guid.Create(), 6UL, 1UL, AddClient "bbbb",
+            Some <| Configuration(Guid.Create(), 5UL, 1UL, [| node1 |],
+              Some <| JointConsensus(Guid.Create(), 4UL, 1UL, changes,
+                Some <| Snapshot(Guid.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
 
       let count = int <| Log.depth log
 

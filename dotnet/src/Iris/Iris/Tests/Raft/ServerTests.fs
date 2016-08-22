@@ -1,13 +1,14 @@
-namespace Pallet.Tests
+namespace Iris.Tests.Raft
 
-open System
 open System.Net
 open Fuchu
 open Fuchu.Test
-open Pallet.Core
+open Iris.Raft
+open Iris.Core
 
 [<AutoOpen>]
-module Server =
+module ServerTests =
+
   ////////////////////////////////////////
   //  ____                              //
   // / ___|  ___ _ ____   _____ _ __    //
@@ -18,7 +19,7 @@ module Server =
 
   let server_voted_for_records_who_we_voted_for =
     testCase "Raft server voted for records who we voted for" <| fun _ ->
-      let id1 = RaftId.Create()
+      let id1 = Guid.Create()
       raft {
          do! expectM  "Should one node" 1UL numNodes
          do! addNodeM (Node.create id1 ())
@@ -65,8 +66,8 @@ module Server =
 
   let server_voting_results_in_voting =
     testCase "Raft server voting should set voted for" <| fun _ ->
-      let node1 = Node.create (RaftId.Create()) ()
-      let node2 = Node.create (RaftId.Create()) ()
+      let node1 = Node.create (Guid.Create()) ()
+      let node2 = Node.create (Guid.Create()) ()
 
       raft {
         // add node and vote for it
@@ -82,7 +83,7 @@ module Server =
 
   let server_add_node_makes_non_voting_node_voting =
     testCase "Raft add node now makes non-voting node voting" <| fun _ ->
-      let node = Node.create (RaftId.Create()) ()
+      let node = Node.create (Guid.Create()) ()
 
       raft {
         do! addNonVotingNodeM node
@@ -98,8 +99,8 @@ module Server =
 
   let server_remove_node =
     testCase "Raft remove node should set correct node count" <| fun _ ->
-      let node1 = Node.create (RaftId.Create()) ()
-      let node2 = Node.create (RaftId.Create()) ()
+      let node1 = Node.create (Guid.Create()) ()
+      let node2 = Node.create (Guid.Create()) ()
 
       raft {
         do! addNodeM node1
@@ -164,7 +165,7 @@ module Server =
       let msg2 = "add some state"
       let msg3 = "add some more state"
 
-      let init = Raft.create (Node.create (RaftId.Create()) "one")
+      let init = Raft.create (Node.create (Guid.Create()) "one")
       let cbs = mkcbs (ref "hola") :> IRaftCallbacks<_,_>
 
       raft {
@@ -203,7 +204,7 @@ module Server =
   let server_wont_apply_entry_if_there_isnt_a_majority =
     testCase "Raft won't apply a change if the is not a majority" <| fun _ ->
       let nodes = // create 5 nodes
-        Array.map (fun n -> Node.create (RaftId.Create()) ()) [|1UL..5UL|]
+        Array.map (fun n -> Node.create (Guid.Create()) ()) [|1UL..5UL|]
 
       raft {
         do! setCommitIndexM 0UL
@@ -263,7 +264,7 @@ module Server =
   let server_election_timeout_does_no_promote_us_to_leader_if_there_is_only_1_node =
     testCase "Election timeout does not promote us to leader if there is only 1 node" <| fun _ ->
       raft {
-        do! addNodeM (Node.create (RaftId.Create()) ())
+        do! addNodeM (Node.create (Guid.Create()) ())
         do! setElectionTimeoutM 1000UL
         do! periodic 1001UL
         do! expectM "Should not be Leader" false isLeader
@@ -273,7 +274,7 @@ module Server =
 
   let server_recv_entry_auto_commits_if_we_are_the_only_node =
     testCase "Receive entry auto-commits if we are the only node" <| fun _ ->
-      let entry = LogEntry(RaftId.Create(),0UL,0UL,(),None)
+      let entry = LogEntry(Guid.Create(),0UL,0UL,(),None)
       raft {
         do! setElectionTimeoutM 1000UL
         do! becomeLeader ()
@@ -289,9 +290,9 @@ module Server =
 
   let server_recv_entry_fails_if_there_is_already_a_voting_change =
     testCase "Receive entry fails if there is already a voting change" <| fun _ ->
-      let node = Node.create (RaftId.Create()) ()
+      let node = Node.create (Guid.Create()) ()
       let mklog term =
-        JointConsensus(RaftId.Create(), 1UL, term, [| NodeAdded(node) |] , None)
+        JointConsensus(Guid.Create(), 1UL, term, [| NodeAdded(node) |] , None)
 
       raft {
         do! setElectionTimeoutM 1000UL
@@ -313,10 +314,10 @@ module Server =
 
   let server_recv_entry_adds_missing_node_on_addnode =
     testCase "recv entry adds missing node on addnode" <| fun _ ->
-      let node = Node.create (RaftId.Create()) ()
+      let node = Node.create (Guid.Create()) ()
 
       let mklog term =
-        JointConsensus(RaftId.Create(), 1UL, term, [| NodeAdded(node) |] , None)
+        JointConsensus(Guid.Create(), 1UL, term, [| NodeAdded(node) |] , None)
 
       raft {
         do! setElectionTimeoutM 1000UL
@@ -333,10 +334,10 @@ module Server =
 
   let server_recv_entry_added_node_should_be_nonvoting =
     testCase "recv entry added node should be nonvoting" <| fun _ ->
-      let nid = RaftId.Create()
+      let nid = Guid.Create()
       let node = Node.create nid ()
       let mklog term =
-        JointConsensus(RaftId.Create(), 1UL, term, [| NodeAdded(node) |] , None)
+        JointConsensus(Guid.Create(), 1UL, term, [| NodeAdded(node) |] , None)
 
       raft {
         do! setElectionTimeoutM 1000UL
@@ -365,10 +366,10 @@ module Server =
               Some  { Term = !term; Success = true; CurrentIndex = !ci; FirstIndex = 1UL } }
         :> IRaftCallbacks<_,_>
 
-      let node = Node.create (RaftId.Create()) ()
+      let node = Node.create (Guid.Create()) ()
 
       let mklog term =
-        JointConsensus(RaftId.Create(), 1UL, term, [| NodeRemoved node |] , None)
+        JointConsensus(Guid.Create(), 1UL, term, [| NodeRemoved node |] , None)
 
       raft {
         do! setElectionTimeoutM 1000UL
@@ -398,7 +399,7 @@ module Server =
 
       let flip f b a = f b a
       let nodes =
-        List.map (fun n -> Node.create (RaftId.Create()) ()) [1UL..count]
+        List.map (fun n -> Node.create (Guid.Create()) ()) [1UL..count]
 
       raft {
         for node in nodes do
@@ -430,7 +431,7 @@ module Server =
 
   let recv_requestvote_response_dont_increase_votes_for_me_when_not_granted =
     testCase "Receive vote response does not increase votes for me when not granted" <| fun _ ->
-      let node = Node.create (RaftId.Create()) ()
+      let node = Node.create (Guid.Create()) ()
 
       raft {
         do! addNodeM node
@@ -448,7 +449,7 @@ module Server =
 
   let recv_requestvote_response_dont_increase_votes_for_me_when_term_is_not_equal =
     testCase "Recv requestvote response does not increase votes for me when term is not equal" <| fun _ ->
-      let node = Node.create (RaftId.Create()) ()
+      let node = Node.create (Guid.Create()) ()
 
       raft {
         do! addNodeM node
@@ -464,7 +465,7 @@ module Server =
 
   let recv_requestvote_response_increase_votes_for_me =
     testCase "Recv requestvote response increase votes for me" <| fun _ ->
-      let node = Node.create (RaftId.Create()) ()
+      let node = Node.create (Guid.Create()) ()
       let cbs =
         { mkcbs (ref ()) with
             SendRequestVote = fun _ _ -> Some { Term = 2UL; Granted = true; Reason = None } }
@@ -482,7 +483,7 @@ module Server =
 
   let recv_requestvote_response_must_be_candidate_to_receive =
     testCase "recv requestvote response must be candidate to receive" <| fun _ ->
-      let node = Node.create (RaftId.Create()) ()
+      let node = Node.create (Guid.Create()) ()
 
       raft {
         do! addNodeM node
@@ -495,7 +496,7 @@ module Server =
 
   let recv_requestvote_fails_if_term_less_than_current_term =
     testCase "recv requestvote fails if term less than current term" <| fun _ ->
-      let node = Node.create (RaftId.Create()) ()
+      let node = Node.create (Guid.Create()) ()
 
       raft {
         do! addNodeM node
@@ -517,7 +518,7 @@ module Server =
 
   let shouldgrantvote_vote_term_too_small =
     testCase "grantVote should be false when vote term too small" <| fun _ ->
-      let node = Node.create (RaftId.Create()) ()
+      let node = Node.create (Guid.Create()) ()
 
       let vote =
         { Term = 1UL
@@ -537,7 +538,7 @@ module Server =
 
   let shouldgrantvote_alredy_voted =
     testCase "grantVote should be false when already voted" <| fun _ ->
-      let node = Node.create (RaftId.Create()) ()
+      let node = Node.create (Guid.Create()) ()
 
       let vote =
         { Term = 2UL
@@ -557,7 +558,7 @@ module Server =
 
   let shouldgrantvote_log_empty =
     testCase "grantVote should be true when log is empty" <| fun _ ->
-      let node = Node.create (RaftId.Create()) ()
+      let node = Node.create (Guid.Create()) ()
 
       let vote =
         { Term = 1UL
@@ -580,7 +581,7 @@ module Server =
 
   let shouldgrantvote_raft_log_term_smaller_vote_logterm =
     testCase "grantVote should be true if last raft log term is smaller than vote last log term " <| fun _ ->
-      let node = Node.create (RaftId.Create()) ()
+      let node = Node.create (Guid.Create()) ()
 
       let vote =
         { Term = 2UL
@@ -605,7 +606,7 @@ module Server =
 
   let shouldgrantvote_raft_last_log_valid =
     testCase "grantVote should be true if last raft log is valid" <| fun _ ->
-      let node = Node.create (RaftId.Create()) ()
+      let node = Node.create (Guid.Create()) ()
 
       let vote =
         { Term = 2UL
@@ -630,7 +631,7 @@ module Server =
 
   let leader_recv_requestvote_does_not_step_down =
     testCase "leader recv requestvote does not step down" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) ()
+      let peer = Node.create (Guid.Create()) ()
 
       raft {
         do! addNodeM peer
@@ -653,7 +654,7 @@ module Server =
 
   let recv_requestvote_reply_true_if_term_greater_than_or_equal_to_current_term =
     testCase "recv requestvote reply true if term greater than or equal to current term" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) ()
+      let peer = Node.create (Guid.Create()) ()
 
       raft {
         do! addNodeM peer
@@ -672,7 +673,7 @@ module Server =
 
   let recv_requestvote_reset_timeout =
     testCase "recv requestvote reset timeout" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) ()
+      let peer = Node.create (Guid.Create()) ()
 
       raft {
         do! addNodeM peer
@@ -694,7 +695,7 @@ module Server =
 
   let recv_requestvote_candidate_step_down_if_term_is_higher_than_current_term =
     testCase "recv requestvote candidate step down if term is higher than current term" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) ()
+      let peer = Node.create (Guid.Create()) ()
 
       raft {
         do! addNodeM peer
@@ -718,8 +719,8 @@ module Server =
 
   let recv_requestvote_add_unknown_candidate =
     testCase "recv_requestvote_adds_candidate" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) ()
-      let other = Node.create (RaftId.Create())()
+      let peer = Node.create (Guid.Create()) ()
+      let other = Node.create (Guid.Create())()
 
       raft {
         do! addNodeM peer
@@ -741,8 +742,8 @@ module Server =
 
   let recv_requestvote_dont_grant_vote_if_we_didnt_vote_for_this_candidate =
     testCase "recv_requestvote_dont_grant_vote_if_we_didnt_vote_for_this_candidate" <| fun _ ->
-      let peer1 = Node.create (RaftId.Create()) ()
-      let peer2 = Node.create (RaftId.Create()) ()
+      let peer1 = Node.create (Guid.Create()) ()
+      let peer2 = Node.create (Guid.Create()) ()
       let request =
         { Term = 1UL
         ; Candidate = peer1
@@ -803,7 +804,7 @@ module Server =
       // When the election timeout is reached and we didn't get enougth votes to
       // become leader yet, periodic is expected to re-start the elections (and
       // thereby increasing the term again).
-      let peer = Node.create (RaftId.Create()) ()
+      let peer = Node.create (Guid.Create()) ()
       raft {
         do! addNodeM peer
         do! setElectionTimeoutM 1000UL
@@ -819,7 +820,7 @@ module Server =
 
   let follower_becomes_candidate_when_election_timeout_occurs =
     testCase "follower becomes candidate when election timeout occurs" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) ()
+      let peer = Node.create (Guid.Create()) ()
 
       raft {
         do! setElectionTimeoutM 1000UL
@@ -833,9 +834,9 @@ module Server =
 
   let follower_dont_grant_vote_if_candidate_has_a_less_complete_log =
     testCase "follower dont grant vote if candidate has a less complete log" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) ()
-      let log1 = LogEntry(RaftId.Create(), 0UL, 1UL, (), None)
-      let log2 = LogEntry(RaftId.Create(), 0UL, 2UL, (), None)
+      let peer = Node.create (Guid.Create()) ()
+      let log1 = LogEntry(Guid.Create(), 0UL, 1UL, (), None)
+      let log2 = LogEntry(Guid.Create(), 0UL, 2UL, (), None)
 
       raft {
         do! addPeerM peer
@@ -875,7 +876,7 @@ module Server =
   let follower_becoming_candidate_votes_for_self =
     testCase "follower becoming candidate votes for self" <| fun _ ->
       raft {
-        let peer = Node.create (RaftId.Create()) ()
+        let peer = Node.create (Guid.Create()) ()
         let! raft' = get
         do! addNodeM peer
         do! expectM "Should have no VotedFor" None votedFor
@@ -901,11 +902,11 @@ module Server =
 
   let follower_becoming_candidate_requests_votes_from_other_servers =
     testCase "follower becoming candidate requests votes from other servers" <| fun _ ->
-      let peer0 = Node.create (RaftId.Create()) ()
-      let peer1 = Node.create (RaftId.Create()) ()
-      let peer2 = Node.create (RaftId.Create()) ()
+      let peer0 = Node.create (Guid.Create()) ()
+      let peer1 = Node.create (Guid.Create()) ()
+      let peer2 = Node.create (Guid.Create()) ()
 
-      let raft' : Raft<unit,unit> = create peer0
+      let raft' : Raft<unit,unit> = Raft.create peer0
       let i = ref 0
       let cbs =
         { mkcbs (ref ()) with
@@ -924,14 +925,13 @@ module Server =
       |> runWithRaft raft' cbs
       |> noError
 
-
   let candidate_receives_majority_of_votes_becomes_leader =
     testCase "candidate receives majority of votes becomes leader" <| fun _ ->
-      let self  = Node.create (RaftId.Create()) ()
-      let peer1 = Node.create (RaftId.Create()) ()
-      let peer2 = Node.create (RaftId.Create()) ()
-      let peer3 = Node.create (RaftId.Create()) ()
-      let peer4 = Node.create (RaftId.Create()) ()
+      let self  = Node.create (Guid.Create()) ()
+      let peer1 = Node.create (Guid.Create()) ()
+      let peer2 = Node.create (Guid.Create()) ()
+      let peer3 = Node.create (Guid.Create()) ()
+      let peer4 = Node.create (Guid.Create()) ()
 
       let cbs =
         { mkcbs (ref ()) with
@@ -951,7 +951,7 @@ module Server =
     testCase "candidate will not respond to voterequest if it has already voted" <| fun _ ->
       raft {
         let! raft' = get
-        let peer = Node.create (RaftId.Create()) ()
+        let peer = Node.create (Guid.Create()) ()
         let vote : VoteRequest<unit> =
           { Term = 0UL                // term must be equal or lower that raft's
           ; Candidate = raft'.Node    // term for this to work
@@ -968,8 +968,8 @@ module Server =
 
   let candidate_requestvote_includes_logidx =
     testCase "candidate requestvote includes logidx" <| fun _ ->
-      let self = Node.create (RaftId.Create()) "peer0"
-      let raft' : Raft<string,string> = create self
+      let self = Node.create (Guid.Create()) "peer0"
+      let raft' : Raft<string,string> = Raft.create self
       let sender = Sender.create
       let response = { Term = 5UL; Granted = true; Reason = None }
       let cbs =
@@ -978,13 +978,13 @@ module Server =
         :> IRaftCallbacks<_,_>
 
       raft {
-        let peer1 = Node.create (RaftId.Create()) "peer1"
-        let peer2 = Node.create (RaftId.Create()) "peer2"
+        let peer1 = Node.create (Guid.Create()) "peer1"
+        let peer2 = Node.create (Guid.Create()) "peer2"
 
         let log =
-          LogEntry(RaftId.Create(),0UL, 3UL,  "three",
-            Some <| LogEntry(RaftId.Create(),0UL, 1UL,  "two",
-              Some <| LogEntry(RaftId.Create(),0UL, 1UL,  "one", None)))
+          LogEntry(Guid.Create(),0UL, 3UL,  "three",
+            Some <| LogEntry(Guid.Create(),0UL, 1UL,  "two",
+              Some <| LogEntry(Guid.Create(),0UL, 1UL,  "one", None)))
 
         do! addPeersM [| peer1; peer2 |]
         do! setStateM Candidate
@@ -1009,7 +1009,7 @@ module Server =
   let candidate_recv_requestvote_response_becomes_follower_if_current_term_is_less_than_term =
     testCase "candidate recv requestvote response becomes follower if current term is less than term" <| fun _ ->
       raft {
-        let peer = Node.create (RaftId.Create()) ()
+        let peer = Node.create (Guid.Create()) ()
         let response = { Term = 2UL ; Granted = false; Reason = None }
         do! addPeerM peer
         do! setTermM 1UL
@@ -1029,7 +1029,7 @@ module Server =
 
   let candidate_recv_appendentries_frm_leader_results_in_follower =
     testCase "candidate recv appendentries frm leader results in follower" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) ()
+      let peer = Node.create (Guid.Create()) ()
       let ae : AppendEntries<_,_> =
         { Term = 1UL
         ; PrevLogIdx = 0UL
@@ -1056,7 +1056,7 @@ module Server =
 
   let candidate_recv_appendentries_from_same_term_results_in_step_down =
     testCase "candidate recv appendentries from same term results in step down" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) ()
+      let peer = Node.create (Guid.Create()) ()
       let ae : AppendEntries<_,_> =
         { Term = 2UL
         ; PrevLogIdx = 1UL
@@ -1076,7 +1076,6 @@ module Server =
       |> runWithDefaults
       |> noError
 
-
   let leader_becomes_leader_is_leader =
     testCase "leader becomes leader is leader" <| fun _ ->
       raft {
@@ -1085,7 +1084,6 @@ module Server =
       }
       |> runWithDefaults
       |> noError
-
 
   let leader_becomes_leader_does_not_clear_voted_for =
     testCase "leader becomes leader does not clear voted for" <| fun _ ->
@@ -1099,11 +1097,10 @@ module Server =
       |> runWithDefaults
       |> noError
 
-
   let leader_when_becomes_leader_all_nodes_have_nextidx_equal_to_lastlog_idx_plus_1 =
     testCase "leader when becomes leader all nodes have nextidx equal to lastlog idx plus 1" <| fun _ ->
-      let peer1 = Node.create (RaftId.Create()) ()
-      let peer2 = Node.create (RaftId.Create()) ()
+      let peer1 = Node.create (Guid.Create()) ()
+      let peer2 = Node.create (Guid.Create()) ()
 
       raft {
         do! addPeerM peer1
@@ -1120,13 +1117,12 @@ module Server =
       |> runWithDefaults
       |> noError
 
-
   let leader_when_it_becomes_a_leader_sends_empty_appendentries =
     testCase "leader when it becomes a leader sends empty appendentries" <| fun _ ->
-      let peer1 = Node.create (RaftId.Create()) "peer1"
-      let peer2 = Node.create (RaftId.Create()) "peer2"
+      let peer1 = Node.create (Guid.Create()) "peer1"
+      let peer2 = Node.create (Guid.Create()) "peer2"
 
-      let lokk = new Object()
+      let lokk = new System.Object()
       let count = ref 0
       let raft' = defaultServer "localhost"
       let sender = Sender.create<_,_>
@@ -1149,8 +1145,8 @@ module Server =
 
   let leader_responds_to_entry_msg_when_entry_is_committed =
     testCase "leader responds to entry msg when entry is committed" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) ()
-      let log = LogEntry(RaftId.Create(),0UL,0UL,(),None)
+      let peer = Node.create (Guid.Create()) ()
+      let log = LogEntry(Guid.Create(),0UL,0UL,(),None)
 
       raft {
         do! addPeerM peer
@@ -1170,8 +1166,8 @@ module Server =
 
   let non_leader_recv_entry_msg_fails =
     testCase "non leader recv entry msg fails" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) ()
-      let log = LogEntry(RaftId.Create(),0UL,0UL,(),None)
+      let peer = Node.create (Guid.Create()) ()
+      let log = LogEntry(Guid.Create(),0UL,0UL,(),None)
 
       raft {
         do! addNodeM peer
@@ -1184,10 +1180,10 @@ module Server =
 
   let leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx =
     testCase "leader sends appendentries with NextIdx when PrevIdx gt NextIdx" <| fun _ ->
-      let peer = { Node.create (RaftId.Create()) "peer" with NextIndex = 4UL }
+      let peer = { Node.create (Guid.Create()) "peer" with NextIndex = 4UL }
       let raft' : Raft<string,string> = defaultServer "localhost"
       let sender = Sender.create<_,_>
-      let log = LogEntry(RaftId.Create(),0UL, 1UL,  "one", None)
+      let log = LogEntry(Guid.Create(),0UL, 1UL,  "one", None)
       let cbs =
         { mkcbs (ref "yep") with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks<_,_>
@@ -1204,7 +1200,7 @@ module Server =
 
   let leader_sends_appendentries_with_leader_commit =
     testCase "leader sends appendentries with leader commit" <| fun _ ->
-      let peer = { Node.create (RaftId.Create()) "peer" with NextIndex = 4UL }
+      let peer = { Node.create (Guid.Create()) "peer" with NextIndex = 4UL }
       let raft' = defaultServer "localhost"
       let sender = Sender.create<_,_>
       let cbs =
@@ -1216,7 +1212,7 @@ module Server =
         do! setStateM Leader
 
         for n in 0 .. 9 do
-          let l = LogEntry(RaftId.Create(), 0UL, 1UL, string n, None)
+          let l = LogEntry(Guid.Create(), 0UL, 1UL, string n, None)
           do! appendEntryM l >>= ignoreM
 
         do! setCommitIndexM 10UL
@@ -1232,7 +1228,7 @@ module Server =
 
   let leader_sends_appendentries_with_prevLogIdx =
     testCase "leader sends appendentries with prevLogIdx" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) "peer"
+      let peer = Node.create (Guid.Create()) "peer"
       let raft' = defaultServer "localhost"
       let sender = Sender.create<_,_>
       let cbs =
@@ -1251,7 +1247,7 @@ module Server =
         |> getAppendEntries
         |> expect "Should have PrevLogIndex 0" 0UL (fun ae -> ae.PrevLogIdx)
 
-        let log = LogEntry(RaftId.Create(),0UL,2UL,"yeah",None)
+        let log = LogEntry(Guid.Create(),0UL,2UL,"yeah",None)
 
         do! appendEntryM log >>= ignoreM
         do! setNextIndexM peer.Id 1UL
@@ -1286,7 +1282,7 @@ module Server =
 
   let leader_sends_appendentries_when_node_has_next_idx_of_0 =
     testCase "leader sends appendentries when node has next idx of 0" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) "peer"
+      let peer = Node.create (Guid.Create()) "peer"
       let raft' = defaultServer "localhost"
       let sender = Sender.create<_,_>
       let cbs =
@@ -1306,7 +1302,7 @@ module Server =
 
         sender.Outbox := List.empty // reset outbox
 
-        let log = LogEntry(RaftId.Create(),0UL,1UL,"Hm ja", None)
+        let log = LogEntry(Guid.Create(),0UL,1UL,"Hm ja", None)
 
         do! setNextIndexM peer.Id 1UL
         do! appendEntryM log >>= ignoreM
@@ -1323,7 +1319,7 @@ module Server =
 
   let leader_retries_appendentries_with_decremented_NextIdx_log_inconsistency =
     testCase "leader retries appendentries with decremented NextIdx log inconsistency" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) "peer"
+      let peer = Node.create (Guid.Create()) "peer"
       let raft' = defaultServer "localhost"
       let sender = Sender.create<_,_>
       let cbs =
@@ -1345,8 +1341,8 @@ module Server =
 
   let leader_append_entry_to_log_increases_idxno =
     testCase "leader append entry to log increases idxno" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) "other"
-      let log = LogEntry(RaftId.Create(),0UL,1UL,"entry",None)
+      let peer = Node.create (Guid.Create()) "other"
+      let log = LogEntry(Guid.Create(),0UL,1UL,"entry",None)
       let raft' = defaultServer "local"
       let sender = Sender.create<_,_>
       let cbs = mkcbs (ref "no!") :> IRaftCallbacks<_,_>
@@ -1363,10 +1359,10 @@ module Server =
 
   let leader_recv_appendentries_response_increase_commit_idx_when_majority_have_entry_and_atleast_one_newer_entry =
     testCase "leader recv appendentries response increase commit idx when majority have entry and atleast one newer entry" <| fun _ ->
-      let peer1 = Node.create (RaftId.Create()) "peer 1"
-      let peer2 = Node.create (RaftId.Create()) "peer 2"
-      let peer3 = Node.create (RaftId.Create()) "peer 3"
-      let peer4 = Node.create (RaftId.Create()) "peer 4"
+      let peer1 = Node.create (Guid.Create()) "peer 1"
+      let peer2 = Node.create (Guid.Create()) "peer 2"
+      let peer3 = Node.create (Guid.Create()) "peer 3"
+      let peer4 = Node.create (Guid.Create()) "peer 4"
 
       let raft' = defaultServer "localhost"
       let sender = Sender.create<_,_>
@@ -1374,9 +1370,9 @@ module Server =
         { mkcbs (ref "yep") with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks<_,_>
 
-      let log1 = LogEntry(RaftId.Create(),0UL,1UL,"one",None)
-      let log2 = LogEntry(RaftId.Create(),0UL,1UL,"two",None)
-      let log3 = LogEntry(RaftId.Create(),0UL,1UL,"three",None)
+      let log1 = LogEntry(Guid.Create(),0UL,1UL,"one",None)
+      let log2 = LogEntry(Guid.Create(),0UL,1UL,"two",None)
+      let log3 = LogEntry(Guid.Create(),0UL,1UL,"three",None)
 
       let response =
         { Term = 1UL
@@ -1422,8 +1418,8 @@ module Server =
 
   let leader_recv_appendentries_response_duplicate_does_not_decrement_match_idx =
     testCase "leader recv appendentries response duplicate does not decrement match idx" <| fun _ ->
-      let peer1 = Node.create (RaftId.Create()) "peer 1"
-      let peer2 = Node.create (RaftId.Create()) "peer 2"
+      let peer1 = Node.create (Guid.Create()) "peer 1"
+      let peer2 = Node.create (Guid.Create()) "peer 2"
 
       let response =
         { Term = 1UL
@@ -1436,9 +1432,9 @@ module Server =
       let sender = Sender.create<_,_>
       let cbs = mkcbs (ref "awyea") :> IRaftCallbacks<_,_>
 
-      let log1 = LogEntry(RaftId.Create(),0UL,1UL,"one",None)
-      let log2 = LogEntry(RaftId.Create(),0UL,1UL,"two",None)
-      let log3 = LogEntry(RaftId.Create(),0UL,1UL,"three",None)
+      let log1 = LogEntry(Guid.Create(),0UL,1UL,"one",None)
+      let log2 = LogEntry(Guid.Create(),0UL,1UL,"two",None)
+      let log3 = LogEntry(Guid.Create(),0UL,1UL,"three",None)
 
       raft {
         do! addNodesM [| peer1; peer2; |]
@@ -1461,10 +1457,10 @@ module Server =
 
   let leader_recv_appendentries_response_do_not_increase_commit_idx_because_of_old_terms_with_majority =
     testCase "leader recv appendentries response do not increase commit idx because of old terms with majority" <| fun _ ->
-      let peer1 = Node.create (RaftId.Create()) "peer 1"
-      let peer2 = Node.create (RaftId.Create()) "peer 2"
-      let peer3 = Node.create (RaftId.Create()) "peer 3"
-      let peer4 = Node.create (RaftId.Create()) "peer 4"
+      let peer1 = Node.create (Guid.Create()) "peer 1"
+      let peer2 = Node.create (Guid.Create()) "peer 2"
+      let peer3 = Node.create (Guid.Create()) "peer 3"
+      let peer4 = Node.create (Guid.Create()) "peer 4"
 
       let raft' = defaultServer "localhost"
       let sender = Sender.create<_,_>
@@ -1472,9 +1468,9 @@ module Server =
         { mkcbs (ref "hell no") with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks<_,_>
 
-      let log1 = LogEntry(RaftId.Create(),0UL,1UL,"one",None)
-      let log2 = LogEntry(RaftId.Create(),0UL,1UL,"two",None)
-      let log3 = LogEntry(RaftId.Create(),0UL,2UL,"three",None)
+      let log1 = LogEntry(Guid.Create(),0UL,1UL,"one",None)
+      let log2 = LogEntry(Guid.Create(),0UL,1UL,"two",None)
+      let log3 = LogEntry(Guid.Create(),0UL,2UL,"three",None)
 
       let response =
         { Term = 1UL
@@ -1549,7 +1545,7 @@ module Server =
 
   let leader_recv_appendentries_response_jumps_to_lower_next_idx =
     testCase "leader recv appendentries response jumps to lower next idx" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) "peer 1"
+      let peer = Node.create (Guid.Create()) "peer 1"
 
       let raft' = defaultServer "localhost"
       let sender = Sender.create<_,_>
@@ -1557,10 +1553,10 @@ module Server =
         { mkcbs (ref "meow") with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks<_,_>
 
-      let log1 = LogEntry(RaftId.Create(),0UL,1UL,"one",None)
-      let log2 = LogEntry(RaftId.Create(),0UL,2UL,"two",None)
-      let log3 = LogEntry(RaftId.Create(),0UL,3UL,"three",None)
-      let log4 = LogEntry(RaftId.Create(),0UL,4UL,"four",None)
+      let log1 = LogEntry(Guid.Create(),0UL,1UL,"one",None)
+      let log2 = LogEntry(Guid.Create(),0UL,2UL,"two",None)
+      let log3 = LogEntry(Guid.Create(),0UL,3UL,"three",None)
+      let log4 = LogEntry(Guid.Create(),0UL,4UL,"four",None)
 
       let response =
         { Term = 1UL
@@ -1619,7 +1615,7 @@ module Server =
 
   let leader_recv_appendentries_response_decrements_to_lower_next_idx =
     testCase "leader recv appendentries response decrements to lower next idx" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) "peer 1"
+      let peer = Node.create (Guid.Create()) "peer 1"
 
       let raft' = defaultServer "localhost"
       let sender = Sender.create<_,_>
@@ -1627,10 +1623,10 @@ module Server =
         { mkcbs (ref "fuck off") with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks<_,_>
 
-      let log1 = LogEntry(RaftId.Create(),0UL,1UL,"one",None)
-      let log2 = LogEntry(RaftId.Create(),0UL,2UL,"two",None)
-      let log3 = LogEntry(RaftId.Create(),0UL,3UL,"three",None)
-      let log4 = LogEntry(RaftId.Create(),0UL,4UL,"four",None)
+      let log1 = LogEntry(Guid.Create(),0UL,1UL,"one",None)
+      let log2 = LogEntry(Guid.Create(),0UL,2UL,"two",None)
+      let log3 = LogEntry(Guid.Create(),0UL,3UL,"three",None)
+      let log4 = LogEntry(Guid.Create(),0UL,4UL,"four",None)
 
       let response =
         { Term = 2UL
@@ -1694,8 +1690,8 @@ module Server =
 
   let leader_recv_appendentries_response_retry_only_if_leader =
     testCase "leader recv appendentries response retry only if leader" <| fun _ ->
-      let peer1 = Node.create (RaftId.Create()) "peer 1"
-      let peer2 = Node.create (RaftId.Create()) "peer 2"
+      let peer1 = Node.create (Guid.Create()) "peer 1"
+      let peer2 = Node.create (Guid.Create()) "peer 2"
 
       let raft' = defaultServer "localhost"
       let sender = Sender.create<_,_>
@@ -1703,7 +1699,7 @@ module Server =
         { mkcbs (ref "well") with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks<_,_>
 
-      let log = LogEntry(RaftId.Create(),0UL,1UL,"one",None)
+      let log = LogEntry(Guid.Create(),0UL,1UL,"one",None)
 
       let response =
         { Term = 1UL
@@ -1736,7 +1732,7 @@ module Server =
 
   let leader_recv_entry_resets_election_timeout =
     testCase "leader recv entry resets election timeout" <| fun _ ->
-      let log = LogEntry(RaftId.Create(), 0UL, 1UL,  (), None)
+      let log = LogEntry(Guid.Create(), 0UL, 1UL,  (), None)
       raft {
         do! setElectionTimeoutM 1000UL
         do! setStateM Leader
@@ -1749,8 +1745,8 @@ module Server =
 
   let leader_recv_entry_is_committed_returns_0_if_not_committed =
     testCase "leader recv entry is committed returns 0 if not committed" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) ()
-      let log = LogEntry(RaftId.Create(), 0UL, 1UL,  (), None)
+      let peer = Node.create (Guid.Create()) ()
+      let log = LogEntry(Guid.Create(), 0UL, 1UL,  (), None)
 
       raft {
         do! addPeerM peer
@@ -1771,7 +1767,7 @@ module Server =
 
   let leader_recv_entry_is_committed_returns_neg_1_if_invalidated =
     testCase "leader recv entry is committed returns neg 1 if invalidated" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) ()
+      let peer = Node.create (Guid.Create()) ()
       let log = Log.make 1UL ()
 
       let ae =
@@ -1817,7 +1813,7 @@ module Server =
     testCase "leader recv entry does not send new appendentries to slow nodes" <| fun _ ->
       skiptest "NO CONGESTION CONTROL CURRENTLY IMPLEMENTED"
 
-      let peer = Node.create (RaftId.Create()) "peer 1"
+      let peer = Node.create (Guid.Create()) "peer 1"
       let raft' = defaultServer "localhost"
       let sender = Sender.create<_,_>
       let cbs =
@@ -1845,7 +1841,7 @@ module Server =
 
   let leader_recv_appendentries_response_failure_does_not_set_node_nextid_to_0 =
     testCase "leader recv appendentries response failure does not set node nextid to 0" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) "peer 1"
+      let peer = Node.create (Guid.Create()) "peer 1"
       let raft' = defaultServer "localhost"
       let sender = Sender.create<_,_>
       let cbs =
@@ -1880,7 +1876,7 @@ module Server =
 
   let leader_recv_appendentries_response_increment_idx_of_node =
     testCase "leader recv appendentries response increment idx of node" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) "peer 1"
+      let peer = Node.create (Guid.Create()) "peer 1"
       let raft' = defaultServer "localhost"
       let sender = Sender.create<_,_>
       let cbs =
@@ -1908,7 +1904,7 @@ module Server =
 
   let leader_recv_appendentries_response_drop_message_if_term_is_old =
     testCase "leader recv appendentries response drop message if term is old" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) "peer 1"
+      let peer = Node.create (Guid.Create()) "peer 1"
       let raft' = defaultServer "localhost"
       let sender = Sender.create<_,_>
       let cbs =
@@ -1934,7 +1930,7 @@ module Server =
 
   let leader_recv_appendentries_steps_down_if_newer =
     testCase "leader recv appendentries steps down if newer" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) ()
+      let peer = Node.create (Guid.Create()) ()
       let ae =
         { Term = 6UL
         ; PrevLogIdx = 6UL
@@ -1959,7 +1955,7 @@ module Server =
 
   let leader_recv_appendentries_steps_down_if_newer_term =
     testCase "leader recv appendentries steps down if newer term" <| fun _ ->
-      let peer = Node.create (RaftId.Create()) ()
+      let peer = Node.create (Guid.Create()) ()
       let resp =
         { Term = 6UL
         ; PrevLogIdx = 5UL
@@ -1979,11 +1975,11 @@ module Server =
 
   let leader_sends_empty_appendentries_every_request_timeout =
     testCase "leader sends empty appendentries every request timeout" <| fun _ ->
-      let peer1 = Node.create (RaftId.Create()) "peer 1"
-      let peer2 = Node.create (RaftId.Create()) "peer 2"
+      let peer1 = Node.create (Guid.Create()) "peer 1"
+      let peer2 = Node.create (Guid.Create()) "peer 2"
       let raft' = defaultServer "localhost"
 
-      let lokk = new Object()
+      let lokk = new System.Object()
 
       let count = ref 0
 
@@ -2028,8 +2024,8 @@ module Server =
 
   let leader_recv_requestvote_responds_without_granting =
     testCase "leader recv requestvote responds without granting" <| fun _ ->
-      let peer1 = Node.create (RaftId.Create()) ()
-      let peer2 = Node.create (RaftId.Create()) ()
+      let peer1 = Node.create (Guid.Create()) ()
+      let peer2 = Node.create (Guid.Create()) ()
       let sender = Sender.create<_,_>
       let resp = { Term = 1UL; Granted = true; Reason = None }
 
@@ -2057,8 +2053,8 @@ module Server =
   let leader_recv_requestvote_responds_with_granting_if_term_is_higher =
     testCase "leader recv requestvote responds with granting if term is higher" <| fun _ ->
 
-      let peer1 = Node.create (RaftId.Create()) ()
-      let peer2 = Node.create (RaftId.Create()) ()
+      let peer1 = Node.create (Guid.Create()) ()
+      let peer2 = Node.create (Guid.Create()) ()
       let sender = Sender.create<_,_>
       let resp = { Term = 1UL; Granted = true; Reason = None }
 
@@ -2086,10 +2082,10 @@ module Server =
 
   let server_should_not_request_vote_from_failed_nodes =
     testCase "should not request vote from failed nodes" <| fun _ ->
-      let node1 =   Node.create (RaftId.Create()) ()
-      let node2 =   Node.create (RaftId.Create()) ()
-      let node3 =   Node.create (RaftId.Create()) ()
-      let node4 = { Node.create (RaftId.Create()) () with State = Failed }
+      let node1 =   Node.create (Guid.Create()) ()
+      let node2 =   Node.create (Guid.Create()) ()
+      let node3 =   Node.create (Guid.Create()) ()
+      let node4 = { Node.create (Guid.Create()) () with State = NodeState.Failed }
 
       let mutable i = 0
 
@@ -2112,10 +2108,10 @@ module Server =
 
   let server_should_not_consider_failed_nodes_when_deciding_vote_outcome =
     testCase "should not consider failed nodes when deciding vote outcome" <| fun _ ->
-      let node1 =   Node.create (RaftId.Create()) ()
-      let node2 =   Node.create (RaftId.Create()) ()
-      let node3 = { Node.create (RaftId.Create()) () with State = Failed }
-      let node4 = { Node.create (RaftId.Create()) () with State = Failed }
+      let node1 =   Node.create (Guid.Create()) ()
+      let node2 =   Node.create (Guid.Create()) ()
+      let node3 = { Node.create (Guid.Create()) () with State = NodeState.Failed }
+      let node4 = { Node.create (Guid.Create()) () with State = NodeState.Failed }
 
       let resp = { Term = 1UL; Granted = true; Reason = None }
 
@@ -2164,14 +2160,14 @@ module Server =
 
       let nodes =
         [| "one"; "two"; "three" |]
-        |> Array.mapi (fun i s -> Node.create (RaftId.Create()) s)
+        |> Array.mapi (fun i s -> Node.create (Guid.Create()) s)
 
       let is: InstallSnapshot<_,_> =
         { Term = term
-        ; LeaderId = RaftId.Create()
+        ; LeaderId = Guid.Create()
         ; LastTerm = term
         ; LastIndex = idx
-        ; Data = Snapshot(RaftId.Create(), idx, term, idx, term, nodes, "state") }
+        ; Data = Snapshot(Guid.Create(), idx, term, idx, term, nodes, "state") }
 
       raft {
         do! setTermM term
@@ -2200,14 +2196,14 @@ module Server =
 
       let nodes =
         [| "one"; "two"; "three" |]
-        |> Array.mapi (fun i s -> Node.create (RaftId.Create()) s)
+        |> Array.mapi (fun i s -> Node.create (Guid.Create()) s)
 
       let is: InstallSnapshot<_,_> =
         { Term = term
-        ; LeaderId = RaftId.Create()
+        ; LeaderId = Guid.Create()
         ; LastTerm = term
         ; LastIndex = idx
-        ; Data = Snapshot(RaftId.Create(), idx, term, idx, term, nodes, "state")
+        ; Data = Snapshot(Guid.Create(), idx, term, idx, term, nodes, "state")
         }
 
       raft {
@@ -2243,17 +2239,17 @@ module Server =
         } :> IRaftCallbacks<_,_>
 
       raft {
-        let node = Node.create (RaftId.Create()) "one"
+        let node = Node.create (Guid.Create()) "one"
 
         do! setStateM Leader
 
-        do! appendEntryM (JointConsensus(RaftId.Create(), 0UL, 0UL, [| NodeAdded(node)|] ,None)) >>= ignoreM
+        do! appendEntryM (JointConsensus(Guid.Create(), 0UL, 0UL, [| NodeAdded(node)|] ,None)) >>= ignoreM
         do! setCommitIndexM 1UL
         do! applyEntries ()
 
         expect "Should have count 1" 1 id !count
 
-        do! appendEntryM (JointConsensus(RaftId.Create(), 0UL, 0UL, [| NodeRemoved node |] ,None)) >>= ignoreM
+        do! appendEntryM (JointConsensus(Guid.Create(), 0UL, 0UL, [| NodeRemoved node |] ,None)) >>= ignoreM
         do! setCommitIndexM 3UL
         do! applyEntries ()
 
@@ -2339,17 +2335,17 @@ module Server =
   let should_call_node_updated_callback_on_node_udpated =
     testCase "call node updated callback on node udpated" <| fun _ ->
       let count = ref 0
-      let init = Raft.create (Node.create (RaftId.Create()) ())
+      let init = Raft.create (Node.create (Guid.Create()) ())
       let cbs = { mkcbs (ref ()) with
                     NodeUpdated = fun _ -> count := 1 + !count }
                 :> IRaftCallbacks<_,_>
 
       raft {
-        let node = Node.create (RaftId.Create()) ()
+        let node = Node.create (Guid.Create()) ()
         do! addNodeM node
-        do! updateNodeM { node with State = Joining }
-        do! updateNodeM { node with State = Running }
-        do! updateNodeM { node with State = Failed }
+        do! updateNodeM { node with State = NodeState.Joining }
+        do! updateNodeM { node with State = NodeState.Running }
+        do! updateNodeM { node with State = NodeState.Failed }
 
         expect "Should have called once" 3 id !count
       }
@@ -2359,7 +2355,7 @@ module Server =
   let should_call_state_changed_callback_on_state_change =
     testCase "call state changed callback on state change" <| fun _ ->
       let count = ref 0
-      let init = Raft.create (Node.create (RaftId.Create()) ())
+      let init = Raft.create (Node.create (Guid.Create()) ())
       let cbs = { mkcbs (ref ()) with
                     StateChanged = fun _ _ -> count := 1 + !count }
                 :> IRaftCallbacks<_,_>
@@ -2391,7 +2387,7 @@ module Server =
 
         do! expectM "Should be committed" true (konst committed)
 
-        let peer = Node.create (RaftId "0xdeadbeef") ()
+        let peer = Node.create (Guid "0xdeadbeef") ()
         do! becomeFollower ()
         do! addNodeM peer
 
@@ -2436,7 +2432,7 @@ module Server =
         do! periodic 10UL
 
         let! committed = responseCommitted result
-        
+
         do! expectM "Should have committed entry" true (konst committed)
         do! expectM "Should have called callback" 1 (konst !count)
       }

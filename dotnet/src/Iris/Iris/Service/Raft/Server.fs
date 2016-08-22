@@ -4,7 +4,7 @@ open System
 open System.Threading
 open Iris.Core
 open Iris.Core.Utils
-open Pallet.Core
+open Iris.Raft
 open FSharpx.Stm
 open FSharpx.Functional
 open Utilities

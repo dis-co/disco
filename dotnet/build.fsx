@@ -349,38 +349,6 @@ Target "GenerateSerialization"
    buildDebug "Serialization.csproj" ()
    buildRelease "Serialization.csproj" ())
 
-//   __
-//  / _|___ _____ __ ___   __ _
-// | |_/ __|_  / '_ ` _ \ / _` |
-// |  _\__ \/ /| | | | | | (_| |
-// |_| |___/___|_| |_| |_|\__, |
-//                           |_|
-
-Target "FsZMQ"
-  (fun _ ->
-   build (setParams "Debug") "src/fszmq/fszmq.fsproj"
-   build (setParams "Release") "src/fszmq/fszmq.fsproj")
-
-//  ____       _ _      _
-// |  _ \ __ _| | | ___| |_
-// | |_) / _` | | |/ _ \ __|
-// |  __/ (_| | | |  __/ |_
-// |_|   \__,_|_|_|\___|\__|
-
-Target "Pallet"
-  (fun _ ->
-   build (setParams "Debug") "src/Pallet/Pallet.fsproj"
-   build (setParams "Release") "src/Pallet/Pallet.fsproj")
-
-Target "PalletTests"
-  (fun _ -> build (setParams "Debug") ("src" @@ "Pallet.Tests" @@ "Pallet.Tests.fsproj"))
-
-Target "RunPalletTests"
-  (fun _ ->
-    let testsDir = "src" @@ "Pallet.Tests"
-    executeFSIWithArgs testsDir "run.fsx" ["--define:RELEASE"; "--define:REFERENCE"] []
-    |> fun result -> if not result then failwith "fsi failed")
-
 //  _____                _                 _
 // |  ___| __ ___  _ __ | |_ ___ _ __   __| |
 // | |_ | '__/ _ \| '_ \| __/ _ \ '_ \ / _` |
@@ -578,10 +546,6 @@ Target "DevServer"
 // --------------------------------------------------------------------------------------
 // Run all targets by default. Invoke 'build <Target>' to override
 
-"Pallet"
-==> "PalletTests"
-==> "RunPalletTests"
-
 Target "Release" DoNothing
 
 // "Clean"
@@ -610,20 +574,9 @@ Target "Release" DoNothing
 "GenerateSerialization"
 ==> "BuildReleaseNodes"
 
-// Pallet
-
-"Pallet"
-==> "BuildReleaseService"
-
-"Pallet"
-==> "BuildReleaseNodes"
-
 // Tests
 
 "GenerateSerialization"
-==> "BuildTests"
-
-"Pallet"
 ==> "BuildTests"
 
 "BuildTests"
@@ -681,9 +634,6 @@ Target "DebugAll" DoNothing
 "RunTests"
 ==> "DebugAll"
 
-"RunPalletTests"
-==> "DebugAll"
-
 // "CleanDocs"
 //   ==> "GenerateHelp"
 //   ==> "GenerateReferenceDocs"
@@ -701,9 +651,6 @@ Target "AllTests" DoNothing
 ==> "AllTests"
 
 "RunWebTests"
-==> "AllTests"
-
-"RunPalletTests"
 ==> "AllTests"
 
 RunTargetOrDefault "Release"

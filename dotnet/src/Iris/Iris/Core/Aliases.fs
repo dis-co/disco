@@ -1,5 +1,8 @@
 namespace Iris.Core
 
+open System.Text.RegularExpressions
+
+
 //  ____            _                                     _
 // |  _ \ ___ _ __ | | __ _  ___ ___ _ __ ___   ___ _ __ | |_ ___
 // | |_) / _ \ '_ \| |/ _` |/ __/ _ \ '_ ` _ \ / _ \ '_ \| __/ __|
@@ -26,8 +29,10 @@ module Replacements =
 // /_/   \_\_|_|\__,_|___/\___||___/
 
 type Id         = Guid
+type NodeId     = Guid
 type Long       = uint64
 type Index      = Long
+type Term       = Long
 type Name       = string
 type Tag        = string
 type NodePath   = string

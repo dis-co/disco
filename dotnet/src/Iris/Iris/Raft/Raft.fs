@@ -1,7 +1,8 @@
-namespace Pallet.Core
+namespace Iris.Raft
 
 open System
 open FSharpx.Functional
+open Iris.Core
 
 [<AutoOpen>]
 module RaftMonad =
@@ -834,7 +835,7 @@ module Raft =
   let createEntryM (d: 'd) =
     raft {
       let! state = get
-      let log = LogEntry(RaftId.Create(),0UL,state.CurrentTerm,d,None)
+      let log = LogEntry(Guid.Create(),0UL,state.CurrentTerm,d,None)
       return! appendEntryM log
     }
 
@@ -1396,7 +1397,7 @@ module Raft =
   let receiveEntry (entry : LogEntry<'d,'n>) =
     raft {
       let! state = get
-      let resp = { Id = RaftId.Create(); Term = 0UL; Index = 0UL }
+      let resp = { Id = Guid.Create(); Term = 0UL; Index = 0UL }
 
       return! maybeUnexpectedConfigChange entry
       return! failNotLeader ()

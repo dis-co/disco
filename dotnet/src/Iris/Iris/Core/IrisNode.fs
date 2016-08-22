@@ -64,7 +64,7 @@ type IrisNode =
   ; TaskId   : TaskId option }
 
   static member Create name host port =
-    { MemberId = createGuid()
+    { MemberId = Guid.Create()
     ; HostName = name
     ; IpAddr   = IPv4Address host
     ; Port     = port
@@ -127,6 +127,6 @@ type IrisNode =
     ; Status   = IrisNodeStatus.FromFB fb.Status
     ; TaskId   = tid }
 
-type Node = Pallet.Core.Node<IrisNode>
+type Node = Iris.Raft.Node<IrisNode>
 
 #endif

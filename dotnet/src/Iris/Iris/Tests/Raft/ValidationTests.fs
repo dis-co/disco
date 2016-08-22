@@ -1,9 +1,9 @@
-namespace Pallet.Tests
+namespace Iris.Tests.Raft
 
 open System
 open Fuchu
 open Fuchu.Test
-open Pallet.Core
+open Iris.Raft
 
 [<AutoOpen>]
 module Validation =

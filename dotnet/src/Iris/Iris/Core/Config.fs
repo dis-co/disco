@@ -1,6 +1,6 @@
 namespace Iris.Core
 
-open Pallet.Core
+open Iris.Raft
 
 //  ____        __ _    ____             __ _
 // |  _ \ __ _ / _| |_ / ___|___  _ __  / _(_) __ _

@@ -3,7 +3,7 @@ module Iris.Service.CommandLine
 open Argu
 open System
 open Iris.Core
-open Pallet.Core
+open Iris.Raft
 open Iris.Service.Raft.Server
 
 
@@ -38,7 +38,7 @@ let parseOptions args =
   try
     let opts = parser.Parse args
     validateOptions opts
-    { RaftId           = opts.GetResult    <@ RaftNodeId @> |> trim
+    { Guid             = opts.GetResult    <@ RaftNodeId @> |> trim
     ; IpAddr           = opts.GetResult    <@ Bind       @> |> trim
     ; WebPort          = opts.GetResult    <@ WebPort    @> |> int
     ; RaftPort         = opts.GetResult    <@ RaftPort   @> |> int

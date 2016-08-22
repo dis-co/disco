@@ -1,13 +1,14 @@
-namespace Pallet.Tests
+namespace Iris.Tests
 
 open Fuchu
 open Fuchu.Test
+open Iris.Tests.Raft
 
 [<AutoOpen>]
-module Tests =
+module RaftTests =
 
   [<Tests>]
-  let palletTests =
+  let raftTests =
     testList "Pallet tests"
       [
         // Continue
@@ -183,10 +184,4 @@ module Tests =
         ///////////////////////////////////////////////////
 
         scenario_leader_appears
-
-        // ////////////////////////////////
-        // // Monad                      //
-        // ////////////////////////////////
-
-        test_raft_monad
       ]

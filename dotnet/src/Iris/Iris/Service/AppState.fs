@@ -3,7 +3,7 @@ namespace Iris.Service
 open LibGit2Sharp
 open Iris.Core.Utils
 open Iris.Core
-open Pallet.Core
+open Iris.Raft
 open Iris.Service.Raft
 
 //     _               ____  _        _

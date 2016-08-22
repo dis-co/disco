@@ -1,13 +1,15 @@
-namespace Pallet.Tests
+namespace Iris.Tests.Raft
 
 open System
 open System.Net
 open Fuchu
 open Fuchu.Test
-open Pallet.Core
+open Iris.Core
+open Iris.Raft
+
 
 [<AutoOpen>]
-module Util =
+module RaftTestUtils =
   ////////////////////////////////////////
   //  _   _ _   _ _                     //
   // | | | | |_(_) |___                 //
@@ -17,6 +19,7 @@ module Util =
   ////////////////////////////////////////
 
   /// Callbacks fired when instantiating the Raft
+  [<NoEquality;NoComparison>]
   type Callbacks<'a,'b> =
     { SendRequestVote     : Node<'b>        -> VoteRequest<'b>        -> VoteResponse option
     ; SendAppendEntries   : Node<'b>        -> AppendEntries<'a,'b>   -> AppendResponse option
@@ -176,16 +179,16 @@ module Util =
     }
 
   let defaultServer (data : 'v) =
-    let self : Node<'v> = Node.create (RaftId.Create()) data
+    let self : Node<'v> = Node.create (Guid.Create()) data
     Raft.create self
 
   let runWithCBS cbs action =
-    let self = Node.create (RaftId.Create()) ()
+    let self = Node.create (Guid.Create()) ()
     let raft = Raft.create self
     runRaft raft cbs action
 
   let runWithData data action =
-    let self = Node.create (RaftId.Create()) ()
+    let self = Node.create (Guid.Create()) ()
     let raft = Raft.create self
     let cbs = mkcbs data :> IRaftCallbacks<_,_>
     runRaft raft cbs action

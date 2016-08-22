@@ -22,28 +22,20 @@ type Guid =
 
     static member TryParse (str: string) = Guid str |> Some
 
-[<AutoOpen>]
-module GuidHelpers =
-
     /// ## Create
     ///
-    /// Create a new globally unique identifie
+    /// Create a new Guid.
     ///
     /// ### Signature:
-    /// - unit: unit
+    /// - unit: .
     ///
     /// Returns: Guid
-    let createGuid () =
-#if JAVASCRIPT
-      Guid "FIXME"
-#else
+    static member Create () =
       let sanitize (str: string) =
         Regex.Replace(str, "[\+|\/|\=]","").ToLower()
 
       let guid = System.Guid.NewGuid()
-
       guid.ToByteArray()
       |> Convert.ToBase64String
       |> sanitize
       |> Guid
-#endif
