@@ -1223,7 +1223,7 @@ module Raft =
       let! self = getSelfM ()
       let! peers = logicalPeersM ()
 
-      let requests = ref Array.empty
+      let requests = ref [| |]
 
       for peer in peers do
         if peer.Value.Id <> self.Id then
@@ -1330,7 +1330,7 @@ module Raft =
           let! state = get
           let! peers = logicalPeersM ()
 
-          let requests = ref Array.empty
+          let requests = ref [| |]
 
           // iterate through all peers and call sendAppendEntries to each
           for peer in peers do
@@ -1816,7 +1816,7 @@ module Raft =
 
         do! log "requesting all votes"
 
-        let requests = ref Array.empty
+        let requests = ref [| |]
 
         for peer in peers do
           if self.Id <> peer.Value.Id then

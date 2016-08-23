@@ -48,7 +48,8 @@ type LogData() =
   let mutable data      : byte array = null
   let mutable prev      : string     = null
 
-  member __._id
+  [<BsonId>]
+  member __.Id
     with get () = id
     and  set v  = id <- v
 
@@ -97,7 +98,7 @@ type LogData() =
   member self.ToLog () : LogEntry =
     let coder = FsPickler.CreateBinarySerializer()
 
-    let id   = Id self._id
+    let id   = Id self.Id
     let idx  = uint64 self.Index
     let term = uint64 self.Term
 
@@ -134,14 +135,14 @@ type LogData() =
       let logdata = new LogData()
       match log with
         | Configuration(id,idx,term,nodes,None) ->
-          logdata._id      <- string id
+          logdata.Id       <- string id
           logdata.LogType  <- int LogDataType.Config
           logdata.Index    <- int64 idx
           logdata.Term     <- int64 term
           logdata.Nodes    <- coder.Pickle(nodes)
 
         | Configuration(id,idx,term,nodes,Some prev) ->
-          logdata._id      <- string id
+          logdata.Id       <- string id
           logdata.LogType  <- int LogDataType.Config
           logdata.Index    <- int64 idx
           logdata.Term     <- int64 term
@@ -149,14 +150,14 @@ type LogData() =
           logdata.Previous <- string <| Log.id prev
 
         | JointConsensus(id,idx,term,changes,None) ->
-          logdata._id      <- string id
+          logdata.Id       <- string id
           logdata.LogType  <- int LogDataType.Consensus
           logdata.Index    <- int64 idx
           logdata.Term     <- int64 term
           logdata.Changes  <- coder.Pickle(changes)
 
         | JointConsensus(id,idx,term,changes,Some prev) ->
-          logdata._id      <- string id
+          logdata.Id       <- string id
           logdata.LogType  <- int LogDataType.Consensus
           logdata.Index    <- int64 idx
           logdata.Term     <- int64 term
@@ -164,14 +165,14 @@ type LogData() =
           logdata.Previous <- string <| Log.id prev
 
         | LogEntry(id,idx,term,data,None) ->
-          logdata._id      <- string id
+          logdata.Id       <- string id
           logdata.LogType  <- int LogDataType.Entry
           logdata.Index    <- int64 idx
           logdata.Term     <- int64 term
           logdata.Data     <- coder.Pickle(data)
 
         | LogEntry(id,idx,term,data,Some prev) ->
-          logdata._id      <- string id
+          logdata.Id       <- string id
           logdata.LogType  <- int LogDataType.Entry
           logdata.Index    <- int64 idx
           logdata.Term     <- int64 term
@@ -179,7 +180,7 @@ type LogData() =
           logdata.Previous <- string <| Log.id prev
 
         | Snapshot(id,idx,term,lidx,lterm,nodes,data) ->
-          logdata._id       <- string id
+          logdata.Id        <- string id
           logdata.LogType   <- int LogDataType.Snapshot
           logdata.Index     <- int64 idx
           logdata.Term      <- int64 term
@@ -210,7 +211,7 @@ type LogData() =
 
   interface IEquatable<LogData> with
     member self.Equals (other: LogData) =
-      self._id = other._id && self.Index = other.Index && self.Term = other.Term
+      self.Id = other.Id && self.Index = other.Index && self.Term = other.Term
 
   override self.Equals obj =
     match obj with
@@ -218,7 +219,7 @@ type LogData() =
     | _                   -> failwith "obj not a LogData"
 
   override self.GetHashCode () =
-    hash (self._id, self.Index, self.Term)
+    hash (self.Id, self.Index, self.Term)
 
 //  _   _           _        __  __      _            _       _
 // | \ | | ___   __| | ___  |  \/  | ___| |_ __ _  __| | __ _| |_ __ _
@@ -236,7 +237,8 @@ type NodeMetaData() =
   let mutable next_idx  : int64      = 0L
   let mutable match_idx : int64      = 0L
 
-  member __._id
+  [<BsonId>]
+  member __.Id
     with get () = id
     and  set v  = id <- v
 
@@ -273,7 +275,7 @@ type NodeMetaData() =
   static member FromNode (node: Node) =
     let coder = FsPickler.CreateBinarySerializer()
     let meta = new NodeMetaData()
-    meta._id        <- string node.Id
+    meta.Id         <- string node.Id
     meta.State      <- string node.State
     meta.Data       <- coder.Pickle(node.Data)
     meta.Voting     <- node.Voting
@@ -290,7 +292,7 @@ type NodeMetaData() =
 
   member self.ToNode () : Node =
     let coder = FsPickler.CreateBinarySerializer()
-    { Id         = Id self._id
+    { Id         = Id self.Id
     ; Data       = coder.UnPickle<IrisNode>(self.Data)
     ; Voting     = self.Voting
     ; VotedForMe = self.VotedForMe
