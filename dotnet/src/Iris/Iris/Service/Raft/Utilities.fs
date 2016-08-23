@@ -166,7 +166,8 @@ let nodeUri (data: IrisNode) =
 ///
 /// Returns: fszmq.Socket
 let mkClientSocket (uri: string) (state: AppState) =
-  let socket = new Req(uri, state.Context, int state.Raft.RequestTimeout)
+  let timeout = 2000 // FIXME: this request timeout value should be settable
+  let socket = new Req(uri, state.Context, timeout)
   socket.Start()
   socket
 
