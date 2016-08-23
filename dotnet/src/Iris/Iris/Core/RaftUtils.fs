@@ -13,7 +13,7 @@ open Iris.Serialization.Raft
 //                            |_|
 
 type RaftOptions =
-  { Guid           : string
+  { Id           : string
   ; Debug            : bool
   ; IpAddr           : string
   ; WebPort          : int
@@ -179,21 +179,21 @@ type RaftRequest =
           let entry = msg.GetMsg(new RequestVoteFB())
           let request = VoteRequest<IrisNode>.FromFB(entry.Request)
 
-          RequestVote(Guid entry.NodeId, request)
+          RequestVote(Id entry.NodeId, request)
           |> Some
 
         | RaftMsgTypeFB.RequestAppendEntriesFB ->
           let entry = msg.GetMsg(new RequestAppendEntriesFB())
           let request = AppendEntries.FromFB entry.Request
 
-          AppendEntries(Guid entry.NodeId, request)
+          AppendEntries(Id entry.NodeId, request)
           |> Some
 
         | RaftMsgTypeFB.RequestInstallSnapshotFB ->
           let entry = msg.GetMsg(new RequestInstallSnapshotFB())
           let request = InstallSnapshot.FromFB entry.Request
 
-          InstallSnapshot(Guid entry.NodeId, request)
+          InstallSnapshot(Id entry.NodeId, request)
           |> Some
 
         | RaftMsgTypeFB.HandShakeFB ->
@@ -296,21 +296,21 @@ type RaftResponse =
           let entry = msg.GetMsg(new RequestVoteResponseFB())
           let response = VoteResponse.FromFB entry.Response
 
-          RequestVoteResponse(Guid entry.NodeId, response)
+          RequestVoteResponse(Id entry.NodeId, response)
           |> Some
 
         | RaftMsgTypeFB.RequestAppendResponseFB ->
           let entry = msg.GetMsg(new RequestAppendResponseFB())
           let response = AppendResponse.FromFB entry.Response
 
-          AppendEntriesResponse(Guid entry.NodeId, response)
+          AppendEntriesResponse(Id entry.NodeId, response)
           |> Some
 
         | RaftMsgTypeFB.RequestSnapshotResponseFB ->
           let entry = msg.GetMsg(new RequestSnapshotResponseFB())
           let response = AppendResponse.FromFB entry.Response
 
-          InstallSnapshotResponse(Guid entry.NodeId, response)
+          InstallSnapshotResponse(Id entry.NodeId, response)
           |> Some
 
         | RaftMsgTypeFB.RedirectFB ->

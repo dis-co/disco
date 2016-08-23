@@ -38,7 +38,7 @@ let parseOptions args =
   try
     let opts = parser.Parse args
     validateOptions opts
-    { Guid             = opts.GetResult    <@ RaftNodeId @> |> trim
+    { Id               = opts.GetResult    <@ RaftNodeId @> |> trim
     ; IpAddr           = opts.GetResult    <@ Bind       @> |> trim
     ; WebPort          = opts.GetResult    <@ WebPort    @> |> int
     ; RaftPort         = opts.GetResult    <@ RaftPort   @> |> int

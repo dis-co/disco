@@ -21,7 +21,7 @@ module AppendEntries =
 
   let follower_recv_appendentries_reply_false_if_term_less_than_currentterm =
     testCase "follower recv appendentries reply false if term less than currentterm" <| fun _ ->
-      let peer = Node.create (Guid.Create())()
+      let peer = Node.create (Id.Create())()
 
       raft {
         do! addNodeM peer
@@ -45,7 +45,7 @@ module AppendEntries =
   let follower_recv_appendentries_does_not_need_node =
     testCase "follower recv appendentries does not need node" <| fun _ ->
       raft {
-        do! addNodeM (Node.create (Guid.Create()) ())
+        do! addNodeM (Node.create (Id.Create()) ())
         let msg =
           { Term         = 1UL
           ; PrevLogIdx   = 0UL
@@ -63,7 +63,7 @@ module AppendEntries =
     testCase "follower recv appendentries updates currentterm if term gt currentterm" <| fun _ ->
 
       raft {
-        let peer = Node.create (Guid.Create()) ()
+        let peer = Node.create (Id.Create()) ()
         do! addNodeM peer
         do! setTermM 1UL
         do! expectM "Should not have a leader" None currentLeader
@@ -88,7 +88,7 @@ module AppendEntries =
   let follower_recv_appendentries_does_not_log_if_no_entries_are_specified =
     testCase "follower recv appendentries does not log if no entries are specified" <| fun _ ->
       raft {
-        let peer = Node.create (Guid.Create()) ()
+        let peer = Node.create (Id.Create()) ()
         do! addNodeM peer
         do! setStateM Follower
         do! expectM "Should have 0 log entries" 0UL numLogs
@@ -108,7 +108,7 @@ module AppendEntries =
   let follower_recv_appendentries_increases_log =
     testCase "follower recv appendentries increases log" <| fun _ ->
       raft {
-        let peer = Node.create (Guid.Create()) ()
+        let peer = Node.create (Id.Create()) ()
         do! addNodeM peer
         do! setStateM Follower
         do! expectM "Should log count 0" 0UL numLogs
@@ -131,7 +131,7 @@ module AppendEntries =
   let follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev_log_idx_which_matches_prev_log_term =
     testCase "follower recv appendentries reply false if doesnt have log at prev log idx which matches prev log term" <| fun _ ->
       raft {
-        let peer = Node.create (Guid.Create()) ()
+        let peer = Node.create (Id.Create()) ()
         do! addNodeM peer
         do! setTermM 2UL
 
@@ -167,7 +167,7 @@ module AppendEntries =
           Option.get
 
         let data = [| "one"; "two"; "three"; |]
-        let peer = Node.create (Guid.Create()) "peer"
+        let peer = Node.create (Id.Create()) "peer"
 
         do! addNodeM peer
         do! setTermM 1UL
@@ -202,7 +202,7 @@ module AppendEntries =
           }
 
       let data = [| "one"; "two"; "three"; |]
-      let peer = Node.create (Guid.Create()) "peer"
+      let peer = Node.create (Id.Create()) "peer"
       let raft' = defaultServer "string tango"
       let cbs = mkcbs (ref "let go") :> IRaftCallbacks<_,_>
 
@@ -230,11 +230,11 @@ module AppendEntries =
 
   let follower_recv_appendentries_add_new_entries_not_already_in_log =
     testCase "follower recv appendentries add new entries not already in log" <| fun _ ->
-      let peer = Node.create (Guid.Create()) ()
+      let peer = Node.create (Id.Create()) ()
 
       let log =
-        LogEntry((Guid.Create()), 2UL, 1UL,  (),
-            Some <| LogEntry((Guid.Create()), 2UL, 1UL, (), None))
+        LogEntry((Id.Create()), 2UL, 1UL,  (),
+            Some <| LogEntry((Id.Create()), 2UL, 1UL, (), None))
 
       raft {
         do! addNodeM peer
@@ -257,9 +257,9 @@ module AppendEntries =
 
   let follower_recv_appendentries_does_not_add_dupe_entries_already_in_log =
     testCase "follower recv appendentries does not add dupe entries already in log" <| fun _ ->
-      let peer = Node.create (Guid.Create()) "node"
+      let peer = Node.create (Id.Create()) "node"
 
-      let entry = LogEntry((Guid.Create()), 2UL, 1UL,  "one", None)
+      let entry = LogEntry((Id.Create()), 2UL, 1UL,  "one", None)
       let log = Log.fromEntries entry
 
       let next =
@@ -296,13 +296,13 @@ module AppendEntries =
 
   let follower_recv_appendentries_set_commitidx_to_prevLogIdx =
     testCase "follower recv appendentries set commitidx to prevLogIdx" <| fun _ ->
-      let peer = Node.create (Guid.Create()) ()
+      let peer = Node.create (Id.Create()) ()
 
       let log =
-        LogEntry((Guid.Create()), 0UL, 1UL,  (),
-            Some <| LogEntry((Guid.Create()), 0UL, 1UL,  (),
-                Some <| LogEntry((Guid.Create()), 0UL, 1UL,  (),
-                    Some <| LogEntry((Guid.Create()), 0UL, 1UL,  (), None))))
+        LogEntry((Id.Create()), 0UL, 1UL,  (),
+            Some <| LogEntry((Id.Create()), 0UL, 1UL,  (),
+                Some <| LogEntry((Id.Create()), 0UL, 1UL,  (),
+                    Some <| LogEntry((Id.Create()), 0UL, 1UL,  (), None))))
 
       let msg =
         { Term = 1UL
@@ -324,13 +324,13 @@ module AppendEntries =
 
   let follower_recv_appendentries_set_commitidx_to_LeaderCommit =
     testCase "follower recv appendentries set commitidx to LeaderCommit" <| fun _ ->
-      let peer = Node.create (Guid.Create()) ()
+      let peer = Node.create (Id.Create()) ()
 
       let log =
-        LogEntry((Guid.Create()), 0UL, 1UL,  (),
-          Some <| LogEntry((Guid.Create()), 0UL, 1UL,  (),
-              Some <| LogEntry((Guid.Create()), 0UL, 1UL,  (),
-                  Some <| LogEntry((Guid.Create()), 0UL, 1UL,  (), None))))
+        LogEntry((Id.Create()), 0UL, 1UL,  (),
+          Some <| LogEntry((Id.Create()), 0UL, 1UL,  (),
+              Some <| LogEntry((Id.Create()), 0UL, 1UL,  (),
+                  Some <| LogEntry((Id.Create()), 0UL, 1UL,  (), None))))
 
       let msg =
         { Term = 1UL
@@ -353,7 +353,7 @@ module AppendEntries =
 
   let follower_recv_appendentries_failure_includes_current_idx =
     testCase "follower recv appendentries failure includes current idx" <| fun _ ->
-      let peer = Node.create (Guid.Create()) ()
+      let peer = Node.create (Id.Create()) ()
 
       let log id = LogEntry(id, 0UL, 1UL,  (), None)
 
@@ -368,13 +368,13 @@ module AppendEntries =
       raft {
         do! addNodeM peer
         do! setTermM 1UL
-        do! appendEntryM (log (Guid.Create())) >>= ignoreM
+        do! appendEntryM (log (Id.Create())) >>= ignoreM
         let! response = receiveAppendEntries (Some peer.Id) msg
 
         expect "Should not be successful" true AppendRequest.failed response
         expect "Should have current index 1" 1UL AppendRequest.currentIndex response
 
-        do! appendEntryM (log (Guid.Create())) >>= ignoreM
+        do! appendEntryM (log (Id.Create())) >>= ignoreM
         let! response = receiveAppendEntries (Some peer.Id) msg
         expect "Should not be successful" true AppendRequest.failed response
         expect "Should have current index 2" 2UL AppendRequest.currentIndex response
@@ -384,7 +384,7 @@ module AppendEntries =
 
   let follower_recv_appendentries_resets_election_timeout =
     testCase "follower recv appendentries resets election timeout" <| fun _ ->
-      let peer = Node.create (Guid.Create()) ()
+      let peer = Node.create (Id.Create()) ()
 
       let msg =
         { Term = 1UL

@@ -83,7 +83,7 @@ module StaticNodeExtensions =
   type Node<'t> with
     static member FromFB (fb: NodeFB) : Node =
       let info = fb.Data |> IrisNode.FromFB
-      { Id = Guid fb.Id
+      { Id = Id fb.Id
       ; State = fb.State |> NodeState.FromFB
       ; Data = info
       ; Voting = fb.Voting
@@ -264,7 +264,7 @@ module StaticLogExtensions =
         for i in 0 .. (entry.NodesLength - 1) do
           nodes.[i] <- entry.GetNodes(i) |> Node.FromFB
 
-        Configuration(Guid entry.Id, entry.Index, entry.Term, nodes, log)
+        Configuration(Id entry.Id, entry.Index, entry.Term, nodes, log)
         |> Some
 
       | LogTypeFB.JointConsensusFB ->
@@ -274,14 +274,14 @@ module StaticLogExtensions =
         for i in 0 .. (entry.ChangesLength - 1) do
           changes.[i] <- entry.GetChanges(i) |> ConfigChange.FromFB
 
-        JointConsensus(Guid entry.Id, entry.Index, entry.Term, changes, log)
+        JointConsensus(Id entry.Id, entry.Index, entry.Term, changes, log)
         |> Some
 
       | LogTypeFB.LogEntryFB ->
         let entry = fb.GetEntry(new LogEntryFB())
         let data = StateMachine.FromFB entry.Data
 
-        LogEntry(Guid entry.Id, entry.Index, entry.Term, data, log)
+        LogEntry(Id entry.Id, entry.Index, entry.Term, data, log)
         |> Some
 
       | LogTypeFB.SnapshotFB ->
@@ -289,7 +289,7 @@ module StaticLogExtensions =
         let data = StateMachine.FromFB entry.Data
         let nodes = Array.zeroCreate entry.NodesLength
 
-        let id = Guid entry.Id
+        let id = Id entry.Id
 
         for i in 0..(entry.NodesLength - 1) do
           nodes.[i] <- entry.GetNodes(i) |> Node.FromFB
@@ -572,7 +572,7 @@ module StaticIntsallSnapshotExtensions =
         else None
 
       { Term      = fb.Term
-      ; LeaderId  = Guid fb.LeaderId
+      ; LeaderId  = Id fb.LeaderId
       ; LastIndex = fb.LastIndex
       ; LastTerm  = fb.LastTerm
       ; Data      = Option.get entries

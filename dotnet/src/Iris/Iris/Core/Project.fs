@@ -67,7 +67,7 @@ module ProjectHelper =
   ///
   /// # Returns: Project
   let create (name : string) : Project =
-    { Id        = Guid.Create()
+    { Id        = Id.Create()
     ; Name      = name
     ; Path      = None
     ; CreatedOn = createTimestamp()

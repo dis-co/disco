@@ -56,7 +56,7 @@ type IrisNodeStatus =
 // |___|_|  |_|___/ |_| \_|\___/ \__,_|\___|
 
 type IrisNode =
-  { MemberId : Guid
+  { MemberId : Id
   ; HostName : string
   ; IpAddr   : IpAddress
   ; Port     : int
@@ -64,7 +64,7 @@ type IrisNode =
   ; TaskId   : TaskId option }
 
   static member Create name host port =
-    { MemberId = Guid.Create()
+    { MemberId = Id.Create()
     ; HostName = name
     ; IpAddr   = IPv4Address host
     ; Port     = port
@@ -118,9 +118,9 @@ type IrisNode =
     let tid =
       match fb.TaskId with
         | null | "" -> None
-        | str    -> Guid.TryParse str
+        | str    -> Id.TryParse str
 
-    { MemberId = Guid.Parse fb.MemberId
+    { MemberId = Id fb.MemberId
     ; HostName = fb.HostName
     ; IpAddr   = IPv4Address fb.IpAddr
     ; Port     = fb.Port

@@ -148,8 +148,6 @@ module RaftTests =
         server_should_call_delete_callback_for_each_deleted_log
 
         server_starts_as_follower
-        server_starts_with_election_timeout_of_6000m
-        server_starts_with_request_timeout_of_1000ms
         server_voted_for_records_who_we_voted_for
         server_votes_are_majority_is_true
         server_voting_results_in_voting

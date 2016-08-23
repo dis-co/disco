@@ -22,14 +22,52 @@ module Replacements =
   let sizeof<'t> : int = failwith "ONLY IN JS"
 #endif
 
+//   ____       _     _
+//  / ___|_   _(_) __| |
+// | |  _| | | | |/ _` |
+// | |_| | |_| | | (_| |
+//  \____|\__,_|_|\__,_|
+
+#if JAVASCRIPT
+[<Erase>]
+open Fable.Core
+#endif
+type Id =
+  | Id of string
+
+  with
+    override id.ToString() =
+      match id with | Id str -> str
+
+    static member Parse (str: string) = Id str
+
+    static member TryParse (str: string) = Id str |> Some
+
+    /// ## Create
+    ///
+    /// Create a new Guid.
+    ///
+    /// ### Signature:
+    /// - unit: .
+    ///
+    /// Returns: Guid
+    static member Create () =
+      let sanitize (str: string) =
+        Regex.Replace(str, "[\+|\/|\=]","").ToLower()
+
+      let guid = System.Guid.NewGuid()
+      guid.ToByteArray()
+      |> System.Convert.ToBase64String
+      |> sanitize
+      |> Id
+
 //     _    _ _
 //    / \  | (_) __ _ ___  ___  ___
 //   / _ \ | | |/ _` / __|/ _ \/ __|
 //  / ___ \| | | (_| \__ \  __/\__ \
 // /_/   \_\_|_|\__,_|___/\___||___/
 
-type Id         = Guid
-type NodeId     = Guid
+type NodeId     = Id
 type Long       = uint64
 type Index      = Long
 type Term       = Long

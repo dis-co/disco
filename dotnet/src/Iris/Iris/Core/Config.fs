@@ -105,7 +105,7 @@ type AudioConfig =
 
 type HostGroup =
   { Name    : Name
-  ; Members : Guid list
+  ; Members : Id list
   }
   with
     override self.ToString() =
@@ -589,7 +589,7 @@ module Configuration =
     for group in cfg.Project.Cluster.Groups do
       if group.Name.Length > 0
       then
-        let ids : Guid list ref = ref []
+        let ids : Id list ref = ref []
 
         for mid in group.Members do
           if mid.Length > 0

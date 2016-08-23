@@ -27,7 +27,7 @@ module RaftIntegrationTests =
 
   let createConfig rid idx start lip lpidx  =
     let portbase = 8000
-    { Guid             = rid
+    { Id               = rid
     ; Debug            = true
     ; IpAddr           = "127.0.0.1"
     ; WebPort          = (portbase - 1000) + idx
@@ -36,7 +36,7 @@ module RaftIntegrationTests =
     ; LeaderIp         = lip
     ; LeaderPort       = Option.map (fun n -> uint32 portbase + n) lpidx
     ; MaxRetries       = 5u
-    ; DataDir          = Guid.Create() |> string |> mkTmpPath
+    ; DataDir          = Id.Create() |> string |> mkTmpPath
     ; PeriodicInterval = 10UL
     }
 
@@ -95,7 +95,7 @@ module RaftIntegrationTests =
       let col = getCollection<RaftMetaData> "metadata" db
 
       let meta = new RaftMetaData()
-      meta.Guid <- rid
+      meta.NodeId <- rid
       meta.Term <- 666L
 
       insert meta col |> ignore
@@ -104,13 +104,13 @@ module RaftIntegrationTests =
       // re-open the database
       let db = openDB path |> Option.get
       let col = getCollection<RaftMetaData> "metadata" db
-      let loaded = findById meta._id col |> Option.get
+      let loaded = findById meta.Id col |> Option.get
 
-      expect "_id should be the same"    meta._id  id loaded._id
+      expect "_id should be the same"    meta.Id   id loaded.Id
       expect "Term should be the same"   meta.Term id loaded.Term
-      expect "Guid should be the same" rid       id loaded.Guid
+      expect "NodeId should be the same" rid       id loaded.NodeId
 
-      loaded.Guid <- "hi"
+      loaded.NodeId <- "hi"
       loaded.Term <- 800L
 
       let result = update loaded col
@@ -122,11 +122,11 @@ module RaftIntegrationTests =
       // re-open the database
       let db = openDB path |> Option.get
       let col = getCollection<RaftMetaData> "metadata" db
-      let updated = findById meta._id col |> Option.get
+      let updated = findById meta.Id col |> Option.get
 
-      expect "_id should be the same"    updated._id    id meta._id
+      expect "_id should be the same"    updated.Id     id meta.Id
       expect "Term should be the same"   updated.Term   id loaded.Term
-      expect "Guid should be the same" updated.Guid id loaded.Guid
+      expect "NodeId should be the same" updated.NodeId id loaded.NodeId
 
       closeDB db
       delete path
@@ -134,7 +134,7 @@ module RaftIntegrationTests =
   let test_save_restore_log_values_correctly =
     testCase "save/restore log values correctly" <| fun _ ->
       let info1 =
-        { MemberId = Guid.Create()
+        { MemberId = Id.Create()
         ; HostName = "Hans"
         ; IpAddr = IpAddress.Parse "192.168.1.20"
         ; Port = 8080
@@ -142,25 +142,25 @@ module RaftIntegrationTests =
         ; TaskId = None }
 
       let info2 =
-        { MemberId = Guid.Create()
+        { MemberId = Id.Create()
         ; HostName = "Klaus"
         ; IpAddr = IpAddress.Parse "192.168.1.22"
         ; Port = 8080
         ; Status = IrisNodeStatus.Failed
-        ; TaskId = Guid.Create() |> Some }
+        ; TaskId = Id.Create() |> Some }
 
-      let node1 = Node.create (Guid.Create()) info1
-      let node2 = Node.create (Guid.Create()) info2
+      let node1 = Node.create (Id.Create()) info1
+      let node2 = Node.create (Id.Create()) info2
 
       let changes = [| NodeRemoved node2 |]
       let nodes = [| node1; node2 |]
 
       let log =
-        Some <| LogEntry(Guid.Create(), 7UL, 1UL, Close "cccc",
-          Some <| LogEntry(Guid.Create(), 6UL, 1UL, AddClient "bbbb",
-            Some <| Configuration(Guid.Create(), 5UL, 1UL, [| node1 |],
-              Some <| JointConsensus(Guid.Create(), 4UL, 1UL, changes,
-                Some <| Snapshot(Guid.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
+        Some <| LogEntry(Id.Create(), 7UL, 1UL, Close "cccc",
+          Some <| LogEntry(Id.Create(), 6UL, 1UL, AddClient "bbbb",
+            Some <| Configuration(Id.Create(), 5UL, 1UL, [| node1 |],
+              Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
+                Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
 
       let depth = log |> Option.get |> Log.depth |> int
       let path = mkTmpPath "test_save_restore_log_values_correctly"
@@ -190,7 +190,7 @@ module RaftIntegrationTests =
   let test_save_restore_raft_value_correctly =
     testCase "save/restore raft value correctly" <| fun _ ->
       let info1 =
-        { MemberId = Guid.Create()
+        { MemberId = Id.Create()
         ; HostName = "Hans"
         ; IpAddr = IpAddress.Parse "192.168.1.20"
         ; Port = 8080
@@ -198,25 +198,25 @@ module RaftIntegrationTests =
         ; TaskId = None }
 
       let info2 =
-        { MemberId = Guid.Create()
+        { MemberId = Id.Create()
         ; HostName = "Klaus"
         ; IpAddr = IpAddress.Parse "192.168.1.22"
         ; Port = 8080
         ; Status = IrisNodeStatus.Failed
-        ; TaskId = Guid.Create() |> Some }
+        ; TaskId = Id.Create() |> Some }
 
-      let node1 = Node.create (Guid.Create()) info1
-      let node2 = Node.create (Guid.Create()) info2
+      let node1 = Node.create (Id.Create()) info1
+      let node2 = Node.create (Id.Create()) info2
 
       let changes = [| NodeRemoved node2 |]
       let nodes = [| node1; node2 |]
 
       let log =
-        LogEntry(Guid.Create(), 7UL, 1UL, Close "cccc",
-          Some <| LogEntry(Guid.Create(), 6UL, 1UL, AddClient "bbbb",
-            Some <| Configuration(Guid.Create(), 5UL, 1UL, [| node1 |],
-              Some <| JointConsensus(Guid.Create(), 4UL, 1UL, changes,
-                Some <| Snapshot(Guid.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
+        LogEntry(Id.Create(), 7UL, 1UL, Close "cccc",
+          Some <| LogEntry(Id.Create(), 6UL, 1UL, AddClient "bbbb",
+            Some <| Configuration(Id.Create(), 5UL, 1UL, [| node1 |],
+              Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
+                Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
         |> Log.fromEntries
 
       let raft =
@@ -244,7 +244,7 @@ module RaftIntegrationTests =
   let test_validate_logs_get_deleted_correctly =
     testCase "validate logs get deleted correctly" <| fun _ ->
       let info1 =
-        { MemberId = Guid.Create()
+        { MemberId = Id.Create()
         ; HostName = "Hans"
         ; IpAddr = IpAddress.Parse "192.168.1.20"
         ; Port = 8080
@@ -252,25 +252,25 @@ module RaftIntegrationTests =
         ; TaskId = None }
 
       let info2 =
-        { MemberId = Guid.Create()
+        { MemberId = Id.Create()
         ; HostName = "Klaus"
         ; IpAddr = IpAddress.Parse "192.168.1.22"
         ; Port = 8080
         ; Status = IrisNodeStatus.Failed
-        ; TaskId = Guid.Create() |> Some }
+        ; TaskId = Id.Create() |> Some }
 
-      let node1 = Node.create (Guid.Create()) info1
-      let node2 = Node.create (Guid.Create()) info2
+      let node1 = Node.create (Id.Create()) info1
+      let node2 = Node.create (Id.Create()) info2
 
       let changes = [| NodeRemoved node2 |]
       let nodes = [| node1; node2 |]
 
       let log =
-        LogEntry(Guid.Create(), 7UL, 1UL, Close "cccc",
-          Some <| LogEntry(Guid.Create(), 6UL, 1UL, AddClient "bbbb",
-            Some <| Configuration(Guid.Create(), 5UL, 1UL, [| node1 |],
-              Some <| JointConsensus(Guid.Create(), 4UL, 1UL, changes,
-                Some <| Snapshot(Guid.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
+        LogEntry(Id.Create(), 7UL, 1UL, Close "cccc",
+          Some <| LogEntry(Id.Create(), 6UL, 1UL, AddClient "bbbb",
+            Some <| Configuration(Id.Create(), 5UL, 1UL, [| node1 |],
+              Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
+                Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
 
       let count = int <| Log.depth log
 

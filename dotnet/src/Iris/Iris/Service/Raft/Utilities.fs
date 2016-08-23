@@ -48,13 +48,13 @@ let getHostName () =
 /// Returns: Raft<StateMachine,IrisNode>
 let createRaft (options: RaftOptions) =
   let node =
-    { MemberId = Guid.Create()
+    { MemberId = Id.Create()
     ; HostName = getHostName()
     ; IpAddr   = IpAddress.Parse options.IpAddr
     ; Port     = options.RaftPort
     ; TaskId   = None
     ; Status   = IrisNodeStatus.Running }
-    |> Node.create (Guid options.Guid)
+    |> Node.create (Id options.Id)
   Raft.create node
 
 let loadRaft (options: RaftOptions) =

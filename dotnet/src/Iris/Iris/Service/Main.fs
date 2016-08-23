@@ -29,7 +29,7 @@ module Main =
 
   let createConfig debug rid idx start lip lpidx  =
     let portbase = 8000
-    { Guid             = rid
+    { Id             = rid
     ; Debug            = debug
     ; IpAddr           = "127.0.0.1"
     ; WebPort          = (portbase - 1000) + idx
@@ -38,7 +38,7 @@ module Main =
     ; LeaderIp         = lip
     ; LeaderPort       = Option.map (fun n -> uint32 portbase + n) lpidx
     ; MaxRetries       = 5u
-    ; DataDir          = Guid.Create() |> string |> mkTmpPath
+    ; DataDir          = Id.Create() |> string |> mkTmpPath
     ; PeriodicInterval = 50UL
     }
 

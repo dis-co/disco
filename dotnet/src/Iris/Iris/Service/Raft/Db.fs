@@ -97,7 +97,7 @@ type LogData() =
   member self.ToLog () : LogEntry =
     let coder = FsPickler.CreateBinarySerializer()
 
-    let id   = Guid self._id
+    let id   = Id self._id
     let idx  = uint64 self.Index
     let term = uint64 self.Term
 
@@ -290,7 +290,7 @@ type NodeMetaData() =
 
   member self.ToNode () : Node =
     let coder = FsPickler.CreateBinarySerializer()
-    { Id         = Guid self._id
+    { Id         = Id self._id
     ; Data       = coder.UnPickle<IrisNode>(self.Data)
     ; Voting     = self.Voting
     ; VotedForMe = self.VotedForMe
@@ -320,63 +320,64 @@ type RaftMetaData() =
   let mutable last_applied_idx : int64        = 0L
   let mutable config_change    : string       = null
 
-  member __._id
-    with get ()          = METADATA_ID
-      and set (_: string) = ()
+  [<BsonId>]
+  member __.Id
+    with get () = METADATA_ID
+     and set (_: string) = ()
 
-  member __.Guid
+  member __.NodeId
     with get () = raftid
-      and set s  = raftid <- s
+     and set s  = raftid <- s
 
   member __.State
     with get () = state
-      and set s  = state <- s
+     and set s  = state <- s
 
   member __.Term
     with get () = term
-      and set t  = term <- t
+     and set t  = term <- t
 
   member __.LeaderId
     with get () = leaderid
-      and set t  = leaderid <- t
+     and set t  = leaderid <- t
 
   member __.OldPeers
     with get () = oldpeers
-      and set t  = oldpeers <- t
+     and set t  = oldpeers <- t
 
   member __.VotedFor
     with get () = votedfor
-      and set v  = votedfor <- v
+     and set v  = votedfor <- v
 
   member __.CommitIndex
     with get () = commitidx
-      and set v  = commitidx <- v
+     and set v  = commitidx <- v
 
   member __.LastAppliedIndex
     with get () = last_applied_idx
-      and set v  = last_applied_idx <- v
+     and set v  = last_applied_idx <- v
 
   member __.TimeoutElapsed
     with get () = timeout_elapsed
-      and set t  = timeout_elapsed <- t
+     and set t  = timeout_elapsed <- t
 
   member __.ElectionTimeout
     with get () = election_timeout
-      and set t  = election_timeout <- t
+     and set t  = election_timeout <- t
 
   member __.RequestTimeout
     with get () = request_timeout
-      and set t  = request_timeout <- t
+     and set t  = request_timeout <- t
 
   member __.MaxLogDepth
     with get () = max_log_depth
-      and set t  = max_log_depth <- t
+     and set t  = max_log_depth <- t
 
   member __.ConfigChangeEntry
     with get () = config_change
-      and set t  = config_change <- t
+     and set t  = config_change <- t
 
-  static member Id = METADATA_ID
+  static member Guid = METADATA_ID
 
 /// ## Open a LevelDB on disk
 ///
@@ -641,7 +642,7 @@ let raftCollection (db: LiteDatabase) =
 /// Returns: RaftMetadata option
 let getMetadata (db: LiteDatabase) =
   raftCollection db
-  |> findById RaftMetaData.Id
+  |> findById RaftMetaData.Guid
 
 /// ## Get the log collection
 ///
@@ -827,7 +828,7 @@ let saveMetadata (raft: Raft) (db: LiteDatabase) =
       | Some m -> m
       | _      -> initMetadata db
 
-  meta.Guid <- string raft.Node.Id
+  meta.NodeId <- string raft.Node.Id
   meta.Term   <- int64  raft.CurrentTerm
   meta.State  <- string raft.State
 
@@ -952,18 +953,18 @@ let loadRaft db =
           | _            -> Log.empty
 
       let nodes = allNodes db
-      let self = List.tryFind (Node.getId >> ((=) (Guid meta.Guid))) nodes
+      let self = List.tryFind (Node.getId >> ((=) (Id meta.NodeId))) nodes
       let votedfor =
         match meta.VotedFor with
           | null   -> None
-          | str -> Guid str |> Some
+          | str -> Id str |> Some
 
       let state = RaftState.Parse meta.State
 
       let leader =
         match meta.LeaderId with
           | null   -> None
-          | str -> Guid str |> Some
+          | str -> Id str |> Some
 
       let oldpeers =
         match meta.OldPeers with
@@ -978,7 +979,7 @@ let loadRaft db =
       let configchange =
         match meta.ConfigChangeEntry with
           | null   -> None
-          | str -> Log.find (Guid str) log
+          | str -> Log.find (Id str) log
 
       match self with
         | Some node ->

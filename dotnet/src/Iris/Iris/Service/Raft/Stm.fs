@@ -36,7 +36,7 @@ let log (cbs: IRaftCallbacks<_,_>) (state: AppState) (msg: string) =
 let addNodeR node state cbs =
   let term = currentTerm state.Raft
   let changes = [| NodeAdded node |]
-  let entry = JointConsensus(Guid.Create(), 0UL, term, changes, None)
+  let entry = JointConsensus(Id.Create(), 0UL, term, changes, None)
   let response = receiveEntry entry |> runRaft state.Raft cbs
 
   match response with
@@ -58,7 +58,7 @@ let addNodeR node state cbs =
 let removeNodeR node state cbs =
   let term = currentTerm state.Raft
   let changes = [| NodeRemoved node |]
-  let entry = JointConsensus(Guid.Create(), 0UL, term, changes, None)
+  let entry = JointConsensus(Id.Create(), 0UL, term, changes, None)
   receiveEntry entry
   |> evalRaft state.Raft cbs
   |> flip updateRaft state
@@ -197,7 +197,7 @@ let handleHandshake node state cbs =
         let run = ref true
         let! term = currentTermM ()
         let changes = [| NodeAdded node |]
-        let entry = JointConsensus(Guid.Create(), 0UL, term, changes, None)
+        let entry = JointConsensus(Id.Create(), 0UL, term, changes, None)
 
         sprintf "initialize: appending entry to enter joint-consensus"
         |> log cbs state
@@ -252,7 +252,7 @@ let handleHandwaive node state cbs =
         let run = ref true
         let! term = currentTermM ()
         let changes = [| NodeRemoved node |]
-        let entry = JointConsensus(Guid.Create(), 0UL, term, changes, None)
+        let entry = JointConsensus(Id.Create(), 0UL, term, changes, None)
 
         sprintf "appending entry to enter joint-consensus"
         |> log cbs state
