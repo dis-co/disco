@@ -168,11 +168,6 @@ module Raft =
       cbs.PersistLog log
       |> returnM
 
-  let deleteLog log =
-    read >>= fun cbs ->
-      cbs.DeleteLog log
-      |> returnM
-
   let hasSufficientLogs node =
     read >>= fun cbs ->
       cbs.HasSufficientLogs node
@@ -991,14 +986,15 @@ module Raft =
 
       if current < msg.PrevLogIdx then
 
-        do! log <| sprintf "receiveAppendEntries: term mismatch at PrevLogIdx %d"
+        do! log <| sprintf "receiveAppendEntries: CurrentIndex: %d < PrevLogIdx: %d [not processing]"
+                    current
                     msg.PrevLogIdx
 
         return resp
       else
         let term = LogEntry.term entry
         if term <> msg.PrevLogTerm then
-          do! log <| sprintf "AE term doesn't match prev_term (ie. %d vs %d) ci:%d pli:%d"
+          do! log <| sprintf "receiveAppendEntries: term doesn't match prev_term (ie. %d vs %d) ci:%d pli:%d"
                       term
                       msg.PrevLogTerm
                       current
@@ -1711,7 +1707,8 @@ module Raft =
   let receiveVoteResponse (nid : NodeId) (vote : VoteResponse) =
     raft {
         let msg =
-          sprintf "node responded to requestvote status: %s"
+          sprintf "%s responded to requestvote status: %s"
+            (string nid)
             (if vote.Granted then "granted" else "not granted")
 
         let! state = get
@@ -1935,9 +1932,10 @@ module Raft =
                      Granted = true
                      Reason  = None }
           else
-            do! log "vote request failed: NotVotingState"
+            do! log "vote request denied: NotVotingState"
             return! failM NotVotingState
         | (false, err) ->
+          do! log <| sprintf "vote request denied: %A" err
           let! term = currentTermM ()
           return { Term    = term
                    Granted = false
@@ -2020,12 +2018,13 @@ module Raft =
         let! timedout = requestTimedOutM ()
         if timedout then
           do! sendAllAppendEntriesM ()
-      | _ ->
+      | Follower ->
         let! num = numNodesM ()
         let! timedout = electionTimedOutM ()
 
         if timedout && num > 1UL then
           do! startElection ()
+      | _ -> ()
     }
 
   let periodic (elapsed : Long) =
