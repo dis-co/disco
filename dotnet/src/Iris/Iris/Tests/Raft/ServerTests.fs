@@ -1441,27 +1441,22 @@ module ServerTests =
 
   let leader_recv_appendentries_response_do_not_increase_commit_idx_because_of_old_terms_with_majority =
     testCase "leader recv appendentries response do not increase commit idx because of old terms with majority" <| fun _ ->
-      let peer1 = Node.create (Id.Create()) "peer 1"
-      let peer2 = Node.create (Id.Create()) "peer 2"
-      let peer3 = Node.create (Id.Create()) "peer 3"
-      let peer4 = Node.create (Id.Create()) "peer 4"
-
-      let raft' = defaultServer "localhost"
-      let sender = Sender.create<_,_>
-      let cbs =
-        { mkcbs (ref "hell no") with SendAppendEntries = senderAppendEntries sender None }
-        :> IRaftCallbacks<_,_>
-
-      let log1 = LogEntry(Id.Create(),0UL,1UL,"one",None)
-      let log2 = LogEntry(Id.Create(),0UL,1UL,"two",None)
-      let log3 = LogEntry(Id.Create(),0UL,2UL,"three",None)
+      let peer1 = Node.create (Id.Create()) ()
+      let peer2 = Node.create (Id.Create()) ()
+      let peer3 = Node.create (Id.Create()) ()
+      let peer4 = Node.create (Id.Create()) ()
 
       let response =
-        { Term = 1UL
-        ; Success = true
+        { Term         = 1UL
+        ; Success      = true
         ; CurrentIndex = 1UL
-        ; FirstIndex = 1UL
-        }
+        ; FirstIndex   = 1UL }
+
+      let cbs = mkcbs (ref ()) :> IRaftCallbacks<_,_>
+
+      let log1 = LogEntry(Id.Create(),0UL,1UL,(),None)
+      let log2 = LogEntry(Id.Create(),0UL,1UL,(),None)
+      let log3 = LogEntry(Id.Create(),0UL,2UL,(),None)
 
       raft {
         do! addNodesM [| peer1; peer2; peer3; peer4 |]
@@ -1516,38 +1511,37 @@ module ServerTests =
         do! expectM "Should have commit index 3" 3UL commitIndex
 
         do! periodic 1UL
-        do! expectM "Should have lastAppliedIndex 1" 1UL lastAppliedIdx
-
-        do! periodic 1UL
-        do! expectM "Should have lastAppliedIndex 2" 2UL lastAppliedIdx
-
-        do! periodic 1UL
         do! expectM "Should have lastAppliedIndex 3" 3UL lastAppliedIdx
       }
-      |> runWithRaft raft' cbs
+      |> runWithCBS cbs
       |> noError
 
   let leader_recv_appendentries_response_jumps_to_lower_next_idx =
     testCase "leader recv appendentries response jumps to lower next idx" <| fun _ ->
-      let peer = Node.create (Id.Create()) "peer 1"
+      let peer = Node.create (Id.Create()) ()
 
-      let raft' = defaultServer "localhost"
-      let sender = Sender.create<_,_>
+      let lokk = new System.Object()
+      let count = ref 0
+      let appendReq = ref None
+
       let cbs =
-        { mkcbs (ref "meow") with SendAppendEntries = senderAppendEntries sender None }
+        { mkcbs (ref ()) with
+            SendAppendEntries = fun n ae ->
+              lock lokk <| fun _ -> count := !count + 1
+              appendReq := Some ae
+              None }
         :> IRaftCallbacks<_,_>
 
-      let log1 = LogEntry(Id.Create(),0UL,1UL,"one",None)
-      let log2 = LogEntry(Id.Create(),0UL,2UL,"two",None)
-      let log3 = LogEntry(Id.Create(),0UL,3UL,"three",None)
-      let log4 = LogEntry(Id.Create(),0UL,4UL,"four",None)
+      let log1 = LogEntry(Id.Create(),0UL,1UL,(),None)
+      let log2 = LogEntry(Id.Create(),0UL,2UL,(),None)
+      let log3 = LogEntry(Id.Create(),0UL,3UL,(),None)
+      let log4 = LogEntry(Id.Create(),0UL,4UL,(),None)
 
       let response =
         { Term = 1UL
         ; Success = true
         ; CurrentIndex = 1UL
-        ; FirstIndex = 1UL
-        }
+        ; FirstIndex = 1UL }
 
       raft {
         do! addNodeM peer
@@ -1562,66 +1556,61 @@ module ServerTests =
         do! becomeLeader ()
 
         do! expectM "Should have nextIdx 5" 5UL (getNode peer.Id >> Option.get >> Node.getNextIndex)
-        do! expectM "Should have a msg 1" 1 (fun _ -> List.length (!sender.Outbox))
-
-        sender.Inbox  := List.empty
-        sender.Outbox := List.empty
+        do! expectM "Should have a msg 1" 1 (konst !count)
 
         // need to get an up-to-date version of the peer, because its nextIdx
         // will have been bumped when becoming leader!
         let! peer = getNodeM peer.Id >>= (Option.get >> returnM)
 
-        let! request = sendAppendEntry peer
-        Async.RunSynchronously request |> ignore
+        do! sendAllAppendEntriesM ()
 
-        !sender.Outbox
-        |> List.head
-        |> getAppendEntries
-        |> assume "Should have prevLogIdx 4" 4UL AppendRequest.prevLogIndex
-        |> expect "Should have prevLogTerm 4" 4UL AppendRequest.prevLogTerm
+        expect "Should have prevLogIdx 4" 4UL AppendRequest.prevLogIndex (!appendReq |> Option.get)
+        expect "Should have prevLogTerm 4" 4UL AppendRequest.prevLogTerm (!appendReq |> Option.get)
 
-        sender.Inbox  := List.empty
-        sender.Outbox := List.empty
+        let! term = currentTermM ()
+        do! receiveAppendEntriesResponse peer.Id { response with Term = term; Success = false; CurrentIndex = 1UL }
 
-        do! receiveAppendEntriesResponse peer.Id { response with Term = 2UL; Success = false; CurrentIndex = 1UL }
-        do! expectM "Should have nextIdx 2" 2UL (getNode peer.Id >> Option.get >> Node.getNextIndex)
-        do! expectM "Should have 2 msgs" 2 (fun _ -> List.length !sender.Outbox)
+        do! expectM "Should have NextIdx 2" 2UL (getNode peer.Id >> Option.get >> Node.getNextIndex)
+        do! expectM "Should have MatchIdx 2" 1UL (getNode peer.Id >> Option.get >> Node.getMatchIndex)
+        do! expectM "Should have 2 msgs"    2   (konst !count)
 
-        !sender.Outbox
-        |> List.head
-        |> getAppendEntries
-        |> assume "Should have prevLogIdx 1" 1UL AppendRequest.prevLogIndex
-        |> expect "Should have prevLogTerm 1" 1UL AppendRequest.prevLogTerm
+        do! sendAllAppendEntriesM ()
+
+        expect "Should have prevLogIdx 1"  1UL AppendRequest.prevLogIndex (!appendReq |> Option.get)
+        expect "Should have prevLogTerm 1" 1UL AppendRequest.prevLogTerm  (!appendReq |> Option.get)
       }
-      |> runWithRaft raft' cbs
+      |> runWithCBS cbs
       |> noError
 
 
   let leader_recv_appendentries_response_decrements_to_lower_next_idx =
     testCase "leader recv appendentries response decrements to lower next idx" <| fun _ ->
-      let peer = Node.create (Id.Create()) "peer 1"
+      let peer = Node.create (Id.Create()) ()
+      let lokk = new System.Object()
 
-      let raft' = defaultServer "localhost"
-      let sender = Sender.create<_,_>
+      let ci = ref 0UL
+      let term = ref 2UL
+      let result = ref false
+      let count = ref 0
+
       let cbs =
-        { mkcbs (ref "fuck off") with SendAppendEntries = senderAppendEntries sender None }
-        :> IRaftCallbacks<_,_>
+        { mkcbs (ref ()) with
+            SendAppendEntries = fun n ae ->
+              lock lokk <| fun _ -> count := !count + 1
+              Some { Term         = !term
+                   ; Success      = !result
+                   ; CurrentIndex = !ci
+                   ; FirstIndex   = 0UL }
+          } :> IRaftCallbacks<_,_>
 
-      let log1 = LogEntry(Id.Create(),0UL,1UL,"one",None)
-      let log2 = LogEntry(Id.Create(),0UL,2UL,"two",None)
-      let log3 = LogEntry(Id.Create(),0UL,3UL,"three",None)
-      let log4 = LogEntry(Id.Create(),0UL,4UL,"four",None)
-
-      let response =
-        { Term = 2UL
-        ; Success = false
-        ; CurrentIndex = 4UL
-        ; FirstIndex = 0UL
-        }
+      let log1 = LogEntry(Id.Create(),0UL,1UL,(),None)
+      let log2 = LogEntry(Id.Create(),0UL,2UL,(),None)
+      let log3 = LogEntry(Id.Create(),0UL,3UL,(),None)
+      let log4 = LogEntry(Id.Create(),0UL,4UL,(),None)
 
       raft {
         do! addNodeM peer
-        do! setTermM 2UL
+        do! setTermM !term
         do! setCommitIndexM 0UL
 
         do! appendEntryM log1 >>= ignoreM
@@ -1629,47 +1618,31 @@ module ServerTests =
         do! appendEntryM log3 >>= ignoreM
         do! appendEntryM log4 >>= ignoreM
 
+        ci := 0UL
         do! becomeLeader ()
-        do! expectM "Should have correct nextIdx" 5UL (getNode peer.Id >> Option.get >> Node.getNextIndex)
-        do! expectM "Should have a message in outbox" 1 (fun _ -> List.length !sender.Outbox)
+
+        do! expectM "Should have correct NextIndex" 1UL (getNode peer.Id >> Option.get >> Node.getNextIndex)
+        do! expectM "Should have correct MatchIndex" 0UL (getNode peer.Id >> Option.get >> Node.getMatchIndex)
+        do! expectM "Should have been called once" 1  (konst !count)
 
         // need to get updated peer, because nextIdx will be bumped when
         // becoming leader!
         let! peer = getNodeM peer.Id >>= (Option.get >> returnM)
 
-        let! request = sendAppendEntry peer
-        Async.RunSynchronously request |> ignore
+        // we pretend that the follower `peer` has now successfully appended those logs
+        let! t = currentTermM ()
+        term := t
+        ci := 4UL
+        result := true
 
-        do! expectM "Should have 2 msgs" 2 (fun _ -> List.length !sender.Outbox)
+        // send again and process responses
+        do! sendAllAppendEntriesM ()
 
-        !sender.Outbox
-        |> List.head
-        |> getAppendEntries
-        |> assume "Should have prevLogTerm 4" 4UL AppendRequest.prevLogTerm
-        |> expect "Should have prevLogIdx 4" 4UL AppendRequest.prevLogIndex
-
-        do! receiveAppendEntriesResponse peer.Id response
-        do! expectM "Should have nextIdx 4" 4UL (getNode peer.Id >> Option.get >> Node.getNextIndex)
-        do! expectM "Should have 3 msgs" 3 (fun _ -> List.length !sender.Outbox)
-
-        !sender.Outbox
-        |> List.head
-        |> getAppendEntries
-        |> assume "Should have prevLogTerm 3" 3UL AppendRequest.prevLogTerm
-        |> expect "Should have prevLogIdx 3" 3UL AppendRequest.prevLogIndex
-
-        do! receiveAppendEntriesResponse peer.Id response
-        do! expectM "Should have correct nextIdx" 3UL (getNode peer.Id >> Option.get >> Node.getNextIndex)
-
-        do! expectM "Should have 4 msgs" 4 (fun _ -> List.length !sender.Outbox)
-
-        !sender.Outbox
-        |> List.head
-        |> getAppendEntries
-        |> assume "Should have prevLogTerm 2" 2UL AppendRequest.prevLogTerm
-        |> expect "Should have prevLogIdx 2" 2UL AppendRequest.prevLogIndex
+        do! expectM "Should finally have NextIndex 5"  5UL (getNode peer.Id >> Option.get >> Node.getNextIndex)
+        do! expectM "Should finally have MatchIndex 4" 4UL (getNode peer.Id >> Option.get >> Node.getMatchIndex)
+        do! expectM "Should have been called twice" 2 (konst !count)
       }
-      |> runWithRaft raft' cbs
+      |> runWithCBS cbs
       |> noError
 
   let leader_recv_appendentries_response_retry_only_if_leader =

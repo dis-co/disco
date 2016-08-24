@@ -205,7 +205,7 @@ module Raft =
     ; CommitIndex       = 0UL
     ; LastAppliedIdx    = 0UL
     ; TimeoutElapsed    = 0UL
-    ; ElectionTimeout   = 1500UL         // msec
+    ; ElectionTimeout   = 4000UL         // msec
     ; RequestTimeout    = 500UL          // msec
     ; MaxLogDepth       = 50UL           // items
     ; ConfigChangeEntry = None
@@ -1052,41 +1052,6 @@ module Raft =
   //         |_|   |_|                                                       //
   /////////////////////////////////////////////////////////////////////////////
 
-  let private makeRequest nextIdx =
-    raft {
-      let! state = get
-      let entries = getEntriesUntil nextIdx state
-      let response = { Term         = state.CurrentTerm
-                     ; PrevLogIdx   = 0UL
-                     ; PrevLogTerm  = 0UL
-                     ; LeaderCommit = state.CommitIndex
-                     ; Entries      = entries }
-
-      if nextIdx > 1UL then
-        let! result = getEntryAtM (nextIdx - 1UL)
-        return { response with
-                   PrevLogIdx = nextIdx - 1UL
-                   PrevLogTerm =
-                      match result with
-                        | Some(entry) -> LogEntry.term entry
-                        | _           -> response.Term }
-      else
-        return response
-    }
-
-  //  If response contains term T > currentTerm: set currentTerm = T
-  //  and convert to follower (§5.3)
-  let private stopWrongTerm (resp : AppendResponse) =
-    raft {
-        let! state = get
-        if currentTerm state < resp.Term then
-          do! setTermM resp.Term
-          do! becomeFollower ()
-          return! stopM ()
-        else if currentTerm state <> resp.Term then
-          return! stopM ()
-      }
-
   let private updateNodeIndices (resp : AppendResponse) (node : Node<'n>) =
     raft {
       let peer =
@@ -1150,9 +1115,25 @@ module Raft =
 
   let sendAppendEntry (peer: Node<_>) =
     raft {
-      let nextIdx = peer.NextIndex
-      let! request = makeRequest nextIdx
-      return! sendAppendEntriesM peer request
+      let! state = get
+      let entries = getEntriesUntil peer.NextIndex state
+      let request = { Term         = state.CurrentTerm
+                    ; PrevLogIdx   = 0UL
+                    ; PrevLogTerm  = 0UL
+                    ; LeaderCommit = state.CommitIndex
+                    ; Entries      = entries }
+
+      if peer.NextIndex > 1UL then
+        let! result = getEntryAtM (peer.NextIndex - 1UL)
+        let request = { request with
+                          PrevLogIdx = peer.NextIndex - 1UL
+                          PrevLogTerm =
+                              match result with
+                                | Some(entry) -> LogEntry.term entry
+                                | _           -> request.Term }
+        return! sendAppendEntriesM peer request
+      else
+        return! sendAppendEntriesM peer request
     }
 
   let private sendRemainingEntries peerid =
@@ -1170,13 +1151,6 @@ module Raft =
           return None
     }
 
-  let private failNotLeader _ =
-    raft {
-      let! leader = isLeaderM ()
-      if not leader then
-        return! failM NotLeader
-    }
-
   let rec receiveAppendEntriesResponse (nid : NodeId) resp =
     raft {
       do! log <| sprintf "appendentries response [status: %s]"
@@ -1184,39 +1158,56 @@ module Raft =
 
       let! node = getNodeM nid
       match node with
-        | None -> return! failM NoNode
+        | None ->
+          do! log <| sprintf "appendEntries failed: NoNode %s" (string nid)
+          return! failM NoNode
         | Some peer ->
-          if resp.CurrentIndex <> 0UL && resp.CurrentIndex <= peer.MatchIndex then
+          if resp.CurrentIndex <> 0UL && resp.CurrentIndex < peer.MatchIndex then
+            do! log <| sprintf "appendEntries failed: peer not up to date yet (CurrentIndex %d) (MatchIndex %d)"
+                        resp.CurrentIndex
+                        peer.MatchIndex
+            // set to current index at follower and try again
+            do! updateNodeM { peer with
+                                NextIndex = resp.CurrentIndex + 1UL
+                                MatchIndex = resp.CurrentIndex }
             return ()
           else
-            return! failNotLeader ()
-            return! stopWrongTerm resp
-            return! handleUnsuccessful resp peer
-            do! updateNodeIndices resp peer
-            do! updateCommitIndex resp
+            let! state = get
 
-          // let! response = sendRemainingEntries peer.Id
-          // match response with
-          // | Some nextresp ->
-          //   do! receiveAppendEntriesResponse nid nextresp
-          // | _  -> ()
-    }
+            // we only process this if we are indeed the leader of the pack
+            if isLeader state then
+              let term = currentTerm state
+              //  If response contains term T > currentTerm: set currentTerm = T
+              //  and convert to follower (§5.3)
+              if term < resp.Term then
+                do! log <| sprintf "append entries failed: term (%d) < resp.Term (%d)" term resp.Term
+                do! setTermM resp.Term
+                do! becomeFollower ()
+                return ()
+              elif term <> resp.Term then
+                do! log <| sprintf "append entries failed: term (%d) != resp.Term (%d)" term resp.Term
+                return ()
+              elif not resp.Success then
+                // If AppendEntries fails because of log inconsistency:
+                // decrement nextIndex and retry (§5.3)
+                do! log <| sprintf "appendEntries failed: resp %A" resp
+                if resp.CurrentIndex < peer.NextIndex - 1UL then
+                  let! idx = currentIndexM ()
+                  let nextIndex = min (resp.CurrentIndex + 1UL) idx
+                  do! setNextIndexM peer.Id nextIndex
+                  do! setMatchIndexM peer.Id (nextIndex - 1UL)
+                  do! log <| sprintf "cidx < nxtidx. setting nextIndex for %s to %d" (string peer.Id) nextIndex
+                else
+                  let nextIndex = peer.NextIndex - 1UL
+                  do! log <| sprintf "cidx >= nxtidx. setting nextIndex for %s to %d" (string peer.Id) nextIndex
+                  do! setNextIndexM peer.Id nextIndex
+                  do! setMatchIndexM peer.Id (nextIndex - 1UL)
+              else
+                do! updateNodeIndices resp peer
+                do! updateCommitIndex resp
+            else
+              return! failM NotLeader
 
-  and handleUnsuccessful (resp : AppendResponse) (node: Node<_>) =
-    raft {
-      if not resp.Success then
-
-        // If AppendEntries fails because of log inconsistency:
-        // decrement nextIndex and retry (§5.3)
-        if resp.CurrentIndex < node.NextIndex - 1UL then
-          let! idx = currentIndexM ()
-          let nextIndex = min (resp.CurrentIndex + 1UL) idx
-          do! setNextIndexM node.Id nextIndex
-        else
-          let nextIndex = node.NextIndex - 1UL
-          do! setNextIndexM node.Id nextIndex
-
-        return! stopM ()
     }
 
   let sendAllAppendEntriesM _ =
@@ -1307,13 +1298,6 @@ module Raft =
             return resp.Index <= cidx
     }
 
-  let private maybeUnexpectedConfigChange (log : LogEntry<'d,'n>) =
-    raft {
-        let! state = get
-        if LogEntry.isConfigChange log && Option.isSome state.ConfigChangeEntry then
-          return! failM UnexpectedVotingChange
-      }
-
   let private updateCommitIdx (state: Raft<'d,'n>) =
     let idx =
       if state.NumNodes = 1UL then
@@ -1396,30 +1380,33 @@ module Raft =
       let! state = get
       let resp = { Id = Id.Create(); Term = 0UL; Index = 0UL }
 
-      return! maybeUnexpectedConfigChange entry
-      return! failNotLeader ()
+      if LogEntry.isConfigChange entry && Option.isSome state.ConfigChangeEntry then
+        return! failM UnexpectedVotingChange
+      elif isLeader state then
+        do! log <| sprintf "received entry t:%d id: %s idx: %d"
+                    state.CurrentTerm
+                    ((LogEntry.id entry).ToString() )
+                    (Log.index state.Log + 1UL)
 
-      do! log <| sprintf "received entry t:%d id: %s idx: %d"
-                  state.CurrentTerm
-                  ((LogEntry.id entry).ToString() )
-                  (Log.index state.Log + 1UL)
+        let! term = currentTermM ()
 
-      let! term = currentTermM ()
+        match entry with
+          | LogEntry(id,_,_,data,_) ->
+            let log = LogEntry(id, 0UL, term, data, None)
+            return! handleLog log resp
 
-      match entry with
-        | LogEntry(id,_,_,data,_) ->
-          let log = LogEntry(id, 0UL, term, data, None)
-          return! handleLog log resp
+          | Configuration(id,_,_,nodes,_) ->
+            let log = Configuration(id, 0UL, term, nodes, None)
+            return! handleLog log resp
 
-        | Configuration(id,_,_,nodes,_) ->
-          let log = Configuration(id, 0UL, term, nodes, None)
-          return! handleLog log resp
+          | JointConsensus(id,_,_,changes,_) ->
+            let log = JointConsensus(id, 0UL, term, changes, None)
+            return! handleLog log resp
 
-        | JointConsensus(id,_,_,changes,_) ->
-          let log = JointConsensus(id, 0UL, term, changes, None)
-          return! handleLog log resp
-
-        | _ -> return! failM LogFormatError
+          | _ ->
+            return! failM LogFormatError
+      else
+        return! failM NotLeader
     }
 
   ////////////////////////////////////////////////////////////////
