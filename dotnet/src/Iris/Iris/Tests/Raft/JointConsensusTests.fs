@@ -62,11 +62,10 @@ module JointConsensus =
 
       let ci = ref 0UL
       let state = Raft.create (Node.create (Id.Create()) ())
-      let count = ref 0
       let cbs = { mkcbs (ref ()) with
-                    SendAppendEntries = fun _ _ -> Some { Term = 0UL; Success = true; CurrentIndex = !ci; FirstIndex = 1UL }
-                    HasSufficientLogs = fun _   -> count := 1 + !count }
-                  :> IRaftCallbacks<_,_>
+                    SendAppendEntries = fun _ _ ->
+                      Some { Term = 0UL; Success = true; CurrentIndex = !ci; FirstIndex = 1UL }
+                  } :> IRaftCallbacks<_,_>
 
       raft {
         do! setElectionTimeoutM 1000UL
@@ -105,6 +104,9 @@ module JointConsensus =
         do! periodic 1000UL
         do! expectM "Should be in joint-consensus now" true inJointConsensus
 
+        do! expectM "Should be non-voting node for start" false (getNode nid2 >> Option.get >> Node.isVoting)
+        do! expectM "Should be in joining state for start" Joining (getNode nid2 >> Option.get >> Node.getState)
+
         // add another regular entry
         let! idx = currentIndexM ()
         ci := idx
@@ -119,13 +121,17 @@ module JointConsensus =
         let! r5 = responseCommitted five
         do! expectM "'five' should not be committed" false (konst r5)
 
-        do! expectM "Should be non-voting node for start" false (getNode nid2 >> Option.get >> Node.isVoting)
-        do! expectM "Should be in joining state for start" Joining (getNode nid2 >> Option.get >> Node.getState)
+        do! expectM "Should still be in joint-consensus" true inJointConsensus
 
         // call periodic to ensure these are applied
         let! idx = currentIndexM ()
         ci := idx + 1UL
         do! periodic 1000UL
+
+        // when the server notices that all nodes are up-to-date it will atomatically append
+        // a Configuration entry to exit the JointConsensus
+        do! expectM "Should not be in joint-consensus anymore" false inJointConsensus
+        do! expectM "Should have nothing in ConfigChange" None lastConfigChange
 
         let! r6 = responseCommitted three
         let! r7 = responseCommitted four
@@ -134,34 +140,6 @@ module JointConsensus =
         do! expectM "'three' should be committed" true (konst r6)
         do! expectM "'four' should be committed"  true (konst r7)
         do! expectM "'five' should be committed"  true (konst r8)
-
-        // call periodic again to ensure that all are committed and applied
-        let! idx = currentIndexM ()
-        ci := idx + 2UL
-        do! periodic 1000UL
-
-        // since all are applied we append the configuration change to end joint consensus
-        let! idx = currentIndexM ()
-        ci := idx + 3UL
-        let! term = currentTermM ()
-        let! nodes = getNodesM () >>= (Map.toArray >> returnM) >>= (Array.map snd >> returnM)
-        let! six  = receiveEntry (mkcnf term nodes)
-        let! r9 = responseCommitted six
-        do! expectM "'six' should be committed"  true (konst r9)
-
-        // the Configuration entry needs to be applied
-        let! idx = currentIndexM ()
-        ci := idx + 3UL
-        do! periodic 1000UL
-
-        // one last time to ensure the node has be updated to Running
-        let! idx = currentIndexM ()
-        ci := idx + 4UL
-        do! periodic 1000UL
-
-        do! expectM "should have called the 'hassufficientlogs' callback" 1 (konst !count)
-        do! expectM "Should be voting node now" true (getNode nid2 >> Option.get >> Node.isVoting)
-        do! expectM "Should be in running state now" Running (getNode nid2 >> Option.get >> Node.getState)
       }
       |> runWithRaft state cbs
       |> noError
@@ -318,27 +296,18 @@ module JointConsensus =
         // |_|  \___|      \___\___/|_| |_|_| |_|\__, |\__,_|_|  \__,_|\__|_|\___/|_| |_|
         // is now complete!                      |___/
 
+        // appends Configuration entry
         let! t = currentTermM ()
         term := t
-
         let! idx = currentIndexM ()
         ci := idx
-
-        let entry = Log.mkConfig !term Array.empty
-
-        let! response = receiveEntry entry
-
-        let! idx = currentIndexM ()
-        ci := idx
-
         do! periodic 1000UL
 
-        let! committed = responseCommitted response
-        do! expectM "Should have committed the config change" true (konst committed)
-
+        // when configuration entry is considered committed, joint-consensus is over
+        let! t = currentTermM ()
+        term := t
         let! idx = currentIndexM ()
         ci := idx
-
         do! periodic 1000UL
 
         do! expectM "Should only have half the nodes" (n / 2UL) numNodes
@@ -435,14 +404,14 @@ module JointConsensus =
         term := t
 
         // should become candidate with the new configuration of 10 nodes also
-        for id in (n / 2UL) .. (n - 2UL) do
+        for id in (n / 2UL) .. (n - 1UL) do
           let nid = fst nodes.[int id]
           let! result = getNodeM nid
           match result with
             | Some node ->
               // the nodes are not able to vote at first, because they will need
               // to be up to date to do that
-              do! updateNodeM { node with State = Running; Voting = true }
+              // do! updateNodeM { node with State = Running; Voting = true }
               do! receiveVoteResponse nid { vote with Term = !term }
             | _ -> failwith "Node not found. :("
 
@@ -455,18 +424,18 @@ module JointConsensus =
         // |_|  \___|      \___\___/|_| |_|_| |_|\__, |\__,_|_|  \__,_|\__|_|\___/|_| |_|
         // is now complete.                      |___/
 
+        // append Configuration and wait for it to be committed
         let! t = currentTermM ()
         term := t
-
         let! idx = currentIndexM ()
         ci := idx
+        do! periodic 1000UL
 
-        let entry = Log.mkConfig !term Array.empty
-        let! response = receiveEntry entry
-
+        // make sure Configuration is committed
+        let! t = currentTermM ()
+        term := t
         let! idx = currentIndexM ()
         ci := idx
-
         do! periodic 1000UL
 
         do! expectM "Should have all the nodes" n numNodes
@@ -569,22 +538,19 @@ module JointConsensus =
         // |_|  \___|      \___\___/|_| |_|_| |_|\__, |\__,_|_|  \__,_|\__|_|\___/|_| |_|
         // is now complete!                      |___/
 
+        // appends a Configuration entry
         let! t = currentTermM ()
         term := t
-
-        let entry = Log.mkConfig !term Array.empty
-        let! response = receiveEntry entry
-
-        let! result = responseCommitted response
-        expect "Should not be committed yet" false id result
-
         let! idx = currentIndexM ()
         ci := idx
-
         do! periodic 1001UL
 
-        let! result = responseCommitted response
-        expect "Should be committed now" true id result
+        // finalizes the joint-consensus mode
+        let! t = currentTermM ()
+        term := t
+        let! idx = currentIndexM ()
+        ci := idx
+        do! periodic 1001UL
 
         do! expectM "Should only have half the nodes" (n / 2UL) numNodes
         do! expectM "Should have None as ConfigChange" None lastConfigChange
@@ -623,7 +589,7 @@ module JointConsensus =
         let! t = currentTermM ()
         term := t
 
-        do! expectM "Should have be Leader" Leader getState
+        do! expectM "Should be Leader" Leader getState
 
         //                                         __ _
         //  _ __   _____      __   ___ ___  _ __  / _(_) __ _
@@ -813,14 +779,12 @@ module JointConsensus =
         // |_|  \___|      \___\___/|_| |_|_| |_|\__, |\__,_|_|  \__,_|\__|_|\___/|_| |_|
         // is now complete!                      |___/
 
-        let! term = currentTermM ()
-        let entry = Log.mkConfig term Array.empty
-
-        let! response = receiveEntry entry
+        let! idx = currentIndexM ()
+        ci := idx
+        do! periodic 1000UL
 
         let! idx = currentIndexM ()
         ci := idx
-
         do! periodic 1000UL
 
         do! expectM "Should only have half the nodes" (n / 2UL) numNodes

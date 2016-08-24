@@ -11,13 +11,23 @@ module Iris.Service.Raft.Stm
 open Iris.Core
 open Iris.Service
 open Iris.Raft
-open FSharpx.Stm
+// open FSharpx.Stm
 open FSharpx.Functional
 open System.Threading
 open Utilities
 open System
 open Zmq
 open Db
+
+type TVar<'a> = 'a ref
+
+let newTVar (value: 'a) = ref value
+
+let readTVar (var: TVar<'a>) = !var
+
+let writeTVar (var: TVar<'a>) (value: 'a) = var := value
+
+let atomically = id
 
 let logMsg (state: AppState) (cbs: IRaftCallbacks<_,_>) (msg: string) =
   cbs.LogMsg state.Raft.Node msg
@@ -66,35 +76,77 @@ let waitForCommit (appended: EntryResponse) (appState: TVar<AppState>) cbs =
 /// - cbs: IRaftCallbacks
 ///
 /// Returns: Either<RaftError * Raft, unit * Raft, EntryResponse * Raft>
-let enterJointConsensus (changes: ConfigChange array) (state: AppState) cbs =
-  raft {
-    let! term = currentTermM ()
-    let entry = JointConsensus(Id.Create(), 0UL, term, changes, None)
-    do! log "HandShake: appending entry to enter joint-consensus"
-    return! receiveEntry entry
-  }
-  |> runRaft state.Raft cbs
+let joinCluster (nodes: Node array) (appState: TVar<AppState>) cbs =
+  let state = readTVar appState |> atomically
+  let changes = Array.map (fun node -> NodeAdded node) nodes
+  let result =
+    raft {
+      let! term = currentTermM ()
+      let entry = JointConsensus(Id.Create(), 0UL, term, changes, None)
+      do! log "HandShake: appending entry to enter joint-consensus"
+      return! receiveEntry entry
+    }
+    |> runRaft state.Raft cbs
 
-/// ## leaveJointConsensus
-///
-/// Leave the Joint-Consensus by appending a Configuration entry to the Log.
-///
-/// ### Signature:
-/// - state: current AppState to work against
-/// - cbs: IRaftCallbacks
-///
-/// Returns: Either<RaftError * Raft, unit * Raft, EntryResponse * Raft>
-let leaveJointConsensus (state: AppState) cbs =
-  raft {
-    let! term = currentTermM ()
-    let! nodes = getNodesM () >>= (Map.toArray >> Array.map snd >> returnM)
-    let entry = Log.mkConfig term nodes
-    do! log "HandShake: appending entry to exit joint-consensus into regular configuration"
-    return! receiveEntry entry
-  }
-  |> runRaft state.Raft cbs
+  match result with
+  | Right (appended, raftState) ->
+    // save the new raft value back to the TVar
+    writeTVar appState (updateRaft raftState state) |> atomically
 
-/// ## twoPhaseCommit
+    // block until entry has been committed
+    let ok = waitForCommit appended appState cbs
+
+    if ok then
+      Welcome raftState.Node
+    else
+      ErrorResponse <| OtherError "Could not commit JointConsensus"
+  | Middle (_, raftState) ->
+    // save the new raft value back to the TVar
+    writeTVar appState (updateRaft raftState state) |> atomically
+    ErrorResponse <| OtherError "Could not enter Joint-Consensus (unexpected result)"
+
+  | Left (err, raftState) ->
+    // save the new raft value back to the TVar
+    writeTVar appState (updateRaft raftState state) |> atomically
+    ErrorResponse err
+
+let onConfigDone (appState: TVar<AppState>) cbs =
+  let state = readTVar appState |> atomically
+  let result =
+    raft {
+      let! term = currentTermM ()
+      let! nodes = getNodesM () >>= (Map.toArray >> Array.map snd >> returnM)
+      let entry = Log.mkConfig term nodes
+      do! log "reConfigDone: appending entry to exit joint-consensus into regular configuration"
+      return! receiveEntry entry
+    }
+    |> runRaft state.Raft cbs
+
+  match result with
+  | Right (appended, raftState) ->
+    // save the new raft value back to the TVar
+    writeTVar appState (updateRaft raftState state) |> atomically
+
+    // block until entry has been committed
+    let ok = waitForCommit appended appState cbs
+
+    if ok then
+      Some appended
+    else
+      None
+
+  | Middle (_, raftState) ->
+    // save the new raft value back to the TVar
+    writeTVar appState (updateRaft raftState state) |> atomically
+    None
+
+  | Left (err, raftState) ->
+    // save the new raft value back to the TVar
+    writeTVar appState (updateRaft raftState state) |> atomically
+    None
+
+
+/// ## leaveCluster
 ///
 /// Function to execute a two-phase commit for adding/removing members from the cluster.
 ///
@@ -105,9 +157,17 @@ let leaveJointConsensus (state: AppState) cbs =
 /// - cbs: IRaftCallbacks
 ///
 /// Returns: RaftResponse
-let twoPhaseCommit (changes: ConfigChange array) (success: RaftResponse) (appState: TVar<AppState>) cbs =
+let leaveCluster (nodes: Node array) (appState: TVar<AppState>) cbs =
   let state = readTVar appState |> atomically
-  let result = enterJointConsensus changes state cbs
+  let changes = Array.map (fun node -> NodeRemoved node) nodes
+  let result =
+    raft {
+      let! term = currentTermM ()
+      let entry = JointConsensus(Id.Create(), 0UL, term, changes, None)
+      do! log "HandWaive: appending entry to enter joint-consensus"
+      return! receiveEntry entry
+    }
+    |> runRaft state.Raft cbs
 
   match result with
   | Right (appended, raftState) ->
@@ -120,27 +180,10 @@ let twoPhaseCommit (changes: ConfigChange array) (success: RaftResponse) (appSta
     if ok then
       // now that all nodes are in joint-consensus we finalize the 2-phase
       // config change process by appending the Configuration entry
-      let state = readTVar appState |> atomically
-      let result = leaveJointConsensus state cbs
-
+      let result = onConfigDone appState cbs
       match result with
-      | Right (appended, raftState) ->
-        // save the new raft value back to the TVar
-        writeTVar appState (updateRaft raftState state) |> atomically
-
-        // block until entry has been committed
-        let ok = waitForCommit appended appState cbs
-
-        if ok then
-          success
-        else
-          ErrorResponse <| OtherError "Could not commit Configuration"
-
-      | Middle _ ->
-        ErrorResponse <| OtherError "Could not commit Configuration (unexpected intermediary result)"
-
-      | Left (err,_) ->
-        ErrorResponse err
+        | Some _ -> Arrivederci
+        | None   -> ErrorResponse <| OtherError "Unable to leave cluster"
     else
       ErrorResponse <| OtherError "Could not commit Joint-Consensus"
 
@@ -277,18 +320,14 @@ let handleVoteResponse sender rep (appState: TVar<AppState>) cbs =
 let handleHandshake node (appState: TVar<AppState>) cbs =
   let state = readTVar appState |> atomically
   if isLeader state.Raft then
-    let changes = [| NodeAdded node |]
-    let result = Welcome state.Raft.Node
-    twoPhaseCommit changes result appState cbs
+    joinCluster [| node |] appState cbs
   else
     doRedirect state
 
 let handleHandwaive node (appState: TVar<AppState>) cbs =
   let state = readTVar appState |> atomically
   if isLeader state.Raft then
-    let changes = [| NodeRemoved node |]
-    let result = Arrivederci
-    twoPhaseCommit changes result appState cbs
+    leaveCluster [| node |] appState cbs
   else
     doRedirect state
 
@@ -296,30 +335,27 @@ let appendEntry (cmd: StateMachine) appState cbs =
   let state = readTVar appState |> atomically
 
   let result =
-    raft {
-      let entry = Log.make (currentTerm state.Raft) cmd
-      let! result = receiveEntry entry
-      let run = ref true
-
-      while !run do
-        let! committed = responseCommitted result
-        if committed then
-          run := false
-
-      return result
-    }
+    receiveEntry (Log.make (currentTerm state.Raft) cmd)
+    >>= returnM
     |> runRaft state.Raft cbs
 
-  let (response, newstate) =
-    match result with
-      | Right  (result, newstate) -> (Some result, newstate)
-      | Middle (_,      newstate) -> (None,        newstate)
-      | Left   (err,    newstate) -> failwithf "Raft Error: %A" err
+  match result with
+    | Right (appended, raftState) ->
+      writeTVar appState (updateRaft raftState state) |> atomically
+      let ok = waitForCommit appended appState cbs
+      if ok then
+        Some appended
+      else
+        None
+    | Middle (_, raftState) ->
+      writeTVar appState (updateRaft raftState state) |> atomically
+      "encountered unexpected result receiveEntry" |> logMsg state cbs
+      None
 
-  writeTVar appState (updateRaft newstate state)
-  |> atomically
-
-  response
+    | Left (err, raftState) ->
+      writeTVar appState (updateRaft raftState state) |> atomically
+      sprintf "encountered error in receiveEntry: %A" err |> logMsg state cbs
+      None
 
 let handleInstallSnapshot node snapshot (appState: TVar<AppState>) cbs =
   // let snapshot = createSnapshot () |> runRaft raft' cbs
@@ -509,25 +545,21 @@ let tryLeave (appState: TVar<AppState>) cbs : bool option =
 
 
 let forceElection appState cbs =
-  stm {
-    let! state = readTVar appState
+  let state = readTVar appState |> atomically
 
-    do! raft {
-          let! timeout = electionTimeoutM ()
-          do! setTimeoutElapsedM timeout
-          do! periodic timeout
-        }
-        |> evalRaft state.Raft cbs
-        |> flip updateRaft state
-        |> writeTVar appState
+  raft {
+    let! timeout = electionTimeoutM ()
+    do! setTimeoutElapsedM timeout
+    do! periodic timeout
   }
+  |> evalRaft state.Raft cbs
+  |> flip updateRaft state
+  |> writeTVar appState
+  |> atomically
 
 let prepareSnapshot appState =
-  stm {
-    let! state = readTVar appState
-    let snapshot = createSnapshot (DataSnapshot "snip snap snapshot") state.Raft
-    return snapshot
-  }
+  let state = readTVar appState |> atomically
+  createSnapshot (DataSnapshot "snip snap snapshot") state.Raft
 
 let resetConnections (connections: Map<MemberId,Zmq.Req>) =
   Map.iter (fun _ sock -> dispose sock) connections

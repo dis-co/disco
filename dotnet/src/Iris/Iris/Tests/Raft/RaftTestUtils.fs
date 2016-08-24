@@ -37,7 +37,6 @@ module RaftTestUtils =
     ; PersistTerm         : Term            -> unit
     ; PersistLog          : LogEntry<'a,'b> -> unit
     ; DeleteLog           : LogEntry<'a,'b> -> unit
-    ; HasSufficientLogs   : Node<'b>        -> unit
     ; LogMsg              : Node<'b>        -> String                 -> unit
     }
 
@@ -58,7 +57,6 @@ module RaftTestUtils =
       member self.PersistTerm node            = self.PersistTerm node
       member self.PersistLog log              = self.PersistLog log
       member self.DeleteLog log               = self.DeleteLog log
-      member self.HasSufficientLogs node      = self.HasSufficientLogs node
       member self.LogMsg node str             = self.LogMsg node str
 
   let log str =
@@ -117,11 +115,6 @@ module RaftTestUtils =
       |> sprintf "LogPoll: %s"
       |> log
 
-    let onHasSufficientLogs n =
-      n.ToString()
-      |> sprintf "HasSufficientLogs: %s"
-      |> log
-
     let onLogMsg n s =
       sprintf "logMsg: %s" s
       |> log
@@ -174,7 +167,6 @@ module RaftTestUtils =
     ; PersistTerm         = onPersistTerm
     ; PersistLog          = onPersistLog
     ; DeleteLog           = onDeleteLog
-    ; HasSufficientLogs   = onHasSufficientLogs
     ; LogMsg              = onLogMsg
     }
 

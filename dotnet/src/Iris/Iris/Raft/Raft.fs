@@ -168,11 +168,6 @@ module Raft =
       cbs.PersistLog log
       |> returnM
 
-  let hasSufficientLogs node =
-    read >>= fun cbs ->
-      cbs.HasSufficientLogs node
-      |> returnM
-
   let modify (f: Raft<_,_> -> Raft<_,_>) =
     get >>= (f >> put)
 
@@ -211,7 +206,7 @@ module Raft =
     ; LastAppliedIdx    = 0UL
     ; TimeoutElapsed    = 0UL
     ; ElectionTimeout   = 1500UL         // msec
-    ; RequestTimeout    = 400UL          // msec
+    ; RequestTimeout    = 500UL          // msec
     ; MaxLogDepth       = 50UL           // items
     ; ConfigChangeEntry = None
     }
@@ -240,6 +235,14 @@ module Raft =
       | _                       -> false
 
   let inJointConsensusM _ = zoomM inJointConsensus
+
+  let hasNonVotingNodes (state: Raft<_,_>) =
+    Map.fold
+      (fun b _ n -> if b then b else not (Node.hasSufficientLogs n && Node.isVoting n))
+      false
+      state.Peers
+
+  let hasNonVotingNodesM _ = zoomM hasNonVotingNodes
 
   ////////////////////////////////////////////////
   //  _   _           _         ___             //
@@ -1086,21 +1089,19 @@ module Raft =
 
   let private updateNodeIndices (resp : AppendResponse) (node : Node<'n>) =
     raft {
-      let! state = get
-
       let peer =
         { node with
             NextIndex  = resp.CurrentIndex + 1UL
             MatchIndex = resp.CurrentIndex }
 
+      let! current = currentIndexM ()
+
       let notVoting = not (Node.isVoting peer)
       let notLogs   = not (Node.hasSufficientLogs peer)
-      let notCfg    = Option.isNone state.ConfigChangeEntry
-      let idxOk     = currentIndex state <= resp.CurrentIndex + 1UL
+      let idxOk     = current <= resp.CurrentIndex + 1UL
 
-      if notVoting && notCfg && idxOk && notLogs then
+      if notVoting && idxOk && notLogs then
         let updated = Node.setHasSufficientLogs peer
-        do! hasSufficientLogs updated
         do! updateNodeM updated
       else
         do! updateNodeM peer
@@ -1488,7 +1489,7 @@ module Raft =
                     | JointConsensus _ as config ->
                       let state = handleConfigChange config state
                       applyEntry cbs config
-                      (state, Some config)
+                      (state, Some (Log.first config))
                     | entry ->
                       applyEntry cbs entry
                       (state, current))
@@ -2005,35 +2006,50 @@ module Raft =
       do! becomeCandidate ()
     }
 
+
   //  ____           _           _ _
   // |  _ \ ___ _ __(_) ___   __| (_) ___
   // | |_) / _ \ '__| |/ _ \ / _` | |/ __|
   // |  __/  __/ |  | | (_) | (_| | | (__
   // |_|   \___|_|  |_|\___/ \__,_|_|\___|
 
-  let private checkIsLeader state =
+  let periodic (elapsed : Long) =
     raft {
-      match state with
+      let! state = get
+      do! setTimeoutElapsedM (state.TimeoutElapsed + elapsed)
+
+      match state.State with
       | Leader ->
+        // if in JointConsensus
+        let! consensus = inJointConsensusM ()
         let! timedout = requestTimedOutM ()
-        if timedout then
+
+        if consensus then
+          let! waiting = hasNonVotingNodesM () // check if any nodes are still marked non-voting/Joining
+          if not waiting then                    // are nodes are voting and have caught up
+            let! term = currentTermM ()
+            let resp = { Id = Id.Create(); Term = term; Index = 0UL }
+            let! nodes = getNodesM () >>= (Map.toArray >> Array.map snd >> returnM)
+            let log = Configuration(resp.Id, 0UL, term, nodes, None)
+            do! handleLog log resp >>= ignoreM
+          else
+            do! sendAllAppendEntriesM ()
+        // the regular case is we need to ping our followers so as to not provoke an election
+        elif timedout then
           do! sendAllAppendEntriesM ()
-      | Follower ->
+
+      | _ ->
+        // have to double check the code here to ensure new elections are really only called when
+        // not enough votes could be garnered
         let! num = numNodesM ()
         let! timedout = electionTimedOutM ()
 
         if timedout && num > 1UL then
           do! startElection ()
-      | _ -> ()
-    }
 
-  let periodic (elapsed : Long) =
-    raft {
-      let! state = get
-      do! setTimeoutElapsedM (state.TimeoutElapsed + elapsed)
-      do! checkIsLeader state.State
       let! coi = commitIndexM ()
       let! lai = lastAppliedIdxM ()
+
       if lai < coi then
         do! applyEntries ()
       do! maybeSnapshot ()

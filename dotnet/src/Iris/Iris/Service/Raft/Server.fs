@@ -5,7 +5,7 @@ open System.Threading
 open Iris.Core
 open Iris.Core.Utils
 open Iris.Raft
-open FSharpx.Stm
+// open FSharpx.Stm
 open FSharpx.Functional
 open Utilities
 open Stm
@@ -133,10 +133,8 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
       let state = readTVar appState |> atomically
       state.Options
     and set opts =
-      stm {
-        let! state = readTVar appState
-        do! writeTVar appState { state with Options = opts }
-      } |> atomically
+      let state = readTVar appState |> atomically
+      writeTVar appState { state with Options = opts } |> atomically
 
   member self.Context
     with get () = context
@@ -296,12 +294,11 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
           | Some peer ->
             meta.VotedFor <- string peer.Id
             saveRaftMetadata meta database
-            sprintf "[Raft: %A] PersistVote persisted vote for node: %A" self.State.Raft.Node.Id (string peer.Id) |> self.Log
+            sprintf "PersistVote for node: %A" (string peer.Id) |> self.Log
           | _         ->
             meta.VotedFor <- null
             saveRaftMetadata meta database
-            sprintf "[Raft: %A] PersistVote persisted reset of VotedFor" self.State.Raft.Node.Id
-            |> self.Log
+            "PersistVote reset VotedFor" |> self.Log
       with
         | exn -> handleException "PersistTerm" exn
 
@@ -327,7 +324,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
         meta.Term <- int64 term
         saveRaftMetadata meta database
-        sprintf "[PersistTerm] saved term: %A" term |> self.Log
+        sprintf "PersistTerm term: %A" term |> self.Log
       with
         | exn -> handleException "PersistTerm" exn
 
@@ -342,7 +339,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
     member self.PersistLog log =
       try
         insertLogs log database
-        sprintf "[PersistLog] insert id: %A" (Log.id log |> string)
+        sprintf "PersistLog insert id: %A" (Log.id log |> string)
         |> self.Log
       with
         | _ ->
@@ -363,13 +360,10 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
     member self.DeleteLog log =
       try
         deleteLogs log database
-        |> sprintf "[DeleteLog] id: %A result: %b" (Log.id log |> string)
+        |> sprintf "DeleteLog id: %A result: %b" (Log.id log |> string)
         |> self.Log
       with
         | exn -> handleException "DeleteLog" exn
-
-    member self.HasSufficientLogs node =
-      self.Log "FIXME: HasSufficientLogs"
 
     member self.LogMsg node str =
       if self.State.Options.Debug then

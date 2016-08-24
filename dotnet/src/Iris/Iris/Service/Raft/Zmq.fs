@@ -58,7 +58,7 @@ type Rep (addr: string, handle: byte array -> byte array) =
         frame.Dispose()                                       // dispose of frame
         reply.Dispose()                                       // dispose of reply
       with
-        | :? ZException -> ()
+        | :? ZException as e-> ignore e
         | failure ->
           exn <- Some failure
           starter.Set() |> ignore
@@ -142,6 +142,7 @@ type Req (addr: string, ctx: ZContext, timeout: int) =
           frame.Dispose()                                     // dispose of frame
       with
         | e ->
+          printfn "expception: %s timeout %d" e.Message timeout
           // save exception to be rethrown on the callers thread
           exn <- Some e
           // prevent re-entering the loop

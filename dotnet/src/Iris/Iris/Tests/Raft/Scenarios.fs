@@ -188,7 +188,6 @@ module Scenarios =
               ; PersistTerm         = ignore
               ; PersistLog          = ignore
               ; DeleteLog           = ignore
-              ; HasSufficientLogs   = ignore
               ; LogMsg              = fun _ -> ignore
               } :> IRaftCallbacks<_,_>
 

@@ -261,9 +261,6 @@ type IRaftCallbacks<'a,'b> =
   /// reasons this callback MUST flush the change to disk.
   abstract member DeleteLog:           LogEntry<'a,'b> -> unit
 
-  /// Callback for detecting when a non-voting node has sufficient logs
-  abstract member HasSufficientLogs:   Node<'b>        -> unit
-
   /// Callback for catching debug messsages
   abstract member LogMsg:              Node<'b>        -> String                 -> unit
 
