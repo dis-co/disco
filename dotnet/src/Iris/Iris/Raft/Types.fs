@@ -10,7 +10,7 @@ open Iris.Core
 /// | |___| | |_| | | |  __/ |
 /// |_____|_|\__|_| |_|\___|_|
 ///
-type Either<'l,'m,'r> =
+type Either<'l,'r> =
   | Left   of 'l                        // Encodes errors
   | Right  of 'r                        // Return result and keep computation running
 
@@ -367,8 +367,8 @@ type PersistVote<'n> = Node<'n> option -> unit
 ////////////////////////////////////////
 
 [<NoComparison;NoEquality>]
-type RaftMonad<'Env,'State,'T,'M,'Error> =
-  MkRM of ('Env -> 'State -> Either<'Error * 'State,'M * 'State,'T * 'State>)
+type RaftMonad<'Env,'State,'T,'Error> =
+  MkRM of ('Env -> 'State -> Either<'Error * 'State,'T * 'State>)
 
-type RaftM<'d,'n,'t,'m,'e> =
-  RaftMonad<IRaftCallbacks<'d,'n>,Raft<'d,'n>,'t,'m,'e>
+type RaftM<'d,'n,'t,'e> =
+  RaftMonad<IRaftCallbacks<'d,'n>,Raft<'d,'n>,'t,'e>

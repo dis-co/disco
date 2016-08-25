@@ -15,28 +15,28 @@ module RaftMonad =
   let put s = MkRM (fun _ _ -> Right ((), s))
 
   /// get the read-only environment value
-  let read : RaftM<_,_,_,_,_> = MkRM (fun l s -> Right (l, s))
+  let read : RaftM<_,_,_,_> = MkRM (fun l s -> Right (l, s))
 
   /// unwrap the closure and apply it to the supplied state/env
-  let apply (env: 'e) (state: 's) (m: RaftMonad<'e,'s,_,_,_>)  =
+  let apply (env: 'e) (state: 's) (m: RaftMonad<'e,'s,_,_>)  =
     match m with | MkRM func -> func env state
 
   /// run the monadic action against state and environment values
-  let runRaft (s: 's) (l: 'e) (m: RaftMonad<'e,'s,'a,'alt,'err>) =
+  let runRaft (s: 's) (l: 'e) (m: RaftMonad<'e,'s,'a,'err>) =
     apply l s m
 
   /// run monadic action against supplied state and evironment and return new state
-  let evalRaft (s: 's) (l: 'e) (m: RaftMonad<'e,'s,'a,'alt,'err>) =
+  let evalRaft (s: 's) (l: 'e) (m: RaftMonad<'e,'s,'a,'err>) =
     match runRaft s l m with
       | Right (_,state) | Left (_,state) -> state
 
   /// Lift a regular value into a RaftMonad by wrapping it in a closure.
   /// This variant wraps it in a `Right` value. This means the computation will,
   /// if possible, continue to the next step.
-  let returnM value : RaftMonad<'e,'s,'t,'alt,'err> =
+  let returnM value : RaftMonad<'e,'s,'t,'err> =
     MkRM (fun _ state -> Right(value, state))
 
-  let ignoreM _ : RaftMonad<'e,'s,unit,'alt,'err> =
+  let ignoreM _ : RaftMonad<'e,'s,unit,'err> =
     MkRM (fun _ state -> Right((), state))
 
   /// Lift a regular value into a RaftMonad by wrapping it in a closure.
@@ -46,19 +46,19 @@ module RaftMonad =
     MkRM (fun _ s -> Left (l, s))
 
   /// pass through the given action
-  let returnFromM func : RaftMonad<'e,'s,'t,'alt,'err> =
+  let returnFromM func : RaftMonad<'e,'s,'t,'err> =
     func
 
   let zeroM () =
     MkRM (fun _ state -> Right((), state))
 
-  let delayM (f: unit -> RaftMonad<'e,'s,'t,'alt,'err>) =
+  let delayM (f: unit -> RaftMonad<'e,'s,'t,'err>) =
     MkRM (fun env state -> f () |> apply env state)
 
   /// Chain up effectful actions.
-  let bindM (m: RaftMonad<'env,'state,'a,'m,'err>)
-            (f: 'a -> RaftMonad<'env,'state,'b,'m,'err>) :
-            RaftMonad<'env,'state,'b,'m,'err> =
+  let bindM (m: RaftMonad<'env,'state,'a,'err>)
+            (f: 'a -> RaftMonad<'env,'state,'b,'err>) :
+            RaftMonad<'env,'state,'b,'err> =
     MkRM (fun env state ->
           match apply env state m with
             | Right  (value,state') -> f value |> apply env state'
@@ -66,30 +66,30 @@ module RaftMonad =
 
   let (>>=) = bindM
 
-  let combineM (m1: RaftMonad<_,_,_,_,_>) (m2: RaftMonad<_,_,_,_,_>) =
+  let combineM (m1: RaftMonad<_,_,_,_>) (m2: RaftMonad<_,_,_,_>) =
     bindM m1 (fun _ -> m2)
 
-  let tryWithM (body: RaftMonad<_,_,_,_,_>) (handler: exn -> RaftMonad<_,_,_,_,_>) =
+  let tryWithM (body: RaftMonad<_,_,_,_>) (handler: exn -> RaftMonad<_,_,_,_>) =
     MkRM (fun env state ->
           try apply env state body
           with ex -> apply env state (handler ex))
 
-  let tryFinallyM (body: RaftMonad<_,_,_,_,_>) handler : RaftMonad<_,_,_,_,_> =
+  let tryFinallyM (body: RaftMonad<_,_,_,_>) handler : RaftMonad<_,_,_,_> =
     MkRM (fun env state ->
           try apply env state body
           finally handler ())
 
-  let usingM (resource: ('a :> System.IDisposable)) (body: 'a -> RaftMonad<_,_,_,_,_>) =
+  let usingM (resource: ('a :> System.IDisposable)) (body: 'a -> RaftMonad<_,_,_,_>) =
     tryFinallyM (body resource)
       (fun _ -> if not <| isNull (box resource)
                 then resource.Dispose())
 
-  let rec whileM (guard: unit -> bool) (body: RaftMonad<_,_,_,_,_>) =
+  let rec whileM (guard: unit -> bool) (body: RaftMonad<_,_,_,_>) =
     match guard () with
       | true -> bindM body (fun _ -> whileM guard body)
       | _ -> zeroM ()
 
-  let rec forM (sequence: seq<_>) (body: 'a -> RaftMonad<_,_,_,_,_>) : RaftMonad<_,_,_,unit,_> =
+  let rec forM (sequence: seq<_>) (body: 'a -> RaftMonad<_,_,_,_>) : RaftMonad<_,_,_,_> =
     usingM (sequence.GetEnumerator())
       (fun enum -> whileM enum.MoveNext (delayM (fun _ -> body enum.Current)))
 
