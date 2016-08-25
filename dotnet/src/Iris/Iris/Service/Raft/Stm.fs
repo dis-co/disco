@@ -55,7 +55,7 @@ let waitForCommit (appended: EntryResponse) (appState: TVar<AppState>) cbs =
       |> fun result ->
         match result with
           | Right (committed, _) -> committed
-          | Middle _ | Left _ ->
+          | Left _ ->
             run := false
             ok  := false
             false
@@ -100,10 +100,6 @@ let joinCluster (nodes: Node array) (appState: TVar<AppState>) cbs =
       Welcome raftState.Node
     else
       ErrorResponse <| OtherError "Could not commit JointConsensus"
-  | Middle (_, raftState) ->
-    // save the new raft value back to the TVar
-    writeTVar appState (updateRaft raftState state) |> atomically
-    ErrorResponse <| OtherError "Could not enter Joint-Consensus (unexpected result)"
 
   | Left (err, raftState) ->
     // save the new raft value back to the TVar
@@ -134,11 +130,6 @@ let onConfigDone (appState: TVar<AppState>) cbs =
       Some appended
     else
       None
-
-  | Middle (_, raftState) ->
-    // save the new raft value back to the TVar
-    writeTVar appState (updateRaft raftState state) |> atomically
-    None
 
   | Left (err, raftState) ->
     // save the new raft value back to the TVar
@@ -187,9 +178,6 @@ let leaveCluster (nodes: Node array) (appState: TVar<AppState>) cbs =
     else
       ErrorResponse <| OtherError "Could not commit Joint-Consensus"
 
-  | Middle _ ->
-    ErrorResponse <| OtherError "Could not enter Joint-Consensus (unexpected result)"
-
   | Left (err,_) ->
     ErrorResponse err
 
@@ -226,10 +214,6 @@ let handleAppendEntries sender ae (appState: TVar<AppState>) cbs =
 
   match result with
   | Right (resp, raftState) ->
-    writeTVar appState (updateRaft raftState state) |> atomically
-    AppendEntriesResponse(raftState.Node.Id, resp)
-
-  | Middle (resp, raftState) ->
     writeTVar appState (updateRaft raftState state) |> atomically
     AppendEntriesResponse(raftState.Node.Id, resp)
 
@@ -277,10 +261,6 @@ let handleVoteRequest sender req (appState: TVar<AppState>) cbs =
 
   match result with
   | Right (resp, raftState) ->
-    writeTVar appState (updateRaft raftState state) |> atomically
-    RequestVoteResponse(raftState.Node.Id, resp)
-
-  | Middle (resp, raftState) ->
     writeTVar appState (updateRaft raftState state) |> atomically
     RequestVoteResponse(raftState.Node.Id, resp)
 
@@ -340,22 +320,17 @@ let appendEntry (cmd: StateMachine) appState cbs =
     |> runRaft state.Raft cbs
 
   match result with
-    | Right (appended, raftState) ->
-      writeTVar appState (updateRaft raftState state) |> atomically
-      let ok = waitForCommit appended appState cbs
-      if ok then
-        Some appended
-      else
-        None
-    | Middle (_, raftState) ->
-      writeTVar appState (updateRaft raftState state) |> atomically
-      "encountered unexpected result receiveEntry" |> logMsg state cbs
+  | Right (appended, raftState) ->
+    writeTVar appState (updateRaft raftState state) |> atomically
+    let ok = waitForCommit appended appState cbs
+    if ok then
+      Some appended
+    else
       None
-
-    | Left (err, raftState) ->
-      writeTVar appState (updateRaft raftState state) |> atomically
-      sprintf "encountered error in receiveEntry: %A" err |> logMsg state cbs
-      None
+  | Left (err, raftState) ->
+    writeTVar appState (updateRaft raftState state) |> atomically
+    sprintf "encountered error in receiveEntry: %A" err |> logMsg state cbs
+    None
 
 let handleInstallSnapshot node snapshot (appState: TVar<AppState>) cbs =
   // let snapshot = createSnapshot () |> runRaft raft' cbs

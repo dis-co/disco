@@ -28,7 +28,7 @@ module RaftMonad =
   /// run monadic action against supplied state and evironment and return new state
   let evalRaft (s: 's) (l: 'e) (m: RaftMonad<'e,'s,'a,'alt,'err>) =
     match runRaft s l m with
-      | Right (_,state) | Middle (_,state) | Left (_,state) -> state
+      | Right (_,state) | Left (_,state) -> state
 
   /// Lift a regular value into a RaftMonad by wrapping it in a closure.
   /// This variant wraps it in a `Right` value. This means the computation will,
@@ -44,12 +44,6 @@ module RaftMonad =
   /// not continue past this step and no regular value will be returned.
   let failM l =
     MkRM (fun _ s -> Left (l, s))
-
-  /// Lift a regular value into a RaftMonad by wrapping it in a closure.
-  /// This variant wraps it in a `Middle` value. This means the computation will
-  /// stop at this point, return a value and the current state.
-  let stopM value =
-    MkRM (fun _ state -> Middle(value, state))
 
   /// pass through the given action
   let returnFromM func : RaftMonad<'e,'s,'t,'alt,'err> =
@@ -68,7 +62,6 @@ module RaftMonad =
     MkRM (fun env state ->
           match apply env state m with
             | Right  (value,state') -> f value |> apply env state'
-            | Middle (value,state') -> Middle (value,state')
             | Left    err           -> Left err)
 
   let (>>=) = bindM
@@ -1039,7 +1032,6 @@ module Raft =
                 return resp
           else
             return! processEntry nid msg resp
-        | Middle v -> return! v
         | Left err -> return err
     }
 

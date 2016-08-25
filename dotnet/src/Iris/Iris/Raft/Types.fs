@@ -12,7 +12,6 @@ open Iris.Core
 ///
 type Either<'l,'m,'r> =
   | Left   of 'l                        // Encodes errors
-  | Middle of 'm                        // Return result immediately
   | Right  of 'r                        // Return result and keep computation running
 
 ////////////////////////////////////////
