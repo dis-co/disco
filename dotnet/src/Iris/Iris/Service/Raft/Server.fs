@@ -39,15 +39,17 @@ module RaftServerStateHelpers =
 // |_| \_\__,_|_|  \__| |____/ \___|_|    \_/ \___|_|
 
 type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
+  let locker = new Object()
+
   let database =
     match openDB options.DataDir with
       | Some db ->
-        this.Log "Found database at %A" options.DataDir
+        this.Log <| sprintf "Found database at %A" options.DataDir
         db
       | _       ->
         match createDB options.DataDir with
           | Some db ->
-            this.Log "Created new database at %A" options.DataDir
+            this.Log <| sprintf "Created new database at %A" options.DataDir
             db
           | _       ->
             this.Log "Unable to open/create a database. Aborting."
@@ -84,22 +86,31 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   ///
   /// Returns: unit
   member self.Start() =
-    try
-      serverState := Starting
+    lock locker <| fun _ ->
+      try
+        this.Log "RaftServer: starting"
+        serverState := Starting
 
-      server := Some (startServer appState cbs)
+        this.Log "RaftServer: initializing server loop"
+        server := Some (startServer appState cbs)
 
-      initialize appState cbs
+        this.Log "RaftServer: initializing application"
+        initialize appState cbs
 
-      let tkn = startPeriodic appState cbs
-      periodictoken := Some tkn
+        this.Log "RaftServer: initializing periodic loop"
+        let tkn = startPeriodic appState cbs
+        periodictoken := Some tkn
 
-      serverState := Running
-    with
-      | :? ZeroMQ.ZException as exn ->
-        serverState := Failed (sprintf "[ZMQ Exception] %A" exn.Message)
-      | exn ->
-        serverState := Failed exn.Message
+        this.Log "RaftServer: running"
+        serverState := Running
+      with
+        | :? ZeroMQ.ZException as exn ->
+          this.Log <| sprintf "RaftServer: ZMQ Exeception in Start: %A" exn.Message
+          serverState := Failed (sprintf "[ZMQ Exception] %A" exn.Message)
+
+        | exn ->
+          this.Log <| sprintf "RaftServer: Exeception in Start: %A" exn.Message
+          serverState := Failed exn.Message
 
   /// ## Stop the Raft engine, sockets and all.
   ///
@@ -110,27 +121,39 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   ///
   /// Returns: unit
   member self.Stop() =
-    match !serverState with
-      | Starting | Stopping | Stopped | Failed _ -> ()
+    lock locker <| fun _ ->
+      match !serverState with
+      | Starting | Stopping | Stopped | Failed _ as state ->
+        this.Log <| sprintf "RaftServer: stopping failed. Invalid state %A" state
+
       | Running ->
+        this.Log "RaftServer: stopping"
         serverState := Stopping
 
-        let _ = tryLeave appState cbs
-
-        Option.bind (dispose >> Some) (!server) |> ignore
-
-        // cancel the running async tasks
+        // cancel the running async tasks so we don't cause an election
+        this.Log "RaftServer: cancel periodic loop"
         cancelToken periodictoken
 
+        this.Log "RaftServer: dispose server"
+        Option.bind (dispose >> Some) (!server) |> ignore
+
+        this.Log "RaftServer: contacting leader to announce departure"
+        let _ = tryLeave appState cbs
+
+        this.Log "RaftServer: disposing sockets"
         readTVar connections
         |> atomically
         |> resetConnections
 
+        this.Log "RaftServer: saving state to disk"
         let state = readTVar appState |> atomically
         saveRaft state.Raft database
 
+        this.Log "RaftServer: dispose database"
+        dispose database
+
+        this.Log "RaftServer: stopped"
         serverState := Stopped
-    dispose database
 
   member self.Options
     with get () =
@@ -153,7 +176,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   member self.ForceTimeout() =
     forceElection appState cbs |> atomically
 
-  member self.Log msg =
+  member self.Log (msg: string) : unit =
     let state = self.State
     cbs.LogMsg state.Raft.Node msg
 
@@ -182,9 +205,6 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
     member self.SendRequestVote node req  =
       let state = self.State
       let request = RequestVote(state.Raft.Node.Id,req)
-
-      self.Log <| sprintf "SendRequestVote to %A" (nodeUri node.Data)
-
       let conns = readTVar connections |> atomically
 
       let response, conns = performRequest request node state conns
@@ -195,8 +215,13 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
         | Some message ->
           match message with
             | RequestVoteResponse(sender, vote) -> Some vote
-            | resp -> failwithf "Expected VoteResponse but got: %A" resp
-        | _ -> None
+            | resp ->
+              this.Log <| sprintf "SendRequestVote: Unexpected Response: %A" resp
+              None
+        | _ ->
+          this.Log <| sprintf "SendRequestVote: No response received for request to %s"
+                       (string node.Id)
+          None
 
     member self.SendAppendEntries (node: Node) (request: AppendEntries) =
       let state = self.State
@@ -211,16 +236,19 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
         | Some message ->
           match message with
             | AppendEntriesResponse(sender, ar) -> Some ar
-            | resp -> failwithf "Expected AppendEntriesResponse but got: %A" resp
-        | _ -> None
+            | resp ->
+              this.Log <| sprintf "SendAppendEntries: Unexpected Response:  %A" resp
+              None
+        | _ ->
+          this.Log <| sprintf "SendAppendEntries: No response received for request to %s"
+                       (string node.Id)
+          None
 
     member self.SendInstallSnapshot node is =
       let state = self.State
       let conns = readTVar connections |> atomically
 
       let request = InstallSnapshot(state.Raft.Node.Id, is)
-
-      self.Log <| sprintf "SendInstallSnapshot to %A" (nodeUri node.Data)
 
       let response, conns = performRequest request node state conns
 
@@ -230,8 +258,13 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
         | Some message ->
           match message with
             | InstallSnapshotResponse(sender, ar) -> Some ar
-            | resp -> failwithf "Expected InstallSnapshotResponse but got: %A" resp
-        | _ -> None
+            | resp ->
+              this.Log <| sprintf "SendInstallSnapshot: Unexpected Response: %A" resp
+              None
+        | _ ->
+          this.Log <| sprintf "SendInstallSnapshot: No response received for request to %s"
+                       (string node.Id)
+          None
 
     member self.ApplyLog sm =
       sprintf "Applying state machine command (%A)" sm
