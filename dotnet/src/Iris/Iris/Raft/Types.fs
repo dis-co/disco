@@ -14,6 +14,13 @@ type Either<'l,'r> =
   | Left   of 'l                        // Encodes errors
   | Right  of 'r                        // Return result and keep computation running
 
+
+type LogLevel =
+  | Debug
+  | Info
+  | Warn
+  | Err
+
 ////////////////////////////////////////
 //  _____                             //
 // | ____|_ __ _ __ ___  _ __         //
@@ -261,7 +268,7 @@ type IRaftCallbacks<'a,'b> =
   abstract member DeleteLog:           LogEntry<'a,'b> -> unit
 
   /// Callback for catching debug messsages
-  abstract member LogMsg:              Node<'b>        -> String                 -> unit
+  abstract member LogMsg:  LogLevel ->  Node<'b>        -> String                 -> unit
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  ____        __ _                                                                                                                     //

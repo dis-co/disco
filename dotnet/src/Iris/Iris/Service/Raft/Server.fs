@@ -44,15 +44,15 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   let database =
     match openDB options.DataDir with
       | Some db ->
-        this.Log <| sprintf "Found database at %A" options.DataDir
+        this.Debug <| sprintf "Found database at %A" options.DataDir
         db
       | _       ->
         match createDB options.DataDir with
           | Some db ->
-            this.Log <| sprintf "Created new database at %A" options.DataDir
+            this.Debug <| sprintf "Created new database at %A" options.DataDir
             db
           | _       ->
-            this.Log "Unable to open/create a database. Aborting."
+            this.Err "Unable to open/create a database. Aborting."
             failwith "Persistence Error: unable to open/create a database."
 
   let serverState = ref Stopped
@@ -71,7 +71,6 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   // |_| |_| |_|\___|_| |_| |_|_.__/ \___|_|  |___/
 
   member self.Periodic() =
-    warn "remove this method when not needed anymore"
     let state = readTVar appState |> atomically
     periodicR state cbs
     |> writeTVar appState
@@ -88,28 +87,28 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   member self.Start() =
     lock locker <| fun _ ->
       try
-        this.Log "RaftServer: starting"
+        this.Debug "RaftServer: starting"
         serverState := Starting
 
-        this.Log "RaftServer: initializing server loop"
+        this.Debug "RaftServer: initializing server loop"
         server := Some (startServer appState cbs)
 
-        this.Log "RaftServer: initializing application"
+        this.Debug "RaftServer: initializing application"
         initialize appState cbs
 
-        this.Log "RaftServer: initializing periodic loop"
+        this.Debug "RaftServer: initializing periodic loop"
         let tkn = startPeriodic appState cbs
         periodictoken := Some tkn
 
-        this.Log "RaftServer: running"
+        this.Debug "RaftServer: running"
         serverState := Running
       with
         | :? ZeroMQ.ZException as exn ->
-          this.Log <| sprintf "RaftServer: ZMQ Exeception in Start: %A" exn.Message
+          this.Err <| sprintf "RaftServer: ZMQ Exeception in Start: %A" exn.Message
           serverState := Failed (sprintf "[ZMQ Exception] %A" exn.Message)
 
         | exn ->
-          this.Log <| sprintf "RaftServer: Exeception in Start: %A" exn.Message
+          this.Err <| sprintf "RaftServer: Exeception in Start: %A" exn.Message
           serverState := Failed exn.Message
 
   /// ## Stop the Raft engine, sockets and all.
@@ -124,35 +123,35 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
     lock locker <| fun _ ->
       match !serverState with
       | Starting | Stopping | Stopped | Failed _ as state ->
-        this.Log <| sprintf "RaftServer: stopping failed. Invalid state %A" state
+        this.Debug <| sprintf "RaftServer: stopping failed. Invalid state %A" state
 
       | Running ->
-        this.Log "RaftServer: stopping"
+        this.Debug "RaftServer: stopping"
         serverState := Stopping
 
         // cancel the running async tasks so we don't cause an election
-        this.Log "RaftServer: cancel periodic loop"
+        this.Debug "RaftServer: cancel periodic loop"
         cancelToken periodictoken
 
-        this.Log "RaftServer: dispose server"
+        this.Debug "RaftServer: dispose server"
         Option.bind (dispose >> Some) (!server) |> ignore
 
-        this.Log "RaftServer: contacting leader to announce departure"
+        this.Debug "RaftServer: contacting leader to announce departure"
         let _ = tryLeave appState cbs
 
-        this.Log "RaftServer: disposing sockets"
+        this.Debug "RaftServer: disposing sockets"
         readTVar connections
         |> atomically
         |> resetConnections
 
-        this.Log "RaftServer: saving state to disk"
+        this.Debug "RaftServer: saving state to disk"
         let state = readTVar appState |> atomically
         saveRaft state.Raft database
 
-        this.Log "RaftServer: dispose database"
+        this.Debug "RaftServer: dispose database"
         dispose database
 
-        this.Log "RaftServer: stopped"
+        this.Debug "RaftServer: stopped"
         serverState := Stopped
 
   member self.Options
@@ -176,9 +175,21 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
   member self.ForceTimeout() =
     forceElection appState cbs |> atomically
 
-  member self.Log (msg: string) : unit =
+  member self.Debug (msg: string) : unit =
     let state = self.State
-    cbs.LogMsg state.Raft.Node msg
+    cbs.LogMsg Debug state.Raft.Node msg
+
+  member self.Info (msg: string) : unit =
+    let state = self.State
+    cbs.LogMsg Info state.Raft.Node msg
+
+  member self.Warn (msg: string) : unit =
+    let state = self.State
+    cbs.LogMsg Warn state.Raft.Node msg
+
+  member self.Err (msg: string) : unit =
+    let state = self.State
+    cbs.LogMsg Err state.Raft.Node msg
 
   member self.ServerState with get () = !serverState
 
@@ -216,10 +227,10 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
           match message with
             | RequestVoteResponse(sender, vote) -> Some vote
             | resp ->
-              this.Log <| sprintf "SendRequestVote: Unexpected Response: %A" resp
+              this.Err <| sprintf "SendRequestVote: Unexpected Response: %A" resp
               None
         | _ ->
-          this.Log <| sprintf "SendRequestVote: No response received for request to %s"
+          this.Err <| sprintf "SendRequestVote: No response received for request to %s"
                        (string node.Id)
           None
 
@@ -237,10 +248,10 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
           match message with
             | AppendEntriesResponse(sender, ar) -> Some ar
             | resp ->
-              this.Log <| sprintf "SendAppendEntries: Unexpected Response:  %A" resp
+              this.Err <| sprintf "SendAppendEntries: Unexpected Response:  %A" resp
               None
         | _ ->
-          this.Log <| sprintf "SendAppendEntries: No response received for request to %s"
+          this.Err <| sprintf "SendAppendEntries: No response received for request to %s"
                        (string node.Id)
           None
 
@@ -259,16 +270,16 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
           match message with
             | InstallSnapshotResponse(sender, ar) -> Some ar
             | resp ->
-              this.Log <| sprintf "SendInstallSnapshot: Unexpected Response: %A" resp
+              this.Err <| sprintf "SendInstallSnapshot: Unexpected Response: %A" resp
               None
         | _ ->
-          this.Log <| sprintf "SendInstallSnapshot: No response received for request to %s"
+          this.Err <| sprintf "SendInstallSnapshot: No response received for request to %s"
                        (string node.Id)
           None
 
     member self.ApplyLog sm =
       sprintf "Applying state machine command (%A)" sm
-      |> self.Log
+      |> this.Info
 
     //  _   _           _
     // | \ | | ___   __| | ___  ___
@@ -278,19 +289,19 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
     member self.NodeAdded node   =
       sprintf "Node was added. %s" (string node.Id)
-      |> self.Log
+      |> this.Debug
 
     member self.NodeUpdated node =
       sprintf "Node was updated. %s" (string node.Id)
-      |> self.Log
+      |> this.Debug
 
     member self.NodeRemoved node =
       sprintf "Node was removed. %s" (string node.Id)
-      |> self.Log
+      |> this.Debug
 
     member self.Configured nodes =
       sprintf "Cluster configuration done!"
-      |> self.Log
+      |> this.Debug
 
     member self.PrepareSnapshot raft = failwith "FIXME: PrepareSnapshot"
     member self.RetrieveSnapshot ()  = failwith "FIXME: RetrieveSnapshot"
@@ -307,7 +318,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
     /// Returns: unit
     member self.StateChanged old current =
       sprintf "state changed from %A to %A" old current
-      |> self.Log
+      |> this.Debug
 
     /// ## Persist the vote for passed node to disk.
     ///
@@ -331,11 +342,11 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
           | Some peer ->
             meta.VotedFor <- string peer.Id
             saveRaftMetadata meta database
-            sprintf "PersistVote for node: %A" (string peer.Id) |> self.Log
+            sprintf "PersistVote for node: %A" (string peer.Id) |> this.Debug
           | _         ->
             meta.VotedFor <- null
             saveRaftMetadata meta database
-            "PersistVote reset VotedFor" |> self.Log
+            "PersistVote reset VotedFor" |> this.Debug
       with
         | exn -> handleException "PersistTerm" exn
 
@@ -361,7 +372,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
         meta.Term <- int64 term
         saveRaftMetadata meta database
-        sprintf "PersistTerm term: %A" term |> self.Log
+        sprintf "PersistTerm term: %A" term |> this.Debug
       with
         | exn -> handleException "PersistTerm" exn
 
@@ -377,7 +388,7 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
       try
         insertLogs log database
         sprintf "PersistLog insert id: %A" (Log.id log |> string)
-        |> self.Log
+        |> this.Debug
       with
         | _ ->
           try
@@ -398,15 +409,21 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
       try
         deleteLogs log database
         |> sprintf "DeleteLog id: %A result: %b" (Log.id log |> string)
-        |> self.Log
+        |> this.Debug
       with
         | exn -> handleException "DeleteLog" exn
 
-    member self.LogMsg node str =
+    member self.LogMsg level node str =
       if self.State.Options.Debug then
         let now = DateTime.Now
         let tid = Thread.CurrentThread.ManagedThreadId
-        printfn "[%d / %s / %s] %s" (unixTime now) (String.Format("{0,2}", string tid)) (string node.Id) str
+
+        printfn "[%A] [%d / %s / %s] %s"
+          level
+          (unixTime now)
+          (String.Format("{0,2}", string tid))
+          (string node.Id)
+          str
 
   override self.ToString() =
     sprintf "Database:%s\nConnections:%s\nNodes:%s\nRaft:%s\nLog:%s"

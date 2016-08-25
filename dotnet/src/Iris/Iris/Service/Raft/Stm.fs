@@ -29,8 +29,13 @@ let writeTVar (var: TVar<'a>) (value: 'a) = var := value
 
 let atomically = id
 
-let logMsg (state: AppState) (cbs: IRaftCallbacks<_,_>) (msg: string) =
-  cbs.LogMsg state.Raft.Node msg
+let logMsg level (state: AppState) (cbs: IRaftCallbacks<_,_>) (msg: string) =
+  cbs.LogMsg level state.Raft.Node msg
+
+let debugMsg state cbs msg = logMsg Debug state cbs msg
+let infoMsg state cbs msg = logMsg Info state cbs msg
+let warnMsg state cbs msg = logMsg Warn state cbs msg
+let errMsg state cbs msg = logMsg Err state cbs msg
 
 /// ## waitForCommit
 ///
@@ -83,7 +88,7 @@ let joinCluster (nodes: Node array) (appState: TVar<AppState>) cbs =
     raft {
       let! term = currentTermM ()
       let entry = JointConsensus(Id.Create(), 0UL, term, changes, None)
-      do! log "HandShake: appending entry to enter joint-consensus"
+      do! debug "HandShake: appending entry to enter joint-consensus"
       return! receiveEntry entry
     }
     |> runRaft state.Raft cbs
@@ -113,7 +118,7 @@ let onConfigDone (appState: TVar<AppState>) cbs =
       let! term = currentTermM ()
       let! nodes = getNodesM () >>= (Map.toArray >> Array.map snd >> returnM)
       let entry = Log.mkConfig term nodes
-      do! log "reConfigDone: appending entry to exit joint-consensus into regular configuration"
+      do! debug "onConfigDone: appending entry to exit joint-consensus into regular configuration"
       return! receiveEntry entry
     }
     |> runRaft state.Raft cbs
@@ -155,7 +160,7 @@ let leaveCluster (nodes: Node array) (appState: TVar<AppState>) cbs =
     raft {
       let! term = currentTermM ()
       let entry = JointConsensus(Id.Create(), 0UL, term, changes, None)
-      do! log "HandWaive: appending entry to enter joint-consensus"
+      do! debug "HandWaive: appending entry to enter joint-consensus"
       return! receiveEntry entry
     }
     |> runRaft state.Raft cbs
@@ -329,7 +334,8 @@ let appendEntry (cmd: StateMachine) appState cbs =
       None
   | Left (err, raftState) ->
     writeTVar appState (updateRaft raftState state) |> atomically
-    sprintf "encountered error in receiveEntry: %A" err |> logMsg state cbs
+    sprintf "encountered error in receiveEntry: %A" err
+    |> errMsg state cbs
     None
 
 let handleInstallSnapshot node snapshot (appState: TVar<AppState>) cbs =
@@ -419,43 +425,43 @@ let tryJoin (ip: IpAddress) (port: uint32) cbs (state: AppState) =
       let client = mkClientSocket uri state
 
       sprintf "Trying To Join Cluster. Retry: %d" retry
-      |> logMsg state cbs
+      |> debugMsg state cbs
 
       let request = HandShake(state.Raft.Node)
       let result = rawRequest request client
 
       sprintf "Result: %A" result
-      |> logMsg state cbs
+      |> debugMsg state cbs
 
       dispose client
 
       match result with
       | Some (Welcome node) ->
         sprintf "Received Welcome from %A" node.Id
-        |> logMsg state cbs
+        |> debugMsg state cbs
         node
 
       | Some (Redirect next) ->
         sprintf "Got redirected to %A" (nodeUri next.Data)
-        |> logMsg state cbs
+        |> infoMsg state cbs
         _tryJoin (retry + 1) (nodeUri next.Data)
 
       | Some (ErrorResponse err) ->
         sprintf "Unexpected error occurred. %A Aborting." err
-        |> logMsg state cbs
+        |> errMsg state cbs
         exit 1
 
       | Some resp ->
         sprintf "Unexpected response. %A Aborting." resp
-        |> logMsg state cbs
+        |> errMsg state cbs
         exit 1
       | _ ->
         sprintf "Node: %A unreachable. Aborting." uri
-        |> logMsg state cbs
+        |> errMsg state cbs
         exit 1
     else
       "Too many unsuccesful connection attempts. Aborting."
-      |> logMsg state cbs
+      |> errMsg state cbs
       exit 1
 
   formatUri ip (int port) |> _tryJoin 0
@@ -486,25 +492,25 @@ let tryLeave (appState: TVar<AppState>) cbs : bool option =
         if retry <= int state.Options.MaxRetries then
           nodeUri other.Data |> _tryLeave (retry + 1)
         else
-          "Too many retries. aborting" |> logMsg state cbs
+          "Too many retries. aborting" |> errMsg state cbs
           None
 
       | Some Arrivederci ->
         Some true
 
       | Some (ErrorResponse err) ->
-        sprintf "Unexpected error occurred. %A" err |> logMsg state cbs
+        sprintf "Unexpected error occurred. %A" err |> errMsg state cbs
         None
 
       | Some resp ->
-        sprintf "Unexpected response. Aborting.\n%A" resp |> logMsg state cbs
+        sprintf "Unexpected response. Aborting.\n%A" resp |> errMsg state cbs
         None
 
       | _ ->
-        "Node unreachable. Aborting." |> logMsg state cbs
+        "Node unreachable. Aborting." |> errMsg state cbs
         None
     else
-      "Too many unsuccesful connection attempts." |> logMsg state cbs
+      "Too many unsuccesful connection attempts." |> errMsg state cbs
       None
 
   match state.Raft.CurrentLeader with
@@ -512,10 +518,10 @@ let tryLeave (appState: TVar<AppState>) cbs : bool option =
       match Map.tryFind nid state.Raft.Peers with
         | Some node -> nodeUri node.Data |> _tryLeave 0
         | _         ->
-          "Node data for leader id not found" |> logMsg state cbs
+          "Node data for leader id not found" |> errMsg state cbs
           None
     | _ ->
-      "no known leader" |> logMsg state cbs
+      "no known leader" |> errMsg state cbs
       None
 
 
@@ -542,44 +548,47 @@ let resetConnections (connections: Map<MemberId,Zmq.Req>) =
 let initialize appState cbs =
   let state = readTVar appState |> atomically
 
-  "initializing raft" |> logMsg state cbs
-
   let newstate =
     raft {
-      warn "should read term from disk on startup"
+      do! warn "should read term from disk on startup"
+
       let term = 0UL
 
       do! setTermM term
       do! setTimeoutElapsedM 0UL
 
       if state.Options.Start then
-        "initialize: becoming leader" |> logMsg state cbs
+        "initialize: becoming leader"
+        |> debugMsg state cbs
+
         do! becomeLeader ()
       else
-        "initialize: requesting to join" |> logMsg state cbs
+        "initialize: requesting to join"
+        |> debugMsg state cbs
+
         match state.Options.LeaderIp, state.Options.LeaderPort with
           | (Some ip, Some port) ->
             let leader = tryJoin (IpAddress.Parse ip) port cbs state
-            sprintf "Reached leader: %A Adding to nodes." leader.Id |> logMsg state cbs
+
+            sprintf "Reached leader: %A Adding to nodes." leader.Id
+            |> debugMsg state cbs
+
             do! addNodeM leader
 
           | (None, _) ->
             "When joining a cluster, the leader's IP must be specified. Aborting."
-            |> logMsg state cbs
+            |> errMsg state cbs
             exit 1
 
           | (_, None) ->
             "When joining a cluster, the leader's port must be specified. Aborting."
-            |> logMsg state cbs
+            |> errMsg state cbs
             exit 1
 
     } |> evalRaft state.Raft cbs
 
-  "initialize: save new state"
-  |> logMsg state cbs
-
-  sprintf "initialize: req-timeout: %A elec-timeout: %A" state.Raft.RequestTimeout state.Raft.ElectionTimeout
-  |> logMsg state cbs
+  "initialize: saving new state"
+  |> debugMsg state cbs
 
   // tryJoin leader
   writeTVar appState (updateRaft newstate state)

@@ -13,7 +13,7 @@ open Iris.Serialization.Raft
 //                            |_|
 
 type RaftOptions =
-  { Id           : string
+  { Id               : string
   ; Debug            : bool
   ; IpAddr           : string
   ; WebPort          : int
@@ -40,7 +40,7 @@ type GeneralArgs =
   | [<Mandatory>][<EqualsAssignment>] RaftPort   of uint32
   | [<Mandatory>][<EqualsAssignment>] WebPort    of uint32
   | [<Mandatory>][<EqualsAssignment>] DataDir    of string
-  |                                   Debug
+  |                                   DebugMode
   |                                   Start
   |                                   Join
   |              [<EqualsAssignment>] LeaderIp   of string
@@ -55,7 +55,7 @@ type GeneralArgs =
         | WebPort    _ -> "Http server port."
         | RaftPort   _ -> "Raft server port (internal)."
         | RaftNodeId _ -> "Raft server ID (internal)."
-        | Debug        -> "Log output to console."
+        | DebugMode    -> "Log output to console."
         | Start        -> "Start a new cluster"
         | Join         -> "Join an existing cluster"
         | LeaderIp   _ -> "Ip address of leader when joining a cluster"
