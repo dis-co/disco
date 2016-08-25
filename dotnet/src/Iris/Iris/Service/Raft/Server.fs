@@ -43,17 +43,12 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
 
   let database =
     match openDB options.DataDir with
-      | Some db ->
-        this.Debug <| sprintf "Found database at %A" options.DataDir
-        db
-      | _       ->
-        match createDB options.DataDir with
-          | Some db ->
-            this.Debug <| sprintf "Created new database at %A" options.DataDir
-            db
-          | _       ->
-            this.Err "Unable to open/create a database. Aborting."
-            failwith "Persistence Error: unable to open/create a database."
+    | Some db -> db
+    | _       ->
+      match createDB options.DataDir with
+        | Some db -> db
+        | _       ->
+          failwith "Persistence Error: unable to open/create a database."
 
   let serverState = ref Stopped
 
