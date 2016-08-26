@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+open System
+open System.IO
 open Iris.Raft
 
 //  ____        __ _    ____             __ _
@@ -17,14 +19,24 @@ type RaftConfig =
   { RequestTimeout:   Long
   ; ElectionTimeout:  Long
   ; MaxLogDepth:      Long
-  ; LogLevel:         int8
+  ; LogLevel:         LogLevel
+  ; DataDir:          FilePath
+  ; MaxRetries:       uint8
+  ; PeriodicInterval: uint8
+  ; BindAddress:      string
   }
   with
     static member Default =
-      { RequestTimeout  = 2000UL
-      ; ElectionTimeout = 2000UL
-      ; MaxLogDepth     = 20UL
-      ; LogLevel        = 5y }
+      let guid = Guid.NewGuid()
+      { RequestTimeout   = 500UL
+      ; ElectionTimeout  = 6000UL
+      ; MaxLogDepth      = 20UL
+      ; MaxRetries       = 10uy
+      ; PeriodicInterval = 50uy
+      ; LogLevel         = Err
+      ; DataDir          = Path.Combine(Path.GetTempPath(), guid.ToString())
+      ; BindAddress      = "127.0.0.1"
+      }
 
 // __     __                     ____             __ _
 // \ \   / /_   ____   ____   __/ ___|___  _ __  / _(_) __ _
@@ -51,13 +63,15 @@ type VvvvConfig =
 type PortConfig =
   { WebSocket : uint32
   ; UDPCue    : uint32
-  ; Iris      : uint32
+  ; Raft      : uint32
+  ; Http      : uint32
   }
   with
     static member Default =
-      { WebSocket = 8080u
+      { WebSocket = 8081u
       ; UDPCue    = 8075u
-      ; Iris      = 9090u
+      ; Raft      = 9090u
+      ; Http      = 8080u
       }
 
 //  _____ _           _              ____             __ _
@@ -275,10 +289,16 @@ module Configuration =
   /// Returns: RaftConfig
   let private parseRaft (cfg : ConfigFile) : RaftConfig =
     // let eng = cfg.Project.Engine
-    { RequestTimeout  = uint64 cfg.Project.Engine.RequestTimeout
-    ; ElectionTimeout = uint64 cfg.Project.Engine.ElectionTimeout
-    ; MaxLogDepth     = uint64 cfg.Project.Engine.MaxLogDepth
-    ; LogLevel        = int8 cfg.Project.Engine.LogLevel }
+    { RequestTimeout   = uint64 cfg.Project.Engine.RequestTimeout
+    ; ElectionTimeout  = uint64 cfg.Project.Engine.ElectionTimeout
+    ; MaxLogDepth      = uint64 cfg.Project.Engine.MaxLogDepth
+    ; LogLevel         = LogLevel.Parse cfg.Project.Engine.LogLevel
+    ; DataDir          = cfg.Project.Engine.DataDir
+    ; MaxRetries       = uint8 cfg.Project.Engine.MaxRetries
+    ; PeriodicInterval = uint8 cfg.Project.Engine.PeriodicInterval
+    ; BindAddress      = cfg.Project.Engine.BindAddress
+    }
+
 
   /// ### Save the passed RaftConfig to the configuration file
   ///
@@ -286,10 +306,14 @@ module Configuration =
   ///
   /// # Returns: ConfigFile
   let private saveRaft (file: ConfigFile, config: Config) =
-    file.Project.Engine.RequestTimeout  <- int config.RaftConfig.RequestTimeout
-    file.Project.Engine.ElectionTimeout <- int config.RaftConfig.ElectionTimeout
-    file.Project.Engine.MaxLogDepth     <- int config.RaftConfig.MaxLogDepth
-    file.Project.Engine.LogLevel        <- int config.RaftConfig.LogLevel
+    file.Project.Engine.RequestTimeout   <- int config.RaftConfig.RequestTimeout
+    file.Project.Engine.ElectionTimeout  <- int config.RaftConfig.ElectionTimeout
+    file.Project.Engine.MaxLogDepth      <- int config.RaftConfig.MaxLogDepth
+    file.Project.Engine.LogLevel         <- string config.RaftConfig.LogLevel
+    file.Project.Engine.DataDir          <- config.RaftConfig.DataDir
+    file.Project.Engine.MaxRetries       <- int config.RaftConfig.MaxRetries
+    file.Project.Engine.PeriodicInterval <- int config.RaftConfig.PeriodicInterval
+    file.Project.Engine.BindAddress      <- config.RaftConfig.BindAddress
     (file, config)
 
   //   _____ _           _
@@ -349,7 +373,9 @@ module Configuration =
   let private parsePort (cnf : ConfigFile) : PortConfig =
     { WebSocket = uint32 cnf.Project.Ports.WebSocket
     ; UDPCue    = uint32 cnf.Project.Ports.UDPCues
-    ; Iris      = uint32 cnf.Project.Ports.IrisService }
+    ; Raft      = uint32 cnf.Project.Ports.Raft
+    ; Http      = uint32 cnf.Project.Ports.Http
+    }
 
   /// ### Transfer the PortConfig configuration
   ///
@@ -357,7 +383,8 @@ module Configuration =
   ///
   /// # Returns: ConfigFile
   let private savePort (file: ConfigFile, config: Config) =
-    file.Project.Ports.IrisService <- int (config.PortConfig.Iris)
+    file.Project.Ports.Raft        <- int (config.PortConfig.Raft)
+    file.Project.Ports.Http        <- int (config.PortConfig.Http)
     file.Project.Ports.UDPCues     <- int (config.PortConfig.UDPCue)
     file.Project.Ports.WebSocket   <- int (config.PortConfig.WebSocket)
     (file, config)
@@ -673,6 +700,33 @@ module Configuration =
     ; ClusterConfig  = { Name   = name + " cluster"
                        ; Nodes  = []
                        ; Groups = [] } }
+
+  let updateVvvv (config: Config) (vvvv: VvvvConfig) =
+    { config with VvvvConfig = vvvv }
+
+  let updateAudio (config: Config) (audio: AudioConfig) =
+    { config with AudioConfig = audio }
+
+  let updateEngine (config: Config) (engine: RaftConfig) =
+    { config with RaftConfig = engine }
+
+  let updateTiming (config: Config) (timing: TimingConfig) =
+    { config with TimingConfig = timing }
+
+  let updatePorts (config: Config) (ports: PortConfig) =
+    { config with PortConfig = ports }
+
+  let updateViewPorts (config: Config) (viewports: ViewPort list) =
+    { config with ViewPorts = viewports }
+
+  let updateDisplays (config: Config) (displays: Display list) =
+    { config with Displays = displays }
+
+  let updateTasks (config: Config) (tasks: Task list) =
+    { config with Tasks = tasks }
+
+  let updateCluster (config: Config) (cluster: Cluster) =
+    { config with ClusterConfig = cluster }
 
   //  __  __                _
   // |  \/  | ___ _ __ ___ | |__   ___ _ __ ___

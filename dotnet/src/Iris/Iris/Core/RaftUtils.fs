@@ -5,63 +5,6 @@ open FlatBuffers
 open Iris.Raft
 open Iris.Serialization.Raft
 
-//  ____        __ _      ___        _   _
-// |  _ \ __ _ / _| |_   / _ \ _ __ | |_(_) ___  _ __  ___
-// | |_) / _` | |_| __| | | | | '_ \| __| |/ _ \| '_ \/ __|
-// |  _ < (_| |  _| |_  | |_| | |_) | |_| | (_) | | | \__ \
-// |_| \_\__,_|_|  \__|  \___/| .__/ \__|_|\___/|_| |_|___/
-//                            |_|
-
-type RaftOptions =
-  { Id               : string
-  ; Debug            : bool
-  ; IpAddr           : string
-  ; WebPort          : int
-  ; RaftPort         : int
-  ; Start            : bool
-  ; LeaderIp         : string option
-  ; LeaderPort       : uint32 option
-  ; MaxRetries       : uint32
-  ; PeriodicInterval : uint64
-  ; DataDir          : FilePath
-  }
-
-
-//   ____ _     ___      _
-//  / ___| |   |_ _|    / \   _ __ __ _ ___
-// | |   | |    | |    / _ \ | '__/ _` / __|
-// | |___| |___ | |   / ___ \| | | (_| \__ \
-//  \____|_____|___| /_/   \_\_|  \__, |___/
-//                                |___/
-
-type GeneralArgs =
-  | [<Mandatory>][<EqualsAssignment>] Bind       of string
-  | [<Mandatory>][<EqualsAssignment>] RaftNodeId of string
-  | [<Mandatory>][<EqualsAssignment>] RaftPort   of uint32
-  | [<Mandatory>][<EqualsAssignment>] WebPort    of uint32
-  | [<Mandatory>][<EqualsAssignment>] DataDir    of string
-  |                                   DebugMode
-  |                                   Start
-  |                                   Join
-  |              [<EqualsAssignment>] LeaderIp   of string
-  |              [<EqualsAssignment>] LeaderPort of uint32
-
-  interface IArgParserTemplate with
-
-    member self.Usage =
-      match self with
-        | DataDir     _ -> "Temporary directory to place the database in"
-        | Bind       _ -> "Specify a valid IP address."
-        | WebPort    _ -> "Http server port."
-        | RaftPort   _ -> "Raft server port (internal)."
-        | RaftNodeId _ -> "Raft server ID (internal)."
-        | DebugMode    -> "Log output to console."
-        | Start        -> "Start a new cluster"
-        | Join         -> "Join an existing cluster"
-        | LeaderIp   _ -> "Ip address of leader when joining a cluster"
-        | LeaderPort _ -> "Port of leader when joining a cluster"
-
-
 //  _____ ____    _   _      _
 // |  ___| __ )  | | | | ___| |_ __   ___ _ __ ___
 // | |_  |  _ \  | |_| |/ _ \ | '_ \ / _ \ '__/ __|

@@ -38,14 +38,14 @@ module RaftServerStateHelpers =
 // |  _ < (_| |  _| |_   ___) |  __/ |   \ V /  __/ |
 // |_| \_\__,_|_|  \__| |____/ \___|_|    \_/ \___|_|
 
-type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
+type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
   let locker = new Object()
 
   let database =
-    match openDB options.DataDir with
+    match openDB options.RaftConfig.DataDir with
     | Some db -> db
     | _       ->
-      match createDB options.DataDir with
+      match createDB options.RaftConfig.DataDir with
         | Some db -> db
         | _       ->
           failwith "Persistence Error: unable to open/create a database."
@@ -409,16 +409,24 @@ type RaftServer(options: RaftOptions, context: ZeroMQ.ZContext) as this =
         | exn -> handleException "DeleteLog" exn
 
     member self.LogMsg level node str =
-      if self.State.Options.Debug then
-        let now = DateTime.Now
-        let tid = Thread.CurrentThread.ManagedThreadId
+      let doLog msg =
+        let now = DateTime.Now |> unixTime
+        let tid = String.Format("[{0,2}]", Thread.CurrentThread.ManagedThreadId)
+        let lvl = String.Format("[{0,5}]", string level)
+        printfn "%s [%d / %s / %s] %s" lvl now tid (string node.Id) msg
 
-        printfn "[%A] [%d / %s / %s] %s"
-          level
-          (unixTime now)
-          (String.Format("{0,2}", string tid))
-          (string node.Id)
-          str
+      match self.State.Options.RaftConfig.LogLevel with
+      | Debug -> doLog str
+      | Info  -> match level with
+                  | Info | Warn | Err -> doLog str
+                  | _ -> ()
+      | Warn  -> match level with
+                  | Warn | Err   -> doLog str
+                  | _ -> ()
+      | Err   -> // default is to show only errors
+                match level with
+                  | Err -> doLog str
+                  | _ -> ()
 
   override self.ToString() =
     sprintf "Database:%s\nConnections:%s\nNodes:%s\nRaft:%s\nLog:%s"

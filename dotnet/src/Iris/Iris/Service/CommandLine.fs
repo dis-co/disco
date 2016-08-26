@@ -16,39 +16,76 @@ open Iris.Service.Raft.Server
 //              |___/                 //
 ////////////////////////////////////////
 
-let parser = ArgumentParser.Create<GeneralArgs>()
+type CLIArguments =
+  | [<EqualsAssignment>] Bind_Address of string
+  | [<EqualsAssignment>] Raft_Port    of uint32
+  | [<EqualsAssignment>] Web_Port     of uint32
+  | [<EqualsAssignment>] Ws_Port      of uint32
+  | [<EqualsAssignment>] Data_Dir     of string
+  |                      Create
+  |                      Start
+  |                      Reset
+  |                      Dump
 
-let validateOptions (opts: ParseResults<GeneralArgs>) =
+  interface IArgParserTemplate with
+    member self.Usage =
+      match self with
+        | Data_Dir     _ -> "Temporary directory to place the database in"
+        | Bind_Address _ -> "Specify a valid IP address."
+        | Web_Port     _ -> "Http server port."
+        | Ws_Port      _ -> "WebSocket port."
+        | Raft_Port    _ -> "Raft server port (internal)."
+        | Create         -> "Create a new configuration (requires --data-dir --bind-address --web-port --raft-port)"
+        | Start          -> "Start the server (requires --data-dir)"
+        | Reset          -> "Join an existing cluster (requires --data-dir)"
+        | Dump           -> "Dump the current state on disk (requires --data-dir)"
+
+let parser = ArgumentParser.Create<CLIArguments>()
+
+let validateOptions (opts: ParseResults<CLIArguments>) =
   let missing = printfn "Error: you must specify %s when joining a cluster"
 
-  if not (opts.Contains <@ Start @>) && not (opts.Contains <@ Join  @>) then
-    printfn "Error: you must specify one of --start/--join"
+  // if we are joining a cluster these options must be passed
+  if not <| opts.Contains <@ Data_Dir @> then
+    missing "--data-dir"
     exit 1
 
-  if opts.Contains <@ Join @> then
-    if not <| opts.Contains <@ LeaderIp @> then
-      missing "--leader-ip"
-      exit 1
-    elif not <| opts.Contains <@ LeaderPort @> then
-      missing "--leader-port"
-      exit 1
+  let flags =
+    ( opts.Contains <@ Create @>
+    , opts.Contains <@ Start  @>
+    , opts.Contains <@ Reset  @>
+    , opts.Contains <@ Dump   @> )
+
+  let valid =
+    match flags with
+    | (true,false,false,false) ->
+      let bind = opts.Contains <@ Bind_Address @>
+      let web  = opts.Contains <@ Web_Port @>
+      let raft = opts.Contains <@ Raft_Port @>
+      let ws   = opts.Contains <@ Ws_Port @>
+      bind && web && raft && ws
+    | (false,true,false,false) -> true
+    | (false,false,true,false) -> true
+    | (false,false,false,true) -> true
+    | _                        -> false
+
+  if not valid then
+    printfn "Error: you must specify either *one of* --start/--create/--reset/--dump"
+    exit 1
+
+let parseLogLevel = function
+  | "debug" -> Debug
+  | "info"  -> Info
+  | "warn"  -> Warn
+  | _       -> Err
 
 let parseOptions args =
   (* Get all mandatory options sorted out and initialize context *)
   try
     let opts = parser.Parse args
-    validateOptions opts
-    { Id               = opts.GetResult    <@ RaftNodeId @> |> trim
-    ; IpAddr           = opts.GetResult    <@ Bind       @> |> trim
-    ; WebPort          = opts.GetResult    <@ WebPort    @> |> int
-    ; RaftPort         = opts.GetResult    <@ RaftPort   @> |> int
-    ; Debug            = opts.Contains     <@ DebugMode  @>
-    ; Start            = opts.Contains     <@ Start      @>
-    ; LeaderIp         = opts.TryGetResult <@ LeaderIp   @>
-    ; LeaderPort       = opts.TryGetResult <@ LeaderPort @>
-    ; DataDir          = opts.GetResult    <@ DataDir    @>
-    ; PeriodicInterval = 10UL
-    ; MaxRetries       = 5u }
+    // validateOptions opts
+
+    failwith "implement option parsing"
   with
     | ex ->
       printfn "Error: %s" ex.Message
@@ -124,19 +161,19 @@ let (|Interval|_|) (str: string) =
   match trimmed.Split(' ') with
   | [| "interval"; x |] ->
     try
-      UInt64.Parse x |> Some
+      uint8 x |> Some
     with
       | _ -> None
   | _ -> None
 
-let (|Debug|_|) (str: string) =
+let (|LogLevel|_|) (str: string) =
   let parsed = str.Trim().Split(' ')
   match parsed with
-    | [| "debug"; "on" |]    -> Some true
-    | [| "debug"; "off" |]   -> Some false
-    | [| "debug"; "true" |]  -> Some true
-    | [| "debug"; "false" |] -> Some false
-    | _ -> None
+    | [| "log"; "debug" |] -> Some "debug"
+    | [| "log"; "info" |]  -> Some "info"
+    | [| "log"; "warn" |]  -> Some "warn"
+    | [| "log"; "err" |]   -> Some "err"
+    | _                  -> None
 
 let (|Periodic|_|) (str: string) =
   let trimmed = str.Trim()
@@ -165,8 +202,12 @@ let consoleLoop (context: RaftServer) =
     printf "~> "
     let input = Console.ReadLine()
     match input with
-      | Debug opt   -> context.Options <- { context.Options with Debug = opt }
-      | Interval  i -> context.Options <- { context.Options with PeriodicInterval = i }
+      | LogLevel opt   ->
+        let config = { context.Options.RaftConfig with LogLevel = parseLogLevel opt }
+        context.Options <- updateEngine context.Options config
+      | Interval  i ->
+        let config = { context.Options.RaftConfig with PeriodicInterval = i }
+        context.Options <- updateEngine context.Options config
       | Exit        -> context.Stop(); kontinue := false
       | Periodic    -> context.Periodic()
       | Nodes       -> Map.iter (fun _ a -> printfn "Node: %A" a) context.State.Peers

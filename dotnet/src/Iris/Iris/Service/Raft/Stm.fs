@@ -387,7 +387,7 @@ let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks<_,_>) =
   server
 
 let periodicR (state: AppState) cbs =
-  periodic state.Options.PeriodicInterval
+  periodic (uint64 state.Options.RaftConfig.PeriodicInterval)
   |> evalRaft state.Raft cbs
   |> flip updateRaft state
 
@@ -412,7 +412,7 @@ let startPeriodic appState cbs =
       |> writeTVar appState
       |> atomically
 
-      Thread.Sleep(int state.Options.PeriodicInterval) // sleep for 100ms
+      Thread.Sleep(int state.Options.RaftConfig.PeriodicInterval) // sleep for 100ms
       return! proc ()                                  // recurse
     }
   Async.Start(proc(), token.Token)
@@ -421,7 +421,7 @@ let startPeriodic appState cbs =
 // -------------------------------------------------------------------------
 let tryJoin (ip: IpAddress) (port: uint32) cbs (state: AppState) =
   let rec _tryJoin retry uri =
-    if retry < int state.Options.MaxRetries then
+    if retry < int state.Options.RaftConfig.MaxRetries then
       let client = mkClientSocket uri state
 
       sprintf "Trying To Join Cluster. Retry: %d" retry
@@ -480,7 +480,7 @@ let tryLeave (appState: TVar<AppState>) cbs : bool option =
   let state = readTVar appState |> atomically
 
   let rec _tryLeave retry (uri: string) =
-    if retry < int state.Options.MaxRetries then
+    if retry < int state.Options.RaftConfig.MaxRetries then
       let client = mkClientSocket uri state
       let request = HandWaive(state.Raft.Node)
       let result = rawRequest request client
@@ -489,7 +489,7 @@ let tryLeave (appState: TVar<AppState>) cbs : bool option =
 
       match result with
       | Some (Redirect other) ->
-        if retry <= int state.Options.MaxRetries then
+        if retry <= int state.Options.RaftConfig.MaxRetries then
           nodeUri other.Data |> _tryLeave (retry + 1)
         else
           "Too many retries. aborting" |> errMsg state cbs
@@ -553,37 +553,37 @@ let initialize appState cbs =
       do! warn "should read term from disk on startup"
 
       let term = 0UL
-
       do! setTermM term
       do! setTimeoutElapsedM 0UL
+      do! becomeFollower ()
 
-      if state.Options.Start then
-        "initialize: becoming leader"
-        |> debugMsg state cbs
+      // if state.Options.Start then
+      //   "initialize: becoming leader"
+      //   |> debugMsg state cbs
 
-        do! becomeLeader ()
-      else
-        "initialize: requesting to join"
-        |> debugMsg state cbs
+      //   do! becomeLeader ()
+      // else
+      //   "initialize: requesting to join"
+      //   |> debugMsg state cbs
 
-        match state.Options.LeaderIp, state.Options.LeaderPort with
-          | (Some ip, Some port) ->
-            let leader = tryJoin (IpAddress.Parse ip) port cbs state
+      //   match state.Options.LeaderIp, state.Options.LeaderPort with
+      //     | (Some ip, Some port) ->
+      //       let leader = tryJoin (IpAddress.Parse ip) port cbs state
 
-            sprintf "Reached leader: %A Adding to nodes." leader.Id
-            |> debugMsg state cbs
+      //       sprintf "Reached leader: %A Adding to nodes." leader.Id
+      //       |> debugMsg state cbs
 
-            do! addNodeM leader
+      //       do! addNodeM leader
 
-          | (None, _) ->
-            "When joining a cluster, the leader's IP must be specified. Aborting."
-            |> errMsg state cbs
-            exit 1
+      //     | (None, _) ->
+      //       "When joining a cluster, the leader's IP must be specified. Aborting."
+      //       |> errMsg state cbs
+      //       exit 1
 
-          | (_, None) ->
-            "When joining a cluster, the leader's port must be specified. Aborting."
-            |> errMsg state cbs
-            exit 1
+      //     | (_, None) ->
+      //       "When joining a cluster, the leader's port must be specified. Aborting."
+      //       |> errMsg state cbs
+      //       exit 1
 
     } |> evalRaft state.Raft cbs
 

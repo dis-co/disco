@@ -3,6 +3,7 @@ namespace Iris.Core
 open System
 open System.IO
 open System.Net
+open System.Linq
 open System.Net.NetworkInformation
 open System.Text.RegularExpressions
 
@@ -140,39 +141,60 @@ module Utils =
       printfn "[%s]%s%s" tag ws str
 
 
-  ////////////////////////////////////////
-  //  _   _ _   _ _                     //
-  // | | | | |_(_) |___                 //
-  // | | | | __| | / __|                //
-  // | |_| | |_| | \__ \                //
-  //  \___/ \__|_|_|___/                //
-  ////////////////////////////////////////
+  //  ____  _        _
+  // / ___|| |_ _ __(_)_ __   __ _
+  // \___ \| __| '__| | '_ \ / _` |
+  //  ___) | |_| |  | | | | | (_| |
+  // |____/ \__|_|  |_|_| |_|\__, |
+  //                         |___/
+
+
+  let inline trim< ^a when ^a : (member Trim : unit -> ^a)> str =
+    (^a : (member Trim : unit -> ^a) str)
+
+  let inline toLower< ^a when ^a : (member ToLower : unit -> ^a)> str =
+    (^a : (member ToLower : unit -> ^a) str)
+
+  let inline toUpper< ^a when ^a : (member ToUpper : unit -> ^a)> str =
+    (^a : (member ToUpper : unit -> ^a) str)
+
+  //  ____  _       ______       _   _
+  // |  _ \(_)_ __ / /  _ \ __ _| |_| |__
+  // | | | | | '__/ /| |_) / _` | __| '_ \
+  // | |_| | | | / / |  __/ (_| | |_| | | |
+  // |____/|_|_|/_/  |_|   \__,_|\__|_| |_|
+
   let (</>) p1 p2 = System.IO.Path.Combine(p1, p2)
 
-  let trim (str: string) = str.Trim()
+  /// ## delete a file or directory
+  ///
+  /// recursively delete a directory or single File.
+  ///
+  /// ### Signature:
+  /// - path: FilePath to delete
+  ///
+  /// Returns: unit
+  let rec delete path =
+    match System.IO.DirectoryInfo(path).Attributes with
+      | System.IO.FileAttributes.Directory ->
+        let children = System.IO.DirectoryInfo(path).EnumerateFileSystemInfos()
+        if children.Count() > 0 then
+          for child in children do
+            delete child.FullName
+          System.IO.Directory.Delete(path)
+        else
+          System.IO.Directory.Delete(path)
+      | _ ->
+        System.IO.File.Delete path
+
+  //  _____ _
+  // |_   _(_)_ __ ___   ___
+  //   | | | | '_ ` _ \ / _ \
+  //   | | | | | | | | |  __/
+  //   |_| |_|_| |_| |_|\___|
 
   let createTimestamp () =
     let now = DateTime.Now
     now.ToString("u")
-
-  // let dispatch (raft : Raft<_,_> ref) (inbox: Actor<_>) =
-  //   let rec loop () =
-  //     async {
-  //         let! msg = inbox.Receive()
-  //         printfn "[dispatch] received: %A" msg
-  //         return! loop ()
-  //       }
-  //   loop ()
-
-  // let quit () =
-  //   printfn "Quitting."
-
-  // let rec infLoop (client:Actor<string>) =
-  //   let inp = Console.ReadLine().Trim()
-  //   if inp = "exit" || inp = "quit"
-  //   then quit()
-  //   else
-  //     client.Post(inp)
-  //     infLoop client
 
 #endif

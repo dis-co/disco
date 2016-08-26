@@ -46,24 +46,25 @@ let getHostName () =
 /// - options: RaftOptions
 ///
 /// Returns: Raft<StateMachine,IrisNode>
-let createRaft (options: RaftOptions) =
+let createRaft (options: Config) =
+  let id = Id.Create()
   let node =
-    { MemberId = Id.Create()
+    { MemberId = id
     ; HostName = getHostName()
-    ; IpAddr   = IpAddress.Parse options.IpAddr
-    ; Port     = options.RaftPort
+    ; IpAddr   = IpAddress.Parse options.RaftConfig.BindAddress
+    ; Port     = int options.PortConfig.Raft
     ; TaskId   = None
     ; Status   = IrisNodeStatus.Running }
-    |> Node.create (Id options.Id)
+    |> Node.create id
   Raft.create node
 
-let loadRaft (options: RaftOptions) =
-  let dir = options.DataDir </> DB_NAME
+let loadRaft (options: Config) =
+  let dir = options.RaftConfig.DataDir </> DB_NAME
   match IO.Directory.Exists dir with
     | true -> openDB dir |> Option.bind loadRaft
     | _    -> None
 
-let mkRaft (options: RaftOptions) =
+let mkRaft (options: Config) =
   match loadRaft options with
     | Some raft -> raft
     | _         -> createRaft options
@@ -79,7 +80,7 @@ let mkRaft (options: RaftOptions) =
 /// - options: `RaftOptions`
 ///
 /// Returns: AppState
-let mkState (context: ZeroMQ.ZContext) (options: RaftOptions) : AppState =
+let mkState (context: ZeroMQ.ZContext) (options: Config) : AppState =
   { Clients     = []
   ; Sessions    = []
   ; Projects    = Map.empty

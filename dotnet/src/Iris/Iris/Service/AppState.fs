@@ -21,7 +21,7 @@ type AppState =
   ; Peers:       Map<MemberId, string>
   ; Context:     ZeroMQ.ZContext
   ; Raft:        Raft
-  ; Options:     RaftOptions
+  ; Options:     Config
   }
 
   with

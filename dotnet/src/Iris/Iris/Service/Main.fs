@@ -3,6 +3,7 @@
 open System
 open System.Security.Cryptography
 open System.Net
+open System.Linq
 open System.Threading
 open System.Diagnostics
 
@@ -29,24 +30,56 @@ module Main =
 
   let createConfig debug rid idx start lip lpidx  =
     let portbase = 8000
-    { Id             = rid
-    ; Debug            = debug
-    ; IpAddr           = "127.0.0.1"
-    ; WebPort          = (portbase - 1000) + idx
-    ; RaftPort         = portbase + idx
-    ; Start            = start
-    ; LeaderIp         = lip
-    ; LeaderPort       = Option.map (fun n -> uint32 portbase + n) lpidx
-    ; MaxRetries       = 5u
-    ; DataDir          = Id.Create() |> string |> mkTmpPath
-    ; PeriodicInterval = 50UL
-    }
+    // { Id             = rid
+    // ; Debug            = debug
+    // ; IpAddr           = "127.0.0.1"
+    // ; WebPort          = (portbase - 1000) + idx
+    // ; RaftPort         = portbase + idx
+    // ; Start            = start
+    // ; LeaderIp         = lip
+    // ; LeaderPort       = Option.map (fun n -> uint32 portbase + n) lpidx
+    // ; MaxRetries       = 5u
+    // ; DataDir          = Id.Create() |> string |> mkTmpPath
+    // ; PeriodicInterval = 50UL
+    // }
+
+    failwith "config config config"
 
   let createFollower debug (rid: string) (portidx: int) lid lpidx =
     createConfig debug rid portidx false (Some "127.0.0.1") (Some (uint32 lpidx))
 
   let createLeader debug (rid: string) (portidx: int) =
     createConfig debug rid portidx true None None
+
+  let startRaft (datadir: FilePath) =
+    use kontext = new ZContext()
+
+    let options = failwith "need to create options"
+
+    // 1. Initialise the application server from the supplied options
+    // let options = parseOptions args
+    use server = new RaftServer(options, kontext)
+    server.Start()
+
+    // 6. Start the console input loop.
+    printfn "Welcome to the Raft REPL. Type help to see all commands."
+    consoleLoop server
+
+  let createDataDir (parsed: ParseResults<CLIArguments>) =
+    let dir = parsed.GetResult <@ Data_Dir @>
+    let empty = IO.Directory.EnumerateFileSystemEntries(dir).Count() = 0
+
+    if IO.Directory.Exists dir && not empty then
+      printf "%A not empty. Can I clean first? y/n" dir
+      match Console.ReadLine() with
+        | "y" -> delete dir
+        | _   -> ()
+
+  let resetDataDir (datadir: FilePath) =
+    failwith "resetDataDir"
+
+  let dumpDataDir (datadir: FilePath) =
+    failwith "dump data dir contents"
 
   ////////////////////////////////////////
   //  __  __       _                    //
@@ -58,23 +91,19 @@ module Main =
   [<EntryPoint>]
   let main args =
 
-    let debug = Array.contains "--debug" args
+    let parsed = parser.ParseCommandLine args
 
-    let options =
-      if Array.length args = 2 || Array.length args = 3 then
-        createLeader debug args.[0] (int args.[1])
-      else
-        createFollower debug args.[0] (int args.[1]) args.[2] (int args.[3])
+    validateOptions parsed
 
-    use kontext = new ZContext()
-
-    // 1. Initialise the application server from the supplied options
-    // let options = parseOptions args
-    use server = new RaftServer(options, kontext)
-    server.Start()
-
-    // 6. Start the console input loop.
-    printfn "Welcome to the Raft REPL. Type help to see all commands."
-    consoleLoop server
+    if parsed.Contains <@ Create @> then
+      createDataDir parsed
+    else
+      let dir = parsed.GetResult <@ Data_Dir @>
+      if parsed.Contains <@ Start @> then
+        startRaft dir
+      elif parsed.Contains <@ Reset @> then
+        resetDataDir dir
+      elif parsed.Contains <@ Dump @> then
+        dumpDataDir dir
 
     0

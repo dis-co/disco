@@ -48,27 +48,6 @@ module RaftIntegrationTests =
 
   open System.Linq
 
-  /// ## delete a file or directory
-  ///
-  /// recursively delete a directory or single File.
-  ///
-  /// ### Signature:
-  /// - path: FilePath to delete
-  ///
-  /// Returns: unit
-  let rec delete path =
-    match System.IO.DirectoryInfo(path).Attributes with
-      | System.IO.FileAttributes.Directory ->
-        let children = System.IO.DirectoryInfo(path).EnumerateFileSystemInfos()
-        if children.Count() > 0 then
-          for child in children do
-            delete child.FullName
-          System.IO.Directory.Delete(path)
-        else
-          System.IO.Directory.Delete(path)
-      | _ ->
-        System.IO.File.Delete path
-
   //  ____  ____    _____         _
   // |  _ \| __ )  |_   _|__  ___| |_ ___
   // | | | |  _ \    | |/ _ \/ __| __/ __|
