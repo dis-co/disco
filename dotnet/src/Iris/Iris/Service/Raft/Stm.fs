@@ -29,7 +29,7 @@ let writeTVar (var: TVar<'a>) (value: 'a) = var := value
 
 let atomically = id
 
-let logMsg level (state: AppState) (cbs: IRaftCallbacks<_,_>) (msg: string) =
+let logMsg level (state: AppState) (cbs: IRaftCallbacks<_>) (msg: string) =
   cbs.LogMsg level state.Raft.Node msg
 
 let debugMsg state cbs msg = logMsg Debug state cbs msg
@@ -81,7 +81,7 @@ let waitForCommit (appended: EntryResponse) (appState: TVar<AppState>) cbs =
 /// - cbs: IRaftCallbacks
 ///
 /// Returns: Either<RaftError * Raft, unit * Raft, EntryResponse * Raft>
-let joinCluster (nodes: Node array) (appState: TVar<AppState>) cbs =
+let joinCluster (nodes: RaftNode array) (appState: TVar<AppState>) cbs =
   let state = readTVar appState |> atomically
   let changes = Array.map (fun node -> NodeAdded node) nodes
   let result =
@@ -153,7 +153,7 @@ let onConfigDone (appState: TVar<AppState>) cbs =
 /// - cbs: IRaftCallbacks
 ///
 /// Returns: RaftResponse
-let leaveCluster (nodes: Node array) (appState: TVar<AppState>) cbs =
+let leaveCluster (nodes: RaftNode array) (appState: TVar<AppState>) cbs =
   let state = readTVar appState |> atomically
   let changes = Array.map (fun node -> NodeRemoved node) nodes
   let result =
@@ -366,11 +366,11 @@ let handleRequest msg (state: TVar<AppState>) cbs : RaftResponse =
   | InstallSnapshot (sender, snapshot) ->
     handleInstallSnapshot sender snapshot state cbs
 
-let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks<_,_>) =
+let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks<_>) =
   let uri =
     readTVar appState
     |> atomically
-    |> fun state -> state.Raft.Node.Data
+    |> fun state -> state.Raft.Node
     |> nodeUri
 
   let handler (request: byte array) : byte array =
@@ -442,9 +442,9 @@ let tryJoin (ip: IpAddress) (port: uint32) cbs (state: AppState) =
         node
 
       | Some (Redirect next) ->
-        sprintf "Got redirected to %A" (nodeUri next.Data)
+        sprintf "Got redirected to %A" (nodeUri next)
         |> infoMsg state cbs
-        _tryJoin (retry + 1) (nodeUri next.Data)
+        _tryJoin (retry + 1) (nodeUri next)
 
       | Some (ErrorResponse err) ->
         sprintf "Unexpected error occurred. %A Aborting." err
@@ -490,7 +490,7 @@ let tryLeave (appState: TVar<AppState>) cbs : bool option =
       match result with
       | Some (Redirect other) ->
         if retry <= int state.Options.RaftConfig.MaxRetries then
-          nodeUri other.Data |> _tryLeave (retry + 1)
+          nodeUri other |> _tryLeave (retry + 1)
         else
           "Too many retries. aborting" |> errMsg state cbs
           None
@@ -516,7 +516,7 @@ let tryLeave (appState: TVar<AppState>) cbs : bool option =
   match state.Raft.CurrentLeader with
     | Some nid ->
       match Map.tryFind nid state.Raft.Peers with
-        | Some node -> nodeUri node.Data |> _tryLeave 0
+        | Some node -> nodeUri node |> _tryLeave 0
         | _         ->
           "Node data for leader id not found" |> errMsg state cbs
           None

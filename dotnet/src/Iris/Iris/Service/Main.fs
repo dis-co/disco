@@ -72,7 +72,7 @@ module Main =
     if IO.Directory.Exists dir && not empty then
       printf "%A not empty. Can I clean first? y/n" dir
       match Console.ReadLine() with
-        | "y" -> delete dir
+        | "y" -> rmDir dir
         | _   -> ()
 
   let resetDataDir (datadir: FilePath) =

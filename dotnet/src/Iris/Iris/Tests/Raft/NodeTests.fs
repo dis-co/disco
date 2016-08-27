@@ -17,5 +17,5 @@ module NodeTests =
 
   let node_init_test =
     testCase "When created, Node should be in Voting state" <| fun _ ->
-      let node : Node<unit> = Node.create (Id.Create()) ()
+      let node : RaftNode = Node.create (Id.Create())
       Assert.Equal("Should be voting", true, Node.isVoting node)

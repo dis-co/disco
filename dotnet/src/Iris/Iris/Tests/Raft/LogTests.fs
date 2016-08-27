@@ -20,7 +20,7 @@ module Log =
 
   let log_new_log_is_empty =
     testCase "When create, a log should be empty" <| fun _ ->
-      let log : Log<unit,unit> = Log.empty
+      let log : Log<unit> = Log.empty
       expect "Should be zero" 0UL Log.length log
 
   let log_is_non_empty =
@@ -126,7 +126,7 @@ module Log =
         |> Log.append (Log.make 1UL 2)
         |> Log.append (Log.make 1UL 3)
 
-      let folder (m: int) (log: LogEntry<int,_>) =
+      let folder (m: int) (log: LogEntry<int>) =
         let value = (Log.data >> Option.get) log
         if value = 2
         then Log.finish (m + 9)
@@ -261,7 +261,7 @@ module Log =
 
       let nodes =
         [ for n in 0UL .. 5UL do
-            yield Node.create (Id.Create()) ("Client " + string n) ]
+            yield Node.create (Id.Create()) ]
         |> Array.ofList
 
       let log =

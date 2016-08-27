@@ -1,20 +1,5 @@
 namespace Iris.Serialization.Raft;
 
-enum IrisNodeStatusFB:ushort {
-     Running,
-     Failed,
-     Paused
-}
-
-table IrisNodeFB {
-      MemberId: string;
-      HostName: string;
-      IpAddr:   string;
-      Port:     int;
-      Status:   IrisNodeStatusFB;
-      TaskId:   string;
-}
-
 //  ____  _        _         __  __            _     _
 // / ___|| |_ __ _| |_ ___  |  \/  | __ _  ___| |__ (_)_ __   ___
 // \___ \| __/ _` | __/ _ \ | |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
@@ -118,7 +103,9 @@ enum NodeStateFB:ubyte {
 
 table NodeFB {
       Id         : string;
-      Data       : IrisNodeFB;
+      HostName   : string;
+      IpAddr     : string;
+      Port       : int;
       Voting     : bool;
       VotedForMe : bool;
       State      : NodeStateFB;

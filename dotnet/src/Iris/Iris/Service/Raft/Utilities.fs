@@ -47,15 +47,11 @@ let getHostName () =
 ///
 /// Returns: Raft<StateMachine,IrisNode>
 let createRaft (options: Config) =
-  let id = Id.Create()
   let node =
-    { MemberId = id
-    ; HostName = getHostName()
-    ; IpAddr   = IpAddress.Parse options.RaftConfig.BindAddress
-    ; Port     = int options.PortConfig.Raft
-    ; TaskId   = None
-    ; Status   = IrisNodeStatus.Running }
-    |> Node.create id
+    { Node.create (Id.Create()) with
+        HostName = getHostName()
+        IpAddr   = IpAddress.Parse options.RaftConfig.BindAddress
+        Port     = uint16 options.PortConfig.Raft }
   Raft.create node
 
 let loadRaft (options: Config) =
@@ -154,8 +150,8 @@ let formatUri (ip: IpAddress) (port: int) =
 /// - data: IrisNode
 ///
 /// Returns: string
-let nodeUri (data: IrisNode) =
-  formatUri data.IpAddr data.Port
+let nodeUri (data: RaftNode) =
+  formatUri data.IpAddr (int data.Port)
 
 /// ## Make a new client socket with correct settings
 ///
@@ -189,13 +185,13 @@ let mkClientSocket (uri: string) (state: AppState) =
 /// - appState: current TVar<AppState>
 ///
 /// Returns: Socket
-let getSocket (node: Node) (state: AppState) (connections: Map<MemberId,Zmq.Req>) =
-  match Map.tryFind node.Data.MemberId connections with
+let getSocket (node: RaftNode) (state: AppState) (connections: Map<Id,Zmq.Req>) =
+  match Map.tryFind node.Id connections with
   | Some client -> (client, connections)
   | _  ->
-    let addr = nodeUri node.Data
+    let addr = nodeUri node
     let socket = mkClientSocket addr state
-    (socket, Map.add node.Data.MemberId socket connections)
+    (socket, Map.add node.Id socket connections)
 
 /// ## Dispose of a client socket
 ///
@@ -206,11 +202,11 @@ let getSocket (node: Node) (state: AppState) (connections: Map<MemberId,Zmq.Req>
 /// - appState: AppState TVar
 ///
 /// Returns: unit
-let disposeSocket (node: Node) (connections: Map<MemberId,Zmq.Req>) =
-  match Map.tryFind node.Data.MemberId connections with
+let disposeSocket (node: RaftNode) (connections: Map<Id,Zmq.Req>) =
+  match Map.tryFind node.Id connections with
   | Some client ->
     dispose client
-    Map.remove node.Data.MemberId connections
+    Map.remove node.Id connections
   | _  -> connections
 
 /// ## Perform a raw request cycle on a request socket
@@ -241,7 +237,7 @@ let rawRequest (request: RaftRequest) (client: Req) =
 /// - appState: application state TVar
 ///
 /// Returns: RaftResponse option
-let performRequest (request: RaftRequest) (node: Node<IrisNode>) (state: AppState) (connections: Map<MemberId,Zmq.Req>) =
+let performRequest (request: RaftRequest) (node: RaftNode) (state: AppState) (connections: Map<Id,Zmq.Req>) =
   let client, connections = getSocket node state connections
 
   try

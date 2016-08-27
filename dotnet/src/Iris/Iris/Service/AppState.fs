@@ -15,7 +15,7 @@ open Iris.Service.Raft
 
 [<NoComparison;NoEquality>]
 type AppState =
-  { Clients:     IrisNode       list
+  { Clients:     string         list
   ; Sessions:    BrowserSession list
   ; Projects:    Map<ProjectId, Project>
   ; Peers:       Map<MemberId, string>
@@ -217,11 +217,11 @@ module AppStateUtils =
   /// - state: the AppState to add it to
   ///
   /// Returns: AppState
-  let addNode (node: IrisNode) (state: AppState) : AppState =
+  let addNode (node: string) (state: AppState) : AppState =
     failwith "FIXME: implement addNode AppState"
 
-  let updateMember (newmem: IrisNode) (state: AppState) : AppState =
+  let updateMember (newmem: string) (state: AppState) : AppState =
     failwith "FIXME: implement updateMember AppState"
 
-  let removeMember (mem: IrisNode) (state: AppState) : AppState =
+  let removeMember (mem: string) (state: AppState) : AppState =
     failwith "FIXME: implement removeNode AppState"

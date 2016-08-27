@@ -27,18 +27,7 @@ module RaftIntegrationTests =
 
   let createConfig rid idx start lip lpidx  =
     let portbase = 8000
-    { Id               = rid
-    ; Debug            = true
-    ; IpAddr           = "127.0.0.1"
-    ; WebPort          = (portbase - 1000) + idx
-    ; RaftPort         = portbase + idx
-    ; Start            = start
-    ; LeaderIp         = lip
-    ; LeaderPort       = Option.map (fun n -> uint32 portbase + n) lpidx
-    ; MaxRetries       = 5u
-    ; DataDir          = Id.Create() |> string |> mkTmpPath
-    ; PeriodicInterval = 10UL
-    }
+    failwith "createConfig FIXME{}"
 
   let createFollower (rid: string) (portidx: int) lid lpidx =
     createConfig rid portidx false (Some "127.0.0.1") (Some (uint32 lpidx))
@@ -112,24 +101,17 @@ module RaftIntegrationTests =
 
   let test_save_restore_log_values_correctly =
     testCase "save/restore log values correctly" <| fun _ ->
-      let info1 =
-        { MemberId = Id.Create()
-        ; HostName = "Hans"
-        ; IpAddr = IpAddress.Parse "192.168.1.20"
-        ; Port = 8080
-        ; Status = IrisNodeStatus.Running
-        ; TaskId = None }
+      let node1 =
+        { Node.create (Id.Create()) with
+            HostName = "Hans"
+            IpAddr = IpAddress.Parse "192.168.1.20"
+            Port   = 8080us }
 
-      let info2 =
-        { MemberId = Id.Create()
-        ; HostName = "Klaus"
-        ; IpAddr = IpAddress.Parse "192.168.1.22"
-        ; Port = 8080
-        ; Status = IrisNodeStatus.Failed
-        ; TaskId = Id.Create() |> Some }
-
-      let node1 = Node.create (Id.Create()) info1
-      let node2 = Node.create (Id.Create()) info2
+      let node2 =
+        { Node.create (Id.Create()) with
+            HostName = "Klaus"
+            IpAddr = IpAddress.Parse "192.168.1.22"
+            Port   = 8080us }
 
       let changes = [| NodeRemoved node2 |]
       let nodes = [| node1; node2 |]
@@ -168,24 +150,17 @@ module RaftIntegrationTests =
 
   let test_save_restore_raft_value_correctly =
     testCase "save/restore raft value correctly" <| fun _ ->
-      let info1 =
-        { MemberId = Id.Create()
-        ; HostName = "Hans"
-        ; IpAddr = IpAddress.Parse "192.168.1.20"
-        ; Port = 8080
-        ; Status = IrisNodeStatus.Running
-        ; TaskId = None }
+      let node1 =
+        { Node.create (Id.Create()) with
+            HostName = "Hans"
+            IpAddr = IpAddress.Parse "192.168.1.20"
+            Port   = 8080us }
 
-      let info2 =
-        { MemberId = Id.Create()
-        ; HostName = "Klaus"
-        ; IpAddr = IpAddress.Parse "192.168.1.22"
-        ; Port = 8080
-        ; Status = IrisNodeStatus.Failed
-        ; TaskId = Id.Create() |> Some }
-
-      let node1 = Node.create (Id.Create()) info1
-      let node2 = Node.create (Id.Create()) info2
+      let node2 =
+        { Node.create (Id.Create()) with
+            HostName = "Klaus"
+            IpAddr = IpAddress.Parse "192.168.1.22"
+            Port   = 8080us }
 
       let changes = [| NodeRemoved node2 |]
       let nodes = [| node1; node2 |]
@@ -222,24 +197,17 @@ module RaftIntegrationTests =
 
   let test_validate_logs_get_deleted_correctly =
     testCase "validate logs get deleted correctly" <| fun _ ->
-      let info1 =
-        { MemberId = Id.Create()
-        ; HostName = "Hans"
-        ; IpAddr = IpAddress.Parse "192.168.1.20"
-        ; Port = 8080
-        ; Status = IrisNodeStatus.Running
-        ; TaskId = None }
+      let node1 =
+        { Node.create (Id.Create()) with
+            HostName = "Hans"
+            IpAddr = IpAddress.Parse "192.168.1.20"
+            Port   = 8080us }
 
-      let info2 =
-        { MemberId = Id.Create()
-        ; HostName = "Klaus"
-        ; IpAddr = IpAddress.Parse "192.168.1.22"
-        ; Port = 8080
-        ; Status = IrisNodeStatus.Failed
-        ; TaskId = Id.Create() |> Some }
-
-      let node1 = Node.create (Id.Create()) info1
-      let node2 = Node.create (Id.Create()) info2
+      let node2 =
+        { Node.create (Id.Create()) with
+            HostName = "Klaus"
+            IpAddr = IpAddress.Parse "192.168.1.22"
+            Port   = 8080us }
 
       let changes = [| NodeRemoved node2 |]
       let nodes = [| node1; node2 |]

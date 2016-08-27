@@ -19,15 +19,11 @@ module SerializationTests =
 
   let test_validate_requestvote_serialization =
     testCase "Validate RequestVote Serialization" <| fun _ ->
-      let info =
-        { MemberId = Id.Create ()
-        ; HostName = "test-host"
-        ; IpAddr   = IpAddress.Parse "192.168.2.10"
-        ; Port     = 8080
-        ; Status   = Paused
-        ; TaskId   = Id.Create() |> Some }
-
-      let node = Node.create (Id.Create()) info
+      let node =
+        { Node.create (Id.Create()) with
+            HostName = "test-host"
+            IpAddr   = IpAddress.Parse "192.168.2.10"
+            Port     = 8080us }
 
       let vr : VoteRequest =
         { Term = 8UL
@@ -68,24 +64,8 @@ module SerializationTests =
 
   let test_validate_appendentries_serialization =
     testCase "Validate RequestVote Response Serialization" <| fun _ ->
-      let info1 =
-        { MemberId = Id.Create()
-        ; HostName = "Hans"
-        ; IpAddr = IpAddress.Parse "192.168.1.20"
-        ; Port = 8080
-        ; Status = IrisNodeStatus.Running
-        ; TaskId = None }
-
-      let info2 =
-        { MemberId = Id.Create()
-        ; HostName = "Klaus"
-        ; IpAddr = IpAddress.Parse "192.168.1.22"
-        ; Port = 8080
-        ; Status = IrisNodeStatus.Failed
-        ; TaskId = Id.Create() |> Some }
-
-      let node1 = Node.create (Id.Create()) info1
-      let node2 = Node.create (Id.Create()) info2
+      let node1 = Node.create (Id.Create())
+      let node2 = Node.create (Id.Create())
 
       let changes = [| NodeRemoved node2 |]
       let nodes = [| node1; node2 |]
@@ -144,15 +124,7 @@ module SerializationTests =
 
   let test_validate_installsnapshot_serialization =
     testCase "Validate InstallSnapshot Serialization" <| fun _ ->
-      let info =
-        { MemberId = Id.Create()
-        ; HostName = "Hans"
-        ; IpAddr = IpAddress.Parse "123.23.21.1"
-        ; Port = 124
-        ; Status = IrisNodeStatus.Running
-        ; TaskId = None }
-
-      let node1 = [| Node.create (Id.Create()) info |]
+      let node1 = [| Node.create (Id.Create()) |]
 
       let is : InstallSnapshot =
         { Term = 2134UL
@@ -175,15 +147,7 @@ module SerializationTests =
 
   let test_validate_handshake_serialization =
     testCase "Validate HandShake Serialization" <| fun _ ->
-      let info =
-        { MemberId = Id.Create()
-        ; HostName = "horst"
-        ; IpAddr   = IpAddress.Parse "127.0.0.1"
-        ; Port     = 8080
-        ; Status   = IrisNodeStatus.Paused
-        ; TaskId   = None }
-
-      let msg = HandShake(Node.create (Id.Create()) info)
+      let msg = HandShake(Node.create (Id.Create()))
       let remsg = msg |> encode |> decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
@@ -196,15 +160,7 @@ module SerializationTests =
 
   let test_validate_handwaive_serialization =
     testCase "Validate HandWaive Serialization" <| fun _ ->
-      let info =
-        { MemberId = Id.Create()
-        ; HostName = "horst"
-        ; IpAddr = IpAddress.Parse "127.0.0.1"
-        ; Port = 8080
-        ; Status = IrisNodeStatus.Failed
-        ; TaskId = Id.Create() |> Some }
-
-      let msg = HandWaive(Node.create (Id.Create()) info)
+      let msg = HandWaive(Node.create (Id.Create()))
       let remsg = msg |> encode |> decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
@@ -217,15 +173,7 @@ module SerializationTests =
 
   let test_validate_redirect_serialization =
     testCase "Validate Redirect Serialization" <| fun _ ->
-      let info =
-        { MemberId = Id.Create()
-        ; HostName = "horst"
-        ; IpAddr = IpAddress.Parse "127.0.0.1"
-        ; Port = 8080
-        ; Status = IrisNodeStatus.Failed
-        ; TaskId = Id.Create() |> Some }
-
-      let msg = Redirect(Node.create (Id.Create()) info)
+      let msg = Redirect(Node.create (Id.Create()))
       let remsg = msg |> encode |> decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
@@ -238,15 +186,7 @@ module SerializationTests =
 
   let test_validate_welcome_serialization =
     testCase "Validate Welcome Serialization" <| fun _ ->
-      let info =
-        { MemberId = Id.Create()
-        ; HostName = "horst"
-        ; IpAddr = IpAddress.Parse "127.0.0.1"
-        ; Port = 8080
-        ; Status = IrisNodeStatus.Failed
-        ; TaskId = Id.Create() |> Some }
-
-      let msg = Welcome(Node.create (Id.Create()) info)
+      let msg = Welcome(Node.create (Id.Create()))
       let remsg = msg |> encode |> decode |> Option.get
       expect "Should be structurally the same" msg id remsg
 

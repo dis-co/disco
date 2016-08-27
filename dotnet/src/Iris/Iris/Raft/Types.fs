@@ -109,9 +109,9 @@ module Entry =
 ///  - `Candidate`    -  the unique node id of candidate for leadership
 ///  - `LastLogIndex` -  the index of the candidates last log entry
 ///  - `LastLogTerm`  -  the index of the candidates last log entry
-type VoteRequest<'n> =
+type VoteRequest =
   { Term         : Term
-  ; Candidate    : Node<'n>
+  ; Candidate    : RaftNode
   ; LastLogIndex : Index
   ; LastLogTerm  : Term
   }
@@ -130,10 +130,10 @@ type VoteResponse =
 [<RequireQualifiedAccess>]
 module Vote =
   // requests
-  let inline term         (vote : VoteRequest<_>) = vote.Term
-  let inline candidate    (vote : VoteRequest<_>) = vote.Candidate
-  let inline lastLogIndex (vote : VoteRequest<_>) = vote.LastLogIndex
-  let inline lastLogTerm  (vote : VoteRequest<_>) = vote.LastLogTerm
+  let inline term         (vote : VoteRequest) = vote.Term
+  let inline candidate    (vote : VoteRequest) = vote.Candidate
+  let inline lastLogIndex (vote : VoteRequest) = vote.LastLogIndex
+  let inline lastLogTerm  (vote : VoteRequest) = vote.LastLogTerm
 
   // responses
   let inline granted  (vote : VoteResponse) = vote.Granted
@@ -150,12 +150,12 @@ module Vote =
 ///  - `PrevLogIdx`  - the index of the log just before the newest entry for the node who receive this message
 ///  - `PrevLogTerm` - the term of the log just before the newest entry for the node who receives this message
 ///  - `LeaderCommit`- the index of the entry that has been appended to the majority of the cluster. Entries up to this index will be applied to the FSM
-type AppendEntries<'a,'n> =
+type AppendEntries<'a> =
   { Term         : Term
   ; PrevLogIdx   : Index
   ; PrevLogTerm  : Term
   ; LeaderCommit : Index
-  ; Entries      : LogEntry<'a,'n> option
+  ; Entries      : LogEntry<'a> option
   }
 
 /// Appendentries response message.
@@ -200,12 +200,12 @@ module AppendRequest =
 //                                              |_|                         //
 //////////////////////////////////////////////////////////////////////////////
 
-type InstallSnapshot<'node,'data> =
+type InstallSnapshot<'data> =
   { Term      : Term
   ; LeaderId  : NodeId
   ; LastIndex : Index
   ; LastTerm  : Term
-  ; Data      : LogEntry<'node,'data> }
+  ; Data      : LogEntry<'data> }
 
 /////////////////////////////////////////////////
 //   ____      _ _ _                _          //
@@ -221,49 +221,49 @@ type InstallSnapshot<'node,'data> =
 // |___|_| |_|\__\___|_|  |_|  \__,_|\___\___| //
 /////////////////////////////////////////////////
 
-type IRaftCallbacks<'a,'b> =
+type IRaftCallbacks<'data> =
 
   /// Request a vote from given Raft server
-  abstract member SendRequestVote:     Node<'b>  -> VoteRequest<'b>        -> VoteResponse option
+  abstract member SendRequestVote:     RaftNode  -> VoteRequest            -> VoteResponse option
 
   /// Send AppendEntries message to given server
-  abstract member SendAppendEntries:   Node<'b>  -> AppendEntries<'a,'b>   -> AppendResponse option
+  abstract member SendAppendEntries:   RaftNode  -> AppendEntries<'data>   -> AppendResponse option
 
   /// Send InstallSnapshot command to given serve
-  abstract member SendInstallSnapshot: Node<'b>  -> InstallSnapshot<'a,'b> -> AppendResponse option
+  abstract member SendInstallSnapshot: RaftNode  -> InstallSnapshot<'data> -> AppendResponse option
 
   /// given the current state of Raft, prepare and return a snapshot value of
   /// current application state
-  abstract member PrepareSnapshot:     Raft<'a,'b>     -> Log<'a,'b>
+  abstract member PrepareSnapshot:     Raft<'data>     -> Log<'data>
 
   /// perist the given Snapshot value to disk. For safety reasons this MUST
   /// flush all changes to disk.
-  abstract member PersistSnapshot:     LogEntry<'a,'b> -> unit
+  abstract member PersistSnapshot:     LogEntry<'data> -> unit
 
   /// attempt to load a snapshot from disk. return None if no snapshot was found
-  abstract member RetrieveSnapshot:    unit            -> LogEntry<'a,'b> option
+  abstract member RetrieveSnapshot:    unit            -> LogEntry<'data> option
 
   /// apply the given command to state machine
-  abstract member ApplyLog:            'a              -> unit
+  abstract member ApplyLog:            'data           -> unit
 
   /// a new server was added to the configuration
-  abstract member NodeAdded:           Node<'b>        -> unit
+  abstract member NodeAdded:           RaftNode        -> unit
 
   /// a new server was added to the configuration
-  abstract member NodeUpdated:         Node<'b>        -> unit
+  abstract member NodeUpdated:         RaftNode        -> unit
 
   /// a server was removed from the configuration
-  abstract member NodeRemoved:         Node<'b>        -> unit
+  abstract member NodeRemoved:         RaftNode        -> unit
 
   /// a cluster configuration transition was successfully applied
-  abstract member Configured:          Node<'b> array  -> unit
+  abstract member Configured:          RaftNode array  -> unit
 
   /// the state of Raft itself has changed from old state to new given state
   abstract member StateChanged:        RaftState       -> RaftState              -> unit
 
   /// persist vote data to disk. For safety reasons this callback MUST flush
   /// the change to disk.
-  abstract member PersistVote:         Node<'b> option -> unit
+  abstract member PersistVote:         RaftNode option -> unit
 
   /// persist term data to disk. For safety reasons this callback MUST flush
   /// the change to disk>
@@ -271,14 +271,14 @@ type IRaftCallbacks<'a,'b> =
 
   /// persist an entry added to the log to disk. For safety reasons this
   /// callback MUST flush the change to disk.
-  abstract member PersistLog:          LogEntry<'a,'b> -> unit
+  abstract member PersistLog:          LogEntry<'data> -> unit
 
   /// persist the removal of the passed entry from the log to disk. For safety
   /// reasons this callback MUST flush the change to disk.
-  abstract member DeleteLog:           LogEntry<'a,'b> -> unit
+  abstract member DeleteLog:           LogEntry<'data> -> unit
 
   /// Callback for catching debug messsages
-  abstract member LogMsg:  LogLevel ->  Node<'b>        -> String                 -> unit
+  abstract member LogMsg:  LogLevel ->  RaftNode        -> String                 -> unit
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  ____        __ _                                                                                                                     //
@@ -307,28 +307,27 @@ type IRaftCallbacks<'a,'b> =
 //                                                                                                                                       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-and Raft<'d,'n> =
-  { Node              : Node<'n>
+and Raft<'d> =
+  { Node              : RaftNode
   ; State             : RaftState
   ; CurrentTerm       : Term
   ; CurrentLeader     : NodeId option
-  ; Peers             : Map<NodeId,Node<'n>>
-  ; OldPeers          : Map<NodeId,Node<'n>> option
+  ; Peers             : Map<NodeId,RaftNode>
+  ; OldPeers          : Map<NodeId,RaftNode> option
   ; NumNodes          : Long
   ; VotedFor          : NodeId option
-  ; Log               : Log<'d,'n>
+  ; Log               : Log<'d>
   ; CommitIndex       : Index
   ; LastAppliedIdx    : Index
   ; TimeoutElapsed    : Long
   ; ElectionTimeout   : Long
   ; RequestTimeout    : Long
   ; MaxLogDepth       : Long
-  ; ConfigChangeEntry : LogEntry<'d,'n> option
+  ; ConfigChangeEntry : LogEntry<'d> option
   }
 
   override self.ToString() =
     sprintf "Node              = %s
-                    %s
 State             = %A
 CurrentTerm       = %A
 CurrentLeader     = %A
@@ -343,7 +342,6 @@ RequestTimeout    = %A
 ConfigChangeEntry = %s
 "
       (self.Node.ToString())
-      (self.Node.Data.ToString())
       self.State
       self.CurrentTerm
       self.CurrentLeader
@@ -359,22 +357,6 @@ ConfigChangeEntry = %s
         Option.get self.ConfigChangeEntry |> string
        else "<empty>")
 
-////////////////////////////////////////////////
-//   ____      _ _ _                _         //
-//  / ___|__ _| | | |__   __ _  ___| | _____  //
-// | |   / _` | | | '_ \ / _` |/ __| |/ / __| //
-// | |__| (_| | | | |_) | (_| | (__|   <\__ \ //
-//  \____\__,_|_|_|_.__/ \__,_|\___|_|\_\___/ //
-////////////////////////////////////////////////
-
-type Logger<'n> = Node<'n> -> string -> unit
-
-type ApplyLog<'d,'n> = LogEntry<'d,'n> -> unit
-
-type LogOffer<'d,'n> = LogEntry<'d,'n> -> Index -> unit
-
-type PersistVote<'n> = Node<'n> option -> unit
-
 ////////////////////////////////////////
 //  __  __                       _    //
 // |  \/  | ___  _ __   __ _  __| |   //
@@ -387,5 +369,5 @@ type PersistVote<'n> = Node<'n> option -> unit
 type RaftMonad<'Env,'State,'T,'Error> =
   MkRM of ('Env -> 'State -> Either<'Error * 'State,'T * 'State>)
 
-type RaftM<'d,'n,'t,'e> =
-  RaftMonad<IRaftCallbacks<'d,'n>,Raft<'d,'n>,'t,'e>
+type RaftM<'data,'t,'err> =
+  RaftMonad<IRaftCallbacks<'data>,Raft<'data>,'t,'err>

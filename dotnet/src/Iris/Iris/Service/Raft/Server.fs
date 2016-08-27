@@ -55,7 +55,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
   let server : Zmq.Rep option ref = ref None
   let periodictoken               = ref None
 
-  let cbs = this :> IRaftCallbacks<_,_>
+  let cbs = this :> IRaftCallbacks<StateMachine>
   let appState = mkState context options |> newTVar
   let connections = newTVar Map.empty
 
@@ -206,7 +206,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
   // |  _ < (_| |  _| |_   | || | | | ||  __/ |  |  _| (_| | (_|  __/
   // |_| \_\__,_|_|  \__| |___|_| |_|\__\___|_|  |_|  \__,_|\___\___|
 
-  interface IRaftCallbacks<StateMachine,IrisNode> with
+  interface IRaftCallbacks<StateMachine> with
 
     member self.SendRequestVote node req  =
       let state = self.State
@@ -229,7 +229,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
                        (string node.Id)
           None
 
-    member self.SendAppendEntries (node: Node) (request: AppendEntries) =
+    member self.SendAppendEntries (node: RaftNode) (request: AppendEntries) =
       let state = self.State
       let conns = readTVar connections |> atomically
       let request = AppendEntries(state.Raft.Node.Id, request)
@@ -323,7 +323,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
     /// - node: Node to persist
     ///
     /// Returns: unit
-    member self.PersistVote (node: Node option) =
+    member self.PersistVote (node: RaftNode option) =
       try
         let meta =
           match getMetadata database with

@@ -94,8 +94,7 @@ Project:
         HostName:
         Ip:
         Port: -1
-        Status:
-        TaskId:
+        State:
 
     Groups:
       - Name:

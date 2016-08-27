@@ -104,7 +104,7 @@ type LogData() =
 
     match self.LogType with
       | t when t = int LogDataType.Config ->
-        let nodes : Node array = coder.UnPickle(self.Nodes)
+        let nodes : RaftNode array = coder.UnPickle(self.Nodes)
         Configuration(id,idx,term,nodes,None)
 
       | t when t = int LogDataType.Consensus ->
@@ -116,7 +116,7 @@ type LogData() =
         LogEntry(id,idx,term,data,None)
 
       | t when t = int LogDataType.Snapshot ->
-        let nodes : Node array = coder.UnPickle(self.Nodes)
+        let nodes : RaftNode array = coder.UnPickle(self.Nodes)
         let data : StateMachine = coder.UnPickle(self.Data)
         let lidx = uint64 self.LastIndex
         let lterm = uint64 self.LastTerm
@@ -233,7 +233,9 @@ type NodeMetaData() =
   let mutable voting    : bool       = false
   let mutable voted     : bool       = false
   let mutable state     : string     = null
-  let mutable data      : byte array = null
+  let mutable hostname  : string     = null
+  let mutable ip        : string     = null
+  let mutable port      : int16      = 0s
   let mutable next_idx  : int64      = 0L
   let mutable match_idx : int64      = 0L
 
@@ -246,9 +248,17 @@ type NodeMetaData() =
     with get () = state
     and  set v  = state <- v
 
-  member __.Data
-    with get () = data
-    and  set v  = data <- v
+  member __.HostName
+    with get () = hostname
+    and  set v  = hostname <- v
+
+  member __.IpAddr
+    with get () = ip
+    and  set v  = ip <- v
+
+  member __.Port
+    with get () = port
+    and  set v  = port <- v
 
   member __.Voting
     with get () = voting
@@ -272,12 +282,13 @@ type NodeMetaData() =
   // |  __/ (_| | |  \__ \  __/
   // |_|   \__,_|_|  |___/\___|
 
-  static member FromNode (node: Node) =
-    let coder = FsPickler.CreateBinarySerializer()
+  static member FromNode (node: RaftNode) =
     let meta = new NodeMetaData()
     meta.Id         <- string node.Id
     meta.State      <- string node.State
-    meta.Data       <- coder.Pickle(node.Data)
+    meta.HostName   <- node.HostName
+    meta.IpAddr     <- string node.IpAddr
+    meta.Port       <- int16 node.Port
     meta.Voting     <- node.Voting
     meta.VotedForMe <- node.VotedForMe
     meta.NextIndex  <- int64 node.NextIndex
@@ -290,13 +301,14 @@ type NodeMetaData() =
   //  ___) |  __/ |  | | (_| | | |/ /  __/
   // |____/ \___|_|  |_|\__,_|_|_/___\___|
 
-  member self.ToNode () : Node =
-    let coder = FsPickler.CreateBinarySerializer()
+  member self.ToNode () : RaftNode =
     { Id         = Id self.Id
-    ; Data       = coder.UnPickle<IrisNode>(self.Data)
+    ; HostName   = self.HostName
+    ; IpAddr     = IpAddress.Parse self.IpAddr
+    ; Port       = uint16 self.Port
     ; Voting     = self.Voting
     ; VotedForMe = self.VotedForMe
-    ; State      = NodeState.Parse self.State
+    ; State      = RaftNodeState.Parse self.State
     ; NextIndex  = uint64 self.NextIndex
     ; MatchIndex = uint64 self.MatchIndex }
 
@@ -971,7 +983,7 @@ let loadRaft db =
       let oldpeers =
         match meta.OldPeers with
           | null   -> None
-          | arr -> List.fold (fun lst (n: Node) ->
+          | arr -> List.fold (fun lst (n: RaftNode) ->
                               if Array.contains (string n.Id) arr then
                                 (n.Id, n)  :: lst
                               else lst) [] nodes
@@ -989,7 +1001,7 @@ let loadRaft db =
           ; State             = state
           ; CurrentTerm       = uint64 meta.Term
           ; CurrentLeader     = leader
-          ; Peers             = List.map (fun (n: Node)-> (n.Id,n)) nodes |> Map.ofList
+          ; Peers             = List.map (fun (n: RaftNode)-> (n.Id,n)) nodes |> Map.ofList
           ; OldPeers          = oldpeers
           ; NumNodes          = List.length nodes |> uint64
           ; VotedFor          = votedfor

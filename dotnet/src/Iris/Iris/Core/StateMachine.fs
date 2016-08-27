@@ -103,10 +103,8 @@ type StateMachine =
 //  / ___ \| | | (_| \__ \  __/\__ \
 // /_/   \_\_|_|\__,_|___/\___||___/ for Raft-specific stuff
 
-type ConfigChange = ConfigChange<IrisNode>
-type Log = Log<StateMachine,IrisNode>
-type LogEntry = LogEntry<StateMachine,IrisNode>
-type Raft = Raft<StateMachine,IrisNode>
-type AppendEntries = AppendEntries<StateMachine,IrisNode>
-type VoteRequest = VoteRequest<IrisNode>
-type InstallSnapshot = InstallSnapshot<StateMachine,IrisNode>
+type Log = Log<StateMachine>
+type LogEntry = LogEntry<StateMachine>
+type Raft = Raft<StateMachine>
+type AppendEntries = AppendEntries<StateMachine>
+type InstallSnapshot = InstallSnapshot<StateMachine>

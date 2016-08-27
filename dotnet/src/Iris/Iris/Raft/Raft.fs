@@ -15,7 +15,7 @@ module RaftMonad =
   let put s = MkRM (fun _ _ -> Right ((), s))
 
   /// get the read-only environment value
-  let read : RaftM<_,_,_,_> = MkRM (fun l s -> Right (l, s))
+  let read : RaftM<_,_,_> = MkRM (fun l s -> Right (l, s))
 
   /// unwrap the closure and apply it to the supplied state/env
   let apply (env: 'e) (state: 's) (m: RaftMonad<'e,'s,_,_>)  =
@@ -118,7 +118,7 @@ module Raft =
   // | |  | | (_) | | | | (_| | (_| | | (__  //
   // |_|  |_|\___/|_| |_|\__,_|\__,_|_|\___| //
   /////////////////////////////////////////////
-  let currentIndex (state: Raft<'d,'n>) =
+  let currentIndex (state: Raft<'data>) =
     Log.index state.Log
 
   let log level str =
@@ -134,7 +134,7 @@ module Raft =
 
   let error str = log Err str
 
-  let sendAppendEntriesM (node: Node<_>) (request: AppendEntries<_,_>) =
+  let sendAppendEntriesM (node: RaftNode) (request: AppendEntries<_>) =
     get >>= fun state ->
       read >>= fun cbs ->
         async {
@@ -169,10 +169,10 @@ module Raft =
       cbs.PersistLog log
       |> returnM
 
-  let modify (f: Raft<_,_> -> Raft<_,_>) =
+  let modify (f: Raft<_> -> Raft<_>) =
     get >>= (f >> put)
 
-  let zoomM (f: Raft<'d,'n> -> 'a) =
+  let zoomM (f: Raft<'data> -> 'a) =
     get >>= (f >> returnM)
 
   ///////////////////////////////////////
@@ -193,7 +193,7 @@ module Raft =
   //  \____|_|  \___|\__,_|\__\___|   //
   //////////////////////////////////////
 
-  let create (self : Node<'n>) : Raft<'d,'n> =
+  let create (self : RaftNode) : Raft<'data> =
     { Node              = self
     ; State             = Follower
     ; CurrentTerm       = 0UL
@@ -213,31 +213,31 @@ module Raft =
     }
 
   /// Is the Raft value in Follower state.
-  let isFollower (state: Raft<'d,'n>) =
+  let isFollower (state: Raft<'data>) =
     state.State = Follower
 
   let isFollowerM = fun _ -> zoomM isFollower
 
   /// Is the Raft value in Candate state.
-  let isCandidate (state: Raft<'d,'n>) =
+  let isCandidate (state: Raft<'data>) =
     state.State = Candidate
 
   let isCandidateM _ = zoomM isCandidate
 
   /// Is the Raft value in Leader state
-  let isLeader (state: Raft<'d,'n>) =
+  let isLeader (state: Raft<'data>) =
     state.State = Leader
 
   let isLeaderM _ = zoomM isLeader
 
-  let inJointConsensus (state: Raft<_,_>) =
+  let inJointConsensus (state: Raft<_>) =
     match state.ConfigChangeEntry with
       | Some (JointConsensus _) -> true
       | _                       -> false
 
   let inJointConsensusM _ = zoomM inJointConsensus
 
-  let hasNonVotingNodes (state: Raft<_,_>) =
+  let hasNonVotingNodes (state: Raft<_>) =
     Map.fold
       (fun b _ n -> if b then b else not (Node.hasSufficientLogs n && Node.isVoting n))
       false
@@ -254,12 +254,12 @@ module Raft =
   //                                |_|         //
   ////////////////////////////////////////////////
 
-  let getChanges (state: Raft<_,_>) =
+  let getChanges (state: Raft<_>) =
     match state.ConfigChangeEntry with
       | Some (JointConsensus(_,_,_,changes,_)) -> Some changes
       | _ -> None
 
-  let logicalPeers (state: Raft<_,_>) =
+  let logicalPeers (state: Raft<_>) =
     // when setting the NumNodes counter we have to include the old config, if set
     if inJointConsensus state then
         // take the old peers as seed and apply the new peers on top
@@ -273,19 +273,19 @@ module Raft =
 
   let countNodes peers = Map.fold (fun m _ _ -> m + 1UL) 0UL peers
 
-  let numLogicalPeers (state: Raft<_,_>) =
+  let numLogicalPeers (state: Raft<_>) =
     logicalPeers state |> countNodes
 
-  let setNumPeers (state: Raft<_,_>) =
+  let setNumPeers (state: Raft<_>) =
     { state with NumNodes = countNodes state.Peers }
 
   /// Set States Nodes to supplied Map of Nodes. Also cache count of nodes.
-  let setPeers (peers : Map<NodeId,Node<'n>>) (state: Raft<'d,'n>) =
+  let setPeers (peers : Map<NodeId,RaftNode>) (state: Raft<'data>) =
     { state with Peers = Map.add state.Node.Id state.Node peers }
     |> setNumPeers
 
   /// Adds a node to the list of known Nodes and increments NumNodes counter
-  let addNode (node : Node<'n>) (state: Raft<'d,'n>) : Raft<'d,'n> =
+  let addNode (node : RaftNode) (state: Raft<'data>) : Raft<'data> =
     let exists = Map.containsKey node.Id state.Peers
     { state with
         Peers = Map.add node.Id node state.Peers
@@ -294,7 +294,7 @@ module Raft =
             then state.NumNodes
             else state.NumNodes + 1UL }
 
-  let addNodeM (node: Node<'n>) =
+  let addNodeM (node: RaftNode) =
     get >>= (addNode node >> put)
 
   /// Alias for `addNode`
@@ -302,11 +302,11 @@ module Raft =
   let addPeerM = addNodeM
 
   /// Add a Non-voting Peer to the list of known Nodes
-  let addNonVotingNode (node : Node<'n>) (state: Raft<'d,'n>) =
+  let addNonVotingNode (node : RaftNode) (state: Raft<'data>) =
     addNode { node with Voting = false; State = Joining } state
 
   /// Remove a Peer from the list of known Nodes and decrement NumNodes counter
-  let removeNode (node : Node<'n>) (state: Raft<'d,'n>) =
+  let removeNode (node : RaftNode) (state: Raft<'data>) =
     let numNodes =
       if Map.containsKey node.Id state.Peers
         then state.NumNodes - 1UL
@@ -316,7 +316,7 @@ module Raft =
         Peers = Map.remove node.Id state.Peers
         NumNodes = numNodes }
 
-  let updateNode (node : Node<'n>) (cbs: IRaftCallbacks<_,_>) (state: Raft<'d,'n>) =
+  let updateNode (node : RaftNode) (cbs: IRaftCallbacks<'data>) (state: Raft<'data>) =
     // if we are in joint consensus, we must update the node value in either the
     // new or the old configuration, or both.
     let regular = Map.containsKey node.Id state.Peers
@@ -358,31 +358,31 @@ module Raft =
       | NodeRemoved node -> removeNode       node _state
     Array.fold folder state changes
 
-  let updateNodeM (node: Node<'n>) =
+  let updateNodeM (node: RaftNode) =
     read >>= fun env ->
       get >>= (updateNode node env >> put)
 
-  let addNodes (nodes : Node<'n> array) (state: Raft<'d,'n>) =
+  let addNodes (nodes : RaftNode array) (state: Raft<'data>) =
     Array.fold (fun m n -> addNode n m) state nodes
 
-  let addNodesM (nodes: Node<'n> array) =
+  let addNodesM (nodes: RaftNode array) =
     get >>= (addNodes nodes >> put)
 
   let addPeers = addNodes
   let addPeersM = addNodesM
 
-  let addNonVotingNodeM (node: Node<'n>) =
+  let addNonVotingNodeM (node: RaftNode) =
     get >>= (addNonVotingNode node >> put)
 
-  let removeNodeM (node: Node<'n>) =
+  let removeNodeM (node: RaftNode) =
     get >>= (removeNode node >> put)
 
-  let hasNode (nid : NodeId) (state: Raft<'d,'n>) =
+  let hasNode (nid : NodeId) (state: Raft<'data>) =
     Map.containsKey nid state.Peers
 
   let hasNodeM _ = hasNode >> zoomM
 
-  let getNode (nid : NodeId) (state: Raft<'d,'n>) =
+  let getNode (nid : NodeId) (state: Raft<'data>) =
     if inJointConsensus state then
       logicalPeers state |> Map.tryFind nid
     else
@@ -398,19 +398,19 @@ module Raft =
         | Some node -> updateNodeM { node with State = state }
         | _         -> returnM ()
 
-  let getNodes (state: Raft<_,_>) = state.Peers
+  let getNodes (state: Raft<_>) = state.Peers
   let getNodesM _ = zoomM getNodes
 
-  let getSelf (state: Raft<_,_>) = state.Node
+  let getSelf (state: Raft<_>) = state.Node
   let getSelfM _ = zoomM getSelf
 
-  let setSelf (node: Node<_>) (state: Raft<_,_>) =
+  let setSelf (node: RaftNode) (state: Raft<_>) =
     { state with Node = node }
 
   let setSelfM node =
     setSelf node |> modify
 
-  let lastConfigChange (state: Raft<_,_>) =
+  let lastConfigChange (state: Raft<_>) =
     state.ConfigChangeEntry
 
   let lastConfigChangeM _ =
@@ -425,7 +425,7 @@ module Raft =
   ////////////////////////////////////////
 
   /// Set CurrentTerm on Raft to supplied term.
-  let setTerm (term : Term) (state: Raft<'d,'n>) =
+  let setTerm (term : Term) (state: Raft<'data>) =
     { state with CurrentTerm = term }
 
   /// Set CurrentTerm to supplied value. Monadic action.
@@ -436,7 +436,7 @@ module Raft =
     }
 
   /// Set current RaftState to supplied state.
-  let setState (rs : RaftState) (env: IRaftCallbacks<_,_>) (state: Raft<'d,'n>) =
+  let setState (rs : RaftState) (env: IRaftCallbacks<'data>) (state: Raft<'data>) =
     env.StateChanged state.State rs
     { state with
         State = rs
@@ -450,31 +450,31 @@ module Raft =
     read >>= (setState state >> modify)
 
   /// Get current RaftState: Leader, Candidate or Follower
-  let getState (state: Raft<'d,'n>) =
+  let getState (state: Raft<'data>) =
     state.State
 
   /// Get current RaftState. Monadic action.
   let getStateM _ = zoomM getState
 
-  let getMaxLogDepth (state: Raft<'d,'n>) =
+  let getMaxLogDepth (state: Raft<'data>) =
     state.MaxLogDepth
 
   let getMaxLogDepthM _ = zoomM getMaxLogDepth
 
-  let setMaxLogDepth (depth: Long) (state: Raft<'d,'n>) =
+  let setMaxLogDepth (depth: Long) (state: Raft<'data>) =
     { state with MaxLogDepth = depth }
 
   let setMaxLogDepthM (depth: Long) =
     setMaxLogDepth depth |> modify
 
   /// Get Node associated with supplied raft value.
-  let self (state: Raft<'d,'n>) =
+  let self (state: Raft<'data>) =
     state.Node
 
   /// Get Node associated with supplied raft value. Monadic action.
   let selfM _ = zoomM self
 
-  let setOldPeers (peers : Map<NodeId,Node<'n>> option) (state: Raft<'d,'n>) =
+  let setOldPeers (peers : Map<NodeId,RaftNode> option) (state: Raft<'data>) =
     { state with OldPeers = peers  } |> setNumPeers
 
   /// Set States Nodes to supplied Map of Nodes. Monadic action.
@@ -486,15 +486,15 @@ module Raft =
     setOldPeers peers |> modify
 
   /// Map over States Nodes with supplied mapping function
-  let updatePeers (f: Node<'n> -> Node<'n>) (state: Raft<'d,'n>) =
+  let updatePeers (f: RaftNode -> RaftNode) (state: Raft<'data>) =
     { state with Peers = Map.map (fun _ v -> f v) state.Peers }
 
   /// Map over States Nodes with supplied mapping function. Monadic action
-  let updatePeersM (f: Node<'n> -> Node<'n>) =
+  let updatePeersM (f: RaftNode -> RaftNode) =
     updatePeers f |> modify
 
   /// Set States CurrentLeader field to supplied NodeId.
-  let setLeader (leader : NodeId option) (state: Raft<'d,'n>) =
+  let setLeader (leader : NodeId option) (state: Raft<'data>) =
     { state with CurrentLeader = leader }
 
   /// Set States CurrentLeader field to supplied NodeId. Monadic action.
@@ -503,7 +503,7 @@ module Raft =
 
   /// Set the nextIndex field on Node corresponding to supplied Id (should it
   /// exist, that is).
-  let setNextIndex (nid : NodeId) idx cbs (state: Raft<'d,'n>) =
+  let setNextIndex (nid : NodeId) idx cbs (state: Raft<'data>) =
     let node = getNode nid state
     let nextidx = if idx < 1UL then 1UL else idx
     match node with
@@ -516,7 +516,7 @@ module Raft =
     read >>= (setNextIndex nid idx >> modify)
 
   /// Set the nextIndex field on all Nodes to supplied index.
-  let setAllNextIndex idx (state: Raft<'d,'n>) =
+  let setAllNextIndex idx (state: Raft<'data>) =
     let updater _ p = { p with NextIndex = idx }
     if inJointConsensus state then
       { state with
@@ -532,7 +532,7 @@ module Raft =
     setAllNextIndex idx |> modify
 
   /// Set the matchIndex field on Node to supplied index.
-  let setMatchIndex nid idx env (state: Raft<_,_>) =
+  let setMatchIndex nid idx env (state: Raft<_>) =
     let node = getNode nid state
     match node with
       | Some peer -> updateNode { peer with MatchIndex = idx } env state
@@ -542,7 +542,7 @@ module Raft =
     read >>= (setMatchIndex nid idx >> modify)
 
   /// Set the matchIndex field on all Nodes to supplied index.
-  let setAllMatchIndex idx (state: Raft<'d,'n>) =
+  let setAllMatchIndex idx (state: Raft<'data>) =
     let updater _ p = { p with MatchIndex = idx }
     if inJointConsensus state then
       { state with
@@ -558,9 +558,9 @@ module Raft =
     setAllMatchIndex idx |> modify
 
   /// Remeber who we have voted for in current election.
-  let voteFor (node : Node<'n> option) =
+  let voteFor (node : RaftNode option) =
     let doVoteFor state =
-      { state with VotedFor = Option.map (fun (n : Node<'n>) -> n.Id) node }
+      { state with VotedFor = Option.map (fun (n : RaftNode) -> n.Id) node }
 
     raft {
       let! state = get
@@ -575,7 +575,7 @@ module Raft =
       do! voteFor node
     }
 
-  let resetVotes (state: Raft<'d,'n>) =
+  let resetVotes (state: Raft<'data>) =
     let resetter _ peer = Node.voteForMe peer false
     { state with
         Peers = Map.map resetter state.Peers
@@ -590,17 +590,17 @@ module Raft =
   let voteForMyself _ =
     get >>= fun state -> voteFor (Some state.Node)
 
-  let votedForMyself (state: Raft<'d,'n>) =
+  let votedForMyself (state: Raft<'data>) =
     match state.VotedFor with
       | Some(nid) -> nid = state.Node.Id
       | _ -> false
 
-  let votedFor (state: Raft<'d,'n>) =
+  let votedFor (state: Raft<'data>) =
     state.VotedFor
 
   let votedForM _ = zoomM votedFor
 
-  let setVoting (node : Node<'n>) (vote : bool) (state: Raft<'d,'n>) =
+  let setVoting (node : RaftNode) (vote : bool) (state: Raft<'data>) =
     let updated = Node.voteForMe node vote
     if inJointConsensus state then
       { state with
@@ -618,7 +618,7 @@ module Raft =
     else
       { state with Peers = Map.add updated.Id updated state.Peers }
 
-  let setVotingM (node: Node<_>) (vote: bool) =
+  let setVotingM (node: RaftNode) (vote: bool) =
     raft {
       do! debug <| sprintf "setVotingM: setting node %s voting to %b" (string node.Id) vote
       do! setVoting node vote |> modify
@@ -626,7 +626,7 @@ module Raft =
 
   let currentIndexM _ = zoomM currentIndex
 
-  let numNodes (state: Raft<'d,'n>) =
+  let numNodes (state: Raft<'data>) =
     state.NumNodes
 
   let numNodesM _ = zoomM numNodes
@@ -634,7 +634,7 @@ module Raft =
   let numPeers = numNodes
   let numPeersM = numNodesM
 
-  let numOldPeers (state: Raft<_,_>) =
+  let numOldPeers (state: Raft<_>) =
     match state.OldPeers with
       | Some peers -> Map.fold (fun m _ _ -> m + 1UL) 0UL peers
       |      _     -> 0UL
@@ -646,108 +646,108 @@ module Raft =
       if Node.isVoting n then r + 1UL else r
     Map.fold counter 0UL peers
 
-  let votingNodes (state: Raft<_,_>) =
+  let votingNodes (state: Raft<_>) =
     votingNodesForConfig state.Peers
 
   let votingNodesM _ = zoomM votingNodes
 
-  let votingNodesForOldConfig (state: Raft<_,_>) =
+  let votingNodesForOldConfig (state: Raft<_>) =
     match state.OldPeers with
       | Some peers -> votingNodesForConfig peers
       | _ -> 0UL
 
   let votingNodesForOldConfigM _ = zoomM votingNodesForOldConfig
 
-  let numLogs (state: Raft<'d,'n>) =
+  let numLogs (state: Raft<'data>) =
     Log.length state.Log
 
   let numLogsM _ = zoomM numLogs
 
-  let currentTerm (state: Raft<'d,'n>) =
+  let currentTerm (state: Raft<'data>) =
     state.CurrentTerm
 
   let currentTermM _ = zoomM currentTerm
 
-  let firstIndex (term: Term) (state: Raft<_,_>) =
+  let firstIndex (term: Term) (state: Raft<_>) =
     Log.firstIndex term state.Log
 
   let firstIndexM (term: Term) =
     firstIndex term |> zoomM
 
-  let currentLeader (state: Raft<'d,'n>) =
+  let currentLeader (state: Raft<'data>) =
     state.CurrentLeader
 
   let currentLeaderM _ = zoomM currentLeader
 
-  let getLeader (state: Raft<_,_>) =
+  let getLeader (state: Raft<_>) =
     currentLeader state |> Option.bind (flip getNode state)
 
-  let commitIndex (state: Raft<'d,'n>) =
+  let commitIndex (state: Raft<'data>) =
     state.CommitIndex
 
   let commitIndexM _ = zoomM commitIndex
 
-  let setCommitIndex (idx : Index) (state: Raft<'d,'n>) =
+  let setCommitIndex (idx : Index) (state: Raft<'data>) =
     { state with CommitIndex = idx }
 
   let setCommitIndexM (idx : Index) =
     setCommitIndex idx |> modify
 
-  let requestTimedOut (state: Raft<'d,'n>) : bool =
+  let requestTimedOut (state: Raft<'data>) : bool =
     state.RequestTimeout <= state.TimeoutElapsed
 
   let requestTimedOutM _ = zoomM requestTimedOut
 
-  let electionTimedOut (state: Raft<'d,'n>) : bool =
+  let electionTimedOut (state: Raft<'data>) : bool =
     state.ElectionTimeout <= state.TimeoutElapsed
 
   let electionTimedOutM _ = zoomM electionTimedOut
 
-  let electionTimeout (state: Raft<'d,'n>) =
+  let electionTimeout (state: Raft<'data>) =
     state.ElectionTimeout
 
   let electionTimeoutM _ = zoomM electionTimeout
 
-  let timeoutElapsed (state: Raft<'d,'n>) =
+  let timeoutElapsed (state: Raft<'data>) =
     state.TimeoutElapsed
 
   let timeoutElapsedM _ = zoomM timeoutElapsed
 
-  let setTimeoutElapsed (elapsed: Long) (state: Raft<'d,'n>) =
+  let setTimeoutElapsed (elapsed: Long) (state: Raft<'data>) =
     { state with TimeoutElapsed = elapsed }
 
   let setTimeoutElapsedM (elapsed: Long) =
     setTimeoutElapsed elapsed |> modify
 
-  let requestTimeout (state: Raft<'d,'n>) =
+  let requestTimeout (state: Raft<'data>) =
     state.RequestTimeout
 
   let requestTimeoutM _ = zoomM requestTimeout
 
-  let setRequestTimeout (timeout : Long) (state: Raft<'d,'n>) =
+  let setRequestTimeout (timeout : Long) (state: Raft<'data>) =
     { state with RequestTimeout = timeout }
 
   let setRequestTimeoutM (timeout: Long) =
     setRequestTimeout timeout |> modify
 
-  let setElectionTimeout (timeout : Long) (state: Raft<'d,'n>) =
+  let setElectionTimeout (timeout : Long) (state: Raft<'data>) =
     { state with ElectionTimeout = timeout }
 
   let setElectionTimeoutM (timeout: Long) =
     setElectionTimeout timeout |> modify
 
-  let lastAppliedIdx (state: Raft<'d,'n>) =
+  let lastAppliedIdx (state: Raft<'data>) =
     state.LastAppliedIdx
 
   let lastAppliedIdxM _ = zoomM lastAppliedIdx
 
-  let setLastAppliedIdx (idx : Index) (state: Raft<'d,'n>) =
+  let setLastAppliedIdx (idx : Index) (state: Raft<'data>) =
     { state with LastAppliedIdx = idx }
 
   let setLastAppliedIdxM (idx: Index) =
     setLastAppliedIdx idx |> modify
 
-  let maxLogDepth (state: Raft<_,_>) = state.MaxLogDepth
+  let maxLogDepth (state: Raft<_>) = state.MaxLogDepth
 
   let maxLogDepthM _ = zoomM maxLogDepth
 
@@ -766,28 +766,28 @@ module Raft =
   //             |___/        |_|         //
   //////////////////////////////////////////
 
-  let lastLogTerm (state: Raft<'d,'n>) =
+  let lastLogTerm (state: Raft<'data>) =
     Log.term state.Log
 
   let lastLogTermM _ = zoomM lastLogTerm
 
-  let getEntryAt (idx : Index) (state: Raft<'d,'n>) : LogEntry<'d,'n> option =
+  let getEntryAt (idx : Index) (state: Raft<'data>) : LogEntry<'data> option =
     Log.at idx state.Log
 
   let getEntryAtM (idx: Index) = zoomM (getEntryAt idx)
 
-  let getEntriesUntil (idx : Index) (state: Raft<'d,'n>) : LogEntry<'d,'n> option =
+  let getEntriesUntil (idx : Index) (state: Raft<'data>) : LogEntry<'data> option =
     Log.until idx state.Log
 
   let getEntriesUntilM (idx: Index) = zoomM (getEntriesUntil idx)
 
-  let entriesUntilExcluding (idx: Index) (state: Raft<_,_>) =
+  let entriesUntilExcluding (idx: Index) (state: Raft<'data>) =
     Log.untilExcluding idx state.Log
 
   let entriesUntilExcludingM (idx: Index) =
     entriesUntilExcluding idx |> zoomM
 
-  let handleConfigChange (log: LogEntry<_,_>) (state: Raft<_,_>) =
+  let handleConfigChange (log: LogEntry<'data>) (state: Raft<'data>) =
     match log with
       | Configuration _ -> setOldPeers None state
       | JointConsensus(_,_,_,changes,_) ->
@@ -803,7 +803,7 @@ module Raft =
   //  \__,_| .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|   \__, |
   //       |_|   |_|                                          |___/
 
-  let appendEntry (log: LogEntry<'d,'n>) =
+  let appendEntry (log: LogEntry<'data>) =
     raft {
       let! state = get
 
@@ -816,7 +816,7 @@ module Raft =
       return Log.getn (Log.depth log) newlog
     }
 
-  let appendEntryM (log: LogEntry<'d,'n>) =
+  let appendEntryM (log: LogEntry<'data>) =
     raft {
       let! result = appendEntry log
       match result with
@@ -840,10 +840,10 @@ module Raft =
       return! appendEntryM log
     }
 
-  let updateLog (log: Log<_,_>) (state: Raft<_,_>) =
+  let updateLog (log: Log<'data>) (state: Raft<'data>) =
     { state with Log = log }
 
-  let updateLogEntries (entries: LogEntry<_,_>) (state: Raft<_,_>) =
+  let updateLogEntries (entries: LogEntry<'data>) (state: Raft<'data>) =
     { state with
         Log = { Index = LogEntry.index entries
                 Depth = LogEntry.depth entries
@@ -851,7 +851,7 @@ module Raft =
 
   /// Delete a log entry at the index specified. Returns the original value if
   /// the record is not found.
-  let removeEntry idx (cbs: IRaftCallbacks<_,_>) state =
+  let removeEntry idx (cbs: IRaftCallbacks<_>) state =
     match Log.at idx state.Log with
       | Some log ->
         match LogEntry.pop log with
@@ -882,7 +882,7 @@ module Raft =
   /////////////////////////////////////////////////////////////////////////////
 
   /// Preliminary Checks on the AppendEntry value
-  let private makeResponse (msg : AppendEntries<'d,'n>) =
+  let private makeResponse (msg : AppendEntries<'data>) =
     raft {
       let! state = get
 
@@ -922,7 +922,7 @@ module Raft =
   // If an existing entry conflicts with a new one (same index
   // but different terms), delete the existing entry and all that
   // follow it (§5.3)
-  let private handleConflicts (request: AppendEntries<'d,'n>) =
+  let private handleConflicts (request: AppendEntries<'data>) =
     raft {
       let idx = request.PrevLogIdx + 1UL
       let! local = getEntryAtM idx
@@ -943,7 +943,7 @@ module Raft =
             do! removeEntryM idx
     }
 
-  let private applyRemainder (msg : AppendEntries<'d,'n>) (resp : AppendResponse) =
+  let private applyRemainder (msg : AppendEntries<'data>) (resp : AppendResponse) =
     raft {
       match msg.Entries with
         | Some entries ->
@@ -963,7 +963,7 @@ module Raft =
 
   /// If leaderCommit > commitIndex, set commitIndex =
   /// min(leaderCommit, index of most recent entry)
-  let private maybeSetCommitIdx (msg : AppendEntries<'d,'n>) =
+  let private maybeSetCommitIdx (msg : AppendEntries<'data>) =
     raft {
       let! state = get
       let cmmtidx = commitIndex state
@@ -1011,7 +1011,7 @@ module Raft =
           return! processEntry nid msg resp
     }
 
-  let receiveAppendEntries (nid: NodeId option) (msg: AppendEntries<'d,'n>) =
+  let receiveAppendEntries (nid: NodeId option) (msg: AppendEntries<'data>) =
     raft {
       do! setTimeoutElapsedM 0UL      // reset timer, so we don't start an election
 
@@ -1054,7 +1054,7 @@ module Raft =
   //         |_|   |_|                                                       //
   /////////////////////////////////////////////////////////////////////////////
 
-  let private updateNodeIndices (resp : AppendResponse) (node : Node<'n>) =
+  let private updateNodeIndices (resp : AppendResponse) (node : RaftNode) =
     raft {
       let peer =
         { node with
@@ -1075,7 +1075,7 @@ module Raft =
     }
 
   let private shouldCommit peers state resp =
-    let folder (votes : Long) nid (node : Node<'n>) =
+    let folder (votes : Long) nid (node : RaftNode) =
       if nid = state.Node.Id || not (Node.isVoting node) then
         votes
       elif node.MatchIndex > 0UL then
@@ -1115,7 +1115,7 @@ module Raft =
         do! setCommitIndexM resp.CurrentIndex
     }
 
-  let sendAppendEntry (peer: Node<_>) =
+  let sendAppendEntry (peer: RaftNode) =
     raft {
       let! state = get
       let entries = getEntriesUntil peer.NextIndex state
@@ -1262,7 +1262,7 @@ module Raft =
   ///////////////////////////////////////////////////
 
   /// utiltity to create a snapshot for the current application and raft state
-  let createSnapshot (data: 'data) (state: Raft<'data,_>) =
+  let createSnapshot (data: 'data) (state: Raft<'data>) =
     let peers = Map.toArray state.Peers |> Array.map snd
     Log.snapshot peers data state.Log
 
@@ -1308,7 +1308,7 @@ module Raft =
             return resp.Index <= cidx
     }
 
-  let private updateCommitIdx (state: Raft<'d,'n>) =
+  let private updateCommitIdx (state: Raft<'data>) =
     let idx =
       if state.NumNodes = 1UL then
         currentIndex state
@@ -1385,7 +1385,7 @@ module Raft =
   /// |_|  \___|\___\___|_| \_/ \___|_____|_| |_|\__|_|   \__, |
   ///                                                     |___/
 
-  let receiveEntry (entry : LogEntry<'d,'n>) =
+  let receiveEntry (entry : LogEntry<'data>) =
     raft {
       let! state = get
       let resp = { Id = Id.Create(); Term = 0UL; Index = 0UL }
@@ -1429,7 +1429,7 @@ module Raft =
   //         |_|   |_|      |___/                        |___/  //
   ////////////////////////////////////////////////////////////////
 
-  let applyEntry (cbs: IRaftCallbacks<_,_>) = function
+  let applyEntry (cbs: IRaftCallbacks<_>) = function
     | JointConsensus(_,_,_,changes,_) ->
       let applyChange change =
         match change with
@@ -1480,7 +1480,7 @@ module Raft =
           do! put { state with ConfigChangeEntry = change }
 
           if Log.containsEntry Log.isConfiguration entries then
-            let selfIncluded (state: Raft<_,_>) =
+            let selfIncluded (state: Raft<_>) =
               Map.containsKey state.Node.Id state.Peers
             let! included = selfIncluded |> zoomM
             if not included then
@@ -1525,7 +1525,7 @@ module Raft =
    * | 8. Reset state machine using snapshot contents (and load snapshot’s cluster configuration)                                    |
    * +-------------------------------------------------------------------------------------------------------------------------------+
    *)
-  let receiveInstallSnapshot (is: InstallSnapshot<_,_>) =
+  let receiveInstallSnapshot (is: InstallSnapshot<'data>) =
     raft {
       let! cbs = read
       let! currentTerm = currentTermM ()
@@ -1546,7 +1546,7 @@ module Raft =
 
           // update the cluster configuration
           let peers =
-            Array.map (fun (n: Node<_>) -> (n.Id, n)) nodes
+            Array.map (fun (n: RaftNode) -> (n.Id, n)) nodes
             |> Map.ofArray
             |> Map.add state.Node.Id state.Node
 
@@ -1643,8 +1643,8 @@ module Raft =
     votingNodesForOldConfigM () >>= fun num ->
       majority num votes |> returnM
 
-  let numVotesForConfig (self: Node<_>) (votedFor: NodeId option) peers =
-    let counter m _ (peer : Node<'n>) =
+  let numVotesForConfig (self: RaftNode) (votedFor: NodeId option) peers =
+    let counter m _ (peer : RaftNode) =
         if (peer.Id <> self.Id) && Node.canVote peer
           then m + 1UL
           else m
@@ -1656,12 +1656,12 @@ module Raft =
 
     Map.fold counter start peers
 
-  let numVotesForMe (state: Raft<'d,'n>) =
+  let numVotesForMe (state: Raft<'data>) =
     numVotesForConfig state.Node state.VotedFor state.Peers
 
   let numVotesForMeM _ = zoomM numVotesForMe
 
-  let numVotesForMeOldConfig (state: Raft<_,_>) =
+  let numVotesForMeOldConfig (state: Raft<_>) =
     match state.OldPeers with
       | Some peers -> numVotesForConfig state.Node state.VotedFor peers
       |      _     -> 0UL
@@ -1792,7 +1792,7 @@ module Raft =
       }
 
   /// Request a from a given peer
-  let sendVoteRequest (node : Node<'n>) =
+  let sendVoteRequest (node : RaftNode) =
     get >>= fun state ->
       read >>= fun cbs ->
         async {
@@ -1863,10 +1863,10 @@ module Raft =
 
   /// if the vote's term is lower than this servers current term,
   /// decline the vote
-  let private validateTerm (vote: VoteRequest<_>) state =
+  let private validateTerm (vote: VoteRequest) state =
     (vote.Term < state.CurrentTerm, InvalidTerm)
 
-  let private alreadyVoted (state: Raft<'d,'n>) =
+  let private alreadyVoted (state: Raft<'data>) =
     (Option.isSome state.VotedFor, AlreadyVoted)
 
   let private validateLastLog vote state =
@@ -1881,10 +1881,10 @@ module Raft =
   let private validateCurrentIdx state =
     (currentIndex state = 0UL, InvalidCurrentIndex)
 
-  let private validateCandidate (vote: VoteRequest<_>) state =
+  let private validateCandidate (vote: VoteRequest) state =
     (getNode vote.Candidate.Id state |> Option.isNone, CandidateUnknown)
 
-  let shouldGrantVote (vote : VoteRequest<_>) =
+  let shouldGrantVote (vote : VoteRequest) =
     raft {
       let! state = get
       let result =
@@ -1919,7 +1919,7 @@ module Raft =
   //                                   |_|                     //
   ///////////////////////////////////////////////////////////////
 
-  let private maybeResetFollower (vote : VoteRequest<_>) =
+  let private maybeResetFollower (vote : VoteRequest) =
     raft {
       let! term = currentTermM ()
       if term < vote.Term then
@@ -1929,7 +1929,7 @@ module Raft =
         do! voteFor None
     }
 
-  let private processVoteRequest (vote : VoteRequest<_>) =
+  let private processVoteRequest (vote : VoteRequest) =
     raft {
       let! result = shouldGrantVote vote
       match result with
@@ -1954,7 +1954,7 @@ module Raft =
                    Reason  = Some err }
     }
 
-  let receiveVoteRequest (nid : NodeId) (vote : VoteRequest<_>) =
+  let receiveVoteRequest (nid : NodeId) (vote : VoteRequest) =
     raft {
       let! node = getNodeM nid
       match node with

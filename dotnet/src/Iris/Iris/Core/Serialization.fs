@@ -36,9 +36,9 @@ open FlatBuffers
 // |_| \_|\___/ \__,_|\___|____/ \__\__,_|\__\___|
 
 [<AutoOpen>]
-module NodeStateExtensions =
+module RaftNodeStateExtensions =
 
-  type NodeState with
+  type RaftNodeState with
     member self.ToOffset () =
       match self with
         | Running -> NodeStateFB.RunningFB
@@ -63,29 +63,33 @@ module NodeStateExtensions =
 type NodeExtensions() =
 
   [<Extension>]
-  static member inline ToOffset (node: Node, builder: FlatBufferBuilder) =
+  static member inline ToOffset (node: RaftNode, builder: FlatBufferBuilder) =
     let id = string node.Id |> builder.CreateString
-    let info = node.Data.ToOffset(builder)
+    let ip = string node.IpAddr |> builder.CreateString
+    let hostname = node.HostName |> builder.CreateString
     let state = node.State.ToOffset()
     NodeFB.StartNodeFB(builder)
     NodeFB.AddId(builder, id)
+    NodeFB.AddHostName(builder, hostname)
+    NodeFB.AddIpAddr(builder, ip)
+    NodeFB.AddPort(builder, int node.Port)
     NodeFB.AddVoting(builder, node.Voting)
     NodeFB.AddVotedForMe(builder, node.VotedForMe)
     NodeFB.AddState(builder, state)
     NodeFB.AddNextIndex(builder, node.NextIndex)
     NodeFB.AddMatchIndex(builder, node.MatchIndex)
-    NodeFB.AddData(builder, info)
     NodeFB.EndNodeFB(builder)
 
 [<AutoOpen>]
 module StaticNodeExtensions =
 
-  type Node<'t> with
-    static member FromFB (fb: NodeFB) : Node =
-      let info = fb.Data |> IrisNode.FromFB
+  type RaftNode with
+    static member FromFB (fb: NodeFB) : RaftNode =
       { Id = Id fb.Id
-      ; State = fb.State |> NodeState.FromFB
-      ; Data = info
+      ; State = fb.State |> RaftNodeState.FromFB
+      ; HostName = fb.HostName
+      ; IpAddr = IpAddress.Parse fb.IpAddr
+      ; Port = uint16 fb.Port
       ; Voting = fb.Voting
       ; VotedForMe = fb.VotedForMe
       ; NextIndex = fb.NextIndex
@@ -123,9 +127,9 @@ type ConfigChangeExtensions() =
 [<AutoOpen>]
 module StaticConfigChangeExtensions =
 
-  type ConfigChange<'t> with
+  type ConfigChange with
     static member FromFB (fb: ConfigChangeFB) : ConfigChange =
-      let node = fb.Node |> Node.FromFB
+      let node = fb.Node |> RaftNode.FromFB
       match fb.Type with
         | ConfigChangeTypeFB.NodeAdded   -> NodeAdded   node
         | ConfigChangeTypeFB.NodeRemoved -> NodeRemoved node
@@ -160,7 +164,7 @@ type LogExentions() =
       //                         |___/
       | Configuration(id,index,term,nodes,_)          ->
         let id = string id |> builder.CreateString
-        let nodes = Array.map (fun (node: Node) -> node.ToOffset(builder)) nodes
+        let nodes = Array.map (fun (node: RaftNode) -> node.ToOffset(builder)) nodes
         let nvec = ConfigurationFB.CreateNodesVector(builder, nodes)
 
         ConfigurationFB.StartConfigurationFB(builder)
@@ -221,7 +225,7 @@ type LogExentions() =
       //                   |_|
       | Snapshot(id,index,term,lidx,lterm,nodes,data) ->
         let id = string id |> builder.CreateString
-        let nodes = Array.map (fun (node: Node) -> node.ToOffset(builder)) nodes
+        let nodes = Array.map (fun (node: RaftNode) -> node.ToOffset(builder)) nodes
         let nvec = SnapshotFB.CreateNodesVector(builder, nodes)
         let data = data.ToOffset(builder)
 
@@ -262,7 +266,7 @@ module StaticLogExtensions =
         let nodes = Array.zeroCreate entry.NodesLength
 
         for i in 0 .. (entry.NodesLength - 1) do
-          nodes.[i] <- entry.GetNodes(i) |> Node.FromFB
+          nodes.[i] <- entry.GetNodes(i) |> RaftNode.FromFB
 
         Configuration(Id entry.Id, entry.Index, entry.Term, nodes, log)
         |> Some
@@ -292,7 +296,7 @@ module StaticLogExtensions =
         let id = Id entry.Id
 
         for i in 0..(entry.NodesLength - 1) do
-          nodes.[i] <- entry.GetNodes(i) |> Node.FromFB
+          nodes.[i] <- entry.GetNodes(i) |> RaftNode.FromFB
 
         Snapshot(id, entry.Index, entry.Term, entry.LastIndex, entry.LastTerm, nodes, data)
         |> Some
@@ -301,7 +305,7 @@ module StaticLogExtensions =
         failwith "unable to de-serialize garbage LogTypeFB value"
 
 
-  type Log<'a,'n> with
+  type Log<'data> with
     static member FromFB (logs: LogFB array) : LogEntry option =
       Array.foldBack fb2Log logs None
 
@@ -393,7 +397,7 @@ type VotingExentions() =
   //               |_|
 
   [<Extension>]
-  static member inline ToOffset (request: VoteRequest<IrisNode>, builder: FlatBufferBuilder) =
+  static member inline ToOffset (request: VoteRequest, builder: FlatBufferBuilder) =
     let node = request.Candidate.ToOffset(builder)
     VoteRequestFB.StartVoteRequestFB(builder)
     VoteRequestFB.AddTerm(builder, uint64 request.Term)
@@ -423,10 +427,10 @@ type VotingExentions() =
 [<AutoOpen>]
 module StaticVotingExtensions =
 
-  type VoteRequest<'t> with
+  type VoteRequest with
     static member FromFB (fb: VoteRequestFB) : VoteRequest =
       { Term         = fb.Term
-      ; Candidate    = fb.Candidate |> Node.FromFB
+      ; Candidate    = fb.Candidate |> RaftNode.FromFB
       ; LastLogIndex = fb.LastLogIndex
       ; LastLogTerm  = fb.LastLogTerm
       }
@@ -500,7 +504,7 @@ type AppendEntriesExentions() =
 [<AutoOpen>]
 module StaticAppendEntriesExtensions =
 
-  type AppendEntries<'a,'n> with
+  type AppendEntries<'data> with
     static member FromFB (fb: AppendEntriesFB) : AppendEntries =
       let entries =
         if fb.EntriesLength = 0
@@ -561,7 +565,7 @@ type InstallSnapshotExtensions() =
 [<AutoOpen>]
 module StaticIntsallSnapshotExtensions =
 
-  type InstallSnapshot<'a,'n> with
+  type InstallSnapshot<'data> with
     static member FromFB (fb: InstallSnapshotFB) =
       let entries =
         if fb.DataLength > 0 then

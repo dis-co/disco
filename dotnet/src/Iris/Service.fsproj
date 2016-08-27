@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
   <UsingTask AssemblyFile="..\..\packages\FSharpLint\FSharpLint.MSBuildIntegration.dll" TaskName="FSharpLintTask" />
@@ -91,7 +91,6 @@
     <Compile Include="Iris\Raft\Log.fs" />
     <Compile Include="Iris\Raft\Types.fs" />
     <Compile Include="Iris\Raft\Raft.fs" />
-    <Compile Include="Iris\Core\IrisNode.fs" />
     <Compile Include="Iris\Core\Git.fs" />
     <Compile Include="Iris\Core\IOBox.fs" />
     <Compile Include="Iris\Core\Patch.fs" />

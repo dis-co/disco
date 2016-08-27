@@ -49,22 +49,22 @@ open Iris.Core
 ///     Nodes     : Node<'n> array *        // node configuration
 ///     Data      : 'a                      // state machine data
 ///
-type LogEntry<'a,'n> =
+type LogEntry<'a> =
   // Node Configuration Entry
   | Configuration of
     Id       : Id              *
     Index    : Index           *
     Term     : Term            *
-    Nodes    : Node<'n> array  *
-    Previous : LogEntry<'a,'n> option
+    Nodes    : RaftNode array  *
+    Previous : LogEntry<'a> option
 
   // Entry type for configuration changes
   | JointConsensus of
     Id       : Id                     *
     Index    : Index                  *
     Term     : Term                   *
-    Changes  : ConfigChange<'n> array *
-    Previous : LogEntry<'a,'n> option
+    Changes  : ConfigChange array     *
+    Previous : LogEntry<'a> option
 
   // Regular Log Entries
   | LogEntry   of
@@ -72,7 +72,7 @@ type LogEntry<'a,'n> =
     Index    : Index           *
     Term     : Term            *
     Data     : 'a              *
-    Previous : LogEntry<'a,'n> option
+    Previous : LogEntry<'a> option
 
   | Snapshot   of
     Id        : Id             *
@@ -80,7 +80,7 @@ type LogEntry<'a,'n> =
     Term      : Term           *
     LastIndex : Index          *
     LastTerm  : Term           *
-    Nodes     : Node<'n> array *
+    Nodes     : RaftNode array *
     Data      : 'a
 
   override self.ToString() =
@@ -90,7 +90,7 @@ type LogEntry<'a,'n> =
           (string id)
           idx
           term
-          (Array.fold (fun m n -> sprintf "%s\n    %s" m (string n.Id)) "" nodes)
+          (Array.fold (fun m n -> sprintf "%s, %s" m (string n.Id)) "" nodes)
           (string prev)
 
       | Configuration(id,idx,term,nodes,_) ->
@@ -98,14 +98,14 @@ type LogEntry<'a,'n> =
           (string id)
           idx
           term
-          (Array.fold (fun m n -> sprintf "%s\n    %s" m (string n.Id)) "" nodes)
+          (Array.fold (fun m n -> sprintf "%s, %s" m (string n.Id)) "" nodes)
 
       | JointConsensus(id,idx,term,changes,Some prev) ->
         sprintf "JointConsensus(id: %s idx: %A term: %A changes: %s)\n%s"
           (string id)
           idx
           term
-          (Array.fold (fun m n -> sprintf "%s\n    %s" m (string n)) "" changes)
+          (Array.fold (fun m n -> sprintf "%s, %s" m (string n)) "" changes)
           (string prev)
 
       | JointConsensus(id,idx,term,changes,_) ->
@@ -113,7 +113,7 @@ type LogEntry<'a,'n> =
           (string id)
           idx
           term
-          (Array.fold (fun m n -> sprintf "%s\n    %s" m (string n)) "" changes)
+          (Array.fold (fun m n -> sprintf "%s, %s" m (string n)) "" changes)
 
       | LogEntry(id,idx,term,_,Some prev) ->
         sprintf "LogEntry(id: %s idx: %A term: %A)\n%s"
@@ -136,8 +136,8 @@ type LogEntry<'a,'n> =
           term
           ltrm
 
-type Log<'a,'n> =
-  { Data  : LogEntry<'a,'n> option
+type Log<'a> =
+  { Data  : LogEntry<'a> option
   ; Depth : Long
   ; Index : Index
   }
@@ -532,7 +532,7 @@ module private LogEntry =
   ///
   /// Map over a Logs<'a,'n> and return a list of results
 
-  let rec map (f : LogEntry<_,_> -> 'b) entry =
+  let rec map (f : LogEntry<_> -> 'b) entry =
     let _map curr prev =
       match prev with
         | Some previous -> f curr :: map f previous
@@ -552,7 +552,7 @@ module private LogEntry =
   ///
   /// Fold over a Log<'a,'n> and return an aggregate value
 
-  let rec foldl (f : 'm -> LogEntry<'a,'n> -> 'm) (m : 'm) log =
+  let rec foldl (f : 'm -> LogEntry<'data> -> 'm) (m : 'm) log =
     let _fold m curr prev =
       let _m = f m curr
       match prev with
@@ -573,7 +573,7 @@ module private LogEntry =
   ///
   /// Fold over a Log<'a,'n> and return an aggregate value
 
-  let rec foldr (f : 'm -> LogEntry<'a,'n> -> 'm) (m : 'm)  = function
+  let rec foldr (f : 'm -> LogEntry<'data> -> 'm) (m : 'm)  = function
     | Configuration(_,_,_,_,Some prev)  as curr -> f (foldr f m prev) curr
     | Configuration(_,_,_,_,None)       as curr -> f m curr
     | JointConsensus(_,_,_,_,Some prev) as curr -> f (foldr f m prev) curr
@@ -589,7 +589,7 @@ module private LogEntry =
   /// |_|\__\___|_|
   ///
   /// Iterate over a log from the newest entry to the oldest.
-  let iter (f : uint32 -> LogEntry<'a,'n> -> unit) (log : LogEntry<'a,'n>) =
+  let iter (f : uint32 -> LogEntry<'data> -> unit) (log : LogEntry<'data>) =
     let rec _iter  _start _log =
       match _log with
         | Configuration(_,_,_,_,Some prev)  as curr -> f _start curr; _iter (_start + 1u) prev
@@ -611,7 +611,7 @@ module private LogEntry =
   /// Version of left-fold that implements short-circuiting by requiring the
   /// return value to be wrapped in `Continue<'a>`.
 
-  let aggregate (f : 'm -> LogEntry<'a,'n> -> Continue<'m>) (m : 'm) log =
+  let aggregate (f : 'm -> LogEntry<'data> -> Continue<'m>) (m : 'm) log =
     // wrap the supplied function such that it takes a value lifted to
     // Continue to proactively stop calculating (what about passing a
     // closure instead?)
@@ -621,7 +621,7 @@ module private LogEntry =
         |      v -> v
 
     // short-circuiting inner function
-    let rec _resFold (m : Continue<'m>) (_log : LogEntry<'a,'n>) : Continue<'m> =
+    let rec _resFold (m : Continue<'m>) (_log : LogEntry<'data>) : Continue<'m> =
       let _do curr prev =
         match m with
           | Cont _ ->
@@ -722,8 +722,8 @@ module private LogEntry =
   ///
   /// Append newer entries to older entries
 
-  let append (newer : LogEntry<'a,'n>) (older : LogEntry<'a,'n>) =
-    let _aggregator (_log : LogEntry<'a,'n>) (_entry : LogEntry<'a,'n>) =
+  let append (newer : LogEntry<'data>) (older : LogEntry<'data>) =
+    let _aggregator (_log : LogEntry<'data>) (_entry : LogEntry<'data>) =
       if id _log = id _entry
       then _log
       else
@@ -782,7 +782,7 @@ module private LogEntry =
   // |  _| | |  \__ \ |_ | || | | | (_| |  __/>  <
   // |_| |_|_|  |___/\__|___|_| |_|\__,_|\___/_/\_\
 
-  let rec firstIndex (t: Term) (entry: LogEntry<_,_>) =
+  let rec firstIndex (t: Term) (entry: LogEntry<_>) =
     let getIdx idx term prev =
       match prev with
         | Some log ->
@@ -849,7 +849,7 @@ module private LogEntry =
   // | (_| (_) | | | | || (_| | | | | \__ \
   //  \___\___/|_| |_|\__\__,_|_|_| |_|___/
 
-  let rec contains (f: LogEntry<_,_> -> bool) = function
+  let rec contains (f: LogEntry<_> -> bool) = function
     | LogEntry(_,_,_,_,Some prev) as this ->
       if f this then true else contains f prev
     | LogEntry(_,_,_,_,None) as this -> f this
@@ -873,7 +873,7 @@ module Log =
     ; Data  = None
     }
 
-  let fromEntries (entries: LogEntry<_,_>) =
+  let fromEntries (entries: LogEntry<_>) =
     { Depth = LogEntry.depth entries
     ; Index = LogEntry.index entries
     ; Data  = Some entries
@@ -955,7 +955,7 @@ module Log =
       | Some entries -> LogEntry.untilExcluding idx entries
       | _            -> None
 
-  let append newentries log : Log<_,_> =
+  let append newentries log : Log<_> =
     match log.Data with
       | Some entries ->
         let newlog = LogEntry.append newentries entries
@@ -1051,10 +1051,10 @@ module Log =
       | Some log -> LogEntry.getn count log
       | _        -> None
 
-  let containsEntry (f: LogEntry<_,_> -> bool) log =
+  let containsEntry (f: LogEntry<_> -> bool) log =
     LogEntry.contains f log
 
-  let contains (f: LogEntry<_,_> -> bool) log =
+  let contains (f: LogEntry<_> -> bool) log =
     match log.Data with
       | Some entries -> LogEntry.contains f entries
       | _ -> false

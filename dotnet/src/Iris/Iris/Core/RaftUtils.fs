@@ -64,8 +64,8 @@ type RaftRequest =
   | RequestVote             of sender:NodeId * req:VoteRequest
   | AppendEntries           of sender:NodeId * ae:AppendEntries
   | InstallSnapshot         of sender:NodeId * is:InstallSnapshot
-  | HandShake               of sender:Node
-  | HandWaive               of sender:Node
+  | HandShake               of sender:RaftNode
+  | HandWaive               of sender:RaftNode
   with
 
     //  _____     ____        _
@@ -120,7 +120,7 @@ type RaftRequest =
       match msg.MsgType with
         | RaftMsgTypeFB.RequestVoteFB ->
           let entry = msg.GetMsg(new RequestVoteFB())
-          let request = VoteRequest<IrisNode>.FromFB(entry.Request)
+          let request = VoteRequest.FromFB(entry.Request)
 
           RequestVote(Id entry.NodeId, request)
           |> Some
@@ -141,13 +141,13 @@ type RaftRequest =
 
         | RaftMsgTypeFB.HandShakeFB ->
           let entry = msg.GetMsg(new HandShakeFB())
-          let node = Node.FromFB entry.Node
+          let node = RaftNode.FromFB entry.Node
 
           HandShake(node) |> Some
 
         | RaftMsgTypeFB.HandWaiveFB ->
           let entry = msg.GetMsg(new HandWaiveFB())
-          let node = Node.FromFB entry.Node
+          let node = RaftNode.FromFB entry.Node
 
           HandWaive(node) |> Some
 
@@ -165,8 +165,8 @@ type RaftResponse =
   | RequestVoteResponse     of sender:NodeId * vote:VoteResponse
   | AppendEntriesResponse   of sender:NodeId * ar:AppendResponse
   | InstallSnapshotResponse of sender:NodeId * ar:AppendResponse
-  | Redirect                of leader:Node
-  | Welcome                 of leader:Node
+  | Redirect                of leader:RaftNode
+  | Welcome                 of leader:RaftNode
   | Arrivederci
   | ErrorResponse           of RaftError
 
@@ -258,13 +258,13 @@ type RaftResponse =
 
         | RaftMsgTypeFB.RedirectFB ->
           let entry = msg.GetMsg(new RedirectFB())
-          let node = Node.FromFB entry.Node
+          let node = RaftNode.FromFB entry.Node
 
           Redirect(node) |> Some
 
         | RaftMsgTypeFB.WelcomeFB ->
           let entry = msg.GetMsg(new WelcomeFB())
-          let node = Node.FromFB entry.Node
+          let node = RaftNode.FromFB entry.Node
 
           Welcome(node) |> Some
 

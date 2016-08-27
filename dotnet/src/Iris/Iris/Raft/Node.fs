@@ -10,7 +10,7 @@ open Iris.Core
 // | |\  | (_) | (_| |  __/___) | || (_| | ||  __/
 // |_| \_|\___/ \__,_|\___|____/ \__\__,_|\__\___|
 
-type NodeState =
+type RaftNodeState =
   | Joining                             // excludes node from voting
   | Running                             // normal execution state
   | Failed                              // node has failed for some reason
@@ -35,19 +35,24 @@ type NodeState =
 // | |\  | (_) | (_| |  __/
 // |_| \_|\___/ \__,_|\___|
 
-type Node<'node> =
+type RaftNode =
   { Id         : NodeId
-  ; Data       : 'node
+  ; HostName   : string
+  ; IpAddr     : IpAddress
+  ; Port       : uint16
   ; Voting     : bool
   ; VotedForMe : bool
-  ; State      : NodeState
+  ; State      : RaftNodeState
   ; NextIndex  : Index
   ; MatchIndex : Index
   }
 
   override self.ToString() =
-    sprintf "%s %s %s %s"
+    sprintf "%s on %s (%s:%d) %s %s %s"
       (string self.Id)
+      (string self.HostName)
+      (string self.IpAddr)
+      self.Port
       (string self.State)
       (sprintf "(NxtIdx %A)" self.NextIndex)
       (sprintf "(MtchIdx %A)" self.MatchIndex)
@@ -59,21 +64,23 @@ type Node<'node> =
 //  \____\___/|_| |_|_| |_|\__, |  \____|_| |_|\__,_|_| |_|\__, |\___|
 //                         |___/                           |___/
 
-type ConfigChange<'n> =
-  | NodeAdded   of Node<'n>
-  | NodeRemoved of Node<'n>
+type ConfigChange =
+  | NodeAdded   of RaftNode
+  | NodeRemoved of RaftNode
 
   override self.ToString() =
     match self with
-    | NodeAdded   n -> sprintf "NodeAdded (%s)" (string n.Id)
+    | NodeAdded   n -> sprintf "NodeAdded (%s)"   (string n.Id)
     | NodeRemoved n ->sprintf "NodeRemoved (%s)" (string n.Id)
 
 [<RequireQualifiedAccess>]
 module Node =
 
-  let create id data =
+  let create id =
     { Id         = id
-    ; Data       = data
+    ; HostName   = System.Net.Dns.GetHostName()
+    ; IpAddr     = IPv4Address "127.0.0.1"
+    ; Port       = 9000us
     ; State      = Running
     ; Voting     = true
     ; VotedForMe = false
@@ -81,7 +88,7 @@ module Node =
     ; MatchIndex = 0UL
     }
 
-  let isVoting (node : Node<'node>) : bool =
+  let isVoting (node : RaftNode) : bool =
     node.State = Running && node.Voting
 
   let setVoting node voting =
@@ -100,30 +107,35 @@ module Node =
   let hasSufficientLogs node =
     node.State = Running
 
+  let hostName node = node.HostName
+
+  let ipAddr node = node.IpAddr
+
+  let port node = node.Port
+
   let canVote peer =
     isVoting peer && hasVoteForMe peer && peer.State = Running
 
   let getId node = node.Id
-  let getData node = node.Data
   let getState node = node.State
   let getNextIndex  node = node.NextIndex
   let getMatchIndex node = node.MatchIndex
 
   let private added oldnodes newnodes =
-    let folder changes (node: Node<_>) =
+    let folder changes (node: RaftNode) =
       match Array.tryFind (getId >> ((=) node.Id)) oldnodes with
         | Some _ -> changes
         | _ -> NodeAdded(node) :: changes
     Array.fold folder [] newnodes
 
   let private removed oldnodes newnodes =
-    let folder changes (node: Node<_>) =
+    let folder changes (node: RaftNode) =
       match Array.tryFind (getId >> ((=) node.Id)) newnodes with
         | Some _ -> changes
         | _ -> NodeAdded(node) :: changes
     Array.fold folder [] oldnodes
 
-  let changes (oldnodes: Node<_> array) (newnodes: Node<_> array) =
+  let changes (oldnodes: RaftNode array) (newnodes: RaftNode array) =
     []
     |> List.append (added oldnodes newnodes)
     |> List.append (removed oldnodes newnodes)

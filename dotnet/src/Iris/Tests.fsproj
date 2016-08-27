@@ -60,7 +60,6 @@
     <Compile Include="Iris\Raft\Types.fs" />
     <Compile Include="Iris\Raft\Raft.fs" />
     <Compile Include="Iris\Core\Git.fs" />
-    <Compile Include="Iris\Core\IrisNode.fs" />
     <Compile Include="Iris\Core\IOBox.fs" />
     <Compile Include="Iris\Core\Patch.fs" />
     <Compile Include="Iris\Core\Cue.fs" />

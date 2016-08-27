@@ -20,27 +20,27 @@ module RaftTestUtils =
 
   /// Callbacks fired when instantiating the Raft
   [<NoEquality;NoComparison>]
-  type Callbacks<'a,'b> =
-    { SendRequestVote     : Node<'b>        -> VoteRequest<'b>        -> VoteResponse option
-    ; SendAppendEntries   : Node<'b>        -> AppendEntries<'a,'b>   -> AppendResponse option
-    ; SendInstallSnapshot : Node<'b>        -> InstallSnapshot<'a,'b> -> AppendResponse option
-    ; PersistSnapshot     : LogEntry<'a,'b> -> unit
-    ; PrepareSnapshot     : Raft<'a,'b>     -> Log<'a,'b>
-    ; RetrieveSnapshot    : unit            -> LogEntry<'a,'b> option
-    ; ApplyLog            : 'a              -> unit
-    ; NodeAdded           : Node<'b>        -> unit
-    ; NodeUpdated         : Node<'b>        -> unit
-    ; NodeRemoved         : Node<'b>        -> unit
-    ; Configured          : Node<'b> array  -> unit
+  type Callbacks<'data> =
+    { SendRequestVote     : RaftNode        -> VoteRequest            -> VoteResponse option
+    ; SendAppendEntries   : RaftNode        -> AppendEntries<'data>   -> AppendResponse option
+    ; SendInstallSnapshot : RaftNode        -> InstallSnapshot<'data> -> AppendResponse option
+    ; PersistSnapshot     : LogEntry<'data> -> unit
+    ; PrepareSnapshot     : Raft<'data>     -> Log<'data>
+    ; RetrieveSnapshot    : unit            -> LogEntry<'data> option
+    ; ApplyLog            : 'data           -> unit
+    ; NodeAdded           : RaftNode        -> unit
+    ; NodeUpdated         : RaftNode        -> unit
+    ; NodeRemoved         : RaftNode        -> unit
+    ; Configured          : RaftNode array  -> unit
     ; StateChanged        : RaftState       -> RaftState              -> unit
-    ; PersistVote         : Node<'b> option -> unit
+    ; PersistVote         : RaftNode option -> unit
     ; PersistTerm         : Term            -> unit
-    ; PersistLog          : LogEntry<'a,'b> -> unit
-    ; DeleteLog           : LogEntry<'a,'b> -> unit
-    ; LogMsg              : Node<'b>        -> String                 -> unit
+    ; PersistLog          : LogEntry<'data> -> unit
+    ; DeleteLog           : LogEntry<'data> -> unit
+    ; LogMsg              : LogLevel        -> RaftNode  -> String    -> unit
     }
 
-    interface IRaftCallbacks<'a,'b> with
+    interface IRaftCallbacks<'data> with
       member self.SendRequestVote node req    = self.SendRequestVote node req
       member self.SendAppendEntries node ae   = self.SendAppendEntries node ae
       member self.SendInstallSnapshot node is = self.SendInstallSnapshot node is
@@ -57,7 +57,7 @@ module RaftTestUtils =
       member self.PersistTerm node            = self.PersistTerm node
       member self.PersistLog log              = self.PersistLog log
       member self.DeleteLog log               = self.DeleteLog log
-      member self.LogMsg node str             = self.LogMsg node str
+      member self.LogMsg level node str       = self.LogMsg level node str
 
   let log str =
     // printfn "%s" str
@@ -97,7 +97,7 @@ module RaftTestUtils =
       sprintf "ApplyLog: %A" en
       |> log
 
-    let onPersistVote (n : Node<'node> option) =
+    let onPersistVote (n : RaftNode option) =
       sprintf "PeristVote: %A" n
       |> log
 
@@ -105,24 +105,24 @@ module RaftTestUtils =
       sprintf "PeristVote: %A" n
       |> log
 
-    let onPersistLog (l : LogEntry<'data,'node>) =
+    let onPersistLog (l : LogEntry<'data>) =
       l.ToString()
       |> sprintf "LogOffer: %s"
       |> log
 
-    let onDeleteLog (l : LogEntry<'data,'node>) =
+    let onDeleteLog (l : LogEntry<'data>) =
       l.ToString()
       |> sprintf "LogPoll: %s"
       |> log
 
-    let onLogMsg n s =
+    let onLogMsg l n s =
       sprintf "logMsg: %s" s
       |> log
 
     let onPrepareSnapshot raft =
       createSnapshot !data raft
 
-    let onPersistSnapshot (entry: LogEntry<_,_>) =
+    let onPersistSnapshot (entry: LogEntry<'data>) =
       sprintf "Perisisting Snapshot: %A" entry
       |> log
 
@@ -170,19 +170,19 @@ module RaftTestUtils =
     ; LogMsg              = onLogMsg
     }
 
-  let defaultServer (data : 'v) =
-    let self : Node<'v> = Node.create (Id.Create()) data
+  let defaultServer _ =
+    let self : RaftNode = Node.create (Id.Create())
     Raft.create self
 
   let runWithCBS cbs action =
-    let self = Node.create (Id.Create()) ()
+    let self = Node.create (Id.Create())
     let raft = Raft.create self
     runRaft raft cbs action
 
   let runWithData data action =
-    let self = Node.create (Id.Create()) ()
+    let self = Node.create (Id.Create())
     let raft = Raft.create self
-    let cbs = mkcbs data :> IRaftCallbacks<_,_>
+    let cbs = mkcbs data :> IRaftCallbacks<_>
     runRaft raft cbs action
 
   let runWithDefaults action =
@@ -191,33 +191,33 @@ module RaftTestUtils =
     let ois _ _ = None
     runWithData (ref ()) action
 
-  type Msg<'data,'node> =
-    | RequestVote           of sender:NodeId * req:VoteRequest<'node>
+  type Msg<'data> =
+    | RequestVote           of sender:NodeId * req:VoteRequest
     | RequestVoteResponse   of sender:NodeId * vote:VoteResponse
-    | AppendEntries         of sender:NodeId * ae:AppendEntries<'data,'node>
+    | AppendEntries         of sender:NodeId * ae:AppendEntries<'data>
     | AppendEntriesResponse of sender:NodeId * ar:AppendResponse
 
-  type Sender<'data,'node> =
-    { Inbox     : List<Msg<'data,'node>>  ref
-    ; Outbox    : List<Msg<'data,'node>>  ref
+  type Sender<'data> =
+    { Inbox     : List<Msg<'data>>  ref
+    ; Outbox    : List<Msg<'data>>  ref
     }
 
   [<RequireQualifiedAccess>]
   module Sender =
-    let create<'a,'b> =
-      { Inbox  = ref List.empty<Msg<'a,'b>>
-      ; Outbox = ref List.empty<Msg<'a,'b>> }
+    let create<'data> =
+      { Inbox  = ref List.empty<Msg<'data>>
+      ; Outbox = ref List.empty<Msg<'data>> }
 
-  let __append_msg (sender:Sender<_,_>) (msg:Msg<_,_>) =
-    sender.Inbox := msg :: !sender.Inbox
+  let __append_msg (sender:Sender<_>) (msg:Msg<_>) =
+    sender.Inbox  := msg :: !sender.Inbox
     sender.Outbox := msg :: !sender.Outbox
 
-  let senderRequestVote (sender:Sender<_,_>) (resp: VoteResponse option) (node:Node<_>) req =
+  let senderRequestVote (sender:Sender<_>) (resp: VoteResponse option) (node: RaftNode) req =
     let msg = RequestVote(node.Id, req)
     __append_msg sender msg
     resp
 
-  let senderAppendEntries (sender:Sender<_,_>) (resp: AppendResponse option) (node:Node<_>) ae =
+  let senderAppendEntries (sender:Sender<_>) (resp: AppendResponse option) (node: RaftNode) ae =
     let msg = AppendEntries(node.Id, ae)
     __append_msg sender msg
     resp
@@ -230,7 +230,7 @@ module RaftTestUtils =
     | AppendEntries(_,ae) -> ae
     | _ -> failwith "not a vote request"
 
-  let getTerm (vote:VoteRequest<_>) = vote.Term
+  let getTerm (vote:VoteRequest) = vote.Term
 
   let konst a _ = a
 

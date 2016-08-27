@@ -7,6 +7,7 @@ open System.Threading
 open Fuchu
 open Fuchu.Test
 open Iris.Core
+open Iris.Raft
 open LibGit2Sharp
 
 [<AutoOpen>]
@@ -169,22 +170,18 @@ module ProjectTests =
           }
 
         let nodeA =
-          { MemberId = Id.Create()
-          ; HostName = "moomoo"
-          ; IpAddr   = IpAddress.Parse "182.123.18.2"
-          ; TaskId   = Id.Create() |> Some
-          ; Status   = Running
-          ; Port     = 1234
-          }
+          { Node.create (Id.Create()) with
+              HostName = "moomoo"
+              IpAddr   = IpAddress.Parse "182.123.18.2"
+              State    = Running
+              Port     = 1234us }
 
         let nodeB =
-          { MemberId = Id.Create()
-          ; HostName = "taataaa"
-          ; IpAddr   = IpAddress.Parse "118.223.8.12"
-          ; TaskId   = Id.Create() |> Some
-          ; Status   = Paused
-          ; Port     = 1234
-          }
+          { Node.create (Id.Create()) with
+              HostName = "taataaa"
+              IpAddr   = IpAddress.Parse "118.223.8.12"
+              State    = Joining
+              Port     = 1234us }
 
         let groupA =
           { Name    = "Group A"

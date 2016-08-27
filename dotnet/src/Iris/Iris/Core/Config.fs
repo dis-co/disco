@@ -137,7 +137,7 @@ type HostGroup =
 
 type Cluster =
   { Name   : Name
-  ; Nodes  : IrisNode  list
+  ; Nodes  : RaftNode  list
   ; Groups : HostGroup list
   }
   with
@@ -594,22 +594,20 @@ module Configuration =
   ///
   /// # Returns: Cluster
   let private parseCluster (cfg : ConfigFile) : Cluster =
-    let nodes  : IrisNode list ref = ref []
+    let nodes  : RaftNode  list ref = ref []
     let groups : HostGroup list ref = ref []
 
     for node in cfg.Project.Cluster.Nodes do
-      let tid =
-        match node.TaskId with
-        | null | "" -> None
-        | str    -> Id.TryParse str
-
-      let node' =
-        { MemberId = Id.Parse node.Id
-        ; HostName = node.HostName
-        ; IpAddr   = IpAddress.Parse node.Ip
-        ; Port     = node.Port
-        ; Status   = IrisNodeStatus.Parse node.Status
-        ; TaskId   = tid
+      let node' : RaftNode =
+        { Id         = Id.Parse node.Id
+        ; HostName   = node.HostName
+        ; IpAddr     = IpAddress.Parse node.Ip
+        ; Port       = uint16 node.Port
+        ; State      = RaftNodeState.Parse node.State
+        ; Voting     = true
+        ; VotedForMe = false
+        ; NextIndex  = 0UL
+        ; MatchIndex = 0UL
         }
       nodes := (node' :: !nodes)
 
@@ -644,14 +642,11 @@ module Configuration =
 
     for node in config.ClusterConfig.Nodes do
       let n = new ConfigFile.Project_Type.Cluster_Type.Nodes_Item_Type()
-      n.Id       <- string node.MemberId
+      n.Id       <- string node.Id
       n.Ip       <- string node.IpAddr
       n.HostName <- node.HostName
-      n.Port     <- node.Port
-      match node.TaskId with
-        | Some tid -> n.TaskId <- string tid
-        | _        -> ()
-      n.Status   <- string node.Status
+      n.Port     <- int node.Port
+      n.State    <- string node.State
       file.Project.Cluster.Nodes.Add(n)
 
     for group in config.ClusterConfig.Groups do
