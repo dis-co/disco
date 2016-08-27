@@ -76,7 +76,8 @@ module Main =
         | _   -> ()
 
   let resetDataDir (datadir: FilePath) =
-    failwith "resetDataDir"
+    if IO.Directory.Exists datadir then
+      rmDir datadir
 
   let dumpDataDir (datadir: FilePath) =
     failwith "dump data dir contents"

@@ -174,13 +174,13 @@ module Utils =
   /// - path: FilePath to delete
   ///
   /// Returns: unit
-  let rec delete path =
+  let rec rmDir path =
     match System.IO.DirectoryInfo(path).Attributes with
       | System.IO.FileAttributes.Directory ->
         let children = System.IO.DirectoryInfo(path).EnumerateFileSystemInfos()
         if children.Count() > 0 then
           for child in children do
-            delete child.FullName
+            rmDir child.FullName
           System.IO.Directory.Delete(path)
         else
           System.IO.Directory.Delete(path)

@@ -64,7 +64,7 @@ module RaftIntegrationTests =
       let db = createDB path
       expect "Raft db should exist" true Option.isSome db
       Option.get db |> dispose
-      delete path
+      rmDir path
 
   let test_should_store_load_raftmetadata_correctly =
     testCase "should store load raftmetadata correctly" <| fun _ ->
@@ -108,7 +108,7 @@ module RaftIntegrationTests =
       expect "NodeId should be the same" updated.NodeId id loaded.NodeId
 
       closeDB db
-      delete path
+      rmDir path
 
   let test_save_restore_log_values_correctly =
     testCase "save/restore log values correctly" <| fun _ ->
@@ -163,7 +163,7 @@ module RaftIntegrationTests =
       expect "Logs should be structurally equal" log id loaded
 
       dispose db
-      delete path
+      rmDir path
 
 
   let test_save_restore_raft_value_correctly =
@@ -217,7 +217,7 @@ module RaftIntegrationTests =
       expect "Values should be equal" (Some raft) id loaded
 
       dispose db
-      delete path
+      rmDir path
 
 
   let test_validate_logs_get_deleted_correctly =
@@ -288,7 +288,7 @@ module RaftIntegrationTests =
       expect "Should have succeeded" true id result
 
       dispose db
-      delete path
+      rmDir path
 
   let test_log_snapshotting_should_clean_all_logs =
     pending "log snapshotting should clean all logs"
