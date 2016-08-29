@@ -19,6 +19,9 @@ module Utils =
   [<Literal>]
   let PROJECT_FILENAME = "project.yaml"
 
+  [<Literal>]
+  let RAFT_DIRECTORY = ".raft"
+
 #if JAVASCRIPT
   //      _                  ____            _       _
   //     | | __ ___   ____ _/ ___|  ___ _ __(_)_ __ | |_

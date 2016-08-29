@@ -22,12 +22,12 @@ open Iris.Service.Raft.Db
 
 [<AutoOpen>]
 module Main =
-  let mkTmpPath snip =
-    let basePath =
-      match Environment.GetEnvironmentVariable("IN_NIX_SHELL") with
-        | "1" -> "/tmp/"
-        | _   -> System.IO.Path.GetTempPath()
-    basePath </> snip
+
+  //  ____  _             _
+  // / ___|| |_ __ _ _ __| |_
+  // \___ \| __/ _` | '__| __|
+  //  ___) | || (_| | |  | |_
+  // |____/ \__\__,_|_|   \__|
 
   let startRaft (projectdir: FilePath) =
     let projFile = IO.Path.Combine(projectdir, PROJECT_FILENAME)
@@ -52,11 +52,17 @@ module Main =
         printfn "Could not load project. Aborting."
         exit 2
 
+  //   ____                _
+  //  / ___|_ __ ___  __ _| |_ ___
+  // | |   | '__/ _ \/ _` | __/ _ \
+  // | |___| | |  __/ (_| | ||  __/
+  //  \____|_|  \___|\__,_|\__\___|
+
   let createDataDir (parsed: ParseResults<CLIArguments>) =
     let baseDir = parsed.GetResult <@ Project_Dir @>
     let name = parsed.GetResult <@ Project_Name @>
     let dir = IO.Path.Combine(baseDir, name)
-    let raftDir = IO.Path.Combine(IO.Path.GetFullPath(dir), ".raft")
+    let raftDir = IO.Path.Combine(IO.Path.GetFullPath(dir), RAFT_DIRECTORY)
 
     if IO.Directory.Exists dir then
       let empty = IO.Directory.EnumerateFileSystemEntries(dir).Count() = 0
@@ -98,12 +104,39 @@ module Main =
       | _ ->
         failwith "unable to create project"
 
+  //  ____                _
+  // |  _ \ ___  ___  ___| |_
+  // | |_) / _ \/ __|/ _ \ __|
+  // |  _ <  __/\__ \  __/ |_
+  // |_| \_\___||___/\___|\__|
+
   let resetDataDir (datadir: FilePath) =
-    if IO.Directory.Exists datadir then
-      rmDir datadir
+    let raftDir = IO.Path.Combine(datadir, RAFT_DIRECTORY)
+    if IO.Directory.Exists raftDir then
+      rmDir raftDir
+
+    mkDir raftDir
+
+    match createDB raftDir with
+      | Some _ -> printfn "successfully reset database"
+      | _      -> printfn "unable to reset database"
+
+
+  //  ____
+  // |  _ \ _   _ _ __ ___  _ __
+  // | | | | | | | '_ ` _ \| '_ \
+  // | |_| | |_| | | | | | | |_) |
+  // |____/ \__,_|_| |_| |_| .__/
+  //                       |_|
 
   let dumpDataDir (datadir: FilePath) =
-    failwith "dump data dir contents"
+    let raftDir = IO.Path.Combine(datadir, RAFT_DIRECTORY)
+    match openDB raftDir with
+      | Some db ->
+        dumpDB db
+        |> printfn "Database contents:\n%s"
+      | _ ->
+        printfn "No Database found at %A." raftDir
 
   ////////////////////////////////////////
   //  __  __       _                    //

@@ -430,7 +430,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
 
   override self.ToString() =
     sprintf "Database:%s\nConnections:%s\nNodes:%s\nRaft:%s\nLog:%s"
-      (dumpDb database |> indent 4)
+      (dumpDB database |> indent 4)
       (readTVar connections |> atomically |> string |> indent 4)
       (Map.fold (fun m _ t -> sprintf "%s\n%s" m (string t)) "" self.State.Raft.Peers |> indent 4)
       (self.State.Raft.ToString() |> indent 4)

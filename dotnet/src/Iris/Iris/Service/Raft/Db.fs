@@ -1017,7 +1017,7 @@ let loadRaft db =
         | _ -> None
     | _ -> None
 
-let dumpDb (database: LiteDatabase) =
+let dumpDB (database: LiteDatabase) =
   sprintf "Logs: %s\nNodes: %s\nMetadata: %s"
     (allLogs  database |> List.fold (fun s l -> sprintf "%s\n%s" s (l.ToString())) "")
     (allNodes database |> List.fold (fun s l -> sprintf "%s\n%s" s (l.ToString())) "")
