@@ -134,6 +134,7 @@ module Main =
     match openDB raftDir with
       | Some db ->
         dumpDB db
+        |> indent 4
         |> printfn "Database contents:\n%s"
       | _ ->
         printfn "No Database found at %A." raftDir

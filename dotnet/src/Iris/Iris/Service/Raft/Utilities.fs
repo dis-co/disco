@@ -17,26 +17,6 @@ open Db
 //                           | |_| | |_| | | | |_| |  __/\__ \                           //
 //                            \___/ \__|_|_|_|\__|_|\___||___/                           //
 // ------------------------------------------------------------------------------------- //
-let indent (num: int) (str: string) =
-  let spaces = Array.fold (fun m _ -> m + " ") "" [| 1 .. num |]
-  str.Split('\n')
-  |> Array.map (fun line -> spaces + line)
-  |> Array.fold (fun m line -> sprintf "%s\n%s" m line) ""
-
-let unixTime (date: DateTime) =
-  let epoch = new DateTime(1970, 1, 1)
-  (date.Ticks - epoch.Ticks) / TimeSpan.TicksPerMillisecond
-
-/// ## Get the current machine's host name
-///
-/// Get the current machine's host name.
-///
-/// ### Signature:
-/// - unit: unit
-///
-/// Returns: string
-let getHostName () =
-  System.Net.Dns.GetHostName()
 
 /// ## Create a new Raft state
 ///

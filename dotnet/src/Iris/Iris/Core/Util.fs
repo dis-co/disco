@@ -58,6 +58,17 @@ module Utils =
 
   let warn = printfn "[warning] %s"
 
+  /// ## Get the current machine's host name
+  ///
+  /// Get the current machine's host name.
+  ///
+  /// ### Signature:
+  /// - unit: unit
+  ///
+  /// Returns: string
+  let getHostName () =
+    System.Net.Dns.GetHostName()
+
   /// ## Dispose of an IDisposable object.
   ///
   /// Convenience function to call Dispose on an IDisposable.
@@ -151,7 +162,6 @@ module Utils =
   // |____/ \__|_|  |_|_| |_|\__, |
   //                         |___/
 
-
   let inline trim< ^a when ^a : (member Trim : unit -> ^a)> str =
     (^a : (member Trim : unit -> ^a) str)
 
@@ -161,12 +171,27 @@ module Utils =
   let inline toUpper< ^a when ^a : (member ToUpper : unit -> ^a)> str =
     (^a : (member ToUpper : unit -> ^a) str)
 
+  let indent (num: int) (str: string) =
+    let spaces = Array.fold (fun m _ -> m + " ") "" [| 1 .. num |]
+    str.Split('\n')
+    |> Array.map (fun line -> spaces + line)
+    |> Array.fold (fun m line -> sprintf "%s\n%s" m line) ""
+
   //  ____  _       ______       _   _
   // |  _ \(_)_ __ / /  _ \ __ _| |_| |__
   // | | | | | '__/ /| |_) / _` | __| '_ \
   // | |_| | | | / / |  __/ (_| | |_| | | |
   // |____/|_|_|/_/  |_|   \__,_|\__|_| |_|
 
+  /// ## </>
+  ///
+  /// Combine two FilePath (string) into one with the proper separator.
+  ///
+  /// ### Signature:
+  /// - path1: first path
+  /// - path2: second path
+  ///
+  /// Returns: FilePath (string)
   let (</>) p1 p2 = System.IO.Path.Combine(p1, p2)
 
   /// ## delete a file or directory
@@ -190,6 +215,14 @@ module Utils =
     else
       System.IO.File.Delete path
 
+  /// ## create a new directory
+  ///
+  /// Create a directory at Path.
+  ///
+  /// ### Signature:
+  /// - path: FilePath
+  ///
+  /// Returns: unit
   let mkDir path =
     if System.IO.Directory.Exists path |> not then
       System.IO.Directory.CreateDirectory path
@@ -204,5 +237,9 @@ module Utils =
   let createTimestamp () =
     let now = DateTime.Now
     now.ToString("u")
+
+  let unixTime (date: DateTime) =
+    let epoch = new DateTime(1970, 1, 1)
+    (date.Ticks - epoch.Ticks) / TimeSpan.TicksPerMillisecond
 
 #endif

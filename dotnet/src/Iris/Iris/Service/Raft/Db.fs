@@ -393,6 +393,34 @@ type RaftMetaData() =
 
   static member Guid = METADATA_ID
 
+  override self.ToString() =
+    sprintf @"Node Id: %s
+State: %s
+Term: %d
+Leader: %s
+OldPeers: %s
+VotedFor: %s
+CommitIndex: %d
+LastAppliedIndex: %d
+TimeoutElapsed: %d
+ElectionTimeout: %d
+RequestTimeout: %d
+MaxLogDepth: %d
+ConfigChange: %s"
+      self.NodeId
+      self.State
+      self.Term
+      self.LeaderId
+      (string self.OldPeers)
+      self.VotedFor
+      self.CommitIndex
+      self.LastAppliedIndex
+      self.TimeoutElapsed
+      self.ElectionTimeout
+      self.RequestTimeout
+      self.MaxLogDepth
+      self.ConfigChangeEntry
+
 /// ## Open a LevelDB on disk
 ///
 /// Open a LevelDB stored at given file path.
@@ -1018,7 +1046,22 @@ let loadRaft db =
     | _ -> None
 
 let dumpDB (database: LiteDatabase) =
-  sprintf "Logs: %s\nNodes: %s\nMetadata: %s"
-    (allLogs  database |> List.fold (fun s l -> sprintf "%s\n%s" s (l.ToString())) "")
-    (allNodes database |> List.fold (fun s l -> sprintf "%s\n%s" s (l.ToString())) "")
-    (getMetadata database |> string)
+  let logs =
+    allLogs database
+    |> List.fold (fun s l -> sprintf "%s\n%s" s (l.ToString())) ""
+    |> indent 4
+
+  let nodes =
+    allNodes database
+    |> List.fold (fun s l -> sprintf "%s\n%s" s (l.ToString())) ""
+    |> indent 4
+
+  let meta =
+    match getMetadata database with
+      | Some meta ->
+        meta
+        |> string
+        |> indent 4
+      | _ -> "<missing>"
+
+  sprintf "Logs: %s\n\nNodes: %s\n\nMetadata:\n%s" logs nodes meta
