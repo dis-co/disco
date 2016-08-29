@@ -4,6 +4,7 @@ open System
 open System.Threading
 open Iris.Core
 open Iris.Core.Utils
+open Iris.Service
 open Iris.Raft
 // open FSharpx.Stm
 open FSharpx.Functional
@@ -292,7 +293,6 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
       with
         | exn -> handleException "NodeAdded" exn
 
-
     member self.NodeUpdated node =
       try
         match findNode node.Id database with
@@ -315,6 +315,15 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
         |> this.Debug
       with
         | exn -> handleException "NodeAdded" exn
+
+
+    //   ____ _
+    //  / ___| |__   __ _ _ __   __ _  ___  ___
+    // | |   | '_ \ / _` | '_ \ / _` |/ _ \/ __|
+    // | |___| | | | (_| | | | | (_| |  __/\__ \
+    //  \____|_| |_|\__,_|_| |_|\__, |\___||___/
+    //                          |___/
+
 
     member self.Configured nodes =
       sprintf "Cluster configuration done!"
@@ -457,3 +466,103 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
       (Map.fold (fun m _ t -> sprintf "%s\n%s" m (string t)) "" self.State.Raft.Peers |> indent 4)
       (self.State.Raft.ToString() |> indent 4)
       (string self.State.Raft.Log |> indent 4)
+
+  //   ____ _           _               ____ _
+  //  / ___| |_   _ ___| |_ ___ _ __   / ___| |__   __ _ _ __   __ _  ___  ___
+  // | |   | | | | / __| __/ _ \ '__| | |   | '_ \ / _` | '_ \ / _` |/ _ \/ __|
+  // | |___| | |_| \__ \ ||  __/ |    | |___| | | | (_| | | | | (_| |  __/\__ \
+  //  \____|_|\__,_|___/\__\___|_|     \____|_| |_|\__,_|_| |_|\__, |\___||___/
+  //                                                           |___/
+
+  member self.JoinCluster(ip: string, port: int) =
+    let state = readTVar appState |> atomically
+    let newstate =
+      raft {
+        "requesting to join" |> this.Debug
+
+        let leader = tryJoin (IpAddress.Parse ip) (uint32 port) cbs state
+
+        sprintf "Reached leader: %A Adding to nodes." leader.Id
+        |> debugMsg state cbs
+
+        do! addNodeM leader
+      } |> evalRaft state.Raft cbs
+
+    writeTVar appState (updateRaft newstate state)
+    |> atomically
+
+  member self.AddNode(id: string, ip: string, port: int) =
+    let state = readTVar appState |> atomically
+
+    let change =
+      { Node.create (Id.Parse id) with
+          IpAddr = IpAddress.Parse ip
+          Port   = uint16 port }
+      |> NodeAdded
+
+    let result =
+      raft {
+        let! term = currentTermM ()
+        let entry = JointConsensus(Id.Create(), 0UL, term, [| change |], None)
+        do! debug "HandShake: appending entry to enter joint-consensus"
+        return! receiveEntry entry
+      }
+      |> runRaft state.Raft cbs
+
+    match result with
+    | Right (appended, raftState) ->
+      // save the new raft value back to the TVar
+      writeTVar appState (updateRaft raftState state) |> atomically
+
+      // block until entry has been committed
+      let ok = waitForCommit appended appState cbs
+
+      if ok then
+        Some appended
+      else
+        None
+
+    | Left (err, raftState) ->
+      // save the new raft value back to the TVar
+      writeTVar appState (updateRaft raftState state) |> atomically
+      None
+
+  member self.RmNode(id: string) =
+    let state = readTVar appState |> atomically
+
+    let result =
+      raft {
+        let! node = getNodeM (Id.Parse id)
+        match node with
+        | Some peer ->
+          let! term = currentTermM ()
+          let changes = [| NodeRemoved peer |]
+          let entry = JointConsensus(Id.Create(), 0UL, term, changes, None)
+          do! debug "HandShake: appending entry to enter joint-consensus"
+          let! appended = receiveEntry entry
+          return Some appended
+        | _ ->
+          do! warn "Node could not be removed. Not found."
+          return None
+      }
+      |> runRaft state.Raft cbs
+
+    match result with
+    | Right (Some appended, raftState) ->
+      // save the new raft value back to the TVar
+      writeTVar appState (updateRaft raftState state) |> atomically
+
+      // block until entry has been committed
+      let ok = waitForCommit appended appState cbs
+
+      if ok then
+        onConfigDone appState cbs
+      else
+        None
+
+    | Left (err, raftState) ->
+      // save the new raft value back to the TVar
+      writeTVar appState (updateRaft raftState state) |> atomically
+      None
+
+    | _ -> None

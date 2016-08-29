@@ -127,36 +127,27 @@ let timeoutRaft (ctx: RaftServer) =
 //  \____\___/|_| |_|___/\___/|_|\___| //
 /////////////////////////////////////////
 
+let private withTrim (token: string) (str: string) =
+  let trimmed = trim str
+  if trimmed.StartsWith(token) then
+    let substr = trimmed.Substring(token.Length)
+    Some <| trim substr
+  else None
+
 let (|Exit|_|) str =
   if str = "exit" || str = "quit" then
     Some ()
   else None
 
-let (|Add|_|) (str: string) =
-  if str.StartsWith("add") then
-    Some <| str.Substring(4).Trim()
-  else None
-
-let (|Remove|_|) (str: string) =
-  if str.StartsWith("rm") then
-    Some <| str.Substring(3).Trim()
-  else None
-
-let (|Nodes|_|) (str: string) =
-  if str.Trim() = "nodes" then
-    Some ()
-  else None
-
 let (|Status|_|) (str: string) =
-  if str.Trim() = "status" then
+  if trim str = "status" then
     Some ()
   else None
 
-let (|Append|_|) (str: string) =
-  let trimmed = str.Trim()
-  if trimmed.StartsWith("append") then
-    Some <| trimmed.Substring(6).Trim()
-  else None
+let (|Append|_|)  (str: string) = withTrim "append" str
+let (|Join|_|)    (str: string) = withTrim "join" str
+let (|AddNode|_|) (str: string) = withTrim "addnode" str
+let (|RmNode|_|)  (str: string) = withTrim "rmnode" str
 
 let (|Interval|_|) (str: string) =
   let trimmed = str.Trim()
@@ -189,6 +180,49 @@ let (|Timeout|_|) (str: string) =
     Some ()
   else None
 
+let trySetLogLevel (str: string) (context: RaftServer) =
+  let config =
+    { context.Options.RaftConfig with
+        LogLevel = parseLogLevel str }
+  context.Options <- updateEngine config context.Options
+
+let trySetInterval i (context: RaftServer) =
+  let config = { context.Options.RaftConfig with PeriodicInterval = i }
+  context.Options <- updateEngine config context.Options
+
+let tryJoinCluster (hst: string) (context: RaftServer) =
+  let parsed =
+    match split [| ' ' |] hst with
+      | [| ip; port |] -> Some (ip, int port)
+      | _            -> None
+
+  match parsed with
+    | Some(ip, port) -> context.JoinCluster(ip, port)
+    | _ -> printfn "parameters %A could not be parsed" hst
+
+let tryAddNode (hst: string) (context: RaftServer) =
+  let parsed =
+    match split [| ' ' |] hst with
+      | [| id; ip; port |] -> Some (id, ip, int port)
+      | _                -> None
+
+  match parsed with
+    | Some(id, ip, port) ->
+      match context.AddNode(id, ip, port) with
+        | Some appended ->
+          printfn "Added node: %A in entry %A" id (string appended.Id)
+        | _ ->
+          printfn "Could not add node %A" id
+    | _ ->
+      printfn "parameters %A could not be parsed" hst
+
+let tryRmNode (hst: string) (context: RaftServer) =
+    match context.RmNode(trim hst) with
+      | Some appended ->
+        printfn "Removed node: %A in entry %A" hst (string appended.Id)
+      | _ ->
+        printfn "Could not removed node %A " hst
+
 ////////////////////////////////////////
 //  _                                 //
 // | |    ___   ___  _ __             //
@@ -204,16 +238,17 @@ let consoleLoop (context: RaftServer) =
     printf "~> "
     let input = Console.ReadLine()
     match input with
-      | LogLevel opt   ->
-        let config = { context.Options.RaftConfig with LogLevel = parseLogLevel opt }
-        context.Options <- updateEngine config context.Options
-      | Interval  i ->
-        let config = { context.Options.RaftConfig with PeriodicInterval = i }
-        context.Options <- updateEngine config context.Options
-      | Exit        -> context.Stop(); kontinue := false
-      | Periodic    -> context.Periodic()
-      | Nodes       -> Map.iter (fun _ a -> printfn "Node: %A" a) context.State.Peers
-      | Append ety  ->
+      | LogLevel opt ->
+        printfn "loglevel"
+        trySetLogLevel opt context
+      | Interval   i ->
+        printfn "interfvall"
+        trySetInterval i context
+      | Exit         ->
+        printfn "ext[]"
+        context.Stop(); kontinue := false
+      | Append ety   ->
+        printfn "append w"
         match tryAppendEntry context ety with
           | Some response ->
             printfn "Added Entry: %s Index: %A Term: %A"
@@ -221,8 +256,20 @@ let consoleLoop (context: RaftServer) =
               response.Index
               response.Term
           | _ -> failwith "an error occurred"
-      | Timeout     -> timeoutRaft context
-      | Status      -> printfn "%s" <| context.ToString()
+      | Join hst    ->
+        printfn "join w"
+        tryJoinCluster hst context
+      | AddNode hst ->
+        printfn "addnode w"
+        tryAddNode hst context
+      | RmNode hst  ->
+        printfn "rmnode"
+        tryRmNode  hst context
+      | Timeout     ->
+        printfn "timeout"
+        timeoutRaft context
+      | Status      ->
+        printfn "%s" <| context.ToString()
       | _           -> printfn "unknown command"
     if !kontinue then
       proc kontinue

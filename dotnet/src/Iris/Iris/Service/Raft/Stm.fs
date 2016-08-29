@@ -550,41 +550,10 @@ let initialize appState cbs =
 
   let newstate =
     raft {
-      do! warn "should read term from disk on startup"
-
       let term = 0UL
       do! setTermM term
       do! setTimeoutElapsedM 0UL
       do! becomeFollower ()
-
-      // if state.Options.Start then
-      //   "initialize: becoming leader"
-      //   |> debugMsg state cbs
-
-      //   do! becomeLeader ()
-      // else
-      //   "initialize: requesting to join"
-      //   |> debugMsg state cbs
-
-      //   match state.Options.LeaderIp, state.Options.LeaderPort with
-      //     | (Some ip, Some port) ->
-      //       let leader = tryJoin (IpAddress.Parse ip) port cbs state
-
-      //       sprintf "Reached leader: %A Adding to nodes." leader.Id
-      //       |> debugMsg state cbs
-
-      //       do! addNodeM leader
-
-      //     | (None, _) ->
-      //       "When joining a cluster, the leader's IP must be specified. Aborting."
-      //       |> errMsg state cbs
-      //       exit 1
-
-      //     | (_, None) ->
-      //       "When joining a cluster, the leader's port must be specified. Aborting."
-      //       |> errMsg state cbs
-      //       exit 1
-
     } |> evalRaft state.Raft cbs
 
   "initialize: saving new state"

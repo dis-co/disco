@@ -165,11 +165,15 @@ module Utils =
   let inline trim< ^a when ^a : (member Trim : unit -> ^a)> str =
     (^a : (member Trim : unit -> ^a) str)
 
+
   let inline toLower< ^a when ^a : (member ToLower : unit -> ^a)> str =
     (^a : (member ToLower : unit -> ^a) str)
 
   let inline toUpper< ^a when ^a : (member ToUpper : unit -> ^a)> str =
     (^a : (member ToUpper : unit -> ^a) str)
+
+  let split (chars: char array) (str: string) =
+    str.Split(chars)
 
   let indent (num: int) (str: string) =
     let spaces = Array.fold (fun m _ -> m + " ") "" [| 1 .. num |]
