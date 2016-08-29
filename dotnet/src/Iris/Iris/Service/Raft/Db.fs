@@ -736,6 +736,20 @@ let allNodes db =
   |> findAll
   |> List.map (fun meta -> meta.ToNode())
 
+let insertNode (db: LiteDatabase) (node: RaftNode) =
+  nodeCollection db
+  |> insert (NodeMetaData.FromNode node)
+
+let updateNode (db: LiteDatabase) (node: RaftNode) =
+  nodeCollection db
+  |> update (NodeMetaData.FromNode node)
+  |> ignore
+
+let deleteNode (db: LiteDatabase) (node: RaftNode) =
+  nodeCollection db
+  |> deleteById (string node.Id)
+  |> ignore
+
 /// ## find a log by its id
 ///
 /// Description

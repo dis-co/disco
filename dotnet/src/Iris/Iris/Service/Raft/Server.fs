@@ -283,16 +283,38 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
     // |_| \_|\___/ \__,_|\___||___/
 
     member self.NodeAdded node   =
-      sprintf "Node was added. %s" (string node.Id)
-      |> this.Debug
+      try
+        match findNode node.Id database with
+          | Some _ -> updateNode database node
+          |      _ -> insertNode database node
+        sprintf "Node was added. %s" (string node.Id)
+        |> this.Debug
+      with
+        | exn -> handleException "NodeAdded" exn
+
 
     member self.NodeUpdated node =
-      sprintf "Node was updated. %s" (string node.Id)
-      |> this.Debug
+      try
+        match findNode node.Id database with
+          | Some _ -> updateNode database node
+          |      _ -> insertNode database node
+        sprintf "Node was updated. %s" (string node.Id)
+        |> this.Debug
+      with
+        | exn -> handleException "NodeAdded" exn
 
     member self.NodeRemoved node =
-      sprintf "Node was removed. %s" (string node.Id)
-      |> this.Debug
+      try
+        match findNode node.Id database with
+          | Some _ -> deleteNode database node
+          |      _ ->
+            sprintf "Node could not be removed. Not found: %s" (string node.Id)
+            |> this.Err
+
+        sprintf "Node was removed. %s" (string node.Id)
+        |> this.Debug
+      with
+        | exn -> handleException "NodeAdded" exn
 
     member self.Configured nodes =
       sprintf "Cluster configuration done!"
