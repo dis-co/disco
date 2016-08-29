@@ -175,17 +175,22 @@ module Utils =
   ///
   /// Returns: unit
   let rec rmDir path =
-    match System.IO.DirectoryInfo(path).Attributes with
-      | System.IO.FileAttributes.Directory ->
-        let children = System.IO.DirectoryInfo(path).EnumerateFileSystemInfos()
-        if children.Count() > 0 then
-          for child in children do
-            rmDir child.FullName
-          System.IO.Directory.Delete(path)
-        else
-          System.IO.Directory.Delete(path)
-      | _ ->
-        System.IO.File.Delete path
+    let attrs = IO.File.GetAttributes(path)
+    if (attrs &&& IO.FileAttributes.Directory) = IO.FileAttributes.Directory then
+      let children = IO.DirectoryInfo(path).EnumerateFileSystemInfos()
+      if children.Count() > 0 then
+        for child in children do
+          rmDir child.FullName
+        System.IO.Directory.Delete(path)
+      else
+        System.IO.Directory.Delete(path)
+    else
+      System.IO.File.Delete path
+
+  let mkDir path =
+    if System.IO.Directory.Exists path |> not then
+      System.IO.Directory.CreateDirectory path
+      |> ignore
 
   //  _____ _
   // |_   _(_)_ __ ___   ___
