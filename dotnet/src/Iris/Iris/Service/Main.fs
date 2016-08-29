@@ -29,19 +29,28 @@ module Main =
         | _   -> System.IO.Path.GetTempPath()
     basePath </> snip
 
-  let startRaft (datadir: FilePath) =
-    use kontext = new ZContext()
+  let startRaft (projectdir: FilePath) =
+    let projFile = IO.Path.Combine(projectdir, PROJECT_FILENAME)
 
-    let options = failwith "need to create options"
+    if IO.File.Exists projFile |> not then
+      printfn "Project file not found. Aborting."
+      exit 2
 
-    // 1. Initialise the application server from the supplied options
-    // let options = parseOptions args
-    use server = new RaftServer(options, kontext)
-    server.Start()
+    match Project.Load(projFile) with
+      | Some project ->
+        use kontext = new ZContext()
 
-    // 6. Start the console input loop.
-    printfn "Welcome to the Raft REPL. Type help to see all commands."
-    consoleLoop server
+        // 1. Initialise the application server from the supplied options
+        // let options = parseOptions args
+        use server = new RaftServer(project.Config, kontext)
+        server.Start()
+
+        // 6. Start the console input loop.
+        printfn "Welcome to the Raft REPL. Type help to see all commands."
+        consoleLoop server
+      | _ ->
+        printfn "Could not load project. Aborting."
+        exit 2
 
   let createDataDir (parsed: ParseResults<CLIArguments>) =
     let baseDir = parsed.GetResult <@ Project_Dir @>
@@ -89,7 +98,6 @@ module Main =
       | _ ->
         failwith "unable to create project"
 
-
   let resetDataDir (datadir: FilePath) =
     if IO.Directory.Exists datadir then
       rmDir datadir
@@ -120,12 +128,16 @@ module Main =
     if parsed.Contains <@ Create @> then
       createDataDir parsed
     else
-      let dir = parsed.GetResult <@ Project_Dir @>
-      if parsed.Contains <@ Start @> then
-        startRaft dir
-      elif parsed.Contains <@ Reset @> then
-        resetDataDir dir
-      elif parsed.Contains <@ Dump @> then
-        dumpDataDir dir
+      match parsed.TryGetResult <@ Project_Dir @> with
+        | Some dir ->
+          if parsed.Contains <@ Start @> then
+            startRaft dir
+          elif parsed.Contains <@ Reset @> then
+            resetDataDir dir
+          elif parsed.Contains <@ Dump @> then
+            dumpDataDir dir
+        | _ ->
+          printfn "Missing project directory. Aborting"
+          exit 2
 
     0

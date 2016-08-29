@@ -210,7 +210,7 @@ module ProjectHelper =
           |> saveMetadata project
 
         // save everything!
-        let destPath = Path.Combine(path, project.Name + IrisExt)
+        let destPath = Path.Combine(path, PROJECT_FILENAME)
 
         try
           IrisConfig.Save(destPath)

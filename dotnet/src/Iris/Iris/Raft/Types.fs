@@ -34,6 +34,13 @@ type LogLevel =
       | "err" | "error" -> Err
       | _               -> Debug
 
+    override self.ToString() =
+      match self with
+      | Debug -> "debug"
+      | Info  -> "info"
+      | Warn  -> "warn"
+      | Err   -> "err"
+
 //  _____
 // | ____|_ __ _ __ ___  _ __
 // |  _| | '__| '__/ _ \| '__|

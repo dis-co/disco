@@ -46,7 +46,7 @@ let parser = ArgumentParser.Create<CLIArguments>()
 
 let validateOptions (opts: ParseResults<CLIArguments>) =
   let ensureDir b =
-    if opts.Contains <@ Project_Dir @> then
+    if opts.Contains <@ Project_Dir @> |> not then
       printfn "Error: you must specify a project dir when starting a node"
       exit 3
     b
@@ -92,18 +92,6 @@ let parseLogLevel = function
   | "info"  -> Info
   | "warn"  -> Warn
   | _       -> Err
-
-let parseOptions args =
-  (* Get all mandatory options sorted out and initialize context *)
-  try
-    let opts = parser.Parse args
-    // validateOptions opts
-
-    failwith "implement option parsing"
-  with
-    | ex ->
-      printfn "Error: %s" ex.Message
-      exit 1
 
 ////////////////////////////////////////
 //  ____  _        _                  //

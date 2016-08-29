@@ -16,6 +16,9 @@ module List =
 [<AutoOpen>]
 module Utils =
 
+  [<Literal>]
+  let PROJECT_FILENAME = "project.yaml"
+
 #if JAVASCRIPT
   //      _                  ____            _       _
   //     | | __ ___   ____ _/ ___|  ___ _ __(_)_ __ | |_
@@ -82,9 +85,6 @@ module Utils =
         sprintf @"/home/%s/iris" usr
       else @"C:\\Iris\"
     else wsp
-
-  /// Iris File Extension
-  let IrisExt = ".iris"
 
   let workspaceExists () =
     Directory.Exists <| Workspace()
