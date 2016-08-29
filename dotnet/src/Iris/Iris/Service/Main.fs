@@ -18,6 +18,7 @@ open LibGit2Sharp
 open Argu
 open ZeroMQ
 open Iris.Raft
+open Iris.Service.Raft.Db
 
 [<AutoOpen>]
 module Main =
@@ -27,29 +28,6 @@ module Main =
         | "1" -> "/tmp/"
         | _   -> System.IO.Path.GetTempPath()
     basePath </> snip
-
-  let createConfig debug rid idx start lip lpidx  =
-    let portbase = 8000
-    // { Id             = rid
-    // ; Debug            = debug
-    // ; IpAddr           = "127.0.0.1"
-    // ; WebPort          = (portbase - 1000) + idx
-    // ; RaftPort         = portbase + idx
-    // ; Start            = start
-    // ; LeaderIp         = lip
-    // ; LeaderPort       = Option.map (fun n -> uint32 portbase + n) lpidx
-    // ; MaxRetries       = 5u
-    // ; DataDir          = Id.Create() |> string |> mkTmpPath
-    // ; PeriodicInterval = 50UL
-    // }
-
-    failwith "config config config"
-
-  let createFollower debug (rid: string) (portidx: int) lid lpidx =
-    createConfig debug rid portidx false (Some "127.0.0.1") (Some (uint32 lpidx))
-
-  let createLeader debug (rid: string) (portidx: int) =
-    createConfig debug rid portidx true None None
 
   let startRaft (datadir: FilePath) =
     use kontext = new ZContext()
@@ -66,14 +44,51 @@ module Main =
     consoleLoop server
 
   let createDataDir (parsed: ParseResults<CLIArguments>) =
-    let dir = parsed.GetResult <@ Data_Dir @>
-    let empty = IO.Directory.EnumerateFileSystemEntries(dir).Count() = 0
+    let baseDir = parsed.GetResult <@ Project_Dir @>
+    let name = parsed.GetResult <@ Project_Name @>
+    let dir = IO.Path.Combine(baseDir, name)
+    let raftDir = IO.Path.Combine(IO.Path.GetFullPath(dir), ".raft")
 
-    if IO.Directory.Exists dir && not empty then
-      printf "%A not empty. Can I clean first? y/n" dir
-      match Console.ReadLine() with
-        | "y" -> rmDir dir
-        | _   -> ()
+    if IO.Directory.Exists dir then
+      let empty = IO.Directory.EnumerateFileSystemEntries(dir).Count() = 0
+      if  not empty then
+        printf "%A not empty. I clean first? y/n" dir
+        match Console.ReadLine() with
+          | "y" -> rmDir dir
+          | _   -> exit 1
+
+    mkDir dir
+    mkDir raftDir
+
+    match createDB raftDir with
+      | Some _ -> printfn "successfully created database"
+      | _      -> printfn "unable to create database"
+
+    let me = new Signature("Operator", "operator@localhost", new DateTimeOffset(DateTime.Now))
+
+    let project  =
+      let def = Project.Create(name)
+      let cfg =
+        def.Config
+        |> updateEngine
+          { def.Config.RaftConfig with
+              DataDir     = raftDir
+              BindAddress = parsed.GetResult <@ Bind_Address @> }
+        |> updatePorts
+          { def.Config.PortConfig with
+              WebSocket = parsed.GetResult <@ Ws_Port @>
+              Http = parsed.GetResult <@ Web_Port @>
+              Raft = parsed.GetResult <@ Raft_Port @> }
+      { def with
+          Path = Some dir
+          Config = cfg }
+
+    match project.Save(me,"project created") with
+      | Some(commit, project) ->
+        printfn "project initialized in %A" project.Path
+      | _ ->
+        failwith "unable to create project"
+
 
   let resetDataDir (datadir: FilePath) =
     if IO.Directory.Exists datadir then
@@ -92,14 +107,20 @@ module Main =
   [<EntryPoint>]
   let main args =
 
-    let parsed = parser.ParseCommandLine args
+    let parsed =
+      try
+        parser.ParseCommandLine args
+      with
+        | _ ->
+          printfn "%s" <| parser.Usage("Unable to parse command line. Usage: ")
+          exit 2
 
     validateOptions parsed
 
     if parsed.Contains <@ Create @> then
       createDataDir parsed
     else
-      let dir = parsed.GetResult <@ Data_Dir @>
+      let dir = parsed.GetResult <@ Project_Dir @>
       if parsed.Contains <@ Start @> then
         startRaft dir
       elif parsed.Contains <@ Reset @> then

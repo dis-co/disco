@@ -696,31 +696,31 @@ module Configuration =
                        ; Nodes  = []
                        ; Groups = [] } }
 
-  let updateVvvv (config: Config) (vvvv: VvvvConfig) =
+  let updateVvvv (vvvv: VvvvConfig) (config: Config) =
     { config with VvvvConfig = vvvv }
 
-  let updateAudio (config: Config) (audio: AudioConfig) =
+  let updateAudio (audio: AudioConfig) (config: Config) =
     { config with AudioConfig = audio }
 
-  let updateEngine (config: Config) (engine: RaftConfig) =
+  let updateEngine (engine: RaftConfig) (config: Config) =
     { config with RaftConfig = engine }
 
-  let updateTiming (config: Config) (timing: TimingConfig) =
+  let updateTiming (timing: TimingConfig) (config: Config) =
     { config with TimingConfig = timing }
 
-  let updatePorts (config: Config) (ports: PortConfig) =
+  let updatePorts (ports: PortConfig) (config: Config)=
     { config with PortConfig = ports }
 
-  let updateViewPorts (config: Config) (viewports: ViewPort list) =
+  let updateViewPorts (viewports: ViewPort list) (config: Config) =
     { config with ViewPorts = viewports }
 
-  let updateDisplays (config: Config) (displays: Display list) =
+  let updateDisplays (displays: Display list) (config: Config) =
     { config with Displays = displays }
 
-  let updateTasks (config: Config) (tasks: Task list) =
+  let updateTasks (tasks: Task list) (config: Config) =
     { config with Tasks = tasks }
 
-  let updateCluster (config: Config) (cluster: Cluster) =
+  let updateCluster (cluster: Cluster) (config: Config) =
     { config with ClusterConfig = cluster }
 
   //  __  __                _

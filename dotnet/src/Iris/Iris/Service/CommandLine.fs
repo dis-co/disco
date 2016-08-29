@@ -21,7 +21,8 @@ type CLIArguments =
   | [<EqualsAssignment>] Raft_Port    of uint32
   | [<EqualsAssignment>] Web_Port     of uint32
   | [<EqualsAssignment>] Ws_Port      of uint32
-  | [<EqualsAssignment>] Data_Dir     of string
+  | [<EqualsAssignment>] Project_Dir  of string
+  | [<EqualsAssignment>] Project_Name of string
   |                      Create
   |                      Start
   |                      Reset
@@ -30,7 +31,8 @@ type CLIArguments =
   interface IArgParserTemplate with
     member self.Usage =
       match self with
-        | Data_Dir     _ -> "Temporary directory to place the database in"
+        | Project_Dir  _ -> "Project directory to place the config & database in"
+        | Project_Name _ -> "Project name when using --create"
         | Bind_Address _ -> "Specify a valid IP address."
         | Web_Port     _ -> "Http server port."
         | Ws_Port      _ -> "WebSocket port."
@@ -43,12 +45,11 @@ type CLIArguments =
 let parser = ArgumentParser.Create<CLIArguments>()
 
 let validateOptions (opts: ParseResults<CLIArguments>) =
-  let missing = printfn "Error: you must specify %s when joining a cluster"
-
-  // if we are joining a cluster these options must be passed
-  if not <| opts.Contains <@ Data_Dir @> then
-    missing "--data-dir"
-    exit 1
+  let ensureDir b =
+    if opts.Contains <@ Project_Dir @> then
+      printfn "Error: you must specify a project dir when starting a node"
+      exit 3
+    b
 
   let flags =
     ( opts.Contains <@ Create @>
@@ -58,20 +59,33 @@ let validateOptions (opts: ParseResults<CLIArguments>) =
 
   let valid =
     match flags with
-    | (true,false,false,false) ->
-      let bind = opts.Contains <@ Bind_Address @>
-      let web  = opts.Contains <@ Web_Port @>
-      let raft = opts.Contains <@ Raft_Port @>
-      let ws   = opts.Contains <@ Ws_Port @>
-      bind && web && raft && ws
-    | (false,true,false,false) -> true
-    | (false,false,true,false) -> true
-    | (false,false,false,true) -> true
+    | (true,false,false,false) -> true
+    | (false,true,false,false) -> ensureDir true
+    | (false,false,true,false) -> ensureDir true
+    | (false,false,false,true) -> ensureDir true
     | _                        -> false
 
   if not valid then
     printfn "Error: you must specify either *one of* --start/--create/--reset/--dump"
     exit 1
+
+  if opts.Contains <@ Create @> then
+    let name = opts.Contains <@ Project_Name @>
+    let dir  = opts.Contains <@ Project_Dir @>
+    let bind = opts.Contains <@ Bind_Address @>
+    let web  = opts.Contains <@ Web_Port @>
+    let raft = opts.Contains <@ Raft_Port @>
+    let ws   = opts.Contains <@ Ws_Port @>
+
+    if not (name && bind && web && raft && ws) then
+      printfn "Error: when creating a new configuration you must specify the following options:"
+      printfn "    --project-name: name for the new project"
+      printfn "    --project-dir: base directory to store new project in"
+      printfn "    --bind-address: ip address to bind raft server to"
+      printfn "    --raft-port: port to bind raft server to"
+      printfn "    --web-port: port to bind http server to"
+      printfn "    --ws-port: port to bind websocket server to"
+      exit 1
 
 let parseLogLevel = function
   | "debug" -> Debug
@@ -204,10 +218,10 @@ let consoleLoop (context: RaftServer) =
     match input with
       | LogLevel opt   ->
         let config = { context.Options.RaftConfig with LogLevel = parseLogLevel opt }
-        context.Options <- updateEngine context.Options config
+        context.Options <- updateEngine config context.Options
       | Interval  i ->
         let config = { context.Options.RaftConfig with PeriodicInterval = i }
-        context.Options <- updateEngine context.Options config
+        context.Options <- updateEngine config context.Options
       | Exit        -> context.Stop(); kontinue := false
       | Periodic    -> context.Periodic()
       | Nodes       -> Map.iter (fun _ a -> printfn "Node: %A" a) context.State.Peers
