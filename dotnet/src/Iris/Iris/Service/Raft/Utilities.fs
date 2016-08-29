@@ -36,7 +36,7 @@ let createRaft (options: Config) =
 
 let loadRaft (options: Config) =
   let dir = options.RaftConfig.DataDir </> DB_NAME
-  match IO.Directory.Exists dir with
+  match IO.File.Exists dir with
     | true -> openDB dir |> Option.bind loadRaft
     | _    -> None
 
@@ -57,14 +57,13 @@ let mkRaft (options: Config) =
 ///
 /// Returns: AppState
 let mkState (context: ZeroMQ.ZContext) (options: Config) : AppState =
-  { Clients     = []
-  ; Sessions    = []
-  ; Projects    = Map.empty
-  ; Peers       = Map.empty
-  ; Raft        = mkRaft options
-  ; Context     = context
-  ; Options     = options
-  }
+  { Clients   = []
+  ; Sessions  = []
+  ; Projects  = Map.empty
+  ; Peers     = Map.empty
+  ; Raft      = mkRaft options
+  ; Context   = context
+  ; Options   = options }
 
 /// ## idiomatically cancel a CancellationTokenSource
 ///

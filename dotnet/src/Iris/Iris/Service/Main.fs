@@ -19,6 +19,7 @@ open Argu
 open ZeroMQ
 open Iris.Raft
 open Iris.Service.Raft.Db
+open Iris.Service.Raft.Utilities
 
 [<AutoOpen>]
 module Main =
@@ -75,10 +76,6 @@ module Main =
     mkDir dir
     mkDir raftDir
 
-    match createDB raftDir with
-      | Some _ -> printfn "successfully created database"
-      | _      -> printfn "unable to create database"
-
     let me = new Signature("Operator", "operator@localhost", new DateTimeOffset(DateTime.Now))
 
     let project  =
@@ -97,6 +94,14 @@ module Main =
       { def with
           Path = Some dir
           Config = cfg }
+
+    match createDB raftDir with
+      | Some db ->
+        createRaft project.Config
+        |> flip saveRaft db
+        dispose db
+        printfn "successfully created database"
+      | _      -> printfn "unable to create database"
 
     match project.Save(me,"project created") with
       | Some(commit, project) ->
