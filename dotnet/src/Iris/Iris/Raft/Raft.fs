@@ -1452,6 +1452,24 @@ module Raft =
   // /_/   \_\ .__/| .__/|_|\__, | |_____|_| |_|\__|_|   \__, | //
   //         |_|   |_|      |___/                        |___/  //
   ////////////////////////////////////////////////////////////////
+  let calculateChanges (oldPeers: Map<NodeId,RaftNode>) (newPeers: Map<NodeId,RaftNode>) =
+    let oldnodes = Map.toArray oldPeers |> Array.map snd
+    let newnodes = Map.toArray newPeers |> Array.map snd
+
+    let additions =
+      Array.fold
+        (fun lst (newnode: RaftNode) ->
+          match Array.tryFind (Node.getId >> (=) newnode.Id) oldnodes with
+            | Some _ -> lst
+            |      _ -> NodeAdded(newnode) :: lst) [] newnodes
+
+    Array.fold
+      (fun lst (oldnode: RaftNode) ->
+        match Array.tryFind (Node.getId >> (=) oldnode.Id) newnodes with
+          | Some _ -> lst
+          | _ -> NodeRemoved(oldnode) :: lst) additions oldnodes
+    |> List.toArray
+
   let notifyChange (cbs: IRaftCallbacks<_>) change =
     match change with
       | NodeAdded(node)   -> cbs.NodeAdded   node
@@ -1486,9 +1504,16 @@ module Raft =
               (fun (state, current) lg ->
                 match lg with
                   | Configuration _ as config ->
-                    let state = handleConfigChange config state
+                    // set the peers map
+                    let newstate = handleConfigChange config state
+                    // when a new configuration is added, under certain circumstances a node change
+                    // might not have been applied yet, so calculate those dangling changes
+                    let changes = calculateChanges state.Peers newstate.Peers
+                    // apply dangling changes
+                    Array.iter (notifyChange cbs) changes
+                    // apply the entry by calling the callback
                     applyEntry cbs config
-                    (state, None)
+                    (newstate, None)
                   | JointConsensus _ as config ->
                     let state = handleConfigChange config state
                     applyEntry cbs config
