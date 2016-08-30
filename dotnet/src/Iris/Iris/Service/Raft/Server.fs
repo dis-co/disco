@@ -525,75 +525,83 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
   member self.AddNode(id: string, ip: string, port: int) =
     let state = readTVar appState |> atomically
 
-    let change =
-      { Node.create (Id.Parse id) with
-          IpAddr = IpAddress.Parse ip
-          Port   = uint16 port }
-      |> NodeAdded
+    if isLeader state.Raft then
 
-    let result =
-      raft {
-        let! term = currentTermM ()
-        let entry = JointConsensus(Id.Create(), 0UL, term, [| change |], None)
-        do! debug "HandShake: appending entry to enter joint-consensus"
-        return! receiveEntry entry
-      }
-      |> runRaft state.Raft cbs
+      let change =
+        { Node.create (Id.Parse id) with
+            IpAddr = IpAddress.Parse ip
+            Port   = uint16 port }
+        |> NodeAdded
 
-    match result with
-    | Right (appended, raftState) ->
-      // save the new raft value back to the TVar
-      writeTVar appState (updateRaft raftState state) |> atomically
+      let result =
+        raft {
+          let! term = currentTermM ()
+          let entry = JointConsensus(Id.Create(), 0UL, term, [| change |], None)
+          do! debug "AddNode: appending entry to enter joint-consensus"
+          return! receiveEntry entry
+        }
+        |> runRaft state.Raft cbs
 
-      // block until entry has been committed
-      let ok = waitForCommit appended appState cbs
+      match result with
+      | Right (appended, raftState) ->
+        // save the new raft value back to the TVar
+        writeTVar appState (updateRaft raftState state) |> atomically
 
-      if ok then
-        Some appended
-      else
+        // block until entry has been committed
+        let ok = waitForCommit appended appState cbs
+
+        if ok then
+          Some appended
+        else
+          None
+
+      | Left (err, raftState) ->
+        // save the new raft value back to the TVar
+        writeTVar appState (updateRaft raftState state) |> atomically
         None
-
-    | Left (err, raftState) ->
-      // save the new raft value back to the TVar
-      writeTVar appState (updateRaft raftState state) |> atomically
-      None
+    else
+      this.Err "Unable to add node. Not leader."
 
   member self.RmNode(id: string) =
     let state = readTVar appState |> atomically
 
-    let result =
-      raft {
-        let! node = getNodeM (Id.Parse id)
-        match node with
-        | Some peer ->
-          let! term = currentTermM ()
-          let changes = [| NodeRemoved peer |]
-          let entry = JointConsensus(Id.Create(), 0UL, term, changes, None)
-          do! debug "HandShake: appending entry to enter joint-consensus"
-          let! appended = receiveEntry entry
-          return Some appended
-        | _ ->
-          do! warn "Node could not be removed. Not found."
-          return None
-      }
-      |> runRaft state.Raft cbs
+    if isLeader state.Raft then
 
-    match result with
-    | Right (Some appended, raftState) ->
-      // save the new raft value back to the TVar
-      writeTVar appState (updateRaft raftState state) |> atomically
+      let result =
+        raft {
+          let! node = getNodeM (Id.Parse id)
+          match node with
+          | Some peer ->
+            let! term = currentTermM ()
+            let changes = [| NodeRemoved peer |]
+            let entry = JointConsensus(Id.Create(), 0UL, term, changes, None)
+            do! debug "RmNode: appending entry to enter joint-consensus"
+            let! appended = receiveEntry entry
+            return Some appended
+          | _ ->
+            do! warn "Node could not be removed. Node not found."
+            return None
+        }
+        |> runRaft state.Raft cbs
 
-      // block until entry has been committed
-      let ok = waitForCommit appended appState cbs
+      match result with
+      | Right (Some appended, raftState) ->
+        // save the new raft value back to the TVar
+        writeTVar appState (updateRaft raftState state) |> atomically
 
-      if ok then
-        onConfigDone appState cbs
-      else
+        // block until entry has been committed
+        let ok = waitForCommit appended appState cbs
+
+        if ok then
+          onConfigDone appState cbs
+        else
+          None
+
+      | Left (err, raftState) ->
+        // save the new raft value back to the TVar
+        writeTVar appState (updateRaft raftState state) |> atomically
         None
 
-    | Left (err, raftState) ->
-      // save the new raft value back to the TVar
-      writeTVar appState (updateRaft raftState state) |> atomically
-      None
-
-    | _ -> None
+      | _ -> None
+  else
+    this.Err "Unable to remove node. Not leader."
