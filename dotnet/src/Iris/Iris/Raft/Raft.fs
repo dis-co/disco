@@ -1256,22 +1256,23 @@ module Raft =
           let! request = sendAppendEntry peer.Value
           requests := Array.append [| (peer.Value, request) |] !requests
 
-      let responses =
-        !requests
-        |> Array.map snd
-        |> Async.Parallel
-        |> Async.RunSynchronously
-        |> Array.zip (Array.map fst !requests)
+      if Array.length !requests > 0 then
+        let responses =
+          !requests
+          |> Array.map snd
+          |> Async.Parallel
+          |> Async.RunSynchronously
+          |> Array.zip (Array.map fst !requests)
 
-      for (node, response) in responses do
-        match response with
-        | Some resp ->
-          do! receiveAppendEntriesResponse node.Id resp
-          let! peer = getNodeM node.Id >>= (Option.get >> returnM)
-          if peer.State = Failed then
-            do! setNodeStateM node.Id Running
-        | _ ->
-          do! setNodeStateM node.Id Failed
+        for (node, response) in responses do
+          match response with
+          | Some resp ->
+            do! receiveAppendEntriesResponse node.Id resp
+            let! peer = getNodeM node.Id >>= (Option.get >> returnM)
+            if peer.State = Failed then
+              do! setNodeStateM node.Id Running
+          | _ ->
+            do! setNodeStateM node.Id Failed
 
       do! setTimeoutElapsedM 0UL
     }
@@ -1883,22 +1884,23 @@ module Raft =
             let! request = sendVoteRequest peer.Value
             requests := Array.append [| (peer.Value, request) |] !requests
 
-        let responses =
-          !requests
-          |> Array.map snd
-          |> Async.Parallel
-          |> Async.RunSynchronously
-          |> Array.zip (Array.map fst !requests)
+        if Array.length !requests > 0 then
+          let responses =
+            !requests
+            |> Array.map snd
+            |> Async.Parallel
+            |> Async.RunSynchronously
+            |> Array.zip (Array.map fst !requests)
 
-        for (node, response) in responses do
-          let! leader = isLeaderM ()
-          if not leader then                          // check if raft is already leader
-            match response with                     // otherwise process the vote
-            | Some resp ->
-              do! receiveVoteResponse node.Id resp
-              do! setNodeStateM node.Id Running
-            | _ ->
-              do! setNodeStateM node.Id Failed      // mark node as failed (calls the callback)
+          for (node, response) in responses do
+            let! leader = isLeaderM ()
+            if not leader then                          // check if raft is already leader
+              match response with                     // otherwise process the vote
+              | Some resp ->
+                do! receiveVoteResponse node.Id resp
+                do! setNodeStateM node.Id Running
+              | _ ->
+                do! setNodeStateM node.Id Failed      // mark node as failed (calls the callback)
       }
 
   ///////////////////////////////////////////////////////
@@ -2117,11 +2119,14 @@ module Raft =
 
         if timedout && num > 1UL then
           do! startElection ()
+        elif timedout && num = 1UL then
+          do! becomeLeader ()
 
       let! coi = commitIndexM ()
       let! lai = lastAppliedIdxM ()
 
       if lai < coi then
         do! applyEntries ()
+
       do! maybeSnapshot ()
     }
