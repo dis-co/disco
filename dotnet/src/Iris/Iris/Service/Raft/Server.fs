@@ -482,14 +482,45 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
 
         let leader = tryJoin (IpAddress.Parse ip) (uint32 port) cbs state
 
-        sprintf "Reached leader: %A Adding to nodes." leader.Id
-        |> debugMsg state cbs
+        match leader with
+        | Some leader ->
+          sprintf "Reached leader: %A Adding to nodes." leader.Id
+          |> infoMsg state cbs
+          do! addNodeM leader
+          do! becomeFollower ()
+        | _ -> "Joining cluster failed." |> errMsg state cbs
 
-        do! addNodeM leader
       } |> evalRaft state.Raft cbs
 
     writeTVar appState (updateRaft newstate state)
     |> atomically
+
+  member self.LeaveCluster() =
+    let state = readTVar appState |> atomically
+    let newstate =
+      raft {
+        "requesting to leave" |> this.Debug
+
+        do! setTimeoutElapsedM 0UL
+
+        match tryLeave appState cbs with
+        | Some true ->
+          "Successfully left cluster." |> infoMsg state cbs
+        | _ ->
+          "Could not leave cluster." |> infoMsg state cbs
+
+        do! becomeFollower ()
+
+        let! peers = getNodesM ()
+
+        for kv in peers do
+          do! removeNodeM kv.Value
+
+      } |> evalRaft state.Raft cbs
+
+    writeTVar appState (updateRaft newstate state)
+    |> atomically
+
 
   member self.AddNode(id: string, ip: string, port: int) =
     let state = readTVar appState |> atomically

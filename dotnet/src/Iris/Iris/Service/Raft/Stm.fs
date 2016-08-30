@@ -439,7 +439,7 @@ let tryJoin (ip: IpAddress) (port: uint32) cbs (state: AppState) =
       | Some (Welcome node) ->
         sprintf "Received Welcome from %A" node.Id
         |> debugMsg state cbs
-        node
+        Some node
 
       | Some (Redirect next) ->
         sprintf "Got redirected to %A" (nodeUri next)
@@ -447,22 +447,23 @@ let tryJoin (ip: IpAddress) (port: uint32) cbs (state: AppState) =
         _tryJoin (retry + 1) (nodeUri next)
 
       | Some (ErrorResponse err) ->
-        sprintf "Unexpected error occurred. %A Aborting." err
+        sprintf "Unexpected error occurred. %A" err
         |> errMsg state cbs
-        exit 1
+        None
 
       | Some resp ->
-        sprintf "Unexpected response. %A Aborting." resp
+        sprintf "Unexpected response. %A" resp
         |> errMsg state cbs
-        exit 1
+        None
+
       | _ ->
-        sprintf "Node: %A unreachable. Aborting." uri
+        sprintf "Node: %A unreachable." uri
         |> errMsg state cbs
-        exit 1
+        None
     else
-      "Too many unsuccesful connection attempts. Aborting."
+      "Too many unsuccesful connection attempts."
       |> errMsg state cbs
-      exit 1
+      None
 
   formatUri ip (int port) |> _tryJoin 0
 
@@ -503,11 +504,11 @@ let tryLeave (appState: TVar<AppState>) cbs : bool option =
         None
 
       | Some resp ->
-        sprintf "Unexpected response. Aborting.\n%A" resp |> errMsg state cbs
+        sprintf "Unexpected response.\n%A" resp |> errMsg state cbs
         None
 
       | _ ->
-        "Node unreachable. Aborting." |> errMsg state cbs
+        "Node unreachable." |> errMsg state cbs
         None
     else
       "Too many unsuccesful connection attempts." |> errMsg state cbs
@@ -553,7 +554,14 @@ let initialize appState cbs =
       let term = 0UL
       do! setTermM term
       do! setTimeoutElapsedM 0UL
-      do! becomeFollower ()
+
+      let! num = numNodesM ()
+
+      if num = 1UL then
+        do! becomeLeader ()
+      else
+        do! becomeFollower ()
+
     } |> evalRaft state.Raft cbs
 
   "initialize: saving new state"

@@ -114,7 +114,13 @@ let parseHostString (str: string) =
 
 
 let tryAppendEntry (ctx: RaftServer) str =
-  ctx.Append (AddClient str)
+  match ctx.Append (AddClient str) with
+    | Some response ->
+      printfn "Added Entry: %s Index: %A Term: %A"
+        (string response.Id)
+        response.Index
+        response.Term
+    | _ -> failwith "an error occurred"
 
 let timeoutRaft (ctx: RaftServer) =
   ctx.ForceTimeout()
@@ -134,20 +140,22 @@ let private withTrim (token: string) (str: string) =
     Some <| trim substr
   else None
 
-let (|Exit|_|) str =
-  if str = "exit" || str = "quit" then
-    Some ()
+let private withEmpty (token: string) (str: string) =
+  if trim str = token
+  then Some ()
   else None
 
-let (|Status|_|) (str: string) =
-  if trim str = "status" then
-    Some ()
-  else None
+let (|Exit|_|)     str = withEmpty "exit" str
+let (|Quit|_|)     str = withEmpty "quit" str
+let (|Status|_|)   str = withEmpty "status" str
+let (|Periodic|_|) str = withEmpty "step" str
+let (|Timeout|_|)  str = withEmpty "timeout" str
+let (|Leave|_|)    str = withEmpty "leave" str
 
-let (|Append|_|)  (str: string) = withTrim "append" str
-let (|Join|_|)    (str: string) = withTrim "join" str
-let (|AddNode|_|) (str: string) = withTrim "addnode" str
-let (|RmNode|_|)  (str: string) = withTrim "rmnode" str
+let (|Append|_|)  str = withTrim "append" str
+let (|Join|_|)    str = withTrim "join" str
+let (|AddNode|_|) str = withTrim "addnode" str
+let (|RmNode|_|)  str = withTrim "rmnode" str
 
 let (|Interval|_|) (str: string) =
   let trimmed = str.Trim()
@@ -168,17 +176,6 @@ let (|LogLevel|_|) (str: string) =
     | [| "log"; "err" |]   -> Some "err"
     | _                  -> None
 
-let (|Periodic|_|) (str: string) =
-  let trimmed = str.Trim()
-  if trimmed = "step" then
-    Some ()
-  else None
-
-let (|Timeout|_|) (str: string) =
-  let trimmed = str.Trim()
-  if trimmed = "timeout" then
-    Some ()
-  else None
 
 let trySetLogLevel (str: string) (context: RaftServer) =
   let config =
@@ -199,6 +196,9 @@ let tryJoinCluster (hst: string) (context: RaftServer) =
   match parsed with
     | Some(ip, port) -> context.JoinCluster(ip, port)
     | _ -> printfn "parameters %A could not be parsed" hst
+
+let tryLeaveCluster (context: RaftServer) =
+  context.LeaveCluster()
 
 let tryAddNode (hst: string) (context: RaftServer) =
   let parsed =
@@ -238,39 +238,18 @@ let consoleLoop (context: RaftServer) =
     printf "~> "
     let input = Console.ReadLine()
     match input with
-      | LogLevel opt ->
-        printfn "loglevel"
-        trySetLogLevel opt context
-      | Interval   i ->
-        printfn "interfvall"
-        trySetInterval i context
-      | Exit         ->
-        printfn "ext[]"
-        context.Stop(); kontinue := false
-      | Append ety   ->
-        printfn "append w"
-        match tryAppendEntry context ety with
-          | Some response ->
-            printfn "Added Entry: %s Index: %A Term: %A"
-              (string response.Id)
-              response.Index
-              response.Term
-          | _ -> failwith "an error occurred"
-      | Join hst    ->
-        printfn "join w"
-        tryJoinCluster hst context
-      | AddNode hst ->
-        printfn "addnode w"
-        tryAddNode hst context
-      | RmNode hst  ->
-        printfn "rmnode"
-        tryRmNode  hst context
-      | Timeout     ->
-        printfn "timeout"
-        timeoutRaft context
-      | Status      ->
-        printfn "%s" <| context.ToString()
-      | _           -> printfn "unknown command"
+      | LogLevel opt -> trySetLogLevel opt context
+      | Interval   i -> trySetInterval i context
+      | Exit         -> context.Stop(); kontinue := false
+      | Periodic     -> context.Periodic()
+      | Append ety   -> tryAppendEntry context ety
+      | Join hst     -> tryJoinCluster hst context
+      | Leave        -> tryLeaveCluster context
+      | AddNode hst  -> tryAddNode hst context
+      | RmNode hst   -> tryRmNode  hst context
+      | Timeout      -> timeoutRaft context
+      | Status       -> printfn "%s" <| context.ToString()
+      | _            -> printfn "unknown command"
     if !kontinue then
       proc kontinue
   proc kont
