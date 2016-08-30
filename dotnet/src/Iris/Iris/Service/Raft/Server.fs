@@ -132,9 +132,6 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
         this.Debug "RaftServer: dispose server"
         Option.bind (dispose >> Some) (!server) |> ignore
 
-        this.Debug "RaftServer: contacting leader to announce departure"
-        let _ = tryLeave appState cbs
-
         this.Debug "RaftServer: disposing sockets"
         readTVar connections
         |> atomically
@@ -561,6 +558,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
         None
     else
       this.Err "Unable to add node. Not leader."
+      None
 
   member self.RmNode(id: string) =
     let state = readTVar appState |> atomically
@@ -603,5 +601,6 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
         None
 
       | _ -> None
-  else
-    this.Err "Unable to remove node. Not leader."
+    else
+      this.Err "Unable to remove node. Not leader."
+      None

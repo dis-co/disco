@@ -221,6 +221,21 @@ type LogData() =
   override self.GetHashCode () =
     hash (self.Id, self.Index, self.Term)
 
+  override self.ToString() =
+    let logtype =
+      match enum<LogDataType>(self.LogType) with
+      | LogDataType.Config    -> "Configuration"
+      | LogDataType.Consensus -> "JointConsensus"
+      | LogDataType.Entry     -> "LogEntry"
+      | LogDataType.Snapshot  -> "Snapshot"
+      | _ -> "UNKNOWN"
+
+    String.Format("{0,-14} {1,-22} idx: {2} term: {3}",
+                  logtype,
+                  (string self.Id),
+                  self.Index,
+                  self.Term)
+
 //  _   _           _        __  __      _            _       _
 // | \ | | ___   __| | ___  |  \/  | ___| |_ __ _  __| | __ _| |_ __ _
 // |  \| |/ _ \ / _` |/ _ \ | |\/| |/ _ \ __/ _` |/ _` |/ _` | __/ _` |
@@ -228,7 +243,7 @@ type LogData() =
 // |_| \_|\___/ \__,_|\___| |_|  |_|\___|\__\__,_|\__,_|\__,_|\__\__,_|
 
 [<AllowNullLiteral>]
-type NodeMetaData() =
+type NodeData() =
   let mutable id        : string     = null
   let mutable voting    : bool       = false
   let mutable voted     : bool       = false
@@ -283,7 +298,7 @@ type NodeMetaData() =
   // |_|   \__,_|_|  |___/\___|
 
   static member FromNode (node: RaftNode) =
-    let meta = new NodeMetaData()
+    let meta = new NodeData()
     meta.Id         <- string node.Id
     meta.State      <- string node.State
     meta.HostName   <- node.HostName
@@ -311,6 +326,15 @@ type NodeMetaData() =
     ; State      = RaftNodeState.Parse self.State
     ; NextIndex  = uint64 self.NextIndex
     ; MatchIndex = uint64 self.MatchIndex }
+
+  override self.ToString() =
+    String.Format("{0,-22} {1,-8} {2,-10} {3,-15} {4,-5}",
+      self.Id,
+      self.State,
+      self.HostName,
+      self.IpAddr,
+      self.Port)
+
 
 //  ____        __ _     __  __      _            _       _
 // |  _ \ __ _ / _| |_  |  \/  | ___| |_ __ _  __| | __ _| |_ __ _
@@ -706,7 +730,7 @@ let logCollection (db: LiteDatabase) =
 ///
 /// Returns: LiteCollection<NodeMetaData>
 let nodeCollection (db: LiteDatabase) =
-  getCollection<NodeMetaData> "nodes" db
+  getCollection<NodeData> "nodes" db
 
 /// ## Find a node by its id.
 ///
@@ -731,18 +755,18 @@ let findNode (id: NodeId) (db: LiteDatabase) =
 /// - db: LiteDatabase
 ///
 /// Returns: Node list
-let allNodes db =
+let allNodes db : NodeData list =
   nodeCollection db
+  |> ensureIndex "Id"
   |> findAll
-  |> List.map (fun meta -> meta.ToNode())
 
 let insertNode (db: LiteDatabase) (node: RaftNode) =
   nodeCollection db
-  |> insert (NodeMetaData.FromNode node)
+  |> insert (NodeData.FromNode node)
 
 let updateNode (db: LiteDatabase) (node: RaftNode) =
   nodeCollection db
-  |> update (NodeMetaData.FromNode node)
+  |> update (NodeData.FromNode node)
   |> ignore
 
 let deleteNode (db: LiteDatabase) (node: RaftNode) =
@@ -949,7 +973,7 @@ let saveLog (raft: Raft) (db: LiteDatabase) =
 let saveNodes (raft: Raft) (db: LiteDatabase) =
   let collection = nodeCollection db
   Map.iter (fun _ node ->
-              NodeMetaData.FromNode(node)
+              NodeData.FromNode(node)
               |> flip insert collection)
             raft.Peers
 
@@ -1008,7 +1032,7 @@ let loadRaft db =
           | Some entries -> Log.fromEntries entries
           | _            -> Log.empty
 
-      let nodes = allNodes db
+      let nodes = allNodes db |> List.map (fun n -> n.ToNode())
       let self = List.tryFind (Node.getId >> ((=) (Id meta.NodeId))) nodes
       let votedfor =
         match meta.VotedFor with
