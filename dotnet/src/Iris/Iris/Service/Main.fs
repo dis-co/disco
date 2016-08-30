@@ -116,16 +116,23 @@ module Main =
   // |_| \_\___||___/\___|\__|
 
   let resetDataDir (datadir: FilePath) =
-    let raftDir = IO.Path.Combine(datadir, RAFT_DIRECTORY)
-    if IO.Directory.Exists raftDir then
-      rmDir raftDir
+    match Project.Load(datadir </> PROJECT_FILENAME) with
+    | Some project ->
+      let raftDir = IO.Path.Combine(datadir, RAFT_DIRECTORY)
+      if IO.Directory.Exists raftDir then
+        rmDir raftDir
 
-    mkDir raftDir
+      mkDir raftDir
 
-    match createDB raftDir with
-      | Some _ -> printfn "successfully reset database"
-      | _      -> printfn "unable to reset database"
+      match createDB raftDir with
+      | Some db ->
+        createRaft project.Config
+        |> flip saveRaft db
+        dispose db
+        printfn "successfully reset database"
+      | _ -> printfn "unable to reset database"
 
+    | _ -> printfn "project could not be loaded. doing nothing.."
 
   //  ____
   // |  _ \ _   _ _ __ ___  _ __
