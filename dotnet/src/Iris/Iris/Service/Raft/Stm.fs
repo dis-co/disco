@@ -174,12 +174,8 @@ let leaveCluster (nodes: RaftNode array) (appState: TVar<AppState>) cbs =
     let ok = waitForCommit appended appState cbs
 
     if ok then
-      // now that all nodes are in joint-consensus we finalize the 2-phase
-      // config change process by appending the Configuration entry
-      let result = onConfigDone appState cbs
-      match result with
-        | Some _ -> Arrivederci
-        | None   -> ErrorResponse <| OtherError "Unable to leave cluster"
+      // now that all nodes are in joint-consensus we need to wait and finalize the 2-phase commit
+      Arrivederci
     else
       ErrorResponse <| OtherError "Could not commit Joint-Consensus"
 

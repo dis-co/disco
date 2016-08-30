@@ -591,7 +591,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
         let ok = waitForCommit appended appState cbs
 
         if ok then
-          onConfigDone appState cbs
+          Some appended
         else
           None
 

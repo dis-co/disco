@@ -797,9 +797,20 @@ module Raft =
   let handleConfigChange (log: LogEntry<'data>) (state: Raft<'data>) =
     match log with
       | Configuration(_,_,_,nodes,_) ->
+        let parting =
+          nodes
+          |> Array.map (fun (node: RaftNode) -> node.Id)
+          |> Array.contains state.Node.Id
+          |> not
+
         let peers =
-          Array.map (fun (node: RaftNode) -> (node.Id, node)) nodes
-          |> Map.ofArray
+          if parting then               // we have been kicked out of the cluster configuration
+            [| (state.Node.Id, state.Node) |]
+            |> Map.ofArray
+          else                          // we are still part of the new cluster configuration
+            Array.map (fun (node: RaftNode) -> (node.Id, node)) nodes
+            |> Map.ofArray
+
         setPeers peers state
         |> setOldPeers None
       | JointConsensus(_,_,_,changes,_) ->
