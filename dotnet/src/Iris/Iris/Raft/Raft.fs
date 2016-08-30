@@ -913,8 +913,8 @@ module Raft =
 
       // 1) If this node is currently candidate and both its and the requests
       // term are equal, we become follower and reset VotedFor.
-      let candiate = isCandidate state
-      let newLeader = isLeader state && numNodes state = 1
+      let candidate = isCandidate state
+      let newLeader = isLeader state && numNodes state = 1UL
       if (candidate || newLeader) && currentTerm state = msg.Term then
         do! voteFor None
         do! becomeFollower ()
