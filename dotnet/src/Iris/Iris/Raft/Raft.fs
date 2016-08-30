@@ -319,19 +319,23 @@ module Raft =
   let updateNode (node : RaftNode) (cbs: IRaftCallbacks<'data>) (state: Raft<'data>) =
     // if we are in joint consensus, we must update the node value in either the
     // new or the old configuration, or both.
-    let regular = Map.containsKey node.Id state.Peers
+    let old = Map.tryFind node.Id state.Peers
     if inJointConsensus state then
-      if regular then cbs.NodeUpdated node
+      // if the nodes has structurally changed fire the callback
+      match old with
+      | Some oldNode -> if oldNode <> node then cbs.NodeUpdated node
+      | _ -> ()
+      // update the state
       { state with
           Peers =
-            if regular then
+            if Option.isSome old then
               Map.add node.Id node state.Peers
             else state.Peers
           OldPeers =
             match state.OldPeers with
               | Some peers ->
                 if Map.containsKey node.Id peers then
-                  if not regular then cbs.NodeUpdated node
+                  if Option.isNone old then cbs.NodeUpdated node
                   Map.add node.Id node peers |> Some
                 else Some peers
               | None ->                 // apply all required changes again
@@ -345,7 +349,10 @@ module Raft =
                 else Some peers }
       |> setNumPeers
     else // base case
-      if regular then cbs.NodeUpdated node
+      // if the nodes has structurally changed fire the callback
+      match old with
+      | Some oldNode -> if oldNode <> node then cbs.NodeUpdated node
+      | _ -> ()
       { state with
           Peers =
             if Map.containsKey node.Id state.Peers
