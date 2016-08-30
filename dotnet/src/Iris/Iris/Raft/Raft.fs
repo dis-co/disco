@@ -28,7 +28,7 @@ module RaftMonad =
   /// run monadic action against supplied state and evironment and return new state
   let evalRaft (s: 's) (l: 'e) (m: RaftMonad<'e,'s,'a,'err>) =
     match runRaft s l m with
-      | Right (_,state) | Left (_,state) -> state
+    | Right (_,state) | Left (_,state) -> state
 
   /// Lift a regular value into a RaftMonad by wrapping it in a closure.
   /// This variant wraps it in a `Right` value. This means the computation will,
@@ -86,8 +86,8 @@ module RaftMonad =
 
   let rec whileM (guard: unit -> bool) (body: RaftMonad<_,_,_,_>) =
     match guard () with
-      | true -> bindM body (fun _ -> whileM guard body)
-      | _ -> zeroM ()
+    | true -> bindM body (fun _ -> whileM guard body)
+    | _ -> zeroM ()
 
   let rec forM (sequence: seq<_>) (body: 'a -> RaftMonad<_,_,_,_>) : RaftMonad<_,_,_,_> =
     usingM (sequence.GetEnumerator())
@@ -796,7 +796,12 @@ module Raft =
 
   let handleConfigChange (log: LogEntry<'data>) (state: Raft<'data>) =
     match log with
-      | Configuration _ -> setOldPeers None state
+      | Configuration(_,_,_,nodes,_) ->
+        let peers =
+          Array.map (fun (node: RaftNode) -> (node.Id, node)) nodes
+          |> Map.ofArray
+        setPeers peers state
+        |> setOldPeers None
       | JointConsensus(_,_,_,changes,_) ->
         let old = state.Peers
         applyChanges changes state
@@ -908,7 +913,9 @@ module Raft =
 
       // 1) If this node is currently candidate and both its and the requests
       // term are equal, we become follower and reset VotedFor.
-      if isCandidate state && currentTerm state = msg.Term then
+      let candiate = isCandidate state
+      let newLeader = isLeader state && numNodes state = 1
+      if (candidate || newLeader) && currentTerm state = msg.Term then
         do! voteFor None
         do! becomeFollower ()
         return Right resp
@@ -998,7 +1005,6 @@ module Raft =
       let! current = currentIndexM ()
 
       if current < msg.PrevLogIdx then
-
         do! debug <| sprintf "receiveAppendEntries: Failed (ci: %d) < (prev log idx: %d)"
                       current
                       msg.PrevLogIdx
@@ -1435,16 +1441,15 @@ module Raft =
   // /_/   \_\ .__/| .__/|_|\__, | |_____|_| |_|\__|_|   \__, | //
   //         |_|   |_|      |___/                        |___/  //
   ////////////////////////////////////////////////////////////////
+  let notifyChange (cbs: IRaftCallbacks<_>) change =
+    match change with
+      | NodeAdded(node)   -> cbs.NodeAdded   node
+      | NodeRemoved(node) -> cbs.NodeRemoved node
 
   let applyEntry (cbs: IRaftCallbacks<_>) = function
-    | JointConsensus(_,_,_,changes,_) ->
-      let applyChange change =
-        match change with
-          | NodeAdded(node)   -> cbs.NodeAdded   node
-          | NodeRemoved(node) -> cbs.NodeRemoved node
-      Array.iter applyChange changes
-    | Configuration(_,_,_,nodes,_) -> cbs.Configured nodes
-    | LogEntry(_,_,_,data,_)       -> cbs.ApplyLog data
+    | JointConsensus(_,_,_,changes,_) -> Array.iter (notifyChange cbs) changes
+    | Configuration(_,_,_,nodes,_)    -> cbs.Configured nodes
+    | LogEntry(_,_,_,data,_)          -> cbs.ApplyLog data
     | Snapshot(_,_,_,_,_,_,data) as snapshot  ->
       cbs.PersistSnapshot snapshot
       cbs.ApplyLog data
