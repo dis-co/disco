@@ -89,9 +89,9 @@ module JsUtilities =
 open Fable.Core
 
 [<Erase>]
-#endif
 [<CustomEquality>]
 [<CustomComparison>]
+#endif
 type Id =
   | Id of string
 
@@ -125,6 +125,7 @@ type Id =
       |> Id
 #endif
 
+#if JAVASCRIPT
     override self.Equals(o) =
       match o with
       | :? Id -> self.ToString() = o.ToString()
@@ -142,6 +143,7 @@ type Id =
           -1
         else
           1
+#endif
 
 //     _    _ _
 //    / \  | (_) __ _ ___  ___  ___
