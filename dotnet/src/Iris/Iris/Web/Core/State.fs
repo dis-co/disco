@@ -26,7 +26,7 @@ module State =
       ; Cues    = Array.empty }
 
     (*  ADD  *)
-    member state.Add (patch : Patch) =
+    member state.AddPatch (patch : Patch) =
       let exists = Array.exists (fun (p : Patch) -> p.Id = patch.Id) state.Patches
       if exists then
         state
@@ -34,19 +34,19 @@ module State =
         let patches' = Array.copy state.Patches // copy the array
         { state with Patches = Array.append patches' [| patch |]  }
 
-    member state.Add (iobox : IOBox) =
+    member state.AddIOBox (iobox : IOBox) =
       let updater (patch : Patch) =
         if iobox.Patch = patch.Id then
           Patch.AddIOBox patch iobox
         else patch
       { state with Patches = Array.map updater state.Patches }
 
-    member state.Add (cue : Cue) =
+    member state.AddCue (cue : Cue) =
       let copy = Array.copy state.Cues
       { state with Cues =  Array.append copy [|cue|] }
 
     (*  UPDATE  *)
-    member state.Update (patch : Patch) =
+    member state.UpdatePatch (patch : Patch) =
       { state with
           Patches = let mapper (oldpatch : Patch) =
                         if patch.Id = oldpatch.Id
@@ -54,25 +54,25 @@ module State =
                         else oldpatch
                     in Array.map mapper state.Patches }
 
-    member state.Update (iobox : IOBox) =
+    member state.UpdateIOBox (iobox : IOBox) =
       let mapper (patch : Patch) = Patch.UpdateIOBox patch iobox
       { state with Patches = Array.map mapper state.Patches }
 
-    member state.Update (cue : Cue) =
+    member state.UpdateCue (cue : Cue) =
       let mapper (cue' : Cue) =
         if cue.Id = cue'.Id then cue' else cue
       { state with Cues = Array.map mapper state.Cues }
 
     (* REMOVE *)
-    member state.Remove (patch : Patch) =
+    member state.RemovePatch (patch : Patch) =
       let pred (patch' : Patch) = patch.Id <> patch'.Id
       { state with Patches = Array.filter pred state.Patches }
 
-    member state.Remove (cue : Cue) =
+    member state.RemoveCue (cue : Cue) =
       let pred (cue' : Cue) = cue.Id <> cue'.Id
       { state with Cues = Array.filter pred state.Cues }
 
-    member state.Remove (iobox : IOBox) =
+    member state.RemoveIOBox (iobox : IOBox) =
       let updater (patch : Patch) =
         if iobox.Patch = patch.Id
         then Patch.RemoveIOBox patch iobox

@@ -90,6 +90,8 @@ open Fable.Core
 
 [<Erase>]
 #endif
+[<CustomEquality>]
+[<NoComparison>]
 type Id =
   | Id of string
 
@@ -122,6 +124,12 @@ type Id =
       |> sanitize
       |> Id
 #endif
+
+    override self.Equals(o) =
+      match o with
+      | :? Id -> self.ToString() = o.ToString()
+      | _     -> false
+
 
 //     _    _ _
 //    / \  | (_) __ _ ___  ___  ___

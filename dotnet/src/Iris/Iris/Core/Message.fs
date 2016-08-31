@@ -52,38 +52,39 @@ type AppEvent =
   | CueEvent   of Crud * Cue option
   | UnknownEvent
 
-  with override self.ToString() : string =
-                match self with
-                  | AppEvent(t) ->
-                    match t with
-                      | AppEventT.Initialize  -> "AppEvent(Initialize)"
-                      | AppEventT.Save        -> "AppEvent(Save)"
-                      | AppEventT.Undo        -> "AppEvent(Undo)"
-                      | AppEventT.Redo        -> "AppEvent(Redo)"
-                      | AppEventT.Reset       -> "AppEvent(Reset)"
+  with
+    override self.ToString() : string =
+      match self with
+      | AppEvent(t) ->
+        match t with
+          | AppEventT.Initialize  -> "AppEvent(Initialize)"
+          | AppEventT.Save        -> "AppEvent(Save)"
+          | AppEventT.Undo        -> "AppEvent(Undo)"
+          | AppEventT.Redo        -> "AppEvent(Redo)"
+          | AppEventT.Reset       -> "AppEvent(Reset)"
 
-                  | IOBoxEvent(t,_) ->
-                    match t with
-                      | Create -> "IOBoxEvent(Create)"
-                      | Delete -> "IOBoxEvent(Delete)"
-                      | Update -> "IOBoxEvent(Update)"
-                      | Read   -> "IOBoxEvent(Read)"
+      | IOBoxEvent(t,_) ->
+        match t with
+          | Create -> "IOBoxEvent(Create)"
+          | Delete -> "IOBoxEvent(Delete)"
+          | Update -> "IOBoxEvent(Update)"
+          | Read   -> "IOBoxEvent(Read)"
 
-                  | PatchEvent(t,_) ->
-                    match t with
-                      | Create -> "PatchEvent(Create)"
-                      | Delete -> "PatchEvent(Delete)"
-                      | Update -> "PatchEvent(Update)"
-                      | Read   -> "PatchEvent(Read)"
+      | PatchEvent(t,_) ->
+        match t with
+          | Create -> "PatchEvent(Create)"
+          | Delete -> "PatchEvent(Delete)"
+          | Update -> "PatchEvent(Update)"
+          | Read   -> "PatchEvent(Read)"
 
-                  | CueEvent(t,_) ->
-                    match t with
-                      | Create -> "CueEvent(Create)"
-                      | Delete -> "CueEvent(Delete)"
-                      | Update -> "CueEvent(Update)"
-                      | Read   -> "CueEvent(Read)"
+      | CueEvent(t,_) ->
+        match t with
+          | Create -> "CueEvent(Create)"
+          | Delete -> "CueEvent(Delete)"
+          | Update -> "CueEvent(Update)"
+          | Read   -> "CueEvent(Read)"
 
-                  | UnknownEvent -> "UnknownEvent"
+      | UnknownEvent -> "UnknownEvent"
 
 (*---------------
     ____ _ _            _

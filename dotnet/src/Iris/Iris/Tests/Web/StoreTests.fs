@@ -50,7 +50,8 @@ module Store =
         let name1 = patch.Name
         let name2 = "patch-2"
 
-        let isPatch (p : Patch) : bool = p.Id = patch.Id
+        let isPatch (p : Patch) : bool =
+          p.Id = patch.Id
 
         store.Dispatch <| PatchEvent(Create, patch)
 

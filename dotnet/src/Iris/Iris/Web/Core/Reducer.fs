@@ -18,36 +18,36 @@ module Reducer =
 
   let Reducer (ev : AppEvent) (state : State) =
     match ev with
-      | PatchEvent(action, patch) ->
-          match action with
-              | Create -> state.Add patch
-              | Update -> state.Update patch
-              | Delete -> state.Remove patch
-              | _ -> state
+    | PatchEvent(action, patch) ->
+        match action with
+        | Create -> state.AddPatch patch
+        | Update -> state.UpdatePatch patch
+        | Delete -> state.RemovePatch patch
+        | _ -> state
 
-      | IOBoxEvent(action, iobox) ->
-          match action with
-              | Create -> state.Add iobox
-              | Update -> state.Update iobox
-              | Delete -> state.Remove iobox
-              | _ -> state
-      
-      | CueEvent(action, cueish) ->
-          match action with
-              | Create ->
-                let input = JSON.stringify(Date.now() * Math.random())
-                let cue : Cue  = { Id = sha1sum input
-                                 ; Name = "Cue-" + input
-                                 ; IOBoxes = [||] }
-                in state.Add cue
-              | Update ->
-                if Option.isSome cueish
-                then state.Update (Option.get cueish)
-                else state
-              | Delete ->
-                if Option.isSome cueish
-                then state.Remove (Option.get cueish)
-                else state
-              | _ -> state
-      
-      | _ -> printfn "unknown event" ;state
+    | IOBoxEvent(action, iobox) ->
+        match action with
+        | Create -> state.AddIOBox iobox
+        | Update -> state.UpdateIOBox iobox
+        | Delete -> state.RemoveIOBox iobox
+        | _ -> state
+
+    | CueEvent(action, cueish) ->
+        match action with
+        | Create ->
+          let input = JSON.stringify(Date.now() * Math.random())
+          let cue : Cue  = { Id = sha1sum input
+                            ; Name = "Cue-" + input
+                            ; IOBoxes = [||] }
+          in state.AddCue cue
+        | Update ->
+          if Option.isSome cueish
+          then state.UpdateCue (Option.get cueish)
+          else state
+        | Delete ->
+          if Option.isSome cueish
+          then state.RemoveCue (Option.get cueish)
+          else state
+        | _ -> state
+
+    | _ -> printfn "unknown event" ;state
