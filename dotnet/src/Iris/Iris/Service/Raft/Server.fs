@@ -60,6 +60,38 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
   let appState = mkState context options |> newTVar
   let connections = newTVar Map.empty
 
+  //            _ _ _                _
+  //   ___ __ _| | | |__   __ _  ___| | _____
+  //  / __/ _` | | | '_ \ / _` |/ __| |/ / __|
+  // | (_| (_| | | | |_) | (_| | (__|   <\__ \
+  //  \___\__,_|_|_|_.__/ \__,_|\___|_|\_\___/
+
+  let mutable onLogMsg       : Option<LogLevel -> string -> unit>     = None
+  let mutable onConfigured   : Option<RaftNode array -> unit>        = None
+  let mutable onNodeAdded    : Option<RaftNode -> unit>              = None
+  let mutable onNodeUpdated  : Option<RaftNode -> unit>              = None
+  let mutable onNodeRemoved  : Option<RaftNode -> unit>              = None
+  let mutable onStateChanged : Option<RaftState -> RaftState -> unit> = None
+  let mutable onApplyLog     : Option<StateMachine -> unit>          = None
+
+  member self.OnLogMsg
+    with set cb = onLogMsg <- Some cb
+
+  member self.OnConfigured
+    with set cb = onConfigured <- Some cb
+
+  member self.OnNodeAdded
+    with set cb = onNodeAdded <- Some cb
+
+  member self.OnNodeUpdated
+    with set cb = onNodeUpdated <- Some cb
+
+  member self.OnNodeRemoved
+    with set cb = onNodeRemoved <- Some cb
+
+  member self.OnStateChanged
+    with set cb = onStateChanged <- Some cb
+
   //                           _
   //  _ __ ___   ___ _ __ ___ | |__   ___ _ __ ___
   // | '_ ` _ \ / _ \ '_ ` _ \| '_ \ / _ \ '__/ __|
@@ -220,11 +252,12 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
           match message with
             | RequestVoteResponse(sender, vote) -> Some vote
             | resp ->
-              this.Err <| sprintf "SendRequestVote: Unexpected Response: %A" resp
+              sprintf "SendRequestVote: Unexpected Response: %A" resp
+              |> this.Err
               None
         | _ ->
-          this.Err <| sprintf "SendRequestVote: No response received for request to %s"
-                       (string node.Id)
+          sprintf "SendRequestVote: No response received for request to %s" (string node.Id)
+          |> this.Err
           None
 
     member self.SendAppendEntries (node: RaftNode) (request: AppendEntries) =
@@ -241,11 +274,12 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
           match message with
             | AppendEntriesResponse(sender, ar) -> Some ar
             | resp ->
-              this.Err <| sprintf "SendAppendEntries: Unexpected Response:  %A" resp
+              sprintf "SendAppendEntries: Unexpected Response:  %A" resp
+              |> this.Err
               None
         | _ ->
-          this.Err <| sprintf "SendAppendEntries: No response received for request to %s"
-                       (string node.Id)
+          sprintf "SendAppendEntries: No response received for request to %s" (string node.Id)
+          |> this.Err
           None
 
     member self.SendInstallSnapshot node is =
@@ -263,14 +297,25 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
           match message with
             | InstallSnapshotResponse(sender, ar) -> Some ar
             | resp ->
-              this.Err <| sprintf "SendInstallSnapshot: Unexpected Response: %A" resp
+              sprintf "SendInstallSnapshot: Unexpected Response: %A" resp
+              |> this.Err
               None
         | _ ->
-          this.Err <| sprintf "SendInstallSnapshot: No response received for request to %s"
-                       (string node.Id)
+          sprintf "SendInstallSnapshot: No response received for request to %s" (string node.Id)
+          |> this.Err
           None
 
+    //     _                _          ____               _
+    //    / \   _ __  _ __ | |_   _   / ___|_ __ ___   __| |
+    //   / _ \ | '_ \| '_ \| | | | | | |   | '_ ` _ \ / _` |
+    //  / ___ \| |_) | |_) | | |_| | | |___| | | | | | (_| |
+    // /_/   \_\ .__/| .__/|_|\__, |  \____|_| |_| |_|\__,_|
+    //         |_|   |_|      |___/
+
     member self.ApplyLog sm =
+      match onApplyLog with
+      | Some cb -> cb sm
+      | _       -> ()
       sprintf "Applying state machine command (%A)" sm
       |> this.Info
 
@@ -283,33 +328,48 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
     member self.NodeAdded node   =
       try
         match findNode node.Id database with
-          | Some _ -> updateNode database node
-          |      _ -> insertNode database node
+        | Some _ -> updateNode database node
+        |      _ -> insertNode database node
+
         sprintf "Node was added. %s" (string node.Id)
         |> this.Debug
+
+        match onNodeAdded with
+        | Some cb -> cb node
+        | _       -> ()
+
       with
         | exn -> handleException "NodeAdded" exn
 
     member self.NodeUpdated node =
       try
         match findNode node.Id database with
-          | Some _ -> updateNode database node
-          |      _ -> insertNode database node
+        | Some _ -> updateNode database node
+        |      _ -> insertNode database node
+
         sprintf "Node was updated. %s" (string node.Id)
         |> this.Debug
+
+        match onNodeUpdated with
+        | Some cb -> cb node
+        | _       -> ()
       with
         | exn -> handleException "NodeAdded" exn
 
     member self.NodeRemoved node =
       try
         match findNode node.Id database with
-          | Some _ -> deleteNode database node
-          |      _ ->
-            sprintf "Node could not be removed. Not found: %s" (string node.Id)
-            |> this.Err
+        | Some _ -> deleteNode database node
+        |      _ ->
+          sprintf "Node could not be removed. Not found: %s" (string node.Id)
+          |> this.Err
 
         sprintf "Node was removed. %s" (string node.Id)
         |> this.Debug
+
+        match onNodeRemoved with
+        | Some cb -> cb node
+        | _       -> ()
       with
         | exn -> handleException "NodeAdded" exn
 
@@ -323,8 +383,13 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
 
 
     member self.Configured nodes =
-      sprintf "Cluster configuration done!"
-      |> this.Debug
+      let logstr = sprintf "Cluster configuration done!"
+
+      match onConfigured with
+      | Some cb -> cb nodes
+      | _       -> ()
+
+      this.Debug logstr
 
     member self.PrepareSnapshot raft = failwith "FIXME: PrepareSnapshot"
     member self.RetrieveSnapshot ()  = failwith "FIXME: RetrieveSnapshot"
@@ -340,8 +405,13 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
     ///
     /// Returns: unit
     member self.StateChanged old current =
-      sprintf "state changed from %A to %A" old current
-      |> this.Debug
+      let logstr = sprintf "state changed from %A to %A" old current
+
+      match onStateChanged with
+      | Some cb -> cb old current
+      | _       -> ()
+
+      this.Debug logstr
 
     /// ## Persist the vote for passed node to disk.
     ///
@@ -355,21 +425,21 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
       try
         let meta =
           match getMetadata database with
-            | Some meta -> meta
-            | _         ->
-              initMetadata database |> ignore
-              let state = readTVar appState |> atomically
-              saveMetadata state.Raft database
+          | Some meta -> meta
+          | _         ->
+            initMetadata database |> ignore
+            let state = readTVar appState |> atomically
+            saveMetadata state.Raft database
 
         match node with
-          | Some peer ->
-            meta.VotedFor <- string peer.Id
-            saveRaftMetadata meta database
-            sprintf "PersistVote for node: %A" (string peer.Id) |> this.Debug
-          | _         ->
-            meta.VotedFor <- null
-            saveRaftMetadata meta database
-            "PersistVote reset VotedFor" |> this.Debug
+        | Some peer ->
+          meta.VotedFor <- string peer.Id
+          saveRaftMetadata meta database
+          sprintf "PersistVote for node: %A" (string peer.Id) |> this.Debug
+        | _         ->
+          meta.VotedFor <- null
+          saveRaftMetadata meta database
+          "PersistVote reset VotedFor" |> this.Debug
       with
         | exn -> handleException "PersistTerm" exn
 
@@ -441,7 +511,13 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
         let now = DateTime.Now |> unixTime
         let tid = String.Format("[{0,2}]", Thread.CurrentThread.ManagedThreadId)
         let lvl = String.Format("[{0,5}]", string level)
-        printfn "%s [%d / %s / %s] %s" lvl now tid (string node.Id) msg
+        let log = sprintf "%s [%d / %s / %s] %s" lvl now tid (string node.Id) msg
+
+        match onLogMsg with
+          | Some cb -> cb level log
+          | _ -> ()
+
+        printfn "%s" log
 
       match self.State.Options.RaftConfig.LogLevel with
       | Debug -> doLog str
