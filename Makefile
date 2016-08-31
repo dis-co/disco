@@ -33,7 +33,7 @@ frontend.fsproj:
 	${BUILD} BuildFrontendFsProj
 
 frontend:
-	${BUILD} BuildFrontend
+	${BUILD} BuildFrontendDebug
 
 web.tests.watch:
 	${BUILD} WatchWebTests
@@ -54,7 +54,7 @@ worker.fsproj:
 	${BUILD} BuildWorkerFsProj
 
 worker:
-	${BUILD} BuildWorker
+	${BUILD} BuildWorkerDebug
 
 #        _ _
 #   __ _| | |

@@ -11,15 +11,72 @@ open System.Text.RegularExpressions
 //           |_|
 
 #if JAVASCRIPT
+open Fable.Core
+
+//  __  __       _   _
+// |  \/  | __ _| |_| |__
+// | |\/| |/ _` | __| '_ \
+// | |  | | (_| | |_| | | |
+// |_|  |_|\__,_|\__|_| |_|
+
+
+[<RequireQualifiedAccess>]
+module Math =
+
+  [<Emit("return Math.random()")>]
+  let random _ : int = failwith "ONLY IN JS"
+
+//  _____  _  _
+// |  ___|| || |_
+// | |_ |_  ..  _|
+// |  _||_      _|
+// |_|    |_||_|
+
 [<AutoOpen>]
 module Replacements =
-  open Fable.Core
 
   [<Emit("return $0")>]
   let uint8 (_: 't) : uint8 = failwith "ONLY IN JS"
 
   [<Emit("return 0")>]
   let sizeof<'t> : int = failwith "ONLY IN JS"
+
+  [<Emit("return ($0).toString(16)")>]
+  let inline encodeBase16 (_: ^a) : string = failwith "ONLY IN JS"
+
+[<AutoOpen>]
+module JsUtilities =
+
+  let mkGuid _ =
+    let lut =
+      [| 0 .. 255 |]
+      |> Array.map
+        (fun i ->
+          let n = if i < 16 then "0" else ""
+          n + encodeBase16 i)
+
+    let d0 = Math.random ()
+    let d1 = Math.random ()
+    let d2 = Math.random ()
+    let d3 = Math.random ()
+
+    lut.[d0 &&& 0xff]                 +
+    lut.[d0 >>> 8  &&& 0xff]          +
+    lut.[d0 >>> 16 &&& 0xff]          +
+    lut.[d0 >>> 24 &&& 0xff]          +
+    lut.[d1 &&& 0xff]                 +
+    lut.[d1 >>> 8 &&& 0xff]           +
+    lut.[d1 >>> 16 &&& 0x0f ||| 0x40] +
+    lut.[d1 >>> 24 &&& 0xff]          +
+    lut.[d2 &&& 0x3f ||| 0x80]        +
+    lut.[d2 >>> 8  &&& 0xff]          +
+    lut.[d2 >>> 16 &&& 0xff]          +
+    lut.[d2 >>> 24 &&& 0xff]          +
+    lut.[d3 &&& 0xff]                 +
+    lut.[d3 >>> 8  &&& 0xff]          +
+    lut.[d3 >>> 16 &&& 0xff]          +
+    lut.[d3 >>> 24 &&& 0xff]
+
 #endif
 
 //   ____       _     _
@@ -29,8 +86,9 @@ module Replacements =
 //  \____|\__,_|_|\__,_|
 
 #if JAVASCRIPT
-[<Erase>]
 open Fable.Core
+
+[<Erase>]
 #endif
 type Id =
   | Id of string
@@ -51,7 +109,10 @@ type Id =
     /// - unit: .
     ///
     /// Returns: Guid
-    static member Create () =
+    static member Create() =
+#if JAVASCRIPT
+      mkGuid () |> Id
+#else
       let sanitize (str: string) =
         Regex.Replace(str, "[\+|\/|\=]","").ToLower()
 
@@ -60,6 +121,7 @@ type Id =
       |> System.Convert.ToBase64String
       |> sanitize
       |> Id
+#endif
 
 //     _    _ _
 //    / \  | (_) __ _ ___  ___  ___
