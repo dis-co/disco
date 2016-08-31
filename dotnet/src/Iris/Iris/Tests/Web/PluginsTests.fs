@@ -44,10 +44,10 @@ module Plugins =
       let plugin = findPlugins StringPin |> (fun plugs -> plugs.[0])
       let inst = plugin.Create(fun _ -> ())
 
-      let elid = Guid "0xb33f"
+      let elid = Id "0xb33f"
 
       let slice : StringSliceD = { Index = 0UL; Value = "oh hey" }
-      let iobox = IOBox.String(elid,"url input", Guid "0xb4d1d34", Array.empty, [| slice |])
+      let iobox = IOBox.String(elid,"url input", Id "0xb4d1d34", Array.empty, [| slice |])
 
       inst.Render iobox
       |> createElement
@@ -68,7 +68,7 @@ module Plugins =
       let value2 = "pr1m0p"
 
       let slice : StringSliceD = { Index = 0UL; Value = value1 }
-      let iobox = IOBox.String(Guid "0xb33f","url input", Guid "0xb4d1d34", Array.empty, [| slice |])
+      let iobox = IOBox.String(Id "0xb33f","url input", Id "0xb4d1d34", Array.empty, [| slice |])
 
       inst.Render iobox
       |> createElement
@@ -113,7 +113,7 @@ module Plugins =
       let instances = new Plugins ()
 
       let slice : StringSliceD = { Index = 0UL; Value = "hello" }
-      let iobox = IOBox.String(Guid "0xb33f","url input", Guid "0xb4d1d34", Array.empty, [| slice |])
+      let iobox = IOBox.String(Id "0xb33f","url input", Id "0xb4d1d34", Array.empty, [| slice |])
 
       instances.Add iobox (fun _ -> ())
       equals 1 <| instances.Ids().Length
@@ -131,7 +131,7 @@ module Plugins =
       let instances = new Plugins ()
 
       let slice : StringSliceD = { Index = 0UL; Value = "hello" }
-      let iobox = IOBox.String(Guid "0xb33f","url input", Guid "0xb4d1d34",Array.empty, [| slice |])
+      let iobox = IOBox.String(Id "0xb33f","url input", Id "0xb4d1d34",Array.empty, [| slice |])
 
       instances.Add iobox (fun _ -> ())
       equals 1 <| instances.Ids().Length
@@ -158,7 +158,7 @@ module Plugins =
       let value2 = "pr1m0p"
 
       let slice : StringSliceD = { Index = 0UL; Value = value1 }
-      let iobox = IOBox.String(Guid "0xb33f","url input", Guid "0xb4d1d34", Array.empty, [| slice |])
+      let iobox = IOBox.String(Id "0xb33f","url input", Id "0xb4d1d34", Array.empty, [| slice |])
 
       let listener (box' : IOBox) : unit =
         match box'.Slices.[0] with

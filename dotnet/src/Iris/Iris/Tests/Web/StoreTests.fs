@@ -12,7 +12,7 @@ module Store =
 
   let withStore (wrap : Patch -> Store<State> -> unit) =
     let patch : Patch =
-      { Id = Guid "0xb4d1d34"
+      { Id = Id "0xb4d1d34"
       ; Name = "patch-1"
       ; IOBoxes = Array.empty
       }
@@ -88,7 +88,7 @@ module Store =
         equals 0 (Array.length store.State.Patches.[0].IOBoxes)
 
         let slice : StringSliceD = { Index = 0UL; Value = "Hey" }
-        let iobox : IOBox = IOBox.String(Guid "0xb33f","url input", patch.Id, Array.empty, [| slice |])
+        let iobox : IOBox = IOBox.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
 
         store.Dispatch <| IOBoxEvent(Create, iobox)
         equals 1 (Array.length store.State.Patches.[0].IOBoxes)
@@ -98,7 +98,7 @@ module Store =
     withStore <| fun patch store ->
       test "should not add an iobox to the store if patch does not exists" <| fun finish ->
         let slice : StringSliceD = { Index = 0UL; Value =  "Hey" }
-        let iobox = IOBox.String(Guid "0xb33f","url input", patch.Id, Array.empty, [| slice |])
+        let iobox = IOBox.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
         store.Dispatch <| IOBoxEvent(Create, iobox)
         equals 0 (Array.length store.State.Patches)
         finish ()
@@ -110,7 +110,7 @@ module Store =
         let name2 = "yes, cats are re-entrant."
 
         let slice : StringSliceD = { Index = 0UL; Value = "swell" }
-        let iobox = IOBox.String(Guid "0xb33f", name1, patch.Id, Array.empty, [| slice |])
+        let iobox = IOBox.String(Id "0xb33f", name1, patch.Id, Array.empty, [| slice |])
 
         store.Dispatch <| PatchEvent(Create, patch)
         store.Dispatch <| IOBoxEvent(Create, iobox)
@@ -132,7 +132,7 @@ module Store =
     withStore <| fun patch store ->
       test "should remove an iobox from the store if it exists" <| fun finish ->
         let slice : StringSliceD = { Index = 0UL; Value = "swell" }
-        let iobox = IOBox.String(Guid "0xb33f", "hi", Guid "0xb4d1d34", Array.empty, [| slice |])
+        let iobox = IOBox.String(Id "0xb33f", "hi", Id "0xb4d1d34", Array.empty, [| slice |])
 
         store.Dispatch <| PatchEvent(Create, patch)
         store.Dispatch <| IOBoxEvent(Create, iobox)

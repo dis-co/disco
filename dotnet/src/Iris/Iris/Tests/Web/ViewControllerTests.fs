@@ -48,19 +48,19 @@ module ViewController =
 
     test "should render successive updates of a patch view" <| fun finished ->
       let patch1 : Patch =
-        { Id = Guid "0xb33f"
+        { Id = Id "0xb33f"
         ; Name = "patch-1"
         ; IOBoxes = Array.empty
         }
 
       let patch2 : Patch =
-        { Id = Guid "0xd001"
+        { Id = Id "0xd001"
         ; Name = "patch-2"
         ; IOBoxes = Array.empty
         }
 
       let patch3 : Patch =
-        { Id = Guid "0x400f"
+        { Id = Id "0x400f"
         ; Name = "patch-3"
         ; IOBoxes = Array.empty
         }
@@ -95,7 +95,7 @@ module ViewController =
     (* ------------------------------------------------------------------------ *)
     test "should take care of removing its root element on Dispose" <| fun finished ->
       let patch1 : Patch =
-        { Id = Guid "0xb33f"
+        { Id = Id "0xb33f"
         ; Name = "patch-1"
         ; IOBoxes = Array.empty
         }

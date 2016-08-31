@@ -26,7 +26,7 @@ module PatchesView =
       resetPlugins()
       addString2Plug ()
 
-      let patchid = hash () |> Guid
+      let patchid = hash () |> Id
 
       let patch : Patch =
         { Id = patchid
@@ -53,8 +53,8 @@ module PatchesView =
       resetPlugins()
       addString2Plug ()
 
-      let pid1 = Guid "patch-2"
-      let pid2 = Guid "patch-3"
+      let pid1 = Id "patch-2"
+      let pid2 = Id "patch-3"
 
       let patch1 : Patch =
         { Id = pid1
@@ -100,14 +100,14 @@ module PatchesView =
       resetPlugins ()
       addString2Plug ()
 
-      let id1 = Guid "id1"
+      let id1 = Id "id1"
       let value = "hello"
 
       let slice : StringSliceD = { Index = 0UL; Value = value }
-      let iobox = IOBox.String(id1,"url input", Guid "0xb4d1d34", Array.empty, [| slice |])
+      let iobox = IOBox.String(id1,"url input", Id "0xb4d1d34", Array.empty, [| slice |])
 
       let patch : Patch =
-        { Id = Guid "0xb4d1d34"
+        { Id = Id "0xb4d1d34"
         ; Name = "patch-1"
         ; IOBoxes = [||]
         }
@@ -133,18 +133,18 @@ module PatchesView =
       resetPlugins ()
       addString2Plug ()
 
-      let id1 = Guid "iobox-3"
-      let id2 = Guid "iobox-4"
+      let id1 = Id "iobox-3"
+      let id2 = Id "iobox-4"
       let value = "hello"
 
       let slice1 : StringSliceD = { Index = 0UL; Value = value }
-      let iobox1 = IOBox.String(id1,"url input", Guid "0xb4d1d34", Array.empty, [| slice1 |])
+      let iobox1 = IOBox.String(id1,"url input", Id "0xb4d1d34", Array.empty, [| slice1 |])
 
       let slice2 : StringSliceD = { Index = 0UL; Value = value }
-      let iobox2 = IOBox.String(id2,"url input", Guid "0xb4d1d34", Array.empty, [| slice2 |])
+      let iobox2 = IOBox.String(id2,"url input", Id "0xb4d1d34", Array.empty, [| slice2 |])
 
       let patch : Patch =
-        { Id = Guid "0xb4d1d34"
+        { Id = Id "0xb4d1d34"
         ; Name = "patch-1"
         ; IOBoxes = [||]
         }
@@ -184,19 +184,19 @@ module PatchesView =
       resetPlugins ()
       addString2Plug ()
 
-      let elid = Guid "0xd34db33f"
+      let elid = Id "0xd34db33f"
       let value1 = "death to the confederacy!"
       let value2 = "the confederacy is dead!"
       let value3 = "death to racism!"
 
       let patch : Patch =
-        { Id = Guid "0xb4d1d34"
+        { Id = Id "0xb4d1d34"
         ; Name = "cooles patch ey"
         ; IOBoxes = [||]
         }
 
       let slice : StringSliceD = { Index = 0UL; Value = value1 }
-      let iobox = IOBox.String(elid, "url input", Guid "0xb4d1d34", Array.empty, [| slice |])
+      let iobox = IOBox.String(elid, "url input", Id "0xb4d1d34", Array.empty, [| slice |])
 
       let store : Store<State> =
         new Store<State>(Reducer, { State.Empty with Patches = [| patch |] })
