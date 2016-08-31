@@ -91,7 +91,7 @@ open Fable.Core
 [<Erase>]
 #endif
 [<CustomEquality>]
-[<NoComparison>]
+[<CustomComparison>]
 type Id =
   | Id of string
 
@@ -133,6 +133,15 @@ type Id =
     override self.GetHashCode() =
       self.ToString().GetHashCode()
 
+    interface System.IComparable with
+      member self.CompareTo(o: obj) =
+        let me = self.ToString()
+        let arr = [| me; o.ToString() |] |> Array.sort
+
+        if Array.findIndex ((=) me) arr = 0 then
+          -1
+        else
+          1
 
 //     _    _ _
 //    / \  | (_) __ _ ___  ___  ___
