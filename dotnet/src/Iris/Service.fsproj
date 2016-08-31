@@ -111,6 +111,7 @@
     <Compile Include="Iris\Core\StateMachine.fs" />
     <Compile Include="Iris\Core\Serialization.fs" />
     <Compile Include="Iris\Core\RaftUtils.fs" />
+    <Compile Include="Iris\Service\WebSocket.fs" />
     <Compile Include="Iris\Service\Raft\Zmq.fs" />
     <Compile Include="Iris\Service\AppState.fs" />
     <Compile Include="Iris\Service\Raft\Db.fs" />

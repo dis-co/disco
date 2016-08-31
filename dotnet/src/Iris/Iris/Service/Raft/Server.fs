@@ -92,6 +92,9 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
   member self.OnStateChanged
     with set cb = onStateChanged <- Some cb
 
+  member self.OnApplyLog
+    with set cb = onApplyLog <- Some cb
+
   //                           _
   //  _ __ ___   ___ _ __ ___ | |__   ___ _ __ ___
   // | '_ ` _ \ / _ \ '_ ` _ \| '_ \ / _ \ '__/ __|

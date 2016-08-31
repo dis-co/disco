@@ -44,6 +44,38 @@ module Main =
         // 1. Initialise the application server from the supplied options
         // let options = parseOptions args
         use server = new RaftServer(project.Config, kontext)
+        use wsserver = new WsServer(project.Config)
+
+        server.OnConfigured <- fun nodes ->
+          nodes
+          |> Array.map (fun (node: RaftNode) -> string node.Id)
+          |> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
+          |> wsserver.Broadcast
+
+        server.OnLogMsg <- fun _ msg ->
+          wsserver.Broadcast(msg)
+
+        server.OnNodeAdded <-
+          string
+          >> sprintf "Node Added: %s"
+          >> wsserver.Broadcast
+
+        server.OnNodeUpdated <-
+          string
+          >> sprintf "Node Updated: %s"
+          >> wsserver.Broadcast
+
+        server.OnNodeRemoved <-
+          string
+          >> sprintf "Node Removed: %s"
+          >> wsserver.Broadcast
+
+        server.OnApplyLog <-
+          string
+          >> sprintf "Command applied: %s"
+          >> wsserver.Broadcast
+
+        wsserver.Start()
         server.Start()
 
         // 6. Start the console input loop.
