@@ -130,6 +130,9 @@ type Id =
       | :? Id -> self.ToString() = o.ToString()
       | _     -> false
 
+    override self.GetHashCode() =
+      self.ToString().GetHashCode()
+
 
 //     _    _ _
 //    / \  | (_) __ _ ___  ___  ___
