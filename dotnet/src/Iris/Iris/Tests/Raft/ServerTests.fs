@@ -891,12 +891,14 @@ module ServerTests =
       let peer2 = Node.create (Id.Create())
 
       let state : Raft<unit> = Raft.create peer0
+      let lokk = new System.Object()
       let i = ref 0
       let cbs =
         { mkcbs (ref ()) with
             SendRequestVote = fun _ _ ->
-              i := !i + 1
-              Some { Granted = true; Term = 3UL; Reason = None } }
+              lock lokk <| fun _ ->
+                i := !i + 1
+                Some { Granted = true; Term = 3UL; Reason = None } }
         :> IRaftCallbacks<_>
 
       raft {
