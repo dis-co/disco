@@ -127,10 +127,8 @@
     <Compile Include="Iris\Service\Raft\Stm.fs" />
     <Compile Include="Iris\Service\Raft\Server.fs" />
     <Compile Include="Iris\Service\AssetServer.fs" />
-    <Compile Include="Iris\Service\WebSockets.fs" />
     <Compile Include="Iris\Service\CommandLine.fs" />
     <Compile Include="Iris\Service\Main.fs" />
-    <None Include="assets\example-project.yml" />
     <Content Include="Iris.exe.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

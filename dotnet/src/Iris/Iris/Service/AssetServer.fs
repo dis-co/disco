@@ -8,52 +8,65 @@ open Suave.Operators
 open Suave.Successful
 open Suave.Writers
 open Suave.Web
+
 open System.Threading
 open System.IO
 open System.Net
 open System.Net.Sockets
 open System.Diagnostics
 
+open Iris.Core
 
-[<AutoOpen>]
-module AssetServer =
+type AssetServer(config: Config) =
+  let cts = new CancellationTokenSource()
 
-  type AssetServer(addr : string, port : int) =
-    let cts = new CancellationTokenSource()
+  let noCache =
+    setHeader "Cache-Control" "no-cache, no-store, must-revalidate"
+    >=> setHeader "Need-Help" "k@ioct.it"
+    >=> setHeader "Pragma" "no-cache"
+    >=> setHeader "Expires" "0"
 
-    let port = Sockets.Port.Parse (string port)
-    let ipAddr = IPAddress.Parse addr
+  let locate dir str =
+    noCache >=> file (dir </> str)
 
-    let basepath =
-      let fn = Process.GetCurrentProcess().MainModule.FileName
-      Path.GetDirectoryName(fn) + "/assets"
+  let basepath =
+    Path.GetFullPath(".") </> "assets"
 
-    // Add more mime-types here if necessary
-    // the following are for fonts, source maps etc.
-    let mimeTypes = defaultMimeTypesMap
+  // Add more mime-types here if necessary
+  // the following are for fonts, source maps etc.
+  let mimeTypes = defaultMimeTypesMap
 
-    // our application only needs to serve files off the disk
-    // but we do need to specify what to do in the base case, i.e. "/"
-    let app =
-      choose [ GET >=> choose [ path "/"      >=> OK "should serve index"
-                                path "/tests" >=> OK "should serve tests page"
-                                browseHome ] ]
+  // our application only needs to serve files off the disk
+  // but we do need to specify what to do in the base case, i.e. "/"
+  let app =
+    choose [
+      GET >=> choose [
+        path "/" >=> locate basepath "index.html"
+        browseHome
+      ]
+    ]
 
-    let config =
-      { defaultConfig with cancellationToken = cts.Token
-                           homeFolder        = Some(basepath)
-                           bindings          = [ HttpBinding.mk HTTP ipAddr port ]
-                           mimeTypesMap      = mimeTypes }
+  let appConfig =
+    let token : CancellationToken = cts.Token
+    let addr = IPAddress.Parse config.RaftConfig.BindAddress
+    let port = Sockets.Port.Parse (string config.PortConfig.Http)
+    { defaultConfig with
+        cancellationToken = token
+        homeFolder        = Some(basepath)
+        bindings          = [ HttpBinding.mk HTTP addr port ]
+        mimeTypesMap      = mimeTypes }
 
-    let thread = new Thread(new ThreadStart(fun _ ->
-      try startWebServer config app
-      with
-        | :? System.OperationCanceledException -> ()
-        | ex -> printfn "Exception: %s" ex.Message))
+  let thread = new Thread(new ThreadStart(fun _ ->
+    try startWebServer appConfig app
+    with
+      | :? System.OperationCanceledException -> ()
+      | ex -> printfn "Exception: %s" ex.Message))
 
+
+  member this.Start() : unit =
+    thread.Start ()
+
+  interface System.IDisposable with
     member this.Dispose() : unit =
       cts.Cancel ()
       cts.Dispose ()
-
-    member this.Start() : unit =
-      thread.Start ()

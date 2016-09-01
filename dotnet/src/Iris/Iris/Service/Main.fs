@@ -45,6 +45,7 @@ module Main =
         // let options = parseOptions args
         use server = new RaftServer(project.Config, kontext)
         use wsserver = new WsServer(project.Config)
+        use httpserver = new AssetServer(project.Config)
 
         server.OnConfigured <-
           Array.map (fun (node: RaftNode) -> string node.Id)
@@ -74,7 +75,11 @@ module Main =
           >> sprintf "Command applied: %s"
           >> wsserver.Broadcast
 
+        printfn "Starting Http Server on %d" project.Config.PortConfig.Http
+        httpserver.Start()
+        printfn "Starting WebSocket Server on %d" project.Config.PortConfig.WebSocket
         wsserver.Start()
+        printfn "Starting Raft Server %d" project.Config.PortConfig.Raft
         server.Start()
 
         // 6. Start the console input loop.
