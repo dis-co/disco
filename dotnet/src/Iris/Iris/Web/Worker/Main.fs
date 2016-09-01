@@ -1,15 +1,13 @@
-﻿namespace Iris.Web.Worker
-
-
+﻿[<AutoOpen>]
 module Client =
 
   open Fable.Core
   open Fable.Import
-  
+
   open Iris.Core
   open Iris.Web.Core
   open Iris.Web.Views
-  
+
   (*  __  __       _
      |  \/  | __ _(_)_ __
      | |\/| |/ _` | | '_ \
@@ -19,14 +17,15 @@ module Client =
   let initialize (ctx : GlobalContext) (ev : WorkerEvent) : unit =
     ctx.Add(ev.ports.[0])
 
-  [<Emit "void(importScripts ? importScripts($script) : null)">]
-  let importScript (_: string) : unit = failwith "oh no jS"
+  [<Emit "importScripts ? importScripts($0) : null">]
+  let importScript (_: string) : unit = failwith "JS ONLY"
 
-  [<Emit "void (onconnect = $handler)">]
-  let onConnect (_: WorkerEvent -> unit) = failwith "hohoho"
+  [<Emit "void(onconnect = $0)">]
+  let onConnect (_: WorkerEvent -> unit) = failwith "JS ONLY"
 
-  let Main : unit =
-    importScript "dependencies/asmcrypto/asmcrypto.js"
+  [<Emit("throw JSON.stringify({ data: $0 })")>]
+  let throw (str: string) = failwith "JS ONLY"
 
-    let context = new GlobalContext()
-    onConnect (initialize context)
+
+onConnect <| fun ev ->
+  printfn "hello"
