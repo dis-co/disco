@@ -44,8 +44,19 @@ module Replacements =
   [<Emit("return ($0).toString(16)")>]
   let inline encodeBase16 (_: ^a) : string = failwith "ONLY IN JS"
 
+  [<Emit("return ($0).charCodeAt($1)")>]
+  let charCodeAt (_: string) (_: int) = failwith "ONLY IN JS"
+
 [<AutoOpen>]
 module JsUtilities =
+
+  let hashCode (str: string) : int =
+    let mutable hash = 0
+    for n in  0 .. str.Length - 1 do
+      let code = charCodeAt str n
+      hash <- ((hash <<< 5) - hash) + code
+      hash <- hash ||| 0
+    hash
 
   let mkGuid _ =
     let lut =
@@ -132,7 +143,7 @@ type Id =
       | _     -> false
 
     override self.GetHashCode() =
-      self.ToString().GetHashCode()
+      self.ToString() |> hashCode
 
     interface System.IComparable with
       member self.CompareTo(o: obj) =
