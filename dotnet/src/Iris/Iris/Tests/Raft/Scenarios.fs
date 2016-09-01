@@ -152,8 +152,6 @@ module Scenarios =
   let config = { FsCheck.Config.Default with MaxTest = 50 }
 
   let scenario_leader_appears =
-    skiptest "NOT CURRENTLY WORKING"
-
     testPropertyWithConfig config "leader appears" <| fun _ ->
       let numPeers = 3UL
 

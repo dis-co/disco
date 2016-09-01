@@ -1246,7 +1246,7 @@ module ServerTests =
         |> getAppendEntries
         |> assume "Should have PrevLogIdx 0" 0UL (fun ae -> ae.PrevLogIdx)
         |> assume "Should have one entry" 1UL (fun ae -> ae.Entries |> Option.get |> Log.depth )
-        |> assume "Should have entry with correct id" (Log.id log) (fun ae -> ae.Entries |> Option.get |> Log.id)
+        |> assume "Should have entry with correct id" (Log.getId log) (fun ae -> ae.Entries |> Option.get |> Log.getId)
         |> expect "Should have entry with term" 2UL (fun ae -> ae.Entries |> Option.get |> Log.entryTerm)
 
         sender.Outbox := List.empty // reset outbox
@@ -2221,7 +2221,7 @@ module ServerTests =
 
       let init = defaultServer "holy crap"
 
-      let cb l = count := Log.id l :: !count
+      let cb l = count := Log.getId l :: !count
 
       let cbs =
         { mkcbs (ref "yep") with
@@ -2235,7 +2235,7 @@ module ServerTests =
 
         let ids =
           [ log3; log2; log1; ]
-          |> List.map Log.id
+          |> List.map Log.getId
 
         do! setStateM Leader
 
@@ -2259,7 +2259,7 @@ module ServerTests =
       let init = defaultServer "holy crap"
 
       let cb l =
-        let fltr l r = Log.id l <> Log.id r
+        let fltr l r = Log.getId l <> Log.getId r
         in count := List.filter (fltr l) !count
 
       let cbs =

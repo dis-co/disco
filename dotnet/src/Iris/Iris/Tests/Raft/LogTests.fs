@@ -65,15 +65,15 @@ module Log =
         |> Log.append (LogEntry(id3, 0UL, 1UL, (), None))
 
       Log.at 1UL log
-      |> assume "Should be correct one" id1 (Log.id << Option.get)
+      |> assume "Should be correct one" id1 (Log.getId << Option.get)
       |> ignore
 
       Log.at 2UL log
-      |> assume "Should also be correct one" id2 (Log.id << Option.get)
+      |> assume "Should also be correct one" id2 (Log.getId << Option.get)
       |> ignore
 
       Log.at 3UL log
-      |> assume "Should also be correct one" id3 (Log.id << Option.get)
+      |> assume "Should also be correct one" id3 (Log.getId << Option.get)
       |> ignore
 
       expect "Should find none at invalid index" None (Log.at 8UL) log
@@ -91,15 +91,15 @@ module Log =
         |> Log.append (LogEntry(id3, 0UL, 1UL, (), None))
 
       Log.find id1 log
-      |> assume "Should be correct one" id1 (Log.id << Option.get)
+      |> assume "Should be correct one" id1 (Log.getId << Option.get)
       |> ignore
 
       Log.find id2 log
-      |> assume "Should also be correct one" id2 (Log.id << Option.get)
+      |> assume "Should also be correct one" id2 (Log.getId << Option.get)
       |> ignore
 
       Log.find id3 log
-      |> assume "Should also be correct one" id3 (Log.id << Option.get)
+      |> assume "Should also be correct one" id3 (Log.getId << Option.get)
       |> ignore
 
       Log.find (Id.Create()) log
@@ -251,7 +251,7 @@ module Log =
 
       Log.append newer log
       |> assume "Should have length 3" 3UL Log.size
-      |> expect "Should have proper id" id3 (Log.entries >> Option.get >> Log.id)
+      |> expect "Should have proper id" id3 (Log.entries >> Option.get >> Log.getId)
 
 
   let log_snapshot_remembers_last_state =

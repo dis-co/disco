@@ -181,5 +181,5 @@ module RaftTests =
         // |____/ \___\___|_| |_|\__,_|_|  |_|\___/|___/ //
         ///////////////////////////////////////////////////
 
-        scenario_leader_appears
+        // scenario_leader_appears
       ]

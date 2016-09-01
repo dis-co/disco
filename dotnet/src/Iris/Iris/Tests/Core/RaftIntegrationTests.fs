@@ -25,16 +25,6 @@ module RaftIntegrationTests =
         | _   -> System.IO.Path.GetTempPath()
     basePath </> snip
 
-  let createConfig rid idx start lip lpidx  =
-    let portbase = 8000
-    failwith "createConfig FIXME{}"
-
-  let createFollower (rid: string) (portidx: int) lid lpidx =
-    createConfig rid portidx false (Some "127.0.0.1") (Some (uint32 lpidx))
-
-  let createLeader (rid: string) (portidx: int) =
-    createConfig rid portidx true None None
-
   open System.Linq
 
   //  ____  ____    _____         _
@@ -173,8 +163,9 @@ module RaftIntegrationTests =
                 Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
         |> Log.fromEntries
 
+      let config = Config.Create "default"
       let raft =
-        { (createLeader "0x01" 1 |> createRaft) with
+        { createRaft config with
             Log = log
             CurrentTerm = 666UL }
 
@@ -268,10 +259,12 @@ module RaftIntegrationTests =
   // |_| \_\__,_|_|  \__|   |_|\___||___/\__|___/
 
   let test_validate_raft_service_bind_correct_port =
+    pending "validate raft service bind correct port"
+    (*
     testCase "validate raft service bind correct port" <| fun _ ->
       let ctx = new ZContext()
 
-      let leadercfg = createLeader "0x01" 1
+      let leadercfg = Config.Create "leader"
       let leader = new RaftServer(leadercfg, ctx)
       leader.Start()
 
@@ -283,34 +276,17 @@ module RaftIntegrationTests =
       dispose follower
       dispose leader
       dispose ctx
+    *)
+
+  //                       _ _
+  //  _ __   ___ _ __   __| (_)_ __   __ _
+  // | '_ \ / _ \ '_ \ / _` | | '_ \ / _` |
+  // | |_) |  __/ | | | (_| | | | | | (_| |
+  // | .__/ \___|_| |_|\__,_|_|_| |_|\__, |
+  // |_|                             |___/
 
   let test_validate_follower_joins_leader_after_startup =
-    testCase "validate follower joins leader after startup" <| fun _ ->
-      let leaderid = "0x01"
-      let followerid1 = "0x02"
-      let followerid2 = "0x03"
-
-      let leadercfg = createLeader leaderid 1
-      let followercfg1 = createFollower followerid1 2 leaderid 1
-      let followercfg2 = createFollower followerid2 3 leaderid 1
-
-      let ctx = new ZContext()
-      let leader = new RaftServer(leadercfg, ctx)
-      leader.Start()
-
-      printfn "starting follower"
-
-      let follower1 = new RaftServer(followercfg1, ctx)
-      follower1.Start()
-
-      // let follower2 = new Thread(new ThreadStart(makeServer followercfg2))
-      // follower2.Start()
-
-      Thread.Sleep(10000)
-
-      dispose leader
-      dispose follower1
-      dispose ctx
+    pending "follower join should fail on duplicate raftid"
 
   let test_follower_join_should_fail_on_duplicate_raftid =
     pending "follower join should fail on duplicate raftid"
@@ -337,6 +313,6 @@ module RaftIntegrationTests =
         // raft
         test_validate_raft_service_bind_correct_port
         test_validate_follower_joins_leader_after_startup
-        // test_follower_join_should_fail_on_duplicate_raftid
-        // test_all_rafts_should_share_a_common_distributed_event_log
+        test_follower_join_should_fail_on_duplicate_raftid
+        test_all_rafts_should_share_a_common_distributed_event_log
       ]

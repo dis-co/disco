@@ -234,7 +234,7 @@ module JointConsensus =
         do! expectM "Should still have correct node count for new configuration" (n / 2UL) numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" n numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.id entry) (lastConfigChange >> Option.get >> Log.id)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.getId entry) (lastConfigChange >> Option.get >> Log.getId)
 
         //       _           _   _               ____
         //   ___| | ___  ___| |_(_) ___  _ __   |___ \
@@ -363,7 +363,7 @@ module JointConsensus =
         do! expectM "Should still have correct node count for new configuration 2" n numPeers
         do! expectM "Should still have correct logical node count 2" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration 2" (n / 2UL) numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange 2" (Log.id entry) (lastConfigChange >> Option.get >> Log.id)
+        do! expectM "Should have JointConsensus entry as ConfigChange 2" (Log.getId entry) (lastConfigChange >> Option.get >> Log.getId)
 
         //       _           _   _               ____
         //   ___| | ___  ___| |_(_) ___  _ __   | ___|
@@ -528,7 +528,7 @@ module JointConsensus =
         do! expectM "Should still have correct node count for new configuration" (n / 2UL) numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" n numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.id entry) (lastConfigChange >> Option.get >> Log.id)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.getId entry) (lastConfigChange >> Option.get >> Log.getId)
         do! expectM "Should be found in joint consensus configuration myself" true (getNode self.Id >> Option.isSome)
 
         //                                  __ _                       _   _
@@ -552,10 +552,8 @@ module JointConsensus =
         ci := idx
         do! periodic 1001UL
 
-        do! expectM "Should only have half the nodes" (n / 2UL) numNodes
+        do! expectM "Should only have half one node (myself)" 1UL numNodes
         do! expectM "Should have None as ConfigChange" None lastConfigChange
-        do! expectM "Should be able to find myself" false (getNode self.Id >> Option.isSome)
-        do! expectM "Should be follower now" Follower getState
       }
       |> runWithCBS cbs
       |> noError
@@ -619,7 +617,7 @@ module JointConsensus =
         do! expectM "Should still have correct node count for new configuration" n numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" 1UL numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.id entry) (lastConfigChange >> Option.get >> Log.id)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.getId entry) (lastConfigChange >> Option.get >> Log.getId)
         do! expectM "Should be in joint consensus configuration" true inJointConsensus
 
         let! t = currentTermM ()
@@ -684,7 +682,7 @@ module JointConsensus =
         do! expectM "Should still have correct node count for new configuration" n numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" 1UL numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.id entry) (lastConfigChange >> Option.get >> Log.id)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.getId entry) (lastConfigChange >> Option.get >> Log.getId)
         do! expectM "Should be in joint consensus configuration" true inJointConsensus
 
         let! peers = getNodesM () >>= (Map.toArray >> Array.map snd >> returnM)
@@ -766,7 +764,7 @@ module JointConsensus =
         do! expectM "Should still have correct node count for new configuration" (n / 2UL) numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" n numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.id entry) (lastConfigChange >> Option.get >> Log.id)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.getId entry) (lastConfigChange >> Option.get >> Log.getId)
         do! expectM "Should be in joint consensus configuration" true inJointConsensus
 
         let! committed = responseCommitted response
@@ -818,7 +816,7 @@ module JointConsensus =
         do! expectM "Should still have correct node count for new configuration" n numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" (n / 2UL) numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.id entry) (lastConfigChange >> Option.get >> Log.id)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.getId entry) (lastConfigChange >> Option.get >> Log.getId)
 
         let! result = responseCommitted response
         do! expectM "Should be committed" true (konst result)

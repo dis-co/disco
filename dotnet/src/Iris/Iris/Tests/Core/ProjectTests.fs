@@ -31,7 +31,7 @@ module ProjectTests =
           |> save signature "Initial project save."
           |> Option.get
 
-        let result = Project.Load(path + (sprintf "/%s.iris" name))
+        let result = Project.Load(path </> PROJECT_FILENAME)
 
         expect "Projects should be loaded" true Option.isSome result
 
@@ -218,7 +218,7 @@ module ProjectTests =
           |> Option.get
 
         let loaded =
-          Project.Load(path + sprintf "/%s.iris" name)
+          Project.Load(path </> PROJECT_FILENAME)
           |> Option.get
 
         // the only difference will be the automatically assigned timestamp
@@ -253,13 +253,13 @@ module ProjectTests =
           |> save signature "Initial commit."
 
         let loaded =
-          Path.Combine(path, sprintf "%s.iris" name)
+          (path </> PROJECT_FILENAME)
           |> Project.Load
           |> Option.get
 
         expect "Projects should be a folder"         true  Directory.Exists path
         expect "Projects should be a git repo"       true  Directory.Exists (path + "/.git")
-        expect "Projects should have project yml"    true  File.Exists (path + "/" + name + ".iris")
+        expect "Projects should have project yml"    true  File.Exists (path </> PROJECT_FILENAME)
         expect "Projects should have repo"           true  (repository >> Option.isSome) loaded
         expect "Projects should not be dirty"        false (repository >> Option.get >> isDirty) loaded
         expect "Projects should have initial commit" 1     (repository >> Option.get >> commitCount) loaded
@@ -290,7 +290,7 @@ module ProjectTests =
           |> save signature msg1
           |> Option.get
 
-        Path.Combine(path, sprintf "%s.iris" name)
+        (path </> PROJECT_FILENAME)
         |> Project.Load
         |> Option.get
         |> fun p ->
@@ -308,7 +308,8 @@ module ProjectTests =
           |> save signature msg2
           |> Option.get
 
-        Path.Combine(path, sprintf "%s.iris" name)
+
+        (path </> PROJECT_FILENAME)
         |> Project.Load
         |> Option.get
         |> fun p ->
@@ -329,7 +330,7 @@ module ProjectTests =
            |> save signature msg3
            |> Option.get
 
-        Path.Combine(path, sprintf "%s.iris" name)
+        (path </> PROJECT_FILENAME)
         |> Project.Load
         |> Option.get
         |> fun p ->

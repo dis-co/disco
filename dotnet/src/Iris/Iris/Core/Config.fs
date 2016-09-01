@@ -606,7 +606,7 @@ module Configuration =
         ; State      = RaftNodeState.Parse node.State
         ; Voting     = true
         ; VotedForMe = false
-        ; NextIndex  = 0UL
+        ; NextIndex  = 1UL
         ; MatchIndex = 0UL
         }
       nodes := (node' :: !nodes)
