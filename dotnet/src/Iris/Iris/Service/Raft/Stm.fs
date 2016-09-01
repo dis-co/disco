@@ -83,7 +83,7 @@ let waitForCommit (appended: EntryResponse) (appState: TVar<AppState>) cbs =
 /// Returns: Either<RaftError * Raft, unit * Raft, EntryResponse * Raft>
 let joinCluster (nodes: RaftNode array) (appState: TVar<AppState>) cbs =
   let state = readTVar appState |> atomically
-  let changes = Array.map (fun node -> NodeAdded node) nodes
+  let changes = Array.map NodeAdded nodes
   let result =
     raft {
       let! term = currentTermM ()
@@ -155,7 +155,7 @@ let onConfigDone (appState: TVar<AppState>) cbs =
 /// Returns: RaftResponse
 let leaveCluster (nodes: RaftNode array) (appState: TVar<AppState>) cbs =
   let state = readTVar appState |> atomically
-  let changes = Array.map (fun node -> NodeRemoved node) nodes
+  let changes = Array.map NodeRemoved nodes
   let result =
     raft {
       let! term = currentTermM ()

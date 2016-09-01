@@ -191,7 +191,7 @@
 
         <MaxLinesInLambdaFunction>
           <Enabled>true</Enabled>
-          <Lines>7</Lines>
+          <Lines>50</Lines>
         </MaxLinesInLambdaFunction>
 
         <MaxLinesInMatchLambdaFunction>
@@ -221,7 +221,7 @@
 
         <MaxLinesInClass>
           <Enabled>true</Enabled>
-          <Lines>500</Lines>
+          <Lines>1000</Lines>
         </MaxLinesInClass>
 
         <MaxLinesInEnum>
@@ -240,7 +240,7 @@
         </MaxLinesInRecord>
 
         <MaxLinesInModule>
-          <Enabled>true</Enabled>
+          <Enabled>false</Enabled>
           <Lines>1000</Lines>
         </MaxLinesInModule>
       </Rules>
@@ -250,7 +250,7 @@
     <Typography>
       <Rules>
         <MaxLinesInFile>
-          <Enabled>true</Enabled>
+          <Enabled>false</Enabled>
           <Lines>1000</Lines>
         </MaxLinesInFile>
 

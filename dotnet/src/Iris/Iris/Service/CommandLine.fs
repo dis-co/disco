@@ -17,12 +17,12 @@ open Iris.Service.Raft.Server
 ////////////////////////////////////////
 
 type CLIArguments =
-  | [<EqualsAssignment>] Bind_Address of string
-  | [<EqualsAssignment>] Raft_Port    of uint32
-  | [<EqualsAssignment>] Web_Port     of uint32
-  | [<EqualsAssignment>] Ws_Port      of uint32
-  | [<EqualsAssignment>] Project_Dir  of string
-  | [<EqualsAssignment>] Project_Name of string
+  | [<EqualsAssignment>] BindAddress of string
+  | [<EqualsAssignment>] RaftPort    of uint32
+  | [<EqualsAssignment>] WebPort     of uint32
+  | [<EqualsAssignment>] WsPort      of uint32
+  | [<EqualsAssignment>] ProjectDir  of string
+  | [<EqualsAssignment>] ProjectName of string
   |                      Create
   |                      Start
   |                      Reset
@@ -31,22 +31,22 @@ type CLIArguments =
   interface IArgParserTemplate with
     member self.Usage =
       match self with
-        | Project_Dir  _ -> "Project directory to place the config & database in"
-        | Project_Name _ -> "Project name when using --create"
-        | Bind_Address _ -> "Specify a valid IP address."
-        | Web_Port     _ -> "Http server port."
-        | Ws_Port      _ -> "WebSocket port."
-        | Raft_Port    _ -> "Raft server port (internal)."
-        | Create         -> "Create a new configuration (requires --data-dir --bind-address --web-port --raft-port)"
-        | Start          -> "Start the server (requires --data-dir)"
-        | Reset          -> "Join an existing cluster (requires --data-dir)"
-        | Dump           -> "Dump the current state on disk (requires --data-dir)"
+        | ProjectDir  _ -> "Project directory to place the config & database in"
+        | ProjectName _ -> "Project name when using --create"
+        | BindAddress _ -> "Specify a valid IP address."
+        | WebPort     _ -> "Http server port."
+        | WsPort      _ -> "WebSocket port."
+        | RaftPort    _ -> "Raft server port (internal)."
+        | Create        -> "Create a new configuration (requires --data-dir --bind-address --web-port --raft-port)"
+        | Start         -> "Start the server (requires --data-dir)"
+        | Reset         -> "Join an existing cluster (requires --data-dir)"
+        | Dump          -> "Dump the current state on disk (requires --data-dir)"
 
 let parser = ArgumentParser.Create<CLIArguments>()
 
 let validateOptions (opts: ParseResults<CLIArguments>) =
   let ensureDir b =
-    if opts.Contains <@ Project_Dir @> |> not then
+    if opts.Contains <@ ProjectDir @> |> not then
       printfn "Error: you must specify a project dir when starting a node"
       exit 3
     b
@@ -70,12 +70,12 @@ let validateOptions (opts: ParseResults<CLIArguments>) =
     exit 1
 
   if opts.Contains <@ Create @> then
-    let name = opts.Contains <@ Project_Name @>
-    let dir  = opts.Contains <@ Project_Dir @>
-    let bind = opts.Contains <@ Bind_Address @>
-    let web  = opts.Contains <@ Web_Port @>
-    let raft = opts.Contains <@ Raft_Port @>
-    let ws   = opts.Contains <@ Ws_Port @>
+    let name = opts.Contains <@ ProjectName @>
+    let dir  = opts.Contains <@ ProjectDir @>
+    let bind = opts.Contains <@ BindAddress @>
+    let web  = opts.Contains <@ WebPort @>
+    let raft = opts.Contains <@ RaftPort @>
+    let ws   = opts.Contains <@ WsPort @>
 
     if not (name && bind && web && raft && ws) then
       printfn "Error: when creating a new configuration you must specify the following options:"

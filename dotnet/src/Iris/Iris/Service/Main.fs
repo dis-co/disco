@@ -46,11 +46,10 @@ module Main =
         use server = new RaftServer(project.Config, kontext)
         use wsserver = new WsServer(project.Config)
 
-        server.OnConfigured <- fun nodes ->
-          nodes
-          |> Array.map (fun (node: RaftNode) -> string node.Id)
-          |> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
-          |> wsserver.Broadcast
+        server.OnConfigured <-
+          Array.map (fun (node: RaftNode) -> string node.Id)
+          >> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
+          >> wsserver.Broadcast
 
         server.OnLogMsg <- fun _ msg ->
           wsserver.Broadcast(msg)
@@ -92,8 +91,8 @@ module Main =
   //  \____|_|  \___|\__,_|\__\___|
 
   let createDataDir (parsed: ParseResults<CLIArguments>) =
-    let baseDir = parsed.GetResult <@ Project_Dir @>
-    let name = parsed.GetResult <@ Project_Name @>
+    let baseDir = parsed.GetResult <@ ProjectDir @>
+    let name = parsed.GetResult <@ ProjectName @>
     let dir = IO.Path.Combine(baseDir, name)
     let raftDir = IO.Path.Combine(IO.Path.GetFullPath(dir), RAFT_DIRECTORY)
 
@@ -117,12 +116,12 @@ module Main =
         |> updateEngine
           { def.Config.RaftConfig with
               DataDir     = raftDir
-              BindAddress = parsed.GetResult <@ Bind_Address @> }
+              BindAddress = parsed.GetResult <@ BindAddress @> }
         |> updatePorts
           { def.Config.PortConfig with
-              WebSocket = parsed.GetResult <@ Ws_Port @>
-              Http = parsed.GetResult <@ Web_Port @>
-              Raft = parsed.GetResult <@ Raft_Port @> }
+              WebSocket = parsed.GetResult <@ WsPort @>
+              Http = parsed.GetResult <@ WebPort @>
+              Raft = parsed.GetResult <@ RaftPort @> }
       { def with
           Path = Some dir
           Config = cfg }
@@ -206,7 +205,7 @@ module Main =
     if parsed.Contains <@ Create @> then
       createDataDir parsed
     else
-      match parsed.TryGetResult <@ Project_Dir @> with
+      match parsed.TryGetResult <@ ProjectDir @> with
         | Some dir ->
           if parsed.Contains <@ Start @> then
             startRaft dir
