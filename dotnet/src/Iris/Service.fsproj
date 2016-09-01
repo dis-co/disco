@@ -74,10 +74,17 @@
     </When>
   </Choose>
   <Import Project="..\..\packages\xunit.core\build\$(__paket__xunit_core_props).props" Condition="Exists('..\..\packages\xunit.core\build\$(__paket__xunit_core_props).props')" Label="Paket" />
+
+  <ItemGroup>
+    <FrontendAssets Include="assets\frontend\**\*.*" />
+  </ItemGroup>
+
   <Target Name="AfterBuild">
+    <Copy SourceFiles="@(FrontendAssets)" DestinationFolder="$(OutputPath)\assets\%(RecursiveDir)" />
     <FSharpLintTask Project="$(MSBuildProjectFullPath)" Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' " />
     <FSharpLintTask Project="$(MSBuildProjectFullPath)" TreatWarningsAsErrors="true" Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' " />
   </Target>
+
   <ItemGroup>
     <Compile Include="AssemblyInfo\ServiceInfo.fs" />
     <Compile Include="Iris\Core\IpAddress.fs" />
