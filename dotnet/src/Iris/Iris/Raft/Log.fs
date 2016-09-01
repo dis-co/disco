@@ -165,7 +165,7 @@ module private LogEntry =
   //
   /// Return the current log entry id.
 
-  let id = function
+  let getId = function
     | Configuration(id,_,_,_,_)    -> id
     | JointConsensus(id,_,_,_,_) -> id
     | LogEntry(id,_,_,_,_)         -> id
@@ -724,7 +724,7 @@ module private LogEntry =
 
   let append (newer : LogEntry<'data>) (older : LogEntry<'data>) =
     let _aggregator (_log : LogEntry<'data>) (_entry : LogEntry<'data>) =
-      if id _log = id _entry
+      if getId _log = getId _entry
       then _log
       else
         let nextIdx = index _log + 1UL
@@ -743,7 +743,7 @@ module private LogEntry =
 
     // find the last shared ancestor
     let last = last newer
-    let lcd = find (id last) older
+    let lcd = find (getId last) older
 
     match lcd with
       | Some ancestor ->
@@ -981,7 +981,7 @@ module Log =
   let mkConfig term nodes = LogEntry.mkConfig term nodes
   let mkConfigChange term old newer = LogEntry.mkConfigChange term old newer
 
-  let id log = LogEntry.id log
+  let getId log = LogEntry.getId log
 
   let data log = LogEntry.data log
 

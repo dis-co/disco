@@ -483,7 +483,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
     member self.PersistLog log =
       try
         insertLogs log database
-        sprintf "PersistLog insert id: %A" (Log.id log |> string)
+        sprintf "PersistLog insert id: %A" (Log.getId log |> string)
         |> this.Debug
       with
         | _ ->
@@ -504,7 +504,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
     member self.DeleteLog log =
       try
         deleteLogs log database
-        |> sprintf "DeleteLog id: %A result: %b" (Log.id log |> string)
+        |> sprintf "DeleteLog id: %A result: %b" (Log.getId log |> string)
         |> this.Debug
       with
         | exn -> handleException "DeleteLog" exn

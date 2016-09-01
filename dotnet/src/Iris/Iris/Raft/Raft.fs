@@ -1396,7 +1396,7 @@ module Raft =
 
           return! currentTermM () >>= fun term ->
                     returnM { resp with
-                                Id = LogEntry.id appended
+                                Id = LogEntry.getId appended
                                 Term = term
                                 Index = Log.entryIndex appended }
         | _ ->
@@ -1420,7 +1420,7 @@ module Raft =
         return! failM UnexpectedVotingChange
       elif isLeader state then
         do! debug <| sprintf "receiveEntry: (id: %s) (idx: %d) (term: %d)"
-                      ((LogEntry.id entry).ToString() )
+                      ((LogEntry.getId entry).ToString() )
                       (Log.index state.Log + 1UL)
                       state.CurrentTerm
 

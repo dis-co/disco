@@ -147,7 +147,7 @@ type LogData() =
           logdata.Index    <- int64 idx
           logdata.Term     <- int64 term
           logdata.Nodes    <- coder.Pickle(nodes)
-          logdata.Previous <- string <| Log.id prev
+          logdata.Previous <- string <| Log.getId prev
 
         | JointConsensus(id,idx,term,changes,None) ->
           logdata.Id       <- string id
@@ -162,7 +162,7 @@ type LogData() =
           logdata.Index    <- int64 idx
           logdata.Term     <- int64 term
           logdata.Changes  <- coder.Pickle(changes)
-          logdata.Previous <- string <| Log.id prev
+          logdata.Previous <- string <| Log.getId prev
 
         | LogEntry(id,idx,term,data,None) ->
           logdata.Id       <- string id
@@ -177,7 +177,7 @@ type LogData() =
           logdata.Index    <- int64 idx
           logdata.Term     <- int64 term
           logdata.Data     <- coder.Pickle(data)
-          logdata.Previous <- string <| Log.id prev
+          logdata.Previous <- string <| Log.getId prev
 
         | Snapshot(id,idx,term,lidx,lterm,nodes,data) ->
           logdata.Id        <- string id
@@ -824,7 +824,7 @@ let updateLogs (log: LogEntry) (db: LiteDatabase) =
 ///
 /// Returns: bool
 let deleteLog (log: LogEntry) (db: LiteDatabase) =
-  logCollection db |> deleteById (Log.id log |> string)
+  logCollection db |> deleteById (Log.getId log |> string)
 
 /// ## Delete all logs in passed log chain
 ///
@@ -837,7 +837,7 @@ let deleteLog (log: LogEntry) (db: LiteDatabase) =
 /// Returns: bool
 let deleteLogs (log: LogEntry) (db: LiteDatabase) =
   let ids =
-    Log.map (Log.id >> string) log
+    Log.map (Log.getId >> string) log
     |> Array.ofList
   logCollection db |> deleteMany ids
 
@@ -931,7 +931,7 @@ let saveMetadata (raft: Raft) (db: LiteDatabase) =
   meta.LastAppliedIndex <- int64 raft.LastAppliedIdx
 
   match raft.ConfigChangeEntry with
-    | Some entry -> meta.ConfigChangeEntry <- string <| Log.id entry
+    | Some entry -> meta.ConfigChangeEntry <- string <| Log.getId entry
     | _          -> meta.ConfigChangeEntry <- null
 
   match raft.VotedFor with
