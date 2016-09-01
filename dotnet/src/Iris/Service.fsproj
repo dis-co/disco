@@ -81,6 +81,7 @@
 
   <Target Name="AfterBuild">
     <Copy SourceFiles="@(FrontendAssets)" DestinationFolder="$(OutputPath)\assets\%(RecursiveDir)" />
+    <Exec Command="npm install" WorkingDirectory="$(OutputPath)\assets" />
     <FSharpLintTask Project="$(MSBuildProjectFullPath)" Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' " />
     <FSharpLintTask Project="$(MSBuildProjectFullPath)" TreatWarningsAsErrors="true" Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' " />
   </Target>
