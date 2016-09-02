@@ -82,14 +82,33 @@ module JsUtilities =
     |> Array.fold (fun m str -> m + "-" + str) (s4())
 
 [<Erase>]
+[<CustomEquality>]
+[<CustomComparison>]
 type Id =
   | Id of string
 
+  with
+    override self.Equals(o) =
+      match o with
+      | :? Id -> self.ToString() = o.ToString()
+      | _     -> false
+
+    override self.GetHashCode() =
+      self.ToString() |> hashCode
+
+    interface System.IComparable with
+      member self.CompareTo(o: obj) =
+        let me = self.ToString()
+        let arr = [| me; o.ToString() |] |> Array.sort
+
+        if Array.findIndex ((=) me) arr = 0 then
+          -1
+        else
+          1
+
 [<RequireQualifiedAccess>]
 module Id =
-
-  let Create _ =
-    mkGuid () |> Id
+  let Create _ = mkGuid () |> Id
 
 #else
 

@@ -237,25 +237,25 @@ type GlobalContext() =
   member __.OnClientMessage(msg : MessageEvent<ClientMessage<State>>) : unit =
     let handleAppEvent (session: Session) (appevent: AppEvent) =
       match appevent with
-      | IOBoxEvent (Create,iobox) as ev -> __.SendServer(AddIOBox iobox)
-      | IOBoxEvent (Read,iobox)   as ev -> __.SendServer(AddIOBox iobox)
-      | IOBoxEvent (Update,iobox) as ev -> __.SendServer(UpdateIOBox iobox)
-      | IOBoxEvent (Delete,iobox) as ev -> __.SendServer(RemoveIOBox iobox)
+      | IOBoxEvent (Create,iobox) -> __.SendServer(AddIOBox iobox)
+      | IOBoxEvent (Read,iobox)   -> __.SendServer(AddIOBox iobox)
+      | IOBoxEvent (Update,iobox) -> __.SendServer(UpdateIOBox iobox)
+      | IOBoxEvent (Delete,iobox) -> __.SendServer(RemoveIOBox iobox)
 
-      | PatchEvent (Create,patch) as ev -> __.SendServer(AddPatch patch)
-      | PatchEvent (Read,patch)   as ev -> __.SendServer(AddPatch patch)
-      | PatchEvent (Update,patch) as ev -> __.SendServer(UpdatePatch patch)
-      | PatchEvent (Delete,patch) as ev -> __.SendServer(RemovePatch patch)
+      | PatchEvent (Create,patch) -> __.SendServer(AddPatch patch)
+      | PatchEvent (Read,patch)   -> __.SendServer(AddPatch patch)
+      | PatchEvent (Update,patch) -> __.SendServer(UpdatePatch patch)
+      | PatchEvent (Delete,patch) -> __.SendServer(RemovePatch patch)
 
-      | CueEvent (Create,cue) as ev -> __.SendServer(AddCue cue)
-      | CueEvent (Read,cue)   as ev -> __.SendServer(AddCue cue)
-      | CueEvent (Update,cue) as ev -> __.SendServer(UpdateCue cue)
-      | CueEvent (Delete,cue) as ev -> __.SendServer(RemoveCue cue)
+      | CueEvent (Create,cue) -> __.SendServer(AddCue cue)
+      | CueEvent (Read,cue)   -> __.SendServer(AddCue cue)
+      | CueEvent (Update,cue) -> __.SendServer(UpdateCue cue)
+      | CueEvent (Delete,cue) -> __.SendServer(RemoveCue cue)
 
       | _ -> __.Log "other are currently not supported in-worker"
 
       store.Dispatch appevent
-      __.Multicast(session, ClientMessage.Render(store.State))
+      __.Broadcast(ClientMessage.Render(store.State))
 
     match msg.Data with
     | ClientMessage.Close(session) -> __.UnRegister(session)
