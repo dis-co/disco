@@ -105,8 +105,8 @@ module Patches =
 
     let cueView (context : ClientContext) (cue : Cue) =
       Div [ ElmId (string cue.Id); Class "cue" ]
-          [| Text cue.Name
-             destroy context cue |]
+          [| Text (string cue.Id)
+          ; destroy context cue |]
 
     let cueList (context : ClientContext) (cues : Cue array) : Html =
       Array.map (cueView context) cues
