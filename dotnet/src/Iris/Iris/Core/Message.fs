@@ -16,6 +16,7 @@ type ApiAction =
   | AddIOBox    of IOBox
   | UpdateIOBox of IOBox
   | RemoveIOBox of IOBox
+  | LogStr      of string
 
 (*
         _                _____                 _
@@ -86,7 +87,7 @@ type AppEvent =
 
       | UnknownEvent -> "UnknownEvent"
 
-(*---------------
+(* //////////////////////////////////////////////////////////////////////////////
     ____ _ _            _
    / ___| (_) ___ _ __ | |_
   | |   | | |/ _ \ '_ \| __|
@@ -107,6 +108,9 @@ type AppEvent =
   |                  |    "log"      |                        |   "log"       |                  |
   | console.log      |<--------------|         Log            |-------------->| console.log      |
   |                  |               |                        |               |                  |
+  |                  |  "connect"    |                        |  "connect"    |                  |
+  |                  |-------------->|      Connect           |<------------- |                  |
+  |                  |               |                        |               |                  |
   |                  |  "connected"  |                        |  "connected"  |                  |
   |                  |<--------------|      Connected         |-------------->|                  |
   |                  |               |                        |               |                  |
@@ -124,7 +128,7 @@ type AppEvent =
   |                  |               |                        |               |                  |
   +------------------+               +------------------------+               +------------------+
 
-  *--------------------------------------------------------------------------*)
+  ///////////////////////////////////////////////////////////////////////////*)
 
 [<RequireQualifiedAccess>]
 type ClientMessage<'state> =
@@ -141,5 +145,7 @@ type ClientMessage<'state> =
   | Error       of Error              // an error occuring inside the worker
   | Render      of 'state             // instruct all clients to render new state
   | Event       of Session * AppEvent // encapsulates an action or event that happened on the client
+  | Connect     of string             // Connect to the specified endpoint
   | Connected                         // worker websocket is connected to service
+  | Disconnect  of string             // Disconnect from server
   | Disconnected                      // worker websocket was disconnected from service

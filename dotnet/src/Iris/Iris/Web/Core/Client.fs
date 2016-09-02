@@ -9,23 +9,47 @@ module Client =
   open Fable.Import.Browser
   open Iris.Core
 
+  [<Emit("window.location.hostname")>]
+  let getHostname _ : string = failwith "ONLY JS"
+
+  [<Emit("parseInt(window.location.port, 10)")>]
+  let getHostPort _ : int = failwith "ONLY_JS"
+
+  //  ____  _                        ___        __         _
+  // / ___|| |__   __ _ _ __ ___  __| \ \      / /__  _ __| | _____ _ __
+  // \___ \| '_ \ / _` | '__/ _ \/ _` |\ \ /\ / / _ \| '__| |/ / _ \ '__|
+  //  ___) | | | | (_| | | |  __/ (_| | \ V  V / (_) | |  |   <  __/ |
+  // |____/|_| |_|\__,_|_|  \___|\__,_|  \_/\_/ \___/|_|  |_|\_\___|_|
+
+  type ErrorMsg() =
+    [<Emit("$0.message")>]
+    member __.Message
+      with get () : string = failwith "ONLY JS"
+
+
+  [<Emit("new SharedWorker($0)")>]
+  type SharedWorker<'data>(url: string) =
+
+      [<Emit("$0.onerror = $1")>]
+      member __.OnError
+        with set (cb: ErrorMsg -> unit) = failwith "ONLY JS"
+
+      [<Emit("$0.port")>]
+      member __.Port
+        with get () : MessagePort<'data> = failwith "ONLY JS"
+
+  //   ____ _ _            _
+  //  / ___| (_) ___ _ __ | |_
+  // | |   | | |/ _ \ '_ \| __|
+  // | |___| | |  __/ | | | |_
+  //  \____|_|_|\___|_| |_|\__|
+
   type ClientContext() =
-    let resource = "Iris.Web.Worker.js"
+    let resource = "js/worker.js"
 
     let mutable session : Session option = None
-    let mutable ctrl : ViewController<State,ClientContext> option = None
-    let mutable worker = new SharedWorker(resource)
-
-    let close _ =
-      match session with
-        | Some session' ->
-          let msg = ClientMessage.Close(session')
-           in worker.port.postMessage(msg, [||])
-        | _ -> ()
-
-    do window.onunload <- fun ev ->
-      close ()
-      failwith "Oh no"
+    let mutable worker  : SharedWorker<ClientMessage<State>> option = None
+    let mutable ctrl    : ViewController<State,ClientContext> option = None
 
     member self.Session
       with get () = session
@@ -34,51 +58,60 @@ module Client =
       with set c  = ctrl <- Some(c)
 
     member self.Start() =
-      worker.onerror <- (fun e -> printfn "SharedWorker Error: %s" <| JSON.stringify(e))
-      worker.port.onmessage <- (fun msg ->
-        self.HandleMsg (msg.data :?> ClientMessage<State>)
-        failwith "should return object here")
-      worker.port.start()
+      let host = getHostname ()
+      let port = getHostPort ()
+      let address = sprintf "ws://%s:%d" host (port + 1000)
+      let me = new SharedWorker<ClientMessage<State>>(resource)
+      me.OnError <- fun e -> printfn "%A" e.Message
+      me.Port.OnMessage <- self.MsgHandler
+      worker <- Some me
+      me.Port.PostMessage (ClientMessage.Connect address)
 
-    member self.Trigger(msg : ClientMessage<State>) =
-      worker.port.postMessage(msg, [||]) //
+    member self.Trigger(msg: ClientMessage<State>) =
+      match worker with
+      | Some me -> me.Port.PostMessage(msg)
+      | _       -> printfn "oops no workr??"
 
-    member self.HandleMsg (msg : ClientMessage<State>) : unit =
-      match ctrl with
-        | Some(ctrl') ->
-          match msg with
-            // initialize this clients session variable
-            | ClientMessage.Initialized(session') ->
-              session <- Some(session')
-              printfn "Initialized with Session: %A" session'
+    member self.Close() =
+      match session, worker with
+      | Some token, Some me ->
+        let msg = ClientMessage.Close(token)
+        me.Port.PostMessage(msg)
+      | _ -> printfn "coudl not clsoe it??"
 
-            // initialize this clients session variable
-            | ClientMessage.Closed(session') ->
-              printfn "A client closed its session: %A" session'
+    member self.MsgHandler (msg : MessageEvent<ClientMessage<State>>) : unit =
+      match msg.Data with
+      // initialize this clients session variable
+      | ClientMessage.Initialized(token) ->
+        session <- Some(token)
+        printfn "Initialized with Session: %A" token
 
-            | ClientMessage.Stopped ->
-              printfn "Worker stopped, restarting..."
-              worker <- new SharedWorker(resource)
-              self.Start()
+      // initialize this clients session variable
+      | ClientMessage.Closed(token) ->
+        printfn "A client closed its session: %A" token
 
-            // Re-render the current view tree with a new state
-            | ClientMessage.Render(state) ->
-              ctrl'.Render state self
+      | ClientMessage.Stopped ->
+        printfn "Worker stopped, restarting..."
+        self.Start()
 
-            // Log a message from Worker on this client
-            | ClientMessage.Log(thing) ->
-              printfn "SharedWorker %A" thing
+      // Re-render the current view tree with a new state
+      | ClientMessage.Render(state) ->
+        match ctrl with
+        | Some(controller) -> controller.Render state self
+        | _                -> printfn "no controller defined"
 
-            | ClientMessage.Connected ->
-              printfn "CONNECTED!"
+      // Log a message from Worker on this client
+      | ClientMessage.Log(msg) ->
+        printfn "SharedWorker Log Message: %A" msg
 
-            | ClientMessage.Disconnected ->
-              printfn "DISCONNECTED!"
+      | ClientMessage.Connected ->
+        printfn "CONNECTED!"
 
-            // initialize this clients session variable
-            | ClientMessage.Error(reason) ->
-              printfn "SharedWorker Error: %A" reason
+      | ClientMessage.Disconnected ->
+        printfn "DISCONNECTED!"
 
-            | _ -> printfn "Unknown Event: %A" msg
+      // initialize this clients session variable
+      | ClientMessage.Error(reason) ->
+        printfn "SharedWorker Error: %A" reason
 
-        | _ -> printfn "no controller set"
+      | _ -> printfn "Unknown Event: %A" msg

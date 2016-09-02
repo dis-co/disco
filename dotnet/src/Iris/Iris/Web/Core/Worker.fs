@@ -1,54 +1,11 @@
 namespace Iris.Web.Core
 
-open Fable.Core
 open Iris.Core
 open Iris.Web.Core
 
-
-//  __  __                                ____            _
-// |  \/  | ___  ___ ___  __ _  __ _  ___|  _ \ ___  _ __| |_
-// | |\/| |/ _ \/ __/ __|/ _` |/ _` |/ _ \ |_) / _ \| '__| __|
-// | |  | |  __/\__ \__ \ (_| | (_| |  __/  __/ (_) | |  | |_
-// |_|  |_|\___||___/___/\__,_|\__, |\___|_|   \___/|_|   \__|
-//                             |___/
-
-type MessagePort =
-
-  [<DefaultValue>] val mutable onmessage : MessageEvent -> unit
-
-  [<Emit("$0.postMessage($1)")>]
-  member self.PostMessage(_: string) = failwith "ONLY JS"
-
-  [<Emit("console.log($0);$0.start()")>]
-  member self.Start() = failwith "ONLY JS"
-
-  [<Emit("$0.close()")>]
-  member self.Close() = failwith "ONLY JS"
-
-  [<Emit("new MessagePort()")>]
-  new() = {}
-
-//  ____  _                        ___        __         _
-// / ___|| |__   __ _ _ __ ___  __| \ \      / /__  _ __| | _____ _ __
-// \___ \| '_ \ / _` | '__/ _ \/ _` |\ \ /\ / / _ \| '__| |/ / _ \ '__|
-//  ___) | | | | (_| | | |  __/ (_| | \ V  V / (_) | |  |   <  __/ |
-// |____/|_| |_|\__,_|_|  \___|\__,_|  \_/\_/ \___/|_|  |_|\_\___|_|
-
-type SharedWorker =
-    [<DefaultValue>] val mutable onerror : (obj -> unit)
-
-    [<DefaultValue>] val mutable port : MessagePort
-
-    [<Emit "new SharedWorker($0)">]
-    new(_: string) = {}
-
-// __        __         _             _____                 _
-// \ \      / /__  _ __| | _____ _ __| ____|_   _____ _ __ | |_
-//  \ \ /\ / / _ \| '__| |/ / _ \ '__|  _| \ \ / / _ \ '_ \| __|
-//   \ V  V / (_) | |  |   <  __/ |  | |___ \ V /  __/ | | | |_
-//    \_/\_/ \___/|_|  |_|\_\___|_|  |_____| \_/ \___|_| |_|\__|
-
-type WorkerEvent = { ports : MessagePort array }
+open Fable.Core
+open Fable.Import
+open Fable.Import.JS
 
 //  __  __                                _____                 _
 // |  \/  | ___  ___ ___  __ _  __ _  ___| ____|_   _____ _ __ | |_
@@ -57,11 +14,49 @@ type WorkerEvent = { ports : MessagePort array }
 // |_|  |_|\___||___/___/\__,_|\__, |\___|_____| \_/ \___|_| |_|\__|
 //                             |___/
 
-type MessageEvent =
-  [<DefaultValue>] val mutable data : string
+[<Emit("new MessageEvent()")>]
+type MessageEvent<'data> =
 
-  [<Emit("new MessageEvent()")>]
-  new() = {}
+  [<Emit("$0.data")>]
+  member __.Data
+    with get () : 'data = failwith "ONLY JS"
+
+//  __  __                                ____            _
+// |  \/  | ___  ___ ___  __ _  __ _  ___|  _ \ ___  _ __| |_
+// | |\/| |/ _ \/ __/ __|/ _` |/ _` |/ _ \ |_) / _ \| '__| __|
+// | |  | |  __/\__ \__ \ (_| | (_| |  __/  __/ (_) | |  | |_
+// |_|  |_|\___||___/___/\__,_|\__, |\___|_|   \___/|_|   \__|
+//                             |___/
+
+[<Emit("new MessagePort()")>]
+type MessagePort<'data>() =
+
+  [<Emit("$0.onmessage = $1")>]
+  member __.OnMessage
+    with set (cb: MessageEvent<'data> -> unit) = failwith "ONLY JS"
+
+  [<Emit("$0.postMessage($1)")>]
+  member __.PostMessage(_: 'data) = failwith "ONLY JS"
+
+  [<Emit("$0.start()")>]
+  member __.Start() = failwith "ONLY JS"
+
+  [<Emit("$0.close()")>]
+  member __.Close() = failwith "ONLY JS"
+
+
+// __        __         _             _____                 _
+// \ \      / /__  _ __| | _____ _ __| ____|_   _____ _ __ | |_
+//  \ \ /\ / / _ \| '__| |/ / _ \ '__|  _| \ \ / / _ \ '_ \| __|
+//   \ V  V / (_) | |  |   <  __/ |  | |___ \ V /  __/ | | | |_
+//    \_/\_/ \___/|_|  |_|\_\___|_|  |_____| \_/ \___|_| |_|\__|
+
+[<Emit("new WorkerEvent()")>]
+type WorkerEvent<'data>() =
+
+  [<Emit("$0.ports")>]
+  member __.Ports
+    with get () : MessagePort<'data> array = failwith "ONLY JS"
 
 // __        __   _    ____             _        _
 // \ \      / /__| |__/ ___|  ___   ___| | _____| |_
@@ -70,7 +65,7 @@ type MessageEvent =
 //    \_/\_/ \___|_.__/____/ \___/ \___|_|\_\___|\__|
 
 [<Emit("new WebSocket($0)")>]
-type WebSocket =
+type WebSocket(url: string)  =
 
   [<Emit("$0.onerror = $1")>]
   member __.OnError
@@ -86,7 +81,7 @@ type WebSocket =
 
   [<Emit("$0.onmessage = $1")>]
   member __.OnMessage
-    with set (cb: MessageEvent -> unit) = failwith "ONLY JS"
+    with set (cb: MessageEvent<string> -> unit) = failwith "ONLY JS"
 
   [<Emit("$0.close()")>]
   member self.Close() = failwith "ONLY JS"
@@ -100,13 +95,23 @@ type WebSocket =
 //   \ V  V / (_) | |  |   <  __/ |
 //    \_/\_/ \___/|_|  |_|\_\___|_|
 
+[<AutoOpen>]
 module Worker =
 
+  [<Emit "importScripts ? importScripts($0) : null">]
+  let importScript (_: string) : unit = failwith "JS ONLY"
+
   [<Emit("onconnect = $0")>]
-  let onConnect (_: WorkerEvent -> unit) = failwith "ONLY JS"
+  let onConnect (_: WorkerEvent<ClientMessage<State>> -> unit) = failwith "ONLY JS"
+
+  [<Emit("JSON.stringify($0)")>]
+  let inline stringify (thing: ^a) : string = failwith "ONLY JS"
+
+  [<Emit("JSON.parse($0)")>]
+  let inline parse (thing: string) : ^a = failwith "ONLY JS"
 
 
-(*---------------------------------------------------------------------------*
+(* ///////////////////////////////////////////////////////////////////////////////
        ____ _       _           _  ____            _            _
      / ___| | ___ | |__   __ _| |/ ___|___  _ __ | |_ _____  _| |_
     | |  _| |/ _ \| '_ \ / _` | | |   / _ \| '_ \| __/ _ \ \/ / __|
@@ -156,140 +161,131 @@ module Worker =
     |              |               |               |              |                |
     +--------------+               +---------------+              +----------------+
 
-*----------------------------------------------------------------------------*)
+/////////////////////////////////////////////////////////////////////////////// *)
 
+type ClientMessagePort = MessagePort<ClientMessage<State>>
+type PortMap = Map<Session,ClientMessagePort>
 
-let mkSession () =
-  let time = JS.Date.now()
-  let fac = Math.random()
-  JSON.stringify(Math.floor(float(time) * fac))
-
-type GlobalContext() as this =
+type GlobalContext() =
   let mutable count = 0
   let mutable store = new Store<State>(Reducer, State.Empty)
-  let mutable socket = None
+  let mutable socket : (string * WebSocket) option = None
 
-  (*                      _                   _
-        ___ ___  _ __  ___| |_ _ __ _   _  ___| |_ ___  _ __
-      / __/ _ \| '_ \/ __| __| '__| | | |/ __| __/ _ \| '__|
-      | (_| (_) | | | \__ \ |_| |  | |_| | (__| || (_) | |
-      \___\___/|_| |_|___/\__|_|   \__,_|\___|\__\___/|_|
-  *)
-  do
-    let sock = new WebSocket("ws://localhost:7000")
+  let ports : PortMap = Map.Create<Session,ClientMessagePort>()
 
-    socket <- Some sock
+  member __.Connect(addr) =
+    let init _ =
+      let sock = new WebSocket(addr)
 
+      sock.OnOpen <- fun _ ->
+        __.Broadcast ClientMessage.Connected
 
-  [<Emit "$0[$1] = $2">]
-  member private __.AddImpl (_: string, _: MessagePort) : unit = failwith "JS Only"
+      sock.OnClose <- fun _ ->
+        __.Broadcast ClientMessage.Disconnected
 
-  [<Emit "delete $0[$1]">]
-  member private __.RmImpl (_: string) : unit = failwith "JS Only"
+      sock.OnMessage <- fun (ev: MessageEvent<string>) ->
+        __.Log ev.Data
 
-  [<Emit "Object.keys($0)">]
-  member private __.AllKeysImpl () : string array = failwith "JS Only"
+      socket <- Some (addr, sock)
 
-  [<Emit "$0[$1]">]
-  member private __.GetImpl (_: string) : MessagePort = failwith "JS Only"
+    match socket with
+    | Some (current, sock) ->
+      if addr <> current then
+        sock.Close()
+        init()
+    | _  -> init ()
 
   [<Emit "$0.close()">]
   member __.Close () = failwith "JS Only"
 
-  member __.Send (msg : ClientMessage<State>, port : MessagePort) : unit =
-    port.postMessage(msg, [| |])
-
-  member __.Broadcast (msg : ClientMessage<State>) : unit =
-    for k in __.AllKeysImpl() do
-      let p = __.GetImpl(k)
-      __.Send(msg, p)
-
-  member __.Multicast (id: Session, msg: ClientMessage<State>) : unit =
-    for k in __.AllKeysImpl() do
-      if id <> k then
-        let p = __.GetImpl(k)
-        __.Send(msg, p)
-
-  member __.Remove (id : Session) =
-    count <- count - 1
-    __.RmImpl(id)
-    __.Broadcast <| ClientMessage.Closed(id)
-
   (*-------------------------------------------------------------------------*
-      ____             _        _
+       ____             _        _
       / ___|  ___   ___| | _____| |_
       \___ \ / _ \ / __| |/ / _ \ __|
-      ___) | (_) | (__|   <  __/ |_
+       ___) | (_) | (__|   <  __/ |_
       |____/ \___/ \___|_|\_\___|\__| Message Handler
 
     *-------------------------------------------------------------------------*)
 
-  member __.OnSocketMessage (ev : MessageEvent) : unit =
-    let msg = JSON.parse(ev.data :?> string) :?> ApiAction
-    let parsed =
-      match msg with
-        | AddPatch    patch -> PatchEvent(Create, patch)
-        | UpdatePatch patch -> PatchEvent(Update, patch)
-        | RemovePatch patch -> PatchEvent(Delete, patch)
+  // member __.OnSocketMessage(ev : MessageEvent<string>) : unit =
+  //   let msg : ApiAction = parse ev.Data
 
-        | AddIOBox    iobox -> IOBoxEvent(Create, iobox)
-        | UpdateIOBox iobox -> IOBoxEvent(Update, iobox)
-        | RemoveIOBox iobox -> IOBoxEvent(Delete, iobox)
+  //   let handleRender msg =
+  //     store.Dispatch msg
+  //     __.Broadcast <| ClientMessage.Render(store.State)
 
-    in store.Dispatch parsed
-    __.Broadcast <| ClientMessage.Render(store.State)
+  //   match msg with
+  //     | AddPatch    patch -> PatchEvent(Create, patch) |> handleRender
+  //     | UpdatePatch patch -> PatchEvent(Update, patch) |> handleRender
+  //     | RemovePatch patch -> PatchEvent(Delete, patch) |> handleRender
+
+  //     | AddIOBox    iobox -> IOBoxEvent(Create, iobox) |> handleRender
+  //     | UpdateIOBox iobox -> IOBoxEvent(Update, iobox) |> handleRender
+  //     | RemoveIOBox iobox -> IOBoxEvent(Delete, iobox) |> handleRender
+
+  //     | LogStr str -> this.Log str
 
   (*-------------------------------------------------------------------------*
-      ____ _ _            _
+       ____ _ _            _
       / ___| (_) ___ _ __ | |_
-    | |   | | |/ _ \ '_ \| __|
-    | |___| | |  __/ | | | |_
+     | |   | | |/ _ \ '_ \| __|
+     | |___| | |  __/ | | | |_
       \____|_|_|\___|_| |_|\__| Message Handler
 
     *------------------------------------------------------------------------*)
 
-  member __.OnClientMessage (msg : MessageEvent) : unit =
-    let parsed = msg.data :?> ClientMessage<State>
-    match parsed with
-      | ClientMessage.Close(session) -> __.Remove(session)
+  member __.OnClientMessage(msg : MessageEvent<ClientMessage<State>>) : unit =
+    match msg.Data with
+    | ClientMessage.Close(session) -> __.UnRegister(session)
 
-      | ClientMessage.Undo ->
-        store.Undo()
+    | ClientMessage.Undo ->
+      store.Undo()
+      __.Broadcast <| ClientMessage.Render(store.State)
+
+    | ClientMessage.Redo ->
+      store.Redo()
+      __.Broadcast <| ClientMessage.Render(store.State)
+
+    | ClientMessage.Stop ->
+      __.Broadcast <| ClientMessage.Stopped
+      __.Close ()
+
+    | ClientMessage.Connect(address) ->
+      __.Log (sprintf "connecting to %s" address)
+      __.Connect(address)
+
+    | ClientMessage.Event(session, event') ->
+      match event' with
+      | IOBoxEvent _    as ev ->
+        store.Dispatch ev
+        __.Multicast(session, ClientMessage.Render(store.State))
+      | PatchEvent _    as ev ->
+        store.Dispatch ev
+        __.Multicast(session, ClientMessage.Render(store.State))
+      | CueEvent _      as ev ->
+        store.Dispatch ev
         __.Broadcast <| ClientMessage.Render(store.State)
+      | _ -> __.Log "other are not supported in-worker"
 
-      | ClientMessage.Redo ->
-        store.Redo()
-        __.Broadcast <| ClientMessage.Render(store.State)
+    | _ -> __.Log "clients-only message ignored"
 
-      | ClientMessage.Stop ->
-        __.Broadcast <| ClientMessage.Stopped
-        __.Close ()
-
-      | ClientMessage.Event(session, event') ->
-        match event' with
-          | IOBoxEvent _    as ev ->
-            store.Dispatch ev
-            __.Multicast(session, ClientMessage.Render(store.State))
-          | PatchEvent _    as ev ->
-            store.Dispatch ev
-            __.Multicast(session, ClientMessage.Render(store.State))
-          | CueEvent _      as ev ->
-            store.Dispatch ev
-            __.Broadcast <| ClientMessage.Render(store.State)
-          | _ -> __.Log "other are not supported in-worker"
-
-      | _ -> __.Log "clients-only message ignored"
-
-  member __.Add (port : MessagePort) =
-    count <- count + 1                    // increase the connection count
-    let id = mkSession()                  // create a session id
-    port.onmessage <- (fun msg -> __.OnClientMessage msg; failwith "hm") // register callback on port
-    __.AddImpl(id, port)                 // add port to ports object
-
-    [ ClientMessage.Initialized(id)       // tell client all is good
-    ; ClientMessage.Render(store.State) ] // tell client to render
-    |> List.map __.Send
+  member __.Register (port : MessagePort<ClientMessage<State>>) =
+    count <- count + 1                     // increase the connection count
+    let session = mkGuid ()               // create a session id
+    port.OnMessage <- __.OnClientMessage   // register handler for client messages
+    ports.set(session, port)              // remember the port in our map
     |> ignore
+
+    ClientMessage.Initialized(session)    // tell client all is good
+    |> __.SendClient port
+
+    ClientMessage.Render(store.State)     // ask client to render
+    |> __.SendClient port
+
+  member __.UnRegister (session: Session) =
+    count <- count - 1
+    if ports.delete(session) then
+      __.Broadcast(ClientMessage.Closed(session))
 
   (* -------------------------------------------------------------------------
 
@@ -305,10 +301,20 @@ type GlobalContext() as this =
   member __.Store  with get () = store
   member __.Socket with get () = socket
 
-  member __.Send (msg : ClientMessage<State>)  : unit =
-    match socket with
-      | Some(thing) -> thing.send(JSON.stringify(msg))
-      | None -> __.Log("Not connected")
+  member __.SendClient (port: ClientMessagePort) (msg: ClientMessage<State>) =
+    port.PostMessage(msg)
+
+  member __.Broadcast (msg : ClientMessage<State>) : unit =
+    let handler port _ _ = __.SendClient port msg
+    let func = new System.Func<ClientMessagePort,Session,PortMap,unit> (handler)
+    ports.forEach(func)
+
+  member __.Multicast (session: Session, msg: ClientMessage<State>) : unit =
+    let handler port token _ =
+      if session <> token then
+        __.SendClient port msg
+    let func = new System.Func<ClientMessagePort,Session,PortMap,unit> (handler)
+    ports.forEach(func)
 
   member __.Log (thing : ClientLog) : unit =
     __.Broadcast <| ClientMessage.Log(thing)

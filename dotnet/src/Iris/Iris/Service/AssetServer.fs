@@ -7,6 +7,8 @@ open Suave.Filters
 open Suave.Operators
 open Suave.Successful
 open Suave.Writers
+open Suave.Logging
+open Suave.Logging.Loggers
 open Suave.Web
 
 open System.Threading
@@ -29,8 +31,7 @@ type AssetServer(config: Config) =
   let locate dir str =
     noCache >=> file (dir </> str)
 
-  let basepath =
-    Path.GetFullPath(".") </> "assets"
+  let basepath = Path.GetFullPath(".") </> "assets"
 
   // Add more mime-types here if necessary
   // the following are for fonts, source maps etc.
@@ -51,6 +52,7 @@ type AssetServer(config: Config) =
     let addr = IPAddress.Parse config.RaftConfig.BindAddress
     let port = Sockets.Port.Parse (string config.PortConfig.Http)
     { defaultConfig with
+        logger            = ConsoleWindowLogger(LogLevel.Info)
         cancellationToken = token
         homeFolder        = Some(basepath)
         bindings          = [ HttpBinding.mk HTTP addr port ]

@@ -2,14 +2,6 @@ namespace Iris.Core
 
 open System.Text.RegularExpressions
 
-
-//  ____            _                                     _
-// |  _ \ ___ _ __ | | __ _  ___ ___ _ __ ___   ___ _ __ | |_ ___
-// | |_) / _ \ '_ \| |/ _` |/ __/ _ \ '_ ` _ \ / _ \ '_ \| __/ __|
-// |  _ <  __/ |_) | | (_| | (_|  __/ | | | | |  __/ | | | |_\__ \
-// |_| \_\___| .__/|_|\__,_|\___\___|_| |_| |_|\___|_| |_|\__|___/
-//           |_|
-
 #if JAVASCRIPT
 open Fable.Core
 
@@ -20,11 +12,25 @@ open Fable.Core
 // |_|  |_|\__,_|\__|_| |_|
 
 
+[<AutoOpen>]
+module Date =
+
+  [<Emit("new Date())")>]
+  type JsDate() =
+
+    [<Emit("$0.getTime()")>]
+    member __.GetTime
+      with get () : int = failwith "ONLY IN JS"
+
+
 [<RequireQualifiedAccess>]
 module Math =
 
-  [<Emit("return Math.random()")>]
+  [<Emit("Math.random()")>]
   let random _ : int = failwith "ONLY IN JS"
+
+  [<Emit("Math.floor($0)")>]
+  let floor (_: float) : int = failwith "ONLY IN JS"
 
 //  _____  _  _
 // |  ___|| || |_
@@ -41,11 +47,14 @@ module Replacements =
   [<Emit("return 0")>]
   let sizeof<'t> : int = failwith "ONLY IN JS"
 
-  [<Emit("return ($0).toString(16)")>]
+  [<Emit("($0).toString(16)")>]
   let inline encodeBase16 (_: ^a) : string = failwith "ONLY IN JS"
 
-  [<Emit("return ($0).charCodeAt($1)")>]
+  [<Emit("($0).charCodeAt($1)")>]
   let charCodeAt (_: string) (_: int) = failwith "ONLY IN JS"
+
+  [<Emit("($1).substring($0)")>]
+  let substr (_: int) (_: string) : string = failwith "ONLY IN JS"
 
 [<AutoOpen>]
 module JsUtilities =
@@ -59,34 +68,14 @@ module JsUtilities =
     hash
 
   let mkGuid _ =
-    let lut =
-      [| 0 .. 255 |]
-      |> Array.map
-        (fun i ->
-          let n = if i < 16 then "0" else ""
-          n + encodeBase16 i)
+    let s4 _ =
+      float ((1 + Math.random()) * 65536)
+      |> Math.floor
+      |> encodeBase16
+      |> substr 1
 
-    let d0 = Math.random ()
-    let d1 = Math.random ()
-    let d2 = Math.random ()
-    let d3 = Math.random ()
-
-    lut.[d0 &&& 0xff]                 +
-    lut.[d0 >>> 8  &&& 0xff]          +
-    lut.[d0 >>> 16 &&& 0xff]          +
-    lut.[d0 >>> 24 &&& 0xff]          +
-    lut.[d1 &&& 0xff]                 +
-    lut.[d1 >>> 8 &&& 0xff]           +
-    lut.[d1 >>> 16 &&& 0x0f ||| 0x40] +
-    lut.[d1 >>> 24 &&& 0xff]          +
-    lut.[d2 &&& 0x3f ||| 0x80]        +
-    lut.[d2 >>> 8  &&& 0xff]          +
-    lut.[d2 >>> 16 &&& 0xff]          +
-    lut.[d2 >>> 24 &&& 0xff]          +
-    lut.[d3 &&& 0xff]                 +
-    lut.[d3 >>> 8  &&& 0xff]          +
-    lut.[d3 >>> 16 &&& 0xff]          +
-    lut.[d3 >>> 24 &&& 0xff]
+    [| for n in 0 .. 3 do yield s4() |]
+    |> Array.fold (fun m str -> m + "-" + str) (s4())
 
 #endif
 
