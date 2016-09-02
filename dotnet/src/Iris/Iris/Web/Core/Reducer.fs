@@ -32,22 +32,11 @@ module Reducer =
         | Delete -> state.RemoveIOBox iobox
         | _ -> state
 
-    | CueEvent(action, cueish) ->
+    | CueEvent(action, cue) ->
         match action with
-        | Create ->
-          let input = JSON.stringify(Date.now() * Math.random())
-          let cue : Cue  = { Id = sha1sum input
-                            ; Name = "Cue-" + input
-                            ; IOBoxes = [||] }
-          in state.AddCue cue
-        | Update ->
-          if Option.isSome cueish
-          then state.UpdateCue (Option.get cueish)
-          else state
-        | Delete ->
-          if Option.isSome cueish
-          then state.RemoveCue (Option.get cueish)
-          else state
-        | _ -> state
+        | Create -> state.AddCue    cue
+        | Update -> state.UpdateCue cue
+        | Delete -> state.RemoveCue cue
+        | _      -> state
 
     | _ -> printfn "unknown event" ;state

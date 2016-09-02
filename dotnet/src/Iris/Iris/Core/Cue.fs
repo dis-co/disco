@@ -1,7 +1,7 @@
 namespace Iris.Core
 
 type Cue =
-  { Id:      string
+  { Id:      Id
   ; Name:    string
   ; IOBoxes: IOBox array
   }

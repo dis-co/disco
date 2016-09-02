@@ -232,19 +232,43 @@ type GlobalContext() =
      | |___| | |  __/ | | | |_
       \____|_|_|\___|_| |_|\__| Message Handler
 
-    *------------------------------------------------------------------------*)
+   *------------------------------------------------------------------------*)
 
   member __.OnClientMessage(msg : MessageEvent<ClientMessage<State>>) : unit =
+    let handleAppEvent (session: Session) (appevent: AppEvent) =
+      match appevent with
+      | IOBoxEvent (Create,iobox) as ev -> __.SendServer(AddIOBox iobox)
+      | IOBoxEvent (Read,iobox)   as ev -> __.SendServer(AddIOBox iobox)
+      | IOBoxEvent (Update,iobox) as ev -> __.SendServer(UpdateIOBox iobox)
+      | IOBoxEvent (Delete,iobox) as ev -> __.SendServer(RemoveIOBox iobox)
+
+      | PatchEvent (Create,patch) as ev -> __.SendServer(AddPatch patch)
+      | PatchEvent (Read,patch)   as ev -> __.SendServer(AddPatch patch)
+      | PatchEvent (Update,patch) as ev -> __.SendServer(UpdatePatch patch)
+      | PatchEvent (Delete,patch) as ev -> __.SendServer(RemovePatch patch)
+
+      | CueEvent (Create,cue) as ev -> __.SendServer(AddCue cue)
+      | CueEvent (Read,cue)   as ev -> __.SendServer(AddCue cue)
+      | CueEvent (Update,cue) as ev -> __.SendServer(UpdateCue cue)
+      | CueEvent (Delete,cue) as ev -> __.SendServer(RemoveCue cue)
+
+      | _ -> __.Log "other are currently not supported in-worker"
+
+      store.Dispatch appevent
+      __.Multicast(session, ClientMessage.Render(store.State))
+
     match msg.Data with
     | ClientMessage.Close(session) -> __.UnRegister(session)
 
     | ClientMessage.Undo ->
       store.Undo()
       __.Broadcast <| ClientMessage.Render(store.State)
+      __.SendServer (LogStr "Undo!")
 
     | ClientMessage.Redo ->
       store.Redo()
       __.Broadcast <| ClientMessage.Render(store.State)
+      __.SendServer (LogStr "Redo!")
 
     | ClientMessage.Stop ->
       __.Broadcast <| ClientMessage.Stopped
@@ -254,18 +278,7 @@ type GlobalContext() =
       __.Log (sprintf "connecting to %s" address)
       __.Connect(address)
 
-    | ClientMessage.Event(session, event') ->
-      match event' with
-      | IOBoxEvent _    as ev ->
-        store.Dispatch ev
-        __.Multicast(session, ClientMessage.Render(store.State))
-      | PatchEvent _    as ev ->
-        store.Dispatch ev
-        __.Multicast(session, ClientMessage.Render(store.State))
-      | CueEvent _      as ev ->
-        store.Dispatch ev
-        __.Broadcast <| ClientMessage.Render(store.State)
-      | _ -> __.Log "other are not supported in-worker"
+    | ClientMessage.Event(session, ev) -> handleAppEvent session ev
 
     | _ -> __.Log "clients-only message ignored"
 
@@ -300,6 +313,11 @@ type GlobalContext() =
 
   member __.Store  with get () = store
   member __.Socket with get () = socket
+
+  member __.SendServer (msg: ApiAction) =
+    match socket with
+    | Some (_, server) -> server.Send(stringify msg)
+    | _                -> __.Log "Cannot update server: no connection."
 
   member __.SendClient (port: ClientMessagePort) (msg: ClientMessage<State>) =
     port.PostMessage(msg)

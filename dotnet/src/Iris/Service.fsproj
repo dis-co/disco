@@ -88,6 +88,7 @@
 
   <ItemGroup>
     <Compile Include="AssemblyInfo\ServiceInfo.fs" />
+    <Compile Include="Iris\Core\Id.fs" />
     <Compile Include="Iris\Core\IpAddress.fs" />
     <Compile Include="Iris\Core\Either.fs" />
     <Compile Include="Iris\Core\Aliases.fs" />

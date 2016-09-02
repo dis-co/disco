@@ -33,10 +33,14 @@ module Patches =
         Button
           [ OnClick (fun _ ->
                         match ctx.Session with
-                          | Some(session) ->
-                             let ev = (session, CueEvent(Create, None))
-                             in ctx.Trigger(ClientMessage.Event(ev))
-                          | _ -> printfn "Cannot create cue. No worker?") ]
+                        | Some(session) ->
+                          let cue : Cue  =
+                            { Id      = Id.Create()
+                            ; Name    = "New Cue"
+                            ; IOBoxes = [| |] }
+                          let ev = session, CueEvent(Create, cue)
+                          ctx.Trigger(ClientMessage.Event(ev))
+                        | _ -> printfn "Cannot create cue. No worker?") ]
           [| Text "Create Cue" |]
       |]
 
@@ -92,16 +96,15 @@ module Patches =
       let handler (_ : MouseEvent) =
         match context.Session with
           | Some(session) ->
-            let ev = ClientMessage<State>.Event(session, CueEvent(Delete, Some(cue)))
+            let ev = ClientMessage<State>.Event(session, CueEvent(Delete, cue))
             context.Trigger(ev)
           | _ -> printfn "Cannot delete cue. No Worker?"
 
       Button [ OnClick handler ]
              [| Text "x" |]
 
-
     let cueView (context : ClientContext) (cue : Cue) =
-      Div [ ElmId cue.Id; Class "cue" ]
+      Div [ ElmId (string cue.Id); Class "cue" ]
           [| Text cue.Name
              destroy context cue |]
 

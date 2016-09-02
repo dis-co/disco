@@ -16,6 +16,9 @@ type ApiAction =
   | AddIOBox    of IOBox
   | UpdateIOBox of IOBox
   | RemoveIOBox of IOBox
+  | AddCue      of Cue
+  | UpdateCue   of Cue
+  | RemoveCue   of Cue
   | LogStr      of string
 
 (*
@@ -50,7 +53,7 @@ type AppEvent =
   | AppEvent   of AppEventT
   | IOBoxEvent of Crud * IOBox
   | PatchEvent of Crud * Patch
-  | CueEvent   of Crud * Cue option
+  | CueEvent   of Crud * Cue
   | UnknownEvent
 
   with
