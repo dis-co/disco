@@ -1,58 +1,69 @@
 namespace Iris.Serialization.Raft;
 
+table CueFB {
+      CueId: string;
+      CueName: string; 
+}
+
 //  ____  _        _         __  __            _     _
 // / ___|| |_ __ _| |_ ___  |  \/  | __ _  ___| |__ (_)_ __   ___
 // \___ \| __/ _` | __/ _ \ | |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
 //  ___) | || (_| | ||  __/ | |  | | (_| | (__| | | | | | | |  __/
 // |____/ \__\__,_|\__\___| |_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
-// table OpenProjectFB {
-//       Name: string;
-// }
+enum AppCommandTypeFB:ushort {
+     UndoFB = 0,
+     RedoFB = 1,
+     ResetFB = 2
+}
 
-// table SaveProjectFB {
-//       Name: string;
-// }
+table AppCommandFB {
+      Command: AppCommandTypeFB;
+}
 
-// table CreateProjectFB {
-//       Name: string;
-// }
+table AddCueFB {
+      Cue: CueFB;
+}
 
-// table CloseProjectFB {
-//       Name: string;
-// }
+table UpdateCueFB {
+      Cue: CueFB;
+}
 
-// table AddClientFB {
-//       Name: string;
-// }
+table RemoveCueFB {
+      Cue: CueFB;
+}
 
-// table UpdateClientFB {
-//       Name: string;
-// }
+table LogMsgFB {
+      LogLevel: string;
+      Msg: string;
+}
 
-// table RemoveClientFB {
-//       Name: string;
-// }
+union ApplicationEventTypeFB {
+      AddCueFB,
+      UpdateCueFB,
+      RemoveCueFB,
+      LogMsgFB,
+      AppCommandFB
+}
 
-// table DataSnapshotFB {
-//       Data: string;
-// }
+table ApplicationEventFB {
+      Event: ApplicationEventTypeFB;
+}
 
-enum StateMachineTypeFB:ushort {
-      OpenProjectTypeFB,
-      SaveProjectTypeFB,
-      CreateProjectTypeFB,
-      CloseProjectTypeFB,
-      AddClientTypeFB,
-      UpdateClientTypeFB,
-      RemoveClientTypeFB,
-      DataSnapshotTypeFB
+table DataSnapshotFB {
+      Data: string;
+}
+
+union StateMachineTypeFB {
+      ApplicationEventFB,
+      DataSnapshotFB
 }
 
 table StateMachineFB {
-      Type: StateMachineTypeFB;
-      Command: string;
+      Command: StateMachineTypeFB;
 }
+
+root_type StateMachineFB;
 
 //  ____        __ _   _____
 // |  _ \ __ _ / _| |_| ____|_ __ _ __ ___  _ __

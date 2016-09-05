@@ -4,7 +4,9 @@ open Fuchu
 open Fuchu.Test
 open Iris.Core
 open Iris.Raft
+open Iris.Serialization.Raft
 open System.Net
+open FlatBuffers
 open FSharpx.Functional
 
 [<AutoOpen>]
@@ -71,8 +73,8 @@ module SerializationTests =
       let nodes = [| node1; node2 |]
 
       let log =
-        Some <| LogEntry(Id.Create(), 7UL, 1UL, Close "cccc",
-          Some <| LogEntry(Id.Create(), 6UL, 1UL, AddClient "bbbb",
+        Some <| LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot "cccc",
+          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot "bbbb",
             Some <| Configuration(Id.Create(), 5UL, 1UL, [| node1 |],
               Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
                 Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
@@ -240,6 +242,64 @@ module SerializationTests =
                   expect "Should be structurally the same" msg id remsg)
                 errors
 
+  //   ____
+  //  / ___|   _  ___
+  // | |  | | | |/ _ \
+  // | |__| |_| |  __/
+  //  \____\__,_|\___|
+
+  let test_validate_cue_serialization =
+    testCase "Validate Cue Serialization" <| fun _ ->
+
+      let cue : Cue = { Id = Id.Create(); Name = "Cue 1"; IOBoxes = [| |] }
+      let recue = cue |> encode |> decode |> Option.get
+
+      expect "should be same" cue id recue
+
+  //     _                _ _           _   _             _____                 _
+  //    / \   _ __  _ __ | (_) ___ __ _| |_(_) ___  _ __ | ____|_   _____ _ __ | |_
+  //   / _ \ | '_ \| '_ \| | |/ __/ _` | __| |/ _ \| '_ \|  _| \ \ / / _ \ '_ \| __|
+  //  / ___ \| |_) | |_) | | | (_| (_| | |_| | (_) | | | | |___ \ V /  __/ | | | |_
+  // /_/   \_\ .__/| .__/|_|_|\___\__,_|\__|_|\___/|_| |_|_____| \_/ \___|_| |_|\__|
+  //         |_|   |_|
+
+  let test_validate_application_event_serialization =
+    testCase "Validate Cue Serialization" <| fun _ ->
+
+      [ AddCue    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = [| |] }
+      ; UpdateCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = [| |] }
+      ; RemoveCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = [| |] }
+      ; Command AppCommand.Undo
+      ; LogMsg(Debug, "ohai")
+      ]
+      |> List.iter (fun cmd ->
+                     let remsg = cmd |> encode |> decode |> Option.get
+                     expect "Should be structurally the same" cmd id remsg)
+
+  //  ____  _        _       __  __            _     _
+  // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
+  // \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
+  //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
+  // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
+
+  let test_validate_state_machine_serialization =
+    testCase "Validate corrent StateMachine serialization" <| fun _ ->
+      let snapshot = DataSnapshot "hello"
+      let remsg = snapshot |> encode |> decode |> Option.get
+      expect "Should be structurally the same" snapshot id remsg
+
+      [ AddCue    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = [| |] }
+      ; UpdateCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = [| |] }
+      ; RemoveCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = [| |] }
+      ; Command AppCommand.Undo
+      ; LogMsg(Debug, "ohai")
+      ]
+      |> List.iter (fun cmd ->
+                     let command = AppEvent cmd
+                     let remsg = command |> encode |> decode
+                     if Option.isNone remsg then printfn "NONE %A" cmd
+                     expect "Should be structurally the same" command id (Option.get remsg))
+
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
   //   / _ \ | | |   | |/ _ \/ __| __/ __|
@@ -259,4 +319,7 @@ module SerializationTests =
         test_validate_welcome_serialization
         test_validate_arrivederci_serialization
         test_validate_errorresponse_serialization
+        test_validate_cue_serialization
+        test_validate_application_event_serialization
+        test_validate_state_machine_serialization
       ]

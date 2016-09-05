@@ -5,78 +5,56 @@ open Iris.Serialization.Raft
 open FlatBuffers
 
 type StateMachine =
-  | Open         of string
-  | Save         of string
-  | Create       of string
-  | Close        of string
-  | AddClient    of string
-  | UpdateClient of string
-  | RemoveClient of string
+  | AppEvent     of ApplicationEvent
   | DataSnapshot of string
 
   with
-
     static member FromFB (fb: StateMachineFB) =
-      match fb.Type with
-        | StateMachineTypeFB.OpenProjectTypeFB   -> Open         fb.Command
-        | StateMachineTypeFB.SaveProjectTypeFB   -> Save         fb.Command
-        | StateMachineTypeFB.CreateProjectTypeFB -> Create       fb.Command
-        | StateMachineTypeFB.CloseProjectTypeFB  -> Close        fb.Command
-        | StateMachineTypeFB.AddClientTypeFB     -> AddClient    fb.Command
-        | StateMachineTypeFB.UpdateClientTypeFB  -> UpdateClient fb.Command
-        | StateMachineTypeFB.RemoveClientTypeFB  -> RemoveClient fb.Command
-        | StateMachineTypeFB.DataSnapshotTypeFB  -> DataSnapshot fb.Command
-        | _ -> failwith "could not de-serialize garbage StateMachineTypeFB command"
+      match fb.CommandType with
+        | StateMachineTypeFB.ApplicationEventFB ->
+          let command = fb.GetCommand(new ApplicationEventFB())
+          ApplicationEvent.FromFB command
+          |> Option.map AppEvent
+
+        | StateMachineTypeFB.DataSnapshotFB ->
+          let entry = fb.GetCommand(new DataSnapshotFB())
+          DataSnapshot entry.Data
+          |> Some
+
+        | _ -> None
 
     member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateMachineFB> =
+      let mkAppEvent (ev: ApplicationEvent) tipe =
+        let appevent = ev.ToOffset(builder)
+        ApplicationEventFB.StartApplicationEventFB(builder)
+        ApplicationEventFB.AddEventType(builder, tipe)
+        ApplicationEventFB.AddEvent(builder, appevent.Value)
+        let offset = ApplicationEventFB.EndApplicationEventFB(builder)
+
+        StateMachineFB.StartStateMachineFB(builder)
+        StateMachineFB.AddCommandType(builder, StateMachineTypeFB.ApplicationEventFB)
+        StateMachineFB.AddCommand(builder, offset.Value)
+        StateMachineFB.EndStateMachineFB(builder)
+
       match self with
-      | Open str ->
-        StateMachineFB.CreateStateMachineFB(
-          builder,
-          StateMachineTypeFB.OpenProjectTypeFB,
-          builder.CreateString str)
-
-      | Save str ->
-        StateMachineFB.CreateStateMachineFB(
-          builder,
-          StateMachineTypeFB.SaveProjectTypeFB,
-          builder.CreateString str)
-
-      | Create str ->
-        StateMachineFB.CreateStateMachineFB(
-          builder,
-          StateMachineTypeFB.CreateProjectTypeFB,
-          builder.CreateString str)
-
-      | Close        str ->
-        StateMachineFB.CreateStateMachineFB(
-          builder,
-          StateMachineTypeFB.CloseProjectTypeFB,
-          builder.CreateString str)
-
-      | AddClient    str ->
-        StateMachineFB.CreateStateMachineFB(
-          builder,
-          StateMachineTypeFB.AddClientTypeFB,
-          builder.CreateString str)
-
-      | UpdateClient str ->
-        StateMachineFB.CreateStateMachineFB(
-          builder,
-          StateMachineTypeFB.UpdateClientTypeFB,
-          builder.CreateString str)
-
-      | RemoveClient str ->
-        StateMachineFB.CreateStateMachineFB(
-          builder,
-          StateMachineTypeFB.RemoveClientTypeFB,
-          builder.CreateString str)
+      | AppEvent ev ->
+        match ev with
+        | AddCue _    -> mkAppEvent ev ApplicationEventTypeFB.AddCueFB
+        | UpdateCue _ -> mkAppEvent ev ApplicationEventTypeFB.UpdateCueFB
+        | RemoveCue _ -> mkAppEvent ev ApplicationEventTypeFB.RemoveCueFB
+        | LogMsg _    -> mkAppEvent ev ApplicationEventTypeFB.LogMsgFB
+        | Command _   -> mkAppEvent ev ApplicationEventTypeFB.AppCommandFB
 
       | DataSnapshot str ->
-        StateMachineFB.CreateStateMachineFB(
-          builder,
-          StateMachineTypeFB.DataSnapshotTypeFB,
-          builder.CreateString str)
+        let data = builder.CreateString str
+        DataSnapshotFB.StartDataSnapshotFB(builder)
+        DataSnapshotFB.AddData(builder, data)
+        let snapshot = DataSnapshotFB.EndDataSnapshotFB(builder)
+
+        StateMachineFB.StartStateMachineFB(builder)
+        StateMachineFB.AddCommandType(builder, StateMachineTypeFB.DataSnapshotFB)
+        StateMachineFB.AddCommand(builder, snapshot.Value)
+        StateMachineFB.EndStateMachineFB(builder)
 
     member self.ToBytes () =
       let builder = new FlatBufferBuilder(1)
@@ -86,16 +64,7 @@ type StateMachine =
 
     static member FromBytes (bytes: byte array) : StateMachine option =
       let msg = StateMachineFB.GetRootAsStateMachineFB(new ByteBuffer(bytes))
-      match msg.Type with
-        | StateMachineTypeFB.OpenProjectTypeFB   -> Open         msg.Command |> Some
-        | StateMachineTypeFB.SaveProjectTypeFB   -> Save         msg.Command |> Some
-        | StateMachineTypeFB.CreateProjectTypeFB -> Create       msg.Command |> Some
-        | StateMachineTypeFB.CloseProjectTypeFB  -> Close        msg.Command |> Some
-        | StateMachineTypeFB.AddClientTypeFB     -> AddClient    msg.Command |> Some
-        | StateMachineTypeFB.UpdateClientTypeFB  -> UpdateClient msg.Command |> Some
-        | StateMachineTypeFB.RemoveClientTypeFB  -> RemoveClient msg.Command |> Some
-        | StateMachineTypeFB.DataSnapshotTypeFB  -> DataSnapshot msg.Command |> Some
-        | _                                      -> None
+      StateMachine.FromFB(msg)
 
 //     _    _ _
 //    / \  | (_) __ _ ___  ___  ___

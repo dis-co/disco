@@ -3,11 +3,14 @@
 namespace Iris.Serialization.Raft
 {
 
-public enum StateMachineTypeFB : byte
+public enum ApplicationEventTypeFB : byte
 {
  NONE = 0,
- ApplicationEventFB = 1,
- DataSnapshotFB = 2,
+ AddCueFB = 1,
+ UpdateCueFB = 2,
+ RemoveCueFB = 3,
+ LogMsgFB = 4,
+ AppCommandFB = 5,
 };
 
 

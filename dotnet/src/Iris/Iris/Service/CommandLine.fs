@@ -112,9 +112,8 @@ let parseHostString (str: string) =
       else None
     | _ -> None
 
-
 let tryAppendEntry (ctx: RaftServer) str =
-  match ctx.Append (AddClient str) with
+  match ctx.Append (AppEvent(LogMsg(Debug,str))) with
     | Some response ->
       printfn "Added Entry: %s Index: %A Term: %A"
         (string response.Id)

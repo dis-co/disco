@@ -1,25 +1,14 @@
 namespace Iris.Core
 
-(*----------------------------------------------------------------------------
-        _          _
-       / \   _ __ (_)      Types for modeling communication between nodes
-      / _ \ | '_ \| |      on the network layer.
-     / ___ \| |_) | |
-    /_/   \_\ .__/|_|
-            |_|
-  ---------------------------------------------------------------------------*)
+open Iris.Raft
 
-type ApiAction =
-  | AddPatch    of Patch
-  | UpdatePatch of Patch
-  | RemovePatch of Patch
-  | AddIOBox    of IOBox
-  | UpdateIOBox of IOBox
-  | RemoveIOBox of IOBox
-  | AddCue      of Cue
-  | UpdateCue   of Cue
-  | RemoveCue   of Cue
-  | LogStr      of string
+#if JAVASCRIPT
+#else
+
+open Iris.Serialization.Raft
+open FlatBuffers
+
+#endif
 
 (*
         _                _____                 _
@@ -36,61 +25,198 @@ type ApiAction =
 
 *)
 
-type Crud =
-  | Create
-  | Read
-  | Update
-  | Delete
-
-type AppEventT =
-  | Initialize
-  | Save
+[<RequireQualifiedAccess>]
+type AppCommand =
   | Undo
   | Redo
   | Reset
 
-type AppEvent =
-  | AppEvent   of AppEventT
-  | IOBoxEvent of Crud * IOBox
-  | PatchEvent of Crud * Patch
-  | CueEvent   of Crud * Cue
-  | UnknownEvent
+  with
+#if JAVASCRIPT
+#else
+    static member FromFB (fb: AppCommandFB) =
+      match fb.Command with
+      | AppCommandTypeFB.UndoFB  -> Some Undo
+      | AppCommandTypeFB.RedoFB  -> Some Redo
+      | AppCommandTypeFB.ResetFB -> Some Reset
+      | _                        -> None
+
+    member self.ToOffset(builder: FlatBufferBuilder) : Offset<AppCommandFB> =
+      let tipe =
+        match self with
+        | Undo  -> AppCommandTypeFB.UndoFB
+        | Redo  -> AppCommandTypeFB.RedoFB
+        | Reset -> AppCommandTypeFB.ResetFB
+
+      AppCommandFB.StartAppCommandFB(builder)
+      AppCommandFB.AddCommand(builder, tipe)
+      AppCommandFB.EndAppCommandFB(builder)
+#endif
+
+type ApplicationEvent =
+  // PROJECT
+  // | OpenProject
+  // | SaveProject
+  // | CreateProject
+  // | CloseProject
+  // | DeleteProject
+
+  // CLIENT
+  // | AddClient    of string
+  // | UpdateClient of string
+  // | RemoveClient of string
+
+  // NODE
+  // | AddNode      of string
+  // | UpdateNode   of string
+  // | RemoveNode   of string
+
+  // PATCH
+  // | AddPatch    of Patch
+  // | UpdatePatch of Patch
+  // | RemovePatch of Patch
+
+  // IOBOX
+  // | AddIOBox    of IOBox
+  // | UpdateIOBox of IOBox
+  // | RemoveIOBox of IOBox
+
+  // CUE
+  | AddCue      of Cue
+  | UpdateCue   of Cue
+  | RemoveCue   of Cue
+
+  | Command     of AppCommand
+
+  | LogMsg      of LogLevel * string
 
   with
+
     override self.ToString() : string =
       match self with
-      | AppEvent(t) ->
-        match t with
-          | AppEventT.Initialize  -> "AppEvent(Initialize)"
-          | AppEventT.Save        -> "AppEvent(Save)"
-          | AppEventT.Undo        -> "AppEvent(Undo)"
-          | AppEventT.Redo        -> "AppEvent(Redo)"
-          | AppEventT.Reset       -> "AppEvent(Reset)"
+      // PROJECT
+      // | OpenProject   -> "OpenProject"
+      // | SaveProject   -> "SaveProject"
+      // | CreateProject -> "CreateProject"
+      // | CloseProject  -> "CloseProject"
+      // | DeleteProject -> "DeleteProject"
 
-      | IOBoxEvent(t,_) ->
-        match t with
-          | Create -> "IOBoxEvent(Create)"
-          | Delete -> "IOBoxEvent(Delete)"
-          | Update -> "IOBoxEvent(Update)"
-          | Read   -> "IOBoxEvent(Read)"
+      // CLIENT
+      // | AddClient    s -> sprintf "AddClient %s"    s
+      // | UpdateClient s -> sprintf "UpdateClient %s" s
+      // | RemoveClient s -> sprintf "RemoveClient %s" s
 
-      | PatchEvent(t,_) ->
-        match t with
-          | Create -> "PatchEvent(Create)"
-          | Delete -> "PatchEvent(Delete)"
-          | Update -> "PatchEvent(Update)"
-          | Read   -> "PatchEvent(Read)"
+      // NODE
+      // | AddNode    s -> sprintf "AddNode %s" s
+      // | UpdateNode s -> sprintf "UpdateNode %s" s
+      // | RemoveNode s -> sprintf "RemoveNode %s" s
 
-      | CueEvent(t,_) ->
-        match t with
-          | Create -> "CueEvent(Create)"
-          | Delete -> "CueEvent(Delete)"
-          | Update -> "CueEvent(Update)"
-          | Read   -> "CueEvent(Read)"
+      // PATCH
+      // | AddPatch    patch -> sprintf "AddPatch %s"    (string patch)
+      // | UpdatePatch patch -> sprintf "UpdatePatch %s" (string patch)
+      // | RemovePatch patch -> sprintf "RemovePatch %s" (string patch)
 
-      | UnknownEvent -> "UnknownEvent"
+      // IOBOX
+      // | AddIOBox    iobox -> sprintf "AddIOBox %s"    (string iobox)
+      // | UpdateIOBox iobox -> sprintf "UpdateIOBox %s" (string iobox)
+      // | RemoveIOBox iobox -> sprintf "RemoveIOBox %s" (string iobox)
 
-(* //////////////////////////////////////////////////////////////////////////////
+      // CUE
+      | AddCue    cue      -> sprintf "AddCue %s"    (string cue)
+      | UpdateCue cue      -> sprintf "UpdateCue %s" (string cue)
+      | RemoveCue cue      -> sprintf "RemoveCue %s" (string cue)
+      | Command    ev      -> sprintf "Command: %s"  (string ev)
+      | LogMsg(level, msg) -> sprintf "LogMsg: [%A] %s" level msg
+
+#if JAVASCRIPT
+#else
+    static member FromFB (fb: ApplicationEventFB) =
+      match fb.EventType with
+      | ApplicationEventTypeFB.AddCueFB ->
+        let ev = fb.GetEvent(new AddCueFB())
+        ev.GetCue(new CueFB())
+        |> Cue.FromFB
+        |> Option.map AddCue
+
+      | ApplicationEventTypeFB.UpdateCueFB  ->
+        let ev = fb.GetEvent(new UpdateCueFB())
+        ev.GetCue(new CueFB())
+        |> Cue.FromFB
+        |> Option.map UpdateCue
+
+      | ApplicationEventTypeFB.RemoveCueFB  ->
+        let ev = fb.GetEvent(new RemoveCueFB())
+        ev.GetCue(new CueFB())
+        |> Cue.FromFB
+        |> Option.map RemoveCue
+
+      | ApplicationEventTypeFB.LogMsgFB     ->
+        let ev = fb.GetEvent(new LogMsgFB())
+        let level = LogLevel.Parse ev.LogLevel
+        LogMsg(level, ev.Msg) |> Some
+
+      | ApplicationEventTypeFB.AppCommandFB ->
+        let ev = fb.GetEvent(new AppCommandFB())
+        AppCommand.FromFB ev
+        |> Option.map Command
+
+      | _ -> None
+
+    member self.ToOffset(builder: FlatBufferBuilder) : Offset<ApplicationEventFB> =
+      let mkOffset tipe value =
+        ApplicationEventFB.StartApplicationEventFB(builder)
+        ApplicationEventFB.AddEventType(builder, tipe)
+        ApplicationEventFB.AddEvent(builder, value)
+        ApplicationEventFB.EndApplicationEventFB(builder)
+
+      match self with
+      | AddCue cue ->
+        let cuefb = cue.ToOffset(builder)
+        AddCueFB.StartAddCueFB(builder)
+        AddCueFB.AddCue(builder, cuefb)
+        let addfb = AddCueFB.EndAddCueFB(builder)
+        mkOffset ApplicationEventTypeFB.AddCueFB addfb.Value
+
+      | UpdateCue cue ->
+        let cuefb = cue.ToOffset(builder)
+        UpdateCueFB.StartUpdateCueFB(builder)
+        UpdateCueFB.AddCue(builder, cuefb)
+        let updatefb = UpdateCueFB.EndUpdateCueFB(builder)
+        mkOffset ApplicationEventTypeFB.UpdateCueFB updatefb.Value
+
+      | RemoveCue cue ->
+        let cuefb = cue.ToOffset(builder)
+        RemoveCueFB.StartRemoveCueFB(builder)
+        RemoveCueFB.AddCue(builder, cuefb)
+        let removefb = RemoveCueFB.EndRemoveCueFB(builder)
+        mkOffset ApplicationEventTypeFB.RemoveCueFB removefb.Value
+
+      | Command ev ->
+        let cmdfb = ev.ToOffset(builder)
+        mkOffset ApplicationEventTypeFB.AppCommandFB cmdfb.Value
+
+      | LogMsg(level, msg) ->
+        let level = string level |> builder.CreateString
+        let msg = msg |> builder.CreateString
+        let log = LogMsgFB.CreateLogMsgFB(builder, level, msg)
+        mkOffset ApplicationEventTypeFB.LogMsgFB log.Value
+
+    member self.ToBytes () =
+      let builder = new FlatBufferBuilder(1)
+      let offset = self.ToOffset(builder)
+      builder.Finish(offset.Value)
+      builder.SizedByteArray()
+
+    static member FromBytes (bytes: byte array) : ApplicationEvent option =
+      let msg = ApplicationEventFB.GetRootAsApplicationEventFB(new ByteBuffer(bytes))
+      ApplicationEvent.FromFB(msg)
+
+#endif
+
+
+#if JAVASCRIPT
+
+  (*
     ____ _ _            _
    / ___| (_) ___ _ __ | |_
   | |   | | |/ _ \ '_ \| __|
@@ -131,24 +257,22 @@ type AppEvent =
   |                  |               |                        |               |                  |
   +------------------+               +------------------------+               +------------------+
 
-  ///////////////////////////////////////////////////////////////////////////*)
+  *)
 
 [<RequireQualifiedAccess>]
 type ClientMessage<'state> =
-  | Initialized of Session            // the worker has created a session for this tab/window
-  | Close       of Session            // client tab/window was closed, so request to remove session
-  | Closed      of Session            // other client tab/window notified of close
-  | Stop                              // SharedWorker is requested to stop
-  | Stopped                           // SharedWorker process has stopped
-  | Undo                              // Undo last step
-  | Redo                              // Redo last undo step
-  | Save                              // Save current state
-  | Open                              // Open a project
-  | Log         of ClientLog          // logs a piece of data to all connected clients
-  | Error       of Error              // an error occuring inside the worker
-  | Render      of 'state             // instruct all clients to render new state
-  | Event       of Session * AppEvent // encapsulates an action or event that happened on the client
-  | Connect     of string             // Connect to the specified endpoint
-  | Connected                         // worker websocket is connected to service
-  | Disconnect  of string             // Disconnect from server
-  | Disconnected                      // worker websocket was disconnected from service
+  | Initialized  of Session            // the worker has created a session for this tab/window
+  | Close        of Session            // client tab/window was closed, so request to remove session
+  | Closed       of Session            // other client tab/window notified of close
+  | Stop                               // SharedWorker is requested to stop
+  | Stopped                            // SharedWorker process has stopped
+  | ClientLog    of ClientLog          // logs a piece of data to all connected clients
+  | Error        of Error              // an error occuring inside the worker
+  | Render       of 'state             // instruct all clients to render new state
+  | Event        of Session * AppEvent // encapsulates an action or event that happened on the client
+  | Connect      of string             // Connect to the specified endpoint
+  | Connected                          // worker websocket is connected to service
+  | Disconnect   of string             // Disconnect from server
+  | Disconnected                       // worker websocket was disconnected from service
+
+#endif

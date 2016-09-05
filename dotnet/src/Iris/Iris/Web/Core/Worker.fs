@@ -133,7 +133,7 @@ module Worker =
 
 
     +--------------+               +---------------+              +----------------+
-    | IRIS SERVICE |   ApiAction   | SHARED WORKER | ClientAction | BROWSER WINDOW |
+    | IRIS SERVICE | StateMachine  | SHARED WORKER | ClientAction | BROWSER WINDOW |
     |              |               |               |              |                |
     |              |   AddPatch    |               |    Render    |                |
     |              | ------------> | update Store  | -----------> | re-render DOM  |
@@ -173,18 +173,21 @@ type GlobalContext() =
 
   let ports : PortMap = Map.Create<Session,ClientMessagePort>()
 
-  member __.Connect(addr) =
+  member self.ConnectServer(addr) =
     let init _ =
       let sock = new WebSocket(addr)
 
+      sock.OnError <- fun err ->
+        self.Log (sprintf "Error: %A" err)
+
       sock.OnOpen <- fun _ ->
-        __.Broadcast ClientMessage.Connected
+        self.Broadcast ClientMessage.Connected
 
       sock.OnClose <- fun _ ->
-        __.Broadcast ClientMessage.Disconnected
+        self.Broadcast ClientMessage.Disconnected
 
       sock.OnMessage <- fun (ev: MessageEvent<string>) ->
-        __.Log ev.Data
+        self.Log ev.Data
 
       socket <- Some (addr, sock)
 
@@ -195,8 +198,8 @@ type GlobalContext() =
         init()
     | _  -> init ()
 
-  [<Emit "$0.close()">]
-  member __.Close () = failwith "JS Only"
+  [<Emit("$0.close()")>]
+  member self.Close () = failwith "JS Only"
 
   (*-------------------------------------------------------------------------*
        ____             _        _
@@ -254,9 +257,6 @@ type GlobalContext() =
 
       | _ -> __.Log "other are currently not supported in-worker"
 
-      store.Dispatch appevent
-      __.Broadcast(ClientMessage.Render(store.State))
-
     match msg.Data with
     | ClientMessage.Close(session) -> __.UnRegister(session)
 
@@ -276,7 +276,7 @@ type GlobalContext() =
 
     | ClientMessage.Connect(address) ->
       __.Log (sprintf "connecting to %s" address)
-      __.Connect(address)
+      __.ConnectServer(address)
 
     | ClientMessage.Event(session, ev) -> handleAppEvent session ev
 

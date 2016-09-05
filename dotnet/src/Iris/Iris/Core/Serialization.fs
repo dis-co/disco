@@ -282,9 +282,9 @@ module StaticLogExtensions =
       | LogTypeFB.LogEntryFB ->
         let entry = fb.GetEntry(new LogEntryFB())
         let data = StateMachine.FromFB entry.Data
-
-        LogEntry(Id entry.Id, entry.Index, entry.Term, data, log)
-        |> Some
+        match data with
+        | Some sm -> LogEntry(Id entry.Id, entry.Index, entry.Term, sm, log) |> Some
+        | _       -> None
 
       | LogTypeFB.SnapshotFB ->
         let entry = fb.GetEntry(new SnapshotFB())
@@ -296,11 +296,11 @@ module StaticLogExtensions =
         for i in 0..(entry.NodesLength - 1) do
           nodes.[i] <- entry.GetNodes(i) |> RaftNode.FromFB
 
-        Snapshot(id, entry.Index, entry.Term, entry.LastIndex, entry.LastTerm, nodes, data)
-        |> Some
+        match data with
+        | Some sm -> Snapshot(id, entry.Index, entry.Term, entry.LastIndex, entry.LastTerm, nodes, sm) |> Some
+        | _       -> None
 
-      | _ ->
-        failwith "unable to de-serialize garbage LogTypeFB value"
+      | _ -> None
 
 
   type Log<'data> with
@@ -321,34 +321,34 @@ module StaticRaftErrorExtensions =
     member error.ToOffset (builder: FlatBufferBuilder) =
       let tipe =
         match error with
-          | AlreadyVoted           -> RaftErrorTypeFB.AlreadyVotedFB
-          | AppendEntryFailed      -> RaftErrorTypeFB.AppendEntryFailedFB
-          | CandidateUnknown       -> RaftErrorTypeFB.CandidateUnknownFB
-          | EntryInvalidated       -> RaftErrorTypeFB.EntryInvalidatedFB
-          | InvalidCurrentIndex    -> RaftErrorTypeFB.InvalidCurrentIndexFB
-          | InvalidLastLog         -> RaftErrorTypeFB.InvalidLastLogFB
-          | InvalidLastLogTerm     -> RaftErrorTypeFB.InvalidLastLogTermFB
-          | InvalidTerm            -> RaftErrorTypeFB.InvalidTermFB
-          | LogFormatError         -> RaftErrorTypeFB.LogFormatErrorFB
-          | LogIncomplete          -> RaftErrorTypeFB.LogIncompleteFB
-          | NoError                -> RaftErrorTypeFB.NoErrorFB
-          | NoNode                 -> RaftErrorTypeFB.NoNodeFB
-          | NotCandidate           -> RaftErrorTypeFB.NotCandidateFB
-          | NotLeader              -> RaftErrorTypeFB.NotLeaderFB
-          | NotVotingState         -> RaftErrorTypeFB.NotVotingStateFB
-          | ResponseTimeout        -> RaftErrorTypeFB.ResponseTimeoutFB
-          | SnapshotFormatError    -> RaftErrorTypeFB.SnapshotFormatErrorFB
-          | StaleResponse          -> RaftErrorTypeFB.StaleResponseFB
-          | UnexpectedVotingChange -> RaftErrorTypeFB.UnexpectedVotingChangeFB
-          | VoteTermMismatch       -> RaftErrorTypeFB.VoteTermMismatchFB
-          | OtherError           _ -> RaftErrorTypeFB.OtherErrorFB
+        | AlreadyVoted           -> RaftErrorTypeFB.AlreadyVotedFB
+        | AppendEntryFailed      -> RaftErrorTypeFB.AppendEntryFailedFB
+        | CandidateUnknown       -> RaftErrorTypeFB.CandidateUnknownFB
+        | EntryInvalidated       -> RaftErrorTypeFB.EntryInvalidatedFB
+        | InvalidCurrentIndex    -> RaftErrorTypeFB.InvalidCurrentIndexFB
+        | InvalidLastLog         -> RaftErrorTypeFB.InvalidLastLogFB
+        | InvalidLastLogTerm     -> RaftErrorTypeFB.InvalidLastLogTermFB
+        | InvalidTerm            -> RaftErrorTypeFB.InvalidTermFB
+        | LogFormatError         -> RaftErrorTypeFB.LogFormatErrorFB
+        | LogIncomplete          -> RaftErrorTypeFB.LogIncompleteFB
+        | NoError                -> RaftErrorTypeFB.NoErrorFB
+        | NoNode                 -> RaftErrorTypeFB.NoNodeFB
+        | NotCandidate           -> RaftErrorTypeFB.NotCandidateFB
+        | NotLeader              -> RaftErrorTypeFB.NotLeaderFB
+        | NotVotingState         -> RaftErrorTypeFB.NotVotingStateFB
+        | ResponseTimeout        -> RaftErrorTypeFB.ResponseTimeoutFB
+        | SnapshotFormatError    -> RaftErrorTypeFB.SnapshotFormatErrorFB
+        | StaleResponse          -> RaftErrorTypeFB.StaleResponseFB
+        | UnexpectedVotingChange -> RaftErrorTypeFB.UnexpectedVotingChangeFB
+        | VoteTermMismatch       -> RaftErrorTypeFB.VoteTermMismatchFB
+        | OtherError           _ -> RaftErrorTypeFB.OtherErrorFB
 
       match error with
-        | OtherError msg ->
-          let message = builder.CreateString msg
-          RaftErrorFB.CreateRaftErrorFB(builder, tipe, message)
-        | _ ->
-          RaftErrorFB.CreateRaftErrorFB(builder, tipe)
+      | OtherError msg ->
+        let message = builder.CreateString msg
+        RaftErrorFB.CreateRaftErrorFB(builder, tipe, message)
+      | _ ->
+        RaftErrorFB.CreateRaftErrorFB(builder, tipe)
 
     static member FromFB (fb: RaftErrorFB) =
       match fb.Type with

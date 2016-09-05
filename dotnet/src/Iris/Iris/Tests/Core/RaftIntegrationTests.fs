@@ -107,8 +107,8 @@ module RaftIntegrationTests =
       let nodes = [| node1; node2 |]
 
       let log =
-        Some <| LogEntry(Id.Create(), 7UL, 1UL, Close "cccc",
-          Some <| LogEntry(Id.Create(), 6UL, 1UL, AddClient "bbbb",
+        Some <| LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot "cccc",
+          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot "bbbb",
             Some <| Configuration(Id.Create(), 5UL, 1UL, [| node1 |],
               Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
                 Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
@@ -156,8 +156,8 @@ module RaftIntegrationTests =
       let nodes = [| node1; node2 |]
 
       let log =
-        LogEntry(Id.Create(), 7UL, 1UL, Close "cccc",
-          Some <| LogEntry(Id.Create(), 6UL, 1UL, AddClient "bbbb",
+        LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot "cccc",
+          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot "bbbb",
             Some <| Configuration(Id.Create(), 5UL, 1UL, [| node1 |],
               Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
                 Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
@@ -204,8 +204,8 @@ module RaftIntegrationTests =
       let nodes = [| node1; node2 |]
 
       let log =
-        LogEntry(Id.Create(), 7UL, 1UL, Close "cccc",
-          Some <| LogEntry(Id.Create(), 6UL, 1UL, AddClient "bbbb",
+        LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot "cccc",
+          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot "bbbb",
             Some <| Configuration(Id.Create(), 5UL, 1UL, [| node1 |],
               Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
                 Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
