@@ -283,7 +283,7 @@ module SerializationTests =
   // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
   let test_validate_state_machine_serialization =
-    testCase "Validate corrent StateMachine serialization" <| fun _ ->
+    testCase "Validate correct StateMachine serialization" <| fun _ ->
       let snapshot = DataSnapshot "hello"
       let remsg = snapshot |> encode |> decode |> Option.get
       expect "Should be structurally the same" snapshot id remsg

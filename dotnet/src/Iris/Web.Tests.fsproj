@@ -43,7 +43,7 @@
     <Compile Include="Iris\Core\Patch.fs" />
     <Compile Include="Iris\Core\Cue.fs" />
     <Compile Include="Iris\Core\CueList.fs" />
-    <Compile Include="Iris\Core\Message.fs" />
+    <Compile Include="Iris\Core\ApplicationEvent.fs" />
     <Compile Include="Iris\Web\Core\Browser.fs" />
     <Compile Include="Iris\Web\Core\Crypto.fs" />
     <Compile Include="Iris\Web\Core\Html.fs" />

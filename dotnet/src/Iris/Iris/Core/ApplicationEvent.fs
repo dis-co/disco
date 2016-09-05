@@ -131,32 +131,32 @@ type ApplicationEvent =
 #if JAVASCRIPT
 #else
     static member FromFB (fb: ApplicationEventFB) =
-      match fb.EventType with
+      match fb.AppEventType with
       | ApplicationEventTypeFB.AddCueFB ->
-        let ev = fb.GetEvent(new AddCueFB())
+        let ev = fb.GetAppEvent(new AddCueFB())
         ev.GetCue(new CueFB())
         |> Cue.FromFB
         |> Option.map AddCue
 
       | ApplicationEventTypeFB.UpdateCueFB  ->
-        let ev = fb.GetEvent(new UpdateCueFB())
+        let ev = fb.GetAppEvent(new UpdateCueFB())
         ev.GetCue(new CueFB())
         |> Cue.FromFB
         |> Option.map UpdateCue
 
       | ApplicationEventTypeFB.RemoveCueFB  ->
-        let ev = fb.GetEvent(new RemoveCueFB())
+        let ev = fb.GetAppEvent(new RemoveCueFB())
         ev.GetCue(new CueFB())
         |> Cue.FromFB
         |> Option.map RemoveCue
 
       | ApplicationEventTypeFB.LogMsgFB     ->
-        let ev = fb.GetEvent(new LogMsgFB())
+        let ev = fb.GetAppEvent(new LogMsgFB())
         let level = LogLevel.Parse ev.LogLevel
         LogMsg(level, ev.Msg) |> Some
 
       | ApplicationEventTypeFB.AppCommandFB ->
-        let ev = fb.GetEvent(new AppCommandFB())
+        let ev = fb.GetAppEvent(new AppCommandFB())
         AppCommand.FromFB ev
         |> Option.map Command
 
@@ -165,8 +165,8 @@ type ApplicationEvent =
     member self.ToOffset(builder: FlatBufferBuilder) : Offset<ApplicationEventFB> =
       let mkOffset tipe value =
         ApplicationEventFB.StartApplicationEventFB(builder)
-        ApplicationEventFB.AddEventType(builder, tipe)
-        ApplicationEventFB.AddEvent(builder, value)
+        ApplicationEventFB.AddAppEventType(builder, tipe)
+        ApplicationEventFB.AddAppEvent(builder, value)
         ApplicationEventFB.EndApplicationEventFB(builder)
 
       match self with

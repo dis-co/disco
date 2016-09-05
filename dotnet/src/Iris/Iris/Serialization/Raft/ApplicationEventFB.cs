@@ -11,21 +11,21 @@ public sealed class ApplicationEventFB : Table {
   public static ApplicationEventFB GetRootAsApplicationEventFB(ByteBuffer _bb, ApplicationEventFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
   public ApplicationEventFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
-  public ApplicationEventTypeFB EventType { get { int o = __offset(4); return o != 0 ? (ApplicationEventTypeFB)bb.Get(o + bb_pos) : ApplicationEventTypeFB.NONE; } }
-  public TTable GetEvent<TTable>(TTable obj) where TTable : Table { int o = __offset(6); return o != 0 ? __union(obj, o) : null; }
+  public ApplicationEventTypeFB AppEventType { get { int o = __offset(4); return o != 0 ? (ApplicationEventTypeFB)bb.Get(o + bb_pos) : ApplicationEventTypeFB.NONE; } }
+  public TTable GetAppEvent<TTable>(TTable obj) where TTable : Table { int o = __offset(6); return o != 0 ? __union(obj, o) : null; }
 
   public static Offset<ApplicationEventFB> CreateApplicationEventFB(FlatBufferBuilder builder,
-      ApplicationEventTypeFB Event_type = ApplicationEventTypeFB.NONE,
-      int EventOffset = 0) {
+      ApplicationEventTypeFB AppEvent_type = ApplicationEventTypeFB.NONE,
+      int AppEventOffset = 0) {
     builder.StartObject(2);
-    ApplicationEventFB.AddEvent(builder, EventOffset);
-    ApplicationEventFB.AddEventType(builder, Event_type);
+    ApplicationEventFB.AddAppEvent(builder, AppEventOffset);
+    ApplicationEventFB.AddAppEventType(builder, AppEvent_type);
     return ApplicationEventFB.EndApplicationEventFB(builder);
   }
 
   public static void StartApplicationEventFB(FlatBufferBuilder builder) { builder.StartObject(2); }
-  public static void AddEventType(FlatBufferBuilder builder, ApplicationEventTypeFB EventType) { builder.AddByte(0, (byte)EventType, 0); }
-  public static void AddEvent(FlatBufferBuilder builder, int EventOffset) { builder.AddOffset(1, EventOffset, 0); }
+  public static void AddAppEventType(FlatBufferBuilder builder, ApplicationEventTypeFB AppEventType) { builder.AddByte(0, (byte)AppEventType, 0); }
+  public static void AddAppEvent(FlatBufferBuilder builder, int AppEventOffset) { builder.AddOffset(1, AppEventOffset, 0); }
   public static Offset<ApplicationEventFB> EndApplicationEventFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
     return new Offset<ApplicationEventFB>(o);

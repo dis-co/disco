@@ -47,7 +47,7 @@ union ApplicationEventTypeFB {
 }
 
 table ApplicationEventFB {
-      Event: ApplicationEventTypeFB;
+      AppEvent: ApplicationEventTypeFB;
 }
 
 table DataSnapshotFB {

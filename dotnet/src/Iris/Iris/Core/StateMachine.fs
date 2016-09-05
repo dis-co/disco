@@ -26,14 +26,9 @@ type StateMachine =
     member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateMachineFB> =
       let mkAppEvent (ev: ApplicationEvent) tipe =
         let appevent = ev.ToOffset(builder)
-        ApplicationEventFB.StartApplicationEventFB(builder)
-        ApplicationEventFB.AddEventType(builder, tipe)
-        ApplicationEventFB.AddEvent(builder, appevent.Value)
-        let offset = ApplicationEventFB.EndApplicationEventFB(builder)
-
         StateMachineFB.StartStateMachineFB(builder)
         StateMachineFB.AddCommandType(builder, StateMachineTypeFB.ApplicationEventFB)
-        StateMachineFB.AddCommand(builder, offset.Value)
+        StateMachineFB.AddCommand(builder, appevent.Value)
         StateMachineFB.EndStateMachineFB(builder)
 
       match self with

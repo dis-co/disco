@@ -21,9 +21,7 @@ type Cue =
         ; IOBoxes = [| |]
         } |> Some
       with
-        | exn ->
-          printfn "Cue unparse: %A" exn.Message
-          None
+        | exn -> None
 
     member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueFB> =
       let id = string self.Id |> builder.CreateString
