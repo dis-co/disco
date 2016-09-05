@@ -53,6 +53,7 @@
     <Compile Include="Iris\Core\Either.fs" />
     <Compile Include="Iris\Core\Aliases.fs" />
     <Compile Include="Iris\Core\Util.fs" />
+    <Compile Include="Iris\Core\LogLevel.fs" />
     <Compile Include="Iris\Raft\Validation.fs" />
     <Compile Include="Iris\Raft\Continue.fs" />
     <Compile Include="Iris\Raft\Node.fs" />

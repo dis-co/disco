@@ -44,6 +44,7 @@
     <Compile Include="Iris\Core\IpAddress.fs" />
     <Compile Include="Iris\Core\Aliases.fs" />
     <Compile Include="Iris\Core\Util.fs" />
+    <Compile Include="Iris\Core\LogLevel.fs" />
     <Compile Include="Iris\Core\IOBox.fs" />
     <Compile Include="Iris\Core\Patch.fs" />
     <Compile Include="Iris\Core\Cue.fs" />

@@ -8,10 +8,10 @@ module Store =
   open Iris.Core
 
   (* Reducers are take a state, an action, acts and finally return the new state *)
-  type Reducer<'a> = (AppEvent -> 'a -> 'a)
+  type Reducer<'a> = (ApplicationEvent -> 'a -> 'a)
 
   (* Action: Log entry for the Event occurred and the resulting state. *)
-  type Action<'a> = { Event : AppEvent; State : 'a }
+  type Action<'a> = { Event : ApplicationEvent; State : 'a }
     with override self.ToString() : string =
                   sprintf "%s %s" (self.Event.ToString()) (self.State.ToString())
 
@@ -99,14 +99,14 @@ module Store =
     let reducer = reducer
     let mutable state = state
     let mutable history =
-      new History<Action<'a>>({ State = state; Event = AppEvent(Initialize) })
+      new History<Action<'a>>({ State = state; Event = Command(AppCommand.Reset) })
 
     let mutable listeners : Listener<'a> list = []
 
     (*
-     * Notify all listeners of the AppEvent change
+     * Notify all listeners of the ApplicationEvent change
      *)
-    member private store.Notify (ev : AppEvent) =
+    member private store.Notify (ev : ApplicationEvent) =
       List.iter (fun f -> f store ev) listeners
 
     (*
@@ -128,14 +128,14 @@ module Store =
        and set n  = history.Depth <- n
 
     (*
-       Dispatch an action (AppEvent) to be executed against the current
+       Dispatch an action (ApplicationEvent) to be executed against the current
        version of the state to produce the next state.
 
        Notify all listeners of the change.
 
        Create a history item for this change if debugging is enabled.
      *)
-    member __.Dispatch (ev : AppEvent) : unit =
+    member __.Dispatch (ev : ApplicationEvent) : unit =
       state <- reducer ev state         // 1) create new state
       __.Notify ev                      // 2) notify all listeners (render as soon as possible)
       history.Append({ Event = ev       // 3) store this action the and state it produced
@@ -168,4 +168,4 @@ module Store =
           __.Notify log.Event |> ignore
         | _ -> ()
 
-  and Listener<'a> = (Store<'a> -> AppEvent -> unit)
+  and Listener<'a> = (Store<'a> -> ApplicationEvent -> unit)

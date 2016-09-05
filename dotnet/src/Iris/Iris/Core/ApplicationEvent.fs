@@ -1,10 +1,9 @@
 namespace Iris.Core
 
-open Iris.Raft
-
 #if JAVASCRIPT
 #else
 
+open Iris.Raft
 open Iris.Serialization.Raft
 open FlatBuffers
 
@@ -31,9 +30,9 @@ type AppCommand =
   | Redo
   | Reset
 
-  with
 #if JAVASCRIPT
 #else
+  with
     static member FromFB (fb: AppCommandFB) =
       match fb.Command with
       | AppCommandTypeFB.UndoFB  -> Some Undo
@@ -261,18 +260,18 @@ type ApplicationEvent =
 
 [<RequireQualifiedAccess>]
 type ClientMessage<'state> =
-  | Initialized  of Session            // the worker has created a session for this tab/window
-  | Close        of Session            // client tab/window was closed, so request to remove session
-  | Closed       of Session            // other client tab/window notified of close
-  | Stop                               // SharedWorker is requested to stop
-  | Stopped                            // SharedWorker process has stopped
-  | ClientLog    of ClientLog          // logs a piece of data to all connected clients
-  | Error        of Error              // an error occuring inside the worker
-  | Render       of 'state             // instruct all clients to render new state
-  | Event        of Session * AppEvent // encapsulates an action or event that happened on the client
-  | Connect      of string             // Connect to the specified endpoint
-  | Connected                          // worker websocket is connected to service
-  | Disconnect   of string             // Disconnect from server
-  | Disconnected                       // worker websocket was disconnected from service
+  | Initialized  of Session                     // the worker has created a session for this tab/window
+  | Close        of Session                     // client tab/window was closed, so request to remove session
+  | Closed       of Session                     // other client tab/window notified of close
+  | Stop                                        // SharedWorker is requested to stop
+  | Stopped                                     // SharedWorker process has stopped
+  | ClientLog    of ClientLog                   // logs a piece of data to all connected clients
+  | Error        of Error                       // an error occuring inside the worker
+  | Render       of 'state                      // instruct all clients to render new state
+  | Event        of Session * ApplicationEvent  // encapsulates an action or event that happened on the client
+  | Connect      of string                      // Connect to the specified endpoint
+  | Connected                                   // worker websocket is connected to service
+  | Disconnect   of string                      // Disconnect from server
+  | Disconnected                                // worker websocket was disconnected from service
 
 #endif

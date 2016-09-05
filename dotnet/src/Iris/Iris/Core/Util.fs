@@ -154,17 +154,26 @@ module Utils =
       let ws = Array.fold (fun m _ -> m + " ") "" [| 0 .. (offset - def) |]
       printfn "[%s]%s%s" tag ws str
 
+#endif
 
-  //  ____  _        _
-  // / ___|| |_ _ __(_)_ __   __ _
-  // \___ \| __| '__| | '_ \ / _` |
-  //  ___) | |_| |  | | | | | (_| |
-  // |____/ \__|_|  |_|_| |_|\__, |
-  //                         |___/
+//  ____  _        _
+// / ___|| |_ _ __(_)_ __   __ _
+// \___ \| __| '__| | '_ \ / _` |
+//  ___) | |_| |  | | | | | (_| |
+// |____/ \__|_|  |_|_| |_|\__, |
+//                         |___/
+
+#if JAVASCRIPT
+
+  open Fable.Core
+
+  [<Emit("$0.toLowerCase()")>]
+  let inline toLower (str: string) : string = failwith "ONLY JS"
+
+#else
 
   let inline trim< ^a when ^a : (member Trim : unit -> ^a)> str =
     (^a : (member Trim : unit -> ^a) str)
-
 
   let inline toLower< ^a when ^a : (member ToLower : unit -> ^a)> str =
     (^a : (member ToLower : unit -> ^a) str)
@@ -181,6 +190,11 @@ module Utils =
     |> Array.map (fun line -> spaces + line)
     |> Array.fold (fun m line -> sprintf "%s\n%s" m line) ""
 
+#endif
+
+
+#if JAVASCRIPT
+#else
   //  ____  _       ______       _   _
   // |  _ \(_)_ __ / /  _ \ __ _| |_| |__
   // | | | | | '__/ /| |_) / _` | __| '_ \

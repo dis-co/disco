@@ -238,24 +238,13 @@ type GlobalContext() =
    *------------------------------------------------------------------------*)
 
   member __.OnClientMessage(msg : MessageEvent<ClientMessage<State>>) : unit =
-    let handleAppEvent (session: Session) (appevent: AppEvent) =
+    let handleAppEvent (session: Session) (appevent: ApplicationEvent) =
       match appevent with
-      | IOBoxEvent (Create,iobox) -> __.SendServer(AddIOBox iobox)
-      | IOBoxEvent (Read,iobox)   -> __.SendServer(AddIOBox iobox)
-      | IOBoxEvent (Update,iobox) -> __.SendServer(UpdateIOBox iobox)
-      | IOBoxEvent (Delete,iobox) -> __.SendServer(RemoveIOBox iobox)
-
-      | PatchEvent (Create,patch) -> __.SendServer(AddPatch patch)
-      | PatchEvent (Read,patch)   -> __.SendServer(AddPatch patch)
-      | PatchEvent (Update,patch) -> __.SendServer(UpdatePatch patch)
-      | PatchEvent (Delete,patch) -> __.SendServer(RemovePatch patch)
-
-      | CueEvent (Create,cue) -> __.SendServer(AddCue cue)
-      | CueEvent (Read,cue)   -> __.SendServer(AddCue cue)
-      | CueEvent (Update,cue) -> __.SendServer(UpdateCue cue)
-      | CueEvent (Delete,cue) -> __.SendServer(RemoveCue cue)
-
-      | _ -> __.Log "other are currently not supported in-worker"
+      | AddCue    cue -> __.SendServer(AddCue cue)
+      | UpdateCue cue -> __.SendServer(UpdateCue cue)
+      | RemoveCue cue -> __.SendServer(UpdateCue cue)
+      | Command   cmd -> __.SendServer(RemoveCue cue)
+      | _             -> __.Log "other are currently not supported in-worker"
 
     match msg.Data with
     | ClientMessage.Close(session) -> __.UnRegister(session)
@@ -314,7 +303,7 @@ type GlobalContext() =
   member __.Store  with get () = store
   member __.Socket with get () = socket
 
-  member __.SendServer (msg: ApiAction) =
+  member __.SendServer (msg: ApplicationEvent) =
     match socket with
     | Some (_, server) -> server.Send(stringify msg)
     | _                -> __.Log "Cannot update server: no connection."
