@@ -1,11 +1,50 @@
 namespace Iris.Core
 
+#if JAVASCRIPT
+
 open Fable.Core
+
+#else
+
+open FlatBuffers
+open Iris.Serialization.Raft
+
+#endif
+
+//  ____       _                 _
+// | __ )  ___| |__   __ ___   _(_) ___  _ __
+// |  _ \ / _ \ '_ \ / _` \ \ / / |/ _ \| '__|
+// | |_) |  __/ | | | (_| |\ V /| | (_) | |
+// |____/ \___|_| |_|\__,_| \_/ |_|\___/|_|
 
 [<RequireQualifiedAccess>]
 type Behavior =
   | Toggle
   | Bang
+
+#if JAVASCRIPT
+#else
+  with
+
+    static member FromFB (fb: BehaviorTypeFB) =
+      match fb with
+      | BehaviorTypeFB.ToggleFB -> Some Toggle
+      | BehaviorTypeFB.BangFB   -> Some Bang
+      | _                       -> None
+
+    member self.ToOffset(builder: FlatBufferBuilder) : BehaviorTypeFB =
+      match self with
+      | Toggle -> BehaviorTypeFB.ToggleFB
+      | Bang   -> BehaviorTypeFB.BangFB
+
+#endif
+
+//  ____  _        _            _____
+// / ___|| |_ _ __(_)_ __   __ |_   _|   _ _ __   ___
+// \___ \| __| '__| | '_ \ / _` || || | | | '_ \ / _ \
+//  ___) | |_| |  | | | | | (_| || || |_| | |_) |  __/
+// |____/ \__|_|  |_|_| |_|\__, ||_| \__, | .__/ \___|
+//                         |___/     |___/|_|
 
 type StringType =
   | Simple
@@ -14,6 +53,31 @@ type StringType =
   | Directory
   | Url
   | IP
+
+#if JAVASCRIPT
+#else
+  with
+
+    static member FromFB (fb: StringTypeFB) =
+      match fb with
+      | StringTypeFB.SimpleFB    -> Some Simple
+      | StringTypeFB.MultiLineFB -> Some MultiLine
+      | StringTypeFB.FileNameFB  -> Some FileName
+      | StringTypeFB.DirectoryFB -> Some Directory
+      | StringTypeFB.UrlFB       -> Some Url
+      | StringTypeFB.IPFB        -> Some IP
+      | _                        -> None
+
+    member self.ToOffset(builder: FlatBufferBuilder) : StringTypeFB =
+      match self with
+      | Simple    -> StringTypeFB.SimpleFB
+      | MultiLine -> StringTypeFB.MultiLineFB
+      | FileName  -> StringTypeFB.FileNameFB
+      | Directory -> StringTypeFB.DirectoryFB
+      | Url       -> StringTypeFB.UrlFB
+      | IP        -> StringTypeFB.IPFB
+
+#endif
 
 //  ___ ___  ____
 // |_ _/ _ \| __ )  _____  __
@@ -298,6 +362,27 @@ type IOBox =
                 ; FileMask   = None
                 ; MaxChars   = sizeof<int>
                 ; Slices     = values }
+
+    //  ___ ___  ____
+    // |_ _/ _ \| __ )  _____  __
+    //  | | | | |  _ \ / _ \ \/ /
+    //  | | |_| | |_) | (_) >  <
+    // |___\___/|____/ \___/_/\_\
+
+    //  ____            _       _ _          _   _
+    // / ___|  ___ _ __(_) __ _| (_)______ _| |_(_) ___  _ __
+    // \___ \ / _ \ '__| |/ _` | | |_  / _` | __| |/ _ \| '_ \
+    //  ___) |  __/ |  | | (_| | | |/ / (_| | |_| | (_) | | | |
+    // |____/ \___|_|  |_|\__,_|_|_/___\__,_|\__|_|\___/|_| |_|
+
+
+    member self.ToOffset(builder: FlatBufferBuilder) : Offset<IOBoxFB> =
+      failwith "IOBOX FIXME"
+
+    static member FromFB(fb: IOBoxFB) =
+      failwith "IOBOX FIXME"
+
+
 
 //  ____              _
 // | __ )  ___   ___ | |
@@ -756,6 +841,15 @@ and Slices =
     member __.CreateCompound (idx: Index) (value: IOBox array) =
       CompoundSlice { Index = idx; Value = value }
 
+//  ____  _     _____
+// |  _ \(_)_ _|_   _|   _ _ __   ___
+// | |_) | | '_ \| || | | | '_ \ / _ \
+// |  __/| | | | | || |_| | |_) |  __/
+// |_|   |_|_| |_|_| \__, | .__/ \___| 4 IOBox Plugins
+//                   |___/|_|
+
+#if JAVASCRIPT
+
 [<StringEnum>]
 type PinType =
   | [<CompiledName("ValuePin")>]    ValuePin
@@ -782,3 +876,5 @@ module IOBoxUtils =
     | EnumBox                                        _ -> EnumPin
     | ColorBox                                       _ -> ColorPin
     | Compound                                       _ -> CompoundPin
+
+#endif

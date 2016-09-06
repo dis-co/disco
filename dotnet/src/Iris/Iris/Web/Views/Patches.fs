@@ -23,11 +23,19 @@ module Patches =
           [| Text "Restart Worker" |]
 
         Button
-          [ OnClick (fun _ -> ctx.Trigger(ClientMessage.Undo)) ]
+          [ OnClick (fun _ ->
+                     let cmd = ApplicationEvent.Command AppCommand.Undo
+                     match ctx.Session with
+                     | Some session -> ctx.Trigger(ClientMessage.Event(session, cmd))
+                     | _            -> printfn "No session active. Worker not running?") ]
           [| Text "Undo" |]
 
         Button
-          [ OnClick (fun _ -> ctx.Trigger(ClientMessage.Redo)) ]
+          [ OnClick (fun _ ->
+                     let cmd = ApplicationEvent.Command AppCommand.Redo
+                     match ctx.Session with
+                     | Some session -> ctx.Trigger(ClientMessage.Event(session, cmd))
+                     | _            -> printfn "No session active. Worker not running??") ]
           [| Text "Redo" |]
 
         Button
@@ -38,7 +46,7 @@ module Patches =
                             { Id      = Id.Create()
                             ; Name    = "New Cue"
                             ; IOBoxes = [| |] }
-                          let ev = session, CueEvent(Create, cue)
+                          let ev = session, AddCue cue
                           ctx.Trigger(ClientMessage.Event(ev))
                         | _ -> printfn "Cannot create cue. No worker?") ]
           [| Text "Create Cue" |]
@@ -52,7 +60,7 @@ module Patches =
              (fun iobox' ->
               match context.Session with
                 | Some(session) ->
-                  ClientMessage.Event(session,IOBoxEvent(Update,iobox'))
+                  ClientMessage.ClientLog "Bla bla iobox update wtf?"
                   |> context.Trigger
                 | _ -> printfn "no worker session found.")
 
@@ -96,7 +104,7 @@ module Patches =
       let handler (_ : MouseEvent) =
         match context.Session with
           | Some(session) ->
-            let ev = ClientMessage<State>.Event(session, CueEvent(Delete, cue))
+            let ev = ClientMessage<State>.Event(session, RemoveCue cue)
             context.Trigger(ev)
           | _ -> printfn "Cannot delete cue. No Worker?"
 

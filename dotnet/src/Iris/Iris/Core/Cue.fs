@@ -16,8 +16,8 @@ type Cue =
   with
     static member FromFB(fb: CueFB) : Cue option =
       try
-        { Id = Id fb.CueId
-        ; Name = fb.CueName
+        { Id = Id fb.Id
+        ; Name = fb.Name
         ; IOBoxes = [| |]
         } |> Some
       with
@@ -27,8 +27,8 @@ type Cue =
       let id = string self.Id |> builder.CreateString
       let name = self.Name |> builder.CreateString
       CueFB.StartCueFB(builder)
-      CueFB.AddCueId(builder, id)
-      CueFB.AddCueName(builder, name)
+      CueFB.AddId(builder, id)
+      CueFB.AddName(builder, name)
       CueFB.EndCueFB(builder)
 
     member self.ToBytes () =

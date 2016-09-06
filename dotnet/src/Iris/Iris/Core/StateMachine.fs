@@ -37,6 +37,19 @@ type StateMachine =
         | AddCue _    -> mkAppEvent ev ApplicationEventTypeFB.AddCueFB
         | UpdateCue _ -> mkAppEvent ev ApplicationEventTypeFB.UpdateCueFB
         | RemoveCue _ -> mkAppEvent ev ApplicationEventTypeFB.RemoveCueFB
+
+        | AddPatch _    -> mkAppEvent ev ApplicationEventTypeFB.AddPatchFB
+        | UpdatePatch _ -> mkAppEvent ev ApplicationEventTypeFB.UpdatePatchFB
+        | RemovePatch _ -> mkAppEvent ev ApplicationEventTypeFB.RemovePatchFB
+
+        | AddIOBox _    -> mkAppEvent ev ApplicationEventTypeFB.AddIOBoxFB
+        | UpdateIOBox _ -> mkAppEvent ev ApplicationEventTypeFB.UpdateIOBoxFB
+        | RemoveIOBox _ -> mkAppEvent ev ApplicationEventTypeFB.RemoveIOBoxFB
+
+        | AddNode _    -> mkAppEvent ev ApplicationEventTypeFB.AddNodeFB
+        | UpdateNode _ -> mkAppEvent ev ApplicationEventTypeFB.UpdateNodeFB
+        | RemoveNode _ -> mkAppEvent ev ApplicationEventTypeFB.RemoveNodeFB
+
         | LogMsg _    -> mkAppEvent ev ApplicationEventTypeFB.LogMsgFB
         | Command _   -> mkAppEvent ev ApplicationEventTypeFB.AppCommandFB
 

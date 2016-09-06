@@ -1,8 +1,50 @@
 namespace Iris.Serialization.Raft;
 
+//  ___ ___  ____
+// |_ _/ _ \| __ )  _____  __
+//  | | | | |  _ \ / _ \ \/ /
+//  | | |_| | |_) | (_) >  <
+// |___\___/|____/ \___/_/\_\
+
+enum BehaviorTypeFB:ushort {
+     ToggleFB = 0,
+     BangFB = 1 
+}
+
+enum StringTypeFB:ushort {
+     SimpleFB = 0,
+     MultiLineFB = 1,
+     FileNameFB = 2,
+     DirectoryFB = 3,
+     UrlFB = 4,
+     IPFB = 5
+}
+
+table IOBoxFB {
+      Id: string;
+      Name: string;
+}
+
+//  ____       _       _
+// |  _ \ __ _| |_ ___| |__
+// | |_) / _` | __/ __| '_ \
+// |  __/ (_| | || (__| | | |
+// |_|   \__,_|\__\___|_| |_|
+
+table PatchFB {
+      Id: string;
+      Name: string; 
+}
+
+//   ____
+//  / ___|   _  ___
+// | |  | | | |/ _ \
+// | |__| |_| |  __/
+//  \____\__,_|\___|
+
 table CueFB {
-      CueId: string;
-      CueName: string; 
+      Id: string;
+      Name: string; 
 }
 
 //  ____  _        _         __  __            _     _
@@ -14,7 +56,8 @@ table CueFB {
 enum AppCommandTypeFB:ushort {
      UndoFB = 0,
      RedoFB = 1,
-     ResetFB = 2
+     ResetFB = 2,
+     SaveProjectFB =3
 }
 
 table AppCommandFB {
@@ -33,15 +76,68 @@ table RemoveCueFB {
       Cue: CueFB;
 }
 
+table AddIOBoxFB {
+      IOBox: IOBoxFB;
+}
+
+table UpdateIOBoxFB {
+      IOBox: IOBoxFB;
+}
+
+table RemoveIOBoxFB {
+      IOBox: IOBoxFB;
+}
+
+table AddPatchFB {
+      Patch: PatchFB;
+}
+
+table UpdatePatchFB {
+      Patch: PatchFB;
+}
+
+table RemovePatchFB {
+      Patch: PatchFB;
+}
+
+table AddNodeFB {
+      Node: NodeFB;
+}
+
+table UpdateNodeFB {
+      Node: NodeFB;
+}
+
+table RemoveNodeFB {
+      Node: NodeFB;
+}
+
 table LogMsgFB {
       LogLevel: string;
       Msg: string;
 }
 
 union ApplicationEventTypeFB {
+      // Cue
       AddCueFB,
       UpdateCueFB,
       RemoveCueFB,
+
+      // IOBox
+      AddIOBoxFB,
+      UpdateIOBoxFB,
+      RemoveIOBoxFB,
+
+      // Patch
+      AddPatchFB,
+      UpdatePatchFB,
+      RemovePatchFB,
+
+      // Node
+      AddNodeFB,
+      UpdateNodeFB,
+      RemoveNodeFB,
+
       LogMsgFB,
       AppCommandFB
 }

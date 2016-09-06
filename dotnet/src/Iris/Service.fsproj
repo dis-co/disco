@@ -88,6 +88,7 @@
 
   <ItemGroup>
     <Compile Include="AssemblyInfo\ServiceInfo.fs" />
+    <Compile Include="Iris\Core\Serialization.fs" />
     <Compile Include="Iris\Core\Id.fs" />
     <Compile Include="Iris\Core\IpAddress.fs" />
     <Compile Include="Iris\Core\Either.fs" />
@@ -119,7 +120,6 @@
     <Compile Include="Iris\Service\GitDaemon.fs" />
     <Compile Include="Iris\Core\BrowserSession.fs" />
     <Compile Include="Iris\Core\StateMachine.fs" />
-    <Compile Include="Iris\Core\Serialization.fs" />
     <Compile Include="Iris\Core\RaftUtils.fs" />
     <Compile Include="Iris\Service\WebSocket.fs" />
     <Compile Include="Iris\Service\Raft\Zmq.fs" />

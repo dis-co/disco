@@ -45,6 +45,8 @@
     <Compile Include="Iris\Core\Cue.fs" />
     <Compile Include="Iris\Core\CueList.fs" />
     <Compile Include="Iris\Core\ApplicationEvent.fs" />
+    <Compile Include="Iris\Core\ClientMessage.fs" />
+
     <Compile Include="Iris\Web\Core\Browser.fs" />
     <Compile Include="Iris\Web\Core\Crypto.fs" />
     <Compile Include="Iris\Web\Core\Html.fs" />
@@ -57,6 +59,7 @@
     <Compile Include="Iris\Web\Core\Client.fs" />
     <Compile Include="Iris\Web\Core\Keyboard.fs" />
     <Compile Include="Iris\Web\Views\Patches.fs" />
+
     <Compile Include=".\Iris\Tests\Web\TestUtilities.fs" />
     <Compile Include=".\Iris\Tests\Web\Mocha.fs" />
     <Compile Include=".\Iris\Tests\Web\HtmlTests.fs" />

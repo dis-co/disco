@@ -3,12 +3,10 @@
 namespace Iris.Serialization.Raft
 {
 
-public enum AppCommandTypeFB : ushort
+public enum BehaviorTypeFB : ushort
 {
- UndoFB = 0,
- RedoFB = 1,
- ResetFB = 2,
- SaveProjectFB = 3,
+ ToggleFB = 0,
+ BangFB = 1,
 };
 
 

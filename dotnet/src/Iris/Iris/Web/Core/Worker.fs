@@ -238,26 +238,8 @@ type GlobalContext() =
    *------------------------------------------------------------------------*)
 
   member __.OnClientMessage(msg : MessageEvent<ClientMessage<State>>) : unit =
-    let handleAppEvent (session: Session) (appevent: ApplicationEvent) =
-      match appevent with
-      | AddCue    cue -> __.SendServer(AddCue cue)
-      | UpdateCue cue -> __.SendServer(UpdateCue cue)
-      | RemoveCue cue -> __.SendServer(UpdateCue cue)
-      | Command   cmd -> __.SendServer(RemoveCue cue)
-      | _             -> __.Log "other are currently not supported in-worker"
-
     match msg.Data with
     | ClientMessage.Close(session) -> __.UnRegister(session)
-
-    | ClientMessage.Undo ->
-      store.Undo()
-      __.Broadcast <| ClientMessage.Render(store.State)
-      __.SendServer (LogStr "Undo!")
-
-    | ClientMessage.Redo ->
-      store.Redo()
-      __.Broadcast <| ClientMessage.Render(store.State)
-      __.SendServer (LogStr "Redo!")
 
     | ClientMessage.Stop ->
       __.Broadcast <| ClientMessage.Stopped
@@ -267,7 +249,7 @@ type GlobalContext() =
       __.Log (sprintf "connecting to %s" address)
       __.ConnectServer(address)
 
-    | ClientMessage.Event(session, ev) -> handleAppEvent session ev
+    | ClientMessage.Event(_, ev) -> __.SendServer(ev)
 
     | _ -> __.Log "clients-only message ignored"
 
@@ -324,4 +306,4 @@ type GlobalContext() =
     ports.forEach(func)
 
   member __.Log (thing : ClientLog) : unit =
-    __.Broadcast <| ClientMessage.Log(thing)
+    __.Broadcast <| ClientMessage.ClientLog(thing)

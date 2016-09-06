@@ -1,8 +1,16 @@
 namespace Iris.Raft
 
+open Iris.Core
+
+#if JAVASCRIPT
+#else
+
 open System
 open System.Net
-open Iris.Core
+open FlatBuffers
+open Iris.Serialization.Raft
+
+#endif
 
 //  _   _           _      ____  _        _
 // | \ | | ___   __| | ___/ ___|| |_ __ _| |_ ___
@@ -29,6 +37,24 @@ type RaftNodeState =
       | "Failed"  -> Failed
       | _         -> failwithf "NodeState: failed to parse %s" str
 
+#if JAVASCRIPT
+#else
+
+    member self.ToOffset () =
+      match self with
+        | Running -> NodeStateFB.RunningFB
+        | Joining -> NodeStateFB.JoiningFB
+        | Failed  -> NodeStateFB.FailedFB
+
+    static member FromFB (fb: NodeStateFB) =
+      match fb with
+        | NodeStateFB.JoiningFB -> Some Joining
+        | NodeStateFB.RunningFB -> Some Running
+        | NodeStateFB.FailedFB  -> Some Failed
+        | _                     -> None
+
+#endif
+
 //  _   _           _
 // | \ | | ___   __| | ___
 // |  \| |/ _ \ / _` |/ _ \
@@ -44,34 +70,103 @@ type RaftNode =
   ; VotedForMe : bool
   ; State      : RaftNodeState
   ; NextIndex  : Index
-  ; MatchIndex : Index
-  }
+  ; MatchIndex : Index }
 
-  override self.ToString() =
-    sprintf "%s on %s (%s:%d) %s %s %s"
-      (string self.Id)
-      (string self.HostName)
-      (string self.IpAddr)
-      self.Port
-      (string self.State)
-      (sprintf "(NxtIdx %A)" self.NextIndex)
-      (sprintf "(MtchIdx %A)" self.MatchIndex)
+  with
+    override self.ToString() =
+      sprintf "%s on %s (%s:%d) %s %s %s"
+        (string self.Id)
+        (string self.HostName)
+        (string self.IpAddr)
+        self.Port
+        (string self.State)
+        (sprintf "(NxtIdx %A)" self.NextIndex)
+        (sprintf "(MtchIdx %A)" self.MatchIndex)
 
-//   ____             __ _          ____ _
-//  / ___|___  _ __  / _(_) __ _   / ___| |__   __ _ _ __   __ _  ___
-// | |   / _ \| '_ \| |_| |/ _` | | |   | '_ \ / _` | '_ \ / _` |/ _ \
-// | |__| (_) | | | |  _| | (_| | | |___| | | | (_| | | | | (_| |  __/
-//  \____\___/|_| |_|_| |_|\__, |  \____|_| |_|\__,_|_| |_|\__, |\___|
-//                         |___/                           |___/
+#if JAVASCRIPT
+#else
+
+    member node.ToOffset (builder: FlatBufferBuilder) =
+      let id = string node.Id |> builder.CreateString
+      let ip = string node.IpAddr |> builder.CreateString
+      let hostname = node.HostName |> builder.CreateString
+      let state = node.State.ToOffset()
+
+      NodeFB.StartNodeFB(builder)
+      NodeFB.AddId(builder, id)
+      NodeFB.AddHostName(builder, hostname)
+      NodeFB.AddIpAddr(builder, ip)
+      NodeFB.AddPort(builder, int node.Port)
+      NodeFB.AddVoting(builder, node.Voting)
+      NodeFB.AddVotedForMe(builder, node.VotedForMe)
+      NodeFB.AddState(builder, state)
+      NodeFB.AddNextIndex(builder, node.NextIndex)
+      NodeFB.AddMatchIndex(builder, node.MatchIndex)
+      NodeFB.EndNodeFB(builder)
+
+    static member FromFB (fb: NodeFB) : RaftNode option =
+      try
+        RaftNodeState.FromFB fb.State
+        |> Option.map
+          (fun state ->
+            { Id = Id fb.Id
+            ; State = state
+            ; HostName = fb.HostName
+            ; IpAddr = IpAddress.Parse fb.IpAddr
+            ; Port = uint16 fb.Port
+            ; Voting = fb.Voting
+            ; VotedForMe = fb.VotedForMe
+            ; NextIndex = fb.NextIndex
+            ; MatchIndex = fb.MatchIndex })
+      with
+        | _ -> None
+
+#endif
+
+
+
+//   ____             __ _        ____ _
+//  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
+// | |   / _ \| '_ \| |_| |/ _` | |   | '_ \ / _` | '_ \ / _` |/ _ \
+// | |__| (_) | | | |  _| | (_| | |___| | | | (_| | | | | (_| |  __/
+//  \____\___/|_| |_|_| |_|\__, |\____|_| |_|\__,_|_| |_|\__, |\___|
+//                         |___/                         |___/
 
 type ConfigChange =
   | NodeAdded   of RaftNode
   | NodeRemoved of RaftNode
 
-  override self.ToString() =
-    match self with
-    | NodeAdded   n -> sprintf "NodeAdded (%s)"   (string n.Id)
-    | NodeRemoved n ->sprintf "NodeRemoved (%s)" (string n.Id)
+  with
+    override self.ToString() =
+      match self with
+      | NodeAdded   n -> sprintf "NodeAdded (%s)"   (string n.Id)
+      | NodeRemoved n ->sprintf "NodeRemoved (%s)" (string n.Id)
+
+#if JAVASCRIPT
+#else
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      match self with
+        | NodeAdded node ->
+          let node = node.ToOffset(builder)
+          ConfigChangeFB.StartConfigChangeFB(builder)
+          ConfigChangeFB.AddType(builder, ConfigChangeTypeFB.NodeAdded)
+          ConfigChangeFB.AddNode(builder, node)
+          ConfigChangeFB.EndConfigChangeFB(builder)
+        | NodeRemoved node ->
+          let node = node.ToOffset(builder)
+          ConfigChangeFB.StartConfigChangeFB(builder)
+          ConfigChangeFB.AddType(builder, ConfigChangeTypeFB.NodeRemoved)
+          ConfigChangeFB.AddNode(builder, node)
+          ConfigChangeFB.EndConfigChangeFB(builder)
+
+    static member FromFB (fb: ConfigChangeFB) : ConfigChange option =
+      RaftNode.FromFB fb.Node
+      |> Option.bind
+        (fun node ->
+          match fb.Type with
+            | ConfigChangeTypeFB.NodeAdded   -> Some (NodeAdded   node)
+            | ConfigChangeTypeFB.NodeRemoved -> Some (NodeRemoved node)
+            | _                              -> None)
 
 [<RequireQualifiedAccess>]
 module Node =
@@ -140,3 +235,5 @@ module Node =
     |> List.append (added oldnodes newnodes)
     |> List.append (removed oldnodes newnodes)
     |> Array.ofList
+
+#endif

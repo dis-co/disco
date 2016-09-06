@@ -13,6 +13,6 @@ onConnect <| fun ev ->
   let port = ev.Ports.[0]
 
   port.OnMessage <- fun msg ->
-    port.PostMessage(ClientMessage.Log (sprintf "hello echo %A" msg.Data))
+    port.PostMessage(ClientMessage.ClientLog (sprintf "hello echo %A" msg.Data))
 
   context.Register(port)

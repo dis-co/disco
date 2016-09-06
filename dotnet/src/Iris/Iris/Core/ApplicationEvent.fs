@@ -1,9 +1,10 @@
 namespace Iris.Core
 
+open Iris.Raft
+
 #if JAVASCRIPT
 #else
 
-open Iris.Raft
 open Iris.Serialization.Raft
 open FlatBuffers
 
@@ -30,22 +31,31 @@ type AppCommand =
   | Redo
   | Reset
 
+  // PROJECT
+  | SaveProject
+  // | OpenProject
+  // | CreateProject
+  // | CloseProject
+  // | DeleteProject
+
 #if JAVASCRIPT
 #else
   with
     static member FromFB (fb: AppCommandFB) =
       match fb.Command with
-      | AppCommandTypeFB.UndoFB  -> Some Undo
-      | AppCommandTypeFB.RedoFB  -> Some Redo
-      | AppCommandTypeFB.ResetFB -> Some Reset
-      | _                        -> None
+      | AppCommandTypeFB.UndoFB        -> Some Undo
+      | AppCommandTypeFB.RedoFB        -> Some Redo
+      | AppCommandTypeFB.ResetFB       -> Some Reset
+      | AppCommandTypeFB.SaveProjectFB -> Some SaveProject
+      | _                              -> None
 
     member self.ToOffset(builder: FlatBufferBuilder) : Offset<AppCommandFB> =
       let tipe =
         match self with
-        | Undo  -> AppCommandTypeFB.UndoFB
-        | Redo  -> AppCommandTypeFB.RedoFB
-        | Reset -> AppCommandTypeFB.ResetFB
+        | Undo        -> AppCommandTypeFB.UndoFB
+        | Redo        -> AppCommandTypeFB.RedoFB
+        | Reset       -> AppCommandTypeFB.ResetFB
+        | SaveProject -> AppCommandTypeFB.SaveProjectFB
 
       AppCommandFB.StartAppCommandFB(builder)
       AppCommandFB.AddCommand(builder, tipe)
@@ -53,12 +63,6 @@ type AppCommand =
 #endif
 
 type ApplicationEvent =
-  // PROJECT
-  // | OpenProject
-  // | SaveProject
-  // | CreateProject
-  // | CloseProject
-  // | DeleteProject
 
   // CLIENT
   // | AddClient    of string
@@ -66,19 +70,19 @@ type ApplicationEvent =
   // | RemoveClient of string
 
   // NODE
-  // | AddNode      of string
-  // | UpdateNode   of string
-  // | RemoveNode   of string
+  | AddNode      of RaftNode
+  | UpdateNode   of RaftNode
+  | RemoveNode   of RaftNode
 
   // PATCH
-  // | AddPatch    of Patch
-  // | UpdatePatch of Patch
-  // | RemovePatch of Patch
+  | AddPatch    of Patch
+  | UpdatePatch of Patch
+  | RemovePatch of Patch
 
   // IOBOX
-  // | AddIOBox    of IOBox
-  // | UpdateIOBox of IOBox
-  // | RemoveIOBox of IOBox
+  | AddIOBox    of IOBox
+  | UpdateIOBox of IOBox
+  | RemoveIOBox of IOBox
 
   // CUE
   | AddCue      of Cue
@@ -106,19 +110,19 @@ type ApplicationEvent =
       // | RemoveClient s -> sprintf "RemoveClient %s" s
 
       // NODE
-      // | AddNode    s -> sprintf "AddNode %s" s
-      // | UpdateNode s -> sprintf "UpdateNode %s" s
-      // | RemoveNode s -> sprintf "RemoveNode %s" s
+      | AddNode    node -> sprintf "AddNode %s"    (string node)
+      | UpdateNode node -> sprintf "UpdateNode %s" (string node)
+      | RemoveNode node -> sprintf "RemoveNode %s" (string node)
 
       // PATCH
-      // | AddPatch    patch -> sprintf "AddPatch %s"    (string patch)
-      // | UpdatePatch patch -> sprintf "UpdatePatch %s" (string patch)
-      // | RemovePatch patch -> sprintf "RemovePatch %s" (string patch)
+      | AddPatch    patch -> sprintf "AddPatch %s"    (string patch)
+      | UpdatePatch patch -> sprintf "UpdatePatch %s" (string patch)
+      | RemovePatch patch -> sprintf "RemovePatch %s" (string patch)
 
       // IOBOX
-      // | AddIOBox    iobox -> sprintf "AddIOBox %s"    (string iobox)
-      // | UpdateIOBox iobox -> sprintf "UpdateIOBox %s" (string iobox)
-      // | RemoveIOBox iobox -> sprintf "RemoveIOBox %s" (string iobox)
+      | AddIOBox    iobox -> sprintf "AddIOBox %s"    (string iobox)
+      | UpdateIOBox iobox -> sprintf "UpdateIOBox %s" (string iobox)
+      | RemoveIOBox iobox -> sprintf "RemoveIOBox %s" (string iobox)
 
       // CUE
       | AddCue    cue      -> sprintf "AddCue %s"    (string cue)
@@ -131,6 +135,13 @@ type ApplicationEvent =
 #else
     static member FromFB (fb: ApplicationEventFB) =
       match fb.AppEventType with
+
+      //   ____
+      //  / ___|   _  ___
+      // | |  | | | |/ _ \
+      // | |__| |_| |  __/
+      //  \____\__,_|\___|
+
       | ApplicationEventTypeFB.AddCueFB ->
         let ev = fb.GetAppEvent(new AddCueFB())
         ev.GetCue(new CueFB())
@@ -148,6 +159,84 @@ type ApplicationEvent =
         ev.GetCue(new CueFB())
         |> Cue.FromFB
         |> Option.map RemoveCue
+
+      //  ____       _       _
+      // |  _ \ __ _| |_ ___| |__
+      // | |_) / _` | __/ __| '_ \
+      // |  __/ (_| | || (__| | | |
+      // |_|   \__,_|\__\___|_| |_|
+
+      | ApplicationEventTypeFB.AddPatchFB ->
+        let ev = fb.GetAppEvent(new AddPatchFB())
+        ev.GetPatch(new PatchFB())
+        |> Patch.FromFB
+        |> Option.map AddPatch
+
+      | ApplicationEventTypeFB.UpdatePatchFB  ->
+        let ev = fb.GetAppEvent(new UpdatePatchFB())
+        ev.GetPatch(new PatchFB())
+        |> Patch.FromFB
+        |> Option.map UpdatePatch
+
+      | ApplicationEventTypeFB.RemovePatchFB  ->
+        let ev = fb.GetAppEvent(new RemovePatchFB())
+        ev.GetPatch(new PatchFB())
+        |> Patch.FromFB
+        |> Option.map RemovePatch
+
+      //  ___ ___  ____
+      // |_ _/ _ \| __ )  _____  __
+      //  | | | | |  _ \ / _ \ \/ /
+      //  | | |_| | |_) | (_) >  <
+      // |___\___/|____/ \___/_/\_\
+
+      | ApplicationEventTypeFB.AddIOBoxFB ->
+        let ev = fb.GetAppEvent(new AddIOBoxFB())
+        ev.GetIOBox(new IOBoxFB())
+        |> IOBox.FromFB
+        |> Option.map AddIOBox
+
+      | ApplicationEventTypeFB.UpdateIOBoxFB  ->
+        let ev = fb.GetAppEvent(new UpdateIOBoxFB())
+        ev.GetIOBox(new IOBoxFB())
+        |> IOBox.FromFB
+        |> Option.map UpdateIOBox
+
+      | ApplicationEventTypeFB.RemoveIOBoxFB  ->
+        let ev = fb.GetAppEvent(new RemoveIOBoxFB())
+        ev.GetIOBox(new IOBoxFB())
+        |> IOBox.FromFB
+        |> Option.map RemoveIOBox
+
+      //  _   _           _
+      // | \ | | ___   __| | ___
+      // |  \| |/ _ \ / _` |/ _ \
+      // | |\  | (_) | (_| |  __/
+      // |_| \_|\___/ \__,_|\___|
+
+      | ApplicationEventTypeFB.AddNodeFB ->
+        let ev = fb.GetAppEvent(new AddNodeFB())
+        ev.GetNode(new NodeFB())
+        |> RaftNode.FromFB
+        |> Option.map AddNode
+
+      | ApplicationEventTypeFB.UpdateNodeFB  ->
+        let ev = fb.GetAppEvent(new UpdateNodeFB())
+        ev.GetNode(new NodeFB())
+        |> RaftNode.FromFB
+        |> Option.map UpdateNode
+
+      | ApplicationEventTypeFB.RemoveNodeFB  ->
+        let ev = fb.GetAppEvent(new RemoveNodeFB())
+        ev.GetNode(new NodeFB())
+        |> RaftNode.FromFB
+        |> Option.map RemoveNode
+
+      //  __  __ _
+      // |  \/  (_)___  ___
+      // | |\/| | / __|/ __|
+      // | |  | | \__ \ (__
+      // |_|  |_|_|___/\___|
 
       | ApplicationEventTypeFB.LogMsgFB     ->
         let ev = fb.GetAppEvent(new LogMsgFB())
@@ -169,6 +258,12 @@ type ApplicationEvent =
         ApplicationEventFB.EndApplicationEventFB(builder)
 
       match self with
+      //   ____
+      //  / ___|   _  ___
+      // | |  | | | |/ _ \
+      // | |__| |_| |  __/
+      //  \____\__,_|\___|
+
       | AddCue cue ->
         let cuefb = cue.ToOffset(builder)
         AddCueFB.StartAddCueFB(builder)
@@ -190,6 +285,93 @@ type ApplicationEvent =
         let removefb = RemoveCueFB.EndRemoveCueFB(builder)
         mkOffset ApplicationEventTypeFB.RemoveCueFB removefb.Value
 
+      //  ____       _       _
+      // |  _ \ __ _| |_ ___| |__
+      // | |_) / _` | __/ __| '_ \
+      // |  __/ (_| | || (__| | | |
+      // |_|   \__,_|\__\___|_| |_|
+
+      | AddPatch patch ->
+        let patchfb = patch.ToOffset(builder)
+        AddPatchFB.StartAddPatchFB(builder)
+        AddPatchFB.AddPatch(builder, patchfb)
+        let addfb = AddPatchFB.EndAddPatchFB(builder)
+        mkOffset ApplicationEventTypeFB.AddPatchFB addfb.Value
+
+      | UpdatePatch patch ->
+        let patchfb = patch.ToOffset(builder)
+        UpdatePatchFB.StartUpdatePatchFB(builder)
+        UpdatePatchFB.AddPatch(builder, patchfb)
+        let updatefb = UpdatePatchFB.EndUpdatePatchFB(builder)
+        mkOffset ApplicationEventTypeFB.UpdatePatchFB updatefb.Value
+
+      | RemovePatch patch ->
+        let patchfb = patch.ToOffset(builder)
+        RemovePatchFB.StartRemovePatchFB(builder)
+        RemovePatchFB.AddPatch(builder, patchfb)
+        let removefb = RemovePatchFB.EndRemovePatchFB(builder)
+        mkOffset ApplicationEventTypeFB.RemovePatchFB removefb.Value
+
+      //  ___ ___  ____
+      // |_ _/ _ \| __ )  _____  __
+      //  | | | | |  _ \ / _ \ \/ /
+      //  | | |_| | |_) | (_) >  <
+      // |___\___/|____/ \___/_/\_\
+
+      | AddIOBox iobox ->
+        let ioboxfb = iobox.ToOffset(builder)
+        AddIOBoxFB.StartAddIOBoxFB(builder)
+        AddIOBoxFB.AddIOBox(builder, ioboxfb)
+        let addfb = AddIOBoxFB.EndAddIOBoxFB(builder)
+        mkOffset ApplicationEventTypeFB.AddIOBoxFB addfb.Value
+
+      | UpdateIOBox iobox ->
+        let ioboxfb = iobox.ToOffset(builder)
+        UpdateIOBoxFB.StartUpdateIOBoxFB(builder)
+        UpdateIOBoxFB.AddIOBox(builder, ioboxfb)
+        let updatefb = UpdateIOBoxFB.EndUpdateIOBoxFB(builder)
+        mkOffset ApplicationEventTypeFB.UpdateIOBoxFB updatefb.Value
+
+      | RemoveIOBox iobox ->
+        let ioboxfb = iobox.ToOffset(builder)
+        RemoveIOBoxFB.StartRemoveIOBoxFB(builder)
+        RemoveIOBoxFB.AddIOBox(builder, ioboxfb)
+        let removefb = RemoveIOBoxFB.EndRemoveIOBoxFB(builder)
+        mkOffset ApplicationEventTypeFB.RemoveIOBoxFB removefb.Value
+
+      //  ____        __ _   _   _           _
+      // |  _ \ __ _ / _| |_| \ | | ___   __| | ___
+      // | |_) / _` | |_| __|  \| |/ _ \ / _` |/ _ \
+      // |  _ < (_| |  _| |_| |\  | (_) | (_| |  __/
+      // |_| \_\__,_|_|  \__|_| \_|\___/ \__,_|\___|
+
+      | AddNode node ->
+        let nodefb = node.ToOffset(builder)
+        AddNodeFB.StartAddNodeFB(builder)
+        AddNodeFB.AddNode(builder, nodefb)
+        let addfb = AddNodeFB.EndAddNodeFB(builder)
+        mkOffset ApplicationEventTypeFB.AddNodeFB addfb.Value
+
+      | UpdateNode node ->
+        let nodefb = node.ToOffset(builder)
+        UpdateNodeFB.StartUpdateNodeFB(builder)
+        UpdateNodeFB.AddNode(builder, nodefb)
+        let updatefb = UpdateNodeFB.EndUpdateNodeFB(builder)
+        mkOffset ApplicationEventTypeFB.UpdateNodeFB updatefb.Value
+
+      | RemoveNode node ->
+        let nodefb = node.ToOffset(builder)
+        RemoveNodeFB.StartRemoveNodeFB(builder)
+        RemoveNodeFB.AddNode(builder, nodefb)
+        let removefb = RemoveNodeFB.EndRemoveNodeFB(builder)
+        mkOffset ApplicationEventTypeFB.RemoveNodeFB removefb.Value
+
+      //  __  __ _
+      // |  \/  (_)___  ___
+      // | |\/| | / __|/ __|
+      // | |  | | \__ \ (__
+      // |_|  |_|_|___/\___|
+
       | Command ev ->
         let cmdfb = ev.ToOffset(builder)
         mkOffset ApplicationEventTypeFB.AppCommandFB cmdfb.Value
@@ -209,69 +391,5 @@ type ApplicationEvent =
     static member FromBytes (bytes: byte array) : ApplicationEvent option =
       let msg = ApplicationEventFB.GetRootAsApplicationEventFB(new ByteBuffer(bytes))
       ApplicationEvent.FromFB(msg)
-
-#endif
-
-
-#if JAVASCRIPT
-
-  (*
-    ____ _ _            _
-   / ___| (_) ___ _ __ | |_
-  | |   | | |/ _ \ '_ \| __|
-  | |___| | |  __/ | | | |_
-   \____|_|_|\___|_| |_|\__|
-
-  The client state machine:
-
-        Window 1                        SharedWorker                             Window 2
-  +------------------+               +------------------------+               +------------------+
-  | Create Worker    |-------------->| make id, save port[0]  |<--------------| Create Worker    |
-  |                  | "initialized" |     |                  | "initialized" |                  |
-  | save session id  |<--------------|-----+------------------|-------------->| save session id  |
-  |                  |               |                        |               |                  |
-  |                  |   "close"     |                        |  "closed"     |                  |
-  | User closes tab  |-------------->|    removes session     |-------------->| Notified of Close|
-  |                  |               |                        |               |                  |
-  |                  |    "log"      |                        |   "log"       |                  |
-  | console.log      |<--------------|         Log            |-------------->| console.log      |
-  |                  |               |                        |               |                  |
-  |                  |  "connect"    |                        |  "connect"    |                  |
-  |                  |-------------->|      Connect           |<------------- |                  |
-  |                  |               |                        |               |                  |
-  |                  |  "connected"  |                        |  "connected"  |                  |
-  |                  |<--------------|      Connected         |-------------->|                  |
-  |                  |               |                        |               |                  |
-  |                  | "disconnected"|                        |"disconnected" |                  |
-  |                  |<--------------|     Disconnected       |-------------->|                  |
-  |                  |               |                        |               |                  |
-  |                  |  "error"      |                        |  "error"      |                  |
-  |   Handle Error   |<--------------|        Error           |-------------->|   Handle Error   |
-  |                  |               |                        |               |                  |
-  |                  |   "render"    |                        |  "render"     |                  |
-  |   Updates view   |<--------------|       Render           |-------------->|   Updates view   |
-  |                  |               |                        |               |                  |
-  |                  |   "update"    |                        |  "render"     |                  |
-  |    User Edits    |-------------->|    Updates State       |-------------->|   Updates view   |
-  |                  |               |                        |               |                  |
-  +------------------+               +------------------------+               +------------------+
-
-  *)
-
-[<RequireQualifiedAccess>]
-type ClientMessage<'state> =
-  | Initialized  of Session                     // the worker has created a session for this tab/window
-  | Close        of Session                     // client tab/window was closed, so request to remove session
-  | Closed       of Session                     // other client tab/window notified of close
-  | Stop                                        // SharedWorker is requested to stop
-  | Stopped                                     // SharedWorker process has stopped
-  | ClientLog    of ClientLog                   // logs a piece of data to all connected clients
-  | Error        of Error                       // an error occuring inside the worker
-  | Render       of 'state                      // instruct all clients to render new state
-  | Event        of Session * ApplicationEvent  // encapsulates an action or event that happened on the client
-  | Connect      of string                      // Connect to the specified endpoint
-  | Connected                                   // worker websocket is connected to service
-  | Disconnect   of string                      // Disconnect from server
-  | Disconnected                                // worker websocket was disconnected from service
 
 #endif

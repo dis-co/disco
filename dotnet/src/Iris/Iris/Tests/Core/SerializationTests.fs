@@ -256,6 +256,34 @@ module SerializationTests =
 
       expect "should be same" cue id recue
 
+  //  ____       _       _
+  // |  _ \ __ _| |_ ___| |__
+  // | |_) / _` | __/ __| '_ \
+  // |  __/ (_| | || (__| | | |
+  // |_|   \__,_|\__\___|_| |_|
+
+  let test_validate_patch_serialization =
+    testCase "Validate Patch Serialization" <| fun _ ->
+
+      let patch : Patch = { Id = Id.Create(); Name = "Patch 1"; IOBoxes = [| |] }
+      let repatch = patch |> encode |> decode |> Option.get
+
+      expect "Should be structurally equivalent" patch id repatch
+
+  //  ___ ___  ____
+  // |_ _/ _ \| __ )  _____  __
+  //  | | | | |  _ \ / _ \ \/ /
+  //  | | |_| | |_) | (_) >  <
+  // |___\___/|____/ \___/_/\_\
+
+  let test_validate_iobox_serialization =
+    testCase "Validate IOBox Serialization" <| fun _ ->
+
+      let iobox : IOBox = failwith "not implemented yet"
+      let reiobox = iobox |> encode |> decode |> Option.get
+
+      expect "Should be structurally equivalent" iobox id reiobox
+
   //     _                _ _           _   _             _____                 _
   //    / \   _ __  _ __ | (_) ___ __ _| |_(_) ___  _ __ | ____|_   _____ _ __ | |_
   //   / _ \ | '_ \| '_ \| | |/ __/ _` | __| |/ _ \| '_ \|  _| \ \ / / _ \ '_ \| __|
@@ -266,9 +294,22 @@ module SerializationTests =
   let test_validate_application_event_serialization =
     testCase "Validate Cue Serialization" <| fun _ ->
 
+      let mkIOBox _ =
+        let slice : StringSliceD = { Index = 0UL; Value = "hello" }
+        IOBox.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
+
       [ AddCue    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = [| |] }
       ; UpdateCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = [| |] }
       ; RemoveCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = [| |] }
+      ; AddPatch    { Id = Id.Create(); Name = "Patch 1"; IOBoxes = [| |] }
+      ; UpdatePatch { Id = Id.Create(); Name = "Patch 2"; IOBoxes = [| |] }
+      ; RemovePatch { Id = Id.Create(); Name = "Patch 3"; IOBoxes = [| |] }
+      ; AddIOBox    <| mkIOBox ()
+      ; UpdateIOBox <| mkIOBox ()
+      ; RemoveIOBox <| mkIOBox ()
+      ; AddNode    <| Node.create (Id.Create())
+      ; UpdateNode <| Node.create (Id.Create())
+      ; RemoveNode <| Node.create (Id.Create())
       ; Command AppCommand.Undo
       ; LogMsg(Debug, "ohai")
       ]
@@ -288,10 +329,23 @@ module SerializationTests =
       let remsg = snapshot |> encode |> decode |> Option.get
       expect "Should be structurally the same" snapshot id remsg
 
+      let mkIOBox _ =
+        let slice : StringSliceD = { Index = 0UL; Value = "hello" }
+        IOBox.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
+
       [ AddCue    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = [| |] }
       ; UpdateCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = [| |] }
-      ; RemoveCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = [| |] }
-      ; Command AppCommand.Undo
+      ; RemoveCue { Id = Id.Create(); Name = "Cue 3"; IOBoxes = [| |] }
+      ; AddPatch    { Id = Id.Create(); Name = "Patch 1"; IOBoxes = [| |] }
+      ; UpdatePatch { Id = Id.Create(); Name = "Patch 2"; IOBoxes = [| |] }
+      ; RemovePatch { Id = Id.Create(); Name = "Patch 3"; IOBoxes = [| |] }
+      ; AddIOBox    <| mkIOBox ()
+      ; UpdateIOBox <| mkIOBox ()
+      ; RemoveIOBox <| mkIOBox ()
+      ; AddNode    <| Node.create (Id.Create())
+      ; UpdateNode <| Node.create (Id.Create())
+      ; RemoveNode <| Node.create (Id.Create())
+      ; Command AppCommand.Redo
       ; LogMsg(Debug, "ohai")
       ]
       |> List.iter (fun cmd ->
@@ -320,6 +374,8 @@ module SerializationTests =
         test_validate_arrivederci_serialization
         test_validate_errorresponse_serialization
         test_validate_cue_serialization
+        test_validate_patch_serialization
+        test_validate_iobox_serialization
         test_validate_application_event_serialization
         test_validate_state_machine_serialization
       ]

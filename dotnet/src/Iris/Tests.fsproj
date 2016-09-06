@@ -48,18 +48,21 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Compile Include="AssemblyInfo\TestsInfo.fs" />
+    <Compile Include="Iris\Core\Serialization.fs" />
     <Compile Include="Iris\Core\Id.fs" />
     <Compile Include="Iris\Core\IpAddress.fs" />
     <Compile Include="Iris\Core\Either.fs" />
     <Compile Include="Iris\Core\Aliases.fs" />
     <Compile Include="Iris\Core\Util.fs" />
     <Compile Include="Iris\Core\LogLevel.fs" />
+
     <Compile Include="Iris\Raft\Validation.fs" />
     <Compile Include="Iris\Raft\Continue.fs" />
     <Compile Include="Iris\Raft\Node.fs" />
     <Compile Include="Iris\Raft\Log.fs" />
     <Compile Include="Iris\Raft\Types.fs" />
     <Compile Include="Iris\Raft\Raft.fs" />
+
     <Compile Include="Iris\Core\Git.fs" />
     <Compile Include="Iris\Core\IOBox.fs" />
     <Compile Include="Iris\Core\Patch.fs" />
@@ -76,11 +79,12 @@
     <Compile Include="Iris\Core\Config.fs" />
     <Compile Include="Iris\Core\Project.fs" />
     <Compile Include="Iris\Core\Uri.fs" />
+
     <Compile Include="Iris\Service\GitDaemon.fs" />
     <Compile Include="Iris\Core\BrowserSession.fs" />
     <Compile Include="Iris\Core\StateMachine.fs" />
-    <Compile Include="Iris\Core\Serialization.fs" />
     <Compile Include="Iris\Core\RaftUtils.fs" />
+
     <Compile Include="Iris\Service\Raft\Zmq.fs" />
     <Compile Include="Iris\Service\AppState.fs" />
     <Compile Include="Iris\Service\Raft\Db.fs" />

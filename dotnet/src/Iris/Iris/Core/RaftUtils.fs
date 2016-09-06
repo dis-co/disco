@@ -120,39 +120,30 @@ type RaftRequest =
       match msg.MsgType with
         | RaftMsgTypeFB.RequestVoteFB ->
           let entry = msg.GetMsg(new RequestVoteFB())
-          let request = VoteRequest.FromFB(entry.Request)
-
-          RequestVote(Id entry.NodeId, request)
-          |> Some
+          VoteRequest.FromFB(entry.Request)
+          |> Option.map (fun request -> RequestVote(Id entry.NodeId, request))
 
         | RaftMsgTypeFB.RequestAppendEntriesFB ->
           let entry = msg.GetMsg(new RequestAppendEntriesFB())
-          let request = AppendEntries.FromFB entry.Request
-
-          AppendEntries(Id entry.NodeId, request)
-          |> Some
+          AppendEntries.FromFB entry.Request
+          |> Option.map (fun request -> AppendEntries(Id entry.NodeId, request))
 
         | RaftMsgTypeFB.RequestInstallSnapshotFB ->
           let entry = msg.GetMsg(new RequestInstallSnapshotFB())
-          let request = InstallSnapshot.FromFB entry.Request
-
-          InstallSnapshot(Id entry.NodeId, request)
-          |> Some
+          InstallSnapshot.FromFB entry.Request
+          |> Option.map (fun request -> InstallSnapshot(Id entry.NodeId, request))
 
         | RaftMsgTypeFB.HandShakeFB ->
           let entry = msg.GetMsg(new HandShakeFB())
-          let node = RaftNode.FromFB entry.Node
-
-          HandShake(node) |> Some
+          RaftNode.FromFB entry.Node
+          |> Option.map (fun node -> HandShake(node))
 
         | RaftMsgTypeFB.HandWaiveFB ->
           let entry = msg.GetMsg(new HandWaiveFB())
-          let node = RaftNode.FromFB entry.Node
+          RaftNode.FromFB entry.Node
+          |> Option.map (fun node -> HandWaive(node))
 
-          HandWaive(node) |> Some
-
-        | _ ->
-          failwith "unable to de-serialize unknown garbage RaftMsgTypeFB"
+        | _ -> None
 
 //  ____        __ _     ____
 // |  _ \ __ _ / _| |_  |  _ \ ___  ___ _ __   ___  _ __  ___  ___

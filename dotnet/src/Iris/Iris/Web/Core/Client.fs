@@ -100,10 +100,6 @@ module Client =
         | Some(controller) -> controller.Render state self
         | _                -> printfn "no controller defined"
 
-      // Log a message from Worker on this client
-      | ClientMessage.Log(msg) ->
-        printfn "SharedWorker Log Message: %A" msg
-
       | ClientMessage.Connected ->
         printfn "CONNECTED!"
 

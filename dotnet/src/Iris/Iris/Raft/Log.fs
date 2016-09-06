@@ -2,7 +2,9 @@ namespace Iris.Raft
 
 open System
 open System.Collections
+open FlatBuffers
 open Iris.Core
+open Iris.Serialization.Raft
 
 //  _                 ___         _      __
 // | |    ___   __ _ / ( ) __ _  ( )_ __ \ \
@@ -49,7 +51,8 @@ open Iris.Core
 ///     Nodes     : Node<'n> array *        // node configuration
 ///     Data      : 'a                      // state machine data
 ///
-type LogEntry<'a> =
+type LogEntry<'a when 'a :> IFlatBufferable> =
+
   // Node Configuration Entry
   | Configuration of
     Id       : Id              *
@@ -83,58 +86,229 @@ type LogEntry<'a> =
     Nodes     : RaftNode array *
     Data      : 'a
 
-  override self.ToString() =
-    match self with
-      | Configuration(id,idx,term,nodes,Some prev) ->
-        sprintf "Configuration(id: %s idx: %A term: %A nodes: %s)\n%s"
-          (string id)
-          idx
-          term
-          (Array.fold (fun m n -> sprintf "%s, %s" m (string n.Id)) "" nodes)
-          (string prev)
+  with
+    override self.ToString() =
+      match self with
+        | Configuration(id,idx,term,nodes,Some prev) ->
+          sprintf "Configuration(id: %s idx: %A term: %A nodes: %s)\n%s"
+            (string id)
+            idx
+            term
+            (Array.fold (fun m n -> sprintf "%s, %s" m (string n.Id)) "" nodes)
+            (string prev)
 
-      | Configuration(id,idx,term,nodes,_) ->
-        sprintf "Configuration(id: %s idx: %A term: %A nodes: %s)"
-          (string id)
-          idx
-          term
-          (Array.fold (fun m n -> sprintf "%s, %s" m (string n.Id)) "" nodes)
+        | Configuration(id,idx,term,nodes,_) ->
+          sprintf "Configuration(id: %s idx: %A term: %A nodes: %s)"
+            (string id)
+            idx
+            term
+            (Array.fold (fun m n -> sprintf "%s, %s" m (string n.Id)) "" nodes)
 
-      | JointConsensus(id,idx,term,changes,Some prev) ->
-        sprintf "JointConsensus(id: %s idx: %A term: %A changes: %s)\n%s"
-          (string id)
-          idx
-          term
-          (Array.fold (fun m n -> sprintf "%s, %s" m (string n)) "" changes)
-          (string prev)
+        | JointConsensus(id,idx,term,changes,Some prev) ->
+          sprintf "JointConsensus(id: %s idx: %A term: %A changes: %s)\n%s"
+            (string id)
+            idx
+            term
+            (Array.fold (fun m n -> sprintf "%s, %s" m (string n)) "" changes)
+            (string prev)
 
-      | JointConsensus(id,idx,term,changes,_) ->
-        sprintf "JointConsensus(id: %s idx: %A term: %A changes: %s)"
-          (string id)
-          idx
-          term
-          (Array.fold (fun m n -> sprintf "%s, %s" m (string n)) "" changes)
+        | JointConsensus(id,idx,term,changes,_) ->
+          sprintf "JointConsensus(id: %s idx: %A term: %A changes: %s)"
+            (string id)
+            idx
+            term
+            (Array.fold (fun m n -> sprintf "%s, %s" m (string n)) "" changes)
 
-      | LogEntry(id,idx,term,_,Some prev) ->
-        sprintf "LogEntry(id: %s idx: %A term: %A)\n%s"
-          (string id)
-          idx
-          term
-          (string prev)
+        | LogEntry(id,idx,term,_,Some prev) ->
+          sprintf "LogEntry(id: %s idx: %A term: %A)\n%s"
+            (string id)
+            idx
+            term
+            (string prev)
 
-      | LogEntry(id,idx,term,_,_) ->
-        sprintf "LogEntry(id: %s idx: %A term: %A)"
-          (string id)
-          idx
-          term
+        | LogEntry(id,idx,term,_,_) ->
+          sprintf "LogEntry(id: %s idx: %A term: %A)"
+            (string id)
+            idx
+            term
 
-      | Snapshot(id,idx,term,lidx,ltrm,_,_) ->
-        sprintf "Snapshot(id: %s idx: %A lidx: %A term: %A lterm: %A)"
-          (string id)
-          idx
-          lidx
-          term
-          ltrm
+        | Snapshot(id,idx,term,lidx,ltrm,_,_) ->
+          sprintf "Snapshot(id: %s idx: %A lidx: %A term: %A lterm: %A)"
+            (string id)
+            idx
+            lidx
+            term
+            ltrm
+
+    //  _____ _       _   ____         __  __
+    // |  ___| | __ _| |_| __ ) _   _ / _|/ _| ___ _ __ ___
+    // | |_  | |/ _` | __|  _ \| | | | |_| |_ / _ \ '__/ __|
+    // |  _| | | (_| | |_| |_) | |_| |  _|  _|  __/ |  \__ \
+    // |_|   |_|\__,_|\__|____/ \__,_|_| |_|  \___|_|  |___/
+
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let buildLogFB tipe value =
+        LogFB.StartLogFB(builder)
+        LogFB.AddEntryType(builder, tipe)
+        LogFB.AddEntry(builder, value)
+        LogFB.EndLogFB(builder)
+
+      let toOffset (log: LogEntry<'a>) =
+        match log with
+        //   ____             __ _                       _   _
+        //  / ___|___  _ __  / _(_) __ _ _   _ _ __ __ _| |_(_) ___  _ __
+        // | |   / _ \| '_ \| |_| |/ _` | | | | '__/ _` | __| |/ _ \| '_ \
+        // | |__| (_) | | | |  _| | (_| | |_| | | | (_| | |_| | (_) | | | |
+        //  \____\___/|_| |_|_| |_|\__, |\__,_|_|  \__,_|\__|_|\___/|_| |_|
+        //                         |___/
+        | Configuration(id,index,term,nodes,_)          ->
+          let id = string id |> builder.CreateString
+          let nodes = Array.map (fun (node: RaftNode) -> node.ToOffset(builder)) nodes
+          let nvec = ConfigurationFB.CreateNodesVector(builder, nodes)
+
+          ConfigurationFB.StartConfigurationFB(builder)
+          ConfigurationFB.AddId(builder, id)
+          ConfigurationFB.AddIndex(builder, uint64 index)
+          ConfigurationFB.AddTerm(builder, uint64 term)
+          ConfigurationFB.AddNodes(builder, nvec)
+
+          let entry = ConfigurationFB.EndConfigurationFB(builder)
+
+          buildLogFB LogTypeFB.ConfigurationFB entry.Value
+
+        //      _       _       _    ____
+        //     | | ___ (_)_ __ | |_ / ___|___  _ __  ___  ___ _ __  ___ _   _ ___
+        //  _  | |/ _ \| | '_ \| __| |   / _ \| '_ \/ __|/ _ \ '_ \/ __| | | / __|
+        // | |_| | (_) | | | | | |_| |__| (_) | | | \__ \  __/ | | \__ \ |_| \__ \
+        //  \___/ \___/|_|_| |_|\__|\____\___/|_| |_|___/\___|_| |_|___/\__,_|___/
+        | JointConsensus(id,index,term,changes,_) ->
+          let id = string id |> builder.CreateString
+          let changes = Array.map (fun (change: ConfigChange) -> change.ToOffset(builder)) changes
+          let chvec = JointConsensusFB.CreateChangesVector(builder, changes)
+
+          JointConsensusFB.StartJointConsensusFB(builder)
+          JointConsensusFB.AddId(builder, id)
+          JointConsensusFB.AddIndex(builder, uint64 index)
+          JointConsensusFB.AddTerm(builder, uint64 term)
+          JointConsensusFB.AddChanges(builder, chvec)
+
+          let entry = JointConsensusFB.EndJointConsensusFB(builder)
+
+          buildLogFB LogTypeFB.JointConsensusFB entry.Value
+
+        //  _                _____       _
+        // | |    ___   __ _| ____|_ __ | |_ _ __ _   _
+        // | |   / _ \ / _` |  _| | '_ \| __| '__| | | |
+        // | |__| (_) | (_| | |___| | | | |_| |  | |_| |
+        // |_____\___/ \__, |_____|_| |_|\__|_|   \__, |
+        //             |___/                      |___/
+        | LogEntry(id,index,term,data,_) ->
+          let id = string id |> builder.CreateString
+          let data = data.ToOffset(builder)
+
+          LogEntryFB.StartLogEntryFB(builder)
+          LogEntryFB.AddId(builder, id)
+          LogEntryFB.AddIndex(builder, uint64 index)
+          LogEntryFB.AddTerm(builder, uint64 term)
+          LogEntryFB.AddData(builder, data)
+
+          let entry = LogEntryFB.EndLogEntryFB(builder)
+
+          buildLogFB LogTypeFB.LogEntryFB entry.Value
+
+        //  ____                        _           _
+        // / ___| _ __   __ _ _ __  ___| |__   ___ | |_
+        // \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __|
+        //  ___) | | | | (_| | |_) \__ \ | | | (_) | |_
+        // |____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
+        //                   |_|
+        | Snapshot(id,index,term,lidx,lterm,nodes,data) ->
+          let id = string id |> builder.CreateString
+          let nodes = Array.map (fun (node: RaftNode) -> node.ToOffset(builder)) nodes
+          let nvec = SnapshotFB.CreateNodesVector(builder, nodes)
+          let data = data.ToOffset(builder)
+
+          SnapshotFB.StartSnapshotFB(builder)
+          SnapshotFB.AddId(builder, id)
+          SnapshotFB.AddIndex(builder, uint64 index)
+          SnapshotFB.AddTerm(builder, uint64 term)
+          SnapshotFB.AddLastIndex(builder, uint64 lidx)
+          SnapshotFB.AddLastTerm(builder, uint64 lterm)
+          SnapshotFB.AddNodes(builder, nvec)
+          SnapshotFB.AddData(builder, data)
+
+          let entry = SnapshotFB.EndSnapshotFB(builder)
+
+          buildLogFB LogTypeFB.SnapshotFB entry.Value
+
+      let arr = Array.zeroCreate (Log.depth self |> int)
+      Log.iter (fun i (log: LogEntry<'a>) -> arr.[int i] <- toOffset log) self
+      arr
+
+      /// ## Decode a FlatBuffer into a Log structure
+      ///
+      /// Decodes a single FlatBuffer encoded log entry into its corresponding Raft LogEntry type and
+      /// adds passed-in `LogEntry option` as previous field value. Indicates failure by returning None.
+      ///
+      /// ### Signature:
+      /// - fb: LogFB FlatBuffer object to parse
+      /// - log: previous LogEntry value to reconstruct the chain of events
+      ///
+      /// Returns: LogEntry option
+      static member FromFB (logs: LogFB array) : LogEntry<'data> option =
+        let fb2Log (fb: LogFB) (log: LogEntry option) : LogEntry option =
+          match fb.EntryType with
+            | LogTypeFB.ConfigurationFB ->
+              let entry = fb.GetEntry(new ConfigurationFB())
+              let nodes = Array.zeroCreate entry.NodesLength
+
+              for i in 0 .. (entry.NodesLength - 1) do
+                entry.GetNodes(i)
+                |> RaftNode.FromFB
+                |> Option.map (fun node -> nodes.[i] <- node)
+                |> ignore
+
+              Configuration(Id entry.Id, entry.Index, entry.Term, nodes, log)
+              |> Some
+
+            | LogTypeFB.JointConsensusFB ->
+              let entry = fb.GetEntry(new JointConsensusFB())
+              let changes = Array.zeroCreate entry.ChangesLength
+
+              for i in 0 .. (entry.ChangesLength - 1) do
+                entry.GetChanges(i)
+                |> ConfigChange.FromFB
+                |> Option.map (fun change -> changes.[i] <- change)
+                |> ignore
+
+              JointConsensus(Id entry.Id, entry.Index, entry.Term, changes, log)
+              |> Some
+
+            | LogTypeFB.LogEntryFB ->
+              let entry = fb.GetEntry(new LogEntryFB())
+              let data = StateMachine.FromFB entry.Data
+              match data with
+              | Some sm -> LogEntry(Id entry.Id, entry.Index, entry.Term, sm, log) |> Some
+              | _       -> None
+
+            | LogTypeFB.SnapshotFB ->
+              let entry = fb.GetEntry(new SnapshotFB())
+              let nodes = Array.zeroCreate entry.NodesLength
+              let id = Id entry.Id
+
+              for i in 0..(entry.NodesLength - 1) do
+                entry.GetNodes(i)
+                |> RaftNode.FromFB
+                |> Option.map (fun node -> nodes.[i] <- node)
+                |> ignore
+
+              StateMachine.FromFB entry.Data
+              |> Option.map
+                (fun sm -> Snapshot(id, entry.Index, entry.Term, entry.LastIndex, entry.LastTerm, nodes, sm))
+
+            | _ -> None
+
+        Array.foldBack fb2Log logs None
 
 type Log<'a> =
   { Data  : LogEntry<'a> option
@@ -142,16 +316,17 @@ type Log<'a> =
   ; Index : Index
   }
 
-  override self.ToString() =
-    let logstr =
-      match self.Data with
-      | Some data -> string data
-      | _ -> "<empty>"
+  with
+    override self.ToString() =
+      let logstr =
+        match self.Data with
+        | Some data -> string data
+        | _ -> "<empty>"
 
-    sprintf "Index: %A Depth: %A\n%s"
-      self.Index
-      self.Depth
-      logstr
+      sprintf "Index: %A Depth: %A\n%s"
+        self.Index
+        self.Depth
+        logstr
 
 
 [<RequireQualifiedAccess>]

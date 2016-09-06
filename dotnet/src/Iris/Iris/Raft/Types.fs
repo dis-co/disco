@@ -3,13 +3,15 @@ namespace Iris.Raft
 open System
 open System.Net
 open Iris.Core
+open Iris.Serialization.Raft
+open FlatBuffers
 
 //  _____ _ _   _
 // | ____(_) |_| |__   ___ _ __
 // |  _| | | __| '_ \ / _ \ '__|
 // | |___| | |_| | | |  __/ |
 // |_____|_|\__|_| |_|\___|_|
-//
+
 type Either<'l,'r> =
   | Left   of 'l                        // Encodes errors
   | Right  of 'r                        // Return result and keep computation running
@@ -19,6 +21,7 @@ type Either<'l,'r> =
 // |  _| | '__| '__/ _ \| '__|
 // | |___| |  | | | (_) | |
 // |_____|_|  |_|  \___/|_|
+
 type RaftError =
   | AlreadyVoted
   | AppendEntryFailed
@@ -41,6 +44,64 @@ type RaftError =
   | UnexpectedVotingChange
   | VoteTermMismatch
   | OtherError of string
+
+  with
+    member error.ToOffset (builder: FlatBufferBuilder) =
+      let tipe =
+        match error with
+        | AlreadyVoted           -> RaftErrorTypeFB.AlreadyVotedFB
+        | AppendEntryFailed      -> RaftErrorTypeFB.AppendEntryFailedFB
+        | CandidateUnknown       -> RaftErrorTypeFB.CandidateUnknownFB
+        | EntryInvalidated       -> RaftErrorTypeFB.EntryInvalidatedFB
+        | InvalidCurrentIndex    -> RaftErrorTypeFB.InvalidCurrentIndexFB
+        | InvalidLastLog         -> RaftErrorTypeFB.InvalidLastLogFB
+        | InvalidLastLogTerm     -> RaftErrorTypeFB.InvalidLastLogTermFB
+        | InvalidTerm            -> RaftErrorTypeFB.InvalidTermFB
+        | LogFormatError         -> RaftErrorTypeFB.LogFormatErrorFB
+        | LogIncomplete          -> RaftErrorTypeFB.LogIncompleteFB
+        | NoError                -> RaftErrorTypeFB.NoErrorFB
+        | NoNode                 -> RaftErrorTypeFB.NoNodeFB
+        | NotCandidate           -> RaftErrorTypeFB.NotCandidateFB
+        | NotLeader              -> RaftErrorTypeFB.NotLeaderFB
+        | NotVotingState         -> RaftErrorTypeFB.NotVotingStateFB
+        | ResponseTimeout        -> RaftErrorTypeFB.ResponseTimeoutFB
+        | SnapshotFormatError    -> RaftErrorTypeFB.SnapshotFormatErrorFB
+        | StaleResponse          -> RaftErrorTypeFB.StaleResponseFB
+        | UnexpectedVotingChange -> RaftErrorTypeFB.UnexpectedVotingChangeFB
+        | VoteTermMismatch       -> RaftErrorTypeFB.VoteTermMismatchFB
+        | OtherError           _ -> RaftErrorTypeFB.OtherErrorFB
+
+      match error with
+      | OtherError msg ->
+        let message = builder.CreateString msg
+        RaftErrorFB.CreateRaftErrorFB(builder, tipe, message)
+      | _ ->
+        RaftErrorFB.CreateRaftErrorFB(builder, tipe)
+
+    static member FromFB (fb: RaftErrorFB) =
+      match fb.Type with
+      | RaftErrorTypeFB.AlreadyVotedFB           -> Some AlreadyVoted
+      | RaftErrorTypeFB.AppendEntryFailedFB      -> Some AppendEntryFailed
+      | RaftErrorTypeFB.CandidateUnknownFB       -> Some CandidateUnknown
+      | RaftErrorTypeFB.EntryInvalidatedFB       -> Some EntryInvalidated
+      | RaftErrorTypeFB.InvalidCurrentIndexFB    -> Some InvalidCurrentIndex
+      | RaftErrorTypeFB.InvalidLastLogFB         -> Some InvalidLastLog
+      | RaftErrorTypeFB.InvalidLastLogTermFB     -> Some InvalidLastLogTerm
+      | RaftErrorTypeFB.InvalidTermFB            -> Some InvalidTerm
+      | RaftErrorTypeFB.LogFormatErrorFB         -> Some LogFormatError
+      | RaftErrorTypeFB.LogIncompleteFB          -> Some LogIncomplete
+      | RaftErrorTypeFB.NoErrorFB                -> Some NoError
+      | RaftErrorTypeFB.NoNodeFB                 -> Some NoNode
+      | RaftErrorTypeFB.NotCandidateFB           -> Some NotCandidate
+      | RaftErrorTypeFB.NotLeaderFB              -> Some NotLeader
+      | RaftErrorTypeFB.NotVotingStateFB         -> Some NotVotingState
+      | RaftErrorTypeFB.ResponseTimeoutFB        -> Some ResponseTimeout
+      | RaftErrorTypeFB.SnapshotFormatErrorFB    -> Some SnapshotFormatError
+      | RaftErrorTypeFB.StaleResponseFB          -> Some StaleResponse
+      | RaftErrorTypeFB.UnexpectedVotingChangeFB -> Some UnexpectedVotingChange
+      | RaftErrorTypeFB.VoteTermMismatchFB       -> Some VoteTermMismatch
+      | RaftErrorTypeFB.OtherErrorFB             -> Some (OtherError fb.Message)
+      | _                                        -> None
 
 /// The Raft state machine
 ///
@@ -82,6 +143,13 @@ module Entry =
   let inline term  (er : EntryResponse) = er.Term
   let inline index (er : EntryResponse) = er.Index
 
+// __     __    _       ____                            _
+// \ \   / /__ | |_ ___|  _ \ ___  __ _ _   _  ___  ___| |_
+//  \ \ / / _ \| __/ _ \ |_) / _ \/ _` | | | |/ _ \/ __| __|
+//   \ V / (_) | ||  __/  _ <  __/ (_| | |_| |  __/\__ \ |_
+//    \_/ \___/ \__\___|_| \_\___|\__, |\__,_|\___||___/\__|
+//                                   |_|
+
 /// Request to Vote for a new Leader
 ///
 /// ## Vote:
@@ -96,6 +164,32 @@ type VoteRequest =
   ; LastLogTerm  : Term
   }
 
+  with
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let node = self.Candidate.ToOffset(builder)
+      VoteRequestFB.StartVoteRequestFB(builder)
+      VoteRequestFB.AddTerm(builder, uint64 self.Term)
+      VoteRequestFB.AddLastLogTerm(builder, uint64 self.LastLogTerm)
+      VoteRequestFB.AddLastLogIndex(builder, uint64 self.LastLogIndex)
+      VoteRequestFB.AddCandidate(builder, node)
+      VoteRequestFB.EndVoteRequestFB(builder)
+
+    static member FromFB (fb: VoteRequestFB) : VoteRequest option =
+      RaftNode.FromFB fb.Candidate
+      |> Option.map
+        (fun node ->
+          { Term         = fb.Term
+          ; Candidate    = node
+          ; LastLogIndex = fb.LastLogIndex
+          ; LastLogTerm  = fb.LastLogTerm })
+
+// __     __    _       ____
+// \ \   / /__ | |_ ___|  _ \ ___  ___ _ __   ___  _ __  ___  ___
+//  \ \ / / _ \| __/ _ \ |_) / _ \/ __| '_ \ / _ \| '_ \/ __|/ _ \
+//   \ V / (_) | ||  __/  _ <  __/\__ \ |_) | (_) | | | \__ \  __/
+//    \_/ \___/ \__\___|_| \_\___||___/ .__/ \___/|_| |_|___/\___|
+//                                    |_|
+
 /// Result of a vote
 ///
 /// ## Result:
@@ -106,6 +200,28 @@ type VoteResponse =
   ; Granted : bool
   ; Reason  : RaftError option
   }
+
+  with
+    static member FromFB (fb: VoteResponseFB) : VoteResponse =
+      let reason =
+        if isNull fb.Reason |> not then
+          RaftError.FromFB fb.Reason
+        else None
+
+      { Term    = fb.Term
+      ; Granted = fb.Granted
+      ; Reason  = reason }
+
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let err = Option.map (fun (r: RaftError) -> r.ToOffset(builder)) self.Reason
+      VoteResponseFB.StartVoteResponseFB(builder)
+      VoteResponseFB.AddTerm(builder, uint64 self.Term)
+      match err with
+        | Some offset -> VoteResponseFB.AddReason(builder, offset)
+        | _ -> ()
+      VoteResponseFB.AddGranted(builder, self.Granted)
+      VoteResponseFB.EndVoteResponseFB(builder)
+
 
 [<RequireQualifiedAccess>]
 module Vote =
@@ -118,6 +234,15 @@ module Vote =
   // responses
   let inline granted  (vote : VoteResponse) = vote.Granted
   let inline declined (vote : VoteResponse) = not vote.Granted
+
+
+
+//     _                               _ _____       _        _
+//    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
+//   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |  _| | '_ \| __| '__| |/ _ \/ __|
+//  / ___ \| |_) | |_) |  __/ | | | (_| | |___| | | | |_| |  | |  __/\__ \
+// /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|  |_|\___||___/
+//         |_|   |_|
 
 /// AppendEntries message.
 ///
@@ -138,6 +263,54 @@ type AppendEntries<'a> =
   ; Entries      : LogEntry<'a> option
   }
 
+  with
+    static member FromFB (fb: AppendEntriesFB) : AppendEntries<'a> option =
+      let entries =
+        if fb.EntriesLength = 0
+        then None
+        else
+          let raw = Array.zeroCreate fb.EntriesLength
+          for i in 0 .. (fb.EntriesLength - 1) do
+            raw.[i] <- fb.GetEntries(i)
+          Log.FromFB raw
+
+      try
+        { Term         = fb.Term
+        ; PrevLogIdx   = fb.PrevLogIdx
+        ; PrevLogTerm  = fb.PrevLogTerm
+        ; LeaderCommit = fb.LeaderCommit
+        ; Entries      = entries
+        }
+        |> Some
+      with
+        | _ -> None
+
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let entries =
+        Option.map
+          (fun (entries: LogEntry<'a>) ->
+            let offsets = entries.ToOffset(builder)
+            AppendEntriesFB.CreateEntriesVector(builder, offsets))
+          self.Entries
+
+      AppendEntriesFB.StartAppendEntriesFB(builder)
+      AppendEntriesFB.AddTerm(builder, uint64 self.Term)
+      AppendEntriesFB.AddPrevLogTerm(builder, uint64 self.PrevLogTerm)
+      AppendEntriesFB.AddPrevLogIdx(builder, uint64 self.PrevLogIdx)
+      AppendEntriesFB.AddLeaderCommit(builder, uint64 self.LeaderCommit)
+
+      Option.map (fun offset -> AppendEntriesFB.AddEntries(builder, offset)) entries
+      |> ignore
+
+      AppendEntriesFB.EndAppendEntriesFB(builder)
+
+//     _                               _ ____
+//    / \   _ __  _ __   ___ _ __   __| |  _ \ ___  ___ _ __   ___  _ __  ___  ___
+//   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` | |_) / _ \/ __| '_ \ / _ \| '_ \/ __|/ _ \
+//  / ___ \| |_) | |_) |  __/ | | | (_| |  _ <  __/\__ \ |_) | (_) | | | \__ \  __/
+// /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_| \_\___||___/ .__/ \___/|_| |_|___/\___|
+//         |_|   |_|                                   |_|
+
 /// Appendentries response message.
 ///
 /// an be sent without any entries as a keep alive message.
@@ -155,6 +328,26 @@ type AppendResponse =
   ; FirstIndex   : Index
   }
 
+  with
+    static member FromFB (fb: AppendResponseFB) : AppendResponse option =
+      try
+        { Term         = fb.Term
+        ; Success      = fb.Success
+        ; CurrentIndex = fb.CurrentIndex
+        ; FirstIndex   = fb.FirstIndex
+        }
+        |> Some
+      with
+        | _ -> None
+
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      AppendResponseFB.StartAppendResponseFB(builder)
+      AppendResponseFB.AddTerm(builder, uint64 self.Term)
+      AppendResponseFB.AddSuccess(builder, self.Success)
+      AppendResponseFB.AddFirstIndex(builder, uint64 self.FirstIndex)
+      AppendResponseFB.AddCurrentIndex(builder, uint64 self.CurrentIndex)
+      AppendResponseFB.EndAppendResponseFB(builder)
+
 [<RequireQualifiedAccess>]
 module AppendRequest =
   let inline term ar = ar.Term
@@ -171,14 +364,12 @@ module AppendRequest =
   let inline prevLogIndex ae = ae.PrevLogIdx
   let inline prevLogTerm ae = ae.PrevLogTerm
 
-//////////////////////////////////////////////////////////////////////////////
-//  ___           _        _ _ ____                        _           _    //
-// |_ _|_ __  ___| |_ __ _| | / ___| _ __   __ _ _ __  ___| |__   ___ | |_  //
-//  | || '_ \/ __| __/ _` | | \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __| //
-//  | || | | \__ \ || (_| | | |___) | | | | (_| | |_) \__ \ | | | (_) | |_  //
-// |___|_| |_|___/\__\__,_|_|_|____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__| //
-//                                              |_|                         //
-//////////////////////////////////////////////////////////////////////////////
+//  ___           _        _ _ ____                        _           _
+// |_ _|_ __  ___| |_ __ _| | / ___| _ __   __ _ _ __  ___| |__   ___ | |_
+//  | || '_ \/ __| __/ _` | | \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __|
+//  | || | | \__ \ || (_| | | |___) | | | | (_| | |_) \__ \ | | | (_) | |_
+// |___|_| |_|___/\__\__,_|_|_|____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
+//                                              |_|
 
 type InstallSnapshot<'data> =
   { Term      : Term
@@ -186,6 +377,39 @@ type InstallSnapshot<'data> =
   ; LastIndex : Index
   ; LastTerm  : Term
   ; Data      : LogEntry<'data> }
+
+  with
+    member self.ToOffset (builder: FlatBufferBuilder) =
+      let data = InstallSnapshotFB.CreateDataVector(builder, self.Data.ToOffset(builder))
+      let leaderid = string self.LeaderId |> builder.CreateString
+
+      InstallSnapshotFB.StartInstallSnapshotFB(builder)
+      InstallSnapshotFB.AddTerm(builder, self.Term)
+      InstallSnapshotFB.AddLeaderId(builder, leaderid)
+      InstallSnapshotFB.AddLastTerm(builder, self.LastTerm)
+      InstallSnapshotFB.AddLastIndex(builder, self.LastIndex)
+      InstallSnapshotFB.AddData(builder, data)
+      InstallSnapshotFB.EndInstallSnapshotFB(builder)
+
+    static member FromFB (fb: InstallSnapshotFB) =
+      let entries =
+        if fb.DataLength > 0 then
+          let raw = Array.zeroCreate fb.DataLength
+          for i in 0 .. (fb.DataLength - 1) do
+            raw.[i] <- fb.GetData(i)
+          Log.FromFB raw
+        else None
+
+      try
+        { Term      = fb.Term
+        ; LeaderId  = Id fb.LeaderId
+        ; LastIndex = fb.LastIndex
+        ; LastTerm  = fb.LastTerm
+        ; Data      = Option.get entries
+        }
+        |> Some
+      with
+        | _ -> None
 
 /////////////////////////////////////////////////
 //   ____      _ _ _                _          //
