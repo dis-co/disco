@@ -382,6 +382,11 @@ type IOBox =
     static member FromFB(fb: IOBoxFB) =
       failwith "IOBOX FIXME"
 
+    member self.ToBytes() : byte array =
+      failwith "IOBOX FIXME"
+
+    static member FromBytes(bytes: byte array) : IOBox option =
+      failwith "IOBOX FIXME"
 
 
 //  ____              _

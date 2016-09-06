@@ -34,24 +34,24 @@ type StateMachine =
       match self with
       | AppEvent ev ->
         match ev with
-        | AddCue _    -> mkAppEvent ev ApplicationEventTypeFB.AddCueFB
-        | UpdateCue _ -> mkAppEvent ev ApplicationEventTypeFB.UpdateCueFB
-        | RemoveCue _ -> mkAppEvent ev ApplicationEventTypeFB.RemoveCueFB
+        | AddCue      _ -> mkAppEvent ev ApplicationEventTypeFB.AddCueFB
+        | UpdateCue   _ -> mkAppEvent ev ApplicationEventTypeFB.UpdateCueFB
+        | RemoveCue   _ -> mkAppEvent ev ApplicationEventTypeFB.RemoveCueFB
 
-        | AddPatch _    -> mkAppEvent ev ApplicationEventTypeFB.AddPatchFB
+        | AddPatch    _ -> mkAppEvent ev ApplicationEventTypeFB.AddPatchFB
         | UpdatePatch _ -> mkAppEvent ev ApplicationEventTypeFB.UpdatePatchFB
         | RemovePatch _ -> mkAppEvent ev ApplicationEventTypeFB.RemovePatchFB
 
-        | AddIOBox _    -> mkAppEvent ev ApplicationEventTypeFB.AddIOBoxFB
+        | AddIOBox    _ -> mkAppEvent ev ApplicationEventTypeFB.AddIOBoxFB
         | UpdateIOBox _ -> mkAppEvent ev ApplicationEventTypeFB.UpdateIOBoxFB
         | RemoveIOBox _ -> mkAppEvent ev ApplicationEventTypeFB.RemoveIOBoxFB
 
-        | AddNode _    -> mkAppEvent ev ApplicationEventTypeFB.AddNodeFB
-        | UpdateNode _ -> mkAppEvent ev ApplicationEventTypeFB.UpdateNodeFB
-        | RemoveNode _ -> mkAppEvent ev ApplicationEventTypeFB.RemoveNodeFB
+        | AddNode     _ -> mkAppEvent ev ApplicationEventTypeFB.AddNodeFB
+        | UpdateNode  _ -> mkAppEvent ev ApplicationEventTypeFB.UpdateNodeFB
+        | RemoveNode  _ -> mkAppEvent ev ApplicationEventTypeFB.RemoveNodeFB
 
-        | LogMsg _    -> mkAppEvent ev ApplicationEventTypeFB.LogMsgFB
-        | Command _   -> mkAppEvent ev ApplicationEventTypeFB.AppCommandFB
+        | LogMsg      _ -> mkAppEvent ev ApplicationEventTypeFB.LogMsgFB
+        | Command     _ -> mkAppEvent ev ApplicationEventTypeFB.AppCommandFB
 
       | DataSnapshot str ->
         let data = builder.CreateString str
@@ -73,15 +73,3 @@ type StateMachine =
     static member FromBytes (bytes: byte array) : StateMachine option =
       let msg = StateMachineFB.GetRootAsStateMachineFB(new ByteBuffer(bytes))
       StateMachine.FromFB(msg)
-
-//     _    _ _
-//    / \  | (_) __ _ ___  ___  ___
-//   / _ \ | | |/ _` / __|/ _ \/ __|
-//  / ___ \| | | (_| \__ \  __/\__ \
-// /_/   \_\_|_|\__,_|___/\___||___/ for Raft-specific stuff
-
-type Log = Log<StateMachine>
-type LogEntry = LogEntry<StateMachine>
-type Raft = Raft<StateMachine>
-type AppendEntries = AppendEntries<StateMachine>
-type InstallSnapshot = InstallSnapshot<StateMachine>

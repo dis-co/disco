@@ -235,38 +235,34 @@ type RaftResponse =
 
         | RaftMsgTypeFB.RequestAppendResponseFB ->
           let entry = msg.GetMsg(new RequestAppendResponseFB())
-          let response = AppendResponse.FromFB entry.Response
-
-          AppendEntriesResponse(Id entry.NodeId, response)
-          |> Some
+          AppendResponse.FromFB entry.Response
+          |> Option.map
+            (fun response ->
+              AppendEntriesResponse(Id entry.NodeId, response))
 
         | RaftMsgTypeFB.RequestSnapshotResponseFB ->
           let entry = msg.GetMsg(new RequestSnapshotResponseFB())
-          let response = AppendResponse.FromFB entry.Response
-
-          InstallSnapshotResponse(Id entry.NodeId, response)
-          |> Some
+          AppendResponse.FromFB entry.Response
+          |> Option.map
+            (fun response ->
+              InstallSnapshotResponse(Id entry.NodeId, response))
 
         | RaftMsgTypeFB.RedirectFB ->
           let entry = msg.GetMsg(new RedirectFB())
-          let node = RaftNode.FromFB entry.Node
-
-          Redirect(node) |> Some
+          RaftNode.FromFB entry.Node
+          |> Option.map (fun node -> Redirect(node))
 
         | RaftMsgTypeFB.WelcomeFB ->
           let entry = msg.GetMsg(new WelcomeFB())
-          let node = RaftNode.FromFB entry.Node
-
-          Welcome(node) |> Some
+          RaftNode.FromFB entry.Node
+          |> Option.map (fun node -> Welcome(node))
 
         | RaftMsgTypeFB.ArrivederciFB ->
-          Arrivederci |> Some
+          Some Arrivederci
 
         | RaftMsgTypeFB.ErrorResponseFB ->
           let entry = msg.GetMsg(new ErrorResponseFB())
+          RaftError.FromFB entry.Error
+          |> Option.map ErrorResponse
 
-          ErrorResponse(RaftError.FromFB entry.Error)
-          |> Some
-
-        | _ ->
-          failwith "unable to de-serialize unknown garbage RaftMsgTypeFB"
+        | _ -> None

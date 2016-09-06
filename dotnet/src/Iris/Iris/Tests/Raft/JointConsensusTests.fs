@@ -20,7 +20,7 @@ module JointConsensus =
       let term = 1UL
 
       let cbs =
-        { mkcbs (ref ()) with
+        { mkcbs (ref defSM) with
             SendRequestVote = fun _ _ -> Some { Term = term; Granted = true; Reason = None } }
 
       let node1 = Node.create (Id.Create())
@@ -61,11 +61,11 @@ module JointConsensus =
         Configuration(Id.Create(), 1UL, term, nodes , None)
 
       let ci = ref 0UL
-      let state = Raft.create (Node.create (Id.Create()))
-      let cbs = { mkcbs (ref ()) with
+      let state = createRaft (Node.create (Id.Create()))
+      let cbs = { mkcbs (ref defSM) with
                     SendAppendEntries = fun _ _ ->
                       Some { Term = 0UL; Success = true; CurrentIndex = !ci; FirstIndex = 1UL }
-                  } :> IRaftCallbacks<_>
+                  } :> IRaftCallbacks
 
       raft {
         do! setElectionTimeoutM 1000UL
@@ -77,12 +77,12 @@ module JointConsensus =
         // Add the first entry
         let! idx = currentIndexM ()
         ci := idx                       // otherwise we get a StaleResponse error
-        let! one = receiveEntry (Log.make term ())
+        let! one = receiveEntry (Log.make term defSM)
 
         // Add another entry
         let! idx = currentIndexM ()
         ci := idx
-        let! two = receiveEntry (Log.make term ())
+        let! two = receiveEntry (Log.make term defSM)
 
         let! r1 = responseCommitted one
         let! r2 = responseCommitted two
@@ -110,14 +110,14 @@ module JointConsensus =
         // add another regular entry
         let! idx = currentIndexM ()
         ci := idx
-        let! four = receiveEntry (Log.make term ())
+        let! four = receiveEntry (Log.make term defSM)
         let! r4 = responseCommitted four
         do! expectM "'four' should not be committed" false (konst r4)
 
         // and another
         let! idx = currentIndexM ()
         ci := idx
-        let! five  = receiveEntry (Log.make term ())
+        let! five  = receiveEntry (Log.make term defSM)
         let! r5 = responseCommitted five
         do! expectM "'five' should not be committed" false (konst r5)
 
@@ -162,11 +162,11 @@ module JointConsensus =
       let vote = { Granted = true; Term = !term; Reason = None }
 
       let cbs =
-        { mkcbs (ref ()) with
+        { mkcbs (ref defSM) with
             SendAppendEntries = fun _ req ->
               lock lokk <| fun _ ->
                 Some { Term = !term; Success = true; CurrentIndex = !ci; FirstIndex = 1UL }
-          } :> IRaftCallbacks<_>
+          } :> IRaftCallbacks
 
       raft {
         let me = snd nodes.[0]
@@ -234,7 +234,7 @@ module JointConsensus =
         do! expectM "Should still have correct node count for new configuration" (n / 2UL) numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" n numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.getId entry) (lastConfigChange >> Option.get >> Log.getId)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (lastConfigChange >> Option.get >> LogEntry.getId)
 
         //       _           _   _               ____
         //   ___| | ___  ___| |_(_) ___  _ __   |___ \
@@ -363,7 +363,7 @@ module JointConsensus =
         do! expectM "Should still have correct node count for new configuration 2" n numPeers
         do! expectM "Should still have correct logical node count 2" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration 2" (n / 2UL) numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange 2" (Log.getId entry) (lastConfigChange >> Option.get >> Log.getId)
+        do! expectM "Should have JointConsensus entry as ConfigChange 2" (LogEntry.getId entry) (lastConfigChange >> Option.get >> LogEntry.getId)
 
         //       _           _   _               ____
         //   ___| | ___  ___| |_(_) ___  _ __   | ___|
@@ -460,11 +460,11 @@ module JointConsensus =
       let vote = { Granted = true; Term = !term; Reason = None }
 
       let cbs =
-        { mkcbs (ref ()) with
+        { mkcbs (ref defSM) with
             SendAppendEntries = fun _ req ->
               lock lokk <| fun _ ->
                 Some { Term = !term; Success = true; CurrentIndex = !ci; FirstIndex = 1UL }
-          } :> IRaftCallbacks<_>
+          } :> IRaftCallbacks
 
       raft {
         let self = snd nodes.[0]
@@ -528,7 +528,7 @@ module JointConsensus =
         do! expectM "Should still have correct node count for new configuration" (n / 2UL) numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" n numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.getId entry) (lastConfigChange >> Option.get >> Log.getId)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (lastConfigChange >> Option.get >> LogEntry.getId)
         do! expectM "Should be found in joint consensus configuration myself" true (getNode self.Id >> Option.isSome)
 
         //                                  __ _                       _   _
@@ -564,13 +564,13 @@ module JointConsensus =
       let count = ref 0
       let ci = ref 0UL
       let term = ref 1UL
-      let init = Raft.create (Node.create (Id.Create()))
-      let cbs = { mkcbs (ref ()) with
+      let init = createRaft (Node.create (Id.Create()))
+      let cbs = { mkcbs (ref defSM) with
                     SendAppendEntries = fun _ _ ->
                       lock lokk <| fun _ ->
                         count := 1 + !count
                         Some { Success = true; Term = !term; CurrentIndex = !ci; FirstIndex = 1UL } }
-                :> IRaftCallbacks<_>
+                :> IRaftCallbacks
 
       let n = 10UL                       // we want ten nodes overall
 
@@ -617,13 +617,13 @@ module JointConsensus =
         do! expectM "Should still have correct node count for new configuration" n numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" 1UL numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.getId entry) (lastConfigChange >> Option.get >> Log.getId)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (lastConfigChange >> Option.get >> LogEntry.getId)
         do! expectM "Should be in joint consensus configuration" true inJointConsensus
 
         let! t = currentTermM ()
         term := t
 
-        let! response = receiveEntry (Log.make !term ())
+        let! response = receiveEntry (Log.make !term defSM)
         let! committed = responseCommitted response
         do! expectM "Should not be committed" false (konst committed)
 
@@ -637,13 +637,13 @@ module JointConsensus =
       let lokk = new System.Object()
       let count = ref 0
       let term = ref 1UL
-      let init = Raft.create (Node.create (Id.Create()))
-      let cbs = { mkcbs (ref ()) with
+      let init = createRaft (Node.create (Id.Create()))
+      let cbs = { mkcbs (ref defSM) with
                     SendRequestVote = fun _ _ ->
                       lock lokk <| fun _ ->
                         count := 1 + !count
                         Some { Granted = true; Term = !term; Reason = None } }
-                :> IRaftCallbacks<_>
+                :> IRaftCallbacks
 
       let n = 10UL                       // we want ten nodes overall
 
@@ -682,7 +682,7 @@ module JointConsensus =
         do! expectM "Should still have correct node count for new configuration" n numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" 1UL numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.getId entry) (lastConfigChange >> Option.get >> Log.getId)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (lastConfigChange >> Option.get >> LogEntry.getId)
         do! expectM "Should be in joint consensus configuration" true inJointConsensus
 
         let! peers = getNodesM () >>= (Map.toArray >> Array.map snd >> returnM)
@@ -711,14 +711,14 @@ module JointConsensus =
       let ci = ref 0UL
       let term = ref 1UL
       let count = ref 0
-      let init = Raft.create self
+      let init = createRaft self
       let cbs =
-        { mkcbs (ref()) with
+        { mkcbs (ref defSM) with
             SendAppendEntries = fun _ _ ->
               lock lokk <| fun _ ->
                 count := 1 + !count
                 Some { Success = true; Term = !term; CurrentIndex = !ci; FirstIndex = 1UL } }
-        :> IRaftCallbacks<_>
+        :> IRaftCallbacks
 
       raft {
         do! setPeersM (nodes |> Map.ofArray)
@@ -764,7 +764,7 @@ module JointConsensus =
         do! expectM "Should still have correct node count for new configuration" (n / 2UL) numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" n numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.getId entry) (lastConfigChange >> Option.get >> Log.getId)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (lastConfigChange >> Option.get >> LogEntry.getId)
         do! expectM "Should be in joint consensus configuration" true inJointConsensus
 
         let! committed = responseCommitted response
@@ -816,7 +816,7 @@ module JointConsensus =
         do! expectM "Should still have correct node count for new configuration" n numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" (n / 2UL) numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (Log.getId entry) (lastConfigChange >> Option.get >> Log.getId)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (lastConfigChange >> Option.get >> LogEntry.getId)
 
         let! result = responseCommitted response
         do! expectM "Should be committed" true (konst result)

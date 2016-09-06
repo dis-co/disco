@@ -113,7 +113,7 @@ module RaftIntegrationTests =
               Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
                 Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
 
-      let depth = log |> Option.get |> Log.depth |> int
+      let depth = log |> Option.get |> LogEntry.depth |> int
       let path = mkTmpPath "test_save_restore_log_values_correctly"
 
       let db = createDB path |> Option.get
@@ -210,7 +210,7 @@ module RaftIntegrationTests =
               Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
                 Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
 
-      let count = int <| Log.depth log
+      let count = int <| LogEntry.depth log
 
       let path = mkTmpPath "test_validate_logs_get_deleted_correctly"
       let db = createDB path |> Option.get
@@ -229,7 +229,7 @@ module RaftIntegrationTests =
       expect "Should have failed" false id result
       expect "Should have correct number of logs" (countLogs db) id (count - 1)
 
-      let result = deleteLog (Log.fromEntries log |> Log.prevEntry  |> Option.get) db
+      let result = deleteLog (Log.fromEntries log |> Log.prevEntry |> Option.get) db
 
       expect "Should have correct number of logs" (countLogs db) id (count - 2)
 

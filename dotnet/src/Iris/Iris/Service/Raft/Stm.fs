@@ -29,7 +29,7 @@ let writeTVar (var: TVar<'a>) (value: 'a) = var := value
 
 let atomically = id
 
-let logMsg level (state: AppState) (cbs: IRaftCallbacks<_>) (msg: string) =
+let logMsg level (state: AppState) (cbs: IRaftCallbacks) (msg: string) =
   cbs.LogMsg level state.Raft.Node msg
 
 let debugMsg state cbs msg = logMsg Debug state cbs msg
@@ -257,7 +257,7 @@ let handleVoteRequest sender req (appState: TVar<AppState>) cbs =
   let state = readTVar appState |> atomically
 
   let result =
-    Raft.receiveVoteRequest sender req
+    receiveVoteRequest sender req
     |> runRaft state.Raft cbs
 
   match result with
@@ -362,7 +362,7 @@ let handleRequest msg (state: TVar<AppState>) cbs : RaftResponse =
   | InstallSnapshot (sender, snapshot) ->
     handleInstallSnapshot sender snapshot state cbs
 
-let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks<_>) =
+let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks) =
   let uri =
     readTVar appState
     |> atomically

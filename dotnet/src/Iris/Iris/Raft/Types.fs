@@ -255,16 +255,16 @@ module Vote =
 ///  - `PrevLogIdx`  - the index of the log just before the newest entry for the node who receive this message
 ///  - `PrevLogTerm` - the term of the log just before the newest entry for the node who receives this message
 ///  - `LeaderCommit`- the index of the entry that has been appended to the majority of the cluster. Entries up to this index will be applied to the FSM
-type AppendEntries<'a> =
+type AppendEntries =
   { Term         : Term
   ; PrevLogIdx   : Index
   ; PrevLogTerm  : Term
   ; LeaderCommit : Index
-  ; Entries      : LogEntry<'a> option
+  ; Entries      : LogEntry option
   }
 
   with
-    static member FromFB (fb: AppendEntriesFB) : AppendEntries<'a> option =
+    static member FromFB (fb: AppendEntriesFB) : AppendEntries option =
       let entries =
         if fb.EntriesLength = 0
         then None
@@ -272,7 +272,7 @@ type AppendEntries<'a> =
           let raw = Array.zeroCreate fb.EntriesLength
           for i in 0 .. (fb.EntriesLength - 1) do
             raw.[i] <- fb.GetEntries(i)
-          Log.FromFB raw
+          LogEntry.FromFB raw
 
       try
         { Term         = fb.Term
@@ -288,7 +288,7 @@ type AppendEntries<'a> =
     member self.ToOffset(builder: FlatBufferBuilder) =
       let entries =
         Option.map
-          (fun (entries: LogEntry<'a>) ->
+          (fun (entries: LogEntry) ->
             let offsets = entries.ToOffset(builder)
             AppendEntriesFB.CreateEntriesVector(builder, offsets))
           self.Entries
@@ -358,8 +358,8 @@ module AppendRequest =
 
   let inline numEntries ar =
     match ar.Entries with
-      | Some entries -> Log.depth entries
-      | _ -> 0UL
+      | Some entries -> LogEntry.depth entries
+      | _            -> 0UL
 
   let inline prevLogIndex ae = ae.PrevLogIdx
   let inline prevLogTerm ae = ae.PrevLogTerm
@@ -371,12 +371,12 @@ module AppendRequest =
 // |___|_| |_|___/\__\__,_|_|_|____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
 //                                              |_|
 
-type InstallSnapshot<'data> =
+type InstallSnapshot =
   { Term      : Term
   ; LeaderId  : NodeId
   ; LastIndex : Index
   ; LastTerm  : Term
-  ; Data      : LogEntry<'data> }
+  ; Data      : LogEntry }
 
   with
     member self.ToOffset (builder: FlatBufferBuilder) =
@@ -392,24 +392,22 @@ type InstallSnapshot<'data> =
       InstallSnapshotFB.EndInstallSnapshotFB(builder)
 
     static member FromFB (fb: InstallSnapshotFB) =
-      let entries =
+      let decoded =
         if fb.DataLength > 0 then
           let raw = Array.zeroCreate fb.DataLength
           for i in 0 .. (fb.DataLength - 1) do
             raw.[i] <- fb.GetData(i)
-          Log.FromFB raw
+          LogEntry.FromFB raw
         else None
 
-      try
-        { Term      = fb.Term
-        ; LeaderId  = Id fb.LeaderId
-        ; LastIndex = fb.LastIndex
-        ; LastTerm  = fb.LastTerm
-        ; Data      = Option.get entries
-        }
-        |> Some
-      with
-        | _ -> None
+      decoded
+      |> Option.map
+        (fun entries ->
+          { Term      = fb.Term
+          ; LeaderId  = Id fb.LeaderId
+          ; LastIndex = fb.LastIndex
+          ; LastTerm  = fb.LastTerm
+          ; Data      = entries })
 
 /////////////////////////////////////////////////
 //   ____      _ _ _                _          //
@@ -425,30 +423,30 @@ type InstallSnapshot<'data> =
 // |___|_| |_|\__\___|_|  |_|  \__,_|\___\___| //
 /////////////////////////////////////////////////
 
-type IRaftCallbacks<'data> =
+type IRaftCallbacks =
 
   /// Request a vote from given Raft server
   abstract member SendRequestVote:     RaftNode  -> VoteRequest            -> VoteResponse option
 
   /// Send AppendEntries message to given server
-  abstract member SendAppendEntries:   RaftNode  -> AppendEntries<'data>   -> AppendResponse option
+  abstract member SendAppendEntries:   RaftNode  -> AppendEntries          -> AppendResponse option
 
   /// Send InstallSnapshot command to given serve
-  abstract member SendInstallSnapshot: RaftNode  -> InstallSnapshot<'data> -> AppendResponse option
+  abstract member SendInstallSnapshot: RaftNode  -> InstallSnapshot        -> AppendResponse option
 
   /// given the current state of Raft, prepare and return a snapshot value of
   /// current application state
-  abstract member PrepareSnapshot:     Raft<'data>     -> Log<'data>
+  abstract member PrepareSnapshot:     Raft            -> Log
 
   /// perist the given Snapshot value to disk. For safety reasons this MUST
   /// flush all changes to disk.
-  abstract member PersistSnapshot:     LogEntry<'data> -> unit
+  abstract member PersistSnapshot:     LogEntry        -> unit
 
   /// attempt to load a snapshot from disk. return None if no snapshot was found
-  abstract member RetrieveSnapshot:    unit            -> LogEntry<'data> option
+  abstract member RetrieveSnapshot:    unit            -> LogEntry option
 
   /// apply the given command to state machine
-  abstract member ApplyLog:            'data           -> unit
+  abstract member ApplyLog:            StateMachine    -> unit
 
   /// a new server was added to the configuration
   abstract member NodeAdded:           RaftNode        -> unit
@@ -475,11 +473,11 @@ type IRaftCallbacks<'data> =
 
   /// persist an entry added to the log to disk. For safety reasons this
   /// callback MUST flush the change to disk.
-  abstract member PersistLog:          LogEntry<'data> -> unit
+  abstract member PersistLog:          LogEntry        -> unit
 
   /// persist the removal of the passed entry from the log to disk. For safety
   /// reasons this callback MUST flush the change to disk.
-  abstract member DeleteLog:           LogEntry<'data> -> unit
+  abstract member DeleteLog:           LogEntry        -> unit
 
   /// Callback for catching debug messsages
   abstract member LogMsg:  LogLevel ->  RaftNode        -> String                 -> unit
@@ -511,7 +509,7 @@ type IRaftCallbacks<'data> =
 //                                                                                                                                       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-and Raft<'d> =
+and Raft =
   { Node              : RaftNode
   ; State             : RaftState
   ; CurrentTerm       : Term
@@ -520,14 +518,14 @@ and Raft<'d> =
   ; OldPeers          : Map<NodeId,RaftNode> option
   ; NumNodes          : Long
   ; VotedFor          : NodeId option
-  ; Log               : Log<'d>
+  ; Log               : Log
   ; CommitIndex       : Index
   ; LastAppliedIdx    : Index
   ; TimeoutElapsed    : Long
   ; ElectionTimeout   : Long
   ; RequestTimeout    : Long
   ; MaxLogDepth       : Long
-  ; ConfigChangeEntry : LogEntry<'d> option
+  ; ConfigChangeEntry : LogEntry option
   }
 
   override self.ToString() =
@@ -573,5 +571,5 @@ ConfigChangeEntry = %s
 type RaftMonad<'Env,'State,'T,'Error> =
   MkRM of ('Env -> 'State -> Either<'Error * 'State,'T * 'State>)
 
-type RaftM<'data,'t,'err> =
-  RaftMonad<IRaftCallbacks<'data>,Raft<'data>,'t,'err>
+type RaftM<'t,'err> =
+  RaftMonad<IRaftCallbacks,Raft,'t,'err>

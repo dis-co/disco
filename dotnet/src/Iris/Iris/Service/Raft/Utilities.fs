@@ -32,7 +32,7 @@ let createRaft (options: Config) =
         HostName = getHostName()
         IpAddr   = IpAddress.Parse options.RaftConfig.BindAddress
         Port     = uint16 options.PortConfig.Raft }
-  Raft.create node
+  RaftModule.createRaft node
 
 let loadRaft (options: Config) =
   let dir = options.RaftConfig.DataDir </> DB_NAME

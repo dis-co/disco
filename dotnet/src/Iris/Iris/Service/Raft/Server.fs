@@ -56,7 +56,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
   let server : Zmq.Rep option ref = ref None
   let periodictoken               = ref None
 
-  let cbs = this :> IRaftCallbacks<StateMachine>
+  let cbs = this :> IRaftCallbacks
   let appState = mkState context options |> newTVar
   let connections = newTVar Map.empty
 
@@ -239,7 +239,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
   // |  _ < (_| |  _| |_   | || | | | ||  __/ |  |  _| (_| | (_|  __/
   // |_| \_\__,_|_|  \__| |___|_| |_|\__\___|_|  |_|  \__,_|\___\___|
 
-  interface IRaftCallbacks<StateMachine> with
+  interface IRaftCallbacks with
 
     member self.SendRequestVote node req  =
       let state = self.State
@@ -483,7 +483,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
     member self.PersistLog log =
       try
         insertLogs log database
-        sprintf "PersistLog insert id: %A" (Log.getId log |> string)
+        sprintf "PersistLog insert id: %A" (LogEntry.getId log |> string)
         |> this.Debug
       with
         | _ ->
@@ -504,7 +504,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
     member self.DeleteLog log =
       try
         deleteLogs log database
-        |> sprintf "DeleteLog id: %A result: %b" (Log.getId log |> string)
+        |> sprintf "DeleteLog id: %A result: %b" (LogEntry.getId log |> string)
         |> this.Debug
       with
         | exn -> handleException "DeleteLog" exn

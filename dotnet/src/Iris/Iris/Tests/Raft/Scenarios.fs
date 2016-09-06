@@ -18,7 +18,7 @@ module Scenarios =
   and Msg =
     | RequestVote           of sender:NodeId * req:VoteRequest
     | RequestVoteResponse   of sender:NodeId * vote:VoteResponse
-    | AppendEntries         of sender:NodeId * ae:AppendEntries<unit>
+    | AppendEntries         of sender:NodeId * ae:AppendEntries
     | AppendEntriesResponse of sender:NodeId * ar:AppendResponse
 
   let create =
@@ -189,10 +189,10 @@ module Scenarios =
               ; PersistLog          = ignore
               ; DeleteLog           = ignore
               ; LogMsg              = fun _ _ -> ignore
-              } :> IRaftCallbacks<_>
+              } :> IRaftCallbacks
 
             let raft =
-              Raft.create peers.[int n]
+              createRaft peers.[int n]
               |> setElectionTimeout 500UL
               |> addNodes peers
 
@@ -228,7 +228,7 @@ module Scenarios =
           |> fun r -> Array.set servers (int n) (r, snd srv)
 
       let __fldr result raft =
-        if Raft.isLeader raft then result + 1 else result
+        if isLeader raft then result + 1 else result
 
       let leaders = Array.map fst servers |> Array.fold __fldr 0
       Assert.Equal("System should have have one leader", 1, leaders)
