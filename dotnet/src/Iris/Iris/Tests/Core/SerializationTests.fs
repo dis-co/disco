@@ -330,7 +330,12 @@ module SerializationTests =
 
       Array.iter check ioboxes
 
-      IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0UL; Value = ioboxes }|])
+      // compound
+      let compound = IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0UL; Value = ioboxes }|])
+      check compound
+
+      // nested compound :)
+      IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0UL; Value = [| compound |] }|])
       |> check
 
   //     _                _ _           _   _             _____                 _
