@@ -52,7 +52,7 @@ type AssetServer(config: Config) =
     let addr = IPAddress.Parse config.RaftConfig.BindAddress
     let port = Sockets.Port.Parse (string config.PortConfig.Http)
     { defaultConfig with
-        logger            = ConsoleWindowLogger(LogLevel.Info)
+        logger            = ConsoleWindowLogger(Suave.Logging.LogLevel.Info)
         cancellationToken = token
         homeFolder        = Some(basepath)
         bindings          = [ HttpBinding.mk HTTP addr port ]

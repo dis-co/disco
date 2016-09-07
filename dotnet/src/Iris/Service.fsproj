@@ -93,20 +93,27 @@
     <Compile Include="Iris\Core\IpAddress.fs" />
     <Compile Include="Iris\Core\Either.fs" />
     <Compile Include="Iris\Core\Aliases.fs" />
+    <Compile Include="Iris\Core\Color.fs" />
     <Compile Include="Iris\Core\Util.fs" />
     <Compile Include="Iris\Core\LogLevel.fs" />
-    <Compile Include="Iris\Raft\Validation.fs" />
-    <Compile Include="Iris\Raft\Continue.fs" />
-    <Compile Include="Iris\Raft\Node.fs" />
-    <Compile Include="Iris\Raft\Log.fs" />
-    <Compile Include="Iris\Raft\Types.fs" />
-    <Compile Include="Iris\Raft\Raft.fs" />
     <Compile Include="Iris\Core\Git.fs" />
     <Compile Include="Iris\Core\IOBox.fs" />
     <Compile Include="Iris\Core\Patch.fs" />
     <Compile Include="Iris\Core\Cue.fs" />
     <Compile Include="Iris\Core\CueList.fs" />
+
+    <Compile Include="Iris\Raft\Validation.fs" />
+    <Compile Include="Iris\Raft\Continue.fs" />
+    <Compile Include="Iris\Raft\Node.fs" />
+
     <Compile Include="Iris\Core\ApplicationEvent.fs" />
+    <Compile Include="Iris\Core\StateMachine.fs" />
+
+    <Compile Include="Iris\Raft\LogEntry.fs" />
+    <Compile Include="Iris\Raft\Log.fs" />
+    <Compile Include="Iris\Raft\Types.fs" />
+    <Compile Include="Iris\Raft\Raft.fs" />
+
     <Compile Include="Iris\Core\Region.fs" />
     <Compile Include="Iris\Core\Signal.fs" />
     <Compile Include="Iris\Core\Display.fs" />
@@ -116,10 +123,10 @@
     <Compile Include="Iris\Core\Yaml.fs" />
     <Compile Include="Iris\Core\Config.fs" />
     <Compile Include="Iris\Core\Project.fs" />
+
     <Compile Include="Iris\Core\Uri.fs" />
     <Compile Include="Iris\Service\GitDaemon.fs" />
     <Compile Include="Iris\Core\BrowserSession.fs" />
-    <Compile Include="Iris\Core\StateMachine.fs" />
     <Compile Include="Iris\Core\RaftUtils.fs" />
     <Compile Include="Iris\Service\WebSocket.fs" />
     <Compile Include="Iris\Service\Raft\Zmq.fs" />
@@ -128,7 +135,7 @@
     <Compile Include="Iris\Service\Raft\Utilities.fs" />
     <Compile Include="Iris\Service\Raft\Stm.fs" />
     <Compile Include="Iris\Service\Raft\Server.fs" />
-    <Compile Include="Iris\Service\AssetServer.fs" />
+    <compile Include="Iris\Service\AssetServer.fs" />
     <Compile Include="Iris\Service\CommandLine.fs" />
     <Compile Include="Iris\Service\Main.fs" />
     <Content Include="Iris.exe.config">
