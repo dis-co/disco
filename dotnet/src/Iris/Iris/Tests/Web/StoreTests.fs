@@ -28,7 +28,7 @@ module Store =
     withStore <| fun patch store ->
       test "store should be immutable" <| fun finish ->
         let state = store.State
-        store.Dispatch <| PatchEvent(Create, patch)
+        store.Dispatch <| AddPatch(patch)
         let newstate = store.State
         equals false (identical state newstate)
         finish()
@@ -40,7 +40,7 @@ module Store =
     withStore <| fun patch store ->
       test "should add a patch to the store" <| fun finish ->
         equals 0 (Array.length store.State.Patches)
-        store.Dispatch <| PatchEvent(Create, patch)
+        store.Dispatch <| AddPatch(patch)
         equals 1 (Array.length store.State.Patches)
         finish ()
 
@@ -53,13 +53,13 @@ module Store =
         let isPatch (p : Patch) : bool =
           p.Id = patch.Id
 
-        store.Dispatch <| PatchEvent(Create, patch)
+        store.Dispatch <| AddPatch(patch)
 
         equals true (Array.exists isPatch store.State.Patches)
         equals true (Array.find isPatch store.State.Patches |> (fun p -> p.Name = name1))
 
         let updated = { patch with Name = name2 }
-        store.Dispatch <| PatchEvent(Update,updated)
+        store.Dispatch <| UpdatePatch(updated)
 
         equals true (Array.find isPatch store.State.Patches |> (fun p -> p.Name = name2))
 
@@ -70,10 +70,10 @@ module Store =
       test "should remove a patch already in the store" <| fun finish ->
         let isPatch (p : Patch) : bool = p.Id = patch.Id
 
-        store.Dispatch <| PatchEvent(Create, patch)
+        store.Dispatch <| AddPatch(patch)
         equals true (Array.exists isPatch store.State.Patches)
 
-        store.Dispatch <| PatchEvent(Delete, patch)
+        store.Dispatch <| RemovePatch(patch)
         equals false (Array.exists isPatch store.State.Patches)
 
         finish()
@@ -84,14 +84,14 @@ module Store =
 
     withStore <| fun patch store ->
       test "should add an iobox to the store if patch exists" <| fun finish ->
-        store.Dispatch <| PatchEvent(Create, patch)
+        store.Dispatch <| AddPatch(patch)
 
         equals 0 (Array.length store.State.Patches.[0].IOBoxes)
 
         let slice : StringSliceD = { Index = 0UL; Value = "Hey" }
         let iobox : IOBox = IOBox.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
 
-        store.Dispatch <| IOBoxEvent(Create, iobox)
+        store.Dispatch <| AddIOBox(iobox)
         equals 1 (Array.length store.State.Patches.[0].IOBoxes)
         finish ()
 
@@ -100,7 +100,7 @@ module Store =
       test "should not add an iobox to the store if patch does not exists" <| fun finish ->
         let slice : StringSliceD = { Index = 0UL; Value =  "Hey" }
         let iobox = IOBox.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
-        store.Dispatch <| IOBoxEvent(Create, iobox)
+        store.Dispatch <| AddIOBox(iobox)
         equals 0 (Array.length store.State.Patches)
         finish ()
 
@@ -113,15 +113,15 @@ module Store =
         let slice : StringSliceD = { Index = 0UL; Value = "swell" }
         let iobox = IOBox.String(Id "0xb33f", name1, patch.Id, Array.empty, [| slice |])
 
-        store.Dispatch <| PatchEvent(Create, patch)
-        store.Dispatch <| IOBoxEvent(Create, iobox)
+        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddIOBox(iobox)
 
         match Patch.FindIOBox store.State.Patches iobox.Id with
           | Some(i) -> equals name1 i.Name
           | None    -> failwith "iobox is mysteriously missing"
 
         let updated = iobox.SetName name2
-        store.Dispatch <| IOBoxEvent(Update, updated)
+        store.Dispatch <| UpdateIOBox(updated)
 
         match Patch.FindIOBox store.State.Patches iobox.Id with
           | Some(i) -> equals name2 i.Name
@@ -135,14 +135,14 @@ module Store =
         let slice : StringSliceD = { Index = 0UL; Value = "swell" }
         let iobox = IOBox.String(Id "0xb33f", "hi", Id "0xb4d1d34", Array.empty, [| slice |])
 
-        store.Dispatch <| PatchEvent(Create, patch)
-        store.Dispatch <| IOBoxEvent(Create, iobox)
+        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddIOBox(iobox)
 
         match Patch.FindIOBox store.State.Patches iobox.Id with
           | Some(_) -> ()
           | None    -> failwith "iobox is mysteriously missing"
 
-        store.Dispatch <| IOBoxEvent(Delete, iobox)
+        store.Dispatch <| RemoveIOBox(iobox)
 
         match Patch.FindIOBox store.State.Patches iobox.Id with
           | Some(_) -> failwith "iobox should be missing by now but isn't"
@@ -154,13 +154,13 @@ module Store =
 
     withStore <| fun patch store ->
       test "store should trigger listeners on undo" <| fun finish ->
-        store.Dispatch <| PatchEvent(Create, patch)
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "patch-2" })
+        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| UpdatePatch( { patch with Name = "patch-2" })
 
         // subscribe now, so as to not fire too early ;)
         store.Subscribe(fun st ev ->
           match ev with
-            | PatchEvent(Create, p) -> if p.Name = patch.Name then finish ()
+            | AddPatch(p) -> if p.Name = patch.Name then finish ()
             | _ -> ())
 
         equals 3 store.History.Length
@@ -170,10 +170,10 @@ module Store =
     withStore <| fun patch store ->
       test "store should dump previous states for inspection" <| fun finish ->
         equals 1 store.History.Length
-        store.Dispatch <| PatchEvent(Create, patch)
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "patch-2" })
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "patch-3" })
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "patch-4" })
+        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| UpdatePatch( { patch with Name = "patch-2" })
+        store.Dispatch <| UpdatePatch( { patch with Name = "patch-3" })
+        store.Dispatch <| UpdatePatch( { patch with Name = "patch-4" })
         equals 5 store.History.Length
         finish()
 
@@ -185,10 +185,10 @@ module Store =
         let patch3 : Patch = { patch2 with Name = "patch-3" }
         let patch4 : Patch = { patch3 with Name = "patch-4" }
 
-        store.Dispatch <| PatchEvent(Create, patch)
-        store.Dispatch <| PatchEvent(Update, patch2)
-        store.Dispatch <| PatchEvent(Update, patch3)
-        store.Dispatch <| PatchEvent(Update, patch4)
+        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| UpdatePatch( patch2)
+        store.Dispatch <| UpdatePatch( patch3)
+        store.Dispatch <| UpdatePatch( patch4)
 
         equals 5 store.History.Length
         finish()
@@ -197,8 +197,8 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->
       test "should undo a single change" <| fun finish ->
-        store.Dispatch <| PatchEvent(Create, patch)
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "cats" })
+        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| UpdatePatch( { patch with Name = "cats" })
         store.Undo()
         equals patch.Name store.State.Patches.[0].Name
         finish()
@@ -206,9 +206,9 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->
       test "should undo two changes" <| fun finish ->
-        store.Dispatch <| PatchEvent(Create, patch)
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "cats" })
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "dogs" })
+        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| UpdatePatch( { patch with Name = "cats" })
+        store.Dispatch <| UpdatePatch( { patch with Name = "dogs" })
         store.Undo()
         store.Undo()
         equals patch.Name store.State.Patches.[0].Name
@@ -217,7 +217,7 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->
       test "should redo an undone change" <| fun finish ->
-        store.Dispatch <| PatchEvent(Create, patch)
+        store.Dispatch <| AddPatch(patch)
         store.Undo()
         equals 0 (Array.length store.State.Patches)
         store.Redo()
@@ -227,11 +227,11 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->
       test "should redo multiple undone changes" <| fun finish ->
-        store.Dispatch <| PatchEvent(Create, patch)
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "cats" })
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "dogs" })
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "mice" })
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "men"  })
+        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| UpdatePatch( { patch with Name = "cats" })
+        store.Dispatch <| UpdatePatch( { patch with Name = "dogs" })
+        store.Dispatch <| UpdatePatch( { patch with Name = "mice" })
+        store.Dispatch <| UpdatePatch( { patch with Name = "men"  })
         store.Undo()
         store.Undo()
 
@@ -250,9 +250,9 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->
       test "should undo/redo interleaved changes" <| fun finish ->
-        store.Dispatch <| PatchEvent(Create, patch)
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "cats" })
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "dogs" })
+        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| UpdatePatch( { patch with Name = "cats" })
+        store.Dispatch <| UpdatePatch( { patch with Name = "dogs" })
 
         store.Undo()
         equals "cats" store.State.Patches.[0].Name
@@ -263,7 +263,7 @@ module Store =
         store.Undo()
         equals "cats" store.State.Patches.[0].Name
 
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "mice" })
+        store.Dispatch <| UpdatePatch( { patch with Name = "mice" })
 
         store.Undo()
         equals "dogs" store.State.Patches.[0].Name
@@ -276,7 +276,7 @@ module Store =
 
         equals "cats" store.State.Patches.[0].Name
 
-        store.Dispatch <| PatchEvent(Update, { patch with Name = "men"  })
+        store.Dispatch <| UpdatePatch( { patch with Name = "men"  })
 
         store.Undo()
         equals "mice" store.State.Patches.[0].Name
@@ -292,11 +292,11 @@ module Store =
     withStore <| fun patch store ->
       test "should only keep specified number of undo-steps" <| fun finish ->
         store.UndoSteps <- 4
-        store.Dispatch <| PatchEvent(Create, patch)
+        store.Dispatch <| AddPatch(patch)
 
         ["dogs"; "cats"; "mice"; "men"; "worms"; "hens"]
         |> List.map (fun n ->
-             store.Dispatch <| PatchEvent(Update, { patch with Name = n }))
+             store.Dispatch <| UpdatePatch( { patch with Name = n }))
         |> List.iter (fun _ -> store.Undo())
 
         equals 4      store.History.Length
@@ -310,11 +310,11 @@ module Store =
         store.UndoSteps <- 2
         store.Debug <- true
 
-        store.Dispatch <| PatchEvent(Create, patch)
+        store.Dispatch <| AddPatch(patch)
 
         ["dogs"; "cats"; "mice"; "men"; "worms"; "hens"]
         |> List.iter (fun n ->
-            store.Dispatch <| PatchEvent(Update, { patch with Name = n }))
+            store.Dispatch <| UpdatePatch( { patch with Name = n }))
 
         equals 8 store.History.Length
         finish ()
@@ -325,11 +325,11 @@ module Store =
         store.UndoSteps <- 3
         store.Debug <- true
 
-        store.Dispatch <| PatchEvent(Create, patch)
+        store.Dispatch <| AddPatch(patch)
 
         ["dogs"; "cats"; "mice"; "men"; "worms"; "hens"]
         |> List.iter (fun n ->
-            store.Dispatch <| PatchEvent(Update, { patch with Name = n }))
+            store.Dispatch <| UpdatePatch( { patch with Name = n }))
 
         equals 8 store.History.Length
         store.Debug <- false

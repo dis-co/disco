@@ -42,7 +42,7 @@ module PatchesView =
       equals None (getById (string patchid))
       controller.Render store.State ctx
       equals None (getById (string patchid))
-      store.Dispatch <| PatchEvent(Create, patch)
+      store.Dispatch <| AddPatch(patch)
       controller.Render store.State ctx
       equals true (getById (string patchid) |> Option.isSome)
       dispose controller
@@ -79,7 +79,7 @@ module PatchesView =
       equals true (getById (string pid1) |> Option.isSome)
       equals true (getById (string pid2) |> Option.isSome)
 
-      store.Dispatch <| PatchEvent(Delete, patch1)
+      store.Dispatch <| RemovePatch(patch1)
 
       equals false (Patch.HasPatch store.State.Patches patch1)
       equals true  (Patch.HasPatch store.State.Patches patch2)
@@ -121,7 +121,7 @@ module PatchesView =
       controller.Render store.State ctx
 
       equals None (getById (string id1))
-      store.Dispatch <| IOBoxEvent(Create, iobox)
+      store.Dispatch <| AddIOBox(iobox)
       controller.Render store.State ctx
       equals true (getById (string id1) |> Option.isSome)
 
@@ -157,20 +157,20 @@ module PatchesView =
       let controller = new ViewController<State,ClientContext> (view)
 
       // add the first iobox
-      store.Dispatch <| IOBoxEvent(Create,iobox1)
+      store.Dispatch <| AddIOBox(iobox1)
       controller.Render store.State ctx
 
       equals true (getById (string id1) |> Option.isSome)
 
       // add the second iobox
-      store.Dispatch <| IOBoxEvent(Create,iobox2)
+      store.Dispatch <| AddIOBox(iobox2)
       controller.Render store.State ctx
 
       equals true (getById (string id1) |> Option.isSome)
       equals true (getById (string id2) |> Option.isSome)
 
       // remove the second iobox
-      store.Dispatch <| IOBoxEvent(Delete,iobox2)
+      store.Dispatch <| RemoveIOBox(iobox2)
       controller.Render store.State ctx
 
       equals true (getById (string id1) |> Option.isSome)
@@ -206,7 +206,7 @@ module PatchesView =
       let ctx = new ClientContext()
       let controller = new ViewController<State,ClientContext> (view)
 
-      store.Dispatch <| IOBoxEvent(Create, iobox)
+      store.Dispatch <| AddIOBox(iobox)
 
       controller.Render store.State ctx
 
@@ -222,11 +222,14 @@ module PatchesView =
         StringSlices [| { Index = 0UL; Value = value2 } |]
         |> iobox.SetSlices
 
-      store.Dispatch <| IOBoxEvent(Update, updated1)
+      store.Dispatch <| AddIOBox(updated1)
 
       match Patch.FindIOBox store.State.Patches elid with
-        | Some(box) -> equals value2 box.Slices.[0].StringValue
-        | None      -> failwith "IOBox was not found in store"
+        | Some(box) ->
+          match box.Slices.[0].StringValue with
+          | Some value -> equals value2 value
+          | _          -> failwith "IOBox should have correct value"
+        | None         -> failwith "IOBox was not found in store"
 
       controller.Render store.State ctx
 
@@ -242,11 +245,14 @@ module PatchesView =
         StringSlices [| { Index = 0UL; Value = value3 } |]
         |> iobox.SetSlices
 
-      store.Dispatch <| IOBoxEvent(Update, updated2)
+      store.Dispatch <| AddIOBox(updated2)
 
       match Patch.FindIOBox store.State.Patches elid with
-        | Some(box) -> equals value3 box.Slices.[0].StringValue
-        | None      -> failwith "IOBox was not found in store"
+        | Some(box) ->
+          match box.Slices.[0].StringValue with
+          | Some value -> equals value3 value
+          | _          -> failwith "IOBox has no value"
+        | None         -> failwith "IOBox was not found in store"
 
       controller.Render store.State ctx
 

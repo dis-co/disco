@@ -71,19 +71,19 @@ module ViewController =
       let ctx = new ClientContext()
       let ctrl = new ViewController<State,ClientContext>(view)
 
-      store.Dispatch <| PatchEvent(Create, patch1)
+      store.Dispatch <| AddPatch(patch1)
 
       ctrl.Render store.State ctx
 
       equals 1.0 (getByClass "patch" |> fun els -> els.length)
 
-      store.Dispatch <| PatchEvent(Create, patch2)
+      store.Dispatch <| AddPatch(patch2)
 
       ctrl.Render store.State ctx
 
       equals 2.0 (getByClass "patch" |> fun els -> els.length)
 
-      store.Dispatch <| PatchEvent(Create, patch3)
+      store.Dispatch <| AddPatch(patch3)
 
       ctrl.Render store.State ctx
 
@@ -106,7 +106,7 @@ module ViewController =
       let ctx = new ClientContext()
       let ctrl = new ViewController<State,ClientContext>(view)
 
-      store.Dispatch <| PatchEvent(Create, patch1)
+      store.Dispatch <| AddPatch(patch1)
 
       ctrl.Render store.State ctx
 

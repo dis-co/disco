@@ -43,12 +43,16 @@
     <Compile Include="Iris\Core\Id.fs" />
     <Compile Include="Iris\Core\IpAddress.fs" />
     <Compile Include="Iris\Core\Aliases.fs" />
+    <Compile Include="Iris\Core\Color.fs" />
     <Compile Include="Iris\Core\Util.fs" />
     <Compile Include="Iris\Core\LogLevel.fs" />
     <Compile Include="Iris\Core\IOBox.fs" />
     <Compile Include="Iris\Core\Patch.fs" />
     <Compile Include="Iris\Core\Cue.fs" />
     <Compile Include="Iris\Core\CueList.fs" />
+
+    <Compile Include="Iris\Raft\Node.fs" />
+
     <Compile Include="Iris\Core\ApplicationEvent.fs" />
     <Compile Include="Iris\Core\ClientMessage.fs" />
 

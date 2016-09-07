@@ -416,6 +416,8 @@ type IOBox =
                ; Tags       = tags
                ; Slices     = values }
 
+#if JAVASCRIPT
+#else
     //  ___ ___  ____
     // |_ _/ _ \| __ )  _____  __
     //  | | | | |  _ \ / _ \ \/ /
@@ -528,11 +530,13 @@ type IOBox =
       IOBoxFB.GetRootAsIOBoxFB(new ByteBuffer(bytes))
       |> IOBox.FromFB
 
-//  ____              _
-// | __ )  ___   ___ | |
-// |  _ \ / _ \ / _ \| |
-// | |_) | (_) | (_) | |
-// |____/ \___/ \___/|_|
+#endif
+
+//  ____              _ ____
+// | __ )  ___   ___ | | __ )  _____  __
+// |  _ \ / _ \ / _ \| |  _ \ / _ \ \/ /
+// | |_) | (_) | (_) | | |_) | (_) >  <
+// |____/ \___/ \___/|_|____/ \___/_/\_\
 
 and BoolBoxD =
   { Id         : Id
@@ -541,6 +545,9 @@ and BoolBoxD =
   ; Tags       : Tag array
   ; Behavior   : Behavior
   ; Slices     : BoolSliceD array }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -589,9 +596,20 @@ and BoolBoxD =
       BoolBoxFB.GetRootAsBoolBoxFB(new ByteBuffer(bytes))
       |> BoolBoxD.FromFB
 
+#endif
+
+//  ____              _ ____  _ _
+// | __ )  ___   ___ | / ___|| (_) ___ ___
+// |  _ \ / _ \ / _ \| \___ \| | |/ __/ _ \
+// | |_) | (_) | (_) | |___) | | | (_|  __/
+// |____/ \___/ \___/|_|____/|_|_|\___\___|
+
 and BoolSliceD =
   { Index: Index
   ; Value: bool }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -614,13 +632,13 @@ and BoolSliceD =
       BoolSliceFB.GetRootAsBoolSliceFB(new ByteBuffer(bytes))
       |> BoolSliceD.FromFB
 
+#endif
 
 //  ___       _   ____
 // |_ _|_ __ | |_| __ )  _____  __
 //  | || '_ \| __|  _ \ / _ \ \/ /
 //  | || | | | |_| |_) | (_) >  <
 // |___|_| |_|\__|____/ \___/_/\_\
-
 
 and IntBoxD =
   { Id         : Id
@@ -632,6 +650,9 @@ and IntBoxD =
   ; Max        : int
   ; Unit       : string
   ; Slices     : IntSliceD array }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -689,6 +710,8 @@ and IntBoxD =
       IntBoxFB.GetRootAsIntBoxFB(new ByteBuffer(bytes))
       |> IntBoxD.FromFB
 
+#endif
+
 //  ___       _   ____  _ _
 // |_ _|_ __ | |_/ ___|| (_) ___ ___
 //  | || '_ \| __\___ \| | |/ __/ _ \
@@ -698,6 +721,10 @@ and IntBoxD =
 and IntSliceD =
   { Index: Index
   ; Value: int }
+
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -720,6 +747,8 @@ and IntSliceD =
       IntSliceFB.GetRootAsIntSliceFB(new ByteBuffer(bytes))
       |> IntSliceD.FromFB
 
+#endif
+
 //  _____ _             _   ____
 // |  ___| | ___   __ _| |_| __ )  _____  __
 // | |_  | |/ _ \ / _` | __|  _ \ / _ \ \/ /
@@ -737,6 +766,9 @@ and FloatBoxD =
   ; Unit       : string
   ; Precision  : uint32
   ; Slices     : FloatSliceD array }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -796,6 +828,8 @@ and FloatBoxD =
       FloatBoxFB.GetRootAsFloatBoxFB(new ByteBuffer(bytes))
       |> FloatBoxD.FromFB
 
+#endif
+
 //  _____ _             _   ____  _ _
 // |  ___| | ___   __ _| |_/ ___|| (_) ___ ___
 // | |_  | |/ _ \ / _` | __\___ \| | |/ __/ _ \
@@ -805,6 +839,9 @@ and FloatBoxD =
 and FloatSliceD =
   { Index: Index
   ; Value: float }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -827,6 +864,8 @@ and FloatSliceD =
       FloatSliceFB.GetRootAsFloatSliceFB(new ByteBuffer(bytes))
       |> FloatSliceD.FromFB
 
+#endif
+
 //  ____              _     _      ____
 // |  _ \  ___  _   _| |__ | | ___| __ )  _____  __
 // | | | |/ _ \| | | | '_ \| |/ _ \  _ \ / _ \ \/ /
@@ -844,6 +883,9 @@ and DoubleBoxD =
   ; Unit       : string
   ; Precision  : uint32
   ; Slices     : DoubleSliceD array }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -903,6 +945,8 @@ and DoubleBoxD =
       DoubleBoxFB.GetRootAsDoubleBoxFB(new ByteBuffer(bytes))
       |> DoubleBoxD.FromFB
 
+#endif
+
 //  ____              _     _      ____  _ _
 // |  _ \  ___  _   _| |__ | | ___/ ___|| (_) ___ ___
 // | | | |/ _ \| | | | '_ \| |/ _ \___ \| | |/ __/ _ \
@@ -912,6 +956,9 @@ and DoubleBoxD =
 and DoubleSliceD =
   { Index: Index
   ; Value: double }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -934,6 +981,8 @@ and DoubleSliceD =
       DoubleSliceFB.GetRootAsDoubleSliceFB(new ByteBuffer(bytes))
       |> DoubleSliceD.FromFB
 
+#endif
+
 //  ____        _       ____
 // | __ ) _   _| |_ ___| __ )  _____  __
 // |  _ \| | | | __/ _ \  _ \ / _ \ \/ /
@@ -947,6 +996,9 @@ and ByteBoxD =
   ; Patch      : Id
   ; Tags       : Tag        array
   ; Slices     : ByteSliceD array }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -994,6 +1046,8 @@ and ByteBoxD =
       ByteBoxFB.GetRootAsByteBoxFB(new ByteBuffer(bytes))
       |> ByteBoxD.FromFB
 
+#endif
+
 //  ____        _       ____  _ _
 // | __ ) _   _| |_ ___/ ___|| (_) ___ ___
 // |  _ \| | | | __/ _ \___ \| | |/ __/ _ \
@@ -1004,6 +1058,9 @@ and ByteBoxD =
 and ByteSliceD =
   { Index: Index
   ; Value: byte array }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -1032,6 +1089,8 @@ and ByteSliceD =
       ByteSliceFB.GetRootAsByteSliceFB(new ByteBuffer(bytes))
       |> ByteSliceD.FromFB
 
+#endif
+
 //  _____                       ____
 // | ____|_ __  _   _ _ __ ___ | __ )  _____  __
 // |  _| | '_ \| | | | '_ ` _ \|  _ \ / _ \ \/ /
@@ -1045,6 +1104,9 @@ and EnumBoxD =
   ; Tags       : Tag        array
   ; Properties : Property   array
   ; Slices     : EnumSliceD array }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -1105,6 +1167,8 @@ and EnumBoxD =
       EnumBoxFB.GetRootAsEnumBoxFB(new ByteBuffer(bytes))
       |> EnumBoxD.FromFB
 
+#endif
+
 //  _____                       ____  _ _
 // | ____|_ __  _   _ _ __ ___ / ___|| (_) ___ ___
 // |  _| | '_ \| | | | '_ ` _ \\___ \| | |/ __/ _ \
@@ -1114,6 +1178,9 @@ and EnumBoxD =
 and EnumSliceD =
   { Index : Index
   ; Value : Property }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -1151,6 +1218,8 @@ and EnumSliceD =
       EnumSliceFB.GetRootAsEnumSliceFB(new ByteBuffer(bytes))
       |> EnumSliceD.FromFB
 
+#endif
+
 //   ____      _            ____
 //  / ___|___ | | ___  _ __| __ )  _____  __
 // | |   / _ \| |/ _ \| '__|  _ \ / _ \ \/ /
@@ -1163,6 +1232,9 @@ and ColorBoxD =
   ; Patch  : Id
   ; Tags   : Tag         array
   ; Slices : ColorSliceD array }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -1210,6 +1282,8 @@ and ColorBoxD =
       ColorBoxFB.GetRootAsColorBoxFB(new ByteBuffer(bytes))
       |> ColorBoxD.FromFB
 
+#endif
+
 //   ____      _            ____  _ _
 //  / ___|___ | | ___  _ __/ ___|| (_) ___ ___
 // | |   / _ \| |/ _ \| '__\___ \| | |/ __/ _ \
@@ -1219,6 +1293,9 @@ and ColorBoxD =
 and ColorSliceD =
   { Index: Index
   ; Value: ColorSpace }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -1238,6 +1315,8 @@ and ColorSliceD =
       ColorSliceFB.GetRootAsColorSliceFB(new ByteBuffer(bytes))
       |> ColorSliceD.FromFB
 
+#endif
+
 //  ____  _        _             ____
 // / ___|| |_ _ __(_)_ __   __ _| __ )  _____  __
 // \___ \| __| '__| | '_ \ / _` |  _ \ / _ \ \/ /
@@ -1254,6 +1333,9 @@ and StringBoxD =
   ; FileMask   : FileMask
   ; MaxChars   : MaxChars
   ; Slices     : StringSliceD array }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -1312,6 +1394,8 @@ and StringBoxD =
       StringBoxFB.GetRootAsStringBoxFB(new ByteBuffer(bytes))
       |> StringBoxD.FromFB
 
+#endif
+
 //  ____  _        _             ____  _ _
 // / ___|| |_ _ __(_)_ __   __ _/ ___|| (_) ___ ___
 // \___ \| __| '__| | '_ \ / _` \___ \| | |/ __/ _ \
@@ -1322,6 +1406,9 @@ and StringBoxD =
 and StringSliceD =
   { Index : Index
   ; Value : string }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -1345,6 +1432,8 @@ and StringSliceD =
       StringSliceFB.GetRootAsStringSliceFB(new ByteBuffer(bytes))
       |> StringSliceD.FromFB
 
+#endif
+
 //   ____                                            _ ____
 //  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| | __ )  _____  __
 // | |   / _ \| '_ ` _ \| '_ \ / _ \| | | | '_ \ / _` |  _ \ / _ \ \/ /
@@ -1358,6 +1447,9 @@ and CompoundBoxD =
   ; Patch      : Id
   ; Tags       : Tag   array
   ; Slices     : CompoundSliceD array }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -1405,6 +1497,8 @@ and CompoundBoxD =
       CompoundBoxFB.GetRootAsCompoundBoxFB(new ByteBuffer(bytes))
       |> CompoundBoxD.FromFB
 
+#endif
+
 //   ____                                            _ ____  _ _
 //  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| / ___|| (_) ___ ___
 // | |   / _ \| '_ ` _ \| '_ \ / _ \| | | | '_ \ / _` \___ \| | |/ __/ _ \
@@ -1415,6 +1509,9 @@ and CompoundBoxD =
 and CompoundSliceD =
   { Index      : Index
   ; Value      : IOBox array }
+
+#if JAVASCRIPT
+#else
 
   with
     member self.ToOffset(builder: FlatBufferBuilder) =
@@ -1446,6 +1543,8 @@ and CompoundSliceD =
     static member FromCompounds(bytes: byte array) : CompoundSliceD option =
       CompoundSliceFB.GetRootAsCompoundSliceFB(new ByteBuffer(bytes))
       |> CompoundSliceD.FromFB
+
+#endif
 
 //  ____  _ _
 // / ___|| (_) ___ ___
@@ -1586,6 +1685,9 @@ and Slice =
         | CompoundSlice data -> Some data
         | _                  -> None
 
+#if JAVASCRIPT
+#else
+
     //  _____      ___   __  __          _
     // |_   _|__  / _ \ / _|/ _|___  ___| |_
     //   | |/ _ \| | | | |_| |_/ __|/ _ \ __|
@@ -1696,6 +1798,8 @@ and Slice =
     static member FromBytes(bytes: byte array) : Slice option =
       SliceFB.GetRootAsSliceFB(new ByteBuffer(bytes))
       |> Slice.FromFB
+
+#endif
 
 //  ____  _ _
 // / ___|| (_) ___ ___  ___
