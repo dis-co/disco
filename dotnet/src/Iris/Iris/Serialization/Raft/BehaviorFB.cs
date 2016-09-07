@@ -3,7 +3,7 @@
 namespace Iris.Serialization.Raft
 {
 
-public enum BehaviorTypeFB : ushort
+public enum BehaviorFB : ushort
 {
  ToggleFB = 0,
  BangFB = 1,

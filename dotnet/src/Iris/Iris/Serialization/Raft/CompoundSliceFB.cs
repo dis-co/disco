@@ -12,7 +12,8 @@ public sealed class CompoundSliceFB : Table {
   public CompoundSliceFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
   public ulong Index { get { int o = __offset(4); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public string GetValue(int j) { int o = __offset(6); return o != 0 ? __string(__vector(o) + j * 4) : null; }
+  public IOBoxFB GetValue(int j) { return GetValue(new IOBoxFB(), j); }
+  public IOBoxFB GetValue(IOBoxFB obj, int j) { int o = __offset(6); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
   public int ValueLength { get { int o = __offset(6); return o != 0 ? __vector_len(o) : 0; } }
 
   public static Offset<CompoundSliceFB> CreateCompoundSliceFB(FlatBufferBuilder builder,
@@ -27,7 +28,7 @@ public sealed class CompoundSliceFB : Table {
   public static void StartCompoundSliceFB(FlatBufferBuilder builder) { builder.StartObject(2); }
   public static void AddIndex(FlatBufferBuilder builder, ulong Index) { builder.AddUlong(0, Index, 0); }
   public static void AddValue(FlatBufferBuilder builder, VectorOffset ValueOffset) { builder.AddOffset(1, ValueOffset.Value, 0); }
-  public static VectorOffset CreateValueVector(FlatBufferBuilder builder, StringOffset[] data) { builder.StartVector(4, data.Length, 4); for (int i = data.Length - 1; i >= 0; i--) builder.AddOffset(data[i].Value); return builder.EndVector(); }
+  public static VectorOffset CreateValueVector(FlatBufferBuilder builder, Offset<IOBoxFB>[] data) { builder.StartVector(4, data.Length, 4); for (int i = data.Length - 1; i >= 0; i--) builder.AddOffset(data[i].Value); return builder.EndVector(); }
   public static void StartValueVector(FlatBufferBuilder builder, int numElems) { builder.StartVector(4, numElems, 4); }
   public static Offset<CompoundSliceFB> EndCompoundSliceFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();

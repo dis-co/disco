@@ -1,12 +1,12 @@
 namespace Iris.Serialization.Raft;
 
-//  ___ ___  ____
-// |_ _/ _ \| __ )  _____  __
-//  | | | | |  _ \ / _ \ \/ /
-//  | | |_| | |_) | (_) >  <
-// |___\___/|____/ \___/_/\_\
+//  ____  _ _
+// / ___|| (_) ___ ___
+// \___ \| | |/ __/ _ \
+//  ___) | | | (_|  __/
+// |____/|_|_|\___\___|
 
-enum BehaviorTypeFB:ushort {
+enum BehaviorFB:ushort {
      ToggleFB = 0,
      BangFB = 1 
 }
@@ -90,7 +90,7 @@ table ColorSliceFB {
 
 table CompoundSliceFB {
       Index: ulong;
-      Value: [string];
+      Value: [IOBoxFB];
 }
 
 union SliceTypeFB {
@@ -109,9 +109,117 @@ table SliceFB {
       Slice: SliceTypeFB;
 }
 
+//  ___ ___  ____
+// |_ _/ _ \| __ )  _____  __
+//  | | | | |  _ \ / _ \ \/ /
+//  | | |_| | |_) | (_) >  <
+// |___\___/|____/ \___/_/\_\
+
+table StringBoxFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      StringType : StringTypeFB;
+      FileMask   : string;
+      MaxChars   : int;
+      Slices     : [StringSliceFB];
+}
+
+table IntBoxFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      VecSize    : uint;
+      Min        : int;
+      Max        : int;
+      Unit       : string;
+      Slices     : [IntSliceFB];
+}
+
+table FloatBoxFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      VecSize    : uint;
+      Min        : int;
+      Max        : int;
+      Unit       : string;
+      Precision  : uint;
+      Slices     : [FloatSliceFB];
+}
+
+table DoubleBoxFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      VecSize    : uint;
+      Min        : int;
+      Max        : int;
+      Unit       : string;
+      Precision  : uint;
+      Slices     : [DoubleSliceFB];
+}
+
+table BoolBoxFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      Behavior   : BehaviorFB;
+      Slices     : [BoolSliceFB];
+}
+
+table ByteBoxFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      Slices     : [ByteSliceFB];
+}
+
+table EnumBoxFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      Properties : [EnumPropertyFB];
+      Slices     : [EnumSliceFB];
+}
+
+table ColorBoxFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      Slices     : [ColorSliceFB];
+}
+
+table CompoundBoxFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      Slices     : [CompoundSliceFB];
+}
+
+union IOBoxTypeFB {
+      StringBoxFB,
+      IntBoxFB,
+      FloatBoxFB,
+      DoubleBoxFB,
+      BoolBoxFB,
+      ByteBoxFB,
+      EnumBoxFB,
+      ColorBoxFB,
+      CompoundBoxFB
+}
+
 table IOBoxFB {
-      Id: string;
-      Name: string;
+      IOBox: IOBoxTypeFB;
 }
 
 //  ____       _       _
@@ -121,7 +229,7 @@ table IOBoxFB {
 // |_|   \__,_|\__\___|_| |_|
 
 table PatchFB {
-      Id: string;
+      Id:   string;
       Name: string; 
 }
 
@@ -132,7 +240,7 @@ table PatchFB {
 //  \____\__,_|\___|
 
 table CueFB {
-      Id: string;
+      Id:   string;
       Name: string; 
 }
 
@@ -143,10 +251,10 @@ table CueFB {
 // |____/ \__\__,_|\__\___| |_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
 enum AppCommandTypeFB:ushort {
-     UndoFB = 0,
-     RedoFB = 1,
-     ResetFB = 2,
-     SaveProjectFB =3
+     UndoFB        = 0,
+     RedoFB        = 1,
+     ResetFB       = 2,
+     SaveProjectFB = 3
 }
 
 table AppCommandFB {

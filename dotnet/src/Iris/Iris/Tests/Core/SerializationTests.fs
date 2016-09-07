@@ -300,6 +300,38 @@ module SerializationTests =
   //  | | |_| | |_) | (_) >  <
   // |___\___/|____/ \___/_/\_\
 
+  let test_validate_iobox_serialization =
+    testCase "Validate IOBox Serialization" <| fun _ ->
+      let rand = new System.Random()
+      let mktags _ =
+        [| for n in 0 .. rand.Next(2,8) do
+            yield Id.Create() |> string |]
+
+      let check iobox =
+        iobox |> encode |> decode |> Option.get
+        |> expect "Should be structurally equivalent" iobox id
+
+      let ioboxes =
+        [| IOBox.Bang       (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
+        ; IOBox.Toggle     (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
+        ; IOBox.String     (Id.Create(), "string",    Id.Create(), mktags (), [|{ Index = 0UL; Value = "one"   }|])
+        ; IOBox.MultiLine  (Id.Create(), "multiline", Id.Create(), mktags (), [|{ Index = 0UL; Value = "two"   }|])
+        ; IOBox.FileName   (Id.Create(), "filename",  Id.Create(), mktags (), "haha", [|{ Index = 0UL; Value = "three" }|])
+        ; IOBox.Directory  (Id.Create(), "directory", Id.Create(), mktags (), "hmmm", [|{ Index = 0UL; Value = "four"  }|])
+        ; IOBox.Url        (Id.Create(), "url",       Id.Create(), mktags (), [|{ Index = 0UL; Value = "five"  }|])
+        ; IOBox.IP         (Id.Create(), "ip",        Id.Create(), mktags (), [|{ Index = 0UL; Value = "six"   }|])
+        ; IOBox.Float      (Id.Create(), "float",     Id.Create(), mktags (), [|{ Index = 0UL; Value = 3.0    }|])
+        ; IOBox.Double     (Id.Create(), "double",    Id.Create(), mktags (), [|{ Index = 0UL; Value = double 3.0 }|])
+        ; IOBox.Bytes      (Id.Create(), "bytes",     Id.Create(), mktags (), [|{ Index = 0UL; Value = [| 2uy; 9uy |] }|])
+        ; IOBox.Color      (Id.Create(), "rgba",      Id.Create(), mktags (), [|{ Index = 0UL; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
+        ; IOBox.Color      (Id.Create(), "hsla",      Id.Create(), mktags (), [|{ Index = 0UL; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
+        ; IOBox.Enum       (Id.Create(), "enum",      Id.Create(), mktags (), [|("one","two"); ("three","four")|] , [|{ Index = 0UL; Value = "one", "two" }|])
+        |]
+
+      Array.iter check ioboxes
+
+      IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0UL; Value = ioboxes }|])
+      |> check
 
   //     _                _ _           _   _             _____                 _
   //    / \   _ __  _ __ | (_) ___ __ _| |_(_) ___  _ __ | ____|_   _____ _ __ | |_
@@ -393,7 +425,7 @@ module SerializationTests =
         test_validate_cue_serialization
         test_validate_patch_serialization
         test_validate_slice_serialization
-        // test_validate_iobox_serialization
+        test_validate_iobox_serialization
         // test_validate_application_event_serialization
         // test_validate_state_machine_serialization
       ]

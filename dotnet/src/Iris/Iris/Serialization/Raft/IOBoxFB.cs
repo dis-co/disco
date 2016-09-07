@@ -11,23 +11,21 @@ public sealed class IOBoxFB : Table {
   public static IOBoxFB GetRootAsIOBoxFB(ByteBuffer _bb, IOBoxFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
   public IOBoxFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
-  public string Id { get { int o = __offset(4); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetIdBytes() { return __vector_as_arraysegment(4); }
-  public string Name { get { int o = __offset(6); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetNameBytes() { return __vector_as_arraysegment(6); }
+  public IOBoxTypeFB IOBoxType { get { int o = __offset(4); return o != 0 ? (IOBoxTypeFB)bb.Get(o + bb_pos) : IOBoxTypeFB.NONE; } }
+  public TTable GetIOBox<TTable>(TTable obj) where TTable : Table { int o = __offset(6); return o != 0 ? __union(obj, o) : null; }
 
   public static Offset<IOBoxFB> CreateIOBoxFB(FlatBufferBuilder builder,
-      StringOffset IdOffset = default(StringOffset),
-      StringOffset NameOffset = default(StringOffset)) {
+      IOBoxTypeFB IOBox_type = IOBoxTypeFB.NONE,
+      int IOBoxOffset = 0) {
     builder.StartObject(2);
-    IOBoxFB.AddName(builder, NameOffset);
-    IOBoxFB.AddId(builder, IdOffset);
+    IOBoxFB.AddIOBox(builder, IOBoxOffset);
+    IOBoxFB.AddIOBoxType(builder, IOBox_type);
     return IOBoxFB.EndIOBoxFB(builder);
   }
 
   public static void StartIOBoxFB(FlatBufferBuilder builder) { builder.StartObject(2); }
-  public static void AddId(FlatBufferBuilder builder, StringOffset IdOffset) { builder.AddOffset(0, IdOffset.Value, 0); }
-  public static void AddName(FlatBufferBuilder builder, StringOffset NameOffset) { builder.AddOffset(1, NameOffset.Value, 0); }
+  public static void AddIOBoxType(FlatBufferBuilder builder, IOBoxTypeFB IOBoxType) { builder.AddByte(0, (byte)IOBoxType, 0); }
+  public static void AddIOBox(FlatBufferBuilder builder, int IOBoxOffset) { builder.AddOffset(1, IOBoxOffset, 0); }
   public static Offset<IOBoxFB> EndIOBoxFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
     return new Offset<IOBoxFB>(o);
