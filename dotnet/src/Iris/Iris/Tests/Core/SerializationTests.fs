@@ -347,17 +347,39 @@ module SerializationTests =
 
   let test_validate_application_event_serialization =
     testCase "Validate Cue Serialization" <| fun _ ->
+      let rand = new System.Random()
+
+      let mktags _ =
+        [| for n in 0 .. rand.Next(2,8) do
+            yield Id.Create() |> string |]
 
       let mkIOBox _ =
         let slice : StringSliceD = { Index = 0UL; Value = "hello" }
         IOBox.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
 
-      [ AddCue    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = [| |] }
-      ; UpdateCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = [| |] }
-      ; RemoveCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = [| |] }
-      ; AddPatch    { Id = Id.Create(); Name = "Patch 1"; IOBoxes = [| |] }
-      ; UpdatePatch { Id = Id.Create(); Name = "Patch 2"; IOBoxes = [| |] }
-      ; RemovePatch { Id = Id.Create(); Name = "Patch 3"; IOBoxes = [| |] }
+      let ioboxes =
+        [| IOBox.Bang       (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
+        ; IOBox.Toggle     (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
+        ; IOBox.String     (Id.Create(), "string",    Id.Create(), mktags (), [|{ Index = 0UL; Value = "one"   }|])
+        ; IOBox.MultiLine  (Id.Create(), "multiline", Id.Create(), mktags (), [|{ Index = 0UL; Value = "two"   }|])
+        ; IOBox.FileName   (Id.Create(), "filename",  Id.Create(), mktags (), "haha", [|{ Index = 0UL; Value = "three" }|])
+        ; IOBox.Directory  (Id.Create(), "directory", Id.Create(), mktags (), "hmmm", [|{ Index = 0UL; Value = "four"  }|])
+        ; IOBox.Url        (Id.Create(), "url",       Id.Create(), mktags (), [|{ Index = 0UL; Value = "five"  }|])
+        ; IOBox.IP         (Id.Create(), "ip",        Id.Create(), mktags (), [|{ Index = 0UL; Value = "six"   }|])
+        ; IOBox.Float      (Id.Create(), "float",     Id.Create(), mktags (), [|{ Index = 0UL; Value = 3.0    }|])
+        ; IOBox.Double     (Id.Create(), "double",    Id.Create(), mktags (), [|{ Index = 0UL; Value = double 3.0 }|])
+        ; IOBox.Bytes      (Id.Create(), "bytes",     Id.Create(), mktags (), [|{ Index = 0UL; Value = [| 2uy; 9uy |] }|])
+        ; IOBox.Color      (Id.Create(), "rgba",      Id.Create(), mktags (), [|{ Index = 0UL; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
+        ; IOBox.Color      (Id.Create(), "hsla",      Id.Create(), mktags (), [|{ Index = 0UL; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
+        ; IOBox.Enum       (Id.Create(), "enum",      Id.Create(), mktags (), [|("one","two"); ("three","four")|] , [|{ Index = 0UL; Value = "one", "two" }|])
+        |]
+
+      [ AddCue    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes }
+      ; UpdateCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = ioboxes }
+      ; RemoveCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = ioboxes }
+      ; AddPatch    { Id = Id.Create(); Name = "Patch 1"; IOBoxes = ioboxes }
+      ; UpdatePatch { Id = Id.Create(); Name = "Patch 2"; IOBoxes = ioboxes }
+      ; RemovePatch { Id = Id.Create(); Name = "Patch 3"; IOBoxes = ioboxes }
       ; AddIOBox    <| mkIOBox ()
       ; UpdateIOBox <| mkIOBox ()
       ; RemoveIOBox <| mkIOBox ()
@@ -383,16 +405,39 @@ module SerializationTests =
       let remsg = snapshot |> encode |> decode |> Option.get
       expect "Should be structurally the same" snapshot id remsg
 
+      let rand = new System.Random()
+
+      let mktags _ =
+        [| for n in 0 .. rand.Next(2,8) do
+            yield Id.Create() |> string |]
+
       let mkIOBox _ =
         let slice : StringSliceD = { Index = 0UL; Value = "hello" }
         IOBox.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
 
-      [ AddCue    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = [| |] }
-      ; UpdateCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = [| |] }
-      ; RemoveCue { Id = Id.Create(); Name = "Cue 3"; IOBoxes = [| |] }
-      ; AddPatch    { Id = Id.Create(); Name = "Patch 1"; IOBoxes = [| |] }
-      ; UpdatePatch { Id = Id.Create(); Name = "Patch 2"; IOBoxes = [| |] }
-      ; RemovePatch { Id = Id.Create(); Name = "Patch 3"; IOBoxes = [| |] }
+      let ioboxes =
+        [| IOBox.Bang       (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
+        ; IOBox.Toggle     (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
+        ; IOBox.String     (Id.Create(), "string",    Id.Create(), mktags (), [|{ Index = 0UL; Value = "one"   }|])
+        ; IOBox.MultiLine  (Id.Create(), "multiline", Id.Create(), mktags (), [|{ Index = 0UL; Value = "two"   }|])
+        ; IOBox.FileName   (Id.Create(), "filename",  Id.Create(), mktags (), "haha", [|{ Index = 0UL; Value = "three" }|])
+        ; IOBox.Directory  (Id.Create(), "directory", Id.Create(), mktags (), "hmmm", [|{ Index = 0UL; Value = "four"  }|])
+        ; IOBox.Url        (Id.Create(), "url",       Id.Create(), mktags (), [|{ Index = 0UL; Value = "five"  }|])
+        ; IOBox.IP         (Id.Create(), "ip",        Id.Create(), mktags (), [|{ Index = 0UL; Value = "six"   }|])
+        ; IOBox.Float      (Id.Create(), "float",     Id.Create(), mktags (), [|{ Index = 0UL; Value = 3.0    }|])
+        ; IOBox.Double     (Id.Create(), "double",    Id.Create(), mktags (), [|{ Index = 0UL; Value = double 3.0 }|])
+        ; IOBox.Bytes      (Id.Create(), "bytes",     Id.Create(), mktags (), [|{ Index = 0UL; Value = [| 2uy; 9uy |] }|])
+        ; IOBox.Color      (Id.Create(), "rgba",      Id.Create(), mktags (), [|{ Index = 0UL; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
+        ; IOBox.Color      (Id.Create(), "hsla",      Id.Create(), mktags (), [|{ Index = 0UL; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
+        ; IOBox.Enum       (Id.Create(), "enum",      Id.Create(), mktags (), [|("one","two"); ("three","four")|] , [|{ Index = 0UL; Value = "one", "two" }|])
+        |]
+
+      [ AddCue    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes }
+      ; UpdateCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = ioboxes }
+      ; RemoveCue { Id = Id.Create(); Name = "Cue 3"; IOBoxes = ioboxes }
+      ; AddPatch    { Id = Id.Create(); Name = "Patch 1"; IOBoxes = ioboxes }
+      ; UpdatePatch { Id = Id.Create(); Name = "Patch 2"; IOBoxes = ioboxes }
+      ; RemovePatch { Id = Id.Create(); Name = "Patch 3"; IOBoxes = ioboxes }
       ; AddIOBox    <| mkIOBox ()
       ; UpdateIOBox <| mkIOBox ()
       ; RemoveIOBox <| mkIOBox ()
@@ -405,7 +450,6 @@ module SerializationTests =
       |> List.iter (fun cmd ->
                      let command = AppEvent cmd
                      let remsg = command |> encode |> decode
-                     if Option.isNone remsg then printfn "NONE %A" cmd
                      expect "Should be structurally the same" command id (Option.get remsg))
 
   //     _    _ _   _____         _
@@ -431,6 +475,6 @@ module SerializationTests =
         test_validate_patch_serialization
         test_validate_slice_serialization
         test_validate_iobox_serialization
-        // test_validate_application_event_serialization
-        // test_validate_state_machine_serialization
+        test_validate_application_event_serialization
+        test_validate_state_machine_serialization
       ]

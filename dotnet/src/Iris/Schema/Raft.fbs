@@ -231,6 +231,7 @@ table IOBoxFB {
 table PatchFB {
       Id:   string;
       Name: string; 
+      IOBoxes: [IOBoxFB];
 }
 
 //   ____
@@ -240,8 +241,9 @@ table PatchFB {
 //  \____\__,_|\___|
 
 table CueFB {
-      Id:   string;
-      Name: string; 
+      Id:      string;
+      Name:    string; 
+      IOBoxes: [IOBoxFB];
 }
 
 //  ____  _        _         __  __            _     _

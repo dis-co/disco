@@ -63,21 +63,31 @@ type Patch =
   // (_)_| \_|_____| |_| serialization
 
   static member FromFB (fb: PatchFB) =
+    let ioboxes = Array.zeroCreate fb.IOBoxesLength
+
+    for i in 0 .. (fb.IOBoxesLength - 1) do
+      fb.GetIOBoxes(i)
+      |> IOBox.FromFB
+      |> Option.map (fun iobox -> ioboxes.[i] <- iobox)
+      |> ignore
+
     try
       { Id = Id fb.Id
       ; Name = fb.Name
-      ; IOBoxes = [| |]
-      }
-      |> Some
+      ; IOBoxes = ioboxes
+      } |> Some
     with
       | _ -> None
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<PatchFB> =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
+    let ioboxoffsets = Array.map (fun (iobox: IOBox) -> iobox.ToOffset(builder)) self.IOBoxes
+    let ioboxes = PatchFB.CreateIOBoxesVector(builder, ioboxoffsets)
     PatchFB.StartPatchFB(builder)
     PatchFB.AddId(builder, id)
     PatchFB.AddName(builder, name)
+    PatchFB.AddIOBoxes(builder, ioboxes)
     PatchFB.EndPatchFB(builder)
 
   member self.ToBytes() : byte array = buildBuffer self
