@@ -382,11 +382,7 @@ type ApplicationEvent =
         let log = LogMsgFB.CreateLogMsgFB(builder, level, msg)
         mkOffset ApplicationEventTypeFB.LogMsgFB log.Value
 
-    member self.ToBytes () =
-      let builder = new FlatBufferBuilder(1)
-      let offset = self.ToOffset(builder)
-      builder.Finish(offset.Value)
-      builder.SizedByteArray()
+    member self.ToBytes () = buildBuffer self
 
     static member FromBytes (bytes: byte array) : ApplicationEvent option =
       let msg = ApplicationEventFB.GetRootAsApplicationEventFB(new ByteBuffer(bytes))

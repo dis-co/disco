@@ -80,11 +80,7 @@ type Patch =
     PatchFB.AddName(builder, name)
     PatchFB.EndPatchFB(builder)
 
-  member self.ToBytes () =
-    let builder = new FlatBufferBuilder(1)
-    let offset = self.ToOffset(builder)
-    builder.Finish(offset.Value)
-    builder.SizedByteArray()
+  member self.ToBytes() : byte array = buildBuffer self
 
   static member FromBytes (bytes: byte array) : Patch option =
     let msg = PatchFB.GetRootAsPatchFB(new ByteBuffer(bytes))

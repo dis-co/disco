@@ -64,11 +64,7 @@ type StateMachine =
         StateMachineFB.AddCommand(builder, snapshot.Value)
         StateMachineFB.EndStateMachineFB(builder)
 
-    member self.ToBytes () =
-      let builder = new FlatBufferBuilder(1)
-      let offset = self.ToOffset(builder)
-      builder.Finish(offset.Value)
-      builder.SizedByteArray()
+    member self.ToBytes () = buildBuffer self
 
     static member FromBytes (bytes: byte array) : StateMachine option =
       let msg = StateMachineFB.GetRootAsStateMachineFB(new ByteBuffer(bytes))

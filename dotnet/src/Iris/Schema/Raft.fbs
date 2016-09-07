@@ -20,6 +20,95 @@ enum StringTypeFB:ushort {
      IPFB = 5
 }
 
+table StringSliceFB {
+      Index: ulong;
+      Value: string;
+}
+
+table IntSliceFB {
+      Index: ulong;
+      Value: int;
+}
+
+table FloatSliceFB {
+      Index: ulong;
+      Value: float;
+}
+
+table DoubleSliceFB {
+      Index: ulong;
+      Value: double;
+}
+
+table BoolSliceFB {
+      Index: ulong;
+      Value: bool;
+}
+
+table ByteSliceFB {
+      Index: ulong;
+      Value: [ubyte]; 
+}
+
+table EnumPropertyFB {
+      Key: string;
+      Value: string;
+}
+
+table EnumSliceFB {
+      Index: ulong;
+      Value: EnumPropertyFB;
+}
+
+table RGBAValueFB {
+     Red:   ubyte;
+     Green: ubyte;
+     Blue:  ubyte;
+     Alpha: ubyte;
+}
+
+table HSLAValueFB {
+     Hue: ubyte;
+     Saturation: ubyte;
+     Lightness: ubyte;
+     Alpha: ubyte;
+}
+
+union ColorSpaceTypeFB {
+      RGBAValueFB,
+      HSLAValueFB
+}
+
+table ColorSpaceFB {
+      Value: ColorSpaceTypeFB;
+}
+
+table ColorSliceFB {
+      Index: ulong;
+      Value: ColorSpaceFB;
+}
+
+table CompoundSliceFB {
+      Index: ulong;
+      Value: [string];
+}
+
+union SliceTypeFB {
+      StringSliceFB,
+      IntSliceFB,
+      FloatSliceFB,
+      DoubleSliceFB,
+      BoolSliceFB,
+      ByteSliceFB,
+      EnumSliceFB,
+      ColorSliceFB,
+      CompoundSliceFB
+}
+
+table SliceFB {
+      Slice: SliceTypeFB;
+}
+
 table IOBoxFB {
       Id: string;
       Name: string;

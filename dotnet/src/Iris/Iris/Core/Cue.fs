@@ -31,11 +31,7 @@ type Cue =
       CueFB.AddName(builder, name)
       CueFB.EndCueFB(builder)
 
-    member self.ToBytes () =
-      let builder = new FlatBufferBuilder(1)
-      let offset = self.ToOffset(builder)
-      builder.Finish(offset.Value)
-      builder.SizedByteArray()
+    member self.ToBytes () = buildBuffer self
 
     static member FromBytes (bytes: byte array) : Cue option =
       let msg = CueFB.GetRootAsCueFB(new ByteBuffer(bytes))

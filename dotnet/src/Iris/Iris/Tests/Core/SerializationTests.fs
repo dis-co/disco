@@ -270,19 +270,36 @@ module SerializationTests =
 
       expect "Should be structurally equivalent" patch id repatch
 
+  //  ____  _ _
+  // / ___|| (_) ___ ___
+  // \___ \| | |/ __/ _ \
+  //  ___) | | | (_|  __/
+  // |____/|_|_|\___\___|
+
+  let test_validate_slice_serialization =
+    testCase "Validate Slice Serialization" <| fun _ ->
+
+      [| BoolSlice     { Index = 0UL; Value = true    }
+      ; StringSlice   { Index = 0UL; Value = "hello" }
+      ; IntSlice      { Index = 0UL; Value = 1234    }
+      ; FloatSlice    { Index = 0UL; Value = 1234.0  }
+      ; DoubleSlice   { Index = 0UL; Value = 1234.0  }
+      ; ByteSlice     { Index = 0UL; Value = [| 0uy |] }
+      ; EnumSlice     { Index = 0UL; Value = "one", "two" }
+      ; ColorSlice    { Index = 0UL; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }
+      ; ColorSlice    { Index = 0UL; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }
+      ; CompoundSlice { Index = 0UL; Value = [| |]     } |]
+      |> Array.iter
+        (fun slice ->
+          let reslice = slice |> encode |> decode |> Option.get
+          expect "Should be structurally equivalent" slice id reslice)
+
   //  ___ ___  ____
   // |_ _/ _ \| __ )  _____  __
   //  | | | | |  _ \ / _ \ \/ /
   //  | | |_| | |_) | (_) >  <
   // |___\___/|____/ \___/_/\_\
 
-  let test_validate_iobox_serialization =
-    testCase "Validate IOBox Serialization" <| fun _ ->
-
-      let iobox : IOBox = failwith "not implemented yet"
-      let reiobox = iobox |> encode |> decode |> Option.get
-
-      expect "Should be structurally equivalent" iobox id reiobox
 
   //     _                _ _           _   _             _____                 _
   //    / \   _ __  _ __ | (_) ___ __ _| |_(_) ___  _ __ | ____|_   _____ _ __ | |_
@@ -375,7 +392,8 @@ module SerializationTests =
         test_validate_errorresponse_serialization
         test_validate_cue_serialization
         test_validate_patch_serialization
-        test_validate_iobox_serialization
-        test_validate_application_event_serialization
-        test_validate_state_machine_serialization
+        test_validate_slice_serialization
+        // test_validate_iobox_serialization
+        // test_validate_application_event_serialization
+        // test_validate_state_machine_serialization
       ]

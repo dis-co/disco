@@ -382,8 +382,7 @@ type IOBox =
     static member FromFB(fb: IOBoxFB) =
       failwith "IOBOX FIXME"
 
-    member self.ToBytes() : byte array =
-      failwith "IOBOX FIXME"
+    member self.ToBytes() : byte array = buildBuffer self
 
     static member FromBytes(bytes: byte array) : IOBox option =
       failwith "IOBOX FIXME"
@@ -403,7 +402,42 @@ and BoolBoxD =
   ; Behavior   : Behavior
   ; Slices     : BoolSliceD array }
 
-and BoolSliceD = { Index: Index; Value: bool }
+  // with
+  //   member self.ToOffset(builder: FlatBufferBuilder) =
+  //     failwith "BoolBox ToOffset FIXME"
+
+  //   static member FromFB(fb: BoolBoxFB) : BoolBoxD option =
+  //     failwith "BoolBox FromFB FIXME"
+
+  //   member self.ToBytes() : byte array = buildBuffer self
+
+  //   static member FromBytes(bytes: byte array) : BoolBoxD option =
+  //     failwith "BoolBox ToBytes FIXME"
+
+and BoolSliceD =
+  { Index: Index
+  ; Value: bool }
+
+  with
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      BoolSliceFB.StartBoolSliceFB(builder)
+      BoolSliceFB.AddIndex(builder, self.Index)
+      BoolSliceFB.AddValue(builder, self.Value)
+      BoolSliceFB.EndBoolSliceFB(builder)
+
+    static member FromFB(fb: BoolSliceFB) : BoolSliceD option =
+      try
+        { Index = fb.Index
+        ; Value = fb.Value }
+        |> Some
+      with
+        | _ -> None
+
+    member self.ToBytes() : byte array = buildBuffer self
+
+    static member FromBytes(bytes: byte array) : BoolSliceD option =
+      BoolSliceFB.GetRootAsBoolSliceFB(new ByteBuffer(bytes))
+      |> BoolSliceD.FromFB
 
 //  ___       _
 // |_ _|_ __ | |_
@@ -422,7 +456,42 @@ and IntBoxD =
   ; Unit       : string
   ; Slices     : IntSliceD array }
 
-and IntSliceD = { Index: Index; Value: int }
+  // with
+  //   member self.ToOffset(builder: FlatBufferBuilder) =
+  //     failwith "IntBox ToOffset FIXME"
+
+  //   static member FromFB(fb: IntBoxFB) : IntBoxD option =
+  //     failwith "IntBox FromFB FIXME"
+
+  //   member self.ToBytes() : byte array = buildBuffer self
+
+  //   static member FromBytes(bytes: byte array) : IntBoxD option =
+  //     failwith "IntBox ToBytes FIXME"
+
+and IntSliceD =
+  { Index: Index
+  ; Value: int }
+
+  with
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      IntSliceFB.StartIntSliceFB(builder)
+      IntSliceFB.AddIndex(builder, self.Index)
+      IntSliceFB.AddValue(builder, self.Value)
+      IntSliceFB.EndIntSliceFB(builder)
+
+    static member FromFB(fb: IntSliceFB) : IntSliceD option =
+      try
+        { Index = fb.Index
+        ; Value = fb.Value }
+        |> Some
+      with
+        | _ -> None
+
+    member self.ToBytes() : byte array = buildBuffer self
+
+    static member FromBytes(bytes: byte array) : IntSliceD option =
+      IntSliceFB.GetRootAsIntSliceFB(new ByteBuffer(bytes))
+      |> IntSliceD.FromFB
 
 //  _____ _             _
 // |  ___| | ___   __ _| |_
@@ -442,7 +511,42 @@ and FloatBoxD =
   ; Precision  : uint32
   ; Slices     : FloatSliceD array }
 
-and FloatSliceD = { Index: Index; Value: float }
+  // with
+  //   member self.ToOffset(builder: FlatBufferBuilder) =
+  //     failwith "FloatBox ToOffset FIXME"
+
+  //   static member FromFB(fb: FloatBoxFB) : FloatBoxD option =
+  //     failwith "FloatBox FromFB FIXME"
+
+  //   member self.ToBytes() : byte array = buildBuffer self
+
+  //   static member FromBytes(bytes: byte array) : FloatBoxD option =
+  //     failwith "FloatBox ToBytes FIXME"
+
+and FloatSliceD =
+  { Index: Index
+  ; Value: float }
+
+  with
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      FloatSliceFB.StartFloatSliceFB(builder)
+      FloatSliceFB.AddIndex(builder, self.Index)
+      FloatSliceFB.AddValue(builder, float32 self.Value)
+      FloatSliceFB.EndFloatSliceFB(builder)
+
+    static member FromFB(fb: FloatSliceFB) : FloatSliceD option =
+      try
+        { Index = fb.Index
+        ; Value = float fb.Value }
+        |> Some
+      with
+        | _ -> None
+
+    member self.ToBytes() : byte array = buildBuffer self
+
+    static member FromBytes(bytes: byte array) : FloatSliceD option =
+      FloatSliceFB.GetRootAsFloatSliceFB(new ByteBuffer(bytes))
+      |> FloatSliceD.FromFB
 
 //  ____              _     _
 // |  _ \  ___  _   _| |__ | | ___
@@ -462,7 +566,45 @@ and DoubleBoxD =
   ; Precision  : uint32
   ; Slices     : DoubleSliceD array }
 
-and DoubleSliceD = { Index: Index; Value: double }
+  // with
+  //   member self.ToOffset(builder: FlatBufferBuilder) =
+  //     failwith "DoubleBox ToOffset FIXME"
+
+  //   static member FromFB(fb: DoubleBoxFB) : DoubleBoxD option =
+  //     failwith "DoubleBox FromFB FIXME"
+
+  //   member self.ToBytes() : byte array = buildBuffer self
+
+  //   static member FromBytes(bytes: byte array) : DoubleBoxD option =
+  //     failwith "DoubleBox ToBytes FIXME"
+
+and DoubleSliceD =
+  { Index: Index
+  ; Value: double }
+
+  with
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      DoubleSliceFB.StartDoubleSliceFB(builder)
+      DoubleSliceFB.AddIndex(builder, self.Index)
+      DoubleSliceFB.AddValue(builder, self.Value)
+      DoubleSliceFB.EndDoubleSliceFB(builder)
+
+    static member FromFB(fb: DoubleSliceFB) : DoubleSliceD option =
+      try
+        { Index = fb.Index
+        ; Value = fb.Value }
+        |> Some
+      with
+        | _ -> None
+
+    member self.ToBytes() : byte array = buildBuffer self
+
+    static member FromBytes(bytes: byte array) : DoubleSliceD option =
+      DoubleSliceFB.GetRootAsDoubleSliceFB(new ByteBuffer(bytes))
+      |> DoubleSliceD.FromFB
+
+
+
 
 //  ____        _
 // | __ ) _   _| |_ ___
@@ -478,7 +620,48 @@ and ByteBoxD =
   ; Tags       : Tag        array
   ; Slices     : ByteSliceD array }
 
-and ByteSliceD = { Index: Index; Value: byte array }
+  // with
+  //   member self.ToOffset(builder: FlatBufferBuilder) =
+  //     failwith "ByteBox ToOffset FIXME"
+
+  //   static member FromFB(fb: ByteBoxFB) : ByteBoxD option =
+  //     failwith "ByteBox FromFB FIXME"
+
+  //   member self.ToBytes() : byte array = buildBuffer self
+
+  //   static member FromBytes(bytes: byte array) : ByteBoxD option =
+  //     failwith "ByteBox ToBytes FIXME"
+
+and ByteSliceD =
+  { Index: Index
+  ; Value: byte array }
+
+  with
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let bytes = ByteSliceFB.CreateValueVector(builder, self.Value)
+      ByteSliceFB.StartByteSliceFB(builder)
+      ByteSliceFB.AddIndex(builder, self.Index)
+      ByteSliceFB.AddValue(builder, bytes)
+      ByteSliceFB.EndByteSliceFB(builder)
+
+    static member FromFB(fb: ByteSliceFB) : ByteSliceD option =
+      try
+        let values = Array.zeroCreate fb.ValueLength
+
+        for i in 0 .. (fb.ValueLength - 1) do
+          values.[i] <- fb.GetValue(i)
+
+        { Index = fb.Index
+        ; Value = values }
+        |> Some
+      with
+        | _ -> None
+
+    member self.ToBytes() : byte array = buildBuffer self
+
+    static member FromBytes(bytes: byte array) : ByteSliceD option =
+      ByteSliceFB.GetRootAsByteSliceFB(new ByteBuffer(bytes))
+      |> ByteSliceD.FromFB
 
 //  _____
 // | ____|_ __  _   _ _ __ ___
@@ -494,7 +677,57 @@ and EnumBoxD =
   ; Properties : Property   array
   ; Slices     : EnumSliceD array }
 
-and EnumSliceD = { Index: Index; Value: Property }
+  // with
+  //   member self.ToOffset(builder: FlatBufferBuilder) =
+  //     failwith "EnumBox ToOffset FIXME"
+
+  //   static member FromFB(fb: EnumBoxFB) : EnumBoxD option =
+  //     failwith "EnumBox FromFB FIXME"
+
+  //   member self.ToBytes() : byte array = buildBuffer self
+
+  //   static member FromBytes(bytes: byte array) : EnumBoxD option =
+  //     failwith "EnumBox ToBytes FIXME"
+
+and EnumSliceD =
+  { Index: Index
+  ; Value: Property }
+
+  with
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let property =
+        let key, value =
+          match self.Value with
+          | (k, v) ->
+            builder.CreateString k, builder.CreateString v
+
+        EnumPropertyFB.StartEnumPropertyFB(builder)
+        EnumPropertyFB.AddKey(builder, key)
+        EnumPropertyFB.AddValue(builder, value)
+        EnumPropertyFB.EndEnumPropertyFB(builder)
+
+      EnumSliceFB.StartEnumSliceFB(builder)
+      EnumSliceFB.AddIndex(builder, self.Index)
+      EnumSliceFB.AddValue(builder, property)
+      EnumSliceFB.EndEnumSliceFB(builder)
+
+    static member FromFB(fb: EnumSliceFB) : EnumSliceD option =
+      let property =
+        let kv = fb.GetValue(new EnumPropertyFB())
+        (kv.Key, kv.Value)
+
+      try
+        { Index = fb.Index
+        ; Value = property }
+        |> Some
+      with
+        | _ -> None
+
+    member self.ToEnums() : byte array = buildBuffer self
+
+    static member FromEnums(bytes: byte array) : EnumSliceD option =
+      EnumSliceFB.GetRootAsEnumSliceFB(new ByteBuffer(bytes))
+      |> EnumSliceD.FromFB
 
 //   ____      _
 //  / ___|___ | | ___  _ __
@@ -509,7 +742,40 @@ and ColorBoxD =
   ; Tags       : Tag         array
   ; Slices     : ColorSliceD array }
 
-and ColorSliceD = { Index: Index; Value: ColorSpace }
+  // with
+  //   member self.ToOffset(builder: FlatBufferBuilder) =
+  //     failwith "ColorBox ToOffset FIXME"
+
+  //   static member FromFB(fb: ColorBoxFB) : ColorBoxD option =
+  //     failwith "ColorBox FromFB FIXME"
+
+  //  member self.ToBytes() : byte array = buildBuffer self
+
+  //   static member FromBytes(bytes: byte array) : ColorBoxD option =
+  //     failwith "ColorBox ToBytes FIXME"
+
+
+and ColorSliceD =
+  { Index: Index
+  ; Value: ColorSpace }
+
+  with
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let offset = self.Value.ToOffset(builder)
+      ColorSliceFB.StartColorSliceFB(builder)
+      ColorSliceFB.AddIndex(builder, self.Index)
+      ColorSliceFB.AddValue(builder, offset)
+      ColorSliceFB.EndColorSliceFB(builder)
+
+    static member FromFB(fb: ColorSliceFB) : ColorSliceD option =
+      ColorSpace.FromFB fb.Value
+      |> Option.map (fun color -> { Index = fb.Index; Value = color })
+
+    member self.ToColors() : byte array = buildBuffer self
+
+    static member FromColors(bytes: byte array) : ColorSliceD option =
+      ColorSliceFB.GetRootAsColorSliceFB(new ByteBuffer(bytes))
+      |> ColorSliceD.FromFB
 
 //  ____  _        _
 // / ___|| |_ _ __(_)_ __   __ _
@@ -528,9 +794,44 @@ and StringBoxD =
   ; MaxChars   : MaxChars
   ; Slices     : StringSliceD array }
 
+  // with
+  //   member self.ToOffset(builder: FlatBufferBuilder) =
+  //     failwith "StringBox ToOffset FIXME"
+
+  //   static member FromFB(fb: StringBoxFB) : StringBoxD option =
+  //     failwith "StringBox FromFB FIXME"
+
+  // member self.ToBytes() : byte array = buildBuffer self
+
+  //   static member FromBytes(bytes: byte array) : StringBoxD option =
+  //     failwith "StringBox ToBytes FIXME"
+
+
 and StringSliceD =
   { Index      : Index
   ; Value      : string }
+
+  with
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let value = builder.CreateString self.Value
+      StringSliceFB.StartStringSliceFB(builder)
+      StringSliceFB.AddIndex(builder, self.Index)
+      StringSliceFB.AddValue(builder, value)
+      StringSliceFB.EndStringSliceFB(builder)
+
+    static member FromFB(fb: StringSliceFB) : StringSliceD option =
+      try
+        { Index = fb.Index
+        ; Value = fb.Value }
+        |> Some
+      with
+        | _ -> None
+
+    member self.ToStrings() : byte array = buildBuffer self
+
+    static member FromStrings(bytes: byte array) : StringSliceD option =
+      StringSliceFB.GetRootAsStringSliceFB(new ByteBuffer(bytes))
+      |> StringSliceD.FromFB
 
 //   ____                                            _
 //  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| |
@@ -546,9 +847,46 @@ and CompoundBoxD =
   ; Tags       : Tag   array
   ; Slices     : CompoundSliceD array }
 
+  // with
+  //   member self.ToOffset(builder: FlatBufferBuilder) =
+  //     failwith "CompundBox ToOffset FIXME"
+
+  //   static member FromFB(fb: CompundBoxFB) : CompundBoxD option =
+  //     failwith "CompundBox FromFB FIXME"
+
+  //  member self.ToBytes() : byte array = buildBuffer self
+
+  //   static member FromBytes(bytes: byte array) : CompundBoxD option =
+  //     failwith "CompundBox ToBytes FIXME"
+
 and CompoundSliceD =
   { Index      : Index
   ; Value      : IOBox array }
+
+  with
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let ioboxes = CompoundSliceFB.CreateValueVector(builder, [| |])
+      CompoundSliceFB.StartCompoundSliceFB(builder)
+      CompoundSliceFB.AddIndex(builder, self.Index)
+      CompoundSliceFB.AddValue(builder, ioboxes)
+      CompoundSliceFB.EndCompoundSliceFB(builder)
+
+    static member FromFB(fb: CompoundSliceFB) : CompoundSliceD option =
+      try
+        { Index = fb.Index
+        ; Value = [| |] }
+        |> Some
+      with
+        | _ -> None
+
+    member self.ToCompounds() : byte array = buildBuffer self
+
+    static member FromCompounds(bytes: byte array) : CompoundSliceD option =
+      CompoundSliceFB.GetRootAsCompoundSliceFB(new ByteBuffer(bytes))
+      |> CompoundSliceD.FromFB
+
+
+
 
 //  ____  _ _
 // / ___|| (_) ___ ___
@@ -581,126 +919,225 @@ and Slice =
         | ColorSlice    data -> data.Index
         | CompoundSlice data -> data.Index
 
-    member self.Value
-      with get () =
-        match self with
-        | StringSlice   data -> data.Value :> obj
-        | IntSlice      data -> data.Value :> obj
-        | FloatSlice    data -> data.Value :> obj
-        | DoubleSlice   data -> data.Value :> obj
-        | BoolSlice     data -> data.Value :> obj
-        | ByteSlice     data -> data.Value :> obj
-        | EnumSlice     data -> data.Value :> obj
-        | ColorSlice    data -> data.Value :> obj
-        | CompoundSlice data -> data.Value :> obj
-
     member self.StringValue
       with get () =
         match self with
-        | StringSlice data -> data.Value
-        | _                -> failwith "Slice is not a string value type"
+        | StringSlice data -> Some data.Value
+        | _                -> None
 
     member self.StringData
       with get () =
         match self with
-        | StringSlice data -> data
-        | _                -> failwith "Slice is not a string value type"
+        | StringSlice data -> Some data
+        | _                -> None
 
     member self.IntValue
       with get () =
         match self with
-        | IntSlice data -> data.Value
-        | _             -> failwith "Slice is not an int value type"
+        | IntSlice data -> Some data.Value
+        | _             -> None
 
     member self.IntData
       with get () =
         match self with
-        | IntSlice data -> data
-        | _             -> failwith "Slice is not an int value type"
+        | IntSlice data -> Some data
+        | _             -> None
 
     member self.FloatValue
       with get () =
         match self with
-        | FloatSlice data -> data.Value
-        | _               -> failwith "Slice is not a float value type"
+        | FloatSlice data -> Some data.Value
+        | _               -> None
 
     member self.FloatData
       with get () =
         match self with
-        | FloatSlice data -> data
-        | _               -> failwith "Slice is not a float value type"
+        | FloatSlice data -> Some data
+        | _               -> None
 
     member self.DoubleValue
       with get () =
         match self with
-        | DoubleSlice data -> data.Value
-        | _                -> failwith "Slice is not a double value type"
+        | DoubleSlice data -> Some data.Value
+        | _                -> None
 
     member self.DoubleData
       with get () =
         match self with
-        | DoubleSlice data -> data
-        | _                -> failwith "Slice is not a double value type"
+        | DoubleSlice data -> Some data
+        | _                -> None
 
     member self.BoolValue
       with get () =
         match self with
-        | BoolSlice data -> data.Value
-        | _              -> failwith "Slice is not a boolean value type"
+        | BoolSlice data -> Some data.Value
+        | _              -> None
 
     member self.BoolData
       with get () =
         match self with
-        | BoolSlice data -> data
-        | _              -> failwith "Slice is not a boolean value type"
+        | BoolSlice data -> Some data
+        | _              -> None
 
     member self.ByteValue
       with get () =
         match self with
-        | ByteSlice data -> data.Value
-        | _              -> failwith "Slice is not a byte value type"
+        | ByteSlice data -> Some data.Value
+        | _              -> None
 
     member self.ByteData
       with get () =
         match self with
-        | ByteSlice data -> data
-        | _              -> failwith "Slice is not a byte value type"
+        | ByteSlice data -> Some data
+        | _              -> None
 
     member self.EnumValue
       with get () =
         match self with
-        | EnumSlice data -> data.Value
-        | _              -> failwith "Slice is not an enum value type"
+        | EnumSlice data -> Some data.Value
+        | _              -> None
 
     member self.EnumData
       with get () =
         match self with
-        | EnumSlice data -> data
-        | _              -> failwith "Slice is not an enum value type"
+        | EnumSlice data -> Some data
+        | _              -> None
 
     member self.ColorValue
       with get () =
         match self with
-        | ColorSlice data -> data.Value
-        | _               -> failwith "Slice is not a color value type"
+        | ColorSlice data -> Some data.Value
+        | _               -> None
 
     member self.ColorData
       with get () =
         match self with
-        | ColorSlice data -> data
-        | _               -> failwith "Slice is not a color value type"
+        | ColorSlice data -> Some data
+        | _               -> None
 
     member self.CompoundValue
       with get () =
         match self with
-        | CompoundSlice data -> data.Value
-        | _                  -> failwith "Slice is not a compound value type"
+        | CompoundSlice data -> Some data.Value
+        | _                  -> None
 
     member self.CompoundData
       with get () =
         match self with
-        | CompoundSlice data -> data
-        | _                  -> failwith "Slice is not a compound value type"
+        | CompoundSlice data -> Some data
+        | _                  -> None
+
+    //  _____      ___   __  __          _
+    // |_   _|__  / _ \ / _|/ _|___  ___| |_
+    //   | |/ _ \| | | | |_| |_/ __|/ _ \ __|
+    //   | | (_) | |_| |  _|  _\__ \  __/ |_
+    //   |_|\___/ \___/|_| |_| |___/\___|\__|
+
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let build tipe (offset: Offset<_>) =
+        SliceFB.StartSliceFB(builder)
+        SliceFB.AddSliceType(builder, tipe)
+        SliceFB.AddSlice(builder, offset.Value)
+        SliceFB.EndSliceFB(builder)
+
+      match self with
+      | StringSlice   data ->
+        data.ToOffset(builder)
+        |> build SliceTypeFB.StringSliceFB
+
+      | IntSlice      data ->
+        data.ToOffset(builder)
+        |> build SliceTypeFB.IntSliceFB
+
+      | FloatSlice    data ->
+        data.ToOffset(builder)
+        |> build SliceTypeFB.FloatSliceFB
+
+      | DoubleSlice   data ->
+        data.ToOffset(builder)
+        |> build SliceTypeFB.DoubleSliceFB
+
+      | BoolSlice     data ->
+        data.ToOffset(builder)
+        |> build SliceTypeFB.BoolSliceFB
+
+      | ByteSlice     data ->
+        data.ToOffset(builder)
+        |> build SliceTypeFB.ByteSliceFB
+
+      | EnumSlice     data ->
+        data.ToOffset(builder)
+        |> build SliceTypeFB.EnumSliceFB
+
+      | ColorSlice    data ->
+        data.ToOffset(builder)
+        |> build SliceTypeFB.ColorSliceFB
+
+      | CompoundSlice data ->
+        data.ToOffset(builder)
+        |> build SliceTypeFB.CompoundSliceFB
+
+    //  _____                    _____ ____
+    // |  ___| __ ___  _ __ ___ |  ___| __ )
+    // | |_ | '__/ _ \| '_ ` _ \| |_  |  _ \
+    // |  _|| | | (_) | | | | | |  _| | |_) |
+    // |_|  |_|  \___/|_| |_| |_|_|   |____/
+
+    static member FromFB(fb: SliceFB) : Slice option =
+      match fb.SliceType with
+      | SliceTypeFB.StringSliceFB   ->
+        fb.GetSlice(new StringSliceFB())
+        |> StringSliceD.FromFB
+        |> Option.map StringSlice
+
+      | SliceTypeFB.IntSliceFB      ->
+        fb.GetSlice(new IntSliceFB())
+        |> IntSliceD.FromFB
+        |> Option.map IntSlice
+
+      | SliceTypeFB.FloatSliceFB    ->
+        fb.GetSlice(new FloatSliceFB())
+        |> FloatSliceD.FromFB
+        |> Option.map FloatSlice
+
+      | SliceTypeFB.DoubleSliceFB   ->
+        fb.GetSlice(new DoubleSliceFB())
+        |> DoubleSliceD.FromFB
+        |> Option.map DoubleSlice
+
+      | SliceTypeFB.BoolSliceFB     ->
+        fb.GetSlice(new BoolSliceFB())
+        |> BoolSliceD.FromFB
+        |> Option.map BoolSlice
+
+      | SliceTypeFB.ByteSliceFB     ->
+        fb.GetSlice(new ByteSliceFB())
+        |> ByteSliceD.FromFB
+        |> Option.map ByteSlice
+
+      | SliceTypeFB.EnumSliceFB     ->
+        fb.GetSlice(new EnumSliceFB())
+        |> EnumSliceD.FromFB
+        |> Option.map EnumSlice
+
+      | SliceTypeFB.ColorSliceFB    ->
+        fb.GetSlice(new ColorSliceFB())
+        |> ColorSliceD.FromFB
+        |> Option.map ColorSlice
+
+      | SliceTypeFB.CompoundSliceFB ->
+        fb.GetSlice(new CompoundSliceFB())
+        |> CompoundSliceD.FromFB
+        |> Option.map CompoundSlice
+
+      | _ -> None
+
+    member self.ToBytes() : byte array = buildBuffer self
+
+    static member FromBytes(bytes: byte array) : Slice option =
+      SliceFB.GetRootAsSliceFB(new ByteBuffer(bytes))
+      |> Slice.FromFB
+
 //  ____  _ _
 // / ___|| (_) ___ ___  ___
 // \___ \| | |/ __/ _ \/ __|
