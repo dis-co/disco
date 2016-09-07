@@ -447,10 +447,11 @@ module SerializationTests =
       ; Command AppCommand.Redo
       ; LogMsg(Debug, "ohai")
       ]
-      |> List.iter (fun cmd ->
-                     let command = AppEvent cmd
-                     let remsg = command |> encode |> decode
-                     expect "Should be structurally the same" command id (Option.get remsg))
+      |> List.iter
+        (fun cmd ->
+          let command = AppEvent cmd
+          let remsg = command |> encode |> decode
+          expect "Should be structurally the same" command id (Option.get remsg))
 
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
