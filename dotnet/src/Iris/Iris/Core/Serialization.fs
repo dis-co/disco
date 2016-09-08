@@ -5,30 +5,22 @@ namespace Iris.Core
 // open Iris.Raft
 
 open FlatBuffers
+open Newtonsoft.Json
+open Newtonsoft.Json.Linq
 
-//  ____            _       _ _          _   _
-// / ___|  ___ _ __(_) __ _| (_)______ _| |_(_) ___  _ __
-// \___ \ / _ \ '__| |/ _` | | |_  / _` | __| |/ _ \| '_ \
-//  ___) |  __/ |  | | (_| | | |/ / (_| | |_| | (_) | | | |
-// |____/ \___|_|  |_|\__,_|_|_/___\__,_|\__|_|\___/|_| |_|
+
+//  ____  _
+// | __ )(_)_ __   __ _ _ __ _   _
+// |  _ \| | '_ \ / _` | '__| | | |
+// | |_) | | | | | (_| | |  | |_| |
+// |____/|_|_| |_|\__,_|_|   \__, |
+//                           |___/
 
 [<RequireQualifiedAccess>]
 module Binary =
 
-  //  _____                     _
-  // | ____|_ __   ___ ___   __| | ___
-  // |  _| | '_ \ / __/ _ \ / _` |/ _ \
-  // | |___| | | | (_| (_) | (_| |  __/
-  // |_____|_| |_|\___\___/ \__,_|\___|
-
   let inline encode (value : ^t when ^t : (member ToBytes : unit -> byte array)) =
     (^t : (member ToBytes : unit -> byte array) value)
-
-  //  ____                     _
-  // |  _ \  ___  ___ ___   __| | ___
-  // | | | |/ _ \/ __/ _ \ / _` |/ _ \
-  // | |_| |  __/ (_| (_) | (_| |  __/
-  // |____/ \___|\___\___/ \__,_|\___|
 
   let inline decode< ^t when ^t : (static member FromBytes : byte array -> ^t option)>
                                   (bytes: byte array) :
@@ -40,3 +32,22 @@ module Binary =
     let offset = (^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >) (thing, builder))
     builder.Finish(offset.Value)
     builder.SizedByteArray()
+
+
+//      _
+//     | |___  ___  _ __
+//  _  | / __|/ _ \| '_ \
+// | |_| \__ \ (_) | | | |
+//  \___/|___/\___/|_| |_|
+
+[<RequireQualifiedAccess>]
+module Json =
+
+  let inline encode (value: ^t when ^t : (member ToJson : unit -> string)) : string =
+    (^t : (member ToJson : unit -> string) value)
+
+  let inline decode< ^t when ^t : (static member FromJson : string -> ^t option)> (str: string) : ^t option =
+    (^t : (static member FromJson : string -> ^t option) str)
+
+  let inline tokenize (value: ^t when ^t : (member ToJToken : unit -> JToken)) : JToken =
+    (^t : (member ToJToken : unit -> JToken) value)

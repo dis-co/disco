@@ -5,6 +5,8 @@ namespace Iris.Core
 
 open FlatBuffers
 open Iris.Serialization.Raft
+open Newtonsoft.Json
+open Newtonsoft.Json.Linq
 
 #endif
 
@@ -24,6 +26,14 @@ type RGBAValue =
 #else
 
   with
+
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
+
     member self.ToOffset(builder: FlatBufferBuilder) =
       RGBAValueFB.StartRGBAValueFB(builder)
       RGBAValueFB.AddRed(builder, self.Red)
@@ -48,6 +58,20 @@ type RGBAValue =
       RGBAValueFB.GetRootAsRGBAValueFB(new ByteBuffer(bytes))
       |> RGBAValue.FromFB
 
+    //      _
+    //     | |___  ___  _ __
+    //  _  | / __|/ _ \| '_ \
+    // | |_| \__ \ (_) | | | |
+    //  \___/|___/\___/|_| |_|
+
+    member self.ToJToken() : JToken =
+      let json = JToken.FromObject(self) :?> JObject
+      json.Add("$type", new JValue("Iris.Core.RGBAValue"))
+      json :> JToken
+
+    member self.ToJson() =
+      self.ToJToken() |> string
+
 #endif
 
 
@@ -61,6 +85,14 @@ type HSLAValue =
 #else
 
   with
+
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
+
     member self.ToOffset(builder: FlatBufferBuilder) =
       HSLAValueFB.StartHSLAValueFB(builder)
       HSLAValueFB.AddHue(builder, self.Hue)
@@ -85,6 +117,20 @@ type HSLAValue =
       HSLAValueFB.GetRootAsHSLAValueFB(new ByteBuffer(bytes))
       |> HSLAValue.FromFB
 
+    //      _
+    //     | |___  ___  _ __
+    //  _  | / __|/ _ \| '_ \
+    // | |_| \__ \ (_) | | | |
+    //  \___/|___/\___/|_| |_|
+
+    member self.ToJToken() : JToken =
+      let json = JToken.FromObject(self) :?> JObject
+      json.Add("$type", new JValue("Iris.Core.HSLAValue"))
+      json :> JToken
+
+    member self.ToJson() =
+      self.ToJToken() |> string
+
 #endif
 
 type ColorSpace =
@@ -95,6 +141,14 @@ type ColorSpace =
 #else
 
   with
+
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
+
     member self.ToOffset(builder: FlatBufferBuilder) =
       let build tipe (offset: Offset<_>) =
         ColorSpaceFB.StartColorSpaceFB(builder)
@@ -128,5 +182,28 @@ type ColorSpace =
     static member FromBytes(bytes: byte array) =
       ColorSpaceFB.GetRootAsColorSpaceFB(new ByteBuffer(bytes))
       |> ColorSpace.FromFB
+
+    //      _
+    //     | |___  ___  _ __
+    //  _  | / __|/ _ \| '_ \
+    // | |_| \__ \ (_) | | | |
+    //  \___/|___/\___/|_| |_|
+
+    member self.ToJToken() : JToken =
+      let json = new JObject()
+      json.Add("$type", new JValue("Iris.Core.ColorSpace"))
+
+      let add (case: string) token =
+        json.Add("Case", new JValue(case))
+        json.Add("Fields", new JArray([| token |]))
+
+      match self with
+      | RGBA data -> add "RGBA" (Json.tokenize data)
+      | HSLA data -> add "HSLA" (Json.tokenize data)
+
+      json :> JToken
+
+    member self.ToJson() =
+      self.ToJToken() |> string
 
 #endif

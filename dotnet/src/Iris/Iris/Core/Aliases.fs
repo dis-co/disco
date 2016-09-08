@@ -23,7 +23,6 @@ type FileMask   = string option
 type Precision  = int    option
 type MaxChars   = int
 type FilePath   = string
-type Property   = (string * string)
 type UserName   = string
 type UserAgent  = string
 
@@ -57,3 +56,35 @@ type Rect = Rect of (int * int)
     override self.ToString() =
       match self with
       | Rect (x, y) -> "(" + string x + ", " + string y + ")"
+
+
+//  ____                            _
+// |  _ \ _ __ ___  _ __   ___ _ __| |_ _   _
+// | |_) | '__/ _ \| '_ \ / _ \ '__| __| | | |
+// |  __/| | | (_) | |_) |  __/ |  | |_| |_| |
+// |_|   |_|  \___/| .__/ \___|_|   \__|\__, |
+//                 |_|                  |___/
+
+#if JAVASCRIPT
+#else
+
+open Newtonsoft.Json
+open Newtonsoft.Json.Linq
+
+#endif
+
+type Property = { Key: string; Value: string }
+
+#if JAVASCRIPT
+#else
+
+  with
+    member self.ToJToken() =
+      let json = JToken.FromObject(self) :?> JObject
+      json.Add("$type", new JValue("Iris.Core.Property"))
+      json :> JToken
+
+    member self.ToJson() =
+      self.ToJToken() |> string
+
+#endif

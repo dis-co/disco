@@ -44,36 +44,26 @@ module Main =
         // 1. Initialise the application server from the supplied options
         // let options = parseOptions args
         use server = new RaftServer(project.Config, kontext)
-        use wsserver = new WsServer(project.Config)
+        use wsserver = new WsServer(project.Config, server)
         use httpserver = new AssetServer(project.Config)
 
         server.OnConfigured <-
           Array.map (fun (node: RaftNode) -> string node.Id)
           >> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
+          >> (fun str -> LogMsg(Iris.Core.LogLevel.Debug, str))
           >> wsserver.Broadcast
 
         server.OnLogMsg <- fun _ msg ->
-          wsserver.Broadcast(msg)
+          wsserver.Broadcast(LogMsg(Iris.Core.LogLevel.Debug, msg))
 
-        server.OnNodeAdded <-
-          string
-          >> sprintf "Node Added: %s"
-          >> wsserver.Broadcast
+        server.OnNodeAdded   <- AddNode    >> wsserver.Broadcast
+        server.OnNodeUpdated <- UpdateNode >> wsserver.Broadcast
+        server.OnNodeRemoved <- RemoveNode >> wsserver.Broadcast
 
-        server.OnNodeUpdated <-
-          string
-          >> sprintf "Node Updated: %s"
-          >> wsserver.Broadcast
-
-        server.OnNodeRemoved <-
-          string
-          >> sprintf "Node Removed: %s"
-          >> wsserver.Broadcast
-
-        server.OnApplyLog <-
-          string
-          >> sprintf "Command applied: %s"
-          >> wsserver.Broadcast
+        server.OnApplyLog <- fun sm ->
+          match sm with
+          | AppEvent ae -> wsserver.Broadcast ae
+          | _           -> printfn "DataSnapshots are not propagated to browsers"
 
         printfn "Starting Http Server on %d" project.Config.PortConfig.Http
         httpserver.Start()
@@ -196,6 +186,10 @@ module Main =
   ////////////////////////////////////////
   [<EntryPoint>]
   let main args =
+
+    Behavior.Bang
+    |> Json.encode
+    |> printfn "%s"
 
     let parsed =
       try

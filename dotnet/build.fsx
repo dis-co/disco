@@ -187,11 +187,9 @@ let buildRelease fsproj _ =
 
 Target "Bootstrap"
   (fun _ ->
-    Restore(id)                         // restore Paket packages
-    runNpm "install"                    __SOURCE_DIRECTORY__ ()
-    runNpm
-      "-g install fable-compiler mocha-phantomjs webpack"
-      __SOURCE_DIRECTORY__ ())
+    Restore(id)                              // restore Paket packages
+    runNpm "install" __SOURCE_DIRECTORY__ () // restore Npm packages
+    runNpm "-g install fable-compiler mocha-phantomjs webpack" __SOURCE_DIRECTORY__ ())
 
 //     _                           _     _       ___        __
 //    / \   ___ ___  ___ _ __ ___ | |__ | |_   _|_ _|_ __  / _| ___

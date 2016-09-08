@@ -54,7 +54,7 @@ window.simpleString1 = function() {
 
 window.simpleString2 = function() {
   var h = virtualDom.h;
-  
+
   var sliceView = function(slice) {
     return h('li', [
       h('input', {
@@ -106,7 +106,7 @@ window.simpleString2 = function() {
 
 window.numberPlugin = function() {
   var h = virtualDom.h;
-  
+
   var numberplugin = function(cb) {
     this.render = function (iobox) {
       var view = h("div", { id: iobox.Id }, [

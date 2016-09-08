@@ -1,6 +1,8 @@
 namespace Iris.Core
 
 open System.Net
+open Newtonsoft.Json
+open Newtonsoft.Json.Linq
 
 type IpAddress =
   | IPv4Address of string
@@ -14,11 +16,6 @@ type IpAddress =
 
 #if JAVASCRIPT
 #else
-      //    _   _ _____ _____
-      //   | \ | | ____|_   _|
-      //   |  \| |  _|   | |
-      //  _| |\  | |___  | |
-      // (_)_| \_|_____| |_|
 
     static member Parse (str: string) =
       let ip = IPAddress.Parse str
@@ -36,5 +33,25 @@ type IpAddress =
             | Sockets.AddressFamily.InterNetworkV6 -> IPv6Address str |> Some
             | _ -> None
         | _ -> None
+
+    //      _
+    //     | |___  ___  _ __
+    //  _  | / __|/ _ \| '_ \
+    // | |_| \__ \ (_) | | | |
+    //  \___/|___/\___/|_| |_|
+
+    member self.ToJToken() : JToken =
+      let json = new JObject()
+      json.Add("$type", new JValue("Iris.Core.IpAddress"))
+
+      match self with
+      | IPv4Address str ->
+        json.Add("Case", new JValue("IPv4Address"))
+        json.Add("Fields", new JArray([| new JValue(str) |]))
+      | IPv6Address str ->
+        json.Add("Case", new JValue("IPv6Address"))
+        json.Add("Fields", new JArray([| new JValue(str) |]))
+
+      json :> JToken
 
 #endif

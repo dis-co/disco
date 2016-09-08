@@ -3,10 +3,15 @@ namespace Iris.Core
 open Iris.Raft
 
 #if JAVASCRIPT
+
+open Fable.Core.JsInterop
+
 #else
 
 open Iris.Serialization.Raft
 open FlatBuffers
+open Newtonsoft.Json
+open Newtonsoft.Json.Linq
 
 #endif
 
@@ -40,26 +45,55 @@ type AppCommand =
 
 #if JAVASCRIPT
 #else
-  with
-    static member FromFB (fb: AppCommandFB) =
-      match fb.Command with
-      | AppCommandTypeFB.UndoFB        -> Some Undo
-      | AppCommandTypeFB.RedoFB        -> Some Redo
-      | AppCommandTypeFB.ResetFB       -> Some Reset
-      | AppCommandTypeFB.SaveProjectFB -> Some SaveProject
-      | _                              -> None
 
-    member self.ToOffset(builder: FlatBufferBuilder) : Offset<AppCommandFB> =
-      let tipe =
-        match self with
-        | Undo        -> AppCommandTypeFB.UndoFB
-        | Redo        -> AppCommandTypeFB.RedoFB
-        | Reset       -> AppCommandTypeFB.ResetFB
-        | SaveProject -> AppCommandTypeFB.SaveProjectFB
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
 
-      AppCommandFB.StartAppCommandFB(builder)
-      AppCommandFB.AddCommand(builder, tipe)
-      AppCommandFB.EndAppCommandFB(builder)
+  static member FromFB (fb: AppCommandFB) =
+    match fb.Command with
+    | AppCommandTypeFB.UndoFB        -> Some Undo
+    | AppCommandTypeFB.RedoFB        -> Some Redo
+    | AppCommandTypeFB.ResetFB       -> Some Reset
+    | AppCommandTypeFB.SaveProjectFB -> Some SaveProject
+    | _                              -> None
+
+  member self.ToOffset(builder: FlatBufferBuilder) : Offset<AppCommandFB> =
+    let tipe =
+      match self with
+      | Undo        -> AppCommandTypeFB.UndoFB
+      | Redo        -> AppCommandTypeFB.RedoFB
+      | Reset       -> AppCommandTypeFB.ResetFB
+      | SaveProject -> AppCommandTypeFB.SaveProjectFB
+
+    AppCommandFB.StartAppCommandFB(builder)
+    AppCommandFB.AddCommand(builder, tipe)
+    AppCommandFB.EndAppCommandFB(builder)
+
+  //      _
+  //     | |___  ___  _ __
+  //  _  | / __|/ _ \| '_ \
+  // | |_| \__ \ (_) | | | |
+  //  \___/|___/\___/|_| |_|
+
+  member self.ToJToken() : JToken =
+    let json = new JObject()
+    json.Add("$type", new JValue("Iris.Core.AppCommand"))
+
+    let add (case: string) =
+      json.Add("Case", new JValue(case))
+
+    match self with
+    | Undo        -> add "Undo"
+    | Redo        -> add "Redo"
+    | Reset       -> add "Reset"
+    | SaveProject -> add "SaveProject"
+
+    json :> JToken
+
 #endif
 
 type ApplicationEvent =
@@ -387,5 +421,67 @@ type ApplicationEvent =
     static member FromBytes (bytes: byte array) : ApplicationEvent option =
       let msg = ApplicationEventFB.GetRootAsApplicationEventFB(new ByteBuffer(bytes))
       ApplicationEvent.FromFB(msg)
+#endif
+
+    //      _
+    //     | |___  ___  _ __
+    //  _  | / __|/ _ \| '_ \
+    // | |_| \__ \ (_) | | | |
+    //  \___/|___/\___/|_| |_|
+
+#if JAVASCRIPT
+
+    member self.ToJson () = toJson self
+
+    static member FromJson (str: string) : ApplicationEvent option =
+      try
+        ofJson<ApplicationEvent> str
+        |> Some
+      with
+        | _ -> None
+
+#else
+    member self.ToJToken () =
+      let json = new JObject()
+      json.Add("$type", new JValue("Iris.Core.ApplicationEvent"))
+
+      let add (case: string) (tokens: JToken array) =
+        json.Add("Case", new JValue(case))
+        json.Add("Fields", new JArray(tokens))
+
+      match self with
+      // NODE
+      | AddNode    node -> add "AddNode"    [| Json.tokenize node |]
+      | UpdateNode node -> add "UpdateNode" [| Json.tokenize node |]
+      | RemoveNode node -> add "RemoveNode" [| Json.tokenize node |]
+
+      // PATCH
+      | AddPatch    patch -> add "AddPatch"    [| Json.tokenize patch |]
+      | UpdatePatch patch -> add "UpdatePatch" [| Json.tokenize patch |]
+      | RemovePatch patch -> add "RemovePatch" [| Json.tokenize patch |]
+
+      // IOBOX
+      | AddIOBox    iobox -> add "AddIOBox"    [| Json.tokenize iobox |]
+      | UpdateIOBox iobox -> add "UpdateIOBox" [| Json.tokenize iobox |]
+      | RemoveIOBox iobox -> add "RemoveIOBox" [| Json.tokenize iobox |]
+
+      // CUE
+      | AddCue    cue -> add "AddCue"    [| Json.tokenize cue |]
+      | UpdateCue cue -> add "UpdateCue" [| Json.tokenize cue |]
+      | RemoveCue cue -> add "RemoveCue" [| Json.tokenize cue |]
+
+      | Command cmd -> add "Command" [| Json.tokenize cmd |]
+
+      | LogMsg (level, str) -> add "LogMsg" [| Json.tokenize level; new JValue(str) |]
+
+    member self.ToJson () =
+      self.ToJToken() |> string
+
+    static member FromJson (str: string) : ApplicationEvent option =
+      try
+        JsonConvert.DeserializeObject<ApplicationEvent>(str)
+        |> Some
+      with
+        | exn -> None
 
 #endif

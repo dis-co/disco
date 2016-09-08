@@ -2,8 +2,12 @@ namespace Iris.Core
 
 #if JAVASCRIPT
 #else
+
 open FlatBuffers
 open Iris.Serialization.Raft
+open Newtonsoft.Json
+open Newtonsoft.Json.Linq
+
 #endif
 
 type Cue =
@@ -11,9 +15,17 @@ type Cue =
   ; Name:    string
   ; IOBoxes: IOBox array
   }
+
 #if JAVASCRIPT
 #else
   with
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
+
     static member FromFB(fb: CueFB) : Cue option =
       let ioboxes = Array.zeroCreate fb.IOBoxesLength
 
@@ -47,5 +59,22 @@ type Cue =
     static member FromBytes (bytes: byte array) : Cue option =
       let msg = CueFB.GetRootAsCueFB(new ByteBuffer(bytes))
       Cue.FromFB(msg)
+
+    //      _
+    //     | |___  ___  _ __
+    //  _  | / __|/ _ \| '_ \
+    // | |_| \__ \ (_) | | | |
+    //  \___/|___/\___/|_| |_|
+
+    member self.ToJToken() =
+      let json = new JObject()
+      json.Add("$type", new JValue("Iris.Core.Cue"))
+      json.Add("Id", new JValue(string self.Id))
+      json.Add("Name", new JValue(self.Name))
+      json.Add("IOBoxes", new JArray(Array.map Json.tokenize self.IOBoxes))
+      json :> JToken
+
+    member self.ToJson() =
+      self.ToJToken() |> string
 
 #endif

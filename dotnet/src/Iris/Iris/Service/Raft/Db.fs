@@ -12,7 +12,6 @@ open System
 open LiteDB
 open Iris.Core
 open Iris.Raft
-open Nessos.FsPickler
 open FSharpx.Functional
 
 [<Literal>]
@@ -37,16 +36,16 @@ type LogDataType =
 
 [<AllowNullLiteral>]
 type LogData() =
-  let mutable log_type  : int        = int LogDataType.Entry
-  let mutable id        : string     = null
-  let mutable idx       : int64      = 0L
-  let mutable term      : int64      = 0L
-  let mutable last_idx  : int64      = 0L
-  let mutable last_term : int64      = 0L
-  let mutable nodes     : byte array = null
-  let mutable changes   : byte array = null
-  let mutable data      : byte array = null
-  let mutable prev      : string     = null
+  let mutable log_type  : int              = int LogDataType.Entry
+  let mutable id        : string           = null
+  let mutable idx       : int64            = 0L
+  let mutable term      : int64            = 0L
+  let mutable last_idx  : int64            = 0L
+  let mutable last_term : int64            = 0L
+  let mutable nodes     : byte array array = null
+  let mutable changes   : byte array array = null
+  let mutable data      : byte array       = null
+  let mutable prev      : string           = null
 
   [<BsonId>]
   member __.Id
@@ -96,33 +95,38 @@ type LogData() =
   // |_|   \__,_|_|  |___/\___|
 
   member self.ToLog () : LogEntry =
-    let coder = FsPickler.CreateBinarySerializer()
-
     let id   = Id self.Id
     let idx  = uint64 self.Index
     let term = uint64 self.Term
 
     match self.LogType with
-      | t when t = int LogDataType.Config ->
-        let nodes : RaftNode array = coder.UnPickle(self.Nodes)
-        Configuration(id,idx,term,nodes,None)
+    | t when t = int LogDataType.Config ->
+      let nodes : RaftNode array =
+        self.Nodes |> Array.map (Binary.decode >> Option.get)
+      Configuration(id,idx,term,nodes,None)
 
-      | t when t = int LogDataType.Consensus ->
-        let changes : ConfigChange array = coder.UnPickle(self.Changes)
-        JointConsensus(id,idx,term,changes,None)
+    | t when t = int LogDataType.Consensus ->
+      let changes : ConfigChange array =
+        self.Changes |> Array.map (Binary.decode >> Option.get)
+      JointConsensus(id,idx,term,changes,None)
 
-      | t when t = int LogDataType.Entry ->
-        let data : StateMachine = coder.UnPickle(self.Data)
-        LogEntry(id,idx,term,data,None)
+    | t when t = int LogDataType.Entry ->
+      let data : StateMachine =
+        Binary.decode self.Data |> Option.get
+      LogEntry(id,idx,term,data,None)
 
-      | t when t = int LogDataType.Snapshot ->
-        let nodes : RaftNode array = coder.UnPickle(self.Nodes)
-        let data : StateMachine = coder.UnPickle(self.Data)
-        let lidx = uint64 self.LastIndex
-        let lterm = uint64 self.LastTerm
-        Snapshot(id,idx,term,lidx,lterm,nodes,data)
+    | t when t = int LogDataType.Snapshot ->
+      let nodes : RaftNode array =
+        self.Nodes |> Array.map (Binary.decode >> Option.get)
 
-      | _ -> failwithf "Could not parse log entry: [id: %A] [idx: %A]" id idx
+      let data : StateMachine =
+        Binary.decode self.Data |> Option.get
+
+      let lidx = uint64 self.LastIndex
+      let lterm = uint64 self.LastTerm
+      Snapshot(id,idx,term,lidx,lterm,nodes,data)
+
+    | _ -> failwithf "Could not parse log entry: [id: %A] [idx: %A]" id idx
 
   //  ____            _       _ _
   // / ___|  ___ _ __(_) __ _| (_)_______
@@ -131,66 +135,65 @@ type LogData() =
   // |____/ \___|_|  |_|\__,_|_|_/___\___|
 
   static member FromLog (log: LogEntry) : LogData array =
-    let toLogData (coder: BinarySerializer) (log: LogEntry) =
+    let toLogData (log: LogEntry) =
       let logdata = new LogData()
       match log with
-        | Configuration(id,idx,term,nodes,None) ->
-          logdata.Id       <- string id
-          logdata.LogType  <- int LogDataType.Config
-          logdata.Index    <- int64 idx
-          logdata.Term     <- int64 term
-          logdata.Nodes    <- coder.Pickle(nodes)
+      | Configuration(id,idx,term,nodes,None) ->
+        logdata.Id       <- string id
+        logdata.LogType  <- int LogDataType.Config
+        logdata.Index    <- int64 idx
+        logdata.Term     <- int64 term
+        logdata.Nodes    <- Array.map Binary.encode nodes
 
-        | Configuration(id,idx,term,nodes,Some prev) ->
-          logdata.Id       <- string id
-          logdata.LogType  <- int LogDataType.Config
-          logdata.Index    <- int64 idx
-          logdata.Term     <- int64 term
-          logdata.Nodes    <- coder.Pickle(nodes)
-          logdata.Previous <- string <| LogEntry.getId prev
+      | Configuration(id,idx,term,nodes,Some prev) ->
+        logdata.Id       <- string id
+        logdata.LogType  <- int LogDataType.Config
+        logdata.Index    <- int64 idx
+        logdata.Term     <- int64 term
+        logdata.Nodes    <- Array.map Binary.encode nodes
+        logdata.Previous <- string <| LogEntry.getId prev
 
-        | JointConsensus(id,idx,term,changes,None) ->
-          logdata.Id       <- string id
-          logdata.LogType  <- int LogDataType.Consensus
-          logdata.Index    <- int64 idx
-          logdata.Term     <- int64 term
-          logdata.Changes  <- coder.Pickle(changes)
+      | JointConsensus(id,idx,term,changes,None) ->
+        logdata.Id       <- string id
+        logdata.LogType  <- int LogDataType.Consensus
+        logdata.Index    <- int64 idx
+        logdata.Term     <- int64 term
+        logdata.Changes  <- Array.map Binary.encode changes
 
-        | JointConsensus(id,idx,term,changes,Some prev) ->
-          logdata.Id       <- string id
-          logdata.LogType  <- int LogDataType.Consensus
-          logdata.Index    <- int64 idx
-          logdata.Term     <- int64 term
-          logdata.Changes  <- coder.Pickle(changes)
-          logdata.Previous <- string <| LogEntry.getId prev
+      | JointConsensus(id,idx,term,changes,Some prev) ->
+        logdata.Id       <- string id
+        logdata.LogType  <- int LogDataType.Consensus
+        logdata.Index    <- int64 idx
+        logdata.Term     <- int64 term
+        logdata.Changes  <- Array.map Binary.encode changes
+        logdata.Previous <- string <| LogEntry.getId prev
 
-        | LogEntry(id,idx,term,data,None) ->
-          logdata.Id       <- string id
-          logdata.LogType  <- int LogDataType.Entry
-          logdata.Index    <- int64 idx
-          logdata.Term     <- int64 term
-          logdata.Data     <- coder.Pickle(data)
+      | LogEntry(id,idx,term,data,None) ->
+        logdata.Id       <- string id
+        logdata.LogType  <- int LogDataType.Entry
+        logdata.Index    <- int64 idx
+        logdata.Term     <- int64 term
+        logdata.Data     <- Binary.encode data
 
-        | LogEntry(id,idx,term,data,Some prev) ->
-          logdata.Id       <- string id
-          logdata.LogType  <- int LogDataType.Entry
-          logdata.Index    <- int64 idx
-          logdata.Term     <- int64 term
-          logdata.Data     <- coder.Pickle(data)
-          logdata.Previous <- string <| LogEntry.getId prev
+      | LogEntry(id,idx,term,data,Some prev) ->
+        logdata.Id       <- string id
+        logdata.LogType  <- int LogDataType.Entry
+        logdata.Index    <- int64 idx
+        logdata.Term     <- int64 term
+        logdata.Data     <- Binary.encode data
+        logdata.Previous <- string <| LogEntry.getId prev
 
-        | Snapshot(id,idx,term,lidx,lterm,nodes,data) ->
-          logdata.Id        <- string id
-          logdata.LogType   <- int LogDataType.Snapshot
-          logdata.Index     <- int64 idx
-          logdata.Term      <- int64 term
-          logdata.LastIndex <- int64 lidx
-          logdata.LastTerm  <- int64 lterm
-          logdata.Nodes     <- coder.Pickle(nodes)
-          logdata.Data      <- coder.Pickle(data)
+      | Snapshot(id,idx,term,lidx,lterm,nodes,data) ->
+        logdata.Id        <- string id
+        logdata.LogType   <- int LogDataType.Snapshot
+        logdata.Index     <- int64 idx
+        logdata.Term      <- int64 term
+        logdata.LastIndex <- int64 lidx
+        logdata.LastTerm  <- int64 lterm
+        logdata.Nodes     <- Array.map Binary.encode nodes
+        logdata.Data      <- Binary.encode data
       logdata
-    let coder = FsPickler.CreateBinarySerializer()
-    LogEntry.foldr (fun lst lg -> toLogData coder lg :: lst) [] log
+    LogEntry.foldr (fun lst lg -> toLogData lg :: lst) [] log
     |> Array.ofList
 
   interface IComparable<LogData> with

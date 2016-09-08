@@ -134,8 +134,14 @@ type RaftState =
 type EntryResponse =
   {  Id    : Id
   ;  Term  : Term
-  ;  Index : Index
-  }
+  ;  Index : Index }
+
+  with
+    override self.ToString() =
+      sprintf "Entry added with Id: %A in term: %d at log index: %d"
+        (string self.Id)
+        self.Term
+        self.Index
 
 [<RequireQualifiedAccess>]
 module Entry =

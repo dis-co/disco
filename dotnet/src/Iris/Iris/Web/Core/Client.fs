@@ -106,8 +106,11 @@ module Client =
       | ClientMessage.Disconnected ->
         printfn "DISCONNECTED!"
 
+      | ClientMessage.ClientLog log ->
+        printfn "%s" log
+
       // initialize this clients session variable
       | ClientMessage.Error(reason) ->
         printfn "SharedWorker Error: %A" reason
 
-      | _ -> printfn "Unknown Event: %A" msg
+      | _ -> printfn "Unknown Event: %A" msg.Data

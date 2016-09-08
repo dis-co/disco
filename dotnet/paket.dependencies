@@ -12,8 +12,6 @@ group Main
   nuget XUnit
   nuget NUnit
   nuget Gallio
-  nuget FsPickler
-  nuget FsPickler.Json
   nuget FSharpx.Extras
   nuget FsControl
   nuget Argu
@@ -24,6 +22,7 @@ group Main
   nuget FSharp.Configuration
   nuget LiteDB
   nuget ZeroMQ
+  nuget Newtonsoft.Json
 
 group Build
   source https://nuget.org/api/v2
@@ -32,8 +31,6 @@ group Build
   nuget FAKE
   nuget FSharp.Formatting
   nuget FSharp.Core redirects:force
-  nuget FsPickler
-  nuget FsPickler.Json
   nuget FSharpx.Extras
   nuget FSharpPlus
   nuget FsControl
@@ -50,8 +47,6 @@ group Test
   nuget XUnit
   nuget NUnit
   nuget Gallio
-  nuget FsPickler
-  nuget FsPickler.Json
   nuget FSharpx.Extras
   nuget FSharpPlus
   nuget FsControl

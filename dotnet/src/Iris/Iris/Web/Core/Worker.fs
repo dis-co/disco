@@ -4,8 +4,10 @@ open Iris.Core
 open Iris.Web.Core
 
 open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Import.JS
+
 
 //  __  __                                _____                 _
 // |  \/  | ___  ___ ___  __ _  __ _  ___| ____|_   _____ _ __ | |_
@@ -107,9 +109,6 @@ module Worker =
   [<Emit("JSON.stringify($0)")>]
   let inline stringify (thing: ^a) : string = failwith "ONLY JS"
 
-  [<Emit("JSON.parse($0)")>]
-  let inline parse (thing: string) : ^a = failwith "ONLY JS"
-
 
 (* ///////////////////////////////////////////////////////////////////////////////
       ____ _       _           _  ____            _            _
@@ -186,9 +185,8 @@ type GlobalContext() =
         self.Broadcast ClientMessage.Disconnected
 
       sock.OnMessage <- fun (ev: MessageEvent<string>) ->
-        let parsed : ApplicationEvent = parse ev.Data
+        let parsed : ApplicationEvent = ofJson<ApplicationEvent> ev.Data
         self.OnSocketMessage parsed
-        self.Log ev.Data
 
       socket <- Some (addr, sock)
 

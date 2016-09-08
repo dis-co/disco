@@ -9,6 +9,8 @@ open System
 open System.Net
 open FlatBuffers
 open Iris.Serialization.Raft
+open Newtonsoft.Json
+open Newtonsoft.Json.Linq
 
 #endif
 
@@ -40,6 +42,13 @@ type RaftNodeState =
 #if JAVASCRIPT
 #else
 
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
+
     member self.ToOffset () =
       match self with
         | Running -> NodeStateFB.RunningFB
@@ -52,6 +61,26 @@ type RaftNodeState =
         | NodeStateFB.RunningFB -> Some Running
         | NodeStateFB.FailedFB  -> Some Failed
         | _                     -> None
+
+    //      _
+    //     | |___  ___  _ __
+    //  _  | / __|/ _ \| '_ \
+    // | |_| \__ \ (_) | | | |
+    //  \___/|___/\___/|_| |_|
+
+    member self.ToJToken() =
+      let json = new JObject()
+      json.Add("$type", new JValue("Iris.Raft.RaftNode"))
+
+      match self with
+      | Running -> json.Add("Case", new JValue("Running"))
+      | Joining -> json.Add("Case", new JValue("Joining"))
+      | Failed  -> json.Add("Case", new JValue("Failed"))
+
+      json :> JToken
+
+    member self.ToJson() =
+      self.ToJToken() |> string
 
 #endif
 
@@ -85,6 +114,13 @@ type RaftNode =
 
 #if JAVASCRIPT
 #else
+
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
 
     member node.ToOffset (builder: FlatBufferBuilder) =
       let id = string node.Id |> builder.CreateString
@@ -120,6 +156,35 @@ type RaftNode =
             ; MatchIndex = fb.MatchIndex })
       with
         | _ -> None
+
+    member self.ToBytes () = Binary.buildBuffer self
+
+    static member FromBytes (bytes: byte array) =
+      NodeFB.GetRootAsNodeFB(new ByteBuffer(bytes))
+      |> RaftNode.FromFB
+
+    //      _
+    //     | |___  ___  _ __
+    //  _  | / __|/ _ \| '_ \
+    // | |_| \__ \ (_) | | | |
+    //  \___/|___/\___/|_| |_|
+
+    member self.ToJToken() =
+      let json = new JObject()
+      json.Add("$type", new JValue("Iris.Raft.RaftNode"))
+      json.Add("Id", new JValue(string self.Id))
+      json.Add("HostName", new JValue(self.HostName))
+      json.Add("IpAddr", Json.tokenize self.IpAddr)
+      json.Add("Port", new JValue(self.Port))
+      json.Add("Voting", new JValue(self.Voting))
+      json.Add("VotedForMe", new JValue(self.VotedForMe))
+      json.Add("State", Json.tokenize self.State)
+      json.Add("NextIndex", new JValue(self.NextIndex))
+      json.Add("MatchIndex", new JValue(self.MatchIndex))
+      json :> JToken
+
+    member self.ToJson() =
+      self.ToJToken() |> string
 
 #endif
 
@@ -167,6 +232,12 @@ type ConfigChange =
             | ConfigChangeTypeFB.NodeAdded   -> Some (NodeAdded   node)
             | ConfigChangeTypeFB.NodeRemoved -> Some (NodeRemoved node)
             | _                              -> None)
+
+    member self.ToBytes () = Binary.buildBuffer self
+
+    static member FromBytes (bytes: byte array) =
+      ConfigChangeFB.GetRootAsConfigChangeFB(new ByteBuffer(bytes))
+      |> ConfigChange.FromFB
 
 [<RequireQualifiedAccess>]
 module Node =

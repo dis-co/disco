@@ -5,6 +5,8 @@ namespace Iris.Core
 
 open FlatBuffers
 open Iris.Serialization.Raft
+open Newtonsoft.Json
+open Newtonsoft.Json.Linq
 
 #endif
 
@@ -95,5 +97,23 @@ type Patch =
   static member FromBytes (bytes: byte array) : Patch option =
     let msg = PatchFB.GetRootAsPatchFB(new ByteBuffer(bytes))
     Patch.FromFB(msg)
+
+  //      _
+  //     | |___  ___  _ __
+  //  _  | / __|/ _ \| '_ \
+  // | |_| \__ \ (_) | | | |
+  //  \___/|___/\___/|_| |_|
+
+  member self.ToJToken() =
+    let json = new JObject()
+    json.Add("$type", new JValue("Iris.Core.Patch"))
+    json.Add("Id", new JValue(string self.Id))
+    json.Add("Name", new JValue(self.Name))
+    json.Add("IOBoxes", new JArray(Array.map Json.tokenize self.IOBoxes))
+    json :> JToken
+
+  member self.ToJson() =
+    self.ToJToken() |> string
+
 
 #endif
