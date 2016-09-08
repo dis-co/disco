@@ -211,4 +211,4 @@ type Req (addr: string, ctx: ZContext, timeout: int) =
 ///
 /// Returns: RaftResponse option
 let request (sock: Req) (req: RaftRequest) : RaftResponse option =
-  req |> encode |> sock.Request |> Option.bind decode
+  req |> Binary.encode |> sock.Request |> Option.bind Binary.decode

@@ -12,8 +12,8 @@ open FlatBuffers
 //  ___) |  __/ |  | | (_| | | |/ / (_| | |_| | (_) | | | |
 // |____/ \___|_|  |_|\__,_|_|_/___\__,_|\__|_|\___/|_| |_|
 
-[<AutoOpen>]
-module Serialization =
+[<RequireQualifiedAccess>]
+module Binary =
 
   //  _____                     _
   // | ____|_ __   ___ ___   __| | ___

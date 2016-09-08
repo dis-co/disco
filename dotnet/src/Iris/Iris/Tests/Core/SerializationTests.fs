@@ -34,7 +34,7 @@ module SerializationTests =
         ; Candidate = node }
 
       let msg   = RequestVote(Id.Create(), vr)
-      let remsg = msg |> encode |> decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -53,7 +53,7 @@ module SerializationTests =
         ; Reason = Some VoteTermMismatch }
 
       let msg   = RequestVoteResponse(Id.Create(), vr)
-      let remsg = msg |> encode |> decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -87,12 +87,12 @@ module SerializationTests =
         ; Entries = log }
 
       let msg   = AppendEntries(Id.Create(), ae)
-      let remsg = msg |> encode |> decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
       let msg   = AppendEntries(Id.Create(), { ae with Entries = None })
-      let remsg = msg |> encode |> decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -113,7 +113,7 @@ module SerializationTests =
         }
 
       let msg = AppendEntriesResponse(Id.Create(), response)
-      let remsg = msg |> encode |> decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -137,7 +137,7 @@ module SerializationTests =
         }
 
       let msg = InstallSnapshot(Id.Create(), is)
-      let remsg = msg |> encode |> decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -150,7 +150,7 @@ module SerializationTests =
   let test_validate_handshake_serialization =
     testCase "Validate HandShake Serialization" <| fun _ ->
       let msg = HandShake(Node.create (Id.Create()))
-      let remsg = msg |> encode |> decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -163,7 +163,7 @@ module SerializationTests =
   let test_validate_handwaive_serialization =
     testCase "Validate HandWaive Serialization" <| fun _ ->
       let msg = HandWaive(Node.create (Id.Create()))
-      let remsg = msg |> encode |> decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -176,7 +176,7 @@ module SerializationTests =
   let test_validate_redirect_serialization =
     testCase "Validate Redirect Serialization" <| fun _ ->
       let msg = Redirect(Node.create (Id.Create()))
-      let remsg = msg |> encode |> decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -189,7 +189,7 @@ module SerializationTests =
   let test_validate_welcome_serialization =
     testCase "Validate Welcome Serialization" <| fun _ ->
       let msg = Welcome(Node.create (Id.Create()))
-      let remsg = msg |> encode |> decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
       expect "Should be structurally the same" msg id remsg
 
   //     _              _               _               _
@@ -201,7 +201,7 @@ module SerializationTests =
   let test_validate_arrivederci_serialization =
     testCase "Validate Arrivederci Serialization" <| fun _ ->
       let msg = Arrivederci
-      let remsg = msg |> encode |> decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
       expect "Should be structurally the same" msg id remsg
 
   //  _____
@@ -238,7 +238,7 @@ module SerializationTests =
         ]
       List.iter (fun err ->
                   let msg = ErrorResponse(err)
-                  let remsg = msg |> encode |> decode |> Option.get
+                  let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
                   expect "Should be structurally the same" msg id remsg)
                 errors
 
@@ -252,7 +252,7 @@ module SerializationTests =
     testCase "Validate Cue Serialization" <| fun _ ->
 
       let cue : Cue = { Id = Id.Create(); Name = "Cue 1"; IOBoxes = [| |] }
-      let recue = cue |> encode |> decode |> Option.get
+      let recue = cue |> Binary.encode |> Binary.decode |> Option.get
 
       expect "should be same" cue id recue
 
@@ -266,7 +266,7 @@ module SerializationTests =
     testCase "Validate Patch Serialization" <| fun _ ->
 
       let patch : Patch = { Id = Id.Create(); Name = "Patch 1"; IOBoxes = [| |] }
-      let repatch = patch |> encode |> decode |> Option.get
+      let repatch = patch |> Binary.encode |> Binary.decode |> Option.get
 
       expect "Should be structurally equivalent" patch id repatch
 
@@ -291,7 +291,7 @@ module SerializationTests =
       ; CompoundSlice { Index = 0UL; Value = [| |]     } |]
       |> Array.iter
         (fun slice ->
-          let reslice = slice |> encode |> decode |> Option.get
+          let reslice = slice |> Binary.encode |> Binary.decode |> Option.get
           expect "Should be structurally equivalent" slice id reslice)
 
   //  ___ ___  ____
@@ -308,7 +308,7 @@ module SerializationTests =
             yield Id.Create() |> string |]
 
       let check iobox =
-        iobox |> encode |> decode |> Option.get
+        iobox |> Binary.encode |> Binary.decode |> Option.get
         |> expect "Should be structurally equivalent" iobox id
 
       let ioboxes =
@@ -390,7 +390,7 @@ module SerializationTests =
       ; LogMsg(Debug, "ohai")
       ]
       |> List.iter (fun cmd ->
-                     let remsg = cmd |> encode |> decode |> Option.get
+                     let remsg = cmd |> Binary.encode |> Binary.decode |> Option.get
                      expect "Should be structurally the same" cmd id remsg)
 
   //  ____  _        _       __  __            _     _
@@ -402,7 +402,7 @@ module SerializationTests =
   let test_validate_state_machine_serialization =
     testCase "Validate correct StateMachine serialization" <| fun _ ->
       let snapshot = DataSnapshot "hello"
-      let remsg = snapshot |> encode |> decode |> Option.get
+      let remsg = snapshot |> Binary.encode |> Binary.decode |> Option.get
       expect "Should be structurally the same" snapshot id remsg
 
       let rand = new System.Random()
@@ -450,7 +450,7 @@ module SerializationTests =
       |> List.iter
         (fun cmd ->
           let command = AppEvent cmd
-          let remsg = command |> encode |> decode
+          let remsg = command |> Binary.encode |> Binary.decode
           expect "Should be structurally the same" command id (Option.get remsg))
 
   //     _    _ _   _____         _

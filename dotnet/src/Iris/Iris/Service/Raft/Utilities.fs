@@ -200,9 +200,9 @@ let disposeSocket (node: RaftNode) (connections: Map<Id,Zmq.Req>) =
 /// Returns: RaftResponse option
 let rawRequest (request: RaftRequest) (client: Req) =
   request
-  |> encode
+  |> Binary.encode
   |> client.Request
-  |> Option.bind decode<RaftResponse>
+  |> Option.bind Binary.decode<RaftResponse>
 
 /// ## Send RaftRequest to node
 ///

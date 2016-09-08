@@ -90,7 +90,7 @@ type RaftRequest =
     //   |_|\___/|____/ \__, |\__\___||___/
     //                  |___/
 
-    member self.ToBytes () : byte array = buildBuffer self
+    member self.ToBytes () : byte array = Binary.buildBuffer self
 
     //  _____                    ____        _
     // |  ___| __ ___  _ __ ___ | __ ) _   _| |_ ___  ___
@@ -240,7 +240,7 @@ type RaftResponse =
     //   |_|\___/|____/ \__, |\__\___||___/
     //                  |___/
 
-    member self.ToBytes () : byte array = buildBuffer self
+    member self.ToBytes () : byte array = Binary.buildBuffer self
 
     //  _____                    ____        _
     // |  ___| __ ___  _ __ ___ | __ ) _   _| |_ ___  ___

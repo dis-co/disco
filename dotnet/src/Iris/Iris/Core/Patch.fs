@@ -90,7 +90,7 @@ type Patch =
     PatchFB.AddIOBoxes(builder, ioboxes)
     PatchFB.EndPatchFB(builder)
 
-  member self.ToBytes() : byte array = buildBuffer self
+  member self.ToBytes() : byte array = Binary.buildBuffer self
 
   static member FromBytes (bytes: byte array) : Patch option =
     let msg = PatchFB.GetRootAsPatchFB(new ByteBuffer(bytes))

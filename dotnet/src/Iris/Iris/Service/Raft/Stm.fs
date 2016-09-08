@@ -370,13 +370,13 @@ let startServer (appState: TVar<AppState>) (cbs: IRaftCallbacks) =
     |> nodeUri
 
   let handler (request: byte array) : byte array =
-    let request : RaftRequest option = decode request
+    let request : RaftRequest option = Binary.decode request
     let response =
       match request with
       | Some message -> handleRequest message appState cbs
       | None         -> ErrorResponse (OtherError "Unable to decipher request")
 
-    response |> encode
+    response |> Binary.encode
 
   let server = new Rep(uri, handler)
   server.Start()

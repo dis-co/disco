@@ -524,7 +524,7 @@ type IOBox =
 
       | _ -> None
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromBytes(bytes: byte array) : IOBox option =
       IOBoxFB.GetRootAsIOBoxFB(new ByteBuffer(bytes))
@@ -590,7 +590,7 @@ and BoolBoxD =
           ; Behavior   = behavior
           ; Slices     = slices })
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromBytes(bytes: byte array) : BoolBoxD option =
       BoolBoxFB.GetRootAsBoolBoxFB(new ByteBuffer(bytes))
@@ -626,7 +626,7 @@ and BoolSliceD =
       with
         | _ -> None
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromBytes(bytes: byte array) : BoolSliceD option =
       BoolSliceFB.GetRootAsBoolSliceFB(new ByteBuffer(bytes))
@@ -704,7 +704,7 @@ and IntBoxD =
       with
         | _ -> None
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromBytes(bytes: byte array) : IntBoxD option =
       IntBoxFB.GetRootAsIntBoxFB(new ByteBuffer(bytes))
@@ -741,7 +741,7 @@ and IntSliceD =
       with
         | _ -> None
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromBytes(bytes: byte array) : IntSliceD option =
       IntSliceFB.GetRootAsIntSliceFB(new ByteBuffer(bytes))
@@ -822,7 +822,7 @@ and FloatBoxD =
       with
         | _ -> None
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromBytes(bytes: byte array) : FloatBoxD option =
       FloatBoxFB.GetRootAsFloatBoxFB(new ByteBuffer(bytes))
@@ -858,7 +858,7 @@ and FloatSliceD =
       with
         | _ -> None
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromBytes(bytes: byte array) : FloatSliceD option =
       FloatSliceFB.GetRootAsFloatSliceFB(new ByteBuffer(bytes))
@@ -939,7 +939,7 @@ and DoubleBoxD =
       with
         | _ -> None
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromBytes(bytes: byte array) : DoubleBoxD option =
       DoubleBoxFB.GetRootAsDoubleBoxFB(new ByteBuffer(bytes))
@@ -975,7 +975,7 @@ and DoubleSliceD =
       with
         | _ -> None
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromBytes(bytes: byte array) : DoubleSliceD option =
       DoubleSliceFB.GetRootAsDoubleSliceFB(new ByteBuffer(bytes))
@@ -1040,7 +1040,7 @@ and ByteBoxD =
       with
         | _ -> None
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromBytes(bytes: byte array) : ByteBoxD option =
       ByteBoxFB.GetRootAsByteBoxFB(new ByteBuffer(bytes))
@@ -1083,7 +1083,7 @@ and ByteSliceD =
       with
         | _ -> None
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromBytes(bytes: byte array) : ByteSliceD option =
       ByteSliceFB.GetRootAsByteSliceFB(new ByteBuffer(bytes))
@@ -1161,7 +1161,7 @@ and EnumBoxD =
       with
         | _ -> None
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromEnums(bytes: byte array) : EnumBoxD option =
       EnumBoxFB.GetRootAsEnumBoxFB(new ByteBuffer(bytes))
@@ -1212,7 +1212,7 @@ and EnumSliceD =
       with
         | _ -> None
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromEnums(bytes: byte array) : EnumSliceD option =
       EnumSliceFB.GetRootAsEnumSliceFB(new ByteBuffer(bytes))
@@ -1276,7 +1276,7 @@ and ColorBoxD =
       with
         | _ -> None
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromColors(bytes: byte array) : ColorBoxD option =
       ColorBoxFB.GetRootAsColorBoxFB(new ByteBuffer(bytes))
@@ -1309,7 +1309,7 @@ and ColorSliceD =
       ColorSpace.FromFB fb.Value
       |> Option.map (fun color -> { Index = fb.Index; Value = color })
 
-    member self.ToColors() : byte array = buildBuffer self
+    member self.ToColors() : byte array = Binary.buildBuffer self
 
     static member FromColors(bytes: byte array) : ColorSliceD option =
       ColorSliceFB.GetRootAsColorSliceFB(new ByteBuffer(bytes))
@@ -1388,7 +1388,7 @@ and StringBoxD =
           ; MaxChars   = fb.MaxChars
           ; Slices     = slices })
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromStrings(bytes: byte array) : StringBoxD option =
       StringBoxFB.GetRootAsStringBoxFB(new ByteBuffer(bytes))
@@ -1426,7 +1426,7 @@ and StringSliceD =
       with
         | _ -> None
 
-    member self.ToStrings() : byte array = buildBuffer self
+    member self.ToStrings() : byte array = Binary.buildBuffer self
 
     static member FromStrings(bytes: byte array) : StringSliceD option =
       StringSliceFB.GetRootAsStringSliceFB(new ByteBuffer(bytes))
@@ -1491,7 +1491,7 @@ and CompoundBoxD =
       with
         | _ -> None
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromCompounds(bytes: byte array) : CompoundBoxD option =
       CompoundBoxFB.GetRootAsCompoundBoxFB(new ByteBuffer(bytes))
@@ -1538,7 +1538,7 @@ and CompoundSliceD =
       with
         | _ -> None
 
-    member self.ToCompounds() : byte array = buildBuffer self
+    member self.ToCompounds() : byte array = Binary.buildBuffer self
 
     static member FromCompounds(bytes: byte array) : CompoundSliceD option =
       CompoundSliceFB.GetRootAsCompoundSliceFB(new ByteBuffer(bytes))
@@ -1806,7 +1806,7 @@ and Slice =
 
       | _ -> None
 
-    member self.ToBytes() : byte array = buildBuffer self
+    member self.ToBytes() : byte array = Binary.buildBuffer self
 
     static member FromBytes(bytes: byte array) : Slice option =
       SliceFB.GetRootAsSliceFB(new ByteBuffer(bytes))

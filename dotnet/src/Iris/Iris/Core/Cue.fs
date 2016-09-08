@@ -42,7 +42,7 @@ type Cue =
       CueFB.AddIOBoxes(builder, ioboxes)
       CueFB.EndCueFB(builder)
 
-    member self.ToBytes () = buildBuffer self
+    member self.ToBytes () = Binary.buildBuffer self
 
     static member FromBytes (bytes: byte array) : Cue option =
       let msg = CueFB.GetRootAsCueFB(new ByteBuffer(bytes))

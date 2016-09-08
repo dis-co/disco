@@ -42,7 +42,7 @@ type RGBAValue =
       with
         | _ -> None
 
-    member self.ToBytes () = buildBuffer self
+    member self.ToBytes () = Binary.buildBuffer self
 
     static member FromBytes(bytes: byte array) =
       RGBAValueFB.GetRootAsRGBAValueFB(new ByteBuffer(bytes))
@@ -79,7 +79,7 @@ type HSLAValue =
       with
         | _ -> None
 
-    member self.ToBytes () = buildBuffer self
+    member self.ToBytes () = Binary.buildBuffer self
 
     static member FromBytes(bytes: byte array) =
       HSLAValueFB.GetRootAsHSLAValueFB(new ByteBuffer(bytes))
@@ -123,7 +123,7 @@ type ColorSpace =
         |> Option.map HSLA
       | _ -> None
 
-    member self.ToBytes () = buildBuffer self
+    member self.ToBytes () = Binary.buildBuffer self
 
     static member FromBytes(bytes: byte array) =
       ColorSpaceFB.GetRootAsColorSpaceFB(new ByteBuffer(bytes))
