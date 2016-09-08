@@ -242,6 +242,28 @@ module SerializationTests =
                   expect "Should be structurally the same" msg id remsg)
                 errors
 
+  let mktags _ =
+    let rand = new System.Random()
+    [| for n in 0 .. rand.Next(2,8) do
+        yield Id.Create() |> string |]
+
+  let ioboxes _ =
+    [| IOBox.Bang       (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
+    ; IOBox.Toggle     (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
+    ; IOBox.String     (Id.Create(), "string",    Id.Create(), mktags (), [|{ Index = 0UL; Value = "one"   }|])
+    ; IOBox.MultiLine  (Id.Create(), "multiline", Id.Create(), mktags (), [|{ Index = 0UL; Value = "two"   }|])
+    ; IOBox.FileName   (Id.Create(), "filename",  Id.Create(), mktags (), "haha", [|{ Index = 0UL; Value = "three" }|])
+    ; IOBox.Directory  (Id.Create(), "directory", Id.Create(), mktags (), "hmmm", [|{ Index = 0UL; Value = "four"  }|])
+    ; IOBox.Url        (Id.Create(), "url",       Id.Create(), mktags (), [|{ Index = 0UL; Value = "five"  }|])
+    ; IOBox.IP         (Id.Create(), "ip",        Id.Create(), mktags (), [|{ Index = 0UL; Value = "six"   }|])
+    ; IOBox.Float      (Id.Create(), "float",     Id.Create(), mktags (), [|{ Index = 0UL; Value = 3.0    }|])
+    ; IOBox.Double     (Id.Create(), "double",    Id.Create(), mktags (), [|{ Index = 0UL; Value = double 3.0 }|])
+    ; IOBox.Bytes      (Id.Create(), "bytes",     Id.Create(), mktags (), [|{ Index = 0UL; Value = [| 2uy; 9uy |] }|])
+    ; IOBox.Color      (Id.Create(), "rgba",      Id.Create(), mktags (), [|{ Index = 0UL; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
+    ; IOBox.Color      (Id.Create(), "hsla",      Id.Create(), mktags (), [|{ Index = 0UL; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
+    ; IOBox.Enum       (Id.Create(), "enum",      Id.Create(), mktags (), [|{ Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|] , [|{ Index = 0UL; Value = { Key = "one"; Value = "two" }}|])
+    |]
+
   //   ____
   //  / ___|   _  ___
   // | |  | | | |/ _ \
@@ -251,9 +273,12 @@ module SerializationTests =
   let test_validate_cue_serialization =
     testCase "Validate Cue Serialization" <| fun _ ->
 
-      let cue : Cue = { Id = Id.Create(); Name = "Cue 1"; IOBoxes = [| |] }
-      let recue = cue |> Binary.encode |> Binary.decode |> Option.get
+      let cue : Cue = { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes () }
 
+      let recue = cue |> Binary.encode |> Binary.decode |> Option.get
+      expect "should be same" cue id recue
+
+      let recue = cue |> Json.encode |> Json.decode |> Option.get
       expect "should be same" cue id recue
 
   //  ____       _       _
@@ -265,9 +290,12 @@ module SerializationTests =
   let test_validate_patch_serialization =
     testCase "Validate Patch Serialization" <| fun _ ->
 
-      let patch : Patch = { Id = Id.Create(); Name = "Patch 1"; IOBoxes = [| |] }
-      let repatch = patch |> Binary.encode |> Binary.decode |> Option.get
+      let patch : Patch = { Id = Id.Create(); Name = "Patch 1"; IOBoxes = ioboxes () }
 
+      let repatch = patch |> Binary.encode |> Binary.decode |> Option.get
+      expect "Should be structurally equivalent" patch id repatch
+
+      let repatch = patch |> Json.encode |> Json.decode |> Option.get
       expect "Should be structurally equivalent" patch id repatch
 
   //  ____  _ _
@@ -285,13 +313,16 @@ module SerializationTests =
       ; FloatSlice    { Index = 0UL; Value = 1234.0  }
       ; DoubleSlice   { Index = 0UL; Value = 1234.0  }
       ; ByteSlice     { Index = 0UL; Value = [| 0uy |] }
-      ; EnumSlice     { Index = 0UL; Value = "one", "two" }
+      ; EnumSlice     { Index = 0UL; Value = { Key = "one"; Value = "two" }}
       ; ColorSlice    { Index = 0UL; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }
       ; ColorSlice    { Index = 0UL; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }
-      ; CompoundSlice { Index = 0UL; Value = [| |]     } |]
+      ; CompoundSlice { Index = 0UL; Value = ioboxes () } |]
       |> Array.iter
         (fun slice ->
           let reslice = slice |> Binary.encode |> Binary.decode |> Option.get
+          expect "Should be structurally equivalent" slice id reslice
+
+          let reslice = slice |> Json.encode |> Json.decode |> Option.get
           expect "Should be structurally equivalent" slice id reslice)
 
   //  ___ ___  ____
@@ -303,35 +334,18 @@ module SerializationTests =
   let test_validate_iobox_serialization =
     testCase "Validate IOBox Serialization" <| fun _ ->
       let rand = new System.Random()
-      let mktags _ =
-        [| for n in 0 .. rand.Next(2,8) do
-            yield Id.Create() |> string |]
 
       let check iobox =
         iobox |> Binary.encode |> Binary.decode |> Option.get
         |> expect "Should be structurally equivalent" iobox id
 
-      let ioboxes =
-        [| IOBox.Bang       (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
-        ; IOBox.Toggle     (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
-        ; IOBox.String     (Id.Create(), "string",    Id.Create(), mktags (), [|{ Index = 0UL; Value = "one"   }|])
-        ; IOBox.MultiLine  (Id.Create(), "multiline", Id.Create(), mktags (), [|{ Index = 0UL; Value = "two"   }|])
-        ; IOBox.FileName   (Id.Create(), "filename",  Id.Create(), mktags (), "haha", [|{ Index = 0UL; Value = "three" }|])
-        ; IOBox.Directory  (Id.Create(), "directory", Id.Create(), mktags (), "hmmm", [|{ Index = 0UL; Value = "four"  }|])
-        ; IOBox.Url        (Id.Create(), "url",       Id.Create(), mktags (), [|{ Index = 0UL; Value = "five"  }|])
-        ; IOBox.IP         (Id.Create(), "ip",        Id.Create(), mktags (), [|{ Index = 0UL; Value = "six"   }|])
-        ; IOBox.Float      (Id.Create(), "float",     Id.Create(), mktags (), [|{ Index = 0UL; Value = 3.0    }|])
-        ; IOBox.Double     (Id.Create(), "double",    Id.Create(), mktags (), [|{ Index = 0UL; Value = double 3.0 }|])
-        ; IOBox.Bytes      (Id.Create(), "bytes",     Id.Create(), mktags (), [|{ Index = 0UL; Value = [| 2uy; 9uy |] }|])
-        ; IOBox.Color      (Id.Create(), "rgba",      Id.Create(), mktags (), [|{ Index = 0UL; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
-        ; IOBox.Color      (Id.Create(), "hsla",      Id.Create(), mktags (), [|{ Index = 0UL; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
-        ; IOBox.Enum       (Id.Create(), "enum",      Id.Create(), mktags (), [|("one","two"); ("three","four")|] , [|{ Index = 0UL; Value = "one", "two" }|])
-        |]
+        iobox |> Json.encode |> Json.decode |> Option.get
+        |> expect "Should be structurally equivalent" iobox id
 
-      Array.iter check ioboxes
+      Array.iter check (ioboxes ())
 
       // compound
-      let compound = IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0UL; Value = ioboxes }|])
+      let compound = IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0UL; Value = ioboxes () }|])
       check compound
 
       // nested compound :)
@@ -357,29 +371,12 @@ module SerializationTests =
         let slice : StringSliceD = { Index = 0UL; Value = "hello" }
         IOBox.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
 
-      let ioboxes =
-        [| IOBox.Bang       (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
-        ; IOBox.Toggle     (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
-        ; IOBox.String     (Id.Create(), "string",    Id.Create(), mktags (), [|{ Index = 0UL; Value = "one"   }|])
-        ; IOBox.MultiLine  (Id.Create(), "multiline", Id.Create(), mktags (), [|{ Index = 0UL; Value = "two"   }|])
-        ; IOBox.FileName   (Id.Create(), "filename",  Id.Create(), mktags (), "haha", [|{ Index = 0UL; Value = "three" }|])
-        ; IOBox.Directory  (Id.Create(), "directory", Id.Create(), mktags (), "hmmm", [|{ Index = 0UL; Value = "four"  }|])
-        ; IOBox.Url        (Id.Create(), "url",       Id.Create(), mktags (), [|{ Index = 0UL; Value = "five"  }|])
-        ; IOBox.IP         (Id.Create(), "ip",        Id.Create(), mktags (), [|{ Index = 0UL; Value = "six"   }|])
-        ; IOBox.Float      (Id.Create(), "float",     Id.Create(), mktags (), [|{ Index = 0UL; Value = 3.0    }|])
-        ; IOBox.Double     (Id.Create(), "double",    Id.Create(), mktags (), [|{ Index = 0UL; Value = double 3.0 }|])
-        ; IOBox.Bytes      (Id.Create(), "bytes",     Id.Create(), mktags (), [|{ Index = 0UL; Value = [| 2uy; 9uy |] }|])
-        ; IOBox.Color      (Id.Create(), "rgba",      Id.Create(), mktags (), [|{ Index = 0UL; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
-        ; IOBox.Color      (Id.Create(), "hsla",      Id.Create(), mktags (), [|{ Index = 0UL; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
-        ; IOBox.Enum       (Id.Create(), "enum",      Id.Create(), mktags (), [|("one","two"); ("three","four")|] , [|{ Index = 0UL; Value = "one", "two" }|])
-        |]
-
-      [ AddCue    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes }
-      ; UpdateCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = ioboxes }
-      ; RemoveCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = ioboxes }
-      ; AddPatch    { Id = Id.Create(); Name = "Patch 1"; IOBoxes = ioboxes }
-      ; UpdatePatch { Id = Id.Create(); Name = "Patch 2"; IOBoxes = ioboxes }
-      ; RemovePatch { Id = Id.Create(); Name = "Patch 3"; IOBoxes = ioboxes }
+      [ AddCue    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes () }
+      ; UpdateCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = ioboxes () }
+      ; RemoveCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = ioboxes () }
+      ; AddPatch    { Id = Id.Create(); Name = "Patch 1"; IOBoxes = ioboxes () }
+      ; UpdatePatch { Id = Id.Create(); Name = "Patch 2"; IOBoxes = ioboxes () }
+      ; RemovePatch { Id = Id.Create(); Name = "Patch 3"; IOBoxes = ioboxes () }
       ; AddIOBox    <| mkIOBox ()
       ; UpdateIOBox <| mkIOBox ()
       ; RemoveIOBox <| mkIOBox ()
@@ -391,6 +388,9 @@ module SerializationTests =
       ]
       |> List.iter (fun cmd ->
                      let remsg = cmd |> Binary.encode |> Binary.decode |> Option.get
+                     expect "Should be structurally the same" cmd id remsg
+
+                     let remsg = cmd |> Json.encode |> Json.decode |> Option.get
                      expect "Should be structurally the same" cmd id remsg)
 
   //  ____  _        _       __  __            _     _
@@ -415,29 +415,12 @@ module SerializationTests =
         let slice : StringSliceD = { Index = 0UL; Value = "hello" }
         IOBox.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
 
-      let ioboxes =
-        [| IOBox.Bang       (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
-        ; IOBox.Toggle     (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
-        ; IOBox.String     (Id.Create(), "string",    Id.Create(), mktags (), [|{ Index = 0UL; Value = "one"   }|])
-        ; IOBox.MultiLine  (Id.Create(), "multiline", Id.Create(), mktags (), [|{ Index = 0UL; Value = "two"   }|])
-        ; IOBox.FileName   (Id.Create(), "filename",  Id.Create(), mktags (), "haha", [|{ Index = 0UL; Value = "three" }|])
-        ; IOBox.Directory  (Id.Create(), "directory", Id.Create(), mktags (), "hmmm", [|{ Index = 0UL; Value = "four"  }|])
-        ; IOBox.Url        (Id.Create(), "url",       Id.Create(), mktags (), [|{ Index = 0UL; Value = "five"  }|])
-        ; IOBox.IP         (Id.Create(), "ip",        Id.Create(), mktags (), [|{ Index = 0UL; Value = "six"   }|])
-        ; IOBox.Float      (Id.Create(), "float",     Id.Create(), mktags (), [|{ Index = 0UL; Value = 3.0    }|])
-        ; IOBox.Double     (Id.Create(), "double",    Id.Create(), mktags (), [|{ Index = 0UL; Value = double 3.0 }|])
-        ; IOBox.Bytes      (Id.Create(), "bytes",     Id.Create(), mktags (), [|{ Index = 0UL; Value = [| 2uy; 9uy |] }|])
-        ; IOBox.Color      (Id.Create(), "rgba",      Id.Create(), mktags (), [|{ Index = 0UL; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
-        ; IOBox.Color      (Id.Create(), "hsla",      Id.Create(), mktags (), [|{ Index = 0UL; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
-        ; IOBox.Enum       (Id.Create(), "enum",      Id.Create(), mktags (), [|("one","two"); ("three","four")|] , [|{ Index = 0UL; Value = "one", "two" }|])
-        |]
-
-      [ AddCue    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes }
-      ; UpdateCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = ioboxes }
-      ; RemoveCue { Id = Id.Create(); Name = "Cue 3"; IOBoxes = ioboxes }
-      ; AddPatch    { Id = Id.Create(); Name = "Patch 1"; IOBoxes = ioboxes }
-      ; UpdatePatch { Id = Id.Create(); Name = "Patch 2"; IOBoxes = ioboxes }
-      ; RemovePatch { Id = Id.Create(); Name = "Patch 3"; IOBoxes = ioboxes }
+      [ AddCue    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes () }
+      ; UpdateCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = ioboxes () }
+      ; RemoveCue { Id = Id.Create(); Name = "Cue 3"; IOBoxes = ioboxes () }
+      ; AddPatch    { Id = Id.Create(); Name = "Patch 1"; IOBoxes = ioboxes () }
+      ; UpdatePatch { Id = Id.Create(); Name = "Patch 2"; IOBoxes = ioboxes () }
+      ; RemovePatch { Id = Id.Create(); Name = "Patch 3"; IOBoxes = ioboxes () }
       ; AddIOBox    <| mkIOBox ()
       ; UpdateIOBox <| mkIOBox ()
       ; RemoveIOBox <| mkIOBox ()
@@ -451,6 +434,9 @@ module SerializationTests =
         (fun cmd ->
           let command = AppEvent cmd
           let remsg = command |> Binary.encode |> Binary.decode
+          expect "Should be structurally the same" command id (Option.get remsg)
+
+          let remsg = command |> Json.encode |> Json.decode
           expect "Should be structurally the same" command id (Option.get remsg))
 
   //     _    _ _   _____         _
