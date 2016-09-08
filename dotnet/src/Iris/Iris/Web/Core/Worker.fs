@@ -112,7 +112,7 @@ module Worker =
 
 
 (* ///////////////////////////////////////////////////////////////////////////////
-       ____ _       _           _  ____            _            _
+      ____ _       _           _  ____            _            _
      / ___| | ___ | |__   __ _| |/ ___|___  _ __ | |_ _____  _| |_
     | |  _| |/ _ \| '_ \ / _` | | |   / _ \| '_ \| __/ _ \ \/ / __|
     | |_| | | (_) | |_) | (_| | | |__| (_) | | | | ||  __/>  <| |_
@@ -177,8 +177,7 @@ type GlobalContext() =
     let init _ =
       let sock = new WebSocket(addr)
 
-      sock.OnError <- fun err ->
-        self.Log (sprintf "Error: %A" err)
+      sock.OnError <- sprintf "Error: %A" >> self.Log
 
       sock.OnOpen <- fun _ ->
         self.Broadcast ClientMessage.Connected
@@ -187,6 +186,8 @@ type GlobalContext() =
         self.Broadcast ClientMessage.Disconnected
 
       sock.OnMessage <- fun (ev: MessageEvent<string>) ->
+        let parsed : ApplicationEvent = parse ev.Data
+        self.OnSocketMessage parsed
         self.Log ev.Data
 
       socket <- Some (addr, sock)
@@ -208,25 +209,14 @@ type GlobalContext() =
        ___) | (_) | (__|   <  __/ |_
       |____/ \___/ \___|_|\_\___|\__| Message Handler
 
-    *-------------------------------------------------------------------------*)
+   *-------------------------------------------------------------------------*)
 
-  // member __.OnSocketMessage(ev : MessageEvent<string>) : unit =
-  //   let msg : ApiAction = parse ev.Data
-
-  //   let handleRender msg =
-  //     store.Dispatch msg
-  //     __.Broadcast <| ClientMessage.Render(store.State)
-
-  //   match msg with
-  //     | AddPatch    patch -> PatchEvent(Create, patch) |> handleRender
-  //     | UpdatePatch patch -> PatchEvent(Update, patch) |> handleRender
-  //     | RemovePatch patch -> PatchEvent(Delete, patch) |> handleRender
-
-  //     | AddIOBox    iobox -> IOBoxEvent(Create, iobox) |> handleRender
-  //     | UpdateIOBox iobox -> IOBoxEvent(Update, iobox) |> handleRender
-  //     | RemoveIOBox iobox -> IOBoxEvent(Delete, iobox) |> handleRender
-
-  //     | LogStr str -> this.Log str
+  member self.OnSocketMessage(ev: ApplicationEvent) : unit =
+    match ev with
+    | LogMsg (level,str) -> self.Log (sprintf "[%A] %s" level str)
+    | _ ->
+      store.Dispatch ev
+      self.Broadcast <| ClientMessage.Render(store.State)
 
   (*-------------------------------------------------------------------------*
        ____ _ _            _
@@ -237,39 +227,40 @@ type GlobalContext() =
 
    *------------------------------------------------------------------------*)
 
-  member __.OnClientMessage(msg : MessageEvent<ClientMessage<State>>) : unit =
+  member self.OnClientMessage(msg : MessageEvent<ClientMessage<State>>) : unit =
     match msg.Data with
-    | ClientMessage.Close(session) -> __.UnRegister(session)
+    | ClientMessage.Close(session) -> self.UnRegister(session)
 
     | ClientMessage.Stop ->
-      __.Broadcast <| ClientMessage.Stopped
-      __.Close ()
+      self.Broadcast <| ClientMessage.Stopped
+      self.Close ()
 
     | ClientMessage.Connect(address) ->
-      __.Log (sprintf "connecting to %s" address)
-      __.ConnectServer(address)
+      self.Log (sprintf "connecting to %s" address)
+      self.ConnectServer(address)
 
-    | ClientMessage.Event(_, ev) -> __.SendServer(ev)
+    | ClientMessage.Event(_, ev) -> self.SendServer(ev)
 
-    | _ -> __.Log "clients-only message ignored"
+    | _ -> self.Log "clients-only message ignored"
 
-  member __.Register (port : MessagePort<ClientMessage<State>>) =
+
+  member self.Register (port : MessagePort<ClientMessage<State>>) =
     count <- count + 1                     // increase the connection count
     let session = mkGuid ()               // create a session id
-    port.OnMessage <- __.OnClientMessage   // register handler for client messages
+    port.OnMessage <- self.OnClientMessage   // register handler for client messages
     ports.set(session, port)              // remember the port in our map
     |> ignore
 
     ClientMessage.Initialized(session)    // tell client all is good
-    |> __.SendClient port
+    |> self.SendClient port
 
     ClientMessage.Render(store.State)     // ask client to render
-    |> __.SendClient port
+    |> self.SendClient port
 
-  member __.UnRegister (session: Session) =
+  member self.UnRegister (session: Session) =
     count <- count - 1
     if ports.delete(session) then
-      __.Broadcast(ClientMessage.Closed(session))
+      self.Broadcast(ClientMessage.Closed(session))
 
   (* -------------------------------------------------------------------------
 
@@ -282,28 +273,28 @@ type GlobalContext() =
 
   ------------------------------------------------------------------------- *)
 
-  member __.Store  with get () = store
-  member __.Socket with get () = socket
+  member self.Store  with get () = store
+  member self.Socket with get () = socket
 
-  member __.SendServer (msg: ApplicationEvent) =
+  member self.SendServer (msg: ApplicationEvent) =
     match socket with
     | Some (_, server) -> server.Send(stringify msg)
-    | _                -> __.Log "Cannot update server: no connection."
+    | _                -> self.Log "Cannot update server: no connection."
 
-  member __.SendClient (port: ClientMessagePort) (msg: ClientMessage<State>) =
+  member self.SendClient (port: ClientMessagePort) (msg: ClientMessage<State>) =
     port.PostMessage(msg)
 
-  member __.Broadcast (msg : ClientMessage<State>) : unit =
-    let handler port _ _ = __.SendClient port msg
+  member self.Broadcast (msg : ClientMessage<State>) : unit =
+    let handler port _ _ = self.SendClient port msg
     let func = new System.Func<ClientMessagePort,Session,PortMap,unit> (handler)
     ports.forEach(func)
 
-  member __.Multicast (session: Session, msg: ClientMessage<State>) : unit =
+  member self.Multicast (session: Session, msg: ClientMessage<State>) : unit =
     let handler port token _ =
       if session <> token then
-        __.SendClient port msg
+        self.SendClient port msg
     let func = new System.Func<ClientMessagePort,Session,PortMap,unit> (handler)
     ports.forEach(func)
 
-  member __.Log (thing : ClientLog) : unit =
-    __.Broadcast <| ClientMessage.ClientLog(thing)
+  member self.Log (thing : ClientLog) : unit =
+    self.Broadcast <| ClientMessage.ClientLog(thing)
