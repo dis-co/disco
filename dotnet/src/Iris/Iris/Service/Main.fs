@@ -96,8 +96,8 @@ module Main =
   //  \____|_|  \___|\__,_|\__\___|
 
   let createDataDir (parsed: ParseResults<CLIArguments>) =
-    let baseDir = parsed.GetResult <@ ProjectDir @>
-    let name = parsed.GetResult <@ ProjectName @>
+    let baseDir = parsed.GetResult <@ Dir @>
+    let name = parsed.GetResult <@ Name @>
     let dir = IO.Path.Combine(baseDir, name)
     let raftDir = IO.Path.Combine(IO.Path.GetFullPath(dir), RAFT_DIRECTORY)
 
@@ -121,12 +121,12 @@ module Main =
         |> updateEngine
           { def.Config.RaftConfig with
               DataDir     = raftDir
-              BindAddress = parsed.GetResult <@ BindAddress @> }
+              BindAddress = parsed.GetResult <@ Bind @> }
         |> updatePorts
           { def.Config.PortConfig with
-              WebSocket = parsed.GetResult <@ WsPort @>
-              Http = parsed.GetResult <@ WebPort @>
-              Raft = parsed.GetResult <@ RaftPort @> }
+              WebSocket = parsed.GetResult <@ Ws @>
+              Http = parsed.GetResult <@ Web @>
+              Raft = parsed.GetResult <@ Raft @> }
       { def with
           Path = Some dir
           Config = cfg }
@@ -210,7 +210,7 @@ module Main =
     if parsed.Contains <@ Create @> then
       createDataDir parsed
     else
-      match parsed.TryGetResult <@ ProjectDir @> with
+      match parsed.TryGetResult <@ Dir @> with
         | Some dir ->
           if parsed.Contains <@ Start @> then
             startRaft dir
