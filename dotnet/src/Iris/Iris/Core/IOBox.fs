@@ -1577,6 +1577,19 @@ and Slice =
         | ColorSlice    data -> data.Index
         | CompoundSlice data -> data.Index
 
+    member self.Value
+      with get () =
+        match self with
+        | StringSlice   data -> data.Value :> obj
+        | IntSlice      data -> data.Value :> obj
+        | FloatSlice    data -> data.Value :> obj
+        | DoubleSlice   data -> data.Value :> obj
+        | BoolSlice     data -> data.Value :> obj
+        | ByteSlice     data -> data.Value :> obj
+        | EnumSlice     data -> data.Value :> obj
+        | ColorSlice    data -> data.Value :> obj
+        | CompoundSlice data -> data.Value :> obj
+
     member self.StringValue
       with get () =
         match self with

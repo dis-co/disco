@@ -6,6 +6,7 @@ module State =
   open Fable.Core
   open Fable.Import
   open Iris.Core
+  open Iris.Raft
 
   (*   ____  _        _
       / ___|| |_ __ _| |_ ___
@@ -18,12 +19,14 @@ module State =
   *)
 
   type State =
-    { Patches : Patch array
-    ; Cues    : Cue   array }
+    { Patches : Patch    array
+    ; Cues    : Cue      array
+    ; Nodes   : RaftNode array }
 
     static member Empty =
-      { Patches = Array.empty
-      ; Cues    = Array.empty }
+      { Patches = [| |]
+      ; Cues    = [| |]
+      ; Nodes   = [| |] }
 
     (*  ADD  *)
     member state.AddPatch (patch : Patch) =
@@ -43,7 +46,11 @@ module State =
 
     member state.AddCue (cue : Cue) =
       let copy = Array.copy state.Cues
-      { state with Cues =  Array.append copy [|cue|] }
+      { state with Cues =  Array.append copy [| cue |] }
+
+    member state.AddNode (node: RaftNode) =
+      let copy = Array.copy state.Nodes
+      { state with Nodes =  Array.append copy [| node |] }
 
     (*  UPDATE  *)
     member state.UpdatePatch (patch : Patch) =
@@ -63,6 +70,11 @@ module State =
         if cue.Id = cue'.Id then cue' else cue
       { state with Cues = Array.map mapper state.Cues }
 
+    member state.UpdateNode (node: RaftNode) =
+      let mapper (_node : RaftNode) =
+        if _node.Id = node.Id then node else _node
+      { state with Nodes = Array.map mapper state.Nodes }
+
     (* REMOVE *)
     member state.RemovePatch (patch : Patch) =
       let pred (patch' : Patch) = patch.Id <> patch'.Id
@@ -78,3 +90,6 @@ module State =
         then Patch.RemoveIOBox patch iobox
         else patch
       { state with Patches = Array.map updater state.Patches }
+
+    member state.RemoveNode (node: RaftNode) =
+      { state with Nodes = Array.filter (fun other -> other.Id <> node.Id) state.Nodes }

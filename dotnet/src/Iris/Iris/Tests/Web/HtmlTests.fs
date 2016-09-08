@@ -23,7 +23,7 @@ module Html =
        finish()
 
     (* -------------------------------------------------------------------------- *)
-    test "class should shouLD BE SPECIFIED with `class'` combinator" <| fun finish ->
+    test "class should shouLD be specified with `class'` combinator" <| fun finish ->
        let klass = "there"
        let comb = H1 [ Class klass ] Array.empty
        let elm = renderHtml comb |> createElement
@@ -71,10 +71,10 @@ module Html =
     suite "Test.Units.Html - event callbacks"
     (* -------------------------------------------------------------------------- *)
 
-    test "callback function should be rendered and called" <| fun finish ->
+    test "function should be rendered and called" <| fun finish ->
       let elm =
         Div [ OnClick (fun ev -> finish()) ] Array.empty
         |> renderHtml
         |> createElement
 
-      elm.click () |> ignore
+      elm.click() |> ignore

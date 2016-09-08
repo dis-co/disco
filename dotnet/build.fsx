@@ -383,19 +383,6 @@ Target "BuildWorkerFsProj" (buildDebug "Frontend.fsproj")
 let webtestsdir = baseDir @@ "Iris" @@ "Tests" @@ "Web"
 
 Target "BuildWebTests" (fun _ ->
-    let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Web.Tests"
-    let jsDir = testsDir @@ "js"
-    let cssDir = testsDir @@ "css"
-    let npmMods = if isUnix then "./node_modules" else @".\node_modules"
-    let assetsDir = baseDir @@ "assets" @@ "frontend"
-
-    CopyDir testsDir assetsDir (konst true)
-    CopyFile cssDir (npmMods @@ "mocha" @@ "mocha.css")
-    CopyFile jsDir  (npmMods @@ "mocha" @@ "mocha.js")
-    CopyFile jsDir  (npmMods @@ "babel-polyfill" @@ "dist" @@ "polyfill.js")
-    CopyFile jsDir  (npmMods @@ "virtual-dom" @@ "dist" @@ "virtual-dom.js")
-    CopyFile (jsDir @@ "expect.js") (npmMods @@ "expect.js" @@ "index.js")
-
     runFable "build-tests-release" webtestsdir ())
 
 Target "WatchWebTests" (runFable "run watch-tests" webtestsdir)
@@ -403,7 +390,7 @@ Target "WatchWebTests" (runFable "run watch-tests" webtestsdir)
 Target "BuildWebTestsFsProj" (buildDebug "Web.Tests.fsproj")
 
 Target "RunWebTests" (fun _ ->
-    let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Web.Tests"
+    let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Iris" @@ "assets"
 
     match useNix with
     | true ->
@@ -604,7 +591,8 @@ Target "Release" DoNothing
 "CreateArchive"
 ==> "Release"
 
-"BuildWebTests"
+"BuildDebugService"
+==> "BuildWebTests"
 ==> "RunWebTests"
 
 //  ____       _                    _    _ _

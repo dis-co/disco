@@ -9,6 +9,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "virtual-dom": "^2.1.1"
+    "babel-polyfill": "^6.13.0",
+    "expect.js": "^0.3.1",
+    "mocha": "^3.0.2",
+    "virtual-dom": "2.1.1"
   }
 }

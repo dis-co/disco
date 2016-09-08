@@ -6,7 +6,7 @@ var cfg = {
   entry: "./Main.js",
   context: path.join(__dirname, "..", "..", "..", "bin", "Debug", "Iris", "Tests", "Web"),
   output: {
-    path: path.join(__dirname, "..", "..", "..","bin","Debug","Web.Tests","js"),
+    path: path.join(__dirname, "..", "..", "..","bin","Debug","Iris","assets","js"),
     filename: "iris.tests.js"
   },
   module: {

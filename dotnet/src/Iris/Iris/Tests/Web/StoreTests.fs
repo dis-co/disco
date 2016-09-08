@@ -22,7 +22,7 @@ module Store =
 
   let main () =
     (* ----------------------------------------------------------------------- *)
-    suite "Test.Units.Store - Immutability"
+    suite "Test.Units.Store - Immutability:"
     (* ----------------------------------------------------------------------- *)
 
     withStore <| fun patch store ->

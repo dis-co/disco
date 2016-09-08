@@ -3,14 +3,13 @@
   <head>
     <title>Iris Browser Tests</title>
     <meta charset="utf-8">
-    <link rel="stylesheet" href="css/mocha.css">
+    <link rel="stylesheet" href="node_modules/mocha/mocha.css">
 
-    <script src="js/polyfill.js"></script>
-    <script src="js/virtual-dom.js"></script>
+    <script src="node_modules/virtual-dom/dist/virtual-dom.js"></script>
+    <script src="node_modules/babel-polyfill/dist/polyfill.js"></script>
     <script src="js/test-plugins.js"></script>
-    <script src="js/expect.js"></script>
-    <script src="js/mocha.js"></script>
-
+    <script src="node_modules/expect.js/index.js"></script>
+    <script src="node_modules/mocha/mocha.js"></script>
   </head>
   <body>
     <h2 style="margin: 50px 65px;">
@@ -19,11 +18,6 @@
 
     <div id="content"></div>
     <div id="mocha"></div>
-
-    <!-- <script src="dependencies/rxjs/dist/rx.all.js"></script> -->
-    <!-- <script src="dependencies/jquery/dist/jquery.js"></script> -->
-    <!-- <script src="dependencies/routie/dist/routie.js"></script> -->
-    <!-- <script src="dependencies/fabric.js/dist/fabric.js"></script> -->
 
     <script>mocha.setup('qunit')</script>
     <script src="js/iris.tests.js"></script>

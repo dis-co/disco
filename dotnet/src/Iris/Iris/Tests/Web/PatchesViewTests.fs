@@ -222,7 +222,7 @@ module PatchesView =
         StringSlices [| { Index = 0UL; Value = value2 } |]
         |> iobox.SetSlices
 
-      store.Dispatch <| AddIOBox(updated1)
+      store.Dispatch <| UpdateIOBox(updated1)
 
       match Patch.FindIOBox store.State.Patches elid with
         | Some(box) ->
@@ -245,7 +245,7 @@ module PatchesView =
         StringSlices [| { Index = 0UL; Value = value3 } |]
         |> iobox.SetSlices
 
-      store.Dispatch <| AddIOBox(updated2)
+      store.Dispatch <| UpdateIOBox(updated2)
 
       match Patch.FindIOBox store.State.Patches elid with
         | Some(box) ->
