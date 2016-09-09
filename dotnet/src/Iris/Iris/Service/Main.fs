@@ -187,9 +187,14 @@ module Main =
   [<EntryPoint>]
   let main args =
 
-    Behavior.Bang
-    |> Json.encode
-    |> printfn "%s"
+    let cue : Cue =
+      { Id = Id.Create(); Name = "Cue Baby"; IOBoxes = [| |] }
+    in
+      cue
+      |> Json.encode
+      |> fun json -> printfn "%s" json; json
+      |> Json.decode<Cue>
+      |> printfn "Cue: %A"
 
     let parsed =
       try

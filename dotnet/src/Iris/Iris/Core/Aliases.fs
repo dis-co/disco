@@ -73,18 +73,40 @@ open Newtonsoft.Json.Linq
 
 #endif
 
-type Property = { Key: string; Value: string }
+type Property =
+  { Key: string; Value: string }
+
+  static member Type
+    with get () = "Iris.Core.Property"
 
 #if JAVASCRIPT
 #else
 
-  with
-    member self.ToJToken() =
-      let json = JToken.FromObject(self) :?> JObject
-      json.Add("$type", new JValue("Iris.Core.Property"))
-      json :> JToken
+  member self.ToJToken() =
+    let json = JToken.FromObject(self) :?> JObject
+    json.Add("$type", new JValue(Property.Type))
+    json :> JToken
 
-    member self.ToJson() =
-      self.ToJToken() |> string
+  member self.ToJson() =
+    self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : Property option =
+    try
+      let tag = string token.["$type"]
+      if tag = Property.Type then
+        { Key  = string token.["Key"]
+        ; Value = string token.["Value"]
+        } |> Some
+      else
+        failwithf "$type not correct or missing: %s" Property.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : Property option =
+    JObject.Parse(str) |> Property.FromJToken
 
 #endif

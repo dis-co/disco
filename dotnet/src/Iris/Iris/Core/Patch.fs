@@ -54,6 +54,8 @@ type Patch =
   static member HasPatch (patches : Patch array) (patch : Patch) : bool =
     Array.exists (fun p -> p.Id = patch.Id) patches
 
+  static member Type
+    with get () = "Iris.Core.Patch"
 
 #if JAVASCRIPT
 #else
@@ -106,7 +108,7 @@ type Patch =
 
   member self.ToJToken() =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.Patch"))
+    json.Add("$type", new JValue(Patch.Type))
     json.Add("Id", new JValue(string self.Id))
     json.Add("Name", new JValue(self.Name))
     json.Add("IOBoxes", new JArray(Array.map Json.tokenize self.IOBoxes))
@@ -115,5 +117,25 @@ type Patch =
   member self.ToJson() =
     self.ToJToken() |> string
 
+  static member FromJToken(token: JToken) : Patch option =
+    try
+      let tag = string token.["$type"]
+      if tag = Patch.Type then
+        { Id = Id (string token.["Id"])
+        ; Name = string token.["Name"]
+        ; IOBoxes = [| |]
+        }
+        |> Some
+      else
+        failwithf "$type not correct or missing: %s" Patch.Type
+    with
+      | exn ->
+        printfn "Could not deserialize patch json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : Patch option =
+    JObject.Parse(str) |> Patch.FromJToken
 
 #endif

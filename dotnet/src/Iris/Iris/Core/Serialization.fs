@@ -51,3 +51,6 @@ module Json =
 
   let inline tokenize (value: ^t when ^t : (member ToJToken : unit -> JToken)) : JToken =
     (^t : (member ToJToken : unit -> JToken) value)
+
+  let inline parse< ^t when ^t : (static member FromJToken : JToken -> ^t option)> (token: JToken) : ^t option =
+    (^t : (static member FromJToken : JToken -> ^t option) token)

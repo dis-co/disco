@@ -7,6 +7,7 @@ open Fable.Core
 #else
 
 open System
+open System.Text
 open FlatBuffers
 open Iris.Serialization.Raft
 open Newtonsoft.Json
@@ -25,43 +26,66 @@ type Behavior =
   | Toggle
   | Bang
 
+  static member Type
+    with get () = "Iris.Core.Behavior"
+
 #if JAVASCRIPT
 #else
-  with
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
 
-    static member FromFB (fb: BehaviorFB) =
-      match fb with
-      | BehaviorFB.ToggleFB -> Some Toggle
-      | BehaviorFB.BangFB   -> Some Bang
-      | _                       -> None
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
 
-    member self.ToOffset(builder: FlatBufferBuilder) : BehaviorFB =
-      match self with
-      | Toggle -> BehaviorFB.ToggleFB
-      | Bang   -> BehaviorFB.BangFB
+  static member FromFB (fb: BehaviorFB) =
+    match fb with
+    | BehaviorFB.ToggleFB -> Some Toggle
+    | BehaviorFB.BangFB   -> Some Bang
+    | _                       -> None
 
-    //      _
-    //     | |___  ___  _ __
-    //  _  | / __|/ _ \| '_ \
-    // | |_| \__ \ (_) | | | |
-    //  \___/|___/\___/|_| |_|
+  member self.ToOffset(builder: FlatBufferBuilder) : BehaviorFB =
+    match self with
+    | Toggle -> BehaviorFB.ToggleFB
+    | Bang   -> BehaviorFB.BangFB
 
-    member self.ToJToken () : JToken =
-      let json = new JObject()
-      json.Add("$type", new JValue("Iris.Core.Behavior"))
-      match self with
-      | Toggle -> json.Add("Case", new JValue("Toggle"))
-      | Bang   -> json.Add("Case", new JValue("Bang"))
-      json :> JToken
+  //      _
+  //     | |___  ___  _ __
+  //  _  | / __|/ _ \| '_ \
+  // | |_| \__ \ (_) | | | |
+  //  \___/|___/\___/|_| |_|
 
-    member self.ToJson() =
-      self.ToJToken() |> string
+  member self.ToJToken () : JToken =
+    let json = new JObject()
+    json.Add("$type", new JValue(Behavior.Type))
+    match self with
+    | Toggle -> json.Add("Case", new JValue("Toggle"))
+    | Bang   -> json.Add("Case", new JValue("Bang"))
+    json :> JToken
+
+  member self.ToJson() =
+    self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : Behavior option =
+    try
+      let tag = string token.["$type"]
+      if tag = Behavior.Type then
+        match string token.["Case"] with
+        | "Toggle" -> Some Toggle
+        | "Bang"   -> Some Bang
+        | _        -> None
+      else
+        failwithf "$type not correct or missing: %s" Behavior.Type
+    with
+      | exn ->
+        printfn "Could not deserialize behavior json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : Behavior option =
+    JObject.Parse(str) |> Behavior.FromJToken
 
 #endif
 
@@ -80,56 +104,114 @@ type StringType =
   | Url
   | IP
 
+  static member Type
+    with get () = "Iris.Core.StringType"
+
 #if JAVASCRIPT
 #else
-  with
 
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
 
-    static member FromFB (fb: StringTypeFB) =
-      match fb with
-      | StringTypeFB.SimpleFB    -> Some Simple
-      | StringTypeFB.MultiLineFB -> Some MultiLine
-      | StringTypeFB.FileNameFB  -> Some FileName
-      | StringTypeFB.DirectoryFB -> Some Directory
-      | StringTypeFB.UrlFB       -> Some Url
-      | StringTypeFB.IPFB        -> Some IP
-      | _                        -> None
+  static member FromFB (fb: StringTypeFB) =
+    match fb with
+    | StringTypeFB.SimpleFB    -> Some Simple
+    | StringTypeFB.MultiLineFB -> Some MultiLine
+    | StringTypeFB.FileNameFB  -> Some FileName
+    | StringTypeFB.DirectoryFB -> Some Directory
+    | StringTypeFB.UrlFB       -> Some Url
+    | StringTypeFB.IPFB        -> Some IP
+    | _                        -> None
 
-    member self.ToOffset(builder: FlatBufferBuilder) : StringTypeFB =
-      match self with
-      | Simple    -> StringTypeFB.SimpleFB
-      | MultiLine -> StringTypeFB.MultiLineFB
-      | FileName  -> StringTypeFB.FileNameFB
-      | Directory -> StringTypeFB.DirectoryFB
-      | Url       -> StringTypeFB.UrlFB
-      | IP        -> StringTypeFB.IPFB
+  member self.ToOffset(builder: FlatBufferBuilder) : StringTypeFB =
+    match self with
+    | Simple    -> StringTypeFB.SimpleFB
+    | MultiLine -> StringTypeFB.MultiLineFB
+    | FileName  -> StringTypeFB.FileNameFB
+    | Directory -> StringTypeFB.DirectoryFB
+    | Url       -> StringTypeFB.UrlFB
+    | IP        -> StringTypeFB.IPFB
 
-    //      _
-    //     | |___  ___  _ __
-    //  _  | / __|/ _ \| '_ \
-    // | |_| \__ \ (_) | | | |
-    //  \___/|___/\___/|_| |_|
+  //      _
+  //     | |___  ___  _ __
+  //  _  | / __|/ _ \| '_ \
+  // | |_| \__ \ (_) | | | |
+  //  \___/|___/\___/|_| |_|
 
-    member self.ToJToken () : JToken =
-      let json = new JObject()
-      json.Add("$type", new JValue("Iris.Core.StringType"))
-      match self with
-      | Simple    -> json.Add("Case", new JValue("Simple"))
-      | MultiLine -> json.Add("Case", new JValue("MultiLine"))
-      | FileName  -> json.Add("Case", new JValue("FileName"))
-      | Directory -> json.Add("Case", new JValue("Directory"))
-      | Url       -> json.Add("Case", new JValue("Url"))
-      | IP        -> json.Add("Case", new JValue("IP"))
-      json :> JToken
+  member self.ToJToken () : JToken =
+    let json = new JObject()
+    json.Add("$type", new JValue(StringType.Type))
+    match self with
+    | Simple    -> json.Add("Case", new JValue("Simple"))
+    | MultiLine -> json.Add("Case", new JValue("MultiLine"))
+    | FileName  -> json.Add("Case", new JValue("FileName"))
+    | Directory -> json.Add("Case", new JValue("Directory"))
+    | Url       -> json.Add("Case", new JValue("Url"))
+    | IP        -> json.Add("Case", new JValue("IP"))
+    json :> JToken
 
-    member self.ToJson() =
-      self.ToJToken() |> string
+  member self.ToJson() =
+    self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : StringType option =
+    try
+      let tag = string token.["$type"]
+      if tag = StringType.Type then
+        match string token.["Case"] with
+        | "Simple"    -> Some Simple
+        | "MultiLine" -> Some MultiLine
+        | "FileName"  -> Some FileName
+        | "Directory" -> Some Directory
+        | "Url"       -> Some Url
+        | "IP"        -> Some IP
+        | _           -> None
+      else
+        failwithf "$type not correct or missing: %s" StringType.Type
+    with
+      | exn ->
+        printfn "Could not deserialize string type json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : StringType option =
+    JObject.Parse(str) |> StringType.FromJToken
+
+#endif
+
+
+#if JAVASCRIPT
+#else
+
+[<AutoOpen>]
+module JsonUtils =
+
+  let parseTags (token: JToken) : Tag array =
+    let jarr = new JArray(token.["Tags"])
+    let arr = Array.zeroCreate jarr.Count
+
+    for i in 0 .. (jarr.Count - 1) do
+      arr.[i] <- string jarr.[i]
+
+    arr
+
+  let inline parseSlices (token: JToken) =
+    let jarr = new JArray(token.["Slices"])
+    let arr = Array.zeroCreate jarr.Count
+
+    for i in 0 .. (jarr.Count - 1) do
+      Json.parse jarr.[i]
+      |> Option.map (fun slice -> arr.[i] <- slice)
+      |> ignore
+
+    arr
+
+  let parseIdField (token: JToken) (name: string) =
+    string token.[name] |> Id
 
 #endif
 
@@ -151,6 +233,9 @@ type IOBox =
   | Compound  of CompoundBoxD
 
   with
+    static member Type
+      with get () = "Iris.Core.IOBox"
+
     member self.Id
       with get () =
         match self with
@@ -587,7 +672,7 @@ type IOBox =
 
     member self.ToJToken () =
       let json = new JObject()
-      json.Add("$type", new JValue("Iris.Core.IOBox"))
+      json.Add("$type", new JValue(IOBox.Type))
 
       let add (case: string) token =
         json.Add("Case", new JValue(case))
@@ -609,6 +694,40 @@ type IOBox =
     member self.ToJson() =
       self.ToJToken() |> string
 
+    static member FromJToken(token: JToken) : IOBox option =
+      try
+        let tag = string token.["$type"]
+
+        let inline parseData (constr: ^f -> IOBox) =
+          new JArray(token.["Fields"])
+          |> fun arr -> arr.[0]
+          |> Json.parse
+          |> Option.map (fun data -> constr data)
+
+        if tag = IOBox.Type then
+          match string token.["Case"] with
+          | "StringBox" -> parseData StringBox
+          | "IntBox"    -> parseData IntBox
+          | "FloatBox"  -> parseData FloatBox
+          | "DoubleBox" -> parseData IntBox
+          | "BoolBox"   -> parseData BoolBox
+          | "ByteBox"   -> parseData ByteBox
+          | "EnumBox"   -> parseData EnumBox
+          | "ColorBox"  -> parseData ColorBox
+          | "Compound"  -> parseData Compound
+          | _ -> None
+        else
+          failwithf "$type not correct or missing: %s" IOBox.Type
+      with
+        | exn ->
+          printfn "Could not deserialize iobox json: "
+          printfn "    Message: %s"  exn.Message
+          printfn "    json:    %s" (string token)
+          None
+
+    static member FromJson(str: string) : IOBox option =
+      JObject.Parse(str) |> IOBox.FromJToken
+
 #endif
 
 //  ____              _ ____
@@ -624,6 +743,9 @@ and BoolBoxD =
   ; Tags       : Tag array
   ; Behavior   : Behavior
   ; Slices     : BoolSliceD array }
+
+  static member Type
+    with get () = "Iris.Core.BoolBoxD"
 
 #if JAVASCRIPT
 #else
@@ -689,7 +811,7 @@ and BoolBoxD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.BoolBoxD"))
+    json.Add("$type", new JValue(BoolBoxD.Type))
     json.Add("Id", new JValue(string self.Id))
     json.Add("Name", new JValue(self.Name))
     json.Add("Patch", new JValue(string self.Patch))
@@ -700,6 +822,33 @@ and BoolBoxD =
 
   member self.ToJson() =
     self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : BoolBoxD option =
+    try
+      let tag = string token.["$type"]
+
+      if tag = BoolBoxD.Type then
+        Json.parse<Behavior> token.["Behavior"]
+        |> Option.map
+          (fun behavior ->
+            { Id       = parseIdField token "Id"
+            ; Name     = string token.["Name"]
+            ; Patch    = parseIdField token "Patch"
+            ; Tags     = parseTags token
+            ; Behavior = behavior
+            ; Slices   = parseSlices token
+            })
+      else
+        failwithf "$type not correct or missing: %s" BoolBoxD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize BoolBoxD json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : BoolBoxD option =
+    JObject.Parse(str) |> BoolBoxD.FromJToken
 
 #endif
 
@@ -712,6 +861,9 @@ and BoolBoxD =
 and BoolSliceD =
   { Index: Index
   ; Value: bool }
+
+  static member Type
+    with get () = "Iris.Core.BoolSliceD"
 
 #if JAVASCRIPT
 #else
@@ -751,13 +903,33 @@ and BoolSliceD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.BoolSliceD"))
+    json.Add("$type", new JValue(BoolSliceD.Type))
     json.Add("Index", new JValue(self.Index))
     json.Add("Value", new JValue(self.Value))
     json :> JToken
 
   member self.ToJson() =
     self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : BoolSliceD option =
+    try
+      let tag = string token.["$type"]
+      if tag = BoolSliceD.Type then
+        let value = System.Boolean.Parse(string token.["Value"])
+        { Index = uint64 token.["Index"]
+        ; Value = value
+        } |> Some
+      else
+        failwithf "$type not correct or missing: %s" BoolSliceD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : BoolSliceD option =
+    JObject.Parse(str) |> BoolSliceD.FromJToken
 
 #endif
 
@@ -777,6 +949,9 @@ and IntBoxD =
   ; Max        : int
   ; Unit       : string
   ; Slices     : IntSliceD array }
+
+  static member Type
+    with get () = "Iris.Core.IntBoxD"
 
 #if JAVASCRIPT
 #else
@@ -851,7 +1026,7 @@ and IntBoxD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.IntBoxD"))
+    json.Add("$type", new JValue(IntBoxD.Type))
     json.Add("Id", new JValue(string self.Id))
     json.Add("Name", new JValue(self.Name))
     json.Add("Patch", new JValue(string self.Patch))
@@ -866,6 +1041,32 @@ and IntBoxD =
   member self.ToJson() =
     self.ToJToken() |> string
 
+  static member FromJToken(token: JToken) : IntBoxD option =
+    try
+      let tag = string token.["$type"]
+      if tag = IntBoxD.Type then
+        { Id         = parseIdField token "Id"
+        ; Name       = string token.["Name"]
+        ; Patch      = parseIdField token "Patch"
+        ; Tags       = parseTags token
+        ; VecSize    = uint32 token.["VecSize"]
+        ; Min        = int    token.["Min"]
+        ; Max        = int    token.["Max"]
+        ; Unit       = string token.["Unit"]
+        ; Slices     = parseSlices token
+        } |> Some
+      else
+        failwithf "$type not correct or missing: %s" IntBoxD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : IntBoxD option =
+    JObject.Parse(str) |> IntBoxD.FromJToken
+
 #endif
 
 //  ___       _   ____  _ _
@@ -878,6 +1079,8 @@ and IntSliceD =
   { Index: Index
   ; Value: int }
 
+  static member Type
+    with get () = "Iris.Core.IntSliceD"
 
 #if JAVASCRIPT
 #else
@@ -917,13 +1120,32 @@ and IntSliceD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.IntSliceD"))
+    json.Add("$type", new JValue(IntSliceD.Type))
     json.Add("Index", new JValue(self.Index))
     json.Add("Value", new JValue(self.Value))
     json :> JToken
 
   member self.ToJson() =
     self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : IntSliceD option =
+    try
+      let tag = string token.["$type"]
+      if tag = IntSliceD.Type then
+        { Index = uint64 token.["Index"]
+        ; Value = int    token.["Value"]
+        } |> Some
+      else
+        failwithf "$type not correct or missing: %s" IntSliceD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : IntSliceD option =
+    JObject.Parse(str) |> IntSliceD.FromJToken
 
 #endif
 
@@ -944,6 +1166,9 @@ and FloatBoxD =
   ; Unit       : string
   ; Precision  : uint32
   ; Slices     : FloatSliceD array }
+
+  static member Type
+    with get () = "Iris.Core.FloatBoxD"
 
 #if JAVASCRIPT
 #else
@@ -1020,7 +1245,7 @@ and FloatBoxD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.FloatBoxD"))
+    json.Add("$type", new JValue(FloatBoxD.Type))
     json.Add("Id", new JValue(string self.Id))
     json.Add("Name", new JValue(self.Name))
     json.Add("Patch", new JValue(string self.Patch))
@@ -1036,6 +1261,33 @@ and FloatBoxD =
   member self.ToJson() =
     self.ToJToken() |> string
 
+  static member FromJToken(token: JToken) : FloatBoxD option =
+    try
+      let tag = string token.["$type"]
+      if tag = FloatBoxD.Type then
+        { Id         = parseIdField token "Id"
+        ; Name       = string token.["Name"]
+        ; Patch      = parseIdField token "Patch"
+        ; Tags       = parseTags token
+        ; VecSize    = uint32 token.["VecSize"]
+        ; Min        = int    token.["Min"]
+        ; Max        = int    token.["Max"]
+        ; Unit       = string token.["Unit"]
+        ; Precision  = uint32 token.["Precision"]
+        ; Slices     = parseSlices token
+        } |> Some
+      else
+        failwithf "$type not correct or missing: %s" FloatBoxD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : FloatBoxD option =
+    JObject.Parse(str) |> FloatBoxD.FromJToken
+
 #endif
 
 //  _____ _             _   ____  _ _
@@ -1047,6 +1299,9 @@ and FloatBoxD =
 and FloatSliceD =
   { Index: Index
   ; Value: float }
+
+  static member Type
+    with get () = "Iris.Core.FloatSliceD"
 
 #if JAVASCRIPT
 #else
@@ -1086,13 +1341,32 @@ and FloatSliceD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.FloatSliceD"))
+    json.Add("$type", new JValue(FloatSliceD.Type))
     json.Add("Index", new JValue(self.Index))
     json.Add("Value", new JValue(self.Value))
     json :> JToken
 
   member self.ToJson() =
     self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : FloatSliceD option =
+    try
+      let tag = string token.["$type"]
+      if tag = FloatSliceD.Type then
+        { Index = uint64 token.["Index"]
+        ; Value = float  token.["Value"]
+        } |> Some
+      else
+        failwithf "$type not correct or missing: %s" FloatSliceD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : FloatSliceD option =
+    JObject.Parse(str) |> FloatSliceD.FromJToken
 
 #endif
 
@@ -1113,6 +1387,9 @@ and DoubleBoxD =
   ; Unit       : string
   ; Precision  : uint32
   ; Slices     : DoubleSliceD array }
+
+  static member Type
+    with get () = "Iris.Core.DoubleBoxD"
 
 #if JAVASCRIPT
 #else
@@ -1189,7 +1466,7 @@ and DoubleBoxD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.DoubleBoxD"))
+    json.Add("$type", new JValue(DoubleBoxD.Type))
     json.Add("Id", new JValue(string self.Id))
     json.Add("Name", new JValue(self.Name))
     json.Add("Patch", new JValue(string self.Patch))
@@ -1205,6 +1482,33 @@ and DoubleBoxD =
   member self.ToJson() =
     self.ToJToken() |> string
 
+  static member FromJToken(token: JToken) : DoubleBoxD option =
+    try
+      let tag = string token.["$type"]
+      if tag = DoubleBoxD.Type then
+        { Id         = parseIdField token "Id"
+        ; Name       = string token.["Name"]
+        ; Patch      = parseIdField token "Patch"
+        ; Tags       = parseTags token
+        ; VecSize    = uint32 token.["VecSize"]
+        ; Min        = int    token.["Min"]
+        ; Max        = int    token.["Max"]
+        ; Unit       = string token.["Unit"]
+        ; Precision  = uint32 token.["Precision"]
+        ; Slices     = parseSlices token
+        } |> Some
+      else
+        failwithf "$type not correct or missing: %s" DoubleBoxD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : DoubleBoxD option =
+    JObject.Parse(str) |> DoubleBoxD.FromJToken
+
 #endif
 
 //  ____              _     _      ____  _ _
@@ -1216,6 +1520,9 @@ and DoubleBoxD =
 and DoubleSliceD =
   { Index: Index
   ; Value: double }
+
+  static member Type
+    with get () = "Iris.Core.DoubleSliceD"
 
 #if JAVASCRIPT
 #else
@@ -1255,13 +1562,32 @@ and DoubleSliceD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.DoubleSliceD"))
+    json.Add("$type", new JValue(DoubleSliceD.Type))
     json.Add("Index", new JValue(self.Index))
     json.Add("Value", new JValue(self.Value))
     json :> JToken
 
   member self.ToJson() =
     self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : DoubleSliceD option =
+    try
+      let tag = string token.["$type"]
+      if tag = DoubleSliceD.Type then
+        { Index = uint64 token.["Index"]
+        ; Value = double token.["Value"]
+        } |> Some
+      else
+        failwithf "$type not correct or missing: %s" DoubleSliceD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : DoubleSliceD option =
+    JObject.Parse(str) |> DoubleSliceD.FromJToken
 
 #endif
 
@@ -1278,6 +1604,9 @@ and ByteBoxD =
   ; Patch      : Id
   ; Tags       : Tag        array
   ; Slices     : ByteSliceD array }
+
+  static member Type
+    with get () = "Iris.Core.ByteBoxD"
 
 #if JAVASCRIPT
 #else
@@ -1342,7 +1671,7 @@ and ByteBoxD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.ByteBoxD"))
+    json.Add("$type", new JValue(ByteBoxD.Type))
     json.Add("Id", new JValue(string self.Id))
     json.Add("Name", new JValue(self.Name))
     json.Add("Patch", new JValue(string self.Patch))
@@ -1352,6 +1681,28 @@ and ByteBoxD =
 
   member self.ToJson() =
     self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : ByteBoxD option =
+    try
+      let tag = string token.["$type"]
+      if tag = ByteBoxD.Type then
+        { Id     = parseIdField token "Id"
+        ; Name   = string token.["Name"]
+        ; Patch  = parseIdField token "Patch"
+        ; Tags   = parseTags token
+        ; Slices = parseSlices token
+        } |> Some
+      else
+        failwithf "$type not correct or missing: %s" ByteBoxD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : ByteBoxD option =
+    JObject.Parse(str) |> ByteBoxD.FromJToken
 
 #endif
 
@@ -1365,6 +1716,9 @@ and ByteBoxD =
 and ByteSliceD =
   { Index: Index
   ; Value: byte array }
+
+  static member Type
+    with get () = "Iris.Core.ByteSliceD"
 
 #if JAVASCRIPT
 #else
@@ -1410,13 +1764,48 @@ and ByteSliceD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.ByteSliceD"))
+
+    // encode binary data as string array
+    let strings =
+      BitConverter.ToString(self.Value)
+      |> split [| '-' |]
+
+    json.Add("$type", new JValue(ByteSliceD.Type))
     json.Add("Index", new JValue(self.Index))
-    json.Add("Value", new JArray(Array.map string self.Value))
+    json.Add("Value", new JArray(strings))
     json :> JToken
 
   member self.ToJson() =
     self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : ByteSliceD option =
+    try
+      let tag = string token.["$type"]
+      if tag = ByteSliceD.Type then
+        // convert string-encoded bytes back to raw bytes
+        let bytes =
+          let jarr = new JArray(token.["Value"])
+          let arr = Array.zeroCreate jarr.Count
+
+          for i in 0 .. (jarr.Count - 1) do
+            arr.[i] <- Convert.ToByte(string jarr.[i], 16)
+
+          arr
+
+        { Index = uint64 token.["Index"]
+        ; Value = bytes
+        } |> Some
+      else
+        failwithf "$type not correct or missing: %s" ByteSliceD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : ByteSliceD option =
+    JObject.Parse(str) |> ByteSliceD.FromJToken
 
 #endif
 
@@ -1433,6 +1822,9 @@ and EnumBoxD =
   ; Tags       : Tag        array
   ; Properties : Property   array
   ; Slices     : EnumSliceD array }
+
+  static member Type
+    with get () = "Iris.Core.EnumBoxD"
 
 #if JAVASCRIPT
 #else
@@ -1510,7 +1902,7 @@ and EnumBoxD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.ByteBoxD"))
+    json.Add("$type", new JValue(EnumBoxD.Type))
     json.Add("Id", new JValue(string self.Id))
     json.Add("Name", new JValue(self.Name))
     json.Add("Patch", new JValue(string self.Patch))
@@ -1521,6 +1913,40 @@ and EnumBoxD =
 
   member self.ToJson() =
     self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : EnumBoxD option =
+    try
+      let tag = string token.["$type"]
+      if tag = EnumBoxD.Type then
+        let properties : Property array =
+          let jarr = new JArray(token.["Properties"])
+          let arr = Array.zeroCreate jarr.Count
+
+          for i in 0 .. (jarr.Count - 1) do
+            Json.parse jarr.[i]
+            |> Option.map (fun prop -> arr.[i] <- prop)
+            |> ignore
+
+          arr
+
+        { Id         = parseIdField token "Id"
+        ; Name       = string token.["Name"]
+        ; Patch      = parseIdField token "Patch"
+        ; Tags       = parseTags token
+        ; Properties = properties
+        ; Slices     = parseSlices token
+        } |> Some
+      else
+        failwithf "$type not correct or missing: %s" EnumBoxD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : EnumBoxD option =
+    JObject.Parse(str) |> EnumBoxD.FromJToken
 
 #endif
 
@@ -1533,6 +1959,9 @@ and EnumBoxD =
 and EnumSliceD =
   { Index : Index
   ; Value : Property }
+
+  static member Type
+    with get () = "Iris.Core.EnumSliceD"
 
 #if JAVASCRIPT
 #else
@@ -1585,13 +2014,35 @@ and EnumSliceD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.EnumSliceD"))
+    json.Add("$type", new JValue(EnumSliceD.Type))
     json.Add("Index", new JValue(self.Index))
     json.Add("Value", Json.tokenize self.Value)
     json :> JToken
 
   member self.ToJson() =
     self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : EnumSliceD option =
+    try
+      let tag = string token.["$type"]
+      if tag = EnumSliceD.Type then
+        Json.parse<Property> token.["Value"]
+        |> Option.map
+          (fun prop ->
+            { Index = uint64 token.["Index"]
+            ; Value = prop
+            })
+      else
+        failwithf "$type not correct or missing: %s" EnumSliceD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : EnumSliceD option =
+    JObject.Parse(str) |> EnumSliceD.FromJToken
 
 #endif
 
@@ -1607,6 +2058,9 @@ and ColorBoxD =
   ; Patch  : Id
   ; Tags   : Tag         array
   ; Slices : ColorSliceD array }
+
+  static member Type
+    with get () = "Iris.Core.ColorBoxD"
 
 #if JAVASCRIPT
 #else
@@ -1671,7 +2125,7 @@ and ColorBoxD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.ColorBoxD"))
+    json.Add("$type", new JValue(ColorBoxD.Type))
     json.Add("Id", new JValue(string self.Id))
     json.Add("Name", new JValue(self.Name))
     json.Add("Patch", new JValue(string self.Patch))
@@ -1681,6 +2135,28 @@ and ColorBoxD =
 
   member self.ToJson() =
     self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : ColorBoxD option =
+    try
+      let tag = string token.["$type"]
+      if tag = ColorBoxD.Type then
+        { Id     = parseIdField token "Id"
+        ; Name   = string token.["Name"]
+        ; Patch  = parseIdField token "Patch"
+        ; Tags   = parseTags token
+        ; Slices = parseSlices token
+        } |> Some
+      else
+        failwithf "$type not correct or missing: %s" ColorBoxD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : ColorBoxD option =
+    JObject.Parse(str) |> ColorBoxD.FromJToken
 
 #endif
 
@@ -1693,6 +2169,9 @@ and ColorBoxD =
 and ColorSliceD =
   { Index: Index
   ; Value: ColorSpace }
+
+  static member Type
+    with get () = "Iris.Core.ColorSliceD"
 
 #if JAVASCRIPT
 #else
@@ -1729,13 +2208,35 @@ and ColorSliceD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.ColorSliceD"))
+    json.Add("$type", new JValue(ColorSliceD.Type))
     json.Add("Index", new JValue(self.Index))
     json.Add("Value", Json.tokenize self.Value)
     json :> JToken
 
   member self.ToJson() =
     self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : ColorSliceD option =
+    try
+      let tag = string token.["$type"]
+      if tag = ColorSliceD.Type then
+        Json.parse<ColorSpace> token.["Value"]
+        |> Option.map
+          (fun color ->
+            { Index = uint64 token.["Index"]
+            ; Value = color
+            })
+      else
+        failwithf "$type not correct or missing: %s" ColorSliceD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : ColorSliceD option =
+    JObject.Parse(str) |> ColorSliceD.FromJToken
 
 #endif
 
@@ -1755,6 +2256,9 @@ and StringBoxD =
   ; FileMask   : FileMask
   ; MaxChars   : MaxChars
   ; Slices     : StringSliceD array }
+
+  static member Type
+    with get () = "Iris.Core.StringBoxD"
 
 #if JAVASCRIPT
 #else
@@ -1830,19 +2334,57 @@ and StringBoxD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.StringBoxD"))
+
+    let fm =
+      match self.FileMask with
+      | Some msk -> new JValue(self.FileMask)
+      |      _   -> null
+
+    json.Add("$type", new JValue(StringBoxD.Type))
     json.Add("Id", new JValue(string self.Id))
     json.Add("Name", new JValue(self.Name))
     json.Add("Patch", new JValue(string self.Patch))
     json.Add("Tags", new JArray(self.Tags))
     json.Add("StringType", Json.tokenize self.StringType)
-    json.Add("FileMask", new JArray(self.FileMask))
+    json.Add("FileMask", fm)
     json.Add("MaxChars", new JValue(self.MaxChars))
     json.Add("Slices", new JArray(Array.map Json.tokenize self.Slices))
     json :> JToken
 
   member self.ToJson() =
     self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : StringBoxD option =
+    try
+      let tag = string token.["$type"]
+      if tag = StringBoxD.Type then
+        let fm : FileMask =
+          let msk = token.["FileMask"]
+          if isNull msk then None else Some (string msk)
+
+        Json.parse<StringType> token.["StringType"]
+        |> Option.map
+          (fun stringtype ->
+            { Id         = parseIdField token "Id"
+            ; Name       = string token.["Name"]
+            ; Patch      = parseIdField token "Patch"
+            ; Tags       = parseTags token
+            ; StringType = stringtype
+            ; FileMask   = fm
+            ; MaxChars   = int token.["MaxChars"]
+            ; Slices     = parseSlices token
+            })
+      else
+        failwithf "$type not correct or missing: %s" StringBoxD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : StringBoxD option =
+    JObject.Parse(str) |> StringBoxD.FromJToken
 
 #endif
 
@@ -1856,6 +2398,9 @@ and StringBoxD =
 and StringSliceD =
   { Index : Index
   ; Value : string }
+
+  static member Type
+    with get () = "Iris.Core.StringSliceD"
 
 #if JAVASCRIPT
 #else
@@ -1896,13 +2441,32 @@ and StringSliceD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.StringSliceD"))
+    json.Add("$type", new JValue(StringSliceD.Type))
     json.Add("Index", new JValue(self.Index))
     json.Add("Value", new JValue(self.Value))
     json :> JToken
 
   member self.ToJson() =
     self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : StringSliceD option =
+    try
+      let tag = string token.["$type"]
+      if tag = StringSliceD.Type then
+        { Index = uint64 token.["Index"]
+        ; Value = string token.["Value"]
+        } |> Some
+      else
+        failwithf "$type not correct or missing: %s" StringSliceD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : StringSliceD option =
+    JObject.Parse(str) |> StringSliceD.FromJToken
 
 #endif
 
@@ -1919,6 +2483,9 @@ and CompoundBoxD =
   ; Patch      : Id
   ; Tags       : Tag   array
   ; Slices     : CompoundSliceD array }
+
+  static member Type
+    with get () = "Iris.Core.CompoundBoxD"
 
 #if JAVASCRIPT
 #else
@@ -1983,7 +2550,7 @@ and CompoundBoxD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.CompoundBoxD"))
+    json.Add("$type", new JValue(CompoundBoxD.Type))
     json.Add("Id", new JValue(string self.Id))
     json.Add("Name", new JValue(self.Name))
     json.Add("Patch", new JValue(string self.Patch))
@@ -1993,6 +2560,28 @@ and CompoundBoxD =
 
   member self.ToJson() =
     self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : CompoundBoxD option =
+    try
+      let tag = string token.["$type"]
+      if tag = CompoundBoxD.Type then
+        { Id     = parseIdField token "Id"
+        ; Name   = string token.["Name"]
+        ; Patch  = parseIdField token "Patch"
+        ; Tags   = parseTags token
+        ; Slices = parseSlices token
+        } |> Some
+      else
+        failwithf "$type not correct or missing: %s" CompoundBoxD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : CompoundBoxD option =
+    JObject.Parse(str) |> CompoundBoxD.FromJToken
 
 #endif
 
@@ -2006,6 +2595,9 @@ and CompoundBoxD =
 and CompoundSliceD =
   { Index      : Index
   ; Value      : IOBox array }
+
+  static member Type
+    with get () = "Iris.Core.CompoundSliceD"
 
 #if JAVASCRIPT
 #else
@@ -2055,13 +2647,44 @@ and CompoundSliceD =
 
   member self.ToJToken () =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.CompoundSliceD"))
+    json.Add("$type", new JValue(CompoundSliceD.Type))
     json.Add("Index", new JValue(self.Index))
     json.Add("Value", new JArray(Array.map Json.tokenize self.Value))
     json :> JToken
 
   member self.ToJson() =
     self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : CompoundSliceD option =
+    try
+      let tag = string token.["$type"]
+
+      if tag = CompoundSliceD.Type then
+        let ioboxes =
+          let jarr = new JArray(token.["Value"])
+          let arr = Array.zeroCreate jarr.Count
+
+          for i in 0 .. (jarr.Count - 1) do
+            Json.parse<IOBox> jarr.[i]
+            |> Option.map (fun iobox -> arr.[i] <- iobox)
+            |> ignore
+
+          arr
+
+        { Index = uint64 token.["Index"]
+        ; Value = ioboxes
+        } |> Some
+      else
+        failwithf "$type not correct or missing: %s" CompoundSliceD.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : CompoundSliceD option =
+    JObject.Parse(str) |> CompoundSliceD.FromJToken
 
 #endif
 
