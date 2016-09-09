@@ -81,26 +81,22 @@ type Cue =
 
   static member FromJToken(token: JToken) : Cue option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains Cue.Type then
-        let ioboxes =
-          let jarr = token.["IOBoxes"] :?> JArray
-          let arr = Array.zeroCreate jarr.Count
+      let ioboxes =
+        let jarr = token.["IOBoxes"] :?> JArray
+        let arr = Array.zeroCreate jarr.Count
 
-          for i in 0 .. (jarr.Count - 1) do
-            Json.parse jarr.[i]
-            |> Option.map (fun iobox -> arr.[i] <- iobox; iobox)
-            |> ignore
+        for i in 0 .. (jarr.Count - 1) do
+          Json.parse jarr.[i]
+          |> Option.map (fun iobox -> arr.[i] <- iobox; iobox)
+          |> ignore
 
-          arr
+        arr
 
-        { Id = Id (string token.["Id"])
-        ; Name = string token.["Name"]
-        ; IOBoxes = ioboxes
-        }
-        |> Some
-      else
-        failwithf "$type not correct or missing: %s" Cue.Type
+      { Id = Id (string token.["Id"])
+      ; Name = string token.["Name"]
+      ; IOBoxes = ioboxes
+      }
+      |> Some
     with
       | exn ->
         printfn "Could not deserialize cue json: "

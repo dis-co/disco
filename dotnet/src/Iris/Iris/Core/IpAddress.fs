@@ -61,16 +61,11 @@ type IpAddress =
 
   static member FromJToken(token: JToken) : IpAddress option =
     try
-      let tag = string token.["$type"]
-
-      if tag.Contains IpAddress.Type then
-        let fields = token.["Fields"] :?> JArray
-        match string token.["Case"] with
-        | "IPv4Address" -> IPv4Address (string fields.[0]) |> Some
-        | "IPv6Address" -> IPv6Address (string fields.[1]) |> Some
-        | _             -> None
-      else
-          failwithf "$type not correct or missing: %s" IpAddress.Type
+      let fields = token.["Fields"] :?> JArray
+      match string token.["Case"] with
+      | "IPv4Address" -> IPv4Address (string fields.[0]) |> Some
+      | "IPv6Address" -> IPv6Address (string fields.[1]) |> Some
+      | _             -> None
     with
       | exn ->
         printfn "Could not deserialize json: "

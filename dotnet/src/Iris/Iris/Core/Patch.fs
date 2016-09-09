@@ -119,26 +119,21 @@ type Patch =
 
   static member FromJToken(token: JToken) : Patch option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains Patch.Type then
-        let ioboxes =
-          let jarr = token.["IOBoxes"] :?> JArray
-          let arr = Array.zeroCreate jarr.Count
+      let ioboxes =
+        let jarr = token.["IOBoxes"] :?> JArray
+        let arr = Array.zeroCreate jarr.Count
 
-          for i in 0 .. (jarr.Count - 1) do
-            Json.parse jarr.[i]
-            |> Option.map (fun iobox -> arr.[i] <- iobox)
-            |> ignore
+        for i in 0 .. (jarr.Count - 1) do
+          Json.parse jarr.[i]
+          |> Option.map (fun iobox -> arr.[i] <- iobox)
+          |> ignore
 
-          arr
+        arr
 
-        { Id = Id (string token.["Id"])
-        ; Name = string token.["Name"]
-        ; IOBoxes = ioboxes
-        }
-        |> Some
-      else
-        failwithf "$type not correct or missing: %s" Patch.Type
+      { Id = Id (string token.["Id"])
+      ; Name = string token.["Name"]
+      ; IOBoxes = ioboxes
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize patch json: "

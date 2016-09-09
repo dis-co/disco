@@ -69,14 +69,10 @@ type Behavior =
 
   static member FromJToken(token: JToken) : Behavior option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains Behavior.Type then
-        match string token.["Case"] with
-        | "Toggle" -> Some Toggle
-        | "Bang"   -> Some Bang
-        | _        -> None
-      else
-        failwithf "$type not correct or missing: %s" Behavior.Type
+      match string token.["Case"] with
+      | "Toggle" -> Some Toggle
+      | "Bang"   -> Some Bang
+      | _        -> None
     with
       | exn ->
         printfn "Could not deserialize behavior json: "
@@ -159,18 +155,14 @@ type StringType =
 
   static member FromJToken(token: JToken) : StringType option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains StringType.Type then
-        match string token.["Case"] with
-        | "Simple"    -> Some Simple
-        | "MultiLine" -> Some MultiLine
-        | "FileName"  -> Some FileName
-        | "Directory" -> Some Directory
-        | "Url"       -> Some Url
-        | "IP"        -> Some IP
-        | _           -> None
-      else
-        failwithf "$type not correct or missing: %s" StringType.Type
+      match string token.["Case"] with
+      | "Simple"    -> Some Simple
+      | "MultiLine" -> Some MultiLine
+      | "FileName"  -> Some FileName
+      | "Directory" -> Some Directory
+      | "Url"       -> Some Url
+      | "IP"        -> Some IP
+      | _           -> None
     with
       | exn ->
         printfn "Could not deserialize string type json: "
@@ -697,28 +689,23 @@ type IOBox =
 
     static member FromJToken(token: JToken) : IOBox option =
       try
-        let tag = string token.["$type"]
-
         let inline parseData (constr: ^f -> IOBox) =
           token.["Fields"] :?> JArray
           |> fun arr -> arr.[0]
           |> Json.parse
           |> Option.map constr
 
-        if tag.Contains IOBox.Type then
-          match string token.["Case"] with
-          | "StringBox" -> parseData StringBox
-          | "IntBox"    -> parseData IntBox
-          | "FloatBox"  -> parseData FloatBox
-          | "DoubleBox" -> parseData DoubleBox
-          | "BoolBox"   -> parseData BoolBox
-          | "ByteBox"   -> parseData ByteBox
-          | "EnumBox"   -> parseData EnumBox
-          | "ColorBox"  -> parseData ColorBox
-          | "Compound"  -> parseData Compound
-          | _ -> None
-        else
-          failwithf "$type not correct or missing: %s" IOBox.Type
+        match string token.["Case"] with
+        | "StringBox" -> parseData StringBox
+        | "IntBox"    -> parseData IntBox
+        | "FloatBox"  -> parseData FloatBox
+        | "DoubleBox" -> parseData DoubleBox
+        | "BoolBox"   -> parseData BoolBox
+        | "ByteBox"   -> parseData ByteBox
+        | "EnumBox"   -> parseData EnumBox
+        | "ColorBox"  -> parseData ColorBox
+        | "Compound"  -> parseData Compound
+        | _ -> None
       with
         | exn ->
           printfn "Could not deserialize iobox json: "
@@ -826,21 +813,16 @@ and BoolBoxD =
 
   static member FromJToken(token: JToken) : BoolBoxD option =
     try
-      let tag = string token.["$type"]
-
-      if tag.Contains BoolBoxD.Type then
-        Json.parse<Behavior> token.["Behavior"]
-        |> Option.map
-          (fun behavior ->
-            { Id       = parseIdField token "Id"
-            ; Name     = string token.["Name"]
-            ; Patch    = parseIdField token "Patch"
-            ; Tags     = parseTags token
-            ; Behavior = behavior
-            ; Slices   = parseSlices token
-            })
-      else
-        failwithf "$type not correct or missing: %s" BoolBoxD.Type
+      Json.parse<Behavior> token.["Behavior"]
+      |> Option.map
+        (fun behavior ->
+          { Id       = parseIdField token "Id"
+          ; Name     = string token.["Name"]
+          ; Patch    = parseIdField token "Patch"
+          ; Tags     = parseTags token
+          ; Behavior = behavior
+          ; Slices   = parseSlices token
+          })
     with
       | exn ->
         printfn "Could not deserialize BoolBoxD json: "
@@ -914,14 +896,10 @@ and BoolSliceD =
 
   static member FromJToken(token: JToken) : BoolSliceD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains BoolSliceD.Type then
-        let value = System.Boolean.Parse(string token.["Value"])
-        { Index = uint64 token.["Index"]
-        ; Value = value
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" BoolSliceD.Type
+      let value = System.Boolean.Parse(string token.["Value"])
+      { Index = uint64 token.["Index"]
+      ; Value = value
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -1044,20 +1022,16 @@ and IntBoxD =
 
   static member FromJToken(token: JToken) : IntBoxD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains IntBoxD.Type then
-        { Id         = parseIdField token "Id"
-        ; Name       = string token.["Name"]
-        ; Patch      = parseIdField token "Patch"
-        ; Tags       = parseTags    token
-        ; VecSize    = uint32 token.["VecSize"]
-        ; Min        = int    token.["Min"]
-        ; Max        = int    token.["Max"]
-        ; Unit       = string token.["Unit"]
-        ; Slices     = parseSlices  token
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" IntBoxD.Type
+      { Id         = parseIdField token "Id"
+      ; Name       = string token.["Name"]
+      ; Patch      = parseIdField token "Patch"
+      ; Tags       = parseTags    token
+      ; VecSize    = uint32 token.["VecSize"]
+      ; Min        = int    token.["Min"]
+      ; Max        = int    token.["Max"]
+      ; Unit       = string token.["Unit"]
+      ; Slices     = parseSlices  token
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -1131,13 +1105,9 @@ and IntSliceD =
 
   static member FromJToken(token: JToken) : IntSliceD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains IntSliceD.Type then
-        { Index = uint64 token.["Index"]
-        ; Value = int    token.["Value"]
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" IntSliceD.Type
+      { Index = uint64 token.["Index"]
+      ; Value = int    token.["Value"]
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -1264,21 +1234,17 @@ and FloatBoxD =
 
   static member FromJToken(token: JToken) : FloatBoxD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains FloatBoxD.Type then
-        { Id         = parseIdField token "Id"
-        ; Name       = string token.["Name"]
-        ; Patch      = parseIdField token "Patch"
-        ; Tags       = parseTags token
-        ; VecSize    = uint32 token.["VecSize"]
-        ; Min        = int    token.["Min"]
-        ; Max        = int    token.["Max"]
-        ; Unit       = string token.["Unit"]
-        ; Precision  = uint32 token.["Precision"]
-        ; Slices     = parseSlices token
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" FloatBoxD.Type
+      { Id         = parseIdField token "Id"
+      ; Name       = string token.["Name"]
+      ; Patch      = parseIdField token "Patch"
+      ; Tags       = parseTags token
+      ; VecSize    = uint32 token.["VecSize"]
+      ; Min        = int    token.["Min"]
+      ; Max        = int    token.["Max"]
+      ; Unit       = string token.["Unit"]
+      ; Precision  = uint32 token.["Precision"]
+      ; Slices     = parseSlices token
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -1352,13 +1318,9 @@ and FloatSliceD =
 
   static member FromJToken(token: JToken) : FloatSliceD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains FloatSliceD.Type then
-        { Index = uint64 token.["Index"]
-        ; Value = float  token.["Value"]
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" FloatSliceD.Type
+      { Index = uint64 token.["Index"]
+      ; Value = float  token.["Value"]
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -1485,21 +1447,17 @@ and DoubleBoxD =
 
   static member FromJToken(token: JToken) : DoubleBoxD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains DoubleBoxD.Type then
-        { Id         = parseIdField token "Id"
-        ; Name       = string token.["Name"]
-        ; Patch      = parseIdField token "Patch"
-        ; Tags       = parseTags token
-        ; VecSize    = uint32 token.["VecSize"]
-        ; Min        = int    token.["Min"]
-        ; Max        = int    token.["Max"]
-        ; Unit       = string token.["Unit"]
-        ; Precision  = uint32 token.["Precision"]
-        ; Slices     = parseSlices token
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" DoubleBoxD.Type
+      { Id         = parseIdField token "Id"
+      ; Name       = string token.["Name"]
+      ; Patch      = parseIdField token "Patch"
+      ; Tags       = parseTags token
+      ; VecSize    = uint32 token.["VecSize"]
+      ; Min        = int    token.["Min"]
+      ; Max        = int    token.["Max"]
+      ; Unit       = string token.["Unit"]
+      ; Precision  = uint32 token.["Precision"]
+      ; Slices     = parseSlices token
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -1573,13 +1531,9 @@ and DoubleSliceD =
 
   static member FromJToken(token: JToken) : DoubleSliceD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains DoubleSliceD.Type then
-        { Index = uint64 token.["Index"]
-        ; Value = double token.["Value"]
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" DoubleSliceD.Type
+      { Index = uint64 token.["Index"]
+      ; Value = double token.["Value"]
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -1685,16 +1639,12 @@ and ByteBoxD =
 
   static member FromJToken(token: JToken) : ByteBoxD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains ByteBoxD.Type then
-        { Id     = parseIdField token "Id"
-        ; Name   = string token.["Name"]
-        ; Patch  = parseIdField token "Patch"
-        ; Tags   = parseTags token
-        ; Slices = parseSlices token
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" ByteBoxD.Type
+      { Id     = parseIdField token "Id"
+      ; Name   = string token.["Name"]
+      ; Patch  = parseIdField token "Patch"
+      ; Tags   = parseTags token
+      ; Slices = parseSlices token
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -1781,23 +1731,19 @@ and ByteSliceD =
 
   static member FromJToken(token: JToken) : ByteSliceD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains ByteSliceD.Type then
-        // convert string-encoded bytes back to raw bytes
-        let bytes =
-          let jarr = token.["Value"] :?> JArray
-          let arr = Array.zeroCreate jarr.Count
+      // convert string-encoded bytes back to raw bytes
+      let bytes =
+        let jarr = token.["Value"] :?> JArray
+        let arr = Array.zeroCreate jarr.Count
 
-          for i in 0 .. (jarr.Count - 1) do
-            arr.[i] <- Convert.ToByte(string jarr.[i], 16)
+        for i in 0 .. (jarr.Count - 1) do
+          arr.[i] <- Convert.ToByte(string jarr.[i], 16)
 
-          arr
+        arr
 
-        { Index = uint64 token.["Index"]
-        ; Value = bytes
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" ByteSliceD.Type
+      { Index = uint64 token.["Index"]
+      ; Value = bytes
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -1917,28 +1863,24 @@ and EnumBoxD =
 
   static member FromJToken(token: JToken) : EnumBoxD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains EnumBoxD.Type then
-        let properties : Property array =
-          let jarr = token.["Properties"] :?> JArray
-          let arr = Array.zeroCreate jarr.Count
+      let properties : Property array =
+        let jarr = token.["Properties"] :?> JArray
+        let arr = Array.zeroCreate jarr.Count
 
-          for i in 0 .. (jarr.Count - 1) do
-            Json.parse jarr.[i]
-            |> Option.map (fun prop -> arr.[i] <- prop)
-            |> ignore
+        for i in 0 .. (jarr.Count - 1) do
+          Json.parse jarr.[i]
+          |> Option.map (fun prop -> arr.[i] <- prop)
+          |> ignore
 
-          arr
+        arr
 
-        { Id         = parseIdField token "Id"
-        ; Name       = string token.["Name"]
-        ; Patch      = parseIdField token "Patch"
-        ; Tags       = parseTags token
-        ; Properties = properties
-        ; Slices     = parseSlices token
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" EnumBoxD.Type
+      { Id         = parseIdField token "Id"
+      ; Name       = string token.["Name"]
+      ; Patch      = parseIdField token "Patch"
+      ; Tags       = parseTags token
+      ; Properties = properties
+      ; Slices     = parseSlices token
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -2025,16 +1967,12 @@ and EnumSliceD =
 
   static member FromJToken(token: JToken) : EnumSliceD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains EnumSliceD.Type then
-        Json.parse<Property> token.["Value"]
-        |> Option.map
-          (fun prop ->
-            { Index = uint64 token.["Index"]
-            ; Value = prop
-            })
-      else
-        failwithf "$type not correct or missing: %s" EnumSliceD.Type
+      Json.parse<Property> token.["Value"]
+      |> Option.map
+        (fun prop ->
+          { Index = uint64 token.["Index"]
+          ; Value = prop
+          })
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -2139,16 +2077,12 @@ and ColorBoxD =
 
   static member FromJToken(token: JToken) : ColorBoxD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains ColorBoxD.Type then
-        { Id     = parseIdField token "Id"
-        ; Name   = string token.["Name"]
-        ; Patch  = parseIdField token "Patch"
-        ; Tags   = parseTags token
-        ; Slices = parseSlices token
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" ColorBoxD.Type
+      { Id     = parseIdField token "Id"
+      ; Name   = string token.["Name"]
+      ; Patch  = parseIdField token "Patch"
+      ; Tags   = parseTags token
+      ; Slices = parseSlices token
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -2219,16 +2153,12 @@ and ColorSliceD =
 
   static member FromJToken(token: JToken) : ColorSliceD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains ColorSliceD.Type then
-        Json.parse<ColorSpace> token.["Value"]
-        |> Option.map
-          (fun color ->
-            { Index = uint64 token.["Index"]
-            ; Value = color
-            })
-      else
-        failwithf "$type not correct or missing: %s" ColorSliceD.Type
+      Json.parse<ColorSpace> token.["Value"]
+      |> Option.map
+        (fun color ->
+          { Index = uint64 token.["Index"]
+          ; Value = color
+          })
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -2357,26 +2287,22 @@ and StringBoxD =
 
   static member FromJToken(token: JToken) : StringBoxD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains StringBoxD.Type then
-        let fm : FileMask =
-          let msk = string token.["FileMask"]
-          if isNull msk || msk.Length = 0 then None else Some msk
+      let fm : FileMask =
+        let msk = string token.["FileMask"]
+        if isNull msk || msk.Length = 0 then None else Some msk
 
-        Json.parse<StringType> token.["StringType"]
-        |> Option.map
-          (fun stringtype ->
-            { Id         = parseIdField token "Id"
-            ; Name       = string token.["Name"]
-            ; Patch      = parseIdField token "Patch"
-            ; Tags       = parseTags token
-            ; StringType = stringtype
-            ; FileMask   = fm
-            ; MaxChars   = int token.["MaxChars"]
-            ; Slices     = parseSlices token
-            })
-      else
-        failwithf "$type not correct or missing: %s" StringBoxD.Type
+      Json.parse<StringType> token.["StringType"]
+      |> Option.map
+        (fun stringtype ->
+          { Id         = parseIdField token "Id"
+          ; Name       = string token.["Name"]
+          ; Patch      = parseIdField token "Patch"
+          ; Tags       = parseTags token
+          ; StringType = stringtype
+          ; FileMask   = fm
+          ; MaxChars   = int token.["MaxChars"]
+          ; Slices     = parseSlices token
+          })
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -2452,13 +2378,9 @@ and StringSliceD =
 
   static member FromJToken(token: JToken) : StringSliceD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains StringSliceD.Type then
-        { Index = uint64 token.["Index"]
-        ; Value = string token.["Value"]
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" StringSliceD.Type
+      { Index = uint64 token.["Index"]
+      ; Value = string token.["Value"]
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -2564,16 +2486,12 @@ and CompoundBoxD =
 
   static member FromJToken(token: JToken) : CompoundBoxD option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains CompoundBoxD.Type then
-        { Id     = parseIdField token "Id"
-        ; Name   = string token.["Name"]
-        ; Patch  = parseIdField token "Patch"
-        ; Tags   = parseTags token
-        ; Slices = parseSlices token
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" CompoundBoxD.Type
+      { Id     = parseIdField token "Id"
+      ; Name   = string token.["Name"]
+      ; Patch  = parseIdField token "Patch"
+      ; Tags   = parseTags token
+      ; Slices = parseSlices token
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -2658,25 +2576,20 @@ and CompoundSliceD =
 
   static member FromJToken(token: JToken) : CompoundSliceD option =
     try
-      let tag = string token.["$type"]
+      let ioboxes =
+        let jarr = token.["Value"] :?> JArray
+        let arr = Array.zeroCreate jarr.Count
 
-      if tag.Contains CompoundSliceD.Type then
-        let ioboxes =
-          let jarr = token.["Value"] :?> JArray
-          let arr = Array.zeroCreate jarr.Count
+        for i in 0 .. (jarr.Count - 1) do
+          Json.parse<IOBox> jarr.[i]
+          |> Option.map (fun iobox -> arr.[i] <- iobox)
+          |> ignore
 
-          for i in 0 .. (jarr.Count - 1) do
-            Json.parse<IOBox> jarr.[i]
-            |> Option.map (fun iobox -> arr.[i] <- iobox)
-            |> ignore
+        arr
 
-          arr
-
-        { Index = uint64 token.["Index"]
-        ; Value = ioboxes
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" CompoundSliceD.Type
+      { Index = uint64 token.["Index"]
+      ; Value = ioboxes
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -2959,29 +2872,23 @@ and Slice =
 
   static member FromJToken(token: JToken) : Slice option =
     try
-      let tag = string token.["$type"]
+      let fields = token.["Fields"] :?> JArray
 
-      if tag.Contains Slice.Type then
-        let fields = token.["Fields"] :?> JArray
+      let inline parseSliceType (cstr: ^t -> Slice) =
+        Json.parse fields.[0]
+        |> Option.map cstr
 
-        let inline parseSliceType (cstr: ^t -> Slice) =
-          Json.parse fields.[0]
-          |> Option.map cstr
-
-        match string token.["Case"] with
-        | "StringSlice"   -> parseSliceType StringSlice
-        | "IntSlice"      -> parseSliceType IntSlice
-        | "FloatSlice"    -> parseSliceType FloatSlice
-        | "DoubleSlice"   -> parseSliceType DoubleSlice
-        | "BoolSlice"     -> parseSliceType BoolSlice
-        | "ByteSlice"     -> parseSliceType ByteSlice
-        | "EnumSlice"     -> parseSliceType EnumSlice
-        | "ColorSlice"    -> parseSliceType ColorSlice
-        | "CompoundSlice" -> parseSliceType CompoundSlice
-        | _               -> None
-
-      else
-        failwithf "$type not correct or missing: %s" Slice.Type
+      match string token.["Case"] with
+      | "StringSlice"   -> parseSliceType StringSlice
+      | "IntSlice"      -> parseSliceType IntSlice
+      | "FloatSlice"    -> parseSliceType FloatSlice
+      | "DoubleSlice"   -> parseSliceType DoubleSlice
+      | "BoolSlice"     -> parseSliceType BoolSlice
+      | "ByteSlice"     -> parseSliceType ByteSlice
+      | "EnumSlice"     -> parseSliceType EnumSlice
+      | "ColorSlice"    -> parseSliceType ColorSlice
+      | "CompoundSlice" -> parseSliceType CompoundSlice
+      | _               -> None
     with
       | exn ->
         printfn "Could not deserialize json: "

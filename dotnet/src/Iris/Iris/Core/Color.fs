@@ -75,15 +75,11 @@ type RGBAValue =
 
   static member FromJToken(token: JToken) : RGBAValue option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains  RGBAValue.Type then
-        { Red   = uint8 token.["Red"]
-        ; Green = uint8 token.["Green"]
-        ; Blue  = uint8 token.["Blue"]
-        ; Alpha = uint8 token.["Alpha"]
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" RGBAValue.Type
+      { Red   = uint8 token.["Red"]
+      ; Green = uint8 token.["Green"]
+      ; Blue  = uint8 token.["Blue"]
+      ; Alpha = uint8 token.["Alpha"]
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -157,15 +153,11 @@ type HSLAValue =
 
   static member FromJToken(token: JToken) : HSLAValue option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains HSLAValue.Type then
-        { Hue        = uint8 token.["Hue"]
-        ; Saturation = uint8 token.["Saturation"]
-        ; Lightness  = uint8 token.["Lightness"]
-        ; Alpha      = uint8 token.["Alpha"]
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" HSLAValue.Type
+      { Hue        = uint8 token.["Hue"]
+      ; Saturation = uint8 token.["Saturation"]
+      ; Lightness  = uint8 token.["Lightness"]
+      ; Alpha      = uint8 token.["Alpha"]
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -254,20 +246,16 @@ type ColorSpace =
 
   static member FromJToken(token: JToken) : ColorSpace option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains  ColorSpace.Type then
-        let fields = token.["Fields"] :?> JArray
+      let fields = token.["Fields"] :?> JArray
 
-        let inline parseColor (cnstr: ^t -> ColorSpace) =
-          Json.parse fields.[0]
-          |> Option.map cnstr
+      let inline parseColor (cnstr: ^t -> ColorSpace) =
+        Json.parse fields.[0]
+        |> Option.map cnstr
 
-        match string token.["Case"] with
-        | "RGBA" -> parseColor RGBA
-        | "HSLA" -> parseColor HSLA
-        | _      -> None
-      else
-        failwithf "$type not correct or missing: %s" ColorSpace.Type
+      match string token.["Case"] with
+      | "RGBA" -> parseColor RGBA
+      | "HSLA" -> parseColor HSLA
+      | _      -> None
     with
       | exn ->
         printfn "Could not deserialize json: "

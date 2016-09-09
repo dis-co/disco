@@ -102,17 +102,12 @@ type AppCommand =
 
   static member FromJToken(token: JToken) : AppCommand option =
     try
-      let tag = string token.["$type"]
-
-      if tag.Contains AppCommand.Type then
-        match string token.["Case"] with
-        | "Undo"        -> Some Undo
-        | "Redo"        -> Some Redo
-        | "Reset"       -> Some Reset
-        | "SaveProject" -> Some SaveProject
-        | _             -> None
-      else
-        failwithf "$type not correct or missing: %s" AppCommand.Type
+      match string token.["Case"] with
+      | "Undo"        -> Some Undo
+      | "Redo"        -> Some Redo
+      | "Reset"       -> Some Reset
+      | "SaveProject" -> Some SaveProject
+      | _             -> None
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -513,42 +508,37 @@ type ApplicationEvent =
 
   static member FromJToken(token: JToken) : ApplicationEvent option =
     try
-      let tag = string token.["$type"]
+      let fields = token.["Fields"] :?> JArray
 
-      if tag.Contains ApplicationEvent.Type then
-        let fields = token.["Fields"] :?> JArray
+      let inline parseSingle (cnst: ^t -> ApplicationEvent) =
+        Json.parse fields.[0]
+        |> Option.map cnst
 
-        let inline parseSingle (cnst: ^t -> ApplicationEvent) =
-          Json.parse fields.[0]
-          |> Option.map cnst
+      match string token.["Case"] with
+      // NODE
+      | "AddNode"     -> parseSingle AddNode
+      | "UpdateNode"  -> parseSingle UpdateNode
+      | "RemoveNode"  -> parseSingle RemoveNode
 
-        match string token.["Case"] with
-        // NODE
-        | "AddNode"     -> parseSingle AddNode
-        | "UpdateNode"  -> parseSingle UpdateNode
-        | "RemoveNode"  -> parseSingle RemoveNode
+      | "AddPatch"    -> parseSingle AddPatch
+      | "UpdatePatch" -> parseSingle UpdatePatch
+      | "RemovePatch" -> parseSingle RemovePatch
 
-        | "AddPatch"    -> parseSingle AddPatch
-        | "UpdatePatch" -> parseSingle UpdatePatch
-        | "RemovePatch" -> parseSingle RemovePatch
+      | "AddIOBox"    -> parseSingle AddIOBox
+      | "UpdateIOBox" -> parseSingle UpdateIOBox
+      | "RemoveIOBox" -> parseSingle RemoveIOBox
 
-        | "AddIOBox"    -> parseSingle AddIOBox
-        | "UpdateIOBox" -> parseSingle UpdateIOBox
-        | "RemoveIOBox" -> parseSingle RemoveIOBox
+      | "AddCue"      -> parseSingle AddCue
+      | "UpdateCue"   -> parseSingle UpdateCue
+      | "RemoveCue"   -> parseSingle RemoveCue
 
-        | "AddCue"      -> parseSingle AddCue
-        | "UpdateCue"   -> parseSingle UpdateCue
-        | "RemoveCue"   -> parseSingle RemoveCue
+      | "Command"     -> parseSingle Command
 
-        | "Command"     -> parseSingle Command
+      | "LogMsg" ->
+        Json.parse fields.[0]
+        |> Option.map (fun level -> LogMsg (level,string fields.[1]))
 
-        | "LogMsg" ->
-          Json.parse fields.[0]
-          |> Option.map (fun level -> LogMsg (level,string fields.[1]))
-
-        | _ -> None
-      else
-        failwithf "$type not correct or missing: %s" ApplicationEvent.Type
+      | _ -> None
     with
       | exn ->
         printfn "Could not deserialize json: "

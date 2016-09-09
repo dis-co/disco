@@ -92,13 +92,9 @@ type Property =
 
   static member FromJToken(token: JToken) : Property option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains Property.Type then
-        { Key  = string token.["Key"]
-        ; Value = string token.["Value"]
-        } |> Some
-      else
-        failwithf "$type not correct or missing: %s" Property.Type
+      { Key   = string token.["Key"]
+      ; Value = string token.["Value"]
+      } |> Some
     with
       | exn ->
         printfn "Could not deserialize json: "

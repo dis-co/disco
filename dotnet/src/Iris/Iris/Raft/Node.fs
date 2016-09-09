@@ -86,16 +86,11 @@ type RaftNodeState =
 
   static member FromJToken(token: JToken) : RaftNodeState option =
     try
-      let tag = string token.["$type"]
-
-      if tag.Contains RaftNodeState.Type then
-        match string token.["Case"] with
-        | "Running" -> Some Running
-        | "Joining" -> Some Joining
-        | "Failed"  -> Some Failed
-        | _         -> None
-      else
-        failwithf "$type not correct or missing: %s" RaftNodeState.Type
+      match string token.["Case"] with
+      | "Running" -> Some Running
+      | "Joining" -> Some Joining
+      | "Failed"  -> Some Failed
+      | _         -> None
     with
       | exn ->
         printfn "Could not deserialize json: "
@@ -215,26 +210,22 @@ type RaftNode =
 
   static member FromJToken(token: JToken) : RaftNode option =
     try
-      let tag = string token.["$type"]
-      if tag.Contains RaftNode.Type then
-        let ip    : IpAddress option     = Json.parse token.["IpAddr"]
-        let state : RaftNodeState option = Json.parse token.["State"]
+      let ip    : IpAddress option     = Json.parse token.["IpAddr"]
+      let state : RaftNodeState option = Json.parse token.["State"]
 
-        match ip, state with
-        | Some ipaddr, Some nodestate ->
-          { Id         = string token.["Id"] |> Id
-          ; HostName   = string token.["HostName"]
-          ; IpAddr     = ipaddr
-          ; State      = nodestate
-          ; Port       = uint16 token.["Port"]
-          ; Voting     = System.Boolean.Parse(string token.["Voting"])
-          ; VotedForMe = System.Boolean.Parse(string token.["VotedForMe"])
-          ; NextIndex  = uint64 token.["NextIndex"]
-          ; MatchIndex = uint64 token.["MatchIndex"]
-          } |> Some
-        | _ -> None
-      else
-        failwithf "$type not correct or missing: %s" RaftNode.Type
+      match ip, state with
+      | Some ipaddr, Some nodestate ->
+        { Id         = string token.["Id"] |> Id
+        ; HostName   = string token.["HostName"]
+        ; IpAddr     = ipaddr
+        ; State      = nodestate
+        ; Port       = uint16 token.["Port"]
+        ; Voting     = System.Boolean.Parse(string token.["Voting"])
+        ; VotedForMe = System.Boolean.Parse(string token.["VotedForMe"])
+        ; NextIndex  = uint64 token.["NextIndex"]
+        ; MatchIndex = uint64 token.["MatchIndex"]
+        } |> Some
+      | _ -> None
     with
       | exn ->
         printfn "Could not deserialize json: "

@@ -60,17 +60,12 @@ type LogLevel =
 
   static member FromJToken(token: JToken) : LogLevel option =
     try
-      let tag = string token.["$type"]
-
-      if tag.Contains LogLevel.Type then
-        match string token.["Case"] with
-        | "Debug" -> Some Debug
-        | "Info"  -> Some Info
-        | "Warn"  -> Some Warn
-        | "Err"   -> Some Err
-        | _       -> None
-      else
-          failwithf "$type not correct or missing: %s" LogLevel.Type
+      match string token.["Case"] with
+      | "Debug" -> Some Debug
+      | "Info"  -> Some Info
+      | "Warn"  -> Some Warn
+      | "Err"   -> Some Err
+      | _       -> None
     with
       | exn ->
         printfn "Could not deserialize json: "

@@ -106,10 +106,6 @@ module Worker =
   [<Emit("onconnect = $0")>]
   let onConnect (_: WorkerEvent<ClientMessage<State>> -> unit) = failwith "ONLY JS"
 
-  [<Emit("JSON.stringify($0)")>]
-  let inline stringify (thing: ^a) : string = failwith "ONLY JS"
-
-
 (* ///////////////////////////////////////////////////////////////////////////////
       ____ _       _           _  ____            _            _
      / ___| | ___ | |__   __ _| |/ ___|___  _ __ | |_ _____  _| |_
@@ -275,8 +271,10 @@ type GlobalContext() =
   member self.Socket with get () = socket
 
   member self.SendServer (msg: ApplicationEvent) =
+    let json = toJson msg
+    self.Log json
     match socket with
-    | Some (_, server) -> server.Send(stringify msg)
+    | Some (_, server) -> server.Send(json)
     | _                -> self.Log "Cannot update server: no connection."
 
   member self.SendClient (port: ClientMessagePort) (msg: ClientMessage<State>) =
