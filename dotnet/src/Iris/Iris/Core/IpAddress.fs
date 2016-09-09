@@ -44,7 +44,7 @@ type IpAddress =
 
   member self.ToJToken() : JToken =
     let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.IpAddress"))
+    json.Add("$type", new JValue(IpAddress.Type))
 
     match self with
     | IPv4Address str ->
@@ -64,11 +64,11 @@ type IpAddress =
       let tag = string token.["$type"]
 
       if tag = IpAddress.Type then
-        let fields = new JArray(token.["Fields"])
+        let fields = token.["Fields"] :?> JArray
         match string token.["Case"] with
-        | "Ip4Address" -> IPv4Address (string fields.[0]) |> Some
-        | "Ip6Address" -> IPv6Address (string fields.[1]) |> Some
-        | _            -> None
+        | "IPv4Address" -> IPv4Address (string fields.[0]) |> Some
+        | "IPv6Address" -> IPv6Address (string fields.[1]) |> Some
+        | _             -> None
       else
           failwithf "$type not correct or missing: %s" IpAddress.Type
     with

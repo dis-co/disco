@@ -360,7 +360,7 @@ module SerializationTests =
   //         |_|   |_|
 
   let test_validate_application_event_serialization =
-    testCase "Validate Cue Serialization" <| fun _ ->
+    testCase "Validate ApplicationEvent Serialization" <| fun _ ->
       let rand = new System.Random()
 
       let mktags _ =

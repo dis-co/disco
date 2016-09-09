@@ -256,7 +256,7 @@ type ColorSpace =
     try
       let tag = string token.["$type"]
       if tag = ColorSpace.Type then
-        let fields = new JArray(token.["Fields"])
+        let fields = token.["Fields"] :?> JArray
 
         let inline parseColor (cnstr: ^t -> ColorSpace) =
           Json.parse fields.[0]

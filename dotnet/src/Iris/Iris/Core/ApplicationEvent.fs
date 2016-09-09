@@ -506,6 +506,8 @@ type ApplicationEvent =
 
     | LogMsg (level, str) -> add "LogMsg" [| Json.tokenize level; new JValue(str) |]
 
+    json :> JToken
+
   member self.ToJson () =
     self.ToJToken() |> string
 
@@ -513,9 +515,8 @@ type ApplicationEvent =
     try
       let tag = string token.["$type"]
 
-
       if tag = ApplicationEvent.Type then
-        let fields = new JArray(token.["Fields"])
+        let fields = token.["Fields"] :?> JArray
 
         let inline parseSingle (cnst: ^t -> ApplicationEvent) =
           Json.parse fields.[0]
@@ -523,9 +524,9 @@ type ApplicationEvent =
 
         match string token.["Case"] with
         // NODE
-        | "AddNode"    -> parseSingle AddNode
-        | "UpdateNode" -> parseSingle UpdateNode
-        | "RemoveNode" -> parseSingle RemoveNode
+        | "AddNode"     -> parseSingle AddNode
+        | "UpdateNode"  -> parseSingle UpdateNode
+        | "RemoveNode"  -> parseSingle RemoveNode
 
         | "AddPatch"    -> parseSingle AddPatch
         | "UpdatePatch" -> parseSingle UpdatePatch
@@ -535,11 +536,11 @@ type ApplicationEvent =
         | "UpdateIOBox" -> parseSingle UpdateIOBox
         | "RemoveIOBox" -> parseSingle RemoveIOBox
 
-        | "AddCue"    -> parseSingle AddCue
-        | "UpdateCue" -> parseSingle UpdateCue
-        | "RemoveCue" -> parseSingle RemoveCue
+        | "AddCue"      -> parseSingle AddCue
+        | "UpdateCue"   -> parseSingle UpdateCue
+        | "RemoveCue"   -> parseSingle RemoveCue
 
-        | "Command" -> parseSingle Command
+        | "Command"     -> parseSingle Command
 
         | "LogMsg" ->
           Json.parse fields.[0]
@@ -556,6 +557,6 @@ type ApplicationEvent =
         None
 
   static member FromJson(str: string) : ApplicationEvent option =
-    JObject.Parse(str) |> ApplicationEvent.FromJToken
+    JToken.Parse(str) |> ApplicationEvent.FromJToken
 
 #endif

@@ -83,9 +83,20 @@ type Cue =
     try
       let tag = string token.["$type"]
       if tag = Cue.Type then
+        let ioboxes =
+          let jarr = token.["IOBoxes"] :?> JArray
+          let arr = Array.zeroCreate jarr.Count
+
+          for i in 0 .. (jarr.Count - 1) do
+            Json.parse jarr.[i]
+            |> Option.map (fun iobox -> arr.[i] <- iobox; iobox)
+            |> ignore
+
+          arr
+
         { Id = Id (string token.["Id"])
         ; Name = string token.["Name"]
-        ; IOBoxes = [| |]
+        ; IOBoxes = ioboxes
         }
         |> Some
       else
@@ -98,6 +109,6 @@ type Cue =
         None
 
   static member FromJson(str: string) : Cue option =
-    JObject.Parse(str) |> Cue.FromJToken
+    JToken.Parse(str) |> Cue.FromJToken
 
 #endif

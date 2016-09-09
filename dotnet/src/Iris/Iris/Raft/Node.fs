@@ -221,11 +221,11 @@ type RaftNode =
         let state : RaftNodeState option = Json.parse token.["State"]
 
         match ip, state with
-        | Some ip, Some state ->
+        | Some ipaddr, Some nodestate ->
           { Id         = string token.["Id"] |> Id
           ; HostName   = string token.["HostName"]
-          ; IpAddr     = ip
-          ; State      = state
+          ; IpAddr     = ipaddr
+          ; State      = nodestate
           ; Port       = uint16 token.["Port"]
           ; Voting     = System.Boolean.Parse(string token.["Voting"])
           ; VotedForMe = System.Boolean.Parse(string token.["VotedForMe"])

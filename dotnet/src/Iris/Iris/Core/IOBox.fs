@@ -85,7 +85,7 @@ type Behavior =
         None
 
   static member FromJson(str: string) : Behavior option =
-    JObject.Parse(str) |> Behavior.FromJToken
+    JToken.Parse(str) |> Behavior.FromJToken
 
 #endif
 
@@ -179,7 +179,7 @@ type StringType =
         None
 
   static member FromJson(str: string) : StringType option =
-    JObject.Parse(str) |> StringType.FromJToken
+    JToken.Parse(str) |> StringType.FromJToken
 
 #endif
 
@@ -671,6 +671,7 @@ type IOBox =
     //  \___/|___/\___/|_| |_|
 
     member self.ToJToken () =
+
       let json = new JObject()
       json.Add("$type", new JValue(IOBox.Type))
 
@@ -699,17 +700,17 @@ type IOBox =
         let tag = string token.["$type"]
 
         let inline parseData (constr: ^f -> IOBox) =
-          new JArray(token.["Fields"])
+          token.["Fields"] :?> JArray
           |> fun arr -> arr.[0]
           |> Json.parse
-          |> Option.map (fun data -> constr data)
+          |> Option.map constr
 
         if tag = IOBox.Type then
           match string token.["Case"] with
           | "StringBox" -> parseData StringBox
           | "IntBox"    -> parseData IntBox
           | "FloatBox"  -> parseData FloatBox
-          | "DoubleBox" -> parseData IntBox
+          | "DoubleBox" -> parseData DoubleBox
           | "BoolBox"   -> parseData BoolBox
           | "ByteBox"   -> parseData ByteBox
           | "EnumBox"   -> parseData EnumBox
@@ -726,7 +727,7 @@ type IOBox =
           None
 
     static member FromJson(str: string) : IOBox option =
-      JObject.Parse(str) |> IOBox.FromJToken
+      JToken.Parse(str) |> IOBox.FromJToken
 
 #endif
 
@@ -848,7 +849,7 @@ and BoolBoxD =
         None
 
   static member FromJson(str: string) : BoolBoxD option =
-    JObject.Parse(str) |> BoolBoxD.FromJToken
+    JToken.Parse(str) |> BoolBoxD.FromJToken
 
 #endif
 
@@ -929,7 +930,7 @@ and BoolSliceD =
         None
 
   static member FromJson(str: string) : BoolSliceD option =
-    JObject.Parse(str) |> BoolSliceD.FromJToken
+    JToken.Parse(str) |> BoolSliceD.FromJToken
 
 #endif
 
@@ -1032,8 +1033,8 @@ and IntBoxD =
     json.Add("Patch", new JValue(string self.Patch))
     json.Add("Tags", new JArray(self.Tags))
     json.Add("VecSize", new JValue(self.VecSize))
-    json.Add("Min", new JArray(self.Min))
-    json.Add("Max", new JArray(self.Max))
+    json.Add("Min", new JValue(self.Min))
+    json.Add("Max", new JValue(self.Max))
     json.Add("Unit", new JValue(self.Unit))
     json.Add("Slices", new JArray(Array.map Json.tokenize self.Slices))
     json :> JToken
@@ -1048,12 +1049,12 @@ and IntBoxD =
         { Id         = parseIdField token "Id"
         ; Name       = string token.["Name"]
         ; Patch      = parseIdField token "Patch"
-        ; Tags       = parseTags token
+        ; Tags       = parseTags    token
         ; VecSize    = uint32 token.["VecSize"]
         ; Min        = int    token.["Min"]
         ; Max        = int    token.["Max"]
         ; Unit       = string token.["Unit"]
-        ; Slices     = parseSlices token
+        ; Slices     = parseSlices  token
         } |> Some
       else
         failwithf "$type not correct or missing: %s" IntBoxD.Type
@@ -1065,7 +1066,7 @@ and IntBoxD =
         None
 
   static member FromJson(str: string) : IntBoxD option =
-    JObject.Parse(str) |> IntBoxD.FromJToken
+    JToken.Parse(str) |> IntBoxD.FromJToken
 
 #endif
 
@@ -1145,7 +1146,7 @@ and IntSliceD =
         None
 
   static member FromJson(str: string) : IntSliceD option =
-    JObject.Parse(str) |> IntSliceD.FromJToken
+    JToken.Parse(str) |> IntSliceD.FromJToken
 
 #endif
 
@@ -1251,8 +1252,8 @@ and FloatBoxD =
     json.Add("Patch", new JValue(string self.Patch))
     json.Add("Tags", new JArray(self.Tags))
     json.Add("VecSize", new JValue(self.VecSize))
-    json.Add("Min", new JArray(self.Min))
-    json.Add("Max", new JArray(self.Max))
+    json.Add("Min", new JValue(self.Min))
+    json.Add("Max", new JValue(self.Max))
     json.Add("Unit", new JValue(self.Unit))
     json.Add("Precision", new JValue(self.Precision))
     json.Add("Slices", new JArray(Array.map Json.tokenize self.Slices))
@@ -1286,7 +1287,7 @@ and FloatBoxD =
         None
 
   static member FromJson(str: string) : FloatBoxD option =
-    JObject.Parse(str) |> FloatBoxD.FromJToken
+    JToken.Parse(str) |> FloatBoxD.FromJToken
 
 #endif
 
@@ -1366,7 +1367,7 @@ and FloatSliceD =
         None
 
   static member FromJson(str: string) : FloatSliceD option =
-    JObject.Parse(str) |> FloatSliceD.FromJToken
+    JToken.Parse(str) |> FloatSliceD.FromJToken
 
 #endif
 
@@ -1472,8 +1473,8 @@ and DoubleBoxD =
     json.Add("Patch", new JValue(string self.Patch))
     json.Add("Tags", new JArray(self.Tags))
     json.Add("VecSize", new JValue(self.VecSize))
-    json.Add("Min", new JArray(self.Min))
-    json.Add("Max", new JArray(self.Max))
+    json.Add("Min", new JValue(self.Min))
+    json.Add("Max", new JValue(self.Max))
     json.Add("Unit", new JValue(self.Unit))
     json.Add("Precision", new JValue(self.Precision))
     json.Add("Slices", new JArray(Array.map Json.tokenize self.Slices))
@@ -1507,7 +1508,7 @@ and DoubleBoxD =
         None
 
   static member FromJson(str: string) : DoubleBoxD option =
-    JObject.Parse(str) |> DoubleBoxD.FromJToken
+    JToken.Parse(str) |> DoubleBoxD.FromJToken
 
 #endif
 
@@ -1587,7 +1588,7 @@ and DoubleSliceD =
         None
 
   static member FromJson(str: string) : DoubleSliceD option =
-    JObject.Parse(str) |> DoubleSliceD.FromJToken
+    JToken.Parse(str) |> DoubleSliceD.FromJToken
 
 #endif
 
@@ -1702,7 +1703,7 @@ and ByteBoxD =
         None
 
   static member FromJson(str: string) : ByteBoxD option =
-    JObject.Parse(str) |> ByteBoxD.FromJToken
+    JToken.Parse(str) |> ByteBoxD.FromJToken
 
 #endif
 
@@ -1784,7 +1785,7 @@ and ByteSliceD =
       if tag = ByteSliceD.Type then
         // convert string-encoded bytes back to raw bytes
         let bytes =
-          let jarr = new JArray(token.["Value"])
+          let jarr = token.["Value"] :?> JArray
           let arr = Array.zeroCreate jarr.Count
 
           for i in 0 .. (jarr.Count - 1) do
@@ -1805,7 +1806,7 @@ and ByteSliceD =
         None
 
   static member FromJson(str: string) : ByteSliceD option =
-    JObject.Parse(str) |> ByteSliceD.FromJToken
+    JToken.Parse(str) |> ByteSliceD.FromJToken
 
 #endif
 
@@ -1919,7 +1920,7 @@ and EnumBoxD =
       let tag = string token.["$type"]
       if tag = EnumBoxD.Type then
         let properties : Property array =
-          let jarr = new JArray(token.["Properties"])
+          let jarr = token.["Properties"] :?> JArray
           let arr = Array.zeroCreate jarr.Count
 
           for i in 0 .. (jarr.Count - 1) do
@@ -1946,7 +1947,7 @@ and EnumBoxD =
         None
 
   static member FromJson(str: string) : EnumBoxD option =
-    JObject.Parse(str) |> EnumBoxD.FromJToken
+    JToken.Parse(str) |> EnumBoxD.FromJToken
 
 #endif
 
@@ -2042,7 +2043,7 @@ and EnumSliceD =
         None
 
   static member FromJson(str: string) : EnumSliceD option =
-    JObject.Parse(str) |> EnumSliceD.FromJToken
+    JToken.Parse(str) |> EnumSliceD.FromJToken
 
 #endif
 
@@ -2156,7 +2157,7 @@ and ColorBoxD =
         None
 
   static member FromJson(str: string) : ColorBoxD option =
-    JObject.Parse(str) |> ColorBoxD.FromJToken
+    JToken.Parse(str) |> ColorBoxD.FromJToken
 
 #endif
 
@@ -2236,7 +2237,7 @@ and ColorSliceD =
         None
 
   static member FromJson(str: string) : ColorSliceD option =
-    JObject.Parse(str) |> ColorSliceD.FromJToken
+    JToken.Parse(str) |> ColorSliceD.FromJToken
 
 #endif
 
@@ -2337,7 +2338,7 @@ and StringBoxD =
 
     let fm =
       match self.FileMask with
-      | Some msk -> new JValue(self.FileMask)
+      | Some msk -> new JValue(msk)
       |      _   -> null
 
     json.Add("$type", new JValue(StringBoxD.Type))
@@ -2359,8 +2360,8 @@ and StringBoxD =
       let tag = string token.["$type"]
       if tag = StringBoxD.Type then
         let fm : FileMask =
-          let msk = token.["FileMask"]
-          if isNull msk then None else Some (string msk)
+          let msk = string token.["FileMask"]
+          if isNull msk || msk.Length = 0 then None else Some msk
 
         Json.parse<StringType> token.["StringType"]
         |> Option.map
@@ -2384,7 +2385,7 @@ and StringBoxD =
         None
 
   static member FromJson(str: string) : StringBoxD option =
-    JObject.Parse(str) |> StringBoxD.FromJToken
+    JToken.Parse(str) |> StringBoxD.FromJToken
 
 #endif
 
@@ -2466,7 +2467,7 @@ and StringSliceD =
         None
 
   static member FromJson(str: string) : StringSliceD option =
-    JObject.Parse(str) |> StringSliceD.FromJToken
+    JToken.Parse(str) |> StringSliceD.FromJToken
 
 #endif
 
@@ -2581,7 +2582,7 @@ and CompoundBoxD =
         None
 
   static member FromJson(str: string) : CompoundBoxD option =
-    JObject.Parse(str) |> CompoundBoxD.FromJToken
+    JToken.Parse(str) |> CompoundBoxD.FromJToken
 
 #endif
 
@@ -2661,7 +2662,7 @@ and CompoundSliceD =
 
       if tag = CompoundSliceD.Type then
         let ioboxes =
-          let jarr = new JArray(token.["Value"])
+          let jarr = token.["Value"] :?> JArray
           let arr = Array.zeroCreate jarr.Count
 
           for i in 0 .. (jarr.Count - 1) do
@@ -2684,7 +2685,7 @@ and CompoundSliceD =
         None
 
   static member FromJson(str: string) : CompoundSliceD option =
-    JObject.Parse(str) |> CompoundSliceD.FromJToken
+    JToken.Parse(str) |> CompoundSliceD.FromJToken
 
 #endif
 
@@ -2961,7 +2962,7 @@ and Slice =
       let tag = string token.["$type"]
 
       if tag = Slice.Type then
-        let fields = new JArray(token.["Fields"])
+        let fields = token.["Fields"] :?> JArray
 
         let inline parseSliceType (cstr: ^t -> Slice) =
           Json.parse fields.[0]
@@ -2989,7 +2990,7 @@ and Slice =
         None
 
   static member FromJson(str: string) : Slice option =
-    JObject.Parse(str) |> Slice.FromJToken
+    JToken.Parse(str) |> Slice.FromJToken
 
 #endif
 

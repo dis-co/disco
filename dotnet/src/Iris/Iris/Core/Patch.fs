@@ -121,9 +121,20 @@ type Patch =
     try
       let tag = string token.["$type"]
       if tag = Patch.Type then
+        let ioboxes =
+          let jarr = token.["IOBoxes"] :?> JArray
+          let arr = Array.zeroCreate jarr.Count
+
+          for i in 0 .. (jarr.Count - 1) do
+            Json.parse jarr.[i]
+            |> Option.map (fun iobox -> arr.[i] <- iobox)
+            |> ignore
+
+          arr
+
         { Id = Id (string token.["Id"])
         ; Name = string token.["Name"]
-        ; IOBoxes = [| |]
+        ; IOBoxes = ioboxes
         }
         |> Some
       else
