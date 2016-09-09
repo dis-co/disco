@@ -63,7 +63,7 @@ type IpAddress =
     try
       let tag = string token.["$type"]
 
-      if tag = IpAddress.Type then
+      if tag.Contains IpAddress.Type then
         let fields = token.["Fields"] :?> JArray
         match string token.["Case"] with
         | "IPv4Address" -> IPv4Address (string fields.[0]) |> Some

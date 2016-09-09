@@ -93,7 +93,7 @@ type Property =
   static member FromJToken(token: JToken) : Property option =
     try
       let tag = string token.["$type"]
-      if tag = Property.Type then
+      if tag.Contains Property.Type then
         { Key  = string token.["Key"]
         ; Value = string token.["Value"]
         } |> Some

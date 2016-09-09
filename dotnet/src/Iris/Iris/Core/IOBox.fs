@@ -70,7 +70,7 @@ type Behavior =
   static member FromJToken(token: JToken) : Behavior option =
     try
       let tag = string token.["$type"]
-      if tag = Behavior.Type then
+      if tag.Contains Behavior.Type then
         match string token.["Case"] with
         | "Toggle" -> Some Toggle
         | "Bang"   -> Some Bang
@@ -160,7 +160,7 @@ type StringType =
   static member FromJToken(token: JToken) : StringType option =
     try
       let tag = string token.["$type"]
-      if tag = StringType.Type then
+      if tag.Contains StringType.Type then
         match string token.["Case"] with
         | "Simple"    -> Some Simple
         | "MultiLine" -> Some MultiLine
@@ -705,7 +705,7 @@ type IOBox =
           |> Json.parse
           |> Option.map constr
 
-        if tag = IOBox.Type then
+        if tag.Contains IOBox.Type then
           match string token.["Case"] with
           | "StringBox" -> parseData StringBox
           | "IntBox"    -> parseData IntBox
@@ -828,7 +828,7 @@ and BoolBoxD =
     try
       let tag = string token.["$type"]
 
-      if tag = BoolBoxD.Type then
+      if tag.Contains BoolBoxD.Type then
         Json.parse<Behavior> token.["Behavior"]
         |> Option.map
           (fun behavior ->
@@ -915,7 +915,7 @@ and BoolSliceD =
   static member FromJToken(token: JToken) : BoolSliceD option =
     try
       let tag = string token.["$type"]
-      if tag = BoolSliceD.Type then
+      if tag.Contains BoolSliceD.Type then
         let value = System.Boolean.Parse(string token.["Value"])
         { Index = uint64 token.["Index"]
         ; Value = value
@@ -1045,7 +1045,7 @@ and IntBoxD =
   static member FromJToken(token: JToken) : IntBoxD option =
     try
       let tag = string token.["$type"]
-      if tag = IntBoxD.Type then
+      if tag.Contains IntBoxD.Type then
         { Id         = parseIdField token "Id"
         ; Name       = string token.["Name"]
         ; Patch      = parseIdField token "Patch"
@@ -1132,7 +1132,7 @@ and IntSliceD =
   static member FromJToken(token: JToken) : IntSliceD option =
     try
       let tag = string token.["$type"]
-      if tag = IntSliceD.Type then
+      if tag.Contains IntSliceD.Type then
         { Index = uint64 token.["Index"]
         ; Value = int    token.["Value"]
         } |> Some
@@ -1265,7 +1265,7 @@ and FloatBoxD =
   static member FromJToken(token: JToken) : FloatBoxD option =
     try
       let tag = string token.["$type"]
-      if tag = FloatBoxD.Type then
+      if tag.Contains FloatBoxD.Type then
         { Id         = parseIdField token "Id"
         ; Name       = string token.["Name"]
         ; Patch      = parseIdField token "Patch"
@@ -1353,7 +1353,7 @@ and FloatSliceD =
   static member FromJToken(token: JToken) : FloatSliceD option =
     try
       let tag = string token.["$type"]
-      if tag = FloatSliceD.Type then
+      if tag.Contains FloatSliceD.Type then
         { Index = uint64 token.["Index"]
         ; Value = float  token.["Value"]
         } |> Some
@@ -1486,7 +1486,7 @@ and DoubleBoxD =
   static member FromJToken(token: JToken) : DoubleBoxD option =
     try
       let tag = string token.["$type"]
-      if tag = DoubleBoxD.Type then
+      if tag.Contains DoubleBoxD.Type then
         { Id         = parseIdField token "Id"
         ; Name       = string token.["Name"]
         ; Patch      = parseIdField token "Patch"
@@ -1574,7 +1574,7 @@ and DoubleSliceD =
   static member FromJToken(token: JToken) : DoubleSliceD option =
     try
       let tag = string token.["$type"]
-      if tag = DoubleSliceD.Type then
+      if tag.Contains DoubleSliceD.Type then
         { Index = uint64 token.["Index"]
         ; Value = double token.["Value"]
         } |> Some
@@ -1686,7 +1686,7 @@ and ByteBoxD =
   static member FromJToken(token: JToken) : ByteBoxD option =
     try
       let tag = string token.["$type"]
-      if tag = ByteBoxD.Type then
+      if tag.Contains ByteBoxD.Type then
         { Id     = parseIdField token "Id"
         ; Name   = string token.["Name"]
         ; Patch  = parseIdField token "Patch"
@@ -1782,7 +1782,7 @@ and ByteSliceD =
   static member FromJToken(token: JToken) : ByteSliceD option =
     try
       let tag = string token.["$type"]
-      if tag = ByteSliceD.Type then
+      if tag.Contains ByteSliceD.Type then
         // convert string-encoded bytes back to raw bytes
         let bytes =
           let jarr = token.["Value"] :?> JArray
@@ -1918,7 +1918,7 @@ and EnumBoxD =
   static member FromJToken(token: JToken) : EnumBoxD option =
     try
       let tag = string token.["$type"]
-      if tag = EnumBoxD.Type then
+      if tag.Contains EnumBoxD.Type then
         let properties : Property array =
           let jarr = token.["Properties"] :?> JArray
           let arr = Array.zeroCreate jarr.Count
@@ -2026,7 +2026,7 @@ and EnumSliceD =
   static member FromJToken(token: JToken) : EnumSliceD option =
     try
       let tag = string token.["$type"]
-      if tag = EnumSliceD.Type then
+      if tag.Contains EnumSliceD.Type then
         Json.parse<Property> token.["Value"]
         |> Option.map
           (fun prop ->
@@ -2140,7 +2140,7 @@ and ColorBoxD =
   static member FromJToken(token: JToken) : ColorBoxD option =
     try
       let tag = string token.["$type"]
-      if tag = ColorBoxD.Type then
+      if tag.Contains ColorBoxD.Type then
         { Id     = parseIdField token "Id"
         ; Name   = string token.["Name"]
         ; Patch  = parseIdField token "Patch"
@@ -2220,7 +2220,7 @@ and ColorSliceD =
   static member FromJToken(token: JToken) : ColorSliceD option =
     try
       let tag = string token.["$type"]
-      if tag = ColorSliceD.Type then
+      if tag.Contains ColorSliceD.Type then
         Json.parse<ColorSpace> token.["Value"]
         |> Option.map
           (fun color ->
@@ -2358,7 +2358,7 @@ and StringBoxD =
   static member FromJToken(token: JToken) : StringBoxD option =
     try
       let tag = string token.["$type"]
-      if tag = StringBoxD.Type then
+      if tag.Contains StringBoxD.Type then
         let fm : FileMask =
           let msk = string token.["FileMask"]
           if isNull msk || msk.Length = 0 then None else Some msk
@@ -2453,7 +2453,7 @@ and StringSliceD =
   static member FromJToken(token: JToken) : StringSliceD option =
     try
       let tag = string token.["$type"]
-      if tag = StringSliceD.Type then
+      if tag.Contains StringSliceD.Type then
         { Index = uint64 token.["Index"]
         ; Value = string token.["Value"]
         } |> Some
@@ -2565,7 +2565,7 @@ and CompoundBoxD =
   static member FromJToken(token: JToken) : CompoundBoxD option =
     try
       let tag = string token.["$type"]
-      if tag = CompoundBoxD.Type then
+      if tag.Contains CompoundBoxD.Type then
         { Id     = parseIdField token "Id"
         ; Name   = string token.["Name"]
         ; Patch  = parseIdField token "Patch"
@@ -2660,7 +2660,7 @@ and CompoundSliceD =
     try
       let tag = string token.["$type"]
 
-      if tag = CompoundSliceD.Type then
+      if tag.Contains CompoundSliceD.Type then
         let ioboxes =
           let jarr = token.["Value"] :?> JArray
           let arr = Array.zeroCreate jarr.Count
@@ -2961,7 +2961,7 @@ and Slice =
     try
       let tag = string token.["$type"]
 
-      if tag = Slice.Type then
+      if tag.Contains Slice.Type then
         let fields = token.["Fields"] :?> JArray
 
         let inline parseSliceType (cstr: ^t -> Slice) =

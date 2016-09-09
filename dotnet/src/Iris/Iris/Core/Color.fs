@@ -76,7 +76,7 @@ type RGBAValue =
   static member FromJToken(token: JToken) : RGBAValue option =
     try
       let tag = string token.["$type"]
-      if tag = RGBAValue.Type then
+      if tag.Contains  RGBAValue.Type then
         { Red   = uint8 token.["Red"]
         ; Green = uint8 token.["Green"]
         ; Blue  = uint8 token.["Blue"]
@@ -158,7 +158,7 @@ type HSLAValue =
   static member FromJToken(token: JToken) : HSLAValue option =
     try
       let tag = string token.["$type"]
-      if tag = HSLAValue.Type then
+      if tag.Contains HSLAValue.Type then
         { Hue        = uint8 token.["Hue"]
         ; Saturation = uint8 token.["Saturation"]
         ; Lightness  = uint8 token.["Lightness"]
@@ -255,7 +255,7 @@ type ColorSpace =
   static member FromJToken(token: JToken) : ColorSpace option =
     try
       let tag = string token.["$type"]
-      if tag = ColorSpace.Type then
+      if tag.Contains  ColorSpace.Type then
         let fields = token.["Fields"] :?> JArray
 
         let inline parseColor (cnstr: ^t -> ColorSpace) =

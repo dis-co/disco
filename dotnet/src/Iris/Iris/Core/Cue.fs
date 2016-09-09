@@ -82,7 +82,7 @@ type Cue =
   static member FromJToken(token: JToken) : Cue option =
     try
       let tag = string token.["$type"]
-      if tag = Cue.Type then
+      if tag.Contains Cue.Type then
         let ioboxes =
           let jarr = token.["IOBoxes"] :?> JArray
           let arr = Array.zeroCreate jarr.Count

@@ -104,7 +104,7 @@ type AppCommand =
     try
       let tag = string token.["$type"]
 
-      if tag = AppCommand.Type then
+      if tag.Contains AppCommand.Type then
         match string token.["Case"] with
         | "Undo"        -> Some Undo
         | "Redo"        -> Some Redo
@@ -515,7 +515,7 @@ type ApplicationEvent =
     try
       let tag = string token.["$type"]
 
-      if tag = ApplicationEvent.Type then
+      if tag.Contains ApplicationEvent.Type then
         let fields = token.["Fields"] :?> JArray
 
         let inline parseSingle (cnst: ^t -> ApplicationEvent) =

@@ -88,7 +88,7 @@ type RaftNodeState =
     try
       let tag = string token.["$type"]
 
-      if tag = RaftNodeState.Type then
+      if tag.Contains RaftNodeState.Type then
         match string token.["Case"] with
         | "Running" -> Some Running
         | "Joining" -> Some Joining
@@ -216,7 +216,7 @@ type RaftNode =
   static member FromJToken(token: JToken) : RaftNode option =
     try
       let tag = string token.["$type"]
-      if tag = RaftNode.Type then
+      if tag.Contains RaftNode.Type then
         let ip    : IpAddress option     = Json.parse token.["IpAddr"]
         let state : RaftNodeState option = Json.parse token.["State"]
 

@@ -62,7 +62,7 @@ type LogLevel =
     try
       let tag = string token.["$type"]
 
-      if tag = LogLevel.Type then
+      if tag.Contains LogLevel.Type then
         match string token.["Case"] with
         | "Debug" -> Some Debug
         | "Info"  -> Some Info

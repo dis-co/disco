@@ -120,7 +120,7 @@ type Patch =
   static member FromJToken(token: JToken) : Patch option =
     try
       let tag = string token.["$type"]
-      if tag = Patch.Type then
+      if tag.Contains Patch.Type then
         let ioboxes =
           let jarr = token.["IOBoxes"] :?> JArray
           let arr = Array.zeroCreate jarr.Count
