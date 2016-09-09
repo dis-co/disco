@@ -25,62 +25,87 @@ type RaftNodeState =
   | Running                             // normal execution state
   | Failed                              // node has failed for some reason
 
-  with
-    override self.ToString() =
-      match self with
-      | Joining -> "Joining"
-      | Running -> "Running"
-      | Failed  -> "Failed"
+  override self.ToString() =
+    match self with
+    | Joining -> "Joining"
+    | Running -> "Running"
+    | Failed  -> "Failed"
 
-    static member Parse (str: string) =
-      match str with
-      | "Joining" -> Joining
-      | "Running" -> Running
-      | "Failed"  -> Failed
-      | _         -> failwithf "NodeState: failed to parse %s" str
+  static member Parse (str: string) =
+    match str with
+    | "Joining" -> Joining
+    | "Running" -> Running
+    | "Failed"  -> Failed
+    | _         -> failwithf "NodeState: failed to parse %s" str
+
+  static member Type
+    with get () = "Iris.Raft.RaftNodeState"
 
 #if JAVASCRIPT
 #else
 
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
 
-    member self.ToOffset () =
-      match self with
-        | Running -> NodeStateFB.RunningFB
-        | Joining -> NodeStateFB.JoiningFB
-        | Failed  -> NodeStateFB.FailedFB
+  member self.ToOffset () =
+    match self with
+      | Running -> NodeStateFB.RunningFB
+      | Joining -> NodeStateFB.JoiningFB
+      | Failed  -> NodeStateFB.FailedFB
 
-    static member FromFB (fb: NodeStateFB) =
-      match fb with
-        | NodeStateFB.JoiningFB -> Some Joining
-        | NodeStateFB.RunningFB -> Some Running
-        | NodeStateFB.FailedFB  -> Some Failed
-        | _                     -> None
+  static member FromFB (fb: NodeStateFB) =
+    match fb with
+      | NodeStateFB.JoiningFB -> Some Joining
+      | NodeStateFB.RunningFB -> Some Running
+      | NodeStateFB.FailedFB  -> Some Failed
+      | _                     -> None
 
-    //      _
-    //     | |___  ___  _ __
-    //  _  | / __|/ _ \| '_ \
-    // | |_| \__ \ (_) | | | |
-    //  \___/|___/\___/|_| |_|
+  //      _
+  //     | |___  ___  _ __
+  //  _  | / __|/ _ \| '_ \
+  // | |_| \__ \ (_) | | | |
+  //  \___/|___/\___/|_| |_|
 
-    member self.ToJToken() =
-      let json = new JObject()
-      json.Add("$type", new JValue("Iris.Raft.RaftNode"))
+  member self.ToJToken() =
+    let json = new JObject()
+    json.Add("$type", new JValue(RaftNodeState.Type))
 
-      match self with
-      | Running -> json.Add("Case", new JValue("Running"))
-      | Joining -> json.Add("Case", new JValue("Joining"))
-      | Failed  -> json.Add("Case", new JValue("Failed"))
+    match self with
+    | Running -> json.Add("Case", new JValue("Running"))
+    | Joining -> json.Add("Case", new JValue("Joining"))
+    | Failed  -> json.Add("Case", new JValue("Failed"))
 
-      json :> JToken
+    json :> JToken
 
-    member self.ToJson() =
-      self.ToJToken() |> string
+  member self.ToJson() =
+    self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : RaftNodeState option =
+    try
+      let tag = string token.["$type"]
+
+      if tag = RaftNodeState.Type then
+        match string token.["Case"] with
+        | "Running" -> Some Running
+        | "Joining" -> Some Joining
+        | "Failed"  -> Some Failed
+        | _         -> None
+      else
+        failwithf "$type not correct or missing: %s" RaftNodeState.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : RaftNodeState option =
+    JObject.Parse(str) |> RaftNodeState.FromJToken
+
 
 #endif
 
@@ -101,90 +126,124 @@ type RaftNode =
   ; NextIndex  : Index
   ; MatchIndex : Index }
 
-  with
-    override self.ToString() =
-      sprintf "%s on %s (%s:%d) %s %s %s"
-        (string self.Id)
-        (string self.HostName)
-        (string self.IpAddr)
-        self.Port
-        (string self.State)
-        (sprintf "(NxtIdx %A)" self.NextIndex)
-        (sprintf "(MtchIdx %A)" self.MatchIndex)
+  override self.ToString() =
+    sprintf "%s on %s (%s:%d) %s %s %s"
+      (string self.Id)
+      (string self.HostName)
+      (string self.IpAddr)
+      self.Port
+      (string self.State)
+      (sprintf "(NxtIdx %A)" self.NextIndex)
+      (sprintf "(MtchIdx %A)" self.MatchIndex)
+
+  static member Type
+    with get () = "Iris.Raft.RaftNode"
 
 #if JAVASCRIPT
 #else
 
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
 
-    member node.ToOffset (builder: FlatBufferBuilder) =
-      let id = string node.Id |> builder.CreateString
-      let ip = string node.IpAddr |> builder.CreateString
-      let hostname = node.HostName |> builder.CreateString
-      let state = node.State.ToOffset()
+  member node.ToOffset (builder: FlatBufferBuilder) =
+    let id = string node.Id |> builder.CreateString
+    let ip = string node.IpAddr |> builder.CreateString
+    let hostname = node.HostName |> builder.CreateString
+    let state = node.State.ToOffset()
 
-      NodeFB.StartNodeFB(builder)
-      NodeFB.AddId(builder, id)
-      NodeFB.AddHostName(builder, hostname)
-      NodeFB.AddIpAddr(builder, ip)
-      NodeFB.AddPort(builder, int node.Port)
-      NodeFB.AddVoting(builder, node.Voting)
-      NodeFB.AddVotedForMe(builder, node.VotedForMe)
-      NodeFB.AddState(builder, state)
-      NodeFB.AddNextIndex(builder, node.NextIndex)
-      NodeFB.AddMatchIndex(builder, node.MatchIndex)
-      NodeFB.EndNodeFB(builder)
+    NodeFB.StartNodeFB(builder)
+    NodeFB.AddId(builder, id)
+    NodeFB.AddHostName(builder, hostname)
+    NodeFB.AddIpAddr(builder, ip)
+    NodeFB.AddPort(builder, int node.Port)
+    NodeFB.AddVoting(builder, node.Voting)
+    NodeFB.AddVotedForMe(builder, node.VotedForMe)
+    NodeFB.AddState(builder, state)
+    NodeFB.AddNextIndex(builder, node.NextIndex)
+    NodeFB.AddMatchIndex(builder, node.MatchIndex)
+    NodeFB.EndNodeFB(builder)
 
-    static member FromFB (fb: NodeFB) : RaftNode option =
-      try
-        RaftNodeState.FromFB fb.State
-        |> Option.map
-          (fun state ->
-            { Id = Id fb.Id
-            ; State = state
-            ; HostName = fb.HostName
-            ; IpAddr = IpAddress.Parse fb.IpAddr
-            ; Port = uint16 fb.Port
-            ; Voting = fb.Voting
-            ; VotedForMe = fb.VotedForMe
-            ; NextIndex = fb.NextIndex
-            ; MatchIndex = fb.MatchIndex })
-      with
+  static member FromFB (fb: NodeFB) : RaftNode option =
+    try
+      RaftNodeState.FromFB fb.State
+      |> Option.map
+        (fun state ->
+          { Id = Id fb.Id
+          ; State = state
+          ; HostName = fb.HostName
+          ; IpAddr = IpAddress.Parse fb.IpAddr
+          ; Port = uint16 fb.Port
+          ; Voting = fb.Voting
+          ; VotedForMe = fb.VotedForMe
+          ; NextIndex = fb.NextIndex
+          ; MatchIndex = fb.MatchIndex })
+    with
+      | _ -> None
+
+  member self.ToBytes () = Binary.buildBuffer self
+
+  static member FromBytes (bytes: byte array) =
+    NodeFB.GetRootAsNodeFB(new ByteBuffer(bytes))
+    |> RaftNode.FromFB
+
+  //      _
+  //     | |___  ___  _ __
+  //  _  | / __|/ _ \| '_ \
+  // | |_| \__ \ (_) | | | |
+  //  \___/|___/\___/|_| |_|
+
+  member self.ToJToken() =
+    let json = new JObject()
+    json.Add("$type", new JValue(RaftNode.Type))
+    json.Add("Id", new JValue(string self.Id))
+    json.Add("HostName", new JValue(self.HostName))
+    json.Add("IpAddr", Json.tokenize self.IpAddr)
+    json.Add("Port", new JValue(self.Port))
+    json.Add("Voting", new JValue(self.Voting))
+    json.Add("VotedForMe", new JValue(self.VotedForMe))
+    json.Add("State", Json.tokenize self.State)
+    json.Add("NextIndex", new JValue(self.NextIndex))
+    json.Add("MatchIndex", new JValue(self.MatchIndex))
+    json :> JToken
+
+  member self.ToJson() =
+    self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : RaftNode option =
+    try
+      let tag = string token.["$type"]
+      if tag = RaftNode.Type then
+        let ip    : IpAddress option     = Json.parse token.["IpAddr"]
+        let state : RaftNodeState option = Json.parse token.["State"]
+
+        match ip, state with
+        | Some ip, Some state ->
+          { Id         = string token.["Id"] |> Id
+          ; HostName   = string token.["HostName"]
+          ; IpAddr     = ip
+          ; State      = state
+          ; Port       = uint16 token.["Port"]
+          ; Voting     = System.Boolean.Parse(string token.["Voting"])
+          ; VotedForMe = System.Boolean.Parse(string token.["VotedForMe"])
+          ; NextIndex  = uint64 token.["NextIndex"]
+          ; MatchIndex = uint64 token.["MatchIndex"]
+          } |> Some
         | _ -> None
+      else
+        failwithf "$type not correct or missing: %s" RaftNode.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
 
-    member self.ToBytes () = Binary.buildBuffer self
-
-    static member FromBytes (bytes: byte array) =
-      NodeFB.GetRootAsNodeFB(new ByteBuffer(bytes))
-      |> RaftNode.FromFB
-
-    //      _
-    //     | |___  ___  _ __
-    //  _  | / __|/ _ \| '_ \
-    // | |_| \__ \ (_) | | | |
-    //  \___/|___/\___/|_| |_|
-
-    member self.ToJToken() =
-      let json = new JObject()
-      json.Add("$type", new JValue("Iris.Raft.RaftNode"))
-      json.Add("Id", new JValue(string self.Id))
-      json.Add("HostName", new JValue(self.HostName))
-      json.Add("IpAddr", Json.tokenize self.IpAddr)
-      json.Add("Port", new JValue(self.Port))
-      json.Add("Voting", new JValue(self.Voting))
-      json.Add("VotedForMe", new JValue(self.VotedForMe))
-      json.Add("State", Json.tokenize self.State)
-      json.Add("NextIndex", new JValue(self.NextIndex))
-      json.Add("MatchIndex", new JValue(self.MatchIndex))
-      json :> JToken
-
-    member self.ToJson() =
-      self.ToJToken() |> string
+  static member FromJson(str: string) : RaftNode option =
+    JObject.Parse(str) |> RaftNode.FromJToken
 
 #endif
 

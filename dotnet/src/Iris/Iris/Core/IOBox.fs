@@ -191,7 +191,7 @@ type StringType =
 module JsonUtils =
 
   let parseTags (token: JToken) : Tag array =
-    let jarr = new JArray(token.["Tags"])
+    let jarr = token.["Tags"] :?> JArray
     let arr = Array.zeroCreate jarr.Count
 
     for i in 0 .. (jarr.Count - 1) do
@@ -200,7 +200,7 @@ module JsonUtils =
     arr
 
   let inline parseSlices (token: JToken) =
-    let jarr = new JArray(token.["Slices"])
+    let jarr = token.["Slices"] :?> JArray
     let arr = Array.zeroCreate jarr.Count
 
     for i in 0 .. (jarr.Count - 1) do
@@ -2705,254 +2705,291 @@ and Slice =
   | ColorSlice    of ColorSliceD
   | CompoundSlice of CompoundSliceD
 
-  with
-    member self.Index
-      with get () =
-        match self with
-        | StringSlice   data -> data.Index
-        | IntSlice      data -> data.Index
-        | FloatSlice    data -> data.Index
-        | DoubleSlice   data -> data.Index
-        | BoolSlice     data -> data.Index
-        | ByteSlice     data -> data.Index
-        | EnumSlice     data -> data.Index
-        | ColorSlice    data -> data.Index
-        | CompoundSlice data -> data.Index
+  static member Type
+    with get () = "Iris.Core.Slice"
 
-    member self.Value
-      with get () =
-        match self with
-        | StringSlice   data -> data.Value :> obj
-        | IntSlice      data -> data.Value :> obj
-        | FloatSlice    data -> data.Value :> obj
-        | DoubleSlice   data -> data.Value :> obj
-        | BoolSlice     data -> data.Value :> obj
-        | ByteSlice     data -> data.Value :> obj
-        | EnumSlice     data -> data.Value :> obj
-        | ColorSlice    data -> data.Value :> obj
-        | CompoundSlice data -> data.Value :> obj
+  member self.Index
+    with get () =
+      match self with
+      | StringSlice   data -> data.Index
+      | IntSlice      data -> data.Index
+      | FloatSlice    data -> data.Index
+      | DoubleSlice   data -> data.Index
+      | BoolSlice     data -> data.Index
+      | ByteSlice     data -> data.Index
+      | EnumSlice     data -> data.Index
+      | ColorSlice    data -> data.Index
+      | CompoundSlice data -> data.Index
 
-    member self.StringValue
-      with get () =
-        match self with
-        | StringSlice data -> Some data.Value
-        | _                -> None
+  member self.Value
+    with get () =
+      match self with
+      | StringSlice   data -> data.Value :> obj
+      | IntSlice      data -> data.Value :> obj
+      | FloatSlice    data -> data.Value :> obj
+      | DoubleSlice   data -> data.Value :> obj
+      | BoolSlice     data -> data.Value :> obj
+      | ByteSlice     data -> data.Value :> obj
+      | EnumSlice     data -> data.Value :> obj
+      | ColorSlice    data -> data.Value :> obj
+      | CompoundSlice data -> data.Value :> obj
 
-    member self.StringData
-      with get () =
-        match self with
-        | StringSlice data -> Some data
-        | _                -> None
+  member self.StringValue
+    with get () =
+      match self with
+      | StringSlice data -> Some data.Value
+      | _                -> None
 
-    member self.IntValue
-      with get () =
-        match self with
-        | IntSlice data -> Some data.Value
-        | _             -> None
+  member self.StringData
+    with get () =
+      match self with
+      | StringSlice data -> Some data
+      | _                -> None
 
-    member self.IntData
-      with get () =
-        match self with
-        | IntSlice data -> Some data
-        | _             -> None
+  member self.IntValue
+    with get () =
+      match self with
+      | IntSlice data -> Some data.Value
+      | _             -> None
 
-    member self.FloatValue
-      with get () =
-        match self with
-        | FloatSlice data -> Some data.Value
-        | _               -> None
+  member self.IntData
+    with get () =
+      match self with
+      | IntSlice data -> Some data
+      | _             -> None
 
-    member self.FloatData
-      with get () =
-        match self with
-        | FloatSlice data -> Some data
-        | _               -> None
+  member self.FloatValue
+    with get () =
+      match self with
+      | FloatSlice data -> Some data.Value
+      | _               -> None
 
-    member self.DoubleValue
-      with get () =
-        match self with
-        | DoubleSlice data -> Some data.Value
-        | _                -> None
+  member self.FloatData
+    with get () =
+      match self with
+      | FloatSlice data -> Some data
+      | _               -> None
 
-    member self.DoubleData
-      with get () =
-        match self with
-        | DoubleSlice data -> Some data
-        | _                -> None
+  member self.DoubleValue
+    with get () =
+      match self with
+      | DoubleSlice data -> Some data.Value
+      | _                -> None
 
-    member self.BoolValue
-      with get () =
-        match self with
-        | BoolSlice data -> Some data.Value
-        | _              -> None
+  member self.DoubleData
+    with get () =
+      match self with
+      | DoubleSlice data -> Some data
+      | _                -> None
 
-    member self.BoolData
-      with get () =
-        match self with
-        | BoolSlice data -> Some data
-        | _              -> None
+  member self.BoolValue
+    with get () =
+      match self with
+      | BoolSlice data -> Some data.Value
+      | _              -> None
 
-    member self.ByteValue
-      with get () =
-        match self with
-        | ByteSlice data -> Some data.Value
-        | _              -> None
+  member self.BoolData
+    with get () =
+      match self with
+      | BoolSlice data -> Some data
+      | _              -> None
 
-    member self.ByteData
-      with get () =
-        match self with
-        | ByteSlice data -> Some data
-        | _              -> None
+  member self.ByteValue
+    with get () =
+      match self with
+      | ByteSlice data -> Some data.Value
+      | _              -> None
 
-    member self.EnumValue
-      with get () =
-        match self with
-        | EnumSlice data -> Some data.Value
-        | _              -> None
+  member self.ByteData
+    with get () =
+      match self with
+      | ByteSlice data -> Some data
+      | _              -> None
 
-    member self.EnumData
-      with get () =
-        match self with
-        | EnumSlice data -> Some data
-        | _              -> None
+  member self.EnumValue
+    with get () =
+      match self with
+      | EnumSlice data -> Some data.Value
+      | _              -> None
 
-    member self.ColorValue
-      with get () =
-        match self with
-        | ColorSlice data -> Some data.Value
-        | _               -> None
+  member self.EnumData
+    with get () =
+      match self with
+      | EnumSlice data -> Some data
+      | _              -> None
 
-    member self.ColorData
-      with get () =
-        match self with
-        | ColorSlice data -> Some data
-        | _               -> None
+  member self.ColorValue
+    with get () =
+      match self with
+      | ColorSlice data -> Some data.Value
+      | _               -> None
 
-    member self.CompoundValue
-      with get () =
-        match self with
-        | CompoundSlice data -> Some data.Value
-        | _                  -> None
+  member self.ColorData
+    with get () =
+      match self with
+      | ColorSlice data -> Some data
+      | _               -> None
 
-    member self.CompoundData
-      with get () =
-        match self with
-        | CompoundSlice data -> Some data
-        | _                  -> None
+  member self.CompoundValue
+    with get () =
+      match self with
+      | CompoundSlice data -> Some data.Value
+      | _                  -> None
+
+  member self.CompoundData
+    with get () =
+      match self with
+      | CompoundSlice data -> Some data
+      | _                  -> None
 
 #if JAVASCRIPT
 #else
 
-    //  _____      ___   __  __          _
-    // |_   _|__  / _ \ / _|/ _|___  ___| |_
-    //   | |/ _ \| | | | |_| |_/ __|/ _ \ __|
-    //   | | (_) | |_| |  _|  _\__ \  __/ |_
-    //   |_|\___/ \___/|_| |_| |___/\___|\__|
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
 
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      let build tipe (offset: Offset<_>) =
-        SliceFB.StartSliceFB(builder)
-        SliceFB.AddSliceType(builder, tipe)
-        SliceFB.AddSlice(builder, offset.Value)
-        SliceFB.EndSliceFB(builder)
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let build tipe (offset: Offset<_>) =
+      SliceFB.StartSliceFB(builder)
+      SliceFB.AddSliceType(builder, tipe)
+      SliceFB.AddSlice(builder, offset.Value)
+      SliceFB.EndSliceFB(builder)
 
-      match self with
-      | StringSlice   data ->
-        data.ToOffset(builder)
-        |> build SliceTypeFB.StringSliceFB
+    match self with
+    | StringSlice   data -> data.ToOffset(builder) |> build SliceTypeFB.StringSliceFB
+    | IntSlice      data -> data.ToOffset(builder) |> build SliceTypeFB.IntSliceFB
+    | FloatSlice    data -> data.ToOffset(builder) |> build SliceTypeFB.FloatSliceFB
+    | DoubleSlice   data -> data.ToOffset(builder) |> build SliceTypeFB.DoubleSliceFB
+    | BoolSlice     data -> data.ToOffset(builder) |> build SliceTypeFB.BoolSliceFB
+    | ByteSlice     data -> data.ToOffset(builder) |> build SliceTypeFB.ByteSliceFB
+    | EnumSlice     data -> data.ToOffset(builder) |> build SliceTypeFB.EnumSliceFB
+    | ColorSlice    data -> data.ToOffset(builder) |> build SliceTypeFB.ColorSliceFB
+    | CompoundSlice data -> data.ToOffset(builder) |> build SliceTypeFB.CompoundSliceFB
 
-      | IntSlice      data ->
-        data.ToOffset(builder)
-        |> build SliceTypeFB.IntSliceFB
+  static member FromFB(fb: SliceFB) : Slice option =
+    match fb.SliceType with
+    | SliceTypeFB.StringSliceFB   ->
+      fb.GetSlice(new StringSliceFB())
+      |> StringSliceD.FromFB
+      |> Option.map StringSlice
 
-      | FloatSlice    data ->
-        data.ToOffset(builder)
-        |> build SliceTypeFB.FloatSliceFB
+    | SliceTypeFB.IntSliceFB      ->
+      fb.GetSlice(new IntSliceFB())
+      |> IntSliceD.FromFB
+      |> Option.map IntSlice
 
-      | DoubleSlice   data ->
-        data.ToOffset(builder)
-        |> build SliceTypeFB.DoubleSliceFB
+    | SliceTypeFB.FloatSliceFB    ->
+      fb.GetSlice(new FloatSliceFB())
+      |> FloatSliceD.FromFB
+      |> Option.map FloatSlice
 
-      | BoolSlice     data ->
-        data.ToOffset(builder)
-        |> build SliceTypeFB.BoolSliceFB
+    | SliceTypeFB.DoubleSliceFB   ->
+      fb.GetSlice(new DoubleSliceFB())
+      |> DoubleSliceD.FromFB
+      |> Option.map DoubleSlice
 
-      | ByteSlice     data ->
-        data.ToOffset(builder)
-        |> build SliceTypeFB.ByteSliceFB
+    | SliceTypeFB.BoolSliceFB     ->
+      fb.GetSlice(new BoolSliceFB())
+      |> BoolSliceD.FromFB
+      |> Option.map BoolSlice
 
-      | EnumSlice     data ->
-        data.ToOffset(builder)
-        |> build SliceTypeFB.EnumSliceFB
+    | SliceTypeFB.ByteSliceFB     ->
+      fb.GetSlice(new ByteSliceFB())
+      |> ByteSliceD.FromFB
+      |> Option.map ByteSlice
 
-      | ColorSlice    data ->
-        data.ToOffset(builder)
-        |> build SliceTypeFB.ColorSliceFB
+    | SliceTypeFB.EnumSliceFB     ->
+      fb.GetSlice(new EnumSliceFB())
+      |> EnumSliceD.FromFB
+      |> Option.map EnumSlice
 
-      | CompoundSlice data ->
-        data.ToOffset(builder)
-        |> build SliceTypeFB.CompoundSliceFB
+    | SliceTypeFB.ColorSliceFB    ->
+      fb.GetSlice(new ColorSliceFB())
+      |> ColorSliceD.FromFB
+      |> Option.map ColorSlice
 
-    //  _____                    _____ ____
-    // |  ___| __ ___  _ __ ___ |  ___| __ )
-    // | |_ | '__/ _ \| '_ ` _ \| |_  |  _ \
-    // |  _|| | | (_) | | | | | |  _| | |_) |
-    // |_|  |_|  \___/|_| |_| |_|_|   |____/
+    | SliceTypeFB.CompoundSliceFB ->
+      fb.GetSlice(new CompoundSliceFB())
+      |> CompoundSliceD.FromFB
+      |> Option.map CompoundSlice
 
-    static member FromFB(fb: SliceFB) : Slice option =
-      match fb.SliceType with
-      | SliceTypeFB.StringSliceFB   ->
-        fb.GetSlice(new StringSliceFB())
-        |> StringSliceD.FromFB
-        |> Option.map StringSlice
+    | _ -> None
 
-      | SliceTypeFB.IntSliceFB      ->
-        fb.GetSlice(new IntSliceFB())
-        |> IntSliceD.FromFB
-        |> Option.map IntSlice
+  member self.ToBytes() : byte array = Binary.buildBuffer self
 
-      | SliceTypeFB.FloatSliceFB    ->
-        fb.GetSlice(new FloatSliceFB())
-        |> FloatSliceD.FromFB
-        |> Option.map FloatSlice
+  static member FromBytes(bytes: byte array) : Slice option =
+    SliceFB.GetRootAsSliceFB(new ByteBuffer(bytes))
+    |> Slice.FromFB
 
-      | SliceTypeFB.DoubleSliceFB   ->
-        fb.GetSlice(new DoubleSliceFB())
-        |> DoubleSliceD.FromFB
-        |> Option.map DoubleSlice
+  //      _
+  //     | |___  ___  _ __
+  //  _  | / __|/ _ \| '_ \
+  // | |_| \__ \ (_) | | | |
+  //  \___/|___/\___/|_| |_|
 
-      | SliceTypeFB.BoolSliceFB     ->
-        fb.GetSlice(new BoolSliceFB())
-        |> BoolSliceD.FromFB
-        |> Option.map BoolSlice
 
-      | SliceTypeFB.ByteSliceFB     ->
-        fb.GetSlice(new ByteSliceFB())
-        |> ByteSliceD.FromFB
-        |> Option.map ByteSlice
+  member self.ToJToken () =
+    let json = new JObject()
+    json.Add("$type", new JValue(Slice.Type))
 
-      | SliceTypeFB.EnumSliceFB     ->
-        fb.GetSlice(new EnumSliceFB())
-        |> EnumSliceD.FromFB
-        |> Option.map EnumSlice
+    let inline add (case: string) data =
+      json.Add("Case", new JValue(case))
+      json.Add("Fields", new JArray([ Json.tokenize data ]))
 
-      | SliceTypeFB.ColorSliceFB    ->
-        fb.GetSlice(new ColorSliceFB())
-        |> ColorSliceD.FromFB
-        |> Option.map ColorSlice
+    match self with
+    | StringSlice   data -> add "StringSlice"   data
+    | IntSlice      data -> add "IntSlice"      data
+    | FloatSlice    data -> add "FloatSlice"    data
+    | DoubleSlice   data -> add "DoubleSlice"   data
+    | BoolSlice     data -> add "BoolSlice"     data
+    | ByteSlice     data -> add "ByteSlice"     data
+    | EnumSlice     data -> add "EnumSlice"     data
+    | ColorSlice    data -> add "ColorSlice"    data
+    | CompoundSlice data -> add "CompoundSlice" data
 
-      | SliceTypeFB.CompoundSliceFB ->
-        fb.GetSlice(new CompoundSliceFB())
-        |> CompoundSliceD.FromFB
-        |> Option.map CompoundSlice
+    json :> JToken
 
-      | _ -> None
+  member self.ToJson() =
+    self.ToJToken() |> string
 
-    member self.ToBytes() : byte array = Binary.buildBuffer self
+  static member FromJToken(token: JToken) : Slice option =
+    try
+      let tag = string token.["$type"]
 
-    static member FromBytes(bytes: byte array) : Slice option =
-      SliceFB.GetRootAsSliceFB(new ByteBuffer(bytes))
-      |> Slice.FromFB
+      if tag = Slice.Type then
+        let fields = new JArray(token.["Fields"])
+
+        let inline parseSliceType (cstr: ^t -> Slice) =
+          Json.parse fields.[0]
+          |> Option.map cstr
+
+        match string token.["Case"] with
+        | "StringSlice"   -> parseSliceType StringSlice
+        | "IntSlice"      -> parseSliceType IntSlice
+        | "FloatSlice"    -> parseSliceType FloatSlice
+        | "DoubleSlice"   -> parseSliceType DoubleSlice
+        | "BoolSlice"     -> parseSliceType BoolSlice
+        | "ByteSlice"     -> parseSliceType ByteSlice
+        | "EnumSlice"     -> parseSliceType EnumSlice
+        | "ColorSlice"    -> parseSliceType ColorSlice
+        | "CompoundSlice" -> parseSliceType CompoundSlice
+        | _               -> None
+
+      else
+        failwithf "$type not correct or missing: %s" Slice.Type
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : Slice option =
+    JObject.Parse(str) |> Slice.FromJToken
 
 #endif
 

@@ -434,10 +434,8 @@ module SerializationTests =
         (fun cmd ->
           let command = AppEvent cmd
           let remsg = command |> Binary.encode |> Binary.decode
-          expect "Should be structurally the same" command id (Option.get remsg)
-
-          let remsg = command |> Json.encode |> Json.decode
           expect "Should be structurally the same" command id (Option.get remsg))
+
 
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
