@@ -35,4 +35,4 @@ module Keyboard =
   let registerKeyHandlers (ctx : ClientContext) =
     Browser.window.onkeydown <- fun e ->
       keydownHandler ctx e
-      failwith "oh ho ho ho"
+      new obj()
