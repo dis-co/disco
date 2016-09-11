@@ -272,7 +272,6 @@ type GlobalContext() =
 
   member self.SendServer (msg: ApplicationEvent) =
     let json = toJson msg
-    self.Log json
     match socket with
     | Some (_, server) -> server.Send(json)
     | _                -> self.Log "Cannot update server: no connection."
