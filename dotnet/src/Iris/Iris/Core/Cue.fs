@@ -70,7 +70,7 @@ type Cue =
 
   member self.ToJToken() =
     let json = new JObject()
-    json.Add("$type", new JValue(Cue.Type))
+    // json.Add("$type", new JValue(Cue.Type))
     json.Add("Id", new JValue(string self.Id))
     json.Add("Name", new JValue(self.Name))
     json.Add("IOBoxes", new JArray(Array.map Json.tokenize self.IOBoxes))
