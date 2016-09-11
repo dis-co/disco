@@ -43,11 +43,11 @@ type AppCommand =
   // | CloseProject
   // | DeleteProject
 
-  static member Type
-    with get () = Serialization.GetTypeName<AppCommand>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<AppCommand>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -151,9 +151,6 @@ type ApplicationEvent =
 
   | LogMsg      of LogLevel * string
 
-  static member Type
-    with get () = Serialization.GetTypeName<ApplicationEvent>()
-
   override self.ToString() : string =
     match self with
     // PROJECT
@@ -192,6 +189,9 @@ type ApplicationEvent =
 
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<ApplicationEvent>()
 
   static member FromFB (fb: ApplicationEventFB) =
     match fb.AppEventType with

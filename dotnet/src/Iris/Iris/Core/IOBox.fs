@@ -29,9 +29,6 @@ type Behavior =
   | Toggle
   | Bang
 
-  static member Type
-    with get () = Serialization.GetTypeName<Behavior>()
-
   static member TryParse (str: string) =
     match toLower str with
     | "toggle" -> Some Toggle
@@ -45,6 +42,9 @@ type Behavior =
 
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<Behavior>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -109,9 +109,6 @@ type StringType =
   | Url
   | IP
 
-  static member Type
-    with get () = Serialization.GetTypeName<StringType>()
-
   static member TryParse (str: string) =
     match toLower str with
     | "simple"    -> Some Simple
@@ -133,6 +130,9 @@ type StringType =
 
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<StringType>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -237,9 +237,6 @@ type IOBox =
   | Compound  of CompoundBoxD
 
   with
-    static member Type
-      with get () = Serialization.GetTypeName<IOBox>()
-
     member self.Id
       with get () =
         match self with
@@ -562,6 +559,9 @@ type IOBox =
 
 #if JAVASCRIPT
 #else
+    static member Type
+      with get () = Serialization.GetTypeName<IOBox>()
+
     //  ____  _
     // | __ )(_)_ __   __ _ _ __ _   _
     // |  _ \| | '_ \ / _` | '__| | | |
@@ -739,11 +739,11 @@ and BoolBoxD =
   ; Behavior   : Behavior
   ; Slices     : BoolSliceD array }
 
-  static member Type
-    with get () = Serialization.GetTypeName<BoolBoxD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<BoolBoxD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -850,11 +850,11 @@ and BoolSliceD =
   { Index: Index
   ; Value: bool }
 
-  static member Type
-    with get () = Serialization.GetTypeName<BoolSliceD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<BoolSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -932,11 +932,11 @@ and IntBoxD =
   ; Unit       : string
   ; Slices     : IntSliceD array }
 
-  static member Type
-    with get () = Serialization.GetTypeName<IntBoxD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<IntBoxD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1055,11 +1055,11 @@ and IntSliceD =
   { Index: Index
   ; Value: int }
 
-  static member Type
-    with get () = Serialization.GetTypeName<IntSliceD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<IntSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1137,11 +1137,11 @@ and FloatBoxD =
   ; Precision  : uint32
   ; Slices     : FloatSliceD array }
 
-  static member Type
-    with get () = Serialization.GetTypeName<FloatBoxD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<FloatBoxD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1264,11 +1264,12 @@ and FloatSliceD =
   { Index: Index
   ; Value: float }
 
-  static member Type
-    with get () = Serialization.GetTypeName<FloatSliceD>()
 
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<FloatSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1346,11 +1347,12 @@ and DoubleBoxD =
   ; Precision  : uint32
   ; Slices     : DoubleSliceD array }
 
-  static member Type
-    with get () = Serialization.GetTypeName<DoubleBoxD>()
 
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<DoubleBoxD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1473,11 +1475,11 @@ and DoubleSliceD =
   { Index: Index
   ; Value: double }
 
-  static member Type
-    with get () = Serialization.GetTypeName<DoubleSliceD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<DoubleSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1551,11 +1553,11 @@ and ByteBoxD =
   ; Tags       : Tag        array
   ; Slices     : ByteSliceD array }
 
-  static member Type
-    with get () = Serialization.GetTypeName<ByteBoxD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<ByteBoxD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1657,11 +1659,11 @@ and ByteSliceD =
   { Index: Index
   ; Value: byte array }
 
-  static member Type
-    with get () = Serialization.GetTypeName<ByteSliceD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<ByteSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1756,11 +1758,11 @@ and EnumBoxD =
   ; Properties : Property   array
   ; Slices     : EnumSliceD array }
 
-  static member Type
-    with get () = Serialization.GetTypeName<EnumBoxD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<EnumBoxD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1887,11 +1889,11 @@ and EnumSliceD =
   { Index : Index
   ; Value : Property }
 
-  static member Type
-    with get () = Serialization.GetTypeName<EnumSliceD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<EnumSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1980,11 +1982,11 @@ and ColorBoxD =
   ; Tags   : Tag         array
   ; Slices : ColorSliceD array }
 
-  static member Type
-    with get () = Serialization.GetTypeName<ColorBoxD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<ColorBoxD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2085,11 +2087,11 @@ and ColorSliceD =
   { Index: Index
   ; Value: ColorSpace }
 
-  static member Type
-    with get () = Serialization.GetTypeName<ColorSliceD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<ColorSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2166,11 +2168,11 @@ and StringBoxD =
   ; MaxChars   : MaxChars
   ; Slices     : StringSliceD array }
 
-  static member Type
-    with get () = Serialization.GetTypeName<StringBoxD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<StringBoxD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2301,11 +2303,11 @@ and StringSliceD =
   { Index : Index
   ; Value : string }
 
-  static member Type
-    with get () = Serialization.GetTypeName<StringSliceD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<StringSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2380,11 +2382,11 @@ and CompoundBoxD =
   ; Tags       : Tag   array
   ; Slices     : CompoundSliceD array }
 
-  static member Type
-    with get () = Serialization.GetTypeName<CompoundBoxD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<CompoundBoxD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2486,11 +2488,11 @@ and CompoundSliceD =
   { Index      : Index
   ; Value      : IOBox array }
 
-  static member Type
-    with get () = Serialization.GetTypeName<CompoundSliceD>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<CompoundSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2587,9 +2589,6 @@ and Slice =
   | EnumSlice     of EnumSliceD
   | ColorSlice    of ColorSliceD
   | CompoundSlice of CompoundSliceD
-
-  static member Type
-    with get () = Serialization.GetTypeName<Slice>()
 
   member self.Index
     with get () =
@@ -2727,6 +2726,9 @@ and Slice =
 
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<Slice>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _

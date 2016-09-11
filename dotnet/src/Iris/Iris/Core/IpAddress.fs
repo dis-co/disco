@@ -8,9 +8,6 @@ type IpAddress =
   | IPv4Address of string
   | IPv6Address of string
 
-  static member Type
-    with get () = Serialization.GetTypeName<IpAddress>()
-
   override self.ToString () =
     match self with
       | IPv4Address str -> str
@@ -18,6 +15,9 @@ type IpAddress =
 
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<IpAddress>()
 
   static member Parse (str: string) =
     let ip = IPAddress.Parse str

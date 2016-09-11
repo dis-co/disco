@@ -21,6 +21,8 @@ open Newtonsoft.Json.Linq
 // |_| \_|\___/ \__,_|\___|____/ \__\__,_|\__\___|
 
 #if JAVASCRIPT
+open Fable.Core
+
 [<StringEnum>]
 #endif
 type RaftNodeState =
@@ -41,11 +43,11 @@ type RaftNodeState =
     | "Failed"  -> Failed
     | _         -> failwithf "NodeState: failed to parse %s" str
 
-  static member Type
-    with get () = Serialization.GetTypeName<RaftNodeState>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<RaftNodeState>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -125,11 +127,11 @@ type RaftNode =
       (sprintf "(NxtIdx %A)" self.NextIndex)
       (sprintf "(MtchIdx %A)" self.MatchIndex)
 
-  static member Type
-    with get () = Serialization.GetTypeName<RaftNode>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<RaftNode>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _

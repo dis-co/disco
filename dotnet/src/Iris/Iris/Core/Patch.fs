@@ -54,11 +54,12 @@ type Patch =
   static member HasPatch (patches : Patch array) (patch : Patch) : bool =
     Array.exists (fun p -> p.Id = patch.Id) patches
 
-  static member Type
-    with get () = Serialization.GetTypeName<Patch>()
 
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<Patch>()
 
   //    _   _ _____ _____
   //   | \ | | ____|_   _|

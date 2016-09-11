@@ -10,6 +10,8 @@ open Newtonsoft.Json.Linq
 // |_____\___/ \__, |_____\___| \_/ \___|_|
 //             |___/
 #if JAVASCRIPT
+open Fable.Core
+
 [<StringEnum>]
 #endif
 type LogLevel =
@@ -17,9 +19,6 @@ type LogLevel =
   | Info
   | Warn
   | Err
-
-  static member Type
-    with get () = Serialization.GetTypeName<LogLevel>()
 
   static member Parse (str: string) =
     match toLower str with
@@ -38,6 +37,9 @@ type LogLevel =
 
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<LogLevel>()
 
   //      _
   //     | |___  ___  _ __

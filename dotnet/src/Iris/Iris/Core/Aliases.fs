@@ -76,11 +76,11 @@ open Newtonsoft.Json.Linq
 type Property =
   { Key: string; Value: string }
 
-  static member Type
-    with get () = Serialization.GetTypeName<Property>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<Property>()
 
   member self.ToJToken() =
     JToken.FromObject self

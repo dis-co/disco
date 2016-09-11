@@ -22,11 +22,11 @@ type RGBAValue =
   ; Blue  : uint8
   ; Alpha : uint8 }
 
-  static member Type
-    with get () = Serialization.GetTypeName<RGBAValue>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<RGBAValue>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -97,12 +97,11 @@ type HSLAValue =
   ; Lightness  : uint8
   ; Alpha      : uint8 }
 
-  static member Type
-    with get () = Serialization.GetTypeName<HSLAValue>()
-
 #if JAVASCRIPT
 #else
 
+  static member Type
+    with get () = Serialization.GetTypeName<HSLAValue>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -170,11 +169,11 @@ type ColorSpace =
   | RGBA of RGBAValue
   | HSLA of HSLAValue
 
-  static member Type
-    with get () = Serialization.GetTypeName<ColorSpace>()
-
 #if JAVASCRIPT
 #else
+
+  static member Type
+    with get () = Serialization.GetTypeName<ColorSpace>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
