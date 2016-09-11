@@ -23,7 +23,7 @@ type RGBAValue =
   ; Alpha : uint8 }
 
   static member Type
-    with get () = "Iris.Core.RGBAValue"
+    with get () = Serialization.GetTypeName<RGBAValue>()
 
 #if JAVASCRIPT
 #else
@@ -66,9 +66,7 @@ type RGBAValue =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken() : JToken =
-    let json = JToken.FromObject(self) :?> JObject
-    json.Add("$type", new JValue(RGBAValue.Type))
-    json :> JToken
+    JToken.FromObject self
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -100,7 +98,7 @@ type HSLAValue =
   ; Alpha      : uint8 }
 
   static member Type
-    with get () = "Iris.Core.HSLAValue"
+    with get () = Serialization.GetTypeName<HSLAValue>()
 
 #if JAVASCRIPT
 #else
@@ -144,9 +142,7 @@ type HSLAValue =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken() : JToken =
-    let json = JToken.FromObject(self) :?> JObject
-    json.Add("$type", new JValue(HSLAValue.Type))
-    json :> JToken
+    JToken.FromObject self
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -175,7 +171,7 @@ type ColorSpace =
   | HSLA of HSLAValue
 
   static member Type
-    with get () = "Iris.Core.ColorSpace"
+    with get () = Serialization.GetTypeName<ColorSpace>()
 
 #if JAVASCRIPT
 #else
@@ -229,11 +225,11 @@ type ColorSpace =
 
   member self.ToJToken() : JToken =
     let json = new JObject()
-    json.Add("$type", new JValue(ColorSpace.Type))
+    json.["$type"] <- new JValue(ColorSpace.Type)
 
     let add (case: string) token =
-      json.Add("Case", new JValue(case))
-      json.Add("Fields", new JArray([| token |]))
+      json.["Case"] <- new JValue(case)
+      json.["Fields"] <- new JArray([| token |])
 
     match self with
     | RGBA data -> add "RGBA" (Json.tokenize data)

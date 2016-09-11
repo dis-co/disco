@@ -20,6 +20,9 @@ open Newtonsoft.Json.Linq
 // | |\  | (_) | (_| |  __/___) | || (_| | ||  __/
 // |_| \_|\___/ \__,_|\___|____/ \__\__,_|\__\___|
 
+#if JAVASCRIPT
+[<StringEnum>]
+#endif
 type RaftNodeState =
   | Joining                             // excludes node from voting
   | Running                             // normal execution state
@@ -39,7 +42,7 @@ type RaftNodeState =
     | _         -> failwithf "NodeState: failed to parse %s" str
 
   static member Type
-    with get () = "Iris.Raft.RaftNodeState"
+    with get () = Serialization.GetTypeName<RaftNodeState>()
 
 #if JAVASCRIPT
 #else
@@ -71,22 +74,14 @@ type RaftNodeState =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken() =
-    let json = new JObject()
-    json.Add("$type", new JValue(RaftNodeState.Type))
-
-    match self with
-    | Running -> json.Add("Case", new JValue("Running"))
-    | Joining -> json.Add("Case", new JValue("Joining"))
-    | Failed  -> json.Add("Case", new JValue("Failed"))
-
-    json :> JToken
+    new JValue(string self) :> JToken
 
   member self.ToJson() =
     self.ToJToken() |> string
 
   static member FromJToken(token: JToken) : RaftNodeState option =
     try
-      match string token.["Case"] with
+      match string token with
       | "Running" -> Some Running
       | "Joining" -> Some Joining
       | "Failed"  -> Some Failed
@@ -100,7 +95,6 @@ type RaftNodeState =
 
   static member FromJson(str: string) : RaftNodeState option =
     JObject.Parse(str) |> RaftNodeState.FromJToken
-
 
 #endif
 
@@ -132,7 +126,7 @@ type RaftNode =
       (sprintf "(MtchIdx %A)" self.MatchIndex)
 
   static member Type
-    with get () = "Iris.Raft.RaftNode"
+    with get () = Serialization.GetTypeName<RaftNode>()
 
 #if JAVASCRIPT
 #else
@@ -192,18 +186,14 @@ type RaftNode =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken() =
-    let json = new JObject()
-    json.Add("$type", new JValue(RaftNode.Type))
-    json.Add("Id", new JValue(string self.Id))
-    json.Add("HostName", new JValue(self.HostName))
-    json.Add("IpAddr", Json.tokenize self.IpAddr)
-    json.Add("Port", new JValue(self.Port))
-    json.Add("Voting", new JValue(self.Voting))
-    json.Add("VotedForMe", new JValue(self.VotedForMe))
-    json.Add("State", Json.tokenize self.State)
-    json.Add("NextIndex", new JValue(self.NextIndex))
-    json.Add("MatchIndex", new JValue(self.MatchIndex))
-    json :> JToken
+    let serializer = JsonSerializer.CreateDefault(JsonSerializerSettings(TypeNameHandling=TypeNameHandling.All))
+    let json = JToken.FromObject(self, serializer)
+
+    json.["Id"] <- new JValue(string self.Id)
+    json.["IpAddr"] <- Json.tokenize self.IpAddr
+    json.["State"] <- Json.tokenize self.State
+
+    json
 
   member self.ToJson() =
     self.ToJToken() |> string

@@ -55,7 +55,7 @@ type Patch =
     Array.exists (fun p -> p.Id = patch.Id) patches
 
   static member Type
-    with get () = "Iris.Core.Patch"
+    with get () = Serialization.GetTypeName<Patch>()
 
 #if JAVASCRIPT
 #else
@@ -105,14 +105,11 @@ type Patch =
   //  _  | / __|/ _ \| '_ \
   // | |_| \__ \ (_) | | | |
   //  \___/|___/\___/|_| |_|
-
   member self.ToJToken() =
-    let json = new JObject()
-    // json.Add("$type", new JValue(Patch.Type))
-    json.Add("Id", new JValue(string self.Id))
-    json.Add("Name", new JValue(self.Name))
-    json.Add("IOBoxes", new JArray(Array.map Json.tokenize self.IOBoxes))
-    json :> JToken
+    new JObject()
+    |> addString "Id"     (string self.Id)
+    |> addString "Name"    self.Name
+    |> addArray  "IOBoxes" self.IOBoxes
 
   member self.ToJson() =
     self.ToJToken() |> string

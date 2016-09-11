@@ -21,13 +21,27 @@ open Newtonsoft.Json.Linq
 // | |_) |  __/ | | | (_| |\ V /| | (_) | |
 // |____/ \___|_| |_|\__,_| \_/ |_|\___/|_|
 
+#if JAVASCRIPT
+[<StringEnum>]
+#endif
 [<RequireQualifiedAccess>]
 type Behavior =
   | Toggle
   | Bang
 
   static member Type
-    with get () = "Iris.Core.Behavior"
+    with get () = Serialization.GetTypeName<Behavior>()
+
+  static member TryParse (str: string) =
+    match toLower str with
+    | "toggle" -> Some Toggle
+    | "bang"   -> Some Bang
+    | _        -> None
+
+  override self.ToString() =
+    match self with
+    | Toggle  -> "Toggle"
+    | Bang    -> "Bang"
 
 #if JAVASCRIPT
 #else
@@ -57,25 +71,17 @@ type Behavior =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () : JToken =
-    let json = new JObject()
-    json.Add("$type", new JValue(Behavior.Type))
-    match self with
-    | Toggle -> json.Add("Case", new JValue("Toggle"))
-    | Bang   -> json.Add("Case", new JValue("Bang"))
-    json :> JToken
+    new JValue(string self) :> JToken
 
   member self.ToJson() =
     self.ToJToken() |> string
 
   static member FromJToken(token: JToken) : Behavior option =
     try
-      match string token.["Case"] with
-      | "Toggle" -> Some Toggle
-      | "Bang"   -> Some Bang
-      | _        -> None
+      Behavior.TryParse (string token)
     with
       | exn ->
-        printfn "Could not deserialize behavior json: "
+        printfn "Could not deserialize behavior value: "
         printfn "    Message: %s"  exn.Message
         printfn "    json:    %s" (string token)
         None
@@ -92,6 +98,9 @@ type Behavior =
 // |____/ \__|_|  |_|_| |_|\__, ||_| \__, | .__/ \___|
 //                         |___/     |___/|_|
 
+#if JAVASCRIPT
+[<StringEnum>]
+#endif
 type StringType =
   | Simple
   | MultiLine
@@ -101,7 +110,26 @@ type StringType =
   | IP
 
   static member Type
-    with get () = "Iris.Core.StringType"
+    with get () = Serialization.GetTypeName<StringType>()
+
+  static member TryParse (str: string) =
+    match toLower str with
+    | "simple"    -> Some Simple
+    | "multiline" -> Some MultiLine
+    | "filename"  -> Some FileName
+    | "directory" -> Some Directory
+    | "url"       -> Some Url
+    | "ip"        -> Some IP
+    | _           -> None
+
+  override self.ToString() =
+    match self with
+    | Simple    -> "Simple"
+    | MultiLine -> "MultiLine"
+    | FileName  -> "FileName"
+    | Directory -> "Directory"
+    | Url       -> "Url"
+    | IP        -> "IP"
 
 #if JAVASCRIPT
 #else
@@ -139,30 +167,14 @@ type StringType =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () : JToken =
-    let json = new JObject()
-    json.Add("$type", new JValue(StringType.Type))
-    match self with
-    | Simple    -> json.Add("Case", new JValue("Simple"))
-    | MultiLine -> json.Add("Case", new JValue("MultiLine"))
-    | FileName  -> json.Add("Case", new JValue("FileName"))
-    | Directory -> json.Add("Case", new JValue("Directory"))
-    | Url       -> json.Add("Case", new JValue("Url"))
-    | IP        -> json.Add("Case", new JValue("IP"))
-    json :> JToken
+    new JValue(string self) :> JToken
 
   member self.ToJson() =
     self.ToJToken() |> string
 
   static member FromJToken(token: JToken) : StringType option =
     try
-      match string token.["Case"] with
-      | "Simple"    -> Some Simple
-      | "MultiLine" -> Some MultiLine
-      | "FileName"  -> Some FileName
-      | "Directory" -> Some Directory
-      | "Url"       -> Some Url
-      | "IP"        -> Some IP
-      | _           -> None
+      StringType.TryParse (string token)
     with
       | exn ->
         printfn "Could not deserialize string type json: "
@@ -226,7 +238,7 @@ type IOBox =
 
   with
     static member Type
-      with get () = "Iris.Core.IOBox"
+      with get () = Serialization.GetTypeName<IOBox>()
 
     member self.Id
       with get () =
@@ -662,27 +674,22 @@ type IOBox =
     // | |_| \__ \ (_) | | | |
     //  \___/|___/\___/|_| |_|
 
-    member self.ToJToken () =
+    member self.ToJToken () : JToken =
+      let json = new JObject() |> addType IOBox.Type
 
-      let json = new JObject()
-      json.Add("$type", new JValue(IOBox.Type))
-
-      let add (case: string) token =
-        json.Add("Case", new JValue(case))
-        json.Add("Fields", new JArray([| token |]))
+      let inline add (case: string) data =
+        json |> addCase case |> addFields [| data |]
 
       match self with
-      | StringBox data -> add "StringBox" (Json.tokenize data)
-      | IntBox    data -> add "IntBox"    (Json.tokenize data)
-      | FloatBox  data -> add "FloatBox"  (Json.tokenize data)
-      | DoubleBox data -> add "DoubleBox" (Json.tokenize data)
-      | BoolBox   data -> add "BoolBox"   (Json.tokenize data)
-      | ByteBox   data -> add "ByteBox"   (Json.tokenize data)
-      | EnumBox   data -> add "EnumBox"   (Json.tokenize data)
-      | ColorBox  data -> add "ColorBox"  (Json.tokenize data)
-      | Compound  data -> add "Compound"  (Json.tokenize data)
-
-      json :> JToken
+      | StringBox data -> add "StringBox" data
+      | IntBox    data -> add "IntBox"    data
+      | FloatBox  data -> add "FloatBox"  data
+      | DoubleBox data -> add "DoubleBox" data
+      | BoolBox   data -> add "BoolBox"   data
+      | ByteBox   data -> add "ByteBox"   data
+      | EnumBox   data -> add "EnumBox"   data
+      | ColorBox  data -> add "ColorBox"  data
+      | Compound  data -> add "Compound"  data
 
     member self.ToJson() =
       self.ToJToken() |> string
@@ -733,7 +740,7 @@ and BoolBoxD =
   ; Slices     : BoolSliceD array }
 
   static member Type
-    with get () = "Iris.Core.BoolBoxD"
+    with get () = Serialization.GetTypeName<BoolBoxD>()
 
 #if JAVASCRIPT
 #else
@@ -798,15 +805,13 @@ and BoolBoxD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(BoolBoxD.Type))
-    json.Add("Id", new JValue(string self.Id))
-    json.Add("Name", new JValue(self.Name))
-    json.Add("Patch", new JValue(string self.Patch))
-    json.Add("Tags", new JArray(self.Tags))
-    json.Add("Behavior", Json.tokenize self.Behavior)
-    json.Add("Slices", new JArray(Array.map Json.tokenize self.Slices))
-    json :> JToken
+    new JObject()
+    |> addString  "Id"       (string self.Id)
+    |> addString  "Name"      self.Name
+    |> addString  "Patch"    (string self.Patch)
+    |> addStrings "Tags"      self.Tags
+    |> addString  "Behavior" (string self.Behavior)
+    |> addArray   "Slices"    self.Slices
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -846,7 +851,7 @@ and BoolSliceD =
   ; Value: bool }
 
   static member Type
-    with get () = "Iris.Core.BoolSliceD"
+    with get () = Serialization.GetTypeName<BoolSliceD>()
 
 #if JAVASCRIPT
 #else
@@ -885,11 +890,9 @@ and BoolSliceD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(BoolSliceD.Type))
-    json.Add("Index", new JValue(self.Index))
-    json.Add("Value", new JValue(self.Value))
-    json :> JToken
+    new JObject()
+    |> addLong "Index" self.Index
+    |> addBool "Value" self.Value
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -930,7 +933,7 @@ and IntBoxD =
   ; Slices     : IntSliceD array }
 
   static member Type
-    with get () = "Iris.Core.IntBoxD"
+    with get () = Serialization.GetTypeName<IntBoxD>()
 
 #if JAVASCRIPT
 #else
@@ -1004,18 +1007,16 @@ and IntBoxD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(IntBoxD.Type))
-    json.Add("Id", new JValue(string self.Id))
-    json.Add("Name", new JValue(self.Name))
-    json.Add("Patch", new JValue(string self.Patch))
-    json.Add("Tags", new JArray(self.Tags))
-    json.Add("VecSize", new JValue(self.VecSize))
-    json.Add("Min", new JValue(self.Min))
-    json.Add("Max", new JValue(self.Max))
-    json.Add("Unit", new JValue(self.Unit))
-    json.Add("Slices", new JArray(Array.map Json.tokenize self.Slices))
-    json :> JToken
+    new JObject()
+    |> addString  "Id"     (string self.Id)
+    |> addString  "Name"    self.Name
+    |> addString  "Patch"  (string self.Patch)
+    |> addStrings "Tags"    self.Tags
+    |> addUInt32  "VecSize" self.VecSize
+    |> addInt     "Min"     self.Min
+    |> addInt     "Max"     self.Max
+    |> addString  "Unit"    self.Unit
+    |> addArray   "Slices"  self.Slices
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -1055,7 +1056,7 @@ and IntSliceD =
   ; Value: int }
 
   static member Type
-    with get () = "Iris.Core.IntSliceD"
+    with get () = Serialization.GetTypeName<IntSliceD>()
 
 #if JAVASCRIPT
 #else
@@ -1094,11 +1095,9 @@ and IntSliceD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(IntSliceD.Type))
-    json.Add("Index", new JValue(self.Index))
-    json.Add("Value", new JValue(self.Value))
-    json :> JToken
+    new JObject()
+    |> addLong "Index" self.Index
+    |> addInt  "Value" self.Value
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -1139,7 +1138,7 @@ and FloatBoxD =
   ; Slices     : FloatSliceD array }
 
   static member Type
-    with get () = "Iris.Core.FloatBoxD"
+    with get () = Serialization.GetTypeName<FloatBoxD>()
 
 #if JAVASCRIPT
 #else
@@ -1215,19 +1214,17 @@ and FloatBoxD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(FloatBoxD.Type))
-    json.Add("Id", new JValue(string self.Id))
-    json.Add("Name", new JValue(self.Name))
-    json.Add("Patch", new JValue(string self.Patch))
-    json.Add("Tags", new JArray(self.Tags))
-    json.Add("VecSize", new JValue(self.VecSize))
-    json.Add("Min", new JValue(self.Min))
-    json.Add("Max", new JValue(self.Max))
-    json.Add("Unit", new JValue(self.Unit))
-    json.Add("Precision", new JValue(self.Precision))
-    json.Add("Slices", new JArray(Array.map Json.tokenize self.Slices))
-    json :> JToken
+    new JObject()
+    |> addString  "Id"       (string self.Id)
+    |> addString  "Name"      self.Name
+    |> addString  "Patch"    (string self.Patch)
+    |> addStrings "Tags"      self.Tags
+    |> addUInt32  "VecSize"   self.VecSize
+    |> addInt     "Min"       self.Min
+    |> addInt     "Max"       self.Max
+    |> addString  "Unit"      self.Unit
+    |> addUInt32  "Precision" self.Precision
+    |> addArray   "Slices"    self.Slices
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -1268,7 +1265,7 @@ and FloatSliceD =
   ; Value: float }
 
   static member Type
-    with get () = "Iris.Core.FloatSliceD"
+    with get () = Serialization.GetTypeName<FloatSliceD>()
 
 #if JAVASCRIPT
 #else
@@ -1307,11 +1304,9 @@ and FloatSliceD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(FloatSliceD.Type))
-    json.Add("Index", new JValue(self.Index))
-    json.Add("Value", new JValue(self.Value))
-    json :> JToken
+    new JObject()
+    |> addLong  "Index" self.Index
+    |> addFloat "Value" self.Value
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -1352,7 +1347,7 @@ and DoubleBoxD =
   ; Slices     : DoubleSliceD array }
 
   static member Type
-    with get () = "Iris.Core.DoubleBoxD"
+    with get () = Serialization.GetTypeName<DoubleBoxD>()
 
 #if JAVASCRIPT
 #else
@@ -1428,19 +1423,17 @@ and DoubleBoxD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(DoubleBoxD.Type))
-    json.Add("Id", new JValue(string self.Id))
-    json.Add("Name", new JValue(self.Name))
-    json.Add("Patch", new JValue(string self.Patch))
-    json.Add("Tags", new JArray(self.Tags))
-    json.Add("VecSize", new JValue(self.VecSize))
-    json.Add("Min", new JValue(self.Min))
-    json.Add("Max", new JValue(self.Max))
-    json.Add("Unit", new JValue(self.Unit))
-    json.Add("Precision", new JValue(self.Precision))
-    json.Add("Slices", new JArray(Array.map Json.tokenize self.Slices))
-    json :> JToken
+    new JObject()
+    |> addString  "Id"       (string self.Id)
+    |> addString  "Name"      self.Name
+    |> addString  "Patch"    (string self.Patch)
+    |> addStrings "Tags"      self.Tags
+    |> addUInt32  "VecSize"   self.VecSize
+    |> addInt     "Min"       self.Min
+    |> addInt     "Max"       self.Max
+    |> addString  "Unit"      self.Unit
+    |> addUInt32  "Precision" self.Precision
+    |> addArray   "Slices"    self.Slices
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -1481,7 +1474,7 @@ and DoubleSliceD =
   ; Value: double }
 
   static member Type
-    with get () = "Iris.Core.DoubleSliceD"
+    with get () = Serialization.GetTypeName<DoubleSliceD>()
 
 #if JAVASCRIPT
 #else
@@ -1520,11 +1513,9 @@ and DoubleSliceD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(DoubleSliceD.Type))
-    json.Add("Index", new JValue(self.Index))
-    json.Add("Value", new JValue(self.Value))
-    json :> JToken
+    new JObject()
+    |> addLong "Index" self.Index
+    |> addDouble "Value" self.Value
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -1561,7 +1552,7 @@ and ByteBoxD =
   ; Slices     : ByteSliceD array }
 
   static member Type
-    with get () = "Iris.Core.ByteBoxD"
+    with get () = Serialization.GetTypeName<ByteBoxD>()
 
 #if JAVASCRIPT
 #else
@@ -1625,14 +1616,12 @@ and ByteBoxD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(ByteBoxD.Type))
-    json.Add("Id", new JValue(string self.Id))
-    json.Add("Name", new JValue(self.Name))
-    json.Add("Patch", new JValue(string self.Patch))
-    json.Add("Tags", new JArray(self.Tags))
-    json.Add("Slices", new JArray(Array.map Json.tokenize self.Slices))
-    json :> JToken
+    new JObject()
+    |> addString  "Id"    (string self.Id)
+    |> addString  "Name"   self.Name
+    |> addString  "Patch" (string self.Patch)
+    |> addStrings "Tags"   self.Tags
+    |> addArray   "Slices" self.Slices
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -1669,7 +1658,7 @@ and ByteSliceD =
   ; Value: byte array }
 
   static member Type
-    with get () = "Iris.Core.ByteSliceD"
+    with get () = Serialization.GetTypeName<ByteSliceD>()
 
 #if JAVASCRIPT
 #else
@@ -1714,17 +1703,14 @@ and ByteSliceD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-
     // encode binary data as string array
     let strings =
       BitConverter.ToString(self.Value)
       |> split [| '-' |]
 
-    json.Add("$type", new JValue(ByteSliceD.Type))
-    json.Add("Index", new JValue(self.Index))
-    json.Add("Value", new JArray(strings))
-    json :> JToken
+    new JObject()
+    |> addLong "Index" self.Index
+    |> addStrings "Value" strings
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -1771,7 +1757,7 @@ and EnumBoxD =
   ; Slices     : EnumSliceD array }
 
   static member Type
-    with get () = "Iris.Core.EnumBoxD"
+    with get () = Serialization.GetTypeName<EnumBoxD>()
 
 #if JAVASCRIPT
 #else
@@ -1848,15 +1834,13 @@ and EnumBoxD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(EnumBoxD.Type))
-    json.Add("Id", new JValue(string self.Id))
-    json.Add("Name", new JValue(self.Name))
-    json.Add("Patch", new JValue(string self.Patch))
-    json.Add("Tags", new JArray(self.Tags))
-    json.Add("Properties", new JArray(Array.map Json.tokenize self.Properties))
-    json.Add("Slices", new JArray(Array.map Json.tokenize self.Slices))
-    json :> JToken
+    new JObject()
+    |> addString  "Id"        (string self.Id)
+    |> addString  "Name"       self.Name
+    |> addString  "Patch"     (string self.Patch)
+    |> addStrings "Tags"       self.Tags
+    |> addArray   "Properties" self.Properties
+    |> addArray   "Slices"     self.Slices
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -1904,7 +1888,7 @@ and EnumSliceD =
   ; Value : Property }
 
   static member Type
-    with get () = "Iris.Core.EnumSliceD"
+    with get () = Serialization.GetTypeName<EnumSliceD>()
 
 #if JAVASCRIPT
 #else
@@ -1956,11 +1940,9 @@ and EnumSliceD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(EnumSliceD.Type))
-    json.Add("Index", new JValue(self.Index))
-    json.Add("Value", Json.tokenize self.Value)
-    json :> JToken
+    new JObject()
+    |> addLong  "Index" self.Index
+    |> addToken "Value" self.Value
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -1999,7 +1981,7 @@ and ColorBoxD =
   ; Slices : ColorSliceD array }
 
   static member Type
-    with get () = "Iris.Core.ColorBoxD"
+    with get () = Serialization.GetTypeName<ColorBoxD>()
 
 #if JAVASCRIPT
 #else
@@ -2063,14 +2045,12 @@ and ColorBoxD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(ColorBoxD.Type))
-    json.Add("Id", new JValue(string self.Id))
-    json.Add("Name", new JValue(self.Name))
-    json.Add("Patch", new JValue(string self.Patch))
-    json.Add("Tags", new JArray(self.Tags))
-    json.Add("Slices", new JArray(Array.map Json.tokenize self.Slices))
-    json :> JToken
+    new JObject()
+    |> addString  "Id"    (string self.Id)
+    |> addString  "Name"   self.Name
+    |> addString  "Patch" (string self.Patch)
+    |> addStrings "Tags"   self.Tags
+    |> addArray   "Slices" self.Slices
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -2106,7 +2086,7 @@ and ColorSliceD =
   ; Value: ColorSpace }
 
   static member Type
-    with get () = "Iris.Core.ColorSliceD"
+    with get () = Serialization.GetTypeName<ColorSliceD>()
 
 #if JAVASCRIPT
 #else
@@ -2142,11 +2122,9 @@ and ColorSliceD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(ColorSliceD.Type))
-    json.Add("Index", new JValue(self.Index))
-    json.Add("Value", Json.tokenize self.Value)
-    json :> JToken
+    new JObject()
+    |> addLong "Index" self.Index
+    |> addToken "Value" self.Value
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -2189,7 +2167,7 @@ and StringBoxD =
   ; Slices     : StringSliceD array }
 
   static member Type
-    with get () = "Iris.Core.StringBoxD"
+    with get () = Serialization.GetTypeName<StringBoxD>()
 
 #if JAVASCRIPT
 #else
@@ -2264,23 +2242,20 @@ and StringBoxD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-
     let fm =
       match self.FileMask with
-      | Some msk -> new JValue(msk)
+      | Some msk -> msk
       |      _   -> null
 
-    json.Add("$type", new JValue(StringBoxD.Type))
-    json.Add("Id", new JValue(string self.Id))
-    json.Add("Name", new JValue(self.Name))
-    json.Add("Patch", new JValue(string self.Patch))
-    json.Add("Tags", new JArray(self.Tags))
-    json.Add("StringType", Json.tokenize self.StringType)
-    json.Add("FileMask", fm)
-    json.Add("MaxChars", new JValue(self.MaxChars))
-    json.Add("Slices", new JArray(Array.map Json.tokenize self.Slices))
-    json :> JToken
+    new JObject()
+    |> addString  "Id"         (string self.Id)
+    |> addString  "Name"        self.Name
+    |> addString  "Patch"      (string self.Patch)
+    |> addStrings "Tags"        self.Tags
+    |> addString  "StringType" (string self.StringType)
+    |> addString  "FileMask"    fm
+    |> addInt     "MaxChars"    self.MaxChars
+    |> addArray   "Slices"      self.Slices
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -2327,7 +2302,7 @@ and StringSliceD =
   ; Value : string }
 
   static member Type
-    with get () = "Iris.Core.StringSliceD"
+    with get () = Serialization.GetTypeName<StringSliceD>()
 
 #if JAVASCRIPT
 #else
@@ -2367,11 +2342,9 @@ and StringSliceD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(StringSliceD.Type))
-    json.Add("Index", new JValue(self.Index))
-    json.Add("Value", new JValue(self.Value))
-    json :> JToken
+    new JObject()
+    |> addLong "Index" self.Index
+    |> addString "Value" self.Value
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -2408,7 +2381,7 @@ and CompoundBoxD =
   ; Slices     : CompoundSliceD array }
 
   static member Type
-    with get () = "Iris.Core.CompoundBoxD"
+    with get () = Serialization.GetTypeName<CompoundBoxD>()
 
 #if JAVASCRIPT
 #else
@@ -2472,14 +2445,12 @@ and CompoundBoxD =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(CompoundBoxD.Type))
-    json.Add("Id", new JValue(string self.Id))
-    json.Add("Name", new JValue(self.Name))
-    json.Add("Patch", new JValue(string self.Patch))
-    json.Add("Tags", new JArray(self.Tags))
-    json.Add("Slices", new JArray(Array.map Json.tokenize self.Slices))
-    json :> JToken
+    new JObject()
+    |> addString  "Id"    (string self.Id)
+    |> addString  "Name"   self.Name
+    |> addString  "Patch" (string self.Patch)
+    |> addStrings "Tags"   self.Tags
+    |> addArray   "Slices" self.Slices
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -2516,7 +2487,7 @@ and CompoundSliceD =
   ; Value      : IOBox array }
 
   static member Type
-    with get () = "Iris.Core.CompoundSliceD"
+    with get () = Serialization.GetTypeName<CompoundSliceD>()
 
 #if JAVASCRIPT
 #else
@@ -2564,12 +2535,10 @@ and CompoundSliceD =
   // | |_| \__ \ (_) | | | |
   //  \___/|___/\___/|_| |_|
 
-  member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(CompoundSliceD.Type))
-    json.Add("Index", new JValue(self.Index))
-    json.Add("Value", new JArray(Array.map Json.tokenize self.Value))
-    json :> JToken
+  member self.ToJToken () : JToken =
+    new JObject()
+    |> addLong  "Index" self.Index
+    |> addArray "Value" self.Value
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -2620,7 +2589,7 @@ and Slice =
   | CompoundSlice of CompoundSliceD
 
   static member Type
-    with get () = "Iris.Core.Slice"
+    with get () = Serialization.GetTypeName<Slice>()
 
   member self.Index
     with get () =
@@ -2846,13 +2815,11 @@ and Slice =
   //  \___/|___/\___/|_| |_|
 
 
-  member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue(Slice.Type))
+  member self.ToJToken () : JToken =
+    let json = new JObject() |> addType Slice.Type
 
     let inline add (case: string) data =
-      json.Add("Case", new JValue(case))
-      json.Add("Fields", new JArray([ Json.tokenize data ]))
+      json |> addCase case |> addFields [| data |]
 
     match self with
     | StringSlice   data -> add "StringSlice"   data
@@ -2864,8 +2831,6 @@ and Slice =
     | EnumSlice     data -> add "EnumSlice"     data
     | ColorSlice    data -> add "ColorSlice"    data
     | CompoundSlice data -> add "CompoundSlice" data
-
-    json :> JToken
 
   member self.ToJson() =
     self.ToJToken() |> string

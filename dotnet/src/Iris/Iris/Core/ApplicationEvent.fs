@@ -44,7 +44,7 @@ type AppCommand =
   // | DeleteProject
 
   static member Type
-    with get () = "Iris.Core.AppCommand"
+    with get () = Serialization.GetTypeName<AppCommand>()
 
 #if JAVASCRIPT
 #else
@@ -84,10 +84,10 @@ type AppCommand =
 
   member self.ToJToken() : JToken =
     let json = new JObject()
-    json.Add("$type", new JValue(AppCommand.Type))
+    json.["$type"] <- new JValue(AppCommand.Type)
 
     let add (case: string) =
-      json.Add("Case", new JValue(case))
+      json.["Case"] <- new JValue(case)
 
     match self with
     | Undo        -> add "Undo"
@@ -116,7 +116,7 @@ type AppCommand =
         None
 
   static member FromJson(str: string) : AppCommand option =
-    JObject.Parse(str) |> AppCommand.FromJToken
+    JToken.Parse(str) |> AppCommand.FromJToken
 
 #endif
 
@@ -152,7 +152,7 @@ type ApplicationEvent =
   | LogMsg      of LogLevel * string
 
   static member Type
-    with get () = "Iris.Core.ApplicationEvent"
+    with get () = Serialization.GetTypeName<ApplicationEvent>()
 
   override self.ToString() : string =
     match self with
@@ -300,8 +300,8 @@ type ApplicationEvent =
 
     | ApplicationEventTypeFB.LogMsgFB     ->
       let ev = fb.GetAppEvent(new LogMsgFB())
-      let level = LogLevel.Parse ev.LogLevel
-      LogMsg(level, ev.Msg) |> Some
+      LogLevel.Parse ev.LogLevel
+      |> Option.map (fun level -> LogMsg(level, ev.Msg))
 
     | ApplicationEventTypeFB.AppCommandFB ->
       let ev = fb.GetAppEvent(new AppCommandFB())
@@ -469,39 +469,36 @@ type ApplicationEvent =
 #else
 
   member self.ToJToken () =
-    let json = new JObject()
-    json.Add("$type", new JValue("Iris.Core.ApplicationEvent"))
+    let json = new JObject() |> addType ApplicationEvent.Type
 
-    let add (case: string) (tokens: JToken array) =
-      json.Add("Case", new JValue(case))
-      json.Add("Fields", new JArray(tokens))
+    let inline add (case: string) data =
+      json |> addCase case |> addFields [| data |]
 
     match self with
     // NODE
-    | AddNode    node   -> add "AddNode"    [| Json.tokenize node |]
-    | UpdateNode node   -> add "UpdateNode" [| Json.tokenize node |]
-    | RemoveNode node   -> add "RemoveNode" [| Json.tokenize node |]
+    | AddNode    node   -> add "AddNode"    node
+    | UpdateNode node   -> add "UpdateNode" node
+    | RemoveNode node   -> add "RemoveNode" node
 
     // PATCH
-    | AddPatch    patch -> add "AddPatch"    [| Json.tokenize patch |]
-    | UpdatePatch patch -> add "UpdatePatch" [| Json.tokenize patch |]
-    | RemovePatch patch -> add "RemovePatch" [| Json.tokenize patch |]
+    | AddPatch    patch -> add "AddPatch"    patch
+    | UpdatePatch patch -> add "UpdatePatch" patch
+    | RemovePatch patch -> add "RemovePatch" patch
 
-    // IOBOX
-    | AddIOBox    iobox -> add "AddIOBox"    [| Json.tokenize iobox |]
-    | UpdateIOBox iobox -> add "UpdateIOBox" [| Json.tokenize iobox |]
-    | RemoveIOBox iobox -> add "RemoveIOBox" [| Json.tokenize iobox |]
+    // // IOBOX
+    | AddIOBox    iobox -> add "AddIOBox"    iobox
+    | UpdateIOBox iobox -> add "UpdateIOBox" iobox
+    | RemoveIOBox iobox -> add "RemoveIOBox" iobox
 
-    // CUE
-    | AddCue    cue     -> add "AddCue"    [| Json.tokenize cue |]
-    | UpdateCue cue     -> add "UpdateCue" [| Json.tokenize cue |]
-    | RemoveCue cue     -> add "RemoveCue" [| Json.tokenize cue |]
+    // // CUE
+    | AddCue    cue     -> add "AddCue"    cue
+    | UpdateCue cue     -> add "UpdateCue" cue
+    | RemoveCue cue     -> add "RemoveCue" cue
 
-    | Command cmd       -> add "Command" [| Json.tokenize cmd |]
+    | Command cmd       -> add "Command" cmd
 
-    | LogMsg (level, str) -> add "LogMsg" [| Json.tokenize level; new JValue(str) |]
-
-    json :> JToken
+    | LogMsg (level, str) ->
+      json |> addCase "LogMsg" |> addFields [| Wrap(string level); Wrap(str) |]
 
   member self.ToJson () =
     self.ToJToken() |> string

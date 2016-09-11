@@ -17,7 +17,7 @@ type Cue =
   }
 
   static member Type
-    with get () = "Iris.Core.Cue"
+    with get () = Serialization.GetTypeName<Cue>()
 
 #if JAVASCRIPT
 #else
@@ -69,12 +69,10 @@ type Cue =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken() =
-    let json = new JObject()
-    // json.Add("$type", new JValue(Cue.Type))
-    json.Add("Id", new JValue(string self.Id))
-    json.Add("Name", new JValue(self.Name))
-    json.Add("IOBoxes", new JArray(Array.map Json.tokenize self.IOBoxes))
-    json :> JToken
+    new JObject()
+    |> addString "Id"     (string self.Id)
+    |> addString "Name"   (self.Name)
+    |> addArray  "IOBoxes" self.IOBoxes
 
   member self.ToJson() =
     self.ToJToken() |> string
@@ -94,8 +92,7 @@ type Cue =
 
       { Id = Id (string token.["Id"])
       ; Name = string token.["Name"]
-      ; IOBoxes = ioboxes
-      }
+      ; IOBoxes = ioboxes }
       |> Some
     with
       | exn ->

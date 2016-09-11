@@ -77,15 +77,13 @@ type Property =
   { Key: string; Value: string }
 
   static member Type
-    with get () = "Iris.Core.Property"
+    with get () = Serialization.GetTypeName<Property>()
 
 #if JAVASCRIPT
 #else
 
   member self.ToJToken() =
-    let json = JToken.FromObject(self) :?> JObject
-    json.Add("$type", new JValue(Property.Type))
-    json :> JToken
+    JToken.FromObject self
 
   member self.ToJson() =
     self.ToJToken() |> string

@@ -9,7 +9,7 @@ type IpAddress =
   | IPv6Address of string
 
   static member Type
-    with get () = "Iris.Core.IpAddress"
+    with get () = Serialization.GetTypeName<IpAddress>()
 
   override self.ToString () =
     match self with
@@ -43,18 +43,15 @@ type IpAddress =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken() : JToken =
-    let json = new JObject()
-    json.Add("$type", new JValue(IpAddress.Type))
+    let constr, str =
+      match self with
+      | IPv4Address str -> "IPv4Address", str
+      | IPv6Address str -> "IPv6Address", str
 
-    match self with
-    | IPv4Address str ->
-      json.Add("Case", new JValue("IPv4Address"))
-      json.Add("Fields", new JArray([| new JValue(str) |]))
-    | IPv6Address str ->
-      json.Add("Case", new JValue("IPv6Address"))
-      json.Add("Fields", new JArray([| new JValue(str) |]))
-
-    json :> JToken
+    new JObject()
+    |> addType IpAddress.Type
+    |> addCase constr
+    |> addFields [| Wrap(str) |]
 
   member self.ToJson()  =
     self.ToJToken() |> string

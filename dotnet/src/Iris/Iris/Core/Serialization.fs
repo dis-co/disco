@@ -8,6 +8,48 @@ open FlatBuffers
 open Newtonsoft.Json
 open Newtonsoft.Json.Linq
 
+open System
+open System.Text
+open System.Runtime.Serialization
+open System.Runtime.Serialization.Formatters
+
+type Serialization =
+
+  static member private RemoveAssemblyDetails(fullyQualifiedTypeName: string) =
+    let builder = new StringBuilder()
+
+    // loop through the type name and filter out qualified assembly details from nested type names
+    let mutable writingAssemblyName = false
+    let mutable writingAssemblyName = false
+    let mutable skippingAssemblyDetails = false
+
+    for i in 0 .. (fullyQualifiedTypeName.Length - 1) do
+      let current = fullyQualifiedTypeName.[i]
+      match current with
+      | '[' ->
+        writingAssemblyName <- false
+        skippingAssemblyDetails <- false
+        builder.Append(current) |> ignore
+      | ']' ->
+        writingAssemblyName <- false
+        skippingAssemblyDetails <- false
+        builder.Append(current) |> ignore
+      | ',' ->
+        if not writingAssemblyName then
+          writingAssemblyName <- true
+          builder.Append(current) |> ignore
+        else
+          skippingAssemblyDetails <- true
+      | _ ->
+        if not skippingAssemblyDetails then
+          builder.Append(current) |> ignore
+
+    builder.ToString();
+
+  static member GetTypeName<'t> _ =
+    let t = typeof<'t>
+    t.AssemblyQualifiedName
+    |> Serialization.RemoveAssemblyDetails
 
 //  ____  _
 // | __ )(_)_ __   __ _ _ __ _   _
@@ -54,3 +96,61 @@ module Json =
 
   let inline parse< ^t when ^t : (static member FromJToken : JToken -> ^t option)> (token: JToken) : ^t option =
     (^t : (static member FromJToken : JToken -> ^t option) token)
+
+#if JAVASCRIPT
+#else
+
+[<AutoOpen>]
+module JsonHelpers =
+
+  type TokenWrap<'a> =
+    | Wrap of 'a
+
+    member self.ToJToken() =
+      match self with
+      | Wrap ting -> new JValue(ting) :> JToken
+
+  let inline addProp (prop: string) (json: JToken) (value: JToken) =
+    json.[prop] <- value
+    json
+
+  let addStrings (prop: string) (value: string array) (json: JToken) =
+    new JArray(value) |> addProp prop json
+
+  let addString (prop: string) (value: string) (json: JToken) =
+    new JValue(value) |> addProp prop json
+
+  let addInt (prop: string) (value: int) (json: JToken) =
+    new JValue(value) |> addProp prop json
+
+  let addUInt32 (prop: string) (value: uint32) (json: JToken) =
+    new JValue(value) |> addProp prop json
+
+  let inline addArray< ^t when ^t : (member ToJToken : unit -> JToken)> (prop: string) (value: ^t array) (json: JToken) : JToken =
+    new JArray(Array.map Json.tokenize value) |> addProp prop json
+
+  let inline addFields< ^t when ^t : (member ToJToken : unit -> JToken)> (value: ^t array) (json: JToken) : JToken =
+    new JArray(Array.map Json.tokenize value) |> addProp "Fields" json
+
+  let addCase (case: string) (json: JToken) =
+    new JValue(case) |> addProp "Case" json
+
+  let addType (tipe: string) (json: JToken) =
+    new JValue(tipe) |> addProp "$type" json
+
+  let addLong (prop: string) (value: uint64) (json: JToken) =
+    new JValue(value) |> addProp prop json
+
+  let addBool (prop: string) (value: bool) (json: JToken) =
+    new JValue(value) |> addProp prop json
+
+  let addFloat (prop: string) (value: float) (json: JToken) =
+    new JValue(value) |> addProp prop json
+
+  let addDouble (prop: string) (value: double) (json: JToken) =
+    new JValue(value) |> addProp prop json
+
+  let inline addToken (prop: string) (value: ^t) (json: JToken) =
+     value |> Json.tokenize |> addProp prop json
+
+#endif

@@ -288,11 +288,16 @@ module Configuration =
   ///
   /// Returns: RaftConfig
   let private parseRaft (cfg : ConfigFile) : RaftConfig =
+    let loglevel =
+      match LogLevel.Parse cfg.Project.Engine.LogLevel with
+      | Some level -> level
+      | _          -> Debug
+
     // let eng = cfg.Project.Engine
     { RequestTimeout   = uint64 cfg.Project.Engine.RequestTimeout
     ; ElectionTimeout  = uint64 cfg.Project.Engine.ElectionTimeout
     ; MaxLogDepth      = uint64 cfg.Project.Engine.MaxLogDepth
-    ; LogLevel         = LogLevel.Parse cfg.Project.Engine.LogLevel
+    ; LogLevel         = loglevel
     ; DataDir          = cfg.Project.Engine.DataDir
     ; MaxRetries       = uint8 cfg.Project.Engine.MaxRetries
     ; PeriodicInterval = uint8 cfg.Project.Engine.PeriodicInterval

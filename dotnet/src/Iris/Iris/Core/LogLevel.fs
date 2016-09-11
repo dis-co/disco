@@ -9,6 +9,9 @@ open Newtonsoft.Json.Linq
 // | |__| (_) | (_| | |__|  __/\ V /  __/ |
 // |_____\___/ \__, |_____\___| \_/ \___|_|
 //             |___/
+#if JAVASCRIPT
+[<StringEnum>]
+#endif
 type LogLevel =
   | Debug
   | Info
@@ -16,15 +19,15 @@ type LogLevel =
   | Err
 
   static member Type
-    with get () = "Iris.Core.LogLevel"
+    with get () = Serialization.GetTypeName<LogLevel>()
 
   static member Parse (str: string) =
     match toLower str with
-    | "debug"         -> Debug
-    | "info"          -> Info
-    | "warn"          -> Warn
-    | "err" | "error" -> Err
-    | _               -> Debug
+    | "debug"         -> Some Debug
+    | "info"          -> Some Info
+    | "warn"          -> Some Warn
+    | "err" | "error" -> Some Err
+    | _               -> None
 
   override self.ToString() =
     match self with
@@ -43,29 +46,14 @@ type LogLevel =
   //  \___/|___/\___/|_| |_|
 
   member self.ToJToken() : JToken =
-    let json = new JObject()
-    json.Add("$type", new JValue(LogLevel.Type))
-
-    match self with
-    | Debug -> json.Add("Case", new JValue("Debug"))
-    | Info  -> json.Add("Case", new JValue("Info"))
-    | Warn  -> json.Add("Case", new JValue("Warn"))
-    | Err   -> json.Add("Case", new JValue("Err"))
-
-    json :> JToken
+    new JValue(string self) :> JToken
 
   member self.ToJson() =
     self.ToJToken() |> string
 
-
   static member FromJToken(token: JToken) : LogLevel option =
     try
-      match string token.["Case"] with
-      | "Debug" -> Some Debug
-      | "Info"  -> Some Info
-      | "Warn"  -> Some Warn
-      | "Err"   -> Some Err
-      | _       -> None
+      LogLevel.Parse (string token)
     with
       | exn ->
         printfn "Could not deserialize json: "
