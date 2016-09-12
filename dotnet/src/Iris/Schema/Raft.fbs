@@ -316,7 +316,11 @@ table LogMsgFB {
       Msg: string;
 }
 
-union ApplicationEventTypeFB {
+table DataSnapshotFB {
+      Data: string;
+}
+
+union StateMachineTypeFB {
       // Cue
       AddCueFB,
       UpdateCueFB,
@@ -338,24 +342,12 @@ union ApplicationEventTypeFB {
       RemoveNodeFB,
 
       LogMsgFB,
-      AppCommandFB
-}
-
-table ApplicationEventFB {
-      AppEvent: ApplicationEventTypeFB;
-}
-
-table DataSnapshotFB {
-      Data: string;
-}
-
-union StateMachineTypeFB {
-      ApplicationEventFB,
+      AppCommandFB,
       DataSnapshotFB
 }
 
 table StateMachineFB {
-      Command: StateMachineTypeFB;
+      AppEvent: StateMachineTypeFB;
 }
 
 root_type StateMachineFB;

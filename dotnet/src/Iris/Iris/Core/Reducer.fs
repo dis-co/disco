@@ -16,7 +16,7 @@ module Reducer =
       |_| \_\___|\__,_|\__,_|\___\___|_|
   *)
 
-  let Reducer (ev : ApplicationEvent) (state : State) =
+  let Reducer (ev : StateMachine) (state : State) =
     match ev with
     | AddCue cue        -> state.AddCue      cue
     | UpdateCue     cue -> state.UpdateCue   cue

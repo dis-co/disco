@@ -6,8 +6,21 @@ namespace Iris.Serialization.Raft
 public enum StateMachineTypeFB : byte
 {
  NONE = 0,
- ApplicationEventFB = 1,
- DataSnapshotFB = 2,
+ AddCueFB = 1,
+ UpdateCueFB = 2,
+ RemoveCueFB = 3,
+ AddIOBoxFB = 4,
+ UpdateIOBoxFB = 5,
+ RemoveIOBoxFB = 6,
+ AddPatchFB = 7,
+ UpdatePatchFB = 8,
+ RemovePatchFB = 9,
+ AddNodeFB = 10,
+ UpdateNodeFB = 11,
+ RemoveNodeFB = 12,
+ LogMsgFB = 13,
+ AppCommandFB = 14,
+ DataSnapshotFB = 15,
 };
 
 

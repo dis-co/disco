@@ -9,12 +9,12 @@ module Keyboard =
   open Iris.Core
   open Iris.Web.Core
 
-  type KeyBinding = (bool * bool * float * ApplicationEvent)
+  type KeyBinding = (bool * bool * float * StateMachine)
 
   let knownActions : KeyBinding array =
     //  ctrl, shift, key, action
-    [| (true, false, 90.0, ApplicationEvent.Command AppCommand.Undo)
-    ; (true, true,  90.0, ApplicationEvent.Command AppCommand.Redo)
+    [| (true, false, 90.0, StateMachine.Command AppCommand.Undo)
+    ; (true, true,  90.0, StateMachine.Command AppCommand.Redo)
     |]
 
   let matches (ctx : ClientContext) (kev : KeyboardEvent) ((ctrl, shift, key, msg) : KeyBinding) =

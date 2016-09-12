@@ -55,7 +55,7 @@ type ClientMessage<'state> =
   | ClientLog    of ClientLog                   // logs a piece of data to all connected clients
   | Error        of Error                       // an error occuring inside the worker
   | Render       of 'state                      // instruct all clients to render new state
-  | Event        of Session * ApplicationEvent  // encapsulates an action or event that happened on the client
+  | Event        of Session * StateMachine      // encapsulates an action or event that happened on the client
   | Connect      of string                      // Connect to the specified endpoint
   | Connected                                   // worker websocket is connected to service
   | Disconnect   of string                      // Disconnect from server

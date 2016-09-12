@@ -352,15 +352,14 @@ module SerializationTests =
       IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0UL; Value = [| compound |] }|])
       |> check
 
-  //     _                _ _           _   _             _____                 _
-  //    / \   _ __  _ __ | (_) ___ __ _| |_(_) ___  _ __ | ____|_   _____ _ __ | |_
-  //   / _ \ | '_ \| '_ \| | |/ __/ _` | __| |/ _ \| '_ \|  _| \ \ / / _ \ '_ \| __|
-  //  / ___ \| |_) | |_) | | | (_| (_| | |_| | (_) | | | | |___ \ V /  __/ | | | |_
-  // /_/   \_\ .__/| .__/|_|_|\___\__,_|\__|_|\___/|_| |_|_____| \_/ \___|_| |_|\__|
-  //         |_|   |_|
+  //  ____  _        _       __  __            _     _
+  // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
+  // \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
+  //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
+  // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
-  let test_validate_application_event_serialization =
-    testCase "Validate ApplicationEvent Serialization" <| fun _ ->
+  let test_validate_state_machine_serialization =
+    testCase "Validate StateMachine Serialization" <| fun _ ->
       let rand = new System.Random()
 
       let mktags _ =
@@ -384,6 +383,7 @@ module SerializationTests =
       ; UpdateNode <| Node.create (Id.Create())
       ; RemoveNode <| Node.create (Id.Create())
       ; Command AppCommand.Undo
+      ; DataSnapshot "YEah!"
       ; LogMsg(Debug, "ohai")
       ]
       |> List.iter (fun cmd ->
@@ -392,50 +392,6 @@ module SerializationTests =
 
                      let remsg = cmd |> Json.encode |> Json.decode |> Option.get
                      expect "Should be structurally the same" cmd id remsg)
-
-  //  ____  _        _       __  __            _     _
-  // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
-  // \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
-  //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
-  // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
-
-  let test_validate_state_machine_serialization =
-    testCase "Validate correct StateMachine serialization" <| fun _ ->
-      let snapshot = DataSnapshot "hello"
-      let remsg = snapshot |> Binary.encode |> Binary.decode |> Option.get
-      expect "Should be structurally the same" snapshot id remsg
-
-      let rand = new System.Random()
-
-      let mktags _ =
-        [| for n in 0 .. rand.Next(2,8) do
-            yield Id.Create() |> string |]
-
-      let mkIOBox _ =
-        let slice : StringSliceD = { Index = 0UL; Value = "hello" }
-        IOBox.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
-
-      [ AddCue    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes () }
-      ; UpdateCue { Id = Id.Create(); Name = "Cue 2"; IOBoxes = ioboxes () }
-      ; RemoveCue { Id = Id.Create(); Name = "Cue 3"; IOBoxes = ioboxes () }
-      ; AddPatch    { Id = Id.Create(); Name = "Patch 1"; IOBoxes = ioboxes () }
-      ; UpdatePatch { Id = Id.Create(); Name = "Patch 2"; IOBoxes = ioboxes () }
-      ; RemovePatch { Id = Id.Create(); Name = "Patch 3"; IOBoxes = ioboxes () }
-      ; AddIOBox    <| mkIOBox ()
-      ; UpdateIOBox <| mkIOBox ()
-      ; RemoveIOBox <| mkIOBox ()
-      ; AddNode    <| Node.create (Id.Create())
-      ; UpdateNode <| Node.create (Id.Create())
-      ; RemoveNode <| Node.create (Id.Create())
-      ; Command AppCommand.Redo
-      ; LogMsg(Debug, "ohai")
-      ]
-      |> List.iter
-        (fun cmd ->
-          let command = AppEvent cmd
-          let remsg = command |> Binary.encode |> Binary.decode
-          expect "Should be structurally the same" command id (Option.get remsg))
-
 
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
@@ -460,6 +416,5 @@ module SerializationTests =
         test_validate_patch_serialization
         test_validate_slice_serialization
         test_validate_iobox_serialization
-        test_validate_application_event_serialization
         test_validate_state_machine_serialization
       ]

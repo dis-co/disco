@@ -38,12 +38,12 @@ module WebSocket =
     let onMessage (socket: IWebSocketConnection) (msg: string) =
       printfn "[%s] onMessage: %s" (getSession socket) msg
 
-      let ev : ApplicationEvent option = Json.decode msg
+      let ev : StateMachine option = Json.decode msg
 
       match ev with
       | Some (LogMsg (_, msg)) -> printfn "log: %s" msg
       | Some ev ->
-        context.Append(AppEvent ev)
+        context.Append(ev)
         |> Option.map
           (fun resp ->
              LogMsg(Iris.Core.LogLevel.Debug, string resp)
@@ -67,7 +67,7 @@ module WebSocket =
       Map.iter (fun _ (socket: IWebSocketConnection) -> socket.Close()) !sessions
       dispose server
 
-    member self.Broadcast(msg: ApplicationEvent) =
+    member self.Broadcast(msg: StateMachine) =
       let send _ (socket: IWebSocketConnection) =
         msg |> Json.encode |> socket.Send |> ignore
       Map.iter send !sessions

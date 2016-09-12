@@ -181,7 +181,7 @@ type GlobalContext() =
         self.Broadcast ClientMessage.Disconnected
 
       sock.OnMessage <- fun (ev: MessageEvent<string>) ->
-        let parsed : ApplicationEvent = ofJson<ApplicationEvent> ev.Data
+        let parsed : StateMachine = ofJson<StateMachine> ev.Data
         self.OnSocketMessage parsed
 
       socket <- Some (addr, sock)
@@ -205,7 +205,7 @@ type GlobalContext() =
 
    *-------------------------------------------------------------------------*)
 
-  member self.OnSocketMessage(ev: ApplicationEvent) : unit =
+  member self.OnSocketMessage(ev: StateMachine) : unit =
     match ev with
     | LogMsg (level,str) -> self.Log (sprintf "[%A] %s" level str)
     | _ ->
@@ -270,7 +270,7 @@ type GlobalContext() =
   member self.Store  with get () = store
   member self.Socket with get () = socket
 
-  member self.SendServer (msg: ApplicationEvent) =
+  member self.SendServer (msg: StateMachine) =
     let json = toJson msg
     match socket with
     | Some (_, server) -> server.Send(json)

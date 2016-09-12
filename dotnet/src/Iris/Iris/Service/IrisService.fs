@@ -64,10 +64,7 @@ type IrisService(project: Project) =
     raftserver.OnNodeUpdated <- UpdateNode >> wsserver.Broadcast
     raftserver.OnNodeRemoved <- RemoveNode >> wsserver.Broadcast
 
-    raftserver.OnApplyLog <- fun sm ->
-      match sm with
-      | AppEvent ae -> wsserver.Broadcast ae
-      | _           -> printfn "DataSnapshots are not propagated to browsers"
+    raftserver.OnApplyLog <- wsserver.Broadcast
 
     printfn "Starting Http Server on %d" project.Config.PortConfig.Http
     httpserver.Start()

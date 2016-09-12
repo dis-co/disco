@@ -66,7 +66,6 @@
     <Compile Include="Iris\Raft\Continue.fs" />
     <Compile Include="Iris\Raft\Node.fs" />
     <!-- FFS!!!! I hate F# -->
-    <Compile Include="Iris\Core\ApplicationEvent.fs" />
     <Compile Include="Iris\Core\StateMachine.fs" />
     <Compile Include="Iris\Raft\LogEntry.fs" />
     <Compile Include="Iris\Raft\Log.fs" />

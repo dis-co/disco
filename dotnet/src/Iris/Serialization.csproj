@@ -49,8 +49,6 @@
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/AppCommandTypeFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/AppendEntriesFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/AppendResponseFB.cs" />
-    <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/ApplicationEventFB.cs" />
-    <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/ApplicationEventTypeFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/ArrivederciFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/BehaviorFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/BoolBoxFB.cs" />

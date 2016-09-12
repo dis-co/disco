@@ -24,7 +24,7 @@ module Patches =
 
         Button
           [ OnClick (fun _ ->
-                     let cmd = ApplicationEvent.Command AppCommand.Undo
+                     let cmd = StateMachine.Command AppCommand.Undo
                      match ctx.Session with
                      | Some session -> ctx.Trigger(ClientMessage.Event(session, cmd))
                      | _            -> printfn "No session active. Worker not running?") ]
@@ -32,7 +32,7 @@ module Patches =
 
         Button
           [ OnClick (fun _ ->
-                     let cmd = ApplicationEvent.Command AppCommand.Redo
+                     let cmd = StateMachine.Command AppCommand.Redo
                      match ctx.Session with
                      | Some session -> ctx.Trigger(ClientMessage.Event(session, cmd))
                      | _            -> printfn "No session active. Worker not running??") ]

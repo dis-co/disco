@@ -9,10 +9,10 @@ module Store =
 #endif
 
   (* Reducers are take a state, an action, acts and finally return the new state *)
-  type Reducer<'a> = (ApplicationEvent -> 'a -> 'a)
+  type Reducer<'a> = (StateMachine -> 'a -> 'a)
 
   (* Action: Log entry for the Event occurred and the resulting state. *)
-  type StoreAction<'a> = { Event : ApplicationEvent; State : 'a }
+  type StoreAction<'a> = { Event : StateMachine; State : 'a }
     with override self.ToString() : string =
                   sprintf "%s %s" (self.Event.ToString()) (self.State.ToString())
 
@@ -101,8 +101,8 @@ module Store =
 
     let mutable listeners : Listener<'a> list = []
 
-    // Notify all listeners of the ApplicationEvent change
-    member private store.Notify (ev : ApplicationEvent) =
+    // Notify all listeners of the StateMachine change
+    member private store.Notify (ev : StateMachine) =
       List.iter (fun f -> f store ev) listeners
 
     // Turn debugging mode on or off.
@@ -120,14 +120,14 @@ module Store =
        and set n  = history.Depth <- n
 
     (*
-       Dispatch an action (ApplicationEvent) to be executed against the current
+       Dispatch an action (StateMachine) to be executed against the current
        version of the state to produce the next state.
 
        Notify all listeners of the change.
 
        Create a history item for this change if debugging is enabled.
      *)
-    member self.Dispatch (ev : ApplicationEvent) : unit =
+    member self.Dispatch (ev : StateMachine) : unit =
       match ev with
       | Command (AppCommand.Redo)  -> self.Redo()
       | Command (AppCommand.Undo)  -> self.Undo()
@@ -165,4 +165,4 @@ module Store =
           self.Notify log.Event |> ignore
         | _ -> ()
 
-  and Listener<'a> = (Store<'a> -> ApplicationEvent -> unit)
+  and Listener<'a> = (Store<'a> -> StateMachine -> unit)

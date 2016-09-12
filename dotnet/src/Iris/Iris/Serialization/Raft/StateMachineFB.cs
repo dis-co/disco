@@ -11,21 +11,21 @@ public sealed class StateMachineFB : Table {
   public static StateMachineFB GetRootAsStateMachineFB(ByteBuffer _bb, StateMachineFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
   public StateMachineFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
-  public StateMachineTypeFB CommandType { get { int o = __offset(4); return o != 0 ? (StateMachineTypeFB)bb.Get(o + bb_pos) : StateMachineTypeFB.NONE; } }
-  public TTable GetCommand<TTable>(TTable obj) where TTable : Table { int o = __offset(6); return o != 0 ? __union(obj, o) : null; }
+  public StateMachineTypeFB AppEventType { get { int o = __offset(4); return o != 0 ? (StateMachineTypeFB)bb.Get(o + bb_pos) : StateMachineTypeFB.NONE; } }
+  public TTable GetAppEvent<TTable>(TTable obj) where TTable : Table { int o = __offset(6); return o != 0 ? __union(obj, o) : null; }
 
   public static Offset<StateMachineFB> CreateStateMachineFB(FlatBufferBuilder builder,
-      StateMachineTypeFB Command_type = StateMachineTypeFB.NONE,
-      int CommandOffset = 0) {
+      StateMachineTypeFB AppEvent_type = StateMachineTypeFB.NONE,
+      int AppEventOffset = 0) {
     builder.StartObject(2);
-    StateMachineFB.AddCommand(builder, CommandOffset);
-    StateMachineFB.AddCommandType(builder, Command_type);
+    StateMachineFB.AddAppEvent(builder, AppEventOffset);
+    StateMachineFB.AddAppEventType(builder, AppEvent_type);
     return StateMachineFB.EndStateMachineFB(builder);
   }
 
   public static void StartStateMachineFB(FlatBufferBuilder builder) { builder.StartObject(2); }
-  public static void AddCommandType(FlatBufferBuilder builder, StateMachineTypeFB CommandType) { builder.AddByte(0, (byte)CommandType, 0); }
-  public static void AddCommand(FlatBufferBuilder builder, int CommandOffset) { builder.AddOffset(1, CommandOffset, 0); }
+  public static void AddAppEventType(FlatBufferBuilder builder, StateMachineTypeFB AppEventType) { builder.AddByte(0, (byte)AppEventType, 0); }
+  public static void AddAppEvent(FlatBufferBuilder builder, int AppEventOffset) { builder.AddOffset(1, AppEventOffset, 0); }
   public static Offset<StateMachineFB> EndStateMachineFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
     return new Offset<StateMachineFB>(o);
