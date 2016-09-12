@@ -4,6 +4,7 @@ open Argu
 open System
 open Iris.Core
 open Iris.Raft
+open Iris.Service.Core
 open Iris.Service.Raft.Server
 
 
@@ -226,23 +227,23 @@ let tryRmNode (hst: string) (context: RaftServer) =
 //                  |_|               //
 ////////////////////////////////////////
 
-let consoleLoop (context: RaftServer) =
+let consoleLoop (context: IrisService) =
   let kont = ref true
   let rec proc kontinue =
     printf "~> "
     let input = Console.ReadLine()
     match input with
-      | LogLevel opt -> trySetLogLevel opt context
-      | Interval   i -> trySetInterval i context
+      | LogLevel opt -> trySetLogLevel opt context.Raft
+      | Interval   i -> trySetInterval i context.Raft
       | Exit         -> context.Stop(); kontinue := false
-      | Periodic     -> context.Periodic()
-      | Append ety   -> tryAppendEntry context ety
-      | Join hst     -> tryJoinCluster hst context
-      | Leave        -> tryLeaveCluster context
-      | AddNode hst  -> tryAddNode hst context
-      | RmNode hst   -> tryRmNode  hst context
-      | Timeout      -> timeoutRaft context
-      | Status       -> printfn "%s" <| context.ToString()
+      | Periodic     -> context.Raft.Periodic()
+      | Append ety   -> tryAppendEntry context.Raft ety
+      | Join hst     -> tryJoinCluster hst context.Raft
+      | Leave        -> tryLeaveCluster context.Raft
+      | AddNode hst  -> tryAddNode hst context.Raft
+      | RmNode hst   -> tryRmNode  hst context.Raft
+      | Timeout      -> timeoutRaft context.Raft
+      | Status       -> printfn "%s" <| context.Raft.ToString()
       | _            -> printfn "unknown command"
     if !kontinue then
       proc kontinue

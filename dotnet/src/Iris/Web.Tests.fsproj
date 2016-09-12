@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
   <PropertyGroup>
@@ -48,13 +48,13 @@
     <Compile Include="Iris\Raft\Node.fs" />
     <Compile Include="Iris\Core\ApplicationEvent.fs" />
     <Compile Include="Iris\Core\ClientMessage.fs" />
+    <Compile Include="Iris\Core\State.fs" />
+    <Compile Include="Iris\Core\Store.fs" />
+    <Compile Include="Iris\Core\Reducer.fs" />
     <Compile Include="Iris\Web\Core\Browser.fs" />
     <Compile Include="Iris\Web\Core\Crypto.fs" />
     <Compile Include="Iris\Web\Core\Html.fs" />
     <Compile Include="Iris\Web\Core\Plugin.fs" />
-    <Compile Include="Iris\Web\Core\State.fs" />
-    <Compile Include="Iris\Web\Core\Store.fs" />
-    <Compile Include="Iris\Web\Core\Reducer.fs" />
     <Compile Include="Iris\Web\Core\ViewController.fs" />
     <Compile Include="Iris\Web\Core\Worker.fs" />
     <Compile Include="Iris\Web\Core\Client.fs" />

@@ -55,13 +55,13 @@ module WebSocket =
       printfn "[%s] onError: %s" (getSession socket) exn.Message
 
     let handler (socket: IWebSocketConnection) =
-      socket.OnOpen    <- new Action(onOpen socket)
-      socket.OnClose   <- new Action(onClose socket)
-      socket.OnMessage <- new Action<string>(onMessage socket)
-      socket.OnError   <- new Action<exn>(onError socket)
+      socket.OnOpen    <- new System.Action(onOpen socket)
+      socket.OnClose   <- new System.Action(onClose socket)
+      socket.OnMessage <- new System.Action<string>(onMessage socket)
+      socket.OnError   <- new System.Action<exn>(onError socket)
 
     member self.Start() =
-      server.Start(new Action<IWebSocketConnection>(handler))
+      server.Start(new System.Action<IWebSocketConnection>(handler))
 
     member self.Stop() =
       Map.iter (fun _ (socket: IWebSocketConnection) -> socket.Close()) !sessions

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
   <UsingTask AssemblyFile="..\..\packages\FSharpLint\FSharpLint.MSBuildIntegration.dll" TaskName="FSharpLintTask" />
@@ -119,15 +119,19 @@
     <Compile Include="Iris\Core\Uri.fs" />
     <Compile Include="Iris\Service\GitDaemon.fs" />
     <Compile Include="Iris\Core\BrowserSession.fs" />
+    <Compile Include="Iris\Core\State.fs" />
+    <Compile Include="Iris\Core\Store.fs" />
+    <Compile Include="Iris\Core\Reducer.fs" />
     <Compile Include="Iris\Core\RaftUtils.fs" />
     <Compile Include="Iris\Service\Raft\Zmq.fs" />
-    <Compile Include="Iris\Service\AppState.fs" />
+    <Compile Include="Iris\Service\Raft\RaftAppState.fs" />
     <Compile Include="Iris\Service\Raft\Db.fs" />
     <Compile Include="Iris\Service\Raft\Utilities.fs" />
     <Compile Include="Iris\Service\Raft\Stm.fs" />
     <Compile Include="Iris\Service\Raft\Server.fs" />
     <compile Include="Iris\Service\AssetServer.fs" />
     <Compile Include="Iris\Service\WebSocket.fs" />
+    <Compile Include="Iris\Service\IrisService.fs" />
     <Compile Include="Iris\Service\CommandLine.fs" />
     <Compile Include="Iris\Service\Main.fs" />
     <Content Include="Iris.exe.config">

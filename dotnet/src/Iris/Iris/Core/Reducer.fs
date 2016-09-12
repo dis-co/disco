@@ -1,13 +1,13 @@
-namespace Iris.Web.Core
+namespace Iris.Core
 
 [<AutoOpen>]
 module Reducer =
 
+#if JAVASCRIPT
   open Fable.Core
   open Fable.Import
   open Fable.Import.JS
-
-  open Iris.Core
+#endif
 
   (*   ____          _
       |  _ \ ___  __| |_   _  ___ ___ _ __

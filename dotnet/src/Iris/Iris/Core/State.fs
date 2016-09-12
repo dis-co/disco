@@ -1,11 +1,13 @@
-namespace Iris.Web.Core
+namespace Iris.Core
 
 [<AutoOpen>]
 module State =
 
+#if JAVASCRIPT
   open Fable.Core
   open Fable.Import
-  open Iris.Core
+#endif
+
   open Iris.Raft
 
   (*   ____  _        _
@@ -21,12 +23,14 @@ module State =
   type State =
     { Patches : Patch    array
     ; Cues    : Cue      array
-    ; Nodes   : RaftNode array }
-
+    ; Nodes   : RaftNode array
+    ; Users   : Map<Name,Email>
+    }
     static member Empty =
       { Patches = [| |]
       ; Cues    = [| |]
-      ; Nodes   = [| |] }
+      ; Nodes   = [| |]
+      ; Users   = Map.empty }
 
     (*  ADD  *)
     member state.AddPatch (patch : Patch) =

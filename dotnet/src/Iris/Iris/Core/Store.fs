@@ -1,28 +1,28 @@
-namespace Iris.Web.Core
+namespace Iris.Core
 
 [<AutoOpen>]
 module Store =
 
+#if JAVASCRIPT
   open Fable.Core
   open Fable.Import
-  open Iris.Core
+#endif
 
   (* Reducers are take a state, an action, acts and finally return the new state *)
   type Reducer<'a> = (ApplicationEvent -> 'a -> 'a)
 
   (* Action: Log entry for the Event occurred and the resulting state. *)
-  type Action<'a> = { Event : ApplicationEvent; State : 'a }
+  type StoreAction<'a> = { Event : ApplicationEvent; State : 'a }
     with override self.ToString() : string =
                   sprintf "%s %s" (self.Event.ToString()) (self.State.ToString())
 
-  (*  _   _ _     _
-   * | | | (_)self_| |_ self_  _ self _   _
-   * | |_| | / self| self/ _ \| 'self| | | |
-   * |  _  | \self \ || (_) | |  | |_| |
-   * |_| |_|_|self_/\self\self_/|_|   \self, |
-   *                            |self_/
-   * Wrap up undo/redo logic.
-   *)
+  //  _   _ _     _
+  // | | | (_)___| |_ ___  _ __ _   _
+  // | |_| | / __| __/ _ \| '__| | | |
+  // |  _  | \__ \ || (_) | |  | |_| |
+  // |_| |_|_|___/\__\___/|_|   \__, |
+  //                            |___/
+
   type History<'a> (state : 'a) =
     let mutable depth = 10
     let mutable debug = false
@@ -79,41 +79,33 @@ module Store =
 
       List.tryItem head values
 
+  //  ____  _
+  // / ___|| |_ ___  _ __ ___
+  // \___ \| __/ _ \| '__/ _ \
+  //  ___) | || (_) | | |  __/
+  // |____/ \__\___/|_|  \___|
 
-  (*   selfself  _
-   *  / self_|| |_ self_  _ self self_
-   *  \self_ \| self/ _ \| 'self/ _ \
-   *   self_) | || (_) | | |  self/
-   *  |selfself/ \self\self_/|_|  \self_|
-   *
-   *  The store centrally manages all state changes and notifies interested
-   *  parties of changes to the carried state (e.g. views, socket transport).
-   *
-   *  Features:
-   *
-   *  - time-traveleing debugger
-   *  - undo/redo (to be implemented)
-   *)
+  // The store centrally manages all state changes and notifies interested
+  // parties of changes to the carried state (e.g. views, socket transport).
+  //
+  // Features:
+  //
+  // - time-traveleing debugger
+  // - undo/redo
 
   type Store<'a> (reducer : Reducer<'a>, state : 'a)=
     let reducer = reducer
     let mutable state = state
     let mutable history =
-      new History<Action<'a>>({ State = state; Event = Command(AppCommand.Reset) })
+      new History<StoreAction<'a>>({ State = state; Event = Command(AppCommand.Reset) })
 
     let mutable listeners : Listener<'a> list = []
 
-    (*
-     * Notify all listeners of the ApplicationEvent change
-     *)
+    // Notify all listeners of the ApplicationEvent change
     member private store.Notify (ev : ApplicationEvent) =
       List.iter (fun f -> f store ev) listeners
 
-    (*
-     * Turn debugging mode on or off.
-     *
-     * Makes sure the current state is the first element.
-     *)
+    // Turn debugging mode on or off.
     member self.Debug
       with get ()  = history.Debug
        and set dbg = history.Debug <- dbg

@@ -11,6 +11,7 @@ type Long       = uint64
 type Index      = Long
 type Term       = Long
 type Name       = string
+type Email      = string
 type Tag        = string
 type NodePath   = string
 type OSCAddress = string

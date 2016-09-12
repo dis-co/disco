@@ -46,22 +46,18 @@ let mkRaft (options: Config) =
     | _         -> createRaft options
 
 
-/// ## Create an AppState value
+/// ## Create an RaftAppState value
 ///
-/// Given the `RaftOptions`, create or load data and construct a new `AppState` for the
+/// Given the `RaftOptions`, create or load data and construct a new `RaftAppState` for the
 /// `RaftServer`.
 ///
 /// ### Signature:
 /// - context: `ZeroMQ` `Context`
 /// - options: `RaftOptions`
 ///
-/// Returns: AppState
-let mkState (context: ZeroMQ.ZContext) (options: Config) : AppState =
-  { Clients   = []
-  ; Sessions  = []
-  ; Projects  = Map.empty
-  ; Peers     = Map.empty
-  ; Raft      = mkRaft options
+/// Returns: RaftAppState
+let mkState (context: ZeroMQ.ZContext) (options: Config) : RaftAppState =
+  { Raft      = mkRaft options
   ; Context   = context
   ; Options   = options }
 
@@ -141,7 +137,7 @@ let nodeUri (data: RaftNode) =
 /// - state: current app state
 ///
 /// Returns: fszmq.Socket
-let mkClientSocket (uri: string) (state: AppState) =
+let mkClientSocket (uri: string) (state: RaftAppState) =
   let timeout = 2000 // FIXME: this request timeout value should be settable
   let socket = new Req(uri, state.Context, timeout)
   socket.Start()
@@ -164,7 +160,7 @@ let mkClientSocket (uri: string) (state: AppState) =
 /// - appState: current TVar<AppState>
 ///
 /// Returns: Socket
-let getSocket (node: RaftNode) (state: AppState) (connections: Map<Id,Zmq.Req>) =
+let getSocket (node: RaftNode) (state: RaftAppState) (connections: Map<Id,Zmq.Req>) =
   match Map.tryFind node.Id connections with
   | Some client -> (client, connections)
   | _  ->
@@ -178,7 +174,7 @@ let getSocket (node: RaftNode) (state: AppState) (connections: Map<Id,Zmq.Req>) 
 ///
 /// ### Signature:
 /// - node: Node whose socket should be disposed of.
-/// - appState: AppState TVar
+/// - appState: RaftAppState TVar
 ///
 /// Returns: unit
 let disposeSocket (node: RaftNode) (connections: Map<Id,Zmq.Req>) =
@@ -195,7 +191,7 @@ let disposeSocket (node: RaftNode) (connections: Map<Id,Zmq.Req>) =
 /// ### Signature:
 /// - request: RaftRequest to perform
 /// - client: Req socket object
-/// - state: AppState to perform request against
+/// - state: RaftAppState to perform request against
 ///
 /// Returns: RaftResponse option
 let rawRequest (request: RaftRequest) (client: Req) =
@@ -216,7 +212,7 @@ let rawRequest (request: RaftRequest) (client: Req) =
 /// - appState: application state TVar
 ///
 /// Returns: RaftResponse option
-let performRequest (request: RaftRequest) (node: RaftNode) (state: AppState) (connections: Map<Id,Zmq.Req>) =
+let performRequest (request: RaftRequest) (node: RaftNode) (state: RaftAppState) (connections: Map<Id,Zmq.Req>) =
   let client, connections = getSocket node state connections
 
   try
