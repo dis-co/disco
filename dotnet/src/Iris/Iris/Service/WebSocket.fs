@@ -10,7 +10,12 @@ module WebSocket =
   open Fleck
   open Newtonsoft.Json
 
-  type WsServer(config: Config, context: RaftServer) as this =
+  type WsServer(config: Config, context: RaftServer) =
+
+    let mutable onOpenCb    : Option<Session -> unit> = None
+    let mutable onCloseCb   : Option<Id -> unit> = None
+    let mutable onErrorCb   : Option<Id -> unit> = None
+    let mutable onMessageCb : Option<Id -> StateMachine -> unit> = None
 
     let uri =
       sprintf "ws://%s:%d"
@@ -19,40 +24,80 @@ module WebSocket =
 
     let server = new WebSocketServer(uri)
 
-    let sessions : Map<Session,IWebSocketConnection> ref = ref Map.empty
+    let mutable sessions : Map<Id,IWebSocketConnection> = Map.empty
 
-    let getSession (socket: IWebSocketConnection) =
-      let id = socket.ConnectionInfo.Id
-      id.ToString()
+    let getSessionId (socket: IWebSocketConnection) : Id =
+      string socket.ConnectionInfo.Id |> Id
+
+    let buildSession (socket: IWebSocketConnection) : Session =
+      let ua =
+        if socket.ConnectionInfo.Headers.ContainsKey("UserAgent") then
+          socket.ConnectionInfo.Headers.["UserAgent"]
+        else
+          "<no user agent specified>"
+
+      for thing in socket.ConnectionInfo.Headers do
+        printfn "%s: %s" thing.Key thing.Value
+
+      { SessionId = getSessionId socket
+      ; UserName  = ""
+      ; IpAddress = IpAddress.Parse socket.ConnectionInfo.ClientIpAddress
+      ; UserAgent = ua }
+
+    //   ___
+    //  / _ \ _ __   ___ _ __
+    // | | | | '_ \ / _ \ '_ \
+    // | |_| | |_) |  __/ | | |
+    //  \___/| .__/ \___|_| |_|
+    //       |_|
 
     let onOpen (socket: IWebSocketConnection) _ =
-      let session = getSession socket
-      sessions := Map.add session socket !sessions
-      printfn "[%s] onOpen!" session
+      let session : Session = buildSession socket
+      let sid = getSessionId socket
+      sessions <- Map.add sid socket sessions
+      Option.map (fun cb -> cb session) onOpenCb |> ignore
+      printfn "[%s] onOpen!" (getSessionId socket |> string)
+
+    //   ____ _
+    //  / ___| | ___  ___  ___
+    // | |   | |/ _ \/ __|/ _ \
+    // | |___| | (_) \__ \  __/
+    //  \____|_|\___/|___/\___|
 
     let onClose (socket: IWebSocketConnection) _ =
-      let session = getSession socket
-      sessions := Map.remove session !sessions
-      printfn "[%s] onClose!" session
+      let session = getSessionId socket
+      sessions <- Map.remove session sessions
+      Option.map (fun cb -> cb session) onCloseCb |> ignore
+      printfn "[%s] onClose!" (string session)
+
+    //  __  __
+    // |  \/  | ___  ___ ___  __ _  __ _  ___
+    // | |\/| |/ _ \/ __/ __|/ _` |/ _` |/ _ \
+    // | |  | |  __/\__ \__ \ (_| | (_| |  __/
+    // |_|  |_|\___||___/___/\__,_|\__, |\___|
+    //                             |___/
 
     let onMessage (socket: IWebSocketConnection) (msg: string) =
-      printfn "[%s] onMessage: %s" (getSession socket) msg
+      let session = getSessionId socket
+      let entry : StateMachine option = Json.decode msg
 
-      let ev : StateMachine option = Json.decode msg
+      match entry with
+      | Some command -> Option.map (fun cb -> cb session command) onMessageCb |> ignore
+      | _            -> ()
 
-      match ev with
-      | Some (LogMsg (_, msg)) -> printfn "log: %s" msg
-      | Some ev ->
-        context.Append(ev)
-        |> Option.map
-          (fun resp ->
-             LogMsg(Iris.Core.LogLevel.Debug, string resp)
-             |> this.Broadcast)
-        |> ignore
-      | _ -> printfn "WebSocket onMesssage: unable to parse %A" msg
+      printfn "[%s] onMessage: %s" (string session) msg
+
+    //  _____
+    // | ____|_ __ _ __ ___  _ __
+    // |  _| | '__| '__/ _ \| '__|
+    // | |___| |  | | | (_) | |
+    // |_____|_|  |_|  \___/|_|
 
     let onError (socket: IWebSocketConnection) (exn: 'a when 'a :> Exception) =
-      printfn "[%s] onError: %s" (getSession socket) exn.Message
+      let session = getSessionId socket
+      sessions <- Map.remove session sessions
+      Option.map (fun cb -> cb session) onErrorCb |> ignore
+      printfn "[%s] onError: %s" (string session) exn.Message
 
     let handler (socket: IWebSocketConnection) =
       socket.OnOpen    <- new System.Action(onOpen socket)
@@ -64,13 +109,25 @@ module WebSocket =
       server.Start(new System.Action<IWebSocketConnection>(handler))
 
     member self.Stop() =
-      Map.iter (fun _ (socket: IWebSocketConnection) -> socket.Close()) !sessions
+      Map.iter (fun _ (socket: IWebSocketConnection) -> socket.Close()) sessions
       dispose server
 
     member self.Broadcast(msg: StateMachine) =
       let send _ (socket: IWebSocketConnection) =
         msg |> Json.encode |> socket.Send |> ignore
-      Map.iter send !sessions
+      Map.iter send sessions
+
+    member self.OnOpen
+      with set cb = onOpenCb <- Some cb
+
+    member self.OnClose
+      with set cb = onOpenCb <- Some cb
+
+    member self.OnError
+      with set cb = onOpenCb <- Some cb
+
+    member self.OnMessage
+      with set cb = onOpenCb <- Some cb
 
     interface IDisposable with
       member self.Dispose() =

@@ -47,18 +47,18 @@ namespace Iris.Core
 
 [<RequireQualifiedAccess>]
 type ClientMessage<'state> =
-  | Initialized  of Session                     // the worker has created a session for this tab/window
-  | Close        of Session                     // client tab/window was closed, so request to remove session
-  | Closed       of Session                     // other client tab/window notified of close
-  | Stop                                        // SharedWorker is requested to stop
-  | Stopped                                     // SharedWorker process has stopped
-  | ClientLog    of ClientLog                   // logs a piece of data to all connected clients
-  | Error        of Error                       // an error occuring inside the worker
-  | Render       of 'state                      // instruct all clients to render new state
-  | Event        of Session * StateMachine      // encapsulates an action or event that happened on the client
-  | Connect      of string                      // Connect to the specified endpoint
-  | Connected                                   // worker websocket is connected to service
-  | Disconnect   of string                      // Disconnect from server
-  | Disconnected                                // worker websocket was disconnected from service
+  | Initialized  of Id                     // the worker has created a session for this tab/window
+  | Close        of Id                     // client tab/window was closed, so request to remove session
+  | Closed       of Id                     // other client tab/window notified of close
+  | Stop                                   // SharedWorker is requested to stop
+  | Stopped                                // SharedWorker process has stopped
+  | ClientLog    of ClientLog              // logs a piece of data to all connected clients
+  | Error        of Error                  // an error occuring inside the worker
+  | Render       of 'state                 // instruct all clients to render new state
+  | Event        of Id * StateMachine      // encapsulates an action or event that happened on the client
+  | Connect      of string                 // Connect to the specified endpoint
+  | Connected                              // worker websocket is connected to service
+  | Disconnect   of string                 // Disconnect from server
+  | Disconnected                           // worker websocket was disconnected from service
 
 #endif

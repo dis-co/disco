@@ -84,7 +84,7 @@ module Patches =
 
     let patchList (context : ClientContext) (patches : Patch array) =
       let container = Div [ ElmId "patches" ] [| |]
-      container <++ Array.map (patchView context) patches
+      container <++  Array.map (patchView context) patches
 
     let mainView (context : ClientContext) (content : Html) : Html =
       Div [ ElmId "main" ] [|
@@ -94,11 +94,13 @@ module Patches =
       |]
 
     let patches (context : ClientContext) (state : State)  : Html =
-      state.Patches
-      |> (fun patches ->
-            if Array.isEmpty patches
-            then P [] [| Text "Empty" |]
-            else patchList context patches)
+      if Map.isEmpty state.Patches then
+        P [] [| Text "Empty" |]
+      else
+        state.Patches
+        |> Map.toArray
+        |> Array.map snd
+        |> patchList context
 
     let destroy (context : ClientContext) (cue : Cue) =
       let handler (_ : MouseEvent) =
@@ -126,12 +128,13 @@ module Patches =
         H3 [] [| Text "Cues" |]
 
         // List of cues
-        state.Cues
-        |> (fun cues ->
-              if Array.isEmpty cues then
-                P [] [| Text "No cues" |]
-              else
-                cueList context cues);
+        if Map.isEmpty state.Cues then
+          P [] [| Text "No cues" |]
+        else
+          cues
+          |> Map.toArray
+          |> Array.map snd
+          |> cueList context
       |]
 
     let content (context : ClientContext) (state : State) : Html =

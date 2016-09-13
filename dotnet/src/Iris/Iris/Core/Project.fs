@@ -30,7 +30,7 @@ open Iris.Core.Utils
 
 // [<NoComparison;NoEquality>]
 type Project =
-  { Id        : ProjectId
+  { Id        : Id
   ; Name      : Name
   ; Path      : FilePath  option        // Project path should always be the path containing '.git'
   ; CreatedOn : TimeStamp

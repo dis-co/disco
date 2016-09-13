@@ -159,14 +159,14 @@ module Worker =
 /////////////////////////////////////////////////////////////////////////////// *)
 
 type ClientMessagePort = MessagePort<ClientMessage<State>>
-type PortMap = Map<Session,ClientMessagePort>
+type PortMap = Map<Id,ClientMessagePort>
 
 type GlobalContext() =
   let mutable count = 0
   let mutable store = new Store<State>(Reducer, State.Empty)
   let mutable socket : (string * WebSocket) option = None
 
-  let ports : PortMap = Map.Create<Session,ClientMessagePort>()
+  let ports : PortMap = Map.Create<Id,ClientMessagePort>()
 
   member self.ConnectServer(addr) =
     let init _ =
@@ -240,7 +240,7 @@ type GlobalContext() =
 
   member self.Register (port : MessagePort<ClientMessage<State>>) =
     count <- count + 1                     // increase the connection count
-    let session = mkGuid ()               // create a session id
+    let session = Id.Create()             // create a session id
     port.OnMessage <- self.OnClientMessage   // register handler for client messages
     ports.set(session, port)              // remember the port in our map
     |> ignore
@@ -251,7 +251,7 @@ type GlobalContext() =
     ClientMessage.Render(store.State)     // ask client to render
     |> self.SendClient port
 
-  member self.UnRegister (session: Session) =
+  member self.UnRegister (session: Id) =
     count <- count - 1
     if ports.delete(session) then
       self.Broadcast(ClientMessage.Closed(session))
@@ -281,14 +281,14 @@ type GlobalContext() =
 
   member self.Broadcast (msg : ClientMessage<State>) : unit =
     let handler port _ _ = self.SendClient port msg
-    let func = new System.Func<ClientMessagePort,Session,PortMap,unit> (handler)
+    let func = new System.Func<ClientMessagePort,Id,PortMap,unit> (handler)
     ports.forEach(func)
 
-  member self.Multicast (session: Session, msg: ClientMessage<State>) : unit =
+  member self.Multicast (session: Id, msg: ClientMessage<State>) : unit =
     let handler port token _ =
       if session <> token then
         self.SendClient port msg
-    let func = new System.Func<ClientMessagePort,Session,PortMap,unit> (handler)
+    let func = new System.Func<ClientMessagePort,Id,PortMap,unit> (handler)
     ports.forEach(func)
 
   member self.Log (thing : ClientLog) : unit =

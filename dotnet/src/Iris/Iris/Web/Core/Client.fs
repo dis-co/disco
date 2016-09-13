@@ -47,7 +47,7 @@ module Client =
   type ClientContext() =
     let resource = "js/worker.js"
 
-    let mutable session : Session option = None
+    let mutable session : Id option = None
     let mutable worker  : SharedWorker<ClientMessage<State>> option = None
     let mutable ctrl    : ViewController<State,ClientContext> option = None
 

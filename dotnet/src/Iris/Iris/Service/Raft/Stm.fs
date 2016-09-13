@@ -540,7 +540,7 @@ let prepareSnapshot appState =
   let state = readTVar appState |> atomically
   createSnapshot (DataSnapshot "snip snap snapshot") state.Raft
 
-let resetConnections (connections: Map<MemberId,Zmq.Req>) =
+let resetConnections (connections: Map<Id,Zmq.Req>) =
   Map.iter (fun _ sock -> dispose sock) connections
 
 let initialize appState cbs =

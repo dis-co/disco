@@ -246,6 +246,46 @@ table CueFB {
       IOBoxes: [IOBoxFB];
 }
 
+//   ____           _     _     _
+//  / ___|   _  ___| |   (_)___| |_
+// | |  | | | |/ _ \ |   | / __| __|
+// | |__| |_| |  __/ |___| \__ \ |_
+//  \____\__,_|\___|_____|_|___/\__|
+
+table CueListFB {
+      Id:      string;
+      Name:    string; 
+      Cues:    [CueFB];
+}
+
+//  _   _
+// | | | |___  ___ _ __
+// | | | / __|/ _ \ '__|
+// | |_| \__ \  __/ |
+//  \___/|___/\___|_|
+
+table UserFB {
+      UserName:  string;
+      FirstName: string;
+      LastName:  string;
+      Email:     string;
+      Joined:    string;
+      Created:   string; 
+}
+
+//  ____                _
+// / ___|  ___  ___ ___(_) ___  _ __
+// \___ \ / _ \/ __/ __| |/ _ \| '_ \
+//  ___) |  __/\__ \__ \ | (_) | | | |
+// |____/ \___||___/___/_|\___/|_| |_|
+
+table SessionFB {
+      SessionId: string;
+      UserName:  string;
+      IpAddress: string;
+      UserAgent: string;
+}
+
 //  ____  _        _         __  __            _     _
 // / ___|| |_ __ _| |_ ___  |  \/  | __ _  ___| |__ (_)_ __   ___
 // \___ \| __/ _` | __/ _ \ | |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
@@ -273,6 +313,18 @@ table UpdateCueFB {
 
 table RemoveCueFB {
       Cue: CueFB;
+}
+
+table AddCueListFB {
+      CueList: CueListFB;
+}
+
+table UpdateCueListFB {
+      CueList: CueListFB;
+}
+
+table RemoveCueListFB {
+      CueList: CueListFB;
 }
 
 table AddIOBoxFB {
@@ -311,6 +363,30 @@ table RemoveNodeFB {
       Node: NodeFB;
 }
 
+table AddUserFB {
+      User: UserFB;
+}
+
+table UpdateUserFB {
+      User: UserFB;
+}
+
+table RemoveUserFB {
+      User: UserFB;
+}
+
+table AddSessionFB {
+      Session: SessionFB;
+}
+
+table UpdateSessionFB {
+      Session: SessionFB;
+}
+
+table RemoveSessionFB {
+      Session: SessionFB;
+}
+
 table LogMsgFB {
       LogLevel: string;
       Msg: string;
@@ -326,6 +402,11 @@ union StateMachineTypeFB {
       UpdateCueFB,
       RemoveCueFB,
 
+      // CueList
+      AddCueListFB,
+      UpdateCueListFB,
+      RemoveCueListFB,
+
       // IOBox
       AddIOBoxFB,
       UpdateIOBoxFB,
@@ -340,6 +421,16 @@ union StateMachineTypeFB {
       AddNodeFB,
       UpdateNodeFB,
       RemoveNodeFB,
+
+      // User
+      AddUserFB,
+      UpdateUserFB,
+      RemoveUserFB,
+
+      // Session
+      AddSessionFB,
+      UpdateSessionFB,
+      RemoveSessionFB,
 
       LogMsgFB,
       AppCommandFB,

@@ -26,13 +26,7 @@ type MaxChars   = int
 type FilePath   = string
 type UserName   = string
 type UserAgent  = string
-
 type ClientLog = string
-type ProjectId = Id
-type TaskId    = Id
-type MemberId  = Id
-type SessionId = Id
-type Session   = string
 type Error     = string
 type TimeStamp = string
 

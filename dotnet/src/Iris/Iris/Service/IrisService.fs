@@ -64,7 +64,9 @@ type IrisService(project: Project) =
     raftserver.OnNodeUpdated <- UpdateNode >> wsserver.Broadcast
     raftserver.OnNodeRemoved <- RemoveNode >> wsserver.Broadcast
 
-    raftserver.OnApplyLog <- wsserver.Broadcast
+    raftserver.OnApplyLog <- fun sm ->
+      store.Dispatch sm
+      wsserver.Broadcast sm
 
     printfn "Starting Http Server on %d" project.Config.PortConfig.Http
     httpserver.Start()

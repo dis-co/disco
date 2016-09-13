@@ -128,30 +128,45 @@ type StateMachine =
   // | RemoveClient of string
 
   // NODE
-  | AddNode      of RaftNode
-  | UpdateNode   of RaftNode
-  | RemoveNode   of RaftNode
+  | AddNode       of RaftNode
+  | UpdateNode    of RaftNode
+  | RemoveNode    of RaftNode
 
   // PATCH
-  | AddPatch    of Patch
-  | UpdatePatch of Patch
-  | RemovePatch of Patch
+  | AddPatch      of Patch
+  | UpdatePatch   of Patch
+  | RemovePatch   of Patch
 
   // IOBOX
-  | AddIOBox    of IOBox
-  | UpdateIOBox of IOBox
-  | RemoveIOBox of IOBox
+  | AddIOBox      of IOBox
+  | UpdateIOBox   of IOBox
+  | RemoveIOBox   of IOBox
 
   // CUE
-  | AddCue      of Cue
-  | UpdateCue   of Cue
-  | RemoveCue   of Cue
+  | AddCue        of Cue
+  | UpdateCue     of Cue
+  | RemoveCue     of Cue
 
-  | Command     of AppCommand
+  // CUE
+  | AddCueList    of CueList
+  | UpdateCueList of CueList
+  | RemoveCueList of CueList
 
-  | DataSnapshot of string
+  // User
+  | AddUser       of User
+  | UpdateUser    of User
+  | RemoveUser    of User
 
-  | LogMsg      of LogLevel * string
+  // Session
+  | AddSession    of Session
+  | UpdateSession of Session
+  | RemoveSession of Session
+
+  | Command       of AppCommand
+
+  | DataSnapshot  of string
+
+  | LogMsg        of LogLevel * string
 
   override self.ToString() : string =
     match self with
@@ -160,7 +175,7 @@ type StateMachine =
     // | SaveProject   -> "SaveProject"
     // | CreateProject -> "CreateProject"
     // | CloseProject  -> "CloseProject"
-    // | DeleteProject -> "DeleteProject"
+    // | DeleteProject -> "DeleteProject
 
     // CLIENT
     // | AddClient    s -> sprintf "AddClient %s"    s
@@ -168,28 +183,43 @@ type StateMachine =
     // | RemoveClient s -> sprintf "RemoveClient %s" s
 
     // NODE
-    | AddNode    node -> sprintf "AddNode %s"    (string node)
-    | UpdateNode node -> sprintf "UpdateNode %s" (string node)
-    | RemoveNode node -> sprintf "RemoveNode %s" (string node)
+    | AddNode    node       -> sprintf "AddNode %s"    (string node)
+    | UpdateNode node       -> sprintf "UpdateNode %s" (string node)
+    | RemoveNode node       -> sprintf "RemoveNode %s" (string node)
 
     // PATCH
-    | AddPatch    patch -> sprintf "AddPatch %s"    (string patch)
-    | UpdatePatch patch -> sprintf "UpdatePatch %s" (string patch)
-    | RemovePatch patch -> sprintf "RemovePatch %s" (string patch)
+    | AddPatch    patch     -> sprintf "AddPatch %s"    (string patch)
+    | UpdatePatch patch     -> sprintf "UpdatePatch %s" (string patch)
+    | RemovePatch patch     -> sprintf "RemovePatch %s" (string patch)
 
     // IOBOX
-    | AddIOBox    iobox -> sprintf "AddIOBox %s"    (string iobox)
-    | UpdateIOBox iobox -> sprintf "UpdateIOBox %s" (string iobox)
-    | RemoveIOBox iobox -> sprintf "RemoveIOBox %s" (string iobox)
+    | AddIOBox    iobox     -> sprintf "AddIOBox %s"    (string iobox)
+    | UpdateIOBox iobox     -> sprintf "UpdateIOBox %s" (string iobox)
+    | RemoveIOBox iobox     -> sprintf "RemoveIOBox %s" (string iobox)
 
     // CUE
-    | AddCue    cue      -> sprintf "AddCue %s"    (string cue)
-    | UpdateCue cue      -> sprintf "UpdateCue %s" (string cue)
-    | RemoveCue cue      -> sprintf "RemoveCue %s" (string cue)
+    | AddCue    cue         -> sprintf "AddCue %s"    (string cue)
+    | UpdateCue cue         -> sprintf "UpdateCue %s" (string cue)
+    | RemoveCue cue         -> sprintf "RemoveCue %s" (string cue)
 
-    | Command    ev      -> sprintf "Command: %s"  (string ev)
-    | DataSnapshot str   -> sprintf "DataSnapshot: %s" str
-    | LogMsg(level, msg) -> sprintf "LogMsg: [%A] %s" level msg
+    // CUELIST
+    | AddCueList    cuelist -> sprintf "AddCueList %s"    (string cuelist)
+    | UpdateCueList cuelist -> sprintf "UpdateCueList %s" (string cuelist)
+    | RemoveCueList cuelist -> sprintf "RemoveCueList %s" (string cuelist)
+
+    // User
+    | AddUser    user       -> sprintf "AddUser %s"    (string user)
+    | UpdateUser user       -> sprintf "UpdateUser %s" (string user)
+    | RemoveUser user       -> sprintf "RemoveUser %s" (string user)
+
+    // Session
+    | AddSession    session -> sprintf "AddSession %s"    (string session)
+    | UpdateSession session -> sprintf "UpdateSession %s" (string session)
+    | RemoveSession session -> sprintf "RemoveSession %s" (string session)
+
+    | Command    ev         -> sprintf "Command: %s"  (string ev)
+    | DataSnapshot str      -> sprintf "DataSnapshot: %s" str
+    | LogMsg(level, msg)    -> sprintf "LogMsg: [%A] %s" level msg
 
 #if JAVASCRIPT
 #else
@@ -223,6 +253,30 @@ type StateMachine =
       ev.GetCue(new CueFB())
       |> Cue.FromFB
       |> Option.map RemoveCue
+
+    //   ____           _     _     _
+    //  / ___|   _  ___| |   (_)___| |_
+    // | |  | | | |/ _ \ |   | / __| __|
+    // | |__| |_| |  __/ |___| \__ \ |_
+    //  \____\__,_|\___|_____|_|___/\__|
+
+    | StateMachineTypeFB.AddCueListFB ->
+      let ev = fb.GetAppEvent(new AddCueListFB())
+      ev.GetCueList(new CueListFB())
+      |> CueList.FromFB
+      |> Option.map AddCueList
+
+    | StateMachineTypeFB.UpdateCueListFB  ->
+      let ev = fb.GetAppEvent(new UpdateCueListFB())
+      ev.GetCueList(new CueListFB())
+      |> CueList.FromFB
+      |> Option.map UpdateCueList
+
+    | StateMachineTypeFB.RemoveCueListFB  ->
+      let ev = fb.GetAppEvent(new RemoveCueListFB())
+      ev.GetCueList(new CueListFB())
+      |> CueList.FromFB
+      |> Option.map RemoveCueList
 
     //  ____       _       _
     // |  _ \ __ _| |_ ___| |__
@@ -296,6 +350,54 @@ type StateMachine =
       |> RaftNode.FromFB
       |> Option.map RemoveNode
 
+    //  _   _
+    // | | | |___  ___ _ __
+    // | | | / __|/ _ \ '__|
+    // | |_| \__ \  __/ |
+    //  \___/|___/\___|_|
+
+    | StateMachineTypeFB.AddUserFB ->
+      let ev = fb.GetAppEvent(new AddUserFB())
+      ev.GetUser(new UserFB())
+      |> User.FromFB
+      |> Option.map AddUser
+
+    | StateMachineTypeFB.UpdateUserFB  ->
+      let ev = fb.GetAppEvent(new UpdateUserFB())
+      ev.GetUser(new UserFB())
+      |> User.FromFB
+      |> Option.map UpdateUser
+
+    | StateMachineTypeFB.RemoveUserFB  ->
+      let ev = fb.GetAppEvent(new RemoveUserFB())
+      ev.GetUser(new UserFB())
+      |> User.FromFB
+      |> Option.map RemoveUser
+
+    //  ____                _
+    // / ___|  ___  ___ ___(_) ___  _ __
+    // \___ \ / _ \/ __/ __| |/ _ \| '_ \
+    //  ___) |  __/\__ \__ \ | (_) | | | |
+    // |____/ \___||___/___/_|\___/|_| |_|
+
+    | StateMachineTypeFB.AddSessionFB ->
+      let ev = fb.GetAppEvent(new AddSessionFB())
+      ev.GetSession(new SessionFB())
+      |> Session.FromFB
+      |> Option.map AddSession
+
+    | StateMachineTypeFB.UpdateSessionFB  ->
+      let ev = fb.GetAppEvent(new UpdateSessionFB())
+      ev.GetSession(new SessionFB())
+      |> Session.FromFB
+      |> Option.map UpdateSession
+
+    | StateMachineTypeFB.RemoveSessionFB  ->
+      let ev = fb.GetAppEvent(new RemoveSessionFB())
+      ev.GetSession(new SessionFB())
+      |> Session.FromFB
+      |> Option.map RemoveSession
+
     //  __  __ _
     // |  \/  (_)___  ___
     // | |\/| | / __|/ __|
@@ -352,6 +454,33 @@ type StateMachine =
       RemoveCueFB.AddCue(builder, cuefb)
       let removefb = RemoveCueFB.EndRemoveCueFB(builder)
       mkOffset StateMachineTypeFB.RemoveCueFB removefb.Value
+
+    //   ____           _     _     _
+    //  / ___|   _  ___| |   (_)___| |_
+    // | |  | | | |/ _ \ |   | / __| __|
+    // | |__| |_| |  __/ |___| \__ \ |_
+    //  \____\__,_|\___|_____|_|___/\__|
+
+    | AddCueList cuelist ->
+      let cuelistfb = cuelist.ToOffset(builder)
+      AddCueListFB.StartAddCueListFB(builder)
+      AddCueListFB.AddCueList(builder, cuelistfb)
+      let addfb = AddCueListFB.EndAddCueListFB(builder)
+      mkOffset StateMachineTypeFB.AddCueListFB addfb.Value
+
+    | UpdateCueList cuelist ->
+      let cuelistfb = cuelist.ToOffset(builder)
+      UpdateCueListFB.StartUpdateCueListFB(builder)
+      UpdateCueListFB.AddCueList(builder, cuelistfb)
+      let updatefb = UpdateCueListFB.EndUpdateCueListFB(builder)
+      mkOffset StateMachineTypeFB.UpdateCueListFB updatefb.Value
+
+    | RemoveCueList cuelist ->
+      let cuelistfb = cuelist.ToOffset(builder)
+      RemoveCueListFB.StartRemoveCueListFB(builder)
+      RemoveCueListFB.AddCueList(builder, cuelistfb)
+      let removefb = RemoveCueListFB.EndRemoveCueListFB(builder)
+      mkOffset StateMachineTypeFB.RemoveCueListFB removefb.Value
 
     //  ____       _       _
     // |  _ \ __ _| |_ ___| |__
@@ -434,6 +563,60 @@ type StateMachine =
       let removefb = RemoveNodeFB.EndRemoveNodeFB(builder)
       mkOffset StateMachineTypeFB.RemoveNodeFB removefb.Value
 
+    //  _   _
+    // | | | |___  ___ _ __
+    // | | | / __|/ _ \ '__|
+    // | |_| \__ \  __/ |
+    //  \___/|___/\___|_|
+
+    | AddUser user ->
+      let userfb = user.ToOffset(builder)
+      AddUserFB.StartAddUserFB(builder)
+      AddUserFB.AddUser(builder, userfb)
+      let addfb = AddUserFB.EndAddUserFB(builder)
+      mkOffset StateMachineTypeFB.AddUserFB addfb.Value
+
+    | UpdateUser user ->
+      let userfb = user.ToOffset(builder)
+      UpdateUserFB.StartUpdateUserFB(builder)
+      UpdateUserFB.AddUser(builder, userfb)
+      let updatefb = UpdateUserFB.EndUpdateUserFB(builder)
+      mkOffset StateMachineTypeFB.UpdateUserFB updatefb.Value
+
+    | RemoveUser user ->
+      let userfb = user.ToOffset(builder)
+      RemoveUserFB.StartRemoveUserFB(builder)
+      RemoveUserFB.AddUser(builder, userfb)
+      let removefb = RemoveUserFB.EndRemoveUserFB(builder)
+      mkOffset StateMachineTypeFB.RemoveUserFB removefb.Value
+
+    //  ____                _
+    // / ___|  ___  ___ ___(_) ___  _ __
+    // \___ \ / _ \/ __/ __| |/ _ \| '_ \
+    //  ___) |  __/\__ \__ \ | (_) | | | |
+    // |____/ \___||___/___/_|\___/|_| |_|
+
+    | AddSession session ->
+      let sessionfb = session.ToOffset(builder)
+      AddSessionFB.StartAddSessionFB(builder)
+      AddSessionFB.AddSession(builder, sessionfb)
+      let addfb = AddSessionFB.EndAddSessionFB(builder)
+      mkOffset StateMachineTypeFB.AddSessionFB addfb.Value
+
+    | UpdateSession session ->
+      let sessionfb = session.ToOffset(builder)
+      UpdateSessionFB.StartUpdateSessionFB(builder)
+      UpdateSessionFB.AddSession(builder, sessionfb)
+      let updatefb = UpdateSessionFB.EndUpdateSessionFB(builder)
+      mkOffset StateMachineTypeFB.UpdateSessionFB updatefb.Value
+
+    | RemoveSession session ->
+      let sessionfb = session.ToOffset(builder)
+      RemoveSessionFB.StartRemoveSessionFB(builder)
+      RemoveSessionFB.AddSession(builder, sessionfb)
+      let removefb = RemoveSessionFB.EndRemoveSessionFB(builder)
+      mkOffset StateMachineTypeFB.RemoveSessionFB removefb.Value
+
     //  __  __ _
     // |  \/  (_)___  ___
     // | |\/| | / __|/ __|
@@ -492,28 +675,43 @@ type StateMachine =
 
     match self with
     // NODE
-    | AddNode    node   -> add "AddNode"    node
-    | UpdateNode node   -> add "UpdateNode" node
-    | RemoveNode node   -> add "RemoveNode" node
+    | AddNode          node -> add "AddNode"    node
+    | UpdateNode       node -> add "UpdateNode" node
+    | RemoveNode       node -> add "RemoveNode" node
 
     // PATCH
-    | AddPatch    patch -> add "AddPatch"    patch
-    | UpdatePatch patch -> add "UpdatePatch" patch
-    | RemovePatch patch -> add "RemovePatch" patch
+    | AddPatch        patch -> add "AddPatch"    patch
+    | UpdatePatch     patch -> add "UpdatePatch" patch
+    | RemovePatch     patch -> add "RemovePatch" patch
 
-    // // IOBOX
-    | AddIOBox    iobox -> add "AddIOBox"    iobox
-    | UpdateIOBox iobox -> add "UpdateIOBox" iobox
-    | RemoveIOBox iobox -> add "RemoveIOBox" iobox
+    // IOBOX
+    | AddIOBox        iobox -> add "AddIOBox"    iobox
+    | UpdateIOBox     iobox -> add "UpdateIOBox" iobox
+    | RemoveIOBox     iobox -> add "RemoveIOBox" iobox
 
-    // // CUE
-    | AddCue    cue     -> add "AddCue"    cue
-    | UpdateCue cue     -> add "UpdateCue" cue
-    | RemoveCue cue     -> add "RemoveCue" cue
+    // CUE
+    | AddCue            cue -> add "AddCue"    cue
+    | UpdateCue         cue -> add "UpdateCue" cue
+    | RemoveCue         cue -> add "RemoveCue" cue
 
-    | Command cmd       -> add "Command" cmd
+    // CUELIST
+    | AddCueList    cuelist -> add "AddCueList"    cuelist
+    | UpdateCueList cuelist -> add "UpdateCueList" cuelist
+    | RemoveCueList cuelist -> add "RemoveCueList" cuelist
 
-    | DataSnapshot data -> add "DataSnapshot" (Wrap data)
+    // USER
+    | AddUser          user -> add "AddUser"    user
+    | UpdateUser       user -> add "UpdateUser" user
+    | RemoveUser       user -> add "RemoveUser" user
+
+    // SESSION
+    | AddSession    session -> add "AddSession"    session
+    | UpdateSession session -> add "UpdateSession" session
+    | RemoveSession session -> add "RemoveSession" session
+
+    | Command           cmd -> add "Command" cmd
+
+    | DataSnapshot     data -> add "DataSnapshot" (Wrap data)
 
     | LogMsg (level, str) ->
       json |> addCase "LogMsg" |> addFields [| Wrap(string level); Wrap(str) |]
@@ -531,25 +729,37 @@ type StateMachine =
 
       match string token.["Case"] with
       // NODE
-      | "AddNode"      -> parseSingle AddNode
-      | "UpdateNode"   -> parseSingle UpdateNode
-      | "RemoveNode"   -> parseSingle RemoveNode
+      | "AddNode"       -> parseSingle AddNode
+      | "UpdateNode"    -> parseSingle UpdateNode
+      | "RemoveNode"    -> parseSingle RemoveNode
 
-      | "AddPatch"     -> parseSingle AddPatch
-      | "UpdatePatch"  -> parseSingle UpdatePatch
-      | "RemovePatch"  -> parseSingle RemovePatch
+      | "AddPatch"      -> parseSingle AddPatch
+      | "UpdatePatch"   -> parseSingle UpdatePatch
+      | "RemovePatch"   -> parseSingle RemovePatch
 
-      | "AddIOBox"     -> parseSingle AddIOBox
-      | "UpdateIOBox"  -> parseSingle UpdateIOBox
-      | "RemoveIOBox"  -> parseSingle RemoveIOBox
+      | "AddIOBox"      -> parseSingle AddIOBox
+      | "UpdateIOBox"   -> parseSingle UpdateIOBox
+      | "RemoveIOBox"   -> parseSingle RemoveIOBox
 
-      | "AddCue"       -> parseSingle AddCue
-      | "UpdateCue"    -> parseSingle UpdateCue
-      | "RemoveCue"    -> parseSingle RemoveCue
+      | "AddCue"        -> parseSingle AddCue
+      | "UpdateCue"     -> parseSingle UpdateCue
+      | "RemoveCue"     -> parseSingle RemoveCue
 
-      | "Command"      -> parseSingle Command
+      | "AddCueList"    -> parseSingle AddCueList
+      | "UpdateCueList" -> parseSingle UpdateCueList
+      | "RemoveCueList" -> parseSingle RemoveCueList
 
-      | "DataSnapshot" -> DataSnapshot (string fields.[0]) |> Some
+      | "AddUser"       -> parseSingle AddUser
+      | "UpdateUser"    -> parseSingle UpdateUser
+      | "RemoveUser"    -> parseSingle RemoveUser
+
+      | "AddSession"    -> parseSingle AddSession
+      | "UpdateSession" -> parseSingle UpdateSession
+      | "RemoveSession" -> parseSingle RemoveSession
+
+      | "Command"       -> parseSingle Command
+
+      | "DataSnapshot"  -> DataSnapshot (string fields.[0]) |> Some
 
       | "LogMsg" ->
         Json.parse fields.[0]
