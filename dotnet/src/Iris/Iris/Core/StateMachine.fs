@@ -120,7 +120,700 @@ type AppCommand =
 
 #endif
 
-type StateMachine =
+#if JAVASCRIPT
+
+open Fable.Core
+open Fable.Core.JsInterop
+open Fable.Import
+open Fable.Import.JS
+open System.Collections.Generic
+
+#endif
+
+open Iris.Raft
+
+  (*   ____  _        _
+      / ___|| |_ __ _| |_ ___
+      \___ \| __/ _` | __/ _ \
+       ___) | || (_| | ||  __/
+      |____/ \__\__,_|\__\___|
+
+      Record type containing all the actual data that gets passed around in our
+      application.
+  *)
+#if JAVASCRIPT
+type State =
+  { Patches  : Dictionary<Id,Patch>
+  ; IOBoxes  : Dictionary<Id,IOBox>
+  ; Cues     : Dictionary<Id,Cue>
+  ; CueLists : Dictionary<Id,CueList>
+  ; Nodes    : Dictionary<Id,RaftNode>
+  ; Sessions : Dictionary<Id,Session>    // could imagine a BrowserInfo type here with some info on client
+  ; Users    : Dictionary<Name,User>
+  }
+#else
+type State =
+  { Patches  : Map<Id,Patch>
+  ; IOBoxes  : Map<Id,IOBox>
+  ; Cues     : Map<Id,Cue>
+  ; CueLists : Map<Id,CueList>
+  ; Nodes    : Map<Id,RaftNode>
+  ; Sessions : Map<Id,Session>    // could imagine a BrowserInfo type here with some info on client
+  ; Users    : Map<Name,User>
+  }
+#endif
+
+#if JAVASCRIPT
+  static member Empty =
+    { Patches  = Dictionary<Id,Patch>()
+    ; IOBoxes  = Dictionary<Id,IOBox>()
+    ; Cues     = Dictionary<Id,Cue>()
+    ; Nodes    = Dictionary<Id,RaftNode>()
+    ; CueLists = Dictionary<Id,CueList>()
+    ; Users    = Dictionary<Name,User>()
+    ; Sessions = Dictionary<Id,Session>()
+    }
+#else
+  static member Empty =
+    { Patches  = Map.empty
+    ; IOBoxes  = Map.empty
+    ; Cues     = Map.empty
+    ; Nodes    = Map.empty
+    ; CueLists = Map.empty
+    ; Users    = Map.empty
+    ; Sessions = Map.empty }
+#endif
+  //  _   _
+  // | | | |___  ___ _ __
+  // | | | / __|/ _ \ '__|
+  // | |_| \__ \  __/ |
+  //  \___/|___/\___|_|
+
+  member state.AddUser (user: User) =
+#if JAVASCRIPT
+    // Implement immutability by copying the map with all its keys
+    if state.Users.ContainsKey user.UserName then
+      state
+    else
+      let users = Dictionary<Name,User>()
+      for kv in state.Users do
+        users.Add(kv.Key, state.Users.[kv.Key])
+      users.Add(user.UserName, user)
+      { state with Users = users }
+#else
+    // In .NET
+    if Map.containsKey user.UserName state.Users then
+      state
+    else
+      let users = Map.add user.UserName user state.Users
+      { state with Users = users }
+#endif
+
+  member state.UpdateUser (user: User) =
+#if JAVASCRIPT
+    // Implement immutability by copying the map with all its keys
+    if state.Users.ContainsKey user.UserName then
+      let users = Dictionary<Name,User>()
+      for kv in state.Users do
+        if user.UserName = kv.Key then
+          users.Add(kv.Key, user)
+        else
+          users.Add(kv.Key, state.Users.[kv.Key])
+      { state with Users = users }
+    else
+      state
+#else
+    if Map.containsKey user.UserName state.Users then
+      let users = Map.add user.UserName user state.Users
+      { state with Users = users }
+    else
+      state
+#endif
+
+  member state.RemoveUser (user: User) =
+#if JAVASCRIPT
+    // Implement immutability by copying the map with all its keys
+    if state.Users.ContainsKey user.UserName then
+      let users = Dictionary<Name,User>()
+      for kv in state.Users do
+        if kv.Key <> user.UserName then
+          users.Add(kv.Key, state.Users.[kv.Key])
+      { state with Users = users }
+    else
+      state
+#else
+    { state with Users = Map.filter (fun k _ -> (k <> user.UserName)) state.Users }
+#endif
+
+  //  ____                _
+  // / ___|  ___  ___ ___(_) ___  _ __
+  // \___ \ / _ \/ __/ __| |/ _ \| '_ \
+  //  ___) |  __/\__ \__ \ | (_) | | | |
+  // |____/ \___||___/___/_|\___/|_| |_|
+
+  member state.AddSession (session: Session) =
+#if JAVASCRIPT
+    // Implement immutability by copying the map with all its keys
+    if state.Sessions.ContainsKey session.SessionId  then
+      state
+    else
+      let sessions = Dictionary<Id,Session>()
+      for kv in state.Sessions do
+        sessions.Add(kv.Key, state.Sessions.[kv.Key])
+      sessions.Add(session.SessionId, session)
+      { state with Sessions = sessions }
+#else
+    let sessions =
+      if Map.containsKey session.SessionId state.Sessions then
+        state.Sessions
+      else
+        Map.add session.SessionId session state.Sessions
+    { state with Sessions = sessions }
+#endif
+
+  member state.UpdateSession (session: Session) =
+#if JAVASCRIPT
+    // Implement immutability by copying the map with all its keys
+    if state.Sessions.ContainsKey session.SessionId  then
+      let sessions = Dictionary<Id,Session>()
+      for kv in state.Sessions do
+        if session.SessionId = kv.Key then
+          sessions.Add(kv.Key, session)
+        else
+          sessions.Add(kv.Key, state.Sessions.[kv.Key])
+      { state with Sessions = sessions }
+    else
+      state
+#else
+    let sessions =
+      if Map.containsKey session.SessionId state.Sessions then
+        Map.add session.SessionId session state.Sessions
+      else
+        state.Sessions
+    { state with Sessions = sessions }
+#endif
+
+  member state.RemoveSession (session: Session) =
+#if JAVASCRIPT
+    if state.Sessions.ContainsKey session.SessionId  then
+      let sessions = Dictionary<Id,Session>()
+      for kv in state.Sessions do
+        if session.SessionId <> kv.Key then
+          sessions.Add(kv.Key, state.Sessions.[kv.Key])
+      { state with Sessions = sessions }
+    else
+      state
+#else
+    { state with Sessions = Map.filter (fun k _ -> (k <> session.SessionId)) state.Sessions }
+#endif
+
+  //  ____       _       _
+  // |  _ \ __ _| |_ ___| |__
+  // | |_) / _` | __/ __| '_ \
+  // |  __/ (_| | || (__| | | |
+  // |_|   \__,_|\__\___|_| |_|
+
+  member state.AddPatch (patch : Patch) =
+#if JAVASCRIPT
+    if state.Patches.ContainsKey patch.Id then
+      state
+    else
+      let patches = Dictionary<Id,Patch>()
+      for kv in state.Patches do
+        patches.Add(kv.Key, kv.Value)
+      patches.Add(patch.Id, patch)
+      { state with Patches = patches }
+#else
+    if Map.containsKey patch.Id state.Patches then
+      state
+    else
+      { state with Patches = Map.add patch.Id patch state.Patches }
+#endif
+
+  member state.UpdatePatch (patch : Patch) =
+#if JAVASCRIPT
+    if state.Patches.ContainsKey patch.Id then
+      let patches = Dictionary<Id,Patch>()
+      for kv in state.Patches do
+        if patch.Id = kv.Key then
+          patches.Add(kv.Key, patch)
+        else
+          patches.Add(kv.Key, kv.Value)
+      { state with Patches = patches }
+    else
+      state
+#else
+    if Map.containsKey patch.Id state.Patches then
+      { state with Patches = Map.add patch.Id patch state.Patches }
+    else
+      state
+#endif
+
+  member state.RemovePatch (patch : Patch) =
+#if JAVASCRIPT
+    if state.Patches.ContainsKey patch.Id then
+      let patches = Dictionary<Id,Patch>()
+      for kv in state.Patches do
+        if patch.Id <> kv.Key then
+          patches.Add(kv.Key, kv.Value)
+      { state with Patches = patches }
+    else
+      state
+#else
+    { state with Patches = Map.remove patch.Id state.Patches }
+#endif
+
+  //  ___ ___  ____
+  // |_ _/ _ \| __ )  _____  __
+  //  | | | | |  _ \ / _ \ \/ /
+  //  | | |_| | |_) | (_) >  <
+  // |___\___/|____/ \___/_/\_\
+
+  member state.AddIOBox (iobox : IOBox) =
+#if JAVASCRIPT
+    if state.Patches.ContainsKey iobox.Patch then
+      let patch = state.Patches.[iobox.Patch]
+
+      if Patch.HasIOBox patch iobox.Id then
+        state
+      else
+        let patches = Dictionary<Id,Patch>()
+        for kv in state.Patches do
+          if kv.Key = patch.Id then
+            let updated = Patch.AddIOBox patch iobox
+            patches.Add(patch.Id, updated)
+          else
+            patches.Add(kv.Key, kv.Value)
+        { state with Patches = patches }
+    else
+      state
+#else
+    if Map.containsKey iobox.Patch state.Patches then
+      let update k (patch: Patch) =
+        if patch.Id = iobox.Patch then
+          Patch.AddIOBox patch iobox
+        else
+          patch
+      { state with Patches = Map.map update state.Patches }
+    else
+      state
+#endif
+
+  member state.UpdateIOBox (iobox : IOBox) =
+#if JAVASCRIPT
+    if state.Patches.ContainsKey iobox.Patch then
+      let patch = state.Patches.[iobox.Patch]
+
+      if Patch.HasIOBox patch iobox.Id then
+        let patches = Dictionary<Id,Patch>()
+        for kv in state.Patches do
+          if kv.Key = patch.Id then
+            patches.Add(patch.Id, Patch.UpdateIOBox patch iobox)
+          else
+            patches.Add(kv.Key, kv.Value)
+
+        { state with Patches = patches }
+      else
+        state
+    else
+      state
+#else
+    let mapper (id: Id) (patch : Patch) =
+      if patch.Id = iobox.Patch then
+        Patch.UpdateIOBox patch iobox
+      else
+        patch
+    { state with Patches = Map.map mapper state.Patches }
+#endif
+
+  member state.RemoveIOBox (iobox : IOBox) =
+#if JAVASCRIPT
+    if state.Patches.ContainsKey iobox.Patch then
+      let patches = Dictionary<Id,Patch>()
+      for kv in state.Patches do
+        if kv.Key = iobox.Patch then
+          patches.Add(kv.Key, Patch.RemoveIOBox kv.Value iobox)
+        else
+          patches.Add(kv.Key, kv.Value)
+      { state with Patches = patches }
+    else
+      state
+#else
+    let updater _ (patch : Patch) =
+      if iobox.Patch = patch.Id
+      then Patch.RemoveIOBox patch iobox
+      else patch
+    { state with Patches = Map.map updater state.Patches }
+#endif
+
+  //   ____           _     _     _
+  //  / ___|   _  ___| |   (_)___| |_ ___
+  // | |  | | | |/ _ \ |   | / __| __/ __|
+  // | |__| |_| |  __/ |___| \__ \ |_\__ \
+  //  \____\__,_|\___|_____|_|___/\__|___/
+
+  member state.AddCueList (cuelist : CueList) =
+#if JAVASCRIPT
+    if state.CueLists.ContainsKey cuelist.Id then
+      state
+    else
+      let cuelists = Dictionary<Id,CueList>()
+      for kv in state.CueLists do
+        cuelists.Add(kv.Key, kv.Value)
+      cuelists.Add(cuelist.Id, cuelist)
+      { state with CueLists = cuelists }
+#else
+    if Map.containsKey cuelist.Id state.CueLists then
+      state
+    else
+      { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
+#endif
+
+  member state.UpdateCueList (cuelist : CueList) =
+#if JAVASCRIPT
+    if state.CueLists.ContainsKey cuelist.Id then
+      let cuelists = Dictionary<Id,CueList>()
+      for kv in state.CueLists do
+        if kv.Key = cuelist.Id then
+          cuelists.Add(cuelist.Id, cuelist)
+        else
+          cuelists.Add(kv.Key, kv.Value)
+      { state with CueLists = cuelists }
+    else
+      state
+#else
+    if Map.containsKey cuelist.Id state.CueLists then
+      { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
+    else
+      state
+#endif
+
+  member state.RemoveCueList (cuelist : CueList) =
+#if JAVASCRIPT
+    if state.CueLists.ContainsKey cuelist.Id then
+      let cuelists = Dictionary<Id,CueList>()
+      for kv in state.CueLists do
+        if kv.Key <> cuelist.Id then
+          cuelists.Add(kv.Key, kv.Value)
+      { state with CueLists = cuelists }
+    else
+      state
+#else
+    { state with CueLists = Map.remove cuelist.Id state.CueLists }
+#endif
+
+  //   ____
+  //  / ___|   _  ___
+  // | |  | | | |/ _ \
+  // | |__| |_| |  __/
+  //  \____\__,_|\___|
+
+  member state.AddCue (cue : Cue) =
+#if JAVASCRIPT
+    if state.Cues.ContainsKey cue.Id then
+      state
+    else
+      let cues = Dictionary<Id,Cue>()
+      for kv in state.Cues do
+        cues.Add(kv.Key, kv.Value)
+      cues.Add(cue.Id, cue)
+      { state with Cues = cues }
+#else
+    if Map.containsKey cue.Id state.Cues then
+      state
+    else
+      { state with Cues = Map.add cue.Id cue state.Cues }
+#endif
+
+  member state.UpdateCue (cue : Cue) =
+#if JAVASCRIPT
+    if state.Cues.ContainsKey cue.Id then
+      let cues = Dictionary<Id,Cue>()
+      for kv in state.Cues do
+        if kv.Key = cue.Id then
+          cues.Add(cue.Id, cue)
+        else
+          cues.Add(kv.Key, kv.Value)
+      { state with Cues = cues }
+    else
+      state
+#else
+    if Map.containsKey cue.Id state.Cues then
+      { state with Cues = Map.add cue.Id cue state.Cues }
+    else
+      state
+#endif
+
+  member state.RemoveCue (cue : Cue) =
+#if JAVASCRIPT
+    if state.Cues.ContainsKey cue.Id then
+      let cues = Dictionary<Id,Cue>()
+      for kv in state.Cues do
+        if kv.Key <> cue.Id then
+          cues.Add(kv.Key, kv.Value)
+      { state with Cues = cues }
+    else
+      state
+#else
+    { state with Cues = Map.remove cue.Id state.Cues }
+#endif
+
+  //  _   _           _
+  // | \ | | ___   __| | ___
+  // |  \| |/ _ \ / _` |/ _ \
+  // | |\  | (_) | (_| |  __/
+  // |_| \_|\___/ \__,_|\___|
+
+  member state.AddNode (node: RaftNode) =
+#if JAVASCRIPT
+    if state.Nodes.ContainsKey node.Id then
+      state
+    else
+      let nodes = Dictionary<Id,RaftNode>()
+      for kv in state.Nodes do
+        nodes.Add(kv.Key, kv.Value)
+      nodes.Add(node.Id, node)
+      { state with Nodes = nodes }
+#else
+    if Map.containsKey node.Id state.Nodes then
+      state
+    else
+      { state with Nodes = Map.add node.Id node state.Nodes }
+#endif
+
+  member state.UpdateNode (node: RaftNode) =
+#if JAVASCRIPT
+    if state.Nodes.ContainsKey node.Id then
+      let nodes = Dictionary<Id,RaftNode>()
+      for kv in state.Nodes do
+        if kv.Key = node.Id then
+          nodes.Add(node.Id, node)
+        else
+          nodes.Add(kv.Key, kv.Value)
+      { state with Nodes = nodes }
+    else
+      state
+#else
+    if Map.containsKey node.Id state.Nodes then
+      { state with Nodes = Map.add node.Id node state.Nodes }
+    else
+      state
+#endif
+
+  member state.RemoveNode (node: RaftNode) =
+#if JAVASCRIPT
+    if state.Nodes.ContainsKey node.Id then
+      let nodes = Dictionary<Id,RaftNode>()
+      for kv in state.Nodes do
+        if kv.Key <> node.Id then
+          nodes.Add(kv.Key, kv.Value)
+      { state with Nodes = nodes }
+    else
+      state
+#else
+    { state with Nodes = Map.remove node.Id state.Nodes }
+#endif
+
+//  ____  _
+// / ___|| |_ ___  _ __ ___
+// \___ \| __/ _ \| '__/ _ \
+//  ___) | || (_) | | |  __/
+// |____/ \__\___/|_|  \___|
+
+(* Action: Log entry for the Event occurred and the resulting state. *)
+and StoreAction<'a> = { Event : StateMachine; State : 'a }
+  with override self.ToString() : string =
+                sprintf "%s %s" (self.Event.ToString()) (self.State.ToString())
+
+//  _   _ _     _
+// | | | (_)___| |_ ___  _ __ _   _
+// | |_| | / __| __/ _ \| '__| | | |
+// |  _  | \__ \ || (_) | |  | |_| |
+// |_| |_|_|___/\__\___/|_|   \__, |
+//                            |___/
+
+and History<'a> (state : 'a) =
+  let mutable depth = 10
+  let mutable debug = false
+  let mutable head = 1
+  let mutable values = [ state ]
+
+  (* - - - - - - - - - - Properties - - - - - - - - - - *)
+  member self.Debug
+    with get () = debug
+    and  set b  =
+      debug <- b
+      if not debug then
+        values <- List.take depth values
+
+  member self.Depth
+    with get () = depth
+      and set n  = depth <- n
+
+  member self.Values
+    with get () = values
+
+  member self.Length
+    with get () = List.length values
+
+  (* - - - - - - - - - - Methods - - - - - - - - - - *)
+  member self.Append (value : 'a) : unit =
+    head <- 0
+    let newvalues = value :: values
+    if (not debug) && List.length newvalues > depth then
+      values <- List.take depth newvalues
+    else
+      values <- newvalues
+
+  member self.Undo () : 'a option =
+    let head' =
+      if (head - 1) > (List.length values) then
+        List.length values
+      else
+        head + 1
+
+    if head <> head' then
+      head <- head'
+
+    List.tryItem head values
+
+  member self.Redo () : 'a option =
+    let head' =
+      if   head - 1 < 0
+      then 0
+      else head - 1
+
+    if head <> head' then
+      head <- head'
+
+    List.tryItem head values
+
+//  ____  _
+// / ___|| |_ ___  _ __ ___
+// \___ \| __/ _ \| '__/ _ \
+//  ___) | || (_) | | |  __/
+// |____/ \__\___/|_|  \___|
+
+// The store centrally manages all state changes and notifies interested
+// parties of changes to the carried state (e.g. views, socket transport).
+//
+// Features:
+//
+// - time-traveleing debugger
+// - undo/redo
+
+and Store<'a> (state : 'a)=
+  let reducer (ev : StateMachine) (state : State) =
+    match ev with
+    | AddCue                cue -> state.AddCue        cue
+    | UpdateCue             cue -> state.UpdateCue     cue
+    | RemoveCue             cue -> state.RemoveCue     cue
+
+    | AddCueList        cuelist -> state.AddCueList    cuelist
+    | UpdateCueList     cuelist -> state.UpdateCueList cuelist
+    | RemoveCueList     cuelist -> state.RemoveCueList cuelist
+
+    | AddPatch            patch -> state.AddPatch      patch
+    | UpdatePatch         patch -> state.UpdatePatch   patch
+    | RemovePatch         patch -> state.RemovePatch   patch
+
+    | AddIOBox            iobox -> state.AddIOBox      iobox
+    | UpdateIOBox         iobox -> state.UpdateIOBox   iobox
+    | RemoveIOBox         iobox -> state.RemoveIOBox   iobox
+
+    | AddNode              node -> state.AddNode       node
+    | UpdateNode           node -> state.UpdateNode    node
+    | RemoveNode           node -> state.RemoveNode    node
+
+    | AddSession        session -> state.AddSession    session
+    | UpdateSession     session -> state.UpdateSession session
+    | RemoveSession     session -> state.RemoveSession session
+
+    | AddUser              user -> state.AddUser       user
+    | UpdateUser           user -> state.UpdateUser    user
+    | RemoveUser           user -> state.RemoveUser    user
+
+    | _                         -> state
+
+  let mutable state = state
+  let mutable history =
+    new History<StoreAction<'a>>({ State = state; Event = Command(AppCommand.Reset) })
+
+  let mutable listeners : Listener<'a> list = []
+
+  // Notify all listeners of the StateMachine change
+  member private store.Notify (ev : StateMachine) =
+    List.iter (fun f -> f store ev) listeners
+
+  // Turn debugging mode on or off.
+  member self.Debug
+    with get ()  = history.Debug
+      and set dbg = history.Debug <- dbg
+
+  (*
+    * Number of undo steps to keep around.
+    *
+    * Overridden in debug mode.
+    *)
+  member self.UndoSteps
+    with get () = history.Depth
+      and set n  = history.Depth <- n
+
+  (*
+      Dispatch an action (StateMachine) to be executed against the current
+      version of the state to produce the next state.
+
+      Notify all listeners of the change.
+
+      Create a history item for this change if debugging is enabled.
+    *)
+  member self.Dispatch (ev : StateMachine) : unit =
+    match ev with
+    | Command (AppCommand.Redo)  -> self.Redo()
+    | Command (AppCommand.Undo)  -> self.Undo()
+    | Command (AppCommand.Reset) -> ()   // do nothing for now
+    | _ ->
+      state <- reducer ev state          // 1) create new state
+      self.Notify(ev)                   // 2) notify all listeners (render as soon as possible)
+      history.Append({ Event = ev       // 3) store this action the and state it produced
+                      ; State = state }) // 4) append to undo history
+
+  (*
+      Subscribe a callback to changes on the store.
+    *)
+  member self.Subscribe (listener : Listener<'a>) =
+    listeners <- listener :: listeners
+
+  (*
+      Get the current version of the Store
+    *)
+  member self.State with get () = state
+
+  member self.History with get () = history
+
+  member self.Redo() =
+    match history.Redo() with
+      | Some log ->
+        state <- log.State
+        self.Notify log.Event |> ignore
+      | _ -> ()
+
+  member self.Undo() =
+    match history.Undo() with
+      | Some log ->
+        state <- log.State
+        self.Notify log.Event |> ignore
+      | _ -> ()
+
+and Listener<'a> = (Store<'a> -> StateMachine -> unit)
+
+//  ____  _        _       __  __            _     _
+// / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
+// \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
+//  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
+// |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
+
+and StateMachine =
 
   // CLIENT
   // | AddClient    of string
@@ -164,7 +857,7 @@ type StateMachine =
 
   | Command       of AppCommand
 
-  | DataSnapshot  of string
+  | DataSnapshot  of State
 
   | LogMsg        of LogLevel * string
 

@@ -19,7 +19,7 @@ module Store =
       ; IOBoxes = Dictionary<Id,IOBox>()
       }
 
-    let store : Store<State> = new Store<State>(Reducer, State.Empty)
+    let store : Store<State> = new Store<State>(State.Empty)
     wrap patch store
 
   let main () =

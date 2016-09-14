@@ -85,9 +85,6 @@
     <Compile Include="Iris\Core\Project.fs" />
     <Compile Include="Iris\Core\Uri.fs" />
     <Compile Include="Iris\Service\GitDaemon.fs" />
-    <Compile Include="Iris\Core\State.fs" />
-    <Compile Include="Iris\Core\Store.fs" />
-    <Compile Include="Iris\Core\Reducer.fs" />
     <Compile Include="Iris\Core\RaftUtils.fs" />
     <Compile Include="Iris\Service\Raft\Zmq.fs" />
     <Compile Include="Iris\Service\Raft\RaftAppState.fs" />

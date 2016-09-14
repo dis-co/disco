@@ -50,9 +50,6 @@
     <Compile Include="Iris\Raft\Node.fs" />
     <Compile Include="Iris\Core\StateMachine.fs" />
     <Compile Include="Iris\Core\ClientMessage.fs" />
-    <Compile Include="Iris\Core\State.fs" />
-    <Compile Include="Iris\Core\Store.fs" />
-    <Compile Include="Iris\Core\Reducer.fs" />
     <Compile Include="Iris\Web\Core\Browser.fs" />
     <Compile Include="Iris\Web\Core\Crypto.fs" />
     <Compile Include="Iris\Web\Core\Html.fs" />

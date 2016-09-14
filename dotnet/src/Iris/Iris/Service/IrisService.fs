@@ -23,7 +23,7 @@ open FSharpx.Functional
 type IrisService(project: Project) =
   let signature = new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
 
-  let store : Store<State> = new Store<State>(Reducer, State.Empty)
+  let store : Store<State> = new Store<State>(State.Empty)
 
   let kontext = new ZContext()
 
@@ -33,13 +33,13 @@ type IrisService(project: Project) =
 
   let setup _ =
     // WEBSOCKET
-    wsserver.OnOpen <- fun session ->
+    wsserver.OnOpen <- fun (session: Session) ->
+      wsserver.Send session.SessionId (DataSnapshot store.State)
       let msg =
         match raftserver.Append(AddSession session) with
         | Some entry -> Iris.Core.LogLevel.Debug, (sprintf "Added session to Raft log with id: %A" entry.Id)
         | _          -> Iris.Core.LogLevel.Err, "Could not add new session log."
       wsserver.Broadcast (LogMsg msg)
-      printfn "Should send DataSnapshot now"
 
     wsserver.OnClose <- fun sessionid ->
       match Map.tryFind sessionid store.State.Sessions with

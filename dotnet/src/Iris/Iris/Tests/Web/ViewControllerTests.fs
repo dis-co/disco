@@ -69,7 +69,7 @@ module ViewController =
         ; IOBoxes = Dictionary<Id,IOBox>()
         }
 
-      let store = new Store<State>(Reducer, State.Empty)
+      let store = new Store<State>(State.Empty)
 
       let view = new PatchView()
       let ctx = new ClientContext()
@@ -104,7 +104,7 @@ module ViewController =
         ; IOBoxes = Dictionary<Id,IOBox>()
         }
 
-      let mutable store = new Store<State>(Reducer, State.Empty)
+      let mutable store = new Store<State>(State.Empty)
 
       let view = new PatchView()
       let ctx = new ClientContext()

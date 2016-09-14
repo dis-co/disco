@@ -114,6 +114,12 @@ module WebSocket =
         msg |> Json.encode |> socket.Send |> ignore
       Map.iter send sessions
 
+    member self.Send (sessionid: Id) (msg: StateMachine) =
+      match Map.tryFind sessionid sessions with
+      | Some socket ->
+        msg |> Json.encode |> socket.Send |> ignore
+      | _ -> printfn "could not send message to %A. not found." sessionid
+
     member self.OnOpen
       with set cb = onOpenCb <- Some cb
 
