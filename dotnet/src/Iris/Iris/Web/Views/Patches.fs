@@ -80,7 +80,12 @@ module Patches =
           P  [] [| Text patch.Name |]
         |]
 
-      container <++ Array.map (ioboxView context) patch.IOBoxes
+      let children =
+        patch.IOBoxes
+        |> Seq.map (fun kv -> ioboxView context kv.Value)
+        |> Seq.toArray
+
+      container <++ children
 
     let patchList (context : ClientContext) (patches : Patch array) =
       let container = Div [ ElmId "patches" ] [| |]
@@ -94,12 +99,12 @@ module Patches =
       |]
 
     let patches (context : ClientContext) (state : State)  : Html =
-      if Map.isEmpty state.Patches then
+      if state.Patches.Count = 0 then
         P [] [| Text "Empty" |]
       else
         state.Patches
-        |> Map.toArray
-        |> Array.map snd
+        |> Seq.toArray
+        |> Array.map (fun kv -> kv.Value)
         |> patchList context
 
     let destroy (context : ClientContext) (cue : Cue) =
@@ -123,18 +128,19 @@ module Patches =
       |> Div [ ElmId "cues" ]
 
     let cues (context : ClientContext) (state : State) : Html =
+      let cuelist =
+        if state.Cues.Count = 0 then
+          P [] [| Text "No cues" |]
+        else
+          state.Cues
+          |> Seq.toArray
+          |> Array.map (fun kv -> kv.Value)
+          |> cueList context
+
       Div [] [|
         // Header
         H3 [] [| Text "Cues" |]
-
-        // List of cues
-        if Map.isEmpty state.Cues then
-          P [] [| Text "No cues" |]
-        else
-          cues
-          |> Map.toArray
-          |> Array.map snd
-          |> cueList context
+        cuelist
       |]
 
     let content (context : ClientContext) (state : State) : Html =

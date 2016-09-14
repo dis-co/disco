@@ -34,12 +34,22 @@ type User =
 
   override me.GetHashCode() =
     let mutable hash = 42
+#if JAVASCRIPT
+    let mutable hash = 42
+    hash <- (hash * 7) + hashCode me.UserName
+    hash <- (hash * 7) + hashCode me.FirstName
+    hash <- (hash * 7) + hashCode me.LastName
+    hash <- (hash * 7) + hashCode me.Email
+    hash <- (hash * 7) + hashCode (string me.Joined)
+    hash <- (hash * 7) + hashCode (string me.Created)
+#else
     hash <- (hash * 7) + me.UserName.GetHashCode()
     hash <- (hash * 7) + me.FirstName.GetHashCode()
     hash <- (hash * 7) + me.LastName.GetHashCode()
     hash <- (hash * 7) + me.Email.GetHashCode()
     hash <- (hash * 7) + (string me.Joined).GetHashCode()
     hash <- (hash * 7) + (string me.Created).GetHashCode()
+#endif
     hash
 
   override me.Equals(o) =

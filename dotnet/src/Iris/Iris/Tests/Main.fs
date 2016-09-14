@@ -7,6 +7,7 @@ let all =
     raftIntegrationTests
     serializationTests
     projectTests
+    storeTests
   ]
 
 [<EntryPoint>]

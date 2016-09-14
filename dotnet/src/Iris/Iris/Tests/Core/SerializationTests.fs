@@ -307,7 +307,8 @@ module SerializationTests =
   let test_validate_patch_serialization =
     testCase "Validate Patch Serialization" <| fun _ ->
 
-      let patch : Patch = { Id = Id.Create(); Name = "Patch 1"; IOBoxes = ioboxes () }
+      let ioboxes = ioboxes () |> Array.map (fun b -> (b.Id,b)) |> Map.ofArray
+      let patch : Patch = { Id = Id.Create(); Name = "Patch 1"; IOBoxes = ioboxes }
 
       let repatch = patch |> Binary.encode |> Binary.decode |> Option.get
       expect "Should be structurally equivalent" patch id repatch
@@ -437,7 +438,8 @@ module SerializationTests =
         { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes () }
 
       let mkPatch _ : Patch =
-        { Id = Id.Create(); Name = "Patch 3"; IOBoxes = ioboxes () }
+        let ioboxes = ioboxes () |> Array.map (fun b -> (b.Id,b)) |> Map.ofArray
+        { Id = Id.Create(); Name = "Patch 3"; IOBoxes = ioboxes }
 
       let mkCueList _ : CueList =
         { Id = Id.Create(); Name = "Patch 3"; Cues = [| mkCue (); mkCue () |] }

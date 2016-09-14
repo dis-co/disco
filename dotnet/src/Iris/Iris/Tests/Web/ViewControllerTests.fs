@@ -7,7 +7,7 @@ module ViewController =
 
   open Fable.Core
   open Fable.Import
-
+  open System.Collections.Generic
   open Iris.Web.Tests
   open Iris.Web.Core
   open Iris.Core
@@ -32,9 +32,13 @@ module ViewController =
     interface IWidget<State,ClientContext> with
       member self.Render (state : State) (context : ClientContext) =
         let content =
-          if Array.length state.Patches = 0
-          then P [] [| Text "Empty" |]
-          else patchList state.Patches
+          if state.Patches.Count = 0 then
+            P [] [| Text "Empty" |]
+          else
+            state.Patches
+            |> Seq.toArray
+            |> Array.map (fun kv -> kv.Value)
+            |> patchList
 
         mainView content |> renderHtml
 
@@ -50,19 +54,19 @@ module ViewController =
       let patch1 : Patch =
         { Id = Id "0xb33f"
         ; Name = "patch-1"
-        ; IOBoxes = Array.empty
+        ; IOBoxes = Dictionary<Id,IOBox>()
         }
 
       let patch2 : Patch =
         { Id = Id "0xd001"
         ; Name = "patch-2"
-        ; IOBoxes = Array.empty
+        ; IOBoxes = Dictionary<Id,IOBox>()
         }
 
       let patch3 : Patch =
         { Id = Id "0x400f"
         ; Name = "patch-3"
-        ; IOBoxes = Array.empty
+        ; IOBoxes = Dictionary<Id,IOBox>()
         }
 
       let store = new Store<State>(Reducer, State.Empty)
@@ -97,7 +101,7 @@ module ViewController =
       let patch1 : Patch =
         { Id = Id "0xb33f"
         ; Name = "patch-1"
-        ; IOBoxes = Array.empty
+        ; IOBoxes = Dictionary<Id,IOBox>()
         }
 
       let mutable store = new Store<State>(Reducer, State.Empty)

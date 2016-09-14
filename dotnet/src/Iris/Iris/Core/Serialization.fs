@@ -126,6 +126,20 @@ module JsonHelpers =
   let addUInt32 (prop: string) (value: uint32) (json: JToken) =
     new JValue(value) |> addProp prop json
 
+  let inline addMap< ^a, ^t when ^t : (member ToJToken : unit -> JToken)
+                             and ^a : (member ToString : unit -> string)
+                             and ^a : comparison>
+                   (prop: string) (values: Map< ^a,^t >) (json: JToken) : JToken =
+
+    let folder (m: JArray) k v =
+      let item = new JArray()
+      item.Add(new JValue(string k))
+      item.Add(Json.tokenize v)
+      m.Add(item)
+      m
+    Map.fold folder (new JArray()) values
+    |> addProp prop json
+
   let inline addArray< ^t when ^t : (member ToJToken : unit -> JToken)> (prop: string) (value: ^t array) (json: JToken) : JToken =
     new JArray(Array.map Json.tokenize value) |> addProp prop json
 

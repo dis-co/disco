@@ -3,6 +3,7 @@ namespace Test.Units
 [<RequireQualifiedAccess>]
 module PatchesView =
 
+  open System.Collections.Generic
   open Fable.Core
   open Fable.Import
 
@@ -31,7 +32,7 @@ module PatchesView =
       let patch : Patch =
         { Id = patchid
         ; Name = "cooles patch ey"
-        ; IOBoxes = [||]
+        ; IOBoxes = Dictionary<Id,IOBox>()
         }
 
       let store : Store<State> = new Store<State>(Reducer, State.Empty)
@@ -59,17 +60,21 @@ module PatchesView =
       let patch1 : Patch =
         { Id = pid1
         ; Name = "patch-1"
-        ; IOBoxes = [||]
+        ; IOBoxes = Dictionary<Id,IOBox>()
         }
 
       let patch2 : Patch =
         { Id = pid2
         ; Name = "patch-2"
-        ; IOBoxes = [||]
+        ; IOBoxes = Dictionary<Id,IOBox>()
         }
 
+      let patches = Dictionary<Id,Patch>()
+      patches.Add(patch1.Id, patch1)
+      patches.Add(patch2.Id, patch2)
+
       let store : Store<State> =
-        new Store<State>(Reducer, { State.Empty with Patches = [| patch1; patch2 |] })
+        new Store<State>(Reducer, { State.Empty with Patches = patches })
 
       let view = new Patches.Root ()
       let controller = new ViewController<State,ClientContext> (view)
@@ -81,8 +86,8 @@ module PatchesView =
 
       store.Dispatch <| RemovePatch(patch1)
 
-      equals false (Patch.HasPatch store.State.Patches patch1)
-      equals true  (Patch.HasPatch store.State.Patches patch2)
+      equals false (store.State.Patches.ContainsKey patch1.Id)
+      equals true  (store.State.Patches.ContainsKey patch2.Id)
 
       controller.Render store.State ctx
 
@@ -109,11 +114,14 @@ module PatchesView =
       let patch : Patch =
         { Id = Id "0xb4d1d34"
         ; Name = "patch-1"
-        ; IOBoxes = [||]
+        ; IOBoxes = Dictionary<Id,IOBox>()
         }
 
+      let patches = Dictionary<Id,Patch>()
+      patches.Add(patch.Id, patch)
+
       let store : Store<State> =
-        new Store<State>(Reducer, { State.Empty with Patches = [| patch |] })
+        new Store<State>(Reducer, { State.Empty with Patches = patches })
 
       let view = new Patches.Root ()
       let ctx = new ClientContext()
@@ -146,11 +154,14 @@ module PatchesView =
       let patch : Patch =
         { Id = Id "0xb4d1d34"
         ; Name = "patch-1"
-        ; IOBoxes = [||]
+        ; IOBoxes = Dictionary<Id,IOBox>()
         }
 
+      let patches = Dictionary<Id,Patch>()
+      patches.Add(patch.Id, patch)
+
       let store : Store<State> =
-        new Store<State>(Reducer, { State.Empty with Patches = [| patch |] })
+        new Store<State>(Reducer, { State.Empty with Patches = patches })
 
       let view = new Patches.Root ()
       let ctx = new ClientContext()
@@ -192,14 +203,17 @@ module PatchesView =
       let patch : Patch =
         { Id = Id "0xb4d1d34"
         ; Name = "cooles patch ey"
-        ; IOBoxes = [||]
+        ; IOBoxes = Dictionary<Id,IOBox>()
         }
+
+      let patches = Dictionary<Id,Patch>()
+      patches.Add(patch.Id, patch)
 
       let slice : StringSliceD = { Index = 0UL; Value = value1 }
       let iobox = IOBox.String(elid, "url input", Id "0xb4d1d34", Array.empty, [| slice |])
 
       let store : Store<State> =
-        new Store<State>(Reducer, { State.Empty with Patches = [| patch |] })
+        new Store<State>(Reducer, { State.Empty with Patches = patches })
 
       // render initial state
       let view = new Patches.Root()
