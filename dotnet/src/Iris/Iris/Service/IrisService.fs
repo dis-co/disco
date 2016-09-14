@@ -31,6 +31,67 @@ type IrisService(project: Project) =
   let wsserver   = new WsServer(project.Config, raftserver)
   let httpserver = new AssetServer(project.Config)
 
+  let setup _ =
+    // WEBSOCKET
+    wsserver.OnOpen <- fun session ->
+      let msg =
+        match raftserver.Append(AddSession session) with
+        | Some entry -> Iris.Core.LogLevel.Debug, (sprintf "Added session to Raft log with id: %A" entry.Id)
+        | _          -> Iris.Core.LogLevel.Err, "Could not add new session log."
+      wsserver.Broadcast (LogMsg msg)
+      printfn "Should send DataSnapshot now"
+
+    wsserver.OnClose <- fun sessionid ->
+      match Map.tryFind sessionid store.State.Sessions with
+      | Some session ->
+        let msg =
+          match raftserver.Append(RemoveSession session) with
+          | Some entry -> Iris.Core.LogLevel.Debug, (sprintf "Remove session added to Raft log with id: %A" entry.Id)
+          | _          -> Iris.Core.LogLevel.Err, "Could not remove session log."
+        wsserver.Broadcast (LogMsg msg)
+      | _ ->
+        let msg = Iris.Core.LogLevel.Err, "Session not found. Something spooky is going on"
+        wsserver.Broadcast (LogMsg msg)
+
+    wsserver.OnError <- fun sessionid ->
+      match Map.tryFind sessionid store.State.Sessions with
+      | Some session ->
+        let msg =
+          match raftserver.Append(RemoveSession session) with
+          | Some entry -> Iris.Core.LogLevel.Debug, (sprintf "Remove session (due to Error) added to Raft log with id: %A" entry.Id)
+          | _          -> Iris.Core.LogLevel.Err, "Could not remove session log."
+        wsserver.Broadcast (LogMsg msg)
+      | _ ->
+        let msg = Iris.Core.LogLevel.Err, "Session not found. Something spooky is going on"
+        wsserver.Broadcast (LogMsg msg)
+
+    wsserver.OnMessage <- fun sessionid command ->
+      let msg =
+        match raftserver.Append(command) with
+        | Some entry -> Iris.Core.LogLevel.Debug, (sprintf "Entry added to Raft log with id: %A" entry.Id)
+        | _          -> Iris.Core.LogLevel.Err, "Could not add new entry to Raft log :("
+      wsserver.Broadcast (LogMsg msg)
+
+    // RAFTSERVER
+    raftserver.OnConfigured <-
+      Array.map (fun (node: RaftNode) -> string node.Id)
+      >> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
+      >> (fun str -> LogMsg(Iris.Core.LogLevel.Debug, str))
+      >> wsserver.Broadcast
+
+    raftserver.OnLogMsg <- fun _ msg ->
+      wsserver.Broadcast(LogMsg(Iris.Core.LogLevel.Debug, msg))
+
+    raftserver.OnNodeAdded   <- AddNode    >> wsserver.Broadcast
+    raftserver.OnNodeUpdated <- UpdateNode >> wsserver.Broadcast
+    raftserver.OnNodeRemoved <- RemoveNode >> wsserver.Broadcast
+
+    raftserver.OnApplyLog <- fun sm ->
+      store.Dispatch sm
+      wsserver.Broadcast sm
+
+  do setup ()
+
   member self.Raft
     with get () : RaftServer = raftserver
 
@@ -51,23 +112,6 @@ type IrisService(project: Project) =
   // |_____|_|_|  \___|\____\__, |\___|_|\___|
   //                        |___/
   member self.Start() =
-    raftserver.OnConfigured <-
-      Array.map (fun (node: RaftNode) -> string node.Id)
-      >> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
-      >> (fun str -> LogMsg(Iris.Core.LogLevel.Debug, str))
-      >> wsserver.Broadcast
-
-    raftserver.OnLogMsg <- fun _ msg ->
-      wsserver.Broadcast(LogMsg(Iris.Core.LogLevel.Debug, msg))
-
-    raftserver.OnNodeAdded   <- AddNode    >> wsserver.Broadcast
-    raftserver.OnNodeUpdated <- UpdateNode >> wsserver.Broadcast
-    raftserver.OnNodeRemoved <- RemoveNode >> wsserver.Broadcast
-
-    raftserver.OnApplyLog <- fun sm ->
-      store.Dispatch sm
-      wsserver.Broadcast sm
-
     printfn "Starting Http Server on %d" project.Config.PortConfig.Http
     httpserver.Start()
 

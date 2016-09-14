@@ -31,13 +31,10 @@ module WebSocket =
 
     let buildSession (socket: IWebSocketConnection) : Session =
       let ua =
-        if socket.ConnectionInfo.Headers.ContainsKey("UserAgent") then
-          socket.ConnectionInfo.Headers.["UserAgent"]
+        if socket.ConnectionInfo.Headers.ContainsKey("User-Agent") then
+          socket.ConnectionInfo.Headers.["User-Agent"]
         else
           "<no user agent specified>"
-
-      for thing in socket.ConnectionInfo.Headers do
-        printfn "%s: %s" thing.Key thing.Value
 
       { SessionId = getSessionId socket
       ; UserName  = ""
@@ -121,13 +118,13 @@ module WebSocket =
       with set cb = onOpenCb <- Some cb
 
     member self.OnClose
-      with set cb = onOpenCb <- Some cb
+      with set cb = onCloseCb <- Some cb
 
     member self.OnError
-      with set cb = onOpenCb <- Some cb
+      with set cb = onErrorCb <- Some cb
 
     member self.OnMessage
-      with set cb = onOpenCb <- Some cb
+      with set cb = onMessageCb <- Some cb
 
     interface IDisposable with
       member self.Dispose() =
