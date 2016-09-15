@@ -889,38 +889,6 @@ and History (action: StoreAction) =
 
 and Store(state : State)=
 
-  let reducer (ev : StateMachine) (state : State) =
-    match ev with
-    | AddCue                cue -> state.AddCue        cue
-    | UpdateCue             cue -> state.UpdateCue     cue
-    | RemoveCue             cue -> state.RemoveCue     cue
-
-    | AddCueList        cuelist -> state.AddCueList    cuelist
-    | UpdateCueList     cuelist -> state.UpdateCueList cuelist
-    | RemoveCueList     cuelist -> state.RemoveCueList cuelist
-
-    | AddPatch            patch -> state.AddPatch      patch
-    | UpdatePatch         patch -> state.UpdatePatch   patch
-    | RemovePatch         patch -> state.RemovePatch   patch
-
-    | AddIOBox            iobox -> state.AddIOBox      iobox
-    | UpdateIOBox         iobox -> state.UpdateIOBox   iobox
-    | RemoveIOBox         iobox -> state.RemoveIOBox   iobox
-
-    | AddNode              node -> state.AddNode       node
-    | UpdateNode           node -> state.UpdateNode    node
-    | RemoveNode           node -> state.RemoveNode    node
-
-    | AddSession        session -> state.AddSession    session
-    | UpdateSession     session -> state.UpdateSession session
-    | RemoveSession     session -> state.RemoveSession session
-
-    | AddUser              user -> state.AddUser       user
-    | UpdateUser           user -> state.UpdateUser    user
-    | RemoveUser           user -> state.RemoveUser    user
-
-    | _                         -> state
-
   let mutable state = state
 
   let mutable history = new History {
@@ -957,15 +925,46 @@ and Store(state : State)=
       Create a history item for this change if debugging is enabled.
     *)
   member self.Dispatch (ev : StateMachine) : unit =
+    let andRender (newstate: State) =
+      state <- newstate                   // 1) create new state
+      self.Notify(ev)                    // 2) notify all listeners (render as soon as possible)
+      history.Append({ Event = ev        // 3) store this action the and state it produced
+                      ; State = state }) // 4) append to undo history
+
     match ev with
     | Command (AppCommand.Redo)  -> self.Redo()
     | Command (AppCommand.Undo)  -> self.Undo()
     | Command (AppCommand.Reset) -> ()   // do nothing for now
-    | _ ->
-      state <- reducer ev state          // 1) create new state
-      self.Notify(ev)                   // 2) notify all listeners (render as soon as possible)
-      history.Append({ Event = ev       // 3) store this action the and state it produced
-                      ; State = state }) // 4) append to undo history
+
+    | AddCue                cue -> state.AddCue        cue     |> andRender
+    | UpdateCue             cue -> state.UpdateCue     cue     |> andRender
+    | RemoveCue             cue -> state.RemoveCue     cue     |> andRender
+
+    | AddCueList        cuelist -> state.AddCueList    cuelist |> andRender
+    | UpdateCueList     cuelist -> state.UpdateCueList cuelist |> andRender
+    | RemoveCueList     cuelist -> state.RemoveCueList cuelist |> andRender
+
+    | AddPatch            patch -> state.AddPatch      patch   |> andRender
+    | UpdatePatch         patch -> state.UpdatePatch   patch   |> andRender
+    | RemovePatch         patch -> state.RemovePatch   patch   |> andRender
+
+    | AddIOBox            iobox -> state.AddIOBox      iobox   |> andRender
+    | UpdateIOBox         iobox -> state.UpdateIOBox   iobox   |> andRender
+    | RemoveIOBox         iobox -> state.RemoveIOBox   iobox   |> andRender
+
+    | AddNode              node -> state.AddNode       node    |> andRender
+    | UpdateNode           node -> state.UpdateNode    node    |> andRender
+    | RemoveNode           node -> state.RemoveNode    node    |> andRender
+
+    | AddSession        session -> state.AddSession    session |> andRender
+    | UpdateSession     session -> state.UpdateSession session |> andRender
+    | RemoveSession     session -> state.RemoveSession session |> andRender
+
+    | AddUser              user -> state.AddUser       user    |> andRender
+    | UpdateUser           user -> state.UpdateUser    user    |> andRender
+    | RemoveUser           user -> state.RemoveUser    user    |> andRender
+
+    | _ -> ()
 
   (*
       Subscribe a callback to changes on the store.
