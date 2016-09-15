@@ -9,6 +9,8 @@ module ViewController =
   open Fable.Import.JS
   open Fable.Import.Browser
 
+  open Iris.Web.Core.Html
+
   (* __        ___     _            _
      \ \      / (_) __| | __ _  ___| |_
       \ \ /\ / /| |/ _` |/ _` |/ _ \ __|

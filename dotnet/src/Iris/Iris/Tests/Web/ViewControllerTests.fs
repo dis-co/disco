@@ -7,9 +7,9 @@ module ViewController =
 
   open Fable.Core
   open Fable.Import
-  open System.Collections.Generic
   open Iris.Web.Tests
   open Iris.Web.Core
+  open Iris.Web.Core.Html
   open Iris.Core
 
   (* ____       _       _  __     ___
@@ -54,19 +54,19 @@ module ViewController =
       let patch1 : Patch =
         { Id = Id "0xb33f"
         ; Name = "patch-1"
-        ; IOBoxes = Dictionary<Id,IOBox>()
+        ; IOBoxes = Map.empty
         }
 
       let patch2 : Patch =
         { Id = Id "0xd001"
         ; Name = "patch-2"
-        ; IOBoxes = Dictionary<Id,IOBox>()
+        ; IOBoxes = Map.empty
         }
 
       let patch3 : Patch =
         { Id = Id "0x400f"
         ; Name = "patch-3"
-        ; IOBoxes = Dictionary<Id,IOBox>()
+        ; IOBoxes = Map.empty
         }
 
       let store = new Store(State.Empty)
@@ -101,7 +101,7 @@ module ViewController =
       let patch1 : Patch =
         { Id = Id "0xb33f"
         ; Name = "patch-1"
-        ; IOBoxes = Dictionary<Id,IOBox>()
+        ; IOBoxes = Map.empty
         }
 
       let mutable store = new Store(State.Empty)

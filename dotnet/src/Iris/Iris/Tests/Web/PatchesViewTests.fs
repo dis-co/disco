@@ -3,7 +3,6 @@ namespace Test.Units
 [<RequireQualifiedAccess>]
 module PatchesView =
 
-  open System.Collections.Generic
   open Fable.Core
   open Fable.Import
 
@@ -11,12 +10,6 @@ module PatchesView =
   open Iris.Web.Core
   open Iris.Web.Tests
   open Iris.Web.Views
-
-  [<Emit("btoa((new Date().getTime() * Math.random()).toString())")>]
-  let hash _ : string = failwith "onlyjs"
-
-  [<Emit("console.log($0, $1)")>]
-  let show str a = failwith "ONLY IN JS"
 
   let main () =
     (* ------------------------------------------------------------------------ *)
@@ -27,12 +20,12 @@ module PatchesView =
       resetPlugins()
       addString2Plug ()
 
-      let patchid = hash () |> Id
+      let patchid = Id.Create()
 
       let patch : Patch =
         { Id = patchid
         ; Name = "cooles patch ey"
-        ; IOBoxes = Dictionary<Id,IOBox>()
+        ; IOBoxes = Map.empty
         }
 
       let store : Store = new Store(State.Empty)
@@ -60,18 +53,19 @@ module PatchesView =
       let patch1 : Patch =
         { Id = pid1
         ; Name = "patch-1"
-        ; IOBoxes = Dictionary<Id,IOBox>()
+        ; IOBoxes = Map.empty
         }
 
       let patch2 : Patch =
         { Id = pid2
         ; Name = "patch-2"
-        ; IOBoxes = Dictionary<Id,IOBox>()
+        ; IOBoxes = Map.empty
         }
 
-      let patches = Dictionary<Id,Patch>()
-      patches.Add(patch1.Id, patch1)
-      patches.Add(patch2.Id, patch2)
+      let patches =
+        Map.empty
+        |> Map.add patch1.Id patch1
+        |> Map.add patch2.Id patch2
 
       let store : Store =
         new Store({ State.Empty with Patches = patches })
@@ -114,11 +108,12 @@ module PatchesView =
       let patch : Patch =
         { Id = Id "0xb4d1d34"
         ; Name = "patch-1"
-        ; IOBoxes = Dictionary<Id,IOBox>()
+        ; IOBoxes = Map.empty
         }
 
-      let patches = Dictionary<Id,Patch>()
-      patches.Add(patch.Id, patch)
+      let patches =
+        Map.empty
+        |> Map.add patch.Id patch
 
       let store : Store =
         new Store({ State.Empty with Patches = patches })
@@ -154,11 +149,12 @@ module PatchesView =
       let patch : Patch =
         { Id = Id "0xb4d1d34"
         ; Name = "patch-1"
-        ; IOBoxes = Dictionary<Id,IOBox>()
+        ; IOBoxes = Map.empty
         }
 
-      let patches = Dictionary<Id,Patch>()
-      patches.Add(patch.Id, patch)
+      let patches =
+        Map.empty
+        |> Map.add patch.Id patch
 
       let store : Store =
         new Store({ State.Empty with Patches = patches })
@@ -203,11 +199,12 @@ module PatchesView =
       let patch : Patch =
         { Id = Id "0xb4d1d34"
         ; Name = "cooles patch ey"
-        ; IOBoxes = Dictionary<Id,IOBox>()
+        ; IOBoxes = Map.empty
         }
 
-      let patches = Dictionary<Id,Patch>()
-      patches.Add(patch.Id, patch)
+      let patches =
+        Map.empty
+        |> Map.add patch.Id patch
 
       let slice : StringSliceD = { Index = 0UL; Value = value1 }
       let iobox = IOBox.String(elid, "url input", Id "0xb4d1d34", Array.empty, [| slice |])

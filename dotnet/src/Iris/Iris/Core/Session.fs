@@ -67,9 +67,9 @@ type Session =
 
   member self.ToJToken() =
     new JObject()
-    |> addString "Id"         (string self.Id)
+    |> addString "Id"        (string self.Id)
     |> addString "UserName"   self.UserName
-    |> addString "IpAddress" (string  self.IpAddress)
+    |> addString "IpAddress" (string self.IpAddress)
     |> addString "UserAgent"  self.UserAgent
 
   member self.ToJson() =

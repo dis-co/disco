@@ -4,7 +4,6 @@ open Fable.Core
 open Fable.Import
 open Fable.Import.Browser
 
-[<AutoOpen>]
 module Html =
 
   //  _____
@@ -557,7 +556,7 @@ module Html =
 
   let Link       props      = Leaf("link", props)
 
-  let Map        props chd  = Parent("map", props, chd)
+  let ImgMap      props chd = Parent("map", props, chd)
 
   let Mark       props chd  = Parent("mark", props, chd)
 

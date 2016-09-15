@@ -16,7 +16,7 @@ module Store =
     let patch : Patch =
       { Id = Id "0xb4d1d34"
       ; Name = "patch-1"
-      ; IOBoxes = Dictionary<Id,IOBox>()
+      ; IOBoxes = Map.empty
       }
 
     let store : Store = new Store(State.Empty)

@@ -8,6 +8,7 @@ module Plugin =
 
   open System
   open Iris.Core
+  open Iris.Web.Core.Html
 
   type EventCallback = IOBox -> unit
 

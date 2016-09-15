@@ -8,6 +8,7 @@ module Plugins =
 
   open Iris.Core
   open Iris.Web.Core
+  open Iris.Web.Core.Html
   open Iris.Web.Views
   open Iris.Web.Tests
 

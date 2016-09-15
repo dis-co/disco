@@ -132,9 +132,9 @@ module JsonHelpers =
   let addUInt32 (prop: string) (value: uint32) (json: JToken) =
     new JValue(value) |> addProp prop json
 
-  let inline addMap< ^a, ^t when ^t : (member ToJToken : unit -> JToken)
-                             and ^a : (member ToString : unit -> string)
-                             and ^a : comparison>
+  let inline addDict< ^a, ^t when ^t : (member ToJToken : unit -> JToken)
+                              and ^a : (member ToString : unit -> string)
+                              and ^a : comparison>
                    (prop: string) (values: Map< ^a,^t >) (json: JToken) : JToken =
 
     let folder (m: JArray) k v =
@@ -144,6 +144,18 @@ module JsonHelpers =
       m.Add(item)
       m
     Map.fold folder (new JArray()) values
+    |> addProp prop json
+
+
+  let inline addMap< ^a, ^t when ^t : (member ToJToken : unit -> JToken)
+                             and ^a : (member ToString : unit -> string)
+                             and ^a : comparison>
+                   (prop: string) (values: Map< ^a,^t >) (json: JToken) : JToken =
+
+    let folder (m: JObject) k v =
+      m.[string k] <- Json.tokenize v
+      m
+    Map.fold folder (new JObject()) values
     |> addProp prop json
 
   let inline addArray< ^t when ^t : (member ToJToken : unit -> JToken)> (prop: string) (value: ^t array) (json: JToken) : JToken =
@@ -187,6 +199,20 @@ module JsonHelpers =
       | Some key, Some value -> map <- Map.add key value map
       | _ -> ()
 
+    map
+
+  let inline fromMap< ^k, ^v when ^v : (static member FromJToken : JToken -> ^v option)
+                              and ^k : (static member FromJToken : JToken -> ^k option)
+                              and ^k : comparison> (field: string) (token: JToken) : Map< ^k, ^v > =
+    let mutable map = Map.empty
+    let jobj = token.[field] :?> JObject
+
+    for prop in jobj.Properties() do
+      let key = Json.parse (new JValue(prop.Name))
+      let value = Json.parse prop.Value
+      match key, value with
+      | Some id, Some thing -> map <- Map.add id thing map
+      | _ -> ()
     map
 
 #endif

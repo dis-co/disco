@@ -8,8 +8,9 @@ module Patches =
   open Fable.Import
   open Fable.Import.Browser
 
-  open Iris.Web.Core
   open Iris.Core
+  open Iris.Web.Core
+  open Iris.Web.Core.Html
 
   type Root () =
     let mutable plugins = new Plugins ()
