@@ -111,13 +111,13 @@ module WebSocket =
 
     member self.Broadcast(msg: StateMachine) =
       let send _ (socket: IWebSocketConnection) =
-        msg |> Json.encode |> socket.Send |> ignore
+        msg |> Binary.encode |> socket.Send |> ignore
       Map.iter send sessions
 
     member self.Send (sessionid: Id) (msg: StateMachine) =
       match Map.tryFind sessionid sessions with
       | Some socket ->
-        msg |> Json.encode |> socket.Send |> ignore
+        msg |> Binary.encode |> socket.Send |> ignore
       | _ -> printfn "could not send message to %A. not found." sessionid
 
     member self.OnOpen

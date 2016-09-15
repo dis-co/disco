@@ -8,7 +8,6 @@ open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Import.JS
 
-
 //  __  __                                _____                 _
 // |  \/  | ___  ___ ___  __ _  __ _  ___| ____|_   _____ _ __ | |_
 // | |\/| |/ _ \/ __/ __|/ _` |/ _` |/ _ \  _| \ \ / / _ \ '_ \| __|
@@ -69,6 +68,10 @@ type WorkerEvent<'data>() =
 [<Emit("new WebSocket($0)")>]
 type WebSocket(url: string)  =
 
+  [<Emit("$0.binaryType = $1")>]
+  member __.BinaryType
+    with set (str: string) = failwith "ONLY JS"
+
   [<Emit("$0.onerror = $1")>]
   member __.OnError
     with set (cb: unit -> unit) = failwith "ONLY JS"
@@ -83,7 +86,7 @@ type WebSocket(url: string)  =
 
   [<Emit("$0.onmessage = $1")>]
   member __.OnMessage
-    with set (cb: MessageEvent<string> -> unit) = failwith "ONLY JS"
+    with set (cb: MessageEvent<ArrayBuffer> -> unit) = failwith "ONLY JS"
 
   [<Emit("$0.close()")>]
   member self.Close() = failwith "ONLY JS"
@@ -172,6 +175,8 @@ type GlobalContext() =
     let init _ =
       let sock = new WebSocket(addr)
 
+      sock.BinaryType <- "arraybuffer"
+
       sock.OnError <- sprintf "Error: %A" >> self.Log
 
       sock.OnOpen <- fun _ ->
@@ -180,9 +185,11 @@ type GlobalContext() =
       sock.OnClose <- fun _ ->
         self.Broadcast ClientMessage.Disconnected
 
-      sock.OnMessage <- fun (ev: MessageEvent<string>) ->
-        let parsed : StateMachine = ofJson<StateMachine> ev.Data
-        self.OnSocketMessage parsed
+      sock.OnMessage <- fun (ev: MessageEvent<ArrayBuffer>) ->
+        let uint8thing = Uint8Array.Create(ev.Data)
+        self.Log (sprintf "data %A" uint8thing.length)
+        // let parsed : StateMachine = ofJson<StateMachine> ev.Data
+        // self.OnSocketMessage parsed
 
       socket <- Some (addr, sock)
 
