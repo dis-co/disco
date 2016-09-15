@@ -1,5 +1,7 @@
 namespace Iris.Serialization.Raft;
 
+
+
 //  ____  _ _
 // / ___|| (_) ___ ___
 // \___ \| | |/ __/ _ \
@@ -265,6 +267,7 @@ table CueListFB {
 //  \___/|___/\___|_|
 
 table UserFB {
+      Id:        string;
       UserName:  string;
       FirstName: string;
       LastName:  string;
@@ -280,10 +283,26 @@ table UserFB {
 // |____/ \___||___/___/_|\___/|_| |_|
 
 table SessionFB {
-      SessionId: string;
+      Id:        string;
       UserName:  string;
       IpAddress: string;
       UserAgent: string;
+}
+
+//  ____  _        _
+// / ___|| |_ __ _| |_ ___
+// \___ \| __/ _` | __/ _ \
+//  ___) | || (_| | ||  __/
+// |____/ \__\__,_|\__\___|
+
+table StateFB {
+      Patches:  [PatchFB];
+      IOBoxes:  [IOBoxFB];
+      Cues:     [CueFB];
+      CueLists: [CueListFB];
+      Nodes:    [NodeFB];
+      Sessions: [SessionFB];
+      Users:    [UserFB];
 }
 
 //  ____  _        _         __  __            _     _
@@ -393,7 +412,7 @@ table LogMsgFB {
 }
 
 table DataSnapshotFB {
-      Data: string;
+      Data: StateFB;
 }
 
 union StateMachineTypeFB {

@@ -185,7 +185,7 @@ module RaftTestUtils =
     let cbs = mkcbs data :> IRaftCallbacks
     runRaft raft cbs action
 
-  let defSM = StateMachine.DataSnapshot "hello"
+  let defSM = StateMachine.DataSnapshot State.Empty
 
   let runWithDefaults action =
     let orv _ _ = None

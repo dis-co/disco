@@ -12,14 +12,14 @@ open Iris.Core
 [<AutoOpen>]
 module StoreTests =
 
-  let withStore (wrap : Patch -> Store<State> -> unit) =
+  let withStore (wrap : Patch -> Store -> unit) =
     let patch : Patch =
       { Id = Id "0xb4d1d34"
       ; Name = "patch-1"
       ; IOBoxes = Map.empty
       }
 
-    let store : Store<State> = new Store<State>(State.Empty)
+    let store : Store = new Store(State.Empty)
     wrap patch store
 
   //  ____       _       _
@@ -280,7 +280,8 @@ module StoreTests =
       withStore <| fun patch store ->
 
         let user : User =
-          { UserName = "krgn"
+          { Id = Id.Create()
+          ; UserName = "krgn"
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
@@ -302,7 +303,8 @@ module StoreTests =
       withStore <| fun patch store ->
 
         let user : User =
-          { UserName = "krgn"
+          { Id = Id.Create()
+          ; UserName = "krgn"
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
@@ -319,7 +321,7 @@ module StoreTests =
         store.Dispatch <| UpdateUser { user with FirstName = newname }
 
         expect "Should be 1" 1 id store.State.Users.Count
-        expect "Should be correct name" newname id store.State.Users.[user.UserName].FirstName
+        expect "Should be correct name" newname id store.State.Users.[user.Id].FirstName
 
 
   let test_should_not_add_user_to_the_store_on_update_when_missing =
@@ -327,7 +329,8 @@ module StoreTests =
       withStore <| fun patch store ->
 
         let user : User =
-          { UserName = "krgn"
+          { Id = Id.Create()
+          ; UserName = "krgn"
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
@@ -345,7 +348,8 @@ module StoreTests =
       withStore <| fun patch store ->
 
         let user : User =
-          { UserName = "krgn"
+          { Id = Id.Create()
+          ; UserName = "krgn"
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
@@ -373,7 +377,7 @@ module StoreTests =
       withStore <| fun patch store ->
 
         let session : Session =
-          { SessionId = Id.Create()
+          { Id = Id.Create()
           ; UserName = "Karsten"
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
@@ -393,7 +397,7 @@ module StoreTests =
       withStore <| fun patch store ->
 
         let session : Session =
-          { SessionId = Id.Create()
+          { Id = Id.Create()
           ; UserName = "Karsten"
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
@@ -408,14 +412,14 @@ module StoreTests =
         store.Dispatch <| UpdateSession { session with UserName = newname }
 
         expect "Should be 1" 1 id store.State.Sessions.Count
-        expect "Should be correct name" newname id store.State.Sessions.[session.SessionId].UserName
+        expect "Should be correct name" newname id store.State.Sessions.[session.Id].UserName
 
   let test_should_not_add_session_to_the_store_on_update_when_missing =
     testCase "should not add session to the store on update when missing" <| fun _ ->
       withStore <| fun patch store ->
 
         let session : Session =
-          { SessionId = Id.Create()
+          { Id = Id.Create()
           ; UserName = "Karsten"
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
@@ -431,7 +435,7 @@ module StoreTests =
       withStore <| fun patch store ->
 
         let session : Session =
-          { SessionId = Id.Create()
+          { Id = Id.Create()
           ; UserName = "Karsten"
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }

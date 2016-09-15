@@ -163,7 +163,7 @@ type PortMap = Map<Id,ClientMessagePort>
 
 type GlobalContext() =
   let mutable count = 0
-  let mutable store = new Store<State>(State.Empty)
+  let mutable store = new Store(State.Empty)
   let mutable socket : (string * WebSocket) option = None
 
   let ports : PortMap = Map.Create<Id,ClientMessagePort>()
@@ -211,7 +211,7 @@ type GlobalContext() =
     | _ ->
       match ev with
       | DataSnapshot state ->
-        store <- new Store<State>(state)
+        store <- new Store(state)
         self.Broadcast <| ClientMessage.Render(store.State)
       | _ ->
         store.Dispatch ev

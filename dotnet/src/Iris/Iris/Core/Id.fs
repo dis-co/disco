@@ -119,34 +119,51 @@ module Id =
 // (_)_| \_|_____| |_|
 
 open System.Text.RegularExpressions
+open Newtonsoft.Json
+open Newtonsoft.Json.Linq
 
 type Id =
   | Id of string
 
-  with
-    override id.ToString() =
-      match id with | Id str -> str
+  override id.ToString() =
+    match id with | Id str -> str
 
-    static member Parse (str: string) = Id str
+  static member Parse (str: string) = Id str
 
-    static member TryParse (str: string) = Id str |> Some
+  static member TryParse (str: string) = Id str |> Some
 
-    /// ## Create
-    ///
-    /// Create a new Guid.
-    ///
-    /// ### Signature:
-    /// - unit: .
-    ///
-    /// Returns: Guid
-    static member Create() =
-      let sanitize (str: string) =
-        Regex.Replace(str, "[\+|\/|\=]","").ToLower()
+  /// ## Create
+  ///
+  /// Create a new Guid.
+  ///
+  /// ### Signature:
+  /// - unit: .
+  ///
+  /// Returns: Guid
+  static member Create() =
+    let sanitize (str: string) =
+      Regex.Replace(str, "[\+|\/|\=]","").ToLower()
 
-      let guid = System.Guid.NewGuid()
-      guid.ToByteArray()
-      |> System.Convert.ToBase64String
-      |> sanitize
-      |> Id
+    let guid = System.Guid.NewGuid()
+    guid.ToByteArray()
+    |> System.Convert.ToBase64String
+    |> sanitize
+    |> Id
+
+  //      _
+  //     | |___  ___  _ __
+  //  _  | / __|/ _ \| '_ \
+  // | |_| \__ \ (_) | | | |
+  //  \___/|___/\___/|_| |_|
+
+  static member FromJToken(token: JToken) : Id option =
+    try
+      Id (string token) |> Some
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
 
 #endif

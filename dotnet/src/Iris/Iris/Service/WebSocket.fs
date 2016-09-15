@@ -36,7 +36,7 @@ module WebSocket =
         else
           "<no user agent specified>"
 
-      { SessionId = getSessionId socket
+      { Id        = getSessionId socket
       ; UserName  = ""
       ; IpAddress = IpAddress.Parse socket.ConnectionInfo.ClientIpAddress
       ; UserAgent = ua }

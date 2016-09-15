@@ -11,8 +11,8 @@ public sealed class SessionFB : Table {
   public static SessionFB GetRootAsSessionFB(ByteBuffer _bb, SessionFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
   public SessionFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
-  public string SessionId { get { int o = __offset(4); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetSessionIdBytes() { return __vector_as_arraysegment(4); }
+  public string Id { get { int o = __offset(4); return o != 0 ? __string(o + bb_pos) : null; } }
+  public ArraySegment<byte>? GetIdBytes() { return __vector_as_arraysegment(4); }
   public string UserName { get { int o = __offset(6); return o != 0 ? __string(o + bb_pos) : null; } }
   public ArraySegment<byte>? GetUserNameBytes() { return __vector_as_arraysegment(6); }
   public string IpAddress { get { int o = __offset(8); return o != 0 ? __string(o + bb_pos) : null; } }
@@ -21,7 +21,7 @@ public sealed class SessionFB : Table {
   public ArraySegment<byte>? GetUserAgentBytes() { return __vector_as_arraysegment(10); }
 
   public static Offset<SessionFB> CreateSessionFB(FlatBufferBuilder builder,
-      StringOffset SessionIdOffset = default(StringOffset),
+      StringOffset IdOffset = default(StringOffset),
       StringOffset UserNameOffset = default(StringOffset),
       StringOffset IpAddressOffset = default(StringOffset),
       StringOffset UserAgentOffset = default(StringOffset)) {
@@ -29,12 +29,12 @@ public sealed class SessionFB : Table {
     SessionFB.AddUserAgent(builder, UserAgentOffset);
     SessionFB.AddIpAddress(builder, IpAddressOffset);
     SessionFB.AddUserName(builder, UserNameOffset);
-    SessionFB.AddSessionId(builder, SessionIdOffset);
+    SessionFB.AddId(builder, IdOffset);
     return SessionFB.EndSessionFB(builder);
   }
 
   public static void StartSessionFB(FlatBufferBuilder builder) { builder.StartObject(4); }
-  public static void AddSessionId(FlatBufferBuilder builder, StringOffset SessionIdOffset) { builder.AddOffset(0, SessionIdOffset.Value, 0); }
+  public static void AddId(FlatBufferBuilder builder, StringOffset IdOffset) { builder.AddOffset(0, IdOffset.Value, 0); }
   public static void AddUserName(FlatBufferBuilder builder, StringOffset UserNameOffset) { builder.AddOffset(1, UserNameOffset.Value, 0); }
   public static void AddIpAddress(FlatBufferBuilder builder, StringOffset IpAddressOffset) { builder.AddOffset(2, IpAddressOffset.Value, 0); }
   public static void AddUserAgent(FlatBufferBuilder builder, StringOffset UserAgentOffset) { builder.AddOffset(3, UserAgentOffset.Value, 0); }

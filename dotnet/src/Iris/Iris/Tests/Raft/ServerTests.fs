@@ -37,11 +37,11 @@ module ServerTests =
     testCase "Raft server index should start at 1" <| fun _ ->
       raft {
          do! expectM "Should have default idx" 0UL currentIndex
-         do! createEntryM (DataSnapshot "hi") >>= ignoreM
+         do! createEntryM (DataSnapshot State.Empty) >>= ignoreM
          do! expectM "Should have current idx" 1UL currentIndex
-         do! createEntryM (DataSnapshot "hi") >>= ignoreM
+         do! createEntryM (DataSnapshot State.Empty) >>= ignoreM
          do! expectM "Should have current idx" 2UL currentIndex
-         do! createEntryM (DataSnapshot "hi") >>= ignoreM
+         do! createEntryM (DataSnapshot State.Empty) >>= ignoreM
          do! expectM "Should have current idx" 3UL currentIndex
       }
       |> runWithDefaults
@@ -145,12 +145,12 @@ module ServerTests =
 
   let server_append_entry_is_retrievable =
     testCase "Raft should be able to retrieve entry and data by index" <| fun _ ->
-      let msg1 = DataSnapshot "default state"
-      let msg2 = DataSnapshot "add some state"
-      let msg3 = DataSnapshot "add some more state"
+      let msg1 = DataSnapshot State.Empty
+      let msg2 = DataSnapshot State.Empty
+      let msg3 = DataSnapshot State.Empty
 
       let init = createRaft (Node.create (Id.Create()))
-      let cbs = mkcbs (ref (DataSnapshot "hola")) :> IRaftCallbacks
+      let cbs = mkcbs (ref (DataSnapshot State.Empty)) :> IRaftCallbacks
 
       raft {
         do! setStateM Candidate
@@ -197,7 +197,7 @@ module ServerTests =
         do! applyEntries ()
         do! expectM "Should not have incremented last applied index" 0UL lastAppliedIdx
         do! expectM "Should not have incremented commit index" 0UL commitIndex
-        do! createEntryM (DataSnapshot "hi") >>= ignoreM
+        do! createEntryM (DataSnapshot State.Empty) >>= ignoreM
         do! applyEntries () >>= ignoreM
         do! expectM "fhould not have incremented last applied index" 0UL lastAppliedIdx
         do! expectM "Should not have incremented commit index" 0UL commitIndex
@@ -212,7 +212,7 @@ module ServerTests =
         do! setStateM Follower
         do! setTermM 1UL
         do! setLastAppliedIdxM 0UL
-        do! createEntryM (DataSnapshot "hi") >>= ignoreM
+        do! createEntryM (DataSnapshot State.Empty) >>= ignoreM
         do! setCommitIndexM 1UL
         do! periodic 1UL
         do! expectM "1) Last applied index should be one" 1UL lastAppliedIdx
@@ -224,7 +224,7 @@ module ServerTests =
     testCase "Raft applyEntry increments LastAppliedIndex" <| fun _ ->
       raft {
         do! setLastAppliedIdxM 0UL
-        do! createEntryM (DataSnapshot "hi") >>= ignoreM
+        do! createEntryM (DataSnapshot State.Empty) >>= ignoreM
         do! setCommitIndexM 1UL
         do! applyEntries ()
         do! expectM "2) Last applied index should be one" 1UL lastAppliedIdx
@@ -258,7 +258,7 @@ module ServerTests =
 
   let server_recv_entry_auto_commits_if_we_are_the_only_node =
     testCase "Receive entry auto-commits if we are the only node" <| fun _ ->
-      let entry = LogEntry(Id.Create(),0UL,0UL,DataSnapshot "haha",None)
+      let entry = LogEntry(Id.Create(),0UL,0UL,DataSnapshot State.Empty,None)
       raft {
         do! setElectionTimeoutM 1000UL
         do! becomeLeader ()
@@ -345,7 +345,7 @@ module ServerTests =
       let ci = ref 0UL
 
       let cbs =
-        { mkcbs (ref (DataSnapshot "hoho")) with
+        { mkcbs (ref (DataSnapshot State.Empty)) with
             SendAppendEntries = fun _ _ ->
               Some  { Term = !term; Success = true; CurrentIndex = !ci; FirstIndex = 1UL } }
         :> IRaftCallbacks
@@ -451,7 +451,7 @@ module ServerTests =
     testCase "Recv requestvote response increase votes for me" <| fun _ ->
       let node = Node.create (Id.Create())
       let cbs =
-        { mkcbs (ref (DataSnapshot "hoho")) with
+        { mkcbs (ref (DataSnapshot State.Empty)) with
             SendRequestVote = fun _ _ -> Some { Term = 2UL; Granted = true; Reason = None } }
         :> IRaftCallbacks
 
@@ -579,8 +579,8 @@ module ServerTests =
         do! setTermM 1UL
         do! voteFor None
         do! expectM "Should have currentIndex zero" 0UL currentIndex
-        do! createEntryM (DataSnapshot "hi") >>= ignoreM
-        do! createEntryM (DataSnapshot "hi") >>= ignoreM
+        do! createEntryM (DataSnapshot State.Empty) >>= ignoreM
+        do! createEntryM (DataSnapshot State.Empty) >>= ignoreM
         do! expectM "Should have currentIndex one" 2UL currentIndex
         let! (res,_) = shouldGrantVote vote
         expect "Should grant vote" true id res
@@ -604,8 +604,8 @@ module ServerTests =
         do! setTermM 2UL
         do! voteFor None
         do! expectM "Should have currentIndex zero" 0UL currentIndex
-        do! createEntryM (DataSnapshot "hi") >>= ignoreM
-        do! createEntryM (DataSnapshot "hi") >>= ignoreM
+        do! createEntryM (DataSnapshot State.Empty) >>= ignoreM
+        do! createEntryM (DataSnapshot State.Empty) >>= ignoreM
         do! expectM "Should have currentIndex one" 2UL currentIndex
         let! (res,_) = shouldGrantVote vote
         expect "Should grant vote" true id res
@@ -819,8 +819,8 @@ module ServerTests =
   let follower_dont_grant_vote_if_candidate_has_a_less_complete_log =
     testCase "follower dont grant vote if candidate has a less complete log" <| fun _ ->
       let peer = Node.create (Id.Create())
-      let log1 = LogEntry(Id.Create(), 0UL, 1UL, (DataSnapshot "hi"), None)
-      let log2 = LogEntry(Id.Create(), 0UL, 2UL, (DataSnapshot "hi"), None)
+      let log1 = LogEntry(Id.Create(), 0UL, 1UL, (DataSnapshot State.Empty), None)
+      let log2 = LogEntry(Id.Create(), 0UL, 2UL, (DataSnapshot State.Empty), None)
 
       raft {
         do! addPeerM peer
@@ -894,7 +894,7 @@ module ServerTests =
       let lokk = new System.Object()
       let i = ref 0
       let cbs =
-        { mkcbs (ref (DataSnapshot "haha")) with
+        { mkcbs (ref (DataSnapshot State.Empty)) with
             SendRequestVote = fun _ _ ->
               lock lokk <| fun _ ->
                 i := !i + 1
@@ -920,7 +920,7 @@ module ServerTests =
       let peer4 = Node.create (Id.Create())
 
       let cbs =
-        { mkcbs (ref (DataSnapshot "haha")) with
+        { mkcbs (ref (DataSnapshot State.Empty)) with
             SendRequestVote = fun n _ -> Some { Term = 1UL; Granted = true; Reason = None } }
         :> IRaftCallbacks
 
@@ -959,7 +959,7 @@ module ServerTests =
       let sender = Sender.create
       let response = { Term = 5UL; Granted = true; Reason = None }
       let cbs =
-        { mkcbs (ref (DataSnapshot "yep")) with
+        { mkcbs (ref (DataSnapshot State.Empty)) with
             SendRequestVote = senderRequestVote sender (Some response) }
         :> IRaftCallbacks
 
@@ -968,9 +968,9 @@ module ServerTests =
         let peer2 = Node.create (Id.Create())
 
         let log =
-          LogEntry(Id.Create(),0UL, 3UL, DataSnapshot "three",
-            Some <| LogEntry(Id.Create(),0UL, 1UL, DataSnapshot "two",
-              Some <| LogEntry(Id.Create(),0UL, 1UL, DataSnapshot "one", None)))
+          LogEntry(Id.Create(),0UL, 3UL, DataSnapshot State.Empty,
+            Some <| LogEntry(Id.Create(),0UL, 1UL, DataSnapshot State.Empty,
+              Some <| LogEntry(Id.Create(),0UL, 1UL, DataSnapshot State.Empty, None)))
 
         do! addPeersM [| peer1; peer2 |]
         do! setStateM Candidate
@@ -1113,7 +1113,7 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot "yep")) with
+        { mkcbs (ref (DataSnapshot State.Empty)) with
             SendAppendEntries = fun _ _ ->
               lock lokk <| fun _ -> count := !count + 1
               Some { Success = true; Term = 0UL; CurrentIndex = 1UL; FirstIndex = 1UL } }
@@ -1132,7 +1132,7 @@ module ServerTests =
   let leader_responds_to_entry_msg_when_entry_is_committed =
     testCase "leader responds to entry msg when entry is committed" <| fun _ ->
       let peer = Node.create (Id.Create())
-      let log = LogEntry(Id.Create(),0UL,0UL,DataSnapshot "heh",None)
+      let log = LogEntry(Id.Create(),0UL,0UL,DataSnapshot State.Empty,None)
 
       raft {
         do! addPeerM peer
@@ -1153,7 +1153,7 @@ module ServerTests =
   let non_leader_recv_entry_msg_fails =
     testCase "non leader recv entry msg fails" <| fun _ ->
       let peer = Node.create (Id.Create())
-      let log = LogEntry(Id.Create(),0UL,0UL,DataSnapshot "nope",None)
+      let log = LogEntry(Id.Create(),0UL,0UL,DataSnapshot State.Empty,None)
 
       raft {
         do! addNodeM peer
@@ -1169,9 +1169,9 @@ module ServerTests =
       let peer = { Node.create (Id.Create()) with NextIndex = 4UL }
       let raft' : Raft = defaultServer "localhost"
       let sender = Sender.create
-      let log = LogEntry(Id.Create(),0UL, 1UL, DataSnapshot "one", None)
+      let log = LogEntry(Id.Create(),0UL, 1UL, DataSnapshot State.Empty, None)
       let cbs =
-        { mkcbs (ref (DataSnapshot "yep")) with SendAppendEntries = senderAppendEntries sender None }
+        { mkcbs (ref (DataSnapshot State.Empty)) with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       raft {
@@ -1190,7 +1190,7 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot "yep")) with SendAppendEntries = senderAppendEntries sender None }
+        { mkcbs (ref (DataSnapshot State.Empty)) with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       raft {
@@ -1198,7 +1198,7 @@ module ServerTests =
         do! setStateM Leader
 
         for n in 0 .. 9 do
-          let l = LogEntry(Id.Create(), 0UL, 1UL, DataSnapshot (string n), None)
+          let l = LogEntry(Id.Create(), 0UL, 1UL, DataSnapshot State.Empty, None)
           do! appendEntryM l >>= ignoreM
 
         do! setCommitIndexM 10UL
@@ -1218,7 +1218,7 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot "yep")) with SendAppendEntries = senderAppendEntries sender None }
+        { mkcbs (ref (DataSnapshot State.Empty)) with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       raft {
@@ -1233,7 +1233,7 @@ module ServerTests =
         |> getAppendEntries
         |> expect "Should have PrevLogIndex 0" 0UL (fun ae -> ae.PrevLogIdx)
 
-        let log = LogEntry(Id.Create(),0UL,2UL,DataSnapshot "yeah",None)
+        let log = LogEntry(Id.Create(),0UL,2UL,DataSnapshot State.Empty,None)
 
         do! appendEntryM log >>= ignoreM
         do! setNextIndexM peer.Id 1UL
@@ -1272,7 +1272,7 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot "hey")) with SendAppendEntries = senderAppendEntries sender None }
+        { mkcbs (ref (DataSnapshot State.Empty)) with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       raft {
@@ -1288,7 +1288,7 @@ module ServerTests =
 
         sender.Outbox := List.empty // reset outbox
 
-        let log = LogEntry(Id.Create(),0UL,1UL,DataSnapshot "Hm ja", None)
+        let log = LogEntry(Id.Create(),0UL,1UL,DataSnapshot State.Empty, None)
 
         do! setNextIndexM peer.Id 1UL
         do! appendEntryM log >>= ignoreM
@@ -1309,7 +1309,7 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot "ohai")) with SendAppendEntries = senderAppendEntries sender None }
+        { mkcbs (ref (DataSnapshot State.Empty)) with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       raft {
@@ -1328,10 +1328,10 @@ module ServerTests =
   let leader_append_entry_to_log_increases_idxno =
     testCase "leader append entry to log increases idxno" <| fun _ ->
       let peer = Node.create (Id.Create())
-      let log = LogEntry(Id.Create(),0UL,1UL,DataSnapshot "entry",None)
+      let log = LogEntry(Id.Create(),0UL,1UL,DataSnapshot State.Empty,None)
       let raft' = defaultServer "local"
       let sender = Sender.create
-      let cbs = mkcbs (ref (DataSnapshot "no!")) :> IRaftCallbacks
+      let cbs = mkcbs (ref (DataSnapshot State.Empty)) :> IRaftCallbacks
 
       raft {
         do! addPeerM peer
@@ -1353,12 +1353,12 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot "yep")) with SendAppendEntries = senderAppendEntries sender None }
+        { mkcbs (ref (DataSnapshot State.Empty)) with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
-      let log1 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot "one",None)
-      let log2 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot "two",None)
-      let log3 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot "three",None)
+      let log1 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot State.Empty,None)
+      let log2 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot State.Empty,None)
+      let log3 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot State.Empty,None)
 
       let response =
         { Term = 1UL
@@ -1416,11 +1416,11 @@ module ServerTests =
 
       let raft' = defaultServer "localhost"
       let sender = Sender.create
-      let cbs = mkcbs (ref (DataSnapshot "awyea")) :> IRaftCallbacks
+      let cbs = mkcbs (ref (DataSnapshot State.Empty)) :> IRaftCallbacks
 
-      let log1 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot "one",None)
-      let log2 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot "two",None)
-      let log3 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot "three",None)
+      let log1 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot State.Empty,None)
+      let log2 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot State.Empty,None)
+      let log3 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot State.Empty,None)
 
       raft {
         do! addNodesM [| peer1; peer2; |]
@@ -1454,11 +1454,11 @@ module ServerTests =
         ; CurrentIndex = 1UL
         ; FirstIndex   = 1UL }
 
-      let cbs = mkcbs (ref (DataSnapshot "one")) :> IRaftCallbacks
+      let cbs = mkcbs (ref (DataSnapshot State.Empty)) :> IRaftCallbacks
 
-      let log1 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot "haha",None)
-      let log2 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot "haha",None)
-      let log3 = LogEntry(Id.Create(),0UL,2UL,DataSnapshot "haha",None)
+      let log1 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot State.Empty,None)
+      let log2 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot State.Empty,None)
+      let log3 = LogEntry(Id.Create(),0UL,2UL,DataSnapshot State.Empty,None)
 
       raft {
         do! addNodesM [| peer1; peer2; peer3; peer4 |]
@@ -1527,17 +1527,17 @@ module ServerTests =
       let appendReq = ref None
 
       let cbs =
-        { mkcbs (ref (DataSnapshot "ahaha")) with
+        { mkcbs (ref (DataSnapshot State.Empty)) with
             SendAppendEntries = fun n ae ->
               lock lokk <| fun _ -> count := !count + 1
               appendReq := Some ae
               None }
         :> IRaftCallbacks
 
-      let log1 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot "haha",None)
-      let log2 = LogEntry(Id.Create(),0UL,2UL,DataSnapshot "haha",None)
-      let log3 = LogEntry(Id.Create(),0UL,3UL,DataSnapshot "haha",None)
-      let log4 = LogEntry(Id.Create(),0UL,4UL,DataSnapshot "haha",None)
+      let log1 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot State.Empty,None)
+      let log2 = LogEntry(Id.Create(),0UL,2UL,DataSnapshot State.Empty,None)
+      let log3 = LogEntry(Id.Create(),0UL,3UL,DataSnapshot State.Empty,None)
+      let log4 = LogEntry(Id.Create(),0UL,4UL,DataSnapshot State.Empty,None)
 
       let response =
         { Term = 1UL
@@ -1596,7 +1596,7 @@ module ServerTests =
       let count = ref 0
 
       let cbs =
-        { mkcbs (ref (DataSnapshot "hoho")) with
+        { mkcbs (ref (DataSnapshot State.Empty)) with
             SendAppendEntries = fun n ae ->
               lock lokk <| fun _ -> count := !count + 1
               Some { Term         = !term
@@ -1605,10 +1605,10 @@ module ServerTests =
                    ; FirstIndex   = 0UL }
           } :> IRaftCallbacks
 
-      let log1 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot "ohoh",None)
-      let log2 = LogEntry(Id.Create(),0UL,2UL,DataSnapshot "ohoh",None)
-      let log3 = LogEntry(Id.Create(),0UL,3UL,DataSnapshot "ohoh",None)
-      let log4 = LogEntry(Id.Create(),0UL,4UL,DataSnapshot "ohoh",None)
+      let log1 = LogEntry(Id.Create(),0UL,1UL,DataSnapshot State.Empty,None)
+      let log2 = LogEntry(Id.Create(),0UL,2UL,DataSnapshot State.Empty,None)
+      let log3 = LogEntry(Id.Create(),0UL,3UL,DataSnapshot State.Empty,None)
+      let log4 = LogEntry(Id.Create(),0UL,4UL,DataSnapshot State.Empty,None)
 
       raft {
         do! addNodeM peer
@@ -1655,10 +1655,10 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot "well")) with SendAppendEntries = senderAppendEntries sender None }
+        { mkcbs (ref (DataSnapshot State.Empty)) with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
-      let log = LogEntry(Id.Create(),0UL,1UL,DataSnapshot "one",None)
+      let log = LogEntry(Id.Create(),0UL,1UL,DataSnapshot State.Empty,None)
 
       let response =
         { Term = 1UL
@@ -1691,7 +1691,7 @@ module ServerTests =
 
   let leader_recv_entry_resets_election_timeout =
     testCase "leader recv entry resets election timeout" <| fun _ ->
-      let log = LogEntry(Id.Create(), 0UL, 1UL, DataSnapshot "heo", None)
+      let log = LogEntry(Id.Create(), 0UL, 1UL, DataSnapshot State.Empty, None)
       raft {
         do! setElectionTimeoutM 1000UL
         do! setStateM Leader
@@ -1705,7 +1705,7 @@ module ServerTests =
   let leader_recv_entry_is_committed_returns_0_if_not_committed =
     testCase "leader recv entry is committed returns 0 if not committed" <| fun _ ->
       let peer = Node.create (Id.Create())
-      let log = LogEntry(Id.Create(), 0UL, 1UL, DataSnapshot "ohai", None)
+      let log = LogEntry(Id.Create(), 0UL, 1UL, DataSnapshot State.Empty, None)
 
       raft {
         do! addPeerM peer
@@ -1727,7 +1727,7 @@ module ServerTests =
   let leader_recv_entry_is_committed_returns_neg_1_if_invalidated =
     testCase "leader recv entry is committed returns neg 1 if invalidated" <| fun _ ->
       let peer = Node.create (Id.Create())
-      let log = Log.make 1UL (DataSnapshot "heheh")
+      let log = Log.make 1UL (DataSnapshot State.Empty)
 
       let ae =
         { LeaderCommit = 1UL
@@ -2168,7 +2168,7 @@ module ServerTests =
       raft {
         do! setTermM term
         for n in 0UL .. (idx + num) do
-          do! appendEntryM (Log.make term (DataSnapshot (string n))) >>= ignoreM
+          do! appendEntryM (Log.make term (DataSnapshot State.Empty)) >>= ignoreM
 
         do! applyEntries ()
 

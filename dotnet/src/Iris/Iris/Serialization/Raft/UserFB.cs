@@ -11,43 +11,48 @@ public sealed class UserFB : Table {
   public static UserFB GetRootAsUserFB(ByteBuffer _bb, UserFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
   public UserFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
-  public string UserName { get { int o = __offset(4); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetUserNameBytes() { return __vector_as_arraysegment(4); }
-  public string FirstName { get { int o = __offset(6); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetFirstNameBytes() { return __vector_as_arraysegment(6); }
-  public string LastName { get { int o = __offset(8); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetLastNameBytes() { return __vector_as_arraysegment(8); }
-  public string Email { get { int o = __offset(10); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetEmailBytes() { return __vector_as_arraysegment(10); }
-  public string Joined { get { int o = __offset(12); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetJoinedBytes() { return __vector_as_arraysegment(12); }
-  public string Created { get { int o = __offset(14); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetCreatedBytes() { return __vector_as_arraysegment(14); }
+  public string Id { get { int o = __offset(4); return o != 0 ? __string(o + bb_pos) : null; } }
+  public ArraySegment<byte>? GetIdBytes() { return __vector_as_arraysegment(4); }
+  public string UserName { get { int o = __offset(6); return o != 0 ? __string(o + bb_pos) : null; } }
+  public ArraySegment<byte>? GetUserNameBytes() { return __vector_as_arraysegment(6); }
+  public string FirstName { get { int o = __offset(8); return o != 0 ? __string(o + bb_pos) : null; } }
+  public ArraySegment<byte>? GetFirstNameBytes() { return __vector_as_arraysegment(8); }
+  public string LastName { get { int o = __offset(10); return o != 0 ? __string(o + bb_pos) : null; } }
+  public ArraySegment<byte>? GetLastNameBytes() { return __vector_as_arraysegment(10); }
+  public string Email { get { int o = __offset(12); return o != 0 ? __string(o + bb_pos) : null; } }
+  public ArraySegment<byte>? GetEmailBytes() { return __vector_as_arraysegment(12); }
+  public string Joined { get { int o = __offset(14); return o != 0 ? __string(o + bb_pos) : null; } }
+  public ArraySegment<byte>? GetJoinedBytes() { return __vector_as_arraysegment(14); }
+  public string Created { get { int o = __offset(16); return o != 0 ? __string(o + bb_pos) : null; } }
+  public ArraySegment<byte>? GetCreatedBytes() { return __vector_as_arraysegment(16); }
 
   public static Offset<UserFB> CreateUserFB(FlatBufferBuilder builder,
+      StringOffset IdOffset = default(StringOffset),
       StringOffset UserNameOffset = default(StringOffset),
       StringOffset FirstNameOffset = default(StringOffset),
       StringOffset LastNameOffset = default(StringOffset),
       StringOffset EmailOffset = default(StringOffset),
       StringOffset JoinedOffset = default(StringOffset),
       StringOffset CreatedOffset = default(StringOffset)) {
-    builder.StartObject(6);
+    builder.StartObject(7);
     UserFB.AddCreated(builder, CreatedOffset);
     UserFB.AddJoined(builder, JoinedOffset);
     UserFB.AddEmail(builder, EmailOffset);
     UserFB.AddLastName(builder, LastNameOffset);
     UserFB.AddFirstName(builder, FirstNameOffset);
     UserFB.AddUserName(builder, UserNameOffset);
+    UserFB.AddId(builder, IdOffset);
     return UserFB.EndUserFB(builder);
   }
 
-  public static void StartUserFB(FlatBufferBuilder builder) { builder.StartObject(6); }
-  public static void AddUserName(FlatBufferBuilder builder, StringOffset UserNameOffset) { builder.AddOffset(0, UserNameOffset.Value, 0); }
-  public static void AddFirstName(FlatBufferBuilder builder, StringOffset FirstNameOffset) { builder.AddOffset(1, FirstNameOffset.Value, 0); }
-  public static void AddLastName(FlatBufferBuilder builder, StringOffset LastNameOffset) { builder.AddOffset(2, LastNameOffset.Value, 0); }
-  public static void AddEmail(FlatBufferBuilder builder, StringOffset EmailOffset) { builder.AddOffset(3, EmailOffset.Value, 0); }
-  public static void AddJoined(FlatBufferBuilder builder, StringOffset JoinedOffset) { builder.AddOffset(4, JoinedOffset.Value, 0); }
-  public static void AddCreated(FlatBufferBuilder builder, StringOffset CreatedOffset) { builder.AddOffset(5, CreatedOffset.Value, 0); }
+  public static void StartUserFB(FlatBufferBuilder builder) { builder.StartObject(7); }
+  public static void AddId(FlatBufferBuilder builder, StringOffset IdOffset) { builder.AddOffset(0, IdOffset.Value, 0); }
+  public static void AddUserName(FlatBufferBuilder builder, StringOffset UserNameOffset) { builder.AddOffset(1, UserNameOffset.Value, 0); }
+  public static void AddFirstName(FlatBufferBuilder builder, StringOffset FirstNameOffset) { builder.AddOffset(2, FirstNameOffset.Value, 0); }
+  public static void AddLastName(FlatBufferBuilder builder, StringOffset LastNameOffset) { builder.AddOffset(3, LastNameOffset.Value, 0); }
+  public static void AddEmail(FlatBufferBuilder builder, StringOffset EmailOffset) { builder.AddOffset(4, EmailOffset.Value, 0); }
+  public static void AddJoined(FlatBufferBuilder builder, StringOffset JoinedOffset) { builder.AddOffset(5, JoinedOffset.Value, 0); }
+  public static void AddCreated(FlatBufferBuilder builder, StringOffset CreatedOffset) { builder.AddOffset(6, CreatedOffset.Value, 0); }
   public static Offset<UserFB> EndUserFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
     return new Offset<UserFB>(o);

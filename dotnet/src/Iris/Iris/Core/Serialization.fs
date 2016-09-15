@@ -69,12 +69,18 @@ module Binary =
                                   ^t option =
     (^t : (static member FromBytes : byte array -> ^t option) bytes)
 
+
+  let inline toOffset< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)>
+                     (builder: FlatBufferBuilder)
+                     (thing: ^a)
+                     : Offset< ^t > =
+    (^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >) (thing,builder))
+
   let inline buildBuffer< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)> (thing: ^a) : byte array =
     let builder = new FlatBufferBuilder(1)
-    let offset = (^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >) (thing, builder))
+    let offset = toOffset builder thing
     builder.Finish(offset.Value)
     builder.SizedByteArray()
-
 
 //      _
 //     | |___  ___  _ __
@@ -166,5 +172,21 @@ module JsonHelpers =
 
   let inline addToken (prop: string) (value: ^t) (json: JToken) =
      value |> Json.tokenize |> addProp prop json
+
+  let inline fromDict< ^k, ^v when ^v : (static member FromJToken : JToken -> ^v option)
+                               and ^k : (static member FromJToken : JToken -> ^k option)
+                               and ^k : comparison> (field: string) (token: JToken) : Map< ^k, ^v > =
+    let mutable map = Map.empty
+    let jarr = token.[field] :?> JArray
+
+    for i in 0 .. (jarr.Count - 1) do
+      let k : ^k option = Json.parse jarr.[i].[0]
+      let t : ^v option = Json.parse jarr.[i].[1]
+
+      match k, t with
+      | Some key, Some value -> map <- Map.add key value map
+      | _ -> ()
+
+    map
 
 #endif

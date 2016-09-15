@@ -73,11 +73,11 @@ module SerializationTests =
       let nodes = [| node1; node2 |]
 
       let log =
-        Some <| LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot "cccc",
-          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot "bbbb",
+        Some <| LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot State.Empty,
+          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot State.Empty,
             Some <| Configuration(Id.Create(), 5UL, 1UL, [| node1 |],
               Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
-                Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
+                Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot State.Empty)))))
 
       let ae : AppendEntries =
         { Term = 8UL
@@ -133,7 +133,7 @@ module SerializationTests =
         ; LeaderId = Id.Create()
         ; LastIndex = 242UL
         ; LastTerm = 124242UL
-        ; Data = Snapshot(Id.Create(), 12UL, 3414UL, 241UL, 422UL, node1, DataSnapshot "hahahah")
+        ; Data = Snapshot(Id.Create(), 12UL, 3414UL, 241UL, 422UL, node1, DataSnapshot State.Empty)
         }
 
       let msg = InstallSnapshot(Id.Create(), is)
@@ -242,8 +242,16 @@ module SerializationTests =
                   expect "Should be structurally the same" msg id remsg)
                 errors
 
+  //   ____                 ____        _       _____
+  //  / ___|___  _ __ ___  |  _ \  __ _| |_ __ |_   _|   _ _ __   ___  ___
+  // | |   / _ \| '__/ _ \ | | | |/ _` | __/ _` || || | | | '_ \ / _ \/ __|
+  // | |__| (_) | | |  __/ | |_| | (_| | || (_| || || |_| | |_) |  __/\__ \
+  //  \____\___/|_|  \___| |____/ \__,_|\__\__,_||_| \__, | .__/ \___||___/
+  //                                                 |___/|_|
+
+  let rand = new System.Random()
+
   let mktags _ =
-    let rand = new System.Random()
     [| for n in 0 .. rand.Next(2,8) do
         yield Id.Create() |> string |]
 
@@ -264,6 +272,49 @@ module SerializationTests =
     ; IOBox.Enum       (Id.Create(), "enum",      Id.Create(), mktags (), [|{ Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|] , [|{ Index = 0UL; Value = { Key = "one"; Value = "two" }}|])
     |]
 
+  let mkIOBox _ =
+    let slice : StringSliceD = { Index = 0UL; Value = "hello" }
+    IOBox.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
+
+  let mkCue _ : Cue =
+    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes () }
+
+  let mkPatch _ : Patch =
+    let ioboxes = ioboxes () |> Array.map (fun b -> (b.Id,b)) |> Map.ofArray
+    { Id = Id.Create(); Name = "Patch 3"; IOBoxes = ioboxes }
+
+  let mkCueList _ : CueList =
+    { Id = Id.Create(); Name = "Patch 3"; Cues = [| mkCue (); mkCue () |] }
+
+  let mkUser _ =
+    { Id = Id.Create()
+    ; UserName = "krgn"
+    ; FirstName = "Karsten"
+    ; LastName = "Gebbert"
+    ; Email = "k@ioctl.it"
+    ; Joined = System.DateTime.Now
+    ; Created = System.DateTime.Now
+    }
+
+  let mkNode _ = Id.Create() |> Node.create
+
+  let mkSession _ =
+    { Id = Id.Create()
+    ; UserName = "krgn"
+    ; IpAddress = IPv4Address "127.0.0.1"
+    ; UserAgent = "Oh my goodness"
+    }
+
+  let mkState _ =
+    { Patches  = mkPatch   () |> fun (patch: Patch) -> Map.ofList [ (patch.Id, patch) ]
+    ; IOBoxes  = ioboxes   () |> (fun (boxes: IOBox array) -> Array.map (fun (box: IOBox) -> (box.Id,box)) boxes) |> Map.ofArray
+    ; Cues     = mkCue     () |> fun (cue: Cue) -> Map.ofList [ (cue.Id, cue) ]
+    ; CueLists = mkCueList () |> fun (cuelist: CueList) -> Map.ofList [ (cuelist.Id, cuelist) ]
+    ; Nodes    = mkNode    () |> fun (node: RaftNode) -> Map.ofList [ (node.Id, node) ]
+    ; Sessions = mkSession () |> fun (session: Session) -> Map.ofList [ (session.Id, session) ]
+    ; Users    = mkUser    () |> fun (user: User) -> Map.ofList [ (user.Id, user) ]
+    }
+
   //   ____
   //  / ___|   _  ___
   // | |  | | | |/ _ \
@@ -272,8 +323,7 @@ module SerializationTests =
 
   let test_validate_cue_serialization =
     testCase "Validate Cue Serialization" <| fun _ ->
-
-      let cue : Cue = { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes () }
+      let cue : Cue = mkCue ()
 
       let recue = cue |> Binary.encode |> Binary.decode |> Option.get
       expect "should be same" cue id recue
@@ -289,8 +339,7 @@ module SerializationTests =
 
   let test_validate_cuelist_serialization =
     testCase "Validate CueList Serialization" <| fun _ ->
-      let cue : Cue = { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes () }
-      let cuelist : CueList = { Id = Id.Create(); Name = "CueList 1"; Cues = [| cue |] }
+      let cuelist : CueList = mkCueList ()
 
       let recuelist = cuelist |> Binary.encode |> Binary.decode |> Option.get
       expect "should be same" cuelist id recuelist
@@ -306,9 +355,7 @@ module SerializationTests =
 
   let test_validate_patch_serialization =
     testCase "Validate Patch Serialization" <| fun _ ->
-
-      let ioboxes = ioboxes () |> Array.map (fun b -> (b.Id,b)) |> Map.ofArray
-      let patch : Patch = { Id = Id.Create(); Name = "Patch 1"; IOBoxes = ioboxes }
+      let patch : Patch = mkPatch ()
 
       let repatch = patch |> Binary.encode |> Binary.decode |> Option.get
       expect "Should be structurally equivalent" patch id repatch
@@ -324,13 +371,7 @@ module SerializationTests =
 
   let test_validate_session_serialization =
     testCase "Validate Session Serialization" <| fun _ ->
-
-      let session : Session =
-        { SessionId = Id.Create()
-        ; UserName = "krgn"
-        ; IpAddress = IPv4Address "127.0.0.1"
-        ; UserAgent = "Oh my goodness"
-        }
+      let session : Session = mkSession ()
 
       let resession = session |> Binary.encode |> Binary.decode |> Option.get
       expect "Should be structurally equivalent" session id resession
@@ -346,15 +387,7 @@ module SerializationTests =
 
   let test_validate_user_serialization =
     testCase "Validate User Serialization" <| fun _ ->
-
-      let user : User =
-        { UserName = "krgn"
-        ; FirstName = "Karsten"
-        ; LastName = "Gebbert"
-        ; Email = "k@ioctl.it"
-        ; Joined = System.DateTime.Now
-        ; Created = System.DateTime.Now
-        }
+      let user : User = mkUser ()
 
       let reuser = user |> Binary.encode |> Binary.decode |> Option.get
       expect "Should be structurally equivalent" user id reuser
@@ -397,8 +430,6 @@ module SerializationTests =
 
   let test_validate_iobox_serialization =
     testCase "Validate IOBox Serialization" <| fun _ ->
-      let rand = new System.Random()
-
       let check iobox =
         iobox |> Binary.encode |> Binary.decode |> Option.get
         |> expect "Should be structurally equivalent" iobox id
@@ -416,6 +447,22 @@ module SerializationTests =
       IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0UL; Value = [| compound |] }|])
       |> check
 
+  //  ____  _        _
+  // / ___|| |_ __ _| |_ ___
+  // \___ \| __/ _` | __/ _ \
+  //  ___) | || (_| | ||  __/
+  // |____/ \__\__,_|\__\___|
+
+  let test_validate_state_serialization =
+    testCase "Validate State Serialization" <| fun _ ->
+      let state : State = mkState ()
+
+      state |> Binary.encode |> Binary.decode |> Option.get
+      |> expect "Should be structurally equivalent" state id
+
+      state |> Json.encode |> Json.decode |> Option.get
+      |> expect "Should be structurally equivalent" state id
+
   //  ____  _        _       __  __            _     _
   // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
   // \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
@@ -424,42 +471,6 @@ module SerializationTests =
 
   let test_validate_state_machine_serialization =
     testCase "Validate StateMachine Serialization" <| fun _ ->
-      let rand = new System.Random()
-
-      let mktags _ =
-        [| for n in 0 .. rand.Next(2,8) do
-            yield Id.Create() |> string |]
-
-      let mkIOBox _ =
-        let slice : StringSliceD = { Index = 0UL; Value = "hello" }
-        IOBox.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
-
-      let mkCue _ : Cue =
-        { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes () }
-
-      let mkPatch _ : Patch =
-        let ioboxes = ioboxes () |> Array.map (fun b -> (b.Id,b)) |> Map.ofArray
-        { Id = Id.Create(); Name = "Patch 3"; IOBoxes = ioboxes }
-
-      let mkCueList _ : CueList =
-        { Id = Id.Create(); Name = "Patch 3"; Cues = [| mkCue (); mkCue () |] }
-
-      let mkUser _ =
-        { UserName = "krgn"
-        ; FirstName = "Karsten"
-        ; LastName = "Gebbert"
-        ; Email = "k@ioctl.it"
-        ; Joined = System.DateTime.Now
-        ; Created = System.DateTime.Now
-        }
-
-      let mkSession _ =
-        { SessionId = Id.Create()
-        ; UserName = "krgn"
-        ; IpAddress = IPv4Address "127.0.0.1"
-        ; UserAgent = "Oh my goodness"
-        }
-
       [ AddCue        <| mkCue ()
       ; UpdateCue     <| mkCue ()
       ; RemoveCue     <| mkCue ()
@@ -481,8 +492,8 @@ module SerializationTests =
       ; AddNode       <| Node.create (Id.Create())
       ; UpdateNode    <| Node.create (Id.Create())
       ; RemoveNode    <| Node.create (Id.Create())
+      ; DataSnapshot  <| mkState ()
       ; Command AppCommand.Undo
-      ; DataSnapshot "YEah!"
       ; LogMsg(Debug, "ohai")
       ]
       |> List.iter (fun cmd ->
@@ -518,5 +529,6 @@ module SerializationTests =
         test_validate_user_serialization
         test_validate_slice_serialization
         test_validate_iobox_serialization
+        test_validate_state_serialization
         test_validate_state_machine_serialization
       ]

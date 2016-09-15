@@ -1,9 +1,23 @@
 namespace Iris.Core
 
+// ********************************************************************************************** //
+//  ___                            _
+// |_ _|_ __ ___  _ __   ___  _ __| |_ ___
+//  | || '_ ` _ \| '_ \ / _ \| '__| __/ __|
+//  | || | | | | | |_) | (_) | |  | |_\__ \
+// |___|_| |_| |_| .__/ \___/|_|   \__|___/
+//               |_|
+// ********************************************************************************************** //
+
 open Iris.Raft
 
 #if JAVASCRIPT
 
+open Fable.Core
+open Fable.Core.JsInterop
+open Fable.Import
+open Fable.Import.JS
+open System.Collections.Generic
 open Fable.Core.JsInterop
 
 #else
@@ -15,20 +29,14 @@ open Newtonsoft.Json.Linq
 
 #endif
 
-(*
-        _                _____                 _
-       / \   _ __  _ __ | ____|_   _____ _ __ | |_ ™
-      / _ \ | '_ \| '_ \|  _| \ \ / / _ \ '_ \| __|
-     / ___ \| |_) | |_) | |___ \ V /  __/ | | | |_
-    /_/   \_\ .__/| .__/|_____| \_/ \___|_| |_|\__|
-            |_|   |_|
-
-    The AppEventT type models all possible state-changes the app can legally
-    undergo. Using this design, we have a clean understanding of how data flows
-    through the system, and have the compiler assist us in handling all possible
-    states with total functions.
-
-*)
+// ********************************************************************************************** //
+//     _                 ____                                          _
+//    / \   _ __  _ __  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| |
+//   / _ \ | '_ \| '_ \| |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |
+//  / ___ \| |_) | |_) | |__| (_) | | | | | | | | | | | (_| | | | | (_| |
+// /_/   \_\ .__/| .__/ \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|
+//         |_|   |_|
+// ********************************************************************************************** //
 
 [<RequireQualifiedAccess>]
 type AppCommand =
@@ -120,27 +128,18 @@ type AppCommand =
 
 #endif
 
-#if JAVASCRIPT
+// ********************************************************************************************** //
+//   ____  _        _
+//  / ___|| |_ __ _| |_ ___
+//  \___ \| __/ _` | __/ _ \
+//   ___) | || (_| | ||  __/
+//  |____/ \__\__,_|\__\___|
 
-open Fable.Core
-open Fable.Core.JsInterop
-open Fable.Import
-open Fable.Import.JS
-open System.Collections.Generic
+//  Record type containing all the actual data that gets passed around in our
+//  application.
+//
+// ********************************************************************************************** //
 
-#endif
-
-open Iris.Raft
-
-  (*   ____  _        _
-      / ___|| |_ __ _| |_ ___
-      \___ \| __/ _` | __/ _ \
-       ___) | || (_| | ||  __/
-      |____/ \__\__,_|\__\___|
-
-      Record type containing all the actual data that gets passed around in our
-      application.
-  *)
 #if JAVASCRIPT
 type State =
   { Patches  : Dictionary<Id,Patch>
@@ -149,7 +148,7 @@ type State =
   ; CueLists : Dictionary<Id,CueList>
   ; Nodes    : Dictionary<Id,RaftNode>
   ; Sessions : Dictionary<Id,Session>    // could imagine a BrowserInfo type here with some info on client
-  ; Users    : Dictionary<Name,User>
+  ; Users    : Dictionary<Id,User>
   }
 #else
 type State =
@@ -159,7 +158,7 @@ type State =
   ; CueLists : Map<Id,CueList>
   ; Nodes    : Map<Id,RaftNode>
   ; Sessions : Map<Id,Session>    // could imagine a BrowserInfo type here with some info on client
-  ; Users    : Map<Name,User>
+  ; Users    : Map<Id,User>
   }
 #endif
 
@@ -170,7 +169,7 @@ type State =
     ; Cues     = Dictionary<Id,Cue>()
     ; Nodes    = Dictionary<Id,RaftNode>()
     ; CueLists = Dictionary<Id,CueList>()
-    ; Users    = Dictionary<Name,User>()
+    ; Users    = Dictionary<Id,User>()
     ; Sessions = Dictionary<Id,Session>()
     }
 #else
@@ -192,30 +191,30 @@ type State =
   member state.AddUser (user: User) =
 #if JAVASCRIPT
     // Implement immutability by copying the map with all its keys
-    if state.Users.ContainsKey user.UserName then
+    if state.Users.ContainsKey user.Id then
       state
     else
-      let users = Dictionary<Name,User>()
+      let users = Dictionary<Id,User>()
       for kv in state.Users do
         users.Add(kv.Key, state.Users.[kv.Key])
-      users.Add(user.UserName, user)
+      users.Add(user.Id, user)
       { state with Users = users }
 #else
     // In .NET
-    if Map.containsKey user.UserName state.Users then
+    if Map.containsKey user.Id state.Users then
       state
     else
-      let users = Map.add user.UserName user state.Users
+      let users = Map.add user.Id user state.Users
       { state with Users = users }
 #endif
 
   member state.UpdateUser (user: User) =
 #if JAVASCRIPT
     // Implement immutability by copying the map with all its keys
-    if state.Users.ContainsKey user.UserName then
-      let users = Dictionary<Name,User>()
+    if state.Users.ContainsKey user.Id then
+      let users = Dictionary<Id,User>()
       for kv in state.Users do
-        if user.UserName = kv.Key then
+        if user.Id = kv.Key then
           users.Add(kv.Key, user)
         else
           users.Add(kv.Key, state.Users.[kv.Key])
@@ -223,8 +222,8 @@ type State =
     else
       state
 #else
-    if Map.containsKey user.UserName state.Users then
-      let users = Map.add user.UserName user state.Users
+    if Map.containsKey user.Id state.Users then
+      let users = Map.add user.Id user state.Users
       { state with Users = users }
     else
       state
@@ -233,16 +232,16 @@ type State =
   member state.RemoveUser (user: User) =
 #if JAVASCRIPT
     // Implement immutability by copying the map with all its keys
-    if state.Users.ContainsKey user.UserName then
-      let users = Dictionary<Name,User>()
+    if state.Users.ContainsKey user.Id then
+      let users = Dictionary<Id,User>()
       for kv in state.Users do
-        if kv.Key <> user.UserName then
+        if kv.Key <> user.Id then
           users.Add(kv.Key, state.Users.[kv.Key])
       { state with Users = users }
     else
       state
 #else
-    { state with Users = Map.filter (fun k _ -> (k <> user.UserName)) state.Users }
+    { state with Users = Map.filter (fun k _ -> (k <> user.Id)) state.Users }
 #endif
 
   //  ____                _
@@ -254,30 +253,30 @@ type State =
   member state.AddSession (session: Session) =
 #if JAVASCRIPT
     // Implement immutability by copying the map with all its keys
-    if state.Sessions.ContainsKey session.SessionId  then
+    if state.Sessions.ContainsKey session.Id  then
       state
     else
       let sessions = Dictionary<Id,Session>()
       for kv in state.Sessions do
         sessions.Add(kv.Key, state.Sessions.[kv.Key])
-      sessions.Add(session.SessionId, session)
+      sessions.Add(session.Id, session)
       { state with Sessions = sessions }
 #else
     let sessions =
-      if Map.containsKey session.SessionId state.Sessions then
+      if Map.containsKey session.Id state.Sessions then
         state.Sessions
       else
-        Map.add session.SessionId session state.Sessions
+        Map.add session.Id session state.Sessions
     { state with Sessions = sessions }
 #endif
 
   member state.UpdateSession (session: Session) =
 #if JAVASCRIPT
     // Implement immutability by copying the map with all its keys
-    if state.Sessions.ContainsKey session.SessionId  then
+    if state.Sessions.ContainsKey session.Id  then
       let sessions = Dictionary<Id,Session>()
       for kv in state.Sessions do
-        if session.SessionId = kv.Key then
+        if session.Id = kv.Key then
           sessions.Add(kv.Key, session)
         else
           sessions.Add(kv.Key, state.Sessions.[kv.Key])
@@ -286,8 +285,8 @@ type State =
       state
 #else
     let sessions =
-      if Map.containsKey session.SessionId state.Sessions then
-        Map.add session.SessionId session state.Sessions
+      if Map.containsKey session.Id state.Sessions then
+        Map.add session.Id session state.Sessions
       else
         state.Sessions
     { state with Sessions = sessions }
@@ -295,16 +294,16 @@ type State =
 
   member state.RemoveSession (session: Session) =
 #if JAVASCRIPT
-    if state.Sessions.ContainsKey session.SessionId  then
+    if state.Sessions.ContainsKey session.Id  then
       let sessions = Dictionary<Id,Session>()
       for kv in state.Sessions do
-        if session.SessionId <> kv.Key then
+        if session.Id <> kv.Key then
           sessions.Add(kv.Key, state.Sessions.[kv.Key])
       { state with Sessions = sessions }
     else
       state
 #else
-    { state with Sessions = Map.filter (fun k _ -> (k <> session.SessionId)) state.Sessions }
+    { state with Sessions = Map.filter (fun k _ -> (k <> session.Id)) state.Sessions }
 #endif
 
   //  ____       _       _
@@ -614,29 +613,212 @@ type State =
     { state with Nodes = Map.remove node.Id state.Nodes }
 #endif
 
+  //  ____            _       _ _          _   _
+  // / ___|  ___ _ __(_) __ _| (_)______ _| |_(_) ___  _ __
+  // \___ \ / _ \ '__| |/ _` | | |_  / _` | __| |/ _ \| '_ \
+  //  ___) |  __/ |  | | (_| | | |/ / (_| | |_| | (_) | | | |
+  // |____/ \___|_|  |_|\__,_|_|_/___\__,_|\__|_|\___/|_| |_|
+
+#if JAVASCRIPT
+#else
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateFB> =
+    let patches =
+      Map.toArray self.Patches
+      |> Array.map (snd >> Binary.toOffset builder)
+
+    let patchesoffset = StateFB.CreatePatchesVector(builder, patches)
+
+    let ioboxes =
+      Map.toArray self.IOBoxes
+      |> Array.map (snd >> Binary.toOffset builder)
+
+    let ioboxesoffset = StateFB.CreateIOBoxesVector(builder, ioboxes)
+
+    let cues =
+      Map.toArray self.Cues
+      |> Array.map (snd >> Binary.toOffset builder)
+
+    let cuesoffset = StateFB.CreateCuesVector(builder, cues)
+
+    let cuelists =
+      Map.toArray self.CueLists
+      |> Array.map (snd >> Binary.toOffset builder)
+
+    let cuelistsoffset = StateFB.CreateCueListsVector(builder, cuelists)
+
+    let nodes =
+      Map.toArray self.Nodes
+      |> Array.map (snd >> Binary.toOffset builder)
+
+    let nodesoffset = StateFB.CreateNodesVector(builder, nodes)
+
+    let users =
+      Map.toArray self.Users
+      |> Array.map (snd >> Binary.toOffset builder)
+
+    let usersoffset = StateFB.CreateUsersVector(builder, users)
+
+    let sessions =
+      Map.toArray self.Sessions
+      |> Array.map (snd >> Binary.toOffset builder)
+
+    let sessionsoffset = StateFB.CreateSessionsVector(builder, sessions)
+
+    StateFB.StartStateFB(builder)
+    StateFB.AddPatches(builder, patchesoffset)
+    StateFB.AddIOBoxes(builder, ioboxesoffset)
+    StateFB.AddCues(builder, cuesoffset)
+    StateFB.AddCueLists(builder, cuelistsoffset)
+    StateFB.AddNodes(builder, nodesoffset)
+    StateFB.AddSessions(builder, sessionsoffset)
+    StateFB.AddUsers(builder, usersoffset)
+    StateFB.EndStateFB(builder)
+
+  member self.ToBytes() = Binary.buildBuffer self
+
+  static member FromFB(fb: StateFB) : State option =
+    let mutable patches  = Map.empty
+    let mutable ioboxes  = Map.empty
+    let mutable cues     = Map.empty
+    let mutable cuelists = Map.empty
+    let mutable nodes    = Map.empty
+    let mutable users    = Map.empty
+    let mutable sessions = Map.empty
+
+    for i in 0 .. (fb.PatchesLength - 1) do
+      fb.GetPatches(i)
+      |> Patch.FromFB
+      |> Option.map (fun patch -> patches <- Map.add patch.Id patch patches)
+      |> ignore
+
+    for i in 0 .. (fb.IOBoxesLength - 1) do
+      fb.GetIOBoxes(i)
+      |> IOBox.FromFB
+      |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
+      |> ignore
+
+    for i in 0 .. (fb.CuesLength - 1) do
+      fb.GetCues(i)
+      |> Cue.FromFB
+      |> Option.map (fun cue -> cues <- Map.add cue.Id cue cues)
+      |> ignore
+
+    for i in 0 .. (fb.CueListsLength - 1) do
+      fb.GetCueLists(i)
+      |> CueList.FromFB
+      |> Option.map (fun cuelist -> cuelists <- Map.add cuelist.Id cuelist cuelists)
+      |> ignore
+
+    for i in 0 .. (fb.NodesLength - 1) do
+      fb.GetNodes(i)
+      |> RaftNode.FromFB
+      |> Option.map (fun node -> nodes <- Map.add node.Id node nodes)
+      |> ignore
+
+    for i in 0 .. (fb.UsersLength - 1) do
+      fb.GetUsers(i)
+      |> User.FromFB
+      |> Option.map (fun user -> users <- Map.add user.Id user users)
+      |> ignore
+
+    for i in 0 .. (fb.SessionsLength - 1) do
+      fb.GetSessions(i)
+      |> Session.FromFB
+      |> Option.map (fun session -> sessions <- Map.add session.Id session sessions)
+      |> ignore
+
+    Some { Patches  = patches
+         ; IOBoxes  = ioboxes
+         ; Cues     = cues
+         ; CueLists = cuelists
+         ; Nodes    = nodes
+         ; Users    = users
+         ; Sessions = sessions }
+
+  static member FromBytes (bytes: byte array) : State option =
+    StateFB.GetRootAsStateFB(new ByteBuffer(bytes))
+    |> State.FromFB
+
+  //      _
+  //     | |___  ___  _ __
+  //  _  | / __|/ _ \| '_ \
+  // | |_| \__ \ (_) | | | |
+  //  \___/|___/\___/|_| |_|
+
+  member self.ToJToken() =
+    new JObject()
+    |> addMap "Patches"  self.Patches
+    |> addMap "IOBoxes"  self.IOBoxes
+    |> addMap "Cues"     self.Cues
+    |> addMap "CueLists" self.CueLists
+    |> addMap "Nodes"    self.Nodes
+    |> addMap "Users"    self.Users
+    |> addMap "Sessions" self.Sessions
+
+  member self.ToJson() =
+    self.ToJToken() |> string
+
+  static member FromJToken(token: JToken) : State option =
+    try
+      Some { Patches  = fromDict "Patches"  token
+           ; IOBoxes  = fromDict "IOBoxes"  token
+           ; Cues     = fromDict "Cues"     token
+           ; CueLists = fromDict "CueLists" token
+           ; Nodes    = fromDict "Nodes"    token
+           ; Users    = fromDict "Users"    token
+           ; Sessions = fromDict "Sessions" token }
+    with
+      | exn ->
+        printfn "Could not deserialize json: "
+        printfn "    Message: %s"  exn.Message
+        printfn "    json:    %s" (string token)
+        None
+
+  static member FromJson(str: string) : State option =
+    JToken.Parse(str) |> State.FromJToken
+
+#endif
+
+// ********************************************************************************************** //
 //  ____  _
 // / ___|| |_ ___  _ __ ___
 // \___ \| __/ _ \| '__/ _ \
 //  ___) | || (_) | | |  __/
 // |____/ \__\___/|_|  \___|
+//
+// ********************************************************************************************** //
 
 (* Action: Log entry for the Event occurred and the resulting state. *)
-and StoreAction<'a> = { Event : StateMachine; State : 'a }
-  with override self.ToString() : string =
-                sprintf "%s %s" (self.Event.ToString()) (self.State.ToString())
+and StoreAction =
+  { Event: StateMachine
+  ; State: State }
 
+  override self.ToString() : string =
+    sprintf "%s %s" (self.Event.ToString()) (self.State.ToString())
+
+// ********************************************************************************************** //
 //  _   _ _     _
 // | | | (_)___| |_ ___  _ __ _   _
 // | |_| | / __| __/ _ \| '__| | | |
 // |  _  | \__ \ || (_) | |  | |_| |
 // |_| |_|_|___/\__\___/|_|   \__, |
 //                            |___/
+//
+// ********************************************************************************************** //
 
-and History<'a> (state : 'a) =
+and History (action: StoreAction) =
   let mutable depth = 10
   let mutable debug = false
   let mutable head = 1
-  let mutable values = [ state ]
+  let mutable values = [ action ]
 
   (* - - - - - - - - - - Properties - - - - - - - - - - *)
   member self.Debug
@@ -657,7 +839,7 @@ and History<'a> (state : 'a) =
     with get () = List.length values
 
   (* - - - - - - - - - - Methods - - - - - - - - - - *)
-  member self.Append (value : 'a) : unit =
+  member self.Append (value: StoreAction) : unit =
     head <- 0
     let newvalues = value :: values
     if (not debug) && List.length newvalues > depth then
@@ -665,7 +847,7 @@ and History<'a> (state : 'a) =
     else
       values <- newvalues
 
-  member self.Undo () : 'a option =
+  member self.Undo () : StoreAction option =
     let head' =
       if (head - 1) > (List.length values) then
         List.length values
@@ -677,7 +859,7 @@ and History<'a> (state : 'a) =
 
     List.tryItem head values
 
-  member self.Redo () : 'a option =
+  member self.Redo () : StoreAction option =
     let head' =
       if   head - 1 < 0
       then 0
@@ -688,12 +870,13 @@ and History<'a> (state : 'a) =
 
     List.tryItem head values
 
+// ********************************************************************************************** //
 //  ____  _
 // / ___|| |_ ___  _ __ ___
 // \___ \| __/ _ \| '__/ _ \
 //  ___) | || (_) | | |  __/
 // |____/ \__\___/|_|  \___|
-
+//
 // The store centrally manages all state changes and notifies interested
 // parties of changes to the carried state (e.g. views, socket transport).
 //
@@ -701,8 +884,11 @@ and History<'a> (state : 'a) =
 //
 // - time-traveleing debugger
 // - undo/redo
+//
+// ********************************************************************************************** //
 
-and Store<'a> (state : 'a)=
+and Store(state : State)=
+
   let reducer (ev : StateMachine) (state : State) =
     match ev with
     | AddCue                cue -> state.AddCue        cue
@@ -736,10 +922,13 @@ and Store<'a> (state : 'a)=
     | _                         -> state
 
   let mutable state = state
-  let mutable history =
-    new History<StoreAction<'a>>({ State = state; Event = Command(AppCommand.Reset) })
 
-  let mutable listeners : Listener<'a> list = []
+  let mutable history = new History {
+      State = state;
+      Event = Command(AppCommand.Reset);
+    }
+
+  let mutable listeners : Listener list = []
 
   // Notify all listeners of the StateMachine change
   member private store.Notify (ev : StateMachine) =
@@ -781,7 +970,7 @@ and Store<'a> (state : 'a)=
   (*
       Subscribe a callback to changes on the store.
     *)
-  member self.Subscribe (listener : Listener<'a>) =
+  member self.Subscribe (listener : Listener) =
     listeners <- listener :: listeners
 
   (*
@@ -805,13 +994,25 @@ and Store<'a> (state : 'a)=
         self.Notify log.Event |> ignore
       | _ -> ()
 
-and Listener<'a> = (Store<'a> -> StateMachine -> unit)
+// ********************************************************************************************** //
+//  _     _     _
+// | |   (_)___| |_ ___ _ __   ___ _ __
+// | |   | / __| __/ _ \ '_ \ / _ \ '__|
+// | |___| \__ \ ||  __/ | | |  __/ |
+// |_____|_|___/\__\___|_| |_|\___|_|
+//
+// ********************************************************************************************** //
 
+and Listener = Store -> StateMachine -> unit
+
+// ********************************************************************************************** //
 //  ____  _        _       __  __            _     _
 // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
 // \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
 //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
 // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
+//
+// ********************************************************************************************** //
 
 and StateMachine =
 
@@ -911,7 +1112,7 @@ and StateMachine =
     | RemoveSession session -> sprintf "RemoveSession %s" (string session)
 
     | Command    ev         -> sprintf "Command: %s"  (string ev)
-    | DataSnapshot str      -> sprintf "DataSnapshot: %s" str
+    | DataSnapshot state    -> sprintf "DataSnapshot: %A" state
     | LogMsg(level, msg)    -> sprintf "LogMsg: [%A] %s" level msg
 
 #if JAVASCRIPT
@@ -1108,8 +1309,10 @@ and StateMachine =
       |> Option.map Command
 
     | StateMachineTypeFB.DataSnapshotFB ->
-      let entry = fb.GetAppEvent(new DataSnapshotFB())
-      DataSnapshot entry.Data |> Some
+      let snapshot = fb.GetAppEvent(new DataSnapshotFB())
+      snapshot.GetData(new StateFB())
+      |> State.FromFB
+      |> Option.map DataSnapshot
 
     | _ -> None
 
@@ -1326,10 +1529,10 @@ and StateMachine =
       let log = LogMsgFB.CreateLogMsgFB(builder, level, msg)
       mkOffset StateMachineTypeFB.LogMsgFB log.Value
 
-    | DataSnapshot str ->
-      let data = builder.CreateString str
+    | DataSnapshot state ->
+      let statefb = state.ToOffset(builder)
       DataSnapshotFB.StartDataSnapshotFB(builder)
-      DataSnapshotFB.AddData(builder, data)
+      DataSnapshotFB.AddData(builder, statefb)
       let snapshot = DataSnapshotFB.EndDataSnapshotFB(builder)
       mkOffset StateMachineTypeFB.DataSnapshotFB snapshot.Value
 
@@ -1404,7 +1607,7 @@ and StateMachine =
 
     | Command           cmd -> add "Command" cmd
 
-    | DataSnapshot     data -> add "DataSnapshot" (Wrap data)
+    | DataSnapshot     data -> add "DataSnapshot" data
 
     | LogMsg (level, str) ->
       json |> addCase "LogMsg" |> addFields [| Wrap(string level); Wrap(str) |]
@@ -1452,7 +1655,7 @@ and StateMachine =
 
       | "Command"       -> parseSingle Command
 
-      | "DataSnapshot"  -> DataSnapshot (string fields.[0]) |> Some
+      | "DataSnapshot"  -> parseSingle DataSnapshot
 
       | "LogMsg" ->
         Json.parse fields.[0]

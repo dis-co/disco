@@ -107,11 +107,11 @@ module RaftIntegrationTests =
       let nodes = [| node1; node2 |]
 
       let log =
-        Some <| LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot "cccc",
-          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot "bbbb",
+        Some <| LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot State.Empty,
+          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot State.Empty,
             Some <| Configuration(Id.Create(), 5UL, 1UL, [| node1 |],
               Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
-                Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
+                Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot State.Empty)))))
 
       let depth = log |> Option.get |> LogEntry.depth |> int
       let path = mkTmpPath "test_save_restore_log_values_correctly"
@@ -156,11 +156,11 @@ module RaftIntegrationTests =
       let nodes = [| node1; node2 |]
 
       let log =
-        LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot "cccc",
-          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot "bbbb",
+        LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot State.Empty,
+          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot State.Empty,
             Some <| Configuration(Id.Create(), 5UL, 1UL, [| node1 |],
               Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
-                Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
+                Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot State.Empty)))))
         |> Log.fromEntries
 
       let config = Config.Create "default"
@@ -204,11 +204,11 @@ module RaftIntegrationTests =
       let nodes = [| node1; node2 |]
 
       let log =
-        LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot "cccc",
-          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot "bbbb",
+        LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot State.Empty,
+          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot State.Empty,
             Some <| Configuration(Id.Create(), 5UL, 1UL, [| node1 |],
               Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
-                Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot "aaaa")))))
+                Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot State.Empty)))))
 
       let count = int <| LogEntry.depth log
 

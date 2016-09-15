@@ -35,7 +35,7 @@ module PatchesView =
         ; IOBoxes = Dictionary<Id,IOBox>()
         }
 
-      let store : Store<State> = new Store<State>(State.Empty)
+      let store : Store = new Store(State.Empty)
       let view = new Patches.Root ()
       let controller = new ViewController<State,ClientContext> (view)
       let ctx = new ClientContext()
@@ -73,8 +73,8 @@ module PatchesView =
       patches.Add(patch1.Id, patch1)
       patches.Add(patch2.Id, patch2)
 
-      let store : Store<State> =
-        new Store<State>({ State.Empty with Patches = patches })
+      let store : Store =
+        new Store({ State.Empty with Patches = patches })
 
       let view = new Patches.Root ()
       let controller = new ViewController<State,ClientContext> (view)
@@ -120,8 +120,8 @@ module PatchesView =
       let patches = Dictionary<Id,Patch>()
       patches.Add(patch.Id, patch)
 
-      let store : Store<State> =
-        new Store<State>({ State.Empty with Patches = patches })
+      let store : Store =
+        new Store({ State.Empty with Patches = patches })
 
       let view = new Patches.Root ()
       let ctx = new ClientContext()
@@ -160,8 +160,8 @@ module PatchesView =
       let patches = Dictionary<Id,Patch>()
       patches.Add(patch.Id, patch)
 
-      let store : Store<State> =
-        new Store<State>({ State.Empty with Patches = patches })
+      let store : Store =
+        new Store({ State.Empty with Patches = patches })
 
       let view = new Patches.Root ()
       let ctx = new ClientContext()
@@ -212,8 +212,8 @@ module PatchesView =
       let slice : StringSliceD = { Index = 0UL; Value = value1 }
       let iobox = IOBox.String(elid, "url input", Id "0xb4d1d34", Array.empty, [| slice |])
 
-      let store : Store<State> =
-        new Store<State>({ State.Empty with Patches = patches })
+      let store : Store =
+        new Store({ State.Empty with Patches = patches })
 
       // render initial state
       let view = new Patches.Root()

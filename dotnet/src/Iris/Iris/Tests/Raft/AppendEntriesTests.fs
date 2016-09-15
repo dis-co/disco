@@ -168,7 +168,7 @@ module AppendEntries =
 
         let data =
           [| "one"; "two"; "three"; |]
-          |> Array.map DataSnapshot
+          |> Array.map (fun name -> AddCue { Id = Id name; Name = name; IOBoxes = [| |] })
 
         let peer = Node.create (Id.Create())
 
@@ -182,7 +182,7 @@ module AppendEntries =
           ; PrevLogIdx   = 1UL
           ; PrevLogTerm  = 1UL
           ; LeaderCommit = 5UL
-          ; Entries      = Log.make 2UL (DataSnapshot "four") |> Some
+          ; Entries      = Log.make 2UL (AddCue { Id = Id "four"; Name = "four"; IOBoxes = [| |] }) |> Some
           }
 
         let! response = receiveAppendEntries (Some peer.Id) newer
@@ -190,8 +190,8 @@ module AppendEntries =
 
         do! expectM "Should have 2 entries" 2UL numLogs
 
-        do! expectM "First should have 'one' value" (DataSnapshot "one") (getNth 1UL)
-        do! expectM "second should have 'four' value" (DataSnapshot "four") (getNth 2UL)
+        do! expectM "First should have 'one' value" (AddCue { Id = Id "one"; Name = "one"; IOBoxes = [| |] }) (getNth 1UL)
+        do! expectM "second should have 'four' value" (AddCue { Id = Id "four"; Name = "four"; IOBoxes = [| |] }) (getNth 2UL)
       }
       |> runWithRaft raft' cbs
       |> ignore
@@ -206,7 +206,7 @@ module AppendEntries =
 
       let data =
         [| "one"; "two"; "three"; |]
-        |> Array.map DataSnapshot
+        |> Array.map (fun name -> AddCue { Id = Id name; Name = name; IOBoxes = [| |] })
 
       let peer = Node.create (Id.Create())
       let raft' = defaultServer "string tango"
@@ -229,7 +229,7 @@ module AppendEntries =
         expect "Should have succeeded" true AppendRequest.succeeded response
         do! expectM "Should have 1 log entry" 1UL numLogs
         let! entry = getNth 1UL
-        expect "Should have correct value" (Some (DataSnapshot "one")) id entry
+        expect "Should have correct value" (Some (AddCue { Id = Id "one"; Name = "one"; IOBoxes = [| |] })) id entry
       }
       |> runWithRaft raft' cbs
       |> ignore
@@ -239,8 +239,8 @@ module AppendEntries =
       let peer = Node.create (Id.Create())
 
       let log =
-        LogEntry((Id.Create()), 2UL, 1UL, DataSnapshot "One",
-            Some <| LogEntry((Id.Create()), 2UL, 1UL, DataSnapshot "Two", None))
+        LogEntry((Id.Create()), 2UL, 1UL, DataSnapshot State.Empty,
+            Some <| LogEntry((Id.Create()), 2UL, 1UL, DataSnapshot State.Empty, None))
 
       raft {
         do! addNodeM peer
@@ -265,7 +265,7 @@ module AppendEntries =
     testCase "follower recv appendentries does not add dupe entries already in log" <| fun _ ->
       let peer = Node.create (Id.Create())
 
-      let entry = LogEntry((Id.Create()), 2UL, 1UL, DataSnapshot "one", None)
+      let entry = LogEntry((Id.Create()), 2UL, 1UL, DataSnapshot State.Empty, None)
       let log = Log.fromEntries entry
 
       let next =
@@ -290,7 +290,7 @@ module AppendEntries =
         expect "Should still be a success" true AppendRequest.succeeded response
         do! expectM "Should have log count 1" 1UL numLogs
 
-        let log'' = Log.append (Log.make 1UL (DataSnapshot "two")) log
+        let log'' = Log.append (Log.make 1UL (DataSnapshot State.Empty)) log
         let msg = { next with Entries = log''.Data }
 
         let! response = receiveAppendEntries (Some peer.Id) msg
@@ -305,10 +305,10 @@ module AppendEntries =
       let peer = Node.create (Id.Create())
 
       let log =
-        LogEntry((Id.Create()), 0UL, 1UL, DataSnapshot "",
-            Some <| LogEntry((Id.Create()), 0UL, 1UL, DataSnapshot "",
-                Some <| LogEntry((Id.Create()), 0UL, 1UL, DataSnapshot "",
-                    Some <| LogEntry((Id.Create()), 0UL, 1UL, DataSnapshot "", None))))
+        LogEntry((Id.Create()), 0UL, 1UL, DataSnapshot State.Empty,
+            Some <| LogEntry((Id.Create()), 0UL, 1UL, DataSnapshot State.Empty,
+                Some <| LogEntry((Id.Create()), 0UL, 1UL, DataSnapshot State.Empty,
+                    Some <| LogEntry((Id.Create()), 0UL, 1UL, DataSnapshot State.Empty, None))))
 
       let msg =
         { Term = 1UL
@@ -333,10 +333,10 @@ module AppendEntries =
       let peer = Node.create (Id.Create())
 
       let log =
-        LogEntry((Id.Create()), 0UL, 1UL,  DataSnapshot "",
-          Some <| LogEntry((Id.Create()), 0UL, 1UL,  DataSnapshot "",
-              Some <| LogEntry((Id.Create()), 0UL, 1UL,  DataSnapshot "",
-                  Some <| LogEntry((Id.Create()), 0UL, 1UL,  DataSnapshot "", None))))
+        LogEntry((Id.Create()), 0UL, 1UL,  DataSnapshot State.Empty,
+          Some <| LogEntry((Id.Create()), 0UL, 1UL,  DataSnapshot State.Empty,
+              Some <| LogEntry((Id.Create()), 0UL, 1UL,  DataSnapshot State.Empty,
+                  Some <| LogEntry((Id.Create()), 0UL, 1UL,  DataSnapshot State.Empty, None))))
 
       let msg =
         { Term = 1UL
@@ -361,7 +361,7 @@ module AppendEntries =
     testCase "follower recv appendentries failure includes current idx" <| fun _ ->
       let peer = Node.create (Id.Create())
 
-      let log id = LogEntry(id, 0UL, 1UL, DataSnapshot "", None)
+      let log id = LogEntry(id, 0UL, 1UL, DataSnapshot State.Empty, None)
 
       let msg =
         { Term = 0UL

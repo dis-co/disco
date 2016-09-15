@@ -19,7 +19,8 @@ open Iris.Serialization.Raft
 [<CustomEquality>]
 [<CustomComparison>]
 type User =
-  { UserName:  Name
+  { Id:        Id
+  ; UserName:  Name
   ; FirstName: Name
   ; LastName:  Name
   ; Email:     Email
@@ -36,6 +37,7 @@ type User =
     let mutable hash = 42
 #if JAVASCRIPT
     let mutable hash = 42
+    hash <- (hash * 7) + hashCode (string me.Id)
     hash <- (hash * 7) + hashCode me.UserName
     hash <- (hash * 7) + hashCode me.FirstName
     hash <- (hash * 7) + hashCode me.LastName
@@ -43,6 +45,7 @@ type User =
     hash <- (hash * 7) + hashCode (string me.Joined)
     hash <- (hash * 7) + hashCode (string me.Created)
 #else
+    hash <- (hash * 7) + me.Id.GetHashCode()
     hash <- (hash * 7) + me.UserName.GetHashCode()
     hash <- (hash * 7) + me.FirstName.GetHashCode()
     hash <- (hash * 7) + me.LastName.GetHashCode()
@@ -56,6 +59,7 @@ type User =
     match o with
     | :? User ->
       let other = o :?> User
+      me.Id               = other.Id              &&
       me.UserName         = other.UserName        &&
       me.FirstName        = other.FirstName       &&
       me.LastName         = other.LastName        &&
@@ -104,6 +108,7 @@ type User =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
+    let id        = self.Id        |> string |> builder.CreateString
     let username  = self.UserName  |> builder.CreateString
     let firstname = self.FirstName |> builder.CreateString
     let lastname  = self.LastName  |> builder.CreateString
@@ -111,6 +116,7 @@ type User =
     let joined    = self.Joined    |> string |> builder.CreateString
     let created   = self.Created   |> string |> builder.CreateString
     UserFB.StartUserFB(builder)
+    UserFB.AddId(builder, id)
     UserFB.AddUserName(builder, username)
     UserFB.AddFirstName(builder, firstname)
     UserFB.AddLastName(builder, lastname)
@@ -123,7 +129,8 @@ type User =
 
   static member FromFB(fb: UserFB) : User option =
     try
-      { UserName  = fb.UserName
+      { Id        = Id fb.Id
+      ; UserName  = fb.UserName
       ; FirstName = fb.FirstName
       ; LastName  = fb.LastName
       ; Email     = fb.Email
@@ -147,6 +154,7 @@ type User =
 
   member self.ToJToken() =
     new JObject()
+    |> addString "Id"        (string self.Id)
     |> addString "UserName"  (string self.UserName)
     |> addString "FirstName"  self.FirstName
     |> addString "LastName"   self.LastName
@@ -159,7 +167,8 @@ type User =
 
   static member FromJToken(token: JToken) : User option =
     try
-      { UserName  = (string token.["UserName"])
+      { Id        = Id (string token.["Id"])
+      ; UserName  = (string token.["UserName"])
       ; FirstName = (string token.["FirstName"])
       ; LastName  = (string token.["LastName"])
       ; Email     = (string token.["Email"])

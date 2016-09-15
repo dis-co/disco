@@ -11,18 +11,18 @@ public sealed class DataSnapshotFB : Table {
   public static DataSnapshotFB GetRootAsDataSnapshotFB(ByteBuffer _bb, DataSnapshotFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
   public DataSnapshotFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
-  public string Data { get { int o = __offset(4); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetDataBytes() { return __vector_as_arraysegment(4); }
+  public StateFB Data { get { return GetData(new StateFB()); } }
+  public StateFB GetData(StateFB obj) { int o = __offset(4); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
 
   public static Offset<DataSnapshotFB> CreateDataSnapshotFB(FlatBufferBuilder builder,
-      StringOffset DataOffset = default(StringOffset)) {
+      Offset<StateFB> DataOffset = default(Offset<StateFB>)) {
     builder.StartObject(1);
     DataSnapshotFB.AddData(builder, DataOffset);
     return DataSnapshotFB.EndDataSnapshotFB(builder);
   }
 
   public static void StartDataSnapshotFB(FlatBufferBuilder builder) { builder.StartObject(1); }
-  public static void AddData(FlatBufferBuilder builder, StringOffset DataOffset) { builder.AddOffset(0, DataOffset.Value, 0); }
+  public static void AddData(FlatBufferBuilder builder, Offset<StateFB> DataOffset) { builder.AddOffset(0, DataOffset.Value, 0); }
   public static Offset<DataSnapshotFB> EndDataSnapshotFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
     return new Offset<DataSnapshotFB>(o);

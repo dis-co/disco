@@ -120,7 +120,7 @@ module Log =
 
   let log_resFold_short_circuit_test =
     testCase "Should short-circuit when folder fails" <| fun _ ->
-      let sm = DataSnapshot "oooooh :WARNING::"
+      let sm = AddCue { Id = Id.Create(); Name = "Wonderful"; IOBoxes = [| |] }
       let log =
         Log.empty
         |> Log.append (Log.make 1UL defSM)
@@ -177,27 +177,28 @@ module Log =
 
   let log_get_entries_until_test =
     testCase "Get all entries until (and including) a given index" <| fun _ ->
+      let cues : Cue array =
+        [| "one"; "two"; "three"; "four"; "five"; "six" |]
+        |> Array.map (fun name -> { Id = Id.Create(); Name = name; IOBoxes = [| |] })
+
       let getData log =
         LogEntry.map
           (fun entry ->
             match LogEntry.data entry with
-            | Some data ->
-              match data with
-              | DataSnapshot str -> str
-              | _ -> "hahahah"
-            | None -> "oooops")
+            | Some data -> data
+            | None      -> failwith "oooops")
           log
 
       Log.empty
-      |> Log.append (Log.make 1UL (DataSnapshot "one"))
-      |> Log.append (Log.make 1UL (DataSnapshot "two"))
-      |> Log.append (Log.make 1UL (DataSnapshot "three"))
-      |> Log.append (Log.make 1UL (DataSnapshot "four"))
-      |> Log.append (Log.make 1UL (DataSnapshot "five"))
-      |> Log.append (Log.make 1UL (DataSnapshot "six"))
+      |> Log.append (Log.make 1UL (AddCue cues.[0]))
+      |> Log.append (Log.make 1UL (AddCue cues.[1]))
+      |> Log.append (Log.make 1UL (AddCue cues.[2]))
+      |> Log.append (Log.make 1UL (AddCue cues.[3]))
+      |> Log.append (Log.make 1UL (AddCue cues.[4]))
+      |> Log.append (Log.make 1UL (AddCue cues.[5]))
       |> Log.until 4UL
       |> assume "Should have 3 logs" 3UL (Option.get >> LogEntry.depth)
-      |> assume "Should have log with these values" ["six"; "five"; "four"] (Option.get >> getData)
+      |> assume "Should have log with these values" [AddCue cues.[5]; AddCue cues.[4]; AddCue cues.[3]] (Option.get >> getData)
       |> ignore
 
   let log_concat_ensure_no_duplicate_entries =
@@ -211,8 +212,8 @@ module Log =
       let idx2 = 2UL
 
       let entries =
-        LogEntry(id2,idx2,term,DataSnapshot "two",
-                 Some <| LogEntry(id1,idx1,term,DataSnapshot "one",None))
+        LogEntry(id2,idx2,term,DataSnapshot State.Empty,
+                 Some <| LogEntry(id1,idx1,term,DataSnapshot State.Empty,None))
 
       let log = Log.fromEntries entries
 
@@ -229,8 +230,8 @@ module Log =
       let idx2 = 2UL
 
       let entries =
-        LogEntry(id2,idx2,term,DataSnapshot "two",
-                 Some <| LogEntry(id1,idx1,term,DataSnapshot "one",None))
+        LogEntry(id2,idx2,term,DataSnapshot State.Empty,
+                 Some <| LogEntry(id1,idx1,term,DataSnapshot State.Empty,None))
 
       let log = Log.fromEntries entries
 
@@ -249,15 +250,15 @@ module Log =
       let idx3 = 3UL
 
       let entires =
-        LogEntry(id2,idx2,term,DataSnapshot "two",
-                 Some <| LogEntry(id1,idx1,term,DataSnapshot "one",None))
+        LogEntry(id2,idx2,term,DataSnapshot State.Empty,
+                 Some <| LogEntry(id1,idx1,term,DataSnapshot State.Empty,None))
 
       let log = Log.fromEntries entires
 
       let newer =
-        LogEntry(id3,idx3,term,DataSnapshot "three",
-                 Some <| LogEntry(id2,idx2,term,DataSnapshot "two",
-                                  Some <| LogEntry(id1,idx1,term,DataSnapshot "one",None)))
+        LogEntry(id3,idx3,term,DataSnapshot State.Empty,
+                 Some <| LogEntry(id2,idx2,term,DataSnapshot State.Empty,
+                                  Some <| LogEntry(id1,idx1,term,DataSnapshot State.Empty,None)))
 
       Log.append newer log
       |> assume "Should have length 3" 3UL Log.length
@@ -268,8 +269,8 @@ module Log =
     testCase "snapshot remembers last state" <| fun _ ->
       let term = 8UL
       let data =
-        [ "one"; "two"; "three"; "four" ]
-        |> List.map DataSnapshot
+        [ for i in 0 .. 3 do
+            yield DataSnapshot State.Empty ]
 
       let nodes =
         [ for n in 0UL .. 5UL do
@@ -279,7 +280,7 @@ module Log =
       let log =
         List.fold (fun l t -> Log.append (Log.make term t) l) Log.empty data
 
-      Log.snapshot nodes (DataSnapshot "four") log
+      Log.snapshot nodes (DataSnapshot State.Empty) log
       |> assume "Should have correct lastTerm" (Some term) Log.lastTerm
       |> expect "Should have correct lastIndex" (Some <| Log.index log) Log.lastIndex
 
@@ -288,19 +289,19 @@ module Log =
       let num = 30UL
 
       [ for n in 1UL .. num do
-          yield DataSnapshot (string n) ]
+          yield AddCue { Id = Id (string n); Name = string n; IOBoxes = [| |] } ]
       |> List.fold (fun m s -> Log.append (Log.make 0UL s) m) Log.empty
       |> assume "Should be at correct index" num                        Log.length
       |> assume "Should pick correct item"   16UL                      (Log.untilExcluding 15UL >> Option.get >> LogEntry.last >> LogEntry.index)
-      |> assume "Should have correct index" (DataSnapshot "16" |> Some) (Log.untilExcluding 15UL >> Option.get >> LogEntry.last >> LogEntry.data)
-      |> assume "Should have correct index" (DataSnapshot "15" |> Some) (Log.until 15UL >> Option.get >> LogEntry.last >> LogEntry.data)
+      |> assume "Should have correct index" (AddCue { Id = Id "16"; Name = "16"; IOBoxes = [| |] } |> Some) (Log.untilExcluding 15UL >> Option.get >> LogEntry.last >> LogEntry.data)
+      |> assume "Should have correct index" (AddCue { Id = Id "15"; Name = "15"; IOBoxes = [| |] } |> Some) (Log.until 15UL >> Option.get >> LogEntry.last >> LogEntry.data)
       |> ignore
 
   let log_append_should_work_with_snapshots_too =
     testCase "append should work with snapshots too" <| fun _ ->
       let log =
         Log.empty
-        |> Log.append (Snapshot(Id.Create(), 0UL, 0UL, 9UL, 1UL, Array.empty, DataSnapshot "hello"))
+        |> Log.append (Snapshot(Id.Create(), 0UL, 0UL, 9UL, 1UL, Array.empty, DataSnapshot State.Empty))
 
       expect "Log should be size 1" 1UL Log.length log
 
@@ -340,7 +341,7 @@ module Log =
 
       let log =
         [ for n in 0 .. (n - 1) do
-            yield (DataSnapshot (string n)) ]
+            yield DataSnapshot State.Empty ]
         |> List.fold (fun m n -> Log.append (Log.make 0UL n) m) Log.empty
 
       expect "should have correct depth" (uint64 n) Log.length log

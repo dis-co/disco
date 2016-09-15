@@ -536,9 +536,9 @@ let forceElection appState cbs =
   |> writeTVar appState
   |> atomically
 
-let prepareSnapshot appState =
+let prepareSnapshot appState snapshot =
   let state = readTVar appState |> atomically
-  createSnapshot (DataSnapshot "snip snap snapshot") state.Raft
+  createSnapshot (DataSnapshot snapshot) state.Raft
 
 let resetConnections (connections: Map<Id,Zmq.Req>) =
   Map.iter (fun _ sock -> dispose sock) connections

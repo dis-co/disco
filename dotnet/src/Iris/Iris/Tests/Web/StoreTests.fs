@@ -12,14 +12,14 @@ module Store =
   open Iris.Web.Core
   open Iris.Web.Tests
 
-  let withStore (wrap : Patch -> Store<State> -> unit) =
+  let withStore (wrap : Patch -> Store -> unit) =
     let patch : Patch =
       { Id = Id "0xb4d1d34"
       ; Name = "patch-1"
       ; IOBoxes = Dictionary<Id,IOBox>()
       }
 
-    let store : Store<State> = new Store<State>(State.Empty)
+    let store : Store = new Store(State.Empty)
     wrap patch store
 
   let main () =
@@ -301,7 +301,8 @@ module Store =
       test "should add a user to the store" <| fun finish ->
 
         let user : User =
-          { UserName = "krgn"
+          { Id = Id.Create()
+          ; UserName = "krgn"
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
@@ -325,7 +326,8 @@ module Store =
       test "should update a user already in the store" <| fun finish ->
 
         let user : User =
-          { UserName = "krgn"
+          { Id = Id.Create()
+          ; UserName = "krgn"
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
@@ -342,7 +344,7 @@ module Store =
         store.Dispatch <| UpdateUser { user with FirstName = newname }
 
         equals 1 store.State.Users.Count
-        equals newname store.State.Users.[user.UserName].FirstName
+        equals newname store.State.Users.[user.Id].FirstName
 
         finish ()
 
@@ -351,7 +353,8 @@ module Store =
       test "should not add user to the store on update when missing" <| fun finish ->
 
         let user : User =
-          { UserName = "krgn"
+          { Id = Id.Create()
+          ; UserName = "krgn"
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
@@ -371,7 +374,8 @@ module Store =
       test "should remove user from the store" <| fun finish ->
 
         let user : User =
-          { UserName = "krgn"
+          { Id = Id.Create()
+          ; UserName = "krgn"
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
@@ -398,7 +402,7 @@ module Store =
       test "should add a session to the store" <| fun finish ->
 
         let session : Session =
-          { SessionId = Id.Create()
+          { Id = Id.Create()
           ; UserName = "Karsten"
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
@@ -420,7 +424,7 @@ module Store =
       test "should update a Session already in the store" <| fun finish ->
 
         let session : Session =
-          { SessionId = Id.Create()
+          { Id = Id.Create()
           ; UserName = "Karsten"
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
@@ -435,7 +439,7 @@ module Store =
         store.Dispatch <| UpdateSession { session with UserName = newname }
 
         equals 1 store.State.Sessions.Count
-        equals newname store.State.Sessions.[session.SessionId].UserName
+        equals newname store.State.Sessions.[session.Id].UserName
 
         finish ()
 
@@ -444,7 +448,7 @@ module Store =
       test "should not add Session to the store on update when missing" <| fun finish ->
 
         let session : Session =
-          { SessionId = Id.Create()
+          { Id = Id.Create()
           ; UserName = "Karsten"
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
@@ -462,7 +466,7 @@ module Store =
       test "should remove Session from the store" <| fun finish ->
 
         let session : Session =
-          { SessionId = Id.Create()
+          { Id = Id.Create()
           ; UserName = "Karsten"
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }

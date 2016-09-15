@@ -12,7 +12,7 @@ open Iris.Serialization.Raft
 #endif
 
 type Session =
-  { SessionId: Id
+  { Id: Id
   ; UserName:  UserName
   ; IpAddress: IpAddress
   ; UserAgent: UserAgent
@@ -30,7 +30,7 @@ type Session =
 
   static member FromFB(fb: SessionFB) : Session option =
     try
-      { SessionId = Id fb.SessionId
+      { Id = Id fb.Id
       ; UserName  = fb.UserName
       ; IpAddress = IpAddress.Parse fb.IpAddress
       ; UserAgent = fb.UserAgent
@@ -46,12 +46,12 @@ type Session =
     |> Session.FromFB
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let session = self.SessionId |> string |> builder.CreateString
+    let session = self.Id |> string |> builder.CreateString
     let name = self.UserName |> builder.CreateString
     let ip = self.IpAddress |> string |> builder.CreateString
     let ua = self.UserAgent |> string |> builder.CreateString
     SessionFB.StartSessionFB(builder)
-    SessionFB.AddSessionId(builder, session)
+    SessionFB.AddId(builder, session)
     SessionFB.AddUserName(builder, name)
     SessionFB.AddIpAddress(builder, ip)
     SessionFB.AddUserAgent(builder, ua)
@@ -67,7 +67,7 @@ type Session =
 
   member self.ToJToken() =
     new JObject()
-    |> addString "SessionId" (string self.SessionId)
+    |> addString "Id"         (string self.Id)
     |> addString "UserName"   self.UserName
     |> addString "IpAddress" (string  self.IpAddress)
     |> addString "UserAgent"  self.UserAgent
@@ -77,7 +77,7 @@ type Session =
 
   static member FromJToken(token: JToken) : Session option =
     try
-      { SessionId = Id (string token.["SessionId"])
+      { Id        = Id (string token.["Id"])
       ; UserName  = (string token.["UserName"])
       ; IpAddress = IpAddress.Parse (string token.["IpAddress"])
       ; UserAgent = (string token.["UserAgent"])
