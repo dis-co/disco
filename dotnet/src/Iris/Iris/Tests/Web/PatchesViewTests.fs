@@ -47,8 +47,8 @@ module PatchesView =
       resetPlugins()
       addString2Plug ()
 
-      let pid1 = Id "patch-2"
-      let pid2 = Id "patch-3"
+      let pid1 = Id "patch-1"
+      let pid2 = Id "patch-2"
 
       let patch1 : Patch =
         { Id = pid1
@@ -64,8 +64,8 @@ module PatchesView =
 
       let patches =
         Map.empty
-        |> Map.add patch1.Id patch1
-        |> Map.add patch2.Id patch2
+        |> Map.add pid1 patch1
+        |> Map.add pid2 patch2
 
       let store : Store =
         new Store({ State.Empty with Patches = patches })
@@ -78,12 +78,16 @@ module PatchesView =
       equals true (getById (string pid1) |> Option.isSome)
       equals true (getById (string pid2) |> Option.isSome)
 
+      printfn "state before: %A" store.State
+
       store.Dispatch <| RemovePatch(patch1)
 
-      equals false (store.State.Patches.ContainsKey patch1.Id)
-      equals true  (store.State.Patches.ContainsKey patch2.Id)
+      equals false (store.State.Patches.ContainsKey pid1)
+      equals true  (store.State.Patches.ContainsKey pid2)
 
       controller.Render store.State ctx
+
+      printfn "state after: %A" store.State
 
       equals None (getById (string pid1))
       equals true (getById (string pid2) |> Option.isSome)

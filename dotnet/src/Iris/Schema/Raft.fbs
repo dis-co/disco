@@ -248,6 +248,7 @@ table CueFB {
       IOBoxes: [IOBoxFB];
 }
 
+
 //   ____           _     _     _
 //  / ___|   _  ___| |   (_)___| |_
 // | |  | | | |/ _ \ |   | / __| __|
@@ -729,3 +730,4 @@ table RaftMsgFB {
 }
 
 root_type RaftMsgFB;
+root_type CueFB;

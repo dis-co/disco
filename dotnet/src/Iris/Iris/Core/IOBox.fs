@@ -616,49 +616,76 @@ type IOBox =
     static member FromFB(fb: IOBoxFB) : IOBox option =
       match fb.IOBoxType with
       | IOBoxTypeFB.StringBoxFB ->
-        fb.GetIOBox(new StringBoxFB())
-        |> StringBoxD.FromFB
-        |> Option.map StringBox
+        let v = fb.IOBox<StringBoxFB>()
+        if v.HasValue then
+          v.Value
+          |> StringBoxD.FromFB
+          |> Option.map StringBox
+        else None
 
       | IOBoxTypeFB.IntBoxFB ->
-        fb.GetIOBox(new IntBoxFB())
-        |> IntBoxD.FromFB
-        |> Option.map IntBox
+        let v = fb.IOBox<IntBoxFB>()
+        if v.HasValue then
+          v.Value
+          |> IntBoxD.FromFB
+          |> Option.map IntBox
+        else None
 
       | IOBoxTypeFB.FloatBoxFB ->
-        fb.GetIOBox(new FloatBoxFB())
-        |> FloatBoxD.FromFB
-        |> Option.map FloatBox
+        let v = fb.IOBox<FloatBoxFB>()
+        if v.HasValue then
+          v.Value
+          |> FloatBoxD.FromFB
+          |> Option.map FloatBox
+        else None
 
       | IOBoxTypeFB.DoubleBoxFB ->
-        fb.GetIOBox(new DoubleBoxFB())
-        |> DoubleBoxD.FromFB
-        |> Option.map DoubleBox
+        let v = fb.IOBox<DoubleBoxFB>()
+        if v.HasValue then
+          v.Value
+          |> DoubleBoxD.FromFB
+          |> Option.map DoubleBox
+        else None
 
       | IOBoxTypeFB.BoolBoxFB ->
-        fb.GetIOBox(new BoolBoxFB())
-        |> BoolBoxD.FromFB
-        |> Option.map BoolBox
+        let v = fb.IOBox<BoolBoxFB>()
+        if v.HasValue then
+          v.Value
+          |> BoolBoxD.FromFB
+          |> Option.map BoolBox
+        else None
 
       | IOBoxTypeFB.ByteBoxFB ->
-        fb.GetIOBox(new ByteBoxFB())
-        |> ByteBoxD.FromFB
-        |> Option.map ByteBox
+        let v = fb.IOBox<ByteBoxFB>()
+        if v.HasValue then
+          v.Value
+          |> ByteBoxD.FromFB
+          |> Option.map ByteBox
+        else None
 
       | IOBoxTypeFB.EnumBoxFB ->
-        fb.GetIOBox(new EnumBoxFB())
-        |> EnumBoxD.FromFB
-        |> Option.map EnumBox
+        let v = fb.IOBox<EnumBoxFB>()
+        if v.HasValue then
+          v.Value
+          |> EnumBoxD.FromFB
+          |> Option.map EnumBox
+        else None
 
       | IOBoxTypeFB.ColorBoxFB ->
-        fb.GetIOBox(new ColorBoxFB())
-        |> ColorBoxD.FromFB
-        |> Option.map ColorBox
+        let v = fb.IOBox<ColorBoxFB>()
+        if v.HasValue then
+          v.Value
+          |> ColorBoxD.FromFB
+          |> Option.map ColorBox
+        else None
 
       | IOBoxTypeFB.CompoundBoxFB ->
-        fb.GetIOBox(new CompoundBoxFB())
-        |> CompoundBoxD.FromFB
-        |> Option.map Compound
+        let v = fb.IOBox<CompoundBoxFB>()
+        if v.HasValue then
+          v.Value
+          |> CompoundBoxD.FromFB
+          |> Option.map Compound
+        else None
 
       | _ -> None
 
@@ -774,13 +801,15 @@ and BoolBoxD =
     let slices = Array.zeroCreate fb.SlicesLength
 
     for i in 0 .. (fb.TagsLength - 1) do
-      tags.[i] <- fb.GetTags(i)
+      tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.SlicesLength - 1) do
-      fb.GetSlices(i)
-      |> BoolSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
+      let slice = fb.Slices(i)
+      if slice.HasValue then
+        slice.Value
+        |> BoolSliceD.FromFB
+        |> Option.map (fun slice -> slices.[i] <- slice)
+        |> ignore
 
     Behavior.FromFB fb.Behavior
     |> Option.map
@@ -972,13 +1001,15 @@ and IntBoxD =
     let unit = if isNull fb.Unit then "" else fb.Unit
 
     for i in 0 .. (fb.TagsLength - 1) do
-      tags.[i] <- fb.GetTags(i)
+      tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.SlicesLength - 1) do
-      fb.GetSlices(i)
-      |> IntSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
+      let slice = fb.Slices(i)
+      if slice.HasValue then
+        slice.Value
+        |> IntSliceD.FromFB
+        |> Option.map (fun slice -> slices.[i] <- slice)
+        |> ignore
 
     try
       { Id         = Id fb.Id
@@ -1178,13 +1209,15 @@ and FloatBoxD =
     let unit = if isNull fb.Unit then "" else fb.Unit
 
     for i in 0 .. (fb.TagsLength - 1) do
-      tags.[i] <- fb.GetTags(i)
+      tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.SlicesLength - 1) do
-      fb.GetSlices(i)
-      |> FloatSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
+      let slice = fb.Slices(i)
+      if slice.HasValue then
+        slice.Value
+        |> FloatSliceD.FromFB
+        |> Option.map (fun slice -> slices.[i] <- slice)
+        |> ignore
 
     try
       { Id         = Id fb.Id
@@ -1389,13 +1422,15 @@ and DoubleBoxD =
     let unit = if isNull fb.Unit then "" else fb.Unit
 
     for i in 0 .. (fb.TagsLength - 1) do
-      tags.[i] <- fb.GetTags(i)
+      tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.SlicesLength - 1) do
-      fb.GetSlices(i)
-      |> DoubleSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
+      let slice = fb.Slices(i)
+      if slice.HasValue then
+        slice.Value
+        |> DoubleSliceD.FromFB
+        |> Option.map (fun slice -> slices.[i] <- slice)
+        |> ignore
 
     try
       { Id         = Id fb.Id
@@ -1587,13 +1622,15 @@ and ByteBoxD =
     let slices = Array.zeroCreate fb.SlicesLength
 
     for i in 0 .. (fb.TagsLength - 1) do
-      tags.[i] <- fb.GetTags(i)
+      tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.SlicesLength - 1) do
-      fb.GetSlices(i)
-      |> ByteSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
+      let slice = fb.Slices(i)
+      if slice.HasValue then
+        slice.Value
+        |> ByteSliceD.FromFB
+        |> Option.map (fun slice -> slices.[i] <- slice)
+        |> ignore
 
     try
       { Id         = Id fb.Id
@@ -1684,7 +1721,7 @@ and ByteSliceD =
       let values = Array.zeroCreate fb.ValueLength
 
       for i in 0 .. (fb.ValueLength - 1) do
-        values.[i] <- fb.GetValue(i)
+        values.[i] <- fb.Value(i)
 
       { Index = fb.Index
       ; Value = values }
@@ -1800,17 +1837,21 @@ and EnumBoxD =
     let properties = Array.zeroCreate fb.PropertiesLength
 
     for i in 0 .. (fb.TagsLength - 1) do
-      tags.[i] <- fb.GetTags(i)
+      tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.PropertiesLength - 1) do
-      let prop = fb.GetProperties(i)
-      properties.[i] <- { Key = prop.Key; Value = prop.Value }
+      let prop = fb.Properties(i)
+      if prop.HasValue then
+        let value = prop.Value
+        properties.[i] <- { Key = value.Key; Value = value.Value }
 
     for i in 0 .. (fb.SlicesLength - 1) do
-      fb.GetSlices(i)
-      |> EnumSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
+      let slice = fb.Slices(i)
+      if slice.HasValue then
+        slice.Value
+        |> EnumSliceD.FromFB
+        |> Option.map (fun slice -> slices.[i] <- slice)
+        |> ignore
 
     try
       { Id         = Id fb.Id
@@ -1918,16 +1959,16 @@ and EnumSliceD =
     EnumSliceFB.EndEnumSliceFB(builder)
 
   static member FromFB(fb: EnumSliceFB) : EnumSliceD option =
-    let property =
-      let kv = fb.GetValue(new EnumPropertyFB())
-      { Key = kv.Key; Value = kv.Value }
-
-    try
-      { Index = fb.Index
-      ; Value = property }
-      |> Some
-    with
-      | _ -> None
+    let nullable = fb.Value
+    if nullable.HasValue then
+      let prop = nullable.Value
+      try
+        { Index = fb.Index
+        ; Value = { Key = prop.Key; Value = prop.Value } }
+        |> Some
+      with
+        | _ -> None
+    else None
 
   member self.ToBytes() : byte array = Binary.buildBuffer self
 
@@ -2016,13 +2057,15 @@ and ColorBoxD =
     let slices = Array.zeroCreate fb.SlicesLength
 
     for i in 0 .. (fb.TagsLength - 1) do
-      tags.[i] <- fb.GetTags(i)
+      tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.SlicesLength - 1) do
-      fb.GetSlices(i)
-      |> ColorSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
+      let slice = fb.Slices(i)
+      if slice.HasValue then
+        slice.Value
+        |> ColorSliceD.FromFB
+        |> Option.map (fun slice -> slices.[i] <- slice)
+        |> ignore
 
     try
       { Id     = Id fb.Id
@@ -2108,8 +2151,11 @@ and ColorSliceD =
     ColorSliceFB.EndColorSliceFB(builder)
 
   static member FromFB(fb: ColorSliceFB) : ColorSliceD option =
-    ColorSpace.FromFB fb.Value
-    |> Option.map (fun color -> { Index = fb.Index; Value = color })
+    let nullable = fb.Value
+    if nullable.HasValue then
+      ColorSpace.FromFB nullable.Value
+      |> Option.map (fun color -> { Index = fb.Index; Value = color })
+    else None
 
   member self.ToColors() : byte array = Binary.buildBuffer self
 
@@ -2211,13 +2257,15 @@ and StringBoxD =
     let mask = if isNull fb.FileMask then None else Some fb.FileMask
 
     for i in 0 .. (fb.TagsLength - 1) do
-      tags.[i] <- fb.GetTags(i)
+      tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.SlicesLength - 1) do
-      fb.GetSlices(i)
-      |> StringSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
+      let slice = fb.Slices(i)
+      if slice.HasValue then
+        slice.Value
+        |> StringSliceD.FromFB
+        |> Option.map (fun slice -> slices.[i] <- slice)
+        |> ignore
 
     StringType.FromFB fb.StringType
     |> Option.map
@@ -2416,13 +2464,15 @@ and CompoundBoxD =
     let slices = Array.zeroCreate fb.SlicesLength
 
     for i in 0 .. (fb.TagsLength - 1) do
-      tags.[i] <- fb.GetTags(i)
+      tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.SlicesLength - 1) do
-      fb.GetSlices(i)
-      |> CompoundSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
+      let slice = fb.Slices(i)
+      if slice.HasValue then
+        slice.Value
+        |> CompoundSliceD.FromFB
+        |> Option.map (fun slice -> slices.[i] <- slice)
+        |> ignore
 
     try
       { Id         = Id fb.Id
@@ -2513,10 +2563,12 @@ and CompoundSliceD =
     let ioboxes = Array.zeroCreate fb.ValueLength
 
     for i in 0 .. (fb.ValueLength - 1) do
-      fb.GetValue(i)
-      |> IOBox.FromFB
-      |> Option.map (fun iobox -> ioboxes.[i] <- iobox)
-      |> ignore
+      let nullable = fb.Value(i)
+      if nullable.HasValue then
+        nullable.Value
+        |> IOBox.FromFB
+        |> Option.map (fun iobox -> ioboxes.[i] <- iobox)
+        |> ignore
 
     try
       { Index = fb.Index
@@ -2758,50 +2810,76 @@ and Slice =
   static member FromFB(fb: SliceFB) : Slice option =
     match fb.SliceType with
     | SliceTypeFB.StringSliceFB   ->
-      fb.GetSlice(new StringSliceFB())
-      |> StringSliceD.FromFB
-      |> Option.map StringSlice
+      let slice = fb.Slice<StringSliceFB>()
+      if slice.HasValue then
+        slice.Value
+        |> StringSliceD.FromFB
+        |> Option.map StringSlice
+      else None
 
     | SliceTypeFB.IntSliceFB      ->
-      fb.GetSlice(new IntSliceFB())
-      |> IntSliceD.FromFB
-      |> Option.map IntSlice
+      let slice = fb.Slice<IntSliceFB>()
+      if slice.HasValue then
+        slice.Value
+        |> IntSliceD.FromFB
+        |> Option.map IntSlice
+      else None
 
     | SliceTypeFB.FloatSliceFB    ->
-      fb.GetSlice(new FloatSliceFB())
-      |> FloatSliceD.FromFB
-      |> Option.map FloatSlice
+      let slice = fb.Slice<FloatSliceFB>()
+      if slice.HasValue then
+        slice.Value
+        |> FloatSliceD.FromFB
+        |> Option.map FloatSlice
+      else None
 
     | SliceTypeFB.DoubleSliceFB   ->
-      fb.GetSlice(new DoubleSliceFB())
-      |> DoubleSliceD.FromFB
-      |> Option.map DoubleSlice
+      let slice = fb.Slice<DoubleSliceFB>()
+      if slice.HasValue then
+        slice.Value
+        |> DoubleSliceD.FromFB
+        |> Option.map DoubleSlice
+      else None
 
     | SliceTypeFB.BoolSliceFB     ->
-      fb.GetSlice(new BoolSliceFB())
-      |> BoolSliceD.FromFB
-      |> Option.map BoolSlice
+      let slice = fb.Slice<BoolSliceFB>()
+      if slice.HasValue then
+        slice.Value
+        |> BoolSliceD.FromFB
+        |> Option.map BoolSlice
+      else None
 
     | SliceTypeFB.ByteSliceFB     ->
-      fb.GetSlice(new ByteSliceFB())
-      |> ByteSliceD.FromFB
-      |> Option.map ByteSlice
+      let slice = fb.Slice<ByteSliceFB>()
+      if slice.HasValue then
+        slice.Value
+        |> ByteSliceD.FromFB
+        |> Option.map ByteSlice
+      else None
 
     | SliceTypeFB.EnumSliceFB     ->
-      fb.GetSlice(new EnumSliceFB())
-      |> EnumSliceD.FromFB
-      |> Option.map EnumSlice
+      let slice = fb.Slice<EnumSliceFB>()
+      if slice.HasValue then
+        slice.Value
+        |> EnumSliceD.FromFB
+        |> Option.map EnumSlice
+      else None
 
     | SliceTypeFB.ColorSliceFB    ->
-      fb.GetSlice(new ColorSliceFB())
-      |> ColorSliceD.FromFB
-      |> Option.map ColorSlice
+      let slice = fb.Slice<ColorSliceFB>()
+      if slice.HasValue then
+        slice.Value
+        |> ColorSliceD.FromFB
+        |> Option.map ColorSlice
+      else None
 
     | SliceTypeFB.CompoundSliceFB ->
-      fb.GetSlice(new CompoundSliceFB())
-      |> CompoundSliceD.FromFB
-      |> Option.map CompoundSlice
-
+      let slice = fb.Slice<CompoundSliceFB>()
+      if slice.HasValue then
+        slice.Value
+        |> CompoundSliceD.FromFB
+        |> Option.map CompoundSlice
+      else None
     | _ -> None
 
   member self.ToBytes() : byte array = Binary.buildBuffer self

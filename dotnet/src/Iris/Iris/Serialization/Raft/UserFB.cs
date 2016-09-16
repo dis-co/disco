@@ -6,25 +6,29 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class UserFB : Table {
+public struct UserFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static UserFB GetRootAsUserFB(ByteBuffer _bb) { return GetRootAsUserFB(_bb, new UserFB()); }
-  public static UserFB GetRootAsUserFB(ByteBuffer _bb, UserFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public UserFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static UserFB GetRootAsUserFB(ByteBuffer _bb, UserFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public UserFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public string Id { get { int o = __offset(4); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetIdBytes() { return __vector_as_arraysegment(4); }
-  public string UserName { get { int o = __offset(6); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetUserNameBytes() { return __vector_as_arraysegment(6); }
-  public string FirstName { get { int o = __offset(8); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetFirstNameBytes() { return __vector_as_arraysegment(8); }
-  public string LastName { get { int o = __offset(10); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetLastNameBytes() { return __vector_as_arraysegment(10); }
-  public string Email { get { int o = __offset(12); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetEmailBytes() { return __vector_as_arraysegment(12); }
-  public string Joined { get { int o = __offset(14); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetJoinedBytes() { return __vector_as_arraysegment(14); }
-  public string Created { get { int o = __offset(16); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetCreatedBytes() { return __vector_as_arraysegment(16); }
+  public string Id { get { int o = __p.__offset(4); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetIdBytes() { return __p.__vector_as_arraysegment(4); }
+  public string UserName { get { int o = __p.__offset(6); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetUserNameBytes() { return __p.__vector_as_arraysegment(6); }
+  public string FirstName { get { int o = __p.__offset(8); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetFirstNameBytes() { return __p.__vector_as_arraysegment(8); }
+  public string LastName { get { int o = __p.__offset(10); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetLastNameBytes() { return __p.__vector_as_arraysegment(10); }
+  public string Email { get { int o = __p.__offset(12); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetEmailBytes() { return __p.__vector_as_arraysegment(12); }
+  public string Joined { get { int o = __p.__offset(14); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetJoinedBytes() { return __p.__vector_as_arraysegment(14); }
+  public string Created { get { int o = __p.__offset(16); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetCreatedBytes() { return __p.__vector_as_arraysegment(16); }
 
   public static Offset<UserFB> CreateUserFB(FlatBufferBuilder builder,
       StringOffset IdOffset = default(StringOffset),

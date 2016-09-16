@@ -6,18 +6,21 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class AppendEntriesFB : Table {
+public struct AppendEntriesFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static AppendEntriesFB GetRootAsAppendEntriesFB(ByteBuffer _bb) { return GetRootAsAppendEntriesFB(_bb, new AppendEntriesFB()); }
-  public static AppendEntriesFB GetRootAsAppendEntriesFB(ByteBuffer _bb, AppendEntriesFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public AppendEntriesFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static AppendEntriesFB GetRootAsAppendEntriesFB(ByteBuffer _bb, AppendEntriesFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public AppendEntriesFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Term { get { int o = __offset(4); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public ulong PrevLogIdx { get { int o = __offset(6); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public ulong PrevLogTerm { get { int o = __offset(8); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public ulong LeaderCommit { get { int o = __offset(10); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public LogFB GetEntries(int j) { return GetEntries(new LogFB(), j); }
-  public LogFB GetEntries(LogFB obj, int j) { int o = __offset(12); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
-  public int EntriesLength { get { int o = __offset(12); return o != 0 ? __vector_len(o) : 0; } }
+  public ulong Term { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public ulong PrevLogIdx { get { int o = __p.__offset(6); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public ulong PrevLogTerm { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public ulong LeaderCommit { get { int o = __p.__offset(10); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public LogFB? Entries(int j) { int o = __p.__offset(12); return o != 0 ? (LogFB?)(new LogFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
+  public int EntriesLength { get { int o = __p.__offset(12); return o != 0 ? __p.__vector_len(o) : 0; } }
 
   public static Offset<AppendEntriesFB> CreateAppendEntriesFB(FlatBufferBuilder builder,
       ulong Term = 0,

@@ -6,14 +6,17 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class EnumSliceFB : Table {
+public struct EnumSliceFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static EnumSliceFB GetRootAsEnumSliceFB(ByteBuffer _bb) { return GetRootAsEnumSliceFB(_bb, new EnumSliceFB()); }
-  public static EnumSliceFB GetRootAsEnumSliceFB(ByteBuffer _bb, EnumSliceFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public EnumSliceFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static EnumSliceFB GetRootAsEnumSliceFB(ByteBuffer _bb, EnumSliceFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public EnumSliceFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Index { get { int o = __offset(4); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public EnumPropertyFB Value { get { return GetValue(new EnumPropertyFB()); } }
-  public EnumPropertyFB GetValue(EnumPropertyFB obj) { int o = __offset(6); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
+  public ulong Index { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public EnumPropertyFB? Value { get { int o = __p.__offset(6); return o != 0 ? (EnumPropertyFB?)(new EnumPropertyFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<EnumSliceFB> CreateEnumSliceFB(FlatBufferBuilder builder,
       ulong Index = 0,

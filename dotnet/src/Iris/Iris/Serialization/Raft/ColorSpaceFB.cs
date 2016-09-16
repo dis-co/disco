@@ -6,13 +6,17 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class ColorSpaceFB : Table {
+public struct ColorSpaceFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static ColorSpaceFB GetRootAsColorSpaceFB(ByteBuffer _bb) { return GetRootAsColorSpaceFB(_bb, new ColorSpaceFB()); }
-  public static ColorSpaceFB GetRootAsColorSpaceFB(ByteBuffer _bb, ColorSpaceFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public ColorSpaceFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static ColorSpaceFB GetRootAsColorSpaceFB(ByteBuffer _bb, ColorSpaceFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public ColorSpaceFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ColorSpaceTypeFB ValueType { get { int o = __offset(4); return o != 0 ? (ColorSpaceTypeFB)bb.Get(o + bb_pos) : ColorSpaceTypeFB.NONE; } }
-  public TTable GetValue<TTable>(TTable obj) where TTable : Table { int o = __offset(6); return o != 0 ? __union(obj, o) : null; }
+  public ColorSpaceTypeFB ValueType { get { int o = __p.__offset(4); return o != 0 ? (ColorSpaceTypeFB)__p.bb.Get(o + __p.bb_pos) : ColorSpaceTypeFB.NONE; } }
+  public TTable? Value<TTable>() where TTable : struct, IFlatbufferObject { int o = __p.__offset(6); return o != 0 ? (TTable?)__p.__union<TTable>(o) : null; }
 
   public static Offset<ColorSpaceFB> CreateColorSpaceFB(FlatBufferBuilder builder,
       ColorSpaceTypeFB Value_type = ColorSpaceTypeFB.NONE,

@@ -7,7 +7,7 @@ open Fable.Import
 open Fable.Import.JS
 
 // ------------------ 8< ------------------
-[<Import("flatbuffers", from="flatbuffers")>]
+[<Import("*", from="flatbuffers")>]
 module FlatBuffers =
 
   //  ____        _       ____         __  __
@@ -24,7 +24,7 @@ module FlatBuffers =
     abstract prototype: ByteBuffer with get, set
 
     [<Emit("new flatbuffers.flatbuffers.$0($1)")>]
-    abstract Create: bytes: Fable.Import.JS.ArrayBuffer -> ByteBuffer
+    abstract Create: bytes: Fable.Import.JS.Uint8Array -> ByteBuffer
 
   //   ___   __  __          _
   //  / _ \ / _|/ _|___  ___| |_

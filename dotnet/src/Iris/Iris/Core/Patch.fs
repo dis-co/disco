@@ -114,10 +114,12 @@ type Patch =
     let mutable ioboxes = Map.empty
 
     for i in 0 .. (fb.IOBoxesLength - 1) do
-      fb.GetIOBoxes(i)
-      |> IOBox.FromFB
-      |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
-      |> ignore
+      let iobox = fb.IOBoxes(i)
+      if iobox.HasValue then
+        iobox.Value
+        |> IOBox.FromFB
+        |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
+        |> ignore
 
     try
       { Id = Id fb.Id

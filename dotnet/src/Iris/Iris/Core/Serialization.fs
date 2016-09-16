@@ -33,7 +33,9 @@ module Binary =
 
   let inline buildBuffer< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)> (thing: ^a) : ArrayBuffer =
     let builder = FlatBufferBuilder.Create(1)
+    printfn "builder: %A" builder
     let offset = toOffset builder thing
+    printfn "offset: %A" offset
     builder.Finish(offset)
     builder.SizedByteArray()
 

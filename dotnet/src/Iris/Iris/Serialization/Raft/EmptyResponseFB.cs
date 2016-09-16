@@ -6,10 +6,14 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class EmptyResponseFB : Table {
+public struct EmptyResponseFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static EmptyResponseFB GetRootAsEmptyResponseFB(ByteBuffer _bb) { return GetRootAsEmptyResponseFB(_bb, new EmptyResponseFB()); }
-  public static EmptyResponseFB GetRootAsEmptyResponseFB(ByteBuffer _bb, EmptyResponseFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public EmptyResponseFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static EmptyResponseFB GetRootAsEmptyResponseFB(ByteBuffer _bb, EmptyResponseFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public EmptyResponseFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
 
   public static void StartEmptyResponseFB(FlatBufferBuilder builder) { builder.StartObject(0); }

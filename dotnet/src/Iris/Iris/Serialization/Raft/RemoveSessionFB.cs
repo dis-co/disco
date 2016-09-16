@@ -6,13 +6,16 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class RemoveSessionFB : Table {
+public struct RemoveSessionFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static RemoveSessionFB GetRootAsRemoveSessionFB(ByteBuffer _bb) { return GetRootAsRemoveSessionFB(_bb, new RemoveSessionFB()); }
-  public static RemoveSessionFB GetRootAsRemoveSessionFB(ByteBuffer _bb, RemoveSessionFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public RemoveSessionFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static RemoveSessionFB GetRootAsRemoveSessionFB(ByteBuffer _bb, RemoveSessionFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public RemoveSessionFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public SessionFB Session { get { return GetSession(new SessionFB()); } }
-  public SessionFB GetSession(SessionFB obj) { int o = __offset(4); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
+  public SessionFB? Session { get { int o = __p.__offset(4); return o != 0 ? (SessionFB?)(new SessionFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<RemoveSessionFB> CreateRemoveSessionFB(FlatBufferBuilder builder,
       Offset<SessionFB> SessionOffset = default(Offset<SessionFB>)) {

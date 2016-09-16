@@ -41,3 +41,5 @@
     <Compile Include="FlatBuffers\Offset.cs" />
     <Compile Include="FlatBuffers\Struct.cs" />
     <Compile Include="FlatBuffers\Table.cs" />
+    <Compile Include="FlatBuffers\IFlatbufferObject.cs" />
+

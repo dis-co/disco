@@ -6,13 +6,17 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class StateMachineFB : Table {
+public struct StateMachineFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static StateMachineFB GetRootAsStateMachineFB(ByteBuffer _bb) { return GetRootAsStateMachineFB(_bb, new StateMachineFB()); }
-  public static StateMachineFB GetRootAsStateMachineFB(ByteBuffer _bb, StateMachineFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public StateMachineFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static StateMachineFB GetRootAsStateMachineFB(ByteBuffer _bb, StateMachineFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public StateMachineFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public StateMachineTypeFB AppEventType { get { int o = __offset(4); return o != 0 ? (StateMachineTypeFB)bb.Get(o + bb_pos) : StateMachineTypeFB.NONE; } }
-  public TTable GetAppEvent<TTable>(TTable obj) where TTable : Table { int o = __offset(6); return o != 0 ? __union(obj, o) : null; }
+  public StateMachineTypeFB AppEventType { get { int o = __p.__offset(4); return o != 0 ? (StateMachineTypeFB)__p.bb.Get(o + __p.bb_pos) : StateMachineTypeFB.NONE; } }
+  public TTable? AppEvent<TTable>() where TTable : struct, IFlatbufferObject { int o = __p.__offset(6); return o != 0 ? (TTable?)__p.__union<TTable>(o) : null; }
 
   public static Offset<StateMachineFB> CreateStateMachineFB(FlatBufferBuilder builder,
       StateMachineTypeFB AppEvent_type = StateMachineTypeFB.NONE,

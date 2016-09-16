@@ -6,13 +6,16 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class DataSnapshotFB : Table {
+public struct DataSnapshotFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static DataSnapshotFB GetRootAsDataSnapshotFB(ByteBuffer _bb) { return GetRootAsDataSnapshotFB(_bb, new DataSnapshotFB()); }
-  public static DataSnapshotFB GetRootAsDataSnapshotFB(ByteBuffer _bb, DataSnapshotFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public DataSnapshotFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static DataSnapshotFB GetRootAsDataSnapshotFB(ByteBuffer _bb, DataSnapshotFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public DataSnapshotFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public StateFB Data { get { return GetData(new StateFB()); } }
-  public StateFB GetData(StateFB obj) { int o = __offset(4); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
+  public StateFB? Data { get { int o = __p.__offset(4); return o != 0 ? (StateFB?)(new StateFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<DataSnapshotFB> CreateDataSnapshotFB(FlatBufferBuilder builder,
       Offset<StateFB> DataOffset = default(Offset<StateFB>)) {

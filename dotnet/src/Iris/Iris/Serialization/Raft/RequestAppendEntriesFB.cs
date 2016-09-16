@@ -6,15 +6,18 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class RequestAppendEntriesFB : Table {
+public struct RequestAppendEntriesFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static RequestAppendEntriesFB GetRootAsRequestAppendEntriesFB(ByteBuffer _bb) { return GetRootAsRequestAppendEntriesFB(_bb, new RequestAppendEntriesFB()); }
-  public static RequestAppendEntriesFB GetRootAsRequestAppendEntriesFB(ByteBuffer _bb, RequestAppendEntriesFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public RequestAppendEntriesFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static RequestAppendEntriesFB GetRootAsRequestAppendEntriesFB(ByteBuffer _bb, RequestAppendEntriesFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public RequestAppendEntriesFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public string NodeId { get { int o = __offset(4); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetNodeIdBytes() { return __vector_as_arraysegment(4); }
-  public AppendEntriesFB Request { get { return GetRequest(new AppendEntriesFB()); } }
-  public AppendEntriesFB GetRequest(AppendEntriesFB obj) { int o = __offset(6); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
+  public string NodeId { get { int o = __p.__offset(4); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetNodeIdBytes() { return __p.__vector_as_arraysegment(4); }
+  public AppendEntriesFB? Request { get { int o = __p.__offset(6); return o != 0 ? (AppendEntriesFB?)(new AppendEntriesFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<RequestAppendEntriesFB> CreateRequestAppendEntriesFB(FlatBufferBuilder builder,
       StringOffset NodeIdOffset = default(StringOffset),

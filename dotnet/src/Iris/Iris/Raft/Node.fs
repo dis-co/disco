@@ -267,13 +267,16 @@ type ConfigChange =
           ConfigChangeFB.EndConfigChangeFB(builder)
 
     static member FromFB (fb: ConfigChangeFB) : ConfigChange option =
-      RaftNode.FromFB fb.Node
-      |> Option.bind
-        (fun node ->
-          match fb.Type with
-            | ConfigChangeTypeFB.NodeAdded   -> Some (NodeAdded   node)
-            | ConfigChangeTypeFB.NodeRemoved -> Some (NodeRemoved node)
-            | _                              -> None)
+      let nullable = fb.Node
+      if nullable.HasValue then
+        RaftNode.FromFB nullable.Value
+        |> Option.bind
+          (fun node ->
+            match fb.Type with
+              | ConfigChangeTypeFB.NodeAdded   -> Some (NodeAdded   node)
+              | ConfigChangeTypeFB.NodeRemoved -> Some (NodeRemoved node)
+              | _                              -> None)
+      else None
 
     member self.ToBytes () = Binary.buildBuffer self
 

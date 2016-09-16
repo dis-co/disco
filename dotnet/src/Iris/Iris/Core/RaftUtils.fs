@@ -16,7 +16,7 @@ module RaftMsgFB =
 
   let getValue (t : Offset<'a>) : int = t.Value
 
-  let inline build< ^t when ^t : not struct > builder tipe (offset: Offset< ^t >) =
+  let inline build< ^t when ^t : struct and ^t :> System.ValueType and ^t : (new : unit -> ^t) > builder tipe (offset: Offset< ^t >) =
     RaftMsgFB.StartRaftMsgFB(builder)
     RaftMsgFB.AddMsgType(builder, tipe)
     RaftMsgFB.AddMsg(builder, offset.Value)
@@ -103,29 +103,59 @@ type RaftRequest =
       let msg = RaftMsgFB.GetRootAsRaftMsgFB(new ByteBuffer(bytes))
       match msg.MsgType with
         | RaftMsgTypeFB.RequestVoteFB ->
-          let entry = msg.GetMsg(new RequestVoteFB())
-          VoteRequest.FromFB(entry.Request)
-          |> Option.map (fun request -> RequestVote(Id entry.NodeId, request))
+          let entry = msg.Msg<RequestVoteFB>()
+          if entry.HasValue then
+            let rv = entry.Value
+            let request = rv.Request
+            if request.HasValue then
+              VoteRequest.FromFB(request.Value)
+              |> Option.map (fun request -> RequestVote(Id rv.NodeId, request))
+            else None
+          else None
 
         | RaftMsgTypeFB.RequestAppendEntriesFB ->
-          let entry = msg.GetMsg(new RequestAppendEntriesFB())
-          AppendEntries.FromFB entry.Request
-          |> Option.map (fun request -> AppendEntries(Id entry.NodeId, request))
+          let entry = msg.Msg<RequestAppendEntriesFB>()
+          if entry.HasValue then
+            let ae = entry.Value
+            let request = ae.Request
+            if request.HasValue then
+              AppendEntries.FromFB request.Value
+              |> Option.map (fun request -> AppendEntries(Id ae.NodeId, request))
+            else None
+          else None
 
         | RaftMsgTypeFB.RequestInstallSnapshotFB ->
-          let entry = msg.GetMsg(new RequestInstallSnapshotFB())
-          InstallSnapshot.FromFB entry.Request
-          |> Option.map (fun request -> InstallSnapshot(Id entry.NodeId, request))
+          let entry = msg.Msg<RequestInstallSnapshotFB>()
+          if entry.HasValue then
+            let is = entry.Value
+            let request = is.Request
+            if request.HasValue then
+              InstallSnapshot.FromFB request.Value
+              |> Option.map (fun request -> InstallSnapshot(Id is.NodeId, request))
+            else None
+          else None
 
         | RaftMsgTypeFB.HandShakeFB ->
-          let entry = msg.GetMsg(new HandShakeFB())
-          RaftNode.FromFB entry.Node
-          |> Option.map (fun node -> HandShake(node))
+          let entry = msg.Msg<HandShakeFB>()
+          if entry.HasValue then
+            let hs = entry.Value
+            let node = hs.Node
+            if node.HasValue then
+              RaftNode.FromFB node.Value
+              |> Option.map (fun node -> HandShake(node))
+            else None
+          else None
 
         | RaftMsgTypeFB.HandWaiveFB ->
-          let entry = msg.GetMsg(new HandWaiveFB())
-          RaftNode.FromFB entry.Node
-          |> Option.map (fun node -> HandWaive(node))
+          let entry = msg.Msg<HandWaiveFB>()
+          if entry.HasValue then
+            let hw = entry.Value
+            let node = hw.Node
+            if node.HasValue then
+              RaftNode.FromFB node.Value
+              |> Option.map (fun node -> HandWaive(node))
+            else None
+          else None
 
         | _ -> None
 
@@ -193,43 +223,78 @@ type RaftResponse =
     static member FromFB(msg: RaftMsgFB) : RaftResponse option =
       match msg.MsgType with
       | RaftMsgTypeFB.RequestVoteResponseFB ->
-        let entry = msg.GetMsg(new RequestVoteResponseFB())
-        let response = VoteResponse.FromFB entry.Response
-
-        RequestVoteResponse(Id entry.NodeId, response)
-        |> Some
+        let entry = msg.Msg<RequestVoteResponseFB>()
+        if entry.HasValue then
+          let fb = entry.Value
+          let response = fb.Response
+          if response.HasValue then
+            let parsed = VoteResponse.FromFB response.Value
+            RequestVoteResponse(Id fb.NodeId, parsed)
+            |> Some
+          else None
+        else None
 
       | RaftMsgTypeFB.RequestAppendResponseFB ->
-        let entry = msg.GetMsg(new RequestAppendResponseFB())
-        AppendResponse.FromFB entry.Response
-        |> Option.map
-          (fun response ->
-            AppendEntriesResponse(Id entry.NodeId, response))
+        let entry = msg.Msg<RequestAppendResponseFB>()
+        if entry.HasValue then
+          let fb = entry.Value
+          let response = fb.Response
+          if response.HasValue then
+            AppendResponse.FromFB response.Value
+            |> Option.map
+              (fun response ->
+                AppendEntriesResponse(Id fb.NodeId, response))
+          else None
+        else None
 
       | RaftMsgTypeFB.RequestSnapshotResponseFB ->
-        let entry = msg.GetMsg(new RequestSnapshotResponseFB())
-        AppendResponse.FromFB entry.Response
-        |> Option.map
-          (fun response ->
-            InstallSnapshotResponse(Id entry.NodeId, response))
+        let entry = msg.Msg<RequestSnapshotResponseFB>()
+        if entry.HasValue then
+          let fb = entry.Value
+          let response = fb.Response
+          if response.HasValue then
+            AppendResponse.FromFB response.Value
+            |> Option.map
+              (fun response ->
+                InstallSnapshotResponse(Id fb.NodeId, response))
+          else None
+        else None
 
       | RaftMsgTypeFB.RedirectFB ->
-        let entry = msg.GetMsg(new RedirectFB())
-        RaftNode.FromFB entry.Node
-        |> Option.map (fun node -> Redirect(node))
+        let entry = msg.Msg<RedirectFB>()
+        if entry.HasValue then
+          let rd = entry.Value
+          let node = rd.Node
+          if node.HasValue then
+            RaftNode.FromFB node.Value
+            |> Option.map (fun node -> Redirect(node))
+          else None
+        else None
 
       | RaftMsgTypeFB.WelcomeFB ->
-        let entry = msg.GetMsg(new WelcomeFB())
-        RaftNode.FromFB entry.Node
-        |> Option.map (fun node -> Welcome(node))
+        let entry = msg.Msg<WelcomeFB>()
+        if entry.HasValue then
+          let wl = entry.Value
+          let node = wl.Node
+          if node.HasValue then
+            RaftNode.FromFB node.Value
+            |> Option.map (fun node -> Welcome(node))
+          else None
+        else None
 
       | RaftMsgTypeFB.ArrivederciFB ->
         Some Arrivederci
 
       | RaftMsgTypeFB.ErrorResponseFB ->
-        let entry = msg.GetMsg(new ErrorResponseFB())
-        RaftError.FromFB entry.Error
-        |> Option.map ErrorResponse
+        let entry = msg.Msg<ErrorResponseFB>()
+        if entry.HasValue then
+          let rv = entry.Value
+          let err = rv.Error
+          if err.HasValue then
+            RaftError.FromFB err.Value
+            |> Option.map ErrorResponse
+          else None
+        else None
 
       | _ -> None
 

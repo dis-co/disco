@@ -6,15 +6,18 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class VoteResponseFB : Table {
+public struct VoteResponseFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static VoteResponseFB GetRootAsVoteResponseFB(ByteBuffer _bb) { return GetRootAsVoteResponseFB(_bb, new VoteResponseFB()); }
-  public static VoteResponseFB GetRootAsVoteResponseFB(ByteBuffer _bb, VoteResponseFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public VoteResponseFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static VoteResponseFB GetRootAsVoteResponseFB(ByteBuffer _bb, VoteResponseFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public VoteResponseFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Term { get { int o = __offset(4); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public bool Granted { get { int o = __offset(6); return o != 0 ? 0!=bb.Get(o + bb_pos) : (bool)false; } }
-  public RaftErrorFB Reason { get { return GetReason(new RaftErrorFB()); } }
-  public RaftErrorFB GetReason(RaftErrorFB obj) { int o = __offset(8); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
+  public ulong Term { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public bool Granted { get { int o = __p.__offset(6); return o != 0 ? 0!=__p.bb.Get(o + __p.bb_pos) : (bool)false; } }
+  public RaftErrorFB? Reason { get { int o = __p.__offset(8); return o != 0 ? (RaftErrorFB?)(new RaftErrorFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<VoteResponseFB> CreateVoteResponseFB(FlatBufferBuilder builder,
       ulong Term = 0,

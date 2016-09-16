@@ -6,18 +6,21 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class PatchFB : Table {
+public struct PatchFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static PatchFB GetRootAsPatchFB(ByteBuffer _bb) { return GetRootAsPatchFB(_bb, new PatchFB()); }
-  public static PatchFB GetRootAsPatchFB(ByteBuffer _bb, PatchFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public PatchFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static PatchFB GetRootAsPatchFB(ByteBuffer _bb, PatchFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public PatchFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public string Id { get { int o = __offset(4); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetIdBytes() { return __vector_as_arraysegment(4); }
-  public string Name { get { int o = __offset(6); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetNameBytes() { return __vector_as_arraysegment(6); }
-  public IOBoxFB GetIOBoxes(int j) { return GetIOBoxes(new IOBoxFB(), j); }
-  public IOBoxFB GetIOBoxes(IOBoxFB obj, int j) { int o = __offset(8); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
-  public int IOBoxesLength { get { int o = __offset(8); return o != 0 ? __vector_len(o) : 0; } }
+  public string Id { get { int o = __p.__offset(4); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetIdBytes() { return __p.__vector_as_arraysegment(4); }
+  public string Name { get { int o = __p.__offset(6); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetNameBytes() { return __p.__vector_as_arraysegment(6); }
+  public IOBoxFB? IOBoxes(int j) { int o = __p.__offset(8); return o != 0 ? (IOBoxFB?)(new IOBoxFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
+  public int IOBoxesLength { get { int o = __p.__offset(8); return o != 0 ? __p.__vector_len(o) : 0; } }
 
   public static Offset<PatchFB> CreatePatchFB(FlatBufferBuilder builder,
       StringOffset IdOffset = default(StringOffset),

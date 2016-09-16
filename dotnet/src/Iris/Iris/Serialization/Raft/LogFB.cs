@@ -6,13 +6,17 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class LogFB : Table {
+public struct LogFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static LogFB GetRootAsLogFB(ByteBuffer _bb) { return GetRootAsLogFB(_bb, new LogFB()); }
-  public static LogFB GetRootAsLogFB(ByteBuffer _bb, LogFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public LogFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static LogFB GetRootAsLogFB(ByteBuffer _bb, LogFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public LogFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public LogTypeFB EntryType { get { int o = __offset(4); return o != 0 ? (LogTypeFB)bb.Get(o + bb_pos) : LogTypeFB.NONE; } }
-  public TTable GetEntry<TTable>(TTable obj) where TTable : Table { int o = __offset(6); return o != 0 ? __union(obj, o) : null; }
+  public LogTypeFB EntryType { get { int o = __p.__offset(4); return o != 0 ? (LogTypeFB)__p.bb.Get(o + __p.bb_pos) : LogTypeFB.NONE; } }
+  public TTable? Entry<TTable>() where TTable : struct, IFlatbufferObject { int o = __p.__offset(6); return o != 0 ? (TTable?)__p.__union<TTable>(o) : null; }
 
   public static Offset<LogFB> CreateLogFB(FlatBufferBuilder builder,
       LogTypeFB Entry_type = LogTypeFB.NONE,

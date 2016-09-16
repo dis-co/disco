@@ -201,13 +201,19 @@ type ColorSpace =
   static member FromFB(fb: ColorSpaceFB) : ColorSpace option =
     match fb.ValueType with
     | ColorSpaceTypeFB.RGBAValueFB ->
-      fb.GetValue(new RGBAValueFB())
-      |> RGBAValue.FromFB
-      |> Option.map RGBA
+      let v = fb.Value<RGBAValueFB>()
+      if v.HasValue then
+        v.Value
+        |> RGBAValue.FromFB
+        |> Option.map RGBA
+      else None
     | ColorSpaceTypeFB.HSLAValueFB ->
-      fb.GetValue(new HSLAValueFB())
-      |> HSLAValue.FromFB
-      |> Option.map HSLA
+      let v = fb.Value<HSLAValueFB>()
+      if v.HasValue then
+        v.Value
+        |> HSLAValue.FromFB
+        |> Option.map HSLA
+      else None
     | _ -> None
 
   member self.ToBytes () = Binary.buildBuffer self

@@ -6,13 +6,17 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class IOBoxFB : Table {
+public struct IOBoxFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static IOBoxFB GetRootAsIOBoxFB(ByteBuffer _bb) { return GetRootAsIOBoxFB(_bb, new IOBoxFB()); }
-  public static IOBoxFB GetRootAsIOBoxFB(ByteBuffer _bb, IOBoxFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public IOBoxFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static IOBoxFB GetRootAsIOBoxFB(ByteBuffer _bb, IOBoxFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public IOBoxFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public IOBoxTypeFB IOBoxType { get { int o = __offset(4); return o != 0 ? (IOBoxTypeFB)bb.Get(o + bb_pos) : IOBoxTypeFB.NONE; } }
-  public TTable GetIOBox<TTable>(TTable obj) where TTable : Table { int o = __offset(6); return o != 0 ? __union(obj, o) : null; }
+  public IOBoxTypeFB IOBoxType { get { int o = __p.__offset(4); return o != 0 ? (IOBoxTypeFB)__p.bb.Get(o + __p.bb_pos) : IOBoxTypeFB.NONE; } }
+  public TTable? IOBox<TTable>() where TTable : struct, IFlatbufferObject { int o = __p.__offset(6); return o != 0 ? (TTable?)__p.__union<TTable>(o) : null; }
 
   public static Offset<IOBoxFB> CreateIOBoxFB(FlatBufferBuilder builder,
       IOBoxTypeFB IOBox_type = IOBoxTypeFB.NONE,

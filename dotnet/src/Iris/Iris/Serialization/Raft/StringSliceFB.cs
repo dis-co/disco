@@ -6,14 +6,18 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class StringSliceFB : Table {
+public struct StringSliceFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static StringSliceFB GetRootAsStringSliceFB(ByteBuffer _bb) { return GetRootAsStringSliceFB(_bb, new StringSliceFB()); }
-  public static StringSliceFB GetRootAsStringSliceFB(ByteBuffer _bb, StringSliceFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public StringSliceFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static StringSliceFB GetRootAsStringSliceFB(ByteBuffer _bb, StringSliceFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public StringSliceFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Index { get { int o = __offset(4); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public string Value { get { int o = __offset(6); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetValueBytes() { return __vector_as_arraysegment(6); }
+  public ulong Index { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public string Value { get { int o = __p.__offset(6); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetValueBytes() { return __p.__vector_as_arraysegment(6); }
 
   public static Offset<StringSliceFB> CreateStringSliceFB(FlatBufferBuilder builder,
       ulong Index = 0,

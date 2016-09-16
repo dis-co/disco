@@ -6,32 +6,29 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class StateFB : Table {
+public struct StateFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static StateFB GetRootAsStateFB(ByteBuffer _bb) { return GetRootAsStateFB(_bb, new StateFB()); }
-  public static StateFB GetRootAsStateFB(ByteBuffer _bb, StateFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public StateFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static StateFB GetRootAsStateFB(ByteBuffer _bb, StateFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public StateFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public PatchFB GetPatches(int j) { return GetPatches(new PatchFB(), j); }
-  public PatchFB GetPatches(PatchFB obj, int j) { int o = __offset(4); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
-  public int PatchesLength { get { int o = __offset(4); return o != 0 ? __vector_len(o) : 0; } }
-  public IOBoxFB GetIOBoxes(int j) { return GetIOBoxes(new IOBoxFB(), j); }
-  public IOBoxFB GetIOBoxes(IOBoxFB obj, int j) { int o = __offset(6); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
-  public int IOBoxesLength { get { int o = __offset(6); return o != 0 ? __vector_len(o) : 0; } }
-  public CueFB GetCues(int j) { return GetCues(new CueFB(), j); }
-  public CueFB GetCues(CueFB obj, int j) { int o = __offset(8); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
-  public int CuesLength { get { int o = __offset(8); return o != 0 ? __vector_len(o) : 0; } }
-  public CueListFB GetCueLists(int j) { return GetCueLists(new CueListFB(), j); }
-  public CueListFB GetCueLists(CueListFB obj, int j) { int o = __offset(10); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
-  public int CueListsLength { get { int o = __offset(10); return o != 0 ? __vector_len(o) : 0; } }
-  public NodeFB GetNodes(int j) { return GetNodes(new NodeFB(), j); }
-  public NodeFB GetNodes(NodeFB obj, int j) { int o = __offset(12); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
-  public int NodesLength { get { int o = __offset(12); return o != 0 ? __vector_len(o) : 0; } }
-  public SessionFB GetSessions(int j) { return GetSessions(new SessionFB(), j); }
-  public SessionFB GetSessions(SessionFB obj, int j) { int o = __offset(14); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
-  public int SessionsLength { get { int o = __offset(14); return o != 0 ? __vector_len(o) : 0; } }
-  public UserFB GetUsers(int j) { return GetUsers(new UserFB(), j); }
-  public UserFB GetUsers(UserFB obj, int j) { int o = __offset(16); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
-  public int UsersLength { get { int o = __offset(16); return o != 0 ? __vector_len(o) : 0; } }
+  public PatchFB? Patches(int j) { int o = __p.__offset(4); return o != 0 ? (PatchFB?)(new PatchFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
+  public int PatchesLength { get { int o = __p.__offset(4); return o != 0 ? __p.__vector_len(o) : 0; } }
+  public IOBoxFB? IOBoxes(int j) { int o = __p.__offset(6); return o != 0 ? (IOBoxFB?)(new IOBoxFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
+  public int IOBoxesLength { get { int o = __p.__offset(6); return o != 0 ? __p.__vector_len(o) : 0; } }
+  public CueFB? Cues(int j) { int o = __p.__offset(8); return o != 0 ? (CueFB?)(new CueFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
+  public int CuesLength { get { int o = __p.__offset(8); return o != 0 ? __p.__vector_len(o) : 0; } }
+  public CueListFB? CueLists(int j) { int o = __p.__offset(10); return o != 0 ? (CueListFB?)(new CueListFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
+  public int CueListsLength { get { int o = __p.__offset(10); return o != 0 ? __p.__vector_len(o) : 0; } }
+  public NodeFB? Nodes(int j) { int o = __p.__offset(12); return o != 0 ? (NodeFB?)(new NodeFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
+  public int NodesLength { get { int o = __p.__offset(12); return o != 0 ? __p.__vector_len(o) : 0; } }
+  public SessionFB? Sessions(int j) { int o = __p.__offset(14); return o != 0 ? (SessionFB?)(new SessionFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
+  public int SessionsLength { get { int o = __p.__offset(14); return o != 0 ? __p.__vector_len(o) : 0; } }
+  public UserFB? Users(int j) { int o = __p.__offset(16); return o != 0 ? (UserFB?)(new UserFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
+  public int UsersLength { get { int o = __p.__offset(16); return o != 0 ? __p.__vector_len(o) : 0; } }
 
   public static Offset<StateFB> CreateStateFB(FlatBufferBuilder builder,
       VectorOffset PatchesOffset = default(VectorOffset),

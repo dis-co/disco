@@ -1013,54 +1013,80 @@ type LogEntry =
     ///
     /// Returns: LogEntry option
     static member FromFB (logs: LogFB array) : LogEntry option =
-      let fb2Log (fb: LogFB) (log: LogEntry option) : LogEntry option =
+      let fb2Log (fb: LogFB) (sibling: LogEntry option) : LogEntry option =
         match fb.EntryType with
         | LogTypeFB.ConfigurationFB ->
-          let entry = fb.GetEntry(new ConfigurationFB())
-          let nodes = Array.zeroCreate entry.NodesLength
+          let entry = fb.Entry<ConfigurationFB>()
+          if entry.HasValue then
+            let logentry = entry.Value
+            let nodes = Array.zeroCreate logentry.NodesLength
 
-          for i in 0 .. (entry.NodesLength - 1) do
-            entry.GetNodes(i)
-            |> RaftNode.FromFB
-            |> Option.map (fun node -> nodes.[i] <- node)
-            |> ignore
+            for i in 0 .. (logentry.NodesLength - 1) do
+              let node = logentry.Nodes(i)
+              if node.HasValue then
+                node.Value
+                |> RaftNode.FromFB
+                |> Option.map (fun node -> nodes.[i] <- node)
+                |> ignore
 
-          Configuration(Id entry.Id, entry.Index, entry.Term, nodes, log)
-          |> Some
+            Configuration(Id logentry.Id, logentry.Index, logentry.Term, nodes, sibling)
+            |> Some
+          else None
 
         | LogTypeFB.JointConsensusFB ->
-          let entry = fb.GetEntry(new JointConsensusFB())
-          let changes = Array.zeroCreate entry.ChangesLength
+          let entry = fb.Entry<JointConsensusFB>()
+          if entry.HasValue then
+            let logentry = entry.Value
+            let changes = Array.zeroCreate logentry.ChangesLength
 
-          for i in 0 .. (entry.ChangesLength - 1) do
-            entry.GetChanges(i)
-            |> ConfigChange.FromFB
-            |> Option.map (fun change -> changes.[i] <- change)
-            |> ignore
+            for i in 0 .. (logentry.ChangesLength - 1) do
+              let change = logentry.Changes(i)
+              if change.HasValue then
+                change.Value
+                |> ConfigChange.FromFB
+                |> Option.map (fun change -> changes.[i] <- change)
+                |> ignore
 
-          JointConsensus(Id entry.Id, entry.Index, entry.Term, changes, log)
-          |> Some
+            JointConsensus(Id logentry.Id, logentry.Index, logentry.Term, changes, sibling)
+            |> Some
+          else None
 
         | LogTypeFB.LogEntryFB ->
-          let entry = fb.GetEntry(new LogEntryFB())
-          StateMachine.FromFB entry.Data
-          |> Option.map (fun sm -> LogEntry(Id entry.Id, entry.Index, entry.Term, sm, log))
+          let entry = fb.Entry<LogEntryFB>()
+          if entry.HasValue then
+            let logentry = entry.Value
+            let data = logentry.Data
+            if data.HasValue then
+              StateMachine.FromFB data.Value
+              |> Option.map
+                (fun sm -> LogEntry(Id logentry.Id, logentry.Index, logentry.Term, sm, sibling))
+            else None
+          else None
 
         | LogTypeFB.SnapshotFB ->
-          let entry = fb.GetEntry(new SnapshotFB())
-          let nodes = Array.zeroCreate entry.NodesLength
-          let id = Id entry.Id
+          let entry = fb.Entry<SnapshotFB>()
+          if entry.HasValue then
+            let logentry = entry.Value
+            let data = logentry.Data
 
-          for i in 0..(entry.NodesLength - 1) do
-            entry.GetNodes(i)
-            |> RaftNode.FromFB
-            |> Option.map (fun node -> nodes.[i] <- node)
-            |> ignore
+            if data.HasValue then
+              let nodes = Array.zeroCreate logentry.NodesLength
+              let id = Id logentry.Id
 
-          StateMachine.FromFB entry.Data
-          |> Option.map
-            (fun sm ->
-                Snapshot(id, entry.Index, entry.Term, entry.LastIndex, entry.LastTerm, nodes, sm))
+              for i in 0..(logentry.NodesLength - 1) do
+                let node = logentry.Nodes(i)
+                if node.HasValue then
+                  node.Value
+                  |> RaftNode.FromFB
+                  |> Option.map (fun node -> nodes.[i] <- node)
+                  |> ignore
+
+              StateMachine.FromFB data.Value
+              |> Option.map
+                (fun sm ->
+                    Snapshot(id, logentry.Index, logentry.Term, logentry.LastIndex, logentry.LastTerm, nodes, sm))
+            else None
+          else None
 
         | _ -> None
 

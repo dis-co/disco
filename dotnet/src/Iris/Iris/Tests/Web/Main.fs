@@ -6,13 +6,14 @@ open Test.Units
 let apply f = failwith "ONLY IN JS"
 
 let main _ =
-  [ Html.main
-  ; Store.main
-  ; Storage.main
-  ; Plugins.main
-  ; VirtualDom.main
-  ; PatchesView.main
-  ; ViewController.main
+  // [ Html.main
+  // ; Store.main
+  // ; Storage.main
+  // ; Plugins.main
+  // ; VirtualDom.main
+  // ; PatchesView.main
+  // ; ViewController.main
+  [ FlatBuffersTests.main
   ] |> List.iter apply
 
 @"

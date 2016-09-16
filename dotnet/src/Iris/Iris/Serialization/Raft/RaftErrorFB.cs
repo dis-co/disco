@@ -6,14 +6,18 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class RaftErrorFB : Table {
+public struct RaftErrorFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static RaftErrorFB GetRootAsRaftErrorFB(ByteBuffer _bb) { return GetRootAsRaftErrorFB(_bb, new RaftErrorFB()); }
-  public static RaftErrorFB GetRootAsRaftErrorFB(ByteBuffer _bb, RaftErrorFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public RaftErrorFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static RaftErrorFB GetRootAsRaftErrorFB(ByteBuffer _bb, RaftErrorFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public RaftErrorFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public RaftErrorTypeFB Type { get { int o = __offset(4); return o != 0 ? (RaftErrorTypeFB)bb.GetUshort(o + bb_pos) : RaftErrorTypeFB.AlreadyVotedFB; } }
-  public string Message { get { int o = __offset(6); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetMessageBytes() { return __vector_as_arraysegment(6); }
+  public RaftErrorTypeFB Type { get { int o = __p.__offset(4); return o != 0 ? (RaftErrorTypeFB)__p.bb.GetUshort(o + __p.bb_pos) : RaftErrorTypeFB.AlreadyVotedFB; } }
+  public string Message { get { int o = __p.__offset(6); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetMessageBytes() { return __p.__vector_as_arraysegment(6); }
 
   public static Offset<RaftErrorFB> CreateRaftErrorFB(FlatBufferBuilder builder,
       RaftErrorTypeFB Type = RaftErrorTypeFB.AlreadyVotedFB,

@@ -6,18 +6,21 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class ConfigurationFB : Table {
+public struct ConfigurationFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static ConfigurationFB GetRootAsConfigurationFB(ByteBuffer _bb) { return GetRootAsConfigurationFB(_bb, new ConfigurationFB()); }
-  public static ConfigurationFB GetRootAsConfigurationFB(ByteBuffer _bb, ConfigurationFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public ConfigurationFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static ConfigurationFB GetRootAsConfigurationFB(ByteBuffer _bb, ConfigurationFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public ConfigurationFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public string Id { get { int o = __offset(4); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetIdBytes() { return __vector_as_arraysegment(4); }
-  public ulong Index { get { int o = __offset(6); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public ulong Term { get { int o = __offset(8); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public NodeFB GetNodes(int j) { return GetNodes(new NodeFB(), j); }
-  public NodeFB GetNodes(NodeFB obj, int j) { int o = __offset(10); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
-  public int NodesLength { get { int o = __offset(10); return o != 0 ? __vector_len(o) : 0; } }
+  public string Id { get { int o = __p.__offset(4); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetIdBytes() { return __p.__vector_as_arraysegment(4); }
+  public ulong Index { get { int o = __p.__offset(6); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public ulong Term { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public NodeFB? Nodes(int j) { int o = __p.__offset(10); return o != 0 ? (NodeFB?)(new NodeFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
+  public int NodesLength { get { int o = __p.__offset(10); return o != 0 ? __p.__vector_len(o) : 0; } }
 
   public static Offset<ConfigurationFB> CreateConfigurationFB(FlatBufferBuilder builder,
       StringOffset IdOffset = default(StringOffset),

@@ -6,15 +6,19 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class EnumPropertyFB : Table {
+public struct EnumPropertyFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static EnumPropertyFB GetRootAsEnumPropertyFB(ByteBuffer _bb) { return GetRootAsEnumPropertyFB(_bb, new EnumPropertyFB()); }
-  public static EnumPropertyFB GetRootAsEnumPropertyFB(ByteBuffer _bb, EnumPropertyFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public EnumPropertyFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static EnumPropertyFB GetRootAsEnumPropertyFB(ByteBuffer _bb, EnumPropertyFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public EnumPropertyFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public string Key { get { int o = __offset(4); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetKeyBytes() { return __vector_as_arraysegment(4); }
-  public string Value { get { int o = __offset(6); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetValueBytes() { return __vector_as_arraysegment(6); }
+  public string Key { get { int o = __p.__offset(4); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetKeyBytes() { return __p.__vector_as_arraysegment(4); }
+  public string Value { get { int o = __p.__offset(6); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetValueBytes() { return __p.__vector_as_arraysegment(6); }
 
   public static Offset<EnumPropertyFB> CreateEnumPropertyFB(FlatBufferBuilder builder,
       StringOffset KeyOffset = default(StringOffset),

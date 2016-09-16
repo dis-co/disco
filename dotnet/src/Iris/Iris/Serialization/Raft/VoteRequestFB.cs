@@ -6,16 +6,19 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class VoteRequestFB : Table {
+public struct VoteRequestFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static VoteRequestFB GetRootAsVoteRequestFB(ByteBuffer _bb) { return GetRootAsVoteRequestFB(_bb, new VoteRequestFB()); }
-  public static VoteRequestFB GetRootAsVoteRequestFB(ByteBuffer _bb, VoteRequestFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public VoteRequestFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static VoteRequestFB GetRootAsVoteRequestFB(ByteBuffer _bb, VoteRequestFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public VoteRequestFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Term { get { int o = __offset(4); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public NodeFB Candidate { get { return GetCandidate(new NodeFB()); } }
-  public NodeFB GetCandidate(NodeFB obj) { int o = __offset(6); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
-  public ulong LastLogIndex { get { int o = __offset(8); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public ulong LastLogTerm { get { int o = __offset(10); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
+  public ulong Term { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public NodeFB? Candidate { get { int o = __p.__offset(6); return o != 0 ? (NodeFB?)(new NodeFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
+  public ulong LastLogIndex { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public ulong LastLogTerm { get { int o = __p.__offset(10); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
 
   public static Offset<VoteRequestFB> CreateVoteRequestFB(FlatBufferBuilder builder,
       ulong Term = 0,

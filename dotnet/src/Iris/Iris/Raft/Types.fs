@@ -181,13 +181,16 @@ type VoteRequest =
       VoteRequestFB.EndVoteRequestFB(builder)
 
     static member FromFB (fb: VoteRequestFB) : VoteRequest option =
-      RaftNode.FromFB fb.Candidate
-      |> Option.map
-        (fun node ->
-          { Term         = fb.Term
-          ; Candidate    = node
-          ; LastLogIndex = fb.LastLogIndex
-          ; LastLogTerm  = fb.LastLogTerm })
+      let candidate = fb.Candidate
+      if candidate.HasValue then
+        RaftNode.FromFB candidate.Value
+        |> Option.map
+          (fun node ->
+            { Term         = fb.Term
+            ; Candidate    = node
+            ; LastLogIndex = fb.LastLogIndex
+            ; LastLogTerm  = fb.LastLogTerm })
+      else None
 
 // __     __    _       ____
 // \ \   / /__ | |_ ___|  _ \ ___  ___ _ __   ___  _ __  ___  ___
@@ -210,8 +213,9 @@ type VoteResponse =
   with
     static member FromFB (fb: VoteResponseFB) : VoteResponse =
       let reason =
-        if isNull fb.Reason |> not then
-          RaftError.FromFB fb.Reason
+        let reason = fb.Reason
+        if reason.HasValue then
+          RaftError.FromFB reason.Value
         else None
 
       { Term    = fb.Term
@@ -277,7 +281,9 @@ type AppendEntries =
         else
           let raw = Array.zeroCreate fb.EntriesLength
           for i in 0 .. (fb.EntriesLength - 1) do
-            raw.[i] <- fb.GetEntries(i)
+            let entry = fb.Entries(i)
+            if entry.HasValue then
+              raw.[i] <- entry.Value
           LogEntry.FromFB raw
 
       try
@@ -402,7 +408,9 @@ type InstallSnapshot =
         if fb.DataLength > 0 then
           let raw = Array.zeroCreate fb.DataLength
           for i in 0 .. (fb.DataLength - 1) do
-            raw.[i] <- fb.GetData(i)
+            let data = fb.Data(i)
+            if data.HasValue then
+              raw.[i] <- data.Value
           LogEntry.FromFB raw
         else None
 

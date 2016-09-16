@@ -6,13 +6,16 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class AddPatchFB : Table {
+public struct AddPatchFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static AddPatchFB GetRootAsAddPatchFB(ByteBuffer _bb) { return GetRootAsAddPatchFB(_bb, new AddPatchFB()); }
-  public static AddPatchFB GetRootAsAddPatchFB(ByteBuffer _bb, AddPatchFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public AddPatchFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static AddPatchFB GetRootAsAddPatchFB(ByteBuffer _bb, AddPatchFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public AddPatchFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public PatchFB Patch { get { return GetPatch(new PatchFB()); } }
-  public PatchFB GetPatch(PatchFB obj) { int o = __offset(4); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
+  public PatchFB? Patch { get { int o = __p.__offset(4); return o != 0 ? (PatchFB?)(new PatchFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<AddPatchFB> CreateAddPatchFB(FlatBufferBuilder builder,
       Offset<PatchFB> PatchOffset = default(Offset<PatchFB>)) {

@@ -6,15 +6,18 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class CompoundSliceFB : Table {
+public struct CompoundSliceFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static CompoundSliceFB GetRootAsCompoundSliceFB(ByteBuffer _bb) { return GetRootAsCompoundSliceFB(_bb, new CompoundSliceFB()); }
-  public static CompoundSliceFB GetRootAsCompoundSliceFB(ByteBuffer _bb, CompoundSliceFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public CompoundSliceFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static CompoundSliceFB GetRootAsCompoundSliceFB(ByteBuffer _bb, CompoundSliceFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public CompoundSliceFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Index { get { int o = __offset(4); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public IOBoxFB GetValue(int j) { return GetValue(new IOBoxFB(), j); }
-  public IOBoxFB GetValue(IOBoxFB obj, int j) { int o = __offset(6); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
-  public int ValueLength { get { int o = __offset(6); return o != 0 ? __vector_len(o) : 0; } }
+  public ulong Index { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public IOBoxFB? Value(int j) { int o = __p.__offset(6); return o != 0 ? (IOBoxFB?)(new IOBoxFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
+  public int ValueLength { get { int o = __p.__offset(6); return o != 0 ? __p.__vector_len(o) : 0; } }
 
   public static Offset<CompoundSliceFB> CreateCompoundSliceFB(FlatBufferBuilder builder,
       ulong Index = 0,

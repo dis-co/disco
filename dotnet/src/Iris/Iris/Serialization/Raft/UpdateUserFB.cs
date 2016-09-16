@@ -6,13 +6,16 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class UpdateUserFB : Table {
+public struct UpdateUserFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static UpdateUserFB GetRootAsUpdateUserFB(ByteBuffer _bb) { return GetRootAsUpdateUserFB(_bb, new UpdateUserFB()); }
-  public static UpdateUserFB GetRootAsUpdateUserFB(ByteBuffer _bb, UpdateUserFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public UpdateUserFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static UpdateUserFB GetRootAsUpdateUserFB(ByteBuffer _bb, UpdateUserFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public UpdateUserFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public UserFB User { get { return GetUser(new UserFB()); } }
-  public UserFB GetUser(UserFB obj) { int o = __offset(4); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
+  public UserFB? User { get { int o = __p.__offset(4); return o != 0 ? (UserFB?)(new UserFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<UpdateUserFB> CreateUpdateUserFB(FlatBufferBuilder builder,
       Offset<UserFB> UserOffset = default(Offset<UserFB>)) {

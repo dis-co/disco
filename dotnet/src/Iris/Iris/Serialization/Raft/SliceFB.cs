@@ -6,13 +6,17 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class SliceFB : Table {
+public struct SliceFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static SliceFB GetRootAsSliceFB(ByteBuffer _bb) { return GetRootAsSliceFB(_bb, new SliceFB()); }
-  public static SliceFB GetRootAsSliceFB(ByteBuffer _bb, SliceFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public SliceFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static SliceFB GetRootAsSliceFB(ByteBuffer _bb, SliceFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public SliceFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public SliceTypeFB SliceType { get { int o = __offset(4); return o != 0 ? (SliceTypeFB)bb.Get(o + bb_pos) : SliceTypeFB.NONE; } }
-  public TTable GetSlice<TTable>(TTable obj) where TTable : Table { int o = __offset(6); return o != 0 ? __union(obj, o) : null; }
+  public SliceTypeFB SliceType { get { int o = __p.__offset(4); return o != 0 ? (SliceTypeFB)__p.bb.Get(o + __p.bb_pos) : SliceTypeFB.NONE; } }
+  public TTable? Slice<TTable>() where TTable : struct, IFlatbufferObject { int o = __p.__offset(6); return o != 0 ? (TTable?)__p.__union<TTable>(o) : null; }
 
   public static Offset<SliceFB> CreateSliceFB(FlatBufferBuilder builder,
       SliceTypeFB Slice_type = SliceTypeFB.NONE,

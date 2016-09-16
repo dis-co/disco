@@ -402,46 +402,60 @@ type State =
     let mutable sessions = Map.empty
 
     for i in 0 .. (fb.PatchesLength - 1) do
-      fb.GetPatches(i)
-      |> Patch.FromFB
-      |> Option.map (fun patch -> patches <- Map.add patch.Id patch patches)
-      |> ignore
+      let patch = fb.Patches(i)
+      if patch.HasValue then
+        patch.Value
+        |> Patch.FromFB
+        |> Option.map (fun patch -> patches <- Map.add patch.Id patch patches)
+        |> ignore
 
     for i in 0 .. (fb.IOBoxesLength - 1) do
-      fb.GetIOBoxes(i)
-      |> IOBox.FromFB
-      |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
-      |> ignore
+      let iobox = fb.IOBoxes(i)
+      if iobox.HasValue then
+        iobox.Value
+        |> IOBox.FromFB
+        |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
+        |> ignore
 
     for i in 0 .. (fb.CuesLength - 1) do
-      fb.GetCues(i)
-      |> Cue.FromFB
-      |> Option.map (fun cue -> cues <- Map.add cue.Id cue cues)
-      |> ignore
+      let cue = fb.Cues(i)
+      if cue.HasValue then
+        cue.Value
+        |> Cue.FromFB
+        |> Option.map (fun cue -> cues <- Map.add cue.Id cue cues)
+        |> ignore
 
     for i in 0 .. (fb.CueListsLength - 1) do
-      fb.GetCueLists(i)
-      |> CueList.FromFB
-      |> Option.map (fun cuelist -> cuelists <- Map.add cuelist.Id cuelist cuelists)
-      |> ignore
+      let cuelist = fb.CueLists(i)
+      if cuelist.HasValue then
+        cuelist.Value
+        |> CueList.FromFB
+        |> Option.map (fun cuelist -> cuelists <- Map.add cuelist.Id cuelist cuelists)
+        |> ignore
 
     for i in 0 .. (fb.NodesLength - 1) do
-      fb.GetNodes(i)
-      |> RaftNode.FromFB
-      |> Option.map (fun node -> nodes <- Map.add node.Id node nodes)
-      |> ignore
+      let node = fb.Nodes(i)
+      if node.HasValue then
+        node.Value
+        |> RaftNode.FromFB
+        |> Option.map (fun node -> nodes <- Map.add node.Id node nodes)
+        |> ignore
 
     for i in 0 .. (fb.UsersLength - 1) do
-      fb.GetUsers(i)
-      |> User.FromFB
-      |> Option.map (fun user -> users <- Map.add user.Id user users)
-      |> ignore
+      let user = fb.Users(i)
+      if user.HasValue then
+        user.Value
+        |> User.FromFB
+        |> Option.map (fun user -> users <- Map.add user.Id user users)
+        |> ignore
 
     for i in 0 .. (fb.SessionsLength - 1) do
-      fb.GetSessions(i)
-      |> Session.FromFB
-      |> Option.map (fun session -> sessions <- Map.add session.Id session sessions)
-      |> ignore
+      let session = fb.Sessions(i)
+      if session.HasValue then
+        session.Value
+        |> Session.FromFB
+        |> Option.map (fun session -> sessions <- Map.add session.Id session sessions)
+        |> ignore
 
     Some { Patches  = patches
          ; IOBoxes  = ioboxes
@@ -851,22 +865,40 @@ and StateMachine =
     //  \____\__,_|\___|
 
     | StateMachineTypeFB.AddCueFB ->
-      let ev = fb.GetAppEvent(new AddCueFB())
-      ev.GetCue(new CueFB())
-      |> Cue.FromFB
-      |> Option.map AddCue
+      let ev = fb.AppEvent<AddCueFB>()
+      if ev.HasValue then
+        let appevent : AddCueFB = ev.Value
+        let cue = appevent.Cue
+        if cue.HasValue then
+          cue.Value
+          |> Cue.FromFB
+          |> Option.map AddCue
+        else None
+      else None
 
     | StateMachineTypeFB.UpdateCueFB  ->
-      let ev = fb.GetAppEvent(new UpdateCueFB())
-      ev.GetCue(new CueFB())
-      |> Cue.FromFB
-      |> Option.map UpdateCue
+      let ev = fb.AppEvent<UpdateCueFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let cue = appevent.Cue
+        if cue.HasValue then
+          cue.Value
+          |> Cue.FromFB
+          |> Option.map UpdateCue
+        else None
+      else None
 
     | StateMachineTypeFB.RemoveCueFB  ->
-      let ev = fb.GetAppEvent(new RemoveCueFB())
-      ev.GetCue(new CueFB())
-      |> Cue.FromFB
-      |> Option.map RemoveCue
+      let ev = fb.AppEvent<RemoveCueFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let cue = appevent.Cue
+        if cue.HasValue then
+          cue.Value
+          |> Cue.FromFB
+          |> Option.map RemoveCue
+        else None
+      else None
 
     //   ____           _     _     _
     //  / ___|   _  ___| |   (_)___| |_
@@ -875,22 +907,40 @@ and StateMachine =
     //  \____\__,_|\___|_____|_|___/\__|
 
     | StateMachineTypeFB.AddCueListFB ->
-      let ev = fb.GetAppEvent(new AddCueListFB())
-      ev.GetCueList(new CueListFB())
-      |> CueList.FromFB
-      |> Option.map AddCueList
+      let ev = fb.AppEvent<AddCueListFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let cuelist = appevent.CueList
+        if cuelist.HasValue then
+          cuelist.Value
+          |> CueList.FromFB
+          |> Option.map AddCueList
+        else None
+      else None
 
     | StateMachineTypeFB.UpdateCueListFB  ->
-      let ev = fb.GetAppEvent(new UpdateCueListFB())
-      ev.GetCueList(new CueListFB())
-      |> CueList.FromFB
-      |> Option.map UpdateCueList
+      let ev = fb.AppEvent<UpdateCueListFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let cuelist = appevent.CueList
+        if cuelist.HasValue then
+          cuelist.Value
+          |> CueList.FromFB
+          |> Option.map UpdateCueList
+        else None
+      else None
 
     | StateMachineTypeFB.RemoveCueListFB  ->
-      let ev = fb.GetAppEvent(new RemoveCueListFB())
-      ev.GetCueList(new CueListFB())
-      |> CueList.FromFB
-      |> Option.map RemoveCueList
+      let ev = fb.AppEvent<RemoveCueListFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let cuelist = appevent.CueList
+        if cuelist.HasValue then
+          cuelist.Value
+          |> CueList.FromFB
+          |> Option.map RemoveCueList
+        else None
+      else None
 
     //  ____       _       _
     // |  _ \ __ _| |_ ___| |__
@@ -899,22 +949,40 @@ and StateMachine =
     // |_|   \__,_|\__\___|_| |_|
 
     | StateMachineTypeFB.AddPatchFB ->
-      let ev = fb.GetAppEvent(new AddPatchFB())
-      ev.GetPatch(new PatchFB())
-      |> Patch.FromFB
-      |> Option.map AddPatch
+      let ev = fb.AppEvent<AddPatchFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let patch = appevent.Patch
+        if patch.HasValue then
+          patch.Value
+          |> Patch.FromFB
+          |> Option.map AddPatch
+        else None
+      else None
 
     | StateMachineTypeFB.UpdatePatchFB  ->
-      let ev = fb.GetAppEvent(new UpdatePatchFB())
-      ev.GetPatch(new PatchFB())
-      |> Patch.FromFB
-      |> Option.map UpdatePatch
+      let ev = fb.AppEvent<UpdatePatchFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let patch = appevent.Patch
+        if patch.HasValue then
+          patch.Value
+          |> Patch.FromFB
+          |> Option.map UpdatePatch
+        else None
+      else None
 
     | StateMachineTypeFB.RemovePatchFB  ->
-      let ev = fb.GetAppEvent(new RemovePatchFB())
-      ev.GetPatch(new PatchFB())
-      |> Patch.FromFB
-      |> Option.map RemovePatch
+      let ev = fb.AppEvent<RemovePatchFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let patch = appevent.Patch
+        if patch.HasValue then
+          patch.Value
+          |> Patch.FromFB
+          |> Option.map RemovePatch
+        else None
+      else None
 
     //  ___ ___  ____
     // |_ _/ _ \| __ )  _____  __
@@ -923,22 +991,40 @@ and StateMachine =
     // |___\___/|____/ \___/_/\_\
 
     | StateMachineTypeFB.AddIOBoxFB ->
-      let ev = fb.GetAppEvent(new AddIOBoxFB())
-      ev.GetIOBox(new IOBoxFB())
-      |> IOBox.FromFB
-      |> Option.map AddIOBox
+      let ev = fb.AppEvent<AddIOBoxFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let iobox = appevent.IOBox
+        if iobox.HasValue then
+          iobox.Value
+          |> IOBox.FromFB
+          |> Option.map AddIOBox
+        else None
+      else None
 
     | StateMachineTypeFB.UpdateIOBoxFB  ->
-      let ev = fb.GetAppEvent(new UpdateIOBoxFB())
-      ev.GetIOBox(new IOBoxFB())
-      |> IOBox.FromFB
-      |> Option.map UpdateIOBox
+      let ev = fb.AppEvent<UpdateIOBoxFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let iobox = appevent.IOBox
+        if iobox.HasValue then
+          iobox.Value
+          |> IOBox.FromFB
+          |> Option.map UpdateIOBox
+        else None
+      else None
 
     | StateMachineTypeFB.RemoveIOBoxFB  ->
-      let ev = fb.GetAppEvent(new RemoveIOBoxFB())
-      ev.GetIOBox(new IOBoxFB())
-      |> IOBox.FromFB
-      |> Option.map RemoveIOBox
+      let ev = fb.AppEvent<RemoveIOBoxFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let iobox = appevent.IOBox
+        if iobox.HasValue then
+          iobox.Value
+          |> IOBox.FromFB
+          |> Option.map RemoveIOBox
+        else None
+      else None
 
     //  _   _           _
     // | \ | | ___   __| | ___
@@ -947,22 +1033,40 @@ and StateMachine =
     // |_| \_|\___/ \__,_|\___|
 
     | StateMachineTypeFB.AddNodeFB ->
-      let ev = fb.GetAppEvent(new AddNodeFB())
-      ev.GetNode(new NodeFB())
-      |> RaftNode.FromFB
-      |> Option.map AddNode
+      let ev = fb.AppEvent<AddNodeFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let node = appevent.Node
+        if node.HasValue then
+          node.Value
+          |> RaftNode.FromFB
+          |> Option.map AddNode
+        else None
+      else None
 
     | StateMachineTypeFB.UpdateNodeFB  ->
-      let ev = fb.GetAppEvent(new UpdateNodeFB())
-      ev.GetNode(new NodeFB())
-      |> RaftNode.FromFB
-      |> Option.map UpdateNode
+      let ev = fb.AppEvent<UpdateNodeFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let node = appevent.Node
+        if node.HasValue then
+          node.Value
+          |> RaftNode.FromFB
+          |> Option.map UpdateNode
+        else None
+      else None
 
     | StateMachineTypeFB.RemoveNodeFB  ->
-      let ev = fb.GetAppEvent(new RemoveNodeFB())
-      ev.GetNode(new NodeFB())
-      |> RaftNode.FromFB
-      |> Option.map RemoveNode
+      let ev = fb.AppEvent<RemoveNodeFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let node = appevent.Node
+        if node.HasValue then
+          node.Value
+          |> RaftNode.FromFB
+          |> Option.map RemoveNode
+        else None
+      else None
 
     //  _   _
     // | | | |___  ___ _ __
@@ -971,22 +1075,40 @@ and StateMachine =
     //  \___/|___/\___|_|
 
     | StateMachineTypeFB.AddUserFB ->
-      let ev = fb.GetAppEvent(new AddUserFB())
-      ev.GetUser(new UserFB())
-      |> User.FromFB
-      |> Option.map AddUser
+      let ev = fb.AppEvent<AddUserFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let user = appevent.User
+        if user.HasValue then
+          user.Value
+          |> User.FromFB
+          |> Option.map AddUser
+        else None
+      else None
 
     | StateMachineTypeFB.UpdateUserFB  ->
-      let ev = fb.GetAppEvent(new UpdateUserFB())
-      ev.GetUser(new UserFB())
-      |> User.FromFB
-      |> Option.map UpdateUser
+      let ev = fb.AppEvent<UpdateUserFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let user = appevent.User
+        if user.HasValue then
+          user.Value
+          |> User.FromFB
+          |> Option.map UpdateUser
+        else None
+      else None
 
     | StateMachineTypeFB.RemoveUserFB  ->
-      let ev = fb.GetAppEvent(new RemoveUserFB())
-      ev.GetUser(new UserFB())
-      |> User.FromFB
-      |> Option.map RemoveUser
+      let ev = fb.AppEvent<RemoveUserFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let user = appevent.User
+        if user.HasValue then
+          user.Value
+          |> User.FromFB
+          |> Option.map RemoveUser
+        else None
+      else None
 
     //  ____                _
     // / ___|  ___  ___ ___(_) ___  _ __
@@ -995,22 +1117,40 @@ and StateMachine =
     // |____/ \___||___/___/_|\___/|_| |_|
 
     | StateMachineTypeFB.AddSessionFB ->
-      let ev = fb.GetAppEvent(new AddSessionFB())
-      ev.GetSession(new SessionFB())
-      |> Session.FromFB
-      |> Option.map AddSession
+      let ev = fb.AppEvent<AddSessionFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let session = appevent.Session
+        if session.HasValue then
+          session.Value
+          |> Session.FromFB
+          |> Option.map AddSession
+        else None
+      else None
 
     | StateMachineTypeFB.UpdateSessionFB  ->
-      let ev = fb.GetAppEvent(new UpdateSessionFB())
-      ev.GetSession(new SessionFB())
-      |> Session.FromFB
-      |> Option.map UpdateSession
+      let ev = fb.AppEvent<UpdateSessionFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let session = appevent.Session
+        if session.HasValue then
+          session.Value
+          |> Session.FromFB
+          |> Option.map UpdateSession
+        else None
+      else None
 
     | StateMachineTypeFB.RemoveSessionFB  ->
-      let ev = fb.GetAppEvent(new RemoveSessionFB())
-      ev.GetSession(new SessionFB())
-      |> Session.FromFB
-      |> Option.map RemoveSession
+      let ev = fb.AppEvent<RemoveSessionFB>()
+      if ev.HasValue then
+        let appevent = ev.Value
+        let session = appevent.Session
+        if session.HasValue then
+          session.Value
+          |> Session.FromFB
+          |> Option.map RemoveSession
+        else None
+      else None
 
     //  __  __ _
     // |  \/  (_)___  ___
@@ -1019,20 +1159,32 @@ and StateMachine =
     // |_|  |_|_|___/\___|
 
     | StateMachineTypeFB.LogMsgFB     ->
-      let ev = fb.GetAppEvent(new LogMsgFB())
-      LogLevel.Parse ev.LogLevel
-      |> Option.map (fun level -> LogMsg(level, ev.Msg))
+      let ev = fb.AppEvent<LogMsgFB>()
+      if ev.HasValue then
+        let log = ev.Value
+        LogLevel.Parse log.LogLevel
+        |> Option.map (fun level -> LogMsg(level, log.Msg))
+      else None
 
     | StateMachineTypeFB.AppCommandFB ->
-      let ev = fb.GetAppEvent(new AppCommandFB())
-      AppCommand.FromFB ev
-      |> Option.map Command
+      let ev = fb.AppEvent<AppCommandFB>()
+      if ev.HasValue then
+        let cmd = ev.Value
+        AppCommand.FromFB cmd
+        |> Option.map Command
+      else None
 
     | StateMachineTypeFB.DataSnapshotFB ->
-      let snapshot = fb.GetAppEvent(new DataSnapshotFB())
-      snapshot.GetData(new StateFB())
-      |> State.FromFB
-      |> Option.map DataSnapshot
+      let ev = fb.AppEvent<DataSnapshotFB>()
+      if ev.HasValue then
+        let snapshot = ev.Value
+        let data = snapshot.Data
+        if data.HasValue then
+          data.Value
+          |> State.FromFB
+          |> Option.map DataSnapshot
+        else None
+      else None
 
     | _ -> None
 

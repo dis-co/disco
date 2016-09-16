@@ -328,9 +328,6 @@ module SerializationTests =
       let recue = cue |> Binary.encode |> Binary.decode |> Option.get
       expect "should be same" cue id recue
 
-      let recue = cue |> Json.encode |> Json.decode |> Option.get
-      expect "should be same" cue id recue
-
   //   ____           _     _     _
   //  / ___|   _  ___| |   (_)___| |_
   // | |  | | | |/ _ \ |   | / __| __|
@@ -342,9 +339,6 @@ module SerializationTests =
       let cuelist : CueList = mkCueList ()
 
       let recuelist = cuelist |> Binary.encode |> Binary.decode |> Option.get
-      expect "should be same" cuelist id recuelist
-
-      let recuelist = cuelist |> Json.encode |> Json.decode |> Option.get
       expect "should be same" cuelist id recuelist
 
   //  ____       _       _
@@ -360,9 +354,6 @@ module SerializationTests =
       let repatch = patch |> Binary.encode |> Binary.decode |> Option.get
       expect "Should be structurally equivalent" patch id repatch
 
-      let repatch = patch |> Json.encode |> Json.decode |> Option.get
-      expect "Should be structurally equivalent" patch id repatch
-
   //  ____                _
   // / ___|  ___  ___ ___(_) ___  _ __
   // \___ \ / _ \/ __/ __| |/ _ \| '_ \
@@ -376,9 +367,6 @@ module SerializationTests =
       let resession = session |> Binary.encode |> Binary.decode |> Option.get
       expect "Should be structurally equivalent" session id resession
 
-      let resession = session |> Json.encode |> Json.decode |> Option.get
-      expect "Should be structurally equivalent" session id resession
-
   //  _   _
   // | | | |___  ___ _ __
   // | | | / __|/ _ \ '__|
@@ -390,9 +378,6 @@ module SerializationTests =
       let user : User = mkUser ()
 
       let reuser = user |> Binary.encode |> Binary.decode |> Option.get
-      expect "Should be structurally equivalent" user id reuser
-
-      let reuser = user |> Json.encode |> Json.decode |> Option.get
       expect "Should be structurally equivalent" user id reuser
 
   //  ____  _ _
@@ -417,9 +402,6 @@ module SerializationTests =
       |> Array.iter
         (fun slice ->
           let reslice = slice |> Binary.encode |> Binary.decode |> Option.get
-          expect "Should be structurally equivalent" slice id reslice
-
-          let reslice = slice |> Json.encode |> Json.decode |> Option.get
           expect "Should be structurally equivalent" slice id reslice)
 
   //  ___ ___  ____
@@ -432,9 +414,6 @@ module SerializationTests =
     testCase "Validate IOBox Serialization" <| fun _ ->
       let check iobox =
         iobox |> Binary.encode |> Binary.decode |> Option.get
-        |> expect "Should be structurally equivalent" iobox id
-
-        iobox |> Json.encode |> Json.decode |> Option.get
         |> expect "Should be structurally equivalent" iobox id
 
       Array.iter check (ioboxes ())
@@ -458,9 +437,6 @@ module SerializationTests =
       let state : State = mkState ()
 
       state |> Binary.encode |> Binary.decode |> Option.get
-      |> expect "Should be structurally equivalent" state id
-
-      state |> Json.encode |> Json.decode |> Option.get
       |> expect "Should be structurally equivalent" state id
 
   //  ____  _        _       __  __            _     _
@@ -498,9 +474,6 @@ module SerializationTests =
       ]
       |> List.iter (fun cmd ->
                      let remsg = cmd |> Binary.encode |> Binary.decode |> Option.get
-                     expect "Should be structurally the same" cmd id remsg
-
-                     let remsg = cmd |> Json.encode |> Json.decode |> Option.get
                      expect "Should be structurally the same" cmd id remsg)
 
   //     _    _ _   _____         _

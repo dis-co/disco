@@ -6,13 +6,16 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class RemoveIOBoxFB : Table {
+public struct RemoveIOBoxFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static RemoveIOBoxFB GetRootAsRemoveIOBoxFB(ByteBuffer _bb) { return GetRootAsRemoveIOBoxFB(_bb, new RemoveIOBoxFB()); }
-  public static RemoveIOBoxFB GetRootAsRemoveIOBoxFB(ByteBuffer _bb, RemoveIOBoxFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public RemoveIOBoxFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static RemoveIOBoxFB GetRootAsRemoveIOBoxFB(ByteBuffer _bb, RemoveIOBoxFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public RemoveIOBoxFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public IOBoxFB IOBox { get { return GetIOBox(new IOBoxFB()); } }
-  public IOBoxFB GetIOBox(IOBoxFB obj) { int o = __offset(4); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
+  public IOBoxFB? IOBox { get { int o = __p.__offset(4); return o != 0 ? (IOBoxFB?)(new IOBoxFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<RemoveIOBoxFB> CreateRemoveIOBoxFB(FlatBufferBuilder builder,
       Offset<IOBoxFB> IOBoxOffset = default(Offset<IOBoxFB>)) {

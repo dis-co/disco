@@ -6,13 +6,16 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class AddCueListFB : Table {
+public struct AddCueListFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static AddCueListFB GetRootAsAddCueListFB(ByteBuffer _bb) { return GetRootAsAddCueListFB(_bb, new AddCueListFB()); }
-  public static AddCueListFB GetRootAsAddCueListFB(ByteBuffer _bb, AddCueListFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public AddCueListFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static AddCueListFB GetRootAsAddCueListFB(ByteBuffer _bb, AddCueListFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public AddCueListFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public CueListFB CueList { get { return GetCueList(new CueListFB()); } }
-  public CueListFB GetCueList(CueListFB obj) { int o = __offset(4); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
+  public CueListFB? CueList { get { int o = __p.__offset(4); return o != 0 ? (CueListFB?)(new CueListFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<AddCueListFB> CreateAddCueListFB(FlatBufferBuilder builder,
       Offset<CueListFB> CueListOffset = default(Offset<CueListFB>)) {

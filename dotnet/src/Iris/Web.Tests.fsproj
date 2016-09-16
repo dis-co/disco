@@ -63,13 +63,14 @@
     <Compile Include="Iris\Web\Views\Patches.fs" />
     <Compile Include=".\Iris\Tests\Web\TestUtilities.fs" />
     <Compile Include=".\Iris\Tests\Web\Mocha.fs" />
-    <Compile Include=".\Iris\Tests\Web\HtmlTests.fs" />
-    <compile Include=".\Iris\Tests\Web\PatchesViewTests.fs" />
-    <Compile Include=".\Iris\Tests\Web\PluginsTests.fs" />
-    <Compile Include=".\Iris\Tests\Web\StorageTests.fs" />
-    <Compile Include=".\Iris\Tests\Web\StoreTests.fs" />
-    <compile Include=".\Iris\Tests\Web\ViewControllerTests.fs" />
-    <Compile Include=".\Iris\Tests\Web\VirtualDomTests.fs" />
+    <Compile Include=".\Iris\Tests\Web\FlatBuffersTests.fs" />
+    <!-- <Compile Include=".\Iris\Tests\Web\HtmlTests.fs" /> -->
+    <!-- <compile Include=".\Iris\Tests\Web\PatchesViewTests.fs" /> -->
+    <!-- <Compile Include=".\Iris\Tests\Web\PluginsTests.fs" /> -->
+    <!-- <Compile Include=".\Iris\Tests\Web\StorageTests.fs" /> -->
+    <!-- <Compile Include=".\Iris\Tests\Web\StoreTests.fs" /> -->
+    <!-- <compile Include=".\Iris\Tests\Web\ViewControllerTests.fs" /> -->
+    <!-- <Compile Include=".\Iris\Tests\Web\VirtualDomTests.fs" /> -->
     <!--  __  __       _        -->
     <!-- |  \/  | __ _(_)_ __   -->
     <!-- | |\/| |/ _` | | '_ \  -->

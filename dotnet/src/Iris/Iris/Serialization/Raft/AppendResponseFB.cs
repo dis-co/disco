@@ -6,15 +6,19 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class AppendResponseFB : Table {
+public struct AppendResponseFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static AppendResponseFB GetRootAsAppendResponseFB(ByteBuffer _bb) { return GetRootAsAppendResponseFB(_bb, new AppendResponseFB()); }
-  public static AppendResponseFB GetRootAsAppendResponseFB(ByteBuffer _bb, AppendResponseFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public AppendResponseFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static AppendResponseFB GetRootAsAppendResponseFB(ByteBuffer _bb, AppendResponseFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public AppendResponseFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Term { get { int o = __offset(4); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public bool Success { get { int o = __offset(6); return o != 0 ? 0!=bb.Get(o + bb_pos) : (bool)false; } }
-  public ulong CurrentIndex { get { int o = __offset(8); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public ulong FirstIndex { get { int o = __offset(10); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
+  public ulong Term { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public bool Success { get { int o = __p.__offset(6); return o != 0 ? 0!=__p.bb.Get(o + __p.bb_pos) : (bool)false; } }
+  public ulong CurrentIndex { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public ulong FirstIndex { get { int o = __p.__offset(10); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
 
   public static Offset<AppendResponseFB> CreateAppendResponseFB(FlatBufferBuilder builder,
       ulong Term = 0,

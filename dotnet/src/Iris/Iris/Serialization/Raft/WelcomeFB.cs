@@ -6,13 +6,16 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class WelcomeFB : Table {
+public struct WelcomeFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static WelcomeFB GetRootAsWelcomeFB(ByteBuffer _bb) { return GetRootAsWelcomeFB(_bb, new WelcomeFB()); }
-  public static WelcomeFB GetRootAsWelcomeFB(ByteBuffer _bb, WelcomeFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public WelcomeFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static WelcomeFB GetRootAsWelcomeFB(ByteBuffer _bb, WelcomeFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public WelcomeFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public NodeFB Node { get { return GetNode(new NodeFB()); } }
-  public NodeFB GetNode(NodeFB obj) { int o = __offset(4); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
+  public NodeFB? Node { get { int o = __p.__offset(4); return o != 0 ? (NodeFB?)(new NodeFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<WelcomeFB> CreateWelcomeFB(FlatBufferBuilder builder,
       Offset<NodeFB> NodeOffset = default(Offset<NodeFB>)) {

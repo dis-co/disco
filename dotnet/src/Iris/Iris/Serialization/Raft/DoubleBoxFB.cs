@@ -6,28 +6,31 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class DoubleBoxFB : Table {
+public struct DoubleBoxFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static DoubleBoxFB GetRootAsDoubleBoxFB(ByteBuffer _bb) { return GetRootAsDoubleBoxFB(_bb, new DoubleBoxFB()); }
-  public static DoubleBoxFB GetRootAsDoubleBoxFB(ByteBuffer _bb, DoubleBoxFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public DoubleBoxFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static DoubleBoxFB GetRootAsDoubleBoxFB(ByteBuffer _bb, DoubleBoxFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public DoubleBoxFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public string Id { get { int o = __offset(4); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetIdBytes() { return __vector_as_arraysegment(4); }
-  public string Name { get { int o = __offset(6); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetNameBytes() { return __vector_as_arraysegment(6); }
-  public string Patch { get { int o = __offset(8); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetPatchBytes() { return __vector_as_arraysegment(8); }
-  public string GetTags(int j) { int o = __offset(10); return o != 0 ? __string(__vector(o) + j * 4) : null; }
-  public int TagsLength { get { int o = __offset(10); return o != 0 ? __vector_len(o) : 0; } }
-  public uint VecSize { get { int o = __offset(12); return o != 0 ? bb.GetUint(o + bb_pos) : (uint)0; } }
-  public int Min { get { int o = __offset(14); return o != 0 ? bb.GetInt(o + bb_pos) : (int)0; } }
-  public int Max { get { int o = __offset(16); return o != 0 ? bb.GetInt(o + bb_pos) : (int)0; } }
-  public string Unit { get { int o = __offset(18); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetUnitBytes() { return __vector_as_arraysegment(18); }
-  public uint Precision { get { int o = __offset(20); return o != 0 ? bb.GetUint(o + bb_pos) : (uint)0; } }
-  public DoubleSliceFB GetSlices(int j) { return GetSlices(new DoubleSliceFB(), j); }
-  public DoubleSliceFB GetSlices(DoubleSliceFB obj, int j) { int o = __offset(22); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
-  public int SlicesLength { get { int o = __offset(22); return o != 0 ? __vector_len(o) : 0; } }
+  public string Id { get { int o = __p.__offset(4); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetIdBytes() { return __p.__vector_as_arraysegment(4); }
+  public string Name { get { int o = __p.__offset(6); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetNameBytes() { return __p.__vector_as_arraysegment(6); }
+  public string Patch { get { int o = __p.__offset(8); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetPatchBytes() { return __p.__vector_as_arraysegment(8); }
+  public string Tags(int j) { int o = __p.__offset(10); return o != 0 ? __p.__string(__p.__vector(o) + j * 4) : null; }
+  public int TagsLength { get { int o = __p.__offset(10); return o != 0 ? __p.__vector_len(o) : 0; } }
+  public uint VecSize { get { int o = __p.__offset(12); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
+  public int Min { get { int o = __p.__offset(14); return o != 0 ? __p.bb.GetInt(o + __p.bb_pos) : (int)0; } }
+  public int Max { get { int o = __p.__offset(16); return o != 0 ? __p.bb.GetInt(o + __p.bb_pos) : (int)0; } }
+  public string Unit { get { int o = __p.__offset(18); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetUnitBytes() { return __p.__vector_as_arraysegment(18); }
+  public uint Precision { get { int o = __p.__offset(20); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
+  public DoubleSliceFB? Slices(int j) { int o = __p.__offset(22); return o != 0 ? (DoubleSliceFB?)(new DoubleSliceFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
+  public int SlicesLength { get { int o = __p.__offset(22); return o != 0 ? __p.__vector_len(o) : 0; } }
 
   public static Offset<DoubleBoxFB> CreateDoubleBoxFB(FlatBufferBuilder builder,
       StringOffset IdOffset = default(StringOffset),

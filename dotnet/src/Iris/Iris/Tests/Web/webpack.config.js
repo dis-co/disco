@@ -5,7 +5,7 @@ var src = path.join(__dirname, "..", "..", "..");
 
 var cfg = {
   devtool: "source-map",
-  entry: [ "./Main.js", 'flatbuffers', 'buffers' ],
+  entry: [ "./Main.js", "flatbuffers"],
   context: path.join(src, "bin", "Debug", "Iris", "Tests", "Web"),
   resolve: {
     alias: {
@@ -15,8 +15,7 @@ var cfg = {
   },
   plugins: [
     new webpack.ProvidePlugin({
-      flatbuffers: "flatbuffers",
-      buffers: "buffers"
+      flatbuffers: "flatbuffers"
     })
   ],
   output: {
@@ -28,7 +27,10 @@ var cfg = {
       test: /\.js$/,
       exclude: /node_modules/,
       loader: "source-map-loader"
-    }]
+    }],
+    loaders: [
+      { test: /buffers/, loader: 'imports?buffers' }
+    ]
   }
 };
 

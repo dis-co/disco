@@ -45,10 +45,12 @@ type CueList =
     let cues = Array.zeroCreate fb.CuesLength
 
     for i in 0 .. (fb.CuesLength - 1) do
-      fb.GetCues(i)
-      |> Cue.FromFB
-      |> Option.map (fun cue -> cues.[i] <- cue)
-      |> ignore
+      let cue = fb.Cues(i)
+      if cue.HasValue then
+        cue.Value
+        |> Cue.FromFB
+        |> Option.map (fun cue -> cues.[i] <- cue)
+        |> ignore
 
     try
       { Id = Id fb.Id

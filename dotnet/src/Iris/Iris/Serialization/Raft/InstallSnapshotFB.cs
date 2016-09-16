@@ -6,19 +6,22 @@ namespace Iris.Serialization.Raft
 using System;
 using FlatBuffers;
 
-public sealed class InstallSnapshotFB : Table {
+public struct InstallSnapshotFB : IFlatbufferObject
+{
+  private Table __p;
+  public ByteBuffer ByteBuffer { get { return __p.bb; } }
   public static InstallSnapshotFB GetRootAsInstallSnapshotFB(ByteBuffer _bb) { return GetRootAsInstallSnapshotFB(_bb, new InstallSnapshotFB()); }
-  public static InstallSnapshotFB GetRootAsInstallSnapshotFB(ByteBuffer _bb, InstallSnapshotFB obj) { return (obj.__init(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public InstallSnapshotFB __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
+  public static InstallSnapshotFB GetRootAsInstallSnapshotFB(ByteBuffer _bb, InstallSnapshotFB obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
+  public InstallSnapshotFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Term { get { int o = __offset(4); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public string LeaderId { get { int o = __offset(6); return o != 0 ? __string(o + bb_pos) : null; } }
-  public ArraySegment<byte>? GetLeaderIdBytes() { return __vector_as_arraysegment(6); }
-  public ulong LastIndex { get { int o = __offset(8); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public ulong LastTerm { get { int o = __offset(10); return o != 0 ? bb.GetUlong(o + bb_pos) : (ulong)0; } }
-  public LogFB GetData(int j) { return GetData(new LogFB(), j); }
-  public LogFB GetData(LogFB obj, int j) { int o = __offset(12); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
-  public int DataLength { get { int o = __offset(12); return o != 0 ? __vector_len(o) : 0; } }
+  public ulong Term { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public string LeaderId { get { int o = __p.__offset(6); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
+  public ArraySegment<byte>? GetLeaderIdBytes() { return __p.__vector_as_arraysegment(6); }
+  public ulong LastIndex { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public ulong LastTerm { get { int o = __p.__offset(10); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public LogFB? Data(int j) { int o = __p.__offset(12); return o != 0 ? (LogFB?)(new LogFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
+  public int DataLength { get { int o = __p.__offset(12); return o != 0 ? __p.__vector_len(o) : 0; } }
 
   public static Offset<InstallSnapshotFB> CreateInstallSnapshotFB(FlatBufferBuilder builder,
       ulong Term = 0,
