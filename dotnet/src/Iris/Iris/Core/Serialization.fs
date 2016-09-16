@@ -1,8 +1,43 @@
 namespace Iris.Core
 
-// open System.Runtime.CompilerServices
-// open Iris.Serialization.Raft
-// open Iris.Raft
+#if JAVASCRIPT // ------------------------------------------------------------------------------- //
+
+open Fable.Core
+open Fable.Import
+open Fable.Import.JS
+open Iris.Core.FlatBuffers
+
+//  ____  _
+// | __ )(_)_ __   __ _ _ __ _   _
+// |  _ \| | '_ \ / _` | '__| | | |
+// | |_) | | | | | (_| | |  | |_| |
+// |____/|_|_| |_|\__,_|_|   \__, |
+//                           |___/
+
+[<RequireQualifiedAccess>]
+module Binary =
+
+  let inline encode (value : ^t when ^t : (member ToBytes : unit -> ArrayBuffer)) =
+    (^t : (member ToBytes : unit -> ArrayBuffer) value)
+
+  let inline decode< ^t when ^t : (static member FromBytes : ArrayBuffer -> ^t option)>
+                                  (bytes: ArrayBuffer) :
+                                  ^t option =
+    (^t : (static member FromBytes : ArrayBuffer -> ^t option) bytes)
+
+  let inline toOffset< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)>
+                     (builder: FlatBufferBuilder)
+                     (thing: ^a)
+                     : Offset< ^t > =
+    (^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >) (thing,builder))
+
+  let inline buildBuffer< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)> (thing: ^a) : ArrayBuffer =
+    let builder = FlatBufferBuilder.Create(1)
+    let offset = toOffset builder thing
+    builder.Finish(offset)
+    builder.SizedByteArray()
+
+#else // ---------------------------------------------------------------------------------------- //
 
 open FlatBuffers
 open Newtonsoft.Json
@@ -103,8 +138,6 @@ module Json =
   let inline parse< ^t when ^t : (static member FromJToken : JToken -> ^t option)> (token: JToken) : ^t option =
     (^t : (static member FromJToken : JToken -> ^t option) token)
 
-#if JAVASCRIPT
-#else
 
 [<AutoOpen>]
 module JsonHelpers =

@@ -14,22 +14,16 @@ let ctrl = new ViewController<State, ClientContext> (widget)
 
 let context = new ClientContext()
 
-// ------------------ 8< ------------------
-[<Import("buffers","*")>]
-module Serializations =
-  let Bla : string = "hello"
 
+[<Emit("Object.keys(buffers.Iris.Serialization.Raft)")>]
+let buffers _ = failwith "ONLY JS"
 
-[<Emit("flatbuffers")>]
-let getit _ = failwith "ONLY JS"
+open Iris.Core.FlatBuffers
 
-[<Emit("buffers")>]
-let gotit _ = failwith "ONLY JS"
+printfn "buffers: %A"     (buffers())
+printfn "bytebuffer: %A"  (ByteBuffer.Create(Fable.Import.JS.ArrayBuffer.Create(1.0)))
+printfn "builder: %A"     (FlatBufferBuilder.Create(1))
 
-open Serializations
-
-printfn "flatbuffers: %A" (getit())
-printfn "buffers: %A"     (gotit())
 // ------------------ 8< ------------------
 
 context.Controller <- ctrl

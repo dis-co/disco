@@ -1,13 +1,16 @@
 var path = require("path");
 var webpack = require("webpack");
 
+var src = path.join(__dirname, "..", "..", "..");
+
 var cfg = {
   devtool: "source-map",
-  entry: [ "../../../bin/Debug/Iris/Web/Frontend/Main.js", 'flatbuffers', 'buffers' ],
+  entry: [ "./Main.js", 'flatbuffers', 'buffers' ],
+  context: path.join(src, "bin", "Debug", "Iris", "Web", "Frontend"),
   resolve: {
     alias: {
-      flatbuffers: __dirname + '/../../../assets/frontend/js/flatbuffers.js',
-      buffers: __dirname + '/../../../Raft_generated.js'
+      flatbuffers: path.join(src, "assets", "frontend", "js", "flatbuffers.js"),
+      buffers: path.join(src, "bin", "Raft_generated.js")
     }
   },
   plugins: [
@@ -17,7 +20,7 @@ var cfg = {
     })
   ],
   output: {
-    path: path.join(__dirname, "../../../bin/Debug/Iris/assets/js"),
+    path: path.join(src, "bin", "Debug", "Iris", "assets", "js"),
     filename: "iris.js"
   },
   module: {

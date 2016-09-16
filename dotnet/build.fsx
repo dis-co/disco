@@ -330,8 +330,12 @@ Target "GenerateSerialization"
       |> Seq.map (fun p -> " " + p)
       |> Seq.fold ((+)) ""
 
+   // CSHARP
    let args = "-I " + (baseDir @@ "Schema") + " --csharp " + fbs
+   runExec flatcPath args baseDir false
 
+   // JAVASCRIPT
+   let args = "-I " + (baseDir @@ "Schema") + " -o " + (baseDir @@ "bin") + " --js " + fbs
    runExec flatcPath args baseDir false
 
    let files =
