@@ -146,43 +146,4 @@ type User =
     UserFB.GetRootAsUserFB(new ByteBuffer(bytes))
     |> User.FromFB
 
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() =
-    new JObject()
-    |> addString "Id"        (string self.Id)
-    |> addString "UserName"  (string self.UserName)
-    |> addString "FirstName"  self.FirstName
-    |> addString "LastName"   self.LastName
-    |> addString "Email"      self.Email
-    |> addString "Joined"    (string self.Joined)
-    |> addString "Created"   (string self.Created)
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : User option =
-    try
-      { Id        = Id (string token.["Id"])
-      ; UserName  = (string token.["UserName"])
-      ; FirstName = (string token.["FirstName"])
-      ; LastName  = (string token.["LastName"])
-      ; Email     = (string token.["Email"])
-      ; Joined    = DateTime.Parse (string token.["Joined"])
-      ; Created   = DateTime.Parse (string token.["Created"])
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize user json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : User option =
-    JToken.Parse(str) |> User.FromJToken
-
 #endif

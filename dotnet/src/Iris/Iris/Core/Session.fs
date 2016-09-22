@@ -59,38 +59,4 @@ type Session =
 
   member self.ToBytes() = Binary.buildBuffer self
 
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() =
-    new JObject()
-    |> addString "Id"        (string self.Id)
-    |> addString "UserName"   self.UserName
-    |> addString "IpAddress" (string self.IpAddress)
-    |> addString "UserAgent"  self.UserAgent
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : Session option =
-    try
-      { Id        = Id (string token.["Id"])
-      ; UserName  = (string token.["UserName"])
-      ; IpAddress = IpAddress.Parse (string token.["IpAddress"])
-      ; UserAgent = (string token.["UserAgent"])
-      }
-      |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize session json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(json: string) : Session option =
-    JToken.Parse(json) |> Session.FromJToken
-
 #endif

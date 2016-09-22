@@ -43,9 +43,6 @@ type Behavior =
 #if JAVASCRIPT
 #else
 
-  static member Type
-    with get () = Serialization.GetTypeName<Behavior>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -63,31 +60,6 @@ type Behavior =
     match self with
     | Toggle -> BehaviorFB.ToggleFB
     | Bang   -> BehaviorFB.BangFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () : JToken =
-    new JValue(string self) :> JToken
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : Behavior option =
-    try
-      Behavior.TryParse (string token)
-    with
-      | exn ->
-        printfn "Could not deserialize behavior value: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : Behavior option =
-    JToken.Parse(str) |> Behavior.FromJToken
 
 #endif
 
@@ -131,9 +103,6 @@ type StringType =
 #if JAVASCRIPT
 #else
 
-  static member Type
-    with get () = Serialization.GetTypeName<StringType>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -159,63 +128,6 @@ type StringType =
     | Directory -> StringTypeFB.DirectoryFB
     | Url       -> StringTypeFB.UrlFB
     | IP        -> StringTypeFB.IPFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () : JToken =
-    new JValue(string self) :> JToken
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : StringType option =
-    try
-      StringType.TryParse (string token)
-    with
-      | exn ->
-        printfn "Could not deserialize string type json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : StringType option =
-    JToken.Parse(str) |> StringType.FromJToken
-
-#endif
-
-
-#if JAVASCRIPT
-#else
-
-[<AutoOpen>]
-module JsonUtils =
-
-  let parseTags (token: JToken) : Tag array =
-    let jarr = token.["Tags"] :?> JArray
-    let arr = Array.zeroCreate jarr.Count
-
-    for i in 0 .. (jarr.Count - 1) do
-      arr.[i] <- string jarr.[i]
-
-    arr
-
-  let inline parseSlices (token: JToken) =
-    let jarr = token.["Slices"] :?> JArray
-    let arr = Array.zeroCreate jarr.Count
-
-    for i in 0 .. (jarr.Count - 1) do
-      Json.parse jarr.[i]
-      |> Option.map (fun slice -> arr.[i] <- slice)
-      |> ignore
-
-    arr
-
-  let parseIdField (token: JToken) (name: string) =
-    string token.[name] |> Id
 
 #endif
 
@@ -559,8 +471,6 @@ type IOBox =
 
 #if JAVASCRIPT
 #else
-    static member Type
-      with get () = Serialization.GetTypeName<IOBox>()
 
     //  ____  _
     // | __ )(_)_ __   __ _ _ __ _   _
@@ -695,61 +605,6 @@ type IOBox =
       IOBoxFB.GetRootAsIOBoxFB(new ByteBuffer(bytes))
       |> IOBox.FromFB
 
-    //      _
-    //     | |___  ___  _ __
-    //  _  | / __|/ _ \| '_ \
-    // | |_| \__ \ (_) | | | |
-    //  \___/|___/\___/|_| |_|
-
-    member self.ToJToken () : JToken =
-      let json = new JObject() |> addType IOBox.Type
-
-      let inline add (case: string) data =
-        json |> addCase case |> addFields [| data |]
-
-      match self with
-      | StringBox data -> add "StringBox" data
-      | IntBox    data -> add "IntBox"    data
-      | FloatBox  data -> add "FloatBox"  data
-      | DoubleBox data -> add "DoubleBox" data
-      | BoolBox   data -> add "BoolBox"   data
-      | ByteBox   data -> add "ByteBox"   data
-      | EnumBox   data -> add "EnumBox"   data
-      | ColorBox  data -> add "ColorBox"  data
-      | Compound  data -> add "Compound"  data
-
-    member self.ToJson() =
-      self.ToJToken() |> string
-
-    static member FromJToken(token: JToken) : IOBox option =
-      try
-        let inline parseData (constr: ^f -> IOBox) =
-          token.["Fields"] :?> JArray
-          |> fun arr -> arr.[0]
-          |> Json.parse
-          |> Option.map constr
-
-        match string token.["Case"] with
-        | "StringBox" -> parseData StringBox
-        | "IntBox"    -> parseData IntBox
-        | "FloatBox"  -> parseData FloatBox
-        | "DoubleBox" -> parseData DoubleBox
-        | "BoolBox"   -> parseData BoolBox
-        | "ByteBox"   -> parseData ByteBox
-        | "EnumBox"   -> parseData EnumBox
-        | "ColorBox"  -> parseData ColorBox
-        | "Compound"  -> parseData Compound
-        | _ -> None
-      with
-        | exn ->
-          printfn "Could not deserialize iobox json: "
-          printfn "    Message: %s"  exn.Message
-          printfn "    json:    %s" (string token)
-          None
-
-    static member FromJson(str: string) : IOBox option =
-      JToken.Parse(str) |> IOBox.FromJToken
-
 #endif
 
 //  ____              _ ____
@@ -768,10 +623,6 @@ and BoolBoxD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<BoolBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -827,46 +678,6 @@ and BoolBoxD =
     BoolBoxFB.GetRootAsBoolBoxFB(new ByteBuffer(bytes))
     |> BoolBoxD.FromFB
 
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"       (string self.Id)
-    |> addString  "Name"      self.Name
-    |> addString  "Patch"    (string self.Patch)
-    |> addStrings "Tags"      self.Tags
-    |> addString  "Behavior" (string self.Behavior)
-    |> addArray   "Slices"    self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : BoolBoxD option =
-    try
-      Json.parse<Behavior> token.["Behavior"]
-      |> Option.map
-        (fun behavior ->
-          { Id       = parseIdField token "Id"
-          ; Name     = string token.["Name"]
-          ; Patch    = parseIdField token "Patch"
-          ; Tags     = parseTags token
-          ; Behavior = behavior
-          ; Slices   = parseSlices token
-          })
-    with
-      | exn ->
-        printfn "Could not deserialize BoolBoxD json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : BoolBoxD option =
-    JToken.Parse(str) |> BoolBoxD.FromJToken
-
 #endif
 
 //  ____              _ ____  _ _
@@ -881,10 +692,6 @@ and BoolSliceD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<BoolSliceD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -911,37 +718,6 @@ and BoolSliceD =
   static member FromBytes(bytes: byte array) : BoolSliceD option =
     BoolSliceFB.GetRootAsBoolSliceFB(new ByteBuffer(bytes))
     |> BoolSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addLong "Index" self.Index
-    |> addBool "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : BoolSliceD option =
-    try
-      let value = System.Boolean.Parse(string token.["Value"])
-      { Index = uint64 token.["Index"]
-      ; Value = value
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : BoolSliceD option =
-    JToken.Parse(str) |> BoolSliceD.FromJToken
-
 #endif
 
 //  ___       _   ____
@@ -963,10 +739,6 @@ and IntBoxD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<IntBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1030,50 +802,6 @@ and IntBoxD =
   static member FromBytes(bytes: byte array) : IntBoxD option =
     IntBoxFB.GetRootAsIntBoxFB(new ByteBuffer(bytes))
     |> IntBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"     (string self.Id)
-    |> addString  "Name"    self.Name
-    |> addString  "Patch"  (string self.Patch)
-    |> addStrings "Tags"    self.Tags
-    |> addUInt32  "VecSize" self.VecSize
-    |> addInt     "Min"     self.Min
-    |> addInt     "Max"     self.Max
-    |> addString  "Unit"    self.Unit
-    |> addArray   "Slices"  self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : IntBoxD option =
-    try
-      { Id         = parseIdField token "Id"
-      ; Name       = string token.["Name"]
-      ; Patch      = parseIdField token "Patch"
-      ; Tags       = parseTags    token
-      ; VecSize    = uint32 token.["VecSize"]
-      ; Min        = int    token.["Min"]
-      ; Max        = int    token.["Max"]
-      ; Unit       = string token.["Unit"]
-      ; Slices     = parseSlices  token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : IntBoxD option =
-    JToken.Parse(str) |> IntBoxD.FromJToken
-
 #endif
 
 //  ___       _   ____  _ _
@@ -1088,10 +816,6 @@ and IntSliceD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<IntSliceD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1118,36 +842,6 @@ and IntSliceD =
   static member FromBytes(bytes: byte array) : IntSliceD option =
     IntSliceFB.GetRootAsIntSliceFB(new ByteBuffer(bytes))
     |> IntSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addLong "Index" self.Index
-    |> addInt  "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : IntSliceD option =
-    try
-      { Index = uint64 token.["Index"]
-      ; Value = int    token.["Value"]
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : IntSliceD option =
-    JToken.Parse(str) |> IntSliceD.FromJToken
-
 #endif
 
 //  _____ _             _   ____
@@ -1170,10 +864,6 @@ and FloatBoxD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<FloatBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1239,52 +929,6 @@ and FloatBoxD =
   static member FromBytes(bytes: byte array) : FloatBoxD option =
     FloatBoxFB.GetRootAsFloatBoxFB(new ByteBuffer(bytes))
     |> FloatBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"       (string self.Id)
-    |> addString  "Name"      self.Name
-    |> addString  "Patch"    (string self.Patch)
-    |> addStrings "Tags"      self.Tags
-    |> addUInt32  "VecSize"   self.VecSize
-    |> addInt     "Min"       self.Min
-    |> addInt     "Max"       self.Max
-    |> addString  "Unit"      self.Unit
-    |> addUInt32  "Precision" self.Precision
-    |> addArray   "Slices"    self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : FloatBoxD option =
-    try
-      { Id         = parseIdField token "Id"
-      ; Name       = string token.["Name"]
-      ; Patch      = parseIdField token "Patch"
-      ; Tags       = parseTags token
-      ; VecSize    = uint32 token.["VecSize"]
-      ; Min        = int    token.["Min"]
-      ; Max        = int    token.["Max"]
-      ; Unit       = string token.["Unit"]
-      ; Precision  = uint32 token.["Precision"]
-      ; Slices     = parseSlices token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : FloatBoxD option =
-    JToken.Parse(str) |> FloatBoxD.FromJToken
-
 #endif
 
 //  _____ _             _   ____  _ _
@@ -1300,10 +944,6 @@ and FloatSliceD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<FloatSliceD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1330,36 +970,6 @@ and FloatSliceD =
   static member FromBytes(bytes: byte array) : FloatSliceD option =
     FloatSliceFB.GetRootAsFloatSliceFB(new ByteBuffer(bytes))
     |> FloatSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addLong  "Index" self.Index
-    |> addFloat "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : FloatSliceD option =
-    try
-      { Index = uint64 token.["Index"]
-      ; Value = float  token.["Value"]
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : FloatSliceD option =
-    JToken.Parse(str) |> FloatSliceD.FromJToken
-
 #endif
 
 //  ____              _     _      ____
@@ -1383,10 +993,6 @@ and DoubleBoxD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<DoubleBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1452,52 +1058,6 @@ and DoubleBoxD =
   static member FromBytes(bytes: byte array) : DoubleBoxD option =
     DoubleBoxFB.GetRootAsDoubleBoxFB(new ByteBuffer(bytes))
     |> DoubleBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"       (string self.Id)
-    |> addString  "Name"      self.Name
-    |> addString  "Patch"    (string self.Patch)
-    |> addStrings "Tags"      self.Tags
-    |> addUInt32  "VecSize"   self.VecSize
-    |> addInt     "Min"       self.Min
-    |> addInt     "Max"       self.Max
-    |> addString  "Unit"      self.Unit
-    |> addUInt32  "Precision" self.Precision
-    |> addArray   "Slices"    self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : DoubleBoxD option =
-    try
-      { Id         = parseIdField token "Id"
-      ; Name       = string token.["Name"]
-      ; Patch      = parseIdField token "Patch"
-      ; Tags       = parseTags token
-      ; VecSize    = uint32 token.["VecSize"]
-      ; Min        = int    token.["Min"]
-      ; Max        = int    token.["Max"]
-      ; Unit       = string token.["Unit"]
-      ; Precision  = uint32 token.["Precision"]
-      ; Slices     = parseSlices token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : DoubleBoxD option =
-    JToken.Parse(str) |> DoubleBoxD.FromJToken
-
 #endif
 
 //  ____              _     _      ____  _ _
@@ -1512,10 +1072,6 @@ and DoubleSliceD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<DoubleSliceD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1542,36 +1098,6 @@ and DoubleSliceD =
   static member FromBytes(bytes: byte array) : DoubleSliceD option =
     DoubleSliceFB.GetRootAsDoubleSliceFB(new ByteBuffer(bytes))
     |> DoubleSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addLong "Index" self.Index
-    |> addDouble "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : DoubleSliceD option =
-    try
-      { Index = uint64 token.["Index"]
-      ; Value = double token.["Value"]
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : DoubleSliceD option =
-    JToken.Parse(str) |> DoubleSliceD.FromJToken
-
 #endif
 
 //  ____        _       ____
@@ -1590,10 +1116,6 @@ and ByteBoxD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<ByteBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1647,42 +1169,6 @@ and ByteBoxD =
   static member FromBytes(bytes: byte array) : ByteBoxD option =
     ByteBoxFB.GetRootAsByteBoxFB(new ByteBuffer(bytes))
     |> ByteBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"    (string self.Id)
-    |> addString  "Name"   self.Name
-    |> addString  "Patch" (string self.Patch)
-    |> addStrings "Tags"   self.Tags
-    |> addArray   "Slices" self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : ByteBoxD option =
-    try
-      { Id     = parseIdField token "Id"
-      ; Name   = string token.["Name"]
-      ; Patch  = parseIdField token "Patch"
-      ; Tags   = parseTags token
-      ; Slices = parseSlices token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : ByteBoxD option =
-    JToken.Parse(str) |> ByteBoxD.FromJToken
-
 #endif
 
 //  ____        _       ____  _ _
@@ -1698,10 +1184,6 @@ and ByteSliceD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<ByteSliceD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1734,51 +1216,6 @@ and ByteSliceD =
   static member FromBytes(bytes: byte array) : ByteSliceD option =
     ByteSliceFB.GetRootAsByteSliceFB(new ByteBuffer(bytes))
     |> ByteSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    // encode binary data as string array
-    let strings =
-      BitConverter.ToString(self.Value)
-      |> split [| '-' |]
-
-    new JObject()
-    |> addLong "Index" self.Index
-    |> addStrings "Value" strings
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : ByteSliceD option =
-    try
-      // convert string-encoded bytes back to raw bytes
-      let bytes =
-        let jarr = token.["Value"] :?> JArray
-        let arr = Array.zeroCreate jarr.Count
-
-        for i in 0 .. (jarr.Count - 1) do
-          arr.[i] <- Convert.ToByte(string jarr.[i], 16)
-
-        arr
-
-      { Index = uint64 token.["Index"]
-      ; Value = bytes
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : ByteSliceD option =
-    JToken.Parse(str) |> ByteSliceD.FromJToken
-
 #endif
 
 //  _____                       ____
@@ -1797,10 +1234,6 @@ and EnumBoxD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<EnumBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1869,55 +1302,6 @@ and EnumBoxD =
   static member FromEnums(bytes: byte array) : EnumBoxD option =
     EnumBoxFB.GetRootAsEnumBoxFB(new ByteBuffer(bytes))
     |> EnumBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"        (string self.Id)
-    |> addString  "Name"       self.Name
-    |> addString  "Patch"     (string self.Patch)
-    |> addStrings "Tags"       self.Tags
-    |> addArray   "Properties" self.Properties
-    |> addArray   "Slices"     self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : EnumBoxD option =
-    try
-      let properties : Property array =
-        let jarr = token.["Properties"] :?> JArray
-        let arr = Array.zeroCreate jarr.Count
-
-        for i in 0 .. (jarr.Count - 1) do
-          Json.parse jarr.[i]
-          |> Option.map (fun prop -> arr.[i] <- prop)
-          |> ignore
-
-        arr
-
-      { Id         = parseIdField token "Id"
-      ; Name       = string token.["Name"]
-      ; Patch      = parseIdField token "Patch"
-      ; Tags       = parseTags token
-      ; Properties = properties
-      ; Slices     = parseSlices token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : EnumBoxD option =
-    JToken.Parse(str) |> EnumBoxD.FromJToken
-
 #endif
 
 //  _____                       ____  _ _
@@ -1932,10 +1316,6 @@ and EnumSliceD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<EnumSliceD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1975,39 +1355,6 @@ and EnumSliceD =
   static member FromEnums(bytes: byte array) : EnumSliceD option =
     EnumSliceFB.GetRootAsEnumSliceFB(new ByteBuffer(bytes))
     |> EnumSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addLong  "Index" self.Index
-    |> addToken "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : EnumSliceD option =
-    try
-      Json.parse<Property> token.["Value"]
-      |> Option.map
-        (fun prop ->
-          { Index = uint64 token.["Index"]
-          ; Value = prop
-          })
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : EnumSliceD option =
-    JToken.Parse(str) |> EnumSliceD.FromJToken
-
 #endif
 
 //   ____      _            ____
@@ -2025,10 +1372,6 @@ and ColorBoxD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<ColorBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -2082,42 +1425,6 @@ and ColorBoxD =
   static member FromColors(bytes: byte array) : ColorBoxD option =
     ColorBoxFB.GetRootAsColorBoxFB(new ByteBuffer(bytes))
     |> ColorBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"    (string self.Id)
-    |> addString  "Name"   self.Name
-    |> addString  "Patch" (string self.Patch)
-    |> addStrings "Tags"   self.Tags
-    |> addArray   "Slices" self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : ColorBoxD option =
-    try
-      { Id     = parseIdField token "Id"
-      ; Name   = string token.["Name"]
-      ; Patch  = parseIdField token "Patch"
-      ; Tags   = parseTags token
-      ; Slices = parseSlices token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : ColorBoxD option =
-    JToken.Parse(str) |> ColorBoxD.FromJToken
-
 #endif
 
 //   ____      _            ____  _ _
@@ -2132,9 +1439,6 @@ and ColorSliceD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<ColorSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2162,39 +1466,6 @@ and ColorSliceD =
   static member FromColors(bytes: byte array) : ColorSliceD option =
     ColorSliceFB.GetRootAsColorSliceFB(new ByteBuffer(bytes))
     |> ColorSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addLong "Index" self.Index
-    |> addToken "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : ColorSliceD option =
-    try
-      Json.parse<ColorSpace> token.["Value"]
-      |> Option.map
-        (fun color ->
-          { Index = uint64 token.["Index"]
-          ; Value = color
-          })
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : ColorSliceD option =
-    JToken.Parse(str) |> ColorSliceD.FromJToken
-
 #endif
 
 //  ____  _        _             ____
@@ -2216,10 +1487,6 @@ and StringBoxD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<StringBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -2284,60 +1551,6 @@ and StringBoxD =
   static member FromStrings(bytes: byte array) : StringBoxD option =
     StringBoxFB.GetRootAsStringBoxFB(new ByteBuffer(bytes))
     |> StringBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    let fm =
-      match self.FileMask with
-      | Some msk -> msk
-      |      _   -> null
-
-    new JObject()
-    |> addString  "Id"         (string self.Id)
-    |> addString  "Name"        self.Name
-    |> addString  "Patch"      (string self.Patch)
-    |> addStrings "Tags"        self.Tags
-    |> addString  "StringType" (string self.StringType)
-    |> addString  "FileMask"    fm
-    |> addInt     "MaxChars"    self.MaxChars
-    |> addArray   "Slices"      self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : StringBoxD option =
-    try
-      let fm : FileMask =
-        let msk = string token.["FileMask"]
-        if isNull msk || msk.Length = 0 then None else Some msk
-
-      Json.parse<StringType> token.["StringType"]
-      |> Option.map
-        (fun stringtype ->
-          { Id         = parseIdField token "Id"
-          ; Name       = string token.["Name"]
-          ; Patch      = parseIdField token "Patch"
-          ; Tags       = parseTags token
-          ; StringType = stringtype
-          ; FileMask   = fm
-          ; MaxChars   = int token.["MaxChars"]
-          ; Slices     = parseSlices token
-          })
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : StringBoxD option =
-    JToken.Parse(str) |> StringBoxD.FromJToken
-
 #endif
 
 //  ____  _        _             ____  _ _
@@ -2353,10 +1566,6 @@ and StringSliceD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<StringSliceD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -2384,36 +1593,6 @@ and StringSliceD =
   static member FromStrings(bytes: byte array) : StringSliceD option =
     StringSliceFB.GetRootAsStringSliceFB(new ByteBuffer(bytes))
     |> StringSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addLong "Index" self.Index
-    |> addString "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : StringSliceD option =
-    try
-      { Index = uint64 token.["Index"]
-      ; Value = string token.["Value"]
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : StringSliceD option =
-    JToken.Parse(str) |> StringSliceD.FromJToken
-
 #endif
 
 //   ____                                            _ ____
@@ -2432,9 +1611,6 @@ and CompoundBoxD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<CompoundBoxD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2489,42 +1665,6 @@ and CompoundBoxD =
   static member FromCompounds(bytes: byte array) : CompoundBoxD option =
     CompoundBoxFB.GetRootAsCompoundBoxFB(new ByteBuffer(bytes))
     |> CompoundBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"    (string self.Id)
-    |> addString  "Name"   self.Name
-    |> addString  "Patch" (string self.Patch)
-    |> addStrings "Tags"   self.Tags
-    |> addArray   "Slices" self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : CompoundBoxD option =
-    try
-      { Id     = parseIdField token "Id"
-      ; Name   = string token.["Name"]
-      ; Patch  = parseIdField token "Patch"
-      ; Tags   = parseTags token
-      ; Slices = parseSlices token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : CompoundBoxD option =
-    JToken.Parse(str) |> CompoundBoxD.FromJToken
-
 #endif
 
 //   ____                                            _ ____  _ _
@@ -2540,10 +1680,6 @@ and CompoundSliceD =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<CompoundSliceD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -2582,47 +1718,6 @@ and CompoundSliceD =
   static member FromCompounds(bytes: byte array) : CompoundSliceD option =
     CompoundSliceFB.GetRootAsCompoundSliceFB(new ByteBuffer(bytes))
     |> CompoundSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () : JToken =
-    new JObject()
-    |> addLong  "Index" self.Index
-    |> addArray "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : CompoundSliceD option =
-    try
-      let ioboxes =
-        let jarr = token.["Value"] :?> JArray
-        let arr = Array.zeroCreate jarr.Count
-
-        for i in 0 .. (jarr.Count - 1) do
-          Json.parse<IOBox> jarr.[i]
-          |> Option.map (fun iobox -> arr.[i] <- iobox)
-          |> ignore
-
-        arr
-
-      { Index = uint64 token.["Index"]
-      ; Value = ioboxes
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : CompoundSliceD option =
-    JToken.Parse(str) |> CompoundSliceD.FromJToken
-
 #endif
 
 //  ____  _ _
@@ -2779,9 +1874,6 @@ and Slice =
 #if JAVASCRIPT
 #else
 
-  static member Type
-    with get () = Serialization.GetTypeName<Slice>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -2887,63 +1979,6 @@ and Slice =
   static member FromBytes(bytes: byte array) : Slice option =
     SliceFB.GetRootAsSliceFB(new ByteBuffer(bytes))
     |> Slice.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-
-  member self.ToJToken () : JToken =
-    let json = new JObject() |> addType Slice.Type
-
-    let inline add (case: string) data =
-      json |> addCase case |> addFields [| data |]
-
-    match self with
-    | StringSlice   data -> add "StringSlice"   data
-    | IntSlice      data -> add "IntSlice"      data
-    | FloatSlice    data -> add "FloatSlice"    data
-    | DoubleSlice   data -> add "DoubleSlice"   data
-    | BoolSlice     data -> add "BoolSlice"     data
-    | ByteSlice     data -> add "ByteSlice"     data
-    | EnumSlice     data -> add "EnumSlice"     data
-    | ColorSlice    data -> add "ColorSlice"    data
-    | CompoundSlice data -> add "CompoundSlice" data
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : Slice option =
-    try
-      let fields = token.["Fields"] :?> JArray
-
-      let inline parseSliceType (cstr: ^t -> Slice) =
-        Json.parse fields.[0]
-        |> Option.map cstr
-
-      match string token.["Case"] with
-      | "StringSlice"   -> parseSliceType StringSlice
-      | "IntSlice"      -> parseSliceType IntSlice
-      | "FloatSlice"    -> parseSliceType FloatSlice
-      | "DoubleSlice"   -> parseSliceType DoubleSlice
-      | "BoolSlice"     -> parseSliceType BoolSlice
-      | "ByteSlice"     -> parseSliceType ByteSlice
-      | "EnumSlice"     -> parseSliceType EnumSlice
-      | "ColorSlice"    -> parseSliceType ColorSlice
-      | "CompoundSlice" -> parseSliceType CompoundSlice
-      | _               -> None
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : Slice option =
-    JToken.Parse(str) |> Slice.FromJToken
-
 #endif
 
 //  ____  _ _

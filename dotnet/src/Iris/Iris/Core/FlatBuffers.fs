@@ -33,7 +33,8 @@ module FlatBuffers =
   //  \___/|_| |_| |___/\___|\__|
 
   and Offset<'a> =
-    abstract Value: unit -> int
+    [<Emit("$0")>]
+    abstract Value: int
 
   //  ____        _ _     _
   // | __ ) _   _(_) | __| | ___ _ __
@@ -55,7 +56,7 @@ module FlatBuffers =
     abstract CreateString: string -> Offset<string>
 
     [<Emit("$0.finish($1)")>]
-    abstract Finish: Offset<'a> -> unit
+    abstract Finish: int -> unit
 
   and FlatBufferBuilderConstructor =
     abstract prototype: FlatBufferBuilder with get, set

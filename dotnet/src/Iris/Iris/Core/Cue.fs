@@ -84,11 +84,7 @@ type Cue =
     CueFB.AddName(builder, name)
     CueFB.EndCueFB(builder)
 
-  member self.ToBytes() =
-    let builder = FlatBufferBuilder.Create(1)
-    let offset = self.ToOffset(builder)
-    builder.Finish(offset)
-    builder.SizedByteArray()
+  member self.ToBytes() = Binary.buildBuffer self
 
   static member FromFB(fb: CueFB) : Cue option =
     { Id = fb.Id() |> Id
@@ -101,9 +97,6 @@ type Cue =
     |> Cue.FromFB
 
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<Cue>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -145,49 +138,7 @@ type Cue =
   member self.ToBytes () = Binary.buildBuffer self
 
   static member FromBytes (bytes: byte array) : Cue option =
-    let msg = CueFB.GetRootAsCueFB(new ByteBuffer(bytes))
-    Cue.FromFB(msg)
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() =
-    new JObject()
-    |> addString "Id"     (string self.Id)
-    |> addString "Name"   (self.Name)
-    |> addArray  "IOBoxes" self.IOBoxes
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : Cue option =
-    try
-      let ioboxes =
-        let jarr = token.["IOBoxes"] :?> JArray
-        let arr = Array.zeroCreate jarr.Count
-
-        for i in 0 .. (jarr.Count - 1) do
-          Json.parse jarr.[i]
-          |> Option.map (fun iobox -> arr.[i] <- iobox; iobox)
-          |> ignore
-
-        arr
-
-      { Id = Id (string token.["Id"])
-      ; Name = string token.["Name"]
-      ; IOBoxes = ioboxes }
-      |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize cue json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : Cue option =
-    JToken.Parse(str) |> Cue.FromJToken
+    CueFB.GetRootAsCueFB(new ByteBuffer(bytes))
+    |> Cue.FromFB
 
 #endif

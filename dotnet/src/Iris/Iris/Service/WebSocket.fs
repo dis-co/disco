@@ -74,15 +74,15 @@ module WebSocket =
     // |_|  |_|\___||___/___/\__,_|\__, |\___|
     //                             |___/
 
-    let onMessage (socket: IWebSocketConnection) (msg: string) =
+    let onMessage (socket: IWebSocketConnection) (msg: Binary.Buffer) =
       let session = getSessionId socket
-      let entry : StateMachine option = Json.decode msg
+      let entry : StateMachine option = Binary.decode msg
 
       match entry with
       | Some command -> Option.map (fun cb -> cb session command) onMessageCb |> ignore
       | _            -> ()
 
-      printfn "[%s] onMessage: %s" (string session) msg
+      printfn "[%s] onMessage: %A" (string session) entry
 
     //  _____
     // | ____|_ __ _ __ ___  _ __
@@ -99,7 +99,8 @@ module WebSocket =
     let handler (socket: IWebSocketConnection) =
       socket.OnOpen    <- new System.Action(onOpen socket)
       socket.OnClose   <- new System.Action(onClose socket)
-      socket.OnMessage <- new System.Action<string>(onMessage socket)
+      // socket.OnMessage <- new System.Action<string>(onMessage socket)
+      socket.OnBinary  <- new System.Action<Binary.Buffer>(onMessage socket)
       socket.OnError   <- new System.Action<exn>(onError socket)
 
     member self.Start() =

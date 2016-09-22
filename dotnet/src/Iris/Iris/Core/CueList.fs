@@ -18,9 +18,6 @@ type CueList =
 #if JAVASCRIPT
 #else
 
-  static member Type
-    with get () = Serialization.GetTypeName<CueList> ()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -65,47 +62,4 @@ type CueList =
   static member FromBytes (bytes: byte array) =
     CueListFB.GetRootAsCueListFB(new ByteBuffer(bytes))
     |> CueList.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() =
-    new JObject()
-    |> addString "Id"   (string self.Id)
-    |> addString "Name" self.Name
-    |> addArray  "Cues" self.Cues
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : CueList option =
-    try
-      let cues =
-        let jarr = token.["Cues"] :?> JArray
-        let arr = Array.zeroCreate jarr.Count
-
-        for i in 0 .. (jarr.Count - 1) do
-          Json.parse jarr.[i]
-          |> Option.map (fun cue -> arr.[i] <- cue)
-          |> ignore
-
-        arr
-
-      { Id = Id (string token.["Id"])
-      ; Name = (string token.["Name"])
-      ; Cues = cues }
-      |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize cue json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : CueList option =
-    JToken.Parse(str) |> CueList.FromJToken
-
 #endif

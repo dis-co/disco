@@ -52,9 +52,6 @@ type AppCommand =
 #if JAVASCRIPT
 #else
 
-  static member Type
-    with get () = Serialization.GetTypeName<AppCommand>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -81,48 +78,6 @@ type AppCommand =
     AppCommandFB.StartAppCommandFB(builder)
     AppCommandFB.AddCommand(builder, tipe)
     AppCommandFB.EndAppCommandFB(builder)
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() : JToken =
-    let json = new JObject()
-    json.["$type"] <- new JValue(AppCommand.Type)
-
-    let add (case: string) =
-      json.["Case"] <- new JValue(case)
-
-    match self with
-    | Undo        -> add "Undo"
-    | Redo        -> add "Redo"
-    | Reset       -> add "Reset"
-    | SaveProject -> add "SaveProject"
-
-    json :> JToken
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : AppCommand option =
-    try
-      match string token.["Case"] with
-      | "Undo"        -> Some Undo
-      | "Redo"        -> Some Redo
-      | "Reset"       -> Some Reset
-      | "SaveProject" -> Some SaveProject
-      | _             -> None
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : AppCommand option =
-    JToken.Parse(str) |> AppCommand.FromJToken
 
 #endif
 
@@ -469,49 +424,6 @@ type State =
     StateFB.GetRootAsStateFB(new ByteBuffer(bytes))
     |> State.FromFB
 
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() =
-    // new JObject()
-    // |> addMap "Patches"  self.Patches
-    // |> addMap "IOBoxes"  self.IOBoxes
-    // |> addMap "Cues"     self.Cues
-    // |> addMap "CueLists" self.CueLists
-    // |> addMap "Nodes"    self.Nodes
-    // |> addMap "Users"    self.Users
-    // |> addMap "Sessions" self.Sessions
-
-    let serializer = JsonSerializer.CreateDefault(JsonSerializerSettings(TypeNameHandling=TypeNameHandling.All))
-    let tok = JToken.FromObject(self, serializer)
-    printfn "string token %s"  (string tok)
-    tok
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : State option =
-    try
-      Some { Patches  = fromMap "Patches"  token
-           ; IOBoxes  = fromMap "IOBoxes"  token
-           ; Cues     = fromMap "Cues"     token
-           ; CueLists = fromMap "CueLists" token
-           ; Nodes    = fromMap "Nodes"    token
-           ; Users    = fromMap "Users"    token
-           ; Sessions = fromMap "Sessions" token }
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : State option =
-    JToken.Parse(str) |> State.FromJToken
-
 #endif
 
 // ********************************************************************************************** //
@@ -851,9 +763,6 @@ and StateMachine =
 
 #if JAVASCRIPT
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<StateMachine>()
 
   static member FromFB (fb: StateMachineFB) =
     match fb.AppEventType with
@@ -1413,135 +1322,5 @@ and StateMachine =
   static member FromBytes (bytes: byte array) : StateMachine option =
     let msg = StateMachineFB.GetRootAsStateMachineFB(new ByteBuffer(bytes))
     StateMachine.FromFB(msg)
-
-#endif
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-#if JAVASCRIPT
-
-  member self.ToJson () = toJson self
-
-  static member FromJson (str: string) : StateMachine option =
-    try
-      ofJson<StateMachine> str
-      |> Some
-    with
-      | _ -> None
-
-#else
-
-  member self.ToJToken () =
-    let json = new JObject() |> addType StateMachine.Type
-
-    let inline add (case: string) data =
-      json |> addCase case |> addFields [| data |]
-
-    match self with
-    // NODE
-    | AddNode          node -> add "AddNode"    node
-    | UpdateNode       node -> add "UpdateNode" node
-    | RemoveNode       node -> add "RemoveNode" node
-
-    // PATCH
-    | AddPatch        patch -> add "AddPatch"    patch
-    | UpdatePatch     patch -> add "UpdatePatch" patch
-    | RemovePatch     patch -> add "RemovePatch" patch
-
-    // IOBOX
-    | AddIOBox        iobox -> add "AddIOBox"    iobox
-    | UpdateIOBox     iobox -> add "UpdateIOBox" iobox
-    | RemoveIOBox     iobox -> add "RemoveIOBox" iobox
-
-    // CUE
-    | AddCue            cue -> add "AddCue"    cue
-    | UpdateCue         cue -> add "UpdateCue" cue
-    | RemoveCue         cue -> add "RemoveCue" cue
-
-    // CUELIST
-    | AddCueList    cuelist -> add "AddCueList"    cuelist
-    | UpdateCueList cuelist -> add "UpdateCueList" cuelist
-    | RemoveCueList cuelist -> add "RemoveCueList" cuelist
-
-    // USER
-    | AddUser          user -> add "AddUser"    user
-    | UpdateUser       user -> add "UpdateUser" user
-    | RemoveUser       user -> add "RemoveUser" user
-
-    // SESSION
-    | AddSession    session -> add "AddSession"    session
-    | UpdateSession session -> add "UpdateSession" session
-    | RemoveSession session -> add "RemoveSession" session
-
-    | Command           cmd -> add "Command" cmd
-
-    | DataSnapshot     data -> add "DataSnapshot" data
-
-    | LogMsg (level, str) ->
-      json |> addCase "LogMsg" |> addFields [| Wrap(string level); Wrap(str) |]
-
-  member self.ToJson () =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : StateMachine option =
-    try
-      let fields = token.["Fields"] :?> JArray
-
-      let inline parseSingle (cnst: ^t -> StateMachine) =
-        Json.parse fields.[0]
-        |> Option.map cnst
-
-      match string token.["Case"] with
-      // NODE
-      | "AddNode"       -> parseSingle AddNode
-      | "UpdateNode"    -> parseSingle UpdateNode
-      | "RemoveNode"    -> parseSingle RemoveNode
-
-      | "AddPatch"      -> parseSingle AddPatch
-      | "UpdatePatch"   -> parseSingle UpdatePatch
-      | "RemovePatch"   -> parseSingle RemovePatch
-
-      | "AddIOBox"      -> parseSingle AddIOBox
-      | "UpdateIOBox"   -> parseSingle UpdateIOBox
-      | "RemoveIOBox"   -> parseSingle RemoveIOBox
-
-      | "AddCue"        -> parseSingle AddCue
-      | "UpdateCue"     -> parseSingle UpdateCue
-      | "RemoveCue"     -> parseSingle RemoveCue
-
-      | "AddCueList"    -> parseSingle AddCueList
-      | "UpdateCueList" -> parseSingle UpdateCueList
-      | "RemoveCueList" -> parseSingle RemoveCueList
-
-      | "AddUser"       -> parseSingle AddUser
-      | "UpdateUser"    -> parseSingle UpdateUser
-      | "RemoveUser"    -> parseSingle RemoveUser
-
-      | "AddSession"    -> parseSingle AddSession
-      | "UpdateSession" -> parseSingle UpdateSession
-      | "RemoveSession" -> parseSingle RemoveSession
-
-      | "Command"       -> parseSingle Command
-
-      | "DataSnapshot"  -> parseSingle DataSnapshot
-
-      | "LogMsg" ->
-        Json.parse fields.[0]
-        |> Option.map (fun level -> LogMsg (level,string fields.[1]))
-
-      | _ -> None
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : StateMachine option =
-    JToken.Parse(str) |> StateMachine.FromJToken
 
 #endif

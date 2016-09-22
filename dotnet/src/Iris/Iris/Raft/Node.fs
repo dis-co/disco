@@ -46,9 +46,6 @@ type RaftNodeState =
 #if JAVASCRIPT
 #else
 
-  static member Type
-    with get () = Serialization.GetTypeName<RaftNodeState>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -130,9 +127,6 @@ type RaftNode =
 #if JAVASCRIPT
 #else
 
-  static member Type
-    with get () = Serialization.GetTypeName<RaftNode>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -180,54 +174,6 @@ type RaftNode =
   static member FromBytes (bytes: byte array) =
     NodeFB.GetRootAsNodeFB(new ByteBuffer(bytes))
     |> RaftNode.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() =
-    let serializer = JsonSerializer.CreateDefault(JsonSerializerSettings(TypeNameHandling=TypeNameHandling.All))
-    let json = JToken.FromObject(self, serializer)
-
-    json.["Id"] <- new JValue(string self.Id)
-    json.["IpAddr"] <- Json.tokenize self.IpAddr
-    json.["State"] <- Json.tokenize self.State
-
-    json
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : RaftNode option =
-    try
-      let ip    : IpAddress option     = Json.parse token.["IpAddr"]
-      let state : RaftNodeState option = Json.parse token.["State"]
-
-      match ip, state with
-      | Some ipaddr, Some nodestate ->
-        { Id         = string token.["Id"] |> Id
-        ; HostName   = string token.["HostName"]
-        ; IpAddr     = ipaddr
-        ; State      = nodestate
-        ; Port       = uint16 token.["Port"]
-        ; Voting     = System.Boolean.Parse(string token.["Voting"])
-        ; VotedForMe = System.Boolean.Parse(string token.["VotedForMe"])
-        ; NextIndex  = uint64 token.["NextIndex"]
-        ; MatchIndex = uint64 token.["MatchIndex"]
-        } |> Some
-      | _ -> None
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : RaftNode option =
-    JObject.Parse(str) |> RaftNode.FromJToken
-
 #endif
 
 

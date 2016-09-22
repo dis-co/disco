@@ -100,9 +100,6 @@ type Patch =
 #if JAVASCRIPT
 #else
 
-  static member Type
-    with get () = Serialization.GetTypeName<Patch>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -149,36 +146,4 @@ type Patch =
   static member FromBytes (bytes: byte array) : Patch option =
     let msg = PatchFB.GetRootAsPatchFB(new ByteBuffer(bytes))
     Patch.FromFB(msg)
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() =
-    new JObject()
-    |> addString "Id"     (string self.Id)
-    |> addString "Name"    self.Name
-    |> addMap    "IOBoxes" self.IOBoxes
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : Patch option =
-    try
-      { Id = Id (string token.["Id"])
-      ; Name = string token.["Name"]
-      ; IOBoxes = fromMap "IOBoxes" token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize patch json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : Patch option =
-    JObject.Parse(str) |> Patch.FromJToken
-
 #endif
