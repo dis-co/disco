@@ -28,6 +28,13 @@ module Binary =
   type Buffer = byte array
 #endif
 
+  let createBuffer (bytes: Buffer) : ByteBuffer =
+#if JAVASCRIPT
+    ByteBuffer.Create(bytes)
+#else
+    new ByteBuffer(bytes)
+#endif
+
   let inline encode (value : ^t when ^t : (member ToBytes : unit -> Buffer)) =
     (^t : (member ToBytes : unit -> Buffer) value)
 

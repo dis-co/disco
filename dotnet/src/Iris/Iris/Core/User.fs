@@ -15,6 +15,79 @@ open Iris.Serialization.Raft
 
 #endif
 
+#if JAVASCRIPT
+
+//  _   _               _____ ____
+// | | | |___  ___ _ __|  ___| __ )
+// | | | / __|/ _ \ '__| |_  |  _ \
+// | |_| \__ \  __/ |  |  _| | |_) |
+//  \___/|___/\___|_|  |_|   |____/
+
+[<Import("Iris", from="buffers")>]
+module UserFBSerialization =
+
+  type UserFB =
+    [<Emit("$0.id()")>]
+    abstract Id: string
+
+    [<Emit("$0.userName()")>]
+    abstract UserName: string
+
+    [<Emit("$0.firstName()")>]
+    abstract FirstName: string
+
+    [<Emit("$0.lastName()")>]
+    abstract LastName: string
+
+    [<Emit("$0.email()")>]
+    abstract Email: string
+
+    [<Emit("$0.joined()")>]
+    abstract Joined: string
+
+    [<Emit("$0.created()")>]
+    abstract Created: string
+
+  type UserFBConstructor =
+    abstract prototype: UserFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.UserFB.startUserFB($1)")>]
+    abstract StartUserFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.UserFB.addId($1, $2)")>]
+    abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.UserFB.addUserName($1, $2)")>]
+    abstract AddUserName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.UserFB.addFirstName($1, $2)")>]
+    abstract AddFirstName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.UserFB.addLastName($1, $2)")>]
+    abstract AddLastName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.UserFB.addEmail($1, $2)")>]
+    abstract AddEmail: builder: FlatBufferBuilder * name: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.UserFB.addJoined($1, $2)")>]
+    abstract AddJoined: builder: FlatBufferBuilder * name: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.UserFB.addCreated($1, $2)")>]
+    abstract AddCreated: builder: FlatBufferBuilder * name: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.UserFB.endUserFB($1)")>]
+    abstract EndUserFB: builder: FlatBufferBuilder -> Offset<'a>
+
+    [<Emit("Iris.Serialization.Raft.UserFB.getRootAsUserFB($1)")>]
+    abstract GetRootAsUserFB: buffer: ByteBuffer -> UserFB
+
+  let UserFB : UserFBConstructor = failwith "JS only"
+
+open UserFBSerialization
+
+#endif
+
+
 [<CustomEquality>]
 [<CustomComparison>]
 type User =
@@ -134,14 +207,19 @@ type User =
       ; FirstName = fb.FirstName
       ; LastName  = fb.LastName
       ; Email     = fb.Email
+#if JAVASCRIPT
+      ; Joined    = fb.Joined
+      ; Created   = fb.Created }
+#else
       ; Joined    = DateTime.Parse fb.Joined
       ; Created   = DateTime.Parse fb.Created }
+#endif
       |> Some
     with
       | exn ->
         printfn "Could not de-serializae binary rep of User: %s" exn.Message
         None
 
-  static member FromBytes (bytes: byte array) : User option =
-    UserFB.GetRootAsUserFB(new ByteBuffer(bytes))
+  static member FromBytes (bytes: Binary.Buffer) : User option =
+    UserFB.GetRootAsUserFB(Binary.createBuffer bytes)
     |> User.FromFB

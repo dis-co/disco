@@ -28,8 +28,11 @@ module CueFBSerialization =
   open Iris.Core.FlatBuffers
 
   type CueFB =
-    abstract Id: unit -> string
-    abstract Name: unit -> string
+    [<Emit("$0.Id()")>]
+    abstract Id: string
+
+    [<Emit("$0.Name()")>]
+    abstract Name: string
 
   type CueFBConstructor =
     abstract prototype: CueFB with get, set
@@ -63,38 +66,6 @@ type Cue =
   { Id:      Id
   ; Name:    string
   ; IOBoxes: IOBox array }
-
-#if JAVASCRIPT
-
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
-
-  member self.ToOffset(builder: FlatBufferBuilder) : Offset<Cue> =
-    let id = builder.CreateString (string self.Id)
-    let name = builder.CreateString self.Name
-    // let ioboxes = CueFB.CreateIOBoxesVector(builder, ioboxoffsets)
-    CueFB.StartCueFB(builder)
-    CueFB.AddId(builder, id)
-    CueFB.AddName(builder, name)
-    CueFB.EndCueFB(builder)
-
-  member self.ToBytes() = Binary.buildBuffer self
-
-  static member FromFB(fb: CueFB) : Cue option =
-    { Id = fb.Id() |> Id
-    ; Name = fb.Name()
-    ; IOBoxes = [| |] }
-    |> Some
-
-  static member FromBytes(bytes: ArrayBuffer) : Cue option =
-    CueFB.GetRootAsCueFB(ByteBuffer.Create(bytes))
-    |> Cue.FromFB
-
-#else
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -133,10 +104,8 @@ type Cue =
     CueFB.AddIOBoxes(builder, ioboxes)
     CueFB.EndCueFB(builder)
 
-  member self.ToBytes () = Binary.buildBuffer self
-
-  static member FromBytes (bytes: byte array) : Cue option =
-    CueFB.GetRootAsCueFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : Cue option =
+    CueFB.GetRootAsCueFB(Binary.createBuffer bytes)
     |> Cue.FromFB
 
-#endif
+  member self.ToBytes() = Binary.buildBuffer self
