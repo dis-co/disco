@@ -186,10 +186,9 @@ type GlobalContext() =
         self.Broadcast ClientMessage.Disconnected
 
       sock.OnMessage <- fun (ev: MessageEvent<ArrayBuffer>) ->
-        let uint8thing = Uint8Array.Create(ev.Data)
-        self.Log (sprintf "data %A" uint8thing.length)
-        // let parsed : StateMachine = ofJson<StateMachine> ev.Data
-        // self.OnSocketMessage parsed
+        match Binary.decode ev.Data with
+        | Some sm -> self.OnSocketMessage sm
+        | _       -> self.Log "Unable to parse received message. Ignoring."
 
       socket <- Some (addr, sock)
 
