@@ -1,12 +1,13 @@
 namespace Iris.Core
 
 #if JAVASCRIPT
+
+open Iris.Core.FlatBuffers
+
 #else
 
 open FlatBuffers
 open Iris.Serialization.Raft
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 #endif
 
@@ -14,9 +15,6 @@ type CueList =
   { Id   : Id
   ; Name : Name
   ; Cues : Cue array }
-
-#if JAVASCRIPT
-#else
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -62,4 +60,3 @@ type CueList =
   static member FromBytes (bytes: byte array) =
     CueListFB.GetRootAsCueListFB(new ByteBuffer(bytes))
     |> CueList.FromFB
-#endif

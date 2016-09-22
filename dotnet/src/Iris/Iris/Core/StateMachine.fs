@@ -14,16 +14,13 @@ open Iris.Raft
 #if JAVASCRIPT
 
 open Fable.Core
-open Fable.Core.JsInterop
 open Fable.Import
-open Fable.Core.JsInterop
+open Iris.Core.FlatBuffers
 
 #else
 
 open Iris.Serialization.Raft
 open FlatBuffers
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 #endif
 
@@ -48,9 +45,6 @@ type AppCommand =
   // | CreateProject
   // | CloseProject
   // | DeleteProject
-
-#if JAVASCRIPT
-#else
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -78,8 +72,6 @@ type AppCommand =
     AppCommandFB.StartAppCommandFB(builder)
     AppCommandFB.AddCommand(builder, tipe)
     AppCommandFB.EndAppCommandFB(builder)
-
-#endif
 
 // ********************************************************************************************** //
 //   ____  _        _
@@ -282,16 +274,6 @@ type State =
   //  ___) |  __/ |  | | (_| | | |/ / (_| | |_| | (_) | | | |
   // |____/ \___|_|  |_|\__,_|_|_/___\__,_|\__|_|\___/|_| |_|
 
-#if JAVASCRIPT
-#else
-
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
-
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateFB> =
     let patches =
       Map.toArray self.Patches
@@ -423,8 +405,6 @@ type State =
   static member FromBytes (bytes: byte array) : State option =
     StateFB.GetRootAsStateFB(new ByteBuffer(bytes))
     |> State.FromFB
-
-#endif
 
 // ********************************************************************************************** //
 //  ____  _
@@ -760,9 +740,6 @@ and StateMachine =
     | Command    ev         -> sprintf "Command: %s"  (string ev)
     | DataSnapshot state    -> sprintf "DataSnapshot: %A" state
     | LogMsg(level, msg)    -> sprintf "LogMsg: [%A] %s" level msg
-
-#if JAVASCRIPT
-#else
 
   static member FromFB (fb: StateMachineFB) =
     match fb.AppEventType with
@@ -1322,5 +1299,3 @@ and StateMachine =
   static member FromBytes (bytes: byte array) : StateMachine option =
     let msg = StateMachineFB.GetRootAsStateMachineFB(new ByteBuffer(bytes))
     StateMachine.FromFB(msg)
-
-#endif

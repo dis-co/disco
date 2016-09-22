@@ -1,12 +1,13 @@
 namespace Iris.Core
 
 #if JAVASCRIPT
+
+open Iris.Core.FlatBuffers
+
 #else
 
 open System
 open FlatBuffers
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 open Iris.Serialization.Raft
 
 #endif
@@ -17,9 +18,6 @@ type Session =
   ; IpAddress: IpAddress
   ; UserAgent: UserAgent
   }
-
-#if JAVASCRIPT
-#else
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -58,5 +56,3 @@ type Session =
     SessionFB.EndSessionFB(builder)
 
   member self.ToBytes() = Binary.buildBuffer self
-
-#endif

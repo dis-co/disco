@@ -2,12 +2,6 @@ namespace Iris.Core
 
 
 #if JAVASCRIPT
-//      _                  ____   ____          _       _
-//     | | __ ___   ____ _/ ___| / ___|___ _ __(_)_ __ | |_
-//  _  | |/ _` \ \ / / _` \___ \| |   / __| '__| | '_ \| __|
-// | |_| | (_| |\ V / (_| |___) | |__| (__| |  | | |_) | |_
-//  \___/ \__,_| \_/ \__,_|____/ \____\___|_|  |_| .__/ \__|
-//                                               |_|
 
 open Fable.Core
 
@@ -128,8 +122,6 @@ type Id =
 // (_)_| \_|_____| |_|
 
 open System.Text.RegularExpressions
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 type Id =
   | Id of string
@@ -158,21 +150,5 @@ type Id =
     |> System.Convert.ToBase64String
     |> sanitize
     |> Id
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  static member FromJToken(token: JToken) : Id option =
-    try
-      Id (string token) |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
 
 #endif

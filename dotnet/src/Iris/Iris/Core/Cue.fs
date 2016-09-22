@@ -11,8 +11,6 @@ open Iris.Core.FlatBuffers
 
 open FlatBuffers
 open Iris.Serialization.Raft
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 #endif
 

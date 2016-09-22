@@ -1,7 +1,5 @@
 namespace Iris.Core
 
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 //  _                _                   _
 // | |    ___   __ _| |    _____   _____| |

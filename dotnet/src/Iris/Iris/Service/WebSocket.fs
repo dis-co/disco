@@ -8,7 +8,6 @@ module WebSocket =
   open Iris.Core
   open Iris.Service.Raft.Server
   open Fleck
-  open Newtonsoft.Json
 
   type WsServer(config: Config, context: RaftServer) =
 

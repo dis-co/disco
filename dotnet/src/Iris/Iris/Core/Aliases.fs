@@ -60,13 +60,5 @@ type Rect = Rect of (int * int)
 // |_|   |_|  \___/| .__/ \___|_|   \__|\__, |
 //                 |_|                  |___/
 
-#if JAVASCRIPT
-#else
-
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
-
-#endif
-
 type Property =
   { Key: string; Value: string }

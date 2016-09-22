@@ -4,13 +4,12 @@ namespace Iris.Core
 
 open Fable.Core
 open Fable.Import
+open Iris.Core.FlatBuffers
 
 #else
 
 open FlatBuffers
 open Iris.Serialization.Raft
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 #endif
 
@@ -91,15 +90,6 @@ type Patch =
   static member RemoveIOBox (patch : Patch) (iobox : IOBox) : Patch =
     { patch with IOBoxes = Map.remove iobox.Id patch.IOBoxes }
 
-  //  ____            _       _ _          _   _
-  // / ___|  ___ _ __(_) __ _| (_)______ _| |_(_) ___  _ __
-  // \___ \ / _ \ '__| |/ _` | | |_  / _` | __| |/ _ \| '_ \
-  //  ___) |  __/ |  | | (_| | | |/ / (_| | |_| | (_) | | | |
-  // |____/ \___|_|  |_|\__,_|_|_/___\__,_|\__|_|\___/|_| |_|
-
-#if JAVASCRIPT
-#else
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -146,4 +136,3 @@ type Patch =
   static member FromBytes (bytes: byte array) : Patch option =
     let msg = PatchFB.GetRootAsPatchFB(new ByteBuffer(bytes))
     Patch.FromFB(msg)
-#endif

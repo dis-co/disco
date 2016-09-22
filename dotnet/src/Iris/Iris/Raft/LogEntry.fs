@@ -2,9 +2,18 @@ namespace Iris.Raft
 
 open System
 open System.Collections
-open FlatBuffers
 open Iris.Core
 open Iris.Serialization.Raft
+
+#if JAVASCRIPT
+
+open Iris.Core.FlatBuffers
+
+#else
+
+open FlatBuffers
+
+#endif
 
 ///  _                _____       _
 /// | |    ___   __ _| ____|_ __ | |_ _ __ _   _

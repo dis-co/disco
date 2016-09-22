@@ -3,6 +3,7 @@ namespace Iris.Core
 #if JAVASCRIPT
 
 open Fable.Core
+open Iris.Core.FlatBuffers
 
 #else
 
@@ -10,8 +11,6 @@ open System
 open System.Text
 open FlatBuffers
 open Iris.Serialization.Raft
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 #endif
 
@@ -40,9 +39,6 @@ type Behavior =
     | Toggle  -> "Toggle"
     | Bang    -> "Bang"
 
-#if JAVASCRIPT
-#else
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -60,8 +56,6 @@ type Behavior =
     match self with
     | Toggle -> BehaviorFB.ToggleFB
     | Bang   -> BehaviorFB.BangFB
-
-#endif
 
 //  ____  _        _            _____
 // / ___|| |_ _ __(_)_ __   __ |_   _|   _ _ __   ___
@@ -100,9 +94,6 @@ type StringType =
     | Url       -> "Url"
     | IP        -> "IP"
 
-#if JAVASCRIPT
-#else
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -129,8 +120,6 @@ type StringType =
     | Url       -> StringTypeFB.UrlFB
     | IP        -> StringTypeFB.IPFB
 
-#endif
-
 //  ___ ___  ____
 // |_ _/ _ \| __ )  _____  __
 //  | | | | |  _ \ / _ \ \/ /
@@ -148,464 +137,456 @@ type IOBox =
   | ColorBox  of ColorBoxD
   | Compound  of CompoundBoxD
 
-  with
-    member self.Id
-      with get () =
-        match self with
-          | StringBox data -> data.Id
-          | IntBox    data -> data.Id
-          | FloatBox  data -> data.Id
-          | DoubleBox data -> data.Id
-          | BoolBox   data -> data.Id
-          | ByteBox   data -> data.Id
-          | EnumBox   data -> data.Id
-          | ColorBox  data -> data.Id
-          | Compound  data -> data.Id
-
-    member self.Name
-      with get () =
-        match self with
-          | StringBox data -> data.Name
-          | IntBox    data -> data.Name
-          | FloatBox  data -> data.Name
-          | DoubleBox data -> data.Name
-          | BoolBox   data -> data.Name
-          | ByteBox   data -> data.Name
-          | EnumBox   data -> data.Name
-          | ColorBox  data -> data.Name
-          | Compound  data -> data.Name
-
-    member self.SetName name =
+  member self.Id
+    with get () =
       match self with
-      | StringBox data -> StringBox { data with Name = name }
-      | IntBox    data -> IntBox    { data with Name = name }
-      | FloatBox  data -> FloatBox  { data with Name = name }
-      | DoubleBox data -> DoubleBox { data with Name = name }
-      | BoolBox   data -> BoolBox   { data with Name = name }
-      | ByteBox   data -> ByteBox   { data with Name = name }
-      | EnumBox   data -> EnumBox   { data with Name = name }
-      | ColorBox  data -> ColorBox  { data with Name = name }
-      | Compound  data -> Compound  { data with Name = name }
+        | StringBox data -> data.Id
+        | IntBox    data -> data.Id
+        | FloatBox  data -> data.Id
+        | DoubleBox data -> data.Id
+        | BoolBox   data -> data.Id
+        | ByteBox   data -> data.Id
+        | EnumBox   data -> data.Id
+        | ColorBox  data -> data.Id
+        | Compound  data -> data.Id
 
-    member self.Patch
-      with get () =
-        match self with
-          | StringBox data -> data.Patch
-          | IntBox    data -> data.Patch
-          | FloatBox  data -> data.Patch
-          | DoubleBox data -> data.Patch
-          | BoolBox   data -> data.Patch
-          | ByteBox   data -> data.Patch
-          | EnumBox   data -> data.Patch
-          | ColorBox  data -> data.Patch
-          | Compound  data -> data.Patch
+  member self.Name
+    with get () =
+      match self with
+        | StringBox data -> data.Name
+        | IntBox    data -> data.Name
+        | FloatBox  data -> data.Name
+        | DoubleBox data -> data.Name
+        | BoolBox   data -> data.Name
+        | ByteBox   data -> data.Name
+        | EnumBox   data -> data.Name
+        | ColorBox  data -> data.Name
+        | Compound  data -> data.Name
 
-    member self.Slices
-      with get () =
-        match self with
-          | StringBox data -> StringSlices   data.Slices
-          | IntBox    data -> IntSlices      data.Slices
-          | FloatBox  data -> FloatSlices    data.Slices
-          | DoubleBox data -> DoubleSlices   data.Slices
-          | BoolBox   data -> BoolSlices     data.Slices
-          | ByteBox   data -> ByteSlices     data.Slices
-          | EnumBox   data -> EnumSlices     data.Slices
-          | ColorBox  data -> ColorSlices    data.Slices
-          | Compound  data -> CompoundSlices data.Slices
+  member self.SetName name =
+    match self with
+    | StringBox data -> StringBox { data with Name = name }
+    | IntBox    data -> IntBox    { data with Name = name }
+    | FloatBox  data -> FloatBox  { data with Name = name }
+    | DoubleBox data -> DoubleBox { data with Name = name }
+    | BoolBox   data -> BoolBox   { data with Name = name }
+    | ByteBox   data -> ByteBox   { data with Name = name }
+    | EnumBox   data -> EnumBox   { data with Name = name }
+    | ColorBox  data -> ColorBox  { data with Name = name }
+    | Compound  data -> Compound  { data with Name = name }
 
-    //  ____       _   ____  _ _
-    // / ___|  ___| |_/ ___|| (_) ___ ___
-    // \___ \ / _ \ __\___ \| | |/ __/ _ \
-    //  ___) |  __/ |_ ___) | | | (_|  __/
-    // |____/ \___|\__|____/|_|_|\___\___|
+  member self.Patch
+    with get () =
+      match self with
+        | StringBox data -> data.Patch
+        | IntBox    data -> data.Patch
+        | FloatBox  data -> data.Patch
+        | DoubleBox data -> data.Patch
+        | BoolBox   data -> data.Patch
+        | ByteBox   data -> data.Patch
+        | EnumBox   data -> data.Patch
+        | ColorBox  data -> data.Patch
+        | Compound  data -> data.Patch
 
-    member self.SetSlice (value: Slice) =
-      let update (arr : 'a array) (data: 'a) =
+  member self.Slices
+    with get () =
+      match self with
+        | StringBox data -> StringSlices   data.Slices
+        | IntBox    data -> IntSlices      data.Slices
+        | FloatBox  data -> FloatSlices    data.Slices
+        | DoubleBox data -> DoubleSlices   data.Slices
+        | BoolBox   data -> BoolSlices     data.Slices
+        | ByteBox   data -> ByteSlices     data.Slices
+        | EnumBox   data -> EnumSlices     data.Slices
+        | ColorBox  data -> ColorSlices    data.Slices
+        | Compound  data -> CompoundSlices data.Slices
 
-        if int value.Index > Array.length arr then
+  //  ____       _   ____  _ _
+  // / ___|  ___| |_/ ___|| (_) ___ ___
+  // \___ \ / _ \ __\___ \| | |/ __/ _ \
+  //  ___) |  __/ |_ ___) | | | (_|  __/
+  // |____/ \___|\__|____/|_|_|\___\___|
+
+  member self.SetSlice (value: Slice) =
+    let update (arr : 'a array) (data: 'a) =
+
+      if int value.Index > Array.length arr then
 #if JAVASCRIPT
-          /// Rationale:
-          ///
-          /// in JavaScript an array will re-allocate automatically under the hood
-          /// hence we don't need to worry about out-of-bounds errors.
-          let newarr = Array.copy arr
-          newarr.[int value.Index] <- data
-          newarr
+        /// Rationale:
+        ///
+        /// in JavaScript an array will re-allocate automatically under the hood
+        /// hence we don't need to worry about out-of-bounds errors.
+        let newarr = Array.copy arr
+        newarr.[int value.Index] <- data
+        newarr
 #else
-          /// Rationale:
-          ///
-          /// in .NET, we need to worry about out-of-bounds errors, and we
-          /// detected that we are about to run into one, hence re-alloc, copy
-          /// and finally set the value at the correct index.
-          let newarr = Array.zeroCreate (int value.Index + 1)
-          arr.CopyTo(newarr, 0)
-          newarr.[int value.Index] <- data
-          newarr
+        /// Rationale:
+        ///
+        /// in .NET, we need to worry about out-of-bounds errors, and we
+        /// detected that we are about to run into one, hence re-alloc, copy
+        /// and finally set the value at the correct index.
+        let newarr = Array.zeroCreate (int value.Index + 1)
+        arr.CopyTo(newarr, 0)
+        newarr.[int value.Index] <- data
+        newarr
 #endif
-        else
-          Array.mapi (fun i d -> if i = int value.Index then data else d) arr
+      else
+        Array.mapi (fun i d -> if i = int value.Index then data else d) arr
 
-      match self with
-      | StringBox data as current ->
-        match value with
-          | StringSlice slice     -> StringBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    match self with
+    | StringBox data as current ->
+      match value with
+        | StringSlice slice     -> StringBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | IntBox data as current    ->
-        match value with
-          | IntSlice slice        -> IntBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | IntBox data as current    ->
+      match value with
+        | IntSlice slice        -> IntBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | FloatBox data as current  ->
-        match value with
-          | FloatSlice slice      -> FloatBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | FloatBox data as current  ->
+      match value with
+        | FloatSlice slice      -> FloatBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | DoubleBox data as current ->
-        match value with
-          | DoubleSlice slice     -> DoubleBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | DoubleBox data as current ->
+      match value with
+        | DoubleSlice slice     -> DoubleBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | BoolBox data as current   ->
-        match value with
-          | BoolSlice slice       -> BoolBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | BoolBox data as current   ->
+      match value with
+        | BoolSlice slice       -> BoolBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | ByteBox data as current   ->
-        match value with
-          | ByteSlice slice       -> ByteBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | ByteBox data as current   ->
+      match value with
+        | ByteSlice slice       -> ByteBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | EnumBox data as current   ->
-        match value with
-          | EnumSlice slice       -> EnumBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | EnumBox data as current   ->
+      match value with
+        | EnumSlice slice       -> EnumBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | ColorBox data as current  ->
-        match value with
-          | ColorSlice slice      -> ColorBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | ColorBox data as current  ->
+      match value with
+        | ColorSlice slice      -> ColorBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | Compound data as current  ->
-        match value with
-          | CompoundSlice slice   -> Compound { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | Compound data as current  ->
+      match value with
+        | CompoundSlice slice   -> Compound { data with Slices = update data.Slices slice }
+        | _                     -> current
 
+  member self.SetSlices slices =
+    match self with
+    | StringBox data as value ->
+      match slices with
+      | StringSlices arr -> StringBox { data with Slices = arr }
+      | _ -> value
 
-    member self.SetSlices slices =
-      match self with
-      | StringBox data as value ->
-        match slices with
-        | StringSlices arr -> StringBox { data with Slices = arr }
-        | _ -> value
+    | IntBox data as value ->
+      match slices with
+      | IntSlices arr -> IntBox { data with Slices = arr }
+      | _ -> value
 
-      | IntBox data as value ->
-        match slices with
-        | IntSlices arr -> IntBox { data with Slices = arr }
-        | _ -> value
+    | FloatBox data as value ->
+      match slices with
+      | FloatSlices  arr -> FloatBox { data with Slices = arr }
+      | _ -> value
 
-      | FloatBox data as value ->
-        match slices with
-        | FloatSlices  arr -> FloatBox { data with Slices = arr }
-        | _ -> value
+    | DoubleBox data as value ->
+      match slices with
+      | DoubleSlices arr -> DoubleBox { data with Slices = arr }
+      | _ -> value
 
-      | DoubleBox data as value ->
-        match slices with
-        | DoubleSlices arr -> DoubleBox { data with Slices = arr }
-        | _ -> value
+    | BoolBox data as value ->
+      match slices with
+      | BoolSlices arr -> BoolBox { data with Slices = arr }
+      | _ -> value
 
-      | BoolBox data as value ->
-        match slices with
-        | BoolSlices arr -> BoolBox { data with Slices = arr }
-        | _ -> value
+    | ByteBox data as value ->
+      match slices with
+      | ByteSlices arr -> ByteBox { data with Slices = arr }
+      | _ -> value
 
-      | ByteBox data as value ->
-        match slices with
-        | ByteSlices arr -> ByteBox { data with Slices = arr }
-        | _ -> value
+    | EnumBox data as value ->
+      match slices with
+      | EnumSlices arr -> EnumBox { data with Slices = arr }
+      | _ -> value
 
-      | EnumBox data as value ->
-        match slices with
-        | EnumSlices arr -> EnumBox { data with Slices = arr }
-        | _ -> value
+    | ColorBox data as value ->
+      match slices with
+      | ColorSlices arr -> ColorBox { data with Slices = arr }
+      | _ -> value
 
-      | ColorBox data as value ->
-        match slices with
-        | ColorSlices arr -> ColorBox { data with Slices = arr }
-        | _ -> value
+    | Compound data as value ->
+      match slices with
+      | CompoundSlices arr -> Compound { data with Slices = arr }
+      | _ -> value
 
-      | Compound data as value ->
-        match slices with
-        | CompoundSlices arr -> Compound { data with Slices = arr }
-        | _ -> value
+  static member Toggle(id, name, patch, tags, values) =
+    BoolBox { Id         = id
+            ; Name       = name
+            ; Patch      = patch
+            ; Tags       = tags
+            ; Behavior   = Behavior.Toggle
+            ; Slices     = values }
 
-    static member Toggle(id, name, patch, tags, values) =
-      BoolBox { Id         = id
+  static member Bang(id, name, patch, tags, values) =
+    BoolBox { Id         = id
+            ; Name       = name
+            ; Patch      = patch
+            ; Tags       = tags
+            ; Behavior   = Behavior.Bang
+            ; Slices     = values }
+
+  static member String(id, name, patch, tags, values) =
+    StringBox { Id         = id
               ; Name       = name
               ; Patch      = patch
               ; Tags       = tags
-              ; Behavior   = Behavior.Toggle
+              ; StringType = Simple
+              ; FileMask   = None
+              ; MaxChars   = sizeof<int>
               ; Slices     = values }
 
-    static member Bang(id, name, patch, tags, values) =
-      BoolBox { Id         = id
+  static member MultiLine(id, name, patch, tags, values) =
+    StringBox { Id         = id
               ; Name       = name
               ; Patch      = patch
               ; Tags       = tags
-              ; Behavior   = Behavior.Bang
+              ; StringType = MultiLine
+              ; FileMask   = None
+              ; MaxChars   = sizeof<int>
               ; Slices     = values }
 
-    static member String(id, name, patch, tags, values) =
-      StringBox { Id         = id
-                ; Name       = name
-                ; Patch      = patch
-                ; Tags       = tags
-                ; StringType = Simple
-                ; FileMask   = None
-                ; MaxChars   = sizeof<int>
-                ; Slices     = values }
+  static member FileName(id, name, patch, tags, filemask, values) =
+    StringBox { Id         = id
+              ; Name       = name
+              ; Patch      = patch
+              ; Tags       = tags
+              ; StringType = FileName
+              ; FileMask   = Some filemask
+              ; MaxChars   = sizeof<int>
+              ; Slices     = values }
 
-    static member MultiLine(id, name, patch, tags, values) =
-      StringBox { Id         = id
-                ; Name       = name
-                ; Patch      = patch
-                ; Tags       = tags
-                ; StringType = MultiLine
-                ; FileMask   = None
-                ; MaxChars   = sizeof<int>
-                ; Slices     = values }
+  static member Directory(id, name, patch, tags, filemask, values) =
+    StringBox { Id         = id
+              ; Name       = name
+              ; Patch      = patch
+              ; Tags       = tags
+              ; StringType = Directory
+              ; FileMask   = Some filemask
+              ; MaxChars   = sizeof<int>
+              ; Slices     = values }
 
-    static member FileName(id, name, patch, tags, filemask, values) =
-      StringBox { Id         = id
-                ; Name       = name
-                ; Patch      = patch
-                ; Tags       = tags
-                ; StringType = FileName
-                ; FileMask   = Some filemask
-                ; MaxChars   = sizeof<int>
-                ; Slices     = values }
+  static member Url(id, name, patch, tags, values) =
+    StringBox { Id         = id
+              ; Name       = name
+              ; Patch      = patch
+              ; Tags       = tags
+              ; StringType = Url
+              ; FileMask   = None
+              ; MaxChars   = sizeof<int>
+              ; Slices     = values }
 
-    static member Directory(id, name, patch, tags, filemask, values) =
-      StringBox { Id         = id
-                ; Name       = name
-                ; Patch      = patch
-                ; Tags       = tags
-                ; StringType = Directory
-                ; FileMask   = Some filemask
-                ; MaxChars   = sizeof<int>
-                ; Slices     = values }
+  static member IP(id, name, patch, tags, values) =
+    StringBox { Id         = id
+              ; Name       = name
+              ; Patch      = patch
+              ; Tags       = tags
+              ; StringType = Url
+              ; FileMask   = None
+              ; MaxChars   = sizeof<int>
+              ; Slices     = values }
 
-    static member Url(id, name, patch, tags, values) =
-      StringBox { Id         = id
-                ; Name       = name
-                ; Patch      = patch
-                ; Tags       = tags
-                ; StringType = Url
-                ; FileMask   = None
-                ; MaxChars   = sizeof<int>
-                ; Slices     = values }
+  static member Float(id, name, patch, tags, values) =
+    FloatBox { Id         = id
+              ; Name       = name
+              ; Patch      = patch
+              ; Tags       = tags
+              ; VecSize    = 1u
+              ; Min        = 0
+              ; Max        = sizeof<float>
+              ; Unit       = ""
+              ; Precision  = 4u
+              ; Slices     = values }
 
-    static member IP(id, name, patch, tags, values) =
-      StringBox { Id         = id
-                ; Name       = name
-                ; Patch      = patch
-                ; Tags       = tags
-                ; StringType = Url
-                ; FileMask   = None
-                ; MaxChars   = sizeof<int>
-                ; Slices     = values }
+  static member Double(id, name, patch, tags, values) =
+    DoubleBox { Id         = id
+              ; Name       = name
+              ; Patch      = patch
+              ; Tags       = tags
+              ; VecSize    = 1u
+              ; Min        = 0
+              ; Max        = sizeof<double>
+              ; Unit       = ""
+              ; Precision  = 4u
+              ; Slices     = values }
 
-    static member Float(id, name, patch, tags, values) =
-      FloatBox { Id         = id
-               ; Name       = name
-               ; Patch      = patch
-               ; Tags       = tags
-               ; VecSize    = 1u
-               ; Min        = 0
-               ; Max        = sizeof<float>
-               ; Unit       = ""
-               ; Precision  = 4u
-               ; Slices     = values }
+  static member Bytes(id, name, patch, tags, values) =
+    ByteBox { Id         = id
+            ; Name       = name
+            ; Patch      = patch
+            ; Tags       = tags
+            ; Slices     = values }
 
-    static member Double(id, name, patch, tags, values) =
-      DoubleBox { Id         = id
-                ; Name       = name
-                ; Patch      = patch
-                ; Tags       = tags
-                ; VecSize    = 1u
-                ; Min        = 0
-                ; Max        = sizeof<double>
-                ; Unit       = ""
-                ; Precision  = 4u
-                ; Slices     = values }
-
-    static member Bytes(id, name, patch, tags, values) =
-      ByteBox { Id         = id
+  static member Color(id, name, patch, tags, values) =
+    ColorBox { Id         = id
               ; Name       = name
               ; Patch      = patch
               ; Tags       = tags
               ; Slices     = values }
 
-    static member Color(id, name, patch, tags, values) =
-      ColorBox { Id         = id
-               ; Name       = name
-               ; Patch      = patch
-               ; Tags       = tags
-               ; Slices     = values }
+  static member Enum(id, name, patch, tags, properties, values) =
+    EnumBox { Id         = id
+            ; Name       = name
+            ; Patch      = patch
+            ; Tags       = tags
+            ; Properties = properties
+            ; Slices     = values }
 
-    static member Enum(id, name, patch, tags, properties, values) =
-      EnumBox { Id         = id
+  static member CompoundBox(id, name, patch, tags, values) =
+    Compound { Id         = id
               ; Name       = name
               ; Patch      = patch
               ; Tags       = tags
-              ; Properties = properties
               ; Slices     = values }
 
-    static member CompoundBox(id, name, patch, tags, values) =
-      Compound { Id         = id
-               ; Name       = name
-               ; Patch      = patch
-               ; Tags       = tags
-               ; Slices     = values }
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
 
+  member self.ToOffset(builder: FlatBufferBuilder) : Offset<IOBoxFB> =
+    let build tipe (offset: Offset<_>) =
+      IOBoxFB.StartIOBoxFB(builder)
+      IOBoxFB.AddIOBox(builder, offset.Value)
+      IOBoxFB.AddIOBoxType(builder, tipe)
+      IOBoxFB.EndIOBoxFB(builder)
 
-#if JAVASCRIPT
-#else
+    match self with
+    | StringBox data ->
+      data.ToOffset(builder)
+      |> build IOBoxTypeFB.StringBoxFB
 
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
+    | IntBox data ->
+      data.ToOffset(builder)
+      |> build IOBoxTypeFB.IntBoxFB
 
-    member self.ToOffset(builder: FlatBufferBuilder) : Offset<IOBoxFB> =
-      let build tipe (offset: Offset<_>) =
-        IOBoxFB.StartIOBoxFB(builder)
-        IOBoxFB.AddIOBox(builder, offset.Value)
-        IOBoxFB.AddIOBoxType(builder, tipe)
-        IOBoxFB.EndIOBoxFB(builder)
+    | FloatBox data ->
+      data.ToOffset(builder)
+      |> build IOBoxTypeFB.FloatBoxFB
 
-      match self with
-      | StringBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.StringBoxFB
+    | DoubleBox data ->
+      data.ToOffset(builder)
+      |> build IOBoxTypeFB.DoubleBoxFB
 
-      | IntBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.IntBoxFB
+    | BoolBox data ->
+      data.ToOffset(builder)
+      |> build IOBoxTypeFB.BoolBoxFB
 
-      | FloatBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.FloatBoxFB
+    | ByteBox data ->
+      data.ToOffset(builder)
+      |> build IOBoxTypeFB.ByteBoxFB
 
-      | DoubleBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.DoubleBoxFB
+    | EnumBox data ->
+      data.ToOffset(builder)
+      |> build IOBoxTypeFB.EnumBoxFB
 
-      | BoolBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.BoolBoxFB
+    | ColorBox data ->
+      data.ToOffset(builder)
+      |> build IOBoxTypeFB.ColorBoxFB
 
-      | ByteBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.ByteBoxFB
+    | Compound data ->
+      data.ToOffset(builder)
+      |> build IOBoxTypeFB.CompoundBoxFB
 
-      | EnumBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.EnumBoxFB
+  static member FromFB(fb: IOBoxFB) : IOBox option =
+    match fb.IOBoxType with
+    | IOBoxTypeFB.StringBoxFB ->
+      let v = fb.IOBox<StringBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> StringBoxD.FromFB
+        |> Option.map StringBox
+      else None
 
-      | ColorBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.ColorBoxFB
+    | IOBoxTypeFB.IntBoxFB ->
+      let v = fb.IOBox<IntBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> IntBoxD.FromFB
+        |> Option.map IntBox
+      else None
 
-      | Compound data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.CompoundBoxFB
+    | IOBoxTypeFB.FloatBoxFB ->
+      let v = fb.IOBox<FloatBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> FloatBoxD.FromFB
+        |> Option.map FloatBox
+      else None
 
-    static member FromFB(fb: IOBoxFB) : IOBox option =
-      match fb.IOBoxType with
-      | IOBoxTypeFB.StringBoxFB ->
-        let v = fb.IOBox<StringBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> StringBoxD.FromFB
-          |> Option.map StringBox
-        else None
+    | IOBoxTypeFB.DoubleBoxFB ->
+      let v = fb.IOBox<DoubleBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> DoubleBoxD.FromFB
+        |> Option.map DoubleBox
+      else None
 
-      | IOBoxTypeFB.IntBoxFB ->
-        let v = fb.IOBox<IntBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> IntBoxD.FromFB
-          |> Option.map IntBox
-        else None
+    | IOBoxTypeFB.BoolBoxFB ->
+      let v = fb.IOBox<BoolBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> BoolBoxD.FromFB
+        |> Option.map BoolBox
+      else None
 
-      | IOBoxTypeFB.FloatBoxFB ->
-        let v = fb.IOBox<FloatBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> FloatBoxD.FromFB
-          |> Option.map FloatBox
-        else None
+    | IOBoxTypeFB.ByteBoxFB ->
+      let v = fb.IOBox<ByteBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> ByteBoxD.FromFB
+        |> Option.map ByteBox
+      else None
 
-      | IOBoxTypeFB.DoubleBoxFB ->
-        let v = fb.IOBox<DoubleBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> DoubleBoxD.FromFB
-          |> Option.map DoubleBox
-        else None
+    | IOBoxTypeFB.EnumBoxFB ->
+      let v = fb.IOBox<EnumBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> EnumBoxD.FromFB
+        |> Option.map EnumBox
+      else None
 
-      | IOBoxTypeFB.BoolBoxFB ->
-        let v = fb.IOBox<BoolBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> BoolBoxD.FromFB
-          |> Option.map BoolBox
-        else None
+    | IOBoxTypeFB.ColorBoxFB ->
+      let v = fb.IOBox<ColorBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> ColorBoxD.FromFB
+        |> Option.map ColorBox
+      else None
 
-      | IOBoxTypeFB.ByteBoxFB ->
-        let v = fb.IOBox<ByteBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> ByteBoxD.FromFB
-          |> Option.map ByteBox
-        else None
+    | IOBoxTypeFB.CompoundBoxFB ->
+      let v = fb.IOBox<CompoundBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> CompoundBoxD.FromFB
+        |> Option.map Compound
+      else None
 
-      | IOBoxTypeFB.EnumBoxFB ->
-        let v = fb.IOBox<EnumBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> EnumBoxD.FromFB
-          |> Option.map EnumBox
-        else None
+    | _ -> None
 
-      | IOBoxTypeFB.ColorBoxFB ->
-        let v = fb.IOBox<ColorBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> ColorBoxD.FromFB
-          |> Option.map ColorBox
-        else None
+  member self.ToBytes() : byte array = Binary.buildBuffer self
 
-      | IOBoxTypeFB.CompoundBoxFB ->
-        let v = fb.IOBox<CompoundBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> CompoundBoxD.FromFB
-          |> Option.map Compound
-        else None
-
-      | _ -> None
-
-    member self.ToBytes() : byte array = Binary.buildBuffer self
-
-    static member FromBytes(bytes: byte array) : IOBox option =
-      IOBoxFB.GetRootAsIOBoxFB(new ByteBuffer(bytes))
-      |> IOBox.FromFB
-
-#endif
+  static member FromBytes(bytes: byte array) : IOBox option =
+    IOBoxFB.GetRootAsIOBoxFB(new ByteBuffer(bytes))
+    |> IOBox.FromFB
 
 //  ____              _ ____
 // | __ )  ___   ___ | | __ )  _____  __
@@ -621,8 +602,6 @@ and BoolBoxD =
   ; Behavior   : Behavior
   ; Slices     : BoolSliceD array }
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -678,8 +657,6 @@ and BoolBoxD =
     BoolBoxFB.GetRootAsBoolBoxFB(new ByteBuffer(bytes))
     |> BoolBoxD.FromFB
 
-#endif
-
 //  ____              _ ____  _ _
 // | __ )  ___   ___ | / ___|| (_) ___ ___
 // |  _ \ / _ \ / _ \| \___ \| | |/ __/ _ \
@@ -690,8 +667,6 @@ and BoolSliceD =
   { Index: Index
   ; Value: bool }
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -718,7 +693,6 @@ and BoolSliceD =
   static member FromBytes(bytes: byte array) : BoolSliceD option =
     BoolSliceFB.GetRootAsBoolSliceFB(new ByteBuffer(bytes))
     |> BoolSliceD.FromFB
-#endif
 
 //  ___       _   ____
 // |_ _|_ __ | |_| __ )  _____  __
@@ -737,8 +711,6 @@ and IntBoxD =
   ; Unit       : string
   ; Slices     : IntSliceD array }
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -802,7 +774,6 @@ and IntBoxD =
   static member FromBytes(bytes: byte array) : IntBoxD option =
     IntBoxFB.GetRootAsIntBoxFB(new ByteBuffer(bytes))
     |> IntBoxD.FromFB
-#endif
 
 //  ___       _   ____  _ _
 // |_ _|_ __ | |_/ ___|| (_) ___ ___
@@ -814,8 +785,6 @@ and IntSliceD =
   { Index: Index
   ; Value: int }
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -842,7 +811,6 @@ and IntSliceD =
   static member FromBytes(bytes: byte array) : IntSliceD option =
     IntSliceFB.GetRootAsIntSliceFB(new ByteBuffer(bytes))
     |> IntSliceD.FromFB
-#endif
 
 //  _____ _             _   ____
 // |  ___| | ___   __ _| |_| __ )  _____  __
@@ -862,8 +830,6 @@ and FloatBoxD =
   ; Precision  : uint32
   ; Slices     : FloatSliceD array }
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -929,7 +895,6 @@ and FloatBoxD =
   static member FromBytes(bytes: byte array) : FloatBoxD option =
     FloatBoxFB.GetRootAsFloatBoxFB(new ByteBuffer(bytes))
     |> FloatBoxD.FromFB
-#endif
 
 //  _____ _             _   ____  _ _
 // |  ___| | ___   __ _| |_/ ___|| (_) ___ ___
@@ -942,8 +907,6 @@ and FloatSliceD =
   ; Value: float }
 
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -970,7 +933,6 @@ and FloatSliceD =
   static member FromBytes(bytes: byte array) : FloatSliceD option =
     FloatSliceFB.GetRootAsFloatSliceFB(new ByteBuffer(bytes))
     |> FloatSliceD.FromFB
-#endif
 
 //  ____              _     _      ____
 // |  _ \  ___  _   _| |__ | | ___| __ )  _____  __
@@ -991,8 +953,6 @@ and DoubleBoxD =
   ; Slices     : DoubleSliceD array }
 
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1058,7 +1018,6 @@ and DoubleBoxD =
   static member FromBytes(bytes: byte array) : DoubleBoxD option =
     DoubleBoxFB.GetRootAsDoubleBoxFB(new ByteBuffer(bytes))
     |> DoubleBoxD.FromFB
-#endif
 
 //  ____              _     _      ____  _ _
 // |  _ \  ___  _   _| |__ | | ___/ ___|| (_) ___ ___
@@ -1070,8 +1029,6 @@ and DoubleSliceD =
   { Index: Index
   ; Value: double }
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1098,7 +1055,6 @@ and DoubleSliceD =
   static member FromBytes(bytes: byte array) : DoubleSliceD option =
     DoubleSliceFB.GetRootAsDoubleSliceFB(new ByteBuffer(bytes))
     |> DoubleSliceD.FromFB
-#endif
 
 //  ____        _       ____
 // | __ ) _   _| |_ ___| __ )  _____  __
@@ -1114,8 +1070,6 @@ and ByteBoxD =
   ; Tags       : Tag        array
   ; Slices     : ByteSliceD array }
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1169,7 +1123,6 @@ and ByteBoxD =
   static member FromBytes(bytes: byte array) : ByteBoxD option =
     ByteBoxFB.GetRootAsByteBoxFB(new ByteBuffer(bytes))
     |> ByteBoxD.FromFB
-#endif
 
 //  ____        _       ____  _ _
 // | __ ) _   _| |_ ___/ ___|| (_) ___ ___
@@ -1182,8 +1135,6 @@ and ByteSliceD =
   { Index: Index
   ; Value: byte array }
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1216,7 +1167,6 @@ and ByteSliceD =
   static member FromBytes(bytes: byte array) : ByteSliceD option =
     ByteSliceFB.GetRootAsByteSliceFB(new ByteBuffer(bytes))
     |> ByteSliceD.FromFB
-#endif
 
 //  _____                       ____
 // | ____|_ __  _   _ _ __ ___ | __ )  _____  __
@@ -1232,8 +1182,6 @@ and EnumBoxD =
   ; Properties : Property   array
   ; Slices     : EnumSliceD array }
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1302,7 +1250,6 @@ and EnumBoxD =
   static member FromEnums(bytes: byte array) : EnumBoxD option =
     EnumBoxFB.GetRootAsEnumBoxFB(new ByteBuffer(bytes))
     |> EnumBoxD.FromFB
-#endif
 
 //  _____                       ____  _ _
 // | ____|_ __  _   _ _ __ ___ / ___|| (_) ___ ___
@@ -1314,8 +1261,6 @@ and EnumSliceD =
   { Index : Index
   ; Value : Property }
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1355,7 +1300,6 @@ and EnumSliceD =
   static member FromEnums(bytes: byte array) : EnumSliceD option =
     EnumSliceFB.GetRootAsEnumSliceFB(new ByteBuffer(bytes))
     |> EnumSliceD.FromFB
-#endif
 
 //   ____      _            ____
 //  / ___|___ | | ___  _ __| __ )  _____  __
@@ -1370,8 +1314,6 @@ and ColorBoxD =
   ; Tags   : Tag         array
   ; Slices : ColorSliceD array }
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1425,7 +1367,6 @@ and ColorBoxD =
   static member FromColors(bytes: byte array) : ColorBoxD option =
     ColorBoxFB.GetRootAsColorBoxFB(new ByteBuffer(bytes))
     |> ColorBoxD.FromFB
-#endif
 
 //   ____      _            ____  _ _
 //  / ___|___ | | ___  _ __/ ___|| (_) ___ ___
@@ -1437,8 +1378,6 @@ and ColorSliceD =
   { Index: Index
   ; Value: ColorSpace }
 
-#if JAVASCRIPT
-#else
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1466,7 +1405,6 @@ and ColorSliceD =
   static member FromColors(bytes: byte array) : ColorSliceD option =
     ColorSliceFB.GetRootAsColorSliceFB(new ByteBuffer(bytes))
     |> ColorSliceD.FromFB
-#endif
 
 //  ____  _        _             ____
 // / ___|| |_ _ __(_)_ __   __ _| __ )  _____  __
@@ -1485,8 +1423,6 @@ and StringBoxD =
   ; MaxChars   : MaxChars
   ; Slices     : StringSliceD array }
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1551,7 +1487,6 @@ and StringBoxD =
   static member FromStrings(bytes: byte array) : StringBoxD option =
     StringBoxFB.GetRootAsStringBoxFB(new ByteBuffer(bytes))
     |> StringBoxD.FromFB
-#endif
 
 //  ____  _        _             ____  _ _
 // / ___|| |_ _ __(_)_ __   __ _/ ___|| (_) ___ ___
@@ -1564,8 +1499,6 @@ and StringSliceD =
   { Index : Index
   ; Value : string }
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1593,7 +1526,6 @@ and StringSliceD =
   static member FromStrings(bytes: byte array) : StringSliceD option =
     StringSliceFB.GetRootAsStringSliceFB(new ByteBuffer(bytes))
     |> StringSliceD.FromFB
-#endif
 
 //   ____                                            _ ____
 //  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| | __ )  _____  __
@@ -1609,8 +1541,6 @@ and CompoundBoxD =
   ; Tags       : Tag   array
   ; Slices     : CompoundSliceD array }
 
-#if JAVASCRIPT
-#else
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1665,7 +1595,6 @@ and CompoundBoxD =
   static member FromCompounds(bytes: byte array) : CompoundBoxD option =
     CompoundBoxFB.GetRootAsCompoundBoxFB(new ByteBuffer(bytes))
     |> CompoundBoxD.FromFB
-#endif
 
 //   ____                                            _ ____  _ _
 //  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| / ___|| (_) ___ ___
@@ -1678,8 +1607,6 @@ and CompoundSliceD =
   { Index      : Index
   ; Value      : IOBox array }
 
-#if JAVASCRIPT
-#else
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1718,7 +1645,6 @@ and CompoundSliceD =
   static member FromCompounds(bytes: byte array) : CompoundSliceD option =
     CompoundSliceFB.GetRootAsCompoundSliceFB(new ByteBuffer(bytes))
     |> CompoundSliceD.FromFB
-#endif
 
 //  ____  _ _
 // / ___|| (_) ___ ___
@@ -1871,8 +1797,6 @@ and Slice =
       | CompoundSlice data -> Some data
       | _                  -> None
 
-#if JAVASCRIPT
-#else
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1979,7 +1903,6 @@ and Slice =
   static member FromBytes(bytes: byte array) : Slice option =
     SliceFB.GetRootAsSliceFB(new ByteBuffer(bytes))
     |> Slice.FromFB
-#endif
 
 //  ____  _ _
 // / ___|| (_) ___ ___  ___

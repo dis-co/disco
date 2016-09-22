@@ -1,8 +1,6 @@
 namespace Iris.Core
 
 open System.Net
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 type IpAddress =
   | IPv4Address of string

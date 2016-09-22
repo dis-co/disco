@@ -4,14 +4,13 @@ namespace Iris.Core
 
 open Fable.Core
 open Fable.Import
+open Iris.Core.FlatBuffers
 
 #else
 
 open System
 open LibGit2Sharp
 open FlatBuffers
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 open Iris.Serialization.Raft
 
 #endif
@@ -36,7 +35,6 @@ type User =
   override me.GetHashCode() =
     let mutable hash = 42
 #if JAVASCRIPT
-    let mutable hash = 42
     hash <- (hash * 7) + hashCode (string me.Id)
     hash <- (hash * 7) + hashCode me.UserName
     hash <- (hash * 7) + hashCode me.FirstName
@@ -100,6 +98,8 @@ type User =
       let name = sprintf "%s %s" user.FirstName user.LastName
       new Signature(name, user.Email, new DateTimeOffset(user.Created))
 
+#endif
+
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -145,5 +145,3 @@ type User =
   static member FromBytes (bytes: byte array) : User option =
     UserFB.GetRootAsUserFB(new ByteBuffer(bytes))
     |> User.FromFB
-
-#endif

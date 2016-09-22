@@ -1,12 +1,13 @@
 namespace Iris.Core
 
 #if JAVASCRIPT
+
+open Iris.Core.FlatBuffers
+
 #else
 
 open FlatBuffers
 open Iris.Serialization.Raft
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 #endif
 
@@ -21,9 +22,6 @@ type RGBAValue =
   ; Green : uint8
   ; Blue  : uint8
   ; Alpha : uint8 }
-
-#if JAVASCRIPT
-#else
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -56,46 +54,12 @@ type RGBAValue =
     RGBAValueFB.GetRootAsRGBAValueFB(new ByteBuffer(bytes))
     |> RGBAValue.FromFB
 
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() : JToken =
-    JToken.FromObject self
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : RGBAValue option =
-    try
-      { Red   = uint8 token.["Red"]
-      ; Green = uint8 token.["Green"]
-      ; Blue  = uint8 token.["Blue"]
-      ; Alpha = uint8 token.["Alpha"]
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : RGBAValue option =
-    JObject.Parse(str) |> RGBAValue.FromJToken
-
-#endif
-
 
 type HSLAValue =
   { Hue        : uint8
   ; Saturation : uint8
   ; Lightness  : uint8
   ; Alpha      : uint8 }
-
-#if JAVASCRIPT
-#else
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -128,43 +92,9 @@ type HSLAValue =
     HSLAValueFB.GetRootAsHSLAValueFB(new ByteBuffer(bytes))
     |> HSLAValue.FromFB
 
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() : JToken =
-    JToken.FromObject self
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : HSLAValue option =
-    try
-      { Hue        = uint8 token.["Hue"]
-      ; Saturation = uint8 token.["Saturation"]
-      ; Lightness  = uint8 token.["Lightness"]
-      ; Alpha      = uint8 token.["Alpha"]
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : HSLAValue option =
-    JObject.Parse(str) |> HSLAValue.FromJToken
-
-#endif
-
 type ColorSpace =
   | RGBA of RGBAValue
   | HSLA of HSLAValue
-
-#if JAVASCRIPT
-#else
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -212,5 +142,3 @@ type ColorSpace =
   static member FromBytes(bytes: byte array) =
     ColorSpaceFB.GetRootAsColorSpaceFB(new ByteBuffer(bytes))
     |> ColorSpace.FromFB
-
-#endif

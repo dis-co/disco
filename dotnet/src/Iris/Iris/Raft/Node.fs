@@ -3,14 +3,15 @@ namespace Iris.Raft
 open Iris.Core
 
 #if JAVASCRIPT
+
+open Iris.Core.FlatBuffers
+
 #else
 
 open System
 open System.Net
 open FlatBuffers
 open Iris.Serialization.Raft
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 #endif
 
@@ -43,9 +44,6 @@ type RaftNodeState =
     | "Failed"  -> Failed
     | _         -> failwithf "NodeState: failed to parse %s" str
 
-#if JAVASCRIPT
-#else
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -65,37 +63,6 @@ type RaftNodeState =
       | NodeStateFB.RunningFB -> Some Running
       | NodeStateFB.FailedFB  -> Some Failed
       | _                     -> None
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() =
-    new JValue(string self) :> JToken
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : RaftNodeState option =
-    try
-      match string token with
-      | "Running" -> Some Running
-      | "Joining" -> Some Joining
-      | "Failed"  -> Some Failed
-      | _         -> None
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : RaftNodeState option =
-    JObject.Parse(str) |> RaftNodeState.FromJToken
-
-#endif
 
 //  _   _           _
 // | \ | | ___   __| | ___
@@ -123,9 +90,6 @@ type RaftNode =
       (string self.State)
       (sprintf "(NxtIdx %A)" self.NextIndex)
       (sprintf "(MtchIdx %A)" self.MatchIndex)
-
-#if JAVASCRIPT
-#else
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -174,7 +138,6 @@ type RaftNode =
   static member FromBytes (bytes: byte array) =
     NodeFB.GetRootAsNodeFB(new ByteBuffer(bytes))
     |> RaftNode.FromFB
-#endif
 
 
 
@@ -189,46 +152,46 @@ type ConfigChange =
   | NodeAdded   of RaftNode
   | NodeRemoved of RaftNode
 
-  with
-    override self.ToString() =
-      match self with
-      | NodeAdded   n -> sprintf "NodeAdded (%s)"   (string n.Id)
-      | NodeRemoved n ->sprintf "NodeRemoved (%s)" (string n.Id)
+  override self.ToString() =
+    match self with
+    | NodeAdded   n -> sprintf "NodeAdded (%s)"   (string n.Id)
+    | NodeRemoved n ->sprintf "NodeRemoved (%s)" (string n.Id)
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    match self with
+      | NodeAdded node ->
+        let node = node.ToOffset(builder)
+        ConfigChangeFB.StartConfigChangeFB(builder)
+        ConfigChangeFB.AddType(builder, ConfigChangeTypeFB.NodeAdded)
+        ConfigChangeFB.AddNode(builder, node)
+        ConfigChangeFB.EndConfigChangeFB(builder)
+      | NodeRemoved node ->
+        let node = node.ToOffset(builder)
+        ConfigChangeFB.StartConfigChangeFB(builder)
+        ConfigChangeFB.AddType(builder, ConfigChangeTypeFB.NodeRemoved)
+        ConfigChangeFB.AddNode(builder, node)
+        ConfigChangeFB.EndConfigChangeFB(builder)
+
+  static member FromFB (fb: ConfigChangeFB) : ConfigChange option =
+    let nullable = fb.Node
+    if nullable.HasValue then
+      RaftNode.FromFB nullable.Value
+      |> Option.bind
+        (fun node ->
+          match fb.Type with
+            | ConfigChangeTypeFB.NodeAdded   -> Some (NodeAdded   node)
+            | ConfigChangeTypeFB.NodeRemoved -> Some (NodeRemoved node)
+            | _                              -> None)
+    else None
+
+  member self.ToBytes () = Binary.buildBuffer self
+
+  static member FromBytes (bytes: byte array) =
+    ConfigChangeFB.GetRootAsConfigChangeFB(new ByteBuffer(bytes))
+    |> ConfigChange.FromFB
 
 #if JAVASCRIPT
 #else
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      match self with
-        | NodeAdded node ->
-          let node = node.ToOffset(builder)
-          ConfigChangeFB.StartConfigChangeFB(builder)
-          ConfigChangeFB.AddType(builder, ConfigChangeTypeFB.NodeAdded)
-          ConfigChangeFB.AddNode(builder, node)
-          ConfigChangeFB.EndConfigChangeFB(builder)
-        | NodeRemoved node ->
-          let node = node.ToOffset(builder)
-          ConfigChangeFB.StartConfigChangeFB(builder)
-          ConfigChangeFB.AddType(builder, ConfigChangeTypeFB.NodeRemoved)
-          ConfigChangeFB.AddNode(builder, node)
-          ConfigChangeFB.EndConfigChangeFB(builder)
-
-    static member FromFB (fb: ConfigChangeFB) : ConfigChange option =
-      let nullable = fb.Node
-      if nullable.HasValue then
-        RaftNode.FromFB nullable.Value
-        |> Option.bind
-          (fun node ->
-            match fb.Type with
-              | ConfigChangeTypeFB.NodeAdded   -> Some (NodeAdded   node)
-              | ConfigChangeTypeFB.NodeRemoved -> Some (NodeRemoved node)
-              | _                              -> None)
-      else None
-
-    member self.ToBytes () = Binary.buildBuffer self
-
-    static member FromBytes (bytes: byte array) =
-      ConfigChangeFB.GetRootAsConfigChangeFB(new ByteBuffer(bytes))
-      |> ConfigChange.FromFB
 
 [<RequireQualifiedAccess>]
 module Node =
