@@ -87,6 +87,8 @@ module JsUtilities =
 type Id =
   | Id of string
 
+  override self.ToString() = match self with | Id str -> str
+
   // override self.GetHashCode() =
   //   self.ToString() |> hashCode
 

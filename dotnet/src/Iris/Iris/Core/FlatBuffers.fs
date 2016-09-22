@@ -48,7 +48,7 @@ module FlatBuffers =
     [<Emit("$0.dataBuffer()")>]
     abstract DataBuffer: unit -> ByteBuffer
 
-    [<Emit("$0.asUint8Array().buffer")>]
+    [<Emit("$0.asUint8Array().buffer.slice($0.dataBuffer().position(),$0.dataBuffer().position() + $0.offset())")>]
     abstract SizedByteArray: unit -> Fable.Import.JS.ArrayBuffer
 
     [<Emit("$0.createString($1)")>]

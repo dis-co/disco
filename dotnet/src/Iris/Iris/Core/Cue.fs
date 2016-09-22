@@ -48,9 +48,6 @@ module CueFBSerialization =
     [<Emit("Iris.Serialization.Raft.CueFB.endCueFB($1)")>]
     abstract EndCueFB: builder: FlatBufferBuilder -> Offset<'a>
 
-    [<Emit("Iris.Serialization.Raft.CueFB.finishCueFBBuffer($1, $2)")>]
-    abstract FinishCueFBBuffer: builder: FlatBufferBuilder * offset: Offset<'a> -> CueFB
-
     [<Emit("Iris.Serialization.Raft.CueFB.getRootAsCueFB($1)")>]
     abstract GetRootAsCueFB: buffer: ByteBuffer -> CueFB
 
@@ -90,9 +87,8 @@ type Cue =
   member self.ToBytes() =
     let builder = FlatBufferBuilder.Create(1)
     let offset = self.ToOffset(builder)
-    CueFB.FinishCueFBBuffer(builder, offset)
-    let uintarr = builder.AsUint8Array()
-    uintarr.buffer
+    builder.Finish(offset)
+    builder.SizedByteArray()
 
   static member FromFB(fb: CueFB) : Cue option =
     { Id = fb.Id() |> Id
