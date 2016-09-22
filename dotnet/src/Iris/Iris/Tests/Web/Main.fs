@@ -13,7 +13,7 @@ let main _ =
   // ; VirtualDom.main
   // ; PatchesView.main
   // ; ViewController.main
-  [ FlatBuffersTests.main
+  [ SerializationTests.main
   ] |> List.iter apply
 
 @"

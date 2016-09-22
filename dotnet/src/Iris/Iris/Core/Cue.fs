@@ -97,13 +97,7 @@ type Cue =
     |> Some
 
   static member FromBytes(bytes: ArrayBuffer) : Cue option =
-    printfn "bytes %A" bytes.byteLength
-    let uarr = Uint8Array.Create(bytes)
-    printfn "uint8array: %A" uarr
-    let byt = ByteBuffer.Create(uarr)
-    printfn "byte buffer: %A" byt
-    CueFB.GetRootAsCueFB(byt)
-    |> fun fb -> printfn "CueFB: %A" fb; fb
+    CueFB.GetRootAsCueFB(ByteBuffer.Create(bytes))
     |> Cue.FromFB
 
 #else

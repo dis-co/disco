@@ -63,7 +63,7 @@
     <Compile Include="Iris\Web\Views\Patches.fs" />
     <Compile Include=".\Iris\Tests\Web\TestUtilities.fs" />
     <Compile Include=".\Iris\Tests\Web\Mocha.fs" />
-    <Compile Include=".\Iris\Tests\Web\FlatBuffersTests.fs" />
+    <Compile Include=".\Iris\Tests\Web\SerializationTests.fs" />
     <!-- <Compile Include=".\Iris\Tests\Web\HtmlTests.fs" /> -->
     <!-- <compile Include=".\Iris\Tests\Web\PatchesViewTests.fs" /> -->
     <!-- <Compile Include=".\Iris\Tests\Web\PluginsTests.fs" /> -->

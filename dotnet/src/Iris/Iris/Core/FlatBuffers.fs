@@ -23,8 +23,8 @@ module FlatBuffers =
   and ByteBufferConstructor =
     abstract prototype: ByteBuffer with get, set
 
-    [<Emit("new flatbuffers.flatbuffers.$0($1)")>]
-    abstract Create: bytes: Fable.Import.JS.Uint8Array -> ByteBuffer
+    [<Emit("new flatbuffers.flatbuffers.$0(new Uint8Array($1))")>]
+    abstract Create: bytes: Fable.Import.JS.ArrayBuffer -> ByteBuffer
 
   //   ___   __  __          _
   //  / _ \ / _|/ _|___  ___| |_
