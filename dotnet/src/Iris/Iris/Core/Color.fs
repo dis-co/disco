@@ -2,7 +2,9 @@ namespace Iris.Core
 
 #if JAVASCRIPT
 
+open Fable.Core
 open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
 
 #else
 
@@ -50,8 +52,9 @@ type RGBAValue =
 
   member self.ToBytes () = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) =
-    RGBAValueFB.GetRootAsRGBAValueFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) =
+    Binary.createBuffer bytes
+    |> RGBAValueFB.GetRootAsRGBAValueFB
     |> RGBAValue.FromFB
 
 
@@ -88,8 +91,9 @@ type HSLAValue =
 
   member self.ToBytes () = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) =
-    HSLAValueFB.GetRootAsHSLAValueFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) =
+    Binary.createBuffer bytes
+    |> HSLAValueFB.GetRootAsHSLAValueFB
     |> HSLAValue.FromFB
 
 type ColorSpace =
@@ -120,6 +124,21 @@ type ColorSpace =
       |> build ColorSpaceTypeFB.HSLAValueFB
 
   static member FromFB(fb: ColorSpaceFB) : ColorSpace option =
+#if JAVASCRIPT
+    match fb.ValueType with
+    | x when x = ColorSpaceTypeFB.RGBAValueFB ->
+      RGBAValueFB.Create()
+      |> fb.Value
+      |> RGBAValue.FromFB
+      |> Option.map RGBA
+    | x when x = ColorSpaceTypeFB.HSLAValueFB ->
+      HSLAValueFB.Create()
+      |> fb.Value
+      |> HSLAValue.FromFB
+      |> Option.map HSLA
+    | _ -> None
+#else
+    // On .NET side, System.Nullables are used. Hard to emulate rn.
     match fb.ValueType with
     | ColorSpaceTypeFB.RGBAValueFB ->
       let v = fb.Value<RGBAValueFB>()
@@ -136,9 +155,11 @@ type ColorSpace =
         |> Option.map HSLA
       else None
     | _ -> None
+#endif
 
   member self.ToBytes () = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) =
-    ColorSpaceFB.GetRootAsColorSpaceFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) =
+    Binary.createBuffer bytes
+    |> ColorSpaceFB.GetRootAsColorSpaceFB
     |> ColorSpace.FromFB

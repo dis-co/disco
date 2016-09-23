@@ -4,6 +4,7 @@ namespace Iris.Core
 
 open Fable.Core
 open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
 
 #else
 
@@ -46,11 +47,19 @@ type Behavior =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
+#if JAVASCRIPT
+  static member FromFB (fb: BehaviorFB) =
+    match fb with
+    | x when x = BehaviorFB.ToggleFB -> Some Toggle
+    | x when x = BehaviorFB.BangFB   -> Some Bang
+    | _                              -> None
+#else
   static member FromFB (fb: BehaviorFB) =
     match fb with
     | BehaviorFB.ToggleFB -> Some Toggle
     | BehaviorFB.BangFB   -> Some Bang
     | _                       -> None
+#endif
 
   member self.ToOffset(builder: FlatBufferBuilder) : BehaviorFB =
     match self with
@@ -102,6 +111,16 @@ type StringType =
   //                           |___/
 
   static member FromFB (fb: StringTypeFB) =
+#if JAVASCRIPT
+    match fb with
+    | x when x = StringTypeFB.SimpleFB    -> Some Simple
+    | x when x = StringTypeFB.MultiLineFB -> Some MultiLine
+    | x when x = StringTypeFB.FileNameFB  -> Some FileName
+    | x when x = StringTypeFB.DirectoryFB -> Some Directory
+    | x when x = StringTypeFB.UrlFB       -> Some Url
+    | x when x = StringTypeFB.IPFB        -> Some IP
+    | _                                   -> None
+#else
     match fb with
     | StringTypeFB.SimpleFB    -> Some Simple
     | StringTypeFB.MultiLineFB -> Some MultiLine
@@ -110,6 +129,7 @@ type StringType =
     | StringTypeFB.UrlFB       -> Some Url
     | StringTypeFB.IPFB        -> Some IP
     | _                        -> None
+#endif
 
   member self.ToOffset(builder: FlatBufferBuilder) : StringTypeFB =
     match self with
@@ -119,6 +139,7 @@ type StringType =
     | Directory -> StringTypeFB.DirectoryFB
     | Url       -> StringTypeFB.UrlFB
     | IP        -> StringTypeFB.IPFB
+
 
 //  ___ ___  ____
 // |_ _/ _ \| __ )  _____  __
@@ -326,6 +347,7 @@ type IOBox =
       | CompoundSlices arr -> Compound { data with Slices = arr }
       | _ -> value
 
+
   static member Toggle(id, name, patch, tags, values) =
     BoolBox { Id         = id
             ; Name       = name
@@ -463,48 +485,23 @@ type IOBox =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<IOBoxFB> =
-    let build tipe (offset: Offset<_>) =
+    let inline build (data: ^t) tipe =
+      let offset = toOffset builder data
       IOBoxFB.StartIOBoxFB(builder)
       IOBoxFB.AddIOBox(builder, offset.Value)
       IOBoxFB.AddIOBoxType(builder, tipe)
       IOBoxFB.EndIOBoxFB(builder)
 
     match self with
-    | StringBox data ->
-      data.ToOffset(builder)
-      |> build IOBoxTypeFB.StringBoxFB
-
-    | IntBox data ->
-      data.ToOffset(builder)
-      |> build IOBoxTypeFB.IntBoxFB
-
-    | FloatBox data ->
-      data.ToOffset(builder)
-      |> build IOBoxTypeFB.FloatBoxFB
-
-    | DoubleBox data ->
-      data.ToOffset(builder)
-      |> build IOBoxTypeFB.DoubleBoxFB
-
-    | BoolBox data ->
-      data.ToOffset(builder)
-      |> build IOBoxTypeFB.BoolBoxFB
-
-    | ByteBox data ->
-      data.ToOffset(builder)
-      |> build IOBoxTypeFB.ByteBoxFB
-
-    | EnumBox data ->
-      data.ToOffset(builder)
-      |> build IOBoxTypeFB.EnumBoxFB
-
-    | ColorBox data ->
-      data.ToOffset(builder)
-      |> build IOBoxTypeFB.ColorBoxFB
-
-    | Compound data ->
-      data.ToOffset(builder)
-      |> build IOBoxTypeFB.CompoundBoxFB
+    | StringBox data -> build data IOBoxTypeFB.StringBoxFB
+    | IntBox    data -> build data IOBoxTypeFB.IntBoxFB
+    | FloatBox  data -> build data IOBoxTypeFB.FloatBoxFB
+    | DoubleBox data -> build data IOBoxTypeFB.DoubleBoxFB
+    | BoolBox   data -> build data IOBoxTypeFB.BoolBoxFB
+    | ByteBox   data -> build data IOBoxTypeFB.ByteBoxFB
+    | EnumBox   data -> build data IOBoxTypeFB.EnumBoxFB
+    | ColorBox  data -> build data IOBoxTypeFB.ColorBoxFB
+    | Compound  data -> build data IOBoxTypeFB.CompoundBoxFB
 
   static member FromFB(fb: IOBoxFB) : IOBox option =
     match fb.IOBoxType with

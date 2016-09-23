@@ -2,7 +2,9 @@ namespace Iris.Core
 
 #if JAVASCRIPT
 
+open Fable.Core
 open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
 
 #else
 
@@ -39,8 +41,9 @@ type Session =
         printfn "Could not de-serializae Session binary value: %s" exn.Message
         None
 
-  static member FromBytes(bytes: byte array) : Session option =
-    SessionFB.GetRootAsSessionFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : Session option =
+    Binary.createBuffer bytes
+    |> SessionFB.GetRootAsSessionFB
     |> Session.FromFB
 
   member self.ToOffset(builder: FlatBufferBuilder) =
