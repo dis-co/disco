@@ -5,7 +5,7 @@ namespace Iris.Core
 open Fable.Core
 open Fable.Import
 open Iris.Core.FlatBuffers
-open Iris.Web.Core.Serialization
+open Iris.Web.Core.FlatBufferTypes
 
 #else
 

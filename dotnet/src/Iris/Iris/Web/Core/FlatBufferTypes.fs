@@ -4,9 +4,9 @@ open Fable.Core
 open Fable.Import
 open Iris.Core.FlatBuffers
 
-[<Import("Iris", from="buffers")>]
-module FlatBufferTypes =
 
+[<Import("Iris", from="buffers")>]
+module UserFlatBuffers =
   //  _   _               _____ ____
   // | | | |___  ___ _ __|  ___| __ )
   // | | | / __|/ _ \ '__| |_  |  _ \
@@ -14,25 +14,25 @@ module FlatBufferTypes =
   //  \___/|___/\___|_|  |_|   |____/
 
   type UserFB =
-    [<Emit("$0.id()")>]
+    [<Emit("$0.Id()")>]
     abstract Id: string
 
-    [<Emit("$0.userName()")>]
+    [<Emit("$0.UserName()")>]
     abstract UserName: string
 
-    [<Emit("$0.firstName()")>]
+    [<Emit("$0.FirstName()")>]
     abstract FirstName: string
 
-    [<Emit("$0.lastName()")>]
+    [<Emit("$0.LastName()")>]
     abstract LastName: string
 
-    [<Emit("$0.email()")>]
+    [<Emit("$0.Email()")>]
     abstract Email: string
 
-    [<Emit("$0.joined()")>]
+    [<Emit("$0.Joined()")>]
     abstract Joined: string
 
-    [<Emit("$0.created()")>]
+    [<Emit("$0.Created()")>]
     abstract Created: string
 
   type UserFBConstructor =
@@ -70,6 +70,10 @@ module FlatBufferTypes =
 
   let UserFB : UserFBConstructor = failwith "JS only"
 
+ open UserFlatBuffers
+
+[<Import("Iris", from="buffers")>]
+module FlatBufferTypes =
   //  ____                _             _____ ____
   // / ___|  ___  ___ ___(_) ___  _ __ |  ___| __ )
   // \___ \ / _ \/ __/ __| |/ _ \| '_ \| |_  |  _ \
@@ -215,9 +219,6 @@ module FlatBufferTypes =
   //       |___/|_|
 
   type ColorSpaceTypeEnumFB =
-    [<Emit("Iris.Serialization.Raft.ColorSpaceTypeFB.NONE")>]
-    abstract NONE : int
-
     [<Emit("Iris.Serialization.Raft.ColorSpaceTypeFB.RGBAValueFB")>]
     abstract RGBAValueFB : int
 
@@ -235,7 +236,7 @@ module FlatBufferTypes =
     [<Emit("$0.ValueType()")>]
     abstract ValueType: int
 
-    [<Emit("$0.Value($1))")>]
+    [<Emit("$0.Value($1)")>]
     abstract Value: 'a -> 'a
 
   type ColorSpaceFBConstructor =
@@ -357,7 +358,7 @@ module FlatBufferTypes =
 
   type IOBoxFB =
 
-    [<Emit("$0.Value($1))")>]
+    [<Emit("$0.Value($1)")>]
     abstract IOBox: 'a -> 'a
 
     [<Emit("$0.ValueType()")>]
@@ -1530,7 +1531,7 @@ module FlatBufferTypes =
 
   type SliceFB =
 
-    [<Emit("$0.Slice($1))")>]
+    [<Emit("$0.Slice($1)")>]
     abstract Slice: 'a -> 'a
 
     [<Emit("$0.SliceType()")>]
@@ -1596,7 +1597,7 @@ module FlatBufferTypes =
     abstract GetRootAsCueFB: buffer: ByteBuffer -> CueFB
 
     [<Emit("Iris.Serialization.Raft.CueFB.createIOBoxesVector($1, $2)")>]
-    abstract CreateIOBoxesVector: builder: FlatBufferBuilder -> Offset<IOBoxFB> array -> Offset<'a>
+    abstract CreateIOBoxesVector: builder: FlatBufferBuilder * Offset<IOBoxFB> array -> Offset<'a>
 
   let CueFB : CueFBConstructor = failwith "JS only"
 
@@ -1641,7 +1642,7 @@ module FlatBufferTypes =
     abstract GetRootAsPatchFB: buffer: ByteBuffer -> PatchFB
 
     [<Emit("Iris.Serialization.Raft.PatchFB.createIOBoxesVector($1, $2)")>]
-    abstract CreateIOBoxesVector: builder: FlatBufferBuilder -> Offset<IOBoxFB> array -> Offset<'a>
+    abstract CreateIOBoxesVector: builder: FlatBufferBuilder * Offset<IOBoxFB> array -> Offset<'a>
 
   let PatchFB : PatchFBConstructor = failwith "JS only"
 
@@ -1686,6 +1687,1132 @@ module FlatBufferTypes =
     abstract GetRootAsCueListFB: buffer: ByteBuffer -> CueListFB
 
     [<Emit("Iris.Serialization.Raft.CueListFB.createCuesVector($1, $2)")>]
-    abstract CreateCuesVector: builder: FlatBufferBuilder -> Offset<CueFB> array -> Offset<'a>
+    abstract CreateCuesVector: builder: FlatBufferBuilder * Offset<CueFB> array -> Offset<'a>
 
   let CueListFB : CueListFBConstructor = failwith "JS only"
+
+  //  _   _           _      ____  _        _       _____ ____
+  // | \ | | ___   __| | ___/ ___|| |_ __ _| |_ ___|  ___| __ )
+  // |  \| |/ _ \ / _` |/ _ \___ \| __/ _` | __/ _ \ |_  |  _ \
+  // | |\  | (_) | (_| |  __/___) | || (_| | ||  __/  _| | |_) |
+  // |_| \_|\___/ \__,_|\___|____/ \__\__,_|\__\___|_|   |____/
+
+  type NodeStateFB = int
+
+  type NodeStateFBConstructor =
+
+    [<Emit("Iris.Serialization.Raft.NodeStateFB.Joining")>]
+    abstract JoiningFB: NodeStateFB
+
+    [<Emit("Iris.Serialization.Raft.NodeStateFB.Running")>]
+    abstract RunningFB: NodeStateFB
+
+    [<Emit("Iris.Serialization.Raft.NodeStateFB.Failed")>]
+    abstract FailedFB: NodeStateFB
+
+  let NodeStateFB: NodeStateFBConstructor = failwith "JS only"
+
+  //  _   _           _
+  // | \ | | ___   __| | ___
+  // |  \| |/ _ \ / _` |/ _ \
+  // | |\  | (_) | (_| |  __/
+  // |_| \_|\___/ \__,_|\___|
+
+  type NodeFB =
+
+    [<Emit("$0.Id()")>]
+    abstract Id: string
+
+    [<Emit("$0.HostName()")>]
+    abstract HostName: string
+
+    [<Emit("$0.IpAddr()")>]
+    abstract IpAddr: string
+
+    [<Emit("$0.Port()")>]
+    abstract Port: uint16
+
+    [<Emit("$0.Voting()")>]
+    abstract Voting: bool
+
+    [<Emit("$0.VotedForMe()")>]
+    abstract VotedForMe: bool
+
+    [<Emit("$0.State()")>]
+    abstract State: NodeStateFB
+
+    [<Emit("$0.NextIndex()")>]
+    abstract NextIndex: uint64
+
+    [<Emit("$0.MatchIndex()")>]
+    abstract MatchIndex: uint64
+
+  type NodeFBConstructor =
+    abstract prototype: NodeFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.NodeFB.startNodeFB($0)")>]
+    abstract StartNodeFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.NodeFB.addId($0,$1)")>]
+    abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.NodeFB.addHostName($0,$1)")>]
+    abstract AddHostName: builder: FlatBufferBuilder * hostname: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.NodeFB.addIpAddr($0,$1)")>]
+    abstract AddIpAddr: builder: FlatBufferBuilder * ip: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.NodeFB.addPort($0,$1)")>]
+    abstract AddPort: builder: FlatBufferBuilder * port: int -> unit
+
+    [<Emit("Iris.Serialization.Raft.NodeFB.addVoting($0,$1)")>]
+    abstract AddVoting: builder: FlatBufferBuilder * voting: bool -> unit
+
+    [<Emit("Iris.Serialization.Raft.NodeFB.addVotedForMe($0,$1)")>]
+    abstract AddVotedForMe: builder: FlatBufferBuilder * votedforme: bool -> unit
+
+    [<Emit("Iris.Serialization.Raft.NodeFB.addState($0,$1)")>]
+    abstract AddState: builder: FlatBufferBuilder * state: NodeStateFB -> unit
+
+    [<Emit("Iris.Serialization.Raft.NodeFB.addNextIndex($0,$1)")>]
+    abstract AddNextIndex: builder: FlatBufferBuilder * idx: uint64 -> unit
+
+    [<Emit("Iris.Serialization.Raft.NodeFB.addMatchIndex($0,$1)")>]
+    abstract AddMatchIndex: builder: FlatBufferBuilder * idx: uint64 -> unit
+
+    [<Emit("Iris.Serialization.Raft.NodeFB.endNodeFB($0)")>]
+    abstract EndNodeFB: builder: FlatBufferBuilder -> Offset<NodeFB>
+
+    [<Emit("Iris.Serialization.Raft.NodeFB.getRootAsNodeFB($0)")>]
+    abstract GetRootAsNodeFB: bytes: ByteBuffer -> NodeFB
+
+    [<Emit("new Iris.Serialization.Raft.NodeFB()")>]
+    abstract Create: unit -> NodeFB
+
+  let NodeFB: NodeFBConstructor = failwith "JS only"
+
+  //   ____ _                           _____
+  //  / ___| |__   __ _ _ __   __ _  __|_   _|   _ _ __   ___
+  // | |   | '_ \ / _` | '_ \ / _` |/ _ \| || | | | '_ \ / _ \
+  // | |___| | | | (_| | | | | (_| |  __/| || |_| | |_) |  __/
+  //  \____|_| |_|\__,_|_| |_|\__, |\___||_| \__, | .__/ \___|
+  //                          |___/          |___/|_|
+
+  type ConfigChangeTypeFB = int
+
+  type ConfigChangeTypeFBConstructor =
+
+    [<Emit("Iris.Serialization.Raft.ConfigChangeTypeFB.NodeAddedFB")>]
+    abstract NodeAdded: ConfigChangeTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ConfigChangeTypeFB.NodeRemovedFB")>]
+    abstract NodeRemoved: ConfigChangeTypeFB
+
+  let ConfigChangeTypeFB: ConfigChangeTypeFBConstructor = failwith "JS only"
+
+  //   ____             __ _        ____ _                            _____ ____
+  //  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___|  ___| __ )
+  // | |   / _ \| '_ \| |_| |/ _` | |   | '_ \ / _` | '_ \ / _` |/ _ \ |_  |  _ \
+  // | |__| (_) | | | |  _| | (_| | |___| | | | (_| | | | | (_| |  __/  _| | |_) |
+  //  \____\___/|_| |_|_| |_|\__, |\____|_| |_|\__,_|_| |_|\__, |\___|_|   |____/
+  //                         |___/                         |___/
+
+  type ConfigChangeFB =
+
+    [<Emit("$0.Type()")>]
+    abstract Type: ConfigChangeTypeFB
+
+    [<Emit("$0.Node()")>]
+    abstract Node: NodeFB
+
+  type ConfigChangeFBConstructor =
+    abstract prototype: ConfigChangeFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.ConfigChangeFB.startConfigChangeFB($0)")>]
+    abstract StartConfigChangeFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.ConfigChangeFB.addType($0, $1)")>]
+    abstract AddType: builder: FlatBufferBuilder * tipe: ConfigChangeTypeFB -> unit
+
+    [<Emit("Iris.Serialization.Raft.ConfigChangeFB.addNode($0, $1)")>]
+    abstract AddNode: builder: FlatBufferBuilder * node: Offset<NodeFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.ConfigChangeFB.endConfigChangeFB($0)")>]
+    abstract EndConfigChangeFB: builder: FlatBufferBuilder -> Offset<ConfigChangeFB>
+
+    [<Emit("Iris.Serialization.Raft.ConfigChangeFB.getRootAsConfigChangeFB($0)")>]
+    abstract GetRootAsConfigChangeFB: bytes: ByteBuffer -> ConfigChangeFB
+
+    [<Emit("new Iris.Serialization.Raft.ConfigChangeFB()")>]
+    abstract Create: unit -> ConfigChangeFB
+
+  let ConfigChangeFB: ConfigChangeFBConstructor = failwith "JS only"
+
+  //     _                 ____                                          _
+  //    / \   _ __  _ __  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| |
+  //   / _ \ | '_ \| '_ \| |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |
+  //  / ___ \| |_) | |_) | |__| (_) | | | | | | | | | | | (_| | | | | (_| |
+  // /_/   \_\ .__/| .__/ \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|
+  //         |_|   |_|
+
+  type AppCommandTypeFB = int
+
+  type AppCommandTypeFBConstructor =
+
+    [<Emit("Iris.Serialization.Raft.AppCommandTypeFB.UndoFB")>]
+    abstract UndoFB: AppCommandTypeFB
+
+    [<Emit("Iris.Serialization.Raft.AppCommandTypeFB.RedoFB")>]
+    abstract RedoFB: AppCommandTypeFB
+
+    [<Emit("Iris.Serialization.Raft.AppCommandTypeFB.ResetFB")>]
+    abstract ResetFB: AppCommandTypeFB
+
+    [<Emit("Iris.Serialization.Raft.AppCommandTypeFB.SaveProjectFB")>]
+    abstract SaveProjectFB: AppCommandTypeFB
+
+  let AppCommandTypeFB: AppCommandTypeFBConstructor = failwith "JS only"
+
+  type AppCommandFB =
+
+    [<Emit("$0.Command()")>]
+    abstract Command: AppCommandTypeFB
+
+  type AppCommandFBConstructor =
+
+    [<Emit("Iris.Serialization.Raft.AppCommandFB.startAppCommandFB($0)")>]
+    abstract StartAppCommandFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.AppCommandFB.addCommand($0,$1)")>]
+    abstract AddCommand: builder: FlatBufferBuilder * tipe: AppCommandTypeFB -> unit
+
+    [<Emit("Iris.Serialization.Raft.AppCommandFB.endAppCommandFB($0)")>]
+    abstract EndAppCommandFB: builder: FlatBufferBuilder -> Offset<AppCommandFB>
+
+    [<Emit("Iris.Serialization.Raft.AppCommandFB.getRootAsAppCommandFB($0)")>]
+    abstract GetRootAsAppCommandFB: bytes: ByteBuffer -> AppCommandFB
+
+  let AppCommandFB: AppCommandFBConstructor = failwith "JS only"
+
+  //  ____  _        _       _____ ____
+  // / ___|| |_ __ _| |_ ___|  ___| __ )
+  // \___ \| __/ _` | __/ _ \ |_  |  _ \
+  //  ___) | || (_| | ||  __/  _| | |_) |
+  // |____/ \__\__,_|\__\___|_|   |____/
+
+  type StateFB =
+    [<Emit("$0.Patches($1)")>]
+    abstract Patches: int -> PatchFB
+
+    [<Emit("$0.PatchesLength()")>]
+    abstract PatchesLength: int
+
+    [<Emit("$0.IOBoxes($1)")>]
+    abstract IOBoxes: int -> IOBoxFB
+
+    [<Emit("$0.IOBoxesLength()")>]
+    abstract IOBoxesLength: int
+
+    [<Emit("$0.Cues($1)")>]
+    abstract Cues: int -> CueFB
+
+    [<Emit("$0.CuesLength()")>]
+    abstract CuesLength: int
+
+    [<Emit("$0.CueLists($1)")>]
+    abstract CueLists: int -> CueListFB
+
+    [<Emit("$0.CueListsLength()")>]
+    abstract CueListsLength: int
+
+    [<Emit("$0.Nodes($1)")>]
+    abstract Nodes: int -> NodeFB
+
+    [<Emit("$0.NodesLength()")>]
+    abstract NodesLength: int
+
+    [<Emit("$0.Sessions($1)")>]
+    abstract Sessions: int -> SessionFB
+
+    [<Emit("$0.SessionsLength()")>]
+    abstract SessionsLength: int
+
+    [<Emit("$0.Users($1)")>]
+    abstract Users: int -> UserFB
+
+    [<Emit("$0.UsersLength()")>]
+    abstract UsersLength: int
+
+  type StateFBConstructor =
+    abstract prototype: StateFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.StateFB.startStateFB($0)")>]
+    abstract StartStateFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.StateFB.createPatchesVector($0, $1)")>]
+    abstract CreatePatchesVector: builder: FlatBufferBuilder * patches: Offset<PatchFB> array -> Offset<'a>
+
+    [<Emit("Iris.Serialization.Raft.StateFB.addPatches($0, $1)")>]
+    abstract AddPatches: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
+
+    [<Emit("Iris.Serialization.Raft.StateFB.createIOBoxesVector($0, $1)")>]
+    abstract CreateIOBoxesVector: builder: FlatBufferBuilder * patches: Offset<IOBoxFB> array -> Offset<'a>
+
+    [<Emit("Iris.Serialization.Raft.StateFB.addIOBoxes($0, $1)")>]
+    abstract AddIOBoxes: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
+
+    [<Emit("Iris.Serialization.Raft.StateFB.createCuesVector($0, $1)")>]
+    abstract CreateCuesVector: builder: FlatBufferBuilder * patches: Offset<CueFB> array -> Offset<'a>
+
+    [<Emit("Iris.Serialization.Raft.StateFB.addCues($0, $1)")>]
+    abstract AddCues: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
+
+    [<Emit("Iris.Serialization.Raft.StateFB.createCueListsVector($0, $1)")>]
+    abstract CreateCueListsVector: builder: FlatBufferBuilder * patches: Offset<CueListFB> array -> Offset<'a>
+
+    [<Emit("Iris.Serialization.Raft.StateFB.addCueLists($0, $1)")>]
+    abstract AddCueLists: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
+
+    [<Emit("Iris.Serialization.Raft.StateFB.createNodesVector($0, $1)")>]
+    abstract CreateNodesVector: builder: FlatBufferBuilder * patches: Offset<NodeFB> array -> Offset<'a>
+
+    [<Emit("Iris.Serialization.Raft.StateFB.addNodes($0, $1)")>]
+    abstract AddNodes: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
+
+    [<Emit("Iris.Serialization.Raft.StateFB.createSessionsVector($0, $1)")>]
+    abstract CreateSessionsVector: builder: FlatBufferBuilder * patches: Offset<SessionFB> array -> Offset<'a>
+
+    [<Emit("Iris.Serialization.Raft.StateFB.addSessions($0, $1)")>]
+    abstract AddSessions: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
+
+    [<Emit("Iris.Serialization.Raft.StateFB.createUsersVector($0, $1)")>]
+    abstract CreateUsersVector: builder: FlatBufferBuilder * patches: Offset<UserFB> array -> Offset<'a>
+
+    [<Emit("Iris.Serialization.Raft.StateFB.addUsers($0, $1)")>]
+    abstract AddUsers: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
+
+    [<Emit("Iris.Serialization.Raft.StateFB.endStateFB($0)")>]
+    abstract EndStateFB: builder: FlatBufferBuilder -> Offset<StateFB>
+
+    [<Emit("Iris.Serialization.Raft.StateFB.getRootAsStateFB($0)")>]
+    abstract GetRootAsStateFB: bytes: ByteBuffer -> StateFB
+
+  let StateFB: StateFBConstructor = failwith "JS only"
+
+  //     _       _     _  ____           _____ ____
+  //    / \   __| | __| |/ ___|   _  ___|  ___| __ )
+  //   / _ \ / _` |/ _` | |  | | | |/ _ \ |_  |  _ \
+  //  / ___ \ (_| | (_| | |__| |_| |  __/  _| | |_) |
+  // /_/   \_\__,_|\__,_|\____\__,_|\___|_|   |____/
+
+  type AddCueFB =
+    [<Emit("$0.Cue()")>]
+    abstract Cue: CueFB
+
+  type AddCueFBConstructor =
+    abstract prototype: AddCueFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.AddCueFB.startAddCueFB($0)")>]
+    abstract StartAddCueFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.AddCueFB.addCue($0, $1)")>]
+    abstract AddCue: builder: FlatBufferBuilder * cue: Offset<CueFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.AddCueFB.endAddCueFB($0)")>]
+    abstract EndAddCueFB: builder: FlatBufferBuilder -> Offset<AddCueFB>
+
+    [<Emit("Iris.Serialization.Raft.AddCueFB.getRootAsAddCueFB($0)")>]
+    abstract GetRootAsAddCueFB: bytes: ByteBuffer -> AddCueFB
+
+    [<Emit("new Iris.Serialization.Raft.AddCueFB()")>]
+    abstract Create: unit -> AddCueFB
+
+  let AddCueFB: AddCueFBConstructor = failwith "JS only"
+
+  //  _   _           _       _        ____           _____ ____
+  // | | | |_ __   __| | __ _| |_ ___ / ___|   _  ___|  ___| __ )
+  // | | | | '_ \ / _` |/ _` | __/ _ \ |  | | | |/ _ \ |_  |  _ \
+  // | |_| | |_) | (_| | (_| | ||  __/ |__| |_| |  __/  _| | |_) |
+  //  \___/| .__/ \__,_|\__,_|\__\___|\____\__,_|\___|_|   |____/
+  //       |_|
+
+  type UpdateCueFB =
+    [<Emit("$0.Cue()")>]
+    abstract Cue: CueFB
+
+  type UpdateCueFBConstructor =
+    abstract prototype: UpdateCueFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.UpdateCueFB.startUpdateCueFB($0)")>]
+    abstract StartUpdateCueFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.UpdateCueFB.addCue($0, $1)")>]
+    abstract AddCue: builder: FlatBufferBuilder * cue: Offset<CueFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.UpdateCueFB.endUpdateCueFB($0)")>]
+    abstract EndUpdateCueFB: builder: FlatBufferBuilder -> Offset<UpdateCueFB>
+
+    [<Emit("Iris.Serialization.Raft.UpdateCueFB.getRootAsUpdateCueFB($0)")>]
+    abstract GetRootAsUpdateCueFB: bytes: ByteBuffer -> UpdateCueFB
+
+    [<Emit("new Iris.Serialization.Raft.UpdateCueFB()")>]
+    abstract Create: unit -> UpdateCueFB
+
+  let UpdateCueFB: UpdateCueFBConstructor = failwith "JS only"
+
+  //  ____                                ____           _____ ____
+  // |  _ \ ___ _ __ ___   _____   _____ / ___|   _  ___|  ___| __ )
+  // | |_) / _ \ '_ ` _ \ / _ \ \ / / _ \ |  | | | |/ _ \ |_  |  _ \
+  // |  _ <  __/ | | | | | (_) \ V /  __/ |__| |_| |  __/  _| | |_) |
+  // |_| \_\___|_| |_| |_|\___/ \_/ \___|\____\__,_|\___|_|   |____/
+
+  type RemoveCueFB =
+    [<Emit("$0.Cue()")>]
+    abstract Cue: CueFB
+
+  type RemoveCueFBConstructor =
+    abstract prototype: RemoveCueFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.RemoveCueFB.startRemoveCueFB($0)")>]
+    abstract StartRemoveCueFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.RemoveCueFB.addCue($0, $1)")>]
+    abstract AddCue: builder: FlatBufferBuilder * cue: Offset<CueFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.RemoveCueFB.endRemoveCueFB($0)")>]
+    abstract EndRemoveCueFB: builder: FlatBufferBuilder -> Offset<RemoveCueFB>
+
+    [<Emit("Iris.Serialization.Raft.RemoveCueFB.getRootAsRemoveCueFB($0)")>]
+    abstract GetRootAsRemoveCueFB: bytes: ByteBuffer -> RemoveCueFB
+
+    [<Emit("new Iris.Serialization.Raft.RemoveCueFB()")>]
+    abstract Create: unit -> RemoveCueFB
+
+  let RemoveCueFB: RemoveCueFBConstructor = failwith "JS only"
+
+  //     _       _     _  ____           _     _     _   _____ ____
+  //    / \   __| | __| |/ ___|   _  ___| |   (_)___| |_|  ___| __ )
+  //   / _ \ / _` |/ _` | |  | | | |/ _ \ |   | / __| __| |_  |  _ \
+  //  / ___ \ (_| | (_| | |__| |_| |  __/ |___| \__ \ |_|  _| | |_) |
+  // /_/   \_\__,_|\__,_|\____\__,_|\___|_____|_|___/\__|_|   |____/
+
+  type AddCueListFB =
+    [<Emit("$0.CueList()")>]
+    abstract CueList: CueListFB
+
+  type AddCueListFBConstructor =
+    abstract prototype: AddCueListFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.AddCueListFB.startAddCueListFB($0)")>]
+    abstract StartAddCueListFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.AddCueListFB.addCueList($0, $1)")>]
+    abstract AddCueList: builder: FlatBufferBuilder * cuelist: Offset<CueListFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.AddCueListFB.endAddCueListFB($0)")>]
+    abstract EndAddCueListFB: builder: FlatBufferBuilder -> Offset<AddCueListFB>
+
+    [<Emit("Iris.Serialization.Raft.AddCueListFB.getRootAsAddCueListFB($0)")>]
+    abstract GetRootAsAddCueListFB: bytes: ByteBuffer -> AddCueListFB
+
+    [<Emit("new Iris.Serialization.Raft.AddCueListFB()")>]
+    abstract Create: unit -> AddCueListFB
+
+  let AddCueListFB: AddCueListFBConstructor = failwith "JS only"
+
+  //  _   _           _       _        ____           _     _     _   _____ ____
+  // | | | |_ __   __| | __ _| |_ ___ / ___|   _  ___| |   (_)___| |_|  ___| __ )
+  // | | | | '_ \ / _` |/ _` | __/ _ \ |  | | | |/ _ \ |   | / __| __| |_  |  _ \
+  // | |_| | |_) | (_| | (_| | ||  __/ |__| |_| |  __/ |___| \__ \ |_|  _| | |_) |
+  //  \___/| .__/ \__,_|\__,_|\__\___|\____\__,_|\___|_____|_|___/\__|_|   |____/
+  //       |_|
+
+  type UpdateCueListFB =
+    [<Emit("$0.CueList()")>]
+    abstract CueList: CueListFB
+
+  type UpdateCueListFBConstructor =
+    abstract prototype: UpdateCueListFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.UpdateCueListFB.startUpdateCueListFB($0)")>]
+    abstract StartUpdateCueListFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.UpdateCueListFB.addCueList($0, $1)")>]
+    abstract AddCueList: builder: FlatBufferBuilder * cuelist: Offset<CueListFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.UpdateCueListFB.endUpdateCueListFB($0)")>]
+    abstract EndUpdateCueListFB: builder: FlatBufferBuilder -> Offset<UpdateCueListFB>
+
+    [<Emit("Iris.Serialization.Raft.UpdateCueListFB.getRootAsUpdateCueListFB($0)")>]
+    abstract GetRootAsUpdateCueListFB: bytes: ByteBuffer -> UpdateCueListFB
+
+    [<Emit("new Iris.Serialization.Raft.UpdateCueListFB()")>]
+    abstract Create: unit -> UpdateCueListFB
+
+  let UpdateCueListFB: UpdateCueListFBConstructor = failwith "JS only"
+
+  //  ____                                ____           _     _     _   _____
+  // |  _ \ ___ _ __ ___   _____   _____ / ___|   _  ___| |   (_)___| |_|  ___|
+  // | |_) / _ \ '_ ` _ \ / _ \ \ / / _ \ |  | | | |/ _ \ |   | / __| __| |_
+  // |  _ <  __/ | | | | | (_) \ V /  __/ |__| |_| |  __/ |___| \__ \ |_|  _|
+  // |_| \_\___|_| |_| |_|\___/ \_/ \___|\____\__,_|\___|_____|_|___/\__|_|
+
+  type RemoveCueListFB =
+    [<Emit("$0.CueList()")>]
+    abstract CueList: CueListFB
+
+  type RemoveCueListFBConstructor =
+    abstract prototype: RemoveCueListFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.RemoveCueListFB.startRemoveCueListFB($0)")>]
+    abstract StartRemoveCueListFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.RemoveCueListFB.addCueList($0, $1)")>]
+    abstract AddCueList: builder: FlatBufferBuilder * cuelist: Offset<CueListFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.RemoveCueListFB.endRemoveCueListFB($0)")>]
+    abstract EndRemoveCueListFB: builder: FlatBufferBuilder -> Offset<RemoveCueListFB>
+
+    [<Emit("Iris.Serialization.Raft.RemoveCueListFB.getRootAsRemoveCueListFB($0)")>]
+    abstract GetRootAsRemoveCueListFB: bytes: ByteBuffer -> RemoveCueListFB
+
+    [<Emit("new Iris.Serialization.Raft.RemoveCueListFB()")>]
+    abstract Create: unit -> RemoveCueListFB
+
+  let RemoveCueListFB: RemoveCueListFBConstructor = failwith "JS only"
+
+  //     _       _     _ ____       _       _     _____ ____
+  //    / \   __| | __| |  _ \ __ _| |_ ___| |__ |  ___| __ )
+  //   / _ \ / _` |/ _` | |_) / _` | __/ __| '_ \| |_  |  _ \
+  //  / ___ \ (_| | (_| |  __/ (_| | || (__| | | |  _| | |_) |
+  // /_/   \_\__,_|\__,_|_|   \__,_|\__\___|_| |_|_|   |____/
+
+  type AddPatchFB =
+    [<Emit("$0.Patch()")>]
+    abstract Patch: PatchFB
+
+  type AddPatchFBConstructor =
+    abstract prototype: AddPatchFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.AddPatchFB.startAddPatchFB($0)")>]
+    abstract StartAddPatchFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.AddPatchFB.addPatch($0, $1)")>]
+    abstract AddPatch: builder: FlatBufferBuilder * cuelist: Offset<PatchFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.AddPatchFB.endAddPatchFB($0)")>]
+    abstract EndAddPatchFB: builder: FlatBufferBuilder -> Offset<AddPatchFB>
+
+    [<Emit("Iris.Serialization.Raft.AddPatchFB.getRootAsAddPatchFB($0)")>]
+    abstract GetRootAsAddPatchFB: bytes: ByteBuffer -> AddPatchFB
+
+    [<Emit("new Iris.Serialization.Raft.AddPatchFB()")>]
+    abstract Create: unit -> AddPatchFB
+
+  let AddPatchFB: AddPatchFBConstructor = failwith "JS only"
+
+  //  _   _           _       _       ____       _       _     _____ ____
+  // | | | |_ __   __| | __ _| |_ ___|  _ \ __ _| |_ ___| |__ |  ___| __ )
+  // | | | | '_ \ / _` |/ _` | __/ _ \ |_) / _` | __/ __| '_ \| |_  |  _ \
+  // | |_| | |_) | (_| | (_| | ||  __/  __/ (_| | || (__| | | |  _| | |_) |
+  //  \___/| .__/ \__,_|\__,_|\__\___|_|   \__,_|\__\___|_| |_|_|   |____/
+  //       |_|
+
+  type UpdatePatchFB =
+    [<Emit("$0.Patch()")>]
+    abstract Patch: PatchFB
+
+  type UpdatePatchFBConstructor =
+    abstract prototype: UpdatePatchFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.UpdatePatchFB.startUpdatePatchFB($0)")>]
+    abstract StartUpdatePatchFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.UpdatePatchFB.addPatch($0, $1)")>]
+    abstract AddPatch: builder: FlatBufferBuilder * cuelist: Offset<PatchFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.UpdatePatchFB.endUpdatePatchFB($0)")>]
+    abstract EndUpdatePatchFB: builder: FlatBufferBuilder -> Offset<UpdatePatchFB>
+
+    [<Emit("Iris.Serialization.Raft.UpdatePatchFB.getRootAsUpdatePatchFB($0)")>]
+    abstract GetRootAsUpdatePatchFB: bytes: ByteBuffer -> UpdatePatchFB
+
+    [<Emit("new Iris.Serialization.Raft.UpdatePatchFB()")>]
+    abstract Create: unit -> UpdatePatchFB
+
+  let UpdatePatchFB: UpdatePatchFBConstructor = failwith "JS only"
+
+  //  ____                               ____       _       _     _____ ____
+  // |  _ \ ___ _ __ ___   _____   _____|  _ \ __ _| |_ ___| |__ |  ___| __ )
+  // | |_) / _ \ '_ ` _ \ / _ \ \ / / _ \ |_) / _` | __/ __| '_ \| |_  |  _ \
+  // |  _ <  __/ | | | | | (_) \ V /  __/  __/ (_| | || (__| | | |  _| | |_) |
+  // |_| \_\___|_| |_| |_|\___/ \_/ \___|_|   \__,_|\__\___|_| |_|_|   |____/
+
+  type RemovePatchFB =
+    [<Emit("$0.Patch()")>]
+    abstract Patch: PatchFB
+
+  type RemovePatchFBConstructor =
+    abstract prototype: RemovePatchFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.RemovePatchFB.startRemovePatchFB($0)")>]
+    abstract StartRemovePatchFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.RemovePatchFB.addPatch($0, $1)")>]
+    abstract AddPatch: builder: FlatBufferBuilder * cuelist: Offset<PatchFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.RemovePatchFB.endRemovePatchFB($0)")>]
+    abstract EndRemovePatchFB: builder: FlatBufferBuilder -> Offset<RemovePatchFB>
+
+    [<Emit("Iris.Serialization.Raft.RemovePatchFB.getRootAsRemovePatchFB($0)")>]
+    abstract GetRootAsRemovePatchFB: bytes: ByteBuffer -> RemovePatchFB
+
+    [<Emit("new Iris.Serialization.Raft.RemovePatchFB()")>]
+    abstract Create: unit -> RemovePatchFB
+
+  let RemovePatchFB: RemovePatchFBConstructor = failwith "JS only"
+
+  //     _       _     _ _   _           _      _____ ____
+  //    / \   __| | __| | \ | | ___   __| | ___|  ___| __ )
+  //   / _ \ / _` |/ _` |  \| |/ _ \ / _` |/ _ \ |_  |  _ \
+  //  / ___ \ (_| | (_| | |\  | (_) | (_| |  __/  _| | |_) |
+  // /_/   \_\__,_|\__,_|_| \_|\___/ \__,_|\___|_|   |____/
+
+  type AddNodeFB =
+    [<Emit("$0.Node()")>]
+    abstract Node: NodeFB
+
+  type AddNodeFBConstructor =
+    abstract prototype: AddNodeFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.AddNodeFB.startAddNodeFB($0)")>]
+    abstract StartAddNodeFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.AddNodeFB.addNode($0, $1)")>]
+    abstract AddNode: builder: FlatBufferBuilder * node: Offset<NodeFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.AddNodeFB.endAddNodeFB($0)")>]
+    abstract EndAddNodeFB: builder: FlatBufferBuilder -> Offset<AddNodeFB>
+
+    [<Emit("Iris.Serialization.Raft.AddNodeFB.getRootAsAddNodeFB($0)")>]
+    abstract GetRootAsAddNodeFB: bytes: ByteBuffer -> AddNodeFB
+
+    [<Emit("new Iris.Serialization.Raft.AddNodeFB()")>]
+    abstract Create: unit -> AddNodeFB
+
+  let AddNodeFB: AddNodeFBConstructor = failwith "JS only"
+
+  //  _   _           _       _       _   _           _      _____ ____
+  // | | | |_ __   __| | __ _| |_ ___| \ | | ___   __| | ___|  ___| __ )
+  // | | | | '_ \ / _` |/ _` | __/ _ \  \| |/ _ \ / _` |/ _ \ |_  |  _ \
+  // | |_| | |_) | (_| | (_| | ||  __/ |\  | (_) | (_| |  __/  _| | |_) |
+  //  \___/| .__/ \__,_|\__,_|\__\___|_| \_|\___/ \__,_|\___|_|   |____/
+  //       |_|
+
+  type UpdateNodeFB =
+    [<Emit("$0.Node()")>]
+    abstract Node: NodeFB
+
+  type UpdateNodeFBConstructor =
+    abstract prototype: UpdateNodeFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.UpdateNodeFB.startUpdateNodeFB($0)")>]
+    abstract StartUpdateNodeFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.UpdateNodeFB.addNode($0, $1)")>]
+    abstract AddNode: builder: FlatBufferBuilder * node: Offset<NodeFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.UpdateNodeFB.endUpdateNodeFB($0)")>]
+    abstract EndUpdateNodeFB: builder: FlatBufferBuilder -> Offset<UpdateNodeFB>
+
+    [<Emit("Iris.Serialization.Raft.UpdateNodeFB.getRootAsUpdateNodeFB($0)")>]
+    abstract GetRootAsUpdateNodeFB: bytes: ByteBuffer -> UpdateNodeFB
+
+    [<Emit("new Iris.Serialization.Raft.UpdateNodeFB()")>]
+    abstract Create: unit -> UpdateNodeFB
+
+  let UpdateNodeFB: UpdateNodeFBConstructor = failwith "JS only"
+
+  //  ____                               _   _           _      _____ ____
+  // |  _ \ ___ _ __ ___   _____   _____| \ | | ___   __| | ___|  ___| __ )
+  // | |_) / _ \ '_ ` _ \ / _ \ \ / / _ \  \| |/ _ \ / _` |/ _ \ |_  |  _ \
+  // |  _ <  __/ | | | | | (_) \ V /  __/ |\  | (_) | (_| |  __/  _| | |_) |
+  // |_| \_\___|_| |_| |_|\___/ \_/ \___|_| \_|\___/ \__,_|\___|_|   |____/
+
+  type RemoveNodeFB =
+    [<Emit("$0.Node()")>]
+    abstract Node: NodeFB
+
+  type RemoveNodeFBConstructor =
+    abstract prototype: RemoveNodeFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.RemoveNodeFB.startRemoveNodeFB($0)")>]
+    abstract StartRemoveNodeFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.RemoveNodeFB.addNode($0, $1)")>]
+    abstract AddNode: builder: FlatBufferBuilder * node: Offset<NodeFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.RemoveNodeFB.endRemoveNodeFB($0)")>]
+    abstract EndRemoveNodeFB: builder: FlatBufferBuilder -> Offset<RemoveNodeFB>
+
+    [<Emit("Iris.Serialization.Raft.RemoveNodeFB.getRootAsRemoveNodeFB($0)")>]
+    abstract GetRootAsRemoveNodeFB: bytes: ByteBuffer -> RemoveNodeFB
+
+    [<Emit("new Iris.Serialization.Raft.RemoveNodeFB()")>]
+    abstract Create: unit -> RemoveNodeFB
+
+  let RemoveNodeFB: RemoveNodeFBConstructor = failwith "JS only"
+
+  //     _       _     _ _   _               _____ ____
+  //    / \   __| | __| | | | |___  ___ _ __|  ___| __ )
+  //   / _ \ / _` |/ _` | | | / __|/ _ \ '__| |_  |  _ \
+  //  / ___ \ (_| | (_| | |_| \__ \  __/ |  |  _| | |_) |
+  // /_/   \_\__,_|\__,_|\___/|___/\___|_|  |_|   |____/
+
+  type AddUserFB =
+    [<Emit("$0.User()")>]
+    abstract User: UserFB
+
+  type AddUserFBConstructor =
+    abstract prototype: AddUserFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.AddUserFB.startAddUserFB($0)")>]
+    abstract StartAddUserFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.AddUserFB.addUser($0, $1)")>]
+    abstract AddUser: builder: FlatBufferBuilder * node: Offset<UserFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.AddUserFB.endAddUserFB($0)")>]
+    abstract EndAddUserFB: builder: FlatBufferBuilder -> Offset<AddUserFB>
+
+    [<Emit("Iris.Serialization.Raft.AddUserFB.getRootAsAddUserFB($0)")>]
+    abstract GetRootAsAddUserFB: bytes: ByteBuffer -> AddUserFB
+
+    [<Emit("new Iris.Serialization.Raft.AddUserFB()")>]
+    abstract Create: unit -> AddUserFB
+
+  let AddUserFB: AddUserFBConstructor = failwith "JS only"
+
+  //  _   _           _       _       _   _               _____ ____
+  // | | | |_ __   __| | __ _| |_ ___| | | |___  ___ _ __|  ___| __ )
+  // | | | | '_ \ / _` |/ _` | __/ _ \ | | / __|/ _ \ '__| |_  |  _ \
+  // | |_| | |_) | (_| | (_| | ||  __/ |_| \__ \  __/ |  |  _| | |_) |
+  //  \___/| .__/ \__,_|\__,_|\__\___|\___/|___/\___|_|  |_|   |____/
+  //       |_|
+
+  type UpdateUserFB =
+    [<Emit("$0.User()")>]
+    abstract User: UserFB
+
+  type UpdateUserFBConstructor =
+    abstract prototype: UpdateUserFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.UpdateUserFB.startUpdateUserFB($0)")>]
+    abstract StartUpdateUserFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.UpdateUserFB.addUser($0, $1)")>]
+    abstract AddUser: builder: FlatBufferBuilder * node: Offset<UserFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.UpdateUserFB.endUpdateUserFB($0)")>]
+    abstract EndUpdateUserFB: builder: FlatBufferBuilder -> Offset<UpdateUserFB>
+
+    [<Emit("Iris.Serialization.Raft.UpdateUserFB.getRootAsUpdateUserFB($0)")>]
+    abstract GetRootAsUpdateUserFB: bytes: ByteBuffer -> UpdateUserFB
+
+    [<Emit("new Iris.Serialization.Raft.UpdateUserFB()")>]
+    abstract Create: unit -> UpdateUserFB
+
+  let UpdateUserFB: UpdateUserFBConstructor = failwith "JS only"
+
+  //  ____                               _   _               _____ ____
+  // |  _ \ ___ _ __ ___   _____   _____| | | |___  ___ _ __|  ___| __ )
+  // | |_) / _ \ '_ ` _ \ / _ \ \ / / _ \ | | / __|/ _ \ '__| |_  |  _ \
+  // |  _ <  __/ | | | | | (_) \ V /  __/ |_| \__ \  __/ |  |  _| | |_) |
+  // |_| \_\___|_| |_| |_|\___/ \_/ \___|\___/|___/\___|_|  |_|   |____/
+
+  type RemoveUserFB =
+    [<Emit("$0.User()")>]
+    abstract User: UserFB
+
+  type RemoveUserFBConstructor =
+    abstract prototype: RemoveUserFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.RemoveUserFB.startRemoveUserFB($0)")>]
+    abstract StartRemoveUserFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.RemoveUserFB.addUser($0, $1)")>]
+    abstract AddUser: builder: FlatBufferBuilder * node: Offset<UserFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.RemoveUserFB.endRemoveUserFB($0)")>]
+    abstract EndRemoveUserFB: builder: FlatBufferBuilder -> Offset<RemoveUserFB>
+
+    [<Emit("Iris.Serialization.Raft.RemoveUserFB.getRootAsRemoveUserFB($0)")>]
+    abstract GetRootAsRemoveUserFB: bytes: ByteBuffer -> RemoveUserFB
+
+    [<Emit("new Iris.Serialization.Raft.RemoveUserFB()")>]
+    abstract Create: unit -> RemoveUserFB
+
+  let RemoveUserFB: RemoveUserFBConstructor = failwith "JS only"
+
+  //     _       _     _ ____                _             _____ ____
+  //    / \   __| | __| / ___|  ___  ___ ___(_) ___  _ __ |  ___| __ )
+  //   / _ \ / _` |/ _` \___ \ / _ \/ __/ __| |/ _ \| '_ \| |_  |  _ \
+  //  / ___ \ (_| | (_| |___) |  __/\__ \__ \ | (_) | | | |  _| | |_) |
+  // /_/   \_\__,_|\__,_|____/ \___||___/___/_|\___/|_| |_|_|   |____/
+
+  type AddSessionFB =
+    [<Emit("$0.Session()")>]
+    abstract Session: SessionFB
+
+  type AddSessionFBConstructor =
+    abstract prototype: AddSessionFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.AddSessionFB.startAddSessionFB($0)")>]
+    abstract StartAddSessionFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.AddSessionFB.addSession($0, $1)")>]
+    abstract AddSession: builder: FlatBufferBuilder * session: Offset<SessionFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.AddSessionFB.endAddSessionFB($0)")>]
+    abstract EndAddSessionFB: builder: FlatBufferBuilder -> Offset<AddSessionFB>
+
+    [<Emit("Iris.Serialization.Raft.AddSessionFB.getRootAsAddSessionFB($0)")>]
+    abstract GetRootAsAddSessionFB: bytes: ByteBuffer -> AddSessionFB
+
+    [<Emit("new Iris.Serialization.Raft.AddSessionFB()")>]
+    abstract Create: unit -> AddSessionFB
+
+  let AddSessionFB: AddSessionFBConstructor = failwith "JS only"
+
+  //  _   _           _       _       ____                _             _____ ____
+  // | | | |_ __   __| | __ _| |_ ___/ ___|  ___  ___ ___(_) ___  _ __ |  ___| __ )
+  // | | | | '_ \ / _` |/ _` | __/ _ \___ \ / _ \/ __/ __| |/ _ \| '_ \| |_  |  _ \
+  // | |_| | |_) | (_| | (_| | ||  __/___) |  __/\__ \__ \ | (_) | | | |  _| | |_) |
+  //  \___/| .__/ \__,_|\__,_|\__\___|____/ \___||___/___/_|\___/|_| |_|_|   |____/
+  //       |_|
+
+  type UpdateSessionFB =
+    [<Emit("$0.Session()")>]
+    abstract Session: SessionFB
+
+  type UpdateSessionFBConstructor =
+    abstract prototype: UpdateSessionFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.UpdateSessionFB.startUpdateSessionFB($0)")>]
+    abstract StartUpdateSessionFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.UpdateSessionFB.addSession($0, $1)")>]
+    abstract AddSession: builder: FlatBufferBuilder * session: Offset<SessionFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.UpdateSessionFB.endUpdateSessionFB($0)")>]
+    abstract EndUpdateSessionFB: builder: FlatBufferBuilder -> Offset<UpdateSessionFB>
+
+    [<Emit("Iris.Serialization.Raft.UpdateSessionFB.getRootAsUpdateSessionFB($0)")>]
+    abstract GetRootAsUpdateSessionFB: bytes: ByteBuffer -> UpdateSessionFB
+
+    [<Emit("new Iris.Serialization.Raft.UpdateSessionFB()")>]
+    abstract Create: unit -> UpdateSessionFB
+
+  let UpdateSessionFB: UpdateSessionFBConstructor = failwith "JS only"
+
+  //  ____                               ____                _             _____
+  // |  _ \ ___ _ __ ___   _____   _____/ ___|  ___  ___ ___(_) ___  _ __ |  ___|
+  // | |_) / _ \ '_ ` _ \ / _ \ \ / / _ \___ \ / _ \/ __/ __| |/ _ \| '_ \| |_
+  // |  _ <  __/ | | | | | (_) \ V /  __/___) |  __/\__ \__ \ | (_) | | | |  _|
+  // |_| \_\___|_| |_| |_|\___/ \_/ \___|____/ \___||___/___/_|\___/|_| |_|_|
+
+  type RemoveSessionFB =
+    [<Emit("$0.Session()")>]
+    abstract Session: SessionFB
+
+  type RemoveSessionFBConstructor =
+    abstract prototype: RemoveSessionFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.RemoveSessionFB.startRemoveSessionFB($0)")>]
+    abstract StartRemoveSessionFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.RemoveSessionFB.addSession($0, $1)")>]
+    abstract AddSession: builder: FlatBufferBuilder * session: Offset<SessionFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.RemoveSessionFB.endRemoveSessionFB($0)")>]
+    abstract EndRemoveSessionFB: builder: FlatBufferBuilder -> Offset<RemoveSessionFB>
+
+    [<Emit("Iris.Serialization.Raft.RemoveSessionFB.getRootAsRemoveSessionFB($0)")>]
+    abstract GetRootAsRemoveSessionFB: bytes: ByteBuffer -> RemoveSessionFB
+
+    [<Emit("new Iris.Serialization.Raft.RemoveSessionFB()")>]
+    abstract Create: unit -> RemoveSessionFB
+
+  let RemoveSessionFB: RemoveSessionFBConstructor = failwith "JS only"
+
+  //     _       _     _ ___ ___  ____            _____ ____
+  //    / \   __| | __| |_ _/ _ \| __ )  _____  _|  ___| __ )
+  //   / _ \ / _` |/ _` || | | | |  _ \ / _ \ \/ / |_  |  _ \
+  //  / ___ \ (_| | (_| || | |_| | |_) | (_) >  <|  _| | |_) |
+  // /_/   \_\__,_|\__,_|___\___/|____/ \___/_/\_\_|   |____/
+
+  type AddIOBoxFB =
+    [<Emit("$0.IOBox()")>]
+    abstract IOBox: IOBoxFB
+
+  type AddIOBoxFBConstructor =
+    abstract prototype: AddIOBoxFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.AddIOBoxFB.startAddIOBoxFB($0)")>]
+    abstract StartAddIOBoxFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.AddIOBoxFB.addIOBox($0, $1)")>]
+    abstract AddIOBox: builder: FlatBufferBuilder * iobox: Offset<IOBoxFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.AddIOBoxFB.endAddIOBoxFB($0)")>]
+    abstract EndAddIOBoxFB: builder: FlatBufferBuilder -> Offset<AddIOBoxFB>
+
+    [<Emit("Iris.Serialization.Raft.AddIOBoxFB.getRootAsAddIOBoxFB($0)")>]
+    abstract GetRootAsAddIOBoxFB: bytes: ByteBuffer -> AddIOBoxFB
+
+    [<Emit("new Iris.Serialization.Raft.AddIOBoxFB()")>]
+    abstract Create: unit -> AddIOBoxFB
+
+  let AddIOBoxFB: AddIOBoxFBConstructor = failwith "JS only"
+
+  //  _   _           _       _       ___ ___  ____            _____ ____
+  // | | | |_ __   __| | __ _| |_ ___|_ _/ _ \| __ )  _____  _|  ___| __ )
+  // | | | | '_ \ / _` |/ _` | __/ _ \| | | | |  _ \ / _ \ \/ / |_  |  _ \
+  // | |_| | |_) | (_| | (_| | ||  __/| | |_| | |_) | (_) >  <|  _| | |_) |
+  //  \___/| .__/ \__,_|\__,_|\__\___|___\___/|____/ \___/_/\_\_|   |____/
+  //       |_|
+
+  type UpdateIOBoxFB =
+    [<Emit("$0.IOBox()")>]
+    abstract IOBox: IOBoxFB
+
+  type UpdateIOBoxFBConstructor =
+    abstract prototype: UpdateIOBoxFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.UpdateIOBoxFB.startUpdateIOBoxFB($0)")>]
+    abstract StartUpdateIOBoxFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.UpdateIOBoxFB.addIOBox($0, $1)")>]
+    abstract AddIOBox: builder: FlatBufferBuilder * iobox: Offset<IOBoxFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.UpdateIOBoxFB.endUpdateIOBoxFB($0)")>]
+    abstract EndUpdateIOBoxFB: builder: FlatBufferBuilder -> Offset<UpdateIOBoxFB>
+
+    [<Emit("Iris.Serialization.Raft.UpdateIOBoxFB.getRootAsUpdateIOBoxFB($0)")>]
+    abstract GetRootAsUpdateIOBoxFB: bytes: ByteBuffer -> UpdateIOBoxFB
+
+    [<Emit("new Iris.Serialization.Raft.UpdateIOBoxFB()")>]
+    abstract Create: unit -> UpdateIOBoxFB
+
+  let UpdateIOBoxFB: UpdateIOBoxFBConstructor = failwith "JS only"
+
+  //  ____                               ___ ___  ____            _____ ____
+  // |  _ \ ___ _ __ ___   _____   _____|_ _/ _ \| __ )  _____  _|  ___| __ )
+  // | |_) / _ \ '_ ` _ \ / _ \ \ / / _ \| | | | |  _ \ / _ \ \/ / |_  |  _ \
+  // |  _ <  __/ | | | | | (_) \ V /  __/| | |_| | |_) | (_) >  <|  _| | |_) |
+  // |_| \_\___|_| |_| |_|\___/ \_/ \___|___\___/|____/ \___/_/\_\_|   |____/
+
+  type RemoveIOBoxFB =
+    [<Emit("$0.IOBox()")>]
+    abstract IOBox: IOBoxFB
+
+  type RemoveIOBoxFBConstructor =
+    abstract prototype: RemoveIOBoxFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.RemoveIOBoxFB.startRemoveIOBoxFB($0)")>]
+    abstract StartRemoveIOBoxFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.RemoveIOBoxFB.addIOBox($0, $1)")>]
+    abstract AddIOBox: builder: FlatBufferBuilder * iobox: Offset<IOBoxFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.RemoveIOBoxFB.endRemoveIOBoxFB($0)")>]
+    abstract EndRemoveIOBoxFB: builder: FlatBufferBuilder -> Offset<RemoveIOBoxFB>
+
+    [<Emit("Iris.Serialization.Raft.RemoveIOBoxFB.getRootAsRemoveIOBoxFB($0)")>]
+    abstract GetRootAsRemoveIOBoxFB: bytes: ByteBuffer -> RemoveIOBoxFB
+
+    [<Emit("new Iris.Serialization.Raft.RemoveIOBoxFB()")>]
+    abstract Create: unit -> RemoveIOBoxFB
+
+  let RemoveIOBoxFB: RemoveIOBoxFBConstructor = failwith "JS only"
+
+  //  ____        _        ____                        _           _   _____ ____
+  // |  _ \  __ _| |_ __ _/ ___| _ __   __ _ _ __  ___| |__   ___ | |_|  ___| __ )
+  // | | | |/ _` | __/ _` \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __| |_  |  _ \
+  // | |_| | (_| | || (_| |___) | | | | (_| | |_) \__ \ | | | (_) | |_|  _| | |_) |
+  // |____/ \__,_|\__\__,_|____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|_|   |____/
+  //                                        |_|
+
+  type DataSnapshotFB =
+    [<Emit("$0.Data()")>]
+    abstract Data: StateFB
+
+  type DataSnapshotFBConstructor =
+    abstract prototype: DataSnapshotFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.DataSnapshotFB.startDataSnapshotFB($0)")>]
+    abstract StartDataSnapshotFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.DataSnapshotFB.addData($0, $1)")>]
+    abstract AddData: builder: FlatBufferBuilder * data: Offset<StateFB> -> unit
+
+    [<Emit("Iris.Serialization.Raft.DataSnapshotFB.endDataSnapshotFB($0)")>]
+    abstract EndDataSnapshotFB: builder: FlatBufferBuilder -> Offset<DataSnapshotFB>
+
+    [<Emit("Iris.Serialization.Raft.DataSnapshotFB.getRootAsDataSnapshotFB($0)")>]
+    abstract GetRootAsDataSnapshotFB: bytes: ByteBuffer -> DataSnapshotFB
+
+    [<Emit("new Iris.Serialization.Raft.DataSnapshotFB()")>]
+    abstract Create: unit -> DataSnapshotFB
+
+  let DataSnapshotFB: DataSnapshotFBConstructor = failwith "JS only"
+
+  //  _                __  __           _____ ____
+  // | |    ___   __ _|  \/  |___  __ _|  ___| __ )
+  // | |   / _ \ / _` | |\/| / __|/ _` | |_  |  _ \
+  // | |__| (_) | (_| | |  | \__ \ (_| |  _| | |_) |
+  // |_____\___/ \__, |_|  |_|___/\__, |_|   |____/
+  //             |___/            |___/
+
+  type LogMsgFB =
+    [<Emit("$0.LogLevel()")>]
+    abstract LogLevel: string
+
+    [<Emit("$0.Msg()")>]
+    abstract Msg: string
+
+  type LogMsgFBConstructor =
+    abstract prototype: LogMsgFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.LogMsgFB.createLogMsgFB($0, $1, $2)")>]
+    abstract CreateLogMsgFB: builder: FlatBufferBuilder * level: Offset<string> * msg: Offset<string> -> Offset<LogMsgFB>
+
+    [<Emit("Iris.Serialization.Raft.LogMsgFB.startLogMsgFB($0)")>]
+    abstract StartLogMsgFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.LogMsgFB.addLogLevel($0, $1)")>]
+    abstract AddLogLevel: builder: FlatBufferBuilder * level: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.LogMsgFB.addMsg($0, $1)")>]
+    abstract AddMsg: builder: FlatBufferBuilder * msg: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.LogMsgFB.endLogMsgFB($0)")>]
+    abstract EndLogMsgFB: builder: FlatBufferBuilder -> Offset<LogMsgFB>
+
+    [<Emit("Iris.Serialization.Raft.LogMsgFB.getRootAsLogMsgFB($0)")>]
+    abstract GetRootAsLogMsgFB: bytes: ByteBuffer -> LogMsgFB
+
+    [<Emit("new Iris.Serialization.Raft.LogMsgFB()")>]
+    abstract Create: unit -> LogMsgFB
+
+  let LogMsgFB: LogMsgFBConstructor = failwith "JS only"
+
+  //  ____  _        _       __  __            _     _            _____ ____
+  // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___|  ___| __ )
+  // \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \ |_  |  _ \
+  //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/  _| | |_) |
+  // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|_|   |____/
+
+  type StateMachineTypeFB = int
+
+  type StateMachineTypeFBConstructor =
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.AddNodeFB")>]
+    abstract AddNodeFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.UpdateNodeFB")>]
+    abstract UpdateNodeFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.RemoveNodeFB")>]
+    abstract RemoveNodeFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.AddPatchFB")>]
+    abstract AddPatchFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.UpdatePatchFB")>]
+    abstract UpdatePatchFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.RemovePatchFB")>]
+    abstract RemovePatchFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.AddIOBoxFB")>]
+    abstract AddIOBoxFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.UpdateIOBoxFB")>]
+    abstract UpdateIOBoxFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.RemoveIOBoxFB")>]
+    abstract RemoveIOBoxFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.AddCueFB")>]
+    abstract AddCueFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.UpdateCueFB")>]
+    abstract UpdateCueFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.RemoveCueFB")>]
+    abstract RemoveCueFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.AddCueListFB")>]
+    abstract AddCueListFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.UpdateCueListFB")>]
+    abstract UpdateCueListFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.RemoveCueListFB")>]
+    abstract RemoveCueListFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.AddUserFB")>]
+    abstract AddUserFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.UpdateUserFB")>]
+    abstract UpdateUserFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.RemoveUserFB")>]
+    abstract RemoveUserFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.AddSessionFB")>]
+    abstract AddSessionFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.UpdateSessionFB")>]
+    abstract UpdateSessionFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.RemoveSessionFB")>]
+    abstract RemoveSessionFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.AppCommandFB")>]
+    abstract AppCommandFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.DataSnapshotFB")>]
+    abstract DataSnapshotFB: StateMachineTypeFB
+
+    [<Emit("Iris.Serialization.Raft.StateMachineTypeFB.LogMsgFB")>]
+    abstract LogMsgFB: StateMachineTypeFB
+
+  let StateMachineTypeFB: StateMachineTypeFBConstructor = failwith "JS only"
+
+  type StateMachineFB =
+    [<Emit("$0.AppEventType()")>]
+    abstract AppEventType: StateMachineTypeFB
+
+    [<Emit("$0.AppEvent($1)")>]
+    abstract AppEvent: 'a -> 'a
+
+  type StateMachineFBConstructor =
+    abstract prototype: StateMachineFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.StateMachineFB.startStateMachineFB($0)")>]
+    abstract StartStateMachineFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.StateMachineFB.addAppEventType($0, $1)")>]
+    abstract AddAppEventType: builder: FlatBufferBuilder * tipe: StateMachineTypeFB -> unit
+
+    [<Emit("Iris.Serialization.Raft.StateMachineFB.addAppEvent($0, $1)")>]
+    abstract AddAppEvent: builder: FlatBufferBuilder * ev: int -> unit
+
+    [<Emit("Iris.Serialization.Raft.StateMachineFB.endStateMachineFB($0)")>]
+    abstract EndStateMachineFB: builder: FlatBufferBuilder -> Offset<StateMachineFB>
+
+    [<Emit("Iris.Serialization.Raft.StateMachineFB.getRootAsStateMachineFB($0)")>]
+    abstract GetRootAsStateMachineFB: bytes: ByteBuffer -> StateMachineFB
+
+  let StateMachineFB: StateMachineFBConstructor = failwith "JS only"

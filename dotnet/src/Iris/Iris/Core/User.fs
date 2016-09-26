@@ -6,7 +6,7 @@ open Fable.Core
 open Fable.Import
 open Iris.Core.FlatBuffers
 open Iris.Web.Core.FlatBufferTypes
-
+open Iris.Web.Core.UserFlatBuffers
 #else
 
 open System

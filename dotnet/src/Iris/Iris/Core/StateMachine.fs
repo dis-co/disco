@@ -16,6 +16,7 @@ open Iris.Raft
 open Fable.Core
 open Fable.Import
 open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
 
 #else
 
@@ -54,12 +55,21 @@ type AppCommand =
   //                           |___/
 
   static member FromFB (fb: AppCommandFB) =
+#if JAVASCRIPT
+    match fb.Command with
+    | x when x = AppCommandTypeFB.UndoFB        -> Some Undo
+    | x when x = AppCommandTypeFB.RedoFB        -> Some Redo
+    | x when x = AppCommandTypeFB.ResetFB       -> Some Reset
+    | x when x = AppCommandTypeFB.SaveProjectFB -> Some SaveProject
+    | _                                         -> None
+#else
     match fb.Command with
     | AppCommandTypeFB.UndoFB        -> Some Undo
     | AppCommandTypeFB.RedoFB        -> Some Redo
     | AppCommandTypeFB.ResetFB       -> Some Reset
     | AppCommandTypeFB.SaveProjectFB -> Some SaveProject
     | _                              -> None
+#endif
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<AppCommandFB> =
     let tipe =
@@ -339,60 +349,109 @@ type State =
     let mutable sessions = Map.empty
 
     for i in 0 .. (fb.PatchesLength - 1) do
+#if JAVASCRIPT
+      fb.Patches(i)
+      |> Patch.FromFB
+      |> Option.map (fun patch -> patches <- Map.add patch.Id patch patches)
+      |> ignore
+#else
       let patch = fb.Patches(i)
       if patch.HasValue then
         patch.Value
         |> Patch.FromFB
         |> Option.map (fun patch -> patches <- Map.add patch.Id patch patches)
         |> ignore
+#endif
 
     for i in 0 .. (fb.IOBoxesLength - 1) do
+#if JAVASCRIPT
+      fb.IOBoxes(i)
+      |> IOBox.FromFB
+      |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
+      |> ignore
+#else
       let iobox = fb.IOBoxes(i)
       if iobox.HasValue then
         iobox.Value
         |> IOBox.FromFB
         |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
         |> ignore
+#endif
 
     for i in 0 .. (fb.CuesLength - 1) do
+#if JAVASCRIPT
+      fb.Cues(i)
+      |> Cue.FromFB
+      |> Option.map (fun cue -> cues <- Map.add cue.Id cue cues)
+      |> ignore
+#else
       let cue = fb.Cues(i)
       if cue.HasValue then
         cue.Value
         |> Cue.FromFB
         |> Option.map (fun cue -> cues <- Map.add cue.Id cue cues)
         |> ignore
+#endif
 
     for i in 0 .. (fb.CueListsLength - 1) do
+#if JAVASCRIPT
+      fb.CueLists(i)
+      |> CueList.FromFB
+      |> Option.map (fun cuelist -> cuelists <- Map.add cuelist.Id cuelist cuelists)
+      |> ignore
+#else
       let cuelist = fb.CueLists(i)
       if cuelist.HasValue then
         cuelist.Value
         |> CueList.FromFB
         |> Option.map (fun cuelist -> cuelists <- Map.add cuelist.Id cuelist cuelists)
         |> ignore
+#endif
 
     for i in 0 .. (fb.NodesLength - 1) do
+#if JAVASCRIPT
+      fb.Nodes(i)
+      |> RaftNode.FromFB
+      |> Option.map (fun node -> nodes <- Map.add node.Id node nodes)
+      |> ignore
+#else
       let node = fb.Nodes(i)
       if node.HasValue then
         node.Value
         |> RaftNode.FromFB
         |> Option.map (fun node -> nodes <- Map.add node.Id node nodes)
         |> ignore
+#endif
 
     for i in 0 .. (fb.UsersLength - 1) do
+#if JAVASCRIPT
+      fb.Users(i)
+      |> User.FromFB
+      |> Option.map (fun user -> users <- Map.add user.Id user users)
+      |> ignore
+#else
       let user = fb.Users(i)
       if user.HasValue then
         user.Value
         |> User.FromFB
         |> Option.map (fun user -> users <- Map.add user.Id user users)
         |> ignore
+#endif
 
     for i in 0 .. (fb.SessionsLength - 1) do
+#if JAVASCRIPT
+      fb.Sessions(i)
+      |> Session.FromFB
+      |> Option.map (fun session -> sessions <- Map.add session.Id session sessions)
+      |> ignore
+#else
       let session = fb.Sessions(i)
       if session.HasValue then
         session.Value
         |> Session.FromFB
         |> Option.map (fun session -> sessions <- Map.add session.Id session sessions)
         |> ignore
+#endif
 
     Some { Patches  = patches
          ; IOBoxes  = ioboxes
@@ -402,8 +461,9 @@ type State =
          ; Users    = users
          ; Sessions = sessions }
 
-  static member FromBytes (bytes: byte array) : State option =
-    StateFB.GetRootAsStateFB(new ByteBuffer(bytes))
+  static member FromBytes (bytes: Binary.Buffer) : State option =
+    Binary.createBuffer bytes
+    |> StateFB.GetRootAsStateFB
     |> State.FromFB
 
 // ********************************************************************************************** //
@@ -742,6 +802,136 @@ and StateMachine =
     | LogMsg(level, msg)    -> sprintf "LogMsg: [%A] %s" level msg
 
   static member FromFB (fb: StateMachineFB) =
+#if JAVASCRIPT
+    match fb.AppEventType with
+    | x when x = StateMachineTypeFB.AddCueFB ->
+      let ev = AddCueFB.Create() |> fb.AppEvent
+      ev.Cue
+      |> Cue.FromFB
+      |> Option.map AddCue
+
+    | x when x = StateMachineTypeFB.UpdateCueFB ->
+      let ev = UpdateCueFB.Create() |> fb.AppEvent
+      ev.Cue
+      |> Cue.FromFB
+      |> Option.map UpdateCue
+
+    | x when x = StateMachineTypeFB.RemoveCueFB ->
+      let ev = RemoveCueFB.Create() |> fb.AppEvent
+      ev.Cue
+      |> Cue.FromFB
+      |> Option.map RemoveCue
+
+    | x when x = StateMachineTypeFB.AddCueListFB ->
+      let ev = AddCueListFB.Create() |> fb.AppEvent
+      ev.CueList
+      |> CueList.FromFB
+      |> Option.map AddCueList
+
+    | x when x = StateMachineTypeFB.UpdateCueListFB ->
+      let ev = UpdateCueListFB.Create() |> fb.AppEvent
+      ev.CueList
+      |> CueList.FromFB
+      |> Option.map UpdateCueList
+
+    | x when x = StateMachineTypeFB.RemoveCueListFB ->
+      let ev = RemoveCueListFB.Create() |> fb.AppEvent
+      ev.CueList
+      |> CueList.FromFB
+      |> Option.map RemoveCueList
+
+    | x when x = StateMachineTypeFB.AddPatchFB ->
+      let ev = AddPatchFB.Create() |> fb.AppEvent
+      ev.Patch
+      |> Patch.FromFB
+      |> Option.map AddPatch
+
+    | x when x = StateMachineTypeFB.UpdatePatchFB ->
+      let ev = UpdatePatchFB.Create() |> fb.AppEvent
+      ev.Patch
+      |> Patch.FromFB
+      |> Option.map UpdatePatch
+
+    | x when x = StateMachineTypeFB.RemovePatchFB ->
+      let ev = RemovePatchFB.Create() |> fb.AppEvent
+      ev.Patch
+      |> Patch.FromFB
+      |> Option.map RemovePatch
+
+    | x when x = StateMachineTypeFB.AddUserFB ->
+      let ev = AddUserFB.Create() |> fb.AppEvent
+      ev.User
+      |> User.FromFB
+      |> Option.map AddUser
+
+    | x when x = StateMachineTypeFB.UpdateUserFB ->
+      let ev = UpdateUserFB.Create() |> fb.AppEvent
+      ev.User
+      |> User.FromFB
+      |> Option.map UpdateUser
+
+    | x when x = StateMachineTypeFB.RemoveUserFB ->
+      let ev = RemoveUserFB.Create() |> fb.AppEvent
+      ev.User
+      |> User.FromFB
+      |> Option.map RemoveUser
+
+    | x when x = StateMachineTypeFB.AddNodeFB ->
+      let ev = AddNodeFB.Create() |> fb.AppEvent
+      ev.Node
+      |> RaftNode.FromFB
+      |> Option.map AddNode
+
+    | x when x = StateMachineTypeFB.UpdateNodeFB ->
+      let ev = UpdateNodeFB.Create() |> fb.AppEvent
+      ev.Node
+      |> RaftNode.FromFB
+      |> Option.map UpdateNode
+
+    | x when x = StateMachineTypeFB.RemoveNodeFB ->
+      let ev = RemoveNodeFB.Create() |> fb.AppEvent
+      ev.Node
+      |> RaftNode.FromFB
+      |> Option.map RemoveNode
+
+    | x when x = StateMachineTypeFB.AddSessionFB ->
+      let ev = AddSessionFB.Create() |> fb.AppEvent
+      ev.Session
+      |> Session.FromFB
+      |> Option.map AddSession
+
+    | x when x = StateMachineTypeFB.UpdateSessionFB ->
+      let ev = UpdateSessionFB.Create() |> fb.AppEvent
+      ev.Session
+      |> Session.FromFB
+      |> Option.map UpdateSession
+
+    | x when x = StateMachineTypeFB.RemoveSessionFB ->
+      let ev = RemoveSessionFB.Create() |> fb.AppEvent
+      ev.Session
+      |> Session.FromFB
+      |> Option.map RemoveSession
+
+    | x when x = StateMachineTypeFB.AddIOBoxFB ->
+      let ev = AddIOBoxFB.Create() |> fb.AppEvent
+      ev.IOBox
+      |> IOBox.FromFB
+      |> Option.map AddIOBox
+
+    | x when x = StateMachineTypeFB.UpdateIOBoxFB ->
+      let ev = UpdateIOBoxFB.Create() |> fb.AppEvent
+      ev.IOBox
+      |> IOBox.FromFB
+      |> Option.map UpdateIOBox
+
+    | x when x = StateMachineTypeFB.RemoveIOBoxFB ->
+      let ev = RemoveIOBoxFB.Create() |> fb.AppEvent
+      ev.IOBox
+      |> IOBox.FromFB
+      |> Option.map RemoveIOBox
+
+    | _ -> None
+#else
     match fb.AppEventType with
 
     //   ____
@@ -1073,9 +1263,10 @@ and StateMachine =
       else None
 
     | _ -> None
+#endif
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateMachineFB> =
-    let mkOffset tipe value =
+    let inline mkOffset tipe value =
       StateMachineFB.StartStateMachineFB(builder)
       StateMachineFB.AddAppEventType(builder, tipe)
       StateMachineFB.AddAppEvent(builder, value)
@@ -1092,22 +1283,22 @@ and StateMachine =
       let cuefb = cue.ToOffset(builder)
       AddCueFB.StartAddCueFB(builder)
       AddCueFB.AddCue(builder, cuefb)
-      let addfb = AddCueFB.EndAddCueFB(builder)
-      mkOffset StateMachineTypeFB.AddCueFB addfb.Value
+      AddCueFB.EndAddCueFB(builder).Value
+      |> mkOffset StateMachineTypeFB.AddCueFB
 
     | UpdateCue cue ->
       let cuefb = cue.ToOffset(builder)
       UpdateCueFB.StartUpdateCueFB(builder)
       UpdateCueFB.AddCue(builder, cuefb)
-      let updatefb = UpdateCueFB.EndUpdateCueFB(builder)
-      mkOffset StateMachineTypeFB.UpdateCueFB updatefb.Value
+      UpdateCueFB.EndUpdateCueFB(builder).Value
+      |> mkOffset StateMachineTypeFB.UpdateCueFB
 
     | RemoveCue cue ->
       let cuefb = cue.ToOffset(builder)
       RemoveCueFB.StartRemoveCueFB(builder)
       RemoveCueFB.AddCue(builder, cuefb)
-      let removefb = RemoveCueFB.EndRemoveCueFB(builder)
-      mkOffset StateMachineTypeFB.RemoveCueFB removefb.Value
+      RemoveCueFB.EndRemoveCueFB(builder).Value
+      |> mkOffset StateMachineTypeFB.RemoveCueFB
 
     //   ____           _     _     _
     //  / ___|   _  ___| |   (_)___| |_
@@ -1119,22 +1310,22 @@ and StateMachine =
       let cuelistfb = cuelist.ToOffset(builder)
       AddCueListFB.StartAddCueListFB(builder)
       AddCueListFB.AddCueList(builder, cuelistfb)
-      let addfb = AddCueListFB.EndAddCueListFB(builder)
-      mkOffset StateMachineTypeFB.AddCueListFB addfb.Value
+      AddCueListFB.EndAddCueListFB(builder).Value
+      |> mkOffset StateMachineTypeFB.AddCueListFB
 
     | UpdateCueList cuelist ->
       let cuelistfb = cuelist.ToOffset(builder)
       UpdateCueListFB.StartUpdateCueListFB(builder)
       UpdateCueListFB.AddCueList(builder, cuelistfb)
-      let updatefb = UpdateCueListFB.EndUpdateCueListFB(builder)
-      mkOffset StateMachineTypeFB.UpdateCueListFB updatefb.Value
+      UpdateCueListFB.EndUpdateCueListFB(builder).Value
+      |> mkOffset StateMachineTypeFB.UpdateCueListFB
 
     | RemoveCueList cuelist ->
       let cuelistfb = cuelist.ToOffset(builder)
       RemoveCueListFB.StartRemoveCueListFB(builder)
       RemoveCueListFB.AddCueList(builder, cuelistfb)
-      let removefb = RemoveCueListFB.EndRemoveCueListFB(builder)
-      mkOffset StateMachineTypeFB.RemoveCueListFB removefb.Value
+      RemoveCueListFB.EndRemoveCueListFB(builder).Value
+      |> mkOffset StateMachineTypeFB.RemoveCueListFB
 
     //  ____       _       _
     // |  _ \ __ _| |_ ___| |__
@@ -1146,22 +1337,22 @@ and StateMachine =
       let patchfb = patch.ToOffset(builder)
       AddPatchFB.StartAddPatchFB(builder)
       AddPatchFB.AddPatch(builder, patchfb)
-      let addfb = AddPatchFB.EndAddPatchFB(builder)
-      mkOffset StateMachineTypeFB.AddPatchFB addfb.Value
+      AddPatchFB.EndAddPatchFB(builder).Value
+      |> mkOffset StateMachineTypeFB.AddPatchFB
 
     | UpdatePatch patch ->
       let patchfb = patch.ToOffset(builder)
       UpdatePatchFB.StartUpdatePatchFB(builder)
       UpdatePatchFB.AddPatch(builder, patchfb)
-      let updatefb = UpdatePatchFB.EndUpdatePatchFB(builder)
-      mkOffset StateMachineTypeFB.UpdatePatchFB updatefb.Value
+      UpdatePatchFB.EndUpdatePatchFB(builder).Value
+      |> mkOffset StateMachineTypeFB.UpdatePatchFB
 
     | RemovePatch patch ->
       let patchfb = patch.ToOffset(builder)
       RemovePatchFB.StartRemovePatchFB(builder)
       RemovePatchFB.AddPatch(builder, patchfb)
-      let removefb = RemovePatchFB.EndRemovePatchFB(builder)
-      mkOffset StateMachineTypeFB.RemovePatchFB removefb.Value
+      RemovePatchFB.EndRemovePatchFB(builder).Value
+      |> mkOffset StateMachineTypeFB.RemovePatchFB
 
     //  ___ ___  ____
     // |_ _/ _ \| __ )  _____  __
@@ -1173,22 +1364,22 @@ and StateMachine =
       let ioboxfb = iobox.ToOffset(builder)
       AddIOBoxFB.StartAddIOBoxFB(builder)
       AddIOBoxFB.AddIOBox(builder, ioboxfb)
-      let addfb = AddIOBoxFB.EndAddIOBoxFB(builder)
-      mkOffset StateMachineTypeFB.AddIOBoxFB addfb.Value
+      AddIOBoxFB.EndAddIOBoxFB(builder).Value
+      |> mkOffset StateMachineTypeFB.AddIOBoxFB
 
     | UpdateIOBox iobox ->
       let ioboxfb = iobox.ToOffset(builder)
       UpdateIOBoxFB.StartUpdateIOBoxFB(builder)
       UpdateIOBoxFB.AddIOBox(builder, ioboxfb)
-      let updatefb = UpdateIOBoxFB.EndUpdateIOBoxFB(builder)
-      mkOffset StateMachineTypeFB.UpdateIOBoxFB updatefb.Value
+      UpdateIOBoxFB.EndUpdateIOBoxFB(builder).Value
+      |> mkOffset StateMachineTypeFB.UpdateIOBoxFB
 
     | RemoveIOBox iobox ->
       let ioboxfb = iobox.ToOffset(builder)
       RemoveIOBoxFB.StartRemoveIOBoxFB(builder)
       RemoveIOBoxFB.AddIOBox(builder, ioboxfb)
-      let removefb = RemoveIOBoxFB.EndRemoveIOBoxFB(builder)
-      mkOffset StateMachineTypeFB.RemoveIOBoxFB removefb.Value
+      RemoveIOBoxFB.EndRemoveIOBoxFB(builder).Value
+      |> mkOffset StateMachineTypeFB.RemoveIOBoxFB
 
     //  ____        __ _   _   _           _
     // |  _ \ __ _ / _| |_| \ | | ___   __| | ___
@@ -1200,22 +1391,22 @@ and StateMachine =
       let nodefb = node.ToOffset(builder)
       AddNodeFB.StartAddNodeFB(builder)
       AddNodeFB.AddNode(builder, nodefb)
-      let addfb = AddNodeFB.EndAddNodeFB(builder)
-      mkOffset StateMachineTypeFB.AddNodeFB addfb.Value
+      AddNodeFB.EndAddNodeFB(builder).Value
+      |> mkOffset StateMachineTypeFB.AddNodeFB
 
     | UpdateNode node ->
       let nodefb = node.ToOffset(builder)
       UpdateNodeFB.StartUpdateNodeFB(builder)
       UpdateNodeFB.AddNode(builder, nodefb)
-      let updatefb = UpdateNodeFB.EndUpdateNodeFB(builder)
-      mkOffset StateMachineTypeFB.UpdateNodeFB updatefb.Value
+      UpdateNodeFB.EndUpdateNodeFB(builder).Value
+      |> mkOffset StateMachineTypeFB.UpdateNodeFB
 
     | RemoveNode node ->
       let nodefb = node.ToOffset(builder)
       RemoveNodeFB.StartRemoveNodeFB(builder)
       RemoveNodeFB.AddNode(builder, nodefb)
-      let removefb = RemoveNodeFB.EndRemoveNodeFB(builder)
-      mkOffset StateMachineTypeFB.RemoveNodeFB removefb.Value
+      RemoveNodeFB.EndRemoveNodeFB(builder).Value
+      |> mkOffset StateMachineTypeFB.RemoveNodeFB
 
     //  _   _
     // | | | |___  ___ _ __
@@ -1227,22 +1418,22 @@ and StateMachine =
       let userfb = user.ToOffset(builder)
       AddUserFB.StartAddUserFB(builder)
       AddUserFB.AddUser(builder, userfb)
-      let addfb = AddUserFB.EndAddUserFB(builder)
-      mkOffset StateMachineTypeFB.AddUserFB addfb.Value
+      AddUserFB.EndAddUserFB(builder).Value
+      |> mkOffset StateMachineTypeFB.AddUserFB
 
     | UpdateUser user ->
       let userfb = user.ToOffset(builder)
       UpdateUserFB.StartUpdateUserFB(builder)
       UpdateUserFB.AddUser(builder, userfb)
-      let updatefb = UpdateUserFB.EndUpdateUserFB(builder)
-      mkOffset StateMachineTypeFB.UpdateUserFB updatefb.Value
+      UpdateUserFB.EndUpdateUserFB(builder).Value
+      |> mkOffset StateMachineTypeFB.UpdateUserFB
 
     | RemoveUser user ->
       let userfb = user.ToOffset(builder)
       RemoveUserFB.StartRemoveUserFB(builder)
       RemoveUserFB.AddUser(builder, userfb)
-      let removefb = RemoveUserFB.EndRemoveUserFB(builder)
-      mkOffset StateMachineTypeFB.RemoveUserFB removefb.Value
+      RemoveUserFB.EndRemoveUserFB(builder).Value
+      |> mkOffset StateMachineTypeFB.RemoveUserFB
 
     //  ____                _
     // / ___|  ___  ___ ___(_) ___  _ __
@@ -1254,22 +1445,22 @@ and StateMachine =
       let sessionfb = session.ToOffset(builder)
       AddSessionFB.StartAddSessionFB(builder)
       AddSessionFB.AddSession(builder, sessionfb)
-      let addfb = AddSessionFB.EndAddSessionFB(builder)
-      mkOffset StateMachineTypeFB.AddSessionFB addfb.Value
+      AddSessionFB.EndAddSessionFB(builder).Value
+      |> mkOffset StateMachineTypeFB.AddSessionFB
 
     | UpdateSession session ->
       let sessionfb = session.ToOffset(builder)
       UpdateSessionFB.StartUpdateSessionFB(builder)
       UpdateSessionFB.AddSession(builder, sessionfb)
-      let updatefb = UpdateSessionFB.EndUpdateSessionFB(builder)
-      mkOffset StateMachineTypeFB.UpdateSessionFB updatefb.Value
+      UpdateSessionFB.EndUpdateSessionFB(builder).Value
+      |> mkOffset StateMachineTypeFB.UpdateSessionFB
 
     | RemoveSession session ->
       let sessionfb = session.ToOffset(builder)
       RemoveSessionFB.StartRemoveSessionFB(builder)
       RemoveSessionFB.AddSession(builder, sessionfb)
-      let removefb = RemoveSessionFB.EndRemoveSessionFB(builder)
-      mkOffset StateMachineTypeFB.RemoveSessionFB removefb.Value
+      RemoveSessionFB.EndRemoveSessionFB(builder).Value
+      |> mkOffset StateMachineTypeFB.RemoveSessionFB
 
     //  __  __ _
     // |  \/  (_)___  ___
@@ -1278,24 +1469,25 @@ and StateMachine =
     // |_|  |_|_|___/\___|
 
     | Command ev ->
-      let cmdfb = ev.ToOffset(builder)
-      mkOffset StateMachineTypeFB.AppCommandFB cmdfb.Value
+      let cmdfb = ev.ToOffset(builder).Value
+      mkOffset StateMachineTypeFB.AppCommandFB cmdfb
 
     | LogMsg(level, msg) ->
       let level = string level |> builder.CreateString
       let msg = msg |> builder.CreateString
-      let log = LogMsgFB.CreateLogMsgFB(builder, level, msg)
-      mkOffset StateMachineTypeFB.LogMsgFB log.Value
+      LogMsgFB.CreateLogMsgFB(builder, level, msg).Value
+      |> mkOffset StateMachineTypeFB.LogMsgFB
 
     | DataSnapshot state ->
       let statefb = state.ToOffset(builder)
       DataSnapshotFB.StartDataSnapshotFB(builder)
       DataSnapshotFB.AddData(builder, statefb)
-      let snapshot = DataSnapshotFB.EndDataSnapshotFB(builder)
-      mkOffset StateMachineTypeFB.DataSnapshotFB snapshot.Value
+      DataSnapshotFB.EndDataSnapshotFB(builder).Value
+      |> mkOffset StateMachineTypeFB.DataSnapshotFB
 
   member self.ToBytes () = Binary.buildBuffer self
 
-  static member FromBytes (bytes: byte array) : StateMachine option =
-    let msg = StateMachineFB.GetRootAsStateMachineFB(new ByteBuffer(bytes))
-    StateMachine.FromFB(msg)
+  static member FromBytes (bytes: Binary.Buffer) : StateMachine option =
+    Binary.createBuffer bytes
+    |> StateMachineFB.GetRootAsStateMachineFB
+    |> StateMachine.FromFB

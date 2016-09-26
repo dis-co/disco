@@ -5,6 +5,7 @@ namespace Iris.Core
 open Fable.Core
 open Fable.Import
 open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
 
 #else
 
@@ -101,12 +102,19 @@ type Patch =
     let mutable ioboxes = Map.empty
 
     for i in 0 .. (fb.IOBoxesLength - 1) do
+#if JAVASCRIPT
+      fb.IOBoxes(i)
+      |> IOBox.FromFB
+      |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
+      |> ignore
+#else
       let iobox = fb.IOBoxes(i)
       if iobox.HasValue then
         iobox.Value
         |> IOBox.FromFB
         |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
         |> ignore
+#endif
 
     try
       { Id = Id fb.Id
@@ -131,8 +139,9 @@ type Patch =
     PatchFB.AddIOBoxes(builder, ioboxes)
     PatchFB.EndPatchFB(builder)
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes (bytes: byte array) : Patch option =
-    let msg = PatchFB.GetRootAsPatchFB(new ByteBuffer(bytes))
-    Patch.FromFB(msg)
+  static member FromBytes (bytes: Binary.Buffer) : Patch option =
+    Binary.createBuffer bytes
+    |> PatchFB.GetRootAsPatchFB
+    |> Patch.FromFB

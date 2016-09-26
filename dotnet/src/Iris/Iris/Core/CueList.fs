@@ -3,6 +3,7 @@ namespace Iris.Core
 #if JAVASCRIPT
 
 open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
 
 #else
 
@@ -40,12 +41,19 @@ type CueList =
     let cues = Array.zeroCreate fb.CuesLength
 
     for i in 0 .. (fb.CuesLength - 1) do
+#if JAVASCRIPT
+      fb.Cues(i)
+      |> Cue.FromFB
+      |> Option.map (fun cue -> cues.[i] <- cue)
+      |> ignore
+#else
       let cue = fb.Cues(i)
       if cue.HasValue then
         cue.Value
         |> Cue.FromFB
         |> Option.map (fun cue -> cues.[i] <- cue)
         |> ignore
+#endif
 
     try
       { Id = Id fb.Id
@@ -57,6 +65,7 @@ type CueList =
         printfn "Could not seserialize CueList: %s" exn.Message
         None
 
-  static member FromBytes (bytes: byte array) =
-    CueListFB.GetRootAsCueListFB(new ByteBuffer(bytes))
+  static member FromBytes (bytes: Binary.Buffer) =
+    Binary.createBuffer bytes
+    |> CueListFB.GetRootAsCueListFB
     |> CueList.FromFB

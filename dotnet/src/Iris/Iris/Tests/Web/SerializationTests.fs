@@ -6,6 +6,7 @@ module SerializationTests =
   open Fable.Core
   open Fable.Import
 
+  open Iris.Raft
   open Iris.Core
   open Iris.Web.Core
   open Iris.Web.Tests
@@ -54,8 +55,8 @@ module SerializationTests =
     ; FirstName = "Karsten"
     ; LastName = "Gebbert"
     ; Email = "k@ioctl.it"
-    ; Joined = System.DateTime.Now
-    ; Created = System.DateTime.Now
+    ; Joined = "1"
+    ; Created = "2"
     }
 
   let mkNode _ = Id.Create() |> Node.create
@@ -133,7 +134,7 @@ module SerializationTests =
     test "Validate IOBox Serialization" <| fun finish ->
       let check iobox =
         iobox |> Binary.encode |> Binary.decode |> Option.get
-        |> equals true ((=) iobox)
+        |> fun box -> equals true (box = iobox)
 
       Array.iter check (ioboxes ())
 
@@ -149,7 +150,7 @@ module SerializationTests =
     test "Validate State Serialization" <| fun finish ->
       let state : State = mkState ()
       state |> Binary.encode |> Binary.decode |> Option.get
-      |> equals true ((=) state)
+      |> fun s -> equals true (s = state)
       finish ()
 
     test "Validate StateMachine Serialization" <| fun finish ->

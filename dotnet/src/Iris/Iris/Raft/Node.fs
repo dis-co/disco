@@ -5,6 +5,7 @@ open Iris.Core
 #if JAVASCRIPT
 
 open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
 
 #else
 
@@ -58,11 +59,19 @@ type RaftNodeState =
       | Failed  -> NodeStateFB.FailedFB
 
   static member FromFB (fb: NodeStateFB) =
+#if JAVASCRIPT
+    match fb with
+      | x when x = NodeStateFB.JoiningFB -> Some Joining
+      | x when x = NodeStateFB.RunningFB -> Some Running
+      | x when x = NodeStateFB.FailedFB  -> Some Failed
+      | _                                -> None
+#else
     match fb with
       | NodeStateFB.JoiningFB -> Some Joining
       | NodeStateFB.RunningFB -> Some Running
       | NodeStateFB.FailedFB  -> Some Failed
       | _                     -> None
+#endif
 
 //  _   _           _
 // | \ | | ___   __| | ___
@@ -135,11 +144,10 @@ type RaftNode =
 
   member self.ToBytes () = Binary.buildBuffer self
 
-  static member FromBytes (bytes: byte array) =
-    NodeFB.GetRootAsNodeFB(new ByteBuffer(bytes))
+  static member FromBytes (bytes: Binary.Buffer) =
+    Binary.createBuffer bytes
+    |> NodeFB.GetRootAsNodeFB
     |> RaftNode.FromFB
-
-
 
 //   ____             __ _        ____ _
 //  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
@@ -173,6 +181,16 @@ type ConfigChange =
         ConfigChangeFB.EndConfigChangeFB(builder)
 
   static member FromFB (fb: ConfigChangeFB) : ConfigChange option =
+#if JAVASCRIPT
+    fb.Node
+    |> RaftNode.FromFB
+    |> Option.bind
+      (fun node ->
+        match fb.Type with
+          | x when x = ConfigChangeTypeFB.NodeAdded   -> Some (NodeAdded   node)
+          | x when x = ConfigChangeTypeFB.NodeRemoved -> Some (NodeRemoved node)
+          | _                                         -> None)
+#else
     let nullable = fb.Node
     if nullable.HasValue then
       RaftNode.FromFB nullable.Value
@@ -183,22 +201,27 @@ type ConfigChange =
             | ConfigChangeTypeFB.NodeRemoved -> Some (NodeRemoved node)
             | _                              -> None)
     else None
+#endif
 
   member self.ToBytes () = Binary.buildBuffer self
 
-  static member FromBytes (bytes: byte array) =
-    ConfigChangeFB.GetRootAsConfigChangeFB(new ByteBuffer(bytes))
+  static member FromBytes (bytes: Binary.Buffer) =
+    Binary.createBuffer bytes
+    |> ConfigChangeFB.GetRootAsConfigChangeFB
     |> ConfigChange.FromFB
 
-#if JAVASCRIPT
-#else
 
 [<RequireQualifiedAccess>]
 module Node =
 
   let create id =
+#if JAVASCRIPT
+    let hostname = Fable.Import.Browser.window.location.host
+#else
+    let hostname = System.Net.Dns.GetHostName()
+#endif
     { Id         = id
-    ; HostName   = System.Net.Dns.GetHostName()
+    ; HostName   = hostname
     ; IpAddr     = IPv4Address "127.0.0.1"
     ; Port       = 9000us
     ; State      = Running
@@ -260,5 +283,3 @@ module Node =
     |> List.append (added oldnodes newnodes)
     |> List.append (removed oldnodes newnodes)
     |> Array.ofList
-
-#endif
