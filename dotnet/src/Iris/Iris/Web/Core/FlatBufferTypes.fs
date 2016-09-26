@@ -363,6 +363,25 @@ module FlatBufferTypes =
     [<Emit("$0.ValueType()")>]
     abstract IOBoxType: int
 
+  type IOBoxFBContructor =
+
+    [<Emit("Iris.Serialization.Raft.IOBoxFB.startIOBoxFB($0)")>]
+    abstract StartIOBoxFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.IOBoxFB.addIOBox($0,$1)")>]
+    abstract AddIOBox: builder: FlatBufferBuilder * iobox: int -> unit
+
+    [<Emit("Iris.Serialization.Raft.IOBoxFB.addIOBoxType($0,$1)")>]
+    abstract AddIOBoxType: builder: FlatBufferBuilder * tipe: IOBoxTypeFB -> unit
+
+    [<Emit("Iris.Serialization.Raft.IOBoxFB.endIOBoxFB($0)")>]
+    abstract EndIOBoxFB: builder: FlatBufferBuilder -> Offset<IOBoxFB>
+
+    [<Emit("Iris.Serialization.Raft.IOBoxFB.getRootAsIOBoxFB($0)")>]
+    abstract GetRootAsIOBoxFB: buffer: ByteBuffer -> IOBoxFB
+
+  let IOBoxFB: IOBoxFBContructor = failwith "JS only"
+
   //  ____              _ ____  _ _          _____ ____
   // | __ )  ___   ___ | / ___|| (_) ___ ___|  ___| __ )
   // |  _ \ / _ \ / _ \| \___ \| | |/ __/ _ \ |_  |  _ \
@@ -371,7 +390,7 @@ module FlatBufferTypes =
 
   type BoolSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: string
+    abstract Index: uint64
 
     [<Emit("$0.Value()")>]
     abstract Value: bool
@@ -387,10 +406,13 @@ module FlatBufferTypes =
     abstract AddValue: builder: FlatBufferBuilder * value: bool -> unit
 
     [<Emit("Iris.Serialization.Raft.BoolSliceFB.endBoolSliceFB($1)")>]
-    abstract EndBoolSliceFB: builder: FlatBufferBuilder -> unit
+    abstract EndBoolSliceFB: builder: FlatBufferBuilder -> Offset<BoolSliceFB>
 
     [<Emit("Iris.Serialization.Raft.BoolSliceFB.getRootAsBoolSliceFB($1)")>]
     abstract GetRootAsBoolSliceFB: buffer: ByteBuffer -> BoolSliceFB
+
+    [<Emit("new Iris.Serialization.Raft.BoolSliceFB()")>]
+    abstract Create: unit -> BoolSliceFB
 
   let BoolSliceFB: BoolSliceFBConstructor = failwith "JS only"
 
@@ -410,14 +432,20 @@ module FlatBufferTypes =
     [<Emit("$0.Patch()")>]
     abstract Patch: string
 
-    [<Emit("$0.Tags()")>]
-    abstract Tags: string array
-
     [<Emit("$0.Behavior()")>]
     abstract Behavior: BehaviorFB
 
-    [<Emit("$0.Slices()")>]
-    abstract Slices: BoolSliceFB array
+    [<Emit("$0.TagsLength()")>]
+    abstract TagsLength: int
+
+    [<Emit("$0.SlicesLength()")>]
+    abstract SlicesLength: int
+
+    [<Emit("$0.tags($1)")>]
+    abstract Tags: int -> string
+
+    [<Emit("$0.slices($1)")>]
+    abstract Slices: int -> BoolSliceFB
 
   type BoolBoxFBConstructor =
     abstract prototype: BoolBoxFB with get, set
@@ -435,13 +463,13 @@ module FlatBufferTypes =
     abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
 
     [<Emit("Iris.Serialization.Raft.BoolBoxFB.addTags($1, $2)")>]
-    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> array -> unit
+    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.BoolBoxFB.addBehavior($1, $2)")>]
     abstract AddBehavior: builder: FlatBufferBuilder * behavior: BehaviorFB -> unit
 
     [<Emit("Iris.Serialization.Raft.BoolBoxFB.addSlices($1, $2)")>]
-    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> array -> unit
+    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.BoolBoxFB.endBoolBoxFB($1)")>]
     abstract EndBoolBoxFB: builder: FlatBufferBuilder -> Offset<'a>
@@ -450,10 +478,13 @@ module FlatBufferTypes =
     abstract GetRootAsBoolBoxFB: buffer: ByteBuffer -> BoolBoxFB
 
     [<Emit("Iris.Serialization.Raft.BoolBoxFB.createTagsVector($1, $2)")>]
-    abstract CreateTagsVector: builder: FlatBufferBuilder -> Offset<string> array -> Offset<'a>
+    abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
 
     [<Emit("Iris.Serialization.Raft.BoolBoxFB.createSlicesVector($1, $2)")>]
-    abstract CreateSlicesVector: builder: FlatBufferBuilder -> Offset<'a> array -> Offset<'a>
+    abstract CreateSlicesVector: builder: FlatBufferBuilder * slices: Offset<BoolSliceFB> array -> Offset<'a>
+
+    [<Emit("new Iris.Serialization.Raft.BoolBoxFB()")>]
+    abstract Create: unit -> BoolBoxFB
 
   let BoolBoxFB : BoolBoxFBConstructor = failwith "JS only"
 
@@ -465,10 +496,10 @@ module FlatBufferTypes =
 
   type IntSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: string
+    abstract Index: uint64
 
     [<Emit("$0.Value()")>]
-    abstract Value: bool
+    abstract Value: int
 
   type IntSliceFBConstructor =
     [<Emit("Iris.Serialization.Raft.IntSliceFB.startIntSliceFB($1)")>]
@@ -478,13 +509,16 @@ module FlatBufferTypes =
     abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
 
     [<Emit("Iris.Serialization.Raft.IntSliceFB.addValue($1, $2)")>]
-    abstract AddValue: builder: FlatBufferBuilder * value: bool -> unit
+    abstract AddValue: builder: FlatBufferBuilder * value: int -> unit
 
     [<Emit("Iris.Serialization.Raft.IntSliceFB.endIntSliceFB($1)")>]
-    abstract EndIntSliceFB: builder: FlatBufferBuilder -> unit
+    abstract EndIntSliceFB: builder: FlatBufferBuilder -> Offset<IntSliceFB>
 
     [<Emit("Iris.Serialization.Raft.IntSliceFB.getRootAsIntSliceFB($1)")>]
     abstract GetRootAsIntSliceFB: buffer: ByteBuffer -> IntSliceFB
+
+    [<Emit("new Iris.Serialization.Raft.IntSliceFB()")>]
+    abstract Create: unit -> IntSliceFB
 
   let IntSliceFB: IntSliceFBConstructor = failwith "JS only"
 
@@ -504,14 +538,29 @@ module FlatBufferTypes =
     [<Emit("$0.Patch()")>]
     abstract Patch: string
 
-    [<Emit("$0.Tags()")>]
-    abstract Tags: string array
+    [<Emit("$0.VecSize()")>]
+    abstract VecSize: uint32
 
-    [<Emit("$0.Behavior()")>]
-    abstract Behavior: BehaviorFB
+    [<Emit("$0.Min()")>]
+    abstract Min: int
 
-    [<Emit("$0.Slices()")>]
-    abstract Slices: IntSliceFB array
+    [<Emit("$0.Max()")>]
+    abstract Max: int
+
+    [<Emit("$0.Unit()")>]
+    abstract Unit: string
+
+    [<Emit("$0.TagsLength($1)")>]
+    abstract TagsLength: int
+
+    [<Emit("$0.tags($1)")>]
+    abstract Tags: int -> string
+
+    [<Emit("$0.SlicesLength($1)")>]
+    abstract SlicesLength: int
+
+    [<Emit("$0.slices($1)")>]
+    abstract Slices: int -> IntSliceFB
 
   type IntBoxFBConstructor =
     abstract prototype: IntBoxFB with get, set
@@ -528,14 +577,23 @@ module FlatBufferTypes =
     [<Emit("Iris.Serialization.Raft.IntBoxFB.addPatch($1, $2)")>]
     abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
 
-    [<Emit("Iris.Serialization.Raft.IntBoxFB.addTags($1, $2)")>]
-    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> array -> unit
+    [<Emit("Iris.Serialization.Raft.IntBoxFB.addVecSize($1, $2)")>]
+    abstract AddVecSize: builder: FlatBufferBuilder * vecsize: uint32 -> unit
 
-    [<Emit("Iris.Serialization.Raft.IntBoxFB.addBehavior($1, $2)")>]
-    abstract AddBehavior: builder: FlatBufferBuilder * behavior: BehaviorFB -> unit
+    [<Emit("Iris.Serialization.Raft.IntBoxFB.addMin($1, $2)")>]
+    abstract AddMin: builder: FlatBufferBuilder * min: int -> unit
+
+    [<Emit("Iris.Serialization.Raft.IntBoxFB.addMax($1, $2)")>]
+    abstract AddMax: builder: FlatBufferBuilder * max: int -> unit
+
+    [<Emit("Iris.Serialization.Raft.IntBoxFB.addUnit($1, $2)")>]
+    abstract AddUnit: builder: FlatBufferBuilder * unit: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.IntBoxFB.addTags($1, $2)")>]
+    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.IntBoxFB.addSlices($1, $2)")>]
-    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> array -> unit
+    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.IntBoxFB.endIntBoxFB($1)")>]
     abstract EndIntBoxFB: builder: FlatBufferBuilder -> Offset<'a>
@@ -544,10 +602,13 @@ module FlatBufferTypes =
     abstract GetRootAsIntBoxFB: buffer: ByteBuffer -> IntBoxFB
 
     [<Emit("Iris.Serialization.Raft.IntBoxFB.createTagsVector($1, $2)")>]
-    abstract CreateTagsVector: builder: FlatBufferBuilder -> Offset<string> array -> Offset<'a>
+    abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
 
     [<Emit("Iris.Serialization.Raft.IntBoxFB.createSlicesVector($1, $2)")>]
-    abstract CreateSlicesVector: builder: FlatBufferBuilder -> Offset<'a> array -> Offset<'a>
+    abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
+
+    [<Emit("new Iris.Serialization.Raft.IntBoxFB()")>]
+    abstract Create: unit -> IntBoxFB
 
   let IntBoxFB : IntBoxFBConstructor = failwith "JS only"
 
@@ -559,10 +620,10 @@ module FlatBufferTypes =
 
   type FloatSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: string
+    abstract Index: uint64
 
     [<Emit("$0.Value()")>]
-    abstract Value: bool
+    abstract Value: float
 
   type FloatSliceFBConstructor =
     [<Emit("Iris.Serialization.Raft.FloatSliceFB.startFloatSliceFB($1)")>]
@@ -572,13 +633,16 @@ module FlatBufferTypes =
     abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
 
     [<Emit("Iris.Serialization.Raft.FloatSliceFB.addValue($1, $2)")>]
-    abstract AddValue: builder: FlatBufferBuilder * value: bool -> unit
+    abstract AddValue: builder: FlatBufferBuilder * value: float32 -> unit
 
     [<Emit("Iris.Serialization.Raft.FloatSliceFB.endFloatSliceFB($1)")>]
-    abstract EndFloatSliceFB: builder: FlatBufferBuilder -> unit
+    abstract EndFloatSliceFB: builder: FlatBufferBuilder -> Offset<FloatSliceFB>
 
     [<Emit("Iris.Serialization.Raft.FloatSliceFB.getRootAsFloatSliceFB($1)")>]
     abstract GetRootAsFloatSliceFB: buffer: ByteBuffer -> FloatSliceFB
+
+    [<Emit("new Iris.Serialization.Raft.FloatSliceFB()")>]
+    abstract Create: unit -> FloatSliceFB
 
   let FloatSliceFB: FloatSliceFBConstructor = failwith "JS only"
 
@@ -598,14 +662,35 @@ module FlatBufferTypes =
     [<Emit("$0.Patch()")>]
     abstract Patch: string
 
-    [<Emit("$0.Tags()")>]
-    abstract Tags: string array
+    [<Emit("$0.VecSize()")>]
+    abstract VecSize: uint32
+
+    [<Emit("$0.Min()")>]
+    abstract Min: int
+
+    [<Emit("$0.Max()")>]
+    abstract Max: int
+
+    [<Emit("$0.Unit()")>]
+    abstract Unit: string
+
+    [<Emit("$0.Precision()")>]
+    abstract Precision: uint32
+
+    [<Emit("$0.TagsLength()")>]
+    abstract TagsLength: int
+
+    [<Emit("$0.Tags($1)")>]
+    abstract Tags: int -> string
 
     [<Emit("$0.Behavior()")>]
     abstract Behavior: BehaviorFB
 
-    [<Emit("$0.Slices()")>]
-    abstract Slices: FloatSliceFB array
+    [<Emit("$0.SlicesLength()")>]
+    abstract SlicesLength: int
+
+    [<Emit("$0.Slices($1)")>]
+    abstract Slices: int -> FloatSliceFB
 
   type FloatBoxFBConstructor =
     abstract prototype: FloatBoxFB with get, set
@@ -623,25 +708,40 @@ module FlatBufferTypes =
     abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
 
     [<Emit("Iris.Serialization.Raft.FloatBoxFB.addTags($1, $2)")>]
-    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> array -> unit
+    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
 
-    [<Emit("Iris.Serialization.Raft.FloatBoxFB.addBehavior($1, $2)")>]
-    abstract AddBehavior: builder: FlatBufferBuilder * behavior: BehaviorFB -> unit
+    [<Emit("Iris.Serialization.Raft.FloatBoxFB.addVecSize($1, $2)")>]
+    abstract AddVecSize: builder: FlatBufferBuilder * vecsize: uint32 -> unit
+
+    [<Emit("Iris.Serialization.Raft.FloatBoxFB.addMin($1, $2)")>]
+    abstract AddMin: builder: FlatBufferBuilder * min: int -> unit
+
+    [<Emit("Iris.Serialization.Raft.FloatBoxFB.addMax($1, $2)")>]
+    abstract AddMax: builder: FlatBufferBuilder * max: int -> unit
+
+    [<Emit("Iris.Serialization.Raft.FloatBoxFB.addUnit($1, $2)")>]
+    abstract AddUnit: builder: FlatBufferBuilder * unit: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.FloatBoxFB.addPrecision($1, $2)")>]
+    abstract AddPrecision: builder: FlatBufferBuilder * precision: uint32 -> unit
 
     [<Emit("Iris.Serialization.Raft.FloatBoxFB.addSlices($1, $2)")>]
-    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> array -> unit
+    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.FloatBoxFB.endFloatBoxFB($1)")>]
-    abstract EndFloatBoxFB: builder: FlatBufferBuilder -> Offset<'a>
+    abstract EndFloatBoxFB: builder: FlatBufferBuilder -> Offset<FloatBoxFB>
 
     [<Emit("Iris.Serialization.Raft.FloatBoxFB.getRootAsFloatBoxFB($1)")>]
     abstract GetRootAsFloatBoxFB: buffer: ByteBuffer -> FloatBoxFB
 
     [<Emit("Iris.Serialization.Raft.FloatBoxFB.createTagsVector($1, $2)")>]
-    abstract CreateTagsVector: builder: FlatBufferBuilder -> Offset<string> array -> Offset<'a>
+    abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
 
     [<Emit("Iris.Serialization.Raft.FloatBoxFB.createSlicesVector($1, $2)")>]
-    abstract CreateSlicesVector: builder: FlatBufferBuilder -> Offset<'a> array -> Offset<'a>
+    abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
+
+    [<Emit("new Iris.Serialization.Raft.FloatBoxFB()")>]
+    abstract Create: unit -> FloatBoxFB
 
   let FloatBoxFB : FloatBoxFBConstructor = failwith "JS only"
 
@@ -653,12 +753,14 @@ module FlatBufferTypes =
 
   type DoubleSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: string
+    abstract Index: uint64
 
     [<Emit("$0.Value()")>]
-    abstract Value: bool
+    abstract Value: double
 
   type DoubleSliceFBConstructor =
+    abstract prototype: DoubleSliceFB with get, set
+
     [<Emit("Iris.Serialization.Raft.DoubleSliceFB.startDoubleSliceFB($1)")>]
     abstract StartDoubleSliceFB: builder: FlatBufferBuilder -> unit
 
@@ -666,13 +768,16 @@ module FlatBufferTypes =
     abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
 
     [<Emit("Iris.Serialization.Raft.DoubleSliceFB.addValue($1, $2)")>]
-    abstract AddValue: builder: FlatBufferBuilder * value: bool -> unit
+    abstract AddValue: builder: FlatBufferBuilder * value: double -> unit
 
     [<Emit("Iris.Serialization.Raft.DoubleSliceFB.endDoubleSliceFB($1)")>]
-    abstract EndDoubleSliceFB: builder: FlatBufferBuilder -> unit
+    abstract EndDoubleSliceFB: builder: FlatBufferBuilder -> Offset<DoubleSliceFB>
 
     [<Emit("Iris.Serialization.Raft.DoubleSliceFB.getRootAsDoubleSliceFB($1)")>]
     abstract GetRootAsDoubleSliceFB: buffer: ByteBuffer -> DoubleSliceFB
+
+    [<Emit("new Iris.Serialization.Raft.DoubleSliceFB()")>]
+    abstract Create: unit -> DoubleSliceFB
 
   let DoubleSliceFB: DoubleSliceFBConstructor = failwith "JS only"
 
@@ -692,14 +797,32 @@ module FlatBufferTypes =
     [<Emit("$0.Patch()")>]
     abstract Patch: string
 
-    [<Emit("$0.Tags()")>]
-    abstract Tags: string array
+    [<Emit("$0.VecSize()")>]
+    abstract VecSize: uint32
 
-    [<Emit("$0.Behavior()")>]
-    abstract Behavior: BehaviorFB
+    [<Emit("$0.Min()")>]
+    abstract Min: int
 
-    [<Emit("$0.Slices()")>]
-    abstract Slices: DoubleSliceFB array
+    [<Emit("$0.Max()")>]
+    abstract Max: int
+
+    [<Emit("$0.Unit()")>]
+    abstract Unit: string
+
+    [<Emit("$0.Precision()")>]
+    abstract Precision: uint32
+
+    [<Emit("$0.Tags($1)")>]
+    abstract Tags: int -> string
+
+    [<Emit("$0.TagsLength()")>]
+    abstract TagsLength: int
+
+    [<Emit("$0.Slices($1)")>]
+    abstract Slices: int -> DoubleSliceFB
+
+    [<Emit("$0.SlicesLength()")>]
+    abstract SlicesLength: int
 
   type DoubleBoxFBConstructor =
     abstract prototype: DoubleBoxFB with get, set
@@ -716,14 +839,29 @@ module FlatBufferTypes =
     [<Emit("Iris.Serialization.Raft.DoubleBoxFB.addPatch($1, $2)")>]
     abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
 
+    [<Emit("Iris.Serialization.Raft.DoubleBoxFB.addVecSize($1, $2)")>]
+    abstract AddVecSize: builder: FlatBufferBuilder * vecsize: uint32 -> unit
+
+    [<Emit("Iris.Serialization.Raft.DoubleBoxFB.addMin($1, $2)")>]
+    abstract AddMin: builder: FlatBufferBuilder * min: int -> unit
+
+    [<Emit("Iris.Serialization.Raft.DoubleBoxFB.addMax($1, $2)")>]
+    abstract AddMax: builder: FlatBufferBuilder * max: int -> unit
+
+    [<Emit("Iris.Serialization.Raft.DoubleBoxFB.addUnit($1, $2)")>]
+    abstract AddUnit: builder: FlatBufferBuilder * unit: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.DoubleBoxFB.addPrecision($1, $2)")>]
+    abstract AddPrecision: builder: FlatBufferBuilder * precision: uint32 -> unit
+
     [<Emit("Iris.Serialization.Raft.DoubleBoxFB.addTags($1, $2)")>]
-    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> array -> unit
+    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.DoubleBoxFB.addBehavior($1, $2)")>]
     abstract AddBehavior: builder: FlatBufferBuilder * behavior: BehaviorFB -> unit
 
     [<Emit("Iris.Serialization.Raft.DoubleBoxFB.addSlices($1, $2)")>]
-    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> array -> unit
+    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.DoubleBoxFB.endDoubleBoxFB($1)")>]
     abstract EndDoubleBoxFB: builder: FlatBufferBuilder -> Offset<'a>
@@ -732,10 +870,13 @@ module FlatBufferTypes =
     abstract GetRootAsDoubleBoxFB: buffer: ByteBuffer -> DoubleBoxFB
 
     [<Emit("Iris.Serialization.Raft.DoubleBoxFB.createTagsVector($1, $2)")>]
-    abstract CreateTagsVector: builder: FlatBufferBuilder -> Offset<string> array -> Offset<'a>
+    abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
 
     [<Emit("Iris.Serialization.Raft.DoubleBoxFB.createSlicesVector($1, $2)")>]
-    abstract CreateSlicesVector: builder: FlatBufferBuilder -> Offset<'a> array -> Offset<'a>
+    abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
+
+    [<Emit("new Iris.Serialization.Raft.DoubleBoxFB()")>]
+    abstract Create: unit -> DoubleBoxFB
 
   let DoubleBoxFB : DoubleBoxFBConstructor = failwith "JS only"
 
@@ -748,12 +889,17 @@ module FlatBufferTypes =
 
   type ByteSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: string
+    abstract Index: uint64
 
-    [<Emit("$0.Value()")>]
-    abstract Value: bool
+    [<Emit("$0.Value($1)")>]
+    abstract Value: int -> byte
+
+    [<Emit("$0.ValueLength()")>]
+    abstract ValueLength: int
 
   type ByteSliceFBConstructor =
+    abstract prototype: ByteSliceFB with get, set
+
     [<Emit("Iris.Serialization.Raft.ByteSliceFB.startByteSliceFB($1)")>]
     abstract StartByteSliceFB: builder: FlatBufferBuilder -> unit
 
@@ -761,13 +907,19 @@ module FlatBufferTypes =
     abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
 
     [<Emit("Iris.Serialization.Raft.ByteSliceFB.addValue($1, $2)")>]
-    abstract AddValue: builder: FlatBufferBuilder * value: bool -> unit
+    abstract AddValue: builder: FlatBufferBuilder * value: Offset<'a> -> unit
+
+    [<Emit("Iris.Serialization.Raft.ByteSliceFB.createValueVector($1, $2)")>]
+    abstract CreateValueVector: builder: FlatBufferBuilder * value: Offset<'a> array -> Offset<'a>
 
     [<Emit("Iris.Serialization.Raft.ByteSliceFB.endByteSliceFB($1)")>]
-    abstract EndByteSliceFB: builder: FlatBufferBuilder -> unit
+    abstract EndByteSliceFB: builder: FlatBufferBuilder -> Offset<ByteSliceFB>
 
     [<Emit("Iris.Serialization.Raft.ByteSliceFB.getRootAsByteSliceFB($1)")>]
     abstract GetRootAsByteSliceFB: buffer: ByteBuffer -> ByteSliceFB
+
+    [<Emit("new Iris.Serialization.Raft.ByteSliceFB()")>]
+    abstract Create: unit -> ByteSliceFB
 
   let ByteSliceFB: ByteSliceFBConstructor = failwith "JS only"
 
@@ -788,14 +940,17 @@ module FlatBufferTypes =
     [<Emit("$0.Patch()")>]
     abstract Patch: string
 
-    [<Emit("$0.Tags()")>]
-    abstract Tags: string array
+    [<Emit("$0.TagsLength()")>]
+    abstract TagsLength: int
 
-    [<Emit("$0.Behavior()")>]
-    abstract Behavior: BehaviorFB
+    [<Emit("$0.Tags($1)")>]
+    abstract Tags: int -> string
 
-    [<Emit("$0.Slices()")>]
-    abstract Slices: ByteSliceFB array
+    [<Emit("$0.SlicesLength()")>]
+    abstract SlicesLength: int
+
+    [<Emit("$0.Slices($1)")>]
+    abstract Slices: int -> ByteSliceFB
 
   type ByteBoxFBConstructor =
     abstract prototype: ByteBoxFB with get, set
@@ -813,13 +968,10 @@ module FlatBufferTypes =
     abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
 
     [<Emit("Iris.Serialization.Raft.ByteBoxFB.addTags($1, $2)")>]
-    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> array -> unit
-
-    [<Emit("Iris.Serialization.Raft.ByteBoxFB.addBehavior($1, $2)")>]
-    abstract AddBehavior: builder: FlatBufferBuilder * behavior: BehaviorFB -> unit
+    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.ByteBoxFB.addSlices($1, $2)")>]
-    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> array -> unit
+    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.ByteBoxFB.endByteBoxFB($1)")>]
     abstract EndByteBoxFB: builder: FlatBufferBuilder -> Offset<'a>
@@ -828,12 +980,56 @@ module FlatBufferTypes =
     abstract GetRootAsByteBoxFB: buffer: ByteBuffer -> ByteBoxFB
 
     [<Emit("Iris.Serialization.Raft.ByteBoxFB.createTagsVector($1, $2)")>]
-    abstract CreateTagsVector: builder: FlatBufferBuilder -> Offset<string> array -> Offset<'a>
+    abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
 
     [<Emit("Iris.Serialization.Raft.ByteBoxFB.createSlicesVector($1, $2)")>]
-    abstract CreateSlicesVector: builder: FlatBufferBuilder -> Offset<'a> array -> Offset<'a>
+    abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
+
+    [<Emit("new Iris.Serialization.Raft.ByteBoxFB()")>]
+    abstract Create: unit -> ByteBoxFB
 
   let ByteBoxFB : ByteBoxFBConstructor = failwith "JS only"
+
+  //  _____                       ____                  _____ ____
+  // | ____|_ __  _   _ _ __ ___ |  _ \ _ __ ___  _ __ |  ___| __ )
+  // |  _| | '_ \| | | | '_ ` _ \| |_) | '__/ _ \| '_ \| |_  |  _ \
+  // | |___| | | | |_| | | | | | |  __/| | | (_) | |_) |  _| | |_) |
+  // |_____|_| |_|\__,_|_| |_| |_|_|   |_|  \___/| .__/|_|   |____/
+  //                                             |_|
+
+  type EnumPropertyFB =
+
+    [<Emit("$0.Key()")>]
+    abstract Key: string
+
+    [<Emit("$0.Value()")>]
+    abstract Value: string
+
+  type EnumPropertyFBConstructor =
+    abstract prototype: EnumPropertyFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.startEnumPropertyFB($1)")>]
+    abstract StartEnumPropertyFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.addKey($0, $1)")>]
+    abstract AddKey: builder: FlatBufferBuilder * key: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.addValue($0, $1)")>]
+    abstract AddValue: builder: FlatBufferBuilder * value: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.endEnumPropertyFB($0)")>]
+    abstract EndEnumPropertyFB: builder: FlatBufferBuilder -> Offset<EnumPropertyFB>
+
+    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.getRootAsEnumPropertyFB($0)")>]
+    abstract GetRootAsEnumPropertyFB: buffer: ByteBuffer -> EnumPropertyFB
+
+    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.createEnumPropertyFB($0, $1, $2)")>]
+    abstract CreateEnumPropertyFB: builder: FlatBufferBuilder * key: Offset<string> * value: Offset<string> -> Offset<EnumPropertyFB>
+
+    [<Emit("new Iris.Serialization.Raft.EnumPropertyFB()")>]
+    abstract Create: unit -> EnumPropertyFB
+
+  let EnumPropertyFB: EnumPropertyFBConstructor = failwith "JS only"
 
   //  _____                       ____  _ _          _____ ____
   // | ____|_ __  _   _ _ __ ___ / ___|| (_) ___ ___|  ___| __ )
@@ -843,12 +1039,14 @@ module FlatBufferTypes =
 
   type EnumSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: string
+    abstract Index: uint64
 
     [<Emit("$0.Value()")>]
-    abstract Value: bool
+    abstract Value: EnumPropertyFB
 
   type EnumSliceFBConstructor =
+    abstract prototype: EnumSliceFB with get, set
+
     [<Emit("Iris.Serialization.Raft.EnumSliceFB.startEnumSliceFB($1)")>]
     abstract StartEnumSliceFB: builder: FlatBufferBuilder -> unit
 
@@ -856,13 +1054,16 @@ module FlatBufferTypes =
     abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
 
     [<Emit("Iris.Serialization.Raft.EnumSliceFB.addValue($1, $2)")>]
-    abstract AddValue: builder: FlatBufferBuilder * value: bool -> unit
+    abstract AddValue: builder: FlatBufferBuilder * value: Offset<EnumPropertyFB> -> unit
 
     [<Emit("Iris.Serialization.Raft.EnumSliceFB.endEnumSliceFB($1)")>]
-    abstract EndEnumSliceFB: builder: FlatBufferBuilder -> unit
+    abstract EndEnumSliceFB: builder: FlatBufferBuilder -> Offset<EnumSliceFB>
 
     [<Emit("Iris.Serialization.Raft.EnumSliceFB.getRootAsEnumSliceFB($1)")>]
     abstract GetRootAsEnumSliceFB: buffer: ByteBuffer -> EnumSliceFB
+
+    [<Emit("new Iris.Serialization.Raft.EnumSliceFB()")>]
+    abstract Create: unit -> EnumSliceFB
 
   let EnumSliceFB: EnumSliceFBConstructor = failwith "JS only"
 
@@ -882,14 +1083,23 @@ module FlatBufferTypes =
     [<Emit("$0.Patch()")>]
     abstract Patch: string
 
-    [<Emit("$0.Tags()")>]
-    abstract Tags: string array
+    [<Emit("$0.Tags($1)")>]
+    abstract Tags: int -> string
 
-    [<Emit("$0.Behavior()")>]
-    abstract Behavior: BehaviorFB
+    [<Emit("$0.TagsLength($1)")>]
+    abstract TagsLength: int
 
-    [<Emit("$0.Slices()")>]
-    abstract Slices: EnumSliceFB array
+    [<Emit("$0.Properties($1)")>]
+    abstract Properties: int -> EnumPropertyFB
+
+    [<Emit("$0.PropertiesLength()")>]
+    abstract PropertiesLength: int
+
+    [<Emit("$0.Slices($1)")>]
+    abstract Slices: int -> EnumSliceFB
+
+    [<Emit("$0.SlicesLength()")>]
+    abstract SlicesLength: int
 
   type EnumBoxFBConstructor =
     abstract prototype: EnumBoxFB with get, set
@@ -907,13 +1117,13 @@ module FlatBufferTypes =
     abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
 
     [<Emit("Iris.Serialization.Raft.EnumBoxFB.addTags($1, $2)")>]
-    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> array -> unit
+    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
 
-    [<Emit("Iris.Serialization.Raft.EnumBoxFB.addBehavior($1, $2)")>]
-    abstract AddBehavior: builder: FlatBufferBuilder * behavior: BehaviorFB -> unit
+    [<Emit("Iris.Serialization.Raft.EnumBoxFB.addProperties($1, $2)")>]
+    abstract AddProperties: builder: FlatBufferBuilder * properties: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.EnumBoxFB.addSlices($1, $2)")>]
-    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> array -> unit
+    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.EnumBoxFB.endEnumBoxFB($1)")>]
     abstract EndEnumBoxFB: builder: FlatBufferBuilder -> Offset<'a>
@@ -922,10 +1132,16 @@ module FlatBufferTypes =
     abstract GetRootAsEnumBoxFB: buffer: ByteBuffer -> EnumBoxFB
 
     [<Emit("Iris.Serialization.Raft.EnumBoxFB.createTagsVector($1, $2)")>]
-    abstract CreateTagsVector: builder: FlatBufferBuilder -> Offset<string> array -> Offset<'a>
+    abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+
+    [<Emit("Iris.Serialization.Raft.EnumBoxFB.createPropertiesVector($1, $2)")>]
+    abstract CreatePropertiesVector: builder: FlatBufferBuilder * Offset<EnumPropertyFB> array -> Offset<'a>
 
     [<Emit("Iris.Serialization.Raft.EnumBoxFB.createSlicesVector($1, $2)")>]
-    abstract CreateSlicesVector: builder: FlatBufferBuilder -> Offset<'a> array -> Offset<'a>
+    abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
+
+    [<Emit("new Iris.Serialization.Raft.EnumBoxFB()")>]
+    abstract Create: unit -> EnumBoxFB
 
   let EnumBoxFB : EnumBoxFBConstructor = failwith "JS only"
 
@@ -937,12 +1153,14 @@ module FlatBufferTypes =
 
   type ColorSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: string
+    abstract Index: uint64
 
     [<Emit("$0.Value()")>]
-    abstract Value: bool
+    abstract Value: ColorSpaceFB
 
   type ColorSliceFBConstructor =
+    abstract prototype: ColorSliceFB with get, set
+
     [<Emit("Iris.Serialization.Raft.ColorSliceFB.startColorSliceFB($1)")>]
     abstract StartColorSliceFB: builder: FlatBufferBuilder -> unit
 
@@ -950,13 +1168,16 @@ module FlatBufferTypes =
     abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
 
     [<Emit("Iris.Serialization.Raft.ColorSliceFB.addValue($1, $2)")>]
-    abstract AddValue: builder: FlatBufferBuilder * value: bool -> unit
+    abstract AddValue: builder: FlatBufferBuilder * value: Offset<ColorSpaceFB> -> unit
 
     [<Emit("Iris.Serialization.Raft.ColorSliceFB.endColorSliceFB($1)")>]
-    abstract EndColorSliceFB: builder: FlatBufferBuilder -> unit
+    abstract EndColorSliceFB: builder: FlatBufferBuilder -> Offset<ColorSliceFB>
 
     [<Emit("Iris.Serialization.Raft.ColorSliceFB.getRootAsColorSliceFB($1)")>]
     abstract GetRootAsColorSliceFB: buffer: ByteBuffer -> ColorSliceFB
+
+    [<Emit("new Iris.Serialization.Raft.ColorSliceFB()")>]
+    abstract Create: unit -> ColorSliceFB
 
   let ColorSliceFB: ColorSliceFBConstructor = failwith "JS only"
 
@@ -976,14 +1197,17 @@ module FlatBufferTypes =
     [<Emit("$0.Patch()")>]
     abstract Patch: string
 
-    [<Emit("$0.Tags()")>]
-    abstract Tags: string array
+    [<Emit("$0.TagsLength()")>]
+    abstract TagsLength: int
 
-    [<Emit("$0.Behavior()")>]
-    abstract Behavior: BehaviorFB
+    [<Emit("$0.Tags($1)")>]
+    abstract Tags: int -> string
 
-    [<Emit("$0.Slices()")>]
-    abstract Slices: ColorSliceFB array
+    [<Emit("$0.Slices($1)")>]
+    abstract Slices: int -> ColorSliceFB
+
+    [<Emit("$0.SlicesLength()")>]
+    abstract SlicesLength: int
 
   type ColorBoxFBConstructor =
     abstract prototype: ColorBoxFB with get, set
@@ -1001,25 +1225,25 @@ module FlatBufferTypes =
     abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
 
     [<Emit("Iris.Serialization.Raft.ColorBoxFB.addTags($1, $2)")>]
-    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> array -> unit
-
-    [<Emit("Iris.Serialization.Raft.ColorBoxFB.addBehavior($1, $2)")>]
-    abstract AddBehavior: builder: FlatBufferBuilder * behavior: BehaviorFB -> unit
+    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.ColorBoxFB.addSlices($1, $2)")>]
-    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> array -> unit
+    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.ColorBoxFB.endColorBoxFB($1)")>]
-    abstract EndColorBoxFB: builder: FlatBufferBuilder -> Offset<'a>
+    abstract EndColorBoxFB: builder: FlatBufferBuilder -> Offset<ColorBoxFB>
 
     [<Emit("Iris.Serialization.Raft.ColorBoxFB.getRootAsColorBoxFB($1)")>]
     abstract GetRootAsColorBoxFB: buffer: ByteBuffer -> ColorBoxFB
 
     [<Emit("Iris.Serialization.Raft.ColorBoxFB.createTagsVector($1, $2)")>]
-    abstract CreateTagsVector: builder: FlatBufferBuilder -> Offset<string> array -> Offset<'a>
+    abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
 
     [<Emit("Iris.Serialization.Raft.ColorBoxFB.createSlicesVector($1, $2)")>]
-    abstract CreateSlicesVector: builder: FlatBufferBuilder -> Offset<'a> array -> Offset<'a>
+    abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
+
+    [<Emit("new Iris.Serialization.Raft.ColorBoxFB()")>]
+    abstract Create: unit -> ColorBoxFB
 
   let ColorBoxFB : ColorBoxFBConstructor = failwith "JS only"
 
@@ -1032,12 +1256,14 @@ module FlatBufferTypes =
 
   type StringSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: string
+    abstract Index: uint64
 
     [<Emit("$0.Value()")>]
-    abstract Value: bool
+    abstract Value: string
 
   type StringSliceFBConstructor =
+    abstract prototype: StringSliceFB with get, set
+
     [<Emit("Iris.Serialization.Raft.StringSliceFB.startStringSliceFB($1)")>]
     abstract StartStringSliceFB: builder: FlatBufferBuilder -> unit
 
@@ -1045,13 +1271,16 @@ module FlatBufferTypes =
     abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
 
     [<Emit("Iris.Serialization.Raft.StringSliceFB.addValue($1, $2)")>]
-    abstract AddValue: builder: FlatBufferBuilder * value: bool -> unit
+    abstract AddValue: builder: FlatBufferBuilder * value: Offset<string> -> unit
 
     [<Emit("Iris.Serialization.Raft.StringSliceFB.endStringSliceFB($1)")>]
-    abstract EndStringSliceFB: builder: FlatBufferBuilder -> unit
+    abstract EndStringSliceFB: builder: FlatBufferBuilder -> Offset<StringSliceFB>
 
     [<Emit("Iris.Serialization.Raft.StringSliceFB.getRootAsStringSliceFB($1)")>]
     abstract GetRootAsStringSliceFB: buffer: ByteBuffer -> StringSliceFB
+
+    [<Emit("new Iris.Serialization.Raft.StringSliceFB()")>]
+    abstract Create: unit -> StringSliceFB
 
   let StringSliceFB: StringSliceFBConstructor = failwith "JS only"
 
@@ -1072,14 +1301,26 @@ module FlatBufferTypes =
     [<Emit("$0.Patch()")>]
     abstract Patch: string
 
-    [<Emit("$0.Tags()")>]
-    abstract Tags: string array
+    [<Emit("$0.StringType()")>]
+    abstract StringType: StringTypeFB
 
-    [<Emit("$0.Behavior()")>]
-    abstract Behavior: BehaviorFB
+    [<Emit("$0.FileMask()")>]
+    abstract FileMask: string
 
-    [<Emit("$0.Slices()")>]
-    abstract Slices: StringSliceFB array
+    [<Emit("$0.MaxChars()")>]
+    abstract MaxChars: int
+
+    [<Emit("$0.TagsLength()")>]
+    abstract TagsLength: int
+
+    [<Emit("$0.Tags($1)")>]
+    abstract Tags: int -> string
+
+    [<Emit("$0.Slices($1)")>]
+    abstract Slices: int -> StringSliceFB
+
+    [<Emit("$0.SlicesLength()")>]
+    abstract SlicesLength: int
 
   type StringBoxFBConstructor =
     abstract prototype: StringBoxFB with get, set
@@ -1096,14 +1337,23 @@ module FlatBufferTypes =
     [<Emit("Iris.Serialization.Raft.StringBoxFB.addPatch($1, $2)")>]
     abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
 
+    [<Emit("Iris.Serialization.Raft.StringBoxFB.addStringType($1, $2)")>]
+    abstract AddStringType: builder: FlatBufferBuilder * tipe: StringTypeFB -> unit
+
+    [<Emit("Iris.Serialization.Raft.StringBoxFB.addFileMask($1, $2)")>]
+    abstract AddFileMask: builder: FlatBufferBuilder * mask: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.StringBoxFB.addMaxChars($1, $2)")>]
+    abstract AddMaxChars: builder: FlatBufferBuilder * max: int -> unit
+
     [<Emit("Iris.Serialization.Raft.StringBoxFB.addTags($1, $2)")>]
-    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> array -> unit
+    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.StringBoxFB.addBehavior($1, $2)")>]
     abstract AddBehavior: builder: FlatBufferBuilder * behavior: BehaviorFB -> unit
 
     [<Emit("Iris.Serialization.Raft.StringBoxFB.addSlices($1, $2)")>]
-    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> array -> unit
+    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.StringBoxFB.endStringBoxFB($1)")>]
     abstract EndStringBoxFB: builder: FlatBufferBuilder -> Offset<'a>
@@ -1112,10 +1362,13 @@ module FlatBufferTypes =
     abstract GetRootAsStringBoxFB: buffer: ByteBuffer -> StringBoxFB
 
     [<Emit("Iris.Serialization.Raft.StringBoxFB.createTagsVector($1, $2)")>]
-    abstract CreateTagsVector: builder: FlatBufferBuilder -> Offset<string> array -> Offset<'a>
+    abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
 
     [<Emit("Iris.Serialization.Raft.StringBoxFB.createSlicesVector($1, $2)")>]
-    abstract CreateSlicesVector: builder: FlatBufferBuilder -> Offset<'a> array -> Offset<'a>
+    abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<StringSliceFB> array -> Offset<'a>
+
+    [<Emit("new Iris.Serialization.Raft.StringBoxFB()")>]
+    abstract Create: unit -> StringBoxFB
 
   let StringBoxFB : StringBoxFBConstructor = failwith "JS only"
 
@@ -1128,12 +1381,17 @@ module FlatBufferTypes =
 
   type CompoundSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: string
+    abstract Index: uint64
 
-    [<Emit("$0.Value()")>]
-    abstract Value: bool
+    [<Emit("$0.Value($1)")>]
+    abstract Value: int -> IOBoxFB
+
+    [<Emit("$0.ValueLength()")>]
+    abstract ValueLength: int
 
   type CompoundSliceFBConstructor =
+    abstract prototype: CompoundSliceFB with get, set
+
     [<Emit("Iris.Serialization.Raft.CompoundSliceFB.startCompoundSliceFB($1)")>]
     abstract StartCompoundSliceFB: builder: FlatBufferBuilder -> unit
 
@@ -1141,13 +1399,19 @@ module FlatBufferTypes =
     abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
 
     [<Emit("Iris.Serialization.Raft.CompoundSliceFB.addValue($1, $2)")>]
-    abstract AddValue: builder: FlatBufferBuilder * value: bool -> unit
+    abstract AddValue: builder: FlatBufferBuilder * value: Offset<'a> -> unit
+
+    [<Emit("Iris.Serialization.Raft.CompoundSliceFB.createValueVector($1, $2)")>]
+    abstract CreateValueVector: builder: FlatBufferBuilder * value: Offset<IOBoxFB> array -> Offset<'a>
 
     [<Emit("Iris.Serialization.Raft.CompoundSliceFB.endCompoundSliceFB($1)")>]
-    abstract EndCompoundSliceFB: builder: FlatBufferBuilder -> unit
+    abstract EndCompoundSliceFB: builder: FlatBufferBuilder -> Offset<CompoundSliceFB>
 
     [<Emit("Iris.Serialization.Raft.CompoundSliceFB.getRootAsCompoundSliceFB($1)")>]
     abstract GetRootAsCompoundSliceFB: buffer: ByteBuffer -> CompoundSliceFB
+
+    [<Emit("new Iris.Serialization.Raft.CompoundSliceFB()")>]
+    abstract Create: unit -> CompoundSliceFB
 
   let CompoundSliceFB: CompoundSliceFBConstructor = failwith "JS only"
 
@@ -1168,14 +1432,17 @@ module FlatBufferTypes =
     [<Emit("$0.Patch()")>]
     abstract Patch: string
 
-    [<Emit("$0.Tags()")>]
-    abstract Tags: string array
+    [<Emit("$0.Tags($1)")>]
+    abstract Tags: int -> string
 
-    [<Emit("$0.Behavior()")>]
-    abstract Behavior: BehaviorFB
+    [<Emit("$0.TagsLength()")>]
+    abstract TagsLength: int
 
-    [<Emit("$0.Slices()")>]
-    abstract Slices: CompoundSliceFB array
+    [<Emit("$0.Slices($1)")>]
+    abstract Slices: int -> CompoundSliceFB
+
+    [<Emit("$0.SlicesLength()")>]
+    abstract SlicesLength: int
 
   type CompoundBoxFBConstructor =
     abstract prototype: CompoundBoxFB with get, set
@@ -1193,13 +1460,10 @@ module FlatBufferTypes =
     abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
 
     [<Emit("Iris.Serialization.Raft.CompoundBoxFB.addTags($1, $2)")>]
-    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> array -> unit
-
-    [<Emit("Iris.Serialization.Raft.CompoundBoxFB.addBehavior($1, $2)")>]
-    abstract AddBehavior: builder: FlatBufferBuilder * behavior: BehaviorFB -> unit
+    abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.CompoundBoxFB.addSlices($1, $2)")>]
-    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> array -> unit
+    abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
 
     [<Emit("Iris.Serialization.Raft.CompoundBoxFB.endCompoundBoxFB($1)")>]
     abstract EndCompoundBoxFB: builder: FlatBufferBuilder -> Offset<'a>
@@ -1208,12 +1472,88 @@ module FlatBufferTypes =
     abstract GetRootAsCompoundBoxFB: buffer: ByteBuffer -> CompoundBoxFB
 
     [<Emit("Iris.Serialization.Raft.CompoundBoxFB.createTagsVector($1, $2)")>]
-    abstract CreateTagsVector: builder: FlatBufferBuilder -> Offset<string> array -> Offset<'a>
+    abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
 
     [<Emit("Iris.Serialization.Raft.CompoundBoxFB.createSlicesVector($1, $2)")>]
-    abstract CreateSlicesVector: builder: FlatBufferBuilder -> Offset<'a> array -> Offset<'a>
+    abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
+
+    [<Emit("new Iris.Serialization.Raft.CompoundBoxFB()")>]
+    abstract Create: unit -> CompoundBoxFB
 
   let CompoundBoxFB : CompoundBoxFBConstructor = failwith "JS only"
+
+  //  ____  _ _         _____                 _____ ____
+  // / ___|| (_) ___ __|_   _|   _ _ __   ___|  ___| __ )
+  // \___ \| | |/ __/ _ \| || | | | '_ \ / _ \ |_  |  _ \
+  //  ___) | | | (_|  __/| || |_| | |_) |  __/  _| | |_) |
+  // |____/|_|_|\___\___||_| \__, | .__/ \___|_|   |____/
+  //                         |___/|_|
+
+  type SliceTypeFB = int
+
+  type SliceTypeFBConstructor =
+
+    [<Emit("Iris.Serialization.Raft.SliceTypeFB.StringSliceFB")>]
+    abstract StringSliceFB : SliceTypeFB
+
+    [<Emit("Iris.Serialization.Raft.SliceTypeFB.IntSliceFB")>]
+    abstract IntSliceFB : SliceTypeFB
+
+    [<Emit("Iris.Serialization.Raft.SliceTypeFB.FloatSliceFB")>]
+    abstract FloatSliceFB : SliceTypeFB
+
+    [<Emit("Iris.Serialization.Raft.SliceTypeFB.DoubleSliceFB")>]
+    abstract DoubleSliceFB : SliceTypeFB
+
+    [<Emit("Iris.Serialization.Raft.SliceTypeFB.BoolSliceFB")>]
+    abstract BoolSliceFB : SliceTypeFB
+
+    [<Emit("Iris.Serialization.Raft.SliceTypeFB.ByteSliceFB")>]
+    abstract ByteSliceFB : SliceTypeFB
+
+    [<Emit("Iris.Serialization.Raft.SliceTypeFB.EnumSliceFB")>]
+    abstract EnumSliceFB : SliceTypeFB
+
+    [<Emit("Iris.Serialization.Raft.SliceTypeFB.ColorSliceFB")>]
+    abstract ColorSliceFB : SliceTypeFB
+
+    [<Emit("Iris.Serialization.Raft.SliceTypeFB.CompoundSliceFB")>]
+    abstract CompoundSliceFB : SliceTypeFB
+
+  let SliceTypeFB: SliceTypeFBConstructor = failwith "JS only"
+
+  //  ____  _ _          _____ ____
+  // / ___|| (_) ___ ___|  ___| __ )
+  // \___ \| | |/ __/ _ \ |_  |  _ \
+  //  ___) | | | (_|  __/  _| | |_) |
+  // |____/|_|_|\___\___|_|   |____/
+
+  type SliceFB =
+
+    [<Emit("$0.Slice($1))")>]
+    abstract Slice: 'a -> 'a
+
+    [<Emit("$0.SliceType()")>]
+    abstract SliceType: int
+
+  type SliceFBConstructor =
+
+    [<Emit("Iris.Serialization.Raft.SliceFB.startSliceFB($0)")>]
+    abstract StartSliceFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialziation.Raft.SliceFB.addSlice($0,$1)")>]
+    abstract AddSlice: builder: FlatBufferBuilder * thing: int -> unit
+
+    [<Emit("Iris.Serialization.RAft.SliceFB.addSliceType($0,$1)")>]
+    abstract AddSliceType: builder: FlatBufferBuilder * tipe: SliceTypeFB -> unit
+
+    [<Emit("Iris.Serialization.Raft.SliceFB.endSliceFB($0)")>]
+    abstract EndSliceFB: builder: FlatBufferBuilder -> Offset<SliceFB>
+
+    [<Emit("Iris.Serialization.Raft.SliceFB.getRootAsSliceFB($0)")>]
+    abstract GetRootAsSliceFB: bytes: ByteBuffer -> SliceFB
+
+  let SliceFB: SliceFBConstructor = failwith "JS only"
 
   //   ____           _____ ____
   //  / ___|   _  ___|  ___| __ )

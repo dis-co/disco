@@ -486,7 +486,7 @@ type IOBox =
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<IOBoxFB> =
     let inline build (data: ^t) tipe =
-      let offset = toOffset builder data
+      let offset = Binary.toOffset builder data
       IOBoxFB.StartIOBoxFB(builder)
       IOBoxFB.AddIOBox(builder, offset.Value)
       IOBoxFB.AddIOBoxType(builder, tipe)
@@ -504,6 +504,55 @@ type IOBox =
     | Compound  data -> build data IOBoxTypeFB.CompoundBoxFB
 
   static member FromFB(fb: IOBoxFB) : IOBox option =
+#if JAVASCRIPT
+    match fb.IOBoxType with
+    | x when x = IOBoxTypeFB.StringBoxFB ->
+      fb.IOBox(StringBoxFB.Create())
+      |> StringBoxD.FromFB
+      |> Option.map StringBox
+
+    | x when x = IOBoxTypeFB.IntBoxFB ->
+      fb.IOBox(IntBoxFB.Create())
+      |> IntBoxD.FromFB
+      |> Option.map IntBox
+
+    | x when x = IOBoxTypeFB.FloatBoxFB ->
+      fb.IOBox(FloatBoxFB.Create())
+      |> FloatBoxD.FromFB
+      |> Option.map FloatBox
+
+    | x when x = IOBoxTypeFB.DoubleBoxFB ->
+      fb.IOBox(DoubleBoxFB.Create())
+      |> DoubleBoxD.FromFB
+      |> Option.map DoubleBox
+
+    | x when x = IOBoxTypeFB.BoolBoxFB ->
+      fb.IOBox(BoolBoxFB.Create())
+      |> BoolBoxD.FromFB
+      |> Option.map BoolBox
+
+    | x when x = IOBoxTypeFB.ByteBoxFB ->
+      fb.IOBox(ByteBoxFB.Create())
+      |> ByteBoxD.FromFB
+      |> Option.map ByteBox
+
+    | x when x = IOBoxTypeFB.EnumBoxFB ->
+      fb.IOBox(EnumBoxFB.Create())
+      |> EnumBoxD.FromFB
+      |> Option.map EnumBox
+
+    | x when x = IOBoxTypeFB.ColorBoxFB ->
+      fb.IOBox(ColorBoxFB.Create())
+      |> ColorBoxD.FromFB
+      |> Option.map ColorBox
+
+    | x when x = IOBoxTypeFB.CompoundBoxFB ->
+      fb.IOBox(CompoundBoxFB.Create())
+      |> CompoundBoxD.FromFB
+      |> Option.map Compound
+
+    | _ -> None
+#else
     match fb.IOBoxType with
     | IOBoxTypeFB.StringBoxFB ->
       let v = fb.IOBox<StringBoxFB>()
@@ -578,11 +627,13 @@ type IOBox =
       else None
 
     | _ -> None
+#endif
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : IOBox option =
-    IOBoxFB.GetRootAsIOBoxFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : IOBox option =
+    Binary.createBuffer bytes
+    |> IOBoxFB.GetRootAsIOBoxFB
     |> IOBox.FromFB
 
 //  ____              _ ____
@@ -632,11 +683,18 @@ and BoolBoxD =
 
     for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
+#if JAVASCRIPT
+      slice
+      |> BoolSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+#else
       if slice.HasValue then
         slice.Value
         |> BoolSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     Behavior.FromFB fb.Behavior
     |> Option.map
@@ -648,10 +706,11 @@ and BoolBoxD =
         ; Behavior   = behavior
         ; Slices     = slices })
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : BoolBoxD option =
-    BoolBoxFB.GetRootAsBoolBoxFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : BoolBoxD option =
+    Binary.createBuffer bytes
+    |> BoolBoxFB.GetRootAsBoolBoxFB
     |> BoolBoxD.FromFB
 
 //  ____              _ ____  _ _
@@ -685,10 +744,11 @@ and BoolSliceD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : BoolSliceD option =
-    BoolSliceFB.GetRootAsBoolSliceFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : BoolSliceD option =
+    Binary.createBuffer bytes
+    |> BoolSliceFB.GetRootAsBoolSliceFB
     |> BoolSliceD.FromFB
 
 //  ___       _   ____
@@ -746,11 +806,18 @@ and IntBoxD =
 
     for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
+#if JAVASCRIPT
+      slice
+      |> IntSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+#else
       if slice.HasValue then
         slice.Value
         |> IntSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     try
       { Id         = Id fb.Id
@@ -766,10 +833,11 @@ and IntBoxD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : IntBoxD option =
-    IntBoxFB.GetRootAsIntBoxFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : IntBoxD option =
+    Binary.createBuffer bytes
+    |> IntBoxFB.GetRootAsIntBoxFB
     |> IntBoxD.FromFB
 
 //  ___       _   ____  _ _
@@ -803,10 +871,11 @@ and IntSliceD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : IntSliceD option =
-    IntSliceFB.GetRootAsIntSliceFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : IntSliceD option =
+    Binary.createBuffer bytes
+    |> IntSliceFB.GetRootAsIntSliceFB
     |> IntSliceD.FromFB
 
 //  _____ _             _   ____
@@ -865,12 +934,19 @@ and FloatBoxD =
       tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.SlicesLength - 1) do
+#if JAVASCRIPT
+      fb.Slices(i)
+      |> FloatSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+#else
       let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
         |> FloatSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     try
       { Id         = Id fb.Id
@@ -887,10 +963,11 @@ and FloatBoxD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : FloatBoxD option =
-    FloatBoxFB.GetRootAsFloatBoxFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : FloatBoxD option =
+    Binary.createBuffer bytes
+    |> FloatBoxFB.GetRootAsFloatBoxFB
     |> FloatBoxD.FromFB
 
 //  _____ _             _   ____  _ _
@@ -925,10 +1002,11 @@ and FloatSliceD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : FloatSliceD option =
-    FloatSliceFB.GetRootAsFloatSliceFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : FloatSliceD option =
+    Binary.createBuffer bytes
+    |> FloatSliceFB.GetRootAsFloatSliceFB
     |> FloatSliceD.FromFB
 
 //  ____              _     _      ____
@@ -988,12 +1066,19 @@ and DoubleBoxD =
       tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.SlicesLength - 1) do
+#if JAVASCRIPT
+      fb.Slices(i)
+      |> DoubleSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+#else
       let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
         |> DoubleSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     try
       { Id         = Id fb.Id
@@ -1010,10 +1095,11 @@ and DoubleBoxD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : DoubleBoxD option =
-    DoubleBoxFB.GetRootAsDoubleBoxFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : DoubleBoxD option =
+    Binary.createBuffer bytes
+    |> DoubleBoxFB.GetRootAsDoubleBoxFB
     |> DoubleBoxD.FromFB
 
 //  ____              _     _      ____  _ _
@@ -1047,10 +1133,11 @@ and DoubleSliceD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : DoubleSliceD option =
-    DoubleSliceFB.GetRootAsDoubleSliceFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : DoubleSliceD option =
+    Binary.createBuffer bytes
+    |> DoubleSliceFB.GetRootAsDoubleSliceFB
     |> DoubleSliceD.FromFB
 
 //  ____        _       ____
@@ -1098,12 +1185,19 @@ and ByteBoxD =
       tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.SlicesLength - 1) do
+#if JAVASCRIPT
+      fb.Slices(i)
+      |> ByteSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+#else
       let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
         |> ByteSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     try
       { Id         = Id fb.Id
@@ -1115,10 +1209,11 @@ and ByteBoxD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : ByteBoxD option =
-    ByteBoxFB.GetRootAsByteBoxFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : ByteBoxD option =
+    Binary.createBuffer bytes
+    |> ByteBoxFB.GetRootAsByteBoxFB
     |> ByteBoxD.FromFB
 
 //  ____        _       ____  _ _
@@ -1140,7 +1235,7 @@ and ByteSliceD =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let bytes = ByteSliceFB.CreateValueVector(builder, self.Value)
+    let bytes = ByteSliceFB.CreateValueVector(builder, [| |])
     ByteSliceFB.StartByteSliceFB(builder)
     ByteSliceFB.AddIndex(builder, self.Index)
     ByteSliceFB.AddValue(builder, bytes)
@@ -1159,10 +1254,11 @@ and ByteSliceD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : ByteSliceD option =
-    ByteSliceFB.GetRootAsByteSliceFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : ByteSliceD option =
+    Binary.createBuffer bytes
+    |> ByteSliceFB.GetRootAsByteSliceFB
     |> ByteSliceD.FromFB
 
 //  _____                       ____
@@ -1218,18 +1314,30 @@ and EnumBoxD =
       tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.PropertiesLength - 1) do
+#if JAVASCRIPT
+      let prop = fb.Properties(i)
+      properties.[i] <- { Key = prop.Key; Value = prop.Value }
+#else
       let prop = fb.Properties(i)
       if prop.HasValue then
         let value = prop.Value
         properties.[i] <- { Key = value.Key; Value = value.Value }
+#endif
 
     for i in 0 .. (fb.SlicesLength - 1) do
+#if JAVASCRIPT
+      fb.Slices(i)
+      |> EnumSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+#else
       let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
         |> EnumSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     try
       { Id         = Id fb.Id
@@ -1242,10 +1350,11 @@ and EnumBoxD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromEnums(bytes: byte array) : EnumBoxD option =
-    EnumBoxFB.GetRootAsEnumBoxFB(new ByteBuffer(bytes))
+  static member FromEnums(bytes: Binary.Buffer) : EnumBoxD option =
+    Binary.createBuffer bytes
+    |> EnumBoxFB.GetRootAsEnumBoxFB
     |> EnumBoxD.FromFB
 
 //  _____                       ____  _ _
@@ -1281,6 +1390,15 @@ and EnumSliceD =
     EnumSliceFB.EndEnumSliceFB(builder)
 
   static member FromFB(fb: EnumSliceFB) : EnumSliceD option =
+#if JAVASCRIPT
+    let prop = fb.Value
+    try
+      { Index = fb.Index
+      ; Value = { Key = prop.Key; Value = prop.Value } }
+      |> Some
+    with
+      | _ -> None
+#else
     let nullable = fb.Value
     if nullable.HasValue then
       let prop = nullable.Value
@@ -1291,11 +1409,13 @@ and EnumSliceD =
       with
         | _ -> None
     else None
+#endif
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromEnums(bytes: byte array) : EnumSliceD option =
-    EnumSliceFB.GetRootAsEnumSliceFB(new ByteBuffer(bytes))
+  static member FromEnums(bytes: Binary.Buffer) : EnumSliceD option =
+    Binary.createBuffer bytes
+    |> EnumSliceFB.GetRootAsEnumSliceFB
     |> EnumSliceD.FromFB
 
 //   ____      _            ____
@@ -1342,12 +1462,19 @@ and ColorBoxD =
       tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.SlicesLength - 1) do
+#if JAVASCRIPT
+      fb.Slices(i)
+      |> ColorSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+#else
       let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
         |> ColorSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     try
       { Id     = Id fb.Id
@@ -1359,10 +1486,11 @@ and ColorBoxD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromColors(bytes: byte array) : ColorBoxD option =
-    ColorBoxFB.GetRootAsColorBoxFB(new ByteBuffer(bytes))
+  static member FromColors(bytes: Binary.Buffer) : ColorBoxD option =
+    Binary.createBuffer bytes
+    |> ColorBoxFB.GetRootAsColorBoxFB
     |> ColorBoxD.FromFB
 
 //   ____      _            ____  _ _
@@ -1391,16 +1519,23 @@ and ColorSliceD =
     ColorSliceFB.EndColorSliceFB(builder)
 
   static member FromFB(fb: ColorSliceFB) : ColorSliceD option =
+#if JAVASCRIPT
+    fb.Value
+    |> ColorSpace.FromFB
+    |> Option.map (fun color -> { Index = fb.Index; Value = color })
+#else
     let nullable = fb.Value
     if nullable.HasValue then
       ColorSpace.FromFB nullable.Value
       |> Option.map (fun color -> { Index = fb.Index; Value = color })
     else None
+#endif
 
-  member self.ToColors() : byte array = Binary.buildBuffer self
+  member self.ToColors() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromColors(bytes: byte array) : ColorSliceD option =
-    ColorSliceFB.GetRootAsColorSliceFB(new ByteBuffer(bytes))
+  static member FromColors(bytes: Binary.Buffer) : ColorSliceD option =
+    Binary.createBuffer bytes
+    |> ColorSliceFB.GetRootAsColorSliceFB
     |> ColorSliceD.FromFB
 
 //  ____  _        _             ____
@@ -1460,12 +1595,19 @@ and StringBoxD =
       tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.SlicesLength - 1) do
+#if JAVASCRIPT
+      fb.Slices(i)
+      |> StringSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+#else
       let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
         |> StringSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     StringType.FromFB fb.StringType
     |> Option.map
@@ -1479,10 +1621,11 @@ and StringBoxD =
         ; MaxChars   = fb.MaxChars
         ; Slices     = slices })
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromStrings(bytes: byte array) : StringBoxD option =
-    StringBoxFB.GetRootAsStringBoxFB(new ByteBuffer(bytes))
+  static member FromStrings(bytes: Binary.Buffer) : StringBoxD option =
+    Binary.createBuffer bytes
+    |> StringBoxFB.GetRootAsStringBoxFB
     |> StringBoxD.FromFB
 
 //  ____  _        _             ____  _ _
@@ -1518,10 +1661,11 @@ and StringSliceD =
     with
       | _ -> None
 
-  member self.ToStrings() : byte array = Binary.buildBuffer self
+  member self.ToStrings() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromStrings(bytes: byte array) : StringSliceD option =
-    StringSliceFB.GetRootAsStringSliceFB(new ByteBuffer(bytes))
+  static member FromStrings(bytes: Binary.Buffer) : StringSliceD option =
+    Binary.createBuffer bytes
+    |> StringSliceFB.GetRootAsStringSliceFB
     |> StringSliceD.FromFB
 
 //   ____                                            _ ____
@@ -1570,12 +1714,19 @@ and CompoundBoxD =
       tags.[i] <- fb.Tags(i)
 
     for i in 0 .. (fb.SlicesLength - 1) do
+#if JAVASCRIPT
+      fb.Slices(i)
+      |> CompoundSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+#else
       let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
         |> CompoundSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     try
       { Id         = Id fb.Id
@@ -1587,10 +1738,11 @@ and CompoundBoxD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromCompounds(bytes: byte array) : CompoundBoxD option =
-    CompoundBoxFB.GetRootAsCompoundBoxFB(new ByteBuffer(bytes))
+  static member FromCompounds(bytes: Binary.Buffer) : CompoundBoxD option =
+    Binary.createBuffer bytes
+    |> CompoundBoxFB.GetRootAsCompoundBoxFB
     |> CompoundBoxD.FromFB
 
 //   ____                                            _ ____  _ _
@@ -1623,12 +1775,19 @@ and CompoundSliceD =
     let ioboxes = Array.zeroCreate fb.ValueLength
 
     for i in 0 .. (fb.ValueLength - 1) do
+#if JAVASCRIPT
+      fb.Value(i)
+      |> IOBox.FromFB
+      |> Option.map (fun iobox -> ioboxes.[i] <- iobox)
+      |> ignore
+#else
       let nullable = fb.Value(i)
       if nullable.HasValue then
         nullable.Value
         |> IOBox.FromFB
         |> Option.map (fun iobox -> ioboxes.[i] <- iobox)
         |> ignore
+#endif
 
     try
       { Index = fb.Index
@@ -1637,10 +1796,11 @@ and CompoundSliceD =
     with
       | _ -> None
 
-  member self.ToCompounds() : byte array = Binary.buildBuffer self
+  member self.ToCompounds() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromCompounds(bytes: byte array) : CompoundSliceD option =
-    CompoundSliceFB.GetRootAsCompoundSliceFB(new ByteBuffer(bytes))
+  static member FromCompounds(bytes: Binary.Buffer) : CompoundSliceD option =
+    Binary.createBuffer bytes
+    |> CompoundSliceFB.GetRootAsCompoundSliceFB
     |> CompoundSliceD.FromFB
 
 //  ____  _ _
@@ -1822,6 +1982,63 @@ and Slice =
 
   static member FromFB(fb: SliceFB) : Slice option =
     match fb.SliceType with
+#if JAVASCRIPT
+    | x when x = SliceTypeFB.StringSliceFB ->
+      StringSliceFB.Create()
+      |> fb.Slice
+      |> StringSliceD.FromFB
+      |> Option.map StringSlice
+
+    | x when x = SliceTypeFB.IntSliceFB ->
+      IntSliceFB.Create()
+      |> fb.Slice
+      |> IntSliceD.FromFB
+      |> Option.map IntSlice
+
+    | x when x = SliceTypeFB.FloatSliceFB ->
+      FloatSliceFB.Create()
+      |> fb.Slice
+      |> FloatSliceD.FromFB
+      |> Option.map FloatSlice
+
+    | x when x = SliceTypeFB.DoubleSliceFB ->
+      DoubleSliceFB.Create()
+      |> fb.Slice
+      |> DoubleSliceD.FromFB
+      |> Option.map DoubleSlice
+
+    | x when x = SliceTypeFB.BoolSliceFB ->
+      BoolSliceFB.Create()
+      |> fb.Slice
+      |> BoolSliceD.FromFB
+      |> Option.map BoolSlice
+
+    | x when x = SliceTypeFB.ByteSliceFB ->
+      ByteSliceFB.Create()
+      |> fb.Slice
+      |> ByteSliceD.FromFB
+      |> Option.map ByteSlice
+
+    | x when x = SliceTypeFB.EnumSliceFB ->
+      EnumSliceFB.Create()
+      |> fb.Slice
+      |> EnumSliceD.FromFB
+      |> Option.map EnumSlice
+
+    | x when x = SliceTypeFB.ColorSliceFB ->
+      ColorSliceFB.Create()
+      |> fb.Slice
+      |> ColorSliceD.FromFB
+      |> Option.map ColorSlice
+
+    | x when x = SliceTypeFB.CompoundSliceFB ->
+      CompoundSliceFB.Create()
+      |> fb.Slice
+      |> CompoundSliceD.FromFB
+      |> Option.map CompoundSlice
+
+    | _ -> None
+#else
     | SliceTypeFB.StringSliceFB   ->
       let slice = fb.Slice<StringSliceFB>()
       if slice.HasValue then
@@ -1894,11 +2111,13 @@ and Slice =
         |> Option.map CompoundSlice
       else None
     | _ -> None
+#endif
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : Slice option =
-    SliceFB.GetRootAsSliceFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : Slice option =
+    Binary.createBuffer bytes
+    |> SliceFB.GetRootAsSliceFB
     |> Slice.FromFB
 
 //  ____  _ _
