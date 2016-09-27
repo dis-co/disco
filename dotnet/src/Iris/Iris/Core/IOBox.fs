@@ -1223,9 +1223,53 @@ and ByteBoxD =
 // |____/ \__, |\__\___|____/|_|_|\___\___|
 //        |___/
 
-and ByteSliceD =
+and [<CustomEquality;CustomComparison>] ByteSliceD =
   { Index: Index
-  ; Value: byte array }
+  ; Value: Binary.Buffer }
+
+  override self.Equals(other) =
+    match other with
+    | :? ByteSliceD as slice ->
+      let mutable contentsEqual = false
+      let lengthEqual =
+#if JAVASCRIPT
+        let result = self.Value.byteLength = slice.Value.byteLength
+        if result then
+          let me = Fable.Import.JS.Uint8Array.Create(self.Value)
+          let it = Fable.Import.JS.Uint8Array.Create(slice.Value)
+          let mutable contents = true
+          let mutable i = 0
+          while i < int self.Value.byteLength do
+            if contents then
+              contents <- me.[i] = it.[i]
+            i <- i + 1
+          contentsEqual <- contents
+        result
+#else
+        failwith ".NET impl missing"
+#endif
+      slice.Index = self.Index &&
+      lengthEqual &&
+      contentsEqual
+    | _ -> false
+
+  override self.GetHashCode() =
+    let mutable hash = 42
+#if JAVASCRIPT
+    hash <- (hash * 7) + hashCode (string self.Index)
+    hash <- (hash * 7) + hashCode (string self.Value.byteLength)
+#else
+    hash <- (hash * 7) + self.Index.GetHashCode()
+    hash <- (hash * 7) + self.Value.GetHashCode()
+#endif
+    hash
+
+  interface System.IComparable with
+    member self.CompareTo other =
+      match other with
+      | :? ByteSliceD as slice -> compare self.Index slice.Index
+      | _ -> invalidArg "other" "cannot compare value of different types"
+
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1235,19 +1279,36 @@ and ByteSliceD =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let bytes = ByteSliceFB.CreateValueVector(builder, [| |])
+    let encode bytes =
+#if JAVASCRIPT
+      let mutable str = ""
+      let arr = Fable.Import.JS.Uint8Array.Create(self.Value)
+      for i in 0 .. (int arr.length - 1) do
+        str <- str + Fable.Import.JS.String.fromCharCode arr.[i]
+      Fable.Import.Browser.window.btoa str
+#else
+      failwith "hoy"
+#endif
+    let encoded = encode self.Value
+    let bytes = builder.CreateString encoded
     ByteSliceFB.StartByteSliceFB(builder)
     ByteSliceFB.AddIndex(builder, self.Index)
     ByteSliceFB.AddValue(builder, bytes)
     ByteSliceFB.EndByteSliceFB(builder)
 
   static member FromFB(fb: ByteSliceFB) : ByteSliceD option =
+    let decode str =
+#if JAVASCRIPT
+      let binary = Fable.Import.Browser.window.atob str
+      let bytes = Fable.Import.JS.Uint8Array.Create(float binary.Length)
+      for i in 0 .. (binary.Length - 1) do
+        bytes.[i] <- charCodeAt binary i
+      bytes.buffer
+#else
+      failwith "hoy"
+#endif
     try
-      let values = Array.zeroCreate fb.ValueLength
-
-      for i in 0 .. (fb.ValueLength - 1) do
-        values.[i] <- fb.Value(i)
-
+      let values = decode fb.Value
       { Index = fb.Index
       ; Value = values }
       |> Some
@@ -1966,7 +2027,11 @@ and Slice =
     let build tipe (offset: Offset<_>) =
       SliceFB.StartSliceFB(builder)
       SliceFB.AddSliceType(builder, tipe)
+#if JAVASCRIPT
+      SliceFB.AddSlice(builder, offset)
+#else
       SliceFB.AddSlice(builder, offset.Value)
+#endif
       SliceFB.EndSliceFB(builder)
 
     match self with
@@ -2253,7 +2318,7 @@ and Slices =
     member __.CreateBool (idx: Index) (value: bool) =
       BoolSlice { Index = idx; Value = value }
 
-    member __.CreateByte (idx: Index) (value: byte array) =
+    member __.CreateByte (idx: Index) (value: Binary.Buffer) =
       ByteSlice { Index = idx; Value = value }
 
     member __.CreateEnum (idx: Index) (value: Property) =

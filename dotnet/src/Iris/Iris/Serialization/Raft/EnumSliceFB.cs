@@ -15,20 +15,20 @@ public struct EnumSliceFB : IFlatbufferObject
   public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
   public EnumSliceFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Index { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public uint Index { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
   public EnumPropertyFB? Value { get { int o = __p.__offset(6); return o != 0 ? (EnumPropertyFB?)(new EnumPropertyFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<EnumSliceFB> CreateEnumSliceFB(FlatBufferBuilder builder,
-      ulong Index = 0,
+      uint Index = 0,
       Offset<EnumPropertyFB> ValueOffset = default(Offset<EnumPropertyFB>)) {
     builder.StartObject(2);
-    EnumSliceFB.AddIndex(builder, Index);
     EnumSliceFB.AddValue(builder, ValueOffset);
+    EnumSliceFB.AddIndex(builder, Index);
     return EnumSliceFB.EndEnumSliceFB(builder);
   }
 
   public static void StartEnumSliceFB(FlatBufferBuilder builder) { builder.StartObject(2); }
-  public static void AddIndex(FlatBufferBuilder builder, ulong Index) { builder.AddUlong(0, Index, 0); }
+  public static void AddIndex(FlatBufferBuilder builder, uint Index) { builder.AddUint(0, Index, 0); }
   public static void AddValue(FlatBufferBuilder builder, Offset<EnumPropertyFB> ValueOffset) { builder.AddOffset(1, ValueOffset.Value, 0); }
   public static Offset<EnumSliceFB> EndEnumSliceFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();

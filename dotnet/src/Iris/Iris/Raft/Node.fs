@@ -227,8 +227,8 @@ module Node =
     ; State      = Running
     ; Voting     = true
     ; VotedForMe = false
-    ; NextIndex  = 1UL
-    ; MatchIndex = 0UL
+    ; NextIndex  = 1u
+    ; MatchIndex = 0u
     }
 
   let isVoting (node : RaftNode) : bool =

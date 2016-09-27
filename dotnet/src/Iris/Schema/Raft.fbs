@@ -23,33 +23,33 @@ enum StringTypeFB:ushort {
 }
 
 table StringSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: string;
 }
 
 table IntSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: int;
 }
 
 table FloatSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: float;
 }
 
 table DoubleSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: double;
 }
 
 table BoolSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: bool;
 }
 
 table ByteSliceFB {
-      Index: ulong;
-      Value: [ubyte]; 
+      Index: uint;
+      Value: string; 
 }
 
 table EnumPropertyFB {
@@ -58,7 +58,7 @@ table EnumPropertyFB {
 }
 
 table EnumSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: EnumPropertyFB;
 }
 
@@ -86,12 +86,12 @@ table ColorSpaceFB {
 }
 
 table ColorSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: ColorSpaceFB;
 }
 
 table CompoundSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: [IOBoxFB];
 }
 
@@ -518,8 +518,8 @@ table NodeFB {
       Voting     : bool;
       VotedForMe : bool;
       State      : NodeStateFB;
-      NextIndex  : ulong;
-      MatchIndex : ulong;
+      NextIndex  : uint;
+      MatchIndex : uint;
 }
 
 //   ____             __ _        ____ _
@@ -548,31 +548,31 @@ table ConfigChangeFB {
 
 table ConfigurationFB {
       Id:    string;
-      Index: ulong;
-      Term : ulong;
+      Index: uint;
+      Term : uint;
       Nodes: [ NodeFB ];
 }
 
 table JointConsensusFB {
       Id:      string;
-      Index:   ulong;
-      Term:    ulong;
+      Index:   uint;
+      Term:    uint;
       Changes: [ ConfigChangeFB ];
 }
 
 table LogEntryFB {
       Id:    string;
-      Index: ulong;
-      Term:  ulong;
+      Index: uint;
+      Term:  uint;
       Data:  StateMachineFB;
 }
 
 table SnapshotFB {
       Id:         string;
-      Index:      ulong;
-      Term:       ulong;
-      LastIndex:  ulong;
-      LastTerm:   ulong;
+      Index:      uint;
+      Term:       uint;
+      LastIndex:  uint;
+      LastTerm:   uint;
       Nodes:      [ NodeFB ];
       Data:       StateMachineFB;
 }
@@ -596,14 +596,14 @@ table LogFB {
 //                          |___/
 
 table VoteRequestFB {
-      Term         : ulong;
+      Term         : uint;
       Candidate    : NodeFB;
-      LastLogIndex : ulong;
-      LastLogTerm  : ulong;
+      LastLogIndex : uint;
+      LastLogTerm  : uint;
 }
 
 table VoteResponseFB {
-      Term    : ulong;
+      Term    : uint;
       Granted : bool;
       Reason  : RaftErrorFB;
 }
@@ -616,18 +616,18 @@ table VoteResponseFB {
 //         |_|   |_|
 
 table AppendEntriesFB {
-      Term         : ulong;
-      PrevLogIdx   : ulong;
-      PrevLogTerm  : ulong;
-      LeaderCommit : ulong;
+      Term         : uint;
+      PrevLogIdx   : uint;
+      PrevLogTerm  : uint;
+      LeaderCommit : uint;
       Entries      : [ LogFB ];
 }
 
 table AppendResponseFB {
-      Term         : ulong;
+      Term         : uint;
       Success      : bool;
-      CurrentIndex : ulong;
-      FirstIndex   : ulong;
+      CurrentIndex : uint;
+      FirstIndex   : uint;
 }
 
 //  ____                        _           _
@@ -639,10 +639,10 @@ table AppendResponseFB {
 
 
 table InstallSnapshotFB {
-      Term      : ulong;
+      Term      : uint;
       LeaderId  : string;
-      LastIndex : ulong;
-      LastTerm  : ulong;
+      LastIndex : uint;
+      LastTerm  : uint;
       Data      : [ LogFB ];
 }
 

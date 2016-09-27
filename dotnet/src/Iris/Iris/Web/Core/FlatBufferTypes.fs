@@ -366,19 +366,19 @@ module FlatBufferTypes =
 
   type IOBoxFBContructor =
 
-    [<Emit("Iris.Serialization.Raft.IOBoxFB.startIOBoxFB($0)")>]
+    [<Emit("Iris.Serialization.Raft.IOBoxFB.startIOBoxFB($1)")>]
     abstract StartIOBoxFB: builder: FlatBufferBuilder -> unit
 
-    [<Emit("Iris.Serialization.Raft.IOBoxFB.addIOBox($0,$1)")>]
+    [<Emit("Iris.Serialization.Raft.IOBoxFB.addIOBox($1,$2)")>]
     abstract AddIOBox: builder: FlatBufferBuilder * iobox: int -> unit
 
-    [<Emit("Iris.Serialization.Raft.IOBoxFB.addIOBoxType($0,$1)")>]
+    [<Emit("Iris.Serialization.Raft.IOBoxFB.addIOBoxType($1,$2)")>]
     abstract AddIOBoxType: builder: FlatBufferBuilder * tipe: IOBoxTypeFB -> unit
 
-    [<Emit("Iris.Serialization.Raft.IOBoxFB.endIOBoxFB($0)")>]
+    [<Emit("Iris.Serialization.Raft.IOBoxFB.endIOBoxFB($1)")>]
     abstract EndIOBoxFB: builder: FlatBufferBuilder -> Offset<IOBoxFB>
 
-    [<Emit("Iris.Serialization.Raft.IOBoxFB.getRootAsIOBoxFB($0)")>]
+    [<Emit("Iris.Serialization.Raft.IOBoxFB.getRootAsIOBoxFB($1)")>]
     abstract GetRootAsIOBoxFB: buffer: ByteBuffer -> IOBoxFB
 
   let IOBoxFB: IOBoxFBContructor = failwith "JS only"
@@ -391,7 +391,7 @@ module FlatBufferTypes =
 
   type BoolSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: uint64
+    abstract Index: uint32
 
     [<Emit("$0.Value()")>]
     abstract Value: bool
@@ -401,7 +401,7 @@ module FlatBufferTypes =
     abstract StartBoolSliceFB: builder: FlatBufferBuilder -> unit
 
     [<Emit("Iris.Serialization.Raft.BoolSliceFB.addIndex($1, $2)")>]
-    abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
+    abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
 
     [<Emit("Iris.Serialization.Raft.BoolSliceFB.addValue($1, $2)")>]
     abstract AddValue: builder: FlatBufferBuilder * value: bool -> unit
@@ -497,7 +497,7 @@ module FlatBufferTypes =
 
   type IntSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: uint64
+    abstract Index: uint32
 
     [<Emit("$0.Value()")>]
     abstract Value: int
@@ -507,7 +507,7 @@ module FlatBufferTypes =
     abstract StartIntSliceFB: builder: FlatBufferBuilder -> unit
 
     [<Emit("Iris.Serialization.Raft.IntSliceFB.addIndex($1, $2)")>]
-    abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
+    abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
 
     [<Emit("Iris.Serialization.Raft.IntSliceFB.addValue($1, $2)")>]
     abstract AddValue: builder: FlatBufferBuilder * value: int -> unit
@@ -621,7 +621,7 @@ module FlatBufferTypes =
 
   type FloatSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: uint64
+    abstract Index: uint32
 
     [<Emit("$0.Value()")>]
     abstract Value: float
@@ -631,7 +631,7 @@ module FlatBufferTypes =
     abstract StartFloatSliceFB: builder: FlatBufferBuilder -> unit
 
     [<Emit("Iris.Serialization.Raft.FloatSliceFB.addIndex($1, $2)")>]
-    abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
+    abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
 
     [<Emit("Iris.Serialization.Raft.FloatSliceFB.addValue($1, $2)")>]
     abstract AddValue: builder: FlatBufferBuilder * value: float32 -> unit
@@ -754,7 +754,7 @@ module FlatBufferTypes =
 
   type DoubleSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: uint64
+    abstract Index: uint32
 
     [<Emit("$0.Value()")>]
     abstract Value: double
@@ -766,7 +766,7 @@ module FlatBufferTypes =
     abstract StartDoubleSliceFB: builder: FlatBufferBuilder -> unit
 
     [<Emit("Iris.Serialization.Raft.DoubleSliceFB.addIndex($1, $2)")>]
-    abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
+    abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
 
     [<Emit("Iris.Serialization.Raft.DoubleSliceFB.addValue($1, $2)")>]
     abstract AddValue: builder: FlatBufferBuilder * value: double -> unit
@@ -890,13 +890,10 @@ module FlatBufferTypes =
 
   type ByteSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: uint64
+    abstract Index: uint32
 
-    [<Emit("$0.Value($1)")>]
-    abstract Value: int -> byte
-
-    [<Emit("$0.ValueLength()")>]
-    abstract ValueLength: int
+    [<Emit("$0.Value()")>]
+    abstract Value: string
 
   type ByteSliceFBConstructor =
     abstract prototype: ByteSliceFB with get, set
@@ -905,13 +902,10 @@ module FlatBufferTypes =
     abstract StartByteSliceFB: builder: FlatBufferBuilder -> unit
 
     [<Emit("Iris.Serialization.Raft.ByteSliceFB.addIndex($1, $2)")>]
-    abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
+    abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
 
     [<Emit("Iris.Serialization.Raft.ByteSliceFB.addValue($1, $2)")>]
-    abstract AddValue: builder: FlatBufferBuilder * value: Offset<'a> -> unit
-
-    [<Emit("Iris.Serialization.Raft.ByteSliceFB.createValueVector($1, $2)")>]
-    abstract CreateValueVector: builder: FlatBufferBuilder * value: Offset<'a> array -> Offset<'a>
+    abstract AddValue: builder: FlatBufferBuilder * value: Offset<string> -> unit
 
     [<Emit("Iris.Serialization.Raft.ByteSliceFB.endByteSliceFB($1)")>]
     abstract EndByteSliceFB: builder: FlatBufferBuilder -> Offset<ByteSliceFB>
@@ -999,7 +993,6 @@ module FlatBufferTypes =
   //                                             |_|
 
   type EnumPropertyFB =
-
     [<Emit("$0.Key()")>]
     abstract Key: string
 
@@ -1012,19 +1005,19 @@ module FlatBufferTypes =
     [<Emit("Iris.Serialization.Raft.EnumPropertyFB.startEnumPropertyFB($1)")>]
     abstract StartEnumPropertyFB: builder: FlatBufferBuilder -> unit
 
-    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.addKey($0, $1)")>]
+    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.addKey($1, $2)")>]
     abstract AddKey: builder: FlatBufferBuilder * key: Offset<string> -> unit
 
-    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.addValue($0, $1)")>]
+    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.addValue($1, $2)")>]
     abstract AddValue: builder: FlatBufferBuilder * value: Offset<string> -> unit
 
-    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.endEnumPropertyFB($0)")>]
+    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.endEnumPropertyFB($1)")>]
     abstract EndEnumPropertyFB: builder: FlatBufferBuilder -> Offset<EnumPropertyFB>
 
-    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.getRootAsEnumPropertyFB($0)")>]
+    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.getRootAsEnumPropertyFB($1)")>]
     abstract GetRootAsEnumPropertyFB: buffer: ByteBuffer -> EnumPropertyFB
 
-    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.createEnumPropertyFB($0, $1, $2)")>]
+    [<Emit("Iris.Serialization.Raft.EnumPropertyFB.createEnumPropertyFB($1, $2, $3)")>]
     abstract CreateEnumPropertyFB: builder: FlatBufferBuilder * key: Offset<string> * value: Offset<string> -> Offset<EnumPropertyFB>
 
     [<Emit("new Iris.Serialization.Raft.EnumPropertyFB()")>]
@@ -1040,7 +1033,7 @@ module FlatBufferTypes =
 
   type EnumSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: uint64
+    abstract Index: uint32
 
     [<Emit("$0.Value()")>]
     abstract Value: EnumPropertyFB
@@ -1052,7 +1045,7 @@ module FlatBufferTypes =
     abstract StartEnumSliceFB: builder: FlatBufferBuilder -> unit
 
     [<Emit("Iris.Serialization.Raft.EnumSliceFB.addIndex($1, $2)")>]
-    abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
+    abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
 
     [<Emit("Iris.Serialization.Raft.EnumSliceFB.addValue($1, $2)")>]
     abstract AddValue: builder: FlatBufferBuilder * value: Offset<EnumPropertyFB> -> unit
@@ -1154,7 +1147,7 @@ module FlatBufferTypes =
 
   type ColorSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: uint64
+    abstract Index: uint32
 
     [<Emit("$0.Value()")>]
     abstract Value: ColorSpaceFB
@@ -1166,7 +1159,7 @@ module FlatBufferTypes =
     abstract StartColorSliceFB: builder: FlatBufferBuilder -> unit
 
     [<Emit("Iris.Serialization.Raft.ColorSliceFB.addIndex($1, $2)")>]
-    abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
+    abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
 
     [<Emit("Iris.Serialization.Raft.ColorSliceFB.addValue($1, $2)")>]
     abstract AddValue: builder: FlatBufferBuilder * value: Offset<ColorSpaceFB> -> unit
@@ -1257,7 +1250,7 @@ module FlatBufferTypes =
 
   type StringSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: uint64
+    abstract Index: uint32
 
     [<Emit("$0.Value()")>]
     abstract Value: string
@@ -1269,7 +1262,7 @@ module FlatBufferTypes =
     abstract StartStringSliceFB: builder: FlatBufferBuilder -> unit
 
     [<Emit("Iris.Serialization.Raft.StringSliceFB.addIndex($1, $2)")>]
-    abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
+    abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
 
     [<Emit("Iris.Serialization.Raft.StringSliceFB.addValue($1, $2)")>]
     abstract AddValue: builder: FlatBufferBuilder * value: Offset<string> -> unit
@@ -1382,7 +1375,7 @@ module FlatBufferTypes =
 
   type CompoundSliceFB =
     [<Emit("$0.Index()")>]
-    abstract Index: uint64
+    abstract Index: uint32
 
     [<Emit("$0.Value($1)")>]
     abstract Value: int -> IOBoxFB
@@ -1397,7 +1390,7 @@ module FlatBufferTypes =
     abstract StartCompoundSliceFB: builder: FlatBufferBuilder -> unit
 
     [<Emit("Iris.Serialization.Raft.CompoundSliceFB.addIndex($1, $2)")>]
-    abstract AddIndex: builder: FlatBufferBuilder * index: uint64 -> unit
+    abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
 
     [<Emit("Iris.Serialization.Raft.CompoundSliceFB.addValue($1, $2)")>]
     abstract AddValue: builder: FlatBufferBuilder * value: Offset<'a> -> unit
@@ -1539,19 +1532,19 @@ module FlatBufferTypes =
 
   type SliceFBConstructor =
 
-    [<Emit("Iris.Serialization.Raft.SliceFB.startSliceFB($0)")>]
+    [<Emit("Iris.Serialization.Raft.SliceFB.startSliceFB($1)")>]
     abstract StartSliceFB: builder: FlatBufferBuilder -> unit
 
-    [<Emit("Iris.Serialziation.Raft.SliceFB.addSlice($0,$1)")>]
-    abstract AddSlice: builder: FlatBufferBuilder * thing: int -> unit
+    [<Emit("Iris.Serialization.Raft.SliceFB.addSlice($1,$2)")>]
+    abstract AddSlice: builder: FlatBufferBuilder * offset: Offset<'a> -> unit
 
-    [<Emit("Iris.Serialization.RAft.SliceFB.addSliceType($0,$1)")>]
+    [<Emit("Iris.Serialization.Raft.SliceFB.addSliceType($1,$2)")>]
     abstract AddSliceType: builder: FlatBufferBuilder * tipe: SliceTypeFB -> unit
 
-    [<Emit("Iris.Serialization.Raft.SliceFB.endSliceFB($0)")>]
+    [<Emit("Iris.Serialization.Raft.SliceFB.endSliceFB($1)")>]
     abstract EndSliceFB: builder: FlatBufferBuilder -> Offset<SliceFB>
 
-    [<Emit("Iris.Serialization.Raft.SliceFB.getRootAsSliceFB($0)")>]
+    [<Emit("Iris.Serialization.Raft.SliceFB.getRootAsSliceFB($1)")>]
     abstract GetRootAsSliceFB: bytes: ByteBuffer -> SliceFB
 
   let SliceFB: SliceFBConstructor = failwith "JS only"
@@ -1742,10 +1735,10 @@ module FlatBufferTypes =
     abstract State: NodeStateFB
 
     [<Emit("$0.NextIndex()")>]
-    abstract NextIndex: uint64
+    abstract NextIndex: uint32
 
     [<Emit("$0.MatchIndex()")>]
-    abstract MatchIndex: uint64
+    abstract MatchIndex: uint32
 
   type NodeFBConstructor =
     abstract prototype: NodeFB with get, set
@@ -1775,10 +1768,10 @@ module FlatBufferTypes =
     abstract AddState: builder: FlatBufferBuilder * state: NodeStateFB -> unit
 
     [<Emit("Iris.Serialization.Raft.NodeFB.addNextIndex($0,$1)")>]
-    abstract AddNextIndex: builder: FlatBufferBuilder * idx: uint64 -> unit
+    abstract AddNextIndex: builder: FlatBufferBuilder * idx: uint32 -> unit
 
     [<Emit("Iris.Serialization.Raft.NodeFB.addMatchIndex($0,$1)")>]
-    abstract AddMatchIndex: builder: FlatBufferBuilder * idx: uint64 -> unit
+    abstract AddMatchIndex: builder: FlatBufferBuilder * idx: uint32 -> unit
 
     [<Emit("Iris.Serialization.Raft.NodeFB.endNodeFB($0)")>]
     abstract EndNodeFB: builder: FlatBufferBuilder -> Offset<NodeFB>

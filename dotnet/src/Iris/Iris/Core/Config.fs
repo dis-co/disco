@@ -28,9 +28,9 @@ type RaftConfig =
   with
     static member Default =
       let guid = Guid.NewGuid()
-      { RequestTimeout   = 500UL
-      ; ElectionTimeout  = 6000UL
-      ; MaxLogDepth      = 20UL
+      { RequestTimeout   = 500u
+      ; ElectionTimeout  = 6000u
+      ; MaxLogDepth      = 20u
       ; MaxRetries       = 10uy
       ; PeriodicInterval = 50uy
       ; LogLevel         = Err
@@ -294,9 +294,9 @@ module Configuration =
       | _          -> Debug
 
     // let eng = cfg.Project.Engine
-    { RequestTimeout   = uint64 cfg.Project.Engine.RequestTimeout
-    ; ElectionTimeout  = uint64 cfg.Project.Engine.ElectionTimeout
-    ; MaxLogDepth      = uint64 cfg.Project.Engine.MaxLogDepth
+    { RequestTimeout   = uint32 cfg.Project.Engine.RequestTimeout
+    ; ElectionTimeout  = uint32 cfg.Project.Engine.ElectionTimeout
+    ; MaxLogDepth      = uint32 cfg.Project.Engine.MaxLogDepth
     ; LogLevel         = loglevel
     ; DataDir          = cfg.Project.Engine.DataDir
     ; MaxRetries       = uint8 cfg.Project.Engine.MaxRetries
@@ -611,8 +611,8 @@ module Configuration =
         ; State      = RaftNodeState.Parse node.State
         ; Voting     = true
         ; VotedForMe = false
-        ; NextIndex  = 1UL
-        ; MatchIndex = 0UL
+        ; NextIndex  = 1u
+        ; MatchIndex = 0u
         }
       nodes := (node' :: !nodes)
 

@@ -154,21 +154,22 @@ module Main =
   // | |  | | (_| | | | | |             //
   // |_|  |_|\__,_|_|_| |_|             //
   ////////////////////////////////////////
+
   [<EntryPoint>]
   let main args =
 
-    // let cue : Cue = { Id = Id.Create(); Name = "Cool cue"; IOBoxes = [| |] }
+    let slice : Slice = StringSlice { Index = 666666u; Value = "Cool slice" }
 
-    // let writer = new BinaryWriter(File.Open("/home/k/src/projects/iris/webpack-tests/cue.dat", FileMode.Create))
-    // Binary.encode cue |> writer.Write
+    let writer = new BinaryWriter(File.Open("/home/k/slice.dat", FileMode.Create))
+    Binary.encode slice |> writer.Write
 
-    // dispose writer
+    dispose writer
 
-    let bytes = File.ReadAllBytes("/home/k/src/projects/iris/webpack-tests/js-encoded-cue.dat")
+    // let bytes = File.ReadAllBytes("/home/k/src/projects/iris/webpack-tests/js-encoded-cue.dat")
 
-    let cue : Cue option = Binary.decode bytes
+    // let cue : Cue option = Binary.decode bytes
 
-    printfn "cuue : %A" cue
+    // printfn "cuue : %A" cue
 
     exit 3
 

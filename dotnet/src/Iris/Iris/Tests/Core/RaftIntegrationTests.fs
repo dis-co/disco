@@ -107,11 +107,11 @@ module RaftIntegrationTests =
       let nodes = [| node1; node2 |]
 
       let log =
-        Some <| LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot State.Empty,
-          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot State.Empty,
-            Some <| Configuration(Id.Create(), 5UL, 1UL, [| node1 |],
-              Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
-                Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot State.Empty)))))
+        Some <| LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
+          Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
+            Some <| Configuration(Id.Create(), 5u, 1u, [| node1 |],
+              Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
+                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, nodes, DataSnapshot State.Empty)))))
 
       let depth = log |> Option.get |> LogEntry.depth |> int
       let path = mkTmpPath "test_save_restore_log_values_correctly"
@@ -156,18 +156,18 @@ module RaftIntegrationTests =
       let nodes = [| node1; node2 |]
 
       let log =
-        LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot State.Empty,
-          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot State.Empty,
-            Some <| Configuration(Id.Create(), 5UL, 1UL, [| node1 |],
-              Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
-                Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot State.Empty)))))
+        LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
+          Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
+            Some <| Configuration(Id.Create(), 5u, 1u, [| node1 |],
+              Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
+                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, nodes, DataSnapshot State.Empty)))))
         |> Log.fromEntries
 
       let config = Config.Create "default"
       let raft =
         { createRaft config with
             Log = log
-            CurrentTerm = 666UL }
+            CurrentTerm = 666u }
 
       let path = mkTmpPath "save_restore-raft_value-correctly"
       let db = createDB path |> Option.get
@@ -204,11 +204,11 @@ module RaftIntegrationTests =
       let nodes = [| node1; node2 |]
 
       let log =
-        LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot State.Empty,
-          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot State.Empty,
-            Some <| Configuration(Id.Create(), 5UL, 1UL, [| node1 |],
-              Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
-                Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot State.Empty)))))
+        LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
+          Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
+            Some <| Configuration(Id.Create(), 5u, 1u, [| node1 |],
+              Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
+                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, nodes, DataSnapshot State.Empty)))))
 
       let count = int <| LogEntry.depth log
 

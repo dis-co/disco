@@ -7,7 +7,7 @@ namespace Iris.Core
 // /_/   \_\_|_|\__,_|___/\___||___/
 
 type NodeId     = Id
-type Long       = uint64
+type Long       = uint32
 type Index      = Long
 type Term       = Long
 type Name       = string

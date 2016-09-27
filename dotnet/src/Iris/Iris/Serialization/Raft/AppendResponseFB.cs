@@ -15,16 +15,16 @@ public struct AppendResponseFB : IFlatbufferObject
   public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
   public AppendResponseFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Term { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public uint Term { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
   public bool Success { get { int o = __p.__offset(6); return o != 0 ? 0!=__p.bb.Get(o + __p.bb_pos) : (bool)false; } }
-  public ulong CurrentIndex { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
-  public ulong FirstIndex { get { int o = __p.__offset(10); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public uint CurrentIndex { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
+  public uint FirstIndex { get { int o = __p.__offset(10); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
 
   public static Offset<AppendResponseFB> CreateAppendResponseFB(FlatBufferBuilder builder,
-      ulong Term = 0,
+      uint Term = 0,
       bool Success = false,
-      ulong CurrentIndex = 0,
-      ulong FirstIndex = 0) {
+      uint CurrentIndex = 0,
+      uint FirstIndex = 0) {
     builder.StartObject(4);
     AppendResponseFB.AddFirstIndex(builder, FirstIndex);
     AppendResponseFB.AddCurrentIndex(builder, CurrentIndex);
@@ -34,10 +34,10 @@ public struct AppendResponseFB : IFlatbufferObject
   }
 
   public static void StartAppendResponseFB(FlatBufferBuilder builder) { builder.StartObject(4); }
-  public static void AddTerm(FlatBufferBuilder builder, ulong Term) { builder.AddUlong(0, Term, 0); }
+  public static void AddTerm(FlatBufferBuilder builder, uint Term) { builder.AddUint(0, Term, 0); }
   public static void AddSuccess(FlatBufferBuilder builder, bool Success) { builder.AddBool(1, Success, false); }
-  public static void AddCurrentIndex(FlatBufferBuilder builder, ulong CurrentIndex) { builder.AddUlong(2, CurrentIndex, 0); }
-  public static void AddFirstIndex(FlatBufferBuilder builder, ulong FirstIndex) { builder.AddUlong(3, FirstIndex, 0); }
+  public static void AddCurrentIndex(FlatBufferBuilder builder, uint CurrentIndex) { builder.AddUint(2, CurrentIndex, 0); }
+  public static void AddFirstIndex(FlatBufferBuilder builder, uint FirstIndex) { builder.AddUint(3, FirstIndex, 0); }
   public static Offset<AppendResponseFB> EndAppendResponseFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
     return new Offset<AppendResponseFB>(o);

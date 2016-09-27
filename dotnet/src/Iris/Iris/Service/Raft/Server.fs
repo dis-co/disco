@@ -577,7 +577,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
       raft {
         "requesting to leave" |> this.Debug
 
-        do! setTimeoutElapsedM 0UL
+        do! setTimeoutElapsedM 0u
 
         match tryLeave appState cbs with
         | Some true ->
@@ -612,7 +612,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
       let result =
         raft {
           let! term = currentTermM ()
-          let entry = JointConsensus(Id.Create(), 0UL, term, [| change |], None)
+          let entry = JointConsensus(Id.Create(), 0u, term, [| change |], None)
           do! debug "AddNode: appending entry to enter joint-consensus"
           return! receiveEntry entry
         }
@@ -651,7 +651,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
           | Some peer ->
             let! term = currentTermM ()
             let changes = [| NodeRemoved peer |]
-            let entry = JointConsensus(Id.Create(), 0UL, term, changes, None)
+            let entry = JointConsensus(Id.Create(), 0u, term, changes, None)
             do! debug "RmNode: appending entry to enter joint-consensus"
             let! appended = receiveEntry entry
             return Some appended

@@ -17,27 +17,27 @@ public struct LogEntryFB : IFlatbufferObject
 
   public string Id { get { int o = __p.__offset(4); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
   public ArraySegment<byte>? GetIdBytes() { return __p.__vector_as_arraysegment(4); }
-  public ulong Index { get { int o = __p.__offset(6); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
-  public ulong Term { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public uint Index { get { int o = __p.__offset(6); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
+  public uint Term { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
   public StateMachineFB? Data { get { int o = __p.__offset(10); return o != 0 ? (StateMachineFB?)(new StateMachineFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<LogEntryFB> CreateLogEntryFB(FlatBufferBuilder builder,
       StringOffset IdOffset = default(StringOffset),
-      ulong Index = 0,
-      ulong Term = 0,
+      uint Index = 0,
+      uint Term = 0,
       Offset<StateMachineFB> DataOffset = default(Offset<StateMachineFB>)) {
     builder.StartObject(4);
+    LogEntryFB.AddData(builder, DataOffset);
     LogEntryFB.AddTerm(builder, Term);
     LogEntryFB.AddIndex(builder, Index);
-    LogEntryFB.AddData(builder, DataOffset);
     LogEntryFB.AddId(builder, IdOffset);
     return LogEntryFB.EndLogEntryFB(builder);
   }
 
   public static void StartLogEntryFB(FlatBufferBuilder builder) { builder.StartObject(4); }
   public static void AddId(FlatBufferBuilder builder, StringOffset IdOffset) { builder.AddOffset(0, IdOffset.Value, 0); }
-  public static void AddIndex(FlatBufferBuilder builder, ulong Index) { builder.AddUlong(1, Index, 0); }
-  public static void AddTerm(FlatBufferBuilder builder, ulong Term) { builder.AddUlong(2, Term, 0); }
+  public static void AddIndex(FlatBufferBuilder builder, uint Index) { builder.AddUint(1, Index, 0); }
+  public static void AddTerm(FlatBufferBuilder builder, uint Term) { builder.AddUint(2, Term, 0); }
   public static void AddData(FlatBufferBuilder builder, Offset<StateMachineFB> DataOffset) { builder.AddOffset(3, DataOffset.Value, 0); }
   public static Offset<LogEntryFB> EndLogEntryFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();

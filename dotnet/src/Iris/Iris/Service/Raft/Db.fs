@@ -96,8 +96,8 @@ type LogData() =
 
   member self.ToLog () : LogEntry =
     let id   = Id self.Id
-    let idx  = uint64 self.Index
-    let term = uint64 self.Term
+    let idx  = uint32 self.Index
+    let term = uint32 self.Term
 
     match self.LogType with
     | t when t = int LogDataType.Config ->
@@ -122,8 +122,8 @@ type LogData() =
       let data : StateMachine =
         Binary.decode self.Data |> Option.get
 
-      let lidx = uint64 self.LastIndex
-      let lterm = uint64 self.LastTerm
+      let lidx = uint32 self.LastIndex
+      let lterm = uint32 self.LastTerm
       Snapshot(id,idx,term,lidx,lterm,nodes,data)
 
     | _ -> failwithf "Could not parse log entry: [id: %A] [idx: %A]" id idx
@@ -327,8 +327,8 @@ type NodeData() =
     ; Voting     = self.Voting
     ; VotedForMe = self.VotedForMe
     ; State      = RaftNodeState.Parse self.State
-    ; NextIndex  = uint64 self.NextIndex
-    ; MatchIndex = uint64 self.MatchIndex }
+    ; NextIndex  = uint32 self.NextIndex
+    ; MatchIndex = uint32 self.MatchIndex }
 
   override self.ToString() =
     String.Format("{0,-22} {1,-8} {2,-10} {3,-15} {4,-5}",
@@ -1068,19 +1068,19 @@ let loadRaft db =
         | Some node ->
           { Node              = node
           ; State             = state
-          ; CurrentTerm       = uint64 meta.Term
+          ; CurrentTerm       = uint32 meta.Term
           ; CurrentLeader     = leader
           ; Peers             = List.map (fun (n: RaftNode)-> (n.Id,n)) nodes |> Map.ofList
           ; OldPeers          = oldpeers
-          ; NumNodes          = List.length nodes |> uint64
+          ; NumNodes          = List.length nodes |> uint32
           ; VotedFor          = votedfor
           ; Log               = log
-          ; CommitIndex       = uint64 meta.CommitIndex
-          ; LastAppliedIdx    = uint64 meta.LastAppliedIndex
-          ; TimeoutElapsed    = uint64 meta.TimeoutElapsed
-          ; ElectionTimeout   = uint64 meta.ElectionTimeout
-          ; RequestTimeout    = uint64 meta.RequestTimeout
-          ; MaxLogDepth       = uint64 meta.MaxLogDepth
+          ; CommitIndex       = uint32 meta.CommitIndex
+          ; LastAppliedIdx    = uint32 meta.LastAppliedIndex
+          ; TimeoutElapsed    = uint32 meta.TimeoutElapsed
+          ; ElectionTimeout   = uint32 meta.ElectionTimeout
+          ; RequestTimeout    = uint32 meta.RequestTimeout
+          ; MaxLogDepth       = uint32 meta.MaxLogDepth
           ; ConfigChangeEntry = configchange
           } |> Some
         | _ -> None

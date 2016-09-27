@@ -58,8 +58,8 @@ type Log =
              ; Index = LogEntry.index entries }
       | _ ->
         Some { Data  = None
-             ; Depth = 0UL
-             ; Index = 0UL }
+             ; Depth = 0u
+             ; Index = 0u }
 
 
     //  _                  __  __           _       _
@@ -71,8 +71,8 @@ type Log =
 
     /// Construct an empty Log
     static member empty
-      with get () = { Depth = 0UL
-                    ; Index = 0UL
+      with get () = { Depth = 0u
+                    ; Index = 0u
                     ; Data  = None }
 
     static member fromEntries (entries: LogEntry) =
@@ -96,7 +96,7 @@ type Log =
     static member term log =
       match log.Data with
       | Some entries -> LogEntry.term entries
-      | _            -> 0UL
+      | _            -> 0u
 
     /// Return the Term of the previous entry
     ///
@@ -171,7 +171,7 @@ type Log =
         | Some entries ->
           let snapshot = LogEntry.snapshot nodes data entries
           { Index = LogEntry.index snapshot
-            Depth = 1UL
+            Depth = 1u
             Data = Some snapshot }
         | _ -> log
 

@@ -25,8 +25,8 @@ public struct NodeFB : IFlatbufferObject
   public bool Voting { get { int o = __p.__offset(12); return o != 0 ? 0!=__p.bb.Get(o + __p.bb_pos) : (bool)false; } }
   public bool VotedForMe { get { int o = __p.__offset(14); return o != 0 ? 0!=__p.bb.Get(o + __p.bb_pos) : (bool)false; } }
   public NodeStateFB State { get { int o = __p.__offset(16); return o != 0 ? (NodeStateFB)__p.bb.Get(o + __p.bb_pos) : NodeStateFB.JoiningFB; } }
-  public ulong NextIndex { get { int o = __p.__offset(18); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
-  public ulong MatchIndex { get { int o = __p.__offset(20); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public uint NextIndex { get { int o = __p.__offset(18); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
+  public uint MatchIndex { get { int o = __p.__offset(20); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
 
   public static Offset<NodeFB> CreateNodeFB(FlatBufferBuilder builder,
       StringOffset IdOffset = default(StringOffset),
@@ -36,8 +36,8 @@ public struct NodeFB : IFlatbufferObject
       bool Voting = false,
       bool VotedForMe = false,
       NodeStateFB State = NodeStateFB.JoiningFB,
-      ulong NextIndex = 0,
-      ulong MatchIndex = 0) {
+      uint NextIndex = 0,
+      uint MatchIndex = 0) {
     builder.StartObject(9);
     NodeFB.AddMatchIndex(builder, MatchIndex);
     NodeFB.AddNextIndex(builder, NextIndex);
@@ -59,8 +59,8 @@ public struct NodeFB : IFlatbufferObject
   public static void AddVoting(FlatBufferBuilder builder, bool Voting) { builder.AddBool(4, Voting, false); }
   public static void AddVotedForMe(FlatBufferBuilder builder, bool VotedForMe) { builder.AddBool(5, VotedForMe, false); }
   public static void AddState(FlatBufferBuilder builder, NodeStateFB State) { builder.AddByte(6, (byte)State, 0); }
-  public static void AddNextIndex(FlatBufferBuilder builder, ulong NextIndex) { builder.AddUlong(7, NextIndex, 0); }
-  public static void AddMatchIndex(FlatBufferBuilder builder, ulong MatchIndex) { builder.AddUlong(8, MatchIndex, 0); }
+  public static void AddNextIndex(FlatBufferBuilder builder, uint NextIndex) { builder.AddUint(7, NextIndex, 0); }
+  public static void AddMatchIndex(FlatBufferBuilder builder, uint MatchIndex) { builder.AddUint(8, MatchIndex, 0); }
   public static Offset<NodeFB> EndNodeFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
     return new Offset<NodeFB>(o);
