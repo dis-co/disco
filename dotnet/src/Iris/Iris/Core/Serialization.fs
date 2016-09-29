@@ -52,9 +52,12 @@ module Binary =
   let inline buildBuffer< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)> (thing: ^a) : Buffer =
 #if JAVASCRIPT
     let builder = FlatBufferBuilder.Create(1)
+    let offset = toOffset builder thing
+    builder.Finish(offset)
+    builder.SizedByteArray()
 #else
     let builder = new FlatBufferBuilder(1)
-#endif
     let offset = toOffset builder thing
     builder.Finish(offset.Value)
     builder.SizedByteArray()
+#endif

@@ -22,11 +22,6 @@ open Iris.Serialization.Raft
 // | |\  | (_) | (_| |  __/___) | || (_| | ||  __/
 // |_| \_|\___/ \__,_|\___|____/ \__\__,_|\__\___|
 
-#if JAVASCRIPT
-open Fable.Core
-
-[<StringEnum>]
-#endif
 type RaftNodeState =
   | Joining                             // excludes node from voting
   | Running                             // normal execution state

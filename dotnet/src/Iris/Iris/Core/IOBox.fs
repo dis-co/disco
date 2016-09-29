@@ -21,9 +21,6 @@ open Iris.Serialization.Raft
 // | |_) |  __/ | | | (_| |\ V /| | (_) | |
 // |____/ \___|_| |_|\__,_| \_/ |_|\___/|_|
 
-#if JAVASCRIPT
-[<StringEnum>]
-#endif
 [<RequireQualifiedAccess>]
 type Behavior =
   | Toggle
@@ -73,9 +70,6 @@ type Behavior =
 // |____/ \__|_|  |_|_| |_|\__, ||_| \__, | .__/ \___|
 //                         |___/     |___/|_|
 
-#if JAVASCRIPT
-[<StringEnum>]
-#endif
 type StringType =
   | Simple
   | MultiLine
@@ -488,7 +482,11 @@ type IOBox =
     let inline build (data: ^t) tipe =
       let offset = Binary.toOffset builder data
       IOBoxFB.StartIOBoxFB(builder)
+#if JAVASCRIPT
+      IOBoxFB.AddIOBox(builder, offset)
+#else
       IOBoxFB.AddIOBox(builder, offset.Value)
+#endif
       IOBoxFB.AddIOBoxType(builder, tipe)
       IOBoxFB.EndIOBoxFB(builder)
 
@@ -507,47 +505,56 @@ type IOBox =
 #if JAVASCRIPT
     match fb.IOBoxType with
     | x when x = IOBoxTypeFB.StringBoxFB ->
-      fb.IOBox(StringBoxFB.Create())
+      StringBoxFB.Create()
+      |> fb.IOBox
       |> StringBoxD.FromFB
       |> Option.map StringBox
 
     | x when x = IOBoxTypeFB.IntBoxFB ->
-      fb.IOBox(IntBoxFB.Create())
+      IntBoxFB.Create()
+      |> fb.IOBox
       |> IntBoxD.FromFB
       |> Option.map IntBox
 
     | x when x = IOBoxTypeFB.FloatBoxFB ->
-      fb.IOBox(FloatBoxFB.Create())
+      FloatBoxFB.Create()
+      |> fb.IOBox
       |> FloatBoxD.FromFB
       |> Option.map FloatBox
 
     | x when x = IOBoxTypeFB.DoubleBoxFB ->
-      fb.IOBox(DoubleBoxFB.Create())
+      DoubleBoxFB.Create()
+      |> fb.IOBox
       |> DoubleBoxD.FromFB
       |> Option.map DoubleBox
 
     | x when x = IOBoxTypeFB.BoolBoxFB ->
-      fb.IOBox(BoolBoxFB.Create())
+      BoolBoxFB.Create()
+      |> fb.IOBox
       |> BoolBoxD.FromFB
       |> Option.map BoolBox
 
     | x when x = IOBoxTypeFB.ByteBoxFB ->
-      fb.IOBox(ByteBoxFB.Create())
+      ByteBoxFB.Create()
+      |> fb.IOBox
       |> ByteBoxD.FromFB
       |> Option.map ByteBox
 
     | x when x = IOBoxTypeFB.EnumBoxFB ->
-      fb.IOBox(EnumBoxFB.Create())
+      EnumBoxFB.Create()
+      |> fb.IOBox
       |> EnumBoxD.FromFB
       |> Option.map EnumBox
 
     | x when x = IOBoxTypeFB.ColorBoxFB ->
-      fb.IOBox(ColorBoxFB.Create())
+      ColorBoxFB.Create()
+      |> fb.IOBox
       |> ColorBoxD.FromFB
       |> Option.map ColorBox
 
     | x when x = IOBoxTypeFB.CompoundBoxFB ->
-      fb.IOBox(CompoundBoxFB.Create())
+      CompoundBoxFB.Create()
+      |> fb.IOBox
       |> CompoundBoxD.FromFB
       |> Option.map Compound
 
@@ -661,34 +668,40 @@ and BoolBoxD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
+    let behavior = self.Behavior.ToOffset builder
     let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let tags = BoolBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: BoolSliceD) -> slice.ToOffset(builder)) self.Slices
     let slices = BoolBoxFB.CreateSlicesVector(builder, sliceoffsets)
     BoolBoxFB.StartBoolBoxFB(builder)
     BoolBoxFB.AddId(builder, id)
     BoolBoxFB.AddName(builder, name)
     BoolBoxFB.AddPatch(builder, patch)
+    BoolBoxFB.AddBehavior(builder, behavior)
     BoolBoxFB.AddTags(builder, tags)
     BoolBoxFB.AddSlices(builder, slices)
-    BoolBoxFB.AddBehavior(builder, self.Behavior.ToOffset(builder))
     BoolBoxFB.EndBoolBoxFB(builder)
 
   static member FromFB(fb: BoolBoxFB) : BoolBoxD option =
     let tags = Array.zeroCreate fb.TagsLength
     let slices = Array.zeroCreate fb.SlicesLength
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
-    for i in 0 .. (fb.SlicesLength - 1) do
-      let slice = fb.Slices(i)
 #if JAVASCRIPT
-      slice
+    let mutable i = 0
+    while i < fb.SlicesLength do
+      fb.Slices(i)
       |> BoolSliceD.FromFB
       |> Option.map (fun slice -> slices.[i] <- slice)
       |> ignore
+      i <- i + 1
 #else
+    for i in 0 .. (fb.SlicesLength - 1) do
+      let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
         |> BoolSliceD.FromFB
@@ -779,11 +792,11 @@ and IntBoxD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let tags = IntBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: IntSliceD) -> slice.ToOffset(builder)) self.Slices
-    let slices = IntBoxFB.CreateSlicesVector(builder, sliceoffsets)
     let unit = self.Unit |> builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let tags = IntBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = IntBoxFB.CreateSlicesVector(builder, sliceoffsets)
     IntBoxFB.StartIntBoxFB(builder)
     IntBoxFB.AddId(builder, id)
     IntBoxFB.AddName(builder, name)
@@ -801,17 +814,22 @@ and IntBoxD =
     let slices = Array.zeroCreate fb.SlicesLength
     let unit = if isNull fb.Unit then "" else fb.Unit
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
-    for i in 0 .. (fb.SlicesLength - 1) do
-      let slice = fb.Slices(i)
 #if JAVASCRIPT
-      slice
+    let mutable i = 0
+    while i < fb.SlicesLength do
+      fb.Slices(i)
       |> IntSliceD.FromFB
       |> Option.map (fun slice -> slices.[i] <- slice)
       |> ignore
+      i <- i + 1
 #else
+    for i in 0 .. (fb.SlicesLength - 1) do
+      let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
         |> IntSliceD.FromFB
@@ -907,11 +925,11 @@ and FloatBoxD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let tags = FloatBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: FloatSliceD) -> slice.ToOffset(builder)) self.Slices
-    let slices = FloatBoxFB.CreateSlicesVector(builder, sliceoffsets)
     let unit = self.Unit |> builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let tags = FloatBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = FloatBoxFB.CreateSlicesVector(builder, sliceoffsets)
     FloatBoxFB.StartFloatBoxFB(builder)
     FloatBoxFB.AddId(builder, id)
     FloatBoxFB.AddName(builder, name)
@@ -930,16 +948,21 @@ and FloatBoxD =
     let slices = Array.zeroCreate fb.SlicesLength
     let unit = if isNull fb.Unit then "" else fb.Unit
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
-    for i in 0 .. (fb.SlicesLength - 1) do
 #if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
       fb.Slices(i)
       |> FloatSliceD.FromFB
       |> Option.map (fun slice -> slices.[i] <- slice)
       |> ignore
+      i <- i + 1
 #else
+    for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
@@ -1039,11 +1062,11 @@ and DoubleBoxD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let tags = DoubleBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: DoubleSliceD) -> slice.ToOffset(builder)) self.Slices
-    let slices = DoubleBoxFB.CreateSlicesVector(builder, sliceoffsets)
     let unit = self.Unit |> builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let tags = DoubleBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = DoubleBoxFB.CreateSlicesVector(builder, sliceoffsets)
     DoubleBoxFB.StartDoubleBoxFB(builder)
     DoubleBoxFB.AddId(builder, id)
     DoubleBoxFB.AddName(builder, name)
@@ -1062,16 +1085,21 @@ and DoubleBoxD =
     let slices = Array.zeroCreate fb.SlicesLength
     let unit = if isNull fb.Unit then "" else fb.Unit
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
-    for i in 0 .. (fb.SlicesLength - 1) do
 #if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
       fb.Slices(i)
       |> DoubleSliceD.FromFB
       |> Option.map (fun slice -> slices.[i] <- slice)
       |> ignore
+      i <- i + 1
 #else
+    for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
@@ -1166,8 +1194,8 @@ and ByteBoxD =
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let tags = ByteBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: ByteSliceD) -> slice.ToOffset(builder)) self.Slices
     let slices = ByteBoxFB.CreateSlicesVector(builder, sliceoffsets)
     ByteBoxFB.StartByteBoxFB(builder)
     ByteBoxFB.AddId(builder, id)
@@ -1181,16 +1209,21 @@ and ByteBoxD =
     let tags = Array.zeroCreate fb.TagsLength
     let slices = Array.zeroCreate fb.SlicesLength
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
-    for i in 0 .. (fb.SlicesLength - 1) do
 #if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
       fb.Slices(i)
       |> ByteSliceD.FromFB
       |> Option.map (fun slice -> slices.[i] <- slice)
       |> ignore
+      i <- i + 1
 #else
+    for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
@@ -1229,7 +1262,28 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
 
   override self.Equals(other) =
     match other with
-    | :? ByteSliceD as slice ->
+    | :? ByteSliceD as slice -> self.Equals(slice)
+    | _ -> false
+
+  override self.GetHashCode() =
+    let mutable hash = 42
+#if JAVASCRIPT
+    hash <- (hash * 7) + hashCode (string self.Index)
+    hash <- (hash * 7) + hashCode (string self.Value.byteLength)
+#else
+    hash <- (hash * 7) + self.Index.GetHashCode()
+    hash <- (hash * 7) + self.Value.GetHashCode()
+#endif
+    hash
+
+  interface System.IComparable with
+    member self.CompareTo other =
+      match other with
+      | :? ByteSliceD as slice -> compare self.Index slice.Index
+      | _ -> invalidArg "other" "cannot compare value of different types"
+
+  interface System.IEquatable<ByteSliceD> with
+    member self.Equals(slice: ByteSliceD) =
       let mutable contentsEqual = false
       let lengthEqual =
 #if JAVASCRIPT
@@ -1251,24 +1305,6 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
       slice.Index = self.Index &&
       lengthEqual &&
       contentsEqual
-    | _ -> false
-
-  override self.GetHashCode() =
-    let mutable hash = 42
-#if JAVASCRIPT
-    hash <- (hash * 7) + hashCode (string self.Index)
-    hash <- (hash * 7) + hashCode (string self.Value.byteLength)
-#else
-    hash <- (hash * 7) + self.Index.GetHashCode()
-    hash <- (hash * 7) + self.Value.GetHashCode()
-#endif
-    hash
-
-  interface System.IComparable with
-    member self.CompareTo other =
-      match other with
-      | :? ByteSliceD as slice -> compare self.Index slice.Index
-      | _ -> invalidArg "other" "cannot compare value of different types"
 
 
   //  ____  _
@@ -1348,14 +1384,18 @@ and EnumBoxD =
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let propoffsets =
+      Array.map (fun (prop: Property) ->
+                 let key, value =
+                    builder.CreateString prop.Key, builder.CreateString prop.Value
+                 EnumPropertyFB.StartEnumPropertyFB(builder)
+                 EnumPropertyFB.AddKey(builder, key)
+                 EnumPropertyFB.AddValue(builder, value)
+                 EnumPropertyFB.EndEnumPropertyFB(builder))
+        self.Properties
     let tags = EnumBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: EnumSliceD) -> slice.ToOffset(builder)) self.Slices
     let slices = EnumBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    let propoffsets = Array.map (fun (prop: Property) ->
-                                    let key, value =
-                                      builder.CreateString prop.Key, builder.CreateString prop.Value
-                                    EnumPropertyFB.CreateEnumPropertyFB(builder, key, value))
-                                  self.Properties
     let properties = EnumBoxFB.CreatePropertiesVector(builder, propoffsets)
     EnumBoxFB.StartEnumBoxFB(builder)
     EnumBoxFB.AddId(builder, id)
@@ -1371,27 +1411,35 @@ and EnumBoxD =
     let slices = Array.zeroCreate fb.SlicesLength
     let properties = Array.zeroCreate fb.PropertiesLength
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
-    for i in 0 .. (fb.PropertiesLength - 1) do
 #if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.PropertiesLength do
       let prop = fb.Properties(i)
       properties.[i] <- { Key = prop.Key; Value = prop.Value }
+      i <- i + 1
 #else
+    for i in 0 .. (fb.PropertiesLength - 1) do
       let prop = fb.Properties(i)
       if prop.HasValue then
         let value = prop.Value
         properties.[i] <- { Key = value.Key; Value = value.Value }
 #endif
 
-    for i in 0 .. (fb.SlicesLength - 1) do
 #if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
       fb.Slices(i)
       |> EnumSliceD.FromFB
       |> Option.map (fun slice -> slices.[i] <- slice)
       |> ignore
+      i <- i + 1
 #else
+    for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
@@ -1504,8 +1552,8 @@ and ColorBoxD =
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let tags = ColorBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: ColorSliceD) -> slice.ToOffset(builder)) self.Slices
     let slices = ColorBoxFB.CreateSlicesVector(builder, sliceoffsets)
     ColorBoxFB.StartColorBoxFB(builder)
     ColorBoxFB.AddId(builder, id)
@@ -1519,16 +1567,21 @@ and ColorBoxD =
     let tags = Array.zeroCreate fb.TagsLength
     let slices = Array.zeroCreate fb.SlicesLength
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
-    for i in 0 .. (fb.SlicesLength - 1) do
 #if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
       fb.Slices(i)
       |> ColorSliceD.FromFB
       |> Option.map (fun slice -> slices.[i] <- slice)
       |> ignore
+      i <- i + 1
 #else
+    for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
@@ -1627,12 +1680,12 @@ and StringBoxD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let tags = StringBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: StringSliceD) -> slice.ToOffset(builder)) self.Slices
-    let slices = StringBoxFB.CreateSlicesVector(builder, sliceoffsets)
     let tipe = self.StringType.ToOffset(builder)
     let mask = self.FileMask |> Option.map builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let tags = StringBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = StringBoxFB.CreateSlicesVector(builder, sliceoffsets)
 
     StringBoxFB.StartStringBoxFB(builder)
     StringBoxFB.AddId(builder, id)
@@ -1652,16 +1705,21 @@ and StringBoxD =
     let slices = Array.zeroCreate fb.SlicesLength
     let mask = if isNull fb.FileMask then None else Some fb.FileMask
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
-    for i in 0 .. (fb.SlicesLength - 1) do
 #if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
       fb.Slices(i)
       |> StringSliceD.FromFB
       |> Option.map (fun slice -> slices.[i] <- slice)
       |> ignore
+      i <- i + 1
 #else
+    for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
@@ -1756,8 +1814,8 @@ and CompoundBoxD =
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let tags = CompoundBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: CompoundSliceD) -> slice.ToOffset(builder)) self.Slices
     let slices = CompoundBoxFB.CreateSlicesVector(builder, sliceoffsets)
     CompoundBoxFB.StartCompoundBoxFB(builder)
     CompoundBoxFB.AddId(builder, id)
@@ -1771,16 +1829,21 @@ and CompoundBoxD =
     let tags = Array.zeroCreate fb.TagsLength
     let slices = Array.zeroCreate fb.SlicesLength
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
-    for i in 0 .. (fb.SlicesLength - 1) do
 #if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
       fb.Slices(i)
       |> CompoundSliceD.FromFB
       |> Option.map (fun slice -> slices.[i] <- slice)
       |> ignore
+      i <- i + 1
 #else
+    for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
         slice.Value
@@ -1835,13 +1898,16 @@ and CompoundSliceD =
   static member FromFB(fb: CompoundSliceFB) : CompoundSliceD option =
     let ioboxes = Array.zeroCreate fb.ValueLength
 
-    for i in 0 .. (fb.ValueLength - 1) do
 #if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.ValueLength do
       fb.Value(i)
       |> IOBox.FromFB
       |> Option.map (fun iobox -> ioboxes.[i] <- iobox)
       |> ignore
+      i <- i + 1
 #else
+    for i in 0 .. (fb.ValueLength - 1) do
       let nullable = fb.Value(i)
       if nullable.HasValue then
         nullable.Value

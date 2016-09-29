@@ -54,10 +54,13 @@ type User =
 #endif
     hash
 
-  override me.Equals(o) =
-    match o with
-    | :? User ->
-      let other = o :?> User
+  override self.Equals(other) =
+    match other with
+    | :? User as user -> self.Equals user
+    | _ -> false
+
+  interface System.IEquatable<User> with
+    member me.Equals(other: User) =
       me.Id               = other.Id              &&
       me.UserName         = other.UserName        &&
       me.FirstName        = other.FirstName       &&
@@ -65,7 +68,6 @@ type User =
       me.Email            = other.Email           &&
       (string me.Joined)  = (string other.Joined) &&
       (string me.Created) = (string other.Created)
-    | _ -> false
 
   interface System.IComparable with
     member me.CompareTo(o: obj) =

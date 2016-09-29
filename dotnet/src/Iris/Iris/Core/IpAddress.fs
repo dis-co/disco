@@ -4,6 +4,7 @@ namespace Iris.Core
 
 open Fable.Core
 open Fable.Import.JS
+open System.Text.RegularExpressions
 
 #else
 
@@ -22,12 +23,11 @@ type IpAddress =
 
   static member Parse (str: string) =
 #if JAVASCRIPT
-    let regex = RegExp.Create(@"/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/")
-    match regex.test str with
+    let regex = new Regex(@"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")
+    match regex.IsMatch str with
     | true -> IPv4Address str
     | _    -> IPv6Address str
 #else
-    // ^[[:digit:]]\{1,3\}\.[[:digit:]]\{1,3\}\.[[:digit:]]\{1,3\}\.[[:digit:]]\{1,3\}\($\|\/[[:digit:]]\{1,2\}$\)
     let ip = IPAddress.Parse str
     match ip.AddressFamily with
       | Sockets.AddressFamily.InterNetwork   -> IPv4Address str

@@ -111,7 +111,11 @@ type ColorSpace =
     let build tipe (offset: Offset<_>) =
       ColorSpaceFB.StartColorSpaceFB(builder)
       ColorSpaceFB.AddValueType(builder, tipe)
+#if JAVASCRIPT
+      ColorSpaceFB.AddValue(builder,offset)
+#else
       ColorSpaceFB.AddValue(builder,offset.Value)
+#endif
       ColorSpaceFB.EndColorSpaceFB(builder)
 
     match self with
