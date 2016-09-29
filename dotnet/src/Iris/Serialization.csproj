@@ -43,6 +43,7 @@
     <Compile Include="FlatBuffers\Table.cs" />
     <Compile Include="FlatBuffers\IFlatbufferObject.cs" />
 
+    <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/ActionTypeFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/AddCueFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/AddCueListFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/AddIOBoxFB.cs" />
@@ -50,6 +51,7 @@
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/AddPatchFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/AddSessionFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/AddUserFB.cs" />
+    <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/ApiActionFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/AppCommandFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/AppCommandTypeFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/AppendEntriesFB.cs" />
@@ -97,6 +99,7 @@
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/NodeFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/NodeStateFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/PatchFB.cs" />
+    <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/PayloadFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/RGBAValueFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/RaftErrorFB.cs" />
     <Compile Include="/home/k/src/projects/iris/iris/dotnet/src/Iris/Iris/Serialization/Raft/RaftErrorTypeFB.cs" />

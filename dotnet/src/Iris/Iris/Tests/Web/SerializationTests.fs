@@ -76,12 +76,12 @@ module SerializationTests =
     }
 
   let mkState _ =
-    { Patches  = mkPatch   () |> fun (patch: Patch) -> Map.ofList [ (patch.Id, patch) ]
-    ; IOBoxes  = ioboxes   () |> (fun (boxes: IOBox array) -> Array.map (fun (box: IOBox) -> (box.Id,box)) boxes) |> Map.ofArray
-    ; Cues     = mkCue     () |> fun (cue: Cue) -> Map.ofList [ (cue.Id, cue) ]
-    ; CueLists = mkCueList () |> fun (cuelist: CueList) -> Map.ofList [ (cuelist.Id, cuelist) ]
-    ; Nodes    = mkNode    () |> fun (node: RaftNode) -> Map.ofList [ (node.Id, node) ]
-    ; Sessions = mkSession () |> fun (session: Session) -> Map.ofList [ (session.Id, session) ]
+    { Patches  = Map.empty // mkPatch   () |> fun (patch: Patch) -> Map.ofList [ (patch.Id, patch) ]
+    ; IOBoxes  = Map.empty // ioboxes   () |> (fun (boxes: IOBox array) -> Array.map (fun (box: IOBox) -> (box.Id,box)) boxes) |> Map.ofArray
+    ; Cues     = Map.empty // mkCue     () |> fun (cue: Cue) -> Map.ofList [ (cue.Id, cue) ]
+    ; CueLists = Map.empty // mkCueList () |> fun (cuelist: CueList) -> Map.ofList [ (cuelist.Id, cuelist) ]
+    ; Nodes    = Map.empty // mkNode    () |> fun (node: RaftNode) -> Map.ofList [ (node.Id, node) ]
+    ; Sessions = Map.empty // mkSession () |> fun (session: Session) -> Map.ofList [ (session.Id, session) ]
     ; Users    = mkUser    () |> fun (user: User) -> Map.ofList [ (user.Id, user) ]
     }
 
@@ -165,37 +165,30 @@ module SerializationTests =
       finish ()
 
     test "Validate StateMachine Serialization" <| fun finish ->
-      // [ AddCue        <| mkCue ()
-      [ UpdateCue     <| mkCue ()
+      [ AddCue        <| mkCue ()
+      ; UpdateCue     <| mkCue ()
       ; RemoveCue     <| mkCue ()
       ; AddCueList    <| mkCueList ()
-      // ; UpdateCueList <| mkCueList ()
-      // ; RemoveCueList <| mkCueList ()
+      ; UpdateCueList <| mkCueList ()
+      ; RemoveCueList <| mkCueList ()
       ; AddSession    <| mkSession ()
-      // ; UpdateSession <| mkSession ()
-      // ; RemoveSession <| mkSession ()
+      ; UpdateSession <| mkSession ()
+      ; RemoveSession <| mkSession ()
       ; AddUser       <| mkUser ()
-      // ; UpdateUser    <| mkUser ()
-      // ; RemoveUser    <| mkUser ()
+      ; UpdateUser    <| mkUser ()
+      ; RemoveUser    <| mkUser ()
       ; AddPatch      <| mkPatch ()
-      // ; UpdatePatch   <| mkPatch ()
-      // ; RemovePatch   <| mkPatch ()
+      ; UpdatePatch   <| mkPatch ()
+      ; RemovePatch   <| mkPatch ()
       ; AddIOBox      <| mkIOBox ()
-      // ; UpdateIOBox   <| mkIOBox ()
-      // ; RemoveIOBox   <| mkIOBox ()
+      ; UpdateIOBox   <| mkIOBox ()
+      ; RemoveIOBox   <| mkIOBox ()
       ; AddNode       <| Node.create (Id.Create())
-      // ; UpdateNode    <| Node.create (Id.Create())
-      // ; RemoveNode    <| Node.create (Id.Create())
+      ; UpdateNode    <| Node.create (Id.Create())
+      ; RemoveNode    <| Node.create (Id.Create())
       ; DataSnapshot  <| mkState ()
       ; Command AppCommand.Undo
       ; LogMsg(Debug, "ohai")
       ]
-      |> List.iter
-        (fun cmd ->
-          let remsg = cmd |> Binary.encode |> Binary.decode |> Option.get
-
-          // printfn "cmd: %A" cmd
-          // printfn "recmd: %A" remsg
-
-          equals true (cmd = remsg))
+      |> List.iter check
       finish()

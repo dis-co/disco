@@ -2875,3 +2875,136 @@ module FlatBufferTypes =
     abstract GetRootAsStateMachineFB: bytes: ByteBuffer -> StateMachineFB
 
   let StateMachineFB: StateMachineFBConstructor = failwith "JS only"
+
+  //     _          _    _        _   _
+  //    / \   _ __ (_)  / \   ___| |_(_) ___  _ __
+  //   / _ \ | '_ \| | / _ \ / __| __| |/ _ \| '_ \
+  //  / ___ \| |_) | |/ ___ \ (__| |_| | (_) | | | |
+  // /_/   \_\ .__/|_/_/   \_\___|\__|_|\___/|_| |_|
+  //         |_|
+
+  type ActionTypeFB = int
+
+  type ActionTypeFBConstructor =
+
+    [<Emit("Iris.Serialization.Raft.ActionTypeFB.AddFB")>]
+    abstract AddFB: ActionTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ActionTypeFB.UpdateFB")>]
+    abstract UpdateFB: ActionTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ActionTypeFB.RemoveFB")>]
+    abstract RemoveFB: ActionTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ActionTypeFB.LogMsgFB")>]
+    abstract LogMsgFB: ActionTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ActionTypeFB.AppCommandFB")>]
+    abstract AppCommandFB: ActionTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ActionTypeFB.DataSnapshotFB")>]
+    abstract DataSnapshotFB: ActionTypeFB
+
+  let ActionTypeFB: ActionTypeFBConstructor = failwith "JS only"
+
+  type PayloadFB = int
+
+  type PayloadFBConstructor =
+    [<Emit("Iris.Serialization.Raft.PayloadFB.NONE")>]
+    abstract NONE: PayloadFB
+
+    [<Emit("Iris.Serialization.Raft.PayloadFB.CueFB")>]
+    abstract CueFB: PayloadFB
+
+    [<Emit("Iris.Serialization.Raft.PayloadFB.CueListFB")>]
+    abstract CueListFB: PayloadFB
+
+    [<Emit("Iris.Serialization.Raft.PayloadFB.IOBoxFB")>]
+    abstract IOBoxFB: PayloadFB
+
+    [<Emit("Iris.Serialization.Raft.PayloadFB.PatchFB")>]
+    abstract PatchFB: PayloadFB
+
+    [<Emit("Iris.Serialization.Raft.PayloadFB.NodeFB")>]
+    abstract NodeFB: PayloadFB
+
+    [<Emit("Iris.Serialization.Raft.PayloadFB.UserFB")>]
+    abstract UserFB: PayloadFB
+
+    [<Emit("Iris.Serialization.Raft.PayloadFB.SessionFB")>]
+    abstract SessionFB: PayloadFB
+
+    [<Emit("Iris.Serialization.Raft.PayloadFB.LogMsgFB")>]
+    abstract LogMsgFB: PayloadFB
+
+    [<Emit("Iris.Serialization.Raft.PayloadFB.AppCommandFB")>]
+    abstract AppCommandFB: PayloadFB
+
+    [<Emit("Iris.Serialization.Raft.PayloadFB.StateFB")>]
+    abstract StateFB: PayloadFB
+
+  let PayloadFB: PayloadFBConstructor = failwith "JS only"
+
+  type ApiActionFB =
+
+    [<Emit("$0.Action()")>]
+    abstract Action: ActionTypeFB
+
+    [<Emit("$0.PayloadType()")>]
+    abstract PayloadType: PayloadFB
+
+    [<Emit("$0.Payload(new Iris.Serialization.Raft.CueFB())")>]
+    abstract CueFB: CueFB
+
+    [<Emit("$0.Payload(new Iris.Serialization.Raft.CueListFB())")>]
+    abstract CueListFB: CueListFB
+
+    [<Emit("$0.Payload(new Iris.Serialization.Raft.IOBoxFB())")>]
+    abstract IOBoxFB: IOBoxFB
+
+    [<Emit("$0.Payload(new Iris.Serialization.Raft.PatchFB())")>]
+    abstract PatchFB: PatchFB
+
+    [<Emit("$0.Payload(new Iris.Serialization.Raft.NodeFB())")>]
+    abstract NodeFB: NodeFB
+
+    [<Emit("$0.Payload(new Iris.Serialization.Raft.UserFB())")>]
+    abstract UserFB: UserFB
+
+    [<Emit("$0.Payload(new Iris.Serialization.Raft.SessionFB())")>]
+    abstract SessionFB: SessionFB
+
+    [<Emit("$0.Payload(new Iris.Serialization.Raft.AppCommandFB())")>]
+    abstract AppCommandFB: AppCommandFB
+
+    [<Emit("$0.Payload(new Iris.Serialization.Raft.LogMsgFB())")>]
+    abstract LogMsgFB: LogMsgFB
+
+    [<Emit("$0.Payload(new Iris.Serialization.Raft.StateFB())")>]
+    abstract StateFB: StateFB
+
+    [<Emit("$0.Payload($1)")>]
+    abstract Payload: 'a -> 'a
+
+  type ApiActionFBConstructor =
+    abstract prototype: ApiActionFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.ApiActionFB.startApiActionFB($1)")>]
+    abstract StartApiActionFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.ApiActionFB.addAction($1,$2)")>]
+    abstract AddAction: builder: FlatBufferBuilder * tipe: ActionTypeFB -> unit
+
+    [<Emit("Iris.Serialization.Raft.ApiActionFB.addPayloadType($1,$2)")>]
+    abstract AddPayloadType: builder: FlatBufferBuilder * tipe: PayloadFB -> unit
+
+    [<Emit("Iris.Serialization.Raft.ApiActionFB.addPayload($1,$2)")>]
+    abstract AddPayload: builder: FlatBufferBuilder * payload: Offset<'a> -> unit
+
+    [<Emit("Iris.Serialization.Raft.ApiActionFB.endApiActionFB($1)")>]
+    abstract EndApiActionFB: builder: FlatBufferBuilder -> Offset<ApiActionFB>
+
+    [<Emit("Iris.Serialization.Raft.ApiActionFB.getRootAsApiActionFB($1)")>]
+    abstract GetRootAsApiActionFB: bytes: ByteBuffer -> ApiActionFB
+
+  let ApiActionFB: ApiActionFBConstructor = failwith "JS only"
