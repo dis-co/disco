@@ -1648,9 +1648,14 @@ module RaftModule =
       if Log.length state.Log >= state.MaxLogDepth then
         let! cbs = read
         let! state = get
-        let snapshot =  cbs.PrepareSnapshot state
-        do! updateLog snapshot |> modify
-        cbs.PersistSnapshot (snapshot.Data |> Option.get)
+        match cbs.PrepareSnapshot state with
+        | Some snapshot ->
+          do! updateLog snapshot |> modify
+          match snapshot.Data with
+          | Some entry -> cbs.PersistSnapshot entry
+          | _          ->
+            do! error "Prepared snapshot was empty. Doing nothing."
+        | _ -> do! error "No snapshot was created. Doing nothing."
     }
 
   ///////////////////////////////////////////////

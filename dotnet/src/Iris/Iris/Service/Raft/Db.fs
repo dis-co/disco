@@ -884,6 +884,26 @@ let getLogs (db: LiteDatabase) =
     | []  -> None
     | lst -> List.fold folder None lst
 
+/// ## Get the most recent snapshot, if any.
+///
+/// Retrieve the most recent snapshot from the database.
+///
+/// ### Signature:
+/// - db: LiteDatabase
+///
+/// Returns: LogEntry option
+let tryFindSnapshot (db: LiteDatabase) =
+  let filter m log =
+    if Option.isNone m then
+      match log with
+      | Snapshot _ -> Some log
+      |          _ -> m
+    else m
+
+  match getLogs db with
+  | Some entries -> LogEntry.foldl filter None entries
+  | _            -> None
+
 /// ## Save the raw RaftMetaData document to disk
 ///
 /// Save the raw RaftMetaData document to disk

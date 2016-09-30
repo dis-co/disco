@@ -66,13 +66,14 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
   // | (_| (_| | | | |_) | (_| | (__|   <\__ \
   //  \___\__,_|_|_|_.__/ \__,_|\___|_|\_\___/
 
-  let mutable onLogMsg       : Option<LogLevel -> string -> unit>     = None
-  let mutable onConfigured   : Option<RaftNode array -> unit>        = None
-  let mutable onNodeAdded    : Option<RaftNode -> unit>              = None
-  let mutable onNodeUpdated  : Option<RaftNode -> unit>              = None
-  let mutable onNodeRemoved  : Option<RaftNode -> unit>              = None
-  let mutable onStateChanged : Option<RaftState -> RaftState -> unit> = None
-  let mutable onApplyLog     : Option<StateMachine -> unit>          = None
+  let mutable onLogMsg         : Option<LogLevel -> string -> unit>     = None
+  let mutable onConfigured     : Option<RaftNode array -> unit>        = None
+  let mutable onNodeAdded      : Option<RaftNode -> unit>              = None
+  let mutable onNodeUpdated    : Option<RaftNode -> unit>              = None
+  let mutable onNodeRemoved    : Option<RaftNode -> unit>              = None
+  let mutable onStateChanged   : Option<RaftState -> RaftState -> unit> = None
+  let mutable onApplyLog       : Option<StateMachine -> unit>          = None
+  let mutable onCreateSnapshot : Option<unit -> StateMachine>          = None
 
   member self.OnLogMsg
     with set cb = onLogMsg <- Some cb
@@ -94,6 +95,9 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
 
   member self.OnApplyLog
     with set cb = onApplyLog <- Some cb
+
+  member self.OnCreateSnapshot
+    with set cb = onCreateSnapshot <- Some cb
 
   //                           _
   //  _ __ ___   ___ _ __ ___ | |__   ___ _ __ ___
@@ -376,14 +380,12 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
       with
         | exn -> handleException "NodeAdded" exn
 
-
     //   ____ _
     //  / ___| |__   __ _ _ __   __ _  ___  ___
     // | |   | '_ \ / _` | '_ \ / _` |/ _ \/ __|
     // | |___| | | | (_| | | | | (_| |  __/\__ \
     //  \____|_| |_|\__,_|_| |_|\__, |\___||___/
     //                          |___/
-
 
     member self.Configured nodes =
       let logstr = sprintf "Cluster configuration done!"
@@ -394,9 +396,29 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
 
       this.Debug logstr
 
-    member self.PrepareSnapshot raft = failwith "FIXME: PrepareSnapshot"
-    member self.RetrieveSnapshot ()  = failwith "FIXME: RetrieveSnapshot"
-    member self.PersistSnapshot log  = failwith "FIXME: PersistSnapshot"
+    member self.PrepareSnapshot (raft: Raft) =
+      match onCreateSnapshot with
+      | Some cb ->
+        let currIdx = Log.index raft.Log
+        let prevTerm = Log.term raft.Log
+        let term = raft.CurrentTerm
+        let nodes = raft.Peers |> Map.toArray |> Array.map snd
+        let data = cb ()
+        Snapshot(Id.Create(), currIdx + 1u, term, currIdx, prevTerm, nodes, data)
+        |> Log.fromEntries
+        |> Some
+      | _ ->
+        self.Err "Unable to create snapshot. No data handler specified."
+        None
+
+    member self.PersistSnapshot log =
+      truncateLog database
+      insertLogs log database
+      sprintf "PersistSnapshot insert id: %A" (LogEntry.getId log |> string)
+      |> this.Debug
+
+    member self.RetrieveSnapshot () =
+      tryFindSnapshot database
 
     /// ## Raft state changed
     ///

@@ -450,7 +450,7 @@ type IRaftCallbacks =
 
   /// given the current state of Raft, prepare and return a snapshot value of
   /// current application state
-  abstract member PrepareSnapshot:     Raft            -> Log
+  abstract member PrepareSnapshot:     Raft            -> Log option
 
   /// perist the given Snapshot value to disk. For safety reasons this MUST
   /// flush all changes to disk.
