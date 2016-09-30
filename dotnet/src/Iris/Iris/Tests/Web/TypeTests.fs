@@ -3,6 +3,7 @@ namespace Test.Units
 [<RequireQualifiedAccess>]
 module TypeTests =
 
+  open Fable.Core.JsInterop
   open Iris.Core
   open Iris.Web.Tests
 
@@ -29,4 +30,9 @@ module TypeTests =
       equals num (Map.fold (fun m _ _ -> m + 1) 0 map)
 
       let id1 = Id.Create()
+      finish ()
+
+    test "Validate Id toString is valid json" <| fun finish ->
+      let id = Id.Create()
+      equals id (id.toString() |> ofJson<Id>)
       finish ()
