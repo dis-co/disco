@@ -14,6 +14,7 @@ let main _ =
   ; PatchesView.main
   ; ViewController.main
   ; SerializationTests.main
+  ; TypeTests.main
   ] |> List.iter apply
 
 @"
