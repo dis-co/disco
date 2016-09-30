@@ -157,22 +157,6 @@ module Main =
 
   [<EntryPoint>]
   let main args =
-
-    let slice : Slice = StringSlice { Index = 666666u; Value = "Cool slice" }
-
-    let writer = new BinaryWriter(File.Open("/home/k/slice.dat", FileMode.Create))
-    Binary.encode slice |> writer.Write
-
-    dispose writer
-
-    // let bytes = File.ReadAllBytes("/home/k/src/projects/iris/webpack-tests/js-encoded-cue.dat")
-
-    // let cue : Cue option = Binary.decode bytes
-
-    // printfn "cuue : %A" cue
-
-    exit 3
-
     let parsed =
       try
         parser.ParseCommandLine args

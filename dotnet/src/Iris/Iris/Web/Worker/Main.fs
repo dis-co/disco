@@ -6,6 +6,7 @@
 
 open Iris.Core
 open Iris.Web.Core
+open Fable.Core.JsInterop
 
 let context = new GlobalContext()
 
@@ -13,6 +14,8 @@ onConnect <| fun ev ->
   let port = ev.Ports.[0]
 
   port.OnMessage <- fun msg ->
-    port.PostMessage(ClientMessage.ClientLog (sprintf "hello echo %A" msg.Data))
+    ClientMessage.ClientLog (sprintf "hello echo %A" msg.Data)
+    |> toJson
+    |> port.PostMessage
 
   context.Register(port)

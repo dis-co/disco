@@ -7,6 +7,7 @@ module Client =
   open Fable.Import
   open Fable.Import.JS
   open Fable.Import.Browser
+  open Fable.Core.JsInterop
   open Iris.Core
 
   [<Emit("window.location.hostname")>]
@@ -48,7 +49,7 @@ module Client =
     let resource = "js/worker.js"
 
     let mutable session : Id option = None
-    let mutable worker  : SharedWorker<ClientMessage<State>> option = None
+    let mutable worker  : SharedWorker<string> option = None
     let mutable ctrl    : ViewController<State,ClientContext> option = None
 
     member self.Session
@@ -61,26 +62,27 @@ module Client =
       let host = getHostname ()
       let port = getHostPort ()
       let address = sprintf "ws://%s:%d" host (port + 1000)
-      let me = new SharedWorker<ClientMessage<State>>(resource)
+      let me = new SharedWorker<string>(resource)
       me.OnError <- fun e -> printfn "%A" e.Message
       me.Port.OnMessage <- self.MsgHandler
       worker <- Some me
-      me.Port.PostMessage (ClientMessage.Connect address)
+      me.Port.PostMessage (ClientMessage.Connect address |> toJson)
 
     member self.Trigger(msg: ClientMessage<State>) =
       match worker with
-      | Some me -> me.Port.PostMessage(msg)
+      | Some me -> msg |> toJson |> me.Port.PostMessage
       | _       -> printfn "oops no workr??"
 
     member self.Close() =
       match session, worker with
       | Some token, Some me ->
-        let msg = ClientMessage.Close(token)
-        me.Port.PostMessage(msg)
+        ClientMessage.Close(token)
+        |> toJson
+        |> me.Port.PostMessage
       | _ -> printfn "coudl not clsoe it??"
 
-    member self.MsgHandler (msg : MessageEvent<ClientMessage<State>>) : unit =
-      match msg.Data with
+    member self.MsgHandler (msg : MessageEvent<string>) : unit =
+      match ofJson<ClientMessage<State>> msg.Data with
       // initialize this clients session variable
       | ClientMessage.Initialized(token) ->
         session <- Some(token)
