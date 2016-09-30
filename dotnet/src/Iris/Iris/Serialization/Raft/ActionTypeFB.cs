@@ -9,8 +9,11 @@ public enum ActionTypeFB : ushort
  UpdateFB = 1,
  RemoveFB = 2,
  LogMsgFB = 3,
- AppCommandFB = 4,
- DataSnapshotFB = 5,
+ DataSnapshotFB = 4,
+ UndoFB = 5,
+ RedoFB = 6,
+ ResetFB = 7,
+ SaveProjectFB = 8,
 };
 
 

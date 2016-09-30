@@ -14,8 +14,7 @@ public enum PayloadFB : byte
  UserFB = 6,
  SessionFB = 7,
  LogMsgFB = 8,
- AppCommandFB = 9,
- StateFB = 10,
+ StateFB = 9,
 };
 
 

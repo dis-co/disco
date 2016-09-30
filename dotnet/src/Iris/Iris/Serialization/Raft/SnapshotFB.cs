@@ -23,7 +23,7 @@ public struct SnapshotFB : IFlatbufferObject
   public uint LastTerm { get { int o = __p.__offset(12); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
   public NodeFB? Nodes(int j) { int o = __p.__offset(14); return o != 0 ? (NodeFB?)(new NodeFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
   public int NodesLength { get { int o = __p.__offset(14); return o != 0 ? __p.__vector_len(o) : 0; } }
-  public StateMachineFB? Data { get { int o = __p.__offset(16); return o != 0 ? (StateMachineFB?)(new StateMachineFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
+  public ApiActionFB? Data { get { int o = __p.__offset(16); return o != 0 ? (ApiActionFB?)(new ApiActionFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<SnapshotFB> CreateSnapshotFB(FlatBufferBuilder builder,
       StringOffset IdOffset = default(StringOffset),
@@ -32,7 +32,7 @@ public struct SnapshotFB : IFlatbufferObject
       uint LastIndex = 0,
       uint LastTerm = 0,
       VectorOffset NodesOffset = default(VectorOffset),
-      Offset<StateMachineFB> DataOffset = default(Offset<StateMachineFB>)) {
+      Offset<ApiActionFB> DataOffset = default(Offset<ApiActionFB>)) {
     builder.StartObject(7);
     SnapshotFB.AddData(builder, DataOffset);
     SnapshotFB.AddNodes(builder, NodesOffset);
@@ -53,7 +53,7 @@ public struct SnapshotFB : IFlatbufferObject
   public static void AddNodes(FlatBufferBuilder builder, VectorOffset NodesOffset) { builder.AddOffset(5, NodesOffset.Value, 0); }
   public static VectorOffset CreateNodesVector(FlatBufferBuilder builder, Offset<NodeFB>[] data) { builder.StartVector(4, data.Length, 4); for (int i = data.Length - 1; i >= 0; i--) builder.AddOffset(data[i].Value); return builder.EndVector(); }
   public static void StartNodesVector(FlatBufferBuilder builder, int numElems) { builder.StartVector(4, numElems, 4); }
-  public static void AddData(FlatBufferBuilder builder, Offset<StateMachineFB> DataOffset) { builder.AddOffset(6, DataOffset.Value, 0); }
+  public static void AddData(FlatBufferBuilder builder, Offset<ApiActionFB> DataOffset) { builder.AddOffset(6, DataOffset.Value, 0); }
   public static Offset<SnapshotFB> EndSnapshotFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();
     return new Offset<SnapshotFB>(o);
