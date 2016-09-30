@@ -220,13 +220,10 @@ type GlobalContext() =
         store <- new Store(state)
         self.Broadcast <| ClientMessage.Render(store.State)
       | _ ->
-        self.Log (sprintf "event %A" ev)
-        self.Log (sprintf "state before: %A" store.State)
         try
           store.Dispatch ev
         with
           | exn -> self.Log (sprintf "Crash: %s" exn.Message)
-        self.Log (sprintf "state after: %A" store.State)
         self.Broadcast <| ClientMessage.Render(store.State)
 
   (*-------------------------------------------------------------------------*
