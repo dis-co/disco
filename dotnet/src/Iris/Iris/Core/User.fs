@@ -56,7 +56,8 @@ type User =
 
   override self.Equals(other) =
     match other with
-    | :? User as user -> self.Equals user
+    | :? User as user ->
+      (self :> System.IEquatable<User>).Equals user
     | _ -> false
 
   interface System.IEquatable<User> with

@@ -1262,7 +1262,8 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
 
   override self.Equals(other) =
     match other with
-    | :? ByteSliceD as slice -> self.Equals(slice)
+    | :? ByteSliceD as slice ->
+      (self :> System.IEquatable<ByteSliceD>).Equals(slice)
     | _ -> false
 
   override self.GetHashCode() =
@@ -1300,7 +1301,14 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
           contentsEqual <- contents
         result
 #else
-        failwith ".NET impl missing"
+        let result = Array.length self.Value = Array.length slice.Value
+        if result then
+          let mutable contents = true
+          for i in 0 .. (Array.length self.Value - 1) do
+            if contents then
+              contents <- self.Value.[i] = slice.Value.[i]
+          contentsEqual <- contents
+        result
 #endif
       slice.Index = self.Index &&
       lengthEqual &&
@@ -1323,8 +1331,9 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
         str <- str + Fable.Import.JS.String.fromCharCode arr.[i]
       Fable.Import.Browser.window.btoa str
 #else
-      failwith "hoy"
+      Convert.ToBase64String(bytes)
 #endif
+
     let encoded = encode self.Value
     let bytes = builder.CreateString encoded
     ByteSliceFB.StartByteSliceFB(builder)
@@ -1341,8 +1350,9 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
         bytes.[i] <- charCodeAt binary i
       bytes.buffer
 #else
-      failwith "hoy"
+      Convert.FromBase64String(str)
 #endif
+
     try
       let values = decode fb.Value
       { Index = fb.Index
