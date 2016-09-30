@@ -4,6 +4,7 @@ namespace Iris.Core
 #if JAVASCRIPT
 
 open Fable.Core
+open Fable.Core.JsInterop
 
 //  __  __       _   _
 // |  \/  | __ _| |_| |__
@@ -77,6 +78,8 @@ module JsUtilities =
 
 type Id =
   | Id of string
+
+  member self.toString() = toJson self
 
   override self.ToString() = match self with | Id str -> str
 
