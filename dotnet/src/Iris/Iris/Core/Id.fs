@@ -75,41 +75,10 @@ module JsUtilities =
     [| for n in 0 .. 3 do yield s4() |]
     |> Array.fold (fun m str -> m + "-" + str) (s4())
 
-// [<Erase>]
-// [<CustomEquality>]
-// [<CustomComparison>]
 type Id =
   | Id of string
 
   override self.ToString() = match self with | Id str -> str
-
-  // override self.GetHashCode() =
-  //   self.ToString() |> hashCode
-
-  // interface System.IComparable with
-  //   member self.CompareTo obj =
-  //     match obj with
-  //     | :? Id as other -> (self :> System.IComparable<_>).CompareTo other
-  //     | _              -> failwith "obj not an Id"
-
-  // interface System.IComparable<Id> with
-  //   member self.CompareTo (other: Id) =
-  //     if self < other then
-  //       -1
-  //     elif self = other then
-  //       0
-  //     else
-  //       1
-
-  // interface System.IEquatable<Id> with
-  //   member self.Equals (other: Id) =
-  //     string self = string other
-
-  // override self.Equals (other: obj) =
-  //   match other with
-  //   | :? Id as other -> (self :> System.IEquatable<Id>).Equals other
-  //   | _              -> failwith "obj not a Patch"
-
 
   static member Create _ = mkGuid () |> Id
 

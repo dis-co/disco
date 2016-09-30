@@ -78,16 +78,12 @@ module PatchesView =
       equals true (getById (string pid1) |> Option.isSome)
       equals true (getById (string pid2) |> Option.isSome)
 
-      printfn "state before: %A" store.State
-
       store.Dispatch <| RemovePatch(patch1)
 
       equals false (store.State.Patches.ContainsKey pid1)
       equals true  (store.State.Patches.ContainsKey pid2)
 
       controller.Render store.State ctx
-
-      printfn "state after: %A" store.State
 
       equals None (getById (string pid1))
       equals true (getById (string pid2) |> Option.isSome)
@@ -106,7 +102,7 @@ module PatchesView =
       let id1 = Id "id1"
       let value = "hello"
 
-      let slice : StringSliceD = { Index = 0UL; Value = value }
+      let slice : StringSliceD = { Index = 0u; Value = value }
       let iobox = IOBox.String(id1,"url input", Id "0xb4d1d34", Array.empty, [| slice |])
 
       let patch : Patch =
@@ -144,10 +140,10 @@ module PatchesView =
       let id2 = Id "iobox-4"
       let value = "hello"
 
-      let slice1 : StringSliceD = { Index = 0UL; Value = value }
+      let slice1 : StringSliceD = { Index = 0u; Value = value }
       let iobox1 = IOBox.String(id1,"url input", Id "0xb4d1d34", Array.empty, [| slice1 |])
 
-      let slice2 : StringSliceD = { Index = 0UL; Value = value }
+      let slice2 : StringSliceD = { Index = 0u; Value = value }
       let iobox2 = IOBox.String(id2,"url input", Id "0xb4d1d34", Array.empty, [| slice2 |])
 
       let patch : Patch =
@@ -210,7 +206,7 @@ module PatchesView =
         Map.empty
         |> Map.add patch.Id patch
 
-      let slice : StringSliceD = { Index = 0UL; Value = value1 }
+      let slice : StringSliceD = { Index = 0u; Value = value1 }
       let iobox = IOBox.String(elid, "url input", Id "0xb4d1d34", Array.empty, [| slice |])
 
       let store : Store =
@@ -234,7 +230,7 @@ module PatchesView =
 
       // update the iobox slice value
       let updated1 =
-        StringSlices [| { Index = 0UL; Value = value2 } |]
+        StringSlices [| { Index = 0u; Value = value2 } |]
         |> iobox.SetSlices
 
       store.Dispatch <| UpdateIOBox(updated1)
@@ -257,7 +253,7 @@ module PatchesView =
 
       // update the iobox slice value
       let updated2 =
-        StringSlices [| { Index = 0UL; Value = value3 } |]
+        StringSlices [| { Index = 0u; Value = value3 } |]
         |> iobox.SetSlices
 
       store.Dispatch <| UpdateIOBox(updated2)

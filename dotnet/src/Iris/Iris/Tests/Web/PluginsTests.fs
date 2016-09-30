@@ -47,7 +47,7 @@ module Plugins =
 
       let elid = Id "0xb33f"
 
-      let slice : StringSliceD = { Index = 0UL; Value = "oh hey" }
+      let slice : StringSliceD = { Index = 0u; Value = "oh hey" }
       let iobox = IOBox.String(elid,"url input", Id "0xb4d1d34", Array.empty, [| slice |])
 
       inst.Render iobox
@@ -68,7 +68,7 @@ module Plugins =
       let value1 = "r4nd0m"
       let value2 = "pr1m0p"
 
-      let slice : StringSliceD = { Index = 0UL; Value = value1 }
+      let slice : StringSliceD = { Index = 0u; Value = value1 }
       let iobox = IOBox.String(Id "0xb33f","url input", Id "0xb4d1d34", Array.empty, [| slice |])
 
       inst.Render iobox
@@ -79,7 +79,7 @@ module Plugins =
           equals value1 els.[0].textContent)
 
       let update =
-        StringSlices [| { Index = 0UL; Value = value2 } |]
+        StringSlices [| { Index = 0u; Value = value2 } |]
         |> iobox.SetSlices
 
       inst.Render update
@@ -90,8 +90,8 @@ module Plugins =
           equals value2 els.[0].textContent)
 
       let final =
-        StringSlices [| { Index = 0UL; Value = value1 }
-                     ; { Index = 0UL; Value = value2 } |]
+        StringSlices [| { Index = 0u; Value = value1 }
+                     ; { Index = 0u; Value = value2 } |]
         |> iobox.SetSlices
 
       inst.Render final
@@ -113,7 +113,7 @@ module Plugins =
 
       let instances = new Plugins ()
 
-      let slice : StringSliceD = { Index = 0UL; Value = "hello" }
+      let slice : StringSliceD = { Index = 0u; Value = "hello" }
       let iobox = IOBox.String(Id "0xb33f","url input", Id "0xb4d1d34", Array.empty, [| slice |])
 
       instances.Add iobox (fun _ -> ())
@@ -131,7 +131,7 @@ module Plugins =
 
       let instances = new Plugins ()
 
-      let slice : StringSliceD = { Index = 0UL; Value = "hello" }
+      let slice : StringSliceD = { Index = 0u; Value = "hello" }
       let iobox = IOBox.String(Id "0xb33f","url input", Id "0xb4d1d34",Array.empty, [| slice |])
 
       instances.Add iobox (fun _ -> ())
@@ -158,7 +158,7 @@ module Plugins =
       let value1 = "r4nd0m"
       let value2 = "pr1m0p"
 
-      let slice : StringSliceD = { Index = 0UL; Value = value1 }
+      let slice : StringSliceD = { Index = 0u; Value = value1 }
       let iobox = IOBox.String(Id "0xb33f","url input", Id "0xb4d1d34", Array.empty, [| slice |])
 
       let listener (box' : IOBox) : unit =
