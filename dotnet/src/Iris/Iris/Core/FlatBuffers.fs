@@ -23,17 +23,10 @@ module FlatBuffers =
   and ByteBufferConstructor =
     abstract prototype: ByteBuffer with get, set
 
-    [<Emit("new flatbuffers.flatbuffers.$0($1)")>]
-    abstract Create: bytes: Fable.Import.JS.Uint8Array -> ByteBuffer
+    [<Emit("new flatbuffers.flatbuffers.$0(new Uint8Array($1))")>]
+    abstract Create: bytes: Fable.Import.JS.ArrayBuffer -> ByteBuffer
 
-  //   ___   __  __          _
-  //  / _ \ / _|/ _|___  ___| |_
-  // | | | | |_| |_/ __|/ _ \ __|
-  // | |_| |  _|  _\__ \  __/ |_
-  //  \___/|_| |_| |___/\___|\__|
-
-  and Offset<'a> =
-    abstract Value: unit -> int
+  and [<Erase>] Offset<'a> = Offset of int
 
   //  ____        _ _     _
   // | __ ) _   _(_) | __| | ___ _ __
@@ -48,7 +41,7 @@ module FlatBuffers =
     [<Emit("$0.dataBuffer()")>]
     abstract DataBuffer: unit -> ByteBuffer
 
-    [<Emit("$0.asUint8Array().buffer")>]
+    [<Emit("$0.asUint8Array().buffer.slice($0.dataBuffer().position(),$0.dataBuffer().position() + $0.offset())")>]
     abstract SizedByteArray: unit -> Fable.Import.JS.ArrayBuffer
 
     [<Emit("$0.createString($1)")>]

@@ -4,13 +4,13 @@ namespace Iris.Core
 
 open Fable.Core
 open Fable.Import
+open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
 
 #else
 
 open FlatBuffers
 open Iris.Serialization.Raft
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 #endif
 
@@ -91,18 +91,6 @@ type Patch =
   static member RemoveIOBox (patch : Patch) (iobox : IOBox) : Patch =
     { patch with IOBoxes = Map.remove iobox.Id patch.IOBoxes }
 
-  //  ____            _       _ _          _   _
-  // / ___|  ___ _ __(_) __ _| (_)______ _| |_(_) ___  _ __
-  // \___ \ / _ \ '__| |/ _` | | |_  / _` | __| |/ _ \| '_ \
-  //  ___) |  __/ |  | | (_| | | |/ / (_| | |_| | (_) | | | |
-  // |____/ \___|_|  |_|\__,_|_|_/___\__,_|\__|_|\___/|_| |_|
-
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<Patch>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -114,12 +102,19 @@ type Patch =
     let mutable ioboxes = Map.empty
 
     for i in 0 .. (fb.IOBoxesLength - 1) do
+#if JAVASCRIPT
+      fb.IOBoxes(i)
+      |> IOBox.FromFB
+      |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
+      |> ignore
+#else
       let iobox = fb.IOBoxes(i)
       if iobox.HasValue then
         iobox.Value
         |> IOBox.FromFB
         |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
         |> ignore
+#endif
 
     try
       { Id = Id fb.Id
@@ -144,41 +139,9 @@ type Patch =
     PatchFB.AddIOBoxes(builder, ioboxes)
     PatchFB.EndPatchFB(builder)
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes (bytes: byte array) : Patch option =
-    let msg = PatchFB.GetRootAsPatchFB(new ByteBuffer(bytes))
-    Patch.FromFB(msg)
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() =
-    new JObject()
-    |> addString "Id"     (string self.Id)
-    |> addString "Name"    self.Name
-    |> addMap    "IOBoxes" self.IOBoxes
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : Patch option =
-    try
-      { Id = Id (string token.["Id"])
-      ; Name = string token.["Name"]
-      ; IOBoxes = fromMap "IOBoxes" token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize patch json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : Patch option =
-    JObject.Parse(str) |> Patch.FromJToken
-
-#endif
+  static member FromBytes (bytes: Binary.Buffer) : Patch option =
+    Binary.createBuffer bytes
+    |> PatchFB.GetRootAsPatchFB
+    |> Patch.FromFB

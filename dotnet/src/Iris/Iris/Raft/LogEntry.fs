@@ -2,9 +2,18 @@ namespace Iris.Raft
 
 open System
 open System.Collections
-open FlatBuffers
 open Iris.Core
 open Iris.Serialization.Raft
+
+#if JAVASCRIPT
+
+open Iris.Core.FlatBuffers
+
+#else
+
+open FlatBuffers
+
+#endif
 
 ///  _                _____       _
 /// | |    ___   __ _| ____|_ __ | |_ _ __ _   _
@@ -197,7 +206,7 @@ type LogEntry =
     static member depth (log: LogEntry) =
       let rec _depth i thing =
         let inline count i prev =
-          let cnt = i + 1UL
+          let cnt = i + 1u
           match prev with
             | Some other -> _depth cnt other
             |          _ -> cnt
@@ -205,8 +214,8 @@ type LogEntry =
           | Configuration(_,_,_,_,prev)  -> count i prev
           | JointConsensus(_,_,_,_,prev) -> count i prev
           | LogEntry(_,_,_,_,prev)       -> count i prev
-          | Snapshot _                   -> i + 1UL
-      _depth 0UL log
+          | Snapshot _                   -> i + 1u
+      _depth 0u log
 
     //   _           _
     //  (_)_ __   __| | _____  __
@@ -477,7 +486,7 @@ type LogEntry =
     /// |_|  |_|\__,_|_|\_\___|
 
     static member make term data =
-      LogEntry(Id.Create(), 0UL, term, data, None)
+      LogEntry(Id.Create(), 0u, term, data, None)
 
 
     /// Add an Configuration log entry onto the queue
@@ -485,7 +494,7 @@ type LogEntry =
     /// ### Complexity: 0(1)
 
     static member mkConfig term nodes =
-      Configuration(Id.Create(), 0UL, term, nodes, None)
+      Configuration(Id.Create(), 0u, term, nodes, None)
 
     /// Add an intermediate configuration entry for 2-phase commit onto the log queue
     ///
@@ -507,7 +516,7 @@ type LogEntry =
               | _ -> NodeRemoved(oldnode) :: lst) additions oldnodes
         |> List.toArray
 
-      JointConsensus(Id.Create(), 0UL, term, changes, None)
+      JointConsensus(Id.Create(), 0u, term, changes, None)
 
     ///  _ __   ___  _ __
     /// | '_ \ / _ \| '_ \
@@ -536,10 +545,10 @@ type LogEntry =
     /// Compact the log database
 
     static member snapshot nodes data = function
-      | LogEntry(_,idx,term,_,_)       -> Snapshot(Id.Create(),idx + 1UL,term,idx,term,nodes,data)
-      | Configuration(_,idx,term,_,_)  -> Snapshot(Id.Create(),idx + 1UL,term,idx,term,nodes,data)
-      | JointConsensus(_,idx,term,_,_) -> Snapshot(Id.Create(),idx + 1UL,term,idx,term,nodes,data)
-      | Snapshot(_,idx,term,_,_,_,_)   -> Snapshot(Id.Create(),idx + 1UL,term,idx,term,nodes,data)
+      | LogEntry(_,idx,term,_,_)       -> Snapshot(Id.Create(),idx + 1u,term,idx,term,nodes,data)
+      | Configuration(_,idx,term,_,_)  -> Snapshot(Id.Create(),idx + 1u,term,idx,term,nodes,data)
+      | JointConsensus(_,idx,term,_,_) -> Snapshot(Id.Create(),idx + 1u,term,idx,term,nodes,data)
+      | Snapshot(_,idx,term,_,_,_,_)   -> Snapshot(Id.Create(),idx + 1u,term,idx,term,nodes,data)
 
     ///  _ __ ___   __ _ _ __
     /// | '_ ` _ \ / _` | '_ \
@@ -711,28 +720,28 @@ type LogEntry =
     static member rewrite entry =
       match entry with
       | Configuration(id, _, _, nodes, None) ->
-        Configuration(id, 1UL, 1UL, nodes, None)
+        Configuration(id, 1u, 1u, nodes, None)
 
       | Configuration(id, _, term, nodes, Some prev) ->
         let previous = LogEntry.rewrite prev
-        Configuration(id, LogEntry.index previous + 1UL, term, nodes, Some previous)
+        Configuration(id, LogEntry.index previous + 1u, term, nodes, Some previous)
 
       | JointConsensus(id, _, term, changes, None) ->
-        JointConsensus(id, 1UL, term, changes, None)
+        JointConsensus(id, 1u, term, changes, None)
 
       | JointConsensus(id, _, term, changes, Some prev) ->
         let previous = LogEntry.rewrite prev
-        JointConsensus(id, LogEntry.index previous + 1UL, term, changes, Some previous)
+        JointConsensus(id, LogEntry.index previous + 1u, term, changes, Some previous)
 
       | LogEntry(id, _, term, data, None) ->
-        LogEntry(id, 1UL, term, data, None)
+        LogEntry(id, 1u, term, data, None)
 
       | LogEntry(id, _, term, data, Some prev) ->
         let previous = LogEntry.rewrite prev
-        LogEntry(id, LogEntry.index previous + 1UL, term, data, Some previous)
+        LogEntry(id, LogEntry.index previous + 1u, term, data, Some previous)
 
       | Snapshot(id, _, term, _, pterm, nodes, data) ->
-        Snapshot(id, 2UL, term, 1UL, pterm, nodes, data)
+        Snapshot(id, 2u, term, 1u, pterm, nodes, data)
 
     ///                                   _
     ///   __ _ _ __  _ __   ___ _ __   __| |
@@ -748,7 +757,7 @@ type LogEntry =
         if LogEntry.getId _log = LogEntry.getId _entry
         then _log
         else
-          let nextIdx = LogEntry.index _log + 1UL
+          let nextIdx = LogEntry.index _log + 1u
           match _entry with
             | Configuration(id, _, term, nodes, _) ->
               Configuration(id, nextIdx, term, nodes, Some _log)
@@ -841,10 +850,10 @@ type LogEntry =
     //  \__, |\___|\__|_| |_|
     //  |___/
     static member getn count log =
-      if count = 0UL then
+      if count = 0u then
         None
       else
-        let newcnt = count - 1UL
+        let newcnt = count - 1u
         match log with
         | Configuration(_,_,_,_, None) as curr -> Some curr
         | JointConsensus(_,_,_,_,None) as curr -> Some curr
@@ -892,9 +901,9 @@ type LogEntry =
 
     /// Make sure the current log entry is a singleton (followed by no entries).
     static member sanitize term = function
-      | Configuration(id,_,term,nodes,_)    -> Configuration(id,0UL,term,nodes,None)
-      | JointConsensus(id,_,term,changes,_) -> JointConsensus(id,0UL,term,changes,None)
-      | LogEntry(id,_,_,data,_)             -> LogEntry(id,0UL,term,data,None)
+      | Configuration(id,_,term,nodes,_)    -> Configuration(id,0u,term,nodes,None)
+      | JointConsensus(id,_,term,changes,_) -> JointConsensus(id,0u,term,changes,None)
+      | LogEntry(id,_,_,data,_)             -> LogEntry(id,0u,term,data,None)
       | Snapshot _ as snapshot              -> snapshot
 
     //  _____ _       _   ____         __  __
@@ -925,8 +934,8 @@ type LogEntry =
 
           ConfigurationFB.StartConfigurationFB(builder)
           ConfigurationFB.AddId(builder, id)
-          ConfigurationFB.AddIndex(builder, uint64 index)
-          ConfigurationFB.AddTerm(builder, uint64 term)
+          ConfigurationFB.AddIndex(builder, index)
+          ConfigurationFB.AddTerm(builder, term)
           ConfigurationFB.AddNodes(builder, nvec)
 
           let entry = ConfigurationFB.EndConfigurationFB(builder)
@@ -945,8 +954,8 @@ type LogEntry =
 
           JointConsensusFB.StartJointConsensusFB(builder)
           JointConsensusFB.AddId(builder, id)
-          JointConsensusFB.AddIndex(builder, uint64 index)
-          JointConsensusFB.AddTerm(builder, uint64 term)
+          JointConsensusFB.AddIndex(builder, index)
+          JointConsensusFB.AddTerm(builder, term)
           JointConsensusFB.AddChanges(builder, chvec)
 
           let entry = JointConsensusFB.EndJointConsensusFB(builder)
@@ -965,8 +974,8 @@ type LogEntry =
 
           LogEntryFB.StartLogEntryFB(builder)
           LogEntryFB.AddId(builder, id)
-          LogEntryFB.AddIndex(builder, uint64 index)
-          LogEntryFB.AddTerm(builder, uint64 term)
+          LogEntryFB.AddIndex(builder, index)
+          LogEntryFB.AddTerm(builder, term)
           LogEntryFB.AddData(builder, data)
 
           let entry = LogEntryFB.EndLogEntryFB(builder)
@@ -987,10 +996,10 @@ type LogEntry =
 
           SnapshotFB.StartSnapshotFB(builder)
           SnapshotFB.AddId(builder, id)
-          SnapshotFB.AddIndex(builder, uint64 index)
-          SnapshotFB.AddTerm(builder, uint64 term)
-          SnapshotFB.AddLastIndex(builder, uint64 lidx)
-          SnapshotFB.AddLastTerm(builder, uint64 lterm)
+          SnapshotFB.AddIndex(builder, index)
+          SnapshotFB.AddTerm(builder, term)
+          SnapshotFB.AddLastIndex(builder, lidx)
+          SnapshotFB.AddLastTerm(builder, lterm)
           SnapshotFB.AddNodes(builder, nvec)
           SnapshotFB.AddData(builder, data)
 

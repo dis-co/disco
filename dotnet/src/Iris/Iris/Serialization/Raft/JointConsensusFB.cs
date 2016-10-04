@@ -17,28 +17,28 @@ public struct JointConsensusFB : IFlatbufferObject
 
   public string Id { get { int o = __p.__offset(4); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
   public ArraySegment<byte>? GetIdBytes() { return __p.__vector_as_arraysegment(4); }
-  public ulong Index { get { int o = __p.__offset(6); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
-  public ulong Term { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public uint Index { get { int o = __p.__offset(6); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
+  public uint Term { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
   public ConfigChangeFB? Changes(int j) { int o = __p.__offset(10); return o != 0 ? (ConfigChangeFB?)(new ConfigChangeFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
   public int ChangesLength { get { int o = __p.__offset(10); return o != 0 ? __p.__vector_len(o) : 0; } }
 
   public static Offset<JointConsensusFB> CreateJointConsensusFB(FlatBufferBuilder builder,
       StringOffset IdOffset = default(StringOffset),
-      ulong Index = 0,
-      ulong Term = 0,
+      uint Index = 0,
+      uint Term = 0,
       VectorOffset ChangesOffset = default(VectorOffset)) {
     builder.StartObject(4);
+    JointConsensusFB.AddChanges(builder, ChangesOffset);
     JointConsensusFB.AddTerm(builder, Term);
     JointConsensusFB.AddIndex(builder, Index);
-    JointConsensusFB.AddChanges(builder, ChangesOffset);
     JointConsensusFB.AddId(builder, IdOffset);
     return JointConsensusFB.EndJointConsensusFB(builder);
   }
 
   public static void StartJointConsensusFB(FlatBufferBuilder builder) { builder.StartObject(4); }
   public static void AddId(FlatBufferBuilder builder, StringOffset IdOffset) { builder.AddOffset(0, IdOffset.Value, 0); }
-  public static void AddIndex(FlatBufferBuilder builder, ulong Index) { builder.AddUlong(1, Index, 0); }
-  public static void AddTerm(FlatBufferBuilder builder, ulong Term) { builder.AddUlong(2, Term, 0); }
+  public static void AddIndex(FlatBufferBuilder builder, uint Index) { builder.AddUint(1, Index, 0); }
+  public static void AddTerm(FlatBufferBuilder builder, uint Term) { builder.AddUint(2, Term, 0); }
   public static void AddChanges(FlatBufferBuilder builder, VectorOffset ChangesOffset) { builder.AddOffset(3, ChangesOffset.Value, 0); }
   public static VectorOffset CreateChangesVector(FlatBufferBuilder builder, Offset<ConfigChangeFB>[] data) { builder.StartVector(4, data.Length, 4); for (int i = data.Length - 1; i >= 0; i--) builder.AddOffset(data[i].Value); return builder.EndVector(); }
   public static void StartChangesVector(FlatBufferBuilder builder, int numElems) { builder.StartVector(4, numElems, 4); }

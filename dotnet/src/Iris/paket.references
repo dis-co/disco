@@ -1,7 +1,6 @@
 FSharp.Core
 Argu
 FSharpx.Extras
-FSharpLint
 LibGit2Sharp
 LibGit2Sharp.NativeBinaries
 FSharp.Configuration
@@ -15,4 +14,3 @@ NUnit
 Gallio
 LiteDB
 ZeroMQ
-Newtonsoft.Json

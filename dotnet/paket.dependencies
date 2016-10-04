@@ -8,7 +8,6 @@ group Main
   nuget Fuchu
   nuget Fuchu.FsCheck
   nuget FsCheck
-  nuget FSharpLint
   nuget XUnit
   nuget NUnit
   nuget Gallio
@@ -22,7 +21,6 @@ group Main
   nuget FSharp.Configuration
   nuget LiteDB
   nuget ZeroMQ
-  nuget Newtonsoft.Json
 
 group Build
   source https://nuget.org/api/v2

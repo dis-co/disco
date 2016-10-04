@@ -4,14 +4,14 @@ namespace Iris.Core
 
 open Fable.Core
 open Fable.Import
-
+open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
+open Iris.Web.Core.UserFlatBuffers
 #else
 
 open System
 open LibGit2Sharp
 open FlatBuffers
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 open Iris.Serialization.Raft
 
 #endif
@@ -36,7 +36,6 @@ type User =
   override me.GetHashCode() =
     let mutable hash = 42
 #if JAVASCRIPT
-    let mutable hash = 42
     hash <- (hash * 7) + hashCode (string me.Id)
     hash <- (hash * 7) + hashCode me.UserName
     hash <- (hash * 7) + hashCode me.FirstName
@@ -55,10 +54,14 @@ type User =
 #endif
     hash
 
-  override me.Equals(o) =
-    match o with
-    | :? User ->
-      let other = o :?> User
+  override self.Equals(other) =
+    match other with
+    | :? User as user ->
+      (self :> System.IEquatable<User>).Equals user
+    | _ -> false
+
+  interface System.IEquatable<User> with
+    member me.Equals(other: User) =
       me.Id               = other.Id              &&
       me.UserName         = other.UserName        &&
       me.FirstName        = other.FirstName       &&
@@ -66,7 +69,6 @@ type User =
       me.Email            = other.Email           &&
       (string me.Joined)  = (string other.Joined) &&
       (string me.Created) = (string other.Created)
-    | _ -> false
 
   interface System.IComparable with
     member me.CompareTo(o: obj) =
@@ -99,6 +101,8 @@ type User =
     with get () =
       let name = sprintf "%s %s" user.FirstName user.LastName
       new Signature(name, user.Email, new DateTimeOffset(user.Created))
+
+#endif
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -134,55 +138,19 @@ type User =
       ; FirstName = fb.FirstName
       ; LastName  = fb.LastName
       ; Email     = fb.Email
+#if JAVASCRIPT
+      ; Joined    = fb.Joined
+      ; Created   = fb.Created }
+#else
       ; Joined    = DateTime.Parse fb.Joined
       ; Created   = DateTime.Parse fb.Created }
+#endif
       |> Some
     with
       | exn ->
         printfn "Could not de-serializae binary rep of User: %s" exn.Message
         None
 
-  static member FromBytes (bytes: byte array) : User option =
-    UserFB.GetRootAsUserFB(new ByteBuffer(bytes))
+  static member FromBytes (bytes: Binary.Buffer) : User option =
+    UserFB.GetRootAsUserFB(Binary.createBuffer bytes)
     |> User.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() =
-    new JObject()
-    |> addString "Id"        (string self.Id)
-    |> addString "UserName"  (string self.UserName)
-    |> addString "FirstName"  self.FirstName
-    |> addString "LastName"   self.LastName
-    |> addString "Email"      self.Email
-    |> addString "Joined"    (string self.Joined)
-    |> addString "Created"   (string self.Created)
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : User option =
-    try
-      { Id        = Id (string token.["Id"])
-      ; UserName  = (string token.["UserName"])
-      ; FirstName = (string token.["FirstName"])
-      ; LastName  = (string token.["LastName"])
-      ; Email     = (string token.["Email"])
-      ; Joined    = DateTime.Parse (string token.["Joined"])
-      ; Created   = DateTime.Parse (string token.["Created"])
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize user json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : User option =
-    JToken.Parse(str) |> User.FromJToken
-
-#endif

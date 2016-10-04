@@ -92,7 +92,7 @@ type WebSocket(url: string)  =
   member self.Close() = failwith "ONLY JS"
 
   [<Emit("$0.send($1)")>]
-  member self.Send(stuff: string) = failwith "ONLY JS"
+  member self.Send(stuff: Binary.Buffer) = failwith "ONLY JS"
 
 // __        __         _
 // \ \      / /__  _ __| | _____ _ __
@@ -107,7 +107,7 @@ module Worker =
   let importScript (_: string) : unit = failwith "JS ONLY"
 
   [<Emit("onconnect = $0")>]
-  let onConnect (_: WorkerEvent<ClientMessage<State>> -> unit) = failwith "ONLY JS"
+  let onConnect (_: WorkerEvent<string> -> unit) = failwith "ONLY JS"
 
 (* ///////////////////////////////////////////////////////////////////////////////
       ____ _       _           _  ____            _            _
@@ -161,7 +161,7 @@ module Worker =
 
 /////////////////////////////////////////////////////////////////////////////// *)
 
-type ClientMessagePort = MessagePort<ClientMessage<State>>
+type ClientMessagePort = MessagePort<string>
 type PortMap = Map<Id,ClientMessagePort>
 
 type GlobalContext() =
@@ -186,10 +186,9 @@ type GlobalContext() =
         self.Broadcast ClientMessage.Disconnected
 
       sock.OnMessage <- fun (ev: MessageEvent<ArrayBuffer>) ->
-        let uint8thing = Uint8Array.Create(ev.Data)
-        self.Log (sprintf "data %A" uint8thing.length)
-        // let parsed : StateMachine = ofJson<StateMachine> ev.Data
-        // self.OnSocketMessage parsed
+        match Binary.decode ev.Data with
+        | Some sm -> self.OnSocketMessage sm
+        | _       -> self.Log "Unable to parse received message. Ignoring."
 
       socket <- Some (addr, sock)
 
@@ -221,13 +220,10 @@ type GlobalContext() =
         store <- new Store(state)
         self.Broadcast <| ClientMessage.Render(store.State)
       | _ ->
-        self.Log (sprintf "event %A" ev)
-        self.Log (sprintf "state before: %A" store.State)
         try
           store.Dispatch ev
         with
           | exn -> self.Log (sprintf "Crash: %s" exn.Message)
-        self.Log (sprintf "state after: %A" store.State)
         self.Broadcast <| ClientMessage.Render(store.State)
 
   (*-------------------------------------------------------------------------*
@@ -239,8 +235,8 @@ type GlobalContext() =
 
    *------------------------------------------------------------------------*)
 
-  member self.OnClientMessage(msg : MessageEvent<ClientMessage<State>>) : unit =
-    match msg.Data with
+  member self.OnClientMessage(msg : MessageEvent<string>) : unit =
+    match ofJson<ClientMessage<State>> msg.Data with
     | ClientMessage.Close(session) -> self.UnRegister(session)
 
     | ClientMessage.Stop ->
@@ -256,7 +252,7 @@ type GlobalContext() =
     | _ -> self.Log "clients-only message ignored"
 
 
-  member self.Register (port : MessagePort<ClientMessage<State>>) =
+  member self.Register (port : MessagePort<string>) =
     count <- count + 1                     // increase the connection count
     let session = Id.Create()             // create a session id
     port.OnMessage <- self.OnClientMessage   // register handler for client messages
@@ -289,13 +285,13 @@ type GlobalContext() =
   member self.Socket with get () = socket
 
   member self.SendServer (msg: StateMachine) =
-    let json = toJson msg
+    let buffer = Binary.encode msg
     match socket with
-    | Some (_, server) -> server.Send(json)
+    | Some (_, server) -> server.Send(buffer)
     | _                -> self.Log "Cannot update server: no connection."
 
   member self.SendClient (port: ClientMessagePort) (msg: ClientMessage<State>) =
-    port.PostMessage(msg)
+    port.PostMessage(toJson msg)
 
   member self.Broadcast (msg : ClientMessage<State>) : unit =
     let handler port _ _ = self.SendClient port msg

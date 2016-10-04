@@ -1,7 +1,5 @@
 namespace Iris.Core
 
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 //  _                _                   _
 // | |    ___   __ _| |    _____   _____| |
@@ -34,36 +32,3 @@ type LogLevel =
     | Info  -> "info"
     | Warn  -> "warn"
     | Err   -> "err"
-
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<LogLevel>()
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() : JToken =
-    new JValue(string self) :> JToken
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : LogLevel option =
-    try
-      LogLevel.Parse (string token)
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : LogLevel option =
-    JObject.Parse(str) |> LogLevel.FromJToken
-
-#endif

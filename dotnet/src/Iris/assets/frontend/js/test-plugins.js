@@ -20,17 +20,17 @@ window.simpleString1 = function() {
 
   var stringplugin = function(cb) {
     this.render = function (iobox) {
-      return h("div", { id: iobox.Id }, iobox.Slices.Map(function(slice) {
-        return h("input", {
-          value: slice.Value,
-          className: "slice",
-          onchange: function(ev) {
-            // strive for immutability
-            var newslice = iobox.Slices.CreateString(slice.Index, ev.target.value);
-            var newbox = iobox.SetSlice(newslice);
-            cb(newbox);
-          }
-        }, [ slice.Value ]);
+      return h("div", { id: iobox.Id.ToString() }, iobox.Slices.Map(function(slice) {
+	return h("input", {
+	  value: slice.Value,
+	  className: "slice",
+	  onchange: function(ev) {
+	    // strive for immutability
+	    var newslice = iobox.Slices.CreateString(slice.Index, ev.target.value);
+	    var newbox = iobox.SetSlice(newslice);
+	    cb(newbox);
+	  }
+	}, [ slice.Value ]);
       }));
     };
     this.dispose = function() {};
@@ -58,10 +58,10 @@ window.simpleString2 = function() {
   var sliceView = function(slice) {
     return h('li', [
       h('input', {
-        className: 'slice',
-        type: 'text',
-        name: 'slice',
-        value: slice.Value
+	className: 'slice',
+	type: 'text',
+	name: 'slice',
+	value: slice.Value
       }, [ slice.Value ])
     ]);
   };
@@ -78,10 +78,10 @@ window.simpleString2 = function() {
     // update view
     this.render = function (iobox) {
       return h('div', {
-        id: iobox.Id
+	id: iobox.Id.ToString()
       }, [
-        h("p", { className: 'name' }, [ iobox.Name ]),
-        slices(iobox)
+	h("p", { className: 'name' }, [ iobox.Name ]),
+	slices(iobox)
       ]);
     };
 
@@ -109,8 +109,8 @@ window.numberPlugin = function() {
 
   var numberplugin = function(cb) {
     this.render = function (iobox) {
-      var view = h("div", { id: iobox.Id }, [
-        h("p", { className: "slice" }, [ iobox.Slices.At(0).Value ])
+      var view = h("div", { id: iobox.Id.ToString() }, [
+	h("p", { className: "slice" }, [ iobox.Slices.At(0).Value ])
       ]);
       return view;
     };

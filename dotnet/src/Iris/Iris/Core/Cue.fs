@@ -4,63 +4,13 @@ namespace Iris.Core
 
 open Fable.Core
 open Fable.Import
-open Fable.Import.JS
 open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
 
 #else
 
 open FlatBuffers
 open Iris.Serialization.Raft
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
-
-#endif
-
-#if JAVASCRIPT
-
-//   ____           _____ ____
-//  / ___|   _  ___|  ___| __ )
-// | |  | | | |/ _ \ |_  |  _ \
-// | |__| |_| |  __/  _| | |_) |
-//  \____\__,_|\___|_|   |____/
-
-[<Import("Iris", from="buffers")>]
-module CueFBSerialization =
-
-  open Iris.Core.FlatBuffers
-
-  type CueFB =
-    abstract Id: unit -> string
-    abstract Name: unit -> string
-
-  type CueFBConstructor =
-    abstract prototype: CueFB with get, set
-
-    [<Emit("Iris.Serialization.Raft.CueFB.startCueFB($1)")>]
-    abstract StartCueFB: builder: FlatBufferBuilder -> unit
-
-    [<Emit("Iris.Serialization.Raft.CueFB.addId($1, $2)")>]
-    abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
-
-    [<Emit("Iris.Serialization.Raft.CueFB.addName($1, $2)")>]
-    abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-
-    [<Emit("Iris.Serialization.Raft.CueFB.endCueFB($1)")>]
-    abstract EndCueFB: builder: FlatBufferBuilder -> Offset<'a>
-
-    [<Emit("Iris.Serialization.Raft.CueFB.finishCueFBBuffer($1, $2)")>]
-    abstract FinishCueFBBuffer: builder: FlatBufferBuilder * offset: Offset<'a> -> CueFB
-
-    [<Emit("Iris.Serialization.Raft.CueFB.getRootAsCueFB($1)")>]
-    abstract GetRootAsCueFB: buffer: ByteBuffer -> CueFB
-
-    // [<Emit("new .$0($1)")>]
-    // abstract Create: unit -> CueFB
-
-  let CueFB : CueFBConstructor = failwith "JS only"
-
-
-open CueFBSerialization
 
 #endif
 
@@ -69,69 +19,34 @@ type Cue =
   ; Name:    string
   ; IOBoxes: IOBox array }
 
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  static member FromFB(fb: CueFB) : Cue option =
 #if JAVASCRIPT
-
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
-
-  member self.ToOffset(builder: FlatBufferBuilder) : Offset<Cue> =
-    let id = builder.CreateString (string self.Id)
-    let name = builder.CreateString self.Name
-    // let ioboxes = CueFB.CreateIOBoxesVector(builder, ioboxoffsets)
-    CueFB.StartCueFB(builder)
-    CueFB.AddId(builder, id)
-    CueFB.AddName(builder, name)
-    CueFB.EndCueFB(builder)
-
-  member self.ToBytes() =
-    let builder = FlatBufferBuilder.Create(1)
-    let offset = self.ToOffset(builder)
-    CueFB.FinishCueFBBuffer(builder, offset)
-    let uintarr = builder.AsUint8Array()
-    uintarr.buffer
-
-  static member FromFB(fb: CueFB) : Cue option =
-    { Id = fb.Id() |> Id
-    ; Name = fb.Name()
-    ; IOBoxes = [| |] }
-    |> Some
-
-  static member FromBytes(bytes: ArrayBuffer) : Cue option =
-    printfn "bytes %A" bytes.byteLength
-    let uarr = Uint8Array.Create(bytes)
-    printfn "uint8array: %A" uarr
-    let byt = ByteBuffer.Create(uarr)
-    printfn "byte buffer: %A" byt
-    CueFB.GetRootAsCueFB(byt)
-    |> fun fb -> printfn "CueFB: %A" fb; fb
-    |> Cue.FromFB
-
+    let ioboxes = [| |]
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<Cue>()
-
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
-
-  static member FromFB(fb: CueFB) : Cue option =
     let ioboxes = Array.zeroCreate fb.IOBoxesLength
+#endif
 
     for i in 0 .. (fb.IOBoxesLength - 1) do
+#if JAVASCRIPT
+      fb.IOBoxes(i)
+      |> IOBox.FromFB
+      |> Option.map (fun iobox -> ioboxes.[i] <- iobox)
+      |> ignore
+#else
       let iobox = fb.IOBoxes(i)
       if iobox.HasValue then
         iobox.Value
         |> IOBox.FromFB
         |> Option.map (fun iobox -> ioboxes.[i] <- iobox)
         |> ignore
+#endif
 
     try
       { Id = Id fb.Id
@@ -152,52 +67,8 @@ type Cue =
     CueFB.AddIOBoxes(builder, ioboxes)
     CueFB.EndCueFB(builder)
 
-  member self.ToBytes () = Binary.buildBuffer self
+  static member FromBytes(bytes: Binary.Buffer) : Cue option =
+    CueFB.GetRootAsCueFB(Binary.createBuffer bytes)
+    |> Cue.FromFB
 
-  static member FromBytes (bytes: byte array) : Cue option =
-    let msg = CueFB.GetRootAsCueFB(new ByteBuffer(bytes))
-    Cue.FromFB(msg)
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() =
-    new JObject()
-    |> addString "Id"     (string self.Id)
-    |> addString "Name"   (self.Name)
-    |> addArray  "IOBoxes" self.IOBoxes
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : Cue option =
-    try
-      let ioboxes =
-        let jarr = token.["IOBoxes"] :?> JArray
-        let arr = Array.zeroCreate jarr.Count
-
-        for i in 0 .. (jarr.Count - 1) do
-          Json.parse jarr.[i]
-          |> Option.map (fun iobox -> arr.[i] <- iobox; iobox)
-          |> ignore
-
-        arr
-
-      { Id = Id (string token.["Id"])
-      ; Name = string token.["Name"]
-      ; IOBoxes = ioboxes }
-      |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize cue json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : Cue option =
-    JToken.Parse(str) |> Cue.FromJToken
-
-#endif
+  member self.ToBytes() = Binary.buildBuffer self

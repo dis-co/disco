@@ -28,9 +28,9 @@ module SerializationTests =
             Port     = 8080us }
 
       let vr : VoteRequest =
-        { Term = 8UL
-        ; LastLogIndex = 128UL
-        ; LastLogTerm = 7UL
+        { Term = 8u
+        ; LastLogIndex = 128u
+        ; LastLogTerm = 7u
         ; Candidate = node }
 
       let msg   = RequestVote(Id.Create(), vr)
@@ -48,7 +48,7 @@ module SerializationTests =
   let test_validate_requestvote_response_serialization =
     testCase "Validate RequestVote Response Serialization" <| fun _ ->
       let vr : VoteResponse =
-        { Term = 8UL
+        { Term = 8u
         ; Granted = false
         ; Reason = Some VoteTermMismatch }
 
@@ -73,17 +73,17 @@ module SerializationTests =
       let nodes = [| node1; node2 |]
 
       let log =
-        Some <| LogEntry(Id.Create(), 7UL, 1UL, DataSnapshot State.Empty,
-          Some <| LogEntry(Id.Create(), 6UL, 1UL, DataSnapshot State.Empty,
-            Some <| Configuration(Id.Create(), 5UL, 1UL, [| node1 |],
-              Some <| JointConsensus(Id.Create(), 4UL, 1UL, changes,
-                Some <| Snapshot(Id.Create(), 3UL, 1UL, 2UL, 1UL, nodes, DataSnapshot State.Empty)))))
+        Some <| LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
+          Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
+            Some <| Configuration(Id.Create(), 5u, 1u, [| node1 |],
+              Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
+                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, nodes, DataSnapshot State.Empty)))))
 
       let ae : AppendEntries =
-        { Term = 8UL
-        ; PrevLogIdx = 192UL
-        ; PrevLogTerm = 87UL
-        ; LeaderCommit = 182UL
+        { Term = 8u
+        ; PrevLogIdx = 192u
+        ; PrevLogTerm = 87u
+        ; LeaderCommit = 182u
         ; Entries = log }
 
       let msg   = AppendEntries(Id.Create(), ae)
@@ -106,10 +106,10 @@ module SerializationTests =
   let test_validate_appendentries_response_serialization =
     testCase "Validate RequestVote Response Serialization" <| fun _ ->
       let response : AppendResponse =
-        { Term         = 38UL
+        { Term         = 38u
         ; Success      = true
-        ; CurrentIndex = 1234UL
-        ; FirstIndex   = 8942UL
+        ; CurrentIndex = 1234u
+        ; FirstIndex   = 8942u
         }
 
       let msg = AppendEntriesResponse(Id.Create(), response)
@@ -129,11 +129,11 @@ module SerializationTests =
       let node1 = [| Node.create (Id.Create()) |]
 
       let is : InstallSnapshot =
-        { Term = 2134UL
+        { Term = 2134u
         ; LeaderId = Id.Create()
-        ; LastIndex = 242UL
-        ; LastTerm = 124242UL
-        ; Data = Snapshot(Id.Create(), 12UL, 3414UL, 241UL, 422UL, node1, DataSnapshot State.Empty)
+        ; LastIndex = 242u
+        ; LastTerm = 124242u
+        ; Data = Snapshot(Id.Create(), 12u, 3414u, 241u, 422u, node1, DataSnapshot State.Empty)
         }
 
       let msg = InstallSnapshot(Id.Create(), is)
@@ -256,24 +256,24 @@ module SerializationTests =
         yield Id.Create() |> string |]
 
   let ioboxes _ =
-    [| IOBox.Bang       (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
-    ; IOBox.Toggle     (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 0UL; Value = true    }|])
-    ; IOBox.String     (Id.Create(), "string",    Id.Create(), mktags (), [|{ Index = 0UL; Value = "one"   }|])
-    ; IOBox.MultiLine  (Id.Create(), "multiline", Id.Create(), mktags (), [|{ Index = 0UL; Value = "two"   }|])
-    ; IOBox.FileName   (Id.Create(), "filename",  Id.Create(), mktags (), "haha", [|{ Index = 0UL; Value = "three" }|])
-    ; IOBox.Directory  (Id.Create(), "directory", Id.Create(), mktags (), "hmmm", [|{ Index = 0UL; Value = "four"  }|])
-    ; IOBox.Url        (Id.Create(), "url",       Id.Create(), mktags (), [|{ Index = 0UL; Value = "five"  }|])
-    ; IOBox.IP         (Id.Create(), "ip",        Id.Create(), mktags (), [|{ Index = 0UL; Value = "six"   }|])
-    ; IOBox.Float      (Id.Create(), "float",     Id.Create(), mktags (), [|{ Index = 0UL; Value = 3.0    }|])
-    ; IOBox.Double     (Id.Create(), "double",    Id.Create(), mktags (), [|{ Index = 0UL; Value = double 3.0 }|])
-    ; IOBox.Bytes      (Id.Create(), "bytes",     Id.Create(), mktags (), [|{ Index = 0UL; Value = [| 2uy; 9uy |] }|])
-    ; IOBox.Color      (Id.Create(), "rgba",      Id.Create(), mktags (), [|{ Index = 0UL; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
-    ; IOBox.Color      (Id.Create(), "hsla",      Id.Create(), mktags (), [|{ Index = 0UL; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
-    ; IOBox.Enum       (Id.Create(), "enum",      Id.Create(), mktags (), [|{ Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|] , [|{ Index = 0UL; Value = { Key = "one"; Value = "two" }}|])
+    [| IOBox.Bang       (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 0u; Value = true    }|])
+    ; IOBox.Toggle     (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 0u; Value = true    }|])
+    ; IOBox.String     (Id.Create(), "string",    Id.Create(), mktags (), [|{ Index = 0u; Value = "one"   }|])
+    ; IOBox.MultiLine  (Id.Create(), "multiline", Id.Create(), mktags (), [|{ Index = 0u; Value = "two"   }|])
+    ; IOBox.FileName   (Id.Create(), "filename",  Id.Create(), mktags (), "haha", [|{ Index = 0u; Value = "three" }|])
+    ; IOBox.Directory  (Id.Create(), "directory", Id.Create(), mktags (), "hmmm", [|{ Index = 0u; Value = "four"  }|])
+    ; IOBox.Url        (Id.Create(), "url",       Id.Create(), mktags (), [|{ Index = 0u; Value = "five"  }|])
+    ; IOBox.IP         (Id.Create(), "ip",        Id.Create(), mktags (), [|{ Index = 0u; Value = "six"   }|])
+    ; IOBox.Float      (Id.Create(), "float",     Id.Create(), mktags (), [|{ Index = 0u; Value = 3.0    }|])
+    ; IOBox.Double     (Id.Create(), "double",    Id.Create(), mktags (), [|{ Index = 0u; Value = double 3.0 }|])
+    ; IOBox.Bytes      (Id.Create(), "bytes",     Id.Create(), mktags (), [|{ Index = 0u; Value = [| 2uy; 9uy |] }|])
+    ; IOBox.Color      (Id.Create(), "rgba",      Id.Create(), mktags (), [|{ Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
+    ; IOBox.Color      (Id.Create(), "hsla",      Id.Create(), mktags (), [|{ Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
+    ; IOBox.Enum       (Id.Create(), "enum",      Id.Create(), mktags (), [|{ Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|] , [|{ Index = 0u; Value = { Key = "one"; Value = "two" }}|])
     |]
 
   let mkIOBox _ =
-    let slice : StringSliceD = { Index = 0UL; Value = "hello" }
+    let slice : StringSliceD = { Index = 0u; Value = "hello" }
     IOBox.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
 
   let mkCue _ : Cue =
@@ -389,16 +389,16 @@ module SerializationTests =
   let test_validate_slice_serialization =
     testCase "Validate Slice Serialization" <| fun _ ->
 
-      [| BoolSlice     { Index = 0UL; Value = true    }
-      ; StringSlice   { Index = 0UL; Value = "hello" }
-      ; IntSlice      { Index = 0UL; Value = 1234    }
-      ; FloatSlice    { Index = 0UL; Value = 1234.0  }
-      ; DoubleSlice   { Index = 0UL; Value = 1234.0  }
-      ; ByteSlice     { Index = 0UL; Value = [| 0uy |] }
-      ; EnumSlice     { Index = 0UL; Value = { Key = "one"; Value = "two" }}
-      ; ColorSlice    { Index = 0UL; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }
-      ; ColorSlice    { Index = 0UL; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }
-      ; CompoundSlice { Index = 0UL; Value = ioboxes () } |]
+      [| BoolSlice     { Index = 0u; Value = true    }
+      ; StringSlice   { Index = 0u; Value = "hello" }
+      ; IntSlice      { Index = 0u; Value = 1234    }
+      ; FloatSlice    { Index = 0u; Value = 1234.0  }
+      ; DoubleSlice   { Index = 0u; Value = 1234.0  }
+      ; ByteSlice     { Index = 0u; Value = [| 0uy |] }
+      ; EnumSlice     { Index = 0u; Value = { Key = "one"; Value = "two" }}
+      ; ColorSlice    { Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }
+      ; ColorSlice    { Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }
+      ; CompoundSlice { Index = 0u; Value = ioboxes () } |]
       |> Array.iter
         (fun slice ->
           let reslice = slice |> Binary.encode |> Binary.decode |> Option.get
@@ -419,11 +419,11 @@ module SerializationTests =
       Array.iter check (ioboxes ())
 
       // compound
-      let compound = IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0UL; Value = ioboxes () }|])
+      let compound = IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = ioboxes () }|])
       check compound
 
       // nested compound :)
-      IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0UL; Value = [| compound |] }|])
+      IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = [| compound |] }|])
       |> check
 
   //  ____  _        _

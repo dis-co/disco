@@ -25,7 +25,7 @@
   "devDependencies": {
     "babel-polyfill": "^6.9.1",
     "exports-loader": "^0.6.3",
-    "fable-compiler": "^0.6.5",
+    "fable-compiler": "^0.6.7",
     "imports-loader": "^0.6.5",
     "script-loader": "^0.7.0",
     "source-map-loader": "^0.1.5",
@@ -34,7 +34,7 @@
   "dependencies": {
     "core-js": "^2.4.0",
     "expect.js": "^0.3.1",
-    "fable-core": "^0.6.3",
+    "fable-core": "^0.6.4",
     "mocha": "^2.5.3",
     "routie": "0.0.1",
     "virtual-dom": "^2.1.1"

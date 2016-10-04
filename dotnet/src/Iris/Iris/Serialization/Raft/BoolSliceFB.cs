@@ -15,11 +15,11 @@ public struct BoolSliceFB : IFlatbufferObject
   public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
   public BoolSliceFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Index { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public uint Index { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
   public bool Value { get { int o = __p.__offset(6); return o != 0 ? 0!=__p.bb.Get(o + __p.bb_pos) : (bool)false; } }
 
   public static Offset<BoolSliceFB> CreateBoolSliceFB(FlatBufferBuilder builder,
-      ulong Index = 0,
+      uint Index = 0,
       bool Value = false) {
     builder.StartObject(2);
     BoolSliceFB.AddIndex(builder, Index);
@@ -28,7 +28,7 @@ public struct BoolSliceFB : IFlatbufferObject
   }
 
   public static void StartBoolSliceFB(FlatBufferBuilder builder) { builder.StartObject(2); }
-  public static void AddIndex(FlatBufferBuilder builder, ulong Index) { builder.AddUlong(0, Index, 0); }
+  public static void AddIndex(FlatBufferBuilder builder, uint Index) { builder.AddUint(0, Index, 0); }
   public static void AddValue(FlatBufferBuilder builder, bool Value) { builder.AddBool(1, Value, false); }
   public static Offset<BoolSliceFB> EndBoolSliceFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();

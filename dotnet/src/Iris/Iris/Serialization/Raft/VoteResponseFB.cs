@@ -15,23 +15,23 @@ public struct VoteResponseFB : IFlatbufferObject
   public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
   public VoteResponseFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Term { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public uint Term { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
   public bool Granted { get { int o = __p.__offset(6); return o != 0 ? 0!=__p.bb.Get(o + __p.bb_pos) : (bool)false; } }
   public RaftErrorFB? Reason { get { int o = __p.__offset(8); return o != 0 ? (RaftErrorFB?)(new RaftErrorFB()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<VoteResponseFB> CreateVoteResponseFB(FlatBufferBuilder builder,
-      ulong Term = 0,
+      uint Term = 0,
       bool Granted = false,
       Offset<RaftErrorFB> ReasonOffset = default(Offset<RaftErrorFB>)) {
     builder.StartObject(3);
-    VoteResponseFB.AddTerm(builder, Term);
     VoteResponseFB.AddReason(builder, ReasonOffset);
+    VoteResponseFB.AddTerm(builder, Term);
     VoteResponseFB.AddGranted(builder, Granted);
     return VoteResponseFB.EndVoteResponseFB(builder);
   }
 
   public static void StartVoteResponseFB(FlatBufferBuilder builder) { builder.StartObject(3); }
-  public static void AddTerm(FlatBufferBuilder builder, ulong Term) { builder.AddUlong(0, Term, 0); }
+  public static void AddTerm(FlatBufferBuilder builder, uint Term) { builder.AddUint(0, Term, 0); }
   public static void AddGranted(FlatBufferBuilder builder, bool Granted) { builder.AddBool(1, Granted, false); }
   public static void AddReason(FlatBufferBuilder builder, Offset<RaftErrorFB> ReasonOffset) { builder.AddOffset(2, ReasonOffset.Value, 0); }
   public static Offset<VoteResponseFB> EndVoteResponseFB(FlatBufferBuilder builder) {

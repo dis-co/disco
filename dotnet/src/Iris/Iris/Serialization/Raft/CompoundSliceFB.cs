@@ -15,21 +15,21 @@ public struct CompoundSliceFB : IFlatbufferObject
   public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
   public CompoundSliceFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Index { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public uint Index { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
   public IOBoxFB? Value(int j) { int o = __p.__offset(6); return o != 0 ? (IOBoxFB?)(new IOBoxFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
   public int ValueLength { get { int o = __p.__offset(6); return o != 0 ? __p.__vector_len(o) : 0; } }
 
   public static Offset<CompoundSliceFB> CreateCompoundSliceFB(FlatBufferBuilder builder,
-      ulong Index = 0,
+      uint Index = 0,
       VectorOffset ValueOffset = default(VectorOffset)) {
     builder.StartObject(2);
-    CompoundSliceFB.AddIndex(builder, Index);
     CompoundSliceFB.AddValue(builder, ValueOffset);
+    CompoundSliceFB.AddIndex(builder, Index);
     return CompoundSliceFB.EndCompoundSliceFB(builder);
   }
 
   public static void StartCompoundSliceFB(FlatBufferBuilder builder) { builder.StartObject(2); }
-  public static void AddIndex(FlatBufferBuilder builder, ulong Index) { builder.AddUlong(0, Index, 0); }
+  public static void AddIndex(FlatBufferBuilder builder, uint Index) { builder.AddUint(0, Index, 0); }
   public static void AddValue(FlatBufferBuilder builder, VectorOffset ValueOffset) { builder.AddOffset(1, ValueOffset.Value, 0); }
   public static VectorOffset CreateValueVector(FlatBufferBuilder builder, Offset<IOBoxFB>[] data) { builder.StartVector(4, data.Length, 4); for (int i = data.Length - 1; i >= 0; i--) builder.AddOffset(data[i].Value); return builder.EndVector(); }
   public static void StartValueVector(FlatBufferBuilder builder, int numElems) { builder.StartVector(4, numElems, 4); }

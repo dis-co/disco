@@ -17,14 +17,6 @@ let context = new ClientContext()
 [<Emit("Object.keys(buffers.Iris.Serialization.Raft)")>]
 let buffers _ = failwith "ONLY JS"
 
-open Iris.Core.FlatBuffers
-
-printfn "buffers: %A"     (buffers())
-printfn "bytebuffer: %A"  (ByteBuffer.Create(Fable.Import.JS.ArrayBuffer.Create(1.0)))
-printfn "builder: %A"     (FlatBufferBuilder.Create(1))
-
-// ------------------ 8< ------------------
-
 context.Controller <- ctrl
 context.Start()
 

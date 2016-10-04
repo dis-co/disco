@@ -73,7 +73,7 @@ module StoreTests =
 
         expect "Should be zero" 0 id store.State.Patches.[patch.Id].IOBoxes.Count
 
-        let slice : StringSliceD = { Index = 0UL; Value = "Hey" }
+        let slice : StringSliceD = { Index = 0u; Value = "Hey" }
         let iobox : IOBox = IOBox.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
 
         store.Dispatch <| AddIOBox(iobox)
@@ -83,7 +83,7 @@ module StoreTests =
   let test_should_not_add_an_iobox_to_the_store_if_patch_does_not_exists =
     testCase "should not add an iobox to the store if patch does not exists" <| fun _ ->
       withStore <| fun patch store ->
-        let slice : StringSliceD = { Index = 0UL; Value =  "Hey" }
+        let slice : StringSliceD = { Index = 0u; Value =  "Hey" }
         let iobox = IOBox.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
         store.Dispatch <| AddIOBox(iobox)
         expect "Should be zero" 0 id store.State.Patches.Count
@@ -94,7 +94,7 @@ module StoreTests =
         let name1 = "can a cat own a cat?"
         let name2 = "yes, cats are re-entrant."
 
-        let slice : StringSliceD = { Index = 0UL; Value = "swell" }
+        let slice : StringSliceD = { Index = 0u; Value = "swell" }
         let iobox = IOBox.String(Id "0xb33f", name1, patch.Id, Array.empty, [| slice |])
 
         store.Dispatch <| AddPatch(patch)
@@ -114,7 +114,7 @@ module StoreTests =
   let test_should_remove_an_iobox_from_the_store_if_it_exists =
     testCase "should remove an iobox from the store if it exists" <| fun _ ->
       withStore <| fun patch store ->
-        let slice : StringSliceD = { Index = 0UL; Value = "swell" }
+        let slice : StringSliceD = { Index = 0u; Value = "swell" }
         let iobox = IOBox.String(Id "0xb33f", "hi", Id "0xb4d1d34", Array.empty, [| slice |])
 
         store.Dispatch <| AddPatch(patch)

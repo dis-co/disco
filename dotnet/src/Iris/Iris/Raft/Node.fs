@@ -3,14 +3,16 @@ namespace Iris.Raft
 open Iris.Core
 
 #if JAVASCRIPT
+
+open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
+
 #else
 
 open System
 open System.Net
 open FlatBuffers
 open Iris.Serialization.Raft
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 #endif
 
@@ -20,11 +22,6 @@ open Newtonsoft.Json.Linq
 // | |\  | (_) | (_| |  __/___) | || (_| | ||  __/
 // |_| \_|\___/ \__,_|\___|____/ \__\__,_|\__\___|
 
-#if JAVASCRIPT
-open Fable.Core
-
-[<StringEnum>]
-#endif
 type RaftNodeState =
   | Joining                             // excludes node from voting
   | Running                             // normal execution state
@@ -43,12 +40,6 @@ type RaftNodeState =
     | "Failed"  -> Failed
     | _         -> failwithf "NodeState: failed to parse %s" str
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<RaftNodeState>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -63,41 +54,18 @@ type RaftNodeState =
       | Failed  -> NodeStateFB.FailedFB
 
   static member FromFB (fb: NodeStateFB) =
+#if JAVASCRIPT
+    match fb with
+      | x when x = NodeStateFB.JoiningFB -> Some Joining
+      | x when x = NodeStateFB.RunningFB -> Some Running
+      | x when x = NodeStateFB.FailedFB  -> Some Failed
+      | _                                -> None
+#else
     match fb with
       | NodeStateFB.JoiningFB -> Some Joining
       | NodeStateFB.RunningFB -> Some Running
       | NodeStateFB.FailedFB  -> Some Failed
       | _                     -> None
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() =
-    new JValue(string self) :> JToken
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : RaftNodeState option =
-    try
-      match string token with
-      | "Running" -> Some Running
-      | "Joining" -> Some Joining
-      | "Failed"  -> Some Failed
-      | _         -> None
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : RaftNodeState option =
-    JObject.Parse(str) |> RaftNodeState.FromJToken
-
 #endif
 
 //  _   _           _
@@ -126,12 +94,6 @@ type RaftNode =
       (string self.State)
       (sprintf "(NxtIdx %A)" self.NextIndex)
       (sprintf "(MtchIdx %A)" self.MatchIndex)
-
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<RaftNode>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -177,60 +139,10 @@ type RaftNode =
 
   member self.ToBytes () = Binary.buildBuffer self
 
-  static member FromBytes (bytes: byte array) =
-    NodeFB.GetRootAsNodeFB(new ByteBuffer(bytes))
+  static member FromBytes (bytes: Binary.Buffer) =
+    Binary.createBuffer bytes
+    |> NodeFB.GetRootAsNodeFB
     |> RaftNode.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() =
-    let serializer = JsonSerializer.CreateDefault(JsonSerializerSettings(TypeNameHandling=TypeNameHandling.All))
-    let json = JToken.FromObject(self, serializer)
-
-    json.["Id"] <- new JValue(string self.Id)
-    json.["IpAddr"] <- Json.tokenize self.IpAddr
-    json.["State"] <- Json.tokenize self.State
-
-    json
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : RaftNode option =
-    try
-      let ip    : IpAddress option     = Json.parse token.["IpAddr"]
-      let state : RaftNodeState option = Json.parse token.["State"]
-
-      match ip, state with
-      | Some ipaddr, Some nodestate ->
-        { Id         = string token.["Id"] |> Id
-        ; HostName   = string token.["HostName"]
-        ; IpAddr     = ipaddr
-        ; State      = nodestate
-        ; Port       = uint16 token.["Port"]
-        ; Voting     = System.Boolean.Parse(string token.["Voting"])
-        ; VotedForMe = System.Boolean.Parse(string token.["VotedForMe"])
-        ; NextIndex  = uint64 token.["NextIndex"]
-        ; MatchIndex = uint64 token.["MatchIndex"]
-        } |> Some
-      | _ -> None
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : RaftNode option =
-    JObject.Parse(str) |> RaftNode.FromJToken
-
-#endif
-
-
 
 //   ____             __ _        ____ _
 //  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
@@ -243,60 +155,75 @@ type ConfigChange =
   | NodeAdded   of RaftNode
   | NodeRemoved of RaftNode
 
-  with
-    override self.ToString() =
-      match self with
-      | NodeAdded   n -> sprintf "NodeAdded (%s)"   (string n.Id)
-      | NodeRemoved n ->sprintf "NodeRemoved (%s)" (string n.Id)
+  override self.ToString() =
+    match self with
+    | NodeAdded   n -> sprintf "NodeAdded (%s)"   (string n.Id)
+    | NodeRemoved n ->sprintf "NodeRemoved (%s)" (string n.Id)
 
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    match self with
+      | NodeAdded node ->
+        let node = node.ToOffset(builder)
+        ConfigChangeFB.StartConfigChangeFB(builder)
+        ConfigChangeFB.AddType(builder, ConfigChangeTypeFB.NodeAdded)
+        ConfigChangeFB.AddNode(builder, node)
+        ConfigChangeFB.EndConfigChangeFB(builder)
+      | NodeRemoved node ->
+        let node = node.ToOffset(builder)
+        ConfigChangeFB.StartConfigChangeFB(builder)
+        ConfigChangeFB.AddType(builder, ConfigChangeTypeFB.NodeRemoved)
+        ConfigChangeFB.AddNode(builder, node)
+        ConfigChangeFB.EndConfigChangeFB(builder)
+
+  static member FromFB (fb: ConfigChangeFB) : ConfigChange option =
 #if JAVASCRIPT
+    fb.Node
+    |> RaftNode.FromFB
+    |> Option.bind
+      (fun node ->
+        match fb.Type with
+          | x when x = ConfigChangeTypeFB.NodeAdded   -> Some (NodeAdded   node)
+          | x when x = ConfigChangeTypeFB.NodeRemoved -> Some (NodeRemoved node)
+          | _                                         -> None)
 #else
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      match self with
-        | NodeAdded node ->
-          let node = node.ToOffset(builder)
-          ConfigChangeFB.StartConfigChangeFB(builder)
-          ConfigChangeFB.AddType(builder, ConfigChangeTypeFB.NodeAdded)
-          ConfigChangeFB.AddNode(builder, node)
-          ConfigChangeFB.EndConfigChangeFB(builder)
-        | NodeRemoved node ->
-          let node = node.ToOffset(builder)
-          ConfigChangeFB.StartConfigChangeFB(builder)
-          ConfigChangeFB.AddType(builder, ConfigChangeTypeFB.NodeRemoved)
-          ConfigChangeFB.AddNode(builder, node)
-          ConfigChangeFB.EndConfigChangeFB(builder)
+    let nullable = fb.Node
+    if nullable.HasValue then
+      RaftNode.FromFB nullable.Value
+      |> Option.bind
+        (fun node ->
+          match fb.Type with
+            | ConfigChangeTypeFB.NodeAdded   -> Some (NodeAdded   node)
+            | ConfigChangeTypeFB.NodeRemoved -> Some (NodeRemoved node)
+            | _                              -> None)
+    else None
+#endif
 
-    static member FromFB (fb: ConfigChangeFB) : ConfigChange option =
-      let nullable = fb.Node
-      if nullable.HasValue then
-        RaftNode.FromFB nullable.Value
-        |> Option.bind
-          (fun node ->
-            match fb.Type with
-              | ConfigChangeTypeFB.NodeAdded   -> Some (NodeAdded   node)
-              | ConfigChangeTypeFB.NodeRemoved -> Some (NodeRemoved node)
-              | _                              -> None)
-      else None
+  member self.ToBytes () = Binary.buildBuffer self
 
-    member self.ToBytes () = Binary.buildBuffer self
+  static member FromBytes (bytes: Binary.Buffer) =
+    Binary.createBuffer bytes
+    |> ConfigChangeFB.GetRootAsConfigChangeFB
+    |> ConfigChange.FromFB
 
-    static member FromBytes (bytes: byte array) =
-      ConfigChangeFB.GetRootAsConfigChangeFB(new ByteBuffer(bytes))
-      |> ConfigChange.FromFB
 
 [<RequireQualifiedAccess>]
 module Node =
 
   let create id =
+#if JAVASCRIPT
+    let hostname = Fable.Import.Browser.window.location.host
+#else
+    let hostname = System.Net.Dns.GetHostName()
+#endif
     { Id         = id
-    ; HostName   = System.Net.Dns.GetHostName()
+    ; HostName   = hostname
     ; IpAddr     = IPv4Address "127.0.0.1"
     ; Port       = 9000us
     ; State      = Running
     ; Voting     = true
     ; VotedForMe = false
-    ; NextIndex  = 1UL
-    ; MatchIndex = 0UL
+    ; NextIndex  = 1u
+    ; MatchIndex = 0u
     }
 
   let isVoting (node : RaftNode) : bool =
@@ -351,5 +278,3 @@ module Node =
     |> List.append (added oldnodes newnodes)
     |> List.append (removed oldnodes newnodes)
     |> Array.ofList
-
-#endif

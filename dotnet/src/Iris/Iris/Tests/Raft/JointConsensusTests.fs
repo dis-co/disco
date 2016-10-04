@@ -17,7 +17,7 @@ module JointConsensus =
 
   let server_periodic_executes_all_cfg_changes =
     testCase "periodic executes all cfg changes" <| fun _ ->
-      let term = 1UL
+      let term = 1u
 
       let cbs =
         { mkcbs (ref defSM) with
@@ -27,9 +27,9 @@ module JointConsensus =
       let node2 = Node.create (Id.Create())
 
       let log =
-        JointConsensus(Id.Create(), 3UL, 0UL, [| NodeAdded node2 |],
-                Some <| JointConsensus(Id.Create(), 2UL, 0UL, [| NodeRemoved node1 |],
-                           Some <| JointConsensus(Id.Create(), 1UL, 0UL, [| NodeAdded node1 |], None)))
+        JointConsensus(Id.Create(), 3u, 0u, [| NodeAdded node2 |],
+                Some <| JointConsensus(Id.Create(), 2u, 0u, [| NodeRemoved node1 |],
+                           Some <| JointConsensus(Id.Create(), 1u, 0u, [| NodeAdded node1 |], None)))
 
       let getstuff r =
         Map.toList r.Peers
@@ -41,9 +41,9 @@ module JointConsensus =
         do! receiveEntry log >>= ignoreM
         let! me = selfM()
 
-        do! expectM "Should have 1 nodes" 1UL numNodes
-        do! periodic 10UL
-        do! expectM "Should have 2 nodes" 2UL numNodes
+        do! expectM "Should have 1 nodes" 1u numNodes
+        do! periodic 10u
+        do! expectM "Should have 2 nodes" 2u numNodes
         do! expectM "Should have correct nodes" (List.sort [me.Id; node2.Id]) getstuff
       }
       |> runWithDefaults
@@ -55,23 +55,23 @@ module JointConsensus =
       let node = Node.create nid2
 
       let mkjc term =
-        JointConsensus(Id.Create(), 1UL, term, [| NodeAdded(node) |] , None)
+        JointConsensus(Id.Create(), 1u, term, [| NodeAdded(node) |] , None)
 
       let mkcnf term nodes =
-        Configuration(Id.Create(), 1UL, term, nodes , None)
+        Configuration(Id.Create(), 1u, term, nodes , None)
 
-      let ci = ref 0UL
+      let ci = ref 0u
       let state = createRaft (Node.create (Id.Create()))
       let cbs = { mkcbs (ref defSM) with
                     SendAppendEntries = fun _ _ ->
-                      Some { Term = 0UL; Success = true; CurrentIndex = !ci; FirstIndex = 1UL }
+                      Some { Term = 0u; Success = true; CurrentIndex = !ci; FirstIndex = 1u }
                   } :> IRaftCallbacks
 
       raft {
-        do! setElectionTimeoutM 1000UL
+        do! setElectionTimeoutM 1000u
         do! becomeLeader ()
-        do! expectM "Should have commit idx of zero" 0UL commitIndex
-        do! expectM "Should have node count of one" 1UL numNodes
+        do! expectM "Should have commit idx of zero" 0u commitIndex
+        do! expectM "Should have node count of one" 1u numNodes
         let! term = currentTermM ()
 
         // Add the first entry
@@ -101,7 +101,7 @@ module JointConsensus =
         do! expectM "Should not be in joint-consensus yet" false inJointConsensus
         let! idx = currentIndexM ()
         ci := idx
-        do! periodic 1000UL
+        do! periodic 1000u
         do! expectM "Should be in joint-consensus now" true inJointConsensus
 
         do! expectM "Should be non-voting node for start" false (getNode nid2 >> Option.get >> Node.isVoting)
@@ -125,8 +125,8 @@ module JointConsensus =
 
         // call periodic to ensure these are applied
         let! idx = currentIndexM ()
-        ci := idx + 1UL
-        do! periodic 1000UL
+        ci := idx + 1u
+        do! periodic 1000u
 
         // when the server notices that all nodes are up-to-date it will atomatically append
         // a Configuration entry to exit the JointConsensus
@@ -148,15 +148,15 @@ module JointConsensus =
 
   let server_should_use_old_and_new_config_during_intermittend_elections =
     testCase "should use old and new config during intermittend elections" <| fun _ ->
-      let n = 10UL                      // we want ten nodes overall
+      let n = 10u                      // we want ten nodes overall
 
       let nodes =
-        [| for n in 0UL .. (n - 1UL) do      // subtract one for the implicitly
+        [| for n in 0u .. (n - 1u) do      // subtract one for the implicitly
             let nid = Id.Create()
             yield (nid, Node.create nid) |] // create node in the Raft state
 
-      let ci = ref 0UL
-      let term = ref 1UL
+      let ci = ref 0u
+      let term = ref 1u
 
       let lokk = new System.Object()
       let vote = { Granted = true; Term = !term; Reason = None }
@@ -165,7 +165,7 @@ module JointConsensus =
         { mkcbs (ref defSM) with
             SendAppendEntries = fun _ req ->
               lock lokk <| fun _ ->
-                Some { Term = !term; Success = true; CurrentIndex = !ci; FirstIndex = 1UL }
+                Some { Term = !term; Success = true; CurrentIndex = !ci; FirstIndex = 1u }
           } :> IRaftCallbacks
 
       raft {
@@ -196,7 +196,7 @@ module JointConsensus =
         do! expectM "Should use the regular configuration" false inJointConsensus
 
         // we need only 5 votes coming in (plus our own) to make a majority
-        for nid in 1UL .. (n / 2UL) do
+        for nid in 1u .. (n / 2u) do
           do! receiveVoteResponse (fst nodes.[int nid]) { vote with Term = !term }
 
         do! expectM "Should be leader in base configuration" Leader getState
@@ -212,9 +212,9 @@ module JointConsensus =
         // we establish a new cluster configuration *without* the last 5 nodes
         let entry =
           nodes
-          |> Array.take (int <| n / 2UL)
+          |> Array.take (int <| n / 2u)
           |> Array.map snd
-          |> Log.mkConfigChange 1UL peers
+          |> Log.mkConfigChange 1u peers
 
         let! idx = currentIndexM ()
         ci := idx
@@ -224,14 +224,14 @@ module JointConsensus =
         let! idx = currentIndexM ()
         ci := idx
 
-        do! periodic 1000UL
+        do! periodic 1000u
 
         let! committed = responseCommitted response
         do! expectM "Should have committed the config change" true (konst committed)
 
-        do! periodic 1000UL
+        do! periodic 1000u
 
-        do! expectM "Should still have correct node count for new configuration" (n / 2UL) numPeers
+        do! expectM "Should still have correct node count for new configuration" (n / 2u) numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" n numOldPeers
         do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (lastConfigChange >> Option.get >> LogEntry.getId)
@@ -245,7 +245,7 @@ module JointConsensus =
         // now in joint consensus state, with 2 configurations (old and new)
 
         // same as calling becomeCandidate but not circumventing requestAllVotes
-        do! setTermM (!term + 1UL)
+        do! setTermM (!term + 1u)
         do! resetVotesM ()
         do! voteForMyself ()
         do! setLeaderM None
@@ -257,7 +257,7 @@ module JointConsensus =
         // testing with the new configuration (the nodes with the lower id values)
         // We only need the votes from 2 more nodes out of the old configuration
         // to form a majority.
-        for idx in 1UL .. ((n / 2UL) / 2UL) do
+        for idx in 1u .. ((n / 2u) / 2u) do
           let nid = fst <| nodes.[int idx]
           do! receiveVoteResponse nid { vote with Term = !term }
 
@@ -272,7 +272,7 @@ module JointConsensus =
         // still in joint consensus state
 
         // same as calling becomeCandidate but not circumventing requestAllVotes
-        do! setTermM (!term + 1UL)
+        do! setTermM (!term + 1u)
         do! resetVotesM ()
         do! voteForMyself ()
         do! setLeaderM None
@@ -283,7 +283,7 @@ module JointConsensus =
 
         // testing with the old configuration (the nodes with the higher id
         // values that have been removed with the joint consensus entry)
-        for idx in (n / 2UL) .. (n - 1UL) do
+        for idx in (n / 2u) .. (n - 1u) do
           let nid = fst nodes.[int idx]
           do! receiveVoteResponse nid { vote with Term = !term }
 
@@ -301,16 +301,16 @@ module JointConsensus =
         term := t
         let! idx = currentIndexM ()
         ci := idx
-        do! periodic 1000UL
+        do! periodic 1000u
 
         // when configuration entry is considered committed, joint-consensus is over
         let! t = currentTermM ()
         term := t
         let! idx = currentIndexM ()
         ci := idx
-        do! periodic 1000UL
+        do! periodic 1000u
 
-        do! expectM "Should only have half the nodes" (n / 2UL) numNodes
+        do! expectM "Should only have half the nodes" (n / 2u) numNodes
         do! expectM "Should have None as ConfigChange" None lastConfigChange
 
         //       _           _   _               _  _
@@ -322,7 +322,7 @@ module JointConsensus =
         // with the new configuration only (should not work with nodes in old config anymore)
 
         // same as calling becomeCandidate but not circumventing requestAllVotes
-        do! setTermM (!term + 1UL)
+        do! setTermM (!term + 1u)
         do! resetVotesM ()
         do! voteForMyself ()
         do! setLeaderM None
@@ -331,7 +331,7 @@ module JointConsensus =
         let! t = currentTermM ()
         term := t
 
-        for nid in 1UL .. ((n / 2UL) / 2UL) do
+        for nid in 1u .. ((n / 2u) / 2u) do
           do! receiveVoteResponse (fst nodes.[int nid]) { vote with Term = !term }
 
         do! expectM "Should be leader in election with regular configuration" Leader getState
@@ -348,7 +348,7 @@ module JointConsensus =
         let entry =
           nodes
           |> Array.map snd
-          |> Log.mkConfigChange 1UL peers
+          |> Log.mkConfigChange 1u peers
 
         let! idx = currentIndexM ()
         ci := idx
@@ -358,11 +358,11 @@ module JointConsensus =
         let! idx = currentIndexM ()
         ci := idx
 
-        do! periodic 1000UL
+        do! periodic 1000u
 
         do! expectM "Should still have correct node count for new configuration 2" n numPeers
         do! expectM "Should still have correct logical node count 2" n numLogicalPeers
-        do! expectM "Should still have correct node count for old configuration 2" (n / 2UL) numOldPeers
+        do! expectM "Should still have correct node count for old configuration 2" (n / 2u) numOldPeers
         do! expectM "Should have JointConsensus entry as ConfigChange 2" (LogEntry.getId entry) (lastConfigChange >> Option.get >> LogEntry.getId)
 
         //       _           _   _               ____
@@ -372,7 +372,7 @@ module JointConsensus =
         //  \___|_|\___|\___|\__|_|\___/|_| |_| |____/
 
         // same as calling becomeCandidate but not circumventing requestAllVotes
-        do! setTermM (!term + 1UL)
+        do! setTermM (!term + 1u)
         do! resetVotesM ()
         do! voteForMyself ()
         do! setLeaderM None
@@ -382,7 +382,7 @@ module JointConsensus =
         term := t
 
         // should become candidate with the old configuration of 5 nodes only
-        for nid in 1UL .. ((n / 2UL) / 2UL) do
+        for nid in 1u .. ((n / 2u) / 2u) do
           do! receiveVoteResponse (fst nodes.[int nid]) { vote with Term = !term }
 
         do! expectM "Should be leader in election in joint consensus with old configuration" Leader getState
@@ -394,7 +394,7 @@ module JointConsensus =
         //  \___|_|\___|\___|\__|_|\___/|_| |_|  \___/
 
         // same as calling becomeCandidate but not circumventing requestAllVotes
-        do! setTermM (!term + 1UL)
+        do! setTermM (!term + 1u)
         do! resetVotesM ()
         do! voteForMyself ()
         do! setLeaderM None
@@ -404,7 +404,7 @@ module JointConsensus =
         term := t
 
         // should become candidate with the new configuration of 10 nodes also
-        for id in (n / 2UL) .. (n - 1UL) do
+        for id in (n / 2u) .. (n - 1u) do
           let nid = fst nodes.[int id]
           let! result = getNodeM nid
           match result with
@@ -429,14 +429,14 @@ module JointConsensus =
         term := t
         let! idx = currentIndexM ()
         ci := idx
-        do! periodic 1000UL
+        do! periodic 1000u
 
         // make sure Configuration is committed
         let! t = currentTermM ()
         term := t
         let! idx = currentIndexM ()
         ci := idx
-        do! periodic 1000UL
+        do! periodic 1000u
 
         do! expectM "Should have all the nodes" n numNodes
         do! expectM "Should have None as ConfigChange" None lastConfigChange
@@ -446,14 +446,14 @@ module JointConsensus =
 
   let server_should_revert_to_follower_state_on_config_change_removal =
     testCase "should revert to follower state on config change removal" <| fun _ ->
-      let n = 10UL                      // we want ten nodes overall
+      let n = 10u                      // we want ten nodes overall
 
-      let ci = ref 0UL
-      let term = ref 1UL
+      let ci = ref 0u
+      let term = ref 1u
       let lokk = new System.Object()
 
       let nodes =
-        [| for n in 0UL .. (n - 1UL) do      // subtract one for the implicitly
+        [| for n in 0u .. (n - 1u) do      // subtract one for the implicitly
             let nid = Id.Create()
             yield (nid, Node.create nid) |] // create node in the Raft state
 
@@ -463,7 +463,7 @@ module JointConsensus =
         { mkcbs (ref defSM) with
             SendAppendEntries = fun _ req ->
               lock lokk <| fun _ ->
-                Some { Term = !term; Success = true; CurrentIndex = !ci; FirstIndex = 1UL }
+                Some { Term = !term; Success = true; CurrentIndex = !ci; FirstIndex = 1u }
           } :> IRaftCallbacks
 
       raft {
@@ -495,7 +495,7 @@ module JointConsensus =
         do! expectM "Should use the regular configuration" false inJointConsensus
 
         // we need only 5 votes coming in (plus our own) to make a majority
-        for nid in 1UL .. (n / 2UL) do
+        for nid in 1u .. (n / 2u) do
           do! receiveVoteResponse (fst nodes.[int nid]) { vote with Term = !term }
 
         do! expectM "Should be leader in base configuration" Leader getState
@@ -515,7 +515,7 @@ module JointConsensus =
         let entry =
           nodes
           |> Array.map snd
-          |> Array.skip (int <| n / 2UL)
+          |> Array.skip (int <| n / 2u)
           |> Log.mkConfigChange !term peers
 
         let! response = receiveEntry entry
@@ -523,9 +523,9 @@ module JointConsensus =
         let! idx = currentIndexM ()
         ci := idx
 
-        do! periodic 1000UL
+        do! periodic 1000u
 
-        do! expectM "Should still have correct node count for new configuration" (n / 2UL) numPeers
+        do! expectM "Should still have correct node count for new configuration" (n / 2u) numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" n numOldPeers
         do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (lastConfigChange >> Option.get >> LogEntry.getId)
@@ -543,16 +543,16 @@ module JointConsensus =
         term := t
         let! idx = currentIndexM ()
         ci := idx
-        do! periodic 1001UL
+        do! periodic 1001u
 
         // finalizes the joint-consensus mode
         let! t = currentTermM ()
         term := t
         let! idx = currentIndexM ()
         ci := idx
-        do! periodic 1001UL
+        do! periodic 1001u
 
-        do! expectM "Should only have half one node (myself)" 1UL numNodes
+        do! expectM "Should only have half one node (myself)" 1u numNodes
         do! expectM "Should have None as ConfigChange" None lastConfigChange
       }
       |> runWithCBS cbs
@@ -562,20 +562,20 @@ module JointConsensus =
     testCase "should send appendentries to all servers in joint consensus" <| fun _ ->
       let lokk = new System.Object()
       let count = ref 0
-      let ci = ref 0UL
-      let term = ref 1UL
+      let ci = ref 0u
+      let term = ref 1u
       let init = createRaft (Node.create (Id.Create()))
       let cbs = { mkcbs (ref defSM) with
                     SendAppendEntries = fun _ _ ->
                       lock lokk <| fun _ ->
                         count := 1 + !count
-                        Some { Success = true; Term = !term; CurrentIndex = !ci; FirstIndex = 1UL } }
+                        Some { Success = true; Term = !term; CurrentIndex = !ci; FirstIndex = 1u } }
                 :> IRaftCallbacks
 
-      let n = 10UL                       // we want ten nodes overall
+      let n = 10u                       // we want ten nodes overall
 
       let nodes =
-        [| for n in 1UL .. (n - 1UL) do      // subtract one for the implicitly
+        [| for n in 1u .. (n - 1u) do      // subtract one for the implicitly
             let nid = Id.Create()
             yield (nid, Node.create nid) |] // create node in the Raft state
         |> Map.ofArray
@@ -611,12 +611,12 @@ module JointConsensus =
         let! idx = currentIndexM ()
         ci := idx
 
-        do! periodic 1000UL             // need to call periodic apply entry (add nodes for real)
-        do! periodic 1000UL             // appendAllEntries now called
+        do! periodic 1000u             // need to call periodic apply entry (add nodes for real)
+        do! periodic 1000u             // appendAllEntries now called
 
         do! expectM "Should still have correct node count for new configuration" n numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
-        do! expectM "Should still have correct node count for old configuration" 1UL numOldPeers
+        do! expectM "Should still have correct node count for old configuration" 1u numOldPeers
         do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (lastConfigChange >> Option.get >> LogEntry.getId)
         do! expectM "Should be in joint consensus configuration" true inJointConsensus
 
@@ -627,7 +627,7 @@ module JointConsensus =
         let! committed = responseCommitted response
         do! expectM "Should not be committed" false (konst committed)
 
-        do! expectM "Count should be n" ((n - 1UL) * 2UL) (uint64 !count |> konst)
+        do! expectM "Count should be n" ((n - 1u) * 2u) (uint32 !count |> konst)
       }
       |> runWithRaft init cbs
       |> noError
@@ -636,7 +636,7 @@ module JointConsensus =
     testCase "should send appendentries to all servers in joint consensus" <| fun _ ->
       let lokk = new System.Object()
       let count = ref 0
-      let term = ref 1UL
+      let term = ref 1u
       let init = createRaft (Node.create (Id.Create()))
       let cbs = { mkcbs (ref defSM) with
                     SendRequestVote = fun _ _ ->
@@ -645,10 +645,10 @@ module JointConsensus =
                         Some { Granted = true; Term = !term; Reason = None } }
                 :> IRaftCallbacks
 
-      let n = 10UL                       // we want ten nodes overall
+      let n = 10u                       // we want ten nodes overall
 
       let nodes =
-        [| for n in 1UL .. (n - 1UL) do      // subtract one for the implicitly
+        [| for n in 1u .. (n - 1u) do      // subtract one for the implicitly
             let nid = Id.Create()
             yield (nid, Node.create nid) |] // create node in the Raft state
 
@@ -673,15 +673,15 @@ module JointConsensus =
           nodes
           |> Array.map snd
           |> Array.append [| self |]
-          |> Log.mkConfigChange 1UL peers
+          |> Log.mkConfigChange 1u peers
 
         let! response = receiveEntry entry
 
-        do! periodic 1000UL
+        do! periodic 1000u
 
         do! expectM "Should still have correct node count for new configuration" n numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
-        do! expectM "Should still have correct node count for old configuration" 1UL numOldPeers
+        do! expectM "Should still have correct node count for old configuration" 1u numOldPeers
         do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (lastConfigChange >> Option.get >> LogEntry.getId)
         do! expectM "Should be in joint consensus configuration" true inJointConsensus
 
@@ -692,24 +692,24 @@ module JointConsensus =
 
         do! startElection ()
 
-        expect "Count should be n" (n - 1UL) uint64 !count
+        expect "Count should be n" (n - 1u) uint32 !count
       }
       |> runWithRaft init cbs
       |> noError
 
   let server_should_use_old_and_new_config_during_intermittend_appendentries =
     testCase "should use old and new config during intermittend appendentries" <| fun _ ->
-      let n = 10UL                       // we want ten nodes overall
+      let n = 10u                       // we want ten nodes overall
 
       let nodes =
-        [| for n in 0UL .. (n - 1UL) do      // subtract one for the implicitly
+        [| for n in 0u .. (n - 1u) do      // subtract one for the implicitly
             let nid = Id.Create()
             yield (nid, Node.create nid) |] // create node in the Raft state
 
       let self = snd nodes.[0]
       let lokk = new System.Object()
-      let ci = ref 0UL
-      let term = ref 1UL
+      let ci = ref 0u
+      let term = ref 1u
       let count = ref 0
       let init = createRaft self
       let cbs =
@@ -717,7 +717,7 @@ module JointConsensus =
             SendAppendEntries = fun _ _ ->
               lock lokk <| fun _ ->
                 count := 1 + !count
-                Some { Success = true; Term = !term; CurrentIndex = !ci; FirstIndex = 1UL } }
+                Some { Success = true; Term = !term; CurrentIndex = !ci; FirstIndex = 1u } }
         :> IRaftCallbacks
 
       raft {
@@ -746,7 +746,7 @@ module JointConsensus =
         let entry =
           nodes
           |> Array.map snd
-          |> Array.take (int <| n / 2UL)
+          |> Array.take (int <| n / 2u)
           |> Log.mkConfigChange !term peers
 
         let! response = receiveEntry entry
@@ -754,14 +754,14 @@ module JointConsensus =
         let! idx = currentIndexM ()
         ci := idx
 
-        do! expectM "This count should be correct" ((n - 1UL) * 2UL) (uint64 !count |> konst)
+        do! expectM "This count should be correct" ((n - 1u) * 2u) (uint32 !count |> konst)
 
         let! committed = responseCommitted response
         do! expectM "should not have been committed" false (konst committed)
 
-        do! periodic 1000UL             // now the new configuration should be committed
+        do! periodic 1000u             // now the new configuration should be committed
 
-        do! expectM "Should still have correct node count for new configuration" (n / 2UL) numPeers
+        do! expectM "Should still have correct node count for new configuration" (n / 2u) numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
         do! expectM "Should still have correct node count for old configuration" n numOldPeers
         do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (lastConfigChange >> Option.get >> LogEntry.getId)
@@ -779,13 +779,13 @@ module JointConsensus =
 
         let! idx = currentIndexM ()
         ci := idx
-        do! periodic 1000UL
+        do! periodic 1000u
 
         let! idx = currentIndexM ()
         ci := idx
-        do! periodic 1000UL
+        do! periodic 1000u
 
-        do! expectM "Should only have half the nodes" (n / 2UL) numNodes
+        do! expectM "Should only have half the nodes" (n / 2u) numNodes
         do! expectM "Should have None as ConfigChange" None lastConfigChange
 
         //            _     _                   _
@@ -801,7 +801,7 @@ module JointConsensus =
           nodes
           |> Array.map snd
           |> Array.append [| self |]
-          |> Log.mkConfigChange 1UL peers
+          |> Log.mkConfigChange 1u peers
 
         let! response = receiveEntry entry
 
@@ -811,11 +811,11 @@ module JointConsensus =
         let! result = responseCommitted response
         do! expectM "Should not be committed" false (konst result)
 
-        do! periodic 1000UL
+        do! periodic 1000u
 
         do! expectM "Should still have correct node count for new configuration" n numPeers
         do! expectM "Should still have correct logical node count" n numLogicalPeers
-        do! expectM "Should still have correct node count for old configuration" (n / 2UL) numOldPeers
+        do! expectM "Should still have correct node count for old configuration" (n / 2u) numOldPeers
         do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (lastConfigChange >> Option.get >> LogEntry.getId)
 
         let! result = responseCommitted response

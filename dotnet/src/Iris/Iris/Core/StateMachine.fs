@@ -14,16 +14,14 @@ open Iris.Raft
 #if JAVASCRIPT
 
 open Fable.Core
-open Fable.Core.JsInterop
 open Fable.Import
-open Fable.Core.JsInterop
+open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
 
 #else
 
 open Iris.Serialization.Raft
 open FlatBuffers
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 #endif
 
@@ -49,12 +47,6 @@ type AppCommand =
   // | CloseProject
   // | DeleteProject
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<AppCommand>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -62,69 +54,29 @@ type AppCommand =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
-  static member FromFB (fb: AppCommandFB) =
-    match fb.Command with
-    | AppCommandTypeFB.UndoFB        -> Some Undo
-    | AppCommandTypeFB.RedoFB        -> Some Redo
-    | AppCommandTypeFB.ResetFB       -> Some Reset
-    | AppCommandTypeFB.SaveProjectFB -> Some SaveProject
-    | _                              -> None
-
-  member self.ToOffset(builder: FlatBufferBuilder) : Offset<AppCommandFB> =
-    let tipe =
-      match self with
-      | Undo        -> AppCommandTypeFB.UndoFB
-      | Redo        -> AppCommandTypeFB.RedoFB
-      | Reset       -> AppCommandTypeFB.ResetFB
-      | SaveProject -> AppCommandTypeFB.SaveProjectFB
-
-    AppCommandFB.StartAppCommandFB(builder)
-    AppCommandFB.AddCommand(builder, tipe)
-    AppCommandFB.EndAppCommandFB(builder)
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() : JToken =
-    let json = new JObject()
-    json.["$type"] <- new JValue(AppCommand.Type)
-
-    let add (case: string) =
-      json.["Case"] <- new JValue(case)
-
-    match self with
-    | Undo        -> add "Undo"
-    | Redo        -> add "Redo"
-    | Reset       -> add "Reset"
-    | SaveProject -> add "SaveProject"
-
-    json :> JToken
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : AppCommand option =
-    try
-      match string token.["Case"] with
-      | "Undo"        -> Some Undo
-      | "Redo"        -> Some Redo
-      | "Reset"       -> Some Reset
-      | "SaveProject" -> Some SaveProject
-      | _             -> None
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : AppCommand option =
-    JToken.Parse(str) |> AppCommand.FromJToken
-
+  static member FromFB (fb: ActionTypeFB) =
+#if JAVASCRIPT
+    match fb with
+    | x when x = ActionTypeFB.UndoFB        -> Some Undo
+    | x when x = ActionTypeFB.RedoFB        -> Some Redo
+    | x when x = ActionTypeFB.ResetFB       -> Some Reset
+    | x when x = ActionTypeFB.SaveProjectFB -> Some SaveProject
+    | _                                     -> None
+#else
+    match fb with
+    | ActionTypeFB.UndoFB        -> Some Undo
+    | ActionTypeFB.RedoFB        -> Some Redo
+    | ActionTypeFB.ResetFB       -> Some Reset
+    | ActionTypeFB.SaveProjectFB -> Some SaveProject
+    | _                          -> None
 #endif
+
+  member self.ToOffset(builder: FlatBufferBuilder) : ActionTypeFB =
+    match self with
+    | Undo        -> ActionTypeFB.UndoFB
+    | Redo        -> ActionTypeFB.RedoFB
+    | Reset       -> ActionTypeFB.ResetFB
+    | SaveProject -> ActionTypeFB.SaveProjectFB
 
 // ********************************************************************************************** //
 //   ____  _        _
@@ -327,16 +279,6 @@ type State =
   //  ___) |  __/ |  | | (_| | | |/ / (_| | |_| | (_) | | | |
   // |____/ \___|_|  |_|\__,_|_|_/___\__,_|\__|_|\___/|_| |_|
 
-#if JAVASCRIPT
-#else
-
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
-
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateFB> =
     let patches =
       Map.toArray self.Patches
@@ -401,6 +343,15 @@ type State =
     let mutable users    = Map.empty
     let mutable sessions = Map.empty
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.PatchesLength do
+      fb.Patches(i)
+      |> Patch.FromFB
+      |> Option.map (fun patch -> patches <- Map.add patch.Id patch patches)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.PatchesLength - 1) do
       let patch = fb.Patches(i)
       if patch.HasValue then
@@ -408,7 +359,17 @@ type State =
         |> Patch.FromFB
         |> Option.map (fun patch -> patches <- Map.add patch.Id patch patches)
         |> ignore
+#endif
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.IOBoxesLength do
+      fb.IOBoxes(i)
+      |> IOBox.FromFB
+      |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.IOBoxesLength - 1) do
       let iobox = fb.IOBoxes(i)
       if iobox.HasValue then
@@ -416,7 +377,17 @@ type State =
         |> IOBox.FromFB
         |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
         |> ignore
+#endif
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.CuesLength do
+      fb.Cues(i)
+      |> Cue.FromFB
+      |> Option.map (fun cue -> cues <- Map.add cue.Id cue cues)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.CuesLength - 1) do
       let cue = fb.Cues(i)
       if cue.HasValue then
@@ -424,7 +395,17 @@ type State =
         |> Cue.FromFB
         |> Option.map (fun cue -> cues <- Map.add cue.Id cue cues)
         |> ignore
+#endif
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.CueListsLength do
+      fb.CueLists(i)
+      |> CueList.FromFB
+      |> Option.map (fun cuelist -> cuelists <- Map.add cuelist.Id cuelist cuelists)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.CueListsLength - 1) do
       let cuelist = fb.CueLists(i)
       if cuelist.HasValue then
@@ -432,7 +413,17 @@ type State =
         |> CueList.FromFB
         |> Option.map (fun cuelist -> cuelists <- Map.add cuelist.Id cuelist cuelists)
         |> ignore
+#endif
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.NodesLength do
+      fb.Nodes(i)
+      |> RaftNode.FromFB
+      |> Option.map (fun node -> nodes <- Map.add node.Id node nodes)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.NodesLength - 1) do
       let node = fb.Nodes(i)
       if node.HasValue then
@@ -440,7 +431,17 @@ type State =
         |> RaftNode.FromFB
         |> Option.map (fun node -> nodes <- Map.add node.Id node nodes)
         |> ignore
+#endif
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.UsersLength do
+      fb.Users(i)
+      |> User.FromFB
+      |> Option.map (fun user -> users <- Map.add user.Id user users)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.UsersLength - 1) do
       let user = fb.Users(i)
       if user.HasValue then
@@ -448,7 +449,17 @@ type State =
         |> User.FromFB
         |> Option.map (fun user -> users <- Map.add user.Id user users)
         |> ignore
+#endif
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SessionsLength do
+      fb.Sessions(i)
+      |> Session.FromFB
+      |> Option.map (fun session -> sessions <- Map.add session.Id session sessions)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.SessionsLength - 1) do
       let session = fb.Sessions(i)
       if session.HasValue then
@@ -456,6 +467,7 @@ type State =
         |> Session.FromFB
         |> Option.map (fun session -> sessions <- Map.add session.Id session sessions)
         |> ignore
+#endif
 
     Some { Patches  = patches
          ; IOBoxes  = ioboxes
@@ -465,54 +477,10 @@ type State =
          ; Users    = users
          ; Sessions = sessions }
 
-  static member FromBytes (bytes: byte array) : State option =
-    StateFB.GetRootAsStateFB(new ByteBuffer(bytes))
+  static member FromBytes (bytes: Binary.Buffer) : State option =
+    Binary.createBuffer bytes
+    |> StateFB.GetRootAsStateFB
     |> State.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() =
-    // new JObject()
-    // |> addMap "Patches"  self.Patches
-    // |> addMap "IOBoxes"  self.IOBoxes
-    // |> addMap "Cues"     self.Cues
-    // |> addMap "CueLists" self.CueLists
-    // |> addMap "Nodes"    self.Nodes
-    // |> addMap "Users"    self.Users
-    // |> addMap "Sessions" self.Sessions
-
-    let serializer = JsonSerializer.CreateDefault(JsonSerializerSettings(TypeNameHandling=TypeNameHandling.All))
-    let tok = JToken.FromObject(self, serializer)
-    printfn "string token %s"  (string tok)
-    tok
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : State option =
-    try
-      Some { Patches  = fromMap "Patches"  token
-           ; IOBoxes  = fromMap "IOBoxes"  token
-           ; Cues     = fromMap "Cues"     token
-           ; CueLists = fromMap "CueLists" token
-           ; Nodes    = fromMap "Nodes"    token
-           ; Users    = fromMap "Users"    token
-           ; Sessions = fromMap "Sessions" token }
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : State option =
-    JToken.Parse(str) |> State.FromJToken
-
-#endif
 
 // ********************************************************************************************** //
 //  ____  _
@@ -850,55 +818,122 @@ and StateMachine =
     | LogMsg(level, msg)    -> sprintf "LogMsg: [%A] %s" level msg
 
 #if JAVASCRIPT
+  static member FromFB (fb: ApiActionFB) =
+    match fb.PayloadType with
+    | x when x = PayloadFB.NodeFB ->
+      let node = fb.NodeFB |> RaftNode.FromFB
+      match fb.Action with
+      | x when x = ActionTypeFB.AddFB ->
+        Option.map AddNode node
+      | x when x = ActionTypeFB.UpdateFB ->
+        Option.map UpdateNode node
+      | x when x = ActionTypeFB.RemoveFB ->
+        Option.map RemoveNode node
+      | _ -> None
+
+    | x when x = PayloadFB.PatchFB ->
+      let patch = fb.PatchFB |> Patch.FromFB
+      match fb.Action with
+      | x when x = ActionTypeFB.AddFB ->
+        Option.map AddPatch patch
+      | x when x = ActionTypeFB.UpdateFB ->
+        Option.map UpdatePatch patch
+      | x when x = ActionTypeFB.RemoveFB ->
+        Option.map RemovePatch patch
+      | _ -> None
+
+    | x when x = PayloadFB.IOBoxFB ->
+      let iobox = fb.IOBoxFB |> IOBox.FromFB
+      match fb.Action with
+      | x when x = ActionTypeFB.AddFB ->
+        Option.map AddIOBox iobox
+      | x when x = ActionTypeFB.UpdateFB ->
+        Option.map UpdateIOBox iobox
+      | x when x = ActionTypeFB.RemoveFB ->
+        Option.map RemoveIOBox iobox
+      | _ -> None
+
+    | x when x = PayloadFB.CueFB ->
+      let cue = fb.CueFB |> Cue.FromFB
+      match fb.Action with
+      | x when x = ActionTypeFB.AddFB ->
+        Option.map AddCue cue
+      | x when x = ActionTypeFB.UpdateFB ->
+        Option.map UpdateCue cue
+      | x when x = ActionTypeFB.RemoveFB ->
+        Option.map RemoveCue cue
+      | _ -> None
+
+    | x when x = PayloadFB.CueListFB ->
+      let cuelist = fb.CueListFB |> CueList.FromFB
+      match fb.Action with
+      | x when x = ActionTypeFB.AddFB ->
+        Option.map AddCueList cuelist
+      | x when x = ActionTypeFB.UpdateFB ->
+        Option.map UpdateCueList cuelist
+      | x when x = ActionTypeFB.RemoveFB ->
+        Option.map RemoveCueList cuelist
+      | _ -> None
+
+    | x when x = PayloadFB.UserFB ->
+      let user = fb.UserFB |> User.FromFB
+      match fb.Action with
+      | x when x = ActionTypeFB.AddFB ->
+        Option.map AddUser user
+      | x when x = ActionTypeFB.UpdateFB ->
+        Option.map UpdateUser user
+      | x when x = ActionTypeFB.RemoveFB ->
+        Option.map RemoveUser user
+      | _ -> None
+
+    | x when x = PayloadFB.SessionFB ->
+      let session = fb.SessionFB |> Session.FromFB
+      match fb.Action with
+      | x when x = ActionTypeFB.AddFB ->
+        Option.map AddSession session
+      | x when x = ActionTypeFB.UpdateFB ->
+        Option.map UpdateSession session
+      | x when x = ActionTypeFB.RemoveFB ->
+        Option.map RemoveSession session
+      | _ -> None
+
+    | x when x = PayloadFB.StateFB && fb.Action = ActionTypeFB.DataSnapshotFB ->
+      fb.StateFB
+      |> State.FromFB
+      |> Option.map DataSnapshot
+
+    | x when x = PayloadFB.LogMsgFB ->
+      let msg = fb.LogMsgFB
+      msg.LogLevel
+      |> LogLevel.Parse
+      |> Option.map (fun level -> LogMsg(level, msg.Msg))
+
+    | _ ->
+      fb.Action
+      |> AppCommand.FromFB
+      |> Option.map Command
+
 #else
-
-  static member Type
-    with get () = Serialization.GetTypeName<StateMachine>()
-
-  static member FromFB (fb: StateMachineFB) =
-    match fb.AppEventType with
-
+  static member FromFB (fb: ApiActionFB) =
+    match fb.PayloadType with
     //   ____
     //  / ___|   _  ___
     // | |  | | | |/ _ \
     // | |__| |_| |  __/
     //  \____\__,_|\___|
 
-    | StateMachineTypeFB.AddCueFB ->
-      let ev = fb.AppEvent<AddCueFB>()
-      if ev.HasValue then
-        let appevent : AddCueFB = ev.Value
-        let cue = appevent.Cue
-        if cue.HasValue then
-          cue.Value
+    | PayloadFB.CueFB ->
+      let cue =
+        let cueish = fb.Payload<CueFB>()
+        if cueish.HasValue then
+          cueish.Value
           |> Cue.FromFB
-          |> Option.map AddCue
         else None
-      else None
-
-    | StateMachineTypeFB.UpdateCueFB  ->
-      let ev = fb.AppEvent<UpdateCueFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let cue = appevent.Cue
-        if cue.HasValue then
-          cue.Value
-          |> Cue.FromFB
-          |> Option.map UpdateCue
-        else None
-      else None
-
-    | StateMachineTypeFB.RemoveCueFB  ->
-      let ev = fb.AppEvent<RemoveCueFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let cue = appevent.Cue
-        if cue.HasValue then
-          cue.Value
-          |> Cue.FromFB
-          |> Option.map RemoveCue
-        else None
-      else None
+      match fb.Action with
+      | ActionTypeFB.AddFB    -> Option.map AddCue    cue
+      | ActionTypeFB.UpdateFB -> Option.map UpdateCue cue
+      | ActionTypeFB.RemoveFB -> Option.map RemoveCue cue
+      | _                     -> None
 
     //   ____           _     _     _
     //  / ___|   _  ___| |   (_)___| |_
@@ -906,41 +941,18 @@ and StateMachine =
     // | |__| |_| |  __/ |___| \__ \ |_
     //  \____\__,_|\___|_____|_|___/\__|
 
-    | StateMachineTypeFB.AddCueListFB ->
-      let ev = fb.AppEvent<AddCueListFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let cuelist = appevent.CueList
-        if cuelist.HasValue then
-          cuelist.Value
+    | PayloadFB.CueListFB ->
+      let cuelist =
+        let cuelistish = fb.Payload<CueListFB>()
+        if cuelistish.HasValue then
+          cuelistish.Value
           |> CueList.FromFB
-          |> Option.map AddCueList
         else None
-      else None
-
-    | StateMachineTypeFB.UpdateCueListFB  ->
-      let ev = fb.AppEvent<UpdateCueListFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let cuelist = appevent.CueList
-        if cuelist.HasValue then
-          cuelist.Value
-          |> CueList.FromFB
-          |> Option.map UpdateCueList
-        else None
-      else None
-
-    | StateMachineTypeFB.RemoveCueListFB  ->
-      let ev = fb.AppEvent<RemoveCueListFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let cuelist = appevent.CueList
-        if cuelist.HasValue then
-          cuelist.Value
-          |> CueList.FromFB
-          |> Option.map RemoveCueList
-        else None
-      else None
+      match fb.Action with
+      | ActionTypeFB.AddFB    -> Option.map AddCueList    cuelist
+      | ActionTypeFB.UpdateFB -> Option.map UpdateCueList cuelist
+      | ActionTypeFB.RemoveFB -> Option.map RemoveCueList cuelist
+      | _                     -> None
 
     //  ____       _       _
     // |  _ \ __ _| |_ ___| |__
@@ -948,41 +960,18 @@ and StateMachine =
     // |  __/ (_| | || (__| | | |
     // |_|   \__,_|\__\___|_| |_|
 
-    | StateMachineTypeFB.AddPatchFB ->
-      let ev = fb.AppEvent<AddPatchFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let patch = appevent.Patch
-        if patch.HasValue then
-          patch.Value
+    | PayloadFB.PatchFB ->
+      let patch =
+        let patchish = fb.Payload<PatchFB>()
+        if patchish.HasValue then
+          patchish.Value
           |> Patch.FromFB
-          |> Option.map AddPatch
         else None
-      else None
-
-    | StateMachineTypeFB.UpdatePatchFB  ->
-      let ev = fb.AppEvent<UpdatePatchFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let patch = appevent.Patch
-        if patch.HasValue then
-          patch.Value
-          |> Patch.FromFB
-          |> Option.map UpdatePatch
-        else None
-      else None
-
-    | StateMachineTypeFB.RemovePatchFB  ->
-      let ev = fb.AppEvent<RemovePatchFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let patch = appevent.Patch
-        if patch.HasValue then
-          patch.Value
-          |> Patch.FromFB
-          |> Option.map RemovePatch
-        else None
-      else None
+      match fb.Action with
+      | ActionTypeFB.AddFB    -> Option.map AddPatch    patch
+      | ActionTypeFB.UpdateFB -> Option.map UpdatePatch patch
+      | ActionTypeFB.RemoveFB -> Option.map RemovePatch patch
+      | _                     -> None
 
     //  ___ ___  ____
     // |_ _/ _ \| __ )  _____  __
@@ -990,41 +979,18 @@ and StateMachine =
     //  | | |_| | |_) | (_) >  <
     // |___\___/|____/ \___/_/\_\
 
-    | StateMachineTypeFB.AddIOBoxFB ->
-      let ev = fb.AppEvent<AddIOBoxFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let iobox = appevent.IOBox
-        if iobox.HasValue then
-          iobox.Value
+    | PayloadFB.IOBoxFB ->
+      let iobox =
+        let ioboxish = fb.Payload<IOBoxFB>()
+        if ioboxish.HasValue then
+          ioboxish.Value
           |> IOBox.FromFB
-          |> Option.map AddIOBox
         else None
-      else None
-
-    | StateMachineTypeFB.UpdateIOBoxFB  ->
-      let ev = fb.AppEvent<UpdateIOBoxFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let iobox = appevent.IOBox
-        if iobox.HasValue then
-          iobox.Value
-          |> IOBox.FromFB
-          |> Option.map UpdateIOBox
-        else None
-      else None
-
-    | StateMachineTypeFB.RemoveIOBoxFB  ->
-      let ev = fb.AppEvent<RemoveIOBoxFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let iobox = appevent.IOBox
-        if iobox.HasValue then
-          iobox.Value
-          |> IOBox.FromFB
-          |> Option.map RemoveIOBox
-        else None
-      else None
+      match fb.Action with
+      | ActionTypeFB.AddFB    -> Option.map AddIOBox    iobox
+      | ActionTypeFB.UpdateFB -> Option.map UpdateIOBox iobox
+      | ActionTypeFB.RemoveFB -> Option.map RemoveIOBox iobox
+      | _                     -> None
 
     //  _   _           _
     // | \ | | ___   __| | ___
@@ -1032,41 +998,18 @@ and StateMachine =
     // | |\  | (_) | (_| |  __/
     // |_| \_|\___/ \__,_|\___|
 
-    | StateMachineTypeFB.AddNodeFB ->
-      let ev = fb.AppEvent<AddNodeFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let node = appevent.Node
-        if node.HasValue then
-          node.Value
+    | PayloadFB.NodeFB ->
+      let node =
+        let nodeish = fb.Payload<NodeFB>()
+        if nodeish.HasValue then
+          nodeish.Value
           |> RaftNode.FromFB
-          |> Option.map AddNode
         else None
-      else None
-
-    | StateMachineTypeFB.UpdateNodeFB  ->
-      let ev = fb.AppEvent<UpdateNodeFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let node = appevent.Node
-        if node.HasValue then
-          node.Value
-          |> RaftNode.FromFB
-          |> Option.map UpdateNode
-        else None
-      else None
-
-    | StateMachineTypeFB.RemoveNodeFB  ->
-      let ev = fb.AppEvent<RemoveNodeFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let node = appevent.Node
-        if node.HasValue then
-          node.Value
-          |> RaftNode.FromFB
-          |> Option.map RemoveNode
-        else None
-      else None
+      match fb.Action with
+      | ActionTypeFB.AddFB    -> Option.map AddNode    node
+      | ActionTypeFB.UpdateFB -> Option.map UpdateNode node
+      | ActionTypeFB.RemoveFB -> Option.map RemoveNode node
+      | _                     -> None
 
     //  _   _
     // | | | |___  ___ _ __
@@ -1074,41 +1017,18 @@ and StateMachine =
     // | |_| \__ \  __/ |
     //  \___/|___/\___|_|
 
-    | StateMachineTypeFB.AddUserFB ->
-      let ev = fb.AppEvent<AddUserFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let user = appevent.User
-        if user.HasValue then
-          user.Value
+    | PayloadFB.UserFB ->
+      let user =
+        let userish = fb.Payload<UserFB>()
+        if userish.HasValue then
+          userish.Value
           |> User.FromFB
-          |> Option.map AddUser
         else None
-      else None
-
-    | StateMachineTypeFB.UpdateUserFB  ->
-      let ev = fb.AppEvent<UpdateUserFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let user = appevent.User
-        if user.HasValue then
-          user.Value
-          |> User.FromFB
-          |> Option.map UpdateUser
-        else None
-      else None
-
-    | StateMachineTypeFB.RemoveUserFB  ->
-      let ev = fb.AppEvent<RemoveUserFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let user = appevent.User
-        if user.HasValue then
-          user.Value
-          |> User.FromFB
-          |> Option.map RemoveUser
-        else None
-      else None
+      match fb.Action with
+      | ActionTypeFB.AddFB    -> Option.map AddUser    user
+      | ActionTypeFB.UpdateFB -> Option.map UpdateUser user
+      | ActionTypeFB.RemoveFB -> Option.map RemoveUser user
+      | _                     -> None
 
     //  ____                _
     // / ___|  ___  ___ ___(_) ___  _ __
@@ -1116,41 +1036,18 @@ and StateMachine =
     //  ___) |  __/\__ \__ \ | (_) | | | |
     // |____/ \___||___/___/_|\___/|_| |_|
 
-    | StateMachineTypeFB.AddSessionFB ->
-      let ev = fb.AppEvent<AddSessionFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let session = appevent.Session
-        if session.HasValue then
-          session.Value
+    | PayloadFB.SessionFB ->
+      let session =
+        let sessionish = fb.Payload<SessionFB>()
+        if sessionish.HasValue then
+          sessionish.Value
           |> Session.FromFB
-          |> Option.map AddSession
         else None
-      else None
-
-    | StateMachineTypeFB.UpdateSessionFB  ->
-      let ev = fb.AppEvent<UpdateSessionFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let session = appevent.Session
-        if session.HasValue then
-          session.Value
-          |> Session.FromFB
-          |> Option.map UpdateSession
-        else None
-      else None
-
-    | StateMachineTypeFB.RemoveSessionFB  ->
-      let ev = fb.AppEvent<RemoveSessionFB>()
-      if ev.HasValue then
-        let appevent = ev.Value
-        let session = appevent.Session
-        if session.HasValue then
-          session.Value
-          |> Session.FromFB
-          |> Option.map RemoveSession
-        else None
-      else None
+      match fb.Action with
+      | ActionTypeFB.AddFB    -> Option.map AddSession    session
+      | ActionTypeFB.UpdateFB -> Option.map UpdateSession session
+      | ActionTypeFB.RemoveFB -> Option.map RemoveSession session
+      | _                     -> None
 
     //  __  __ _
     // |  \/  (_)___  ___
@@ -1158,390 +1055,323 @@ and StateMachine =
     // | |  | | \__ \ (__
     // |_|  |_|_|___/\___|
 
-    | StateMachineTypeFB.LogMsgFB     ->
-      let ev = fb.AppEvent<LogMsgFB>()
-      if ev.HasValue then
-        let log = ev.Value
-        LogLevel.Parse log.LogLevel
+    | PayloadFB.LogMsgFB ->
+      let logish = fb.Payload<LogMsgFB>()
+      if logish.HasValue then
+        let log = logish.Value
+        log.LogLevel
+        |> LogLevel.Parse
         |> Option.map (fun level -> LogMsg(level, log.Msg))
       else None
 
-    | StateMachineTypeFB.AppCommandFB ->
-      let ev = fb.AppEvent<AppCommandFB>()
-      if ev.HasValue then
-        let cmd = ev.Value
-        AppCommand.FromFB cmd
-        |> Option.map Command
+    | PayloadFB.StateFB ->
+      let stateish = fb.Payload<StateFB>()
+      if stateish.HasValue then
+        let state = stateish.Value
+        state
+        |> State.FromFB
+        |> Option.map DataSnapshot
       else None
 
-    | StateMachineTypeFB.DataSnapshotFB ->
-      let ev = fb.AppEvent<DataSnapshotFB>()
-      if ev.HasValue then
-        let snapshot = ev.Value
-        let data = snapshot.Data
-        if data.HasValue then
-          data.Value
-          |> State.FromFB
-          |> Option.map DataSnapshot
-        else None
-      else None
+    | _ ->
+      AppCommand.FromFB fb.Action |> Option.map Command
 
-    | _ -> None
+#endif
 
-  member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateMachineFB> =
-    let mkOffset tipe value =
-      StateMachineFB.StartStateMachineFB(builder)
-      StateMachineFB.AddAppEventType(builder, tipe)
-      StateMachineFB.AddAppEvent(builder, value)
-      StateMachineFB.EndStateMachineFB(builder)
-
+  member self.ToOffset(builder: FlatBufferBuilder) : Offset<ApiActionFB> =
     match self with
-    //   ____
-    //  / ___|   _  ___
-    // | |  | | | |/ _ \
-    // | |__| |_| |  __/
-    //  \____\__,_|\___|
+    | AddNode       node ->
+      let node = node.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.NodeFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, node)
+#else
+      ApiActionFB.AddPayload(builder, node.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
+
+    | UpdateNode    node ->
+      let node = node.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.NodeFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, node)
+#else
+      ApiActionFB.AddPayload(builder, node.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
+
+    | RemoveNode    node ->
+      let node = node.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.NodeFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, node)
+#else
+      ApiActionFB.AddPayload(builder, node.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
+
+    | AddPatch       patch ->
+      let patch = patch.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.PatchFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, patch)
+#else
+      ApiActionFB.AddPayload(builder, patch.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
+
+    | UpdatePatch    patch ->
+      let patch = patch.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.PatchFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, patch)
+#else
+      ApiActionFB.AddPayload(builder, patch.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
+
+    | RemovePatch    patch ->
+      let patch = patch.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.PatchFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, patch)
+#else
+      ApiActionFB.AddPayload(builder, patch.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
+
+    | AddIOBox       iobox ->
+      let iobox = iobox.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.IOBoxFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, iobox)
+#else
+      ApiActionFB.AddPayload(builder, iobox.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
+
+    | UpdateIOBox    iobox ->
+      let iobox = iobox.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.IOBoxFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, iobox)
+#else
+      ApiActionFB.AddPayload(builder, iobox.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
+
+    | RemoveIOBox    iobox ->
+      let iobox = iobox.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.IOBoxFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, iobox)
+#else
+      ApiActionFB.AddPayload(builder, iobox.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
 
     | AddCue cue ->
-      let cuefb = cue.ToOffset(builder)
-      AddCueFB.StartAddCueFB(builder)
-      AddCueFB.AddCue(builder, cuefb)
-      let addfb = AddCueFB.EndAddCueFB(builder)
-      mkOffset StateMachineTypeFB.AddCueFB addfb.Value
+      let cue = cue.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.CueFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, cue)
+#else
+      ApiActionFB.AddPayload(builder, cue.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
 
     | UpdateCue cue ->
-      let cuefb = cue.ToOffset(builder)
-      UpdateCueFB.StartUpdateCueFB(builder)
-      UpdateCueFB.AddCue(builder, cuefb)
-      let updatefb = UpdateCueFB.EndUpdateCueFB(builder)
-      mkOffset StateMachineTypeFB.UpdateCueFB updatefb.Value
+      let cue = cue.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.CueFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, cue)
+#else
+      ApiActionFB.AddPayload(builder, cue.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
 
     | RemoveCue cue ->
-      let cuefb = cue.ToOffset(builder)
-      RemoveCueFB.StartRemoveCueFB(builder)
-      RemoveCueFB.AddCue(builder, cuefb)
-      let removefb = RemoveCueFB.EndRemoveCueFB(builder)
-      mkOffset StateMachineTypeFB.RemoveCueFB removefb.Value
-
-    //   ____           _     _     _
-    //  / ___|   _  ___| |   (_)___| |_
-    // | |  | | | |/ _ \ |   | / __| __|
-    // | |__| |_| |  __/ |___| \__ \ |_
-    //  \____\__,_|\___|_____|_|___/\__|
+      let cue = cue.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.CueFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, cue)
+#else
+      ApiActionFB.AddPayload(builder, cue.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
 
     | AddCueList cuelist ->
-      let cuelistfb = cuelist.ToOffset(builder)
-      AddCueListFB.StartAddCueListFB(builder)
-      AddCueListFB.AddCueList(builder, cuelistfb)
-      let addfb = AddCueListFB.EndAddCueListFB(builder)
-      mkOffset StateMachineTypeFB.AddCueListFB addfb.Value
+      let cuelist = cuelist.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.CueListFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, cuelist)
+#else
+      ApiActionFB.AddPayload(builder, cuelist.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
 
     | UpdateCueList cuelist ->
-      let cuelistfb = cuelist.ToOffset(builder)
-      UpdateCueListFB.StartUpdateCueListFB(builder)
-      UpdateCueListFB.AddCueList(builder, cuelistfb)
-      let updatefb = UpdateCueListFB.EndUpdateCueListFB(builder)
-      mkOffset StateMachineTypeFB.UpdateCueListFB updatefb.Value
+      let cuelist = cuelist.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.CueListFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, cuelist)
+#else
+      ApiActionFB.AddPayload(builder, cuelist.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
 
     | RemoveCueList cuelist ->
-      let cuelistfb = cuelist.ToOffset(builder)
-      RemoveCueListFB.StartRemoveCueListFB(builder)
-      RemoveCueListFB.AddCueList(builder, cuelistfb)
-      let removefb = RemoveCueListFB.EndRemoveCueListFB(builder)
-      mkOffset StateMachineTypeFB.RemoveCueListFB removefb.Value
-
-    //  ____       _       _
-    // |  _ \ __ _| |_ ___| |__
-    // | |_) / _` | __/ __| '_ \
-    // |  __/ (_| | || (__| | | |
-    // |_|   \__,_|\__\___|_| |_|
-
-    | AddPatch patch ->
-      let patchfb = patch.ToOffset(builder)
-      AddPatchFB.StartAddPatchFB(builder)
-      AddPatchFB.AddPatch(builder, patchfb)
-      let addfb = AddPatchFB.EndAddPatchFB(builder)
-      mkOffset StateMachineTypeFB.AddPatchFB addfb.Value
-
-    | UpdatePatch patch ->
-      let patchfb = patch.ToOffset(builder)
-      UpdatePatchFB.StartUpdatePatchFB(builder)
-      UpdatePatchFB.AddPatch(builder, patchfb)
-      let updatefb = UpdatePatchFB.EndUpdatePatchFB(builder)
-      mkOffset StateMachineTypeFB.UpdatePatchFB updatefb.Value
-
-    | RemovePatch patch ->
-      let patchfb = patch.ToOffset(builder)
-      RemovePatchFB.StartRemovePatchFB(builder)
-      RemovePatchFB.AddPatch(builder, patchfb)
-      let removefb = RemovePatchFB.EndRemovePatchFB(builder)
-      mkOffset StateMachineTypeFB.RemovePatchFB removefb.Value
-
-    //  ___ ___  ____
-    // |_ _/ _ \| __ )  _____  __
-    //  | | | | |  _ \ / _ \ \/ /
-    //  | | |_| | |_) | (_) >  <
-    // |___\___/|____/ \___/_/\_\
-
-    | AddIOBox iobox ->
-      let ioboxfb = iobox.ToOffset(builder)
-      AddIOBoxFB.StartAddIOBoxFB(builder)
-      AddIOBoxFB.AddIOBox(builder, ioboxfb)
-      let addfb = AddIOBoxFB.EndAddIOBoxFB(builder)
-      mkOffset StateMachineTypeFB.AddIOBoxFB addfb.Value
-
-    | UpdateIOBox iobox ->
-      let ioboxfb = iobox.ToOffset(builder)
-      UpdateIOBoxFB.StartUpdateIOBoxFB(builder)
-      UpdateIOBoxFB.AddIOBox(builder, ioboxfb)
-      let updatefb = UpdateIOBoxFB.EndUpdateIOBoxFB(builder)
-      mkOffset StateMachineTypeFB.UpdateIOBoxFB updatefb.Value
-
-    | RemoveIOBox iobox ->
-      let ioboxfb = iobox.ToOffset(builder)
-      RemoveIOBoxFB.StartRemoveIOBoxFB(builder)
-      RemoveIOBoxFB.AddIOBox(builder, ioboxfb)
-      let removefb = RemoveIOBoxFB.EndRemoveIOBoxFB(builder)
-      mkOffset StateMachineTypeFB.RemoveIOBoxFB removefb.Value
-
-    //  ____        __ _   _   _           _
-    // |  _ \ __ _ / _| |_| \ | | ___   __| | ___
-    // | |_) / _` | |_| __|  \| |/ _ \ / _` |/ _ \
-    // |  _ < (_| |  _| |_| |\  | (_) | (_| |  __/
-    // |_| \_\__,_|_|  \__|_| \_|\___/ \__,_|\___|
-
-    | AddNode node ->
-      let nodefb = node.ToOffset(builder)
-      AddNodeFB.StartAddNodeFB(builder)
-      AddNodeFB.AddNode(builder, nodefb)
-      let addfb = AddNodeFB.EndAddNodeFB(builder)
-      mkOffset StateMachineTypeFB.AddNodeFB addfb.Value
-
-    | UpdateNode node ->
-      let nodefb = node.ToOffset(builder)
-      UpdateNodeFB.StartUpdateNodeFB(builder)
-      UpdateNodeFB.AddNode(builder, nodefb)
-      let updatefb = UpdateNodeFB.EndUpdateNodeFB(builder)
-      mkOffset StateMachineTypeFB.UpdateNodeFB updatefb.Value
-
-    | RemoveNode node ->
-      let nodefb = node.ToOffset(builder)
-      RemoveNodeFB.StartRemoveNodeFB(builder)
-      RemoveNodeFB.AddNode(builder, nodefb)
-      let removefb = RemoveNodeFB.EndRemoveNodeFB(builder)
-      mkOffset StateMachineTypeFB.RemoveNodeFB removefb.Value
-
-    //  _   _
-    // | | | |___  ___ _ __
-    // | | | / __|/ _ \ '__|
-    // | |_| \__ \  __/ |
-    //  \___/|___/\___|_|
+      let cuelist = cuelist.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.CueListFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, cuelist)
+#else
+      ApiActionFB.AddPayload(builder, cuelist.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
 
     | AddUser user ->
-      let userfb = user.ToOffset(builder)
-      AddUserFB.StartAddUserFB(builder)
-      AddUserFB.AddUser(builder, userfb)
-      let addfb = AddUserFB.EndAddUserFB(builder)
-      mkOffset StateMachineTypeFB.AddUserFB addfb.Value
+      let user = user.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.UserFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, user)
+#else
+      ApiActionFB.AddPayload(builder, user.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
 
     | UpdateUser user ->
-      let userfb = user.ToOffset(builder)
-      UpdateUserFB.StartUpdateUserFB(builder)
-      UpdateUserFB.AddUser(builder, userfb)
-      let updatefb = UpdateUserFB.EndUpdateUserFB(builder)
-      mkOffset StateMachineTypeFB.UpdateUserFB updatefb.Value
+      let user = user.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.UserFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, user)
+#else
+      ApiActionFB.AddPayload(builder, user.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
 
     | RemoveUser user ->
-      let userfb = user.ToOffset(builder)
-      RemoveUserFB.StartRemoveUserFB(builder)
-      RemoveUserFB.AddUser(builder, userfb)
-      let removefb = RemoveUserFB.EndRemoveUserFB(builder)
-      mkOffset StateMachineTypeFB.RemoveUserFB removefb.Value
-
-    //  ____                _
-    // / ___|  ___  ___ ___(_) ___  _ __
-    // \___ \ / _ \/ __/ __| |/ _ \| '_ \
-    //  ___) |  __/\__ \__ \ | (_) | | | |
-    // |____/ \___||___/___/_|\___/|_| |_|
+      let user = user.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.UserFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, user)
+#else
+      ApiActionFB.AddPayload(builder, user.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
 
     | AddSession session ->
-      let sessionfb = session.ToOffset(builder)
-      AddSessionFB.StartAddSessionFB(builder)
-      AddSessionFB.AddSession(builder, sessionfb)
-      let addfb = AddSessionFB.EndAddSessionFB(builder)
-      mkOffset StateMachineTypeFB.AddSessionFB addfb.Value
+      let session = session.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.SessionFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, session)
+#else
+      ApiActionFB.AddPayload(builder, session.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
 
     | UpdateSession session ->
-      let sessionfb = session.ToOffset(builder)
-      UpdateSessionFB.StartUpdateSessionFB(builder)
-      UpdateSessionFB.AddSession(builder, sessionfb)
-      let updatefb = UpdateSessionFB.EndUpdateSessionFB(builder)
-      mkOffset StateMachineTypeFB.UpdateSessionFB updatefb.Value
+      let session = session.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.SessionFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, session)
+#else
+      ApiActionFB.AddPayload(builder, session.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
 
     | RemoveSession session ->
-      let sessionfb = session.ToOffset(builder)
-      RemoveSessionFB.StartRemoveSessionFB(builder)
-      RemoveSessionFB.AddSession(builder, sessionfb)
-      let removefb = RemoveSessionFB.EndRemoveSessionFB(builder)
-      mkOffset StateMachineTypeFB.RemoveSessionFB removefb.Value
+      let session = session.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.SessionFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, session)
+#else
+      ApiActionFB.AddPayload(builder, session.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
 
-    //  __  __ _
-    // |  \/  (_)___  ___
-    // | |\/| | / __|/ __|
-    // | |  | | \__ \ (__
-    // |_|  |_|_|___/\___|
-
-    | Command ev ->
-      let cmdfb = ev.ToOffset(builder)
-      mkOffset StateMachineTypeFB.AppCommandFB cmdfb.Value
-
-    | LogMsg(level, msg) ->
-      let level = string level |> builder.CreateString
-      let msg = msg |> builder.CreateString
-      let log = LogMsgFB.CreateLogMsgFB(builder, level, msg)
-      mkOffset StateMachineTypeFB.LogMsgFB log.Value
+    | Command appcommand ->
+      let cmd = appcommand.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, cmd)
+      ApiActionFB.EndApiActionFB(builder)
 
     | DataSnapshot state ->
-      let statefb = state.ToOffset(builder)
-      DataSnapshotFB.StartDataSnapshotFB(builder)
-      DataSnapshotFB.AddData(builder, statefb)
-      let snapshot = DataSnapshotFB.EndDataSnapshotFB(builder)
-      mkOffset StateMachineTypeFB.DataSnapshotFB snapshot.Value
+      let data = state.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.DataSnapshotFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.StateFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, data)
+#else
+      ApiActionFB.AddPayload(builder, data.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
+
+    | LogMsg (level, msg) ->
+      let level = string level |> builder.CreateString
+      let msg = msg |> builder.CreateString
+      LogMsgFB.StartLogMsgFB(builder)
+      LogMsgFB.AddLogLevel(builder, level)
+      LogMsgFB.AddMsg(builder, msg)
+      let offset = LogMsgFB.EndLogMsgFB(builder)
+
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.LogMsgFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.LogMsgFB)
+#if JAVASCRIPT
+      ApiActionFB.AddPayload(builder, offset)
+#else
+      ApiActionFB.AddPayload(builder, offset.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
+
 
   member self.ToBytes () = Binary.buildBuffer self
 
-  static member FromBytes (bytes: byte array) : StateMachine option =
-    let msg = StateMachineFB.GetRootAsStateMachineFB(new ByteBuffer(bytes))
-    StateMachine.FromFB(msg)
-
-#endif
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-#if JAVASCRIPT
-
-  member self.ToJson () = toJson self
-
-  static member FromJson (str: string) : StateMachine option =
-    try
-      ofJson<StateMachine> str
-      |> Some
-    with
-      | _ -> None
-
-#else
-
-  member self.ToJToken () =
-    let json = new JObject() |> addType StateMachine.Type
-
-    let inline add (case: string) data =
-      json |> addCase case |> addFields [| data |]
-
-    match self with
-    // NODE
-    | AddNode          node -> add "AddNode"    node
-    | UpdateNode       node -> add "UpdateNode" node
-    | RemoveNode       node -> add "RemoveNode" node
-
-    // PATCH
-    | AddPatch        patch -> add "AddPatch"    patch
-    | UpdatePatch     patch -> add "UpdatePatch" patch
-    | RemovePatch     patch -> add "RemovePatch" patch
-
-    // IOBOX
-    | AddIOBox        iobox -> add "AddIOBox"    iobox
-    | UpdateIOBox     iobox -> add "UpdateIOBox" iobox
-    | RemoveIOBox     iobox -> add "RemoveIOBox" iobox
-
-    // CUE
-    | AddCue            cue -> add "AddCue"    cue
-    | UpdateCue         cue -> add "UpdateCue" cue
-    | RemoveCue         cue -> add "RemoveCue" cue
-
-    // CUELIST
-    | AddCueList    cuelist -> add "AddCueList"    cuelist
-    | UpdateCueList cuelist -> add "UpdateCueList" cuelist
-    | RemoveCueList cuelist -> add "RemoveCueList" cuelist
-
-    // USER
-    | AddUser          user -> add "AddUser"    user
-    | UpdateUser       user -> add "UpdateUser" user
-    | RemoveUser       user -> add "RemoveUser" user
-
-    // SESSION
-    | AddSession    session -> add "AddSession"    session
-    | UpdateSession session -> add "UpdateSession" session
-    | RemoveSession session -> add "RemoveSession" session
-
-    | Command           cmd -> add "Command" cmd
-
-    | DataSnapshot     data -> add "DataSnapshot" data
-
-    | LogMsg (level, str) ->
-      json |> addCase "LogMsg" |> addFields [| Wrap(string level); Wrap(str) |]
-
-  member self.ToJson () =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : StateMachine option =
-    try
-      let fields = token.["Fields"] :?> JArray
-
-      let inline parseSingle (cnst: ^t -> StateMachine) =
-        Json.parse fields.[0]
-        |> Option.map cnst
-
-      match string token.["Case"] with
-      // NODE
-      | "AddNode"       -> parseSingle AddNode
-      | "UpdateNode"    -> parseSingle UpdateNode
-      | "RemoveNode"    -> parseSingle RemoveNode
-
-      | "AddPatch"      -> parseSingle AddPatch
-      | "UpdatePatch"   -> parseSingle UpdatePatch
-      | "RemovePatch"   -> parseSingle RemovePatch
-
-      | "AddIOBox"      -> parseSingle AddIOBox
-      | "UpdateIOBox"   -> parseSingle UpdateIOBox
-      | "RemoveIOBox"   -> parseSingle RemoveIOBox
-
-      | "AddCue"        -> parseSingle AddCue
-      | "UpdateCue"     -> parseSingle UpdateCue
-      | "RemoveCue"     -> parseSingle RemoveCue
-
-      | "AddCueList"    -> parseSingle AddCueList
-      | "UpdateCueList" -> parseSingle UpdateCueList
-      | "RemoveCueList" -> parseSingle RemoveCueList
-
-      | "AddUser"       -> parseSingle AddUser
-      | "UpdateUser"    -> parseSingle UpdateUser
-      | "RemoveUser"    -> parseSingle RemoveUser
-
-      | "AddSession"    -> parseSingle AddSession
-      | "UpdateSession" -> parseSingle UpdateSession
-      | "RemoveSession" -> parseSingle RemoveSession
-
-      | "Command"       -> parseSingle Command
-
-      | "DataSnapshot"  -> parseSingle DataSnapshot
-
-      | "LogMsg" ->
-        Json.parse fields.[0]
-        |> Option.map (fun level -> LogMsg (level,string fields.[1]))
-
-      | _ -> None
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : StateMachine option =
-    JToken.Parse(str) |> StateMachine.FromJToken
-
-#endif
+  static member FromBytes (bytes: Binary.Buffer) : StateMachine option =
+    Binary.createBuffer bytes
+    |> ApiActionFB.GetRootAsApiActionFB
+    |> StateMachine.FromFB

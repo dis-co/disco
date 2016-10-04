@@ -1,12 +1,15 @@
 namespace Iris.Core
 
 #if JAVASCRIPT
+
+open Fable.Core
+open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
+
 #else
 
 open FlatBuffers
 open Iris.Serialization.Raft
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 #endif
 
@@ -21,12 +24,6 @@ type RGBAValue =
   ; Green : uint8
   ; Blue  : uint8
   ; Alpha : uint8 }
-
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<RGBAValue>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -55,40 +52,10 @@ type RGBAValue =
 
   member self.ToBytes () = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) =
-    RGBAValueFB.GetRootAsRGBAValueFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) =
+    Binary.createBuffer bytes
+    |> RGBAValueFB.GetRootAsRGBAValueFB
     |> RGBAValue.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() : JToken =
-    JToken.FromObject self
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : RGBAValue option =
-    try
-      { Red   = uint8 token.["Red"]
-      ; Green = uint8 token.["Green"]
-      ; Blue  = uint8 token.["Blue"]
-      ; Alpha = uint8 token.["Alpha"]
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : RGBAValue option =
-    JObject.Parse(str) |> RGBAValue.FromJToken
-
-#endif
 
 
 type HSLAValue =
@@ -96,12 +63,6 @@ type HSLAValue =
   ; Saturation : uint8
   ; Lightness  : uint8
   ; Alpha      : uint8 }
-
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<HSLAValue>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -130,50 +91,14 @@ type HSLAValue =
 
   member self.ToBytes () = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) =
-    HSLAValueFB.GetRootAsHSLAValueFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) =
+    Binary.createBuffer bytes
+    |> HSLAValueFB.GetRootAsHSLAValueFB
     |> HSLAValue.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() : JToken =
-    JToken.FromObject self
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : HSLAValue option =
-    try
-      { Hue        = uint8 token.["Hue"]
-      ; Saturation = uint8 token.["Saturation"]
-      ; Lightness  = uint8 token.["Lightness"]
-      ; Alpha      = uint8 token.["Alpha"]
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : HSLAValue option =
-    JObject.Parse(str) |> HSLAValue.FromJToken
-
-#endif
 
 type ColorSpace =
   | RGBA of RGBAValue
   | HSLA of HSLAValue
-
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<ColorSpace>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -186,7 +111,11 @@ type ColorSpace =
     let build tipe (offset: Offset<_>) =
       ColorSpaceFB.StartColorSpaceFB(builder)
       ColorSpaceFB.AddValueType(builder, tipe)
+#if JAVASCRIPT
+      ColorSpaceFB.AddValue(builder,offset)
+#else
       ColorSpaceFB.AddValue(builder,offset.Value)
+#endif
       ColorSpaceFB.EndColorSpaceFB(builder)
 
     match self with
@@ -199,6 +128,21 @@ type ColorSpace =
       |> build ColorSpaceTypeFB.HSLAValueFB
 
   static member FromFB(fb: ColorSpaceFB) : ColorSpace option =
+#if JAVASCRIPT
+    match fb.ValueType with
+    | x when x = ColorSpaceTypeFB.RGBAValueFB ->
+      RGBAValueFB.Create()
+      |> fb.Value
+      |> RGBAValue.FromFB
+      |> Option.map RGBA
+    | x when x = ColorSpaceTypeFB.HSLAValueFB ->
+      HSLAValueFB.Create()
+      |> fb.Value
+      |> HSLAValue.FromFB
+      |> Option.map HSLA
+    | _ -> None
+#else
+    // On .NET side, System.Nullables are used. Hard to emulate rn.
     match fb.ValueType with
     | ColorSpaceTypeFB.RGBAValueFB ->
       let v = fb.Value<RGBAValueFB>()
@@ -215,56 +159,11 @@ type ColorSpace =
         |> Option.map HSLA
       else None
     | _ -> None
+#endif
 
   member self.ToBytes () = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) =
-    ColorSpaceFB.GetRootAsColorSpaceFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) =
+    Binary.createBuffer bytes
+    |> ColorSpaceFB.GetRootAsColorSpaceFB
     |> ColorSpace.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() : JToken =
-    let json = new JObject()
-    json.["$type"] <- new JValue(ColorSpace.Type)
-
-    let add (case: string) token =
-      json.["Case"] <- new JValue(case)
-      json.["Fields"] <- new JArray([| token |])
-
-    match self with
-    | RGBA data -> add "RGBA" (Json.tokenize data)
-    | HSLA data -> add "HSLA" (Json.tokenize data)
-
-    json :> JToken
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : ColorSpace option =
-    try
-      let fields = token.["Fields"] :?> JArray
-
-      let inline parseColor (cnstr: ^t -> ColorSpace) =
-        Json.parse fields.[0]
-        |> Option.map cnstr
-
-      match string token.["Case"] with
-      | "RGBA" -> parseColor RGBA
-      | "HSLA" -> parseColor HSLA
-      | _      -> None
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : ColorSpace option =
-    JObject.Parse(str) |> ColorSpace.FromJToken
-
-#endif

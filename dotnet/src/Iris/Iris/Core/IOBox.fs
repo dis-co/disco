@@ -3,6 +3,8 @@ namespace Iris.Core
 #if JAVASCRIPT
 
 open Fable.Core
+open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
 
 #else
 
@@ -10,8 +12,6 @@ open System
 open System.Text
 open FlatBuffers
 open Iris.Serialization.Raft
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 #endif
 
@@ -21,9 +21,6 @@ open Newtonsoft.Json.Linq
 // | |_) |  __/ | | | (_| |\ V /| | (_) | |
 // |____/ \___|_| |_|\__,_| \_/ |_|\___/|_|
 
-#if JAVASCRIPT
-[<StringEnum>]
-#endif
 [<RequireQualifiedAccess>]
 type Behavior =
   | Toggle
@@ -40,12 +37,6 @@ type Behavior =
     | Toggle  -> "Toggle"
     | Bang    -> "Bang"
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<Behavior>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -53,43 +44,24 @@ type Behavior =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
+#if JAVASCRIPT
+  static member FromFB (fb: BehaviorFB) =
+    match fb with
+    | x when x = BehaviorFB.ToggleFB -> Some Toggle
+    | x when x = BehaviorFB.BangFB   -> Some Bang
+    | _                              -> None
+#else
   static member FromFB (fb: BehaviorFB) =
     match fb with
     | BehaviorFB.ToggleFB -> Some Toggle
     | BehaviorFB.BangFB   -> Some Bang
     | _                       -> None
+#endif
 
   member self.ToOffset(builder: FlatBufferBuilder) : BehaviorFB =
     match self with
     | Toggle -> BehaviorFB.ToggleFB
     | Bang   -> BehaviorFB.BangFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () : JToken =
-    new JValue(string self) :> JToken
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : Behavior option =
-    try
-      Behavior.TryParse (string token)
-    with
-      | exn ->
-        printfn "Could not deserialize behavior value: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : Behavior option =
-    JToken.Parse(str) |> Behavior.FromJToken
-
-#endif
 
 //  ____  _        _            _____
 // / ___|| |_ _ __(_)_ __   __ |_   _|   _ _ __   ___
@@ -98,9 +70,6 @@ type Behavior =
 // |____/ \__|_|  |_|_| |_|\__, ||_| \__, | .__/ \___|
 //                         |___/     |___/|_|
 
-#if JAVASCRIPT
-[<StringEnum>]
-#endif
 type StringType =
   | Simple
   | MultiLine
@@ -128,12 +97,6 @@ type StringType =
     | Url       -> "Url"
     | IP        -> "IP"
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<StringType>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -142,6 +105,16 @@ type StringType =
   //                           |___/
 
   static member FromFB (fb: StringTypeFB) =
+#if JAVASCRIPT
+    match fb with
+    | x when x = StringTypeFB.SimpleFB    -> Some Simple
+    | x when x = StringTypeFB.MultiLineFB -> Some MultiLine
+    | x when x = StringTypeFB.FileNameFB  -> Some FileName
+    | x when x = StringTypeFB.DirectoryFB -> Some Directory
+    | x when x = StringTypeFB.UrlFB       -> Some Url
+    | x when x = StringTypeFB.IPFB        -> Some IP
+    | _                                   -> None
+#else
     match fb with
     | StringTypeFB.SimpleFB    -> Some Simple
     | StringTypeFB.MultiLineFB -> Some MultiLine
@@ -150,6 +123,7 @@ type StringType =
     | StringTypeFB.UrlFB       -> Some Url
     | StringTypeFB.IPFB        -> Some IP
     | _                        -> None
+#endif
 
   member self.ToOffset(builder: FlatBufferBuilder) : StringTypeFB =
     match self with
@@ -160,64 +134,6 @@ type StringType =
     | Url       -> StringTypeFB.UrlFB
     | IP        -> StringTypeFB.IPFB
 
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () : JToken =
-    new JValue(string self) :> JToken
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : StringType option =
-    try
-      StringType.TryParse (string token)
-    with
-      | exn ->
-        printfn "Could not deserialize string type json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : StringType option =
-    JToken.Parse(str) |> StringType.FromJToken
-
-#endif
-
-
-#if JAVASCRIPT
-#else
-
-[<AutoOpen>]
-module JsonUtils =
-
-  let parseTags (token: JToken) : Tag array =
-    let jarr = token.["Tags"] :?> JArray
-    let arr = Array.zeroCreate jarr.Count
-
-    for i in 0 .. (jarr.Count - 1) do
-      arr.[i] <- string jarr.[i]
-
-    arr
-
-  let inline parseSlices (token: JToken) =
-    let jarr = token.["Slices"] :?> JArray
-    let arr = Array.zeroCreate jarr.Count
-
-    for i in 0 .. (jarr.Count - 1) do
-      Json.parse jarr.[i]
-      |> Option.map (fun slice -> arr.[i] <- slice)
-      |> ignore
-
-    arr
-
-  let parseIdField (token: JToken) (name: string) =
-    string token.[name] |> Id
-
-#endif
 
 //  ___ ___  ____
 // |_ _/ _ \| __ )  _____  __
@@ -236,521 +152,496 @@ type IOBox =
   | ColorBox  of ColorBoxD
   | Compound  of CompoundBoxD
 
-  with
-    member self.Id
-      with get () =
-        match self with
-          | StringBox data -> data.Id
-          | IntBox    data -> data.Id
-          | FloatBox  data -> data.Id
-          | DoubleBox data -> data.Id
-          | BoolBox   data -> data.Id
-          | ByteBox   data -> data.Id
-          | EnumBox   data -> data.Id
-          | ColorBox  data -> data.Id
-          | Compound  data -> data.Id
-
-    member self.Name
-      with get () =
-        match self with
-          | StringBox data -> data.Name
-          | IntBox    data -> data.Name
-          | FloatBox  data -> data.Name
-          | DoubleBox data -> data.Name
-          | BoolBox   data -> data.Name
-          | ByteBox   data -> data.Name
-          | EnumBox   data -> data.Name
-          | ColorBox  data -> data.Name
-          | Compound  data -> data.Name
-
-    member self.SetName name =
+  member self.Id
+    with get () =
       match self with
-      | StringBox data -> StringBox { data with Name = name }
-      | IntBox    data -> IntBox    { data with Name = name }
-      | FloatBox  data -> FloatBox  { data with Name = name }
-      | DoubleBox data -> DoubleBox { data with Name = name }
-      | BoolBox   data -> BoolBox   { data with Name = name }
-      | ByteBox   data -> ByteBox   { data with Name = name }
-      | EnumBox   data -> EnumBox   { data with Name = name }
-      | ColorBox  data -> ColorBox  { data with Name = name }
-      | Compound  data -> Compound  { data with Name = name }
+        | StringBox data -> data.Id
+        | IntBox    data -> data.Id
+        | FloatBox  data -> data.Id
+        | DoubleBox data -> data.Id
+        | BoolBox   data -> data.Id
+        | ByteBox   data -> data.Id
+        | EnumBox   data -> data.Id
+        | ColorBox  data -> data.Id
+        | Compound  data -> data.Id
 
-    member self.Patch
-      with get () =
-        match self with
-          | StringBox data -> data.Patch
-          | IntBox    data -> data.Patch
-          | FloatBox  data -> data.Patch
-          | DoubleBox data -> data.Patch
-          | BoolBox   data -> data.Patch
-          | ByteBox   data -> data.Patch
-          | EnumBox   data -> data.Patch
-          | ColorBox  data -> data.Patch
-          | Compound  data -> data.Patch
+  member self.Name
+    with get () =
+      match self with
+        | StringBox data -> data.Name
+        | IntBox    data -> data.Name
+        | FloatBox  data -> data.Name
+        | DoubleBox data -> data.Name
+        | BoolBox   data -> data.Name
+        | ByteBox   data -> data.Name
+        | EnumBox   data -> data.Name
+        | ColorBox  data -> data.Name
+        | Compound  data -> data.Name
 
-    member self.Slices
-      with get () =
-        match self with
-          | StringBox data -> StringSlices   data.Slices
-          | IntBox    data -> IntSlices      data.Slices
-          | FloatBox  data -> FloatSlices    data.Slices
-          | DoubleBox data -> DoubleSlices   data.Slices
-          | BoolBox   data -> BoolSlices     data.Slices
-          | ByteBox   data -> ByteSlices     data.Slices
-          | EnumBox   data -> EnumSlices     data.Slices
-          | ColorBox  data -> ColorSlices    data.Slices
-          | Compound  data -> CompoundSlices data.Slices
+  member self.SetName name =
+    match self with
+    | StringBox data -> StringBox { data with Name = name }
+    | IntBox    data -> IntBox    { data with Name = name }
+    | FloatBox  data -> FloatBox  { data with Name = name }
+    | DoubleBox data -> DoubleBox { data with Name = name }
+    | BoolBox   data -> BoolBox   { data with Name = name }
+    | ByteBox   data -> ByteBox   { data with Name = name }
+    | EnumBox   data -> EnumBox   { data with Name = name }
+    | ColorBox  data -> ColorBox  { data with Name = name }
+    | Compound  data -> Compound  { data with Name = name }
 
-    //  ____       _   ____  _ _
-    // / ___|  ___| |_/ ___|| (_) ___ ___
-    // \___ \ / _ \ __\___ \| | |/ __/ _ \
-    //  ___) |  __/ |_ ___) | | | (_|  __/
-    // |____/ \___|\__|____/|_|_|\___\___|
+  member self.Patch
+    with get () =
+      match self with
+        | StringBox data -> data.Patch
+        | IntBox    data -> data.Patch
+        | FloatBox  data -> data.Patch
+        | DoubleBox data -> data.Patch
+        | BoolBox   data -> data.Patch
+        | ByteBox   data -> data.Patch
+        | EnumBox   data -> data.Patch
+        | ColorBox  data -> data.Patch
+        | Compound  data -> data.Patch
 
-    member self.SetSlice (value: Slice) =
-      let update (arr : 'a array) (data: 'a) =
+  member self.Slices
+    with get () =
+      match self with
+        | StringBox data -> StringSlices   data.Slices
+        | IntBox    data -> IntSlices      data.Slices
+        | FloatBox  data -> FloatSlices    data.Slices
+        | DoubleBox data -> DoubleSlices   data.Slices
+        | BoolBox   data -> BoolSlices     data.Slices
+        | ByteBox   data -> ByteSlices     data.Slices
+        | EnumBox   data -> EnumSlices     data.Slices
+        | ColorBox  data -> ColorSlices    data.Slices
+        | Compound  data -> CompoundSlices data.Slices
 
-        if int value.Index > Array.length arr then
+  //  ____       _   ____  _ _
+  // / ___|  ___| |_/ ___|| (_) ___ ___
+  // \___ \ / _ \ __\___ \| | |/ __/ _ \
+  //  ___) |  __/ |_ ___) | | | (_|  __/
+  // |____/ \___|\__|____/|_|_|\___\___|
+
+  member self.SetSlice (value: Slice) =
+    let update (arr : 'a array) (data: 'a) =
+
+      if int value.Index > Array.length arr then
 #if JAVASCRIPT
-          /// Rationale:
-          ///
-          /// in JavaScript an array will re-allocate automatically under the hood
-          /// hence we don't need to worry about out-of-bounds errors.
-          let newarr = Array.copy arr
-          newarr.[int value.Index] <- data
-          newarr
+        /// Rationale:
+        ///
+        /// in JavaScript an array will re-allocate automatically under the hood
+        /// hence we don't need to worry about out-of-bounds errors.
+        let newarr = Array.copy arr
+        newarr.[int value.Index] <- data
+        newarr
 #else
-          /// Rationale:
-          ///
-          /// in .NET, we need to worry about out-of-bounds errors, and we
-          /// detected that we are about to run into one, hence re-alloc, copy
-          /// and finally set the value at the correct index.
-          let newarr = Array.zeroCreate (int value.Index + 1)
-          arr.CopyTo(newarr, 0)
-          newarr.[int value.Index] <- data
-          newarr
+        /// Rationale:
+        ///
+        /// in .NET, we need to worry about out-of-bounds errors, and we
+        /// detected that we are about to run into one, hence re-alloc, copy
+        /// and finally set the value at the correct index.
+        let newarr = Array.zeroCreate (int value.Index + 1)
+        arr.CopyTo(newarr, 0)
+        newarr.[int value.Index] <- data
+        newarr
 #endif
-        else
-          Array.mapi (fun i d -> if i = int value.Index then data else d) arr
+      else
+        Array.mapi (fun i d -> if i = int value.Index then data else d) arr
 
-      match self with
-      | StringBox data as current ->
-        match value with
-          | StringSlice slice     -> StringBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    match self with
+    | StringBox data as current ->
+      match value with
+        | StringSlice slice     -> StringBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | IntBox data as current    ->
-        match value with
-          | IntSlice slice        -> IntBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | IntBox data as current    ->
+      match value with
+        | IntSlice slice        -> IntBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | FloatBox data as current  ->
-        match value with
-          | FloatSlice slice      -> FloatBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | FloatBox data as current  ->
+      match value with
+        | FloatSlice slice      -> FloatBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | DoubleBox data as current ->
-        match value with
-          | DoubleSlice slice     -> DoubleBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | DoubleBox data as current ->
+      match value with
+        | DoubleSlice slice     -> DoubleBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | BoolBox data as current   ->
-        match value with
-          | BoolSlice slice       -> BoolBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | BoolBox data as current   ->
+      match value with
+        | BoolSlice slice       -> BoolBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | ByteBox data as current   ->
-        match value with
-          | ByteSlice slice       -> ByteBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | ByteBox data as current   ->
+      match value with
+        | ByteSlice slice       -> ByteBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | EnumBox data as current   ->
-        match value with
-          | EnumSlice slice       -> EnumBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | EnumBox data as current   ->
+      match value with
+        | EnumSlice slice       -> EnumBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | ColorBox data as current  ->
-        match value with
-          | ColorSlice slice      -> ColorBox { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | ColorBox data as current  ->
+      match value with
+        | ColorSlice slice      -> ColorBox { data with Slices = update data.Slices slice }
+        | _                     -> current
 
-      | Compound data as current  ->
-        match value with
-          | CompoundSlice slice   -> Compound { data with Slices = update data.Slices slice }
-          | _                     -> current
+    | Compound data as current  ->
+      match value with
+        | CompoundSlice slice   -> Compound { data with Slices = update data.Slices slice }
+        | _                     -> current
+
+  member self.SetSlices slices =
+    match self with
+    | StringBox data as value ->
+      match slices with
+      | StringSlices arr -> StringBox { data with Slices = arr }
+      | _ -> value
+
+    | IntBox data as value ->
+      match slices with
+      | IntSlices arr -> IntBox { data with Slices = arr }
+      | _ -> value
+
+    | FloatBox data as value ->
+      match slices with
+      | FloatSlices  arr -> FloatBox { data with Slices = arr }
+      | _ -> value
+
+    | DoubleBox data as value ->
+      match slices with
+      | DoubleSlices arr -> DoubleBox { data with Slices = arr }
+      | _ -> value
+
+    | BoolBox data as value ->
+      match slices with
+      | BoolSlices arr -> BoolBox { data with Slices = arr }
+      | _ -> value
+
+    | ByteBox data as value ->
+      match slices with
+      | ByteSlices arr -> ByteBox { data with Slices = arr }
+      | _ -> value
+
+    | EnumBox data as value ->
+      match slices with
+      | EnumSlices arr -> EnumBox { data with Slices = arr }
+      | _ -> value
+
+    | ColorBox data as value ->
+      match slices with
+      | ColorSlices arr -> ColorBox { data with Slices = arr }
+      | _ -> value
+
+    | Compound data as value ->
+      match slices with
+      | CompoundSlices arr -> Compound { data with Slices = arr }
+      | _ -> value
 
 
-    member self.SetSlices slices =
-      match self with
-      | StringBox data as value ->
-        match slices with
-        | StringSlices arr -> StringBox { data with Slices = arr }
-        | _ -> value
+  static member Toggle(id, name, patch, tags, values) =
+    BoolBox { Id         = id
+            ; Name       = name
+            ; Patch      = patch
+            ; Tags       = tags
+            ; Behavior   = Behavior.Toggle
+            ; Slices     = values }
 
-      | IntBox data as value ->
-        match slices with
-        | IntSlices arr -> IntBox { data with Slices = arr }
-        | _ -> value
+  static member Bang(id, name, patch, tags, values) =
+    BoolBox { Id         = id
+            ; Name       = name
+            ; Patch      = patch
+            ; Tags       = tags
+            ; Behavior   = Behavior.Bang
+            ; Slices     = values }
 
-      | FloatBox data as value ->
-        match slices with
-        | FloatSlices  arr -> FloatBox { data with Slices = arr }
-        | _ -> value
-
-      | DoubleBox data as value ->
-        match slices with
-        | DoubleSlices arr -> DoubleBox { data with Slices = arr }
-        | _ -> value
-
-      | BoolBox data as value ->
-        match slices with
-        | BoolSlices arr -> BoolBox { data with Slices = arr }
-        | _ -> value
-
-      | ByteBox data as value ->
-        match slices with
-        | ByteSlices arr -> ByteBox { data with Slices = arr }
-        | _ -> value
-
-      | EnumBox data as value ->
-        match slices with
-        | EnumSlices arr -> EnumBox { data with Slices = arr }
-        | _ -> value
-
-      | ColorBox data as value ->
-        match slices with
-        | ColorSlices arr -> ColorBox { data with Slices = arr }
-        | _ -> value
-
-      | Compound data as value ->
-        match slices with
-        | CompoundSlices arr -> Compound { data with Slices = arr }
-        | _ -> value
-
-    static member Toggle(id, name, patch, tags, values) =
-      BoolBox { Id         = id
+  static member String(id, name, patch, tags, values) =
+    StringBox { Id         = id
               ; Name       = name
               ; Patch      = patch
               ; Tags       = tags
-              ; Behavior   = Behavior.Toggle
+              ; StringType = Simple
+              ; FileMask   = None
+              ; MaxChars   = sizeof<int>
               ; Slices     = values }
 
-    static member Bang(id, name, patch, tags, values) =
-      BoolBox { Id         = id
+  static member MultiLine(id, name, patch, tags, values) =
+    StringBox { Id         = id
               ; Name       = name
               ; Patch      = patch
               ; Tags       = tags
-              ; Behavior   = Behavior.Bang
+              ; StringType = MultiLine
+              ; FileMask   = None
+              ; MaxChars   = sizeof<int>
               ; Slices     = values }
 
-    static member String(id, name, patch, tags, values) =
-      StringBox { Id         = id
-                ; Name       = name
-                ; Patch      = patch
-                ; Tags       = tags
-                ; StringType = Simple
-                ; FileMask   = None
-                ; MaxChars   = sizeof<int>
-                ; Slices     = values }
+  static member FileName(id, name, patch, tags, filemask, values) =
+    StringBox { Id         = id
+              ; Name       = name
+              ; Patch      = patch
+              ; Tags       = tags
+              ; StringType = FileName
+              ; FileMask   = Some filemask
+              ; MaxChars   = sizeof<int>
+              ; Slices     = values }
 
-    static member MultiLine(id, name, patch, tags, values) =
-      StringBox { Id         = id
-                ; Name       = name
-                ; Patch      = patch
-                ; Tags       = tags
-                ; StringType = MultiLine
-                ; FileMask   = None
-                ; MaxChars   = sizeof<int>
-                ; Slices     = values }
+  static member Directory(id, name, patch, tags, filemask, values) =
+    StringBox { Id         = id
+              ; Name       = name
+              ; Patch      = patch
+              ; Tags       = tags
+              ; StringType = Directory
+              ; FileMask   = Some filemask
+              ; MaxChars   = sizeof<int>
+              ; Slices     = values }
 
-    static member FileName(id, name, patch, tags, filemask, values) =
-      StringBox { Id         = id
-                ; Name       = name
-                ; Patch      = patch
-                ; Tags       = tags
-                ; StringType = FileName
-                ; FileMask   = Some filemask
-                ; MaxChars   = sizeof<int>
-                ; Slices     = values }
+  static member Url(id, name, patch, tags, values) =
+    StringBox { Id         = id
+              ; Name       = name
+              ; Patch      = patch
+              ; Tags       = tags
+              ; StringType = Url
+              ; FileMask   = None
+              ; MaxChars   = sizeof<int>
+              ; Slices     = values }
 
-    static member Directory(id, name, patch, tags, filemask, values) =
-      StringBox { Id         = id
-                ; Name       = name
-                ; Patch      = patch
-                ; Tags       = tags
-                ; StringType = Directory
-                ; FileMask   = Some filemask
-                ; MaxChars   = sizeof<int>
-                ; Slices     = values }
+  static member IP(id, name, patch, tags, values) =
+    StringBox { Id         = id
+              ; Name       = name
+              ; Patch      = patch
+              ; Tags       = tags
+              ; StringType = Url
+              ; FileMask   = None
+              ; MaxChars   = sizeof<int>
+              ; Slices     = values }
 
-    static member Url(id, name, patch, tags, values) =
-      StringBox { Id         = id
-                ; Name       = name
-                ; Patch      = patch
-                ; Tags       = tags
-                ; StringType = Url
-                ; FileMask   = None
-                ; MaxChars   = sizeof<int>
-                ; Slices     = values }
+  static member Float(id, name, patch, tags, values) =
+    FloatBox { Id         = id
+              ; Name       = name
+              ; Patch      = patch
+              ; Tags       = tags
+              ; VecSize    = 1u
+              ; Min        = 0
+              ; Max        = sizeof<float>
+              ; Unit       = ""
+              ; Precision  = 4u
+              ; Slices     = values }
 
-    static member IP(id, name, patch, tags, values) =
-      StringBox { Id         = id
-                ; Name       = name
-                ; Patch      = patch
-                ; Tags       = tags
-                ; StringType = Url
-                ; FileMask   = None
-                ; MaxChars   = sizeof<int>
-                ; Slices     = values }
+  static member Double(id, name, patch, tags, values) =
+    DoubleBox { Id         = id
+              ; Name       = name
+              ; Patch      = patch
+              ; Tags       = tags
+              ; VecSize    = 1u
+              ; Min        = 0
+              ; Max        = sizeof<double>
+              ; Unit       = ""
+              ; Precision  = 4u
+              ; Slices     = values }
 
-    static member Float(id, name, patch, tags, values) =
-      FloatBox { Id         = id
-               ; Name       = name
-               ; Patch      = patch
-               ; Tags       = tags
-               ; VecSize    = 1u
-               ; Min        = 0
-               ; Max        = sizeof<float>
-               ; Unit       = ""
-               ; Precision  = 4u
-               ; Slices     = values }
+  static member Bytes(id, name, patch, tags, values) =
+    ByteBox { Id         = id
+            ; Name       = name
+            ; Patch      = patch
+            ; Tags       = tags
+            ; Slices     = values }
 
-    static member Double(id, name, patch, tags, values) =
-      DoubleBox { Id         = id
-                ; Name       = name
-                ; Patch      = patch
-                ; Tags       = tags
-                ; VecSize    = 1u
-                ; Min        = 0
-                ; Max        = sizeof<double>
-                ; Unit       = ""
-                ; Precision  = 4u
-                ; Slices     = values }
-
-    static member Bytes(id, name, patch, tags, values) =
-      ByteBox { Id         = id
+  static member Color(id, name, patch, tags, values) =
+    ColorBox { Id         = id
               ; Name       = name
               ; Patch      = patch
               ; Tags       = tags
               ; Slices     = values }
 
-    static member Color(id, name, patch, tags, values) =
-      ColorBox { Id         = id
-               ; Name       = name
-               ; Patch      = patch
-               ; Tags       = tags
-               ; Slices     = values }
+  static member Enum(id, name, patch, tags, properties, values) =
+    EnumBox { Id         = id
+            ; Name       = name
+            ; Patch      = patch
+            ; Tags       = tags
+            ; Properties = properties
+            ; Slices     = values }
 
-    static member Enum(id, name, patch, tags, properties, values) =
-      EnumBox { Id         = id
+  static member CompoundBox(id, name, patch, tags, values) =
+    Compound { Id         = id
               ; Name       = name
               ; Patch      = patch
               ; Tags       = tags
-              ; Properties = properties
               ; Slices     = values }
 
-    static member CompoundBox(id, name, patch, tags, values) =
-      Compound { Id         = id
-               ; Name       = name
-               ; Patch      = patch
-               ; Tags       = tags
-               ; Slices     = values }
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
 
-
+  member self.ToOffset(builder: FlatBufferBuilder) : Offset<IOBoxFB> =
+    let inline build (data: ^t) tipe =
+      let offset = Binary.toOffset builder data
+      IOBoxFB.StartIOBoxFB(builder)
 #if JAVASCRIPT
+      IOBoxFB.AddIOBox(builder, offset)
 #else
-    static member Type
-      with get () = Serialization.GetTypeName<IOBox>()
-
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
-
-    member self.ToOffset(builder: FlatBufferBuilder) : Offset<IOBoxFB> =
-      let build tipe (offset: Offset<_>) =
-        IOBoxFB.StartIOBoxFB(builder)
-        IOBoxFB.AddIOBox(builder, offset.Value)
-        IOBoxFB.AddIOBoxType(builder, tipe)
-        IOBoxFB.EndIOBoxFB(builder)
-
-      match self with
-      | StringBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.StringBoxFB
-
-      | IntBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.IntBoxFB
-
-      | FloatBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.FloatBoxFB
-
-      | DoubleBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.DoubleBoxFB
-
-      | BoolBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.BoolBoxFB
-
-      | ByteBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.ByteBoxFB
-
-      | EnumBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.EnumBoxFB
-
-      | ColorBox data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.ColorBoxFB
-
-      | Compound data ->
-        data.ToOffset(builder)
-        |> build IOBoxTypeFB.CompoundBoxFB
-
-    static member FromFB(fb: IOBoxFB) : IOBox option =
-      match fb.IOBoxType with
-      | IOBoxTypeFB.StringBoxFB ->
-        let v = fb.IOBox<StringBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> StringBoxD.FromFB
-          |> Option.map StringBox
-        else None
-
-      | IOBoxTypeFB.IntBoxFB ->
-        let v = fb.IOBox<IntBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> IntBoxD.FromFB
-          |> Option.map IntBox
-        else None
-
-      | IOBoxTypeFB.FloatBoxFB ->
-        let v = fb.IOBox<FloatBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> FloatBoxD.FromFB
-          |> Option.map FloatBox
-        else None
-
-      | IOBoxTypeFB.DoubleBoxFB ->
-        let v = fb.IOBox<DoubleBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> DoubleBoxD.FromFB
-          |> Option.map DoubleBox
-        else None
-
-      | IOBoxTypeFB.BoolBoxFB ->
-        let v = fb.IOBox<BoolBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> BoolBoxD.FromFB
-          |> Option.map BoolBox
-        else None
-
-      | IOBoxTypeFB.ByteBoxFB ->
-        let v = fb.IOBox<ByteBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> ByteBoxD.FromFB
-          |> Option.map ByteBox
-        else None
-
-      | IOBoxTypeFB.EnumBoxFB ->
-        let v = fb.IOBox<EnumBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> EnumBoxD.FromFB
-          |> Option.map EnumBox
-        else None
-
-      | IOBoxTypeFB.ColorBoxFB ->
-        let v = fb.IOBox<ColorBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> ColorBoxD.FromFB
-          |> Option.map ColorBox
-        else None
-
-      | IOBoxTypeFB.CompoundBoxFB ->
-        let v = fb.IOBox<CompoundBoxFB>()
-        if v.HasValue then
-          v.Value
-          |> CompoundBoxD.FromFB
-          |> Option.map Compound
-        else None
-
-      | _ -> None
-
-    member self.ToBytes() : byte array = Binary.buildBuffer self
-
-    static member FromBytes(bytes: byte array) : IOBox option =
-      IOBoxFB.GetRootAsIOBoxFB(new ByteBuffer(bytes))
-      |> IOBox.FromFB
-
-    //      _
-    //     | |___  ___  _ __
-    //  _  | / __|/ _ \| '_ \
-    // | |_| \__ \ (_) | | | |
-    //  \___/|___/\___/|_| |_|
-
-    member self.ToJToken () : JToken =
-      let json = new JObject() |> addType IOBox.Type
-
-      let inline add (case: string) data =
-        json |> addCase case |> addFields [| data |]
-
-      match self with
-      | StringBox data -> add "StringBox" data
-      | IntBox    data -> add "IntBox"    data
-      | FloatBox  data -> add "FloatBox"  data
-      | DoubleBox data -> add "DoubleBox" data
-      | BoolBox   data -> add "BoolBox"   data
-      | ByteBox   data -> add "ByteBox"   data
-      | EnumBox   data -> add "EnumBox"   data
-      | ColorBox  data -> add "ColorBox"  data
-      | Compound  data -> add "Compound"  data
-
-    member self.ToJson() =
-      self.ToJToken() |> string
-
-    static member FromJToken(token: JToken) : IOBox option =
-      try
-        let inline parseData (constr: ^f -> IOBox) =
-          token.["Fields"] :?> JArray
-          |> fun arr -> arr.[0]
-          |> Json.parse
-          |> Option.map constr
-
-        match string token.["Case"] with
-        | "StringBox" -> parseData StringBox
-        | "IntBox"    -> parseData IntBox
-        | "FloatBox"  -> parseData FloatBox
-        | "DoubleBox" -> parseData DoubleBox
-        | "BoolBox"   -> parseData BoolBox
-        | "ByteBox"   -> parseData ByteBox
-        | "EnumBox"   -> parseData EnumBox
-        | "ColorBox"  -> parseData ColorBox
-        | "Compound"  -> parseData Compound
-        | _ -> None
-      with
-        | exn ->
-          printfn "Could not deserialize iobox json: "
-          printfn "    Message: %s"  exn.Message
-          printfn "    json:    %s" (string token)
-          None
-
-    static member FromJson(str: string) : IOBox option =
-      JToken.Parse(str) |> IOBox.FromJToken
-
+      IOBoxFB.AddIOBox(builder, offset.Value)
 #endif
+      IOBoxFB.AddIOBoxType(builder, tipe)
+      IOBoxFB.EndIOBoxFB(builder)
+
+    match self with
+    | StringBox data -> build data IOBoxTypeFB.StringBoxFB
+    | IntBox    data -> build data IOBoxTypeFB.IntBoxFB
+    | FloatBox  data -> build data IOBoxTypeFB.FloatBoxFB
+    | DoubleBox data -> build data IOBoxTypeFB.DoubleBoxFB
+    | BoolBox   data -> build data IOBoxTypeFB.BoolBoxFB
+    | ByteBox   data -> build data IOBoxTypeFB.ByteBoxFB
+    | EnumBox   data -> build data IOBoxTypeFB.EnumBoxFB
+    | ColorBox  data -> build data IOBoxTypeFB.ColorBoxFB
+    | Compound  data -> build data IOBoxTypeFB.CompoundBoxFB
+
+  static member FromFB(fb: IOBoxFB) : IOBox option =
+#if JAVASCRIPT
+    match fb.IOBoxType with
+    | x when x = IOBoxTypeFB.StringBoxFB ->
+      StringBoxFB.Create()
+      |> fb.IOBox
+      |> StringBoxD.FromFB
+      |> Option.map StringBox
+
+    | x when x = IOBoxTypeFB.IntBoxFB ->
+      IntBoxFB.Create()
+      |> fb.IOBox
+      |> IntBoxD.FromFB
+      |> Option.map IntBox
+
+    | x when x = IOBoxTypeFB.FloatBoxFB ->
+      FloatBoxFB.Create()
+      |> fb.IOBox
+      |> FloatBoxD.FromFB
+      |> Option.map FloatBox
+
+    | x when x = IOBoxTypeFB.DoubleBoxFB ->
+      DoubleBoxFB.Create()
+      |> fb.IOBox
+      |> DoubleBoxD.FromFB
+      |> Option.map DoubleBox
+
+    | x when x = IOBoxTypeFB.BoolBoxFB ->
+      BoolBoxFB.Create()
+      |> fb.IOBox
+      |> BoolBoxD.FromFB
+      |> Option.map BoolBox
+
+    | x when x = IOBoxTypeFB.ByteBoxFB ->
+      ByteBoxFB.Create()
+      |> fb.IOBox
+      |> ByteBoxD.FromFB
+      |> Option.map ByteBox
+
+    | x when x = IOBoxTypeFB.EnumBoxFB ->
+      EnumBoxFB.Create()
+      |> fb.IOBox
+      |> EnumBoxD.FromFB
+      |> Option.map EnumBox
+
+    | x when x = IOBoxTypeFB.ColorBoxFB ->
+      ColorBoxFB.Create()
+      |> fb.IOBox
+      |> ColorBoxD.FromFB
+      |> Option.map ColorBox
+
+    | x when x = IOBoxTypeFB.CompoundBoxFB ->
+      CompoundBoxFB.Create()
+      |> fb.IOBox
+      |> CompoundBoxD.FromFB
+      |> Option.map Compound
+
+    | _ -> None
+#else
+    match fb.IOBoxType with
+    | IOBoxTypeFB.StringBoxFB ->
+      let v = fb.IOBox<StringBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> StringBoxD.FromFB
+        |> Option.map StringBox
+      else None
+
+    | IOBoxTypeFB.IntBoxFB ->
+      let v = fb.IOBox<IntBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> IntBoxD.FromFB
+        |> Option.map IntBox
+      else None
+
+    | IOBoxTypeFB.FloatBoxFB ->
+      let v = fb.IOBox<FloatBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> FloatBoxD.FromFB
+        |> Option.map FloatBox
+      else None
+
+    | IOBoxTypeFB.DoubleBoxFB ->
+      let v = fb.IOBox<DoubleBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> DoubleBoxD.FromFB
+        |> Option.map DoubleBox
+      else None
+
+    | IOBoxTypeFB.BoolBoxFB ->
+      let v = fb.IOBox<BoolBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> BoolBoxD.FromFB
+        |> Option.map BoolBox
+      else None
+
+    | IOBoxTypeFB.ByteBoxFB ->
+      let v = fb.IOBox<ByteBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> ByteBoxD.FromFB
+        |> Option.map ByteBox
+      else None
+
+    | IOBoxTypeFB.EnumBoxFB ->
+      let v = fb.IOBox<EnumBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> EnumBoxD.FromFB
+        |> Option.map EnumBox
+      else None
+
+    | IOBoxTypeFB.ColorBoxFB ->
+      let v = fb.IOBox<ColorBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> ColorBoxD.FromFB
+        |> Option.map ColorBox
+      else None
+
+    | IOBoxTypeFB.CompoundBoxFB ->
+      let v = fb.IOBox<CompoundBoxFB>()
+      if v.HasValue then
+        v.Value
+        |> CompoundBoxD.FromFB
+        |> Option.map Compound
+      else None
+
+    | _ -> None
+#endif
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromBytes(bytes: Binary.Buffer) : IOBox option =
+    Binary.createBuffer bytes
+    |> IOBoxFB.GetRootAsIOBoxFB
+    |> IOBox.FromFB
 
 //  ____              _ ____
 // | __ )  ___   ___ | | __ )  _____  __
@@ -766,12 +657,6 @@ and BoolBoxD =
   ; Behavior   : Behavior
   ; Slices     : BoolSliceD array }
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<BoolBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -783,26 +668,38 @@ and BoolBoxD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
+    let behavior = self.Behavior.ToOffset builder
     let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let tags = BoolBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: BoolSliceD) -> slice.ToOffset(builder)) self.Slices
     let slices = BoolBoxFB.CreateSlicesVector(builder, sliceoffsets)
     BoolBoxFB.StartBoolBoxFB(builder)
     BoolBoxFB.AddId(builder, id)
     BoolBoxFB.AddName(builder, name)
     BoolBoxFB.AddPatch(builder, patch)
+    BoolBoxFB.AddBehavior(builder, behavior)
     BoolBoxFB.AddTags(builder, tags)
     BoolBoxFB.AddSlices(builder, slices)
-    BoolBoxFB.AddBehavior(builder, self.Behavior.ToOffset(builder))
     BoolBoxFB.EndBoolBoxFB(builder)
 
   static member FromFB(fb: BoolBoxFB) : BoolBoxD option =
     let tags = Array.zeroCreate fb.TagsLength
     let slices = Array.zeroCreate fb.SlicesLength
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
+      fb.Slices(i)
+      |> BoolSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
@@ -810,6 +707,7 @@ and BoolBoxD =
         |> BoolSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     Behavior.FromFB fb.Behavior
     |> Option.map
@@ -821,53 +719,12 @@ and BoolBoxD =
         ; Behavior   = behavior
         ; Slices     = slices })
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : BoolBoxD option =
-    BoolBoxFB.GetRootAsBoolBoxFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : BoolBoxD option =
+    Binary.createBuffer bytes
+    |> BoolBoxFB.GetRootAsBoolBoxFB
     |> BoolBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"       (string self.Id)
-    |> addString  "Name"      self.Name
-    |> addString  "Patch"    (string self.Patch)
-    |> addStrings "Tags"      self.Tags
-    |> addString  "Behavior" (string self.Behavior)
-    |> addArray   "Slices"    self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : BoolBoxD option =
-    try
-      Json.parse<Behavior> token.["Behavior"]
-      |> Option.map
-        (fun behavior ->
-          { Id       = parseIdField token "Id"
-          ; Name     = string token.["Name"]
-          ; Patch    = parseIdField token "Patch"
-          ; Tags     = parseTags token
-          ; Behavior = behavior
-          ; Slices   = parseSlices token
-          })
-    with
-      | exn ->
-        printfn "Could not deserialize BoolBoxD json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : BoolBoxD option =
-    JToken.Parse(str) |> BoolBoxD.FromJToken
-
-#endif
 
 //  ____              _ ____  _ _
 // | __ )  ___   ___ | / ___|| (_) ___ ___
@@ -878,12 +735,6 @@ and BoolBoxD =
 and BoolSliceD =
   { Index: Index
   ; Value: bool }
-
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<BoolSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -906,43 +757,12 @@ and BoolSliceD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : BoolSliceD option =
-    BoolSliceFB.GetRootAsBoolSliceFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : BoolSliceD option =
+    Binary.createBuffer bytes
+    |> BoolSliceFB.GetRootAsBoolSliceFB
     |> BoolSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addLong "Index" self.Index
-    |> addBool "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : BoolSliceD option =
-    try
-      let value = System.Boolean.Parse(string token.["Value"])
-      { Index = uint64 token.["Index"]
-      ; Value = value
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : BoolSliceD option =
-    JToken.Parse(str) |> BoolSliceD.FromJToken
-
-#endif
 
 //  ___       _   ____
 // |_ _|_ __ | |_| __ )  _____  __
@@ -961,12 +781,6 @@ and IntBoxD =
   ; Unit       : string
   ; Slices     : IntSliceD array }
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<IntBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -978,11 +792,11 @@ and IntBoxD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let tags = IntBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: IntSliceD) -> slice.ToOffset(builder)) self.Slices
-    let slices = IntBoxFB.CreateSlicesVector(builder, sliceoffsets)
     let unit = self.Unit |> builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let tags = IntBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = IntBoxFB.CreateSlicesVector(builder, sliceoffsets)
     IntBoxFB.StartIntBoxFB(builder)
     IntBoxFB.AddId(builder, id)
     IntBoxFB.AddName(builder, name)
@@ -1000,9 +814,20 @@ and IntBoxD =
     let slices = Array.zeroCreate fb.SlicesLength
     let unit = if isNull fb.Unit then "" else fb.Unit
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
+      fb.Slices(i)
+      |> IntSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
@@ -1010,6 +835,7 @@ and IntBoxD =
         |> IntSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     try
       { Id         = Id fb.Id
@@ -1025,56 +851,12 @@ and IntBoxD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : IntBoxD option =
-    IntBoxFB.GetRootAsIntBoxFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : IntBoxD option =
+    Binary.createBuffer bytes
+    |> IntBoxFB.GetRootAsIntBoxFB
     |> IntBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"     (string self.Id)
-    |> addString  "Name"    self.Name
-    |> addString  "Patch"  (string self.Patch)
-    |> addStrings "Tags"    self.Tags
-    |> addUInt32  "VecSize" self.VecSize
-    |> addInt     "Min"     self.Min
-    |> addInt     "Max"     self.Max
-    |> addString  "Unit"    self.Unit
-    |> addArray   "Slices"  self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : IntBoxD option =
-    try
-      { Id         = parseIdField token "Id"
-      ; Name       = string token.["Name"]
-      ; Patch      = parseIdField token "Patch"
-      ; Tags       = parseTags    token
-      ; VecSize    = uint32 token.["VecSize"]
-      ; Min        = int    token.["Min"]
-      ; Max        = int    token.["Max"]
-      ; Unit       = string token.["Unit"]
-      ; Slices     = parseSlices  token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : IntBoxD option =
-    JToken.Parse(str) |> IntBoxD.FromJToken
-
-#endif
 
 //  ___       _   ____  _ _
 // |_ _|_ __ | |_/ ___|| (_) ___ ___
@@ -1085,12 +867,6 @@ and IntBoxD =
 and IntSliceD =
   { Index: Index
   ; Value: int }
-
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<IntSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1113,42 +889,12 @@ and IntSliceD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : IntSliceD option =
-    IntSliceFB.GetRootAsIntSliceFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : IntSliceD option =
+    Binary.createBuffer bytes
+    |> IntSliceFB.GetRootAsIntSliceFB
     |> IntSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addLong "Index" self.Index
-    |> addInt  "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : IntSliceD option =
-    try
-      { Index = uint64 token.["Index"]
-      ; Value = int    token.["Value"]
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : IntSliceD option =
-    JToken.Parse(str) |> IntSliceD.FromJToken
-
-#endif
 
 //  _____ _             _   ____
 // |  ___| | ___   __ _| |_| __ )  _____  __
@@ -1168,12 +914,6 @@ and FloatBoxD =
   ; Precision  : uint32
   ; Slices     : FloatSliceD array }
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<FloatBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1185,11 +925,11 @@ and FloatBoxD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let tags = FloatBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: FloatSliceD) -> slice.ToOffset(builder)) self.Slices
-    let slices = FloatBoxFB.CreateSlicesVector(builder, sliceoffsets)
     let unit = self.Unit |> builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let tags = FloatBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = FloatBoxFB.CreateSlicesVector(builder, sliceoffsets)
     FloatBoxFB.StartFloatBoxFB(builder)
     FloatBoxFB.AddId(builder, id)
     FloatBoxFB.AddName(builder, name)
@@ -1208,9 +948,20 @@ and FloatBoxD =
     let slices = Array.zeroCreate fb.SlicesLength
     let unit = if isNull fb.Unit then "" else fb.Unit
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
+      fb.Slices(i)
+      |> FloatSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
@@ -1218,6 +969,7 @@ and FloatBoxD =
         |> FloatSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     try
       { Id         = Id fb.Id
@@ -1234,58 +986,12 @@ and FloatBoxD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : FloatBoxD option =
-    FloatBoxFB.GetRootAsFloatBoxFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : FloatBoxD option =
+    Binary.createBuffer bytes
+    |> FloatBoxFB.GetRootAsFloatBoxFB
     |> FloatBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"       (string self.Id)
-    |> addString  "Name"      self.Name
-    |> addString  "Patch"    (string self.Patch)
-    |> addStrings "Tags"      self.Tags
-    |> addUInt32  "VecSize"   self.VecSize
-    |> addInt     "Min"       self.Min
-    |> addInt     "Max"       self.Max
-    |> addString  "Unit"      self.Unit
-    |> addUInt32  "Precision" self.Precision
-    |> addArray   "Slices"    self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : FloatBoxD option =
-    try
-      { Id         = parseIdField token "Id"
-      ; Name       = string token.["Name"]
-      ; Patch      = parseIdField token "Patch"
-      ; Tags       = parseTags token
-      ; VecSize    = uint32 token.["VecSize"]
-      ; Min        = int    token.["Min"]
-      ; Max        = int    token.["Max"]
-      ; Unit       = string token.["Unit"]
-      ; Precision  = uint32 token.["Precision"]
-      ; Slices     = parseSlices token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : FloatBoxD option =
-    JToken.Parse(str) |> FloatBoxD.FromJToken
-
-#endif
 
 //  _____ _             _   ____  _ _
 // |  ___| | ___   __ _| |_/ ___|| (_) ___ ___
@@ -1297,12 +1003,6 @@ and FloatSliceD =
   { Index: Index
   ; Value: float }
 
-
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<FloatSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1325,42 +1025,12 @@ and FloatSliceD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : FloatSliceD option =
-    FloatSliceFB.GetRootAsFloatSliceFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : FloatSliceD option =
+    Binary.createBuffer bytes
+    |> FloatSliceFB.GetRootAsFloatSliceFB
     |> FloatSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addLong  "Index" self.Index
-    |> addFloat "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : FloatSliceD option =
-    try
-      { Index = uint64 token.["Index"]
-      ; Value = float  token.["Value"]
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : FloatSliceD option =
-    JToken.Parse(str) |> FloatSliceD.FromJToken
-
-#endif
 
 //  ____              _     _      ____
 // |  _ \  ___  _   _| |__ | | ___| __ )  _____  __
@@ -1381,12 +1051,6 @@ and DoubleBoxD =
   ; Slices     : DoubleSliceD array }
 
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<DoubleBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1398,11 +1062,11 @@ and DoubleBoxD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let tags = DoubleBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: DoubleSliceD) -> slice.ToOffset(builder)) self.Slices
-    let slices = DoubleBoxFB.CreateSlicesVector(builder, sliceoffsets)
     let unit = self.Unit |> builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let tags = DoubleBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = DoubleBoxFB.CreateSlicesVector(builder, sliceoffsets)
     DoubleBoxFB.StartDoubleBoxFB(builder)
     DoubleBoxFB.AddId(builder, id)
     DoubleBoxFB.AddName(builder, name)
@@ -1421,9 +1085,20 @@ and DoubleBoxD =
     let slices = Array.zeroCreate fb.SlicesLength
     let unit = if isNull fb.Unit then "" else fb.Unit
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
+      fb.Slices(i)
+      |> DoubleSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
@@ -1431,6 +1106,7 @@ and DoubleBoxD =
         |> DoubleSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     try
       { Id         = Id fb.Id
@@ -1447,58 +1123,12 @@ and DoubleBoxD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : DoubleBoxD option =
-    DoubleBoxFB.GetRootAsDoubleBoxFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : DoubleBoxD option =
+    Binary.createBuffer bytes
+    |> DoubleBoxFB.GetRootAsDoubleBoxFB
     |> DoubleBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"       (string self.Id)
-    |> addString  "Name"      self.Name
-    |> addString  "Patch"    (string self.Patch)
-    |> addStrings "Tags"      self.Tags
-    |> addUInt32  "VecSize"   self.VecSize
-    |> addInt     "Min"       self.Min
-    |> addInt     "Max"       self.Max
-    |> addString  "Unit"      self.Unit
-    |> addUInt32  "Precision" self.Precision
-    |> addArray   "Slices"    self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : DoubleBoxD option =
-    try
-      { Id         = parseIdField token "Id"
-      ; Name       = string token.["Name"]
-      ; Patch      = parseIdField token "Patch"
-      ; Tags       = parseTags token
-      ; VecSize    = uint32 token.["VecSize"]
-      ; Min        = int    token.["Min"]
-      ; Max        = int    token.["Max"]
-      ; Unit       = string token.["Unit"]
-      ; Precision  = uint32 token.["Precision"]
-      ; Slices     = parseSlices token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : DoubleBoxD option =
-    JToken.Parse(str) |> DoubleBoxD.FromJToken
-
-#endif
 
 //  ____              _     _      ____  _ _
 // |  _ \  ___  _   _| |__ | | ___/ ___|| (_) ___ ___
@@ -1509,12 +1139,6 @@ and DoubleBoxD =
 and DoubleSliceD =
   { Index: Index
   ; Value: double }
-
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<DoubleSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1537,42 +1161,12 @@ and DoubleSliceD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : DoubleSliceD option =
-    DoubleSliceFB.GetRootAsDoubleSliceFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : DoubleSliceD option =
+    Binary.createBuffer bytes
+    |> DoubleSliceFB.GetRootAsDoubleSliceFB
     |> DoubleSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addLong "Index" self.Index
-    |> addDouble "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : DoubleSliceD option =
-    try
-      { Index = uint64 token.["Index"]
-      ; Value = double token.["Value"]
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : DoubleSliceD option =
-    JToken.Parse(str) |> DoubleSliceD.FromJToken
-
-#endif
 
 //  ____        _       ____
 // | __ ) _   _| |_ ___| __ )  _____  __
@@ -1588,12 +1182,6 @@ and ByteBoxD =
   ; Tags       : Tag        array
   ; Slices     : ByteSliceD array }
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<ByteBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1606,8 +1194,8 @@ and ByteBoxD =
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let tags = ByteBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: ByteSliceD) -> slice.ToOffset(builder)) self.Slices
     let slices = ByteBoxFB.CreateSlicesVector(builder, sliceoffsets)
     ByteBoxFB.StartByteBoxFB(builder)
     ByteBoxFB.AddId(builder, id)
@@ -1621,9 +1209,20 @@ and ByteBoxD =
     let tags = Array.zeroCreate fb.TagsLength
     let slices = Array.zeroCreate fb.SlicesLength
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
+      fb.Slices(i)
+      |> ByteSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
@@ -1631,6 +1230,7 @@ and ByteBoxD =
         |> ByteSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     try
       { Id         = Id fb.Id
@@ -1642,48 +1242,12 @@ and ByteBoxD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : ByteBoxD option =
-    ByteBoxFB.GetRootAsByteBoxFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : ByteBoxD option =
+    Binary.createBuffer bytes
+    |> ByteBoxFB.GetRootAsByteBoxFB
     |> ByteBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"    (string self.Id)
-    |> addString  "Name"   self.Name
-    |> addString  "Patch" (string self.Patch)
-    |> addStrings "Tags"   self.Tags
-    |> addArray   "Slices" self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : ByteBoxD option =
-    try
-      { Id     = parseIdField token "Id"
-      ; Name   = string token.["Name"]
-      ; Patch  = parseIdField token "Patch"
-      ; Tags   = parseTags token
-      ; Slices = parseSlices token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : ByteBoxD option =
-    JToken.Parse(str) |> ByteBoxD.FromJToken
-
-#endif
 
 //  ____        _       ____  _ _
 // | __ ) _   _| |_ ___/ ___|| (_) ___ ___
@@ -1692,15 +1256,64 @@ and ByteBoxD =
 // |____/ \__, |\__\___|____/|_|_|\___\___|
 //        |___/
 
-and ByteSliceD =
+and [<CustomEquality;CustomComparison>] ByteSliceD =
   { Index: Index
-  ; Value: byte array }
+  ; Value: Binary.Buffer }
 
+  override self.Equals(other) =
+    match other with
+    | :? ByteSliceD as slice ->
+      (self :> System.IEquatable<ByteSliceD>).Equals(slice)
+    | _ -> false
+
+  override self.GetHashCode() =
+    let mutable hash = 42
 #if JAVASCRIPT
+    hash <- (hash * 7) + hashCode (string self.Index)
+    hash <- (hash * 7) + hashCode (string self.Value.byteLength)
 #else
+    hash <- (hash * 7) + self.Index.GetHashCode()
+    hash <- (hash * 7) + self.Value.GetHashCode()
+#endif
+    hash
 
-  static member Type
-    with get () = Serialization.GetTypeName<ByteSliceD>()
+  interface System.IComparable with
+    member self.CompareTo other =
+      match other with
+      | :? ByteSliceD as slice -> compare self.Index slice.Index
+      | _ -> invalidArg "other" "cannot compare value of different types"
+
+  interface System.IEquatable<ByteSliceD> with
+    member self.Equals(slice: ByteSliceD) =
+      let mutable contentsEqual = false
+      let lengthEqual =
+#if JAVASCRIPT
+        let result = self.Value.byteLength = slice.Value.byteLength
+        if result then
+          let me = Fable.Import.JS.Uint8Array.Create(self.Value)
+          let it = Fable.Import.JS.Uint8Array.Create(slice.Value)
+          let mutable contents = true
+          let mutable i = 0
+          while i < int self.Value.byteLength do
+            if contents then
+              contents <- me.[i] = it.[i]
+            i <- i + 1
+          contentsEqual <- contents
+        result
+#else
+        let result = Array.length self.Value = Array.length slice.Value
+        if result then
+          let mutable contents = true
+          for i in 0 .. (Array.length self.Value - 1) do
+            if contents then
+              contents <- self.Value.[i] = slice.Value.[i]
+          contentsEqual <- contents
+        result
+#endif
+      slice.Index = self.Index &&
+      lengthEqual &&
+      contentsEqual
+
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1710,76 +1323,50 @@ and ByteSliceD =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let bytes = ByteSliceFB.CreateValueVector(builder, self.Value)
+    let encode bytes =
+#if JAVASCRIPT
+      let mutable str = ""
+      let arr = Fable.Import.JS.Uint8Array.Create(self.Value)
+      for i in 0 .. (int arr.length - 1) do
+        str <- str + Fable.Import.JS.String.fromCharCode arr.[i]
+      Fable.Import.Browser.window.btoa str
+#else
+      Convert.ToBase64String(bytes)
+#endif
+
+    let encoded = encode self.Value
+    let bytes = builder.CreateString encoded
     ByteSliceFB.StartByteSliceFB(builder)
     ByteSliceFB.AddIndex(builder, self.Index)
     ByteSliceFB.AddValue(builder, bytes)
     ByteSliceFB.EndByteSliceFB(builder)
 
   static member FromFB(fb: ByteSliceFB) : ByteSliceD option =
+    let decode str =
+#if JAVASCRIPT
+      let binary = Fable.Import.Browser.window.atob str
+      let bytes = Fable.Import.JS.Uint8Array.Create(float binary.Length)
+      for i in 0 .. (binary.Length - 1) do
+        bytes.[i] <- charCodeAt binary i
+      bytes.buffer
+#else
+      Convert.FromBase64String(str)
+#endif
+
     try
-      let values = Array.zeroCreate fb.ValueLength
-
-      for i in 0 .. (fb.ValueLength - 1) do
-        values.[i] <- fb.Value(i)
-
+      let values = decode fb.Value
       { Index = fb.Index
       ; Value = values }
       |> Some
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: byte array) : ByteSliceD option =
-    ByteSliceFB.GetRootAsByteSliceFB(new ByteBuffer(bytes))
+  static member FromBytes(bytes: Binary.Buffer) : ByteSliceD option =
+    Binary.createBuffer bytes
+    |> ByteSliceFB.GetRootAsByteSliceFB
     |> ByteSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    // encode binary data as string array
-    let strings =
-      BitConverter.ToString(self.Value)
-      |> split [| '-' |]
-
-    new JObject()
-    |> addLong "Index" self.Index
-    |> addStrings "Value" strings
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : ByteSliceD option =
-    try
-      // convert string-encoded bytes back to raw bytes
-      let bytes =
-        let jarr = token.["Value"] :?> JArray
-        let arr = Array.zeroCreate jarr.Count
-
-        for i in 0 .. (jarr.Count - 1) do
-          arr.[i] <- Convert.ToByte(string jarr.[i], 16)
-
-        arr
-
-      { Index = uint64 token.["Index"]
-      ; Value = bytes
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : ByteSliceD option =
-    JToken.Parse(str) |> ByteSliceD.FromJToken
-
-#endif
 
 //  _____                       ____
 // | ____|_ __  _   _ _ __ ___ | __ )  _____  __
@@ -1795,12 +1382,6 @@ and EnumBoxD =
   ; Properties : Property   array
   ; Slices     : EnumSliceD array }
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<EnumBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1813,14 +1394,18 @@ and EnumBoxD =
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let propoffsets =
+      Array.map (fun (prop: Property) ->
+                 let key, value =
+                    builder.CreateString prop.Key, builder.CreateString prop.Value
+                 EnumPropertyFB.StartEnumPropertyFB(builder)
+                 EnumPropertyFB.AddKey(builder, key)
+                 EnumPropertyFB.AddValue(builder, value)
+                 EnumPropertyFB.EndEnumPropertyFB(builder))
+        self.Properties
     let tags = EnumBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: EnumSliceD) -> slice.ToOffset(builder)) self.Slices
     let slices = EnumBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    let propoffsets = Array.map (fun (prop: Property) ->
-                                    let key, value =
-                                      builder.CreateString prop.Key, builder.CreateString prop.Value
-                                    EnumPropertyFB.CreateEnumPropertyFB(builder, key, value))
-                                  self.Properties
     let properties = EnumBoxFB.CreatePropertiesVector(builder, propoffsets)
     EnumBoxFB.StartEnumBoxFB(builder)
     EnumBoxFB.AddId(builder, id)
@@ -1836,15 +1421,34 @@ and EnumBoxD =
     let slices = Array.zeroCreate fb.SlicesLength
     let properties = Array.zeroCreate fb.PropertiesLength
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.PropertiesLength do
+      let prop = fb.Properties(i)
+      properties.[i] <- { Key = prop.Key; Value = prop.Value }
+      i <- i + 1
+#else
     for i in 0 .. (fb.PropertiesLength - 1) do
       let prop = fb.Properties(i)
       if prop.HasValue then
         let value = prop.Value
         properties.[i] <- { Key = value.Key; Value = value.Value }
+#endif
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
+      fb.Slices(i)
+      |> EnumSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
@@ -1852,6 +1456,7 @@ and EnumBoxD =
         |> EnumSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     try
       { Id         = Id fb.Id
@@ -1864,61 +1469,12 @@ and EnumBoxD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromEnums(bytes: byte array) : EnumBoxD option =
-    EnumBoxFB.GetRootAsEnumBoxFB(new ByteBuffer(bytes))
+  static member FromEnums(bytes: Binary.Buffer) : EnumBoxD option =
+    Binary.createBuffer bytes
+    |> EnumBoxFB.GetRootAsEnumBoxFB
     |> EnumBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"        (string self.Id)
-    |> addString  "Name"       self.Name
-    |> addString  "Patch"     (string self.Patch)
-    |> addStrings "Tags"       self.Tags
-    |> addArray   "Properties" self.Properties
-    |> addArray   "Slices"     self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : EnumBoxD option =
-    try
-      let properties : Property array =
-        let jarr = token.["Properties"] :?> JArray
-        let arr = Array.zeroCreate jarr.Count
-
-        for i in 0 .. (jarr.Count - 1) do
-          Json.parse jarr.[i]
-          |> Option.map (fun prop -> arr.[i] <- prop)
-          |> ignore
-
-        arr
-
-      { Id         = parseIdField token "Id"
-      ; Name       = string token.["Name"]
-      ; Patch      = parseIdField token "Patch"
-      ; Tags       = parseTags token
-      ; Properties = properties
-      ; Slices     = parseSlices token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : EnumBoxD option =
-    JToken.Parse(str) |> EnumBoxD.FromJToken
-
-#endif
 
 //  _____                       ____  _ _
 // | ____|_ __  _   _ _ __ ___ / ___|| (_) ___ ___
@@ -1929,12 +1485,6 @@ and EnumBoxD =
 and EnumSliceD =
   { Index : Index
   ; Value : Property }
-
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<EnumSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1959,6 +1509,15 @@ and EnumSliceD =
     EnumSliceFB.EndEnumSliceFB(builder)
 
   static member FromFB(fb: EnumSliceFB) : EnumSliceD option =
+#if JAVASCRIPT
+    let prop = fb.Value
+    try
+      { Index = fb.Index
+      ; Value = { Key = prop.Key; Value = prop.Value } }
+      |> Some
+    with
+      | _ -> None
+#else
     let nullable = fb.Value
     if nullable.HasValue then
       let prop = nullable.Value
@@ -1969,46 +1528,14 @@ and EnumSliceD =
       with
         | _ -> None
     else None
-
-  member self.ToBytes() : byte array = Binary.buildBuffer self
-
-  static member FromEnums(bytes: byte array) : EnumSliceD option =
-    EnumSliceFB.GetRootAsEnumSliceFB(new ByteBuffer(bytes))
-    |> EnumSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addLong  "Index" self.Index
-    |> addToken "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : EnumSliceD option =
-    try
-      Json.parse<Property> token.["Value"]
-      |> Option.map
-        (fun prop ->
-          { Index = uint64 token.["Index"]
-          ; Value = prop
-          })
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : EnumSliceD option =
-    JToken.Parse(str) |> EnumSliceD.FromJToken
-
 #endif
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromEnums(bytes: Binary.Buffer) : EnumSliceD option =
+    Binary.createBuffer bytes
+    |> EnumSliceFB.GetRootAsEnumSliceFB
+    |> EnumSliceD.FromFB
 
 //   ____      _            ____
 //  / ___|___ | | ___  _ __| __ )  _____  __
@@ -2023,12 +1550,6 @@ and ColorBoxD =
   ; Tags   : Tag         array
   ; Slices : ColorSliceD array }
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<ColorBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -2041,8 +1562,8 @@ and ColorBoxD =
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let tags = ColorBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: ColorSliceD) -> slice.ToOffset(builder)) self.Slices
     let slices = ColorBoxFB.CreateSlicesVector(builder, sliceoffsets)
     ColorBoxFB.StartColorBoxFB(builder)
     ColorBoxFB.AddId(builder, id)
@@ -2056,9 +1577,20 @@ and ColorBoxD =
     let tags = Array.zeroCreate fb.TagsLength
     let slices = Array.zeroCreate fb.SlicesLength
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
+      fb.Slices(i)
+      |> ColorSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
@@ -2066,6 +1598,7 @@ and ColorBoxD =
         |> ColorSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     try
       { Id     = Id fb.Id
@@ -2077,48 +1610,12 @@ and ColorBoxD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromColors(bytes: byte array) : ColorBoxD option =
-    ColorBoxFB.GetRootAsColorBoxFB(new ByteBuffer(bytes))
+  static member FromColors(bytes: Binary.Buffer) : ColorBoxD option =
+    Binary.createBuffer bytes
+    |> ColorBoxFB.GetRootAsColorBoxFB
     |> ColorBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"    (string self.Id)
-    |> addString  "Name"   self.Name
-    |> addString  "Patch" (string self.Patch)
-    |> addStrings "Tags"   self.Tags
-    |> addArray   "Slices" self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : ColorBoxD option =
-    try
-      { Id     = parseIdField token "Id"
-      ; Name   = string token.["Name"]
-      ; Patch  = parseIdField token "Patch"
-      ; Tags   = parseTags token
-      ; Slices = parseSlices token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : ColorBoxD option =
-    JToken.Parse(str) |> ColorBoxD.FromJToken
-
-#endif
 
 //   ____      _            ____  _ _
 //  / ___|___ | | ___  _ __/ ___|| (_) ___ ___
@@ -2130,11 +1627,6 @@ and ColorSliceD =
   { Index: Index
   ; Value: ColorSpace }
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<ColorSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2151,51 +1643,24 @@ and ColorSliceD =
     ColorSliceFB.EndColorSliceFB(builder)
 
   static member FromFB(fb: ColorSliceFB) : ColorSliceD option =
+#if JAVASCRIPT
+    fb.Value
+    |> ColorSpace.FromFB
+    |> Option.map (fun color -> { Index = fb.Index; Value = color })
+#else
     let nullable = fb.Value
     if nullable.HasValue then
       ColorSpace.FromFB nullable.Value
       |> Option.map (fun color -> { Index = fb.Index; Value = color })
     else None
-
-  member self.ToColors() : byte array = Binary.buildBuffer self
-
-  static member FromColors(bytes: byte array) : ColorSliceD option =
-    ColorSliceFB.GetRootAsColorSliceFB(new ByteBuffer(bytes))
-    |> ColorSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addLong "Index" self.Index
-    |> addToken "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : ColorSliceD option =
-    try
-      Json.parse<ColorSpace> token.["Value"]
-      |> Option.map
-        (fun color ->
-          { Index = uint64 token.["Index"]
-          ; Value = color
-          })
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : ColorSliceD option =
-    JToken.Parse(str) |> ColorSliceD.FromJToken
-
 #endif
+
+  member self.ToColors() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromColors(bytes: Binary.Buffer) : ColorSliceD option =
+    Binary.createBuffer bytes
+    |> ColorSliceFB.GetRootAsColorSliceFB
+    |> ColorSliceD.FromFB
 
 //  ____  _        _             ____
 // / ___|| |_ _ __(_)_ __   __ _| __ )  _____  __
@@ -2214,12 +1679,6 @@ and StringBoxD =
   ; MaxChars   : MaxChars
   ; Slices     : StringSliceD array }
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<StringBoxD>()
-
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -2231,12 +1690,12 @@ and StringBoxD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let tags = StringBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: StringSliceD) -> slice.ToOffset(builder)) self.Slices
-    let slices = StringBoxFB.CreateSlicesVector(builder, sliceoffsets)
     let tipe = self.StringType.ToOffset(builder)
     let mask = self.FileMask |> Option.map builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let tags = StringBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = StringBoxFB.CreateSlicesVector(builder, sliceoffsets)
 
     StringBoxFB.StartStringBoxFB(builder)
     StringBoxFB.AddId(builder, id)
@@ -2256,9 +1715,20 @@ and StringBoxD =
     let slices = Array.zeroCreate fb.SlicesLength
     let mask = if isNull fb.FileMask then None else Some fb.FileMask
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
+      fb.Slices(i)
+      |> StringSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
@@ -2266,6 +1736,7 @@ and StringBoxD =
         |> StringSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     StringType.FromFB fb.StringType
     |> Option.map
@@ -2279,66 +1750,12 @@ and StringBoxD =
         ; MaxChars   = fb.MaxChars
         ; Slices     = slices })
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromStrings(bytes: byte array) : StringBoxD option =
-    StringBoxFB.GetRootAsStringBoxFB(new ByteBuffer(bytes))
+  static member FromStrings(bytes: Binary.Buffer) : StringBoxD option =
+    Binary.createBuffer bytes
+    |> StringBoxFB.GetRootAsStringBoxFB
     |> StringBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    let fm =
-      match self.FileMask with
-      | Some msk -> msk
-      |      _   -> null
-
-    new JObject()
-    |> addString  "Id"         (string self.Id)
-    |> addString  "Name"        self.Name
-    |> addString  "Patch"      (string self.Patch)
-    |> addStrings "Tags"        self.Tags
-    |> addString  "StringType" (string self.StringType)
-    |> addString  "FileMask"    fm
-    |> addInt     "MaxChars"    self.MaxChars
-    |> addArray   "Slices"      self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : StringBoxD option =
-    try
-      let fm : FileMask =
-        let msk = string token.["FileMask"]
-        if isNull msk || msk.Length = 0 then None else Some msk
-
-      Json.parse<StringType> token.["StringType"]
-      |> Option.map
-        (fun stringtype ->
-          { Id         = parseIdField token "Id"
-          ; Name       = string token.["Name"]
-          ; Patch      = parseIdField token "Patch"
-          ; Tags       = parseTags token
-          ; StringType = stringtype
-          ; FileMask   = fm
-          ; MaxChars   = int token.["MaxChars"]
-          ; Slices     = parseSlices token
-          })
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : StringBoxD option =
-    JToken.Parse(str) |> StringBoxD.FromJToken
-
-#endif
 
 //  ____  _        _             ____  _ _
 // / ___|| |_ _ __(_)_ __   __ _/ ___|| (_) ___ ___
@@ -2350,12 +1767,6 @@ and StringBoxD =
 and StringSliceD =
   { Index : Index
   ; Value : string }
-
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<StringSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2379,42 +1790,12 @@ and StringSliceD =
     with
       | _ -> None
 
-  member self.ToStrings() : byte array = Binary.buildBuffer self
+  member self.ToStrings() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromStrings(bytes: byte array) : StringSliceD option =
-    StringSliceFB.GetRootAsStringSliceFB(new ByteBuffer(bytes))
+  static member FromStrings(bytes: Binary.Buffer) : StringSliceD option =
+    Binary.createBuffer bytes
+    |> StringSliceFB.GetRootAsStringSliceFB
     |> StringSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addLong "Index" self.Index
-    |> addString "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : StringSliceD option =
-    try
-      { Index = uint64 token.["Index"]
-      ; Value = string token.["Value"]
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : StringSliceD option =
-    JToken.Parse(str) |> StringSliceD.FromJToken
-
-#endif
 
 //   ____                                            _ ____
 //  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| | __ )  _____  __
@@ -2430,11 +1811,6 @@ and CompoundBoxD =
   ; Tags       : Tag   array
   ; Slices     : CompoundSliceD array }
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<CompoundBoxD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2448,8 +1824,8 @@ and CompoundBoxD =
     let name = self.Name |> builder.CreateString
     let patch = string self.Patch |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let tags = CompoundBoxFB.CreateTagsVector(builder, tagoffsets)
-    let sliceoffsets = Array.map (fun (slice: CompoundSliceD) -> slice.ToOffset(builder)) self.Slices
     let slices = CompoundBoxFB.CreateSlicesVector(builder, sliceoffsets)
     CompoundBoxFB.StartCompoundBoxFB(builder)
     CompoundBoxFB.AddId(builder, id)
@@ -2463,9 +1839,20 @@ and CompoundBoxD =
     let tags = Array.zeroCreate fb.TagsLength
     let slices = Array.zeroCreate fb.SlicesLength
 
-    for i in 0 .. (fb.TagsLength - 1) do
+    let mutable i = 0
+    while i < fb.TagsLength do
       tags.[i] <- fb.Tags(i)
+      i <- i + 1
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.SlicesLength do
+      fb.Slices(i)
+      |> CompoundSliceD.FromFB
+      |> Option.map (fun slice -> slices.[i] <- slice)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.SlicesLength - 1) do
       let slice = fb.Slices(i)
       if slice.HasValue then
@@ -2473,6 +1860,7 @@ and CompoundBoxD =
         |> CompoundSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
+#endif
 
     try
       { Id         = Id fb.Id
@@ -2484,48 +1872,12 @@ and CompoundBoxD =
     with
       | _ -> None
 
-  member self.ToBytes() : byte array = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromCompounds(bytes: byte array) : CompoundBoxD option =
-    CompoundBoxFB.GetRootAsCompoundBoxFB(new ByteBuffer(bytes))
+  static member FromCompounds(bytes: Binary.Buffer) : CompoundBoxD option =
+    Binary.createBuffer bytes
+    |> CompoundBoxFB.GetRootAsCompoundBoxFB
     |> CompoundBoxD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () =
-    new JObject()
-    |> addString  "Id"    (string self.Id)
-    |> addString  "Name"   self.Name
-    |> addString  "Patch" (string self.Patch)
-    |> addStrings "Tags"   self.Tags
-    |> addArray   "Slices" self.Slices
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : CompoundBoxD option =
-    try
-      { Id     = parseIdField token "Id"
-      ; Name   = string token.["Name"]
-      ; Patch  = parseIdField token "Patch"
-      ; Tags   = parseTags token
-      ; Slices = parseSlices token
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : CompoundBoxD option =
-    JToken.Parse(str) |> CompoundBoxD.FromJToken
-
-#endif
 
 //   ____                                            _ ____  _ _
 //  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| / ___|| (_) ___ ___
@@ -2537,12 +1889,6 @@ and CompoundBoxD =
 and CompoundSliceD =
   { Index      : Index
   ; Value      : IOBox array }
-
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<CompoundSliceD>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2562,6 +1908,15 @@ and CompoundSliceD =
   static member FromFB(fb: CompoundSliceFB) : CompoundSliceD option =
     let ioboxes = Array.zeroCreate fb.ValueLength
 
+#if JAVASCRIPT
+    let mutable i = 0
+    while i < fb.ValueLength do
+      fb.Value(i)
+      |> IOBox.FromFB
+      |> Option.map (fun iobox -> ioboxes.[i] <- iobox)
+      |> ignore
+      i <- i + 1
+#else
     for i in 0 .. (fb.ValueLength - 1) do
       let nullable = fb.Value(i)
       if nullable.HasValue then
@@ -2569,6 +1924,7 @@ and CompoundSliceD =
         |> IOBox.FromFB
         |> Option.map (fun iobox -> ioboxes.[i] <- iobox)
         |> ignore
+#endif
 
     try
       { Index = fb.Index
@@ -2577,53 +1933,12 @@ and CompoundSliceD =
     with
       | _ -> None
 
-  member self.ToCompounds() : byte array = Binary.buildBuffer self
+  member self.ToCompounds() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromCompounds(bytes: byte array) : CompoundSliceD option =
-    CompoundSliceFB.GetRootAsCompoundSliceFB(new ByteBuffer(bytes))
+  static member FromCompounds(bytes: Binary.Buffer) : CompoundSliceD option =
+    Binary.createBuffer bytes
+    |> CompoundSliceFB.GetRootAsCompoundSliceFB
     |> CompoundSliceD.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken () : JToken =
-    new JObject()
-    |> addLong  "Index" self.Index
-    |> addArray "Value" self.Value
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : CompoundSliceD option =
-    try
-      let ioboxes =
-        let jarr = token.["Value"] :?> JArray
-        let arr = Array.zeroCreate jarr.Count
-
-        for i in 0 .. (jarr.Count - 1) do
-          Json.parse<IOBox> jarr.[i]
-          |> Option.map (fun iobox -> arr.[i] <- iobox)
-          |> ignore
-
-        arr
-
-      { Index = uint64 token.["Index"]
-      ; Value = ioboxes
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : CompoundSliceD option =
-    JToken.Parse(str) |> CompoundSliceD.FromJToken
-
-#endif
 
 //  ____  _ _
 // / ___|| (_) ___ ___
@@ -2776,11 +2091,6 @@ and Slice =
       | CompoundSlice data -> Some data
       | _                  -> None
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<Slice>()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2793,7 +2103,11 @@ and Slice =
     let build tipe (offset: Offset<_>) =
       SliceFB.StartSliceFB(builder)
       SliceFB.AddSliceType(builder, tipe)
+#if JAVASCRIPT
+      SliceFB.AddSlice(builder, offset)
+#else
       SliceFB.AddSlice(builder, offset.Value)
+#endif
       SliceFB.EndSliceFB(builder)
 
     match self with
@@ -2809,6 +2123,63 @@ and Slice =
 
   static member FromFB(fb: SliceFB) : Slice option =
     match fb.SliceType with
+#if JAVASCRIPT
+    | x when x = SliceTypeFB.StringSliceFB ->
+      StringSliceFB.Create()
+      |> fb.Slice
+      |> StringSliceD.FromFB
+      |> Option.map StringSlice
+
+    | x when x = SliceTypeFB.IntSliceFB ->
+      IntSliceFB.Create()
+      |> fb.Slice
+      |> IntSliceD.FromFB
+      |> Option.map IntSlice
+
+    | x when x = SliceTypeFB.FloatSliceFB ->
+      FloatSliceFB.Create()
+      |> fb.Slice
+      |> FloatSliceD.FromFB
+      |> Option.map FloatSlice
+
+    | x when x = SliceTypeFB.DoubleSliceFB ->
+      DoubleSliceFB.Create()
+      |> fb.Slice
+      |> DoubleSliceD.FromFB
+      |> Option.map DoubleSlice
+
+    | x when x = SliceTypeFB.BoolSliceFB ->
+      BoolSliceFB.Create()
+      |> fb.Slice
+      |> BoolSliceD.FromFB
+      |> Option.map BoolSlice
+
+    | x when x = SliceTypeFB.ByteSliceFB ->
+      ByteSliceFB.Create()
+      |> fb.Slice
+      |> ByteSliceD.FromFB
+      |> Option.map ByteSlice
+
+    | x when x = SliceTypeFB.EnumSliceFB ->
+      EnumSliceFB.Create()
+      |> fb.Slice
+      |> EnumSliceD.FromFB
+      |> Option.map EnumSlice
+
+    | x when x = SliceTypeFB.ColorSliceFB ->
+      ColorSliceFB.Create()
+      |> fb.Slice
+      |> ColorSliceD.FromFB
+      |> Option.map ColorSlice
+
+    | x when x = SliceTypeFB.CompoundSliceFB ->
+      CompoundSliceFB.Create()
+      |> fb.Slice
+      |> CompoundSliceD.FromFB
+      |> Option.map CompoundSlice
+
+    | _ -> None
+#else
     | SliceTypeFB.StringSliceFB   ->
       let slice = fb.Slice<StringSliceFB>()
       if slice.HasValue then
@@ -2881,70 +2252,14 @@ and Slice =
         |> Option.map CompoundSlice
       else None
     | _ -> None
-
-  member self.ToBytes() : byte array = Binary.buildBuffer self
-
-  static member FromBytes(bytes: byte array) : Slice option =
-    SliceFB.GetRootAsSliceFB(new ByteBuffer(bytes))
-    |> Slice.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-
-  member self.ToJToken () : JToken =
-    let json = new JObject() |> addType Slice.Type
-
-    let inline add (case: string) data =
-      json |> addCase case |> addFields [| data |]
-
-    match self with
-    | StringSlice   data -> add "StringSlice"   data
-    | IntSlice      data -> add "IntSlice"      data
-    | FloatSlice    data -> add "FloatSlice"    data
-    | DoubleSlice   data -> add "DoubleSlice"   data
-    | BoolSlice     data -> add "BoolSlice"     data
-    | ByteSlice     data -> add "ByteSlice"     data
-    | EnumSlice     data -> add "EnumSlice"     data
-    | ColorSlice    data -> add "ColorSlice"    data
-    | CompoundSlice data -> add "CompoundSlice" data
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : Slice option =
-    try
-      let fields = token.["Fields"] :?> JArray
-
-      let inline parseSliceType (cstr: ^t -> Slice) =
-        Json.parse fields.[0]
-        |> Option.map cstr
-
-      match string token.["Case"] with
-      | "StringSlice"   -> parseSliceType StringSlice
-      | "IntSlice"      -> parseSliceType IntSlice
-      | "FloatSlice"    -> parseSliceType FloatSlice
-      | "DoubleSlice"   -> parseSliceType DoubleSlice
-      | "BoolSlice"     -> parseSliceType BoolSlice
-      | "ByteSlice"     -> parseSliceType ByteSlice
-      | "EnumSlice"     -> parseSliceType EnumSlice
-      | "ColorSlice"    -> parseSliceType ColorSlice
-      | "CompoundSlice" -> parseSliceType CompoundSlice
-      | _               -> None
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : Slice option =
-    JToken.Parse(str) |> Slice.FromJToken
-
 #endif
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromBytes(bytes: Binary.Buffer) : Slice option =
+    Binary.createBuffer bytes
+    |> SliceFB.GetRootAsSliceFB
+    |> Slice.FromFB
 
 //  ____  _ _
 // / ___|| (_) ___ ___  ___
@@ -3079,7 +2394,7 @@ and Slices =
     member __.CreateBool (idx: Index) (value: bool) =
       BoolSlice { Index = idx; Value = value }
 
-    member __.CreateByte (idx: Index) (value: byte array) =
+    member __.CreateByte (idx: Index) (value: Binary.Buffer) =
       ByteSlice { Index = idx; Value = value }
 
     member __.CreateEnum (idx: Index) (value: Property) =

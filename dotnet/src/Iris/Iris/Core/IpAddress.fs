@@ -1,8 +1,16 @@
 namespace Iris.Core
 
+#if JAVASCRIPT
+
+open Fable.Core
+open Fable.Import.JS
+open System.Text.RegularExpressions
+
+#else
+
 open System.Net
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
+
+#endif
 
 type IpAddress =
   | IPv4Address of string
@@ -13,20 +21,24 @@ type IpAddress =
       | IPv4Address str -> str
       | IPv6Address str -> str
 
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<IpAddress>()
-
   static member Parse (str: string) =
+#if JAVASCRIPT
+    let regex = new Regex(@"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")
+    match regex.IsMatch str with
+    | true -> IPv4Address str
+    | _    -> IPv6Address str
+#else
     let ip = IPAddress.Parse str
     match ip.AddressFamily with
       | Sockets.AddressFamily.InterNetwork   -> IPv4Address str
       | Sockets.AddressFamily.InterNetworkV6 -> IPv6Address str
       | _ -> failwith "Addressfamily not supportet"
+#endif
 
   static member TryParse (str: string) =
+#if JAVASCRIPT
+    IpAddress.Parse str |> Some          // :D
+#else
     let mutable ip = new IPAddress([||])
     match IPAddress.TryParse(str, &ip) with
       | true ->
@@ -35,42 +47,4 @@ type IpAddress =
           | Sockets.AddressFamily.InterNetworkV6 -> IPv6Address str |> Some
           | _ -> None
       | _ -> None
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() : JToken =
-    let constr, str =
-      match self with
-      | IPv4Address str -> "IPv4Address", str
-      | IPv6Address str -> "IPv6Address", str
-
-    new JObject()
-    |> addType IpAddress.Type
-    |> addCase constr
-    |> addFields [| Wrap(str) |]
-
-  member self.ToJson()  =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : IpAddress option =
-    try
-      let fields = token.["Fields"] :?> JArray
-      match string token.["Case"] with
-      | "IPv4Address" -> IPv4Address (string fields.[0]) |> Some
-      | "IPv6Address" -> IPv6Address (string fields.[1]) |> Some
-      | _             -> None
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : IpAddress option =
-    JObject.Parse(str) |> IpAddress.FromJToken
-
 #endif

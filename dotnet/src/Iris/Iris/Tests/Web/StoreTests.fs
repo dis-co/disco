@@ -85,7 +85,7 @@ module Store =
 
         equals 0 store.State.Patches.[patch.Id].IOBoxes.Count
 
-        let slice : StringSliceD = { Index = 0UL; Value = "Hey" }
+        let slice : StringSliceD = { Index = 0u; Value = "Hey" }
         let iobox : IOBox = IOBox.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
 
         store.Dispatch <| AddIOBox(iobox)
@@ -97,7 +97,7 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->
       test "should not add an iobox to the store if patch does not exists" <| fun finish ->
-        let slice : StringSliceD = { Index = 0UL; Value =  "Hey" }
+        let slice : StringSliceD = { Index = 0u; Value =  "Hey" }
         let iobox = IOBox.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
         store.Dispatch <| AddIOBox(iobox)
         equals 0 store.State.Patches.Count
@@ -109,7 +109,7 @@ module Store =
         let name1 = "can a cat own a cat?"
         let name2 = "yes, cats are re-entrant."
 
-        let slice : StringSliceD = { Index = 0UL; Value = "swell" }
+        let slice : StringSliceD = { Index = 0u; Value = "swell" }
         let iobox = IOBox.String(Id "0xb33f", name1, patch.Id, Array.empty, [| slice |])
 
         store.Dispatch <| AddPatch(patch)
@@ -131,7 +131,7 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->
       test "should remove an iobox from the store if it exists" <| fun finish ->
-        let slice : StringSliceD = { Index = 0UL; Value = "swell" }
+        let slice : StringSliceD = { Index = 0u; Value = "swell" }
         let iobox = IOBox.String(Id "0xb33f", "hi", Id "0xb4d1d34", Array.empty, [| slice |])
 
         store.Dispatch <| AddPatch(patch)

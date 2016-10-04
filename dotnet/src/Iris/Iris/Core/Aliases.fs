@@ -7,7 +7,7 @@ namespace Iris.Core
 // /_/   \_\_|_|\__,_|___/\___||___/
 
 type NodeId     = Id
-type Long       = uint64
+type Long       = uint32
 type Index      = Long
 type Term       = Long
 type Name       = string
@@ -60,42 +60,5 @@ type Rect = Rect of (int * int)
 // |_|   |_|  \___/| .__/ \___|_|   \__|\__, |
 //                 |_|                  |___/
 
-#if JAVASCRIPT
-#else
-
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
-
-#endif
-
 type Property =
   { Key: string; Value: string }
-
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<Property>()
-
-  member self.ToJToken() =
-    JToken.FromObject self
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : Property option =
-    try
-      { Key   = string token.["Key"]
-      ; Value = string token.["Value"]
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : Property option =
-    JObject.Parse(str) |> Property.FromJToken
-
-#endif

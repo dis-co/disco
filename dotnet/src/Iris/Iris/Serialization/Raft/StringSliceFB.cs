@@ -15,21 +15,21 @@ public struct StringSliceFB : IFlatbufferObject
   public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
   public StringSliceFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Index { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public uint Index { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
   public string Value { get { int o = __p.__offset(6); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
   public ArraySegment<byte>? GetValueBytes() { return __p.__vector_as_arraysegment(6); }
 
   public static Offset<StringSliceFB> CreateStringSliceFB(FlatBufferBuilder builder,
-      ulong Index = 0,
+      uint Index = 0,
       StringOffset ValueOffset = default(StringOffset)) {
     builder.StartObject(2);
-    StringSliceFB.AddIndex(builder, Index);
     StringSliceFB.AddValue(builder, ValueOffset);
+    StringSliceFB.AddIndex(builder, Index);
     return StringSliceFB.EndStringSliceFB(builder);
   }
 
   public static void StartStringSliceFB(FlatBufferBuilder builder) { builder.StartObject(2); }
-  public static void AddIndex(FlatBufferBuilder builder, ulong Index) { builder.AddUlong(0, Index, 0); }
+  public static void AddIndex(FlatBufferBuilder builder, uint Index) { builder.AddUint(0, Index, 0); }
   public static void AddValue(FlatBufferBuilder builder, StringOffset ValueOffset) { builder.AddOffset(1, ValueOffset.Value, 0); }
   public static Offset<StringSliceFB> EndStringSliceFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();

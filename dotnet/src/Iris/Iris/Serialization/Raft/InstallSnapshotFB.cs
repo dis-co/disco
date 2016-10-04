@@ -15,34 +15,34 @@ public struct InstallSnapshotFB : IFlatbufferObject
   public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
   public InstallSnapshotFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Term { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public uint Term { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
   public string LeaderId { get { int o = __p.__offset(6); return o != 0 ? __p.__string(o + __p.bb_pos) : null; } }
   public ArraySegment<byte>? GetLeaderIdBytes() { return __p.__vector_as_arraysegment(6); }
-  public ulong LastIndex { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
-  public ulong LastTerm { get { int o = __p.__offset(10); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public uint LastIndex { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
+  public uint LastTerm { get { int o = __p.__offset(10); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
   public LogFB? Data(int j) { int o = __p.__offset(12); return o != 0 ? (LogFB?)(new LogFB()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
   public int DataLength { get { int o = __p.__offset(12); return o != 0 ? __p.__vector_len(o) : 0; } }
 
   public static Offset<InstallSnapshotFB> CreateInstallSnapshotFB(FlatBufferBuilder builder,
-      ulong Term = 0,
+      uint Term = 0,
       StringOffset LeaderIdOffset = default(StringOffset),
-      ulong LastIndex = 0,
-      ulong LastTerm = 0,
+      uint LastIndex = 0,
+      uint LastTerm = 0,
       VectorOffset DataOffset = default(VectorOffset)) {
     builder.StartObject(5);
+    InstallSnapshotFB.AddData(builder, DataOffset);
     InstallSnapshotFB.AddLastTerm(builder, LastTerm);
     InstallSnapshotFB.AddLastIndex(builder, LastIndex);
-    InstallSnapshotFB.AddTerm(builder, Term);
-    InstallSnapshotFB.AddData(builder, DataOffset);
     InstallSnapshotFB.AddLeaderId(builder, LeaderIdOffset);
+    InstallSnapshotFB.AddTerm(builder, Term);
     return InstallSnapshotFB.EndInstallSnapshotFB(builder);
   }
 
   public static void StartInstallSnapshotFB(FlatBufferBuilder builder) { builder.StartObject(5); }
-  public static void AddTerm(FlatBufferBuilder builder, ulong Term) { builder.AddUlong(0, Term, 0); }
+  public static void AddTerm(FlatBufferBuilder builder, uint Term) { builder.AddUint(0, Term, 0); }
   public static void AddLeaderId(FlatBufferBuilder builder, StringOffset LeaderIdOffset) { builder.AddOffset(1, LeaderIdOffset.Value, 0); }
-  public static void AddLastIndex(FlatBufferBuilder builder, ulong LastIndex) { builder.AddUlong(2, LastIndex, 0); }
-  public static void AddLastTerm(FlatBufferBuilder builder, ulong LastTerm) { builder.AddUlong(3, LastTerm, 0); }
+  public static void AddLastIndex(FlatBufferBuilder builder, uint LastIndex) { builder.AddUint(2, LastIndex, 0); }
+  public static void AddLastTerm(FlatBufferBuilder builder, uint LastTerm) { builder.AddUint(3, LastTerm, 0); }
   public static void AddData(FlatBufferBuilder builder, VectorOffset DataOffset) { builder.AddOffset(4, DataOffset.Value, 0); }
   public static VectorOffset CreateDataVector(FlatBufferBuilder builder, Offset<LogFB>[] data) { builder.StartVector(4, data.Length, 4); for (int i = data.Length - 1; i >= 0; i--) builder.AddOffset(data[i].Value); return builder.EndVector(); }
   public static void StartDataVector(FlatBufferBuilder builder, int numElems) { builder.StartVector(4, numElems, 4); }

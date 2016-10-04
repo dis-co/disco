@@ -2,14 +2,9 @@ namespace Iris.Core
 
 
 #if JAVASCRIPT
-//      _                  ____   ____          _       _
-//     | | __ ___   ____ _/ ___| / ___|___ _ __(_)_ __ | |_
-//  _  | |/ _` \ \ / / _` \___ \| |   / __| '__| | '_ \| __|
-// | |_| | (_| |\ V / (_| |___) | |__| (__| |  | | |_) | |_
-//  \___/ \__,_| \_/ \__,_|____/ \____\___|_|  |_| .__/ \__|
-//                                               |_|
 
 open Fable.Core
+open Fable.Core.JsInterop
 
 //  __  __       _   _
 // |  \/  | __ _| |_| |__
@@ -81,39 +76,12 @@ module JsUtilities =
     [| for n in 0 .. 3 do yield s4() |]
     |> Array.fold (fun m str -> m + "-" + str) (s4())
 
-// [<Erase>]
-// [<CustomEquality>]
-// [<CustomComparison>]
 type Id =
   | Id of string
 
-  // override self.GetHashCode() =
-  //   self.ToString() |> hashCode
+  member self.toString() = toJson self
 
-  // interface System.IComparable with
-  //   member self.CompareTo obj =
-  //     match obj with
-  //     | :? Id as other -> (self :> System.IComparable<_>).CompareTo other
-  //     | _              -> failwith "obj not an Id"
-
-  // interface System.IComparable<Id> with
-  //   member self.CompareTo (other: Id) =
-  //     if self < other then
-  //       -1
-  //     elif self = other then
-  //       0
-  //     else
-  //       1
-
-  // interface System.IEquatable<Id> with
-  //   member self.Equals (other: Id) =
-  //     string self = string other
-
-  // override self.Equals (other: obj) =
-  //   match other with
-  //   | :? Id as other -> (self :> System.IEquatable<Id>).Equals other
-  //   | _              -> failwith "obj not a Patch"
-
+  override self.ToString() = match self with | Id str -> str
 
   static member Create _ = mkGuid () |> Id
 
@@ -126,8 +94,6 @@ type Id =
 // (_)_| \_|_____| |_|
 
 open System.Text.RegularExpressions
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 type Id =
   | Id of string
@@ -156,21 +122,5 @@ type Id =
     |> System.Convert.ToBase64String
     |> sanitize
     |> Id
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  static member FromJToken(token: JToken) : Id option =
-    try
-      Id (string token) |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
 
 #endif

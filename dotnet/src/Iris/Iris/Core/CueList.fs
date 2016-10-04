@@ -1,12 +1,14 @@
 namespace Iris.Core
 
 #if JAVASCRIPT
+
+open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
+
 #else
 
 open FlatBuffers
 open Iris.Serialization.Raft
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 #endif
 
@@ -14,12 +16,6 @@ type CueList =
   { Id   : Id
   ; Name : Name
   ; Cues : Cue array }
-
-#if JAVASCRIPT
-#else
-
-  static member Type
-    with get () = Serialization.GetTypeName<CueList> ()
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -45,12 +41,19 @@ type CueList =
     let cues = Array.zeroCreate fb.CuesLength
 
     for i in 0 .. (fb.CuesLength - 1) do
+#if JAVASCRIPT
+      fb.Cues(i)
+      |> Cue.FromFB
+      |> Option.map (fun cue -> cues.[i] <- cue)
+      |> ignore
+#else
       let cue = fb.Cues(i)
       if cue.HasValue then
         cue.Value
         |> Cue.FromFB
         |> Option.map (fun cue -> cues.[i] <- cue)
         |> ignore
+#endif
 
     try
       { Id = Id fb.Id
@@ -62,50 +65,7 @@ type CueList =
         printfn "Could not seserialize CueList: %s" exn.Message
         None
 
-  static member FromBytes (bytes: byte array) =
-    CueListFB.GetRootAsCueListFB(new ByteBuffer(bytes))
+  static member FromBytes (bytes: Binary.Buffer) =
+    Binary.createBuffer bytes
+    |> CueListFB.GetRootAsCueListFB
     |> CueList.FromFB
-
-  //      _
-  //     | |___  ___  _ __
-  //  _  | / __|/ _ \| '_ \
-  // | |_| \__ \ (_) | | | |
-  //  \___/|___/\___/|_| |_|
-
-  member self.ToJToken() =
-    new JObject()
-    |> addString "Id"   (string self.Id)
-    |> addString "Name" self.Name
-    |> addArray  "Cues" self.Cues
-
-  member self.ToJson() =
-    self.ToJToken() |> string
-
-  static member FromJToken(token: JToken) : CueList option =
-    try
-      let cues =
-        let jarr = token.["Cues"] :?> JArray
-        let arr = Array.zeroCreate jarr.Count
-
-        for i in 0 .. (jarr.Count - 1) do
-          Json.parse jarr.[i]
-          |> Option.map (fun cue -> arr.[i] <- cue)
-          |> ignore
-
-        arr
-
-      { Id = Id (string token.["Id"])
-      ; Name = (string token.["Name"])
-      ; Cues = cues }
-      |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize cue json: "
-        printfn "    Message: %s"  exn.Message
-        printfn "    json:    %s" (string token)
-        None
-
-  static member FromJson(str: string) : CueList option =
-    JToken.Parse(str) |> CueList.FromJToken
-
-#endif

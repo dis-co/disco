@@ -23,33 +23,33 @@ enum StringTypeFB:ushort {
 }
 
 table StringSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: string;
 }
 
 table IntSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: int;
 }
 
 table FloatSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: float;
 }
 
 table DoubleSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: double;
 }
 
 table BoolSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: bool;
 }
 
 table ByteSliceFB {
-      Index: ulong;
-      Value: [ubyte]; 
+      Index: uint;
+      Value: string; 
 }
 
 table EnumPropertyFB {
@@ -58,7 +58,7 @@ table EnumPropertyFB {
 }
 
 table EnumSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: EnumPropertyFB;
 }
 
@@ -86,12 +86,12 @@ table ColorSpaceFB {
 }
 
 table ColorSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: ColorSpaceFB;
 }
 
 table CompoundSliceFB {
-      Index: ulong;
+      Index: uint;
       Value: [IOBoxFB];
 }
 
@@ -306,162 +306,46 @@ table StateFB {
       Users:    [UserFB];
 }
 
-//  ____  _        _         __  __            _     _
-// / ___|| |_ __ _| |_ ___  |  \/  | __ _  ___| |__ (_)_ __   ___
-// \___ \| __/ _` | __/ _ \ | |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
-//  ___) | || (_| | ||  __/ | |  | | (_| | (__| | | | | | | |  __/
-// |____/ \__\__,_|\__\___| |_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
-
-enum AppCommandTypeFB:ushort {
-     UndoFB        = 0,
-     RedoFB        = 1,
-     ResetFB       = 2,
-     SaveProjectFB = 3
-}
-
-table AppCommandFB {
-      Command: AppCommandTypeFB;
-}
-
-table AddCueFB {
-      Cue: CueFB;
-}
-
-table UpdateCueFB {
-      Cue: CueFB;
-}
-
-table RemoveCueFB {
-      Cue: CueFB;
-}
-
-table AddCueListFB {
-      CueList: CueListFB;
-}
-
-table UpdateCueListFB {
-      CueList: CueListFB;
-}
-
-table RemoveCueListFB {
-      CueList: CueListFB;
-}
-
-table AddIOBoxFB {
-      IOBox: IOBoxFB;
-}
-
-table UpdateIOBoxFB {
-      IOBox: IOBoxFB;
-}
-
-table RemoveIOBoxFB {
-      IOBox: IOBoxFB;
-}
-
-table AddPatchFB {
-      Patch: PatchFB;
-}
-
-table UpdatePatchFB {
-      Patch: PatchFB;
-}
-
-table RemovePatchFB {
-      Patch: PatchFB;
-}
-
-table AddNodeFB {
-      Node: NodeFB;
-}
-
-table UpdateNodeFB {
-      Node: NodeFB;
-}
-
-table RemoveNodeFB {
-      Node: NodeFB;
-}
-
-table AddUserFB {
-      User: UserFB;
-}
-
-table UpdateUserFB {
-      User: UserFB;
-}
-
-table RemoveUserFB {
-      User: UserFB;
-}
-
-table AddSessionFB {
-      Session: SessionFB;
-}
-
-table UpdateSessionFB {
-      Session: SessionFB;
-}
-
-table RemoveSessionFB {
-      Session: SessionFB;
-}
+//     _          _
+//    / \   _ __ (_)
+//   / _ \ | '_ \| |
+//  / ___ \| |_) | |
+// /_/   \_\ .__/|_|
+//         |_|
 
 table LogMsgFB {
       LogLevel: string;
       Msg: string;
 }
 
-table DataSnapshotFB {
-      Data: StateFB;
-}
-
-union StateMachineTypeFB {
-      // Cue
-      AddCueFB,
-      UpdateCueFB,
-      RemoveCueFB,
-
-      // CueList
-      AddCueListFB,
-      UpdateCueListFB,
-      RemoveCueListFB,
-
-      // IOBox
-      AddIOBoxFB,
-      UpdateIOBoxFB,
-      RemoveIOBoxFB,
-
-      // Patch
-      AddPatchFB,
-      UpdatePatchFB,
-      RemovePatchFB,
-
-      // Node
-      AddNodeFB,
-      UpdateNodeFB,
-      RemoveNodeFB,
-
-      // User
-      AddUserFB,
-      UpdateUserFB,
-      RemoveUserFB,
-
-      // Session
-      AddSessionFB,
-      UpdateSessionFB,
-      RemoveSessionFB,
-
+union PayloadFB {
+      CueFB,
+      CueListFB,
+      IOBoxFB,
+      PatchFB,
+      NodeFB,
+      UserFB,
+      SessionFB,
       LogMsgFB,
-      AppCommandFB,
-      DataSnapshotFB
+      StateFB
 }
 
-table StateMachineFB {
-      AppEvent: StateMachineTypeFB;
+enum ActionTypeFB:ushort {
+      AddFB,
+      UpdateFB,
+      RemoveFB,
+      LogMsgFB,
+      DataSnapshotFB,
+      UndoFB,
+      RedoFB,
+      ResetFB,
+      SaveProjectFB,
 }
 
-root_type StateMachineFB;
+table ApiActionFB {
+      Action: ActionTypeFB;
+      Payload: PayloadFB;
+}
 
 //  ____        __ _   _____
 // |  _ \ __ _ / _| |_| ____|_ __ _ __ ___  _ __
@@ -518,8 +402,8 @@ table NodeFB {
       Voting     : bool;
       VotedForMe : bool;
       State      : NodeStateFB;
-      NextIndex  : ulong;
-      MatchIndex : ulong;
+      NextIndex  : uint;
+      MatchIndex : uint;
 }
 
 //   ____             __ _        ____ _
@@ -548,33 +432,33 @@ table ConfigChangeFB {
 
 table ConfigurationFB {
       Id:    string;
-      Index: ulong;
-      Term : ulong;
+      Index: uint;
+      Term : uint;
       Nodes: [ NodeFB ];
 }
 
 table JointConsensusFB {
       Id:      string;
-      Index:   ulong;
-      Term:    ulong;
+      Index:   uint;
+      Term:    uint;
       Changes: [ ConfigChangeFB ];
 }
 
 table LogEntryFB {
       Id:    string;
-      Index: ulong;
-      Term:  ulong;
-      Data:  StateMachineFB;
+      Index: uint;
+      Term:  uint;
+      Data:  ApiActionFB;
 }
 
 table SnapshotFB {
       Id:         string;
-      Index:      ulong;
-      Term:       ulong;
-      LastIndex:  ulong;
-      LastTerm:   ulong;
+      Index:      uint;
+      Term:       uint;
+      LastIndex:  uint;
+      LastTerm:   uint;
       Nodes:      [ NodeFB ];
-      Data:       StateMachineFB;
+      Data:       ApiActionFB;
 }
 
 union LogTypeFB {
@@ -596,14 +480,14 @@ table LogFB {
 //                          |___/
 
 table VoteRequestFB {
-      Term         : ulong;
+      Term         : uint;
       Candidate    : NodeFB;
-      LastLogIndex : ulong;
-      LastLogTerm  : ulong;
+      LastLogIndex : uint;
+      LastLogTerm  : uint;
 }
 
 table VoteResponseFB {
-      Term    : ulong;
+      Term    : uint;
       Granted : bool;
       Reason  : RaftErrorFB;
 }
@@ -616,18 +500,18 @@ table VoteResponseFB {
 //         |_|   |_|
 
 table AppendEntriesFB {
-      Term         : ulong;
-      PrevLogIdx   : ulong;
-      PrevLogTerm  : ulong;
-      LeaderCommit : ulong;
+      Term         : uint;
+      PrevLogIdx   : uint;
+      PrevLogTerm  : uint;
+      LeaderCommit : uint;
       Entries      : [ LogFB ];
 }
 
 table AppendResponseFB {
-      Term         : ulong;
+      Term         : uint;
       Success      : bool;
-      CurrentIndex : ulong;
-      FirstIndex   : ulong;
+      CurrentIndex : uint;
+      FirstIndex   : uint;
 }
 
 //  ____                        _           _
@@ -639,10 +523,10 @@ table AppendResponseFB {
 
 
 table InstallSnapshotFB {
-      Term      : ulong;
+      Term      : uint;
       LeaderId  : string;
-      LastIndex : ulong;
-      LastTerm  : ulong;
+      LastIndex : uint;
+      LastTerm  : uint;
       Data      : [ LogFB ];
 }
 

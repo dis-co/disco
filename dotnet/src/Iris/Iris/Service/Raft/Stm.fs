@@ -88,7 +88,7 @@ let joinCluster (nodes: RaftNode array) (appState: TVar<RaftAppState>) cbs =
   let result =
     raft {
       let! term = currentTermM ()
-      let entry = JointConsensus(Id.Create(), 0UL, term, changes, None)
+      let entry = JointConsensus(Id.Create(), 0u, term, changes, None) //
       do! debug "HandShake: appending entry to enter joint-consensus"
       return! receiveEntry entry
     }
@@ -160,7 +160,7 @@ let leaveCluster (nodes: RaftNode array) (appState: TVar<RaftAppState>) cbs =
   let result =
     raft {
       let! term = currentTermM ()
-      let entry = JointConsensus(Id.Create(), 0UL, term, changes, None)
+      let entry = JointConsensus(Id.Create(), 0u, term, changes, None)
       do! debug "HandWaive: appending entry to enter joint-consensus"
       return! receiveEntry entry
     }
@@ -343,7 +343,7 @@ let handleInstallSnapshot node snapshot (appState: TVar<RaftAppState>) cbs =
            ; CurrentIndex = currentIndex state.Raft
            ; FirstIndex   = match firstIndex state.Raft.CurrentTerm state.Raft with
                             | Some idx -> idx
-                            | _        -> 0UL }
+                            | _        -> 0u }
   InstallSnapshotResponse(state.Raft.Node.Id, ar)
 
 let handleRequest msg (state: TVar<RaftAppState>) cbs : RaftResponse =
@@ -384,7 +384,7 @@ let startServer (appState: TVar<RaftAppState>) (cbs: IRaftCallbacks) =
   server
 
 let periodicR (state: RaftAppState) cbs =
-  periodic (uint64 state.Options.RaftConfig.PeriodicInterval)
+  periodic (uint32 state.Options.RaftConfig.PeriodicInterval)
   |> evalRaft state.Raft cbs
   |> flip updateRaft state
 
@@ -548,13 +548,13 @@ let initialize appState cbs =
 
   let newstate =
     raft {
-      let term = 0UL
+      let term = 0u
       do! setTermM term
-      do! setTimeoutElapsedM 0UL
+      do! setTimeoutElapsedM 0u
 
       let! num = numNodesM ()
 
-      if num = 1UL then
+      if num = 1u then
         do! becomeLeader ()
       else
         do! becomeFollower ()

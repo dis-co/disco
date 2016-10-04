@@ -15,11 +15,11 @@ public struct DoubleSliceFB : IFlatbufferObject
   public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
   public DoubleSliceFB __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public ulong Index { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUlong(o + __p.bb_pos) : (ulong)0; } }
+  public uint Index { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
   public double Value { get { int o = __p.__offset(6); return o != 0 ? __p.bb.GetDouble(o + __p.bb_pos) : (double)0.0; } }
 
   public static Offset<DoubleSliceFB> CreateDoubleSliceFB(FlatBufferBuilder builder,
-      ulong Index = 0,
+      uint Index = 0,
       double Value = 0.0) {
     builder.StartObject(2);
     DoubleSliceFB.AddValue(builder, Value);
@@ -28,7 +28,7 @@ public struct DoubleSliceFB : IFlatbufferObject
   }
 
   public static void StartDoubleSliceFB(FlatBufferBuilder builder) { builder.StartObject(2); }
-  public static void AddIndex(FlatBufferBuilder builder, ulong Index) { builder.AddUlong(0, Index, 0); }
+  public static void AddIndex(FlatBufferBuilder builder, uint Index) { builder.AddUint(0, Index, 0); }
   public static void AddValue(FlatBufferBuilder builder, double Value) { builder.AddDouble(1, Value, 0.0); }
   public static Offset<DoubleSliceFB> EndDoubleSliceFB(FlatBufferBuilder builder) {
     int o = builder.EndObject();

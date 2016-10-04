@@ -174,9 +174,9 @@ type VoteRequest =
     member self.ToOffset(builder: FlatBufferBuilder) =
       let node = self.Candidate.ToOffset(builder)
       VoteRequestFB.StartVoteRequestFB(builder)
-      VoteRequestFB.AddTerm(builder, uint64 self.Term)
-      VoteRequestFB.AddLastLogTerm(builder, uint64 self.LastLogTerm)
-      VoteRequestFB.AddLastLogIndex(builder, uint64 self.LastLogIndex)
+      VoteRequestFB.AddTerm(builder, self.Term)
+      VoteRequestFB.AddLastLogTerm(builder, self.LastLogTerm)
+      VoteRequestFB.AddLastLogIndex(builder, self.LastLogIndex)
       VoteRequestFB.AddCandidate(builder, node)
       VoteRequestFB.EndVoteRequestFB(builder)
 
@@ -225,7 +225,7 @@ type VoteResponse =
     member self.ToOffset(builder: FlatBufferBuilder) =
       let err = Option.map (fun (r: RaftError) -> r.ToOffset(builder)) self.Reason
       VoteResponseFB.StartVoteResponseFB(builder)
-      VoteResponseFB.AddTerm(builder, uint64 self.Term)
+      VoteResponseFB.AddTerm(builder, self.Term)
       match err with
         | Some offset -> VoteResponseFB.AddReason(builder, offset)
         | _ -> ()
@@ -306,10 +306,10 @@ type AppendEntries =
           self.Entries
 
       AppendEntriesFB.StartAppendEntriesFB(builder)
-      AppendEntriesFB.AddTerm(builder, uint64 self.Term)
-      AppendEntriesFB.AddPrevLogTerm(builder, uint64 self.PrevLogTerm)
-      AppendEntriesFB.AddPrevLogIdx(builder, uint64 self.PrevLogIdx)
-      AppendEntriesFB.AddLeaderCommit(builder, uint64 self.LeaderCommit)
+      AppendEntriesFB.AddTerm(builder, self.Term)
+      AppendEntriesFB.AddPrevLogTerm(builder, self.PrevLogTerm)
+      AppendEntriesFB.AddPrevLogIdx(builder, self.PrevLogIdx)
+      AppendEntriesFB.AddLeaderCommit(builder, self.LeaderCommit)
 
       Option.map (fun offset -> AppendEntriesFB.AddEntries(builder, offset)) entries
       |> ignore
@@ -354,10 +354,10 @@ type AppendResponse =
 
     member self.ToOffset(builder: FlatBufferBuilder) =
       AppendResponseFB.StartAppendResponseFB(builder)
-      AppendResponseFB.AddTerm(builder, uint64 self.Term)
+      AppendResponseFB.AddTerm(builder, self.Term)
       AppendResponseFB.AddSuccess(builder, self.Success)
-      AppendResponseFB.AddFirstIndex(builder, uint64 self.FirstIndex)
-      AppendResponseFB.AddCurrentIndex(builder, uint64 self.CurrentIndex)
+      AppendResponseFB.AddFirstIndex(builder, self.FirstIndex)
+      AppendResponseFB.AddCurrentIndex(builder, self.CurrentIndex)
       AppendResponseFB.EndAppendResponseFB(builder)
 
 [<RequireQualifiedAccess>]
@@ -371,7 +371,7 @@ module AppendRequest =
   let inline numEntries ar =
     match ar.Entries with
       | Some entries -> LogEntry.depth entries
-      | _            -> 0UL
+      | _            -> 0u
 
   let inline prevLogIndex ae = ae.PrevLogIdx
   let inline prevLogTerm ae = ae.PrevLogTerm
@@ -450,7 +450,7 @@ type IRaftCallbacks =
 
   /// given the current state of Raft, prepare and return a snapshot value of
   /// current application state
-  abstract member PrepareSnapshot:     Raft            -> Log
+  abstract member PrepareSnapshot:     Raft            -> Log option
 
   /// perist the given Snapshot value to disk. For safety reasons this MUST
   /// flush all changes to disk.
