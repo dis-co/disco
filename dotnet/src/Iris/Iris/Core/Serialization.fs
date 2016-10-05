@@ -61,3 +61,23 @@ module Binary =
     builder.Finish(offset.Value)
     builder.SizedByteArray()
 #endif
+
+// __   __              _
+// \ \ / /_ _ _ __ ___ | |
+//  \ V / _` | '_ ` _ \| |
+//   | | (_| | | | | | | |
+//   |_|\__,_|_| |_| |_|_|
+
+#if JAVSCRIPT
+#else
+
+[<RequireQualifiedAccess>]
+module Yaml =
+
+  let inline encode< ^t when ^t : (member ToYaml : unit -> string)> (thing: ^t) =
+    (^t : (member ToYaml : unit -> string) thing)
+
+  let inline decode< ^t when ^t : (static member FromYaml : string -> ^t)> (str: string) =
+    (^t : (static member FromYaml : string -> ^t) str)
+
+#endif

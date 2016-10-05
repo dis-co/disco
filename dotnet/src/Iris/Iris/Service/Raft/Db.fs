@@ -560,7 +560,7 @@ let insert<'t when 't : (new : unit -> 't)>
 let insertMany<'t when 't : (new : unit -> 't)>
               (things: 't array)
               (collection: LiteCollection<'t>) =
-  collection.InsertBulk things |> ignore
+  collection.Insert things |> ignore
 
 
 /// ## Update many
@@ -576,7 +576,7 @@ let insertMany<'t when 't : (new : unit -> 't)>
 let updateMany<'t when 't : (new : unit -> 't)>
               (things: 't array)
               (collection: LiteCollection<'t>) =
-  Array.iter (collection.Update >> ignore) things
+  things |> collection.Update |> ignore
 
 /// ## Update a document
 ///
@@ -663,7 +663,8 @@ let inline deleteMany< ^a, 't when 't : (new : unit -> 't)>
 let truncateDB (db: LiteDatabase)  =
   for name in db.GetCollectionNames() do
     let collection = db.GetCollection(name)
-    collection.Drop() |> ignore
+    collection.Delete(Query.All())
+    |> ignore
 
 /// ## Clear a collections records
 ///
@@ -674,7 +675,7 @@ let truncateDB (db: LiteDatabase)  =
 ///
 /// Returns: unit
 let truncateCollection (collection: LiteCollection<'t>) =
-  collection.Drop() |> ignore
+  collection.Delete(Query.All()) |> ignore
 
 /// ## Initialize the metadata document
 ///

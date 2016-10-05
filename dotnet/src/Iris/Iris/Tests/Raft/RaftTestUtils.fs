@@ -25,7 +25,7 @@ module RaftTestUtils =
     ; SendAppendEntries   : RaftNode        -> AppendEntries          -> AppendResponse option
     ; SendInstallSnapshot : RaftNode        -> InstallSnapshot        -> AppendResponse option
     ; PersistSnapshot     : LogEntry        -> unit
-    ; PrepareSnapshot     : Raft            -> Log
+    ; PrepareSnapshot     : Raft            -> Log option
     ; RetrieveSnapshot    : unit            -> LogEntry option
     ; ApplyLog            : StateMachine    -> unit
     ; NodeAdded           : RaftNode        -> unit
@@ -120,7 +120,7 @@ module RaftTestUtils =
       |> log
 
     let onPrepareSnapshot raft =
-      createSnapshot !data raft
+      createSnapshot !data raft |> Some
 
     let onPersistSnapshot (entry: LogEntry) =
       sprintf "Perisisting Snapshot: %A" entry

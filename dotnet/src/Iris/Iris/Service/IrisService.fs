@@ -13,6 +13,14 @@ open LibGit2Sharp
 open ZeroMQ
 open FSharpx.Functional
 
+[<AutoOpen>]
+module Hooks =
+  let saveAsset (location: FilePath) (payload: string) =
+    failwith "never"
+
+  let inline maybeSave (project: Project) (thing: ^t) =
+    failwith "something"
+
 //  ___      _     ____                  _
 // |_ _|_ __(_)___/ ___|  ___ _ ____   _(_) ___ ___
 //  | || '__| / __\___ \ / _ \ '__\ \ / / |/ __/ _ \

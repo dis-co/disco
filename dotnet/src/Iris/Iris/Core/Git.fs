@@ -386,7 +386,7 @@ module Git =
     ///
     /// Returns: Branch
     let checkout (spec: string) (repo: Repository) =
-      match repo.Checkout spec with
+      match LibGit2Sharp.Commands.Checkout(repo, spec) with
         | null      -> None
         | branch -> Some branch
 

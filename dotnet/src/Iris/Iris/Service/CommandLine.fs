@@ -80,7 +80,7 @@ let validateOptions (opts: ParseResults<CLIArguments>) =
 
     if not (name && bind && web && raft && ws) then
       printfn "Error: when creating a new configuration you must specify the following options:"
-      printfn "%s" <| opts.Usage()
+      printfn "%s" <| parser.PrintUsage()
       exit 1
 
 let parseLogLevel = function

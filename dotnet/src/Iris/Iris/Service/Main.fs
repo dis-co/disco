@@ -162,7 +162,7 @@ module Main =
         parser.ParseCommandLine args
       with
         | _ ->
-          printfn "%s" <| parser.Usage("Unable to parse command line. Usage: ")
+          printfn "%s" <| parser.PrintUsage("Unable to parse command line. Usage: ")
           exit 2
 
     validateOptions parsed
@@ -181,5 +181,4 @@ module Main =
         | _ ->
           printfn "Missing project directory. Aborting"
           exit 2
-
     0

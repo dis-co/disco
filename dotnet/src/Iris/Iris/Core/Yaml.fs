@@ -3,7 +3,7 @@ namespace Iris.Core
 open FSharp.Configuration
 
 [<AutoOpen>]
-module Yaml =
+module YamlConfig =
 
   [<Literal>]
   let private Config = """
