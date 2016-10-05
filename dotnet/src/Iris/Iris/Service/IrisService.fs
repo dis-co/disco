@@ -15,11 +15,66 @@ open FSharpx.Functional
 
 [<AutoOpen>]
 module Hooks =
-  let saveAsset (location: FilePath) (payload: string) =
-    failwith "never"
+  /// ## saveAsset
+  ///
+  /// save a thing (string) to a file and returns its FileInfo. Might
+  /// crash, so catch it.
+  ///
+  /// ### Signature:
+  /// - location: FilePath to save payload to
+  /// - payload: string payload to save
+  ///
+  /// Returns: FileInfo
+  let saveAsset (location: FilePath) (payload: string) : FileInfo =
+    let fi = IO.FileInfo(location)
+    if not (IO.Directory.Exists fi.Directory.FullName) then
+      IO.Directory.CreateDirectory fi.Directory.FullName
+      |> ignore
+    File.WriteAllText(location, payload)
+    fi.Refresh()
+    fi
 
-  let inline maybeSave (project: Project) (thing: ^t) =
-    failwith "something"
+  /// ## maybeSave
+  ///
+  /// Attempt to save the passed thing, and, if succesful, return its
+  /// FileInfo object.
+  ///
+  /// ### Signature:
+  /// - project: Project to save file into
+  /// - thing: the thing to save. Must implement certain methods/getters
+  ///
+  /// Returns: FileInfo option
+  let inline maybeSave< ^t when
+                        ^t : (member ToYaml : unit -> string) and
+                        ^t : (member CanonicalName : string) and
+                        ^t : (member DirName : string)>
+                        (project: Project) (thing: ^t) =
+    match project.Path with
+    | Some path ->
+      let name = (^t : (member CanonicalName : string) thing)
+      let dirname = (^t : (member DirName : string) thing)
+      let destDir = path </> dirname </> (name + ".yaml")
+      try
+        thing
+        |> Yaml.encode
+        |> saveAsset destDir
+        |> Some
+      with
+        | exn ->
+          printfn "Error saving %A to %s." thing destDir
+          printfn "Reason: %s" exn.Message
+          None
+    | _ -> None
+
+  let inline persistEntry (project: Project) (sm: StateMachine) =
+    match sm with
+    | AddCue        cue     -> maybeSave project cue
+    | UpdateCue     cue     -> maybeSave project cue
+    | RemoveCue     cue     -> maybeSave project cue
+    | AddCueList    cuelist -> maybeSave project cuelist
+    | UpdateCueList cuelist -> maybeSave project cuelist
+    | RemoveCueList cuelist -> maybeSave project cuelist
+    | _ -> None
 
 //  ___      _     ____                  _
 // |_ _|_ __(_)___/ ___|  ___ _ ____   _(_) ___ ___
@@ -97,6 +152,7 @@ type IrisService(project: Project) =
     raftserver.OnApplyLog <- fun sm ->
       store.Dispatch sm
       wsserver.Broadcast sm
+      persistEntry project sm |> ignore
 
   do setup ()
 

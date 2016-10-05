@@ -72,3 +72,17 @@ type Cue =
     |> Cue.FromFB
 
   member self.ToBytes() = Binary.buildBuffer self
+
+#if JAVASCRIPT
+#else
+  member self.ToYaml() =
+    failwith "in a minute"
+
+  member self.DirName
+    with get () = "cues"
+
+  member self.CanonicalName
+    with get () =
+      sanitizeName self.Name
+      |> sprintf "%s-%s" (string self.Id)
+#endif
