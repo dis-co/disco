@@ -10,6 +10,23 @@ open Iris.Web.Core.FlatBufferTypes
 
 open FlatBuffers
 open Iris.Serialization.Raft
+open SharpYaml.Serialization
+
+type ColorYaml(tipe, alpha, ch1, ch2, ch3) as self =
+  [<DefaultValue>] val mutable ColorType : string
+  [<DefaultValue>] val mutable Alpha     : uint8
+  [<DefaultValue>] val mutable Channel1  : uint8
+  [<DefaultValue>] val mutable Channel2  : uint8
+  [<DefaultValue>] val mutable Channel3  : uint8
+
+  new () = new ColorYaml(null, 0uy, 0uy, 0uy, 0uy)
+
+  do
+    self.ColorType <- tipe
+    self.Alpha <- alpha
+    self.Channel1 <- ch1
+    self.Channel2 <- ch2
+    self.Channel3 <- ch3
 
 #endif
 
@@ -167,3 +184,35 @@ type ColorSpace =
     Binary.createBuffer bytes
     |> ColorSpaceFB.GetRootAsColorSpaceFB
     |> ColorSpace.FromFB
+
+#if JAVASCRIPT
+#else
+
+  member self.ToColorYaml() =
+    match self with
+    | RGBA value ->
+      new ColorYaml("RGBA", value.Alpha, value.Red, value.Green, value.Blue)
+    | HSLA value ->
+      new ColorYaml("HSLA", value.Alpha, value.Hue, value.Saturation, value.Lightness)
+
+  static member FromColorYaml(yml: ColorYaml) =
+    match yml.ColorType with
+    | "RGBA" ->
+      RGBA {
+        Red = yml.Channel1;
+        Green = yml.Channel2;
+        Blue = yml.Channel3;
+        Alpha = yml.Alpha
+        }
+      |> Some
+    | "HSLA" ->
+      HSLA {
+        Hue = yml.Channel1;
+        Saturation = yml.Channel2;
+        Lightness = yml.Channel3;
+        Alpha = yml.Alpha
+        }
+      |> Some
+    | _ -> None
+
+#endif

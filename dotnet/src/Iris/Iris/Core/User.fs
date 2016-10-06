@@ -13,8 +13,60 @@ open System
 open LibGit2Sharp
 open FlatBuffers
 open Iris.Serialization.Raft
+open SharpYaml.Serialization
+
+// __   __              _
+// \ \ / /_ _ _ __ ___ | |
+//  \ V / _` | '_ ` _ \| |
+//   | | (_| | | | | | | |
+//   |_|\__,_|_| |_| |_|_|
+
+type UserYaml(i, u, f, l, e, j, c) =
+  let mutable id        = i
+  let mutable username  = u
+  let mutable firstname = f
+  let mutable lastname  = l
+  let mutable email     = e
+  let mutable joined    = j
+  let mutable created   = c
+
+  new () = new UserYaml(null, null, null, null, null, null, null)
+
+  member self.Id
+    with get ()  = id
+     and set str = id <- str
+
+  member self.UserName
+    with get ()  = username
+     and set str = username <- str
+
+  member self.FirstName
+    with get ()  = firstname
+     and set str = firstname <- str
+
+  member self.LastName
+    with get ()  = lastname
+     and set str = lastname <- str
+
+  member self.Email
+    with get ()  = email
+     and set str = email <- str
+
+  member self.Joined
+    with get ()  = joined
+     and set str = joined <- str
+
+  member self.Created
+    with get ()  = created
+     and set str = created <- str
 
 #endif
+
+//  _   _
+// | | | |___  ___ _ __
+// | | | / __|/ _ \ '__|
+// | |_| \__ \  __/ |
+//  \___/|___/\___|_|
 
 [<CustomEquality>]
 [<CustomComparison>]
@@ -154,3 +206,46 @@ type User =
   static member FromBytes (bytes: Binary.Buffer) : User option =
     UserFB.GetRootAsUserFB(Binary.createBuffer bytes)
     |> User.FromFB
+
+#if JAVASCRIPT
+#else
+
+  member self.ToYaml(serializer: Serializer) =
+    new UserYaml(
+      string self.Id,
+      self.UserName,
+      self.FirstName,
+      self.LastName,
+      self.Email,
+      string self.Joined,
+      string self.Created)
+    |> serializer.Serialize
+
+  static member FromYaml(str: string) =
+    let serializer = new Serializer()
+    let yaml = serializer.Deserialize<UserYaml>(str)
+    try
+      { Id = Id yaml.Id
+      ; UserName = yaml.UserName
+      ; FirstName = yaml.FirstName
+      ; LastName = yaml.LastName
+      ; Email = yaml.Email
+      ; Joined = DateTime.Parse yaml.Joined
+      ; Created = DateTime.Parse yaml.Created }
+      |> Some
+    with
+      | exn ->
+        printfn "Could not deserialize USer: %s" exn.Message
+        None
+
+
+  member self.DirName
+    with get () = "users"
+
+  member self.CanonicalName
+    with get () =
+      sprintf "%s_%s" self.FirstName self.LastName
+      |> toLower
+      |> sanitizeName
+      |> sprintf "%s-%s" (string self.Id)
+#endif

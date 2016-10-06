@@ -60,5 +60,29 @@ type Rect = Rect of (int * int)
 // |_|   |_|  \___/| .__/ \___|_|   \__|\__, |
 //                 |_|                  |___/
 
+#if JAVASCRIPT
+
 type Property =
   { Key: string; Value: string }
+
+#else
+
+open SharpYaml.Serialization
+
+type PropertyYaml(key, value) as self =
+  [<DefaultValue>] val mutable Key   : string
+  [<DefaultValue>] val mutable Value : string
+
+  new () = new PropertyYaml(null, null)
+
+  do
+    self.Key <- key
+    self.Value <- value
+
+and Property =
+  { Key: string; Value: string }
+
+  member self.ToPropertyYaml() =
+    new PropertyYaml(self.Key, self.Value)
+
+#endif

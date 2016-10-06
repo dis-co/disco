@@ -73,11 +73,13 @@ module Binary =
 
 [<RequireQualifiedAccess>]
 module Yaml =
+  open SharpYaml.Serialization
 
-  let inline encode< ^t when ^t : (member ToYaml : unit -> string)> (thing: ^t) =
-    (^t : (member ToYaml : unit -> string) thing)
+  let inline encode< ^t when ^t : (member ToYaml : Serializer -> string)> (thing: ^t) =
+    let serializer = new Serializer()
+    (^t : (member ToYaml : Serializer -> string) thing,serializer)
 
-  let inline decode< ^t when ^t : (static member FromYaml : string -> ^t)> (str: string) =
-    (^t : (static member FromYaml : string -> ^t) str)
+  let inline decode< ^t when ^t : (static member FromYaml : string -> ^t option)> (str: string) =
+    (^t : (static member FromYaml : string -> ^t option) str)
 
 #endif

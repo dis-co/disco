@@ -321,11 +321,18 @@ module SerializationTests =
   // | |__| |_| |  __/
   //  \____\__,_|\___|
 
-  let test_validate_cue_serialization =
-    testCase "Validate Cue Serialization" <| fun _ ->
+  let test_validate_cue_binary_serialization =
+    testCase "Validate Cue Binary Serialization" <| fun _ ->
       let cue : Cue = mkCue ()
 
       let recue = cue |> Binary.encode |> Binary.decode |> Option.get
+      expect "should be same" cue id recue
+
+  let test_validate_cue_yaml_serialization =
+    testCase "Validate Cue Yaml Serialization" <| fun _ ->
+      let cue : Cue = mkCue ()
+
+      let recue = cue |> Yaml.encode |> Yaml.decode |> Option.get
       expect "should be same" cue id recue
 
   //   ____           _     _     _
@@ -334,11 +341,18 @@ module SerializationTests =
   // | |__| |_| |  __/ |___| \__ \ |_
   //  \____\__,_|\___|_____|_|___/\__|
 
-  let test_validate_cuelist_serialization =
-    testCase "Validate CueList Serialization" <| fun _ ->
+  let test_validate_cuelist_binary_serialization =
+    testCase "Validate CueList Binary Serialization" <| fun _ ->
       let cuelist : CueList = mkCueList ()
 
       let recuelist = cuelist |> Binary.encode |> Binary.decode |> Option.get
+      expect "should be same" cuelist id recuelist
+
+  let test_validate_cuelist_yaml_serialization =
+    testCase "Validate CueList Yaml Serialization" <| fun _ ->
+      let cuelist : CueList = mkCueList ()
+
+      let recuelist = cuelist |> Yaml.encode |> Yaml.decode |> Option.get
       expect "should be same" cuelist id recuelist
 
   //  ____       _       _
@@ -373,11 +387,18 @@ module SerializationTests =
   // | |_| \__ \  __/ |
   //  \___/|___/\___|_|
 
-  let test_validate_user_serialization =
-    testCase "Validate User Serialization" <| fun _ ->
+  let test_validate_user_binary_serialization =
+    testCase "Validate User Binary Serialization" <| fun _ ->
       let user : User = mkUser ()
 
       let reuser = user |> Binary.encode |> Binary.decode |> Option.get
+      expect "Should be structurally equivalent" user id reuser
+
+  let test_validate_user_yaml_serialization =
+    testCase "Validate User Yaml Serialization" <| fun _ ->
+      let user : User = mkUser ()
+
+      let reuser = user |> Yaml.encode |> Yaml.decode |> Option.get
       expect "Should be structurally equivalent" user id reuser
 
   //  ____  _ _
@@ -386,8 +407,8 @@ module SerializationTests =
   //  ___) | | | (_|  __/
   // |____/|_|_|\___\___|
 
-  let test_validate_slice_serialization =
-    testCase "Validate Slice Serialization" <| fun _ ->
+  let test_validate_slice_binary_serialization =
+    testCase "Validate Slice Binary Serialization" <| fun _ ->
 
       [| BoolSlice     { Index = 0u; Value = true    }
       ; StringSlice   { Index = 0u; Value = "hello" }
@@ -404,16 +425,52 @@ module SerializationTests =
           let reslice = slice |> Binary.encode |> Binary.decode |> Option.get
           expect "Should be structurally equivalent" slice id reslice)
 
+  let test_validate_slice_yaml_serialization =
+    testCase "Validate Slice Yaml Serialization" <| fun _ ->
+
+      [| BoolSlice     { Index = 0u; Value = true    }
+      ; StringSlice   { Index = 0u; Value = "hello" }
+      ; IntSlice      { Index = 0u; Value = 1234    }
+      ; FloatSlice    { Index = 0u; Value = 1234.0  }
+      ; DoubleSlice   { Index = 0u; Value = 1234.0  }
+      ; ByteSlice     { Index = 0u; Value = [| 0uy; 4uy; 9uy; 233uy |] }
+      ; EnumSlice     { Index = 0u; Value = { Key = "one"; Value = "two" }}
+      ; ColorSlice    { Index = 0u; Value = RGBA { Red = 255uy; Blue = 2uy; Green = 255uy; Alpha = 33uy } }
+      ; ColorSlice    { Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 25uy; Lightness = 255uy; Alpha = 55uy } }
+      // ; CompoundSlice { Index = 0u; Value = ioboxes () }
+      |]
+      |> Array.iter
+        (fun slice ->
+          slice |> Yaml.encode |> printfn "slice:\n %s"
+          let reslice = slice |> Yaml.encode |> Yaml.decode |> Option.get
+          expect "Should be structurally equivalent" slice id reslice)
+
   //  ___ ___  ____
   // |_ _/ _ \| __ )  _____  __
   //  | | | | |  _ \ / _ \ \/ /
   //  | | |_| | |_) | (_) >  <
   // |___\___/|____/ \___/_/\_\
 
-  let test_validate_iobox_serialization =
-    testCase "Validate IOBox Serialization" <| fun _ ->
+  let test_validate_iobox_binary_serialization =
+    testCase "Validate IOBox Binary Serialization" <| fun _ ->
       let check iobox =
         iobox |> Binary.encode |> Binary.decode |> Option.get
+        |> expect "Should be structurally equivalent" iobox id
+
+      Array.iter check (ioboxes ())
+
+      // compound
+      let compound = IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = ioboxes () }|])
+      check compound
+
+      // nested compound :)
+      IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = [| compound |] }|])
+      |> check
+
+  let test_validate_iobox_yaml_serialization =
+    testCase "Validate IOBox Yaml Serialization" <| fun _ ->
+      let check iobox =
+        iobox |> Yaml.encode |> Yaml.decode |> Option.get
         |> expect "Should be structurally equivalent" iobox id
 
       Array.iter check (ioboxes ())
@@ -495,13 +552,18 @@ module SerializationTests =
         test_validate_welcome_serialization
         test_validate_arrivederci_serialization
         test_validate_errorresponse_serialization
-        test_validate_cue_serialization
-        test_validate_cuelist_serialization
+        test_validate_cue_binary_serialization
+        // test_validate_cue_yaml_serialization
+        test_validate_cuelist_binary_serialization
+        // test_validate_cuelist_yaml_serialization
         test_validate_patch_serialization
         test_validate_session_serialization
-        test_validate_user_serialization
-        test_validate_slice_serialization
-        test_validate_iobox_serialization
+        test_validate_user_binary_serialization
+        test_validate_user_yaml_serialization
+        test_validate_slice_binary_serialization
+        test_validate_slice_yaml_serialization
+        test_validate_iobox_binary_serialization
+        test_validate_iobox_binary_serialization
         test_validate_state_serialization
         test_validate_state_machine_serialization
       ]

@@ -7,6 +7,7 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
+open SharpYaml.Serialization
 open FlatBuffers
 open Iris.Serialization.Raft
 
@@ -72,7 +73,10 @@ type CueList =
 
 #if JAVASCRIPT
 #else
-  member self.ToYaml() =
+  member self.ToYaml(serializer: Serializer) =
+    serializer.Serialize(self)
+
+  static member FromYaml(str: string) =
     failwith "in a minute"
 
   member self.DirName

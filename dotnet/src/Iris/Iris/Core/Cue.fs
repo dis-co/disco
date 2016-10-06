@@ -9,12 +9,30 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
+open SharpYaml
+open SharpYaml.Serialization
 open FlatBuffers
 open Iris.Serialization.Raft
 
+type CueYaml(id, name, ioboxes) as self =
+  [<DefaultValue>] val mutable Id   : string
+  [<DefaultValue>] val mutable Name : string
+  [<DefaultValue>] val mutable IOBoxes : IOBoxYaml array
+
+  new () = new CueYaml(null, null, null)
+
+  do
+    self.Id <- id
+    self.Name <- name
+    self.IOBoxes <- ioboxes
+
 #endif
 
+#if JAVASCRIPT
 type Cue =
+#else
+and Cue =
+#endif
   { Id:      Id
   ; Name:    string
   ; IOBoxes: IOBox array }
@@ -75,8 +93,23 @@ type Cue =
 
 #if JAVASCRIPT
 #else
-  member self.ToYaml() =
-    failwith "in a minute"
+  member self.ToYaml(serializer: Serializer) =
+    // let ioboxes = Array.map (fun box -> box.ToIOBoxYaml()) self.IOBoxes
+    new CueYaml(string self.Id, self.Name, [| |])
+    |> serializer.Serialize
+
+  static member FromYaml(str: string) =
+    let serializer = new Serializer()
+    let yaml = serializer.Deserialize<CueYaml>(str)
+    try
+      { Id = Id yaml.Id
+      ; Name = yaml.Name
+      ; IOBoxes = [| |]
+      } |> Some
+    with
+      | exn ->
+        printfn "Could not deserialize Cue: %s" exn.Message
+        None
 
   member self.DirName
     with get () = "cues"

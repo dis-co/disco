@@ -12,6 +12,7 @@ open System
 open System.Text
 open FlatBuffers
 open Iris.Serialization.Raft
+open SharpYaml.Serialization
 
 #endif
 
@@ -134,14 +135,34 @@ type StringType =
     | Url       -> StringTypeFB.UrlFB
     | IP        -> StringTypeFB.IPFB
 
-
 //  ___ ___  ____
 // |_ _/ _ \| __ )  _____  __
 //  | | | | |  _ \ / _ \ \/ /
 //  | | |_| | |_) | (_) >  <
 // |___\___/|____/ \___/_/\_\
 
+#if JAVASCRIPT
 type IOBox =
+#else
+type SliceYaml() =
+  [<DefaultValue>] val mutable SliceType : string
+  [<DefaultValue>] val mutable Index     : Index
+  [<DefaultValue>] val mutable Value     : obj
+
+type IOBoxYaml() =
+  [<DefaultValue>] val mutable BoxType    : string
+  [<DefaultValue>] val mutable Id         : string
+  [<DefaultValue>] val mutable Name       : string
+  [<DefaultValue>] val mutable Patch      : string
+  [<DefaultValue>] val mutable Tags       : string array
+  [<DefaultValue>] val mutable Behavior   : string
+  [<DefaultValue>] val mutable StringType : string
+  [<DefaultValue>] val mutable FileMask   : string
+  [<DefaultValue>] val mutable MaxChars   : int
+  [<DefaultValue>] val mutable Slices     : SliceYaml array
+
+and IOBox =
+#endif
   | StringBox of StringBoxD
   | IntBox    of IntBoxD
   | FloatBox  of FloatBoxD
@@ -643,6 +664,28 @@ type IOBox =
     |> IOBoxFB.GetRootAsIOBoxFB
     |> IOBox.FromFB
 
+// __   __              _
+// \ \ / /_ _ _ __ ___ | |
+//  \ V / _` | '_ ` _ \| |
+//   | | (_| | | | | | | |
+//   |_|\__,_|_| |_| |_|_|
+
+#if JAVASCRIPT
+#else
+  member self.ToIOBoxYaml() =
+    failwith "in a moment"
+
+  static member self.FromIOBoxYaml(yml: IOBoxYml) =
+    failwith "in another moment"
+
+  member self.ToYaml(serializer: Serializer) =
+    self.ToIOBoxYaml()
+    |> serializer.Serialize
+
+  static member FromYaml(str: string) =
+    failwith "in a minute"
+
+#endif
 //  ____              _ ____
 // | __ )  ___   ___ | | __ )  _____  __
 // |  _ \ / _ \ / _ \| |  _ \ / _ \ \/ /
@@ -2260,6 +2303,119 @@ and Slice =
     Binary.createBuffer bytes
     |> SliceFB.GetRootAsSliceFB
     |> Slice.FromFB
+
+#if JAVASCRIPT
+#else
+
+  member self.ToYaml(serializer: Serializer) =
+    let yaml = new SliceYaml()
+    match self with
+    | StringSlice   slice ->
+      yaml.SliceType <- "StringSlice"
+      yaml.Index     <- slice.Index
+      yaml.Value     <- slice.Value
+
+    | IntSlice      slice ->
+      yaml.SliceType <- "IntSlice"
+      yaml.Index     <- slice.Index
+      yaml.Value     <- slice.Value
+
+    | FloatSlice    slice ->
+      yaml.SliceType <- "FloatSlice"
+      yaml.Index     <- slice.Index
+      yaml.Value     <- slice.Value
+
+    | DoubleSlice   slice ->
+      yaml.SliceType <- "DoubleSlice"
+      yaml.Index     <- slice.Index
+      yaml.Value     <- slice.Value
+
+    | BoolSlice     slice ->
+      yaml.SliceType <- "BoolSlice"
+      yaml.Index     <- slice.Index
+      yaml.Value     <- slice.Value
+
+    | ByteSlice     slice ->
+      yaml.SliceType <- "ByteSlice"
+      yaml.Index     <- slice.Index
+      yaml.Value     <- Convert.ToBase64String(slice.Value)
+
+    | EnumSlice     slice ->
+      yaml.SliceType <- "EnumSlice"
+      yaml.Index     <- slice.Index
+      yaml.Value     <- slice.Value.ToPropertyYaml()
+
+    | ColorSlice    slice ->
+      yaml.SliceType <- "ColorSlice"
+      yaml.Index     <- slice.Index
+      yaml.Value     <- slice.Value.ToColorYaml()
+
+    | CompoundSlice slice ->
+      yaml.SliceType <- "CompoundSlice"
+      yaml.Index     <- slice.Index
+      yaml.Value     <- [| |]
+
+    serializer.Serialize(yaml)
+
+  static member FromYaml(str: string) =
+    let serializer = new Serializer()
+    let yaml = serializer.Deserialize<SliceYaml>(str)
+
+    match yaml.SliceType with
+    | "StringSlice" ->
+      StringSlice { Index = yaml.Index; Value = string yaml.Value }
+      |> Some
+
+    | "IntSlice" ->
+      IntSlice { Index = yaml.Index; Value = Int32.Parse (string yaml.Value) }
+      |> Some
+
+    | "FloatSlice" ->
+      FloatSlice { Index = yaml.Index; Value = Double.Parse (string yaml.Value) }
+      |> Some
+
+    | "DoubleSlice" ->
+      DoubleSlice { Index = yaml.Index; Value = Double.Parse (string yaml.Value) }
+      |> Some
+
+    | "BoolSlice" ->
+      BoolSlice { Index = yaml.Index; Value = Boolean.Parse (string yaml.Value) }
+      |> Some
+
+    | "ByteSlice" ->
+      ByteSlice { Index = yaml.Index; Value = Convert.FromBase64String(string yaml.Value) }
+      |> Some
+
+    | "EnumSlice" ->
+      let property =
+        let pyml = yaml.Value :?> PropertyYaml
+        { Key = pyml.Key; Value = pyml.Value }
+      EnumSlice { Index = yaml.Index; Value = property }
+      |> Some
+
+    | "ColorSlice" ->
+      match ColorSpace.FromColorYaml(yaml.Value :?> ColorYaml) with
+      | Some color  ->
+        ColorSlice { Index = yaml.Index; Value = color }
+        |> Some
+      | _ -> None
+
+    | "CompoundSlice" ->
+      let ioboxes =
+        yaml.Value :?> IOBoxYaml array
+        |> Array.map (fun box -> IOBox.FromIOBoxYaml(box))
+        |> Array.fold
+            (fun m box ->
+              match box with
+              | Some thing -> Array.append m [| thing |]
+              | _ -> m)
+            [| |]
+      CompoundSlice { Index = yaml.Index; Value = ioboxes }
+      |> Some
+
+    | _ -> None
+
+#endif
 
 //  ____  _ _
 // / ___|| (_) ___ ___  ___
