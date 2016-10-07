@@ -13,13 +13,16 @@
 
 
 ### IRIS Project
-* Name (string)
 
 | Name | Type  | mandatory | description
 | :------- | :------: |  :------: | -------: |
 | name | **string** | yes | 
-| id | **int32** | yes | guid
+| id | **uint32** | yes | guid
 
+#### Cuelist
 
-#### Project
-* TEST
+| Name | Type  | mandatory | description
+| :------- | :------: |  :------: | -------: |
+| name | **string** | yes | 
+| id | **uint32** | yes | guid
+| cues| **[cue]** | yes | array of cues
