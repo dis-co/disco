@@ -17,8 +17,8 @@
 
 | Name | Type  | mandatory | description
 | :------- | :------: |  :------: | -------: |
-| name | string | yes | 
-| id | guid | yes | 
+| name | **string** | yes | 
+| id | **int32** | yes | guid
 
 
 #### Project
