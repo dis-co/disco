@@ -16,13 +16,13 @@
 
 | Name | Type  | mandatory | description
 | :------- | :------: |  :------: | -------: |
-| name | **string** | yes | 
-| id | **uint32** | yes | guid
+| name | string | yes | 
+| id | uint32 | yes | guid
 
 #### Cuelist
 
 | Name | Type  | mandatory | description
 | :------- | :------: |  :------: | -------: |
-| name | **string** | yes | 
-| id | **uint32** | yes | guid
-| cues| **[cue]** | yes | array of cues
+| name | string | yes | 
+| id | uint32 | yes | guid
+| cues| [cue] | yes | array of cues
