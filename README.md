@@ -13,8 +13,7 @@
 
 
 ### IRIS Project
+* Name (string)
 
-Data Types
-
-* Project
+#### Project
 * TEST
