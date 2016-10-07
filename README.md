@@ -15,5 +15,11 @@
 ### IRIS Project
 * Name (string)
 
+| Name | Type  | mandatory | description
+| :------- | :------: |  :------: | -------: |
+| name | string | yes | 
+| id | guid | yes | 
+
+
 #### Project
 * TEST
