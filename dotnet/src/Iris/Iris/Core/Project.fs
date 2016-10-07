@@ -8,19 +8,6 @@ open System.Collections.Generic
 open LibGit2Sharp
 open Iris.Core.Utils
 
-(***************************************************************************************************
-
-  //   ____                          _ _   _
-  //  / ___|___  _ __ ___  _ __ ___ (_) |_| |_ ___ _ __
-  // | |   / _ \| '_ ` _ \| '_ ` _ \| | __| __/ _ \ '__|
-  // | |__| (_) | | | | | | | | | | | | |_| ||  __/ |
-  //  \____\___/|_| |_| |_|_| |_| |_|_|\__|\__\___|_| is Iris
-  let committer =
-    let hostname = Dns.GetHostName()
-    new Signature("Iris", "iris@" + hostname, new DateTimeOffset(DateTime.Now))
-
-***************************************************************************************************)
-
 //  ____            _           _
 // |  _ \ _ __ ___ (_) ___  ___| |_
 // | |_) | '__/ _ \| |/ _ \/ __| __|
@@ -184,26 +171,39 @@ module ProjectHelper =
 
     { project with LastSaved = Some ts }
 
-  //   ____
-  //  / ___|  __ ___   _____
-  //  \___ \ / _` \ \ / / _ \
-  //   ___) | (_| |\ V /  __/
-  //  |____/ \__,_| \_/ \___|
-  //
-  /// Save a Project to Disk
-  let save (committer: Signature) (msg : string) (project: Project) : (Commit * Project) option =
+  /// ## commitPath
+  ///
+  /// commit a file at given path to git
+  ///
+  /// ### Signature:
+  /// - committer : Signature of committer
+  /// - msg       : commit msg
+  /// - filepath  : path to file being committed
+  /// - project   : Project
+  ///
+  /// Returns: (Commit * Project) option
+  let commitPath (committer: Signature) (msg : string) (filepath: FilePath) (project: Project) : (Commit * Project) option =
+    match File.Exists filepath, repository project with
+      | true, Some repo ->
+        try
+          // FIXME: need to do some checks on repository before...
+          // create git commit
+          printfn "adding %s to the index" filepath
+          repo.Index.Add(filepath)
+          // Commands.Stage(repo, filepath)
+          repo.Commit(msg, committer, committer)
+          |> fun commit -> Some (commit, project)
+        with
+          | exn ->
+            printfn "excption: %s" exn.Message
+            None
+      | _ ->
+        printfn "project has no path..."
+        None
+
+  let saveProject (committer: Signature) (msg : string) (project: Project) : (Commit * Project) option =
     match project.Path with
       | Some path ->
-        let repo =
-          match repository project with
-            | Some repo -> repo
-            | _ ->
-              match initRepo project with
-                | Some repo -> repo
-                | _ ->
-                  printfn "Unable to get/initialize git repository."
-                  exit 1
-
         let project =
           IrisConfig
           |> toFile project.Config
@@ -214,14 +214,14 @@ module ProjectHelper =
 
         try
           IrisConfig.Save(destPath)
-          // create git commit
-          Commands.Stage(repo, destPath)
-          repo.Commit(msg, committer, committer)
-          |> fun commit -> Some (commit, project)
+          commitPath committer msg destPath project
         with
-          | exn -> None
-      | _ -> None
-
+          | exn ->
+            printfn "excption: %s" exn.Message
+            None
+      | _ ->
+        printfn "project has no path..."
+        None
 
   //   ____ _
   //  / ___| | ___  _ __   ___
@@ -294,4 +294,7 @@ module ProjectHelper =
     static member Load (path: FilePath) = load path
 
     member self.Save (committer: Signature, msg : string) : (Commit * Project) option =
-      save committer msg self
+      saveProject committer msg self
+
+    member self.SaveFile (committer: Signature, msg : string, path: FilePath) : (Commit * Project) option =
+      commitPath committer msg path self

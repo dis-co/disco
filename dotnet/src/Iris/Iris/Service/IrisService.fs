@@ -27,15 +27,31 @@ module Hooks =
   ///
   /// Returns: FileInfo
   let saveAsset (location: FilePath) (payload: string) : FileInfo =
-    let fi = IO.FileInfo(location)
-    if not (IO.Directory.Exists fi.Directory.FullName) then
-      IO.Directory.CreateDirectory fi.Directory.FullName
+    let info = IO.FileInfo location
+    if not (IO.Directory.Exists info.Directory.FullName) then
+      IO.Directory.CreateDirectory info.Directory.FullName
       |> ignore
     File.WriteAllText(location, payload)
-    fi.Refresh()
-    fi
+    info.Refresh()
+    info
 
-  /// ## maybeSave
+  /// ## deleteAsset
+  ///
+  /// Delete a file from disk
+  ///
+  /// ### Signature:
+  /// - location: path of file to delete
+  ///
+  /// Returns: bool
+  let deleteAsset (location: FilePath) : FileInfo =
+    if IO.File.Exists location then
+      try
+        IO.File.Delete location
+      with
+        | exn -> ()
+    IO.FileInfo location
+
+  /// ## saveToDisk
   ///
   /// Attempt to save the passed thing, and, if succesful, return its
   /// FileInfo object.
@@ -45,37 +61,77 @@ module Hooks =
   /// - thing: the thing to save. Must implement certain methods/getters
   ///
   /// Returns: FileInfo option
-  let inline maybeSave< ^t when
-                        ^t : (member ToYaml : Serializer -> string) and
-                        ^t : (member CanonicalName : string) and
-                        ^t : (member DirName : string)>
-                        (project: Project) (thing: ^t) =
+  let inline saveToDisk< ^t when
+                     ^t : (member ToYaml : Serializer -> string) and
+                     ^t : (member CanonicalName : string)       and
+                     ^t : (member DirName : string)>
+                     (project: Project) (thing: ^t) =
     match project.Path with
     | Some path ->
       let name = (^t : (member CanonicalName : string) thing)
       let dirname = (^t : (member DirName : string) thing)
-      let destDir = path </> dirname </> (name + ".yaml")
+      let destPath = path </> dirname </> (name + ".yaml")
       try
-        thing
-        |> Yaml.encode
-        |> saveAsset destDir
-        |> Some
+        // FIXME: should later be the person who issued command (session + user)
+        let committer =
+          let hostname = Net.Dns.GetHostName()
+          new Signature("Iris", "iris@" + hostname, new DateTimeOffset(DateTime.Now))
+
+        let msg = sprintf "Saved %s " name
+
+        let fileinfo =
+          thing
+          |> Yaml.encode
+          |> saveAsset destPath
+
+        match project.SaveFile(committer, msg, destPath) with
+        | Some (commit, saved) -> Some(fileinfo, commit, saved)
+        | _                    -> None
+
       with
         | exn ->
-          printfn "Error saving %A to %s." thing destDir
+          printfn "Error saving %A to %s." thing destPath
           printfn "Reason: %s" exn.Message
           None
     | _ -> None
 
+  let inline deleteFromDisk< ^t when
+                             ^t : (member CanonicalName : string) and
+                             ^t : (member DirName : string)>
+                             (project: Project) (thing: ^t) =
+    match project.Path with
+    | Some path ->
+      let name = (^t : (member CanonicalName : string) thing)
+      let dirname = (^t : (member DirName : string) thing)
+      let destPath = path </> dirname </> (name + ".yaml")
+      try
+        let fileinfo = deleteAsset destPath
+
+        let committer =
+          let hostname = Net.Dns.GetHostName()
+          new Signature("Iris", "iris@" + hostname, new DateTimeOffset(DateTime.Now))
+
+        let msg = sprintf "Saved %s " name
+
+        match project.SaveFile(committer, msg, destPath) with
+        | Some (commit, saved) -> Some(fileinfo, commit, saved)
+        | _                    -> None
+      with
+        | _ -> None
+    | _ -> None
+
   let inline persistEntry (project: Project) (sm: StateMachine) =
     match sm with
-    | AddCue        cue     -> maybeSave project cue
-    | UpdateCue     cue     -> maybeSave project cue
-    | RemoveCue     cue     -> maybeSave project cue
-    | AddCueList    cuelist -> maybeSave project cuelist
-    | UpdateCueList cuelist -> maybeSave project cuelist
-    | RemoveCueList cuelist -> maybeSave project cuelist
-    | _ -> None
+    | AddCue        cue     -> saveToDisk     project cue
+    | UpdateCue     cue     -> saveToDisk     project cue
+    | RemoveCue     cue     -> deleteFromDisk project cue
+    | AddCueList    cuelist -> saveToDisk     project cuelist
+    | UpdateCueList cuelist -> saveToDisk     project cuelist
+    | RemoveCueList cuelist -> deleteFromDisk project cuelist
+    | AddUser       user    -> saveToDisk     project user
+    | UpdateUser    user    -> saveToDisk     project user
+    | RemoveUser    user    -> deleteFromDisk project user
+    | _                     -> None
 
 //  ___      _     ____                  _
 // |_ _|_ __(_)___/ ___|  ___ _ ____   _(_) ___ ___
@@ -84,16 +140,16 @@ module Hooks =
 // |___|_|  |_|___/____/ \___|_|    \_/ |_|\___\___|
 //
 
-type IrisService(project: Project) =
+type IrisService(project: Project ref) =
   let signature = new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
 
   let store : Store = new Store(State.Empty)
 
   let kontext = new ZContext()
 
-  let raftserver = new RaftServer(project.Config, kontext)
-  let wsserver   = new WsServer(project.Config, raftserver)
-  let httpserver = new AssetServer(project.Config)
+  let raftserver = new RaftServer((!project).Config, kontext)
+  let wsserver   = new WsServer((!project).Config, raftserver)
+  let httpserver = new AssetServer((!project).Config)
 
   let setup _ =
     // WEBSOCKET
@@ -153,7 +209,7 @@ type IrisService(project: Project) =
     raftserver.OnApplyLog <- fun sm ->
       store.Dispatch sm
       wsserver.Broadcast sm
-      persistEntry project sm |> ignore
+      persistEntry !project sm |> ignore
 
   do setup ()
 
@@ -177,13 +233,13 @@ type IrisService(project: Project) =
   // |_____|_|_|  \___|\____\__, |\___|_|\___|
   //                        |___/
   member self.Start() =
-    printfn "Starting Http Server on %d" project.Config.PortConfig.Http
+    printfn "Starting Http Server on %d" (!project).Config.PortConfig.Http
     httpserver.Start()
 
-    printfn "Starting WebSocket Server on %d" project.Config.PortConfig.WebSocket
+    printfn "Starting WebSocket Server on %d" (!project).Config.PortConfig.WebSocket
     wsserver.Start()
 
-    printfn "Starting Raft Server %d" project.Config.PortConfig.Raft
+    printfn "Starting Raft Server %d" (!project).Config.PortConfig.Raft
     raftserver.Start()
 
   member self.Stop() =

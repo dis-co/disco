@@ -949,6 +949,7 @@ and IOBox =
         | _ ->
           printfn "Could not parse StringType from yml: %s" yml.StringType
           None
+
       | "IntBox" ->
         IntBox {
           Id       = Id yml.Id

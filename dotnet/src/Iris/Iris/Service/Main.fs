@@ -40,7 +40,7 @@ module Main =
 
     match Project.Load(projFile) with
       | Some project ->
-        use server = new IrisService(project)
+        use server = new IrisService(ref project)
         server.Start()
 
         printfn "Welcome to the Raft REPL. Type help to see all commands."
