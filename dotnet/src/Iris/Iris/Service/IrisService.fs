@@ -12,6 +12,7 @@ open Iris.Service.Raft.Server
 open LibGit2Sharp
 open ZeroMQ
 open FSharpx.Functional
+open SharpYaml.Serialization
 
 [<AutoOpen>]
 module Hooks =
@@ -45,7 +46,7 @@ module Hooks =
   ///
   /// Returns: FileInfo option
   let inline maybeSave< ^t when
-                        ^t : (member ToYaml : unit -> string) and
+                        ^t : (member ToYaml : Serializer -> string) and
                         ^t : (member CanonicalName : string) and
                         ^t : (member DirName : string)>
                         (project: Project) (thing: ^t) =

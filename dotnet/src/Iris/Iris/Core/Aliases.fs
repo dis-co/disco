@@ -82,7 +82,15 @@ type PropertyYaml(key, value) as self =
 and Property =
   { Key: string; Value: string }
 
-  member self.ToPropertyYaml() =
+  member self.ToYamlObject() =
     new PropertyYaml(self.Key, self.Value)
+
+  static member FromYamlObject(yml: PropertyYaml) : Property option =
+    try
+      { Key = yml.Key; Value = yml.Value } |> Some
+    with
+      | exn ->
+        printfn "Could not parse PropteryYaml: %s" exn.Message
+        None
 
 #endif

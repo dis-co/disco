@@ -437,11 +437,10 @@ module SerializationTests =
       ; EnumSlice     { Index = 0u; Value = { Key = "one"; Value = "two" }}
       ; ColorSlice    { Index = 0u; Value = RGBA { Red = 255uy; Blue = 2uy; Green = 255uy; Alpha = 33uy } }
       ; ColorSlice    { Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 25uy; Lightness = 255uy; Alpha = 55uy } }
-      // ; CompoundSlice { Index = 0u; Value = ioboxes () }
+      ; CompoundSlice { Index = 0u; Value = ioboxes () }
       |]
       |> Array.iter
         (fun slice ->
-          slice |> Yaml.encode |> printfn "slice:\n %s"
           let reslice = slice |> Yaml.encode |> Yaml.decode |> Option.get
           expect "Should be structurally equivalent" slice id reslice)
 
@@ -553,9 +552,9 @@ module SerializationTests =
         test_validate_arrivederci_serialization
         test_validate_errorresponse_serialization
         test_validate_cue_binary_serialization
-        // test_validate_cue_yaml_serialization
+        test_validate_cue_yaml_serialization
         test_validate_cuelist_binary_serialization
-        // test_validate_cuelist_yaml_serialization
+        test_validate_cuelist_yaml_serialization
         test_validate_patch_serialization
         test_validate_session_serialization
         test_validate_user_binary_serialization
@@ -563,7 +562,7 @@ module SerializationTests =
         test_validate_slice_binary_serialization
         test_validate_slice_yaml_serialization
         test_validate_iobox_binary_serialization
-        test_validate_iobox_binary_serialization
+        test_validate_iobox_yaml_serialization
         test_validate_state_serialization
         test_validate_state_machine_serialization
       ]

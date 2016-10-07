@@ -82,4 +82,10 @@ module Yaml =
   let inline decode< ^t when ^t : (static member FromYaml : string -> ^t option)> (str: string) =
     (^t : (static member FromYaml : string -> ^t option) str)
 
+  let inline toYaml< ^a, ^t when ^t : (member ToYamlObject : unit -> ^a)> (thing: ^t) : ^a =
+    (^t : (member ToYamlObject : unit -> ^a) thing)
+
+  let inline fromYaml< ^a, ^t when ^t : (static member FromYamlObject : ^a -> ^t option)> (thing: ^a) =
+    (^t : (static member FromYamlObject : ^a -> ^t option) thing)
+
 #endif

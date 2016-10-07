@@ -93,23 +93,36 @@ and Cue =
 
 #if JAVASCRIPT
 #else
-  member self.ToYaml(serializer: Serializer) =
-    // let ioboxes = Array.map (fun box -> box.ToIOBoxYaml()) self.IOBoxes
-    new CueYaml(string self.Id, self.Name, [| |])
-    |> serializer.Serialize
+  member self.ToYamlObject() =
+    let ioboxes = Array.map Yaml.toYaml self.IOBoxes
+    new CueYaml(string self.Id, self.Name, ioboxes)
 
-  static member FromYaml(str: string) =
-    let serializer = new Serializer()
-    let yaml = serializer.Deserialize<CueYaml>(str)
+  static member FromYamlObject(yaml: CueYaml) : Cue option =
+    let ioboxes =
+      Array.fold
+        (fun m box ->
+           match Yaml.fromYaml box with
+           | Some iobox -> Array.append m [| iobox |]
+           | _          -> m)
+        [| |]
+        yaml.IOBoxes
     try
       { Id = Id yaml.Id
       ; Name = yaml.Name
-      ; IOBoxes = [| |]
+      ; IOBoxes = ioboxes
       } |> Some
     with
       | exn ->
         printfn "Could not deserialize Cue: %s" exn.Message
         None
+
+  member self.ToYaml(serializer: Serializer) =
+    Yaml.toYaml self |> serializer.Serialize
+
+  static member FromYaml(str: string) : Cue option =
+    let serializer = new Serializer()
+    serializer.Deserialize<CueYaml>(str)
+    |> Yaml.fromYaml
 
   member self.DirName
     with get () = "cues"

@@ -188,14 +188,14 @@ type ColorSpace =
 #if JAVASCRIPT
 #else
 
-  member self.ToColorYaml() =
+  member self.ToYamlObject() =
     match self with
     | RGBA value ->
       new ColorYaml("RGBA", value.Alpha, value.Red, value.Green, value.Blue)
     | HSLA value ->
       new ColorYaml("HSLA", value.Alpha, value.Hue, value.Saturation, value.Lightness)
 
-  static member FromColorYaml(yml: ColorYaml) =
+  static member FromYamlObject(yml: ColorYaml) =
     match yml.ColorType with
     | "RGBA" ->
       RGBA {
@@ -203,16 +203,14 @@ type ColorSpace =
         Green = yml.Channel2;
         Blue = yml.Channel3;
         Alpha = yml.Alpha
-        }
-      |> Some
+      } |> Some
     | "HSLA" ->
       HSLA {
         Hue = yml.Channel1;
         Saturation = yml.Channel2;
         Lightness = yml.Channel3;
         Alpha = yml.Alpha
-        }
-      |> Some
+      } |> Some
     | _ -> None
 
 #endif

@@ -5,15 +5,28 @@ namespace Iris.Core
 open Iris.Core.FlatBuffers
 open Iris.Web.Core.FlatBufferTypes
 
+type CueList =
 #else
 
 open SharpYaml.Serialization
 open FlatBuffers
 open Iris.Serialization.Raft
 
+type CueListYaml(id, name, cues) as self =
+  [<DefaultValue>] val mutable Id   : string
+  [<DefaultValue>] val mutable Name : string
+  [<DefaultValue>] val mutable Cues : CueYaml array
+
+  new () = new CueListYaml(null, null, null)
+
+  do
+    self.Id   <- id
+    self.Name <- name
+    self.Cues <- cues
+
+and CueList =
 #endif
 
-type CueList =
   { Id   : Id
   ; Name : Name
   ; Cues : Cue array }
@@ -73,11 +86,35 @@ type CueList =
 
 #if JAVASCRIPT
 #else
-  member self.ToYaml(serializer: Serializer) =
-    serializer.Serialize(self)
+  member self.ToYamlObject() =
+    new CueListYaml(
+      string self.Id,
+      self.Name,
+      Array.map Yaml.toYaml self.Cues)
 
-  static member FromYaml(str: string) =
-    failwith "in a minute"
+  static member FromYamlObject(yml: CueListYaml) : CueList option =
+    try
+      let cues =
+        Array.fold
+          (fun m cueish ->
+            match Yaml.fromYaml cueish with
+            | Some cue -> Array.append m [| cue |]
+            | _        -> m)
+          [| |]
+          yml.Cues
+      { Id = Id yml.Id; Name = yml.Name; Cues = cues } |> Some
+    with
+      | exn ->
+        printfn "Could not deserialize CueList yml: %s" exn.Message
+        None
+
+  member self.ToYaml(serializer: Serializer) =
+    Yaml.toYaml self |> serializer.Serialize
+
+  static member FromYaml(str: string) : CueList option =
+    let serializer = new Serializer()
+    serializer.Deserialize<CueListYaml>(str)
+    |> Yaml.fromYaml
 
   member self.DirName
     with get () = "cuelists"
