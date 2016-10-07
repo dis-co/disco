@@ -15,6 +15,6 @@
 ### IRIS Project
 
 Data Types
-- Project
-- TEST
--
+
+* Project
+* TEST
