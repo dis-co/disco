@@ -6,16 +6,6 @@ open Iris.Core
 open Iris.Serialization.Raft
 open FlatBuffers
 
-//  _____ _ _   _
-// | ____(_) |_| |__   ___ _ __
-// |  _| | | __| '_ \ / _ \ '__|
-// | |___| | |_| | | |  __/ |
-// |_____|_|\__|_| |_|\___|_|
-
-type Either<'l,'r> =
-  | Left   of 'l                        // Encodes errors
-  | Right  of 'r                        // Return result and keep computation running
-
 //  _____
 // | ____|_ __ _ __ ___  _ __
 // |  _| | '__| '__/ _ \| '__|

@@ -7,48 +7,45 @@ namespace Iris.Core
 // |_____|_|\__|_| |_|\___|_|
 
 type Either<'err,'a> =
-  | Success of 'a
-  | Fail    of 'err
+  | Right of 'a
+  | Left  of 'err
 
   static member Get(v : Either<'err,'a>) : 'a =
     match v with
-      | Success v1 -> v1
-      | _ -> failwith "Either: cannot get on a Fail value"
+      | Right v1 -> v1
+      | _ -> failwith "Either: cannot get on a Left value"
 
   static member Error(v : Either<'err,'a>) : 'err =
     match v with
-      | Fail v1 -> v1
-      | _ -> failwith "Either: cannot get error from Success Value"
+      | Left v1 -> v1
+      | _ -> failwith "Either: cannot get error from Right Value"
 
   static member Map(f : 'a -> Either<'err,'b>) (v : Either<'err,'a>) : Either<'err, 'b> =
     match v with
-      | Success value -> f value
-      | Fail err -> Fail err
+      | Right value -> f value
+      | Left err -> Left err
 
 
 [<RequireQualifiedAccess>]
 module Either =
 
   let isFail = function
-    | Fail _ -> true
+    | Left _ -> true
     |      _ -> false
 
   let isSuccess = function
-    | Success _  -> true
+    | Right _  -> true
     |         _  -> false
 
-  let bindE (a : Either<'err,'a>) (f : 'a -> Either<'err,'b>) : Either<'err,'b> =
+  let bind (a : Either<'err,'a>) (f : 'a -> Either<'err,'b>) : Either<'err,'b> =
     match a with
-      | Success value -> f value
-      | Fail err      -> Fail err
+      | Right value -> f value
+      | Left err      -> Left err
 
-  let succeed v : Either<'err,'t> = Success v
-  let fail v : Either<'err,'t> = Fail v
-
-  let (>>>) v f = bindE v (fun _ -> f())
-  let (>>=) = bindE
+  let succeed v = Right v
+  let fail v = Left v
 
   let combine (v1 : 'a) (v2 : Either<'err,'b>) : Either<'err,('a * 'b)> =
     match v2 with
-      | Success value2 -> succeed (v1, value2)
-      | Fail err -> Fail err
+      | Right value2 -> succeed (v1, value2)
+      | Left err -> Left err
