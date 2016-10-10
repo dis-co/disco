@@ -163,14 +163,13 @@ module ProjectHelper =
       createAssetDir repo "users"
       repo
     match project.Path with
-      | Some path ->
-        path
-        |> Git.Repo.init
-        |> Either.map initRepoImpl
-      | _ ->
-        "project has no path"
-        |> RepositoryInitFailed
-        |> Either.fail
+    | Some path ->
+      path
+      |> Git.Repo.init
+      |> Either.map initRepoImpl
+    | _ ->
+      ProjectPathError
+      |> Either.fail
 
   //   ____             __ _                       _   _
   //  / ___|___  _ __  / _(_) __ _ _   _ _ __ __ _| |_(_) ___  _ __
