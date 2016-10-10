@@ -85,15 +85,16 @@ module Hooks =
           |> saveAsset destPath
 
         match project.SaveFile(committer, msg, relPath) with
-        | Some (commit, saved) -> Some(fileinfo, commit, saved)
-        | _                    -> None
+        | Right (commit, saved) -> Right(fileinfo, commit, saved)
+        | Left   error          -> Left error
 
       with
         | exn ->
-          printfn "Error saving %A to %s." thing destPath
-          printfn "Reason: %s" exn.Message
-          None
-    | _ -> None
+          exn.Message
+          |> AssetSaveError
+          |> Either.fail
+
+    | _ -> ProjectPathError |> Either.fail
 
   let inline deleteFromDisk< ^t when
                              ^t : (member CanonicalName : string) and
@@ -114,11 +115,14 @@ module Hooks =
         let msg = sprintf "Saved %s " name
 
         match project.SaveFile(committer, msg, relPath) with
-        | Some (commit, saved) -> Some(fileinfo, commit, saved)
-        | _                    -> None
+        | Right (commit, saved) -> Right(fileinfo, commit, saved)
+        | Left error            -> Left error
       with
-        | _ -> None
-    | _ -> None
+        | exn ->
+          exn.Message
+          |> AssetDeleteError
+          |> Either.fail
+    | _ -> Either.fail ProjectPathError
 
   let inline persistEntry (project: Project) (sm: StateMachine) =
     match sm with
@@ -131,7 +135,7 @@ module Hooks =
     | AddUser       user    -> saveToDisk     project user
     | UpdateUser    user    -> saveToDisk     project user
     | RemoveUser    user    -> deleteFromDisk project user
-    | _                     -> None
+    | _                     -> Left (Other "this is ok. relax")
 
   let updateRepo (project: Project) =
     printfn "should pull shit now"

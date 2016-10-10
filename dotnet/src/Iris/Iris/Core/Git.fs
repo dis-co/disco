@@ -59,11 +59,11 @@ module Git =
     /// ### Signature:
     /// - branch: Branch
     ///
-    /// Returns: Branch option
-    let tracked (branch: Branch) : Branch option =
+    /// Returns: Either<string,Branch>
+    let tracked (branch: Branch) : Either<IrisError<string>,Branch> =
       match branch.TrackedBranch with
-        | null      -> None
-        | branch -> Some branch
+        | null      -> Either.fail BranchNotFound
+        | branch -> Either.succeed branch
 
     /// ## Get details about the remote tracking branch
     ///
@@ -73,10 +73,10 @@ module Git =
     /// - branch: Branch to get details for
     ///
     /// Returns: BranchTrackingDetails option
-    let tracking (branch: Branch) : BranchTrackingDetails option =
+    let tracking (branch: Branch) : Either<IrisError<string>,BranchTrackingDetails> =
       match branch.TrackingDetails with
-        | null       -> None
-        | details -> Some details
+        | null       -> Either.fail BranchDetailsNotFound
+        | details -> Either.succeed details
 
     /// ## Get the lastest commit object.
     ///
@@ -401,8 +401,8 @@ module Git =
     /// Returns: Branch
     let checkout (spec: string) (repo: Repository) =
       match LibGit2Sharp.Commands.Checkout(repo, spec) with
-        | null      -> None
-        | branch -> Some branch
+        | null      -> Either.fail BranchNotFound
+        | branch -> Either.succeed branch
 
     /// ## Find and return Repository object
     ///
@@ -412,13 +412,19 @@ module Git =
     /// - path: FilePath to search for the .git folder
     ///
     /// Returns: Repository option
-    let repository (path: FilePath) : Repository option =
+    let repository (path: FilePath) : Either<IrisError<string>,Repository> =
       try
-        new Repository(System.IO.Path.Combine(path, ".git")) |> Some
+        new Repository(System.IO.Path.Combine(path, ".git"))
+        |> Either.succeed
       with
+        | :? RepositoryNotFoundException as exn  ->
+          RepositoryNotFound
+          |> Either.fail
         | exn ->
-          logger "Git" exn.Message
-          None
+          printfn "type of git error: %A" (exn.GetType())
+          exn.Message
+          |> GitError
+          |> Either.fail
 
     /// ## Initialize a new repository
     ///
@@ -427,15 +433,16 @@ module Git =
     /// ### Signature:
     /// - path: FilePath pointing to the target directory
     ///
-    /// Returns: Repository option
+    /// Returns: Either<IrisError<string>,Repository>
     let init (path: FilePath) =
       try
         Repository.Init path |> ignore
         repository path
       with
         | exn ->
-          logger "Git" exn.Message
-          None
+          exn.Message
+          |> RepositoryInitFailed
+          |> Either.fail
 
     let add (repo: Repository) (filepath: FilePath) =
       if File.Exists filepath then

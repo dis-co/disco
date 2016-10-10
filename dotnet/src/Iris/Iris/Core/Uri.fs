@@ -13,10 +13,8 @@ module Uri =
 
   let mkProjectUri (project : Project) =
     match currentBranch project with
-      | Some(branch) ->
-        mkUri "project" project.Name branch.CanonicalName
-      | _ ->
-        mkUri "project" project.Name "<nobranch>"
+      | Right branch -> mkUri "project" project.Name branch.CanonicalName
+      | _            -> mkUri "project" project.Name "<nobranch>"
 
   let mkCueUri (project : Project) (group : string) =
     mkUri "cues" project.Name group

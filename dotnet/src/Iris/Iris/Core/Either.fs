@@ -29,23 +29,28 @@ type Either<'err,'a> =
 [<RequireQualifiedAccess>]
 module Either =
 
+  let succeed v = Right v
+  let fail v = Left v
+
   let isFail = function
     | Left _ -> true
     |      _ -> false
 
   let isSuccess = function
-    | Right _  -> true
-    |         _  -> false
+    | Right _ -> true
+    |       _ -> false
 
-  let bind (a : Either<'err,'a>) (f : 'a -> Either<'err,'b>) : Either<'err,'b> =
+  let inline bind< ^a, ^b, ^err > (f: ^a -> Either< ^err, ^b >) (a: Either< ^err, ^a >) : Either< ^err, ^b > =
     match a with
-      | Right value -> f value
-      | Left err      -> Left err
+    | Right value -> f value
+    | Left err    -> Left err
 
-  let succeed v = Right v
-  let fail v = Left v
+  let inline map< ^a, ^b, ^err > (f: ^a -> ^b) (a: Either< ^err, ^a >) : Either< ^err, ^b > =
+    match a with
+    | Right value -> f value |> succeed
+    | Left  error -> Left error
 
-  let combine (v1 : 'a) (v2 : Either<'err,'b>) : Either<'err,('a * 'b)> =
+  let inline combine< ^a, ^b, ^err > (v1 : ^a) (v2 : Either< ^err, ^b >) : Either< ^err, (^a * ^b) > =
     match v2 with
-      | Right value2 -> succeed (v1, value2)
-      | Left err -> Left err
+    | Right value2 -> succeed (v1, value2)
+    | Left err     -> Left err

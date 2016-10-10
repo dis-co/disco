@@ -28,7 +28,7 @@ module ProjectTests =
 
         let (commit, project) =
           { Project.Create name with Path = Some(path) }
-          |> save signature "Initial project save."
+          |> saveProject signature "Initial project save."
           |> Option.get
 
         let result = Project.Load(path </> PROJECT_FILENAME)
@@ -250,7 +250,9 @@ module ProjectTests =
 
         let project =
           { Project.Create name with Path = Some(path) }
-          |> save signature "Initial commit."
+          |> saveProject signature "Initial commit."
+
+        printfn "path: %s" (path </> PROJECT_FILENAME)
 
         let loaded =
           (path </> PROJECT_FILENAME)
@@ -287,7 +289,7 @@ module ProjectTests =
           { Project.Create name with
               Path = Some(path)
               Author = Some(author1) }
-          |> save signature msg1
+          |> saveProject signature msg1
           |> Option.get
 
         (path </> PROJECT_FILENAME)
@@ -305,7 +307,7 @@ module ProjectTests =
 
         let (commit2, project) =
           { project with Author = Some author2 }
-          |> save signature msg2
+          |> saveProject signature msg2
           |> Option.get
 
 
@@ -327,7 +329,7 @@ module ProjectTests =
 
         let (commit3, project) =
            { project with Author = Some author3 }
-           |> save signature msg3
+           |> saveProject signature msg3
            |> Option.get
 
         (path </> PROJECT_FILENAME)

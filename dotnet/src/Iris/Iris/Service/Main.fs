@@ -100,10 +100,12 @@ module Main =
       | _      -> printfn "unable to create database"
 
     match project.Save(me,"project created") with
-      | Some(commit, project) ->
-        printfn "project initialized in %A" project.Path
-      | _ ->
-        failwith "unable to create project"
+      | Right(commit, project) ->
+        project.Path
+        |> Option.get
+        |> printfn "project initialized in %A"
+      | Left error ->
+        failwithf "Unable to create project: %A" error
 
   //  ____                _
   // |  _ \ ___  ___  ___| |_

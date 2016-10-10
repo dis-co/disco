@@ -38,15 +38,15 @@ module ProjectHelper =
   let repository (project: Project) =
     match project.Path with
       | Some path -> Git.Repo.repository path
-      | _         -> None
+      | _         -> ProjectPathError |> Either.fail
 
   let currentBranch (project: Project) =
     repository project
-    |> Option.map Git.Branch.current
+    |> Either.map Git.Branch.current
 
   let checkoutBranch (name: string) (project: Project) =
     repository project
-    |> Option.bind (Git.Repo.checkout name)
+    |> Either.bind (Git.Repo.checkout name)
 
   /// ### Create a new project with the given name
   ///
@@ -154,16 +154,23 @@ module ProjectHelper =
   /// exists, otherwise creating it.
   ///
   /// # Returns: Repository
-  let initRepo (project: Project) : Repository option =
-    match Option.bind Git.Repo.init project.Path with
-      | Some repo as result->
-        writeDaemonExportFile repo
-        writeGitIgnoreFile repo
-        createAssetDir repo "cues"
-        createAssetDir repo "cuelists"
-        createAssetDir repo "users"
-        result
-      | _ -> None
+  let initRepo (project: Project) : Either<IrisError<string>,Repository> =
+    let initRepoImpl (repo: Repository) =
+      writeDaemonExportFile repo
+      writeGitIgnoreFile repo
+      createAssetDir repo "cues"
+      createAssetDir repo "cuelists"
+      createAssetDir repo "users"
+      repo
+    match project.Path with
+      | Some path ->
+        path
+        |> Git.Repo.init
+        |> Either.map initRepoImpl
+      | _ ->
+        "project has no path"
+        |> RepositoryInitFailed
+        |> Either.fail
 
   //   ____             __ _                       _   _
   //  / ___|___  _ __  / _(_) __ _ _   _ _ __ __ _| |_(_) ___  _ __
@@ -208,7 +215,7 @@ module ProjectHelper =
   /// - project   : Project
   ///
   /// Returns: (Commit * Project) option
-  let commitPath (committer: Signature) (msg : string) (filepath: FilePath) (project: Project) : (Commit * Project) option =
+  let commitPath (committer: Signature) (msg : string) (filepath: FilePath) (project: Project) : Either<IrisError<string>,(Commit * Project)> =
     let doCommit repo =
       try
         let parent = Git.Repo.parentPath repo
@@ -218,22 +225,21 @@ module ProjectHelper =
         // create git commit
         Git.Repo.stage repo abspath
         Git.Repo.commit repo msg committer
-        |> fun commit -> Some (commit, project)
+        |> fun commit -> Either.succeed (commit, project)
       with
         | exn ->
-          printfn "Excption during commitPath: %s" exn.Message
-          None
+          exn.Message
+          |> CommitError
+          |> Either.fail
 
     match repository project with
-    | None ->
+    | Left _ ->
       match initRepo project with
-      | Some repo -> doCommit repo
-      | _ ->
-        printfn "unable to fetch or initialize repository. this is bad."
-        None
-    | Some repo -> doCommit repo
+      | Right repo -> doCommit repo
+      | Left error -> Left error
+    | Right repo -> doCommit repo
 
-  let saveProject (committer: Signature) (msg : string) (project: Project) : (Commit * Project) option =
+  let saveProject (committer: Signature) (msg : string) (project: Project) : Either<IrisError<string>,(Commit * Project)> =
     match project.Path with
     | Some path ->
       let project =
@@ -249,11 +255,12 @@ module ProjectHelper =
         commitPath committer msg destPath project
       with
         | exn ->
-          printfn "excption: %s" exn.Message
-          None
+          exn.Message
+          |> ProjectSaveError
+          |> Either.fail
     | _ ->
-      printfn "project has no path..."
-      None
+      ProjectPathError
+      |> Either.fail
 
   //   ____ _
   //  / ___| | ___  _ __   ___
@@ -327,8 +334,8 @@ module ProjectHelper =
     static member Load (path: FilePath) =
       load path
 
-    member self.Save (committer: Signature, msg : string) : (Commit * Project) option =
+    member self.Save (committer: Signature, msg : string) : Either<IrisError<string>,(Commit * Project)> =
       saveProject committer msg self
 
-    member self.SaveFile (committer: Signature, msg : string, path: FilePath) : (Commit * Project) option =
+    member self.SaveFile (committer: Signature, msg : string, path: FilePath) : Either<IrisError<string>,(Commit * Project)> =
       commitPath committer msg path self
