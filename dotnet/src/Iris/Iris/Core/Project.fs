@@ -99,9 +99,9 @@ module ProjectHelper =
   /// Attempts to load a serializad project file from the specified location.
   ///
   /// # Returns: Project option
-  let load (path : FilePath) : Project option =
+  let load (path : FilePath) : Either<IrisError<string>,Project> =
     if not (File.Exists path) then
-      None
+      Either.fail ProjectNotFound
     else
       IrisConfig.Load(path)
 
@@ -124,7 +124,7 @@ module ProjectHelper =
       ; Copyright = parseStringProp meta.Copyright
       ; Author    = parseStringProp meta.Author
       ; Config    = Config.FromFile(IrisConfig) }
-      |> Some
+      |> Either.succeed
 
   let writeDaemonExportFile (repo: Repository) =
     File.WriteAllText(Path.Combine(repo.Info.Path, "git-daemon-export-ok"), "")
@@ -242,6 +242,9 @@ module ProjectHelper =
   let saveProject (committer: Signature) (msg : string) (project: Project) : Either<IrisError<string>,(Commit * Project)> =
     match project.Path with
     | Some path ->
+      if not (Directory.Exists path) then
+        Directory.CreateDirectory path |> ignore
+
       let project =
         IrisConfig
         |> toFile project.Config
@@ -331,7 +334,7 @@ module ProjectHelper =
     static member Create (name: string) =
       create name
 
-    static member Load (path: FilePath) =
+    static member Load (path: FilePath) : Either<IrisError<string>,Project> =
       load path
 
     member self.Save (committer: Signature, msg : string) : Either<IrisError<string>,(Commit * Project)> =

@@ -29,13 +29,13 @@ module ProjectTests =
         let (commit, project) =
           { Project.Create name with Path = Some(path) }
           |> saveProject signature "Initial project save."
-          |> Option.get
+          |> Either.get
 
         let result = Project.Load(path </> PROJECT_FILENAME)
 
-        expect "Projects should be loaded" true Option.isSome result
+        expect "Projects should be loaded" true Either.isSuccess result
 
-        let loaded = Option.get result
+        let loaded = Either.get result
 
         expect "Projects should be equal" true ((=) project) loaded
 
@@ -215,11 +215,11 @@ module ProjectTests =
 
         let (_,saved) =
           project.Save(signature, "Initial project save.")
-          |> Option.get
+          |> Either.get
 
         let loaded =
           Project.Load(path </> PROJECT_FILENAME)
-          |> Option.get
+          |> Either.get
 
         // the only difference will be the automatically assigned timestamp
         expect "CreatedOn should be structurally equal"  true ((=) loaded.CreatedOn) saved.CreatedOn
@@ -249,22 +249,20 @@ module ProjectTests =
         then Directory.Delete(path, true) |> ignore
 
         let project =
-          { Project.Create name with Path = Some(path) }
+          { Project.Create name with Path = Some path }
           |> saveProject signature "Initial commit."
-
-        printfn "path: %s" (path </> PROJECT_FILENAME)
 
         let loaded =
           (path </> PROJECT_FILENAME)
           |> Project.Load
-          |> Option.get
+          |> Either.get
 
         expect "Projects should be a folder"         true  Directory.Exists path
-        expect "Projects should be a git repo"       true  Directory.Exists (path + "/.git")
+        expect "Projects should be a git repo"       true  Directory.Exists (path </> ".git")
         expect "Projects should have project yml"    true  File.Exists (path </> PROJECT_FILENAME)
-        expect "Projects should have repo"           true  (repository >> Option.isSome) loaded
-        expect "Projects should not be dirty"        false (repository >> Option.get >> isDirty) loaded
-        expect "Projects should have initial commit" 1     (repository >> Option.get >> commitCount) loaded
+        expect "Projects should have repo"           true  (repository >> Either.isSuccess) loaded
+        expect "Projects should not be dirty"        false (repository >> Either.get >> isDirty) loaded
+        expect "Projects should have initial commit" 1     (repository >> Either.get >> commitCount) loaded
 
   //    ____                          _ _
   //   / ___|___  _ __ ___  _ __ ___ (_) |_ ___
@@ -290,13 +288,13 @@ module ProjectTests =
               Path = Some(path)
               Author = Some(author1) }
           |> saveProject signature msg1
-          |> Option.get
+          |> Either.get
 
         (path </> PROJECT_FILENAME)
         |> Project.Load
-        |> Option.get
+        |> Either.get
         |> fun p ->
-            let repo = repository p |> Option.get
+            let repo = repository p |> Either.get
             let c =  commits repo |> elementAt 0
             expect "Authors should be equal"                true ((Option.get >> (=)) p.Author) author1
             expect "Project should have one initial commit" true ((=) (commitCount repo)) 1
@@ -308,14 +306,14 @@ module ProjectTests =
         let (commit2, project) =
           { project with Author = Some author2 }
           |> saveProject signature msg2
-          |> Option.get
+          |> Either.get
 
 
         (path </> PROJECT_FILENAME)
         |> Project.Load
-        |> Option.get
+        |> Either.get
         |> fun p ->
-            let repo = repository p |> Option.get
+            let repo = repository p |> Either.get
             let cs = commits repo
             let c1 = elementAt 0 cs
             let c2 = elementAt 1 cs
@@ -330,13 +328,13 @@ module ProjectTests =
         let (commit3, project) =
            { project with Author = Some author3 }
            |> saveProject signature msg3
-           |> Option.get
+           |> Either.get
 
         (path </> PROJECT_FILENAME)
         |> Project.Load
-        |> Option.get
+        |> Either.get
         |> fun p ->
-            let repo = repository p |> Option.get
+            let repo = repository p |> Either.get
             let cs = commits repo
             let c1 = elementAt 0 cs
             let c2 = elementAt 1 cs

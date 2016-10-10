@@ -10,21 +10,6 @@ type Either<'err,'a> =
   | Right of 'a
   | Left  of 'err
 
-  static member Get(v : Either<'err,'a>) : 'a =
-    match v with
-      | Right v1 -> v1
-      | _ -> failwith "Either: cannot get on a Left value"
-
-  static member Error(v : Either<'err,'a>) : 'err =
-    match v with
-      | Left v1 -> v1
-      | _ -> failwith "Either: cannot get error from Right Value"
-
-  static member Map(f : 'a -> Either<'err,'b>) (v : Either<'err,'a>) : Either<'err, 'b> =
-    match v with
-      | Right value -> f value
-      | Left err -> Left err
-
 
 [<RequireQualifiedAccess>]
 module Either =
@@ -39,6 +24,14 @@ module Either =
   let isSuccess = function
     | Right _ -> true
     |       _ -> false
+
+  let get = function
+    | Right result -> result
+    | Left   error -> failwithf "Either: cannot get result from failure: %A" error
+
+  let error = function
+    | Left error -> error
+    | Right _    -> failwith "Either: cannot get error from regular result"
 
   let inline bind< ^a, ^b, ^err > (f: ^a -> Either< ^err, ^b >) (a: Either< ^err, ^a >) : Either< ^err, ^b > =
     match a with

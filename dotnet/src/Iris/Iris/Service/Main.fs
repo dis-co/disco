@@ -39,14 +39,14 @@ module Main =
       exit 2
 
     match Project.Load(projFile) with
-      | Some project ->
+      | Right project ->
         use server = new IrisService(ref project)
         server.Start()
 
         printfn "Welcome to the Raft REPL. Type help to see all commands."
         consoleLoop server
-      | _ ->
-        printfn "Could not load project. Aborting."
+      | Left error ->
+        printfn "Could not load project. %A Aborting." error
         exit 2
 
   //   ____                _
@@ -115,7 +115,7 @@ module Main =
 
   let resetDataDir (datadir: FilePath) =
     match Project.Load(datadir </> PROJECT_FILENAME) with
-    | Some project ->
+    | Right project ->
       let raftDir = IO.Path.Combine(datadir, RAFT_DIRECTORY)
       if IO.Directory.Exists raftDir then
         rmDir raftDir
@@ -130,7 +130,8 @@ module Main =
         printfn "successfully reset database"
       | _ -> printfn "unable to reset database"
 
-    | _ -> printfn "project could not be loaded. doing nothing.."
+    | Left error ->
+      printfn "Project could not be loaded. %A" error
 
   //  ____
   // |  _ \ _   _ _ __ ___  _ __

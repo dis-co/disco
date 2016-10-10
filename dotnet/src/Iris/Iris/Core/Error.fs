@@ -9,6 +9,7 @@ type IrisError<'a> =
   | CommitError            of string
   | GitError               of string
 
+  | ProjectNotFound
   | ProjectPathError
   | ProjectSaveError       of string
 
