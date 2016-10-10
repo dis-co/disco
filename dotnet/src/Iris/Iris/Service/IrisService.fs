@@ -133,6 +133,9 @@ module Hooks =
     | RemoveUser    user    -> deleteFromDisk project user
     | _                     -> None
 
+  let updateRepo (project: Project) =
+    printfn "should pull shit now"
+
 //  ___      _     ____                  _
 // |_ _|_ __(_)___/ ___|  ___ _ ____   _(_) ___ ___
 //  | || '__| / __\___ \ / _ \ '__\ \ / / |/ __/ _ \
@@ -209,7 +212,10 @@ type IrisService(project: Project ref) =
     raftserver.OnApplyLog <- fun sm ->
       store.Dispatch sm
       wsserver.Broadcast sm
-      persistEntry !project sm |> ignore
+      if raftserver.IsLeader then
+        persistEntry !project sm |> ignore
+      else
+        updateRepo !project
 
   do setup ()
 

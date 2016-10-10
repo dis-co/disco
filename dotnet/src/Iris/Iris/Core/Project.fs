@@ -212,14 +212,10 @@ module ProjectHelper =
     let doCommit repo =
       try
         let parent = Git.Repo.parentPath repo
-
         let abspath =  parent </> filepath
-
-        printfn "abs path: %s" abspath
 
         // FIXME: need to do some checks on repository before...
         // create git commit
-        printfn "abs path: %s" abspath
         Git.Repo.stage repo abspath
         Git.Repo.commit repo msg committer
         |> fun commit -> Some (commit, project)

@@ -573,6 +573,12 @@ ConfigChangeEntry = %s
         Option.get self.ConfigChangeEntry |> string
        else "<empty>")
 
+  member self.IsLeader
+    with get () =
+      match self.CurrentLeader with
+      | Some lid -> self.Node.Id = lid
+      | _ -> false
+
 ////////////////////////////////////////
 //  __  __                       _    //
 // |  \/  | ___  _ __   __ _  __| |   //

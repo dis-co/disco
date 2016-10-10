@@ -99,6 +99,11 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
   member self.OnCreateSnapshot
     with set cb = onCreateSnapshot <- Some cb
 
+  member self.IsLeader
+    with get () =
+      let state = readTVar appState |> atomically
+      state.Raft.IsLeader
+
   //                           _
   //  _ __ ___   ___ _ __ ___ | |__   ___ _ __ ___
   // | '_ ` _ \ / _ \ '_ ` _ \| '_ \ / _ \ '__/ __|
