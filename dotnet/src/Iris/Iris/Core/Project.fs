@@ -126,6 +126,28 @@ module ProjectHelper =
       ; Config    = Config.FromFile(IrisConfig) }
       |> Some
 
+  let writeDaemonExportFile (repo: Repository) =
+    File.WriteAllText(Path.Combine(repo.Info.Path, "git-daemon-export-ok"), "")
+
+  let writeGitIgnoreFile (repo: Repository) =
+    let gitignore = @"
+/.raft
+    "
+    let parent = Git.Repo.parentPath repo
+    let path = parent </> ".gitignore"
+
+    File.WriteAllText(path, gitignore)
+    Git.Repo.stage repo path
+
+  let createAssetDir (repo: Repository) (dir: FilePath) =
+    let parent = Git.Repo.parentPath repo
+    let target = parent </> dir
+    if not (Directory.Exists target) && not (File.Exists target) then
+      Directory.CreateDirectory target |> ignore
+      let gitkeep = target </> ".gitkeep"
+      File.WriteAllText(gitkeep, "")
+      Git.Repo.stage repo gitkeep
+
   /// ### Initialize the project git repository
   ///
   /// Given a project value, attempt to work out whether a git repository at that location already
@@ -135,7 +157,11 @@ module ProjectHelper =
   let initRepo (project: Project) : Repository option =
     match Option.bind Git.Repo.init project.Path with
       | Some repo as result->
-        File.WriteAllText(Path.Combine(repo.Info.Path, "git-daemon-export-ok"), "")
+        writeDaemonExportFile repo
+        writeGitIgnoreFile repo
+        createAssetDir repo "cues"
+        createAssetDir repo "cuelists"
+        createAssetDir repo "users"
         result
       | _ -> None
 
@@ -183,45 +209,55 @@ module ProjectHelper =
   ///
   /// Returns: (Commit * Project) option
   let commitPath (committer: Signature) (msg : string) (filepath: FilePath) (project: Project) : (Commit * Project) option =
-    match File.Exists filepath, repository project with
-      | true, Some repo ->
-        try
-          // FIXME: need to do some checks on repository before...
-          // create git commit
-          printfn "adding %s to the index" filepath
-          repo.Index.Add(filepath)
-          // Commands.Stage(repo, filepath)
-          repo.Commit(msg, committer, committer)
-          |> fun commit -> Some (commit, project)
-        with
-          | exn ->
-            printfn "excption: %s" exn.Message
-            None
+    let doCommit repo =
+      try
+        let parent = Git.Repo.parentPath repo
+
+        let abspath =  parent </> filepath
+
+        printfn "abs path: %s" abspath
+
+        // FIXME: need to do some checks on repository before...
+        // create git commit
+        printfn "abs path: %s" abspath
+        Git.Repo.stage repo abspath
+        Git.Repo.commit repo msg committer
+        |> fun commit -> Some (commit, project)
+      with
+        | exn ->
+          printfn "Excption during commitPath: %s" exn.Message
+          None
+
+    match repository project with
+    | None ->
+      match initRepo project with
+      | Some repo -> doCommit repo
       | _ ->
-        printfn "project has no path..."
+        printfn "unable to fetch or initialize repository. this is bad."
         None
+    | Some repo -> doCommit repo
 
   let saveProject (committer: Signature) (msg : string) (project: Project) : (Commit * Project) option =
     match project.Path with
-      | Some path ->
-        let project =
-          IrisConfig
-          |> toFile project.Config
-          |> saveMetadata project
+    | Some path ->
+      let project =
+        IrisConfig
+        |> toFile project.Config
+        |> saveMetadata project
 
-        // save everything!
-        let destPath = Path.Combine(path, PROJECT_FILENAME)
+      // save everything!
+      let destPath = Path.Combine(path, PROJECT_FILENAME)
 
-        try
-          IrisConfig.Save(destPath)
-          commitPath committer msg destPath project
-        with
-          | exn ->
-            printfn "excption: %s" exn.Message
-            None
-      | _ ->
-        printfn "project has no path..."
-        None
+      try
+        IrisConfig.Save(destPath)
+        commitPath committer msg destPath project
+      with
+        | exn ->
+          printfn "excption: %s" exn.Message
+          None
+    | _ ->
+      printfn "project has no path..."
+      None
 
   //   ____ _
   //  / ___| | ___  _ __   ___
@@ -289,9 +325,11 @@ module ProjectHelper =
 
   type Project with
 
-    static member Create (name: string) = create name
+    static member Create (name: string) =
+      create name
 
-    static member Load (path: FilePath) = load path
+    static member Load (path: FilePath) =
+      load path
 
     member self.Save (committer: Signature, msg : string) : (Commit * Project) option =
       saveProject committer msg self

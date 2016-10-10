@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+open System.IO
+
 //   ____ _ _
 //  / ___(_) |_
 // | |  _| | __|
@@ -10,6 +12,7 @@ namespace Iris.Core
 ///
 /// Provides a more functional API over LibGit2Sharp.
 ///
+[<RequireQualifiedAccess>]
 module Git =
 
   open System.Linq
@@ -193,6 +196,17 @@ module Git =
   /// Git repository management code.
   ///
   module Repo =
+
+    let path (repo: Repository) =
+      repo.Info.Path
+
+    let parentPath (repo: Repository) =
+      let p = path repo
+      if p.[p.Length - 1] = Path.DirectorySeparatorChar then
+        p |> Path.GetDirectoryName
+        |> Path.GetDirectoryName
+      else
+        p |> Path.GetDirectoryName
 
     /// ## Get all tags for repository
     ///
@@ -402,9 +416,9 @@ module Git =
       try
         new Repository(System.IO.Path.Combine(path, ".git")) |> Some
       with
-        | _ ->
+        | exn ->
+          logger "Git" exn.Message
           None
-
 
     /// ## Initialize a new repository
     ///
@@ -419,4 +433,16 @@ module Git =
         Repository.Init path |> ignore
         repository path
       with
-        | _ -> None
+        | exn ->
+          logger "Git" exn.Message
+          None
+
+    let add (repo: Repository) (filepath: FilePath) =
+      if File.Exists filepath then
+        repo.Index.Add filepath
+
+    let stage (repo: Repository) (filepath: FilePath) =
+      Commands.Stage(repo, filepath)
+
+    let commit (repo: Repository) (msg: string) (committer: Signature) =
+      repo.Commit(msg, committer, committer)

@@ -69,8 +69,8 @@ module Hooks =
     match project.Path with
     | Some path ->
       let name = (^t : (member CanonicalName : string) thing)
-      let dirname = (^t : (member DirName : string) thing)
-      let destPath = path </> dirname </> (name + ".yaml")
+      let relPath = (^t : (member DirName : string) thing) </> (name + ".yaml")
+      let destPath = path </> relPath
       try
         // FIXME: should later be the person who issued command (session + user)
         let committer =
@@ -84,7 +84,7 @@ module Hooks =
           |> Yaml.encode
           |> saveAsset destPath
 
-        match project.SaveFile(committer, msg, destPath) with
+        match project.SaveFile(committer, msg, relPath) with
         | Some (commit, saved) -> Some(fileinfo, commit, saved)
         | _                    -> None
 
@@ -102,8 +102,8 @@ module Hooks =
     match project.Path with
     | Some path ->
       let name = (^t : (member CanonicalName : string) thing)
-      let dirname = (^t : (member DirName : string) thing)
-      let destPath = path </> dirname </> (name + ".yaml")
+      let relPath = (^t : (member DirName : string) thing) </> (name + ".yaml")
+      let destPath = path </> relPath
       try
         let fileinfo = deleteAsset destPath
 
@@ -113,7 +113,7 @@ module Hooks =
 
         let msg = sprintf "Saved %s " name
 
-        match project.SaveFile(committer, msg, destPath) with
+        match project.SaveFile(committer, msg, relPath) with
         | Some (commit, saved) -> Some(fileinfo, commit, saved)
         | _                    -> None
       with

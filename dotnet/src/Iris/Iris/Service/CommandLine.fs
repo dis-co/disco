@@ -17,60 +17,50 @@ open Iris.Service.Raft.Server
 //              |___/                 //
 ////////////////////////////////////////
 
+type SubCommand =
+  | Create
+  | Start
+  | Reset
+  | Dump
+
 type CLIArguments =
-  | [<EqualsAssignment>] Bind  of string
-  | [<EqualsAssignment>] Raft  of uint32
-  | [<EqualsAssignment>] Web   of uint32
-  | [<EqualsAssignment>] Ws    of uint32
-  | [<EqualsAssignment>] Dir   of string
-  | [<EqualsAssignment>] Name  of string
-  |                      Create
-  |                      Start
-  |                      Reset
-  |                      Dump
+  | [<EqualsAssignment>]            Bind  of string
+  | [<EqualsAssignment>]            Raft  of uint32
+  | [<EqualsAssignment>]            Web   of uint32
+  | [<EqualsAssignment>]            Ws    of uint32
+  | [<EqualsAssignment>]            Dir   of string
+  | [<EqualsAssignment>]            Name  of string
+  | [<Mandatory;MainCommand;CliPosition(CliPosition.First)>] Cmd   of SubCommand
+
 
   interface IArgParserTemplate with
     member self.Usage =
       match self with
         | Dir     _ -> "Project directory to place the config & database in"
-        | Name    _ -> "Project name when using --create"
+        | Name    _ -> "Project name when using <create>"
         | Bind    _ -> "Specify a valid IP address."
         | Web     _ -> "Http server port."
         | Ws      _ -> "WebSocket port."
         | Raft    _ -> "Raft server port (internal)."
-        | Create    -> "Create a new configuration (requires --data-dir --bind-address --web-port --raft-port)"
-        | Start     -> "Start the server (requires --data-dir)"
-        | Reset     -> "Join an existing cluster (requires --data-dir)"
-        | Dump      -> "Dump the current state on disk (requires --data-dir)"
+        | Cmd     _ -> "Either one of (--create, --start, --reset or --dump)"
 
 let parser = ArgumentParser.Create<CLIArguments>()
 
 let validateOptions (opts: ParseResults<CLIArguments>) =
-  let ensureDir b =
+  let ensureDir result =
     if opts.Contains <@ Dir @> |> not then
       printfn "Error: you must specify a project dir when starting a node"
       exit 3
-    b
-
-  let flags =
-    ( opts.Contains <@ Create @>
-    , opts.Contains <@ Start  @>
-    , opts.Contains <@ Reset  @>
-    , opts.Contains <@ Dump   @> )
+    result
 
   let valid =
-    match flags with
-    | (true,false,false,false) -> true
-    | (false,true,false,false) -> ensureDir true
-    | (false,false,true,false) -> ensureDir true
-    | (false,false,false,true) -> ensureDir true
-    | _                        -> false
+    match opts.GetResult <@ Cmd @> with
+    | Create -> true
+    | Start  -> ensureDir true
+    | Reset  -> ensureDir true
+    | Dump   -> ensureDir true
 
-  if not valid then
-    printfn "Error: you must specify either *one of* --start/--create/--reset/--dump"
-    exit 1
-
-  if opts.Contains <@ Create @> then
+  if opts.GetResult <@ Cmd @> = Create then
     let name = opts.Contains <@ Name @>
     let dir  = opts.Contains <@ Dir @>
     let bind = opts.Contains <@ Bind @>
@@ -80,7 +70,12 @@ let validateOptions (opts: ParseResults<CLIArguments>) =
 
     if not (name && bind && web && raft && ws) then
       printfn "Error: when creating a new configuration you must specify the following options:"
-      printfn "%s" <| parser.PrintUsage()
+      if not name then printfn "    --name=<name>"
+      if not dir  then printfn "    --dir=<directory>"
+      if not bind then printfn "    --bind=<binding address>"
+      if not web  then printfn "    --web=<web interface port>"
+      if not raft then printfn "    --raft=<raft port>"
+      if not ws   then printfn "    --ws=<ws port>"
       exit 1
 
 let parseLogLevel = function

@@ -161,24 +161,25 @@ module Main =
       try
         parser.ParseCommandLine args
       with
-        | _ ->
-          printfn "%s" <| parser.PrintUsage("Unable to parse command line. Usage: ")
+        | exn ->
+          printfn "%s" <| parser.PrintUsage exn.Message
           exit 2
 
     validateOptions parsed
 
-    if parsed.Contains <@ Create @> then
-      createDataDir parsed
-    else
-      match parsed.TryGetResult <@ Dir @> with
-        | Some dir ->
-          if parsed.Contains <@ Start @> then
-            startRaft dir
-          elif parsed.Contains <@ Reset @> then
-            resetDataDir dir
-          elif parsed.Contains <@ Dump @> then
-            dumpDataDir dir
-        | _ ->
-          printfn "Missing project directory. Aborting"
-          exit 2
+    match parsed.GetResult <@ Cmd @> with
+    | Create -> createDataDir parsed
+    | Start ->
+      parsed.TryGetResult <@ Dir @>
+      |> Option.map startRaft
+      |> ignore
+    | Reset ->
+      parsed.TryGetResult <@ Dir @>
+      |> Option.map resetDataDir
+      |> ignore
+    | Dump ->
+      parsed.TryGetResult <@ Dir @>
+      |> Option.map dumpDataDir
+      |> ignore
+
     0
