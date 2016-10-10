@@ -149,7 +149,7 @@ module ServerTests =
       let msg2 = DataSnapshot State.Empty
       let msg3 = DataSnapshot State.Empty
 
-      let init = createRaft (Node.create (Id.Create()))
+      let init = mkRaft (Node.create (Id.Create()))
       let cbs = mkcbs (ref (DataSnapshot State.Empty)) :> IRaftCallbacks
 
       raft {
@@ -890,7 +890,7 @@ module ServerTests =
       let peer1 = Node.create (Id.Create())
       let peer2 = Node.create (Id.Create())
 
-      let state : Raft = createRaft peer0
+      let state : Raft = mkRaft peer0
       let lokk = new System.Object()
       let i = ref 0
       let cbs =
@@ -955,7 +955,7 @@ module ServerTests =
   let candidate_requestvote_includes_logidx =
     testCase "candidate requestvote includes logidx" <| fun _ ->
       let self = Node.create (Id.Create())
-      let raft' : Raft = createRaft self
+      let raft' : Raft = mkRaft self
       let sender = Sender.create
       let response = { Term = 5u; Granted = true; Reason = None }
       let cbs =
@@ -2048,7 +2048,7 @@ module ServerTests =
 
       let mutable i = 0
 
-      let raft' = createRaft node1
+      let raft' = mkRaft node1
       let cbs =
         { mkcbs (ref defSM) with SendRequestVote = fun _ _ -> i <- i + 1; None }
         :> IRaftCallbacks
@@ -2294,7 +2294,7 @@ module ServerTests =
   let should_call_node_updated_callback_on_node_udpated =
     testCase "call node updated callback on node udpated" <| fun _ ->
       let count = ref 0
-      let init = createRaft (Node.create (Id.Create()))
+      let init = mkRaft (Node.create (Id.Create()))
       let cbs = { mkcbs (ref defSM) with
                     NodeUpdated = fun _ -> count := 1 + !count }
                 :> IRaftCallbacks
@@ -2314,7 +2314,7 @@ module ServerTests =
   let should_call_state_changed_callback_on_state_change =
     testCase "call state changed callback on state change" <| fun _ ->
       let count = ref 0
-      let init = createRaft (Node.create (Id.Create()))
+      let init = mkRaft (Node.create (Id.Create()))
       let cbs = { mkcbs (ref defSM) with
                     StateChanged = fun _ _ -> count := 1 + !count }
                 :> IRaftCallbacks

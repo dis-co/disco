@@ -172,16 +172,16 @@ module RaftTestUtils =
 
   let defaultServer _ =
     let self : RaftNode = Node.create (Id.Create())
-    createRaft self
+    mkRaft self
 
   let runWithCBS cbs action =
     let self = Node.create (Id.Create())
-    let raft = createRaft self
+    let raft = mkRaft self
     runRaft raft cbs action
 
   let runWithData data action =
     let self = Node.create (Id.Create())
-    let raft = createRaft self
+    let raft = mkRaft self
     let cbs = mkcbs data :> IRaftCallbacks
     runRaft raft cbs action
 

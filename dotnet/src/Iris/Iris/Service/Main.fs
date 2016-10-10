@@ -36,7 +36,7 @@ module Main =
 
     if IO.File.Exists projFile |> not then
       printfn "Project file not found. Aborting."
-      exit 2
+      exitWith ExitCode.ProjectMissing
 
     match Project.Load(projFile) with
       | Right project ->
@@ -47,7 +47,7 @@ module Main =
         consoleLoop server
       | Left error ->
         printfn "Could not load project. %A Aborting." error
-        exit 2
+        exitWith ExitCode.ProjectMissing
 
   //   ____                _
   //  / ___|_ __ ___  __ _| |_ ___
@@ -67,26 +67,30 @@ module Main =
         printf "%A not empty. I clean first? y/n" dir
         match Console.ReadLine() with
           | "y" -> rmDir dir
-          | _   -> exit 1
+          | _   -> exitWith ExitCode.OK
 
     mkDir dir
     mkDir raftDir
 
     let me = new Signature("Operator", "operator@localhost", new DateTimeOffset(DateTime.Now))
 
+    let node =
+      getNodeId ()
+      |> fun id ->
+        { Node.create(id) with
+            IpAddr = parsed.GetResult <@ Bind @> |> IpAddress.Parse
+            GitPort = parsed.GetResult <@ Git @>
+            WsPort = parsed.GetResult <@ Ws @>
+            WebPort = parsed.GetResult <@ Web @>
+            Port = parsed.GetResult <@ Raft @> }
+
     let project  =
       let def = Project.Create(name)
       let cfg =
         def.Config
         |> updateEngine
-          { def.Config.RaftConfig with
-              DataDir     = raftDir
-              BindAddress = parsed.GetResult <@ Bind @> }
-        |> updatePorts
-          { def.Config.PortConfig with
-              WebSocket = parsed.GetResult <@ Ws @>
-              Http = parsed.GetResult <@ Web @>
-              Raft = parsed.GetResult <@ Raft @> }
+          { def.Config.RaftConfig with DataDir = raftDir }
+        |> addNodeConfig node
       { def with
           Path = Some dir
           Config = cfg }
@@ -166,7 +170,7 @@ module Main =
       with
         | exn ->
           printfn "%s" <| parser.PrintUsage exn.Message
-          exit 2
+          exitWith ExitCode.CliParseError
 
     validateOptions parsed
 
@@ -185,4 +189,4 @@ module Main =
       |> Option.map dumpDataDir
       |> ignore
 
-    0
+    exitWith ExitCode.OK

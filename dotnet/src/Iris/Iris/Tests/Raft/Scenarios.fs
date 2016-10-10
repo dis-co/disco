@@ -192,7 +192,7 @@ module Scenarios =
               } :> IRaftCallbacks
 
             let raft =
-              createRaft peers.[int n]
+              mkRaft peers.[int n]
               |> setElectionTimeout 500u
               |> addNodes peers
 

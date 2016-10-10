@@ -65,9 +65,7 @@ module ProjectTests =
                 ]
             }
 
-        let portCfg =
-          { PortConfig.Default with
-              WebSocket = 666u }
+        let portCfg = PortConfig.Default
 
         let display1 =
           { Id        = Id.Create()

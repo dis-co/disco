@@ -49,14 +49,23 @@ type AssetServer(config: Config) =
 
   let appConfig =
     let token : CancellationToken = cts.Token
-    let addr = IPAddress.Parse config.RaftConfig.BindAddress
-    let port = Sockets.Port.Parse (string config.PortConfig.Http)
-    { defaultConfig with
-        logger            = ConsoleWindowLogger(Suave.Logging.LogLevel.Info)
-        cancellationToken = token
-        homeFolder        = Some(basepath)
-        bindings          = [ HttpBinding.mk HTTP addr port ]
-        mimeTypesMap      = mimeTypes }
+
+    match getNodeId () |> tryFindNode config with
+    | Some node ->
+      let addr = IPAddress.Parse (string node.IpAddr)
+      let port = Sockets.Port.Parse (string node.WebPort)
+
+      printfn "Starting WebSocket Server on: %A:%A" addr port
+
+      { defaultConfig with
+          logger            = ConsoleWindowLogger(Suave.Logging.LogLevel.Info)
+          cancellationToken = token
+          homeFolder        = Some(basepath)
+          bindings          = [ HttpBinding.mk HTTP addr port ]
+          mimeTypesMap      = mimeTypes }
+    | _ ->
+      printfn "Unable to find node in config. Aborting."
+      exitWith ExitCode.MissingNode
 
   let thread = new Thread(new ThreadStart(fun _ ->
     try startWebServer appConfig app

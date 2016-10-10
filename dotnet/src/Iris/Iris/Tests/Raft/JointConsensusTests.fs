@@ -61,7 +61,7 @@ module JointConsensus =
         Configuration(Id.Create(), 1u, term, nodes , None)
 
       let ci = ref 0u
-      let state = createRaft (Node.create (Id.Create()))
+      let state = mkRaft (Node.create (Id.Create()))
       let cbs = { mkcbs (ref defSM) with
                     SendAppendEntries = fun _ _ ->
                       Some { Term = 0u; Success = true; CurrentIndex = !ci; FirstIndex = 1u }
@@ -564,7 +564,7 @@ module JointConsensus =
       let count = ref 0
       let ci = ref 0u
       let term = ref 1u
-      let init = createRaft (Node.create (Id.Create()))
+      let init = mkRaft (Node.create (Id.Create()))
       let cbs = { mkcbs (ref defSM) with
                     SendAppendEntries = fun _ _ ->
                       lock lokk <| fun _ ->
@@ -637,7 +637,7 @@ module JointConsensus =
       let lokk = new System.Object()
       let count = ref 0
       let term = ref 1u
-      let init = createRaft (Node.create (Id.Create()))
+      let init = mkRaft (Node.create (Id.Create()))
       let cbs = { mkcbs (ref defSM) with
                     SendRequestVote = fun _ _ ->
                       lock lokk <| fun _ ->
@@ -711,7 +711,7 @@ module JointConsensus =
       let ci = ref 0u
       let term = ref 1u
       let count = ref 0
-      let init = createRaft self
+      let init = mkRaft self
       let cbs =
         { mkcbs (ref defSM) with
             SendAppendEntries = fun _ _ ->

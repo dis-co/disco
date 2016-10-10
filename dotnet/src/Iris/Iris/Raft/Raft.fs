@@ -193,7 +193,7 @@ module RaftModule =
   //  \____|_|  \___|\__,_|\__\___|   //
   //////////////////////////////////////
 
-  let createRaft (self : RaftNode) : Raft =
+  let mkRaft (self : RaftNode) : Raft =
     { Node              = self
     ; State             = Follower
     ; CurrentTerm       = 0u

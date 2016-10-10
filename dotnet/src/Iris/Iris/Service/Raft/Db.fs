@@ -254,6 +254,9 @@ type NodeData() =
   let mutable hostname  : string     = null
   let mutable ip        : string     = null
   let mutable port      : int16      = 0s
+  let mutable webport   : int16      = 0s
+  let mutable wsport    : int16      = 0s
+  let mutable gitport   : int16      = 0s
   let mutable next_idx  : int64      = 0L
   let mutable match_idx : int64      = 0L
 
@@ -277,6 +280,18 @@ type NodeData() =
   member __.Port
     with get () = port
     and  set v  = port <- v
+
+  member __.WebPort
+    with get () = webport
+    and  set v  = webport <- v
+
+  member __.WsPort
+    with get () = wsport
+    and  set v  = wsport <- v
+
+  member __.GitPort
+    with get () = gitport
+    and  set v  = gitport <- v
 
   member __.Voting
     with get () = voting
@@ -307,6 +322,9 @@ type NodeData() =
     meta.HostName   <- node.HostName
     meta.IpAddr     <- string node.IpAddr
     meta.Port       <- int16 node.Port
+    meta.WebPort    <- int16 node.WebPort
+    meta.WsPort     <- int16 node.WsPort
+    meta.GitPort    <- int16 node.GitPort
     meta.Voting     <- node.Voting
     meta.VotedForMe <- node.VotedForMe
     meta.NextIndex  <- int64 node.NextIndex
@@ -324,6 +342,9 @@ type NodeData() =
     ; HostName   = self.HostName
     ; IpAddr     = IpAddress.Parse self.IpAddr
     ; Port       = uint16 self.Port
+    ; WebPort    = uint16 self.WebPort
+    ; WsPort     = uint16 self.WsPort
+    ; GitPort    = uint16 self.GitPort
     ; Voting     = self.Voting
     ; VotedForMe = self.VotedForMe
     ; State      = RaftNodeState.Parse self.State

@@ -26,9 +26,6 @@ Project:
         Path:
 
   Ports:
-    Http:        -1
-    Raft:        -1
-    WebSocket:   -1
     UDPCues:     -1
 
   Engine:
@@ -93,7 +90,10 @@ Project:
       - Id:
         HostName:
         Ip:
-        Port: -1
+        Port:    -1
+        WebPort: -1
+        WsPort:  -1
+        GitPort: -1
         State:
 
     Groups:

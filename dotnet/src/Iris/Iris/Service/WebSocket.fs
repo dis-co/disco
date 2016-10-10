@@ -17,9 +17,11 @@ module WebSocket =
     let mutable onMessageCb : Option<Id -> StateMachine -> unit> = None
 
     let uri =
-      sprintf "ws://%s:%d"
-        config.RaftConfig.BindAddress
-        config.PortConfig.WebSocket
+      match getNodeId () |> tryFindNode config with
+      | Some node -> sprintf "ws://%s:%d" (string node.IpAddr) node.WsPort
+      | _ ->
+        printfn "Error: could not find node. Aborting"
+        exitWith ExitCode.MissingNode
 
     let server = new WebSocketServer(uri)
 
@@ -103,6 +105,7 @@ module WebSocket =
       socket.OnError   <- new System.Action<exn>(onError socket)
 
     member self.Start() =
+      printfn "Starting Http Server on: %s" uri
       server.Start(new System.Action<IWebSocketConnection>(handler))
 
     member self.Stop() =

@@ -243,13 +243,8 @@ type IrisService(project: Project ref) =
   // |_____|_|_|  \___|\____\__, |\___|_|\___|
   //                        |___/
   member self.Start() =
-    printfn "Starting Http Server on %d" (!project).Config.PortConfig.Http
     httpserver.Start()
-
-    printfn "Starting WebSocket Server on %d" (!project).Config.PortConfig.WebSocket
     wsserver.Start()
-
-    printfn "Starting Raft Server %d" (!project).Config.PortConfig.Raft
     raftserver.Start()
 
   member self.Stop() =

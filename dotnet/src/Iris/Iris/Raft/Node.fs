@@ -79,6 +79,9 @@ type RaftNode =
   ; HostName   : string
   ; IpAddr     : IpAddress
   ; Port       : uint16
+  ; WebPort    : uint16
+  ; WsPort     : uint16
+  ; GitPort    : uint16
   ; Voting     : bool
   ; VotedForMe : bool
   ; State      : RaftNodeState
@@ -113,6 +116,9 @@ type RaftNode =
     NodeFB.AddHostName(builder, hostname)
     NodeFB.AddIpAddr(builder, ip)
     NodeFB.AddPort(builder, int node.Port)
+    NodeFB.AddWebPort(builder, int node.WebPort)
+    NodeFB.AddWsPort(builder, int node.WsPort)
+    NodeFB.AddGitPort(builder, int node.GitPort)
     NodeFB.AddVoting(builder, node.Voting)
     NodeFB.AddVotedForMe(builder, node.VotedForMe)
     NodeFB.AddState(builder, state)
@@ -130,6 +136,9 @@ type RaftNode =
           ; HostName = fb.HostName
           ; IpAddr = IpAddress.Parse fb.IpAddr
           ; Port = uint16 fb.Port
+          ; WebPort = uint16 fb.WebPort
+          ; WsPort = uint16 fb.WsPort
+          ; GitPort = uint16 fb.GitPort
           ; Voting = fb.Voting
           ; VotedForMe = fb.VotedForMe
           ; NextIndex = fb.NextIndex
@@ -218,7 +227,10 @@ module Node =
     { Id         = id
     ; HostName   = hostname
     ; IpAddr     = IPv4Address "127.0.0.1"
-    ; Port       = 9000us
+    ; Port       = 6000us
+    ; WebPort    = 7000us
+    ; WsPort     = 8000us
+    ; GitPort    = 9000us
     ; State      = Running
     ; Voting     = true
     ; VotedForMe = false

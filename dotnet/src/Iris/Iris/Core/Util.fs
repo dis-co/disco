@@ -79,6 +79,9 @@ module Utils =
   /// Returns: unit
   let dispose (o : 't when 't :> IDisposable) = o.Dispose()
 
+  let exitWith (code: ExitCode) =
+    code |> int |> exit
+
   // __        __         _     ____
   // \ \      / /__  _ __| | __/ ___| _ __   __ _  ___ ___
   //  \ \ /\ / / _ \| '__| |/ /\___ \| '_ \ / _` |/ __/ _ \

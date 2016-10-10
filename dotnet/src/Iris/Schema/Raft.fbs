@@ -399,6 +399,9 @@ table NodeFB {
       HostName   : string;
       IpAddr     : string;
       Port       : int;
+      WebPort    : int;
+      WsPort     : int;
+      GitPort    : int;
       Voting     : bool;
       VotedForMe : bool;
       State      : NodeStateFB;

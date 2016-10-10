@@ -125,6 +125,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
   ///
   /// Returns: unit
   member self.Start() =
+    printfn "Starting Raft Server"
     lock locker <| fun _ ->
       try
         this.Debug "RaftServer: starting"

@@ -27,12 +27,13 @@ open Db
 ///
 /// Returns: Raft<StateMachine,IrisNode>
 let createRaft (options: Config) =
-  let node =
-    { Node.create (Id.Create()) with
-        HostName = getHostName()
-        IpAddr   = IpAddress.Parse options.RaftConfig.BindAddress
-        Port     = uint16 options.PortConfig.Raft }
-  RaftModule.createRaft node
+  let id = getNodeId ()
+
+  match tryFindNode options id with
+  | Some node -> RaftModule.mkRaft node
+  | _         ->
+    printfn "Error: node not found. Aborting."
+    exitWith ExitCode.MissingNode
 
 let loadRaft (options: Config) =
   let dir = options.RaftConfig.DataDir </> DB_NAME
@@ -94,7 +95,7 @@ let handleException (tag: string) (exn: 't when 't :> Exception) =
   printfn "StackTrace:"
   printfn "%s"            exn.StackTrace
   printfn "Aborting."
-  exit 1
+  exitWith ExitCode.GeneralError
 
 // ----------------------------------------------------------------------------------------- //
 //                   _   _      _                      _    _                                //

@@ -23,7 +23,6 @@ type RaftConfig =
   ; DataDir:          FilePath
   ; MaxRetries:       uint8
   ; PeriodicInterval: uint8
-  ; BindAddress:      string
   }
   with
     static member Default =
@@ -35,7 +34,6 @@ type RaftConfig =
       ; PeriodicInterval = 50uy
       ; LogLevel         = Err
       ; DataDir          = Path.Combine(Path.GetTempPath(), guid.ToString())
-      ; BindAddress      = "127.0.0.1"
       }
 
 // __     __                     ____             __ _
@@ -61,18 +59,10 @@ type VvvvConfig =
 //                                             |___/
 
 type PortConfig =
-  { WebSocket : uint32
-  ; UDPCue    : uint32
-  ; Raft      : uint32
-  ; Http      : uint32
-  }
+  { UDPCue    : uint32 }
   with
     static member Default =
-      { WebSocket = 8081u
-      ; UDPCue    = 8075u
-      ; Raft      = 9090u
-      ; Http      = 8080u
-      }
+      { UDPCue    = 8075u }
 
 //  _____ _           _              ____             __ _
 // |_   _(_)_ __ ___ (_)_ __   __ _ / ___|___  _ __  / _(_) __ _
@@ -301,7 +291,6 @@ module Configuration =
     ; DataDir          = cfg.Project.Engine.DataDir
     ; MaxRetries       = uint8 cfg.Project.Engine.MaxRetries
     ; PeriodicInterval = uint8 cfg.Project.Engine.PeriodicInterval
-    ; BindAddress      = cfg.Project.Engine.BindAddress
     }
 
 
@@ -318,7 +307,6 @@ module Configuration =
     file.Project.Engine.DataDir          <- config.RaftConfig.DataDir
     file.Project.Engine.MaxRetries       <- int config.RaftConfig.MaxRetries
     file.Project.Engine.PeriodicInterval <- int config.RaftConfig.PeriodicInterval
-    file.Project.Engine.BindAddress      <- config.RaftConfig.BindAddress
     (file, config)
 
   //   _____ _           _
@@ -376,11 +364,7 @@ module Configuration =
   ///
   /// # Returns: PortConfig
   let private parsePort (cnf : ConfigFile) : PortConfig =
-    { WebSocket = uint32 cnf.Project.Ports.WebSocket
-    ; UDPCue    = uint32 cnf.Project.Ports.UDPCues
-    ; Raft      = uint32 cnf.Project.Ports.Raft
-    ; Http      = uint32 cnf.Project.Ports.Http
-    }
+    { UDPCue = uint32 cnf.Project.Ports.UDPCues }
 
   /// ### Transfer the PortConfig configuration
   ///
@@ -388,10 +372,7 @@ module Configuration =
   ///
   /// # Returns: ConfigFile
   let private savePort (file: ConfigFile, config: Config) =
-    file.Project.Ports.Raft        <- int (config.PortConfig.Raft)
-    file.Project.Ports.Http        <- int (config.PortConfig.Http)
-    file.Project.Ports.UDPCues     <- int (config.PortConfig.UDPCue)
-    file.Project.Ports.WebSocket   <- int (config.PortConfig.WebSocket)
+    file.Project.Ports.UDPCues <- int (config.PortConfig.UDPCue)
     (file, config)
 
   //  __     ___               ____            _
@@ -608,6 +589,9 @@ module Configuration =
         ; HostName   = node.HostName
         ; IpAddr     = IpAddress.Parse node.Ip
         ; Port       = uint16 node.Port
+        ; WebPort    = uint16 node.WebPort
+        ; WsPort     = uint16 node.WsPort
+        ; GitPort    = uint16 node.GitPort
         ; State      = RaftNodeState.Parse node.State
         ; Voting     = true
         ; VotedForMe = false
@@ -651,6 +635,9 @@ module Configuration =
       n.Ip       <- string node.IpAddr
       n.HostName <- node.HostName
       n.Port     <- int node.Port
+      n.WebPort  <- int node.WebPort
+      n.WsPort   <- int node.WsPort
+      n.GitPort  <- int node.GitPort
       n.State    <- string node.State
       file.Project.Cluster.Nodes.Add(n)
 
@@ -727,6 +714,32 @@ module Configuration =
 
   let updateCluster (cluster: Cluster) (config: Config) =
     { config with ClusterConfig = cluster }
+
+  let tryFindNode (config: Config) (id: Id) =
+    List.tryFind
+      (fun (node: RaftNode) -> node.Id = id)
+      config.ClusterConfig.Nodes
+
+  let getNodeId () =
+    let id = Environment.GetEnvironmentVariable "IRIS_NODE_ID"
+    if isNull id then
+      printfn "Error: IRIS_NODE_ID environment variable is not set. Aborting."
+      exitWith ExitCode.MissingNodeId
+    Id id
+
+  let addNodeConfig (node: RaftNode) (config: Config) =
+    { config with
+        ClusterConfig =
+          { config.ClusterConfig with
+              Nodes = node :: config.ClusterConfig.Nodes } }
+
+  let removeNodeConfig (id: Id) (config: Config) =
+    { config with
+        ClusterConfig =
+          { config.ClusterConfig with
+              Nodes = List.filter
+                        (fun (node: RaftNode) -> node.Id = id)
+                        config.ClusterConfig.Nodes } }
 
   //  __  __                _
   // |  \/  | ___ _ __ ___ | |__   ___ _ __ ___

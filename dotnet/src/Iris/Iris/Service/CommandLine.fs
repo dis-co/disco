@@ -25,9 +25,10 @@ type SubCommand =
 
 type CLIArguments =
   | [<EqualsAssignment>]            Bind  of string
-  | [<EqualsAssignment>]            Raft  of uint32
-  | [<EqualsAssignment>]            Web   of uint32
-  | [<EqualsAssignment>]            Ws    of uint32
+  | [<EqualsAssignment>]            Raft  of uint16
+  | [<EqualsAssignment>]            Web   of uint16
+  | [<EqualsAssignment>]            Git   of uint16
+  | [<EqualsAssignment>]            Ws    of uint16
   | [<EqualsAssignment>]            Dir   of string
   | [<EqualsAssignment>]            Name  of string
   | [<Mandatory;MainCommand;CliPosition(CliPosition.First)>] Cmd   of SubCommand
@@ -40,6 +41,7 @@ type CLIArguments =
         | Name    _ -> "Project name when using <create>"
         | Bind    _ -> "Specify a valid IP address."
         | Web     _ -> "Http server port."
+        | Git     _ -> "Git server port."
         | Ws      _ -> "WebSocket port."
         | Raft    _ -> "Raft server port (internal)."
         | Cmd     _ -> "Either one of (--create, --start, --reset or --dump)"
@@ -50,7 +52,7 @@ let validateOptions (opts: ParseResults<CLIArguments>) =
   let ensureDir result =
     if opts.Contains <@ Dir @> |> not then
       printfn "Error: you must specify a project dir when starting a node"
-      exit 3
+      exitWith ExitCode.MissingStartupDir
     result
 
   let valid =
@@ -66,6 +68,7 @@ let validateOptions (opts: ParseResults<CLIArguments>) =
     let bind = opts.Contains <@ Bind @>
     let web  = opts.Contains <@ Web @>
     let raft = opts.Contains <@ Raft @>
+    let git  = opts.Contains <@ Git @>
     let ws   = opts.Contains <@ Ws @>
 
     if not (name && bind && web && raft && ws) then
@@ -74,9 +77,10 @@ let validateOptions (opts: ParseResults<CLIArguments>) =
       if not dir  then printfn "    --dir=<directory>"
       if not bind then printfn "    --bind=<binding address>"
       if not web  then printfn "    --web=<web interface port>"
+      if not git  then printfn "    --git=<git server port>"
       if not raft then printfn "    --raft=<raft port>"
       if not ws   then printfn "    --ws=<ws port>"
-      exit 1
+      exitWith ExitCode.CliParseError
 
 let parseLogLevel = function
   | "debug" -> Debug
