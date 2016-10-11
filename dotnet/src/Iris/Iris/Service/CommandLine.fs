@@ -51,8 +51,7 @@ let parser = ArgumentParser.Create<CLIArguments>()
 let validateOptions (opts: ParseResults<CLIArguments>) =
   let ensureDir result =
     if opts.Contains <@ Dir @> |> not then
-      printfn "Error: you must specify a project dir when starting a node"
-      exitWith ExitCode.MissingStartupDir
+      Error.exitWith MissingStartupDir
     result
 
   let valid =
@@ -80,7 +79,7 @@ let validateOptions (opts: ParseResults<CLIArguments>) =
       if not git  then printfn "    --git=<git server port>"
       if not raft then printfn "    --raft=<raft port>"
       if not ws   then printfn "    --ws=<ws port>"
-      exitWith ExitCode.CliParseError
+      Error.exitWith CliParseError
 
 let parseLogLevel = function
   | "debug" -> Debug
@@ -226,7 +225,7 @@ let tryRmNode (hst: string) (context: RaftServer) =
 //                  |_|               //
 ////////////////////////////////////////
 
-let consoleLoop (context: IrisService) =
+let consoleLoop (context: IrisService) : unit =
   let kont = ref true
   let rec proc kontinue =
     printf "~> "

@@ -60,9 +60,9 @@ module Git =
     /// - branch: Branch
     ///
     /// Returns: Either<string,Branch>
-    let tracked (branch: Branch) : Either<IrisError<string>,Branch> =
+    let tracked (branch: Branch) : Either<Error<string>,Branch> =
       match branch.TrackedBranch with
-        | null      -> Either.fail BranchNotFound
+        | null      -> BranchNotFound "No tracked branch" |> Either.fail
         | branch -> Either.succeed branch
 
     /// ## Get details about the remote tracking branch
@@ -73,9 +73,9 @@ module Git =
     /// - branch: Branch to get details for
     ///
     /// Returns: BranchTrackingDetails option
-    let tracking (branch: Branch) : Either<IrisError<string>,BranchTrackingDetails> =
+    let tracking (branch: Branch) : Either<Error<string>,BranchTrackingDetails> =
       match branch.TrackingDetails with
-        | null       -> Either.fail BranchDetailsNotFound
+        | null       -> BranchDetailsNotFound "No tracked branch" |> Either.fail
         | details -> Either.succeed details
 
     /// ## Get the lastest commit object.
@@ -401,7 +401,7 @@ module Git =
     /// Returns: Branch
     let checkout (spec: string) (repo: Repository) =
       match LibGit2Sharp.Commands.Checkout(repo, spec) with
-        | null      -> Either.fail BranchNotFound
+        | null      -> BranchNotFound spec |> Either.fail
         | branch -> Either.succeed branch
 
     /// ## Find and return Repository object
@@ -412,13 +412,13 @@ module Git =
     /// - path: FilePath to search for the .git folder
     ///
     /// Returns: Repository option
-    let repository (path: FilePath) : Either<IrisError<string>,Repository> =
+    let repository (path: FilePath) : Either<Error<string>,Repository> =
       try
         new Repository(System.IO.Path.Combine(path, ".git"))
         |> Either.succeed
       with
         | :? RepositoryNotFoundException as exn  ->
-          RepositoryNotFound
+          RepositoryNotFound path
           |> Either.fail
         | exn ->
           printfn "type of git error: %A" (exn.GetType())

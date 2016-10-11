@@ -7,6 +7,8 @@ open System.Net
 open System.Collections.Generic
 open LibGit2Sharp
 open Iris.Core.Utils
+open FSharpx.Functional
+open Iris.Raft
 
 //  ____            _           _
 // |  _ \ _ __ ___ (_) ___  ___| |_
@@ -53,7 +55,7 @@ module ProjectHelper =
   /// Create a new project with the given name. The default configuration will apply.
   ///
   /// # Returns: Project
-  let create (name : string) : Project =
+  let createProject (name : string) : Project =
     { Id        = Id.Create()
     ; Name      = name
     ; Path      = None
@@ -99,9 +101,9 @@ module ProjectHelper =
   /// Attempts to load a serializad project file from the specified location.
   ///
   /// # Returns: Project option
-  let load (path : FilePath) : Either<IrisError<string>,Project> =
+  let loadProject (path : FilePath) : Either<Error<string>,Project> =
     if not (File.Exists path) then
-      Either.fail ProjectNotFound
+      ProjectNotFound path |> Either.fail
     else
       IrisConfig.Load(path)
 
@@ -154,7 +156,7 @@ module ProjectHelper =
   /// exists, otherwise creating it.
   ///
   /// # Returns: Repository
-  let initRepo (project: Project) : Either<IrisError<string>,Repository> =
+  let initRepo (project: Project) : Either<Error<string>,Repository> =
     let initRepoImpl (repo: Repository) =
       writeDaemonExportFile repo
       writeGitIgnoreFile repo
@@ -214,7 +216,7 @@ module ProjectHelper =
   /// - project   : Project
   ///
   /// Returns: (Commit * Project) option
-  let commitPath (committer: Signature) (msg : string) (filepath: FilePath) (project: Project) : Either<IrisError<string>,(Commit * Project)> =
+  let commitPath (committer: Signature) (msg : string) (filepath: FilePath) (project: Project) : Either<Error<string>,(Commit * Project)> =
     let doCommit repo =
       try
         let parent = Git.Repo.parentPath repo
@@ -238,7 +240,10 @@ module ProjectHelper =
       | Left error -> Left error
     | Right repo -> doCommit repo
 
-  let saveProject (committer: Signature) (msg : string) (project: Project) : Either<IrisError<string>,(Commit * Project)> =
+  let saveFile (committer: Signature) (msg : string) (path: FilePath) (project: Project) : Either<Error<string>,(Commit * Project)> =
+    commitPath committer msg path project
+
+  let saveProject (committer: Signature) (msg : string) (project: Project) : Either<Error<string>,(Commit * Project)> =
     match project.Path with
     | Some path ->
       if not (Directory.Exists path) then
@@ -321,23 +326,20 @@ module ProjectHelper =
   let commitCount (repo: Repository) =
     commits repo |> fun lst -> lst.Count()
 
+  let getConfig (project: Project) : Config = project.Config
 
-  //  _____      _                 _
-  // | ____|_  _| |_ ___ _ __  ___(_) ___  _ __  ___
-  // |  _| \ \/ / __/ _ \ '_ \/ __| |/ _ \| '_ \/ __|
-  // | |___ >  <| ||  __/ | | \__ \ | (_) | | | \__ \
-  // |_____/_/\_\\__\___|_| |_|___/_|\___/|_| |_|___/
+  let updatePath (path: FilePath) (project: Project) : Project =
+    { project with Path = Some path }
 
-  type Project with
+  let updateConfig (config: Config) (project: Project) : Project =
+    { project with Config = config }
 
-    static member Create (name: string) =
-      create name
+  let updateDataDir (raftDir: FilePath) (project: Project) : Project =
+    { project.Config.RaftConfig with DataDir = raftDir }
+    |> flip updateEngine project.Config
+    |> flip updateConfig project
 
-    static member Load (path: FilePath) : Either<IrisError<string>,Project> =
-      load path
-
-    member self.Save (committer: Signature, msg : string) : Either<IrisError<string>,(Commit * Project)> =
-      saveProject committer msg self
-
-    member self.SaveFile (committer: Signature, msg : string, path: FilePath) : Either<IrisError<string>,(Commit * Project)> =
-      commitPath committer msg path self
+  let addMember (node: RaftNode) (project: Project) : Project =
+    project.Config
+    |> addNodeConfig node
+    |> flip updateConfig project

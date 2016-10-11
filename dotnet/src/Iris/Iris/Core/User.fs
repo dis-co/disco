@@ -154,6 +154,16 @@ type User =
       let name = sprintf "%s %s" user.FirstName user.LastName
       new Signature(name, user.Email, new DateTimeOffset(user.Created))
 
+  static member Admin
+    with get () =
+      { Id        = Id.Create()
+      ; UserName  = "admin"
+      ; FirstName = "Administrator"
+      ; LastName  = ""
+      ; Email     = "info@nsynk.de"
+      ; Joined    = DateTime.Now
+      ; Created   = DateTime.Now }
+
 #endif
 
   //  ____  _

@@ -1,6 +1,7 @@
 module Iris.Service.Raft.Utilities
 
 open System
+open System.IO
 open System.Threading
 open FSharpx.Functional
 open Iris.Service
@@ -26,26 +27,34 @@ open Db
 /// - options: RaftOptions
 ///
 /// Returns: Raft<StateMachine,IrisNode>
-let createRaft (options: Config) =
-  let id = getNodeId ()
-
-  match tryFindNode options id with
-  | Some node -> RaftModule.mkRaft node
-  | _         ->
-    printfn "Error: node not found. Aborting."
-    exitWith ExitCode.MissingNode
+let createRaft (options: Config) : Either<Error<string>, Raft> =
+  getNodeId ()
+  |> Either.bind (tryFindNode options)
+  |> Either.map mkRaft
 
 let loadRaft (options: Config) =
-  let dir = options.RaftConfig.DataDir </> DB_NAME
-  match IO.File.Exists dir with
-    | true -> openDB dir |> Option.bind loadRaft
-    | _    -> None
+  let db =
+    options.RaftConfig.DataDir </> DB_NAME
+    |> openDB
 
-let mkRaft (options: Config) =
+  let node =
+    getNodeId ()
+    |> Either.bind (tryFindNode options)
+
+  let nodes =
+    options.ClusterConfig.Nodes
+    |> List.map (fun node -> node.Id, node)
+    |> Map.ofList
+
+  match db, node with
+  | Right database, Right node -> loadRaft node nodes database
+  | Left error,     _          -> Either.fail error
+  | _,              Left error -> Either.fail error
+
+let getRaft (options: Config) =
   match loadRaft options with
-    | Some raft -> raft
-    | _         -> createRaft options
-
+    | Right raft -> Either.succeed raft
+    | _          -> createRaft options
 
 /// ## Create an RaftAppState value
 ///
@@ -57,10 +66,13 @@ let mkRaft (options: Config) =
 /// - options: `RaftOptions`
 ///
 /// Returns: RaftAppState
-let mkState (context: ZeroMQ.ZContext) (options: Config) : RaftAppState =
-  { Raft      = mkRaft options
-  ; Context   = context
-  ; Options   = options }
+let mkState (context: ZeroMQ.ZContext) (options: Config) : Either<Error<string>,RaftAppState> =
+  getRaft options
+  |> Either.map
+      (fun raft ->
+        { Raft      = raft
+        ; Context   = context
+        ; Options   = options })
 
 /// ## idiomatically cancel a CancellationTokenSource
 ///
@@ -95,7 +107,10 @@ let handleException (tag: string) (exn: 't when 't :> Exception) =
   printfn "StackTrace:"
   printfn "%s"            exn.StackTrace
   printfn "Aborting."
-  exitWith ExitCode.GeneralError
+
+  exn.Message
+  |> Other
+  |> Error.exitWith
 
 // ----------------------------------------------------------------------------------------- //
 //                   _   _      _                      _    _                                //

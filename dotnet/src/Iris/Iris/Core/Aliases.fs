@@ -27,7 +27,6 @@ type FilePath   = string
 type UserName   = string
 type UserAgent  = string
 type ClientLog = string
-type Error     = string
 type TimeStamp = string
 
 type Actor<'t> = MailboxProcessor<'t>

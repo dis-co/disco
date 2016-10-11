@@ -9,6 +9,7 @@ module Iris.Service.Raft.Db
 // -------------------------------------------------------------------------------------------- //
 
 open System
+open System.IO
 open LiteDB
 open Iris.Core
 open Iris.Raft
@@ -477,13 +478,15 @@ ConfigChange: %s"
 /// - filepath: path to database file
 ///
 /// Returns: LevelDB.DB
-let openDB filepath =
-  match IO.File.Exists filepath with
-    | true -> new LiteDatabase(filepath) |> Some
+let openDB (filepath: FilePath) =
+  match File.Exists filepath with
+  | true -> new LiteDatabase(filepath) |> Either.succeed
+  | _    ->
+    match File.Exists (filepath </> DB_NAME) with
+    | true -> new LiteDatabase(filepath </> DB_NAME) |> Either.succeed
     | _    ->
-      match IO.File.Exists (filepath </> DB_NAME) with
-        | true -> new LiteDatabase(filepath </> DB_NAME) |> Some
-        | _    -> None
+      DatabaseNotFound filepath
+      |> Either.fail
 
 /// ## Close a database
 ///
@@ -504,20 +507,24 @@ let closeDB (db: LiteDatabase) =
 /// - path: FilePath to the Directory to contain database File
 ///
 /// Returns: LiteDatabase option
-let createDB (path: FilePath) =
+let createDB (path: FilePath) : Either<Error<string>,LiteDatabase> =
   match openDB path with
-    | Some _ as db -> db
-    |      _       ->
-      match IO.Directory.Exists path with
-        | true -> new LiteDatabase(path </> DB_NAME) |> Some
-        | _    ->
-          try
-            let info = IO.Directory.CreateDirectory path
-            if info.Exists then
-              new LiteDatabase(path </> DB_NAME) |> Some
-            else None
-          with
-            | _ -> None
+  | Right _ as db -> db
+  |       _       ->
+    match Directory.Exists path with
+      | true -> new LiteDatabase(path </> DB_NAME) |> Either.succeed
+      | _    ->
+        try
+          let info = Directory.CreateDirectory path
+          if info.Exists then
+            new LiteDatabase(path </> DB_NAME) |> Either.succeed
+          else
+            DatabaseCreateError path
+            |> Either.fail
+        with
+          | exn ->
+            DatabaseCreateError exn.Message
+            |> Either.fail
 
 /// ## Get a collection for a type
 ///
@@ -1069,64 +1076,63 @@ let saveRaft (raft: Raft) (db: LiteDatabase) =
 /// - db:  LiteDatabase
 ///
 /// Returns: Raft option
-let loadRaft db =
+let loadRaft (node: RaftNode) (nodes: Map<Id,RaftNode>) (db: LiteDatabase) : Either<Error<string>,Raft> =
   match getMetadata db with
     | Some meta ->
       let log =
         match getLogs db with
-          | Some entries -> Log.fromEntries entries
-          | _            -> Log.empty
+        | Some entries -> Log.fromEntries entries
+        | _            -> Log.empty
 
-      let nodes = allNodes db |> List.map (fun n -> n.ToNode())
-      let self = List.tryFind (Node.getId >> ((=) (Id meta.NodeId))) nodes
       let votedfor =
         match meta.VotedFor with
-          | null   -> None
-          | str -> Id str |> Some
+        | null   -> None
+        | str -> Id str |> Some
 
       let state = RaftState.Parse meta.State
 
       let leader =
         match meta.LeaderId with
-          | null   -> None
-          | str -> Id str |> Some
+        | null   -> None
+        | str -> Id str |> Some
 
       let oldpeers =
         match meta.OldPeers with
-          | null   -> None
-          | arr -> List.fold (fun lst (n: RaftNode) ->
-                              if Array.contains (string n.Id) arr then
-                                (n.Id, n)  :: lst
-                              else lst) [] nodes
-                  |> Map.ofList
-                  |> Some
+        | null   -> None
+        | arr -> Map.fold
+                  (fun map _ (n: RaftNode) ->
+                    if Array.contains (string n.Id) arr then
+                      Option.map (Map.add n.Id n) map
+                    else
+                      map)
+                    (Some Map.empty)
+                    nodes
 
       let configchange =
         match meta.ConfigChangeEntry with
-          | null   -> None
-          | str -> Log.find (Id str) log
+        | null   -> None
+        | str -> Log.find (Id str) log
 
-      match self with
-        | Some node ->
-          { Node              = node
-          ; State             = state
-          ; CurrentTerm       = uint32 meta.Term
-          ; CurrentLeader     = leader
-          ; Peers             = List.map (fun (n: RaftNode)-> (n.Id,n)) nodes |> Map.ofList
-          ; OldPeers          = oldpeers
-          ; NumNodes          = List.length nodes |> uint32
-          ; VotedFor          = votedfor
-          ; Log               = log
-          ; CommitIndex       = uint32 meta.CommitIndex
-          ; LastAppliedIdx    = uint32 meta.LastAppliedIndex
-          ; TimeoutElapsed    = uint32 meta.TimeoutElapsed
-          ; ElectionTimeout   = uint32 meta.ElectionTimeout
-          ; RequestTimeout    = uint32 meta.RequestTimeout
-          ; MaxLogDepth       = uint32 meta.MaxLogDepth
-          ; ConfigChangeEntry = configchange
-          } |> Some
-        | _ -> None
-    | _ -> None
+      let num = Map.fold (fun count _ _ -> count + 1u) 0u nodes
+
+      { Node              = node
+      ; State             = state
+      ; CurrentTerm       = uint32 meta.Term
+      ; CurrentLeader     = leader
+      ; Peers             = nodes
+      ; OldPeers          = oldpeers
+      ; NumNodes          = num
+      ; VotedFor          = votedfor
+      ; Log               = log
+      ; CommitIndex       = uint32 meta.CommitIndex
+      ; LastAppliedIdx    = uint32 meta.LastAppliedIndex
+      ; TimeoutElapsed    = uint32 meta.TimeoutElapsed
+      ; ElectionTimeout   = uint32 meta.ElectionTimeout
+      ; RequestTimeout    = uint32 meta.RequestTimeout
+      ; MaxLogDepth       = uint32 meta.MaxLogDepth
+      ; ConfigChangeEntry = configchange
+      } |> Either.succeed
+    | _ -> Either.fail MetaDataNotFound
 
 let dumpDB (database: LiteDatabase) =
   let logs =

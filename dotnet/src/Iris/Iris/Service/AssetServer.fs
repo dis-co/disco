@@ -48,31 +48,27 @@ type AssetServer(config: Config) =
     ]
 
   let appConfig =
-    let token : CancellationToken = cts.Token
+    getNodeId ()
+    |> Either.bind (tryFindNode config)
+    |> Either.orExit
+        (fun node ->
+          let addr = IPAddress.Parse (string node.IpAddr)
+          let port = Sockets.Port.Parse (string node.WebPort)
 
-    match getNodeId () |> tryFindNode config with
-    | Some node ->
-      let addr = IPAddress.Parse (string node.IpAddr)
-      let port = Sockets.Port.Parse (string node.WebPort)
+          printfn "Starting WebSocket Server on: %A:%A" addr port
 
-      printfn "Starting WebSocket Server on: %A:%A" addr port
-
-      { defaultConfig with
-          logger            = ConsoleWindowLogger(Suave.Logging.LogLevel.Info)
-          cancellationToken = token
-          homeFolder        = Some(basepath)
-          bindings          = [ HttpBinding.mk HTTP addr port ]
-          mimeTypesMap      = mimeTypes }
-    | _ ->
-      printfn "Unable to find node in config. Aborting."
-      exitWith ExitCode.MissingNode
+          { defaultConfig with
+              logger            = ConsoleWindowLogger(Suave.Logging.LogLevel.Info)
+              cancellationToken = cts.Token
+              homeFolder        = Some(basepath)
+              bindings          = [ HttpBinding.mk HTTP addr port ]
+              mimeTypesMap      = mimeTypes })
 
   let thread = new Thread(new ThreadStart(fun _ ->
     try startWebServer appConfig app
     with
       | :? System.OperationCanceledException -> ()
       | ex -> printfn "Exception: %s" ex.Message))
-
 
   member this.Start() : unit =
     thread.Start ()

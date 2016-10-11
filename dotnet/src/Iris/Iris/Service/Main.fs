@@ -31,23 +31,36 @@ module Main =
   //  ___) | || (_| | |  | |_
   // |____/ \__\__,_|_|   \__|
 
-  let startRaft (projectdir: FilePath) =
-    let projFile = IO.Path.Combine(projectdir, PROJECT_FILENAME)
+  let startRaft (projectdir: FilePath) : unit =
+    let projFile = projectdir </> PROJECT_FILENAME
 
-    if IO.File.Exists projFile |> not then
-      printfn "Project file not found. Aborting."
-      exitWith ExitCode.ProjectMissing
+    if File.Exists projFile |> not then
+      ProjectNotFound projectdir |> Error.exitWith
 
-    match Project.Load(projFile) with
+    match loadProject projFile with
       | Right project ->
         use server = new IrisService(ref project)
         server.Start()
 
         printfn "Welcome to the Raft REPL. Type help to see all commands."
         consoleLoop server
+
       | Left error ->
-        printfn "Could not load project. %A Aborting." error
-        exitWith ExitCode.ProjectMissing
+        ProjectNotFound projectdir |> Error.exitWith
+
+  let buildNode (parsed: ParseResults<CLIArguments>) (id: Id) =
+    { Node.create(id) with
+        IpAddr  = parsed.GetResult <@ Bind @> |> IpAddress.Parse
+        GitPort = parsed.GetResult <@ Git  @>
+        WsPort  = parsed.GetResult <@ Ws   @>
+        WebPort = parsed.GetResult <@ Web  @>
+        Port    = parsed.GetResult <@ Raft @> }
+
+  let buildProject (name: string) (path: FilePath) (raftDir: FilePath) (node: RaftNode) =
+    createProject name
+    |> updatePath path
+    |> updateDataDir raftDir
+    |> addMember node
 
   //   ____                _
   //  / ___|_ __ ___  __ _| |_ ___
@@ -56,60 +69,48 @@ module Main =
   //  \____|_|  \___|\__,_|\__\___|
 
   let createDataDir (parsed: ParseResults<CLIArguments>) =
+    let me = User.Admin.Signature
     let baseDir = parsed.GetResult <@ Dir @>
     let name = parsed.GetResult <@ Name @>
-    let dir = IO.Path.Combine(baseDir, name)
-    let raftDir = IO.Path.Combine(IO.Path.GetFullPath(dir), RAFT_DIRECTORY)
+    let dir = baseDir </> name
+    let raftDir = Path.GetFullPath(dir) </> RAFT_DIRECTORY
 
-    if IO.Directory.Exists dir then
-      let empty = IO.Directory.EnumerateFileSystemEntries(dir).Count() = 0
+    if Directory.Exists dir then
+      let empty = Directory.EnumerateFileSystemEntries(dir).Count() = 0
       if  not empty then
         printf "%A not empty. I clean first? y/n" dir
         match Console.ReadLine() with
           | "y" -> rmDir dir
-          | _   -> exitWith ExitCode.OK
+          | _   -> Error.exitWith OK
 
     mkDir dir
     mkDir raftDir
 
-    let me = new Signature("Operator", "operator@localhost", new DateTimeOffset(DateTime.Now))
+    getNodeId ()
+    |> Either.map (buildNode parsed)
+    |> Either.map (buildProject dir name raftDir)
+    |> Either.map
+        (fun project ->
+            match createDB raftDir, createRaft project.Config with
+            | Right db, Right raft ->
+              try
+                saveRaft raft db
+                dispose db
+                printfn "successfully created database"
+              with
+                | exn ->
+                  DatabaseCreateError exn.Message
+                  |> Error.exitWith
+            | Left error, _ -> Error.exitWith error
+            | _, Left error -> Error.exitWith error
 
-    let node =
-      getNodeId ()
-      |> fun id ->
-        { Node.create(id) with
-            IpAddr = parsed.GetResult <@ Bind @> |> IpAddress.Parse
-            GitPort = parsed.GetResult <@ Git @>
-            WsPort = parsed.GetResult <@ Ws @>
-            WebPort = parsed.GetResult <@ Web @>
-            Port = parsed.GetResult <@ Raft @> }
-
-    let project  =
-      let def = Project.Create(name)
-      let cfg =
-        def.Config
-        |> updateEngine
-          { def.Config.RaftConfig with DataDir = raftDir }
-        |> addNodeConfig node
-      { def with
-          Path = Some dir
-          Config = cfg }
-
-    match createDB raftDir with
-      | Some db ->
-        createRaft project.Config
-        |> flip saveRaft db
-        dispose db
-        printfn "successfully created database"
-      | _      -> printfn "unable to create database"
-
-    match project.Save(me,"project created") with
-      | Right(commit, project) ->
-        project.Path
-        |> Option.get
-        |> printfn "project initialized in %A"
-      | Left error ->
-        failwithf "Unable to create project: %A" error
+            match saveProject me "project created" project with
+            | Right(commit, project) ->
+              project.Path
+              |> Option.get
+              |> printfn "project initialized in %A"
+            | Left error ->
+              Error.exitWith error)
 
   //  ____                _
   // |  _ \ ___  ___  ___| |_
@@ -118,24 +119,30 @@ module Main =
   // |_| \_\___||___/\___|\__|
 
   let resetDataDir (datadir: FilePath) =
-    match Project.Load(datadir </> PROJECT_FILENAME) with
-    | Right project ->
-      let raftDir = IO.Path.Combine(datadir, RAFT_DIRECTORY)
-      if IO.Directory.Exists raftDir then
+
+    let reset project =
+      let raftDir = datadir </> RAFT_DIRECTORY
+      if Directory.Exists raftDir then
         rmDir raftDir
 
       mkDir raftDir
 
-      match createDB raftDir with
-      | Some db ->
-        createRaft project.Config
-        |> flip saveRaft db
-        dispose db
-        printfn "successfully reset database"
-      | _ -> printfn "unable to reset database"
+      match createDB raftDir, createRaft project.Config with
+      | Right db, Right raft ->
+        try
+          saveRaft raft db
+          dispose db
+          printfn "successfully reset database"
+        with
+          | exn ->
+            DatabaseCreateError exn.Message
+            |> Error.exitWith
+      | Left error, _ -> Error.exitWith error
+      | _, Left error -> Error.exitWith error
 
-    | Left error ->
-      printfn "Project could not be loaded. %A" error
+    datadir </> PROJECT_FILENAME
+    |> loadProject
+    |> Either.orExit reset
 
   //  ____
   // |  _ \ _   _ _ __ ___  _ __
@@ -145,14 +152,14 @@ module Main =
   //                       |_|
 
   let dumpDataDir (datadir: FilePath) =
-    let raftDir = IO.Path.Combine(datadir, RAFT_DIRECTORY)
+    let raftDir = datadir </> RAFT_DIRECTORY
     match openDB raftDir with
-      | Some db ->
-        dumpDB db
-        |> indent 4
-        |> printfn "Database contents:\n%s"
-      | _ ->
-        printfn "No Database found at %A." raftDir
+    | Right db ->
+      dumpDB db
+      |> indent 4
+      |> printfn "Database contents:\n%s"
+    | Left error ->
+      Error.exitWith error
 
   ////////////////////////////////////////
   //  __  __       _                    //
@@ -170,23 +177,14 @@ module Main =
       with
         | exn ->
           printfn "%s" <| parser.PrintUsage exn.Message
-          exitWith ExitCode.CliParseError
+          Error.exitWith CliParseError
 
     validateOptions parsed
 
-    match parsed.GetResult <@ Cmd @> with
-    | Create -> createDataDir parsed
-    | Start ->
-      parsed.TryGetResult <@ Dir @>
-      |> Option.map startRaft
-      |> ignore
-    | Reset ->
-      parsed.TryGetResult <@ Dir @>
-      |> Option.map resetDataDir
-      |> ignore
-    | Dump ->
-      parsed.TryGetResult <@ Dir @>
-      |> Option.map dumpDataDir
-      |> ignore
+    match parsed.GetResult <@ Cmd @>, parsed.GetResult <@ Dir @> with
+    | Create, _   -> createDataDir parsed |> ignore
+    | Start,  dir -> startRaft     dir    |> ignore
+    | Reset,  dir -> resetDataDir  dir    |> ignore
+    | Dump,   dir -> dumpDataDir   dir    |> ignore
 
-    exitWith ExitCode.OK
+    Error.exitWith OK

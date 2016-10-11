@@ -17,11 +17,13 @@ module WebSocket =
     let mutable onMessageCb : Option<Id -> StateMachine -> unit> = None
 
     let uri =
-      match getNodeId () |> tryFindNode config with
-      | Some node -> sprintf "ws://%s:%d" (string node.IpAddr) node.WsPort
-      | _ ->
-        printfn "Error: could not find node. Aborting"
-        exitWith ExitCode.MissingNode
+      let result =
+        getNodeId ()
+        |> Either.bind (tryFindNode config)
+
+      match result with
+      | Right node -> sprintf "ws://%s:%d" (string node.IpAddr) node.WsPort
+      | Left error -> Error.exitWith error
 
     let server = new WebSocketServer(uri)
 

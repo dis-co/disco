@@ -716,16 +716,21 @@ module Configuration =
     { config with ClusterConfig = cluster }
 
   let tryFindNode (config: Config) (id: Id) =
-    List.tryFind
-      (fun (node: RaftNode) -> node.Id = id)
-      config.ClusterConfig.Nodes
+    let result =
+      List.tryFind
+        (fun (node: RaftNode) -> node.Id = id)
+        config.ClusterConfig.Nodes
+
+    match result with
+    | Some node -> Either.succeed node
+    | _         -> MissingNode (string id) |> Either.fail
 
   let getNodeId () =
     let id = Environment.GetEnvironmentVariable "IRIS_NODE_ID"
     if isNull id then
-      printfn "Error: IRIS_NODE_ID environment variable is not set. Aborting."
-      exitWith ExitCode.MissingNodeId
-    Id id
+      MissingNodeId |> Either.fail
+    else
+      Id id |> Either.succeed
 
   let addNodeConfig (node: RaftNode) (config: Config) =
     { config with

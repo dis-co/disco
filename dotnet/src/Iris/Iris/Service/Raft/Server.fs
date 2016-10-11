@@ -44,12 +44,12 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
 
   let database =
     match openDB options.RaftConfig.DataDir with
-    | Some db -> db
-    | _       ->
+    | Right db    -> db
+    | _           ->
       match createDB options.RaftConfig.DataDir with
-        | Some db -> db
-        | _       ->
-          failwith "Persistence Error: unable to open/create a database."
+        | Right db   -> db
+        | Left error ->
+          Error.exitWith error
 
   let serverState = ref Stopped
 
@@ -57,7 +57,11 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
   let periodictoken               = ref None
 
   let cbs = this :> IRaftCallbacks
-  let appState = mkState context options |> newTVar
+  let appState =
+    match mkState context options with
+    | Right state -> newTVar state
+    | Left error  -> Error.exitWith error
+
   let connections = newTVar Map.empty
 
   //            _ _ _                _

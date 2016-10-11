@@ -84,7 +84,7 @@ module Hooks =
           |> Yaml.encode
           |> saveAsset destPath
 
-        match project.SaveFile(committer, msg, relPath) with
+        match saveFile committer msg relPath project with
         | Right (commit, saved) -> Right(fileinfo, commit, saved)
         | Left   error          -> Left error
 
@@ -114,7 +114,7 @@ module Hooks =
 
         let msg = sprintf "Saved %s " name
 
-        match project.SaveFile(committer, msg, relPath) with
+        match saveFile committer msg relPath project with
         | Right (commit, saved) -> Right(fileinfo, commit, saved)
         | Left error            -> Left error
       with
