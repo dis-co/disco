@@ -53,7 +53,7 @@ type ClientMessage<'state> =
   | Stop                                   // SharedWorker is requested to stop
   | Stopped                                // SharedWorker process has stopped
   | ClientLog    of ClientLog              // logs a piece of data to all connected clients
-  | Error        of Error                  // an error occuring inside the worker
+  | Error        of string                 // an error occuring inside the worker
   | Render       of 'state                 // instruct all clients to render new state
   | Event        of Id * StateMachine      // encapsulates an action or event that happened on the client
   | Connect      of string                 // Connect to the specified endpoint

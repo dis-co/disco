@@ -1725,6 +1725,15 @@ module FlatBufferTypes =
     [<Emit("$0.Port()")>]
     abstract Port: uint16
 
+    [<Emit("$0.WebPort()")>]
+    abstract WebPort: uint16
+
+    [<Emit("$0.WsPort()")>]
+    abstract WsPort: uint16
+
+    [<Emit("$0.GitPort()")>]
+    abstract GitPort: uint16
+
     [<Emit("$0.Voting()")>]
     abstract Voting: bool
 
@@ -1757,6 +1766,15 @@ module FlatBufferTypes =
 
     [<Emit("Iris.Serialization.Raft.NodeFB.addPort($1,$2)")>]
     abstract AddPort: builder: FlatBufferBuilder * port: int -> unit
+
+    [<Emit("Iris.Serialization.Raft.NodeFB.addWebPort($1,$2)")>]
+    abstract AddWebPort: builder: FlatBufferBuilder * port: int -> unit
+
+    [<Emit("Iris.Serialization.Raft.NodeFB.addWsPort($1,$2)")>]
+    abstract AddWsPort: builder: FlatBufferBuilder * port: int -> unit
+
+    [<Emit("Iris.Serialization.Raft.NodeFB.addGitPort($1,$2)")>]
+    abstract AddGitPort: builder: FlatBufferBuilder * port: int -> unit
 
     [<Emit("Iris.Serialization.Raft.NodeFB.addVoting($1,$2)")>]
     abstract AddVoting: builder: FlatBufferBuilder * voting: bool -> unit
