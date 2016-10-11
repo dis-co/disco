@@ -1,6 +1,9 @@
 namespace Iris.Core
 
-type Error<'a> =
+open FlatBuffers
+open Iris.Serialization.Raft
+
+type IrisError =
   | OK
 
   // GIT
@@ -33,12 +36,149 @@ type Error<'a> =
   | AssetSaveError         of string
   | AssetDeleteError       of string
 
-  | Other                  of 'a
+  | Other                  of string
+
+  // RAFT
+  | AlreadyVoted
+  | AppendEntryFailed
+  | CandidateUnknown
+  | EntryInvalidated
+  | InvalidCurrentIndex
+  | InvalidLastLog
+  | InvalidLastLogTerm
+  | InvalidTerm
+  | LogFormatError
+  | LogIncomplete
+  | NoError
+  | NoNode
+  | NotCandidate
+  | NotLeader
+  | NotVotingState
+  | ResponseTimeout
+  | SnapshotFormatError
+  | StaleResponse
+  | UnexpectedVotingChange
+  | VoteTermMismatch
+
+  with
+    static member FromFB (fb: ErrorFB) =
+      match fb.Type with
+      | ErrorTypeFB.OKFB                     -> Some OK
+      | ErrorTypeFB.BranchNotFoundFB         -> Some (BranchNotFound fb.Message)
+      | ErrorTypeFB.BranchDetailsNotFoundFB  -> Some (BranchDetailsNotFound fb.Message)
+      | ErrorTypeFB.RepositoryNotFoundFB     -> Some (RepositoryNotFound fb.Message)
+      | ErrorTypeFB.RepositoryInitFailedFB   -> Some (RepositoryInitFailed fb.Message)
+      | ErrorTypeFB.CommitErrorFB            -> Some (CommitError fb.Message)
+      | ErrorTypeFB.GitErrorFB               -> Some (GitError fb.Message)
+      | ErrorTypeFB.ProjectNotFoundFB        -> Some (ProjectNotFound fb.Message)
+      | ErrorTypeFB.ProjectParseErrorFB      -> Some (ProjectParseError fb.Message)
+      | ErrorTypeFB.ProjectPathErrorFB       -> Some ProjectPathError
+      | ErrorTypeFB.ProjectSaveErrorFB       -> Some (ProjectSaveError fb.Message)
+      | ErrorTypeFB.DatabaseCreateErrorFB    -> Some (DatabaseCreateError fb.Message)
+      | ErrorTypeFB.DatabaseNotFoundFB       -> Some (DatabaseNotFound fb.Message)
+      | ErrorTypeFB.MetaDataNotFoundFB       -> Some MetaDataNotFound
+      | ErrorTypeFB.MissingStartupDirFB      -> Some MissingStartupDir
+      | ErrorTypeFB.CliParseErrorFB          -> Some CliParseError
+      | ErrorTypeFB.MissingNodeIdFB          -> Some MissingNodeId
+      | ErrorTypeFB.MissingNodeFB            -> Some (MissingNode fb.Message)
+      | ErrorTypeFB.AssetSaveErrorFB         -> Some (AssetSaveError fb.Message)
+      | ErrorTypeFB.AssetDeleteErrorFB       -> Some (AssetDeleteError fb.Message)
+      | ErrorTypeFB.OtherFB                  -> Some (Other fb.Message)
+      | ErrorTypeFB.AlreadyVotedFB           -> Some AlreadyVoted
+      | ErrorTypeFB.AppendEntryFailedFB      -> Some AppendEntryFailed
+      | ErrorTypeFB.CandidateUnknownFB       -> Some CandidateUnknown
+      | ErrorTypeFB.EntryInvalidatedFB       -> Some EntryInvalidated
+      | ErrorTypeFB.InvalidCurrentIndexFB    -> Some InvalidCurrentIndex
+      | ErrorTypeFB.InvalidLastLogFB         -> Some InvalidLastLog
+      | ErrorTypeFB.InvalidLastLogTermFB     -> Some InvalidLastLogTerm
+      | ErrorTypeFB.InvalidTermFB            -> Some InvalidTerm
+      | ErrorTypeFB.LogFormatErrorFB         -> Some LogFormatError
+      | ErrorTypeFB.LogIncompleteFB          -> Some LogIncomplete
+      | ErrorTypeFB.NoErrorFB                -> Some NoError
+      | ErrorTypeFB.NoNodeFB                 -> Some NoNode
+      | ErrorTypeFB.NotCandidateFB           -> Some NotCandidate
+      | ErrorTypeFB.NotLeaderFB              -> Some NotLeader
+      | ErrorTypeFB.NotVotingStateFB         -> Some NotVotingState
+      | ErrorTypeFB.ResponseTimeoutFB        -> Some ResponseTimeout
+      | ErrorTypeFB.SnapshotFormatErrorFB    -> Some SnapshotFormatError
+      | ErrorTypeFB.StaleResponseFB          -> Some StaleResponse
+      | ErrorTypeFB.UnexpectedVotingChangeFB -> Some UnexpectedVotingChange
+      | ErrorTypeFB.VoteTermMismatchFB       -> Some VoteTermMismatch
+      | _                                    -> None
+
+    member error.ToOffset (builder: FlatBufferBuilder) =
+      let tipe =
+        match error with
+        | OK                       -> ErrorTypeFB.OKFB
+        | BranchNotFound         _ -> ErrorTypeFB.BranchNotFoundFB
+        | BranchDetailsNotFound  _ -> ErrorTypeFB.BranchDetailsNotFoundFB
+        | RepositoryNotFound     _ -> ErrorTypeFB.RepositoryNotFoundFB
+        | RepositoryInitFailed   _ -> ErrorTypeFB.RepositoryInitFailedFB
+        | CommitError            _ -> ErrorTypeFB.CommitErrorFB
+        | GitError               _ -> ErrorTypeFB.GitErrorFB
+        | ProjectNotFound        _ -> ErrorTypeFB.ProjectNotFoundFB
+        | ProjectParseError      _ -> ErrorTypeFB.ProjectParseErrorFB
+        | ProjectPathError         -> ErrorTypeFB.ProjectPathErrorFB
+        | ProjectSaveError       _ -> ErrorTypeFB.ProjectSaveErrorFB
+        | DatabaseCreateError    _ -> ErrorTypeFB.DatabaseCreateErrorFB
+        | DatabaseNotFound       _ -> ErrorTypeFB.DatabaseNotFoundFB
+        | MetaDataNotFound         -> ErrorTypeFB.MetaDataNotFoundFB
+        | MissingStartupDir        -> ErrorTypeFB.MissingStartupDirFB
+        | CliParseError            -> ErrorTypeFB.CliParseErrorFB
+        | MissingNodeId            -> ErrorTypeFB.MissingNodeIdFB
+        | MissingNode            _ -> ErrorTypeFB.MissingNodeFB
+        | AssetSaveError         _ -> ErrorTypeFB.AssetSaveErrorFB
+        | AssetDeleteError       _ -> ErrorTypeFB.AssetDeleteErrorFB
+        | Other                  _ -> ErrorTypeFB.OtherFB
+
+        | AlreadyVoted             -> ErrorTypeFB.AlreadyVotedFB
+        | AppendEntryFailed        -> ErrorTypeFB.AppendEntryFailedFB
+        | CandidateUnknown         -> ErrorTypeFB.CandidateUnknownFB
+        | EntryInvalidated         -> ErrorTypeFB.EntryInvalidatedFB
+        | InvalidCurrentIndex      -> ErrorTypeFB.InvalidCurrentIndexFB
+        | InvalidLastLog           -> ErrorTypeFB.InvalidLastLogFB
+        | InvalidLastLogTerm       -> ErrorTypeFB.InvalidLastLogTermFB
+        | InvalidTerm              -> ErrorTypeFB.InvalidTermFB
+        | LogFormatError           -> ErrorTypeFB.LogFormatErrorFB
+        | LogIncomplete            -> ErrorTypeFB.LogIncompleteFB
+        | NoError                  -> ErrorTypeFB.NoErrorFB
+        | NoNode                   -> ErrorTypeFB.NoNodeFB
+        | NotCandidate             -> ErrorTypeFB.NotCandidateFB
+        | NotLeader                -> ErrorTypeFB.NotLeaderFB
+        | NotVotingState           -> ErrorTypeFB.NotVotingStateFB
+        | ResponseTimeout          -> ErrorTypeFB.ResponseTimeoutFB
+        | SnapshotFormatError      -> ErrorTypeFB.SnapshotFormatErrorFB
+        | StaleResponse            -> ErrorTypeFB.StaleResponseFB
+        | UnexpectedVotingChange   -> ErrorTypeFB.UnexpectedVotingChangeFB
+        | VoteTermMismatch         -> ErrorTypeFB.VoteTermMismatchFB
+
+      let str =
+        match error with
+        | BranchNotFound         msg -> builder.CreateString msg |> Some
+        | BranchDetailsNotFound  msg -> builder.CreateString msg |> Some
+        | RepositoryNotFound     msg -> builder.CreateString msg |> Some
+        | RepositoryInitFailed   msg -> builder.CreateString msg |> Some
+        | CommitError            msg -> builder.CreateString msg |> Some
+        | GitError               msg -> builder.CreateString msg |> Some
+        | ProjectNotFound        msg -> builder.CreateString msg |> Some
+        | ProjectParseError      msg -> builder.CreateString msg |> Some
+        | ProjectSaveError       msg -> builder.CreateString msg |> Some
+        | DatabaseCreateError    msg -> builder.CreateString msg |> Some
+        | DatabaseNotFound       msg -> builder.CreateString msg |> Some
+        | MissingNode            msg -> builder.CreateString msg |> Some
+        | AssetSaveError         msg -> builder.CreateString msg |> Some
+        | AssetDeleteError       msg -> builder.CreateString msg |> Some
+        | Other                  msg -> builder.CreateString msg |> Some
+        | _                          -> None
+
+      match str with
+      | Some payload -> ErrorFB.CreateErrorFB(builder, tipe, payload)
+      | _            -> ErrorFB.CreateErrorFB(builder, tipe)
 
 [<RequireQualifiedAccess>]
 module Error =
 
-  let inline toMessage (error: Error<'a>) =
+  let inline toMessage (error: IrisError) =
     match error with
     | BranchNotFound        e -> sprintf "Branch does not exist: %s" e
     | BranchDetailsNotFound e -> sprintf "Branch details could not be found: %s" e
@@ -69,9 +209,31 @@ module Error =
 
     | Other                 e -> sprintf "Other error occurred: %s" (string e)
 
+    // RAFT
+    | AlreadyVoted            -> "Already voted"
+    | AppendEntryFailed       -> "AppendEntry request has failed"
+    | CandidateUnknown        -> "Election candidate not known to Raft"
+    | EntryInvalidated        -> "Entry was invalidated"
+    | InvalidCurrentIndex     -> "Invalid CurrentIndex"
+    | InvalidLastLog          -> "Invalid last log"
+    | InvalidLastLogTerm      -> "Invalid last log term"
+    | InvalidTerm             -> "Invalid term"
+    | LogFormatError          -> "Log format error"
+    | LogIncomplete           -> "Log is incomplete"
+    | NoError                 -> "No error"
+    | NoNode                  -> "No node"
+    | NotCandidate            -> "Not currently candidate"
+    | NotLeader               -> "Not currently leader"
+    | NotVotingState          -> "Not in voting state"
+    | ResponseTimeout         -> "Response timeout"
+    | SnapshotFormatError     -> "Snapshot was malformed"
+    | StaleResponse           -> "Unsolicited response"
+    | UnexpectedVotingChange  -> "Unexpected voting change"
+    | VoteTermMismatch        -> "Vote term mismatch"
+
     | OK                      ->         "All good."
 
-  let inline toExitCode (error: Error<'a>) =
+  let inline toExitCode (error: IrisError) =
     match error with
     | OK                      -> 0
     | BranchNotFound        _ -> 1
@@ -103,13 +265,35 @@ module Error =
 
     | Other                 _ -> 20
 
+    // RAFT
+    | AlreadyVoted            -> 21
+    | AppendEntryFailed       -> 22
+    | CandidateUnknown        -> 23
+    | EntryInvalidated        -> 24
+    | InvalidCurrentIndex     -> 25
+    | InvalidLastLog          -> 26
+    | InvalidLastLogTerm      -> 27
+    | InvalidTerm             -> 28
+    | LogFormatError          -> 29
+    | LogIncomplete           -> 30
+    | NoError                 -> 31
+    | NoNode                  -> 32
+    | NotCandidate            -> 33
+    | NotLeader               -> 34
+    | NotVotingState          -> 35
+    | ResponseTimeout         -> 36
+    | SnapshotFormatError     -> 37
+    | StaleResponse           -> 38
+    | UnexpectedVotingChange  -> 39
+    | VoteTermMismatch        -> 40
 
-  let inline isOk (error: Error<'a>) =
+
+  let inline isOk (error: IrisError) =
     match error with
     | OK -> true
     | _  -> false
 
-  let inline exitWith (error: Error<'a>) =
+  let inline exitWith (error: IrisError) =
     if not (isOk error) then
       toMessage error
       |> printfn "Fatal: %s"

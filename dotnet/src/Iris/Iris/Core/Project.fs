@@ -101,7 +101,7 @@ module ProjectHelper =
   /// Attempts to load a serializad project file from the specified location.
   ///
   /// # Returns: Project option
-  let loadProject (path : FilePath) : Either<Error<string>,Project> =
+  let loadProject (path : FilePath) : Either<IrisError,Project> =
     if not (File.Exists path) then
       ProjectNotFound path |> Either.fail
     else
@@ -156,7 +156,7 @@ module ProjectHelper =
   /// exists, otherwise creating it.
   ///
   /// # Returns: Repository
-  let initRepo (project: Project) : Either<Error<string>,Repository> =
+  let initRepo (project: Project) : Either<IrisError,Repository> =
     let initRepoImpl (repo: Repository) =
       writeDaemonExportFile repo
       writeGitIgnoreFile repo
@@ -216,7 +216,7 @@ module ProjectHelper =
   /// - project   : Project
   ///
   /// Returns: (Commit * Project) option
-  let commitPath (committer: Signature) (msg : string) (filepath: FilePath) (project: Project) : Either<Error<string>,(Commit * Project)> =
+  let commitPath (committer: Signature) (msg : string) (filepath: FilePath) (project: Project) : Either<IrisError,(Commit * Project)> =
     let doCommit repo =
       try
         let parent = Git.Repo.parentPath repo
@@ -240,10 +240,10 @@ module ProjectHelper =
       | Left error -> Left error
     | Right repo -> doCommit repo
 
-  let saveFile (committer: Signature) (msg : string) (path: FilePath) (project: Project) : Either<Error<string>,(Commit * Project)> =
+  let saveFile (committer: Signature) (msg : string) (path: FilePath) (project: Project) : Either<IrisError,(Commit * Project)> =
     commitPath committer msg path project
 
-  let saveProject (committer: Signature) (msg : string) (project: Project) : Either<Error<string>,(Commit * Project)> =
+  let saveProject (committer: Signature) (msg : string) (project: Project) : Either<IrisError,(Commit * Project)> =
     match project.Path with
     | Some path ->
       if not (Directory.Exists path) then

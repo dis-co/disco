@@ -10,7 +10,7 @@ namespace Iris.Serialization.Raft;
 
 enum BehaviorFB:ushort {
      ToggleFB = 0,
-     BangFB = 1 
+     BangFB = 1
 }
 
 enum StringTypeFB:ushort {
@@ -49,7 +49,7 @@ table BoolSliceFB {
 
 table ByteSliceFB {
       Index: uint;
-      Value: string; 
+      Value: string;
 }
 
 table EnumPropertyFB {
@@ -232,7 +232,7 @@ table IOBoxFB {
 
 table PatchFB {
       Id:   string;
-      Name: string; 
+      Name: string;
       IOBoxes: [IOBoxFB];
 }
 
@@ -244,7 +244,7 @@ table PatchFB {
 
 table CueFB {
       Id:      string;
-      Name:    string; 
+      Name:    string;
       IOBoxes: [IOBoxFB];
 }
 
@@ -257,7 +257,7 @@ table CueFB {
 
 table CueListFB {
       Id:      string;
-      Name:    string; 
+      Name:    string;
       Cues:    [CueFB];
 }
 
@@ -274,7 +274,7 @@ table UserFB {
       LastName:  string;
       Email:     string;
       Joined:    string;
-      Created:   string; 
+      Created:   string;
 }
 
 //  ____                _
@@ -353,7 +353,30 @@ table ApiActionFB {
 // |  _ < (_| |  _| |_| |___| |  | | | (_) | |
 // |_| \_\__,_|_|  \__|_____|_|  |_|  \___/|_|
 
-enum RaftErrorTypeFB:ushort {
+enum ErrorTypeFB:ushort {
+     // Application
+     BranchNotFoundFB,
+     BranchDetailsNotFoundFB,
+     RepositoryNotFoundFB,
+     RepositoryInitFailedFB,
+     CommitErrorFB,
+     GitErrorFB,
+     ProjectNotFoundFB,
+     ProjectParseErrorFB,
+     ProjectPathErrorFB,
+     ProjectSaveErrorFB,
+     DatabaseCreateErrorFB,
+     DatabaseNotFoundFB,
+     MetaDataNotFoundFB,
+     MissingStartupDirFB,
+     CliParseErrorFB,
+     MissingNodeIdFB,
+     MissingNodeFB,
+     AssetSaveErrorFB,
+     AssetDeleteErrorFB,
+     OKFB,
+
+     // RAFT
      AlreadyVotedFB,
      AppendEntryFailedFB,
      CandidateUnknownFB,
@@ -374,11 +397,11 @@ enum RaftErrorTypeFB:ushort {
      StaleResponseFB,
      UnexpectedVotingChangeFB,
      VoteTermMismatchFB,
-     OtherErrorFB
+     OtherFB
 }
 
-table RaftErrorFB {
-      Type: RaftErrorTypeFB;
+table ErrorFB {
+      Type: ErrorTypeFB;
       Message: string;
 }
 
@@ -492,7 +515,7 @@ table VoteRequestFB {
 table VoteResponseFB {
       Term    : uint;
       Granted : bool;
-      Reason  : RaftErrorFB;
+      Reason  : ErrorFB;
 }
 
 //     _                               _ _____       _        _
@@ -590,7 +613,7 @@ table ArrivederciFB {
 }
 
 table ErrorResponseFB {
-      Error: RaftErrorFB;
+      Error: ErrorFB;
 }
 
 table EmptyResponseFB {

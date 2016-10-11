@@ -60,7 +60,7 @@ module Git =
     /// - branch: Branch
     ///
     /// Returns: Either<string,Branch>
-    let tracked (branch: Branch) : Either<Error<string>,Branch> =
+    let tracked (branch: Branch) : Either<IrisError,Branch> =
       match branch.TrackedBranch with
         | null      -> BranchNotFound "No tracked branch" |> Either.fail
         | branch -> Either.succeed branch
@@ -73,7 +73,7 @@ module Git =
     /// - branch: Branch to get details for
     ///
     /// Returns: BranchTrackingDetails option
-    let tracking (branch: Branch) : Either<Error<string>,BranchTrackingDetails> =
+    let tracking (branch: Branch) : Either<IrisError,BranchTrackingDetails> =
       match branch.TrackingDetails with
         | null       -> BranchDetailsNotFound "No tracked branch" |> Either.fail
         | details -> Either.succeed details
@@ -412,7 +412,7 @@ module Git =
     /// - path: FilePath to search for the .git folder
     ///
     /// Returns: Repository option
-    let repository (path: FilePath) : Either<Error<string>,Repository> =
+    let repository (path: FilePath) : Either<IrisError,Repository> =
       try
         new Repository(System.IO.Path.Combine(path, ".git"))
         |> Either.succeed

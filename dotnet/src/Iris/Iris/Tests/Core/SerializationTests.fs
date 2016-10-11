@@ -214,6 +214,26 @@ module SerializationTests =
     testCase "Validate ErrorResponse Serialization" <| fun _ ->
 
       let errors = [
+          OK
+          BranchNotFound        "bla"
+          BranchDetailsNotFound "haha"
+          RepositoryNotFound    "haha"
+          RepositoryInitFailed  "haha"
+          CommitError           "haha"
+          GitError              "haha"
+          ProjectNotFound       "aklsdfl"
+          ProjectPathError
+          ProjectSaveError      "lskdfj"
+          ProjectParseError     "lskdfj"
+          MissingNodeId
+          MissingNode           "lak"
+          DatabaseCreateError   "oiwe"
+          DatabaseNotFound      "lksjfolsk"
+          MetaDataNotFound
+          MissingStartupDir
+          CliParseError
+          AssetSaveError        "lskd"
+          AssetDeleteError      "lskd"
           AlreadyVoted
           AppendEntryFailed
           CandidateUnknown
@@ -234,7 +254,7 @@ module SerializationTests =
           StaleResponse
           UnexpectedVotingChange
           VoteTermMismatch
-          OtherError "whatever"
+          Other "whatever"
         ]
       List.iter (fun err ->
                   let msg = ErrorResponse(err)

@@ -6,93 +6,6 @@ open Iris.Core
 open Iris.Serialization.Raft
 open FlatBuffers
 
-//  _____
-// | ____|_ __ _ __ ___  _ __
-// |  _| | '__| '__/ _ \| '__|
-// | |___| |  | | | (_) | |
-// |_____|_|  |_|  \___/|_|
-
-type RaftError =
-  | AlreadyVoted
-  | AppendEntryFailed
-  | CandidateUnknown
-  | EntryInvalidated
-  | InvalidCurrentIndex
-  | InvalidLastLog
-  | InvalidLastLogTerm
-  | InvalidTerm
-  | LogFormatError
-  | LogIncomplete
-  | NoError
-  | NoNode
-  | NotCandidate
-  | NotLeader
-  | NotVotingState
-  | ResponseTimeout
-  | SnapshotFormatError
-  | StaleResponse
-  | UnexpectedVotingChange
-  | VoteTermMismatch
-  | OtherError of string
-
-  with
-    member error.ToOffset (builder: FlatBufferBuilder) =
-      let tipe =
-        match error with
-        | AlreadyVoted           -> RaftErrorTypeFB.AlreadyVotedFB
-        | AppendEntryFailed      -> RaftErrorTypeFB.AppendEntryFailedFB
-        | CandidateUnknown       -> RaftErrorTypeFB.CandidateUnknownFB
-        | EntryInvalidated       -> RaftErrorTypeFB.EntryInvalidatedFB
-        | InvalidCurrentIndex    -> RaftErrorTypeFB.InvalidCurrentIndexFB
-        | InvalidLastLog         -> RaftErrorTypeFB.InvalidLastLogFB
-        | InvalidLastLogTerm     -> RaftErrorTypeFB.InvalidLastLogTermFB
-        | InvalidTerm            -> RaftErrorTypeFB.InvalidTermFB
-        | LogFormatError         -> RaftErrorTypeFB.LogFormatErrorFB
-        | LogIncomplete          -> RaftErrorTypeFB.LogIncompleteFB
-        | NoError                -> RaftErrorTypeFB.NoErrorFB
-        | NoNode                 -> RaftErrorTypeFB.NoNodeFB
-        | NotCandidate           -> RaftErrorTypeFB.NotCandidateFB
-        | NotLeader              -> RaftErrorTypeFB.NotLeaderFB
-        | NotVotingState         -> RaftErrorTypeFB.NotVotingStateFB
-        | ResponseTimeout        -> RaftErrorTypeFB.ResponseTimeoutFB
-        | SnapshotFormatError    -> RaftErrorTypeFB.SnapshotFormatErrorFB
-        | StaleResponse          -> RaftErrorTypeFB.StaleResponseFB
-        | UnexpectedVotingChange -> RaftErrorTypeFB.UnexpectedVotingChangeFB
-        | VoteTermMismatch       -> RaftErrorTypeFB.VoteTermMismatchFB
-        | OtherError           _ -> RaftErrorTypeFB.OtherErrorFB
-
-      match error with
-      | OtherError msg ->
-        let message = builder.CreateString msg
-        RaftErrorFB.CreateRaftErrorFB(builder, tipe, message)
-      | _ ->
-        RaftErrorFB.CreateRaftErrorFB(builder, tipe)
-
-    static member FromFB (fb: RaftErrorFB) =
-      match fb.Type with
-      | RaftErrorTypeFB.AlreadyVotedFB           -> Some AlreadyVoted
-      | RaftErrorTypeFB.AppendEntryFailedFB      -> Some AppendEntryFailed
-      | RaftErrorTypeFB.CandidateUnknownFB       -> Some CandidateUnknown
-      | RaftErrorTypeFB.EntryInvalidatedFB       -> Some EntryInvalidated
-      | RaftErrorTypeFB.InvalidCurrentIndexFB    -> Some InvalidCurrentIndex
-      | RaftErrorTypeFB.InvalidLastLogFB         -> Some InvalidLastLog
-      | RaftErrorTypeFB.InvalidLastLogTermFB     -> Some InvalidLastLogTerm
-      | RaftErrorTypeFB.InvalidTermFB            -> Some InvalidTerm
-      | RaftErrorTypeFB.LogFormatErrorFB         -> Some LogFormatError
-      | RaftErrorTypeFB.LogIncompleteFB          -> Some LogIncomplete
-      | RaftErrorTypeFB.NoErrorFB                -> Some NoError
-      | RaftErrorTypeFB.NoNodeFB                 -> Some NoNode
-      | RaftErrorTypeFB.NotCandidateFB           -> Some NotCandidate
-      | RaftErrorTypeFB.NotLeaderFB              -> Some NotLeader
-      | RaftErrorTypeFB.NotVotingStateFB         -> Some NotVotingState
-      | RaftErrorTypeFB.ResponseTimeoutFB        -> Some ResponseTimeout
-      | RaftErrorTypeFB.SnapshotFormatErrorFB    -> Some SnapshotFormatError
-      | RaftErrorTypeFB.StaleResponseFB          -> Some StaleResponse
-      | RaftErrorTypeFB.UnexpectedVotingChangeFB -> Some UnexpectedVotingChange
-      | RaftErrorTypeFB.VoteTermMismatchFB       -> Some VoteTermMismatch
-      | RaftErrorTypeFB.OtherErrorFB             -> Some (OtherError fb.Message)
-      | _                                        -> None
-
 /// The Raft state machine
 ///
 /// ## States
@@ -197,7 +110,7 @@ type VoteRequest =
 type VoteResponse =
   { Term    : Term
   ; Granted : bool
-  ; Reason  : RaftError option
+  ; Reason  : IrisError option
   }
 
   with
@@ -205,7 +118,7 @@ type VoteResponse =
       let reason =
         let reason = fb.Reason
         if reason.HasValue then
-          RaftError.FromFB reason.Value
+          IrisError.FromFB reason.Value
         else None
 
       { Term    = fb.Term
@@ -213,7 +126,7 @@ type VoteResponse =
       ; Reason  = reason }
 
     member self.ToOffset(builder: FlatBufferBuilder) =
-      let err = Option.map (fun (r: RaftError) -> r.ToOffset(builder)) self.Reason
+      let err = Option.map (fun (r: IrisError) -> r.ToOffset(builder)) self.Reason
       VoteResponseFB.StartVoteResponseFB(builder)
       VoteResponseFB.AddTerm(builder, self.Term)
       match err with

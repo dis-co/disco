@@ -507,7 +507,7 @@ let closeDB (db: LiteDatabase) =
 /// - path: FilePath to the Directory to contain database File
 ///
 /// Returns: LiteDatabase option
-let createDB (path: FilePath) : Either<Error<string>,LiteDatabase> =
+let createDB (path: FilePath) : Either<IrisError,LiteDatabase> =
   match openDB path with
   | Right _ as db -> db
   |       _       ->
@@ -1076,7 +1076,7 @@ let saveRaft (raft: Raft) (db: LiteDatabase) =
 /// - db:  LiteDatabase
 ///
 /// Returns: Raft option
-let loadRaft (node: RaftNode) (nodes: Map<Id,RaftNode>) (db: LiteDatabase) : Either<Error<string>,Raft> =
+let loadRaft (node: RaftNode) (nodes: Map<Id,RaftNode>) (db: LiteDatabase) : Either<IrisError,Raft> =
   match getMetadata db with
   | Some meta ->
     let log =

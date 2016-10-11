@@ -48,7 +48,7 @@ module Either =
     | Right value2 -> succeed (v1, value2)
     | Left err     -> Left err
 
-  let inline orExit< ^a, ^b, ^c > (f: ^a -> ^b) (a: Either< Error< ^c >, ^a>) : ^b =
+  let inline orExit< ^a, ^b > (f: ^a -> ^b) (a: Either< IrisError, ^a>) : ^b =
     match a with
     | Right value -> f value
     | Left error  -> Error.exitWith error

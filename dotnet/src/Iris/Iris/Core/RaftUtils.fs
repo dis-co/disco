@@ -173,7 +173,7 @@ type RaftResponse =
   | Redirect                of leader:RaftNode
   | Welcome                 of leader:RaftNode
   | Arrivederci
-  | ErrorResponse           of RaftError
+  | ErrorResponse           of IrisError
 
   with
 
@@ -291,7 +291,7 @@ type RaftResponse =
           let rv = entry.Value
           let err = rv.Error
           if err.HasValue then
-            RaftError.FromFB err.Value
+            IrisError.FromFB err.Value
             |> Option.map ErrorResponse
           else None
         else None

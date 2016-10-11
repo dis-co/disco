@@ -27,7 +27,7 @@ open Db
 /// - options: RaftOptions
 ///
 /// Returns: Raft<StateMachine,IrisNode>
-let createRaft (options: Config) : Either<Error<string>, Raft> =
+let createRaft (options: Config) : Either<IrisError, Raft> =
   getNodeId ()
   |> Either.bind (tryFindNode options)
   |> Either.map mkRaft
@@ -67,7 +67,7 @@ let getRaft (options: Config) =
 /// - options: `RaftOptions`
 ///
 /// Returns: RaftAppState
-let mkState (context: ZeroMQ.ZContext) (options: Config) : Either<Error<string>,RaftAppState> =
+let mkState (context: ZeroMQ.ZContext) (options: Config) : Either<IrisError,RaftAppState> =
   getRaft options
   |> Either.map
       (fun raft ->

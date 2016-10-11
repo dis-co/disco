@@ -105,7 +105,7 @@ let joinCluster (nodes: RaftNode array) (appState: TVar<RaftAppState>) cbs =
     if ok then
       Welcome raftState.Node
     else
-      ErrorResponse <| OtherError "Could not commit JointConsensus"
+      ErrorResponse <| Other "Could not commit JointConsensus"
 
   | Left (err, raftState) ->
     // save the new raft value back to the TVar
@@ -178,7 +178,7 @@ let leaveCluster (nodes: RaftNode array) (appState: TVar<RaftAppState>) cbs =
       // now that all nodes are in joint-consensus we need to wait and finalize the 2-phase commit
       Arrivederci
     else
-      ErrorResponse <| OtherError "Could not commit Joint-Consensus"
+      ErrorResponse <| Other "Could not commit Joint-Consensus"
 
   | Left (err,_) ->
     ErrorResponse err
@@ -194,7 +194,7 @@ let leaveCluster (nodes: RaftNode array) (appState: TVar<RaftAppState>) cbs =
 let doRedirect state =
   match getLeader state.Raft with
   | Some node -> Redirect node
-  | _         -> ErrorResponse (OtherError "No known leader")
+  | _         -> ErrorResponse (Other "No known leader")
 
 /// ## Handle AppendEntries requests
 ///
@@ -375,7 +375,7 @@ let startServer (appState: TVar<RaftAppState>) (cbs: IRaftCallbacks) =
     let response =
       match request with
       | Some message -> handleRequest message appState cbs
-      | None         -> ErrorResponse (OtherError "Unable to decipher request")
+      | None         -> ErrorResponse (Other "Unable to decipher request")
 
     response |> Binary.encode
 
