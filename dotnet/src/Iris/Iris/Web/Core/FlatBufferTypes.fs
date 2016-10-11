@@ -2136,3 +2136,168 @@ module FlatBufferTypes =
     abstract GetRootAsApiActionFB: bytes: ByteBuffer -> ApiActionFB
 
   let ApiActionFB: ApiActionFBConstructor = failwith "JS only"
+
+  //  _____                     _____ ____
+  // | ____|_ __ _ __ ___  _ __|  ___| __ )
+  // |  _| | '__| '__/ _ \| '__| |_  |  _ \
+  // | |___| |  | | | (_) | |  |  _| | |_) |
+  // |_____|_|  |_|  \___/|_|  |_|   |____/
+
+  type ErrorTypeFB = int
+
+  type ErrorTypeFBConstructor =
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.OKFB")>]
+    abstract OKFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.BranchNotFoundFB")>]
+    abstract BranchNotFoundFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.BranchDetailsNotFoundFB")>]
+    abstract BranchDetailsNotFoundFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.RepositoryNotFoundFB")>]
+    abstract RepositoryNotFoundFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.RepositoryInitFailedFB")>]
+    abstract RepositoryInitFailedFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.CommitErrorFB")>]
+    abstract CommitErrorFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.GitErrorFB")>]
+    abstract GitErrorFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.ProjectNotFoundFB")>]
+    abstract ProjectNotFoundFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.ProjectParseErrorFB")>]
+    abstract ProjectParseErrorFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.ProjectPathErrorFB")>]
+    abstract ProjectPathErrorFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.ProjectSaveErrorFB")>]
+    abstract ProjectSaveErrorFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.DatabaseCreateErrorFB")>]
+    abstract DatabaseCreateErrorFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.DatabaseNotFoundFB")>]
+    abstract DatabaseNotFoundFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.MetaDataNotFoundFB")>]
+    abstract MetaDataNotFoundFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.MissingStartupDirFB")>]
+    abstract MissingStartupDirFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.CliParseErrorFB")>]
+    abstract CliParseErrorFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.MissingNodeIdFB")>]
+    abstract MissingNodeIdFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.MissingNodeFB")>]
+    abstract MissingNodeFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.AssetSaveErrorFB")>]
+    abstract AssetSaveErrorFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.AssetDeleteErrorFB")>]
+    abstract AssetDeleteErrorFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.OtherFB")>]
+    abstract OtherFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.AlreadyVotedFB")>]
+    abstract AlreadyVotedFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.AppendEntryFailedFB")>]
+    abstract AppendEntryFailedFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.CandidateUnknownFB")>]
+    abstract CandidateUnknownFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.EntryInvalidatedFB")>]
+    abstract EntryInvalidatedFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.InvalidCurrentIndexFB")>]
+    abstract InvalidCurrentIndexFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.InvalidLastLogFB")>]
+    abstract InvalidLastLogFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.InvalidLastLogTermFB")>]
+    abstract InvalidLastLogTermFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.InvalidTermFB")>]
+    abstract InvalidTermFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.LogFormatErrorFB")>]
+    abstract LogFormatErrorFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.LogIncompleteFB")>]
+    abstract LogIncompleteFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.NoErrorFB")>]
+    abstract NoErrorFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.NoNodeFB")>]
+    abstract NoNodeFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.NotCandidateFB")>]
+    abstract NotCandidateFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.NotLeaderFB")>]
+    abstract NotLeaderFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.NotVotingStateFB")>]
+    abstract NotVotingStateFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.ResponseTimeoutFB")>]
+    abstract ResponseTimeoutFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.SnapshotFormatErrorFB")>]
+    abstract SnapshotFormatErrorFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.StaleResponseFB")>]
+    abstract StaleResponseFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.UnexpectedVotingChangeFB")>]
+    abstract UnexpectedVotingChangeFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.VoteTermMismatchFB")>]
+    abstract VoteTermMismatchFB: ErrorTypeFB
+
+  let ErrorTypeFB: ErrorTypeFBConstructor = failwith "JS only"
+
+  type ErrorFB =
+    [<Emit("$0.Type()")>]
+    abstract Type: ErrorTypeFB
+
+    [<Emit("$0.Message()")>]
+    abstract Message: string
+
+  type ErrorFBConstructor =
+    abstract prototype: ErrorFB with get, set
+
+    [<Emit("Iris.Serialization.Raft.ErrorFB.startErrorFB($1)")>]
+    abstract StartErrorFB: builder: FlatBufferBuilder -> unit
+
+    [<Emit("Iris.Serialization.Raft.ErrorFB.addType($1, $2)")>]
+    abstract AddType: builder: FlatBufferBuilder * tipe: ErrorTypeFB -> unit
+
+    [<Emit("Iris.Serialization.Raft.ErrorFB.addMessage($1, $2)")>]
+    abstract AddMessage: builder: FlatBufferBuilder * msg: Offset<string> -> unit
+
+    [<Emit("Iris.Serialization.Raft.ErrorFB.endErrorFB($1)")>]
+    abstract EndErrorFB: builder: FlatBufferBuilder -> Offset<ErrorFB>
+
+    [<Emit("Iris.Serialization.Raft.ErrorFB.getRootAsErrorFB($1)")>]
+    abstract GetRootAsErrorFB: bytes: ByteBuffer -> ErrorFB
+
+    [<Emit("new Iris.Serialization.Raft.ErrorFB()")>]
+    abstract Create: unit -> ErrorFB
+
+  let ErrorFB: ErrorFBConstructor = failwith "JS only"

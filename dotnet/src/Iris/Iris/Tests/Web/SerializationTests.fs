@@ -192,3 +192,49 @@ module SerializationTests =
       ]
       |> List.iter check
       finish()
+
+    test "Validate Error Serialization" <| fun finish ->
+      [ OK
+      ; BranchNotFound        "bla"
+      ; BranchDetailsNotFound "haha"
+      ; RepositoryNotFound    "haha"
+      ; RepositoryInitFailed  "haha"
+      ; CommitError           "haha"
+      ; GitError              "haha"
+      ; ProjectNotFound       "aklsdfl"
+      ; ProjectPathError
+      ; ProjectSaveError      "lskdfj"
+      ; ProjectParseError     "lskdfj"
+      ; MissingNodeId
+      ; MissingNode           "lak"
+      ; DatabaseCreateError   "oiwe"
+      ; DatabaseNotFound      "lksjfolsk"
+      ; MetaDataNotFound
+      ; MissingStartupDir
+      ; CliParseError
+      ; AssetSaveError        "lskd"
+      ; AssetDeleteError      "lskd"
+      ; AlreadyVoted
+      ; AppendEntryFailed
+      ; CandidateUnknown
+      ; EntryInvalidated
+      ; InvalidCurrentIndex
+      ; InvalidLastLog
+      ; InvalidLastLogTerm
+      ; InvalidTerm
+      ; LogFormatError
+      ; LogIncomplete
+      ; NoError
+      ; NoNode
+      ; NotCandidate
+      ; NotLeader
+      ; NotVotingState
+      ; ResponseTimeout
+      ; SnapshotFormatError
+      ; StaleResponse
+      ; UnexpectedVotingChange
+      ; VoteTermMismatch
+      ; Other "whatever"
+      ] |> List.iter check
+
+      finish()

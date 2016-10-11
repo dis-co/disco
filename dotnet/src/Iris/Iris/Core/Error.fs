@@ -1,7 +1,16 @@
 namespace Iris.Core
 
+#if JAVASCRIPT
+
+open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
+
+#else
+
 open FlatBuffers
 open Iris.Serialization.Raft
+
+#endif
 
 type IrisError =
   | OK
@@ -63,6 +72,50 @@ type IrisError =
   with
     static member FromFB (fb: ErrorFB) =
       match fb.Type with
+#if JAVASCRIPT
+      | x when x = ErrorTypeFB.OKFB                     -> Some OK
+      | x when x = ErrorTypeFB.BranchNotFoundFB         -> Some (BranchNotFound fb.Message)
+      | x when x = ErrorTypeFB.BranchDetailsNotFoundFB  -> Some (BranchDetailsNotFound fb.Message)
+      | x when x = ErrorTypeFB.RepositoryNotFoundFB     -> Some (RepositoryNotFound fb.Message)
+      | x when x = ErrorTypeFB.RepositoryInitFailedFB   -> Some (RepositoryInitFailed fb.Message)
+      | x when x = ErrorTypeFB.CommitErrorFB            -> Some (CommitError fb.Message)
+      | x when x = ErrorTypeFB.GitErrorFB               -> Some (GitError fb.Message)
+      | x when x = ErrorTypeFB.ProjectNotFoundFB        -> Some (ProjectNotFound fb.Message)
+      | x when x = ErrorTypeFB.ProjectParseErrorFB      -> Some (ProjectParseError fb.Message)
+      | x when x = ErrorTypeFB.ProjectPathErrorFB       -> Some ProjectPathError
+      | x when x = ErrorTypeFB.ProjectSaveErrorFB       -> Some (ProjectSaveError fb.Message)
+      | x when x = ErrorTypeFB.DatabaseCreateErrorFB    -> Some (DatabaseCreateError fb.Message)
+      | x when x = ErrorTypeFB.DatabaseNotFoundFB       -> Some (DatabaseNotFound fb.Message)
+      | x when x = ErrorTypeFB.MetaDataNotFoundFB       -> Some MetaDataNotFound
+      | x when x = ErrorTypeFB.MissingStartupDirFB      -> Some MissingStartupDir
+      | x when x = ErrorTypeFB.CliParseErrorFB          -> Some CliParseError
+      | x when x = ErrorTypeFB.MissingNodeIdFB          -> Some MissingNodeId
+      | x when x = ErrorTypeFB.MissingNodeFB            -> Some (MissingNode fb.Message)
+      | x when x = ErrorTypeFB.AssetSaveErrorFB         -> Some (AssetSaveError fb.Message)
+      | x when x = ErrorTypeFB.AssetDeleteErrorFB       -> Some (AssetDeleteError fb.Message)
+      | x when x = ErrorTypeFB.OtherFB                  -> Some (Other fb.Message)
+      | x when x = ErrorTypeFB.AlreadyVotedFB           -> Some AlreadyVoted
+      | x when x = ErrorTypeFB.AppendEntryFailedFB      -> Some AppendEntryFailed
+      | x when x = ErrorTypeFB.CandidateUnknownFB       -> Some CandidateUnknown
+      | x when x = ErrorTypeFB.EntryInvalidatedFB       -> Some EntryInvalidated
+      | x when x = ErrorTypeFB.InvalidCurrentIndexFB    -> Some InvalidCurrentIndex
+      | x when x = ErrorTypeFB.InvalidLastLogFB         -> Some InvalidLastLog
+      | x when x = ErrorTypeFB.InvalidLastLogTermFB     -> Some InvalidLastLogTerm
+      | x when x = ErrorTypeFB.InvalidTermFB            -> Some InvalidTerm
+      | x when x = ErrorTypeFB.LogFormatErrorFB         -> Some LogFormatError
+      | x when x = ErrorTypeFB.LogIncompleteFB          -> Some LogIncomplete
+      | x when x = ErrorTypeFB.NoErrorFB                -> Some NoError
+      | x when x = ErrorTypeFB.NoNodeFB                 -> Some NoNode
+      | x when x = ErrorTypeFB.NotCandidateFB           -> Some NotCandidate
+      | x when x = ErrorTypeFB.NotLeaderFB              -> Some NotLeader
+      | x when x = ErrorTypeFB.NotVotingStateFB         -> Some NotVotingState
+      | x when x = ErrorTypeFB.ResponseTimeoutFB        -> Some ResponseTimeout
+      | x when x = ErrorTypeFB.SnapshotFormatErrorFB    -> Some SnapshotFormatError
+      | x when x = ErrorTypeFB.StaleResponseFB          -> Some StaleResponse
+      | x when x = ErrorTypeFB.UnexpectedVotingChangeFB -> Some UnexpectedVotingChange
+      | x when x = ErrorTypeFB.VoteTermMismatchFB       -> Some VoteTermMismatch
+      | _                                    -> None
+#else
       | ErrorTypeFB.OKFB                     -> Some OK
       | ErrorTypeFB.BranchNotFoundFB         -> Some (BranchNotFound fb.Message)
       | ErrorTypeFB.BranchDetailsNotFoundFB  -> Some (BranchDetailsNotFound fb.Message)
@@ -105,6 +158,7 @@ type IrisError =
       | ErrorTypeFB.UnexpectedVotingChangeFB -> Some UnexpectedVotingChange
       | ErrorTypeFB.VoteTermMismatchFB       -> Some VoteTermMismatch
       | _                                    -> None
+#endif
 
     member error.ToOffset (builder: FlatBufferBuilder) =
       let tipe =
@@ -171,9 +225,19 @@ type IrisError =
         | Other                  msg -> builder.CreateString msg |> Some
         | _                          -> None
 
+      ErrorFB.StartErrorFB(builder)
+      ErrorFB.AddType(builder, tipe)
       match str with
-      | Some payload -> ErrorFB.CreateErrorFB(builder, tipe, payload)
-      | _            -> ErrorFB.CreateErrorFB(builder, tipe)
+      | Some payload -> ErrorFB.AddMessage(builder, payload)
+      | _            -> ()
+      ErrorFB.EndErrorFB(builder)
+
+    member self.ToBytes() = Binary.buildBuffer self
+
+    static member FromBytes(bytes: Binary.Buffer) =
+      Binary.createBuffer bytes
+      |> ErrorFB.GetRootAsErrorFB
+      |> IrisError.FromFB
 
 [<RequireQualifiedAccess>]
 module Error =
@@ -231,7 +295,7 @@ module Error =
     | UnexpectedVotingChange  -> "Unexpected voting change"
     | VoteTermMismatch        -> "Vote term mismatch"
 
-    | OK                      ->         "All good."
+    | OK                      -> "All good."
 
   let inline toExitCode (error: IrisError) =
     match error with
