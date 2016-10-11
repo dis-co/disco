@@ -41,15 +41,15 @@ module RaftIntegrationTests =
     testCase "should store load raft correctly" <| fun _ ->
       let path = mkTmpPath "test_should_create_database"
       let db = createDB path
-      expect "Raft db should exist" true Option.isSome db
-      Option.get db |> dispose
+      expect "Raft db should exist" true Either.isSuccess db
+      Either.get db |> dispose
       rmDir path
 
   let test_should_store_load_raftmetadata_correctly =
     testCase "should store load raftmetadata correctly" <| fun _ ->
       let rid = "0xdeadbeef"
       let path = mkTmpPath "test_should_store_load_raftmetadata_correctly"
-      let db = createDB path |> Option.get
+      let db = createDB path |> Either.get
       let col = getCollection<RaftMetaData> "metadata" db
 
       let meta = new RaftMetaData()
@@ -60,7 +60,7 @@ module RaftIntegrationTests =
       closeDB db
 
       // re-open the database
-      let db = openDB path |> Option.get
+      let db = openDB path |> Either.get
       let col = getCollection<RaftMetaData> "metadata" db
       let loaded = findById meta.Id col |> Option.get
 
@@ -78,7 +78,7 @@ module RaftIntegrationTests =
       closeDB db
 
       // re-open the database
-      let db = openDB path |> Option.get
+      let db = openDB path |> Either.get
       let col = getCollection<RaftMetaData> "metadata" db
       let updated = findById meta.Id col |> Option.get
 
@@ -116,7 +116,7 @@ module RaftIntegrationTests =
       let depth = log |> Option.get |> LogEntry.depth |> int
       let path = mkTmpPath "test_save_restore_log_values_correctly"
 
-      let db = createDB path |> Option.get
+      let db = createDB path |> Either.get
       let col = logCollection db
 
       let logdatas = LogData.FromLog(Option.get log)
@@ -129,7 +129,7 @@ module RaftIntegrationTests =
 
       dispose db
 
-      let db = openDB path |> Option.get
+      let db = openDB path |> Either.get
       let loaded = getLogs db
 
       expect "Logs should be structurally equal" log id loaded
@@ -140,6 +140,11 @@ module RaftIntegrationTests =
 
   let test_save_restore_raft_value_correctly =
     testCase "save/restore raft value correctly" <| fun _ ->
+      let self =
+        getNodeId ()
+        |> Either.map Node.create
+        |> Either.get
+
       let node1 =
         { Node.create (Id.Create()) with
             HostName = "Hans"
@@ -163,24 +168,34 @@ module RaftIntegrationTests =
                 Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, nodes, DataSnapshot State.Empty)))))
         |> Log.fromEntries
 
-      let config = Config.Create "default"
+      let config =
+        Config.Create "default"
+        |> addNodeConfig self
+        |> addNodeConfig node1
+        |> addNodeConfig node2
+
       let raft =
-        { createRaft config with
-            Log = log
-            CurrentTerm = 666u }
+        createRaft config
+        |> Either.map
+            (fun raft ->
+              { raft with
+                  Log = log
+                  CurrentTerm = 666u })
+        |> Either.get
 
       let path = mkTmpPath "save_restore-raft_value-correctly"
-      let db = createDB path |> Option.get
+      let db = createDB path |> Either.get
 
       saveRaft raft db
 
       dispose db
 
-      let db = openDB path |> Option.get
+      let db = openDB path |> Either.get
 
-      let loaded = loadRaft db
+      let loaded =
+        loadRaft self (Array.map (fun (n: RaftNode) -> n.Id, n) nodes |> Map.ofArray) db
 
-      expect "Values should be equal" (Some raft) id loaded
+      expect "Values should be equal" (Right raft) id loaded
 
       dispose db
       rmDir path
@@ -213,7 +228,7 @@ module RaftIntegrationTests =
       let count = int <| LogEntry.depth log
 
       let path = mkTmpPath "test_validate_logs_get_deleted_correctly"
-      let db = createDB path |> Option.get
+      let db = createDB path |> Either.get
 
       insertLogs log db
 

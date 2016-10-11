@@ -27,11 +27,11 @@ module ProjectTests =
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
         let (commit, project) =
-          { Project.Create name with Path = Some(path) }
+          { createProject name with Path = Some(path) }
           |> saveProject signature "Initial project save."
           |> Either.get
 
-        let result = Project.Load(path </> PROJECT_FILENAME)
+        let result = loadProject (path </> PROJECT_FILENAME)
 
         expect "Projects should be loaded" true Either.isSuccess result
 
@@ -198,25 +198,26 @@ module ProjectTests =
           }
 
         let project =
-          let prj = Project.Create name
-          { prj with
-              Path = Some(path)
-              Config =
-                { prj.Config with
-                    RaftConfig    = engineCfg
-                    PortConfig    = portCfg
-                    VvvvConfig    = vvvvCfg
-                    ViewPorts     = [ viewPort1; viewPort2 ]
-                    Displays      = [ display1;  display2  ]
-                    Tasks         = [ task1;     task2     ]
-                    ClusterConfig = cluster } }
+          createProject name
+          |> updatePath path
+          |> fun project ->
+            updateConfig
+              { project.Config with
+                  RaftConfig    = engineCfg
+                  PortConfig    = portCfg
+                  VvvvConfig    = vvvvCfg
+                  ViewPorts     = [ viewPort1; viewPort2 ]
+                  Displays      = [ display1;  display2  ]
+                  Tasks         = [ task1;     task2     ]
+                  ClusterConfig = cluster }
+              project
 
         let (_,saved) =
-          project.Save(signature, "Initial project save.")
+          saveProject signature "Initial project save." project
           |> Either.get
 
         let loaded =
-          Project.Load(path </> PROJECT_FILENAME)
+          loadProject (path </> PROJECT_FILENAME)
           |> Either.get
 
         // the only difference will be the automatically assigned timestamp
@@ -247,12 +248,12 @@ module ProjectTests =
         then Directory.Delete(path, true) |> ignore
 
         let project =
-          { Project.Create name with Path = Some path }
+          { createProject name with Path = Some path }
           |> saveProject signature "Initial commit."
 
         let loaded =
           (path </> PROJECT_FILENAME)
-          |> Project.Load
+          |> loadProject
           |> Either.get
 
         expect "Projects should be a folder"         true  Directory.Exists path
@@ -282,14 +283,14 @@ module ProjectTests =
         let msg1 = "Commit 1"
 
         let (commit1, project) =
-          { Project.Create name with
+          { createProject name with
               Path = Some(path)
               Author = Some(author1) }
           |> saveProject signature msg1
           |> Either.get
 
         (path </> PROJECT_FILENAME)
-        |> Project.Load
+        |> loadProject
         |> Either.get
         |> fun p ->
             let repo = repository p |> Either.get
@@ -308,7 +309,7 @@ module ProjectTests =
 
 
         (path </> PROJECT_FILENAME)
-        |> Project.Load
+        |> loadProject
         |> Either.get
         |> fun p ->
             let repo = repository p |> Either.get
@@ -329,7 +330,7 @@ module ProjectTests =
            |> Either.get
 
         (path </> PROJECT_FILENAME)
-        |> Project.Load
+        |> loadProject
         |> Either.get
         |> fun p ->
             let repo = repository p |> Either.get

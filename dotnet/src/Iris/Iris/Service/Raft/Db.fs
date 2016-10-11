@@ -1078,61 +1078,65 @@ let saveRaft (raft: Raft) (db: LiteDatabase) =
 /// Returns: Raft option
 let loadRaft (node: RaftNode) (nodes: Map<Id,RaftNode>) (db: LiteDatabase) : Either<Error<string>,Raft> =
   match getMetadata db with
-    | Some meta ->
-      let log =
-        match getLogs db with
-        | Some entries -> Log.fromEntries entries
-        | _            -> Log.empty
+  | Some meta ->
+    let log =
+      match getLogs db with
+      | Some entries -> Log.fromEntries entries
+      | _            -> Log.empty
 
-      let votedfor =
-        match meta.VotedFor with
-        | null   -> None
-        | str -> Id str |> Some
+    let votedfor =
+      match meta.VotedFor with
+      | null   -> None
+      | str -> Id str |> Some
 
-      let state = RaftState.Parse meta.State
+    let state = RaftState.Parse meta.State
 
-      let leader =
-        match meta.LeaderId with
-        | null   -> None
-        | str -> Id str |> Some
+    let leader =
+      match meta.LeaderId with
+      | null   -> None
+      | str -> Id str |> Some
 
-      let oldpeers =
-        match meta.OldPeers with
-        | null   -> None
-        | arr -> Map.fold
-                  (fun map _ (n: RaftNode) ->
-                    if Array.contains (string n.Id) arr then
-                      Option.map (Map.add n.Id n) map
-                    else
-                      map)
-                    (Some Map.empty)
-                    nodes
+    let oldpeers =
+      match meta.OldPeers with
+      | null   -> None
+      | arr -> Map.fold
+                (fun map _ (n: RaftNode) ->
+                  if Array.contains (string n.Id) arr then
+                    Option.map (Map.add n.Id n) map
+                  else
+                    map)
+                  (Some Map.empty)
+                  nodes
 
-      let configchange =
-        match meta.ConfigChangeEntry with
-        | null   -> None
-        | str -> Log.find (Id str) log
+    let configchange =
+      match meta.ConfigChangeEntry with
+      | null   -> None
+      | str -> Log.find (Id str) log
 
-      let num = Map.fold (fun count _ _ -> count + 1u) 0u nodes
+    let peers = Map.add node.Id node nodes
 
-      { Node              = node
-      ; State             = state
-      ; CurrentTerm       = uint32 meta.Term
-      ; CurrentLeader     = leader
-      ; Peers             = nodes
-      ; OldPeers          = oldpeers
-      ; NumNodes          = num
-      ; VotedFor          = votedfor
-      ; Log               = log
-      ; CommitIndex       = uint32 meta.CommitIndex
-      ; LastAppliedIdx    = uint32 meta.LastAppliedIndex
-      ; TimeoutElapsed    = uint32 meta.TimeoutElapsed
-      ; ElectionTimeout   = uint32 meta.ElectionTimeout
-      ; RequestTimeout    = uint32 meta.RequestTimeout
-      ; MaxLogDepth       = uint32 meta.MaxLogDepth
-      ; ConfigChangeEntry = configchange
-      } |> Either.succeed
-    | _ -> Either.fail MetaDataNotFound
+    let num = Map.fold (fun count _ _ -> count + 1u) 0u peers
+
+    { Node              = node
+    ; State             = state
+    ; CurrentTerm       = uint32 meta.Term
+    ; CurrentLeader     = leader
+    ; Peers             = peers
+    ; OldPeers          = oldpeers
+    ; NumNodes          = num
+    ; VotedFor          = votedfor
+    ; Log               = log
+    ; CommitIndex       = uint32 meta.CommitIndex
+    ; LastAppliedIdx    = uint32 meta.LastAppliedIndex
+    ; TimeoutElapsed    = uint32 meta.TimeoutElapsed
+    ; ElectionTimeout   = uint32 meta.ElectionTimeout
+    ; RequestTimeout    = uint32 meta.RequestTimeout
+    ; MaxLogDepth       = uint32 meta.MaxLogDepth
+    ; ConfigChangeEntry = configchange
+    }
+    |> Either.succeed
+  | _ ->
+    Either.fail MetaDataNotFound
 
 let dumpDB (database: LiteDatabase) =
   let logs =

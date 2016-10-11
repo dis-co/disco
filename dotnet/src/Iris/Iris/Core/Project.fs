@@ -343,3 +343,11 @@ module ProjectHelper =
     project.Config
     |> addNodeConfig node
     |> flip updateConfig project
+
+  let addMembers (nodes: RaftNode list) (project: Project) : Project =
+    List.fold
+      (fun config (node: RaftNode) ->
+        addNodeConfig node config)
+      project.Config
+      nodes
+    |> flip updateConfig project

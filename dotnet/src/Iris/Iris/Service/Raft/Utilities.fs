@@ -31,6 +31,7 @@ let createRaft (options: Config) : Either<Error<string>, Raft> =
   getNodeId ()
   |> Either.bind (tryFindNode options)
   |> Either.map mkRaft
+  |> Either.map (options.ClusterConfig.Nodes |> Array.ofList |> addNodes)
 
 let loadRaft (options: Config) =
   let db =
