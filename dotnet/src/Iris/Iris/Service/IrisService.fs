@@ -209,9 +209,20 @@ type IrisService(project: Project ref) =
     raftserver.OnLogMsg <- fun _ msg ->
       wsserver.Broadcast(LogMsg(Iris.Core.LogLevel.Debug, msg))
 
-    raftserver.OnNodeAdded   <- AddNode    >> wsserver.Broadcast
-    raftserver.OnNodeUpdated <- UpdateNode >> wsserver.Broadcast
-    raftserver.OnNodeRemoved <- RemoveNode >> wsserver.Broadcast
+    raftserver.OnNodeAdded   <- fun node ->
+      warn "NODE NEEDS TO BE ADDED TO PROJECT NOW"
+      AddNode node
+      |> wsserver.Broadcast
+
+    raftserver.OnNodeUpdated <- fun node ->
+      warn "NODE NEEDS TO BE UPDATED IN PROJECT NOW"
+      UpdateNode node
+      |> wsserver.Broadcast
+
+    raftserver.OnNodeRemoved <- fun node ->
+      warn "NODE NEEDS TO BE REMOVED FROM PROJECT NOW"
+      RemoveNode node
+      |> wsserver.Broadcast
 
     raftserver.OnApplyLog <- fun sm ->
       store.Dispatch sm
