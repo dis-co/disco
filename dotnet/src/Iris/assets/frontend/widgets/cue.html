@@ -1,0 +1,83 @@
+<template id="cue">
+  <style>
+   div.cue {
+     border: 2px solid #888;
+     min-height: 30px;
+     min-width: 80px;
+   }
+
+   ul {
+     list-style: none;
+   }
+  </style>
+
+  <div class="cue">
+    <ul>
+      <li>
+	Id: <content select="p.id"></content>
+      </li>
+      <li>
+	Name: <content select="p.name"></content>
+      </li>
+      <li>
+	<button id="play">Play</button>
+      </li>
+    </ul>
+  </div>
+</template>
+
+<script>
+ // use a clojure so as to not overwrite global values
+ (function() {
+    // IMPORT DOM 
+    var importDoc = document.currentScript.ownerDocument;
+
+    // PARENT DOM 
+    var parentDoc = document;
+
+    var mkEvent = function(name, data) {
+    var event = document.createEvent(name);
+    };
+
+    var XComponent = document.registerElement('iris-cue', {
+      prototype: Object.create(HTMLElement.prototype, {
+        // Element initializer
+        createdCallback: {
+          value: function() {
+            this.root = this.createShadowRoot();
+            var template = importDoc.querySelector('template#cue');
+            var clone = importDoc.importNode(template.content, true);
+            this.root.appendChild(clone);
+          
+            this.root
+      	      .querySelector('#play')
+      	      .addEventListener('click', this.trigger);
+          }
+        },
+        
+        // Element attached to DOM
+        attachedCallback: {
+          value: function() {
+          
+          }
+        },
+        
+        // Element is detached (removed from DOM)
+        detachedCallback: {
+          value: function() {
+          
+          }
+        },
+        
+        trigger: {
+          value: function() {
+            var event = parentDoc.createEvent("HTMLEvents");
+            event.initEvent('play', true, true);
+            this.dispatchEvent(event);
+          }
+        }
+      })
+    });
+ })();
+
+</script>

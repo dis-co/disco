@@ -19,6 +19,8 @@ open System.Diagnostics
 
 open Iris.Core
 
+type FileName = string
+
 type AssetServer(config: Config) =
   let cts = new CancellationTokenSource()
 
@@ -31,7 +33,60 @@ type AssetServer(config: Config) =
   let locate dir str =
     noCache >=> file (dir </> str)
 
-  let basepath = Path.GetFullPath(".") </> "assets"
+  let basePath = Path.GetFullPath(".") </> "assets"
+
+  let widgetPath = basePath </> "widgets"
+
+  let listFiles (path: FilePath) : FileName list =
+    DirectoryInfo(widgetPath).EnumerateFiles()
+    |> Seq.map (fun file -> file.Name)
+    |> Seq.toList
+
+  let importStmt (name: FileName) =
+    sprintf "<link rel=\"import\" href=\"widgets/%s\" />" name
+
+  let indexHtml () =
+    listFiles widgetPath
+    |> List.map importStmt
+    |> List.fold (+) ""
+    |> sprintf "
+<!doctype html>
+<!--
+ ___ ____  ___ ____
+|_ _|  _ \|_ _/ ___|
+ | || |_) || |\___ \
+ | ||  _ < | | ___) |
+|___|_| \_\___|____/ © Nsynk GmbH, 2015
+
+-->
+<html lang=\"en\">
+  <head>
+    <title>Iris</title>
+    <meta charset=\"utf-8\">
+    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\" />
+    <script src=\"node_modules/virtual-dom/dist/virtual-dom.js\"></script>
+
+    %s
+
+    <link href=\"css/iris.css\" rel=\"stylesheet\" />
+  </head>
+  <body>
+    <header>Iris</header>
+
+    <nav><a href=\"/\">Home</a></nav>
+
+    <main>
+      <article>Content</article>
+      <aside>
+        <p>More information</p>
+      </aside>
+    </main>
+
+    <footer>© 2016 Nsynk GmbH</footer>
+    <script type=\"text/javascript\" src=\"js/iris.js\"></script>
+  </body>
+</html>
+"
 
   // Add more mime-types here if necessary
   // the following are for fonts, source maps etc.
@@ -42,7 +97,7 @@ type AssetServer(config: Config) =
   let app =
     choose [
       GET >=> choose [
-        path "/" >=> locate basepath "index.html"
+        path "/" >=> Successful.OK(indexHtml ())
         browseHome
       ]
     ]
@@ -60,7 +115,7 @@ type AssetServer(config: Config) =
           { defaultConfig with
               logger            = ConsoleWindowLogger(Suave.Logging.LogLevel.Info)
               cancellationToken = cts.Token
-              homeFolder        = Some(basepath)
+              homeFolder        = Some(basePath)
               bindings          = [ HttpBinding.mk HTTP addr port ]
               mimeTypesMap      = mimeTypes })
 
