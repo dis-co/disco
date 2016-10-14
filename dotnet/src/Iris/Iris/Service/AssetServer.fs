@@ -49,7 +49,7 @@ type AssetServer(config: Config) =
     listFiles widgetPath
     |> List.map importStmt
     |> List.fold (+) ""
-    |> sprintf "
+    |> sprintf """
 <!doctype html>
 <!--
  ___ ____  ___ ____
@@ -59,21 +59,21 @@ type AssetServer(config: Config) =
 |___|_| \_\___|____/ © Nsynk GmbH, 2015
 
 -->
-<html lang=\"en\">
+<html lang="en">
   <head>
     <title>Iris</title>
-    <meta charset=\"utf-8\">
-    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\" />
-    <script src=\"node_modules/virtual-dom/dist/virtual-dom.js\"></script>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <script src="node_modules/virtual-dom/dist/virtual-dom.js"></script>
 
     %s
 
-    <link href=\"css/iris.css\" rel=\"stylesheet\" />
+    <link href="css/iris.css" rel="stylesheet" />
   </head>
   <body>
     <header>Iris</header>
 
-    <nav><a href=\"/\">Home</a></nav>
+    <nav><a href="/">Home</a></nav>
 
     <main>
       <article>Content</article>
@@ -83,10 +83,10 @@ type AssetServer(config: Config) =
     </main>
 
     <footer>© 2016 Nsynk GmbH</footer>
-    <script type=\"text/javascript\" src=\"js/iris.js\"></script>
+    <script type="text/javascript" src="js/iris.js"></script>
   </body>
 </html>
-"
+"""
 
   // Add more mime-types here if necessary
   // the following are for fonts, source maps etc.
