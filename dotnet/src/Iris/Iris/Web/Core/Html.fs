@@ -647,3 +647,5 @@ module Html =
   let Video      props chd  = Parent("video", props, chd)
 
   let Wbr        props chd  = Parent("wbr", props, chd)
+
+  let IrisCue    props chd  = Parent("iris-cue", props, chd)

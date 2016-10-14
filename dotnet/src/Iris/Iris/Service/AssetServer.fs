@@ -43,7 +43,7 @@ type AssetServer(config: Config) =
     |> Seq.toList
 
   let importStmt (name: FileName) =
-    sprintf "<link rel=\"import\" href=\"widgets/%s\" />" name
+    sprintf """<link rel="import" href="widgets/%s" />""" name
 
   let indexHtml () =
     listFiles widgetPath
