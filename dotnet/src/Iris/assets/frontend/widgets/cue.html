@@ -75,9 +75,7 @@
         
         trigger: {
           value: function(event, data) {
-            var event = parentDoc.createEvent("HTMLEvents");
-            event.initEvent(name, true, true);
-	    event.data = data;
+            var event = new CustomEvent(event, { data: data });
             this.dispatchEvent(event);
           }
         }

@@ -11,6 +11,7 @@ open Iris.Web.Views
 open Fable.Core
 
 let delegator = Delegator.Create()
+delegator.ListenTo "play"
 
 let widget = new Patches.Root()
 let ctrl = new ViewController<State, ClientContext> (widget)

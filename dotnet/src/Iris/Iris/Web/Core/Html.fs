@@ -11,6 +11,9 @@ module DomDelegator =
     [<Emit("$0.addEventListener($1,$2,$3)")>]
     abstract AddEventListener: HTMLElement -> string -> (Event -> unit) -> unit
 
+    [<Emit("$0.listenTo($1)")>]
+    abstract ListenTo: string -> unit
+
   type DelegatorConstructor =
     abstract prototype: Delegator with get, set
 
@@ -64,7 +67,7 @@ module Html =
     | [<CompiledName("type")>]      Type    of InputType
     | [<CompiledName("style")>]     Style   of CSSProperty list
     | [<CompiledName("onclick")>]   OnClick of (MouseEvent -> unit)
-    | [<CompiledName("ev-click")>]  OnPlay  of (MouseEvent -> unit)
+    | [<CompiledName("ev-play")>]   OnPlay  of (CustomEvent -> unit)
 
   type Properties = ElementProperty list
 
