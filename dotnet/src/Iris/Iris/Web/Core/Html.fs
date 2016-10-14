@@ -4,6 +4,21 @@ open Fable.Core
 open Fable.Import
 open Fable.Import.Browser
 
+[<Import("*","dom-delegator")>]
+module DomDelegator =
+
+  type Delegator =
+    [<Emit("$0.addEventListener($1,$2,$3)")>]
+    abstract AddEventListener: HTMLElement -> string -> (Event -> unit) -> unit
+
+  type DelegatorConstructor =
+    abstract prototype: Delegator with get, set
+
+    [<Emit("""require("dom-delegator")()""")>]
+    abstract Create: unit -> Delegator
+
+  let Delegator: DelegatorConstructor = failwith "JS only"
+
 module Html =
 
   //  _____
@@ -49,6 +64,7 @@ module Html =
     | [<CompiledName("type")>]      Type    of InputType
     | [<CompiledName("style")>]     Style   of CSSProperty list
     | [<CompiledName("onclick")>]   OnClick of (MouseEvent -> unit)
+    | [<CompiledName("ev-click")>]  OnPlay  of (MouseEvent -> unit)
 
   type Properties = ElementProperty list
 
@@ -132,7 +148,7 @@ module Html =
   [<Emit "virtualDom.patch($0, $1)">]
   let patch (_: HTMLElement) (_: VPatch) : HTMLElement = failwith "JS Only"
 
-  [<Emit "new virtualDom.VNode($0,$1,$2)">]
+  [<Emit("new virtualDom.h($0,$1,$2)")>]
   let VNode (_: string) (_: Properties) (_: VTree array) : VTree = failwith "ONLY IN JS"
 
   [<Emit "new virtualDom.VText($0)">]
@@ -649,3 +665,7 @@ module Html =
   let Wbr        props chd  = Parent("wbr", props, chd)
 
   let IrisCue    props chd  = Parent("iris-cue", props, chd)
+
+  let UserWidget props chd  = Parent("iris-user", props, chd)
+
+  let SessionWidget props chd  = Parent("iris-user", props, chd)

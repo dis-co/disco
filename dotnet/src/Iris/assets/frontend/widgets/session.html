@@ -1,6 +1,6 @@
-<template id="cue">
+<template id="session">
   <style>
-   div.cue {
+   div.session {
      border: 2px solid #888;
      min-height: 30px;
      min-width: 80px;
@@ -11,22 +11,13 @@
    }
   </style>
 
-  <div class="cue">
+  <div class="session">
     <ul>
       <li>
-	<strong>Id:</strong>
-	<div id="id">
-	  <content select="p.id"></content>
-	</div>
+	Id: <content select="p.id"></content>
       </li>
       <li>
-	<strong>Name:</strong>
-	<div contenteditable="true" id="name">
-	  <content select="p.name"></content>
-	</div>
-      </li>
-      <li>
-	<button id="play">Play</button>
+	User: <content select="p.UserName"></content>
       </li>
     </ul>
   </div>
@@ -41,23 +32,17 @@
     // PARENT DOM 
     var parentDoc = document;
 
-    var XComponent = document.registerElement('iris-cue', {
+    var XComponent = document.registerElement('iris-session', {
       prototype: Object.create(HTMLElement.prototype, {
         // Element initializer
         createdCallback: {
           value: function() {
             this.root = this.createShadowRoot();
-            var template = importDoc.querySelector('template#cue');
+            var template = importDoc.querySelector('template#session');
             var clone = importDoc.importNode(template.content, true);
             this.root.appendChild(clone);
-          
-            this.root
-      	      .querySelector('#play')
-      	      .addEventListener('click', (function() {
-		this.trigger('play', this.root.querySelector('div#id').innerHTML);
-	      }).bind(this));
-	  }
-	},
+          }
+        },
         
         // Element attached to DOM
         attachedCallback: {
@@ -74,10 +59,9 @@
         },
         
         trigger: {
-          value: function(event, data) {
+          value: function() {
             var event = parentDoc.createEvent("HTMLEvents");
-            event.initEvent(name, true, true);
-	    event.data = data;
+            event.initEvent('play', true, true);
             this.dispatchEvent(event);
           }
         }

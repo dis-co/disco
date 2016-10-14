@@ -6,16 +6,16 @@
 
 open Iris.Core
 open Iris.Web.Core
+open Iris.Web.Core.DomDelegator
 open Iris.Web.Views
 open Fable.Core
+
+let delegator = Delegator.Create()
 
 let widget = new Patches.Root()
 let ctrl = new ViewController<State, ClientContext> (widget)
 
 let context = new ClientContext()
-
-[<Emit("Object.keys(buffers.Iris.Serialization.Raft)")>]
-let buffers _ = failwith "ONLY JS"
 
 context.Controller <- ctrl
 context.Start()

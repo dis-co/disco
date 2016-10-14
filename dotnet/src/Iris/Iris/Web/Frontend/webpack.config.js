@@ -11,7 +11,8 @@ var cfg = {
     alias: {
       flatbuffers: path.join(src, "assets", "frontend", "js", "flatbuffers.js"),
       buffers: path.join(src, "bin", "Raft_generated.js")
-    }
+    },
+    moduleDirectories: [ 'node_modules' ]
   },
   plugins: [
     new webpack.ProvidePlugin({
@@ -26,9 +27,9 @@ var cfg = {
   module: {
     preLoaders: [
       {
-        test: /\.js$/,
-        exclude: /node_modules/,
-        loader: "source-map-loader"
+	test: /\.js$/,
+	exclude: /node_modules/,
+	loader: "source-map-loader"
       }
     ]
   }
