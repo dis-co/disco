@@ -73,7 +73,7 @@ module JsUtilities =
       |> encodeBase16
       |> substr 1
 
-    [| for n in 0 .. 3 do yield s4() |]
+    [| for _ in 0 .. 3 do yield s4() |]
     |> Array.fold (fun m str -> m + "-" + str) (s4())
 
 type Id =

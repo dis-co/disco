@@ -71,7 +71,7 @@ type AppCommand =
     | _                          -> None
 #endif
 
-  member self.ToOffset(builder: FlatBufferBuilder) : ActionTypeFB =
+  member self.ToOffset(_: FlatBufferBuilder) : ActionTypeFB =
     match self with
     | Undo        -> ActionTypeFB.UndoFB
     | Redo        -> ActionTypeFB.RedoFB

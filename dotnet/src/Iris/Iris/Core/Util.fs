@@ -168,7 +168,7 @@ module Utils =
   open Fable.Core
 
   [<Emit("$0.toLowerCase()")>]
-  let inline toLower (str: string) : string = failwith "ONLY JS"
+  let inline toLower (_: string) : string = failwith "ONLY JS"
 
 #else
 

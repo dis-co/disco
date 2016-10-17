@@ -33,7 +33,7 @@ module Client =
 
       [<Emit("$0.onerror = $1")>]
       member __.OnError
-        with set (cb: ErrorMsg -> unit) = failwith "ONLY JS"
+        with set (_: ErrorMsg -> unit) = failwith "ONLY JS"
 
       [<Emit("$0.port")>]
       member __.Port

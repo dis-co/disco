@@ -59,7 +59,7 @@ type Behavior =
     | _                       -> None
 #endif
 
-  member self.ToOffset(builder: FlatBufferBuilder) : BehaviorFB =
+  member self.ToOffset(_: FlatBufferBuilder) : BehaviorFB =
     match self with
     | Toggle -> BehaviorFB.ToggleFB
     | Bang   -> BehaviorFB.BangFB
@@ -126,7 +126,7 @@ type StringType =
     | _                        -> None
 #endif
 
-  member self.ToOffset(builder: FlatBufferBuilder) : StringTypeFB =
+  member self.ToOffset(_: FlatBufferBuilder) : StringTypeFB =
     match self with
     | Simple    -> StringTypeFB.SimpleFB
     | MultiLine -> StringTypeFB.MultiLineFB
@@ -1837,10 +1837,10 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let encode bytes =
+    let encode (bytes: Binary.Buffer) =
 #if JAVASCRIPT
       let mutable str = ""
-      let arr = Fable.Import.JS.Uint8Array.Create(self.Value)
+      let arr = Fable.Import.JS.Uint8Array.Create(bytes)
       for i in 0 .. (int arr.length - 1) do
         str <- str + Fable.Import.JS.String.fromCharCode arr.[i]
       Fable.Import.Browser.window.btoa str

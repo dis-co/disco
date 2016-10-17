@@ -34,7 +34,7 @@ type MessagePort<'data>() =
 
   [<Emit("$0.onmessage = $1")>]
   member __.OnMessage
-    with set (cb: MessageEvent<'data> -> unit) = failwith "ONLY JS"
+    with set (_: MessageEvent<'data> -> unit) = failwith "ONLY JS"
 
   [<Emit("$0.postMessage($1)")>]
   member __.PostMessage(_: 'data) = failwith "ONLY JS"
@@ -70,29 +70,29 @@ type WebSocket(url: string)  =
 
   [<Emit("$0.binaryType = $1")>]
   member __.BinaryType
-    with set (str: string) = failwith "ONLY JS"
+    with set (_: string) = failwith "ONLY JS"
 
   [<Emit("$0.onerror = $1")>]
   member __.OnError
-    with set (cb: unit -> unit) = failwith "ONLY JS"
+    with set (_: unit -> unit) = failwith "ONLY JS"
 
   [<Emit("$0.onopen = $1")>]
   member __.OnOpen
-    with set (cb: unit -> unit) = failwith "ONLY JS"
+    with set (_: unit -> unit) = failwith "ONLY JS"
 
   [<Emit("$0.onclose = $1")>]
   member __.OnClose
-    with set (cb: unit -> unit) = failwith "ONLY JS"
+    with set (_: unit -> unit) = failwith "ONLY JS"
 
   [<Emit("$0.onmessage = $1")>]
   member __.OnMessage
-    with set (cb: MessageEvent<ArrayBuffer> -> unit) = failwith "ONLY JS"
+    with set (_: MessageEvent<ArrayBuffer> -> unit) = failwith "ONLY JS"
 
   [<Emit("$0.close()")>]
   member self.Close() = failwith "ONLY JS"
 
   [<Emit("$0.send($1)")>]
-  member self.Send(stuff: Binary.Buffer) = failwith "ONLY JS"
+  member self.Send(_: Binary.Buffer) = failwith "ONLY JS"
 
 // __        __         _
 // \ \      / /__  _ __| | _____ _ __

@@ -58,12 +58,12 @@ module Patches =
     let ioboxView (context : ClientContext) (iobox : IOBox) : Html =
       if not (plugins.Has iobox)
       then plugins.Add iobox
-             (fun iobox' ->
+             (fun _ ->
               match context.Session with
-                | Some(session) ->
-                  ClientMessage.ClientLog "Bla bla iobox update wtf?"
-                  |> context.Trigger
-                | _ -> printfn "no worker session found.")
+              | Some _ ->
+                ClientMessage.ClientLog "Bla bla iobox update wtf?"
+                |> context.Trigger
+              | _ -> printfn "no worker session found.")
 
       let container =
         Li [] [|
@@ -123,7 +123,7 @@ module Patches =
       IrisCue
         [ ElmId (string cue.Id)
         ; Class "cue"
-        ; OnPlay (fun ev -> printfn "hello. play!") ]
+        ; OnPlay (fun _ -> printfn "hello. play!") ]
         [| P [ Class "id" ] [| Text (string cue.Id) |]
         ; P [ Class "name" ] [| Text (string cue.Name) |]
         ; destroy context cue |]
