@@ -8,6 +8,7 @@ let all =
     serializationTests
     projectTests
     storeTests
+    gitTests
   ]
 
 [<EntryPoint>]

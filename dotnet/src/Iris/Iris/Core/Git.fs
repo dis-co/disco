@@ -1,5 +1,6 @@
 namespace Iris.Core
 
+
 open System.IO
 
 //   ____ _ _
@@ -461,6 +462,32 @@ module Git =
   //                         |___/
 
   module Config =
+    open System.Text.RegularExpressions
+
+    let remoteUrl name =
+      sprintf "remote.%s.url" name
+
+    let remoteFetch name =
+      sprintf "remote.%s.fetch" name
+
+    let fetchSetting name =
+      sprintf "+refs/heads/*:refs/remotes/%s/*" name
 
     let remotes (repo: Repository) =
-      failwith "make it happen bruv"
+      let result = ref Map.empty
+      let url = new Regex("(?<=remote\.).*?(?=\.url)")
+
+      for cfg in repo.Config do
+        let mtch = url.Match cfg.Key
+        if mtch.Success then
+          result := Map.add mtch.Value cfg.Value !result
+
+      !result
+
+    let addRemote (repo: Repository) (name: string) (url: string) =
+      repo.Config.Set<string>(remoteUrl name, url)
+      repo.Config.Set<string>(remoteFetch name, fetchSetting name)
+
+    let delRemote (repo: Repository) (name: string) =
+      repo.Config.Unset(remoteUrl name)
+      repo.Config.Unset(remoteFetch name)
