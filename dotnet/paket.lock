@@ -5,8 +5,8 @@ NUGET
       FSharp.Core (>= 4.0.1.7-alpha) - framework: >= netstandard16
       NETStandard.Library (>= 1.6) - framework: >= netstandard16
       System.Xml.XDocument (>= 4.0.11) - framework: >= netstandard16
-    Fleck (0.14.0.58)
-    FsCheck (2.6.1)
+    Fleck (0.14.0.59)
+    FsCheck (2.6.2)
       FSharp.Core (>= 3.1.2.5)
     FsControl (1.0.13)
     FSharp.Configuration (0.6.2)
@@ -618,7 +618,7 @@ NUGET
       FSharp.Core (>= 4.0.1.7-alpha) - framework: >= netstandard16
       NETStandard.Library (>= 1.6) - framework: >= netstandard16
       System.Xml.XDocument (>= 4.0.11) - framework: >= netstandard16
-    FAKE (4.40.1)
+    FAKE (4.41.6)
     FsControl (1.0.13)
     FSharp.Compiler.Service (2.0.0.6)
     FSharp.Control.AsyncSeq (2.0.9)
@@ -706,7 +706,7 @@ NUGET
       System.Threading.Timer (>= 4.0.1) - framework: >= netstandard12
       System.Xml.ReaderWriter (>= 4.0.11) - framework: >= netstandard10
       System.Xml.XDocument (>= 4.0.11) - framework: >= netstandard10
-    Octokit (0.22)
+    Octokit (0.23)
       Microsoft.Net.Http  - framework: net10, net11, net20, net30, net35, net40, net40-full
     runtime.native.System (4.0) - framework: >= netstandard16
       Microsoft.NETCore.Platforms (>= 1.0.1)
@@ -1174,12 +1174,12 @@ NUGET
       System.Xml.ReaderWriter (>= 4.0.11) - framework: dnxcore50, netstandard10, >= netstandard13
 GITHUB
   remote: fsharp/FAKE
-    modules/Octokit/Octokit.fsx (d071e770b2edfe6c9c7242003b2939ad9d0e33a5)
+    modules/Octokit/Octokit.fsx (889bda9367dfb24f9abb524165a0dbe2cdd86252)
       Octokit (>= 0.20)
 GROUP Test
 NUGET
   remote: https://www.nuget.org/api/v2
-    FsCheck (2.6.1)
+    FsCheck (2.6.2)
       FSharp.Core (>= 3.1.2.5)
     FsControl (1.0.13)
     FSharp.Control.AsyncSeq (2.0.9)

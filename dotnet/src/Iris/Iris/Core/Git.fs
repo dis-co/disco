@@ -354,8 +354,7 @@ module Git =
     /// - repo: Repository
     ///
     /// Returns: Ingnore
-    let gitignore (repo: Repository) = repo.Ignore
-
+    let ignored (repo: Repository) = repo.Ignore
 
     /// ## Get a diff between current working changes and last commit
     ///
@@ -453,3 +452,15 @@ module Git =
 
     let commit (repo: Repository) (msg: string) (committer: Signature) =
       repo.Commit(msg, committer, committer)
+
+  //   ____             __ _
+  //  / ___|___  _ __  / _(_) __ _
+  // | |   / _ \| '_ \| |_| |/ _` |
+  // | |__| (_) | | | |  _| | (_| |
+  //  \____\___/|_| |_|_| |_|\__, |
+  //                         |___/
+
+  module Config =
+
+    let remotes (repo: Repository) =
+      failwith "make it happen bruv"
