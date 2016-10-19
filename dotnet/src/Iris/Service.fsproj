@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
   <PropertyGroup>
@@ -81,7 +81,7 @@
     <Copy SourceFiles="assets/interactive.fsx" DestinationFolder="$(OutputPath)" />
     <Copy SourceFiles="@(FrontendAssets)" DestinationFolder="$(OutputPath)\assets\%(RecursiveDir)" />
     <Copy SourceFiles="..\..\packages\FSharp.Core\lib\net40\FSharp.Core.sigdata" DestinationFolder="$(OutputPath)" />
-    <Copy SourceFiles="..\..\packages\FSharp.Core\lib\net40\FSharp.Core.optdata" DestinationFolder="$(OutputPath)"/>
+    <Copy SourceFiles="..\..\packages\FSharp.Core\lib\net40\FSharp.Core.optdata" DestinationFolder="$(OutputPath)" />
     <Exec Command="npm install" WorkingDirectory="$(OutputPath)\assets" />
   </Target>
   <ItemGroup>
@@ -122,13 +122,15 @@
     <Compile Include="Iris\Core\Project.fs" />
     <Compile Include="Iris\Core\Uri.fs" />
     <Compile Include="Iris\Service\GitDaemon.fs" />
-    <Compile Include="Iris\Core\RaftUtils.fs" />
-    <Compile Include="Iris\Service\Raft\Zmq.fs" />
-    <Compile Include="Iris\Service\Raft\RaftAppState.fs" />
-    <Compile Include="Iris\Service\Raft\Db.fs" />
-    <Compile Include="Iris\Service\Raft\Utilities.fs" />
-    <Compile Include="Iris\Service\Raft\Stm.fs" />
-    <Compile Include="Iris\Service\Raft\Server.fs" />
+    <Compile Include="Iris\Service\Request.fs" />
+    <Compile Include="Iris\Service\RaftAppState.fs" />
+    <Compile Include="Iris\Service\Zmq\Rep.fs" />
+    <Compile Include="Iris\Service\Zmq\Req.fs" />
+    <Compile Include="Iris\Service\Zmq\ZmqUtils.fs" />
+    <compile Include="Iris\Service\Persistence.fs" />
+    <Compile Include="Iris\Service\Utilities.fs" />
+    <Compile Include="Iris\Service\Stm.fs" />
+    <Compile Include="Iris\Service\RaftServer.fs" />
     <compile Include="Iris\Service\AssetServer.fs" />
     <Compile Include="Iris\Service\WebSocket.fs" />
     <Compile Include="Iris\Service\IrisService.fs" />
@@ -474,17 +476,6 @@
       <ItemGroup>
         <Reference Include="LibGit2Sharp">
           <HintPath>..\..\packages\LibGit2Sharp\lib\net40\LibGit2Sharp.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v3.5' Or $(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
-      <ItemGroup>
-        <Reference Include="LiteDB">
-          <HintPath>..\..\packages\LiteDB\lib\net35\LiteDB.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

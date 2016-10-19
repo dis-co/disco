@@ -4,8 +4,7 @@ open Argu
 open System
 open Iris.Core
 open Iris.Raft
-open Iris.Service.Core
-open Iris.Service.Raft.Server
+open Iris.Service
 
 
 ////////////////////////////////////////

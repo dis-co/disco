@@ -12,5 +12,4 @@ FsCheck
 XUnit
 NUnit
 Gallio
-LiteDB
 ZeroMQ

@@ -19,7 +19,6 @@ group Main
   nuget LibGit2Sharp >= 0.22.0-pre20151023210959 prerelease
   nuget LibGit2Sharp.NativeBinaries
   nuget FSharp.Configuration
-  nuget LiteDB
   nuget ZeroMQ
 
 group Build

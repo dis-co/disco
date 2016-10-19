@@ -23,10 +23,10 @@ type RaftState =
 
   static member Parse str =
     match str with
-      | "Follower"  -> Follower
-      | "Candidate" -> Candidate
-      | "Leader"    -> Leader
-      | _           -> failwithf "unable to parse %A as RaftState" str
+    | "Follower"  -> Follower
+    | "Candidate" -> Candidate
+    | "Leader"    -> Leader
+    | _           -> failwithf "unable to parse %A as RaftState" str
 
 /// Response to an AppendEntry request
 ///
@@ -425,6 +425,18 @@ type IRaftCallbacks =
 //  - `VotingCfgChangeLogIdx` - the log which has a voting cfg change, otherwise None                                                    //
 //                                                                                                                                       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+and RaftMetadata(trm: Term, vfor: string, ldr: string) as self =
+  [<DefaultValue>] val mutable Term : Term
+  [<DefaultValue>] val mutable VotedFor : string
+  [<DefaultValue>] val mutable Leader : string
+
+  new () = new RaftMetadata(0u, null, null)
+
+  do
+    self.Term     <- trm
+    self.VotedFor <- vfor
+    self.Leader   <- ldr
 
 and Raft =
   { Node              : RaftNode

@@ -1,4 +1,4 @@
-namespace Iris.Service.Types
+namespace Iris.Service
 
 open Suave
 open Suave.Http;

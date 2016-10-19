@@ -5,6 +5,7 @@ open Fuchu
 open Fuchu.Test
 open Iris.Core
 open Iris.Service
+open Iris.Service.Utilities
 open Iris.Raft
 open FSharpx.Functional
 open ZeroMQ
@@ -32,110 +33,6 @@ module RaftIntegrationTests =
   // | | | |  _ \    | |/ _ \/ __| __/ __|
   // | |_| | |_) |   | |  __/\__ \ |_\__ \
   // |____/|____/    |_|\___||___/\__|___/
-
-  open Iris.Service.Raft.Utilities
-  open Iris.Service.Raft.Db
-  open Iris.Service.Raft.Server
-
-  let test_should_create_database =
-    testCase "should store load raft correctly" <| fun _ ->
-      let path = mkTmpPath "test_should_create_database"
-      let db = createDB path
-      expect "Raft db should exist" true Either.isSuccess db
-      Either.get db |> dispose
-      rmDir path
-
-  let test_should_store_load_raftmetadata_correctly =
-    testCase "should store load raftmetadata correctly" <| fun _ ->
-      let rid = "0xdeadbeef"
-      let path = mkTmpPath "test_should_store_load_raftmetadata_correctly"
-      let db = createDB path |> Either.get
-      let col = getCollection<RaftMetaData> "metadata" db
-
-      let meta = new RaftMetaData()
-      meta.NodeId <- rid
-      meta.Term <- 666L
-
-      insert meta col |> ignore
-      closeDB db
-
-      // re-open the database
-      let db = openDB path |> Either.get
-      let col = getCollection<RaftMetaData> "metadata" db
-      let loaded = findById meta.Id col |> Option.get
-
-      expect "_id should be the same"    meta.Id   id loaded.Id
-      expect "Term should be the same"   meta.Term id loaded.Term
-      expect "NodeId should be the same" rid       id loaded.NodeId
-
-      loaded.NodeId <- "hi"
-      loaded.Term <- 800L
-
-      let result = update loaded col
-
-      expect "should have been successful" true id result
-
-      closeDB db
-
-      // re-open the database
-      let db = openDB path |> Either.get
-      let col = getCollection<RaftMetaData> "metadata" db
-      let updated = findById meta.Id col |> Option.get
-
-      expect "_id should be the same"    updated.Id     id meta.Id
-      expect "Term should be the same"   updated.Term   id loaded.Term
-      expect "NodeId should be the same" updated.NodeId id loaded.NodeId
-
-      closeDB db
-      rmDir path
-
-  let test_save_restore_log_values_correctly =
-    testCase "save/restore log values correctly" <| fun _ ->
-      let node1 =
-        { Node.create (Id.Create()) with
-            HostName = "Hans"
-            IpAddr = IpAddress.Parse "192.168.1.20"
-            Port   = 8080us }
-
-      let node2 =
-        { Node.create (Id.Create()) with
-            HostName = "Klaus"
-            IpAddr = IpAddress.Parse "192.168.1.22"
-            Port   = 8080us }
-
-      let changes = [| NodeRemoved node2 |]
-      let nodes = [| node1; node2 |]
-
-      let log =
-        Some <| LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
-          Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
-            Some <| Configuration(Id.Create(), 5u, 1u, [| node1 |],
-              Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
-                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, nodes, DataSnapshot State.Empty)))))
-
-      let depth = log |> Option.get |> LogEntry.depth |> int
-      let path = mkTmpPath "test_save_restore_log_values_correctly"
-
-      let db = createDB path |> Either.get
-      let col = logCollection db
-
-      let logdatas = LogData.FromLog(Option.get log)
-
-      expect "LogDatas should have correct length" depth id (Array.length logdatas)
-
-      insertMany logdatas col |> ignore
-
-      expect "Should have correct number of log entries" depth id (countEntries col)
-
-      dispose db
-
-      let db = openDB path |> Either.get
-      let loaded = getLogs db
-
-      expect "Logs should be structurally equal" log id loaded
-
-      dispose db
-      rmDir path
 
 
   let test_save_restore_raft_value_correctly =
@@ -184,84 +81,14 @@ module RaftIntegrationTests =
         |> Either.get
 
       let path = mkTmpPath "save_restore-raft_value-correctly"
-      let db = createDB path |> Either.get
 
-      saveRaft raft db
-
-      dispose db
-
-      let db = openDB path |> Either.get
+      saveRaft raft
 
       let loaded =
-        loadRaft self (Array.map (fun (n: RaftNode) -> n.Id, n) nodes |> Map.ofArray) db
+        loadRaft self (Array.map (fun (n: RaftNode) -> n.Id, n) nodes |> Map.ofArray)
 
       expect "Values should be equal" (Right raft) id loaded
 
-      dispose db
-      rmDir path
-
-
-  let test_validate_logs_get_deleted_correctly =
-    testCase "validate logs get deleted correctly" <| fun _ ->
-      let node1 =
-        { Node.create (Id.Create()) with
-            HostName = "Hans"
-            IpAddr = IpAddress.Parse "192.168.1.20"
-            Port   = 8080us }
-
-      let node2 =
-        { Node.create (Id.Create()) with
-            HostName = "Klaus"
-            IpAddr = IpAddress.Parse "192.168.1.22"
-            Port   = 8080us }
-
-      let changes = [| NodeRemoved node2 |]
-      let nodes = [| node1; node2 |]
-
-      let log =
-        LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
-          Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
-            Some <| Configuration(Id.Create(), 5u, 1u, [| node1 |],
-              Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
-                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, nodes, DataSnapshot State.Empty)))))
-
-      let count = int <| LogEntry.depth log
-
-      let path = mkTmpPath "test_validate_logs_get_deleted_correctly"
-      let db = createDB path |> Either.get
-
-      insertLogs log db
-
-      expect "Should have correct number of logs" (countLogs db) id count
-
-      let result = deleteLog log db
-
-      expect "Should have succeeded" true id result
-      expect "Should have correct number of logs" (countLogs db) id (count - 1)
-
-      let result = deleteLog (log) db
-
-      expect "Should have failed" false id result
-      expect "Should have correct number of logs" (countLogs db) id (count - 1)
-
-      let result = deleteLog (Log.fromEntries log |> Log.prevEntry |> Option.get) db
-
-      expect "Should have correct number of logs" (countLogs db) id (count - 2)
-
-      truncateLog db
-
-      expect "Should have no logs" (countLogs db) id 0
-
-      insertLogs log db
-
-      expect "Should have correct number of logs" (countLogs db) id count
-
-      let result = deleteLogs log db
-
-      expect "Should have no logs" (countLogs db) id 0
-      expect "Should have succeeded" true id result
-
-      dispose db
       rmDir path
 
   let test_log_snapshotting_should_clean_all_logs =
@@ -318,11 +145,7 @@ module RaftIntegrationTests =
   let raftIntegrationTests =
     testList "Raft Integration Tests" [
         // db
-        test_should_create_database
-        test_should_store_load_raftmetadata_correctly
-        test_save_restore_log_values_correctly
         test_save_restore_raft_value_correctly
-        test_validate_logs_get_deleted_correctly
         test_log_snapshotting_should_clean_all_logs
 
         // raft

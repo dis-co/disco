@@ -261,3 +261,6 @@ module Utils =
     (date.Ticks - epoch.Ticks) / TimeSpan.TicksPerMillisecond
 
 #endif
+
+  let implement (str: string) =
+    failwithf "FIXME: implement %s"

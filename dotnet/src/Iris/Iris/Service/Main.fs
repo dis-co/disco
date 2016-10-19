@@ -10,17 +10,15 @@ open System.Diagnostics
 
 open Iris.Core
 open Iris.Core.Utils
-open Iris.Service.Types
-open Iris.Service.Core
+open Iris.Service
 open Iris.Service.CommandLine
-open Iris.Service.Raft.Server
 open FSharpx.Functional
 open LibGit2Sharp
 open Argu
 open ZeroMQ
 open Iris.Raft
-open Iris.Service.Raft.Db
-open Iris.Service.Raft.Utilities
+open Iris.Service.Utilities
+open Iris.Service.Persistence
 
 [<AutoOpen>]
 module Main =
@@ -91,18 +89,16 @@ module Main =
     |> Either.map (buildProject dir name raftDir)
     |> Either.map
         (fun project ->
-            match createDB raftDir, createRaft project.Config with
-            | Right db, Right raft ->
+            match createRaft project.Config with
+            | Right raft ->
               try
-                saveRaft raft db
-                dispose db
+                saveRaft raft
                 printfn "successfully created database"
               with
                 | exn ->
                   DatabaseCreateError exn.Message
                   |> Error.exitWith
-            | Left error, _ -> Error.exitWith error
-            | _, Left error -> Error.exitWith error
+            | Left error -> Error.exitWith error
 
             match saveProject me "project created" project with
             | Right(commit, project) ->
@@ -127,18 +123,16 @@ module Main =
 
       mkDir raftDir
 
-      match createDB raftDir, createRaft project.Config with
-      | Right db, Right raft ->
+      match createRaft project.Config with
+      | Right raft ->
         try
-          saveRaft raft db
-          dispose db
+          saveRaft raft
           printfn "successfully reset database"
         with
           | exn ->
             DatabaseCreateError exn.Message
             |> Error.exitWith
-      | Left error, _ -> Error.exitWith error
-      | _, Left error -> Error.exitWith error
+      | Left error -> Error.exitWith error
 
     datadir </> PROJECT_FILENAME
     |> loadProject
@@ -152,14 +146,7 @@ module Main =
   //                       |_|
 
   let dumpDataDir (datadir: FilePath) =
-    let raftDir = datadir </> RAFT_DIRECTORY
-    match openDB raftDir with
-    | Right db ->
-      dumpDB db
-      |> indent 4
-      |> printfn "Database contents:\n%s"
-    | Left error ->
-      Error.exitWith error
+    implement "dumpDataDir"
 
   ////////////////////////////////////////
   //  __  __       _                    //

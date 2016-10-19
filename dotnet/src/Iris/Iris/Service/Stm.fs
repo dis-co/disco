@@ -1,4 +1,4 @@
-module Iris.Service.Raft.Stm
+module Iris.Service.Stm
 
 // ----------------------------------------------------------------------------------------- //
 //                                    ____ _____ __  __                                      //
@@ -9,16 +9,13 @@ module Iris.Service.Raft.Stm
 // ----------------------------------------------------------------------------------------- //
 
 open Iris.Core
-open Iris.Service
 open Iris.Raft
-open Iris.Service.Raft
 // open FSharpx.Stm
 open FSharpx.Functional
 open System.Threading
 open Utilities
 open System
-open Zmq
-open Db
+open Iris.Service.Zmq
 
 type TVar<'a> = 'a ref
 

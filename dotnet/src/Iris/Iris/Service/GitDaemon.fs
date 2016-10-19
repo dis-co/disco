@@ -1,4 +1,4 @@
-namespace Iris.Service.Core
+namespace Iris.Service
 
 open Iris.Core
 open Iris.Core.Utils

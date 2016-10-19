@@ -401,8 +401,8 @@ module Git =
     /// Returns: Branch
     let checkout (spec: string) (repo: Repository) =
       match LibGit2Sharp.Commands.Checkout(repo, spec) with
-        | null      -> BranchNotFound spec |> Either.fail
-        | branch -> Either.succeed branch
+      | null      -> BranchNotFound spec |> Either.fail
+      | branch -> Either.succeed branch
 
     /// ## Find and return Repository object
     ///

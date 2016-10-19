@@ -1,17 +1,16 @@
-module Iris.Service.Raft.Server
+namespace Iris.Service
 
 open System
 open System.Threading
 open Iris.Core
 open Iris.Core.Utils
-open Iris.Service
+open Iris.Service.Zmq
 open Iris.Raft
 // open FSharpx.Stm
 open FSharpx.Functional
 open Utilities
+open Persistence
 open Stm
-open Db
-
 
 //  ____        __ _     ____                             ____  _        _
 // |  _ \ __ _ / _| |_  / ___|  ___ _ ____   _____ _ __  / ___|| |_ __ _| |_ ___
@@ -41,15 +40,6 @@ module RaftServerStateHelpers =
 
 type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
   let locker = new Object()
-
-  let database =
-    match openDB options.RaftConfig.DataDir with
-    | Right db    -> db
-    | _           ->
-      match createDB options.RaftConfig.DataDir with
-        | Right db   -> db
-        | Left error ->
-          Error.exitWith error
 
   let serverState = ref Stopped
 
@@ -188,10 +178,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
 
         this.Debug "RaftServer: saving state to disk"
         let state = readTVar appState |> atomically
-        saveRaft state.Raft database
-
-        this.Debug "RaftServer: dispose database"
-        dispose database
+        saveRaft state.Raft
 
         this.Debug "RaftServer: stopped"
         serverState := Stopped
@@ -234,7 +221,6 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
     cbs.LogMsg Err state.Raft.Node msg
 
   member self.ServerState with get () = !serverState
-
 
   //  ____  _                           _     _
   // |  _ \(_)___ _ __   ___  ___  __ _| |__ | | ___
@@ -344,10 +330,6 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
 
     member self.NodeAdded node   =
       try
-        match findNode node.Id database with
-        | Some _ -> updateNode database node
-        |      _ -> insertNode database node
-
         sprintf "Node was added. %s" (string node.Id)
         |> this.Debug
 
@@ -360,10 +342,6 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
 
     member self.NodeUpdated node =
       try
-        match findNode node.Id database with
-        | Some _ -> updateNode database node
-        |      _ -> insertNode database node
-
         sprintf "Node was updated. %s" (string node.Id)
         |> this.Debug
 
@@ -375,12 +353,6 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
 
     member self.NodeRemoved node =
       try
-        match findNode node.Id database with
-        | Some _ -> deleteNode database node
-        |      _ ->
-          sprintf "Node could not be removed. Not found: %s" (string node.Id)
-          |> this.Err
-
         sprintf "Node was removed. %s" (string node.Id)
         |> this.Debug
 
@@ -422,13 +394,11 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
         None
 
     member self.PersistSnapshot log =
-      truncateLog database
-      insertLogs log database
       sprintf "PersistSnapshot insert id: %A" (LogEntry.getId log |> string)
       |> this.Debug
 
     member self.RetrieveSnapshot () =
-      tryFindSnapshot database
+      failwith "implement RetrieveSnapshot again"
 
     /// ## Raft state changed
     ///
@@ -458,23 +428,8 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
     /// Returns: unit
     member self.PersistVote (node: RaftNode option) =
       try
-        let meta =
-          match getMetadata database with
-          | Some meta -> meta
-          | _         ->
-            initMetadata database |> ignore
-            let state = readTVar appState |> atomically
-            saveMetadata state.Raft database
-
-        match node with
-        | Some peer ->
-          meta.VotedFor <- string peer.Id
-          saveRaftMetadata meta database
-          sprintf "PersistVote for node: %A" (string peer.Id) |> this.Debug
-        | _         ->
-          meta.VotedFor <- null
-          saveRaftMetadata meta database
-          "PersistVote reset VotedFor" |> this.Debug
+        saveRaftMetadata ()
+        "PersistVote reset VotedFor" |> this.Debug
       with
         | exn -> handleException "PersistTerm" exn
 
@@ -490,16 +445,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
     /// Returns: unit
     member self.PersistTerm term =
       try
-        let meta =
-          match getMetadata database with
-            | Some meta -> meta
-            | _         ->
-              initMetadata database |> ignore
-              let state = readTVar appState |> atomically
-              saveMetadata state.Raft database
-
-        meta.Term <- int64 term
-        saveRaftMetadata meta database
+        saveRaftMetadata ()
         sprintf "PersistTerm term: %A" term |> this.Debug
       with
         | exn -> handleException "PersistTerm" exn
@@ -514,16 +460,11 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
     /// Returns: unit
     member self.PersistLog log =
       try
-        insertLogs log database
         sprintf "PersistLog insert id: %A" (LogEntry.getId log |> string)
         |> this.Debug
       with
-        | _ ->
-          try
-            updateLogs log database
-          with
-            | exn ->
-              handleException "PersistLog" exn
+        | exn->
+          handleException "PersistLog" exn
 
     /// ## Callback to delete a log entry from database
     ///
@@ -535,8 +476,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
     /// Returns: unit
     member self.DeleteLog log =
       try
-        deleteLogs log database
-        |> sprintf "DeleteLog id: %A result: %b" (LogEntry.getId log |> string)
+        sprintf "DeleteLog id: %A" (LogEntry.getId log |> string)
         |> this.Debug
       with
         | exn -> handleException "DeleteLog" exn
@@ -568,8 +508,7 @@ type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
                   | _ -> ()
 
   override self.ToString() =
-    sprintf "Database:%s\nConnections:%s\nNodes:%s\nRaft:%s\nLog:%s"
-      (dumpDB database |> indent 4)
+    sprintf "Connections:%s\nNodes:%s\nRaft:%s\nLog:%s"
       (readTVar connections |> atomically |> string |> indent 4)
       (Map.fold (fun m _ t -> sprintf "%s\n%s" m (string t)) "" self.State.Raft.Peers |> indent 4)
       (self.State.Raft.ToString() |> indent 4)

@@ -6,7 +6,7 @@ module WebSocket =
   open System
   open System.Threading
   open Iris.Core
-  open Iris.Service.Raft.Server
+  open Iris.Service
   open Fleck
 
   type WsServer(config: Config, context: RaftServer) =

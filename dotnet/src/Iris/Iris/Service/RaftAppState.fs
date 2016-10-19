@@ -1,10 +1,9 @@
-namespace Iris.Service.Raft
+namespace Iris.Service
 
 open LibGit2Sharp
 open Iris.Core.Utils
 open Iris.Core
 open Iris.Raft
-open Iris.Service.Raft
 
 //  ____        __ _      _               ____  _        _
 // |  _ \ __ _ / _| |_   / \   _ __  _ __/ ___|| |_ __ _| |_ ___
@@ -12,19 +11,19 @@ open Iris.Service.Raft
 // |  _ < (_| |  _| |_ / ___ \| |_) | |_) |__) | || (_| | ||  __/
 // |_| \_\__,_|_|  \__|_/   \_\ .__/| .__/____/ \__\__,_|\__\___|
 //                            |_|   |_|
+[<AutoOpen>]
+module RaftAppState =
 
-[<NoComparison;NoEquality>]
-type RaftAppState =
-  { Context: ZeroMQ.ZContext
-  ; Raft:    Raft
-  ; Options: Config }
+  [<NoComparison;NoEquality>]
+  type RaftAppState =
+    { Context: ZeroMQ.ZContext
+    ; Raft:    Raft
+    ; Options: Config }
 
   with
     override self.ToString() =
       sprintf "Raft: %A" self.Raft
 
-[<AutoOpen>]
-module RaftAppStateUtils =
 
   /// ## Update Raft in RaftAppState
   ///

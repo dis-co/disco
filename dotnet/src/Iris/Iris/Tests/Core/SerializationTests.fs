@@ -4,6 +4,7 @@ open Fuchu
 open Fuchu.Test
 open Iris.Core
 open Iris.Raft
+open Iris.Service
 open Iris.Serialization.Raft
 open System.Net
 open FlatBuffers
