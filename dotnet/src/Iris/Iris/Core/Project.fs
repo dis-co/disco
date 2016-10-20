@@ -17,8 +17,7 @@ open Iris.Raft
 // |_|   |_|  \___// |\___|\___|\__|
 //               |__/
 
-// [<NoComparison;NoEquality>]
-type Project =
+type IrisProject =
   { Id        : Id
   ; Name      : Name
   ; Path      : FilePath  option        // Project path should always be the path containing '.git'
@@ -26,10 +25,10 @@ type Project =
   ; LastSaved : TimeStamp option
   ; Copyright : string    option
   ; Author    : string    option
-  ; Config    : Config }
+  ; Config    : IrisConfig }
 
-[<AutoOpen>]
-module ProjectHelper =
+[<RequireQualifiedAccess>]
+module Project =
 
   /// ### Retrieve git repository
   ///
@@ -37,16 +36,16 @@ module ProjectHelper =
   /// whether it exists. If so, construct a git Repository object and return that.
   ///
   /// # Returns: Repository option
-  let repository (project: Project) =
+  let repository (project: IrisProject) =
     match project.Path with
       | Some path -> Git.Repo.repository path
       | _         -> ProjectPathError |> Either.fail
 
-  let currentBranch (project: Project) =
+  let currentBranch (project: IrisProject) =
     repository project
     |> Either.map Git.Branch.current
 
-  let checkoutBranch (name: string) (project: Project) =
+  let checkoutBranch (name: string) (project: IrisProject) =
     repository project
     |> Either.bind (Git.Repo.checkout name)
 
@@ -54,8 +53,8 @@ module ProjectHelper =
   ///
   /// Create a new project with the given name. The default configuration will apply.
   ///
-  /// # Returns: Project
-  let createProject (name : string) : Project =
+  /// # Returns: IrisProject
+  let create (name : string) : IrisProject =
     { Id        = Id.Create()
     ; Name      = name
     ; Path      = None
@@ -63,7 +62,7 @@ module ProjectHelper =
     ; LastSaved = None
     ; Copyright = None
     ; Author    = None
-    ; Config    = Config.Create(name) }
+    ; Config    = Config.create(name) }
 
   /// ### Parses the LastSaved property.
   ///
@@ -100,8 +99,8 @@ module ProjectHelper =
   ///
   /// Attempts to load a serializad project file from the specified location.
   ///
-  /// # Returns: Project option
-  let loadProject (path : FilePath) : Either<IrisError,Project> =
+  /// # Returns: IrisProject option
+  let load (path : FilePath) : Either<IrisError,IrisProject> =
     if not (File.Exists path) then
       ProjectNotFound path |> Either.fail
     else
@@ -123,13 +122,13 @@ module ProjectHelper =
       ; Path      = Some <| Path.GetDirectoryName(path)
       ; CreatedOn = meta.CreatedOn
       ; LastSaved = lastSaved
-      ; Copyright = parseStringProp meta.Copyright
-      ; Author    = parseStringProp meta.Author
-      ; Config    = Config.FromFile(IrisConfig) }
+      ; Copyright = Config.parseStringProp meta.Copyright
+      ; Author    = Config.parseStringProp meta.Author
+      ; Config    = Config.fromFile IrisConfig }
       |> Either.succeed
 
   let writeDaemonExportFile (repo: Repository) =
-    File.WriteAllText(Path.Combine(repo.Info.Path, "git-daemon-export-ok"), "")
+    File.WriteAllText(repo.Info.Path </> "git-daemon-export-ok", "")
 
   let writeGitIgnoreFile (repo: Repository) =
     let gitignore = @"
@@ -156,7 +155,7 @@ module ProjectHelper =
   /// exists, otherwise creating it.
   ///
   /// # Returns: Repository
-  let initRepo (project: Project) : Either<IrisError,Repository> =
+  let initRepo (project: IrisProject) : Either<IrisError,Repository> =
     let initRepoImpl (repo: Repository) =
       writeDaemonExportFile repo
       writeGitIgnoreFile repo
@@ -186,8 +185,8 @@ module ProjectHelper =
   /// config file object. As we want to keep track of the last moment a project was saved, we update
   /// the project value with the new time stamp.
   ///
-  /// # Returns: Project
-  let private saveMetadata (project: Project) (config: ConfigFile)  =
+  /// # Returns: IrisProject
+  let private saveMetadata (project: IrisProject) (config: ConfigFile)  =
     // Project metadata
     config.Project.Metadata.Id   <- string project.Id
     config.Project.Metadata.Name <- project.Name
@@ -213,10 +212,10 @@ module ProjectHelper =
   /// - committer : Signature of committer
   /// - msg       : commit msg
   /// - filepath  : path to file being committed
-  /// - project   : Project
+  /// - project   : IrisProject
   ///
-  /// Returns: (Commit * Project) option
-  let commitPath (committer: Signature) (msg : string) (filepath: FilePath) (project: Project) : Either<IrisError,(Commit * Project)> =
+  /// Returns: (Commit * IrisProject) option
+  let commitPath (committer: Signature) (msg : string) (filepath: FilePath) (project: IrisProject) : Either<IrisError,(Commit * IrisProject)> =
     let doCommit repo =
       try
         let parent = Git.Repo.parentPath repo
@@ -240,10 +239,10 @@ module ProjectHelper =
       | Left error -> Left error
     | Right repo -> doCommit repo
 
-  let saveFile (committer: Signature) (msg : string) (path: FilePath) (project: Project) : Either<IrisError,(Commit * Project)> =
+  let saveFile (committer: Signature) (msg : string) (path: FilePath) (project: IrisProject) : Either<IrisError,(Commit * IrisProject)> =
     commitPath committer msg path project
 
-  let saveProject (committer: Signature) (msg : string) (project: Project) : Either<IrisError,(Commit * Project)> =
+  let save (committer: Signature) (msg : string) (project: IrisProject) : Either<IrisError,(Commit * IrisProject)> =
     match project.Path with
     | Some path ->
       if not (Directory.Exists path) then
@@ -251,7 +250,7 @@ module ProjectHelper =
 
       let project =
         IrisConfig
-        |> toFile project.Config
+        |> Config.toFile project.Config
         |> saveMetadata project
 
       // save everything!
@@ -280,74 +279,32 @@ module ProjectHelper =
     try
       let res = Repository.Clone(url, Path.Combine(destination, name))
       logger "cloneProject" <| sprintf "clone result: %s" res
-      Some(Path.Combine(destination, name))
+      Some(destination </> name)
     with
       | _ -> None
 
+  let config (project: IrisProject) : IrisConfig = project.Config
 
-  /// ## Retrieve current repository status object
-  ///
-  /// Retrieve status information on the current repository
-  ///
-  /// ### Signature:
-  /// - repo: Repository to fetch status for
-  ///
-  /// Returns: RepositoryStatus
-  let retrieveStatus (repo: Repository) : RepositoryStatus =
-    repo.RetrieveStatus()
-
-
-  /// ## Check if repository is currently dirty
-  ///
-  /// Check if the current repository is dirty or nor.
-  ///
-  /// ### Signature:
-  /// - repo: Repository to check
-  ///
-  /// Returns: boolean
-  let isDirty (repo: Repository) : bool =
-    retrieveStatus repo |> fun status -> status.IsDirty
-
-
-  /// ## Shorthand to work with the commit log of a repository
-  ///
-  /// Get the list of commits for a repository.
-  ///
-  /// ### Signature:
-  /// - repo: Repository to get commits for
-  ///
-  /// Returns: IQueryableCommitLog
-  let commits (repo: Repository) : IQueryableCommitLog =
-    repo.Commits
-
-  let elementAt (idx: int) (t: IQueryableCommitLog) : Commit =
-    t.ElementAt(idx)
-
-  let commitCount (repo: Repository) =
-    commits repo |> fun lst -> lst.Count()
-
-  let getConfig (project: Project) : Config = project.Config
-
-  let updatePath (path: FilePath) (project: Project) : Project =
+  let updatePath (path: FilePath) (project: IrisProject) : IrisProject =
     { project with Path = Some path }
 
-  let updateConfig (config: Config) (project: Project) : Project =
+  let updateConfig (config: IrisConfig) (project: IrisProject) : IrisProject =
     { project with Config = config }
 
-  let updateDataDir (raftDir: FilePath) (project: Project) : Project =
+  let updateDataDir (raftDir: FilePath) (project: IrisProject) : IrisProject =
     { project.Config.RaftConfig with DataDir = raftDir }
-    |> flip updateEngine project.Config
+    |> flip Config.updateEngine project.Config
     |> flip updateConfig project
 
-  let addMember (node: RaftNode) (project: Project) : Project =
+  let addMember (node: RaftNode) (project: IrisProject) : IrisProject =
     project.Config
-    |> addNodeConfig node
+    |> Config.addNode node
     |> flip updateConfig project
 
-  let addMembers (nodes: RaftNode list) (project: Project) : Project =
+  let addMembers (nodes: RaftNode list) (project: IrisProject) : IrisProject =
     List.fold
       (fun config (node: RaftNode) ->
-        addNodeConfig node config)
+        Config.addNode node config)
       project.Config
       nodes
     |> flip updateConfig project

@@ -9,7 +9,7 @@ module WebSocket =
   open Iris.Service
   open Fleck
 
-  type WsServer(config: Config, context: RaftServer) =
+  type WsServer(config: IrisConfig, context: RaftServer) =
 
     let mutable onOpenCb    : Option<Session -> unit> = None
     let mutable onCloseCb   : Option<Id -> unit> = None
@@ -18,8 +18,8 @@ module WebSocket =
 
     let uri =
       let result =
-        getNodeId ()
-        |> Either.bind (tryFindNode config)
+        Config.getNodeId ()
+        |> Either.bind (Config.findNode config)
 
       match result with
       | Right node -> sprintf "ws://%s:%d" (string node.IpAddr) node.WsPort

@@ -21,7 +21,7 @@ open Iris.Core
 
 type FileName = string
 
-type AssetServer(config: Config) =
+type AssetServer(config: IrisConfig) =
   let cts = new CancellationTokenSource()
 
   let noCache =
@@ -103,8 +103,8 @@ type AssetServer(config: Config) =
     ]
 
   let appConfig =
-    getNodeId ()
-    |> Either.bind (tryFindNode config)
+    Config.getNodeId ()
+    |> Either.bind (Config.findNode config)
     |> Either.orExit
         (fun node ->
           let addr = IPAddress.Parse (string node.IpAddr)

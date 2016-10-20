@@ -414,7 +414,7 @@ module Git =
     /// Returns: Repository option
     let repository (path: FilePath) : Either<IrisError,Repository> =
       try
-        new Repository(System.IO.Path.Combine(path, ".git"))
+        new Repository(path </> ".git")
         |> Either.succeed
       with
         | :? RepositoryNotFoundException as exn  ->
@@ -453,6 +453,64 @@ module Git =
 
     let commit (repo: Repository) (msg: string) (committer: Signature) =
       repo.Commit(msg, committer, committer)
+
+    /// ## Retrieve current repository status object
+    ///
+    /// Retrieve status information on the current repository
+    ///
+    /// ### Signature:
+    /// - repo: Repository to fetch status for
+    ///
+    /// Returns: RepositoryStatus
+    let status (repo: Repository) : RepositoryStatus =
+      repo.RetrieveStatus()
+
+    /// ## Check if repository is currently dirty
+    ///
+    /// Check if the current repository is dirty or nor.
+    ///
+    /// ### Signature:
+    /// - repo: Repository to check
+    ///
+    /// Returns: boolean
+    let isDirty (repo: Repository) : bool =
+      status repo |> fun status -> status.IsDirty
+
+    /// ## Shorthand to work with the commit log of a repository
+    ///
+    /// Get the list of commits for a repository.
+    ///
+    /// ### Signature:
+    /// - repo: Repository to get commits for
+    ///
+    /// Returns: IQueryableCommitLog
+    let commits (repo: Repository) : IQueryableCommitLog =
+      repo.Commits
+
+    /// ## Get the commit object at given index.
+    ///
+    /// Get the commit object at the given commit index in the
+    /// IQueryableCommitLog.
+    ///
+    /// ### Signature:
+    /// - idx: index of commit
+    /// - t: IQueryableCommitLog
+    ///
+    /// Returns: Commit
+    let elementAt (idx: int) (t: IQueryableCommitLog) : Commit =
+      t.ElementAt(idx)
+
+
+    /// ## Count number of commits
+    ///
+    /// Count number of commits at the repository level.
+    ///
+    /// ### Signature:
+    /// - repo: Git repository object
+    ///
+    /// Returns: int
+    let commitCount (repo: Repository) =
+      commits repo |> fun lst -> lst.Count()
 
   //   ____             __ _
   //  / ___|___  _ __  / _(_) __ _

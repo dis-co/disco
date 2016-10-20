@@ -18,7 +18,7 @@ module RaftAppState =
   type RaftAppState =
     { Context: ZeroMQ.ZContext
     ; Raft:    Raft
-    ; Options: Config }
+    ; Options: IrisConfig }
 
   with
     override self.ToString() =

@@ -33,7 +33,7 @@ type RaftConfig =
       ; MaxRetries       = 10uy
       ; PeriodicInterval = 50uy
       ; LogLevel         = Err
-      ; DataDir          = Path.Combine(Path.GetTempPath(), guid.ToString())
+      ; DataDir          = Path.GetTempPath() </> guid.ToString()
       }
 
 // __     __                     ____             __ _
@@ -147,7 +147,7 @@ type Cluster =
 //  \____\___/|_| |_|_| |_|\__, |
 //                         |___/
 
-type Config =
+type IrisConfig =
   { AudioConfig    : AudioConfig
   ; VvvvConfig     : VvvvConfig
   ; RaftConfig     : RaftConfig
@@ -165,8 +165,8 @@ type Config =
 // |_| |_|\___|_| .__/ \___|_|  |___/
 //              |_|
 
-[<AutoOpen>]
-module Configuration =
+[<RequireQualifiedAccess>]
+module Config =
 
   let private parseTuple (input: string) : (int * int) =
     input.Split [| '('; ','; ' '; ')' |]       // split the string according to the specified chars
@@ -203,7 +203,7 @@ module Configuration =
   /// Transfer the configuration from `AudioConfig` values to a given config file.
   ///
   /// # Returns: ConfigFile
-  let private saveAudio (file: ConfigFile, config: Config) =
+  let private saveAudio (file: ConfigFile, config: IrisConfig) =
     file.Project.Audio.SampleRate <- int (config.AudioConfig.SampleRate)
     (file, config)
 
@@ -248,7 +248,7 @@ module Configuration =
   /// Translate the values from Config into the passed in configuration file.
   ///
   /// # Returns: ConfigFile
-  let private saveVvvv (file: ConfigFile, config: Config) =
+  let private saveVvvv (file: ConfigFile, config: IrisConfig) =
     file.Project.VVVV.Executables.Clear()
     for exe in config.VvvvConfig.Executables do
       let entry = new ConfigFile.Project_Type.VVVV_Type.Executables_Item_Type()
@@ -299,7 +299,7 @@ module Configuration =
   /// Save Raft algorithm specific configuration options to the configuration file object.
   ///
   /// # Returns: ConfigFile
-  let private saveRaft (file: ConfigFile, config: Config) =
+  let private saveRaft (file: ConfigFile, config: IrisConfig) =
     file.Project.Engine.RequestTimeout   <- int config.RaftConfig.RequestTimeout
     file.Project.Engine.ElectionTimeout  <- int config.RaftConfig.ElectionTimeout
     file.Project.Engine.MaxLogDepth      <- int config.RaftConfig.MaxLogDepth
@@ -339,7 +339,7 @@ module Configuration =
   ///
   ///
   /// # Returns: ConfigFile
-  let private saveTiming (file: ConfigFile, config: Config) =
+  let private saveTiming (file: ConfigFile, config: IrisConfig) =
     file.Project.Timing.Framebase <- int (config.TimingConfig.Framebase)
     file.Project.Timing.Input     <- config.TimingConfig.Input
 
@@ -371,7 +371,7 @@ module Configuration =
   /// Save all values in the PortConfig to the passed configuration file instance.
   ///
   /// # Returns: ConfigFile
-  let private savePort (file: ConfigFile, config: Config) =
+  let private savePort (file: ConfigFile, config: IrisConfig) =
     file.Project.Ports.UDPCues <- int (config.PortConfig.UDPCue)
     (file, config)
 
@@ -410,7 +410,7 @@ module Configuration =
   /// file.
   ///
   /// # Returns: ConfigFile
-  let private saveViewPorts (file: ConfigFile, config: Config) =
+  let private saveViewPorts (file: ConfigFile, config: IrisConfig) =
     file.Project.ViewPorts.Clear()
     for vp in config.ViewPorts do
       let item = new ConfigFile.Project_Type.ViewPorts_Item_Type()
@@ -479,7 +479,7 @@ module Configuration =
   /// Save all `Display` values in `Config` to the passed configuration file.
   ///
   /// # Returns: ConfigFile
-  let private saveDisplays (file: ConfigFile, config: Config) =
+  let private saveDisplays (file: ConfigFile, config: IrisConfig) =
     file.Project.Displays.Clear()
     for dp in config.Displays do
       let item = new ConfigFile.Project_Type.Displays_Item_Type()
@@ -549,7 +549,7 @@ module Configuration =
   /// Transfers all `Task` values into the configuration file.
   ///
   /// # Returns: ConfigFile
-  let private saveTasks (file: ConfigFile, config: Config) =
+  let private saveTasks (file: ConfigFile, config: IrisConfig) =
     file.Project.Tasks.Clear()
     for task in config.Tasks do
       let t = new ConfigFile.Project_Type.Tasks_Item_Type()
@@ -624,7 +624,7 @@ module Configuration =
   /// Saves the passed `Cluster` value to the passed config file.
   ///
   /// # Returns: ConfigFile
-  let saveCluster (file: ConfigFile, config: Config) =
+  let saveCluster (file: ConfigFile, config: IrisConfig) =
     file.Project.Cluster.Nodes.Clear()
     file.Project.Cluster.Groups.Clear()
     file.Project.Cluster.Name <- config.ClusterConfig.Name
@@ -662,7 +662,7 @@ module Configuration =
     ; Tasks          = parseTasks     file
     ; ClusterConfig  = parseCluster   file  }
 
-  let toFile (config: Config) (file: ConfigFile) =
+  let toFile (config: IrisConfig) (file: ConfigFile) =
     (file, config)
     |> saveVvvv
     |> saveAudio
@@ -688,34 +688,34 @@ module Configuration =
                        ; Nodes  = []
                        ; Groups = [] } }
 
-  let updateVvvv (vvvv: VvvvConfig) (config: Config) =
+  let updateVvvv (vvvv: VvvvConfig) (config: IrisConfig) =
     { config with VvvvConfig = vvvv }
 
-  let updateAudio (audio: AudioConfig) (config: Config) =
+  let updateAudio (audio: AudioConfig) (config: IrisConfig) =
     { config with AudioConfig = audio }
 
-  let updateEngine (engine: RaftConfig) (config: Config) =
+  let updateEngine (engine: RaftConfig) (config: IrisConfig) =
     { config with RaftConfig = engine }
 
-  let updateTiming (timing: TimingConfig) (config: Config) =
+  let updateTiming (timing: TimingConfig) (config: IrisConfig) =
     { config with TimingConfig = timing }
 
-  let updatePorts (ports: PortConfig) (config: Config)=
+  let updatePorts (ports: PortConfig) (config: IrisConfig)=
     { config with PortConfig = ports }
 
-  let updateViewPorts (viewports: ViewPort list) (config: Config) =
+  let updateViewPorts (viewports: ViewPort list) (config: IrisConfig) =
     { config with ViewPorts = viewports }
 
-  let updateDisplays (displays: Display list) (config: Config) =
+  let updateDisplays (displays: Display list) (config: IrisConfig) =
     { config with Displays = displays }
 
-  let updateTasks (tasks: Task list) (config: Config) =
+  let updateTasks (tasks: Task list) (config: IrisConfig) =
     { config with Tasks = tasks }
 
-  let updateCluster (cluster: Cluster) (config: Config) =
+  let updateCluster (cluster: Cluster) (config: IrisConfig) =
     { config with ClusterConfig = cluster }
 
-  let tryFindNode (config: Config) (id: Id) =
+  let findNode (config: IrisConfig) (id: Id) =
     let result =
       List.tryFind
         (fun (node: RaftNode) -> node.Id = id)
@@ -732,30 +732,16 @@ module Configuration =
     else
       Id id |> Either.succeed
 
-  let addNodeConfig (node: RaftNode) (config: Config) =
+  let addNode (node: RaftNode) (config: IrisConfig) =
     { config with
         ClusterConfig =
           { config.ClusterConfig with
               Nodes = node :: config.ClusterConfig.Nodes } }
 
-  let removeNodeConfig (id: Id) (config: Config) =
+  let removeNode (id: Id) (config: IrisConfig) =
     { config with
         ClusterConfig =
           { config.ClusterConfig with
               Nodes = List.filter
                         (fun (node: RaftNode) -> node.Id = id)
                         config.ClusterConfig.Nodes } }
-
-  //  __  __                _
-  // |  \/  | ___ _ __ ___ | |__   ___ _ __ ___
-  // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__/ __|
-  // | |  | |  __/ | | | | | |_) |  __/ |  \__ \
-  // |_|  |_|\___|_| |_| |_|_.__/ \___|_|  |___/
-
-  type Config with
-
-    static member Create (name: string) : Config = create name
-
-    static member FromFile (file: ConfigFile) : Config = fromFile file
-
-    static member ToFile (file: ConfigFile) (config: Config) = toFile config file

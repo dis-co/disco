@@ -11,13 +11,13 @@ module Uri =
   let mkUri resource project group =
     sprintf "iris.%s/%s/%s" resource project group
 
-  let mkProjectUri (project : Project) =
-    match currentBranch project with
+  let mkProjectUri (project : IrisProject) =
+    match Project.currentBranch project with
       | Right branch -> mkUri "project" project.Name branch.CanonicalName
       | _            -> mkUri "project" project.Name "<nobranch>"
 
-  let mkCueUri (project : Project) (group : string) =
+  let mkCueUri (project : IrisProject) (group : string) =
     mkUri "cues" project.Name group
 
-  let mkPinUri (project : Project) (group : string) =
+  let mkPinUri (project : IrisProject) (group : string) =
     mkUri "pins" project.Name group

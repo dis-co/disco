@@ -28,10 +28,8 @@ type IrisError =
   | ProjectParseError      of string
   | ProjectPathError
   | ProjectSaveError       of string
+  | ProjectInitError       of string
 
-  // LITEDB
-  | DatabaseCreateError    of string
-  | DatabaseNotFound       of string
   | MetaDataNotFound
 
   // CLI
@@ -84,8 +82,7 @@ type IrisError =
       | x when x = ErrorTypeFB.ProjectParseErrorFB      -> Some (ProjectParseError fb.Message)
       | x when x = ErrorTypeFB.ProjectPathErrorFB       -> Some ProjectPathError
       | x when x = ErrorTypeFB.ProjectSaveErrorFB       -> Some (ProjectSaveError fb.Message)
-      | x when x = ErrorTypeFB.DatabaseCreateErrorFB    -> Some (DatabaseCreateError fb.Message)
-      | x when x = ErrorTypeFB.DatabaseNotFoundFB       -> Some (DatabaseNotFound fb.Message)
+      | x when x = ErrorTypeFB.ProjectInitErrorFB       -> Some (ProjectInitError fb.Message)
       | x when x = ErrorTypeFB.MetaDataNotFoundFB       -> Some MetaDataNotFound
       | x when x = ErrorTypeFB.MissingStartupDirFB      -> Some MissingStartupDir
       | x when x = ErrorTypeFB.CliParseErrorFB          -> Some CliParseError
@@ -127,8 +124,7 @@ type IrisError =
       | ErrorTypeFB.ProjectParseErrorFB      -> Some (ProjectParseError fb.Message)
       | ErrorTypeFB.ProjectPathErrorFB       -> Some ProjectPathError
       | ErrorTypeFB.ProjectSaveErrorFB       -> Some (ProjectSaveError fb.Message)
-      | ErrorTypeFB.DatabaseCreateErrorFB    -> Some (DatabaseCreateError fb.Message)
-      | ErrorTypeFB.DatabaseNotFoundFB       -> Some (DatabaseNotFound fb.Message)
+      | ErrorTypeFB.ProjectInitErrorFB       -> Some (ProjectInitError fb.Message)
       | ErrorTypeFB.MetaDataNotFoundFB       -> Some MetaDataNotFound
       | ErrorTypeFB.MissingStartupDirFB      -> Some MissingStartupDir
       | ErrorTypeFB.CliParseErrorFB          -> Some CliParseError
@@ -174,8 +170,7 @@ type IrisError =
         | ProjectParseError      _ -> ErrorTypeFB.ProjectParseErrorFB
         | ProjectPathError         -> ErrorTypeFB.ProjectPathErrorFB
         | ProjectSaveError       _ -> ErrorTypeFB.ProjectSaveErrorFB
-        | DatabaseCreateError    _ -> ErrorTypeFB.DatabaseCreateErrorFB
-        | DatabaseNotFound       _ -> ErrorTypeFB.DatabaseNotFoundFB
+        | ProjectInitError       _ -> ErrorTypeFB.ProjectInitErrorFB
         | MetaDataNotFound         -> ErrorTypeFB.MetaDataNotFoundFB
         | MissingStartupDir        -> ErrorTypeFB.MissingStartupDirFB
         | CliParseError            -> ErrorTypeFB.CliParseErrorFB
@@ -217,8 +212,7 @@ type IrisError =
         | ProjectNotFound        msg -> builder.CreateString msg |> Some
         | ProjectParseError      msg -> builder.CreateString msg |> Some
         | ProjectSaveError       msg -> builder.CreateString msg |> Some
-        | DatabaseCreateError    msg -> builder.CreateString msg |> Some
-        | DatabaseNotFound       msg -> builder.CreateString msg |> Some
+        | ProjectInitError       msg -> builder.CreateString msg |> Some
         | MissingNode            msg -> builder.CreateString msg |> Some
         | AssetSaveError         msg -> builder.CreateString msg |> Some
         | AssetDeleteError       msg -> builder.CreateString msg |> Some
@@ -257,8 +251,7 @@ module Error =
     | ProjectParseError     e -> sprintf "Project could not be parsed: %s" e
 
     // LITEDB
-    | DatabaseCreateError   e -> sprintf "Database could not be created: %s" e
-    | DatabaseNotFound      e -> sprintf "Database could not be found: %s" e
+    | ProjectInitError      e -> sprintf "Database could not be created: %s" e
     | MetaDataNotFound        -> sprintf "Metadata could not be loaded from db"
 
     // CLI
@@ -316,40 +309,39 @@ module Error =
     | MissingNode           _ -> 12
 
     // LITEDB
-    | DatabaseCreateError   _ -> 13
-    | DatabaseNotFound      _ -> 14
-    | MetaDataNotFound        -> 15
+    | ProjectInitError      _ -> 13
+    | MetaDataNotFound        -> 14
 
     // CLI
-    | MissingStartupDir       -> 16
-    | CliParseError           -> 17
+    | MissingStartupDir       -> 15
+    | CliParseError           -> 16
 
-    | AssetSaveError        _ -> 18
-    | AssetDeleteError      _ -> 19
+    | AssetSaveError        _ -> 17
+    | AssetDeleteError      _ -> 18
 
-    | Other                 _ -> 20
+    | Other                 _ -> 19
 
     // RAFT
-    | AlreadyVoted            -> 21
-    | AppendEntryFailed       -> 22
-    | CandidateUnknown        -> 23
-    | EntryInvalidated        -> 24
-    | InvalidCurrentIndex     -> 25
-    | InvalidLastLog          -> 26
-    | InvalidLastLogTerm      -> 27
-    | InvalidTerm             -> 28
-    | LogFormatError          -> 29
-    | LogIncomplete           -> 30
-    | NoError                 -> 31
-    | NoNode                  -> 32
-    | NotCandidate            -> 33
-    | NotLeader               -> 34
-    | NotVotingState          -> 35
-    | ResponseTimeout         -> 36
-    | SnapshotFormatError     -> 37
-    | StaleResponse           -> 38
-    | UnexpectedVotingChange  -> 39
-    | VoteTermMismatch        -> 40
+    | AlreadyVoted            -> 20
+    | AppendEntryFailed       -> 21
+    | CandidateUnknown        -> 22
+    | EntryInvalidated        -> 23
+    | InvalidCurrentIndex     -> 24
+    | InvalidLastLog          -> 25
+    | InvalidLastLogTerm      -> 26
+    | InvalidTerm             -> 27
+    | LogFormatError          -> 28
+    | LogIncomplete           -> 29
+    | NoError                 -> 30
+    | NoNode                  -> 31
+    | NotCandidate            -> 32
+    | NotLeader               -> 33
+    | NotVotingState          -> 34
+    | ResponseTimeout         -> 35
+    | SnapshotFormatError     -> 36
+    | StaleResponse           -> 37
+    | UnexpectedVotingChange  -> 38
+    | VoteTermMismatch        -> 39
 
 
   let inline isOk (error: IrisError) =

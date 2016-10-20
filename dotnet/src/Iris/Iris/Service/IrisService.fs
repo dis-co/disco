@@ -16,7 +16,7 @@ open ZeroMQ
 // |___|_|  |_|___/____/ \___|_|    \_/ |_|\___\___|
 //
 
-type IrisService(project: Project ref) =
+type IrisService(project: IrisProject ref) =
   let signature = new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
 
   let store : Store = new Store(State.Empty)

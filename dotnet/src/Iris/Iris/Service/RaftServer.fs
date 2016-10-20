@@ -38,7 +38,7 @@ module RaftServerStateHelpers =
 // |  _ < (_| |  _| |_   ___) |  __/ |   \ V /  __/ |
 // |_| \_\__,_|_|  \__| |____/ \___|_|    \_/ \___|_|
 
-type RaftServer(options: Config, context: ZeroMQ.ZContext) as this =
+type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
   let locker = new Object()
 
   let serverState = ref Stopped

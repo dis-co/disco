@@ -2180,11 +2180,8 @@ module FlatBufferTypes =
     [<Emit("Iris.Serialization.Raft.ErrorTypeFB.ProjectSaveErrorFB")>]
     abstract ProjectSaveErrorFB: ErrorTypeFB
 
-    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.DatabaseCreateErrorFB")>]
-    abstract DatabaseCreateErrorFB: ErrorTypeFB
-
-    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.DatabaseNotFoundFB")>]
-    abstract DatabaseNotFoundFB: ErrorTypeFB
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.ProjectInitErrorFB")>]
+    abstract ProjectInitErrorFB: ErrorTypeFB
 
     [<Emit("Iris.Serialization.Raft.ErrorTypeFB.MetaDataNotFoundFB")>]
     abstract MetaDataNotFoundFB: ErrorTypeFB
