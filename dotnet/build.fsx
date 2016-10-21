@@ -405,6 +405,10 @@ Target "RunWebTests" (fun _ ->
 //  _| |\  | |___  | |
 // (_)_| \_|_____| |_|
 
+Target "BuildDebugCore" (buildDebug "Core.fsproj")
+
+Target "BuildReleaseCore" (buildRelease "Core.fsproj")
+
 Target "BuildDebugService" (buildDebug "Service.fsproj")
 
 Target "BuildReleaseService" (buildRelease "Service.fsproj")

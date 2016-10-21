@@ -1,4 +1,4 @@
-#I "."
+#I __SOURCE_DIRECTORY__
 
 #r "Argu.dll"
 #r "Fable.Core.dll"
@@ -15,7 +15,6 @@
 #r "Gallio.dll"
 #r "Iris.Serialization.dll"
 #r "LibGit2Sharp.dll"
-#r "LiteDB.dll"
 #r "MbUnit40.dll"
 #r "MbUnit.dll"
 #r "nunit.framework.dll"
@@ -26,6 +25,7 @@
 #r "xunit.core.dll"
 #r "xunit.execution.desktop.dll"
 #r "ZeroMQ.dll"
+#r "Iris.Core.dll"
 
 open System
 open System.IO

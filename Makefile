@@ -14,6 +14,9 @@ run.tests:
 service:
 	${BUILD} BuildDebugService
 
+core:
+	${BUILD} BuildDebugCore
+
 nodes:
 	${BUILD} BuildDebugNodes
 
@@ -88,6 +91,9 @@ release:
 
 shell:
 	@nix-shell shell.nix
+
+fsi:
+	@nix-shell shell.nix -A irisEnv --run "fsi --use:dotnet/src/Iris/bin/Debug/Core/interactive.fsx"
 
 #              _        _
 #  _ __   __ _| | _____| |_

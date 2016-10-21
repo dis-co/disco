@@ -32,6 +32,8 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Tests", "src\Iris\Tests.fsp
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Service", "src\Iris\Service.fsproj", "{2704F49C-2E66-4923-A4C6-9E07B05FC017}"
 EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Core", "src\Iris\Core.fsproj", "{7D6918E9-1494-41E9-9BEB-638616110A60}"
+EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Nodes", "src\Iris\Nodes.fsproj", "{FBFFB969-00ED-4568-8FD0-65A699AACA18}"
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Frontend", "src\Iris\Frontend.fsproj", "{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}"
@@ -64,6 +66,10 @@ Global
 		{2704F49C-2E66-4923-A4C6-9E07B05FC017}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2704F49C-2E66-4923-A4C6-9E07B05FC017}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2704F49C-2E66-4923-A4C6-9E07B05FC017}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Release|Any CPU.Build.0 = Release|Any CPU
 		{39714BA9-31D0-4160-B0C2-5BE0AA12734E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{39714BA9-31D0-4160-B0C2-5BE0AA12734E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{39714BA9-31D0-4160-B0C2-5BE0AA12734E}.Release|Any CPU.ActiveCfg = Release|Any CPU

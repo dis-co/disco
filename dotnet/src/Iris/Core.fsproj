@@ -5,22 +5,21 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
-    <ProjectGuid>{2704F49C-2E66-4923-A4C6-9E07B05FC017}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <ProjectGuid>{7D6918E9-1494-41E9-9BEB-638616110A60}</ProjectGuid>
+    <OutputType>Library</OutputType>
     <RootNamespace>Iris</RootNamespace>
-    <AssemblyName>iris</AssemblyName>
+    <AssemblyName>Iris.Core</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
-    <Name>Service</Name>
+    <Name>Iris.Core</Name>
     <TargetFrameworkProfile />
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <Tailcalls>false</Tailcalls>
-    <OutputPath>bin\Debug\Iris</OutputPath>
+    <OutputPath>bin\Debug\Core</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
   </PropertyGroup>
@@ -28,13 +27,12 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
-    <OutputPath>bin\Release\Iris</OutputPath>
+    <OutputPath>bin\Release\Core</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>
   </PropertyGroup>
   <ItemGroup>
-    <FrontendAssets Include="assets\frontend\**\*.*" />
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -42,7 +40,7 @@
     <Reference Include="System.Management" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AssemblyInfo\ServiceInfo.fs" />
+    <Compile Include="AssemblyInfo\CoreInfo.fs" />
     <Compile Include="Iris\Core\Serialization.fs" />
     <Compile Include="Iris\Core\Error.fs" />
     <Compile Include="Iris\Core\Either.fs" />
@@ -92,13 +90,6 @@
     <Compile Include="Iris\Service\WebSocket.fs" />
     <Compile Include="Iris\Service\IrisService.fs" />
     <Compile Include="Iris\Service\CommandLine.fs" />
-    <Compile Include="Iris\Service\Main.fs" />
-    <Content Include="Iris.exe.config">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="app.config">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <None Include="i386/libzmq.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -1325,7 +1316,8 @@
   </Choose>
   <Import Project="..\..\packages\ZeroMQ\build\$(__paket__ZeroMQ_targets).targets" Condition="Exists('..\..\packages\ZeroMQ\build\$(__paket__ZeroMQ_targets).targets')" Label="Paket" />
   <Target Name="AfterBuild">
-    <Copy SourceFiles="@(FrontendAssets)" DestinationFolder="$(OutputPath)\assets\%(RecursiveDir)" />
-    <Exec Command="npm install" WorkingDirectory="$(OutputPath)\assets" />
+    <Copy SourceFiles="assets/interactive.fsx" DestinationFolder="$(OutputPath)" />
+    <Copy SourceFiles="..\..\packages\FSharp.Core\lib\net40\FSharp.Core.sigdata" DestinationFolder="$(OutputPath)" />
+    <Copy SourceFiles="..\..\packages\FSharp.Core\lib\net40\FSharp.Core.optdata" DestinationFolder="$(OutputPath)" />
   </Target>
 </Project>
