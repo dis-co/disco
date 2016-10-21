@@ -34,19 +34,13 @@
     <OtherFlags>--warnon:1182</OtherFlags>
   </PropertyGroup>
   <ItemGroup>
+    <FrontendAssets Include="assets\frontend\**\*.*" />
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Management" />
   </ItemGroup>
-  <Target Name="AfterBuild">
-    <Copy SourceFiles="assets/interactive.fsx" DestinationFolder="$(OutputPath)" />
-    <Copy SourceFiles="@(FrontendAssets)" DestinationFolder="$(OutputPath)\assets\%(RecursiveDir)" />
-    <Copy SourceFiles="..\..\packages\FSharp.Core\lib\net40\FSharp.Core.sigdata" DestinationFolder="$(OutputPath)" />
-    <Copy SourceFiles="..\..\packages\FSharp.Core\lib\net40\FSharp.Core.optdata" DestinationFolder="$(OutputPath)" />
-    <Exec Command="npm install" WorkingDirectory="$(OutputPath)\assets" />
-  </Target>
   <ItemGroup>
     <Compile Include="AssemblyInfo\ServiceInfo.fs" />
     <Compile Include="Iris\Core\Serialization.fs" />
@@ -169,13 +163,6 @@
     </When>
   </Choose>
   <Import Project="..\..\packages\xunit.core\build\$(__paket__xunit_core_props).props" Condition="Exists('..\..\packages\xunit.core\build\$(__paket__xunit_core_props).props')" Label="Paket" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v3.5'">
       <ItemGroup>
@@ -1337,4 +1324,12 @@
     </When>
   </Choose>
   <Import Project="..\..\packages\ZeroMQ\build\$(__paket__ZeroMQ_targets).targets" Condition="Exists('..\..\packages\ZeroMQ\build\$(__paket__ZeroMQ_targets).targets')" Label="Paket" />
+  <Target Name="AfterBuild">
+    <Message Text="COPYING STUFF" />
+    <Copy SourceFiles="assets/interactive.fsx" DestinationFolder="$(OutputPath)" />
+    <Copy SourceFiles="@(FrontendAssets)" DestinationFolder="$(OutputPath)\assets\%(RecursiveDir)" />
+    <Copy SourceFiles="..\..\packages\FSharp.Core\lib\net40\FSharp.Core.sigdata" DestinationFolder="$(OutputPath)" />
+    <Copy SourceFiles="..\..\packages\FSharp.Core\lib\net40\FSharp.Core.optdata" DestinationFolder="$(OutputPath)" />
+    <Exec Command="npm install" WorkingDirectory="$(OutputPath)\assets" />
+  </Target>
 </Project>

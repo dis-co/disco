@@ -42,7 +42,7 @@ web.tests.fsproj:
 	${BUILD} BuildWebTestsFsProj
 
 run.web.tests:
-	${BUILD} RunWebTests
+	@nix-shell shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunWebTests"
 
 web.tests:
 	${BUILD} BuildWebTests

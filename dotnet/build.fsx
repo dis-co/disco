@@ -387,7 +387,8 @@ Target "RunWebTests" (fun _ ->
 
     match useNix with
     | true ->
-        let args = "-p /run/current-system/sw/bin/phantomjs -R min tests.html"
+        let path = Environment.GetEnvironmentVariable "PHANTOMJS_PATH"
+        let args = "-p " + path + " -R min tests.html"
         ExecProcess (fun info ->
                           info.FileName <- "mocha-phantomjs"
                           info.Arguments <- args
