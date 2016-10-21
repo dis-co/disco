@@ -5,6 +5,7 @@ open System.Net
 open Iris.Core
 open Iris.Serialization.Raft
 open FlatBuffers
+open SharpYaml.Serialization
 
 /// The Raft state machine
 ///
@@ -493,6 +494,32 @@ ConfigChangeEntry = %s
       match self.CurrentLeader with
       | Some lid -> self.Node.Id = lid
       | _ -> false
+
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+  member self.ToYaml(serializer: Serializer) =
+    Yaml.toYaml self |> serializer.Serialize
+
+  member self.ToYamlObject() =
+    let meta = new RaftMetadata()
+
+    meta.Term <- self.CurrentTerm
+
+    Option.map
+      (fun voted -> meta.VotedFor <- string voted)
+      self.VotedFor
+    |> ignore
+
+    Option.map
+      (fun leader -> meta.Leader <- string leader)
+      self.CurrentLeader
+    |> ignore
+
+    meta
 
 ////////////////////////////////////////
 //  __  __                       _    //

@@ -32,6 +32,8 @@ type IrisError =
 
   | MetaDataNotFound
 
+  | ParseError             of string
+
   // CLI
   | MissingStartupDir
   | CliParseError
@@ -111,7 +113,8 @@ type IrisError =
       | x when x = ErrorTypeFB.StaleResponseFB          -> Some StaleResponse
       | x when x = ErrorTypeFB.UnexpectedVotingChangeFB -> Some UnexpectedVotingChange
       | x when x = ErrorTypeFB.VoteTermMismatchFB       -> Some VoteTermMismatch
-      | _                                    -> None
+      | x when x = ErrorTypeFB.ParseErrorFB             -> Some (ParseError fb.Message)
+      | _                                               -> None
 #else
       | ErrorTypeFB.OKFB                     -> Some OK
       | ErrorTypeFB.BranchNotFoundFB         -> Some (BranchNotFound fb.Message)
@@ -153,6 +156,7 @@ type IrisError =
       | ErrorTypeFB.StaleResponseFB          -> Some StaleResponse
       | ErrorTypeFB.UnexpectedVotingChangeFB -> Some UnexpectedVotingChange
       | ErrorTypeFB.VoteTermMismatchFB       -> Some VoteTermMismatch
+      | ErrorTypeFB.ParseErrorFB             -> Some (ParseError fb.Message)
       | _                                    -> None
 #endif
 
@@ -178,6 +182,7 @@ type IrisError =
         | MissingNode            _ -> ErrorTypeFB.MissingNodeFB
         | AssetSaveError         _ -> ErrorTypeFB.AssetSaveErrorFB
         | AssetDeleteError       _ -> ErrorTypeFB.AssetDeleteErrorFB
+        | ParseError             _ -> ErrorTypeFB.ParseErrorFB
         | Other                  _ -> ErrorTypeFB.OtherFB
 
         | AlreadyVoted             -> ErrorTypeFB.AlreadyVotedFB
@@ -216,6 +221,7 @@ type IrisError =
         | MissingNode            msg -> builder.CreateString msg |> Some
         | AssetSaveError         msg -> builder.CreateString msg |> Some
         | AssetDeleteError       msg -> builder.CreateString msg |> Some
+        | ParseError             msg -> builder.CreateString msg |> Some
         | Other                  msg -> builder.CreateString msg |> Some
         | _                          -> None
 
@@ -249,6 +255,8 @@ module Error =
     | ProjectPathError        ->         "Project has no path"
     | ProjectSaveError      e -> sprintf "Project could not be saved: %s" e
     | ProjectParseError     e -> sprintf "Project could not be parsed: %s" e
+
+    | ParseError            e -> sprintf "Parse error: %s" e
 
     // LITEDB
     | ProjectInitError      e -> sprintf "Database could not be created: %s" e
@@ -319,29 +327,31 @@ module Error =
     | AssetSaveError        _ -> 17
     | AssetDeleteError      _ -> 18
 
-    | Other                 _ -> 19
+    | ParseError            _ -> 19
+
+    | Other                 _ -> 20
 
     // RAFT
-    | AlreadyVoted            -> 20
-    | AppendEntryFailed       -> 21
-    | CandidateUnknown        -> 22
-    | EntryInvalidated        -> 23
-    | InvalidCurrentIndex     -> 24
-    | InvalidLastLog          -> 25
-    | InvalidLastLogTerm      -> 26
-    | InvalidTerm             -> 27
-    | LogFormatError          -> 28
-    | LogIncomplete           -> 29
-    | NoError                 -> 30
-    | NoNode                  -> 31
-    | NotCandidate            -> 32
-    | NotLeader               -> 33
-    | NotVotingState          -> 34
-    | ResponseTimeout         -> 35
-    | SnapshotFormatError     -> 36
-    | StaleResponse           -> 37
-    | UnexpectedVotingChange  -> 38
-    | VoteTermMismatch        -> 39
+    | AlreadyVoted            -> 21
+    | AppendEntryFailed       -> 22
+    | CandidateUnknown        -> 23
+    | EntryInvalidated        -> 24
+    | InvalidCurrentIndex     -> 25
+    | InvalidLastLog          -> 26
+    | InvalidLastLogTerm      -> 27
+    | InvalidTerm             -> 28
+    | LogFormatError          -> 29
+    | LogIncomplete           -> 30
+    | NoError                 -> 31
+    | NoNode                  -> 32
+    | NotCandidate            -> 33
+    | NotLeader               -> 34
+    | NotVotingState          -> 35
+    | ResponseTimeout         -> 36
+    | SnapshotFormatError     -> 37
+    | StaleResponse           -> 38
+    | UnexpectedVotingChange  -> 39
+    | VoteTermMismatch        -> 40
 
 
   let inline isOk (error: IrisError) =
@@ -354,3 +364,6 @@ module Error =
       toMessage error
       |> printfn "Fatal: %s"
     error |> toExitCode |> exit
+
+  let throw (error: IrisError) =
+    failwithf "ERROR: %A" error

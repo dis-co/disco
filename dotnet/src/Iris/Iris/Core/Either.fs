@@ -43,6 +43,11 @@ module Either =
     | Right value -> f value |> succeed
     | Left  error -> Left error
 
+  let inline mapError< ^a, ^err1, ^err2 > (f: ^err1 -> ^err2) (a: Either< ^err1, ^a >) : Either< ^err2, ^a> =
+    match a with
+    | Right value -> Right value
+    | Left error  -> Left(f error)
+
   let inline combine< ^a, ^b, ^err > (v1 : ^a) (v2 : Either< ^err, ^b >) : Either< ^err, (^a * ^b) > =
     match v2 with
     | Right value2 -> succeed (v1, value2)
@@ -52,3 +57,23 @@ module Either =
     match a with
     | Right value -> f value
     | Left error  -> Error.exitWith error
+
+[<AutoOpen>]
+module EitherUtils =
+
+  type EitherBuilder() =
+
+    member __.Return(v) = Right v
+
+    member __.ReturnFrom(v) = v
+
+    member __.Bind(m, f) =
+      match m with
+      | Right value -> f value |> Right
+      | Left error  -> Left error
+
+    member __.Zero() = Right ()
+
+    member __.Delay(f) = fun _ -> f()
+
+  let either = new EitherBuilder()

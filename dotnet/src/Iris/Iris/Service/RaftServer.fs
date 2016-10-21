@@ -178,7 +178,11 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
 
         this.Debug "RaftServer: saving state to disk"
         let state = readTVar appState |> atomically
-        saveRaft state.Raft
+        saveRaft options state.Raft
+        |> Either.mapError
+          (fun err ->
+            printfn "An error occurred: %A" err)
+        |> ignore
 
         this.Debug "RaftServer: stopped"
         serverState := Stopped
@@ -428,14 +432,21 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
     /// Returns: unit
     member self.PersistVote (node: RaftNode option) =
       try
-        saveRaftMetadata ()
+        self.State
+        |> RaftContext.getRaft
+        |> saveRaft options
+        |> Either.mapError
+          (fun err ->
+            printfn "Could not persit vote change. %A" err)
+        |> ignore
+
         "PersistVote reset VotedFor" |> this.Debug
       with
         | exn -> handleException "PersistTerm" exn
 
-    /// ## Persit the new term into the database
+    /// ## Persit the new term in metadata file
     ///
-    /// Save the current term to the database.
+    /// Save the current term in metatdata file.
     ///
     /// ### Signature:
     /// - arg: arg
@@ -445,14 +456,21 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
     /// Returns: unit
     member self.PersistTerm term =
       try
-        saveRaftMetadata ()
+        self.State
+        |> RaftContext.getRaft
+        |> saveRaft options
+        |> Either.mapError
+          (fun err ->
+            printfn "Could not persit vote change. %A" err)
+        |> ignore
+
         sprintf "PersistTerm term: %A" term |> this.Debug
       with
         | exn -> handleException "PersistTerm" exn
 
     /// ## Persist a log to disk
     ///
-    /// Save a log to the database.
+    /// Save a log to disk.
     ///
     /// ### Signature:
     /// - log: Log to persist
@@ -539,7 +557,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
 
       } |> evalRaft state.Raft cbs
 
-    writeTVar appState (updateRaft newstate state)
+    writeTVar appState (RaftContext.updateRaft newstate state)
     |> atomically
 
   member self.LeaveCluster() =
@@ -565,7 +583,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
 
       } |> evalRaft state.Raft cbs
 
-    writeTVar appState (updateRaft newstate state)
+    writeTVar appState (RaftContext.updateRaft newstate state)
     |> atomically
 
 
@@ -592,7 +610,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
       match result with
       | Right (appended, raftState) ->
         // save the new raft value back to the TVar
-        writeTVar appState (updateRaft raftState state) |> atomically
+        writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
 
         // block until entry has been committed
         let ok = waitForCommit appended appState cbs
@@ -604,7 +622,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
 
       | Left (err, raftState) ->
         // save the new raft value back to the TVar
-        writeTVar appState (updateRaft raftState state) |> atomically
+        writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
         None
     else
       this.Err "Unable to add node. Not leader."
@@ -635,7 +653,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
       match result with
       | Right (Some appended, raftState) ->
         // save the new raft value back to the TVar
-        writeTVar appState (updateRaft raftState state) |> atomically
+        writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
 
         // block until entry has been committed
         let ok = waitForCommit appended appState cbs
@@ -647,7 +665,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
 
       | Left (err, raftState) ->
         // save the new raft value back to the TVar
-        writeTVar appState (updateRaft raftState state) |> atomically
+        writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
         None
 
       | _ -> None

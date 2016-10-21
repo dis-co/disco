@@ -27,11 +27,11 @@ module ProjectTests =
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
         let (commit, project) =
-          { createProject name with Path = Some(path) }
-          |> saveProject signature "Initial project save."
+          { Project.create name with Path = Some(path) }
+          |> Project.save signature "Initial project save."
           |> Either.get
 
-        let result = loadProject (path </> PROJECT_FILENAME)
+        let result = Project.load (path </> PROJECT_FILENAME)
 
         expect "Projects should be loaded" true Either.isSuccess result
 
@@ -198,10 +198,10 @@ module ProjectTests =
           }
 
         let project =
-          createProject name
-          |> updatePath path
+          Project.create name
+          |> Project.updatePath path
           |> fun project ->
-            updateConfig
+            Project.updateConfig
               { project.Config with
                   RaftConfig    = engineCfg
                   PortConfig    = portCfg
@@ -213,11 +213,11 @@ module ProjectTests =
               project
 
         let (_,saved) =
-          saveProject signature "Initial project save." project
+          Project.save signature "Initial project save." project
           |> Either.get
 
         let loaded =
-          loadProject (path </> PROJECT_FILENAME)
+          Project.load (path </> PROJECT_FILENAME)
           |> Either.get
 
         // the only difference will be the automatically assigned timestamp
@@ -248,20 +248,20 @@ module ProjectTests =
         then Directory.Delete(path, true) |> ignore
 
         let project =
-          { createProject name with Path = Some path }
-          |> saveProject signature "Initial commit."
+          { Project.create name with Path = Some path }
+          |> Project.save signature "Initial commit."
 
         let loaded =
           (path </> PROJECT_FILENAME)
-          |> loadProject
+          |> Project.load
           |> Either.get
 
         expect "Projects should be a folder"         true  Directory.Exists path
         expect "Projects should be a git repo"       true  Directory.Exists (path </> ".git")
         expect "Projects should have project yml"    true  File.Exists (path </> PROJECT_FILENAME)
-        expect "Projects should have repo"           true  (repository >> Either.isSuccess) loaded
-        expect "Projects should not be dirty"        false (repository >> Either.get >> isDirty) loaded
-        expect "Projects should have initial commit" 1     (repository >> Either.get >> commitCount) loaded
+        expect "Projects should have repo"           true  (Project.repository >> Either.isSuccess) loaded
+        expect "Projects should not be dirty"        false (Project.repository >> Either.get >> Git.Repo.isDirty) loaded
+        expect "Projects should have initial commit" 1     (Project.repository >> Either.get >> Git.Repo.commitCount) loaded
 
   //    ____                          _ _
   //   / ___|___  _ __ ___  _ __ ___ (_) |_ ___
@@ -283,20 +283,20 @@ module ProjectTests =
         let msg1 = "Commit 1"
 
         let (commit1, project) =
-          { createProject name with
+          { Project.create name with
               Path = Some(path)
               Author = Some(author1) }
-          |> saveProject signature msg1
+          |> Project.save signature msg1
           |> Either.get
 
         (path </> PROJECT_FILENAME)
-        |> loadProject
+        |> Project.load
         |> Either.get
         |> fun p ->
-            let repo = repository p |> Either.get
-            let c =  commits repo |> elementAt 0
+            let repo = Project.repository p |> Either.get
+            let c =  Git.Repo.commits repo |> Git.Repo.elementAt 0
             expect "Authors should be equal"                true ((Option.get >> (=)) p.Author) author1
-            expect "Project should have one initial commit" true ((=) (commitCount repo)) 1
+            expect "Project should have one initial commit" true ((=) (Git.Repo.commitCount repo)) 1
             expect "Project should have commit message"     true ((=) c.MessageShort) msg1
 
         let author2 = "ingolf"
@@ -304,20 +304,20 @@ module ProjectTests =
 
         let (commit2, project) =
           { project with Author = Some author2 }
-          |> saveProject signature msg2
+          |> Project.save signature msg2
           |> Either.get
 
 
         (path </> PROJECT_FILENAME)
-        |> loadProject
+        |> Project.load
         |> Either.get
         |> fun p ->
-            let repo = repository p |> Either.get
-            let cs = commits repo
-            let c1 = elementAt 0 cs
-            let c2 = elementAt 1 cs
+            let repo = Project.repository p |> Either.get
+            let cs = Git.Repo.commits repo
+            let c1 = Git.Repo.elementAt 0 cs
+            let c2 = Git.Repo.elementAt 1 cs
             expect "Authors should be equal"                    true ((=) (Option.get p.Author)) author2
-            expect "Projects should two commits"                true ((=) (commitCount repo)) 2
+            expect "Projects should two commits"                true ((=) (Git.Repo.commitCount repo)) 2
             expect "Project should have current commit message" true ((=) c1.MessageShort) msg2
             expect "Project should have old commit message"     true ((=) c2.MessageShort) msg1
 
@@ -326,20 +326,20 @@ module ProjectTests =
 
         let (commit3, project) =
            { project with Author = Some author3 }
-           |> saveProject signature msg3
+           |> Project.save signature msg3
            |> Either.get
 
         (path </> PROJECT_FILENAME)
-        |> loadProject
+        |> Project.load
         |> Either.get
         |> fun p ->
-            let repo = repository p |> Either.get
-            let cs = commits repo
-            let c1 = elementAt 0 cs
-            let c2 = elementAt 1 cs
-            let c3 = elementAt 2 cs
+            let repo = Project.repository p |> Either.get
+            let cs = Git.Repo.commits repo
+            let c1 = Git.Repo.elementAt 0 cs
+            let c2 = Git.Repo.elementAt 1 cs
+            let c3 = Git.Repo.elementAt 2 cs
             expect "Authors should be equal"                    true ((=) (Option.get p.Author)) author3
-            expect "Projects should have three commits"         true ((=) (commitCount repo)) 3
+            expect "Projects should have three commits"         true ((=) (Git.Repo.commitCount repo)) 3
             expect "Project should have current commit message" true ((=) c1.MessageShort) msg3
             expect "Project should have old commit message"     true ((=) c2.MessageShort) msg2
             expect "Project should have oldest commit message"  true ((=) c3.MessageShort) msg1

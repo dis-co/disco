@@ -168,18 +168,22 @@ type IrisConfig =
 [<RequireQualifiedAccess>]
 module Config =
 
-  let private parseTuple (input: string) : (int * int) =
+  let private parseTuple (input: string) : Either<IrisError,int * int> =
     input.Split [| '('; ','; ' '; ')' |]       // split the string according to the specified chars
     |> Array.filter (String.length >> ((<) 0)) // filter out elements that have zero length
     |> function
-      | [| x; y |] -> (int x, int y)
-      | _        -> failwithf "failed to parse tuple: %s" input
+      | [| x; y |] -> Right (int x, int y)
+      | _ ->
+        ParseError input
+        |> Either.fail
 
-  let private parseRect (str : string) : Rect =
-    parseTuple str |> Rect
+  let private parseRect (str : string) : Either<IrisError,Rect> =
+    parseTuple str
+    |> Either.map Rect
 
-  let private parseCoordinate (str : string) : Coordinate =
-    parseTuple str |> Coordinate
+  let private parseCoordinate (str : string) : Either<IrisError,Coordinate> =
+    parseTuple str
+    |> Either.map Coordinate
 
   let parseStringProp (str : string) : string option =
     if str.Length > 0 then Some(str) else None
@@ -387,22 +391,29 @@ module Config =
   ///
   /// # Returns: ViewPort list
   let private parseViewPorts (cnf : ConfigFile) : ViewPort list =
-    let vports : ViewPort list ref = ref []
+    let viewports : ViewPort list ref = ref []
 
     for vp in cnf.Project.ViewPorts do
-      let viewport' =
-        { Id             = Id.Parse vp.Id
-        ; Name           = vp.Name
-        ; Position       = parseCoordinate vp.Position
-        ; Size           = parseRect       vp.Size
-        ; OutputPosition = parseCoordinate vp.OutputPosition
-        ; OutputSize     = parseRect       vp.OutputSize
-        ; Overlap        = parseRect       vp.Overlap
-        ; Description    = vp.Description }
+      either {
+        let! pos     = parseCoordinate vp.Position
+        let! size    = parseRect       vp.Size
+        let! outpos  = parseCoordinate vp.OutputPosition
+        let! outsize = parseRect       vp.OutputSize
+        let! overlap = parseRect       vp.Overlap
 
-      vports := (viewport' :: !vports)
+        let viewport : ViewPort =
+          { Id             = Id.Parse vp.Id
+          ; Name           = vp.Name
+          ; Position       = pos
+          ; Size           = size
+          ; OutputPosition = outpos
+          ; OutputSize     = outsize
+          ; Overlap        = overlap
+          ; Description    = vp.Description }
+        viewports := (viewport :: !viewports)
+      } |> ignore
 
-    List.reverse !vports
+    List.reverse !viewports
 
   /// ### Transfers the passed list of ViewPort values
   ///
@@ -441,36 +452,57 @@ module Config =
     let displays : Display list ref = ref []
 
     for display in cnf.Project.Displays do
-
       /// scrape all signal defs out of the config
       let signals : Signal list ref = ref []
+
       for signal in display.Signals do
-        let signal' : Signal =
-          { Size     = parseRect       signal.Size
-          ; Position = parseCoordinate signal.Position }
-        signals := (signal' :: !signals)
+        either {
+          let! size = parseRect       signal.Size
+          let! pos = parseCoordinate signal.Position
+
+          let signal : Signal =
+            { Size     = size
+            ; Position = pos }
+
+          signals := (signal :: !signals)
+        }
+        |> ignore
 
       let regions : Region list ref = ref []
-      for region in display.RegionMap.Regions do
-        let region' =
-          { Id             = Id.Parse region.Id
-          ; Name           = region.Name
-          ; SrcPosition    = parseCoordinate region.SrcPosition
-          ; SrcSize        = parseRect       region.SrcSize
-          ; OutputPosition = parseCoordinate region.OutputPosition
-          ; OutputSize     = parseRect       region.OutputSize }
-        regions := (region' :: !regions)
 
-      let display' =
-        { Id        = Id.Parse display.Id
-        ; Name      = display.Name
-        ; Size      = parseRect display.Size
-        ; Signals   = List.reverse !signals
-        ; RegionMap =
-          { SrcViewportId = Id.Parse display.RegionMap.SrcViewportId
-          ; Regions       = List.reverse !regions }
-        }
-      displays := (display' :: !displays)
+      for region in display.RegionMap.Regions do
+        either {
+          let! srcpos  = parseCoordinate region.SrcPosition
+          let! srcsize = parseRect       region.SrcSize
+          let! outpos  = parseCoordinate region.OutputPosition
+          let! outsize = parseRect       region.OutputSize
+
+          let region =
+            { Id             = Id.Parse region.Id
+            ; Name           = region.Name
+            ; SrcPosition    = srcpos
+            ; SrcSize        = srcsize
+            ; OutputPosition = outpos
+            ; OutputSize     = outsize }
+
+          regions := (region :: !regions)
+        } |> ignore
+
+      either {
+        let! size = parseRect display.Size
+
+        let display =
+          { Id        = Id.Parse display.Id
+          ; Name      = display.Name
+          ; Size      = size
+          ; Signals   = List.reverse !signals
+          ; RegionMap =
+            { SrcViewportId = Id.Parse display.RegionMap.SrcViewportId
+            ; Regions       = List.reverse !regions }
+          }
+
+        displays := (display :: !displays)
+      } |> ignore
 
     List.reverse !displays
 

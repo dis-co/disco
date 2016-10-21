@@ -228,10 +228,10 @@ module SerializationTests =
           ProjectParseError     "lskdfj"
           MissingNodeId
           MissingNode           "lak"
-          DatabaseCreateError   "oiwe"
-          DatabaseNotFound      "lksjfolsk"
+          ProjectInitError      "oiwe"
           MetaDataNotFound
           MissingStartupDir
+          ParseError            "lah"
           CliParseError
           AssetSaveError        "lskd"
           AssetDeleteError      "lskd"

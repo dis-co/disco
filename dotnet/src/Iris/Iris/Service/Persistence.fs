@@ -13,6 +13,42 @@ open SharpYaml.Serialization
 
 module Persistence =
 
+  /// ## saveAsset
+  ///
+  /// save a thing (string) to a file and returns its FileInfo. Might
+  /// crash, so catch it.
+  ///
+  /// ### Signature:
+  /// - location: FilePath to save payload to
+  /// - payload: string payload to save
+  ///
+  /// Returns: FileInfo
+  let saveAsset (location: FilePath) (payload: string) : FileInfo =
+   let info = IO.FileInfo location
+   if not (IO.Directory.Exists info.Directory.FullName) then
+     IO.Directory.CreateDirectory info.Directory.FullName
+     |> ignore
+   File.WriteAllText(location, payload)
+   info.Refresh()
+   info
+
+  /// ## deleteAsset
+  ///
+  /// Delete a file from disk
+  ///
+  /// ### Signature:
+  /// - location: path of file to delete
+  ///
+  /// Returns: bool
+  let deleteAsset (location: FilePath) : FileInfo =
+    if IO.File.Exists location then
+      try
+        IO.File.Delete location
+      with
+        | exn -> ()
+    IO.FileInfo location
+
+
   /// ## Create a new Raft state
   ///
   /// Create a new initial Raft state value with default values from
@@ -40,7 +76,8 @@ module Persistence =
   ///
   /// Returns: Either<IrisError,Raft>
   let loadRaft (options: IrisConfig) =
-    let db = failwith "FIXME: loadRaft"
+
+    /// loadRaft self (Array.map (fun (n: RaftNode) -> n.Id, n) nodes |> Map.ofArray)
 
     let node =
       Config.getNodeId ()
@@ -51,10 +88,9 @@ module Persistence =
       |> List.map (fun node -> node.Id, node)
       |> Map.ofList
 
-    match db, node with
-    | Right database, Right node -> failwith "FIXME: loadRaft"
-    | Left error,     _          -> Either.fail error
-    | _,              Left error -> Either.fail error
+    match node with
+    | Right node -> failwith "FIXME: loadRaft"
+    | Left error -> Either.fail error
 
   /// ## Get Raft state value from config
   ///
@@ -70,46 +106,26 @@ module Persistence =
       | Right raft -> Either.succeed raft
       | _          -> createRaft options
 
-  let saveRaftMetadata _ =
-    failwith "implement saveRaftMetadata"
-
-  let saveRaft (state: Raft) =
-    failwith "in a second"
-
-  /// ## saveAsset
+  /// ## saveRaftMetadata to disk
   ///
-  /// save a thing (string) to a file and returns its FileInfo. Might
-  /// crash, so catch it.
+  /// Attempts to save Raft metadata to disk at the location
+  /// configured in RaftConfig.DataDir.
   ///
   /// ### Signature:
-  /// - location: FilePath to save payload to
-  /// - payload: string payload to save
+  /// - config: IrisConfig
+  /// - raft: Raft state value
   ///
-  /// Returns: FileInfo
-  let saveAsset (location: FilePath) (payload: string) : FileInfo =
-    let info = IO.FileInfo location
-    if not (IO.Directory.Exists info.Directory.FullName) then
-      IO.Directory.CreateDirectory info.Directory.FullName
-      |> ignore
-    File.WriteAllText(location, payload)
-    info.Refresh()
-    info
-
-  /// ## deleteAsset
-  ///
-  /// Delete a file from disk
-  ///
-  /// ### Signature:
-  /// - location: path of file to delete
-  ///
-  /// Returns: bool
-  let deleteAsset (location: FilePath) : FileInfo =
-    if IO.File.Exists location then
-      try
-        IO.File.Delete location
-      with
-        | exn -> ()
-    IO.FileInfo location
+  /// Returns: Either<IrisError,FileInfo>
+  let saveRaft (config: IrisConfig) (raft: Raft) =
+    try
+      raft
+      |> Yaml.encode
+      |> saveAsset (config.RaftConfig.DataDir </> RAFT_DIRECTORY)
+      |> Either.succeed
+    with
+      | exn ->
+        ProjectSaveError exn.Message
+        |> Either.fail
 
   /// ## saveWithCommit
   ///

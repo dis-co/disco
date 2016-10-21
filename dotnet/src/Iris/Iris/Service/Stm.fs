@@ -27,7 +27,7 @@ let writeTVar (var: TVar<'a>) (value: 'a) = var := value
 
 let atomically = id
 
-let logMsg level (state: RaftAppState) (cbs: IRaftCallbacks) (msg: string) =
+let logMsg level (state: RaftAppContext) (cbs: IRaftCallbacks) (msg: string) =
   cbs.LogMsg level state.Raft.Node msg
 
 let debugMsg state cbs msg = logMsg Debug state cbs msg
@@ -41,11 +41,11 @@ let errMsg state cbs msg = logMsg Err state cbs msg
 ///
 /// ### Signature:
 /// - appended: EntryResponse returned by receiveEntry
-/// - appState: TVar<RaftAppState> transactional state variable
+/// - appState: TVar<RaftAppContext> transactional state variable
 /// - cbs: IRaftCallbacks
 ///
 /// Returns: bool
-let waitForCommit (appended: EntryResponse) (appState: TVar<RaftAppState>) cbs =
+let waitForCommit (appended: EntryResponse) (appState: TVar<RaftAppContext>) cbs =
   let ok = ref true
   let run = ref true
 
@@ -75,11 +75,11 @@ let waitForCommit (appended: EntryResponse) (appState: TVar<RaftAppState>) cbs =
 ///
 /// ### Signature:
 /// - changes: the changes to make to the current cluster configuration
-/// - state: current RaftAppState to work against
+/// - state: current RaftAppContext to work against
 /// - cbs: IRaftCallbacks
 ///
 /// Returns: Either<RaftError * Raft, unit * Raft, EntryResponse * Raft>
-let joinCluster (nodes: RaftNode array) (appState: TVar<RaftAppState>) cbs =
+let joinCluster (nodes: RaftNode array) (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
   let changes = Array.map NodeAdded nodes
   let result =
@@ -94,7 +94,7 @@ let joinCluster (nodes: RaftNode array) (appState: TVar<RaftAppState>) cbs =
   match result with
   | Right (appended, raftState) ->
     // save the new raft value back to the TVar
-    writeTVar appState (updateRaft raftState state) |> atomically
+    writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
 
     // block until entry has been committed
     let ok = waitForCommit appended appState cbs
@@ -106,10 +106,10 @@ let joinCluster (nodes: RaftNode array) (appState: TVar<RaftAppState>) cbs =
 
   | Left (err, raftState) ->
     // save the new raft value back to the TVar
-    writeTVar appState (updateRaft raftState state) |> atomically
+    writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
     ErrorResponse err
 
-let onConfigDone (appState: TVar<RaftAppState>) cbs =
+let onConfigDone (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
   let result =
     raft {
@@ -124,7 +124,7 @@ let onConfigDone (appState: TVar<RaftAppState>) cbs =
   match result with
   | Right (appended, raftState) ->
     // save the new raft value back to the TVar
-    writeTVar appState (updateRaft raftState state) |> atomically
+    writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
 
     // block until entry has been committed
     let ok = waitForCommit appended appState cbs
@@ -136,7 +136,7 @@ let onConfigDone (appState: TVar<RaftAppState>) cbs =
 
   | Left (err, raftState) ->
     // save the new raft value back to the TVar
-    writeTVar appState (updateRaft raftState state) |> atomically
+    writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
     None
 
 
@@ -151,7 +151,7 @@ let onConfigDone (appState: TVar<RaftAppState>) cbs =
 /// - cbs: IRaftCallbacks
 ///
 /// Returns: RaftResponse
-let leaveCluster (nodes: RaftNode array) (appState: TVar<RaftAppState>) cbs =
+let leaveCluster (nodes: RaftNode array) (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
   let changes = Array.map NodeRemoved nodes
   let result =
@@ -166,7 +166,7 @@ let leaveCluster (nodes: RaftNode array) (appState: TVar<RaftAppState>) cbs =
   match result with
   | Right (appended, raftState) ->
     // save the new raft value back to the TVar
-    writeTVar appState (updateRaft raftState state) |> atomically
+    writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
 
     // block until entry has been committed
     let ok = waitForCommit appended appState cbs
@@ -185,7 +185,7 @@ let leaveCluster (nodes: RaftNode array) (appState: TVar<RaftAppState>) cbs =
 /// Gets the current leader node from the Raft state and returns a corresponding RaftResponse.
 ///
 /// ### Signature:
-/// - state: RaftAppState
+/// - state: RaftAppContext
 ///
 /// Returns: Stm<RaftResponse>
 let doRedirect state =
@@ -200,11 +200,11 @@ let doRedirect state =
 /// ### Signature:
 /// - sender:   Raft node which sent the request
 /// - ae:       AppendEntries request value
-/// - appState: RaftAppState TVar
+/// - appState: RaftAppContext TVar
 /// - cbs:      Raft callbacks
 ///
 /// Returns: Stm<RaftResponse>
-let handleAppendEntries sender ae (appState: TVar<RaftAppState>) cbs =
+let handleAppendEntries sender ae (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
 
   let result =
@@ -213,11 +213,11 @@ let handleAppendEntries sender ae (appState: TVar<RaftAppState>) cbs =
 
   match result with
   | Right (resp, raftState) ->
-    writeTVar appState (updateRaft raftState state) |> atomically
+    writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
     AppendEntriesResponse(raftState.Node.Id, resp)
 
   | Left (err, raftState) ->
-    writeTVar appState (updateRaft raftState state) |> atomically
+    writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
     ErrorResponse err
 
 /// ## Handle the AppendEntries request response.
@@ -227,16 +227,16 @@ let handleAppendEntries sender ae (appState: TVar<RaftAppState>) cbs =
 /// ### Signature:
 /// - sender: Node who replied
 /// - ar: AppendResponse to process
-/// - appState: TVar<RaftAppState>
+/// - appState: TVar<RaftAppContext>
 /// - cbs: IRaftCallbacks
 ///
 /// Returns: unit
-let handleAppendResponse sender ar (appState: TVar<RaftAppState>) cbs =
+let handleAppendResponse sender ar (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
 
   receiveAppendEntriesResponse sender ar
   |> evalRaft state.Raft cbs
-  |> flip updateRaft state
+  |> flip RaftContext.updateRaft state
   |> writeTVar appState
   |> atomically
 
@@ -247,11 +247,11 @@ let handleAppendResponse sender ar (appState: TVar<RaftAppState>) cbs =
 /// ### Signature:
 /// - sender: Node which sent request
 /// - req: the `VoteRequest`
-/// - appState: current TVar<RaftAppState>
+/// - appState: current TVar<RaftAppContext>
 /// - cbs: IRaftCallbacks
 ///
 /// Returns: unit
-let handleVoteRequest sender req (appState: TVar<RaftAppState>) cbs =
+let handleVoteRequest sender req (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
 
   let result =
@@ -260,11 +260,11 @@ let handleVoteRequest sender req (appState: TVar<RaftAppState>) cbs =
 
   match result with
   | Right (resp, raftState) ->
-    writeTVar appState (updateRaft raftState state) |> atomically
+    writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
     RequestVoteResponse(raftState.Node.Id, resp)
 
   | Left (err, raftState) ->
-    writeTVar appState (updateRaft raftState state) |> atomically
+    writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
     ErrorResponse err
 
 /// ## Handle the response to a vote request.
@@ -274,14 +274,14 @@ let handleVoteRequest sender req (appState: TVar<RaftAppState>) cbs =
 /// ### Signature:
 /// - sender: Node which sent the response
 /// - resp: VoteResponse to process
-/// - appState: current TVar<RaftAppState>
+/// - appState: current TVar<RaftAppContext>
 ///
 /// Returns: unit
-let handleVoteResponse sender rep (appState: TVar<RaftAppState>) cbs =
+let handleVoteResponse sender rep (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
   receiveVoteResponse sender rep
   |> evalRaft state.Raft cbs
-  |> flip updateRaft state
+  |> flip RaftContext.updateRaft state
   |> writeTVar appState
   |> atomically
 
@@ -292,18 +292,18 @@ let handleVoteResponse sender rep (appState: TVar<RaftAppState>) cbs =
 ///
 /// ### Signature:
 /// - node: Node which wants to join the cluster
-/// - appState: current TVar<RaftAppState>
+/// - appState: current TVar<RaftAppContext>
 /// - cbs: IRaftCallbacks
 ///
 /// Returns: RaftResponse
-let handleHandshake node (appState: TVar<RaftAppState>) cbs =
+let handleHandshake node (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
   if isLeader state.Raft then
     joinCluster [| node |] appState cbs
   else
     doRedirect state
 
-let handleHandwaive node (appState: TVar<RaftAppState>) cbs =
+let handleHandwaive node (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
   if isLeader state.Raft then
     leaveCluster [| node |] appState cbs
@@ -320,19 +320,19 @@ let appendEntry (cmd: StateMachine) appState cbs =
 
   match result with
   | Right (appended, raftState) ->
-    writeTVar appState (updateRaft raftState state) |> atomically
+    writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
     let ok = waitForCommit appended appState cbs
     if ok then
       Some appended
     else
       None
   | Left (err, raftState) ->
-    writeTVar appState (updateRaft raftState state) |> atomically
+    writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
     sprintf "encountered error in receiveEntry: %A" err
     |> errMsg state cbs
     None
 
-let handleInstallSnapshot node snapshot (appState: TVar<RaftAppState>) cbs =
+let handleInstallSnapshot node snapshot (appState: TVar<RaftAppContext>) cbs =
   // let snapshot = createSnapshot () |> runRaft raft' cbs
   let state = readTVar appState |> atomically
   let ar = { Term         = state.Raft.CurrentTerm
@@ -343,7 +343,7 @@ let handleInstallSnapshot node snapshot (appState: TVar<RaftAppState>) cbs =
                             | _        -> 0u }
   InstallSnapshotResponse(state.Raft.Node.Id, ar)
 
-let handleRequest msg (state: TVar<RaftAppState>) cbs : RaftResponse =
+let handleRequest msg (state: TVar<RaftAppContext>) cbs : RaftResponse =
   match msg with
   | RequestVote (sender, req) ->
     handleVoteRequest sender req state cbs
@@ -360,7 +360,7 @@ let handleRequest msg (state: TVar<RaftAppState>) cbs : RaftResponse =
   | InstallSnapshot (sender, snapshot) ->
     handleInstallSnapshot sender snapshot state cbs
 
-let startServer (appState: TVar<RaftAppState>) (cbs: IRaftCallbacks) =
+let startServer (appState: TVar<RaftAppContext>) (cbs: IRaftCallbacks) =
   let uri =
     readTVar appState
     |> atomically
@@ -380,10 +380,10 @@ let startServer (appState: TVar<RaftAppState>) (cbs: IRaftCallbacks) =
   server.Start()
   server
 
-let periodicR (state: RaftAppState) cbs =
+let periodicR (state: RaftAppContext) cbs =
   periodic (uint32 state.Options.RaftConfig.PeriodicInterval)
   |> evalRaft state.Raft cbs
-  |> flip updateRaft state
+  |> flip RaftContext.updateRaft state
 
 /// ## startPeriodic
 ///
@@ -392,7 +392,7 @@ let periodicR (state: RaftAppState) cbs =
 ///
 /// ### Signature:
 /// - timeoput: interval at which the loop runs
-/// - appState: current RaftAppState TVar
+/// - appState: current RaftAppContext TVar
 /// - cbs: Raft Callbacks
 ///
 /// Returns: CancellationTokenSource
@@ -413,7 +413,7 @@ let startPeriodic appState cbs =
   token                               // return the cancellation token source so this loop can be
 
 // -------------------------------------------------------------------------
-let tryJoin (ip: IpAddress) (port: uint32) cbs (state: RaftAppState) =
+let tryJoin (ip: IpAddress) (port: uint32) cbs (state: RaftAppContext) =
   let rec _tryJoin retry uri =
     if retry < int state.Options.RaftConfig.MaxRetries then
       let client = mkClientSocket uri state
@@ -467,11 +467,11 @@ let tryJoin (ip: IpAddress) (port: uint32) cbs (state: RaftAppState) =
 /// AppendEntries request with a JointConsensus entry.
 ///
 /// ### Signature:
-/// - appState: RaftAppState TVar
+/// - appState: RaftAppContext TVar
 /// - cbs: Raft callbacks
 ///
 /// Returns: unit
-let tryLeave (appState: TVar<RaftAppState>) cbs : bool option =
+let tryLeave (appState: TVar<RaftAppContext>) cbs : bool option =
   let state = readTVar appState |> atomically
 
   let rec _tryLeave retry (uri: string) =
@@ -529,7 +529,7 @@ let forceElection appState cbs =
     do! periodic timeout
   }
   |> evalRaft state.Raft cbs
-  |> flip updateRaft state
+  |> flip RaftContext.updateRaft state
   |> writeTVar appState
   |> atomically
 
@@ -562,5 +562,5 @@ let initialize appState cbs =
   |> debugMsg state cbs
 
   // tryJoin leader
-  writeTVar appState (updateRaft newstate state)
+  writeTVar appState (RaftContext.updateRaft newstate state)
   |> atomically

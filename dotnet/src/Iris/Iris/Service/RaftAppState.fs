@@ -11,84 +11,94 @@ open Iris.Raft
 // |  _ < (_| |  _| |_ / ___ \| |_) | |_) |__) | || (_| | ||  __/
 // |_| \_\__,_|_|  \__|_/   \_\ .__/| .__/____/ \__\__,_|\__\___|
 //                            |_|   |_|
-[<AutoOpen>]
-module RaftAppState =
-
-  [<NoComparison;NoEquality>]
-  type RaftAppState =
-    { Context: ZeroMQ.ZContext
-    ; Raft:    Raft
-    ; Options: IrisConfig }
+[<NoComparison;NoEquality>]
+type RaftAppContext =
+  { Context: ZeroMQ.ZContext
+  ; Raft:    Raft
+  ; Options: IrisConfig }
 
   with
     override self.ToString() =
       sprintf "Raft: %A" self.Raft
 
+[<RequireQualifiedAccess>]
+module RaftContext =
 
-  /// ## Update Raft in RaftAppState
+  /// ## pull Raft state value out of RaftAppContext value
   ///
-  /// Update the Raft field of a given RaftAppState
+  /// Get Raft state value from RaftAppContext.
   ///
   /// ### Signature:
-  /// - raft: new Raft value to add to RaftAppState
-  /// - state: RaftAppState to update
+  /// - context: RaftAppContext
   ///
-  /// Returns: RaftAppState
-  let updateRaft (raft: Raft) (state: RaftAppState) : RaftAppState =
+  /// Returns: Raft
+  let getRaft (context: RaftAppContext) =
+    context.Raft
+
+  /// ## Update Raft in RaftAppContext
+  ///
+  /// Update the Raft field of a given RaftAppContext
+  ///
+  /// ### Signature:
+  /// - raft: new Raft value to add to RaftAppContext
+  /// - state: RaftAppContext to update
+  ///
+  /// Returns: RaftAppContext
+  let updateRaft (raft: Raft) (state: RaftAppContext) : RaftAppContext =
     { state with Raft = raft }
 
   (*
-  /// ## Add Project to RaftAppState
+  /// ## Add Project to RaftAppContext
   ///
-  /// Unsafely adds a `Project` to an `RaftAppState`, meaning no checks are performed to indicate
+  /// Unsafely adds a `Project` to an `RaftAppContext`, meaning no checks are performed to indicate
   /// whether the project already existed in the Map or not.
   ///
   /// ### Signature:
   /// - `project`: Project to add
-  /// - `state`: RaftAppState to add project to
+  /// - `state`: RaftAppContext to add project to
   ///
-  /// Returns: RaftAppState
-  let internal appendProject (project: Project) (state: RaftAppState) : RaftAppState =
+  /// Returns: RaftAppContext
+  let internal appendProject (project: Project) (state: RaftAppContext) : RaftAppContext =
     { state with Projects = Map.add project.Id project state.Projects }
 
 
-  /// ## Add a project to RaftAppState
+  /// ## Add a project to RaftAppContext
   ///
-  /// Add a `Project` to current `RaftAppState` value. If the `Project` is already added indicate
+  /// Add a `Project` to current `RaftAppContext` value. If the `Project` is already added indicate
   /// failure by returning `None`.
   ///
   /// ### Signature:
   /// - `project`: Project to add
-  /// - `state`: RaftAppState to add project to
+  /// - `state`: RaftAppContext to add project to
   ///
-  /// Returns: RaftAppState option
-  let addProject (project: Project) (state: RaftAppState) : RaftAppState option =
+  /// Returns: RaftAppContext option
+  let addProject (project: Project) (state: RaftAppContext) : RaftAppContext option =
     if Map.containsKey project.Id state.Projects |> not
     then appendProject project state |> Some
     else None
 
-  /// ## Update a project loaded into RaftAppState
+  /// ## Update a project loaded into RaftAppContext
   ///
-  /// Update an existing `Project` in given `RaftAppState`. Indicate failure to find existing entry by
+  /// Update an existing `Project` in given `RaftAppContext`. Indicate failure to find existing entry by
   /// returning `None`.
   ///
   /// ### Signature:
   /// - `project`: Project to add
-  /// - `state`: RaftAppState to add project to
+  /// - `state`: RaftAppContext to add project to
   ///
-  /// Returns: RaftAppState option
-  let updateProject (project: Project) (state: RaftAppState) =
+  /// Returns: RaftAppContext option
+  let updateProject (project: Project) (state: RaftAppContext) =
     if Map.containsKey project.Id state.Projects
     then appendProject project state |> Some
     else None
 
-  /// ## Find a project loaded into RaftAppState
+  /// ## Find a project loaded into RaftAppContext
   ///
-  /// Find a given `ProjectId` in current `RaftAppState`. Indicate failure to do so by returning `None`.
+  /// Find a given `ProjectId` in current `RaftAppContext`. Indicate failure to do so by returning `None`.
   ///
   /// ### Signature:
   /// - `id`; ProjectId of Project
-  /// - `state`: RaftAppState to find Project in
+  /// - `state`: RaftAppContext to find Project in
   ///
   /// Returns: Project option
   let findProject (id: ProjectId) state : Project option =
@@ -96,33 +106,33 @@ module RaftAppState =
       | Some _ as project -> project
       |      _            -> None
 
-  /// ## Load a Project into given RaftAppState
+  /// ## Load a Project into given RaftAppContext
   ///
-  /// Attempt to load a `Project` into `RaftAppState`. Indicate failure to do so by returning `None`.
+  /// Attempt to load a `Project` into `RaftAppContext`. Indicate failure to do so by returning `None`.
   ///
   /// ### Signature:
   /// - `path`: FilePath to project yaml
-  /// - `state`: RaftAppState to load Project into
+  /// - `state`: RaftAppContext to load Project into
   ///
-  /// Returns: RaftAppState option
-  let loadProject (path: FilePath) (state: RaftAppState) : RaftAppState option =
+  /// Returns: RaftAppContext option
+  let loadProject (path: FilePath) (state: RaftAppContext) : RaftAppContext option =
     match load path with
       | Some project -> addProject project state
       | _            -> None
 
   /// ## Save a loaded project to disk
   ///
-  /// Save a project loaded into RaftAppState to disk. Indicate failure to find or save the Project by
+  /// Save a project loaded into RaftAppContext to disk. Indicate failure to find or save the Project by
   /// returning `None`
   ///
   /// ### Signature:
   /// - `id`: Project Id
   /// - `committer`: the signature (name, email) of the person invoking the operation
   /// - `msg`: the commit message associated with the operation
-  /// - `state`: the current `RaftAppState`
+  /// - `state`: the current `RaftAppContext`
   ///
-  /// Returns: (Commit * RaftAppState) option
-  let saveProject (id : ProjectId) (committer : Signature) msg state : (Commit * RaftAppState) option =
+  /// Returns: (Commit * RaftAppContext) option
+  let saveProject (id : ProjectId) (committer : Signature) msg state : (Commit * RaftAppContext) option =
     match findProject id state with
       | Some project ->
         try
@@ -138,16 +148,16 @@ module RaftAppState =
 
   /// ## Create a new Project
   ///
-  /// Create a new `Project`, save it to disk and load it into given RaftAppState.
+  /// Create a new `Project`, save it to disk and load it into given RaftAppContext.
   ///
   /// ### Signature:
   /// - name: Project name
   /// - path: destination path for new Project
   /// - committer: signature of the person creating the project
-  /// - state: current RaftAppState
+  /// - state: current RaftAppContext
   ///
-  /// Returns: (Project * RaftAppState) option
-  let createProject name path (committer: Signature) state : (Project * RaftAppState) option =
+  /// Returns: (Project * RaftAppContext) option
+  let createProject name path (committer: Signature) state : (Project * RaftAppContext) option =
     let now = System.DateTime.Now
     let msg = sprintf "On %s, %s created %s" (now.ToLongTimeString()) committer.Name name
     let project = { Project.Create name with Path = Some(path) }
@@ -166,24 +176,24 @@ module RaftAppState =
   ///
   /// ### Signature:
   /// - id: ProjectId of Project to remove
-  /// - state: current RaftAppState
+  /// - state: current RaftAppContext
   ///
-  /// Returns: RaftAppState option
-  let closeProject (id : ProjectId) (state : RaftAppState) : RaftAppState option =
+  /// Returns: RaftAppContext option
+  let closeProject (id : ProjectId) (state : RaftAppContext) : RaftAppContext option =
     if Map.containsKey id state.Projects then
       { state with Projects = Map.remove id state.Projects } |> Some
     else None
 
   /// ## Check if a project is loaded
   ///
-  /// Try to find a given `ProjectId` in the passed `RaftAppState`.
+  /// Try to find a given `ProjectId` in the passed `RaftAppContext`.
   ///
   /// ### Signature:
   /// - id: ProjectId to search for
-  /// - state: RaftAppState to search project in
+  /// - state: RaftAppContext to search project in
   ///
   /// Returns: boolean
-  let projectLoaded (id : ProjectId) (state : RaftAppState) : bool =
+  let projectLoaded (id : ProjectId) (state : RaftAppContext) : bool =
     findProject id state |> Option.isSome
 
   //  _   _           _
@@ -192,22 +202,22 @@ module RaftAppState =
   // | |\  | (_) | (_| |  __/\__ \
   // |_| \_|\___/ \__,_|\___||___/
 
-  /// ## Add a Node to current RaftAppState
+  /// ## Add a Node to current RaftAppContext
   ///
-  /// Add a new node to current `Raft` and `RaftAppState`.
+  /// Add a new node to current `Raft` and `RaftAppContext`.
   ///
   /// ### Signature:
   /// - node: the Node to add
-  /// - state: the RaftAppState to add it to
+  /// - state: the RaftAppContext to add it to
   ///
-  /// Returns: RaftAppState
-  let addNode (node: string) (state: RaftAppState) : RaftAppState =
-    failwith "FIXME: implement addNode RaftAppState"
+  /// Returns: RaftAppContext
+  let addNode (node: string) (state: RaftAppContext) : RaftAppContext =
+    failwith "FIXME: implement addNode RaftAppContext"
 
-  let updateMember (newmem: string) (state: RaftAppState) : RaftAppState =
-    failwith "FIXME: implement updateMember RaftAppState"
+  let updateMember (newmem: string) (state: RaftAppContext) : RaftAppContext =
+    failwith "FIXME: implement updateMember RaftAppContext"
 
-  let removeMember (mem: string) (state: RaftAppState) : RaftAppState =
-    failwith "FIXME: implement removeNode RaftAppState"
+  let removeMember (mem: string) (state: RaftAppContext) : RaftAppContext =
+    failwith "FIXME: implement removeNode RaftAppContext"
 
   *)

@@ -54,7 +54,7 @@ module ZmqUtils =
   /// - state: current app state
   ///
   /// Returns: fszmq.Socket
-  let mkClientSocket (uri: string) (state: RaftAppState) =
+  let mkClientSocket (uri: string) (state: RaftAppContext) =
     let timeout = 2000 // FIXME: this request timeout value should be settable
     let socket = new Req(uri, state.Context, timeout)
     socket.Start()
@@ -77,7 +77,7 @@ module ZmqUtils =
   /// - appState: current TVar<AppState>
   ///
   /// Returns: Socket
-  let getSocket (node: RaftNode) (state: RaftAppState) (connections: Map<Id,Zmq.Req>) =
+  let getSocket (node: RaftNode) (state: RaftAppContext) (connections: Map<Id,Zmq.Req>) =
     match Map.tryFind node.Id connections with
     | Some client -> (client, connections)
     | _  ->
@@ -91,7 +91,7 @@ module ZmqUtils =
   ///
   /// ### Signature:
   /// - node: Node whose socket should be disposed of.
-  /// - appState: RaftAppState TVar
+  /// - appState: RaftAppContext TVar
   ///
   /// Returns: unit
   let disposeSocket (node: RaftNode) (connections: Map<Id,Zmq.Req>) =
@@ -108,7 +108,7 @@ module ZmqUtils =
   /// ### Signature:
   /// - request: RaftRequest to perform
   /// - client: Req socket object
-  /// - state: RaftAppState to perform request against
+  /// - state: RaftAppContext to perform request against
   ///
   /// Returns: RaftResponse option
   let rawRequest (request: RaftRequest) (client: Req) =
@@ -129,7 +129,7 @@ module ZmqUtils =
   /// - appState: application state TVar
   ///
   /// Returns: RaftResponse option
-  let performRequest (request: RaftRequest) (node: RaftNode) (state: RaftAppState) (connections: Map<Id,Zmq.Req>) =
+  let performRequest (request: RaftRequest) (node: RaftNode) (state: RaftAppContext) (connections: Map<Id,Zmq.Req>) =
     let client, connections = getSocket node state connections
 
     try

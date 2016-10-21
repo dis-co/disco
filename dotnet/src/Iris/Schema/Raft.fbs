@@ -373,6 +373,7 @@ enum ErrorTypeFB:ushort {
      MissingNodeFB,
      AssetSaveErrorFB,
      AssetDeleteErrorFB,
+     ParseErrorFB,
      OKFB,
 
      // RAFT

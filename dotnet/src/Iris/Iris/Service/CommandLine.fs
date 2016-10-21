@@ -303,7 +303,9 @@ module CommandLine =
     match createRaft project.Config with
     | Right raft ->
       try
-        saveRaft raft
+        saveRaft project.Config raft
+        |> Either.mapError Error.exitWith
+        |> ignore
       with
         | exn ->
           ProjectInitError exn.Message
@@ -358,7 +360,9 @@ module CommandLine =
       match createRaft project.Config with
       | Right raft ->
         try
-          saveRaft raft
+          saveRaft project.Config raft
+          |> Either.mapError Error.exitWith
+          |> ignore
           printfn "successfully reset database"
         with
           | exn ->

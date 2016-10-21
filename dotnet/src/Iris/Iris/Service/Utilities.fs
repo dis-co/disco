@@ -21,7 +21,7 @@ module Utilities =
   /// - options: `RaftOptions`
   ///
   /// Returns: RaftAppState
-  let mkState (context: ZeroMQ.ZContext) (options: IrisConfig) : Either<IrisError,RaftAppState> =
+  let mkState (context: ZeroMQ.ZContext) (options: IrisConfig) : Either<IrisError,RaftAppContext> =
     getRaft options
     |> Either.map
         (fun raft ->

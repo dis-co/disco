@@ -6,6 +6,7 @@ open Fuchu.Test
 open Iris.Core
 open Iris.Service
 open Iris.Service.Utilities
+open Iris.Service.Persistence
 open Iris.Raft
 open FSharpx.Functional
 open ZeroMQ
@@ -38,7 +39,7 @@ module RaftIntegrationTests =
   let test_save_restore_raft_value_correctly =
     testCase "save/restore raft value correctly" <| fun _ ->
       let self =
-        getNodeId ()
+        Config.getNodeId ()
         |> Either.map Node.create
         |> Either.get
 
@@ -66,10 +67,10 @@ module RaftIntegrationTests =
         |> Log.fromEntries
 
       let config =
-        Config.Create "default"
-        |> addNodeConfig self
-        |> addNodeConfig node1
-        |> addNodeConfig node2
+        Config.create "default"
+        |> Config.addNode self
+        |> Config.addNode node1
+        |> Config.addNode node2
 
       let raft =
         createRaft config
@@ -82,10 +83,11 @@ module RaftIntegrationTests =
 
       let path = mkTmpPath "save_restore-raft_value-correctly"
 
-      saveRaft raft
+      saveRaft config raft
+      |> Either.mapError Error.throw
+      |> ignore
 
-      let loaded =
-        loadRaft self (Array.map (fun (n: RaftNode) -> n.Id, n) nodes |> Map.ofArray)
+      let loaded = loadRaft config
 
       expect "Values should be equal" (Right raft) id loaded
 
