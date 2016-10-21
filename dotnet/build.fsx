@@ -128,15 +128,6 @@ let runFable cmd workdir _ =
     CopyFile workdir (__SOURCE_DIRECTORY__ @@ "package.json")
   runNpm ("run " + cmd) workdir ()
 
-let runNixShell filepath workdir =
-  ExecProcess (fun info ->
-                  info.FileName <- "nix-shell"
-                  info.Arguments <- filepath
-                  info.UseShellExecute <- true
-                  info.WorkingDirectory <- workdir)
-              (TimeSpan.FromMinutes 5.0)
-  |> maybeFail
-
 let runMono filepath workdir =
   ExecProcess (fun info ->
                   info.FileName <- "mono"
@@ -446,9 +437,7 @@ Target "RunTests"
   (fun _ ->
     let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Tests"
 
-    if useNix then
-      runNixShell "assets/nix/runtests.nix" testsDir
-    elif isUnix then
+    if isUnix then
       runMono "Iris.Tests.exe" testsDir
     else
       runTests "Iris.Tests.exe" testsDir)

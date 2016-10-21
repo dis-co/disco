@@ -9,7 +9,7 @@ BUILD=cd $(VVVV_BASEDIR) && ./build.sh
 # |_| |_|\__,_|\__|_| \_/ \___|
 
 run.tests:
-	${BUILD} RunTests
+	@nix-shell shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunTests"
 
 service:
 	${BUILD} BuildDebugService
@@ -79,6 +79,15 @@ clean:
 
 release:
 	${BUILD} Release
+
+#      _          _ _
+#  ___| |__   ___| | |
+# / __| '_ \ / _ \ | |
+# \__ \ | | |  __/ | |
+# |___/_| |_|\___|_|_|
+
+shell:
+	@nix-shell shell.nix
 
 #              _        _
 #  _ __   __ _| | _____| |_
