@@ -2,6 +2,8 @@ VVVV_BASEDIR=dotnet
 
 BUILD=cd $(VVVV_BASEDIR) && ./build.sh
 
+CURRENT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+
 #              _   _
 #  _ __   __ _| |_(_)_   _____
 # | '_ \ / _` | __| \ \ / / _ \
@@ -45,7 +47,7 @@ web.tests.fsproj:
 	${BUILD} BuildWebTestsFsProj
 
 run.web.tests:
-	@nix-shell shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunWebTests"
+	@nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunWebTests"
 
 web.tests:
 	${BUILD} BuildWebTests
@@ -90,10 +92,10 @@ release:
 # |___/_| |_|\___|_|_|
 
 shell:
-	@nix-shell shell.nix
+	@nix-shell ${CURRENT_DIR}/shell.nix
 
 fsi:
-	@nix-shell shell.nix -A irisEnv --run "fsi --use:dotnet/src/Iris/bin/Debug/Core/interactive.fsx"
+	@nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv --run "fsi --use:dotnet/src/Iris/bin/Debug/Core/interactive.fsx"
 
 #              _        _
 #  _ __   __ _| | _____| |_
