@@ -271,7 +271,7 @@ module CommandLine =
   // |____/ \__\__,_|_|   \__|
 
   let startService (projectdir: FilePath) : unit =
-    let projFile = projectdir </> PROJECT_FILENAME
+    let projFile = projectdir </> PROJECT_FILENAME + ASSET_EXTENSION
 
     if File.Exists projFile |> not then
       ProjectNotFound projectdir |> Error.exitWith
@@ -370,7 +370,7 @@ module CommandLine =
             |> Error.exitWith
       | Left error -> Error.exitWith error
 
-    datadir </> PROJECT_FILENAME
+    datadir </> PROJECT_FILENAME + ASSET_EXTENSION
     |> Project.load
     |> Either.orExit reset
 

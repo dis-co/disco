@@ -16,12 +16,6 @@ module List =
 [<AutoOpen>]
 module Utils =
 
-  [<Literal>]
-  let PROJECT_FILENAME = "project.yaml"
-
-  [<Literal>]
-  let RAFT_DIRECTORY = ".raft"
-
 #if JAVASCRIPT
   //      _                  ____            _       _
   //     | | __ ___   ____ _/ ___|  ___ _ __(_)_ __ | |_
@@ -90,7 +84,7 @@ module Utils =
   // the standard location projects are create/cloned to.
   // Settable it via environment variable.
   let Workspace (_ : unit) : string =
-    let wsp = Environment.GetEnvironmentVariable("IRIS_WORKSPACE")
+    let wsp = Environment.GetEnvironmentVariable IRIS_WORKSPACE
     if isNull wsp || wsp.Length = 0
     then
       if isLinux
@@ -133,23 +127,22 @@ module Utils =
   //          |___/ |___/
   let logger (tag : string) (str : string) : unit =
     let def = tag.Length + 2
-    let verbose = Environment.GetEnvironmentVariable("IRIS_VERBOSE")
+    let verbose = Environment.GetEnvironmentVariable IRIS_VERBOSE
     if not (isNull verbose) && bool.Parse(verbose)
     then
-      let var = "IRIS_LOGGING_OFFSET"
       let mutable offset = 0
 
       try
-        offset <- int (Environment.GetEnvironmentVariable(var))
+        offset <- int (Environment.GetEnvironmentVariable IRIS_LOGGING_OFFSET)
       with
         | _ ->
           offset <- def
-          Environment.SetEnvironmentVariable(var, string offset)
+          Environment.SetEnvironmentVariable(IRIS_LOGGING_OFFSET, string offset)
 
       if def > offset
       then
         offset <- def
-        Environment.SetEnvironmentVariable(var, string offset)
+        Environment.SetEnvironmentVariable(IRIS_LOGGING_OFFSET, string offset)
 
       let ws = Array.fold (fun m _ -> m + " ") "" [| 0 .. (offset - def) |]
       printfn "[%s]%s%s" tag ws str
@@ -263,4 +256,4 @@ module Utils =
 #endif
 
   let implement (str: string) =
-    failwithf "FIXME: implement %s"
+    failwithf "FIXME: implement %s" str

@@ -53,7 +53,7 @@ let waitForCommit (appended: EntryResponse) (appState: TVar<RaftAppContext>) cbs
   while !run do
     let state = readTVar appState |> atomically
     let committed =
-      responseCommitted appended
+      Raft.responseCommitted appended
       |> runRaft state.Raft cbs
       |> fun result ->
         match result with
@@ -84,10 +84,10 @@ let joinCluster (nodes: RaftNode array) (appState: TVar<RaftAppContext>) cbs =
   let changes = Array.map NodeAdded nodes
   let result =
     raft {
-      let! term = currentTermM ()
+      let! term = Raft.currentTermM ()
       let entry = JointConsensus(Id.Create(), 0u, term, changes, None) //
-      do! debug "HandShake: appending entry to enter joint-consensus"
-      return! receiveEntry entry
+      do! Raft.debug "HandShake: appending entry to enter joint-consensus"
+      return! Raft.receiveEntry entry
     }
     |> runRaft state.Raft cbs
 
@@ -113,11 +113,11 @@ let onConfigDone (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
   let result =
     raft {
-      let! term = currentTermM ()
-      let! nodes = getNodesM () >>= (Map.toArray >> Array.map snd >> returnM)
+      let! term = Raft.currentTermM ()
+      let! nodes = Raft.getNodesM () >>= (Map.toArray >> Array.map snd >> returnM)
       let entry = Log.mkConfig term nodes
-      do! debug "onConfigDone: appending entry to exit joint-consensus into regular configuration"
-      return! receiveEntry entry
+      do! Raft.debug "onConfigDone: appending entry to exit joint-consensus into regular configuration"
+      return! Raft.receiveEntry entry
     }
     |> runRaft state.Raft cbs
 
@@ -156,10 +156,10 @@ let leaveCluster (nodes: RaftNode array) (appState: TVar<RaftAppContext>) cbs =
   let changes = Array.map NodeRemoved nodes
   let result =
     raft {
-      let! term = currentTermM ()
+      let! term = Raft.currentTermM ()
       let entry = JointConsensus(Id.Create(), 0u, term, changes, None)
-      do! debug "HandWaive: appending entry to enter joint-consensus"
-      return! receiveEntry entry
+      do! Raft.debug "HandWaive: appending entry to enter joint-consensus"
+      return! Raft.receiveEntry entry
     }
     |> runRaft state.Raft cbs
 
@@ -189,7 +189,7 @@ let leaveCluster (nodes: RaftNode array) (appState: TVar<RaftAppContext>) cbs =
 ///
 /// Returns: Stm<RaftResponse>
 let doRedirect state =
-  match getLeader state.Raft with
+  match Raft.getLeader state.Raft with
   | Some node -> Redirect node
   | _         -> ErrorResponse (Other "No known leader")
 
@@ -208,7 +208,7 @@ let handleAppendEntries sender ae (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
 
   let result =
-    receiveAppendEntries (Some sender) ae
+    Raft.receiveAppendEntries (Some sender) ae
     |> runRaft state.Raft cbs
 
   match result with
@@ -234,7 +234,7 @@ let handleAppendEntries sender ae (appState: TVar<RaftAppContext>) cbs =
 let handleAppendResponse sender ar (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
 
-  receiveAppendEntriesResponse sender ar
+  Raft.receiveAppendEntriesResponse sender ar
   |> evalRaft state.Raft cbs
   |> flip RaftContext.updateRaft state
   |> writeTVar appState
@@ -255,7 +255,7 @@ let handleVoteRequest sender req (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
 
   let result =
-    receiveVoteRequest sender req
+    Raft.receiveVoteRequest sender req
     |> runRaft state.Raft cbs
 
   match result with
@@ -279,7 +279,7 @@ let handleVoteRequest sender req (appState: TVar<RaftAppContext>) cbs =
 /// Returns: unit
 let handleVoteResponse sender rep (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
-  receiveVoteResponse sender rep
+  Raft.receiveVoteResponse sender rep
   |> evalRaft state.Raft cbs
   |> flip RaftContext.updateRaft state
   |> writeTVar appState
@@ -298,14 +298,14 @@ let handleVoteResponse sender rep (appState: TVar<RaftAppContext>) cbs =
 /// Returns: RaftResponse
 let handleHandshake node (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
-  if isLeader state.Raft then
+  if Raft.isLeader state.Raft then
     joinCluster [| node |] appState cbs
   else
     doRedirect state
 
 let handleHandwaive node (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
-  if isLeader state.Raft then
+  if Raft.isLeader state.Raft then
     leaveCluster [| node |] appState cbs
   else
     doRedirect state
@@ -314,7 +314,7 @@ let appendEntry (cmd: StateMachine) appState cbs =
   let state = readTVar appState |> atomically
 
   let result =
-    receiveEntry (Log.make (currentTerm state.Raft) cmd)
+    Raft.receiveEntry (Log.make (Raft.currentTerm state.Raft) cmd)
     >>= returnM
     |> runRaft state.Raft cbs
 
@@ -337,8 +337,8 @@ let handleInstallSnapshot node snapshot (appState: TVar<RaftAppContext>) cbs =
   let state = readTVar appState |> atomically
   let ar = { Term         = state.Raft.CurrentTerm
            ; Success      = false
-           ; CurrentIndex = currentIndex state.Raft
-           ; FirstIndex   = match firstIndex state.Raft.CurrentTerm state.Raft with
+           ; CurrentIndex = Raft.currentIndex state.Raft
+           ; FirstIndex   = match Raft.firstIndex state.Raft.CurrentTerm state.Raft with
                             | Some idx -> idx
                             | _        -> 0u }
   InstallSnapshotResponse(state.Raft.Node.Id, ar)
@@ -381,7 +381,7 @@ let startServer (appState: TVar<RaftAppContext>) (cbs: IRaftCallbacks) =
   server
 
 let periodicR (state: RaftAppContext) cbs =
-  periodic (uint32 state.Options.RaftConfig.PeriodicInterval)
+  Raft.periodic (uint32 state.Options.RaftConfig.PeriodicInterval)
   |> evalRaft state.Raft cbs
   |> flip RaftContext.updateRaft state
 
@@ -524,9 +524,9 @@ let forceElection appState cbs =
   let state = readTVar appState |> atomically
 
   raft {
-    let! timeout = electionTimeoutM ()
-    do! setTimeoutElapsedM timeout
-    do! periodic timeout
+    let! timeout = Raft.electionTimeoutM ()
+    do! Raft.setTimeoutElapsedM timeout
+    do! Raft.periodic timeout
   }
   |> evalRaft state.Raft cbs
   |> flip RaftContext.updateRaft state
@@ -535,7 +535,7 @@ let forceElection appState cbs =
 
 let prepareSnapshot appState snapshot =
   let state = readTVar appState |> atomically
-  createSnapshot (DataSnapshot snapshot) state.Raft
+  Raft.createSnapshot (DataSnapshot snapshot) state.Raft
 
 let resetConnections (connections: Map<Id,Zmq.Req>) =
   Map.iter (fun _ sock -> dispose sock) connections
@@ -546,15 +546,15 @@ let initialize appState cbs =
   let newstate =
     raft {
       let term = 0u
-      do! setTermM term
-      do! setTimeoutElapsedM 0u
+      do! Raft.setTermM term
+      do! Raft.setTimeoutElapsedM 0u
 
-      let! num = numNodesM ()
+      let! num = Raft.numNodesM ()
 
       if num = 1u then
-        do! becomeLeader ()
+        do! Raft.becomeLeader ()
       else
-        do! becomeFollower ()
+        do! Raft.becomeFollower ()
 
     } |> evalRaft state.Raft cbs
 

@@ -42,6 +42,8 @@ type IrisError =
   | MissingNodeId
   | MissingNode            of string
 
+  | AssetNotFoundError     of string
+  | AssetLoadError         of string
   | AssetSaveError         of string
   | AssetDeleteError       of string
 
@@ -90,6 +92,8 @@ type IrisError =
       | x when x = ErrorTypeFB.CliParseErrorFB          -> Some CliParseError
       | x when x = ErrorTypeFB.MissingNodeIdFB          -> Some MissingNodeId
       | x when x = ErrorTypeFB.MissingNodeFB            -> Some (MissingNode fb.Message)
+      | x when x = ErrorTypeFB.AssetNotFoundErrorFB     -> Some (AssetNotFoundError fb.Message)
+      | x when x = ErrorTypeFB.AssetLoadErrorFB         -> Some (AssetLoadError fb.Message)
       | x when x = ErrorTypeFB.AssetSaveErrorFB         -> Some (AssetSaveError fb.Message)
       | x when x = ErrorTypeFB.AssetDeleteErrorFB       -> Some (AssetDeleteError fb.Message)
       | x when x = ErrorTypeFB.OtherFB                  -> Some (Other fb.Message)
@@ -133,6 +137,8 @@ type IrisError =
       | ErrorTypeFB.CliParseErrorFB          -> Some CliParseError
       | ErrorTypeFB.MissingNodeIdFB          -> Some MissingNodeId
       | ErrorTypeFB.MissingNodeFB            -> Some (MissingNode fb.Message)
+      | ErrorTypeFB.AssetNotFoundErrorFB     -> Some (AssetNotFoundError fb.Message)
+      | ErrorTypeFB.AssetLoadErrorFB         -> Some (AssetLoadError fb.Message)
       | ErrorTypeFB.AssetSaveErrorFB         -> Some (AssetSaveError fb.Message)
       | ErrorTypeFB.AssetDeleteErrorFB       -> Some (AssetDeleteError fb.Message)
       | ErrorTypeFB.OtherFB                  -> Some (Other fb.Message)
@@ -180,6 +186,8 @@ type IrisError =
         | CliParseError            -> ErrorTypeFB.CliParseErrorFB
         | MissingNodeId            -> ErrorTypeFB.MissingNodeIdFB
         | MissingNode            _ -> ErrorTypeFB.MissingNodeFB
+        | AssetNotFoundError     _ -> ErrorTypeFB.AssetNotFoundErrorFB
+        | AssetLoadError         _ -> ErrorTypeFB.AssetLoadErrorFB
         | AssetSaveError         _ -> ErrorTypeFB.AssetSaveErrorFB
         | AssetDeleteError       _ -> ErrorTypeFB.AssetDeleteErrorFB
         | ParseError             _ -> ErrorTypeFB.ParseErrorFB
@@ -219,7 +227,9 @@ type IrisError =
         | ProjectSaveError       msg -> builder.CreateString msg |> Some
         | ProjectInitError       msg -> builder.CreateString msg |> Some
         | MissingNode            msg -> builder.CreateString msg |> Some
+        | AssetNotFoundError     msg -> builder.CreateString msg |> Some
         | AssetSaveError         msg -> builder.CreateString msg |> Some
+        | AssetLoadError         msg -> builder.CreateString msg |> Some
         | AssetDeleteError       msg -> builder.CreateString msg |> Some
         | ParseError             msg -> builder.CreateString msg |> Some
         | Other                  msg -> builder.CreateString msg |> Some
@@ -269,7 +279,9 @@ module Error =
     | MissingNodeId           ->         "Node Id missing in environment"
     | MissingNode           e -> sprintf "Node with Id %s missing in Project configuration" e
 
+    | AssetNotFoundError    e -> sprintf "Could not find asset on disk: %s" e
     | AssetSaveError        e -> sprintf "Could not save asset to disk: %s" e
+    | AssetLoadError        e -> sprintf "Could not load asset to disk: %s" e
     | AssetDeleteError      e -> sprintf "Could not delete asset from disl: %s" e
 
     | Other                 e -> sprintf "Other error occurred: %s" (string e)
@@ -324,35 +336,36 @@ module Error =
     | MissingStartupDir       -> 15
     | CliParseError           -> 16
 
-    | AssetSaveError        _ -> 17
-    | AssetDeleteError      _ -> 18
+    | AssetNotFoundError    _ -> 18
+    | AssetSaveError        _ -> 19
+    | AssetLoadError        _ -> 19
+    | AssetDeleteError      _ -> 21
 
-    | ParseError            _ -> 19
+    | ParseError            _ -> 21
 
-    | Other                 _ -> 20
+    | Other                 _ -> 22
 
     // RAFT
-    | AlreadyVoted            -> 21
-    | AppendEntryFailed       -> 22
-    | CandidateUnknown        -> 23
-    | EntryInvalidated        -> 24
-    | InvalidCurrentIndex     -> 25
-    | InvalidLastLog          -> 26
-    | InvalidLastLogTerm      -> 27
-    | InvalidTerm             -> 28
-    | LogFormatError          -> 29
-    | LogIncomplete           -> 30
-    | NoError                 -> 31
-    | NoNode                  -> 32
-    | NotCandidate            -> 33
-    | NotLeader               -> 34
-    | NotVotingState          -> 35
-    | ResponseTimeout         -> 36
-    | SnapshotFormatError     -> 37
-    | StaleResponse           -> 38
-    | UnexpectedVotingChange  -> 39
-    | VoteTermMismatch        -> 40
-
+    | AlreadyVoted            -> 23
+    | AppendEntryFailed       -> 24
+    | CandidateUnknown        -> 25
+    | EntryInvalidated        -> 26
+    | InvalidCurrentIndex     -> 27
+    | InvalidLastLog          -> 28
+    | InvalidLastLogTerm      -> 29
+    | InvalidTerm             -> 30
+    | LogFormatError          -> 31
+    | LogIncomplete           -> 32
+    | NoError                 -> 33
+    | NoNode                  -> 34
+    | NotCandidate            -> 35
+    | NotLeader               -> 36
+    | NotVotingState          -> 37
+    | ResponseTimeout         -> 38
+    | SnapshotFormatError     -> 39
+    | StaleResponse           -> 40
+    | UnexpectedVotingChange  -> 41
+    | VoteTermMismatch        -> 42
 
   let inline isOk (error: IrisError) =
     match error with

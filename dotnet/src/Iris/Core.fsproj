@@ -41,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo\CoreInfo.fs" />
+    <Compile Include="Iris\Core\Constants.fs" />
     <Compile Include="Iris\Core\Serialization.fs" />
     <Compile Include="Iris\Core\Error.fs" />
     <Compile Include="Iris\Core\Either.fs" />

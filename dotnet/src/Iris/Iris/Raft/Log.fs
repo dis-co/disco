@@ -5,6 +5,7 @@ open System.Collections
 open FlatBuffers
 open Iris.Core
 open Iris.Serialization.Raft
+open SharpYaml
 
 //  _
 // | |    ___   __ _

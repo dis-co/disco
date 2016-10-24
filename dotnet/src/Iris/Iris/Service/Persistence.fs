@@ -48,6 +48,25 @@ module Persistence =
         | exn -> ()
     IO.FileInfo location
 
+  /// ## loadAsset
+  ///
+  /// Load a text file from disk. If the file could not be loaded,
+  /// return None.
+  ///
+  /// ### Signature:
+  /// - locationg: FilePath to asset
+  ///
+  /// Returns: string option
+  let loadAsset (location: FilePath) : Either<IrisError,string> =
+    if File.Exists location then
+      try
+        File.ReadAllText location
+        |> Either.succeed
+      with
+        | exn -> AssetLoadError exn.Message |> Either.fail
+    else
+      AssetNotFoundError location
+      |> Either.fail
 
   /// ## Create a new Raft state
   ///
@@ -58,11 +77,16 @@ module Persistence =
   /// - options: RaftOptions
   ///
   /// Returns: Either<IrisError,Raft>
-  let createRaft (options: IrisConfig) : Either<IrisError, Raft> =
-    Config.getNodeId ()
-    |> Either.bind (Config.findNode options)
-    |> Either.map mkRaft
-    |> Either.map (options.ClusterConfig.Nodes |> Array.ofList |> addNodes)
+  let createRaft (options: IrisConfig) =
+    either {
+      let! node = Config.selfNode options
+      let! nodes = Config.getNodes options
+      let state =
+        node
+        |> Raft.mkRaft
+        |> Raft.addNodes nodes
+      return state
+    }
 
   /// ## Load a raft state from disk
   ///
@@ -75,22 +99,15 @@ module Persistence =
   /// - options: Project Config
   ///
   /// Returns: Either<IrisError,Raft>
-  let loadRaft (options: IrisConfig) =
-
-    /// loadRaft self (Array.map (fun (n: RaftNode) -> n.Id, n) nodes |> Map.ofArray)
-
-    let node =
-      Config.getNodeId ()
-      |> Either.bind (Config.findNode options)
-
-    let nodes =
-      options.ClusterConfig.Nodes
-      |> List.map (fun node -> node.Id, node)
-      |> Map.ofList
-
-    match node with
-    | Right node -> failwith "FIXME: loadRaft"
-    | Left error -> Either.fail error
+  let loadRaft (options: IrisConfig) : Either<IrisError,RaftValue> =
+    either {
+      let! nodes = Config.getNodes options
+      let! node = Config.selfNode options
+      let! meta = options |> Config.metadataPath |> loadAsset
+      return! meta
+              |> Yaml.decode
+              |> Either.ofOption MetaDataNotFound
+    }
 
   /// ## Get Raft state value from config
   ///
@@ -116,11 +133,11 @@ module Persistence =
   /// - raft: Raft state value
   ///
   /// Returns: Either<IrisError,FileInfo>
-  let saveRaft (config: IrisConfig) (raft: Raft) =
+  let saveRaft (config: IrisConfig) (raft: RaftValue) =
     try
       raft
       |> Yaml.encode
-      |> saveAsset (config.RaftConfig.DataDir </> RAFT_DIRECTORY)
+      |> saveAsset (Config.metadataPath config)
       |> Either.succeed
     with
       | exn ->
@@ -138,14 +155,14 @@ module Persistence =
   ///
   /// Returns: FileInfo option
   let inline saveWithCommit< ^t when
-                         ^t : (member ToYaml : Serializer -> string) and
-                         ^t : (member CanonicalName : string)       and
-                         ^t : (member DirName : string)>
-                         (project: IrisProject) (thing: ^t) =
+                             ^t : (member ToYaml : Serializer -> string) and
+                             ^t : (member CanonicalName : string)       and
+                             ^t : (member DirName : string)>
+                             (project: IrisProject) (thing: ^t) =
     match project.Path with
     | Some path ->
       let name = (^t : (member CanonicalName : string) thing)
-      let relPath = (^t : (member DirName : string) thing) </> (name + ".yaml")
+      let relPath = (^t : (member DirName : string) thing) </> (name + ASSET_EXTENSION)
       let destPath = path </> relPath
       try
         // FIXME: should later be the person who issued command (session + user)
@@ -179,7 +196,7 @@ module Persistence =
     match project.Path with
     | Some path ->
       let name = (^t : (member CanonicalName : string) thing)
-      let relPath = (^t : (member DirName : string) thing) </> (name + ".yaml")
+      let relPath = (^t : (member DirName : string) thing) </> (name + ASSET_EXTENSION)
       let destPath = path </> relPath
       try
         let fileinfo = deleteAsset destPath

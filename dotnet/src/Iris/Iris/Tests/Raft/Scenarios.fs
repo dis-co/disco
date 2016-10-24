@@ -81,15 +81,15 @@ module Scenarios =
       raft {
         match msg with
           | RequestVote(sid,req) ->
-            let! peer = getNodeM sid
+            let! peer = Raft.getNodeM sid
             if Option.isSome peer
             then
               let sender = Option.get peer
               __logg <| sprintf "    process request vote %A" req
-              let! response = receiveVoteRequest sid req
+              let! response = Raft.receiveVoteRequest sid req
 
               let! raft' = get
-              let receiver = self raft'
+              let receiver = Raft.self raft'
               if not response.Granted then
                 __logg <| sprintf "(1) result was not granted"
                 let updated = { response with Term = raft'.CurrentTerm }
@@ -100,15 +100,15 @@ module Scenarios =
                 __append_msgs peers receiver.Id sender.Id msg
           | RequestVoteResponse(sid,resp) ->
             __logg "    process request vote response"
-            do! receiveVoteResponse sid resp
+            do! Raft.receiveVoteResponse sid resp
           | AppendEntries(sid,ae) ->
             __logg "process appendentries"
-            let! response = receiveAppendEntries (Some sid) ae
+            let! response = Raft.receiveAppendEntries (Some sid) ae
             if not response.Success then
               __logg "(2) result was Fail"
             let! raft' = get
-            let sender = self raft'
-            let! peer = getNodeM sid
+            let sender = Raft.self raft'
+            let! peer = Raft.getNodeM sid
             match peer with
               | Some receiver ->
                 let msg = AppendEntriesResponse(sender.Id, response)
@@ -117,7 +117,7 @@ module Scenarios =
                 __logg "peer unknown"
           | AppendEntriesResponse (sid,ar) ->
             __logg "process appendentries response"
-            do! receiveAppendEntriesResponse sid ar
+            do! Raft.receiveAppendEntriesResponse sid ar
       }
 
     raft {
@@ -192,19 +192,19 @@ module Scenarios =
               } :> IRaftCallbacks
 
             let raft =
-              mkRaft peers.[int n]
-              |> setElectionTimeout 500u
-              |> addNodes peers
+              Raft.mkRaft peers.[int n]
+              |> Raft.setElectionTimeout 500u
+              |> Raft.addNodes peers
 
             yield (raft,callbacks) |]
 
       // First node starts election.
-      periodic 1000u
+      Raft.periodic 1000u
       |> evalRaft  (fst servers.[0]) (snd servers.[0])
       |> fun result ->
         Array.set servers 0 (result, snd servers.[0])
 
-      expect "Should be candidate now" Candidate getState (fst servers.[0])
+      expect "Should be candidate now" Candidate Raft.getState (fst servers.[0])
 
       for j in 0..19  do
         Map.fold totalMsgs 0 senders
@@ -223,12 +223,12 @@ module Scenarios =
         __logg "Running periodic"
         for n in 0UL .. (numPeers - 1UL) do
           let srv = servers.[int n]
-          periodic 100u
+          Raft.periodic 100u
           |> evalRaft (fst srv) (snd srv)
           |> fun r -> Array.set servers (int n) (r, snd srv)
 
       let __fldr result raft =
-        if isLeader raft then result + 1 else result
+        if Raft.isLeader raft then result + 1 else result
 
       let leaders = Array.map fst servers |> Array.fold __fldr 0
       Assert.Equal("System should have have one leader", 1, leaders)

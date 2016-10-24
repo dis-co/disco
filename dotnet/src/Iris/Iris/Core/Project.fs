@@ -254,7 +254,7 @@ module Project =
         |> saveMetadata project
 
       // save everything!
-      let destPath = Path.Combine(path, PROJECT_FILENAME)
+      let destPath = path </> PROJECT_FILENAME + ASSET_EXTENSION
 
       try
         IrisConfig.Save(destPath)

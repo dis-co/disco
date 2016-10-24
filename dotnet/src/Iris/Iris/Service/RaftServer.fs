@@ -382,7 +382,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
 
       this.Debug logstr
 
-    member self.PrepareSnapshot (raft: Raft) =
+    member self.PrepareSnapshot (raft: RaftValue) =
       match onCreateSnapshot with
       | Some cb ->
         let currIdx = Log.index raft.Log
@@ -551,8 +551,8 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
         | Some leader ->
           sprintf "Reached leader: %A Adding to nodes." leader.Id
           |> infoMsg state cbs
-          do! addNodeM leader
-          do! becomeFollower ()
+          do! Raft.addNodeM leader
+          do! Raft.becomeFollower ()
         | _ -> "Joining cluster failed." |> errMsg state cbs
 
       } |> evalRaft state.Raft cbs
@@ -566,7 +566,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
       raft {
         "requesting to leave" |> this.Debug
 
-        do! setTimeoutElapsedM 0u
+        do! Raft.setTimeoutElapsedM 0u
 
         match tryLeave appState cbs with
         | Some true ->
@@ -574,12 +574,12 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
         | _ ->
           "Could not leave cluster." |> infoMsg state cbs
 
-        do! becomeFollower ()
+        do! Raft.becomeFollower ()
 
-        let! peers = getNodesM ()
+        let! peers = Raft.getNodesM ()
 
         for kv in peers do
-          do! removeNodeM kv.Value
+          do! Raft.removeNodeM kv.Value
 
       } |> evalRaft state.Raft cbs
 
@@ -590,7 +590,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
   member self.AddNode(id: string, ip: string, port: int) =
     let state = readTVar appState |> atomically
 
-    if isLeader state.Raft then
+    if Raft.isLeader state.Raft then
 
       let change =
         { Node.create (Id.Parse id) with
@@ -600,10 +600,10 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
 
       let result =
         raft {
-          let! term = currentTermM ()
+          let! term = Raft.currentTermM ()
           let entry = JointConsensus(Id.Create(), 0u, term, [| change |], None)
-          do! debug "AddNode: appending entry to enter joint-consensus"
-          return! receiveEntry entry
+          do! Raft.debug "AddNode: appending entry to enter joint-consensus"
+          return! Raft.receiveEntry entry
         }
         |> runRaft state.Raft cbs
 
@@ -631,21 +631,21 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
   member self.RmNode(id: string) =
     let state = readTVar appState |> atomically
 
-    if isLeader state.Raft then
+    if Raft.isLeader state.Raft then
 
       let result =
         raft {
-          let! node = getNodeM (Id.Parse id)
+          let! node = Raft.getNodeM (Id.Parse id)
           match node with
           | Some peer ->
-            let! term = currentTermM ()
+            let! term = Raft.currentTermM ()
             let changes = [| NodeRemoved peer |]
             let entry = JointConsensus(Id.Create(), 0u, term, changes, None)
-            do! debug "RmNode: appending entry to enter joint-consensus"
-            let! appended = receiveEntry entry
+            do! Raft.debug "RmNode: appending entry to enter joint-consensus"
+            let! appended = Raft.receiveEntry entry
             return Some appended
           | _ ->
-            do! warn "Node could not be removed. Node not found."
+            do! Raft.warn "Node could not be removed. Node not found."
             return None
         }
         |> runRaft state.Raft cbs

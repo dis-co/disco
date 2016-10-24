@@ -31,7 +31,7 @@ module ProjectTests =
           |> Project.save signature "Initial project save."
           |> Either.get
 
-        let result = Project.load (path </> PROJECT_FILENAME)
+        let result = Project.load (path </> PROJECT_FILENAME + ASSET_EXTENSION)
 
         expect "Projects should be loaded" true Either.isSuccess result
 
@@ -217,7 +217,7 @@ module ProjectTests =
           |> Either.get
 
         let loaded =
-          Project.load (path </> PROJECT_FILENAME)
+          Project.load (path </> PROJECT_FILENAME + ASSET_EXTENSION)
           |> Either.get
 
         // the only difference will be the automatically assigned timestamp
@@ -252,13 +252,13 @@ module ProjectTests =
           |> Project.save signature "Initial commit."
 
         let loaded =
-          (path </> PROJECT_FILENAME)
+          path </> PROJECT_FILENAME + ASSET_EXTENSION
           |> Project.load
           |> Either.get
 
         expect "Projects should be a folder"         true  Directory.Exists path
         expect "Projects should be a git repo"       true  Directory.Exists (path </> ".git")
-        expect "Projects should have project yml"    true  File.Exists (path </> PROJECT_FILENAME)
+        expect "Projects should have project yml"    true  File.Exists (path </> PROJECT_FILENAME + ASSET_EXTENSION)
         expect "Projects should have repo"           true  (Project.repository >> Either.isSuccess) loaded
         expect "Projects should not be dirty"        false (Project.repository >> Either.get >> Git.Repo.isDirty) loaded
         expect "Projects should have initial commit" 1     (Project.repository >> Either.get >> Git.Repo.commitCount) loaded
@@ -289,7 +289,7 @@ module ProjectTests =
           |> Project.save signature msg1
           |> Either.get
 
-        (path </> PROJECT_FILENAME)
+        (path </> PROJECT_FILENAME + ASSET_EXTENSION)
         |> Project.load
         |> Either.get
         |> fun p ->
@@ -308,7 +308,7 @@ module ProjectTests =
           |> Either.get
 
 
-        (path </> PROJECT_FILENAME)
+        (path </> PROJECT_FILENAME + ASSET_EXTENSION)
         |> Project.load
         |> Either.get
         |> fun p ->
@@ -329,7 +329,7 @@ module ProjectTests =
            |> Project.save signature msg3
            |> Either.get
 
-        (path </> PROJECT_FILENAME)
+        (path </> PROJECT_FILENAME + ASSET_EXTENSION)
         |> Project.load
         |> Either.get
         |> fun p ->

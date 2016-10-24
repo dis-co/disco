@@ -354,7 +354,7 @@ type IRaftCallbacks =
 
   /// given the current state of Raft, prepare and return a snapshot value of
   /// current application state
-  abstract member PrepareSnapshot:     Raft            -> Log option
+  abstract member PrepareSnapshot:     RaftValue       -> Log option
 
   /// perist the given Snapshot value to disk. For safety reasons this MUST
   /// flush all changes to disk.
@@ -439,7 +439,7 @@ and RaftMetadata(trm: Term, vfor: string, ldr: string) as self =
     self.VotedFor <- vfor
     self.Leader   <- ldr
 
-and Raft =
+and RaftValue =
   { Node              : RaftNode
   ; State             : RaftState
   ; CurrentTerm       : Term
@@ -521,6 +521,12 @@ ConfigChangeEntry = %s
 
     meta
 
+  static member FromYamlObject (meta: RaftMetadata) : RaftValue option =
+    None
+
+  static member FromYaml (str: string) : RaftValue option =
+    None
+
 ////////////////////////////////////////
 //  __  __                       _    //
 // |  \/  | ___  _ __   __ _  __| |   //
@@ -534,4 +540,4 @@ type RaftMonad<'Env,'State,'T,'Error> =
   MkRM of ('Env -> 'State -> Either<'Error * 'State,'T * 'State>)
 
 type RaftM<'t,'err> =
-  RaftMonad<IRaftCallbacks,Raft,'t,'err>
+  RaftMonad<IRaftCallbacks, RaftValue, 't, 'err>

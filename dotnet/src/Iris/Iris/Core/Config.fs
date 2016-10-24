@@ -24,17 +24,17 @@ type RaftConfig =
   ; MaxRetries:       uint8
   ; PeriodicInterval: uint8
   }
-  with
-    static member Default =
-      let guid = Guid.NewGuid()
-      { RequestTimeout   = 500u
-      ; ElectionTimeout  = 6000u
-      ; MaxLogDepth      = 20u
-      ; MaxRetries       = 10uy
-      ; PeriodicInterval = 50uy
-      ; LogLevel         = Err
-      ; DataDir          = Path.GetTempPath() </> guid.ToString()
-      }
+
+  static member Default =
+    let guid = Guid.NewGuid()
+    { RequestTimeout   = 500u
+    ; ElectionTimeout  = 6000u
+    ; MaxLogDepth      = 20u
+    ; MaxRetries       = 10uy
+    ; PeriodicInterval = 50uy
+    ; LogLevel         = Err
+    ; DataDir          = Path.GetTempPath() </> guid.ToString()
+    }
 
 // __     __                     ____             __ _
 // \ \   / /_   ____   ____   __/ ___|___  _ __  / _(_) __ _
@@ -46,10 +46,10 @@ type RaftConfig =
 type VvvvConfig =
   { Executables : VvvvExe list
   ; Plugins     : VvvvPlugin list }
-  with
-    static member Default =
-      { Executables = List.empty
-      ; Plugins     = List.empty }
+
+  static member Default =
+    { Executables = List.empty
+    ; Plugins     = List.empty }
 
 //  ____            _    ____             __ _
 // |  _ \ ___  _ __| |_ / ___|___  _ __  / _(_) __ _
@@ -60,9 +60,9 @@ type VvvvConfig =
 
 type PortConfig =
   { UDPCue    : uint32 }
-  with
-    static member Default =
-      { UDPCue    = 8075u }
+
+  static member Default =
+    { UDPCue    = 8075u }
 
 //  _____ _           _              ____             __ _
 // |_   _(_)_ __ ___ (_)_ __   __ _ / ___|___  _ __  / _(_) __ _
@@ -78,14 +78,14 @@ type TimingConfig =
   ; UDPPort   : uint32
   ; TCPPort   : uint32
   }
-  with
-    static member Default =
-      { Framebase = 50u
-      ; Input     = "Iris Freerun"
-      ; Servers   = List.empty
-      ; UDPPort   = 8071u
-      ; TCPPort   = 8072u
-      }
+
+  static member Default =
+    { Framebase = 50u
+    ; Input     = "Iris Freerun"
+    ; Servers   = List.empty
+    ; UDPPort   = 8071u
+    ; TCPPort   = 8072u
+    }
 
 //     _             _ _        ____             __ _
 //    / \  _   _  __| (_) ___  / ___|___  _ __  / _(_) __ _
@@ -96,9 +96,9 @@ type TimingConfig =
 
 type AudioConfig =
   { SampleRate : uint32 }
-  with
-    static member Default =
-      { SampleRate = 48000u }
+
+  static member Default =
+    { SampleRate = 48000u }
 
 //  _   _           _    ____
 // | | | | ___  ___| |_ / ___|_ __ ___  _   _ _ __
@@ -757,12 +757,21 @@ module Config =
     | Some node -> Either.succeed node
     | _         -> MissingNode (string id) |> Either.fail
 
+  let getNodes (config: IrisConfig) : Either<IrisError,RaftNode array> =
+    config.ClusterConfig.Nodes
+    |> Array.ofList
+    |> Either.succeed
+
   let getNodeId () =
-    let id = Environment.GetEnvironmentVariable "IRIS_NODE_ID"
+    let id = Environment.GetEnvironmentVariable IRIS_NODE_ID
     if isNull id then
       MissingNodeId |> Either.fail
     else
       Id id |> Either.succeed
+
+  let selfNode (options: IrisConfig) =
+    getNodeId ()
+    |> Either.bind (findNode options)
 
   let addNode (node: RaftNode) (config: IrisConfig) =
     { config with
@@ -777,3 +786,9 @@ module Config =
               Nodes = List.filter
                         (fun (node: RaftNode) -> node.Id = id)
                         config.ClusterConfig.Nodes } }
+
+  let metadataPath (config: IrisConfig) =
+    config.RaftConfig.DataDir </> RAFT_METADATA_FILENAME + ASSET_EXTENSION
+
+  let logDataPath (config: IrisConfig) =
+    config.RaftConfig.DataDir </> RAFT_LOGDATA_PATH

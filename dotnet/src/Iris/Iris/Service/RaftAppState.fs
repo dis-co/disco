@@ -14,7 +14,7 @@ open Iris.Raft
 [<NoComparison;NoEquality>]
 type RaftAppContext =
   { Context: ZeroMQ.ZContext
-  ; Raft:    Raft
+  ; Raft:    RaftValue
   ; Options: IrisConfig }
 
   with
@@ -44,7 +44,7 @@ module RaftContext =
   /// - state: RaftAppContext to update
   ///
   /// Returns: RaftAppContext
-  let updateRaft (raft: Raft) (state: RaftAppContext) : RaftAppContext =
+  let updateRaft (raft: RaftValue) (state: RaftAppContext) : RaftAppContext =
     { state with Raft = raft }
 
   (*

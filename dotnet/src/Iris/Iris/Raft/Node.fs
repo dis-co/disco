@@ -153,6 +153,40 @@ type RaftNode =
     |> NodeFB.GetRootAsNodeFB
     |> RaftNode.FromFB
 
+// __   __              _   _____
+// \ \ / /_ _ _ __ ___ | | |_   _|   _ _ __   ___
+//  \ V / _` | '_ ` _ \| |   | || | | | '_ \ / _ \
+//   | | (_| | | | | | | |   | || |_| | |_) |  __/
+//   |_|\__,_|_| |_| |_|_|   |_| \__, | .__/ \___|
+//                               |___/|_|
+
+type ConfigChangeYaml(tipe: string, id: string) as self =
+  [<DefaultValue>] val mutable ChangeType : string
+  [<DefaultValue>] val mutable NodeId     : string
+
+  new () = new ConfigChangeYaml(null, null)
+
+  do
+    self.ChangeType <- tipe
+    self.NodeId     <- id
+
+  member self.ToConfigChange (nodes: RaftNode array) =
+    match self.ChangeType with
+      | "NodeAdded"   -> Some (NodeAdded (failwith "ohai"))
+      | "NodeRemoved" -> Some (NodeRemoved (failwith "ohai"))
+      | _ -> None
+
+  static member FromConfigChange (chng: ConfigChange) =
+    match chng with
+    | NodeAdded node -> ConfigChangeYaml.NodeAdded(node.Id)
+    | NodeRemoved node -> ConfigChangeYaml.NodeRemoved(node.Id)
+
+  static member NodeAdded (id: Id) =
+    new ConfigChangeYaml("NodeAdded", string id)
+
+  static member NodeRemoved (id: Id) =
+    new ConfigChangeYaml("NodeRemoved", string id)
+
 //   ____             __ _        ____ _
 //  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
 // | |   / _ \| '_ \| |_| |/ _` | |   | '_ \ / _` | '_ \ / _` |/ _ \
@@ -160,7 +194,7 @@ type RaftNode =
 //  \____\___/|_| |_|_| |_|\__, |\____|_| |_|\__,_|_| |_|\__, |\___|
 //                         |___/                         |___/
 
-type ConfigChange =
+and ConfigChange =
   | NodeAdded   of RaftNode
   | NodeRemoved of RaftNode
 
@@ -168,6 +202,13 @@ type ConfigChange =
     match self with
     | NodeAdded   n -> sprintf "NodeAdded (%s)"   (string n.Id)
     | NodeRemoved n ->sprintf "NodeRemoved (%s)" (string n.Id)
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     match self with
@@ -214,6 +255,17 @@ type ConfigChange =
     |> ConfigChangeFB.GetRootAsConfigChangeFB
     |> ConfigChange.FromFB
 
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+
+  member self.ToYamlObject() = ConfigChangeYaml.FromConfigChange self
+
+  static member FromYamlObject (yml: ConfigChangeYaml) =
+    implement "ConfigChange.FromYamlObject"
 
 [<RequireQualifiedAccess>]
 module Node =

@@ -58,6 +58,11 @@ module Either =
     | Right value -> f value
     | Left error  -> Error.exitWith error
 
+  let inline ofOption< ^a, ^b, ^err > (err: ^err) (a: ^a option) : Either< ^err, ^a > =
+    match a with
+    | Some value -> Right value
+    | None       -> Left err
+
 [<AutoOpen>]
 module EitherUtils =
 
@@ -69,11 +74,13 @@ module EitherUtils =
 
     member __.Bind(m, f) =
       match m with
-      | Right value -> f value |> Right
+      | Right value -> f value
       | Left error  -> Left error
 
     member __.Zero() = Right ()
 
-    member __.Delay(f) = fun _ -> f()
+    member __.Delay(f) = fun () -> f()
+
+    member __.Run(f) = f()              // needed for lazyness to work
 
   let either = new EitherBuilder()
