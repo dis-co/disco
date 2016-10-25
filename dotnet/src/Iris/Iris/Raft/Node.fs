@@ -40,6 +40,12 @@ type RaftNodeState =
     | "Failed"  -> Failed
     | _         -> failwithf "NodeState: failed to parse %s" str
 
+  static member TryParse (str: string) =
+    try
+      str |> RaftNodeState.Parse |> Some
+    with
+      | _ -> None
+
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -68,13 +74,35 @@ type RaftNodeState =
       | _                     -> None
 #endif
 
+type RaftNodeYaml(id, hostname, ip, port, web, ws, git, state) as self =
+  [<DefaultValue>] val mutable Id       : string
+  [<DefaultValue>] val mutable HostName : string
+  [<DefaultValue>] val mutable IpAddr   : string
+  [<DefaultValue>] val mutable Port     : uint16
+  [<DefaultValue>] val mutable WebPort  : uint16
+  [<DefaultValue>] val mutable WsPort   : uint16
+  [<DefaultValue>] val mutable GitPort  : uint16
+  [<DefaultValue>] val mutable State    : string
+
+  new () = new RaftNodeYaml(null, null, null, 0us, 0us, 0us, 0us, null)
+
+  do
+    self.Id       <- id
+    self.HostName <- hostname
+    self.IpAddr   <- ip
+    self.Port     <- port
+    self.WebPort  <- web
+    self.WsPort   <- ws
+    self.GitPort  <- git
+    self.State    <- state
+
 //  _   _           _
 // | \ | | ___   __| | ___
 // |  \| |/ _ \ / _` |/ _ \
 // | |\  | (_) | (_| |  __/
 // |_| \_|\___/ \__,_|\___|
 
-type RaftNode =
+and RaftNode =
   { Id         : NodeId
   ; HostName   : string
   ; IpAddr     : IpAddress
@@ -97,6 +125,43 @@ type RaftNode =
       (string self.State)
       (sprintf "(NxtIdx %A)" self.NextIndex)
       (sprintf "(MtchIdx %A)" self.MatchIndex)
+
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+  member self.ToYamlObject () =
+    let yaml = new RaftNodeYaml()
+    yaml.Id <- string self.Id
+    yaml.HostName <- self.HostName
+    yaml.IpAddr <- string self.IpAddr
+    yaml.Port <- self.Port
+    yaml.WebPort <- self.WebPort
+    yaml.WsPort <- self.WsPort
+    yaml.GitPort <- self.GitPort
+    yaml.State <- string self.State
+    yaml
+
+  static member FromYamlObject (yaml: RaftNodeYaml) : RaftNode option =
+    maybe {
+      let! ip = IpAddress.TryParse yaml.IpAddr
+      let! state = RaftNodeState.TryParse yaml.State
+      return { Id = Id yaml.Id
+             ; HostName = yaml.HostName
+             ; IpAddr = ip
+             ; Port = yaml.Port
+             ; WebPort = yaml.WebPort
+             ; WsPort = yaml.WsPort
+             ; GitPort = yaml.GitPort
+             ; Voting = true
+             ; VotedForMe = false
+             ; NextIndex = 0u
+             ; MatchIndex = 0u
+             ; State = state
+             }
+    }
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _

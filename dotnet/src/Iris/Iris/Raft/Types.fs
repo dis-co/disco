@@ -174,7 +174,7 @@ type AppendEntries =
   ; PrevLogIdx   : Index
   ; PrevLogTerm  : Term
   ; LeaderCommit : Index
-  ; Entries      : LogEntry option
+  ; Entries      : RaftLogEntry option
   }
 
   with
@@ -188,7 +188,7 @@ type AppendEntries =
             let entry = fb.Entries(i)
             if entry.HasValue then
               raw.[i] <- entry.Value
-          LogEntry.FromFB raw
+          RaftLogEntry.FromFB raw
 
       try
         { Term         = fb.Term
@@ -204,7 +204,7 @@ type AppendEntries =
     member self.ToOffset(builder: FlatBufferBuilder) =
       let entries =
         Option.map
-          (fun (entries: LogEntry) ->
+          (fun (entries: RaftLogEntry) ->
             let offsets = entries.ToOffset(builder)
             AppendEntriesFB.CreateEntriesVector(builder, offsets))
           self.Entries
@@ -292,7 +292,7 @@ type InstallSnapshot =
   ; LeaderId  : NodeId
   ; LastIndex : Index
   ; LastTerm  : Term
-  ; Data      : LogEntry }
+  ; Data      : RaftLogEntry }
 
   with
     member self.ToOffset (builder: FlatBufferBuilder) =
@@ -315,7 +315,7 @@ type InstallSnapshot =
             let data = fb.Data(i)
             if data.HasValue then
               raw.[i] <- data.Value
-          LogEntry.FromFB raw
+          RaftLogEntry.FromFB raw
         else None
 
       decoded
@@ -354,14 +354,14 @@ type IRaftCallbacks =
 
   /// given the current state of Raft, prepare and return a snapshot value of
   /// current application state
-  abstract member PrepareSnapshot:     RaftValue       -> Log option
+  abstract member PrepareSnapshot:     RaftValue       -> RaftLog option
 
   /// perist the given Snapshot value to disk. For safety reasons this MUST
   /// flush all changes to disk.
-  abstract member PersistSnapshot:     LogEntry        -> unit
+  abstract member PersistSnapshot:     RaftLogEntry    -> unit
 
   /// attempt to load a snapshot from disk. return None if no snapshot was found
-  abstract member RetrieveSnapshot:    unit            -> LogEntry option
+  abstract member RetrieveSnapshot:    unit            -> RaftLogEntry option
 
   /// apply the given command to state machine
   abstract member ApplyLog:            StateMachine    -> unit
@@ -391,11 +391,11 @@ type IRaftCallbacks =
 
   /// persist an entry added to the log to disk. For safety reasons this
   /// callback MUST flush the change to disk.
-  abstract member PersistLog:          LogEntry        -> unit
+  abstract member PersistLog:          RaftLogEntry        -> unit
 
   /// persist the removal of the passed entry from the log to disk. For safety
   /// reasons this callback MUST flush the change to disk.
-  abstract member DeleteLog:           LogEntry        -> unit
+  abstract member DeleteLog:           RaftLogEntry        -> unit
 
   /// Callback for catching debug messsages
   abstract member LogMsg:  LogLevel ->  RaftNode        -> String                 -> unit
@@ -427,17 +427,28 @@ type IRaftCallbacks =
 //                                                                                                                                       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-and RaftMetadata(trm: Term, vfor: string, ldr: string) as self =
-  [<DefaultValue>] val mutable Term : Term
-  [<DefaultValue>] val mutable VotedFor : string
-  [<DefaultValue>] val mutable Leader : string
+and RaftMetadata(node, trm, ldr, prs, vfor, logs, eto, rto, mld) as self =
+  [<DefaultValue>] val mutable Node            : string
+  [<DefaultValue>] val mutable Term            : Term
+  [<DefaultValue>] val mutable Leader          : string
+  [<DefaultValue>] val mutable Peers           : RaftNodeYaml array
+  [<DefaultValue>] val mutable VotedFor        : string
+  [<DefaultValue>] val mutable Logs            : LogYaml array
+  [<DefaultValue>] val mutable ElectionTimeout : Long
+  [<DefaultValue>] val mutable RequestTimeout  : Long
+  [<DefaultValue>] val mutable MaxLogDepth     : Long
 
-  new () = new RaftMetadata(0u, null, null)
+  new () = new RaftMetadata(null, 0u, null, null, null, null, 0u, 0u, 0u)
 
   do
-    self.Term     <- trm
-    self.VotedFor <- vfor
-    self.Leader   <- ldr
+    self.Node            <- node
+    self.Term            <- trm
+    self.Leader          <- ldr
+    self.Peers           <- prs
+    self.VotedFor        <- vfor
+    self.Logs            <- logs
+    self.ElectionTimeout <- eto
+    self.RequestTimeout  <- eto
 
 and RaftValue =
   { Node              : RaftNode
@@ -448,14 +459,14 @@ and RaftValue =
   ; OldPeers          : Map<NodeId,RaftNode> option
   ; NumNodes          : Long
   ; VotedFor          : NodeId option
-  ; Log               : Log
+  ; Log               : RaftLog
   ; CommitIndex       : Index
   ; LastAppliedIdx    : Index
   ; TimeoutElapsed    : Long
   ; ElectionTimeout   : Long
   ; RequestTimeout    : Long
   ; MaxLogDepth       : Long
-  ; ConfigChangeEntry : LogEntry option
+  ; ConfigChangeEntry : RaftLogEntry option
   }
 
   override self.ToString() =
@@ -505,24 +516,73 @@ ConfigChangeEntry = %s
     Yaml.toYaml self |> serializer.Serialize
 
   member self.ToYamlObject() =
-    let meta = new RaftMetadata()
-
-    meta.Term <- self.CurrentTerm
-
-    Option.map
-      (fun voted -> meta.VotedFor <- string voted)
-      self.VotedFor
-    |> ignore
+    let yaml = new RaftMetadata()
+    yaml.Node <- string self.Node.Id
+    yaml.Term <- self.CurrentTerm
 
     Option.map
-      (fun leader -> meta.Leader <- string leader)
+      (fun leader -> yaml.Leader <- string leader)
       self.CurrentLeader
     |> ignore
 
-    meta
+    yaml.Peers <- self.Peers
+                 |> Map.toArray
+                 |> Array.map (snd >> Yaml.toYaml)
 
-  static member FromYamlObject (meta: RaftMetadata) : RaftValue option =
-    None
+    Option.map
+      (fun voted -> yaml.VotedFor <- string voted)
+      self.VotedFor
+    |> ignore
+
+    yaml.Logs <- Yaml.toYaml self.Log
+    yaml.ElectionTimeout <- self.ElectionTimeout
+    yaml.RequestTimeout <- self.RequestTimeout
+    yaml.MaxLogDepth <- self.MaxLogDepth
+    yaml
+
+  static member FromYamlObject (yaml: RaftMetadata) : RaftValue option =
+    let leader =
+      if isNull yaml.Leader then
+        None
+      else
+        Some (Id yaml.Leader)
+
+    let votedfor =
+      if isNull yaml.VotedFor then
+        None
+      else
+        Some (Id yaml.VotedFor)
+
+    let nodes : Map<Id,RaftNode> ref = ref Map.empty
+    for peer in yaml.Peers do
+      Option.map
+        (fun (node: RaftNode) -> nodes := Map.add node.Id node !nodes)
+        (Yaml.fromYaml peer)
+      |> ignore
+
+    let log = Yaml.fromYaml yaml.Logs
+    let node = Map.tryFind (Id yaml.Node) !nodes
+
+    match log, node with
+    | Some log, Some node ->
+      { Node              = node
+      ; State             = Follower
+      ; CurrentTerm       = yaml.Term
+      ; CurrentLeader     = leader
+      ; Peers             = !nodes
+      ; OldPeers          = Map.empty
+      ; NumNodes          = uint32 yaml.Peers.Length
+      ; VotedFor          = votedfor
+      ; Log               = log
+      ; CommitIndex       = Log.index log
+      ; LastAppliedIdx    = Log.index log
+      ; TimeoutElapsed    = 0u
+      ; ElectionTimeout   = yaml.ElectionTimeout
+      ; RequestTimeout    = yaml.RequestTimeout
+      ; MaxLogDepth       = yaml.MaxLogDepth
+      ; ConfigChangeEntry = None
+      } |> Some
+    | _ -> None
 
   static member FromYaml (str: string) : RaftValue option =
     None

@@ -14,6 +14,33 @@ open Iris.Serialization.Raft
 
 #endif
 
+// __   __              _    ___  _     _           _
+// \ \ / /_ _ _ __ ___ | |  / _ \| |__ (_) ___  ___| |_
+//  \ V / _` | '_ ` _ \| | | | | | '_ \| |/ _ \/ __| __|
+//   | | (_| | | | | | | | | |_| | |_) | |  __/ (__| |_
+//   |_|\__,_|_| |_| |_|_|  \___/|_.__// |\___|\___|\__|
+//                                   |__/
+
+type SessionYaml(id, name, ip, ua) as self =
+  [<DefaultValue>] val mutable Id        : string
+  [<DefaultValue>] val mutable UserName  : string
+  [<DefaultValue>] val mutable IpAddress : string
+  [<DefaultValue>] val mutable UserAgent : string
+
+  new () = new SessionYaml(null, null, null, null)
+
+  do
+    self.Id        <- id
+    self.UserName  <- name
+    self.IpAddress <- ip
+    self.UserAgent <- ua
+
+//  ____                _
+// / ___|  ___  ___ ___(_) ___  _ __
+// \___ \ / _ \/ __/ __| |/ _ \| '_ \
+//  ___) |  __/\__ \__ \ | (_) | | | |
+// |____/ \___||___/___/_|\___/|_| |_|
+
 type Session =
   { Id: Id
   ; UserName:  UserName
@@ -59,3 +86,16 @@ type Session =
     SessionFB.EndSessionFB(builder)
 
   member self.ToBytes() = Binary.buildBuffer self
+
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+  member self.ToYamlObject () =
+    new SessionYaml(
+      string self.Id,
+      self.UserName,
+      string self.IpAddress,
+      self.UserAgent)

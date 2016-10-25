@@ -220,7 +220,7 @@ type User =
 #if JAVASCRIPT
 #else
 
-  member self.ToYaml(serializer: Serializer) =
+  member self.ToYamlObject () =
     new UserYaml(
       string self.Id,
       self.UserName,
@@ -229,7 +229,9 @@ type User =
       self.Email,
       string self.Joined,
       string self.Created)
-    |> serializer.Serialize
+
+  member self.ToYaml(serializer: Serializer) =
+    self |> Yaml.toYaml |> serializer.Serialize
 
   static member FromYaml(str: string) =
     let serializer = new Serializer()

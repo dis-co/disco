@@ -24,9 +24,9 @@ module RaftTestUtils =
     { SendRequestVote     : RaftNode        -> VoteRequest            -> VoteResponse option
     ; SendAppendEntries   : RaftNode        -> AppendEntries          -> AppendResponse option
     ; SendInstallSnapshot : RaftNode        -> InstallSnapshot        -> AppendResponse option
-    ; PersistSnapshot     : LogEntry        -> unit
-    ; PrepareSnapshot     : RaftValue       -> Log option
-    ; RetrieveSnapshot    : unit            -> LogEntry option
+    ; PersistSnapshot     : RaftLogEntry    -> unit
+    ; PrepareSnapshot     : RaftValue       -> RaftLog option
+    ; RetrieveSnapshot    : unit            -> RaftLogEntry option
     ; ApplyLog            : StateMachine    -> unit
     ; NodeAdded           : RaftNode        -> unit
     ; NodeUpdated         : RaftNode        -> unit
@@ -35,8 +35,8 @@ module RaftTestUtils =
     ; StateChanged        : RaftState       -> RaftState              -> unit
     ; PersistVote         : RaftNode option -> unit
     ; PersistTerm         : Term            -> unit
-    ; PersistLog          : LogEntry        -> unit
-    ; DeleteLog           : LogEntry        -> unit
+    ; PersistLog          : RaftLogEntry    -> unit
+    ; DeleteLog           : RaftLogEntry    -> unit
     ; LogMsg              : LogLevel        -> RaftNode  -> String     -> unit
     }
 
@@ -105,12 +105,12 @@ module RaftTestUtils =
       sprintf "PeristVote: %A" n
       |> log
 
-    let onPersistLog (l : LogEntry) =
+    let onPersistLog (l : RaftLogEntry) =
       l.ToString()
       |> sprintf "LogOffer: %s"
       |> log
 
-    let onDeleteLog (l : LogEntry) =
+    let onDeleteLog (l : RaftLogEntry) =
       l.ToString()
       |> sprintf "LogPoll: %s"
       |> log
@@ -122,7 +122,7 @@ module RaftTestUtils =
     let onPrepareSnapshot raft =
       Raft.createSnapshot !data raft |> Some
 
-    let onPersistSnapshot (entry: LogEntry) =
+    let onPersistSnapshot (entry: RaftLogEntry) =
       sprintf "Perisisting Snapshot: %A" entry
       |> log
 

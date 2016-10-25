@@ -78,6 +78,32 @@ type AppCommand =
     | Reset       -> ActionTypeFB.ResetFB
     | SaveProject -> ActionTypeFB.SaveProjectFB
 
+//  ____  _        _     __   __              _
+// / ___|| |_ __ _| |_ __\ \ / /_ _ _ __ ___ | |
+// \___ \| __/ _` | __/ _ \ V / _` | '_ ` _ \| |
+//  ___) | || (_| | ||  __/| | (_| | | | | | | |
+// |____/ \__\__,_|\__\___||_|\__,_|_| |_| |_|_|
+
+type StateYaml(ps, ioboxes, cues, cuelists, nodes, sessions, users) as self =
+  [<DefaultValue>] val mutable Patches  : PatchYaml array
+  [<DefaultValue>] val mutable IOBoxes  : IOBoxYaml array
+  [<DefaultValue>] val mutable Cues     : CueYaml array
+  [<DefaultValue>] val mutable CueLists : CueListYaml array
+  [<DefaultValue>] val mutable Nodes    : RaftNodeYaml array
+  [<DefaultValue>] val mutable Sessions : SessionYaml array
+  [<DefaultValue>] val mutable Users    : UserYaml array
+
+  new () = new StateYaml(null, null, null, null, null, null, null)
+
+  do
+    self.Patches  <- ps
+    self.IOBoxes  <- ioboxes
+    self.Cues     <- cues
+    self.CueLists <- cuelists
+    self.Nodes    <- nodes
+    self.Sessions <- sessions
+    self.Users    <- users
+
 // ********************************************************************************************** //
 //   ____  _        _
 //  / ___|| |_ __ _| |_ ___
@@ -273,11 +299,33 @@ type State =
   member state.RemoveNode (node: RaftNode) =
     { state with Nodes = Map.remove node.Id state.Nodes }
 
-  //  ____            _       _ _          _   _
-  // / ___|  ___ _ __(_) __ _| (_)______ _| |_(_) ___  _ __
-  // \___ \ / _ \ '__| |/ _` | | |_  / _` | __| |/ _ \| '_ \
-  //  ___) |  __/ |  | | (_| | | |/ / (_| | |_| | (_) | | | |
-  // |____/ \___|_|  |_|\__,_|_|_/___\__,_|\__|_|\___/|_| |_|
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+  member self.ToYamlObject () =
+    let inline encode m =
+      m |> Map.toArray |> Array.map (snd >> Yaml.toYaml)
+
+    let yaml = new StateYaml()
+    yaml.Patches  <- encode self.Patches
+    yaml.IOBoxes  <- encode self.IOBoxes
+    yaml.Cues     <- encode self.Cues
+    yaml.CueLists <- encode self.CueLists
+    yaml.Nodes    <- encode self.Nodes
+    yaml.Sessions <- encode self.Sessions
+    yaml.Users    <- encode self.Users
+
+    yaml
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateFB> =
     let patches =
@@ -696,32 +744,111 @@ and Store(state : State)=
         self.Notify log.Event |> ignore
       | _ -> ()
 
-// ********************************************************************************************** //
 //  _     _     _
 // | |   (_)___| |_ ___ _ __   ___ _ __
 // | |   | / __| __/ _ \ '_ \ / _ \ '__|
 // | |___| \__ \ ||  __/ | | |  __/ |
 // |_____|_|___/\__\___|_| |_|\___|_|
 //
-// ********************************************************************************************** //
 
 and Listener = Store -> StateMachine -> unit
 
-// ********************************************************************************************** //
+// __   __              _    ___  _     _           _
+// \ \ / /_ _ _ __ ___ | |  / _ \| |__ (_) ___  ___| |_
+//  \ V / _` | '_ ` _ \| | | | | | '_ \| |/ _ \/ __| __|
+//   | | (_| | | | | | | | | |_| | |_) | |  __/ (__| |_
+//   |_|\__,_|_| |_| |_|_|  \___/|_.__// |\___|\___|\__|
+//                                   |__/
+
+and StateMachineYaml(cmd: string, payload: obj) as self =
+  [<DefaultValue>] val mutable Action : string
+  [<DefaultValue>] val mutable Payload : obj
+
+  new () = new StateMachineYaml(null, null)
+
+  do
+    self.Action  <- cmd
+    self.Payload <- payload
+
+  static member AddNode (node: RaftNode) =
+    new StateMachineYaml("AddNode", Yaml.toYaml node)
+
+  static member UpdateNode (node: RaftNode) =
+    new StateMachineYaml("UpdateNode", Yaml.toYaml node)
+
+  static member RemoveNode (node: RaftNode) =
+    new StateMachineYaml("RemoveNode", Yaml.toYaml node)
+
+  static member AddPatch (patch: Patch) =
+    new StateMachineYaml("AddPatch", Yaml.toYaml patch)
+
+  static member UpdatePatch (patch: Patch) =
+    new StateMachineYaml("UpdatePatch", Yaml.toYaml patch)
+
+  static member RemovePatch (patch: Patch) =
+    new StateMachineYaml("RemovePatch", Yaml.toYaml patch)
+
+  static member AddIOBox (iobox: IOBox) =
+    new StateMachineYaml("AddIOBox", Yaml.toYaml iobox)
+
+  static member UpdateIOBox (iobox: IOBox) =
+    new StateMachineYaml("UpdateIOBox", Yaml.toYaml iobox)
+
+  static member RemoveIOBox (iobox: IOBox) =
+    new StateMachineYaml("RemoveIOBox", Yaml.toYaml iobox)
+
+  static member AddCue (cue: Cue) =
+    new StateMachineYaml("AddCue", Yaml.toYaml cue)
+
+  static member UpdateCue (cue: Cue) =
+    new StateMachineYaml("UpdateCue", Yaml.toYaml cue)
+
+  static member RemoveCue (cue: Cue) =
+    new StateMachineYaml("RemoveCue", Yaml.toYaml cue)
+
+  static member AddCueList (cuelist: CueList) =
+    new StateMachineYaml("AddCueList", Yaml.toYaml cuelist)
+
+  static member UpdateCueList (cuelist: CueList) =
+    new StateMachineYaml("UpdateCueList", Yaml.toYaml cuelist)
+
+  static member RemoveCueList (cuelist: CueList) =
+    new StateMachineYaml("RemoveCueList", Yaml.toYaml cuelist)
+
+  static member AddUser (user: User) =
+    new StateMachineYaml("AddUser", Yaml.toYaml user)
+
+  static member UpdateUser (user: User) =
+    new StateMachineYaml("UpdateUser", Yaml.toYaml user)
+
+  static member RemoveUser (user: User) =
+    new StateMachineYaml("RemoveUser", Yaml.toYaml user)
+
+  static member AddSession (session: Session) =
+    new StateMachineYaml("AddSession", Yaml.toYaml session)
+
+  static member UpdateSession (session: Session) =
+    new StateMachineYaml("UpdateSession", Yaml.toYaml session)
+
+  static member RemoveSession (session: Session) =
+    new StateMachineYaml("RemoveSession", Yaml.toYaml session)
+
+  static member Command (cmd: AppCommand) =
+    new StateMachineYaml("Command", string cmd)
+
+  static member LogMsg (loglevel, str) =
+    new StateMachineYaml("LogMsg", sprintf "%A %s" loglevel str)
+
+  static member DataSnapshot (state: State) =
+    new StateMachineYaml("DataSnapshot", Yaml.toYaml state)
+
 //  ____  _        _       __  __            _     _
 // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
 // \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
 //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
 // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
-//
-// ********************************************************************************************** //
 
 and StateMachine =
-
-  // CLIENT
-  // | AddClient    of string
-  // | UpdateClient of string
-  // | RemoveClient of string
 
   // NODE
   | AddNode       of RaftNode
@@ -766,17 +893,6 @@ and StateMachine =
 
   override self.ToString() : string =
     match self with
-    // PROJECT
-    // | OpenProject   -> "OpenProject"
-    // | SaveProject   -> "SaveProject"
-    // | CreateProject -> "CreateProject"
-    // | CloseProject  -> "CloseProject"
-    // | DeleteProject -> "DeleteProject
-
-    // CLIENT
-    // | AddClient    s -> sprintf "AddClient %s"    s
-    // | UpdateClient s -> sprintf "UpdateClient %s" s
-    // | RemoveClient s -> sprintf "RemoveClient %s" s
 
     // NODE
     | AddNode    node       -> sprintf "AddNode %s"    (string node)
@@ -816,6 +932,65 @@ and StateMachine =
     | Command    ev         -> sprintf "Command: %s"  (string ev)
     | DataSnapshot state    -> sprintf "DataSnapshot: %A" state
     | LogMsg(level, msg)    -> sprintf "LogMsg: [%A] %s" level msg
+
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+#if JAVASCRIPT
+#else
+
+  member self.ToYamlObject() : StateMachineYaml =
+    match self with
+    | AddNode    node       -> StateMachineYaml.AddNode(node)
+    | UpdateNode node       -> StateMachineYaml.UpdateNode(node)
+    | RemoveNode node       -> StateMachineYaml.RemoveNode(node)
+
+    // PATCH
+    | AddPatch    patch     -> StateMachineYaml.AddPatch(patch)
+    | UpdatePatch patch     -> StateMachineYaml.UpdatePatch(patch)
+    | RemovePatch patch     -> StateMachineYaml.RemovePatch(patch)
+
+    // IOBOX
+    | AddIOBox    iobox     -> StateMachineYaml.AddIOBox(iobox)
+    | UpdateIOBox iobox     -> StateMachineYaml.UpdateIOBox(iobox)
+    | RemoveIOBox iobox     -> StateMachineYaml.RemoveIOBox(iobox)
+
+    // CUE
+    | AddCue    cue         -> StateMachineYaml.AddCue(cue)
+    | UpdateCue cue         -> StateMachineYaml.UpdateCue(cue)
+    | RemoveCue cue         -> StateMachineYaml.RemoveCue(cue)
+
+    // CUELIST
+    | AddCueList    cuelist -> StateMachineYaml.AddCueList(cuelist)
+    | UpdateCueList cuelist -> StateMachineYaml.UpdateCueList(cuelist)
+    | RemoveCueList cuelist -> StateMachineYaml.RemoveCueList(cuelist)
+
+    // User
+    | AddUser    user       -> StateMachineYaml.AddUser(user)
+    | UpdateUser user       -> StateMachineYaml.UpdateUser(user)
+    | RemoveUser user       -> StateMachineYaml.RemoveUser(user)
+
+    // Session
+    | AddSession    session -> StateMachineYaml.AddSession(session)
+    | UpdateSession session -> StateMachineYaml.UpdateSession(session)
+    | RemoveSession session -> StateMachineYaml.RemoveSession(session)
+
+    | Command         ev    -> StateMachineYaml.Command(ev)
+    | DataSnapshot state    -> StateMachineYaml.DataSnapshot(state)
+    | LogMsg(level, msg)    -> StateMachineYaml.LogMsg(level,msg)
+
+
+#endif
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
 
 #if JAVASCRIPT
   static member FromFB (fb: ApiActionFB) =

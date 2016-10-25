@@ -778,12 +778,12 @@ module Raft =
 
   let lastLogTermM _ = zoomM lastLogTerm
 
-  let getEntryAt (idx : Index) (state: RaftValue) : LogEntry option =
+  let getEntryAt (idx : Index) (state: RaftValue) : RaftLogEntry option =
     Log.at idx state.Log
 
   let getEntryAtM (idx: Index) = zoomM (getEntryAt idx)
 
-  let getEntriesUntil (idx : Index) (state: RaftValue) : LogEntry option =
+  let getEntriesUntil (idx : Index) (state: RaftValue) : RaftLogEntry option =
     Log.until idx state.Log
 
   let getEntriesUntilM (idx: Index) = zoomM (getEntriesUntil idx)
@@ -794,7 +794,7 @@ module Raft =
   let entriesUntilExcludingM (idx: Index) =
     entriesUntilExcluding idx |> zoomM
 
-  let handleConfigChange (log: LogEntry) (state: RaftValue) =
+  let handleConfigChange (log: RaftLogEntry) (state: RaftValue) =
     match log with
       | Configuration(_,_,_,nodes,_) ->
         let parting =
@@ -826,7 +826,7 @@ module Raft =
   //  \__,_| .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|   \__, |
   //       |_|   |_|                                          |___/
 
-  let appendEntry (log: LogEntry) =
+  let appendEntry (log: RaftLogEntry) =
     raft {
       let! state = get
 
@@ -839,7 +839,7 @@ module Raft =
       return Log.getn (LogEntry.depth log) newlog
     }
 
-  let appendEntryM (log: LogEntry) =
+  let appendEntryM (log: RaftLogEntry) =
     raft {
       let! result = appendEntry log
       match result with
@@ -863,10 +863,10 @@ module Raft =
       return! appendEntryM log
     }
 
-  let updateLog (log: Log) (state: RaftValue) =
+  let updateLog (log: RaftLog) (state: RaftValue) =
     { state with Log = log }
 
-  let updateLogEntries (entries: LogEntry) (state: RaftValue) =
+  let updateLogEntries (entries: RaftLogEntry) (state: RaftValue) =
     { state with
         Log = { Index = LogEntry.index entries
                 Depth = LogEntry.depth entries
@@ -953,37 +953,37 @@ module Raft =
       let! local = getEntryAtM idx
 
       match request.Entries with
-        | Some entries ->
-          let remote = LogEntry.last entries
-          // find the entry in the local log that corresponds to position of
-          // then log in the request and compare their terms
-          match local with
-            | Some entry ->
-              if LogEntry.term entry <> LogEntry.term remote then
-                // removes entry at idx (and all following entries)
-                do! removeEntryM idx
-            | _ -> ()
-        | _ ->
-          if Option.isSome local then
-            do! removeEntryM idx
+      | Some entries ->
+        let remote = LogEntry.last entries
+        // find the entry in the local log that corresponds to position of
+        // then log in the request and compare their terms
+        match local with
+          | Some entry ->
+            if LogEntry.term entry <> LogEntry.term remote then
+              // removes entry at idx (and all following entries)
+              do! removeEntryM idx
+          | _ -> ()
+      | _ ->
+        if Option.isSome local then
+          do! removeEntryM idx
     }
 
   let private applyRemainder (msg : AppendEntries) (resp : AppendResponse) =
     raft {
       match msg.Entries with
-        | Some entries ->
-          let! result = appendEntryM entries
-          match result with
-            | Some log ->
-              let! fst = currentTermM () >>= firstIndexM
-              return { resp with
-                        CurrentIndex = LogEntry.index log
-                        FirstIndex   =
-                            match fst with
-                              | Some fidx -> fidx
-                              | _         -> msg.PrevLogIdx + LogEntry.depth log }
-            | _ -> return resp
-        | _ -> return resp
+      | Some entries ->
+        let! result = appendEntryM entries
+        match result with
+          | Some log ->
+            let! fst = currentTermM () >>= firstIndexM
+            return { resp with
+                      CurrentIndex = LogEntry.index log
+                      FirstIndex   =
+                          match fst with
+                            | Some fidx -> fidx
+                            | _         -> msg.PrevLogIdx + LogEntry.depth log }
+          | _ -> return resp
+      | _ -> return resp
     }
 
   /// If leaderCommit > commitIndex, set commitIndex =
@@ -1410,7 +1410,7 @@ module Raft =
   /// |_|  \___|\___\___|_| \_/ \___|_____|_| |_|\__|_|   \__, |
   ///                                                     |___/
 
-  let receiveEntry (entry : LogEntry) =
+  let receiveEntry (entry : RaftLogEntry) =
     raft {
       let! state = get
       let resp = { Id = Id.Create(); Term = 0u; Index = 0u }
@@ -1588,58 +1588,58 @@ module Raft =
       cbs.PersistSnapshot is.Data
 
       match is.Data with
-        | Snapshot(_,idx,_,_,_,nodes,_) ->
-          let! state = get
+      | Snapshot(_,idx,_,_,_,nodes,_) ->
+        let! state = get
 
-          let! remaining = entriesUntilExcludingM idx
+        let! remaining = entriesUntilExcludingM idx
 
-          // update the cluster configuration
-          let peers =
-            Array.map (fun (n: RaftNode) -> (n.Id, n)) nodes
-            |> Map.ofArray
-            |> Map.add state.Node.Id state.Node
+        // update the cluster configuration
+        let peers =
+          Array.map (fun (n: RaftNode) -> (n.Id, n)) nodes
+          |> Map.ofArray
+          |> Map.add state.Node.Id state.Node
 
-          do! setPeersM peers
+        do! setPeersM peers
 
-          // update log with snapshot and possibly merge existing entries
-          match remaining with
-            | Some entries ->
-              do! updateLog (Log.empty
-                            |> Log.append is.Data
-                            |> Log.append entries)
-                  |> modify
-            | _ ->
-              do! updateLogEntries is.Data |> modify
+        // update log with snapshot and possibly merge existing entries
+        match remaining with
+          | Some entries ->
+            do! updateLog (Log.empty
+                          |> Log.append is.Data
+                          |> Log.append entries)
+                |> modify
+          | _ ->
+            do! updateLogEntries is.Data |> modify
 
-          // set the current leader to node which sent snapshot
-          do! setLeaderM (Some is.LeaderId)
+        // set the current leader to node which sent snapshot
+        do! setLeaderM (Some is.LeaderId)
 
-          // apply all entries in the new log
-          let! state = get
-          match state.Log.Data with
-            | Some data ->
-              LogEntry.foldr (fun _ entry -> applyEntry cbs entry) () data
-            | _ -> failwith "Fatal. Snapshot applied, but log is empty. Aborting."
+        // apply all entries in the new log
+        let! state = get
+        match state.Log.Data with
+          | Some data ->
+            LogEntry.foldr (fun _ entry -> applyEntry cbs entry) () data
+          | _ -> failwith "Fatal. Snapshot applied, but log is empty. Aborting."
 
-          // reset the counters,to apply all entries in the log
-          do! setLastAppliedIdxM (Log.index state.Log)
-          do! setCommitIndexM (Log.index state.Log)
+        // reset the counters,to apply all entries in the log
+        do! setLastAppliedIdxM (Log.index state.Log)
+        do! setCommitIndexM (Log.index state.Log)
 
-          // cosntruct reply
-          let! term = currentTermM ()
-          let! ci = currentIndexM ()
-          let! fi = firstIndexM term
+        // cosntruct reply
+        let! term = currentTermM ()
+        let! ci = currentIndexM ()
+        let! fi = firstIndexM term
 
-          let ar : AppendResponse =
-            { Term         = term
-            ; Success      = true
-            ; CurrentIndex = ci
-            ; FirstIndex   = match fi with
-                             | Some i -> i
-                             | _      -> 0u }
+        let ar : AppendResponse =
+          { Term         = term
+          ; Success      = true
+          ; CurrentIndex = ci
+          ; FirstIndex   = match fi with
+                            | Some i -> i
+                            | _      -> 0u }
 
-          return ar
-        | _ -> return! failM SnapshotFormatError
+        return ar
+      | _ -> return! failM SnapshotFormatError
     }
 
   let maybeSnapshot _ =

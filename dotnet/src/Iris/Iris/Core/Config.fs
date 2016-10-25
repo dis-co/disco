@@ -27,13 +27,14 @@ type RaftConfig =
 
   static member Default =
     let guid = Guid.NewGuid()
+    let path = Path.GetTempPath() </> guid.ToString() </> RAFT_DIRECTORY
     { RequestTimeout   = 500u
     ; ElectionTimeout  = 6000u
     ; MaxLogDepth      = 20u
     ; MaxRetries       = 10uy
     ; PeriodicInterval = 50uy
     ; LogLevel         = Err
-    ; DataDir          = Path.GetTempPath() </> guid.ToString()
+    ; DataDir          = path
     }
 
 // __     __                     ____             __ _

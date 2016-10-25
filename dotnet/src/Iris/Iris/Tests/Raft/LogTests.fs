@@ -20,7 +20,7 @@ module Log =
 
   let log_new_log_is_empty =
     testCase "When create, a log should be empty" <| fun _ ->
-      let log : Log = Log.empty
+      let log : RaftLog = Log.empty
       expect "Should be zero" 0u Log.length log
 
   let log_is_non_empty =
@@ -127,7 +127,7 @@ module Log =
         |> Log.append (Log.make 1u sm)
         |> Log.append (Log.make 1u defSM)
 
-      let folder (m: int) (log: LogEntry) : Continue<int> =
+      let folder (m: int) (log: RaftLogEntry) : Continue<int> =
         let value = (LogEntry.data >> Option.get) log
         if value = sm
         then LogEntry.finish (m + 9)

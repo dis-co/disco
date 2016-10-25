@@ -101,6 +101,7 @@ module Persistence =
   /// Returns: Either<IrisError,Raft>
   let loadRaft (options: IrisConfig) : Either<IrisError,RaftValue> =
     either {
+      printfn "metadata path: %s" (options |> Config.metadataPath)
       let! nodes = Config.getNodes options
       let! node = Config.selfNode options
       let! meta = options |> Config.metadataPath |> loadAsset
@@ -134,6 +135,7 @@ module Persistence =
   ///
   /// Returns: Either<IrisError,FileInfo>
   let saveRaft (config: IrisConfig) (raft: RaftValue) =
+    printfn "datadir: %s" config.RaftConfig.DataDir
     try
       raft
       |> Yaml.encode
@@ -162,7 +164,7 @@ module Persistence =
     match project.Path with
     | Some path ->
       let name = (^t : (member CanonicalName : string) thing)
-      let relPath = (^t : (member DirName : string) thing) </> (name + ASSET_EXTENSION)
+      let relPath = (^t : (member DirName : string) thing) </> name + ASSET_EXTENSION
       let destPath = path </> relPath
       try
         // FIXME: should later be the person who issued command (session + user)
