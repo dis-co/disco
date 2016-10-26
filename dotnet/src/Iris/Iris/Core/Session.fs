@@ -11,6 +11,7 @@ open Iris.Web.Core.FlatBufferTypes
 open System
 open FlatBuffers
 open Iris.Serialization.Raft
+open SharpYaml.Serialization
 
 #endif
 
@@ -99,3 +100,22 @@ type Session =
       self.UserName,
       string self.IpAddress,
       self.UserAgent)
+
+  member self.ToYaml (serializer: Serializer) =
+    self
+    |> Yaml.toYaml
+    |> serializer.Serialize
+
+  static member FromYamlObject (yml: SessionYaml) =
+    maybe {
+      let! ip = IpAddress.TryParse yml.IpAddress
+      return { Id = Id yml.Id
+               UserName = yml.UserName
+               IpAddress = ip
+               UserAgent = yml.UserAgent }
+    }
+
+  static member FromYaml (str: string) : Session option =
+    let serializer = new Serializer()
+    serializer.Deserialize<SessionYaml>(str)
+    |> Yaml.fromYaml

@@ -1,13 +1,11 @@
 namespace Iris.Core
 
-// ********************************************************************************************** //
 //  ___                            _
 // |_ _|_ __ ___  _ __   ___  _ __| |_ ___
 //  | || '_ ` _ \| '_ \ / _ \| '__| __/ __|
 //  | || | | | | | |_) | (_) | |  | |_\__ \
 // |___|_| |_| |_| .__/ \___/|_|   \__|___/
 //               |_|
-// ********************************************************************************************** //
 
 open Iris.Raft
 
@@ -20,19 +18,18 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
-open Iris.Serialization.Raft
 open FlatBuffers
+open Iris.Serialization.Raft
+open SharpYaml.Serialization
 
 #endif
 
-// ********************************************************************************************** //
 //     _                 ____                                          _
 //    / \   _ __  _ __  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| |
 //   / _ \ | '_ \| '_ \| |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |
 //  / ___ \| |_) | |_) | |__| (_) | | | | | | | | | | | (_| | | | | (_| |
 // /_/   \_\ .__/| .__/ \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|
 //         |_|   |_|
-// ********************************************************************************************** //
 
 [<RequireQualifiedAccess>]
 type AppCommand =
@@ -46,6 +43,20 @@ type AppCommand =
   // | CreateProject
   // | CloseProject
   // | DeleteProject
+
+  static member Parse (str: string) =
+    match str with
+    | "Undo"        -> Undo
+    | "Redo"        -> Redo
+    | "Reset"       -> Reset
+    | "SaveProject" -> SaveProject
+    | _             -> failwithf "AppCommand: parse error: %s" str
+
+  static member TryParse (str: string) =
+    try
+      str |> AppCommand.Parse |> Some
+    with
+      | _ -> None
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -104,7 +115,6 @@ type StateYaml(ps, ioboxes, cues, cuelists, nodes, sessions, users) as self =
     self.Sessions <- sessions
     self.Users    <- users
 
-// ********************************************************************************************** //
 //   ____  _        _
 //  / ___|| |_ __ _| |_ ___
 //  \___ \| __/ _` | __/ _ \
@@ -114,7 +124,6 @@ type StateYaml(ps, ioboxes, cues, cuelists, nodes, sessions, users) as self =
 //  Record type containing all the actual data that gets passed around in our
 //  application.
 //
-// ********************************************************************************************** //
 
 type State =
   { Patches  : Map<Id,Patch>
@@ -320,6 +329,24 @@ type State =
 
     yaml
 
+  member self.ToYaml (serializer: Serializer) =
+    self |> Yaml.toYaml |> serializer.Serialize
+
+  static member FromYamlObject (yml: StateYaml) =
+    { Patches  = Yaml.arrayToMap yml.Patches
+      IOBoxes  = Yaml.arrayToMap yml.IOBoxes
+      Cues     = Yaml.arrayToMap yml.Cues
+      CueLists = Yaml.arrayToMap yml.CueLists
+      Nodes    = Yaml.arrayToMap yml.Nodes
+      Sessions = Yaml.arrayToMap yml.Sessions
+      Users    = Yaml.arrayToMap yml.Users
+    } |> Some
+
+  static member FromYaml (str: string) : State option =
+    let serializer = new Serializer()
+    serializer.Deserialize<StateYaml>(str)
+    |> Yaml.fromYaml
+
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -450,7 +477,9 @@ type State =
     while i < fb.CueListsLength do
       fb.CueLists(i)
       |> CueList.FromFB
-      |> Option.map (fun cuelist -> cuelists <- Map.add cuelist.Id cuelist cuelists)
+      |> Option.map
+        (fun cuelist ->
+          cuelists <- Map.add cuelist.Id cuelist cuelists)
       |> ignore
       i <- i + 1
 #else
@@ -459,7 +488,9 @@ type State =
       if cuelist.HasValue then
         cuelist.Value
         |> CueList.FromFB
-        |> Option.map (fun cuelist -> cuelists <- Map.add cuelist.Id cuelist cuelists)
+        |> Option.map
+          (fun cuelist ->
+            cuelists <- Map.add cuelist.Id cuelist cuelists)
         |> ignore
 #endif
 
@@ -504,7 +535,9 @@ type State =
     while i < fb.SessionsLength do
       fb.Sessions(i)
       |> Session.FromFB
-      |> Option.map (fun session -> sessions <- Map.add session.Id session sessions)
+      |> Option.map
+        (fun session ->
+          sessions <- Map.add session.Id session sessions)
       |> ignore
       i <- i + 1
 #else
@@ -513,7 +546,9 @@ type State =
       if session.HasValue then
         session.Value
         |> Session.FromFB
-        |> Option.map (fun session -> sessions <- Map.add session.Id session sessions)
+        |> Option.map
+          (fun session ->
+            sessions <- Map.add session.Id session sessions)
         |> ignore
 #endif
 
@@ -530,14 +565,12 @@ type State =
     |> StateFB.GetRootAsStateFB
     |> State.FromFB
 
-// ********************************************************************************************** //
 //  ____  _
 // / ___|| |_ ___  _ __ ___
 // \___ \| __/ _ \| '__/ _ \
 //  ___) | || (_) | | |  __/
 // |____/ \__\___/|_|  \___|
 //
-// ********************************************************************************************** //
 
 (* Action: Log entry for the Event occurred and the resulting state. *)
 and StoreAction =
@@ -547,7 +580,6 @@ and StoreAction =
   override self.ToString() : string =
     sprintf "%s %s" (self.Event.ToString()) (self.State.ToString())
 
-// ********************************************************************************************** //
 //  _   _ _     _
 // | | | (_)___| |_ ___  _ __ _   _
 // | |_| | / __| __/ _ \| '__| | | |
@@ -555,7 +587,6 @@ and StoreAction =
 // |_| |_|_|___/\__\___/|_|   \__, |
 //                            |___/
 //
-// ********************************************************************************************** //
 
 and History (action: StoreAction) =
   let mutable depth = 10
@@ -563,7 +594,6 @@ and History (action: StoreAction) =
   let mutable head = 1
   let mutable values = [ action ]
 
-  (* - - - - - - - - - - Properties - - - - - - - - - - *)
   member self.Debug
     with get () = debug
     and  set b  =
@@ -613,7 +643,6 @@ and History (action: StoreAction) =
 
     List.tryItem head values
 
-// ********************************************************************************************** //
 //  ____  _
 // / ___|| |_ ___  _ __ ___
 // \___ \| __/ _ \| '__/ _ \
@@ -628,7 +657,6 @@ and History (action: StoreAction) =
 // - time-traveleing debugger
 // - undo/redo
 //
-// ********************************************************************************************** //
 
 and Store(state : State)=
 
@@ -670,8 +698,8 @@ and Store(state : State)=
   member self.Dispatch (ev : StateMachine) : unit =
     let andRender (newstate: State) =
       state <- newstate                   // 1) create new state
-      self.Notify(ev)                    // 2) notify all listeners (render as soon as possible)
-      history.Append({ Event = ev        // 3) store this action the and state it produced
+      self.Notify(ev)                    // 2) notify all listeners
+      history.Append({ Event = ev        // 3) store this action and new state
                       ; State = state }) // 4) append to undo history
 
     let addSession (session: Session) (state: State) =
@@ -982,6 +1010,117 @@ and StateMachine =
     | DataSnapshot state    -> StateMachineYaml.DataSnapshot(state)
     | LogMsg(level, msg)    -> StateMachineYaml.LogMsg(level,msg)
 
+  member self.ToYaml (serializer: Serializer) =
+    self |> Yaml.toYaml |> serializer.Serialize
+
+  static member FromYamlObject (yaml: StateMachineYaml) =
+    match yaml.Action with
+    | "AddNode" -> maybe {
+        let! node = yaml.Payload :?> RaftNodeYaml |> Yaml.fromYaml
+        return AddNode(node)
+      }
+    | "UpdateNode" -> maybe {
+        let! node = yaml.Payload :?> RaftNodeYaml |> Yaml.fromYaml
+        return UpdateNode(node)
+      }
+    | "RemoveNode" -> maybe {
+        let! node = yaml.Payload :?> RaftNodeYaml |> Yaml.fromYaml
+        return RemoveNode(node)
+      }
+    | "AddPatch" -> maybe {
+        let! patch = yaml.Payload :?> PatchYaml |> Yaml.fromYaml
+        return AddPatch(patch)
+      }
+    | "UpdatePatch" -> maybe {
+        let! patch = yaml.Payload :?> PatchYaml |> Yaml.fromYaml
+        return UpdatePatch(patch)
+      }
+    | "RemovePatch" -> maybe {
+        let! patch = yaml.Payload :?> PatchYaml |> Yaml.fromYaml
+        return RemovePatch(patch)
+      }
+    | "AddIOBox" -> maybe {
+        let! iobox = yaml.Payload :?> IOBoxYaml |> Yaml.fromYaml
+        return AddIOBox(iobox)
+      }
+    | "UpdateIOBox" -> maybe {
+        let! iobox = yaml.Payload :?> IOBoxYaml |> Yaml.fromYaml
+        return UpdateIOBox(iobox)
+      }
+    | "RemoveIOBox" -> maybe {
+        let! iobox = yaml.Payload :?> IOBoxYaml |> Yaml.fromYaml
+        return RemoveIOBox(iobox)
+      }
+    | "AddCue" -> maybe {
+        let! cue = yaml.Payload :?> CueYaml |> Yaml.fromYaml
+        return AddCue(cue)
+      }
+    | "UpdateCue" -> maybe {
+        let! cue = yaml.Payload :?> CueYaml |> Yaml.fromYaml
+        return UpdateCue(cue)
+      }
+    | "RemoveCue" -> maybe {
+        let! cue = yaml.Payload :?> CueYaml |> Yaml.fromYaml
+        return RemoveCue(cue)
+      }
+    | "AddCueList" -> maybe {
+        let! cuelist = yaml.Payload :?> CueListYaml |> Yaml.fromYaml
+        return AddCueList(cuelist)
+      }
+    | "UpdateCueList" -> maybe {
+        let! cuelist = yaml.Payload :?> CueListYaml |> Yaml.fromYaml
+        return UpdateCueList(cuelist)
+      }
+    | "RemoveCueList" -> maybe {
+        let! cuelist = yaml.Payload :?> CueListYaml |> Yaml.fromYaml
+        return RemoveCueList(cuelist)
+      }
+    | "AddUser" -> maybe {
+        let! user = yaml.Payload :?> UserYaml |> Yaml.fromYaml
+        return AddUser(user)
+      }
+    | "UpdateUser" -> maybe {
+        let! user = yaml.Payload :?> UserYaml |> Yaml.fromYaml
+        return UpdateUser(user)
+      }
+    | "RemoveUser" -> maybe {
+        let! user = yaml.Payload :?> UserYaml |> Yaml.fromYaml
+        return RemoveUser(user)
+      }
+    | "AddSession" -> maybe {
+        let! session = yaml.Payload :?> SessionYaml |> Yaml.fromYaml
+        return AddSession(session)
+      }
+    | "UpdateSession" -> maybe {
+        let! session = yaml.Payload :?> SessionYaml |> Yaml.fromYaml
+        return UpdateSession(session)
+      }
+    | "RemoveSession" -> maybe {
+        let! session = yaml.Payload :?> SessionYaml |> Yaml.fromYaml
+        return RemoveSession(session)
+      }
+    | "Command" -> maybe {
+        let! cmd = yaml.Payload :?> string |> AppCommand.TryParse
+        return Command(cmd)
+      }
+    | "DataSnapshot" -> maybe {
+        let! data = yaml.Payload :?> StateYaml |> Yaml.fromYaml
+        return DataSnapshot(data)
+      }
+    | "LogMsg" -> maybe {
+        let payload = yaml.Payload :?> string
+        let! levelstr, str = match split [| ';' |] payload with
+                             | [| level; str |] -> Some (level, str)
+                             | _              -> None
+        let! loglevel = LogLevel.TryParse levelstr
+        return LogMsg(loglevel, str)
+      }
+    | _ -> None
+
+  static member FromYaml (str: string) : StateMachine option =
+    let serializer = new Serializer()
+    serializer.Deserialize<StateMachineYaml>(str)
+    |> Yaml.fromYaml
 
 #endif
 
@@ -1235,7 +1374,7 @@ and StateMachine =
       if logish.HasValue then
         let log = logish.Value
         log.LogLevel
-        |> LogLevel.Parse
+        |> LogLevel.TryParse
         |> Option.map (fun level -> LogMsg(level, log.Msg))
       else None
 

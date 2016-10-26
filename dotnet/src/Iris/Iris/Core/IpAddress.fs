@@ -37,14 +37,19 @@ type IpAddress =
 
   static member TryParse (str: string) =
 #if JAVASCRIPT
-    IpAddress.Parse str |> Some          // :D
-#else
-    let mutable ip = new IPAddress([||])
-    match IPAddress.TryParse(str, &ip) with
-      | true ->
-        match ip.AddressFamily with
-          | Sockets.AddressFamily.InterNetwork   -> IPv4Address str |> Some
-          | Sockets.AddressFamily.InterNetworkV6 -> IPv6Address str |> Some
-          | _ -> None
+    try
+      IpAddress.Parse str |> Some          // :D
+    with
       | _ -> None
+#else
+    try
+      let ip = IPAddress.Parse(str)
+      match ip.AddressFamily with
+      | Sockets.AddressFamily.InterNetwork   -> IPv4Address str |> Some
+      | Sockets.AddressFamily.InterNetworkV6 -> IPv6Address str |> Some
+      | _ -> None
+    with
+      | exn ->
+        printfn "Error: %s\nValue:%s" exn.Message str
+        None
 #endif

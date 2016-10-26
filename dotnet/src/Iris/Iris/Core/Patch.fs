@@ -10,6 +10,7 @@ open Iris.Web.Core.FlatBufferTypes
 #else
 
 open FlatBuffers
+open SharpYaml.Serialization
 open Iris.Serialization.Raft
 
 #endif
@@ -103,6 +104,9 @@ type Patch =
   static member RemoveIOBox (patch : Patch) (iobox : IOBox) : Patch =
     { patch with IOBoxes = Map.remove iobox.Id patch.IOBoxes }
 
+#if JAVASCRIPT
+#else
+
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
   //  \ V / _` | '_ ` _ \| |
@@ -117,6 +121,34 @@ type Patch =
                    |> Map.toArray
                    |> Array.map (snd >> Yaml.toYaml)
     yaml
+
+  member self.ToYaml (serializer: Serializer) =
+    self
+    |> Yaml.toYaml
+    |> serializer.Serialize
+
+  static member FromYamlObject (yml: PatchYaml) =
+    let ioboxes =
+      Array.fold
+        (fun (ioboxes: Map<Id,IOBox>) (ioyml: IOBoxYaml) ->
+           let parsed : IOBox option = Yaml.fromYaml ioyml
+           match parsed with
+           | Some iobox -> Map.add iobox.Id iobox ioboxes
+           | _          -> ioboxes)
+        Map.empty
+        yml.IOBoxes
+
+    { Id = Id yml.Id
+      Name = yml.Name
+      IOBoxes = ioboxes }
+    |> Some
+
+  static member FromYaml (str: string) : Patch option =
+    let serializer = new Serializer()
+    serializer.Deserialize<PatchYaml>(str)
+    |> Yaml.fromYaml
+
+#endif
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _

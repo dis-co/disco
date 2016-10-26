@@ -20,11 +20,19 @@ type LogLevel =
 
   static member Parse (str: string) =
     match toLower str with
-    | "debug"         -> Some Debug
-    | "info"          -> Some Info
-    | "warn"          -> Some Warn
-    | "err" | "error" -> Some Err
-    | _               -> None
+    | "debug"         -> Debug
+    | "info"          -> Info
+    | "warn"          -> Warn
+    | "err" | "error" -> Err
+    | _               -> failwithf "could not parse %s" str
+
+  static member TryParse (str: string) =
+    try
+      str |> LogLevel.Parse |> Some
+    with
+      | exn ->
+        printfn "Error: %s" exn.Message
+        None
 
   override self.ToString() =
     match self with

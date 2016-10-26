@@ -74,27 +74,19 @@ type RaftNodeState =
       | _                     -> None
 #endif
 
-type RaftNodeYaml(id, hostname, ip, port, web, ws, git, state) as self =
-  [<DefaultValue>] val mutable Id       : string
-  [<DefaultValue>] val mutable HostName : string
-  [<DefaultValue>] val mutable IpAddr   : string
-  [<DefaultValue>] val mutable Port     : uint16
-  [<DefaultValue>] val mutable WebPort  : uint16
-  [<DefaultValue>] val mutable WsPort   : uint16
-  [<DefaultValue>] val mutable GitPort  : uint16
-  [<DefaultValue>] val mutable State    : string
-
-  new () = new RaftNodeYaml(null, null, null, 0us, 0us, 0us, 0us, null)
-
-  do
-    self.Id       <- id
-    self.HostName <- hostname
-    self.IpAddr   <- ip
-    self.Port     <- port
-    self.WebPort  <- web
-    self.WsPort   <- ws
-    self.GitPort  <- git
-    self.State    <- state
+type RaftNodeYaml() =
+  [<DefaultValue>] val mutable Id         : string
+  [<DefaultValue>] val mutable HostName   : string
+  [<DefaultValue>] val mutable IpAddr     : string
+  [<DefaultValue>] val mutable Port       : uint16
+  [<DefaultValue>] val mutable WebPort    : uint16
+  [<DefaultValue>] val mutable WsPort     : uint16
+  [<DefaultValue>] val mutable GitPort    : uint16
+  [<DefaultValue>] val mutable State      : string
+  [<DefaultValue>] val mutable NextIndex  : Index
+  [<DefaultValue>] val mutable MatchIndex : Index
+  [<DefaultValue>] val mutable Voting     : bool
+  [<DefaultValue>] val mutable VotedForMe : bool
 
 //  _   _           _
 // | \ | | ___   __| | ___
@@ -134,33 +126,36 @@ and RaftNode =
 
   member self.ToYamlObject () =
     let yaml = new RaftNodeYaml()
-    yaml.Id <- string self.Id
-    yaml.HostName <- self.HostName
-    yaml.IpAddr <- string self.IpAddr
-    yaml.Port <- self.Port
-    yaml.WebPort <- self.WebPort
-    yaml.WsPort <- self.WsPort
-    yaml.GitPort <- self.GitPort
-    yaml.State <- string self.State
+    yaml.Id         <- string self.Id
+    yaml.HostName   <- self.HostName
+    yaml.IpAddr     <- string self.IpAddr
+    yaml.Port       <- self.Port
+    yaml.WebPort    <- self.WebPort
+    yaml.WsPort     <- self.WsPort
+    yaml.GitPort    <- self.GitPort
+    yaml.State      <- string self.State
+    yaml.NextIndex  <- self.NextIndex
+    yaml.MatchIndex <- self.MatchIndex
+    yaml.Voting     <- self.Voting
+    yaml.VotedForMe <- self.VotedForMe
     yaml
 
   static member FromYamlObject (yaml: RaftNodeYaml) : RaftNode option =
     maybe {
       let! ip = IpAddress.TryParse yaml.IpAddr
       let! state = RaftNodeState.TryParse yaml.State
-      return { Id = Id yaml.Id
-             ; HostName = yaml.HostName
-             ; IpAddr = ip
-             ; Port = yaml.Port
-             ; WebPort = yaml.WebPort
-             ; WsPort = yaml.WsPort
-             ; GitPort = yaml.GitPort
-             ; Voting = true
-             ; VotedForMe = false
-             ; NextIndex = 0u
-             ; MatchIndex = 0u
-             ; State = state
-             }
+      return { Id         = Id yaml.Id
+             ; HostName   = yaml.HostName
+             ; IpAddr     = ip
+             ; Port       = yaml.Port
+             ; WebPort    = yaml.WebPort
+             ; WsPort     = yaml.WsPort
+             ; GitPort    = yaml.GitPort
+             ; Voting     = yaml.Voting
+             ; VotedForMe = yaml.VotedForMe
+             ; NextIndex  = yaml.NextIndex
+             ; MatchIndex = yaml.MatchIndex
+             ; State      = state }
     }
 
   //  ____  _
@@ -225,32 +220,21 @@ and RaftNode =
 //   |_|\__,_|_| |_| |_|_|   |_| \__, | .__/ \___|
 //                               |___/|_|
 
-type ConfigChangeYaml(tipe: string, id: string) as self =
+type ConfigChangeYaml() =
   [<DefaultValue>] val mutable ChangeType : string
-  [<DefaultValue>] val mutable NodeId     : string
+  [<DefaultValue>] val mutable Node       : RaftNodeYaml
 
-  new () = new ConfigChangeYaml(null, null)
+  static member NodeAdded (node: RaftNodeYaml) =
+    let yaml = new ConfigChangeYaml()
+    yaml.ChangeType <- "NodeAdded"
+    yaml.Node <- node
+    yaml
 
-  do
-    self.ChangeType <- tipe
-    self.NodeId     <- id
-
-  member self.ToConfigChange (nodes: RaftNode array) =
-    match self.ChangeType with
-      | "NodeAdded"   -> Some (NodeAdded (failwith "ohai"))
-      | "NodeRemoved" -> Some (NodeRemoved (failwith "ohai"))
-      | _ -> None
-
-  static member FromConfigChange (chng: ConfigChange) =
-    match chng with
-    | NodeAdded node -> ConfigChangeYaml.NodeAdded(node.Id)
-    | NodeRemoved node -> ConfigChangeYaml.NodeRemoved(node.Id)
-
-  static member NodeAdded (id: Id) =
-    new ConfigChangeYaml("NodeAdded", string id)
-
-  static member NodeRemoved (id: Id) =
-    new ConfigChangeYaml("NodeRemoved", string id)
+  static member NodeRemoved (node: RaftNodeYaml) =
+    let yaml = new ConfigChangeYaml()
+    yaml.ChangeType <- "NodeRemoved"
+    yaml.Node <- node
+    yaml
 
 //   ____             __ _        ____ _
 //  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
@@ -327,10 +311,22 @@ and ConfigChange =
   //   |_|\__,_|_| |_| |_|_|
 
 
-  member self.ToYamlObject() = ConfigChangeYaml.FromConfigChange self
+  member self.ToYamlObject() =
+    match self with
+    | NodeAdded node   -> node |> Yaml.toYaml |> ConfigChangeYaml.NodeAdded
+    | NodeRemoved node -> node |> Yaml.toYaml |> ConfigChangeYaml.NodeRemoved
 
   static member FromYamlObject (yml: ConfigChangeYaml) =
-    implement "ConfigChange.FromYamlObject"
+    match yml.ChangeType with
+    | "NodeAdded" -> maybe {
+        let! node = Yaml.fromYaml yml.Node
+        return NodeAdded(node)
+      }
+    | "NodeRemoved" -> maybe {
+        let! node = Yaml.fromYaml yml.Node
+        return NodeRemoved(node)
+      }
+    | _ -> None
 
 [<RequireQualifiedAccess>]
 module Node =

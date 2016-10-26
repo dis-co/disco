@@ -220,6 +220,12 @@ type User =
 #if JAVASCRIPT
 #else
 
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
   member self.ToYamlObject () =
     new UserYaml(
       string self.Id,
@@ -233,9 +239,7 @@ type User =
   member self.ToYaml(serializer: Serializer) =
     self |> Yaml.toYaml |> serializer.Serialize
 
-  static member FromYaml(str: string) =
-    let serializer = new Serializer()
-    let yaml = serializer.Deserialize<UserYaml>(str)
+  static member FromYamlObject (yaml: UserYaml) =
     try
       { Id = Id yaml.Id
       ; UserName = yaml.UserName
@@ -250,6 +254,10 @@ type User =
         printfn "Could not deserialize USer: %s" exn.Message
         None
 
+  static member FromYaml(str: string) =
+    let serializer = new Serializer()
+    serializer.Deserialize<UserYaml>(str)
+    |> User.FromYamlObject
 
   member self.DirName
     with get () = "users"

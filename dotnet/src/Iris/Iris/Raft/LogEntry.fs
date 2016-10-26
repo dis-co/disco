@@ -15,7 +15,7 @@ open FlatBuffers
 
 #endif
 
-type LogYaml() =
+type RaftLogEntryYaml() =
 
   [<DefaultValue>] val mutable LogType   : string
   [<DefaultValue>] val mutable Id        : string
@@ -29,7 +29,7 @@ type LogYaml() =
   [<DefaultValue>] val mutable Previous  : string
 
   static member Configuration (id, idx, term, nodes, prev) =
-    let yaml = new LogYaml()
+    let yaml = new RaftLogEntryYaml()
     yaml.LogType  <- "Configuration"
     yaml.Id       <- id
     yaml.Index    <- idx
@@ -39,7 +39,7 @@ type LogYaml() =
     yaml
 
   static member JointConsensus (id, idx, term, changes, prev) =
-    let yaml = new LogYaml()
+    let yaml = new RaftLogEntryYaml()
     yaml.LogType <- "JointConsensus"
     yaml.Id <- id
     yaml.Index <- idx
@@ -49,7 +49,7 @@ type LogYaml() =
     yaml
 
   static member LogEntry (id, idx, term, sm, prev) =
-    let yaml = new LogYaml()
+    let yaml = new RaftLogEntryYaml()
     yaml.LogType <- "LogEntry"
     yaml.Id <- id
     yaml.Index <- idx
@@ -59,7 +59,7 @@ type LogYaml() =
     yaml
 
   static member Snapshot (id, idx, term, lidx, lterm, nodes, sm) =
-    let yaml = new LogYaml()
+    let yaml = new RaftLogEntryYaml()
     yaml.LogType <- "LogEntry"
     yaml.Id <- id
     yaml.Index <- idx
@@ -69,6 +69,51 @@ type LogYaml() =
     yaml.Nodes <- nodes
     yaml.Data <- sm
     yaml
+
+  override self.Equals(obj) =
+    match obj with
+    | :? RaftLogEntryYaml as other ->
+      (self :> System.IEquatable<RaftLogEntryYaml>).Equals(other)
+    | _ -> false
+
+  override self.GetHashCode() =
+    hash (self.LogType
+         ,self.Id
+         ,self.Index
+         ,self.Term
+         ,self.LastIndex
+         ,self.LastTerm
+         ,self.Changes
+         ,self.Nodes
+         ,self.Data
+         ,self.Previous)
+
+  interface System.IEquatable<RaftLogEntryYaml> with
+    member self.Equals(other: RaftLogEntryYaml) =
+      self.LogType   = other.LogType   &&
+      self.Id        = other.Id        &&
+      self.Index     = other.Index     &&
+      self.Term      = other.Term      &&
+      self.LastIndex = other.LastIndex &&
+      self.LastTerm  = other.LastTerm  &&
+      self.Changes   = other.Changes   &&
+      self.Nodes     = other.Nodes     &&
+      self.Data      = other.Data      &&
+      self.Previous  = other.Previous
+
+  interface System.IComparable<RaftLogEntryYaml> with
+    member self.CompareTo (other: RaftLogEntryYaml) =
+      match self.Index, other.Index with
+      | x, y when x > y -> -1
+      | x, y when x = y ->  0
+      |             _   ->  1
+
+  interface System.IComparable with
+    member self.CompareTo (obj) =
+      match obj with
+      | :? RaftLogEntryYaml as other ->
+        (self :> System.IComparable<RaftLogEntryYaml>).CompareTo(other)
+      | _ -> failwith "Cannot compare Apples with Pears"
 
 ///  _                _____       _
 /// | |    ___   __ _| ____|_ __ | |_ _ __ _   _
@@ -484,48 +529,105 @@ and RaftLogEntry =
   /// ### Signature:
   /// - unit: unit
   ///
-  /// Returns: LogYaml
+  /// Returns: RaftLogEntryYaml
   member self.ToYamlObject () =
     match self with
     | Configuration(id, idx, term, nodes, Some prev) ->
       let lid = string id
       let previd = prev.Id |> string
       let nids = Array.map Yaml.toYaml nodes
-      LogYaml.Configuration(lid, idx, term, nids, previd)
+      RaftLogEntryYaml.Configuration(lid, idx, term, nids, previd)
 
     | Configuration(id, idx, term, nodes, None) ->
       let lid = string id
       let previd = null
       let nids = Array.map Yaml.toYaml nodes
-      LogYaml.Configuration(lid, idx, term, nids, previd)
+      RaftLogEntryYaml.Configuration(lid, idx, term, nids, previd)
 
     | JointConsensus(id, idx, term, changes, Some prev) ->
       let lid = string id
       let previd = prev.Id |> string
       let ymls = Array.map Yaml.toYaml changes
-      LogYaml.JointConsensus(lid, idx, term, ymls, previd)
+      RaftLogEntryYaml.JointConsensus(lid, idx, term, ymls, previd)
 
     | JointConsensus(id, idx, term, changes, None) ->
       let lid = string id
       let previd = null
       let ymls = Array.map Yaml.toYaml changes
-      LogYaml.JointConsensus(lid, idx, term, ymls, previd)
+      RaftLogEntryYaml.JointConsensus(lid, idx, term, ymls, previd)
 
     | LogEntry(id, idx, term, smentry, None) ->
       let lid = string id
       let previd = null
       let yml = Yaml.toYaml smentry
-      LogYaml.LogEntry(lid, idx, term, yml, previd)
+      RaftLogEntryYaml.LogEntry(lid, idx, term, yml, previd)
 
     | LogEntry(id, idx, term, smentry, Some prev) ->
       let lid = string id
       let previd = prev.Id |> string
-      LogYaml.LogEntry(lid, idx, term, Yaml.toYaml smentry, previd)
+      RaftLogEntryYaml.LogEntry(lid, idx, term, Yaml.toYaml smentry, previd)
 
     | Snapshot(id, idx, term, lidx, lterm, nodes, smentry) ->
       let lid = string id
       let nids = Array.map Yaml.toYaml nodes
-      LogYaml.Snapshot(lid, idx, term, lidx, lterm, nids, Yaml.toYaml smentry)
+      let yml = Yaml.toYaml smentry
+      RaftLogEntryYaml.Snapshot(lid, idx, term, lidx, lterm, nids, yml)
+
+  static member FromYamlObject (yaml: RaftLogEntryYaml) =
+    match yaml.LogType with
+    | "LogEntry" -> maybe {
+        let id = Id yaml.Id
+        let! data = Yaml.fromYaml yaml.Data
+        return LogEntry(id, yaml.Index, yaml.Term, data, None)
+      }
+    | "Configuration" -> maybe {
+        let id = Id yaml.Id
+        let nodes =
+          Array.fold
+            (fun (i: int, arr: RaftNode array) (yml: RaftNodeYaml) ->
+              match Yaml.fromYaml yml with
+              | Some node -> arr.[i] <- node
+              | _         -> ()
+              (i + 1, arr))
+            (0, Array.zeroCreate yaml.Nodes.Length)
+            yaml.Nodes
+          |> snd
+        return Configuration(id, yaml.Index, yaml.Term, nodes, None)
+      }
+    | "JointConsensus" -> maybe {
+        let id = Id yaml.Id
+        let changes =
+          Array.fold
+            (fun (i: int, arr: ConfigChange array) (yml: ConfigChangeYaml) ->
+              match Yaml.fromYaml yml with
+              | Some change -> arr.[i] <- change
+              | _           -> ()
+              (i + 1, arr))
+            (0, Array.zeroCreate yaml.Changes.Length)
+            yaml.Changes
+          |> snd
+        return JointConsensus(id, yaml.Index, yaml.Term, changes, None)
+      }
+    | "Snapshot" -> maybe {
+        let id = Id yaml.Id
+        let idx = yaml.Index
+        let term = yaml.Term
+        let lidx = yaml.LastIndex
+        let lterm = yaml.LastTerm
+        let! data = Yaml.fromYaml yaml.Data
+        let nodes =
+          Array.fold
+            (fun (i: int, arr: RaftNode array) (yml: RaftNodeYaml) ->
+              match Yaml.fromYaml yml with
+              | Some node -> arr.[i] <- node
+              | _         -> ()
+              (i + 1, arr))
+            (0, Array.zeroCreate yaml.Nodes.Length)
+            yaml.Nodes
+          |> snd
+        return Snapshot(id, idx, term, lidx, lterm, nodes, data)
+      }
+    | _                -> None
 
 
 [<RequireQualifiedAccess>]
@@ -537,8 +639,15 @@ module LogEntry =
   //  | | (_| |
   //  |_|\__,_|
   //
-  /// Return the current log entry id.
 
+  /// ## Get the Id of a log entry
+  ///
+  /// Get the unique identifier of the top-most log entry
+  ///
+  /// ### Signature:
+  /// - log: RaftLogEntry to get Id ofg
+  ///
+  /// Returns: Id
   let getId (log: RaftLogEntry) = log.Id
 
   //  _      ____             __ _        ____ _

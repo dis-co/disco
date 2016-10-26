@@ -6,6 +6,7 @@ open System.Net
 open System.Linq
 open System.Net.NetworkInformation
 open System.Text.RegularExpressions
+open System.Runtime.CompilerServices
 
 [<RequireQualifiedAccess>]
 module List =
@@ -257,3 +258,14 @@ module Utils =
 
   let implement (str: string) =
     failwithf "FIXME: implement %s" str
+
+  /// ## toPair on types with Id member
+  ///
+  /// Create a tuple from types that have an `Id` member/field.
+  ///
+  /// ### Signature:
+  /// - a: type with member `Id` to create tuple of
+  ///
+  /// Returns: Id * ^t
+  let inline toPair< ^t, ^i when ^t : (member Id : ^i)> (a: ^t) : ^i * ^t =
+    ((^t : (member Id : ^i) a), a)

@@ -284,7 +284,7 @@ module Config =
   /// Returns: RaftConfig
   let private parseRaft (cfg : ConfigFile) : RaftConfig =
     let loglevel =
-      match LogLevel.Parse cfg.Project.Engine.LogLevel with
+      match LogLevel.TryParse cfg.Project.Engine.LogLevel with
       | Some level -> level
       | _          -> Debug
 

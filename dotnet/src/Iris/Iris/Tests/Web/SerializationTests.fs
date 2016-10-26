@@ -50,7 +50,7 @@ module SerializationTests =
     { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes () }
 
   let mkPatch _ : Patch =
-    let ioboxes = ioboxes () |> Array.map (fun b -> (b.Id,b)) |> Map.ofArray
+    let ioboxes = ioboxes () |> Array.map toPair |> Map.ofArray
     { Id = Id.Create(); Name = "Patch 3"; IOBoxes = ioboxes }
 
   let mkCueList _ : CueList =
@@ -77,7 +77,7 @@ module SerializationTests =
 
   let mkState _ =
     { Patches  = Map.empty // mkPatch   () |> fun (patch: Patch) -> Map.ofList [ (patch.Id, patch) ]
-    ; IOBoxes  = Map.empty // ioboxes   () |> (fun (boxes: IOBox array) -> Array.map (fun (box: IOBox) -> (box.Id,box)) boxes) |> Map.ofArray
+    ; IOBoxes  = Map.empty // ioboxes   () |> (fun (boxes: IOBox array) -> Array.map toPair boxes) |> Map.ofArray
     ; Cues     = Map.empty // mkCue     () |> fun (cue: Cue) -> Map.ofList [ (cue.Id, cue) ]
     ; CueLists = Map.empty // mkCueList () |> fun (cuelist: CueList) -> Map.ofList [ (cuelist.Id, cuelist) ]
     ; Nodes    = Map.empty // mkNode    () |> fun (node: RaftNode) -> Map.ofList [ (node.Id, node) ]

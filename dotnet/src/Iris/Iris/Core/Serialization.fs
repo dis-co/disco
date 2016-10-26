@@ -88,4 +88,17 @@ module Yaml =
   let inline fromYaml< ^a, ^t when ^t : (static member FromYamlObject : ^a -> ^t option)> (thing: ^a) =
     (^t : (static member FromYamlObject : ^a -> ^t option) thing)
 
+  let inline arrayToMap< ^i, ^a, ^t when ^t : (static member FromYamlObject : ^a -> ^t option)
+                                    and  ^t : (member Id : ^i)
+                                    and  ^i : comparison> (things: ^a array) =
+    Array.fold
+      (fun (m: Map< ^i, ^t >) (yml: ^a) ->
+        match fromYaml yml with
+         Some thing ->
+          let id = (^t : (member Id : ^i) thing)
+          Map.add id thing m
+        | _ -> m)
+      Map.empty
+      things
+
 #endif

@@ -5,7 +5,19 @@ open System.Collections
 open FlatBuffers
 open Iris.Core
 open Iris.Serialization.Raft
-open SharpYaml
+open SharpYaml.Serialization
+
+// __   __              _    ___  _     _           _
+// \ \ / /_ _ _ __ ___ | |  / _ \| |__ (_) ___  ___| |_
+//  \ V / _` | '_ ` _ \| | | | | | '_ \| |/ _ \/ __| __|
+//   | | (_| | | | | | | | | |_| | |_) | |  __/ (__| |_
+//   |_|\__,_|_| |_| |_|_|  \___/|_.__// |\___|\___|\__|
+//                                   |__/
+
+type RaftLogYaml() =
+  [<DefaultValue>] val mutable Data  : RaftLogEntryYaml array
+  [<DefaultValue>] val mutable Depth : Long
+  [<DefaultValue>] val mutable Index : Index
 
 //  _
 // | |    ___   __ _
@@ -60,14 +72,57 @@ type RaftLog =
            ; Depth = 0u
            ; Index = 0u }
 
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
   member self.ToYamlObject () =
+    let yaml = new RaftLogYaml()
     let arr = Array.zeroCreate (int self.Depth)
     Option.map
       (fun logdata ->
         LogEntry.iter (fun i entry -> arr.[int i] <- Yaml.toYaml entry))
       self.Data
     |> ignore
-    arr
+    yaml.Data  <- arr
+    yaml.Depth <- self.Depth
+    yaml.Index <- self.Index
+    yaml
+
+  member self.ToYaml (serializer: Serializer) =
+    self
+    |> Yaml.toYaml
+    |> serializer.Serialize
+
+  static member FromYamlObject (log: RaftLogYaml) =
+    let folder (yaml: RaftLogEntryYaml) (entry: RaftLogEntry option) =
+      match Yaml.fromYaml yaml with
+      | Some (LogEntry(id, idx, term, data, _)) ->
+        Some (LogEntry(id, idx, term, data, entry))
+      | Some (Configuration(id, idx, term, nodes, _))->
+        Some (Configuration(id, idx, term, nodes, entry))
+      | Some (JointConsensus(id, idx, term, changes, _)) ->
+        Some (JointConsensus(id, idx, term, changes, entry))
+      | Some (Snapshot _) as value -> value
+      | _ -> entry
+
+    let bare = { Data = None; Depth = 0u; Index = 0u }
+
+    match Array.foldBack folder (Array.sort log.Data) None with
+    | None -> Some bare
+    | Some _ as value ->
+      { bare with
+          Data = value
+          Depth = log.Depth
+          Index = log.Index }
+      |> Some
+
+  static member FromYaml (str: string) : RaftLog option =
+    let serializer = new Serializer()
+    serializer.Deserialize<RaftLogYaml>(str)
+    |> Yaml.fromYaml
 
 //  _                  __  __           _       _
 // | |    ___   __ _  |  \/  | ___   __| |_   _| | ___

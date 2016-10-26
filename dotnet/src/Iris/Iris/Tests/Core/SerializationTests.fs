@@ -301,7 +301,7 @@ module SerializationTests =
     { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes () }
 
   let mkPatch _ : Patch =
-    let ioboxes = ioboxes () |> Array.map (fun b -> (b.Id,b)) |> Map.ofArray
+    let ioboxes = ioboxes () |> Array.map toPair |> Map.ofArray
     { Id = Id.Create(); Name = "Patch 3"; IOBoxes = ioboxes }
 
   let mkCueList _ : CueList =
@@ -319,6 +319,11 @@ module SerializationTests =
 
   let mkNode _ = Id.Create() |> Node.create
 
+  let mkNodes _ =
+    let n = rand.Next(1, 6)
+    [| for _ in 0 .. n do
+        yield mkNode () |]
+
   let mkSession _ =
     { Id = Id.Create()
     ; UserName = "krgn"
@@ -328,13 +333,45 @@ module SerializationTests =
 
   let mkState _ =
     { Patches  = mkPatch   () |> fun (patch: Patch) -> Map.ofList [ (patch.Id, patch) ]
-    ; IOBoxes  = ioboxes   () |> (fun (boxes: IOBox array) -> Array.map (fun (box: IOBox) -> (box.Id,box)) boxes) |> Map.ofArray
+    ; IOBoxes  = ioboxes   () |> (fun (boxes: IOBox array) -> Array.map toPair boxes) |> Map.ofArray
     ; Cues     = mkCue     () |> fun (cue: Cue) -> Map.ofList [ (cue.Id, cue) ]
     ; CueLists = mkCueList () |> fun (cuelist: CueList) -> Map.ofList [ (cuelist.Id, cuelist) ]
     ; Nodes    = mkNode    () |> fun (node: RaftNode) -> Map.ofList [ (node.Id, node) ]
     ; Sessions = mkSession () |> fun (session: Session) -> Map.ofList [ (session.Id, session) ]
     ; Users    = mkUser    () |> fun (user: User) -> Map.ofList [ (user.Id, user) ]
     }
+
+  let mkChange _ =
+    match rand.Next(0,2) with
+    | n when n > 0 -> NodeAdded(mkNode ())
+    |          _   -> NodeRemoved(mkNode ())
+
+  let mkChanges _ =
+    let n = rand.Next(1, 6)
+    [| for _ in 0 .. n do
+        yield mkChange () |]
+
+  let mkLog _ =
+    LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
+      Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
+        Some <| Configuration(Id.Create(), 5u, 1u, [| mkNode () |],
+          Some <| JointConsensus(Id.Create(), 4u, 1u, mkChanges (),
+            Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mkNodes (), DataSnapshot State.Empty)))))
+    |> Log.fromEntries
+
+  //  ____        __ _   _
+  // |  _ \ __ _ / _| |_| |    ___   __ _
+  // | |_) / _` | |_| __| |   / _ \ / _` |
+  // |  _ < (_| |  _| |_| |__| (_) | (_| |
+  // |_| \_\__,_|_|  \__|_____\___/ \__, |
+  //                                |___/
+
+  let test_validate_log_yaml_serialization =
+    testCase "Validate Log Yaml Serialization" <| fun _ ->
+      let log : RaftLog = mkLog ()
+
+      let relog = log |> Yaml.encode |> Yaml.decode |> Option.get
+      expect "should be same" log id relog
 
   //   ____
   //  / ___|   _  ___
@@ -382,11 +419,18 @@ module SerializationTests =
   // |  __/ (_| | || (__| | | |
   // |_|   \__,_|\__\___|_| |_|
 
-  let test_validate_patch_serialization =
-    testCase "Validate Patch Serialization" <| fun _ ->
+  let test_validate_patch_binary_serialization =
+    testCase "Validate Patch Binary Serialization" <| fun _ ->
       let patch : Patch = mkPatch ()
 
       let repatch = patch |> Binary.encode |> Binary.decode |> Option.get
+      expect "Should be structurally equivalent" patch id repatch
+
+  let test_validate_patch_yaml_serialization =
+    testCase "Validate Patch Yaml Serialization" <| fun _ ->
+      let patch : Patch = mkPatch ()
+
+      let repatch = patch |> Yaml.encode |> Yaml.decode |> Option.get
       expect "Should be structurally equivalent" patch id repatch
 
   //  ____                _
@@ -395,11 +439,18 @@ module SerializationTests =
   //  ___) |  __/\__ \__ \ | (_) | | | |
   // |____/ \___||___/___/_|\___/|_| |_|
 
-  let test_validate_session_serialization =
-    testCase "Validate Session Serialization" <| fun _ ->
+  let test_validate_session_binary_serialization =
+    testCase "Validate Session Binary Serialization" <| fun _ ->
       let session : Session = mkSession ()
 
       let resession = session |> Binary.encode |> Binary.decode |> Option.get
+      expect "Should be structurally equivalent" session id resession
+
+  let test_validate_session_yaml_serialization =
+    testCase "Validate Session Yaml Serialization" <| fun _ ->
+      let session : Session = mkSession ()
+
+      let resession = session |> Yaml.encode |> Yaml.decode |> Option.get
       expect "Should be structurally equivalent" session id resession
 
   //  _   _
@@ -509,11 +560,18 @@ module SerializationTests =
   //  ___) | || (_| | ||  __/
   // |____/ \__\__,_|\__\___|
 
-  let test_validate_state_serialization =
-    testCase "Validate State Serialization" <| fun _ ->
+  let test_validate_state_binary_serialization =
+    testCase "Validate State Binary Serialization" <| fun _ ->
       let state : State = mkState ()
 
       state |> Binary.encode |> Binary.decode |> Option.get
+      |> expect "Should be structurally equivalent" state id
+
+  let test_validate_state_yaml_serialization =
+    testCase "Validate State Yaml Serialization" <| fun _ ->
+      let state : State = mkState ()
+
+      state |> Yaml.encode |> Yaml.decode |> Option.get
       |> expect "Should be structurally equivalent" state id
 
   //  ____  _        _       __  __            _     _
@@ -522,8 +580,8 @@ module SerializationTests =
   //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
   // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
-  let test_validate_state_machine_serialization =
-    testCase "Validate StateMachine Serialization" <| fun _ ->
+  let test_validate_state_machine_binary_serialization =
+    testCase "Validate StateMachine Binary Serialization" <| fun _ ->
       [ AddCue        <| mkCue ()
       ; UpdateCue     <| mkCue ()
       ; RemoveCue     <| mkCue ()
@@ -549,9 +607,42 @@ module SerializationTests =
       ; Command AppCommand.Undo
       ; LogMsg(Debug, "ohai")
       ]
-      |> List.iter (fun cmd ->
-                     let remsg = cmd |> Binary.encode |> Binary.decode |> Option.get
-                     expect "Should be structurally the same" cmd id remsg)
+      |> List.iter
+          (fun cmd ->
+            let remsg = cmd |> Binary.encode |> Binary.decode |> Option.get
+            expect "Should be structurally the same" cmd id remsg)
+
+  let test_validate_state_machine_yaml_serialization =
+    testCase "Validate StateMachine Yaml Serialization" <| fun _ ->
+      [ AddCue        <| mkCue ()
+      ; UpdateCue     <| mkCue ()
+      ; RemoveCue     <| mkCue ()
+      ; AddCueList    <| mkCueList ()
+      ; UpdateCueList <| mkCueList ()
+      ; RemoveCueList <| mkCueList ()
+      ; AddSession    <| mkSession ()
+      ; UpdateSession <| mkSession ()
+      ; RemoveSession <| mkSession ()
+      ; AddUser       <| mkUser ()
+      ; UpdateUser    <| mkUser ()
+      ; RemoveUser    <| mkUser ()
+      ; AddPatch      <| mkPatch ()
+      ; UpdatePatch   <| mkPatch ()
+      ; RemovePatch   <| mkPatch ()
+      ; AddIOBox      <| mkIOBox ()
+      ; UpdateIOBox   <| mkIOBox ()
+      ; RemoveIOBox   <| mkIOBox ()
+      ; AddNode       <| Node.create (Id.Create())
+      ; UpdateNode    <| Node.create (Id.Create())
+      ; RemoveNode    <| Node.create (Id.Create())
+      ; DataSnapshot  <| mkState ()
+      ; Command AppCommand.Undo
+      ; LogMsg(Debug, "ohai")
+      ]
+      |> List.iter
+          (fun cmd ->
+            let remsg = cmd |> Yaml.encode |> Yaml.decode |> Option.get
+            expect "Should be structurally the same" cmd id remsg)
 
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
@@ -561,29 +652,34 @@ module SerializationTests =
 
   let serializationTests =
     testList "Serialization Tests" [
-        test_validate_requestvote_serialization
-        test_validate_requestvote_response_serialization
-        test_validate_appendentries_serialization
-        test_validate_appendentries_response_serialization
-        test_validate_installsnapshot_serialization
-        test_validate_handshake_serialization
-        test_validate_handwaive_serialization
-        test_validate_redirect_serialization
-        test_validate_welcome_serialization
-        test_validate_arrivederci_serialization
-        test_validate_errorresponse_serialization
-        test_validate_cue_binary_serialization
-        test_validate_cue_yaml_serialization
-        test_validate_cuelist_binary_serialization
-        test_validate_cuelist_yaml_serialization
-        test_validate_patch_serialization
-        test_validate_session_serialization
-        test_validate_user_binary_serialization
-        test_validate_user_yaml_serialization
-        test_validate_slice_binary_serialization
-        test_validate_slice_yaml_serialization
-        test_validate_iobox_binary_serialization
-        test_validate_iobox_yaml_serialization
-        test_validate_state_serialization
-        test_validate_state_machine_serialization
-      ]
+      test_validate_requestvote_serialization
+      test_validate_requestvote_response_serialization
+      test_validate_appendentries_serialization
+      test_validate_appendentries_response_serialization
+      test_validate_installsnapshot_serialization
+      test_validate_handshake_serialization
+      test_validate_handwaive_serialization
+      test_validate_redirect_serialization
+      test_validate_welcome_serialization
+      test_validate_arrivederci_serialization
+      test_validate_errorresponse_serialization
+      test_validate_log_yaml_serialization
+      test_validate_cue_binary_serialization
+      test_validate_cue_yaml_serialization
+      test_validate_cuelist_binary_serialization
+      test_validate_cuelist_yaml_serialization
+      test_validate_patch_binary_serialization
+      test_validate_patch_yaml_serialization
+      test_validate_session_binary_serialization
+      test_validate_session_yaml_serialization
+      test_validate_user_binary_serialization
+      test_validate_user_yaml_serialization
+      test_validate_slice_binary_serialization
+      test_validate_slice_yaml_serialization
+      test_validate_iobox_binary_serialization
+      test_validate_iobox_yaml_serialization
+      test_validate_state_binary_serialization
+      test_validate_state_yaml_serialization
+      test_validate_state_machine_binary_serialization
+      test_validate_state_machine_yaml_serialization
+    ]

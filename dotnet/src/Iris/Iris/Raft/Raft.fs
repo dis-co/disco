@@ -239,7 +239,11 @@ module Raft =
 
   let hasNonVotingNodes (state: RaftValue) =
     Map.fold
-      (fun b _ n -> if b then b else not (Node.hasSufficientLogs n && Node.isVoting n))
+      (fun b _ n ->
+        if b then
+          b
+        else
+          not (Node.hasSufficientLogs n && Node.isVoting n))
       false
       state.Peers
 
@@ -260,7 +264,7 @@ module Raft =
       | _ -> None
 
   let logicalPeers (state: RaftValue) =
-    // when setting the NumNodes counter we have to include the old config, if set
+    // when setting the NumNodes counter we have to include the old config
     if inJointConsensus state then
         // take the old peers as seed and apply the new peers on top
       match state.OldPeers with
@@ -627,7 +631,9 @@ module Raft =
 
   let setVotingM (node: RaftNode) (vote: bool) =
     raft {
-      do! debug <| sprintf "setVotingM: setting node %s voting to %b" (string node.Id) vote
+      do! debug <| sprintf "setVotingM: setting node %s voting to %b"
+                    (string node.Id)
+                     vote
       do! setVoting node vote |> modify
     }
 
@@ -804,11 +810,11 @@ module Raft =
           |> not
 
         let peers =
-          if parting then               // we have been kicked out of the cluster configuration
+          if parting then // we have been kicked out of the configuration
             [| (state.Node.Id, state.Node) |]
             |> Map.ofArray
-          else                          // we are still part of the new cluster configuration
-            Array.map (fun (node: RaftNode) -> (node.Id, node)) nodes
+          else            // we are still part of the new cluster configuration
+            Array.map toPair nodes
             |> Map.ofArray
 
         setPeers peers state
@@ -1595,7 +1601,7 @@ module Raft =
 
         // update the cluster configuration
         let peers =
-          Array.map (fun (n: RaftNode) -> (n.Id, n)) nodes
+          Array.map toPair nodes
           |> Map.ofArray
           |> Map.add state.Node.Id state.Node
 

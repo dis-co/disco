@@ -427,28 +427,16 @@ type IRaftCallbacks =
 //                                                                                                                                       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-and RaftMetadata(node, trm, ldr, prs, vfor, logs, eto, rto, mld) as self =
+and RaftValueYaml() =
   [<DefaultValue>] val mutable Node            : string
   [<DefaultValue>] val mutable Term            : Term
   [<DefaultValue>] val mutable Leader          : string
   [<DefaultValue>] val mutable Peers           : RaftNodeYaml array
   [<DefaultValue>] val mutable VotedFor        : string
-  [<DefaultValue>] val mutable Logs            : LogYaml array
+  [<DefaultValue>] val mutable Log             : RaftLogYaml
   [<DefaultValue>] val mutable ElectionTimeout : Long
   [<DefaultValue>] val mutable RequestTimeout  : Long
   [<DefaultValue>] val mutable MaxLogDepth     : Long
-
-  new () = new RaftMetadata(null, 0u, null, null, null, null, 0u, 0u, 0u)
-
-  do
-    self.Node            <- node
-    self.Term            <- trm
-    self.Leader          <- ldr
-    self.Peers           <- prs
-    self.VotedFor        <- vfor
-    self.Logs            <- logs
-    self.ElectionTimeout <- eto
-    self.RequestTimeout  <- eto
 
 and RaftValue =
   { Node              : RaftNode
@@ -513,10 +501,10 @@ ConfigChangeEntry = %s
   //   |_|\__,_|_| |_| |_|_|
 
   member self.ToYaml(serializer: Serializer) =
-    Yaml.toYaml self |> serializer.Serialize
+    self |> Yaml.toYaml |> serializer.Serialize
 
   member self.ToYamlObject() =
-    let yaml = new RaftMetadata()
+    let yaml = new RaftValueYaml()
     yaml.Node <- string self.Node.Id
     yaml.Term <- self.CurrentTerm
 
@@ -534,13 +522,13 @@ ConfigChangeEntry = %s
       self.VotedFor
     |> ignore
 
-    yaml.Logs <- Yaml.toYaml self.Log
+    yaml.Log <- Yaml.toYaml self.Log
     yaml.ElectionTimeout <- self.ElectionTimeout
     yaml.RequestTimeout <- self.RequestTimeout
     yaml.MaxLogDepth <- self.MaxLogDepth
     yaml
 
-  static member FromYamlObject (yaml: RaftMetadata) : RaftValue option =
+  static member FromYamlObject (yaml: RaftValueYaml) : RaftValue option =
     let leader =
       if isNull yaml.Leader then
         None
@@ -560,7 +548,7 @@ ConfigChangeEntry = %s
         (Yaml.fromYaml peer)
       |> ignore
 
-    let log = Yaml.fromYaml yaml.Logs
+    let log = Yaml.fromYaml yaml.Log
     let node = Map.tryFind (Id yaml.Node) !nodes
 
     match log, node with
@@ -570,7 +558,7 @@ ConfigChangeEntry = %s
       ; CurrentTerm       = yaml.Term
       ; CurrentLeader     = leader
       ; Peers             = !nodes
-      ; OldPeers          = Map.empty
+      ; OldPeers          = None
       ; NumNodes          = uint32 yaml.Peers.Length
       ; VotedFor          = votedfor
       ; Log               = log
@@ -585,7 +573,9 @@ ConfigChangeEntry = %s
     | _ -> None
 
   static member FromYaml (str: string) : RaftValue option =
-    None
+    let serializer = new Serializer()
+    serializer.Deserialize<RaftValueYaml>(str)
+    |> Yaml.fromYaml
 
 ////////////////////////////////////////
 //  __  __                       _    //
