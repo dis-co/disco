@@ -145,24 +145,6 @@ module Either =
     | Right value2 -> succeed (v1, value2)
     | Left err     -> Left err
 
-  /// ## Exit with an exit code on failure
-  ///
-  /// Apply function `f` to inner value of `a` *if* `a` is a success,
-  /// otherwise exit with an exit code derived from the error value.
-  ///
-  /// ### Signature:
-  /// - `f`: function to apply to inner value of `a`
-  /// - `a`: value to apply function
-  ///
-  /// Returns: ^b
-  let inline orExit< ^a, ^b >
-                   (f: ^a -> ^b)
-                   (a: Either< IrisError, ^a>)
-                   : ^b =
-    match a with
-    | Right value -> f value
-    | Left error  -> Error.exitWith error
-
   /// ## Transform an Option value into an Either
   ///
   /// Converts the passed value of type `'t option` into an
@@ -181,6 +163,19 @@ module Either =
     match a with
     | Some value -> Right value
     | None       -> Left err
+
+  let inline tryWith< ^a, ^err >
+                    (err: (string -> ^err))
+                    (loc: string)
+                    (f: unit -> ^a)
+                    : Either< ^err, ^a > =
+    try
+      f() |> succeed
+    with
+      | exn ->
+        sprintf "Could not parse %s: %s" loc exn.Message
+        |> err
+        |> fail
 
 //  _____ _ _   _                 ____        _ _     _
 // | ____(_) |_| |__   ___ _ __  | __ ) _   _(_) | __| | ___ _ __

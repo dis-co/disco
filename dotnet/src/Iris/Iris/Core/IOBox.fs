@@ -186,94 +186,55 @@ type SliceYaml(tipe, idx, value: obj) as self =
   static member CompoundSlice(idx, value) =
     new SliceYaml("CompoundSlice", idx, value)
 
-  member self.ToStringSliceD() : StringSliceD option =
-    try
-      let result : StringSliceD =
-        { Index = self.Index; Value = string self.Value }
-      Some result
-    with
-      | exn ->
-        printfn "Could not de-serialize StringSlice yaml: %s" exn.Message
-        None
+  member self.ToStringSliceD() : Either<IrisError,StringSliceD> =
+    Either.tryWith ParseError "StringSlice" <| fun _ ->
+      StringSliceD.Create
+        self.Index
+        (string self.Value)
 
-  member self.ToIntSliceD() : IntSliceD option =
-    try
-      let result : IntSliceD =
-        { Index = self.Index; Value = Int32.Parse (string self.Value) }
-      Some result
-    with
-      | exn ->
-        printfn "Could not de-serialize IntSlice yaml: %s" exn.Message
-        None
+  member self.ToIntSliceD() : Either<IrisError,IntSliceD> =
+    Either.tryWith ParseError "IntSlice" <| fun _ ->
+      IntSliceD.Create
+        self.Index
+        (Int32.Parse (string self.Value))
 
-  member self.ToFloatSliceD() : FloatSliceD option =
-    try
-      let result : FloatSliceD =
-        { Index = self.Index; Value = Double.Parse (string self.Value) }
-      Some result
-    with
-      | exn ->
-        printfn "Could not de-serialize FloatSlice yaml: %s" exn.Message
-        None
+  member self.ToFloatSliceD() : Either<IrisError, FloatSliceD> =
+    Either.tryWith ParseError "FloatSlice" <| fun _ ->
+      FloatSliceD.Create
+        self.Index
+        (Double.Parse (string self.Value))
 
-  member self.ToDoubleSliceD() : DoubleSliceD option =
-    try
-      let result : DoubleSliceD =
-        { Index = self.Index; Value = Double.Parse (string self.Value) }
-      Some result
-    with
-      | exn ->
-        printfn "Could not de-serialize DoubleSlice yaml: %s" exn.Message
-        None
+  member self.ToDoubleSliceD() : Either<IrisError, DoubleSliceD> =
+    Either.tryWith ParseError "DoubleSlice" <| fun _ ->
+      DoubleSliceD.Create
+        self.Index
+        (Double.Parse (string self.Value))
 
-  member self.ToBoolSliceD() : BoolSliceD option =
-    try
-      let result : BoolSliceD =
-        { Index = self.Index; Value = Boolean.Parse (string self.Value) }
-      Some result
-    with
-      | exn ->
-        printfn "Could not de-serialize BoolSlice yaml: %s" exn.Message
-        None
+  member self.ToBoolSliceD() : Either<IrisError, BoolSliceD> =
+    Either.tryWith ParseError "BoolSlice" <| fun _ ->
+      BoolSliceD.Create
+        self.Index
+        (Boolean.Parse (string self.Value))
 
-  member self.ToByteSliceD() : ByteSliceD option =
-    try
-      let result : ByteSliceD =
-        { Index = self.Index; Value = Convert.FromBase64String(string self.Value) }
-      Some result
-    with
-      | exn ->
-        printfn "Could not de-serialize ByteSlice yaml: %s" exn.Message
-        None
+  member self.ToByteSliceD() : Either<IrisError, ByteSliceD> =
+    Either.tryWith ParseError "ByteSlice" <| fun _ ->
+      ByteSliceD.Create
+        self.Index
+        (Convert.FromBase64String(string self.Value))
 
-  member self.ToEnumSliceD() : EnumSliceD option =
-    try
-      let property =
-        let pyml = self.Value :?> PropertyYaml
-        { Key = pyml.Key; Value = pyml.Value }
-      let result : EnumSliceD =
-        { Index = self.Index; Value = property }
-      Some result
-    with
-      | exn ->
-        printfn "Could not de-serialize EnumSlice yaml: %s" exn.Message
-        None
+  member self.ToEnumSliceD() : Either<IrisError,EnumSliceD> =
+    Either.tryWith ParseError "EnumSlice" <| fun _ ->
+      let pyml = self.Value :?> PropertyYaml
+      { Key = pyml.Key; Value = pyml.Value }
+      |> EnumSliceD.Create self.Index
 
-  member self.ToColorSliceD() : ColorSliceD option =
-    try
-      match Yaml.fromYaml(self.Value :?> ColorYaml) with
-      | Some color  ->
-        let result : ColorSliceD =
-          { Index = self.Index; Value = color }
-        Some result
-      | _ -> None
-    with
-      | exn ->
-        printfn "Could not de-serialize ColorSlice yaml: %s" exn.Message
-        None
+  member self.ToColorSliceD() : Either<IrisError,ColorSliceD> =
+    Either.tryWith ParseError "ColorSlice" <| fun _ -> either {
+      let! color = Yaml.fromYaml(self.Value :?> ColorYaml)
+      ColorSliceD.Create self.Index color
 
-  member self.ToCompoundSliceD() : CompoundSliceD option =
-    try
+  member self.ToCompoundSliceD() : Either<IrisError,CompoundSliceD>  =
+    Either.tryWith ParseError "CompoundSlice" <| fun _ ->
       let ioboxes =
         Array.fold
           (fun m box ->
@@ -282,14 +243,7 @@ type SliceYaml(tipe, idx, value: obj) as self =
             | _          -> m)
           [| |]
           (self.Value :?> IOBoxYaml array)
-
-      let result : CompoundSliceD =
-        { Index = self.Index; Value = ioboxes }
-      Some result
-    with
-      | exn ->
-        printfn "Could not de-serialize CompoundSlice yaml: %s" exn.Message
-        None
+      CompoundSliceD.Create self.Index ioboxes
 
 and IOBoxYaml() =
   [<DefaultValue>] val mutable BoxType    : string
@@ -1161,6 +1115,10 @@ and BoolSliceD =
   { Index: Index
   ; Value: bool }
 
+  static member Create (idx: Index) (value: bool) =
+    { Index = idx
+      Value = value }
+
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -1174,1289 +1132,1318 @@ and BoolSliceD =
     BoolSliceFB.AddValue(builder, self.Value)
     BoolSliceFB.EndBoolSliceFB(builder)
 
-  static member FromFB(fb: BoolSliceFB) : BoolSliceD option =
-    try
-      { Index = fb.Index
-      ; Value = fb.Value }
-      |> Some
-    with
-      | _ -> None
+    static member FromFB(fb: BoolSliceFB) : BoolSliceD option =
+      try
+        { Index = fb.Index
+        ; Value = fb.Value }
+        |> Some
+      with
+        | _ -> None
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: Binary.Buffer) : BoolSliceD option =
-    Binary.createBuffer bytes
-    |> BoolSliceFB.GetRootAsBoolSliceFB
-    |> BoolSliceD.FromFB
+    static member FromBytes(bytes: Binary.Buffer) : BoolSliceD option =
+      Binary.createBuffer bytes
+      |> BoolSliceFB.GetRootAsBoolSliceFB
+      |> BoolSliceD.FromFB
 
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
+    // __   __              _
+    // \ \ / /_ _ _ __ ___ | |
+    //  \ V / _` | '_ ` _ \| |
+    //   | | (_| | | | | | | |
+    //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
-#else
-  member self.ToYamlObject() =
-    SliceYaml.BoolSlice(self.Index, self.Value)
+  #if JAVASCRIPT
+  #else
+    member self.ToYamlObject() =
+      SliceYaml.BoolSlice(self.Index, self.Value)
 
-  static member FromYamlObject(yaml: SliceYaml) =
-    match yaml.SliceType with
-    | "BoolSlice" -> yaml.ToBoolSliceD()
-    | _           -> None
+    static member FromYamlObject(yaml: SliceYaml) =
+      match yaml.SliceType with
+      | "BoolSlice" -> yaml.ToBoolSliceD()
+      | _           -> None
 
-#endif
+  #endif
 
-//  ___       _   ____
-// |_ _|_ __ | |_| __ )  _____  __
-//  | || '_ \| __|  _ \ / _ \ \/ /
-//  | || | | | |_| |_) | (_) >  <
-// |___|_| |_|\__|____/ \___/_/\_\
+  //  ___       _   ____
+  // |_ _|_ __ | |_| __ )  _____  __
+  //  | || '_ \| __|  _ \ / _ \ \/ /
+  //  | || | | | |_| |_) | (_) >  <
+  // |___|_| |_|\__|____/ \___/_/\_\
 
-and IntBoxD =
-  { Id         : Id
-  ; Name       : string
-  ; Patch      : Id
-  ; Tags       : Tag array
-  ; VecSize    : uint32
-  ; Min        : int
-  ; Max        : int
-  ; Unit       : string
-  ; Slices     : IntSliceD array }
+  and IntBoxD =
+    { Id         : Id
+    ; Name       : string
+    ; Patch      : Id
+    ; Tags       : Tag array
+    ; VecSize    : uint32
+    ; Min        : int
+    ; Max        : int
+    ; Unit       : string
+    ; Slices     : IntSliceD array }
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
 
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
-    let unit = self.Unit |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let tags = IntBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = IntBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    IntBoxFB.StartIntBoxFB(builder)
-    IntBoxFB.AddId(builder, id)
-    IntBoxFB.AddName(builder, name)
-    IntBoxFB.AddPatch(builder, patch)
-    IntBoxFB.AddTags(builder, tags)
-    IntBoxFB.AddVecSize(builder, self.VecSize)
-    IntBoxFB.AddMin(builder, self.Min)
-    IntBoxFB.AddMax(builder, self.Max)
-    IntBoxFB.AddUnit(builder, unit)
-    IntBoxFB.AddSlices(builder, slices)
-    IntBoxFB.EndIntBoxFB(builder)
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let id = string self.Id |> builder.CreateString
+      let name = self.Name |> builder.CreateString
+      let patch = string self.Patch |> builder.CreateString
+      let unit = self.Unit |> builder.CreateString
+      let tagoffsets = Array.map builder.CreateString self.Tags
+      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+      let tags = IntBoxFB.CreateTagsVector(builder, tagoffsets)
+      let slices = IntBoxFB.CreateSlicesVector(builder, sliceoffsets)
+      IntBoxFB.StartIntBoxFB(builder)
+      IntBoxFB.AddId(builder, id)
+      IntBoxFB.AddName(builder, name)
+      IntBoxFB.AddPatch(builder, patch)
+      IntBoxFB.AddTags(builder, tags)
+      IntBoxFB.AddVecSize(builder, self.VecSize)
+      IntBoxFB.AddMin(builder, self.Min)
+      IntBoxFB.AddMax(builder, self.Max)
+      IntBoxFB.AddUnit(builder, unit)
+      IntBoxFB.AddSlices(builder, slices)
+      IntBoxFB.EndIntBoxFB(builder)
 
-  static member FromFB(fb: IntBoxFB) : IntBoxD option =
-    let tags = Array.zeroCreate fb.TagsLength
-    let slices = Array.zeroCreate fb.SlicesLength
-    let unit = if isNull fb.Unit then "" else fb.Unit
+    static member FromFB(fb: IntBoxFB) : IntBoxD option =
+      let tags = Array.zeroCreate fb.TagsLength
+      let slices = Array.zeroCreate fb.SlicesLength
+      let unit = if isNull fb.Unit then "" else fb.Unit
 
-    let mutable i = 0
-    while i < fb.TagsLength do
-      tags.[i] <- fb.Tags(i)
-      i <- i + 1
+      let mutable i = 0
+      while i < fb.TagsLength do
+        tags.[i] <- fb.Tags(i)
+        i <- i + 1
 
-#if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.SlicesLength do
-      fb.Slices(i)
-      |> IntSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
-      i <- i + 1
-#else
-    for i in 0 .. (fb.SlicesLength - 1) do
-      let slice = fb.Slices(i)
-      if slice.HasValue then
-        slice.Value
+  #if JAVASCRIPT
+      let mutable i = 0
+      while i < fb.SlicesLength do
+        fb.Slices(i)
         |> IntSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
-#endif
+        i <- i + 1
+  #else
+      for i in 0 .. (fb.SlicesLength - 1) do
+        let slice = fb.Slices(i)
+        if slice.HasValue then
+          slice.Value
+          |> IntSliceD.FromFB
+          |> Option.map (fun slice -> slices.[i] <- slice)
+          |> ignore
+  #endif
 
-    try
-      { Id         = Id fb.Id
-      ; Name       = fb.Name
-      ; Patch      = Id fb.Patch
-      ; Tags       = tags
-      ; VecSize    = fb.VecSize
-      ; Min        = fb.Min
-      ; Max        = fb.Max
-      ; Unit       = unit
-      ; Slices     = slices }
-      |> Some
-    with
-      | _ -> None
+      try
+        { Id         = Id fb.Id
+        ; Name       = fb.Name
+        ; Patch      = Id fb.Patch
+        ; Tags       = tags
+        ; VecSize    = fb.VecSize
+        ; Min        = fb.Min
+        ; Max        = fb.Max
+        ; Unit       = unit
+        ; Slices     = slices }
+        |> Some
+      with
+        | _ -> None
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: Binary.Buffer) : IntBoxD option =
-    Binary.createBuffer bytes
-    |> IntBoxFB.GetRootAsIntBoxFB
-    |> IntBoxD.FromFB
+    static member FromBytes(bytes: Binary.Buffer) : IntBoxD option =
+      Binary.createBuffer bytes
+      |> IntBoxFB.GetRootAsIntBoxFB
+      |> IntBoxD.FromFB
 
-//  ___       _   ____  _ _
-// |_ _|_ __ | |_/ ___|| (_) ___ ___
-//  | || '_ \| __\___ \| | |/ __/ _ \
-//  | || | | | |_ ___) | | | (_|  __/
-// |___|_| |_|\__|____/|_|_|\___\___|
+  //  ___       _   ____  _ _
+  // |_ _|_ __ | |_/ ___|| (_) ___ ___
+  //  | || '_ \| __\___ \| | |/ __/ _ \
+  //  | || | | | |_ ___) | | | (_|  __/
+  // |___|_| |_|\__|____/|_|_|\___\___|
 
-and IntSliceD =
-  { Index: Index
-  ; Value: int }
+  and IntSliceD =
+    { Index: Index
+    ; Value: int }
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+    static member Create (idx: Index) (value: int) =
+      { Index = idx
+        Value = value }
 
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    IntSliceFB.StartIntSliceFB(builder)
-    IntSliceFB.AddIndex(builder, self.Index)
-    IntSliceFB.AddValue(builder, self.Value)
-    IntSliceFB.EndIntSliceFB(builder)
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
 
-  static member FromFB(fb: IntSliceFB) : IntSliceD option =
-    try
-      { Index = fb.Index
-      ; Value = fb.Value }
-      |> Some
-    with
-      | _ -> None
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      IntSliceFB.StartIntSliceFB(builder)
+      IntSliceFB.AddIndex(builder, self.Index)
+      IntSliceFB.AddValue(builder, self.Value)
+      IntSliceFB.EndIntSliceFB(builder)
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+    static member FromFB(fb: IntSliceFB) : IntSliceD option =
+      try
+        { Index = fb.Index
+        ; Value = fb.Value }
+        |> Some
+      with
+        | _ -> None
 
-  static member FromBytes(bytes: Binary.Buffer) : IntSliceD option =
-    Binary.createBuffer bytes
-    |> IntSliceFB.GetRootAsIntSliceFB
-    |> IntSliceD.FromFB
+    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
+    static member FromBytes(bytes: Binary.Buffer) : IntSliceD option =
+      Binary.createBuffer bytes
+      |> IntSliceFB.GetRootAsIntSliceFB
+      |> IntSliceD.FromFB
 
-#if JAVASCRIPT
-#else
-  member self.ToYamlObject() =
-    SliceYaml.IntSlice(self.Index, self.Value)
+    // __   __              _
+    // \ \ / /_ _ _ __ ___ | |
+    //  \ V / _` | '_ ` _ \| |
+    //   | | (_| | | | | | | |
+    //   |_|\__,_|_| |_| |_|_|
 
-  static member FromYamlObject(yaml: SliceYaml) =
-    match yaml.SliceType with
-    | "IntSlice" -> yaml.ToIntSliceD()
-    | _          -> None
+  #if JAVASCRIPT
+  #else
+    member self.ToYamlObject() =
+      SliceYaml.IntSlice(self.Index, self.Value)
 
-#endif
+    static member FromYamlObject(yaml: SliceYaml) =
+      match yaml.SliceType with
+      | "IntSlice" -> yaml.ToIntSliceD()
+      | _          -> None
 
-//  _____ _             _   ____
-// |  ___| | ___   __ _| |_| __ )  _____  __
-// | |_  | |/ _ \ / _` | __|  _ \ / _ \ \/ /
-// |  _| | | (_) | (_| | |_| |_) | (_) >  <
-// |_|   |_|\___/ \__,_|\__|____/ \___/_/\_\
+  #endif
 
-and FloatBoxD =
-  { Id         : Id
-  ; Name       : string
-  ; Patch      : Id
-  ; Tags       : Tag array
-  ; VecSize    : uint32
-  ; Min        : int
-  ; Max        : int
-  ; Unit       : string
-  ; Precision  : uint32
-  ; Slices     : FloatSliceD array }
+  //  _____ _             _   ____
+  // |  ___| | ___   __ _| |_| __ )  _____  __
+  // | |_  | |/ _ \ / _` | __|  _ \ / _ \ \/ /
+  // |  _| | | (_) | (_| | |_| |_) | (_) >  <
+  // |_|   |_|\___/ \__,_|\__|____/ \___/_/\_\
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+  and FloatBoxD =
+    { Id         : Id
+    ; Name       : string
+    ; Patch      : Id
+    ; Tags       : Tag array
+    ; VecSize    : uint32
+    ; Min        : int
+    ; Max        : int
+    ; Unit       : string
+    ; Precision  : uint32
+    ; Slices     : FloatSliceD array }
 
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
-    let unit = self.Unit |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let tags = FloatBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = FloatBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    FloatBoxFB.StartFloatBoxFB(builder)
-    FloatBoxFB.AddId(builder, id)
-    FloatBoxFB.AddName(builder, name)
-    FloatBoxFB.AddPatch(builder, patch)
-    FloatBoxFB.AddTags(builder, tags)
-    FloatBoxFB.AddVecSize(builder, self.VecSize)
-    FloatBoxFB.AddMin(builder, self.Min)
-    FloatBoxFB.AddMax(builder, self.Max)
-    FloatBoxFB.AddUnit(builder, unit)
-    FloatBoxFB.AddPrecision(builder, self.Precision)
-    FloatBoxFB.AddSlices(builder, slices)
-    FloatBoxFB.EndFloatBoxFB(builder)
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
 
-  static member FromFB(fb: FloatBoxFB) : FloatBoxD option =
-    let tags = Array.zeroCreate fb.TagsLength
-    let slices = Array.zeroCreate fb.SlicesLength
-    let unit = if isNull fb.Unit then "" else fb.Unit
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let id = string self.Id |> builder.CreateString
+      let name = self.Name |> builder.CreateString
+      let patch = string self.Patch |> builder.CreateString
+      let unit = self.Unit |> builder.CreateString
+      let tagoffsets = Array.map builder.CreateString self.Tags
+      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+      let tags = FloatBoxFB.CreateTagsVector(builder, tagoffsets)
+      let slices = FloatBoxFB.CreateSlicesVector(builder, sliceoffsets)
+      FloatBoxFB.StartFloatBoxFB(builder)
+      FloatBoxFB.AddId(builder, id)
+      FloatBoxFB.AddName(builder, name)
+      FloatBoxFB.AddPatch(builder, patch)
+      FloatBoxFB.AddTags(builder, tags)
+      FloatBoxFB.AddVecSize(builder, self.VecSize)
+      FloatBoxFB.AddMin(builder, self.Min)
+      FloatBoxFB.AddMax(builder, self.Max)
+      FloatBoxFB.AddUnit(builder, unit)
+      FloatBoxFB.AddPrecision(builder, self.Precision)
+      FloatBoxFB.AddSlices(builder, slices)
+      FloatBoxFB.EndFloatBoxFB(builder)
 
-    let mutable i = 0
-    while i < fb.TagsLength do
-      tags.[i] <- fb.Tags(i)
-      i <- i + 1
+    static member FromFB(fb: FloatBoxFB) : FloatBoxD option =
+      let tags = Array.zeroCreate fb.TagsLength
+      let slices = Array.zeroCreate fb.SlicesLength
+      let unit = if isNull fb.Unit then "" else fb.Unit
 
-#if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.SlicesLength do
-      fb.Slices(i)
-      |> FloatSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
-      i <- i + 1
-#else
-    for i in 0 .. (fb.SlicesLength - 1) do
-      let slice = fb.Slices(i)
-      if slice.HasValue then
-        slice.Value
+      let mutable i = 0
+      while i < fb.TagsLength do
+        tags.[i] <- fb.Tags(i)
+        i <- i + 1
+
+  #if JAVASCRIPT
+      let mutable i = 0
+      while i < fb.SlicesLength do
+        fb.Slices(i)
         |> FloatSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
-#endif
+        i <- i + 1
+  #else
+      for i in 0 .. (fb.SlicesLength - 1) do
+        let slice = fb.Slices(i)
+        if slice.HasValue then
+          slice.Value
+          |> FloatSliceD.FromFB
+          |> Option.map (fun slice -> slices.[i] <- slice)
+          |> ignore
+  #endif
 
-    try
-      { Id         = Id fb.Id
-      ; Name       = fb.Name
-      ; Patch      = Id fb.Patch
-      ; Tags       = tags
-      ; VecSize    = fb.VecSize
-      ; Min        = fb.Min
-      ; Max        = fb.Max
-      ; Unit       = unit
-      ; Precision  = fb.Precision
-      ; Slices     = slices }
-      |> Some
-    with
-      | _ -> None
+      try
+        { Id         = Id fb.Id
+        ; Name       = fb.Name
+        ; Patch      = Id fb.Patch
+        ; Tags       = tags
+        ; VecSize    = fb.VecSize
+        ; Min        = fb.Min
+        ; Max        = fb.Max
+        ; Unit       = unit
+        ; Precision  = fb.Precision
+        ; Slices     = slices }
+        |> Some
+      with
+        | _ -> None
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: Binary.Buffer) : FloatBoxD option =
-    Binary.createBuffer bytes
-    |> FloatBoxFB.GetRootAsFloatBoxFB
-    |> FloatBoxD.FromFB
+    static member FromBytes(bytes: Binary.Buffer) : FloatBoxD option =
+      Binary.createBuffer bytes
+      |> FloatBoxFB.GetRootAsFloatBoxFB
+      |> FloatBoxD.FromFB
 
-//  _____ _             _   ____  _ _
-// |  ___| | ___   __ _| |_/ ___|| (_) ___ ___
-// | |_  | |/ _ \ / _` | __\___ \| | |/ __/ _ \
-// |  _| | | (_) | (_| | |_ ___) | | | (_|  __/
-// |_|   |_|\___/ \__,_|\__|____/|_|_|\___\___|
+  //  _____ _             _   ____  _ _
+  // |  ___| | ___   __ _| |_/ ___|| (_) ___ ___
+  // | |_  | |/ _ \ / _` | __\___ \| | |/ __/ _ \
+  // |  _| | | (_) | (_| | |_ ___) | | | (_|  __/
+  // |_|   |_|\___/ \__,_|\__|____/|_|_|\___\___|
 
-and FloatSliceD =
-  { Index: Index
-  ; Value: float }
+  and FloatSliceD =
+    { Index: Index
+    ; Value: float }
 
+    static member Create (idx: Index) (value: float) =
+      { Index = idx
+        Value = value }
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
 
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    FloatSliceFB.StartFloatSliceFB(builder)
-    FloatSliceFB.AddIndex(builder, self.Index)
-    FloatSliceFB.AddValue(builder, float32 self.Value)
-    FloatSliceFB.EndFloatSliceFB(builder)
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      FloatSliceFB.StartFloatSliceFB(builder)
+      FloatSliceFB.AddIndex(builder, self.Index)
+      FloatSliceFB.AddValue(builder, float32 self.Value)
+      FloatSliceFB.EndFloatSliceFB(builder)
 
-  static member FromFB(fb: FloatSliceFB) : FloatSliceD option =
-    try
-      { Index = fb.Index
-      ; Value = float fb.Value }
-      |> Some
-    with
-      | _ -> None
+    static member FromFB(fb: FloatSliceFB) : FloatSliceD option =
+      try
+        { Index = fb.Index
+        ; Value = float fb.Value }
+        |> Some
+      with
+        | _ -> None
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: Binary.Buffer) : FloatSliceD option =
-    Binary.createBuffer bytes
-    |> FloatSliceFB.GetRootAsFloatSliceFB
-    |> FloatSliceD.FromFB
+    static member FromBytes(bytes: Binary.Buffer) : FloatSliceD option =
+      Binary.createBuffer bytes
+      |> FloatSliceFB.GetRootAsFloatSliceFB
+      |> FloatSliceD.FromFB
 
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
+    // __   __              _
+    // \ \ / /_ _ _ __ ___ | |
+    //  \ V / _` | '_ ` _ \| |
+    //   | | (_| | | | | | | |
+    //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
-#else
-  member self.ToYamlObject() =
-    SliceYaml.FloatSlice(self.Index, self.Value)
+  #if JAVASCRIPT
+  #else
+    member self.ToYamlObject() =
+      SliceYaml.FloatSlice(self.Index, self.Value)
 
-  static member FromYamlObject(yaml: SliceYaml) =
-    match yaml.SliceType with
-    | "FloatSlice" -> yaml.ToFloatSliceD()
-    | _            -> None
+    static member FromYamlObject(yaml: SliceYaml) =
+      match yaml.SliceType with
+      | "FloatSlice" -> yaml.ToFloatSliceD()
+      | _            -> None
 
-#endif
+  #endif
 
-//  ____              _     _      ____
-// |  _ \  ___  _   _| |__ | | ___| __ )  _____  __
-// | | | |/ _ \| | | | '_ \| |/ _ \  _ \ / _ \ \/ /
-// | |_| | (_) | |_| | |_) | |  __/ |_) | (_) >  <
-// |____/ \___/ \__,_|_.__/|_|\___|____/ \___/_/\_\
+  //  ____              _     _      ____
+  // |  _ \  ___  _   _| |__ | | ___| __ )  _____  __
+  // | | | |/ _ \| | | | '_ \| |/ _ \  _ \ / _ \ \/ /
+  // | |_| | (_) | |_| | |_) | |  __/ |_) | (_) >  <
+  // |____/ \___/ \__,_|_.__/|_|\___|____/ \___/_/\_\
 
-and DoubleBoxD =
-  { Id         : Id
-  ; Name       : string
-  ; Patch      : Id
-  ; Tags       : Tag array
-  ; VecSize    : uint32
-  ; Min        : int
-  ; Max        : int
-  ; Unit       : string
-  ; Precision  : uint32
-  ; Slices     : DoubleSliceD array }
+  and DoubleBoxD =
+    { Id         : Id
+    ; Name       : string
+    ; Patch      : Id
+    ; Tags       : Tag array
+    ; VecSize    : uint32
+    ; Min        : int
+    ; Max        : int
+    ; Unit       : string
+    ; Precision  : uint32
+    ; Slices     : DoubleSliceD array }
 
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let id = string self.Id |> builder.CreateString
+      let name = self.Name |> builder.CreateString
+      let patch = string self.Patch |> builder.CreateString
+      let unit = self.Unit |> builder.CreateString
+      let tagoffsets = Array.map builder.CreateString self.Tags
+      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+      let tags = DoubleBoxFB.CreateTagsVector(builder, tagoffsets)
+      let slices = DoubleBoxFB.CreateSlicesVector(builder, sliceoffsets)
+      DoubleBoxFB.StartDoubleBoxFB(builder)
+      DoubleBoxFB.AddId(builder, id)
+      DoubleBoxFB.AddName(builder, name)
+      DoubleBoxFB.AddPatch(builder, patch)
+      DoubleBoxFB.AddTags(builder, tags)
+      DoubleBoxFB.AddVecSize(builder, self.VecSize)
+      DoubleBoxFB.AddMin(builder, self.Min)
+      DoubleBoxFB.AddMax(builder, self.Max)
+      DoubleBoxFB.AddUnit(builder, unit)
+      DoubleBoxFB.AddPrecision(builder, self.Precision)
+      DoubleBoxFB.AddSlices(builder, slices)
+      DoubleBoxFB.EndDoubleBoxFB(builder)
 
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
-    let unit = self.Unit |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let tags = DoubleBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = DoubleBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    DoubleBoxFB.StartDoubleBoxFB(builder)
-    DoubleBoxFB.AddId(builder, id)
-    DoubleBoxFB.AddName(builder, name)
-    DoubleBoxFB.AddPatch(builder, patch)
-    DoubleBoxFB.AddTags(builder, tags)
-    DoubleBoxFB.AddVecSize(builder, self.VecSize)
-    DoubleBoxFB.AddMin(builder, self.Min)
-    DoubleBoxFB.AddMax(builder, self.Max)
-    DoubleBoxFB.AddUnit(builder, unit)
-    DoubleBoxFB.AddPrecision(builder, self.Precision)
-    DoubleBoxFB.AddSlices(builder, slices)
-    DoubleBoxFB.EndDoubleBoxFB(builder)
+    static member FromFB(fb: DoubleBoxFB) : DoubleBoxD option =
+      let tags = Array.zeroCreate fb.TagsLength
+      let slices = Array.zeroCreate fb.SlicesLength
+      let unit = if isNull fb.Unit then "" else fb.Unit
 
-  static member FromFB(fb: DoubleBoxFB) : DoubleBoxD option =
-    let tags = Array.zeroCreate fb.TagsLength
-    let slices = Array.zeroCreate fb.SlicesLength
-    let unit = if isNull fb.Unit then "" else fb.Unit
+      let mutable i = 0
+      while i < fb.TagsLength do
+        tags.[i] <- fb.Tags(i)
+        i <- i + 1
 
-    let mutable i = 0
-    while i < fb.TagsLength do
-      tags.[i] <- fb.Tags(i)
-      i <- i + 1
-
-#if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.SlicesLength do
-      fb.Slices(i)
-      |> DoubleSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
-      i <- i + 1
-#else
-    for i in 0 .. (fb.SlicesLength - 1) do
-      let slice = fb.Slices(i)
-      if slice.HasValue then
-        slice.Value
+  #if JAVASCRIPT
+      let mutable i = 0
+      while i < fb.SlicesLength do
+        fb.Slices(i)
         |> DoubleSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
-#endif
+        i <- i + 1
+  #else
+      for i in 0 .. (fb.SlicesLength - 1) do
+        let slice = fb.Slices(i)
+        if slice.HasValue then
+          slice.Value
+          |> DoubleSliceD.FromFB
+          |> Option.map (fun slice -> slices.[i] <- slice)
+          |> ignore
+  #endif
 
-    try
-      { Id         = Id fb.Id
-      ; Name       = fb.Name
-      ; Patch      = Id fb.Patch
-      ; Tags       = tags
-      ; VecSize    = fb.VecSize
-      ; Min        = fb.Min
-      ; Max        = fb.Max
-      ; Unit       = unit
-      ; Precision  = fb.Precision
-      ; Slices     = slices }
-      |> Some
-    with
-      | _ -> None
+      try
+        { Id         = Id fb.Id
+        ; Name       = fb.Name
+        ; Patch      = Id fb.Patch
+        ; Tags       = tags
+        ; VecSize    = fb.VecSize
+        ; Min        = fb.Min
+        ; Max        = fb.Max
+        ; Unit       = unit
+        ; Precision  = fb.Precision
+        ; Slices     = slices }
+        |> Some
+      with
+        | _ -> None
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: Binary.Buffer) : DoubleBoxD option =
-    Binary.createBuffer bytes
-    |> DoubleBoxFB.GetRootAsDoubleBoxFB
-    |> DoubleBoxD.FromFB
+    static member FromBytes(bytes: Binary.Buffer) : DoubleBoxD option =
+      Binary.createBuffer bytes
+      |> DoubleBoxFB.GetRootAsDoubleBoxFB
+      |> DoubleBoxD.FromFB
 
-//  ____              _     _      ____  _ _
-// |  _ \  ___  _   _| |__ | | ___/ ___|| (_) ___ ___
-// | | | |/ _ \| | | | '_ \| |/ _ \___ \| | |/ __/ _ \
-// | |_| | (_) | |_| | |_) | |  __/___) | | | (_|  __/
-// |____/ \___/ \__,_|_.__/|_|\___|____/|_|_|\___\___|
+  //  ____              _     _      ____  _ _
+  // |  _ \  ___  _   _| |__ | | ___/ ___|| (_) ___ ___
+  // | | | |/ _ \| | | | '_ \| |/ _ \___ \| | |/ __/ _ \
+  // | |_| | (_) | |_| | |_) | |  __/___) | | | (_|  __/
+  // |____/ \___/ \__,_|_.__/|_|\___|____/|_|_|\___\___|
 
-and DoubleSliceD =
-  { Index: Index
-  ; Value: double }
+  and DoubleSliceD =
+    { Index: Index
+    ; Value: double }
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+    static member Create (idx: Index) (value: double) =
+      { Index = idx
+        Value = value }
 
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    DoubleSliceFB.StartDoubleSliceFB(builder)
-    DoubleSliceFB.AddIndex(builder, self.Index)
-    DoubleSliceFB.AddValue(builder, self.Value)
-    DoubleSliceFB.EndDoubleSliceFB(builder)
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
 
-  static member FromFB(fb: DoubleSliceFB) : DoubleSliceD option =
-    try
-      { Index = fb.Index
-      ; Value = fb.Value }
-      |> Some
-    with
-      | _ -> None
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      DoubleSliceFB.StartDoubleSliceFB(builder)
+      DoubleSliceFB.AddIndex(builder, self.Index)
+      DoubleSliceFB.AddValue(builder, self.Value)
+      DoubleSliceFB.EndDoubleSliceFB(builder)
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+    static member FromFB(fb: DoubleSliceFB) : DoubleSliceD option =
+      try
+        { Index = fb.Index
+        ; Value = fb.Value }
+        |> Some
+      with
+        | _ -> None
 
-  static member FromBytes(bytes: Binary.Buffer) : DoubleSliceD option =
-    Binary.createBuffer bytes
-    |> DoubleSliceFB.GetRootAsDoubleSliceFB
-    |> DoubleSliceD.FromFB
+    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
+    static member FromBytes(bytes: Binary.Buffer) : DoubleSliceD option =
+      Binary.createBuffer bytes
+      |> DoubleSliceFB.GetRootAsDoubleSliceFB
+      |> DoubleSliceD.FromFB
 
-#if JAVASCRIPT
-#else
-  member self.ToYamlObject() =
-    SliceYaml.DoubleSlice(self.Index, self.Value)
+    // __   __              _
+    // \ \ / /_ _ _ __ ___ | |
+    //  \ V / _` | '_ ` _ \| |
+    //   | | (_| | | | | | | |
+    //   |_|\__,_|_| |_| |_|_|
 
-  static member FromYamlObject(yaml: SliceYaml) =
-    match yaml.SliceType with
-    | "DoubleSlice" -> yaml.ToDoubleSliceD()
-    | _             -> None
+  #if JAVASCRIPT
+  #else
+    member self.ToYamlObject() =
+      SliceYaml.DoubleSlice(self.Index, self.Value)
 
-#endif
+    static member FromYamlObject(yaml: SliceYaml) =
+      match yaml.SliceType with
+      | "DoubleSlice" -> yaml.ToDoubleSliceD()
+      | _             -> None
 
-//  ____        _       ____
-// | __ ) _   _| |_ ___| __ )  _____  __
-// |  _ \| | | | __/ _ \  _ \ / _ \ \/ /
-// | |_) | |_| | ||  __/ |_) | (_) >  <
-// |____/ \__, |\__\___|____/ \___/_/\_\
-//        |___/
+  #endif
 
-and ByteBoxD =
-  { Id         : Id
-  ; Name       : string
-  ; Patch      : Id
-  ; Tags       : Tag        array
-  ; Slices     : ByteSliceD array }
+  //  ____        _       ____
+  // | __ ) _   _| |_ ___| __ )  _____  __
+  // |  _ \| | | | __/ _ \  _ \ / _ \ \/ /
+  // | |_) | |_| | ||  __/ |_) | (_) >  <
+  // |____/ \__, |\__\___|____/ \___/_/\_\
+  //        |___/
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+  and ByteBoxD =
+    { Id         : Id
+    ; Name       : string
+    ; Patch      : Id
+    ; Tags       : Tag        array
+    ; Slices     : ByteSliceD array }
 
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let tags = ByteBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = ByteBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    ByteBoxFB.StartByteBoxFB(builder)
-    ByteBoxFB.AddId(builder, id)
-    ByteBoxFB.AddName(builder, name)
-    ByteBoxFB.AddPatch(builder, patch)
-    ByteBoxFB.AddTags(builder, tags)
-    ByteBoxFB.AddSlices(builder, slices)
-    ByteBoxFB.EndByteBoxFB(builder)
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
 
-  static member FromFB(fb: ByteBoxFB) : ByteBoxD option =
-    let tags = Array.zeroCreate fb.TagsLength
-    let slices = Array.zeroCreate fb.SlicesLength
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let id = string self.Id |> builder.CreateString
+      let name = self.Name |> builder.CreateString
+      let patch = string self.Patch |> builder.CreateString
+      let tagoffsets = Array.map builder.CreateString self.Tags
+      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+      let tags = ByteBoxFB.CreateTagsVector(builder, tagoffsets)
+      let slices = ByteBoxFB.CreateSlicesVector(builder, sliceoffsets)
+      ByteBoxFB.StartByteBoxFB(builder)
+      ByteBoxFB.AddId(builder, id)
+      ByteBoxFB.AddName(builder, name)
+      ByteBoxFB.AddPatch(builder, patch)
+      ByteBoxFB.AddTags(builder, tags)
+      ByteBoxFB.AddSlices(builder, slices)
+      ByteBoxFB.EndByteBoxFB(builder)
 
-    let mutable i = 0
-    while i < fb.TagsLength do
-      tags.[i] <- fb.Tags(i)
-      i <- i + 1
+    static member FromFB(fb: ByteBoxFB) : ByteBoxD option =
+      let tags = Array.zeroCreate fb.TagsLength
+      let slices = Array.zeroCreate fb.SlicesLength
 
-#if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.SlicesLength do
-      fb.Slices(i)
-      |> ByteSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
-      i <- i + 1
-#else
-    for i in 0 .. (fb.SlicesLength - 1) do
-      let slice = fb.Slices(i)
-      if slice.HasValue then
-        slice.Value
+      let mutable i = 0
+      while i < fb.TagsLength do
+        tags.[i] <- fb.Tags(i)
+        i <- i + 1
+
+  #if JAVASCRIPT
+      let mutable i = 0
+      while i < fb.SlicesLength do
+        fb.Slices(i)
         |> ByteSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
-#endif
+        i <- i + 1
+  #else
+      for i in 0 .. (fb.SlicesLength - 1) do
+        let slice = fb.Slices(i)
+        if slice.HasValue then
+          slice.Value
+          |> ByteSliceD.FromFB
+          |> Option.map (fun slice -> slices.[i] <- slice)
+          |> ignore
+  #endif
 
-    try
-      { Id         = Id fb.Id
-      ; Name       = fb.Name
-      ; Patch      = Id fb.Patch
-      ; Tags       = tags
-      ; Slices     = slices }
-      |> Some
-    with
-      | _ -> None
+      try
+        { Id         = Id fb.Id
+        ; Name       = fb.Name
+        ; Patch      = Id fb.Patch
+        ; Tags       = tags
+        ; Slices     = slices }
+        |> Some
+      with
+        | _ -> None
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: Binary.Buffer) : ByteBoxD option =
-    Binary.createBuffer bytes
-    |> ByteBoxFB.GetRootAsByteBoxFB
-    |> ByteBoxD.FromFB
+    static member FromBytes(bytes: Binary.Buffer) : ByteBoxD option =
+      Binary.createBuffer bytes
+      |> ByteBoxFB.GetRootAsByteBoxFB
+      |> ByteBoxD.FromFB
 
-//  ____        _       ____  _ _
-// | __ ) _   _| |_ ___/ ___|| (_) ___ ___
-// |  _ \| | | | __/ _ \___ \| | |/ __/ _ \
-// | |_) | |_| | ||  __/___) | | | (_|  __/
-// |____/ \__, |\__\___|____/|_|_|\___\___|
-//        |___/
+  //  ____        _       ____  _ _
+  // | __ ) _   _| |_ ___/ ___|| (_) ___ ___
+  // |  _ \| | | | __/ _ \___ \| | |/ __/ _ \
+  // | |_) | |_| | ||  __/___) | | | (_|  __/
+  // |____/ \__, |\__\___|____/|_|_|\___\___|
+  //        |___/
 
-and [<CustomEquality;CustomComparison>] ByteSliceD =
-  { Index: Index
-  ; Value: Binary.Buffer }
+  and [<CustomEquality;CustomComparison>] ByteSliceD =
+    { Index: Index
+    ; Value: Binary.Buffer }
 
-  override self.Equals(other) =
-    match other with
-    | :? ByteSliceD as slice ->
-      (self :> System.IEquatable<ByteSliceD>).Equals(slice)
-    | _ -> false
+    static member Create (idx: Index) (value: Binary.Buffer) =
+      { Index = idx
+        Value = value }
 
-  override self.GetHashCode() =
-    let mutable hash = 42
-#if JAVASCRIPT
-    hash <- (hash * 7) + hashCode (string self.Index)
-    hash <- (hash * 7) + hashCode (string self.Value.byteLength)
-#else
-    hash <- (hash * 7) + self.Index.GetHashCode()
-    hash <- (hash * 7) + self.Value.GetHashCode()
-#endif
-    hash
-
-  interface System.IComparable with
-    member self.CompareTo other =
+    override self.Equals(other) =
       match other with
-      | :? ByteSliceD as slice -> compare self.Index slice.Index
-      | _ -> invalidArg "other" "cannot compare value of different types"
+      | :? ByteSliceD as slice ->
+        (self :> System.IEquatable<ByteSliceD>).Equals(slice)
+      | _ -> false
 
-  interface System.IEquatable<ByteSliceD> with
-    member self.Equals(slice: ByteSliceD) =
-      let mutable contentsEqual = false
-      let lengthEqual =
-#if JAVASCRIPT
-        let result = self.Value.byteLength = slice.Value.byteLength
-        if result then
-          let me = Fable.Import.JS.Uint8Array.Create(self.Value)
-          let it = Fable.Import.JS.Uint8Array.Create(slice.Value)
-          let mutable contents = true
-          let mutable i = 0
-          while i < int self.Value.byteLength do
-            if contents then
-              contents <- me.[i] = it.[i]
-            i <- i + 1
-          contentsEqual <- contents
-        result
-#else
-        let result = Array.length self.Value = Array.length slice.Value
-        if result then
-          let mutable contents = true
-          for i in 0 .. (Array.length self.Value - 1) do
-            if contents then
-              contents <- self.Value.[i] = slice.Value.[i]
-          contentsEqual <- contents
-        result
-#endif
-      slice.Index = self.Index &&
-      lengthEqual &&
-      contentsEqual
+    override self.GetHashCode() =
+      let mutable hash = 42
+  #if JAVASCRIPT
+      hash <- (hash * 7) + hashCode (string self.Index)
+      hash <- (hash * 7) + hashCode (string self.Value.byteLength)
+  #else
+      hash <- (hash * 7) + self.Index.GetHashCode()
+      hash <- (hash * 7) + self.Value.GetHashCode()
+  #endif
+      hash
 
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
+    interface System.IComparable with
+      member self.CompareTo other =
+        match other with
+        | :? ByteSliceD as slice -> compare self.Index slice.Index
+        | _ -> invalidArg "other" "cannot compare value of different types"
 
-#if JAVASCRIPT
-#else
-  member self.ToYamlObject() =
-    SliceYaml.ByteSlice(self.Index,  Convert.ToBase64String self.Value)
+    interface System.IEquatable<ByteSliceD> with
+      member self.Equals(slice: ByteSliceD) =
+        let mutable contentsEqual = false
+        let lengthEqual =
+  #if JAVASCRIPT
+          let result = self.Value.byteLength = slice.Value.byteLength
+          if result then
+            let me = Fable.Import.JS.Uint8Array.Create(self.Value)
+            let it = Fable.Import.JS.Uint8Array.Create(slice.Value)
+            let mutable contents = true
+            let mutable i = 0
+            while i < int self.Value.byteLength do
+              if contents then
+                contents <- me.[i] = it.[i]
+              i <- i + 1
+            contentsEqual <- contents
+          result
+  #else
+          let result = Array.length self.Value = Array.length slice.Value
+          if result then
+            let mutable contents = true
+            for i in 0 .. (Array.length self.Value - 1) do
+              if contents then
+                contents <- self.Value.[i] = slice.Value.[i]
+            contentsEqual <- contents
+          result
+  #endif
+        slice.Index = self.Index &&
+        lengthEqual &&
+        contentsEqual
 
-  static member FromYamlObject(yaml: SliceYaml) =
-    match yaml.SliceType with
-    | "ByteSlice" -> yaml.ToByteSliceD()
-    | _           -> None
+    // __   __              _
+    // \ \ / /_ _ _ __ ___ | |
+    //  \ V / _` | '_ ` _ \| |
+    //   | | (_| | | | | | | |
+    //   |_|\__,_|_| |_| |_|_|
 
-#endif
+  #if JAVASCRIPT
+  #else
+    member self.ToYamlObject() =
+      SliceYaml.ByteSlice(self.Index,  Convert.ToBase64String self.Value)
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+    static member FromYamlObject(yaml: SliceYaml) =
+      match yaml.SliceType with
+      | "ByteSlice" -> yaml.ToByteSliceD()
+      | _           -> None
 
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let encode (bytes: Binary.Buffer) =
-#if JAVASCRIPT
-      let mutable str = ""
-      let arr = Fable.Import.JS.Uint8Array.Create(bytes)
-      for i in 0 .. (int arr.length - 1) do
-        str <- str + Fable.Import.JS.String.fromCharCode arr.[i]
-      Fable.Import.Browser.window.btoa str
-#else
-      Convert.ToBase64String(bytes)
-#endif
+  #endif
 
-    let encoded = encode self.Value
-    let bytes = builder.CreateString encoded
-    ByteSliceFB.StartByteSliceFB(builder)
-    ByteSliceFB.AddIndex(builder, self.Index)
-    ByteSliceFB.AddValue(builder, bytes)
-    ByteSliceFB.EndByteSliceFB(builder)
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
 
-  static member FromFB(fb: ByteSliceFB) : ByteSliceD option =
-    let decode str =
-#if JAVASCRIPT
-      let binary = Fable.Import.Browser.window.atob str
-      let bytes = Fable.Import.JS.Uint8Array.Create(float binary.Length)
-      for i in 0 .. (binary.Length - 1) do
-        bytes.[i] <- charCodeAt binary i
-      bytes.buffer
-#else
-      Convert.FromBase64String(str)
-#endif
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let encode (bytes: Binary.Buffer) =
+  #if JAVASCRIPT
+        let mutable str = ""
+        let arr = Fable.Import.JS.Uint8Array.Create(bytes)
+        for i in 0 .. (int arr.length - 1) do
+          str <- str + Fable.Import.JS.String.fromCharCode arr.[i]
+        Fable.Import.Browser.window.btoa str
+  #else
+        Convert.ToBase64String(bytes)
+  #endif
 
-    try
-      let values = decode fb.Value
-      { Index = fb.Index
-      ; Value = values }
-      |> Some
-    with
-      | _ -> None
+      let encoded = encode self.Value
+      let bytes = builder.CreateString encoded
+      ByteSliceFB.StartByteSliceFB(builder)
+      ByteSliceFB.AddIndex(builder, self.Index)
+      ByteSliceFB.AddValue(builder, bytes)
+      ByteSliceFB.EndByteSliceFB(builder)
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+    static member FromFB(fb: ByteSliceFB) : ByteSliceD option =
+      let decode str =
+  #if JAVASCRIPT
+        let binary = Fable.Import.Browser.window.atob str
+        let bytes = Fable.Import.JS.Uint8Array.Create(float binary.Length)
+        for i in 0 .. (binary.Length - 1) do
+          bytes.[i] <- charCodeAt binary i
+        bytes.buffer
+  #else
+        Convert.FromBase64String(str)
+  #endif
 
-  static member FromBytes(bytes: Binary.Buffer) : ByteSliceD option =
-    Binary.createBuffer bytes
-    |> ByteSliceFB.GetRootAsByteSliceFB
-    |> ByteSliceD.FromFB
+      try
+        let values = decode fb.Value
+        { Index = fb.Index
+        ; Value = values }
+        |> Some
+      with
+        | _ -> None
 
-//  _____                       ____
-// | ____|_ __  _   _ _ __ ___ | __ )  _____  __
-// |  _| | '_ \| | | | '_ ` _ \|  _ \ / _ \ \/ /
-// | |___| | | | |_| | | | | | | |_) | (_) >  <
-// |_____|_| |_|\__,_|_| |_| |_|____/ \___/_/\_\
+    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-and EnumBoxD =
-  { Id         : Id
-  ; Name       : string
-  ; Patch      : Id
-  ; Tags       : Tag        array
-  ; Properties : Property   array
-  ; Slices     : EnumSliceD array }
+    static member FromBytes(bytes: Binary.Buffer) : ByteSliceD option =
+      Binary.createBuffer bytes
+      |> ByteSliceFB.GetRootAsByteSliceFB
+      |> ByteSliceD.FromFB
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+  //  _____                       ____
+  // | ____|_ __  _   _ _ __ ___ | __ )  _____  __
+  // |  _| | '_ \| | | | '_ ` _ \|  _ \ / _ \ \/ /
+  // | |___| | | | |_| | | | | | | |_) | (_) >  <
+  // |_____|_| |_|\__,_|_| |_| |_|____/ \___/_/\_\
 
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let propoffsets =
-      Array.map (fun (prop: Property) ->
-                 let key, value =
-                    builder.CreateString prop.Key, builder.CreateString prop.Value
-                 EnumPropertyFB.StartEnumPropertyFB(builder)
-                 EnumPropertyFB.AddKey(builder, key)
-                 EnumPropertyFB.AddValue(builder, value)
-                 EnumPropertyFB.EndEnumPropertyFB(builder))
-        self.Properties
-    let tags = EnumBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = EnumBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    let properties = EnumBoxFB.CreatePropertiesVector(builder, propoffsets)
-    EnumBoxFB.StartEnumBoxFB(builder)
-    EnumBoxFB.AddId(builder, id)
-    EnumBoxFB.AddName(builder, name)
-    EnumBoxFB.AddPatch(builder, patch)
-    EnumBoxFB.AddTags(builder, tags)
-    EnumBoxFB.AddProperties(builder, properties)
-    EnumBoxFB.AddSlices(builder, slices)
-    EnumBoxFB.EndEnumBoxFB(builder)
+  and EnumBoxD =
+    { Id         : Id
+    ; Name       : string
+    ; Patch      : Id
+    ; Tags       : Tag        array
+    ; Properties : Property   array
+    ; Slices     : EnumSliceD array }
 
-  static member FromFB(fb: EnumBoxFB) : EnumBoxD option =
-    let tags = Array.zeroCreate fb.TagsLength
-    let slices = Array.zeroCreate fb.SlicesLength
-    let properties = Array.zeroCreate fb.PropertiesLength
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
 
-    let mutable i = 0
-    while i < fb.TagsLength do
-      tags.[i] <- fb.Tags(i)
-      i <- i + 1
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let id = string self.Id |> builder.CreateString
+      let name = self.Name |> builder.CreateString
+      let patch = string self.Patch |> builder.CreateString
+      let tagoffsets = Array.map builder.CreateString self.Tags
+      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+      let propoffsets =
+        Array.map (fun (prop: Property) ->
+                  let key, value =
+                      builder.CreateString prop.Key, builder.CreateString prop.Value
+                  EnumPropertyFB.StartEnumPropertyFB(builder)
+                  EnumPropertyFB.AddKey(builder, key)
+                  EnumPropertyFB.AddValue(builder, value)
+                  EnumPropertyFB.EndEnumPropertyFB(builder))
+          self.Properties
+      let tags = EnumBoxFB.CreateTagsVector(builder, tagoffsets)
+      let slices = EnumBoxFB.CreateSlicesVector(builder, sliceoffsets)
+      let properties = EnumBoxFB.CreatePropertiesVector(builder, propoffsets)
+      EnumBoxFB.StartEnumBoxFB(builder)
+      EnumBoxFB.AddId(builder, id)
+      EnumBoxFB.AddName(builder, name)
+      EnumBoxFB.AddPatch(builder, patch)
+      EnumBoxFB.AddTags(builder, tags)
+      EnumBoxFB.AddProperties(builder, properties)
+      EnumBoxFB.AddSlices(builder, slices)
+      EnumBoxFB.EndEnumBoxFB(builder)
 
-#if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.PropertiesLength do
-      let prop = fb.Properties(i)
-      properties.[i] <- { Key = prop.Key; Value = prop.Value }
-      i <- i + 1
-#else
-    for i in 0 .. (fb.PropertiesLength - 1) do
-      let prop = fb.Properties(i)
-      if prop.HasValue then
-        let value = prop.Value
-        properties.[i] <- { Key = value.Key; Value = value.Value }
-#endif
+    static member FromFB(fb: EnumBoxFB) : EnumBoxD option =
+      let tags = Array.zeroCreate fb.TagsLength
+      let slices = Array.zeroCreate fb.SlicesLength
+      let properties = Array.zeroCreate fb.PropertiesLength
 
-#if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.SlicesLength do
-      fb.Slices(i)
-      |> EnumSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
-      i <- i + 1
-#else
-    for i in 0 .. (fb.SlicesLength - 1) do
-      let slice = fb.Slices(i)
-      if slice.HasValue then
-        slice.Value
+      let mutable i = 0
+      while i < fb.TagsLength do
+        tags.[i] <- fb.Tags(i)
+        i <- i + 1
+
+  #if JAVASCRIPT
+      let mutable i = 0
+      while i < fb.PropertiesLength do
+        let prop = fb.Properties(i)
+        properties.[i] <- { Key = prop.Key; Value = prop.Value }
+        i <- i + 1
+  #else
+      for i in 0 .. (fb.PropertiesLength - 1) do
+        let prop = fb.Properties(i)
+        if prop.HasValue then
+          let value = prop.Value
+          properties.[i] <- { Key = value.Key; Value = value.Value }
+  #endif
+
+  #if JAVASCRIPT
+      let mutable i = 0
+      while i < fb.SlicesLength do
+        fb.Slices(i)
         |> EnumSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
-#endif
+        i <- i + 1
+  #else
+      for i in 0 .. (fb.SlicesLength - 1) do
+        let slice = fb.Slices(i)
+        if slice.HasValue then
+          slice.Value
+          |> EnumSliceD.FromFB
+          |> Option.map (fun slice -> slices.[i] <- slice)
+          |> ignore
+  #endif
 
-    try
-      { Id         = Id fb.Id
-      ; Name       = fb.Name
-      ; Patch      = Id fb.Patch
-      ; Tags       = tags
-      ; Properties = properties
-      ; Slices     = slices }
-      |> Some
-    with
-      | _ -> None
+      try
+        { Id         = Id fb.Id
+        ; Name       = fb.Name
+        ; Patch      = Id fb.Patch
+        ; Tags       = tags
+        ; Properties = properties
+        ; Slices     = slices }
+        |> Some
+      with
+        | _ -> None
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromEnums(bytes: Binary.Buffer) : EnumBoxD option =
-    Binary.createBuffer bytes
-    |> EnumBoxFB.GetRootAsEnumBoxFB
-    |> EnumBoxD.FromFB
+    static member FromEnums(bytes: Binary.Buffer) : EnumBoxD option =
+      Binary.createBuffer bytes
+      |> EnumBoxFB.GetRootAsEnumBoxFB
+      |> EnumBoxD.FromFB
 
-//  _____                       ____  _ _
-// | ____|_ __  _   _ _ __ ___ / ___|| (_) ___ ___
-// |  _| | '_ \| | | | '_ ` _ \\___ \| | |/ __/ _ \
-// | |___| | | | |_| | | | | | |___) | | | (_|  __/
-// |_____|_| |_|\__,_|_| |_| |_|____/|_|_|\___\___|
+  //  _____                       ____  _ _
+  // | ____|_ __  _   _ _ __ ___ / ___|| (_) ___ ___
+  // |  _| | '_ \| | | | '_ ` _ \\___ \| | |/ __/ _ \
+  // | |___| | | | |_| | | | | | |___) | | | (_|  __/
+  // |_____|_| |_|\__,_|_| |_| |_|____/|_|_|\___\___|
 
-and EnumSliceD =
-  { Index : Index
-  ; Value : Property }
+  and EnumSliceD =
+    { Index : Index
+    ; Value : Property }
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+    static member Create (idx: Index) (value: Property) =
+      { Index = idx
+        Value = value }
 
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let property =
-      let key, value =
-        builder.CreateString self.Value.Key, builder.CreateString self.Value.Value
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
 
-      EnumPropertyFB.StartEnumPropertyFB(builder)
-      EnumPropertyFB.AddKey(builder, key)
-      EnumPropertyFB.AddValue(builder, value)
-      EnumPropertyFB.EndEnumPropertyFB(builder)
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let property =
+        let key, value =
+          builder.CreateString self.Value.Key, builder.CreateString self.Value.Value
 
-    EnumSliceFB.StartEnumSliceFB(builder)
-    EnumSliceFB.AddIndex(builder, self.Index)
-    EnumSliceFB.AddValue(builder, property)
-    EnumSliceFB.EndEnumSliceFB(builder)
+        EnumPropertyFB.StartEnumPropertyFB(builder)
+        EnumPropertyFB.AddKey(builder, key)
+        EnumPropertyFB.AddValue(builder, value)
+        EnumPropertyFB.EndEnumPropertyFB(builder)
 
-  static member FromFB(fb: EnumSliceFB) : EnumSliceD option =
-#if JAVASCRIPT
-    let prop = fb.Value
-    try
-      { Index = fb.Index
-      ; Value = { Key = prop.Key; Value = prop.Value } }
-      |> Some
-    with
-      | _ -> None
-#else
-    let nullable = fb.Value
-    if nullable.HasValue then
-      let prop = nullable.Value
+      EnumSliceFB.StartEnumSliceFB(builder)
+      EnumSliceFB.AddIndex(builder, self.Index)
+      EnumSliceFB.AddValue(builder, property)
+      EnumSliceFB.EndEnumSliceFB(builder)
+
+    static member FromFB(fb: EnumSliceFB) : EnumSliceD option =
+  #if JAVASCRIPT
+      let prop = fb.Value
       try
         { Index = fb.Index
         ; Value = { Key = prop.Key; Value = prop.Value } }
         |> Some
       with
         | _ -> None
-    else None
-#endif
+  #else
+      let nullable = fb.Value
+      if nullable.HasValue then
+        let prop = nullable.Value
+        try
+          { Index = fb.Index
+          ; Value = { Key = prop.Key; Value = prop.Value } }
+          |> Some
+        with
+          | _ -> None
+      else None
+  #endif
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromEnums(bytes: Binary.Buffer) : EnumSliceD option =
-    Binary.createBuffer bytes
-    |> EnumSliceFB.GetRootAsEnumSliceFB
-    |> EnumSliceD.FromFB
+    static member FromEnums(bytes: Binary.Buffer) : EnumSliceD option =
+      Binary.createBuffer bytes
+      |> EnumSliceFB.GetRootAsEnumSliceFB
+      |> EnumSliceD.FromFB
 
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
+    // __   __              _
+    // \ \ / /_ _ _ __ ___ | |
+    //  \ V / _` | '_ ` _ \| |
+    //   | | (_| | | | | | | |
+    //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
-#else
-  member self.ToYamlObject() =
-    SliceYaml.EnumSlice(self.Index, Yaml.toYaml self.Value)
+  #if JAVASCRIPT
+  #else
+    member self.ToYamlObject() =
+      SliceYaml.EnumSlice(self.Index, Yaml.toYaml self.Value)
 
-  static member FromYamlObject(yaml: SliceYaml) =
-    match yaml.SliceType with
-    | "EnumSlice" -> yaml.ToEnumSliceD()
-    | _           -> None
+    static member FromYamlObject(yaml: SliceYaml) =
+      match yaml.SliceType with
+      | "EnumSlice" -> yaml.ToEnumSliceD()
+      | _           -> None
 
-#endif
+  #endif
 
-//   ____      _            ____
-//  / ___|___ | | ___  _ __| __ )  _____  __
-// | |   / _ \| |/ _ \| '__|  _ \ / _ \ \/ /
-// | |__| (_) | | (_) | |  | |_) | (_) >  <
-//  \____\___/|_|\___/|_|  |____/ \___/_/\_\
+  //   ____      _            ____
+  //  / ___|___ | | ___  _ __| __ )  _____  __
+  // | |   / _ \| |/ _ \| '__|  _ \ / _ \ \/ /
+  // | |__| (_) | | (_) | |  | |_) | (_) >  <
+  //  \____\___/|_|\___/|_|  |____/ \___/_/\_\
 
-and ColorBoxD =
-  { Id     : Id
-  ; Name   : string
-  ; Patch  : Id
-  ; Tags   : Tag         array
-  ; Slices : ColorSliceD array }
+  and ColorBoxD =
+    { Id     : Id
+    ; Name   : string
+    ; Patch  : Id
+    ; Tags   : Tag         array
+    ; Slices : ColorSliceD array }
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
 
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let tags = ColorBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = ColorBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    ColorBoxFB.StartColorBoxFB(builder)
-    ColorBoxFB.AddId(builder, id)
-    ColorBoxFB.AddName(builder, name)
-    ColorBoxFB.AddPatch(builder, patch)
-    ColorBoxFB.AddTags(builder, tags)
-    ColorBoxFB.AddSlices(builder, slices)
-    ColorBoxFB.EndColorBoxFB(builder)
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let id = string self.Id |> builder.CreateString
+      let name = self.Name |> builder.CreateString
+      let patch = string self.Patch |> builder.CreateString
+      let tagoffsets = Array.map builder.CreateString self.Tags
+      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+      let tags = ColorBoxFB.CreateTagsVector(builder, tagoffsets)
+      let slices = ColorBoxFB.CreateSlicesVector(builder, sliceoffsets)
+      ColorBoxFB.StartColorBoxFB(builder)
+      ColorBoxFB.AddId(builder, id)
+      ColorBoxFB.AddName(builder, name)
+      ColorBoxFB.AddPatch(builder, patch)
+      ColorBoxFB.AddTags(builder, tags)
+      ColorBoxFB.AddSlices(builder, slices)
+      ColorBoxFB.EndColorBoxFB(builder)
 
-  static member FromFB(fb: ColorBoxFB) : ColorBoxD option =
-    let tags = Array.zeroCreate fb.TagsLength
-    let slices = Array.zeroCreate fb.SlicesLength
+    static member FromFB(fb: ColorBoxFB) : ColorBoxD option =
+      let tags = Array.zeroCreate fb.TagsLength
+      let slices = Array.zeroCreate fb.SlicesLength
 
-    let mutable i = 0
-    while i < fb.TagsLength do
-      tags.[i] <- fb.Tags(i)
-      i <- i + 1
+      let mutable i = 0
+      while i < fb.TagsLength do
+        tags.[i] <- fb.Tags(i)
+        i <- i + 1
 
-#if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.SlicesLength do
-      fb.Slices(i)
-      |> ColorSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
-      i <- i + 1
-#else
-    for i in 0 .. (fb.SlicesLength - 1) do
-      let slice = fb.Slices(i)
-      if slice.HasValue then
-        slice.Value
+  #if JAVASCRIPT
+      let mutable i = 0
+      while i < fb.SlicesLength do
+        fb.Slices(i)
         |> ColorSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
-#endif
+        i <- i + 1
+  #else
+      for i in 0 .. (fb.SlicesLength - 1) do
+        let slice = fb.Slices(i)
+        if slice.HasValue then
+          slice.Value
+          |> ColorSliceD.FromFB
+          |> Option.map (fun slice -> slices.[i] <- slice)
+          |> ignore
+  #endif
 
-    try
-      { Id     = Id fb.Id
-      ; Name   = fb.Name
-      ; Patch  = Id fb.Patch
-      ; Tags   = tags
-      ; Slices = slices }
-      |> Some
-    with
-      | _ -> None
+      try
+        { Id     = Id fb.Id
+        ; Name   = fb.Name
+        ; Patch  = Id fb.Patch
+        ; Tags   = tags
+        ; Slices = slices }
+        |> Some
+      with
+        | _ -> None
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromColors(bytes: Binary.Buffer) : ColorBoxD option =
-    Binary.createBuffer bytes
-    |> ColorBoxFB.GetRootAsColorBoxFB
-    |> ColorBoxD.FromFB
+    static member FromColors(bytes: Binary.Buffer) : ColorBoxD option =
+      Binary.createBuffer bytes
+      |> ColorBoxFB.GetRootAsColorBoxFB
+      |> ColorBoxD.FromFB
 
-//   ____      _            ____  _ _
-//  / ___|___ | | ___  _ __/ ___|| (_) ___ ___
-// | |   / _ \| |/ _ \| '__\___ \| | |/ __/ _ \
-// | |__| (_) | | (_) | |   ___) | | | (_|  __/
-//  \____\___/|_|\___/|_|  |____/|_|_|\___\___|
+  //   ____      _            ____  _ _
+  //  / ___|___ | | ___  _ __/ ___|| (_) ___ ___
+  // | |   / _ \| |/ _ \| '__\___ \| | |/ __/ _ \
+  // | |__| (_) | | (_) | |   ___) | | | (_|  __/
+  //  \____\___/|_|\___/|_|  |____/|_|_|\___\___|
 
-and ColorSliceD =
-  { Index: Index
-  ; Value: ColorSpace }
+  and ColorSliceD =
+    { Index: Index
+    ; Value: ColorSpace }
 
+    static member Create (idx: Index) (value: ColorSpace) =
+      { Index = idx
+        Value = value }
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
 
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let offset = self.Value.ToOffset(builder)
-    ColorSliceFB.StartColorSliceFB(builder)
-    ColorSliceFB.AddIndex(builder, self.Index)
-    ColorSliceFB.AddValue(builder, offset)
-    ColorSliceFB.EndColorSliceFB(builder)
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let offset = self.Value.ToOffset(builder)
+      ColorSliceFB.StartColorSliceFB(builder)
+      ColorSliceFB.AddIndex(builder, self.Index)
+      ColorSliceFB.AddValue(builder, offset)
+      ColorSliceFB.EndColorSliceFB(builder)
 
-  static member FromFB(fb: ColorSliceFB) : ColorSliceD option =
-#if JAVASCRIPT
-    fb.Value
-    |> ColorSpace.FromFB
-    |> Option.map (fun color -> { Index = fb.Index; Value = color })
-#else
-    let nullable = fb.Value
-    if nullable.HasValue then
-      ColorSpace.FromFB nullable.Value
+    static member FromFB(fb: ColorSliceFB) : ColorSliceD option =
+  #if JAVASCRIPT
+      fb.Value
+      |> ColorSpace.FromFB
       |> Option.map (fun color -> { Index = fb.Index; Value = color })
-    else None
-#endif
+  #else
+      let nullable = fb.Value
+      if nullable.HasValue then
+        ColorSpace.FromFB nullable.Value
+        |> Option.map (fun color -> { Index = fb.Index; Value = color })
+      else None
+  #endif
 
-  member self.ToColors() : Binary.Buffer = Binary.buildBuffer self
+    member self.ToColors() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromColors(bytes: Binary.Buffer) : ColorSliceD option =
-    Binary.createBuffer bytes
-    |> ColorSliceFB.GetRootAsColorSliceFB
-    |> ColorSliceD.FromFB
+    static member FromColors(bytes: Binary.Buffer) : ColorSliceD option =
+      Binary.createBuffer bytes
+      |> ColorSliceFB.GetRootAsColorSliceFB
+      |> ColorSliceD.FromFB
 
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
+    // __   __              _
+    // \ \ / /_ _ _ __ ___ | |
+    //  \ V / _` | '_ ` _ \| |
+    //   | | (_| | | | | | | |
+    //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
-#else
-  member self.ToYamlObject() =
-    SliceYaml.ColorSlice(self.Index, Yaml.toYaml self.Value)
+  #if JAVASCRIPT
+  #else
+    member self.ToYamlObject() =
+      SliceYaml.ColorSlice(self.Index, Yaml.toYaml self.Value)
 
-  static member FromYamlObject(yaml: SliceYaml) =
-    match yaml.SliceType with
-    | "ColorSlice" -> yaml.ToColorSliceD()
-    | _            -> None
+    static member FromYamlObject(yaml: SliceYaml) =
+      match yaml.SliceType with
+      | "ColorSlice" -> yaml.ToColorSliceD()
+      | _            -> None
 
-#endif
+  #endif
 
-//  ____  _        _             ____
-// / ___|| |_ _ __(_)_ __   __ _| __ )  _____  __
-// \___ \| __| '__| | '_ \ / _` |  _ \ / _ \ \/ /
-//  ___) | |_| |  | | | | | (_| | |_) | (_) >  <
-// |____/ \__|_|  |_|_| |_|\__, |____/ \___/_/\_\
-//                         |___/
+  //  ____  _        _             ____
+  // / ___|| |_ _ __(_)_ __   __ _| __ )  _____  __
+  // \___ \| __| '__| | '_ \ / _` |  _ \ / _ \ \/ /
+  //  ___) | |_| |  | | | | | (_| | |_) | (_) >  <
+  // |____/ \__|_|  |_|_| |_|\__, |____/ \___/_/\_\
+  //                         |___/
 
-and StringBoxD =
-  { Id         : Id
-  ; Name       : string
-  ; Patch      : Id
-  ; Tags       : Tag array
-  ; StringType : StringType
-  ; FileMask   : FileMask
-  ; MaxChars   : MaxChars
-  ; Slices     : StringSliceD array }
+  and StringBoxD =
+    { Id         : Id
+    ; Name       : string
+    ; Patch      : Id
+    ; Tags       : Tag array
+    ; StringType : StringType
+    ; FileMask   : FileMask
+    ; MaxChars   : MaxChars
+    ; Slices     : StringSliceD array }
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
 
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
-    let tipe = self.StringType.ToOffset(builder)
-    let mask = self.FileMask |> Option.map builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let tags = StringBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = StringBoxFB.CreateSlicesVector(builder, sliceoffsets)
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let id = string self.Id |> builder.CreateString
+      let name = self.Name |> builder.CreateString
+      let patch = string self.Patch |> builder.CreateString
+      let tipe = self.StringType.ToOffset(builder)
+      let mask = self.FileMask |> Option.map builder.CreateString
+      let tagoffsets = Array.map builder.CreateString self.Tags
+      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+      let tags = StringBoxFB.CreateTagsVector(builder, tagoffsets)
+      let slices = StringBoxFB.CreateSlicesVector(builder, sliceoffsets)
 
-    StringBoxFB.StartStringBoxFB(builder)
-    StringBoxFB.AddId(builder, id)
-    StringBoxFB.AddName(builder, name)
-    StringBoxFB.AddPatch(builder, patch)
-    StringBoxFB.AddTags(builder, tags)
-    StringBoxFB.AddStringType(builder, tipe)
+      StringBoxFB.StartStringBoxFB(builder)
+      StringBoxFB.AddId(builder, id)
+      StringBoxFB.AddName(builder, name)
+      StringBoxFB.AddPatch(builder, patch)
+      StringBoxFB.AddTags(builder, tags)
+      StringBoxFB.AddStringType(builder, tipe)
 
-    Option.map (fun mask -> StringBoxFB.AddFileMask(builder, mask)) mask |> ignore
+      Option.map (fun mask -> StringBoxFB.AddFileMask(builder, mask)) mask |> ignore
 
-    StringBoxFB.AddMaxChars(builder, self.MaxChars)
-    StringBoxFB.AddSlices(builder, slices)
-    StringBoxFB.EndStringBoxFB(builder)
+      StringBoxFB.AddMaxChars(builder, self.MaxChars)
+      StringBoxFB.AddSlices(builder, slices)
+      StringBoxFB.EndStringBoxFB(builder)
 
-  static member FromFB(fb: StringBoxFB) : StringBoxD option =
-    let tags = Array.zeroCreate fb.TagsLength
-    let slices = Array.zeroCreate fb.SlicesLength
-    let mask = if isNull fb.FileMask then None else Some fb.FileMask
+    static member FromFB(fb: StringBoxFB) : StringBoxD option =
+      let tags = Array.zeroCreate fb.TagsLength
+      let slices = Array.zeroCreate fb.SlicesLength
+      let mask = if isNull fb.FileMask then None else Some fb.FileMask
 
-    let mutable i = 0
-    while i < fb.TagsLength do
-      tags.[i] <- fb.Tags(i)
-      i <- i + 1
+      let mutable i = 0
+      while i < fb.TagsLength do
+        tags.[i] <- fb.Tags(i)
+        i <- i + 1
 
-#if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.SlicesLength do
-      fb.Slices(i)
-      |> StringSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
-      i <- i + 1
-#else
-    for i in 0 .. (fb.SlicesLength - 1) do
-      let slice = fb.Slices(i)
-      if slice.HasValue then
-        slice.Value
+  #if JAVASCRIPT
+      let mutable i = 0
+      while i < fb.SlicesLength do
+        fb.Slices(i)
         |> StringSliceD.FromFB
         |> Option.map (fun slice -> slices.[i] <- slice)
         |> ignore
-#endif
+        i <- i + 1
+  #else
+      for i in 0 .. (fb.SlicesLength - 1) do
+        let slice = fb.Slices(i)
+        if slice.HasValue then
+          slice.Value
+          |> StringSliceD.FromFB
+          |> Option.map (fun slice -> slices.[i] <- slice)
+          |> ignore
+  #endif
 
-    StringType.FromFB fb.StringType
-    |> Option.map
-      (fun tipe ->
+      StringType.FromFB fb.StringType
+      |> Option.map
+        (fun tipe ->
+          { Id         = Id fb.Id
+          ; Name       = fb.Name
+          ; Patch      = Id fb.Patch
+          ; Tags       = tags
+          ; StringType = tipe
+          ; FileMask   = mask
+          ; MaxChars   = fb.MaxChars
+          ; Slices     = slices })
+
+    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+    static member FromStrings(bytes: Binary.Buffer) : StringBoxD option =
+      Binary.createBuffer bytes
+      |> StringBoxFB.GetRootAsStringBoxFB
+      |> StringBoxD.FromFB
+
+  //  ____  _        _             ____  _ _
+  // / ___|| |_ _ __(_)_ __   __ _/ ___|| (_) ___ ___
+  // \___ \| __| '__| | '_ \ / _` \___ \| | |/ __/ _ \
+  //  ___) | |_| |  | | | | | (_| |___) | | | (_|  __/
+  // |____/ \__|_|  |_|_| |_|\__, |____/|_|_|\___\___|
+  //                         |___/
+
+  and StringSliceD =
+    { Index : Index
+    ; Value : string }
+
+    static member Create (idx: Index) (value: string) =
+      { Index = idx
+        Value = value }
+
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
+
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let value = builder.CreateString self.Value
+      StringSliceFB.StartStringSliceFB(builder)
+      StringSliceFB.AddIndex(builder, self.Index)
+      StringSliceFB.AddValue(builder, value)
+      StringSliceFB.EndStringSliceFB(builder)
+
+    static member FromFB(fb: StringSliceFB) : StringSliceD option =
+      try
+        { Index = fb.Index
+        ; Value = fb.Value }
+        |> Some
+      with
+        | _ -> None
+
+    member self.ToStrings() : Binary.Buffer = Binary.buildBuffer self
+
+    static member FromStrings(bytes: Binary.Buffer) : StringSliceD option =
+      Binary.createBuffer bytes
+      |> StringSliceFB.GetRootAsStringSliceFB
+      |> StringSliceD.FromFB
+
+    // __   __              _
+    // \ \ / /_ _ _ __ ___ | |
+    //  \ V / _` | '_ ` _ \| |
+    //   | | (_| | | | | | | |
+    //   |_|\__,_|_| |_| |_|_|
+
+  #if JAVASCRIPT
+  #else
+    member self.ToYamlObject() =
+      SliceYaml.StringSlice(self.Index, self.Value)
+
+    static member FromYamlObject(yaml: SliceYaml) =
+      match yaml.SliceType with
+      | "StringSlice" -> yaml.ToStringSliceD()
+      | _             -> None
+
+  #endif
+
+  //   ____                                            _ ____
+  //  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| | __ )  _____  __
+  // | |   / _ \| '_ ` _ \| '_ \ / _ \| | | | '_ \ / _` |  _ \ / _ \ \/ /
+  // | |__| (_) | | | | | | |_) | (_) | |_| | | | | (_| | |_) | (_) >  <
+  //  \____\___/|_| |_| |_| .__/ \___/ \__,_|_| |_|\__,_|____/ \___/_/\_\
+  //                      |_|
+
+  and CompoundBoxD =
+    { Id         : Id
+    ; Name       : string
+    ; Patch      : Id
+    ; Tags       : Tag   array
+    ; Slices     : CompoundSliceD array }
+
+
+    //  ____  _
+    // | __ )(_)_ __   __ _ _ __ _   _
+    // |  _ \| | '_ \ / _` | '__| | | |
+    // | |_) | | | | | (_| | |  | |_| |
+    // |____/|_|_| |_|\__,_|_|   \__, |
+    //                           |___/
+
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let id = string self.Id |> builder.CreateString
+      let name = self.Name |> builder.CreateString
+      let patch = string self.Patch |> builder.CreateString
+      let tagoffsets = Array.map builder.CreateString self.Tags
+      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+      let tags = CompoundBoxFB.CreateTagsVector(builder, tagoffsets)
+      let slices = CompoundBoxFB.CreateSlicesVector(builder, sliceoffsets)
+      CompoundBoxFB.StartCompoundBoxFB(builder)
+      CompoundBoxFB.AddId(builder, id)
+      CompoundBoxFB.AddName(builder, name)
+      CompoundBoxFB.AddPatch(builder, patch)
+      CompoundBoxFB.AddTags(builder, tags)
+      CompoundBoxFB.AddSlices(builder, slices)
+      CompoundBoxFB.EndCompoundBoxFB(builder)
+
+    static member FromFB(fb: CompoundBoxFB) : CompoundBoxD option =
+      let tags = Array.zeroCreate fb.TagsLength
+      let slices = Array.zeroCreate fb.SlicesLength
+
+      let mutable i = 0
+      while i < fb.TagsLength do
+        tags.[i] <- fb.Tags(i)
+        i <- i + 1
+
+  #if JAVASCRIPT
+      let mutable i = 0
+      while i < fb.SlicesLength do
+        fb.Slices(i)
+        |> CompoundSliceD.FromFB
+        |> Option.map (fun slice -> slices.[i] <- slice)
+        |> ignore
+        i <- i + 1
+  #else
+      for i in 0 .. (fb.SlicesLength - 1) do
+        let slice = fb.Slices(i)
+        if slice.HasValue then
+          slice.Value
+          |> CompoundSliceD.FromFB
+          |> Option.map (fun slice -> slices.[i] <- slice)
+          |> ignore
+  #endif
+
+      try
         { Id         = Id fb.Id
         ; Name       = fb.Name
         ; Patch      = Id fb.Patch
         ; Tags       = tags
-        ; StringType = tipe
-        ; FileMask   = mask
-        ; MaxChars   = fb.MaxChars
-        ; Slices     = slices })
+        ; Slices     = slices }
+        |> Some
+      with
+        | _ -> None
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromStrings(bytes: Binary.Buffer) : StringBoxD option =
-    Binary.createBuffer bytes
-    |> StringBoxFB.GetRootAsStringBoxFB
-    |> StringBoxD.FromFB
+    static member FromCompounds(bytes: Binary.Buffer) : CompoundBoxD option =
+      Binary.createBuffer bytes
+      |> CompoundBoxFB.GetRootAsCompoundBoxFB
+      |> CompoundBoxD.FromFB
 
-//  ____  _        _             ____  _ _
-// / ___|| |_ _ __(_)_ __   __ _/ ___|| (_) ___ ___
-// \___ \| __| '__| | '_ \ / _` \___ \| | |/ __/ _ \
-//  ___) | |_| |  | | | | | (_| |___) | | | (_|  __/
-// |____/ \__|_|  |_|_| |_|\__, |____/|_|_|\___\___|
-//                         |___/
+  //   ____                                            _ ____  _ _
+  //  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| / ___|| (_) ___ ___
+  // | |   / _ \| '_ ` _ \| '_ \ / _ \| | | | '_ \ / _` \___ \| | |/ __/ _ \
+  // | |__| (_) | | | | | | |_) | (_) | |_| | | | | (_| |___) | | | (_|  __/
+  //  \____\___/|_| |_| |_| .__/ \___/ \__,_|_| |_|\__,_|____/|_|_|\___\___|
+  //                      |_|
 
-and StringSliceD =
-  { Index : Index
-  ; Value : string }
+  and CompoundSliceD =
+    { Index      : Index
+    ; Value      : IOBox array }
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
-
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let value = builder.CreateString self.Value
-    StringSliceFB.StartStringSliceFB(builder)
-    StringSliceFB.AddIndex(builder, self.Index)
-    StringSliceFB.AddValue(builder, value)
-    StringSliceFB.EndStringSliceFB(builder)
-
-  static member FromFB(fb: StringSliceFB) : StringSliceD option =
-    try
-      { Index = fb.Index
-      ; Value = fb.Value }
-      |> Some
-    with
-      | _ -> None
-
-  member self.ToStrings() : Binary.Buffer = Binary.buildBuffer self
-
-  static member FromStrings(bytes: Binary.Buffer) : StringSliceD option =
-    Binary.createBuffer bytes
-    |> StringSliceFB.GetRootAsStringSliceFB
-    |> StringSliceD.FromFB
-
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
-
-#if JAVASCRIPT
-#else
-  member self.ToYamlObject() =
-    SliceYaml.StringSlice(self.Index, self.Value)
-
-  static member FromYamlObject(yaml: SliceYaml) =
-    match yaml.SliceType with
-    | "StringSlice" -> yaml.ToStringSliceD()
-    | _             -> None
-
-#endif
-
-//   ____                                            _ ____
-//  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| | __ )  _____  __
-// | |   / _ \| '_ ` _ \| '_ \ / _ \| | | | '_ \ / _` |  _ \ / _ \ \/ /
-// | |__| (_) | | | | | | |_) | (_) | |_| | | | | (_| | |_) | (_) >  <
-//  \____\___/|_| |_| |_| .__/ \___/ \__,_|_| |_|\__,_|____/ \___/_/\_\
-//                      |_|
-
-and CompoundBoxD =
-  { Id         : Id
-  ; Name       : string
-  ; Patch      : Id
-  ; Tags       : Tag   array
-  ; Slices     : CompoundSliceD array }
-
-
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
-
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
-    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let tags = CompoundBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = CompoundBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    CompoundBoxFB.StartCompoundBoxFB(builder)
-    CompoundBoxFB.AddId(builder, id)
-    CompoundBoxFB.AddName(builder, name)
-    CompoundBoxFB.AddPatch(builder, patch)
-    CompoundBoxFB.AddTags(builder, tags)
-    CompoundBoxFB.AddSlices(builder, slices)
-    CompoundBoxFB.EndCompoundBoxFB(builder)
-
-  static member FromFB(fb: CompoundBoxFB) : CompoundBoxD option =
-    let tags = Array.zeroCreate fb.TagsLength
-    let slices = Array.zeroCreate fb.SlicesLength
-
-    let mutable i = 0
-    while i < fb.TagsLength do
-      tags.[i] <- fb.Tags(i)
-      i <- i + 1
-
-#if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.SlicesLength do
-      fb.Slices(i)
-      |> CompoundSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
-      i <- i + 1
-#else
-    for i in 0 .. (fb.SlicesLength - 1) do
-      let slice = fb.Slices(i)
-      if slice.HasValue then
-        slice.Value
-        |> CompoundSliceD.FromFB
-        |> Option.map (fun slice -> slices.[i] <- slice)
-        |> ignore
-#endif
-
-    try
-      { Id         = Id fb.Id
-      ; Name       = fb.Name
-      ; Patch      = Id fb.Patch
-      ; Tags       = tags
-      ; Slices     = slices }
-      |> Some
-    with
-      | _ -> None
-
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
-
-  static member FromCompounds(bytes: Binary.Buffer) : CompoundBoxD option =
-    Binary.createBuffer bytes
-    |> CompoundBoxFB.GetRootAsCompoundBoxFB
-    |> CompoundBoxD.FromFB
-
-//   ____                                            _ ____  _ _
-//  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| / ___|| (_) ___ ___
-// | |   / _ \| '_ ` _ \| '_ \ / _ \| | | | '_ \ / _` \___ \| | |/ __/ _ \
-// | |__| (_) | | | | | | |_) | (_) | |_| | | | | (_| |___) | | | (_|  __/
-//  \____\___/|_| |_| |_| .__/ \___/ \__,_|_| |_|\__,_|____/|_|_|\___\___|
-//                      |_|
-
-and CompoundSliceD =
-  { Index      : Index
-  ; Value      : IOBox array }
+    static member Create (idx: Index) (value: ) =
+    { Index = idx
+      Value = value }
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _

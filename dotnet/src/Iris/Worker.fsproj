@@ -43,6 +43,7 @@
     <Compile Include="Iris\Core\FlatBuffers.fs" />
     <Compile Include="Iris\Web\Core\FlatBufferTypes.fs" />
     <Compile Include="Iris\Core\Constants.fs" />
+    <Compile Include="Iris\Core\Either.fs" />
     <Compile Include="Iris\Core\Serialization.fs" />
     <Compile Include="Iris\Core\Error.fs" />
     <Compile Include="Iris\Core\Id.fs" />

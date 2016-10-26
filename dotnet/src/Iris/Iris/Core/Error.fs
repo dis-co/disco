@@ -380,3 +380,21 @@ module Error =
 
   let throw (error: IrisError) =
     failwithf "ERROR: %A" error
+
+  /// ## Exit with an exit code on failure
+  ///
+  /// Apply function `f` to inner value of `a` *if* `a` is a success,
+  /// otherwise exit with an exit code derived from the error value.
+  ///
+  /// ### Signature:
+  /// - `f`: function to apply to inner value of `a`
+  /// - `a`: value to apply function
+  ///
+  /// Returns: ^b
+  let inline orExit< ^a, ^b >
+                   (f: ^a -> ^b)
+                   (a: Either< IrisError, ^a>)
+                   : ^b =
+    match a with
+    | Right value -> f value
+    | Left  error -> exitWith error

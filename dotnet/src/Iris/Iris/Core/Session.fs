@@ -115,7 +115,7 @@ type Session =
                UserAgent = yml.UserAgent }
     }
 
-  static member FromYaml (str: string) : Session option =
+  static member FromYaml (str: string) : Either<IrisError,Session> =
     let serializer = new Serializer()
     serializer.Deserialize<SessionYaml>(str)
     |> Yaml.fromYaml

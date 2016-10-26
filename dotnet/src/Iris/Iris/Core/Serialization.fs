@@ -38,10 +38,10 @@ module Binary =
   let inline encode (value : ^t when ^t : (member ToBytes : unit -> Buffer)) =
     (^t : (member ToBytes : unit -> Buffer) value)
 
-  let inline decode< ^t when ^t : (static member FromBytes : Buffer -> ^t option)>
+  let inline decode< ^err, ^t when ^t : (static member FromBytes : Buffer -> Either< ^err, ^t >)>
                                   (bytes: Buffer) :
-                                  ^t option =
-    (^t : (static member FromBytes : Buffer -> ^t option) bytes)
+                                  Either< ^err, ^t > =
+    (^t : (static member FromBytes : Buffer -> Either< ^err, ^t >) bytes)
 
   let inline toOffset< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)>
                      (builder: FlatBufferBuilder)
@@ -79,22 +79,22 @@ module Yaml =
     let serializer = new Serializer()
     (^t : (member ToYaml : Serializer -> string) thing,serializer)
 
-  let inline decode< ^t when ^t : (static member FromYaml : string -> ^t option)> (str: string) =
-    (^t : (static member FromYaml : string -> ^t option) str)
+  let inline decode< ^err, ^t when ^t : (static member FromYaml : string -> Either< ^err, ^t >)> (str: string) =
+    (^t : (static member FromYaml : string -> Either< ^err, ^t >) str)
 
   let inline toYaml< ^a, ^t when ^t : (member ToYamlObject : unit -> ^a)> (thing: ^t) : ^a =
     (^t : (member ToYamlObject : unit -> ^a) thing)
 
-  let inline fromYaml< ^a, ^t when ^t : (static member FromYamlObject : ^a -> ^t option)> (thing: ^a) =
-    (^t : (static member FromYamlObject : ^a -> ^t option) thing)
+  let inline fromYaml< ^err, ^a, ^t when ^t : (static member FromYamlObject : ^a -> Either< ^err, ^t >)> (thing: ^a) =
+    (^t : (static member FromYamlObject : ^a -> Either< ^err, ^t >) thing)
 
-  let inline arrayToMap< ^i, ^a, ^t when ^t : (static member FromYamlObject : ^a -> ^t option)
-                                    and  ^t : (member Id : ^i)
-                                    and  ^i : comparison> (things: ^a array) =
+  let inline arrayToMap< ^err, ^i, ^a, ^t when ^t : (static member FromYamlObject : ^a -> Either< ^err, ^t >)
+                                          and  ^t : (member Id : ^i)
+                                          and  ^i : comparison> (things: ^a array) =
     Array.fold
       (fun (m: Map< ^i, ^t >) (yml: ^a) ->
         match fromYaml yml with
-         Some thing ->
+        | Right thing ->
           let id = (^t : (member Id : ^i) thing)
           Map.add id thing m
         | _ -> m)
