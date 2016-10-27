@@ -42,9 +42,12 @@ type RaftNodeState =
 
   static member TryParse (str: string) =
     try
-      str |> RaftNodeState.Parse |> Some
+      str |> RaftNodeState.Parse |> Either.succeed
     with
-      | _ -> None
+      | exn ->
+        sprintf "Could not parse RaftNodeState: %s" exn.Message
+        |> ParseError
+        |> Either.fail
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -62,16 +65,23 @@ type RaftNodeState =
   static member FromFB (fb: NodeStateFB) =
 #if JAVASCRIPT
     match fb with
-      | x when x = NodeStateFB.JoiningFB -> Some Joining
-      | x when x = NodeStateFB.RunningFB -> Some Running
-      | x when x = NodeStateFB.FailedFB  -> Some Failed
-      | _                                -> None
+      | x when x = NodeStateFB.JoiningFB -> Right Joining
+      | x when x = NodeStateFB.RunningFB -> Right Running
+      | x when x = NodeStateFB.FailedFB  -> Right Failed
+      | x ->
+        sprintf "Could not parse RaftNodeState: %A" x
+        |> ParseError
+        |> Either.fail
 #else
     match fb with
-      | NodeStateFB.JoiningFB -> Some Joining
-      | NodeStateFB.RunningFB -> Some Running
-      | NodeStateFB.FailedFB  -> Some Failed
-      | _                     -> None
+      | NodeStateFB.JoiningFB -> Right Joining
+      | NodeStateFB.RunningFB -> Right Running
+      | NodeStateFB.FailedFB  -> Right Failed
+      | x ->
+        sprintf "Could not parse RaftNodeState: %A" x
+        |> ParseError
+        |> Either.fail
+
 #endif
 
 type RaftNodeYaml() =
@@ -140,8 +150,8 @@ and RaftNode =
     yaml.VotedForMe <- self.VotedForMe
     yaml
 
-  static member FromYamlObject (yaml: RaftNodeYaml) : RaftNode option =
-    maybe {
+  static member FromYamlObject (yaml: RaftNodeYaml) : Either<IrisError, RaftNode> =
+    either {
       let! ip = IpAddress.TryParse yaml.IpAddr
       let! state = RaftNodeState.TryParse yaml.State
       return { Id         = Id yaml.Id
@@ -186,25 +196,22 @@ and RaftNode =
     NodeFB.AddMatchIndex(builder, node.MatchIndex)
     NodeFB.EndNodeFB(builder)
 
-  static member FromFB (fb: NodeFB) : RaftNode option =
-    try
-      RaftNodeState.FromFB fb.State
-      |> Option.map
-        (fun state ->
-          { Id = Id fb.Id
-          ; State = state
-          ; HostName = fb.HostName
-          ; IpAddr = IpAddress.Parse fb.IpAddr
-          ; Port = uint16 fb.Port
-          ; WebPort = uint16 fb.WebPort
-          ; WsPort = uint16 fb.WsPort
-          ; GitPort = uint16 fb.GitPort
-          ; Voting = fb.Voting
-          ; VotedForMe = fb.VotedForMe
-          ; NextIndex = fb.NextIndex
-          ; MatchIndex = fb.MatchIndex })
-    with
-      | _ -> None
+  static member FromFB (fb: NodeFB) : Either<IrisError, RaftNode> =
+    either {
+      let! state = RaftNodeState.FromFB fb.State
+      return { Id = Id fb.Id
+               State = state
+               HostName = fb.HostName
+               IpAddr = IpAddress.Parse fb.IpAddr
+               Port = uint16 fb.Port
+               WebPort = uint16 fb.WebPort
+               WsPort = uint16 fb.WsPort
+               GitPort = uint16 fb.GitPort
+               Voting = fb.Voting
+               VotedForMe = fb.VotedForMe
+               NextIndex = fb.NextIndex
+               MatchIndex = fb.MatchIndex }
+    }
 
   member self.ToBytes () = Binary.buildBuffer self
 
@@ -274,28 +281,39 @@ and ConfigChange =
         ConfigChangeFB.AddNode(builder, node)
         ConfigChangeFB.EndConfigChangeFB(builder)
 
-  static member FromFB (fb: ConfigChangeFB) : ConfigChange option =
+  static member FromFB (fb: ConfigChangeFB) : Either<IrisError,ConfigChange> =
+    either {
+
 #if JAVASCRIPT
-    fb.Node
-    |> RaftNode.FromFB
-    |> Option.bind
-      (fun node ->
-        match fb.Type with
-          | x when x = ConfigChangeTypeFB.NodeAdded   -> Some (NodeAdded   node)
-          | x when x = ConfigChangeTypeFB.NodeRemoved -> Some (NodeRemoved node)
-          | _                                         -> None)
+      let! node = fb.Node |> RaftNode.FromFB
+      match fb.Type with
+      | x when x = ConfigChangeTypeFB.NodeAdded   -> return (NodeAdded   node)
+      | x when x = ConfigChangeTypeFB.NodeRemoved -> return (NodeRemoved node)
+      | x ->
+        return!
+          sprintf "Could not parse ConfigChangeTypeFB %A" x
+          |> ParseError
+          |> Either.fail
 #else
-    let nullable = fb.Node
-    if nullable.HasValue then
-      RaftNode.FromFB nullable.Value
-      |> Option.bind
-        (fun node ->
-          match fb.Type with
-            | ConfigChangeTypeFB.NodeAdded   -> Some (NodeAdded   node)
-            | ConfigChangeTypeFB.NodeRemoved -> Some (NodeRemoved node)
-            | _                              -> None)
-    else None
+      let nullable = fb.Node
+      if nullable.HasValue then
+        let! node = RaftNode.FromFB nullable.Value
+        match fb.Type with
+        | ConfigChangeTypeFB.NodeAdded   -> return (NodeAdded   node)
+        | ConfigChangeTypeFB.NodeRemoved -> return (NodeRemoved node)
+        | x ->
+          return!
+            sprintf "Could not parse ConfigChangeTypeFB %A" x
+            |> ParseError
+            |> Either.fail
+      else
+        return!
+          "Could not parse empty ConfigChangeFB payload"
+          |> ParseError
+          |> Either.fail
 #endif
+    }
+
 
   member self.ToBytes () = Binary.buildBuffer self
 
@@ -318,15 +336,18 @@ and ConfigChange =
 
   static member FromYamlObject (yml: ConfigChangeYaml) =
     match yml.ChangeType with
-    | "NodeAdded" -> maybe {
+    | "NodeAdded" -> either {
         let! node = Yaml.fromYaml yml.Node
         return NodeAdded(node)
       }
-    | "NodeRemoved" -> maybe {
+    | "NodeRemoved" -> either {
         let! node = Yaml.fromYaml yml.Node
         return NodeRemoved(node)
       }
-    | _ -> None
+    | x ->
+      sprintf "Could not parse %s as ConfigChange" x
+      |> ParseError
+      |> Either.fail
 
 [<RequireQualifiedAccess>]
 module Node =

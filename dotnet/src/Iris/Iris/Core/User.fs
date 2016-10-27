@@ -193,8 +193,8 @@ type User =
 
   member self.ToBytes() = Binary.buildBuffer self
 
-  static member FromFB(fb: UserFB) : User option =
-    try
+  static member FromFB(fb: UserFB) : Either<IrisError, User> =
+    Either.tryWith ParseError "User" <| fun _ ->
       { Id        = Id fb.Id
       ; UserName  = fb.UserName
       ; FirstName = fb.FirstName
@@ -207,13 +207,8 @@ type User =
       ; Joined    = DateTime.Parse fb.Joined
       ; Created   = DateTime.Parse fb.Created }
 #endif
-      |> Some
-    with
-      | exn ->
-        printfn "Could not de-serializae binary rep of User: %s" exn.Message
-        None
 
-  static member FromBytes (bytes: Binary.Buffer) : User option =
+  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError, User> =
     UserFB.GetRootAsUserFB(Binary.createBuffer bytes)
     |> User.FromFB
 
@@ -240,19 +235,14 @@ type User =
     self |> Yaml.toYaml |> serializer.Serialize
 
   static member FromYamlObject (yaml: UserYaml) =
-    try
+    Either.tryWith ParseError "User" <| fun _ ->
       { Id = Id yaml.Id
-      ; UserName = yaml.UserName
-      ; FirstName = yaml.FirstName
-      ; LastName = yaml.LastName
-      ; Email = yaml.Email
-      ; Joined = DateTime.Parse yaml.Joined
-      ; Created = DateTime.Parse yaml.Created }
-      |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize USer: %s" exn.Message
-        None
+        UserName = yaml.UserName
+        FirstName = yaml.FirstName
+        LastName = yaml.LastName
+        Email = yaml.Email
+        Joined = DateTime.Parse yaml.Joined
+        Created = DateTime.Parse yaml.Created }
 
   static member FromYaml(str: string) =
     let serializer = new Serializer()

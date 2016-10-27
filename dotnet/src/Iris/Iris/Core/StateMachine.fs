@@ -53,10 +53,8 @@ type AppCommand =
     | _             -> failwithf "AppCommand: parse error: %s" str
 
   static member TryParse (str: string) =
-    try
-      str |> AppCommand.Parse |> Some
-    with
-      | _ -> None
+    Either.tryWith ParseError "AppCommand" <| fun _ ->
+      str |> AppCommand.Parse
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -68,18 +66,24 @@ type AppCommand =
   static member FromFB (fb: ActionTypeFB) =
 #if JAVASCRIPT
     match fb with
-    | x when x = ActionTypeFB.UndoFB        -> Some Undo
-    | x when x = ActionTypeFB.RedoFB        -> Some Redo
-    | x when x = ActionTypeFB.ResetFB       -> Some Reset
-    | x when x = ActionTypeFB.SaveProjectFB -> Some SaveProject
-    | _                                     -> None
+    | x when x = ActionTypeFB.UndoFB        -> Right Undo
+    | x when x = ActionTypeFB.RedoFB        -> Right Redo
+    | x when x = ActionTypeFB.ResetFB       -> Right Reset
+    | x when x = ActionTypeFB.SaveProjectFB -> Right SaveProject
+    | x ->
+      sprintf "Could not parse %s as AppCommand" x
+      |> ParseError
+      |> Either.fail
 #else
     match fb with
-    | ActionTypeFB.UndoFB        -> Some Undo
-    | ActionTypeFB.RedoFB        -> Some Redo
-    | ActionTypeFB.ResetFB       -> Some Reset
-    | ActionTypeFB.SaveProjectFB -> Some SaveProject
-    | _                          -> None
+    | ActionTypeFB.UndoFB        -> Right Undo
+    | ActionTypeFB.RedoFB        -> Right Redo
+    | ActionTypeFB.ResetFB       -> Right Reset
+    | ActionTypeFB.SaveProjectFB -> Right SaveProject
+    | x ->
+      sprintf "Could not parse %A as AppCommand" x
+      |> ParseError
+      |> Either.fail
 #endif
 
   member self.ToOffset(_: FlatBufferBuilder) : ActionTypeFB =
@@ -333,16 +337,25 @@ type State =
     self |> Yaml.toYaml |> serializer.Serialize
 
   static member FromYamlObject (yml: StateYaml) =
-    { Patches  = Yaml.arrayToMap yml.Patches
-      IOBoxes  = Yaml.arrayToMap yml.IOBoxes
-      Cues     = Yaml.arrayToMap yml.Cues
-      CueLists = Yaml.arrayToMap yml.CueLists
-      Nodes    = Yaml.arrayToMap yml.Nodes
-      Sessions = Yaml.arrayToMap yml.Sessions
-      Users    = Yaml.arrayToMap yml.Users
-    } |> Some
+    either {
+      let! patches  = Yaml.arrayToMap yml.Patches
+      let! ioboxes  = Yaml.arrayToMap yml.IOBoxes
+      let! cues     = Yaml.arrayToMap yml.Cues
+      let! cuelists = Yaml.arrayToMap yml.CueLists
+      let! nodes    = Yaml.arrayToMap yml.Nodes
+      let! sessions = Yaml.arrayToMap yml.Sessions
+      let! users    = Yaml.arrayToMap yml.Users
 
-  static member FromYaml (str: string) : State option =
+      return { Patches  = patches
+               IOBoxes  = ioboxes
+               Cues     = cues
+               CueLists = cuelists
+               Nodes    = nodes
+               Sessions = sessions
+               Users    = users }
+    }
+
+  static member FromYaml (str: string) : Either<IrisError,State> =
     let serializer = new Serializer()
     serializer.Deserialize<StateYaml>(str)
     |> Yaml.fromYaml
@@ -409,158 +422,200 @@ type State =
 
   member self.ToBytes() = Binary.buildBuffer self
 
-  static member FromFB(fb: StateFB) : State option =
-    let mutable patches  = Map.empty
-    let mutable ioboxes  = Map.empty
-    let mutable cues     = Map.empty
-    let mutable cuelists = Map.empty
-    let mutable nodes    = Map.empty
-    let mutable users    = Map.empty
-    let mutable sessions = Map.empty
+  static member FromFB(fb: StateFB) : Either<IrisError, State> =
+    either {
+      // PATCHES
 
+      let! patches =
+        let arr = Array.zeroCreate fb.PatchesLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<Id, Patch>>) _ -> either {
+            let! (i, map) = m
 #if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.PatchesLength do
-      fb.Patches(i)
-      |> Patch.FromFB
-      |> Option.map (fun patch -> patches <- Map.add patch.Id patch patches)
-      |> ignore
-      i <- i + 1
+            let! patch = fb.Patches(i) |> Patch.FromFB
 #else
-    for i in 0 .. (fb.PatchesLength - 1) do
-      let patch = fb.Patches(i)
-      if patch.HasValue then
-        patch.Value
-        |> Patch.FromFB
-        |> Option.map (fun patch -> patches <- Map.add patch.Id patch patches)
-        |> ignore
+            let! patch =
+              let value = fb.Patches(i)
+              if value.HasValue then
+                value.Value
+                |> Patch.FromFB
+              else
+                "Could not parse empty patch payload"
+                |> ParseError
+                |> Either.fail
 #endif
+            return (i + 1, Map.add patch.Id patch map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
 
+      // IOBOXES
+
+      let! ioboxes =
+        let arr = Array.zeroCreate fb.IOBoxesLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<Id, IOBox>>) _ -> either {
+            let! (i, map) = m
 #if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.IOBoxesLength do
-      fb.IOBoxes(i)
-      |> IOBox.FromFB
-      |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
-      |> ignore
-      i <- i + 1
+            let! iobox = fb.IOBoxes(i) |> IOBox.FromFB
 #else
-    for i in 0 .. (fb.IOBoxesLength - 1) do
-      let iobox = fb.IOBoxes(i)
-      if iobox.HasValue then
-        iobox.Value
-        |> IOBox.FromFB
-        |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
-        |> ignore
+            let! iobox =
+              let value = fb.IOBoxes(i)
+              if value.HasValue then
+                value.Value
+                |> IOBox.FromFB
+              else
+                "Could not parse empty IOBox payload"
+                |> ParseError
+                |> Either.fail
 #endif
+            return (i + 1, Map.add iobox.Id iobox map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
 
+      // CUES
+
+      let! cues =
+        let arr = Array.zeroCreate fb.CuesLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<Id, Cue>>) _ -> either {
+            let! (i, map) = m
 #if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.CuesLength do
-      fb.Cues(i)
-      |> Cue.FromFB
-      |> Option.map (fun cue -> cues <- Map.add cue.Id cue cues)
-      |> ignore
-      i <- i + 1
+            let! cue = fb.Cues(i) |> Cue.FromFB
 #else
-    for i in 0 .. (fb.CuesLength - 1) do
-      let cue = fb.Cues(i)
-      if cue.HasValue then
-        cue.Value
-        |> Cue.FromFB
-        |> Option.map (fun cue -> cues <- Map.add cue.Id cue cues)
-        |> ignore
+            let! cue =
+              let value = fb.Cues(i)
+              if value.HasValue then
+                value.Value
+                |> Cue.FromFB
+              else
+                "Could not parse empty Cue payload"
+                |> ParseError
+                |> Either.fail
 #endif
+            return (i + 1, Map.add cue.Id cue map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
 
+      // CUELISTS
+
+      let! cuelists =
+        let arr = Array.zeroCreate fb.CueListsLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<Id, CueList>>) _ -> either {
+            let! (i, map) = m
 #if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.CueListsLength do
-      fb.CueLists(i)
-      |> CueList.FromFB
-      |> Option.map
-        (fun cuelist ->
-          cuelists <- Map.add cuelist.Id cuelist cuelists)
-      |> ignore
-      i <- i + 1
+            let! cuelist = fb.CueLists(i) |> CueList.FromFB
 #else
-    for i in 0 .. (fb.CueListsLength - 1) do
-      let cuelist = fb.CueLists(i)
-      if cuelist.HasValue then
-        cuelist.Value
-        |> CueList.FromFB
-        |> Option.map
-          (fun cuelist ->
-            cuelists <- Map.add cuelist.Id cuelist cuelists)
-        |> ignore
+            let! cuelist =
+              let value = fb.CueLists(i)
+              if value.HasValue then
+                value.Value
+                |> CueList.FromFB
+              else
+                "Could not parse empty CueList payload"
+                |> ParseError
+                |> Either.fail
 #endif
+            return (i + 1, Map.add cuelist.Id cuelist map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
 
+      // NODES
+
+      let! nodes =
+        let arr = Array.zeroCreate fb.NodesLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<Id, RaftNode>>) _ -> either {
+            let! (i, map) = m
 #if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.NodesLength do
-      fb.Nodes(i)
-      |> RaftNode.FromFB
-      |> Option.map (fun node -> nodes <- Map.add node.Id node nodes)
-      |> ignore
-      i <- i + 1
+            let! node = fb.Nodes(i) |> RaftNode.FromFB
 #else
-    for i in 0 .. (fb.NodesLength - 1) do
-      let node = fb.Nodes(i)
-      if node.HasValue then
-        node.Value
-        |> RaftNode.FromFB
-        |> Option.map (fun node -> nodes <- Map.add node.Id node nodes)
-        |> ignore
+            let! node =
+              let value = fb.Nodes(i)
+              if value.HasValue then
+                value.Value
+                |> RaftNode.FromFB
+              else
+                "Could not parse empty RaftNode payload"
+                |> ParseError
+                |> Either.fail
 #endif
+            return (i + 1, Map.add node.Id node map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
 
+      // USERS
+
+      let! users =
+        let arr = Array.zeroCreate fb.UsersLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<Id, User>>) _ -> either {
+            let! (i, map) = m
 #if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.UsersLength do
-      fb.Users(i)
-      |> User.FromFB
-      |> Option.map (fun user -> users <- Map.add user.Id user users)
-      |> ignore
-      i <- i + 1
+            let! user = fb.Users(i) |> User.FromFB
 #else
-    for i in 0 .. (fb.UsersLength - 1) do
-      let user = fb.Users(i)
-      if user.HasValue then
-        user.Value
-        |> User.FromFB
-        |> Option.map (fun user -> users <- Map.add user.Id user users)
-        |> ignore
+            let! user =
+              let value = fb.Users(i)
+              if value.HasValue then
+                value.Value
+                |> User.FromFB
+              else
+                "Could not parse empty User payload"
+                |> ParseError
+                |> Either.fail
 #endif
+            return (i + 1, Map.add user.Id user map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
 
+      // SESSIONS
+
+      let! sessions =
+        let arr = Array.zeroCreate fb.SessionsLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<Id, Session>>) _ -> either {
+            let! (i, map) = m
 #if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.SessionsLength do
-      fb.Sessions(i)
-      |> Session.FromFB
-      |> Option.map
-        (fun session ->
-          sessions <- Map.add session.Id session sessions)
-      |> ignore
-      i <- i + 1
+            let! session = fb.Sessions(i) |> Session.FromFB
 #else
-    for i in 0 .. (fb.SessionsLength - 1) do
-      let session = fb.Sessions(i)
-      if session.HasValue then
-        session.Value
-        |> Session.FromFB
-        |> Option.map
-          (fun session ->
-            sessions <- Map.add session.Id session sessions)
-        |> ignore
+            let! session =
+              let value = fb.Sessions(i)
+              if value.HasValue then
+                value.Value
+                |> Session.FromFB
+              else
+                "Could not parse empty Session payload"
+                |> ParseError
+                |> Either.fail
 #endif
+            return (i + 1, Map.add session.Id session map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
 
-    Some { Patches  = patches
-         ; IOBoxes  = ioboxes
-         ; Cues     = cues
-         ; CueLists = cuelists
-         ; Nodes    = nodes
-         ; Users    = users
-         ; Sessions = sessions }
+      return { Patches  = patches
+               IOBoxes  = ioboxes
+               Cues     = cues
+               CueLists = cuelists
+               Nodes    = nodes
+               Users    = users
+               Sessions = sessions }
+    }
 
-  static member FromBytes (bytes: Binary.Buffer) : State option =
+  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError,State> =
     Binary.createBuffer bytes
     |> StateFB.GetRootAsStateFB
     |> State.FromFB
@@ -1015,109 +1070,117 @@ and StateMachine =
 
   static member FromYamlObject (yaml: StateMachineYaml) =
     match yaml.Action with
-    | "AddNode" -> maybe {
+    | "AddNode" -> either {
         let! node = yaml.Payload :?> RaftNodeYaml |> Yaml.fromYaml
         return AddNode(node)
       }
-    | "UpdateNode" -> maybe {
+    | "UpdateNode" -> either {
         let! node = yaml.Payload :?> RaftNodeYaml |> Yaml.fromYaml
         return UpdateNode(node)
       }
-    | "RemoveNode" -> maybe {
+    | "RemoveNode" -> either {
         let! node = yaml.Payload :?> RaftNodeYaml |> Yaml.fromYaml
         return RemoveNode(node)
       }
-    | "AddPatch" -> maybe {
+    | "AddPatch" -> either {
         let! patch = yaml.Payload :?> PatchYaml |> Yaml.fromYaml
         return AddPatch(patch)
       }
-    | "UpdatePatch" -> maybe {
+    | "UpdatePatch" -> either {
         let! patch = yaml.Payload :?> PatchYaml |> Yaml.fromYaml
         return UpdatePatch(patch)
       }
-    | "RemovePatch" -> maybe {
+    | "RemovePatch" -> either {
         let! patch = yaml.Payload :?> PatchYaml |> Yaml.fromYaml
         return RemovePatch(patch)
       }
-    | "AddIOBox" -> maybe {
+    | "AddIOBox" -> either {
         let! iobox = yaml.Payload :?> IOBoxYaml |> Yaml.fromYaml
         return AddIOBox(iobox)
       }
-    | "UpdateIOBox" -> maybe {
+    | "UpdateIOBox" -> either {
         let! iobox = yaml.Payload :?> IOBoxYaml |> Yaml.fromYaml
         return UpdateIOBox(iobox)
       }
-    | "RemoveIOBox" -> maybe {
+    | "RemoveIOBox" -> either {
         let! iobox = yaml.Payload :?> IOBoxYaml |> Yaml.fromYaml
         return RemoveIOBox(iobox)
       }
-    | "AddCue" -> maybe {
+    | "AddCue" -> either {
         let! cue = yaml.Payload :?> CueYaml |> Yaml.fromYaml
         return AddCue(cue)
       }
-    | "UpdateCue" -> maybe {
+    | "UpdateCue" -> either {
         let! cue = yaml.Payload :?> CueYaml |> Yaml.fromYaml
         return UpdateCue(cue)
       }
-    | "RemoveCue" -> maybe {
+    | "RemoveCue" -> either {
         let! cue = yaml.Payload :?> CueYaml |> Yaml.fromYaml
         return RemoveCue(cue)
       }
-    | "AddCueList" -> maybe {
+    | "AddCueList" -> either {
         let! cuelist = yaml.Payload :?> CueListYaml |> Yaml.fromYaml
         return AddCueList(cuelist)
       }
-    | "UpdateCueList" -> maybe {
+    | "UpdateCueList" -> either {
         let! cuelist = yaml.Payload :?> CueListYaml |> Yaml.fromYaml
         return UpdateCueList(cuelist)
       }
-    | "RemoveCueList" -> maybe {
+    | "RemoveCueList" -> either {
         let! cuelist = yaml.Payload :?> CueListYaml |> Yaml.fromYaml
         return RemoveCueList(cuelist)
       }
-    | "AddUser" -> maybe {
+    | "AddUser" -> either {
         let! user = yaml.Payload :?> UserYaml |> Yaml.fromYaml
         return AddUser(user)
       }
-    | "UpdateUser" -> maybe {
+    | "UpdateUser" -> either {
         let! user = yaml.Payload :?> UserYaml |> Yaml.fromYaml
         return UpdateUser(user)
       }
-    | "RemoveUser" -> maybe {
+    | "RemoveUser" -> either {
         let! user = yaml.Payload :?> UserYaml |> Yaml.fromYaml
         return RemoveUser(user)
       }
-    | "AddSession" -> maybe {
+    | "AddSession" -> either {
         let! session = yaml.Payload :?> SessionYaml |> Yaml.fromYaml
         return AddSession(session)
       }
-    | "UpdateSession" -> maybe {
+    | "UpdateSession" -> either {
         let! session = yaml.Payload :?> SessionYaml |> Yaml.fromYaml
         return UpdateSession(session)
       }
-    | "RemoveSession" -> maybe {
+    | "RemoveSession" -> either {
         let! session = yaml.Payload :?> SessionYaml |> Yaml.fromYaml
         return RemoveSession(session)
       }
-    | "Command" -> maybe {
+    | "Command" -> either {
         let! cmd = yaml.Payload :?> string |> AppCommand.TryParse
         return Command(cmd)
       }
-    | "DataSnapshot" -> maybe {
+    | "DataSnapshot" -> either {
         let! data = yaml.Payload :?> StateYaml |> Yaml.fromYaml
         return DataSnapshot(data)
       }
-    | "LogMsg" -> maybe {
+    | "LogMsg" -> either {
         let payload = yaml.Payload :?> string
-        let! levelstr, str = match split [| ';' |] payload with
-                             | [| level; str |] -> Some (level, str)
-                             | _              -> None
+        let! (levelstr, str) =
+          match split [| ';' |] payload with
+          | [| level; str |] ->
+             Right (level, str)
+          | _ ->
+             sprintf "Could not parse LogMsg %s" payload
+             |> ParseError
+             |> Either.fail
         let! loglevel = LogLevel.TryParse levelstr
         return LogMsg(loglevel, str)
       }
-    | _ -> None
+    | x ->
+      sprintf "Could not parse %s as StateMachine command" x
+      |> ParseError
+      |> Either.fail
 
-  static member FromYaml (str: string) : StateMachine option =
+  static member FromYaml (str: string) : Either<IrisError,StateMachine> =
     let serializer = new Serializer()
     serializer.Deserialize<StateMachineYaml>(str)
     |> Yaml.fromYaml
@@ -1237,17 +1300,27 @@ and StateMachine =
     //  \____\__,_|\___|
 
     | PayloadFB.CueFB ->
-      let cue =
-        let cueish = fb.Payload<CueFB>()
-        if cueish.HasValue then
-          cueish.Value
-          |> Cue.FromFB
-        else None
-      match fb.Action with
-      | ActionTypeFB.AddFB    -> Option.map AddCue    cue
-      | ActionTypeFB.UpdateFB -> Option.map UpdateCue cue
-      | ActionTypeFB.RemoveFB -> Option.map RemoveCue cue
-      | _                     -> None
+      either {
+        let! cue =
+          let cueish = fb.Payload<CueFB>()
+          if cueish.HasValue then
+            cueish.Value
+            |> Cue.FromFB
+          else
+            "Could not parse empty cue payload"
+            |> ParseError
+            |> Either.fail
+
+        match fb.Action with
+        | ActionTypeFB.AddFB    -> return (AddCue cue)
+        | ActionTypeFB.UpdateFB -> return (UpdateCue cue)
+        | ActionTypeFB.RemoveFB -> return (RemoveCue cue)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> ParseError
+            |> Either.fail
+      }
 
     //   ____           _     _     _
     //  / ___|   _  ___| |   (_)___| |_
@@ -1256,17 +1329,27 @@ and StateMachine =
     //  \____\__,_|\___|_____|_|___/\__|
 
     | PayloadFB.CueListFB ->
-      let cuelist =
-        let cuelistish = fb.Payload<CueListFB>()
-        if cuelistish.HasValue then
-          cuelistish.Value
-          |> CueList.FromFB
-        else None
-      match fb.Action with
-      | ActionTypeFB.AddFB    -> Option.map AddCueList    cuelist
-      | ActionTypeFB.UpdateFB -> Option.map UpdateCueList cuelist
-      | ActionTypeFB.RemoveFB -> Option.map RemoveCueList cuelist
-      | _                     -> None
+      either {
+        let! cuelist =
+          let cuelistish = fb.Payload<CueListFB>()
+          if cuelistish.HasValue then
+            cuelistish.Value
+            |> CueList.FromFB
+          else
+            "Could not parse empty cuelist payload"
+            |> ParseError
+            |> Either.fail
+
+        match fb.Action with
+        | ActionTypeFB.AddFB    -> return (AddCueList    cuelist)
+        | ActionTypeFB.UpdateFB -> return (UpdateCueList cuelist)
+        | ActionTypeFB.RemoveFB -> return (RemoveCueList cuelist)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> ParseError
+            |> Either.fail
+      }
 
     //  ____       _       _
     // |  _ \ __ _| |_ ___| |__
@@ -1275,17 +1358,27 @@ and StateMachine =
     // |_|   \__,_|\__\___|_| |_|
 
     | PayloadFB.PatchFB ->
-      let patch =
-        let patchish = fb.Payload<PatchFB>()
-        if patchish.HasValue then
-          patchish.Value
-          |> Patch.FromFB
-        else None
-      match fb.Action with
-      | ActionTypeFB.AddFB    -> Option.map AddPatch    patch
-      | ActionTypeFB.UpdateFB -> Option.map UpdatePatch patch
-      | ActionTypeFB.RemoveFB -> Option.map RemovePatch patch
-      | _                     -> None
+      either {
+        let! patch =
+          let patchish = fb.Payload<PatchFB>()
+          if patchish.HasValue then
+            patchish.Value
+            |> Patch.FromFB
+          else
+            "Could not parse empty patche payload"
+            |> ParseError
+            |> Either.fail
+
+        match fb.Action with
+        | ActionTypeFB.AddFB    -> return (AddPatch    patch)
+        | ActionTypeFB.UpdateFB -> return (UpdatePatch patch)
+        | ActionTypeFB.RemoveFB -> return (RemovePatch patch)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> ParseError
+            |> Either.fail
+      }
 
     //  ___ ___  ____
     // |_ _/ _ \| __ )  _____  __
@@ -1294,17 +1387,27 @@ and StateMachine =
     // |___\___/|____/ \___/_/\_\
 
     | PayloadFB.IOBoxFB ->
-      let iobox =
-        let ioboxish = fb.Payload<IOBoxFB>()
-        if ioboxish.HasValue then
-          ioboxish.Value
-          |> IOBox.FromFB
-        else None
-      match fb.Action with
-      | ActionTypeFB.AddFB    -> Option.map AddIOBox    iobox
-      | ActionTypeFB.UpdateFB -> Option.map UpdateIOBox iobox
-      | ActionTypeFB.RemoveFB -> Option.map RemoveIOBox iobox
-      | _                     -> None
+      either {
+        let! iobox =
+          let ioboxish = fb.Payload<IOBoxFB>()
+          if ioboxish.HasValue then
+            ioboxish.Value
+            |> IOBox.FromFB
+          else
+            "Could not parse empty iobox payload"
+            |> ParseError
+            |> Either.fail
+
+        match fb.Action with
+        | ActionTypeFB.AddFB    -> return (AddIOBox    iobox)
+        | ActionTypeFB.UpdateFB -> return (UpdateIOBox iobox)
+        | ActionTypeFB.RemoveFB -> return (RemoveIOBox iobox)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> ParseError
+            |> Either.fail
+      }
 
     //  _   _           _
     // | \ | | ___   __| | ___
@@ -1313,17 +1416,27 @@ and StateMachine =
     // |_| \_|\___/ \__,_|\___|
 
     | PayloadFB.NodeFB ->
-      let node =
-        let nodeish = fb.Payload<NodeFB>()
-        if nodeish.HasValue then
-          nodeish.Value
-          |> RaftNode.FromFB
-        else None
-      match fb.Action with
-      | ActionTypeFB.AddFB    -> Option.map AddNode    node
-      | ActionTypeFB.UpdateFB -> Option.map UpdateNode node
-      | ActionTypeFB.RemoveFB -> Option.map RemoveNode node
-      | _                     -> None
+      either {
+        let! node =
+          let nodeish = fb.Payload<NodeFB>()
+          if nodeish.HasValue then
+            nodeish.Value
+            |> RaftNode.FromFB
+          else
+            "Could not parse empty node payload"
+            |> ParseError
+            |> Either.fail
+
+        match fb.Action with
+        | ActionTypeFB.AddFB    -> return (AddNode    node)
+        | ActionTypeFB.UpdateFB -> return (UpdateNode node)
+        | ActionTypeFB.RemoveFB -> return (RemoveNode node)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> ParseError
+            |> Either.fail
+      }
 
     //  _   _
     // | | | |___  ___ _ __
@@ -1332,17 +1445,27 @@ and StateMachine =
     //  \___/|___/\___|_|
 
     | PayloadFB.UserFB ->
-      let user =
-        let userish = fb.Payload<UserFB>()
-        if userish.HasValue then
-          userish.Value
-          |> User.FromFB
-        else None
-      match fb.Action with
-      | ActionTypeFB.AddFB    -> Option.map AddUser    user
-      | ActionTypeFB.UpdateFB -> Option.map UpdateUser user
-      | ActionTypeFB.RemoveFB -> Option.map RemoveUser user
-      | _                     -> None
+      either {
+        let! user =
+          let userish = fb.Payload<UserFB>()
+          if userish.HasValue then
+            userish.Value
+            |> User.FromFB
+          else
+            "Could not parse empty user payload"
+            |> ParseError
+            |> Either.fail
+
+        match fb.Action with
+        | ActionTypeFB.AddFB    -> return (AddUser    user)
+        | ActionTypeFB.UpdateFB -> return (UpdateUser user)
+        | ActionTypeFB.RemoveFB -> return (RemoveUser user)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> ParseError
+            |> Either.fail
+      }
 
     //  ____                _
     // / ___|  ___  ___ ___(_) ___  _ __
@@ -1351,18 +1474,27 @@ and StateMachine =
     // |____/ \___||___/___/_|\___/|_| |_|
 
     | PayloadFB.SessionFB ->
-      let session =
-        let sessionish = fb.Payload<SessionFB>()
-        if sessionish.HasValue then
-          sessionish.Value
-          |> Session.FromFB
-        else None
-      match fb.Action with
-      | ActionTypeFB.AddFB    -> Option.map AddSession    session
-      | ActionTypeFB.UpdateFB -> Option.map UpdateSession session
-      | ActionTypeFB.RemoveFB -> Option.map RemoveSession session
-      | _                     -> None
+      either {
+        let! session =
+          let sessionish = fb.Payload<SessionFB>()
+          if sessionish.HasValue then
+            sessionish.Value
+            |> Session.FromFB
+          else
+            "Could not parse empty session payload"
+            |> ParseError
+            |> Either.fail
 
+        match fb.Action with
+        | ActionTypeFB.AddFB    -> return (AddSession    session)
+        | ActionTypeFB.UpdateFB -> return (UpdateSession session)
+        | ActionTypeFB.RemoveFB -> return (RemoveSession session)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> ParseError
+            |> Either.fail
+      }
     //  __  __ _
     // |  \/  (_)___  ___
     // | |\/| | / __|/ __|
@@ -1370,25 +1502,37 @@ and StateMachine =
     // |_|  |_|_|___/\___|
 
     | PayloadFB.LogMsgFB ->
-      let logish = fb.Payload<LogMsgFB>()
-      if logish.HasValue then
-        let log = logish.Value
-        log.LogLevel
-        |> LogLevel.TryParse
-        |> Option.map (fun level -> LogMsg(level, log.Msg))
-      else None
+      either {
+        let logish = fb.Payload<LogMsgFB>()
+        if logish.HasValue then
+          let log = logish.Value
+          let! level = log.LogLevel |> LogLevel.TryParse
+          return LogMsg(level, log.Msg)
+        else
+          return!
+            "Could not parse empty logmsg payload"
+            |> ParseError
+            |> Either.fail
+      }
 
     | PayloadFB.StateFB ->
-      let stateish = fb.Payload<StateFB>()
-      if stateish.HasValue then
-        let state = stateish.Value
-        state
-        |> State.FromFB
-        |> Option.map DataSnapshot
-      else None
+      either {
+        let stateish = fb.Payload<StateFB>()
+        if stateish.HasValue then
+          let state = stateish.Value
+          let! parsed = state |> State.FromFB
+          return (DataSnapshot parsed)
+        else
+          return!
+            "Could not parse empty state payload"
+            |> ParseError
+            |> Either.fail
+      }
 
-    | _ ->
-      AppCommand.FromFB fb.Action |> Option.map Command
+    | _ -> either {
+      let! cmd = AppCommand.FromFB fb.Action
+      return (Command cmd)
+    }
 
 #endif
 
@@ -1685,7 +1829,7 @@ and StateMachine =
 
   member self.ToBytes () = Binary.buildBuffer self
 
-  static member FromBytes (bytes: Binary.Buffer) : StateMachine option =
+  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError,StateMachine> =
     Binary.createBuffer bytes
     |> ApiActionFB.GetRootAsApiActionFB
     |> StateMachine.FromFB

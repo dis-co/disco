@@ -84,12 +84,14 @@ and Property =
   member self.ToYamlObject() =
     new PropertyYaml(self.Key, self.Value)
 
-  static member FromYamlObject(yml: PropertyYaml) : Property option =
+  static member FromYamlObject(yml: PropertyYaml) : Either<IrisError,Property> =
     try
-      { Key = yml.Key; Value = yml.Value } |> Some
+      { Key = yml.Key; Value = yml.Value }
+      |> Either.succeed
     with
       | exn ->
-        printfn "Could not parse PropteryYaml: %s" exn.Message
-        None
+        sprintf "Could not parse PropteryYaml: %s" exn.Message
+        |> ParseError
+        |> Either.fail
 
 #endif

@@ -90,15 +90,16 @@ module Yaml =
 
   let inline arrayToMap< ^err, ^i, ^a, ^t when ^t : (static member FromYamlObject : ^a -> Either< ^err, ^t >)
                                           and  ^t : (member Id : ^i)
-                                          and  ^i : comparison> (things: ^a array) =
+                                          and  ^i : comparison> (things: ^a array)
+                                          : Either< ^err, Map< ^i, ^t > > =
     Array.fold
-      (fun (m: Map< ^i, ^t >) (yml: ^a) ->
-        match fromYaml yml with
-        | Right thing ->
-          let id = (^t : (member Id : ^i) thing)
-          Map.add id thing m
-        | _ -> m)
-      Map.empty
+      (fun (m: Either< ^err, Map< ^i, ^t > >) (yml: ^a) -> either {
+        let! things = m
+        let! thing = fromYaml yml
+        let id = (^t : (member Id : ^i) thing)
+        return Map.add id thing things
+      })
+      (Right Map.empty)
       things
 
 #endif

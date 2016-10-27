@@ -51,33 +51,39 @@ and CueList =
 
   member self.ToBytes() = Binary.buildBuffer self
 
-  static member FromFB(fb: CueListFB) : CueList option =
-    let cues = Array.zeroCreate fb.CuesLength
-
-    for i in 0 .. (fb.CuesLength - 1) do
+  static member FromFB(fb: CueListFB) : Either<IrisError, CueList> =
+    either {
+      let! cues =
+        let arr = Array.zeroCreate fb.CuesLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Cue array>) _ -> either {
+            let! (i, arr) = m
 #if JAVASCRIPT
-      fb.Cues(i)
-      |> Cue.FromFB
-      |> Option.map (fun cue -> cues.[i] <- cue)
-      |> ignore
+            let! cue =
+              fb.Cues(i)
+              |> Cue.FromFB
 #else
-      let cue = fb.Cues(i)
-      if cue.HasValue then
-        cue.Value
-        |> Cue.FromFB
-        |> Option.map (fun cue -> cues.[i] <- cue)
-        |> ignore
+            let! cue =
+              let value = fb.Cues(i)
+              if value.HasValue then
+                value.Value
+                |> Cue.FromFB
+              else
+                "Could not parse empty CueFB"
+                |> ParseError
+                |> Either.fail
 #endif
+            arr.[i] <- cue
+            return (i + 1, arr)
+          })
+          (Right (0, arr))
+          arr
+        |> Either.map snd
 
-    try
-      { Id = Id fb.Id
-      ; Name = fb.Name
-      ; Cues = cues }
-      |> Some
-    with
-      | exn ->
-        printfn "Could not seserialize CueList: %s" exn.Message
-        None
+      return { Id = Id fb.Id
+               Name = fb.Name
+               Cues = cues }
+    }
 
   static member FromBytes (bytes: Binary.Buffer) =
     Binary.createBuffer bytes
@@ -92,26 +98,30 @@ and CueList =
       self.Name,
       Array.map Yaml.toYaml self.Cues)
 
-  static member FromYamlObject(yml: CueListYaml) : CueList option =
-    try
-      let cues =
+  static member FromYamlObject(yml: CueListYaml) : Either<IrisError,CueList> =
+    either {
+      let! cues =
+        let arr = Array.zeroCreate yml.Cues.Length
         Array.fold
-          (fun m cueish ->
-            match Yaml.fromYaml cueish with
-            | Some cue -> Array.append m [| cue |]
-            | _        -> m)
-          [| |]
+          (fun (m: Either<IrisError,int * Cue array>) cueish -> either {
+            let! (i, arr) = m
+            let! (cue: Cue) = Yaml.fromYaml cueish
+            arr.[i] <- cue
+            return (i + 1, arr)
+          })
+          (Right (0, arr))
           yml.Cues
-      { Id = Id yml.Id; Name = yml.Name; Cues = cues } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize CueList yml: %s" exn.Message
-        None
+        |> Either.map snd
+
+      return { Id = Id yml.Id
+               Name = yml.Name
+               Cues = cues }
+    }
 
   member self.ToYaml(serializer: Serializer) =
     Yaml.toYaml self |> serializer.Serialize
 
-  static member FromYaml(str: string) : CueList option =
+  static member FromYaml(str: string) : Either<IrisError, CueList> =
     let serializer = new Serializer()
     serializer.Deserialize<CueListYaml>(str)
     |> Yaml.fromYaml

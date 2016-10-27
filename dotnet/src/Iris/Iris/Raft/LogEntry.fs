@@ -419,8 +419,8 @@ and RaftLogEntry =
   /// - log: previous RaftLogEntry value to reconstruct the chain of events
   ///
   /// Returns: RaftLogEntry option
-  static member FromFB (logs: LogFB array) : RaftLogEntry option =
-    let fb2Log (fb: LogFB) (sibling: RaftLogEntry option) : RaftLogEntry option =
+  static member FromFB (logs: LogFB array) : Either<IrisError, RaftLogEntry> =
+    let fb2Log (fb: LogFB) (sibling: RaftLogEntry option) : Either<IrisError,RaftLogEntry> =
       match fb.EntryType with
       | LogTypeFB.ConfigurationFB ->
         let entry = fb.Entry<ConfigurationFB>()

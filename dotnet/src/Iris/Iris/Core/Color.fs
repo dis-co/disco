@@ -57,15 +57,18 @@ type RGBAValue =
     RGBAValueFB.AddAlpha(builder, self.Alpha)
     RGBAValueFB.EndRGBAValueFB(builder)
 
-  static member FromFB(fb: RGBAValueFB) : RGBAValue option =
+  static member FromFB(fb: RGBAValueFB) : Either<IrisError,RGBAValue> =
     try
       { Red   = fb.Red
       ; Green = fb.Green
       ; Blue  = fb.Blue
       ; Alpha = fb.Alpha
-      } |> Some
+      } |> Right
     with
-      | _ -> None
+      | exn ->
+        sprintf "Could not parse RGBAValueFB: %s" exn.Message
+        |> ParseError
+        |> Either.fail
 
   member self.ToBytes () = Binary.buildBuffer self
 
@@ -96,15 +99,18 @@ type HSLAValue =
     HSLAValueFB.AddAlpha(builder, self.Alpha)
     HSLAValueFB.EndHSLAValueFB(builder)
 
-  static member FromFB(fb: HSLAValueFB) : HSLAValue option =
+  static member FromFB(fb: HSLAValueFB) : Either<IrisError,HSLAValue> =
     try
       { Hue        = fb.Hue
       ; Saturation = fb.Saturation
       ; Lightness  = fb.Lightness
       ; Alpha      = fb.Alpha
-      } |> Some
+      } |> Right
     with
-      | _ -> None
+      | exn ->
+        sprintf "Could not parse HSLAValueFB: %s" exn.Message
+        |> ParseError
+        |> Either.fail
 
   member self.ToBytes () = Binary.buildBuffer self
 
@@ -144,19 +150,21 @@ type ColorSpace =
       value.ToOffset(builder)
       |> build ColorSpaceTypeFB.HSLAValueFB
 
-  static member FromFB(fb: ColorSpaceFB) : ColorSpace option =
+  static member FromFB(fb: ColorSpaceFB) : Either<IrisError,ColorSpace> =
 #if JAVASCRIPT
     match fb.ValueType with
     | x when x = ColorSpaceTypeFB.RGBAValueFB ->
       RGBAValueFB.Create()
       |> fb.Value
       |> RGBAValue.FromFB
-      |> Option.map RGBA
+      |> Either.map RGBA
+
     | x when x = ColorSpaceTypeFB.HSLAValueFB ->
       HSLAValueFB.Create()
       |> fb.Value
       |> HSLAValue.FromFB
-      |> Option.map HSLA
+      |> Either.map HSLA
+
     | _ -> None
 #else
     // On .NET side, System.Nullables are used. Hard to emulate rn.
@@ -166,16 +174,28 @@ type ColorSpace =
       if v.HasValue then
         v.Value
         |> RGBAValue.FromFB
-        |> Option.map RGBA
-      else None
+        |> Either.map RGBA
+      else
+        sprintf "Could not parse RGBAValue"
+        |> ParseError
+        |> Either.fail
+
     | ColorSpaceTypeFB.HSLAValueFB ->
       let v = fb.Value<HSLAValueFB>()
       if v.HasValue then
         v.Value
         |> HSLAValue.FromFB
-        |> Option.map HSLA
-      else None
-    | _ -> None
+        |> Either.map HSLA
+      else
+        sprintf "Could not parse RGBAValue"
+        |> ParseError
+        |> Either.fail
+
+    | x ->
+      sprintf "Could not parse ColorSpaceFB. Unknown type: %A" x
+      |> ParseError
+      |> Either.fail
+
 #endif
 
   member self.ToBytes () = Binary.buildBuffer self
@@ -191,9 +211,22 @@ type ColorSpace =
   member self.ToYamlObject() =
     match self with
     | RGBA value ->
-      new ColorYaml("RGBA", value.Alpha, value.Red, value.Green, value.Blue)
+      let yml = new ColorYaml()
+      yml.ColorType <- "RGBA"
+      yml.Alpha     <- value.Alpha
+      yml.Channel1  <- value.Red
+      yml.Channel2  <- value.Green
+      yml.Channel3  <- value.Blue
+      yml
+
     | HSLA value ->
-      new ColorYaml("HSLA", value.Alpha, value.Hue, value.Saturation, value.Lightness)
+      let yml = new ColorYaml()
+      yml.ColorType <- "HSLA"
+      yml.Alpha     <- value.Alpha
+      yml.Channel1  <- value.Hue
+      yml.Channel2  <- value.Saturation
+      yml.Channel3  <- value.Lightness
+      yml
 
   static member FromYamlObject(yml: ColorYaml) =
     match yml.ColorType with
@@ -203,14 +236,17 @@ type ColorSpace =
         Green = yml.Channel2;
         Blue = yml.Channel3;
         Alpha = yml.Alpha
-      } |> Some
+      } |> Right
     | "HSLA" ->
       HSLA {
         Hue = yml.Channel1;
         Saturation = yml.Channel2;
         Lightness = yml.Channel3;
         Alpha = yml.Alpha
-      } |> Some
-    | _ -> None
+      } |> Right
+    | x ->
+      sprintf "Could not parse ColorYaml. Unknown type: %s" x
+      |> ParseError
+      |> Either.fail
 
 #endif

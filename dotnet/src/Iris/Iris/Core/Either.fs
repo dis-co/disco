@@ -188,17 +188,30 @@ module EitherUtils =
 
   type EitherBuilder() =
 
-    member __.Return(v) = Right v
+    member self.Return(v) = Right v
 
-    member __.ReturnFrom(v) = v
+    member self.ReturnFrom(v) = v
 
-    member inline __.Bind(m, f) = Either.bind f m
+    member inline self.Bind(m, f) = Either.bind f m
 
-    member __.Zero() = Right ()
+    member self.Zero() = Right ()
 
-    member __.Delay(f) = fun () -> f()
+    member self.Delay(f) = fun () -> f()
 
-    member __.Run(f) = f()              // needed for lazyness to work
+    member self.Run(f) = f()              // needed for lazyness to work
+
+    member self.While(guard, body) =
+      if guard () then
+        let cont () =
+          self.While(guard, body)
+        self.Bind(body(), cont)
+      else
+        self.Zero()
+
+    member self.Combine(a, b) =
+      match a with
+      | Right _ -> a
+      | Left  _ -> b
 
   let either = new EitherBuilder()
 

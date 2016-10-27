@@ -44,35 +44,38 @@ and Cue =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
-  static member FromFB(fb: CueFB) : Cue option =
-#if JAVASCRIPT
-    let ioboxes = [| |]
-#else
-    let ioboxes = Array.zeroCreate fb.IOBoxesLength
-#endif
+  static member FromFB(fb: CueFB) : Either<IrisError,Cue> =
+    either {
+      let! ioboxes =
+        let arr = Array.zeroCreate fb.IOBoxesLength
+        Array.fold
+          (fun (m: Either<IrisError,int * IOBox array>) _ -> either {
+              let! (i, ioboxes) = m
 
-    for i in 0 .. (fb.IOBoxesLength - 1) do
-#if JAVASCRIPT
-      fb.IOBoxes(i)
-      |> IOBox.FromFB
-      |> Option.map (fun iobox -> ioboxes.[i] <- iobox)
-      |> ignore
-#else
-      let iobox = fb.IOBoxes(i)
-      if iobox.HasValue then
-        iobox.Value
-        |> IOBox.FromFB
-        |> Option.map (fun iobox -> ioboxes.[i] <- iobox)
-        |> ignore
-#endif
+  #if JAVASCRIPT
+              let! iobox = i |> fb.IOBoxes |> IOBox.FromFB
+  #else
+              let! iobox =
+                let nullable = fb.IOBoxes(i)
+                if nullable.HasValue then
+                  nullable.Value
+                  |> IOBox.FromFB
+                else
+                  "Could not parse empty IOBoxFB"
+                  |> ParseError
+                  |> Either.fail
+  #endif
 
-    try
-      { Id = Id fb.Id
-      ; Name = fb.Name
-      ; IOBoxes = ioboxes
-      } |> Some
-    with
-      | exn -> None
+              return (i + 1, arr)
+            })
+          (Right (0, arr))
+          arr
+        |> Either.map snd
+
+      return { Id = Id fb.Id
+               Name = fb.Name
+               IOBoxes = ioboxes }
+    }
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueFB> =
     let id = string self.Id |> builder.CreateString
@@ -85,7 +88,7 @@ and Cue =
     CueFB.AddIOBoxes(builder, ioboxes)
     CueFB.EndCueFB(builder)
 
-  static member FromBytes(bytes: Binary.Buffer) : Cue option =
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,Cue> =
     CueFB.GetRootAsCueFB(Binary.createBuffer bytes)
     |> Cue.FromFB
 
@@ -97,29 +100,29 @@ and Cue =
     let ioboxes = Array.map Yaml.toYaml self.IOBoxes
     new CueYaml(string self.Id, self.Name, ioboxes)
 
-  static member FromYamlObject(yaml: CueYaml) : Cue option =
-    let ioboxes =
-      Array.fold
-        (fun m box ->
-           match Yaml.fromYaml box with
-           | Some iobox -> Array.append m [| iobox |]
-           | _          -> m)
-        [| |]
-        yaml.IOBoxes
-    try
-      { Id = Id yaml.Id
-      ; Name = yaml.Name
-      ; IOBoxes = ioboxes
-      } |> Some
-    with
-      | exn ->
-        printfn "Could not deserialize Cue: %s" exn.Message
-        None
+  static member FromYamlObject(yaml: CueYaml) : Either<IrisError,Cue> =
+    either {
+      let! ioboxes =
+        let arr = Array.zeroCreate yaml.IOBoxes.Length
+        Array.fold
+          (fun (m: Either<IrisError,int * IOBox array>) box -> either {
+            let! (i, arr) = m
+            let! (iobox : IOBox) = Yaml.fromYaml box
+            return (i + 1, arr)
+          })
+          (Right (0, arr))
+          yaml.IOBoxes
+        |> Either.map snd
+
+      return { Id = Id yaml.Id
+               Name = yaml.Name
+               IOBoxes = ioboxes }
+    }
 
   member self.ToYaml(serializer: Serializer) =
     Yaml.toYaml self |> serializer.Serialize
 
-  static member FromYaml(str: string) : Cue option =
+  static member FromYaml(str: string) : Either<IrisError,Cue> =
     let serializer = new Serializer()
     serializer.Deserialize<CueYaml>(str)
     |> Yaml.fromYaml

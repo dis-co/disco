@@ -56,20 +56,14 @@ type Session =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
-  static member FromFB(fb: SessionFB) : Session option =
-    try
+  static member FromFB(fb: SessionFB) : Either<IrisError, Session> =
+    Either.tryWith ParseError "Session" <| fun _ ->
       { Id = Id fb.Id
       ; UserName  = fb.UserName
       ; IpAddress = IpAddress.Parse fb.IpAddress
-      ; UserAgent = fb.UserAgent
-      }
-      |> Some
-    with
-      | exn ->
-        printfn "Could not de-serializae Session binary value: %s" exn.Message
-        None
+      ; UserAgent = fb.UserAgent }
 
-  static member FromBytes(bytes: Binary.Buffer) : Session option =
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,Session> =
     Binary.createBuffer bytes
     |> SessionFB.GetRootAsSessionFB
     |> Session.FromFB
@@ -107,7 +101,7 @@ type Session =
     |> serializer.Serialize
 
   static member FromYamlObject (yml: SessionYaml) =
-    maybe {
+    either {
       let! ip = IpAddress.TryParse yml.IpAddress
       return { Id = Id yml.Id
                UserName = yml.UserName

@@ -128,22 +128,23 @@ type Patch =
     |> serializer.Serialize
 
   static member FromYamlObject (yml: PatchYaml) =
-    let ioboxes =
-      Array.fold
-        (fun (ioboxes: Map<Id,IOBox>) (ioyml: IOBoxYaml) ->
-           let parsed : IOBox option = Yaml.fromYaml ioyml
-           match parsed with
-           | Some iobox -> Map.add iobox.Id iobox ioboxes
-           | _          -> ioboxes)
-        Map.empty
-        yml.IOBoxes
+    either {
+      let! ioboxes =
+        Array.fold
+          (fun (m: Either<IrisError,Map<Id,IOBox>>) ioyml -> either {
+            let! ioboxes = m
+            let! (iobox : IOBox) = Yaml.fromYaml ioyml
+            return Map.add iobox.Id iobox ioboxes
+          })
+          (Right Map.empty)
+          yml.IOBoxes
 
-    { Id = Id yml.Id
-      Name = yml.Name
-      IOBoxes = ioboxes }
-    |> Some
+      return { Id = Id yml.Id
+               Name = yml.Name
+               IOBoxes = ioboxes }
+    }
 
-  static member FromYaml (str: string) : Patch option =
+  static member FromYaml (str: string) : Either<IrisError,Patch> =
     let serializer = new Serializer()
     serializer.Deserialize<PatchYaml>(str)
     |> Yaml.fromYaml
@@ -158,30 +159,37 @@ type Patch =
   //                           |___/
 
   static member FromFB (fb: PatchFB) =
-    let mutable ioboxes = Map.empty
+    either {
+      let! ioboxes =
+        let arr = Array.zeroCreate fb.IOBoxesLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<Id,IOBox>>) _ -> either {
+              let! (i, ioboxes) = m
 
-    for i in 0 .. (fb.IOBoxesLength - 1) do
-#if JAVASCRIPT
-      fb.IOBoxes(i)
-      |> IOBox.FromFB
-      |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
-      |> ignore
-#else
-      let iobox = fb.IOBoxes(i)
-      if iobox.HasValue then
-        iobox.Value
-        |> IOBox.FromFB
-        |> Option.map (fun iobox -> ioboxes <- Map.add iobox.Id iobox ioboxes)
-        |> ignore
-#endif
+  #if JAVASCRIPT
+              let! iobox = i |> fb.IOBoxes |> IOBox.FromFB
+  #else
+              let! iobox =
+                let nullable = fb.IOBoxes(i)
+                if nullable.HasValue then
+                  nullable.Value
+                  |> IOBox.FromFB
+                else
+                  "Could not parse empty IOBoxFB"
+                  |> ParseError
+                  |> Either.fail
+  #endif
 
-    try
-      { Id = Id fb.Id
-      ; Name = fb.Name
-      ; IOBoxes = ioboxes
-      } |> Some
-    with
-      | _ -> None
+              return (i + 1, Map.add iobox.Id iobox ioboxes)
+            })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
+
+      return { Id = Id fb.Id
+               Name = fb.Name
+               IOBoxes = ioboxes }
+    }
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<PatchFB> =
     let id = string self.Id |> builder.CreateString
@@ -200,7 +208,7 @@ type Patch =
 
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes (bytes: Binary.Buffer) : Patch option =
+  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError,Patch> =
     Binary.createBuffer bytes
     |> PatchFB.GetRootAsPatchFB
     |> Patch.FromFB

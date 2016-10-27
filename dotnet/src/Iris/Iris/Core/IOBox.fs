@@ -29,9 +29,12 @@ type Behavior =
 
   static member TryParse (str: string) =
     match toLower str with
-    | "toggle" -> Some Toggle
-    | "bang"   -> Some Bang
-    | _        -> None
+    | "toggle" -> Right Toggle
+    | "bang"   -> Right Bang
+    | _  ->
+      sprintf "Invalid Behavior value: %s" str
+      |> ParseError
+      |> Either.fail
 
   override self.ToString() =
     match self with
@@ -46,17 +49,27 @@ type Behavior =
   //                           |___/
 
 #if JAVASCRIPT
+
   static member FromFB (fb: BehaviorFB) =
     match fb with
-    | x when x = BehaviorFB.ToggleFB -> Some Toggle
-    | x when x = BehaviorFB.BangFB   -> Some Bang
-    | _                              -> None
+    | x when x = BehaviorFB.ToggleFB -> Right Toggle
+    | x when x = BehaviorFB.BangFB   -> Right Bang
+    | x ->
+      sprintf "Could not parse Behavior: %A" x
+      |> ParseError
+      |> Either.fail
+
 #else
+
   static member FromFB (fb: BehaviorFB) =
     match fb with
-    | BehaviorFB.ToggleFB -> Some Toggle
-    | BehaviorFB.BangFB   -> Some Bang
-    | _                       -> None
+    | BehaviorFB.ToggleFB -> Right Toggle
+    | BehaviorFB.BangFB   -> Right Bang
+    | x  ->
+      sprintf "Could not parse Behavior: %A" x
+      |> ParseError
+      |> Either.fail
+
 #endif
 
   member self.ToOffset(_: FlatBufferBuilder) : BehaviorFB =
@@ -81,13 +94,16 @@ type StringType =
 
   static member TryParse (str: string) =
     match toLower str with
-    | "simple"    -> Some Simple
-    | "multiline" -> Some MultiLine
-    | "filename"  -> Some FileName
-    | "directory" -> Some Directory
-    | "url"       -> Some Url
-    | "ip"        -> Some IP
-    | _           -> None
+    | "simple"    -> Right Simple
+    | "multiline" -> Right MultiLine
+    | "filename"  -> Right FileName
+    | "directory" -> Right Directory
+    | "url"       -> Right Url
+    | "ip"        -> Right IP
+    | _ ->
+      sprintf "Invalid StringType value: %s" str
+      |> ParseError
+      |> Either.fail
 
   override self.ToString() =
     match self with
@@ -108,22 +124,31 @@ type StringType =
   static member FromFB (fb: StringTypeFB) =
 #if JAVASCRIPT
     match fb with
-    | x when x = StringTypeFB.SimpleFB    -> Some Simple
-    | x when x = StringTypeFB.MultiLineFB -> Some MultiLine
-    | x when x = StringTypeFB.FileNameFB  -> Some FileName
-    | x when x = StringTypeFB.DirectoryFB -> Some Directory
-    | x when x = StringTypeFB.UrlFB       -> Some Url
-    | x when x = StringTypeFB.IPFB        -> Some IP
-    | _                                   -> None
+    | x when x = StringTypeFB.SimpleFB    -> Right Simple
+    | x when x = StringTypeFB.MultiLineFB -> Right MultiLine
+    | x when x = StringTypeFB.FileNameFB  -> Right FileName
+    | x when x = StringTypeFB.DirectoryFB -> Right Directory
+    | x when x = StringTypeFB.UrlFB       -> Right Url
+    | x when x = StringTypeFB.IPFB        -> Right IP
+    | x ->
+      sprintf "Cannot parse StringType. Unknown type: %A" x
+      |> ParseError
+      |> Either.fail
+
 #else
+
     match fb with
-    | StringTypeFB.SimpleFB    -> Some Simple
-    | StringTypeFB.MultiLineFB -> Some MultiLine
-    | StringTypeFB.FileNameFB  -> Some FileName
-    | StringTypeFB.DirectoryFB -> Some Directory
-    | StringTypeFB.UrlFB       -> Some Url
-    | StringTypeFB.IPFB        -> Some IP
-    | _                        -> None
+    | StringTypeFB.SimpleFB    -> Right Simple
+    | StringTypeFB.MultiLineFB -> Right MultiLine
+    | StringTypeFB.FileNameFB  -> Right FileName
+    | StringTypeFB.DirectoryFB -> Right Directory
+    | StringTypeFB.UrlFB       -> Right Url
+    | StringTypeFB.IPFB        -> Right IP
+    | x ->
+      sprintf "Cannot parse StringType. Unknown type: %A" x
+      |> ParseError
+      |> Either.fail
+
 #endif
 
   member self.ToOffset(_: FlatBufferBuilder) : StringTypeFB =
@@ -229,21 +254,35 @@ type SliceYaml(tipe, idx, value: obj) as self =
       |> EnumSliceD.Create self.Index
 
   member self.ToColorSliceD() : Either<IrisError,ColorSliceD> =
-    Either.tryWith ParseError "ColorSlice" <| fun _ -> either {
-      let! color = Yaml.fromYaml(self.Value :?> ColorYaml)
-      ColorSliceD.Create self.Index color
+    Either.tryWith ParseError "ColorSlice" <| fun _ ->
+      match Yaml.fromYaml(self.Value :?> ColorYaml) with
+      | Right color ->
+        ColorSliceD.Create self.Index color
+      | Left (ParseError error) ->
+        failwith error
+      | other ->
+        failwithf "Encountered unexpected error: %A" other
 
   member self.ToCompoundSliceD() : Either<IrisError,CompoundSliceD>  =
     Either.tryWith ParseError "CompoundSlice" <| fun _ ->
+      let n = (self.Value :?> IOBoxYaml array).Length
       let ioboxes =
         Array.fold
-          (fun m box ->
-            match Yaml.fromYaml box with
-            | Some thing -> Array.append m [| thing |]
-            | _          -> m)
-          [| |]
+          (fun (m: Either<IrisError,int * IOBox array>) box -> either {
+              let! inner = m
+              let! iobox = Yaml.fromYaml box
+              (snd inner).[fst inner] <- iobox
+              return (fst inner + 1, snd inner)
+            })
+          (Right (0, Array.zeroCreate n))
           (self.Value :?> IOBoxYaml array)
-      CompoundSliceD.Create self.Index ioboxes
+      match ioboxes with
+      | Right (_, boxes) ->
+        CompoundSliceD.Create self.Index boxes
+      | Left (ParseError error) ->
+        failwith error
+      | error ->
+        failwithf "Encountered unexpected error: %A" error
 
 and IOBoxYaml() =
   [<DefaultValue>] val mutable BoxType    : string
@@ -352,7 +391,7 @@ and IOBox =
 #if JAVASCRIPT
         /// Rationale:
         ///
-        /// in JavaScript an array will re-allocate automatically under the hood
+        /// in JavaScript an array> will re-allocate automatically under the hood
         /// hence we don't need to worry about out-of-bounds errors.
         let newarr = Array.copy arr
         newarr.[int value.Index] <- data
@@ -624,144 +663,180 @@ and IOBox =
     | ColorBox  data -> build data IOBoxTypeFB.ColorBoxFB
     | Compound  data -> build data IOBoxTypeFB.CompoundBoxFB
 
-  static member FromFB(fb: IOBoxFB) : IOBox option =
+  static member FromFB(fb: IOBoxFB) : Either<IrisError,IOBox> =
 #if JAVASCRIPT
     match fb.IOBoxType with
     | x when x = IOBoxTypeFB.StringBoxFB ->
       StringBoxFB.Create()
       |> fb.IOBox
       |> StringBoxD.FromFB
-      |> Option.map StringBox
+      |> Either.map StringBox
 
     | x when x = IOBoxTypeFB.IntBoxFB ->
       IntBoxFB.Create()
       |> fb.IOBox
       |> IntBoxD.FromFB
-      |> Option.map IntBox
+      |> Either.map IntBox
 
     | x when x = IOBoxTypeFB.FloatBoxFB ->
       FloatBoxFB.Create()
       |> fb.IOBox
       |> FloatBoxD.FromFB
-      |> Option.map FloatBox
+      |> Either.map FloatBox
 
     | x when x = IOBoxTypeFB.DoubleBoxFB ->
       DoubleBoxFB.Create()
       |> fb.IOBox
       |> DoubleBoxD.FromFB
-      |> Option.map DoubleBox
+      |> Either.map DoubleBox
 
     | x when x = IOBoxTypeFB.BoolBoxFB ->
       BoolBoxFB.Create()
       |> fb.IOBox
       |> BoolBoxD.FromFB
-      |> Option.map BoolBox
+      |> Either.map BoolBox
 
     | x when x = IOBoxTypeFB.ByteBoxFB ->
       ByteBoxFB.Create()
       |> fb.IOBox
       |> ByteBoxD.FromFB
-      |> Option.map ByteBox
+      |> Either.map ByteBox
 
     | x when x = IOBoxTypeFB.EnumBoxFB ->
       EnumBoxFB.Create()
       |> fb.IOBox
       |> EnumBoxD.FromFB
-      |> Option.map EnumBox
+      |> Either.map EnumBox
 
     | x when x = IOBoxTypeFB.ColorBoxFB ->
       ColorBoxFB.Create()
       |> fb.IOBox
       |> ColorBoxD.FromFB
-      |> Option.map ColorBox
+      |> Either.map ColorBox
 
     | x when x = IOBoxTypeFB.CompoundBoxFB ->
       CompoundBoxFB.Create()
       |> fb.IOBox
       |> CompoundBoxD.FromFB
-      |> Option.map Compound
+      |> Either.map Compound
 
-    | _ -> None
+    | x ->
+      sprintf "%A is not a valid IOBoxTypeFB" x
+      |> ParseError
+      |> Either.fail
+
 #else
+
     match fb.IOBoxType with
     | IOBoxTypeFB.StringBoxFB ->
       let v = fb.IOBox<StringBoxFB>()
       if v.HasValue then
         v.Value
         |> StringBoxD.FromFB
-        |> Option.map StringBox
-      else None
+        |> Either.map StringBox
+      else
+        "IOBoxFB has no value"
+        |> ParseError
+        |> Either.fail
 
     | IOBoxTypeFB.IntBoxFB ->
       let v = fb.IOBox<IntBoxFB>()
       if v.HasValue then
         v.Value
         |> IntBoxD.FromFB
-        |> Option.map IntBox
-      else None
+        |> Either.map IntBox
+      else
+        "IOBoxFB has no value"
+        |> ParseError
+        |> Either.fail
 
     | IOBoxTypeFB.FloatBoxFB ->
       let v = fb.IOBox<FloatBoxFB>()
       if v.HasValue then
         v.Value
         |> FloatBoxD.FromFB
-        |> Option.map FloatBox
-      else None
+        |> Either.map FloatBox
+      else
+        "IOBoxFB has no value"
+        |> ParseError
+        |> Either.fail
 
     | IOBoxTypeFB.DoubleBoxFB ->
       let v = fb.IOBox<DoubleBoxFB>()
       if v.HasValue then
         v.Value
         |> DoubleBoxD.FromFB
-        |> Option.map DoubleBox
-      else None
+        |> Either.map DoubleBox
+      else
+        "IOBoxFB has no value"
+        |> ParseError
+        |> Either.fail
 
     | IOBoxTypeFB.BoolBoxFB ->
       let v = fb.IOBox<BoolBoxFB>()
       if v.HasValue then
         v.Value
         |> BoolBoxD.FromFB
-        |> Option.map BoolBox
-      else None
+        |> Either.map BoolBox
+      else
+        "IOBoxFB has no value"
+        |> ParseError
+        |> Either.fail
 
     | IOBoxTypeFB.ByteBoxFB ->
       let v = fb.IOBox<ByteBoxFB>()
       if v.HasValue then
         v.Value
         |> ByteBoxD.FromFB
-        |> Option.map ByteBox
-      else None
+        |> Either.map ByteBox
+      else
+        "IOBoxFB has no value"
+        |> ParseError
+        |> Either.fail
 
     | IOBoxTypeFB.EnumBoxFB ->
       let v = fb.IOBox<EnumBoxFB>()
       if v.HasValue then
         v.Value
         |> EnumBoxD.FromFB
-        |> Option.map EnumBox
-      else None
+        |> Either.map EnumBox
+      else
+        "IOBoxFB has no value"
+        |> ParseError
+        |> Either.fail
 
     | IOBoxTypeFB.ColorBoxFB ->
       let v = fb.IOBox<ColorBoxFB>()
       if v.HasValue then
         v.Value
         |> ColorBoxD.FromFB
-        |> Option.map ColorBox
-      else None
+        |> Either.map ColorBox
+      else
+        "IOBoxFB has no value"
+        |> ParseError
+        |> Either.fail
 
     | IOBoxTypeFB.CompoundBoxFB ->
       let v = fb.IOBox<CompoundBoxFB>()
       if v.HasValue then
         v.Value
         |> CompoundBoxD.FromFB
-        |> Option.map Compound
-      else None
+        |> Either.map Compound
+      else
+        "IOBoxFB has no value"
+        |> ParseError
+        |> Either.fail
 
-    | _ -> None
+    | x ->
+      sprintf "%A is not a valid IOBoxTypeFB" x
+      |> ParseError
+      |> Either.fail
+
 #endif
 
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: Binary.Buffer) : IOBox option =
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,IOBox> =
     Binary.createBuffer bytes
     |> IOBoxFB.GetRootAsIOBoxFB
     |> IOBox.FromFB
@@ -875,22 +950,125 @@ and IOBox =
 
     yaml
 
-  static member FromYamlObject(yml: IOBoxYaml) =
-    let inline parseSlices (slices: SliceYaml array) =
-      Array.fold
-        (fun m yml ->
-           match Yaml.fromYaml yml with
-           | Some slice -> Array.append m [| slice |]
-           | _          -> m)
-        [| |]
-        slices
+  /// ## Parse all SliceYamls for a given IOBox data type
+  ///
+  /// Takes an array> of SliceYaml and folds over it, parsing the
+  /// slices. If an error occurs, it will be returned in the left-hand
+  /// side.
+  ///
+  /// ### Signature:
+  /// - slices: SliceYaml array>
+  ///
+  /// Returns: Either<IrisError,^a>
+  static member inline ParseSliceYamls< ^t when ^t : (static member FromYamlObject : SliceYaml -> Either<IrisError, ^t>)>
+                                           (slices: SliceYaml array)
+                                           : Either<IrisError, ^t array> =
+    Array.fold
+      (fun (m: Either<IrisError,int * ^t array>) yml -> either {
+        let! arr = m
+        let! parsed = Yaml.fromYaml yml
+        (snd arr).[fst arr] <- parsed
+        return (fst arr + 1, snd arr)
+      })
+      (Right (0, Array.zeroCreate slices.Length))
+      slices
+    |> Either.map snd
 
+  /// ## Parse all tags in a Flatbuffer-serialized type
+  ///
+  /// Parses all tags in a given IOBox inner data type.
+  ///
+  /// ### Signature:
+  /// - fb: the inner IOBox data type (BoolBoxD, StringBoxD, etc.)
+  ///
+  /// Returns: Either<IrisError, Tag array>
+  static member inline ParseTagsFB< ^a when ^a : (member TagsLength : int)
+                                       and  ^a : (member Tags : int -> Tag)>
+                                       (fb: ^a)
+                                       : Either<IrisError, Tag array> =
+    let len = (^a : (member TagsLength : int) fb)
+    let arr = Array.zeroCreate len
+    Array.fold
+      (fun (result: Either<IrisError,int * Tag array>) _ -> either {
+          let! (i, tags) = result
+          tags.[i] <- (^a : (member Tags : int -> Tag) (fb, i))
+          return (i + 1, tags)
+        })
+      (Right (0, arr))
+      arr
+    |> Either.map snd
+
+
+#if JAVASCRIPT
+
+  static member inline ParseSlicesFB< ^a, ^b, ^t when ^t : (static member FromFB : ^a -> Either<IrisError, ^t>)
+                                                 and ^b : (member SlicesLength : int)
+                                                 and ^b : (member Slices : int -> ^a)>
+                                                 (fb: ^b)
+                                                 : Either<IrisError, ^t> =
+    let len = (^b : (member SlicesLength : int) fb)
+    let arr = Array.zeroCreate len
+    Array.fold
+      (fun (result: Either<IrisError,int * ^t array>) _ -> either {
+
+          let! (i, slices) = result
+
+          // In Javascript, Flatbuffer types are not modeled as nullables,
+          // hence parsing code is much simpler
+          let! slice =
+            let value = (^b : (member Slices : int -> ^a) (fb, i))
+            (^t : (static member FromFB : ^a -> Either<IrisError, ^t>) value)
+
+          // add the slice to the array> at its correct position
+          slices.[i] <- slice
+          return (i + 1, slices)
+      })
+      (Right (0, arr))
+      arr
+    |> Either.map snd
+
+#else
+
+  static member inline ParseSlicesFB< ^a, ^b, ^t when ^t : (static member FromFB : ^a -> Either<IrisError, ^t>)
+                                                 and ^b : (member SlicesLength : int)
+                                                 and ^b : (member Slices : int -> Nullable< ^a >)>
+                                                 (fb: ^b)
+                                                 : Either<IrisError, ^t array> =
+    let len = (^b : (member SlicesLength : int) fb)
+    let arr = Array.zeroCreate len
+    Array.fold
+      (fun (result: Either<IrisError,int * ^t array>) _ -> either {
+          let! (i, slices) = result
+
+          // In .NET, Flatbuffers are modelled with nullables, hence
+          // parsing is slightly more elaborate
+          let! slice =
+            let value = (^b : (member Slices : int -> Nullable< ^a >) (fb, i))
+            if value.HasValue then
+              (^t : (static member FromFB : ^a -> Either<IrisError, ^t>) value.Value)
+            else
+              "Could not parse empty slice"
+              |> ParseError
+              |> Either.fail
+
+          // add the slice to the array> at its correct position
+          slices.[i] <- slice
+          return (i + 1, slices)
+      })
+      (Right (0, arr))
+      arr
+    |> Either.map snd
+#endif
+
+
+  static member FromYamlObject(yml: IOBoxYaml) =
     try
       match yml.BoxType with
-      | "StringBox" ->
-        match StringType.TryParse yml.StringType with
-        | Some strtype ->
-          StringBox {
+      | "StringBox" -> either {
+          let! strtype = StringType.TryParse yml.StringType
+          let! slices  = IOBox.ParseSliceYamls yml.Slices
+
+          return StringBox {
             Id         = Id yml.Id
             Name       = yml.Name
             Patch      = Id yml.Patch
@@ -898,118 +1076,141 @@ and IOBox =
             FileMask   = if isNull yml.FileMask then None else Some yml.FileMask
             MaxChars   = yml.MaxChars
             StringType = strtype
-            Slices     = parseSlices yml.Slices
-          } |> Some
-        | _ ->
-          printfn "Could not parse StringType from yml: %s" yml.StringType
-          None
+            Slices     = slices
+          }
+        }
 
-      | "IntBox" ->
-        IntBox {
-          Id       = Id yml.Id
-          Name     = yml.Name
-          Patch    = Id yml.Patch
-          Tags     = yml.Tags
-          VecSize  = yml.VecSize
-          Min      = yml.Min
-          Max      = yml.Max
-          Unit     = yml.Unit
-          Slices   = parseSlices yml.Slices
-        } |> Some
+      | "IntBox" -> either {
+          let! slices = IOBox.ParseSliceYamls yml.Slices
 
-      | "FloatBox" ->
-        FloatBox {
-          Id        = Id yml.Id
-          Name      = yml.Name
-          Patch     = Id yml.Patch
-          Tags      = yml.Tags
-          VecSize   = yml.VecSize
-          Min       = yml.Min
-          Max       = yml.Max
-          Unit      = yml.Unit
-          Precision = yml.Precision
-          Slices    = parseSlices yml.Slices
-        } |> Some
+          return IntBox {
+            Id       = Id yml.Id
+            Name     = yml.Name
+            Patch    = Id yml.Patch
+            Tags     = yml.Tags
+            VecSize  = yml.VecSize
+            Min      = yml.Min
+            Max      = yml.Max
+            Unit     = yml.Unit
+            Slices   = slices
+          }
+        }
 
-      | "DoubleBox" ->
-        DoubleBox {
-          Id        = Id yml.Id
-          Name      = yml.Name
-          Patch     = Id yml.Patch
-          Tags      = yml.Tags
-          VecSize   = yml.VecSize
-          Min       = yml.Min
-          Max       = yml.Max
-          Unit      = yml.Unit
-          Precision = yml.Precision
-          Slices    = parseSlices yml.Slices
-        } |> Some
+      | "FloatBox" -> either {
+          let! slices = IOBox.ParseSliceYamls yml.Slices
 
-      | "BoolBox"   ->
-        match Behavior.TryParse yml.Behavior with
-        | Some behavior ->
-          BoolBox {
+          return FloatBox {
+            Id        = Id yml.Id
+            Name      = yml.Name
+            Patch     = Id yml.Patch
+            Tags      = yml.Tags
+            VecSize   = yml.VecSize
+            Min       = yml.Min
+            Max       = yml.Max
+            Unit      = yml.Unit
+            Precision = yml.Precision
+            Slices    = slices
+          }
+        }
+
+      | "DoubleBox" -> either {
+          let! slices = IOBox.ParseSliceYamls yml.Slices
+          return DoubleBox {
+            Id        = Id yml.Id
+            Name      = yml.Name
+            Patch     = Id yml.Patch
+            Tags      = yml.Tags
+            VecSize   = yml.VecSize
+            Min       = yml.Min
+            Max       = yml.Max
+            Unit      = yml.Unit
+            Precision = yml.Precision
+            Slices    = slices
+          }
+        }
+
+      | "BoolBox" -> either {
+          let! behavior = Behavior.TryParse yml.Behavior
+          let! slices = IOBox.ParseSliceYamls yml.Slices
+          return BoolBox {
             Id       = Id yml.Id
             Name     = yml.Name
             Patch    = Id yml.Patch
             Tags     = yml.Tags
             Behavior = behavior
-            Slices   = parseSlices yml.Slices
-          } |> Some
-        | _ ->
-          printfn "Could not parse Behavior from yml: %s" yml.Behavior
-          None
+            Slices   = slices
+          }
+        }
 
-      | "ByteBox" ->
-        ByteBox {
-          Id     = Id yml.Id
-          Name   = yml.Name
-          Patch  = Id yml.Patch
-          Tags   = yml.Tags
-          Slices = parseSlices yml.Slices
-        } |> Some
+      | "ByteBox" -> either {
+          let! slices = IOBox.ParseSliceYamls yml.Slices
+          return ByteBox {
+            Id     = Id yml.Id
+            Name   = yml.Name
+            Patch  = Id yml.Patch
+            Tags   = yml.Tags
+            Slices = slices
+          }
+        }
 
-      | "EnumBox"   ->
-        let properties =
-          Array.fold
-            (fun m yml ->
-              match Yaml.fromYaml yml with
-              | Some prop -> Array.append m [| prop |]
-              | _         -> m)
-            [| |]
-            yml.Properties
+      | "EnumBox" -> either {
+          let! properties =
+            Array.fold
+              (fun (m: Either<IrisError, int * Property array>) yml ->
+                either {
+                  let! state = m
+                  let! parsed = Yaml.fromYaml yml
+                  (snd state).[fst state] <- parsed
+                  return (fst state + 1, snd state)
+                })
+              (Right (0, Array.zeroCreate yml.Properties.Length))
+              yml.Properties
+            |> Either.map snd
 
-        EnumBox {
-          Id         = Id yml.Id
-          Name       = yml.Name
-          Patch      = Id yml.Patch
-          Tags       = yml.Tags
-          Properties = properties
-          Slices     = parseSlices yml.Slices
-        } |> Some
+          let! slices = IOBox.ParseSliceYamls yml.Slices
 
-      | "ColorBox"  ->
-        ColorBox {
-          Id     = Id yml.Id
-          Name   = yml.Name
-          Patch  = Id yml.Patch
-          Tags   = yml.Tags
-          Slices = parseSlices yml.Slices
-        } |> Some
+          return EnumBox {
+            Id         = Id yml.Id
+            Name       = yml.Name
+            Patch      = Id yml.Patch
+            Tags       = yml.Tags
+            Properties = properties
+            Slices     = slices
+          }
+        }
 
-      | "Compound" ->
-        Compound {
-          Id     = Id yml.Id
-          Name   = yml.Name
-          Patch  = Id yml.Patch
-          Tags   = yml.Tags
-          Slices = parseSlices yml.Slices
-        } |> Some
-      | _ -> None
+      | "ColorBox" -> either {
+          let! slices = IOBox.ParseSliceYamls yml.Slices
+          return ColorBox {
+            Id     = Id yml.Id
+            Name   = yml.Name
+            Patch  = Id yml.Patch
+            Tags   = yml.Tags
+            Slices = slices
+          }
+        }
+
+      | "Compound" -> either {
+          let! slices = IOBox.ParseSliceYamls yml.Slices
+          return Compound {
+            Id     = Id yml.Id
+            Name   = yml.Name
+            Patch  = Id yml.Patch
+            Tags   = yml.Tags
+            Slices = slices
+          }
+        }
+
+      | x ->
+        sprintf "Could not parse IOBoxYml type: %s" x
+        |> ParseError
+        |> Either.fail
+
     with
       | exn ->
-        printfn "Could not parse IOBoxYml: %s" exn.Message
-        None
+        sprintf "Could not parse IOBoxYml: %s" exn.Message
+        |> ParseError
+        |> Either.fail
 
   member self.ToYaml(serializer: Serializer) =
     self
@@ -1061,46 +1262,23 @@ and BoolBoxD =
     BoolBoxFB.AddSlices(builder, slices)
     BoolBoxFB.EndBoolBoxFB(builder)
 
-  static member FromFB(fb: BoolBoxFB) : BoolBoxD option =
-    let tags = Array.zeroCreate fb.TagsLength
-    let slices = Array.zeroCreate fb.SlicesLength
+  static member FromFB(fb: BoolBoxFB) : Either<IrisError,BoolBoxD> =
+    either {
+      let! tags = IOBox.ParseTagsFB fb
+      let! slices = IOBox.ParseSlicesFB fb
+      let! behavior = Behavior.FromFB fb.Behavior
 
-    let mutable i = 0
-    while i < fb.TagsLength do
-      tags.[i] <- fb.Tags(i)
-      i <- i + 1
-
-#if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.SlicesLength do
-      fb.Slices(i)
-      |> BoolSliceD.FromFB
-      |> Option.map (fun slice -> slices.[i] <- slice)
-      |> ignore
-      i <- i + 1
-#else
-    for i in 0 .. (fb.SlicesLength - 1) do
-      let slice = fb.Slices(i)
-      if slice.HasValue then
-        slice.Value
-        |> BoolSliceD.FromFB
-        |> Option.map (fun slice -> slices.[i] <- slice)
-        |> ignore
-#endif
-
-    Behavior.FromFB fb.Behavior
-    |> Option.map
-      (fun behavior ->
-        { Id         = Id fb.Id
-        ; Name       = fb.Name
-        ; Patch      = Id fb.Patch
-        ; Tags       = tags
-        ; Behavior   = behavior
-        ; Slices     = slices })
+      return { Id         = Id fb.Id
+               Name       = fb.Name
+               Patch      = Id fb.Patch
+               Tags       = tags
+               Behavior   = behavior
+               Slices     = slices }
+    }
 
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: Binary.Buffer) : BoolBoxD option =
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,BoolBoxD> =
     Binary.createBuffer bytes
     |> BoolBoxFB.GetRootAsBoolBoxFB
     |> BoolBoxD.FromFB
@@ -1132,1316 +1310,118 @@ and BoolSliceD =
     BoolSliceFB.AddValue(builder, self.Value)
     BoolSliceFB.EndBoolSliceFB(builder)
 
-    static member FromFB(fb: BoolSliceFB) : BoolSliceD option =
-      try
-        { Index = fb.Index
-        ; Value = fb.Value }
-        |> Some
-      with
-        | _ -> None
+  static member FromFB(fb: BoolSliceFB) : Either<IrisError,BoolSliceD> =
+    Either.tryWith ParseError "BoolSlice" <| fun _ ->
+      { Index = fb.Index; Value = fb.Value }
 
-    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-    static member FromBytes(bytes: Binary.Buffer) : BoolSliceD option =
-      Binary.createBuffer bytes
-      |> BoolSliceFB.GetRootAsBoolSliceFB
-      |> BoolSliceD.FromFB
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,BoolSliceD> =
+    Binary.createBuffer bytes
+    |> BoolSliceFB.GetRootAsBoolSliceFB
+    |> BoolSliceD.FromFB
 
-    // __   __              _
-    // \ \ / /_ _ _ __ ___ | |
-    //  \ V / _` | '_ ` _ \| |
-    //   | | (_| | | | | | | |
-    //   |_|\__,_|_| |_| |_|_|
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
 
-  #if JAVASCRIPT
-  #else
-    member self.ToYamlObject() =
-      SliceYaml.BoolSlice(self.Index, self.Value)
+#if JAVASCRIPT
+#else
+  member self.ToYamlObject() =
+    SliceYaml.BoolSlice(self.Index, self.Value)
 
-    static member FromYamlObject(yaml: SliceYaml) =
-      match yaml.SliceType with
-      | "BoolSlice" -> yaml.ToBoolSliceD()
-      | _           -> None
+  static member FromYamlObject(yaml: SliceYaml) =
+    match yaml.SliceType with
+    | "BoolSlice" -> yaml.ToBoolSliceD()
+    | x ->
+      sprintf "Could not parse SliceType: %s" x
+      |> ParseError
+      |> Either.fail
 
-  #endif
+#endif
 
-  //  ___       _   ____
-  // |_ _|_ __ | |_| __ )  _____  __
-  //  | || '_ \| __|  _ \ / _ \ \/ /
-  //  | || | | | |_| |_) | (_) >  <
-  // |___|_| |_|\__|____/ \___/_/\_\
+//  ___       _   ____
+// |_ _|_ __ | |_| __ )  _____  __
+//  | || '_ \| __|  _ \ / _ \ \/ /
+//  | || | | | |_| |_) | (_) >  <
+// |___|_| |_|\__|____/ \___/_/\_\
 
-  and IntBoxD =
-    { Id         : Id
-    ; Name       : string
-    ; Patch      : Id
-    ; Tags       : Tag array
-    ; VecSize    : uint32
-    ; Min        : int
-    ; Max        : int
-    ; Unit       : string
-    ; Slices     : IntSliceD array }
+and IntBoxD =
+  { Id         : Id
+  ; Name       : string
+  ; Patch      : Id
+  ; Tags       : Tag array
+  ; VecSize    : uint32
+  ; Min        : int
+  ; Max        : int
+  ; Unit       : string
+  ; Slices     : IntSliceD array }
 
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
 
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      let id = string self.Id |> builder.CreateString
-      let name = self.Name |> builder.CreateString
-      let patch = string self.Patch |> builder.CreateString
-      let unit = self.Unit |> builder.CreateString
-      let tagoffsets = Array.map builder.CreateString self.Tags
-      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-      let tags = IntBoxFB.CreateTagsVector(builder, tagoffsets)
-      let slices = IntBoxFB.CreateSlicesVector(builder, sliceoffsets)
-      IntBoxFB.StartIntBoxFB(builder)
-      IntBoxFB.AddId(builder, id)
-      IntBoxFB.AddName(builder, name)
-      IntBoxFB.AddPatch(builder, patch)
-      IntBoxFB.AddTags(builder, tags)
-      IntBoxFB.AddVecSize(builder, self.VecSize)
-      IntBoxFB.AddMin(builder, self.Min)
-      IntBoxFB.AddMax(builder, self.Max)
-      IntBoxFB.AddUnit(builder, unit)
-      IntBoxFB.AddSlices(builder, slices)
-      IntBoxFB.EndIntBoxFB(builder)
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let id = string self.Id |> builder.CreateString
+    let name = self.Name |> builder.CreateString
+    let patch = string self.Patch |> builder.CreateString
+    let unit = self.Unit |> builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let tags = IntBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = IntBoxFB.CreateSlicesVector(builder, sliceoffsets)
+    IntBoxFB.StartIntBoxFB(builder)
+    IntBoxFB.AddId(builder, id)
+    IntBoxFB.AddName(builder, name)
+    IntBoxFB.AddPatch(builder, patch)
+    IntBoxFB.AddTags(builder, tags)
+    IntBoxFB.AddVecSize(builder, self.VecSize)
+    IntBoxFB.AddMin(builder, self.Min)
+    IntBoxFB.AddMax(builder, self.Max)
+    IntBoxFB.AddUnit(builder, unit)
+    IntBoxFB.AddSlices(builder, slices)
+    IntBoxFB.EndIntBoxFB(builder)
 
-    static member FromFB(fb: IntBoxFB) : IntBoxD option =
-      let tags = Array.zeroCreate fb.TagsLength
-      let slices = Array.zeroCreate fb.SlicesLength
+  static member FromFB(fb: IntBoxFB) : Either<IrisError,IntBoxD> =
+    either {
       let unit = if isNull fb.Unit then "" else fb.Unit
-
-      let mutable i = 0
-      while i < fb.TagsLength do
-        tags.[i] <- fb.Tags(i)
-        i <- i + 1
-
-  #if JAVASCRIPT
-      let mutable i = 0
-      while i < fb.SlicesLength do
-        fb.Slices(i)
-        |> IntSliceD.FromFB
-        |> Option.map (fun slice -> slices.[i] <- slice)
-        |> ignore
-        i <- i + 1
-  #else
-      for i in 0 .. (fb.SlicesLength - 1) do
-        let slice = fb.Slices(i)
-        if slice.HasValue then
-          slice.Value
-          |> IntSliceD.FromFB
-          |> Option.map (fun slice -> slices.[i] <- slice)
-          |> ignore
-  #endif
-
-      try
-        { Id         = Id fb.Id
-        ; Name       = fb.Name
-        ; Patch      = Id fb.Patch
-        ; Tags       = tags
-        ; VecSize    = fb.VecSize
-        ; Min        = fb.Min
-        ; Max        = fb.Max
-        ; Unit       = unit
-        ; Slices     = slices }
-        |> Some
-      with
-        | _ -> None
-
-    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
-
-    static member FromBytes(bytes: Binary.Buffer) : IntBoxD option =
-      Binary.createBuffer bytes
-      |> IntBoxFB.GetRootAsIntBoxFB
-      |> IntBoxD.FromFB
-
-  //  ___       _   ____  _ _
-  // |_ _|_ __ | |_/ ___|| (_) ___ ___
-  //  | || '_ \| __\___ \| | |/ __/ _ \
-  //  | || | | | |_ ___) | | | (_|  __/
-  // |___|_| |_|\__|____/|_|_|\___\___|
-
-  and IntSliceD =
-    { Index: Index
-    ; Value: int }
-
-    static member Create (idx: Index) (value: int) =
-      { Index = idx
-        Value = value }
-
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
-
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      IntSliceFB.StartIntSliceFB(builder)
-      IntSliceFB.AddIndex(builder, self.Index)
-      IntSliceFB.AddValue(builder, self.Value)
-      IntSliceFB.EndIntSliceFB(builder)
-
-    static member FromFB(fb: IntSliceFB) : IntSliceD option =
-      try
-        { Index = fb.Index
-        ; Value = fb.Value }
-        |> Some
-      with
-        | _ -> None
-
-    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
-
-    static member FromBytes(bytes: Binary.Buffer) : IntSliceD option =
-      Binary.createBuffer bytes
-      |> IntSliceFB.GetRootAsIntSliceFB
-      |> IntSliceD.FromFB
-
-    // __   __              _
-    // \ \ / /_ _ _ __ ___ | |
-    //  \ V / _` | '_ ` _ \| |
-    //   | | (_| | | | | | | |
-    //   |_|\__,_|_| |_| |_|_|
-
-  #if JAVASCRIPT
-  #else
-    member self.ToYamlObject() =
-      SliceYaml.IntSlice(self.Index, self.Value)
-
-    static member FromYamlObject(yaml: SliceYaml) =
-      match yaml.SliceType with
-      | "IntSlice" -> yaml.ToIntSliceD()
-      | _          -> None
-
-  #endif
-
-  //  _____ _             _   ____
-  // |  ___| | ___   __ _| |_| __ )  _____  __
-  // | |_  | |/ _ \ / _` | __|  _ \ / _ \ \/ /
-  // |  _| | | (_) | (_| | |_| |_) | (_) >  <
-  // |_|   |_|\___/ \__,_|\__|____/ \___/_/\_\
-
-  and FloatBoxD =
-    { Id         : Id
-    ; Name       : string
-    ; Patch      : Id
-    ; Tags       : Tag array
-    ; VecSize    : uint32
-    ; Min        : int
-    ; Max        : int
-    ; Unit       : string
-    ; Precision  : uint32
-    ; Slices     : FloatSliceD array }
-
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
-
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      let id = string self.Id |> builder.CreateString
-      let name = self.Name |> builder.CreateString
-      let patch = string self.Patch |> builder.CreateString
-      let unit = self.Unit |> builder.CreateString
-      let tagoffsets = Array.map builder.CreateString self.Tags
-      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-      let tags = FloatBoxFB.CreateTagsVector(builder, tagoffsets)
-      let slices = FloatBoxFB.CreateSlicesVector(builder, sliceoffsets)
-      FloatBoxFB.StartFloatBoxFB(builder)
-      FloatBoxFB.AddId(builder, id)
-      FloatBoxFB.AddName(builder, name)
-      FloatBoxFB.AddPatch(builder, patch)
-      FloatBoxFB.AddTags(builder, tags)
-      FloatBoxFB.AddVecSize(builder, self.VecSize)
-      FloatBoxFB.AddMin(builder, self.Min)
-      FloatBoxFB.AddMax(builder, self.Max)
-      FloatBoxFB.AddUnit(builder, unit)
-      FloatBoxFB.AddPrecision(builder, self.Precision)
-      FloatBoxFB.AddSlices(builder, slices)
-      FloatBoxFB.EndFloatBoxFB(builder)
-
-    static member FromFB(fb: FloatBoxFB) : FloatBoxD option =
-      let tags = Array.zeroCreate fb.TagsLength
-      let slices = Array.zeroCreate fb.SlicesLength
-      let unit = if isNull fb.Unit then "" else fb.Unit
-
-      let mutable i = 0
-      while i < fb.TagsLength do
-        tags.[i] <- fb.Tags(i)
-        i <- i + 1
-
-  #if JAVASCRIPT
-      let mutable i = 0
-      while i < fb.SlicesLength do
-        fb.Slices(i)
-        |> FloatSliceD.FromFB
-        |> Option.map (fun slice -> slices.[i] <- slice)
-        |> ignore
-        i <- i + 1
-  #else
-      for i in 0 .. (fb.SlicesLength - 1) do
-        let slice = fb.Slices(i)
-        if slice.HasValue then
-          slice.Value
-          |> FloatSliceD.FromFB
-          |> Option.map (fun slice -> slices.[i] <- slice)
-          |> ignore
-  #endif
-
-      try
-        { Id         = Id fb.Id
-        ; Name       = fb.Name
-        ; Patch      = Id fb.Patch
-        ; Tags       = tags
-        ; VecSize    = fb.VecSize
-        ; Min        = fb.Min
-        ; Max        = fb.Max
-        ; Unit       = unit
-        ; Precision  = fb.Precision
-        ; Slices     = slices }
-        |> Some
-      with
-        | _ -> None
-
-    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
-
-    static member FromBytes(bytes: Binary.Buffer) : FloatBoxD option =
-      Binary.createBuffer bytes
-      |> FloatBoxFB.GetRootAsFloatBoxFB
-      |> FloatBoxD.FromFB
-
-  //  _____ _             _   ____  _ _
-  // |  ___| | ___   __ _| |_/ ___|| (_) ___ ___
-  // | |_  | |/ _ \ / _` | __\___ \| | |/ __/ _ \
-  // |  _| | | (_) | (_| | |_ ___) | | | (_|  __/
-  // |_|   |_|\___/ \__,_|\__|____/|_|_|\___\___|
-
-  and FloatSliceD =
-    { Index: Index
-    ; Value: float }
-
-    static member Create (idx: Index) (value: float) =
-      { Index = idx
-        Value = value }
-
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
-
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      FloatSliceFB.StartFloatSliceFB(builder)
-      FloatSliceFB.AddIndex(builder, self.Index)
-      FloatSliceFB.AddValue(builder, float32 self.Value)
-      FloatSliceFB.EndFloatSliceFB(builder)
-
-    static member FromFB(fb: FloatSliceFB) : FloatSliceD option =
-      try
-        { Index = fb.Index
-        ; Value = float fb.Value }
-        |> Some
-      with
-        | _ -> None
-
-    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
-
-    static member FromBytes(bytes: Binary.Buffer) : FloatSliceD option =
-      Binary.createBuffer bytes
-      |> FloatSliceFB.GetRootAsFloatSliceFB
-      |> FloatSliceD.FromFB
-
-    // __   __              _
-    // \ \ / /_ _ _ __ ___ | |
-    //  \ V / _` | '_ ` _ \| |
-    //   | | (_| | | | | | | |
-    //   |_|\__,_|_| |_| |_|_|
-
-  #if JAVASCRIPT
-  #else
-    member self.ToYamlObject() =
-      SliceYaml.FloatSlice(self.Index, self.Value)
-
-    static member FromYamlObject(yaml: SliceYaml) =
-      match yaml.SliceType with
-      | "FloatSlice" -> yaml.ToFloatSliceD()
-      | _            -> None
-
-  #endif
-
-  //  ____              _     _      ____
-  // |  _ \  ___  _   _| |__ | | ___| __ )  _____  __
-  // | | | |/ _ \| | | | '_ \| |/ _ \  _ \ / _ \ \/ /
-  // | |_| | (_) | |_| | |_) | |  __/ |_) | (_) >  <
-  // |____/ \___/ \__,_|_.__/|_|\___|____/ \___/_/\_\
-
-  and DoubleBoxD =
-    { Id         : Id
-    ; Name       : string
-    ; Patch      : Id
-    ; Tags       : Tag array
-    ; VecSize    : uint32
-    ; Min        : int
-    ; Max        : int
-    ; Unit       : string
-    ; Precision  : uint32
-    ; Slices     : DoubleSliceD array }
-
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
-
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      let id = string self.Id |> builder.CreateString
-      let name = self.Name |> builder.CreateString
-      let patch = string self.Patch |> builder.CreateString
-      let unit = self.Unit |> builder.CreateString
-      let tagoffsets = Array.map builder.CreateString self.Tags
-      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-      let tags = DoubleBoxFB.CreateTagsVector(builder, tagoffsets)
-      let slices = DoubleBoxFB.CreateSlicesVector(builder, sliceoffsets)
-      DoubleBoxFB.StartDoubleBoxFB(builder)
-      DoubleBoxFB.AddId(builder, id)
-      DoubleBoxFB.AddName(builder, name)
-      DoubleBoxFB.AddPatch(builder, patch)
-      DoubleBoxFB.AddTags(builder, tags)
-      DoubleBoxFB.AddVecSize(builder, self.VecSize)
-      DoubleBoxFB.AddMin(builder, self.Min)
-      DoubleBoxFB.AddMax(builder, self.Max)
-      DoubleBoxFB.AddUnit(builder, unit)
-      DoubleBoxFB.AddPrecision(builder, self.Precision)
-      DoubleBoxFB.AddSlices(builder, slices)
-      DoubleBoxFB.EndDoubleBoxFB(builder)
-
-    static member FromFB(fb: DoubleBoxFB) : DoubleBoxD option =
-      let tags = Array.zeroCreate fb.TagsLength
-      let slices = Array.zeroCreate fb.SlicesLength
-      let unit = if isNull fb.Unit then "" else fb.Unit
-
-      let mutable i = 0
-      while i < fb.TagsLength do
-        tags.[i] <- fb.Tags(i)
-        i <- i + 1
-
-  #if JAVASCRIPT
-      let mutable i = 0
-      while i < fb.SlicesLength do
-        fb.Slices(i)
-        |> DoubleSliceD.FromFB
-        |> Option.map (fun slice -> slices.[i] <- slice)
-        |> ignore
-        i <- i + 1
-  #else
-      for i in 0 .. (fb.SlicesLength - 1) do
-        let slice = fb.Slices(i)
-        if slice.HasValue then
-          slice.Value
-          |> DoubleSliceD.FromFB
-          |> Option.map (fun slice -> slices.[i] <- slice)
-          |> ignore
-  #endif
-
-      try
-        { Id         = Id fb.Id
-        ; Name       = fb.Name
-        ; Patch      = Id fb.Patch
-        ; Tags       = tags
-        ; VecSize    = fb.VecSize
-        ; Min        = fb.Min
-        ; Max        = fb.Max
-        ; Unit       = unit
-        ; Precision  = fb.Precision
-        ; Slices     = slices }
-        |> Some
-      with
-        | _ -> None
-
-    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
-
-    static member FromBytes(bytes: Binary.Buffer) : DoubleBoxD option =
-      Binary.createBuffer bytes
-      |> DoubleBoxFB.GetRootAsDoubleBoxFB
-      |> DoubleBoxD.FromFB
-
-  //  ____              _     _      ____  _ _
-  // |  _ \  ___  _   _| |__ | | ___/ ___|| (_) ___ ___
-  // | | | |/ _ \| | | | '_ \| |/ _ \___ \| | |/ __/ _ \
-  // | |_| | (_) | |_| | |_) | |  __/___) | | | (_|  __/
-  // |____/ \___/ \__,_|_.__/|_|\___|____/|_|_|\___\___|
-
-  and DoubleSliceD =
-    { Index: Index
-    ; Value: double }
-
-    static member Create (idx: Index) (value: double) =
-      { Index = idx
-        Value = value }
-
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
-
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      DoubleSliceFB.StartDoubleSliceFB(builder)
-      DoubleSliceFB.AddIndex(builder, self.Index)
-      DoubleSliceFB.AddValue(builder, self.Value)
-      DoubleSliceFB.EndDoubleSliceFB(builder)
-
-    static member FromFB(fb: DoubleSliceFB) : DoubleSliceD option =
-      try
-        { Index = fb.Index
-        ; Value = fb.Value }
-        |> Some
-      with
-        | _ -> None
-
-    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
-
-    static member FromBytes(bytes: Binary.Buffer) : DoubleSliceD option =
-      Binary.createBuffer bytes
-      |> DoubleSliceFB.GetRootAsDoubleSliceFB
-      |> DoubleSliceD.FromFB
-
-    // __   __              _
-    // \ \ / /_ _ _ __ ___ | |
-    //  \ V / _` | '_ ` _ \| |
-    //   | | (_| | | | | | | |
-    //   |_|\__,_|_| |_| |_|_|
-
-  #if JAVASCRIPT
-  #else
-    member self.ToYamlObject() =
-      SliceYaml.DoubleSlice(self.Index, self.Value)
-
-    static member FromYamlObject(yaml: SliceYaml) =
-      match yaml.SliceType with
-      | "DoubleSlice" -> yaml.ToDoubleSliceD()
-      | _             -> None
-
-  #endif
-
-  //  ____        _       ____
-  // | __ ) _   _| |_ ___| __ )  _____  __
-  // |  _ \| | | | __/ _ \  _ \ / _ \ \/ /
-  // | |_) | |_| | ||  __/ |_) | (_) >  <
-  // |____/ \__, |\__\___|____/ \___/_/\_\
-  //        |___/
-
-  and ByteBoxD =
-    { Id         : Id
-    ; Name       : string
-    ; Patch      : Id
-    ; Tags       : Tag        array
-    ; Slices     : ByteSliceD array }
-
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
-
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      let id = string self.Id |> builder.CreateString
-      let name = self.Name |> builder.CreateString
-      let patch = string self.Patch |> builder.CreateString
-      let tagoffsets = Array.map builder.CreateString self.Tags
-      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-      let tags = ByteBoxFB.CreateTagsVector(builder, tagoffsets)
-      let slices = ByteBoxFB.CreateSlicesVector(builder, sliceoffsets)
-      ByteBoxFB.StartByteBoxFB(builder)
-      ByteBoxFB.AddId(builder, id)
-      ByteBoxFB.AddName(builder, name)
-      ByteBoxFB.AddPatch(builder, patch)
-      ByteBoxFB.AddTags(builder, tags)
-      ByteBoxFB.AddSlices(builder, slices)
-      ByteBoxFB.EndByteBoxFB(builder)
-
-    static member FromFB(fb: ByteBoxFB) : ByteBoxD option =
-      let tags = Array.zeroCreate fb.TagsLength
-      let slices = Array.zeroCreate fb.SlicesLength
-
-      let mutable i = 0
-      while i < fb.TagsLength do
-        tags.[i] <- fb.Tags(i)
-        i <- i + 1
-
-  #if JAVASCRIPT
-      let mutable i = 0
-      while i < fb.SlicesLength do
-        fb.Slices(i)
-        |> ByteSliceD.FromFB
-        |> Option.map (fun slice -> slices.[i] <- slice)
-        |> ignore
-        i <- i + 1
-  #else
-      for i in 0 .. (fb.SlicesLength - 1) do
-        let slice = fb.Slices(i)
-        if slice.HasValue then
-          slice.Value
-          |> ByteSliceD.FromFB
-          |> Option.map (fun slice -> slices.[i] <- slice)
-          |> ignore
-  #endif
-
-      try
-        { Id         = Id fb.Id
-        ; Name       = fb.Name
-        ; Patch      = Id fb.Patch
-        ; Tags       = tags
-        ; Slices     = slices }
-        |> Some
-      with
-        | _ -> None
-
-    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
-
-    static member FromBytes(bytes: Binary.Buffer) : ByteBoxD option =
-      Binary.createBuffer bytes
-      |> ByteBoxFB.GetRootAsByteBoxFB
-      |> ByteBoxD.FromFB
-
-  //  ____        _       ____  _ _
-  // | __ ) _   _| |_ ___/ ___|| (_) ___ ___
-  // |  _ \| | | | __/ _ \___ \| | |/ __/ _ \
-  // | |_) | |_| | ||  __/___) | | | (_|  __/
-  // |____/ \__, |\__\___|____/|_|_|\___\___|
-  //        |___/
-
-  and [<CustomEquality;CustomComparison>] ByteSliceD =
-    { Index: Index
-    ; Value: Binary.Buffer }
-
-    static member Create (idx: Index) (value: Binary.Buffer) =
-      { Index = idx
-        Value = value }
-
-    override self.Equals(other) =
-      match other with
-      | :? ByteSliceD as slice ->
-        (self :> System.IEquatable<ByteSliceD>).Equals(slice)
-      | _ -> false
-
-    override self.GetHashCode() =
-      let mutable hash = 42
-  #if JAVASCRIPT
-      hash <- (hash * 7) + hashCode (string self.Index)
-      hash <- (hash * 7) + hashCode (string self.Value.byteLength)
-  #else
-      hash <- (hash * 7) + self.Index.GetHashCode()
-      hash <- (hash * 7) + self.Value.GetHashCode()
-  #endif
-      hash
-
-    interface System.IComparable with
-      member self.CompareTo other =
-        match other with
-        | :? ByteSliceD as slice -> compare self.Index slice.Index
-        | _ -> invalidArg "other" "cannot compare value of different types"
-
-    interface System.IEquatable<ByteSliceD> with
-      member self.Equals(slice: ByteSliceD) =
-        let mutable contentsEqual = false
-        let lengthEqual =
-  #if JAVASCRIPT
-          let result = self.Value.byteLength = slice.Value.byteLength
-          if result then
-            let me = Fable.Import.JS.Uint8Array.Create(self.Value)
-            let it = Fable.Import.JS.Uint8Array.Create(slice.Value)
-            let mutable contents = true
-            let mutable i = 0
-            while i < int self.Value.byteLength do
-              if contents then
-                contents <- me.[i] = it.[i]
-              i <- i + 1
-            contentsEqual <- contents
-          result
-  #else
-          let result = Array.length self.Value = Array.length slice.Value
-          if result then
-            let mutable contents = true
-            for i in 0 .. (Array.length self.Value - 1) do
-              if contents then
-                contents <- self.Value.[i] = slice.Value.[i]
-            contentsEqual <- contents
-          result
-  #endif
-        slice.Index = self.Index &&
-        lengthEqual &&
-        contentsEqual
-
-    // __   __              _
-    // \ \ / /_ _ _ __ ___ | |
-    //  \ V / _` | '_ ` _ \| |
-    //   | | (_| | | | | | | |
-    //   |_|\__,_|_| |_| |_|_|
-
-  #if JAVASCRIPT
-  #else
-    member self.ToYamlObject() =
-      SliceYaml.ByteSlice(self.Index,  Convert.ToBase64String self.Value)
-
-    static member FromYamlObject(yaml: SliceYaml) =
-      match yaml.SliceType with
-      | "ByteSlice" -> yaml.ToByteSliceD()
-      | _           -> None
-
-  #endif
-
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
-
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      let encode (bytes: Binary.Buffer) =
-  #if JAVASCRIPT
-        let mutable str = ""
-        let arr = Fable.Import.JS.Uint8Array.Create(bytes)
-        for i in 0 .. (int arr.length - 1) do
-          str <- str + Fable.Import.JS.String.fromCharCode arr.[i]
-        Fable.Import.Browser.window.btoa str
-  #else
-        Convert.ToBase64String(bytes)
-  #endif
-
-      let encoded = encode self.Value
-      let bytes = builder.CreateString encoded
-      ByteSliceFB.StartByteSliceFB(builder)
-      ByteSliceFB.AddIndex(builder, self.Index)
-      ByteSliceFB.AddValue(builder, bytes)
-      ByteSliceFB.EndByteSliceFB(builder)
-
-    static member FromFB(fb: ByteSliceFB) : ByteSliceD option =
-      let decode str =
-  #if JAVASCRIPT
-        let binary = Fable.Import.Browser.window.atob str
-        let bytes = Fable.Import.JS.Uint8Array.Create(float binary.Length)
-        for i in 0 .. (binary.Length - 1) do
-          bytes.[i] <- charCodeAt binary i
-        bytes.buffer
-  #else
-        Convert.FromBase64String(str)
-  #endif
-
-      try
-        let values = decode fb.Value
-        { Index = fb.Index
-        ; Value = values }
-        |> Some
-      with
-        | _ -> None
-
-    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
-
-    static member FromBytes(bytes: Binary.Buffer) : ByteSliceD option =
-      Binary.createBuffer bytes
-      |> ByteSliceFB.GetRootAsByteSliceFB
-      |> ByteSliceD.FromFB
-
-  //  _____                       ____
-  // | ____|_ __  _   _ _ __ ___ | __ )  _____  __
-  // |  _| | '_ \| | | | '_ ` _ \|  _ \ / _ \ \/ /
-  // | |___| | | | |_| | | | | | | |_) | (_) >  <
-  // |_____|_| |_|\__,_|_| |_| |_|____/ \___/_/\_\
-
-  and EnumBoxD =
-    { Id         : Id
-    ; Name       : string
-    ; Patch      : Id
-    ; Tags       : Tag        array
-    ; Properties : Property   array
-    ; Slices     : EnumSliceD array }
-
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
-
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      let id = string self.Id |> builder.CreateString
-      let name = self.Name |> builder.CreateString
-      let patch = string self.Patch |> builder.CreateString
-      let tagoffsets = Array.map builder.CreateString self.Tags
-      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-      let propoffsets =
-        Array.map (fun (prop: Property) ->
-                  let key, value =
-                      builder.CreateString prop.Key, builder.CreateString prop.Value
-                  EnumPropertyFB.StartEnumPropertyFB(builder)
-                  EnumPropertyFB.AddKey(builder, key)
-                  EnumPropertyFB.AddValue(builder, value)
-                  EnumPropertyFB.EndEnumPropertyFB(builder))
-          self.Properties
-      let tags = EnumBoxFB.CreateTagsVector(builder, tagoffsets)
-      let slices = EnumBoxFB.CreateSlicesVector(builder, sliceoffsets)
-      let properties = EnumBoxFB.CreatePropertiesVector(builder, propoffsets)
-      EnumBoxFB.StartEnumBoxFB(builder)
-      EnumBoxFB.AddId(builder, id)
-      EnumBoxFB.AddName(builder, name)
-      EnumBoxFB.AddPatch(builder, patch)
-      EnumBoxFB.AddTags(builder, tags)
-      EnumBoxFB.AddProperties(builder, properties)
-      EnumBoxFB.AddSlices(builder, slices)
-      EnumBoxFB.EndEnumBoxFB(builder)
-
-    static member FromFB(fb: EnumBoxFB) : EnumBoxD option =
-      let tags = Array.zeroCreate fb.TagsLength
-      let slices = Array.zeroCreate fb.SlicesLength
-      let properties = Array.zeroCreate fb.PropertiesLength
-
-      let mutable i = 0
-      while i < fb.TagsLength do
-        tags.[i] <- fb.Tags(i)
-        i <- i + 1
-
-  #if JAVASCRIPT
-      let mutable i = 0
-      while i < fb.PropertiesLength do
-        let prop = fb.Properties(i)
-        properties.[i] <- { Key = prop.Key; Value = prop.Value }
-        i <- i + 1
-  #else
-      for i in 0 .. (fb.PropertiesLength - 1) do
-        let prop = fb.Properties(i)
-        if prop.HasValue then
-          let value = prop.Value
-          properties.[i] <- { Key = value.Key; Value = value.Value }
-  #endif
-
-  #if JAVASCRIPT
-      let mutable i = 0
-      while i < fb.SlicesLength do
-        fb.Slices(i)
-        |> EnumSliceD.FromFB
-        |> Option.map (fun slice -> slices.[i] <- slice)
-        |> ignore
-        i <- i + 1
-  #else
-      for i in 0 .. (fb.SlicesLength - 1) do
-        let slice = fb.Slices(i)
-        if slice.HasValue then
-          slice.Value
-          |> EnumSliceD.FromFB
-          |> Option.map (fun slice -> slices.[i] <- slice)
-          |> ignore
-  #endif
-
-      try
-        { Id         = Id fb.Id
-        ; Name       = fb.Name
-        ; Patch      = Id fb.Patch
-        ; Tags       = tags
-        ; Properties = properties
-        ; Slices     = slices }
-        |> Some
-      with
-        | _ -> None
-
-    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
-
-    static member FromEnums(bytes: Binary.Buffer) : EnumBoxD option =
-      Binary.createBuffer bytes
-      |> EnumBoxFB.GetRootAsEnumBoxFB
-      |> EnumBoxD.FromFB
-
-  //  _____                       ____  _ _
-  // | ____|_ __  _   _ _ __ ___ / ___|| (_) ___ ___
-  // |  _| | '_ \| | | | '_ ` _ \\___ \| | |/ __/ _ \
-  // | |___| | | | |_| | | | | | |___) | | | (_|  __/
-  // |_____|_| |_|\__,_|_| |_| |_|____/|_|_|\___\___|
-
-  and EnumSliceD =
-    { Index : Index
-    ; Value : Property }
-
-    static member Create (idx: Index) (value: Property) =
-      { Index = idx
-        Value = value }
-
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
-
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      let property =
-        let key, value =
-          builder.CreateString self.Value.Key, builder.CreateString self.Value.Value
-
-        EnumPropertyFB.StartEnumPropertyFB(builder)
-        EnumPropertyFB.AddKey(builder, key)
-        EnumPropertyFB.AddValue(builder, value)
-        EnumPropertyFB.EndEnumPropertyFB(builder)
-
-      EnumSliceFB.StartEnumSliceFB(builder)
-      EnumSliceFB.AddIndex(builder, self.Index)
-      EnumSliceFB.AddValue(builder, property)
-      EnumSliceFB.EndEnumSliceFB(builder)
-
-    static member FromFB(fb: EnumSliceFB) : EnumSliceD option =
-  #if JAVASCRIPT
-      let prop = fb.Value
-      try
-        { Index = fb.Index
-        ; Value = { Key = prop.Key; Value = prop.Value } }
-        |> Some
-      with
-        | _ -> None
-  #else
-      let nullable = fb.Value
-      if nullable.HasValue then
-        let prop = nullable.Value
-        try
-          { Index = fb.Index
-          ; Value = { Key = prop.Key; Value = prop.Value } }
-          |> Some
-        with
-          | _ -> None
-      else None
-  #endif
-
-    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
-
-    static member FromEnums(bytes: Binary.Buffer) : EnumSliceD option =
-      Binary.createBuffer bytes
-      |> EnumSliceFB.GetRootAsEnumSliceFB
-      |> EnumSliceD.FromFB
-
-    // __   __              _
-    // \ \ / /_ _ _ __ ___ | |
-    //  \ V / _` | '_ ` _ \| |
-    //   | | (_| | | | | | | |
-    //   |_|\__,_|_| |_| |_|_|
-
-  #if JAVASCRIPT
-  #else
-    member self.ToYamlObject() =
-      SliceYaml.EnumSlice(self.Index, Yaml.toYaml self.Value)
-
-    static member FromYamlObject(yaml: SliceYaml) =
-      match yaml.SliceType with
-      | "EnumSlice" -> yaml.ToEnumSliceD()
-      | _           -> None
-
-  #endif
-
-  //   ____      _            ____
-  //  / ___|___ | | ___  _ __| __ )  _____  __
-  // | |   / _ \| |/ _ \| '__|  _ \ / _ \ \/ /
-  // | |__| (_) | | (_) | |  | |_) | (_) >  <
-  //  \____\___/|_|\___/|_|  |____/ \___/_/\_\
-
-  and ColorBoxD =
-    { Id     : Id
-    ; Name   : string
-    ; Patch  : Id
-    ; Tags   : Tag         array
-    ; Slices : ColorSliceD array }
-
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
-
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      let id = string self.Id |> builder.CreateString
-      let name = self.Name |> builder.CreateString
-      let patch = string self.Patch |> builder.CreateString
-      let tagoffsets = Array.map builder.CreateString self.Tags
-      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-      let tags = ColorBoxFB.CreateTagsVector(builder, tagoffsets)
-      let slices = ColorBoxFB.CreateSlicesVector(builder, sliceoffsets)
-      ColorBoxFB.StartColorBoxFB(builder)
-      ColorBoxFB.AddId(builder, id)
-      ColorBoxFB.AddName(builder, name)
-      ColorBoxFB.AddPatch(builder, patch)
-      ColorBoxFB.AddTags(builder, tags)
-      ColorBoxFB.AddSlices(builder, slices)
-      ColorBoxFB.EndColorBoxFB(builder)
-
-    static member FromFB(fb: ColorBoxFB) : ColorBoxD option =
-      let tags = Array.zeroCreate fb.TagsLength
-      let slices = Array.zeroCreate fb.SlicesLength
-
-      let mutable i = 0
-      while i < fb.TagsLength do
-        tags.[i] <- fb.Tags(i)
-        i <- i + 1
-
-  #if JAVASCRIPT
-      let mutable i = 0
-      while i < fb.SlicesLength do
-        fb.Slices(i)
-        |> ColorSliceD.FromFB
-        |> Option.map (fun slice -> slices.[i] <- slice)
-        |> ignore
-        i <- i + 1
-  #else
-      for i in 0 .. (fb.SlicesLength - 1) do
-        let slice = fb.Slices(i)
-        if slice.HasValue then
-          slice.Value
-          |> ColorSliceD.FromFB
-          |> Option.map (fun slice -> slices.[i] <- slice)
-          |> ignore
-  #endif
-
-      try
-        { Id     = Id fb.Id
-        ; Name   = fb.Name
-        ; Patch  = Id fb.Patch
-        ; Tags   = tags
-        ; Slices = slices }
-        |> Some
-      with
-        | _ -> None
-
-    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
-
-    static member FromColors(bytes: Binary.Buffer) : ColorBoxD option =
-      Binary.createBuffer bytes
-      |> ColorBoxFB.GetRootAsColorBoxFB
-      |> ColorBoxD.FromFB
-
-  //   ____      _            ____  _ _
-  //  / ___|___ | | ___  _ __/ ___|| (_) ___ ___
-  // | |   / _ \| |/ _ \| '__\___ \| | |/ __/ _ \
-  // | |__| (_) | | (_) | |   ___) | | | (_|  __/
-  //  \____\___/|_|\___/|_|  |____/|_|_|\___\___|
-
-  and ColorSliceD =
-    { Index: Index
-    ; Value: ColorSpace }
-
-    static member Create (idx: Index) (value: ColorSpace) =
-      { Index = idx
-        Value = value }
-
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
-
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      let offset = self.Value.ToOffset(builder)
-      ColorSliceFB.StartColorSliceFB(builder)
-      ColorSliceFB.AddIndex(builder, self.Index)
-      ColorSliceFB.AddValue(builder, offset)
-      ColorSliceFB.EndColorSliceFB(builder)
-
-    static member FromFB(fb: ColorSliceFB) : ColorSliceD option =
-  #if JAVASCRIPT
-      fb.Value
-      |> ColorSpace.FromFB
-      |> Option.map (fun color -> { Index = fb.Index; Value = color })
-  #else
-      let nullable = fb.Value
-      if nullable.HasValue then
-        ColorSpace.FromFB nullable.Value
-        |> Option.map (fun color -> { Index = fb.Index; Value = color })
-      else None
-  #endif
-
-    member self.ToColors() : Binary.Buffer = Binary.buildBuffer self
-
-    static member FromColors(bytes: Binary.Buffer) : ColorSliceD option =
-      Binary.createBuffer bytes
-      |> ColorSliceFB.GetRootAsColorSliceFB
-      |> ColorSliceD.FromFB
-
-    // __   __              _
-    // \ \ / /_ _ _ __ ___ | |
-    //  \ V / _` | '_ ` _ \| |
-    //   | | (_| | | | | | | |
-    //   |_|\__,_|_| |_| |_|_|
-
-  #if JAVASCRIPT
-  #else
-    member self.ToYamlObject() =
-      SliceYaml.ColorSlice(self.Index, Yaml.toYaml self.Value)
-
-    static member FromYamlObject(yaml: SliceYaml) =
-      match yaml.SliceType with
-      | "ColorSlice" -> yaml.ToColorSliceD()
-      | _            -> None
-
-  #endif
-
-  //  ____  _        _             ____
-  // / ___|| |_ _ __(_)_ __   __ _| __ )  _____  __
-  // \___ \| __| '__| | '_ \ / _` |  _ \ / _ \ \/ /
-  //  ___) | |_| |  | | | | | (_| | |_) | (_) >  <
-  // |____/ \__|_|  |_|_| |_|\__, |____/ \___/_/\_\
-  //                         |___/
-
-  and StringBoxD =
-    { Id         : Id
-    ; Name       : string
-    ; Patch      : Id
-    ; Tags       : Tag array
-    ; StringType : StringType
-    ; FileMask   : FileMask
-    ; MaxChars   : MaxChars
-    ; Slices     : StringSliceD array }
-
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
-
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      let id = string self.Id |> builder.CreateString
-      let name = self.Name |> builder.CreateString
-      let patch = string self.Patch |> builder.CreateString
-      let tipe = self.StringType.ToOffset(builder)
-      let mask = self.FileMask |> Option.map builder.CreateString
-      let tagoffsets = Array.map builder.CreateString self.Tags
-      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-      let tags = StringBoxFB.CreateTagsVector(builder, tagoffsets)
-      let slices = StringBoxFB.CreateSlicesVector(builder, sliceoffsets)
-
-      StringBoxFB.StartStringBoxFB(builder)
-      StringBoxFB.AddId(builder, id)
-      StringBoxFB.AddName(builder, name)
-      StringBoxFB.AddPatch(builder, patch)
-      StringBoxFB.AddTags(builder, tags)
-      StringBoxFB.AddStringType(builder, tipe)
-
-      Option.map (fun mask -> StringBoxFB.AddFileMask(builder, mask)) mask |> ignore
-
-      StringBoxFB.AddMaxChars(builder, self.MaxChars)
-      StringBoxFB.AddSlices(builder, slices)
-      StringBoxFB.EndStringBoxFB(builder)
-
-    static member FromFB(fb: StringBoxFB) : StringBoxD option =
-      let tags = Array.zeroCreate fb.TagsLength
-      let slices = Array.zeroCreate fb.SlicesLength
-      let mask = if isNull fb.FileMask then None else Some fb.FileMask
-
-      let mutable i = 0
-      while i < fb.TagsLength do
-        tags.[i] <- fb.Tags(i)
-        i <- i + 1
-
-  #if JAVASCRIPT
-      let mutable i = 0
-      while i < fb.SlicesLength do
-        fb.Slices(i)
-        |> StringSliceD.FromFB
-        |> Option.map (fun slice -> slices.[i] <- slice)
-        |> ignore
-        i <- i + 1
-  #else
-      for i in 0 .. (fb.SlicesLength - 1) do
-        let slice = fb.Slices(i)
-        if slice.HasValue then
-          slice.Value
-          |> StringSliceD.FromFB
-          |> Option.map (fun slice -> slices.[i] <- slice)
-          |> ignore
-  #endif
-
-      StringType.FromFB fb.StringType
-      |> Option.map
-        (fun tipe ->
-          { Id         = Id fb.Id
-          ; Name       = fb.Name
-          ; Patch      = Id fb.Patch
-          ; Tags       = tags
-          ; StringType = tipe
-          ; FileMask   = mask
-          ; MaxChars   = fb.MaxChars
-          ; Slices     = slices })
-
-    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
-
-    static member FromStrings(bytes: Binary.Buffer) : StringBoxD option =
-      Binary.createBuffer bytes
-      |> StringBoxFB.GetRootAsStringBoxFB
-      |> StringBoxD.FromFB
-
-  //  ____  _        _             ____  _ _
-  // / ___|| |_ _ __(_)_ __   __ _/ ___|| (_) ___ ___
-  // \___ \| __| '__| | '_ \ / _` \___ \| | |/ __/ _ \
-  //  ___) | |_| |  | | | | | (_| |___) | | | (_|  __/
-  // |____/ \__|_|  |_|_| |_|\__, |____/|_|_|\___\___|
-  //                         |___/
-
-  and StringSliceD =
-    { Index : Index
-    ; Value : string }
-
-    static member Create (idx: Index) (value: string) =
-      { Index = idx
-        Value = value }
-
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
-
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      let value = builder.CreateString self.Value
-      StringSliceFB.StartStringSliceFB(builder)
-      StringSliceFB.AddIndex(builder, self.Index)
-      StringSliceFB.AddValue(builder, value)
-      StringSliceFB.EndStringSliceFB(builder)
-
-    static member FromFB(fb: StringSliceFB) : StringSliceD option =
-      try
-        { Index = fb.Index
-        ; Value = fb.Value }
-        |> Some
-      with
-        | _ -> None
-
-    member self.ToStrings() : Binary.Buffer = Binary.buildBuffer self
-
-    static member FromStrings(bytes: Binary.Buffer) : StringSliceD option =
-      Binary.createBuffer bytes
-      |> StringSliceFB.GetRootAsStringSliceFB
-      |> StringSliceD.FromFB
-
-    // __   __              _
-    // \ \ / /_ _ _ __ ___ | |
-    //  \ V / _` | '_ ` _ \| |
-    //   | | (_| | | | | | | |
-    //   |_|\__,_|_| |_| |_|_|
-
-  #if JAVASCRIPT
-  #else
-    member self.ToYamlObject() =
-      SliceYaml.StringSlice(self.Index, self.Value)
-
-    static member FromYamlObject(yaml: SliceYaml) =
-      match yaml.SliceType with
-      | "StringSlice" -> yaml.ToStringSliceD()
-      | _             -> None
-
-  #endif
-
-  //   ____                                            _ ____
-  //  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| | __ )  _____  __
-  // | |   / _ \| '_ ` _ \| '_ \ / _ \| | | | '_ \ / _` |  _ \ / _ \ \/ /
-  // | |__| (_) | | | | | | |_) | (_) | |_| | | | | (_| | |_) | (_) >  <
-  //  \____\___/|_| |_| |_| .__/ \___/ \__,_|_| |_|\__,_|____/ \___/_/\_\
-  //                      |_|
-
-  and CompoundBoxD =
-    { Id         : Id
-    ; Name       : string
-    ; Patch      : Id
-    ; Tags       : Tag   array
-    ; Slices     : CompoundSliceD array }
-
-
-    //  ____  _
-    // | __ )(_)_ __   __ _ _ __ _   _
-    // |  _ \| | '_ \ / _` | '__| | | |
-    // | |_) | | | | | (_| | |  | |_| |
-    // |____/|_|_| |_|\__,_|_|   \__, |
-    //                           |___/
-
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      let id = string self.Id |> builder.CreateString
-      let name = self.Name |> builder.CreateString
-      let patch = string self.Patch |> builder.CreateString
-      let tagoffsets = Array.map builder.CreateString self.Tags
-      let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-      let tags = CompoundBoxFB.CreateTagsVector(builder, tagoffsets)
-      let slices = CompoundBoxFB.CreateSlicesVector(builder, sliceoffsets)
-      CompoundBoxFB.StartCompoundBoxFB(builder)
-      CompoundBoxFB.AddId(builder, id)
-      CompoundBoxFB.AddName(builder, name)
-      CompoundBoxFB.AddPatch(builder, patch)
-      CompoundBoxFB.AddTags(builder, tags)
-      CompoundBoxFB.AddSlices(builder, slices)
-      CompoundBoxFB.EndCompoundBoxFB(builder)
-
-    static member FromFB(fb: CompoundBoxFB) : CompoundBoxD option =
-      let tags = Array.zeroCreate fb.TagsLength
-      let slices = Array.zeroCreate fb.SlicesLength
-
-      let mutable i = 0
-      while i < fb.TagsLength do
-        tags.[i] <- fb.Tags(i)
-        i <- i + 1
-
-  #if JAVASCRIPT
-      let mutable i = 0
-      while i < fb.SlicesLength do
-        fb.Slices(i)
-        |> CompoundSliceD.FromFB
-        |> Option.map (fun slice -> slices.[i] <- slice)
-        |> ignore
-        i <- i + 1
-  #else
-      for i in 0 .. (fb.SlicesLength - 1) do
-        let slice = fb.Slices(i)
-        if slice.HasValue then
-          slice.Value
-          |> CompoundSliceD.FromFB
-          |> Option.map (fun slice -> slices.[i] <- slice)
-          |> ignore
-  #endif
-
-      try
-        { Id         = Id fb.Id
-        ; Name       = fb.Name
-        ; Patch      = Id fb.Patch
-        ; Tags       = tags
-        ; Slices     = slices }
-        |> Some
-      with
-        | _ -> None
-
-    member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
-
-    static member FromCompounds(bytes: Binary.Buffer) : CompoundBoxD option =
-      Binary.createBuffer bytes
-      |> CompoundBoxFB.GetRootAsCompoundBoxFB
-      |> CompoundBoxD.FromFB
-
-  //   ____                                            _ ____  _ _
-  //  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| / ___|| (_) ___ ___
-  // | |   / _ \| '_ ` _ \| '_ \ / _ \| | | | '_ \ / _` \___ \| | |/ __/ _ \
-  // | |__| (_) | | | | | | |_) | (_) | |_| | | | | (_| |___) | | | (_|  __/
-  //  \____\___/|_| |_| |_| .__/ \___/ \__,_|_| |_|\__,_|____/|_|_|\___\___|
-  //                      |_|
-
-  and CompoundSliceD =
-    { Index      : Index
-    ; Value      : IOBox array }
-
-    static member Create (idx: Index) (value: ) =
+      let! tags = IOBox.ParseTagsFB fb
+      let! slices = IOBox.ParseSlicesFB fb
+
+      return { Id      = Id fb.Id
+               Name    = fb.Name
+               Patch   = Id fb.Patch
+               Tags    = tags
+               VecSize = fb.VecSize
+               Min     = fb.Min
+               Max     = fb.Max
+               Unit    = unit
+               Slices  = slices }
+    }
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,IntBoxD> =
+    Binary.createBuffer bytes
+    |> IntBoxFB.GetRootAsIntBoxFB
+    |> IntBoxD.FromFB
+
+//  ___       _   ____  _ _
+// |_ _|_ __ | |_/ ___|| (_) ___ ___
+//  | || '_ \| __\___ \| | |/ __/ _ \
+//  | || | | | |_ ___) | | | (_|  __/
+// |___|_| |_|\__|____/|_|_|\___\___|
+
+and IntSliceD =
+  { Index: Index
+  ; Value: int }
+
+  static member Create (idx: Index) (value: int) =
     { Index = idx
       Value = value }
 
@@ -2453,44 +1433,1065 @@ and BoolSliceD =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let ioboxoffsets = Array.map (fun (iobox: IOBox) -> iobox.ToOffset(builder)) self.Value
+    IntSliceFB.StartIntSliceFB(builder)
+    IntSliceFB.AddIndex(builder, self.Index)
+    IntSliceFB.AddValue(builder, self.Value)
+    IntSliceFB.EndIntSliceFB(builder)
+
+  static member FromFB(fb: IntSliceFB) : Either<IrisError,IntSliceD> =
+    Either.tryWith ParseError "IntSliceFB" <| fun _ ->
+      { Index = fb.Index
+        Value = fb.Value }
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,IntSliceD> =
+    Binary.createBuffer bytes
+    |> IntSliceFB.GetRootAsIntSliceFB
+    |> IntSliceD.FromFB
+
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+#if JAVASCRIPT
+#else
+  member self.ToYamlObject() =
+    SliceYaml.IntSlice(self.Index, self.Value)
+
+  static member FromYamlObject(yaml: SliceYaml) =
+    match yaml.SliceType with
+    | "IntSlice" -> yaml.ToIntSliceD()
+    | x ->
+      sprintf "Could not parse %s as InSlice" x
+      |> ParseError
+      |> Either.fail
+
+#endif
+
+//  _____ _             _   ____
+// |  ___| | ___   __ _| |_| __ )  _____  __
+// | |_  | |/ _ \ / _` | __|  _ \ / _ \ \/ /
+// |  _| | | (_) | (_| | |_| |_) | (_) >  <
+// |_|   |_|\___/ \__,_|\__|____/ \___/_/\_\
+
+and FloatBoxD =
+  { Id         : Id
+  ; Name       : string
+  ; Patch      : Id
+  ; Tags       : Tag array
+  ; VecSize    : uint32
+  ; Min        : int
+  ; Max        : int
+  ; Unit       : string
+  ; Precision  : uint32
+  ; Slices     : FloatSliceD array }
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let id = string self.Id |> builder.CreateString
+    let name = self.Name |> builder.CreateString
+    let patch = string self.Patch |> builder.CreateString
+    let unit = self.Unit |> builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let tags = FloatBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = FloatBoxFB.CreateSlicesVector(builder, sliceoffsets)
+    FloatBoxFB.StartFloatBoxFB(builder)
+    FloatBoxFB.AddId(builder, id)
+    FloatBoxFB.AddName(builder, name)
+    FloatBoxFB.AddPatch(builder, patch)
+    FloatBoxFB.AddTags(builder, tags)
+    FloatBoxFB.AddVecSize(builder, self.VecSize)
+    FloatBoxFB.AddMin(builder, self.Min)
+    FloatBoxFB.AddMax(builder, self.Max)
+    FloatBoxFB.AddUnit(builder, unit)
+    FloatBoxFB.AddPrecision(builder, self.Precision)
+    FloatBoxFB.AddSlices(builder, slices)
+    FloatBoxFB.EndFloatBoxFB(builder)
+
+  static member FromFB(fb: FloatBoxFB) : Either<IrisError,FloatBoxD> =
+    either {
+      let! tags = IOBox.ParseTagsFB fb
+      let! slices = IOBox.ParseSlicesFB fb
+      let unit = if isNull fb.Unit then "" else fb.Unit
+
+      return { Id         = Id fb.Id
+               Name       = fb.Name
+               Patch      = Id fb.Patch
+               Tags       = tags
+               VecSize    = fb.VecSize
+               Min        = fb.Min
+               Max        = fb.Max
+               Unit       = unit
+               Precision  = fb.Precision
+               Slices     = slices }
+    }
+
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,FloatBoxD> =
+    Binary.createBuffer bytes
+    |> FloatBoxFB.GetRootAsFloatBoxFB
+    |> FloatBoxD.FromFB
+
+//  _____ _             _   ____  _ _
+// |  ___| | ___   __ _| |_/ ___|| (_) ___ ___
+// | |_  | |/ _ \ / _` | __\___ \| | |/ __/ _ \
+// |  _| | | (_) | (_| | |_ ___) | | | (_|  __/
+// |_|   |_|\___/ \__,_|\__|____/|_|_|\___\___|
+
+and FloatSliceD =
+  { Index: Index
+  ; Value: float }
+
+  static member Create (idx: Index) (value: float) =
+    { Index = idx
+      Value = value }
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    FloatSliceFB.StartFloatSliceFB(builder)
+    FloatSliceFB.AddIndex(builder, self.Index)
+    FloatSliceFB.AddValue(builder, float32 self.Value)
+    FloatSliceFB.EndFloatSliceFB(builder)
+
+  static member FromFB(fb: FloatSliceFB) : Either<IrisError,FloatSliceD> =
+    Either.tryWith ParseError "FloatSliceFB" <| fun _ ->
+      { Index = fb.Index
+        Value = float fb.Value }
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,FloatSliceD> =
+    Binary.createBuffer bytes
+    |> FloatSliceFB.GetRootAsFloatSliceFB
+    |> FloatSliceD.FromFB
+
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+#if JAVASCRIPT
+#else
+  member self.ToYamlObject() =
+    SliceYaml.FloatSlice(self.Index, self.Value)
+
+  static member FromYamlObject(yaml: SliceYaml) =
+    match yaml.SliceType with
+    | "FloatSlice" -> yaml.ToFloatSliceD()
+    | x ->
+      sprintf "Cannot parse %s as FloatSlice" x
+      |> ParseError
+      |> Either.fail
+
+#endif
+
+//  ____              _     _      ____
+// |  _ \  ___  _   _| |__ | | ___| __ )  _____  __
+// | | | |/ _ \| | | | '_ \| |/ _ \  _ \ / _ \ \/ /
+// | |_| | (_) | |_| | |_) | |  __/ |_) | (_) >  <
+// |____/ \___/ \__,_|_.__/|_|\___|____/ \___/_/\_\
+
+and DoubleBoxD =
+  { Id         : Id
+  ; Name       : string
+  ; Patch      : Id
+  ; Tags       : Tag array
+  ; VecSize    : uint32
+  ; Min        : int
+  ; Max        : int
+  ; Unit       : string
+  ; Precision  : uint32
+  ; Slices     : DoubleSliceD array }
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let id = string self.Id |> builder.CreateString
+    let name = self.Name |> builder.CreateString
+    let patch = string self.Patch |> builder.CreateString
+    let unit = self.Unit |> builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let tags = DoubleBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = DoubleBoxFB.CreateSlicesVector(builder, sliceoffsets)
+    DoubleBoxFB.StartDoubleBoxFB(builder)
+    DoubleBoxFB.AddId(builder, id)
+    DoubleBoxFB.AddName(builder, name)
+    DoubleBoxFB.AddPatch(builder, patch)
+    DoubleBoxFB.AddTags(builder, tags)
+    DoubleBoxFB.AddVecSize(builder, self.VecSize)
+    DoubleBoxFB.AddMin(builder, self.Min)
+    DoubleBoxFB.AddMax(builder, self.Max)
+    DoubleBoxFB.AddUnit(builder, unit)
+    DoubleBoxFB.AddPrecision(builder, self.Precision)
+    DoubleBoxFB.AddSlices(builder, slices)
+    DoubleBoxFB.EndDoubleBoxFB(builder)
+
+  static member FromFB(fb: DoubleBoxFB) : Either<IrisError,DoubleBoxD> =
+    either {
+      let unit = if isNull fb.Unit then "" else fb.Unit
+      let! tags = IOBox.ParseTagsFB fb
+      let! slices = IOBox.ParseSlicesFB fb
+
+      return { Id        = Id fb.Id
+               Name      = fb.Name
+               Patch     = Id fb.Patch
+               Tags      = tags
+               VecSize   = fb.VecSize
+               Min       = fb.Min
+               Max       = fb.Max
+               Unit      = unit
+               Precision = fb.Precision
+               Slices    = slices }
+    }
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,DoubleBoxD> =
+    Binary.createBuffer bytes
+    |> DoubleBoxFB.GetRootAsDoubleBoxFB
+    |> DoubleBoxD.FromFB
+
+//  ____              _     _      ____  _ _
+// |  _ \  ___  _   _| |__ | | ___/ ___|| (_) ___ ___
+// | | | |/ _ \| | | | '_ \| |/ _ \___ \| | |/ __/ _ \
+// | |_| | (_) | |_| | |_) | |  __/___) | | | (_|  __/
+// |____/ \___/ \__,_|_.__/|_|\___|____/|_|_|\___\___|
+
+and DoubleSliceD =
+  { Index: Index
+  ; Value: double }
+
+  static member Create (idx: Index) (value: double) =
+    { Index = idx
+      Value = value }
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    DoubleSliceFB.StartDoubleSliceFB(builder)
+    DoubleSliceFB.AddIndex(builder, self.Index)
+    DoubleSliceFB.AddValue(builder, self.Value)
+    DoubleSliceFB.EndDoubleSliceFB(builder)
+
+  static member FromFB(fb: DoubleSliceFB) : Either<IrisError,DoubleSliceD> =
+    Either.tryWith ParseError "DoubleSliceD" <| fun _ ->
+      { Index = fb.Index
+        Value = fb.Value }
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,DoubleSliceD> =
+    Binary.createBuffer bytes
+    |> DoubleSliceFB.GetRootAsDoubleSliceFB
+    |> DoubleSliceD.FromFB
+
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+#if JAVASCRIPT
+#else
+  member self.ToYamlObject() =
+    SliceYaml.DoubleSlice(self.Index, self.Value)
+
+  static member FromYamlObject(yaml: SliceYaml) =
+    match yaml.SliceType with
+    | "DoubleSlice" -> yaml.ToDoubleSliceD()
+    | x ->
+      sprintf "Could not parse %s as DoubleSliceD" x
+      |> ParseError
+      |> Either.fail
+
+#endif
+
+//  ____        _       ____
+// | __ ) _   _| |_ ___| __ )  _____  __
+// |  _ \| | | | __/ _ \  _ \ / _ \ \/ /
+// | |_) | |_| | ||  __/ |_) | (_) >  <
+// |____/ \__, |\__\___|____/ \___/_/\_\
+//        |___/
+
+and ByteBoxD =
+  { Id         : Id
+  ; Name       : string
+  ; Patch      : Id
+  ; Tags       : Tag        array
+  ; Slices     : ByteSliceD array }
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let id = string self.Id |> builder.CreateString
+    let name = self.Name |> builder.CreateString
+    let patch = string self.Patch |> builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let tags = ByteBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = ByteBoxFB.CreateSlicesVector(builder, sliceoffsets)
+    ByteBoxFB.StartByteBoxFB(builder)
+    ByteBoxFB.AddId(builder, id)
+    ByteBoxFB.AddName(builder, name)
+    ByteBoxFB.AddPatch(builder, patch)
+    ByteBoxFB.AddTags(builder, tags)
+    ByteBoxFB.AddSlices(builder, slices)
+    ByteBoxFB.EndByteBoxFB(builder)
+
+  static member FromFB(fb: ByteBoxFB) : Either<IrisError,ByteBoxD> =
+    either {
+      let! tags = IOBox.ParseTagsFB fb
+      let! slices = IOBox.ParseSlicesFB fb
+
+      return { Id         = Id fb.Id
+               Name       = fb.Name
+               Patch      = Id fb.Patch
+               Tags       = tags
+               Slices     = slices }
+    }
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,ByteBoxD> =
+    Binary.createBuffer bytes
+    |> ByteBoxFB.GetRootAsByteBoxFB
+    |> ByteBoxD.FromFB
+
+//  ____        _       ____  _ _
+// | __ ) _   _| |_ ___/ ___|| (_) ___ ___
+// |  _ \| | | | __/ _ \___ \| | |/ __/ _ \
+// | |_) | |_| | ||  __/___) | | | (_|  __/
+// |____/ \__, |\__\___|____/|_|_|\___\___|
+//        |___/
+
+and [<CustomEquality;CustomComparison>] ByteSliceD =
+  { Index: Index
+  ; Value: Binary.Buffer }
+
+  static member Create (idx: Index) (value: Binary.Buffer) =
+    { Index = idx
+      Value = value }
+
+  override self.Equals(other) =
+    match other with
+    | :? ByteSliceD as slice ->
+      (self :> System.IEquatable<ByteSliceD>).Equals(slice)
+    | _ -> false
+
+  override self.GetHashCode() =
+    let mutable hash = 42
+#if JAVASCRIPT
+    hash <- (hash * 7) + hashCode (string self.Index)
+    hash <- (hash * 7) + hashCode (string self.Value.byteLength)
+#else
+    hash <- (hash * 7) + self.Index.GetHashCode()
+    hash <- (hash * 7) + self.Value.GetHashCode()
+#endif
+    hash
+
+  interface System.IComparable with
+    member self.CompareTo other =
+      match other with
+      | :? ByteSliceD as slice -> compare self.Index slice.Index
+      | _ -> invalidArg "other" "cannot compare value of different types"
+
+  interface System.IEquatable<ByteSliceD> with
+    member self.Equals(slice: ByteSliceD) =
+      let mutable contentsEqual = false
+      let lengthEqual =
+#if JAVASCRIPT
+        let result = self.Value.byteLength = slice.Value.byteLength
+        if result then
+          let me = Fable.Import.JS.Uint8Array.Create(self.Value)
+          let it = Fable.Import.JS.Uint8Array.Create(slice.Value)
+          let mutable contents = true
+          let mutable i = 0
+          while i < int self.Value.byteLength do
+            if contents then
+              contents <- me.[i] = it.[i]
+            i <- i + 1
+          contentsEqual <- contents
+        result
+#else
+        let result = Array.length self.Value = Array.length slice.Value
+        if result then
+          let mutable contents = true
+          for i in 0 .. (Array.length self.Value - 1) do
+            if contents then
+              contents <- self.Value.[i] = slice.Value.[i]
+          contentsEqual <- contents
+        result
+#endif
+      slice.Index = self.Index &&
+      lengthEqual &&
+      contentsEqual
+
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+#if JAVASCRIPT
+#else
+  member self.ToYamlObject() =
+    SliceYaml.ByteSlice(self.Index,  Convert.ToBase64String self.Value)
+
+  static member FromYamlObject(yaml: SliceYaml) =
+    match yaml.SliceType with
+    | "ByteSlice" -> yaml.ToByteSliceD()
+    | x ->
+      sprintf "Cannot parse %s as ByteSliceD" x
+      |> ParseError
+      |> Either.fail
+
+#endif
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let encode (bytes: Binary.Buffer) =
+#if JAVASCRIPT
+      let mutable str = ""
+      let arr = Fable.Import.JS.Uint8Array.Create(bytes)
+      for i in 0 .. (int arr.length - 1) do
+        str <- str + Fable.Import.JS.String.fromCharCode arr.[i]
+      Fable.Import.Browser.window.btoa str
+#else
+      Convert.ToBase64String(bytes)
+#endif
+
+    let encoded = encode self.Value
+    let bytes = builder.CreateString encoded
+    ByteSliceFB.StartByteSliceFB(builder)
+    ByteSliceFB.AddIndex(builder, self.Index)
+    ByteSliceFB.AddValue(builder, bytes)
+    ByteSliceFB.EndByteSliceFB(builder)
+
+  static member FromFB(fb: ByteSliceFB) : Either<IrisError,ByteSliceD> =
+    let decode str =
+#if JAVASCRIPT
+      let binary = Fable.Import.Browser.window.atob str
+      let bytes = Fable.Import.JS.Uint8Array.Create(float binary.Length)
+      for i in 0 .. (binary.Length - 1) do
+        bytes.[i] <- charCodeAt binary i
+      bytes.buffer
+#else
+      Convert.FromBase64String(str)
+#endif
+
+    Either.tryWith ParseError "ByteSliceD" <| fun _ ->
+      { Index = fb.Index
+        Value = decode fb.Value }
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,ByteSliceD> =
+    Binary.createBuffer bytes
+    |> ByteSliceFB.GetRootAsByteSliceFB
+    |> ByteSliceD.FromFB
+
+//  _____                       ____
+// | ____|_ __  _   _ _ __ ___ | __ )  _____  __
+// |  _| | '_ \| | | | '_ ` _ \|  _ \ / _ \ \/ /
+// | |___| | | | |_| | | | | | | |_) | (_) >  <
+// |_____|_| |_|\__,_|_| |_| |_|____/ \___/_/\_\
+
+and EnumBoxD =
+  { Id         : Id
+  ; Name       : string
+  ; Patch      : Id
+  ; Tags       : Tag        array
+  ; Properties : Property   array
+  ; Slices     : EnumSliceD array }
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let id = string self.Id |> builder.CreateString
+    let name = self.Name |> builder.CreateString
+    let patch = string self.Patch |> builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let propoffsets =
+      Array.map (fun (prop: Property) ->
+                let key, value =
+                    builder.CreateString prop.Key, builder.CreateString prop.Value
+                EnumPropertyFB.StartEnumPropertyFB(builder)
+                EnumPropertyFB.AddKey(builder, key)
+                EnumPropertyFB.AddValue(builder, value)
+                EnumPropertyFB.EndEnumPropertyFB(builder))
+        self.Properties
+    let tags = EnumBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = EnumBoxFB.CreateSlicesVector(builder, sliceoffsets)
+    let properties = EnumBoxFB.CreatePropertiesVector(builder, propoffsets)
+    EnumBoxFB.StartEnumBoxFB(builder)
+    EnumBoxFB.AddId(builder, id)
+    EnumBoxFB.AddName(builder, name)
+    EnumBoxFB.AddPatch(builder, patch)
+    EnumBoxFB.AddTags(builder, tags)
+    EnumBoxFB.AddProperties(builder, properties)
+    EnumBoxFB.AddSlices(builder, slices)
+    EnumBoxFB.EndEnumBoxFB(builder)
+
+  static member FromFB(fb: EnumBoxFB) : Either<IrisError,EnumBoxD> =
+    either {
+      let! tags = IOBox.ParseTagsFB fb
+      let! slices = IOBox.ParseSlicesFB fb
+
+      let! properties =
+        let properties = Array.zeroCreate fb.PropertiesLength
+        Array.fold
+          (fun (m: Either<IrisError, int * Property array>) _ -> either {
+            let! (i, arr) = m
+#if JAVASCRIPT
+            let prop = fb.Properties(i)
+#else
+            let! prop =
+              let nullable = fb.Properties(i)
+              if nullable.HasValue then
+                Either.succeed nullable.Value
+              else
+                "Cannot parse empty property"
+                |> ParseError
+                |> Either.fail
+#endif
+            arr.[i] <- { Key = prop.Key; Value = prop.Value }
+            return (i + 1, arr)
+          })
+          (Right (0, properties))
+          properties
+        |> Either.map snd
+
+      return { Id         = Id fb.Id
+               Name       = fb.Name
+               Patch      = Id fb.Patch
+               Tags       = tags
+               Properties = properties
+               Slices     = slices }
+    }
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromEnums(bytes: Binary.Buffer) : Either<IrisError,EnumBoxD> =
+    Binary.createBuffer bytes
+    |> EnumBoxFB.GetRootAsEnumBoxFB
+    |> EnumBoxD.FromFB
+
+//  _____                       ____  _ _
+// | ____|_ __  _   _ _ __ ___ / ___|| (_) ___ ___
+// |  _| | '_ \| | | | '_ ` _ \\___ \| | |/ __/ _ \
+// | |___| | | | |_| | | | | | |___) | | | (_|  __/
+// |_____|_| |_|\__,_|_| |_| |_|____/|_|_|\___\___|
+
+and EnumSliceD =
+  { Index : Index
+  ; Value : Property }
+
+  static member Create (idx: Index) (value: Property) =
+    { Index = idx
+      Value = value }
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let property =
+      let key, value =
+        builder.CreateString self.Value.Key, builder.CreateString self.Value.Value
+
+      EnumPropertyFB.StartEnumPropertyFB(builder)
+      EnumPropertyFB.AddKey(builder, key)
+      EnumPropertyFB.AddValue(builder, value)
+      EnumPropertyFB.EndEnumPropertyFB(builder)
+
+    EnumSliceFB.StartEnumSliceFB(builder)
+    EnumSliceFB.AddIndex(builder, self.Index)
+    EnumSliceFB.AddValue(builder, property)
+    EnumSliceFB.EndEnumSliceFB(builder)
+
+  static member FromFB(fb: EnumSliceFB) : Either<IrisError,EnumSliceD> =
+    Either.tryWith ParseError "EnumSliceD" <| fun _ ->
+#if JAVASCRIPT
+      let prop = fb.Value
+      { Index = fb.Index
+        Value = { Key = prop.Key; Value = prop.Value } }
+#else
+      let nullable = fb.Value
+      if nullable.HasValue then
+        let prop = nullable.Value
+        { Index = fb.Index
+          Value = { Key = prop.Key; Value = prop.Value } }
+      else
+        failwith "Cannot parse empty property value"
+#endif
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromEnums(bytes: Binary.Buffer) : Either<IrisError,EnumSliceD> =
+    Binary.createBuffer bytes
+    |> EnumSliceFB.GetRootAsEnumSliceFB
+    |> EnumSliceD.FromFB
+
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+#if JAVASCRIPT
+#else
+  member self.ToYamlObject() =
+    SliceYaml.EnumSlice(self.Index, Yaml.toYaml self.Value)
+
+  static member FromYamlObject(yaml: SliceYaml) =
+    match yaml.SliceType with
+    | "EnumSlice" -> yaml.ToEnumSliceD()
+    | x ->
+      sprintf "Cannot parse %s as EnumSlice" x
+      |> ParseError
+      |> Either.fail
+
+#endif
+
+//   ____      _            ____
+//  / ___|___ | | ___  _ __| __ )  _____  __
+// | |   / _ \| |/ _ \| '__|  _ \ / _ \ \/ /
+// | |__| (_) | | (_) | |  | |_) | (_) >  <
+//  \____\___/|_|\___/|_|  |____/ \___/_/\_\
+
+and ColorBoxD =
+  { Id     : Id
+  ; Name   : string
+  ; Patch  : Id
+  ; Tags   : Tag         array
+  ; Slices : ColorSliceD array }
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let id = string self.Id |> builder.CreateString
+    let name = self.Name |> builder.CreateString
+    let patch = string self.Patch |> builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let tags = ColorBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = ColorBoxFB.CreateSlicesVector(builder, sliceoffsets)
+    ColorBoxFB.StartColorBoxFB(builder)
+    ColorBoxFB.AddId(builder, id)
+    ColorBoxFB.AddName(builder, name)
+    ColorBoxFB.AddPatch(builder, patch)
+    ColorBoxFB.AddTags(builder, tags)
+    ColorBoxFB.AddSlices(builder, slices)
+    ColorBoxFB.EndColorBoxFB(builder)
+
+  static member FromFB(fb: ColorBoxFB) : Either<IrisError,ColorBoxD> =
+    either {
+      let! tags = IOBox.ParseTagsFB fb
+      let! slices = IOBox.ParseSlicesFB fb
+      return { Id     = Id fb.Id
+               Name   = fb.Name
+               Patch  = Id fb.Patch
+               Tags   = tags
+               Slices = slices }
+    }
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromColors(bytes: Binary.Buffer) : Either<IrisError,ColorBoxD> =
+    Binary.createBuffer bytes
+    |> ColorBoxFB.GetRootAsColorBoxFB
+    |> ColorBoxD.FromFB
+
+//   ____      _            ____  _ _
+//  / ___|___ | | ___  _ __/ ___|| (_) ___ ___
+// | |   / _ \| |/ _ \| '__\___ \| | |/ __/ _ \
+// | |__| (_) | | (_) | |   ___) | | | (_|  __/
+//  \____\___/|_|\___/|_|  |____/|_|_|\___\___|
+
+and ColorSliceD =
+  { Index: Index
+  ; Value: ColorSpace }
+
+  static member Create (idx: Index) (value: ColorSpace) =
+    { Index = idx
+      Value = value }
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let offset = self.Value.ToOffset(builder)
+    ColorSliceFB.StartColorSliceFB(builder)
+    ColorSliceFB.AddIndex(builder, self.Index)
+    ColorSliceFB.AddValue(builder, offset)
+    ColorSliceFB.EndColorSliceFB(builder)
+
+  static member FromFB(fb: ColorSliceFB) : Either<IrisError,ColorSliceD> =
+    Either.tryWith ParseError "ColorSliceD" <| fun _ ->
+#if JAVASCRIPT
+      match fb.Value |> ColorSpace.FromFB with
+      | Right color             -> { Index = fb.Index; Value = color }
+      | Left (ParseError error) -> failwith error
+      | Left error ->
+        failwithf "Unexpected error: %A" error
+#else
+      let nullable = fb.Value
+      if nullable.HasValue then
+        match ColorSpace.FromFB nullable.Value with
+        | Right color             -> { Index = fb.Index; Value = color }
+        | Left (ParseError error) -> failwith error
+        | Left error ->
+          failwithf "Unexpected error: %A" error
+      else
+        failwith "Cannot parse empty ColorSpaceFB"
+#endif
+
+  member self.ToColors() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromColors(bytes: Binary.Buffer) : Either<IrisError,ColorSliceD> =
+    Binary.createBuffer bytes
+    |> ColorSliceFB.GetRootAsColorSliceFB
+    |> ColorSliceD.FromFB
+
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+#if JAVASCRIPT
+#else
+  member self.ToYamlObject() =
+    SliceYaml.ColorSlice(self.Index, Yaml.toYaml self.Value)
+
+  static member FromYamlObject(yaml: SliceYaml) =
+    match yaml.SliceType with
+    | "ColorSlice" -> yaml.ToColorSliceD()
+    | x ->
+      sprintf "Cannot parse %s as ColorSlice" x
+      |> ParseError
+      |> Either.fail
+
+#endif
+
+//  ____  _        _             ____
+// / ___|| |_ _ __(_)_ __   __ _| __ )  _____  __
+// \___ \| __| '__| | '_ \ / _` |  _ \ / _ \ \/ /
+//  ___) | |_| |  | | | | | (_| | |_) | (_) >  <
+// |____/ \__|_|  |_|_| |_|\__, |____/ \___/_/\_\
+//                         |___/
+
+and StringBoxD =
+  { Id         : Id
+  ; Name       : string
+  ; Patch      : Id
+  ; Tags       : Tag array
+  ; StringType : StringType
+  ; FileMask   : FileMask
+  ; MaxChars   : MaxChars
+  ; Slices     : StringSliceD array }
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let id = string self.Id |> builder.CreateString
+    let name = self.Name |> builder.CreateString
+    let patch = string self.Patch |> builder.CreateString
+    let tipe = self.StringType.ToOffset(builder)
+    let mask = self.FileMask |> Option.map builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let tags = StringBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = StringBoxFB.CreateSlicesVector(builder, sliceoffsets)
+
+    StringBoxFB.StartStringBoxFB(builder)
+    StringBoxFB.AddId(builder, id)
+    StringBoxFB.AddName(builder, name)
+    StringBoxFB.AddPatch(builder, patch)
+    StringBoxFB.AddTags(builder, tags)
+    StringBoxFB.AddStringType(builder, tipe)
+
+    Option.map (fun mask -> StringBoxFB.AddFileMask(builder, mask)) mask |> ignore
+
+    StringBoxFB.AddMaxChars(builder, self.MaxChars)
+    StringBoxFB.AddSlices(builder, slices)
+    StringBoxFB.EndStringBoxFB(builder)
+
+  static member FromFB(fb: StringBoxFB) : Either<IrisError,StringBoxD> =
+    either {
+      let mask = if isNull fb.FileMask then None else Some fb.FileMask
+      let! tags = IOBox.ParseTagsFB fb
+      let! slices = IOBox.ParseSlicesFB fb
+      let! tipe = StringType.FromFB fb.StringType
+
+      return { Id         = Id fb.Id
+               Name       = fb.Name
+               Patch      = Id fb.Patch
+               Tags       = tags
+               StringType = tipe
+               FileMask   = mask
+               MaxChars   = fb.MaxChars
+               Slices     = slices }
+    }
+
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromStrings(bytes: Binary.Buffer) : Either<IrisError,StringBoxD> =
+    Binary.createBuffer bytes
+    |> StringBoxFB.GetRootAsStringBoxFB
+    |> StringBoxD.FromFB
+
+//  ____  _        _             ____  _ _
+// / ___|| |_ _ __(_)_ __   __ _/ ___|| (_) ___ ___
+// \___ \| __| '__| | '_ \ / _` \___ \| | |/ __/ _ \
+//  ___) | |_| |  | | | | | (_| |___) | | | (_|  __/
+// |____/ \__|_|  |_|_| |_|\__, |____/|_|_|\___\___|
+//                         |___/
+
+and StringSliceD =
+  { Index : Index
+  ; Value : string }
+
+  static member Create (idx: Index) (value: string) =
+    { Index = idx
+      Value = value }
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let value = builder.CreateString self.Value
+    StringSliceFB.StartStringSliceFB(builder)
+    StringSliceFB.AddIndex(builder, self.Index)
+    StringSliceFB.AddValue(builder, value)
+    StringSliceFB.EndStringSliceFB(builder)
+
+  static member FromFB(fb: StringSliceFB) : Either<IrisError,StringSliceD> =
+    Either.tryWith ParseError "StringSliceD" <| fun _ ->
+      { Index = fb.Index
+        Value = fb.Value }
+
+  member self.ToStrings() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromStrings(bytes: Binary.Buffer) : Either<IrisError,StringSliceD> =
+    Binary.createBuffer bytes
+    |> StringSliceFB.GetRootAsStringSliceFB
+    |> StringSliceD.FromFB
+
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+#if JAVASCRIPT
+#else
+
+  member self.ToYamlObject() =
+    SliceYaml.StringSlice(self.Index, self.Value)
+
+  static member FromYamlObject(yaml: SliceYaml) =
+    match yaml.SliceType with
+    | "StringSlice" -> yaml.ToStringSliceD()
+    | x ->
+      sprintf "Cannot parse %s as StringSlice" x
+      |> ParseError
+      |> Either.fail
+
+#endif
+
+//   ____                                            _ ____
+//  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| | __ )  _____  __
+// | |   / _ \| '_ ` _ \| '_ \ / _ \| | | | '_ \ / _` |  _ \ / _ \ \/ /
+// | |__| (_) | | | | | | |_) | (_) | |_| | | | | (_| | |_) | (_) >  <
+//  \____\___/|_| |_| |_| .__/ \___/ \__,_|_| |_|\__,_|____/ \___/_/\_\
+//                      |_|
+
+and CompoundBoxD =
+  { Id         : Id
+  ; Name       : string
+  ; Patch      : Id
+  ; Tags       : Tag   array
+  ; Slices     : CompoundSliceD array }
+
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let id = string self.Id |> builder.CreateString
+    let name = self.Name |> builder.CreateString
+    let patch = string self.Patch |> builder.CreateString
+    let tagoffsets = Array.map builder.CreateString self.Tags
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let tags = CompoundBoxFB.CreateTagsVector(builder, tagoffsets)
+    let slices = CompoundBoxFB.CreateSlicesVector(builder, sliceoffsets)
+    CompoundBoxFB.StartCompoundBoxFB(builder)
+    CompoundBoxFB.AddId(builder, id)
+    CompoundBoxFB.AddName(builder, name)
+    CompoundBoxFB.AddPatch(builder, patch)
+    CompoundBoxFB.AddTags(builder, tags)
+    CompoundBoxFB.AddSlices(builder, slices)
+    CompoundBoxFB.EndCompoundBoxFB(builder)
+
+  static member FromFB(fb: CompoundBoxFB) : Either<IrisError,CompoundBoxD> =
+    either {
+      let! tags = IOBox.ParseTagsFB fb
+      let! slices = IOBox.ParseSlicesFB fb
+
+      return { Id     = Id fb.Id
+               Name   = fb.Name
+               Patch  = Id fb.Patch
+               Tags   = tags
+               Slices = slices }
+    }
+
+  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  static member FromCompounds(bytes: Binary.Buffer) : Either<IrisError,CompoundBoxD> =
+    Binary.createBuffer bytes
+    |> CompoundBoxFB.GetRootAsCompoundBoxFB
+    |> CompoundBoxD.FromFB
+
+//   ____                                            _ ____  _ _
+//  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| / ___|| (_) ___ ___
+// | |   / _ \| '_ ` _ \| '_ \ / _ \| | | | '_ \ / _` \___ \| | |/ __/ _ \
+// | |__| (_) | | | | | | |_) | (_) | |_| | | | | (_| |___) | | | (_|  __/
+//  \____\___/|_| |_| |_| .__/ \___/ \__,_|_| |_|\__,_|____/|_|_|\___\___|
+//                      |_|
+
+and CompoundSliceD =
+  { Index      : Index
+  ; Value      : IOBox array }
+
+  static member Create (idx: Index) (value: IOBox array) =
+    { Index = idx
+      Value = value }
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let ioboxoffsets = Array.map (Binary.toOffset builder) self.Value
     let ioboxes = CompoundSliceFB.CreateValueVector(builder, ioboxoffsets)
     CompoundSliceFB.StartCompoundSliceFB(builder)
     CompoundSliceFB.AddIndex(builder, self.Index)
     CompoundSliceFB.AddValue(builder, ioboxes)
     CompoundSliceFB.EndCompoundSliceFB(builder)
 
-  static member FromFB(fb: CompoundSliceFB) : CompoundSliceD option =
-    let ioboxes = Array.zeroCreate fb.ValueLength
+  static member FromFB(fb: CompoundSliceFB) : Either<IrisError,CompoundSliceD> =
+    either {
+      let! ioboxes =
+        let arr = Array.zeroCreate fb.ValueLength
+        Array.fold
+          (fun (m: Either<IrisError,int * IOBox array>) _ -> either {
+              let! (i, arr) = m
 
-#if JAVASCRIPT
-    let mutable i = 0
-    while i < fb.ValueLength do
-      fb.Value(i)
-      |> IOBox.FromFB
-      |> Option.map (fun iobox -> ioboxes.[i] <- iobox)
-      |> ignore
-      i <- i + 1
-#else
-    for i in 0 .. (fb.ValueLength - 1) do
-      let nullable = fb.Value(i)
-      if nullable.HasValue then
-        nullable.Value
-        |> IOBox.FromFB
-        |> Option.map (fun iobox -> ioboxes.[i] <- iobox)
-        |> ignore
-#endif
+  #if JAVASCRIPT
+              let! iobox = i |> fb.Value |> IOBox.FromFB
+  #else
+              let! iobox =
+                let nullable = fb.Value(i)
+                if nullable.HasValue then
+                  nullable.Value
+                  |> IOBox.FromFB
+                else
+                  "Could not parse empty IOBoxFB"
+                  |> ParseError
+                  |> Either.fail
+  #endif
 
-    try
-      { Index = fb.Index
-      ; Value = ioboxes }
-      |> Some
-    with
-      | _ -> None
+              arr.[i] <- iobox
+              return (i + 1, arr)
+            })
+          (Right (0, arr))
+          arr
+        |> Either.map snd
+
+      return { Index = fb.Index
+               Value = ioboxes }
+    }
 
   member self.ToCompounds() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromCompounds(bytes: Binary.Buffer) : CompoundSliceD option =
+  static member FromCompounds(bytes: Binary.Buffer) : Either<IrisError,CompoundSliceD> =
     Binary.createBuffer bytes
     |> CompoundSliceFB.GetRootAsCompoundSliceFB
     |> CompoundSliceD.FromFB
@@ -2509,7 +2510,10 @@ and BoolSliceD =
   static member FromYamlObject(yaml: SliceYaml) =
     match yaml.SliceType with
     | "CompoundSlice" -> yaml.ToCompoundSliceD()
-    | _               -> None
+    | x ->
+      sprintf "Could not parse %s as CompoundSlice" x
+      |> ParseError
+      |> Either.fail
 
 #endif
 
@@ -2694,142 +2698,179 @@ and Slice =
     | ColorSlice    data -> data.ToOffset(builder) |> build SliceTypeFB.ColorSliceFB
     | CompoundSlice data -> data.ToOffset(builder) |> build SliceTypeFB.CompoundSliceFB
 
-  static member FromFB(fb: SliceFB) : Slice option =
+  static member FromFB(fb: SliceFB) : Either<IrisError,Slice>  =
     match fb.SliceType with
 #if JAVASCRIPT
     | x when x = SliceTypeFB.StringSliceFB ->
       StringSliceFB.Create()
       |> fb.Slice
       |> StringSliceD.FromFB
-      |> Option.map StringSlice
+      |> Either.map StringSlice
 
     | x when x = SliceTypeFB.IntSliceFB ->
       IntSliceFB.Create()
       |> fb.Slice
       |> IntSliceD.FromFB
-      |> Option.map IntSlice
+      |> Either.map IntSlice
 
     | x when x = SliceTypeFB.FloatSliceFB ->
       FloatSliceFB.Create()
       |> fb.Slice
       |> FloatSliceD.FromFB
-      |> Option.map FloatSlice
+      |> Either.map FloatSlice
 
     | x when x = SliceTypeFB.DoubleSliceFB ->
       DoubleSliceFB.Create()
       |> fb.Slice
       |> DoubleSliceD.FromFB
-      |> Option.map DoubleSlice
+      |> Either.map DoubleSlice
 
     | x when x = SliceTypeFB.BoolSliceFB ->
       BoolSliceFB.Create()
       |> fb.Slice
       |> BoolSliceD.FromFB
-      |> Option.map BoolSlice
+      |> Either.map BoolSlice
 
     | x when x = SliceTypeFB.ByteSliceFB ->
       ByteSliceFB.Create()
       |> fb.Slice
       |> ByteSliceD.FromFB
-      |> Option.map ByteSlice
+      |> Either.map ByteSlice
 
     | x when x = SliceTypeFB.EnumSliceFB ->
       EnumSliceFB.Create()
       |> fb.Slice
       |> EnumSliceD.FromFB
-      |> Option.map EnumSlice
+      |> Either.map EnumSlice
 
     | x when x = SliceTypeFB.ColorSliceFB ->
       ColorSliceFB.Create()
       |> fb.Slice
       |> ColorSliceD.FromFB
-      |> Option.map ColorSlice
+      |> Either.map ColorSlice
 
     | x when x = SliceTypeFB.CompoundSliceFB ->
       CompoundSliceFB.Create()
       |> fb.Slice
       |> CompoundSliceD.FromFB
-      |> Option.map CompoundSlice
+      |> Either.map CompoundSlice
 
-    | _ -> None
+    | x ->
+      sprintf "Could not parse slice. Unknown slice type %A" x
+      |> ParseError
+      |> Either.fail
+
 #else
+
     | SliceTypeFB.StringSliceFB   ->
       let slice = fb.Slice<StringSliceFB>()
       if slice.HasValue then
         slice.Value
         |> StringSliceD.FromFB
-        |> Option.map StringSlice
-      else None
+        |> Either.map StringSlice
+      else
+        "Could not parse StringSlice"
+        |> ParseError
+        |> Either.fail
 
     | SliceTypeFB.IntSliceFB      ->
       let slice = fb.Slice<IntSliceFB>()
       if slice.HasValue then
         slice.Value
         |> IntSliceD.FromFB
-        |> Option.map IntSlice
-      else None
+        |> Either.map IntSlice
+      else
+        "Could not parse IntSlice"
+        |> ParseError
+        |> Either.fail
 
     | SliceTypeFB.FloatSliceFB    ->
       let slice = fb.Slice<FloatSliceFB>()
       if slice.HasValue then
         slice.Value
         |> FloatSliceD.FromFB
-        |> Option.map FloatSlice
-      else None
+        |> Either.map FloatSlice
+      else
+        "Could not parse FloatSlice"
+        |> ParseError
+        |> Either.fail
 
     | SliceTypeFB.DoubleSliceFB   ->
       let slice = fb.Slice<DoubleSliceFB>()
       if slice.HasValue then
         slice.Value
         |> DoubleSliceD.FromFB
-        |> Option.map DoubleSlice
-      else None
+        |> Either.map DoubleSlice
+      else
+        "Could not parse DoubleSlice"
+        |> ParseError
+        |> Either.fail
 
     | SliceTypeFB.BoolSliceFB     ->
       let slice = fb.Slice<BoolSliceFB>()
       if slice.HasValue then
         slice.Value
         |> BoolSliceD.FromFB
-        |> Option.map BoolSlice
-      else None
+        |> Either.map BoolSlice
+      else
+        "Could not parse BoolSlice"
+        |> ParseError
+        |> Either.fail
 
     | SliceTypeFB.ByteSliceFB     ->
       let slice = fb.Slice<ByteSliceFB>()
       if slice.HasValue then
         slice.Value
         |> ByteSliceD.FromFB
-        |> Option.map ByteSlice
-      else None
+        |> Either.map ByteSlice
+      else
+        "Could not parse ByteSlice"
+        |> ParseError
+        |> Either.fail
 
     | SliceTypeFB.EnumSliceFB     ->
       let slice = fb.Slice<EnumSliceFB>()
       if slice.HasValue then
         slice.Value
         |> EnumSliceD.FromFB
-        |> Option.map EnumSlice
-      else None
+        |> Either.map EnumSlice
+      else
+        "Could not parse EnumSlice"
+        |> ParseError
+        |> Either.fail
 
     | SliceTypeFB.ColorSliceFB    ->
       let slice = fb.Slice<ColorSliceFB>()
       if slice.HasValue then
         slice.Value
         |> ColorSliceD.FromFB
-        |> Option.map ColorSlice
-      else None
+        |> Either.map ColorSlice
+      else
+        "Could not parse ColorSlice"
+        |> ParseError
+        |> Either.fail
 
     | SliceTypeFB.CompoundSliceFB ->
       let slice = fb.Slice<CompoundSliceFB>()
       if slice.HasValue then
         slice.Value
         |> CompoundSliceD.FromFB
-        |> Option.map CompoundSlice
-      else None
-    | _ -> None
+        |> Either.map CompoundSlice
+      else
+        "Could not parse CompoundSlice"
+        |> ParseError
+        |> Either.fail
+
+    | x ->
+      sprintf "Cannot parse slice. Unknown slice type: %A" x
+      |> ParseError
+      |> Either.fail
+
 #endif
 
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes(bytes: Binary.Buffer) : Slice option =
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,Slice> =
     Binary.createBuffer bytes
     |> SliceFB.GetRootAsSliceFB
     |> Slice.FromFB
@@ -2875,16 +2916,19 @@ and Slice =
     let yaml = serializer.Deserialize<SliceYaml>(str)
 
     match yaml.SliceType with
-    | "StringSlice"   -> yaml.ToStringSliceD()   |> Option.map StringSlice
-    | "IntSlice"      -> yaml.ToIntSliceD()      |> Option.map IntSlice
-    | "FloatSlice"    -> yaml.ToFloatSliceD()    |> Option.map FloatSlice
-    | "DoubleSlice"   -> yaml.ToDoubleSliceD()   |> Option.map DoubleSlice
-    | "BoolSlice"     -> yaml.ToBoolSliceD()     |> Option.map BoolSlice
-    | "ByteSlice"     -> yaml.ToByteSliceD()     |> Option.map ByteSlice
-    | "EnumSlice"     -> yaml.ToEnumSliceD()     |> Option.map EnumSlice
-    | "ColorSlice"    -> yaml.ToColorSliceD()    |> Option.map ColorSlice
-    | "CompoundSlice" -> yaml.ToCompoundSliceD() |> Option.map CompoundSlice
-    | _               -> None
+    | "StringSlice"   -> yaml.ToStringSliceD()   |> Either.map StringSlice
+    | "IntSlice"      -> yaml.ToIntSliceD()      |> Either.map IntSlice
+    | "FloatSlice"    -> yaml.ToFloatSliceD()    |> Either.map FloatSlice
+    | "DoubleSlice"   -> yaml.ToDoubleSliceD()   |> Either.map DoubleSlice
+    | "BoolSlice"     -> yaml.ToBoolSliceD()     |> Either.map BoolSlice
+    | "ByteSlice"     -> yaml.ToByteSliceD()     |> Either.map ByteSlice
+    | "EnumSlice"     -> yaml.ToEnumSliceD()     |> Either.map EnumSlice
+    | "ColorSlice"    -> yaml.ToColorSliceD()    |> Either.map ColorSlice
+    | "CompoundSlice" -> yaml.ToCompoundSliceD() |> Either.map CompoundSlice
+    | x ->
+      sprintf "Cannot parse slice type: %s" x
+      |> ParseError
+      |> Either.fail
 
 #endif
 

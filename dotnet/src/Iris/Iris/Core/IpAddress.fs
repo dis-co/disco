@@ -38,18 +38,27 @@ type IpAddress =
   static member TryParse (str: string) =
 #if JAVASCRIPT
     try
-      IpAddress.Parse str |> Some          // :D
+      IpAddress.Parse str
+      |> Either.succeed
     with
-      | _ -> None
+      | exn ->
+        sprintf "Unable to parse IP: %s Cause: %s" str exn.Message
+        |> ParseError
+        |> Either.fail
 #else
     try
       let ip = IPAddress.Parse(str)
       match ip.AddressFamily with
-      | Sockets.AddressFamily.InterNetwork   -> IPv4Address str |> Some
-      | Sockets.AddressFamily.InterNetworkV6 -> IPv6Address str |> Some
-      | _ -> None
+      | Sockets.AddressFamily.InterNetwork   -> IPv4Address str |> Right
+      | Sockets.AddressFamily.InterNetworkV6 -> IPv6Address str |> Right
+      | fam ->
+        sprintf "Unable to parse IP: %s Unsupported AddressFamily: %A" str fam
+        |> ParseError
+        |> Either.fail
+
     with
       | exn ->
-        printfn "Error: %s\nValue:%s" exn.Message str
-        None
+        sprintf "Unable to parse IP: %s Cause: %s" str exn.Message
+        |> ParseError
+        |> Either.fail
 #endif

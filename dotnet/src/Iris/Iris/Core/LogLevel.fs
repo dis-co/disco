@@ -27,12 +27,8 @@ type LogLevel =
     | _               -> failwithf "could not parse %s" str
 
   static member TryParse (str: string) =
-    try
-      str |> LogLevel.Parse |> Some
-    with
-      | exn ->
-        printfn "Error: %s" exn.Message
-        None
+    Either.tryWith ParseError "LogLevel" <| fun _ ->
+      str |> LogLevel.Parse
 
   override self.ToString() =
     match self with
