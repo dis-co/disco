@@ -100,65 +100,113 @@ type RaftRequest =
   // |_|  |_|  \___/|_| |_| |_|____/ \__, |\__\___||___/
   //                                 |___/
 
-  static member FromBytes (bytes: byte array) : RaftRequest option =
+  static member FromBytes (bytes: byte array) : Either<IrisError, RaftRequest> =
     let msg = RaftMsgFB.GetRootAsRaftMsgFB(new ByteBuffer(bytes))
     match msg.MsgType with
-      | RaftMsgTypeFB.RequestVoteFB ->
-        let entry = msg.Msg<RequestVoteFB>()
-        if entry.HasValue then
-          let rv = entry.Value
-          let request = rv.Request
-          if request.HasValue then
-            VoteRequest.FromFB(request.Value)
-            |> Option.map (fun request -> RequestVote(Id rv.NodeId, request))
-          else None
-        else None
+      | RaftMsgTypeFB.RequestVoteFB -> either {
+          let entry = msg.Msg<RequestVoteFB>()
+          if entry.HasValue then
+            let rv = entry.Value
+            let request = rv.Request
+            if request.HasValue then
+              let! request = VoteRequest.FromFB(request.Value)
+              return RequestVote(Id rv.NodeId, request)
+            else
+              return!
+                "Could not parse empty VoteRequestFB body"
+                |> ParseError
+                |> Either.fail
+          else
+            return!
+              "Could not parse empty RequestVoteFB body"
+              |> ParseError
+              |> Either.fail
+        }
 
-      | RaftMsgTypeFB.RequestAppendEntriesFB ->
-        let entry = msg.Msg<RequestAppendEntriesFB>()
-        if entry.HasValue then
-          let ae = entry.Value
-          let request = ae.Request
-          if request.HasValue then
-            AppendEntries.FromFB request.Value
-            |> Option.map (fun request -> AppendEntries(Id ae.NodeId, request))
-          else None
-        else None
+      | RaftMsgTypeFB.RequestAppendEntriesFB -> either {
+          let entry = msg.Msg<RequestAppendEntriesFB>()
+          if entry.HasValue then
+            let ae = entry.Value
+            let request = ae.Request
+            if request.HasValue then
+              let! request = AppendEntries.FromFB request.Value
+              return AppendEntries(Id ae.NodeId, request)
+            else
+              return!
+                "Could not parse empty AppendEntriesFB body"
+                |> ParseError
+                |> Either.fail
+          else
+            return!
+              "Could not parse empty RequestAppendEntriesFB body"
+              |> ParseError
+              |> Either.fail
+        }
 
-      | RaftMsgTypeFB.RequestInstallSnapshotFB ->
-        let entry = msg.Msg<RequestInstallSnapshotFB>()
-        if entry.HasValue then
-          let is = entry.Value
-          let request = is.Request
-          if request.HasValue then
-            InstallSnapshot.FromFB request.Value
-            |> Option.map (fun request -> InstallSnapshot(Id is.NodeId, request))
-          else None
-        else None
+      | RaftMsgTypeFB.RequestInstallSnapshotFB -> either {
+          let entry = msg.Msg<RequestInstallSnapshotFB>()
+          if entry.HasValue then
+            let is = entry.Value
+            let request = is.Request
+            if request.HasValue then
+              let! request = InstallSnapshot.FromFB request.Value
+              return InstallSnapshot(Id is.NodeId, request)
+            else
+              return!
+                "Could not parse empty InstallSnapshotFB body"
+                |> ParseError
+                |> Either.fail
+          else
+            return!
+              "Could not parse empty RequestInstallSnapshotFB body"
+              |> ParseError
+              |> Either.fail
+        }
 
-      | RaftMsgTypeFB.HandShakeFB ->
-        let entry = msg.Msg<HandShakeFB>()
-        if entry.HasValue then
-          let hs = entry.Value
-          let node = hs.Node
-          if node.HasValue then
-            RaftNode.FromFB node.Value
-            |> Option.map (fun node -> HandShake(node))
-          else None
-        else None
+      | RaftMsgTypeFB.HandShakeFB -> either {
+          let entry = msg.Msg<HandShakeFB>()
+          if entry.HasValue then
+            let hs = entry.Value
+            let node = hs.Node
+            if node.HasValue then
+              let! node = RaftNode.FromFB node.Value
+              return HandShake(node)
+            else
+              return!
+                "Could not parse empty RaftNodeFB body"
+                |> ParseError
+                |> Either.fail
+          else
+            return!
+              "Could not parse empty HandShakeFB body"
+              |> ParseError
+              |> Either.fail
+        }
 
-      | RaftMsgTypeFB.HandWaiveFB ->
-        let entry = msg.Msg<HandWaiveFB>()
-        if entry.HasValue then
-          let hw = entry.Value
-          let node = hw.Node
-          if node.HasValue then
-            RaftNode.FromFB node.Value
-            |> Option.map (fun node -> HandWaive(node))
-          else None
-        else None
+      | RaftMsgTypeFB.HandWaiveFB -> either {
+          let entry = msg.Msg<HandWaiveFB>()
+          if entry.HasValue then
+            let hw = entry.Value
+            let node = hw.Node
+            if node.HasValue then
+              let! node = RaftNode.FromFB node.Value
+              return HandWaive(node)
+            else
+              return!
+                "Could not parse empty RaftNodeFB body"
+                |> ParseError
+                |> Either.fail
+          else
+            return!
+              "Could not parse empty HandShakeFB body"
+              |> ParseError
+              |> Either.fail
+        }
 
-      | _ -> None
+      | x ->
+        sprintf "Could not parse unknown RaftMsgTypeFB: %A" x
+        |> ParseError
+        |> Either.fail
 
 //  ____        __ _     ____
 // |  _ \ __ _ / _| |_  |  _ \ ___  ___ _ __   ___  _ __  ___  ___
@@ -219,83 +267,135 @@ type RaftResponse =
   // |  _|| | | (_) | | | | | |  _| | |_) |
   // |_|  |_|  \___/|_| |_| |_|_|   |____/
 
-  static member FromFB(msg: RaftMsgFB) : RaftResponse option =
+  static member FromFB(msg: RaftMsgFB) : Either<IrisError,RaftResponse> =
     match msg.MsgType with
-    | RaftMsgTypeFB.RequestVoteResponseFB ->
-      let entry = msg.Msg<RequestVoteResponseFB>()
-      if entry.HasValue then
-        let fb = entry.Value
-        let response = fb.Response
-        if response.HasValue then
-          let parsed = VoteResponse.FromFB response.Value
-          RequestVoteResponse(Id fb.NodeId, parsed)
-          |> Some
-        else None
-      else None
+    | RaftMsgTypeFB.RequestVoteResponseFB -> either {
+        let entry = msg.Msg<RequestVoteResponseFB>()
+        if entry.HasValue then
+          let fb = entry.Value
+          let response = fb.Response
+          if response.HasValue then
+            let! parsed = VoteResponse.FromFB response.Value
+            return RequestVoteResponse(Id fb.NodeId, parsed)
+          else
+            return!
+              "Could not parse empty VoteResponseFB body"
+              |> ParseError
+              |> Either.fail
+        else
+          return!
+            "Could not parse empty RequestVoteResponseFB body"
+            |> ParseError
+            |> Either.fail
+      }
 
-    | RaftMsgTypeFB.RequestAppendResponseFB ->
-      let entry = msg.Msg<RequestAppendResponseFB>()
-      if entry.HasValue then
-        let fb = entry.Value
-        let response = fb.Response
-        if response.HasValue then
-          AppendResponse.FromFB response.Value
-          |> Option.map
-            (fun response ->
-              AppendEntriesResponse(Id fb.NodeId, response))
-        else None
-      else None
+    | RaftMsgTypeFB.RequestAppendResponseFB -> either {
+        let entry = msg.Msg<RequestAppendResponseFB>()
+        if entry.HasValue then
+          let fb = entry.Value
+          let response = fb.Response
+          if response.HasValue then
+            let! response = AppendResponse.FromFB response.Value
+            return AppendEntriesResponse(Id fb.NodeId, response)
+          else
+            return!
+              "Could not parse empty AppendResponseFB body"
+              |> ParseError
+              |> Either.fail
+        else
+          return!
+            "Could not parse empty RequestAppendResponseFB body"
+            |> ParseError
+            |> Either.fail
+      }
 
-    | RaftMsgTypeFB.RequestSnapshotResponseFB ->
-      let entry = msg.Msg<RequestSnapshotResponseFB>()
-      if entry.HasValue then
-        let fb = entry.Value
-        let response = fb.Response
-        if response.HasValue then
-          AppendResponse.FromFB response.Value
-          |> Option.map
-            (fun response ->
-              InstallSnapshotResponse(Id fb.NodeId, response))
-        else None
-      else None
+    | RaftMsgTypeFB.RequestSnapshotResponseFB -> either {
+        let entry = msg.Msg<RequestSnapshotResponseFB>()
+        if entry.HasValue then
+          let fb = entry.Value
+          let response = fb.Response
+          if response.HasValue then
+            let! response = AppendResponse.FromFB response.Value
+            return InstallSnapshotResponse(Id fb.NodeId, response)
+          else
+            return!
+              "Could not parse empty AppendResponseFB body"
+              |> ParseError
+              |> Either.fail
+        else
+          return!
+            "Could not parse empty RequestSnapshotResponseFB body"
+            |> ParseError
+            |> Either.fail
+      }
 
-    | RaftMsgTypeFB.RedirectFB ->
-      let entry = msg.Msg<RedirectFB>()
-      if entry.HasValue then
-        let rd = entry.Value
-        let node = rd.Node
-        if node.HasValue then
-          RaftNode.FromFB node.Value
-          |> Option.map (fun node -> Redirect(node))
-        else None
-      else None
+    | RaftMsgTypeFB.RedirectFB -> either {
+        let entry = msg.Msg<RedirectFB>()
+        if entry.HasValue then
+          let rd = entry.Value
+          let node = rd.Node
+          if node.HasValue then
+            let! node = RaftNode.FromFB node.Value
+            return Redirect(node)
+          else
+            return!
+              "Could not parse empty RaftNodeFB body"
+              |> ParseError
+              |> Either.fail
+        else
+          return!
+            "Could not parse empty RedirectFB body"
+            |> ParseError
+            |> Either.fail
+      }
 
-    | RaftMsgTypeFB.WelcomeFB ->
-      let entry = msg.Msg<WelcomeFB>()
-      if entry.HasValue then
-        let wl = entry.Value
-        let node = wl.Node
-        if node.HasValue then
-          RaftNode.FromFB node.Value
-          |> Option.map (fun node -> Welcome(node))
-        else None
-      else None
+    | RaftMsgTypeFB.WelcomeFB -> either {
+        let entry = msg.Msg<WelcomeFB>()
+        if entry.HasValue then
+          let wl = entry.Value
+          let node = wl.Node
+          if node.HasValue then
+            let! node = RaftNode.FromFB node.Value
+            return Welcome(node)
+          else
+            return!
+              "Could not parse empty RaftNodeFB body"
+              |> ParseError
+              |> Either.fail
+        else
+          return!
+            "Could not parse empty WelcomeFB body"
+            |> ParseError
+            |> Either.fail
+      }
 
     | RaftMsgTypeFB.ArrivederciFB ->
-      Some Arrivederci
+      Right Arrivederci
 
-    | RaftMsgTypeFB.ErrorResponseFB ->
-      let entry = msg.Msg<ErrorResponseFB>()
-      if entry.HasValue then
-        let rv = entry.Value
-        let err = rv.Error
-        if err.HasValue then
-          IrisError.FromFB err.Value
-          |> Option.map ErrorResponse
-        else None
-      else None
+    | RaftMsgTypeFB.ErrorResponseFB -> either {
+        let entry = msg.Msg<ErrorResponseFB>()
+        if entry.HasValue then
+          let rv = entry.Value
+          let err = rv.Error
+          if err.HasValue then
+            let! error = IrisError.FromFB err.Value
+            return ErrorResponse error
+          else
+            return!
+              "Could not parse empty ErrorFB body"
+              |> ParseError
+              |> Either.fail
+        else
+          return!
+            "Could not parse empty ErrorResponseFB body"
+            |> ParseError
+            |> Either.fail
+      }
 
-    | _ -> None
+    | x ->
+      sprintf "Could not parse unknown RaftMsgTypeFB: %A" x
+      |> ParseError
+      |> Either.fail
 
   //  _____     ____        _
   // |_   _|__ | __ ) _   _| |_ ___  ___
@@ -313,6 +413,6 @@ type RaftResponse =
   // |_|  |_|  \___/|_| |_| |_|____/ \__, |\__\___||___/
   //                                 |___/
 
-  static member FromBytes (bytes: byte array) : RaftResponse option =
+  static member FromBytes (bytes: byte array) : Either<IrisError,RaftResponse> =
     let msg = RaftMsgFB.GetRootAsRaftMsgFB(new ByteBuffer(bytes))
     RaftResponse.FromFB msg

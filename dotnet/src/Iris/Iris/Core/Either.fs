@@ -213,6 +213,11 @@ module EitherUtils =
       | Right _ -> a
       | Left  _ -> b
 
+    member self.TryWith(body, handler) =
+      try body() |> self.ReturnFrom
+      with e -> handler e
+
+
   let either = new EitherBuilder()
 
 //   ___        _   _               ____        _ _     _

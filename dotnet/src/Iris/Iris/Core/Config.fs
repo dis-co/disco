@@ -4,6 +4,30 @@ open System
 open System.IO
 open Iris.Raft
 
+//     _    _ _
+//    / \  | (_) __ _ ___  ___  ___
+//   / _ \ | | |/ _` / __|/ _ \/ __|
+//  / ___ \| | | (_| \__ \  __/\__ \
+// /_/   \_\_|_|\__,_|___/\___||___/
+
+type DisplayYaml    = ConfigFile.Project_Type.Displays_Item_Type
+type ViewPortYaml   = ConfigFile.Project_Type.ViewPorts_Item_Type
+type TaskYaml       = ConfigFile.Project_Type.Tasks_Item_Type
+type ArgumentYaml   = TaskYaml.Arguments_Item_Type
+type ClusterYaml    = ConfigFile.Project_Type.Cluster_Type
+type NodeYaml       = ConfigFile.Project_Type.Cluster_Type.Nodes_Item_Type
+type GroupYaml      = ConfigFile.Project_Type.Cluster_Type.Groups_Item_Type
+type AudioYaml      = ConfigFile.Project_Type.Audio_Type
+type EngineYaml     = ConfigFile.Project_Type.Engine_Type
+type MetadatYaml    = ConfigFile.Project_Type.Metadata_Type
+type PortsYaml      = ConfigFile.Project_Type.Ports_Type
+type TimingYaml     = ConfigFile.Project_Type.Timing_Type
+type VvvvYaml       = ConfigFile.Project_Type.VVVV_Type
+type ExeYaml        = ConfigFile.Project_Type.VVVV_Type.Executables_Item_Type
+type PluginYaml     = ConfigFile.Project_Type.VVVV_Type.Plugins_Item_Type
+type SignalYaml     = DisplayYaml.Signals_Item_Type
+type RegionMapYaml  = DisplayYaml.RegionMap_Type
+type RegionYaml     = RegionMapYaml.Regions_Item_Type
 //  ____        __ _    ____             __ _
 // |  _ \ __ _ / _| |_ / ___|___  _ __  / _(_) __ _
 // | |_) / _` | |_| __| |   / _ \| '_ \| |_| |/ _` |
@@ -17,25 +41,23 @@ open Iris.Raft
 ///
 type RaftConfig =
   { RequestTimeout:   Long
-  ; ElectionTimeout:  Long
-  ; MaxLogDepth:      Long
-  ; LogLevel:         LogLevel
-  ; DataDir:          FilePath
-  ; MaxRetries:       uint8
-  ; PeriodicInterval: uint8
-  }
+    ElectionTimeout:  Long
+    MaxLogDepth:      Long
+    LogLevel:         LogLevel
+    DataDir:          FilePath
+    MaxRetries:       uint8
+    PeriodicInterval: uint8 }
 
   static member Default =
     let guid = Guid.NewGuid()
     let path = Path.GetTempPath() </> guid.ToString() </> RAFT_DIRECTORY
     { RequestTimeout   = 500u
-    ; ElectionTimeout  = 6000u
-    ; MaxLogDepth      = 20u
-    ; MaxRetries       = 10uy
-    ; PeriodicInterval = 50uy
-    ; LogLevel         = Err
-    ; DataDir          = path
-    }
+      ElectionTimeout  = 6000u
+      MaxLogDepth      = 20u
+      MaxRetries       = 10uy
+      PeriodicInterval = 50uy
+      LogLevel         = Err
+      DataDir          = path }
 
 // __     __                     ____             __ _
 // \ \   / /_   ____   ____   __/ ___|___  _ __  / _(_) __ _
@@ -46,11 +68,11 @@ type RaftConfig =
 
 type VvvvConfig =
   { Executables : VvvvExe list
-  ; Plugins     : VvvvPlugin list }
+    Plugins     : VvvvPlugin list }
 
   static member Default =
     { Executables = List.empty
-    ; Plugins     = List.empty }
+      Plugins     = List.empty }
 
 //  ____            _    ____             __ _
 // |  _ \ ___  _ __| |_ / ___|___  _ __  / _(_) __ _
@@ -60,10 +82,10 @@ type VvvvConfig =
 //                                             |___/
 
 type PortConfig =
-  { UDPCue    : uint32 }
+  { UDPCue : uint32 }
 
   static member Default =
-    { UDPCue    = 8075u }
+    { UDPCue = 8075u }
 
 //  _____ _           _              ____             __ _
 // |_   _(_)_ __ ___ (_)_ __   __ _ / ___|___  _ __  / _(_) __ _
@@ -74,19 +96,17 @@ type PortConfig =
 
 type TimingConfig =
   { Framebase : uint32
-  ; Input     : string
-  ; Servers   : IpAddress list
-  ; UDPPort   : uint32
-  ; TCPPort   : uint32
-  }
+    Input     : string
+    Servers   : IpAddress list
+    UDPPort   : uint32
+    TCPPort   : uint32 }
 
   static member Default =
     { Framebase = 50u
-    ; Input     = "Iris Freerun"
-    ; Servers   = List.empty
-    ; UDPPort   = 8071u
-    ; TCPPort   = 8072u
-    }
+      Input     = "Iris Freerun"
+      Servers   = List.empty
+      UDPPort   = 8071u
+      TCPPort   = 8072u }
 
 //     _             _ _        ____             __ _
 //    / \  _   _  __| (_) ___  / ___|___  _ __  / _(_) __ _
@@ -110,15 +130,14 @@ type AudioConfig =
 
 type HostGroup =
   { Name    : Name
-  ; Members : Id list
-  }
-  with
-    override self.ToString() =
-      sprintf "HostGroup:
-                Name: %A
-                Members: %A"
-              self.Name
-              (List.fold (fun m s -> m + " " + string s) "" self.Members)
+    Members : Id list }
+
+  override self.ToString() =
+    sprintf "HostGroup:
+              Name: %A
+              Members: %A"
+            self.Name
+            (List.fold (fun m s -> m + " " + string s) "" self.Members)
 
 //   ____ _           _
 //  / ___| |_   _ ___| |_ ___ _ __
@@ -128,18 +147,17 @@ type HostGroup =
 
 type Cluster =
   { Name   : Name
-  ; Nodes  : RaftNode  list
-  ; Groups : HostGroup list
-  }
-  with
-    override self.ToString() =
-      sprintf "Cluster:
-                Name: %A
-                Nodes: %A
-                Groups: %A"
-              self.Name
-              self.Nodes
-              self.Groups
+    Nodes  : RaftNode  list
+    Groups : HostGroup list }
+
+  override self.ToString() =
+    sprintf "Cluster:
+              Name: %A
+              Nodes: %A
+              Groups: %A"
+            self.Name
+            self.Nodes
+            self.Groups
 
 //   ____             __ _
 //  / ___|___  _ __  / _(_) __ _
@@ -150,14 +168,14 @@ type Cluster =
 
 type IrisConfig =
   { AudioConfig    : AudioConfig
-  ; VvvvConfig     : VvvvConfig
-  ; RaftConfig     : RaftConfig
-  ; TimingConfig   : TimingConfig
-  ; PortConfig     : PortConfig
-  ; ClusterConfig  : Cluster
-  ; ViewPorts      : ViewPort list
-  ; Displays       : Display  list
-  ; Tasks          : Task     list }
+    VvvvConfig     : VvvvConfig
+    RaftConfig     : RaftConfig
+    TimingConfig   : TimingConfig
+    PortConfig     : PortConfig
+    ClusterConfig  : Cluster
+    ViewPorts      : ViewPort list
+    Displays       : Display  list
+    Tasks          : Task     list }
 
 //  _   _      _
 // | | | | ___| |_ __   ___ _ __ ___
@@ -172,11 +190,19 @@ module Config =
   let private parseTuple (input: string) : Either<IrisError,int * int> =
     input.Split [| '('; ','; ' '; ')' |]       // split the string according to the specified chars
     |> Array.filter (String.length >> ((<) 0)) // filter out elements that have zero length
-    |> function
-      | [| x; y |] -> Right (int x, int y)
-      | _ ->
-        ParseError input
-        |> Either.fail
+    |> fun parsed ->
+      try
+        match parsed with
+        | [| x; y |] -> Right (int x, int y)
+        | _ ->
+          sprintf "Cannot parse %A as (int * int) tuple" input
+          |> ParseError
+          |> Either.fail
+      with
+        | exn ->
+          sprintf "Cannot parse %A as (int * int) tuple: %s" input exn.Message
+          |> ParseError
+          |> Either.fail
 
   let private parseRect (str : string) : Either<IrisError,Rect> =
     parseTuple str
@@ -200,8 +226,9 @@ module Config =
   /// Parses the Audio configuration section of the passed-in configuration file.
   ///
   /// # Returns: AudioConfig
-  let private parseAudio (cfg : ConfigFile)  : AudioConfig =
-    { SampleRate = uint32 cfg.Project.Audio.SampleRate }
+  let private parseAudio (config: ConfigFile) : Either<IrisError, AudioConfig> =
+    Either.tryWith ParseError "AudioConfig" <| fun _ ->
+      { SampleRate = uint32 config.Project.Audio.SampleRate }
 
   /// ### Save the AudioConfig value
   ///
@@ -219,34 +246,56 @@ module Config =
   //     \_/    \_/    \_/    \_/
   //
 
+  let parseExe (exe: ExeYaml) : Either<IrisError, VvvvExe> =
+    Right { Executable = exe.Path
+            Version    = exe.Version
+            Required   = exe.Required }
+
+  let parseExes exes : Either<IrisError, VvvvExe list> =
+    either {
+      let! exes =
+        Seq.fold
+          (fun (m: Either<IrisError,VvvvExe list>) exe -> either {
+            let! exes = m
+            let! exe = parseExe exe
+            return exe :: exes
+          })
+          (Right [])
+          exes
+      return List.reverse exes
+    }
+
+  let parsePlugin (plugin: PluginYaml) : Either<IrisError, VvvvPlugin> =
+    Right { Name = plugin.Name
+            Path = plugin.Path }
+
+  let parsePlugins plugins : Either<IrisError, VvvvPlugin list> =
+    either {
+      let! plugins =
+        Seq.fold
+          (fun (m: Either<IrisError,VvvvPlugin list>) plugin -> either {
+            let! plugins = m
+            let! plugin = parsePlugin plugin
+            return plugin :: plugins
+          })
+          (Right [])
+          plugins
+      return List.reverse plugins
+    }
+
   /// ### Parses the VVVV configuration
   ///
   /// Constructs the VVVV configuration values from the handed config file value.
   ///
   /// # Returns: VvvvConfig
-  let private parseVvvv (cfg : ConfigFile) : VvvvConfig =
-    let ctoe (i : ConfigFile.Project_Type.VVVV_Type.Executables_Item_Type) =
-      { Executable = i.Path
-      ; Version    = i.Version
-      ; Required   = i.Required
-      }
-
-    let ctop (i : ConfigFile.Project_Type.VVVV_Type.Plugins_Item_Type) =
-      { Name = i.Name
-      ; Path = i.Path
-      }
-
-    let exes  : VvvvExe list ref = ref []
-    let plugs : VvvvPlugin list ref = ref []
-
-    for exe in cfg.Project.VVVV.Executables do
-      exes := ((ctoe exe) :: !exes)
-
-    for plg in cfg.Project.VVVV.Plugins do
-      plugs := ((ctop plg) :: !plugs)
-
-    { Executables = List.reverse !exes
-    ; Plugins     = List.reverse !plugs }
+  let private parseVvvv (config: ConfigFile) : Either<IrisError, VvvvConfig> =
+    either {
+      let vvvv = config.Project.VVVV
+      let! exes = parseExes vvvv.Executables
+      let! plugins = parsePlugins vvvv.Plugins
+      return { Executables = exes
+               Plugins     = plugins }
+    }
 
   /// ### Save the VVVV configuration
   ///
@@ -282,22 +331,28 @@ module Config =
   /// Parses the passed-in configuration file contents and returns a `RaftConfig` value.
   ///
   /// Returns: RaftConfig
-  let private parseRaft (cfg : ConfigFile) : RaftConfig =
-    let loglevel =
-      match LogLevel.TryParse cfg.Project.Engine.LogLevel with
-      | Some level -> level
-      | _          -> Debug
+  let private parseRaft (config: ConfigFile) : Either<IrisError, RaftConfig> =
+    either {
+      let engine = config.Project.Engine
 
-    // let eng = cfg.Project.Engine
-    { RequestTimeout   = uint32 cfg.Project.Engine.RequestTimeout
-    ; ElectionTimeout  = uint32 cfg.Project.Engine.ElectionTimeout
-    ; MaxLogDepth      = uint32 cfg.Project.Engine.MaxLogDepth
-    ; LogLevel         = loglevel
-    ; DataDir          = cfg.Project.Engine.DataDir
-    ; MaxRetries       = uint8 cfg.Project.Engine.MaxRetries
-    ; PeriodicInterval = uint8 cfg.Project.Engine.PeriodicInterval
+      let! loglevel = LogLevel.TryParse engine.LogLevel
+
+      try
+        return
+          { RequestTimeout   = uint32 engine.RequestTimeout
+            ElectionTimeout  = uint32 engine.ElectionTimeout
+            MaxLogDepth      = uint32 engine.MaxLogDepth
+            LogLevel         = loglevel
+            DataDir          = engine.DataDir
+            MaxRetries       = uint8 engine.MaxRetries
+            PeriodicInterval = uint8 engine.PeriodicInterval }
+      with
+        | exn ->
+          return!
+            sprintf "Could not parse Engine config: %s" exn.Message
+            |> ParseError
+            |> Either.fail
     }
-
 
   /// ### Save the passed RaftConfig to the configuration file
   ///
@@ -326,17 +381,33 @@ module Config =
   /// Parse TimingConfig related values into a TimingConfig value and return it.
   ///
   /// # Returns: TimingConfig
-  let private parseTiming (cnf : ConfigFile) : TimingConfig =
-    let servers : IpAddress list ref = ref []
+  let private parseTiming (config: ConfigFile) : Either<IrisError,TimingConfig> =
+    either {
+      let timing = config.Project.Timing
+      let! servers =
+        Seq.fold
+          (fun (m: Either<IrisError, IpAddress list>) thing -> either {
+            let! lst = m
+            let! server = IpAddress.TryParse thing
+            return (server :: lst)
+          })
+          (Right [])
+          timing.Servers
 
-    for server in cnf.Project.Timing.Servers do
-      servers := (IpAddress.Parse server :: !servers)
-
-    { Framebase = uint32 cnf.Project.Timing.Framebase
-    ; Input     = cnf.Project.Timing.Input
-    ; Servers   = List.reverse !servers
-    ; UDPPort   = uint32 cnf.Project.Timing.UDPPort
-    ; TCPPort   = uint32 cnf.Project.Timing.TCPPort }
+      try
+        return
+          { Framebase = uint32 timing.Framebase
+            Input     = timing.Input
+            Servers   = List.reverse servers
+            UDPPort   = uint32 timing.UDPPort
+            TCPPort   = uint32 timing.TCPPort }
+      with
+        | exn ->
+          return!
+            sprintf "Could not parse Timing config: %s" exn.Message
+            |> ParseError
+            |> Either.fail
+    }
 
 
   /// ### Transfer the TimingConfig options to the passed configuration file
@@ -368,8 +439,9 @@ module Config =
   /// Parse the port configuration in a given config file into a `PortConfig` value.
   ///
   /// # Returns: PortConfig
-  let private parsePort (cnf : ConfigFile) : PortConfig =
-    { UDPCue = uint32 cnf.Project.Ports.UDPCues }
+  let private parsePort (config: ConfigFile) : Either<IrisError, PortConfig> =
+    Either.tryWith ParseError "PortConfig" <| fun _ ->
+      { UDPCue = uint32 config.Project.Ports.UDPCues }
 
   /// ### Transfer the PortConfig configuration
   ///
@@ -386,35 +458,43 @@ module Config =
   //    \ V / | |  __/\ V  V /|  __/ (_) | |  | |_
   //     \_/  |_|\___| \_/\_/ |_|   \___/|_|   \__|
 
+  let parseViewPort (viewport: ViewPortYaml) =
+    either {
+      let! pos     = parseCoordinate viewport.Position
+      let! size    = parseRect       viewport.Size
+      let! outpos  = parseCoordinate viewport.OutputPosition
+      let! outsize = parseRect       viewport.OutputSize
+      let! overlap = parseRect       viewport.Overlap
+
+      return { Id             = Id viewport.Id
+               Name           = viewport.Name
+               Position       = pos
+               Size           = size
+               OutputPosition = outpos
+               OutputSize     = outsize
+               Overlap        = overlap
+               Description    = viewport.Description }
+    }
+
   /// ### Parse all Viewport configs listed in a config file
   ///
   /// Parses the ViewPort config section and returns a list of `ViewPort` values.
   ///
   /// # Returns: ViewPort list
-  let private parseViewPorts (cnf : ConfigFile) : ViewPort list =
-    let viewports : ViewPort list ref = ref []
+  let private parseViewPorts (config: ConfigFile) : Either<IrisError,ViewPort list> =
+    either {
+      let! viewports =
+        Seq.fold
+          (fun (m: Either<IrisError, ViewPort list>) vp -> either {
+            let! viewports = m
+            let! viewport = parseViewPort vp
+            return viewport :: viewports
+          })
+          (Right [])
+          config.Project.ViewPorts
 
-    for vp in cnf.Project.ViewPorts do
-      either {
-        let! pos     = parseCoordinate vp.Position
-        let! size    = parseRect       vp.Size
-        let! outpos  = parseCoordinate vp.OutputPosition
-        let! outsize = parseRect       vp.OutputSize
-        let! overlap = parseRect       vp.Overlap
-
-        let viewport : ViewPort =
-          { Id             = Id.Parse vp.Id
-          ; Name           = vp.Name
-          ; Position       = pos
-          ; Size           = size
-          ; OutputPosition = outpos
-          ; OutputSize     = outsize
-          ; Overlap        = overlap
-          ; Description    = vp.Description }
-        viewports := (viewport :: !viewports)
-      } |> ignore
-
-    List.reverse !viewports
+      return List.reverse viewports
+    }
 
   /// ### Transfers the passed list of ViewPort values
   ///
@@ -437,6 +517,105 @@ module Config =
       file.Project.ViewPorts.Add(item)
     (file, config)
 
+  //  ____  _                   _
+  // / ___|(_) __ _ _ __   __ _| |___
+  // \___ \| |/ _` | '_ \ / _` | / __|
+  //  ___) | | (_| | | | | (_| | \__ \
+  // |____/|_|\__, |_| |_|\__,_|_|___/
+  //          |___/
+
+  /// ## Parse a Signal definition
+  ///
+  /// Parse a signal definition. Returns a ParseError on failure.
+  ///
+  /// ### Signature:
+  /// - signal: SignalYaml
+  ///
+  /// Returns: Either<IrisError, Signal>
+  let parseSignal (signal: SignalYaml) : Either<IrisError, Signal> =
+    either {
+      let! size = parseRect       signal.Size
+      let! pos = parseCoordinate signal.Position
+
+      return { Size     = size
+               Position = pos }
+    }
+
+  /// ## Parse a list of signals
+  ///
+  /// Parse a list of signals stored in the ConfigFile. Returns a ParseError on failure.
+  ///
+  /// ### Signature:
+  /// - signals: SignalYaml collection
+  ///
+  /// Returns: Either<IrisError, Signal list>
+  let parseSignals signals =
+    either {
+      let! parsed =
+        Seq.fold
+          (fun (m: Either<IrisError,Signal list>) signal -> either {
+            let! signals = m
+            let! signal = parseSignal signal
+            return signal :: signals
+          })
+          (Right [])
+          signals
+      return List.reverse parsed
+    }
+
+  //  ____            _
+  // |  _ \ ___  __ _(_) ___  _ __  ___
+  // | |_) / _ \/ _` | |/ _ \| '_ \/ __|
+  // |  _ <  __/ (_| | | (_) | | | \__ \
+  // |_| \_\___|\__, |_|\___/|_| |_|___/
+  //            |___/
+
+  /// ## Parse a Region definition
+  ///
+  /// Parse a single Region definition. Returns a ParseError on failure.
+  ///
+  /// ### Signature:
+  /// - region: Region
+  ///
+  /// Returns: Either<IrisError,Region>
+  let parseRegion (region: RegionYaml) : Either<IrisError, Region> =
+    either {
+      let! srcpos  = parseCoordinate region.SrcPosition
+      let! srcsize = parseRect       region.SrcSize
+      let! outpos  = parseCoordinate region.OutputPosition
+      let! outsize = parseRect       region.OutputSize
+
+      return
+        { Id             = Id region.Id
+          Name           = region.Name
+          SrcPosition    = srcpos
+          SrcSize        = srcsize
+          OutputPosition = outpos
+          OutputSize     = outsize }
+    }
+
+  /// ## Parse a list of Region definitions
+  ///
+  /// Parse a list of Region definitions. Returns a ParseError on failure.
+  ///
+  /// ### Signature:
+  /// - regions: RegionYaml collection
+  ///
+  /// Returns: Either<IrisError,Region list>
+  let parseRegions regions : Either<IrisError, Region list> =
+    either {
+      let! parsed =
+        Seq.fold
+          (fun (m: Either<IrisError, Region list>) region -> either {
+            let! regions = m
+            let! region = parseRegion region
+            return region :: regions
+          })
+          (Right [])
+          regions
+      return List.reverse parsed
+    }
+
   //   ____  _           _
   //  |  _ \(_)___ _ __ | | __ _ _   _ ___
   //  | | | | / __| '_ \| |/ _` | | | / __|
@@ -444,68 +623,53 @@ module Config =
   //  |____/|_|___/ .__/|_|\__,_|\__, |___/
   //              |_|            |___/
 
-  /// ### Parse the Display section of a configuration file
+  /// ## Parse a Display definition
   ///
-  /// Construct a list of `Display` values from the given configuration file.
+  /// Parse a Display definition. Returns a ParseError on failure.
   ///
-  /// # Returns: Display list
-  let private parseDisplays (cnf : ConfigFile) : Display list =
-    let displays : Display list ref = ref []
+  /// ### Signature:
+  /// - display: DisplayYaml
+  ///
+  /// Returns: Either<IrisError,Display>
+  let parseDisplay (display: DisplayYaml) : Either<IrisError, Display> =
+    either {
+      let! size = parseRect display.Size
+      let! signals = parseSignals display.Signals
+      let! regions = parseRegions display.RegionMap.Regions
 
-    for display in cnf.Project.Displays do
-      /// scrape all signal defs out of the config
-      let signals : Signal list ref = ref []
+      let regionmap =
+        { SrcViewportId = Id display.RegionMap.SrcViewportId
+          Regions       = regions }
 
-      for signal in display.Signals do
-        either {
-          let! size = parseRect       signal.Size
-          let! pos = parseCoordinate signal.Position
+      return { Id        = Id display.Id
+               Name      = display.Name
+               Size      = size
+               Signals   = signals
+               RegionMap = regionmap }
+    }
 
-          let signal : Signal =
-            { Size     = size
-            ; Position = pos }
+  /// ## Parse a list of Display definitionsg
+  ///
+  /// Parses a list of Display definitions. Returns a ParseError on failure.
+  ///
+  /// ### Signature:
+  /// - displays: DisplayYaml collection
+  ///
+  /// Returns: Either<IrisError,Display list>
+  let private parseDisplays (config: ConfigFile) : Either<IrisError, Display list> =
+    either {
+      let! displays =
+        Seq.fold
+          (fun (m: Either<IrisError, Display list>) display -> either {
+            let! displays = m
+            let! display = parseDisplay display
+            return (display :: displays)
+          })
+          (Right [])
+          config.Project.Displays
 
-          signals := (signal :: !signals)
-        }
-        |> ignore
-
-      let regions : Region list ref = ref []
-
-      for region in display.RegionMap.Regions do
-        either {
-          let! srcpos  = parseCoordinate region.SrcPosition
-          let! srcsize = parseRect       region.SrcSize
-          let! outpos  = parseCoordinate region.OutputPosition
-          let! outsize = parseRect       region.OutputSize
-
-          let region =
-            { Id             = Id.Parse region.Id
-            ; Name           = region.Name
-            ; SrcPosition    = srcpos
-            ; SrcSize        = srcsize
-            ; OutputPosition = outpos
-            ; OutputSize     = outsize }
-
-          regions := (region :: !regions)
-        } |> ignore
-
-      either {
-        let! size = parseRect display.Size
-
-        let display =
-          { Id        = Id.Parse display.Id
-          ; Name      = display.Name
-          ; Size      = size
-          ; Signals   = List.reverse !signals
-          ; RegionMap =
-            { SrcViewportId = Id.Parse display.RegionMap.SrcViewportId
-            ; Regions       = List.reverse !regions }
-          }
-
-        displays := (display :: !displays)
-      } |> ignore
-
-    List.reverse !displays
+      return List.reverse displays
+    }
 
   /// ### Transfer the Display config to a configuration file
   ///
@@ -544,6 +708,56 @@ module Config =
       file.Project.Displays.Add(item)
     (file, config)
 
+  //     _                                         _
+  //    / \   _ __ __ _ _   _ _ __ ___   ___ _ __ | |_
+  //   / _ \ | '__/ _` | | | | '_ ` _ \ / _ \ '_ \| __|
+  //  / ___ \| | | (_| | |_| | | | | | |  __/ | | | |_
+  // /_/   \_\_|  \__, |\__,_|_| |_| |_|\___|_| |_|\__|
+  //              |___/
+
+
+  /// ## Parse a single Argument key/value pair
+  ///
+  /// Parse a single Argument key/value pair
+  ///
+  /// ### Signature:
+  /// - argument: ArgumentYaml
+  ///
+  /// Returns: Either<IrisError, string * string>
+  let parseArgument (argument: ArgumentYaml) =
+    either {
+      if (argument.Key.Length > 0) && (argument.Value.Length > 0) then
+        return (argument.Key, argument.Value)
+      else
+        return!
+          sprintf "Could not parse Argument: %A" argument
+          |> ParseError
+          |> Either.fail
+    }
+
+  /// ## Parse a list of ArgumentYamls
+  ///
+  /// Parse a list of ArgumentYamls
+  ///
+  /// ### Signature:
+  /// - arguments: ArgumentYaml collection
+  ///
+  /// Returns: Either<IrisError, (string * string) list>
+  let parseArguments arguments =
+    either {
+      let! arguments =
+        Seq.fold
+          (fun (m: Either<IrisError, Argument list>) thing -> either {
+            let! arguments = m
+            let! argument = parseArgument thing
+            return argument :: arguments
+          })
+          (Right [])
+          arguments
+
+      return List.reverse arguments
+    }
+
   //   _____         _
   //  |_   _|_ _ ___| | _____
   //    | |/ _` / __| |/ / __|
@@ -551,31 +765,43 @@ module Config =
   //    |_|\__,_|___/_|\_\___/
   //
 
+
+  /// ## Parse a Task definition
+  ///
+  /// Parse a single Task definition. Returns a ParseError on failure.
+  ///
+  /// ### Signature:
+  /// - task: TaskYaml
+  ///
+  /// Returns: Either<IrisError, Task>
+  let parseTask (task: TaskYaml) : Either<IrisError, Task> =
+    either {
+      let! arguments = parseArguments task.Arguments
+      return { Id          = Id task.Id
+               Description = task.Description
+               DisplayId   = Id task.DisplayId
+               AudioStream = task.AudioStream
+               Arguments   = arguments }
+    }
+
   /// ### Parse Task configuration section
   ///
   /// Create `Task` values for each entry in the Task config section.
   ///
   /// # Returns: Task list
-  let private parseTasks (cfg : ConfigFile) : Task list =
-    let tasks : Task list ref = ref []
-
-    for task in cfg.Project.Tasks do
-      let arguments : Argument list ref = ref []
-
-      for argument in task.Arguments do
-        if (argument.Key.Length > 0) && (argument.Value.Length > 0)
-        then arguments := ((argument.Key, argument.Value) :: !arguments)
-
-      let task' =
-        { Id          = Id.Parse task.Id
-        ; Description = task.Description
-        ; DisplayId   = Id.Parse task.DisplayId
-        ; AudioStream = task.AudioStream
-        ; Arguments   = !arguments
-        }
-      tasks := (task' :: !tasks)
-
-    List.reverse !tasks
+  let private parseTasks (config: ConfigFile) : Either<IrisError,Task list> =
+    either {
+      let! tasks =
+        Seq.fold
+          (fun (m: Either<IrisError, Task list>) task -> either {
+            let! tasks = m
+            let! task = parseTask task
+            return task :: tasks
+          })
+          (Right [])
+          config.Project.Tasks
+      return List.reverse tasks
+    }
 
   /// ### Save the Tasks to a config file
   ///
@@ -607,50 +833,108 @@ module Config =
   //   \____|_|\__,_|___/\__\___|_|
   //
 
+  /// ## Parse a single Node definition
+  ///
+  /// Parse a single Node definition. Returns a ParseError on failiure.
+  ///
+  /// ### Signature:
+  /// - node: NodeYaml
+  ///
+  /// Returns: Either<IrisError, RaftNode>
+  let parseNode (node: NodeYaml) : Either<IrisError, RaftNode> =
+    either {
+      let! ip = IpAddress.TryParse node.Ip
+      let! state = RaftNodeState.TryParse node.State
+
+      try
+        return { Id         = Id node.Id
+                 HostName   = node.HostName
+                 IpAddr     = ip
+                 Port       = uint16 node.Port
+                 WebPort    = uint16 node.WebPort
+                 WsPort     = uint16 node.WsPort
+                 GitPort    = uint16 node.GitPort
+                 State      = state
+                 Voting     = true
+                 VotedForMe = false
+                 NextIndex  = 1u
+                 MatchIndex = 0u }
+      with
+        | exn ->
+          return!
+            sprintf "Could not parse Node definition: %s" exn.Message
+            |> ParseError
+            |> Either.fail
+    }
+
+  /// ## Parse a collectio of Node definitions
+  ///
+  /// Parse a list of Node definitions. Returns a ParseError on failure.
+  ///
+  /// ### Signature:
+  /// - nodes: NodeYaml collection
+  ///
+  /// Returns: Either<IrisError, RaftNode list>
+  let parseNodes nodes : Either<IrisError, RaftNode list> =
+    either {
+      let! nodes =
+        Seq.fold
+          (fun (m: Either<IrisError, RaftNode list>) node -> either {
+            let! nodes = m
+            let! node = parseNode node
+            return node :: nodes
+          })
+          (Right [])
+          nodes
+      return List.reverse nodes
+    }
+
+  let parseGroup (group: GroupYaml) : Either<IrisError, HostGroup> =
+    either {
+      if group.Name.Length > 0 then
+        let ids = Seq.map Id group.Members |> Seq.toList
+
+        return { Name    = group.Name
+                 Members = ids }
+      else
+        return!
+          "Invalid HostGroup setting (Name must be given)"
+          |> ParseError
+          |> Either.fail
+    }
+
+  let parseGroups groups : Either<IrisError, HostGroup list> =
+    either {
+      let! groups =
+        Seq.fold
+          (fun (m: Either<IrisError, HostGroup list>) group -> either {
+            let! groups = m
+            let! group = parseGroup group
+            return group :: groups
+          })
+          (Right [])
+          groups
+
+      return List.reverse groups
+    }
+
   /// ### Parse the Cluster configuration section
   ///
   /// Parse the cluster configuration section of a given configuration file into a `Cluster` value.
   ///
   /// # Returns: Cluster
-  let private parseCluster (cfg : ConfigFile) : Cluster =
-    let nodes  : RaftNode  list ref = ref []
-    let groups : HostGroup list ref = ref []
 
-    for node in cfg.Project.Cluster.Nodes do
-      let node' : RaftNode =
-        { Id         = Id.Parse node.Id
-        ; HostName   = node.HostName
-        ; IpAddr     = IpAddress.Parse node.Ip
-        ; Port       = uint16 node.Port
-        ; WebPort    = uint16 node.WebPort
-        ; WsPort     = uint16 node.WsPort
-        ; GitPort    = uint16 node.GitPort
-        ; State      = RaftNodeState.Parse node.State
-        ; Voting     = true
-        ; VotedForMe = false
-        ; NextIndex  = 1u
-        ; MatchIndex = 0u
-        }
-      nodes := (node' :: !nodes)
+  let private parseCluster (config: ConfigFile) : Either<IrisError, Cluster> =
+    either {
+      let cluster = config.Project.Cluster
 
-    for group in cfg.Project.Cluster.Groups do
-      if group.Name.Length > 0
-      then
-        let ids : Id list ref = ref []
+      let! groups = parseGroups cluster.Groups
+      let! nodes = parseNodes cluster.Nodes
 
-        for mid in group.Members do
-          if mid.Length > 0
-          then ids := (Id.Parse mid :: !ids)
-
-        let group' =
-          { Name    = group.Name
-          ; Members = !ids
-          }
-        groups := (group' :: !groups)
-
-    { Name   = cfg.Project.Cluster.Name
-    ; Nodes  = List.reverse !nodes
-    ; Groups = List.reverse !groups }
+      return { Name   = cluster.Name
+               Nodes  = nodes
+               Groups = groups }
+    }
 
   /// ### Save a Cluster value to a configuration file
   ///
@@ -684,16 +968,28 @@ module Config =
       file.Project.Cluster.Groups.Add(g)
     (file, config)
 
-  let fromFile (file: ConfigFile) =
-    { VvvvConfig     = parseVvvv      file
-    ; AudioConfig    = parseAudio     file
-    ; RaftConfig     = parseRaft      file
-    ; TimingConfig   = parseTiming    file
-    ; PortConfig     = parsePort      file
-    ; ViewPorts      = parseViewPorts file
-    ; Displays       = parseDisplays  file
-    ; Tasks          = parseTasks     file
-    ; ClusterConfig  = parseCluster   file  }
+  let fromFile (file: ConfigFile) : Either<IrisError, IrisConfig> =
+    either {
+      let! raftcfg   = parseRaft      file
+      let! timing    = parseTiming    file
+      let! vvvv      = parseVvvv      file
+      let! audio     = parseAudio     file
+      let! ports     = parsePort      file
+      let! viewports = parseViewPorts file
+      let! displays  = parseDisplays  file
+      let! tasks     = parseTasks     file
+      let! cluster   = parseCluster   file
+
+      return { VvvvConfig    = vvvv
+               AudioConfig   = audio
+               RaftConfig    = raftcfg
+               TimingConfig  = timing
+               PortConfig    = ports
+               ViewPorts     = viewports
+               Displays      = displays
+               Tasks         = tasks
+               ClusterConfig = cluster }
+    }
 
   let toFile (config: IrisConfig) (file: ConfigFile) =
     (file, config)

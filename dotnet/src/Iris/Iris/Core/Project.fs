@@ -101,31 +101,43 @@ module Project =
   ///
   /// # Returns: IrisProject option
   let load (path : FilePath) : Either<IrisError,IrisProject> =
-    if not (File.Exists path) then
-      ProjectNotFound path |> Either.fail
-    else
-      IrisConfig.Load(path)
+    either {
+      if not (File.Exists path) then
+        return!
+          ProjectNotFound path
+          |> Either.fail
+      else
+        try
+          IrisConfig.Load(path)
 
-      let meta = IrisConfig.Project.Metadata
-      let lastSaved =
-        match meta.LastSaved with
-          | null | "" -> None
-          | str ->
-            try
-              DateTime.Parse str |> ignore
-              Some str
-            with
-              | _ -> None
+          let meta = IrisConfig.Project.Metadata
+          let lastSaved =
+            match meta.LastSaved with
+              | null | "" -> None
+              | str ->
+                try
+                  DateTime.Parse str |> ignore
+                  Some str
+                with
+                  | _ -> None
 
-      { Id        = Id.Parse meta.Id
-      ; Name      = meta.Name
-      ; Path      = Some <| Path.GetDirectoryName(path)
-      ; CreatedOn = meta.CreatedOn
-      ; LastSaved = lastSaved
-      ; Copyright = Config.parseStringProp meta.Copyright
-      ; Author    = Config.parseStringProp meta.Author
-      ; Config    = Config.fromFile IrisConfig }
-      |> Either.succeed
+          let! config = Config.fromFile IrisConfig
+
+          return { Id        = Id meta.Id
+                   Name      = meta.Name
+                   Path      = Some <| Path.GetDirectoryName(path)
+                   CreatedOn = meta.CreatedOn
+                   LastSaved = lastSaved
+                   Copyright = Config.parseStringProp meta.Copyright
+                   Author    = Config.parseStringProp meta.Author
+                   Config    = config }
+        with
+          | exn ->
+            return!
+              sprintf "Could not load Project: %s" exn.Message
+              |> ProjectParseError
+              |> Either.fail
+    }
 
   let writeDaemonExportFile (repo: Repository) =
     File.WriteAllText(repo.Info.Path </> "git-daemon-export-ok", "")

@@ -368,11 +368,11 @@ let startServer (appState: TVar<RaftAppContext>) (cbs: IRaftCallbacks) =
     |> nodeUri
 
   let handler (request: byte array) : byte array =
-    let request : RaftRequest option = Binary.decode request
+    let request = Binary.decode<IrisError,RaftRequest> request
     let response =
       match request with
-      | Some message -> handleRequest message appState cbs
-      | None         -> ErrorResponse (Other "Unable to decipher request")
+      | Right message -> handleRequest message appState cbs
+      | Left error    -> ErrorResponse error
 
     response |> Binary.encode
 
@@ -430,34 +430,34 @@ let tryJoin (ip: IpAddress) (port: uint32) cbs (state: RaftAppContext) =
       dispose client
 
       match result with
-      | Some (Welcome node) ->
+      | Right (Welcome node) ->
         sprintf "Received Welcome from %A" node.Id
         |> debugMsg state cbs
-        Some node
+        Right node
 
-      | Some (Redirect next) ->
+      | Right (Redirect next) ->
         sprintf "Got redirected to %A" (nodeUri next)
         |> infoMsg state cbs
         _tryJoin (retry + 1) (nodeUri next)
 
-      | Some (ErrorResponse err) ->
+      | Right (ErrorResponse err) ->
         sprintf "Unexpected error occurred. %A" err
         |> errMsg state cbs
-        None
+        Left err
 
-      | Some resp ->
+      | Right resp ->
         sprintf "Unexpected response. %A" resp
         |> errMsg state cbs
-        None
+        Left (Other "Unexpected response")
 
-      | _ ->
-        sprintf "Node: %A unreachable." uri
+      | Left err ->
+        sprintf "Errot: %A Node: %A unreachable." err uri
         |> errMsg state cbs
-        None
+        Left err
     else
       "Too many unsuccesful connection attempts."
       |> errMsg state cbs
-      None
+      Left (Other "Too many unsuccesful connection attempts.")
 
   formatUri ip (int port) |> _tryJoin 0
 
@@ -471,7 +471,7 @@ let tryJoin (ip: IpAddress) (port: uint32) cbs (state: RaftAppContext) =
 /// - cbs: Raft callbacks
 ///
 /// Returns: unit
-let tryLeave (appState: TVar<RaftAppContext>) cbs : bool option =
+let tryLeave (appState: TVar<RaftAppContext>) cbs : Either<IrisError,bool> =
   let state = readTVar appState |> atomically
 
   let rec _tryLeave retry (uri: string) =
@@ -483,41 +483,42 @@ let tryLeave (appState: TVar<RaftAppContext>) cbs : bool option =
       dispose client
 
       match result with
-      | Some (Redirect other) ->
+      | Right (Redirect other) ->
         if retry <= int state.Options.RaftConfig.MaxRetries then
           nodeUri other |> _tryLeave (retry + 1)
         else
           "Too many retries. aborting" |> errMsg state cbs
-          None
+          Left (Other "Too many retries, aborting.")
 
-      | Some Arrivederci ->
-        Some true
+      | Right Arrivederci ->
+        Right true
 
-      | Some (ErrorResponse err) ->
+      | Right (ErrorResponse err) ->
         sprintf "Unexpected error occurred. %A" err |> errMsg state cbs
-        None
+        Left err
 
-      | Some resp ->
+      | Right resp ->
         sprintf "Unexpected response.\n%A" resp |> errMsg state cbs
-        None
+        Left (Other "Unexpected response")
 
-      | _ ->
+      | Left err ->
         "Node unreachable." |> errMsg state cbs
-        None
+        Left (sprintf "Error: %A" err |> Other)
+
     else
       "Too many unsuccesful connection attempts." |> errMsg state cbs
-      None
+      Left (Other "Too many unsuccesful connection attempts.")
 
   match state.Raft.CurrentLeader with
-    | Some nid ->
-      match Map.tryFind nid state.Raft.Peers with
-        | Some node -> nodeUri node |> _tryLeave 0
-        | _         ->
-          "Node data for leader id not found" |> errMsg state cbs
-          None
-    | _ ->
-      "no known leader" |> errMsg state cbs
-      None
+  | Some nid ->
+    match Map.tryFind nid state.Raft.Peers with
+      | Some node -> nodeUri node |> _tryLeave 0
+      | _         ->
+        "Node data for leader id not found" |> errMsg state cbs
+        Left (Other "Node data for leader id not found")
+  | _ ->
+    "no known leader" |> errMsg state cbs
+    Left (Other "no known leader")
 
 
 let forceElection appState cbs =

@@ -548,12 +548,14 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
         let leader = tryJoin (IpAddress.Parse ip) (uint32 port) cbs state
 
         match leader with
-        | Some leader ->
+        | Right leader ->
           sprintf "Reached leader: %A Adding to nodes." leader.Id
           |> infoMsg state cbs
           do! Raft.addNodeM leader
           do! Raft.becomeFollower ()
-        | _ -> "Joining cluster failed." |> errMsg state cbs
+        | Left err ->
+          sprintf "Joining cluster failed. %A" err
+          |> errMsg state cbs
 
       } |> evalRaft state.Raft cbs
 
@@ -569,10 +571,11 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
         do! Raft.setTimeoutElapsedM 0u
 
         match tryLeave appState cbs with
-        | Some true ->
+        | Right true ->
           "Successfully left cluster." |> infoMsg state cbs
-        | _ ->
-          "Could not leave cluster." |> infoMsg state cbs
+        | Left err ->
+          sprintf "Could not leave cluster. %A" err
+          |> infoMsg state cbs
 
         do! Raft.becomeFollower ()
 

@@ -61,16 +61,19 @@ type RaftLog =
     | Some entries -> entries.ToOffset(builder)
     | _            -> [| |]
 
-  static member FromFB (logs: LogFB array) : RaftLog option =
-    match RaftLogEntry.FromFB logs with
-    | Some entries ->
-      Some { Data  = Some entries
-           ; Depth = LogEntry.depth entries
-           ; Index = LogEntry.index entries }
-    | _ ->
-      Some { Data  = None
-           ; Depth = 0u
-           ; Index = 0u }
+  static member FromFB (logs: LogFB array) : Either<IrisError, RaftLog> =
+    either {
+      let! entries = RaftLogEntry.FromFB logs
+      match entries with
+      | Some entries as value ->
+        return { Data  = value
+                 Depth = LogEntry.depth entries
+                 Index = LogEntry.index entries }
+      | _ ->
+        return { Data  = None
+                 Depth = 0u
+                 Index = 0u }
+    }
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -96,30 +99,42 @@ type RaftLog =
     |> Yaml.toYaml
     |> serializer.Serialize
 
-  static member FromYamlObject (log: RaftLogYaml) =
-    let folder (yaml: RaftLogEntryYaml) (entry: RaftLogEntry option) =
-      match Yaml.fromYaml yaml with
-      | Some (LogEntry(id, idx, term, data, _)) ->
-        Some (LogEntry(id, idx, term, data, entry))
-      | Some (Configuration(id, idx, term, nodes, _))->
-        Some (Configuration(id, idx, term, nodes, entry))
-      | Some (JointConsensus(id, idx, term, changes, _)) ->
-        Some (JointConsensus(id, idx, term, changes, entry))
-      | Some (Snapshot _) as value -> value
-      | _ -> entry
+  static member FromYamlObject (log: RaftLogYaml) : Either<IrisError, RaftLog> =
+    let folder (yaml: RaftLogEntryYaml) (sibling: Either<IrisError,RaftLogEntry option>) =
+      either {
+        let! previous = sibling
+        let! parsed = Yaml.fromYaml yaml
 
-    let bare = { Data = None; Depth = 0u; Index = 0u }
+        return
+          match parsed with
+          | LogEntry(id, idx, term, data, _) ->
+            LogEntry(id, idx, term, data, previous)
+          | Configuration(id, idx, term, nodes, _)->
+            Configuration(id, idx, term, nodes, previous)
+          | JointConsensus(id, idx, term, changes, _) ->
+            JointConsensus(id, idx, term, changes, previous)
+          | Snapshot _ as value -> value
+          |> Some
+      }
 
-    match Array.foldBack folder (Array.sort log.Data) None with
-    | None -> Some bare
-    | Some _ as value ->
-      { bare with
-          Data = value
-          Depth = log.Depth
-          Index = log.Index }
-      |> Some
+    either {
+      let! logs =
+        Array.foldBack
+          folder
+          (Array.sort log.Data)
+          (Right None)
 
-  static member FromYaml (str: string) : RaftLog option =
+      return
+        match logs with
+        | Some entries as values ->
+          { Data = values
+            Depth = LogEntry.depth entries
+            Index = LogEntry.index entries }
+        | _ ->
+          { Data = None; Depth = 0u; Index = 0u }
+    }
+
+  static member FromYaml (str: string) : Either<IrisError,RaftLog> =
     let serializer = new Serializer()
     serializer.Deserialize<RaftLogYaml>(str)
     |> Yaml.fromYaml

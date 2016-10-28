@@ -407,6 +407,197 @@ and RaftLogEntry =
     self.Iter (fun i (log: RaftLogEntry) -> arr.[int i] <- toOffset log)
     arr
 
+  /// ## Parse a single log entry, adding its sibling node
+  ///
+  /// Parses a single log entry, adding the passed sibling node, if any. If an error occurs, the
+  /// entire parsing process fails. With the first error.
+  ///
+  /// ### Signature:
+  /// - fb: LogFB FlatBuffer object
+  /// - sibling: an sibling (None also legal, for the first node), or the previous error
+  ///
+  /// Returns: Either<IrisError, RaftLogEntry option>
+  static member ParseLogFB (fb: LogFB)
+                           (sibling: Either<IrisError,RaftLogEntry option>)
+                           : Either<IrisError,RaftLogEntry option> =
+      match fb.EntryType with
+      | LogTypeFB.ConfigurationFB -> either {
+          // the previous log entry. An error, if occurred previously
+          let! previous = sibling
+
+          // parse the log entry
+          let entry = fb.Entry<ConfigurationFB>()
+          if entry.HasValue then
+            let logentry = entry.Value
+
+            // parse all nodes in this log entry. if this fails, the error will be propagated up the
+            // call chain
+            let! nodes =
+              let arr = Array.zeroCreate logentry.NodesLength
+              Array.fold
+                (fun (m: Either<IrisError,int * RaftNode array>) _ -> either {
+                  let! (i, arr) = m
+                  let! node =
+                    let value = logentry.Nodes(i)
+                    if value.HasValue then
+                      value.Value
+                      |> RaftNode.FromFB
+                    else
+                      "Could not parse empty NodeFB value"
+                      |> ParseError
+                      |> Either.fail
+                  arr.[i] <- node
+                  return (i + i, arr)
+                })
+                (Right (0, arr))
+                arr
+              |> Either.map snd
+
+            // successfully parsed this LogEntry, so return it wrapped in an option
+            return Configuration(Id logentry.Id,
+                                 logentry.Index,
+                                 logentry.Term,
+                                 nodes,
+                                 previous)
+                   |> Some
+          else
+            return! "Could not parse empty LogTypeFB.ConfigurationFB"
+                    |> ParseError
+                    |> Either.fail
+        }
+
+      | LogTypeFB.JointConsensusFB -> either {
+          // the previous entry, or an error. short-circuits here on error.
+          let! previous = sibling
+
+          // start parsing the entry
+          let entry = fb.Entry<JointConsensusFB>()
+          if entry.HasValue then
+            let logentry = entry.Value
+
+            // parse the ConfigChange entries
+            let! changes =
+              let arr = Array.zeroCreate logentry.ChangesLength
+              Array.fold
+                (fun (m: Either<IrisError, int * ConfigChange array>) _ -> either {
+                  let! (i, changes) = m // pull the index and array out
+                  let! change =
+                    let value = logentry.Changes(i)
+                    if value.HasValue then
+                      value.Value
+                      |> ConfigChange.FromFB
+                    else
+                      "Could not parse empty ConfigChangeFB value"
+                      |> ParseError
+                      |> Either.fail
+                  changes.[i] <- change
+                  return (i + 1, changes)
+                })
+                (Right (0, arr))
+                arr
+              |> Either.map snd
+
+            return JointConsensus(Id logentry.Id,
+                                  logentry.Index,
+                                  logentry.Term,
+                                  changes,
+                                  previous)
+                   |> Some
+          else
+            return!
+              "Could not parse empty LogTypeFB.JointConsensusFB"
+              |> ParseError
+              |> Either.fail
+
+        }
+
+      | LogTypeFB.LogEntryFB -> either {
+          let! previous = sibling
+
+          let entry = fb.Entry<LogEntryFB>()
+          if entry.HasValue then
+            let logentry = entry.Value
+            let data = logentry.Data
+            if data.HasValue then
+              let! command = StateMachine.FromFB data.Value
+
+              return LogEntry(Id logentry.Id,
+                              logentry.Index,
+                              logentry.Term,
+                              command,
+                              previous)
+                     |> Some
+            else
+              return!
+                "Could not parse empty StateMachineFB"
+                |> ParseError
+                |> Either.fail
+          else
+            return!
+              "Could not parse empty LogTypeFB.LogEntry"
+              |> ParseError
+              |> Either.fail
+        }
+
+      | LogTypeFB.SnapshotFB -> either {
+          // Snapshots don't have ancestors, so move ahead right away
+          let entry = fb.Entry<SnapshotFB>()
+          if entry.HasValue then
+            let logentry = entry.Value
+            let data = logentry.Data
+
+            if data.HasValue then
+              let id = Id logentry.Id
+              let! state = StateMachine.FromFB data.Value
+
+              let! nodes =
+                let arr = Array.zeroCreate logentry.NodesLength
+                Array.fold
+                  (fun (m: Either<IrisError, int * RaftNode array>) _ -> either {
+                    let! (i, nodes) = m
+
+                    let! node =
+                      let value = logentry.Nodes(i)
+                      if value.HasValue then
+                        value.Value
+                        |> RaftNode.FromFB
+                      else
+                        "Could not parse empty RaftNodeFB"
+                        |> ParseError
+                        |> Either.fail
+
+                    nodes.[i] <- node
+                    return (i + 1, nodes)
+                  })
+                  (Right (0, arr))
+                  arr
+                |> Either.map snd
+
+              return Snapshot(id,
+                              logentry.Index,
+                              logentry.Term,
+                              logentry.LastIndex,
+                              logentry.LastTerm,
+                              nodes,
+                              state)
+                     |> Some
+            else
+              return!
+                "Could not parse empty StateMachineFB"
+                |> ParseError
+                |> Either.fail
+          else
+            return!
+              "Could not parse empty LogTypeFB.SnapshotFB"
+              |> ParseError
+              |> Either.fail
+        }
+
+      | x ->
+        sprintf "Could not parse unknown LogTypeFB; %A" x
+        |> ParseError
+        |> Either.fail
+
   /// ## Decode a FlatBuffer into a Log structure
   ///
   /// Decodes a single FlatBuffer encoded log entry into its
@@ -419,102 +610,8 @@ and RaftLogEntry =
   /// - log: previous RaftLogEntry value to reconstruct the chain of events
   ///
   /// Returns: RaftLogEntry option
-  static member FromFB (logs: LogFB array) : Either<IrisError, RaftLogEntry> =
-    let fb2Log (fb: LogFB) (sibling: RaftLogEntry option) : Either<IrisError,RaftLogEntry> =
-      match fb.EntryType with
-      | LogTypeFB.ConfigurationFB ->
-        let entry = fb.Entry<ConfigurationFB>()
-        if entry.HasValue then
-          let logentry = entry.Value
-          let nodes = Array.zeroCreate logentry.NodesLength
-
-          for i in 0 .. (logentry.NodesLength - 1) do
-            let node = logentry.Nodes(i)
-            if node.HasValue then
-              node.Value
-              |> RaftNode.FromFB
-              |> Option.map (fun node -> nodes.[i] <- node)
-              |> ignore
-
-          Configuration(Id logentry.Id,
-                        logentry.Index,
-                        logentry.Term,
-                        nodes,
-                        sibling)
-          |> Some
-        else None
-
-      | LogTypeFB.JointConsensusFB ->
-        let entry = fb.Entry<JointConsensusFB>()
-        if entry.HasValue then
-          let logentry = entry.Value
-          let changes = Array.zeroCreate logentry.ChangesLength
-
-          for i in 0 .. (logentry.ChangesLength - 1) do
-            let change = logentry.Changes(i)
-            if change.HasValue then
-              change.Value
-              |> ConfigChange.FromFB
-              |> Option.map (fun change -> changes.[i] <- change)
-              |> ignore
-
-          JointConsensus(Id logentry.Id,
-                         logentry.Index,
-                         logentry.Term,
-                         changes,
-                         sibling)
-          |> Some
-        else None
-
-      | LogTypeFB.LogEntryFB ->
-        let entry = fb.Entry<LogEntryFB>()
-        if entry.HasValue then
-          let logentry = entry.Value
-          let data = logentry.Data
-          if data.HasValue then
-            StateMachine.FromFB data.Value
-            |> Option.map
-              (fun sm -> LogEntry(Id logentry.Id,
-                               logentry.Index,
-                               logentry.Term,
-                               sm,
-                               sibling))
-          else None
-        else None
-
-      | LogTypeFB.SnapshotFB ->
-        let entry = fb.Entry<SnapshotFB>()
-        if entry.HasValue then
-          let logentry = entry.Value
-          let data = logentry.Data
-
-          if data.HasValue then
-            let nodes = Array.zeroCreate logentry.NodesLength
-            let id = Id logentry.Id
-
-            for i in 0..(logentry.NodesLength - 1) do
-              let node = logentry.Nodes(i)
-              if node.HasValue then
-                node.Value
-                |> RaftNode.FromFB
-                |> Option.map (fun node -> nodes.[i] <- node)
-                |> ignore
-
-            StateMachine.FromFB data.Value
-            |> Option.map
-              (fun sm -> Snapshot(id,
-                               logentry.Index,
-                               logentry.Term,
-                               logentry.LastIndex,
-                               logentry.LastTerm,
-                               nodes,
-                               sm))
-          else None
-        else None
-
-      | _ -> None
-
-    Array.foldBack fb2Log logs None
+  static member FromFB (logs: LogFB array) : Either<IrisError, RaftLogEntry option> =
+    Array.foldBack RaftLogEntry.ParseLogFB logs (Right None)
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -575,60 +672,65 @@ and RaftLogEntry =
 
   static member FromYamlObject (yaml: RaftLogEntryYaml) =
     match yaml.LogType with
-    | "LogEntry" -> maybe {
+    | "LogEntry" -> either {
         let id = Id yaml.Id
         let! data = Yaml.fromYaml yaml.Data
         return LogEntry(id, yaml.Index, yaml.Term, data, None)
       }
-    | "Configuration" -> maybe {
+    | "Configuration" -> either {
         let id = Id yaml.Id
-        let nodes =
+        let! nodes =
           Array.fold
-            (fun (i: int, arr: RaftNode array) (yml: RaftNodeYaml) ->
-              match Yaml.fromYaml yml with
-              | Some node -> arr.[i] <- node
-              | _         -> ()
-              (i + 1, arr))
-            (0, Array.zeroCreate yaml.Nodes.Length)
+            (fun (m: Either<IrisError, int * RaftNode array>) (yml: RaftNodeYaml) -> either {
+              let! (i, nodes) = m
+              let! node = Yaml.fromYaml yml
+              nodes.[i] <- node
+              return (i + 1, nodes)
+            })
+            (Right (0, Array.zeroCreate yaml.Nodes.Length))
             yaml.Nodes
-          |> snd
+          |> Either.map snd
         return Configuration(id, yaml.Index, yaml.Term, nodes, None)
       }
-    | "JointConsensus" -> maybe {
+    | "JointConsensus" -> either {
         let id = Id yaml.Id
-        let changes =
+        let! changes =
           Array.fold
-            (fun (i: int, arr: ConfigChange array) (yml: ConfigChangeYaml) ->
-              match Yaml.fromYaml yml with
-              | Some change -> arr.[i] <- change
-              | _           -> ()
-              (i + 1, arr))
-            (0, Array.zeroCreate yaml.Changes.Length)
+            (fun (m: Either<IrisError, int * ConfigChange array>) yml -> either {
+              let! (i, changes) = m
+              let! change = Yaml.fromYaml yml
+              changes.[i] <- change
+              return (i + 1, changes)
+            })
+            (Right (0, Array.zeroCreate yaml.Changes.Length))
             yaml.Changes
-          |> snd
+          |> Either.map snd
         return JointConsensus(id, yaml.Index, yaml.Term, changes, None)
       }
-    | "Snapshot" -> maybe {
+    | "Snapshot" -> either {
         let id = Id yaml.Id
         let idx = yaml.Index
         let term = yaml.Term
         let lidx = yaml.LastIndex
         let lterm = yaml.LastTerm
         let! data = Yaml.fromYaml yaml.Data
-        let nodes =
+        let! nodes =
           Array.fold
-            (fun (i: int, arr: RaftNode array) (yml: RaftNodeYaml) ->
-              match Yaml.fromYaml yml with
-              | Some node -> arr.[i] <- node
-              | _         -> ()
-              (i + 1, arr))
-            (0, Array.zeroCreate yaml.Nodes.Length)
+            (fun (m: Either<IrisError, int * RaftNode array>) yml -> either {
+              let! (i, nodes) = m
+              let! node = Yaml.fromYaml yml
+              nodes.[i] <- node
+              return (i + 1, nodes)
+            })
+            (Right (0, Array.zeroCreate yaml.Nodes.Length))
             yaml.Nodes
-          |> snd
+          |> Either.map snd
         return Snapshot(id, idx, term, lidx, lterm, nodes, data)
       }
-    | _                -> None
-
+    | x ->
+      sprintf "Could not parse unknow LogType: %s" x
+      |> ParseError
+      |> Either.fail
 
 [<RequireQualifiedAccess>]
 module LogEntry =

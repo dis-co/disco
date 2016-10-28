@@ -99,18 +99,26 @@ type Req (addr: string, ctx: ZContext, timeout: int) =
     run <- true                                                // run reset to default
     self.Start()                                              // start the socket
 
-  member self.Request(req: byte array) : byte array option =  // synchronously request the square of `req`
-    if started && not disposed then
-      lock lokk  (fun _ ->                                       // lock on the `lokk` object while executing this transaction
+  member self.Request(req: byte array) : Either<IrisError,byte array> =
+    if started && not disposed then                               // synchronously request the square of `req-`
+      lock lokk <| fun _ ->                                       // lock on the `lokk` object while executing this transaction
         request <- req                                         // first set the requets
         requester.Set() |> ignore                              // then signal a request is ready for execution
         responder.WaitOne() |> ignore                          // wait for signal from the responder that execution has finished
         match exn with                                        // handle exception raised on thread
-        | Some e -> raise e                                    // re-raise it on callers thread
-        | _      -> Some response)                             // or return the response
+        | Some e ->                                            // re-raise it on callers thread
+          sprintf "Exception thrown on socket thread: %s" e.Message
+          |> SocketError
+          |> Either.fail
+        | _  -> Either.succeed response                        // or return the response
     elif disposed then                                        // diposed sockets should have to be re-initialized
-      failwith "Socket disposed"
-    else None
+      "Socket disposed"
+      |> SocketError
+      |> Either.fail
+    else
+      "Socket not started"
+      |> SocketError
+      |> Either.fail
 
   interface IDisposable with
     member self.Dispose() = self.Stop()

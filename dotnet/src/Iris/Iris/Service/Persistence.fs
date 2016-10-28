@@ -104,10 +104,12 @@ module Persistence =
       printfn "metadata path: %s" (options |> Config.metadataPath)
       let! nodes = Config.getNodes options
       let! node = Config.selfNode options
-      let! meta = options |> Config.metadataPath |> loadAsset
-      return! meta
-              |> Yaml.decode
-              |> Either.ofOption MetaDataNotFound
+      let! meta =
+        options
+        |> Config.metadataPath
+        |> loadAsset
+        |> Yaml.decode<IrisError,RaftValue>
+      return meta
     }
 
   /// ## Get Raft state value from config

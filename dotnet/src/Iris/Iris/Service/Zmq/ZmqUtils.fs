@@ -42,8 +42,8 @@ module ZmqUtils =
   /// - req: the reqest value
   ///
   /// Returns: RaftResponse option
-  let request (sock: Req) (req: RaftRequest) : RaftResponse option =
-    req |> Binary.encode |> sock.Request |> Option.bind Binary.decode
+  let request (sock: Req) (req: RaftRequest) : Either<IrisError,RaftResponse> =
+    req |> Binary.encode |> sock.Request |> Either.bind Binary.decode
 
   /// ## Make a new client socket with correct settings
   ///
@@ -68,6 +68,11 @@ module ZmqUtils =
   //   use frame = socket.ReceiveFrame()
   //   frame.Read()
 
+  let addSocket (node: RaftNode) (state: RaftAppContext) (connections: Map<Id,Zmq.Req>) =
+    let addr = nodeUri node
+    let socket = mkClientSocket addr state
+    (socket, Map.add node.Id socket connections)
+
   /// ## getSocket for Member
   ///
   /// Gets the socket we memoized for given MemberId, else creates one and instantiates a
@@ -76,14 +81,9 @@ module ZmqUtils =
   /// ### Signature:
   /// - appState: current TVar<AppState>
   ///
-  /// Returns: Socket
-  let getSocket (node: RaftNode) (state: RaftAppContext) (connections: Map<Id,Zmq.Req>) =
-    match Map.tryFind node.Id connections with
-    | Some client -> (client, connections)
-    | _  ->
-      let addr = nodeUri node
-      let socket = mkClientSocket addr state
-      (socket, Map.add node.Id socket connections)
+  /// Returns: Req option
+  let getSocket (node: RaftNode) (connections: Map<Id,Zmq.Req>) : Req option =
+    Map.tryFind node.Id connections
 
   /// ## Dispose of a client socket
   ///
@@ -111,11 +111,11 @@ module ZmqUtils =
   /// - state: RaftAppContext to perform request against
   ///
   /// Returns: RaftResponse option
-  let rawRequest (request: RaftRequest) (client: Req) =
+  let rawRequest (request: RaftRequest) (client: Req) : Either<IrisError,RaftResponse> =
     request
     |> Binary.encode
     |> client.Request
-    |> Option.bind Binary.decode<RaftResponse>
+    |> Either.bind Binary.decode<IrisError,RaftResponse>
 
   /// ## Send RaftRequest to node
   ///
@@ -130,15 +130,21 @@ module ZmqUtils =
   ///
   /// Returns: RaftResponse option
   let performRequest (request: RaftRequest) (node: RaftNode) (state: RaftAppContext) (connections: Map<Id,Zmq.Req>) =
-    let client, connections = getSocket node state connections
+    either {
+      let client = getSocket node connections
+      try
+        let! response = rawRequest request client
+        return (response, connections)
+      with
+        | :? TimeoutException ->
+          disposeSocket node connections
+          "Operation timed out"
+          |> SocketError
+          |> Either.fail
 
-    try
-      let response = rawRequest request client
-      (response, connections)
-    with
-      | :? TimeoutException ->
-        printfn "Operation timed out"
-        None, disposeSocket node connections
-      | exn ->
-        printfn "performRequest exception: %s" exn.Message
-        None, disposeSocket node connections
+        | exn ->
+          disposeSocket node connections
+          sprintf "performRequest encountered an exception: %s" exn.Message
+          |> SocketError
+          |> Either.fail
+    }
