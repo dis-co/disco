@@ -106,9 +106,9 @@ type VoteRequest =
       if candidate.HasValue then
         let! node = RaftNode.FromFB candidate.Value
         return { Term         = fb.Term
-                  Candidate    = node
-                  LastLogIndex = fb.LastLogIndex
-                  LastLogTerm  = fb.LastLogTerm }
+                 Candidate    = node
+                 LastLogIndex = fb.LastLogIndex
+                 LastLogTerm  = fb.LastLogTerm }
       else
         return!
           "Could not parse empty NodeFB"
