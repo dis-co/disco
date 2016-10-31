@@ -340,7 +340,6 @@ module CommandLine =
           ProjectInitError exn.Message
           |> Error.exitWith
     | Left error ->
-      printfn "Error: %A" error
       Error.exitWith error
 
     match Project.save user.Signature "project created" project with
@@ -349,7 +348,6 @@ module CommandLine =
       |> Option.get
       |> printfn "project initialized in %A"
     | Left error ->
-      printfn "Error: %A" error
       Error.exitWith error
 
   /// ## createProject
