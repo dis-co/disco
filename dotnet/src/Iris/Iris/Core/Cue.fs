@@ -65,7 +65,7 @@ and Cue =
                   |> ParseError
                   |> Either.fail
   #endif
-
+              ioboxes.[i] <- iobox
               return (i + 1, arr)
             })
           (Right (0, arr))
@@ -108,6 +108,7 @@ and Cue =
           (fun (m: Either<IrisError,int * IOBox array>) box -> either {
             let! (i, arr) = m
             let! (iobox : IOBox) = Yaml.fromYaml box
+            arr.[i] <- iobox
             return (i + 1, arr)
           })
           (Right (0, arr))
