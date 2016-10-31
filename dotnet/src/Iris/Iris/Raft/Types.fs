@@ -1,11 +1,14 @@
 namespace Iris.Raft
 
+// * imports
 open System
 open System.Net
 open Iris.Core
 open Iris.Serialization.Raft
 open FlatBuffers
 open SharpYaml.Serialization
+
+// * RaftSate
 
 /// The Raft state machine
 ///
@@ -19,15 +22,19 @@ type RaftState =
   | Candidate
   | Leader
 
+  // ** ToString
   override self.ToString() =
     sprintf "%A" self
 
+  // ** Parse
   static member Parse str =
     match str with
     | "Follower"  -> Follower
     | "Candidate" -> Candidate
     | "Leader"    -> Leader
     | _           -> failwithf "unable to parse %A as RaftState" str
+
+// * EntryResponse
 
 /// Response to an AppendEntry request
 ///
@@ -40,18 +47,27 @@ type EntryResponse =
   ;  Term  : Term
   ;  Index : Index }
 
-  with
-    override self.ToString() =
-      sprintf "Entry added with Id: %A in term: %d at log index: %d"
-        (string self.Id)
-        self.Term
-        self.Index
+  // ** ToString
+  override self.ToString() =
+    sprintf "Entry added with Id: %A in term: %d at log index: %d"
+      (string self.Id)
+      self.Term
+      self.Index
+
+// * Entry
 
 [<RequireQualifiedAccess>]
 module Entry =
+  // ** id
   let inline id    (er : EntryResponse) = er.Id
+
+  // ** term
   let inline term  (er : EntryResponse) = er.Term
+
+  // ** index
   let inline index (er : EntryResponse) = er.Index
+
+// * VoteRequest
 
 // __     __    _       ____                            _
 // \ \   / /__ | |_ ___|  _ \ ___  __ _ _   _  ___  ___| |_
@@ -69,36 +85,38 @@ module Entry =
 ///  - `LastLogTerm`  -  the index of the candidates last log entry
 type VoteRequest =
   { Term         : Term
-  ; Candidate    : RaftNode
-  ; LastLogIndex : Index
-  ; LastLogTerm  : Term
-  }
+    Candidate    : RaftNode
+    LastLogIndex : Index
+    LastLogTerm  : Term }
 
-  with
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      let node = self.Candidate.ToOffset(builder)
-      VoteRequestFB.StartVoteRequestFB(builder)
-      VoteRequestFB.AddTerm(builder, self.Term)
-      VoteRequestFB.AddLastLogTerm(builder, self.LastLogTerm)
-      VoteRequestFB.AddLastLogIndex(builder, self.LastLogIndex)
-      VoteRequestFB.AddCandidate(builder, node)
-      VoteRequestFB.EndVoteRequestFB(builder)
+  // ** ToOffset
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let node = self.Candidate.ToOffset(builder)
+    VoteRequestFB.StartVoteRequestFB(builder)
+    VoteRequestFB.AddTerm(builder, self.Term)
+    VoteRequestFB.AddLastLogTerm(builder, self.LastLogTerm)
+    VoteRequestFB.AddLastLogIndex(builder, self.LastLogIndex)
+    VoteRequestFB.AddCandidate(builder, node)
+    VoteRequestFB.EndVoteRequestFB(builder)
 
-    static member FromFB (fb: VoteRequestFB) : Either<IrisError, VoteRequest> =
-      either {
-        let candidate = fb.Candidate
-        if candidate.HasValue then
-          let! node = RaftNode.FromFB candidate.Value
-          return { Term         = fb.Term
-                   Candidate    = node
-                   LastLogIndex = fb.LastLogIndex
-                   LastLogTerm  = fb.LastLogTerm }
-        else
-          return!
-            "Could not parse empty NodeFB"
-            |> ParseError
-            |> Either.fail
-      }
+  // ** FromFB
+  static member FromFB (fb: VoteRequestFB) : Either<IrisError, VoteRequest> =
+    either {
+      let candidate = fb.Candidate
+      if candidate.HasValue then
+        let! node = RaftNode.FromFB candidate.Value
+        return { Term         = fb.Term
+                 Candidate    = node
+                 LastLogIndex = fb.LastLogIndex
+                 LastLogTerm  = fb.LastLogTerm }
+      else
+        return!
+          "Could not parse empty NodeFB"
+          |> ParseError
+          |> Either.fail
+    }
+
+// * VoteResponse
 
 // __     __    _       ____
 // \ \   / /__ | |_ ___|  _ \ ___  ___ _ __   ___  _ __  ___  ___
@@ -114,10 +132,10 @@ type VoteRequest =
 ///  - `Granted` - result of vote
 type VoteResponse =
   { Term    : Term
-  ; Granted : bool
-  ; Reason  : IrisError option
-  }
+    Granted : bool
+    Reason  : IrisError option }
 
+  // ** FromFB
   static member FromFB (fb: VoteResponseFB) : Either<IrisError, VoteResponse> =
     either {
       let! reason =
@@ -133,6 +151,7 @@ type VoteResponse =
                Reason  = reason }
     }
 
+  // ** ToOffset
   member self.ToOffset(builder: FlatBufferBuilder) =
     let err = Option.map (fun (r: IrisError) -> r.ToOffset(builder)) self.Reason
     VoteResponseFB.StartVoteResponseFB(builder)
@@ -144,19 +163,30 @@ type VoteResponse =
     VoteResponseFB.EndVoteResponseFB(builder)
 
 
+// * module Vote
 [<RequireQualifiedAccess>]
 module Vote =
-  // requests
+
+  // ** term
   let inline term         (vote : VoteRequest) = vote.Term
+
+  // ** candiate
   let inline candidate    (vote : VoteRequest) = vote.Candidate
+
+  // ** lastLogIndex
   let inline lastLogIndex (vote : VoteRequest) = vote.LastLogIndex
+
+  // ** lastLogTerm
   let inline lastLogTerm  (vote : VoteRequest) = vote.LastLogTerm
 
-  // responses
+  // ** granted
   let inline granted  (vote : VoteResponse) = vote.Granted
+
+  // ** declined
   let inline declined (vote : VoteResponse) = not vote.Granted
 
 
+// * AppendEntries
 
 //     _                               _ _____       _        _
 //    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
@@ -178,51 +208,53 @@ module Vote =
 ///  - `LeaderCommit`- the index of the entry that has been appended to the majority of the cluster. Entries up to this index will be applied to the FSM
 type AppendEntries =
   { Term         : Term
-  ; PrevLogIdx   : Index
-  ; PrevLogTerm  : Term
-  ; LeaderCommit : Index
-  ; Entries      : RaftLogEntry option
-  }
+    PrevLogIdx   : Index
+    PrevLogTerm  : Term
+    LeaderCommit : Index
+    Entries      : RaftLogEntry option }
 
-  with
-    static member FromFB (fb: AppendEntriesFB) : Either<IrisError,AppendEntries> =
-      either {
-        let! entries =
-          if fb.EntriesLength = 0 then
-            Either.succeed None
-          else
-            let raw = Array.zeroCreate fb.EntriesLength
-            for i in 0 .. (fb.EntriesLength - 1) do
-              let entry = fb.Entries(i)
-              if entry.HasValue then
-                raw.[i] <- entry.Value
-            RaftLogEntry.FromFB raw
+  // ** FromFB
+  static member FromFB (fb: AppendEntriesFB) : Either<IrisError,AppendEntries> =
+    either {
+      let! entries =
+        if fb.EntriesLength = 0 then
+          Either.succeed None
+        else
+          let raw = Array.zeroCreate fb.EntriesLength
+          for i in 0 .. (fb.EntriesLength - 1) do
+            let entry = fb.Entries(i)
+            if entry.HasValue then
+              raw.[i] <- entry.Value
+          RaftLogEntry.FromFB raw
 
-        return { Term         = fb.Term
-                 PrevLogIdx   = fb.PrevLogIdx
-                 PrevLogTerm  = fb.PrevLogTerm
-                 LeaderCommit = fb.LeaderCommit
-                 Entries      = entries }
-      }
+      return { Term         = fb.Term
+               PrevLogIdx   = fb.PrevLogIdx
+               PrevLogTerm  = fb.PrevLogTerm
+               LeaderCommit = fb.LeaderCommit
+               Entries      = entries }
+    }
 
-    member self.ToOffset(builder: FlatBufferBuilder) =
-      let entries =
-        Option.map
-          (fun (entries: RaftLogEntry) ->
-            let offsets = entries.ToOffset(builder)
-            AppendEntriesFB.CreateEntriesVector(builder, offsets))
-          self.Entries
+  // ** ToOffset
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let entries =
+      Option.map
+        (fun (entries: RaftLogEntry) ->
+          let offsets = entries.ToOffset(builder)
+          AppendEntriesFB.CreateEntriesVector(builder, offsets))
+        self.Entries
 
-      AppendEntriesFB.StartAppendEntriesFB(builder)
-      AppendEntriesFB.AddTerm(builder, self.Term)
-      AppendEntriesFB.AddPrevLogTerm(builder, self.PrevLogTerm)
-      AppendEntriesFB.AddPrevLogIdx(builder, self.PrevLogIdx)
-      AppendEntriesFB.AddLeaderCommit(builder, self.LeaderCommit)
+    AppendEntriesFB.StartAppendEntriesFB(builder)
+    AppendEntriesFB.AddTerm(builder, self.Term)
+    AppendEntriesFB.AddPrevLogTerm(builder, self.PrevLogTerm)
+    AppendEntriesFB.AddPrevLogIdx(builder, self.PrevLogIdx)
+    AppendEntriesFB.AddLeaderCommit(builder, self.LeaderCommit)
 
-      Option.map (fun offset -> AppendEntriesFB.AddEntries(builder, offset)) entries
-      |> ignore
+    Option.map (fun offset -> AppendEntriesFB.AddEntries(builder, offset)) entries
+    |> ignore
 
-      AppendEntriesFB.EndAppendEntriesFB(builder)
+    AppendEntriesFB.EndAppendEntriesFB(builder)
+
+// * AppendResponse
 
 //     _                               _ ____
 //    / \   _ __  _ __   ___ _ __   __| |  _ \ ___  ___ _ __   ___  _ __  ___  ___
@@ -243,17 +275,18 @@ type AppendEntries =
 ///  - `FirstIdx`   - The first idx that we received within the appendentries message
 type AppendResponse =
   { Term         : Term
-  ; Success      : bool
-  ; CurrentIndex : Index
-  ; FirstIndex   : Index
-  }
+    Success      : bool
+    CurrentIndex : Index
+    FirstIndex   : Index }
 
+  // ** FromFB
   static member FromFB (fb: AppendResponseFB) : Either<IrisError,AppendResponse> =
     Right { Term         = fb.Term
             Success      = fb.Success
             CurrentIndex = fb.CurrentIndex
             FirstIndex   = fb.FirstIndex }
 
+  // ** ToOffset
   member self.ToOffset(builder: FlatBufferBuilder) =
     AppendResponseFB.StartAppendResponseFB(builder)
     AppendResponseFB.AddTerm(builder, self.Term)
@@ -262,21 +295,39 @@ type AppendResponse =
     AppendResponseFB.AddCurrentIndex(builder, self.CurrentIndex)
     AppendResponseFB.EndAppendResponseFB(builder)
 
+// * module AppendRequest
+
 [<RequireQualifiedAccess>]
 module AppendRequest =
+
+  // ** term
   let inline term ar = ar.Term
+
+  // ** succeeded
   let inline succeeded ar = ar.Success
+
+  // ** failed
   let inline failed ar = not ar.Success
+
+  // ** firstIndex
   let inline firstIndex ar = ar.FirstIndex
+
+  // ** currentIndex
   let inline currentIndex ar = ar.CurrentIndex
 
+  // ** numEntries
   let inline numEntries ar =
     match ar.Entries with
       | Some entries -> LogEntry.depth entries
       | _            -> 0u
 
+  // ** prevLogIndex
   let inline prevLogIndex ae = ae.PrevLogIdx
+
+  // ** prevLogTerm
   let inline prevLogTerm ae = ae.PrevLogTerm
+
+// * InstallSnapshot
 
 //  ___           _        _ _ ____                        _           _
 // |_ _|_ __  ___| |_ __ _| | / ___| _ __   __ _ _ __  ___| |__   ___ | |_
@@ -287,53 +338,56 @@ module AppendRequest =
 
 type InstallSnapshot =
   { Term      : Term
-  ; LeaderId  : NodeId
-  ; LastIndex : Index
-  ; LastTerm  : Term
-  ; Data      : RaftLogEntry }
+    LeaderId  : NodeId
+    LastIndex : Index
+    LastTerm  : Term
+    Data      : RaftLogEntry }
 
-  with
-    member self.ToOffset (builder: FlatBufferBuilder) =
-      let data = InstallSnapshotFB.CreateDataVector(builder, self.Data.ToOffset(builder))
-      let leaderid = string self.LeaderId |> builder.CreateString
+  // ** ToOffset
+  member self.ToOffset (builder: FlatBufferBuilder) =
+    let data = InstallSnapshotFB.CreateDataVector(builder, self.Data.ToOffset(builder))
+    let leaderid = string self.LeaderId |> builder.CreateString
 
-      InstallSnapshotFB.StartInstallSnapshotFB(builder)
-      InstallSnapshotFB.AddTerm(builder, self.Term)
-      InstallSnapshotFB.AddLeaderId(builder, leaderid)
-      InstallSnapshotFB.AddLastTerm(builder, self.LastTerm)
-      InstallSnapshotFB.AddLastIndex(builder, self.LastIndex)
-      InstallSnapshotFB.AddData(builder, data)
-      InstallSnapshotFB.EndInstallSnapshotFB(builder)
+    InstallSnapshotFB.StartInstallSnapshotFB(builder)
+    InstallSnapshotFB.AddTerm(builder, self.Term)
+    InstallSnapshotFB.AddLeaderId(builder, leaderid)
+    InstallSnapshotFB.AddLastTerm(builder, self.LastTerm)
+    InstallSnapshotFB.AddLastIndex(builder, self.LastIndex)
+    InstallSnapshotFB.AddData(builder, data)
+    InstallSnapshotFB.EndInstallSnapshotFB(builder)
 
-    static member FromFB (fb: InstallSnapshotFB) =
-      either  {
-        let! decoded =
-          if fb.DataLength > 0 then
-            let raw = Array.zeroCreate fb.DataLength
-            for i in 0 .. (fb.DataLength - 1) do
-              let data = fb.Data(i)
-              if data.HasValue then
-                raw.[i] <- data.Value
-            RaftLogEntry.FromFB raw
-          else
-            "Invalid InstallSnapshot (no log data)"
-            |> ParseError
-            |> Either.fail
+  // ** FromFB
+  static member FromFB (fb: InstallSnapshotFB) =
+    either  {
+      let! decoded =
+        if fb.DataLength > 0 then
+          let raw = Array.zeroCreate fb.DataLength
+          for i in 0 .. (fb.DataLength - 1) do
+            let data = fb.Data(i)
+            if data.HasValue then
+              raw.[i] <- data.Value
+          RaftLogEntry.FromFB raw
+        else
+          "Invalid InstallSnapshot (no log data)"
+          |> ParseError
+          |> Either.fail
 
-        match decoded with
-        | Some entries ->
-          return
-            { Term      = fb.Term
-              LeaderId  = Id fb.LeaderId
-              LastIndex = fb.LastIndex
-              LastTerm  = fb.LastTerm
-              Data      = entries }
-        | _ ->
-          return!
-            "Invalid InstallSnapshot (no log data)"
-            |> ParseError
-            |> Either.fail
-      }
+      match decoded with
+      | Some entries ->
+        return
+          { Term      = fb.Term
+            LeaderId  = Id fb.LeaderId
+            LastIndex = fb.LastIndex
+            LastTerm  = fb.LastTerm
+            Data      = entries }
+      | _ ->
+        return!
+          "Invalid InstallSnapshot (no log data)"
+          |> ParseError
+          |> Either.fail
+    }
+
+// * Callback Interface
 
 /////////////////////////////////////////////////
 //   ____      _ _ _                _          //
@@ -408,6 +462,21 @@ type IRaftCallbacks =
   /// Callback for catching debug messsages
   abstract member LogMsg:  LogLevel ->  RaftNode        -> String                 -> unit
 
+// * RaftValueYaml
+
+and RaftValueYaml() =
+  [<DefaultValue>] val mutable Node            : string
+  [<DefaultValue>] val mutable Term            : Term
+  [<DefaultValue>] val mutable Leader          : string
+  [<DefaultValue>] val mutable Peers           : RaftNodeYaml array
+  [<DefaultValue>] val mutable VotedFor        : string
+  [<DefaultValue>] val mutable Log             : RaftLogYaml
+  [<DefaultValue>] val mutable ElectionTimeout : Long
+  [<DefaultValue>] val mutable RequestTimeout  : Long
+  [<DefaultValue>] val mutable MaxLogDepth     : Long
+
+// * RaftValue
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  ____        __ _                                                                                                                     //
 // |  _ \ __ _ / _| |_                                                                                                                   //
@@ -435,17 +504,6 @@ type IRaftCallbacks =
 //                                                                                                                                       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-and RaftValueYaml() =
-  [<DefaultValue>] val mutable Node            : string
-  [<DefaultValue>] val mutable Term            : Term
-  [<DefaultValue>] val mutable Leader          : string
-  [<DefaultValue>] val mutable Peers           : RaftNodeYaml array
-  [<DefaultValue>] val mutable VotedFor        : string
-  [<DefaultValue>] val mutable Log             : RaftLogYaml
-  [<DefaultValue>] val mutable ElectionTimeout : Long
-  [<DefaultValue>] val mutable RequestTimeout  : Long
-  [<DefaultValue>] val mutable MaxLogDepth     : Long
-
 and RaftValue =
   { Node              : RaftNode
   ; State             : RaftState
@@ -465,6 +523,7 @@ and RaftValue =
   ; ConfigChangeEntry : RaftLogEntry option
   }
 
+  // ** ToString
   override self.ToString() =
     sprintf "Node              = %s
 State             = %A
@@ -496,21 +555,25 @@ ConfigChangeEntry = %s
         Option.get self.ConfigChangeEntry |> string
        else "<empty>")
 
+  // ** IsLeader
   member self.IsLeader
     with get () =
       match self.CurrentLeader with
       | Some lid -> self.Node.Id = lid
       | _ -> false
 
+  // ** Yaml
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
   //  \ V / _` | '_ ` _ \| |
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
+  // *** ToYaml
   member self.ToYaml(serializer: Serializer) =
     self |> Yaml.toYaml |> serializer.Serialize
 
+  // *** ToYamlObject
   member self.ToYamlObject() =
     let yaml = new RaftValueYaml()
     yaml.Node <- string self.Node.Id
@@ -536,6 +599,7 @@ ConfigChangeEntry = %s
     yaml.MaxLogDepth <- self.MaxLogDepth
     yaml
 
+  // *** FromYamlObject
   static member FromYamlObject (yaml: RaftValueYaml) : Either<IrisError, RaftValue> =
     either {
       let leader =
@@ -588,10 +652,13 @@ ConfigChangeEntry = %s
           |> Either.fail
     }
 
+  // *** FromYaml
   static member FromYaml (str: string) : Either<IrisError, RaftValue> =
     let serializer = new Serializer()
     serializer.Deserialize<RaftValueYaml>(str)
     |> Yaml.fromYaml
+
+// * State Monad
 
 ////////////////////////////////////////
 //  __  __                       _    //
