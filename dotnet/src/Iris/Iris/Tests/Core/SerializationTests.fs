@@ -35,7 +35,7 @@ module SerializationTests =
         ; Candidate = node }
 
       let msg   = RequestVote(Id.Create(), vr)
-      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -54,7 +54,7 @@ module SerializationTests =
         ; Reason = Some VoteTermMismatch }
 
       let msg   = RequestVoteResponse(Id.Create(), vr)
-      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -88,12 +88,12 @@ module SerializationTests =
         ; Entries = log }
 
       let msg   = AppendEntries(Id.Create(), ae)
-      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
       expect "Should be structurally the same" msg id remsg
 
       let msg   = AppendEntries(Id.Create(), { ae with Entries = None })
-      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -114,7 +114,7 @@ module SerializationTests =
         }
 
       let msg = AppendEntriesResponse(Id.Create(), response)
-      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -138,7 +138,7 @@ module SerializationTests =
         }
 
       let msg = InstallSnapshot(Id.Create(), is)
-      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -151,7 +151,7 @@ module SerializationTests =
   let test_validate_handshake_serialization =
     testCase "Validate HandShake Serialization" <| fun _ ->
       let msg = HandShake(Node.create (Id.Create()))
-      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -164,7 +164,7 @@ module SerializationTests =
   let test_validate_handwaive_serialization =
     testCase "Validate HandWaive Serialization" <| fun _ ->
       let msg = HandWaive(Node.create (Id.Create()))
-      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -177,7 +177,7 @@ module SerializationTests =
   let test_validate_redirect_serialization =
     testCase "Validate Redirect Serialization" <| fun _ ->
       let msg = Redirect(Node.create (Id.Create()))
-      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
       expect "Should be structurally the same" msg id remsg
 
@@ -190,7 +190,7 @@ module SerializationTests =
   let test_validate_welcome_serialization =
     testCase "Validate Welcome Serialization" <| fun _ ->
       let msg = Welcome(Node.create (Id.Create()))
-      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
       expect "Should be structurally the same" msg id remsg
 
   //     _              _               _               _
@@ -202,7 +202,7 @@ module SerializationTests =
   let test_validate_arrivederci_serialization =
     testCase "Validate Arrivederci Serialization" <| fun _ ->
       let msg = Arrivederci
-      let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
+      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
       expect "Should be structurally the same" msg id remsg
 
   //  _____
@@ -259,7 +259,7 @@ module SerializationTests =
         ]
       List.iter (fun err ->
                   let msg = ErrorResponse(err)
-                  let remsg = msg |> Binary.encode |> Binary.decode |> Option.get
+                  let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
                   expect "Should be structurally the same" msg id remsg)
                 errors
 
@@ -370,7 +370,7 @@ module SerializationTests =
     testCase "Validate Log Yaml Serialization" <| fun _ ->
       let log : RaftLog = mkLog ()
 
-      let relog = log |> Yaml.encode |> Yaml.decode |> Option.get
+      let relog = log |> Yaml.encode |> Yaml.decode |> Either.get
       expect "should be same" log id relog
 
   //   ____
@@ -383,14 +383,14 @@ module SerializationTests =
     testCase "Validate Cue Binary Serialization" <| fun _ ->
       let cue : Cue = mkCue ()
 
-      let recue = cue |> Binary.encode |> Binary.decode |> Option.get
+      let recue = cue |> Binary.encode |> Binary.decode |> Either.get
       expect "should be same" cue id recue
 
   let test_validate_cue_yaml_serialization =
     testCase "Validate Cue Yaml Serialization" <| fun _ ->
       let cue : Cue = mkCue ()
 
-      let recue = cue |> Yaml.encode |> Yaml.decode |> Option.get
+      let recue = cue |> Yaml.encode |> Yaml.decode |> Either.get
       expect "should be same" cue id recue
 
   //   ____           _     _     _
@@ -403,14 +403,14 @@ module SerializationTests =
     testCase "Validate CueList Binary Serialization" <| fun _ ->
       let cuelist : CueList = mkCueList ()
 
-      let recuelist = cuelist |> Binary.encode |> Binary.decode |> Option.get
+      let recuelist = cuelist |> Binary.encode |> Binary.decode |> Either.get
       expect "should be same" cuelist id recuelist
 
   let test_validate_cuelist_yaml_serialization =
     testCase "Validate CueList Yaml Serialization" <| fun _ ->
       let cuelist : CueList = mkCueList ()
 
-      let recuelist = cuelist |> Yaml.encode |> Yaml.decode |> Option.get
+      let recuelist = cuelist |> Yaml.encode |> Yaml.decode |> Either.get
       expect "should be same" cuelist id recuelist
 
   //  ____       _       _
@@ -423,14 +423,14 @@ module SerializationTests =
     testCase "Validate Patch Binary Serialization" <| fun _ ->
       let patch : Patch = mkPatch ()
 
-      let repatch = patch |> Binary.encode |> Binary.decode |> Option.get
+      let repatch = patch |> Binary.encode |> Binary.decode |> Either.get
       expect "Should be structurally equivalent" patch id repatch
 
   let test_validate_patch_yaml_serialization =
     testCase "Validate Patch Yaml Serialization" <| fun _ ->
       let patch : Patch = mkPatch ()
 
-      let repatch = patch |> Yaml.encode |> Yaml.decode |> Option.get
+      let repatch = patch |> Yaml.encode |> Yaml.decode |> Either.get
       expect "Should be structurally equivalent" patch id repatch
 
   //  ____                _
@@ -443,14 +443,14 @@ module SerializationTests =
     testCase "Validate Session Binary Serialization" <| fun _ ->
       let session : Session = mkSession ()
 
-      let resession = session |> Binary.encode |> Binary.decode |> Option.get
+      let resession = session |> Binary.encode |> Binary.decode |> Either.get
       expect "Should be structurally equivalent" session id resession
 
   let test_validate_session_yaml_serialization =
     testCase "Validate Session Yaml Serialization" <| fun _ ->
       let session : Session = mkSession ()
 
-      let resession = session |> Yaml.encode |> Yaml.decode |> Option.get
+      let resession = session |> Yaml.encode |> Yaml.decode |> Either.get
       expect "Should be structurally equivalent" session id resession
 
   //  _   _
@@ -463,14 +463,14 @@ module SerializationTests =
     testCase "Validate User Binary Serialization" <| fun _ ->
       let user : User = mkUser ()
 
-      let reuser = user |> Binary.encode |> Binary.decode |> Option.get
+      let reuser = user |> Binary.encode |> Binary.decode |> Either.get
       expect "Should be structurally equivalent" user id reuser
 
   let test_validate_user_yaml_serialization =
     testCase "Validate User Yaml Serialization" <| fun _ ->
       let user : User = mkUser ()
 
-      let reuser = user |> Yaml.encode |> Yaml.decode |> Option.get
+      let reuser = user |> Yaml.encode |> Yaml.decode |> Either.get
       expect "Should be structurally equivalent" user id reuser
 
   //  ____  _ _
@@ -494,7 +494,7 @@ module SerializationTests =
       ; CompoundSlice { Index = 0u; Value = ioboxes () } |]
       |> Array.iter
         (fun slice ->
-          let reslice = slice |> Binary.encode |> Binary.decode |> Option.get
+          let reslice = slice |> Binary.encode |> Binary.decode |> Either.get
           expect "Should be structurally equivalent" slice id reslice)
 
   let test_validate_slice_yaml_serialization =
@@ -513,7 +513,7 @@ module SerializationTests =
       |]
       |> Array.iter
         (fun slice ->
-          let reslice = slice |> Yaml.encode |> Yaml.decode |> Option.get
+          let reslice = slice |> Yaml.encode |> Yaml.decode |> Either.get
           expect "Should be structurally equivalent" slice id reslice)
 
   //  ___ ___  ____
@@ -525,7 +525,7 @@ module SerializationTests =
   let test_validate_iobox_binary_serialization =
     testCase "Validate IOBox Binary Serialization" <| fun _ ->
       let check iobox =
-        iobox |> Binary.encode |> Binary.decode |> Option.get
+        iobox |> Binary.encode |> Binary.decode |> Either.get
         |> expect "Should be structurally equivalent" iobox id
 
       Array.iter check (ioboxes ())
@@ -541,7 +541,7 @@ module SerializationTests =
   let test_validate_iobox_yaml_serialization =
     testCase "Validate IOBox Yaml Serialization" <| fun _ ->
       let check iobox =
-        iobox |> Yaml.encode |> Yaml.decode |> Option.get
+        iobox |> Yaml.encode |> Yaml.decode |> Either.get
         |> expect "Should be structurally equivalent" iobox id
 
       Array.iter check (ioboxes ())
@@ -564,14 +564,14 @@ module SerializationTests =
     testCase "Validate State Binary Serialization" <| fun _ ->
       let state : State = mkState ()
 
-      state |> Binary.encode |> Binary.decode |> Option.get
+      state |> Binary.encode |> Binary.decode |> Either.get
       |> expect "Should be structurally equivalent" state id
 
   let test_validate_state_yaml_serialization =
     testCase "Validate State Yaml Serialization" <| fun _ ->
       let state : State = mkState ()
 
-      state |> Yaml.encode |> Yaml.decode |> Option.get
+      state |> Yaml.encode |> Yaml.decode |> Either.get
       |> expect "Should be structurally equivalent" state id
 
   //  ____  _        _       __  __            _     _
@@ -609,7 +609,7 @@ module SerializationTests =
       ]
       |> List.iter
           (fun cmd ->
-            let remsg = cmd |> Binary.encode |> Binary.decode |> Option.get
+            let remsg = cmd |> Binary.encode |> Binary.decode |> Either.get
             expect "Should be structurally the same" cmd id remsg)
 
   let test_validate_state_machine_yaml_serialization =
@@ -641,7 +641,7 @@ module SerializationTests =
       ]
       |> List.iter
           (fun cmd ->
-            let remsg = cmd |> Yaml.encode |> Yaml.decode |> Option.get
+            let remsg = cmd |> Yaml.encode |> Yaml.decode |> Either.get
             expect "Should be structurally the same" cmd id remsg)
 
   //     _    _ _   _____         _
