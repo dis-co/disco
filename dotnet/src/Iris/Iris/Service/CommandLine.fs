@@ -339,7 +339,9 @@ module CommandLine =
         | exn ->
           ProjectInitError exn.Message
           |> Error.exitWith
-    | Left error -> Error.exitWith error
+    | Left error ->
+      printfn "Error: %A" error
+      Error.exitWith error
 
     match Project.save user.Signature "project created" project with
     | Right(commit, project) ->
