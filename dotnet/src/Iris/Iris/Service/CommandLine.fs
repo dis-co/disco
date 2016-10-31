@@ -347,6 +347,7 @@ module CommandLine =
       |> Option.get
       |> printfn "project initialized in %A"
     | Left error ->
+      printfn "Error: %A" error
       Error.exitWith error
 
   /// ## createProject
