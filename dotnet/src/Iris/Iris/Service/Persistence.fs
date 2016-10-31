@@ -114,13 +114,13 @@ module Persistence =
   /// Returns: Either<IrisError,Raft>
   let loadRaft (options: IrisConfig) : Either<IrisError,RaftValue> =
     either {
-      printfn "metadata path: %s" (options |> Config.metadataPath)
       let! nodes = Config.getNodes options
       let! node = Config.selfNode options
       let! data =
         options
         |> Config.metadataPath
         |> loadAsset
+      // printfn "yaml string: %s" data
       return! Yaml.decode data
     }
 
@@ -153,7 +153,6 @@ module Persistence =
   ///
   /// Returns: Either<IrisError,FileInfo>
   let saveRaft (config: IrisConfig) (raft: RaftValue) =
-    printfn "datadir: %s" config.RaftConfig.DataDir
     try
       raft
       |> Yaml.encode

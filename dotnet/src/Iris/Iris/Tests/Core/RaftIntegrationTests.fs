@@ -35,7 +35,6 @@ module RaftIntegrationTests =
   // | |_| | |_) |   | |  __/\__ \ |_\__ \
   // |____/|____/    |_|\___||___/\__|___/
 
-
   let test_save_restore_raft_value_correctly =
     testCase "save/restore raft value correctly" <| fun _ ->
       let self =

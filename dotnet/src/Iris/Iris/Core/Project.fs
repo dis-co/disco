@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+// * Imports
+
 open System
 open System.IO
 open System.Linq
@@ -9,6 +11,8 @@ open LibGit2Sharp
 open Iris.Core.Utils
 open FSharpx.Functional
 open Iris.Raft
+
+// * IrisProject type
 
 //  ____            _           _
 // |  _ \ _ __ ___ (_) ___  ___| |_
@@ -26,6 +30,8 @@ type IrisProject =
   ; Copyright : string    option
   ; Author    : string    option
   ; Config    : IrisConfig }
+
+// * Project module
 
 [<RequireQualifiedAccess>]
 module Project =
