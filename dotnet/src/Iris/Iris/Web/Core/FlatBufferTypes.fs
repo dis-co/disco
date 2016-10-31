@@ -2201,6 +2201,12 @@ module FlatBufferTypes =
     [<Emit("Iris.Serialization.Raft.ErrorTypeFB.AssetSaveErrorFB")>]
     abstract AssetSaveErrorFB: ErrorTypeFB
 
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.AssetLoadErrorFB")>]
+    abstract AssetLoadErrorFB: ErrorTypeFB
+
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.AssetNotFoundErrorFB")>]
+    abstract AssetNotFoundErrorFB: ErrorTypeFB
+
     [<Emit("Iris.Serialization.Raft.ErrorTypeFB.AssetDeleteErrorFB")>]
     abstract AssetDeleteErrorFB: ErrorTypeFB
 
@@ -2208,7 +2214,7 @@ module FlatBufferTypes =
     abstract ParseErrorFB: ErrorTypeFB
 
     [<Emit("Iris.Serialization.Raft.ErrorTypeFB.SocketErrorFB")>]
-    abstract ParseErrorFB: ErrorTypeFB
+    abstract SocketErrorFB: ErrorTypeFB
 
     [<Emit("Iris.Serialization.Raft.ErrorTypeFB.OtherFB")>]
     abstract OtherFB: ErrorTypeFB

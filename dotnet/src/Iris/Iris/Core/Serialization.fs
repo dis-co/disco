@@ -68,7 +68,7 @@ module Binary =
 //   | | (_| | | | | | | |
 //   |_|\__,_|_| |_| |_|_|
 
-#if JAVSCRIPT
+#if JAVASCRIPT
 #else
 
 [<RequireQualifiedAccess>]

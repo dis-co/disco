@@ -165,7 +165,11 @@ type ColorSpace =
       |> HSLAValue.FromFB
       |> Either.map HSLA
 
-    | _ -> None
+    | x ->
+      sprintf "Could not deserialize ColorSpaceTypeFB %A" x
+      |> ParseError
+      |> Either.fail
+
 #else
     // On .NET side, System.Nullables are used. Hard to emulate rn.
     match fb.ValueType with

@@ -128,6 +128,8 @@ and RaftNode =
       (sprintf "(NxtIdx %A)" self.NextIndex)
       (sprintf "(MtchIdx %A)" self.MatchIndex)
 
+#if !JAVASCRIPT
+
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
   //  \ V / _` | '_ ` _ \| |
@@ -168,6 +170,8 @@ and RaftNode =
              ; State      = state }
     }
 
+#endif
+
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -199,17 +203,17 @@ and RaftNode =
   static member FromFB (fb: NodeFB) : Either<IrisError, RaftNode> =
     either {
       let! state = RaftNodeState.FromFB fb.State
-      return { Id = Id fb.Id
-               State = state
-               HostName = fb.HostName
-               IpAddr = IpAddress.Parse fb.IpAddr
-               Port = uint16 fb.Port
-               WebPort = uint16 fb.WebPort
-               WsPort = uint16 fb.WsPort
-               GitPort = uint16 fb.GitPort
-               Voting = fb.Voting
+      return { Id         = Id fb.Id
+               State      = state
+               HostName   = fb.HostName
+               IpAddr     = IpAddress.Parse fb.IpAddr
+               Port       = uint16 fb.Port
+               WebPort    = uint16 fb.WebPort
+               WsPort     = uint16 fb.WsPort
+               GitPort    = uint16 fb.GitPort
+               Voting     = fb.Voting
                VotedForMe = fb.VotedForMe
-               NextIndex = fb.NextIndex
+               NextIndex  = fb.NextIndex
                MatchIndex = fb.MatchIndex }
     }
 
@@ -322,6 +326,8 @@ and ConfigChange =
     |> ConfigChangeFB.GetRootAsConfigChangeFB
     |> ConfigChange.FromFB
 
+#if !JAVASCRIPT
+
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
   //  \ V / _` | '_ ` _ \| |
@@ -348,6 +354,8 @@ and ConfigChange =
       sprintf "Could not parse %s as ConfigChange" x
       |> ParseError
       |> Either.fail
+
+#endif
 
 [<RequireQualifiedAccess>]
 module Node =

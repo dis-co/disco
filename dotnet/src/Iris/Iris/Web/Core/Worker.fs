@@ -187,8 +187,10 @@ type GlobalContext() =
 
       sock.OnMessage <- fun (ev: MessageEvent<ArrayBuffer>) ->
         match Binary.decode ev.Data with
-        | Some sm -> self.OnSocketMessage sm
-        | _       -> self.Log "Unable to parse received message. Ignoring."
+        | Right sm   -> self.OnSocketMessage sm
+        | Left error ->
+          sprintf "Unable to parse received message. %A" error
+          |> self.Log
 
       socket <- Some (addr, sock)
 

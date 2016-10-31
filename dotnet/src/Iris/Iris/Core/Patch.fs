@@ -15,9 +15,11 @@ open Iris.Serialization.Raft
 
 #endif
 
+#if !JAVASCRIPT
+
 type PatchYaml(id, name, ioboxes) as self =
-  [<DefaultValue>] val mutable Id : string
-  [<DefaultValue>] val mutable Name : string
+  [<DefaultValue>] val mutable Id      : string
+  [<DefaultValue>] val mutable Name    : string
   [<DefaultValue>] val mutable IOBoxes : IOBoxYaml array
 
   new () = new PatchYaml(null, null, null)
@@ -26,6 +28,8 @@ type PatchYaml(id, name, ioboxes) as self =
     self.Id <- id
     self.Name <- name
     self.IOBoxes <- ioboxes
+
+#endif
 
 // #if JAVASCRIPT
 // [<CustomEquality>]
@@ -104,8 +108,7 @@ type Patch =
   static member RemoveIOBox (patch : Patch) (iobox : IOBox) : Patch =
     { patch with IOBoxes = Map.remove iobox.Id patch.IOBoxes }
 
-#if JAVASCRIPT
-#else
+#if !JAVASCRIPT
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |

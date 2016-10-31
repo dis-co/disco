@@ -847,8 +847,7 @@ and IOBox =
 //   | | (_| | | | | | | |
 //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
-#else
+#if !JAVASCRIPT
   member self.ToYamlObject() =
     let yaml = new IOBoxYaml()
     match self with
@@ -950,6 +949,7 @@ and IOBox =
 
     yaml
 
+
   /// ## Parse all SliceYamls for a given IOBox data type
   ///
   /// Takes an array> of SliceYaml and folds over it, parsing the
@@ -973,6 +973,8 @@ and IOBox =
       (Right (0, Array.zeroCreate slices.Length))
       slices
     |> Either.map snd
+
+#endif
 
   /// ## Parse all tags in a Flatbuffer-serialized type
   ///
@@ -1005,7 +1007,7 @@ and IOBox =
                                                  and ^b : (member SlicesLength : int)
                                                  and ^b : (member Slices : int -> ^a)>
                                                  (fb: ^b)
-                                                 : Either<IrisError, ^t> =
+                                                 : Either<IrisError, ^t array> =
     let len = (^b : (member SlicesLength : int) fb)
     let arr = Array.zeroCreate len
     Array.fold
@@ -1058,9 +1060,10 @@ and IOBox =
       (Right (0, arr))
       arr
     |> Either.map snd
+
 #endif
 
-
+#if !JAVASCRIPT
   static member FromYamlObject(yml: IOBoxYaml) =
     try
       match yml.BoxType with

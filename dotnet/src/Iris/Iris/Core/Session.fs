@@ -15,6 +15,9 @@ open SharpYaml.Serialization
 
 #endif
 
+
+#if !JAVASCRIPT
+
 // __   __              _    ___  _     _           _
 // \ \ / /_ _ _ __ ___ | |  / _ \| |__ (_) ___  ___| |_
 //  \ V / _` | '_ ` _ \| | | | | | '_ \| |/ _ \/ __| __|
@@ -35,6 +38,8 @@ type SessionYaml(id, name, ip, ua) as self =
     self.UserName  <- name
     self.IpAddress <- ip
     self.UserAgent <- ua
+
+#endif
 
 //  ____                _
 // / ___|  ___  ___ ___(_) ___  _ __
@@ -82,6 +87,8 @@ type Session =
 
   member self.ToBytes() = Binary.buildBuffer self
 
+#if !JAVASCRIPT
+
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
   //  \ V / _` | '_ ` _ \| |
@@ -113,3 +120,5 @@ type Session =
     let serializer = new Serializer()
     serializer.Deserialize<SessionYaml>(str)
     |> Yaml.fromYaml
+
+#endif

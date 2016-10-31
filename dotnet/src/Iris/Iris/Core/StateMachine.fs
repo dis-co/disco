@@ -71,7 +71,7 @@ type AppCommand =
     | x when x = ActionTypeFB.ResetFB       -> Right Reset
     | x when x = ActionTypeFB.SaveProjectFB -> Right SaveProject
     | x ->
-      sprintf "Could not parse %s as AppCommand" x
+      sprintf "Could not parse %A as AppCommand" x
       |> ParseError
       |> Either.fail
 #else
@@ -92,6 +92,8 @@ type AppCommand =
     | Redo        -> ActionTypeFB.RedoFB
     | Reset       -> ActionTypeFB.ResetFB
     | SaveProject -> ActionTypeFB.SaveProjectFB
+
+#if !JAVASCRIPT
 
 //  ____  _        _     __   __              _
 // / ___|| |_ __ _| |_ __\ \ / /_ _ _ __ ___ | |
@@ -118,6 +120,8 @@ type StateYaml(ps, ioboxes, cues, cuelists, nodes, sessions, users) as self =
     self.Nodes    <- nodes
     self.Sessions <- sessions
     self.Users    <- users
+
+#endif
 
 //   ____  _        _
 //  / ___|| |_ __ _| |_ ___
@@ -312,6 +316,8 @@ type State =
   member state.RemoveNode (node: RaftNode) =
     { state with Nodes = Map.remove node.Id state.Nodes }
 
+#if !JAVASCRIPT
+
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
   //  \ V / _` | '_ ` _ \| |
@@ -359,6 +365,8 @@ type State =
     let serializer = new Serializer()
     serializer.Deserialize<StateYaml>(str)
     |> Yaml.fromYaml
+
+#endif
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -836,6 +844,8 @@ and Store(state : State)=
 
 and Listener = Store -> StateMachine -> unit
 
+#if !JAVASCRIPT
+
 // __   __              _    ___  _     _           _
 // \ \ / /_ _ _ __ ___ | |  / _ \| |__ (_) ___  ___| |_
 //  \ V / _` | '_ ` _ \| | | | | | '_ \| |/ _ \/ __| __|
@@ -924,6 +934,8 @@ and StateMachineYaml(cmd: string, payload: obj) as self =
 
   static member DataSnapshot (state: State) =
     new StateMachineYaml("DataSnapshot", Yaml.toYaml state)
+
+#endif
 
 //  ____  _        _       __  __            _     _
 // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
@@ -1016,14 +1028,13 @@ and StateMachine =
     | DataSnapshot state    -> sprintf "DataSnapshot: %A" state
     | LogMsg(level, msg)    -> sprintf "LogMsg: [%A] %s" level msg
 
+#if !JAVASCRIPT
+
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
   //  \ V / _` | '_ ` _ \| |
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
-
-#if JAVASCRIPT
-#else
 
   member self.ToYamlObject() : StateMachineYaml =
     match self with
@@ -1201,94 +1212,115 @@ and StateMachine =
       let node = fb.NodeFB |> RaftNode.FromFB
       match fb.Action with
       | x when x = ActionTypeFB.AddFB ->
-        Option.map AddNode node
+        Either.map AddNode node
       | x when x = ActionTypeFB.UpdateFB ->
-        Option.map UpdateNode node
+        Either.map UpdateNode node
       | x when x = ActionTypeFB.RemoveFB ->
-        Option.map RemoveNode node
-      | _ -> None
+        Either.map RemoveNode node
+      | x ->
+        sprintf "Could not parse unknown ActionTypeFB %A" x
+        |> ParseError
+        |> Either.fail
 
     | x when x = PayloadFB.PatchFB ->
       let patch = fb.PatchFB |> Patch.FromFB
       match fb.Action with
       | x when x = ActionTypeFB.AddFB ->
-        Option.map AddPatch patch
+        Either.map AddPatch patch
       | x when x = ActionTypeFB.UpdateFB ->
-        Option.map UpdatePatch patch
+        Either.map UpdatePatch patch
       | x when x = ActionTypeFB.RemoveFB ->
-        Option.map RemovePatch patch
-      | _ -> None
+        Either.map RemovePatch patch
+      | x ->
+        sprintf "Could not parse unknown ActionTypeFB %A" x
+        |> ParseError
+        |> Either.fail
 
     | x when x = PayloadFB.IOBoxFB ->
       let iobox = fb.IOBoxFB |> IOBox.FromFB
       match fb.Action with
       | x when x = ActionTypeFB.AddFB ->
-        Option.map AddIOBox iobox
+        Either.map AddIOBox iobox
       | x when x = ActionTypeFB.UpdateFB ->
-        Option.map UpdateIOBox iobox
+        Either.map UpdateIOBox iobox
       | x when x = ActionTypeFB.RemoveFB ->
-        Option.map RemoveIOBox iobox
-      | _ -> None
+        Either.map RemoveIOBox iobox
+      | x ->
+        sprintf "Could not parse unknown ActionTypeFB %A" x
+        |> ParseError
+        |> Either.fail
 
     | x when x = PayloadFB.CueFB ->
       let cue = fb.CueFB |> Cue.FromFB
       match fb.Action with
       | x when x = ActionTypeFB.AddFB ->
-        Option.map AddCue cue
+        Either.map AddCue cue
       | x when x = ActionTypeFB.UpdateFB ->
-        Option.map UpdateCue cue
+        Either.map UpdateCue cue
       | x when x = ActionTypeFB.RemoveFB ->
-        Option.map RemoveCue cue
-      | _ -> None
+        Either.map RemoveCue cue
+      | x ->
+        sprintf "Could not parse unknown ActionTypeFB %A" x
+        |> ParseError
+        |> Either.fail
 
     | x when x = PayloadFB.CueListFB ->
       let cuelist = fb.CueListFB |> CueList.FromFB
       match fb.Action with
       | x when x = ActionTypeFB.AddFB ->
-        Option.map AddCueList cuelist
+        Either.map AddCueList cuelist
       | x when x = ActionTypeFB.UpdateFB ->
-        Option.map UpdateCueList cuelist
+        Either.map UpdateCueList cuelist
       | x when x = ActionTypeFB.RemoveFB ->
-        Option.map RemoveCueList cuelist
-      | _ -> None
+        Either.map RemoveCueList cuelist
+      | x ->
+        sprintf "Could not parse unknown ActionTypeFB %A" x
+        |> ParseError
+        |> Either.fail
 
     | x when x = PayloadFB.UserFB ->
       let user = fb.UserFB |> User.FromFB
       match fb.Action with
       | x when x = ActionTypeFB.AddFB ->
-        Option.map AddUser user
+        Either.map AddUser user
       | x when x = ActionTypeFB.UpdateFB ->
-        Option.map UpdateUser user
+        Either.map UpdateUser user
       | x when x = ActionTypeFB.RemoveFB ->
-        Option.map RemoveUser user
-      | _ -> None
+        Either.map RemoveUser user
+      | x ->
+        sprintf "Could not parse unknown ActionTypeFB %A" x
+        |> ParseError
+        |> Either.fail
 
     | x when x = PayloadFB.SessionFB ->
       let session = fb.SessionFB |> Session.FromFB
       match fb.Action with
       | x when x = ActionTypeFB.AddFB ->
-        Option.map AddSession session
+        Either.map AddSession session
       | x when x = ActionTypeFB.UpdateFB ->
-        Option.map UpdateSession session
+        Either.map UpdateSession session
       | x when x = ActionTypeFB.RemoveFB ->
-        Option.map RemoveSession session
-      | _ -> None
+        Either.map RemoveSession session
+      | x ->
+        sprintf "Could not parse unknown ActionTypeFB %A" x
+        |> ParseError
+        |> Either.fail
 
     | x when x = PayloadFB.StateFB && fb.Action = ActionTypeFB.DataSnapshotFB ->
       fb.StateFB
       |> State.FromFB
-      |> Option.map DataSnapshot
+      |> Either.map DataSnapshot
 
     | x when x = PayloadFB.LogMsgFB ->
       let msg = fb.LogMsgFB
       msg.LogLevel
-      |> LogLevel.Parse
-      |> Option.map (fun level -> LogMsg(level, msg.Msg))
+      |> LogLevel.TryParse
+      |> Either.map (fun level -> LogMsg(level, msg.Msg))
 
     | _ ->
       fb.Action
       |> AppCommand.FromFB
-      |> Option.map Command
+      |> Either.map Command
 
 #else
   static member FromFB (fb: ApiActionFB) =
