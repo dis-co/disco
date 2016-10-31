@@ -1,7 +1,9 @@
 namespace Iris.Service
 
+// * CommandLine
 module CommandLine =
 
+  // ** Imports
   open Argu
   open System
   open Iris.Core
@@ -11,14 +13,14 @@ module CommandLine =
   open System.IO
   open System.Linq
 
-  ////////////////////////////////////////
-  //     _                              //
-  //    / \   _ __ __ _ ___             //
-  //   / _ \ | '__/ _` / __|            //
-  //  / ___ \| | | (_| \__ \            //
-  // /_/   \_\_|  \__, |___/            //
-  //              |___/                 //
-  ////////////////////////////////////////
+  // ** Command Line Argument Parser
+
+  //     _
+  //    / \   _ __ __ _ ___
+  //   / _ \ | '__/ _` / __|
+  //  / ___ \| | | (_| \__ \
+  // /_/   \_\_|  \__, |___/
+  //              |___/
 
   type SubCommand =
     | Create
@@ -49,6 +51,8 @@ module CommandLine =
           | Cmd     _ -> "Either one of (--create, --start, --reset or --dump)"
 
   let parser = ArgumentParser.Create<CLIArguments>()
+
+  // ** validateOptions
 
   let validateOptions (opts: ParseResults<CLIArguments>) =
     let ensureDir result =
@@ -83,51 +87,7 @@ module CommandLine =
         if not ws   then printfn "    --ws=<ws port>"
         Error.exitWith CliParseError
 
-  let parseLogLevel = function
-    | "debug" -> Debug
-    | "info"  -> Info
-    | "warn"  -> Warn
-    | _       -> Err
-
-  ////////////////////////////////////////
-  //  ____  _        _                  //
-  // / ___|| |_ __ _| |_ ___            //
-  // \___ \| __/ _` | __/ _ \           //
-  //  ___) | || (_| | ||  __/           //
-  // |____/ \__\__,_|\__\___| manipulation....
-  ////////////////////////////////////////
-
-  let parseHostString (str: string) =
-    let trimmed = str.Trim().Split(' ')
-    match trimmed with
-      | [| id; hostname; hostspec |] as arr ->
-        if hostspec.StartsWith("tcp://") then
-          match hostspec.Substring(6).Split(':') with
-            | [| addr; port |] -> Some (uint32 id, hostname, addr, int port)
-            | _ -> None
-        else None
-      | _ -> None
-
-  let tryAppendEntry (ctx: RaftServer) str =
-    match ctx.Append (LogMsg(Debug,str)) with
-      | Right response ->
-        printfn "Added Entry: %s Index: %A Term: %A"
-          (string response.Id)
-          response.Index
-          response.Term
-      | Left error ->
-        printfn "AppendEntry Error: %A" error
-
-  let timeoutRaft (ctx: RaftServer) =
-    ctx.ForceTimeout()
-
-  /////////////////////////////////////////
-  //   ____                      _       //
-  //  / ___|___  _ __  ___  ___ | | ___  //
-  // | |   / _ \| '_ \/ __|/ _ \| |/ _ \ //
-  // | |__| (_) | | | \__ \ (_) | |  __/ //
-  //  \____\___/|_| |_|___/\___/|_|\___| //
-  /////////////////////////////////////////
+  // ** Utilities
 
   let private withTrim (token: string) (str: string) =
     let trimmed = trim str
@@ -140,6 +100,37 @@ module CommandLine =
     if trim str = token
     then Some ()
     else None
+
+
+  let parseHostString (str: string) =
+    let trimmed = str.Trim().Split(' ')
+    match trimmed with
+      | [| id; hostname; hostspec |] as arr ->
+        if hostspec.StartsWith("tcp://") then
+          match hostspec.Substring(6).Split(':') with
+            | [| addr; port |] -> Some (uint32 id, hostname, addr, int port)
+            | _ -> None
+        else None
+      | _ -> None
+
+  // ** tryAppendEntry
+
+  let tryAppendEntry (ctx: RaftServer) str =
+    match ctx.Append (LogMsg(Debug,str)) with
+      | Right response ->
+        printfn "Added Entry: %s Index: %A Term: %A"
+          (string response.Id)
+          response.Index
+          response.Term
+      | Left error ->
+        printfn "AppendEntry Error: %A" error
+
+  // ** timeoutRaft
+
+  let timeoutRaft (ctx: RaftServer) =
+    ctx.ForceTimeout()
+
+  // ** Command Parsers
 
   let (|Exit|_|)     str = withEmpty "exit" str
   let (|Quit|_|)     str = withEmpty "quit" str
@@ -172,16 +163,21 @@ module CommandLine =
       | [| "log"; "err" |]   -> Some "err"
       | _                  -> None
 
+  // ** trySetLogLevel
 
   let trySetLogLevel (str: string) (context: RaftServer) =
     let config =
       { context.Options.RaftConfig with
-          LogLevel = parseLogLevel str }
+          LogLevel = LogLevel.Parse str }
     context.Options <- Config.updateEngine config context.Options
+
+  // ** trySetInterval
 
   let trySetInterval i (context: RaftServer) =
     let config = { context.Options.RaftConfig with PeriodicInterval = i }
     context.Options <- Config.updateEngine config context.Options
+
+  // ** tryJoinCluster
 
   let tryJoinCluster (hst: string) (context: RaftServer) =
     let parsed =
@@ -193,8 +189,12 @@ module CommandLine =
       | Some(ip, port) -> context.JoinCluster(ip, port)
       | _ -> printfn "parameters %A could not be parsed" hst
 
+  // ** tryLeaveCluster
+
   let tryLeaveCluster (context: RaftServer) =
     context.LeaveCluster()
+
+  // ** tryAddNode
 
   let tryAddNode (hst: string) (context: RaftServer) =
     let parsed =
@@ -212,6 +212,8 @@ module CommandLine =
       | _ ->
         printfn "parameters %A could not be parsed" hst
 
+  // ** tryRmNode
+
   let tryRmNode (hst: string) (context: RaftServer) =
       match context.RmNode(trim hst) with
         | Some appended ->
@@ -219,14 +221,14 @@ module CommandLine =
         | _ ->
           printfn "Could not removed node %A " hst
 
-  ////////////////////////////////////////
-  //  _                                 //
-  // | |    ___   ___  _ __             //
-  // | |   / _ \ / _ \| '_ \            //
-  // | |__| (_) | (_) | |_) |           //
-  // |_____\___/ \___/| .__/            //
-  //                  |_|               //
-  ////////////////////////////////////////
+  // ** consoleLoop
+
+  //  _
+  // | |    ___   ___  _ __
+  // | |   / _ \ / _ \| '_ \
+  // | |__| (_) | (_) | |_) |
+  // |_____\___/ \___/| .__/
+  //                  |_|
 
   let consoleLoop (context: IrisService) : unit =
     let kont = ref true
@@ -250,6 +252,7 @@ module CommandLine =
         proc kontinue
     proc kont
 
+  // ** buildNode
 
   //  _   _           _
   // | \ | | ___   __| | ___
@@ -264,6 +267,8 @@ module CommandLine =
         WsPort  = parsed.GetResult <@ Ws   @>
         WebPort = parsed.GetResult <@ Web  @>
         Port    = parsed.GetResult <@ Raft @> }
+
+  // ** startService
 
   //  ____  _             _
   // / ___|| |_ __ _ _ __| |_
@@ -288,18 +293,41 @@ module CommandLine =
       | Left error ->
         ProjectNotFound projectdir |> Error.exitWith
 
+  // ** createProject
+
   //   ____                _
   //  / ___|_ __ ___  __ _| |_ ___
   // | |   | '__/ _ \/ _` | __/ _ \
   // | |___| | |  __/ (_| | ||  __/
   //  \____|_|  \___|\__,_|\__\___|
 
+  /// ## buildProject
+  ///
+  /// Create a new IrisProject data structure with given parameters.
+  ///
+  /// ### Signature:
+  /// - name: Name of the Project
+  /// - path: destination path of the Project
+  /// - raftDir: Raft data directory
+  /// - node: self Node (built from Node Id env var)
+  ///
+  /// Returns: IrisProject
   let buildProject (name: string) (path: FilePath) (raftDir: FilePath) (node: RaftNode) =
     Project.create name
     |> Project.updatePath path
     |> Project.updateDataDir raftDir
     |> Project.addMember node
 
+  /// ## initializeRaft
+  ///
+  /// Given the user (usually the admin user) and Project value, initialize the Raft intermediate
+  /// state in the data directory and commit the result to git.
+  ///
+  /// ### Signature:
+  /// - user: User to commit as
+  /// - project: IrisProject to initialize
+  ///
+  /// Returns: unit
   let initializeRaft (user: User) (project: IrisProject) =
     match createRaft project.Config with
     | Right raft ->
@@ -321,6 +349,14 @@ module CommandLine =
     | Left error ->
       Error.exitWith error
 
+  /// ## createProject
+  ///
+  /// Create a new project given the passed command line options.
+  ///
+  /// ### Signature:
+  /// - parsed: ParseResult<CLIArguments>
+  ///
+  /// Returns: unit
   let createProject (parsed: ParseResults<CLIArguments>) =
     let me = User.Admin
     let baseDir = parsed.GetResult <@ Dir @>
@@ -344,12 +380,22 @@ module CommandLine =
     |> Either.map (buildProject dir name raftDir)
     |> Either.map (initializeRaft me)
 
+  // ** resetProject
+
   //  ____                _
   // |  _ \ ___  ___  ___| |_
   // | |_) / _ \/ __|/ _ \ __|
   // |  _ <  __/\__ \  __/ |_
   // |_| \_\___||___/\___|\__|
 
+  /// ## resetProject
+  ///
+  /// Reset a Project at given path to initial state.
+  ///
+  /// ### Signature:
+  /// - datadir: FilePath to Project directory
+  ///
+  /// Returns: unit
   let resetProject (datadir: FilePath) =
     let reset project =
       let raftDir = datadir </> RAFT_DIRECTORY
@@ -374,6 +420,8 @@ module CommandLine =
     datadir </> PROJECT_FILENAME + ASSET_EXTENSION
     |> Project.load
     |> Error.orExit reset
+
+  // ** dumpDataDir
 
   //  ____
   // |  _ \ _   _ _ __ ___  _ __
