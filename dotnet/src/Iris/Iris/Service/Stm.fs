@@ -311,26 +311,36 @@ let handleHandwaive node (appState: TVar<RaftAppContext>) cbs =
     doRedirect state
 
 let appendEntry (cmd: StateMachine) appState cbs =
-  let state = readTVar appState |> atomically
+  either {
+    let state = readTVar appState |> atomically
 
-  let result =
-    Raft.receiveEntry (Log.make (Raft.currentTerm state.Raft) cmd)
-    >>= returnM
-    |> runRaft state.Raft cbs
+    let update raftState =
+      state
+      |> RaftContext.updateRaft raftState
+      |> writeTVar appState
+      |> atomically
 
-  match result with
-  | Right (appended, raftState) ->
-    writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
-    let ok = waitForCommit appended appState cbs
-    if ok then
-      Some appended
-    else
-      None
-  | Left (err, raftState) ->
-    writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
-    sprintf "encountered error in receiveEntry: %A" err
-    |> errMsg state cbs
-    None
+    let result =
+      Log.make (Raft.currentTerm state.Raft) cmd
+      |> Raft.receiveEntry
+      |> runRaft state.Raft cbs
+
+    match result with
+    | Right (appended, raftState) ->
+      update raftState
+      let ok = waitForCommit appended appState cbs
+      if ok then
+        return appended
+      else
+        return!
+          "Unable to commit entry"
+          |> Other
+          |> Either.fail
+    | Left (err, raftState) ->
+      update raftState
+      return! Either.fail err
+  }
+
 
 let handleInstallSnapshot node snapshot (appState: TVar<RaftAppContext>) cbs =
   // let snapshot = createSnapshot () |> runRaft raft' cbs
@@ -414,52 +424,51 @@ let startPeriodic appState cbs =
 
 // -------------------------------------------------------------------------
 let tryJoin (ip: IpAddress) (port: uint32) cbs (state: RaftAppContext) =
-  let rec _tryJoin retry uri =
-    if retry < int state.Options.RaftConfig.MaxRetries then
-      let client = mkClientSocket uri state
+  let rec _tryJoin retry peer =
+    either {
+      if retry < int state.Options.RaftConfig.MaxRetries then
+        let client = mkReqSocket peer state.Context
 
-      sprintf "Trying To Join Cluster. Retry: %d" retry
-      |> debugMsg state cbs
-
-      let request = HandShake(state.Raft.Node)
-      let result = rawRequest request client
-
-      sprintf "Result: %A" result
-      |> debugMsg state cbs
-
-      dispose client
-
-      match result with
-      | Right (Welcome node) ->
-        sprintf "Received Welcome from %A" node.Id
+        sprintf "Trying To Join Cluster. Retry: %d" retry
         |> debugMsg state cbs
-        Right node
 
-      | Right (Redirect next) ->
-        sprintf "Got redirected to %A" (nodeUri next)
-        |> infoMsg state cbs
-        _tryJoin (retry + 1) (nodeUri next)
+        let request = HandShake(state.Raft.Node)
+        let! result = rawRequest request client
 
-      | Right (ErrorResponse err) ->
-        sprintf "Unexpected error occurred. %A" err
+        sprintf "Result: %A" result
+        |> debugMsg state cbs
+
+        dispose client
+
+        match result with
+        | Welcome node ->
+          sprintf "Received Welcome from %A" node.Id
+          |> debugMsg state cbs
+          return node
+
+        | Redirect next ->
+          sprintf "Got redirected to %A" (nodeUri next)
+          |> infoMsg state cbs
+          return! _tryJoin (retry + 1) next
+
+        | ErrorResponse err ->
+          sprintf "Unexpected error occurred. %A" err
+          |> errMsg state cbs
+          return! Either.fail err
+
+        | resp ->
+          sprintf "Unexpected response. %A" resp
+          |> errMsg state cbs
+          return! Either.fail (Other "Unexpected response")
+      else
+        "Too many unsuccesful connection attempts."
         |> errMsg state cbs
-        Left err
+        return! Either.fail (Other "Too many unsuccesful connection attempts.")
+    }
 
-      | Right resp ->
-        sprintf "Unexpected response. %A" resp
-        |> errMsg state cbs
-        Left (Other "Unexpected response")
-
-      | Left err ->
-        sprintf "Errot: %A Node: %A unreachable." err uri
-        |> errMsg state cbs
-        Left err
-    else
-      "Too many unsuccesful connection attempts."
-      |> errMsg state cbs
-      Left (Other "Too many unsuccesful connection attempts.")
-
-  formatUri ip (int port) |> _tryJoin 0
+  _tryJoin 0 { Node.create (Id.Create()) with
+                IpAddr = ip
+                Port = uint16 port }
 
 /// ## Attempt to leave a Raft cluster
 ///
@@ -474,52 +483,40 @@ let tryJoin (ip: IpAddress) (port: uint32) cbs (state: RaftAppContext) =
 let tryLeave (appState: TVar<RaftAppContext>) cbs : Either<IrisError,bool> =
   let state = readTVar appState |> atomically
 
-  let rec _tryLeave retry (uri: string) =
-    if retry < int state.Options.RaftConfig.MaxRetries then
-      let client = mkClientSocket uri state
-      let request = HandWaive(state.Raft.Node)
-      let result = rawRequest request client
+  let rec _tryLeave retry node =
+    either {
+      if retry < int state.Options.RaftConfig.MaxRetries then
+        let client = mkReqSocket node state.Context
+        let request = HandWaive(state.Raft.Node)
+        let! result = rawRequest request client
 
-      dispose client
+        dispose client
 
-      match result with
-      | Right (Redirect other) ->
-        if retry <= int state.Options.RaftConfig.MaxRetries then
-          nodeUri other |> _tryLeave (retry + 1)
-        else
-          "Too many retries. aborting" |> errMsg state cbs
-          Left (Other "Too many retries, aborting.")
-
-      | Right Arrivederci ->
-        Right true
-
-      | Right (ErrorResponse err) ->
-        sprintf "Unexpected error occurred. %A" err |> errMsg state cbs
-        Left err
-
-      | Right resp ->
-        sprintf "Unexpected response.\n%A" resp |> errMsg state cbs
-        Left (Other "Unexpected response")
-
-      | Left err ->
-        "Node unreachable." |> errMsg state cbs
-        Left (sprintf "Error: %A" err |> Other)
-
-    else
-      "Too many unsuccesful connection attempts." |> errMsg state cbs
-      Left (Other "Too many unsuccesful connection attempts.")
+        match result with
+        | Redirect other ->
+          if retry <= int state.Options.RaftConfig.MaxRetries then
+            return! _tryLeave (retry + 1) other
+          else
+            return!
+              Other "Too many retries, aborting."
+              |> Either.fail
+        | Arrivederci       -> return true
+        | ErrorResponse err -> return! Either.fail err
+        | resp              -> return! Either.fail (Other "Unexpected response")
+      else
+        return! Either.fail (Other "Too many unsuccesful connection attempts.")
+    }
 
   match state.Raft.CurrentLeader with
   | Some nid ->
     match Map.tryFind nid state.Raft.Peers with
-      | Some node -> nodeUri node |> _tryLeave 0
-      | _         ->
-        "Node data for leader id not found" |> errMsg state cbs
-        Left (Other "Node data for leader id not found")
+    | Some node -> _tryLeave 0 node
+    | _         ->
+      Other "Node data for leader id not found"
+      |> Either.fail
   | _ ->
-    "no known leader" |> errMsg state cbs
-    Left (Other "no known leader")
-
+    Other "No known Leader"
+    |> Either.fail
 
 let forceElection appState cbs =
   let state = readTVar appState |> atomically

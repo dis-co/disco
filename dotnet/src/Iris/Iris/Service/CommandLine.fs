@@ -110,12 +110,13 @@ module CommandLine =
 
   let tryAppendEntry (ctx: RaftServer) str =
     match ctx.Append (LogMsg(Debug,str)) with
-      | Some response ->
+      | Right response ->
         printfn "Added Entry: %s Index: %A Term: %A"
           (string response.Id)
           response.Index
           response.Term
-      | _ -> failwith "an error occurred"
+      | Left error ->
+        printfn "AppendEntry Error: %A" error
 
   let timeoutRaft (ctx: RaftServer) =
     ctx.ForceTimeout()
@@ -372,7 +373,7 @@ module CommandLine =
 
     datadir </> PROJECT_FILENAME + ASSET_EXTENSION
     |> Project.load
-    |> Either.orExit reset
+    |> Error.orExit reset
 
   //  ____
   // |  _ \ _   _ _ __ ___  _ __

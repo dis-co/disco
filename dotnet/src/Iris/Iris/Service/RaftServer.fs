@@ -47,12 +47,11 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
   let periodictoken               = ref None
 
   let cbs = this :> IRaftCallbacks
+
   let appState =
-    match mkState context options with
+    match mkContext context options with
     | Right state -> newTVar state
     | Left error  -> Error.exitWith error
-
-  let connections = newTVar Map.empty
 
   //            _ _ _                _
   //   ___ __ _| | | |__   __ _  ___| | _____
@@ -172,8 +171,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
         Option.bind (dispose >> Some) (!server) |> ignore
 
         this.Debug "RaftServer: disposing sockets"
-        readTVar connections
-        |> atomically
+        self.State.Connections
         |> resetConnections
 
         this.Debug "RaftServer: saving state to disk"
@@ -194,6 +192,18 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
     and set opts =
       let state = readTVar appState |> atomically
       writeTVar appState { state with Options = opts } |> atomically
+
+  member self.GetClient (node: RaftNode) =
+    let state = self.State
+    match RaftContext.getConnection state node.Id with
+    | Some socket -> socket
+    | _ ->
+      let socket = mkReqSocket node state.Context
+      socket
+      |> RaftContext.addConnection state
+      |> writeTVar appState
+      |> atomically
+      socket
 
   member self.Context
     with get () = context
@@ -248,69 +258,65 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
     member self.SendRequestVote node req  =
       let state = self.State
       let request = RequestVote(state.Raft.Node.Id,req)
-      let conns = readTVar connections |> atomically
+      let client = self.GetClient node
+      let result = performRequest request client
 
-      let response, conns = performRequest request node state conns
-
-      writeTVar connections conns |> atomically
-
-      match response with
-        | Some message ->
-          match message with
-            | RequestVoteResponse(sender, vote) -> Some vote
-            | resp ->
-              sprintf "SendRequestVote: Unexpected Response: %A" resp
-              |> this.Err
-              None
-        | _ ->
-          sprintf "SendRequestVote: No response received for request to %s" (string node.Id)
+      match result with
+      | Right response ->
+        match response with
+        | RequestVoteResponse(sender, vote) -> Some vote
+        | resp ->
+          resp
+          |> sprintf "SendRequestVote: Unexpected Response: %A"
           |> this.Err
           None
+      | Left error ->
+        nodeUri node
+        |> sprintf "SendRequestVote: encountered error \"%A\" during request to %s" error
+        |> this.Err
+        None
 
     member self.SendAppendEntries (node: RaftNode) (request: AppendEntries) =
       let state = self.State
-      let conns = readTVar connections |> atomically
       let request = AppendEntries(state.Raft.Node.Id, request)
+      let client = self.GetClient node
+      let result = performRequest request client
 
-      let response, conns = performRequest request node state conns
-
-      writeTVar connections conns |> atomically
-
-      match response with
-        | Some message ->
-          match message with
-            | AppendEntriesResponse(sender, ar) -> Some ar
-            | resp ->
-              sprintf "SendAppendEntries: Unexpected Response:  %A" resp
-              |> this.Err
-              None
-        | _ ->
-          sprintf "SendAppendEntries: No response received for request to %s" (string node.Id)
+      match result with
+      | Right response ->
+        match response with
+        | AppendEntriesResponse(sender, ar) -> Some ar
+        | resp ->
+          resp
+          |> sprintf "SendAppendEntries: Unexpected Response:  %A"
           |> this.Err
           None
+      | Left error ->
+        nodeUri node
+        |> sprintf "SendAppendEntries: Error \"%A\" received for request to %s" error
+        |> this.Err
+        None
 
     member self.SendInstallSnapshot node is =
       let state = self.State
-      let conns = readTVar connections |> atomically
-
+      let client = self.GetClient node
       let request = InstallSnapshot(state.Raft.Node.Id, is)
+      let result = performRequest request client
 
-      let response, conns = performRequest request node state conns
-
-      writeTVar connections conns |> atomically
-
-      match response with
-        | Some message ->
-          match message with
-            | InstallSnapshotResponse(sender, ar) -> Some ar
-            | resp ->
-              sprintf "SendInstallSnapshot: Unexpected Response: %A" resp
-              |> this.Err
-              None
-        | _ ->
-          sprintf "SendInstallSnapshot: No response received for request to %s" (string node.Id)
+      match result with
+      | Right response ->
+        match response with
+        | InstallSnapshotResponse(sender, ar) -> Some ar
+        | resp ->
+          resp
+          |> sprintf "SendInstallSnapshot: Unexpected Response: %A"
           |> this.Err
           None
+      | Left error ->
+        nodeUri node
+        |> sprintf "SendInstallSnapshot: Error \"%A\" received for request to %s" error
+        |> this.Err
+        None
 
     //     _                _          ____               _
     //    / \   _ __  _ __ | |_   _   / ___|_ __ ___   __| |
@@ -527,7 +533,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
 
   override self.ToString() =
     sprintf "Connections:%s\nNodes:%s\nRaft:%s\nLog:%s"
-      (readTVar connections |> atomically |> string |> indent 4)
+      (self.State.Connections |> string |> indent 4)
       (Map.fold (fun m _ t -> sprintf "%s\n%s" m (string t)) "" self.State.Raft.Peers |> indent 4)
       (self.State.Raft.ToString() |> indent 4)
       (string self.State.Raft.Log |> indent 4)
@@ -571,11 +577,12 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
         do! Raft.setTimeoutElapsedM 0u
 
         match tryLeave appState cbs with
-        | Right true ->
-          "Successfully left cluster." |> infoMsg state cbs
+        | Right true  -> "Successfully left cluster." |> infoMsg state cbs // FIXME: this might need more consequences than this
+        | Right false -> "Could not leave cluster."   |> errMsg state cbs
         | Left err ->
-          sprintf "Could not leave cluster. %A" err
-          |> infoMsg state cbs
+          err
+          |> sprintf "Could not leave cluster. %A"
+          |> errMsg state cbs
 
         do! Raft.becomeFollower ()
 

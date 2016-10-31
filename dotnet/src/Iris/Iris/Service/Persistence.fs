@@ -1,5 +1,7 @@
 namespace Iris.Service
 
+// * Imports
+
 open System
 open System.IO
 open Iris.Raft
@@ -11,7 +13,10 @@ open ZeroMQ
 open FSharpx.Functional
 open SharpYaml.Serialization
 
+// * Persistence
 module Persistence =
+
+  // ** saveAsset
 
   /// ## saveAsset
   ///
@@ -32,6 +37,8 @@ module Persistence =
    info.Refresh()
    info
 
+  // ** deleteAsset
+
   /// ## deleteAsset
   ///
   /// Delete a file from disk
@@ -47,6 +54,8 @@ module Persistence =
       with
         | exn -> ()
     IO.FileInfo location
+
+  // ** loadAsset
 
   /// ## loadAsset
   ///
@@ -68,6 +77,8 @@ module Persistence =
       AssetNotFoundError location
       |> Either.fail
 
+  // ** createRaft
+
   /// ## Create a new Raft state
   ///
   /// Create a new initial Raft state value with default values from
@@ -88,6 +99,8 @@ module Persistence =
       return state
     }
 
+  // ** loadRaft
+
   /// ## Load a raft state from disk
   ///
   /// Load a Raft state value from disk. This includes parsing the
@@ -104,13 +117,14 @@ module Persistence =
       printfn "metadata path: %s" (options |> Config.metadataPath)
       let! nodes = Config.getNodes options
       let! node = Config.selfNode options
-      let! meta =
+      let! data =
         options
         |> Config.metadataPath
         |> loadAsset
-        |> Yaml.decode<IrisError,RaftValue>
-      return meta
+      return! Yaml.decode data
     }
+
+  // ** getRaft
 
   /// ## Get Raft state value from config
   ///
@@ -125,6 +139,8 @@ module Persistence =
     match loadRaft options with
       | Right raft -> Either.succeed raft
       | _          -> createRaft options
+
+  // ** saveRaft
 
   /// ## saveRaftMetadata to disk
   ///
@@ -147,6 +163,29 @@ module Persistence =
       | exn ->
         ProjectSaveError exn.Message
         |> Either.fail
+
+  // ** mkContext
+
+  /// ## Create an RaftAppState value
+  ///
+  /// Given the `RaftOptions`, create or load data and construct a new `RaftAppState` for the
+  /// `RaftServer`.
+  ///
+  /// ### Signature:
+  /// - context: `ZeroMQ` `Context`
+  /// - options: `RaftOptions`
+  ///
+  /// Returns: RaftAppState
+  let mkContext (context: ZeroMQ.ZContext) (options: IrisConfig) : Either<IrisError,RaftAppContext> =
+    either {
+      let! raft = getRaft options
+      return { Raft        = raft
+               Context     = context
+               Connections = Map.empty
+               Options     = options }
+    }
+
+  // ** saveWithCommit
 
   /// ## saveWithCommit
   ///
@@ -193,6 +232,17 @@ module Persistence =
 
     | _ -> ProjectPathError |> Either.fail
 
+  // ** deleteWithCommit
+
+  /// ## deleteWithCommit
+  ///
+  /// Delete a file path from disk and commit the change to git.
+  ///
+  /// ### Signature:
+  /// - project: Project to work on
+  /// - thing: ^t thing to delete
+  ///
+  /// Returns: Either<IrisError, FileInfo * Commit * Project>
   let inline deleteWithCommit< ^t when
                                ^t : (member CanonicalName : string) and
                                ^t : (member DirName : string)>
@@ -221,6 +271,17 @@ module Persistence =
           |> Either.fail
     | _ -> Either.fail ProjectPathError
 
+  // ** persistEntry
+
+  /// ## persistEntry
+  ///
+  /// Persist a StateMachine command to disk.
+  ///
+  /// ### Signature:
+  /// - project: IrisProject to work on
+  /// - sm: StateMachine command
+  ///
+  /// Returns: Either<IrisError, FileInfo * Commit * IrisProject>
   let inline persistEntry (project: IrisProject) (sm: StateMachine) =
     match sm with
     | AddCue        cue     -> saveWithCommit     project cue
@@ -234,5 +295,17 @@ module Persistence =
     | RemoveUser    user    -> deleteWithCommit project user
     | _                     -> Left (Other "this is ok. relax")
 
+  // ** updateRepo
+
+  /// ## updateRepo
+  ///
+  /// Description
+  ///
+  /// ### Signature:
+  /// - arg: arg
+  /// - arg: arg
+  /// - arg: arg
+  ///
+  /// Returns: Either<IrisError, about:blank>
   let updateRepo (project: IrisProject) =
     printfn "should pull shit now"

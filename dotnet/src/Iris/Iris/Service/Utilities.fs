@@ -11,24 +11,6 @@ module Utilities =
   open Iris.Core
   open Iris.Service.Persistence
 
-  /// ## Create an RaftAppState value
-  ///
-  /// Given the `RaftOptions`, create or load data and construct a new `RaftAppState` for the
-  /// `RaftServer`.
-  ///
-  /// ### Signature:
-  /// - context: `ZeroMQ` `Context`
-  /// - options: `RaftOptions`
-  ///
-  /// Returns: RaftAppState
-  let mkState (context: ZeroMQ.ZContext) (options: IrisConfig) : Either<IrisError,RaftAppContext> =
-    getRaft options
-    |> Either.map
-        (fun raft ->
-          { Raft      = raft
-          ; Context   = context
-          ; Options   = options })
-
   /// ## idiomatically cancel a CancellationTokenSource
   ///
   /// Cancels a ref to an CancellationTokenSource. Assign None when done.

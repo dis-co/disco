@@ -33,8 +33,8 @@ type IrisService(project: IrisProject ref) =
       wsserver.Send session.Id (DataSnapshot store.State)
       let msg =
         match raftserver.Append(AddSession session) with
-        | Some entry -> Iris.Core.LogLevel.Debug, (sprintf "Added session to Raft log with id: %A" entry.Id)
-        | _          -> Iris.Core.LogLevel.Err, "Could not add new session log."
+        | Right entry -> Debug, (sprintf "Added session to Raft log with id: %A" entry.Id)
+        | Left  error -> Err, string error
       wsserver.Broadcast (LogMsg msg)
 
     wsserver.OnClose <- fun sessionid ->
@@ -42,11 +42,11 @@ type IrisService(project: IrisProject ref) =
       | Some session ->
         let msg =
           match raftserver.Append(RemoveSession session) with
-          | Some entry -> Iris.Core.LogLevel.Debug, (sprintf "Remove session added to Raft log with id: %A" entry.Id)
-          | _          -> Iris.Core.LogLevel.Err, "Could not remove session log."
+          | Right entry -> Debug, (sprintf "Remove session added to Raft log with id: %A" entry.Id)
+          | Left error  -> Err, string error
         wsserver.Broadcast (LogMsg msg)
       | _ ->
-        let msg = Iris.Core.LogLevel.Err, "Session not found. Something spooky is going on"
+        let msg = Err, "Session not found. Something spooky is going on"
         wsserver.Broadcast (LogMsg msg)
 
     wsserver.OnError <- fun sessionid ->
@@ -54,18 +54,18 @@ type IrisService(project: IrisProject ref) =
       | Some session ->
         let msg =
           match raftserver.Append(RemoveSession session) with
-          | Some entry -> Iris.Core.LogLevel.Debug, (sprintf "Remove session (due to Error) added to Raft log with id: %A" entry.Id)
-          | _          -> Iris.Core.LogLevel.Err, "Could not remove session log."
+          | Right entry -> Debug, (sprintf "Remove session added to Raft log with id: %A" entry.Id)
+          | Left error  -> Err, string error
         wsserver.Broadcast (LogMsg msg)
       | _ ->
-        let msg = Iris.Core.LogLevel.Err, "Session not found. Something spooky is going on"
+        let msg = Err, "Session not found. Something spooky is going on"
         wsserver.Broadcast (LogMsg msg)
 
     wsserver.OnMessage <- fun sessionid command ->
       let msg =
         match raftserver.Append(command) with
-        | Some entry -> Iris.Core.LogLevel.Debug, (sprintf "Entry added to Raft log with id: %A" entry.Id)
-        | _          -> Iris.Core.LogLevel.Err, "Could not add new entry to Raft log :("
+        | Right entry -> Debug, (sprintf "Entry added to Raft log with id: %A" entry.Id)
+        | Left error  -> Err, string error
       wsserver.Broadcast (LogMsg msg)
 
     // RAFTSERVER

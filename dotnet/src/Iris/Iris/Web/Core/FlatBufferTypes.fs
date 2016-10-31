@@ -2207,6 +2207,9 @@ module FlatBufferTypes =
     [<Emit("Iris.Serialization.Raft.ErrorTypeFB.ParseErrorFB")>]
     abstract ParseErrorFB: ErrorTypeFB
 
+    [<Emit("Iris.Serialization.Raft.ErrorTypeFB.SocketErrorFB")>]
+    abstract ParseErrorFB: ErrorTypeFB
+
     [<Emit("Iris.Serialization.Raft.ErrorTypeFB.OtherFB")>]
     abstract OtherFB: ErrorTypeFB
 

@@ -35,6 +35,7 @@ type IrisError =
 
   | MetaDataNotFound
 
+  | SocketError            of string
   | ParseError             of string
 
   // CLI
@@ -120,6 +121,7 @@ type IrisError =
     | x when x = ErrorTypeFB.UnexpectedVotingChangeFB -> Right UnexpectedVotingChange
     | x when x = ErrorTypeFB.VoteTermMismatchFB       -> Right VoteTermMismatch
     | x when x = ErrorTypeFB.ParseErrorFB             -> Right (ParseError fb.Message)
+    | x when x = ErrorTypeFB.SocketErrorFB            -> Right (SocketError fb.Message)
     | x ->
       sprintf "Could not parse unknown ErrotTypeFB: %A" x
       |> ParseError
@@ -168,6 +170,7 @@ type IrisError =
     | ErrorTypeFB.UnexpectedVotingChangeFB -> Right UnexpectedVotingChange
     | ErrorTypeFB.VoteTermMismatchFB       -> Right VoteTermMismatch
     | ErrorTypeFB.ParseErrorFB             -> Right (ParseError fb.Message)
+    | ErrorTypeFB.SocketErrorFB            -> Right (SocketError fb.Message)
     | x ->
       sprintf "Could not parse unknown ErrotTypeFB: %A" x
       |> ParseError
@@ -199,6 +202,7 @@ type IrisError =
       | AssetSaveError         _ -> ErrorTypeFB.AssetSaveErrorFB
       | AssetDeleteError       _ -> ErrorTypeFB.AssetDeleteErrorFB
       | ParseError             _ -> ErrorTypeFB.ParseErrorFB
+      | SocketError            _ -> ErrorTypeFB.SocketErrorFB
       | Other                  _ -> ErrorTypeFB.OtherFB
 
       | AlreadyVoted             -> ErrorTypeFB.AlreadyVotedFB
@@ -240,6 +244,7 @@ type IrisError =
       | AssetLoadError         msg -> builder.CreateString msg |> Some
       | AssetDeleteError       msg -> builder.CreateString msg |> Some
       | ParseError             msg -> builder.CreateString msg |> Some
+      | SocketError            msg -> builder.CreateString msg |> Some
       | Other                  msg -> builder.CreateString msg |> Some
       | _                          -> None
 
@@ -274,7 +279,8 @@ module Error =
     | ProjectSaveError      e -> sprintf "Project could not be saved: %s" e
     | ProjectParseError     e -> sprintf "Project could not be parsed: %s" e
 
-    | ParseError            e -> sprintf "Parse error: %s" e
+    | ParseError            e -> sprintf "Parse Error: %s" e
+    | SocketError           e -> sprintf "Socket Error: %s" e
 
     // LITEDB
     | ProjectInitError      e -> sprintf "Database could not be created: %s" e
@@ -350,30 +356,31 @@ module Error =
     | AssetDeleteError      _ -> 21
 
     | ParseError            _ -> 21
+    | SocketError           _ -> 22
 
-    | Other                 _ -> 22
+    | Other                 _ -> 23
 
     // RAFT
-    | AlreadyVoted            -> 23
-    | AppendEntryFailed       -> 24
-    | CandidateUnknown        -> 25
-    | EntryInvalidated        -> 26
-    | InvalidCurrentIndex     -> 27
-    | InvalidLastLog          -> 28
-    | InvalidLastLogTerm      -> 29
-    | InvalidTerm             -> 30
-    | LogFormatError          -> 31
-    | LogIncomplete           -> 32
-    | NoError                 -> 33
-    | NoNode                  -> 34
-    | NotCandidate            -> 35
-    | NotLeader               -> 36
-    | NotVotingState          -> 37
-    | ResponseTimeout         -> 38
-    | SnapshotFormatError     -> 39
-    | StaleResponse           -> 40
-    | UnexpectedVotingChange  -> 41
-    | VoteTermMismatch        -> 42
+    | AlreadyVoted            -> 24
+    | AppendEntryFailed       -> 25
+    | CandidateUnknown        -> 26
+    | EntryInvalidated        -> 27
+    | InvalidCurrentIndex     -> 28
+    | InvalidLastLog          -> 29
+    | InvalidLastLogTerm      -> 30
+    | InvalidTerm             -> 31
+    | LogFormatError          -> 32
+    | LogIncomplete           -> 33
+    | NoError                 -> 34
+    | NoNode                  -> 35
+    | NotCandidate            -> 36
+    | NotLeader               -> 37
+    | NotVotingState          -> 38
+    | ResponseTimeout         -> 39
+    | SnapshotFormatError     -> 40
+    | StaleResponse           -> 41
+    | UnexpectedVotingChange  -> 42
+    | VoteTermMismatch        -> 43
 
   let inline isOk (error: IrisError) =
     match error with

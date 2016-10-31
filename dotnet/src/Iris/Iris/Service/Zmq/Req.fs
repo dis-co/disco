@@ -1,9 +1,13 @@
 namespace Iris.Service.Zmq
 
+// * Imports
+
 open System
 open System.Threading
 open ZeroMQ
 open Iris.Core
+
+// * Req
 
 /// ## Req
 ///
@@ -14,7 +18,9 @@ open Iris.Core
 /// - ctx: ZeroMQ context
 ///
 /// Returns: instance of Req
-type Req (addr: string, ctx: ZContext, timeout: int) =
+type Req (id: Id, addr: string, ctx: ZContext, timeout: int) =
+
+  let nodeid = id
 
   let mutable starter:   AutoResetEvent = null
   let mutable stopper:   AutoResetEvent = null
@@ -32,6 +38,8 @@ type Req (addr: string, ctx: ZContext, timeout: int) =
   let mutable disposed = false
   let mutable sock = null
   let mutable lokk = null
+
+  // ** worker
 
   let worker _ =                                              // thread worker function
     if isNull sock then                                       // if not yet present
@@ -71,12 +79,21 @@ type Req (addr: string, ctx: ZContext, timeout: int) =
     started <- false                                           // and not running anymore
     stopper.Set() |> ignore                                    // signal that everything was cleaned up now
 
+  // ** Constructor
+
   do
     lokk      <- new Object()                                  // lock object
     starter   <- new AutoResetEvent(false)                     // initialize the signals
     stopper   <- new AutoResetEvent(false)
     requester <- new AutoResetEvent(false)
     responder <- new AutoResetEvent(false)
+
+  // ** Id
+
+  member self.Id
+    with get () = nodeid
+
+  // ** Start
 
   member self.Start() =
     if not started && not disposed then
@@ -86,6 +103,8 @@ type Req (addr: string, ctx: ZContext, timeout: int) =
     elif disposed then
       failwith "Socket disposed."
 
+  // ** Stop
+
   member self.Stop() =
     if started && not disposed then
       run <- false                                             // stop the loop from iterating
@@ -93,11 +112,15 @@ type Req (addr: string, ctx: ZContext, timeout: int) =
       stopper.WaitOne() |> ignore                              // wait for the stopper to signal that everything was disposed
       thread.Join()
 
+  // ** Restart
+
   member self.Restart() =
     self.Stop()                                               // stop, if not stopped yet
     disposed <- false                                          // disposed reset to default
     run <- true                                                // run reset to default
     self.Start()                                              // start the socket
+
+  // ** Request
 
   member self.Request(req: byte array) : Either<IrisError,byte array> =
     if started && not disposed then                               // synchronously request the square of `req-`
@@ -119,6 +142,8 @@ type Req (addr: string, ctx: ZContext, timeout: int) =
       "Socket not started"
       |> SocketError
       |> Either.fail
+
+  // ** Dispose
 
   interface IDisposable with
     member self.Dispose() = self.Stop()

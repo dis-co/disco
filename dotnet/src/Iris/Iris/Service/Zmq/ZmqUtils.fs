@@ -1,5 +1,6 @@
 namespace Iris.Service.Zmq
 
+// * Imports
 open System
 open System.Threading
 open ZeroMQ
@@ -7,8 +8,11 @@ open Iris.Raft
 open Iris.Core
 open Iris.Service
 
+
 [<AutoOpen>]
 module ZmqUtils =
+
+  // * formatUri
 
   /// ## Format ZeroMQ URI
   ///
@@ -22,6 +26,8 @@ module ZmqUtils =
   let formatUri (ip: IpAddress) (port: int) =
     sprintf "tcp://%s:%d" (string ip) port
 
+  // * nodeUri
+
   /// ## Format ZeroMQ URI for passed NodeInfo
   ///
   /// Formates the given IrisNode's host metadata into a ZeroMQ compatible resource string.
@@ -32,6 +38,8 @@ module ZmqUtils =
   /// Returns: string
   let nodeUri (data: RaftNode) =
     formatUri data.IpAddr (int data.Port)
+
+  // * request
 
   /// ## execute a request and return response
   ///
@@ -45,6 +53,8 @@ module ZmqUtils =
   let request (sock: Req) (req: RaftRequest) : Either<IrisError,RaftResponse> =
     req |> Binary.encode |> sock.Request |> Either.bind Binary.decode
 
+  // * mkReqSocket
+
   /// ## Make a new client socket with correct settings
   ///
   /// Creates a new req type socket with correct settings, connects and returns it.
@@ -54,24 +64,14 @@ module ZmqUtils =
   /// - state: current app state
   ///
   /// Returns: fszmq.Socket
-  let mkClientSocket (uri: string) (state: RaftAppContext) =
+  let mkReqSocket (node: RaftNode) (context: ZContext) =
     let timeout = 2000 // FIXME: this request timeout value should be settable
-    let socket = new Req(uri, state.Context, timeout)
+    let addr = nodeUri node
+    let socket = new Req(node.Id, addr, context, timeout)
     socket.Start()
     socket
 
-  // let send (socket: ZSocket) (bytes: byte array) =
-  //   use msg = new ZFrame(bytes)
-  //   socket.Send(msg)
-
-  // let recv (socket: ZSocket) : byte array =
-  //   use frame = socket.ReceiveFrame()
-  //   frame.Read()
-
-  let addSocket (node: RaftNode) (state: RaftAppContext) (connections: Map<Id,Zmq.Req>) =
-    let addr = nodeUri node
-    let socket = mkClientSocket addr state
-    (socket, Map.add node.Id socket connections)
+  // * getSocket
 
   /// ## getSocket for Member
   ///
@@ -84,6 +84,8 @@ module ZmqUtils =
   /// Returns: Req option
   let getSocket (node: RaftNode) (connections: Map<Id,Zmq.Req>) : Req option =
     Map.tryFind node.Id connections
+
+  // * disposeSocket
 
   /// ## Dispose of a client socket
   ///
@@ -101,6 +103,8 @@ module ZmqUtils =
       Map.remove node.Id connections
     | _  -> connections
 
+  // * rawRequest
+
   /// ## Perform a raw request cycle on a request socket
   ///
   /// Request a resource and return its response.
@@ -117,6 +121,8 @@ module ZmqUtils =
     |> client.Request
     |> Either.bind Binary.decode<IrisError,RaftResponse>
 
+  // * performRequest
+
   /// ## Send RaftRequest to node
   ///
   /// Sends given RaftRequest to node. If the request times out, None is return to indicate
@@ -124,27 +130,25 @@ module ZmqUtils =
   /// indicate whether de-serialization was successful.
   ///
   /// ### Signature:
-  /// - thing:    RaftRequest to send
-  /// - node:     node to send the message to
-  /// - appState: application state TVar
+  /// - request:    RaftRequest to send
+  /// - client:     client socket to use
   ///
-  /// Returns: RaftResponse option
-  let performRequest (request: RaftRequest) (node: RaftNode) (state: RaftAppContext) (connections: Map<Id,Zmq.Req>) =
+  /// Returns: Either<IrisError,RaftResponse>
+  let performRequest (request: RaftRequest) (client: Req) =
     either {
-      let client = getSocket node connections
       try
         let! response = rawRequest request client
-        return (response, connections)
+        return response
       with
         | :? TimeoutException ->
-          disposeSocket node connections
-          "Operation timed out"
-          |> SocketError
-          |> Either.fail
-
+          return!
+            "Operation timed out"
+            |> SocketError
+            |> Either.fail
         | exn ->
-          disposeSocket node connections
-          sprintf "performRequest encountered an exception: %s" exn.Message
-          |> SocketError
-          |> Either.fail
+          return!
+            exn.Message
+            |> sprintf "performRequest encountered an exception: %s"
+            |> SocketError
+            |> Either.fail
     }

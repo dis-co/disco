@@ -79,9 +79,9 @@
     <Compile Include="Iris\Core\Uri.fs" />
     <Compile Include="Iris\Service\GitDaemon.fs" />
     <Compile Include="Iris\Service\Request.fs" />
-    <Compile Include="Iris\Service\RaftAppState.fs" />
     <Compile Include="Iris\Service\Zmq\Rep.fs" />
     <Compile Include="Iris\Service\Zmq\Req.fs" />
+    <Compile Include="Iris\Service\RaftAppState.fs" />
     <Compile Include="Iris\Service\Zmq\ZmqUtils.fs" />
     <compile Include="Iris\Service\Persistence.fs" />
     <Compile Include="Iris\Service\Utilities.fs" />

@@ -376,6 +376,7 @@ enum ErrorTypeFB:ushort {
      AssetSaveErrorFB,
      AssetDeleteErrorFB,
      ParseErrorFB,
+     SocketErrorFB,
      OKFB,
 
      // RAFT

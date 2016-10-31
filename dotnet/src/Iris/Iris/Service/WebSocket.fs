@@ -78,14 +78,19 @@ module WebSocket =
     //                             |___/
 
     let onMessage (socket: IWebSocketConnection) (msg: Binary.Buffer) =
-      let session = getSessionId socket
-      let entry : StateMachine option = Binary.decode msg
+      Option.map
+        (fun cb ->
+          let session = getSessionId socket
+          let entry : Either<IrisError,StateMachine> = Binary.decode msg
 
-      match entry with
-      | Some command -> Option.map (fun cb -> cb session command) onMessageCb |> ignore
-      | _            -> ()
-
-      printfn "[%s] onMessage: %A" (string session) entry
+          match entry with
+          | Right command -> cb session command
+          | Left  error   ->
+            (Err, sprintf "Decoding Error: %A" error)
+            |> LogMsg
+            |> cb session)
+        onMessageCb
+      |> ignore
 
     //  _____
     // | ____|_ __ _ __ ___  _ __

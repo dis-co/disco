@@ -103,21 +103,30 @@ type AssetServer(config: IrisConfig) =
     ]
 
   let appConfig =
-    Config.getNodeId ()
-    |> Either.bind (Config.findNode config)
-    |> Either.orExit
-        (fun node ->
-          let addr = IPAddress.Parse (string node.IpAddr)
-          let port = Sockets.Port.Parse (string node.WebPort)
+    either {
+      let! nid = Config.getNodeId ()
+      let! node = Config.findNode config nid
 
-          printfn "Starting WebSocket Server on: %A:%A" addr port
+      try
+        let addr = IPAddress.Parse (string node.IpAddr)
+        let port = Sockets.Port.Parse (string node.WebPort)
 
-          { defaultConfig with
-              logger            = ConsoleWindowLogger(Suave.Logging.LogLevel.Info)
-              cancellationToken = cts.Token
-              homeFolder        = Some(basePath)
-              bindings          = [ HttpBinding.mk HTTP addr port ]
-              mimeTypesMap      = mimeTypes })
+        printfn "Starting Suave Web Server on: %A:%A" addr port
+
+        return { defaultConfig with
+                   logger            = ConsoleWindowLogger(Suave.Logging.LogLevel.Info)
+                   cancellationToken = cts.Token
+                   homeFolder        = Some(basePath)
+                   bindings          = [ HttpBinding.mk HTTP addr port ]
+                   mimeTypesMap      = mimeTypes }
+      with
+        | exn ->
+          return!
+            exn.Message
+            |> Other
+            |> Either.fail
+    }
+    |> Error.orExit id
 
   let thread = new Thread(new ThreadStart(fun _ ->
     try startWebServer appConfig app
