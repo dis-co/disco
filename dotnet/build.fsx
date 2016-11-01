@@ -591,6 +591,22 @@ Target "Release" DoNothing
 ==> "BuildWebTests"
 ==> "RunWebTests"
 
+//  ____       _                 ____             _
+// |  _ \  ___| |__  _   _  __ _|  _ \  ___   ___| | _____ _ __
+// | | | |/ _ \ '_ \| | | |/ _` | | | |/ _ \ / __| |/ / _ \ '__|
+// | |_| |  __/ |_) | |_| | (_| | |_| | (_) | (__|   <  __/ |
+// |____/ \___|_.__/ \__,_|\__, |____/ \___/ \___|_|\_\___|_|
+//                         |___/
+
+Target "DebugDocker" DoNothing
+
+"Clean"
+==> "GenerateSerialization"
+==> "BuildWorkerDebug"
+==> "BuildFrontendDebug"
+==> "BuildDebugService"
+==> "DebugDocker"
+
 //  ____       _                    _    _ _
 // |  _ \  ___| |__  _   _  __ _   / \  | | |
 // | | | |/ _ \ '_ \| | | |/ _` | / _ \ | | |
