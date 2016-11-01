@@ -97,6 +97,9 @@
     <Content Include="Dockerfile">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="start.sh">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Iris.exe.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

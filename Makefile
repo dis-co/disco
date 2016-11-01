@@ -76,6 +76,7 @@ debug.all:
 clean:
 	${BUILD} Clean
 
+
 #           _
 #  _ __ ___| | ___  __ _ ___  ___
 # | '__/ _ \ |/ _ \/ _` / __|/ _ \
@@ -103,11 +104,14 @@ fsi:
 # | |_| | (_) | (__|   <  __/ |
 # |____/ \___/ \___|_|\_\___|_|
 
-image:
-	@docker build ${CURRENT_DIR}/dotnet/src/Iris/bin/Debug/Iris/
+docker:
+	${BUILD} DebugDocker
+
+image: docker
+	@sudo docker build ${CURRENT_DIR}/dotnet/src/Iris/bin/Debug/Iris/
 
 start:
-	@docker run -i --rm --net=host \
+	@sudo docker run -i --rm --net=host \
 		-v ${PROJECT}:/project \
 		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
 		-p ${IRIS_GIT}:${IRIS_GIT} \
