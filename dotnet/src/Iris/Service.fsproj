@@ -94,6 +94,9 @@
     <Compile Include="Iris\Service\IrisService.fs" />
     <Compile Include="Iris\Service\CommandLine.fs" />
     <Compile Include="Iris\Service\Main.fs" />
+    <Content Include="Dockerfile">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Iris.exe.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

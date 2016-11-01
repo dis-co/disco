@@ -92,10 +92,29 @@ release:
 # |___/_| |_|\___|_|_|
 
 shell:
-	@nix-shell ${CURRENT_DIR}/shell.nix
+	@nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv
 
 fsi:
 	@nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv --run "fsi --use:dotnet/src/Iris/bin/Debug/Core/interactive.fsx"
+
+#  ____             _
+# |  _ \  ___   ___| | _____ _ __
+# | | | |/ _ \ / __| |/ / _ \ '__|
+# | |_| | (_) | (__|   <  __/ |
+# |____/ \___/ \___|_|\_\___|_|
+
+image:
+	@docker build ${CURRENT_DIR}/dotnet/src/Iris/bin/Debug/Iris/
+
+start:
+	@docker run --net=host \
+		-v ${PROJECT}:/project \
+		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
+		-p ${IRIS_GIT}:${IRIS_GIT} \
+		-p ${IRIS_WEB}:${IRIS_WEB} \
+		-p ${IRIS_WS}:${IRIS_WS} \
+		-p ${IRIS_RAFT}:${IRIS_RAFT} \
+		${IMAGE}
 
 #              _        _
 #  _ __   __ _| | _____| |_
