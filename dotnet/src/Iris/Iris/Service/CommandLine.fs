@@ -30,8 +30,10 @@ module CommandLine =
 
   type CLIArguments =
     | [<Mandatory;MainCommand;CliPosition(CliPosition.First)>] Cmd of SubCommand
-    |                      Interactive
-    |                      NoHttp
+
+    | [<AltCommandLine("-i")>]        Interactive
+    | [<AltCommandLine("--no-http")>] NoHttp
+
     | [<EqualsAssignment>] Bind         of string
     | [<EqualsAssignment>] Raft         of uint16
     | [<EqualsAssignment>] Web          of uint16
