@@ -1,5 +1,121 @@
 import Radium from "Radium";
 
+// Styles ---------------------
+
+let xyHandleSize = 20;
+let colorActive = "#2e8ece";
+let colorBg = "#dddddd";
+let size = 20;
+let fix = 4;
+
+let styles = {
+  uSlider: {
+    position: "relative",
+    display: "inline-block",
+    backgroundColor: colorBg,
+    borderRadius: 3,
+
+    value: {
+      position: "absolute",
+      backgroundColor: colorActive,
+      borderRadius: "3px",
+    },
+
+    handle: {
+      position: "absolute",
+      width: size,
+      height: size,
+
+      ":after": {
+        position: "relative",
+        display: "block",
+        content: ''
+      }
+    }
+  },
+
+  uSliderOneAxis: {
+    handle: {
+      ":after": {
+        width: size + fix,
+        height: size + fix,
+        backgroundColor: "#fff",
+        border: "3px solid " + colorActive,
+        borderRadius: "50%",
+      }
+    }
+  },
+
+  uSliderX: {
+    height: size,
+
+    handle: {
+      height: "100%",
+      ":after": {
+        top: -fix/2,
+        left: -(size+fix)/2
+      }
+    },
+
+    value: {
+      top: "0",
+      height: "100%",
+    }
+  },
+
+  uSliderY: {
+    width: size,
+
+    handle: {
+      width: "100%",
+      ":after": {
+        top: -(size+fix)/2,
+        left: -fix/2,
+      }
+    },
+
+    value: {
+      left: 0,
+      width: "100%",
+    }
+  },
+
+  uSliderTwoAxis: {
+    position: "relative",
+    width: "100%",
+    height: "100%",
+    backgroundColor: colorActive,
+    borderRadius: 0,
+
+    handle: {
+      position: "absolute",
+
+      ":after": {
+        position: "relative",
+        display: "block",
+        top: -xyHandleSize/2,
+        left: -xyHandleSize/2,
+        width: xyHandleSize,
+        height: xyHandleSize,
+        backgroundColor: "rgba(0, 0, 0, 0)",
+        border: "2px solid #fff",
+        borderRadius: "50%",
+        content: ''
+      }
+    }
+  }
+}
+
+function m() {
+  var res = {};
+  for (var i = 0; i < arguments.length; ++i) {
+    if (arguments[i]) {
+      Object.assign(res, arguments[i]);
+    }
+  }
+  return res;
+}
+
 module.exports = React.createClass({
   displayName: 'InputSlider',
 
@@ -29,16 +145,27 @@ module.exports = React.createClass({
     if(axis === 'x') valueStyle.width = pos.left;
     if(axis === 'y') valueStyle.height = pos.top;
 
-    props.className = `u-slider u-slider-${axis} ${this.props.className}`;
+    // props.className = `u-slider u-slider-${axis} ${this.props.className}`;
+
+    props.style = m(
+      styles.uSlider,
+      (axis === "x" || axis === "y") && styles.uSliderOneAxis,
+      axis === "x" && styles.uSliderX,
+      axis === "y" && styles.uSliderY,
+      axis === "xy" && styles.uSliderTwoAxis
+    );
 
     return (
-      <div {... props} onClick={this.handleClick}>
-        <div
-          className="value"
-          style={valueStyle}>
+      <div {...props} onClick={this.handleClick}>
+        <div style={m(
+          valueStyle,
+          styles.uSlider.value,
+          axis === "x" && styles.uSliderX.value,
+          axis === "y" && styles.uSliderY.value
+        )}>
         </div>
         <div
-          className="handle"
+          // className="handle"
           ref="handle"
           onTouchStart={this.handleMouseDown}
           onMouseDown={this.handleMouseDown}
@@ -46,8 +173,22 @@ module.exports = React.createClass({
             e.stopPropagation();
             e.nativeEvent.stopImmediatePropagation();
           }}
-          style={pos}>
+          style={m(
+            pos,
+            styles.uSlider.handle,
+            (axis === "x" || axis === "y") && styles.uSliderOneAxis.handle,
+            axis === "x" && styles.uSliderX.handle,
+            axis === "y" && styles.uSliderY.handle,
+            axis === "xy" && styles.uSliderTwoAxis.handle
+          )}>
         </div>
+        <div style={m(
+          styles.uSlider.handle[":after"],
+          (axis === "x" || axis === "y") && styles.uSliderOneAxis.handle[":after"],
+          axis === "x" && styles.uSliderX.handle[":after"],
+          axis === "y" && styles.uSliderY.handle[":after"],
+          axis === "xy" && styles.uSliderTwoAxis.handle[":after"]
+        )}></div>
       </div>
     );
   },
