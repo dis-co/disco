@@ -1,5 +1,7 @@
 namespace Iris.Raft
 
+// * Imports
+
 open System
 open System.Collections
 open Iris.Core
@@ -15,6 +17,8 @@ open FlatBuffers
 
 #endif
 
+// * RAftLogEntry Yaml
+
 type RaftLogEntryYaml() =
 
   [<DefaultValue>] val mutable LogType   : string
@@ -28,6 +32,8 @@ type RaftLogEntryYaml() =
   [<DefaultValue>] val mutable Data      : StateMachineYaml
   [<DefaultValue>] val mutable Previous  : string
 
+  // ** Configuration
+
   static member Configuration (id, idx, term, nodes, prev) =
     let yaml = new RaftLogEntryYaml()
     yaml.LogType  <- "Configuration"
@@ -37,6 +43,8 @@ type RaftLogEntryYaml() =
     yaml.Nodes    <- nodes
     yaml.Previous <- prev
     yaml
+
+  // ** JointConsensus
 
   static member JointConsensus (id, idx, term, changes, prev) =
     let yaml = new RaftLogEntryYaml()
@@ -48,6 +56,8 @@ type RaftLogEntryYaml() =
     yaml.Previous <- prev
     yaml
 
+  // ** LogEntry
+
   static member LogEntry (id, idx, term, sm, prev) =
     let yaml = new RaftLogEntryYaml()
     yaml.LogType <- "LogEntry"
@@ -58,9 +68,11 @@ type RaftLogEntryYaml() =
     yaml.Previous <- prev
     yaml
 
+  // ** Snapshot
+
   static member Snapshot (id, idx, term, lidx, lterm, nodes, sm) =
     let yaml = new RaftLogEntryYaml()
-    yaml.LogType <- "LogEntry"
+    yaml.LogType <- "Snapshot"
     yaml.Id <- id
     yaml.Index <- idx
     yaml.Term <- term
@@ -70,11 +82,15 @@ type RaftLogEntryYaml() =
     yaml.Data <- sm
     yaml
 
+  // ** Equals
+
   override self.Equals(obj) =
     match obj with
     | :? RaftLogEntryYaml as other ->
       (self :> System.IEquatable<RaftLogEntryYaml>).Equals(other)
     | _ -> false
+
+  // ** GetHashCode
 
   override self.GetHashCode() =
     hash (self.LogType
@@ -87,6 +103,8 @@ type RaftLogEntryYaml() =
          ,self.Nodes
          ,self.Data
          ,self.Previous)
+
+  // ** IEquatable Interface
 
   interface System.IEquatable<RaftLogEntryYaml> with
     member self.Equals(other: RaftLogEntryYaml) =
@@ -101,6 +119,8 @@ type RaftLogEntryYaml() =
       self.Data      = other.Data      &&
       self.Previous  = other.Previous
 
+  // ** IComparable Interface
+
   interface System.IComparable<RaftLogEntryYaml> with
     member self.CompareTo (other: RaftLogEntryYaml) =
       match self.Index, other.Index with
@@ -114,6 +134,8 @@ type RaftLogEntryYaml() =
       | :? RaftLogEntryYaml as other ->
         (self :> System.IComparable<RaftLogEntryYaml>).CompareTo(other)
       | _ -> failwith "Cannot compare Apples with Pears"
+
+// * RaftLogEntry
 
 ///  _                _____       _
 /// | |    ___   __ _| ____|_ __ | |_ _ __ _   _
@@ -195,6 +217,9 @@ and RaftLogEntry =
     Nodes     : RaftNode array *
     Data      : StateMachine
 
+
+  // ** ToString
+
   //  _____    ____  _        _
   // |_   _|__/ ___|| |_ _ __(_)_ __   __ _
   //   | |/ _ \___ \| __| '__| | '_ \ / _` |
@@ -254,6 +279,13 @@ and RaftLogEntry =
           term
           ltrm
 
+  // ** Id
+
+  /// ## Id
+  ///
+  /// Get the current log's Id.
+  ///
+  /// Returns: Id
   member self.Id
     with get () =
       match self with
@@ -262,6 +294,13 @@ and RaftLogEntry =
       | LogEntry(id,_,_,_,_)       -> id
       | Snapshot(id,_,_,_,_,_,_)   -> id
 
+  // ** Depth
+
+  /// ## Depth
+  ///
+  /// Compute the depth of the current log.
+  ///
+  /// Returns: uint32
   member self.Depth
     with get () =
       let rec _depth i thing =
@@ -277,6 +316,16 @@ and RaftLogEntry =
           | Snapshot _                   -> i + 1u
       _depth 0u self
 
+  // ** Iter
+
+  /// ## Iter
+  ///
+  /// Iterate over the entire log sequence and apply `f` to every element.
+  ///
+  /// ### Signature:
+  /// - f: uint32 -> RaftLogEntry -> unit
+  ///
+  /// Returns: unit
   member self.Iter (f : uint32 -> RaftLogEntry -> unit) =
     let rec impl start = function
       | Configuration(_,_,_,_,Some prev)  as curr ->
@@ -301,6 +350,8 @@ and RaftLogEntry =
         f start curr
 
     impl 0u self
+
+  // ** ToOffset
 
   //  _____ _       _   ____         __  __
   // |  ___| | __ _| |_| __ ) _   _ / _|/ _| ___ _ __ ___
@@ -406,6 +457,8 @@ and RaftLogEntry =
     let arr = Array.zeroCreate (self.Depth |> int)
     self.Iter (fun i (log: RaftLogEntry) -> arr.[int i] <- toOffset log)
     arr
+
+  // ** ParseLogFB
 
   /// ## Parse a single log entry, adding its sibling node
   ///
@@ -598,6 +651,8 @@ and RaftLogEntry =
         |> ParseError
         |> Either.fail
 
+  // ** FromFB
+
   /// ## Decode a FlatBuffer into a Log structure
   ///
   /// Decodes a single FlatBuffer encoded log entry into its
@@ -612,6 +667,8 @@ and RaftLogEntry =
   /// Returns: RaftLogEntry option
   static member FromFB (logs: LogFB array) : Either<IrisError, RaftLogEntry option> =
     Array.foldBack RaftLogEntry.ParseLogFB logs (Right None)
+
+  // ** ToYamlObject
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -670,6 +727,16 @@ and RaftLogEntry =
       let yml = Yaml.toYaml smentry
       RaftLogEntryYaml.Snapshot(lid, idx, term, lidx, lterm, nids, yml)
 
+  // ** FromYamlObject
+
+  /// ## FromYamlObject
+  ///
+  /// Deserialize a Yaml object to a log
+  ///
+  /// ### Signature:
+  /// - yaml: RaftLogEntryYaml to deserialize
+  ///
+  /// Returns: Either<IrisError, RaftLogEntry>
   static member FromYamlObject (yaml: RaftLogEntryYaml) =
     match yaml.LogType with
     | "LogEntry" -> either {
@@ -732,8 +799,13 @@ and RaftLogEntry =
       |> ParseError
       |> Either.fail
 
+
+// * LogEntry Module
+
 [<RequireQualifiedAccess>]
 module LogEntry =
+
+  // ** LogEntry.getId
 
   //   _     _
   //  (_) __| |
@@ -752,6 +824,8 @@ module LogEntry =
   /// Returns: Id
   let getId (log: RaftLogEntry) = log.Id
 
+  // ** LogEntry.isConfigChange
+
   //  _      ____             __ _        ____ _
   // (_)___ / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
   // | / __| |   / _ \| '_ \| |_| |/ _` | |   | '_ \ / _` | '_ \ / _` |/ _ \
@@ -762,6 +836,8 @@ module LogEntry =
   let isConfigChange = function
     | JointConsensus _ -> true
     |                _ -> false
+
+  // ** LogEntry.isConfiguration
 
   //  _      ____             __ _                       _   _
   // (_)___ / ___|___  _ __  / _(_) __ _ _   _ _ __ __ _| |_(_) ___  _ __
@@ -774,6 +850,8 @@ module LogEntry =
     | Configuration _ -> true
     |               _ -> false
 
+  // ** LogEntry.depth
+
   //       _            _   _
   //    __| | ___ _ __ | |_| |__
   //   / _` |/ _ \ '_ \| __| '_ \
@@ -785,6 +863,8 @@ module LogEntry =
 
   let depth (log: RaftLogEntry) =
     log.Depth
+
+  // ** LogEntry.index
 
   //   _           _
   //  (_)_ __   __| | _____  __
@@ -799,6 +879,8 @@ module LogEntry =
     | JointConsensus(_,idx,_,_,_) -> idx
     | LogEntry(_,idx,_,_,_)       -> idx
     | Snapshot(_,idx,_,_,_,_,_)   -> idx
+
+  // ** LogEntry.prevIndex
 
   //                        ___           _
   //   _ __  _ __ _____   _|_ _|_ __   __| | _____  __
@@ -816,6 +898,8 @@ module LogEntry =
     | Snapshot(_,_,_,idx,_,_,_)         -> Some idx
     | _                                 -> None
 
+  // ** LogEntry.term
+
   //   _
   //  | |_ ___ _ __ _ __ ___
   //  | __/ _ \ '__| '_ ` _ \
@@ -829,6 +913,8 @@ module LogEntry =
     | JointConsensus(_,_,term,_,_) -> term
     | LogEntry(_,_,term,_,_)       -> term
     | Snapshot(_,_,term,_,_,_,_)   -> term
+
+  // ** LogEntry.prevTerm
 
   //                        _____
   //   _ __  _ __ _____   _|_   _|__ _ __ _ __ ___
@@ -846,6 +932,8 @@ module LogEntry =
     | Snapshot(_,_,_,_,term,_,_)        -> Some term
     | _                                 -> None
 
+  // ** LogEntry.prevEntry
+
   //                        _____       _
   //   _ __  _ __ _____   _| ____|_ __ | |_ _ __ _   _
   //  | '_ \| '__/ _ \ \ / /  _| | '_ \| __| '__| | | |
@@ -861,6 +949,8 @@ module LogEntry =
     | LogEntry(_,_,_,_,prev)       -> prev
     | Snapshot _                   -> None
 
+  // ** LogEntry.data
+
   //       _       _
   //    __| | __ _| |_ __ _
   //   / _` |/ _` | __/ _` |
@@ -873,6 +963,8 @@ module LogEntry =
     | LogEntry(_,_,_,d,_)     -> Some d
     | Snapshot(_,_,_,_,_,_,d) -> Some d
     | _                       -> None
+
+  // ** LogEntry.nodes
 
   //                   _
   //   _ __   ___   __| | ___  ___
@@ -887,6 +979,8 @@ module LogEntry =
     | Snapshot(_,_,_,_,_,d,_)   -> Some d
     | _                         -> None
 
+  // ** LogEntry.changes
+
   //        _
   //    ___| |__   __ _ _ __   __ _  ___  ___
   //   / __| '_ \ / _` | '_ \ / _` |/ _ \/ __|
@@ -900,6 +994,9 @@ module LogEntry =
   let changes = function
     | JointConsensus(_,_,_,c,_) -> Some c
     | _                         -> None
+
+
+  // ** LogEntry.at
 
   //         _
   //    __ _| |_
@@ -928,6 +1025,8 @@ module LogEntry =
       | _ when idx <= idx'  -> Some curr
       | _ when idx <= lidx' -> Some curr
       | _                   -> None
+
+  // ** LogEntry.until
 
   //               _   _ _
   //   _   _ _ __ | |_(_) |
@@ -991,6 +1090,8 @@ module LogEntry =
 
       | _ -> None
 
+  // ** LogEntry.untilExcluding
+
   ///              _   _ _ _____          _           _ _
   ///  _   _ _ __ | |_(_) | ____|_  _____| |_   _  __| (_)_ __   __ _
   /// | | | | '_ \| __| | |  _| \ \/ / __| | | | |/ _` | | '_ \ / _` |
@@ -1025,6 +1126,8 @@ module LogEntry =
 
     | _ -> None
 
+  // ** LogEntry.find
+
   ///  _____ _           _
   /// |  ___(_)_ __   __| |
   /// | |_  | | '_ \ / _` |
@@ -1048,6 +1151,8 @@ module LogEntry =
     | Snapshot(id',_,_,_,_,_,_)      as curr ->
       if id' <> id then None else Some curr
 
+  // ** LogEntry.make
+
   ///  __  __       _
   /// |  \/  | __ _| | _____
   /// | |\/| |/ _` | |/ / _ \
@@ -1057,6 +1162,7 @@ module LogEntry =
   let make term data =
     LogEntry(Id.Create(), 0u, term, data, None)
 
+  // ** LogEntry.mkConfig
 
   /// Add an Configuration log entry onto the queue
   ///
@@ -1064,6 +1170,8 @@ module LogEntry =
 
   let mkConfig term nodes =
     Configuration(Id.Create(), 0u, term, nodes, None)
+
+  // ** LogEntry.mkConfigChange
 
   /// Add an intermediate configuration entry for 2-phase commit onto
   /// the log queue
@@ -1088,6 +1196,8 @@ module LogEntry =
 
     JointConsensus(Id.Create(), 0u, term, changes, None)
 
+  // ** LogEntry.pop
+
   ///  _ __   ___  _ __
   /// | '_ \ / _ \| '_ \
   /// | |_) | (_) | |_) |
@@ -1104,6 +1214,8 @@ module LogEntry =
     | JointConsensus(_,_,_,_,prev) -> prev
     | LogEntry(_,_,_,_,prev)       -> prev
     | Snapshot _                   -> None
+
+  // ** LogEntry.snapshot
 
   ///                            _           _
   ///  ___ _ __   __ _ _ __  ___| |__   ___ | |_
@@ -1124,6 +1236,8 @@ module LogEntry =
     in
       Snapshot(Id.Create(),idx + 1u,term,idx,term,nodes,data)
 
+  // ** LogEntry.map
+
   ///  _ __ ___   __ _ _ __
   /// | '_ ` _ \ / _` | '_ \
   /// | | | | | | (_| | |_) |
@@ -1143,6 +1257,8 @@ module LogEntry =
     | JointConsensus(_,_,_,_,prev) as curr -> _map curr prev
     | LogEntry(_,_,_,_,prev)       as curr -> _map curr prev
     | Snapshot _                   as curr -> _map curr None
+
+  // ** LogEntry.foldl
 
   ///   __       _     _ _
   ///  / _| ___ | | __| | |
@@ -1165,6 +1281,8 @@ module LogEntry =
     | LogEntry(_,_,_,_,prev)       as curr -> _fold m curr prev
     | Snapshot _                   as curr -> f m curr
 
+  // ** LogEntry.foldr
+
   ///   __       _     _
   ///  / _| ___ | | __| |_ __
   /// | |_ / _ \| |/ _` | '__|
@@ -1182,6 +1300,8 @@ module LogEntry =
     | LogEntry(_,_,_,_,None)            as curr -> f m curr
     | Snapshot _                        as curr -> f m curr
 
+  // ** LogEntry.iter
+
   ///  _ _
   /// (_) |_ ___ _ __
   /// | | __/ _ \ '__|
@@ -1191,6 +1311,8 @@ module LogEntry =
   /// Iterate over a log from the newest entry to the oldest.
   let iter (f : uint32 -> RaftLogEntry -> unit) (log : RaftLogEntry) =
     log.Iter f
+
+  // ** LogEntry.aggregate
 
   ///     _                                    _
   ///    / \   __ _  __ _ _ __ ___  __ _  __ _| |_ ___
@@ -1234,11 +1356,17 @@ module LogEntry =
     | Cont v -> v
     | Ret  v -> v
 
+  // ** LogEntry.next
+
   let inline next< ^m > (m: ^m) : Continue< ^m > =
     Continue.next m
 
+  // ** LogEntry.finish
+
   let inline finish< ^m > (m: ^m) : Continue< ^m > =
     Continue.finish m
+
+  // ** LogEntry.last
 
   ///  _           _
   /// | | __ _ ___| |_
@@ -1257,6 +1385,8 @@ module LogEntry =
     | JointConsensus(_,_,_,_,Some prev)       -> last prev
     | Snapshot _                      as curr -> curr
 
+  // ** LogEntry.head
+
   //  _                    _
   // | |__   ___  __ _  __| |
   // | '_ \ / _ \/ _` |/ _` |
@@ -1274,6 +1404,8 @@ module LogEntry =
       JointConsensus(id,idx,term,changes,None)
 
     | curr -> curr
+
+  // ** LogEntry.rewrite
 
   //                         _ _
   //  _ __ _____      ___ __(_) |_ ___
@@ -1306,6 +1438,8 @@ module LogEntry =
 
     | Snapshot(id, _, term, _, pterm, nodes, data) ->
       Snapshot(id, 2u, term, 1u, pterm, nodes, data)
+
+  // ** LogEntry.append
 
   ///                                   _
   ///   __ _ _ __  _ __   ___ _ __   __| |
@@ -1350,6 +1484,8 @@ module LogEntry =
       // no overlap found
       foldr _aggregator older newer
 
+  // ** LogEntry.lastIndex
+
   //  _           _   ___           _
   // | | __ _ ___| |_|_ _|_ __   __| | _____  __
   // | |/ _` / __| __|| || '_ \ / _` |/ _ \ \/ /
@@ -1360,6 +1496,8 @@ module LogEntry =
     | Snapshot(_,_,_,idx,_,_,_) -> Some idx
     | _                         -> None
 
+  // ** LogEntry.lastTerm
+
   //  _           _  _____
   // | | __ _ ___| ||_   _|__ _ __ _ __ ___
   // | |/ _` / __| __|| |/ _ \ '__| '_ ` _ \
@@ -1369,6 +1507,8 @@ module LogEntry =
   let lastTerm = function
     | Snapshot(_,_,_,_,term,_,_) -> Some term
     | _                          -> None
+
+  // ** LogEntry.firstIndex
 
   //   __ _          _   ___           _
   //  / _(_)_ __ ___| |_|_ _|_ __   __| | _____  __
@@ -1407,6 +1547,8 @@ module LogEntry =
       else
         None
 
+  // ** LogEntry.getn
+
   //             _
   //   __ _  ___| |_ _ __
   //  / _` |/ _ \ __| '_ \
@@ -1436,6 +1578,8 @@ module LogEntry =
         LogEntry(id,idx,term,data, getn newcnt prev)
         |> Some
 
+  // ** LogEntry.contains
+
   //                  _        _
   //   ___ ___  _ __ | |_ __ _(_)_ __  ___
   //  / __/ _ \| '_ \| __/ _` | | '_ \/ __|
@@ -1459,6 +1603,8 @@ module LogEntry =
     | JointConsensus(_,_,_,_,None) as this -> f this
 
     | Snapshot _ as this -> f this
+
+  // ** LogEntry.sanitize
 
   //  ____              _ _   _
   // / ___|  __ _ _ __ (_) |_(_)_______

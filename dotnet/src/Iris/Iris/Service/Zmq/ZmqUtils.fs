@@ -1,13 +1,13 @@
 namespace Iris.Service.Zmq
 
 // * Imports
+
 open System
 open System.Threading
 open ZeroMQ
 open Iris.Raft
 open Iris.Core
 open Iris.Service
-
 
 [<AutoOpen>]
 module ZmqUtils =
