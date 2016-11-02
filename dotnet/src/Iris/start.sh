@@ -8,7 +8,11 @@ cd $BASEDIR
 
 case $COMMAND in
     "interactive")
-	mono iris.exe start -i --dir=/project
+	if [ -z "$IRIS_NOWEB" ]; then
+	    mono iris.exe start -i --dir=/project
+	else
+	    mono iris.exe start -i --no-http --dir=/project
+	fi
 	;;
     "start")
 	if [ -z "$IRIS_NOWEB" ]; then

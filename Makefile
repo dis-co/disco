@@ -128,10 +128,17 @@ create:
 		${IMAGE}
 
 start:
-	@sudo docker run -i --rm --net=host \
+	@sudo docker run --rm --net=host \
 		-v ${PROJECT}:/project \
 		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
 		-e COMMAND=start \
+		${IMAGE}
+
+start.interactive:
+	@sudo docker run -i --rm --net=host \
+		-v ${PROJECT}:/project \
+		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
+		-e COMMAND=interactive \
 		${IMAGE}
 
 start.noweb:
