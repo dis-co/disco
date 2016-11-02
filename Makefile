@@ -107,19 +107,39 @@ fsi:
 docker:
 	${BUILD} DebugDocker
 
-image: docker
-	@sudo docker build ${CURRENT_DIR}/dotnet/src/Iris/bin/Debug/Iris/
+image:
+	@sudo docker build \
+		--label iris \
+		--tag iris:$(shell git log -n1 --oneline | cut -d\  -f1) \
+		${CURRENT_DIR}/dotnet/src/Iris/bin/Debug/Iris/
+
+create:
+	@mkdir -p ${PROJECT}
+	@sudo docker run -i --rm --net=host \
+		-v ${PROJECT}:/project \
+		-e IRIS_BIND=127.0.0.1 \
+		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
+		-e IRIS_GIT_PORT=${IRIS_GIT} \
+		-e IRIS_WEB_PORT=${IRIS_WEB} \
+		-e IRIS_WS_PORT=${IRIS_WS} \
+		-e IRIS_RAFT_PORT=${IRIS_RAFT} \
+		-e IRIS_NAME=${IRIS_NAME} \
+		-e COMMAND=create \
+		${IMAGE}
 
 start:
 	@sudo docker run -i --rm --net=host \
 		-v ${PROJECT}:/project \
 		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
-		-p ${IRIS_GIT}:${IRIS_GIT} \
-		-p ${IRIS_WEB}:${IRIS_WEB} \
-		-p ${IRIS_WS}:${IRIS_WS} \
-		-p ${IRIS_RAFT}:${IRIS_RAFT} \
+		-e COMMAND=start \
 		${IMAGE}
 
+enter:
+	@sudo docker run -i --rm --net=host \
+		-v ${PROJECT}:/project \
+		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
+		-e COMMAND=shell \
+		${IMAGE}
 #              _        _
 #  _ __   __ _| | _____| |_
 # | '_ \ / _` | |/ / _ \ __|
