@@ -127,8 +127,14 @@ create:
 		-e COMMAND=create \
 		${IMAGE}
 
+docker.shell:
+	@sudo docker run -p 7000:7000 -i --rm \
+		-v ${PROJECT}:/project \
+		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
+		-e COMMAND=shell \
+		${IMAGE}
 start:
-	@docker run --rm --net=host \
+	@sudo docker run -p 7000:7000 -i --rm \
 		-v ${PROJECT}:/project \
 		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
 		-e COMMAND=start \
