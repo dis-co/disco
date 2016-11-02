@@ -108,14 +108,14 @@ docker:
 	${BUILD} DebugDocker
 
 image: docker
-	@sudo docker build \
+	@docker build \
 		--label iris \
 		--tag iris:$(shell git log -n1 --oneline | cut -d\  -f1) \
 		${CURRENT_DIR}/dotnet/src/Iris/bin/Debug/Iris/
 
 create:
 	@mkdir -p ${PROJECT}
-	@sudo docker run -i --rm --net=host \
+	@docker run -i --rm --net=host \
 		-v ${PROJECT}:/project \
 		-e IRIS_BIND=127.0.0.1 \
 		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
@@ -128,21 +128,21 @@ create:
 		${IMAGE}
 
 start:
-	@sudo docker run --rm --net=host \
+	@docker run --rm --net=host \
 		-v ${PROJECT}:/project \
 		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
 		-e COMMAND=start \
 		${IMAGE}
 
 start.interactive:
-	@sudo docker run -i --rm --net=host \
+	@docker run -i --rm --net=host \
 		-v ${PROJECT}:/project \
 		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
 		-e COMMAND=interactive \
 		${IMAGE}
 
 start.noweb:
-	@sudo docker run -i --rm --net=host \
+	@docker run -i --rm --net=host \
 		-v ${PROJECT}:/project \
 		-e IRIS_NOWEB=true \
 		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
@@ -150,7 +150,7 @@ start.noweb:
 		${IMAGE}
 
 enter:
-	@sudo docker run -i --rm --net=host \
+	@docker run -i --rm --net=host \
 		-v ${PROJECT}:/project \
 		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
 		-e COMMAND=shell \
