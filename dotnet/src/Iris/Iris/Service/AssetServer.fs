@@ -21,7 +21,9 @@ open Iris.Core
 
 type FileName = string
 
-type AssetServer(config: IrisConfig) =
+type AssetServer(?config: IrisConfig) =
+  let [<Literal>] defaultIP = "127.0.0.1"
+  let [<Literal>] defaultPort = "8080"
   let cts = new CancellationTokenSource()
 
   let noCache =
@@ -33,7 +35,7 @@ type AssetServer(config: IrisConfig) =
   let locate dir str =
     noCache >=> file (dir </> str)
 
-  let basePath = Path.GetFullPath(".") </> "assets"
+  let basePath = Path.GetFullPath(".") </> "assets" </> "frontend"
 
   let widgetPath = basePath </> "widgets"
 
@@ -64,7 +66,11 @@ type AssetServer(config: IrisConfig) =
     <title>Iris</title>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-    <script src="node_modules/virtual-dom/dist/virtual-dom.js"></script>
+    <script data-main="react/main" src="js/require.min.js"></script>
+    <script src="js/react.min.js"></script>
+    <script src="js/react-dom.min.js"></script>
+    <script src="js/radium.min.js"></script>
+    <!--<script src="node_modules/virtual-dom/dist/virtual-dom.js"></script>-->
 
     %s
 
@@ -83,7 +89,8 @@ type AssetServer(config: IrisConfig) =
     </main>
 
     <footer>© 2016 Nsynk GmbH</footer>
-    <script type="text/javascript" src="js/iris.js"></script>
+    <!--<script type="text/javascript" src="js/iris.js"></script>--->
+    <div id="app"></div>
   </body>
 </html>
 """
@@ -102,29 +109,38 @@ type AssetServer(config: IrisConfig) =
       ]
     ]
 
-  let appConfig =
+  let appConfig: SuaveConfig =
     either {
-      let! nid = Config.getNodeId ()
-      let! node = Config.findNode config nid
-
       try
-        let addr = IPAddress.Parse (string node.IpAddr)
-        let port = Sockets.Port.Parse (string node.WebPort)
+        let! addr, port =
+          match config with
+          | Some config ->
+            either {
+              let! nid = Config.getNodeId ()
+              let! node = Config.findNode config nid
+              return string node.IpAddr, string node.WebPort
+            }
+          | None ->
+            either { return defaultIP, defaultPort }
 
-        printfn "Starting Suave Web Server on: %A:%A" addr port
+        let addr = IPAddress.Parse addr
+        let port = Sockets.Port.Parse port
 
-        return { defaultConfig with
-                   logger            = ConsoleWindowLogger(Suave.Logging.LogLevel.Info)
-                   cancellationToken = cts.Token
-                   homeFolder        = Some(basePath)
-                   bindings          = [ HttpBinding.mk HTTP addr port ]
-                   mimeTypesMap      = mimeTypes }
+        printfn "Suave Web Server ready to start on: %A:%A" addr port
+
+        return
+          { defaultConfig with
+              logger            = ConsoleWindowLogger(Suave.Logging.LogLevel.Info)
+              cancellationToken = cts.Token
+              homeFolder        = Some(basePath)
+              bindings          = [ HttpBinding.mk HTTP addr port ]
+              mimeTypesMap      = mimeTypes }
       with
         | exn ->
           return!
             exn.Message
             |> Other
-            |> Either.fail
+            |> Error.exitWith
     }
     |> Error.orExit id
 

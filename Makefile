@@ -95,7 +95,7 @@ release:
 shell:
 	@nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv
 
-fsi:
+nixfsi:
 	@nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv --run "fsi --use:dotnet/src/Iris/bin/Debug/Core/interactive.fsx"
 
 #  ____             _
@@ -155,6 +155,10 @@ enter:
 		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
 		-e COMMAND=shell \
 		${IMAGE}
+
+fsi:
+	@cd dotnet/src/Iris; fsharpi --use:bin/Debug/Core/interactive.fsx
+
 #              _        _
 #  _ __   __ _| | _____| |_
 # | '_ \ / _` | |/ / _ \ __|
