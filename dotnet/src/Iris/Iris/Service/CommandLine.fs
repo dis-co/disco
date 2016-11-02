@@ -29,26 +29,30 @@ module CommandLine =
     | Dump
 
   type CLIArguments =
-    | [<EqualsAssignment>]            Bind  of string
-    | [<EqualsAssignment>]            Raft  of uint16
-    | [<EqualsAssignment>]            Web   of uint16
-    | [<EqualsAssignment>]            Git   of uint16
-    | [<EqualsAssignment>]            Ws    of uint16
-    | [<EqualsAssignment>]            Dir   of string
-    | [<EqualsAssignment>]            Name  of string
-    | [<Mandatory;MainCommand;CliPosition(CliPosition.First)>] Cmd   of SubCommand
+    | [<Mandatory;MainCommand;CliPosition(CliPosition.First)>] Cmd of SubCommand
+    |                      Interactive
+    |                      NoHttp
+    | [<EqualsAssignment>] Bind         of string
+    | [<EqualsAssignment>] Raft         of uint16
+    | [<EqualsAssignment>] Web          of uint16
+    | [<EqualsAssignment>] Git          of uint16
+    | [<EqualsAssignment>] Ws           of uint16
+    | [<EqualsAssignment>] Dir          of string
+    | [<EqualsAssignment>] Name         of string
 
     interface IArgParserTemplate with
       member self.Usage =
         match self with
-          | Dir     _ -> "Project directory to place the config & database in"
-          | Name    _ -> "Project name when using <create>"
-          | Bind    _ -> "Specify a valid IP address."
-          | Web     _ -> "Http server port."
-          | Git     _ -> "Git server port."
-          | Ws      _ -> "WebSocket port."
-          | Raft    _ -> "Raft server port (internal)."
-          | Cmd     _ -> "Either one of (--create, --start, --reset or --dump)"
+          | Interactive -> "Start daemon in interactive mode"
+          | NoHttp      -> "Do not start http server (default: http will be started)"
+          | Dir     _   -> "Project directory to place the config & database in"
+          | Name    _   -> "Project name when using <create>"
+          | Bind    _   -> "Specify a valid IP address."
+          | Web     _   -> "Http server port."
+          | Git     _   -> "Git server port."
+          | Ws      _   -> "WebSocket port."
+          | Raft    _   -> "Raft server port (internal)."
+          | Cmd     _   -> "Either one of (--create, --start, --reset or --dump)"
 
   let parser = ArgumentParser.Create<CLIArguments>()
 
@@ -227,10 +231,10 @@ module CommandLine =
   // | |    ___   ___  _ __
   // | |   / _ \ / _ \| '_ \
   // | |__| (_) | (_) | |_) |
-  // |_____\___/ \___/| .__/
+  // |_____\___/ \___/| .__/ s
   //                  |_|
 
-  let consoleLoop (context: IrisService) : unit =
+  let interactiveLoop (context: IrisService) : unit =
     let kont = ref true
     let rec proc kontinue =
       printf "~> "
@@ -248,6 +252,14 @@ module CommandLine =
         | Timeout      -> timeoutRaft context.Raft
         | Status       -> printfn "%s" <| context.Raft.ToString()
         | _            -> printfn "unknown command"
+      if !kontinue then
+        proc kontinue
+    proc kont
+
+  let silentLoop () =
+    let kont = ref true
+    let rec proc kontinue =
+      Console.ReadLine() |> ignore
       if !kontinue then
         proc kontinue
     proc kont
@@ -276,22 +288,30 @@ module CommandLine =
   //  ___) | || (_| | |  | |_
   // |____/ \__\__,_|_|   \__|
 
-  let startService (projectdir: FilePath) : unit =
+  let startService (web: bool) (interactive: bool) (projectdir: FilePath) : Either<IrisError, unit> =
     let projFile = projectdir </> PROJECT_FILENAME + ASSET_EXTENSION
 
     if File.Exists projFile |> not then
-      ProjectNotFound projectdir |> Error.exitWith
-
-    match Project.load projFile with
+      projectdir
+      |> ProjectNotFound
+      |> Either.fail
+    else
+      match Project.load projFile with
       | Right project ->
         use server = new IrisService(ref project)
-        server.Start()
+        server.Start(web)
 
-        printfn "Welcome to the Raft REPL. Type help to see all commands."
-        consoleLoop server
+        if interactive then
+          printfn "Welcome to the Raft REPL. Type help to see all commands."
+          interactiveLoop server
+          |> Either.succeed
+        else
+          silentLoop ()
+          |> Either.succeed
 
       | Left error ->
-        ProjectNotFound projectdir |> Error.exitWith
+        error
+        |> Either.fail
 
   // ** createProject
 
@@ -409,18 +429,19 @@ module CommandLine =
       | Right raft ->
         try
           saveRaft project.Config raft
-          |> Either.mapError Error.exitWith
-          |> ignore
-          printfn "successfully reset database"
+          |> Either.map ignore
         with
           | exn ->
-            ProjectInitError exn.Message
-            |> Error.exitWith
-      | Left error -> Error.exitWith error
+            exn.Message
+            |> ProjectInitError
+            |> Either.fail
+      | Left error ->
+        error
+        |> Either.fail
 
     datadir </> PROJECT_FILENAME + ASSET_EXTENSION
     |> Project.load
-    |> Error.orExit reset
+    |> Either.bind reset
 
   // ** dumpDataDir
 

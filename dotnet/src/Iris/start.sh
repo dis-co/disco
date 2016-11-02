@@ -11,7 +11,11 @@ case $COMMAND in
 	mono iris.exe start -i --dir=/project
 	;;
     "start")
-	mono iris.exe start --dir=/project
+	if [ -z "$IRIS_NOWEB" ]; then
+	    mono iris.exe start --dir=/project
+	else
+	    mono iris.exe start --no-http --dir=/project
+	fi
 	;;
     "create")
 	mono iris.exe create \

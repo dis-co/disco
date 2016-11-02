@@ -107,7 +107,7 @@ fsi:
 docker:
 	${BUILD} DebugDocker
 
-image:
+image: docker
 	@sudo docker build \
 		--label iris \
 		--tag iris:$(shell git log -n1 --oneline | cut -d\  -f1) \
@@ -130,6 +130,14 @@ create:
 start:
 	@sudo docker run -i --rm --net=host \
 		-v ${PROJECT}:/project \
+		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
+		-e COMMAND=start \
+		${IMAGE}
+
+start.noweb:
+	@sudo docker run -i --rm --net=host \
+		-v ${PROJECT}:/project \
+		-e IRIS_NOWEB=true \
 		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
 		-e COMMAND=start \
 		${IMAGE}

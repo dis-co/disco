@@ -600,11 +600,13 @@ Target "Release" DoNothing
 
 Target "DebugDocker" DoNothing
 
-"Clean"
-==> "GenerateSerialization"
-==> "BuildWorkerDebug"
-==> "BuildFrontendDebug"
-==> "BuildDebugService"
+"BuildWorkerDebug"
+==> "DebugDocker"
+
+"BuildFrontendDebug"
+==> "DebugDocker"
+
+"BuildDebugService"
 ==> "DebugDocker"
 
 //  ____       _                    _    _ _

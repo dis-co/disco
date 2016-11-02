@@ -26,10 +26,15 @@ module Main =
 
     validateOptions parsed
 
+    let web = not (parsed.Contains <@ NoHttp @>)
+    let interactive = parsed.Contains <@ Interactive @>
+
     match parsed.GetResult <@ Cmd @>, parsed.GetResult <@ Dir @> with
-    | Create, _   -> createProject parsed |> ignore
-    | Start,  dir -> startService  dir    |> ignore
-    | Reset,  dir -> resetProject  dir    |> ignore
-    | Dump,   dir -> dumpDataDir   dir    |> ignore
+    | Create,  _ -> createProject parsed
+    | Start, dir -> startService web interactive dir
+    | Reset, dir -> resetProject dir
+    | Dump,  dir -> dumpDataDir dir
+    |> Error.orExit id
+    |> ignore
 
     Error.exitWith OK

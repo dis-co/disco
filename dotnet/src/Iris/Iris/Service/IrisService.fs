@@ -122,6 +122,12 @@ type IrisService(project: IrisProject ref) =
   // | |___| |  _|  __/ |__| |_| | (__| |  __/
   // |_____|_|_|  \___|\____\__, |\___|_|\___|
   //                        |___/
+  member self.Start(web: bool) =
+    if web then
+      httpserver.Start()
+    wsserver.Start()
+    raftserver.Start()
+
   member self.Start() =
     httpserver.Start()
     wsserver.Start()
