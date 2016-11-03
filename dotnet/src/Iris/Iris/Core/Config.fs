@@ -1,8 +1,12 @@
 namespace Iris.Core
 
+// * Imports
+
 open System
 open System.IO
 open Iris.Raft
+
+// * Aliases
 
 //     _    _ _
 //    / \  | (_) __ _ ___  ___  ___
@@ -28,6 +32,9 @@ type PluginYaml     = ConfigFile.Project_Type.VVVV_Type.Plugins_Item_Type
 type SignalYaml     = DisplayYaml.Signals_Item_Type
 type RegionMapYaml  = DisplayYaml.RegionMap_Type
 type RegionYaml     = RegionMapYaml.Regions_Item_Type
+
+// * RaftConfig
+
 //  ____        __ _    ____             __ _
 // |  _ \ __ _ / _| |_ / ___|___  _ __  / _(_) __ _
 // | |_) / _` | |_| __| |   / _ \| '_ \| |_| |/ _` |
@@ -59,6 +66,8 @@ type RaftConfig =
       LogLevel         = Err
       DataDir          = path }
 
+// * VvvvConfig
+
 // __     __                     ____             __ _
 // \ \   / /_   ____   ____   __/ ___|___  _ __  / _(_) __ _
 //  \ \ / /\ \ / /\ \ / /\ \ / / |   / _ \| '_ \| |_| |/ _` |
@@ -74,6 +83,8 @@ type VvvvConfig =
     { Executables = List.empty
       Plugins     = List.empty }
 
+// * PortConfig
+
 //  ____            _    ____             __ _
 // |  _ \ ___  _ __| |_ / ___|___  _ __  / _(_) __ _
 // | |_) / _ \| '__| __| |   / _ \| '_ \| |_| |/ _` |
@@ -86,6 +97,8 @@ type PortConfig =
 
   static member Default =
     { UDPCue = 8075u }
+
+// * TimingConfig
 
 //  _____ _           _              ____             __ _
 // |_   _(_)_ __ ___ (_)_ __   __ _ / ___|___  _ __  / _(_) __ _
@@ -108,6 +121,8 @@ type TimingConfig =
       UDPPort   = 8071u
       TCPPort   = 8072u }
 
+// * AudioConfig
+
 //     _             _ _        ____             __ _
 //    / \  _   _  __| (_) ___  / ___|___  _ __  / _(_) __ _
 //   / _ \| | | |/ _` | |/ _ \| |   / _ \| '_ \| |_| |/ _` |
@@ -120,6 +135,8 @@ type AudioConfig =
 
   static member Default =
     { SampleRate = 48000u }
+
+// * HostGroup
 
 //  _   _           _    ____
 // | | | | ___  ___| |_ / ___|_ __ ___  _   _ _ __
@@ -138,6 +155,8 @@ type HostGroup =
               Members: %A"
             self.Name
             (List.fold (fun m s -> m + " " + string s) "" self.Members)
+
+// * Cluster
 
 //   ____ _           _
 //  / ___| |_   _ ___| |_ ___ _ __
@@ -159,12 +178,14 @@ type Cluster =
             self.Nodes
             self.Groups
 
-//   ____             __ _
-//  / ___|___  _ __  / _(_) __ _
-// | |   / _ \| '_ \| |_| |/ _` |
-// | |__| (_) | | | |  _| | (_| |
-//  \____\___/|_| |_|_| |_|\__, |
-//                         |___/
+// * IrisConfig
+
+//  ___      _      ____             __ _
+// |_ _|_ __(_)___ / ___|___  _ __  / _(_) __ _
+//  | || '__| / __| |   / _ \| '_ \| |_| |/ _` |
+//  | || |  | \__ \ |__| (_) | | | |  _| | (_| |
+// |___|_|  |_|___/\____\___/|_| |_|_| |_|\__, |
+//                                        |___/
 
 type IrisConfig =
   { AudioConfig    : AudioConfig
@@ -177,15 +198,20 @@ type IrisConfig =
     Displays       : Display  list
     Tasks          : Task     list }
 
-//  _   _      _
-// | | | | ___| |_ __   ___ _ __ ___
-// | |_| |/ _ \ | '_ \ / _ \ '__/ __|
-// |  _  |  __/ | |_) |  __/ |  \__ \
-// |_| |_|\___|_| .__/ \___|_|  |___/
-//              |_|
+
+// * Config Module
+
+//   ____             __ _
+//  / ___|___  _ __  / _(_) __ _
+// | |   / _ \| '_ \| |_| |/ _` |
+// | |__| (_) | | | |  _| | (_| |
+//  \____\___/|_| |_|_| |_|\__, |
+//                         |___/
 
 [<RequireQualifiedAccess>]
 module Config =
+
+  // ** parseTuple
 
   let private parseTuple (input: string) : Either<IrisError,int * int> =
     input.Split [| '('; ','; ' '; ')' |]       // split the string according to the specified chars
@@ -204,16 +230,24 @@ module Config =
           |> ParseError
           |> Either.fail
 
+  // ** parseRect
+
   let private parseRect (str : string) : Either<IrisError,Rect> =
     parseTuple str
     |> Either.map Rect
+
+  // ** parseCoordinate
 
   let private parseCoordinate (str : string) : Either<IrisError,Coordinate> =
     parseTuple str
     |> Either.map Coordinate
 
+  // ** parseStringProp
+
   let parseStringProp (str : string) : string option =
     if str.Length > 0 then Some(str) else None
+
+  // ** parseAudio
 
   //      _             _ _
   //     / \  _   _  __| (_) ___
@@ -230,6 +264,8 @@ module Config =
     Either.tryWith ParseError "AudioConfig" <| fun _ ->
       { SampleRate = uint32 config.Project.Audio.SampleRate }
 
+  // ** saveAudio
+
   /// ### Save the AudioConfig value
   ///
   /// Transfer the configuration from `AudioConfig` values to a given config file.
@@ -238,6 +274,8 @@ module Config =
   let private saveAudio (file: ConfigFile, config: IrisConfig) =
     file.Project.Audio.SampleRate <- int (config.AudioConfig.SampleRate)
     (file, config)
+
+  // ** parseExe
 
   //  __     __
   //  \ \   / /_   ____   ____   __
@@ -250,6 +288,8 @@ module Config =
     Right { Executable = exe.Path
             Version    = exe.Version
             Required   = exe.Required }
+
+  // ** parseExes
 
   let parseExes exes : Either<IrisError, VvvvExe list> =
     either {
@@ -265,9 +305,13 @@ module Config =
       return List.reverse exes
     }
 
+  // ** parsePlugin
+
   let parsePlugin (plugin: PluginYaml) : Either<IrisError, VvvvPlugin> =
     Right { Name = plugin.Name
             Path = plugin.Path }
+
+  // ** parsePlugins
 
   let parsePlugins plugins : Either<IrisError, VvvvPlugin list> =
     either {
@@ -283,6 +327,8 @@ module Config =
       return List.reverse plugins
     }
 
+  // ** parseVvvv
+
   /// ### Parses the VVVV configuration
   ///
   /// Constructs the VVVV configuration values from the handed config file value.
@@ -297,28 +343,34 @@ module Config =
                Plugins     = plugins }
     }
 
+  // ** saveVvvv
+
   /// ### Save the VVVV configuration
   ///
   /// Translate the values from Config into the passed in configuration file.
   ///
   /// # Returns: ConfigFile
   let private saveVvvv (file: ConfigFile, config: IrisConfig) =
-    file.Project.VVVV.Executables.Clear()
+    file.Project.VVVV.Executables.Clear() //
+
     for exe in config.VvvvConfig.Executables do
-      let entry = new ConfigFile.Project_Type.VVVV_Type.Executables_Item_Type()
+      let entry = new ExeYaml()
       entry.Path <- exe.Executable;
       entry.Version <- exe.Version;
       entry.Required <- exe.Required
       file.Project.VVVV.Executables.Add(entry)
 
     file.Project.VVVV.Plugins.Clear()
+
     for plug in config.VvvvConfig.Plugins do
-      let entry = new ConfigFile.Project_Type.VVVV_Type.Plugins_Item_Type ()
+      let entry = new PluginYaml()
       entry.Name <- plug.Name
       entry.Path <- plug.Path
       file.Project.VVVV.Plugins.Add(entry)
 
     (file, config)
+
+  // ** parseRaft
 
   //  ____        __ _
   // |  _ \ __ _ / _| |_
@@ -354,6 +406,8 @@ module Config =
             |> Either.fail
     }
 
+  // ** saveRaft
+
   /// ### Save the passed RaftConfig to the configuration file
   ///
   /// Save Raft algorithm specific configuration options to the configuration file object.
@@ -368,6 +422,8 @@ module Config =
     file.Project.Engine.MaxRetries       <- int config.RaftConfig.MaxRetries
     file.Project.Engine.PeriodicInterval <- int config.RaftConfig.PeriodicInterval
     (file, config)
+
+  // ** parseTiming
 
   //   _____ _           _
   //  |_   _(_)_ __ ___ (_)_ __   __ _
@@ -409,6 +465,7 @@ module Config =
             |> Either.fail
     }
 
+  // ** saveTiming
 
   /// ### Transfer the TimingConfig options to the passed configuration file
   ///
@@ -428,6 +485,8 @@ module Config =
 
     (file, config)
 
+  // ** parsePort
+
   //   ____            _
   //  |  _ \ ___  _ __| |_
   //  | |_) / _ \| '__| __|
@@ -443,6 +502,8 @@ module Config =
     Either.tryWith ParseError "PortConfig" <| fun _ ->
       { UDPCue = uint32 config.Project.Ports.UDPCues }
 
+  // ** savePort
+
   /// ### Transfer the PortConfig configuration
   ///
   /// Save all values in the PortConfig to the passed configuration file instance.
@@ -451,6 +512,8 @@ module Config =
   let private savePort (file: ConfigFile, config: IrisConfig) =
     file.Project.Ports.UDPCues <- int (config.PortConfig.UDPCue)
     (file, config)
+
+  // ** parseViewPort
 
   //  __     ___               ____            _
   //  \ \   / (_) _____      _|  _ \ ___  _ __| |_
@@ -476,6 +539,8 @@ module Config =
                Description    = viewport.Description }
     }
 
+  // ** parseViewPorts
+
   /// ### Parse all Viewport configs listed in a config file
   ///
   /// Parses the ViewPort config section and returns a list of `ViewPort` values.
@@ -496,6 +561,8 @@ module Config =
       return List.reverse viewports
     }
 
+  // ** saveViewPorts
+
   /// ### Transfers the passed list of ViewPort values
   ///
   /// Adds a config section for each ViewPort value in the passed in Config to the configuration
@@ -505,7 +572,7 @@ module Config =
   let private saveViewPorts (file: ConfigFile, config: IrisConfig) =
     file.Project.ViewPorts.Clear()
     for vp in config.ViewPorts do
-      let item = new ConfigFile.Project_Type.ViewPorts_Item_Type()
+      let item = new ViewPortYaml()
       item.Id             <- string vp.Id
       item.Name           <- vp.Name
       item.Size           <- string vp.Size
@@ -516,6 +583,8 @@ module Config =
       item.Description    <- vp.Description
       file.Project.ViewPorts.Add(item)
     (file, config)
+
+  // ** parseSignal
 
   //  ____  _                   _
   // / ___|(_) __ _ _ __   __ _| |___
@@ -541,6 +610,8 @@ module Config =
                Position = pos }
     }
 
+  // ** parseSignals
+
   /// ## Parse a list of signals
   ///
   /// Parse a list of signals stored in the ConfigFile. Returns a ParseError on failure.
@@ -562,6 +633,8 @@ module Config =
           signals
       return List.reverse parsed
     }
+
+  // ** parseRegion
 
   //  ____            _
   // |  _ \ ___  __ _(_) ___  _ __  ___
@@ -594,6 +667,8 @@ module Config =
           OutputSize     = outsize }
     }
 
+  // ** parseRegions
+
   /// ## Parse a list of Region definitions
   ///
   /// Parse a list of Region definitions. Returns a ParseError on failure.
@@ -615,6 +690,8 @@ module Config =
           regions
       return List.reverse parsed
     }
+
+  // ** parseDisplay
 
   //   ____  _           _
   //  |  _ \(_)___ _ __ | | __ _ _   _ ___
@@ -648,6 +725,8 @@ module Config =
                RegionMap = regionmap }
     }
 
+  // ** parseDisplays
+
   /// ## Parse a list of Display definitionsg
   ///
   /// Parses a list of Display definitions. Returns a ParseError on failure.
@@ -671,6 +750,8 @@ module Config =
       return List.reverse displays
     }
 
+  // ** saveDisplays
+
   /// ### Transfer the Display config to a configuration file
   ///
   /// Save all `Display` values in `Config` to the passed configuration file.
@@ -679,7 +760,7 @@ module Config =
   let private saveDisplays (file: ConfigFile, config: IrisConfig) =
     file.Project.Displays.Clear()
     for dp in config.Displays do
-      let item = new ConfigFile.Project_Type.Displays_Item_Type()
+      let item = new DisplayYaml()
       item.Id <- string dp.Id
       item.Name <- dp.Name
       item.Size <- dp.Size.ToString()
@@ -688,7 +769,7 @@ module Config =
       item.RegionMap.Regions.Clear()
 
       for region in dp.RegionMap.Regions do
-        let r = new ConfigFile.Project_Type.Displays_Item_Type.RegionMap_Type.Regions_Item_Type()
+        let r = new RegionYaml()
         r.Id <- string region.Id
         r.Name <- region.Name
         r.OutputPosition <- region.OutputPosition.ToString()
@@ -700,7 +781,7 @@ module Config =
       item.Signals.Clear()
 
       for signal in dp.Signals do
-        let s = new ConfigFile.Project_Type.Displays_Item_Type.Signals_Item_Type()
+        let s = new SignalYaml()
         s.Position <- signal.Position.ToString()
         s.Size <- signal.Size.ToString()
         item.Signals.Add(s)
@@ -708,13 +789,14 @@ module Config =
       file.Project.Displays.Add(item)
     (file, config)
 
+  // ** parseArgument
+
   //     _                                         _
   //    / \   _ __ __ _ _   _ _ __ ___   ___ _ __ | |_
   //   / _ \ | '__/ _` | | | | '_ ` _ \ / _ \ '_ \| __|
   //  / ___ \| | | (_| | |_| | | | | | |  __/ | | | |_
   // /_/   \_\_|  \__, |\__,_|_| |_| |_|\___|_| |_|\__|
   //              |___/
-
 
   /// ## Parse a single Argument key/value pair
   ///
@@ -734,6 +816,8 @@ module Config =
           |> ParseError
           |> Either.fail
     }
+
+  // ** parseArguments
 
   /// ## Parse a list of ArgumentYamls
   ///
@@ -758,13 +842,14 @@ module Config =
       return List.reverse arguments
     }
 
+  // ** parseTask
+
   //   _____         _
   //  |_   _|_ _ ___| | _____
   //    | |/ _` / __| |/ / __|
   //    | | (_| \__ \   <\__ \
   //    |_|\__,_|___/_|\_\___/
   //
-
 
   /// ## Parse a Task definition
   ///
@@ -783,6 +868,8 @@ module Config =
                AudioStream = task.AudioStream
                Arguments   = arguments }
     }
+
+  // ** parseTasks
 
   /// ### Parse Task configuration section
   ///
@@ -803,6 +890,8 @@ module Config =
       return List.reverse tasks
     }
 
+  // ** saveTasks
+
   /// ### Save the Tasks to a config file
   ///
   /// Transfers all `Task` values into the configuration file.
@@ -811,20 +900,24 @@ module Config =
   let private saveTasks (file: ConfigFile, config: IrisConfig) =
     file.Project.Tasks.Clear()
     for task in config.Tasks do
-      let t = new ConfigFile.Project_Type.Tasks_Item_Type()
+      let t = new TaskYaml()
       t.Id <- string task.Id
       t.AudioStream <- task.AudioStream
       t.Description <- task.Description
       t.DisplayId   <- string task.DisplayId
 
+      t.Arguments.Clear()
+
       for arg in task.Arguments do
-        let a = new ConfigFile.Project_Type.Tasks_Item_Type.Arguments_Item_Type()
+        let a = new ArgumentYaml()
         a.Key <- fst arg
         a.Value <- snd arg
         t.Arguments.Add(a)
 
       file.Project.Tasks.Add(t)
     (file, config)
+
+  // ** parseNode
 
   //    ____ _           _
   //   / ___| |_   _ ___| |_ ___ _ __
@@ -867,6 +960,8 @@ module Config =
             |> Either.fail
     }
 
+  // ** parseNode
+
   /// ## Parse a collectio of Node definitions
   ///
   /// Parse a list of Node definitions. Returns a ParseError on failure.
@@ -889,6 +984,8 @@ module Config =
       return List.reverse nodes
     }
 
+  // ** parseGroup
+
   let parseGroup (group: GroupYaml) : Either<IrisError, HostGroup> =
     either {
       if group.Name.Length > 0 then
@@ -902,6 +999,8 @@ module Config =
           |> ParseError
           |> Either.fail
     }
+
+  // ** parseGroups
 
   let parseGroups groups : Either<IrisError, HostGroup list> =
     either {
@@ -917,6 +1016,8 @@ module Config =
 
       return List.reverse groups
     }
+
+  // ** parseCluster
 
   /// ### Parse the Cluster configuration section
   ///
@@ -936,6 +1037,8 @@ module Config =
                Groups = groups }
     }
 
+  // ** saveCluster
+
   /// ### Save a Cluster value to a configuration file
   ///
   /// Saves the passed `Cluster` value to the passed config file.
@@ -947,7 +1050,7 @@ module Config =
     file.Project.Cluster.Name <- config.ClusterConfig.Name
 
     for node in config.ClusterConfig.Nodes do
-      let n = new ConfigFile.Project_Type.Cluster_Type.Nodes_Item_Type()
+      let n = new NodeYaml()
       n.Id       <- string node.Id
       n.Ip       <- string node.IpAddr
       n.HostName <- node.HostName
@@ -959,14 +1062,18 @@ module Config =
       file.Project.Cluster.Nodes.Add(n)
 
     for group in config.ClusterConfig.Groups do
-      let g = new ConfigFile.Project_Type.Cluster_Type.Groups_Item_Type()
+      let g = new GroupYaml()
       g.Name <- group.Name
+
+      g.Members.Clear()
 
       for mem in group.Members do
         g.Members.Add(string mem)
 
       file.Project.Cluster.Groups.Add(g)
     (file, config)
+
+  // ** fromFile
 
   let fromFile (file: ConfigFile) : Either<IrisError, IrisConfig> =
     either {
@@ -991,6 +1098,8 @@ module Config =
                ClusterConfig = cluster }
     }
 
+  // ** toFile
+
   let toFile (config: IrisConfig) (file: ConfigFile) =
     (file, config)
     |> saveVvvv
@@ -1003,6 +1112,8 @@ module Config =
     |> saveTasks
     |> saveCluster
     |> fst
+
+  // ** create
 
   let create (name: string) =
     { VvvvConfig     = VvvvConfig.Default
@@ -1017,32 +1128,52 @@ module Config =
                        ; Nodes  = []
                        ; Groups = [] } }
 
+  // ** updateVvvv
+
   let updateVvvv (vvvv: VvvvConfig) (config: IrisConfig) =
     { config with VvvvConfig = vvvv }
+
+  // ** updateAudio
 
   let updateAudio (audio: AudioConfig) (config: IrisConfig) =
     { config with AudioConfig = audio }
 
+  // ** updateEngine
+
   let updateEngine (engine: RaftConfig) (config: IrisConfig) =
     { config with RaftConfig = engine }
+
+  // ** updateTiming
 
   let updateTiming (timing: TimingConfig) (config: IrisConfig) =
     { config with TimingConfig = timing }
 
+  // ** updatePorts
+
   let updatePorts (ports: PortConfig) (config: IrisConfig)=
     { config with PortConfig = ports }
+
+  // ** updateViewPorts
 
   let updateViewPorts (viewports: ViewPort list) (config: IrisConfig) =
     { config with ViewPorts = viewports }
 
+  // ** updateDisplays
+
   let updateDisplays (displays: Display list) (config: IrisConfig) =
     { config with Displays = displays }
+
+  // ** updateTasks
 
   let updateTasks (tasks: Task list) (config: IrisConfig) =
     { config with Tasks = tasks }
 
+  // ** updateCluster
+
   let updateCluster (cluster: Cluster) (config: IrisConfig) =
     { config with ClusterConfig = cluster }
+
+  // ** findNode
 
   let findNode (config: IrisConfig) (id: Id) =
     let result =
@@ -1054,10 +1185,14 @@ module Config =
     | Some node -> Either.succeed node
     | _         -> MissingNode (string id) |> Either.fail
 
+  // ** getNodes
+
   let getNodes (config: IrisConfig) : Either<IrisError,RaftNode array> =
     config.ClusterConfig.Nodes
     |> Array.ofList
     |> Either.succeed
+
+  // ** getNodeId
 
   let getNodeId () =
     let id = Environment.GetEnvironmentVariable IRIS_NODE_ID
@@ -1066,15 +1201,21 @@ module Config =
     else
       Id id |> Either.succeed
 
+  // ** selfNode
+
   let selfNode (options: IrisConfig) =
     getNodeId ()
     |> Either.bind (findNode options)
+
+  // ** addNode
 
   let addNode (node: RaftNode) (config: IrisConfig) =
     { config with
         ClusterConfig =
           { config.ClusterConfig with
               Nodes = node :: config.ClusterConfig.Nodes } }
+
+  // ** removeNode
 
   let removeNode (id: Id) (config: IrisConfig) =
     { config with
@@ -1084,8 +1225,12 @@ module Config =
                         (fun (node: RaftNode) -> node.Id = id)
                         config.ClusterConfig.Nodes } }
 
+  // ** metadataPath
+
   let metadataPath (config: IrisConfig) =
     config.RaftConfig.DataDir </> RAFT_METADATA_FILENAME + ASSET_EXTENSION
+
+  // ** logDataPath
 
   let logDataPath (config: IrisConfig) =
     config.RaftConfig.DataDir </> RAFT_LOGDATA_PATH

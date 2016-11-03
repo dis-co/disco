@@ -46,8 +46,7 @@ module ProjectTests =
   //   \____\__,_|___/\__\___/|_| |_| |_|_/___\___|\__,_| load/saved
   //
   let testCustomizedCfg =
-    testCase "Save/Load of Project with customized configs should render structurally equal values" <|
-      fun _ ->
+    testCase "Save/Load of Project with customized configs" <| fun _ ->
         let name = "test2"
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 

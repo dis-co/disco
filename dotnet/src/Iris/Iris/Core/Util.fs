@@ -238,9 +238,9 @@ module Utils =
     with
       | exn ->
         exn.Message
+        |> sprintf "rmDir: %s"
         |> IOError
         |> Either.fail
-
 
   /// ## create a new directory
   ///
@@ -249,11 +249,21 @@ module Utils =
   /// ### Signature:
   /// - path: FilePath
   ///
-  /// Returns: unit
+  /// Returns: Either<IrisError, unit>
   let mkDir path =
-    if System.IO.Directory.Exists path |> not then
-      System.IO.Directory.CreateDirectory path
-      |> ignore
+    try
+      if System.IO.Directory.Exists path |> not then
+        System.IO.Directory.CreateDirectory path
+        |> ignore
+        |> Either.succeed
+      else
+        Either.succeed ()
+    with
+      | exn ->
+        exn.Message
+        |> sprintf "mkDir: %s"
+        |> IOError
+        |> Either.fail
 
   //  _____ _
   // |_   _(_)_ __ ___   ___

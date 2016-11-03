@@ -80,8 +80,6 @@ module RaftIntegrationTests =
                   CurrentTerm = 666u })
         |> Either.get
 
-      let path = mkTmpPath "save_restore-raft_value-correctly"
-
       saveRaft config raft
       |> Either.mapError Error.throw
       |> printfn "%A"
@@ -90,9 +88,6 @@ module RaftIntegrationTests =
       let loaded = loadRaft config
 
       expect "Values should be equal" (Right raft) id loaded
-
-      rmDir path
-      |> Error.orExit id
 
   let test_log_snapshotting_should_clean_all_logs =
     pending "log snapshotting should clean all logs"

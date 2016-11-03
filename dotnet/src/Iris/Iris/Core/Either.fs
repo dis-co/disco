@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+// * Either Type
+
 //  _____ _ _   _
 // | ____(_) |_| |__   ___ _ __
 // |  _| | | __| '_ \ / _ \ '__|
@@ -11,8 +13,12 @@ type Either<'err,'a> =
   | Left  of 'err
 
 
+// * Either Module
+
 [<RequireQualifiedAccess>]
 module Either =
+
+  // ** succeed
 
   /// ## lift a regular value into Either
   ///
@@ -22,6 +28,8 @@ module Either =
   /// Returns: Either<^err, ^t>
   let succeed v = Right v
 
+  // ** fail
+
   /// ## lift an error value into Either
   ///
   /// ### Signature:
@@ -29,6 +37,8 @@ module Either =
   ///
   /// Returns: Either<^err, ^t>
   let fail v = Left v
+
+  // ** isFail
 
   /// ## Check if Either is a failure
   ///
@@ -42,6 +52,8 @@ module Either =
     | Left _ -> true
     |      _ -> false
 
+  // ** isSuccess
+
   /// ## Check if Either value is a success
   ///
   /// Check the passed value for being a success constructor.g
@@ -53,6 +65,8 @@ module Either =
   let isSuccess = function
     | Right _ -> true
     |       _ -> false
+
+  // ** get
 
   /// ## Extract success value from Either wrapper type
   ///
@@ -68,6 +82,8 @@ module Either =
     | Left   error ->
       failwithf "Either: cannot get result from failure: %A" error
 
+  // ** error
+
   /// ## Extract the embedded error value from an Either
   ///
   /// Extracts the embedded error value from the passed Either
@@ -81,6 +97,8 @@ module Either =
     | Left error -> error
     | Right _    ->
       failwith "Either: cannot get error from regular result"
+
+  // ** bind
 
   /// ## Bind a function to the result of a computation
   ///
@@ -101,6 +119,8 @@ module Either =
     | Right value -> f value
     | Left err    -> Left err
 
+  // ** map
+
   /// ## Map over an embedded value
   ///
   /// Applies a function `f` to the inner value of `a`, *if* `a`
@@ -118,6 +138,8 @@ module Either =
     match a with
     | Right value -> f value |> succeed
     | Left  error -> Left error
+
+  // ** mapError
 
   /// ## Map over the embedded error value
   ///
@@ -137,6 +159,8 @@ module Either =
     | Right value -> Right value
     | Left error  -> Left(f error)
 
+  // ** combine
+
   let inline combine< ^a, ^b, ^err >
                     (v1 : ^a)
                     (v2 : Either< ^err, ^b >)
@@ -144,6 +168,8 @@ module Either =
     match v2 with
     | Right value2 -> succeed (v1, value2)
     | Left err     -> Left err
+
+  // ** ofOption
 
   /// ## Transform an Option value into an Either
   ///
@@ -164,6 +190,13 @@ module Either =
     | Some value -> Right value
     | None       -> Left err
 
+  // ** nothing
+
+  let inline nothing< ^err > : Either< ^err,unit > =
+    succeed ()
+
+  // ** tryWith
+
   let inline tryWith< ^a, ^err >
                     (err: (string -> ^err))
                     (loc: string)
@@ -176,6 +209,9 @@ module Either =
         sprintf "Could not parse %s: %s" loc exn.Message
         |> err
         |> fail
+
+
+// * Either Builder
 
 //  _____ _ _   _                 ____        _ _     _
 // | ____(_) |_| |__   ___ _ __  | __ ) _   _(_) | __| | ___ _ __
@@ -194,7 +230,7 @@ module EitherUtils =
 
     member inline self.Bind(m, f) = Either.bind f m
 
-    member self.Zero() = Right ()
+    member inline self.Zero() = Either.nothing
 
     member self.Delay(f) = fun () -> f()
 
@@ -219,6 +255,8 @@ module EitherUtils =
 
 
   let either = new EitherBuilder()
+
+// * Option Builder
 
 //   ___        _   _               ____        _ _     _
 //  / _ \ _ __ | |_(_) ___  _ __   | __ ) _   _(_) | __| | ___ _ __

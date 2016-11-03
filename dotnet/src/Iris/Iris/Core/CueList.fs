@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+// * Imports
+
 #if JAVASCRIPT
 
 open Iris.Core.FlatBuffers
@@ -11,6 +13,8 @@ type CueList =
 open SharpYaml.Serialization
 open FlatBuffers
 open Iris.Serialization.Raft
+
+// * CueList Yaml
 
 type CueListYaml(id, name, cues) as self =
   [<DefaultValue>] val mutable Id   : string
@@ -24,12 +28,16 @@ type CueListYaml(id, name, cues) as self =
     self.Name <- name
     self.Cues <- cues
 
+// * CueList
+
 and CueList =
 #endif
 
   { Id   : Id
-  ; Name : Name
-  ; Cues : Cue array }
+    Name : Name
+    Cues : Cue array }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -49,7 +57,11 @@ and CueList =
     CueListFB.AddCues(builder, cuesvec)
     CueListFB.EndCueListFB(builder)
 
+  // ** ToBytes
+
   member self.ToBytes() = Binary.buildBuffer self
+
+  // ** FromFB
 
   static member FromFB(fb: CueListFB) : Either<IrisError, CueList> =
     either {
@@ -85,18 +97,24 @@ and CueList =
                Cues = cues }
     }
 
+  // ** FromBytes
+
   static member FromBytes (bytes: Binary.Buffer) =
     Binary.createBuffer bytes
     |> CueListFB.GetRootAsCueListFB
     |> CueList.FromFB
 
-#if JAVASCRIPT
-#else
+  // ** ToYamlObject
+
+#if !JAVASCRIPT
+
   member self.ToYamlObject() =
     new CueListYaml(
       string self.Id,
       self.Name,
       Array.map Yaml.toYaml self.Cues)
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yml: CueListYaml) : Either<IrisError,CueList> =
     either {
@@ -118,16 +136,24 @@ and CueList =
                Cues = cues }
     }
 
+  // ** ToYaml
+
   member self.ToYaml(serializer: Serializer) =
     Yaml.toYaml self |> serializer.Serialize
+
+  // ** FromYaml
 
   static member FromYaml(str: string) : Either<IrisError, CueList> =
     let serializer = new Serializer()
     serializer.Deserialize<CueListYaml>(str)
     |> Yaml.fromYaml
 
+  // ** DirName
+
   member self.DirName
     with get () = "cuelists"
+
+  // ** CanonicalName
 
   member self.CanonicalName
     with get () =

@@ -350,27 +350,15 @@ module CommandLine =
   /// - project: IrisProject to initialize
   ///
   /// Returns: unit
-  let initializeRaft (user: User) (project: IrisProject) =
-    match createRaft project.Config with
-    | Right raft ->
-      try
-        saveRaft project.Config raft
-        |> Either.mapError Error.exitWith
-        |> ignore
-      with
-        | exn ->
-          ProjectInitError exn.Message
-          |> Error.exitWith
-    | Left error ->
-      Error.exitWith error
+  let initializeRaft (user: User) (project: IrisProject) = either {
+      let! raft = createRaft project.Config
+      let! result = saveRaft project.Config raft
+      let! (commit, saved) = Project.save user.Signature "project created" project
 
-    match Project.save user.Signature "project created" project with
-    | Right(commit, project) ->
       project.Path
       |> Option.get
-      |> printfn "project initialized in %A"
-    | Left error ->
-      Error.exitWith error
+      |> printfn "project initialized in %A and committed @ %s" commit.Sha
+    }
 
   /// ## createProject
   ///
@@ -380,28 +368,35 @@ module CommandLine =
   /// - parsed: ParseResult<CLIArguments>
   ///
   /// Returns: unit
-  let createProject (parsed: ParseResults<CLIArguments>) =
-    let me = User.Admin
-    let baseDir = parsed.GetResult <@ Dir @>
-    let name = parsed.GetResult <@ Name @>
-    let dir = baseDir </> name
-    let raftDir = Path.GetFullPath(dir) </> RAFT_DIRECTORY
+  let createProject (parsed: ParseResults<CLIArguments>) = either {
+      let me = User.Admin
+      let baseDir = parsed.GetResult <@ Dir @>
+      let name = parsed.GetResult <@ Name @>
+      let dir = baseDir </> name
+      let raftDir = Path.GetFullPath(dir) </> RAFT_DIRECTORY
 
-    if Directory.Exists dir then
-      let empty = Directory.EnumerateFileSystemEntries(dir).Count() = 0
-      if  not empty then
-        printf "%A not empty. I clean first? y/n" dir
-        match Console.ReadLine() with
-          | "y" -> rmDir dir
-          | _   -> Error.exitWith OK
+      do! match Directory.Exists dir with
+          | true  ->
+            match Directory.EnumerateFileSystemEntries(dir).Count() = 0 with
+            | true  -> Either.nothing
+            | false ->
+              printf "%A not empty. I clean first? y/n" dir
+              let input = Console.ReadKey()
+              match input.Key with
+                | ConsoleKey.Y -> rmDir dir
+                | _            -> OK |> Either.fail
+          | false -> Either.nothing
 
-    mkDir dir
-    mkDir raftDir
+      do! mkDir dir
+      do! mkDir raftDir
 
-    Config.getNodeId ()
-    |> Either.map (buildNode parsed)
-    |> Either.map (buildProject dir name raftDir)
-    |> Either.map (initializeRaft me)
+      let! id = Config.getNodeId ()
+
+      let node = buildNode parsed id
+      let project = buildProject dir name raftDir node
+
+      do! initializeRaft me project
+    }
 
   // ** resetProject
 
@@ -419,31 +414,22 @@ module CommandLine =
   /// - datadir: FilePath to Project directory
   ///
   /// Returns: unit
-  let resetProject (datadir: FilePath) =
-    let reset project =
+  let resetProject (datadir: FilePath) = either {
+      let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
       let raftDir = datadir </> RAFT_DIRECTORY
-      if Directory.Exists raftDir then
-        rmDir raftDir
 
-      mkDir raftDir
+      let! project = Project.load path
 
-      match createRaft project.Config with
-      | Right raft ->
-        try
-          saveRaft project.Config raft
-          |> Either.map ignore
-        with
-          | exn ->
-            exn.Message
-            |> ProjectInitError
-            |> Either.fail
-      | Left error ->
-        error
-        |> Either.fail
+      do! match Directory.Exists raftDir with
+          | true  -> rmDir raftDir
+          | false -> Either.nothing
 
-    datadir </> PROJECT_FILENAME + ASSET_EXTENSION
-    |> Project.load
-    |> Either.bind reset
+      do! mkDir raftDir
+
+      let! raft = createRaft project.Config
+      let! result = saveRaft project.Config raft
+      return ()
+    }
 
   // ** dumpDataDir
 

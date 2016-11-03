@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+// * Imports
+
 #if JAVASCRIPT
 
 open Fable.Core
@@ -11,6 +13,8 @@ open Iris.Web.Core.FlatBufferTypes
 open FlatBuffers
 open Iris.Serialization.Raft
 open SharpYaml.Serialization
+
+// * Color Yaml
 
 type ColorYaml(tipe, alpha, ch1, ch2, ch3) as self =
   [<DefaultValue>] val mutable ColorType : string
@@ -30,6 +34,8 @@ type ColorYaml(tipe, alpha, ch1, ch2, ch3) as self =
 
 #endif
 
+// * RGBAValue
+
 //   ____      _
 //  / ___|___ | | ___  _ __ ___
 // | |   / _ \| |/ _ \| '__/ __|
@@ -41,6 +47,8 @@ type RGBAValue =
   ; Green : uint8
   ; Blue  : uint8
   ; Alpha : uint8 }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -57,6 +65,8 @@ type RGBAValue =
     RGBAValueFB.AddAlpha(builder, self.Alpha)
     RGBAValueFB.EndRGBAValueFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: RGBAValueFB) : Either<IrisError,RGBAValue> =
     try
       { Red   = fb.Red
@@ -70,7 +80,11 @@ type RGBAValue =
         |> ParseError
         |> Either.fail
 
+  // ** ToBytes
+
   member self.ToBytes () = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) =
     Binary.createBuffer bytes
@@ -78,11 +92,15 @@ type RGBAValue =
     |> RGBAValue.FromFB
 
 
+// * HSLAValue
+
 type HSLAValue =
   { Hue        : uint8
   ; Saturation : uint8
   ; Lightness  : uint8
   ; Alpha      : uint8 }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -99,6 +117,8 @@ type HSLAValue =
     HSLAValueFB.AddAlpha(builder, self.Alpha)
     HSLAValueFB.EndHSLAValueFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: HSLAValueFB) : Either<IrisError,HSLAValue> =
     try
       { Hue        = fb.Hue
@@ -112,16 +132,24 @@ type HSLAValue =
         |> ParseError
         |> Either.fail
 
+  // ** ToBytes
+
   member self.ToBytes () = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) =
     Binary.createBuffer bytes
     |> HSLAValueFB.GetRootAsHSLAValueFB
     |> HSLAValue.FromFB
 
+// * ColorSpace
+
 type ColorSpace =
   | RGBA of RGBAValue
   | HSLA of HSLAValue
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -149,6 +177,8 @@ type ColorSpace =
     | HSLA value ->
       value.ToOffset(builder)
       |> build ColorSpaceTypeFB.HSLAValueFB
+
+  // ** FromFB
 
   static member FromFB(fb: ColorSpaceFB) : Either<IrisError,ColorSpace> =
 #if JAVASCRIPT
@@ -202,15 +232,20 @@ type ColorSpace =
 
 #endif
 
+  // ** ToBytes
+
   member self.ToBytes () = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) =
     Binary.createBuffer bytes
     |> ColorSpaceFB.GetRootAsColorSpaceFB
     |> ColorSpace.FromFB
 
-#if JAVASCRIPT
-#else
+  // ** ToYamlObject
+
+#if !JAVASCRIPT
 
   member self.ToYamlObject() =
     match self with
@@ -231,6 +266,8 @@ type ColorSpace =
       yml.Channel2  <- value.Saturation
       yml.Channel3  <- value.Lightness
       yml
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yml: ColorYaml) =
     match yml.ColorType with
