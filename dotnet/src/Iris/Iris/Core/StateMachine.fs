@@ -712,14 +712,21 @@ type State =
 
 // * Store Action
 
-//  ____  _
-// / ___|| |_ ___  _ __ ___
-// \___ \| __/ _ \| '__/ _ \
-//  ___) | || (_) | | |  __/
-// |____/ \__\___/|_|  \___|
-//
+//  ____  _                      _        _   _
+// / ___|| |_ ___  _ __ ___     / \   ___| |_(_) ___  _ __
+// \___ \| __/ _ \| '__/ _ \   / _ \ / __| __| |/ _ \| '_ \
+//  ___) | || (_) | | |  __/  / ___ \ (__| |_| | (_) | | | |
+// |____/ \__\___/|_|  \___| /_/   \_\___|\__|_|\___/|_| |_|
 
-(* Action: Log entry for the Event occurred and the resulting state. *)
+
+/// ## StoreAction
+///
+/// Wraps a StateMachine command and the current state it is applied to in a record type. This type
+/// is used internally in `Store` (more specifically `History`) to achieve the ability to easily
+/// undo/redo changes made to the state. It also enables time-travelling debugging (specifically in
+/// the front-end).
+///
+/// Returns: StoreAction
 and StoreAction =
   { Event: StateMachine
   ; State: State }
@@ -737,6 +744,15 @@ and StoreAction =
 //                            |___/
 //
 
+/// ## History
+///
+/// Keep a history of state changes. Tracks `StoreActions` in a list to enable easy undo/redo
+/// functionality.
+///
+/// ### Signature:
+/// - action: `StoreAction` - the initial `StoreAction` beyond which there is no history
+///
+/// Returns: History
 and History (action: StoreAction) =
   let mutable depth = 10
   let mutable debug = false
@@ -813,15 +829,20 @@ and History (action: StoreAction) =
 //  ___) | || (_) | | |  __/
 // |____/ \__\___/|_|  \___|
 //
-// The store centrally manages all state changes and notifies interested
-// parties of changes to the carried state (e.g. views, socket transport).
-//
-// Features:
-//
-// - time-traveleing debugger
-// - undo/redo
-//
 
+/// ## Store
+///
+/// The `Store` centrally manages all state changes and notifies interested parties of changes to
+/// the carried state (e.g. views, socket transport). Clients of the `Store` can subscribe to change
+/// notifications by regis a callback handler. `Store` is used in all parts of the Iris cluster
+/// application, from the front-end, at the service level, to all registered clients. `StateMachine`
+/// commands replicated via `Raft` are applied in the same order to it to ensure that all parties
+/// have the same data.
+///
+/// ### Signature:
+/// - state: `State` - the intitial state to use for the store
+///
+/// Returns: Store
 and Store(state : State)=
 
   let mutable state = state
@@ -835,39 +856,54 @@ and Store(state : State)=
 
   // ** Notify
 
-  // Notify all listeners of the StateMachine change
+  /// ## Notify
+  ///
+  /// Notify all listeners (registered callbacks) of the StateMachine command that was just applied
+  /// to the `State` atom.
+  ///
+  /// ### Signature:
+  /// - ev: `StateMachine` - command that was applied to `State`
+  ///
+  /// Returns: unit
   member private store.Notify (ev : StateMachine) =
     List.iter (fun f -> f store ev) listeners
 
 
   // ** Debug
 
-  // Turn debugging mode on or off.
+  /// ## Debug property
+  ///
+  /// Turn debugging of Store on or off.
+  ///
+  /// Returns: set: bool -> unit, get: bool
   member self.Debug
     with get ()  = history.Debug
       and set dbg = history.Debug <- dbg
 
   // ** UndoSteps
 
-  (*
-    * Number of undo steps to keep around.
-    *
-    * Overridden in debug mode.
-    *)
+  /// ## UndoSteps property
+  ///
+  /// Number of undo steps to keep around. This property is not honored if `Debug` is `true`.
+  ///
+  /// Returns: set: int -> unit, get: int
   member self.UndoSteps
     with get () = history.Depth
       and set n  = history.Depth <- n
 
   // ** Dispatch
 
-  (*
-      Dispatch an action (StateMachine) to be executed against the current
-      version of the state to produce the next state.
-
-      Notify all listeners of the change.
-
-      Create a history item for this change if debugging is enabled.
-    *)
+  /// ## Dispatch
+  ///
+  /// Dispatch an action (StateMachine command) to be executed against the current version of the
+  /// `State` to produce the next `State`.
+  ///
+  /// Then notify all listeners of the change, and record a history item for this change.
+  ///
+  /// ### Signature:
+  /// - ev: `StateMachine` - command to apply to the `State`
+  ///
+  /// Returns: unit
   member self.Dispatch (ev : StateMachine) : unit =
     let andRender (newstate: State) =
       state <- newstate                   // 1) create new state
@@ -920,25 +956,45 @@ and Store(state : State)=
 
   // ** Subscribe
 
-  (*
-      Subscribe a callback to changes on the store.
-    *)
+  /// ## Subscribe
+  ///
+  /// Register a callback to be invoked when a state change occurred.
+  ///
+  /// ### Signature:
+  /// - listener: `Listener` - function of type `Listener` to be invoked
+  ///
+  /// Returns: unit
   member self.Subscribe (listener : Listener) =
     listeners <- listener :: listeners
 
   // ** State
 
-  (*
-      Get the current version of the Store
-    *)
+  /// ## State
+  ///
+  /// Get the current `State`. This is a read-only property.
+  ///
+  /// Returns: State
   member self.State with get () = state
 
   // ** History
 
+  /// ## History
+  ///
+  /// Get the current History. This is exposed mainly for debugging purposes.
+  ///
+  /// Returns: History
   member self.History with get () = history
 
   // ** Redo
 
+  /// ## Redo
+  ///
+  /// Redo an undone change.
+  ///
+  /// ### Signature:
+  /// - unit: unit
+  ///
+  /// Returns: unit
   member self.Redo() =
     match history.Redo() with
       | Some log ->
@@ -948,6 +1004,14 @@ and Store(state : State)=
 
   // ** Undo
 
+  /// ## Undo
+  ///
+  /// Undo the last change to the state atom.
+  ///
+  /// ### Signature:
+  /// - unit: unit
+  ///
+  /// Returns: unit
   member self.Undo() =
     match history.Undo() with
       | Some log ->
@@ -964,6 +1028,12 @@ and Store(state : State)=
 // |_____|_|___/\__\___|_| |_|\___|_|
 //
 
+/// ## Listener
+///
+/// A `Listener` is type alias over a function that takes a `Store` and a `StateMachine` command,
+/// which gets invoked once a state change occurred.
+///
+/// Returns: Store -> StateMachine -> unit
 and Listener = Store -> StateMachine -> unit
 
 
@@ -978,6 +1048,15 @@ and Listener = Store -> StateMachine -> unit
 //   |_|\__,_|_| |_| |_|_|  \___/|_.__// |\___|\___|\__|
 //                                   |__/
 
+/// ## StateMachineYaml
+///
+/// Intermediate POCO for serializing a `StateMachine` value to Yaml.
+///
+/// ### Signature:
+/// - cmd: string - stringified `StateMachine` constructor
+/// - payload: obj - payload to save (obj for allowing for different payload types)
+///
+/// Returns: StateMachineYaml
 and StateMachineYaml(cmd: string, payload: obj) as self =
   [<DefaultValue>] val mutable Action : string
   [<DefaultValue>] val mutable Payload : obj
