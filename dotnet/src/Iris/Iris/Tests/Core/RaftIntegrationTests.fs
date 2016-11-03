@@ -92,6 +92,7 @@ module RaftIntegrationTests =
       expect "Values should be equal" (Right raft) id loaded
 
       rmDir path
+      |> Error.orExit id
 
   let test_log_snapshotting_should_clean_all_logs =
     pending "log snapshotting should clean all logs"

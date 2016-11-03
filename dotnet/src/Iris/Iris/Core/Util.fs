@@ -213,19 +213,34 @@ module Utils =
   /// ### Signature:
   /// - path: FilePath to delete
   ///
-  /// Returns: unit
-  let rec rmDir path =
-    let attrs = IO.File.GetAttributes(path)
-    if (attrs &&& IO.FileAttributes.Directory) = IO.FileAttributes.Directory then
-      let children = IO.DirectoryInfo(path).EnumerateFileSystemInfos()
-      if children.Count() > 0 then
-        for child in children do
-          rmDir child.FullName
-        System.IO.Directory.Delete(path)
+  /// Returns: Either<IrisError, unit>
+  let rec rmDir path : Either<IrisError,unit>  =
+    try
+      let attrs = IO.File.GetAttributes(path)
+      if (attrs &&& IO.FileAttributes.Directory) = IO.FileAttributes.Directory then
+        let children = IO.DirectoryInfo(path).EnumerateFileSystemInfos()
+        if children.Count() > 0 then
+          either {
+            do! Seq.fold
+                  (fun (m: Either<IrisError, unit>) (child: FileSystemInfo) -> either {
+                    return! rmDir child.FullName
+                  })
+                  (Right ())
+                  children
+            return System.IO.Directory.Delete(path)
+          }
+        else
+          System.IO.Directory.Delete(path)
+          |> Either.succeed
       else
-        System.IO.Directory.Delete(path)
-    else
-      System.IO.File.Delete path
+        System.IO.File.Delete path
+        |> Either.succeed
+    with
+      | exn ->
+        exn.Message
+        |> IOError
+        |> Either.fail
+
 
   /// ## create a new directory
   ///

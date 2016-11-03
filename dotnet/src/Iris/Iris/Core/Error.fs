@@ -1,6 +1,6 @@
 namespace Iris.Core
 
-/// * imports
+// * imports
 #if JAVASCRIPT
 
 open Iris.Core.FlatBuffers
@@ -8,17 +8,16 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
-/// * more
 open FlatBuffers
 open Iris.Serialization.Raft
 
 #endif
 
-/// * IrisError Definition
+// * IrisError
 type IrisError =
   | OK
 
-  // ** GIT
+  // GIT
   | BranchNotFound         of string
   | BranchDetailsNotFound  of string
   | RepositoryNotFound     of string
@@ -37,12 +36,13 @@ type IrisError =
 
   | SocketError            of string
   | ParseError             of string
+  | IOError                of string
 
   // CLI
   | MissingStartupDir
   | CliParseError
 
-  /// Node:
+  // Node
   | MissingNodeId
   | MissingNode            of string
 
@@ -53,7 +53,7 @@ type IrisError =
 
   | Other                  of string
 
-  /// RAFT:
+  // RAFT
   | AlreadyVoted
   | AppendEntryFailed
   | CandidateUnknown
@@ -74,6 +74,8 @@ type IrisError =
   | StaleResponse
   | UnexpectedVotingChange
   | VoteTermMismatch
+
+  // ** FromFB
 
   static member FromFB (fb: ErrorFB) =
     match fb.Type with
@@ -122,8 +124,9 @@ type IrisError =
     | x when x = ErrorTypeFB.VoteTermMismatchFB       -> Right VoteTermMismatch
     | x when x = ErrorTypeFB.ParseErrorFB             -> Right (ParseError fb.Message)
     | x when x = ErrorTypeFB.SocketErrorFB            -> Right (SocketError fb.Message)
+    | x when x = ErrorTypeFB.IOErrorFB                -> Right (IOError fb.Message)
     | x ->
-      sprintf "Could not parse unknown ErrotTypeFB: %A" x
+      sprintf "Could not parse unknown ErrorTypeFB: %A" x
       |> ParseError
       |> Either.fail
 #else
@@ -171,11 +174,14 @@ type IrisError =
     | ErrorTypeFB.VoteTermMismatchFB       -> Right VoteTermMismatch
     | ErrorTypeFB.ParseErrorFB             -> Right (ParseError fb.Message)
     | ErrorTypeFB.SocketErrorFB            -> Right (SocketError fb.Message)
+    | ErrorTypeFB.IOErrorFB                -> Right (IOError fb.Message)
     | x ->
       sprintf "Could not parse unknown ErrotTypeFB: %A" x
       |> ParseError
       |> Either.fail
 #endif
+
+  // ** ToOffset
 
   member error.ToOffset (builder: FlatBufferBuilder) =
     let tipe =
@@ -203,6 +209,7 @@ type IrisError =
       | AssetDeleteError       _ -> ErrorTypeFB.AssetDeleteErrorFB
       | ParseError             _ -> ErrorTypeFB.ParseErrorFB
       | SocketError            _ -> ErrorTypeFB.SocketErrorFB
+      | IOError                _ -> ErrorTypeFB.IOErrorFB
       | Other                  _ -> ErrorTypeFB.OtherFB
 
       | AlreadyVoted             -> ErrorTypeFB.AlreadyVotedFB
@@ -245,6 +252,7 @@ type IrisError =
       | AssetDeleteError       msg -> builder.CreateString msg |> Some
       | ParseError             msg -> builder.CreateString msg |> Some
       | SocketError            msg -> builder.CreateString msg |> Some
+      | IOError                msg -> builder.CreateString msg |> Some
       | Other                  msg -> builder.CreateString msg |> Some
       | _                          -> None
 
@@ -255,16 +263,32 @@ type IrisError =
     | _            -> ()
     ErrorFB.EndErrorFB(builder)
 
+  // ** ToBytes
+
   member self.ToBytes() = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) =
     Binary.createBuffer bytes
     |> ErrorFB.GetRootAsErrorFB
     |> IrisError.FromFB
 
+
+// * Error Module
 [<RequireQualifiedAccess>]
 module Error =
 
+  // ** toMessage
+
+  /// ## toMessage
+  ///
+  /// Convert a rigid `IrisError` into a puffy string message to be displayed.
+  ///
+  /// ### Signature:
+  /// - error: `IrisError` - error to convert into a human understable message
+  ///
+  /// Returns: string
   let inline toMessage (error: IrisError) =
     match error with
     | BranchNotFound        e -> sprintf "Branch does not exist: %s" e
@@ -281,6 +305,7 @@ module Error =
 
     | ParseError            e -> sprintf "Parse Error: %s" e
     | SocketError           e -> sprintf "Socket Error: %s" e
+    | IOError               e -> sprintf "IO Error: %s" e
 
     // LITEDB
     | ProjectInitError      e -> sprintf "Database could not be created: %s" e
@@ -324,6 +349,16 @@ module Error =
 
     | OK                      -> "All good."
 
+  // ** toExitCode
+
+  /// ## toExitCode
+  ///
+  /// Convert a rigid `IrisError` into an integer exit code to be used with `exit`.
+  ///
+  /// ### Signature:
+  /// - error: `IrisError` - error to return exit code for
+  ///
+  /// Returns: int
   let inline toExitCode (error: IrisError) =
     match error with
     | OK                      -> 0
@@ -357,44 +392,79 @@ module Error =
 
     | ParseError            _ -> 21
     | SocketError           _ -> 22
+    | IOError               _ -> 22
 
-    | Other                 _ -> 23
+    | Other                 _ -> 24
 
     // RAFT
-    | AlreadyVoted            -> 24
-    | AppendEntryFailed       -> 25
-    | CandidateUnknown        -> 26
-    | EntryInvalidated        -> 27
-    | InvalidCurrentIndex     -> 28
-    | InvalidLastLog          -> 29
-    | InvalidLastLogTerm      -> 30
-    | InvalidTerm             -> 31
-    | LogFormatError          -> 32
-    | LogIncomplete           -> 33
-    | NoError                 -> 34
-    | NoNode                  -> 35
-    | NotCandidate            -> 36
-    | NotLeader               -> 37
-    | NotVotingState          -> 38
-    | ResponseTimeout         -> 39
-    | SnapshotFormatError     -> 40
-    | StaleResponse           -> 41
-    | UnexpectedVotingChange  -> 42
-    | VoteTermMismatch        -> 43
+    | AlreadyVoted            -> 25
+    | AppendEntryFailed       -> 26
+    | CandidateUnknown        -> 27
+    | EntryInvalidated        -> 28
+    | InvalidCurrentIndex     -> 29
+    | InvalidLastLog          -> 30
+    | InvalidLastLogTerm      -> 31
+    | InvalidTerm             -> 32
+    | LogFormatError          -> 33
+    | LogIncomplete           -> 34
+    | NoError                 -> 35
+    | NoNode                  -> 36
+    | NotCandidate            -> 37
+    | NotLeader               -> 38
+    | NotVotingState          -> 39
+    | ResponseTimeout         -> 40
+    | SnapshotFormatError     -> 41
+    | StaleResponse           -> 42
+    | UnexpectedVotingChange  -> 43
+    | VoteTermMismatch        -> 44
 
+
+  // ** isOk
+
+  /// ## isOk
+  ///
+  /// Check if an `IrisError` value is the `OK` constructor.
+  ///
+  /// ### Signature:
+  /// - error: `IrisError` - error to check
+  ///
+  /// Returns: bool
   let inline isOk (error: IrisError) =
     match error with
     | OK -> true
     | _  -> false
 
+  // ** exitWith
+
+  /// ## exitWith
+  ///
+  /// Exit the program with the specified `IrisError` value, displaying its message and generating
+  /// its correspondonding exit code.
+  ///
+  /// ### Signature:
+  /// - error: `IrisError` - error to exit with
+  ///
+  /// Returns: unit
   let inline exitWith (error: IrisError) =
     if not (isOk error) then
       toMessage error
       |> printfn "Fatal: %s"
     error |> toExitCode |> exit
 
+  // ** throw
+
+  /// ## throw
+  ///
+  /// `failwith` the passed `IrisError` value.
+  ///
+  /// ### Signature:
+  /// - error: `IrisError` - value to fail with
+  ///
+  /// Returns: 'a
   let throw (error: IrisError) =
     failwithf "ERROR: %A" error
+
+  // ** orExit
 
   /// ## Exit with an exit code on failure
   ///
@@ -406,10 +476,7 @@ module Error =
   /// - `a`: value to apply function
   ///
   /// Returns: ^b
-  let inline orExit< ^a, ^b >
-                   (f: ^a -> ^b)
-                   (a: Either< IrisError, ^a>)
-                   : ^b =
+  let inline orExit (f: ^a -> ^b) (a: Either< IrisError, ^a>) : ^b =
     match a with
     | Right value -> f value
     | Left  error -> exitWith error
