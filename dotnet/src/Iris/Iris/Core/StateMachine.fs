@@ -1180,7 +1180,7 @@ and StateMachineYaml(cmd: string, payload: obj) as self =
   // ** LogMsg
 
   static member LogMsg (loglevel, str) =
-    new StateMachineYaml("LogMsg", sprintf "%A %s" loglevel str)
+    new StateMachineYaml("LogMsg", sprintf "%A;%s" loglevel str)
 
   // ** DataSnapshot
 
@@ -1334,8 +1334,12 @@ and StateMachine =
     | DataSnapshot state    -> StateMachineYaml.DataSnapshot(state)
     | LogMsg(level, msg)    -> StateMachineYaml.LogMsg(level,msg)
 
+  // ** ToYaml
+
   member self.ToYaml (serializer: Serializer) =
     self |> Yaml.toYaml |> serializer.Serialize
+
+  // ** FromYamlObject
 
   static member FromYamlObject (yaml: StateMachineYaml) =
     match yaml.Action with
