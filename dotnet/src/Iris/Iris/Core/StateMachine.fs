@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+// * Imports
+
 //  ___                            _
 // |_ _|_ __ ___  _ __   ___  _ __| |_ ___
 //  | || '_ ` _ \| '_ \ / _ \| '__| __/ __|
@@ -24,6 +26,8 @@ open SharpYaml.Serialization
 
 #endif
 
+// * AppCommand
+
 //     _                 ____                                          _
 //    / \   _ __  _ __  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| |
 //   / _ \ | '_ \| '_ \| |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |
@@ -39,10 +43,18 @@ type AppCommand =
 
   // PROJECT
   | SaveProject
-  // | OpenProject
-  // | CreateProject
-  // | CloseProject
-  // | DeleteProject
+
+  // ** ToString
+
+  override self.ToString() =
+    match self with
+    | Undo -> "Undo"
+    | Redo -> "Redo"
+    | Reset -> "Reset"
+    // PROJECT
+    | SaveProject -> "SaveProject"
+
+  // ** Parse
 
   static member Parse (str: string) =
     match str with
@@ -52,9 +64,13 @@ type AppCommand =
     | "SaveProject" -> SaveProject
     | _             -> failwithf "AppCommand: parse error: %s" str
 
+  // ** TryParse
+
   static member TryParse (str: string) =
     Either.tryWith ParseError "AppCommand" <| fun _ ->
       str |> AppCommand.Parse
+
+  // ** FromFB
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -86,6 +102,8 @@ type AppCommand =
       |> Either.fail
 #endif
 
+  // ** ToOffset
+
   member self.ToOffset(_: FlatBufferBuilder) : ActionTypeFB =
     match self with
     | Undo        -> ActionTypeFB.UndoFB
@@ -94,6 +112,8 @@ type AppCommand =
     | SaveProject -> ActionTypeFB.SaveProjectFB
 
 #if !JAVASCRIPT
+
+// * State Yaml
 
 //  ____  _        _     __   __              _
 // / ___|| |_ __ _| |_ __\ \ / /_ _ _ __ ___ | |
@@ -123,6 +143,8 @@ type StateYaml(ps, ioboxes, cues, cuelists, nodes, sessions, users) as self =
 
 #endif
 
+// * State Type
+
 //   ____  _        _
 //  / ___|| |_ __ _| |_ ___
 //  \___ \| __/ _` | __/ _ \
@@ -143,6 +165,8 @@ type State =
   ; Users    : Map<Id,User>
   }
 
+  // ** Empty
+
   static member Empty =
     { Patches  = Map.empty
     ; IOBoxes  = Map.empty
@@ -151,6 +175,8 @@ type State =
     ; CueLists = Map.empty
     ; Users    = Map.empty
     ; Sessions = Map.empty }
+
+  // ** AddUser
 
   //  _   _
   // | | | |___  ___ _ __
@@ -165,6 +191,8 @@ type State =
       let users = Map.add user.Id user state.Users
       { state with Users = users }
 
+  // ** UpdateUser
+
   member state.UpdateUser (user: User) =
     if Map.containsKey user.Id state.Users then
       let users = Map.add user.Id user state.Users
@@ -172,8 +200,12 @@ type State =
     else
       state
 
+  // ** RemoveUser
+
   member state.RemoveUser (user: User) =
     { state with Users = Map.filter (fun k _ -> (k <> user.Id)) state.Users }
+
+  // ** AddSession
 
   //  ____                _
   // / ___|  ___  ___ ___(_) ___  _ __
@@ -189,6 +221,8 @@ type State =
         Map.add session.Id session state.Sessions
     { state with Sessions = sessions }
 
+  // ** UpdateSession
+
   member state.UpdateSession (session: Session) =
     let sessions =
       if Map.containsKey session.Id state.Sessions then
@@ -197,8 +231,12 @@ type State =
         state.Sessions
     { state with Sessions = sessions }
 
+  // ** RemoveSession
+
   member state.RemoveSession (session: Session) =
     { state with Sessions = Map.filter (fun k _ -> (k <> session.Id)) state.Sessions }
+
+  // ** AddPatch
 
   //  ____       _       _
   // |  _ \ __ _| |_ ___| |__
@@ -212,14 +250,21 @@ type State =
     else
       { state with Patches = Map.add patch.Id patch state.Patches }
 
+  // ** UpdatePatch
+
   member state.UpdatePatch (patch : Patch) =
     if Map.containsKey patch.Id state.Patches then
       { state with Patches = Map.add patch.Id patch state.Patches }
     else
       state
 
+  // ** RemovePatch
+
   member state.RemovePatch (patch : Patch) =
     { state with Patches = Map.remove patch.Id state.Patches }
+
+
+  // ** AddIOBox
 
   //  ___ ___  ____
   // |_ _/ _ \| __ )  _____  __
@@ -238,6 +283,8 @@ type State =
     else
       state
 
+  // ** UpdateIOBox
+
   member state.UpdateIOBox (iobox : IOBox) =
     let mapper (_: Id) (patch : Patch) =
       if patch.Id = iobox.Patch then
@@ -246,12 +293,16 @@ type State =
         patch
     { state with Patches = Map.map mapper state.Patches }
 
+  // ** RemoveIOBox
+
   member state.RemoveIOBox (iobox : IOBox) =
     let updater _ (patch : Patch) =
       if iobox.Patch = patch.Id
       then Patch.RemoveIOBox patch iobox
       else patch
     { state with Patches = Map.map updater state.Patches }
+
+  // ** AddCueList
 
   //   ____           _     _     _
   //  / ___|   _  ___| |   (_)___| |_ ___
@@ -265,14 +316,20 @@ type State =
     else
       { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
 
+  // ** UpdateCueList
+
   member state.UpdateCueList (cuelist : CueList) =
     if Map.containsKey cuelist.Id state.CueLists then
       { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
     else
       state
 
+  // ** RemoveCueList
+
   member state.RemoveCueList (cuelist : CueList) =
     { state with CueLists = Map.remove cuelist.Id state.CueLists }
+
+  // ** AddCue
 
   //   ____
   //  / ___|   _  ___
@@ -286,14 +343,20 @@ type State =
     else
       { state with Cues = Map.add cue.Id cue state.Cues }
 
+  // ** UpdateCue
+
   member state.UpdateCue (cue : Cue) =
     if Map.containsKey cue.Id state.Cues then
       { state with Cues = Map.add cue.Id cue state.Cues }
     else
       state
 
+  // ** RemoveCue
+
   member state.RemoveCue (cue : Cue) =
     { state with Cues = Map.remove cue.Id state.Cues }
+
+  // ** AddNode
 
   //  _   _           _
   // | \ | | ___   __| | ___
@@ -307,15 +370,20 @@ type State =
     else
       { state with Nodes = Map.add node.Id node state.Nodes }
 
+  // ** UpdateNode
+
   member state.UpdateNode (node: RaftNode) =
     if Map.containsKey node.Id state.Nodes then
       { state with Nodes = Map.add node.Id node state.Nodes }
     else
       state
 
+  // ** RemoveNode
+
   member state.RemoveNode (node: RaftNode) =
     { state with Nodes = Map.remove node.Id state.Nodes }
 
+  // ** ToYamlObject
 #if !JAVASCRIPT
 
   // __   __              _
@@ -339,8 +407,12 @@ type State =
 
     yaml
 
+  // ** ToYaml
+
   member self.ToYaml (serializer: Serializer) =
     self |> Yaml.toYaml |> serializer.Serialize
+
+  // ** FromYamlObject
 
   static member FromYamlObject (yml: StateYaml) =
     either {
@@ -361,12 +433,16 @@ type State =
                Users    = users }
     }
 
+  // ** FromYaml
+
   static member FromYaml (str: string) : Either<IrisError,State> =
     let serializer = new Serializer()
     serializer.Deserialize<StateYaml>(str)
     |> Yaml.fromYaml
 
 #endif
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -428,7 +504,11 @@ type State =
     StateFB.AddUsers(builder, usersoffset)
     StateFB.EndStateFB(builder)
 
+  // ** ToBytes
+
   member self.ToBytes() = Binary.buildBuffer self
+
+  // ** FromFB
 
   static member FromFB(fb: StateFB) : Either<IrisError, State> =
     either {
@@ -623,10 +703,14 @@ type State =
                Sessions = sessions }
     }
 
+  // ** FromBytes
+
   static member FromBytes (bytes: Binary.Buffer) : Either<IrisError,State> =
     Binary.createBuffer bytes
     |> StateFB.GetRootAsStateFB
     |> State.FromFB
+
+// * Store Action
 
 //  ____  _
 // / ___|| |_ ___  _ __ ___
@@ -643,6 +727,8 @@ and StoreAction =
   override self.ToString() : string =
     sprintf "%s %s" (self.Event.ToString()) (self.State.ToString())
 
+// * History
+
 //  _   _ _     _
 // | | | (_)___| |_ ___  _ __ _   _
 // | |_| | / __| __/ _ \| '__| | | |
@@ -657,6 +743,8 @@ and History (action: StoreAction) =
   let mutable head = 1
   let mutable values = [ action ]
 
+  // ** Debug
+
   member self.Debug
     with get () = debug
     and  set b  =
@@ -664,17 +752,24 @@ and History (action: StoreAction) =
       if not debug then
         values <- List.take depth values
 
+  // ** Depth
+
   member self.Depth
     with get () = depth
       and set n  = depth <- n
 
+  // ** Values
+
   member self.Values
     with get () = values
+
+  // ** Length
 
   member self.Length
     with get () = List.length values
 
-  (* - - - - - - - - - - Methods - - - - - - - - - - *)
+  // ** Append
+
   member self.Append (value: StoreAction) : unit =
     head <- 0
     let newvalues = value :: values
@@ -682,6 +777,8 @@ and History (action: StoreAction) =
       values <- List.take depth newvalues
     else
       values <- newvalues
+
+  // ** Undo
 
   member self.Undo () : StoreAction option =
     let head' =
@@ -695,6 +792,8 @@ and History (action: StoreAction) =
 
     List.tryItem head values
 
+  // ** Redo
+
   member self.Redo () : StoreAction option =
     let head' =
       if   head - 1 < 0
@@ -705,6 +804,8 @@ and History (action: StoreAction) =
       head <- head'
 
     List.tryItem head values
+
+// * Store
 
 //  ____  _
 // / ___|| |_ ___  _ __ ___
@@ -732,14 +833,21 @@ and Store(state : State)=
 
   let mutable listeners : Listener list = []
 
+  // ** Notify
+
   // Notify all listeners of the StateMachine change
   member private store.Notify (ev : StateMachine) =
     List.iter (fun f -> f store ev) listeners
+
+
+  // ** Debug
 
   // Turn debugging mode on or off.
   member self.Debug
     with get ()  = history.Debug
       and set dbg = history.Debug <- dbg
+
+  // ** UndoSteps
 
   (*
     * Number of undo steps to keep around.
@@ -749,6 +857,8 @@ and Store(state : State)=
   member self.UndoSteps
     with get () = history.Depth
       and set n  = history.Depth <- n
+
+  // ** Dispatch
 
   (*
       Dispatch an action (StateMachine) to be executed against the current
@@ -808,18 +918,26 @@ and Store(state : State)=
 
     | _ -> ()
 
+  // ** Subscribe
+
   (*
       Subscribe a callback to changes on the store.
     *)
   member self.Subscribe (listener : Listener) =
     listeners <- listener :: listeners
 
+  // ** State
+
   (*
       Get the current version of the Store
     *)
   member self.State with get () = state
 
+  // ** History
+
   member self.History with get () = history
+
+  // ** Redo
 
   member self.Redo() =
     match history.Redo() with
@@ -828,12 +946,16 @@ and Store(state : State)=
         self.Notify log.Event |> ignore
       | _ -> ()
 
+  // ** Undo
+
   member self.Undo() =
     match history.Undo() with
       | Some log ->
         state <- log.State
         self.Notify log.Event |> ignore
       | _ -> ()
+
+// * Listener
 
 //  _     _     _
 // | |   (_)___| |_ ___ _ __   ___ _ __
@@ -843,6 +965,9 @@ and Store(state : State)=
 //
 
 and Listener = Store -> StateMachine -> unit
+
+
+// * StateMachine Yaml
 
 #if !JAVASCRIPT
 
@@ -863,79 +988,129 @@ and StateMachineYaml(cmd: string, payload: obj) as self =
     self.Action  <- cmd
     self.Payload <- payload
 
+  // ** AddNode
+
   static member AddNode (node: RaftNode) =
     new StateMachineYaml("AddNode", Yaml.toYaml node)
+
+  // ** UpdateNode
 
   static member UpdateNode (node: RaftNode) =
     new StateMachineYaml("UpdateNode", Yaml.toYaml node)
 
+  // ** RemoveNode
+
   static member RemoveNode (node: RaftNode) =
     new StateMachineYaml("RemoveNode", Yaml.toYaml node)
+
+  // ** AddPatch
 
   static member AddPatch (patch: Patch) =
     new StateMachineYaml("AddPatch", Yaml.toYaml patch)
 
+  // ** UpdatePatch
+
   static member UpdatePatch (patch: Patch) =
     new StateMachineYaml("UpdatePatch", Yaml.toYaml patch)
+
+  // ** RemovePatch
 
   static member RemovePatch (patch: Patch) =
     new StateMachineYaml("RemovePatch", Yaml.toYaml patch)
 
+  // ** AddIOBox
+
   static member AddIOBox (iobox: IOBox) =
     new StateMachineYaml("AddIOBox", Yaml.toYaml iobox)
+
+  // ** UpdateIOBox
 
   static member UpdateIOBox (iobox: IOBox) =
     new StateMachineYaml("UpdateIOBox", Yaml.toYaml iobox)
 
+  // ** RemoveIOBox
+
   static member RemoveIOBox (iobox: IOBox) =
     new StateMachineYaml("RemoveIOBox", Yaml.toYaml iobox)
+
+  // ** AddCue
 
   static member AddCue (cue: Cue) =
     new StateMachineYaml("AddCue", Yaml.toYaml cue)
 
+  // ** UpdateCue
+
   static member UpdateCue (cue: Cue) =
     new StateMachineYaml("UpdateCue", Yaml.toYaml cue)
+
+  // ** RemoveCue
 
   static member RemoveCue (cue: Cue) =
     new StateMachineYaml("RemoveCue", Yaml.toYaml cue)
 
+  // ** AddCueList
+
   static member AddCueList (cuelist: CueList) =
     new StateMachineYaml("AddCueList", Yaml.toYaml cuelist)
+
+  // ** UpdateCueList
 
   static member UpdateCueList (cuelist: CueList) =
     new StateMachineYaml("UpdateCueList", Yaml.toYaml cuelist)
 
+  // ** RemoveCueList
+
   static member RemoveCueList (cuelist: CueList) =
     new StateMachineYaml("RemoveCueList", Yaml.toYaml cuelist)
+
+  // ** AddUser
 
   static member AddUser (user: User) =
     new StateMachineYaml("AddUser", Yaml.toYaml user)
 
+  // ** UpdateUser
+
   static member UpdateUser (user: User) =
     new StateMachineYaml("UpdateUser", Yaml.toYaml user)
+
+  // ** RemoveUser
 
   static member RemoveUser (user: User) =
     new StateMachineYaml("RemoveUser", Yaml.toYaml user)
 
+  // ** AddSession
+
   static member AddSession (session: Session) =
     new StateMachineYaml("AddSession", Yaml.toYaml session)
+
+  // ** UpdateSession
 
   static member UpdateSession (session: Session) =
     new StateMachineYaml("UpdateSession", Yaml.toYaml session)
 
+  // ** RemoveSession
+
   static member RemoveSession (session: Session) =
     new StateMachineYaml("RemoveSession", Yaml.toYaml session)
+
+  // ** Command
 
   static member Command (cmd: AppCommand) =
     new StateMachineYaml("Command", string cmd)
 
+  // ** LogMsg
+
   static member LogMsg (loglevel, str) =
     new StateMachineYaml("LogMsg", sprintf "%A %s" loglevel str)
+
+  // ** DataSnapshot
 
   static member DataSnapshot (state: State) =
     new StateMachineYaml("DataSnapshot", Yaml.toYaml state)
 
 #endif
+
+// * StateMachine
 
 //  ____  _        _       __  __            _     _
 // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
@@ -986,6 +1161,8 @@ and StateMachine =
 
   | LogMsg        of LogLevel * string
 
+  // ** ToString
+
   override self.ToString() : string =
     match self with
 
@@ -1027,6 +1204,8 @@ and StateMachine =
     | Command    ev         -> sprintf "Command: %s"  (string ev)
     | DataSnapshot state    -> sprintf "DataSnapshot: %A" state
     | LogMsg(level, msg)    -> sprintf "LogMsg: [%A] %s" level msg
+
+  // ** ToYamlObject
 
 #if !JAVASCRIPT
 
@@ -1191,12 +1370,16 @@ and StateMachine =
       |> ParseError
       |> Either.fail
 
+  // ** FromYaml
+
   static member FromYaml (str: string) : Either<IrisError,StateMachine> =
     let serializer = new Serializer()
     serializer.Deserialize<StateMachineYaml>(str)
     |> Yaml.fromYaml
 
 #endif
+
+  // ** FromFB (JavaScript)
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1323,6 +1506,9 @@ and StateMachine =
       |> Either.map Command
 
 #else
+
+  // ** FromFB (.NET)
+
   static member FromFB (fb: ApiActionFB) =
     match fb.PayloadType with
     //   ____
@@ -1567,6 +1753,7 @@ and StateMachine =
     }
 
 #endif
+  // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<ApiActionFB> =
     match self with
@@ -1858,8 +2045,11 @@ and StateMachine =
 #endif
       ApiActionFB.EndApiActionFB(builder)
 
+  // ** ToBytes
 
   member self.ToBytes () = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes (bytes: Binary.Buffer) : Either<IrisError,StateMachine> =
     Binary.createBuffer bytes
