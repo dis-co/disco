@@ -107,6 +107,12 @@ nixfsi:
 docker:
 	${BUILD} DebugDocker
 
+image_base: docker
+	@sudo docker build \
+		--label iris \
+		--tag iris:base \
+		${CURRENT_DIR}/dotnet/src/Iris/Dockerbase/
+
 image: docker
 	@docker build \
 		--label iris \
