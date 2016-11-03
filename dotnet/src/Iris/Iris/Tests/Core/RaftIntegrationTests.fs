@@ -82,8 +82,7 @@ module RaftIntegrationTests =
 
       saveRaft config raft
       |> Either.mapError Error.throw
-      |> printfn "%A"
-      // |> ignore
+      |> ignore
 
       let loaded = loadRaft config
 
