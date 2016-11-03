@@ -1,0 +1,156 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+    <ProjectGuid>{D89C8286-2978-465B-89C9-8836A837C06B}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Iris.Tests</RootNamespace>
+    <AssemblyName>Iris.Tests</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
+    <WebSharperProject>Library</WebSharperProject>
+    <Name>Iris.Tests</Name>
+    <TargetFrameworkProfile />
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <Tailcalls>false</Tailcalls>
+    <OutputPath>bin\Debug\Tests</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <WarningLevel>5</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <Tailcalls>true</Tailcalls>
+    <OutputPath>bin\Release\Tests</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <WarningLevel>5</WarningLevel>
+    <OtherFlags>--warnon:1182</OtherFlags>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Management" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="paket.references" />
+    <None Include="paket.template" />
+    <Content Include="..\..\assets\nix\runtests.nix">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Compile Include="..\..\AssemblyInfo\TestsInfo.fs" />
+    <Compile Include="..\..\Iris\Core\Constants.fs" />
+    <Compile Include="..\..\Iris\Core\Either.fs" />
+    <Compile Include="..\..\Iris\Core\Serialization.fs" />
+    <Compile Include="..\..\Iris\Core\Error.fs" />
+    <Compile Include="..\..\Iris\Core\Id.fs" />
+    <Compile Include="..\..\Iris\Core\IpAddress.fs" />
+    <Compile Include="..\..\Iris\Core\Aliases.fs" />
+    <Compile Include="..\..\Iris\Core\Util.fs" />
+    <Compile Include="..\..\Iris\Core\User.fs" />
+    <Compile Include="..\..\Iris\Core\Session.fs" />
+    <Compile Include="..\..\Iris\Core\Color.fs" />
+    <Compile Include="..\..\Iris\Core\LogLevel.fs" />
+    <Compile Include="..\..\Iris\Core\Git.fs" />
+    <Compile Include="..\..\Iris\Core\IOBox.fs" />
+    <Compile Include="..\..\Iris\Core\Patch.fs" />
+    <Compile Include="..\..\Iris\Core\Cue.fs" />
+    <Compile Include="..\..\Iris\Core\CueList.fs" />
+    <!-- Raft -->
+    <Compile Include="..\..\Iris\Raft\Validation.fs" />
+    <Compile Include="..\..\Iris\Raft\Continue.fs" />
+    <Compile Include="..\..\Iris\Raft\Node.fs" />
+    <!-- FFS!!!! I hate F# -->
+    <Compile Include="..\..\Iris\Core\StateMachine.fs" />
+    <Compile Include="..\..\Iris\Raft\LogEntry.fs" />
+    <Compile Include="..\..\Iris\Raft\Log.fs" />
+    <Compile Include="..\..\Iris\Raft\Types.fs" />
+    <Compile Include="..\..\Iris\Raft\Raft.fs" />
+    <!-- Config -->
+    <Compile Include="..\..\Iris\Core\Region.fs" />
+    <Compile Include="..\..\Iris\Core\Signal.fs" />
+    <Compile Include="..\..\Iris\Core\Display.fs" />
+    <Compile Include="..\..\Iris\Core\Task.fs" />
+    <Compile Include="..\..\Iris\Core\ViewPort.fs" />
+    <Compile Include="..\..\Iris\Core\Vvvv.fs" />
+    <Compile Include="..\..\Iris\Core\Yaml.fs" />
+    <Compile Include="..\..\Iris\Core\Config.fs" />
+    <Compile Include="..\..\Iris\Core\Project.fs" />
+    <Compile Include="..\..\Iris\Core\Uri.fs" />
+    <Compile Include="..\..\Iris\Service\GitDaemon.fs" />
+    <Compile Include="..\..\Iris\Service\Request.fs" />
+    <Compile Include="..\..\Iris\Service\Zmq\Rep.fs" />
+    <Compile Include="..\..\Iris\Service\Zmq\Req.fs" />
+    <Compile Include="..\..\Iris\Service\RaftAppState.fs" />
+    <Compile Include="..\..\Iris\Service\Zmq\ZmqUtils.fs" />
+    <Compile Include="..\..\Iris\Service\Persistence.fs" />
+    <Compile Include="..\..\Iris\Service\Utilities.fs" />
+    <Compile Include="..\..\Iris\Service\Stm.fs" />
+    <Compile Include="..\..\Iris\Service\RaftServer.fs" />
+    <!--  _____         _        -->
+    <!-- |_   _|__  ___| |_ ___  -->
+    <!--   | |/ _ \/ __| __/ __| -->
+    <!--   | |  __/\__ \ |_\__ \ -->
+    <!--   |_|\___||___/\__|___/ -->
+    <!-- Service -->
+    <Compile Include="..\..\Iris\Tests\TestUtilities.fs" />
+    <Compile Include="..\..\Iris\Tests\Core\SerializationTests.fs" />
+    <Compile Include="..\..\Iris\Tests\Core\ProjectTests.fs" />
+    <Compile Include="..\..\Iris\Tests\Core\RaftIntegrationTests.fs" />
+    <Compile Include="..\..\Iris\Tests\Core\StoreTests.fs" />
+    <Compile Include="..\..\Iris\Tests\Core\GitTests.fs" />
+    <!-- Raft -->
+    <Compile Include="..\..\Iris\Tests\Raft\RaftTestUtils.fs" />
+    <Compile Include="..\..\Iris\Tests\Raft\NodeTests.fs" />
+    <Compile Include="..\..\Iris\Tests\Raft\LogTests.fs" />
+    <Compile Include="..\..\Iris\Tests\Raft\ValidationTests.fs" />
+    <Compile Include="..\..\Iris\Tests\Raft\ServerTests.fs" />
+    <Compile Include="..\..\Iris\Tests\Raft\JointConsensusTests.fs" />
+    <Compile Include="..\..\Iris\Tests\Raft\AppendEntriesTests.fs" />
+    <Compile Include="..\..\Iris\Tests\Raft\Scenarios.fs" />
+    <Compile Include="..\..\Iris\Tests\Raft\Tests.fs" />
+    <!--  __  __       _        -->
+    <!-- |  \/  | __ _(_)_ __   -->
+    <!-- | |\/| |/ _` | | '_ \  -->
+    <!-- | |  | | (_| | | | | | -->
+    <!-- |_|  |_|\__,_|_|_| |_| -->
+    <Compile Include="..\..\Iris\Tests\Main.fs" />
+  </ItemGroup>
+  <PropertyGroup>
+    <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Iris.Serialization">
+      <HintPath>.\bin\Release\Serialization\Iris.Serialization.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+  <Choose>
+    <When Condition="'$(VisualStudioVersion)' == '11.0'">
+      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')">
+        <FSharpTargetsPath Condition="Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')">$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
+      </PropertyGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets')">
+        <FSharpTargetsPath Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets')">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets</FSharpTargetsPath>
+      </PropertyGroup>
+    </Otherwise>
+  </Choose>
+  <Import Project="$(FSharpTargetsPath)" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -107,7 +107,7 @@ nixfsi:
 docker:
 	${BUILD} DebugDocker
 
-image_base: docker
+image_base:
 	@sudo docker build \
 		--label iris \
 		--tag iris:base \

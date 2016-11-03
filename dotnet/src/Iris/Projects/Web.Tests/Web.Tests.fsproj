@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{CDC50F9D-1EFB-483B-8D14-3F2A3FD87F9D}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Iris</RootNamespace>
+    <AssemblyName>Web.Tests</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\Web.Tests</OutputPath>
+    <DefineConstants>DEBUG;TRACE;JAVASCRIPT</DefineConstants>
+    <WarningLevel>5</WarningLevel>
+    <ErrorReport>prompt</ErrorReport>
+    <Externalconsole>true</Externalconsole>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <OutputPath>bin\Release\Web.Tests</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <Externalconsole>true</Externalconsole>
+    <DefineConstants>TRACE;JAVASCRIPT</DefineConstants>
+    <WarningLevel>5</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AssemblyInfo\Web.TestsInfo.fs" />
+    <Compile Include="Iris\Core\FlatBuffers.fs" />
+    <Compile Include="Iris\Web\Core\FlatBufferTypes.fs" />
+    <Compile Include="Iris\Core\Constants.fs" />
+    <Compile Include="Iris\Core\Either.fs" />
+    <Compile Include="Iris\Core\Serialization.fs" />
+    <Compile Include="Iris\Core\Error.fs" />
+    <Compile Include="Iris\Core\Id.fs" />
+    <Compile Include="Iris\Core\IpAddress.fs" />
+    <Compile Include="Iris\Core\Aliases.fs" />
+    <Compile Include="Iris\Core\User.fs" />
+    <Compile Include="Iris\Core\Session.fs" />
+    <Compile Include="Iris\Core\Color.fs" />
+    <Compile Include="Iris\Core\Util.fs" />
+    <Compile Include="Iris\Core\LogLevel.fs" />
+    <Compile Include="Iris\Core\IOBox.fs" />
+    <Compile Include="Iris\Core\Patch.fs" />
+    <Compile Include="Iris\Core\Cue.fs" />
+    <Compile Include="Iris\Core\CueList.fs" />
+    <Compile Include="Iris\Raft\Node.fs" />
+    <Compile Include="Iris\Core\StateMachine.fs" />
+    <Compile Include="Iris\Core\ClientMessage.fs" />
+    <Compile Include="Iris\Web\Core\Browser.fs" />
+    <Compile Include="Iris\Web\Core\Crypto.fs" />
+    <Compile Include="Iris\Web\Core\Html.fs" />
+    <Compile Include="Iris\Web\Core\Plugin.fs" />
+    <Compile Include="Iris\Web\Core\ViewController.fs" />
+    <Compile Include="Iris\Web\Core\Worker.fs" />
+    <Compile Include="Iris\Web\Core\Client.fs" />
+    <Compile Include="Iris\Web\Core\Keyboard.fs" />
+    <Compile Include="Iris\Web\Views\Patches.fs" />
+    <Compile Include="Iris\Tests\Web\TestUtilities.fs" />
+    <Compile Include="Iris\Tests\Web\Mocha.fs" />
+    <Compile Include="Iris\Tests\Web\TypeTests.fs" />
+    <Compile Include="Iris\Tests\Web\SerializationTests.fs" />
+    <Compile Include="Iris\Tests\Web\HtmlTests.fs" />
+    <compile Include="Iris\Tests\Web\PatchesViewTests.fs" />
+    <Compile Include="Iris\Tests\Web\PluginsTests.fs" />
+    <Compile Include="Iris\Tests\Web\StorageTests.fs" />
+    <Compile Include="Iris\Tests\Web\StoreTests.fs" />
+    <compile Include="Iris\Tests\Web\ViewControllerTests.fs" />
+    <Compile Include="Iris\Tests\Web\VirtualDomTests.fs" />
+    <!--  __  __       _        -->
+    <!-- |  \/  | __ _(_)_ __   -->
+    <!-- | |\/| |/ _` | | '_ \  -->
+    <!-- | |  | | (_| | | | | | -->
+    <!-- |_|  |_|\__,_|_|_| |_| -->
+    <Compile Include=".\Iris\Tests\Web\Main.fs" />
+  </ItemGroup>
+  <Choose>
+    <When Condition="'$(VisualStudioVersion)' == '11.0'">
+      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')">
+        <FSharpTargetsPath Condition="Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')">$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
+      </PropertyGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets')">
+        <FSharpTargetsPath Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets')">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets</FSharpTargetsPath>
+      </PropertyGroup>
+    </Otherwise>
+  </Choose>
+  <Import Project="$(FSharpTargetsPath)" />
+  <ItemGroup>
+    <Reference Include="Fable.Core">
+      <HintPath>..\..\node_modules\fable-core\Fable.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+</Project>
