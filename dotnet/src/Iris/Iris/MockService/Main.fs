@@ -18,7 +18,7 @@ module Main =
   let main args =
     let service = new Iris.Service.MockService()
     service.Start()
-
+    let _ = System.Console.ReadLine()
     //let parsed =
     //  try
     //    parser.ParseCommandLine args

@@ -41,7 +41,7 @@ type AssetServer(?config: IrisConfig) =
   #else
     let asm = System.Reflection.Assembly.GetExecutingAssembly()
     let dir = Path.GetDirectoryName(asm.Location)
-    dir </> "assets" </> "frontend"
+    dir </> "assets"
   #endif
 
   let widgetPath = basePath </> "widgets"
