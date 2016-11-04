@@ -5,7 +5,7 @@ open System.IO
 // open Iris.Raft
 open Iris.Core
 open Iris.Core.Utils
-open Iris.Service.Persistence
+// open Iris.Service.Persistence
 
 //  ___      _     ____                  _
 // |_ _|_ __(_)___/ ___|  ___ _ ____   _(_) ___ ___
@@ -14,7 +14,7 @@ open Iris.Service.Persistence
 // |___|_|  |_|___/____/ \___|_|    \_/ |_|\___\___|
 //
 
-type IrisService(project: IrisProject ref) =
+type MockService(?project: IrisProject ref) =
   // let signature = new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
 
   let store : Store = new Store(State.Empty)
@@ -23,8 +23,8 @@ type IrisService(project: IrisProject ref) =
 
   // let raftserver = new RaftServer((!project).Config, kontext)
 
-  let wsserver   = new WsServer((!project).Config)
-  let httpserver = new AssetServer((!project).Config)
+  let wsserver   = new WsServer() //(!project).Config)
+  let httpserver = new AssetServer() //(!project).Config)
 
   let setup _ =
     // WEBSOCKET

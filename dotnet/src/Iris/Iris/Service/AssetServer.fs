@@ -23,7 +23,7 @@ type FileName = string
 
 type AssetServer(?config: IrisConfig) =
   let [<Literal>] defaultIP = "127.0.0.1"
-  let [<Literal>] defaultPort = "8080"
+  let [<Literal>] defaultPort = "7000"
   let cts = new CancellationTokenSource()
 
   let noCache =

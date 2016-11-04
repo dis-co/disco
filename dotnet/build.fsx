@@ -391,15 +391,24 @@ Target "RunWebTests" (fun _ ->
 //  _| |\  | |___  | |
 // (_)_| \_|_____| |_|
 
+Target "BuildMockService" (fun () ->
+  buildDebug "Projects/MockService/MockService.fsproj" ()
+  let assetsTargetDir = (baseDir @@ "bin/Debug/MockService/assets")
+  FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
+  runNpm "install" assetsTargetDir ()
+  // let targetDir = (baseDir @@ "bin/Debug/MockService")
+  // runMono (targetDir @@ "Iris.MockService.exe") targetDir
+)
+
 Target "BuildDebugCore" (buildDebug "Projects/Core/Core.fsproj")
 
 Target "BuildReleaseCore" (buildRelease "Projects/Core/Core.fsproj")
 
 Target "BuildDebugService" (fun () ->
-  let targetDir = (baseDir @@ "bin/Debug/Iris/assets")
   buildDebug "Projects/Service/Service.fsproj" ()
-  FileUtils.cp_r (baseDir @@ "assets/frontend") targetDir
-  runNpm "install" targetDir ()
+  let assetsTargetDir = (baseDir @@ "bin/Debug/Iris/assets")
+  FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
+  runNpm "install" assetsTargetDir ()
 )
 
 Target "BuildReleaseService" (fun () ->

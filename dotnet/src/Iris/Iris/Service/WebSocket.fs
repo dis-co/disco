@@ -9,8 +9,12 @@ module WebSocket =
   open Iris.Service
   open Fleck
 
+  #if MOCKSERVICE
+  type RaftServer = class end
+  #endif
+
   type WsServer(?config: IrisConfig, ?context: RaftServer) =
-    let [<Literal>] defaultUri = "ws://127.0.0.1:9080"
+    let [<Literal>] defaultUri = "ws://127.0.0.1:8000"
 
     let mutable onOpenCb    : Option<Session -> unit> = None
     let mutable onCloseCb   : Option<Id -> unit> = None
