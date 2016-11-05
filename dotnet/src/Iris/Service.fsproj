@@ -23,6 +23,7 @@
     <OutputPath>bin\Debug\Iris</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
+    <!-- <OtherFlags>-\-standalone</OtherFlags> -->
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
     <DebugType>pdbonly</DebugType>
@@ -32,6 +33,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>
+    <!-- <OtherFlags>-\-standalone</OtherFlags> -->
   </PropertyGroup>
   <ItemGroup>
     <FrontendAssets Include="assets\frontend\**\*.*" />
