@@ -5,7 +5,7 @@ var src = path.join(__dirname, "../..");
 
 var cfg = {
   devtool: "source-map",
-  entry: path.join(src, "bin/Debug/Web.Tests/Main.js"),
+  entry: path.join(src, "bin/Debug/Web.Tests/Tests/Web/Main.js"),
   resolve: {
     alias: {
       flatbuffers: path.join(src, "assets", "frontend", "js", "flatbuffers.js"),

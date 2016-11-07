@@ -68,19 +68,14 @@
     <Compile Include="..\..\Iris\Tests\Web\Mocha.fs" />
     <Compile Include="..\..\Iris\Tests\Web\TypeTests.fs" />
     <Compile Include="..\..\Iris\Tests\Web\SerializationTests.fs" />
-    <Compile Include="..\..\Iris\Tests\Web\HtmlTests.fs" />
-    <compile Include="..\..\Iris\Tests\Web\PatchesViewTests.fs" />
-    <Compile Include="..\..\Iris\Tests\Web\PluginsTests.fs" />
     <Compile Include="..\..\Iris\Tests\Web\StorageTests.fs" />
     <Compile Include="..\..\Iris\Tests\Web\StoreTests.fs" />
-    <compile Include="..\..\Iris\Tests\Web\ViewControllerTests.fs" />
-    <Compile Include="..\..\Iris\Tests\Web\VirtualDomTests.fs" />
     <!--  __  __       _        -->
     <!-- |  \/  | __ _(_)_ __   -->
     <!-- | |\/| |/ _` | | '_ \  -->
     <!-- | |  | | (_| | | | | | -->
     <!-- |_|  |_|\__,_|_|_| |_| -->
-    <Compile Include=".\Iris\Tests\Web\Main.fs" />
+    <Compile Include="..\..\Iris\Tests\Web\Main.fs" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">

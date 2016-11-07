@@ -347,12 +347,12 @@ Target "GenerateSerialization"
 let frontendDir = baseDir @@ "Projects" @@ "Frontend"
 
 Target "BuildFrontend" (runFable "fable" frontendDir)
-Target "BuildFrontendFsProj" (buildDebug "Frontend.fsproj")
+Target "BuildFrontendFsProj" (buildDebug "Projects/Frontend/Frontend.fsproj")
 
 let workerDir = baseDir @@ "Projects" @@ "Worker"
 
 Target "BuildWorker" (runFable "fable" workerDir)
-Target "BuildWorkerFsProj" (buildDebug "Frontend.fsproj")
+Target "BuildWorkerFsProj" (buildDebug "Projects/Worker/Worker.fsproj")
 
 //  _____         _
 // |_   _|__  ___| |_ ___
@@ -366,7 +366,7 @@ Target "BuildWebTests" (fun _ ->
 
 Target "WatchWebTests" (runFable "run watch-tests" webtestsdir)
 
-Target "BuildWebTestsFsProj" (buildDebug "Web.Tests.fsproj")
+Target "BuildWebTestsFsProj" (buildDebug "Projects/Web.Tests/Web.Tests.fsproj")
 
 Target "RunWebTests" (fun _ ->
     let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Iris" @@ "assets"

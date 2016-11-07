@@ -1,3 +1,5 @@
+module Iris.Web.Tests.Main
+
 open Fable.Core
 open Fable.Import
 open Test.Units
@@ -6,13 +8,8 @@ open Test.Units
 let apply f = failwith "ONLY IN JS"
 
 let main _ =
-  [ Html.main
-  ; Store.main
+  [ Store.main
   ; Storage.main
-  ; Plugins.main
-  ; VirtualDom.main
-  ; PatchesView.main
-  ; ViewController.main
   ; SerializationTests.main
   ; TypeTests.main
   ] |> List.iter apply
