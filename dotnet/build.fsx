@@ -139,9 +139,9 @@ let runNode cmd workdir _ =
   runExec node cmd workdir false
 
 let runFable cmd fableconfigdir _ =
-  // runNpm ("run " + cmd + " -- --projFile " + fableconfigdir) __SOURCE_DIRECTORY__ ()
+  runNpm ("run " + cmd + " -- --projFile " + fableconfigdir) __SOURCE_DIRECTORY__ ()
   // Run Fable's dev version
-  runNode ("../../Fable/build/fable " + fableconfigdir) __SOURCE_DIRECTORY__ ()
+  // runNode ("../../Fable/build/fable " + fableconfigdir) __SOURCE_DIRECTORY__ ()
 
 let runTests filepath workdir =
   let arch =
