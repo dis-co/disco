@@ -95,7 +95,7 @@ release:
 shell:
 	@nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv
 
-fsi:
+nixfsi:
 	@nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv --run "fsi --use:dotnet/src/Iris/bin/Debug/Core/interactive.fsx"
 
 #  ____             _
@@ -106,6 +106,12 @@ fsi:
 
 docker:
 	${BUILD} DebugDocker
+
+image_base:
+	@sudo docker build \
+		--label iris \
+		--tag iris:base \
+		${CURRENT_DIR}/dotnet/src/Iris/Dockerbase/
 
 image: docker
 	@docker build \
@@ -127,8 +133,14 @@ create:
 		-e COMMAND=create \
 		${IMAGE}
 
+docker.shell:
+	@sudo docker run -p 7000:7000 -i --rm \
+		-v ${PROJECT}:/project \
+		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
+		-e COMMAND=shell \
+		${IMAGE}
 start:
-	@docker run --rm --net=host \
+	@sudo docker run -p 7000:7000 -i --rm \
 		-v ${PROJECT}:/project \
 		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
 		-e COMMAND=start \
@@ -155,6 +167,10 @@ enter:
 		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
 		-e COMMAND=shell \
 		${IMAGE}
+
+fsi:
+	@cd dotnet/src/Iris; fsharpi --use:bin/Debug/Core/interactive.fsx
+
 #              _        _
 #  _ __   __ _| | _____| |_
 # | '_ \ / _` | |/ / _ \ __|

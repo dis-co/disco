@@ -66,7 +66,7 @@ type WorkerEvent<'data>() =
 //    \_/\_/ \___|_.__/____/ \___/ \___|_|\_\___|\__|
 
 [<Emit("new WebSocket($0)")>]
-type WebSocket(url: string)  =
+type WebSocket(_url: string)  =
 
   [<Emit("$0.binaryType = $1")>]
   member __.BinaryType

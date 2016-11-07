@@ -104,30 +104,6 @@ let setParams cfg defaults =
       Targets = ["Build"]
       Properties = [ "Configuration", cfg ] }
 
-let runNpm cmd workdir _ =
-  ExecProcessWithLambdas (fun info ->
-                           let npm =
-                             match Environment.OSVersion.Platform with
-                               | PlatformID.Unix ->  "npm" // use the platform npm/node
-                               | _               ->        // use the nuget/paket npm
-                                 __SOURCE_DIRECTORY__ @@  @"\packages\Npm.js\tools\npm.cmd"
-
-                           info.FileName <- npm
-                           info.Arguments <- cmd
-                           info.UseShellExecute <- false
-                           info.WorkingDirectory <- workdir)
-                         (TimeSpan.MaxValue)
-                         true
-                         (printfn "error: %s")
-                         (printfn "%s")
-  |> maybeFail
-
-let runFable cmd workdir _ =
-  if not isUnix then
-    DeleteFile (workdir @@ "package.json")
-    CopyFile workdir (__SOURCE_DIRECTORY__ @@ "package.json")
-  runNpm ("run " + cmd) workdir ()
-
 let runMono filepath workdir =
   ExecProcess (fun info ->
                   info.FileName <- "mono"
@@ -146,6 +122,26 @@ let runExec filepath args workdir shell =
               TimeSpan.MaxValue
   |> maybeFail
 
+let runNpm cmd workdir _ =
+  let npm =
+    match Environment.OSVersion.Platform with
+      | PlatformID.Unix ->  "npm" // use the platform npm/node
+      | _               ->        // use the nuget/paket npm/node
+        __SOURCE_DIRECTORY__ @@  @"\packages\Npm.js\tools\npm.cmd"
+  runExec npm cmd workdir false
+
+let runNode cmd workdir _ =
+  let node =
+    match Environment.OSVersion.Platform with
+      | PlatformID.Unix ->  "node" // use the platform npm/node
+      | _               ->         // use the nuget/paket npm/node
+        __SOURCE_DIRECTORY__ @@  @"\packages\Node.js\node.exe"
+  runExec node cmd workdir false
+
+let runFable cmd fableconfigdir _ =
+  runNpm ("run " + cmd + " -- --projFile " + fableconfigdir) __SOURCE_DIRECTORY__ ()
+  // Run Fable's dev version
+  // runNode ("../../Fable/build/fable " + fableconfigdir) __SOURCE_DIRECTORY__ ()
 
 let runTests filepath workdir =
   let arch =
@@ -348,24 +344,14 @@ Target "GenerateSerialization"
 // |  _|| | | (_) | | | | ||  __/ | | | (_| |
 // |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| JS!
 
-let frontendDir = baseDir @@ "Iris" @@ "Web" @@ "Frontend"
+let frontendDir = baseDir @@ "Projects" @@ "Frontend"
 
-Target "WatchFrontendDebug" (runFable "watch-frontend-debug" frontendDir)
-Target "WatchFrontendRelease" (runFable "watch-frontend-release" frontendDir)
-
-Target "BuildFrontendDebug" (runFable "build-frontend-debug" frontendDir)
-Target "BuildFrontendRelease" (runFable "build-frontend-release" frontendDir)
-
+Target "BuildFrontend" (runFable "fable" frontendDir)
 Target "BuildFrontendFsProj" (buildDebug "Frontend.fsproj")
 
-let workerDir = baseDir @@ "Iris" @@ "Web" @@ "Worker"
+let workerDir = baseDir @@ "Projects" @@ "Worker"
 
-Target "BuildWorkerDebug" (runFable "build-worker-debug" workerDir)
-Target "BuildWorkerRelease" (runFable "build-worker-release" workerDir)
-
-Target "WatchWorkerDebug" (runFable "watch-worker-debug" workerDir)
-Target "WatchWorkerRelease" (runFable "watch-worker-release" workerDir)
-
+Target "BuildWorker" (runFable "fable" workerDir)
 Target "BuildWorkerFsProj" (buildDebug "Frontend.fsproj")
 
 //  _____         _
@@ -405,17 +391,36 @@ Target "RunWebTests" (fun _ ->
 //  _| |\  | |___  | |
 // (_)_| \_|_____| |_|
 
-Target "BuildDebugCore" (buildDebug "Core.fsproj")
+Target "BuildMockService" (fun () ->
+  buildDebug "Projects/MockService/MockService.fsproj" ()
+  let assetsTargetDir = (baseDir @@ "bin/Debug/MockService/assets")
+  FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
+  runNpm "install" assetsTargetDir ()
+  // let targetDir = (baseDir @@ "bin/Debug/MockService")
+  // runMono (targetDir @@ "Iris.MockService.exe") targetDir
+)
 
-Target "BuildReleaseCore" (buildRelease "Core.fsproj")
+Target "BuildDebugCore" (buildDebug "Projects/Core/Core.fsproj")
 
-Target "BuildDebugService" (buildDebug "Service.fsproj")
+Target "BuildReleaseCore" (buildRelease "Projects/Core/Core.fsproj")
 
-Target "BuildReleaseService" (buildRelease "Service.fsproj")
+Target "BuildDebugService" (fun () ->
+  buildDebug "Projects/Service/Service.fsproj" ()
+  let assetsTargetDir = (baseDir @@ "bin/Debug/Iris/assets")
+  FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
+  runNpm "install" assetsTargetDir ()
+)
 
-Target "BuildDebugNodes" (buildDebug "Nodes.fsproj")
+Target "BuildReleaseService" (fun () ->
+  let targetDir = (baseDir @@ "bin/Release/Iris/assets")
+  buildRelease "Projects/Service/Service.fsproj" ()
+  FileUtils.cp_r (baseDir @@ "assets/frontend") targetDir
+  runNpm "install" targetDir ()
+)
 
-Target "BuildReleaseNodes" (buildRelease "Nodes.fsproj")
+Target "BuildDebugNodes" (buildDebug "Projects/Nodes/Nodes.fsproj")
+
+Target "BuildReleaseNodes" (buildRelease "Projects/Nodes/Nodes.fsproj")
 
 //  _____         _
 // |_   _|__  ___| |_ ___
@@ -540,16 +545,10 @@ Target "Release" DoNothing
 ==> "BuildWebTests"
 
 "GenerateSerialization"
-==> "BuildFrontendRelease"
+==> "BuildFrontend"
 
 "GenerateSerialization"
-==> "BuildFrontendDebug"
-
-"GenerateSerialization"
-==> "BuildWorkerDebug"
-
-"GenerateSerialization"
-==> "BuildWorkerRelease"
+==> "BuildWorker"
 
 "GenerateSerialization"
 ==> "BuildReleaseService"
@@ -571,14 +570,8 @@ Target "Release" DoNothing
 ==> "BuildReleaseService"
 ==> "CopyBinaries"
 
-"BuildWorkerRelease"
-==> "CopyAssets"
-
 // "BuildWebTests"
 // ==> "CopyAssets"
-
-"BuildFrontendRelease"
-==> "CopyAssets"
 
 "CopyBinaries"
 ==> "CopyAssets"
@@ -598,12 +591,14 @@ Target "Release" DoNothing
 // |____/ \___|_.__/ \__,_|\__, |____/ \___/ \___|_|\_\___|_|
 //                         |___/
 
-Target "DebugDocker" DoNothing
+Target "DebugDocker" (fun () ->
+  FileUtils.cp_r "src/Docker/iris/" "src/Iris/bin/Debug/Iris"
+)
 
-"BuildWorkerDebug"
+"BuildWorker"
 ==> "DebugDocker"
 
-"BuildFrontendDebug"
+"BuildFrontend"
 ==> "DebugDocker"
 
 "BuildDebugService"
@@ -621,10 +616,10 @@ Target "DebugAll" DoNothing
 "RunWebTests"
 ==> "DebugAll"
 
-"BuildWorkerDebug"
+"BuildWorker"
 ==> "DebugAll"
 
-"BuildFrontendDebug"
+"BuildFrontend"
 ==> "DebugAll"
 
 "BuildDebugService"

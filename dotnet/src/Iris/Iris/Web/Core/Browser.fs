@@ -12,9 +12,6 @@ module Browser =
   open Fable.Core
   open Fable.Import
 
-  [<Emit("$0 === null || $0 === undefined")>]
-  let isNullValue (_: 't) : bool = failwith "JS ONLY"
-
   //  ____   ___  __  __
   // |  _ \ / _ \|  \/  |
   // | | | | | | | |\/| |
@@ -24,7 +21,7 @@ module Browser =
   /// Safe function to get an element by id
   let getById<'T when 'T :> Browser.HTMLElement> id =
     let el = Browser.document.getElementById id
-    if isNullValue el then None
+    if isNull el then None
     else Some el
 
   /// Safe function to get an element by id
@@ -34,11 +31,9 @@ module Browser =
   let getByTag<'T when 'T :> Browser.HTMLElement> tag =
     Browser.document.getElementsByTagName tag
 
-  [<Emit("$1.split($0)")>]
-  let split (_: char) (_: string) : string array = failwith "ONLY JS"
+  let inline split (c: char) (txt: string) : string array = txt.Split(c)
 
-  [<Emit("$1.indexOf($0) > -1")>]
-  let contains (_: 'a) (_: 'a array) : bool = failwith "ONLY JS"
+  let inline contains (el: 'a) (ar: 'a array) : bool = Array.contains el ar
 
   let hasClass klass (el: Browser.HTMLElement) =
     split ' ' el.className |> contains klass
@@ -53,7 +48,7 @@ module Browser =
 
   let getStyle style (el: Browser.Element) =
     let attr = el.getAttribute "style"
-    if isNullValue attr then None
+    if isNull attr then None
     else
       let styles = parseStyles attr |> Map.ofArray
       Map.tryFind style styles
@@ -70,16 +65,9 @@ module Browser =
   let appendChild (el: Browser.Element) (target: Browser.Element) =
     target.appendChild el
 
-  [<Emit("Object.is($0, $1)")>]
-  let identical (_: obj) (_: obj) = failwith "OH NO ITS ITS ITS JS"
+  let inline asHtml (el: 'a when 'a :> Browser.Node) : Browser.HTMLElement = unbox el
 
-  [<Emit("return $0")>]
-  let asHtml (el: 'a when 'a :> Browser.Node) : Browser.HTMLElement =
-    failwithf "asHtml: JAVASCRIPT ONLY %A" el
-
-  [<Emit("return $0")>]
-  let asHtmlInput (el: 'a when 'a :> Browser.Node) : Browser.HTMLInputElement =
-    failwithf "asHtmlInput: JAVASCRIPT ONLY %A" el
+  let asHtmlInput (el: 'a when 'a :> Browser.Node) : Browser.HTMLInputElement = unbox el
 
   //  _____                 _
   // | ____|_   _____ _ __ | |_ ___

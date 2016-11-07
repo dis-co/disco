@@ -6,6 +6,7 @@ module Store =
   open Fable.Core
   open Fable.Import
 
+  open System
   open System.Collections.Generic
 
   open Iris.Core
@@ -32,7 +33,7 @@ module Store =
         let state = store.State
         store.Dispatch <| AddPatch(patch)
         let newstate = store.State
-        equals false (identical state newstate)
+        equals false (Object.ReferenceEquals(state, newstate))
         finish()
 
     (* ---------------------------------------------------------------------- *)

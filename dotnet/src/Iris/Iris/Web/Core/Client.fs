@@ -10,11 +10,9 @@ module Client =
   open Fable.Core.JsInterop
   open Iris.Core
 
-  [<Emit("window.location.hostname")>]
-  let getHostname _ : string = failwith "ONLY JS"
+  let inline getHostname(): string = window.location.hostname
 
-  [<Emit("parseInt(window.location.port, 10)")>]
-  let getHostPort _ : int = failwith "ONLY_JS"
+  let inline getHostPort(): int = int window.location.port
 
   //  ____  _                        ___        __         _
   // / ___|| |__   __ _ _ __ ___  __| \ \      / /__  _ __| | _____ _ __
