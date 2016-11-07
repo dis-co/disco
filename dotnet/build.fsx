@@ -359,7 +359,7 @@ Target "BuildWorkerFsProj" (buildDebug "Frontend.fsproj")
 //   | |/ _ \/ __| __/ __|
 //   | |  __/\__ \ |_\__ \
 // JS|_|\___||___/\__|___/
-let webtestsdir = baseDir @@ "Iris" @@ "Tests" @@ "Web"
+let webtestsdir = baseDir @@ "Projects" @@ "Web.Tests"
 
 Target "BuildWebTests" (fun _ ->
     runFable "fable" webtestsdir ())
