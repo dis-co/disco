@@ -362,7 +362,7 @@ Target "BuildWorkerFsProj" (buildDebug "Frontend.fsproj")
 let webtestsdir = baseDir @@ "Iris" @@ "Tests" @@ "Web"
 
 Target "BuildWebTests" (fun _ ->
-    runFable "build-tests-release" webtestsdir ())
+    runFable "fable" webtestsdir ())
 
 Target "WatchWebTests" (runFable "run watch-tests" webtestsdir)
 
