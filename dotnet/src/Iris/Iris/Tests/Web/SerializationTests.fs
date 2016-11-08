@@ -97,7 +97,7 @@ module SerializationTests =
     test "should serialize/deserialize cue correctly" <| fun finish ->
       [| for i in 0 .. 20 do
           yield  mkCue () |]
-      |> Array.map check
+      |> Array.iter check
       finish()
 
     test "Validate CueList Serialization" <| fun finish ->

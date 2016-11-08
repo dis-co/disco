@@ -11,7 +11,7 @@ module Mocha =
 
   let success (cb : unit -> unit) : unit = cb ()
 
-  let inline equals (expectation: ^a) (value: ^a) : unit =
+  let equals (expectation: 'a) (value: 'a) : unit =
     if expectation <> value then
       failwithf "Expected %A but got %A." expectation value
 
