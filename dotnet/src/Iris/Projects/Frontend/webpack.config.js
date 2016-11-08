@@ -25,13 +25,11 @@ var cfg = {
     filename: "iris.js"
   },
   module: {
-    preLoaders: [
-      {
-	test: /\.js$/,
-	exclude: /node_modules/,
-	loader: "source-map-loader"
-      }
-    ]
+    preLoaders: [{
+      test: /\.js$/,
+      exclude: /node_modules/,
+      loader: "source-map-loader"
+    }]
   }
 };
 
