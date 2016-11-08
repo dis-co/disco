@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+// * Imports
+
 #if JAVASCRIPT
 
 open Fable.Core
@@ -16,6 +18,8 @@ open SharpYaml.Serialization
 
 #endif
 
+// * Behavior
+
 //  ____       _                 _
 // | __ )  ___| |__   __ ___   _(_) ___  _ __
 // |  _ \ / _ \ '_ \ / _` \ \ / / |/ _ \| '__|
@@ -27,6 +31,8 @@ type Behavior =
   | Toggle
   | Bang
 
+  // ** TryParse
+
   static member TryParse (str: string) =
     match toLower str with
     | "toggle" -> Right Toggle
@@ -36,10 +42,15 @@ type Behavior =
       |> ParseError
       |> Either.fail
 
+  // ** ToString
+
   override self.ToString() =
     match self with
     | Toggle  -> "Toggle"
     | Bang    -> "Bang"
+
+
+  // ** FromFB
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -72,10 +83,14 @@ type Behavior =
 
 #endif
 
+  // ** ToOffset
+
   member self.ToOffset(_: FlatBufferBuilder) : BehaviorFB =
     match self with
     | Toggle -> BehaviorFB.ToggleFB
     | Bang   -> BehaviorFB.BangFB
+
+// * StringType
 
 //  ____  _        _            _____
 // / ___|| |_ _ __(_)_ __   __ |_   _|   _ _ __   ___
@@ -92,6 +107,8 @@ type StringType =
   | Url
   | IP
 
+  // ** TryParse
+
   static member TryParse (str: string) =
     match toLower str with
     | "simple"    -> Right Simple
@@ -105,6 +122,8 @@ type StringType =
       |> ParseError
       |> Either.fail
 
+  // ** ToString
+
   override self.ToString() =
     match self with
     | Simple    -> "Simple"
@@ -113,6 +132,8 @@ type StringType =
     | Directory -> "Directory"
     | Url       -> "Url"
     | IP        -> "IP"
+
+  // ** FromFB
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -151,6 +172,8 @@ type StringType =
 
 #endif
 
+  // ** ToOffset
+
   member self.ToOffset(_: FlatBufferBuilder) : StringTypeFB =
     match self with
     | Simple    -> StringTypeFB.SimpleFB
@@ -160,17 +183,16 @@ type StringType =
     | Url       -> StringTypeFB.UrlFB
     | IP        -> StringTypeFB.IPFB
 
-//  ___ ___  ____
-// |_ _/ _ \| __ )  _____  __
-//  | | | | |  _ \ / _ \ \/ /
-//  | | |_| | |_) | (_) >  <
-// |___\___/|____/ \___/_/\_\
 
-#if JAVASCRIPT
+// * SliceYaml
 
-type IOBox =
+#if !JAVASCRIPT
 
-#else
+//  ____  _ _        __   __              _
+// / ___|| (_) ___ __\ \ / /_ _ _ __ ___ | |
+// \___ \| | |/ __/ _ \ V / _` | '_ ` _ \| |
+//  ___) | | | (_|  __/| | (_| | | | | | | |
+// |____/|_|_|\___\___||_|\__,_|_| |_| |_|_|
 
 type SliceYaml(tipe, idx, value: obj) as self =
   [<DefaultValue>] val mutable SliceType : string
@@ -284,6 +306,8 @@ type SliceYaml(tipe, idx, value: obj) as self =
       | error ->
         failwithf "Encountered unexpected error: %A" error
 
+// * IOBoxYaml
+
 and IOBoxYaml() =
   [<DefaultValue>] val mutable BoxType    : string
   [<DefaultValue>] val mutable Id         : string
@@ -302,7 +326,14 @@ and IOBoxYaml() =
   [<DefaultValue>] val mutable Properties : PropertyYaml array
   [<DefaultValue>] val mutable Slices     : SliceYaml array
 
+// * IOBox
+
 and IOBox =
+
+#else
+
+type IOBox =
+
 #endif
   | StringBox of StringBoxD
   | IntBox    of IntBoxD
@@ -313,6 +344,8 @@ and IOBox =
   | EnumBox   of EnumBoxD
   | ColorBox  of ColorBoxD
   | Compound  of CompoundBoxD
+
+  // ** Id
 
   member self.Id
     with get () =
@@ -327,6 +360,8 @@ and IOBox =
         | ColorBox  data -> data.Id
         | Compound  data -> data.Id
 
+  // ** Name
+
   member self.Name
     with get () =
       match self with
@@ -340,6 +375,8 @@ and IOBox =
         | ColorBox  data -> data.Name
         | Compound  data -> data.Name
 
+  // ** SetName
+
   member self.SetName name =
     match self with
     | StringBox data -> StringBox { data with Name = name }
@@ -351,6 +388,8 @@ and IOBox =
     | EnumBox   data -> EnumBox   { data with Name = name }
     | ColorBox  data -> ColorBox  { data with Name = name }
     | Compound  data -> Compound  { data with Name = name }
+
+  // ** Patch
 
   member self.Patch
     with get () =
@@ -365,6 +404,8 @@ and IOBox =
         | ColorBox  data -> data.Patch
         | Compound  data -> data.Patch
 
+  // ** Slices
+
   member self.Slices
     with get () =
       match self with
@@ -377,6 +418,8 @@ and IOBox =
         | EnumBox   data -> EnumSlices     data.Slices
         | ColorBox  data -> ColorSlices    data.Slices
         | Compound  data -> CompoundSlices data.Slices
+
+  // ** SetSlice
 
   //  ____       _   ____  _ _
   // / ___|  ___| |_/ ___|| (_) ___ ___
@@ -456,6 +499,8 @@ and IOBox =
         | CompoundSlice slice   -> Compound { data with Slices = update data.Slices slice }
         | _                     -> current
 
+  // ** SetSlices
+
   member self.SetSlices slices =
     match self with
     | StringBox data as value ->
@@ -504,6 +549,8 @@ and IOBox =
       | _ -> value
 
 
+  // ** static Toggle
+
   static member Toggle(id, name, patch, tags, values) =
     BoolBox { Id         = id
             ; Name       = name
@@ -512,6 +559,8 @@ and IOBox =
             ; Behavior   = Behavior.Toggle
             ; Slices     = values }
 
+  // ** static Bang
+
   static member Bang(id, name, patch, tags, values) =
     BoolBox { Id         = id
             ; Name       = name
@@ -519,6 +568,8 @@ and IOBox =
             ; Tags       = tags
             ; Behavior   = Behavior.Bang
             ; Slices     = values }
+
+  // ** static String
 
   static member String(id, name, patch, tags, values) =
     StringBox { Id         = id
@@ -530,6 +581,8 @@ and IOBox =
               ; MaxChars   = sizeof<int>
               ; Slices     = values }
 
+  // ** static MultiLine
+
   static member MultiLine(id, name, patch, tags, values) =
     StringBox { Id         = id
               ; Name       = name
@@ -539,6 +592,8 @@ and IOBox =
               ; FileMask   = None
               ; MaxChars   = sizeof<int>
               ; Slices     = values }
+
+  // ** static FileName
 
   static member FileName(id, name, patch, tags, filemask, values) =
     StringBox { Id         = id
@@ -550,6 +605,8 @@ and IOBox =
               ; MaxChars   = sizeof<int>
               ; Slices     = values }
 
+  // ** static Directory
+
   static member Directory(id, name, patch, tags, filemask, values) =
     StringBox { Id         = id
               ; Name       = name
@@ -559,6 +616,8 @@ and IOBox =
               ; FileMask   = Some filemask
               ; MaxChars   = sizeof<int>
               ; Slices     = values }
+
+  // ** static Url
 
   static member Url(id, name, patch, tags, values) =
     StringBox { Id         = id
@@ -570,6 +629,8 @@ and IOBox =
               ; MaxChars   = sizeof<int>
               ; Slices     = values }
 
+  // ** static IP
+
   static member IP(id, name, patch, tags, values) =
     StringBox { Id         = id
               ; Name       = name
@@ -579,6 +640,8 @@ and IOBox =
               ; FileMask   = None
               ; MaxChars   = sizeof<int>
               ; Slices     = values }
+
+  // ** static Float
 
   static member Float(id, name, patch, tags, values) =
     FloatBox { Id         = id
@@ -592,6 +655,8 @@ and IOBox =
               ; Precision  = 4u
               ; Slices     = values }
 
+  // ** static Double
+
   static member Double(id, name, patch, tags, values) =
     DoubleBox { Id         = id
               ; Name       = name
@@ -604,6 +669,8 @@ and IOBox =
               ; Precision  = 4u
               ; Slices     = values }
 
+  // ** static Bytes
+
   static member Bytes(id, name, patch, tags, values) =
     ByteBox { Id         = id
             ; Name       = name
@@ -611,12 +678,16 @@ and IOBox =
             ; Tags       = tags
             ; Slices     = values }
 
+  // ** static Color
+
   static member Color(id, name, patch, tags, values) =
     ColorBox { Id         = id
               ; Name       = name
               ; Patch      = patch
               ; Tags       = tags
               ; Slices     = values }
+
+  // ** static Enum
 
   static member Enum(id, name, patch, tags, properties, values) =
     EnumBox { Id         = id
@@ -626,12 +697,16 @@ and IOBox =
             ; Properties = properties
             ; Slices     = values }
 
+  // ** static CompoundBox
+
   static member CompoundBox(id, name, patch, tags, values) =
     Compound { Id         = id
               ; Name       = name
               ; Patch      = patch
               ; Tags       = tags
               ; Slices     = values }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -662,6 +737,8 @@ and IOBox =
     | EnumBox   data -> build data IOBoxTypeFB.EnumBoxFB
     | ColorBox  data -> build data IOBoxTypeFB.ColorBoxFB
     | Compound  data -> build data IOBoxTypeFB.CompoundBoxFB
+
+  // ** FromFB
 
   static member FromFB(fb: IOBoxFB) : Either<IrisError,IOBox> =
 #if JAVASCRIPT
@@ -834,20 +911,27 @@ and IOBox =
 
 #endif
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,IOBox> =
     Binary.createBuffer bytes
     |> IOBoxFB.GetRootAsIOBoxFB
     |> IOBox.FromFB
 
-// __   __              _
-// \ \ / /_ _ _ __ ___ | |
-//  \ V / _` | '_ ` _ \| |
-//   | | (_| | | | | | | |
-//   |_|\__,_|_| |_| |_|_|
+  // ** ToYamlObject
 
-#if !JAVASCRIPT
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+  #if !JAVASCRIPT
+
   member self.ToYamlObject() =
     let yaml = new IOBoxYaml()
     match self with
@@ -949,6 +1033,7 @@ and IOBox =
 
     yaml
 
+  // ** ParseSliceYamls
 
   /// ## Parse all SliceYamls for a given IOBox data type
   ///
@@ -976,6 +1061,8 @@ and IOBox =
 
 #endif
 
+  // ** ParseTags
+
   /// ## Parse all tags in a Flatbuffer-serialized type
   ///
   /// Parses all tags in a given IOBox inner data type.
@@ -1000,8 +1087,10 @@ and IOBox =
       arr
     |> Either.map snd
 
+  // ** ParseSlicesFB
+  // *** JS
 
-#if JAVASCRIPT
+  #if JAVASCRIPT
 
   static member inline ParseSlicesFB< ^a, ^b, ^t when ^t : (static member FromFB : ^a -> Either<IrisError, ^t>)
                                                  and ^b : (member SlicesLength : int)
@@ -1010,6 +1099,7 @@ and IOBox =
                                                  : Either<IrisError, ^t array> =
     let len = (^b : (member SlicesLength : int) fb)
     let arr = Array.zeroCreate len
+    printfn "ParseSlicesFB"
     Array.fold
       (fun (result: Either<IrisError,int * ^t array>) _ -> either {
 
@@ -1021,6 +1111,8 @@ and IOBox =
             let value = (^b : (member Slices : int -> ^a) (fb, i))
             (^t : (static member FromFB : ^a -> Either<IrisError, ^t>) value)
 
+          printfn "index; %d slice: %A" i slice
+
           // add the slice to the array> at its correct position
           slices.[i] <- slice
           return (i + 1, slices)
@@ -1030,6 +1122,7 @@ and IOBox =
     |> Either.map snd
 
 #else
+  // *** .NET
 
   static member inline ParseSlicesFB< ^a, ^b, ^t when ^t : (static member FromFB : ^a -> Either<IrisError, ^t>)
                                                  and ^b : (member SlicesLength : int)
@@ -1063,7 +1156,10 @@ and IOBox =
 
 #endif
 
-#if !JAVASCRIPT
+  // ** FromYamlObject
+
+  #if !JAVASCRIPT
+
   static member FromYamlObject(yml: IOBoxYaml) =
     try
       match yml.BoxType with
@@ -1215,17 +1311,24 @@ and IOBox =
         |> ParseError
         |> Either.fail
 
+  // ** ToYaml
+
   member self.ToYaml(serializer: Serializer) =
     self
     |> Yaml.toYaml
     |> serializer.Serialize
+
+  // ** FromYaml
 
   static member FromYaml(str: string) =
     let serializer = new Serializer()
     serializer.Deserialize<IOBoxYaml>(str)
     |> IOBox.FromYamlObject
 
-#endif
+  #endif
+
+// * BoolBoxD
+
 //  ____              _ ____
 // | __ )  ___   ___ | | __ )  _____  __
 // |  _ \ / _ \ / _ \| |  _ \ / _ \ \/ /
@@ -1239,6 +1342,8 @@ and BoolBoxD =
   ; Tags       : Tag array
   ; Behavior   : Behavior
   ; Slices     : BoolSliceD array }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1265,6 +1370,8 @@ and BoolBoxD =
     BoolBoxFB.AddSlices(builder, slices)
     BoolBoxFB.EndBoolBoxFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: BoolBoxFB) : Either<IrisError,BoolBoxD> =
     either {
       let! tags = IOBox.ParseTagsFB fb
@@ -1279,12 +1386,18 @@ and BoolBoxD =
                Slices     = slices }
     }
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,BoolBoxD> =
     Binary.createBuffer bytes
     |> BoolBoxFB.GetRootAsBoolBoxFB
     |> BoolBoxD.FromFB
+
+// * BoolSliceD
 
 //  ____              _ ____  _ _
 // | __ )  ___   ___ | / ___|| (_) ___ ___
@@ -1296,9 +1409,13 @@ and BoolSliceD =
   { Index: Index
   ; Value: bool }
 
+  // ** Create
+
   static member Create (idx: Index) (value: bool) =
     { Index = idx
       Value = value }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1313,16 +1430,24 @@ and BoolSliceD =
     BoolSliceFB.AddValue(builder, self.Value)
     BoolSliceFB.EndBoolSliceFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: BoolSliceFB) : Either<IrisError,BoolSliceD> =
     Either.tryWith ParseError "BoolSlice" <| fun _ ->
       { Index = fb.Index; Value = fb.Value }
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,BoolSliceD> =
     Binary.createBuffer bytes
     |> BoolSliceFB.GetRootAsBoolSliceFB
     |> BoolSliceD.FromFB
+
+  // ** ToYamlObject
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -1330,10 +1455,12 @@ and BoolSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
-#else
+  #if !JAVASCRIPT
+
   member self.ToYamlObject() =
     SliceYaml.BoolSlice(self.Index, self.Value)
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yaml: SliceYaml) =
     match yaml.SliceType with
@@ -1343,7 +1470,9 @@ and BoolSliceD =
       |> ParseError
       |> Either.fail
 
-#endif
+  #endif
+
+// * IntBoxD
 
 //  ___       _   ____
 // |_ _|_ __ | |_| __ )  _____  __
@@ -1361,6 +1490,8 @@ and IntBoxD =
   ; Max        : int
   ; Unit       : string
   ; Slices     : IntSliceD array }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1390,6 +1521,8 @@ and IntBoxD =
     IntBoxFB.AddSlices(builder, slices)
     IntBoxFB.EndIntBoxFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: IntBoxFB) : Either<IrisError,IntBoxD> =
     either {
       let unit = if isNull fb.Unit then "" else fb.Unit
@@ -1407,12 +1540,18 @@ and IntBoxD =
                Slices  = slices }
     }
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,IntBoxD> =
     Binary.createBuffer bytes
     |> IntBoxFB.GetRootAsIntBoxFB
     |> IntBoxD.FromFB
+
+// * IntSliceD
 
 //  ___       _   ____  _ _
 // |_ _|_ __ | |_/ ___|| (_) ___ ___
@@ -1424,9 +1563,13 @@ and IntSliceD =
   { Index: Index
   ; Value: int }
 
+  // ** Create
+
   static member Create (idx: Index) (value: int) =
     { Index = idx
       Value = value }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1441,17 +1584,25 @@ and IntSliceD =
     IntSliceFB.AddValue(builder, self.Value)
     IntSliceFB.EndIntSliceFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: IntSliceFB) : Either<IrisError,IntSliceD> =
     Either.tryWith ParseError "IntSliceFB" <| fun _ ->
       { Index = fb.Index
         Value = fb.Value }
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,IntSliceD> =
     Binary.createBuffer bytes
     |> IntSliceFB.GetRootAsIntSliceFB
     |> IntSliceD.FromFB
+
+  // ** ToYamlObject
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -1459,10 +1610,12 @@ and IntSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
-#else
+  #if !JAVASCRIPT
+
   member self.ToYamlObject() =
     SliceYaml.IntSlice(self.Index, self.Value)
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yaml: SliceYaml) =
     match yaml.SliceType with
@@ -1472,7 +1625,9 @@ and IntSliceD =
       |> ParseError
       |> Either.fail
 
-#endif
+  #endif
+
+// * FloatBoxD
 
 //  _____ _             _   ____
 // |  ___| | ___   __ _| |_| __ )  _____  __
@@ -1491,6 +1646,8 @@ and FloatBoxD =
   ; Unit       : string
   ; Precision  : uint32
   ; Slices     : FloatSliceD array }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1521,6 +1678,8 @@ and FloatBoxD =
     FloatBoxFB.AddSlices(builder, slices)
     FloatBoxFB.EndFloatBoxFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: FloatBoxFB) : Either<IrisError,FloatBoxD> =
     either {
       let! tags = IOBox.ParseTagsFB fb
@@ -1540,12 +1699,18 @@ and FloatBoxD =
     }
 
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,FloatBoxD> =
     Binary.createBuffer bytes
     |> FloatBoxFB.GetRootAsFloatBoxFB
     |> FloatBoxD.FromFB
+
+// * FloatSliceD
 
 //  _____ _             _   ____  _ _
 // |  ___| | ___   __ _| |_/ ___|| (_) ___ ___
@@ -1557,9 +1722,13 @@ and FloatSliceD =
   { Index: Index
   ; Value: float }
 
+  // ** Create
+
   static member Create (idx: Index) (value: float) =
     { Index = idx
       Value = value }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1574,17 +1743,25 @@ and FloatSliceD =
     FloatSliceFB.AddValue(builder, float32 self.Value)
     FloatSliceFB.EndFloatSliceFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: FloatSliceFB) : Either<IrisError,FloatSliceD> =
     Either.tryWith ParseError "FloatSliceFB" <| fun _ ->
       { Index = fb.Index
         Value = float fb.Value }
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,FloatSliceD> =
     Binary.createBuffer bytes
     |> FloatSliceFB.GetRootAsFloatSliceFB
     |> FloatSliceD.FromFB
+
+  // ** ToYamlObject
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -1592,10 +1769,12 @@ and FloatSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
-#else
+  #if !JAVASCRIPT
+
   member self.ToYamlObject() =
     SliceYaml.FloatSlice(self.Index, self.Value)
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yaml: SliceYaml) =
     match yaml.SliceType with
@@ -1605,7 +1784,9 @@ and FloatSliceD =
       |> ParseError
       |> Either.fail
 
-#endif
+  #endif
+
+// * DoubleBoxD
 
 //  ____              _     _      ____
 // |  _ \  ___  _   _| |__ | | ___| __ )  _____  __
@@ -1624,6 +1805,8 @@ and DoubleBoxD =
   ; Unit       : string
   ; Precision  : uint32
   ; Slices     : DoubleSliceD array }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1654,6 +1837,8 @@ and DoubleBoxD =
     DoubleBoxFB.AddSlices(builder, slices)
     DoubleBoxFB.EndDoubleBoxFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: DoubleBoxFB) : Either<IrisError,DoubleBoxD> =
     either {
       let unit = if isNull fb.Unit then "" else fb.Unit
@@ -1672,12 +1857,18 @@ and DoubleBoxD =
                Slices    = slices }
     }
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,DoubleBoxD> =
     Binary.createBuffer bytes
     |> DoubleBoxFB.GetRootAsDoubleBoxFB
     |> DoubleBoxD.FromFB
+
+// * DoubleSliceD
 
 //  ____              _     _      ____  _ _
 // |  _ \  ___  _   _| |__ | | ___/ ___|| (_) ___ ___
@@ -1689,9 +1880,13 @@ and DoubleSliceD =
   { Index: Index
   ; Value: double }
 
+  // ** Create
+
   static member Create (idx: Index) (value: double) =
     { Index = idx
       Value = value }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1706,17 +1901,25 @@ and DoubleSliceD =
     DoubleSliceFB.AddValue(builder, self.Value)
     DoubleSliceFB.EndDoubleSliceFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: DoubleSliceFB) : Either<IrisError,DoubleSliceD> =
     Either.tryWith ParseError "DoubleSliceD" <| fun _ ->
       { Index = fb.Index
         Value = fb.Value }
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,DoubleSliceD> =
     Binary.createBuffer bytes
     |> DoubleSliceFB.GetRootAsDoubleSliceFB
     |> DoubleSliceD.FromFB
+
+  // ** ToYamlObject
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -1724,10 +1927,12 @@ and DoubleSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
-#else
+  #if !JAVASCRIPT
+
   member self.ToYamlObject() =
     SliceYaml.DoubleSlice(self.Index, self.Value)
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yaml: SliceYaml) =
     match yaml.SliceType with
@@ -1737,7 +1942,9 @@ and DoubleSliceD =
       |> ParseError
       |> Either.fail
 
-#endif
+  #endif
+
+// * ByteBoxD
 
 //  ____        _       ____
 // | __ ) _   _| |_ ___| __ )  _____  __
@@ -1752,6 +1959,8 @@ and ByteBoxD =
   ; Patch      : Id
   ; Tags       : Tag        array
   ; Slices     : ByteSliceD array }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1776,6 +1985,8 @@ and ByteBoxD =
     ByteBoxFB.AddSlices(builder, slices)
     ByteBoxFB.EndByteBoxFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: ByteBoxFB) : Either<IrisError,ByteBoxD> =
     either {
       let! tags = IOBox.ParseTagsFB fb
@@ -1788,12 +1999,18 @@ and ByteBoxD =
                Slices     = slices }
     }
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,ByteBoxD> =
     Binary.createBuffer bytes
     |> ByteBoxFB.GetRootAsByteBoxFB
     |> ByteBoxD.FromFB
+
+// * ByteSliceD
 
 //  ____        _       ____  _ _
 // | __ ) _   _| |_ ___/ ___|| (_) ___ ___
@@ -1806,15 +2023,21 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
   { Index: Index
   ; Value: Binary.Buffer }
 
+  // ** Create
+
   static member Create (idx: Index) (value: Binary.Buffer) =
     { Index = idx
       Value = value }
+
+  // ** Equals
 
   override self.Equals(other) =
     match other with
     | :? ByteSliceD as slice ->
       (self :> System.IEquatable<ByteSliceD>).Equals(slice)
     | _ -> false
+
+  // ** GetHashCode
 
   override self.GetHashCode() =
     let mutable hash = 42
@@ -1827,11 +2050,15 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
 #endif
     hash
 
+  // ** CompareTo
+
   interface System.IComparable with
     member self.CompareTo other =
       match other with
       | :? ByteSliceD as slice -> compare self.Index slice.Index
       | _ -> invalidArg "other" "cannot compare value of different types"
+
+  // ** Equals<ByteSliceD>
 
   interface System.IEquatable<ByteSliceD> with
     member self.Equals(slice: ByteSliceD) =
@@ -1864,16 +2091,20 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
       lengthEqual &&
       contentsEqual
 
+  // ** ToYamlObject
+
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
   //  \ V / _` | '_ ` _ \| |
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
-#else
+  #if !JAVASCRIPT
+
   member self.ToYamlObject() =
     SliceYaml.ByteSlice(self.Index,  Convert.ToBase64String self.Value)
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yaml: SliceYaml) =
     match yaml.SliceType with
@@ -1883,7 +2114,9 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
       |> ParseError
       |> Either.fail
 
-#endif
+  #endif
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1911,6 +2144,8 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
     ByteSliceFB.AddValue(builder, bytes)
     ByteSliceFB.EndByteSliceFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: ByteSliceFB) : Either<IrisError,ByteSliceD> =
     let decode str =
 #if JAVASCRIPT
@@ -1927,12 +2162,18 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
       { Index = fb.Index
         Value = decode fb.Value }
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,ByteSliceD> =
     Binary.createBuffer bytes
     |> ByteSliceFB.GetRootAsByteSliceFB
     |> ByteSliceD.FromFB
+
+// * EnumBoxD
 
 //  _____                       ____
 // | ____|_ __  _   _ _ __ ___ | __ )  _____  __
@@ -1947,6 +2188,8 @@ and EnumBoxD =
   ; Tags       : Tag        array
   ; Properties : Property   array
   ; Slices     : EnumSliceD array }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -1981,6 +2224,8 @@ and EnumBoxD =
     EnumBoxFB.AddProperties(builder, properties)
     EnumBoxFB.AddSlices(builder, slices)
     EnumBoxFB.EndEnumBoxFB(builder)
+
+  // ** FromFB
 
   static member FromFB(fb: EnumBoxFB) : Either<IrisError,EnumBoxD> =
     either {
@@ -2019,12 +2264,18 @@ and EnumBoxD =
                Slices     = slices }
     }
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromEnums
 
   static member FromEnums(bytes: Binary.Buffer) : Either<IrisError,EnumBoxD> =
     Binary.createBuffer bytes
     |> EnumBoxFB.GetRootAsEnumBoxFB
     |> EnumBoxD.FromFB
+
+// * EnumSlicdD
 
 //  _____                       ____  _ _
 // | ____|_ __  _   _ _ __ ___ / ___|| (_) ___ ___
@@ -2036,9 +2287,13 @@ and EnumSliceD =
   { Index : Index
   ; Value : Property }
 
+  // ** Create
+
   static member Create (idx: Index) (value: Property) =
     { Index = idx
       Value = value }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2062,6 +2317,8 @@ and EnumSliceD =
     EnumSliceFB.AddValue(builder, property)
     EnumSliceFB.EndEnumSliceFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: EnumSliceFB) : Either<IrisError,EnumSliceD> =
     Either.tryWith ParseError "EnumSliceD" <| fun _ ->
 #if JAVASCRIPT
@@ -2078,12 +2335,18 @@ and EnumSliceD =
         failwith "Cannot parse empty property value"
 #endif
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromEnums
 
   static member FromEnums(bytes: Binary.Buffer) : Either<IrisError,EnumSliceD> =
     Binary.createBuffer bytes
     |> EnumSliceFB.GetRootAsEnumSliceFB
     |> EnumSliceD.FromFB
+
+  // ** ToYamlObject
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -2091,10 +2354,12 @@ and EnumSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
-#else
+  #if !JAVASCRIPT
+
   member self.ToYamlObject() =
     SliceYaml.EnumSlice(self.Index, Yaml.toYaml self.Value)
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yaml: SliceYaml) =
     match yaml.SliceType with
@@ -2104,7 +2369,9 @@ and EnumSliceD =
       |> ParseError
       |> Either.fail
 
-#endif
+  #endif
+
+// ** ColorBoxD
 
 //   ____      _            ____
 //  / ___|___ | | ___  _ __| __ )  _____  __
@@ -2118,6 +2385,8 @@ and ColorBoxD =
   ; Patch  : Id
   ; Tags   : Tag         array
   ; Slices : ColorSliceD array }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2142,6 +2411,8 @@ and ColorBoxD =
     ColorBoxFB.AddSlices(builder, slices)
     ColorBoxFB.EndColorBoxFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: ColorBoxFB) : Either<IrisError,ColorBoxD> =
     either {
       let! tags = IOBox.ParseTagsFB fb
@@ -2153,12 +2424,18 @@ and ColorBoxD =
                Slices = slices }
     }
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromColors
 
   static member FromColors(bytes: Binary.Buffer) : Either<IrisError,ColorBoxD> =
     Binary.createBuffer bytes
     |> ColorBoxFB.GetRootAsColorBoxFB
     |> ColorBoxD.FromFB
+
+// * ColorSliceD
 
 //   ____      _            ____  _ _
 //  / ___|___ | | ___  _ __/ ___|| (_) ___ ___
@@ -2170,9 +2447,13 @@ and ColorSliceD =
   { Index: Index
   ; Value: ColorSpace }
 
+  // ** Create
+
   static member Create (idx: Index) (value: ColorSpace) =
     { Index = idx
       Value = value }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2187,6 +2468,8 @@ and ColorSliceD =
     ColorSliceFB.AddIndex(builder, self.Index)
     ColorSliceFB.AddValue(builder, offset)
     ColorSliceFB.EndColorSliceFB(builder)
+
+  // ** FromFB
 
   static member FromFB(fb: ColorSliceFB) : Either<IrisError,ColorSliceD> =
     Either.tryWith ParseError "ColorSliceD" <| fun _ ->
@@ -2208,12 +2491,18 @@ and ColorSliceD =
         failwith "Cannot parse empty ColorSpaceFB"
 #endif
 
+  // ** ToColors
+
   member self.ToColors() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromColors
 
   static member FromColors(bytes: Binary.Buffer) : Either<IrisError,ColorSliceD> =
     Binary.createBuffer bytes
     |> ColorSliceFB.GetRootAsColorSliceFB
     |> ColorSliceD.FromFB
+
+  // ** ToYamlObject
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -2221,10 +2510,12 @@ and ColorSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
-#else
+  #if !JAVASCRIPT
+
   member self.ToYamlObject() =
     SliceYaml.ColorSlice(self.Index, Yaml.toYaml self.Value)
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yaml: SliceYaml) =
     match yaml.SliceType with
@@ -2234,7 +2525,9 @@ and ColorSliceD =
       |> ParseError
       |> Either.fail
 
-#endif
+  #endif
+
+// * StringBoxD
 
 //  ____  _        _             ____
 // / ___|| |_ _ __(_)_ __   __ _| __ )  _____  __
@@ -2252,6 +2545,8 @@ and StringBoxD =
   ; FileMask   : FileMask
   ; MaxChars   : MaxChars
   ; Slices     : StringSliceD array }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2284,6 +2579,8 @@ and StringBoxD =
     StringBoxFB.AddSlices(builder, slices)
     StringBoxFB.EndStringBoxFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: StringBoxFB) : Either<IrisError,StringBoxD> =
     either {
       let mask = if isNull fb.FileMask then None else Some fb.FileMask
@@ -2301,13 +2598,18 @@ and StringBoxD =
                Slices     = slices }
     }
 
+  // ** ToBytes
 
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromStrings
 
   static member FromStrings(bytes: Binary.Buffer) : Either<IrisError,StringBoxD> =
     Binary.createBuffer bytes
     |> StringBoxFB.GetRootAsStringBoxFB
     |> StringBoxD.FromFB
+
+// * StringSliceD
 
 //  ____  _        _             ____  _ _
 // / ___|| |_ _ __(_)_ __   __ _/ ___|| (_) ___ ___
@@ -2320,9 +2622,13 @@ and StringSliceD =
   { Index : Index
   ; Value : string }
 
+  // ** Create
+
   static member Create (idx: Index) (value: string) =
     { Index = idx
       Value = value }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2338,17 +2644,25 @@ and StringSliceD =
     StringSliceFB.AddValue(builder, value)
     StringSliceFB.EndStringSliceFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: StringSliceFB) : Either<IrisError,StringSliceD> =
     Either.tryWith ParseError "StringSliceD" <| fun _ ->
       { Index = fb.Index
         Value = fb.Value }
 
+  // ** ToStrings
+
   member self.ToStrings() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromStrings
 
   static member FromStrings(bytes: Binary.Buffer) : Either<IrisError,StringSliceD> =
     Binary.createBuffer bytes
     |> StringSliceFB.GetRootAsStringSliceFB
     |> StringSliceD.FromFB
+
+  // ** ToYamlObject
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -2356,11 +2670,12 @@ and StringSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
-#else
+  #if !JAVASCRIPT
 
   member self.ToYamlObject() =
     SliceYaml.StringSlice(self.Index, self.Value)
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yaml: SliceYaml) =
     match yaml.SliceType with
@@ -2370,7 +2685,9 @@ and StringSliceD =
       |> ParseError
       |> Either.fail
 
-#endif
+  #endif
+
+// ** CompoundBoxD
 
 //   ____                                            _ ____
 //  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| | __ )  _____  __
@@ -2386,6 +2703,7 @@ and CompoundBoxD =
   ; Tags       : Tag   array
   ; Slices     : CompoundSliceD array }
 
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2410,6 +2728,8 @@ and CompoundBoxD =
     CompoundBoxFB.AddSlices(builder, slices)
     CompoundBoxFB.EndCompoundBoxFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: CompoundBoxFB) : Either<IrisError,CompoundBoxD> =
     either {
       let! tags = IOBox.ParseTagsFB fb
@@ -2422,12 +2742,18 @@ and CompoundBoxD =
                Slices = slices }
     }
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromCompounds
 
   static member FromCompounds(bytes: Binary.Buffer) : Either<IrisError,CompoundBoxD> =
     Binary.createBuffer bytes
     |> CompoundBoxFB.GetRootAsCompoundBoxFB
     |> CompoundBoxD.FromFB
+
+// * CompoundSliceD
 
 //   ____                                            _ ____  _ _
 //  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| / ___|| (_) ___ ___
@@ -2440,9 +2766,13 @@ and CompoundSliceD =
   { Index      : Index
   ; Value      : IOBox array }
 
+  // ** Create
+
   static member Create (idx: Index) (value: IOBox array) =
     { Index = idx
       Value = value }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2458,6 +2788,8 @@ and CompoundSliceD =
     CompoundSliceFB.AddIndex(builder, self.Index)
     CompoundSliceFB.AddValue(builder, ioboxes)
     CompoundSliceFB.EndCompoundSliceFB(builder)
+
+  // ** FromFB
 
   static member FromFB(fb: CompoundSliceFB) : Either<IrisError,CompoundSliceD> =
     either {
@@ -2492,12 +2824,18 @@ and CompoundSliceD =
                Value = ioboxes }
     }
 
+  // ** ToCompounds
+
   member self.ToCompounds() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromCompounds
 
   static member FromCompounds(bytes: Binary.Buffer) : Either<IrisError,CompoundSliceD> =
     Binary.createBuffer bytes
     |> CompoundSliceFB.GetRootAsCompoundSliceFB
     |> CompoundSliceD.FromFB
+
+  // ** ToYamlObject
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -2505,10 +2843,12 @@ and CompoundSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
-#else
+  #if !JAVASCRIPT
+
   member self.ToYamlObject() =
     SliceYaml.CompoundSlice(self.Index, Array.map Yaml.toYaml self.Value)
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yaml: SliceYaml) =
     match yaml.SliceType with
@@ -2518,7 +2858,9 @@ and CompoundSliceD =
       |> ParseError
       |> Either.fail
 
-#endif
+  #endif
+
+// * Slice
 
 //  ____  _ _
 // / ___|| (_) ___ ___
@@ -2537,6 +2879,8 @@ and Slice =
   | ColorSlice    of ColorSliceD
   | CompoundSlice of CompoundSliceD
 
+  // ** Index
+
   member self.Index
     with get () =
       match self with
@@ -2549,6 +2893,8 @@ and Slice =
       | EnumSlice     data -> data.Index
       | ColorSlice    data -> data.Index
       | CompoundSlice data -> data.Index
+
+  // ** Value
 
   member self.Value
     with get () =
@@ -2563,11 +2909,15 @@ and Slice =
       | ColorSlice    data -> data.Value :> obj
       | CompoundSlice data -> data.Value :> obj
 
+  // ** StringValue
+
   member self.StringValue
     with get () =
       match self with
       | StringSlice data -> Some data.Value
       | _                -> None
+
+  // ** StringData
 
   member self.StringData
     with get () =
@@ -2575,11 +2925,15 @@ and Slice =
       | StringSlice data -> Some data
       | _                -> None
 
+  // ** IntValue
+
   member self.IntValue
     with get () =
       match self with
       | IntSlice data -> Some data.Value
       | _             -> None
+
+  // ** IntData
 
   member self.IntData
     with get () =
@@ -2587,11 +2941,15 @@ and Slice =
       | IntSlice data -> Some data
       | _             -> None
 
+  // ** FloatValue
+
   member self.FloatValue
     with get () =
       match self with
       | FloatSlice data -> Some data.Value
       | _               -> None
+
+  // ** FloatData
 
   member self.FloatData
     with get () =
@@ -2599,11 +2957,15 @@ and Slice =
       | FloatSlice data -> Some data
       | _               -> None
 
+  // ** DoubleValue
+
   member self.DoubleValue
     with get () =
       match self with
       | DoubleSlice data -> Some data.Value
       | _                -> None
+
+  // ** DoubleData
 
   member self.DoubleData
     with get () =
@@ -2611,11 +2973,15 @@ and Slice =
       | DoubleSlice data -> Some data
       | _                -> None
 
+  // ** BoolValue
+
   member self.BoolValue
     with get () =
       match self with
       | BoolSlice data -> Some data.Value
       | _              -> None
+
+  // ** BoolData
 
   member self.BoolData
     with get () =
@@ -2623,11 +2989,15 @@ and Slice =
       | BoolSlice data -> Some data
       | _              -> None
 
+  // ** ByteValue
+
   member self.ByteValue
     with get () =
       match self with
       | ByteSlice data -> Some data.Value
       | _              -> None
+
+  // ** ByteData
 
   member self.ByteData
     with get () =
@@ -2635,11 +3005,15 @@ and Slice =
       | ByteSlice data -> Some data
       | _              -> None
 
+  // ** EnumValue
+
   member self.EnumValue
     with get () =
       match self with
       | EnumSlice data -> Some data.Value
       | _              -> None
+
+  // ** EnumData
 
   member self.EnumData
     with get () =
@@ -2647,11 +3021,15 @@ and Slice =
       | EnumSlice data -> Some data
       | _              -> None
 
+  // ** ColorValue
+
   member self.ColorValue
     with get () =
       match self with
       | ColorSlice data -> Some data.Value
       | _               -> None
+
+  // ** ColorData
 
   member self.ColorData
     with get () =
@@ -2659,11 +3037,15 @@ and Slice =
       | ColorSlice data -> Some data
       | _               -> None
 
+  // ** CompoundValue
+
   member self.CompoundValue
     with get () =
       match self with
       | CompoundSlice data -> Some data.Value
       | _                  -> None
+
+  // ** CompoundData
 
   member self.CompoundData
     with get () =
@@ -2671,6 +3053,7 @@ and Slice =
       | CompoundSlice data -> Some data
       | _                  -> None
 
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2700,6 +3083,8 @@ and Slice =
     | EnumSlice     data -> data.ToOffset(builder) |> build SliceTypeFB.EnumSliceFB
     | ColorSlice    data -> data.ToOffset(builder) |> build SliceTypeFB.ColorSliceFB
     | CompoundSlice data -> data.ToOffset(builder) |> build SliceTypeFB.CompoundSliceFB
+
+  // ** FromFB
 
   static member FromFB(fb: SliceFB) : Either<IrisError,Slice>  =
     match fb.SliceType with
@@ -2871,15 +3256,20 @@ and Slice =
 
 #endif
 
+  // ** ToBytes
+
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,Slice> =
     Binary.createBuffer bytes
     |> SliceFB.GetRootAsSliceFB
     |> Slice.FromFB
 
-#if JAVASCRIPT
-#else
+  // ** ToYaml
+
+  #if !JAVASCRIPT
 
   member self.ToYaml(serializer: Serializer) =
     let yaml =
@@ -2914,6 +3304,8 @@ and Slice =
 
     serializer.Serialize yaml
 
+  // ** FromYaml
+
   static member FromYaml(str: string) =
     let serializer = new Serializer()
     let yaml = serializer.Deserialize<SliceYaml>(str)
@@ -2933,7 +3325,9 @@ and Slice =
       |> ParseError
       |> Either.fail
 
-#endif
+  #endif
+
+// * Slices
 
 //  ____  _ _
 // / ___|| (_) ___ ___  ___
@@ -2952,133 +3346,176 @@ and Slices =
   | ColorSlices    of ColorSliceD    array
   | CompoundSlices of CompoundSliceD array
 
-  with
-    member self.IsString
-      with get () =
-        match self with
-        | StringSlices _ -> true
-        |              _ -> false
+  // ** IsString
 
-    member self.IsInt
-      with get () =
-        match self with
-        | IntSlices _ -> true
-        |           _ -> false
-
-    member self.IsFloat
-      with get () =
-        match self with
-        | FloatSlices _ -> true
-        |           _ -> false
-
-    member self.IsDouble
-      with get () =
-        match self with
-        | DoubleSlices _ -> true
-        |              _ -> false
-
-    member self.IsBool
-      with get () =
-        match self with
-        | BoolSlices _ -> true
-        |            _ -> false
-
-    member self.IsByte
-      with get () =
-        match self with
-        | ByteSlices _ -> true
-        |            _ -> false
-
-    member self.IsEnum
-      with get () =
-        match self with
-        | EnumSlices _ -> true
-        |            _ -> false
-
-    member self.IsColor
-      with get () =
-        match self with
-        | ColorSlices _ -> true
-        |             _ -> false
-
-    member self.IsCompound
-      with get () =
-        match self with
-        | CompoundSlices _ -> true
-        |                _ -> false
-
-    //  ___ _
-    // |_ _| |_ ___ _ __ ___
-    //  | || __/ _ \ '_ ` _ \
-    //  | || ||  __/ | | | | |
-    // |___|\__\___|_| |_| |_|
-
-    member self.Item (idx: int) =
+  member self.IsString
+    with get () =
       match self with
-      | StringSlices    arr -> StringSlice   arr.[idx]
-      | IntSlices       arr -> IntSlice      arr.[idx]
-      | FloatSlices     arr -> FloatSlice    arr.[idx]
-      | DoubleSlices    arr -> DoubleSlice   arr.[idx]
-      | BoolSlices      arr -> BoolSlice     arr.[idx]
-      | ByteSlices      arr -> ByteSlice     arr.[idx]
-      | EnumSlices      arr -> EnumSlice     arr.[idx]
-      | ColorSlices     arr -> ColorSlice    arr.[idx]
-      | CompoundSlices  arr -> CompoundSlice arr.[idx]
+      | StringSlices _ -> true
+      |              _ -> false
 
-    member self.At (idx: int) = self.Item idx
+  // ** IsInt
 
-    //  __  __
-    // |  \/  | __ _ _ __
-    // | |\/| |/ _` | '_ \
-    // | |  | | (_| | |_) |
-    // |_|  |_|\__,_| .__/
-    //              |_|
-
-    member self.Map (f: Slice -> 'a) : 'a array =
+  member self.IsInt
+    with get () =
       match self with
-      | StringSlices    arr -> Array.map (StringSlice   >> f) arr
-      | IntSlices       arr -> Array.map (IntSlice      >> f) arr
-      | FloatSlices     arr -> Array.map (FloatSlice    >> f) arr
-      | DoubleSlices    arr -> Array.map (DoubleSlice   >> f) arr
-      | BoolSlices      arr -> Array.map (BoolSlice     >> f) arr
-      | ByteSlices      arr -> Array.map (ByteSlice     >> f) arr
-      | EnumSlices      arr -> Array.map (EnumSlice     >> f) arr
-      | ColorSlices     arr -> Array.map (ColorSlice    >> f) arr
-      | CompoundSlices  arr -> Array.map (CompoundSlice >> f) arr
+      | IntSlices _ -> true
+      |           _ -> false
 
-    //  _   _      _
-    // | | | | ___| |_ __   ___ _ __ ___
-    // | |_| |/ _ \ | '_ \ / _ \ '__/ __|
-    // |  _  |  __/ | |_) |  __/ |  \__ \
-    // |_| |_|\___|_| .__/ \___|_|  |___/
-    //              |_|
+  // ** IsFloat
 
-    member __.CreateString (idx: Index) (value: string) =
-      StringSlice { Index = idx; Value = value }
+  member self.IsFloat
+    with get () =
+      match self with
+      | FloatSlices _ -> true
+      |           _ -> false
 
-    member __.CreateInt (idx: Index) (value: int) =
-      IntSlice { Index = idx; Value = value }
+  // ** IsDouble
 
-    member __.CreateFloat (idx: Index) (value: float) =
-      FloatSlice { Index = idx; Value = value }
+  member self.IsDouble
+    with get () =
+      match self with
+      | DoubleSlices _ -> true
+      |              _ -> false
 
-    member __.CreateDouble (idx: Index) (value: double) =
-      DoubleSlice { Index = idx; Value = value }
+  // ** IsBool
 
-    member __.CreateBool (idx: Index) (value: bool) =
-      BoolSlice { Index = idx; Value = value }
+  member self.IsBool
+    with get () =
+      match self with
+      | BoolSlices _ -> true
+      |            _ -> false
 
-    member __.CreateByte (idx: Index) (value: Binary.Buffer) =
-      ByteSlice { Index = idx; Value = value }
+  // ** IsByte
 
-    member __.CreateEnum (idx: Index) (value: Property) =
-      EnumSlice { Index = idx; Value = value }
+  member self.IsByte
+    with get () =
+      match self with
+      | ByteSlices _ -> true
+      |            _ -> false
 
-    member __.CreateColor (idx: Index) (value: ColorSpace) =
-      ColorSlice { Index = idx; Value = value }
+  // ** IsEnum
 
-    member __.CreateCompound (idx: Index) (value: IOBox array) =
-      CompoundSlice { Index = idx; Value = value }
+  member self.IsEnum
+    with get () =
+      match self with
+      | EnumSlices _ -> true
+      |            _ -> false
+
+  // ** IsColor
+
+  member self.IsColor
+    with get () =
+      match self with
+      | ColorSlices _ -> true
+      |             _ -> false
+
+  // ** IsCompound
+
+  member self.IsCompound
+    with get () =
+      match self with
+      | CompoundSlices _ -> true
+      |                _ -> false
+
+  // ** Item
+
+  //  ___ _
+  // |_ _| |_ ___ _ __ ___
+  //  | || __/ _ \ '_ ` _ \
+  //  | || ||  __/ | | | | |
+  // |___|\__\___|_| |_| |_|
+
+  member self.Item (idx: int) =
+    match self with
+    | StringSlices    arr -> StringSlice   arr.[idx]
+    | IntSlices       arr -> IntSlice      arr.[idx]
+    | FloatSlices     arr -> FloatSlice    arr.[idx]
+    | DoubleSlices    arr -> DoubleSlice   arr.[idx]
+    | BoolSlices      arr -> BoolSlice     arr.[idx]
+    | ByteSlices      arr -> ByteSlice     arr.[idx]
+    | EnumSlices      arr -> EnumSlice     arr.[idx]
+    | ColorSlices     arr -> ColorSlice    arr.[idx]
+    | CompoundSlices  arr -> CompoundSlice arr.[idx]
+
+  // ** At
+
+  member self.At (idx: int) = self.Item idx
+
+  // ** Map
+
+  //  __  __
+  // |  \/  | __ _ _ __
+  // | |\/| |/ _` | '_ \
+  // | |  | | (_| | |_) |
+  // |_|  |_|\__,_| .__/
+  //              |_|
+
+  member self.Map (f: Slice -> 'a) : 'a array =
+    match self with
+    | StringSlices    arr -> Array.map (StringSlice   >> f) arr
+    | IntSlices       arr -> Array.map (IntSlice      >> f) arr
+    | FloatSlices     arr -> Array.map (FloatSlice    >> f) arr
+    | DoubleSlices    arr -> Array.map (DoubleSlice   >> f) arr
+    | BoolSlices      arr -> Array.map (BoolSlice     >> f) arr
+    | ByteSlices      arr -> Array.map (ByteSlice     >> f) arr
+    | EnumSlices      arr -> Array.map (EnumSlice     >> f) arr
+    | ColorSlices     arr -> Array.map (ColorSlice    >> f) arr
+    | CompoundSlices  arr -> Array.map (CompoundSlice >> f) arr
+
+  //  _   _      _
+  // | | | | ___| |_ __   ___ _ __ ___
+  // | |_| |/ _ \ | '_ \ / _ \ '__/ __|
+  // |  _  |  __/ | |_) |  __/ |  \__ \
+  // |_| |_|\___|_| .__/ \___|_|  |___/
+  //              |_|
+
+  // ** CreateString
+
+  member __.CreateString (idx: Index) (value: string) =
+    StringSlice { Index = idx; Value = value }
+
+  // ** CreateInt
+
+  member __.CreateInt (idx: Index) (value: int) =
+    IntSlice { Index = idx; Value = value }
+
+  // ** CreateFloat
+
+  member __.CreateFloat (idx: Index) (value: float) =
+    FloatSlice { Index = idx; Value = value }
+
+  // ** CreateDouble
+
+  member __.CreateDouble (idx: Index) (value: double) =
+    DoubleSlice { Index = idx; Value = value }
+
+  // ** CreateBool
+
+  member __.CreateBool (idx: Index) (value: bool) =
+    BoolSlice { Index = idx; Value = value }
+
+  // ** CreateByte
+
+  member __.CreateByte (idx: Index) (value: Binary.Buffer) =
+    ByteSlice { Index = idx; Value = value }
+
+  // ** CreateEnum
+
+  member __.CreateEnum (idx: Index) (value: Property) =
+    EnumSlice { Index = idx; Value = value }
+
+  // ** CreateColor
+
+  member __.CreateColor (idx: Index) (value: ColorSpace) =
+    ColorSlice { Index = idx; Value = value }
+
+  // ** CreateCompound
+
+  member __.CreateCompound (idx: Index) (value: IOBox array) =
+    CompoundSlice { Index = idx; Value = value }
+
+// * PinType
 
 //  ____  _     _____
 // |  _ \(_)_ _|_   _|   _ _ __   ___
@@ -3098,6 +3535,9 @@ type PinType =
   | [<CompiledName("NodePin")>]     NodePin
   | [<CompiledName("BytePin")>]     BytePin
   | [<CompiledName("CompoundPin")>] CompoundPin
+
+
+// * IOBox Utils Module
 
 //  _   _ _   _ _
 // | | | | |_(_) |___
