@@ -477,8 +477,6 @@ module Utils =
         let proc = Process.GetProcessById(pid)
         proc.Kill();
 
-  #endif
-
 
 
 // * WorkSpace Module
@@ -489,7 +487,7 @@ module WorkSpace =
   // ** find
 
   #if !JAVASCRIPT
-  /// ## find
+  /// ## getWorkSpace
   ///
   /// The standard location projects are create/cloned to. Currently only settable it via
   /// the `IRIS_WORKSPACE` environment variable.
@@ -543,7 +541,7 @@ module WorkSpace =
   /// Returns: unit
   let create () =
     if not (exists ()) then
-      find()
+      getWorkSpace()
       |> Directory.CreateDirectory
       |> ignore
 
