@@ -11,32 +11,23 @@ open System.Management
 
 module Git =
 
-  //  _    _ _ _
-  // | | _(_) | |
-  // | |/ / | | |
-  // |   <| | | |
-  // |_|\_\_|_|_|
-  //
-  let rec kill (pid : int) =
-    if isLinux
-    then
-      Process.Start("kill", string pid)
-      |> ignore
-    else
-      let query = sprintf "Select * From Win32_Process Where ParentProcessID=%d" pid
-      let searcher = new ManagementObjectSearcher(query);
-      let moc = searcher.Get();
-      for mo in moc do
-        kill <| (mo.GetPropertyValue("ProcessID") :?> int)
-      let proc = Process.GetProcessById(pid)
-      proc.Kill();
-
   //  ____
   // |  _ \  __ _  ___ _ __ ___   ___  _ __
   // | | | |/ _` |/ _ \ '_ ` _ \ / _ \| '_ \
   // | |_| | (_| |  __/ | | | | | (_) | | | |
   // |____/ \__,_|\___|_| |_| |_|\___/|_| |_|
   //
+
+  /// ## Daemon
+  ///
+  /// Description
+  ///
+  /// ### Signature:
+  /// - arg: arg
+  /// - arg: arg
+  /// - arg: arg
+  ///
+  /// Returns: Type
   type Daemon(path : FilePath) =
     let loco : obj  = new obj()
     let mutable started : bool = false
@@ -44,7 +35,8 @@ module Git =
     let mutable worker  : Thread option = None
 
     member self.Runner () =
-      let basedir = Workspace()
+      let basedir = Path.GetDirectoryName path
+      let folder = Path.GetFileName path
 
       let args = sprintf "daemon --reuseaddr --strict-paths --base-path=%s %s/.git" basedir path
       let proc = Process.Start("git", args)
