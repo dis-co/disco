@@ -138,8 +138,8 @@ let runNode cmd workdir _ =
         __SOURCE_DIRECTORY__ @@  @"\packages\Node.js\node.exe"
   runExec node cmd workdir false
 
-let runFable cmd fableconfigdir _ =
-  runNpm ("run " + cmd + " -- --projFile " + fableconfigdir) __SOURCE_DIRECTORY__ ()
+let runFable fableconfigdir extraArgs _ =
+  runNpm ("run fable -- " + fableconfigdir + " " + extraArgs) __SOURCE_DIRECTORY__ ()
   // Run Fable's dev version
   // runNode ("../../Fable/build/fable " + fableconfigdir) __SOURCE_DIRECTORY__ ()
 
@@ -172,11 +172,11 @@ let buildRelease fsproj _ =
 // |____/ \___/ \___/ \__|___/\__|_|  \__,_| .__/
 //                                         |_|
 
-Target "Bootstrap"
-  (fun _ ->
-    Restore(id)                              // restore Paket packages
-    runNpm "install" __SOURCE_DIRECTORY__ () // restore Npm packages
-    runNpm "-g install fable-compiler mocha-phantomjs webpack" __SOURCE_DIRECTORY__ ())
+Target "Bootstrap" (fun _ ->
+  Restore(id)                              // restore Paket packages
+  runNpm "install" __SOURCE_DIRECTORY__ () // restore Npm packages
+  // runNpm "-g install fable-compiler mocha-phantomjs webpack" __SOURCE_DIRECTORY__ ()
+)
 
 //     _                           _     _       ___        __
 //    / \   ___ ___  ___ _ __ ___ | |__ | |_   _|_ _|_ __  / _| ___
@@ -346,12 +346,12 @@ Target "GenerateSerialization"
 
 let frontendDir = baseDir @@ "Projects" @@ "Frontend"
 
-Target "BuildFrontend" (runFable "fable" frontendDir)
+Target "BuildFrontend" (runFable frontendDir "")
 Target "BuildFrontendFsProj" (buildDebug "Projects/Frontend/Frontend.fsproj")
 
 let workerDir = baseDir @@ "Projects" @@ "Worker"
 
-Target "BuildWorker" (runFable "fable" workerDir)
+Target "BuildWorker" (runFable workerDir "")
 Target "BuildWorkerFsProj" (buildDebug "Projects/Worker/Worker.fsproj")
 
 //  _____         _
@@ -362,29 +362,21 @@ Target "BuildWorkerFsProj" (buildDebug "Projects/Worker/Worker.fsproj")
 let webtestsdir = baseDir @@ "Projects" @@ "Web.Tests"
 
 Target "BuildWebTests" (fun _ ->
-    runFable "fable" webtestsdir ())
+    runFable webtestsdir "" ())
 
-Target "WatchWebTests" (runFable "run watch-tests" webtestsdir)
+Target "WatchWebTests" (runFable webtestsdir "-t watch")
 
 Target "BuildWebTestsFsProj" (buildDebug "Projects/Web.Tests/Web.Tests.fsproj")
 
 Target "RunWebTests" (fun _ ->
-    let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Iris" @@ "assets"
-
-    match useNix with
-    | true ->
-        let path = Environment.GetEnvironmentVariable "PHANTOMJS_PATH"
-        let args = "-p " + path + " -R min tests.html"
-        ExecProcess (fun info ->
-                          info.FileName <- "mocha-phantomjs"
-                          info.Arguments <- args
-                          info.UseShellExecute <- true
-                          info.WorkingDirectory <- testsDir)
-                      TimeSpan.MaxValue
-        |> maybeFail
-    | _ ->
-        runNpm "run appveyor-tests" testsDir ())
-
+  if environVar "APPVEYOR" = "True"
+  then runNpm "run appveyor-tests" __SOURCE_DIRECTORY__ ()
+  else
+    let testsFile = baseDir @@ "bin" @@ "Debug" @@ "Iris" @@ "assets" @@ "tests.html"
+    let phantomJsPath = Environment.GetEnvironmentVariable "PHANTOMJS_PATH"
+    let cmd = "run mocha-phantomjs -- -p " + phantomJsPath + " -R min " + testsFile
+    runNpm cmd __SOURCE_DIRECTORY__ ()
+)
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
 //   |  \| |  _|   | |

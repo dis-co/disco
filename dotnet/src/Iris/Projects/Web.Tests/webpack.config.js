@@ -21,7 +21,7 @@ var cfg = {
   ],
   output: {
     path: path.join(src, "bin", "Debug", "Iris", "assets", "js"),
-    filename: "iris.js"
+    filename: "iris.tests.js"
   },
   module: {
     preLoaders: [

@@ -6,6 +6,7 @@
   "scripts": {
     "babel": "babel src/Iris/Iris/Web/React --out-dir src/Iris/assets/frontend/react",
     "fable": "fable",
+    "mocha-phantomjs": "mocha-phantomjs",
     "appveyor-tests": "mocha-phantomjs -p C:/ProgramData/chocolatey/bin/phantomjs.exe -R tap src/Iris/bin/Debug/Web.Tests/tests.html"
   },
   "author": "Karsten Gebbert, 2016, Nsynk GmbH",
@@ -22,6 +23,7 @@
     "exports-loader": "^0.6.3",
     "fable-compiler": "next",
     "imports-loader": "^0.6.5",
+    "mocha-phantomjs": "^4.1.0",
     "script-loader": "^0.7.0",
     "source-map-loader": "^0.1.5",
     "webpack": "^1.13.1"
