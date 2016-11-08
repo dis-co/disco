@@ -8,6 +8,7 @@
 	},
 	"exclude": [
 		"node_modules",
+		"packages",
 		"bower_components",
 		"jspm_packages",
 		"tmp",

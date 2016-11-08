@@ -87,7 +87,7 @@ module SerializationTests =
 
   let inline check thing =
     thing |> Binary.encode |> Binary.decode |> Either.get
-    |> fun thong -> equals true (thong = thing)
+    |> fun thong -> equals thong thing
 
   let main () =
     (* ------------------------------------------------------------------------ *)
@@ -103,25 +103,25 @@ module SerializationTests =
     test "Validate CueList Serialization" <| fun finish ->
       let cuelist : CueList = mkCueList ()
       let recuelist = cuelist |> Binary.encode |> Binary.decode |> Either.get
-      equals true (cuelist = recuelist)
+      equals cuelist recuelist
       finish()
 
     test "Validate Patch Serialization" <| fun finish ->
       let patch : Patch = mkPatch ()
       let repatch = patch |> Binary.encode |> Binary.decode |> Either.get
-      equals true (patch = repatch)
+      equals patch repatch
       finish()
 
     test "Validate Session Serialization" <| fun finish ->
       let session : Session = mkSession ()
       let resession = session |> Binary.encode |> Binary.decode |> Either.get
-      equals true (session = resession)
+      equals session resession
       finish()
 
     test "Validate User Serialization" <| fun finish ->
       let user : User = mkUser ()
       let reuser = user |> Binary.encode |> Binary.decode |> Either.get
-      equals true (user = reuser)
+      equals user reuser
       finish()
 
     test "Validate Node Serialization" <| fun finish ->
@@ -143,7 +143,7 @@ module SerializationTests =
       |> Array.iter
         (fun slice ->
           let reslice = slice |> Binary.encode |> Binary.decode |> Either.get
-          equals true (slice = reslice))
+          equals slice reslice)
       finish()
 
     test "Validate IOBox Serialization" <| fun finish ->
@@ -161,7 +161,7 @@ module SerializationTests =
     test "Validate State Serialization" <| fun finish ->
       let state : State = mkState ()
       let restate : State = state |> Binary.encode |> Binary.decode |> Either.get
-      equals true (restate = state)
+      equals restate state
       finish ()
 
     test "Validate StateMachine Serialization" <| fun finish ->

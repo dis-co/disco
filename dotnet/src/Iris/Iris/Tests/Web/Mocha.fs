@@ -6,14 +6,22 @@ open System
 module Mocha =
 
   open Fable.Core
+  open Fable.Core.JsInterop
   open Fable.Import
   open Fable.Import.Browser
 
   let success (cb : unit -> unit) : unit = cb ()
 
-  let equals (expectation: 'a) (value: 'a) : unit =
+  [<Emit("chai.assert.deepEqual($1,$0)")>]
+  let chaiAssert(expectation: 'a) (value: 'a): unit = jsNative
+
+  let inline equals (expectation: 'a) (value: 'a) : unit =
+    // Assign the values to prevent running expressions
+    // too many times when inlining
+    let expectation, value = expectation, value
     if expectation <> value then
-      failwithf "Expected %A but got %A." expectation value
+      // Use chai.asser.deepEqual to display diffs with mocha
+      chaiAssert expectation value
 
   [<Emit "window.suite($0)">]
   let suite (desc : string) : unit = failwith "JS only"

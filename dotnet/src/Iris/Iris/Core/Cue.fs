@@ -45,37 +45,44 @@ and Cue =
   //                           |___/
 
   static member FromFB(fb: CueFB) : Either<IrisError,Cue> =
-    either {
-      let! ioboxes =
-        let arr = Array.zeroCreate fb.IOBoxesLength
-        Array.fold
-          (fun (m: Either<IrisError,int * IOBox array>) _ -> either {
-              let! (i, ioboxes) = m
+    let ioboxes = Array.zeroCreate fb.IOBoxesLength
+    for i = 0 to (ioboxes.Length-1) do
+      let ioboxFB = fb.IOBoxes i
+      let iobox = IOBox.FromFB(ioboxFB)
+      ioboxes.[i] <- Either.get iobox
+    let res = { Id = Id fb.Id; Name = fb.Name; IOBoxes = ioboxes }
+    Either.succeed res
+  //   either {
+  //     let! ioboxes =
+  //       let arr = Array.zeroCreate fb.IOBoxesLength
+  //       Array.fold
+  //         (fun (m: Either<IrisError,int * IOBox array>) _ -> either {
+  //             let! (i, ioboxes) = m
 
-  #if JAVASCRIPT
-              let! iobox = i |> fb.IOBoxes |> IOBox.FromFB
-  #else
-              let! iobox =
-                let nullable = fb.IOBoxes(i)
-                if nullable.HasValue then
-                  nullable.Value
-                  |> IOBox.FromFB
-                else
-                  "Could not parse empty IOBoxFB"
-                  |> ParseError
-                  |> Either.fail
-  #endif
-              ioboxes.[i] <- iobox
-              return (i + 1, arr)
-            })
-          (Right (0, arr))
-          arr
-        |> Either.map snd
+  // #if JAVASCRIPT
+  //             let! iobox = i |> fb.IOBoxes |> IOBox.FromFB
+  // #else
+  //             let! iobox =
+  //               let nullable = fb.IOBoxes(i)
+  //               if nullable.HasValue then
+  //                 nullable.Value
+  //                 |> IOBox.FromFB
+  //               else
+  //                 "Could not parse empty IOBoxFB"
+  //                 |> ParseError
+  //                 |> Either.fail
+  // #endif
+  //             ioboxes.[i] <- iobox
+  //             return (i + 1, ioboxes)
+  //           })
+  //         (Right (0, arr))
+  //         arr
+  //       |> Either.map snd
 
-      return { Id = Id fb.Id
-               Name = fb.Name
-               IOBoxes = ioboxes }
-    }
+  //     return { Id = Id fb.Id
+  //              Name = fb.Name
+  //              IOBoxes = ioboxes }
+  //   }
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueFB> =
     let id = string self.Id |> builder.CreateString

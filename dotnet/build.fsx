@@ -141,7 +141,7 @@ let runNode cmd workdir _ =
 let runFable fableconfigdir extraArgs _ =
   runNpm ("run fable -- " + fableconfigdir + " " + extraArgs) __SOURCE_DIRECTORY__ ()
   // Run Fable's dev version
-  // runNode ("../../Fable/build/fable " + fableconfigdir) __SOURCE_DIRECTORY__ ()
+  // runNode ("../../Fable/build/fable " + fableconfigdir + " " + extraArgs + " --verbose") __SOURCE_DIRECTORY__ ()
 
 let runTests filepath workdir =
   let arch =
@@ -373,7 +373,7 @@ Target "RunWebTests" (fun _ ->
   then runNpm "run appveyor-tests" __SOURCE_DIRECTORY__ ()
   else
     let testsFile = baseDir @@ "bin" @@ "Debug" @@ "Iris" @@ "assets" @@ "tests.html"
-    let phantomJsPath = Environment.GetEnvironmentVariable "PHANTOMJS_PATH"
+    let phantomJsPath = environVarOrDefault "PHANTOMJS_PATH" "phantomjs"
     let cmd = "run mocha-phantomjs -- -p " + phantomJsPath + " -R min " + testsFile
     runNpm cmd __SOURCE_DIRECTORY__ ()
 )

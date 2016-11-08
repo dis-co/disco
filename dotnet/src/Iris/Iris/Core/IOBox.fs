@@ -990,15 +990,19 @@ and IOBox =
                                        : Either<IrisError, Tag array> =
     let len = (^a : (member TagsLength : int) fb)
     let arr = Array.zeroCreate len
-    Array.fold
-      (fun (result: Either<IrisError,int * Tag array>) _ -> either {
-          let! (i, tags) = result
-          tags.[i] <- (^a : (member Tags : int -> Tag) (fb, i))
-          return (i + 1, tags)
-        })
-      (Right (0, arr))
-      arr
-    |> Either.map snd
+    for i = 0 to (arr.Length-1) do
+      let x = (^a : (member Tags : int -> Tag) (fb, i))
+      arr.[i] <- x
+    Either.succeed arr
+    //        Array.fold
+    //  (fun (result: Either<IrisError,int * Tag array>) _ -> either {
+    //      let! (i, tags) = result
+    //      tags.[i] <- (^a : (member Tags : int -> Tag) (fb, i))
+    //      return (i + 1, tags)
+    //    })
+    //  (Right (0, arr))
+    //  arr
+    //|> Either.map snd
 
 
 #if JAVASCRIPT
@@ -1010,24 +1014,29 @@ and IOBox =
                                                  : Either<IrisError, ^t array> =
     let len = (^b : (member SlicesLength : int) fb)
     let arr = Array.zeroCreate len
-    Array.fold
-      (fun (result: Either<IrisError,int * ^t array>) _ -> either {
+    for i = 0 to (arr.Length-1) do
+      let value = (^b : (member Slices : int -> ^a) (fb, i))
+      let slice = (^t : (static member FromFB : ^a -> Either<IrisError, ^t>) value)
+      arr.[i] <- Either.get slice
+    Either.succeed arr
+    //Array.fold
+    //  (fun (result: Either<IrisError,int * ^t array>) _ -> either {
 
-          let! (i, slices) = result
+    //      let! (i, slices) = result
 
-          // In Javascript, Flatbuffer types are not modeled as nullables,
-          // hence parsing code is much simpler
-          let! slice =
-            let value = (^b : (member Slices : int -> ^a) (fb, i))
-            (^t : (static member FromFB : ^a -> Either<IrisError, ^t>) value)
+    //      // In Javascript, Flatbuffer types are not modeled as nullables,
+    //      // hence parsing code is much simpler
+    //      let! slice =
+    //        let value = (^b : (member Slices : int -> ^a) (fb, i))
+    //        (^t : (static member FromFB : ^a -> Either<IrisError, ^t>) value)
 
-          // add the slice to the array> at its correct position
-          slices.[i] <- slice
-          return (i + 1, slices)
-      })
-      (Right (0, arr))
-      arr
-    |> Either.map snd
+    //      // add the slice to the array> at its correct position
+    //      slices.[i] <- slice
+    //      return (i + 1, slices)
+    //  })
+    //  (Right (0, arr))
+    //  arr
+    //|> Either.map snd
 
 #else
 
