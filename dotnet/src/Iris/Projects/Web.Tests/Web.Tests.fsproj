@@ -13,6 +13,7 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
+    <Optimize>false</Optimize>
     <OutputPath>bin\Debug\Web.Tests</OutputPath>
     <DefineConstants>DEBUG;TRACE;JAVASCRIPT</DefineConstants>
     <WarningLevel>5</WarningLevel>
@@ -20,6 +21,7 @@
     <Externalconsole>true</Externalconsole>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <Optimize>false</Optimize>
     <OutputPath>bin\Release\Web.Tests</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <Externalconsole>true</Externalconsole>
@@ -31,6 +33,11 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Fable.Core">
+      <HintPath>../../../../node_modules/fable-core/Fable.Core.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\..\AssemblyInfo\Web.TestsInfo.fs" />
@@ -90,10 +97,4 @@
     </Otherwise>
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
-  <ItemGroup>
-    <Reference Include="Fable.Core">
-      <HintPath>../../../../node_modules/fable-core/Fable.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-  </ItemGroup>
 </Project>

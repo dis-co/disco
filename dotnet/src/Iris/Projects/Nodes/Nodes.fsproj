@@ -40,10 +40,8 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="paket.references" />
-    <None Include="paket.template" />
-    <Compile Include="AssemblyInfo\NodesInfo.fs" />
-    <Compile Include="Iris\Nodes\GraphApi.fs" />
+    <Compile Include="../../AssemblyInfo/NodesInfo.fs" />
+    <Compile Include="../../Iris/Nodes/GraphApi.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
@@ -68,5 +66,4 @@
   <Target Name="AfterBuild">
   </Target>
   -->
-  <Import Project="..\..\.paket\paket.targets" />
 </Project>
