@@ -6,7 +6,7 @@
 // Binaries that have XML documentation (in a corresponding generated XML file)
 // Any binary output / copied to bin/projectName/projectName.dll will
 // automatically be added as a binary to generate API docs for.
-// for binaries output to root bin folder please add the filename only to the 
+// for binaries output to root bin folder please add the filename only to the
 // referenceBinaries list below in order to generate documentation for the binaries.
 // (This is the original behaviour of ProjectScaffold prior to multi project support)
 let referenceBinaries = []
@@ -15,19 +15,20 @@ let website = "/Iris"
 
 // Specify more information about your project
 let info =
-  [ "project-name", "Iris.Core"
-    "project-author", "Karsten Gebbert"
-    "project-summary", "VVVV Infrastructure"
-    "project-nuget", "http://nuget.org/packages/Iris" ]
+  [ "project-name",    "Iris.Core"
+    "project-author",  "Karsten Gebbert, Alfonso Garcia-Caro"
+    "project-summary", "Automation Infrastructure"
+    "project-nuget",   "http://gittit.org/packages/Iris" ]
 
 // --------------------------------------------------------------------------------------
 // For typical project, no changes are needed below
 // --------------------------------------------------------------------------------------
 
-#I "../../packages/FAKE/tools/"
-#load "../../packages/FSharp.Formatting/FSharp.Formatting.fsx"
+#I "../../packages/build/FAKE/tools/"
+#load "../../packages/build/FSharp.Formatting/FSharp.Formatting.fsx"
 #r "NuGet.Core.dll"
 #r "FakeLib.dll"
+
 open Fake
 open System.IO
 open Fake.FileHelper
@@ -68,16 +69,16 @@ subDirectories (directoryInfo templates)
 let copyFiles () =
   CopyRecursive files output true |> Log "Copying file: "
   ensureDirectory (output @@ "content")
-  CopyRecursive (formatting @@ "styles") (output @@ "content") true 
+  CopyRecursive (formatting @@ "styles") (output @@ "content") true
     |> Log "Copying styles and scripts: "
 
 let binaries =
-    let manuallyAdded = 
-        referenceBinaries 
+    let manuallyAdded =
+        referenceBinaries
         |> List.map (fun b -> bin @@ b)
-    
-    let conventionBased = 
-        directoryInfo bin 
+
+    let conventionBased =
+        directoryInfo bin
         |> subDirectories
         |> Array.map (fun d -> d.FullName @@ (sprintf "%s.dll" d.Name))
         |> List.ofArray
@@ -86,7 +87,7 @@ let binaries =
 
 let libDirs =
     let conventionBasedbinDirs =
-        directoryInfo bin 
+        directoryInfo bin
         |> subDirectories
         |> Array.map (fun d -> d.FullName)
         |> List.ofArray
