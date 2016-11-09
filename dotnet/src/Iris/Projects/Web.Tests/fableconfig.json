@@ -1,0 +1,20 @@
+ {
+     "module": "commonjs",
+     "sourceMaps": true,
+     "coreLib": "fable-core/umd",
+     "projFile": "Web.Tests.fsproj",
+     "outDir": "../../bin/Debug/Web.Tests",
+     "symbols": ["JAVASCRIPT"],
+     "scripts": {
+         "postbuild": "node ../../../../node_modules/webpack/bin/webpack"
+     },
+     "targets": {
+         "watch": {
+             "watch": true,
+             "scripts": {
+                 "postbuild": "",
+                 "postbuild-once": "node ../../../../node_modules/webpack/bin/webpack --watch"
+             }
+         }
+     }
+ }

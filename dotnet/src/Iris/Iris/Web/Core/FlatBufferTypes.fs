@@ -551,13 +551,13 @@ module FlatBufferTypes =
     [<Emit("$0.Unit()")>]
     abstract Unit: string
 
-    [<Emit("$0.TagsLength($1)")>]
+    [<Emit("$0.TagsLength()")>]
     abstract TagsLength: int
 
     [<Emit("$0.tags($1)")>]
     abstract Tags: int -> string
 
-    [<Emit("$0.SlicesLength($1)")>]
+    [<Emit("$0.SlicesLength()")>]
     abstract SlicesLength: int
 
     [<Emit("$0.slices($1)")>]
@@ -1077,7 +1077,7 @@ module FlatBufferTypes =
     [<Emit("$0.Tags($1)")>]
     abstract Tags: int -> string
 
-    [<Emit("$0.TagsLength($1)")>]
+    [<Emit("$0.TagsLength()")>]
     abstract TagsLength: int
 
     [<Emit("$0.Properties($1)")>]

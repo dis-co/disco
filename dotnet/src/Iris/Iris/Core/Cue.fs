@@ -52,9 +52,12 @@ and Cue =
           (fun (m: Either<IrisError,int * IOBox array>) _ -> either {
               let! (i, ioboxes) = m
 
-  #if JAVASCRIPT
+              #if JAVASCRIPT
+
               let! iobox = i |> fb.IOBoxes |> IOBox.FromFB
-  #else
+
+              #else
+
               let! iobox =
                 let nullable = fb.IOBoxes(i)
                 if nullable.HasValue then
@@ -64,9 +67,11 @@ and Cue =
                   "Could not parse empty IOBoxFB"
                   |> ParseError
                   |> Either.fail
-  #endif
+
+              #endif
+
               ioboxes.[i] <- iobox
-              return (i + 1, arr)
+              return (i + 1, ioboxes)
             })
           (Right (0, arr))
           arr

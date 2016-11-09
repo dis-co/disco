@@ -5,8 +5,7 @@ var src = path.join(__dirname, "../..");
 
 var cfg = {
   devtool: "source-map",
-  entry: path.join(src, "bin/Debug/Frontend/Web/Frontend.js"),
-  // context: path.join(src, "bin", "Debug", "Iris", "Web", "Frontend"),
+  entry: path.join(src, "bin/Debug/Web.Tests/Tests/Web/Main.js"),
   resolve: {
     alias: {
       flatbuffers: path.join(src, "assets", "frontend", "js", "flatbuffers.js"),
@@ -22,14 +21,16 @@ var cfg = {
   ],
   output: {
     path: path.join(src, "bin", "Debug", "Iris", "assets", "js"),
-    filename: "iris.js"
+    filename: "iris.tests.js"
   },
   module: {
-    preLoaders: [{
-      test: /\.js$/,
-      exclude: /node_modules/,
-      loader: "source-map-loader"
-    }]
+    preLoaders: [
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,
+        loader: "source-map-loader"
+      }
+    ]
   }
 };
 

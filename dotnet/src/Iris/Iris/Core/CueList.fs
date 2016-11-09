@@ -69,12 +69,15 @@ and CueList =
         let arr = Array.zeroCreate fb.CuesLength
         Array.fold
           (fun (m: Either<IrisError,int * Cue array>) _ -> either {
-            let! (i, arr) = m
-#if JAVASCRIPT
+            let! (i, cues) = m
+
+            #if JAVASCRIPT
+
             let! cue =
               fb.Cues(i)
               |> Cue.FromFB
-#else
+            #else
+
             let! cue =
               let value = fb.Cues(i)
               if value.HasValue then
@@ -84,9 +87,11 @@ and CueList =
                 "Could not parse empty CueFB"
                 |> ParseError
                 |> Either.fail
-#endif
-            arr.[i] <- cue
-            return (i + 1, arr)
+
+            #endif
+
+            cues.[i] <- cue
+            return (i + 1, cues)
           })
           (Right (0, arr))
           arr

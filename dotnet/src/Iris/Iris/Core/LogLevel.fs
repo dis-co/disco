@@ -7,11 +7,11 @@ namespace Iris.Core
 // | |__| (_) | (_| | |__|  __/\ V /  __/ |
 // |_____\___/ \__, |_____\___| \_/ \___|_|
 //             |___/
-#if JAVASCRIPT
-open Fable.Core
+// #if JAVASCRIPT
+// open Fable.Core
 
-[<StringEnum>]
-#endif
+// [<StringEnum>]
+// #endif
 type LogLevel =
   | Debug
   | Info

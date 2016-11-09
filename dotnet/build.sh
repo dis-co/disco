@@ -7,7 +7,7 @@ cd `dirname $0`
 
 FSIARGS=""
 OS=${OS:-"unknown"}
-if [[ "$OS" != "Windows_NT" ]]
+if [[ "$OS"   != "Windows_NT" ]]
 then
   FSIARGS="--fsiargs -d:MONO"
 fi
