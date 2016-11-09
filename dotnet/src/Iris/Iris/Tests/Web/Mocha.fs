@@ -20,7 +20,7 @@ module Mocha =
     // too many times when inlining
     let expectation, value = expectation, value
     if expectation <> value then
-      // Use chai.asser.deepEqual to display diffs with mocha
+      // Use chai.assert.deepEqual to display diffs with mocha
       chaiAssert expectation value
 
   [<Emit "window.suite($0)">]
