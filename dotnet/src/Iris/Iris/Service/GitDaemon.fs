@@ -45,7 +45,7 @@ module Git =
         while running do
           Monitor.Wait(loco) |> ignore
 
-      kill proc.Id
+      Process.kill proc.Id
 
     member self.Start() =
       if not started

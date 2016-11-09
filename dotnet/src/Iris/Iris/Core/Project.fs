@@ -64,7 +64,7 @@ module Project =
     { Id        = Id.Create()
     ; Name      = name
     ; Path      = None
-    ; CreatedOn = createTimestamp()
+    ; CreatedOn = Time.createTimestamp()
     ; LastSaved = None
     ; Copyright = None
     ; Author    = None
@@ -217,7 +217,7 @@ module Project =
 
     config.Project.Metadata.CreatedOn <- project.CreatedOn
 
-    let ts = createTimestamp()
+    let ts = Time.createTimestamp()
     config.Project.Metadata.LastSaved <- ts
 
     { project with LastSaved = Some ts }
