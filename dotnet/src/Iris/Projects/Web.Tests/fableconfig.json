@@ -10,8 +10,10 @@
      },
      "targets": {
          "watch": {
+             "watch": true,
              "scripts": {
-                 "postbuild": "node ../../../../node_modules/webpack/bin/webpack --watch"
+                 "postbuild": "",
+                 "postbuild-once": "node ../../../../node_modules/webpack/bin/webpack --watch"
              }
          }
      }

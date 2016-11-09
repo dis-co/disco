@@ -139,6 +139,18 @@ module Either =
     | Right value -> f value |> succeed
     | Left  error -> Left error
 
+  let mapArray(f: 'a->Either<'err,'b>) (arr:'a[]): Either<'err,'b[]> =
+    let mutable i = 0
+    let mutable error = None
+    let arr2 = Array.zeroCreate arr.Length
+    while i < arr.Length && Option.isNone error do
+      match f arr.[i] with
+      | Right value -> arr2.[i] <- value; i <- i + 1
+      | Left err -> error <- Some err
+    match error with
+    | Some err -> Left err
+    | None -> Right arr2
+
   // ** mapError
 
   /// ## Map over the embedded error value
