@@ -188,7 +188,7 @@ module SerializationTests =
       ; RemoveNode    <| Node.create (Id.Create())
       ; DataSnapshot  <| mkState ()
       ; Command AppCommand.Undo
-      // ; LogMsg(Debug, "ohai")
+      ; LogMsg(Debug, "ohai")
       ]
       |> List.iter check
       finish()
