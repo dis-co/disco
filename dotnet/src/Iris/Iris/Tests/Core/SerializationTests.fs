@@ -6,6 +6,8 @@ open Iris.Core
 open Iris.Raft
 open Iris.Service
 open Iris.Serialization.Raft
+open Iris.Service.Utilities
+open Iris.Service.Persistence
 open System.Net
 open FlatBuffers
 open FSharpx.Functional
@@ -262,6 +264,65 @@ module SerializationTests =
                   let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
                   expect "Should be structurally the same" msg id remsg)
                 errors
+
+  //  ____        __ _
+  // |  _ \ __ _ / _| |_
+  // | |_) / _` | |_| __|
+  // |  _ < (_| |  _| |_
+  // |_| \_\__,_|_|  \__|
+
+  let test_save_restore_raft_value_correctly =
+    testCase "save/restore raft value correctly" <| fun _ ->
+      let self =
+        Config.getNodeId ()
+        |> Either.map Node.create
+        |> Either.get
+
+      let node1 =
+        { Node.create (Id.Create()) with
+            HostName = "Hans"
+            IpAddr = IpAddress.Parse "192.168.1.20"
+            Port   = 8080us }
+
+      let node2 =
+        { Node.create (Id.Create()) with
+            HostName = "Klaus"
+            IpAddr = IpAddress.Parse "192.168.1.22"
+            Port   = 8080us }
+
+      let changes = [| NodeRemoved node2 |]
+      let nodes = [| node1; node2 |]
+
+      let log =
+        LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
+          Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
+            Some <| Configuration(Id.Create(), 5u, 1u, [| node1 |],
+              Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
+                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, nodes, DataSnapshot State.Empty)))))
+        |> Log.fromEntries
+
+      let config =
+        Config.create "default"
+        |> Config.addNode self
+        |> Config.addNode node1
+        |> Config.addNode node2
+
+      let raft =
+        createRaft config
+        |> Either.map
+            (fun raft ->
+              { raft with
+                  Log = log
+                  CurrentTerm = 666u })
+        |> Either.get
+
+      saveRaft config raft
+      |> Either.mapError Error.throw
+      |> ignore
+
+      let loaded = loadRaft config
+
+      expect "Values should be equal" (Right raft) id loaded
 
   //   ____                 ____        _       _____
   //  / ___|___  _ __ ___  |  _ \  __ _| |_ __ |_   _|   _ _ __   ___  ___
@@ -663,6 +724,7 @@ module SerializationTests =
       test_validate_welcome_serialization
       test_validate_arrivederci_serialization
       test_validate_errorresponse_serialization
+      test_save_restore_raft_value_correctly
       test_validate_log_yaml_serialization
       test_validate_cue_binary_serialization
       test_validate_cue_yaml_serialization
