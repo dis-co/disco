@@ -138,10 +138,51 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
         serverState := Running
       with
         | :? ZeroMQ.ZException as exn ->
+
+          /////////////////////////////////////
+          //  ____  _____ ____  _   _ ____   //
+          // |  _ \| ____|  _ \| | | |  _ \  //
+          // | | | |  _| | | | | | | | |_) | //
+          // | |_| | |___| |_| | |_| |  __/  //
+          // |____/|_____|____/ \___/|_|     //
+          /////////////////////////////////////
+
+
+          // cancel the running async tasks so we don't cause an election
+          this.Debug "RaftServer: cancel periodic loop"
+          cancelToken periodictoken
+
+          this.Debug "RaftServer: dispose server"
+          Option.bind (dispose >> Some) (!server) |> ignore
+
+          this.Debug "RaftServer: disposing sockets"
+          self.State.Connections
+          |> resetConnections
+
           this.Err <| sprintf "RaftServer: ZMQ Exeception in Start: %A" exn.Message
           serverState := Failed (sprintf "[ZMQ Exception] %A" exn.Message)
 
         | exn ->
+
+          /////////////////////////////////////
+          //  ____  _____ ____  _   _ ____   //
+          // |  _ \| ____|  _ \| | | |  _ \  //
+          // | | | |  _| | | | | | | | |_) | //
+          // | |_| | |___| |_| | |_| |  __/  //
+          // |____/|_____|____/ \___/|_|     //
+          /////////////////////////////////////
+
+          // cancel the running async tasks so we don't cause an election
+          this.Debug "RaftServer: cancel periodic loop"
+          cancelToken periodictoken
+
+          this.Debug "RaftServer: dispose server"
+          Option.bind (dispose >> Some) (!server) |> ignore
+
+          this.Debug "RaftServer: disposing sockets"
+          self.State.Connections
+          |> resetConnections
+
           this.Err <| sprintf "RaftServer: Exeception in Start: %A" exn.Message
           serverState := Failed exn.Message
 
