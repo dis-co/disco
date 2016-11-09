@@ -241,8 +241,6 @@ type IrisService(project: IrisProject ref) =
 
   // ** Stop
 
-  // ** Stop
-
   member self.Stop() =
     try
       dispose raftserver
