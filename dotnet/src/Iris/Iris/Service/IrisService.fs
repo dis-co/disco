@@ -28,6 +28,7 @@ type IrisService(project: IrisProject ref) =
 
   let kontext = new ZContext()
 
+  let gitserver  = new Git.Daemon(project)
   let raftserver = new RaftServer((!project).Config, kontext)
   let wsserver   = new WsServer((!project).Config, raftserver)
   let httpserver = new AssetServer((!project).Config)
@@ -218,23 +219,37 @@ type IrisService(project: IrisProject ref) =
   // ** Start
 
   member self.Start(web: bool) =
-    if web then
-      httpserver.Start()
-    wsserver.Start()
-    raftserver.Start()
+    try
+      if web then
+        httpserver.Start()
+      gitserver.Start()
+      wsserver.Start()
+      raftserver.Start()
+    with
+      | exn ->
+        printfn "Exception occurred trying to start IrisService: %s" exn.Message
 
   member self.Start() =
-    httpserver.Start()
-    wsserver.Start()
-    raftserver.Start()
+    try
+      gitserver.Start()
+      httpserver.Start()
+      wsserver.Start()
+      raftserver.Start()
+    with
+      | exn ->
+        printfn "Exception occurred trying to start IrisService: %s" exn.Message
 
   // ** Stop
 
   member self.Stop() =
-    dispose raftserver
-    dispose wsserver
-    dispose httpserver
-    dispose kontext
+    try
+      dispose raftserver
+      dispose wsserver
+      dispose httpserver
+      dispose kontext
+    with
+      | exn ->
+        printfn "Exception occurred trying to dispose IrisService: %s" exn.Message
 
   //  ____            _           _
   // |  _ \ _ __ ___ (_) ___  ___| |_
