@@ -569,6 +569,10 @@ Target "Release" DoNothing
 ==> "CopyAssets"
 ==> "CreateArchive"
 
+"RunTests"
+==> "RunWebTests"
+==> "Release"
+
 "CreateArchive"
 ==> "Release"
 
