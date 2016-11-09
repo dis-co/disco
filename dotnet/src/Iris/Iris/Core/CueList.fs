@@ -64,43 +64,43 @@ and CueList =
   // ** FromFB
 
   static member FromFB(fb: CueListFB) : Either<IrisError, CueList> =
-    let xs = Array.zeroCreate fb.CuesLength
-    for i = 0 to (xs.Length-1) do
-      xs.[i] <- fb.Cues i |> Cue.FromFB |> Either.get
-    { Id = Id fb.Id; Name = fb.Name; Cues = xs }
-    |> Either.succeed
-//     either {
-//       let! cues =
-//         let arr = Array.zeroCreate fb.CuesLength
-//         Array.fold
-//           (fun (m: Either<IrisError,int * Cue array>) _ -> either {
-//             let! (i, arr) = m
-// #if JAVASCRIPT
-//             let! cue =
-//               fb.Cues(i)
-//               |> Cue.FromFB
-// #else
-//             let! cue =
-//               let value = fb.Cues(i)
-//               if value.HasValue then
-//                 value.Value
-//                 |> Cue.FromFB
-//               else
-//                 "Could not parse empty CueFB"
-//                 |> ParseError
-//                 |> Either.fail
-// #endif
-//             arr.[i] <- cue
-//             return (i + 1, arr)
-//           })
-//           (Right (0, arr))
-//           arr
-//         |> Either.map snd
+    either {
+      let! cues =
+        let arr = Array.zeroCreate fb.CuesLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Cue array>) _ -> either {
+            let! (i, cues) = m
 
-//       return { Id = Id fb.Id
-//                Name = fb.Name
-//                Cues = cues }
-//     }
+            #if JAVASCRIPT
+
+            let! cue =
+              fb.Cues(i)
+              |> Cue.FromFB
+            #else
+
+            let! cue =
+              let value = fb.Cues(i)
+              if value.HasValue then
+                value.Value
+                |> Cue.FromFB
+              else
+                "Could not parse empty CueFB"
+                |> ParseError
+                |> Either.fail
+
+            #endif
+
+            cues.[i] <- cue
+            return (i + 1, cues)
+          })
+          (Right (0, arr))
+          arr
+        |> Either.map snd
+
+      return { Id = Id fb.Id
+               Name = fb.Name
+               Cues = cues }
+    }
 
   // ** FromBytes
 
