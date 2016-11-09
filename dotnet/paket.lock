@@ -1175,7 +1175,7 @@ NUGET
       System.Xml.ReaderWriter (>= 4.0.11) - framework: dnxcore50, netstandard10, >= netstandard13
 GITHUB
   remote: fsharp/FAKE
-    modules/Octokit/Octokit.fsx (19bd9bc0336af1c1cffeea253565214b760d73fa)
+    modules/Octokit/Octokit.fsx (f367c3d28b1fc9a2a89636c2b870dea4b4559dca)
       Octokit (>= 0.20)
 GROUP Test
 NUGET

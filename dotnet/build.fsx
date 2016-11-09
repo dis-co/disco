@@ -433,7 +433,7 @@ Target "BuildReleaseNodes" (buildRelease "Projects/Nodes/Nodes.fsproj")
    Good Fix: use a nix-shell environment that exposes LD_LIBRARY_PATH correctly.
 *)
 
-Target "BuildTests" (buildDebug "Tests.fsproj")
+Target "BuildTests" (buildDebug "Projects/Tests/Tests.fsproj")
 
 Target "RunTests"
   (fun _ ->
