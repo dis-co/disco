@@ -29,14 +29,14 @@ type Rep (addr: string, handle: byte array -> byte array) =
   let worker () =                                             // thread worker function
     if isNull sock then                                       // if the socket is null
       try
-        ctx <- new ZContext()
-        let socket = new ZSocket(ctx, ZSocketType.REP)        // create it
-        socket.SetOption(ZSocketOption.RCVTIMEO, 50) |> ignore // periodic timeout to interupt loop
-        socket.Bind(addr)                                     // bind to address
-        sock <- socket                                         // and safe for later use
-        starter.Set() |> ignore                                // signal Start that startup is done
+        ctx  <- new ZContext()
+        sock <- new ZSocket(ctx, ZSocketType.REP)            // create it
+        sock.SetOption(ZSocketOption.RCVTIMEO, 50) |> ignore // periodic timeout to interupt loop
+        sock.Bind(addr)                                     // bind to address
+        starter.Set() |> ignore                              // signal Start that startup is done
       with
         | failure ->
+          run <- false
           exn <- Some failure
           starter.Set() |> ignore
 
@@ -51,16 +51,19 @@ type Rep (addr: string, handle: byte array -> byte array) =
         frame.Dispose()                                       // dispose of frame
         reply.Dispose()                                       // dispose of reply
       with
-        | :? ZException as e-> ignore e
+        | :? ZException as e ->
+          ignore e                      // FIXME: should probably look at excepion type and handle
+                                        // it instead of .. not.
         | failure ->
+          run <- false
           exn <- Some failure
           starter.Set() |> ignore
 
     sock.SetOption(ZSocketOption.LINGER, 0) |> ignore          // loop exited, so set linger to 0
     sock.Unbind(addr)
     sock.Close()                                              // and close socket
-    sock.Dispose()                                            // dispose socket
-    ctx.Dispose()
+    dispose sock                                              // dispose socket
+    dispose ctx
     stopper.Set() |> ignore                                    // signal that Stop is done
 
   do
