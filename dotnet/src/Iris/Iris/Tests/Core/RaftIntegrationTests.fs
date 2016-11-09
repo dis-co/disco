@@ -14,6 +14,12 @@ open ZeroMQ
 [<AutoOpen>]
 module RaftIntegrationTests =
 
+  //  _   _ _   _ _ _ _   _
+  // | | | | |_(_) (_) |_(_) ___  ___
+  // | | | | __| | | | __| |/ _ \/ __|
+  // | |_| | |_| | | | |_| |  __/\__ \
+  //  \___/ \__|_|_|_|\__|_|\___||___/
+
   let test_log_snapshotting_should_clean_all_logs =
     pending "log snapshotting should clean all logs"
 
@@ -27,12 +33,20 @@ module RaftIntegrationTests =
     testCase "validate raft service bind correct port" <| fun _ ->
       let ctx = new ZContext()
 
-      let leadercfg = Config.create "leader"
+      let leadercfg =
+        Config.create "leader"
+        |> Config.addNode (Config.getNodeId() |> Either.get |> Node.create)
+
       let leader = new RaftServer(leadercfg, ctx)
       leader.Start()
 
+      expect "Should be in running" true (not << hasFailed) leader.ServerState
+
       let follower = new RaftServer(leadercfg, ctx)
+
+      printfn "starting follower"
       follower.Start()
+      printfn "done starting"
 
       expect "Should be in failed state" true hasFailed follower.ServerState
 
