@@ -507,7 +507,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as this =
 
     member self.LogMsg level node str =
       let doLog msg =
-        let now = DateTime.Now |> unixTime
+        let now = DateTime.Now |> Time.unixTime
         let tid = String.Format("[{0,2}]", Thread.CurrentThread.ManagedThreadId)
         let lvl = String.Format("[{0,5}]", string level)
         let log = sprintf "%s [%d / %s / %s] %s" lvl now tid (string node.Id) msg
