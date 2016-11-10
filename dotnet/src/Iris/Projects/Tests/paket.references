@@ -6,8 +6,9 @@ LibGit2Sharp.NativeBinaries
 FSharp.Configuration
 Fleck
 Suave
-Fuchu
-Fuchu.FsCheck
+Expecto
+Expecto.PerfUtil
+Expecto.FsCheck
 FsCheck
 XUnit
 NUnit

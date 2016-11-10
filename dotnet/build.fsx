@@ -149,8 +149,11 @@ let runTests filepath workdir =
     then "amd64"
     else "i386"
 
-  CopyFile workdir (workdir @@ arch @@ "libzmq.dll")
-  CopyFile workdir (workdir @@ arch @@ "libsodium.dll")
+  printfn "Copy %s to %s" (baseDir @@ arch @@ "libzmq.dll") workdir
+  CopyFile workdir (baseDir @@ arch @@ "libzmq.dll")
+
+  printfn "Copy %s to %s" (baseDir @@ arch @@ "libzmq.dll") workdir
+  CopyFile workdir (baseDir @@ arch @@ "libsodium.dll")
 
   ExecProcess (fun info ->
                   info.FileName <- (workdir </> filepath)
@@ -362,20 +365,16 @@ Target "BuildWorkerFsProj" (buildDebug "Projects/Worker/Worker.fsproj")
 let webtestsdir = baseDir @@ "Projects" @@ "Web.Tests"
 
 Target "BuildWebTests" (fun _ ->
-    runFable webtestsdir "" ())
+  runNpm "install" __SOURCE_DIRECTORY__ ()
+  runFable webtestsdir "" ()
+)
 
 Target "WatchWebTests" (runFable webtestsdir "-t watch")
 
 Target "BuildWebTestsFsProj" (buildDebug "Projects/Web.Tests/Web.Tests.fsproj")
 
 Target "RunWebTests" (fun _ ->
-  if environVar "APPVEYOR" = "True"
-  then runNpm "run appveyor-tests" __SOURCE_DIRECTORY__ ()
-  else
-    let testsFile = baseDir @@ "bin" @@ "Debug" @@ "Iris" @@ "assets" @@ "tests.html"
-    let phantomJsPath = environVarOrDefault "PHANTOMJS_PATH" "phantomjs"
-    let cmd = "run mocha-phantomjs -- -p " + phantomJsPath + " -R min " + testsFile
-    runNpm cmd __SOURCE_DIRECTORY__ ()
+  runNpm "run phantomjs -- node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Iris/bin/Debug/Iris/assets/tests.html tap" __SOURCE_DIRECTORY__ ()
 )
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
@@ -568,10 +567,6 @@ Target "Release" DoNothing
 "CopyBinaries"
 ==> "CopyAssets"
 ==> "CreateArchive"
-
-"RunTests"
-==> "RunWebTests"
-==> "Release"
 
 "CreateArchive"
 ==> "Release"

@@ -1,7 +1,6 @@
 namespace Iris.Tests.Raft
 
-open Fuchu
-open Fuchu.Test
+open Expecto
 open Iris.Core
 open Iris.Raft
 
@@ -18,4 +17,4 @@ module NodeTests =
   let node_init_test =
     testCase "When created, Node should be in Voting state" <| fun _ ->
       let node : RaftNode = Node.create (Id.Create())
-      Assert.Equal("Should be voting", true, Node.isVoting node)
+      Expect.equal (Node.isVoting node) true "Should be voting"

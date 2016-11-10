@@ -1,8 +1,8 @@
 namespace Iris.Tests.Raft
 
 open System.Net
-open Fuchu
-open Fuchu.Test
+open Expecto
+
 open Iris.Raft
 open Iris.Core
 
@@ -160,14 +160,14 @@ module ServerTests =
         let! entry = Raft.getEntryAtM 1u
         match Option.get entry with
           | LogEntry(_,_,_,data,_) ->
-            Assert.Equal("Should have correct contents", msg2, data)
+            Expect.equal data msg2 "Should have correct contents"
           | _ -> failwith "Should be a Log"
 
         do! Raft.createEntryM msg3 >>= ignoreM
         let! entry = Raft.getEntryAtM 2u
         match Option.get entry with
           | LogEntry(_,_,_,data,_) ->
-            Assert.Equal("Should have correct contents", msg3, data)
+            Expect.equal data msg3 "Should have correct contents"
           | _ -> failwith "Should be a Log"
       }
       |> runWithRaft init cbs

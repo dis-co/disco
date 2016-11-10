@@ -5,6 +5,17 @@ NUGET
       FSharp.Core (>= 4.0.1.7-alpha) - framework: >= net463, >= netstandard16
       NETStandard.Library (>= 1.6) - framework: >= net463, >= netstandard16
       System.Xml.XDocument (>= 4.0.11) - framework: >= net463, >= netstandard16
+    Expecto (1.1.2)
+      Argu (>= 3.2)
+      FSharp.Core (>= 3.1.2.5)
+    Expecto.FsCheck (1.1.2)
+      Expecto (>= 1.1.2)
+      FsCheck (>= 2.6.2)
+      FSharp.Core (>= 3.1.2.5)
+    Expecto.PerfUtil (1.0.12)
+      Expecto (>= 1.0.12)
+      FSharp.Core (>= 3.1.2.5)
+      PerfUtil (>= 0.1.8)
     Fleck (0.14.0.59)
     FsCheck (2.6.2)
       FSharp.Core (>= 3.1.2.5)
@@ -28,15 +39,9 @@ NUGET
       FSharp.Core
     FSharpx.Collections (1.15.2)
       FSharp.Core
-    FSharpx.Extras (2.1.3)
+    FSharpx.Extras (2.2)
       FSharpx.Async
       FSharpx.Collections
-    Fuchu (1.0.3)
-      FSharp.Core (>= 3.1.2.1)
-    Fuchu.FsCheck (1.0.3)
-      FsCheck (>= 2.2.4)
-      FSharp.Core (>= 3.1.2.5)
-      Fuchu (>= 1.0.3)
     Gallio (3.3.1)
     LibGit2Sharp (0.23.0-pre20160922233542)
       LibGit2Sharp.NativeBinaries (1.0.160)
@@ -96,6 +101,7 @@ NUGET
     Npm.js (2.13.1)
       Node.js (>= 0.12.7)
     NUnit (3.5)
+    PerfUtil (0.1.8)
     runtime.native.System (4.0) - framework: >= netstandard16
       Microsoft.NETCore.Platforms (>= 1.0.1)
       Microsoft.NETCore.Targets (>= 1.0.1)
@@ -618,7 +624,7 @@ NUGET
       FSharp.Core (>= 4.0.1.7-alpha) - framework: >= net463, >= netstandard16
       NETStandard.Library (>= 1.6) - framework: >= net463, >= netstandard16
       System.Xml.XDocument (>= 4.0.11) - framework: >= net463, >= netstandard16
-    FAKE (4.41.6)
+    FAKE (4.45.1)
     FsControl (1.0.13)
     FSharp.Compiler.Service (2.0.0.6)
     FSharp.Control.AsyncSeq (2.0.9)
@@ -646,7 +652,7 @@ NUGET
       FSharp.Core
     FSharpx.Collections (1.15.2)
       FSharp.Core
-    FSharpx.Extras (2.1.3)
+    FSharpx.Extras (2.2)
       FSharpx.Async
       FSharpx.Collections
     Microsoft.Bcl (1.1.10) - framework: net10, net11, net20, net30, net35, net40, net40-full
@@ -1180,6 +1186,18 @@ GITHUB
 GROUP Test
 NUGET
   remote: https://www.nuget.org/api/v2
+    Argu (3.2)
+    Expecto (1.1.2)
+      Argu (>= 3.2)
+      FSharp.Core (>= 3.1.2.5)
+    Expecto.FsCheck (1.1.2)
+      Expecto (>= 1.1.2)
+      FsCheck (>= 2.6.2)
+      FSharp.Core (>= 3.1.2.5)
+    Expecto.PerfUtil (1.0.12)
+      Expecto (>= 1.0.12)
+      FSharp.Core (>= 3.1.2.5)
+      PerfUtil (>= 0.1.8)
     FsCheck (2.6.2)
       FSharp.Core (>= 3.1.2.5)
     FsControl (1.0.13)
@@ -1192,19 +1210,14 @@ NUGET
       FSharp.Core
     FSharpx.Collections (1.15.2)
       FSharp.Core
-    FSharpx.Extras (2.1.3)
+    FSharpx.Extras (2.2)
       FSharpx.Async
       FSharpx.Collections
-    Fuchu (1.0.3)
-      FSharp.Core (>= 3.1.2.1)
-    Fuchu.FsCheck (1.0.3)
-      FsCheck (>= 2.2.4)
-      FSharp.Core (>= 3.1.2.5)
-      Fuchu (>= 1.0.3)
     Gallio (3.3.1)
     Microsoft.NETCore.Platforms (1.0.1) - framework: dnxcore50
     Microsoft.NETCore.Targets (1.0.1) - framework: dnxcore50
     NUnit (3.5)
+    PerfUtil (0.1.8)
     System.Collections (4.0.11) - framework: dnxcore50
       Microsoft.NETCore.Platforms (>= 1.0.1) - framework: dnxcore50, netstandard10, >= netstandard13
       Microsoft.NETCore.Targets (>= 1.0.1) - framework: dnxcore50, netstandard10, >= netstandard13

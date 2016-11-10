@@ -6,9 +6,6 @@ LibGit2Sharp.NativeBinaries
 FSharp.Configuration
 Fleck
 Suave
-Fuchu
-Fuchu.FsCheck
-FsCheck
 XUnit
 NUnit
 Gallio

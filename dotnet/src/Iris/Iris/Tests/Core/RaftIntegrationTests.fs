@@ -1,8 +1,8 @@
 namespace Iris.Tests
 
 open System.Threading
-open Fuchu
-open Fuchu.Test
+open Expecto
+
 open Iris.Core
 open Iris.Service
 open Iris.Service.Utilities

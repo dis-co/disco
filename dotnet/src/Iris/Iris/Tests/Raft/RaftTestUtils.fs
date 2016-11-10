@@ -2,8 +2,7 @@ namespace Iris.Tests.Raft
 
 open System
 open System.Net
-open Fuchu
-open Fuchu.Test
+open Expecto
 open Iris.Core
 open Iris.Raft
 
@@ -65,15 +64,15 @@ module RaftTestUtils =
 
   /// abstract over Assert.Equal to create pipe-lineable assertions
   let expect (msg : string) (a : 'a) (b : 't -> 'a) (t : 't) =
-    Assert.Equal(msg, a, b t) // apply t to b
+    Expect.equal (b t) a msg // apply t to b
 
   let assume (msg : string) (a : 'a) (b : 't -> 'a) (t : 't) =
-    Assert.Equal(msg, a, b t) // apply t to b
+    Expect.equal (b t) a msg // apply t to b
     t
 
   let expectM (msg: string) (a: 'a) (b: 't -> 'a) =
     get >>= fun thing ->
-      Assert.Equal(msg, a, b thing)
+      Expect.equal (b thing) a msg
       returnM ()
 
   let mkcbs (data: StateMachine ref) =

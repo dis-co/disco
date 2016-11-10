@@ -1,8 +1,7 @@
 namespace Iris.Tests.Raft
 
 open System.Net
-open Fuchu
-open Fuchu.Test
+open Expecto
 open Iris.Core
 open Iris.Raft
 

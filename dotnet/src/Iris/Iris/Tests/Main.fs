@@ -1,4 +1,6 @@
-open Fuchu
+module Iris.Tests.Main
+
+open Expecto
 open Iris.Tests
 
 let all =
@@ -12,4 +14,5 @@ let all =
   ]
 
 [<EntryPoint>]
-let main _ = run all
+let main _ =
+  run defaultConfig.printer all
