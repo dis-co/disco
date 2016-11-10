@@ -1,5 +1,6 @@
 namespace Iris.Tests
 
+open System
 open System.Threading
 open Expecto
 
@@ -20,8 +21,12 @@ module RaftIntegrationTests =
   // | |_| | |_| | | | |_| |  __/\__ \
   //  \___/ \__|_|_|_|\__|_|\___||___/
 
-  let test_log_snapshotting_should_clean_all_logs =
-    pending "log snapshotting should clean all logs"
+  let mkUuid () =
+    let uuid = Guid.NewGuid()
+    string uuid
+
+  let setNodeId uuid =
+    Environment.SetEnvironmentVariable(IRIS_NODE_ID, uuid)
 
   //  ____        __ _     _____         _
   // |  _ \ __ _ / _| |_  |_   _|__  ___| |_ ___
@@ -52,6 +57,54 @@ module RaftIntegrationTests =
       dispose leader
       dispose ctx
 
+  let test_validate_follower_joins_leader_after_startup =
+    testCase "validate follower joins leader after startup" <| fun _ ->
+      printfn "============================================================"
+      let ctx = new ZContext()
+
+      let nid1 = mkUuid()
+      let nid2 = mkUuid()
+
+      let node1 =
+        Id nid1
+        |> Node.create
+        |> Node.setPort 8000us
+
+      let node2 =
+        Id nid2
+        |> Node.create
+        |> Node.setPort 8001us
+
+      setNodeId nid1
+
+      let leadercfg =
+        Config.create "leader"
+        |> Config.setNodes [| node1; node2 |]
+        |> Config.setLogLevel (LogLevel.Debug)
+
+      setNodeId nid2
+
+      let followercfg =
+        Config.create "follower"
+        |> Config.setNodes [| node1; node2 |]
+        |> Config.setLogLevel (LogLevel.Debug)
+
+      setNodeId nid1
+
+      let leader = new RaftServer(leadercfg, ctx)
+      leader.Start()
+
+      setNodeId nid2
+
+      let follower = new RaftServer(followercfg, ctx)
+      follower.Start()
+
+      Thread.Sleep 10000
+
+      dispose follower
+      dispose leader
+      dispose ctx
+
   //                       _ _
   //  _ __   ___ _ __   __| (_)_ __   __ _
   // | '_ \ / _ \ '_ \ / _` | | '_ \ / _` |
@@ -59,8 +112,8 @@ module RaftIntegrationTests =
   // | .__/ \___|_| |_|\__,_|_|_| |_|\__, |
   // |_|                             |___/
 
-  let test_validate_follower_joins_leader_after_startup =
-    pending "follower join should fail on duplicate raftid"
+  let test_log_snapshotting_should_clean_all_logs =
+    pending "log snapshotting should clean all logs"
 
   let test_follower_join_should_fail_on_duplicate_raftid =
     pending "follower join should fail on duplicate raftid"

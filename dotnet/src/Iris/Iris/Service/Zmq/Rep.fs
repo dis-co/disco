@@ -188,7 +188,7 @@ type Rep (addr: string, handle: byte array -> byte array) =
     stopper <- new AutoResetEvent(false)
 
   member self.Stop () =
-    if not dispose then
+    if not disposed then
       run <- false                                   // break loop by setting to false
       stopper.WaitOne() |> ignore                    // wait for signal that stopping is done
                                                     // and return to caller
