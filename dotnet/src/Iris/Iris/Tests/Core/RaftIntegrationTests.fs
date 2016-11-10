@@ -36,7 +36,7 @@ module RaftIntegrationTests =
       let leadercfg =
         Config.create "leader"
         |> Config.addNode (Config.getNodeId() |> Either.get |> Node.create)
-        |> Config.setLogLevel (LogLevel.Debug)
+        // |> Config.setLogLevel (LogLevel.Debug)
 
       let leader = new RaftServer(leadercfg, ctx)
       leader.Start()
@@ -44,24 +44,13 @@ module RaftIntegrationTests =
       expect "Should be in running" true (not << hasFailed) leader.ServerState
 
       let follower = new RaftServer(leadercfg, ctx)
-
-      printfn "starting follower"
       follower.Start()
-      printfn "done starting"
 
       expect "Should be in failed state" true hasFailed follower.ServerState
 
-      printfn "disposing follower"
-
       dispose follower
-
-      printfn "disposing leader"
       dispose leader
-
-      printfn "disposing ctx"
       dispose ctx
-
-      printfn "done disposing"
 
   //                       _ _
   //  _ __   ___ _ __   __| (_)_ __   __ _
