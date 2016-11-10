@@ -18,6 +18,29 @@ open System.Diagnostics
 
 let konst x _ = x
 
+/// Copies a directory recursively without any output.
+/// If the target directory does not exist, it will be created.
+/// ## Parameters
+///
+///  - `target` - The target directory.
+///  - `source` - The source directory.
+///  - `filterFile` - A file filter predicate.
+let SilentCopyDir target source filterFile =
+    CreateDir target
+    Directory.GetFiles(source, "*.*", SearchOption.AllDirectories)
+    |> Seq.filter filterFile
+    |> Seq.iter (fun file ->
+           let fi =
+               file
+               |> replaceFirst source ""
+               |> trimSeparator
+
+           let newFile = target @@ fi
+          //  logVerbosefn "%s => %s" file newFile
+           DirectoryName newFile |> ensureDirectory
+           File.Copy(file, newFile, true))
+    |> ignore
+
 // The name of the project
 // (used by attributes in AssemblyInfo, name of a NuGet package and directory in 'src')
 let project = "Iris"
@@ -227,12 +250,12 @@ Target "AssemblyInfo" (fun _ ->
 
 Target "CopyBinaries"
   (fun _ ->
-    CopyDir "bin/Iris"  (baseDir @@ "bin/Release/Iris")  (konst true)
-    CopyDir "bin/Nodes" (baseDir @@ "bin/Release/Nodes") (konst true))
+    SilentCopyDir "bin/Iris"  (baseDir @@ "bin/Release/Iris")  (konst true)
+    SilentCopyDir "bin/Nodes" (baseDir @@ "bin/Release/Nodes") (konst true))
 
 Target "CopyAssets"
   (fun _ ->
-    CopyDir "bin/Iris/assets" (baseDir @@ "assets/frontend") (konst true)
+    SilentCopyDir "bin/Iris/assets" (baseDir @@ "assets/frontend") (konst true)
 
     !! (baseDir @@ "bin/*.js")
     |> CopyFiles "bin/Iris/assets/js"
