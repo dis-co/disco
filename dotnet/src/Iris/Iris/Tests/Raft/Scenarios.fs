@@ -1,8 +1,7 @@
 namespace Iris.Tests.Raft
 
 open System.Net
-open Fuchu
-open Fuchu.Test
+open Expecto
 open Iris.Core
 open Iris.Raft
 
@@ -231,4 +230,4 @@ module Scenarios =
         if Raft.isLeader raft then result + 1 else result
 
       let leaders = Array.map fst servers |> Array.fold __fldr 0
-      Assert.Equal("System should have have one leader", 1, leaders)
+      Expect.equal leaders 1 "System should have have one leader"

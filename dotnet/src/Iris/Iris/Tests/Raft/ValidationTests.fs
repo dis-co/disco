@@ -1,8 +1,7 @@
 namespace Iris.Tests.Raft
 
 open System
-open Fuchu
-open Fuchu.Test
+open Expecto
 open Iris.Raft
 
 [<AutoOpen>]
@@ -18,7 +17,7 @@ module Validation =
 
   let validation_dsl_validation =
     let run c = runValidation c
-    let a n a b = Assert.Equal(sprintf "%d) should be %b" n a, a, b)
+    let a n a b = Expect.equal b a (sprintf "%d) should be %b" n a)
     testCase "Continue DSL validation" <| fun _ ->
       a 1 false <| fst (runValidation (validation {
         return! validate (fun x -> (x,0))  false true

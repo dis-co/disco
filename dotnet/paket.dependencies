@@ -5,8 +5,9 @@ group Main
   source https://nuget.org/api/v2
   nuget Npm.js
   nuget FSharp.Core redirects:force
-  nuget Fuchu
-  nuget Fuchu.FsCheck
+  nuget Expecto
+  nuget Expecto.PerfUtil
+  nuget Expecto.FsCheck
   nuget FsCheck
   nuget XUnit
   nuget NUnit
@@ -23,7 +24,7 @@ group Main
 
 group Build
   source https://nuget.org/api/v2
-  
+
   nuget SourceLink.Fake
   nuget FAKE
   nuget FSharp.Formatting
@@ -37,10 +38,11 @@ group Build
 
 group Test
   source https://nuget.org/api/v2
-  
+
   nuget FSharp.Core redirects:force
-  nuget Fuchu
-  nuget Fuchu.FsCheck
+  nuget Expecto
+  nuget Expecto.PerfUtil
+  nuget Expecto.FsCheck
   nuget XUnit
   nuget NUnit
   nuget Gallio

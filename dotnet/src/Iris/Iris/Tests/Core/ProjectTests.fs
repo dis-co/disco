@@ -4,8 +4,7 @@ open System
 open System.IO
 open System.Linq
 open System.Threading
-open Fuchu
-open Fuchu.Test
+open Expecto
 open Iris.Core
 open Iris.Raft
 open LibGit2Sharp
@@ -243,7 +242,7 @@ module ProjectTests =
         fileSystemInfo.Attributes <- FileAttributes.Normal
         fileSystemInfo.Delete()
     with _ -> ()
-            
+
 
   //    ____ _ _
   //   / ___(_) |_

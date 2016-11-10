@@ -1,7 +1,6 @@
 namespace Iris.Tests
 
-open Fuchu
-open Fuchu.Test
+open Expecto
 open Iris.Tests.Raft
 
 [<AutoOpen>]
