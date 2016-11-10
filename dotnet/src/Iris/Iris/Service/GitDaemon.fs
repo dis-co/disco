@@ -32,46 +32,63 @@ module Git =
 
     let loco : obj  = new obj()
 
+    let mutable logger : (LogLevel -> string -> unit) option = None
+
     let mutable starter : AutoResetEvent = null
     let mutable stopper : AutoResetEvent = null
 
     let mutable started : bool = false
     let mutable running : bool = false
-    let mutable worker  : Thread option = None
+    let mutable proc    : Thread option = None
 
     do
       starter <- new AutoResetEvent(false)
       stopper <- new AutoResetEvent(false)
 
-    member self.Runner path () =
+    let worker path () =
       let basedir = Path.GetDirectoryName path
       let folder = Path.GetFileName path
 
       let mutable initialized = false
 
-      let args = sprintf "daemon --reuseaddr --strict-paths --base-path=%s %s/.git" basedir path
-      let proc = Process.Start("git", args)
+      let args =
+        sprintf "daemon --reuseaddr --strict-paths --listen=%s --port=%d --base-path=%s %s/.git"
+          addr
+          port
+          basedir
+          path
 
-      lock loco <| fun _ ->
-        while running do
-          if not initialized then
-            starter.Set() |> ignore
-            initialized <- true
-          Monitor.Wait(loco) |> ignore
+      let proc = new Process()
+      proc.StartInfo.FileName <- "git"
+      proc.StartInfo.Arguments <- args
+      proc.StartInfo.CreateNoWindow <- true
+      proc.StartInfo.UseShellExecute <- false
+      proc.StartInfo.RedirectStandardError <- true
 
-      Process.kill proc.Id
+      proc.Start()
+
+      starter.Set() |> ignore
+
+      while running do
+        printfn "DO SOMETHING SENSIBLE"
+
+      proc.Kill()
+      dispose proc
 
       stopper.Set() |> ignore
+
+    member self.OnLogMsg
+      with set callback = logger <- Some callback
 
     member self.Start() =
       if not started then
         match (!project).Path with
         | Some path ->
           running <- true
-          let thread = new Thread(new ThreadStart(self.Runner path))
+          let thread = new Thread(new ThreadStart(worker path))
           thread.Start()
           starter.WaitOne() |> ignore
-          worker <- Some(thread)
+          proc <- Some(thread)
           started <- true
         | _ -> ()
 
@@ -79,12 +96,10 @@ module Git =
       if started && running then
         lock loco <| fun _ ->
           running <- false
-          Monitor.Pulse(loco)
           started <- false
           stopper.WaitOne() |> ignore
 
     member self.Running() =
-      started
-      && running
-      && Option.isSome worker
-      && Option.get(worker).IsAlive
+      match started && running, proc with
+      | true, Some t -> t.IsAlive
+      | _            -> false
