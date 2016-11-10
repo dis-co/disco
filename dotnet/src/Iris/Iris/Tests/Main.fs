@@ -1,3 +1,5 @@
+module Iris.Tests.Main
+
 open Fuchu
 open Iris.Tests
 

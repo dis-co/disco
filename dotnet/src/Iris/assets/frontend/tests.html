@@ -20,7 +20,11 @@
     <div id="content"></div>
     <div id="mocha"></div>
 
-    <script>mocha.setup('qunit')</script>
+    <script>
+    if (typeof initMochaPhantomJS === 'function') {
+      initMochaPhantomJS()
+    }
+    mocha.setup('qunit')</script>
     <script src="js/iris.tests.js"></script>
     <script>mocha.run()</script>
   </body>

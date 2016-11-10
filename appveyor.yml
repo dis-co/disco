@@ -17,7 +17,6 @@ install:
   - npm version
   - cd dotnet
   - npm install --no-optional
-  - npm install -g mocha-phantomjs
 
 build_script:
   - ps:

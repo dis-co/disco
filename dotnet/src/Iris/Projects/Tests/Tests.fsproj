@@ -21,7 +21,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <Tailcalls>false</Tailcalls>
-    <OutputPath>bin\Debug\Tests</OutputPath>
+    <OutputPath>..\..\bin\Debug\Tests</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
   </PropertyGroup>
@@ -29,7 +29,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
-    <OutputPath>bin\Release\Tests</OutputPath>
+    <OutputPath>..\..\bin\Release\Tests</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>
@@ -43,87 +43,211 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="paket.references" />
-    <None Include="paket.template" />
     <Content Include="..\..\assets\nix\runtests.nix">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <Link>runtests.nix</Link>
     </Content>
-    <Compile Include="..\..\AssemblyInfo\TestsInfo.fs" />
-    <Compile Include="..\..\Iris\Core\Constants.fs" />
-    <Compile Include="..\..\Iris\Core\Either.fs" />
-    <Compile Include="..\..\Iris\Core\Serialization.fs" />
-    <Compile Include="..\..\Iris\Core\Error.fs" />
-    <Compile Include="..\..\Iris\Core\Id.fs" />
-    <Compile Include="..\..\Iris\Core\IpAddress.fs" />
-    <Compile Include="..\..\Iris\Core\Aliases.fs" />
-    <Compile Include="..\..\Iris\Core\Util.fs" />
-    <Compile Include="..\..\Iris\Core\User.fs" />
-    <Compile Include="..\..\Iris\Core\Session.fs" />
-    <Compile Include="..\..\Iris\Core\Color.fs" />
-    <Compile Include="..\..\Iris\Core\LogLevel.fs" />
-    <Compile Include="..\..\Iris\Core\Git.fs" />
-    <Compile Include="..\..\Iris\Core\IOBox.fs" />
-    <Compile Include="..\..\Iris\Core\Patch.fs" />
-    <Compile Include="..\..\Iris\Core\Cue.fs" />
-    <Compile Include="..\..\Iris\Core\CueList.fs" />
+    <Compile Include="..\..\AssemblyInfo\TestsInfo.fs">
+      <Link>TestsInfo.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Constants.fs">
+      <Link>Constants.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Either.fs">
+      <Link>Either.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Serialization.fs">
+      <Link>Serialization.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Error.fs">
+      <Link>Error.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Id.fs">
+      <Link>Id.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\IpAddress.fs">
+      <Link>IpAddress.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Aliases.fs">
+      <Link>Aliases.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Util.fs">
+      <Link>Util.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\User.fs">
+      <Link>User.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Session.fs">
+      <Link>Session.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Color.fs">
+      <Link>Color.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\LogLevel.fs">
+      <Link>LogLevel.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Git.fs">
+      <Link>Git.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\IOBox.fs">
+      <Link>IOBox.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Patch.fs">
+      <Link>Patch.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Cue.fs">
+      <Link>Cue.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\CueList.fs">
+      <Link>CueList.fs</Link>
+    </Compile>
     <!-- Raft -->
-    <Compile Include="..\..\Iris\Raft\Validation.fs" />
-    <Compile Include="..\..\Iris\Raft\Continue.fs" />
-    <Compile Include="..\..\Iris\Raft\Node.fs" />
+    <Compile Include="..\..\Iris\Raft\Validation.fs">
+      <Link>Validation.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Raft\Continue.fs">
+      <Link>Continue.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Raft\Node.fs">
+      <Link>Node.fs</Link>
+    </Compile>
     <!-- FFS!!!! I hate F# -->
-    <Compile Include="..\..\Iris\Core\StateMachine.fs" />
-    <Compile Include="..\..\Iris\Raft\LogEntry.fs" />
-    <Compile Include="..\..\Iris\Raft\Log.fs" />
-    <Compile Include="..\..\Iris\Raft\Types.fs" />
-    <Compile Include="..\..\Iris\Raft\Raft.fs" />
+    <Compile Include="..\..\Iris\Core\StateMachine.fs">
+      <Link>StateMachine.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Raft\LogEntry.fs">
+      <Link>LogEntry.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Raft\Log.fs">
+      <Link>Log.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Raft\Types.fs">
+      <Link>Types.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Raft\Raft.fs">
+      <Link>Raft.fs</Link>
+    </Compile>
     <!-- Config -->
-    <Compile Include="..\..\Iris\Core\Region.fs" />
-    <Compile Include="..\..\Iris\Core\Signal.fs" />
-    <Compile Include="..\..\Iris\Core\Display.fs" />
-    <Compile Include="..\..\Iris\Core\Task.fs" />
-    <Compile Include="..\..\Iris\Core\ViewPort.fs" />
-    <Compile Include="..\..\Iris\Core\Vvvv.fs" />
-    <Compile Include="..\..\Iris\Core\Yaml.fs" />
-    <Compile Include="..\..\Iris\Core\Config.fs" />
-    <Compile Include="..\..\Iris\Core\Project.fs" />
-    <Compile Include="..\..\Iris\Core\Uri.fs" />
-    <Compile Include="..\..\Iris\Service\GitDaemon.fs" />
-    <Compile Include="..\..\Iris\Service\Request.fs" />
-    <Compile Include="..\..\Iris\Service\Zmq\Rep.fs" />
-    <Compile Include="..\..\Iris\Service\Zmq\Req.fs" />
-    <Compile Include="..\..\Iris\Service\RaftAppState.fs" />
-    <Compile Include="..\..\Iris\Service\Zmq\ZmqUtils.fs" />
-    <Compile Include="..\..\Iris\Service\Persistence.fs" />
-    <Compile Include="..\..\Iris\Service\Utilities.fs" />
-    <Compile Include="..\..\Iris\Service\Stm.fs" />
-    <Compile Include="..\..\Iris\Service\RaftServer.fs" />
+    <Compile Include="..\..\Iris\Core\Region.fs">
+      <Link>Region.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Signal.fs">
+      <Link>Signal.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Display.fs">
+      <Link>Display.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Task.fs">
+      <Link>Task.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\ViewPort.fs">
+      <Link>ViewPort.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Vvvv.fs">
+      <Link>Vvvv.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Yaml.fs">
+      <Link>Yaml.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Config.fs">
+      <Link>Config.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Project.fs">
+      <Link>Project.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Uri.fs">
+      <Link>Uri.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\GitDaemon.fs">
+      <Link>GitDaemon.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\Request.fs">
+      <Link>Request.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\Zmq\Rep.fs">
+      <Link>Rep.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\Zmq\Req.fs">
+      <Link>Req.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\RaftAppState.fs">
+      <Link>RaftAppState.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\Zmq\ZmqUtils.fs">
+      <Link>ZmqUtils.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\Persistence.fs">
+      <Link>Persistence.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\Utilities.fs">
+      <Link>Utilities.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\Stm.fs">
+      <Link>Stm.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\RaftServer.fs">
+      <Link>RaftServer.fs</Link>
+    </Compile>
     <!--  _____         _        -->
     <!-- |_   _|__  ___| |_ ___  -->
     <!--   | |/ _ \/ __| __/ __| -->
     <!--   | |  __/\__ \ |_\__ \ -->
     <!--   |_|\___||___/\__|___/ -->
     <!-- Service -->
-    <Compile Include="..\..\Iris\Tests\TestUtilities.fs" />
-    <Compile Include="..\..\Iris\Tests\Core\SerializationTests.fs" />
-    <Compile Include="..\..\Iris\Tests\Core\ProjectTests.fs" />
-    <Compile Include="..\..\Iris\Tests\Core\RaftIntegrationTests.fs" />
-    <Compile Include="..\..\Iris\Tests\Core\StoreTests.fs" />
-    <Compile Include="..\..\Iris\Tests\Core\GitTests.fs" />
+    <Compile Include="..\..\Iris\Tests\TestUtilities.fs">
+      <Link>TestUtilities.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\SerializationTests.fs">
+      <Link>SerializationTests.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\ProjectTests.fs">
+      <Link>ProjectTests.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\RaftIntegrationTests.fs">
+      <Link>RaftIntegrationTests.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\StoreTests.fs">
+      <Link>StoreTests.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\GitTests.fs">
+      <Link>GitTests.fs</Link>
+    </Compile>
     <!-- Raft -->
-    <Compile Include="..\..\Iris\Tests\Raft\RaftTestUtils.fs" />
-    <Compile Include="..\..\Iris\Tests\Raft\NodeTests.fs" />
-    <Compile Include="..\..\Iris\Tests\Raft\LogTests.fs" />
-    <Compile Include="..\..\Iris\Tests\Raft\ValidationTests.fs" />
-    <Compile Include="..\..\Iris\Tests\Raft\ServerTests.fs" />
-    <Compile Include="..\..\Iris\Tests\Raft\JointConsensusTests.fs" />
-    <Compile Include="..\..\Iris\Tests\Raft\AppendEntriesTests.fs" />
-    <Compile Include="..\..\Iris\Tests\Raft\Scenarios.fs" />
-    <Compile Include="..\..\Iris\Tests\Raft\Tests.fs" />
+    <Compile Include="..\..\Iris\Tests\Raft\RaftTestUtils.fs">
+      <Link>RaftTestUtils.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Raft\NodeTests.fs">
+      <Link>NodeTests.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Raft\LogTests.fs">
+      <Link>LogTests.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Raft\ValidationTests.fs">
+      <Link>ValidationTests.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Raft\ServerTests.fs">
+      <Link>ServerTests.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Raft\JointConsensusTests.fs">
+      <Link>JointConsensusTests.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Raft\AppendEntriesTests.fs">
+      <Link>AppendEntriesTests.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Raft\Scenarios.fs">
+      <Link>Scenarios.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Raft\Tests.fs">
+      <Link>Tests.fs</Link>
+    </Compile>
     <!--  __  __       _        -->
     <!-- |  \/  | __ _(_)_ __   -->
     <!-- | |\/| |/ _` | | '_ \  -->
     <!-- | |  | | (_| | | | | | -->
     <!-- |_|  |_|\__,_|_|_| |_| -->
-    <Compile Include="..\..\Iris\Tests\Main.fs" />
+    <Compile Include="..\..\Iris\Tests\Main.fs">
+      <Link>Main.fs</Link>
+    </Compile>
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

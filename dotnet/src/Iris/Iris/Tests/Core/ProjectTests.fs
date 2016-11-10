@@ -231,6 +231,20 @@ module ProjectTests =
         expect "Cluster should be structurally equal"    true ((=) loaded.Config.ClusterConfig) saved.Config.ClusterConfig
         expect "Projects should be structurally equal"   true ((=) loaded) saved
 
+
+  // Adapted from http://stackoverflow.com/a/648055
+  let rec deleteFileSystemInfo (fileSystemInfo: FileSystemInfo) =
+    try
+        match fileSystemInfo with
+        | :? DirectoryInfo as dirInfo ->
+            for childInfo in dirInfo.GetFileSystemInfos("*", SearchOption.AllDirectories) do
+                deleteFileSystemInfo childInfo
+        | _ -> ()
+        fileSystemInfo.Attributes <- FileAttributes.Normal
+        fileSystemInfo.Delete()
+    with _ -> ()
+            
+
   //    ____ _ _
   //   / ___(_) |_
   //  | |  _| | __|
@@ -243,8 +257,8 @@ module ProjectTests =
         let name = "test3"
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
-        if Directory.Exists path
-        then Directory.Delete(path, true) |> ignore
+        if Directory.Exists path then
+            DirectoryInfo(path) |> deleteFileSystemInfo
 
         let project =
           { Project.create name with Path = Some path }
@@ -277,7 +291,7 @@ module ProjectTests =
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
         if Directory.Exists path then
-          Directory.Delete(path, true) |> ignore
+            DirectoryInfo(path) |> deleteFileSystemInfo
 
         let msg1 = "Commit 1"
 
