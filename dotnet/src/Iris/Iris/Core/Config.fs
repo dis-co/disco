@@ -1192,6 +1192,14 @@ module Config =
     |> Array.ofList
     |> Either.succeed
 
+  // ** setNodes
+
+  let setNodes (nodes: RaftNode array) (config: IrisConfig) =
+    { config with
+        ClusterConfig =
+          { config.ClusterConfig with
+              Nodes = List.ofArray nodes } }
+
   // ** getNodeId
 
   let getNodeId () =
