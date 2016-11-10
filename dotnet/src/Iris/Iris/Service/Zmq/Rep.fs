@@ -50,10 +50,12 @@ type Rep (addr: string, handle: byte array -> byte array) =
 
         frame.Dispose()                                       // dispose of frame
         reply.Dispose()                                       // dispose of reply
+
       with
-        | :? ZException as e ->
-          ignore e                      // FIXME: should probably look at excepion type and handle
-                                        // it instead of .. not.
+        /// ignore timeouts, since they are our way to ensure we can
+        /// cancel close and dispose the socket in time
+        | :? ZException as e when e.ErrNo = ZError.ETIMEDOUT.Number ->
+          ignore e
         | failure ->
           run <- false
           exn <- Some failure
