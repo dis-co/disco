@@ -28,7 +28,7 @@ module Git =
   /// - arg: arg
   ///
   /// Returns: Type
-  type Daemon(project: IrisProject ref) =
+  type Daemon(project: IrisProject) =
 
     let loco : obj  = new obj()
 
@@ -36,7 +36,7 @@ module Git =
 
     let mutable starter : AutoResetEvent = null
     let mutable stopper : AutoResetEvent = null
-
+    let mutable status  : ServiceStatus = ServiceStatus.Stopped
     let mutable started : bool = false
     let mutable running : bool = false
     let mutable proc    : Thread option = None
@@ -45,15 +45,22 @@ module Git =
       starter <- new AutoResetEvent(false)
       stopper <- new AutoResetEvent(false)
 
+    let log level str =
+      match logger with
+      | Some cb -> cb level str
+      | _       -> ()
+
     let worker path () =
       let basedir = Path.GetDirectoryName path
       let folder = Path.GetFileName path
-
-      let mutable initialized = false
+      let addr, port =
+        match Config.selfNode project.Config with
+        | Right node -> node.IpAddr, node.GitPort
+        | _ -> failwith "hu"
 
       let args =
         sprintf "daemon --reuseaddr --strict-paths --listen=%s --port=%d --base-path=%s %s/.git"
-          addr
+          (string addr)
           port
           basedir
           path
@@ -63,28 +70,45 @@ module Git =
       proc.StartInfo.Arguments <- args
       proc.StartInfo.CreateNoWindow <- true
       proc.StartInfo.UseShellExecute <- false
+      proc.StartInfo.RedirectStandardOutput <- true
       proc.StartInfo.RedirectStandardError <- true
 
-      proc.Start()
-
-      starter.Set() |> ignore
+      if proc.Start() then
+        running <- true
+        status <- ServiceStatus.Running
+        starter.Set() |> ignore
 
       while running do
-        printfn "DO SOMETHING SENSIBLE"
+        if proc.StandardError.Peek() > -1 then
+          let stderr = proc.StandardError.ReadToEnd()
+          log Err stderr
+        else
+          Thread.Sleep 10
 
-      proc.Kill()
-      dispose proc
+        if proc.StandardOutput.Peek() > -1 then
+          let stdout = proc.StandardOutput.ReadToEnd()
+          log Info stdout
+        else
+          Thread.Sleep 10
 
-      stopper.Set() |> ignore
+      try
+        proc.Kill()
+        dispose proc
+      finally
+        status <- ServiceStatus.Stopped
+        stopper.Set() |> ignore
 
     member self.OnLogMsg
       with set callback = logger <- Some callback
 
+    member self.Status
+      with get () = status
+
     member self.Start() =
       if not started then
-        match (!project).Path with
+        match project.Path with
         | Some path ->
-          running <- true
+          status <- ServiceStatus.Starting
           let thread = new Thread(new ThreadStart(worker path))
           thread.Start()
           starter.WaitOne() |> ignore
@@ -95,6 +119,7 @@ module Git =
     member self.Stop() =
       if started && running then
         lock loco <| fun _ ->
+          status <- ServiceStatus.Stopping
           running <- false
           started <- false
           stopper.WaitOne() |> ignore

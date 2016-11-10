@@ -12,19 +12,6 @@ open Utilities
 open Persistence
 open Stm
 
-//  ____        __ _     ____                             ____  _        _
-// |  _ \ __ _ / _| |_  / ___|  ___ _ ____   _____ _ __  / ___|| |_ __ _| |_ ___
-// | |_) / _` | |_| __| \___ \ / _ \ '__\ \ / / _ \ '__| \___ \| __/ _` | __/ _ \
-// |  _ < (_| |  _| |_   ___) |  __/ |   \ V /  __/ |     ___) | || (_| | ||  __/
-// |_| \_\__,_|_|  \__| |____/ \___|_|    \_/ \___|_|    |____/ \__\__,_|\__\___|
-
-type RaftServerState =
-  | Starting
-  | Running
-  | Stopping
-  | Stopped
-  | Failed  of string
-
 [<AutoOpen>]
 module RaftServerStateHelpers =
 
@@ -41,7 +28,7 @@ module RaftServerStateHelpers =
 type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
   let locker = new Object()
 
-  let serverState = ref Stopped
+  let mutable serverState = ServiceStatus.Stopped
 
   let server : Zmq.Rep option ref = ref None
   let periodictoken               = ref None
@@ -122,7 +109,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
     lock locker <| fun _ ->
       try
         self.Debug "RaftServer: starting"
-        serverState := Starting
+        serverState <- ServiceStatus.Starting
 
         self.Debug "RaftServer: initializing server loop"
         server := Some (startServer appState cbs)
@@ -135,12 +122,12 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
         periodictoken := Some tkn
 
         self.Debug "RaftServer: running"
-        serverState := Running
+        serverState <- ServiceStatus.Running
       with
         | exn ->
           self.Cancel()
           self.Err <| sprintf "RaftServer: Exeception in Start: %A" exn.Message
-          serverState := Failed exn.Message
+          serverState <- ServiceStatus.Failed (Other exn.Message)
 
   /// ## Cancel
   ///
@@ -192,13 +179,9 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
   /// Returns: unit
   member self.Stop() =
     lock locker <| fun _ ->
-      match !serverState with
-      | Starting | Stopping | Stopped | Failed _ as state ->
-        self.Debug <| sprintf "RaftServer: stopping failed. Invalid state %A" state
-
-      | Running ->
+      if serverState = ServiceStatus.Running then
         self.Debug "RaftServer: stopping"
-        serverState := Stopping
+        serverState <- ServiceStatus.Stopping
 
         // cancel the running async tasks so we don't cause an election
         self.Debug "RaftServer: cancel periodic loop"
@@ -218,7 +201,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
         |> ignore
 
         self.Debug "RaftServer: stopped"
-        serverState := Stopped
+        serverState <- ServiceStatus.Stopped
 
   member self.Options
     with get () =
@@ -269,7 +252,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
     let state = self.State
     cbs.LogMsg Err state.Raft.Node msg
 
-  member self.ServerState with get () = !serverState
+  member self.ServerState with get () = serverState
 
   //  ____  _                           _     _
   // |  _ \(_)___ _ __   ___  ___  __ _| |__ | | ___

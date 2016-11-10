@@ -95,3 +95,11 @@ and Property =
         |> Either.fail
 
 #endif
+
+[<RequireQualifiedAccess>]
+type ServiceStatus =
+  | Starting
+  | Running
+  | Stopping
+  | Stopped
+  | Failed of IrisError
