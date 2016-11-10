@@ -5,7 +5,8 @@
   "description": "Fable build stuff",
   "scripts": {
     "babel": "babel src/Iris/Iris/Web/React --out-dir src/Iris/assets/frontend/react",
-    "fable": "fable"
+    "fable": "fable",
+    "phantomjs": "phantomjs"
   },
   "author": "Karsten Gebbert, 2016, Nsynk GmbH",
   "license": "ISC",
@@ -22,20 +23,10 @@
     "fable-compiler": "next",
     "imports-loader": "^0.6.5",
     "mocha-phantomjs-core": "^1.3.1",
+    "phantomjs": "^2.1.7",
     "script-loader": "^0.7.0",
     "source-map-loader": "^0.1.5",
-    "webpack": "^1.13.1"
-  },
-  "dependencies": {
-    "core-js": "^2.4.0",
-    "dom-delegator": "^13.1.0",
-    "expect.js": "^0.3.1",
-    "fable-core": "next",
-    "mocha": "^2.5.3",
-    "radium": "^0.18.1",
-    "react": "^15.3.2",
-    "react-dom": "^15.3.2",
-    "routie": "0.0.1",
-    "virtual-dom": "^2.1.1"
+    "webpack": "^1.13.1",
+    "fable-core": "next"
   }
 }

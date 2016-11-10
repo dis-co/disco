@@ -374,11 +374,7 @@ Target "WatchWebTests" (runFable webtestsdir "-t watch")
 Target "BuildWebTestsFsProj" (buildDebug "Projects/Web.Tests/Web.Tests.fsproj")
 
 Target "RunWebTests" (fun _ ->
-  let phantomJsPath =
-    if environVar "APPVEYOR" = "True"
-    then "C:/ProgramData/chocolatey/bin/phantomjs.exe"
-    else environVarOrDefault "PHANTOMJS_PATH" "phantomjs"
-  runExec phantomJsPath "node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Iris/bin/Debug/Iris/assets/tests.html tap" __SOURCE_DIRECTORY__ false
+  runNpm "run phantomjs -- node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Iris/bin/Debug/Iris/assets/tests.html tap" __SOURCE_DIRECTORY__ ()
 )
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
