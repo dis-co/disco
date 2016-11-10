@@ -551,8 +551,6 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
           | Some cb -> cb level log
           | _ -> ()
 
-        printfn "%s" log
-
       match self.State.Options.RaftConfig.LogLevel with
       | Debug -> doLog str
       | Info  -> match level with
