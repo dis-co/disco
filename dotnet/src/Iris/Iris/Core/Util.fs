@@ -62,6 +62,27 @@ module Utils =
 
   #endif
 
+  // ** tryDispose
+
+  #if !JAVASCRIPT
+
+  /// ## tryDispose
+  ///
+  /// Try to dispose a resource. Run passed handler if Dispose fails.
+  ///
+  /// ### Signature:
+  /// - o: ^t to dispose of
+  /// - handler: (Exception -> unit) handler to run on failure
+  ///
+  /// Returns: unit
+  let tryDispose (o: 't when 't :> IDisposable) (handler: Exception -> unit) =
+    try
+      dispose o
+    with
+      | exn -> handler exn
+
+  #endif
+
   // ** isLinux
 
   #if !JAVASCRIPT
