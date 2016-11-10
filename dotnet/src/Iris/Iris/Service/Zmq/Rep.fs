@@ -16,8 +16,6 @@ open Iris.Core
 ///
 /// Returns: instance of Rep
 type Rep (addr: string, handle: byte array -> byte array) =
-  let uuid = Guid.NewGuid()
-
   let mutable error : Exception option = None
   let mutable disposed = false
   let mutable run = true
