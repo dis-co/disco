@@ -116,13 +116,15 @@ type GitServer (project: IrisProject) =
       log LogLevel.Debug "entering loop"
 
       stdoutToken <- streamReader LogLevel.Info proc.StandardOutput
-      stderrToken <-streamReader LogLevel.Err  proc.StandardError
+      stderrToken <- streamReader LogLevel.Err  proc.StandardError
+
+      log LogLevel.Debug "reaching the lock"
 
       lock loco <| fun _ ->
         Monitor.Wait(loco)
         |> ignore
 
-      log LogLevel.Debug "disposing"
+      log LogLevel.Debug "staring to dispose stuff"
 
       try
         log LogLevel.Debug "stopping streamReaders"
@@ -179,9 +181,15 @@ type GitServer (project: IrisProject) =
   member self.Stop() =
     if Service.isRunning status then
       lock loco <| fun _ ->
+        log LogLevel.Debug "setting status to Stopping"
         status <- ServiceStatus.Stopping
+        log LogLevel.Debug "pulsing the lock object"
         Monitor.Pulse(loco)
-        stopper.WaitOne() |> ignore
+      log LogLevel.Debug "waiting for stop signal"
+      stopper.WaitOne() |> ignore
+      log LogLevel.Debug "got stop signal. done"
+    else
+      log LogLevel.Debug (sprintf "stop called but wrong status %A" status)
 
   // ** Running
 
