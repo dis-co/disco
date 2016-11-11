@@ -135,7 +135,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
     try
       // cancel the running async tasks so we don't cause an election
       self.Debug "RaftServer: cancel periodic loop"
-      cancelToken periodictoken
+      maybeCancelToken periodictoken
     with
       | exn ->
         exn.Message
@@ -178,7 +178,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
 
         // cancel the running async tasks so we don't cause an election
         self.Debug "RaftServer: cancel periodic loop"
-        cancelToken periodictoken
+        maybeCancelToken periodictoken
 
         self.Debug "RaftServer: dispose server"
         Option.bind (dispose >> Some) (!server) |> ignore

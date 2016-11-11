@@ -158,9 +158,6 @@
     <Compile Include="..\..\Iris\Core\Uri.fs">
       <Link>Uri.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\GitServer.fs">
-      <Link>GitServer.fs</Link>
-    </Compile>
     <Compile Include="..\..\Iris\Service\Request.fs">
       <Link>Request.fs</Link>
     </Compile>
@@ -184,6 +181,9 @@
     </Compile>
     <Compile Include="..\..\Iris\Service\Stm.fs">
       <Link>Stm.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\GitServer.fs">
+      <Link>GitServer.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Service\RaftServer.fs">
       <Link>RaftServer.fs</Link>

@@ -33,7 +33,7 @@ module Utilities =
   /// - cts: CancellationTokenSource option ref
   ///
   /// Returns: unit
-  let mabyeCancelToken (cts: CancellationTokenSource option ref) =
+  let maybeCancelToken (cts: CancellationTokenSource option ref) =
     match !cts with
     | Some token ->
       cancelToken token

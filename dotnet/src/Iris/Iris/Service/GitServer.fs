@@ -38,7 +38,7 @@ type GitServer (project: IrisProject) =
   let mutable starter : AutoResetEvent = null
   let mutable stopper : AutoResetEvent = null
   let mutable status  : ServiceStatus = ServiceStatus.Stopped
-  let mutable proc    : Thread = null
+  let mutable thread  : Thread = null
   let mutable running : bool = false
 
   let mutable stdoutToken : CancellationTokenSource = null
@@ -155,12 +155,12 @@ type GitServer (project: IrisProject) =
   // ** Start
 
   member self.Start() =
-    if ServiceStatus.isStopped status then
+    if Service.isStopped status then
       match project.Path, Config.selfNode project.Config with
       | Some path, Right node  ->
         log LogLevel.Info "starting"
         status <- ServiceStatus.Starting
-        proc <- new Thread(new ThreadStart(worker path node.IpAddr node.GitPort))
+        thread <- new Thread(new ThreadStart(worker path node.IpAddr node.GitPort))
         thread.Start()
         starter.WaitOne() |> ignore
         log LogLevel.Info "started sucessfully"
@@ -186,9 +186,7 @@ type GitServer (project: IrisProject) =
   // ** Running
 
   member self.Running() =
-    match Service.isRunning status, proc with
-    | true, Some t -> t.IsAlive
-    | _            -> false
+    Service.isRunning status && thread.IsAlive
 
   // ** IDisposable
 
