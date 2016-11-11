@@ -36,6 +36,8 @@ type IrisProject =
 [<RequireQualifiedAccess>]
 module Project =
 
+  // ** repository
+
   /// ### Retrieve git repository
   ///
   /// Computes the path to the passed projects' git repository from its `Path` field and checks
@@ -47,13 +49,19 @@ module Project =
       | Some path -> Git.Repo.repository path
       | _         -> ProjectPathError |> Either.fail
 
+  // ** currentBranch
+
   let currentBranch (project: IrisProject) =
     repository project
     |> Either.map Git.Branch.current
 
+  // ** checkoutBranch
+
   let checkoutBranch (name: string) (project: IrisProject) =
     repository project
     |> Either.bind (Git.Repo.checkout name)
+
+  // ** create
 
   /// ### Create a new project with the given name
   ///
@@ -70,6 +78,8 @@ module Project =
     ; Author    = None
     ; Config    = Config.create(name) }
 
+  // ** parseLastSaved
+
   /// ### Parses the LastSaved property.
   ///
   /// Attempt to parse the LastSaved proptery from the passed `ConfigFile`.
@@ -84,6 +94,8 @@ module Project =
       with
         | _ -> None
     else None
+
+  // ** parseCreatedOn
 
   /// ### Parse the CreatedOn property
   ///
@@ -100,6 +112,8 @@ module Project =
       with
         | _ -> DateTime.FromFileTimeUtc(int64 0)
     else DateTime.FromFileTimeUtc(int64 0)
+
+  // ** load
 
   /// ### Load a project from disk
   ///
@@ -145,8 +159,12 @@ module Project =
               |> Either.fail
     }
 
+  // ** writeDaemonExportFile
+
   let writeDaemonExportFile (repo: Repository) =
     File.WriteAllText(repo.Info.Path </> "git-daemon-export-ok", "")
+
+  // ** writeGitIgnoreFile
 
   let writeGitIgnoreFile (repo: Repository) =
     let gitignore = @"
@@ -158,6 +176,8 @@ module Project =
     File.WriteAllText(path, gitignore)
     Git.Repo.stage repo path
 
+  // ** createAssetDir
+
   let createAssetDir (repo: Repository) (dir: FilePath) =
     let parent = Git.Repo.parentPath repo
     let target = parent </> dir
@@ -166,6 +186,8 @@ module Project =
       let gitkeep = target </> ".gitkeep"
       File.WriteAllText(gitkeep, "")
       Git.Repo.stage repo gitkeep
+
+  // ** initRepo
 
   /// ### Initialize the project git repository
   ///
@@ -189,6 +211,8 @@ module Project =
     | _ ->
       ProjectPathError
       |> Either.fail
+
+  // ** saveMetadata
 
   //   ____             __ _                       _   _
   //  / ___|___  _ __  / _(_) __ _ _   _ _ __ __ _| |_(_) ___  _ __
@@ -221,6 +245,8 @@ module Project =
     config.Project.Metadata.LastSaved <- ts
 
     { project with LastSaved = Some ts }
+
+  // ** commitPath
 
   /// ## commitPath
   ///
@@ -257,8 +283,12 @@ module Project =
       | Left error -> Left error
     | Right repo -> doCommit repo
 
+  // ** saveFile
+
   let saveFile (committer: Signature) (msg : string) (path: FilePath) (project: IrisProject) : Either<IrisError,(Commit * IrisProject)> =
     commitPath committer msg path project
+
+  // ** save
 
   let save (committer: Signature) (msg : string) (project: IrisProject) : Either<IrisError,(Commit * IrisProject)> =
     match project.Path with
@@ -286,6 +316,8 @@ module Project =
       ProjectPathError
       |> Either.fail
 
+  // ** clone
+
   //   ____ _
   //  / ___| | ___  _ __   ___
   // | |   | |/ _ \| '_ \ / _ \
@@ -296,28 +328,39 @@ module Project =
     let url = sprintf "git://%s/%s/.git" host name
     try
       let res = Repository.Clone(url, Path.Combine(destination, name))
-      logger "cloneProject" <| sprintf "clone result: %s" res
       Some(destination </> name)
     with
       | _ -> None
 
+  // ** config
+
   let config (project: IrisProject) : IrisConfig = project.Config
+
+  // ** updatePath
 
   let updatePath (path: FilePath) (project: IrisProject) : IrisProject =
     { project with Path = Some path }
 
+  // ** updateConfig
+
   let updateConfig (config: IrisConfig) (project: IrisProject) : IrisProject =
     { project with Config = config }
+
+  // ** updateDataDir
 
   let updateDataDir (raftDir: FilePath) (project: IrisProject) : IrisProject =
     { project.Config.RaftConfig with DataDir = raftDir }
     |> flip Config.updateEngine project.Config
     |> flip updateConfig project
 
+  // ** addMember
+
   let addMember (node: RaftNode) (project: IrisProject) : IrisProject =
     project.Config
     |> Config.addNode node
     |> flip updateConfig project
+
+  // ** addMembers
 
   let addMembers (nodes: RaftNode list) (project: IrisProject) : IrisProject =
     List.fold

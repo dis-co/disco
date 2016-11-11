@@ -34,7 +34,7 @@ type Behavior =
   // ** TryParse
 
   static member TryParse (str: string) =
-    match toLower str with
+    match String.toLower str with
     | "toggle" -> Right Toggle
     | "bang"   -> Right Bang
     | _  ->
@@ -110,7 +110,7 @@ type StringType =
   // ** TryParse
 
   static member TryParse (str: string) =
-    match toLower str with
+    match String.toLower str with
     | "simple"    -> Right Simple
     | "multiline" -> Right MultiLine
     | "filename"  -> Right FileName

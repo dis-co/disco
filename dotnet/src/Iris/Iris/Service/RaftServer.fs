@@ -12,13 +12,6 @@ open Utilities
 open Persistence
 open Stm
 
-[<AutoOpen>]
-module RaftServerStateHelpers =
-
-  let hasFailed = function
-    | Failed _ -> true
-    |        _ -> false
-
 //  ____        __ _     ____
 // |  _ \ __ _ / _| |_  / ___|  ___ _ ____   _____ _ __
 // | |_) / _` | |_| __| \___ \ / _ \ '__\ \ / / _ \ '__|
@@ -524,35 +517,17 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
         | exn -> handleException "DeleteLog" exn
 
     member self.LogMsg level node str =
-      let doLog msg =
-        let now = DateTime.Now |> Time.unixTime
-        let tid = String.Format("[{0,2}]", Thread.CurrentThread.ManagedThreadId)
-        let lvl = String.Format("[{0,5}]", string level)
-        let log = sprintf "%s [%d / %s / %s] %s" lvl now tid (string node.Id) msg
-
-        match onLogMsg with
-          | Some cb -> cb level log
-          | _ -> ()
-
-      match self.State.Options.RaftConfig.LogLevel with
-      | Debug -> doLog str
-      | Info  -> match level with
-                  | Info | Warn | Err -> doLog str
-                  | _ -> ()
-      | Warn  -> match level with
-                  | Warn | Err   -> doLog str
-                  | _ -> ()
-      | Err   -> // default is to show only errors
-                match level with
-                  | Err -> doLog str
-                  | _ -> ()
+      let log = sprintf "NODE: %s %s" (string node.Id) str
+      match onLogMsg with
+        | Some cb -> cb level log
+        | _ -> ()
 
   override self.ToString() =
     sprintf "Connections:%s\nNodes:%s\nRaft:%s\nLog:%s"
-      (self.State.Connections |> string |> indent 4)
-      (Map.fold (fun m _ t -> sprintf "%s\n%s" m (string t)) "" self.State.Raft.Peers |> indent 4)
-      (self.State.Raft.ToString() |> indent 4)
-      (string self.State.Raft.Log |> indent 4)
+      (self.State.Connections |> string |> String.indent 4)
+      (Map.fold (fun m _ t -> sprintf "%s\n%s" m (string t)) "" self.State.Raft.Peers |> String.indent 4)
+      (self.State.Raft.ToString() |> String.indent 4)
+      (string self.State.Raft.Log |> String.indent 4)
 
   //   ____ _           _               ____ _
   //  / ___| |_   _ ___| |_ ___ _ __   / ___| |__   __ _ _ __   __ _  ___  ___

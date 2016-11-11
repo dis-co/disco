@@ -52,7 +52,7 @@
     <Compile Include="..\..\Iris\Core\User.fs" />
     <Compile Include="..\..\Iris\Core\Session.fs" />
     <Compile Include="..\..\Iris\Core\Color.fs" />
-    <Compile Include="..\..\Iris\Core\LogLevel.fs" />
+    <Compile Include="..\..\Iris\Core\Logging.fs" />
     <Compile Include="..\..\Iris\Core\Git.fs" />
     <Compile Include="..\..\Iris\Core\IOBox.fs" />
     <Compile Include="..\..\Iris\Core\Patch.fs" />
@@ -76,7 +76,7 @@
     <Compile Include="..\..\Iris\Core\Config.fs" />
     <Compile Include="..\..\Iris\Core\Project.fs" />
     <Compile Include="..\..\Iris\Core\Uri.fs" />
-    <Compile Include="..\..\Iris\Service\GitDaemon.fs" />
+    <Compile Include="..\..\Iris\Service\GitServer.fs" />
     <Compile Include="..\..\Iris\Service\Request.fs" />
     <Compile Include="..\..\Iris\Service\Zmq\Rep.fs" />
     <Compile Include="..\..\Iris\Service\Zmq\Req.fs" />

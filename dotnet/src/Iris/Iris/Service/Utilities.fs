@@ -11,7 +11,21 @@ module Utilities =
   open Iris.Core
   open Iris.Service.Persistence
 
-  /// ## idiomatically cancel a CancellationTokenSource
+  /// ## cancelToken
+  ///
+  /// Cancel a CancellationToken and capture the exception.
+  ///
+  /// ### Signature:
+  /// - token: CancellationToken
+  ///
+  /// Returns: unit
+  let cancelToken (token: CancellationTokenSource) =
+    try
+      token.Cancel()
+    with
+      | _ -> ()
+
+  /// ## maybe cancel a CancellationTokenSource
   ///
   /// Cancels a ref to an CancellationTokenSource. Assign None when done.
   ///
@@ -19,13 +33,11 @@ module Utilities =
   /// - cts: CancellationTokenSource option ref
   ///
   /// Returns: unit
-  let cancelToken (cts: CancellationTokenSource option ref) =
+  let mabyeCancelToken (cts: CancellationTokenSource option ref) =
     match !cts with
     | Some token ->
-      try
-        token.Cancel()
-      finally
-        cts := None
+      cancelToken token
+      cts := None
     | _ -> ()
 
   /// ## Print debug information and exit

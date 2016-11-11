@@ -1,7 +1,8 @@
 namespace Iris.Tests
 
 open Expecto
-
+open System
+open Iris.Core
 
 [<AutoOpen>]
 module TestUtilities =
@@ -16,3 +17,10 @@ module TestUtilities =
 
   let pending (msg: string) =
     testCase msg <| fun _ -> skiptest "NOT YET IMPLEMENTED"
+
+  let mkUuid () =
+    let uuid = Guid.NewGuid()
+    string uuid
+
+  let setNodeId uuid =
+    Environment.SetEnvironmentVariable(IRIS_NODE_ID, uuid)

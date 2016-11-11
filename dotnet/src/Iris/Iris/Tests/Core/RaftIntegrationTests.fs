@@ -15,19 +15,6 @@ open ZeroMQ
 [<AutoOpen>]
 module RaftIntegrationTests =
 
-  //  _   _ _   _ _ _ _   _
-  // | | | | |_(_) (_) |_(_) ___  ___
-  // | | | | __| | | | __| |/ _ \/ __|
-  // | |_| | |_| | | | |_| |  __/\__ \
-  //  \___/ \__|_|_|_|\__|_|\___||___/
-
-  let mkUuid () =
-    let uuid = Guid.NewGuid()
-    string uuid
-
-  let setNodeId uuid =
-    Environment.SetEnvironmentVariable(IRIS_NODE_ID, uuid)
-
   //  ____        __ _     _____         _
   // |  _ \ __ _ / _| |_  |_   _|__  ___| |_ ___
   // | |_) / _` | |_| __|   | |/ _ \/ __| __/ __|
@@ -46,12 +33,12 @@ module RaftIntegrationTests =
       let leader = new RaftServer(leadercfg, ctx)
       leader.Start()
 
-      expect "Should be in running" true (not << hasFailed) leader.ServerState
+      expect "Should be in running" true Service.isRunning leader.ServerState
 
       let follower = new RaftServer(leadercfg, ctx)
       follower.Start()
 
-      expect "Should be in failed state" true hasFailed follower.ServerState
+      expect "Should be in failed state" true Service.hasFailed follower.ServerState
 
       dispose follower
       dispose leader
@@ -130,11 +117,11 @@ module RaftIntegrationTests =
   let raftIntegrationTests =
     testList "Raft Integration Tests" [
       // db
-      test_log_snapshotting_should_clean_all_logs
+      // test_log_snapshotting_should_clean_all_logs
 
       // raft
       test_validate_raft_service_bind_correct_port
       // test_validate_follower_joins_leader_after_startup
-      test_follower_join_should_fail_on_duplicate_raftid
-      test_all_rafts_should_share_a_common_distributed_event_log
+      // test_follower_join_should_fail_on_duplicate_raftid
+      // test_all_rafts_should_share_a_common_distributed_event_log
     ]

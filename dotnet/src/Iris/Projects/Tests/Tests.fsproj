@@ -83,8 +83,8 @@
     <Compile Include="..\..\Iris\Core\Color.fs">
       <Link>Color.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Core\LogLevel.fs">
-      <Link>LogLevel.fs</Link>
+    <Compile Include="..\..\Iris\Core\Logging.fs">
+      <Link>Logging.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Core\Git.fs">
       <Link>Git.fs</Link>
@@ -158,8 +158,8 @@
     <Compile Include="..\..\Iris\Core\Uri.fs">
       <Link>Uri.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\GitDaemon.fs">
-      <Link>GitDaemon.fs</Link>
+    <Compile Include="..\..\Iris\Service\GitServer.fs">
+      <Link>GitServer.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Service\Request.fs">
       <Link>Request.fs</Link>

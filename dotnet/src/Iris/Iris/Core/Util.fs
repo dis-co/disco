@@ -196,7 +196,7 @@ module Network =
 
 // * String
 
-[<AutoOpen>]
+[<RequireQualifiedAccess>]
 module String =
 
   // *** logger
@@ -331,6 +331,28 @@ module String =
 
   #endif
 
+  // *** subString
+
+  #if !JAVASCRIPT
+
+  /// ## subString
+  ///
+  /// Return a sub-section of a passed string.
+  ///
+  /// ### Signature:
+  /// - index: int index where to start in string
+  /// - length: int number of characters to include
+  /// - str: string to slice
+  ///
+  /// Returns: string
+  let subString (index: int) (length: int) (str: string) =
+    if index >= 0 && index < str.Length then
+      let length = if length < str.Length then length else str.Length
+      str.Substring(index, length)
+    else
+      ""
+
+  #endif
 
 // * FileSystem
 
