@@ -39,11 +39,8 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Management" />
-  </ItemGroup>
-  <ItemGroup>
     <Reference Include="Iris.Serialization">
       <HintPath>..\..\bin\Debug\Serialization\Iris.Serialization.dll</HintPath>
-      <Private>True</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -54,7 +51,6 @@
     <Compile Include="..\..\Iris\Core\Error.fs" />
     <Compile Include="..\..\Iris\Core\Id.fs" />
     <Compile Include="..\..\Iris\Core\IpAddress.fs" />
-    <Compile Include="..\..\Iris\Core\Either.fs" />
     <Compile Include="..\..\Iris\Core\Aliases.fs" />
     <Compile Include="..\..\Iris\Core\Util.fs" />
     <Compile Include="..\..\Iris\Core\User.fs" />
@@ -102,12 +98,6 @@
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="Iris.Serialization">
-      <HintPath>.\bin\Release\Serialization\Iris.Serialization.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-  </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">
       <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')">

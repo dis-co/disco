@@ -1,12 +1,11 @@
 namespace Iris.Core
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 open Fable.Core
 open Fable.Import
 open Iris.Core.FlatBuffers
 open Iris.Web.Core.FlatBufferTypes
-open Iris.Web.Core.UserFlatBuffers
 #else
 
 open System
@@ -76,7 +75,7 @@ type User =
   ; FirstName: Name
   ; LastName:  Name
   ; Email:     Email
-#if JAVASCRIPT
+#if FABLE_COMPILER
   ; Joined:    string
   ; Created:   string }
 #else
@@ -87,7 +86,7 @@ type User =
 
   override me.GetHashCode() =
     let mutable hash = 42
-#if JAVASCRIPT
+#if FABLE_COMPILER
     hash <- (hash * 7) + hashCode (string me.Id)
     hash <- (hash * 7) + hashCode me.UserName
     hash <- (hash * 7) + hashCode me.FirstName
@@ -128,7 +127,7 @@ type User =
       | :? User ->
         let other = o :?> User
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
         if me.UserName > other.UserName then
           1
         elif me.UserName = other.UserName then
@@ -146,7 +145,7 @@ type User =
       | _ -> 0
 
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 #else
 
   member user.Signature
@@ -200,7 +199,7 @@ type User =
       ; FirstName = fb.FirstName
       ; LastName  = fb.LastName
       ; Email     = fb.Email
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ; Joined    = fb.Joined
       ; Created   = fb.Created }
 #else
@@ -212,7 +211,7 @@ type User =
     UserFB.GetRootAsUserFB(Binary.createBuffer bytes)
     |> User.FromFB
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 #else
 
   // __   __              _

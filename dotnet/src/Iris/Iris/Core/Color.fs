@@ -2,7 +2,7 @@ namespace Iris.Core
 
 // * Imports
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 open Fable.Core
 open Iris.Core.FlatBuffers
@@ -162,7 +162,7 @@ type ColorSpace =
     let build tipe (offset: Offset<_>) =
       ColorSpaceFB.StartColorSpaceFB(builder)
       ColorSpaceFB.AddValueType(builder, tipe)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ColorSpaceFB.AddValue(builder,offset)
 #else
       ColorSpaceFB.AddValue(builder,offset.Value)
@@ -181,7 +181,7 @@ type ColorSpace =
   // ** FromFB
 
   static member FromFB(fb: ColorSpaceFB) : Either<IrisError,ColorSpace> =
-#if JAVASCRIPT
+#if FABLE_COMPILER
     match fb.ValueType with
     | x when x = ColorSpaceTypeFB.RGBAValueFB ->
       RGBAValueFB.Create()
@@ -245,7 +245,7 @@ type ColorSpace =
 
   // ** ToYamlObject
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
 
   member self.ToYamlObject() =
     match self with

@@ -8,19 +8,24 @@
 
 open Iris.Core
 open Iris.Web.Core
-open Iris.Web.Core.DomDelegator
-open Iris.Web.Views
 open Fable.Core
-
-let delegator = Delegator.Create()
-delegator.ListenTo "play"
-
-let widget = new Patches.Root()
-let ctrl = new ViewController<State, ClientContext> (widget)
+open Fable.Import
+module R = Fable.Helpers.React
 
 let context = new ClientContext()
 
-context.Controller <- ctrl
+type AppView(props, ctx) as this =
+    inherit React.Component<obj, State>(props, ctx)
+    //let dispatch = context.Trigger
+    do context.Subscribe(fun _ state -> this.setState state)
+
+    member this.render() =
+        R.div [] [R.str "foo"]
+
+ReactDom.render(
+  R.com<AppView,_,_> None [],
+  Browser.document.getElementById "app") |> ignore
+
 context.Start()
 
 registerKeyHandlers context

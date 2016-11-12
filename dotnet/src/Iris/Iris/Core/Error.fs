@@ -1,7 +1,7 @@
 namespace Iris.Core
 
 // * imports
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 open Iris.Core.FlatBuffers
 open Iris.Web.Core.FlatBufferTypes
@@ -79,7 +79,7 @@ type IrisError =
 
   static member FromFB (fb: ErrorFB) =
     match fb.Type with
-#if JAVASCRIPT
+#if FABLE_COMPILER
     | x when x = ErrorTypeFB.OKFB                     -> Right OK
     | x when x = ErrorTypeFB.BranchNotFoundFB         -> Right (BranchNotFound fb.Message)
     | x when x = ErrorTypeFB.BranchDetailsNotFoundFB  -> Right (BranchDetailsNotFound fb.Message)

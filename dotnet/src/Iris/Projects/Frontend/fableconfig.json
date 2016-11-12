@@ -1,18 +1,17 @@
- {
-     "module": "commonjs",
-     "sourceMaps": true,
-     "coreLib": "fable-core/umd",
-     "projFile": "Frontend.fsproj",
-     "outDir": "../../bin/Debug/Frontend",
-     "symbols": ["JAVASCRIPT"],
-     "scripts": {
-         "postbuild": "node ../../../../node_modules/webpack/bin/webpack"
-     },
-     "targets": {
-         "watch": {
-             "scripts": {
-                 "postbuild": "node ../../../../node_modules/webpack/bin/webpack --watch"
-             }
-         }
-     }
- }
+{
+    "projFile": "Frontend.fsproj",
+    "sourceMaps": true,
+    "babelPlugins": ["transform-runtime"],
+    "rollup": {
+        "dest": "../../bin/Debug/Iris/assets/js/iris.js",
+        "plugins": [
+            ["replace", {"process.env.NODE_ENV": "'production'"}],
+            ["commonjs", {
+                "namedExports": {
+                    "react": ["Component", "createElement"],
+                    "react-dom": ["render"]
+                }
+            }]
+        ]
+    }
+}

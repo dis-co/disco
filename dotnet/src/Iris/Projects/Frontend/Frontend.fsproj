@@ -18,16 +18,17 @@
     <Optimize>false</Optimize>
     <Tailcalls>false</Tailcalls>
     <OutputPath>bin/Debug/Frontend</OutputPath>
-    <DefineConstants>DEBUG;TRACE;JAVASCRIPT</DefineConstants>
+    <DefineConstants>DEBUG;TRACE;FABLE_COMPILER</DefineConstants>
     <WarningLevel>5</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
     <OutputPath>bin/Release/Frontend</OutputPath>
-    <DefineConstants>TRACE;JAVASCRIPT</DefineConstants>
+    <DefineConstants>TRACE;FABLE_COMPILER</DefineConstants>
     <WarningLevel>5</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>
   </PropertyGroup>
@@ -38,14 +39,9 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="Fable.Core">
-      <HintPath>../../../../node_modules/fable-core/Fable.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <!--<Reference Include="Iris.Serialization">
-      <HintPath>../../bin/Debug/Serialization/Iris.Serialization.dll</HintPath>
-      <Private>True</Private>
-    </Reference>-->
+    <!--<Reference Include="../../../../node_modules/fable-core/Fable.Core.dll" />-->
+    <Reference Include="../../../../../../Fable/build/fable-core/Fable.Core.dll" />
+    <Reference Include="../../../../../../fable-react/npm/Fable.React.dll" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../AssemblyInfo/FrontendInfo.fs" />
@@ -72,13 +68,10 @@
     <Compile Include="../../Iris/Core/ClientMessage.fs" />
     <Compile Include="../../Iris/Web/Core/Browser.fs" />
     <Compile Include="../../Iris/Web/Core/Crypto.fs" />
-    <Compile Include="../../Iris/Web/Core/Html.fs" />
-    <Compile Include="../../Iris/Web/Core/Plugin.fs" />
-    <Compile Include="../../Iris/Web/Core/ViewController.fs" />
     <Compile Include="../../Iris/Web/Core/Worker.fs" />
     <Compile Include="../../Iris/Web/Core/Client.fs" />
     <Compile Include="../../Iris/Web/Core/Keyboard.fs" />
-    <Compile Include="../../Iris/Web/Views/Patches.fs" />
+    <Compile Include="../../Iris/Web/React/Cluster.fs" />
     <!--  __  __       _        -->
     <!-- |  //  | __ _(_)_ __   -->
     <!-- | |//| |/ _` | | '_ /  -->

@@ -2,7 +2,7 @@ namespace Iris.Service
 
 open System
 open System.IO
-// open Iris.Raft
+open Iris.Raft
 open Iris.Core
 open Iris.Core.Utils
 // open Iris.Service.Persistence
@@ -16,6 +16,16 @@ open Iris.Core.Utils
 
 type MockService(?project: IrisProject ref) =
   // let signature = new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
+
+  let mutable config =
+    let leader = Id "MOCKUP" |> Node.create
+    let followers = List.init 4 (fun _ -> Id.Create() |> Node.create)
+    let cluster =
+      { Cluster.Name = "my-cluster"
+      ; Nodes = leader::followers
+      ; Groups = [] }
+    Config.create("mock-config")
+    |> Config.updateCluster cluster
 
   let store : Store = new Store(State.Empty)
 

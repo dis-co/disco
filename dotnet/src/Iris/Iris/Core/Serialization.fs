@@ -1,6 +1,6 @@
 namespace Iris.Core
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 open Fable.Core
 open Fable.Import
@@ -22,14 +22,14 @@ open FlatBuffers
 
 [<RequireQualifiedAccess>]
 module Binary =
-#if JAVASCRIPT
+#if FABLE_COMPILER
   type Buffer = ArrayBuffer
 #else
   type Buffer = byte array
 #endif
 
   let createBuffer (bytes: Buffer) : ByteBuffer =
-#if JAVASCRIPT
+#if FABLE_COMPILER
     ByteBuffer.Create(bytes)
 #else
     new ByteBuffer(bytes)
@@ -50,7 +50,7 @@ module Binary =
     (^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >) (thing,builder))
 
   let inline buildBuffer< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)> (thing: ^a) : Buffer =
-#if JAVASCRIPT
+#if FABLE_COMPILER
     let builder = FlatBufferBuilder.Create(1)
     let offset = toOffset builder thing
     builder.Finish(offset)
@@ -68,7 +68,7 @@ module Binary =
 //   | | (_| | | | | | | |
 //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 #else
 
 [<RequireQualifiedAccess>]

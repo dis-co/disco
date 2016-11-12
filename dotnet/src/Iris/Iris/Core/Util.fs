@@ -17,7 +17,7 @@ module List =
 [<AutoOpen>]
 module Utils =
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
   //      _                  ____            _       _
   //     | | __ ___   ____ _/ ___|  ___ _ __(_)_ __ | |_
   //  _  | |/ _` \ \ / / _` \___ \ / __| '__| | '_ \| __|
@@ -157,7 +157,7 @@ module Utils =
 // |____/ \__|_|  |_|_| |_|\__, |
 //                         |___/
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
   open Fable.Core
 
@@ -187,7 +187,7 @@ module Utils =
 #endif
 
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 #else
   //  ____  _       ______       _   _
   // |  _ \(_)_ __ / /  _ \ __ _| |_| |__

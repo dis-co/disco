@@ -24,13 +24,9 @@ module WebSocket =
     let uri =
       match config with
       | Some config ->
-        let result =
-          Config.getNodeId ()
-          |> Either.bind (Config.findNode config)
-
-        match result with
-        | Right node -> sprintf "ws://%s:%d" (string node.IpAddr) node.WsPort
-        | Left error -> Error.exitWith error
+        Config.getNodeId ()
+        |> Either.bind (Config.findNode config)
+        |> Error.orExit (fun node -> sprintf "ws://%s:%d" (string node.IpAddr) node.WsPort)
       | None -> defaultUri
 
     let server = new WebSocketServer(uri)

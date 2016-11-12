@@ -1,6 +1,6 @@
 namespace Iris.Core
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 open Fable.Core
 open Iris.Core.FlatBuffers
@@ -16,7 +16,7 @@ open SharpYaml.Serialization
 #endif
 
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
 
 // __   __              _    ___  _     _           _
 // \ \ / /_ _ _ __ ___ | |  / _ \| |__ (_) ___  ___| |_
@@ -87,7 +87,7 @@ type Session =
 
   member self.ToBytes() = Binary.buildBuffer self
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |

@@ -2,7 +2,7 @@ namespace Iris.Core
 
 // * Imports
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 open Iris.Core.FlatBuffers
 open Iris.Web.Core.FlatBufferTypes
@@ -71,7 +71,7 @@ and CueList =
           (fun (m: Either<IrisError,int * Cue array>) _ -> either {
             let! (i, cues) = m
 
-            #if JAVASCRIPT
+            #if FABLE_COMPILER
 
             let! cue =
               fb.Cues(i)
@@ -111,7 +111,7 @@ and CueList =
 
   // ** ToYamlObject
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
 
   member self.ToYamlObject() =
     new CueListYaml(

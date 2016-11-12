@@ -1,7 +1,5 @@
 namespace Iris.Core
 
-#if JAVASCRIPT
-
   (*
     ____ _ _            _
    / ___| (_) ___ _ __ | |_
@@ -60,5 +58,3 @@ type ClientMessage<'state> =
   | Connected                              // worker websocket is connected to service
   | Disconnect   of string                 // Disconnect from server
   | Disconnected                           // worker websocket was disconnected from service
-
-#endif

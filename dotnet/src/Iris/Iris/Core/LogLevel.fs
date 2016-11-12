@@ -7,7 +7,7 @@ namespace Iris.Core
 // | |__| (_) | (_| | |__|  __/\ V /  __/ |
 // |_____\___/ \__, |_____\___| \_/ \___|_|
 //             |___/
-// #if JAVASCRIPT
+// #if FABLE_COMPILER
 // open Fable.Core
 
 // [<StringEnum>]

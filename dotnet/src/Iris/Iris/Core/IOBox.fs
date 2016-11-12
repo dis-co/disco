@@ -1,6 +1,6 @@
 namespace Iris.Core
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 open Fable.Core
 open Iris.Core.FlatBuffers
@@ -48,7 +48,7 @@ type Behavior =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
   static member FromFB (fb: BehaviorFB) =
     match fb with
@@ -122,7 +122,7 @@ type StringType =
   //                           |___/
 
   static member FromFB (fb: StringTypeFB) =
-#if JAVASCRIPT
+#if FABLE_COMPILER
     match fb with
     | x when x = StringTypeFB.SimpleFB    -> Right Simple
     | x when x = StringTypeFB.MultiLineFB -> Right MultiLine
@@ -166,7 +166,7 @@ type StringType =
 //  | | |_| | |_) | (_) >  <
 // |___\___/|____/ \___/_/\_\
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 type IOBox =
 
@@ -388,7 +388,7 @@ and IOBox =
     let update (arr : 'a array) (data: 'a) =
 
       if int value.Index > Array.length arr then
-#if JAVASCRIPT
+#if FABLE_COMPILER
         /// Rationale:
         ///
         /// in JavaScript an array> will re-allocate automatically under the hood
@@ -644,7 +644,7 @@ and IOBox =
     let inline build (data: ^t) tipe =
       let offset = Binary.toOffset builder data
       IOBoxFB.StartIOBoxFB(builder)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       IOBoxFB.AddIOBox(builder, offset)
 #else
       IOBoxFB.AddIOBox(builder, offset.Value)
@@ -664,7 +664,7 @@ and IOBox =
     | Compound  data -> build data IOBoxTypeFB.CompoundBoxFB
 
   static member FromFB(fb: IOBoxFB) : Either<IrisError,IOBox> =
-#if JAVASCRIPT
+#if FABLE_COMPILER
     match fb.IOBoxType with
     | x when x = IOBoxTypeFB.StringBoxFB ->
       StringBoxFB.Create()
@@ -847,7 +847,7 @@ and IOBox =
 //   | | (_| | | | | | | |
 //   |_|\__,_|_| |_| |_|_|
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
   member self.ToYamlObject() =
     let yaml = new IOBoxYaml()
     match self with
@@ -1001,7 +1001,7 @@ and IOBox =
     |> Either.map snd
 
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
   static member inline ParseSlicesFB< ^a, ^b, ^t when ^t : (static member FromFB : ^a -> Either<IrisError, ^t>)
                                                  and ^b : (member SlicesLength : int)
@@ -1063,7 +1063,7 @@ and IOBox =
 
 #endif
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
   static member FromYamlObject(yml: IOBoxYaml) =
     try
       match yml.BoxType with
@@ -1330,7 +1330,7 @@ and BoolSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 #else
   member self.ToYamlObject() =
     SliceYaml.BoolSlice(self.Index, self.Value)
@@ -1459,7 +1459,7 @@ and IntSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 #else
   member self.ToYamlObject() =
     SliceYaml.IntSlice(self.Index, self.Value)
@@ -1592,7 +1592,7 @@ and FloatSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 #else
   member self.ToYamlObject() =
     SliceYaml.FloatSlice(self.Index, self.Value)
@@ -1724,7 +1724,7 @@ and DoubleSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 #else
   member self.ToYamlObject() =
     SliceYaml.DoubleSlice(self.Index, self.Value)
@@ -1818,7 +1818,7 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
 
   override self.GetHashCode() =
     let mutable hash = 42
-#if JAVASCRIPT
+#if FABLE_COMPILER
     hash <- (hash * 7) + hashCode (string self.Index)
     hash <- (hash * 7) + hashCode (string self.Value.byteLength)
 #else
@@ -1837,7 +1837,7 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
     member self.Equals(slice: ByteSliceD) =
       let mutable contentsEqual = false
       let lengthEqual =
-#if JAVASCRIPT
+#if FABLE_COMPILER
         let result = self.Value.byteLength = slice.Value.byteLength
         if result then
           let me = Fable.Import.JS.Uint8Array.Create(self.Value)
@@ -1870,7 +1870,7 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 #else
   member self.ToYamlObject() =
     SliceYaml.ByteSlice(self.Index,  Convert.ToBase64String self.Value)
@@ -1894,7 +1894,7 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let encode (bytes: Binary.Buffer) =
-#if JAVASCRIPT
+#if FABLE_COMPILER
       let mutable str = ""
       let arr = Fable.Import.JS.Uint8Array.Create(bytes)
       for i in 0 .. (int arr.length - 1) do
@@ -1913,7 +1913,7 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
 
   static member FromFB(fb: ByteSliceFB) : Either<IrisError,ByteSliceD> =
     let decode str =
-#if JAVASCRIPT
+#if FABLE_COMPILER
       let binary = Fable.Import.Browser.window.atob str
       let bytes = Fable.Import.JS.Uint8Array.Create(float binary.Length)
       for i in 0 .. (binary.Length - 1) do
@@ -1992,7 +1992,7 @@ and EnumBoxD =
         Array.fold
           (fun (m: Either<IrisError, int * Property array>) _ -> either {
             let! (i, arr) = m
-#if JAVASCRIPT
+#if FABLE_COMPILER
             let prop = fb.Properties(i)
 #else
             let! prop =
@@ -2064,7 +2064,7 @@ and EnumSliceD =
 
   static member FromFB(fb: EnumSliceFB) : Either<IrisError,EnumSliceD> =
     Either.tryWith ParseError "EnumSliceD" <| fun _ ->
-#if JAVASCRIPT
+#if FABLE_COMPILER
       let prop = fb.Value
       { Index = fb.Index
         Value = { Key = prop.Key; Value = prop.Value } }
@@ -2091,7 +2091,7 @@ and EnumSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 #else
   member self.ToYamlObject() =
     SliceYaml.EnumSlice(self.Index, Yaml.toYaml self.Value)
@@ -2190,7 +2190,7 @@ and ColorSliceD =
 
   static member FromFB(fb: ColorSliceFB) : Either<IrisError,ColorSliceD> =
     Either.tryWith ParseError "ColorSliceD" <| fun _ ->
-#if JAVASCRIPT
+#if FABLE_COMPILER
       match fb.Value |> ColorSpace.FromFB with
       | Right color             -> { Index = fb.Index; Value = color }
       | Left (ParseError error) -> failwith error
@@ -2221,7 +2221,7 @@ and ColorSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 #else
   member self.ToYamlObject() =
     SliceYaml.ColorSlice(self.Index, Yaml.toYaml self.Value)
@@ -2356,7 +2356,7 @@ and StringSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 #else
 
   member self.ToYamlObject() =
@@ -2467,7 +2467,7 @@ and CompoundSliceD =
           (fun (m: Either<IrisError,int * IOBox array>) _ -> either {
               let! (i, arr) = m
 
-  #if JAVASCRIPT
+  #if FABLE_COMPILER
               let! iobox = i |> fb.Value |> IOBox.FromFB
   #else
               let! iobox =
@@ -2505,7 +2505,7 @@ and CompoundSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 #else
   member self.ToYamlObject() =
     SliceYaml.CompoundSlice(self.Index, Array.map Yaml.toYaml self.Value)
@@ -2683,7 +2683,7 @@ and Slice =
     let build tipe (offset: Offset<_>) =
       SliceFB.StartSliceFB(builder)
       SliceFB.AddSliceType(builder, tipe)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       SliceFB.AddSlice(builder, offset)
 #else
       SliceFB.AddSlice(builder, offset.Value)
@@ -2703,7 +2703,7 @@ and Slice =
 
   static member FromFB(fb: SliceFB) : Either<IrisError,Slice>  =
     match fb.SliceType with
-#if JAVASCRIPT
+#if FABLE_COMPILER
     | x when x = SliceTypeFB.StringSliceFB ->
       StringSliceFB.Create()
       |> fb.Slice
@@ -2878,7 +2878,7 @@ and Slice =
     |> SliceFB.GetRootAsSliceFB
     |> Slice.FromFB
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 #else
 
   member self.ToYaml(serializer: Serializer) =
@@ -3087,7 +3087,7 @@ and Slices =
 // |_|   |_|_| |_|_| \__, | .__/ \___| 4 IOBox Plugins
 //                   |___/|_|
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 [<StringEnum>]
 type PinType =

@@ -47,3 +47,9 @@ module Constants =
 
   [<Literal>]
   let IRIS_NODE_ID = "IRIS_NODE_ID"
+
+  [<Literal>]
+  let WEB_WORKER_SCRIPT = "js/worker.js"
+
+  [<Literal>]
+  let SOCKET_SERVER_PORT_DIFF = 1000
