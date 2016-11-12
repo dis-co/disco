@@ -18,14 +18,16 @@ type FlatBuffersPlugin() =
                     |> get "Serialization"
                     |> get "Raft"
                     |> get i.methodName
-                | Some callee when i.ownerFullName.EndsWith "Constructor" ->
-                    let methName =
-                        // Properties and methods with empty args are not lowered
-                        if List.isEmpty i.args
-                        then i.methodName
-                        else Naming.lowerFirst i.methodName
-                    get methName callee
-                    |> apply i.range i.returnType i.args
+                | Some callee when i.ownerFullName.EndsWith "Constructor"
+                                || i.ownerFullName.EndsWith "EnumFB" ->
+                    match i.methodKind with
+                    | Fable.Getter ->
+                        get i.methodName callee
+                    | _ when i.methodName = "Create" ->
+                        Fable.Apply(callee, i.args, Fable.ApplyCons, i.returnType, i.range)
+                    | _ ->
+                        get (Naming.lowerFirst i.methodName) callee
+                        |> apply i.range i.returnType i.args
                 // Note instance properties keep the capital letter
                 // and properties are applied as if they were methods
                 | Some callee ->
