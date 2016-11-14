@@ -7,17 +7,18 @@ type FlatBuffersPlugin() =
         Fable.Apply(expr, args, Fable.ApplyMeth, t, r)
     let get prop expr =
         Fable.Apply(expr, [Fable.Value(Fable.StringConst prop)], Fable.ApplyGet, Fable.Any, None)
+    let staticField name =
+        Fable.Value(Fable.IdentValue(Fable.Ident("Iris")))
+        |> get "Serialization"
+        |> get "Raft"
+        |> get name
     interface IReplacePlugin with
         member x.TryReplace (com: Fable.ICompiler) (i: Fable.ApplyInfo) =
             match i.ownerFullName with
             | Naming.StartsWith "Iris.Web.Core.FlatBufferTypes" _ ->
-                // com.AddLog(Fable.Info i.ownerFullName)
                 match i.callee with
                 | None ->
-                    Fable.Value(Fable.IdentValue(Fable.Ident("Iris")))
-                    |> get "Serialization"
-                    |> get "Raft"
-                    |> get i.methodName
+                    staticField i.methodName
                 | Some callee when i.ownerFullName.EndsWith "Constructor"
                                 || i.ownerFullName.EndsWith "EnumFB" ->
                     match i.methodKind with
@@ -28,6 +29,12 @@ type FlatBuffersPlugin() =
                     | _ ->
                         get (Naming.lowerFirst i.methodName) callee
                         |> apply i.range i.returnType i.args
+                | Some callee when i.ownerFullName.EndsWith "ApiActionFB"
+                                && i.methodName.EndsWith "FB" ->
+                    let cons =
+                        Fable.Apply(staticField i.methodName, [], Fable.ApplyCons, Fable.Any, None)
+                    get "Payload" callee
+                    |> apply i.range i.returnType [cons]
                 // Note instance properties keep the capital letter
                 // and properties are applied as if they were methods
                 | Some callee ->

@@ -390,6 +390,7 @@ let webtestsdir = baseDir @@ "Projects" @@ "Web.Tests"
 Target "BuildWebTests" (fun _ ->
   runNpm "install" __SOURCE_DIRECTORY__ ()
   runFable webtestsdir "" ()
+  FileUtils.cp (baseDir @@ "bin/Raft_generated.js") (baseDir @@ "bin/Debug/Iris/assets/js")
 )
 
 Target "WatchWebTests" (runFable webtestsdir "-t watch")

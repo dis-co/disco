@@ -204,14 +204,14 @@ type IOBoxFB =
   abstract IOBox: 'a -> 'a
   abstract IOBoxType: int
 
-type IOBoxFBContructor =
+type IOBoxFBConstructor =
   abstract StartIOBoxFB: builder: FlatBufferBuilder -> unit
   abstract AddIOBox: builder: FlatBufferBuilder * iobox: Offset<'a> -> unit
   abstract AddIOBoxType: builder: FlatBufferBuilder * tipe: IOBoxTypeFB -> unit
   abstract EndIOBoxFB: builder: FlatBufferBuilder -> Offset<IOBoxFB>
   abstract GetRootAsIOBoxFB: buffer: ByteBuffer -> IOBoxFB
 
-let IOBoxFB: IOBoxFBContructor = failwith "JS only"
+let IOBoxFB: IOBoxFBConstructor = failwith "JS only"
 
 //  ____              _ ____  _ _          _____ ____
 // | __ )  ___   ___ | / ___|| (_) ___ ___|  ___| __ )
