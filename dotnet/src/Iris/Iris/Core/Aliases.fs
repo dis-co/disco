@@ -118,6 +118,10 @@ module Service =
     | ServiceStatus.Running -> true
     | _                     -> false
 
+  let isStopping = function
+    | ServiceStatus.Stopping -> true
+    | _                      -> false
+
   let isStopped = function
     | ServiceStatus.Stopped -> true
     | _                     -> false

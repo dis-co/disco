@@ -7,6 +7,7 @@ open Iris.Raft
 open Iris.Service
 open Iris.Serialization.Raft
 open System.Net
+open System.Threading
 open FlatBuffers
 open FSharpx.Functional
 open LibGit2Sharp
@@ -34,6 +35,34 @@ module GitTests =
     |> fun path ->
       Repository.Init path |> ignore
       new Repository(path)
+
+  let mkEnvironment port =
+    let uuid = mkUuid ()
+    setNodeId uuid
+
+    let user = User.Admin
+
+    let tmpdir = mkTmpDir ()
+
+    let node =
+      Id uuid
+      |> Node.create
+      |> Node.setGitPort port
+
+    let config =
+      "cool project mate"
+      |> Config.create
+      |> Config.setNodes [| node |]
+      |> Config.setLogLevel Debug
+
+    let commit, project =
+      Project.create "cool-project"
+      |> Project.updatePath tmpdir.FullName
+      |> Project.updateConfig config
+      |> Project.save user.Signature "Project Initialized"
+      |> Either.get
+
+    uuid, tmpdir, project
 
   //  ____                      _
   // |  _ \ ___ _ __ ___   ___ | |_ ___  ___
@@ -71,50 +100,45 @@ module GitTests =
       let remotes = Git.Config.remotes repo
       expect "Should be empty" Map.empty id remotes
 
+
   //  ____
   // / ___|  ___ _ ____   _____ _ __
   // \___ \ / _ \ '__\ \ / / _ \ '__|
   //  ___) |  __/ |   \ V /  __/ |
   // |____/ \___|_|    \_/ \___|_|
 
-  let test_server_startup_and_availability =
-    testCase "Server startup and availability" <| fun _ ->
-      let uuid = mkUuid ()
-      setNodeId uuid
-
-      let user = User.Admin
-
-      let tmpdir = mkTmpDir ()
-
-      let node =
-        Id uuid
-        |> Node.create
-
-      let config =
-        "cool project mate"
-        |> Config.create
-        |> Config.setNodes [| node |]
-        |> Config.setLogLevel Debug
-
-      let commit, project =
-        Project.create "cool-project"
-        |> Project.updatePath tmpdir.FullName
-        |> Project.updateConfig config
-        |> Project.save user.Signature "Project Initialized"
-        |> Either.get
+  let test_server_startup =
+    testCase "Server startup" <| fun _ ->
+      let uuid, tmpdir, project =
+        mkEnvironment 9000us
 
       let gitserver = new GitServer(project)
-      gitserver.OnLogMsg <- Logger.log (Id uuid) Debug
-
-      printfn "start"
+      // gitserver.OnLogMsg <- Logger.log (Id uuid) Debug
       gitserver.Start()
 
-      printfn "test"
       expect "Should be running" true Service.isRunning gitserver.Status
 
-      printfn "disposing"
       dispose gitserver
-      printfn "done"
+
+  let test_server_startup_should_error_on_eaddrinuse =
+    testCase "Server should fail on EADDRINUSE" <| fun _ ->
+      let uuid, tmpdir, project =
+        mkEnvironment 8000us
+
+      let gitserver1 = new GitServer(project)
+      // gitserver1.OnLogMsg <- Logger.log (Id uuid) Debug
+      gitserver1.Start()
+
+      expect "Should be running" true Service.isRunning gitserver1.Status
+
+      let gitserver2 = new GitServer(project)
+      // gitserver2.OnLogMsg <- Logger.log (Id.Create()) Debug
+      gitserver2.Start()
+
+      expect "Should have failed" true Service.hasFailed gitserver2.Status
+
+      dispose gitserver1
+      dispose gitserver2
 
   //  _____         _     _     _     _
   // |_   _|__  ___| |_  | |   (_)___| |_
@@ -129,5 +153,6 @@ module GitTests =
       test_remove_remote
 
       // SERVER
-      test_server_startup_and_availability
+      test_server_startup
+      test_server_startup_should_error_on_eaddrinuse
     ]
