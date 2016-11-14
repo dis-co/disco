@@ -17,7 +17,9 @@ let context = new ClientContext()
 type AppView(props, ctx) as this =
     inherit React.Component<obj, State>(props, ctx)
     //let dispatch = context.Trigger
-    do context.Subscribe(fun _ state -> this.setState state)
+    do context.Subscribe(fun _ state ->
+      printfn "%A" state
+      this.setState state)
 
     member this.render() =
         R.div [] [R.str "foo"]

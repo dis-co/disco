@@ -1,6 +1,7 @@
 {
     "projFile": "Frontend.fsproj",
     "sourceMaps": true,
+    "plugins": ["../../../Fable/FlatBuffersPlugin.fsx"],
     "babelPlugins": ["transform-runtime"],
     "rollup": {
         "dest": "../../bin/Debug/Iris/assets/js/iris.js",
