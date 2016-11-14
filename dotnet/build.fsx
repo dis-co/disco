@@ -408,13 +408,11 @@ Target "RunWebTests" (fun _ ->
 
 Target "BuildMockService" (fun () ->
   buildDebug "Projects/MockService/MockService.fsproj" ()
-  let assetsTargetDir = (baseDir @@ "bin/Debug/MockService/assets")
+  let assetsTargetDir = (baseDir @@ "bin/Debug/Iris/assets")
   FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
-  // Copy compiled worker.js and iris.js
-  FileUtils.cp_r (baseDir @@ "bin/Debug/Iris/assets/js") (assetsTargetDir @@ "js")
   FileUtils.cp (baseDir @@ "bin/Raft_generated.js") (assetsTargetDir @@ "js")
   // runNpm "install" assetsTargetDir ()
-  // let targetDir = (baseDir @@ "bin/Debug/MockService")
+  // let targetDir = (baseDir @@ "bin/Debug/Iris")
   // runMono (targetDir @@ "Iris.MockService.exe") targetDir
 )
 

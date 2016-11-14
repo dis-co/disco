@@ -4,10 +4,9 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <RootNamespace>Iris</RootNamespace>
-    <AssemblyName>Iris.Web</AssemblyName>
-    <Name>Iris</Name>
+    <Name>Iris.Web</Name>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -39,9 +38,10 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <!--<Reference Include="../../../../node_modules/fable-core/Fable.Core.dll" />-->
-    <Reference Include="../../../../../../Fable/build/fable-core/Fable.Core.dll" />
-    <Reference Include="../../../../../../fable-react/npm/Fable.React.dll" />
+    <Reference Include="../../../../node_modules/fable-core/Fable.Core.dll" />
+    <Reference Include="../../../../node_modules/fable-react/Fable.React.dll" />
+    <!--<Reference Include="../../../../../../Fable/build/fable-core/Fable.Core.dll" />
+    <Reference Include="../../../../../../fable-react/npm/Fable.React.dll" />-->
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../AssemblyInfo/FrontendInfo.fs" />

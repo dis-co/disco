@@ -23,13 +23,11 @@
     "exports-loader": "^0.6.3",
     "fable-compiler": "next",
     "fable-core": "next",
+    "fable-react": "^0.7.0-alpha.8",
     "imports-loader": "^0.6.5",
     "mocha-phantomjs-core": "^1.3.1",
     "phantomjs": "^2.1.7",
     "script-loader": "^0.7.0",
     "source-map-loader": "^0.1.5"
-  },
-  "dependencies": {
-    "babel-runtime": "^6.18.0"
   }
 }

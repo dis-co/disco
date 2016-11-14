@@ -15,7 +15,7 @@ open Fable.Import.JS
 // |_|  |_|\___||___/___/\__,_|\__, |\___|_____| \_/ \___|_| |_|\__|
 //                             |___/
 
-[<Emit("new MessageEvent()")>]
+[<Global>]
 type MessageEvent<'data> =
 
   [<Emit("$0.data")>]
@@ -29,7 +29,7 @@ type MessageEvent<'data> =
 // |_|  |_|\___||___/___/\__,_|\__, |\___|_|   \___/|_|   \__|
 //                             |___/
 
-[<Emit("new MessagePort()")>]
+[<Global>]
 type MessagePort<'data>() =
 
   [<Emit("$0.onmessage = $1")>]
@@ -52,7 +52,7 @@ type MessagePort<'data>() =
 //   \ V  V / (_) | |  |   <  __/ |  | |___ \ V /  __/ | | | |_
 //    \_/\_/ \___/|_|  |_|\_\___|_|  |_____| \_/ \___|_| |_|\__|
 
-[<Emit("new WorkerEvent()")>]
+[<Global>]
 type WorkerEvent<'data>() =
 
   [<Emit("$0.ports")>]
@@ -65,7 +65,7 @@ type WorkerEvent<'data>() =
 //   \ V  V /  __/ |_) |__) | (_) | (__|   <  __/ |_
 //    \_/\_/ \___|_.__/____/ \___/ \___|_|\_\___|\__|
 
-[<Emit("new WebSocket($0)")>]
+[<Global>]
 type WebSocket(_url: string)  =
 
   [<Emit("$0.binaryType = $1")>]
@@ -93,21 +93,6 @@ type WebSocket(_url: string)  =
 
   [<Emit("$0.send($1)")>]
   member self.Send(_: Binary.Buffer) = failwith "ONLY JS"
-
-// __        __         _
-// \ \      / /__  _ __| | _____ _ __
-//  \ \ /\ / / _ \| '__| |/ / _ \ '__|
-//   \ V  V / (_) | |  |   <  __/ |
-//    \_/\_/ \___/|_|  |_|\_\___|_|
-
-[<AutoOpen>]
-module Worker =
-
-  [<Emit "importScripts ? importScripts($0) : null">]
-  let importScript (_: string) : unit = failwith "JS ONLY"
-
-  [<Emit("onconnect = $0")>]
-  let onConnect (_: WorkerEvent<string> -> unit) = failwith "ONLY JS"
 
 (* ///////////////////////////////////////////////////////////////////////////////
       ____ _       _           _  ____            _            _

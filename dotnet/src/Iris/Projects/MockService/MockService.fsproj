@@ -19,7 +19,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\bin\Debug\MockService</OutputPath>
+    <OutputPath>..\..\bin\Debug\Iris</OutputPath>
     <DefineConstants>DEBUG;TRACE;MOCKSERVICE</DefineConstants>
     <WarningLevel>5</WarningLevel>
   </PropertyGroup>
@@ -27,7 +27,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
-    <OutputPath>..\..\bin\Release\MockService</OutputPath>
+    <OutputPath>..\..\bin\Release\Iris</OutputPath>
     <DefineConstants>TRACE;MOCKSERVICE</DefineConstants>
     <WarningLevel>5</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>

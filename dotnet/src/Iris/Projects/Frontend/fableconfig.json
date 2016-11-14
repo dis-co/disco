@@ -1,18 +1,13 @@
 {
     "projFile": "Frontend.fsproj",
+    "outDir": "../../bin/Debug/Iris/assets/js",
+    "module": "amd",
+    "coreLib": "fable-core/umd",
     "sourceMaps": true,
     "plugins": ["../../../Fable/FlatBuffersPlugin.fsx"],
-    "babelPlugins": ["transform-runtime"],
-    "rollup": {
-        "dest": "../../bin/Debug/Iris/assets/js/iris.js",
-        "plugins": [
-            ["replace", {"process.env.NODE_ENV": "'production'"}],
-            ["commonjs", {
-                "namedExports": {
-                    "react": ["Component", "createElement"],
-                    "react-dom": ["render"]
-                }
-            }]
-        ]
+    "targets": {
+        "debug": {
+            "watch": "../../Iris/Web"
+        }
     }
 }

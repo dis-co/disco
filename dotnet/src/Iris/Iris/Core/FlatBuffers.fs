@@ -1,6 +1,7 @@
 namespace Iris.Core
 
 open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Import.JS
 
@@ -53,5 +54,5 @@ module FlatBuffers =
     [<Emit("new flatbuffers.Builder($1)")>]
     abstract Create: size: int -> FlatBufferBuilder
 
-  let ByteBuffer: ByteBufferConstructor = failwith "JS only"
-  let FlatBufferBuilder: FlatBufferBuilderConstructor = failwith "JS only"
+  let ByteBuffer: ByteBufferConstructor = createEmpty
+  let FlatBufferBuilder: FlatBufferBuilderConstructor = createEmpty
