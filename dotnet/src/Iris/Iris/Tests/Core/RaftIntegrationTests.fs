@@ -25,20 +25,29 @@ module RaftIntegrationTests =
     testCase "validate raft service bind correct port" <| fun _ ->
       let ctx = new ZContext()
 
+      let port = 12000us
+
+      let node =
+        Config.getNodeId()
+        |> Either.get
+        |> Node.create
+        |> Node.setPort port
+
       let leadercfg =
         Config.create "leader"
-        |> Config.addNode (Config.getNodeId() |> Either.get |> Node.create)
+        |> Config.addNode node
+
         // |> Config.setLogLevel (LogLevel.Debug)
 
       let leader = new RaftServer(leadercfg, ctx)
       leader.Start()
 
-      expect "Should be in running" true Service.isRunning leader.ServerState
+      expect "Should be running" true Service.isRunning leader.ServerState
 
       let follower = new RaftServer(leadercfg, ctx)
       follower.Start()
 
-      expect "Should be in failed state" true Service.hasFailed follower.ServerState
+      expect "Should be failed" true Service.hasFailed follower.ServerState
 
       dispose follower
       dispose leader
