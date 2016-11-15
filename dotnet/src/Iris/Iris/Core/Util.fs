@@ -3,18 +3,21 @@ namespace Iris.Core
 // * Imports
 
 open System
+open System.Text.RegularExpressions
+
+#if FABLE_COMPILER
+
+open Fable.Core
+
+#else
+
 open System.IO
 open System.Net
 open System.Linq
 open System.Management
 open System.Diagnostics
 open System.Net.NetworkInformation
-open System.Text.RegularExpressions
 open System.Runtime.CompilerServices
-
-#if FABLE_COMPILER
-
-open Fable.Core
 
 #endif
 
@@ -149,11 +152,12 @@ module Utils =
 
 // * Network
 
+#if !FABLE_COMPILER
+
 [<RequireQualifiedAccess>]
 module Network =
   // *** getHostName
 
-  #if !FABLE_COMPILER
 
   /// ## Get the current machine's host name
   ///
@@ -166,11 +170,7 @@ module Network =
   let getHostName () =
     System.Net.Dns.GetHostName()
 
-  #endif
-
   // *** getIpAddress
-
-  #if !FABLE_COMPILER
 
   /// ## getIpAddress
   ///
@@ -191,7 +191,7 @@ module Network =
           then outip <- Some(ip.Address)
     outip
 
-  #endif
+#endif
 
 
 // * String
@@ -249,7 +249,7 @@ module String =
   #if FABLE_COMPILER
 
   [<Emit("$0.toLowerCase()")>]
-  let inline toLower (_: string) : string = failwith "ONLY JS"
+  let toLower (_: string) : string = failwith "ONLY JS"
 
   #else
 
@@ -260,7 +260,7 @@ module String =
 
   // *** trim
 
-  #if !JAVSCRIPT
+  #if !FABLE_COMPILER
 
   /// ## trim
   ///
@@ -333,8 +333,6 @@ module String =
 
   // *** subString
 
-  #if !FABLE_COMPILER
-
   /// ## subString
   ///
   /// Return a sub-section of a passed string.
@@ -351,8 +349,6 @@ module String =
       str.Substring(index, length)
     else
       ""
-
-  #endif
 
 // * FileSystem
 
@@ -437,7 +433,6 @@ module FileSystem =
         |> IOError
         |> Either.fail
 
-#endif
 
 // * Path
 
@@ -447,9 +442,8 @@ module Path =
   let baseName (path: FilePath) =
     Path.GetFileName path
 
+#endif
 // * Time
-
-#if !FABLE_COMPILER
 
 //  _____ _
 // |_   _(_)_ __ ___   ___
@@ -487,8 +481,6 @@ module Time =
   let unixTime (date: DateTime) =
     let epoch = new DateTime(1970, 1, 1)
     (date.Ticks - epoch.Ticks) / TimeSpan.TicksPerMillisecond
-
-#endif
 
 // * Process
 
