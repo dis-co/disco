@@ -26,8 +26,9 @@ type MaxChars   = int
 type FilePath   = string
 type UserName   = string
 type UserAgent  = string
-type ClientLog = string
-type TimeStamp = string
+type ClientLog  = string
+type TimeStamp  = string
+type CallSite   = System.Type
 
 type Actor<'t> = MailboxProcessor<'t>
 
@@ -95,3 +96,36 @@ and Property =
         |> Either.fail
 
 #endif
+
+//  ____                  _          ____  _        _
+// / ___|  ___ _ ____   _(_) ___ ___/ ___|| |_ __ _| |_ _   _ ___
+// \___ \ / _ \ '__\ \ / / |/ __/ _ \___ \| __/ _` | __| | | / __|
+//  ___) |  __/ |   \ V /| | (_|  __/___) | || (_| | |_| |_| \__ \
+// |____/ \___|_|    \_/ |_|\___\___|____/ \__\__,_|\__|\__,_|___/
+
+[<RequireQualifiedAccess>]
+type ServiceStatus =
+  | Starting
+  | Running
+  | Stopping
+  | Stopped
+  | Failed of IrisError
+
+[<RequireQualifiedAccess>]
+module Service =
+
+  let isRunning = function
+    | ServiceStatus.Running -> true
+    | _                     -> false
+
+  let isStopping = function
+    | ServiceStatus.Stopping -> true
+    | _                      -> false
+
+  let isStopped = function
+    | ServiceStatus.Stopped -> true
+    | _                     -> false
+
+  let hasFailed = function
+    | ServiceStatus.Failed _ -> true
+    |                      _ -> false

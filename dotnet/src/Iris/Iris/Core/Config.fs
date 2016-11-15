@@ -1192,6 +1192,14 @@ module Config =
     |> Array.ofList
     |> Either.succeed
 
+  // ** setNodes
+
+  let setNodes (nodes: RaftNode array) (config: IrisConfig) =
+    { config with
+        ClusterConfig =
+          { config.ClusterConfig with
+              Nodes = List.ofArray nodes } }
+
   // ** getNodeId
 
   let getNodeId () =
@@ -1224,6 +1232,14 @@ module Config =
               Nodes = List.filter
                         (fun (node: RaftNode) -> node.Id = id)
                         config.ClusterConfig.Nodes } }
+
+  // ** setLogLevel
+
+  let setLogLevel (level: LogLevel) (config: IrisConfig) =
+    { config with
+        RaftConfig =
+          { config.RaftConfig with
+              LogLevel = level } }
 
   // ** metadataPath
 

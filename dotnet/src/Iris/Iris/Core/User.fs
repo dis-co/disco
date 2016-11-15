@@ -255,7 +255,7 @@ type User =
   member self.CanonicalName
     with get () =
       sprintf "%s_%s" self.FirstName self.LastName
-      |> toLower
+      |> String.toLower
       |> sanitizeName
       |> sprintf "%s-%s" (string self.Id)
 #endif
