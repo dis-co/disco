@@ -193,8 +193,8 @@ type IrisService(project: IrisProject ref) =
     // | |_| | | |_  |  _  | (_| | | | | (_| | |  __/ |  \__ \
     //  \____|_|\__| |_| |_|\__,_|_| |_|\__,_|_|\___|_|  |___/
 
-    gitserver.OnLogMsg <- fun level str ->
-      printfn "GIT LOG MSG: %A %s" level str
+    gitserver.OnLogMsg <- fun level msg ->
+      wsserver.Broadcast(LogMsg(level, msg))
 
   do setup ()
 
