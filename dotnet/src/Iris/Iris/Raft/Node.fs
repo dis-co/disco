@@ -432,3 +432,15 @@ module Node =
     |> List.append (added oldnodes newnodes)
     |> List.append (removed oldnodes newnodes)
     |> Array.ofList
+
+  let setPort (port: uint16) (node: RaftNode) =
+    { node with Port = port }
+
+  let setGitPort (port: uint16) (node: RaftNode) =
+    { node with GitPort = port }
+
+  let setWsPort (port: uint16) (node: RaftNode) =
+    { node with WsPort = port }
+
+  let setWebPort (port: uint16) (node: RaftNode) =
+    { node with WebPort = port }

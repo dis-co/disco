@@ -16,8 +16,7 @@ open Iris.Core
 ///
 /// Returns: instance of Rep
 type Rep (addr: string, handle: byte array -> byte array) =
-  let mutable exn : Exception option = None
-  let mutable started = false
+  let mutable error : Exception option = None
   let mutable disposed = false
   let mutable run = true
   let mutable sock: ZSocket = null
@@ -26,59 +25,184 @@ type Rep (addr: string, handle: byte array -> byte array) =
   let mutable stopper: AutoResetEvent = null
   let mutable ctx : ZContext = null
 
-  let worker () =                                             // thread worker function
-    if isNull sock then                                       // if the socket is null
+  /// ## ignoreErr
+  ///
+  /// Determine if the error number passed is worth ignoring or not.
+  ///
+  /// ### Signature:
+  /// - errno: int error number to check
+  ///
+  /// Returns: bool
+  let ignoreErr (errno: int) =
+    match errno with
+    | x when x = ZError.ETIMEDOUT.Number -> true
+    | x when x = ZError.EAGAIN.Number    -> true
+    | _ -> false
+
+  /// ## setOption
+  ///
+  /// Set a ZSocketOption on a socket in a more functional style.
+  ///
+  /// ### Signature:
+  /// - sock: ZSocket to set option onb
+  /// - option: ZSocketOption to set
+  /// - value: int value to set on the socket
+  ///
+  /// Returns: unit
+  let setOption (sock: ZSocket) (option: ZSocketOption) (value: int) =
+    sock.SetOption(option, value)
+    |> ignore                            // FIXME: maybe I should do something with this result
+
+  /// ## bind
+  ///
+  /// Bind a ZSocket to an address.
+  ///
+  /// ### Signature:
+  /// - sock: ZSocket to bind
+  /// - addr: string address to bind to
+  ///
+  /// Returns: unit
+  let bind (sock: ZSocket) (addr: string) =
+    sock.Bind(addr)
+
+  /// ## tryUnbind
+  ///
+  /// Attempt to unbind a ZSocket from a given address safely.
+  ///
+  /// ### Signature:
+  /// - sock: ZSocket to unbind
+  /// - addr: string address to unbind from
+  ///
+  /// Returns: unit
+  let tryUnbind (sock: ZSocket) (addr: string) =
+    try
+      sock.Unbind(addr)
+    with
+      | _ -> () // throws ENOENT on failure. We ignore that.
+
+  /// ## tryCloseb
+  ///
+  /// Attempt to close a ZSocket safely.
+  ///
+  /// ### Signature:
+  /// - sock: ZSocket to close
+  ///
+  /// Returns: unit
+  let tryClose (sock: ZSocket) =
+    try
+      sock.Close()
+    with
+      | _ -> () // ....at least we tried!
+
+  /// ## worker
+  ///
+  /// Worker function to wrap the ZSocket and ZContext. This provides a thread-safe means to run
+  /// ZSockets in a multi-threaded environment.
+  ///
+  /// ### Signature:
+  /// - unit: unit
+  ///
+  /// Returns: unit
+  let worker () =
+
+    /// ## Initialization
+    ///
+    /// In the beginning, there was darkness, and no server responded. So God decided, its time for
+    /// some action and create the `ZContext` and a `REP`-`ZSocket` such that the universe shall
+    /// respond to requests.
+    ///
+    /// God decided to set the `RCVTIMEO` timeout value to 50ms, in order to be able to shut the
+    /// thing down in case she gets bored with it all, as calls to `ReceiveFrame` would block
+    /// indefinitely. When startup was done, the `starter.Set()` call signals to the parent thread
+    /// that everything is hunky dory, and allow it to pass control back to the caller.
+    ///
+    /// In case of an error (e.g. EADDRINUSE), the run loop is not entered and everything is
+    /// disposed again.
+    ///
+    if isNull sock then
       try
-        ctx <- new ZContext()
-        let socket = new ZSocket(ctx, ZSocketType.REP)        // create it
-        socket.SetOption(ZSocketOption.RCVTIMEO, 50) |> ignore // periodic timeout to interupt loop
-        socket.Bind(addr)                                     // bind to address
-        sock <- socket                                         // and safe for later use
-        starter.Set() |> ignore                                // signal Start that startup is done
+        ctx  <- new ZContext()
+        sock <- new ZSocket(ctx, ZSocketType.REP)
+        setOption sock ZSocketOption.RCVTIMEO 50
+        bind sock addr
+        starter.Set() |> ignore
       with
-        | failure ->
-          exn <- Some failure
+        | exn ->
+          run <- false
+          error <- Some exn
           starter.Set() |> ignore
 
+    /// ## Inner Loop
+    ///
+    /// This is where the magic happens.
+    ///
+    /// `ReceiveFrame` blocks until either one of two things happens:
+    ///   - `EAGAIN` is thrown, but ignored, and the loop keeps plowing on
+    ///   - a message is received
+    ///
+    /// When a message is received, its byte array contents are pulled out and processed with the
+    /// specified `handler` function. The result is then wrapped in a new `ZFrame` and sent back to
+    /// the requesting party. Both, the intial message and its response frame are finally discarded.
+    ///
+    /// Should any other error occur during the handling of a message, the loop is exited, the error
+    /// saved in a variable and all resources are finally disposed.
     while run do
       try
-        let frame = sock.ReceiveFrame()                       // block to receive a request
-        let bytes = frame.Read()                              // read the number as byte buffer
+        let frame = sock.ReceiveFrame()
+        let bytes = frame.Read()
 
-        let reply = new ZFrame(handle bytes)                  // handle request & create response
-        sock.Send(reply)                                      // send response back
+        let reply = new ZFrame(handle bytes)
+        sock.Send(reply)
 
-        frame.Dispose()                                       // dispose of frame
-        reply.Dispose()                                       // dispose of reply
+        dispose frame
+        dispose reply
+
       with
-        | :? ZException as e-> ignore e
-        | failure ->
-          exn <- Some failure
-          starter.Set() |> ignore
+        /// ignore timeouts, since they are our way to ensure we can
+        /// cancel close and dispose the socket in time
+        | :? ZException as e when ignoreErr e.ErrNo ->
+          ignore e
 
-    sock.SetOption(ZSocketOption.LINGER, 0) |> ignore          // loop exited, so set linger to 0
-    sock.Unbind(addr)
-    sock.Close()                                              // and close socket
-    sock.Dispose()                                            // dispose socket
-    ctx.Dispose()
-    stopper.Set() |> ignore                                    // signal that Stop is done
+        | exn ->
+          run <- false
+          error <- Some exn
+
+    /// ## Disposal of resources
+    ///
+    /// First the socket option `LINGER` is set to 0, to ensure the socket can be disposed of
+    /// switftly. Next we attempt to `Unbind` the socket from its address and close it. Finally, we
+    /// dispose the thread-local `ZSocket` and `ZContext` and signal that we are done.
+    ///
+    setOption sock ZSocketOption.LINGER 0
+    tryUnbind sock addr
+    tryClose  sock
+    tryDispose sock ignore
+    tryDispose ctx ignore
+
+    disposed <- true
+
+    stopper.Set() |> ignore
 
   do
-    starter <- new AutoResetEvent(false)                       // initialise the signals
+    starter <- new AutoResetEvent(false)
     stopper <- new AutoResetEvent(false)
 
   member self.Stop () =
-    run <- false                                               // break loop by setting this to false
-    stopper.WaitOne() |> ignore                                // wait for signal that stopping done
+    if not disposed then
+      run <- false                                   // break loop by setting to false
+      stopper.WaitOne() |> ignore                    // wait for signal that stopping is done
+                                                    // and return to caller
 
   member self.Start () =
-    thread <- new Thread(new ThreadStart(worker))              // create worker thread
-    thread.Start()                                            // start worker thread
-    starter.WaitOne() |> ignore                                // wait for startup done signal
+    if not disposed then
+      thread <- new Thread(new ThreadStart(worker))  // create worker thread
+      thread.Start()                                // start worker thread
+      starter.WaitOne() |> ignore                    // wait for startup-done signal
 
-    match exn with
-    | Some failure -> failwith failure.Message                 // re-raise the exception on the
-    | _ -> ()                                                  // parents thread, so it can be caught
+      match error with
+      | Some exn -> raise exn                        // re-raise the exception on the
+      | _ -> ()                                      // parents thread, so it can be
+                                                    // caught and handled synchronously
 
   interface IDisposable with
     member self.Dispose() =

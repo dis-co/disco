@@ -39,7 +39,7 @@
    "Iris/Core/Config.fs"
    "Iris/Core/Project.fs"
    "Iris/Core/Uri.fs"
-   "Iris/Service/GitDaemon.fs"
+   "Iris/Service/GitServer.fs"
    "Iris/Service/Request.fs"
    "Iris/Service/Zmq/Rep.fs"
    "Iris/Service/Zmq/Req.fs"

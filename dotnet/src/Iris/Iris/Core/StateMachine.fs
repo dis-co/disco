@@ -1438,7 +1438,7 @@ and StateMachine =
     | "LogMsg" -> either {
         let payload = yaml.Payload :?> string
         let! (levelstr, str) =
-          match split [| ';' |] payload with
+          match String.split [| ';' |] payload with
           | [| level; str |] ->
              Right (level, str)
           | _ ->
