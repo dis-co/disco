@@ -11,7 +11,7 @@ namespace Iris.Core
 
 open Iris.Raft
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 open Fable.Core
 open Fable.Import
@@ -80,7 +80,7 @@ type AppCommand =
   //                           |___/
 
   static member FromFB (fb: ActionTypeFB) =
-#if JAVASCRIPT
+#if FABLE_COMPILER
     match fb with
     | x when x = ActionTypeFB.UndoFB        -> Right Undo
     | x when x = ActionTypeFB.RedoFB        -> Right Redo
@@ -111,7 +111,7 @@ type AppCommand =
     | Reset       -> ActionTypeFB.ResetFB
     | SaveProject -> ActionTypeFB.SaveProjectFB
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
 
 // * State Yaml
 
@@ -384,7 +384,7 @@ type State =
     { state with Nodes = Map.remove node.Id state.Nodes }
 
   // ** ToYamlObject
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -519,7 +519,7 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, Patch>>) _ -> either {
             let! (i, map) = m
-#if JAVASCRIPT
+#if FABLE_COMPILER
             let! patch = fb.Patches(i) |> Patch.FromFB
 #else
             let! patch =
@@ -545,7 +545,7 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, IOBox>>) _ -> either {
             let! (i, map) = m
-#if JAVASCRIPT
+#if FABLE_COMPILER
             let! iobox = fb.IOBoxes(i) |> IOBox.FromFB
 #else
             let! iobox =
@@ -571,7 +571,7 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, Cue>>) _ -> either {
             let! (i, map) = m
-#if JAVASCRIPT
+#if FABLE_COMPILER
             let! cue = fb.Cues(i) |> Cue.FromFB
 #else
             let! cue =
@@ -597,7 +597,7 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, CueList>>) _ -> either {
             let! (i, map) = m
-#if JAVASCRIPT
+#if FABLE_COMPILER
             let! cuelist = fb.CueLists(i) |> CueList.FromFB
 #else
             let! cuelist =
@@ -623,7 +623,7 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, RaftNode>>) _ -> either {
             let! (i, map) = m
-#if JAVASCRIPT
+#if FABLE_COMPILER
             let! node = fb.Nodes(i) |> RaftNode.FromFB
 #else
             let! node =
@@ -649,7 +649,7 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, User>>) _ -> either {
             let! (i, map) = m
-#if JAVASCRIPT
+#if FABLE_COMPILER
             let! user = fb.Users(i) |> User.FromFB
 #else
             let! user =
@@ -675,7 +675,7 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, Session>>) _ -> either {
             let! (i, map) = m
-#if JAVASCRIPT
+#if FABLE_COMPILER
             let! session = fb.Sessions(i) |> Session.FromFB
 #else
             let! session =
@@ -1039,7 +1039,7 @@ and Listener = Store -> StateMachine -> unit
 
 // * StateMachine Yaml
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
 
 // __   __              _    ___  _     _           _
 // \ \ / /_ _ _ __ ___ | |  / _ \| |__ (_) ___  ___| |_
@@ -1286,7 +1286,7 @@ and StateMachine =
 
   // ** ToYamlObject
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -1471,7 +1471,7 @@ and StateMachine =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
   static member FromFB (fb: ApiActionFB) =
     match fb.PayloadType with
     | x when x = PayloadFB.NodeFB ->
@@ -1845,7 +1845,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.NodeFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, node)
 #else
       ApiActionFB.AddPayload(builder, node.Value)
@@ -1857,7 +1857,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.NodeFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, node)
 #else
       ApiActionFB.AddPayload(builder, node.Value)
@@ -1869,7 +1869,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.NodeFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, node)
 #else
       ApiActionFB.AddPayload(builder, node.Value)
@@ -1881,7 +1881,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.PatchFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, patch)
 #else
       ApiActionFB.AddPayload(builder, patch.Value)
@@ -1893,7 +1893,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.PatchFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, patch)
 #else
       ApiActionFB.AddPayload(builder, patch.Value)
@@ -1905,7 +1905,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.PatchFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, patch)
 #else
       ApiActionFB.AddPayload(builder, patch.Value)
@@ -1917,7 +1917,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.IOBoxFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, iobox)
 #else
       ApiActionFB.AddPayload(builder, iobox.Value)
@@ -1929,7 +1929,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.IOBoxFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, iobox)
 #else
       ApiActionFB.AddPayload(builder, iobox.Value)
@@ -1941,7 +1941,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.IOBoxFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, iobox)
 #else
       ApiActionFB.AddPayload(builder, iobox.Value)
@@ -1953,7 +1953,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.CueFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, cue)
 #else
       ApiActionFB.AddPayload(builder, cue.Value)
@@ -1965,7 +1965,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.CueFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, cue)
 #else
       ApiActionFB.AddPayload(builder, cue.Value)
@@ -1977,7 +1977,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.CueFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, cue)
 #else
       ApiActionFB.AddPayload(builder, cue.Value)
@@ -1989,7 +1989,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.CueListFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, cuelist)
 #else
       ApiActionFB.AddPayload(builder, cuelist.Value)
@@ -2001,7 +2001,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.CueListFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, cuelist)
 #else
       ApiActionFB.AddPayload(builder, cuelist.Value)
@@ -2013,7 +2013,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.CueListFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, cuelist)
 #else
       ApiActionFB.AddPayload(builder, cuelist.Value)
@@ -2025,7 +2025,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.UserFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, user)
 #else
       ApiActionFB.AddPayload(builder, user.Value)
@@ -2037,7 +2037,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.UserFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, user)
 #else
       ApiActionFB.AddPayload(builder, user.Value)
@@ -2049,7 +2049,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.UserFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, user)
 #else
       ApiActionFB.AddPayload(builder, user.Value)
@@ -2061,7 +2061,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.SessionFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, session)
 #else
       ApiActionFB.AddPayload(builder, session.Value)
@@ -2073,7 +2073,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.SessionFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, session)
 #else
       ApiActionFB.AddPayload(builder, session.Value)
@@ -2085,7 +2085,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.SessionFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, session)
 #else
       ApiActionFB.AddPayload(builder, session.Value)
@@ -2103,7 +2103,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.DataSnapshotFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.StateFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, data)
 #else
       ApiActionFB.AddPayload(builder, data.Value)
@@ -2121,7 +2121,7 @@ and StateMachine =
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.LogMsgFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.LogMsgFB)
-#if JAVASCRIPT
+#if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, offset)
 #else
       ApiActionFB.AddPayload(builder, offset.Value)

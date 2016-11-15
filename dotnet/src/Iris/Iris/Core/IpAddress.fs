@@ -1,6 +1,6 @@
 namespace Iris.Core
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 open Fable.Core
 open Fable.Import.JS
@@ -22,7 +22,7 @@ type IpAddress =
       | IPv6Address str -> str
 
   static member Parse (str: string) =
-#if JAVASCRIPT
+#if FABLE_COMPILER
     let regex = new Regex(@"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")
     match regex.IsMatch str with
     | true -> IPv4Address str
@@ -36,7 +36,7 @@ type IpAddress =
 #endif
 
   static member TryParse (str: string) =
-#if JAVASCRIPT
+#if FABLE_COMPILER
     try
       IpAddress.Parse str
       |> Either.succeed

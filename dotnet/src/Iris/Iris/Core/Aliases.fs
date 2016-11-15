@@ -60,7 +60,7 @@ type Rect = Rect of (int * int)
 // |_|   |_|  \___/| .__/ \___|_|   \__|\__, |
 //                 |_|                  |___/
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 type Property =
   { Key: string; Value: string }

@@ -3,18 +3,21 @@ namespace Iris.Core
 // * Imports
 
 open System
+open System.Text.RegularExpressions
+
+#if FABLE_COMPILER
+
+open Fable.Core
+
+#else
+
 open System.IO
 open System.Net
 open System.Linq
 open System.Management
 open System.Diagnostics
 open System.Net.NetworkInformation
-open System.Text.RegularExpressions
 open System.Runtime.CompilerServices
-
-#if JAVASCRIPT
-
-open Fable.Core
 
 #endif
 
@@ -33,12 +36,12 @@ module Utils =
 
   // ** dispose
 
-  #if JAVASCRIPT
+  #if FABLE_COMPILER
 
   /// ## Dispose of an object that implements the method Dispose
   ///
   /// This is slightly different to the .NET based version, as I have discovered problems with the
-  /// `use` keyword of IDisposable members in JAVASCRIPT. Hence we manage manualy and ensure that
+  /// `use` keyword of IDisposable members in FABLE_COMPILER. Hence we manage manualy and ensure that
   /// dispose reminds us that the object needs to have the member, not interface implemented.
   ///
   /// ### Signature:
@@ -64,7 +67,7 @@ module Utils =
 
   // ** tryDispose
 
-  #if !JAVASCRIPT
+  #if !FABLE_COMPILER
 
   /// ## tryDispose
   ///
@@ -85,7 +88,7 @@ module Utils =
 
   // ** isLinux
 
-  #if !JAVASCRIPT
+  #if !FABLE_COMPILER
 
   let isLinux : bool =
     int Environment.OSVersion.Platform
@@ -114,7 +117,7 @@ module Utils =
 
   // ** santitizeName
 
-  #if !JAVASCRIPT
+  #if !FABLE_COMPILER
 
   /// ## sanitizeName
   ///
@@ -149,11 +152,12 @@ module Utils =
 
 // * Network
 
+#if !FABLE_COMPILER
+
 [<RequireQualifiedAccess>]
 module Network =
   // *** getHostName
 
-  #if !JAVASCRIPT
 
   /// ## Get the current machine's host name
   ///
@@ -166,11 +170,7 @@ module Network =
   let getHostName () =
     System.Net.Dns.GetHostName()
 
-  #endif
-
   // *** getIpAddress
-
-  #if !JAVASCRIPT
 
   /// ## getIpAddress
   ///
@@ -191,7 +191,7 @@ module Network =
           then outip <- Some(ip.Address)
     outip
 
-  #endif
+#endif
 
 
 // * String
@@ -201,7 +201,7 @@ module String =
 
   // *** logger
 
-  #if !JAVASCRIPT
+  #if !FABLE_COMPILER
 
   /// ## logger
   ///
@@ -246,10 +246,10 @@ module String =
   /// - string: string to transform
   ///
   /// Returns: string
-  #if JAVASCRIPT
+  #if FABLE_COMPILER
 
   [<Emit("$0.toLowerCase()")>]
-  let inline toLower (_: string) : string = failwith "ONLY JS"
+  let toLower (_: string) : string = failwith "ONLY JS"
 
   #else
 
@@ -260,7 +260,7 @@ module String =
 
   // *** trim
 
-  #if !JAVSCRIPT
+  #if !FABLE_COMPILER
 
   /// ## trim
   ///
@@ -277,7 +277,7 @@ module String =
 
   // *** toUpper
 
-  #if !JAVASCRIPT
+  #if !FABLE_COMPILER
 
   /// ## toUpper
   ///
@@ -294,7 +294,7 @@ module String =
 
   // *** split
 
-  #if !JAVASCRIPT
+  #if !FABLE_COMPILER
 
   /// ## split
   ///
@@ -312,7 +312,7 @@ module String =
 
   // *** indent
 
-  #if !JAVASCRIPT
+  #if !FABLE_COMPILER
 
   /// ## indent
   ///
@@ -333,8 +333,6 @@ module String =
 
   // *** subString
 
-  #if !JAVASCRIPT
-
   /// ## subString
   ///
   /// Return a sub-section of a passed string.
@@ -352,11 +350,9 @@ module String =
     else
       ""
 
-  #endif
-
 // * FileSystem
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
 
 [<AutoOpen>]
 module FileSystem =
@@ -437,7 +433,6 @@ module FileSystem =
         |> IOError
         |> Either.fail
 
-#endif
 
 // * Path
 
@@ -447,9 +442,8 @@ module Path =
   let baseName (path: FilePath) =
     Path.GetFileName path
 
+#endif
 // * Time
-
-#if !JAVASCRIPT
 
 //  _____ _
 // |_   _(_)_ __ ___   ___
@@ -488,11 +482,9 @@ module Time =
     let epoch = new DateTime(1970, 1, 1)
     (date.Ticks - epoch.Ticks) / TimeSpan.TicksPerMillisecond
 
-#endif
-
 // * Process
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
 
 ///////////////////////////////////////////////////
 //  ____                                         //
@@ -540,7 +532,7 @@ module WorkSpace =
 
   // ** find
 
-  #if !JAVASCRIPT
+  #if !FABLE_COMPILER
   /// ## find
   ///
   /// The standard location projects are create/cloned to. Currently only settable it via
@@ -564,7 +556,7 @@ module WorkSpace =
 
   // ** exists
 
-  #if !JAVASCRIPT
+  #if !FABLE_COMPILER
 
   /// ## workSpaceExists
   ///
@@ -581,7 +573,7 @@ module WorkSpace =
 
   // ** create
 
-  #if !JAVASCRIPT
+  #if !FABLE_COMPILER
 
   /// ## createWorkSpace
   ///

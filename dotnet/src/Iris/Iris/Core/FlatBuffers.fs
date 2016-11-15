@@ -1,13 +1,11 @@
 namespace Iris.Core
 
-#if JAVASCRIPT
-
 open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Import.JS
 
 // ------------------ 8< ------------------
-[<Import("*", from="flatbuffers")>]
 module FlatBuffers =
 
   //  ____        _       ____         __  __
@@ -21,9 +19,9 @@ module FlatBuffers =
     abstract bytes: unit -> Fable.Import.JS.Uint8Array
 
   and ByteBufferConstructor =
-    abstract prototype: ByteBuffer with get, set
+    // abstract prototype: ByteBuffer with get, set
 
-    [<Emit("new flatbuffers.flatbuffers.$0(new Uint8Array($1))")>]
+    [<Emit("new flatbuffers.ByteBuffer(new Uint8Array($1))")>]
     abstract Create: bytes: Fable.Import.JS.ArrayBuffer -> ByteBuffer
 
   and [<Erase>] Offset<'a> = Offset of int
@@ -51,12 +49,10 @@ module FlatBuffers =
     abstract Finish: Offset<'a> -> unit
 
   and FlatBufferBuilderConstructor =
-    abstract prototype: FlatBufferBuilder with get, set
+    // abstract prototype: FlatBufferBuilder with get, set
 
-    [<Emit("new flatbuffers.flatbuffers.Builder($1)")>]
+    [<Emit("new flatbuffers.Builder($1)")>]
     abstract Create: size: int -> FlatBufferBuilder
 
-  let [<Global>] ByteBuffer: ByteBufferConstructor = failwith "JS only"
-  let [<Global>] FlatBufferBuilder: FlatBufferBuilderConstructor = failwith "JS only"
-
-#endif
+  let ByteBuffer: ByteBufferConstructor = createEmpty
+  let FlatBufferBuilder: FlatBufferBuilderConstructor = createEmpty

@@ -1,6 +1,6 @@
 namespace Iris.Core
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 open Fable.Core
 open Fable.Import
@@ -15,7 +15,7 @@ open Iris.Serialization.Raft
 
 #endif
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
 
 type PatchYaml(id, name, ioboxes) as self =
   [<DefaultValue>] val mutable Id      : string
@@ -31,7 +31,7 @@ type PatchYaml(id, name, ioboxes) as self =
 
 #endif
 
-// #if JAVASCRIPT
+// #if FABLE_COMPILER
 // [<CustomEquality>]
 // [<CustomComparison>]
 // #endif
@@ -108,7 +108,7 @@ type Patch =
   static member RemoveIOBox (patch : Patch) (iobox : IOBox) : Patch =
     { patch with IOBoxes = Map.remove iobox.Id patch.IOBoxes }
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -169,7 +169,7 @@ type Patch =
           (fun (m: Either<IrisError,int * Map<Id,IOBox>>) _ -> either {
               let! (i, ioboxes) = m
 
-  #if JAVASCRIPT
+  #if FABLE_COMPILER
               let! iobox = i |> fb.IOBoxes |> IOBox.FromFB
   #else
               let! iobox =

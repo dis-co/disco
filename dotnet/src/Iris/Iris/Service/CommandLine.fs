@@ -96,14 +96,14 @@ module CommandLine =
   // ** Utilities
 
   let private withTrim (token: string) (str: string) =
-    let trimmed = trim str
+    let trimmed = String.trim str
     if trimmed.StartsWith(token) then
       let substr = trimmed.Substring(token.Length)
-      Some <| trim substr
+      Some <| String.trim substr
     else None
 
   let private withEmpty (token: string) (str: string) =
-    if trim str = token
+    if String.trim str = token
     then Some ()
     else None
 
@@ -187,7 +187,7 @@ module CommandLine =
 
   let tryJoinCluster (hst: string) (context: RaftServer) =
     let parsed =
-      match split [| ' ' |] hst with
+      match String.split [| ' ' |] hst with
         | [| ip; port |] -> Some (ip, int port)
         | _            -> None
 
@@ -204,7 +204,7 @@ module CommandLine =
 
   let tryAddNode (hst: string) (context: RaftServer) =
     let parsed =
-      match split [| ' ' |] hst with
+      match String.split [| ' ' |] hst with
         | [| id; ip; port |] -> Some (id, ip, int port)
         | _                -> None
 
@@ -221,7 +221,7 @@ module CommandLine =
   // ** tryRmNode
 
   let tryRmNode (hst: string) (context: RaftServer) =
-      match context.RmNode(trim hst) with
+      match context.RmNode(String.trim hst) with
         | Some appended ->
           printfn "Removed node: %A in entry %A" hst (string appended.Id)
         | _ ->

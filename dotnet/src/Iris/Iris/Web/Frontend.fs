@@ -6,21 +6,23 @@
 // |  _|| | | (_) | | | | ||  __/ | | | (_| | | |  | | (_| | | | | |
 // |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| |_|  |_|\__,_|_|_| |_|
 
+open Iris.Raft
 open Iris.Core
 open Iris.Web.Core
-open Iris.Web.Core.DomDelegator
-open Iris.Web.Views
 open Fable.Core
-
-let delegator = Delegator.Create()
-delegator.ListenTo "play"
-
-let widget = new Patches.Root()
-let ctrl = new ViewController<State, ClientContext> (widget)
+open Fable.Core.JsInterop
+open Fable.Import
 
 let context = new ClientContext()
 
-context.Controller <- ctrl
+type ReactApp =
+  abstract mount: ((State->unit)->unit)->unit
+
+let reactApp: ReactApp = importDefault "ReactApp"
+reactApp.mount(fun f ->
+  context.Subscribe(fun _ state -> f state)
+)
+
 context.Start()
 
 registerKeyHandlers context

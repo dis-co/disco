@@ -2,7 +2,7 @@ namespace Iris.Raft
 
 open Iris.Core
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 open Iris.Core.FlatBuffers
 open Iris.Web.Core.FlatBufferTypes
@@ -63,7 +63,7 @@ type RaftNodeState =
       | Failed  -> NodeStateFB.FailedFB
 
   static member FromFB (fb: NodeStateFB) =
-#if JAVASCRIPT
+#if FABLE_COMPILER
     match fb with
       | x when x = NodeStateFB.JoiningFB -> Right Joining
       | x when x = NodeStateFB.RunningFB -> Right Running
@@ -128,7 +128,7 @@ and RaftNode =
       (sprintf "(NxtIdx %A)" self.NextIndex)
       (sprintf "(MtchIdx %A)" self.MatchIndex)
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -288,7 +288,7 @@ and ConfigChange =
   static member FromFB (fb: ConfigChangeFB) : Either<IrisError,ConfigChange> =
     either {
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
       let! node = fb.Node |> RaftNode.FromFB
       match fb.Type with
       | x when x = ConfigChangeTypeFB.NodeAdded   -> return (NodeAdded   node)
@@ -326,7 +326,7 @@ and ConfigChange =
     |> ConfigChangeFB.GetRootAsConfigChangeFB
     |> ConfigChange.FromFB
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -361,7 +361,7 @@ and ConfigChange =
 module Node =
 
   let create id =
-#if JAVASCRIPT
+#if FABLE_COMPILER
     let hostname = Fable.Import.Browser.window.location.host
 #else
     let hostname = System.Net.Dns.GetHostName()

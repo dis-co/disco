@@ -1,7 +1,7 @@
 namespace Iris.Core
 
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 open Fable.Core
 open Fable.Core.JsInterop

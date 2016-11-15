@@ -1,6 +1,6 @@
 namespace Iris.Core
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 open Fable.Core
 open Fable.Import
@@ -28,7 +28,7 @@ type CueYaml(id, name, ioboxes) as self =
 
 #endif
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 type Cue =
 #else
 and Cue =
@@ -52,7 +52,7 @@ and Cue =
           (fun (m: Either<IrisError,int * IOBox array>) _ -> either {
               let! (i, ioboxes) = m
 
-              #if JAVASCRIPT
+              #if FABLE_COMPILER
 
               let! iobox = i |> fb.IOBoxes |> IOBox.FromFB
 
@@ -99,7 +99,7 @@ and Cue =
 
   member self.ToBytes() = Binary.buildBuffer self
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 #else
   member self.ToYamlObject() =
     let ioboxes = Array.map Yaml.toYaml self.IOBoxes

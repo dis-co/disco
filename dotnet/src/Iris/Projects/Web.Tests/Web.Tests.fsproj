@@ -13,19 +13,22 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\Web.Tests</OutputPath>
-    <DefineConstants>DEBUG;TRACE;JAVASCRIPT</DefineConstants>
+    <DefineConstants>DEBUG;TRACE;FABLE_COMPILER</DefineConstants>
     <WarningLevel>5</WarningLevel>
     <ErrorReport>prompt</ErrorReport>
     <Externalconsole>true</Externalconsole>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Release\Web.Tests</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <Externalconsole>true</Externalconsole>
-    <DefineConstants>TRACE;JAVASCRIPT</DefineConstants>
+    <DefineConstants>TRACE;FABLE_COMPILER</DefineConstants>
     <WarningLevel>5</WarningLevel>
   </PropertyGroup>
   <ItemGroup>

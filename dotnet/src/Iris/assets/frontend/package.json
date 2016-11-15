@@ -1,18 +1,20 @@
 {
   "private": true,
-  "name": "frontend",
+  "name": "iris-web-tests",
   "version": "1.0.0",
-  "description": "Irish Frontend",
-  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "babel-polyfill": "^6.13.0",
+    "core-js": "^2.4.1",
+    "fable-core": "next",
+    "requirejs": "^2.3.2"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
     "expect.js": "^0.3.1",
-    "mocha": "^3.0.2",
-    "virtual-dom": "2.1.1"
+    "mocha": "^3.0.2"
   }
 }

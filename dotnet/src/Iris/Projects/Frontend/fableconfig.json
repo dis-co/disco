@@ -1,18 +1,13 @@
- {
-     "module": "commonjs",
-     "sourceMaps": true,
-     "coreLib": "fable-core/umd",
-     "projFile": "Frontend.fsproj",
-     "outDir": "../../bin/Debug/Frontend",
-     "symbols": ["JAVASCRIPT"],
-     "scripts": {
-         "postbuild": "node ../../../../node_modules/webpack/bin/webpack"
-     },
-     "targets": {
-         "watch": {
-             "scripts": {
-                 "postbuild": "node ../../../../node_modules/webpack/bin/webpack --watch"
-             }
-         }
-     }
- }
+{
+    "projFile": "Frontend.fsproj",
+    "outDir": "../../bin/Debug/Iris/assets/js",
+    "module": "amd",
+    "coreLib": "fable-core/umd",
+    "sourceMaps": true,
+    "plugins": ["../../../Fable/FlatBuffersPlugin.fsx"],
+    "targets": {
+        "debug": {
+            "watch": "../../Iris/Web"
+        }
+    }
+}

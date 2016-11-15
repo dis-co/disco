@@ -390,6 +390,7 @@ let webtestsdir = baseDir @@ "Projects" @@ "Web.Tests"
 Target "BuildWebTests" (fun _ ->
   runNpm "install" __SOURCE_DIRECTORY__ ()
   runFable webtestsdir "" ()
+  FileUtils.cp (baseDir @@ "bin/Raft_generated.js") (baseDir @@ "bin/Debug/Iris/assets/js")
 )
 
 Target "WatchWebTests" (runFable webtestsdir "-t watch")
@@ -407,10 +408,11 @@ Target "RunWebTests" (fun _ ->
 
 Target "BuildMockService" (fun () ->
   buildDebug "Projects/MockService/MockService.fsproj" ()
-  let assetsTargetDir = (baseDir @@ "bin/Debug/MockService/assets")
+  let assetsTargetDir = (baseDir @@ "bin/Debug/Iris/assets")
   FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
-  runNpm "install" assetsTargetDir ()
-  // let targetDir = (baseDir @@ "bin/Debug/MockService")
+  FileUtils.cp (baseDir @@ "bin/Raft_generated.js") (assetsTargetDir @@ "js")
+  // runNpm "install" assetsTargetDir ()
+  // let targetDir = (baseDir @@ "bin/Debug/Iris")
   // runMono (targetDir @@ "Iris.MockService.exe") targetDir
 )
 

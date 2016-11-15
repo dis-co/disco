@@ -28,7 +28,7 @@ type IrisService(project: IrisProject ref) =
 
   let kontext = new ZContext()
 
-  let gitserver  = new Git.Daemon(!project)
+  let gitserver  = new GitServer(!project)
   let raftserver = new RaftServer((!project).Config, kontext)
   let wsserver   = new WsServer((!project).Config, raftserver)
   let httpserver = new AssetServer((!project).Config)
@@ -193,7 +193,7 @@ type IrisService(project: IrisProject ref) =
     // | |_| | | |_  |  _  | (_| | | | | (_| | |  __/ |  \__ \
     //  \____|_|\__| |_| |_|\__,_|_| |_|\__,_|_|\___|_|  |___/
 
-    gitserver.OnLogMsg <- fun level msg ->
+    gitserver.OnLogMsg <- fun _ level msg ->
       wsserver.Broadcast(LogMsg(level, msg))
 
   do setup ()

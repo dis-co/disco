@@ -7,7 +7,7 @@ open System.Collections
 open Iris.Core
 open Iris.Serialization.Raft
 
-#if JAVASCRIPT
+#if FABLE_COMPILER
 
 open Iris.Core.FlatBuffers
 

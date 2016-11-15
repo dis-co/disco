@@ -1,6 +1,5 @@
 namespace Iris.Core
 
-
 // * LogLevel
 
 //  _                _                   _
@@ -9,11 +8,6 @@ namespace Iris.Core
 // | |__| (_) | (_| | |__|  __/\ V /  __/ |
 // |_____\___/ \__, |_____\___| \_/ \___|_|
 //             |___/
-// #if JAVASCRIPT
-// open Fable.Core
-
-// [<StringEnum>]
-// #endif
 type LogLevel =
   | Debug
   | Info
@@ -42,7 +36,7 @@ type LogLevel =
 
 // * Logger
 
-#if !JAVASCRIPT
+#if !FABLE_COMPILER
 
 [<RequireQualifiedAccess>]
 module Logger =

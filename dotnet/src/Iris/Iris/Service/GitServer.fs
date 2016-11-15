@@ -174,14 +174,14 @@ type GitServer (project: IrisProject) =
     |> log LogLevel.Debug
 
     let args =
-      sprintf "daemon \
+      sprintf """daemon \
                  --verbose \
                  --reuseaddr \
                  --listen=%s \
                  --port=%d \
                  --strict-paths \
                  --base-path=%s \
-                 %s/.git"
+                 %s/.git"""
         (string addr)
         port
         basedir
