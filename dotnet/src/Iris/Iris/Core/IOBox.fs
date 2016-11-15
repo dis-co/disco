@@ -1099,7 +1099,6 @@ type IOBox =
                                                  : Either<IrisError, ^t array> =
     let len = (^b : (member SlicesLength : int) fb)
     let arr = Array.zeroCreate len
-    printfn "ParseSlicesFB"
     Array.fold
       (fun (result: Either<IrisError,int * ^t array>) _ -> either {
 
@@ -1110,8 +1109,6 @@ type IOBox =
           let! slice =
             let value = (^b : (member Slices : int -> ^a) (fb, i))
             (^t : (static member FromFB : ^a -> Either<IrisError, ^t>) value)
-
-          printfn "index; %d slice: %A" i slice
 
           // add the slice to the array> at its correct position
           slices.[i] <- slice

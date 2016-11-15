@@ -460,7 +460,7 @@ type IRaftCallbacks =
   abstract member DeleteLog:           RaftLogEntry        -> unit
 
   /// Callback for catching debug messsages
-  abstract member LogMsg:  LogLevel ->  RaftNode        -> String                 -> unit
+  abstract member LogMsg: RaftNode -> CallSite -> LogLevel -> String -> unit
 
 // * RaftValueYaml
 

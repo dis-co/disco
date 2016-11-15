@@ -21,7 +21,6 @@ open ZeroMQ
 //
 
 type IrisService(project: IrisProject ref) =
-
   let signature = new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
 
   let store : Store = new Store(State.Empty)
@@ -33,10 +32,29 @@ type IrisService(project: IrisProject ref) =
   let wsserver   = new WsServer((!project).Config, raftserver)
   let httpserver = new AssetServer((!project).Config)
 
+  //  _                      _
+  // | |    ___   __ _  __ _(_)_ __   __ _
+  // | |   / _ \ / _` |/ _` | | '_ \ / _` |
+  // | |__| (_) | (_| | (_| | | | | | (_| |
+  // |_____\___/ \__, |\__, |_|_| |_|\__, |
+  //             |___/ |___/         |___/
+
+  let logger =
+    Observable.subscribe
+      (fun log ->
+        wsserver.Broadcast (LogMsg log)
+        Logger.stdout log)
+      Logger.listener
+
+  let tag = "IrisService"
+
+  let nodeid =
+    Config.getNodeId()
+    |> Error.orExit id
+
   // ** setup
 
   let setup _ =
-
     // __        __   _    ____             _        _
     // \ \      / /__| |__/ ___|  ___   ___| | _____| |_
     //  \ \ /\ / / _ \ '_ \___ \ / _ \ / __| |/ / _ \ __|
@@ -55,48 +73,46 @@ type IrisService(project: IrisProject ref) =
     /// contacted this IrisSerivce. First, we send a `DataSnapshot` to the client to initialize it
     /// with the current state. Then, we append the newly created Session value to the Raft log to
     /// replicate it throughout the cluster.
-
     wsserver.OnOpen <- fun (session: Session) ->
       wsserver.Send session.Id (DataSnapshot store.State)
-      let msg =
-        match raftserver.Append(AddSession session) with
-        | Right entry -> Debug, (sprintf "Added session to Raft log with id: %A" entry.Id)
-        | Left  error -> Err, string error
-      wsserver.Broadcast (LogMsg msg)
+      match raftserver.Append(AddSession session) with
+      | Right entry ->
+        sprintf "Added session to Raft log with id: %A" entry.Id
+        |> Logger.debug nodeid tag
+      | Left  error ->
+        Logger.err nodeid tag (string error)
 
     /// ## OnClose
     ///
     /// Register a callback to be run when a browser as exited a session in an orderly fashion. The
     /// session is removed from the global state by appending a `RemoveSession`
-
     wsserver.OnClose <- fun sessionid ->
       match Map.tryFind sessionid store.State.Sessions with
       | Some session ->
-        let msg =
-          match raftserver.Append(RemoveSession session) with
-          | Right entry -> Debug, (sprintf "Remove session added to Raft log with id: %A" entry.Id)
-          | Left error  -> Err, string error
-        wsserver.Broadcast (LogMsg msg)
+        match raftserver.Append(RemoveSession session) with
+        | Right entry ->
+          sprintf "Remove session added to Raft log with id: %A" entry.Id
+          |> Logger.debug nodeid tag
+        | Left error  ->
+          Logger.err nodeid tag (string error)
       | _ ->
-        let msg = Err, "Session not found. Something spooky is going on"
-        wsserver.Broadcast (LogMsg msg)
+        Logger.err nodeid tag "Session not found. Something spooky is going on"
 
     /// ## OnError
     ///
     /// Register a callback to be run if the client connection unexpectectly fails. In that case the
     /// Session is retrieved and removed from global state.
-
     wsserver.OnError <- fun sessionid ->
       match Map.tryFind sessionid store.State.Sessions with
       | Some session ->
-        let msg =
-          match raftserver.Append(RemoveSession session) with
-          | Right entry -> Debug, (sprintf "Remove session added to Raft log with id: %A" entry.Id)
-          | Left error  -> Err, string error
-        wsserver.Broadcast (LogMsg msg)
+        match raftserver.Append(RemoveSession session) with
+        | Right entry ->
+          sprintf "Remove session added to Raft log with id: %A" entry.Id
+          |> Logger.debug nodeid tag
+        | Left error  ->
+          Logger.err nodeid tag (string error)
       | _ ->
-        let msg = Err, "Session not found. Something spooky is going on"
-        wsserver.Broadcast (LogMsg msg)
+        Logger.err nodeid tag "Session not found. Something spooky is going on"
 
     /// ## OnMessage
     ///
@@ -105,13 +121,13 @@ type IrisService(project: IrisProject ref) =
     /// message is sent back to the client. Once the new command has been replicated throughout the
     /// system, it will be applied to the server-side global state, then pushed over the socket to
     /// be applied to all client-side global state atoms.
-
     wsserver.OnMessage <- fun sessionid command ->
-      let msg =
-        match raftserver.Append(command) with
-        | Right entry -> Debug, (sprintf "Entry added to Raft log with id: %A" entry.Id)
-        | Left error  -> Err, string error
-      wsserver.Broadcast (LogMsg msg)
+      match raftserver.Append(command) with
+      | Right entry ->
+        sprintf "Entry added to Raft log with id: %A" entry.Id
+        |> Logger.debug nodeid tag
+      | Left error  ->
+        Logger.err nodeid tag (string error)
 
     //  ____        __ _     _   _                 _ _
     // |  _ \ __ _ / _| |_  | | | | __ _ _ __   __| | | ___ _ __ ___
@@ -123,19 +139,10 @@ type IrisService(project: IrisProject ref) =
     ///
     /// Register a callback to run when a new cluster configuration has been committed, and the
     /// joint-consensus mode has been concluded.
-
     raftserver.OnConfigured <-
       Array.map (Node.getId >> string)
       >> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
-      >> (fun str -> LogMsg(Iris.Core.LogLevel.Debug, str))
-      >> wsserver.Broadcast
-
-    /// ## OnLogMsg
-    ///
-    /// Register a callback to be called when some `Raft`-interal logging has occurred.
-
-    raftserver.OnLogMsg <- fun _ msg ->
-      wsserver.Broadcast(LogMsg(Iris.Core.LogLevel.Debug, msg))
+      >> Logger.debug nodeid tag
 
     /// ## OnNodeAdded
     ///
@@ -143,8 +150,12 @@ type IrisService(project: IrisProject ref) =
     /// commences the joint-consensus mode until the new node has been caught up and is ready be a
     /// full member of the cluster.
 
-    raftserver.OnNodeAdded   <- fun node ->
-      warn "NODE NEEDS TO BE ADDED TO PROJECT NOW"
+    raftserver.OnNodeAdded <- fun node ->
+      node.Id
+      |> string
+      |> sprintf "Node added to cluster: %s"
+      |> Logger.debug nodeid tag
+
       AddNode node
       |> wsserver.Broadcast
 
@@ -154,7 +165,11 @@ type IrisService(project: IrisProject ref) =
     /// state.
 
     raftserver.OnNodeUpdated <- fun node ->
-      warn "NODE NEEDS TO BE UPDATED IN PROJECT NOW"
+      node.Id
+      |> string
+      |> sprintf "Node updated: %s"
+      |> Logger.debug nodeid tag
+
       UpdateNode node
       |> wsserver.Broadcast
 
@@ -164,7 +179,11 @@ type IrisService(project: IrisProject ref) =
     /// the cluster entering into joint-consensus mode until the node was successfully removed.
 
     raftserver.OnNodeRemoved <- fun node ->
-      warn "NODE NEEDS TO BE REMOVED FROM PROJECT NOW"
+      node.Id
+      |> string
+      |> sprintf "Node removed from cluster: %s"
+      |> Logger.debug nodeid tag
+
       RemoveNode node
       |> wsserver.Broadcast
 
@@ -181,20 +200,15 @@ type IrisService(project: IrisProject ref) =
 
     raftserver.OnApplyLog <- fun sm ->
       store.Dispatch sm
+
       wsserver.Broadcast sm
+
       if raftserver.IsLeader then
         persistEntry !project sm |> ignore
       else
         updateRepo !project
 
-    //   ____ _ _     _   _                 _ _
-    //  / ___(_) |_  | | | | __ _ _ __   __| | | ___ _ __ ___
-    // | |  _| | __| | |_| |/ _` | '_ \ / _` | |/ _ \ '__/ __|
-    // | |_| | | |_  |  _  | (_| | | | | (_| | |  __/ |  \__ \
-    //  \____|_|\__| |_| |_|\__,_|_| |_|\__,_|_|\___|_|  |___/
-
-    gitserver.OnLogMsg <- fun _ level msg ->
-      wsserver.Broadcast(LogMsg(level, msg))
+      Logger.debug nodeid tag "Raft applied a new log"
 
   do setup ()
 
@@ -213,7 +227,6 @@ type IrisService(project: IrisProject ref) =
     member self.Dispose() =
       self.Stop()
 
-
   //  _     _  __       ____           _
   // | |   (_)/ _| ___ / ___|   _  ___| | ___
   // | |   | | |_ / _ \ |  | | | |/ __| |/ _ \
@@ -227,12 +240,16 @@ type IrisService(project: IrisProject ref) =
     try
       if web then
         httpserver.Start()
+      else
+        Logger.debug nodeid tag "not starting HTTP server"
+
       gitserver.Start()
       wsserver.Start()
       raftserver.Start()
     with
       | exn ->
-        printfn "Exception occurred trying to start IrisService: %s" exn.Message
+        sprintf "Exception occurred trying to start IrisService: %s" exn.Message
+        |> Logger.err nodeid tag
 
   member self.Start() =
     try
@@ -242,7 +259,8 @@ type IrisService(project: IrisProject ref) =
       raftserver.Start()
     with
       | exn ->
-        printfn "Exception occurred trying to start IrisService: %s" exn.Message
+        sprintf "Exception occurred trying to start IrisService: %s" exn.Message
+        |> Logger.err nodeid tag
 
   // ** Stop
 
@@ -252,9 +270,11 @@ type IrisService(project: IrisProject ref) =
       dispose wsserver
       dispose httpserver
       dispose kontext
+      dispose logger
     with
       | exn ->
-        printfn "Exception occurred trying to dispose IrisService: %s" exn.Message
+        sprintf "Exception occurred trying to dispose IrisService: %s" exn.Message
+        |> Logger.err nodeid tag
 
   //  ____            _           _
   // |  _ \ _ __ ___ (_) ___  ___| |_

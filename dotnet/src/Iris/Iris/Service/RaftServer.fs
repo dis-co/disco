@@ -19,6 +19,8 @@ open Stm
 // |_| \_\__,_|_|  \__| |____/ \___|_|    \_/ \___|_|
 
 type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
+  let tag = "RaftServer"
+
   let locker = new Object()
 
   let mutable serverState = ServiceStatus.Stopped
@@ -39,7 +41,6 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
   // | (_| (_| | | | |_) | (_| | (__|   <\__ \
   //  \___\__,_|_|_|_.__/ \__,_|\___|_|\_\___/
 
-  let mutable onLogMsg         : Option<LogLevel -> string -> unit>     = None
   let mutable onConfigured     : Option<RaftNode array -> unit>        = None
   let mutable onNodeAdded      : Option<RaftNode -> unit>              = None
   let mutable onNodeUpdated    : Option<RaftNode -> unit>              = None
@@ -47,9 +48,6 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
   let mutable onStateChanged   : Option<RaftState -> RaftState -> unit> = None
   let mutable onApplyLog       : Option<StateMachine -> unit>          = None
   let mutable onCreateSnapshot : Option<unit -> StateMachine>          = None
-
-  member self.OnLogMsg
-    with set cb = onLogMsg <- Some cb
 
   member self.OnConfigured
     with set cb = onConfigured <- Some cb
@@ -98,7 +96,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
   ///
   /// Returns: unit
   member self.Start() =
-    printfn "Starting Raft Server"
+    self.Info "Starting Raft Server"
     lock locker <| fun _ ->
       try
         self.Debug "RaftServer: starting"
@@ -231,19 +229,19 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
 
   member self.Debug (msg: string) : unit =
     let state = self.State
-    cbs.LogMsg Debug state.Raft.Node msg
+    cbs.LogMsg state.Raft.Node tag Debug msg
 
   member self.Info (msg: string) : unit =
     let state = self.State
-    cbs.LogMsg Info state.Raft.Node msg
+    cbs.LogMsg state.Raft.Node tag Info msg
 
   member self.Warn (msg: string) : unit =
     let state = self.State
-    cbs.LogMsg Warn state.Raft.Node msg
+    cbs.LogMsg state.Raft.Node tag Warn msg
 
   member self.Err (msg: string) : unit =
     let state = self.State
-    cbs.LogMsg Err state.Raft.Node msg
+    cbs.LogMsg state.Raft.Node tag Err msg
 
   member self.ServerState with get () = serverState
 
@@ -516,11 +514,18 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
       with
         | exn -> handleException "DeleteLog" exn
 
-    member self.LogMsg level node str =
-      let log = sprintf "NODE: %s %s" (string node.Id) str
-      match onLogMsg with
-        | Some cb -> cb level log
-        | _ -> ()
+    /// ## LogMsg
+    ///
+    /// Triggers a new event on LogObservable.
+    ///
+    /// ### Signature:
+    /// - level: LogLevel
+    /// - node:  RaftNode
+    /// - str:   string
+    ///
+    /// Returns: unit
+    member self.LogMsg node site level str =
+      Logger.log level node.Id site str
 
   override self.ToString() =
     sprintf "Connections:%s\nNodes:%s\nRaft:%s\nLog:%s"
@@ -547,12 +552,12 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
         match leader with
         | Right leader ->
           sprintf "Reached leader: %A Adding to nodes." leader.Id
-          |> infoMsg state cbs
+          |> infoMsg state cbs "JoinCluster"
           do! Raft.addNodeM leader
           do! Raft.becomeFollower ()
         | Left err ->
           sprintf "Joining cluster failed. %A" err
-          |> errMsg state cbs
+          |> errMsg state cbs "JointCluser"
 
       } |> evalRaft state.Raft cbs
 
@@ -568,12 +573,16 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
         do! Raft.setTimeoutElapsedM 0u
 
         match tryLeave appState cbs with
-        | Right true  -> "Successfully left cluster." |> infoMsg state cbs // FIXME: this might need more consequences than this
-        | Right false -> "Could not leave cluster."   |> errMsg state cbs
+        | Right true  ->
+          "Successfully left cluster."
+          |> infoMsg state cbs "LeaveCluster" // FIXME: this might need more consequences than this
+        | Right false ->
+          "Could not leave cluster."
+          |> errMsg state cbs "LeaveCluster"
         | Left err ->
           err
           |> sprintf "Could not leave cluster. %A"
-          |> errMsg state cbs
+          |> errMsg state cbs "LeaveCluster"
 
         do! Raft.becomeFollower ()
 
@@ -603,7 +612,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
         raft {
           let! term = Raft.currentTermM ()
           let entry = JointConsensus(Id.Create(), 0u, term, [| change |], None)
-          do! Raft.debug "AddNode: appending entry to enter joint-consensus"
+          do! Raft.debug "AddNode" "appending entry to enter joint-consensus"
           return! Raft.receiveEntry entry
         }
         |> runRaft state.Raft cbs
@@ -642,11 +651,11 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
             let! term = Raft.currentTermM ()
             let changes = [| NodeRemoved peer |]
             let entry = JointConsensus(Id.Create(), 0u, term, changes, None)
-            do! Raft.debug "RmNode: appending entry to enter joint-consensus"
+            do! Raft.debug "RmNode" "appending entry to enter joint-consensus"
             let! appended = Raft.receiveEntry entry
             return Some appended
           | _ ->
-            do! Raft.warn "Node could not be removed. Node not found."
+            do! Raft.warn "RmNode" "Node could not be removed. Node not found."
             return None
         }
         |> runRaft state.Raft cbs

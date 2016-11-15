@@ -665,7 +665,8 @@ module SerializationTests =
       ; RemoveNode    <| Node.create (Id.Create())
       ; DataSnapshot  <| mkState ()
       ; Command AppCommand.Undo
-      ; LogMsg(Debug, "ohai")
+      ; LogMsg(Logger.create Debug (Id.Create()) "bla" "oohhhh")
+      ; SetLogLevel Warn
       ]
       |> List.iter
           (fun cmd ->
@@ -697,7 +698,8 @@ module SerializationTests =
       ; RemoveNode    <| Node.create (Id.Create())
       ; DataSnapshot  <| mkState ()
       ; Command AppCommand.Undo
-      ; LogMsg(Debug, "ohai")
+      ; LogMsg(Logger.create Debug (Id.Create()) "bla" "oohhhh")
+      ; SetLogLevel Err
       ]
       |> List.iter
           (fun cmd ->

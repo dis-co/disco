@@ -1179,8 +1179,13 @@ and StateMachineYaml(cmd: string, payload: obj) as self =
 
   // ** LogMsg
 
-  static member LogMsg (loglevel, str) =
-    new StateMachineYaml("LogMsg", sprintf "%A;%s" loglevel str)
+  static member LogMsg (log: LogEvent) =
+    new StateMachineYaml("LogMsg", Yaml.toYaml log)
+
+  // ** LogMsg
+
+  static member SetLogLevel (level: LogLevel) =
+    new StateMachineYaml("SetLogLevel", string level)
 
   // ** DataSnapshot
 
@@ -1238,7 +1243,9 @@ and StateMachine =
 
   | DataSnapshot  of State
 
-  | LogMsg        of LogLevel * string
+  | SetLogLevel   of LogLevel
+
+  | LogMsg        of LogEvent
 
   // ** ToString
 
@@ -1282,7 +1289,8 @@ and StateMachine =
 
     | Command    ev         -> sprintf "Command: %s"  (string ev)
     | DataSnapshot state    -> sprintf "DataSnapshot: %A" state
-    | LogMsg(level, msg)    -> sprintf "LogMsg: [%A] %s" level msg
+    | SetLogLevel level     -> sprintf "SetLogLevel: %A" level
+    | LogMsg log            -> sprintf "LogMsg: [%A] %s" log.LogLevel log.Message
 
   // ** ToYamlObject
 
@@ -1332,7 +1340,9 @@ and StateMachine =
 
     | Command         ev    -> StateMachineYaml.Command(ev)
     | DataSnapshot state    -> StateMachineYaml.DataSnapshot(state)
-    | LogMsg(level, msg)    -> StateMachineYaml.LogMsg(level,msg)
+
+    | SetLogLevel level     -> StateMachineYaml.SetLogLevel(level)
+    | LogMsg log            -> StateMachineYaml.LogMsg(log)
 
   // ** ToYaml
 
@@ -1435,18 +1445,13 @@ and StateMachine =
         let! data = yaml.Payload :?> StateYaml |> Yaml.fromYaml
         return DataSnapshot(data)
       }
+    | "SetLogLevel" -> either {
+        let! level = yaml.Payload :?> string |> LogLevel.TryParse
+        return SetLogLevel level
+      }
     | "LogMsg" -> either {
-        let payload = yaml.Payload :?> string
-        let! (levelstr, str) =
-          match String.split [| ';' |] payload with
-          | [| level; str |] ->
-             Right (level, str)
-          | _ ->
-             sprintf "Could not parse LogMsg %s" payload
-             |> ParseError
-             |> Either.fail
-        let! loglevel = LogLevel.TryParse levelstr
-        return LogMsg(loglevel, str)
+        let! log = yaml.Payload :?> LogEventYaml |> Yaml.fromYaml
+        return LogMsg log
       }
     | x ->
       sprintf "Could not parse %s as StateMachine command" x
@@ -1577,12 +1582,21 @@ and StateMachine =
       |> State.FromFB
       |> Either.map DataSnapshot
 
-    | x when x = PayloadFB.LogMsgFB ->
-      let msg = fb.LogMsgFB
-      msg.LogLevel
-      |> LogLevel.TryParse
-      |> Either.map (fun level -> LogMsg(level, msg.Msg))
+    | x when x = PayloadFB.LogEventFB ->
+      fb.LogEventFB
+      |> LogEvent.FromFB
+      |> Either.map LogMsg
 
+    | x when x = PayloadFB.StringFB ->
+      match fb.Action with
+      | x when x = ActionTypeFB.SetLogLevelFB ->
+        fb.StringFB.Value
+        |> LogLevel.TryParse
+        |> Either.map SetLogLevel
+      | x ->
+        sprintf "Could not parse unknown ActionTypeFB %A" x
+        |> ParseError
+        |> Either.fail
     | _ ->
       fb.Action
       |> AppCommand.FromFB
@@ -1802,16 +1816,15 @@ and StateMachine =
     // | |  | | \__ \ (__
     // |_|  |_|_|___/\___|
 
-    | PayloadFB.LogMsgFB ->
+    | PayloadFB.LogEventFB ->
       either {
-        let logish = fb.Payload<LogMsgFB>()
+        let logish = fb.Payload<LogEventFB>()
         if logish.HasValue then
-          let log = logish.Value
-          let! level = log.LogLevel |> LogLevel.TryParse
-          return LogMsg(level, log.Msg)
+          let! log = LogEvent.FromFB logish.Value
+          return LogMsg(log)
         else
           return!
-            "Could not parse empty logmsg payload"
+            "Could not parse empty LogEvent payload"
             |> ParseError
             |> Either.fail
       }
@@ -1826,6 +1839,20 @@ and StateMachine =
         else
           return!
             "Could not parse empty state payload"
+            |> ParseError
+            |> Either.fail
+      }
+
+    | PayloadFB.StringFB ->
+      either {
+        let stringish = fb.Payload<StringFB> ()
+        if stringish.HasValue then
+          let value = stringish.Value
+          let! parsed = LogLevel.TryParse value.Value
+          return (SetLogLevel parsed)
+        else
+          return!
+            "Could not parse empty string payload"
             |> ParseError
             |> Either.fail
       }
@@ -2110,17 +2137,26 @@ and StateMachine =
 #endif
       ApiActionFB.EndApiActionFB(builder)
 
-    | LogMsg (level, msg) ->
-      let level = string level |> builder.CreateString
-      let msg = msg |> builder.CreateString
-      LogMsgFB.StartLogMsgFB(builder)
-      LogMsgFB.AddLogLevel(builder, level)
-      LogMsgFB.AddMsg(builder, msg)
-      let offset = LogMsgFB.EndLogMsgFB(builder)
-
+    | LogMsg log ->
+      let offset = log.ToOffset(builder)
       ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.LogMsgFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.LogMsgFB)
+      ApiActionFB.AddAction(builder, ActionTypeFB.LogEventFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.LogEventFB)
+#if FABLE_COMPILER
+      ApiActionFB.AddPayload(builder, offset)
+#else
+      ApiActionFB.AddPayload(builder, offset.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
+
+    | SetLogLevel level ->
+      let str = builder.CreateString (string level)
+      StringFB.StartStringFB(builder)
+      StringFB.AddValue(builder,str)
+      let offset = StringFB.EndStringFB(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.SetLogLevelFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.StringFB)
 #if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, offset)
 #else

@@ -122,14 +122,7 @@ module CommandLine =
   // ** tryAppendEntry
 
   let tryAppendEntry (ctx: RaftServer) str =
-    match ctx.Append (LogMsg(Debug,str)) with
-      | Right response ->
-        printfn "Added Entry: %s Index: %A Term: %A"
-          (string response.Id)
-          response.Index
-          response.Term
-      | Left error ->
-        printfn "AppendEntry Error: %A" error
+    warn "CLI AppendEntry currently not supported"
 
   // ** timeoutRaft
 
@@ -237,9 +230,10 @@ module CommandLine =
   //                  |_|
 
   let interactiveLoop (context: IrisService) : unit =
+    printfn "Welcome to the Raft REPL. Type help to see all commands."
     let kont = ref true
     let rec proc kontinue =
-      printf "~> "
+      printf "λ "
       let input = Console.ReadLine()
       match input with
         | LogLevel opt -> trySetLogLevel opt context.Raft
@@ -301,10 +295,10 @@ module CommandLine =
       match Project.load projFile with
       | Right project ->
         use server = new IrisService(ref project)
+
         server.Start(web)
 
         if interactive then
-          printfn "Welcome to the Raft REPL. Type help to see all commands."
           interactiveLoop server
           |> Either.succeed
         else

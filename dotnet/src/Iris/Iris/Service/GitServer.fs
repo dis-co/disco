@@ -31,10 +31,13 @@ open Microsoft.FSharp.Control
 ///
 /// Returns: GitServer
 type GitServer (project: IrisProject) =
+  let tag = "GitServer"
 
   let loco : obj  = new obj()
 
-  let mutable logger : (CallSite -> LogLevel -> string -> unit) option = None
+  let nodeid =
+    Config.getNodeId()
+    |> Either.get
 
   let mutable starter : AutoResetEvent = null
   let mutable stopper : AutoResetEvent = null
@@ -58,22 +61,6 @@ type GitServer (project: IrisProject) =
     starter <- new AutoResetEvent(false)
     stopper <- new AutoResetEvent(false)
 
-  // ** log
-
-  /// ## log
-  ///
-  /// Uses the passed logging function to log events inside the worker.
-  ///
-  /// ### Signature:
-  /// - level: LogLevel to use
-  /// - str: string to log
-  ///
-  /// Returns: unit
-  let log level str =
-    match logger with
-    | Some cb -> cb (typeof<GitServer>) level str
-    | _       -> ()
-
   // ** streamReader
 
   /// ## streamReader
@@ -88,7 +75,7 @@ type GitServer (project: IrisProject) =
   /// - stream: StreamReader to monitor
   ///
   /// Returns: CancellationTokenSource
-  let streamReader (tag: LogLevel) (stream: StreamReader) =
+  let streamReader (level: LogLevel) (stream: StreamReader) =
     let cts = new CancellationTokenSource()
     let action =
       async {
@@ -96,12 +83,13 @@ type GitServer (project: IrisProject) =
           let line = stream.ReadLine()    // blocks
 
           if line.Contains "Ready to rumble" then
-            log LogLevel.Debug "setting starter to return to caller of .Start()"
+            Logger.debug nodeid tag "setting starter to return to caller of .Start()"
             starter.Set() |> ignore
 
-          log tag line
+          Logger.log level nodeid tag line
 
-        log LogLevel.Debug (sprintf "streamReader done. running=%b eof=%b" running (not running))
+        sprintf "streamReader done. running=%b eof=%b" running (not running)
+        |> Logger.debug nodeid tag
       }
     Async.Start(action, cts.Token)
     cts
@@ -171,7 +159,7 @@ type GitServer (project: IrisProject) =
       port
       basedir
       path
-    |> log LogLevel.Debug
+    |> Logger.debug nodeid tag
 
     let args =
       sprintf """daemon \
@@ -210,66 +198,59 @@ type GitServer (project: IrisProject) =
       stdoutToken <- streamReader LogLevel.Info proc.StandardOutput
       stderrToken <- streamReader LogLevel.Err  proc.StandardError
 
-      log LogLevel.Debug "setting status to running"
+      Logger.debug nodeid tag "setting status to running"
       status <- ServiceStatus.Running
 
       /// 4.2) Waiting for the Signal to shut down
-      log LogLevel.Debug "waiting for Stop signal"
+      Logger.debug nodeid tag "waiting for Stop signal"
       lock loco <| fun _ ->
         Monitor.Wait(loco) |> ignore
 
       /// 5.1) Cleaing up Resources - StdErr/StdOut StreamReader actions
-      log LogLevel.Debug "stopping streamReaders"
+      Logger.debug nodeid tag "stopping streamReaders"
       cancelToken stdoutToken
       cancelToken stderrToken
 
       /// 5.2) Exit event handler
       try
-        log LogLevel.Debug "disposing event handlers"
+        Logger.debug nodeid tag "disposing event handlers"
         dispose onExitEvent
       with
-        | exn -> log LogLevel.Info (sprintf "could not dispose of event handler: %s" exn.Message)
+        | exn ->
+          sprintf "could not dispose of event handler: %s" exn.Message
+          |> Logger.info nodeid tag
 
       /// 5.3) Kill the process
       try
-        log LogLevel.Debug "killing process"
+        Logger.debug nodeid tag "killing process"
         proc.Kill()
       with
-        | exn -> log LogLevel.Info (sprintf "could not kill process: %s" exn.Message)
+        | exn ->
+          sprintf "could not kill process: %s" exn.Message
+          |> Logger.info nodeid tag
 
       /// 5.4) dispose the Process
       try
-        log LogLevel.Debug "disposing process"
+        Logger.debug nodeid tag "disposing process"
         dispose proc
       with
-        | exn -> log LogLevel.Info (sprintf "could not dispose of process: %s" exn.Message)
+        | exn ->
+          sprintf "could not dispose of process: %s" exn.Message
+          |> Logger.info nodeid tag
 
       /// 6) Set status to Stopped
       if Service.isStopping status then
-        log LogLevel.Debug "setting status to Stopped"
+        Logger.debug nodeid tag "setting status to Stopped"
         status <- ServiceStatus.Stopped
 
       /// 7) Signal shutdown is complete
       stopper.Set() |> ignore
-      log LogLevel.Debug "shutdown in thread complete"
+      Logger.debug nodeid tag "shutdown in thread complete"
     else
       /// 4.2) Signal startup is complete (but failed)
-      log LogLevel.Err "starting child process unsuccessful"
+      Logger.err nodeid tag "starting child process unsuccessful"
       status <- ServiceStatus.Failed (Other "Git process could not be started")
       starter.Set() |> ignore
-
-  // ** OnLogMsg
-
-  /// ## OnLogMsg
-  ///
-  /// Setter for logging callback
-  ///
-  /// ### Signature:
-  /// - callback: (CallSite -> LogLevel -> string -> unit) callback to use for logging
-  ///
-  /// Returns: unit
-  member self.OnLogMsg
-    with set callback = logger <- Some callback
 
   // ** Status
 
@@ -299,21 +280,23 @@ type GitServer (project: IrisProject) =
     if Service.isStopped status then
       match project.Path, Config.selfNode project.Config with
       | Some path, Right node  ->
-        log LogLevel.Info "starting"
+        Logger.info nodeid tag "starting"
         status <- ServiceStatus.Starting
         thread <- new Thread(new ThreadStart(worker path node.IpAddr node.GitPort))
         thread.Start()
         starter.WaitOne() |> ignore
-        log LogLevel.Info "started sucessfully"
+        Logger.info nodeid tag "started sucessfully"
 
       | None, _ ->
-        log LogLevel.Err "cannot start without a project path"
+        Logger.err nodeid tag "cannot start without a project path"
 
       | _, Left error ->
-        log LogLevel.Err (sprintf "cannot start: %A" error)
+        sprintf "cannot start: %A" error
+        |> Logger.err nodeid tag
 
     else
-      log Err (sprintf "cannot not start. wrong status: %A" status)
+      sprintf "cannot not start. wrong status: %A" status
+      |> Logger.err nodeid tag
 
   // ** Stop
 
@@ -327,17 +310,17 @@ type GitServer (project: IrisProject) =
   /// Returns: unit
   member self.Stop() =
     if Service.isRunning status then
-      log LogLevel.Debug "setting status to Stopping"
+      Logger.debug nodeid tag "setting status to Stopping"
       status <- ServiceStatus.Stopping
 
-      log LogLevel.Debug "waiting for stop signal"
+      Logger.debug nodeid tag "waiting for stop signal"
       lock loco <| fun _ ->
         Monitor.Pulse(loco)
 
-      log LogLevel.Debug "waiting for final signal to shut down"
+      Logger.debug nodeid tag "waiting for final signal to shut down"
       stopper.WaitOne() |> ignore
 
-      log LogLevel.Debug "shutdown complete"
+      Logger.debug nodeid tag "shutdown complete"
 
   // ** Running
 

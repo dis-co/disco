@@ -1002,27 +1002,57 @@ type StateFBConstructor =
 
 let StateFB: StateFBConstructor = failwith "JS only"
 
-//  _                __  __           _____ ____
-// | |    ___   __ _|  \/  |___  __ _|  ___| __ )
-// | |   / _ \ / _` | |\/| / __|/ _` | |_  |  _ \
-// | |__| (_) | (_| | |  | \__ \ (_| |  _| | |_) |
-// |_____\___/ \__, |_|  |_|___/\__, |_|   |____/
-//             |___/            |___/
+//  _                _____                 _   _____ ____
+// | |    ___   __ _| ____|_   _____ _ __ | |_|  ___| __ )
+// | |   / _ \ / _` |  _| \ \ / / _ \ '_ \| __| |_  |  _ \
+// | |__| (_) | (_| | |___ \ V /  __/ | | | |_|  _| | |_) |
+// |_____\___/ \__, |_____| \_/ \___|_| |_|\__|_|   |____/
+//             |___/
 
-type LogMsgFB =
+type LogEventFB =
+  abstract Time: uint32
+  abstract Thread: int
+  abstract Tier: string
+  abstract Id: string
+  abstract Tag: string
   abstract LogLevel: string
-  abstract Msg: string
+  abstract Message: string
 
-type LogMsgFBConstructor =
-  abstract prototype: LogMsgFB with get, set
-  abstract StartLogMsgFB: builder: FlatBufferBuilder -> unit
+type LogEventFBConstructor =
+  abstract prototype: LogEventFB with get, set
+  abstract StartLogEventFB: builder: FlatBufferBuilder -> unit
+  abstract AddTime: builder: FlatBufferBuilder * time: uint32 -> unit
+  abstract AddThread: builder: FlatBufferBuilder * thread: int -> unit
+  abstract AddTier: builder: FlatBufferBuilder * tier: Offset<string> -> unit
+  abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+  abstract AddTag: builder: FlatBufferBuilder * tag: Offset<string> -> unit
   abstract AddLogLevel: builder: FlatBufferBuilder * level: Offset<string> -> unit
-  abstract AddMsg: builder: FlatBufferBuilder * msg: Offset<string> -> unit
-  abstract EndLogMsgFB: builder: FlatBufferBuilder -> Offset<LogMsgFB>
-  abstract GetRootAsLogMsgFB: bytes: ByteBuffer -> LogMsgFB
-  abstract Create: unit -> LogMsgFB
+  abstract AddMessage: builder: FlatBufferBuilder * msg: Offset<string> -> unit
+  abstract EndLogEventFB: builder: FlatBufferBuilder -> Offset<LogEventFB>
+  abstract GetRootAsLogEventFB: bytes: ByteBuffer -> LogEventFB
+  abstract Create: unit -> LogEventFB
 
-let LogMsgFB: LogMsgFBConstructor = failwith "JS only"
+let LogEventFB: LogEventFBConstructor = failwith "JS only"
+
+//  ____  _        _             _____ ____
+// / ___|| |_ _ __(_)_ __   __ _|  ___| __ )
+// \___ \| __| '__| | '_ \ / _` | |_  |  _ \
+//  ___) | |_| |  | | | | | (_| |  _| | |_) |
+// |____/ \__|_|  |_|_| |_|\__, |_|   |____/
+//                         |___/
+
+type StringFB =
+  abstract Value: string
+
+type StringFBConstructor =
+  abstract prototype: StringFB with get, set
+  abstract StartStringFB: builder: FlatBufferBuilder -> unit
+  abstract AddValue: builder: FlatBufferBuilder * value: Offset<string> -> unit
+  abstract EndStringFB: builder: FlatBufferBuilder -> Offset<string>
+  abstract GetRootAsStringFB: bytes: ByteBuffer -> StringFB
+  abstract Create: unit -> StringFB
+
+let StringFB: StringFBConstructor = failwith "JS only"
 
 //     _          _    _        _   _
 //    / \   _ __ (_)  / \   ___| |_(_) ___  _ __
@@ -1037,12 +1067,13 @@ type ActionTypeFBConstructor =
   abstract AddFB: ActionTypeFB
   abstract UpdateFB: ActionTypeFB
   abstract RemoveFB: ActionTypeFB
-  abstract LogMsgFB: ActionTypeFB
+  abstract LogEventFB: ActionTypeFB
   abstract UndoFB: ActionTypeFB
   abstract RedoFB: ActionTypeFB
   abstract ResetFB: ActionTypeFB
   abstract SaveProjectFB: ActionTypeFB
   abstract DataSnapshotFB: ActionTypeFB
+  abstract SetLogLevelFB: ActionTypeFB
 
 let ActionTypeFB: ActionTypeFBConstructor = failwith "JS only"
 
@@ -1057,8 +1088,9 @@ type PayloadFBConstructor =
   abstract NodeFB: PayloadFB
   abstract UserFB: PayloadFB
   abstract SessionFB: PayloadFB
-  abstract LogMsgFB: PayloadFB
+  abstract LogEventFB: PayloadFB
   abstract StateFB: PayloadFB
+  abstract StringFB: PayloadFB
 
 let PayloadFB: PayloadFBConstructor = failwith "JS only"
 
@@ -1072,8 +1104,9 @@ type ApiActionFB =
   abstract NodeFB: NodeFB
   abstract UserFB: UserFB
   abstract SessionFB: SessionFB
-  abstract LogMsgFB: LogMsgFB
+  abstract LogEventFB: LogEventFB
   abstract StateFB: StateFB
+  abstract StringFB: StringFB
   abstract Payload: 'a -> 'a
 
 type ApiActionFBConstructor =

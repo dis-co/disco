@@ -21,10 +21,18 @@ open Iris.Core
 
 type FileName = string
 
-type AssetServer(?config: IrisConfig) =
+
+type AssetServer(?config: IrisConfig) as self =
+  let [<Literal>] tag = "AssetServer"
+
   let [<Literal>] defaultIP = "127.0.0.1"
   let [<Literal>] defaultPort = "7000"
+
   let cts = new CancellationTokenSource()
+
+  let nodeid =
+    Config.getNodeId()
+    |> Error.orExit id
 
   let noCache =
     setHeader "Cache-Control" "no-cache, no-store, must-revalidate"
@@ -92,11 +100,12 @@ type AssetServer(?config: IrisConfig) =
         let addr = IPAddress.Parse addr
         let port = Sockets.Port.Parse port
 
-        printfn "Suave Web Server ready to start on: %A:%A" addr port
+        sprintf "Suave Web Server ready to start on: %A:%A" addr port
+        |> Logger.info nodeid tag
 
         return
           { defaultConfig with
-              logger            = ConsoleWindowLogger(Suave.Logging.LogLevel.Info)
+              logger            = self
               cancellationToken = cts.Token
               homeFolder        = Some(basePath)
               bindings          = [ HttpBinding.mk HTTP addr port ]
@@ -112,12 +121,14 @@ type AssetServer(?config: IrisConfig) =
 
   let thread = new Thread(new ThreadStart(fun _ ->
     try
-      printfn "Starting asset server..."
+      Logger.info nodeid tag "Starting HTTP server"
       startWebServer appConfig app
     with
       | :? System.OperationCanceledException ->
-        printfn "Asset server cancelled"
-      | ex -> printfn "Asset server Exception: %s" ex.Message))
+        Logger.debug nodeid tag  "HTTP server shutting down"
+      | ex ->
+        sprintf "Asset server Exception: %s" ex.Message
+        |> Logger.err nodeid tag ))
 
   member this.Start() : unit =
     thread.Start ()
@@ -126,3 +137,11 @@ type AssetServer(?config: IrisConfig) =
     member this.Dispose() : unit =
       cts.Cancel ()
       cts.Dispose ()
+
+  interface Logger with
+    member self.Log level fLine =
+      let line = fLine ()
+      match line.level with
+      | Suave.Logging.LogLevel.Verbose -> ()
+      | _ ->
+        Logger.debug nodeid tag line.message
