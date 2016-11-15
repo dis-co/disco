@@ -6,27 +6,22 @@
 // |  _|| | | (_) | | | | ||  __/ | | | (_| | | |  | | (_| | | | | |
 // |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| |_|  |_|\__,_|_|_| |_|
 
+open Iris.Raft
 open Iris.Core
 open Iris.Web.Core
 open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Import
-module R = Fable.Helpers.React
 
 let context = new ClientContext()
 
-type AppView(props, ctx) as this =
-    inherit React.Component<obj, State>(props, ctx)
-    //let dispatch = context.Trigger
-    do context.Subscribe(fun _ state ->
-      printfn "%A" state
-      this.setState state)
+type ReactApp =
+  abstract mount: ((State->unit)->unit)->unit
 
-    member this.render() =
-        R.div [] [R.str "foo"]
-
-ReactDom.render(
-  R.com<AppView,_,_> None [],
-  Browser.document.getElementById "app") |> ignore
+let reactApp: ReactApp = importDefault "ReactApp"
+reactApp.mount(fun f ->
+  context.Subscribe(fun _ state -> f state)
+)
 
 context.Start()
 
