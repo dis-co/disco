@@ -237,6 +237,23 @@ module Git =
         modewls := modewl :: !modewls
       !modewls
 
+    /// ## clone
+    ///
+    /// Clone a remote repository.
+    ///
+    /// ### Signature:
+    /// - target: FilePath to target directory
+    /// - remote: string specifiying the remote repository address
+    ///
+    /// Returns: Either<IrisError, Respository>
+    let clone (target: FilePath) (remote: string) =
+      try
+        new Repository(Repository.Clone(remote, target))
+        |> Either.succeed
+      with
+        | exn ->
+          Left (GitError exn.Message)
+
     /// ## Get all branches in repository.
     ///
     /// Get all branches in repository.

@@ -110,35 +110,53 @@ module GitTests =
   let test_server_startup =
     testCase "Server startup" <| fun _ ->
       let uuid, tmpdir, project =
-        mkEnvironment 9000us
+        mkEnvironment 10000us
 
-      let gitserver = new GitServer(project)
+      use gitserver = new GitServer(project)
       // gitserver.OnLogMsg <- Logger.log (Id uuid) Debug
       gitserver.Start()
 
       expect "Should be running" true Service.isRunning gitserver.Status
 
-      dispose gitserver
-
   let test_server_startup_should_error_on_eaddrinuse =
     testCase "Server should fail on EADDRINUSE" <| fun _ ->
       let uuid, tmpdir, project =
-        mkEnvironment 8000us
+        mkEnvironment 10001us
 
-      let gitserver1 = new GitServer(project)
+      use gitserver1 = new GitServer(project)
       // gitserver1.OnLogMsg <- Logger.log (Id uuid) Debug
       gitserver1.Start()
 
       expect "Should be running" true Service.isRunning gitserver1.Status
 
-      let gitserver2 = new GitServer(project)
+      use gitserver2 = new GitServer(project)
       // gitserver2.OnLogMsg <- Logger.log (Id.Create()) Debug
       gitserver2.Start()
 
       expect "Should have failed" true Service.hasFailed gitserver2.Status
 
-      dispose gitserver1
-      dispose gitserver2
+  let test_server_availability =
+    testCase "Server availability" <| fun _ ->
+      let port = 10002us
+
+      let uuid, tmpdir, project =
+        mkEnvironment port
+
+      use gitserver = new GitServer(project)
+      // gitserver.OnLogMsg <- Logger.log (Id uuid) Debug
+      gitserver.Start()
+
+      expect "Should be running" true Service.isRunning gitserver.Status
+
+      let target = mkTmpDir ()
+
+      let repo =
+        tmpdir.FullName
+        |> Path.baseName
+        |> sprintf "git://localhost:%d/%s/.git" port
+        |> Git.Repo.clone target.FullName
+
+      expect "Should have successfully clone project" true Either.isSuccess repo
 
   //  _____         _     _     _     _
   // |_   _|__  ___| |_  | |   (_)___| |_
@@ -154,5 +172,6 @@ module GitTests =
 
       // SERVER
       test_server_startup
+      test_server_availability
       test_server_startup_should_error_on_eaddrinuse
     ]

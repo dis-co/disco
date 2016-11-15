@@ -439,6 +439,14 @@ module FileSystem =
 
 #endif
 
+// * Path
+
+[<RequireQualifiedAccess>]
+module Path =
+
+  let baseName (path: FilePath) =
+    Path.GetFileName path
+
 // * Time
 
 #if !JAVASCRIPT
