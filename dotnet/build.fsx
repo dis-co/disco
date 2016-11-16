@@ -110,7 +110,6 @@ let nativeProjects =
 
 let jsProjects =
   [ baseDir @@ "Frontend.fsproj"
-    baseDir @@ "Worker.fsproj"
     baseDir @@ "Web.Tests.fsproj" ]
 
 // Helper active pattern for project types
@@ -145,6 +144,14 @@ let runExec filepath args workdir shell =
               TimeSpan.MaxValue
   |> maybeFail
 
+let runExecAndReturn filepath args workdir =
+  ExecProcessAndReturnMessages (fun info ->
+    info.FileName <- filepath
+    info.Arguments <- if String.length args > 0 then args else info.Arguments
+    info.UseShellExecute <- false
+    info.WorkingDirectory <- workdir) TimeSpan.MaxValue
+  |> fun res -> res.Messages |> String.concat "\n"
+
 let runNpm cmd workdir _ =
   let npm =
     match Environment.OSVersion.Platform with
@@ -166,7 +173,7 @@ let runFable fableconfigdir extraArgs _ =
   // Run Fable's dev version
   // runNode ("../../Fable/build/fable " + fableconfigdir + " " + extraArgs + " --verbose") __SOURCE_DIRECTORY__ ()
 
-let runTests filepath workdir =
+let runTestsOnWindows filepath workdir =
   let arch =
     if Environment.Is64BitOperatingSystem
     then "amd64"
@@ -372,13 +379,10 @@ Target "GenerateSerialization"
 
 let frontendDir = baseDir @@ "Projects" @@ "Frontend"
 
-Target "BuildFrontend" (runFable frontendDir "")
-Target "BuildFrontendFsProj" (buildDebug "Projects/Frontend/Frontend.fsproj")
-
-let workerDir = baseDir @@ "Projects" @@ "Worker"
-
-Target "BuildWorker" (runFable workerDir "")
-Target "BuildWorkerFsProj" (buildDebug "Projects/Worker/Worker.fsproj")
+Target "BuildFrontend" (fun () ->
+  runFable frontendDir "" ()
+  runNpm "run webpack" (baseDir @@ "Iris/Web/React") ()
+)
 
 //  _____         _
 // |_   _|__  ___| |_ ___
@@ -466,7 +470,7 @@ Target "RunTests"
     if isUnix then
       runMono "Iris.Tests.exe" testsDir
     else
-      runTests "Iris.Tests.exe" testsDir)
+      runTestsOnWindows "Iris.Tests.exe" testsDir)
 
 //  ____
 // / ___|  ___ _ ____   _____ _ __
@@ -558,9 +562,6 @@ Target "Release" DoNothing
 ==> "BuildFrontend"
 
 "GenerateSerialization"
-==> "BuildWorker"
-
-"GenerateSerialization"
 ==> "BuildReleaseService"
 
 "GenerateSerialization"
@@ -601,18 +602,45 @@ Target "Release" DoNothing
 // |____/ \___|_.__/ \__,_|\__, |____/ \___/ \___|_|\_\___|_|
 //                         |___/
 
-Target "DebugDocker" (fun () ->
-  FileUtils.cp_r "src/Docker/iris/" "src/Iris/bin/Debug/Iris"
+let getCommitHash() =
+  let log = runExecAndReturn "git" "log -n1 --oneline" baseDir
+  log.Substring(0, log.IndexOf(" "))
+
+let dockerCreateImage hash workingDir =
+  let cmd = sprintf "build --label iris --tag iris:%s ." hash
+  runExec "docker" cmd workingDir false
+
+Target "DockerCreateBaseImage" (fun () ->
+  runExec "docker" "build --label iris --tag iris:base ../Docker/iris_base" baseDir false
 )
 
-"BuildWorker"
-==> "DebugDocker"
+Target "DockerRunTests" (fun () ->
+  let testsDir = "src/Iris/bin/Debug/Tests"
+  FileUtils.cp_r "src/Docker/iris/" testsDir
+  let hash = getCommitHash()
+  dockerCreateImage hash testsDir
+  let irisNodeId = Guid.NewGuid().ToString()
+  let img = runExecAndReturn "docker" ("images -q iris:" + hash) baseDir
+  let runCmd = sprintf "run -i --rm -e IRIS_NODE_ID=%s -e COMMAND=tests %s" irisNodeId img
+  runExec "docker" runCmd  baseDir false
+)
 
-"BuildFrontend"
-==> "DebugDocker"
+"BuildTests"
+==> "DockerRunTests"
 
-"BuildDebugService"
-==> "DebugDocker"
+// let startDockerCmd() =
+//   let project, irisNodeId, image = "foo", "foo", "foo"
+//   sprintf """run -p 7000:7000 -i --rm -v %s:/project \
+//     -e IRIS_NODE_ID=%s -e COMMAND=start %s""" project irisNodeId image
+
+// Target "CreateDocker" (fun () ->
+//   FileUtils.cp_r "src/Docker/iris/" "src/Iris/bin/Debug/Iris"
+//   runExec "docker" (createDockerCmd()) baseDir false
+// )
+
+// Target "StartDockerImage" (fun () ->
+//   runExec "docker" (startDockerCmd()) baseDir false
+// )
 
 //  ____       _                    _    _ _
 // |  _ \  ___| |__  _   _  __ _   / \  | | |
@@ -623,22 +651,9 @@ Target "DebugDocker" (fun () ->
 
 Target "DebugAll" DoNothing
 
-"RunWebTests"
-==> "DebugAll"
-
-"BuildWorker"
-==> "DebugAll"
-
 "BuildFrontend"
-==> "DebugAll"
-
-"BuildDebugService"
-==> "DebugAll"
-
-"BuildDebugNodes"
-==> "DebugAll"
-
-"RunTests"
+?=> "BuildDebugService"
+?=> "BuildDebugNodes"
 ==> "DebugAll"
 
 // "CleanDocs"
@@ -655,9 +670,7 @@ Target "DebugAll" DoNothing
 Target "AllTests" DoNothing
 
 "RunTests"
-==> "AllTests"
-
-"RunWebTests"
+?=> "RunWebTests"
 ==> "AllTests"
 
 RunTargetOrDefault "Release"

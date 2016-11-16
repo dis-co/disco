@@ -7,6 +7,9 @@ export PATH=/usr/local/bin:/usr/bin/:/bin:/sbin
 cd $BASEDIR
 
 case $COMMAND in
+    "tests")
+	mono Iris.Tests.exe
+	;;
     "interactive")
 	if [ -z "$IRIS_NOWEB" ]; then
 	    mono iris.exe start -i --dir=/project
