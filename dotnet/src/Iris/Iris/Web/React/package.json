@@ -1,8 +1,8 @@
 {
   "private": true,
   "scripts": {
-    "babel": "babel src --out-dir build",
-    "webpack": "webpack --progress"
+    "build": "webpack-dev-server",
+    "build-production": "NODE_ENV=production webpack --progress"
   },
   "devDependencies": {
     "@types/material-ui": "^0.16.39",
@@ -16,7 +16,13 @@
     "material-ui": "^0.16.2",
     "react": "^15.3.2",
     "react-dom": "^15.3.2",
+    "react-grid-layout": "^0.13.9",
+    "react-hot-loader": "^3.0.0-beta.6",
     "react-tap-event-plugin": "^1.0.0",
-    "webpack": "^1.13.3"
+    "requirejs": "^2.3.2",
+    "ts-loader": "^1.2.1",
+    "typescript": "^2.0.10",
+    "webpack": "^1.13.3",
+    "webpack-dev-server": "^1.16.2"
   }
 }

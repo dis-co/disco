@@ -162,18 +162,8 @@ type GitServer (project: IrisProject) =
     |> Logger.debug nodeid tag
 
     let args =
-      sprintf """daemon \
-                 --verbose \
-                 --reuseaddr \
-                 --listen=%s \
-                 --port=%d \
-                 --strict-paths \
-                 --base-path=%s \
-                 %s/.git"""
-        (string addr)
-        port
-        basedir
-        path
+      sprintf "daemon --verbose --reuseaddr --listen=%s --port=%d --strict-paths --base-path=%s %s/.git"
+        (string addr) port basedir path
 
     let proc = new Process()
     proc.StartInfo.FileName <- "git"
