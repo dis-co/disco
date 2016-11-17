@@ -121,18 +121,19 @@ module Raft =
   let currentIndex (state: RaftValue) =
     Log.index state.Log
 
-  let log level str =
+  let log site level str =
     read >>= fun cbs ->
       get >>= fun state ->
-        cbs.LogMsg level state.Node str |> returnM
+        cbs.LogMsg state.Node site level str
+        |> returnM
 
-  let debug str = log Debug str
+  let debug site str = log site Debug str
 
-  let info str = log Info str
+  let info site str = log site Info str
 
-  let warn str = log Warn str
+  let warn site str = log site Warn str
 
-  let error str = log Err str
+  let error site str = log site Err str
 
   let sendAppendEntriesM (node: RaftNode) (request: AppendEntries) =
     get >>= fun state ->
@@ -147,7 +148,7 @@ module Raft =
               request.PrevLogIdx
               request.PrevLogTerm
 
-          cbs.LogMsg Debug state.Node msg
+          cbs.LogMsg state.Node "sendAppendEntriesM" Debug msg
 
           let result = cbs.SendAppendEntries node request
           return result
@@ -631,9 +632,8 @@ module Raft =
 
   let setVotingM (node: RaftNode) (vote: bool) =
     raft {
-      do! debug <| sprintf "setVotingM: setting node %s voting to %b"
-                    (string node.Id)
-                     vote
+      let msg = sprintf "setting node %s voting to %b" (string node.Id) vote
+      do! debug "setVotingM" msg
       do! setVoting node vote |> modify
     }
 
@@ -766,7 +766,7 @@ module Raft =
 
   let becomeFollower _ =
     raft {
-      do! info "becoming follower"
+      do! info "becomeFollower" "becoming follower"
       do! setStateM Follower
     }
 
@@ -1022,18 +1022,18 @@ module Raft =
       let! current = currentIndexM ()
 
       if current < msg.PrevLogIdx then
-        do! debug <| sprintf "receiveAppendEntries: Failed (ci: %d) < (prev log idx: %d)"
-                      current
-                      msg.PrevLogIdx
+        let msg = sprintf "Failed (ci: %d) < (prev log idx: %d)" current msg.PrevLogIdx
+        do! debug "receiveAppendEntries" msg
         return resp
       else
         let term = LogEntry.term entry
         if term <> msg.PrevLogTerm then
-          do! debug <| sprintf "receiveAppendEntries: Failed (term %d) != (prev log term %d) (ci: %d) (prev log idx: %d)"
+          let str = sprintf "Failed (term %d) != (prev log term %d) (ci: %d) (prev log idx: %d)"
                         term
                         msg.PrevLogTerm
                         current
                         msg.PrevLogIdx
+          do! debug "receiveAppendEntries" str
           let response = { resp with CurrentIndex = msg.PrevLogIdx - 1u }
           do! removeEntryM msg.PrevLogIdx
           return response
@@ -1048,7 +1048,8 @@ module Raft =
       // log this if any entries are to be processed
       if Option.isSome msg.Entries then
         let! current = currentIndexM ()
-        do! debug <| sprintf "receiveAppendEntries: (from: %s) (term: %d) (ci: %d) (lc-idx: %d) (pli: %d) (plt: %d) (entries: %d)"
+        let str =
+          sprintf "(from: %s) (term: %d) (ci: %d) (lc-idx: %d) (pli: %d) (plt: %d) (entries: %d)"
                      (string nid)
                      msg.Term
                      current
@@ -1056,6 +1057,7 @@ module Raft =
                      msg.PrevLogIdx
                      msg.PrevLogTerm
                      (Option.get msg.Entries |> LogEntry.depth)    // let the world know
+        do! debug "receiveAppendEntries" str
 
       let! result = makeResponse msg  // check terms et al match, fail otherwise
 
@@ -1067,8 +1069,8 @@ module Raft =
             match entry with
               | Some log -> return! checkAndProcess log nid msg resp
               | _        ->
-                do! debug <| sprintf "receiveAppendEntries: Failed. No log at (prev log idx %d)"
-                              msg.PrevLogIdx
+                let str = sprintf "Failed. No log at (prev log idx %d)" msg.PrevLogIdx
+                do! debug "receiveAppendEntries" str
                 return resp
           else
             return! processEntry nid msg resp
@@ -1188,13 +1190,14 @@ module Raft =
       let! node = getNodeM nid
       match node with
         | None ->
-          do! debug <| sprintf "receiveAppendEntriesResponse: Failed: NoNode %s" (string nid)
+          do! debug "receiveAppendEntriesResponse" (sprintf "Failed: NoNode %s" (string nid))
           return! failM NoNode
         | Some peer ->
           if resp.CurrentIndex <> 0u && resp.CurrentIndex < peer.MatchIndex then
-            do! debug <| sprintf "receiveAppendEntriesResponse: Failed: peer not up to date yet (ci: %d) (match idx: %d)"
+            let str = sprintf "Failed: peer not up to date yet (ci: %d) (match idx: %d)"
                           resp.CurrentIndex
                           peer.MatchIndex
+            do! debug "receiveAppendEntriesResponse" str
             // set to current index at follower and try again
             do! updateNodeM { peer with
                                 NextIndex = resp.CurrentIndex + 1u
@@ -1209,16 +1212,14 @@ module Raft =
               //  If response contains term T > currentTerm: set currentTerm = T
               //  and convert to follower (§5.3)
               if term < resp.Term then
-                do! debug <| sprintf "receiveAppendEntriesResponse: Failed: (term: %d) < (resp.Term: %d)"
-                              term
-                              resp.Term
+                let str = sprintf "Failed: (term: %d) < (resp.Term: %d)" term resp.Term
+                do! debug "receiveAppendEntriesResponse" str
                 do! setTermM resp.Term
                 do! becomeFollower ()
                 return ()
               elif term <> resp.Term then
-                do! debug <| sprintf "receiveAppendEntriesResponse: Failed: (term: %d) != (resp.Term: %d)"
-                              term
-                              resp.Term
+                let str = sprintf "Failed: (term: %d) != (resp.Term: %d)" term resp.Term
+                do! debug "receiveAppendEntriesResponse" str
                 return ()
               elif not resp.Success then
                 // If AppendEntries fails because of log inconsistency:
@@ -1227,18 +1228,20 @@ module Raft =
                   let! idx = currentIndexM ()
                   let nextIndex = min (resp.CurrentIndex + 1u) idx
 
-                  do! debug <| sprintf "receiveAppendEntriesResponse: Failed: cidx < nxtidx. setting nextIndex for %s to %d"
+                  let str = sprintf "Failed: cidx < nxtidx. setting nextIndex for %s to %d"
                                 (string peer.Id)
                                 nextIndex
+                  do! debug "receiveAppendEntriesResponse" str
 
                   do! setNextIndexM peer.Id nextIndex
                   do! setMatchIndexM peer.Id (nextIndex - 1u)
                 else
                   let nextIndex = peer.NextIndex - 1u
 
-                  do! debug <| sprintf "receiveAppendEntriesResponse: Failed: cidx >= nxtidx. setting nextIndex for %s to %d"
+                  let str = sprintf "Failed: cidx >= nxtidx. setting nextIndex for %s to %d"
                                 (string peer.Id)
                                 nextIndex
+                  do! debug "receiveAppendEntriesResponse" str
 
                   do! setNextIndexM peer.Id nextIndex
                   do! setMatchIndexM peer.Id (nextIndex - 1u)
@@ -1422,13 +1425,14 @@ module Raft =
       let resp = { Id = Id.Create(); Term = 0u; Index = 0u }
 
       if LogEntry.isConfigChange entry && Option.isSome state.ConfigChangeEntry then
-        do! debug "receiveEntry: Failed: UnexpectedVotingChange"
+        do! debug "receiveEntry" "Failed: UnexpectedVotingChange"
         return! failM UnexpectedVotingChange
       elif isLeader state then
-        do! debug <| sprintf "receiveEntry: (id: %s) (idx: %d) (term: %d)"
+        let str = sprintf "(id: %s) (idx: %d) (term: %d)"
                       ((LogEntry.getId entry).ToString() )
                       (Log.index state.Log + 1u)
                       state.CurrentTerm
+        do! debug "receiveEntry" str
 
         let! term = currentTermM ()
 
@@ -1502,8 +1506,11 @@ module Raft =
         | Some entries ->
           let! cbs = read
 
-          do! info <| sprintf "applyEntries: applying %d entries to state machine"
-                        (LogEntry.depth entries)
+          let str =
+            LogEntry.depth entries
+            |> sprintf "applying %d entries to state machine"
+
+          do! info "applyEntries" str
 
           // Apply log chain in the order it arrived
           let state, change =
@@ -1531,7 +1538,7 @@ module Raft =
               (state, state.ConfigChangeEntry)
               entries
 
-          do! debug <| sprintf "applyEntries: setting ConfigChangeEntry to %A" change
+          do! debug "applyEntries" (sprintf "setting ConfigChangeEntry to %A" change)
           do! put { state with ConfigChangeEntry = change }
 
           if LogEntry.contains LogEntry.isConfiguration entries then
@@ -1539,21 +1546,24 @@ module Raft =
               Map.containsKey state.Node.Id state.Peers
             let! included = selfIncluded |> zoomM
             if not included then
-              do! debug "applyEntries: self (%s) not included in new configuration"
+              let str =
+                string state.Node.Id
+                |> sprintf "self (%s) not included in new configuration"
+              do! debug "applyEntries" str
               do! becomeFollower ()
 
           let! state = get
           if not (isLeader state) && LogEntry.contains LogEntry.isConfiguration entries then
-            do! debug "applyEntries: not leader and new configuration is applied. Updating nodes."
+            do! debug "applyEntries" "not leader and new configuration is applied. Updating nodes."
             for kv in state.Peers do
               if kv.Value.State <> Running then
                 do! updateNodeM { kv.Value with State = Running; Voting = true }
 
           let idx = LogEntry.index entries
-          do! debug <| sprintf "applyEntries: setting LastAppliedIndex to %d" idx
+          do! debug "applyEntries" <| sprintf "setting LastAppliedIndex to %d" idx
           do! setLastAppliedIdxM idx
         | _ ->
-          do! debug <| sprintf "applyEntries: no log entries found for index %d" logIdx
+          do! debug "applyEntries" (sprintf "no log entries found for index %d" logIdx)
     }
 
   (*
@@ -1660,8 +1670,8 @@ module Raft =
           match snapshot.Data with
           | Some entry -> cbs.PersistSnapshot entry
           | _          ->
-            do! error "Prepared snapshot was empty. Doing nothing."
-        | _ -> do! error "No snapshot was created. Doing nothing."
+            do! error "maybeSnapshot" "Prepared snapshot was empty. Doing nothing."
+        | _ -> do! error "maybeSnapshot" "No snapshot was created. Doing nothing."
     }
 
   ///////////////////////////////////////////////
@@ -1747,7 +1757,7 @@ module Raft =
   let becomeLeader _ =
     raft {
       let! state = get
-      do! info "becoming leader"
+      do! info "becomeLeader" "becoming leader"
       let nextidx = currentIndex state + 1u
       do! setStateM Leader
       do! maybeSetIndex state.Node.Id nextidx 0u
@@ -1767,26 +1777,29 @@ module Raft =
     raft {
         let! state = get
 
-        do! debug <| sprintf "receiveVoteResponse: %s responded to vote request with: %s"
-                      (string nid)
-                      (if vote.Granted then "granted" else "not granted")
+        let str = sprintf "%s responded to vote request with: %s"
+                    (string nid)
+                    (if vote.Granted then "granted" else "not granted")
+        do! debug "receiveVoteResponse" str
 
         /// The term must not be bigger than current raft term,
         /// otherwise set term to vote term become follower.
         if vote.Term > state.CurrentTerm then
-          do! debug <| sprintf "receiveVoteResponse: (vote term: %d) > (current term: %d). Setting to %d."
-                        vote.Term
-                        state.CurrentTerm
-                        state.CurrentTerm
+          let str = sprintf "(vote term: %d) > (current term: %d). Setting to %d."
+                      vote.Term
+                      state.CurrentTerm
+                      state.CurrentTerm
+          do! debug "receiveVoteResponse" str
           do! setTermM vote.Term
           do! becomeFollower ()
 
         /// If the vote term is smaller than current term it is considered an
         /// error and the client will be notified.
         elif vote.Term < state.CurrentTerm then
-          do! debug <| sprintf "receiveVoteResponse: Failed: (vote term: %d) < (current term: %d). VoteTermMismatch."
-                        vote.Term
-                        state.CurrentTerm
+          let str = sprintf "Failed: (vote term: %d) < (current term: %d). VoteTermMismatch."
+                      vote.Term
+                      state.CurrentTerm
+          do! debug "receiveVoteResponse" str
           return! failM VoteTermMismatch
 
         /// Process the vote if current state of our Raft must be candidate..
@@ -1797,7 +1810,7 @@ module Raft =
             match node with
               // Could not find the node in current configuration(s)
               | None ->
-                do! debug "receiveVoteResponse: Failed: vote granted but NoNode"
+                do! debug "receiveVoteResponse" "Failed: vote granted but NoNode"
                 return! failM NoNode
               // found the node
               | Some node ->
@@ -1820,9 +1833,11 @@ module Raft =
                   let! oldConfig =
                     numVotesForMeOldConfigM () >>= oldConfigMajorityM
 
-                  do! debug <| sprintf "receiveVoteResponse: In JointConsensus (majority for new config: %b) (majority for old config: %b)"
-                                newConfig
-                                oldConfig
+                  let str =
+                    sprintf "In JointConsensus (majority new config: %b) (majority old config: %b)"
+                      newConfig
+                      oldConfig
+                  do! debug "receiveVoteResponse" str
 
                   // and finally, become leader if we have a majority in either
                   // configuration
@@ -1840,14 +1855,14 @@ module Raft =
                   let! majority =
                     numVotesForMeM () >>= regularMajorityM
 
-                  do! debug <| sprintf "receiveVoteResponse: (majority for config: %b)" majority
+                  do! debug "receiveVoteResponse" <| sprintf "(majority for config: %b)" majority
 
                   if majority then
                     do! becomeLeader ()
 
         /// ...otherwise we respond with the respective RaftError.
         else
-          do! debug "receiveVoteResponse: Failed: NotCandidate"
+          do! debug "receiveVoteResponse" "Failed: NotCandidate"
           return! failM NotCandidate
       }
 
@@ -1863,19 +1878,17 @@ module Raft =
               ; LastLogIndex = Log.index state.Log
               ; LastLogTerm  = Log.term state.Log }
 
-            sprintf "sendVoteRequest: (to: %s) (state: %A)"
-              (string node.Id)
-              (node.State)
-            |> cbs.LogMsg Debug state.Node
+            sprintf "(to: %s) (state: %A)" (string node.Id) (node.State)
+            |> cbs.LogMsg state.Node "sendVoteRequest" Debug
 
             let result = cbs.SendRequestVote node vote
             return result
           else
-            sprintf "sendVoteRequest: not requesting vote from %s: (voting: %b) (state: %A)"
+            sprintf "not requesting vote from %s: (voting: %b) (state: %A)"
               (string node.Id)
               (Node.isVoting node)
               (node.State)
-            |> cbs.LogMsg Debug state.Node
+            |> cbs.LogMsg state.Node "sendVoteRequest" Debug
 
             return None
         }
@@ -1886,7 +1899,7 @@ module Raft =
         let! self = getSelfM ()
         let! peers = logicalPeersM ()
 
-        do! info "requesting all votes"
+        do! info "requestAllVotes" "requesting all votes"
 
         let requests = ref [| |]
 
@@ -1961,13 +1974,13 @@ module Raft =
         |> runValidation
 
       if fst result then
-        do! debug <| sprintf "shouldGrantVote: granted vote to %s"
-                      (string vote.Candidate.Id)
+        let str = sprintf "granted vote to %s" (string vote.Candidate.Id)
+        do! debug "shouldGrantVote" str
       else
-        do! debug <| sprintf "shouldGrantVote: did not grant vote to %s. reason: %A"
-                      (string vote.Candidate.Id)
-                      (snd result)
-
+        let str = sprintf "did not grant vote to %s. reason: %A"
+                    (string vote.Candidate.Id)
+                    (snd result)
+        do! debug "shouldGrantVote" str
       return result
     }
 
@@ -1984,7 +1997,7 @@ module Raft =
     raft {
       let! term = currentTermM ()
       if term < vote.Term then
-        do! debug "maybeResetFollower: term < vote.Term resetting"
+        do! debug "maybeResetFollower" "term < vote.Term resetting"
         do! setTermM vote.Term
         do! becomeFollower ()
         do! voteFor None
@@ -2006,7 +2019,7 @@ module Raft =
                      Granted = true
                      Reason  = None }
           else
-            do! debug "processVoteRequest: vote request denied: NotVotingState"
+            do! debug "processVoteRequest" "vote request denied: NotVotingState"
             return! failM NotVotingState
         | (false, err) ->
           let! term = currentTermM ()
@@ -2023,13 +2036,14 @@ module Raft =
           do! maybeResetFollower vote
           let! result = processVoteRequest vote
 
-          do! info <| sprintf "receiveVoteRequest: node %s requested vote. granted: %b"
-                        (string nid)
-                        result.Granted
+          let str = sprintf "node %s requested vote. granted: %b"
+                      (string nid)
+                      result.Granted
+          do! info "receiveVoteRequest" str
 
           return result
         | _ ->
-          do! info <| sprintf "receiveVoteRequest: requested denied. NoNode %s" (string nid)
+          do! info "receiveVoteRequest" <| sprintf "requested denied. NoNode %s" (string nid)
 
           let! term = currentTermM ()
           return { Term    = term
@@ -2051,12 +2065,12 @@ module Raft =
   /// After timeout a Node must become Candidate
   let becomeCandidate _ =
     raft {
-      do! info "becoming candidate"
+      do! info "becomeCandidate" "becoming candidate"
 
       let! state = get
 
       let term = state.CurrentTerm + 1u
-      do! debug <| sprintf "becomeCandidate: setting term to %d" term
+      do! debug "becomeCandidate" <| sprintf "setting term to %d" term
       do! setTermM term
 
       do! resetVotesM ()
@@ -2065,7 +2079,7 @@ module Raft =
       do! setStateM Candidate
 
       let elapsed = uint32(_rand.Next(15, int state.ElectionTimeout))
-      do! debug <| sprintf "becomeCandidate: setting timeoutElapsed to %d" elapsed
+      do! debug "becomeCandidate" <| sprintf "setting timeoutElapsed to %d" elapsed
       do! setTimeoutElapsedM elapsed
 
       do! requestAllVotes ()
@@ -2081,15 +2095,14 @@ module Raft =
   let startElection _ =
     raft {
       let! state = get
-      do! debug <| sprintf "startElection: (elapsed: %d) (elec-timeout: %d) (term: %d) (ci: %d)"
-                    state.TimeoutElapsed
-                    state.ElectionTimeout
-                    state.CurrentTerm
-                    (currentIndex state)
-
+      let str = sprintf "(elapsed: %d) (elec-timeout: %d) (term: %d) (ci: %d)"
+                  state.TimeoutElapsed
+                  state.ElectionTimeout
+                  state.CurrentTerm
+                  (currentIndex state)
+      do! debug "startElection" str
       do! becomeCandidate ()
     }
-
 
   //  ____           _           _ _
   // |  _ \ ___ _ __(_) ___   __| (_) ___

@@ -36,7 +36,7 @@ module RaftTestUtils =
     ; PersistTerm         : Term            -> unit
     ; PersistLog          : RaftLogEntry    -> unit
     ; DeleteLog           : RaftLogEntry    -> unit
-    ; LogMsg              : LogLevel        -> RaftNode  -> String     -> unit
+    ; LogMsg              : RaftNode        -> CallSite -> LogLevel -> String -> unit
     }
 
     interface IRaftCallbacks with
@@ -56,11 +56,7 @@ module RaftTestUtils =
       member self.PersistTerm node            = self.PersistTerm node
       member self.PersistLog log              = self.PersistLog log
       member self.DeleteLog log               = self.DeleteLog log
-      member self.LogMsg level node str       = self.LogMsg level node str
-
-  let log str =
-    // printfn "%s" str
-    ignore str
+      member self.LogMsg node site level str  = self.LogMsg node site level str
 
   /// abstract over Assert.Equal to create pipe-lineable assertions
   let expect (msg : string) (a : 'a) (b : 't -> 'a) (t : 't) =
@@ -76,79 +72,79 @@ module RaftTestUtils =
       returnM ()
 
   let mkcbs (data: StateMachine ref) =
-    let onSendRequestVote n v =
-      sprintf "SendRequestVote: %A" v |> log
+    let onSendRequestVote (n: RaftNode) (v: VoteRequest) =
+      sprintf "%A" v
+      |> Logger.debug n.Id "SendRequestVote"
       None
 
-    let onSendAppendEntries n ae =
+    let onSendAppendEntries (n: RaftNode) (ae: AppendEntries) =
       string ae
-      |> sprintf "SendAppendEntries: %s"
-      |> log
+      |> sprintf "%s"
+      |> Logger.debug n.Id "SendAppendEntries"
       None
 
-    let onSendInstallSnapshot n is =
+    let onSendInstallSnapshot (n: RaftNode) (is: InstallSnapshot) =
       string is
-      |> sprintf "SendInstall: %s"
-      |> log
+      |> sprintf "%s"
+      |> Logger.debug n.Id "SendInstall"
       None
 
     let onApplyLog en =
-      sprintf "ApplyLog: %A" en
-      |> log
+      sprintf "%A" en
+      |> Logger.debug (Id "<unknown>") "ApplyLog"
 
     let onPersistVote (n : RaftNode option) =
-      sprintf "PeristVote: %A" n
-      |> log
+      sprintf "%A" n
+      |> Logger.debug (Id "<fixme>") "PeristVote"
 
-    let onPersistTerm n =
-      sprintf "PeristVote: %A" n
-      |> log
+    let onPersistTerm (t: Term) =
+      sprintf "%A" t
+      |> Logger.debug (Id "<unknown>") "PeristVote"
 
     let onPersistLog (l : RaftLogEntry) =
       l.ToString()
-      |> sprintf "LogOffer: %s"
-      |> log
+      |> sprintf "%s"
+      |> Logger.debug (Id "<unknown>") "PersistLog"
 
     let onDeleteLog (l : RaftLogEntry) =
       l.ToString()
-      |> sprintf "LogPoll: %s"
-      |> log
+      |> sprintf "%s"
+      |> Logger.debug (Id "<unknown>") "DeleteLog"
 
-    let onLogMsg l n s =
-      sprintf "logMsg: %s" s
-      |> log
+    let onLogMsg (node: RaftNode) site level str =
+      Logger.log level node.Id site str
 
     let onPrepareSnapshot raft =
       Raft.createSnapshot !data raft |> Some
 
     let onPersistSnapshot (entry: RaftLogEntry) =
       sprintf "Perisisting Snapshot: %A" entry
-      |> log
+      |> Logger.debug (Id "<unknown>") "PersistSnapshot"
 
     let onRetrieveSnapshot _ =
       "Asked to retrieve last snapshot"
-      |> log
+      |> Logger.debug (Id "<unknown>") "RetrieveSnapshot"
       None
 
     let onNodeAdded node =
       sprintf "Node added: %A" node
-      |> log
+      |> Logger.debug (Id "<unknown>") "NodeAdded"
 
     let onNodeRemoved node =
       sprintf "Node removed: %A" node
-      |> log
+      |> Logger.debug (Id "<unknown>") "NodeRemoved"
 
     let onNodeUpdated node =
       sprintf "Node updated: %A" node
-      |> log
+      |> Logger.debug (Id "<unknown>") "NodeUpdated"
 
     let onConfigured nodes =
       sprintf "Cluster configuration applied:\n%A" nodes
-      |> log
+      |> Logger.debug (Id "<unknown>") "Configured"
 
     let onStateChanged olds news =
       sprintf "state changed"
-      |> log
+      |> Logger.debug (Id "<unknown>") "StateChanged"
 
     { SendRequestVote     = onSendRequestVote
     ; SendAppendEntries   = onSendAppendEntries

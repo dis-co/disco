@@ -1233,6 +1233,11 @@ module Config =
                         (fun (node: RaftNode) -> node.Id = id)
                         config.ClusterConfig.Nodes } }
 
+  // ** logLevel
+
+  let logLevel (config: IrisConfig) =
+    config.RaftConfig.LogLevel
+
   // ** setLogLevel
 
   let setLogLevel (level: LogLevel) (config: IrisConfig) =

@@ -96,6 +96,7 @@
     <Compile Include="..\..\Iris\Service\Stm.fs" />
     <Compile Include="..\..\Iris\Service\GitServer.fs" />
     <Compile Include="..\..\Iris\Service\RaftServer.fs" />
+    <Compile Include="..\..\Iris\Service\GitServer.fs" />
     <compile Include="..\..\Iris\Service\AssetServer.fs" />
     <Compile Include="..\..\Iris\Service\WebSocket.fs" />
     <Compile Include="..\..\Iris\Service\IrisService.fs" />

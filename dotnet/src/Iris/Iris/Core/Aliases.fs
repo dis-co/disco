@@ -28,7 +28,7 @@ type UserName   = string
 type UserAgent  = string
 type ClientLog  = string
 type TimeStamp  = string
-type CallSite   = System.Type
+type CallSite   = string
 
 type Actor<'t> = MailboxProcessor<'t>
 

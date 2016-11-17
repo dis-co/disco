@@ -27,13 +27,13 @@ let writeTVar (var: TVar<'a>) (value: 'a) = var := value
 
 let atomically = id
 
-let logMsg level (state: RaftAppContext) (cbs: IRaftCallbacks) (msg: string) =
-  cbs.LogMsg level state.Raft.Node msg
+let logMsg level site (state: RaftAppContext) (cbs: IRaftCallbacks) (msg: string) =
+  cbs.LogMsg state.Raft.Node site level msg
 
-let debugMsg state cbs msg = logMsg Debug state cbs msg
-let infoMsg state cbs msg = logMsg Info state cbs msg
-let warnMsg state cbs msg = logMsg Warn state cbs msg
-let errMsg state cbs msg = logMsg Err state cbs msg
+let debugMsg state cbs site msg = logMsg Debug site state cbs msg
+let infoMsg  state cbs site msg = logMsg Info site state cbs msg
+let warnMsg state cbs site msg = logMsg Warn site state cbs msg
+let errMsg state cbs site msg = logMsg Err site state cbs msg
 
 /// ## waitForCommit
 ///
@@ -86,7 +86,7 @@ let joinCluster (nodes: RaftNode array) (appState: TVar<RaftAppContext>) cbs =
     raft {
       let! term = Raft.currentTermM ()
       let entry = JointConsensus(Id.Create(), 0u, term, changes, None) //
-      do! Raft.debug "HandShake: appending entry to enter joint-consensus"
+      do! Raft.debug "joinCluster" "appending entry to enter joint-consensus"
       return! Raft.receiveEntry entry
     }
     |> runRaft state.Raft cbs
@@ -116,7 +116,8 @@ let onConfigDone (appState: TVar<RaftAppContext>) cbs =
       let! term = Raft.currentTermM ()
       let! nodes = Raft.getNodesM () >>= (Map.toArray >> Array.map snd >> returnM)
       let entry = Log.mkConfig term nodes
-      do! Raft.debug "onConfigDone: appending entry to exit joint-consensus into regular configuration"
+      let str = "appending entry to exit joint-consensus into regular configuration"
+      do! Raft.debug "onConfigDone" str
       return! Raft.receiveEntry entry
     }
     |> runRaft state.Raft cbs
@@ -158,7 +159,7 @@ let leaveCluster (nodes: RaftNode array) (appState: TVar<RaftAppContext>) cbs =
     raft {
       let! term = Raft.currentTermM ()
       let entry = JointConsensus(Id.Create(), 0u, term, changes, None)
-      do! Raft.debug "HandWaive: appending entry to enter joint-consensus"
+      do! Raft.debug "leaveCluster" "appending entry to enter joint-consensus"
       return! Raft.receiveEntry entry
     }
     |> runRaft state.Raft cbs
@@ -429,40 +430,40 @@ let tryJoin (ip: IpAddress) (port: uint32) cbs (state: RaftAppContext) =
       if retry < int state.Options.RaftConfig.MaxRetries then
         let client = mkReqSocket peer state.Context
 
-        sprintf "Trying To Join Cluster. Retry: %d" retry
-        |> debugMsg state cbs
+        sprintf "Retry: %d" retry
+        |> debugMsg state cbs "tryJoin"
 
         let request = HandShake(state.Raft.Node)
         let! result = rawRequest request client
 
         sprintf "Result: %A" result
-        |> debugMsg state cbs
+        |> debugMsg state cbs "tryJoin"
 
         dispose client
 
         match result with
         | Welcome node ->
           sprintf "Received Welcome from %A" node.Id
-          |> debugMsg state cbs
+          |> debugMsg state cbs "tryJoin"
           return node
 
         | Redirect next ->
           sprintf "Got redirected to %A" (nodeUri next)
-          |> infoMsg state cbs
+          |> infoMsg state cbs "tryJoin"
           return! _tryJoin (retry + 1) next
 
         | ErrorResponse err ->
           sprintf "Unexpected error occurred. %A" err
-          |> errMsg state cbs
+          |> errMsg state cbs "tryJoin"
           return! Either.fail err
 
         | resp ->
           sprintf "Unexpected response. %A" resp
-          |> errMsg state cbs
+          |> errMsg state cbs "tryJoin"
           return! Either.fail (Other "Unexpected response")
       else
         "Too many unsuccesful connection attempts."
-        |> errMsg state cbs
+        |> errMsg state cbs "tryJoin"
         return! Either.fail (Other "Too many unsuccesful connection attempts.")
     }
 
@@ -557,7 +558,7 @@ let initialize appState cbs =
     } |> evalRaft state.Raft cbs
 
   "initialize: saving new state"
-  |> debugMsg state cbs
+  |> debugMsg state cbs "initialize"
 
   // tryJoin leader
   writeTVar appState (RaftContext.updateRaft newstate state)

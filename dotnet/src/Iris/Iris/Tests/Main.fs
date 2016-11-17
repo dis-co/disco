@@ -1,6 +1,7 @@
 module Iris.Tests.Main
 
 open Expecto
+open Iris.Core
 open Iris.Tests
 
 let all =

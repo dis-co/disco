@@ -187,7 +187,7 @@ module Scenarios =
               ; PersistTerm         = ignore
               ; PersistLog          = ignore
               ; DeleteLog           = ignore
-              ; LogMsg              = fun _ _ -> ignore
+              ; LogMsg              = fun _ _ _ -> ignore
               } :> IRaftCallbacks
 
             let raft =
