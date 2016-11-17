@@ -108,7 +108,7 @@ docker:
 	${BUILD} DebugDocker
 
 image_base:
-	@sudo docker build \
+	@docker build \
 		--label iris \
 		--tag iris:base \
 		${CURRENT_DIR}/dotnet/src/Iris/Dockerbase/
@@ -134,13 +134,13 @@ create:
 		${IMAGE}
 
 docker.shell:
-	@sudo docker run -p 7000:7000 -i --rm \
+	@docker run -p 7000:7000 -i --rm \
 		-v ${PROJECT}:/project \
 		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
 		-e COMMAND=shell \
 		${IMAGE}
 start:
-	@sudo docker run -p 7000:7000 -i --rm \
+	@docker run -p 7000:7000 -i --rm \
 		-v ${PROJECT}:/project \
 		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
 		-e COMMAND=start \
