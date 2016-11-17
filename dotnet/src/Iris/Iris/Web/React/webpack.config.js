@@ -51,6 +51,7 @@ module.exports = {
     devServer: devServer,
     module: {
         loaders: [
+            { test: /\.css$/, loader: "style-loader!css-loader" },
             { test: /\.ts$/, loader: 'ts-loader' },
             { test: /\.js$/, loader: 'babel', exclude: /node_modules/ }
         ].concat(loaders)
