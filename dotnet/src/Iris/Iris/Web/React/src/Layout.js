@@ -9,7 +9,7 @@ require("react-grid-layout/css/styles.css");
 require("react-resizable/css/styles.css");
 
 let defaultLayout = [
-  {i: 'left', x: 0, y: 0, w: 3, h: 12},
+  {i: 'left', x: 0, y: 0, w: 3, h: 12, static: true},
   {i: 'center', x: 3, y: 0, w: 6, h: 12},
   {i: 'right', x: 9, y: 0, w: 3, h: 12}
 ];
