@@ -6,7 +6,7 @@ import Tree from 'react-ui-tree';
 require("react-ui-tree/dist/react-ui-tree.css");
 require("./styles/tree.less");
 
-let treeChildren = [
+let tree = {module: 'Views', children: [
 {
   module: 'View 1',
   children: [
@@ -118,12 +118,12 @@ let treeChildren = [
     }
   ]
 },
-];
+]};
 
 class TreeView extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { active: null, tree: { children: treeChildren } };
+    this.state = { active: null, tree: tree };
   }
 
   renderNode(node) {
@@ -161,7 +161,7 @@ class TreeView extends React.Component {
   }
 }
 
-export default function () { return (
+export default function LeftPanel() { return (
   <Tabs>
     <Tab label="VIEWS" >
       <TreeView />
