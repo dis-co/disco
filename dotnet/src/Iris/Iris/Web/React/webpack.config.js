@@ -7,7 +7,7 @@ if (process.env.NODE_ENV !== "production") {
     entry = [
         "webpack-dev-server/client?http://localhost:8080",
         'webpack/hot/only-dev-server',
-        "./src/Layout.js"
+        "./src/Main.js"
     ];
     outDir = "./temp";
     devtool = "eval";
