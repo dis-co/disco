@@ -652,8 +652,12 @@ Target "DockerRunTests" (fun () ->
 Target "DebugAll" DoNothing
 
 "BuildFrontend"
-?=> "BuildDebugService"
-?=> "BuildDebugNodes"
+==> "DebugAll"
+
+"BuildDebugService"
+==> "DebugAll"
+
+"BuildDebugNodes"
 ==> "DebugAll"
 
 // "CleanDocs"
@@ -670,7 +674,9 @@ Target "DebugAll" DoNothing
 Target "AllTests" DoNothing
 
 "RunTests"
-?=> "RunWebTests"
+==> "AllTests"
+
+"RunWebTests"
 ==> "AllTests"
 
 RunTargetOrDefault "Release"
