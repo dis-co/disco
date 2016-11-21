@@ -168,7 +168,10 @@ module Network =
   ///
   /// Returns: string
   let getHostName () =
-    System.Net.Dns.GetHostName()
+    try
+      System.Net.Dns.GetHostName()
+    with
+      | _ -> System.Environment.MachineName
 
   // *** getIpAddress
 
