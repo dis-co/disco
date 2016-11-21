@@ -113,7 +113,6 @@ module GitTests =
         mkEnvironment 10000us
 
       use gitserver = new GitServer(project)
-      // gitserver.OnLogMsg <- Logger.log (Id uuid) Debug
       gitserver.Start()
 
       expect "Should be running" true Service.isRunning gitserver.Status
@@ -130,7 +129,6 @@ module GitTests =
       expect "Should be running" true Service.isRunning gitserver1.Status
 
       use gitserver2 = new GitServer(project)
-      // gitserver2.OnLogMsg <- Logger.log (Id.Create()) Debug
       gitserver2.Start()
 
       expect "Should have failed" true Service.hasFailed gitserver2.Status
@@ -143,7 +141,6 @@ module GitTests =
         mkEnvironment port
 
       use gitserver = new GitServer(project)
-      // gitserver.OnLogMsg <- Logger.log (Id uuid) Debug
       gitserver.Start()
 
       expect "Should be running" true Service.isRunning gitserver.Status

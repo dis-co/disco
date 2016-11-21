@@ -196,6 +196,27 @@ module Network =
 
 #endif
 
+// * Platform
+
+[<RequireQualifiedAccess>]
+module Platform =
+
+  /// ## isUnix
+  ///
+  /// Returns true if currently run on MacOS or other Unices.
+  ///
+  /// Returns: bool
+  let isUnix =
+    let current = Environment.OSVersion.Platform
+    current = PlatformID.Unix ||
+    current = PlatformID.MacOSX
+
+  /// ## isWindows
+  ///
+  /// True if the current platform is not a unix.
+  ///
+  /// Returns: bool
+  let isWindows = not isUnix
 
 // * String
 
@@ -238,6 +259,19 @@ module String =
       printfn "[%s]%s%s" tag ws str
 
   #endif
+
+  // *** join
+
+  /// ## join
+  ///
+  /// Join a string using provided separator.
+  ///
+  /// ### Signature:
+  /// - sep: string separator
+  /// - arr: string array to join
+  ///
+  /// Returns: string
+  let join sep (arr: string array) = String.Join(sep, arr)
 
   // *** toLower
 

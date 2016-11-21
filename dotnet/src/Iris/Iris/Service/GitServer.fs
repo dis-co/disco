@@ -12,7 +12,7 @@ open System.Threading
 open System.Diagnostics
 open System.Management
 open Microsoft.FSharp.Control
-
+open FSharpx.Functional
 
 // * GitServer
 
@@ -162,8 +162,15 @@ type GitServer (project: IrisProject) =
     |> Logger.debug nodeid tag
 
     let args =
-      sprintf "daemon --verbose --reuseaddr --listen=%s --port=%d --strict-paths --base-path=%s %s/.git"
-        (string addr) port basedir path
+      [| "daemon"
+      ; "--verbose"
+      ; "--strict-paths"
+      ; (sprintf "--base-path=%s" basedir)
+      ; (if Platform.isUnix then "--reuseaddr" else "")
+      ; (addr |> string |> sprintf "--listen=%s")
+      ; (sprintf "--port=%d" port)
+      ; (sprintf "%s/.git" path) |]
+      |> String.join " "
 
     let proc = new Process()
     proc.StartInfo.FileName <- "git"
