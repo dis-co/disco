@@ -39,7 +39,7 @@ type MockService(?project: IrisProject ref) =
   // let raftserver = new RaftServer((!project).Config, kontext)
 
   let wsserver   = new WsServer() //(!project).Config)
-  let httpserver = new AssetServer() //(!project).Config)
+  // let httpserver = new AssetServer() //(!project).Config)
 
   let setup _ =
     // WEBSOCKET
@@ -141,20 +141,20 @@ type MockService(?project: IrisProject ref) =
   // |_____|_|_|  \___|\____\__, |\___|_|\___|
   //                        |___/
   member self.Start(?web: bool) =
-    if defaultArg web true then
-      httpserver.Start()
+    // if defaultArg web true then
+    //   httpserver.Start()
     wsserver.Start()
     // raftserver.Start()
 
   member self.Start() =
-    httpserver.Start()
+    // httpserver.Start()
     wsserver.Start()
     // raftserver.Start()
 
   member self.Stop() =
     // dispose raftserver
     dispose wsserver
-    dispose httpserver
+    // dispose httpserver
     // dispose kontext
 
   //  ____            _           _

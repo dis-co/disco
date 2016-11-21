@@ -9,9 +9,12 @@ if (process.env.NODE_ENV !== "production") {
         'webpack/hot/only-dev-server',
         "./src/Main.js"
     ];
-    outDir = "./temp";
+    outDir = "./js";
     devtool = "eval";
-    devServer = null;
+    devServer = {
+        port: 7000,
+        contentBase: "../../../bin/Debug/Iris/assets"
+    };
     loaders = [{
         test: /\.js$/,
         loader: "react-hot-loader/webpack",
@@ -26,7 +29,6 @@ else {
     entry = "./src/Main.js";
     outDir = "../../../bin/Debug/Iris/assets/js";
     devtool = "source-map";
-    devServer = null;
     loaders = [];
     plugins = [
         new webpack.DefinePlugin({

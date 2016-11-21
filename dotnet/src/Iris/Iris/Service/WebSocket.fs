@@ -24,8 +24,6 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
 
   // ** uri
 
-  let [<Literal>] defaultUri = "ws://127.0.0.1:8000"
-
   let mutable onOpenCb    : Option<Session -> unit> = None
   let mutable onCloseCb   : Option<Id -> unit> = None
   let mutable onErrorCb   : Option<Id -> unit> = None
@@ -37,7 +35,9 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
       Config.getNodeId ()
       |> Either.bind (Config.findNode config)
       |> Error.orExit (fun node -> sprintf "ws://%s:%d" (string node.IpAddr) node.WsPort)
-    | None -> defaultUri
+    | None ->
+      sprintf "ws://%s:%d" Constants.DEFAULT_IP
+        (Constants.WEB_SERVER_DEFAULT_PORT + Constants.SOCKET_SERVER_PORT_DIFF)
 
 
   let server = new WebSocketServer(uri)
