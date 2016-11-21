@@ -35,6 +35,8 @@ type GitServer (project: IrisProject) =
 
   let loco : obj  = new obj()
 
+  let mutable pid = -1
+
   let nodeid =
     Config.getNodeId()
     |> Either.get
@@ -79,17 +81,14 @@ type GitServer (project: IrisProject) =
     let cts = new CancellationTokenSource()
     let action =
       async {
-        while running && stream.Peek() <> -1 do
+        while running do
           let line = stream.ReadLine()    // blocks
 
-          if line.Contains "Ready to rumble" then
-            Logger.debug nodeid tag "setting starter to return to caller of .Start()"
-            starter.Set() |> ignore
-
-          Logger.log level nodeid tag line
-
-        sprintf "streamReader done. running=%b eof=%b" running (not running)
-        |> Logger.debug nodeid tag
+          if not (isNull line) then
+            if line.Contains "Ready to rumble" then
+              Logger.debug nodeid tag "setting starter to return to caller of .Start()"
+              starter.Set() |> ignore
+            Logger.log level nodeid tag line
       }
     Async.Start(action, cts.Token)
     cts
@@ -182,15 +181,14 @@ type GitServer (project: IrisProject) =
     proc.StartInfo.RedirectStandardError <- true
 
     /// 2) Hook up `onExitEvent` callback
-    onExitEvent <-
-      proc.Exited
-      |> Observable.subscribe (exitHandler proc)
+    onExitEvent <- Observable.subscribe (exitHandler proc) proc.Exited
 
     /// 3) Start the Process
     if proc.Start() then
 
       /// 4.1) Setting the Status to Running
       running <- true
+      pid <- proc.Id
 
       stdoutToken <- streamReader LogLevel.Info proc.StandardOutput
       stderrToken <- streamReader LogLevel.Err  proc.StandardError
@@ -220,7 +218,9 @@ type GitServer (project: IrisProject) =
       /// 5.3) Kill the process
       try
         Logger.debug nodeid tag "killing process"
-        proc.Kill()
+        Process.kill pid
+        while Process.isRunning pid do
+          Thread.Sleep 40
       with
         | exn ->
           sprintf "could not kill process: %s" exn.Message
@@ -330,7 +330,25 @@ type GitServer (project: IrisProject) =
   ///
   /// Returns: bool
   member self.Running() =
-    Service.isRunning status && thread.IsAlive
+    pid >= 0                  &&
+    Service.isRunning status &&
+    Process.isRunning pid    &&
+    thread.IsAlive
+
+  // ** Pid
+
+  /// ## Pid
+  ///
+  /// Get the PID of the underlying `git daemon` process.
+  ///
+  /// ### Signature:
+  /// - unit: unit
+  /// - arg: arg
+  /// - arg: arg
+  ///
+  /// Returns: int
+  member self.Pid
+    with get () = pid
 
   // ** IDisposable
 

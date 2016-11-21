@@ -86,17 +86,6 @@ module Utils =
 
   #endif
 
-  // ** isLinux
-
-  #if !FABLE_COMPILER
-
-  let isLinux : bool =
-    int Environment.OSVersion.Platform
-    |> fun p ->
-      (p = 4) || (p = 6) || (p = 128)
-
-  #endif
-
   // ** warn
 
   let warn = printfn "[WARNING] %s"
@@ -198,18 +187,26 @@ module Network =
 
 // * Platform
 
+#if !FABLE_COMPILER
+
 [<RequireQualifiedAccess>]
 module Platform =
+
+  // ** isUnix
 
   /// ## isUnix
   ///
   /// Returns true if currently run on MacOS or other Unices.
   ///
-  /// Returns: bool
-  let isUnix =
-    let current = Environment.OSVersion.Platform
-    current = PlatformID.Unix ||
-    current = PlatformID.MacOSX
+  let isUnix : bool =
+    int Environment.OSVersion.Platform
+    |> fun p ->
+      (p = 4) ||                         // Unix
+      (p = 6) ||                         // MacOS
+      (p = 128)                         // old Mono Unix
+
+
+  // ** isWindows
 
   /// ## isWindows
   ///
@@ -217,6 +214,9 @@ module Platform =
   ///
   /// Returns: bool
   let isWindows = not isUnix
+
+#endif
+
 
 // * String
 
@@ -534,6 +534,23 @@ module Time =
 [<RequireQualifiedAccess>]
 module Process =
 
+  // *** tryFind
+
+  /// ## tryFind
+  ///
+  /// Try to find a Process by its process id.
+  ///
+  /// ### Signature:
+  /// - pid: int
+  ///
+  /// Returns: Process option
+  let tryFind (pid: int) =
+    try
+      Process.GetProcessById(pid)
+      |> Some
+    with
+      | _ -> None
+
   // *** kill
 
   /// ## kill
@@ -545,11 +562,12 @@ module Process =
   ///
   /// Returns: unit
   let rec kill (pid : int) =
-    if isLinux
-    then
-      Process.Start("kill", string pid)
+    if Platform.isUnix then
+      /// On Mono we need to kill the parent and children
+      Process.Start("pkill", sprintf "-TERM -P %d" pid)
       |> ignore
     else
+      /// On Windows, we can use this trick to kill all child processes and finally the parent.
       let query = sprintf "Select * From Win32_Process Where ParentProcessID=%d" pid
       let searcher = new ManagementObjectSearcher(query);
       let moc = searcher.Get();
@@ -557,6 +575,19 @@ module Process =
         kill <| (mo.GetPropertyValue("ProcessID") :?> int)
       let proc = Process.GetProcessById(pid)
       proc.Kill();
+
+  /// ## isRunning
+  ///
+  /// Return true if a process with the given PID is currently running.
+  ///
+  /// ### Signature:
+  /// - pid: int process id
+  ///
+  /// Returns: bool
+  let isRunning (pid: int) =
+    match tryFind pid with
+    | Some _ -> true
+    | _      -> false
 
 #endif
 
@@ -581,9 +612,8 @@ module WorkSpace =
   /// Returns: FilePath
   let find () : FilePath =
     let wsp = Environment.GetEnvironmentVariable IRIS_WORKSPACE
-    if isNull wsp || wsp.Length = 0
-    then
-      if isLinux then
+    if isNull wsp || wsp.Length = 0 then
+      if Platform.isUnix then
         let usr = Security.Principal.WindowsIdentity.GetCurrent().Name
         sprintf @"/home/%s/iris" usr
       else @"C:\\Iris\"
