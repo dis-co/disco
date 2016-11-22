@@ -68,3 +68,26 @@ A parameter defines a single exposed value of a client
 | :------- | :------: |  :------: | -------: |
 | name | string | yes |
 | id | uint32 | yes | guid
+
+# Building
+
+## Windows
+
+A setup without `VisualStudio` is best bootstrapped with [chocolatey](https://chocolatey.org). The following packages are required to build Iris:
+
+```
+7zip.commandline
+chocolatey 
+cmake.install 
+DotNet4.0 
+DotNet4.5 
+DotNet4.5.2 
+git.install 
+microsoft-build-tools 
+nodejs.install 
+vcredist2015 
+VisualCppBuildTools 
+visualfsharptools
+Wget 
+windows-sdk-8.0
+```
