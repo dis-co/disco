@@ -387,7 +387,7 @@ module ProjectTests =
 
       let newpath = Path.dirName path </> (Path.GetTempFileName() |> Path.baseName)
 
-      FileSystem.mv path newpath
+      FileSystem.moveFile path newpath
 
       (newpath </> PROJECT_FILENAME + ASSET_EXTENSION)
       |> Project.load

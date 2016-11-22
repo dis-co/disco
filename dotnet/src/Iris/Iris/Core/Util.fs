@@ -407,9 +407,9 @@ module FileSystem =
   /// Returns: FilePath (string)
   let (</>) p1 p2 = System.IO.Path.Combine(p1, p2)
 
-  // *** mv
+  // *** moveFile
 
-  /// ## mv
+  /// ## moveFile
   ///
   /// Move a file or directory from source to dest.
   ///
@@ -418,9 +418,14 @@ module FileSystem =
   /// - dest: FilePath
   ///
   /// Returns: unit
-  let mv (source: FilePath) (dest: FilePath) =
+  let moveFile (source: FilePath) (dest: FilePath) =
     try
-      File.Move(source, dest)
+      let info = new FileInfo(source)
+      let attrs = info.Attributes
+      if attrs.HasFlag(FileAttributes.Directory) then
+        Directory.Move(source,dest)
+      else
+        File.Move(source, dest)
     with | _ -> ()
 
   // *** rmDir
