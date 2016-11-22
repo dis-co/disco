@@ -260,6 +260,19 @@ module String =
 
   #endif
 
+  /// ## replace
+  ///
+  /// Replace `oldchar` with `newchar` in `str`.
+  ///
+  /// ### Signature:
+  /// - oldchar: char to replace
+  /// - newchar: char to substitute
+  /// - str: string to work on
+  ///
+  /// Returns: string
+  let replace (oldchar: char) (newchar: char) (str: string) =
+    str.Replace(oldchar, newchar)
+
   // *** join
 
   /// ## join

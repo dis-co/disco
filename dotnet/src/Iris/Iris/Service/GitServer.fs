@@ -151,7 +151,13 @@ type GitServer (project: IrisProject) =
   let worker path addr port () =
     /// 1) Set up the Process
 
-    let basedir = Path.GetDirectoryName path
+    let basedir =
+      Path.GetDirectoryName path
+      |> String.replace '\\' '/'
+
+    let sanepath =
+      path
+      |> String.replace '\\' '/'
 
     sprintf "starting on %s:%d in base path: %A with dir: %A"
       (string addr)
@@ -168,7 +174,7 @@ type GitServer (project: IrisProject) =
       ; (if Platform.isUnix then "--reuseaddr" else "")
       ; (addr |> string |> sprintf "--listen=%s")
       ; (sprintf "--port=%d" port)
-      ; (sprintf "%s/.git" path) |]
+      ; (sprintf "%s/.git" sanepath) |]
       |> String.join " "
 
     let proc = new Process()
