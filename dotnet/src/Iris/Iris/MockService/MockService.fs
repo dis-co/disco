@@ -7,6 +7,23 @@ open Iris.Core
 open Iris.Core.Utils
 // open Iris.Service.Persistence
 
+module Util =
+  open System.Collections.Concurrent
+
+  let authorizedUsers =
+    ConcurrentDictionary<string, User>()
+    
+  let users = [
+    { Id        = Id.Create()
+    ; UserName  = "alfonso"
+    ; FirstName = "Alfonso"
+    ; LastName  = "García-Caro"
+    ; Email     = "alfonso.garcia-caro@nsynk.de"
+    ; Password  = "1234"
+    ; Joined    = DateTime.Now
+    ; Created   = DateTime.Now }
+  ]
+
 //  ___      _     ____                  _
 // |_ _|_ __(_)___/ ___|  ___ _ ____   _(_) ___ ___
 //  | || '__| / __\___ \ / _ \ '__\ \ / / |/ __/ _ \
@@ -39,7 +56,7 @@ type MockService(?project: IrisProject ref) =
   // let raftserver = new RaftServer((!project).Config, kontext)
 
   let wsserver   = new WsServer() //(!project).Config)
-  let httpserver = new AssetServer() //(!project).Config)
+  // let httpserver = new AssetServer() //(!project).Config)
 
   let setup _ =
     // WEBSOCKET
@@ -141,20 +158,20 @@ type MockService(?project: IrisProject ref) =
   // |_____|_|_|  \___|\____\__, |\___|_|\___|
   //                        |___/
   member self.Start(?web: bool) =
-    if defaultArg web true then
-      httpserver.Start()
+    // if defaultArg web true then
+    //   httpserver.Start()
     wsserver.Start()
     // raftserver.Start()
 
   member self.Start() =
-    httpserver.Start()
+    // httpserver.Start()
     wsserver.Start()
     // raftserver.Start()
 
   member self.Stop() =
     // dispose raftserver
     dispose wsserver
-    dispose httpserver
+    // dispose httpserver
     // dispose kontext
 
   //  ____            _           _

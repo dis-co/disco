@@ -18,26 +18,20 @@
     <script src="node_modules/requirejs/require.js"></script>
   </head>
   <body>
-    <header>Iris</header>
-
+    <!--<header>Iris</header>
     <nav><a href="/">Home</a></nav>
-
     <main>
-      <!--<article>Content</article>
-      <aside>
-        <p>More information</p>
-      </aside>-->
-
+      <article>Content</article>
+      <aside><p>More information</p></aside>
       <div id="app"></div>
     </main>
-
-    <footer>© 2016 Nsynk GmbH</footer>
+    <footer>© 2016 Nsynk GmbH</footer>-->
+    <div id="app"></div>
     <script>
 		// Paths in Require.js must always omit the .js extension
 		requirejs.config({
 			paths: {
-        'fable-core/umd': 'node_modules/fable-core/umd',
-        'ReactApp': 'js/ReactApp'
+        'fable-core/umd': 'node_modules/fable-core/umd'
 			}
 		});
 		requirejs(["js/Web/Frontend"]);

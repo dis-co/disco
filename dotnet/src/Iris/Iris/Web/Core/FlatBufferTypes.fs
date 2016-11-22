@@ -16,6 +16,7 @@ type UserFB =
   abstract FirstName: string
   abstract LastName: string
   abstract Email: string
+  abstract Password: string
   abstract Joined: string
   abstract Created: string
 
@@ -27,6 +28,7 @@ type UserFBConstructor =
   abstract AddFirstName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddLastName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddEmail: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddPassword: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddJoined: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddCreated: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract EndUserFB: builder: FlatBufferBuilder -> Offset<'a>
@@ -40,9 +42,29 @@ let UserFB : UserFBConstructor = failwith "JS only"
 //  ___) |  __/\__ \__ \ | (_) | | | |  _| | |_) |
 // |____/ \___||___/___/_|\___/|_| |_|_|   |____/
 
+type SessionStatusTypeFB = int
+
+type SessionStatusTypeFBConstructor =
+  abstract LoginFB: SessionStatusTypeFB
+  abstract UnathorizedFB: SessionStatusTypeFB
+  abstract AuthorizedFB: SessionStatusTypeFB
+
+type SessionStatusFB =
+  abstract StatusType: SessionStatusTypeFB
+  abstract Payload: string
+
+type SessionStatusFBConstructor =
+  abstract prototype: SessionStatusFB with get, set
+  abstract StartSessionStatusFB: builder: FlatBufferBuilder -> unit
+  abstract AddStatusType: builder: FlatBufferBuilder * typ: SessionStatusTypeFB -> unit
+  abstract AddPayload: builder: FlatBufferBuilder * payload: Offset<string> -> unit
+  abstract EndSessionStatusFB: builder: FlatBufferBuilder -> Offset<SessionStatusFB>
+  abstract GetRootAsSessionStatusFB: buffer: ByteBuffer -> SessionStatusFB
+  abstract Create: unit -> SessionStatusFB
+
 type SessionFB =
+  abstract Status: SessionStatusFB
   abstract Id: string
-  abstract UserName: string
   abstract IpAddress: string
   abstract UserAgent: string
 
@@ -50,12 +72,15 @@ type SessionFBConstructor =
   abstract prototype: SessionFB with get, set
   abstract StartSessionFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
-  abstract AddUserName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddStatus: builder: FlatBufferBuilder * status: Offset<SessionStatusFB> -> unit
   abstract AddIpAddress: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddUserAgent: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract EndSessionFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract EndSessionFB: builder: FlatBufferBuilder -> Offset<SessionFB>
   abstract GetRootAsSessionFB: buffer: ByteBuffer -> SessionFB
+  abstract Create: unit -> SessionStatusFB
 
+let SessionStatusTypeFB : SessionStatusTypeFBConstructor = failwith "JS only"
+let SessionStatusFB : SessionStatusFBConstructor = failwith "JS only"
 let SessionFB : SessionFBConstructor = failwith "JS only"
 
 //  ____   ____ ____    ___     __    _

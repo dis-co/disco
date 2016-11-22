@@ -52,4 +52,10 @@ module Constants =
   let WEB_WORKER_SCRIPT = "js/worker.js"
 
   [<Literal>]
+  let DEFAULT_IP = "127.0.0.1"
+
+  [<Literal>]
+  let WEB_SERVER_DEFAULT_PORT = 7000
+
+  [<Literal>]
   let SOCKET_SERVER_PORT_DIFF = 1000

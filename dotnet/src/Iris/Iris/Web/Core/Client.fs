@@ -76,9 +76,9 @@ type ClientContext() =
   member self.MsgHandler (msg : MessageEvent<string>) : unit =
     match ofJson<ClientMessage<State>> msg.Data with
     // initialize this clients session variable
-    | ClientMessage.Initialized(token) ->
+    | ClientMessage.Initialized(Id id as token) ->
       session <- Some(token)
-      printfn "Initialized with Session: %A" token
+      printfn "Initialized with Session: %s" id
 
     // initialize this clients session variable
     | ClientMessage.Closed(token) ->

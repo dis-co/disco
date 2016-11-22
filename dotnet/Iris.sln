@@ -36,8 +36,6 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Service", "src\Iris\Project
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Frontend", "src\Iris\Projects\Frontend\Frontend.fsproj", "{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Worker", "src\Iris\Projects\Worker\Worker.fsproj", "{39714BA9-31D0-4160-B0C2-5BE0AA12734E}"
-EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Tests", "src\Iris\Projects\Tests\Tests.fsproj", "{D89C8286-2978-465B-89C9-8836A837C06B}"
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "MockService", "src\Iris\Projects\MockService\MockService.fsproj", "{C6312535-64F9-405D-912A-A0E4558B5524}"
@@ -90,18 +88,6 @@ Global
 		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Release|x64.Build.0 = Release|Any CPU
 		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Release|x86.ActiveCfg = Release|Any CPU
 		{5A80F4BC-039B-49A5-B6A7-1DE583A281C0}.Release|x86.Build.0 = Release|Any CPU
-		{39714BA9-31D0-4160-B0C2-5BE0AA12734E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{39714BA9-31D0-4160-B0C2-5BE0AA12734E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{39714BA9-31D0-4160-B0C2-5BE0AA12734E}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{39714BA9-31D0-4160-B0C2-5BE0AA12734E}.Debug|x64.Build.0 = Debug|Any CPU
-		{39714BA9-31D0-4160-B0C2-5BE0AA12734E}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{39714BA9-31D0-4160-B0C2-5BE0AA12734E}.Debug|x86.Build.0 = Debug|Any CPU
-		{39714BA9-31D0-4160-B0C2-5BE0AA12734E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{39714BA9-31D0-4160-B0C2-5BE0AA12734E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{39714BA9-31D0-4160-B0C2-5BE0AA12734E}.Release|x64.ActiveCfg = Release|Any CPU
-		{39714BA9-31D0-4160-B0C2-5BE0AA12734E}.Release|x64.Build.0 = Release|Any CPU
-		{39714BA9-31D0-4160-B0C2-5BE0AA12734E}.Release|x86.ActiveCfg = Release|Any CPU
-		{39714BA9-31D0-4160-B0C2-5BE0AA12734E}.Release|x86.Build.0 = Release|Any CPU
 		{D89C8286-2978-465B-89C9-8836A837C06B}.Debug|Any CPU.ActiveCfg = Debug|x64
 		{D89C8286-2978-465B-89C9-8836A837C06B}.Debug|x64.ActiveCfg = Debug|x64
 		{D89C8286-2978-465B-89C9-8836A837C06B}.Debug|x64.Build.0 = Debug|x64
@@ -142,5 +128,25 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{83F16175-43B1-4C90-A1EE-8E351C33435D} = {A6A6AF7D-D6E3-442D-9B1E-58CC91879BE1}
 		{8E6D5255-776D-4B61-85F9-73C37AA1FB9A} = {A6A6AF7D-D6E3-442D-9B1E-58CC91879BE1}
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		Policies = $0
+		$0.TextStylePolicy = $1
+		$1.FileWidth = 120
+		$1.TabWidth = 2
+		$1.IndentWidth = 2
+		$1.inheritsSet = VisualStudio
+		$1.inheritsScope = text/plain
+		$1.scope = text/x-fsharp
+		$0.FSharpFormattingPolicy = $2
+		$2.DefaultFormat = $3
+		$3.IndentOnTryWith = False
+		$3.ReorderOpenDeclaration = False
+		$3.SpaceAfterComma = True
+		$3.SpaceAfterSemicolon = True
+		$3.SpaceAroundDelimiter = True
+		$3.SpaceBeforeArgument = True
+		$3.SpaceBeforeColon = True
+		$2.scope = text/x-fsharp
 	EndGlobalSection
 EndGlobal

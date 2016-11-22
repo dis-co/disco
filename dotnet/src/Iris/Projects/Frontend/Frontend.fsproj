@@ -69,12 +69,6 @@
     <Compile Include="../../Iris/Web/Core/Worker.fs" />
     <Compile Include="../../Iris/Web/Core/Client.fs" />
     <Compile Include="../../Iris/Web/Core/Keyboard.fs" />
-    <Compile Include="../../Iris/Web/React/Cluster.fs" />
-    <!--  __  __       _        -->
-    <!-- |  //  | __ _(_)_ __   -->
-    <!-- | |//| |/ _` | | '_ /  -->
-    <!-- | |  | | (_| | | | | | -->
-    <!-- |_|  |_|/__,_|_|_| |_| -->
     <Compile Include="../../Iris/Web/Frontend.fs" />
   </ItemGroup>
   <Choose>

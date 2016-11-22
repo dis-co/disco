@@ -381,7 +381,6 @@ let frontendDir = baseDir @@ "Projects" @@ "Frontend"
 
 Target "BuildFrontend" (fun () ->
   runFable frontendDir "" ()
-  runNpm "run webpack" (baseDir @@ "Iris/Web/React") ()
 )
 
 //  _____         _

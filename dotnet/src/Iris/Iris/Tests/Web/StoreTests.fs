@@ -307,6 +307,7 @@ module Store =
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
+          ; Password = "1234"
           ; Joined = "today"
           ; Created = "yesterday" }
 
@@ -332,6 +333,7 @@ module Store =
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
+          ; Password = "1234"
           ; Joined = "today"
           ; Created = "yesterday" }
 
@@ -359,6 +361,7 @@ module Store =
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
+          ; Password = "1234"
           ; Joined = "today"
           ; Created = "yesterday" }
 
@@ -380,6 +383,7 @@ module Store =
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
+          ; Password = "1234"
           ; Joined = "today"
           ; Created = "yesterday" }
 
@@ -404,7 +408,7 @@ module Store =
 
         let session : Session =
           { Id = Id.Create()
-          ; UserName = "Karsten"
+          ; Status = { StatusType = Unathorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
@@ -426,7 +430,7 @@ module Store =
 
         let session : Session =
           { Id = Id.Create()
-          ; UserName = "Karsten"
+          ; Status = { StatusType = Unathorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
@@ -436,11 +440,11 @@ module Store =
 
         equals 1 store.State.Sessions.Count
 
-        let newname = "kurt mix master"
-        store.Dispatch <| UpdateSession { session with UserName = newname }
+        let newStatus = Authorized
+        store.Dispatch <| UpdateSession { session with Status = { StatusType = Authorized; Payload = "" } }
 
         equals 1 store.State.Sessions.Count
-        equals newname store.State.Sessions.[session.Id].UserName
+        equals Authorized store.State.Sessions.[session.Id].Status.StatusType
 
         finish ()
 
@@ -450,7 +454,7 @@ module Store =
 
         let session : Session =
           { Id = Id.Create()
-          ; UserName = "Karsten"
+          ; Status = { StatusType = Unathorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
@@ -468,7 +472,7 @@ module Store =
 
         let session : Session =
           { Id = Id.Create()
-          ; UserName = "Karsten"
+          ; Status = { StatusType = Unathorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 

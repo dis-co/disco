@@ -80,7 +80,6 @@
     <Compile Include="..\..\Iris\Core\Config.fs" />
     <Compile Include="..\..\Iris\Core\Project.fs" />
     <Compile Include="..\..\Iris\Core\Uri.fs" />
-    <Compile Include="..\..\Iris\Service\GitServer.fs" />
     <Compile Include="..\..\Iris\Service\Request.fs" />
     <!--<Compile Include="..\..\Iris\Service\Zmq\Rep.fs" />
     <Compile Include="..\..\Iris\Service\Zmq\Req.fs" />

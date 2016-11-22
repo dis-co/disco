@@ -20,16 +20,17 @@ open SharpYaml.Serialization
 //   | | (_| | | | | | | |
 //   |_|\__,_|_| |_| |_|_|
 
-type UserYaml(i, u, f, l, e, j, c) =
+type UserYaml(i, u, f, l, e, p, j, c) =
   let mutable id        = i
   let mutable username  = u
   let mutable firstname = f
   let mutable lastname  = l
   let mutable email     = e
+  let mutable password  = p
   let mutable joined    = j
   let mutable created   = c
 
-  new () = new UserYaml(null, null, null, null, null, null, null)
+  new () = new UserYaml(null, null, null, null, null, null, null, null)
 
   member self.Id
     with get ()  = id
@@ -50,6 +51,10 @@ type UserYaml(i, u, f, l, e, j, c) =
   member self.Email
     with get ()  = email
      and set str = email <- str
+
+  member self.Password
+    with get ()  = password
+     and set str = password <- str
 
   member self.Joined
     with get ()  = joined
@@ -75,6 +80,7 @@ type User =
   ; FirstName: Name
   ; LastName:  Name
   ; Email:     Email
+  ; Password:  string
 #if FABLE_COMPILER
   ; Joined:    string
   ; Created:   string }
@@ -92,6 +98,7 @@ type User =
     hash <- (hash * 7) + hashCode me.FirstName
     hash <- (hash * 7) + hashCode me.LastName
     hash <- (hash * 7) + hashCode me.Email
+    hash <- (hash * 7) + hashCode me.Password
     hash <- (hash * 7) + hashCode (string me.Joined)
     hash <- (hash * 7) + hashCode (string me.Created)
 #else
@@ -100,6 +107,7 @@ type User =
     hash <- (hash * 7) + me.FirstName.GetHashCode()
     hash <- (hash * 7) + me.LastName.GetHashCode()
     hash <- (hash * 7) + me.Email.GetHashCode()
+    hash <- (hash * 7) + me.Password.GetHashCode()
     hash <- (hash * 7) + (string me.Joined).GetHashCode()
     hash <- (hash * 7) + (string me.Created).GetHashCode()
 #endif
@@ -160,6 +168,7 @@ type User =
       ; FirstName = "Administrator"
       ; LastName  = ""
       ; Email     = "info@nsynk.de"
+      ; Password  = "1234"
       ; Joined    = DateTime.Now
       ; Created   = DateTime.Now }
 
@@ -178,6 +187,7 @@ type User =
     let firstname = self.FirstName |> builder.CreateString
     let lastname  = self.LastName  |> builder.CreateString
     let email     = self.Email     |> builder.CreateString
+    let password  = self.Password  |> builder.CreateString
     let joined    = self.Joined    |> string |> builder.CreateString
     let created   = self.Created   |> string |> builder.CreateString
     UserFB.StartUserFB(builder)
@@ -186,6 +196,7 @@ type User =
     UserFB.AddFirstName(builder, firstname)
     UserFB.AddLastName(builder, lastname)
     UserFB.AddEmail(builder, email)
+    UserFB.AddPassword(builder, password)
     UserFB.AddJoined(builder, joined)
     UserFB.AddCreated(builder, created)
     UserFB.EndUserFB(builder)
@@ -199,6 +210,7 @@ type User =
       ; FirstName = fb.FirstName
       ; LastName  = fb.LastName
       ; Email     = fb.Email
+      ; Password  = fb.Password
 #if FABLE_COMPILER
       ; Joined    = fb.Joined
       ; Created   = fb.Created }
@@ -227,6 +239,7 @@ type User =
       self.FirstName,
       self.LastName,
       self.Email,
+      self.Password,
       string self.Joined,
       string self.Created)
 
@@ -240,6 +253,7 @@ type User =
         FirstName = yaml.FirstName
         LastName = yaml.LastName
         Email = yaml.Email
+        Password = yaml.Password
         Joined = DateTime.Parse yaml.Joined
         Created = DateTime.Parse yaml.Created }
 
