@@ -86,17 +86,6 @@ module Utils =
 
   #endif
 
-  // ** isLinux
-
-  #if !FABLE_COMPILER
-
-  let isLinux : bool =
-    int Environment.OSVersion.Platform
-    |> fun p ->
-      (p = 4) || (p = 6) || (p = 128)
-
-  #endif
-
   // ** warn
 
   let warn = printfn "[WARNING] %s"
@@ -168,7 +157,10 @@ module Network =
   ///
   /// Returns: string
   let getHostName () =
-    System.Net.Dns.GetHostName()
+    try
+      System.Net.Dns.GetHostName()
+    with
+      | _ -> System.Environment.MachineName
 
   // *** getIpAddress
 
@@ -190,6 +182,38 @@ module Network =
           if ip.Address.AddressFamily = Sockets.AddressFamily.InterNetwork
           then outip <- Some(ip.Address)
     outip
+
+#endif
+
+// * Platform
+
+#if !FABLE_COMPILER
+
+[<RequireQualifiedAccess>]
+module Platform =
+
+  // ** isUnix
+
+  /// ## isUnix
+  ///
+  /// Returns true if currently run on MacOS or other Unices.
+  ///
+  let isUnix : bool =
+    int Environment.OSVersion.Platform
+    |> fun p ->
+      (p = 4) ||                         // Unix
+      (p = 6) ||                         // MacOS
+      (p = 128)                         // old Mono Unix
+
+
+  // ** isWindows
+
+  /// ## isWindows
+  ///
+  /// True if the current platform is not a unix.
+  ///
+  /// Returns: bool
+  let isWindows = not isUnix
 
 #endif
 
@@ -235,6 +259,32 @@ module String =
       printfn "[%s]%s%s" tag ws str
 
   #endif
+
+  /// ## replace
+  ///
+  /// Replace `oldchar` with `newchar` in `str`.
+  ///
+  /// ### Signature:
+  /// - oldchar: char to replace
+  /// - newchar: char to substitute
+  /// - str: string to work on
+  ///
+  /// Returns: string
+  let replace (oldchar: char) (newchar: char) (str: string) =
+    str.Replace(oldchar, newchar)
+
+  // *** join
+
+  /// ## join
+  ///
+  /// Join a string using provided separator.
+  ///
+  /// ### Signature:
+  /// - sep: string separator
+  /// - arr: string array to join
+  ///
+  /// Returns: string
+  let join sep (arr: string array) = String.Join(sep, arr)
 
   // *** toLower
 
@@ -370,6 +420,27 @@ module FileSystem =
   /// Returns: FilePath (string)
   let (</>) p1 p2 = System.IO.Path.Combine(p1, p2)
 
+  // *** moveFile
+
+  /// ## moveFile
+  ///
+  /// Move a file or directory from source to dest.
+  ///
+  /// ### Signature:
+  /// - source: FilePath
+  /// - dest: FilePath
+  ///
+  /// Returns: unit
+  let moveFile (source: FilePath) (dest: FilePath) =
+    try
+      let info = new FileInfo(source)
+      let attrs = info.Attributes
+      if attrs.HasFlag(FileAttributes.Directory) then
+        Directory.Move(source,dest)
+      else
+        File.Move(source, dest)
+    with | _ -> ()
+
   // *** rmDir
 
   /// ## delete a file or directory
@@ -442,6 +513,9 @@ module Path =
   let baseName (path: FilePath) =
     Path.GetFileName path
 
+  let dirName (path: FilePath) =
+    Path.GetDirectoryName path
+
 #endif
 // * Time
 
@@ -497,6 +571,23 @@ module Time =
 [<RequireQualifiedAccess>]
 module Process =
 
+  // *** tryFind
+
+  /// ## tryFind
+  ///
+  /// Try to find a Process by its process id.
+  ///
+  /// ### Signature:
+  /// - pid: int
+  ///
+  /// Returns: Process option
+  let tryFind (pid: int) =
+    try
+      Process.GetProcessById(pid)
+      |> Some
+    with
+      | _ -> None
+
   // *** kill
 
   /// ## kill
@@ -508,18 +599,46 @@ module Process =
   ///
   /// Returns: unit
   let rec kill (pid : int) =
-    if isLinux
-    then
-      Process.Start("kill", string pid)
+    if Platform.isUnix then
+      /// On Mono we need to kill the parent and children
+      Process.Start("pkill", sprintf "-TERM -P %d" pid)
       |> ignore
     else
-      let query = sprintf "Select * From Win32_Process Where ParentProcessID=%d" pid
-      let searcher = new ManagementObjectSearcher(query);
-      let moc = searcher.Get();
-      for mo in moc do
-        kill <| (mo.GetPropertyValue("ProcessID") :?> int)
-      let proc = Process.GetProcessById(pid)
-      proc.Kill();
+      try
+        /// On Windows, we can use this trick to kill all child processes and finally the parent.
+        let query = sprintf "Select * From Win32_Process Where ParentProcessID=%d" pid
+        let searcher = new ManagementObjectSearcher(query);
+
+        // kill all child processes
+        for mo in searcher.Get() do
+          // have to use explicit conversion using Convert here, or it breaks
+          mo.GetPropertyValue "ProcessID"
+          |> Convert.ToInt32
+          |> kill
+
+        // kill parent process
+        let proc = Process.GetProcessById(pid)
+        proc.Kill();
+      with
+        | _ -> ()
+
+    // wait for this process to end properly
+    while tryFind pid |> Option.isSome do
+      System.Threading.Thread.Sleep 1
+
+
+  /// ## isRunning
+  ///
+  /// Return true if a process with the given PID is currently running.
+  ///
+  /// ### Signature:
+  /// - pid: int process id
+  ///
+  /// Returns: bool
+  let isRunning (pid: int) =
+    match tryFind pid with
+    | Some _ -> true
+    | _      -> false
 
 #endif
 
@@ -544,9 +663,8 @@ module WorkSpace =
   /// Returns: FilePath
   let find () : FilePath =
     let wsp = Environment.GetEnvironmentVariable IRIS_WORKSPACE
-    if isNull wsp || wsp.Length = 0
-    then
-      if isLinux then
+    if isNull wsp || wsp.Length = 0 then
+      if Platform.isUnix then
         let usr = Security.Principal.WindowsIdentity.GetCurrent().Name
         sprintf @"/home/%s/iris" usr
       else @"C:\\Iris\"

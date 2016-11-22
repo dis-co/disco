@@ -113,7 +113,6 @@ module GitTests =
         mkEnvironment 10000us
 
       use gitserver = new GitServer(project)
-      // gitserver.OnLogMsg <- Logger.log (Id uuid) Debug
       gitserver.Start()
 
       expect "Should be running" true Service.isRunning gitserver.Status
@@ -130,7 +129,6 @@ module GitTests =
       expect "Should be running" true Service.isRunning gitserver1.Status
 
       use gitserver2 = new GitServer(project)
-      // gitserver2.OnLogMsg <- Logger.log (Id.Create()) Debug
       gitserver2.Start()
 
       expect "Should have failed" true Service.hasFailed gitserver2.Status
@@ -143,7 +141,6 @@ module GitTests =
         mkEnvironment port
 
       use gitserver = new GitServer(project)
-      // gitserver.OnLogMsg <- Logger.log (Id uuid) Debug
       gitserver.Start()
 
       expect "Should be running" true Service.isRunning gitserver.Status
@@ -157,6 +154,32 @@ module GitTests =
         |> Git.Repo.clone target.FullName
 
       expect "Should have successfully clone project" true Either.isSuccess repo
+
+  let test_server_cleanup =
+    testCase "Should cleanup processes correctly" <| fun _ ->
+      let port = 10003us
+
+      let uuid, tmpdir, project =
+        mkEnvironment port
+
+      let gitserver1 = new GitServer(project)
+      gitserver1.Start()
+
+      expect "Should be running" true Service.isRunning gitserver1.Status
+
+      let gitserver2 = new GitServer(project)
+      gitserver2.Start()
+
+      expect "Should have failed" true Service.hasFailed gitserver2.Status
+
+      dispose gitserver1
+      dispose gitserver2
+
+      expect "Should not be running" false Service.isRunning gitserver1.Status
+      expect "Should not be running" false Service.isRunning gitserver2.Status
+
+      expect "Should leave no dangling process 1/2" false Process.isRunning gitserver1.Pid
+      expect "Should leave no dangling process 2/2" false Process.isRunning gitserver2.Pid
 
   //  _____         _     _     _     _
   // |_   _|__  ___| |_  | |   (_)___| |_
@@ -174,4 +197,5 @@ module GitTests =
       test_server_startup
       test_server_availability
       test_server_startup_should_error_on_eaddrinuse
+      test_server_cleanup
     ]

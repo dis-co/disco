@@ -209,7 +209,7 @@ module Persistence =
       try
         // FIXME: should later be the person who issued command (session + user)
         let committer =
-          let hostname = Net.Dns.GetHostName()
+          let hostname = Network.getHostName()
           new Signature("Iris", "iris@" + hostname, new DateTimeOffset(DateTime.Now))
 
         let msg = sprintf "Saved %s " name
@@ -255,7 +255,7 @@ module Persistence =
         let fileinfo = deleteAsset destPath
 
         let committer =
-          let hostname = Net.Dns.GetHostName()
+          let hostname = Network.getHostName()
           new Signature("Iris", "iris@" + hostname, new DateTimeOffset(DateTime.Now))
 
         let msg = sprintf "Saved %s " name

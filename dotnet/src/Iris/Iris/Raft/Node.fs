@@ -364,7 +364,7 @@ module Node =
 #if FABLE_COMPILER
     let hostname = Fable.Import.Browser.window.location.host
 #else
-    let hostname = System.Net.Dns.GetHostName()
+    let hostname = Network.getHostName ()
 #endif
     { Id         = id
     ; HostName   = hostname

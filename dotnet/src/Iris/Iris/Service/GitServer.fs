@@ -12,7 +12,7 @@ open System.Threading
 open System.Diagnostics
 open System.Management
 open Microsoft.FSharp.Control
-
+open FSharpx.Functional
 
 // * GitServer
 
@@ -34,6 +34,8 @@ type GitServer (project: IrisProject) =
   let tag = "GitServer"
 
   let loco : obj  = new obj()
+
+  let mutable pid = -1
 
   let nodeid =
     Config.getNodeId()
@@ -79,17 +81,14 @@ type GitServer (project: IrisProject) =
     let cts = new CancellationTokenSource()
     let action =
       async {
-        while running && stream.Peek() <> -1 do
+        while running do
           let line = stream.ReadLine()    // blocks
 
-          if line.Contains "Ready to rumble" then
-            Logger.debug nodeid tag "setting starter to return to caller of .Start()"
-            starter.Set() |> ignore
-
-          Logger.log level nodeid tag line
-
-        sprintf "streamReader done. running=%b eof=%b" running (not running)
-        |> Logger.debug nodeid tag
+          if not (isNull line) then
+            if line.Contains "Ready to rumble" then
+              Logger.debug nodeid tag "setting starter to return to caller of .Start()"
+              starter.Set() |> ignore
+            Logger.log level nodeid tag line
       }
     Async.Start(action, cts.Token)
     cts
@@ -152,7 +151,13 @@ type GitServer (project: IrisProject) =
   let worker path addr port () =
     /// 1) Set up the Process
 
-    let basedir = Path.GetDirectoryName path
+    let basedir =
+      Path.GetDirectoryName path
+      |> String.replace '\\' '/'
+
+    let sanepath =
+      path
+      |> String.replace '\\' '/'
 
     sprintf "starting on %s:%d in base path: %A with dir: %A"
       (string addr)
@@ -162,8 +167,15 @@ type GitServer (project: IrisProject) =
     |> Logger.debug nodeid tag
 
     let args =
-      sprintf "daemon --verbose --reuseaddr --listen=%s --port=%d --strict-paths --base-path=%s %s/.git"
-        (string addr) port basedir path
+      [| "daemon"
+      ; "--verbose"
+      ; "--strict-paths"
+      ; (sprintf "--base-path=%s" basedir)
+      ; (if Platform.isUnix then "--reuseaddr" else "")
+      ; (addr |> string |> sprintf "--listen=%s")
+      ; (sprintf "--port=%d" port)
+      ; (sprintf "%s/.git" sanepath) |]
+      |> String.join " "
 
     let proc = new Process()
     proc.StartInfo.FileName <- "git"
@@ -175,15 +187,14 @@ type GitServer (project: IrisProject) =
     proc.StartInfo.RedirectStandardError <- true
 
     /// 2) Hook up `onExitEvent` callback
-    onExitEvent <-
-      proc.Exited
-      |> Observable.subscribe (exitHandler proc)
+    onExitEvent <- Observable.subscribe (exitHandler proc) proc.Exited
 
     /// 3) Start the Process
     if proc.Start() then
 
       /// 4.1) Setting the Status to Running
       running <- true
+      pid <- proc.Id
 
       stdoutToken <- streamReader LogLevel.Info proc.StandardOutput
       stderrToken <- streamReader LogLevel.Err  proc.StandardError
@@ -213,7 +224,7 @@ type GitServer (project: IrisProject) =
       /// 5.3) Kill the process
       try
         Logger.debug nodeid tag "killing process"
-        proc.Kill()
+        Process.kill pid
       with
         | exn ->
           sprintf "could not kill process: %s" exn.Message
@@ -323,7 +334,25 @@ type GitServer (project: IrisProject) =
   ///
   /// Returns: bool
   member self.Running() =
-    Service.isRunning status && thread.IsAlive
+    pid >= 0                  &&
+    Service.isRunning status &&
+    Process.isRunning pid    &&
+    thread.IsAlive
+
+  // ** Pid
+
+  /// ## Pid
+  ///
+  /// Get the PID of the underlying `git daemon` process.
+  ///
+  /// ### Signature:
+  /// - unit: unit
+  /// - arg: arg
+  /// - arg: arg
+  ///
+  /// Returns: int
+  member self.Pid
+    with get () = pid
 
   // ** IDisposable
 
