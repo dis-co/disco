@@ -586,14 +586,28 @@ module Process =
       Process.Start("pkill", sprintf "-TERM -P %d" pid)
       |> ignore
     else
-      /// On Windows, we can use this trick to kill all child processes and finally the parent.
-      let query = sprintf "Select * From Win32_Process Where ParentProcessID=%d" pid
-      let searcher = new ManagementObjectSearcher(query);
-      let moc = searcher.Get();
-      for mo in moc do
-        kill <| (mo.GetPropertyValue("ProcessID") :?> int)
-      let proc = Process.GetProcessById(pid)
-      proc.Kill();
+      try
+        /// On Windows, we can use this trick to kill all child processes and finally the parent.
+        let query = sprintf "Select * From Win32_Process Where ParentProcessID=%d" pid
+        let searcher = new ManagementObjectSearcher(query);
+
+        // kill all child processes
+        for mo in searcher.Get() do
+          // have to use explicit conversion using Convert here, or it breaks
+          mo.GetPropertyValue "ProcessID"
+          |> Convert.ToInt32
+          |> kill
+
+        // kill parent process
+        let proc = Process.GetProcessById(pid)
+        proc.Kill();
+      with
+        | _ -> ()
+
+    // wait for this process to end properly
+    while tryFind pid |> Option.isSome do
+      System.Threading.Thread.Sleep 1
+
 
   /// ## isRunning
   ///

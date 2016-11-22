@@ -219,8 +219,6 @@ type GitServer (project: IrisProject) =
       try
         Logger.debug nodeid tag "killing process"
         Process.kill pid
-        while Process.isRunning pid do
-          Thread.Sleep 40
       with
         | exn ->
           sprintf "could not kill process: %s" exn.Message
