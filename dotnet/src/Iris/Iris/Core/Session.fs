@@ -25,6 +25,7 @@ open SharpYaml.Serialization
 //   |_|\__,_|_| |_| |_|_|  \___/|_.__// |\___|\___|\__|
 //                                   |__/
 
+[<AllowNullLiteral>]
 type SessionStatusYaml(typ, payload) as self =
   [<DefaultValue>] val mutable StatusType : string
   [<DefaultValue>] val mutable Payload    : string
@@ -36,9 +37,9 @@ type SessionStatusYaml(typ, payload) as self =
     self.Payload    <- payload
 
 
-type SessionYaml(id, name, ip, ua) as self =
+type SessionYaml(id, status, ip, ua) as self =
   [<DefaultValue>] val mutable Id        : string
-  [<DefaultValue>] val mutable UserName  : string
+  [<DefaultValue>] val mutable Status    : SessionStatusYaml
   [<DefaultValue>] val mutable IpAddress : string
   [<DefaultValue>] val mutable UserAgent : string
 
@@ -46,7 +47,7 @@ type SessionYaml(id, name, ip, ua) as self =
 
   do
     self.Id        <- id
-    self.UserName  <- name
+    self.Status    <- status
     self.IpAddress <- ip
     self.UserAgent <- ua
 
@@ -135,6 +136,38 @@ type SessionStatus =
 
   member self.ToBytes() = Binary.buildBuffer self
 
+#if !FABLE_COMPILER
+
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+  member self.ToYamlObject () =
+    new SessionStatusYaml(
+      string self.StatusType,
+      self.Payload)
+
+  member self.ToYaml (serializer: Serializer) =
+    self
+    |> Yaml.toYaml
+    |> serializer.Serialize
+
+  static member FromYamlObject (yml: SessionStatusYaml) =
+    either {
+      let! typ = SessionStatusType.TryParse yml.StatusType
+      return { StatusType = typ
+               Payload = yml.Payload }
+    }
+
+  static member FromYaml (str: string): Either<IrisError,SessionStatus> =
+    let serializer = new Serializer()
+    serializer.Deserialize<SessionStatusYaml>(str)
+    |> Yaml.fromYaml
+
+#endif
+
 type Session =
   { Id: Id
   ; Status:  SessionStatus
@@ -149,7 +182,8 @@ type Session =
   //                           |___/
 
   static member FromFB(fb: SessionFB) : Either<IrisError, Session> =
-    SessionStatus.FromFB fb.Status
+    Either.ofNullable fb.Status ParseError
+    |> Either.bind SessionStatus.FromFB
     |> Either.map (fun status ->
       { Id = Id fb.Id
       ; Status  = status
@@ -184,9 +218,13 @@ type Session =
   //   |_|\__,_|_| |_| |_|_|
 
   member self.ToYamlObject () =
+    let status =
+      new SessionStatusYaml(
+        string self.Status.StatusType,
+        self.Status.Payload)
     new SessionYaml(
       string self.Id,
-      self.UserName,
+      status,
       string self.IpAddress,
       self.UserAgent)
 
@@ -198,13 +236,14 @@ type Session =
   static member FromYamlObject (yml: SessionYaml) =
     either {
       let! ip = IpAddress.TryParse yml.IpAddress
+      let! status = SessionStatus.FromYamlObject yml.Status
       return { Id = Id yml.Id
-               UserName = yml.UserName
+               Status = status
                IpAddress = ip
                UserAgent = yml.UserAgent }
     }
 
-  static member FromYaml (str: string) : Either<IrisError,Session> =
+  static member FromYaml (str: string): Either<IrisError,Session> =
     let serializer = new Serializer()
     serializer.Deserialize<SessionYaml>(str)
     |> Yaml.fromYaml

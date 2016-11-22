@@ -284,6 +284,7 @@ module StoreTests =
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
+          ; Password = "1234"
           ; Joined = DateTime.Now
           ; Created = DateTime.Now }
 
@@ -307,6 +308,7 @@ module StoreTests =
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
+          ; Password = "1234"
           ; Joined  = DateTime.Now
           ; Created = DateTime.Now }
 
@@ -333,6 +335,7 @@ module StoreTests =
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
+          ; Password = "1234"
           ; Joined  = DateTime.Now
           ; Created = DateTime.Now }
 
@@ -352,6 +355,7 @@ module StoreTests =
           ; FirstName = "Karsten"
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
+          ; Password = "1234"
           ; Joined  = DateTime.Now
           ; Created = DateTime.Now }
 
@@ -377,7 +381,7 @@ module StoreTests =
 
         let session : Session =
           { Id = Id.Create()
-          ; UserName = "Karsten"
+          ; Status = { StatusType = Unathorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
@@ -397,7 +401,7 @@ module StoreTests =
 
         let session : Session =
           { Id = Id.Create()
-          ; UserName = "Karsten"
+          ; Status = { StatusType = Unathorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
@@ -407,11 +411,11 @@ module StoreTests =
 
         expect "Should be 1" 1 id store.State.Sessions.Count
 
-        let newname = "kurt mix master"
-        store.Dispatch <| UpdateSession { session with UserName = newname }
+        let newStatus = "kurt mix master"
+        store.Dispatch <| UpdateSession { session with Status = { StatusType = Authorized; Payload = "" } }
 
         expect "Should be 1" 1 id store.State.Sessions.Count
-        expect "Should be correct name" newname id store.State.Sessions.[session.Id].UserName
+        expect "Should be correct name" Authorized id store.State.Sessions.[session.Id].Status.StatusType
 
   let test_should_not_add_session_to_the_store_on_update_when_missing =
     testCase "should not add session to the store on update when missing" <| fun _ ->
@@ -419,7 +423,7 @@ module StoreTests =
 
         let session : Session =
           { Id = Id.Create()
-          ; UserName = "Karsten"
+          ; Status = { StatusType = Unathorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
@@ -435,7 +439,7 @@ module StoreTests =
 
         let session : Session =
           { Id = Id.Create()
-          ; UserName = "Karsten"
+          ; Status = { StatusType = Unathorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 

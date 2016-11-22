@@ -62,6 +62,7 @@ module SerializationTests =
     ; FirstName = "Karsten"
     ; LastName = "Gebbert"
     ; Email = "k@ioctl.it"
+    ; Password = "1234"
     ; Joined = "1"
     ; Created = "2"
     }
@@ -70,7 +71,7 @@ module SerializationTests =
 
   let mkSession _ =
     { Id = Id.Create()
-    ; UserName = "krgn"
+    ; Status = { StatusType = Unathorized; Payload = "" }
     ; IpAddress = IPv4Address "127.0.0.1"
     ; UserAgent = "Oh my goodness"
     }

@@ -75,7 +75,7 @@ type SessionFBConstructor =
   abstract AddStatus: builder: FlatBufferBuilder * status: Offset<SessionStatusFB> -> unit
   abstract AddIpAddress: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddUserAgent: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract EndSessionFB: builder: FlatBufferBuilder -> Offset<SessionStatusFB>
+  abstract EndSessionFB: builder: FlatBufferBuilder -> Offset<SessionFB>
   abstract GetRootAsSessionFB: buffer: ByteBuffer -> SessionFB
   abstract Create: unit -> SessionStatusFB
 

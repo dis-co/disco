@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+open System
+
 // * Either Type
 
 //  _____ _ _   _
@@ -17,6 +19,17 @@ type Either<'err,'a> =
 
 [<RequireQualifiedAccess>]
 module Either =
+
+  // FB types are not modeled with nullables in JS
+  #if FABLE_COMPILER
+  let ofNullable (v: 'T) (er: string->'Err) =
+    Right v
+  #else
+  let ofNullable (v: Nullable<'T>) (er: string->'Err) =
+    if v.HasValue
+    then Right v.Value
+    else "Item has no value" |> er |> Left
+  #endif
 
   // ** succeed
 

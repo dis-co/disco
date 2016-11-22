@@ -57,7 +57,7 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
         "<no user agent specified>"
 
     { Id        = getSessionId socket
-    ; UserName  = ""
+    ; Status    = { StatusType = Unathorized; Payload = "" }
     ; IpAddress = IpAddress.Parse socket.ConnectionInfo.ClientIpAddress
     ; UserAgent = ua }
 
