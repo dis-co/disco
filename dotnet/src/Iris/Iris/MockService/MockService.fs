@@ -7,6 +7,23 @@ open Iris.Core
 open Iris.Core.Utils
 // open Iris.Service.Persistence
 
+module Util =
+  open System.Collections.Concurrent
+
+  let authorizedUsers =
+    ConcurrentDictionary<string, User>()
+    
+  let users = [
+    { Id        = Id.Create()
+    ; UserName  = "alfonso"
+    ; FirstName = "Alfonso"
+    ; LastName  = "García-Caro"
+    ; Email     = "alfonso.garcia-caro@nsynk.de"
+    ; Password  = "1234"
+    ; Joined    = DateTime.Now
+    ; Created   = DateTime.Now }
+  ]
+
 //  ___      _     ____                  _
 // |_ _|_ __(_)___/ ___|  ___ _ ____   _(_) ___ ___
 //  | || '__| / __\___ \ / _ \ '__\ \ / / |/ __/ _ \
