@@ -356,6 +356,49 @@ module ProjectTests =
             expect "Project should have old commit message"     true ((=) c2.MessageShort) msg2
             expect "Project should have oldest commit message"  true ((=) c3.MessageShort) msg1
 
+  let upToDatePath =
+    testCase "Saving project should always contain an up-to-date path" <| fun _ ->
+      let name = "test4"
+      let author1 = "karsten"
+
+      let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
+
+      if Directory.Exists path then
+          DirectoryInfo(path) |> deleteFileSystemInfo
+
+      let msg1 = "Commit 1"
+
+      let (commit1, project) =
+        { Project.create name with
+            Path = Some(path)
+            Author = Some(author1) }
+        |> Project.save signature msg1
+        |> Either.get
+
+      (path </> PROJECT_FILENAME + ASSET_EXTENSION)
+      |> Project.load
+      |> Either.get
+      |> fun p ->
+        expect
+          "Project should have commit message"
+          (Some path)
+          id
+          p.Path
+
+      let newpath = Path.dirName path </> (Path.GetTempFileName() |> Path.baseName)
+
+      FileSystem.mv path newpath
+
+      (newpath </> PROJECT_FILENAME + ASSET_EXTENSION)
+      |> Project.load
+      |> Either.get
+      |> fun p ->
+        expect
+          "Project should have commit message"
+          (Some newpath)
+          id
+          p.Path
+
   // For tests async stuff:
   //
   // let testTests =
@@ -371,4 +414,5 @@ module ProjectTests =
         testCustomizedCfg
         saveInitsGit
         savesMultipleCommits
+        upToDatePath
       ]

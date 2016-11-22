@@ -407,6 +407,22 @@ module FileSystem =
   /// Returns: FilePath (string)
   let (</>) p1 p2 = System.IO.Path.Combine(p1, p2)
 
+  // *** mv
+
+  /// ## mv
+  ///
+  /// Move a file or directory from source to dest.
+  ///
+  /// ### Signature:
+  /// - source: FilePath
+  /// - dest: FilePath
+  ///
+  /// Returns: unit
+  let mv (source: FilePath) (dest: FilePath) =
+    try
+      File.Move(source, dest)
+    with | _ -> ()
+
   // *** rmDir
 
   /// ## delete a file or directory
@@ -478,6 +494,9 @@ module Path =
 
   let baseName (path: FilePath) =
     Path.GetFileName path
+
+  let dirName (path: FilePath) =
+    Path.GetDirectoryName path
 
 #endif
 // * Time
