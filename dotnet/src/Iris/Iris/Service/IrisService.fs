@@ -25,10 +25,8 @@ type IrisService(project: IrisProject ref) =
 
   let store : Store = new Store(State.Empty)
 
-  let kontext = new ZContext()
-
   let gitserver  = new GitServer(!project)
-  let raftserver = new RaftServer((!project).Config, kontext)
+  let raftserver = new RaftServer((!project).Config)
   let wsserver   = new WsServer((!project).Config, raftserver)
   let httpserver = new AssetServer((!project).Config)
 
@@ -269,7 +267,6 @@ type IrisService(project: IrisProject ref) =
       dispose raftserver
       dispose wsserver
       dispose httpserver
-      dispose kontext
       dispose logger
     with
       | exn ->

@@ -18,7 +18,7 @@ open Stm
 // |  _ < (_| |  _| |_   ___) |  __/ |   \ V /  __/ |
 // |_| \_\__,_|_|  \__| |____/ \___|_|    \_/ \___|_|
 
-type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
+type RaftServer(options: IrisConfig) as self =
   let tag = "RaftServer"
 
   let locker = new Object()
@@ -31,7 +31,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
   let cbs = self :> IRaftCallbacks
 
   let appState =
-    match mkContext context options with
+    match mkContext options with
     | Right state -> newTVar state
     | Left error  -> Error.exitWith error
 
@@ -207,15 +207,12 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
     match RaftContext.getConnection state node.Id with
     | Some socket -> socket
     | _ ->
-      let socket = mkReqSocket node state.Context
+      let socket = mkReqSocket node
       socket
       |> RaftContext.addConnection state
       |> writeTVar appState
       |> atomically
       socket
-
-  member self.Context
-    with get () = context
 
   /// Alas, we may only *look* at the current state.
   member self.State

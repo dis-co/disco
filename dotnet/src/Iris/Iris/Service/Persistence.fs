@@ -175,11 +175,10 @@ module Persistence =
   /// - options: `RaftOptions`
   ///
   /// Returns: RaftAppState
-  let mkContext (context: ZeroMQ.ZContext) (options: IrisConfig) : Either<IrisError,RaftAppContext> =
+  let mkContext (options: IrisConfig) : Either<IrisError,RaftAppContext> =
     either {
       let! raft = getRaft options
       return { Raft        = raft
-               Context     = context
                Connections = Map.empty
                Options     = options }
     }

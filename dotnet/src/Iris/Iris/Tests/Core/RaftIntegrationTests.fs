@@ -2,6 +2,7 @@ namespace Iris.Tests
 
 open System
 open System.Threading
+open System.Text
 open Expecto
 
 open Iris.Core
@@ -9,6 +10,7 @@ open Iris.Service
 open Iris.Service.Utilities
 open Iris.Service.Persistence
 open Iris.Raft
+open Iris.Service
 open FSharpx.Functional
 open ZeroMQ
 
@@ -23,8 +25,6 @@ module RaftIntegrationTests =
 
   let test_validate_raft_service_bind_correct_port =
     testCase "validate raft service bind correct port" <| fun _ ->
-      let ctx = new ZContext()
-
       let port = 12000us
 
       let node =
@@ -39,24 +39,24 @@ module RaftIntegrationTests =
 
         // |> Config.setLogLevel (LogLevel.Debug)
 
-      let leader = new RaftServer(leadercfg, ctx)
+      let leader = new RaftServer(leadercfg)
       leader.Start()
 
       expect "Should be running" true Service.isRunning leader.ServerState
 
-      let follower = new RaftServer(leadercfg, ctx)
+      let follower = new RaftServer(leadercfg)
       follower.Start()
 
       expect "Should be failed" true Service.hasFailed follower.ServerState
 
       dispose follower
       dispose leader
-      dispose ctx
 
   let test_validate_follower_joins_leader_after_startup =
     testCase "validate follower joins leader after startup" <| fun _ ->
-      printfn "============================================================"
-      let ctx = new ZContext()
+      printfn "---------------------------- follower joins leader --------------------------------"
+
+      use obs = Observable.subscribe Logger.stdout Logger.listener
 
       let nid1 = mkUuid()
       let nid2 = mkUuid()
@@ -87,19 +87,56 @@ module RaftIntegrationTests =
 
       setNodeId nid1
 
-      let leader = new RaftServer(leadercfg, ctx)
+      let leader = new RaftServer(leadercfg)
       leader.Start()
 
       setNodeId nid2
 
-      let follower = new RaftServer(followercfg, ctx)
+      let follower = new RaftServer(followercfg)
       follower.Start()
 
       Thread.Sleep 10000
 
-      dispose follower
+      printfn "----------------------------- disposing -------------------------------"
+
       dispose leader
-      dispose ctx
+      dispose follower
+
+      printfn "connections: %A" (Map.isEmpty leader.State.Connections)
+
+      printfn "----------------------------- done -------------------------------"
+
+
+  let test_proper_cleanup_of_request_sockets =
+    testCase "validate Req sockets are cleaned up properly" <| fun _ ->
+      let srv = "tcp://127.0.0.1:8989"
+
+      let count = ref 0
+
+      let handler (msg: byte array) =
+        Encoding.UTF8.GetString msg
+        |> printfn "msg: %s"
+
+        lock count <| fun _ ->
+          let next = !count + 1
+          printfn "incr: %d" next
+          count := next
+
+        "roger"
+        |> Encoding.UTF8.GetBytes
+
+      let rep = new Zmq.Rep(srv, handler)
+      rep.Start()
+
+      let req = new Zmq.Req(Id.Create(), srv, 50)
+      req.Start()
+
+      [ "hi"; "yep"; "bye" ]
+      |> List.map (Encoding.UTF8.GetBytes >> req.Request)
+      |> List.iter (expect "Should be a success" true Either.isSuccess)
+
+      dispose rep
+      dispose req
 
   //                       _ _
   //  _ __   ___ _ __   __| (_)_ __   __ _
@@ -129,8 +166,10 @@ module RaftIntegrationTests =
       // test_log_snapshotting_should_clean_all_logs
 
       // raft
+      test_proper_cleanup_of_request_sockets
       test_validate_raft_service_bind_correct_port
-      // test_validate_follower_joins_leader_after_startup
+      test_validate_follower_joins_leader_after_startup
+
       // test_follower_join_should_fail_on_duplicate_raftid
       // test_all_rafts_should_share_a_common_distributed_event_log
     ]

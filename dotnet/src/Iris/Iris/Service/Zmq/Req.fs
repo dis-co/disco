@@ -18,7 +18,7 @@ open Iris.Core
 /// - ctx: ZeroMQ context
 ///
 /// Returns: instance of Req
-type Req (id: Id, addr: string, ctx: ZContext, timeout: int) =
+type Req (id: Id, addr: string, timeout: int) =
 
   let nodeid = id
 
@@ -38,11 +38,13 @@ type Req (id: Id, addr: string, ctx: ZContext, timeout: int) =
   let mutable disposed = false
   let mutable sock = null
   let mutable lokk = null
+  let mutable ctx = null
 
   // ** worker
 
   let worker _ =                                              // thread worker function
     if isNull sock then                                       // if not yet present
+      ctx <- new ZContext()
       sock <- new ZSocket(ctx, ZSocketType.REQ)                // initialise the socket
       sock.SetOption(ZSocketOption.RCVTIMEO, timeout)         // set receive timeout
       |> ignore
@@ -75,6 +77,7 @@ type Req (id: Id, addr: string, ctx: ZContext, timeout: int) =
     sock.SetOption(ZSocketOption.LINGER, 0) |> ignore          // set linger to 0 to close socket quickly
     sock.Close()                                              // close the socket
     sock.Dispose()                                            // dispose of it
+    ctx.Dispose()
     disposed <- true                                           // this socket is disposed
     started <- false                                           // and not running anymore
     stopper.Set() |> ignore                                    // signal that everything was cleaned up now

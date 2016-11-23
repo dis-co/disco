@@ -137,8 +137,6 @@ module Utils =
   let inline toPair< ^t, ^i when ^t : (member Id : ^i)> (a: ^t) : ^i * ^t =
     ((^t : (member Id : ^i) a), a)
 
-
-
 // * Network
 
 #if !FABLE_COMPILER

@@ -428,7 +428,7 @@ let tryJoin (ip: IpAddress) (port: uint32) cbs (state: RaftAppContext) =
   let rec _tryJoin retry peer =
     either {
       if retry < int state.Options.RaftConfig.MaxRetries then
-        let client = mkReqSocket peer state.Context
+        let client = mkReqSocket peer
 
         sprintf "Retry: %d" retry
         |> debugMsg state cbs "tryJoin"
@@ -487,7 +487,7 @@ let tryLeave (appState: TVar<RaftAppContext>) cbs : Either<IrisError,bool> =
   let rec _tryLeave retry node =
     either {
       if retry < int state.Options.RaftConfig.MaxRetries then
-        let client = mkReqSocket node state.Context
+        let client = mkReqSocket node
         let request = HandWaive(state.Raft.Node)
         let! result = rawRequest request client
 

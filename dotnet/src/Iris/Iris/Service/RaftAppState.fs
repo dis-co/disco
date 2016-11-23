@@ -18,8 +18,7 @@ open Iris.Service.Zmq
 //                            |_|   |_|
 [<NoComparison;NoEquality>]
 type RaftAppContext =
-  { Context:     ZeroMQ.ZContext
-    Connections: Map<Id,Req>
+  { Connections: Map<Id,Req>
     Raft:        RaftValue
     Options:     IrisConfig }
 

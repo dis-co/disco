@@ -64,10 +64,10 @@ module ZmqUtils =
   /// - state: current app state
   ///
   /// Returns: fszmq.Socket
-  let mkReqSocket (node: RaftNode) (context: ZContext) =
+  let mkReqSocket (node: RaftNode) =
     let timeout = 2000 // FIXME: this request timeout value should be settable
     let addr = nodeUri node
-    let socket = new Req(node.Id, addr, context, timeout)
+    let socket = new Req(node.Id, addr, timeout)
     socket.Start()
     socket
 
