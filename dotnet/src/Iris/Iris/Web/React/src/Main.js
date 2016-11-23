@@ -9,12 +9,15 @@ injectTapEventPlugin();
 class App extends React.Component {
   constructor(props) {
     super(props);
-    props.subscribe(state => this.setState(state))
+    props.subscribe(state => {
+      console.log(state);
+      this.setState(state);
+    })
   }
 
   render() {
     return <MuiThemeProvider>
-      <Layout />
+      <Layout state={this.state} />
     </MuiThemeProvider>
   }
 }

@@ -10,9 +10,38 @@ export default class LoginDialog extends React.Component {
       this.state = { open: true, username: "", password: "" };
   }
 
-  handleClose() {
-    this.setState({open: false});
+  handleSubmit() {
+    this.props.login(this.state.username, this.state.password);
+    this.setState({status: 'waiting'});
   };
+
+  componentWillReceiveProps(nextProps) {
+    try {
+      let status = nextProps.session.Status.StatusType.ToString();
+      switch (status) {
+        case "Authorized":
+          this.setState({ open: false })
+          break;
+        case "Unauthorized":
+          if (this.state.status === "waiting") {
+            this.setState({ status: "rejected" })
+          }
+          break;
+      }
+    }
+    catch (err) {
+      console.log(err);
+    }
+  }
+
+  getMessage() {
+    switch (this.state.status) {
+      case "waiting":
+        return <p>Waiting for response</p>;
+      case "rejected":
+        return <p>Input data is not correct</p>;
+    }
+  }
 
   render() {
     const actions = [
@@ -24,8 +53,8 @@ export default class LoginDialog extends React.Component {
       <FlatButton
         label="Submit"
         primary={true}
-        disabled={!this.state.username || !this.state.password}
-        onTouchTap={this.handleClose.bind(this)}
+        disabled={!this.state.username || !this.state.password || this.state.status === "waiting"}
+        onTouchTap={this.handleSubmit.bind(this)}
       />,
     ];
 
@@ -46,6 +75,7 @@ export default class LoginDialog extends React.Component {
           errorText="This field is required"
           onChange={ev => this.setState({password: ev.target.value})}
         /><br />
+        {this.getMessage()}
     </Dialog>
     );
   }

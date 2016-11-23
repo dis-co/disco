@@ -8,6 +8,7 @@ open Iris.Core
 open Iris.Service
 open FSharpx.Functional
 open Fleck
+open System.Collections.Concurrent
 
 #if MOCKSERVICE
 type RaftServer = class end
@@ -24,7 +25,7 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
 
   // ** uri
 
-  let mutable onOpenCb    : Option<Session -> unit> = None
+  let mutable onOpenCb    : Option<Id -> unit> = None
   let mutable onCloseCb   : Option<Id -> unit> = None
   let mutable onErrorCb   : Option<Id -> unit> = None
   let mutable onMessageCb : Option<Id -> StateMachine -> unit> = None
@@ -44,22 +45,10 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
 
   // ** sessions
 
-  let mutable sessions : Map<Id,IWebSocketConnection> = Map.empty
+  let connections = ConcurrentDictionary<Id,IWebSocketConnection>()
 
-  let getSessionId (socket: IWebSocketConnection) : Id =
+  let getConnectionId (socket: IWebSocketConnection) : Id =
     string socket.ConnectionInfo.Id |> Id
-
-  let buildSession (socket: IWebSocketConnection) : Session =
-    let ua =
-      if socket.ConnectionInfo.Headers.ContainsKey("User-Agent") then
-        socket.ConnectionInfo.Headers.["User-Agent"]
-      else
-        "<no user agent specified>"
-
-    { Id        = getSessionId socket
-    ; Status    = { StatusType = Unathorized; Payload = "" }
-    ; IpAddress = IpAddress.Parse socket.ConnectionInfo.ClientIpAddress
-    ; UserAgent = ua }
 
   // ** onOpen
 
@@ -80,15 +69,11 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
   ///
   /// Returns: unit
   let onOpen (socket: IWebSocketConnection) () =
-    let session : Session = buildSession socket
-    let sid = getSessionId socket
-    sessions <- Map.add sid socket sessions
-    Option.map (fun cb -> cb session) onOpenCb |> ignore
+    let sid = getConnectionId socket
+    connections.AddOrUpdate(sid, socket, fun _ s -> s) |> ignore
+    Option.map (fun cb -> cb sid) onOpenCb |> ignore
 
-    socket
-    |> getSessionId
-    |> string
-    |> sprintf "new session was opened: %s"
+    sprintf "Connection added: %O" sid
     |> Logger.debug nodeid tag
 
 
@@ -110,13 +95,11 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
   ///
   /// Returns: unit
   let onClose (socket: IWebSocketConnection) () =
-    let session = getSessionId socket
-    sessions <- Map.remove session sessions
-    Option.map (fun cb -> cb session) onCloseCb |> ignore
+    let sid = getConnectionId socket
+    let success, _ = connections.TryRemove(sid)
+    Option.map (fun cb -> cb sid) onCloseCb |> ignore
 
-    session
-    |> string
-    |> sprintf "session was closed: %s"
+    sprintf "Removing connection: %O - Succeeded: %b" sid success
     |> Logger.debug nodeid tag
 
   // ** onMessage
@@ -141,8 +124,8 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
   /// Returns: unit
   let onMessage (socket: IWebSocketConnection) (msg: Binary.Buffer) =
     let msgHandler cb =
-      /// get the session Id for this connection
-      let session = getSessionId socket
+      /// get the Id for this connection
+      let sid = getConnectionId socket
 
       /// decode the binary buffer as `StateMachine` command
       let entry : Either<IrisError,StateMachine> = Binary.decode msg
@@ -151,12 +134,12 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
       match entry with
       | Right command ->
         /// handle the result
-        cb session command
+        cb sid command
 
         /// log some debugging messages
         command
         |> string
-        |> sprintf "command received from session %s and decoded as %s" (string session)
+        |> sprintf "command received from session %s and decoded as %s" (string sid)
         |> Logger.debug nodeid tag
 
 
@@ -164,7 +147,7 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
         /// log the error globally
         error
         |> string
-        |> sprintf "command received from session %s could not be decoded: %s" (string session)
+        |> sprintf "command received from session %s could not be decoded: %s" (string sid)
         |> Logger.debug nodeid tag
 
     /// Reach into the `onMessageCb` and apply `msgHandler` to the stored callback
@@ -191,12 +174,11 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
   ///
   /// Returns: unit
   let onError (socket: IWebSocketConnection) (exn: 'a when 'a :> Exception) =
-    let session = getSessionId socket
-    sessions <- Map.remove session sessions
-    Option.map (fun cb -> cb session) onErrorCb |> ignore
+    let sid = getConnectionId socket
+    let success, _ = connections.TryRemove(sid)
+    Option.map (fun cb -> cb sid) onErrorCb |> ignore
 
-    exn.Message
-    |> sprintf "an error occurred on session %s. error: %s" (string session)
+    sprintf "Removing session %O because fo error: %s - Succeeded %b" sid exn.Message success
     |> Logger.err nodeid tag
 
   // ** onNewSocket
@@ -218,18 +200,35 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
 
   // ** closeConnection
 
-  let closeConnection _ (socket: IWebSocketConnection) =
-    lock sessions <| fun _ ->
-      let session = getSessionId socket
+  let closeConnection (socket: IWebSocketConnection) =
+    let sid = getConnectionId socket
 
-      session
-      |> string
-      |> sprintf "Closing connection %s"
-      |> Logger.debug nodeid tag
+    sprintf "Closing connection %O" sid
+    |> Logger.debug nodeid tag
 
-      socket.Close()
+    socket.Close()
+    let success, _ = connections.TryRemove(sid)
 
-      sessions <- Map.remove session sessions
+    sprintf "Connection %O closed. Removing succeeded: %b" sid success
+    |> Logger.debug nodeid tag
+
+  member self.BuildSession (socketId: Id, session: Session) : Either<IrisError,Session> =
+    match connections.TryGetValue socketId with
+    | true, socket ->
+      let ua =
+        if socket.ConnectionInfo.Headers.ContainsKey("User-Agent") then
+          socket.ConnectionInfo.Headers.["User-Agent"]
+        else
+          "<no user agent specified>"
+      { session with
+          // TODO: Set the sessions as unauthorized?
+          IpAddress = IpAddress.Parse socket.ConnectionInfo.ClientIpAddress
+          UserAgent = ua }
+      |> Either.Right
+    | false, _ ->
+      sprintf "No socket open with id %O" socketId
+      |> SocketError
+      |> Either.Left
 
   // ** Start
 
@@ -265,7 +264,8 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
   /// Returns: unit
   member self.Stop() =
     Logger.debug nodeid tag "Stopping WebSocketServer and closing all connections"
-    Map.iter closeConnection sessions
+    for cnn in connections.Values do
+      closeConnection cnn
 
     Logger.debug nodeid tag "Disposing WebSocketServer"
     dispose server
@@ -281,9 +281,10 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
   ///
   /// Returns: unit
   member self.Broadcast(msg: StateMachine) =
-    let send _ (socket: IWebSocketConnection) =
+    let send (socket: IWebSocketConnection) =
       msg |> Binary.encode |> socket.Send |> ignore
-    Map.iter send sessions
+    for cnn in connections.Values do
+      send cnn
 
   // ** Send
 
@@ -296,22 +297,19 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
   /// - msg: StateMachine command to send
   ///
   /// Returns: unit
-  member self.Send (sessionid: Id) (msg: StateMachine) =
-    match Map.tryFind sessionid sessions with
-    | Some socket ->
+  member self.Send (sid: Id) (msg: StateMachine) =
+    match connections.TryGetValue(sid) with
+    | true, socket ->
       msg
       |> Binary.encode
       |> socket.Send
       |> ignore
 
-    | _ ->
-      lock sessions <| fun _ ->
-        sessionid
-        |> string
-        |> sprintf "could not send message to session %s. not found."
-        |> Logger.debug nodeid tag
-
-        sessions <- Map.remove sessionid sessions
+    | false, _ ->
+      sid
+      |> string
+      |> sprintf "could not send message to session %s. not found."
+      |> Logger.debug nodeid tag
 
   member self.OnOpen
     with set cb = onOpenCb <- Some cb

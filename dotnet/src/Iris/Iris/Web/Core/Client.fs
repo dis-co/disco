@@ -64,6 +64,14 @@ type ClientContext() =
     match worker with
     | Some me -> msg |> toJson |> me.Port.PostMessage
     | _       -> printfn "oops no workr??"
+  
+  member self.Post(ev: StateMachine) =
+    match session, worker with
+    | Some token, Some me ->
+      ClientMessage.Event(token, ev)
+      |> toJson
+      |> me.Port.PostMessage
+    | _ -> printfn "Couldn't post message %A" ev
 
   member self.Close() =
     match session, worker with

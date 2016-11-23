@@ -5,6 +5,7 @@ import CenterPanel from "./CenterPanel";
 import RightPanel from "./RightPanel";
 import _ReactGridLayout, { WidthProvider } from "react-grid-layout";
 const ReactGridLayout = WidthProvider(_ReactGridLayout);
+import { getCurrentSession, login } from "lib";
 
 require("react-grid-layout/css/styles.css");
 require("react-resizable/css/styles.css");
@@ -15,6 +16,13 @@ let defaultLayout = [
   {i: 'right', x: 9, y: 0, w: 3, h: 12}
 ];
 
+function getSession(props) {
+  if (props.state) {
+    return getCurrentSession(props.state);
+  }
+  return null;
+}
+
 export default class Layout extends React.Component {
   onLayoutChange(layout) {
     layout.sort((a,b) => a.x < b.x ? -1 : 1); // Sort panels
@@ -24,14 +32,16 @@ export default class Layout extends React.Component {
     layout[2].w = 12 - layout[2].x;
     for (let i = 0; i < layout.length; i++)
       layout[i].y = 0;
-    this.setState({layout})
   }
+
   render() {
     return (
       <div>
-        <LoginDialog />
+        <LoginDialog
+            login={(username, password) => login(this.props.state, username, password)}
+            session={getSession(this.props)} />
         <ReactGridLayout
-            className="layout" onLayoutChange={this.onLayoutChange.bind(this)}
+            className="layout" onLayoutChange={this.onLayoutChange}
             layout={defaultLayout} cols={12} rowHeight={65} >
           <div key={'left'} style={{background: "lightgrey"}}>
             <LeftPanel />

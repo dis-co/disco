@@ -5,7 +5,7 @@ var entry, outDir, devtool, devServer, loaders, plugins;
 if (process.env.NODE_ENV !== "production") {
     console.log("Starting Webpack Dev Server...");
     entry = [
-        "webpack-dev-server/client?http://localhost:8080",
+        "webpack-dev-server/client?http://localhost:7000",
         'webpack/hot/only-dev-server',
         "./src/Main.js"
     ];
@@ -48,6 +48,11 @@ module.exports = {
         path: path.join(__dirname, outDir),
         filename: "ReactApp.js",
         libraryTarget: "amd",
+    },
+    externals: {
+        // This is the only way I had to convince RequireJS
+        // to load the lib file and its dependencies properly
+        lib: "js/Web/Lib"
     },
     devtool: devtool,
     devServer: devServer,

@@ -287,6 +287,16 @@ module Logger =
           sub.OnNext log
     }
 
+  /// ## subscribe
+  ///
+  /// Log the given string.
+  let subscribe cb =
+    { new IObserver<LogEvent> with
+        member x.OnCompleted() = ()
+        member x.OnError(error) = ()
+        member x.OnNext(value) = cb value }
+    |> listener.Subscribe
+
   // let filter (level: LogLevel) (logger: LogEvent -> unit) =
   //     /// ## To `log` or not, that is the question.
   //     match level with

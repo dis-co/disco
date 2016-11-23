@@ -47,7 +47,7 @@ type MockService(?project: IrisProject ref) =
       |> Config.updateCluster cluster
     let state =
       let nodes = nodes |> Seq.map (fun x -> x.Id, x) |> Map
-      { State.Empty with Nodes = nodes }
+      { State.Empty with Nodes = nodes; Users = Util.users |> Seq.map (fun u -> u.Id, u) |> Map }
     config, state
   let store : Store = new Store(state)
 
@@ -60,15 +60,17 @@ type MockService(?project: IrisProject ref) =
 
   let setup _ =
     // WEBSOCKET
-    wsserver.OnOpen <- fun (session: Session) ->
-      wsserver.Send session.Id (DataSnapshot store.State)
+    wsserver.OnOpen <- fun (id: Id) ->
+      wsserver.Send id (DataSnapshot store.State)
       // let msg =
       //   match raftserver.Append(AddSession session) with
       //   | Right entry -> Debug, (sprintf "Added session to Raft log with id: %A" entry.Id)
       //   | Left  error -> Err, string error
       // wsserver.Broadcast (LogMsg msg)
 
-    wsserver.OnClose <- fun sessionid ->
+    wsserver.OnClose <- fun id ->
+      // TODO: Remove session
+//      store.Dispatch(RemoveSession session)
       ()
       // match Map.tryFind sessionid store.State.Sessions with
       // | Some session ->
@@ -81,7 +83,7 @@ type MockService(?project: IrisProject ref) =
       //   let msg = Err, "Session not found. Something spooky is going on"
       //   wsserver.Broadcast (LogMsg msg)
 
-    wsserver.OnError <- fun sessionid ->
+    wsserver.OnError <- fun id ->
       ()
       // match Map.tryFind sessionid store.State.Sessions with
       // | Some session ->
@@ -94,9 +96,32 @@ type MockService(?project: IrisProject ref) =
       //   let msg = Err, "Session not found. Something spooky is going on"
       //   wsserver.Broadcast (LogMsg msg)
 
-    wsserver.OnMessage <- fun sessionid command ->
-      store.Dispatch command
-      wsserver.Broadcast command
+    wsserver.OnMessage <- fun id command ->
+      match command with
+      | AddSession session ->
+        match wsserver.BuildSession(id, session) with
+        | Left err -> Error.exitWith err
+        | Right session -> AddSession session
+
+      | UpdateSession session when session.Status.StatusType = Login ->
+        let username, password =
+          // TODO: Validate format
+          let info = session.Status.Payload.Split('\n')
+          info.[0], info.[1]
+
+        store.State.Users
+        |> Map.tryPick (fun _ u -> if u.UserName = username then Some u else None)
+        |> function
+          | Some user when user.Password = password ->
+            { session with Status = { StatusType = Authorized; Payload = string user.Id } }
+          | _ ->
+            { session with Status = { StatusType = Unathorized; Payload = "" } }
+        |> UpdateSession
+        
+      | command -> command
+      |> store.Dispatch
+
+      wsserver.Broadcast (DataSnapshot store.State)
       // let msg =
       //   match raftserver.Append(command) with
       //   | Right entry -> Debug, (sprintf "Entry added to Raft log with id: %A" entry.Id)

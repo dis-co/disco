@@ -414,7 +414,7 @@ Target "BuildMockService" (fun () ->
   let assetsTargetDir = (baseDir @@ "bin/Debug/Iris/assets")
   FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
   FileUtils.cp (baseDir @@ "bin/Raft_generated.js") (assetsTargetDir @@ "js")
-  // runNpm "install" assetsTargetDir ()
+  runNpm "install" assetsTargetDir ()
   // let targetDir = (baseDir @@ "bin/Debug/Iris")
   // runMono (targetDir @@ "Iris.MockService.exe") targetDir
 )
@@ -427,6 +427,7 @@ Target "BuildDebugService" (fun () ->
   buildDebug "Projects/Service/Service.fsproj" ()
   let assetsTargetDir = (baseDir @@ "bin/Debug/Iris/assets")
   FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
+  FileUtils.cp (baseDir @@ "bin/Raft_generated.js") (assetsTargetDir @@ "js")
   runNpm "install" assetsTargetDir ()
 )
 
@@ -434,6 +435,7 @@ Target "BuildReleaseService" (fun () ->
   let targetDir = (baseDir @@ "bin/Release/Iris/assets")
   buildRelease "Projects/Service/Service.fsproj" ()
   FileUtils.cp_r (baseDir @@ "assets/frontend") targetDir
+  FileUtils.cp (baseDir @@ "bin/Raft_generated.js") (targetDir @@ "js")
   runNpm "install" targetDir ()
 )
 
