@@ -24,6 +24,55 @@ module RaftIntegrationTests =
   // |  _ < (_| |  _| |_    | |  __/\__ \ |_\__ \
   // |_| \_\__,_|_|  \__|   |_|\___||___/\__|___/
 
+  let test_validate_correct_req_socket_tracking =
+    testCase "validate correct req socket tracking" <| fun _ ->
+      let nid1 = mkUuid()
+      let nid2 = mkUuid()
+
+      let node1 =
+        Id nid1
+        |> Node.create
+        |> Node.setPort 8000us
+
+      let node2 =
+        Id nid2
+        |> Node.create
+        |> Node.setPort 8001us
+
+      setNodeId nid1
+
+      let leadercfg =
+        Config.create "leader"
+        |> Config.setNodes [| node1; node2 |]
+        |> Config.setLogLevel (LogLevel.Debug)
+
+      setNodeId nid2
+
+      let followercfg =
+        Config.create "follower"
+        |> Config.setNodes [| node1; node2 |]
+        |> Config.setLogLevel (LogLevel.Debug)
+
+      setNodeId nid1
+
+      let leader = new RaftServer(leadercfg)
+      expect "Leader should have no connections" true ((=) 0) leader.State.Connections.Count
+      leader.Start()
+      expect "Leader should have one connection" true ((=) 1) leader.State.Connections.Count
+
+      setNodeId nid2
+
+      let follower = new RaftServer(followercfg)
+      expect "Follower should have no connections" true ((=) 0) follower.State.Connections.Count
+      follower.Start()
+      expect "Follower should have one connection" true ((=) 1) follower.State.Connections.Count
+
+      dispose leader
+      dispose follower
+
+      expect "Leader should have no connections" true ((=) 0) leader.State.Connections.Count
+      expect "Follower should have no connections" true ((=) 0) follower.State.Connections.Count
+
   let test_validate_raft_service_bind_correct_port =
     testCase "validate raft service bind correct port" <| fun _ ->
       let port = 12000us
@@ -103,53 +152,7 @@ module RaftIntegrationTests =
       dispose leader
       dispose follower
 
-      printfn "connections: %A" (Map.isEmpty leader.State.Connections)
-
       printfn "----------------------------- done -------------------------------"
-
-  let test_proper_cleanup_of_request_sockets =
-    testCase "validate Req sockets are cleaned up properly" <| fun _ ->
-      let srv = "tcp://127.0.0.1:8989"
-
-      let n = 12
-      let msgs = [ "hi"; "yep"; "bye" ]
-      let count = ref 0
-
-      let handler (msg: byte array) =
-        lock count <| fun _ ->
-          let next = !count + 1
-          count := next
-        msg
-
-      use rep = new Zmq.Rep(srv, handler)
-      rep.Start()
-
-      let socks =
-        [ for _ in 0 .. (n - 1) do
-            let sock = new Zmq.Req(Id.Create(), srv, 50)
-            sock.Start()
-            yield sock ]
-
-      let request (str: string) (sck: Zmq.Req) =
-        async {
-          let result = str |> Encoding.UTF8.GetBytes |> sck.Request
-          return result
-        }
-
-      msgs
-      |> List.fold (fun lst str ->
-                   List.fold
-                     (fun inner sock -> request str sock :: inner)
-                     lst
-                     socks)
-                  []
-      |> Async.Parallel
-      |> Async.RunSynchronously
-      |> Array.iter (expect "Should be a success" true Either.isSuccess)
-
-      expect "Should have correct number of requests" (n * List.length msgs) id !count
-
-      List.iter dispose socks
 
   //                       _ _
   //  _ __   ___ _ __   __| (_)_ __   __ _
@@ -175,12 +178,13 @@ module RaftIntegrationTests =
 
   let raftIntegrationTests =
     testList "Raft Integration Tests" [
+      // raft
+      test_validate_raft_service_bind_correct_port
+      test_validate_correct_req_socket_tracking
+
       // db
       // test_log_snapshotting_should_clean_all_logs
 
-      // raft
-      test_proper_cleanup_of_request_sockets
-      test_validate_raft_service_bind_correct_port
       // test_validate_follower_joins_leader_after_startup
 
       // test_follower_join_should_fail_on_duplicate_raftid

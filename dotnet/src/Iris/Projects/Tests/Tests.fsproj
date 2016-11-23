@@ -206,6 +206,9 @@
     <Compile Include="..\..\Iris\Tests\Core\RaftIntegrationTests.fs">
       <Link>RaftIntegrationTests.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\ZmqTests.fs">
+      <Link>ZmqIntegrationTests.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Tests\Core\StoreTests.fs">
       <Link>StoreTests.fs</Link>
     </Compile>

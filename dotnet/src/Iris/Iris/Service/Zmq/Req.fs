@@ -18,6 +18,7 @@ open Iris.Core
 /// - ctx: ZeroMQ context
 ///
 /// Returns: instance of Req
+[<AllowNullLiteral>]
 type Req (id: Id, addr: string, timeout: int) =
 
   let tag = "Req"
@@ -140,6 +141,8 @@ type Req (id: Id, addr: string, timeout: int) =
       stopper.WaitOne() |> ignore                   // wait for stopper to signal disposed done
       thread.Join()
       Logger.debug id tag "socket shutdown complete"
+    else
+      Logger.err id tag "refusing to stop. wrong state"
 
   // ** Restart
 

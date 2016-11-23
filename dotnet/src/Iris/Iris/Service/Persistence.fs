@@ -4,6 +4,7 @@ namespace Iris.Service
 
 open System
 open System.IO
+open System.Collections.Concurrent
 open Iris.Raft
 open Iris.Core
 open Iris.Core.Utils
@@ -179,7 +180,7 @@ module Persistence =
     either {
       let! raft = getRaft options
       return { Raft        = raft
-               Connections = Map.empty
+               Connections = new ConcurrentDictionary<Id,Zmq.Req>()
                Options     = options }
     }
 

@@ -61,8 +61,8 @@ module RaftMonad =
             RaftMonad<'env,'state,'b,'err> =
     MkRM (fun env state ->
           match apply env state m with
-            | Right  (value,state') -> f value |> apply env state'
-            | Left    err           -> Left err)
+          | Right  (value,state') -> f value |> apply env state'
+          | Left    err           -> Left err)
 
   let (>>=) = bindM
 
@@ -2063,7 +2063,7 @@ module Raft =
   //  \____\__,_|_| |_|\__,_|_|\__,_|\__,_|\__\___|
 
   /// After timeout a Node must become Candidate
-  let becomeCandidate _ =
+  let becomeCandidate () =
     raft {
       do! info "becomeCandidate" "becoming candidate"
 
@@ -2092,7 +2092,7 @@ module Raft =
   // |____/ \__\__,_|_|   \__| |_____|_|\___|\___|\__|_|\___/|_| |_|
 
   /// start an election by becoming candidate
-  let startElection _ =
+  let startElection () =
     raft {
       let! state = get
       let str = sprintf "(elapsed: %d) (elec-timeout: %d) (term: %d) (ci: %d)"
