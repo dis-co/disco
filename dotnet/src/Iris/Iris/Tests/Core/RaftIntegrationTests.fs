@@ -12,6 +12,7 @@ open Iris.Service.Persistence
 open Iris.Raft
 open Iris.Service
 open FSharpx.Functional
+open Microsoft.FSharp.Control
 open ZeroMQ
 
 [<AutoOpen>]
@@ -106,37 +107,49 @@ module RaftIntegrationTests =
 
       printfn "----------------------------- done -------------------------------"
 
-
   let test_proper_cleanup_of_request_sockets =
     testCase "validate Req sockets are cleaned up properly" <| fun _ ->
       let srv = "tcp://127.0.0.1:8989"
 
+      let n = 12
+      let msgs = [ "hi"; "yep"; "bye" ]
       let count = ref 0
 
       let handler (msg: byte array) =
-        Encoding.UTF8.GetString msg
-        |> printfn "msg: %s"
-
         lock count <| fun _ ->
           let next = !count + 1
-          printfn "incr: %d" next
           count := next
+        msg
 
-        "roger"
-        |> Encoding.UTF8.GetBytes
-
-      let rep = new Zmq.Rep(srv, handler)
+      use rep = new Zmq.Rep(srv, handler)
       rep.Start()
 
-      let req = new Zmq.Req(Id.Create(), srv, 50)
-      req.Start()
+      let socks =
+        [ for _ in 0 .. (n - 1) do
+            let sock = new Zmq.Req(Id.Create(), srv, 50)
+            sock.Start()
+            yield sock ]
 
-      [ "hi"; "yep"; "bye" ]
-      |> List.map (Encoding.UTF8.GetBytes >> req.Request)
-      |> List.iter (expect "Should be a success" true Either.isSuccess)
+      let request (str: string) (sck: Zmq.Req) =
+        async {
+          let result = str |> Encoding.UTF8.GetBytes |> sck.Request
+          return result
+        }
 
-      dispose rep
-      dispose req
+      msgs
+      |> List.fold (fun lst str ->
+                   List.fold
+                     (fun inner sock -> request str sock :: inner)
+                     lst
+                     socks)
+                  []
+      |> Async.Parallel
+      |> Async.RunSynchronously
+      |> Array.iter (expect "Should be a success" true Either.isSuccess)
+
+      expect "Should have correct number of requests" (n * List.length msgs) id !count
+
+      List.iter dispose socks
 
   //                       _ _
   //  _ __   ___ _ __   __| (_)_ __   __ _
@@ -168,7 +181,7 @@ module RaftIntegrationTests =
       // raft
       test_proper_cleanup_of_request_sockets
       test_validate_raft_service_bind_correct_port
-      test_validate_follower_joins_leader_after_startup
+      // test_validate_follower_joins_leader_after_startup
 
       // test_follower_join_should_fail_on_duplicate_raftid
       // test_all_rafts_should_share_a_common_distributed_event_log
