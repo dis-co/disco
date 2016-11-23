@@ -104,9 +104,14 @@ module RaftIntegrationTests =
 
   let test_validate_follower_joins_leader_after_startup =
     testCase "validate follower joins leader after startup" <| fun _ ->
-      printfn "---------------------------- follower joins leader --------------------------------"
+      let state = ref None
 
-      use obs = Observable.subscribe Logger.stdout Logger.listener
+      let setState ost nst =
+        match !state, nst with
+        | None, Leader ->
+          lock state <| fun _ ->
+            state := Some Leader
+        | _ -> ()
 
       let nid1 = mkUuid()
       let nid2 = mkUuid()
@@ -138,21 +143,26 @@ module RaftIntegrationTests =
       setNodeId nid1
 
       let leader = new RaftServer(leadercfg)
+      leader.OnStateChanged <- setState
+
       leader.Start()
 
       setNodeId nid2
 
       let follower = new RaftServer(followercfg)
+      follower.OnStateChanged <- setState
       follower.Start()
 
-      Thread.Sleep 10000
+      max
+        leader.State.Raft.ElectionTimeout
+        follower.State.Raft.ElectionTimeout
+      |> (int >> ((+) 100))
+      |> Thread.Sleep
 
-      printfn "----------------------------- disposing -------------------------------"
+      expect "Should have elected a leader" (Some Leader) id !state
 
       dispose leader
       dispose follower
-
-      printfn "----------------------------- done -------------------------------"
 
   //                       _ _
   //  _ __   ___ _ __   __| (_)_ __   __ _
@@ -181,11 +191,11 @@ module RaftIntegrationTests =
       // raft
       test_validate_raft_service_bind_correct_port
       test_validate_correct_req_socket_tracking
+      test_validate_follower_joins_leader_after_startup
 
       // db
       // test_log_snapshotting_should_clean_all_logs
 
-      // test_validate_follower_joins_leader_after_startup
 
       // test_follower_join_should_fail_on_duplicate_raftid
       // test_all_rafts_should_share_a_common_distributed_event_log
