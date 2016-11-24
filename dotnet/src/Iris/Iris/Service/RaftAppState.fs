@@ -1,8 +1,6 @@
 namespace Iris.Service
 
 // * Imports
-
-open System.Collections.Concurrent
 open LibGit2Sharp
 
 open Iris.Core.Utils
@@ -20,9 +18,12 @@ open Iris.Service.Zmq
 //                            |_|   |_|
 [<NoComparison;NoEquality>]
 type RaftAppContext =
-  { Connections: ConcurrentDictionary<Id,Req>
+  { Status:      ServiceStatus
     Raft:        RaftValue
-    Options:     IrisConfig }
+    Options:     IrisConfig
+    Connections: Map<Id,Req>
+    Callbacks:   IRaftCallbacks
+  }
 
   override self.ToString() =
     sprintf "Raft: %A" self.Raft
@@ -102,9 +103,8 @@ module RaftContext =
   ///
   /// Returns: RaftAppContext
   let addConnection (context: RaftAppContext) (client: Req) =
-    if context.Connections.TryAdd(client.Id, client) then
-      sprintf "could not add connection for client (already present): %s" (string client.Id)
-      |> Logger.warn context.Raft.Node.Id "RaftContext"
+    { context with
+        Connections = Map.add client.Id client context.Connections }
 
   // ** rmConnection
 
@@ -118,9 +118,8 @@ module RaftContext =
   ///
   /// Returns: RaftAppContext
   let rmConnection (context: RaftAppContext) (id: Id) =
-    if context.Connections.TryRemove(id) |> fst then
-      sprintf "could not remove connection for client (not present): %s" (string id)
-      |> Logger.warn context.Raft.Node.Id "RaftContext"
+    { context with
+        Connections = Map.remove id context.Connections }
 
   // ** getConnection
 
@@ -134,6 +133,4 @@ module RaftContext =
   ///
   /// Returns: Req option
   let getConnection (context: RaftAppContext) (id: Id) : Req option =
-    match context.Connections.TryGetValue(id) with
-    | true, v  -> Some v
-    | false, _ -> None
+    Map.tryFind id context.Connections

@@ -278,6 +278,16 @@ module EitherUtils =
       try body() |> self.ReturnFrom
       with e -> handler e
 
+    member self.TryFinally(body, handler) =
+      try
+        self.ReturnFrom(body())
+      finally
+        handler ()
+
+    member self.Using(disposable: #System.IDisposable, body) =
+      let body' = fun () -> body disposable
+      self.TryFinally(body', fun () ->
+        disposable.Dispose())
 
   let either = new EitherBuilder()
 

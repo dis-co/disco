@@ -84,7 +84,6 @@
     <Compile Include="..\..\Iris\Service\Zmq\ZmqUtils.fs" />
     <compile Include="..\..\Iris\Service\Persistence.fs" />
     <Compile Include="..\..\Iris\Service\Utilities.fs" />
-    <Compile Include="..\..\Iris\Service\Stm.fs" />
     <Compile Include="..\..\Iris\Service\RaftServer.fs" />
     <compile Include="..\..\Iris\Service\AssetServer.fs" />
     <Compile Include="..\..\Iris\Service\WebSocket.fs" />

@@ -164,26 +164,6 @@ module Persistence =
         ProjectSaveError exn.Message
         |> Either.fail
 
-  // ** mkContext
-
-  /// ## Create an RaftAppState value
-  ///
-  /// Given the `RaftOptions`, create or load data and construct a new `RaftAppState` for the
-  /// `RaftServer`.
-  ///
-  /// ### Signature:
-  /// - context: `ZeroMQ` `Context`
-  /// - options: `RaftOptions`
-  ///
-  /// Returns: RaftAppState
-  let mkContext (options: IrisConfig) : Either<IrisError,RaftAppContext> =
-    either {
-      let! raft = getRaft options
-      return { Raft        = raft
-               Connections = new ConcurrentDictionary<Id,Zmq.Req>()
-               Options     = options }
-    }
-
   // ** saveWithCommit
 
   /// ## saveWithCommit
