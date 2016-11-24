@@ -102,11 +102,9 @@ module RaftContext =
   ///
   /// Returns: RaftAppContext
   let addConnection (context: RaftAppContext) (client: Req) =
-    match context.Connections.TryAdd(client.Id, client) with
-    | false ->
+    if context.Connections.TryAdd(client.Id, client) then
       sprintf "could not add connection for client (already present): %s" (string client.Id)
       |> Logger.warn context.Raft.Node.Id "RaftContext"
-    | _ -> ()
 
   // ** rmConnection
 
@@ -120,12 +118,9 @@ module RaftContext =
   ///
   /// Returns: RaftAppContext
   let rmConnection (context: RaftAppContext) (id: Id) =
-    let mutable req = null
-    match context.Connections.TryRemove(id, &req) with
-    | false ->
+    if context.Connections.TryRemove(id) |> fst then
       sprintf "could not remove connection for client (not present): %s" (string id)
       |> Logger.warn context.Raft.Node.Id "RaftContext"
-    | _ -> ()
 
   // ** getConnection
 
@@ -139,8 +134,6 @@ module RaftContext =
   ///
   /// Returns: Req option
   let getConnection (context: RaftAppContext) (id: Id) : Req option =
-    try
-      context.Connections.[id]
-      |> Some
-    with
-      | _ -> None
+    match context.Connections.TryGetValue(id) with
+    | true, v  -> Some v
+    | false, _ -> None

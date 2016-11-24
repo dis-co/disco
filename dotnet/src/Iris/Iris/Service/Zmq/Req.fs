@@ -18,7 +18,6 @@ open Iris.Core
 /// - ctx: ZeroMQ context
 ///
 /// Returns: instance of Req
-[<AllowNullLiteral>]
 type Req (id: Id, addr: string, timeout: int) =
 
   let tag = "Req"
