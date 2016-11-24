@@ -18,10 +18,8 @@ open Stm
 // |  _ < (_| |  _| |_   ___) |  __/ |   \ V /  __/ |
 // |_| \_\__,_|_|  \__| |____/ \___|_|    \_/ \___|_|
 
-type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
+type RaftServer(options: IrisConfig) as self =
   let tag = "RaftServer"
-
-  let locker = new Object()
 
   let mutable serverState = ServiceStatus.Stopped
 
@@ -31,9 +29,14 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
   let cbs = self :> IRaftCallbacks
 
   let appState =
-    match mkContext context options with
+    match mkContext options with
     | Right state -> newTVar state
     | Left error  -> Error.exitWith error
+
+  let nodeid =
+    appState
+    |> readTVar
+    |> RaftContext.getNodeId
 
   //            _ _ _                _
   //   ___ __ _| | | |__   __ _  ___| | _____
@@ -96,28 +99,35 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
   ///
   /// Returns: unit
   member self.Start() =
-    self.Info "Starting Raft Server"
-    lock locker <| fun _ ->
+    Logger.info nodeid tag "starting"
+
+    lock server <| fun _ ->
       try
-        self.Debug "RaftServer: starting"
+        Logger.debug nodeid tag "initialize server state"
         serverState <- ServiceStatus.Starting
 
-        self.Debug "RaftServer: initializing server loop"
+        Logger.debug nodeid tag "initialize server loop"
         server := Some (startServer appState cbs)
 
-        self.Debug "RaftServer: initializing application"
+        Logger.debug nodeid tag "initialize application"
         initialize appState cbs
 
-        self.Debug "RaftServer: initializing periodic loop"
+        Logger.debug nodeid tag "initialize connections"
+        mkConnections appState
+
+        Logger.debug nodeid tag "initialize periodic loop"
         let tkn = startPeriodic appState cbs
         periodictoken := Some tkn
 
-        self.Debug "RaftServer: running"
+        Logger.debug nodeid tag "server running"
         serverState <- ServiceStatus.Running
       with
         | exn ->
           self.Cancel()
-          self.Err <| sprintf "RaftServer: Exeception in Start: %A" exn.Message
+
+          sprintf "Exeception in Start: %A" exn.Message
+          |> Logger.err nodeid tag
+
           serverState <- ServiceStatus.Failed (Other exn.Message)
 
   /// ## Cancel
@@ -132,33 +142,33 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
   member private self.Cancel() =
     try
       // cancel the running async tasks so we don't cause an election
-      self.Debug "RaftServer: cancel periodic loop"
+      Logger.debug nodeid tag "cancel periodic loop"
       maybeCancelToken periodictoken
     with
       | exn ->
         exn.Message
         |> sprintf "RaftServer Error: could not cancel periodic loop: %s"
-        |> self.Err
+        |> Logger.err nodeid tag
 
     try
       // dispose of the server
-      self.Debug "RaftServer: disposing server"
+      Logger.debug nodeid tag "disposing server"
       Option.bind (dispose >> Some) (!server) |> ignore
     with
       | exn ->
         exn.Message
-        |> sprintf "RaftServer Error: Could not dispose of server: %s"
-        |> self.Err
+        |> sprintf "Error: Could not dispose server: %s"
+        |> Logger.err nodeid tag
 
     try
-      self.Debug "RaftServer: disposing sockets"
+      Logger.debug nodeid tag "disposing sockets"
       self.State.Connections
       |> resetConnections
     with
       | exn ->
         exn.Message
-        |> sprintf "RaftServer Error: Could not dispose of connections: %s"
-        |> self.Err
+        |> sprintf "Error: Could not dispose of connections: %s"
+        |> Logger.err nodeid tag
 
   /// ## Stop the Raft engine, sockets and all.
   ///
@@ -169,29 +179,33 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
   ///
   /// Returns: unit
   member self.Stop() =
-    lock locker <| fun _ ->
+    lock server <| fun _ ->
       if serverState = ServiceStatus.Running then
-        self.Debug "RaftServer: stopping"
+        Logger.debug nodeid tag "stopping"
         serverState <- ServiceStatus.Stopping
 
         // cancel the running async tasks so we don't cause an election
-        self.Debug "RaftServer: cancel periodic loop"
+        Logger.debug nodeid tag "cancel periodic loop"
         maybeCancelToken periodictoken
 
-        self.Debug "RaftServer: dispose server"
+        Logger.debug nodeid tag "dispose server"
         Option.bind (dispose >> Some) (!server) |> ignore
 
-        self.Debug "RaftServer: disposing sockets"
+        Logger.debug nodeid tag "disposing sockets"
         self.State.Connections
         |> resetConnections
 
-        self.Debug "RaftServer: saving state to disk"
+        Logger.debug nodeid tag  "saving state to disk"
         let state = readTVar appState |> atomically
         saveRaft options state.Raft
-        |> Either.mapError (sprintf "An error occurred saving state to disk: %A" >> self.Err)
+        |> Either.mapError
+          (fun msg ->
+            msg
+            |> sprintf "An error occurred saving state to disk: %A"
+            |> Logger.err nodeid tag)
         |> ignore
 
-        self.Debug "RaftServer: stopped"
+        Logger.debug nodeid tag "stopped"
         serverState <- ServiceStatus.Stopped
 
   member self.Options
@@ -207,15 +221,9 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
     match RaftContext.getConnection state node.Id with
     | Some socket -> socket
     | _ ->
-      let socket = mkReqSocket node state.Context
+      let socket = mkReqSocket node
+      RaftContext.addConnection state socket
       socket
-      |> RaftContext.addConnection state
-      |> writeTVar appState
-      |> atomically
-      socket
-
-  member self.Context
-    with get () = context
 
   /// Alas, we may only *look* at the current state.
   member self.State
@@ -226,22 +234,6 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
 
   member self.ForceTimeout() =
     forceElection appState cbs |> atomically
-
-  member self.Debug (msg: string) : unit =
-    let state = self.State
-    cbs.LogMsg state.Raft.Node tag Debug msg
-
-  member self.Info (msg: string) : unit =
-    let state = self.State
-    cbs.LogMsg state.Raft.Node tag Info msg
-
-  member self.Warn (msg: string) : unit =
-    let state = self.State
-    cbs.LogMsg state.Raft.Node tag Warn msg
-
-  member self.Err (msg: string) : unit =
-    let state = self.State
-    cbs.LogMsg state.Raft.Node tag Err msg
 
   member self.ServerState with get () = serverState
 
@@ -277,12 +269,13 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
         | resp ->
           resp
           |> sprintf "SendRequestVote: Unexpected Response: %A"
-          |> self.Err
+          |> Logger.err nodeid tag
           None
+
       | Left error ->
         nodeUri node
         |> sprintf "SendRequestVote: encountered error \"%A\" during request to %s" error
-        |> self.Err
+        |> Logger.err nodeid tag
         None
 
     member self.SendAppendEntries (node: RaftNode) (request: AppendEntries) =
@@ -298,12 +291,12 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
         | resp ->
           resp
           |> sprintf "SendAppendEntries: Unexpected Response:  %A"
-          |> self.Err
+          |> Logger.err nodeid tag
           None
       | Left error ->
         nodeUri node
         |> sprintf "SendAppendEntries: Error \"%A\" received for request to %s" error
-        |> self.Err
+        |> Logger.err nodeid tag
         None
 
     member self.SendInstallSnapshot node is =
@@ -319,12 +312,12 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
         | resp ->
           resp
           |> sprintf "SendInstallSnapshot: Unexpected Response: %A"
-          |> self.Err
+          |> Logger.err nodeid tag
           None
       | Left error ->
         nodeUri node
         |> sprintf "SendInstallSnapshot: Error \"%A\" received for request to %s" error
-        |> self.Err
+        |> Logger.err nodeid tag
         None
 
     //     _                _          ____               _
@@ -338,8 +331,9 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
       match onApplyLog with
       | Some cb -> cb sm
       | _       -> ()
+
       sprintf "Applying state machine command (%A)" sm
-      |> self.Info
+      |> Logger.info nodeid tag
 
     //  _   _           _
     // | \ | | ___   __| | ___  ___
@@ -349,12 +343,12 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
 
     member self.NodeAdded node   =
       try
-        sprintf "Node was added. %s" (string node.Id)
-        |> self.Debug
-
         match onNodeAdded with
         | Some cb -> cb node
         | _       -> ()
+
+        sprintf "Node was added. %s" (string node.Id)
+        |> Logger.info nodeid tag
 
       with
         | exn -> handleException "NodeAdded" exn
@@ -362,7 +356,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
     member self.NodeUpdated node =
       try
         sprintf "Node was updated. %s" (string node.Id)
-        |> self.Debug
+        |> Logger.debug nodeid tag
 
         match onNodeUpdated with
         | Some cb -> cb node
@@ -373,7 +367,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
     member self.NodeRemoved node =
       try
         sprintf "Node was removed. %s" (string node.Id)
-        |> self.Debug
+        |> Logger.debug nodeid tag
 
         match onNodeRemoved with
         | Some cb -> cb node
@@ -389,13 +383,11 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
     //                          |___/
 
     member self.Configured nodes =
-      let logstr = sprintf "Cluster configuration done!"
-
       match onConfigured with
       | Some cb -> cb nodes
       | _       -> ()
 
-      self.Debug logstr
+      Logger.debug nodeid tag "Cluster configuration done!"
 
     member self.PrepareSnapshot (raft: RaftValue) =
       match onCreateSnapshot with
@@ -409,12 +401,12 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
         |> Log.fromEntries
         |> Some
       | _ ->
-        self.Err "Unable to create snapshot. No data handler specified."
+        Logger.err nodeid tag "Unable to create snapshot. No data handler specified."
         None
 
     member self.PersistSnapshot log =
       sprintf "PersistSnapshot insert id: %A" (LogEntry.getId log |> string)
-      |> self.Debug
+      |> Logger.debug nodeid tag
 
     member self.RetrieveSnapshot () =
       failwith "implement RetrieveSnapshot again"
@@ -429,13 +421,12 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
     ///
     /// Returns: unit
     member self.StateChanged old current =
-      let logstr = sprintf "state changed from %A to %A" old current
-
       match onStateChanged with
       | Some cb -> cb old current
       | _       -> ()
 
-      self.Debug logstr
+      sprintf "state changed from %A to %A" old current
+      |> Logger.info nodeid tag
 
     /// ## Persist the vote for passed node to disk.
     ///
@@ -455,7 +446,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
             printfn "Could not persit vote change. %A" err)
         |> ignore
 
-        "PersistVote reset VotedFor" |> self.Debug
+        "PersistVote reset VotedFor" |> Logger.debug nodeid tag
       with
         | exn -> handleException "PersistTerm" exn
 
@@ -479,7 +470,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
             printfn "Could not persit vote change. %A" err)
         |> ignore
 
-        sprintf "PersistTerm term: %A" term |> self.Debug
+        sprintf "PersistTerm term: %A" term |> Logger.debug nodeid tag
       with
         | exn -> handleException "PersistTerm" exn
 
@@ -494,7 +485,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
     member self.PersistLog log =
       try
         sprintf "PersistLog insert id: %A" (LogEntry.getId log |> string)
-        |> self.Debug
+        |> Logger.debug nodeid tag
       with
         | exn->
           handleException "PersistLog" exn
@@ -510,7 +501,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
     member self.DeleteLog log =
       try
         sprintf "DeleteLog id: %A" (LogEntry.getId log |> string)
-        |> self.Debug
+        |> Logger.debug nodeid tag
       with
         | exn -> handleException "DeleteLog" exn
 
@@ -545,44 +536,49 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
     let state = readTVar appState |> atomically
     let newstate =
       raft {
-        "requesting to join" |> self.Debug
+        Logger.debug nodeid tag "requesting to join"
 
         let leader = tryJoin (IpAddress.Parse ip) (uint32 port) cbs state
 
         match leader with
         | Right leader ->
           sprintf "Reached leader: %A Adding to nodes." leader.Id
-          |> infoMsg state cbs "JoinCluster"
+          |> Logger.info nodeid tag
+
           do! Raft.addNodeM leader
           do! Raft.becomeFollower ()
+
         | Left err ->
           sprintf "Joining cluster failed. %A" err
-          |> errMsg state cbs "JointCluser"
+          |> Logger.err nodeid tag
 
       } |> evalRaft state.Raft cbs
 
-    writeTVar appState (RaftContext.updateRaft newstate state)
+    RaftContext.updateRaft newstate state
+    |> writeTVar appState
     |> atomically
 
   member self.LeaveCluster() =
     let state = readTVar appState |> atomically
     let newstate =
       raft {
-        "requesting to leave" |> self.Debug
+        Logger.debug nodeid tag "requesting to leave"
 
         do! Raft.setTimeoutElapsedM 0u
 
         match tryLeave appState cbs with
         | Right true  ->
           "Successfully left cluster."
-          |> infoMsg state cbs "LeaveCluster" // FIXME: this might need more consequences than this
+          |> Logger.info nodeid tag // FIXME: this might need more consequences than this
+
         | Right false ->
           "Could not leave cluster."
-          |> errMsg state cbs "LeaveCluster"
+          |> Logger.err nodeid tag
+
         | Left err ->
           err
           |> sprintf "Could not leave cluster. %A"
-          |> errMsg state cbs "LeaveCluster"
+          |> Logger.err nodeid tag
 
         do! Raft.becomeFollower ()
 
@@ -635,7 +631,7 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
         writeTVar appState (RaftContext.updateRaft raftState state) |> atomically
         None
     else
-      self.Err "Unable to add node. Not leader."
+      Logger.err nodeid tag "Unable to add node. Not leader."
       None
 
   member self.RmNode(id: string) =
@@ -680,5 +676,5 @@ type RaftServer(options: IrisConfig, context: ZeroMQ.ZContext) as self =
 
       | _ -> None
     else
-      self.Err "Unable to remove node. Not leader."
+      Logger.err nodeid tag "Unable to remove node. Not leader."
       None

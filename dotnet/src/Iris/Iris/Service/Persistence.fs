@@ -4,6 +4,7 @@ namespace Iris.Service
 
 open System
 open System.IO
+open System.Collections.Concurrent
 open Iris.Raft
 open Iris.Core
 open Iris.Core.Utils
@@ -175,12 +176,11 @@ module Persistence =
   /// - options: `RaftOptions`
   ///
   /// Returns: RaftAppState
-  let mkContext (context: ZeroMQ.ZContext) (options: IrisConfig) : Either<IrisError,RaftAppContext> =
+  let mkContext (options: IrisConfig) : Either<IrisError,RaftAppContext> =
     either {
       let! raft = getRaft options
       return { Raft        = raft
-               Context     = context
-               Connections = Map.empty
+               Connections = new ConcurrentDictionary<Id,Zmq.Req>()
                Options     = options }
     }
 

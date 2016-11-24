@@ -2,6 +2,7 @@ namespace Iris.Tests
 
 open System
 open System.Threading
+open System.Text
 open Expecto
 
 open Iris.Core
@@ -9,7 +10,9 @@ open Iris.Service
 open Iris.Service.Utilities
 open Iris.Service.Persistence
 open Iris.Raft
+open Iris.Service
 open FSharpx.Functional
+open Microsoft.FSharp.Control
 open ZeroMQ
 
 [<AutoOpen>]
@@ -21,10 +24,57 @@ module RaftIntegrationTests =
   // |  _ < (_| |  _| |_    | |  __/\__ \ |_\__ \
   // |_| \_\__,_|_|  \__|   |_|\___||___/\__|___/
 
+  let test_validate_correct_req_socket_tracking =
+    testCase "validate correct req socket tracking" <| fun _ ->
+      let nid1 = mkUuid()
+      let nid2 = mkUuid()
+
+      let node1 =
+        Id nid1
+        |> Node.create
+        |> Node.setPort 8000us
+
+      let node2 =
+        Id nid2
+        |> Node.create
+        |> Node.setPort 8001us
+
+      setNodeId nid1
+
+      let leadercfg =
+        Config.create "leader"
+        |> Config.setNodes [| node1; node2 |]
+        |> Config.setLogLevel (LogLevel.Debug)
+
+      setNodeId nid2
+
+      let followercfg =
+        Config.create "follower"
+        |> Config.setNodes [| node1; node2 |]
+        |> Config.setLogLevel (LogLevel.Debug)
+
+      setNodeId nid1
+
+      let leader = new RaftServer(leadercfg)
+      expect "Leader should have no connections" true ((=) 0) leader.State.Connections.Count
+      leader.Start()
+      expect "Leader should have one connection" true ((=) 1) leader.State.Connections.Count
+
+      setNodeId nid2
+
+      let follower = new RaftServer(followercfg)
+      expect "Follower should have no connections" true ((=) 0) follower.State.Connections.Count
+      follower.Start()
+      expect "Follower should have one connection" true ((=) 1) follower.State.Connections.Count
+
+      dispose leader
+      dispose follower
+
+      expect "Leader should have no connections" true ((=) 0) leader.State.Connections.Count
+      expect "Follower should have no connections" true ((=) 0) follower.State.Connections.Count
+
   let test_validate_raft_service_bind_correct_port =
     testCase "validate raft service bind correct port" <| fun _ ->
-      let ctx = new ZContext()
-
       let port = 12000us
 
       let node =
@@ -39,24 +89,29 @@ module RaftIntegrationTests =
 
         // |> Config.setLogLevel (LogLevel.Debug)
 
-      let leader = new RaftServer(leadercfg, ctx)
+      let leader = new RaftServer(leadercfg)
       leader.Start()
 
       expect "Should be running" true Service.isRunning leader.ServerState
 
-      let follower = new RaftServer(leadercfg, ctx)
+      let follower = new RaftServer(leadercfg)
       follower.Start()
 
       expect "Should be failed" true Service.hasFailed follower.ServerState
 
       dispose follower
       dispose leader
-      dispose ctx
 
   let test_validate_follower_joins_leader_after_startup =
     testCase "validate follower joins leader after startup" <| fun _ ->
-      printfn "============================================================"
-      let ctx = new ZContext()
+      let state = ref None
+
+      let setState ost nst =
+        match !state, nst with
+        | None, Leader ->
+          lock state <| fun _ ->
+            state := Some Leader
+        | _ -> ()
 
       let nid1 = mkUuid()
       let nid2 = mkUuid()
@@ -87,19 +142,27 @@ module RaftIntegrationTests =
 
       setNodeId nid1
 
-      let leader = new RaftServer(leadercfg, ctx)
+      let leader = new RaftServer(leadercfg)
+      leader.OnStateChanged <- setState
+
       leader.Start()
 
       setNodeId nid2
 
-      let follower = new RaftServer(followercfg, ctx)
+      let follower = new RaftServer(followercfg)
+      follower.OnStateChanged <- setState
       follower.Start()
 
-      Thread.Sleep 10000
+      max
+        leader.State.Raft.ElectionTimeout
+        follower.State.Raft.ElectionTimeout
+      |> (int >> ((+) 100))
+      |> Thread.Sleep
 
-      dispose follower
+      expect "Should have elected a leader" (Some Leader) id !state
+
       dispose leader
-      dispose ctx
+      dispose follower
 
   //                       _ _
   //  _ __   ___ _ __   __| (_)_ __   __ _
@@ -125,12 +188,15 @@ module RaftIntegrationTests =
 
   let raftIntegrationTests =
     testList "Raft Integration Tests" [
+      // raft
+      test_validate_raft_service_bind_correct_port
+      test_validate_correct_req_socket_tracking
+      test_validate_follower_joins_leader_after_startup
+
       // db
       // test_log_snapshotting_should_clean_all_logs
 
-      // raft
-      test_validate_raft_service_bind_correct_port
-      // test_validate_follower_joins_leader_after_startup
+
       // test_follower_join_should_fail_on_duplicate_raftid
       // test_all_rafts_should_share_a_common_distributed_event_log
     ]

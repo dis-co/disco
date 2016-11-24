@@ -15,6 +15,7 @@ open FSharpx.Functional
 open System.Threading
 open Utilities
 open System
+open System.Collections.Concurrent
 open Iris.Service.Zmq
 
 type TVar<'a> = 'a ref
@@ -26,14 +27,6 @@ let readTVar (var: TVar<'a>) = !var
 let writeTVar (var: TVar<'a>) (value: 'a) = var := value
 
 let atomically = id
-
-let logMsg level site (state: RaftAppContext) (cbs: IRaftCallbacks) (msg: string) =
-  cbs.LogMsg state.Raft.Node site level msg
-
-let debugMsg state cbs site msg = logMsg Debug site state cbs msg
-let infoMsg  state cbs site msg = logMsg Info site state cbs msg
-let warnMsg state cbs site msg = logMsg Warn site state cbs msg
-let errMsg state cbs site msg = logMsg Err site state cbs msg
 
 /// ## waitForCommit
 ///
@@ -428,45 +421,50 @@ let tryJoin (ip: IpAddress) (port: uint32) cbs (state: RaftAppContext) =
   let rec _tryJoin retry peer =
     either {
       if retry < int state.Options.RaftConfig.MaxRetries then
-        let client = mkReqSocket peer state.Context
+        let client = mkReqSocket peer
 
         sprintf "Retry: %d" retry
-        |> debugMsg state cbs "tryJoin"
+        |> Logger.debug state.Raft.Node.Id "tryJoin"
 
         let request = HandShake(state.Raft.Node)
         let! result = rawRequest request client
 
         sprintf "Result: %A" result
-        |> debugMsg state cbs "tryJoin"
+        |> Logger.debug state.Raft.Node.Id "tryJoin"
 
         dispose client
 
         match result with
         | Welcome node ->
           sprintf "Received Welcome from %A" node.Id
-          |> debugMsg state cbs "tryJoin"
+          |> Logger.debug state.Raft.Node.Id "tryJoin"
           return node
 
         | Redirect next ->
           sprintf "Got redirected to %A" (nodeUri next)
-          |> infoMsg state cbs "tryJoin"
+          |> Logger.info state.Raft.Node.Id "tryJoin"
           return! _tryJoin (retry + 1) next
 
         | ErrorResponse err ->
           sprintf "Unexpected error occurred. %A" err
-          |> errMsg state cbs "tryJoin"
+          |> Logger.err state.Raft.Node.Id "tryJoin"
           return! Either.fail err
 
         | resp ->
           sprintf "Unexpected response. %A" resp
-          |> errMsg state cbs "tryJoin"
-          return! Either.fail (Other "Unexpected response")
+          |> Logger.err state.Raft.Node.Id "tryJoin"
+          return!
+            Other "Unexpected response"
+            |> Either.fail
       else
         "Too many unsuccesful connection attempts."
-        |> errMsg state cbs "tryJoin"
-        return! Either.fail (Other "Too many unsuccesful connection attempts.")
+        |> Logger.err state.Raft.Node.Id "tryJoin"
+        return!
+          Other "Too many unsuccesful connection attempts."
+          |> Either.fail
     }
 
+  // execute the join request with a newly created "fake" node
   _tryJoin 0 { Node.create (Id.Create()) with
                 IpAddr = ip
                 Port = uint16 port }
@@ -487,7 +485,7 @@ let tryLeave (appState: TVar<RaftAppContext>) cbs : Either<IrisError,bool> =
   let rec _tryLeave retry node =
     either {
       if retry < int state.Options.RaftConfig.MaxRetries then
-        let client = mkReqSocket node state.Context
+        let client = mkReqSocket node
         let request = HandWaive(state.Raft.Node)
         let! result = rawRequest request client
 
@@ -536,8 +534,21 @@ let prepareSnapshot appState snapshot =
   let state = readTVar appState |> atomically
   Raft.createSnapshot (DataSnapshot snapshot) state.Raft
 
-let resetConnections (connections: Map<Id,Zmq.Req>) =
-  Map.iter (fun _ sock -> dispose sock) connections
+let resetConnections (connections: ConcurrentDictionary<Id,Zmq.Req>) =
+  for KeyValue(_, sock) in connections do
+    dispose sock
+  connections.Clear()
+
+let mkConnections appState =
+  let state = readTVar appState |> atomically
+  Map.iter
+    (fun _ (node: RaftNode) ->
+      if node.Id <> state.Raft.Node.Id then
+        mkReqSocket node
+        |> RaftContext.addConnection state)
+    state.Raft.Peers
+
+let private rand = new System.Random()
 
 let initialize appState cbs =
   let state = readTVar appState |> atomically
@@ -546,20 +557,24 @@ let initialize appState cbs =
     raft {
       let term = 0u
       do! Raft.setTermM term
-      do! Raft.setTimeoutElapsedM 0u
-
       let! num = Raft.numNodesM ()
 
       if num = 1u then
+        do! Raft.setTimeoutElapsedM 0u
         do! Raft.becomeLeader ()
       else
+        // set the timeout to something random, to prevent split votes
+        let timeout : Long =
+          rand.Next(0, int state.Raft.ElectionTimeout)
+          |> uint32
+        do! Raft.setTimeoutElapsedM timeout
         do! Raft.becomeFollower ()
-
     } |> evalRaft state.Raft cbs
 
   "initialize: saving new state"
-  |> debugMsg state cbs "initialize"
+  |> Logger.debug state.Raft.Node.Id "initialize"
 
   // tryJoin leader
-  writeTVar appState (RaftContext.updateRaft newstate state)
+  RaftContext.updateRaft newstate state
+  |> writeTVar appState
   |> atomically

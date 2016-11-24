@@ -25,10 +25,8 @@ type IrisService(project: IrisProject ref) =
 
   let store : Store = new Store(State.Empty)
 
-  let kontext = new ZContext()
-
   let gitserver  = new GitServer(!project)
-  let raftserver = new RaftServer((!project).Config, kontext)
+  let raftserver = new RaftServer((!project).Config)
   let wsserver   = new WsServer((!project).Config, raftserver)
   let httpserver = new AssetServer((!project).Config)
 
@@ -269,91 +267,8 @@ type IrisService(project: IrisProject ref) =
       dispose raftserver
       dispose wsserver
       dispose httpserver
-      dispose kontext
       dispose logger
     with
       | exn ->
         sprintf "Exception occurred trying to dispose IrisService: %s" exn.Message
         |> Logger.err nodeid tag
-
-  //  ____            _           _
-  // |  _ \ _ __ ___ (_) ___  ___| |_
-  // | |_) | '__/ _ \| |/ _ \/ __| __|
-  // |  __/| | | (_) | |  __/ (__| |_
-  // |_|   |_|  \___// |\___|\___|\__|
-  //               |__/
-
-  // member self.SaveProject(id, msg) =
-  //   match saveProject id signature msg !state with
-  //     | Success (commit, newstate) ->
-  //       state := newstate
-  //       Either.succeed commit
-  //     | Fail err -> Either.fail err
-
-  //   ____                _
-  //  / ___|_ __ ___  __ _| |_ ___
-  // | |   | '__/ _ \/ _` | __/ _ \
-  // | |___| | |  __/ (_| | ||  __/
-  //  \____|_|  \___|\__,_|\__\___|
-
-  // member self.CreateProject(name, path) =
-  //   createProject name path signature !state
-  //     >>= fun (project, state') ->
-  //       // add and start the process groups for this project
-  //       let result =
-  //         project.Name
-  //           >>= startProcess
-  //           >>= (addProcess project.Id >> succeed)
-
-  //       match result with
-  //         | Success _ -> state := state'
-  //                        self.Ctrl.Load(project.Id, project.Name)
-  //                        succeed project
-  //         | Fail err  -> logger tag err
-  //                        fail err
-  //   printfn "hm"
-
-  //   ____ _
-  //  / ___| | ___  ___  ___
-  // | |   | |/ _ \/ __|/ _ \
-  // | |___| | (_) \__ \  __/
-  //  \____|_|\___/|___/\___|
-
-  // member self.CloseProject(pid) =
-  //   findProject pid !state
-  //     >>= fun project ->
-  //       combine project (closeProject pid !state)
-  //     >>= fun (project, state') ->
-  //       // remove and stop process groups
-  //       let result = removeProcess project.Id >>= stopProcess
-  //       match result with
-  //         | Success _ -> state := state'                    // save global state
-  //                        self.Ctrl.Close(pid, project.Name) // notify everybody
-  //                        succeed project
-  //         | Fail err  -> logger tag err
-  //                        fail err
-
-  //   printfn "fm"
-
-  //  _                    _
-  // | |    ___   __ _  __| |
-  // | |   / _ \ / _` |/ _` |
-  // | |__| (_) | (_| | (_| |
-  // |_____\___/ \__,_|\__,_|
-
-  // member self.LoadProject(path : FilePath) =
-  //   loadProject path !state
-  //     >>= fun (project, state') ->
-  //       // add and start the process groups for this project
-  //       let result =
-  //         ProjectProcess.Create project
-  //           >>= startProcess
-  //           >>= (addProcess project.Id >> succeed)
-
-  //       match result with
-  //         | Success _ -> self.Ctrl.Load(project.Id, project.Name)
-  //                        state := state'
-  //                        succeed project
-  //         | Fail err  -> logger tag err
-  //                        fail err
-  //   printfn "oh"

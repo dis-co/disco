@@ -7,6 +7,7 @@ open Iris.Tests
 let all =
   testList "All tests" [
     raftTests
+    zmqIntegrationTests
     raftIntegrationTests
     serializationTests
     projectTests

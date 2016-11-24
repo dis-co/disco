@@ -2,7 +2,9 @@ namespace Iris.Service
 
 // * Imports
 
+open System.Collections.Concurrent
 open LibGit2Sharp
+
 open Iris.Core.Utils
 open Iris.Core
 open Iris.Raft
@@ -18,8 +20,7 @@ open Iris.Service.Zmq
 //                            |_|   |_|
 [<NoComparison;NoEquality>]
 type RaftAppContext =
-  { Context:     ZeroMQ.ZContext
-    Connections: Map<Id,Req>
+  { Connections: ConcurrentDictionary<Id,Req>
     Raft:        RaftValue
     Options:     IrisConfig }
 
@@ -43,6 +44,37 @@ module RaftContext =
   /// Returns: Raft
   let getRaft (context: RaftAppContext) =
     context.Raft
+
+  // ** getNode
+
+  /// ## getNode
+  ///
+  /// Return the current node.
+  ///
+  /// ### Signature:
+  /// - context: RaftAppContext
+  ///
+  /// Returns: RaftNode
+  let getNode (context: RaftAppContext) =
+    context
+    |> getRaft
+    |> Raft.getSelf
+
+  // ** getNodeId
+
+  /// ## getNodeId
+  ///
+  /// Return the current node Id.
+  ///
+  /// ### Signature:
+  /// - context: RaftAppContext
+  ///
+  /// Returns: Id
+  let getNodeId (context: RaftAppContext) =
+    context
+    |> getRaft
+    |> Raft.getSelf
+    |> Node.getId
 
   // ** updateRaft
 
@@ -69,9 +101,10 @@ module RaftContext =
   /// - client: Req
   ///
   /// Returns: RaftAppContext
-  let addConnection (context: RaftAppContext) (client: Req) : RaftAppContext =
-    { context with
-        Connections = Map.add client.Id client context.Connections }
+  let addConnection (context: RaftAppContext) (client: Req) =
+    if context.Connections.TryAdd(client.Id, client) then
+      sprintf "could not add connection for client (already present): %s" (string client.Id)
+      |> Logger.warn context.Raft.Node.Id "RaftContext"
 
   // ** rmConnection
 
@@ -84,9 +117,10 @@ module RaftContext =
   /// - id: Id of Node to remove connection for
   ///
   /// Returns: RaftAppContext
-  let rmConnection (context: RaftAppContext) (id: Id) : RaftAppContext =
-    { context with
-        Connections = Map.remove id context.Connections }
+  let rmConnection (context: RaftAppContext) (id: Id) =
+    if context.Connections.TryRemove(id) |> fst then
+      sprintf "could not remove connection for client (not present): %s" (string id)
+      |> Logger.warn context.Raft.Node.Id "RaftContext"
 
   // ** getConnection
 
@@ -100,4 +134,6 @@ module RaftContext =
   ///
   /// Returns: Req option
   let getConnection (context: RaftAppContext) (id: Id) : Req option =
-    Map.tryFind id context.Connections
+    match context.Connections.TryGetValue(id) with
+    | true, v  -> Some v
+    | false, _ -> None
