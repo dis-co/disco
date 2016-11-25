@@ -88,7 +88,7 @@ module RaftContext =
   /// - state: RaftAppContext to update
   ///
   /// Returns: RaftAppContext
-  let updateRaft (raft: RaftValue) (context: RaftAppContext) : RaftAppContext =
+  let updateRaft (context: RaftAppContext) (raft: RaftValue) : RaftAppContext =
     { context with Raft = raft }
 
   // ** addConnection
