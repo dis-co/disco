@@ -101,21 +101,27 @@ type MockService(?project: IrisProject ref) =
       | AddSession session ->
         match wsserver.BuildSession(id, session) with
         | Left err -> Error.exitWith err
-        | Right session -> AddSession session
+        | Right session ->
+          printfn "Session added %O" session.Id     
+          AddSession session
 
       | UpdateSession session when session.Status.StatusType = Login ->
         let username, password =
           // TODO: Validate format
           let info = session.Status.Payload.Split('\n')
           info.[0], info.[1]
+        printfn "Login request: username %s - password %s" username password
 
         store.State.Users
         |> Map.tryPick (fun _ u -> if u.UserName = username then Some u else None)
         |> function
           | Some user when user.Password = password ->
+            printfn "Login authorized"
             { session with Status = { StatusType = Authorized; Payload = string user.Id } }
+
           | _ ->
-            { session with Status = { StatusType = Unathorized; Payload = "" } }
+            printfn "Login rejected"
+            { session with Status = { StatusType = Unauthorized; Payload = "" } }
         |> UpdateSession
         
       | command -> command

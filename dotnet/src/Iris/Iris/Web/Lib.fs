@@ -14,14 +14,12 @@ type [<Pojo; NoComparison>] StateInfo =
   { context: ClientContext; state: State }
 
 let getCurrentSession(info: StateInfo) =
-  match info.context.Session with
-  | Some id ->
-    info.state.Sessions |> Map.find id
-  | None ->
-    failwith "Context not initialized"
+  info.state.Sessions
+  |> Map.tryFind info.context.Session
 
 let login(info: StateInfo, username: string, password: string) =
-  let curSession = getCurrentSession info
-  { curSession with Status = { StatusType=Login; Payload=username+"\n"+password}}
-  |> UpdateSession
-  |> info.context.Post
+  getCurrentSession info
+  |> Option.iter (fun curSession ->
+    { curSession with Status = { StatusType=Login; Payload=username+"\n"+password}}
+    |> UpdateSession
+    |> info.context.Post)

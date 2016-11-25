@@ -20,12 +20,7 @@ let matches (ctx : ClientContext) (kev : KeyboardEvent) ((ctrl, shift, key, msg)
      kev.shiftKey = shift &&
      kev.ctrlKey  = ctrl
   then
-    match ctx.Session with
-    | Some session ->
-      ctx.Trigger(ClientMessage.Event(session, msg))
-    | _ ->
-      printfn "NO SESSION ACTIVE. CANNOT FIRE EVENT."
-      kev.preventDefault()
+    ctx.Post(msg)
 
 let keydownHandler (ctx : ClientContext) (ev : KeyboardEvent) =
   Array.iter (matches ctx ev) knownActions

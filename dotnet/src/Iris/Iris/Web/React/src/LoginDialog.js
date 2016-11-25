@@ -1,82 +1,72 @@
 import React from 'react';
-import Dialog from 'material-ui/Dialog';
-import FlatButton from 'material-ui/FlatButton';
-import RaisedButton from 'material-ui/RaisedButton';
-import TextField from 'material-ui/TextField';
+import Form from 'muicss/lib/react/form';
+import Input from 'muicss/lib/react/input';
+import Button from 'muicss/lib/react/button';
+import Panel from 'muicss/lib/react/panel';
+
+const STATUS = {
+  AUTHORIZED: "Authorized",
+  WAITING: "Waiting",
+  UNAUTHORIZED: "Unauthorized"
+}
 
 export default class LoginDialog extends React.Component {
   constructor(props) {
       super(props);
-      this.state = { open: true, username: "", password: "" };
+      this.state = { active: false, username: "", password: "" };
   }
 
-  handleSubmit() {
-    this.props.login(this.state.username, this.state.password);
-    this.setState({status: 'waiting'});
+  handleSubmit(username, password) {
+    this.props.login(username, password);
+    this.setState({status: STATUS.WAITING});
   };
 
   componentWillReceiveProps(nextProps) {
-    try {
+    if (nextProps.session) {
       let status = nextProps.session.Status.StatusType.ToString();
       switch (status) {
-        case "Authorized":
-          this.setState({ open: false })
+        case STATUS.AUTHORIZED:
+          this.setState({ status })
           break;
-        case "Unauthorized":
-          if (this.state.status === "waiting") {
-            this.setState({ status: "rejected" })
+        case STATUS.UNAUTHORIZED:
+          if (this.state.status === STATUS.WAITING) {
+            this.setState({ status })
           }
           break;
       }
-    }
-    catch (err) {
-      console.log(err);
     }
   }
 
   getMessage() {
     switch (this.state.status) {
-      case "waiting":
-        return <p>Waiting for response</p>;
-      case "rejected":
-        return <p>Input data is not correct</p>;
+      case STATUS.AUTHORIZED:
+        return "Login succeeded!";
+      case STATUS.WAITING:
+        return "Waiting for response";
+      case STATUS.UNAUTHORIZED:
+        return "Input data is not correct";
     }
   }
 
   render() {
-    const actions = [
-    //   <FlatButton
-    //     label="Cancel"
-    //     primary={true}
-    //     onTouchTap={this.handleClose.bind(this)}
-    //   />,
-      <FlatButton
-        label="Submit"
-        primary={true}
-        disabled={!this.state.username || !this.state.password || this.state.status === "waiting"}
-        onTouchTap={this.handleSubmit.bind(this)}
-      />,
-    ];
-
     return (
-    <Dialog
-        title="Login"
-        actions={actions}
-        modal={true}
-        open={this.state.open}>
-        <TextField
-          floatingLabelText="Username"
-          errorText={this.state.username ? "" : "This field is required"}
-          onChange={ev => this.setState({username: ev.target.value})}
-        /><br />
-        <TextField
-          type="password"
-          floatingLabelText="Password"
-          errorText="This field is required"
-          onChange={ev => this.setState({password: ev.target.value})}
-        /><br />
-        {this.getMessage()}
-    </Dialog>
+      <Panel style={{width: 500, margin: "auto"}}>
+        <Form>
+          <legend>Login</legend>
+          <Input name="username" label="Username" floatingLabel={true} required={true} />
+          <Input name="password" label="Password" type="password" floatingLabel={true} required={true} />
+          <Button variant="raised"
+            disabled={this.state.status == STATUS.WAITING}
+            onClick={ev => {
+              ev.preventDefault();
+              var form = ev.target.parentNode;
+              this.handleSubmit(form.username.value, form.password.value);
+            }}>
+            Submit
+          </Button>
+          <p>{this.getMessage()}</p>
+        </Form>
+      </Panel>
     );
   }
 }

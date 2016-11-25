@@ -17,7 +17,7 @@ module Main =
   [<EntryPoint>]
   let main args =
     try
-      Logger.subscribe (printfn "%A") |> ignore
+      //Logger.subscribe (printfn "%A") |> ignore
       let service = new Iris.Service.MockService()
       service.Start()
       let _ = System.Console.ReadLine()

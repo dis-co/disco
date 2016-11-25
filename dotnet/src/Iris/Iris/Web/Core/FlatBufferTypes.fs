@@ -46,7 +46,7 @@ type SessionStatusTypeFB = int
 
 type SessionStatusTypeFBConstructor =
   abstract LoginFB: SessionStatusTypeFB
-  abstract UnathorizedFB: SessionStatusTypeFB
+  abstract UnauthorizedFB: SessionStatusTypeFB
   abstract AuthorizedFB: SessionStatusTypeFB
 
 type SessionStatusFB =
