@@ -13,7 +13,13 @@ open Utilities
 open Persistence
 
 type IRaftServerCallbacks =
-  abstract Hello : unit -> unit
+  abstract OnApplyLog     : StateMachine   -> unit
+  abstract OnNodeAdded    : RaftNode       -> unit
+  abstract OnNodeRemoved  : RaftNode       -> unit
+  abstract OnNodeUpdated  : RaftNode       -> unit
+  abstract OnConfigured   : RaftNode array -> unit
+  abstract OnStateChanged : RaftState      -> RaftState -> unit
+  abstract CreateSnapshot : RaftState      -> RaftState -> unit
 
 // * RaftServer
 
@@ -31,7 +37,7 @@ module RaftServer =
   [<Literal>]
   let tag = "RaftServer"
 
-  // ** RaftCommand
+  // ** Msg
 
   [<RequireQualifiedAccess>]
   type private Msg =
@@ -46,6 +52,8 @@ module RaftServer =
     | RmNode         of Id
     | IsCommitted    of EntryResponse
 
+  // ** Reply
+
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Reply =
     | Ok
@@ -54,16 +62,23 @@ module RaftServer =
     | State          of RaftAppContext
     | IsCommitted    of bool
 
+  // ** ReplyChan
+
   type private ReplyChan = AsyncReplyChannel<Either<IrisError,Reply>>
+
+  // ** Message
 
   type private Message = Msg * ReplyChan
 
+  // ** StateArbiter
+
   type private StateArbiter = MailboxProcessor<Message>
+
+  // ** RaftServer
 
   type RaftServer private (arbiter: StateArbiter) =
 
     interface IDisposable with
-
       member self.Dispose() = ()
 
   // ** periodicR
