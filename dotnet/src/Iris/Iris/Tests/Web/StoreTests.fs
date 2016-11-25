@@ -408,7 +408,7 @@ module Store =
 
         let session : Session =
           { Id = Id.Create()
-          ; Status = { StatusType = Unathorized; Payload = "" }
+          ; Status = { StatusType = Unauthorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
@@ -430,7 +430,7 @@ module Store =
 
         let session : Session =
           { Id = Id.Create()
-          ; Status = { StatusType = Unathorized; Payload = "" }
+          ; Status = { StatusType = Unauthorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
@@ -454,7 +454,7 @@ module Store =
 
         let session : Session =
           { Id = Id.Create()
-          ; Status = { StatusType = Unathorized; Payload = "" }
+          ; Status = { StatusType = Unauthorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
@@ -472,7 +472,7 @@ module Store =
 
         let session : Session =
           { Id = Id.Create()
-          ; Status = { StatusType = Unathorized; Payload = "" }
+          ; Status = { StatusType = Unauthorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 

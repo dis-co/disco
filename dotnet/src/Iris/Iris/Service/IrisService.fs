@@ -71,14 +71,15 @@ type IrisService(project: IrisProject ref) =
     /// contacted this IrisSerivce. First, we send a `DataSnapshot` to the client to initialize it
     /// with the current state. Then, we append the newly created Session value to the Raft log to
     /// replicate it throughout the cluster.
-    wsserver.OnOpen <- fun (session: Session) ->
-      wsserver.Send session.Id (DataSnapshot store.State)
-      match raftserver.Append(AddSession session) with
-      | Right entry ->
-        sprintf "Added session to Raft log with id: %A" entry.Id
-        |> Logger.debug nodeid tag
-      | Left  error ->
-        Logger.err nodeid tag (string error)
+    wsserver.OnOpen <- fun (sessionId: Id) ->
+      wsserver.Send sessionId (DataSnapshot store.State)
+      // TODO: Session shouldn't be added until getting ID from client
+      //match raftserver.Append(AddSession session) with
+      //| Right entry ->
+      //  sprintf "Added session to Raft log with id: %A" entry.Id
+      //  |> Logger.debug nodeid tag
+      //| Left  error ->
+      //  Logger.err nodeid tag (string error)
 
     /// ## OnClose
     ///

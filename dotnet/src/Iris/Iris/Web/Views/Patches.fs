@@ -23,30 +23,23 @@ type Root () =
       Button
         [ OnClick (fun _ ->
                    let cmd = StateMachine.Command AppCommand.Undo
-                   match ctx.Session with
-                   | Some session -> ctx.Trigger(ClientMessage.Event(session, cmd))
-                   | _            -> printfn "No session active. Worker not running?") ]
+                   ctx.Trigger(ClientMessage.Event(ctx.Session, cmd))) ]
         [| Text "Undo" |]
 
       Button
         [ OnClick (fun _ ->
                    let cmd = StateMachine.Command AppCommand.Redo
-                   match ctx.Session with
-                   | Some session -> ctx.Trigger(ClientMessage.Event(session, cmd))
-                   | _            -> printfn "No session active. Worker not running??") ]
+                   ctx.Trigger(ClientMessage.Event(ctx.Session, cmd))) ]
         [| Text "Redo" |]
 
       Button
         [ OnClick (fun _ ->
-                      match ctx.Session with
-                      | Some(session) ->
-                        let cue : Cue  =
-                          { Id      = Id.Create()
-                          ; Name    = "New Cue"
-                          ; IOBoxes = [| |] }
-                        let ev = session, AddCue cue
-                        ctx.Trigger(ClientMessage.Event(ev))
-                      | _ -> printfn "Cannot create cue. No worker?") ]
+                    let cue : Cue  =
+                      { Id      = Id.Create()
+                      ; Name    = "New Cue"
+                      ; IOBoxes = [| |] }
+                    let ev = ctx.Session, AddCue cue
+                    ctx.Trigger(ClientMessage.Event(ev))) ]
         [| Text "Create Cue" |]
     |]
 
@@ -56,11 +49,8 @@ type Root () =
     if not (plugins.Has iobox)
     then plugins.Add iobox
            (fun _ ->
-            match context.Session with
-            | Some _ ->
-              ClientMessage.ClientLog "Bla bla iobox update wtf?"
-              |> context.Trigger
-            | _ -> printfn "no worker session found.")
+            ClientMessage.ClientLog "Bla bla iobox update wtf?"
+            |> context.Trigger)
 
     let container =
       Li [] [|
@@ -107,11 +97,8 @@ type Root () =
 
   let destroy (context : ClientContext) (cue : Cue) =
     let handler (_ : MouseEvent) =
-      match context.Session with
-        | Some(session) ->
-          let ev = ClientMessage<State>.Event(session, RemoveCue cue)
-          context.Trigger(ev)
-        | _ -> printfn "Cannot delete cue. No Worker?"
+        let ev = ClientMessage<_>.Event(context.Session, RemoveCue cue)
+        context.Trigger(ev)
 
     Button [ OnClick handler ]
            [| Text "x" |]

@@ -61,6 +61,9 @@ type ClientContext private (worker: SharedWorker<string>) =
     | Some token -> token
     | None -> failwith "Client not initialized"
 
+  member self.Trigger(msg: ClientMessage<StateMachine>) =
+    worker.Port.PostMessage(toJson msg)
+
   member self.Post(ev: StateMachine) =
     printfn "Will send message %A" ev
     ClientMessage.Event(self.Session, ev)
