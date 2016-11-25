@@ -37,13 +37,13 @@ type MessagePort<'data>() =
     with set (_: MessageEvent<'data> -> unit) = failwith "ONLY JS"
 
   [<Emit("$0.postMessage($1)")>]
-  member __.PostMessage(_: 'data) = failwith "ONLY JS"
+  member __.PostMessage(_: 'data): unit = failwith "ONLY JS"
 
   [<Emit("$0.start()")>]
-  member __.Start() = failwith "ONLY JS"
+  member __.Start(): unit = failwith "ONLY JS"
 
   [<Emit("$0.close()")>]
-  member __.Close() = failwith "ONLY JS"
+  member __.Close(): unit = failwith "ONLY JS"
 
 
 // __        __         _             _____                 _

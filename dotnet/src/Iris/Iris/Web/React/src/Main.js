@@ -1,21 +1,32 @@
 import * as React from "react";
 import * as ReactDom from "react-dom";
-import injectTapEventPlugin from 'react-tap-event-plugin';
-import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
+import LoginDialog from "./LoginDialog";
 import Layout from "./Layout";
+import { getCurrentSession, login } from "lib";
 
-injectTapEventPlugin();
+
+function getSession(state) {
+  if (state) {
+    return getCurrentSession(state);
+  }
+  return null;
+}
 
 class App extends React.Component {
   constructor(props) {
     super(props);
-    props.subscribe(state => this.setState(state))
+    props.subscribe(state => {
+      console.log(state);
+      this.setState(state);
+    })
   }
 
   render() {
-    return <MuiThemeProvider>
-      <Layout />
-    </MuiThemeProvider>
+    return (
+      <LoginDialog
+        login={(username, password) => login(this.state, username, password)}
+        session={getSession(this.state)} />
+    );
   }
 }
 

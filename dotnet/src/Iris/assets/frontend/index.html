@@ -12,6 +12,7 @@
     <title>Iris</title>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <link href="css/mui.min.css" rel="stylesheet" type="text/css" media="screen" />
     <link href="css/iris.css" rel="stylesheet" />
     <script src="js/flatbuffers.js"></script>
     <script src="js/Raft_generated.js"></script>
@@ -31,7 +32,9 @@
 		// Paths in Require.js must always omit the .js extension
 		requirejs.config({
 			paths: {
-        'fable-core/umd': 'node_modules/fable-core/umd'
+        'fable-core/umd': 'node_modules/fable-core/umd',
+        'react': 'node_modules/react/dist/react',
+        'react-dom': 'node_modules/react-dom/dist/react-dom'
 			}
 		});
 		requirejs(["js/Web/Frontend"]);

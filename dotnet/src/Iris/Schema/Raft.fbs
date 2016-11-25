@@ -305,7 +305,7 @@ table UserFB {
 
 enum SessionStatusTypeFB:ushort {
      LoginFB = 0,
-     UnathorizedFB = 1,
+     UnauthorizedFB = 1,
      AuthorizedFB = 2,
 }
 

@@ -24,14 +24,13 @@ export default class Layout extends React.Component {
     layout[2].w = 12 - layout[2].x;
     for (let i = 0; i < layout.length; i++)
       layout[i].y = 0;
-    this.setState({layout})
   }
+
   render() {
     return (
       <div>
-        <LoginDialog />
         <ReactGridLayout
-            className="layout" onLayoutChange={this.onLayoutChange.bind(this)}
+            className="layout" onLayoutChange={this.onLayoutChange}
             layout={defaultLayout} cols={12} rowHeight={65} >
           <div key={'left'} style={{background: "lightgrey"}}>
             <LeftPanel />

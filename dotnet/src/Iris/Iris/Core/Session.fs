@@ -61,19 +61,19 @@ type SessionYaml(id, status, ip, ua) as self =
 
 type SessionStatusType =
   | Login
-  | Unathorized
+  | Unauthorized
   | Authorized
 
   override self.ToString() =
     match self with
     | Login -> "Login"
-    | Unathorized -> "Unathorized"
+    | Unauthorized -> "Unauthorized"
     | Authorized  -> "Authorized"
 
   static member Parse (str: string) =
     match str with
     | "Login" -> Login
-    | "Unathorized" -> Unathorized
+    | "Unauthorized" -> Unauthorized
     | "Authorized"  -> Authorized
     | _         -> failwithf "SessionStatusType: failed to parse %s" str
 
@@ -89,14 +89,14 @@ type SessionStatusType =
   member self.ToOffset () =
     match self with
       | Login -> SessionStatusTypeFB.LoginFB
-      | Unathorized -> SessionStatusTypeFB.UnathorizedFB
+      | Unauthorized -> SessionStatusTypeFB.UnauthorizedFB
       | Authorized  -> SessionStatusTypeFB.AuthorizedFB
 
   static member FromFB (fb: SessionStatusTypeFB) =
 #if FABLE_COMPILER
     match fb with
       | x when x = SessionStatusTypeFB.LoginFB -> Right Login
-      | x when x = SessionStatusTypeFB.UnathorizedFB -> Right Unathorized
+      | x when x = SessionStatusTypeFB.UnauthorizedFB -> Right Unauthorized
       | x when x = SessionStatusTypeFB.AuthorizedFB  -> Right Authorized
       | x ->
         sprintf "Could not parse SessionStatusType: %A" x
@@ -105,7 +105,7 @@ type SessionStatusType =
 #else
     match fb with
       | SessionStatusTypeFB.LoginFB -> Right Login
-      | SessionStatusTypeFB.UnathorizedFB -> Right Unathorized
+      | SessionStatusTypeFB.UnauthorizedFB -> Right Unauthorized
       | SessionStatusTypeFB.AuthorizedFB  -> Right Authorized
       | x ->
         sprintf "Could not parse SessionStatusType: %A" x
@@ -169,10 +169,16 @@ type SessionStatus =
 #endif
 
 type Session =
-  { Id: Id
-  ; Status:  SessionStatus
+  { Id:        Id
+  ; Status:    SessionStatus
   ; IpAddress: IpAddress
   ; UserAgent: UserAgent }
+  
+  static member Empty(id: Id) =
+    { Id = id
+    ; Status = { StatusType = Unauthorized; Payload = "" }
+    ; IpAddress = IPv4Address "0.0.0.0"
+    ; UserAgent = "" }
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _

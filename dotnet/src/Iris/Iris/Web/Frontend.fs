@@ -6,23 +6,22 @@
 // |  _|| | | (_) | | | | ||  __/ | | | (_| | | |  | | (_| | | | | |
 // |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| |_|  |_|\__,_|_|_| |_|
 
-open Iris.Raft
-open Iris.Core
+open System
 open Iris.Web.Core
 open Fable.Core
 open Fable.Core.JsInterop
-open Fable.Import
+open Iris.Web.Lib
 
-let context = new ClientContext()
+let context = ClientContext.Start()
 
 type ReactApp =
-  abstract mount: ((State->unit)->unit)->unit
+  abstract mount: ((StateInfo->unit)->unit)->unit
 
 let reactApp: ReactApp = importDefault "ReactApp"
 reactApp.mount(fun f ->
-  context.Subscribe(fun _ state -> f state)
+  (context :> IObservable<_>).Subscribe(fun (ctx, state) ->
+    f { context = ctx; state = state })
+  |> ignore
 )
-
-context.Start()
 
 registerKeyHandlers context

@@ -1,6 +1,8 @@
 [<AutoOpen>]
 module Iris.Web.Core.Client
 
+open System
+open System.Collections.Generic
 open Fable.Core
 open Fable.Import
 open Fable.Import.JS
@@ -39,39 +41,31 @@ type SharedWorker<'data>(url: string) =
 // | |___| | |  __/ | | | |_
 //  \____|_|_|\___|_| |_|\__|
 
-type ClientContext() =
+type ClientContext private (worker: SharedWorker<string>) =
   let mutable session : Id option = None
-  let mutable worker  : SharedWorker<string> option = None
-  let mutable ctrl    : (ClientContext -> State -> unit) option = None
+  let ctrls = Dictionary<Guid, IObserver<ClientContext*State>>()
 
-  member self.Session
-    with get () = session
-
-  member self.Subscribe(c) =
-    ctrl <- Some(c)
-
-  member self.Start() =
+  static member Start() =
     let host = getHostname ()
     let port = getHostPort ()
     let address = sprintf "ws://%s:%d" host (port + Constants.SOCKET_SERVER_PORT_DIFF)
     let me = new SharedWorker<string>(Constants.WEB_WORKER_SCRIPT)
+    let client = new ClientContext(me)
     me.OnError <- fun e -> printfn "%A" e.Message
-    me.Port.OnMessage <- self.MsgHandler
-    worker <- Some me
+    me.Port.OnMessage <- client.MsgHandler
     me.Port.PostMessage (ClientMessage.Connect address |> toJson)
+    client
 
-  member self.Trigger(msg: ClientMessage<State>) =
-    match worker with
-    | Some me -> msg |> toJson |> me.Port.PostMessage
-    | _       -> printfn "oops no workr??"
+  member self.Session =
+    match session with
+    | Some token -> token
+    | None -> failwith "Client not initialized"
 
-  member self.Close() =
-    match session, worker with
-    | Some token, Some me ->
-      ClientMessage.Close(token)
-      |> toJson
-      |> me.Port.PostMessage
-    | _ -> printfn "could not close it??"
+  member self.Post(ev: StateMachine) =
+    printfn "Will send message %A" ev
+    ClientMessage.Event(self.Session, ev)
+    |> toJson
+    |> worker.Port.PostMessage
 
   member self.MsgHandler (msg : MessageEvent<string>) : unit =
     match ofJson<ClientMessage<State>> msg.Data with
@@ -85,17 +79,17 @@ type ClientContext() =
       printfn "A client closed its session: %A" token
 
     | ClientMessage.Stopped ->
-      printfn "Worker stopped, restarting..."
-      self.Start()
+      printfn "Worker stopped. TODO: Needs to be restarted"
+      // TODO: Restart worker
+      //self.Start()
 
     // Re-render the current view tree with a new state
     | ClientMessage.Render(state) ->
-      match ctrl with
-      | Some(controller) -> controller self state
-      | _                -> printfn "no controller defined"
-
+      for ctrl in ctrls.Values do
+        ctrl.OnNext(self, state)
 
     | ClientMessage.Connected ->
+      Session.Empty self.Session |> AddSession |> self.Post
       printfn "CONNECTED!"
 
     | ClientMessage.Disconnected ->
@@ -109,3 +103,17 @@ type ClientContext() =
       printfn "SharedWorker Error: %A" reason
 
     | _ -> printfn "Unknown Event: %A" msg.Data
+
+
+  interface IDisposable with
+    member self.Dispose() =
+      ClientMessage.Close(self.Session)
+      |> toJson
+      |> worker.Port.PostMessage
+
+  interface IObservable<ClientContext * State> with
+    member __.Subscribe(obs) =
+      let guid = Guid.NewGuid()
+      ctrls.Add(guid, obs)
+      { new IDisposable with
+          member __.Dispose() = ctrls.Remove(guid) |> ignore }

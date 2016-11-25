@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -42,34 +42,93 @@
     <!--<Reference Include="../../../../../../Fable/build/fable-core/Fable.Core.dll" />-->
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="../../AssemblyInfo/FrontendInfo.fs" />
-    <Compile Include="../../Iris/Core/FlatBuffers.fs" />
-    <Compile Include="../../Iris/Web/Core/FlatBufferTypes.fs" />
-    <Compile Include="../../Iris/Core/Constants.fs" />
-    <Compile Include="../../Iris/Core/Either.fs" />
-    <Compile Include="../../Iris/Core/Serialization.fs" />
-    <Compile Include="../../Iris/Core/Error.fs" />
-    <Compile Include="../../Iris/Core/Id.fs" />
-    <Compile Include="../../Iris/Core/IpAddress.fs" />
-    <Compile Include="../../Iris/Core/Aliases.fs" />
-    <Compile Include="../../Iris/Core/User.fs" />
-    <Compile Include="../../Iris/Core/Session.fs" />
-    <Compile Include="../../Iris/Core/Color.fs" />
-    <Compile Include="../../Iris/Core/Util.fs" />
-    <Compile Include="../../Iris/Core/Logging.fs" />
-    <Compile Include="../../Iris/Raft/Node.fs" />
-    <Compile Include="../../Iris/Core/IOBox.fs" />
-    <Compile Include="../../Iris/Core/Patch.fs" />
-    <Compile Include="../../Iris/Core/Cue.fs" />
-    <Compile Include="../../Iris/Core/CueList.fs" />
-    <Compile Include="../../Iris/Core/StateMachine.fs" />
-    <Compile Include="../../Iris/Core/ClientMessage.fs" />
-    <Compile Include="../../Iris/Web/Core/Browser.fs" />
-    <Compile Include="../../Iris/Web/Core/Crypto.fs" />
-    <Compile Include="../../Iris/Web/Core/Worker.fs" />
-    <Compile Include="../../Iris/Web/Core/Client.fs" />
-    <Compile Include="../../Iris/Web/Core/Keyboard.fs" />
-    <Compile Include="../../Iris/Web/Frontend.fs" />
+    <Compile Include="../../AssemblyInfo/FrontendInfo.fs">
+      <Link>FrontendInfo.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/FlatBuffers.fs">
+      <Link>FlatBuffers.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Web/Core/FlatBufferTypes.fs">
+      <Link>FlatBufferTypes.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Constants.fs">
+      <Link>Constants.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Either.fs">
+      <Link>Either.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Serialization.fs">
+      <Link>Serialization.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Error.fs">
+      <Link>Error.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Id.fs">
+      <Link>Id.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/IpAddress.fs">
+      <Link>IpAddress.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Aliases.fs">
+      <Link>Aliases.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/User.fs">
+      <Link>User.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Session.fs">
+      <Link>Session.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Color.fs">
+      <Link>Color.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Util.fs">
+      <Link>Util.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Logging.fs">
+      <Link>Logging.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Raft/Node.fs">
+      <Link>Node.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/IOBox.fs">
+      <Link>IOBox.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Patch.fs">
+      <Link>Patch.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Cue.fs">
+      <Link>Cue.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/CueList.fs">
+      <Link>CueList.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/StateMachine.fs">
+      <Link>StateMachine.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/ClientMessage.fs">
+      <Link>ClientMessage.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Web/Core/Browser.fs">
+      <Link>Browser.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Web/Core/Crypto.fs">
+      <Link>Crypto.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Web/Core/Worker.fs">
+      <Link>Worker.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Web/Core/Client.fs">
+      <Link>Client.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Web/Core/Keyboard.fs">
+      <Link>Keyboard.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Web/Lib.fs">
+      <Link>Lib.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Web/Frontend.fs">
+      <Link>Frontend.fs</Link>
+    </Compile>
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">
