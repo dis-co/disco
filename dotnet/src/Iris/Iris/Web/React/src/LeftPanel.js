@@ -1,6 +1,7 @@
 import React from 'react';
 import cx from 'classnames';
-import {Tabs, Tab} from 'material-ui/Tabs';
+import Tabs from 'muicss/lib/react/tabs';
+import Tab from 'muicss/lib/react/tab';
 
 import Tree from 'react-ui-tree';
 require("react-ui-tree/dist/react-ui-tree.css");

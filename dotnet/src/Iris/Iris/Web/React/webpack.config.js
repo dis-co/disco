@@ -13,7 +13,7 @@ if (process.env.NODE_ENV !== "production") {
     devtool = "eval";
     devServer = {
         port: 7000,
-        contentBase: "../../../bin/Debug/Iris/assets"
+        contentBase: "../../../assets/frontend"
     };
     loaders = [{
         test: /\.js$/,

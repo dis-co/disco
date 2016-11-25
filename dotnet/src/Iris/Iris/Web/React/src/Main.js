@@ -3,7 +3,7 @@ import * as ReactDom from "react-dom";
 import LoginDialog from "./LoginDialog";
 import Layout from "./Layout";
 import { getCurrentSession, login } from "lib";
-
+import overlay from 'muicss/lib/js/overlay';
 
 function getSession(state) {
   if (state) {
@@ -22,11 +22,13 @@ class App extends React.Component {
   }
 
   render() {
-    return (
-      <LoginDialog
-        login={(username, password) => login(this.state, username, password)}
-        session={getSession(this.state)} />
-    );
+    var session = getSession(this.state);
+
+      // <LoginDialog
+      //   login={(username, password) => login(this.state, username, password)}
+      //   session={session} />
+
+    return <Layout />;
   }
 }
 
