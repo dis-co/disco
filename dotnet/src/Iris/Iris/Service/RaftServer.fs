@@ -12,6 +12,9 @@ open FSharpx.Functional
 open Utilities
 open Persistence
 
+type IRaftServerCallbacks =
+  abstract Hello : unit -> unit
+
 // * RaftServer
 
 [<RequireQualifiedAccess>]
@@ -816,10 +819,8 @@ module RaftServer =
             |> Either.fail
       }
 
-    // execute the join request with
-         a newly created "fake" node
+    // execute the join request with a newly created "fake" node
     _tryJoin 0 { Node.create (Id.Create()) with
-
                   IpAddr = ip
                   Port = uint16 port }
 
@@ -1001,7 +1002,10 @@ module RaftServer =
   // |  __/| |_| | |_) | | | (__
   // |_|    \__,_|_.__/|_|_|\___|
 
-  let start (options: IrisConfig, callbacks: IRaftCallbacks) =
+  let start (options: IrisConfig, callbacks: IRaftServerCallacks) =
+    let callbacks =
+      { new IRaftCallbacks with
+          member self.Hehe() = () }
 
     let initialState =
       match mkState options callbacks with
