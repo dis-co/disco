@@ -506,6 +506,160 @@ module RaftServer =
     | ErrorResponse            error         -> processErrorResponse    state channel error
     | _                                      -> state
 
+  // ** tryJoin
+
+  let private tryJoin (state: RaftAppContext) (ip: IpAddress) (port: uint32) =
+    let rec _tryJoin retry peer =
+      either {
+        if retry < int state.Options.RaftConfig.MaxRetries then
+          use client = mkReqSocket peer
+
+          sprintf "Retry: %d" retry
+          |> Logger.debug state.Raft.Node.Id "tryJoin"
+
+          let request = HandShake(state.Raft.Node)
+          let! result = rawRequest request client
+
+          sprintf "Result: %A" result
+          |> Logger.debug state.Raft.Node.Id "tryJoin"
+
+          match result with
+          | Welcome node ->
+            sprintf "Received Welcome from %A" node.Id
+            |> Logger.debug state.Raft.Node.Id "tryJoin"
+            return node
+
+          | Redirect next ->
+            sprintf "Got redirected to %A" (nodeUri next)
+            |> Logger.info state.Raft.Node.Id "tryJoin"
+            return! _tryJoin (retry + 1) next
+
+          | ErrorResponse err ->
+            sprintf "Unexpected error occurred. %A" err
+            |> Logger.err state.Raft.Node.Id "tryJoin"
+            return! Either.fail err
+
+          | resp ->
+            sprintf "Unexpected response. %A" resp
+            |> Logger.err state.Raft.Node.Id "tryJoin"
+            return!
+              Other "Unexpected response"
+              |> Either.fail
+        else
+          "Too many unsuccesful connection attempts."
+          |> Logger.err state.Raft.Node.Id "tryJoin"
+          return!
+            Other "Too many unsuccesful connection attempts."
+            |> Either.fail
+      }
+
+    // execute the join request with a newly created "fake" node
+    _tryJoin 0 { Node.create (Id.Create()) with
+                  IpAddr = ip
+                  Port = uint16 port }
+
+  // ** tryJoinCluster
+
+  let private tryJoinCluster (state: RaftAppContext) (ip: IpAddress) (port: uint32) =
+    raft {
+      Logger.debug state.Raft.Node.Id tag "requesting to join"
+
+      let leader = tryJoin state ip port
+
+      match leader with
+      | Right leader ->
+        sprintf "Reached leader: %A Adding to nodes." leader.Id
+        |> Logger.info state.Raft.Node.Id tag
+
+        do! Raft.addNodeM leader
+        do! Raft.becomeFollower ()
+
+      | Left err ->
+        sprintf "Joining cluster failed. %A" err
+        |> Logger.err state.Raft.Node.Id tag
+
+    }
+    |> runRaft state.Raft state.Callbacks
+
+  // ** tryLeave
+
+  /// ## Attempt to leave a Raft cluster
+  ///
+  /// Attempt to leave a Raft cluster by identifying the current cluster leader and sending an
+  /// AppendEntries request with a JointConsensus entry.
+  ///
+  /// ### Signature:
+  /// - appState: RaftAppContext TVar
+  ///
+  /// Returns: unit
+  let private tryLeave (state: RaftAppContext) : Either<IrisError,bool> =
+    let rec _tryLeave retry node =
+      either {
+        if retry < int state.Options.RaftConfig.MaxRetries then
+          use client = mkReqSocket node
+
+          let request = HandWaive(state.Raft.Node)
+          let! result = rawRequest request client
+
+          match result with
+
+          | Redirect other ->
+            if retry <= int state.Options.RaftConfig.MaxRetries then
+              return! _tryLeave (retry + 1) other
+            else
+              return!
+                Other "Too many retries, aborting."
+                |> Either.fail
+          | Arrivederci       -> return true
+          | ErrorResponse err -> return! Either.fail err
+          | resp              -> return! Either.fail (Other "Unexpected response")
+        else
+          return! Either.fail (Other "Too many unsuccesful connection attempts.")
+      }
+
+    match state.Raft.CurrentLeader with
+    | Some nid ->
+      match Map.tryFind nid state.Raft.Peers with
+
+      | Some node -> _tryLeave 0 node
+      | _         ->
+        Other "Node data for leader id not found"
+        |> Either.fail
+    | _ ->
+      Other "No known Leader"
+      |> Either.fail
+
+  // ** leaveCluster
+
+  let private tryLeaveCluster (state: RaftAppContext) =
+    raft {
+      do! Raft.setTimeoutElapsedM 0u
+
+      match tryLeave state with
+
+      | Right true  ->
+        "Successfully left cluster."
+        |> Logger.info state.Raft.Node.Id tag // FIXME: this might need more consequences than this
+
+      | Right false ->
+        "Could not leave cluster."
+        |> Logger.err state.Raft.Node.Id tag
+
+      | Left err ->
+        err
+        |> sprintf "Could not leave cluster. %A"
+        |> Logger.err state.Raft.Node.Id tag
+
+      do! Raft.becomeFollower ()
+
+      let! peers = Raft.getNodesM ()
+
+      for kv in peers do
+        do! Raft.removeNodeM kv.Value
+
+    }
+    |> runRaft state.Raft state.Callbacks
+
   // ** loop
 
   let private loop (initial: RaftAppContext) (inbox: MailboxProcessor<Message>) =
@@ -516,16 +670,32 @@ module RaftServer =
         let newstate =
           match cmd with
           | Msg.Join (ip, port) ->
-            // channel.Reply (Right () Ok)
-            // tryJoinCluster state ip port
+            match tryJoinCluster state ip port with
+            | Right (_, newstate) ->
+              Reply.Ok
+              |> Either.succeed
+              |> channel.Reply
+              RaftContext.updateRaft state newstate
 
-            implement "Join"
+            | Left (error, newstate) ->
+              error
+              |> Either.fail
+              |> channel.Reply
+              RaftContext.updateRaft state newstate
 
           | Msg.Leave ->
-            // channel.Reply (Right () Ok)
-            // tryLeaveCluster state
+            match tryLeaveCluster state with
+            | Right (_, newstate) ->
+              Reply.Ok
+              |> Either.succeed
+              |> channel.Reply
+              RaftContext.updateRaft state newstate
 
-            implement "Leave"
+            | Left (error, newstate) ->
+              error
+              |> Either.fail
+              |> channel.Reply
+              RaftContext.updateRaft state newstate
 
           | Msg.Periodic -> periodic state channel
 
@@ -785,164 +955,6 @@ module RaftServer =
       }
     Async.Start(proc(), token.Token)
     token                               // return the cancellation token source so this loop can be
-
-  // ** tryJoin
-
-  let private tryJoin (state: RaftAppContext) (ip: IpAddress) (port: uint32) =
-    let rec _tryJoin retry peer =
-      either {
-        if retry < int state.Options.RaftConfig.MaxRetries then
-          use client = mkReqSocket peer
-
-          sprintf "Retry: %d" retry
-          |> Logger.debug state.Raft.Node.Id "tryJoin"
-
-          let request = HandShake(state.Raft.Node)
-          let! result = rawRequest request client
-
-          sprintf "Result: %A" result
-          |> Logger.debug state.Raft.Node.Id "tryJoin"
-
-          match result with
-
-          | Welcome node ->
-            sprintf "Received Welcome from %A" node.Id
-            |> Logger.debug state.Raft.Node.Id "tryJoin"
-            return node
-
-          | Redirect next ->
-            sprintf "Got redirected to %A" (nodeUri next)
-            |> Logger.info state.Raft.Node.Id "tryJoin"
-            return! _tryJoin (retry + 1) next
-
-          | ErrorResponse err ->
-            sprintf "Unexpected error occurred. %A" err
-            |> Logger.err state.Raft.Node.Id "tryJoin"
-            return! Either.fail err
-
-          | resp ->
-            sprintf "Unexpected response. %A" resp
-            |> Logger.err state.Raft.Node.Id "tryJoin"
-            return!
-              Other "Unexpected response"
-              |> Either.fail
-        else
-          "Too many unsuccesful connection attempts."
-          |> Logger.err state.Raft.Node.Id "tryJoin"
-          return!
-            Other "Too many unsuccesful connection attempts."
-            |> Either.fail
-      }
-
-    // execute the join request with a newly created "fake" node
-    _tryJoin 0 { Node.create (Id.Create()) with
-                  IpAddr = ip
-                  Port = uint16 port }
-
-  // ** tryJoinCluster
-
-  let private tryJoinCluster (state: RaftAppContext) (ip: IpAddress) (port: uint32) =
-    raft {
-      Logger.debug state.Raft.Node.Id tag "requesting to join"
-
-      let leader = tryJoin state ip port
-
-      match leader with
-
-      | Right leader ->
-        sprintf "Reached leader: %A Adding to nodes." leader.Id
-        |> Logger.info state.Raft.Node.Id tag
-
-        do! Raft.addNodeM leader
-        do! Raft.becomeFollower ()
-
-      | Left err ->
-        sprintf "Joining cluster failed. %A" err
-        |> Logger.err state.Raft.Node.Id tag
-
-    } |> evalRaft state.Raft state.Callbacks
-    |> RaftContext.updateRaft state
-
-  // ** tryLeave
-
-  /// ## Attempt to leave a Raft cluster
-  ///
-  /// Attempt to leave a Raft cluster by identifying the current cluster leader and sending an
-  /// AppendEntries request with a JointConsensus entry.
-  ///
-  /// ### Signature:
-  /// - appState: RaftAppContext TVar
-  ///
-  /// Returns: unit
-  let private tryLeave (state: RaftAppContext) : Either<IrisError,bool> =
-    let rec _tryLeave retry node =
-      either {
-        if retry < int state.Options.RaftConfig.MaxRetries then
-          use client = mkReqSocket node
-
-          let request = HandWaive(state.Raft.Node)
-          let! result = rawRequest request client
-
-          match result with
-
-          | Redirect other ->
-            if retry <= int state.Options.RaftConfig.MaxRetries then
-              return! _tryLeave (retry + 1) other
-            else
-              return!
-                Other "Too many retries, aborting."
-                |> Either.fail
-          | Arrivederci       -> return true
-          | ErrorResponse err -> return! Either.fail err
-          | resp              -> return! Either.fail (Other "Unexpected response")
-        else
-          return! Either.fail (Other "Too many unsuccesful connection attempts.")
-      }
-
-    match state.Raft.CurrentLeader with
-
-    | Some nid ->
-      match Map.tryFind nid state.Raft.Peers with
-
-      | Some node -> _tryLeave 0 node
-      | _         ->
-        Other "Node data for leader id not found"
-        |> Either.fail
-    | _ ->
-      Other "No known Leader"
-      |> Either.fail
-
-  // ** leaveCluster
-
-  let private tryLeaveCluster (state: RaftAppContext) =
-    raft {
-      do! Raft.setTimeoutElapsedM 0u
-
-      match tryLeave state with
-
-      | Right true  ->
-        "Successfully left cluster."
-        |> Logger.info state.Raft.Node.Id tag // FIXME: this might need more consequences than this
-
-      | Right false ->
-        "Could not leave cluster."
-        |> Logger.err state.Raft.Node.Id tag
-
-      | Left err ->
-        err
-        |> sprintf "Could not leave cluster. %A"
-        |> Logger.err state.Raft.Node.Id tag
-
-      do! Raft.becomeFollower ()
-
-      let! peers = Raft.getNodesM ()
-
-      for kv in peers do
-        do! Raft.removeNodeM kv.Value
-
-    }
-    |> evalRaft state.Raft state.Callbacks
-    |> RaftContext.updateRaft state
 
 
   // ** forceElection
