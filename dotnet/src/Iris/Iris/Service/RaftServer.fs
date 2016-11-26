@@ -45,6 +45,7 @@ module RaftServer =
     | Leave
     | Get
     | Periodic
+    | ForceElection
     | AddCmd         of StateMachine
     | Request        of RaftRequest
     | Response       of RaftResponse
@@ -660,6 +661,16 @@ module RaftServer =
     }
     |> runRaft state.Raft state.Callbacks
 
+  // ** forceElection
+
+  let private forceElection (state: RaftAppContext) =
+    raft {
+      let! timeout = Raft.electionTimeoutM ()
+      do! Raft.setTimeoutElapsedM timeout
+      do! Raft.periodic timeout
+    }
+    |> runRaft state.Raft state.Callbacks
+
   // ** loop
 
   let private loop (initial: RaftAppContext) (inbox: MailboxProcessor<Message>) =
@@ -698,6 +709,20 @@ module RaftServer =
               RaftContext.updateRaft state newstate
 
           | Msg.Periodic -> periodic state channel
+
+          | Msg.ForceElection ->
+            match forceElection state with
+            | Right (_, newstate) ->
+              Reply.Ok
+              |> Either.succeed
+              |> channel.Reply
+              RaftContext.updateRaft state newstate
+
+            | Left (err, newstate) ->
+              err
+              |> Either.fail
+              |> channel.Reply
+              RaftContext.updateRaft state newstate
 
           // Add a new StateMachine Command to the distributed log
           | Msg.AddCmd cmd ->
@@ -956,17 +981,6 @@ module RaftServer =
     Async.Start(proc(), token.Token)
     token                               // return the cancellation token source so this loop can be
 
-
-  // ** forceElection
-
-  let private forceElection state =
-    raft {
-      let! timeout = Raft.electionTimeoutM ()
-      do! Raft.setTimeoutElapsedM timeout
-      do! Raft.periodic timeout
-    }
-    |> evalRaft state.Raft state.Callbacks
-    |> RaftContext.updateRaft state
 
   // ** prepareSnapshot
 
