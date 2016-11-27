@@ -78,10 +78,12 @@ module RaftServer =
 
   // ** RaftServer
 
-  type RaftServer private (arbiter: StateArbiter) =
+  type IRaftServer =
+    inherit IDisposable
 
-    interface IDisposable with
-      member self.Dispose() = ()
+    abstract Append : StateMachine -> Either<IrisError, EntryResponse>
+    abstract ForceElection : unit -> unit
+    abstract State : RaftAppContext
 
   // ** periodicR
 
@@ -1185,14 +1187,14 @@ module RaftServer =
   let start (options: IrisConfig) (callbacks: IRaftServerCallbacks) =
     let connections = new Connections()
 
-    let initialState =
-      match mkState options connections callbacks with
-      | Right state -> state
-      | Left error  -> Error.exitWith error
+    match mkState options connections callbacks with
+    | Right state ->
+      let nodeid =
+        initialState
+        |> RaftContext.getNodeId
+      state
 
-    let nodeid =
-      initialState
-      |> RaftContext.getNodeId
+    | error -> error
 
     let socket : Zmq.Rep = new Zmq.Rep()
 
@@ -1327,82 +1329,12 @@ module RaftServer =
 
   // interface IRaftCallbacks with
 
-  //   //     _                _          ____               _
-  //   //    / \   _ __  _ __ | |_   _   / ___|_ __ ___   __| |
-  //   //   / _ \ | '_ \| '_ \| | | | | | |   | '_ ` _ \ / _` |
-  //   //  / ___ \| |_) | |_) | | |_| | | |___| | | | | | (_| |
-  //   // /_/   \_\ .__/| .__/|_|\__, |  \____|_| |_| |_|\__,_|
-  //   //         |_|   |_|      |___/
-
-  //   member self.ApplyLog sm =
-  //     match onApplyLog with
-
-  //     | Some cb -> cb sm
-  //     | _       -> ()
-
-  //     sprintf "Applying state machine command (%A)" sm
-  //     |> Logger.info nodeid tag
-
-  //   //  _   _           _
-  //   // | \ | | ___   __| | ___  ___
-  //   // |  \| |/ _ \ / _` |/ _ \/ __|
-  //   // | |\  | (_) | (_| |  __/\__ \
-  //   // |_| \_|\___/ \__,_|\___||___/
-
-  //   member self.NodeAdded node   =
-  //     try
-  //       match onNodeAdded with
-
-  //       | Some cb -> cb node
-  //       | _       -> ()
-
-  //       sprintf "Node was added. %s" (string node.Id)
-  //       |> Logger.info nodeid tag
-
-  //     with
-
-  //       | exn -> handleException "NodeAdded" exn
-
-  //   member self.NodeUpdated node =
-  //     try
-  //       sprintf "Node was updated. %s" (string node.Id)
-  //       |> Logger.debug nodeid tag
-
-  //       match onNodeUpdated with
-
-  //       | Some cb -> cb node
-  //       | _       -> ()
-  //     with
-
-  //       | exn -> handleException "NodeAdded" exn
-
-  //   member self.NodeRemoved node =
-  //     try
-  //       sprintf "Node was removed. %s" (string node.Id)
-  //       |> Logger.debug nodeid tag
-
-  //       match onNodeRemoved with
-
-  //       | Some cb -> cb node
-  //       | _       -> ()
-  //     with
-
-  //       | exn -> handleException "NodeAdded" exn
-
   //   //   ____ _
   //   //  / ___| |__   __ _ _ __   __ _  ___  ___
   //   // | |   | '_ \ / _` | '_ \ / _` |/ _ \/ __|
   //   // | |___| | | | (_| | | | | (_| |  __/\__ \
   //   //  \____|_| |_|\__,_|_| |_|\__, |\___||___/
   //   //                          |___/
-
-  //   member self.Configured nodes =
-  //     match onConfigured with
-
-  //     | Some cb -> cb nodes
-  //     | _       -> ()
-
-  //     Logger.debug nodeid tag "Cluster configuration done!"
 
   //   member self.PrepareSnapshot (raft: RaftValue) =
   //     match onCreateSnapshot with
@@ -1525,23 +1457,3 @@ module RaftServer =
   //     with
 
   //       | exn -> handleException "DeleteLog" exn
-
-  //   /// ## LogMsg
-  //   ///
-  //   /// Triggers a new event on LogObservable.
-  //   ///
-  //   /// ### Signature:
-  //   /// - level: LogLevel
-  //   /// - node:  RaftNode
-  //   /// - str:   string
-  //   ///
-  //   /// Returns: unit
-  //   member self.LogMsg node site level str =
-  //     Logger.log level node.Id site str
-
-  // override self.ToString() =
-  //   sprintf "Connections:%s\nNodes:%s\nRaft:%s\nLog:%s"
-  //     (self.State.Connections |> string |> String.indent 4)
-  //     (Map.fold (fun m _ t -> sprintf "%s\n%s" m (string t)) "" self.State.Raft.Peers |> String.indent 4)
-  //     (self.State.Raft.ToString() |> String.indent 4)
-  //     (string self.State.Raft.Log |> String.indent 4)
