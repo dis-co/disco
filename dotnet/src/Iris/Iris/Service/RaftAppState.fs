@@ -28,17 +28,10 @@ type RaftAppContext =
   { Status:      ServiceStatus
     Raft:        RaftValue
     Options:     IrisConfig
-    Connections: Connections
     Callbacks:   IRaftCallbacks }
 
   override self.ToString() =
     sprintf "Raft: %A" self.Raft
-
-  interface IDisposable with
-    member self.Dispose () =
-      for KeyValue(_, connection) in self.Connections do
-        dispose connection
-      self.Connections.Clear()
 
 // * RaftContext
 

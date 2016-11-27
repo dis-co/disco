@@ -941,21 +941,6 @@ module RaftServer =
         Thread.Sleep 1
       connection
 
-  // ** initConnections
-
-  let private initConnections (state: RaftAppContext) =
-    for KeyValue(_,node) in state.Raft.Peers do
-      if node.Id <> state.Raft.Node.Id then
-        getConnection state.Raft.Node.Id state.Connections node
-        |> ignore
-
-  // ** resetConnections
-
-  let private destroyConnections (state: RaftAppContext) =
-    for KeyValue(_,connection) in state.Connections do
-      dispose connection
-    state.Connections.Clear()
-
   // ** sendRequestVote
 
   let private sendRequestVote (self: Id)
@@ -1001,7 +986,7 @@ module RaftServer =
       |> Logger.err self tag
       None
     | Left error ->
-      nodeUri node
+      nodeUri peer
       |> sprintf "SendAppendEntries: received error %A in request to %s" error
       |> Logger.err self tag
       None
@@ -1021,12 +1006,12 @@ module RaftServer =
     | Right response ->
       response
       |> sprintf "SendInstallSnapshot: Unexpected Response: %A"
-      |> Logger.err state.Raft.Node.Id tag
+      |> Logger.err self tag
       None
     | Left error ->
-      nodeUri node
+      nodeUri peer
       |> sprintf "SendInstallSnapshot: received error %A in request to %s" error
-      |> Logger.err state.Raft.Node.Id tag
+      |> Logger.err self tag
       None
 
   // ** rand
@@ -1070,6 +1055,74 @@ module RaftServer =
     Raft.createSnapshot (DataSnapshot snapshot) state.Raft
 
 
+  // ** mkCallbacks
+
+  let private mkCallbacks (id: Id)
+                          (connections: Connections)
+                          (callbacks: IRaftServerCallbacks) =
+
+    { new IRaftCallbacks with
+        member self.SendRequestVote peer request =
+          sendRequestVote id connections peer request
+
+        member self.SendAppendEntries peer request =
+          sendAppendEntries id connections peer request
+
+        member self.SendInstallSnapshot peer request =
+          sendInstallSnapshot id connections peer request
+
+        member self.PrepareSnapshot raft =
+          implement "PrepareSnapshot"
+
+        member self.RetrieveSnapshot () =
+          implement "RetrieveSnapshot"
+
+        member self.PersistSnapshot log =
+          implement "PersistSnapshot"
+
+        member self.ApplyLog cmd =
+          callbacks.OnApplyLog cmd
+
+        member self.NodeAdded node =
+          callbacks.OnNodeAdded node
+
+        member self.NodeUpdated node =
+          callbacks.OnNodeUpdated node
+
+        member self.NodeRemoved node =
+          callbacks.OnNodeRemoved node
+
+        member self.Configured nodes =
+          callbacks.OnConfigured nodes
+
+        member self.StateChanged oldstate newstate =
+          callbacks.OnStateChanged oldstate newstate
+
+        member self.PersistVote node =
+          implement "PersistVote"
+
+        member self.PersistTerm term =
+          implement "PersistTerm"
+
+        member self.PersistLog log =
+          implement "PersistLog"
+
+        member self.DeleteLog log =
+          implement "DeleteLog"
+
+        member self.LogMsg node callsite level msg =
+          Logger.log level node.Id callsite msg
+
+        }
+
+  // ** initConnections
+
+  let private initConnections (state: RaftValue) (connections: Connections) =
+    for KeyValue(_,node) in state.Peers do
+      if node.Id <> state.Node.Id then
+        getConnection state.Node.Id connections node
+        |> ignore
+
   // ** mkState
 
   /// ## Create an RaftAppState value
@@ -1082,22 +1135,18 @@ module RaftServer =
   /// - options: `RaftOptions`
   ///
   /// Returns: RaftAppState
-  let private mkState (options: IrisConfig) (callbacks: IRaftServerCallbacks) =
+  let private mkState (options: IrisConfig)
+                      (connections: Connections)
+                      (callbacks: IRaftServerCallbacks) =
     either {
       let! raft = getRaft options
-      let connections = new Connections()
 
-      let raftCallbacks =
-        { new IRaftCallbacks with
-            member self.SendRequestVote peer request =
-              implement "SendRequestVote"
-              }
+      initConnections raft connections
 
-      return { Status      = ServiceStatus.Starting
-               Raft        = raft
-               Connections = connections
-               Callbacks   = callbacks
-               Options     = options }
+      return { Status    = ServiceStatus.Starting
+               Raft      = raft
+               Callbacks = mkCallbacks raft.Node.Id connections callbacks
+               Options   = options }
     }
 
   // ** initializeState
@@ -1133,10 +1182,12 @@ module RaftServer =
   // |  __/| |_| | |_) | | | (__
   // |_|    \__,_|_.__/|_|_|\___|
 
-  let start (options: IrisConfig, callbacks: IRaftServerCallbacks) =
+  let start (options: IrisConfig) (callbacks: IRaftServerCallbacks) =
+    let connections = new Connections()
+
     let initialState =
-      match mkState options callbacks with
-      | Right state -> initConnections state
+      match mkState options connections callbacks with
+      | Right state -> state
       | Left error  -> Error.exitWith error
 
     let nodeid =
