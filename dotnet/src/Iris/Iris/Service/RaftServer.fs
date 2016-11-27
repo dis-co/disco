@@ -78,7 +78,7 @@ module RaftServer =
 
   // ** RaftServer
 
-  type IRaftServer =
+  type RaftServer =
     inherit IDisposable
 
     abstract Append : StateMachine -> Either<IrisError, EntryResponse>
@@ -1189,21 +1189,33 @@ module RaftServer =
 
     match mkState options connections callbacks with
     | Right state ->
-      let nodeid =
-        initialState
-        |> RaftContext.getNodeId
-      state
+      let nodeid = RaftContext.getNodeId state
+
+      let agent = new StateArbiter(loop state)
+      let server = new Zmq.Rep()
+
+      let periodic = startPeriodic agent
+
+      { new RaftServer with
+          member self.Append cmd =
+            implement "Append"
+
+          member self.ForceElection () =
+            implement "ForceElection"
+
+          member self.State
+            with get () =
+              agent.PostAndReply(fun chan -> Msg.Get,chan)
+              |> Either.get
+
+          member self.Dispose() =
+            dispose periodic
+            dispose agent
+          }
+
+      |> Either.succeed
 
     | error -> error
-
-    let socket : Zmq.Rep = new Zmq.Rep()
-
-    let periodic = startPeriodic
-
-    // returns a simpl
-    { new IDisposable with
-        member self.Dispose() =
-          failwith "add all disposable stuff here" }
 
   // /// ## Start the Raft engine
   // ///
