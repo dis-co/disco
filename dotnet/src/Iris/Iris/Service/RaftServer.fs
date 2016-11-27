@@ -4,6 +4,7 @@ namespace Iris.Service
 
 open System
 open System.Threading
+open System.Collections.Concurrent
 open Iris.Core
 open Iris.Core.Utils
 open Iris.Service.Zmq
@@ -927,25 +928,103 @@ module RaftServer =
 
     implement "startServer"
 
-  // ** mkConnections
+  // ** getConnection
 
-  let private addConnections state =
-    Map.fold
-      (fun current _ (node: RaftNode) ->
-        if node.Id <> state.Raft.Node.Id then
-          mkReqSocket node
-          |> RaftContext.addConnection state
-        else
-          state)
-      state
-      state.Raft.Peers
+  let private getConnection (state: RaftAppContext) (peer: RaftNode) : Req =
+    match state.Connections.TryGetValue peer.Id with
+    | true, connection -> connection
+    | false, _ ->
+      let addr = nodeUri peer
+      let connection = mkReqSocket peer
+      while not (state.Connections.TryAdd(peer.Id, connection)) do
+        Logger.err state.Raft.Node.Id tag "Unable to add connection. Retrying."
+        Thread.Sleep 1
+      connection
+
+  // ** initConnections
+
+  let private initConnections (state: RaftAppContext) =
+    for KeyValue(_,node) in state.Raft.Peers do
+      if node.Id <> state.Raft.Node.Id then
+        getConnection state node
+        |> ignore
 
   // ** resetConnections
 
   let private destroyConnections (state: RaftAppContext) =
-    Map.iter (konst dispose) state.Connections
-    { state with
-         Connections = Map.empty }
+    for KeyValue(_,connection) in state.Connections do
+      dispose connection
+    state.Connections.Clear()
+
+  // ** sendRequestVote
+
+  let private sendRequestVote (state: RaftAppContext)
+                              (peer: RaftNode)
+                              (request: VoteRequest) :
+                              VoteResponse option =
+
+    let request = RequestVote(state.Raft.Node.Id, request)
+    let client = getConnection state peer
+    let result = performRequest client request
+
+    match result with
+    | Right (RequestVoteResponse(sender, vote)) -> Some vote
+    | Right other ->
+      other
+      |> sprintf "SendRequestVote: Unexpected Response: %A"
+      |> Logger.err state.Raft.Node.Id tag
+      None
+
+    | Left error ->
+      nodeUri peer
+      |> sprintf "SendRequestVote: encountered error %A in request to %s" error
+      |> Logger.err state.Raft.Node.Id tag
+      None
+
+  // ** sendAppendEntries
+
+  let private sendAppendEntries (state: RaftAppContext)
+                                (node: RaftNode)
+                                (request: AppendEntries) =
+
+    let request = AppendEntries(state.Raft.Node.Id, request)
+    let client = getConnection state node
+    let result = performRequest client request
+
+    match result with
+    | Right (AppendEntriesResponse(sender, ar)) -> Some ar
+    | Right response ->
+      response
+      |> sprintf "SendAppendEntries: Unexpected Response:  %A"
+      |> Logger.err state.Raft.Node.Id tag
+      None
+    | Left error ->
+      nodeUri node
+      |> sprintf "SendAppendEntries: received error %A in request to %s" error
+      |> Logger.err state.Raft.Node.Id tag
+      None
+
+  // ** sendInstallSnapshot
+
+  let private sendInstallSnapshot (state: RaftAppContext)
+                                  (node: RaftNode)
+                                  (is: InstallSnapshot) =
+    let client = getConnection state node
+    let request = InstallSnapshot(state.Raft.Node.Id, is)
+    let result = performRequest client request
+
+    match result with
+    | Right (InstallSnapshotResponse(sender, ar)) -> Some ar
+    | Right response ->
+      response
+      |> sprintf "SendInstallSnapshot: Unexpected Response: %A"
+      |> Logger.err state.Raft.Node.Id tag
+      None
+    | Left error ->
+      nodeUri node
+      |> sprintf "SendInstallSnapshot: received error %A in request to %s" error
+      |> Logger.err state.Raft.Node.Id tag
+      None
 
   // ** rand
 
@@ -1005,7 +1084,7 @@ module RaftServer =
       let! raft = getRaft options
       return { Status      = ServiceStatus.Starting
                Raft        = raft
-               Connections = Map.empty
+               Connections = new Connections()
                Callbacks   = callbacks
                Options     = options }
     }
@@ -1071,17 +1150,6 @@ module RaftServer =
 
         member self.Dispose() =
           failwith "add all disposable stuff here" }
-
-  // member self.IsLeader
-  //   with get () =
-  //     let state = readTVar appState |> atomically
-  //     state.Raft.IsLeader
-
-  // member self.Periodic() =
-  //   let state = readTVar appState |> atomically
-  //   periodicR state cbs
-  //   |> writeTVar appState
-  //   |> atomically
 
   // /// ## Start the Raft engine
   // ///
@@ -1206,77 +1274,6 @@ module RaftServer =
   //       serverState <- ServiceStatus.Stopped
 
   // interface IRaftCallbacks with
-
-
-  //   member self.SendRequestVote node req  =
-  //     let state = self.State
-  //     let request = RequestVote(state.Raft.Node.Id,req)
-  //     let client = self.GetClient node
-  //     let result = performRequest request client
-
-  //     match result with
-
-  //     | Right response ->
-  //       match response with
-
-  //       | RequestVoteResponse(sender, vote) -> Some vote
-  //       | resp ->
-  //         resp
-  //         |> sprintf "SendRequestVote: Unexpected Response: %A"
-  //         |> Logger.err nodeid tag
-  //         None
-
-  //     | Left error ->
-  //       nodeUri node
-  //       |> sprintf "SendRequestVote: encountered error \"%A\" during request to %s" error
-  //       |> Logger.err nodeid tag
-  //       None
-
-  //   member self.SendAppendEntries (node: RaftNode) (request: AppendEntries) =
-  //     let state = self.State
-  //     let request = AppendEntries(state.Raft.Node.Id, request)
-  //     let client = self.GetClient node
-  //     let result = performRequest request client
-
-  //     match result with
-
-  //     | Right response ->
-  //       match response with
-
-  //       | AppendEntriesResponse(sender, ar) -> Some ar
-  //       | resp ->
-  //         resp
-  //         |> sprintf "SendAppendEntries: Unexpected Response:  %A"
-  //         |> Logger.err nodeid tag
-  //         None
-  //     | Left error ->
-  //       nodeUri node
-  //       |> sprintf "SendAppendEntries: Error \"%A\" received for request to %s" error
-  //       |> Logger.err nodeid tag
-  //       None
-
-  //   member self.SendInstallSnapshot node is =
-  //     let state = self.State
-  //     let client = self.GetClient node
-  //     let request = InstallSnapshot(state.Raft.Node.Id, is)
-  //     let result = performRequest request client
-
-  //     match result with
-
-  //     | Right  response ->
-  //       match response with
-
-  //       | InstallSnapshotResponse(sender, ar) -> Some ar
-  //       | resp ->
-  //         resp
-  //         |> sprintf "SendInstallSnapshot: Unexpected Response: %A"
-  //         |> Logger.err nodeid tag
-  //         None
-  //     | Left error ->
-  //       nodeUri node
-  //       |> sprintf "SendInstallSnapshot: Error \"%A\" received for request to %s" error
-  //       |> Logger.err nodeid tag
-  //       None
 
   //   //     _                _          ____               _
   //   //    / \   _ __  _ __ | |_   _   / ___|_ __ ___   __| |

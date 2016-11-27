@@ -3,10 +3,16 @@ namespace Iris.Service
 // * Imports
 open LibGit2Sharp
 
-open Iris.Core.Utils
-open Iris.Core
+open System
+open System.Collections.Concurrent
 open Iris.Raft
+open Iris.Core
+open Iris.Core.Utils
 open Iris.Service.Zmq
+
+// * Connections
+
+type private Connections = ConcurrentDictionary<Id,Req>
 
 // * RaftAppState
 
@@ -16,17 +22,23 @@ open Iris.Service.Zmq
 // |  _ < (_| |  _| |_ / ___ \| |_) | |_) |__) | || (_| | ||  __/
 // |_| \_\__,_|_|  \__|_/   \_\ .__/| .__/____/ \__\__,_|\__\___|
 //                            |_|   |_|
+
 [<NoComparison;NoEquality>]
 type RaftAppContext =
   { Status:      ServiceStatus
     Raft:        RaftValue
     Options:     IrisConfig
-    Connections: Map<Id,Req>
-    Callbacks:   IRaftCallbacks
-  }
+    Connections: Connections
+    Callbacks:   IRaftCallbacks }
 
   override self.ToString() =
     sprintf "Raft: %A" self.Raft
+
+  interface IDisposable with
+    member self.Dispose () =
+      for KeyValue(_, connection) in self.Connections do
+        dispose connection
+      self.Connections.Clear()
 
 // * RaftContext
 
@@ -90,47 +102,3 @@ module RaftContext =
   /// Returns: RaftAppContext
   let updateRaft (context: RaftAppContext) (raft: RaftValue) : RaftAppContext =
     { context with Raft = raft }
-
-  // ** addConnection
-
-  /// ## addConnection
-  ///
-  /// Add the passed socket connect to the Connections map
-  ///
-  /// ### Signature:
-  /// - context: RaftAppContext
-  /// - client: Req
-  ///
-  /// Returns: RaftAppContext
-  let addConnection (context: RaftAppContext) (client: Req) =
-    { context with
-        Connections = Map.add client.Id client context.Connections }
-
-  // ** rmConnection
-
-  /// ## rmConnection
-  ///
-  /// Remove a socket connection from Connections map
-  ///
-  /// ### Signature:
-  /// - context: RaftAppContext
-  /// - id: Id of Node to remove connection for
-  ///
-  /// Returns: RaftAppContext
-  let rmConnection (context: RaftAppContext) (id: Id) =
-    { context with
-        Connections = Map.remove id context.Connections }
-
-  // ** getConnection
-
-  /// ## getConnection
-  ///
-  /// Get a socket connection from the connections map.
-  ///
-  /// ### Signature:
-  /// - context: RaftAppContex
-  /// - id: Node Id to get connection for
-  ///
-  /// Returns: Req option
-  let getConnection (context: RaftAppContext) (id: Id) : Req option =
-    Map.tryFind id context.Connections
