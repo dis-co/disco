@@ -930,14 +930,14 @@ module RaftServer =
 
   // ** getConnection
 
-  let private getConnection (state: RaftAppContext) (peer: RaftNode) : Req =
-    match state.Connections.TryGetValue peer.Id with
+  let private getConnection (self: Id) (connections: Connections) (peer: RaftNode) : Req =
+    match connections.TryGetValue peer.Id with
     | true, connection -> connection
     | false, _ ->
       let addr = nodeUri peer
       let connection = mkReqSocket peer
-      while not (state.Connections.TryAdd(peer.Id, connection)) do
-        Logger.err state.Raft.Node.Id tag "Unable to add connection. Retrying."
+      while not (connections.TryAdd(peer.Id, connection)) do
+        Logger.err self tag "Unable to add connection. Retrying."
         Thread.Sleep 1
       connection
 
@@ -946,7 +946,7 @@ module RaftServer =
   let private initConnections (state: RaftAppContext) =
     for KeyValue(_,node) in state.Raft.Peers do
       if node.Id <> state.Raft.Node.Id then
-        getConnection state node
+        getConnection state.Raft.Node.Id state.Connections node
         |> ignore
 
   // ** resetConnections
@@ -958,13 +958,14 @@ module RaftServer =
 
   // ** sendRequestVote
 
-  let private sendRequestVote (state: RaftAppContext)
+  let private sendRequestVote (self: Id)
+                              (connections: Connections)
                               (peer: RaftNode)
                               (request: VoteRequest) :
                               VoteResponse option =
 
-    let request = RequestVote(state.Raft.Node.Id, request)
-    let client = getConnection state peer
+    let request = RequestVote(self, request)
+    let client = getConnection self connections peer
     let result = performRequest client request
 
     match result with
@@ -972,23 +973,24 @@ module RaftServer =
     | Right other ->
       other
       |> sprintf "SendRequestVote: Unexpected Response: %A"
-      |> Logger.err state.Raft.Node.Id tag
+      |> Logger.err self tag
       None
 
     | Left error ->
       nodeUri peer
       |> sprintf "SendRequestVote: encountered error %A in request to %s" error
-      |> Logger.err state.Raft.Node.Id tag
+      |> Logger.err self tag
       None
 
   // ** sendAppendEntries
 
-  let private sendAppendEntries (state: RaftAppContext)
-                                (node: RaftNode)
+  let private sendAppendEntries (self: Id)
+                                (connections: Connections)
+                                (peer: RaftNode)
                                 (request: AppendEntries) =
 
-    let request = AppendEntries(state.Raft.Node.Id, request)
-    let client = getConnection state node
+    let request = AppendEntries(self, request)
+    let client = getConnection self connections peer
     let result = performRequest client request
 
     match result with
@@ -996,21 +998,22 @@ module RaftServer =
     | Right response ->
       response
       |> sprintf "SendAppendEntries: Unexpected Response:  %A"
-      |> Logger.err state.Raft.Node.Id tag
+      |> Logger.err self tag
       None
     | Left error ->
       nodeUri node
       |> sprintf "SendAppendEntries: received error %A in request to %s" error
-      |> Logger.err state.Raft.Node.Id tag
+      |> Logger.err self tag
       None
 
   // ** sendInstallSnapshot
 
-  let private sendInstallSnapshot (state: RaftAppContext)
-                                  (node: RaftNode)
+  let private sendInstallSnapshot (self: Id)
+                                  (connections: Connections)
+                                  (peer: RaftNode)
                                   (is: InstallSnapshot) =
-    let client = getConnection state node
-    let request = InstallSnapshot(state.Raft.Node.Id, is)
+    let client = getConnection self connections peer
+    let request = InstallSnapshot(self, is)
     let result = performRequest client request
 
     match result with
@@ -1079,12 +1082,20 @@ module RaftServer =
   /// - options: `RaftOptions`
   ///
   /// Returns: RaftAppState
-  let private mkState (options: IrisConfig) (callbacks: IRaftCallbacks) =
+  let private mkState (options: IrisConfig) (callbacks: IRaftServerCallbacks) =
     either {
       let! raft = getRaft options
+      let connections = new Connections()
+
+      let raftCallbacks =
+        { new IRaftCallbacks with
+            member self.SendRequestVote peer request =
+              implement "SendRequestVote"
+              }
+
       return { Status      = ServiceStatus.Starting
                Raft        = raft
-               Connections = new Connections()
+               Connections = connections
                Callbacks   = callbacks
                Options     = options }
     }
@@ -1122,20 +1133,11 @@ module RaftServer =
   // |  __/| |_| | |_) | | | (__
   // |_|    \__,_|_.__/|_|_|\___|
 
-  let start (options: IrisConfig, callbacks: IRaftServerCallacks) =
-    let callbacks =
-      { new IRaftCallbacks with
-          member self.Hehe() = () }
-
+  let start (options: IrisConfig, callbacks: IRaftServerCallbacks) =
     let initialState =
       match mkState options callbacks with
-
-      | Right state ->
-        state
-        |> addConnections
-
-      | Left error ->
-        Error.exitWith error
+      | Right state -> initConnections state
+      | Left error  -> Error.exitWith error
 
     let nodeid =
       initialState
@@ -1147,7 +1149,6 @@ module RaftServer =
 
     // returns a simpl
     { new IDisposable with
-
         member self.Dispose() =
           failwith "add all disposable stuff here" }
 
