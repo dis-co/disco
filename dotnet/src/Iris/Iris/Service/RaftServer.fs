@@ -13,19 +13,10 @@ open FSharpx.Functional
 open Utilities
 open Persistence
 
-type IRaftServerCallbacks =
-  abstract OnApplyLog     : StateMachine   -> unit
-  abstract OnNodeAdded    : RaftNode       -> unit
-  abstract OnNodeRemoved  : RaftNode       -> unit
-  abstract OnNodeUpdated  : RaftNode       -> unit
-  abstract OnConfigured   : RaftNode array -> unit
-  abstract OnStateChanged : RaftState      -> RaftState -> unit
-  abstract CreateSnapshot : RaftState      -> RaftState -> unit
+// * Raft
 
-// * RaftServer
-
-[<RequireQualifiedAccess>]
-module RaftServer =
+[<AutoOpen>]
+module Raft =
 
   //  ____       _            _
   // |  _ \ _ __(_)_   ____ _| |_ ___
@@ -36,7 +27,7 @@ module RaftServer =
   // ** tag
 
   [<Literal>]
-  let tag = "RaftServer"
+  let private tag = "RaftServer"
 
   // ** Msg
 
@@ -77,9 +68,20 @@ module RaftServer =
 
   type private StateArbiter = MailboxProcessor<Message>
 
+  // ** IRaftServerCallbacks
+
+  type IRaftServerCallbacks =
+    abstract OnApplyLog     : StateMachine   -> unit
+    abstract OnNodeAdded    : RaftNode       -> unit
+    abstract OnNodeRemoved  : RaftNode       -> unit
+    abstract OnNodeUpdated  : RaftNode       -> unit
+    abstract OnConfigured   : RaftNode array -> unit
+    abstract OnStateChanged : RaftState      -> RaftState -> unit
+    abstract CreateSnapshot : RaftState      -> RaftState -> unit
+
   // ** RaftServer
 
-  type RaftServer =
+  type IRaftServer =
     inherit IDisposable
 
     abstract Append : StateMachine -> Either<IrisError, EntryResponse>
@@ -1259,59 +1261,63 @@ module RaftServer =
     | Left error ->
       Either.fail error
 
-  //  ____        _     _ _
-  // |  _ \ _   _| |__ | (_) ___
-  // | |_) | | | | '_ \| | |/ __|
-  // |  __/| |_| | |_) | | | (__
-  // |_|    \__,_|_.__/|_|_|\___|
 
-  let start (options: IrisConfig) (callbacks: IRaftServerCallbacks) =
-    either {
-      let connections = new Connections()
+  [<RequireQualifiedAccess>]
+  module RaftServer =
 
-      let! state = mkState options connections callbacks
+    //  ____        _     _ _
+    // |  _ \ _   _| |__ | (_) ___
+    // | |_) | | | | '_ \| | |/ __|
+    // |  __/| |_| | |_) | | | (__
+    // |_|    \__,_|_.__/|_|_|\___|
 
-      let addr =
-        state
-        |> RaftContext.getNode
-        |> nodeUri
+    let start (options: IrisConfig) (callbacks: IRaftServerCallbacks) =
+      either {
+        let connections = new Connections()
 
-      let agent = new StateArbiter(loop state)
+        let! state = mkState options connections callbacks
 
-      let! server = Zmq.Rep.Create(addr, requestHandler agent)
+        let addr =
+          state
+          |> RaftContext.getNode
+          |> nodeUri
 
-      agent.Start()
+        let agent = new StateArbiter(loop state)
 
-      do! withOk Msg.Initialize agent
+        let! server = Zmq.Rep.Create(addr, requestHandler agent)
 
-      let periodic = startPeriodic agent
+        agent.Start()
 
-      return
-        { new RaftServer with
-            member self.Append cmd =
-              addCmd agent cmd
+        do! withOk Msg.Initialize agent
 
-            member self.ForceElection () =
-              withOk Msg.ForceElection agent
+        let periodic = startPeriodic agent
 
-            member self.State
-              with get () =
-                match agent.PostAndReply(fun chan -> Msg.Get,chan) with
-                | Right (Reply.State state) -> Right state
+        return
+          { new IRaftServer with
+              member self.Append cmd =
+                addCmd agent cmd
 
-                | Right other ->
-                  sprintf "Received garbage reply from agent: %A" other
-                  |> Other
-                  |> Either.fail
+              member self.ForceElection () =
+                withOk Msg.ForceElection agent
 
-                | Left error ->
-                  Either.fail error
+              member self.State
+                with get () =
+                  match agent.PostAndReply(fun chan -> Msg.Get,chan) with
+                  | Right (Reply.State state) -> Right state
 
-            member self.Dispose() =
-              dispose periodic
-              for KeyValue(_, connection) in connections do
-                dispose connection
-              connections.Clear()
-              dispose agent
-          }
-    }
+                  | Right other ->
+                    sprintf "Received garbage reply from agent: %A" other
+                    |> Other
+                    |> Either.fail
+
+                  | Left error ->
+                    Either.fail error
+
+              member self.Dispose() =
+                dispose periodic
+                for KeyValue(_, connection) in connections do
+                  dispose connection
+                connections.Clear()
+                dispose agent
+            }
+      }
