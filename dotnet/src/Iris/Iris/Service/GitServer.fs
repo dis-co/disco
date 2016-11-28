@@ -12,6 +12,7 @@ open System.IO
 open System.Threading
 open System.Diagnostics
 open System.Management
+open System.Text.RegularExpressions
 open Microsoft.FSharp.Control
 open FSharpx.Functional
 
@@ -45,10 +46,11 @@ module Git =
   let private tag = "GitServer"
 
   // ** GitEvent
+
   type GitEvent =
-    | Pull of address:string * port:uint16
-    | Started
-    | Exited of int
+    | Started of pid:int
+    | Exited  of code:int
+    | Pull    of pid:int * address:string * port:uint16
 
   // ** IGitServer
 
@@ -59,19 +61,43 @@ module Git =
     abstract Subscribe : (GitEvent -> unit) -> IDisposable
     abstract Start: unit -> Either<IrisError,unit>
 
+  // ** GitState
+
+  type private GitState =
+    { Status : ServiceStatus
+      Pid    : int
+      SubPid : int }
+
   // ** Msg
+
+  [<RequireQualifiedAccess>]
   type private Msg =
     | Status
     | Exit   of int
     | Log    of string
 
+  // ** Reply
+
+  [<RequireQualifiedAccess>]
+  type private Reply =
+    | Ok
+    | Status of ServiceStatus
+
   // ** Subscriptions
 
   type private Subscriptions = ResizeArray<IObserver<GitEvent>>
 
+  // ** ReplyChan
+
+  type private ReplyChan = AsyncReplyChannel<Reply>
+
+  // ** Message
+
+  type private Message = Msg * ReplyChan
+
   // ** GitAgent
 
-  type private GitAgent = MailboxProcessor<Msg>
+  type private GitAgent = MailboxProcessor<Message>
 
   // ** createProcess
 
@@ -126,14 +152,95 @@ module Git =
   ///
   /// Returns: unit
   let private exitHandler (proc: Process) (agent: GitAgent) _ =
-    Exit proc.ExitCode
-    |> agent.Post
+    agent.PostAndReply(fun chan -> Msg.Exit proc.ExitCode, chan)
+    |> ignore
 
   // ** logHandler
 
   let private logHandler (agent: GitAgent) (data: DataReceivedEventArgs) =
-    Log data.Data
-    |> agent.Post
+    agent.PostAndReply(fun chan -> Msg.Log data.Data, chan)
+    |> ignore
+
+  let private (|Ready|_|) (input: string) =
+    let m = Regex.Match(input, "\[(?<pid>[0-9]*)\] Ready to rumble")
+    if m.Success then
+      match Int32.TryParse(m.Groups.[1].Value) with
+      | (true, pid) -> Some pid
+      | _ -> None
+    else
+      None
+
+  let private (|Connection|_|) (input: string) =
+    let pattern = "\[(?<pid>[0-9]*)\] Connection from (?<ip>[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:(?<port>[0-9]*)"
+    let m = Regex.Match(input, pattern)
+    if m.Success then
+      match Int32.TryParse(m.Groups.[1].Value), UInt16.TryParse(m.Groups.[3]Value) with
+      | (true,pid), (true,port) ->
+        Some(pid, m.Groups.[2].Value, port)
+      | _ -> None
+    else
+      None
+
+  let private parseLog (line: string) =
+    match line with
+    | Ready pid ->
+      Started pid
+      |> Either.succeed
+
+    | Connection (pid, ip, port) ->
+      Pull(pid, ip, port)
+      |> Either.succeed
+
+    | _ ->
+      sprintf "Line not relevant or recognized: %A" line
+      |> ParseError
+      |> Either.fail
+
+  // ** loop
+
+  let private loop (id: Id) (subscriptions: Subscriptions) (inbox: GitAgent) =
+    let initial =
+      { Status = ServiceStatus.Starting
+        Pid = -1
+        SubPid = -1 }
+
+    let rec act (state: GitState) =
+      async {
+        let! (msg, chan) = inbox.Receive()
+        let newstate =
+          match msg with
+          | Msg.Status ->
+            state.Status
+            |> Reply.Status
+            |> chan.Reply
+            state
+
+          | Msg.Exit code when code = 0 ->
+            Reply.Ok
+            |> chan.Reply
+            { state with Status = ServiceStatus.Stopped }
+
+          | Msg.Exit code ->
+            Reply.Ok
+            |> chan.Reply
+            let error =
+              sprintf "Non-zero exit code: %d" code
+              |> IrisError.GitError
+            { state with Status = ServiceStatus.Failed error }
+
+          | Msg.Log msg ->
+            match parseLog msg with
+            | Right msg ->
+              for subscription in subscriptions do
+                subscription.OnNext msg
+            | Left error ->
+              error
+              |> sprintf "Error parsing git message: %A"
+              |> Logger.err id tag
+            state
+        return! act newstate
+      }
+    act initial
 
   // ** GitServer
 
