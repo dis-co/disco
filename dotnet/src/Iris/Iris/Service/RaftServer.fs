@@ -15,7 +15,6 @@ open Persistence
 
 // * Raft
 
-[<AutoOpen>]
 module Raft =
 
   //  ____       _            _
@@ -37,6 +36,7 @@ module Raft =
     | Join           of IpAddress * uint32
     | Leave
     | Get
+    | Status
     | Periodic
     | ForceElection
     | AddCmd         of StateMachine
@@ -54,6 +54,7 @@ module Raft =
     | Entry          of EntryResponse
     | Response       of RaftResponse
     | State          of RaftAppContext
+    | Status         of ServiceStatus
     | IsCommitted    of bool
 
   // ** ReplyChan
@@ -87,6 +88,7 @@ module Raft =
     abstract Append : StateMachine -> Either<IrisError, EntryResponse>
     abstract ForceElection : unit -> Either<IrisError, unit>
     abstract State : Either<IrisError,RaftAppContext>
+    abstract Status : Either<IrisError,ServiceStatus>
 
   // ** periodicR
 
@@ -727,6 +729,12 @@ module Raft =
               { RaftContext.updateRaft state newstate with
                   Status = ServiceStatus.Failed error }
 
+          | Msg.Status ->
+            Reply.Status state.Status
+            |> Either.succeed
+            |> channel.Reply
+            state
+
           | Msg.Join (ip, port) ->
             match tryJoinCluster state ip port with
             | Right (_, newstate) ->
@@ -1296,6 +1304,19 @@ module Raft =
           { new IRaftServer with
               member self.Append cmd =
                 addCmd agent cmd
+
+              member self.Status
+                with get () =
+                  match agent.PostAndReply(fun chan -> Msg.Status,chan) with
+                  | Right (Reply.Status status) -> Right status
+
+                  | Right other ->
+                    sprintf "Received garbage reply from agent: %A" other
+                    |> Other
+                    |> Either.fail
+
+                  | Left error ->
+                    Either.fail error
 
               member self.ForceElection () =
                 withOk Msg.ForceElection agent
