@@ -28,6 +28,17 @@ module Raft =
   [<Literal>]
   let private tag = "RaftServer"
 
+  // ** RaftEvent
+
+  type RaftEvent =
+    | ApplyLog       of StateMachine
+    | NodeAdded      of RaftNode
+    | NodeRemoved    of RaftNode
+    | NodeUpdated    of RaftNode
+    | Configured     of RaftNode array
+    | StateChanged   of RaftState * RaftState
+    | CreateSnapshot of string
+
   // ** Msg
 
   [<RequireQualifiedAccess>]
@@ -57,6 +68,14 @@ module Raft =
     | Status         of ServiceStatus
     | IsCommitted    of bool
 
+  // ** Connections
+
+  type private Connections = ConcurrentDictionary<Id,Req>
+
+  // ** Subscriptions
+
+  type private Subscriptions = ResizeArray<IObserver<RaftEvent>>
+
   // ** ReplyChan
 
   type private ReplyChan = AsyncReplyChannel<Either<IrisError,Reply>>
@@ -69,17 +88,6 @@ module Raft =
 
   type private StateArbiter = MailboxProcessor<Message>
 
-  // ** IRaftServerCallbacks
-
-  type IRaftServerCallbacks =
-    abstract OnApplyLog     : StateMachine   -> unit
-    abstract OnNodeAdded    : RaftNode       -> unit
-    abstract OnNodeRemoved  : RaftNode       -> unit
-    abstract OnNodeUpdated  : RaftNode       -> unit
-    abstract OnConfigured   : RaftNode array -> unit
-    abstract OnStateChanged : RaftState      -> RaftState -> unit
-    abstract CreateSnapshot : RaftState      -> RaftState -> unit
-
   // ** RaftServer
 
   type IRaftServer =
@@ -89,6 +97,7 @@ module Raft =
     abstract ForceElection : unit -> Either<IrisError, unit>
     abstract State : Either<IrisError,RaftAppContext>
     abstract Status : Either<IrisError,ServiceStatus>
+    abstract Subscribe : (RaftEvent -> unit) -> IDisposable
 
   // ** periodicR
 
@@ -154,7 +163,7 @@ module Raft =
   let private addNodes (state: RaftAppContext) (nodes: RaftNode array) =
     if Raft.isLeader state.Raft then
       nodes
-      |> Array.map NodeAdded
+      |> Array.map ConfigChange.NodeAdded
       |> Log.mkConfigChange state.Raft.CurrentTerm
       |> appendEntry state
     else
@@ -192,7 +201,7 @@ module Raft =
     |> Logger.debug state.Raft.Node.Id tag
 
     nodes
-    |> Array.map NodeRemoved
+    |> Array.map ConfigChange.NodeRemoved
     |> Log.mkConfigChange state.Raft.CurrentTerm
     |> appendEntry state
 
@@ -1109,11 +1118,15 @@ module Raft =
   //       Logger.err nodeid tag "Unable to create snapshot. No data handler specified."
   //       None
 
+  let private trigger (subscriptions: Subscriptions) (ev: RaftEvent) =
+    for subscription in subscriptions do
+      subscription.OnNext ev
+
   // ** mkCallbacks
 
   let private mkCallbacks (id: Id)
                           (connections: Connections)
-                          (callbacks: IRaftServerCallbacks) =
+                          (subscriptions: Subscriptions) =
 
     { new IRaftCallbacks with
         member self.SendRequestVote peer request =
@@ -1135,22 +1148,28 @@ module Raft =
           implement "PersistSnapshot"
 
         member self.ApplyLog cmd =
-          callbacks.OnApplyLog cmd
+          RaftEvent.ApplyLog cmd
+          |> trigger subscriptions
 
         member self.NodeAdded node =
-          callbacks.OnNodeAdded node
+          RaftEvent.NodeAdded node
+          |> trigger subscriptions
 
         member self.NodeUpdated node =
-          callbacks.OnNodeUpdated node
+          RaftEvent.NodeUpdated node
+          |> trigger subscriptions
 
         member self.NodeRemoved node =
-          callbacks.OnNodeRemoved node
+          RaftEvent.NodeRemoved node
+          |> trigger subscriptions
 
         member self.Configured nodes =
-          callbacks.OnConfigured nodes
+          RaftEvent.Configured nodes
+          |> trigger subscriptions
 
         member self.StateChanged oldstate newstate =
-          callbacks.OnStateChanged oldstate newstate
+          RaftEvent.StateChanged(oldstate, newstate)
+          |> trigger subscriptions
 
         member self.PersistVote node =
           implement "PersistVote"
@@ -1217,7 +1236,7 @@ module Raft =
   /// Returns: RaftAppState
   let private mkState (options: IrisConfig)
                       (connections: Connections)
-                      (callbacks: IRaftServerCallbacks) =
+                      (subscriptions: Subscriptions) =
     either {
       let! raft = getRaft options
 
@@ -1225,7 +1244,7 @@ module Raft =
 
       return { Status    = ServiceStatus.Starting
                Raft      = raft
-               Callbacks = mkCallbacks raft.Node.Id connections callbacks
+               Callbacks = mkCallbacks raft.Node.Id connections subscriptions
                Options   = options }
     }
 
@@ -1279,11 +1298,24 @@ module Raft =
     // |  __/| |_| | |_) | | | (__
     // |_|    \__,_|_.__/|_|_|\___|
 
-    let start (options: IrisConfig) (callbacks: IRaftServerCallbacks) =
+    let start (options: IrisConfig) =
       either {
         let connections = new Connections()
+        let subscriptions = new Subscriptions()
 
-        let! state = mkState options connections callbacks
+        let listener =
+          { new IObservable<RaftEvent> with
+              member self.Subscribe(obs) =
+                lock subscriptions <| fun _ ->
+                  subscriptions.Add obs
+
+                { new IDisposable with
+                    member self.Dispose () =
+                      lock subscriptions <| fun _ ->
+                        subscriptions.Remove obs
+                        |> ignore } }
+
+        let! state = mkState options connections subscriptions
 
         let addr =
           state
@@ -1333,6 +1365,13 @@ module Raft =
 
                   | Left error ->
                     Either.fail error
+
+              member self.Subscribe (callback: RaftEvent -> unit) =
+                { new IObserver<RaftEvent> with
+                    member self.OnCompleted() = ()
+                    member self.OnError(error) = ()
+                    member self.OnNext(value) = callback value }
+                |> listener.Subscribe
 
               member self.Dispose() =
                 dispose periodic

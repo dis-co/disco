@@ -10,10 +10,6 @@ open Iris.Core
 open Iris.Core.Utils
 open Iris.Service.Zmq
 
-// * Connections
-
-type private Connections = ConcurrentDictionary<Id,Req>
-
 // * RaftAppState
 
 //  ____        __ _      _               ____  _        _
