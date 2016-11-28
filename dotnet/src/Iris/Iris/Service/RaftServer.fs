@@ -1205,8 +1205,9 @@ module RaftServer =
 
           member self.State
             with get () =
-              agent.PostAndReply(fun chan -> Msg.Get,chan)
-              |> Either.get
+              match agent.PostAndReply(fun chan -> Msg.Get,chan) with
+              | Right (Reply.State state) -> state
+              | other -> failwithf "Received garbage reply from agent: %A" other
 
           member self.Dispose() =
             dispose periodic
