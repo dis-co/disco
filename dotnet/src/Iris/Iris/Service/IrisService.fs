@@ -7,6 +7,7 @@ open System.IO
 open Iris.Raft
 open Iris.Core
 open Iris.Core.Utils
+open Iris.Service.Raft
 open Iris.Service.Persistence
 open LibGit2Sharp
 open ZeroMQ
@@ -26,7 +27,7 @@ type IrisService(project: IrisProject ref) =
   let store : Store = new Store(State.Empty)
 
   let gitserver  = new GitServer(!project)
-  let raftserver = new RaftServer((!project).Config)
+  let raftserver = RaftServer.start (!project).Config
   let wsserver   = new WsServer((!project).Config, raftserver)
   let httpserver = new AssetServer((!project).Config)
 
@@ -212,7 +213,7 @@ type IrisService(project: IrisProject ref) =
   do setup ()
 
   member self.Raft
-    with get () : RaftServer = raftserver
+    with get () : IRaftServer = raftserver
 
   // ** Dispose
 

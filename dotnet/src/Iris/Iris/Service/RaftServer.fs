@@ -1377,6 +1377,7 @@ module Raft =
                 dispose periodic
                 for KeyValue(_, connection) in connections do
                   dispose connection
+                subscriptions.Clear()
                 connections.Clear()
                 dispose agent
             }

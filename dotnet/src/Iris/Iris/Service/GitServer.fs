@@ -2,6 +2,7 @@ namespace Iris.Service
 
 // * Imports
 
+open Iris.Raft
 open Iris.Core
 open Iris.Core.Utils
 open Iris.Service.Utilities
@@ -22,46 +23,93 @@ open FSharpx.Functional
 // | |_| | | |_ ___) |  __/ |   \ V /  __/ |
 //  \____|_|\__|____/ \___|_|    \_/ \___|_|
 
-/// ## GitServer
-///
-/// GitServer to provide data sync services between Iris nodes.
-///
-/// ### Signature:
-/// - project: IrisProject to work on
-///
-/// Returns: GitServer
-type GitServer (project: IrisProject) =
-  let tag = "GitServer"
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+//
+// EXAMPLE CLONES
+//
+// [10422] Ready to rumble
+// [11331] Connection from 127.0.0.1:43218
+// [11331] Extended attributes (21 bytes) exist <host=localhost:6000>
+// [11331] Request upload-pack for '/gittest/.git'
+// [10422] [11331] Disconnected
+// [11921] Connection from 127.0.0.1:43224
+// [11921] Extended attributes (21 bytes) exist <host=localhost:6000>
+// [11921] Request upload-pack for '/gittest/.git'
+// [10422] [11921] Disconnected
+//
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
-  let loco : obj  = new obj()
+module Git =
 
-  let mutable pid = -1
+  [<Literal>]
+  let private tag = "GitServer"
 
-  let nodeid =
-    Config.getNodeId()
-    |> Either.get
+  // ** GitEvent
+  type GitEvent =
+    | Pull of address:string * port:uint16
+    | Started
+    | Exited of int
 
-  let mutable starter : AutoResetEvent = null
-  let mutable stopper : AutoResetEvent = null
-  let mutable status  : ServiceStatus = ServiceStatus.Stopped
-  let mutable thread  : Thread = null
-  let mutable running : bool = false
+  // ** IGitServer
 
-  let mutable stdoutToken : CancellationTokenSource = null
-  let mutable stderrToken : CancellationTokenSource = null
+  type IGitServer =
+    inherit IDisposable
 
-  let mutable onExitEvent : IDisposable = null
+    abstract Status : ServiceStatus
+    abstract Subscribe : (GitEvent -> unit) -> IDisposable
+    abstract Start: unit -> Either<IrisError,unit>
 
-  // ** do
+  // ** Msg
+  type private Msg =
+    | Status
+    | Exit   of int
+    | Log    of string
 
-  /// ## constructor
-  ///
-  /// Creates two `AutoResetEvent`s to control the running thread and process.
-  ///
-  /// Returns: unit
-  do
-    starter <- new AutoResetEvent(false)
-    stopper <- new AutoResetEvent(false)
+  // ** Subscriptions
+
+  type private Subscriptions = ResizeArray<IObserver<GitEvent>>
+
+  // ** GitAgent
+
+  type private GitAgent = MailboxProcessor<Msg>
+
+  // ** createProcess
+
+  let private createProcess (id: Id) (path: FilePath) (addr: string) (port: uint16) =
+    let basedir =
+      Path.GetDirectoryName path
+      |> String.replace '\\' '/'
+
+    let sanepath = String.replace '\\' '/' path
+
+    sprintf "starting on %s:%d in base path: %A with dir: %A"
+      (string addr)
+      port
+      basedir
+      path
+    |> Logger.debug id tag
+
+    let args =
+      [| "daemon"
+      ; "--verbose"
+      ; "--strict-paths"
+      ; (sprintf "--base-path=%s" basedir)
+      ; (if Platform.isUnix then "--reuseaddr" else "")
+      ; (addr |> string |> sprintf "--listen=%s")
+      ; (sprintf "--port=%d" port)
+      ; (sprintf "%s/.git" sanepath) |]
+      |> String.join " "
+
+    let proc = new Process()
+    proc.StartInfo.FileName <- "git"
+    proc.StartInfo.Arguments <- args
+    proc.EnableRaisingEvents <- true
+    proc.StartInfo.CreateNoWindow <- true
+    proc.StartInfo.UseShellExecute <- false
+    proc.StartInfo.RedirectStandardOutput <- true
+    proc.StartInfo.RedirectStandardError <- true
+
+    proc
 
   // ** streamReader
 
@@ -77,21 +125,15 @@ type GitServer (project: IrisProject) =
   /// - stream: StreamReader to monitor
   ///
   /// Returns: CancellationTokenSource
-  let streamReader (level: LogLevel) (stream: StreamReader) =
-    let cts = new CancellationTokenSource()
+  let private streamReader (stream: StreamReader) (agent: GitAgent) (cts: CancellationTokenSource) =
     let action =
       async {
-        while running do
+        while true do
           let line = stream.ReadLine()    // blocks
-
           if not (isNull line) then
-            if line.Contains "Ready to rumble" then
-              Logger.debug nodeid tag "setting starter to return to caller of .Start()"
-              starter.Set() |> ignore
-            Logger.log level nodeid tag line
+            agent.Post(Log line)
       }
     Async.Start(action, cts.Token)
-    cts
 
   // ** exitHandler
 
@@ -107,17 +149,73 @@ type GitServer (project: IrisProject) =
   /// - proc: Process to monitor (mostly to get ExitCode from)
   ///
   /// Returns: unit
-  let exitHandler (proc: Process) _ =
-    if proc.ExitCode > 0 then
-      status <-
-        sprintf "Non-zero ExitCode: %d" proc.ExitCode
-        |> Other
-        |> ServiceStatus.Failed
+  let private exitHandler (proc: Process) (agent: GitAgent) _ =
+    Exit proc.ExitCode
+    |> agent.Post
 
-    lock loco <| fun _ ->
-      Monitor.Pulse(loco)
+  [<RequireQualifiedAccess>]
+  module GitServer =
 
-    starter.Set() |> ignore
+    let start (node: RaftNode) (project: IrisProject) =
+      match project.Path with
+      | Some path ->
+        let stdoutToken = new CancellationTokenSource()
+        let stderrToken = new CancellationTokenSource()
+        let subscriptions = new Subscriptions()
+
+        let listener =
+          { new IObservable<GitEvent> with
+              member self.Subscribe(obs) =
+                lock subscriptions <| fun _ ->
+                  subscriptions.Add obs
+
+                { new IDisposable with
+                    member self.Dispose () =
+                      lock subscriptions <| fun _ ->
+                        subscriptions.Remove obs
+                        |> ignore } }
+
+        let proc = createProcess node.Id path (string node.IpAddr) node.GitPort
+
+        proc.OutputDataReceived
+
+        let onExitEvent =
+          Observable.subscribe (exitHandler proc) proc.Exited
+
+        { new IGitServer with
+            member self.Status
+              with get () = implement "Status"
+
+            member self.Subscribe(callback: string -> unit) =
+              { new IObserver<string> with
+                  member self.OnCompleted() = ()
+                  member self.OnError(error) = ()
+                  member self.OnNext(value) = callback value }
+              |> listener.Subscribe
+
+            member self.Start () =
+              /// 3) Start the Process
+              if proc.Start() then
+
+                /// 4.1) Setting the Status to Running
+
+                streamReader proc.StandardOutput stdoutToken
+                streamReader proc.StandardError  stderrToken
+
+            member self.Dispose() =
+              dispose stdoutToken
+              dispose stderrToken
+              dispose onExitEvent
+              try
+                Process.kill proc.Id
+              finally
+                dispose proc
+          }
+        |> Either.succeed
+
+      | None ->
+        ProjectPathError
+        |> Either.fail
 
   // ** worker
 
@@ -151,53 +249,8 @@ type GitServer (project: IrisProject) =
   let worker path addr port () =
     /// 1) Set up the Process
 
-    let basedir =
-      Path.GetDirectoryName path
-      |> String.replace '\\' '/'
-
-    let sanepath =
-      path
-      |> String.replace '\\' '/'
-
-    sprintf "starting on %s:%d in base path: %A with dir: %A"
-      (string addr)
-      port
-      basedir
-      path
-    |> Logger.debug nodeid tag
-
-    let args =
-      [| "daemon"
-      ; "--verbose"
-      ; "--strict-paths"
-      ; (sprintf "--base-path=%s" basedir)
-      ; (if Platform.isUnix then "--reuseaddr" else "")
-      ; (addr |> string |> sprintf "--listen=%s")
-      ; (sprintf "--port=%d" port)
-      ; (sprintf "%s/.git" sanepath) |]
-      |> String.join " "
-
-    let proc = new Process()
-    proc.StartInfo.FileName <- "git"
-    proc.StartInfo.Arguments <- args
-    proc.EnableRaisingEvents <- true
-    proc.StartInfo.CreateNoWindow <- true
-    proc.StartInfo.UseShellExecute <- false
-    proc.StartInfo.RedirectStandardOutput <- true
-    proc.StartInfo.RedirectStandardError <- true
 
     /// 2) Hook up `onExitEvent` callback
-    onExitEvent <- Observable.subscribe (exitHandler proc) proc.Exited
-
-    /// 3) Start the Process
-    if proc.Start() then
-
-      /// 4.1) Setting the Status to Running
-      running <- true
-      pid <- proc.Id
-
-      stdoutToken <- streamReader LogLevel.Info proc.StandardOutput
-      stderrToken <- streamReader LogLevel.Err  proc.StandardError
 
       Logger.debug nodeid tag "setting status to running"
       status <- ServiceStatus.Running
@@ -282,7 +335,9 @@ type GitServer (project: IrisProject) =
       match project.Path, Config.selfNode project.Config with
       | Some path, Right node  ->
         Logger.info nodeid tag "starting"
-        status <- ServiceStatus.Starting
+        status <- ServiceStatus. Start
+    | Status
+    | Sto
         thread <- new Thread(new ThreadStart(worker path node.IpAddr node.GitPort))
         thread.Start()
         starter.WaitOne() |> ignore
