@@ -42,6 +42,7 @@ module RaftServer =
 
   [<RequireQualifiedAccess>]
   type private Msg =
+    | Initialize
     | Join           of IpAddress * uint32
     | Leave
     | Get
@@ -82,8 +83,8 @@ module RaftServer =
     inherit IDisposable
 
     abstract Append : StateMachine -> Either<IrisError, EntryResponse>
-    abstract ForceElection : unit -> unit
-    abstract State : RaftAppContext
+    abstract ForceElection : unit -> Either<IrisError, unit>
+    abstract State : Either<IrisError,RaftAppContext>
 
   // ** periodicR
 
@@ -674,6 +675,31 @@ module RaftServer =
     }
     |> runRaft state.Raft state.Callbacks
 
+  // ** rand
+
+  let private rand = new System.Random()
+
+  // ** initializeState
+
+  let private initializeState (state: RaftAppContext) =
+    raft {
+      let term = 0u
+      do! Raft.setTermM term
+      let! num = Raft.numNodesM ()
+
+      if num = 1u then
+        do! Raft.setTimeoutElapsedM 0u
+        do! Raft.becomeLeader ()
+      else
+        // set the timeout to something random, to prevent split votes
+        let timeout : Long =
+          rand.Next(0, int state.Raft.ElectionTimeout)
+          |> uint32
+        do! Raft.setTimeoutElapsedM timeout
+        do! Raft.becomeFollower ()
+    }
+    |> runRaft state.Raft state.Callbacks
+
   // ** loop
 
   let private loop (initial: RaftAppContext) (inbox: MailboxProcessor<Message>) =
@@ -683,6 +709,22 @@ module RaftServer =
 
         let newstate =
           match cmd with
+          | Msg.Initialize ->
+            match initializeState state with
+            | Right (_, newstate) ->
+              Reply.Ok
+              |> Either.succeed
+              |> channel.Reply
+              { RaftContext.updateRaft state newstate with
+                  Status = ServiceStatus.Running }
+
+            | Left (error, newstate) ->
+              error
+              |> Either.fail
+              |> channel.Reply
+              { RaftContext.updateRaft state newstate with
+                  Status = ServiceStatus.Failed error }
+
           | Msg.Join (ip, port) ->
             match tryJoinCluster state ip port with
             | Right (_, newstate) ->
@@ -909,9 +951,9 @@ module RaftServer =
     | Left error -> ErrorResponse error
 
 
-  // ** handler
+  // ** requestHandler
 
-  let private handler (arbiter: StateArbiter) (request: byte array) =
+  let private requestHandler (arbiter: StateArbiter) (request: byte array) =
     let request = Binary.decode<IrisError,RaftRequest> request
 
     let response =
@@ -920,15 +962,6 @@ module RaftServer =
       | Left error    -> ErrorResponse error
 
     response |> Binary.encode
-
-  // ** startServer
-
-  let private startServer (state: RaftAppContext) =
-    let uri =
-      state.Raft.Node
-      |> nodeUri
-
-    implement "startServer"
 
   // ** getConnection
 
@@ -1016,10 +1049,6 @@ module RaftServer =
       |> Logger.err self tag
       None
 
-  // ** rand
-
-  let private rand = new System.Random()
-
   // ** startPeriodic
 
   /// ## startPeriodic
@@ -1055,7 +1084,20 @@ module RaftServer =
 
   let private prepareSnapshot state snapshot =
     Raft.createSnapshot (DataSnapshot snapshot) state.Raft
+  //     match onCreateSnapshot with
 
+  //     | Some cb ->
+  //       let currIdx = Log.index raft.Log
+  //       let prevTerm = Log.term raft.Log
+  //       let term = raft.CurrentTerm
+  //       let nodes = raft.Peers |> Map.toArray |> Array.map snd
+  //       let data = cb ()
+  //       Snapshot(Id.Create(), currIdx + 1u, term, currIdx, prevTerm, nodes, data)
+  //       |> Log.fromEntries
+  //       |> Some
+  //     | _ ->
+  //       Logger.err nodeid tag "Unable to create snapshot. No data handler specified."
+  //       None
 
   // ** mkCallbacks
 
@@ -1102,9 +1144,35 @@ module RaftServer =
 
         member self.PersistVote node =
           implement "PersistVote"
+  //     try
+  //       self.State
+  //       |> RaftContext.getRaft
+  //       |> saveRaft options
+  //       |> Either.mapError
+  //         (fun err ->
+  //           printfn "Could not persit vote change. %A" err)
+  //       |> ignore
+
+  //       "PersistVote reset VotedFor" |> Logger.debug nodeid tag
+  //     with
+
+  //       | exn -> handleException "PersistTerm" exn
 
         member self.PersistTerm term =
           implement "PersistTerm"
+  //     try
+  //       self.State
+  //       |> RaftContext.getRaft
+  //       |> saveRaft options
+  //       |> Either.mapError
+  //         (fun err ->
+  //           printfn "Could not persit vote change. %A" err)
+  //       |> ignore
+
+  //       sprintf "PersistTerm term: %A" term |> Logger.debug nodeid tag
+  //     with
+
+  //       | exn -> handleException "PersistTerm" exn
 
         member self.PersistLog log =
           implement "PersistLog"
@@ -1151,32 +1219,45 @@ module RaftServer =
                Options   = options }
     }
 
-  // ** initializeState
+  // ** withOk
 
-  let private initializeState state =
-    let newstate =
-      raft {
-        let term = 0u
-        do! Raft.setTermM term
-        let! num = Raft.numNodesM ()
+  let private withOk (msg: Msg) (agent: StateArbiter) : Either<IrisError,unit> =
+    match agent.PostAndReply(fun chan -> msg, chan) with
+    | Right Reply.Ok -> Right ()
 
-        if num = 1u then
-          do! Raft.setTimeoutElapsedM 0u
-          do! Raft.becomeLeader ()
-        else
-          // set the timeout to something random, to prevent split votes
-          let timeout : Long =
-            rand.Next(0, int state.Raft.ElectionTimeout)
-            |> uint32
-          do! Raft.setTimeoutElapsedM timeout
-          do! Raft.becomeFollower ()
-      } |> evalRaft state.Raft state.Callbacks
+    | Right other ->
+      sprintf "Received garbage reply from agent: %A" other
+      |> Other
+      |> Either.fail
 
-    "initialize: saving new state"
-    |> Logger.debug state.Raft.Node.Id "initialize"
+    | Left error ->
+      Either.fail error
 
-    // tryJoin leader
-    RaftContext.updateRaft state newstate
+  // ** addCmd
+
+  let private addCmd (agent: StateArbiter)
+                     (cmd: StateMachine) :
+                     Either<IrisError, EntryResponse> =
+    match agent.PostAndReply(fun chan -> Msg.AddCmd cmd,chan) with
+    | Right (Reply.Entry entry) ->
+      match waitForCommit agent entry with
+      | Right true -> Either.succeed entry
+
+      | Right false ->
+        ResponseTimeout
+        |> Either.fail
+
+      | Left error ->
+        error
+        |> Either.fail
+
+    | Right other ->
+      sprintf "Received garbage reply from agent: %A" other
+      |> Other
+      |> Either.fail
+
+    | Left error ->
+      Either.fail error
 
   //  ____        _     _ _
   // |  _ \ _   _| |__ | (_) ___
@@ -1185,288 +1266,52 @@ module RaftServer =
   // |_|    \__,_|_.__/|_|_|\___|
 
   let start (options: IrisConfig) (callbacks: IRaftServerCallbacks) =
-    let connections = new Connections()
+    either {
+      let connections = new Connections()
 
-    match mkState options connections callbacks with
-    | Right state ->
-      let nodeid = RaftContext.getNodeId state
+      let! state = mkState options connections callbacks
+
+      let addr =
+        state
+        |> RaftContext.getNode
+        |> nodeUri
 
       let agent = new StateArbiter(loop state)
-      let server = new Zmq.Rep()
+
+      let! server = Zmq.Rep.Create(addr, requestHandler agent)
+
+      agent.Start()
+
+      do! withOk Msg.Initialize agent
 
       let periodic = startPeriodic agent
 
-      { new RaftServer with
-          member self.Append cmd =
-            implement "Append"
+      return
+        { new RaftServer with
+            member self.Append cmd =
+              addCmd agent cmd
 
-          member self.ForceElection () =
-            implement "ForceElection"
+            member self.ForceElection () =
+              withOk Msg.ForceElection agent
 
-          member self.State
-            with get () =
-              match agent.PostAndReply(fun chan -> Msg.Get,chan) with
-              | Right (Reply.State state) -> state
-              | other -> failwithf "Received garbage reply from agent: %A" other
+            member self.State
+              with get () =
+                match agent.PostAndReply(fun chan -> Msg.Get,chan) with
+                | Right (Reply.State state) -> Right state
 
-          member self.Dispose() =
-            dispose periodic
-            dispose agent
+                | Right other ->
+                  sprintf "Received garbage reply from agent: %A" other
+                  |> Other
+                  |> Either.fail
+
+                | Left error ->
+                  Either.fail error
+
+            member self.Dispose() =
+              dispose periodic
+              for KeyValue(_, connection) in connections do
+                dispose connection
+              connections.Clear()
+              dispose agent
           }
-
-      |> Either.succeed
-
-    | error -> error
-
-  // /// ## Start the Raft engine
-  // ///
-  // /// Start the Raft engine and start processing requests.
-  // ///
-  // /// ### Signature:
-  // /// - unit: unit
-  // ///
-  // /// Returns: unit
-  // member self.Start() =
-  //   Logger.info nodeid tag "starting"
-
-  //   lock server <| fun _ ->
-  //     try
-  //       Logger.debug nodeid tag "initialize server state"
-  //       serverState <- ServiceStatus.Starting
-
-  //       Logger.debug nodeid tag "initialize server loop"
-  //       server := Some (startServer appState cbs)
-
-  //       Logger.debug nodeid tag "initialize application"
-  //       initialize appState cbs
-
-  //       Logger.debug nodeid tag "initialize connections"
-  //       mkConnections appState
-
-  //       Logger.debug nodeid tag "initialize periodic loop"
-  //       let tkn = startPeriodic appState cbs
-  //       periodictoken := Some tkn
-
-  //       Logger.debug nodeid tag "server running"
-  //       serverState <- ServiceStatus.Running
-  //     with
-
-  //       | exn ->
-  //         self.Cancel()
-
-  //         sprintf "Exeception in Start: %A" exn.Message
-  //         |> Logger.err nodeid tag
-
-  //         serverState <- ServiceStatus.Failed (Other exn.Message)
-
-  // /// ## Cancel
-  // ///
-  // /// Cancel the periodic loop, dispose of the server socket and reset all connections to self
-  // /// server.
-  // ///
-  // /// ### Signature:
-  // /// - unit: unit
-  // ///
-  // /// Returns: unit
-  // member private self.Cancel() =
-  //   try
-  //     // cancel the running async tasks so we don't cause an election
-  //     Logger.debug nodeid tag "cancel periodic loop"
-  //     maybeCancelToken periodictoken
-  //   with
-
-  //     | exn ->
-  //       exn.Message
-  //       |> sprintf "RaftServer Error: could not cancel periodic loop: %s"
-  //       |> Logger.err nodeid tag
-
-  //   try
-  //     // dispose of the server
-  //     Logger.debug nodeid tag "disposing server"
-  //     Option.bind (dispose >> Some) (!server) |> ignore
-  //   with
-
-  //     | exn ->
-  //       exn.Message
-  //       |> sprintf "Error: Could not dispose server: %s"
-  //       |> Logger.err nodeid tag
-
-  //   try
-  //     Logger.debug nodeid tag "disposing sockets"
-  //     self.State.Connections
-  //     |> resetConnections
-  //   with
-
-  //     | exn ->
-  //       exn.Message
-  //       |> sprintf "Error: Could not dispose of connections: %s"
-  //       |> Logger.err nodeid tag
-
-  // /// ## Stop the Raft engine, sockets and all.
-  // ///
-  // /// Stop the Raft engine
-  // ///
-  // /// ### Signature:
-  // /// - unit: unit
-  // ///
-  // /// Returns: unit
-  // member self.Stop() =
-  //   lock server <| fun _ ->
-  //     if serverState = ServiceStatus.Running then
-  //       Logger.debug nodeid tag "stopping"
-  //       serverState <- ServiceStatus.Stopping
-
-  //       // cancel the running async tasks so we don't cause an election
-  //       Logger.debug nodeid tag "cancel periodic loop"
-  //       maybeCancelToken periodictoken
-
-  //       Logger.debug nodeid tag "dispose server"
-  //       Option.bind (dispose >> Some) (!server) |> ignore
-
-  //       Logger.debug nodeid tag "disposing sockets"
-  //       self.State.Connections
-  //       |> resetConnections
-
-  //       Logger.debug nodeid tag  "saving state to disk"
-  //       let state = readTVar appState |> atomically
-  //       saveRaft options state.Raft
-  //       |> Either.mapError
-  //         (fun msg ->
-  //           msg
-  //           |> sprintf "An error occurred saving state to disk: %A"
-  //           |> Logger.err nodeid tag)
-  //       |> ignore
-
-  //       Logger.debug nodeid tag "stopped"
-  //       serverState <- ServiceStatus.Stopped
-
-  // interface IRaftCallbacks with
-
-  //   //   ____ _
-  //   //  / ___| |__   __ _ _ __   __ _  ___  ___
-  //   // | |   | '_ \ / _` | '_ \ / _` |/ _ \/ __|
-  //   // | |___| | | | (_| | | | | (_| |  __/\__ \
-  //   //  \____|_| |_|\__,_|_| |_|\__, |\___||___/
-  //   //                          |___/
-
-  //   member self.PrepareSnapshot (raft: RaftValue) =
-  //     match onCreateSnapshot with
-
-  //     | Some cb ->
-  //       let currIdx = Log.index raft.Log
-  //       let prevTerm = Log.term raft.Log
-  //       let term = raft.CurrentTerm
-  //       let nodes = raft.Peers |> Map.toArray |> Array.map snd
-  //       let data = cb ()
-  //       Snapshot(Id.Create(), currIdx + 1u, term, currIdx, prevTerm, nodes, data)
-  //       |> Log.fromEntries
-  //       |> Some
-  //     | _ ->
-  //       Logger.err nodeid tag "Unable to create snapshot. No data handler specified."
-  //       None
-
-  //   member self.PersistSnapshot log =
-  //     sprintf "PersistSnapshot insert id: %A" (LogEntry.getId log |> string)
-  //     |> Logger.debug nodeid tag
-
-  //   member self.RetrieveSnapshot () =
-  //     failwith "implement RetrieveSnapshot again"
-
-  //   /// ## Raft state changed
-  //   ///
-  //   /// Signals the Raft instance has changed its State.
-  //   ///
-  //   /// ### Signature:
-  //   /// - old: old Raft state
-  //   /// - new: new Raft state
-  //   ///
-  //   /// Returns: unit
-  //   member self.StateChanged old current =
-  //     match onStateChanged with
-
-  //     | Some cb -> cb old current
-  //     | _       -> ()
-
-  //     sprintf "state changed from %A to %A" old current
-  //     |> Logger.info nodeid tag
-
-  //   /// ## Persist the vote for passed node to disk.
-  //   ///
-  //   /// Persist the vote for the passed node to disk.
-  //   ///
-  //   /// ### Signature:
-  //   /// - node: Node to persist
-  //   ///
-  //   /// Returns: unit
-  //   member self.PersistVote (node: RaftNode option) =
-  //     try
-  //       self.State
-  //       |> RaftContext.getRaft
-  //       |> saveRaft options
-  //       |> Either.mapError
-  //         (fun err ->
-  //           printfn "Could not persit vote change. %A" err)
-  //       |> ignore
-
-  //       "PersistVote reset VotedFor" |> Logger.debug nodeid tag
-  //     with
-
-  //       | exn -> handleException "PersistTerm" exn
-
-  //   /// ## Persit the new term in metadata file
-  //   ///
-  //   /// Save the current term in metatdata file.
-  //   ///
-  //   /// ### Signature:
-  //   /// - arg: arg
-  //   /// - arg: arg
-  //   /// - arg: arg
-  //   ///
-  //   /// Returns: unit
-  //   member self.PersistTerm term =
-  //     try
-  //       self.State
-  //       |> RaftContext.getRaft
-  //       |> saveRaft options
-  //       |> Either.mapError
-  //         (fun err ->
-  //           printfn "Could not persit vote change. %A" err)
-  //       |> ignore
-
-  //       sprintf "PersistTerm term: %A" term |> Logger.debug nodeid tag
-  //     with
-
-  //       | exn -> handleException "PersistTerm" exn
-
-  //   /// ## Persist a log to disk
-  //   ///
-  //   /// Save a log to disk.
-  //   ///
-  //   /// ### Signature:
-  //   /// - log: Log to persist
-  //   ///
-  //   /// Returns: unit
-  //   member self.PersistLog log =
-  //     try
-  //       sprintf "PersistLog insert id: %A" (LogEntry.getId log |> string)
-  //       |> Logger.debug nodeid tag
-  //     with
-
-  //       | exn->
-  //         handleException "PersistLog" exn
-
-  //   /// ## Callback to delete a log entry from database
-  //   ///
-  //   /// Delete a log entry from the database.
-  //   ///
-  //   /// ### Signature:
-  //   /// - log: LogEntry to delete
-  //   ///
-  //   /// Returns: unit
-  //   member self.DeleteLog log =
-  //     try
-  //       sprintf "DeleteLog id: %A" (LogEntry.getId log |> string)
-  //       |> Logger.debug nodeid tag
-  //     with
-
-  //       | exn -> handleException "DeleteLog" exn
+    }
