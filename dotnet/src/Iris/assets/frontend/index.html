@@ -12,29 +12,27 @@
     <title>Iris</title>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+
+    <!-- STYLING -->
     <link href="css/mui.min.css" rel="stylesheet" type="text/css" media="screen" />
     <link href="css/iris.css" rel="stylesheet" />
-    <script src="js/flatbuffers.js"></script>
+
+    <!-- FLATBUFFERS -->
+    <script src="lib/flatbuffers.js"></script>
     <script src="js/Raft_generated.js"></script>
-    <script src="node_modules/requirejs/require.js"></script>
   </head>
   <body>
-    <!--<header>Iris</header>
-    <nav><a href="/">Home</a></nav>
-    <main>
-      <article>Content</article>
-      <aside><p>More information</p></aside>
-      <div id="app"></div>
-    </main>
-    <footer>© 2016 Nsynk GmbH</footer>-->
+    <!-- PLACEHOLDER FOR APP COMPONENT -->
     <div id="app"></div>
+
+    <!-- REQUIRE.JS -->
+    <script src="lib/require.js"></script>
     <script>
-		// Paths in Require.js must always omit the .js extension
 		requirejs.config({
 			paths: {
         'fable-core/umd': 'node_modules/fable-core/umd',
-        'react': 'node_modules/react/dist/react',
-        'react-dom': 'node_modules/react-dom/dist/react-dom'
+        'react': 'lib/react/react',
+        'react-dom': 'lib/react/react-dom'
 			}
 		});
 		requirejs(["js/Web/Frontend"]);

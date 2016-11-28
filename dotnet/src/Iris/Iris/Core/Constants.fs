@@ -49,7 +49,7 @@ module Constants =
   let IRIS_NODE_ID = "IRIS_NODE_ID"
 
   [<Literal>]
-  let WEB_WORKER_SCRIPT = "js/worker.js"
+  let WEB_WORKER_SCRIPT = "lib/worker.js"
 
   [<Literal>]
   let DEFAULT_IP = "127.0.0.1"

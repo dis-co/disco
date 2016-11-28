@@ -3,7 +3,7 @@ import Tabs from 'muicss/lib/react/tabs';
 import Tab from 'muicss/lib/react/tab';
 
 export default function CenterPanel() { return (
-  <Tabs>
+  <Tabs id="panel-center">
     <Tab label="CUSTOM VIEW" >
       <div>
         <p>Laboris cillum ut cillum dolore velit excepteur qui ea non incididunt in officia sit magna.</p>

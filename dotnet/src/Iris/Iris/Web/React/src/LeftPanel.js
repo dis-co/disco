@@ -162,8 +162,8 @@ class TreeView extends React.Component {
   }
 }
 
-export default function LeftPanel() { return (
-  <Tabs>
+export default function LeftPanel(props) { return (
+  <Tabs id="panel-left" style={{width: props.width}}>
     <Tab label="VIEWS" >
       <TreeView />
     </Tab>

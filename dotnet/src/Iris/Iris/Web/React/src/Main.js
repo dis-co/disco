@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as ReactDom from "react-dom";
 import LoginDialog from "./LoginDialog";
-import Layout from "./Layout";
+import Layout from "./ColumnLayout";
 import { getCurrentSession, login } from "lib";
 import overlay from 'muicss/lib/js/overlay';
 
