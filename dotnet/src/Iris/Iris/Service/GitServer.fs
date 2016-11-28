@@ -344,7 +344,7 @@ module Git =
               with
                 | exn ->
                   exn.Message
-                  |> "Exception starting git daemon process %s"
+                  |> sprintf "Exception starting git daemon process %s"
                   |> GitError
                   |> Either.fail
 
