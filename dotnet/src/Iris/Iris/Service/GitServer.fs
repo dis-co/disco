@@ -73,6 +73,7 @@ module Git =
   [<RequireQualifiedAccess>]
   type private Msg =
     | Status
+    | Pid    of int
     | Exit   of int
     | Log    of string
 
@@ -174,7 +175,7 @@ module Git =
     let pattern = "\[(?<pid>[0-9]*)\] Connection from (?<ip>[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:(?<port>[0-9]*)"
     let m = Regex.Match(input, pattern)
     if m.Success then
-      match Int32.TryParse(m.Groups.[1].Value), UInt16.TryParse(m.Groups.[3]Value) with
+      match Int32.TryParse(m.Groups.[1].Value), UInt16.TryParse(m.Groups.[3].Value) with
       | (true,pid), (true,port) ->
         Some(pid, m.Groups.[2].Value, port)
       | _ -> None
@@ -209,6 +210,9 @@ module Git =
         let! (msg, chan) = inbox.Receive()
         let newstate =
           match msg with
+          | Msg.Pid pid ->
+            { state with Pid = pid }
+
           | Msg.Status ->
             state.Status
             |> Reply.Status
@@ -233,14 +237,32 @@ module Git =
             | Right msg ->
               for subscription in subscriptions do
                 subscription.OnNext msg
+              match msg with
+              | Started pid ->
+                { state with SubPid = pid }
+              | _ -> state
             | Left error ->
               error
-              |> sprintf "Error parsing git message: %A"
+              |> string
               |> Logger.err id tag
-            state
+              state
         return! act newstate
       }
     act initial
+
+  // ** starting
+
+  let private starting (agent: GitAgent) =
+    match agent.PostAndReply(fun chan -> Msg.Status,chan) with
+    | Reply.Status status when status = ServiceStatus.Starting -> true
+    | _ -> false
+
+  // ** started
+
+  let private running (agent: GitAgent) =
+    match agent.PostAndReply(fun chan -> Msg.Status,chan) with
+    | Reply.Status status when status = ServiceStatus.Running -> true
+    | _ -> false
 
   // ** GitServer
 
@@ -268,7 +290,7 @@ module Git =
 
         let proc = createProcess node.Id path (string node.IpAddr) node.GitPort
 
-        let agent = new GitAgent(fun inbox -> implement "me")
+        let agent = new GitAgent(loop node.Id subscriptions)
 
         let stdoutReader =
           Observable.subscribe (logHandler agent) proc.OutputDataReceived
@@ -293,14 +315,38 @@ module Git =
             member self.Start () =
               try
                 if proc.Start() then
+                  agent.PostAndReply(fun chan -> Msg.Pid proc.Id, chan)
+                  |> ignore
                   proc.BeginErrorReadLine()
                   proc.BeginErrorReadLine()
-                  implement "while loop"
+                  let mutable n = 0
+                  while starting agent && n < 1000 do
+                    n <- n + 10
+                    Thread.Sleep 10
+                  if running agent then
+                    Right ()
+                  else
+                    match agent.PostAndReply(fun chan -> Msg.Status,chan) with
+                    | Reply.Status status ->
+                      status
+                      |> string
+                      |> GitError
+                      |> Either.fail
+                    | other ->
+                      other
+                      |> string
+                      |> GitError
+                      |> Either.fail
                 else
-                  implement "else"
+                  "Could not start git daemon process"
+                  |> GitError
+                  |> Either.fail
               with
                 | exn ->
-                  implement "with"
+                  exn.Message
+                  |> "Exception starting git daemon process %s"
+                  |> GitError
+                  |> Either.fail
 
             member self.Dispose() =
               dispose stdoutReader
