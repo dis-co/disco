@@ -2,7 +2,6 @@ import React from 'react';
 import Form from 'muicss/lib/react/form';
 import Input from 'muicss/lib/react/input';
 import Button from 'muicss/lib/react/button';
-import Panel from 'muicss/lib/react/panel';
 import SkyLight from 'react-skylight';
 
 const STATUS = {

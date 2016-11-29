@@ -4,11 +4,11 @@ html, body, #app {
   padding: 0px;
 }
 
-#layout-wrapper {
+#column-layout-wrapper {
   height: 100%;
 }
 
-#layout {
+#column-layout {
   display: flex;
   height: 100%;
 }
