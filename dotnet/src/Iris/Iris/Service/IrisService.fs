@@ -423,6 +423,36 @@ module Iris =
   // | |_| | | |_
   //  \____|_|\__|
 
+  // ** handleGitEvent
+
+  let private handleGitEvent (state: IrisState) (ev: GitEvent) (chan: ReplyChan) =
+    match state.RaftServer with
+    | Some server ->
+      match ev with
+      | Started pid ->
+        "Git daemon started"
+        |> Logger.debug server.NodeId tag
+
+      | Exited pid ->
+        "Git daemon exited"
+        |> Logger.debug server.NodeId tag
+
+      | Pull (_, addr, port) ->
+        sprintf "Client %s:%d pulled updates from me" addr port
+        |> Logger.debug server.NodeId tag
+    | _ -> ()
+
+    Reply.Ok
+    |> Either.succeed
+    |> chan.Reply
+    state
+
+  //  _                    _
+  // | |    ___   __ _  __| |
+  // | |   / _ \ / _` |/ _` |
+  // | |__| (_) | (_| | (_| |
+  // |_____\___/ \__,_|\__,_|
+
   // ** loadProject
 
   let private loadProject (state: IrisState) (path: FilePath) =
@@ -462,16 +492,6 @@ module Iris =
       "Could not start server. No instance provided."
       |> Other
       |> Either.fail
-
-  // ** handleLogEvent
-
-  let private handleLogEvent (state: IrisState) (chan: ReplyChan) (log: LogEvent) =
-    broadcastMsg (LogMsg log)
-    Logger.stdout log
-
-    Reply.Ok
-    |> Either.succeed
-    |> chan.Reply
 
   // ** forwardLogEvents
 
@@ -557,19 +577,34 @@ module Iris =
       { resetState state with
           Status = ServiceStatus.Failed error }
 
+  //  _
+  // | |    ___   __ _
+  // | |   / _ \ / _` |
+  // | |__| (_) | (_| |
+  // |_____\___/ \__, |
+  //             |___/
+
+  // ** handleLogEvent
+
+  let private handleLogEvent (state: IrisState) (chan: ReplyChan) (log: LogEvent) =
+    broadcastMsg (LogMsg log)
+    Logger.stdout log
+
+    Reply.Ok
+    |> Either.succeed
+    |> chan.Reply
+
+  //  ____  _        _
+  // / ___|| |_ __ _| |_ _   _ ___
+  // \___ \| __/ _` | __| | | / __|
+  //  ___) | || (_| | |_| |_| \__ \
+  // |____/ \__\__,_|\__|\__,_|___/
+
   // ** handleStatus
 
   let private handleStatus (state: IrisState) (chan: ReplyChan) =
     state.Status
     |> Reply.Status
-    |> Either.succeed
-    |> chan.Reply
-    state
-
-  // ** handleGit
-
-  let private handleGit (state: IrisState) (chan: ReplyChan) =
-    Reply.Ok
     |> Either.succeed
     |> chan.Reply
     state
