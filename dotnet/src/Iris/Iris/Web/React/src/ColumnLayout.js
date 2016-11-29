@@ -3,6 +3,7 @@ import LeftPanel from "./LeftPanel";
 import CenterPanel from "./CenterPanel";
 import RightPanel from "./RightPanel";
 import Draggable from 'react-draggable';
+import LoginDialog from "./LoginDialog";
 import { PANEL_DEFAULT_WIDTH, PANEL_MAX_WIDTH } from "./Constants"
 
 const DragBar = (props) => (
@@ -33,6 +34,9 @@ export default class ColumnLayout extends React.Component {
   render() {
     return (
       <div id="layout-wrapper">
+        <LoginDialog
+          login={this.props.login}
+          session={this.props.session} />
         <DragBar
           id="left"
           style={{left:PANEL_DEFAULT_WIDTH}}

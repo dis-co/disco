@@ -3,6 +3,7 @@ import Form from 'muicss/lib/react/form';
 import Input from 'muicss/lib/react/input';
 import Button from 'muicss/lib/react/button';
 import Panel from 'muicss/lib/react/panel';
+import SkyLight from 'react-skylight';
 
 const STATUS = {
   AUTHORIZED: "Authorized",
@@ -13,7 +14,7 @@ const STATUS = {
 export default class LoginDialog extends React.Component {
   constructor(props) {
       super(props);
-      this.state = { active: false, username: "", password: "" };
+      this.state = { username: "", password: "" };
   }
 
   handleSubmit(username, password) {
@@ -21,12 +22,17 @@ export default class LoginDialog extends React.Component {
     this.setState({status: STATUS.WAITING});
   };
 
+  shouldComponentUpdate(nextProps, nextState) {
+    return nextProps.session && nextProps.session.Status.StatusType.ToString() !== this.state.status;
+  }
+
   componentWillReceiveProps(nextProps) {
     if (nextProps.session) {
       let status = nextProps.session.Status.StatusType.ToString();
       switch (status) {
         case STATUS.AUTHORIZED:
           this.setState({ status })
+          this.self.hide();
           break;
         case STATUS.UNAUTHORIZED:
           if (this.state.status === STATUS.WAITING) {
@@ -50,7 +56,16 @@ export default class LoginDialog extends React.Component {
 
   render() {
     return (
-      <Panel style={{width: 500, margin: "auto"}}>
+      <SkyLight
+        closeButtonStyle={{display: "none"}}
+        ref={el => {
+          if (el != null) {
+            this.self=el;
+            if (this.state.status !== STATUS.AUTHORIZED)
+              el.show();
+          }
+        }}
+      >
         <Form>
           <legend>Login</legend>
           <Input name="username" label="Username" floatingLabel={true} required={true} />
@@ -66,7 +81,7 @@ export default class LoginDialog extends React.Component {
           </Button>
           <p>{this.getMessage()}</p>
         </Form>
-      </Panel>
+      </SkyLight>
     );
   }
 }

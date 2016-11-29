@@ -1,6 +1,5 @@
 import * as React from "react";
 import * as ReactDom from "react-dom";
-import LoginDialog from "./LoginDialog";
 import Layout from "./ColumnLayout";
 import { getCurrentSession, login } from "lib";
 import overlay from 'muicss/lib/js/overlay';
@@ -22,13 +21,11 @@ class App extends React.Component {
   }
 
   render() {
-    var session = getSession(this.state);
-
-      // <LoginDialog
-      //   login={(username, password) => login(this.state, username, password)}
-      //   session={session} />
-
-    return <Layout />;
+    return (
+      <Layout
+        login={(username, password) => login(this.state, username, password)}
+        session={getSession(this.state)} />
+    );
   }
 }
 
