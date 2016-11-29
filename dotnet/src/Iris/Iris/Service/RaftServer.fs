@@ -93,11 +93,13 @@ module Raft =
   type IRaftServer =
     inherit IDisposable
 
+    abstract Node : RaftNode
     abstract Append : StateMachine -> Either<IrisError, EntryResponse>
     abstract ForceElection : unit -> Either<IrisError, unit>
     abstract State : Either<IrisError,RaftAppContext>
     abstract Status : Either<IrisError,ServiceStatus>
     abstract Subscribe : (RaftEvent -> unit) -> IDisposable
+    abstract Start : unit -> Either<IrisError,unit>
 
   // ** periodicR
 
@@ -1080,24 +1082,30 @@ module Raft =
   /// - appState: current RaftAppContext TVar
   ///
   /// Returns: CancellationTokenSource
-  let private startPeriodic (arbiter: StateArbiter) =
-    let token = new CancellationTokenSource()
+  let private startPeriodic (arbiter: StateArbiter) (cts: CancellationTokenSource) =
     let rec proc () =
       async {
         let! result = arbiter.PostAndAsyncReply(fun chan -> Msg.Get,chan)
         match result with
         | Right (Reply.State state) ->
           let! _ = arbiter.PostAndAsyncReply(fun chan -> Msg.Periodic, chan)
-          Thread.Sleep(int state.Options.RaftConfig.PeriodicInterval) // sleep for 100ms
+          do! Async.Sleep(int state.Options.RaftConfig.PeriodicInterval) // sleep for 100ms
+
         | Right reply ->
           printfn "WARNING: received garbage reply in periodic function %A" reply
+
         | Left error ->
           printfn "ERROR: %A" error
-        return! proc ()                                             // recurse
+        return! proc ()
       }
-    Async.Start(proc(), token.Token)
-    token                               // return the cancellation token source so this loop can be
-
+    try
+      Async.Start(proc(), cts.Token)
+      |> Either.succeed
+    with
+      | exn ->
+        exn.Message
+        |> Other
+        |> Either.fail
 
   // ** prepareSnapshot
 
@@ -1298,7 +1306,7 @@ module Raft =
     // |  __/| |_| | |_) | | | (__
     // |_|    \__,_|_.__/|_|_|\___|
 
-    let start (options: IrisConfig) =
+    let create (options: IrisConfig) =
       either {
         let connections = new Connections()
         let subscriptions = new Subscriptions()
@@ -1323,17 +1331,14 @@ module Raft =
           |> nodeUri
 
         let agent = new StateArbiter(loop state)
-
-        let! server = Zmq.Rep.Create(addr, requestHandler agent)
-
-        agent.Start()
-
-        do! withOk Msg.Initialize agent
-
-        let periodic = startPeriodic agent
+        let server = new Zmq.Rep(addr, requestHandler agent)
+        let periodic = new CancellationTokenSource()
 
         return
           { new IRaftServer with
+              member self.Node
+                with get () = state.Raft.Node
+
               member self.Append cmd =
                 addCmd agent cmd
 
@@ -1373,7 +1378,15 @@ module Raft =
                     member self.OnNext(value) = callback value }
                 |> listener.Subscribe
 
-              member self.Dispose() =
+              member self.Start () =
+                either {
+                  agent.Start()
+                  do! startPeriodic agent periodic
+                  do! withOk Msg.Initialize agent
+                  do! server.Start()
+                }
+
+              member self.Dispose () =
                 dispose periodic
                 for KeyValue(_, connection) in connections do
                   dispose connection

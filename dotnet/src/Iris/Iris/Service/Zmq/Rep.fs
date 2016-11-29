@@ -15,7 +15,7 @@ open Iris.Core
 /// - handler: request handler
 ///
 /// Returns: instance of Rep
-type Rep private (addr: string, handle: byte array -> byte array) =
+type Rep (addr: string, handle: byte array -> byte array) =
   let mutable status : ServiceStatus = ServiceStatus.Starting
 
   let mutable error : Exception option = None
@@ -201,7 +201,7 @@ type Rep private (addr: string, handle: byte array -> byte array) =
       stopper.WaitOne() |> ignore                    // wait for signal that stopping is done
                                                     // and return to caller
 
-  member private self.Start () : Either<IrisError,unit> =
+  member self.Start () : Either<IrisError,unit> =
     if not disposed then
       thread <- new Thread(new ThreadStart(worker))  // create worker thread
       thread.Start()                                // start worker thread
@@ -217,10 +217,6 @@ type Rep private (addr: string, handle: byte array -> byte array) =
     else
       SocketError "already disposed"
       |> Either.fail
-
-  static member Create(addr: string, handler: byte array -> byte array) =
-    let server = new Rep(addr, handler)
-    server.Start()
 
   interface IDisposable with
     member self.Dispose() =

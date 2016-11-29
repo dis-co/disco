@@ -269,38 +269,37 @@ module Git =
   [<RequireQualifiedAccess>]
   module GitServer =
 
-    let start (node: RaftNode) (project: IrisProject) =
-      match project.Path with
-      | Some path ->
-        let stdoutToken = new CancellationTokenSource()
-        let stderrToken = new CancellationTokenSource()
-        let subscriptions = new Subscriptions()
+    let create (node: RaftNode) (path: FilePath) =
+      let stdoutToken = new CancellationTokenSource()
+      let stderrToken = new CancellationTokenSource()
+      let subscriptions = new Subscriptions()
 
-        let listener =
-          { new IObservable<GitEvent> with
-              member self.Subscribe(obs) =
-                lock subscriptions <| fun _ ->
-                  subscriptions.Add obs
+      let listener =
+        { new IObservable<GitEvent> with
+            member self.Subscribe(obs) =
+              lock subscriptions <| fun _ ->
+                subscriptions.Add obs
 
-                { new IDisposable with
-                    member self.Dispose () =
-                      lock subscriptions <| fun _ ->
-                        subscriptions.Remove obs
-                        |> ignore } }
+              { new IDisposable with
+                  member self.Dispose () =
+                    lock subscriptions <| fun _ ->
+                      subscriptions.Remove obs
+                      |> ignore } }
 
-        let proc = createProcess node.Id path (string node.IpAddr) node.GitPort
+      let proc = createProcess node.Id path (string node.IpAddr) node.GitPort
 
-        let agent = new GitAgent(loop node.Id subscriptions)
+      let agent = new GitAgent(loop node.Id subscriptions)
 
-        let stdoutReader =
-          Observable.subscribe (logHandler agent) proc.OutputDataReceived
+      let stdoutReader =
+        Observable.subscribe (logHandler agent) proc.OutputDataReceived
 
-        let stderrReader =
-          Observable.subscribe (logHandler agent) proc.ErrorDataReceived
+      let stderrReader =
+        Observable.subscribe (logHandler agent) proc.ErrorDataReceived
 
-        let onExitEvent =
-          Observable.subscribe (exitHandler proc agent) proc.Exited
+      let onExitEvent =
+        Observable.subscribe (exitHandler proc agent) proc.Exited
 
+      Either.succeed
         { new IGitServer with
             member self.Status
               with get () = implement "Status"
@@ -324,7 +323,7 @@ module Git =
                     n <- n + 10
                     Thread.Sleep 10
                   if running agent then
-                    Right ()
+                    Either.succeed ()
                   else
                     match agent.PostAndReply(fun chan -> Msg.Status,chan) with
                     | Reply.Status status ->
@@ -357,8 +356,3 @@ module Git =
               finally
                 dispose proc
           }
-        |> Either.succeed
-
-      | None ->
-        ProjectPathError
-        |> Either.fail

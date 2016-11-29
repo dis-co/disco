@@ -39,12 +39,13 @@ module WebSockets =
 
   // ** IWsServer
 
-  type IWsServer =
+  type IWebSocketServer =
     inherit System.IDisposable
     abstract Send         : Id -> StateMachine -> Either<IrisError,unit>
     abstract Broadcast    : StateMachine -> Either<IrisError list,unit>
     abstract BuildSession : Id -> Session -> Either<IrisError,Session>
     abstract Subscribe    : (WsEvent -> unit) -> System.IDisposable
+    abstract Start        : unit -> Either<IrisError, unit>
 
   // ** WsEventProcessor
 
@@ -219,9 +220,9 @@ module WebSockets =
   // |_|    \__,_|_.__/|_|_|\___|
 
   [<RequireQualifiedAccess>]
-  module WsServer =
+  module IrisSocketServer =
 
-    let start (node: RaftNode) =
+    let create (node: RaftNode) =
       either {
         let connections = new Connections()
         let subscriptions = new Subscriptions()
@@ -238,52 +239,54 @@ module WebSockets =
                         subscriptions.Remove obs
                         |> ignore } }
 
-        let agent = WsEventProcessor.Start(loop subscriptions)
+        let agent = new WsEventProcessor(loop subscriptions)
 
         let uri = sprintf "ws://%s:%d" (string node.IpAddr) node.WsPort
-
-        uri
-        |> sprintf "Starting WebSocketServer on: %s"
-        |> Logger.debug node.Id tag
 
         let handler = onNewSocket node.Id connections agent
         let server = new WebSocketServer(uri)
 
-        try
-          server.Start(new Action<IWebSocketConnection>(handler))
+        return
+          { new IWebSocketServer with
+              member self.Send (id: Id) (cmd: StateMachine) =
+                send connections id cmd
 
-          "WebSocketServer successfully started"
-          |> Logger.debug node.Id tag
+              member self.Broadcast (cmd: StateMachine) =
+                broadcast connections cmd
 
-          return
-            { new IWsServer with
-                member self.Send (id: Id) (cmd: StateMachine) =
-                  send connections id cmd
+              member self.BuildSession (id: Id) (session: Session) =
+                buildSession connections id session
 
-                member self.Broadcast (cmd: StateMachine) =
-                  broadcast connections cmd
+              member self.Subscribe (callback: WsEvent -> unit) =
+                { new IObserver<WsEvent> with
+                    member self.OnCompleted() = ()
+                    member self.OnError(error) = ()
+                    member self.OnNext(value) = callback value
+                  }
+                |> listener.Subscribe
 
-                member self.BuildSession (id: Id) (session: Session) =
-                  buildSession connections id session
+              member self.Start () =
+                try
+                  uri
+                  |> sprintf "Starting WebSocketServer on: %s"
+                  |> Logger.debug node.Id tag
 
-                member self.Subscribe (callback: WsEvent -> unit) =
-                  { new IObserver<WsEvent> with
-                      member self.OnCompleted() = ()
-                      member self.OnError(error) = ()
-                      member self.OnNext(value) = callback value
-                    }
-                  |> listener.Subscribe
+                  agent.Start()
+                  server.Start(new Action<IWebSocketConnection>(handler))
 
-                member self.Dispose () =
-                  for KeyValue(_, connection) in connections do
-                    connection.Close()
-                  connections.Clear()
-                  subscriptions.Clear()
-                  dispose server }
-        with
-          | exn ->
-            return!
-              exn.Message
-              |> SocketError
-              |> Either.fail
+                  "WebSocketServer successfully started"
+                  |> Logger.debug node.Id tag
+                  |> Either.succeed
+                with
+                  | exn ->
+                    exn.Message
+                    |> SocketError
+                    |> Either.fail
+
+              member self.Dispose () =
+                for KeyValue(_, connection) in connections do
+                  connection.Close()
+                connections.Clear()
+                subscriptions.Clear()
+                dispose server }
       }
