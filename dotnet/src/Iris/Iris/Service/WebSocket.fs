@@ -20,10 +20,10 @@ module WebSockets =
   [<Literal>]
   let private tag = "WebSocket"
 
-  // ** WsEvent
+  // ** SocketEvent
 
   [<NoComparison;NoEquality>]
-  type WsEvent =
+  type SocketEvent =
     | OnOpen    of Id
     | OnClose   of Id
     | OnMessage of Id * StateMachine
@@ -35,7 +35,7 @@ module WebSockets =
 
   // ** Subscriptions
 
-  type private Subscriptions = ResizeArray<IObserver<WsEvent>>
+  type private Subscriptions = ResizeArray<IObserver<SocketEvent>>
 
   // ** IWsServer
 
@@ -44,12 +44,12 @@ module WebSockets =
     abstract Send         : Id -> StateMachine -> Either<IrisError,unit>
     abstract Broadcast    : StateMachine -> Either<IrisError list,unit>
     abstract BuildSession : Id -> Session -> Either<IrisError,Session>
-    abstract Subscribe    : (WsEvent -> unit) -> System.IDisposable
+    abstract Subscribe    : (SocketEvent -> unit) -> System.IDisposable
     abstract Start        : unit -> Either<IrisError, unit>
 
-  // ** WsEventProcessor
+  // ** SocketEventProcessor
 
-  type private WsEventProcessor = MailboxProcessor<WsEvent>
+  type private SocketEventProcessor = MailboxProcessor<SocketEvent>
 
   // ** getConnectionId
 
@@ -158,7 +158,7 @@ module WebSockets =
   /// Returns: unit
   let private onNewSocket (id: Id)
                           (connections: Connections)
-                          (agent: WsEventProcessor)
+                          (agent: SocketEventProcessor)
                           (socket: IWebSocketConnection) =
     socket.OnOpen <- fun () ->
       let sid = getConnectionId socket
@@ -202,7 +202,7 @@ module WebSockets =
 
   // ** loop
 
-  let private loop (initial: Subscriptions)(inbox: WsEventProcessor) =
+  let private loop (initial: Subscriptions)(inbox: SocketEventProcessor) =
     let rec act (subscriptions: Subscriptions) = async {
         let! msg = inbox.Receive()
         for sub in subscriptions do
@@ -220,7 +220,7 @@ module WebSockets =
   // |_|    \__,_|_.__/|_|_|\___|
 
   [<RequireQualifiedAccess>]
-  module IrisSocketServer =
+  module SocketServer =
 
     let create (node: RaftNode) =
       either {
@@ -228,7 +228,7 @@ module WebSockets =
         let subscriptions = new Subscriptions()
 
         let listener =
-          { new IObservable<WsEvent> with
+          { new IObservable<SocketEvent> with
               member self.Subscribe(obs) =
                 lock subscriptions <| fun _ ->
                   subscriptions.Add obs
@@ -239,7 +239,7 @@ module WebSockets =
                         subscriptions.Remove obs
                         |> ignore } }
 
-        let agent = new WsEventProcessor(loop subscriptions)
+        let agent = new SocketEventProcessor(loop subscriptions)
 
         let uri = sprintf "ws://%s:%d" (string node.IpAddr) node.WsPort
 
@@ -257,8 +257,8 @@ module WebSockets =
               member self.BuildSession (id: Id) (session: Session) =
                 buildSession connections id session
 
-              member self.Subscribe (callback: WsEvent -> unit) =
-                { new IObserver<WsEvent> with
+              member self.Subscribe (callback: SocketEvent -> unit) =
+                { new IObserver<SocketEvent> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()
                     member self.OnNext(value) = callback value
