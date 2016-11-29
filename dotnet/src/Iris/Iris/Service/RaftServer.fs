@@ -93,7 +93,7 @@ module Raft =
   type IRaftServer =
     inherit IDisposable
 
-    abstract Node : RaftNode
+    abstract NodeId : Id
     abstract Append : StateMachine -> Either<IrisError, EntryResponse>
     abstract ForceElection : unit -> Either<IrisError, unit>
     abstract State : Either<IrisError,RaftAppContext>
@@ -1336,8 +1336,8 @@ module Raft =
 
         return
           { new IRaftServer with
-              member self.Node
-                with get () = state.Raft.Node
+              member self.NodeId
+                with get () = state.Raft.Node.Id
 
               member self.Append cmd =
                 addCmd agent cmd

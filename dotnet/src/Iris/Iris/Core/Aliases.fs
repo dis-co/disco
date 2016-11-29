@@ -109,7 +109,8 @@ type ServiceStatus =
   | Running
   | Stopping
   | Stopped
-  | Failed of IrisError
+  | Degraded of IrisError
+  | Failed   of IrisError
 
 [<RequireQualifiedAccess>]
 module Service =

@@ -292,22 +292,16 @@ module CommandLine =
       |> ProjectNotFound
       |> Either.fail
     else
-      match Project.load projFile with
-      | Right project ->
-        use server = new IrisService(ref project)
+      use server = IrisService.create ()
 
-        server.Start(web)
+      server.Start(web)
 
-        if interactive then
-          interactiveLoop server
-          |> Either.succeed
-        else
-          silentLoop ()
-          |> Either.succeed
-
-      | Left error ->
-        error
-        |> Either.fail
+      if interactive then
+        interactiveLoop server
+        |> Either.succeed
+      else
+        silentLoop ()
+        |> Either.succeed
 
   // ** createProject
 
