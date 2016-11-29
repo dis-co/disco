@@ -33,6 +33,45 @@ module Iris =
   let private signature =
     new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
 
+  // ** Msg
+
+  [<RequireQualifiedAccess>]
+  type private Msg =
+    | Status of ServiceStatus
+    | Git    of GitEvent
+    | Socket of SocketEvent
+    | Raft   of RaftEvent
+
+  // ** Reply
+
+  [<RequireQualifiedAccess>]
+  type private Reply =
+    | Ok
+
+  // ** ReplyChan
+
+  let private ReplyChan = AsyncReplyChannel<Either<IrisError,Reply>>
+
+  // ** Message
+
+  type private Message = Msg * ReplyChan
+
+  // ** IrisAgent
+
+  type private IrisAgent = MailboxProcessor<Message>
+
+  // ** IrisState
+
+  [<NoComparison;NoEquality>]
+  type private IrisState =
+    { Status       : ServiceStatus
+      Store        : Store
+      Project      : IrisProject
+      HttpServer   : AssetServer
+      GitServer    : IGitServer
+      RaftServer   : IRaftServer
+      SocketServer : IWebSocketServer }
+
   // ** IIrisServer
 
   type IIrisServer =
@@ -197,10 +236,44 @@ module Iris =
   // | |_| | | |_
   //  \____|_|\__|
 
-  let private onGitEvent (wsserver: IWebSocketServer) (msg: GitEvent) =
+  // ** handleGitEvent
+
+  let private handleGitEvent (state: IrisState) (msg: GitEvent) =
     msg
     |> string
-    |> Logger.debug nodeid tag
+    |> Logger.debug state.RaftServer.Node.Id tag
+    state
+
+  // ** loop
+
+  let private loop (initial: IrisState) (inbox: IrisAgent) =
+    let act (state: IrisState) =
+      async {
+        let! (msg, chan) = inbox.Receive()
+        match msg with
+        | Msg.Status status ->
+          { state with Status = status }
+
+        | Msg.Git ev    ->
+          Reply.Ok
+          |> Either.succeed
+          |> chan.Reply
+          handleGit state ev
+
+        | Msg.Socket ev ->
+          Reply.Ok
+          |> Either.succeed
+          |> chan.Reply
+          handleSocketEvent state ev
+
+        | Msg.Raft ev ->
+          Reply.Ok
+          |> Either.succeed
+          |> chan.Reply
+          handleRaftEvent state ev
+      }
+
+    act initial
 
   // ** IrisService
 
@@ -221,28 +294,67 @@ module Iris =
           let httpserver  = new AssetServer(project.Config)
 
           let! raftserver = RaftServer.create project.Config
-          let! wsserver   = IrisSocketServer.create raftserver.Node
+          let! wsserver   = SocketServer.create raftserver.Node
           let! gitserver  = GitServer.create raftserver.Node path
 
-          let logger =
-            Observable.subscribe
-              (fun log ->
-                wsserver.Broadcast (LogMsg log) |> ignore
-                Logger.stdout log)
-              Logger.listener
+          let initial =
+            { Status       = ServiceStatus.Starting
+              Store        = store
+              Project      = project
+              HttpServer   = httpserver
+              GitServer    = gitserver
+              RaftServer   = raftserver
+              SocketServer = wsserver }
+
+          let agent = new IrisAgent(loop initial)
+
+          let loggerobs =
+            handleLogs wsserver
+            |> Logger.subscribe
+
+          let raftobs =
+            handleRaftEvents wsserver raftserver
+            |> raftserver.Subscribe
+
+          let wsobs =
+            handleSocketEvents wsserver raftserver
+            |> wsserver.Subscribe
+
+          let gitobs =
+            handleGitEvents wsserver raftserver
+            |> gitserver.Subscribe
 
           return
             { new IIrisServer with
+                member self.Status
+                  with get () =
+
                 member self.Start() =
-                  either {
-                    do! httpserver.Start()
-                    do! wsserver.Start()
-                    do! GitServer.Start()
-                    do! raftserver.Start()
-                  }
+                  let result =
+                    either {
+                      agent.Start()
+                      do! httpserver.Start()
+                      do! wsserver.Start()
+                      do! GitServer.Start()
+                      do! raftserver.Start()
+                    }
+                  match result with
+                  | Right () ->
+                    match agent.Post(Msg.Status ServiceStatus.Running) with
+                    | Right Reply.Ok -> Either.succeed ()
+                    | Left error     -> Either.fail error
+
+                  | Left error ->
+                    agent.Post(Msg.Status ServiceStatus.Failed error)
+                    |> ignore
+                    Either.fail error
 
                 member self.Dispose() =
-                  dispose logger
+                  dispose raftobs
+                  dispose gitobs
+                  dispose wsobs
+                  dispose loggerobs
+
                   dispose raftserver
                   dispose wsserver
                   dispose gitserver
