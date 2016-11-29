@@ -42,9 +42,9 @@
     <!--<Reference Include="../../../../../../Fable/build/fable-core/Fable.Core.dll" />-->
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="../../AssemblyInfo/FrontendInfo.fs">
+    <!--<Compile Include="../../AssemblyInfo/FrontendInfo.fs">
       <Link>FrontendInfo.fs</Link>
-    </Compile>
+    </Compile>-->
     <Compile Include="../../Iris/Core/FlatBuffers.fs">
       <Link>FlatBuffers.fs</Link>
     </Compile>

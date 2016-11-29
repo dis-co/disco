@@ -1,34 +1,40 @@
 import * as React from "react";
-import Card from 'material-ui/Card/Card';
-import CardActions from 'material-ui/Card/CardActions';
-import CardHeader from 'material-ui/Card/CardHeader';
-import CardText from 'material-ui/Card/CardText';
-import FlatButton from 'material-ui/FlatButton/FlatButton';
-import Table from "./Table.js"
+import Panel from 'muicss/lib/react/panel';
 
-function propsToArray(o) {
-  return Object.getOwnPropertyNames(o).map(k => [k, o[k]]);
+function map(iterable, f) {
+  let ar = [];
+  if (iterable != null)
+    for (let x of iterable)
+      ar.push(f(x));
+  return ar;
 }
 
-export default function (props) { return (
-  <ul>
-    {props.nodes.map(node =>
-      <li>
-        <Card>
-          <CardHeader
-            title={node.HostName}
-            subtitle={node.Id.Fields[0]}
-            actAsExpander={true}
-            showExpandableButton={true}
-          />
-          <CardActions>
-            <FlatButton label="Remove" />
-          </CardActions>
-          <CardText expandable={true}>
-            <Table data={propsToArray(node)} />
-          </CardText>
-        </Card>
-      </li>
-    )}
-  </ul>
+export default function (props) {
+  // console.log("Cluster props:", props)
+  return (
+    <Panel className="panel-cluster">
+      <table className="mui-table mui-table--bordered">
+        <thead>
+          <tr>
+            <th>Host</th>
+            <th>IP</th>
+            <th>Port</th>
+            <th>State</th>
+          </tr>
+        </thead>
+        <tbody>
+          {map(props.nodes, kv => {
+            const node = kv[1];
+            return (
+              <tr key={kv[0].Fields[0]}>
+                <td>{node.HostName}</td>
+                <td>{node.IpAddr.Fields[0]}</td>
+                <td>{node.Port}</td>
+                <td>{node.State.Case}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Panel>
 )};

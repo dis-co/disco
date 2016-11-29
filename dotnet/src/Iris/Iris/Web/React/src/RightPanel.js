@@ -1,8 +1,9 @@
 import React from 'react';
-import {Tabs, Tab} from 'material-ui/Tabs';
+import Tabs from 'muicss/lib/react/tabs';
+import Tab from 'muicss/lib/react/tab';
 
-export default function RightPanel() { return (
-  <Tabs>
+export default function RightPanel(props) { return (
+  <Tabs id="panel-right" style={{width: props.width}}>
     <Tab label="PARAMETER" >
       <div>
         <p>Laboris cillum ut cillum dolore velit excepteur qui ea non incididunt in officia sit magna.</p>

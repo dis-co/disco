@@ -1,9 +1,9 @@
 {
     "projFile": "Frontend.fsproj",
-    "outDir": "../../bin/Debug/Iris/assets/js",
+    "outDir": "../../assets/frontend/js",
     "module": "amd",
     "coreLib": "fable-core/umd",
-    "sourceMaps": true,
+    "sourceMaps": false,
     "plugins": ["../../../Fable/FlatBuffersPlugin.fsx"],
     "targets": {
         "debug": {

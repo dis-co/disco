@@ -355,7 +355,7 @@ Target "GenerateSerialization"
    runExec flatcPath args baseDir false
 
    // JAVASCRIPT
-   let args = "-I " + (baseDir @@ "Schema") + " -o " + (baseDir @@ "bin") + " --js " + fbs
+   let args = "-I " + (baseDir @@ "Schema") + " -o " + (baseDir @@ "assets/frontend/js") + " --js " + fbs
    runExec flatcPath args baseDir false
 
    let files =
@@ -393,7 +393,6 @@ let webtestsdir = baseDir @@ "Projects" @@ "Web.Tests"
 Target "BuildWebTests" (fun _ ->
   runNpm "install" __SOURCE_DIRECTORY__ ()
   runFable webtestsdir "" ()
-  FileUtils.cp (baseDir @@ "bin/Raft_generated.js") (baseDir @@ "bin/Debug/Iris/assets/js")
 )
 
 Target "WatchWebTests" (runFable webtestsdir "-t watch")
@@ -413,10 +412,7 @@ Target "BuildMockService" (fun () ->
   buildDebug "Projects/MockService/MockService.fsproj" ()
   let assetsTargetDir = (baseDir @@ "bin/Debug/Iris/assets")
   FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
-  FileUtils.cp (baseDir @@ "bin/Raft_generated.js") (assetsTargetDir @@ "js")
-  runNpm "install" assetsTargetDir ()
-  // let targetDir = (baseDir @@ "bin/Debug/Iris")
-  // runMono (targetDir @@ "Iris.MockService.exe") targetDir
+  runNpm "install" (baseDir @@ "assets/frontend") ()
 )
 
 Target "BuildDebugCore" (buildDebug "Projects/Core/Core.fsproj")
@@ -427,7 +423,6 @@ Target "BuildDebugService" (fun () ->
   buildDebug "Projects/Service/Service.fsproj" ()
   let assetsTargetDir = (baseDir @@ "bin/Debug/Iris/assets")
   FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
-  FileUtils.cp (baseDir @@ "bin/Raft_generated.js") (assetsTargetDir @@ "js")
   runNpm "install" assetsTargetDir ()
 )
 
@@ -435,7 +430,6 @@ Target "BuildReleaseService" (fun () ->
   let targetDir = (baseDir @@ "bin/Release/Iris/assets")
   buildRelease "Projects/Service/Service.fsproj" ()
   FileUtils.cp_r (baseDir @@ "assets/frontend") targetDir
-  FileUtils.cp (baseDir @@ "bin/Raft_generated.js") (targetDir @@ "js")
   runNpm "install" targetDir ()
 )
 

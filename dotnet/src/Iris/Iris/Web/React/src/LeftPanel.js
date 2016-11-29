@@ -1,6 +1,7 @@
 import React from 'react';
 import cx from 'classnames';
-import {Tabs, Tab} from 'material-ui/Tabs';
+import Tabs from 'muicss/lib/react/tabs';
+import Tab from 'muicss/lib/react/tab';
 
 import Tree from 'react-ui-tree';
 require("react-ui-tree/dist/react-ui-tree.css");
@@ -161,8 +162,8 @@ class TreeView extends React.Component {
   }
 }
 
-export default function LeftPanel() { return (
-  <Tabs>
+export default function LeftPanel(props) { return (
+  <Tabs id="panel-left" style={{width: props.width}}>
     <Tab label="VIEWS" >
       <TreeView />
     </Tab>
