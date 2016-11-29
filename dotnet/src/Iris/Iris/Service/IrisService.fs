@@ -12,6 +12,7 @@ open Iris.Service.Git
 open Iris.Service.WebSockets
 open Iris.Service.Raft
 open Microsoft.FSharp.Control
+open FSharpx.Functional
 open LibGit2Sharp
 
 // * IrisService
@@ -37,18 +38,21 @@ module Iris =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Status of ServiceStatus
     | Git    of GitEvent
     | Socket of SocketEvent
     | Raft   of RaftEvent
     | Log    of LogEvent
+    | Load   of FilePath
+    | Status
+    | Unload
 
   // ** Reply
 
   [<RequireQualifiedAccess>]
   type private Reply =
     | Ok
-    | Entry of EntryResponse
+    | Entry  of EntryResponse
+    | Status of ServiceStatus
 
   // ** ReplyChan
 
@@ -70,80 +74,73 @@ module Iris =
   // ** IrisState
 
   [<NoComparison;NoEquality>]
-  type private IrisState =
+  type private IrisStateData =
     { Status       : ServiceStatus
       Store        : Store
-      Project      : IrisProject option
-      GitServer    : IGitServer option
-      RaftServer   : IRaftServer option
-      SocketServer : IWebSocketServer option
+      Project      : IrisProject
+      GitServer    : IGitServer
+      RaftServer   : IRaftServer
+      HttpServer   : AssetServer
+      SocketServer : IWebSocketServer
       Disposables  : IDisposable list }
 
     interface IDisposable with
       member self.Dispose() =
         disposeAll self.Disposables
-        Option.map dispose self.GitServer    |> ignore
-        Option.map dispose self.RaftServer   |> ignore
-        Option.map dispose self.SocketServer |> ignore
+        dispose self.GitServer
+        dispose self.RaftServer
+        dispose self.SocketServer
+
+  [<NoComparison;NoEquality>]
+  type private IrisState =
+    | Idle
+    | Loaded of IrisStateData
+
+    interface IDisposable with
+      member self.Dispose() =
+        match self with
+        | Idle -> ()
+        | Loaded data -> dispose data
+
+  let private withState (state: IrisState) (cb: IrisStateData -> unit) =
+    match state with
+    | Idle -> ()
+    | Loaded data -> cb data
 
   // ** resetState
 
   let private resetState (state: IrisState) =
-    dispose state
-    { state with
-        Store        = new Store(State.Empty)
-        Project      = None
-        GitServer    = None
-        RaftServer   = None
-        SocketServer = None
-        Disposables  = [] }
+    match state with
+    | Idle -> Idle
+    | Loaded data ->
+      dispose data
+      Idle
 
   // ** IIrisServer
 
   type IIrisServer =
     inherit IDisposable
-
+    abstract Config : Either<IrisError,Config>
     abstract Status : Either<IrisError,ServiceStatus>
     abstract Start : unit -> Either<IrisError,unit>
     abstract Load : FilePath -> Either<IrisError,unit>
 
   // ** broadcastMsg
 
-  let private broadcastMsg (state: IrisState) (cmd: StateMachine) =
-    match state.SocketServer with
-    | Some server ->
-      match server.Broadcast with
-      | Right () -> ()
-      | Left errors ->
-        List.iter (string >> Logger.err state.RaftServer.NodeId tag) errors
-    | None ->
-      "Could not send logs to clients: No socket server available"
-      |> Logger.err state.RaftServer.NodeId tag
+  let private broadcastMsg (state: IrisStateData) (cmd: StateMachine) =
+    state.SocketServer.Broadcast cmd
+    |> ignore
 
   // ** sendMsg
 
-  let private sendMsg (state: IrisState) (id: Id) (cmd: StateMachine) =
-    match state.SocketServer with
-    | Some server ->
-      match server.Send id cmd with
-      | Right () -> ()
-      | Left error ->
-        error
-        |> string
-        |> Logger.err state.RaftServer.NodeId tag
-    | None ->
-      "Could not send logs to clients: No socket server available"
-      |> Logger.err state.RaftServer.NodeId tag
+  let private sendMsg (state: IrisStateData) (id: Id) (cmd: StateMachine) =
+    state.SocketServer.Send id cmd
+    |> ignore
 
   // ** appendCmd
 
-  let private appendCmd (state: IrisState) (cmd: StateMachine) =
-    match state.RaftServer with
-    | Some server -> server.Append(cmd)
-    | None ->
-      "Could not append command to raft: No server available"
-      |> Other
-      |> Either.fail
+  let private appendCmd (state: IrisStateData) (cmd: StateMachine) =
+    state.RaftServer.Append(cmd)
 
   // ** onOpen
 
@@ -160,18 +157,25 @@ module Iris =
   /// with the current state. Then, we append the newly created Session value to the Raft log to
   /// replicate it throughout the cluster.
 
-  let private onOpen (state: IrisState) (id: Id) (chan: ReplyChan) =
-    sendMsg id (DataSnapshot state.Store.State)
-    match appendCmd (AddSession session) with
-    | Right entry ->
-      entry
-      |> Reply.Entry
-      |> Either.succeed
-      |> chan.Reply
-    | Left error ->
-      error
-      |> Either.fail
-      |> chan.Reply
+  let private onOpen (state: IrisState) (session: Id) (chan: ReplyChan) =
+    withState state <| fun data ->
+      sendMsg data session (DataSnapshot data.Store.State)
+
+    // FIXME: need to check this bit for proper session handling
+    Reply.Ok
+    |> Either.succeed
+    |> chan.Reply
+
+    // match appendCmd state (AddSession session) with
+    // | Right entry ->
+    //   entry
+    //   |> Reply.Entry
+    //   |> Either.succeed
+    //   |> chan.Reply
+    // | Left error ->
+    //   error
+    //   |> Either.fail
+    //   |> chan.Reply
 
   // ** onClose
 
@@ -180,22 +184,23 @@ module Iris =
   /// Register a callback to be run when a browser as exited a session in an orderly fashion. The
   /// session is removed from the global state by appending a `RemoveSession`
   let private onClose (state: IrisState) (id: Id) (chan: ReplyChan) =
-    match Map.tryFind id state.Store.State.Sessions with
-    | Some session ->
-      match appendCmd (RemoveSession session) with
-      | Right entry ->
-        entry
-        |> Reply.Entry
-        |> Either.succeed
-        |> chan.Reply
-      | Left error ->
-        error
+    withState state <| fun data ->
+      match Map.tryFind id data.Store.State.Sessions with
+      | Some session ->
+        match appendCmd data (RemoveSession session) with
+        | Right entry ->
+          entry
+          |> Reply.Entry
+          |> Either.succeed
+          |> chan.Reply
+        | Left error ->
+          error
+          |> Either.fail
+          |> chan.Reply
+      | _ ->
+        Other "Session not found. Something spooky is going on"
         |> Either.fail
         |> chan.Reply
-    | _ ->
-      Other "Session not found. Something spooky is going on"
-      |> Either.fail
-      |> chan.Reply
 
   // ** onError
 
@@ -203,22 +208,24 @@ module Iris =
   ///
   /// Register a callback to be run if the client connection unexpectectly fails. In that case the
   /// Session is retrieved and removed from global state.
-  let private onError (state: IrisState) (sessionid: Id) (chan: ReplyChan) =
-    match Map.tryFind sessionid state.Store.State.Sessions with
-      match appendCmd (RemoveSession session) with
-      | Right entry ->
-        entry
-        |> Reply.Entry
-        |> Either.succeed
-        |> chan.Reply
-      | Left error ->
-        error
+  let private onError (state: IrisState) (sessionid: Id) (err: Exception) (chan: ReplyChan) =
+    withState state <| fun data ->
+      match Map.tryFind sessionid data.Store.State.Sessions with
+      | Some session ->
+        match appendCmd data (RemoveSession session) with
+        | Right entry ->
+          entry
+          |> Reply.Entry
+          |> Either.succeed
+          |> chan.Reply
+        | Left error ->
+          error
+          |> Either.fail
+          |> chan.Reply
+      | _ ->
+        Other "Session not found. Something spooky is going on"
         |> Either.fail
         |> chan.Reply
-    | _ ->
-      Other "Session not found. Something spooky is going on"
-      |> Either.fail
-      |> chan.Reply
 
 
   // ** onMessage
@@ -231,25 +238,26 @@ module Iris =
   /// system, it will be applied to the server-side global state, then pushed over the socket to
   /// be applied to all client-side global state atoms.
   let private onMessage (state: IrisState) (id: Id) (cmd: StateMachine) (chan: ReplyChan) =
-    match appendCmd cmd with
-    | Right entry ->
-      entry
-      |> Reply.Entry
-      |> Either.succeed
-      |> chan.Reply
-    | Left error ->
-      error
-      |> Either.fail
-      |> chan.Reply
+    withState state <| fun data ->
+      match appendCmd data cmd with
+      | Right entry ->
+        entry
+        |> Reply.Entry
+        |> Either.succeed
+        |> chan.Reply
+      | Left error ->
+        error
+        |> Either.fail
+        |> chan.Reply
 
-  // ** handleSocket
+  // ** handleSocketEvent
 
-  let private handleSocket (state: IrisState) (chan: ReplyChan) (ev: SocketEvent) =
+  let private handleSocketEvent (state: IrisState) (ev: SocketEvent) (chan: ReplyChan) =
     match ev with
-    | OnOpen id       -> onOpen    state id    chan
-    | OnClose id      -> onClose   state id    chan
-    | OnMessage id,sm -> onMessage state id sm chan
-    | OnError id,err  -> onError   state id sm chan
+    | OnOpen id         -> onOpen    state id     chan
+    | OnClose id        -> onClose   state id     chan
+    | OnMessage (id,sm) -> onMessage state id sm  chan
+    | OnError (id,err)  -> onError   state id err chan
     state
 
   // ** onConfigured
@@ -265,10 +273,11 @@ module Iris =
   /// Register a callback to run when a new cluster configuration has been committed, and the
   /// joint-consensus mode has been concluded.
   let private onConfigured (state: IrisState) (nodes: RaftNode array) (chan: ReplyChan) =
-    nodes
-    |> Array.map (Node.getId >> string)
-    |> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
-    |> Logger.debug nodeid tag
+    withState state <| fun data ->
+      nodes
+      |> Array.map (Node.getId >> string)
+      |> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
+      |> Logger.debug data.RaftServer.NodeId tag
 
     Reply.Ok
     |> Either.succeed
@@ -284,9 +293,11 @@ module Iris =
   /// full member of the cluster.
 
   let private onNodeAdded (state: IrisState) (node: RaftNode) (chan: ReplyChan) =
-    let cmd = AddNode node
-    state.Store.Dispatch cmd
-    broadcastMsg state cmd
+    withState state <| fun data ->
+      let cmd = AddNode node
+      data.Store.Dispatch cmd
+      broadcastMsg data cmd
+
     Reply.Ok
     |> Either.succeed
     |> chan.Reply
@@ -300,9 +311,11 @@ module Iris =
   /// state.
 
   let private onNodeUpdated (state: IrisState) (node: RaftNode) (chan: ReplyChan) =
-    let cmd = UpdateNode node
-    state.Store.Dispatch cmd
-    broadcastMsg state cmd
+    withState state <| fun data ->
+      let cmd = UpdateNode node
+      data.Store.Dispatch cmd
+      broadcastMsg data cmd
+
     Reply.Ok
     |> Either.succeed
     |> chan.Reply
@@ -316,9 +329,11 @@ module Iris =
   /// the cluster entering into joint-consensus mode until the node was successfully removed.
 
   let private onNodeRemoved (state: IrisState) (node: RaftNode) (chan: ReplyChan) =
-    let cmd = RemoveNode node
-    state.Store.Dispatch cmd
-    broadcastMsg state cmd
+    withState state <| fun data ->
+      let cmd = RemoveNode node
+      data.Store.Dispatch cmd
+      broadcastMsg data cmd
+
     Reply.Ok
     |> Either.succeed
     |> chan.Reply
@@ -337,52 +352,69 @@ module Iris =
   ///   - the state machine command is broadcast to all clients
   ///   - the state machine command is persisted to disk (potentially recorded in a git commit)
 
-  let private onApplyLog (state: IrisState) (sm: StateMachine) =
-    state.Store.Dispatch sm
-    broadcastMsg state sm
+  let private onApplyLog (state: IrisState) (sm: StateMachine) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      Other "No project loaded"
+      |> Either.fail
+      |> chan.Reply
+      state
+    | Loaded data ->
+      data.Store.Dispatch sm
+      broadcastMsg data sm
 
-    if state.RaftServer.IsLeader then
-      match state.Project with
-      | Some project ->
-        match persistEntry project sm with
+      if RaftServer.isLeader data.RaftServer then
+        match persistEntry data.Project sm with
         | Right (info, commit, updated) ->
-          { state with Project = Some updated }
-
           Reply.Ok
           |> Either.succeed
           |> chan.Reply
+          Loaded { data with Project = updated }
 
         | Left error ->
           error
           |> Either.fail
           |> chan.Reply
+          Loaded data
+      else
+        match data.RaftServer.State with
+        | Right state ->
+          let node =
+            state.Raft
+            |> Raft.currentLeader
+            |> Option.bind (flip Raft.getNode state.Raft)
 
-      | None ->
-        "Unable to persist project (not in IrisState)"
-        |> Other
-        |> Either.fail
-        |> chan.Reply
-    else
-      match updateRepo project with
-      | Right () ->
-        Reply.Ok
-        |> Either.succeed
-        |> chan.Reply
-      | Left error ->
-        error
-        |> Either.fail
-        |> chan.Reply
+          match node with
+          | Some leader ->
+            match updateRepo data.Project leader with
+            | Right () ->
+              Reply.Ok
+              |> Either.succeed
+              |> chan.Reply
+            | Left error ->
+              error
+              |> Either.fail
+              |> chan.Reply
+          | None ->
+            Reply.Ok
+            |> Either.succeed
+            |> chan.Reply
+        | Left error ->
+          error
+          |> Either.fail
+          |> chan.Reply
+        Loaded data
 
   // ** onStateChanged
 
   let private onStateChanged (state: IrisState)
                              (oldstate: RaftState)
-                             (newstate: RaftSTate)
+                             (newstate: RaftState)
                              (chan: ReplyChan) =
-    match state.RaftServer with
-    | Some server ->
+    match state with
+    | Loaded data ->
       sprintf "Raft state changed from %A to %A" oldstate newstate
-      |> Logger.debug server.NodeId tag
+      |> Logger.debug data.RaftServer.NodeId tag
     | _ -> ()
 
     Reply.Ok
@@ -393,10 +425,10 @@ module Iris =
   // ** onCreateSnapshot
 
   let private onCreateSnapshot (state: IrisState) (chan: ReplyChan) =
-    match state.RaftServer with
-    | Some server ->
+    match state with
+    | Loaded data ->
       "CreateSnapshot requested"
-      |> Logger.debug server.NodeId tag
+      |> Logger.debug data.RaftServer.NodeId tag
     | _ -> ()
 
     Reply.Ok
@@ -426,20 +458,20 @@ module Iris =
   // ** handleGitEvent
 
   let private handleGitEvent (state: IrisState) (ev: GitEvent) (chan: ReplyChan) =
-    match state.RaftServer with
-    | Some server ->
+    match state with
+    | Loaded data ->
       match ev with
       | Started pid ->
         "Git daemon started"
-        |> Logger.debug server.NodeId tag
+        |> Logger.debug data.RaftServer.NodeId tag
 
       | Exited pid ->
         "Git daemon exited"
-        |> Logger.debug server.NodeId tag
+        |> Logger.debug data.RaftServer.NodeId tag
 
       | Pull (_, addr, port) ->
         sprintf "Client %s:%d pulled updates from me" addr port
-        |> Logger.debug server.NodeId tag
+        |> Logger.debug data.RaftServer.NodeId tag
     | _ -> ()
 
     Reply.Ok
@@ -457,6 +489,8 @@ module Iris =
 
   let private loadProject (state: IrisState) (path: FilePath) =
     either {
+      dispose state
+
       let! project = Project.load path
 
       match project.Path with
@@ -468,30 +502,21 @@ module Iris =
       | Some path ->
         // FIXME: load the actual state from disk
 
+        let  httpserver = new AssetServer(project.Config)
         let! raftserver = RaftServer.create project.Config
         let! wsserver   = SocketServer.create raftserver.Node
         let! gitserver  = GitServer.create raftserver.Node path
 
         return
-          { state with
-              Store        = Some store
-              Project      = Some project
-              GitServer    = Some gitserver
-              RaftServer   = Some raftserver
-              SocketServer = Some wsserver }
+          Loaded { Status       = ServiceStatus.Starting
+                   Store        = new Store(State.Empty)
+                   Project      = project
+                   GitServer    = gitserver
+                   RaftServer   = raftserver
+                   HttpServer   = httpserver
+                   SocketServer = wsserver
+                   Disposables  = [] }
     }
-
-  // ** startServer
-
-  let inline private startServer< ^a when ^a : (member Start : unit -> Either<IrisError,unit>)>
-                                (server: ^a option) :
-                                Either<IrisError, unit> =
-    match server with
-    | Some srv -> (^a: (member Start: unit -> Either<IrisError,unit>) server)
-    | None ->
-      "Could not start server. No instance provided."
-      |> Other
-      |> Either.fail
 
   // ** forwardLogEvents
 
@@ -520,40 +545,41 @@ module Iris =
   // ** start
 
   let private start (state: IrisState) (agent: IrisAgent) =
-    let disposables =
-      [ forwardLogEvents    agent |> Logger.subscribe
-        forwardRaftEvents   agent |> raftserver.Subscribe
-        forwardSocketEvents agent |> wsserver.Subscribe
-        forwardGitEvents    agent |> gitserver.Subscribe ]
+    match state with
+    | Idle -> Either.succeed Idle
+    | Loaded data ->
+      let disposables =
+        [ forwardLogEvents    agent |> Logger.subscribe
+          forwardRaftEvents   agent |> data.RaftServer.Subscribe
+          forwardSocketEvents agent |> data.SocketServer.Subscribe
+          forwardGitEvents    agent |> data.GitServer.Subscribe ]
 
-    match startServer state.SocketServer with
-    | Right () ->
-      match startServer state.GitServer with
-      | Right () ->
-        match startServer state.RaftServer with
-        | Right () ->
-          { state with
-              Status = ServiceStatus.Running
-              Disposable = disposables }
-          |> Either.succeed
-        | Left error ->
-          disposeAll disposables
-          Either.fail error
-      | Left error ->
+      let result1 = data.SocketServer.Start()
+      let result2 = data.GitServer.Start()
+      let result3 = data.RaftServer.Start()
+      let result4 = data.HttpServer.Start()
+
+      match result1, result2, result3, result4 with
+      | Right _, Right _, Right _, Right _ ->
+        Loaded { data with
+                   Status = ServiceStatus.Running
+                   Disposables = disposables }
+        |> Either.succeed
+      | other ->
         disposeAll disposables
-        Either.fail error
-    | Left error ->
-      disposeAll disposables
-      Either.fail error
+        dispose data.SocketServer
+        dispose data.RaftServer
+        dispose data.GitServer
+        Other "Could not start servers."
+        |> Either.fail
 
   // ** handleLoad
 
   let private handleLoad (state: IrisState)
                          (path: FilePath)
-                         (chan: ReplyChannel)
+                         (chan: ReplyChan)
                          (inbox: IrisAgent) =
-
-    match loadProject path with
+    match loadProject state path with
     | Right nextstate ->
 
       match start nextstate inbox with
@@ -567,15 +593,13 @@ module Iris =
         error
         |> Either.fail
         |> chan.Reply
-        { resetState state with
-            Status = ServiceStatus.Failed error }
+        Idle
 
     | Left error ->
       error
       |> Either.fail
       |> chan.Reply
-      { resetState state with
-          Status = ServiceStatus.Failed error }
+      Idle
 
   //  _
   // | |    ___   __ _
@@ -586,13 +610,15 @@ module Iris =
 
   // ** handleLogEvent
 
-  let private handleLogEvent (state: IrisState) (chan: ReplyChan) (log: LogEvent) =
-    broadcastMsg (LogMsg log)
-    Logger.stdout log
+  let private handleLogEvent (state: IrisState) (log: LogEvent) (chan: ReplyChan) =
+    withState state <| fun data ->
+      broadcastMsg data (LogMsg log)
+      Logger.stdout log
 
     Reply.Ok
     |> Either.succeed
     |> chan.Reply
+    state
 
   //  ____  _        _
   // / ___|| |_ __ _| |_ _   _ ___
@@ -603,25 +629,40 @@ module Iris =
   // ** handleStatus
 
   let private handleStatus (state: IrisState) (chan: ReplyChan) =
-    state.Status
-    |> Reply.Status
+    match state with
+    | Idle -> Idle
+    | Loaded data ->
+      data.Status
+      |> Reply.Status
+      |> Either.succeed
+      |> chan.Reply
+      state
+
+  // ** handleUnload
+
+  let private handleUnload (state: IrisState) (chan: ReplyChan) =
+    dispose state
+    Reply.Ok
     |> Either.succeed
     |> chan.Reply
-    state
+    Idle
 
   // ** loop
 
   let private loop (initial: IrisState) (inbox: IrisAgent) =
-    let act (state: IrisState) =
+    let rec act (state: IrisState) =
       async {
         let! (msg, chan) = inbox.Receive()
-        match msg with
-        | Msg.Load path -> handleLoad        state path chan inbox
-        | Msg.Status    -> handleStatus      state chan
-        | Msg.Git    ev -> handleGitEvent    state chan ev
-        | Msg.Socket ev -> handleSocketEvent state chan ev
-        | Msg.Raft   ev -> handleRaftEvent   state chan ev
-        | Msg.Log   log -> handleLogEvent    state chan log
+        let newstate =
+          match msg with
+          | Msg.Load path -> handleLoad        state path chan inbox
+          | Msg.Status    -> handleStatus      state      chan
+          | Msg.Git    ev -> handleGitEvent    state ev   chan
+          | Msg.Socket ev -> handleSocketEvent state ev   chan
+          | Msg.Raft   ev -> handleRaftEvent   state ev   chan
+          | Msg.Log   log -> handleLogEvent    state log  chan
+          | Msg.Unload    -> handleUnload      state      chan
+        return! act newstate
       }
 
     act initial
@@ -632,33 +673,35 @@ module Iris =
   module IrisService =
 
     let create () =
-      either {
-          let httpserver  = new AssetServer(project.Config)
+      let agent = new IrisAgent(loop Idle)
 
-          let initial =
-            { Status       = ServiceStatus.Starting
-              Store        = new Store(State.Empty)
-              Project      = None
-              GitServer    = None
-              RaftServer   = None
-              SocketServer = None
-              Dispoables   = [] }
+      Either.succeed
+        { new IIrisServer with
+            member self.Start() =
+              try
+                agent.Start()
+                |> Either.succeed
+              with
+                | exn ->
+                  exn.Message
+                  |> Other
+                  |> Either.fail
 
-          let agent = new IrisAgent(loop initial)
+            member self.Status
+              with get () =
+                match agent.PostAndReply(fun chan -> Msg.Status,chan) with
+                | Right (Reply.Status status) -> Right status
+                | Right other -> Left (Other "Unexpected response")
+                | Left error -> Left error
 
-          return
-            { new IIrisServer with
-                member self.Start() =
-                  try
-                    agent.Start()
-                    |> Either.succeed
-                  with
-                    | exn ->
-                      exn.Message
-                      |> Other
-                      |> Either.fail
+            member self.Load(path: FilePath) =
+              match agent.PostAndReply(fun chan -> Msg.Load path,chan) with
+              | Right Reply.Ok -> Right ()
+              | Right other -> Left (Other "Unexpectted response")
+              | Left error -> Left error
 
-                member self.Dispose() =
-                  dispose httpserver
-              }
-      }
+            member self.Dispose() =
+              agent.PostAndReply(fun chan -> Msg.Unload, chan)
+              |> ignore
+              dispose agent
+          }

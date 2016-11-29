@@ -9,6 +9,8 @@ module CommandLine =
   open Iris.Core
   open Iris.Raft
   open Iris.Service.Persistence
+  open Iris.Service.Iris
+  open Iris.Service.Raft
   open System
   open System.IO
   open System.Linq
@@ -121,13 +123,14 @@ module CommandLine =
 
   // ** tryAppendEntry
 
-  let tryAppendEntry (ctx: RaftServer) str =
+  let tryAppendEntry (ctx: IRaftServer) str =
     warn "CLI AppendEntry currently not supported"
 
   // ** timeoutRaft
 
-  let timeoutRaft (ctx: RaftServer) =
-    ctx.ForceTimeout()
+  let timeoutRaft (ctx: IRaftServer) =
+    ctx.ForceElection()
+    |> ignore
 
   // ** Command Parsers
 
@@ -164,7 +167,7 @@ module CommandLine =
 
   // ** trySetLogLevel
 
-  let trySetLogLevel (str: string) (context: RaftServer) =
+  let trySetLogLevel (str: string) (context: IRaftServer) =
     let config =
       { context.Options.RaftConfig with
           LogLevel = LogLevel.Parse str }
@@ -172,13 +175,13 @@ module CommandLine =
 
   // ** trySetInterval
 
-  let trySetInterval i (context: RaftServer) =
+  let trySetInterval i (context: IRaftServer) =
     let config = { context.Options.RaftConfig with PeriodicInterval = i }
     context.Options <- Config.updateEngine config context.Options
 
   // ** tryJoinCluster
 
-  let tryJoinCluster (hst: string) (context: RaftServer) =
+  let tryJoinCluster (hst: string) (context: IRaftServer) =
     let parsed =
       match String.split [| ' ' |] hst with
         | [| ip; port |] -> Some (ip, int port)
@@ -190,12 +193,12 @@ module CommandLine =
 
   // ** tryLeaveCluster
 
-  let tryLeaveCluster (context: RaftServer) =
+  let tryLeaveCluster (context: IRaftServer) =
     context.LeaveCluster()
 
   // ** tryAddNode
 
-  let tryAddNode (hst: string) (context: RaftServer) =
+  let tryAddNode (hst: string) (context: IRaftServer) =
     let parsed =
       match String.split [| ' ' |] hst with
         | [| id; ip; port |] -> Some (id, ip, int port)
@@ -213,7 +216,7 @@ module CommandLine =
 
   // ** tryRmNode
 
-  let tryRmNode (hst: string) (context: RaftServer) =
+  let tryRmNode (hst: string) (context: IRaftServer) =
       match context.RmNode(String.trim hst) with
         | Some appended ->
           printfn "Removed node: %A in entry %A" hst (string appended.Id)
@@ -229,7 +232,7 @@ module CommandLine =
   // |_____\___/ \___/| .__/ s
   //                  |_|
 
-  let interactiveLoop (context: IrisService) : unit =
+  let interactiveLoop (context: IIrisService) : unit =
     printfn "Welcome to the Raft REPL. Type help to see all commands."
     let kont = ref true
     let rec proc kontinue =

@@ -290,3 +290,9 @@ module WebSockets =
                 subscriptions.Clear()
                 dispose server }
       }
+
+    let broadcast (cmd: StateMachine) (server: IWebSocketServer) =
+      server.Broadcast cmd
+
+    let send (id: Id) (cmd: StateMachine) (server: IWebSocketServer) =
+      server.Send id cmd

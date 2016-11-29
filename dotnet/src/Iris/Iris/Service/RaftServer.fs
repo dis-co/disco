@@ -93,13 +93,14 @@ module Raft =
   type IRaftServer =
     inherit IDisposable
 
-    abstract NodeId : Id
-    abstract Append : StateMachine -> Either<IrisError, EntryResponse>
+    abstract Node          : RaftNode
+    abstract NodeId        : Id
+    abstract Append        : StateMachine -> Either<IrisError, EntryResponse>
     abstract ForceElection : unit -> Either<IrisError, unit>
-    abstract State : Either<IrisError,RaftAppContext>
-    abstract Status : Either<IrisError,ServiceStatus>
-    abstract Subscribe : (RaftEvent -> unit) -> IDisposable
-    abstract Start : unit -> Either<IrisError,unit>
+    abstract State         : Either<IrisError,RaftAppContext>
+    abstract Status        : Either<IrisError,ServiceStatus>
+    abstract Subscribe     : (RaftEvent -> unit) -> IDisposable
+    abstract Start         : unit -> Either<IrisError,unit>
 
   // ** periodicR
 
@@ -1336,6 +1337,9 @@ module Raft =
 
         return
           { new IRaftServer with
+              member self.Node
+                with get () = state.Raft.Node
+
               member self.NodeId
                 with get () = state.Raft.Node.Id
 
@@ -1395,3 +1399,8 @@ module Raft =
                 dispose agent
             }
       }
+
+    let isLeader (server: IRaftServer) : bool =
+      match server.State with
+      | Right state -> Raft.isLeader state.Raft
+      | _ -> false
