@@ -23,3 +23,11 @@ let login(info: StateInfo, username: string, password: string) =
     { curSession with Status = { StatusType=Login; Payload=username+"\n"+password}}
     |> UpdateSession
     |> info.context.Post)
+
+let removeNode(info: StateInfo, nodeId: Id) =
+  match Map.tryFind nodeId info.state.Nodes with
+  | Some node ->
+    RemoveNode node
+    |> info.context.Post
+  | None ->
+    printfn "Couldn't find node with Id %O" nodeId
