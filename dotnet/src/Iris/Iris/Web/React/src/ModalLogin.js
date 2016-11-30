@@ -3,6 +3,7 @@ import Form from 'muicss/lib/react/form';
 import Input from 'muicss/lib/react/input';
 import Button from 'muicss/lib/react/button';
 import SkyLight from 'react-skylight';
+import { login, getCurrentSession } from 'iris';
 
 const STATUS = {
   AUTHORIZED: "Authorized",
@@ -10,24 +11,26 @@ const STATUS = {
   UNAUTHORIZED: "Unauthorized"
 }
 
-export default class LoginDialog extends React.Component {
+export default class ModalLogin extends React.Component {
   constructor(props) {
       super(props);
       this.state = { username: "", password: "" };
   }
 
   handleSubmit(username, password) {
-    this.props.login(username, password);
+    login(this.props.info, username, password);
     this.setState({status: STATUS.WAITING});
   };
 
   shouldComponentUpdate(nextProps, nextState) {
-    return nextProps.session && nextProps.session.Status.StatusType.ToString() !== this.state.status;
+    var session = getCurrentSession(nextProps.info);
+    return session && session.Status.StatusType.ToString() !== this.state.status;
   }
 
   componentWillReceiveProps(nextProps) {
-    if (nextProps.session) {
-      let status = nextProps.session.Status.StatusType.ToString();
+    var session = getCurrentSession(nextProps.info);
+    if (session) {
+      let status = session.Status.StatusType.ToString();
       switch (status) {
         case STATUS.AUTHORIZED:
           this.setState({ status })

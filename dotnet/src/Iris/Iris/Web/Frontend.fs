@@ -15,10 +15,10 @@ open Iris.Web.Lib
 let context = ClientContext.Start()
 
 type ReactApp =
-  abstract mount: ((StateInfo->unit)->unit)->unit
+  abstract mount: StateInfo*((StateInfo->unit)->unit)->unit
 
 let reactApp: ReactApp = importDefault "ReactApp"
-reactApp.mount(fun f ->
+reactApp.mount({ context = context; state = Iris.Core.State.Empty }, fun f ->
   (context :> IObservable<_>).Subscribe(fun (ctx, state) ->
     f { context = ctx; state = state })
   |> ignore

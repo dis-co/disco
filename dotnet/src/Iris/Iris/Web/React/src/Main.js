@@ -1,29 +1,25 @@
 import * as React from "react";
 import * as ReactDom from "react-dom";
-import Layout from "./ColumnLayout";
-import { getCurrentSession, login } from "lib";
+import LayoutColumn from "./LayoutColumn";
 
 class App extends React.Component {
   constructor(props) {
     super(props);
-    props.subscribe(state => {
-      console.log("Received state:",state);
-      this.setState(state);
+    props.subscribe(info => {
+      // console.log("Received state:",info.state);
+      this.setState(info);
     })
   }
 
   render() {
-    return (
-      <Layout
-        login={(username, password) => login(this.state, username, password)}
-        session={this.state ? getCurrentSession(this.state) : null}
-        state={this.state ? this.state.state : null} />
-    );
+    return <LayoutColumn info={this.state || this.props.info} />;
   }
 }
 
 export default {
-  mount(subscribe) {
-    ReactDom.render(<App subscribe={subscribe} />, document.getElementById("app"))
+  mount(info, subscribe) {
+    ReactDom.render(
+      <App info={info} subscribe={subscribe} />,
+      document.getElementById("app"))
   }
 }
