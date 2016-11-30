@@ -106,6 +106,7 @@ module Raft =
     abstract LeaveCluster  : unit -> Either<IrisError,unit>
     abstract AddNode       : RaftNode -> Either<IrisError,EntryResponse>
     abstract RmNode        : Id -> Either<IrisError,EntryResponse>
+    abstract Connections   : Either<IrisError,Connections>
 
   // ** periodicR
 
@@ -1423,6 +1424,9 @@ module Raft =
                   do! withOk Msg.Initialize agent
                   do! server.Start()
                 }
+
+              member self.Connections
+                with get () = Right connections
 
               member self.Dispose () =
                 dispose periodic

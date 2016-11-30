@@ -212,8 +212,8 @@ module JointConsensus =
         let entry =
           nodes
           |> Array.take (int <| n / 2u)
-          |> Array.map snd
-          |> Log.mkConfigChange 1u peers
+          |> Array.map (snd >> ConfigChange.NodeRemoved)
+          |> Log.mkConfigChange 1u
 
         let! idx = Raft.currentIndexM ()
         ci := idx
@@ -346,8 +346,8 @@ module JointConsensus =
         // we establish a new cluster configuration with 5 new nodes
         let entry =
           nodes
-          |> Array.map snd
-          |> Log.mkConfigChange 1u peers
+          |> Array.map (snd >> ConfigChange.NodeAdded)
+          |> Log.mkConfigChange 1u
 
         let! idx = Raft.currentIndexM ()
         ci := idx
@@ -466,7 +466,7 @@ module JointConsensus =
           } :> IRaftCallbacks
 
       raft {
-        let self = snd nodes.[0]
+        let self = snd nodes.[0]        //
         do! Raft.setSelfM self
 
         do! Raft.setPeersM (nodes |> Map.ofArray)
@@ -513,9 +513,9 @@ module JointConsensus =
         // we establish a new cluster configuration *without* the last 5 nodes
         let entry =
           nodes
-          |> Array.map snd
+          |> Array.map (snd >> ConfigChange.NodeRemoved)
           |> Array.skip (int <| n / 2u)
-          |> Log.mkConfigChange !term peers
+          |> Log.mkConfigChange !term
 
         let! response = Raft.receiveEntry entry
 
@@ -601,9 +601,9 @@ module JointConsensus =
         // with node id's 5 - 9
         let entry =
           Map.toArray nodes
-          |> Array.map snd
-          |> Array.append [| self |]
-          |> Log.mkConfigChange !term peers
+          |> Array.map (snd >> ConfigChange.NodeAdded)
+          |> Array.append [| ConfigChange.NodeAdded self |]
+          |> Log.mkConfigChange !term
 
         let! response = Raft.receiveEntry entry
 
@@ -670,9 +670,9 @@ module JointConsensus =
         // with node id's 5 - 9
         let entry =
           nodes
-          |> Array.map snd
-          |> Array.append [| self |]
-          |> Log.mkConfigChange 1u peers
+          |> Array.map (snd >> ConfigChange.NodeAdded)
+          |> Array.append [| ConfigChange.NodeAdded self |]
+          |> Log.mkConfigChange 1u
 
         let! response = Raft.receiveEntry entry
 
@@ -744,9 +744,9 @@ module JointConsensus =
         // with node id's 5 - 9
         let entry =
           nodes
-          |> Array.map snd
+          |> Array.map (snd >> ConfigChange.NodeRemoved)
           |> Array.take (int <| n / 2u)
-          |> Log.mkConfigChange !term peers
+          |> Log.mkConfigChange !term
 
         let! response = Raft.receiveEntry entry
 
@@ -798,9 +798,9 @@ module JointConsensus =
         // we establish a new cluster configuration with 5 new nodes
         let entry =
           nodes
-          |> Array.map snd
-          |> Array.append [| self |]
-          |> Log.mkConfigChange 1u peers
+          |> Array.map (snd >> ConfigChange.NodeAdded)
+          |> Array.append [| ConfigChange.NodeAdded self |]
+          |> Log.mkConfigChange 1u 
 
         let! response = Raft.receiveEntry entry
 

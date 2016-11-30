@@ -5,6 +5,7 @@ open Expecto
 open Iris.Core
 open Iris.Raft
 open Iris.Service
+open Iris.Service.Git
 open Iris.Serialization.Raft
 open System.Net
 open System.Threading
@@ -62,7 +63,11 @@ module GitTests =
       |> Project.save user.Signature "Project Initialized"
       |> Either.get
 
-    uuid, tmpdir, project
+    let path =
+      project.Path
+      |> Option.get
+
+    uuid, tmpdir, project, node, path
 
   //  ____                      _
   // |  _ \ ___ _ __ ___   ___ | |_ ___  ___
@@ -109,77 +114,91 @@ module GitTests =
 
   let test_server_startup =
     testCase "Server startup" <| fun _ ->
-      let uuid, tmpdir, project =
-        mkEnvironment 10000us
+      either {
+        let uuid, tmpdir, project, node, path =
+          mkEnvironment 10000us
 
-      use gitserver = new GitServer(project)
-      gitserver.Start()
+        use! gitserver = GitServer.create node path
+        do! gitserver.Start()
 
-      expect "Should be running" true Service.isRunning gitserver.Status
+        do! expectE "Should be running" true Service.isRunning gitserver.Status
+      }
+      |> noError
 
   let test_server_startup_should_error_on_eaddrinuse =
     testCase "Server should fail on EADDRINUSE" <| fun _ ->
-      let uuid, tmpdir, project =
-        mkEnvironment 10001us
+      either {
+        let uuid, tmpdir, project, node, path =
+          mkEnvironment 10001us
 
-      use gitserver1 = new GitServer(project)
-      // gitserver1.OnLogMsg <- Logger.log (Id uuid) Debug
-      gitserver1.Start()
+        use! gitserver1 = GitServer.create node path
+        do! gitserver1.Start()
 
-      expect "Should be running" true Service.isRunning gitserver1.Status
+        do! expectE "Should be running" true Service.isRunning gitserver1.Status
 
-      use gitserver2 = new GitServer(project)
-      gitserver2.Start()
+        use! gitserver2 = GitServer.create node path
 
-      expect "Should have failed" true Service.hasFailed gitserver2.Status
+        do! match gitserver2.Start() with
+            | Right () -> Left (Other "Should have failed to start")
+            | Left error -> Right ()
+
+        do! expectE "Should have failed" true Service.hasFailed gitserver2.Status
+      }
+      |> noError
 
   let test_server_availability =
     testCase "Server availability" <| fun _ ->
-      let port = 10002us
+      either {
+        let port = 10002us
 
-      let uuid, tmpdir, project =
-        mkEnvironment port
+        let uuid, tmpdir, project, node, path =
+          mkEnvironment port
 
-      use gitserver = new GitServer(project)
-      gitserver.Start()
+        use! gitserver = GitServer.create node path
+        do! gitserver.Start()
 
-      expect "Should be running" true Service.isRunning gitserver.Status
+        do! expectE "Should be running" true Service.isRunning gitserver.Status
 
-      let target = mkTmpDir ()
+        let target = mkTmpDir ()
 
-      let repo =
-        tmpdir.FullName
-        |> Path.baseName
-        |> sprintf "git://localhost:%d/%s/.git" port
-        |> Git.Repo.clone target.FullName
+        let repo =
+          tmpdir.FullName
+          |> Path.baseName
+          |> sprintf "git://localhost:%d/%s/.git" port
+          |> Git.Repo.clone target.FullName
 
-      expect "Should have successfully clone project" true Either.isSuccess repo
+        expect "Should have successfully clone project" true Either.isSuccess repo
+      }
+      |> noError
 
   let test_server_cleanup =
     testCase "Should cleanup processes correctly" <| fun _ ->
-      let port = 10003us
+      either {
+        let port = 10003us
 
-      let uuid, tmpdir, project =
-        mkEnvironment port
+        let uuid, tmpdir, project, node, path =
+          mkEnvironment port
 
-      let gitserver1 = new GitServer(project)
-      gitserver1.Start()
+        let! gitserver1 = GitServer.create node path
+        do! gitserver1.Start()
 
-      expect "Should be running" true Service.isRunning gitserver1.Status
+        do! expectE "Should be running" true Service.isRunning gitserver1.Status
 
-      let gitserver2 = new GitServer(project)
-      gitserver2.Start()
+        let! gitserver2 = GitServer.create node path
+        do! gitserver2.Start()
 
-      expect "Should have failed" true Service.hasFailed gitserver2.Status
+        do! expectE "Should have failed" true Service.hasFailed gitserver2.Status
 
-      dispose gitserver1
-      dispose gitserver2
+        dispose gitserver1
+        dispose gitserver2
 
-      expect "Should not be running" false Service.isRunning gitserver1.Status
-      expect "Should not be running" false Service.isRunning gitserver2.Status
+        do! expectE "Should not be running" false Service.isRunning gitserver1.Status
+        do! expectE "Should not be running" false Service.isRunning gitserver2.Status
 
-      expect "Should leave no dangling process 1/2" false Process.isRunning gitserver1.Pid
-      expect "Should leave no dangling process 2/2" false Process.isRunning gitserver2.Pid
+        do! expectE "Should leave no dangling process 1/2" false Process.isRunning gitserver1.Pid
+        do! expectE "Should leave no dangling process 2/2" false Process.isRunning gitserver2.Pid
+      }
+      |> noError
 
   //  _____         _     _     _     _
   // |_   _|__  ___| |_  | |   (_)___| |_

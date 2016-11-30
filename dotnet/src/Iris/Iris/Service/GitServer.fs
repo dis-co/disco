@@ -57,9 +57,10 @@ module Git =
   type IGitServer =
     inherit IDisposable
 
-    abstract Status : ServiceStatus
+    abstract Status    : Either<IrisError,ServiceStatus>
+    abstract Pid       : Either<IrisError,int>
     abstract Subscribe : (GitEvent -> unit) -> IDisposable
-    abstract Start: unit -> Either<IrisError,unit>
+    abstract Start     : unit -> Either<IrisError,unit>
 
   // ** GitState
 
@@ -73,6 +74,7 @@ module Git =
   [<RequireQualifiedAccess>]
   type private Msg =
     | Status
+    | GetPid
     | Pid    of int
     | Exit   of int
     | Log    of string
@@ -82,6 +84,7 @@ module Git =
   [<RequireQualifiedAccess>]
   type private Reply =
     | Ok
+    | Pid    of int
     | Status of ServiceStatus
 
   // ** Subscriptions
@@ -90,7 +93,7 @@ module Git =
 
   // ** ReplyChan
 
-  type private ReplyChan = AsyncReplyChannel<Reply>
+  type private ReplyChan = AsyncReplyChannel<Either<IrisError,Reply>>
 
   // ** Message
 
@@ -192,10 +195,7 @@ module Git =
       Pull(pid, ip, port)
       |> Either.succeed
 
-    | _ ->
-      sprintf "Line not relevant or recognized: %A" line
-      |> ParseError
-      |> Either.fail
+    | _ -> Either.fail IrisError.OK      // we don't care about the rest
 
   // ** loop
 
@@ -210,22 +210,34 @@ module Git =
         let! (msg, chan) = inbox.Receive()
         let newstate =
           match msg with
+          | Msg.GetPid ->
+            Reply.Pid state.Pid
+            |> Either.succeed
+            |> chan.Reply
+            state
+
           | Msg.Pid pid ->
+            Reply.Ok
+            |> Either.succeed
+            |> chan.Reply
             { state with Pid = pid }
 
           | Msg.Status ->
             state.Status
             |> Reply.Status
+            |> Either.succeed
             |> chan.Reply
             state
 
           | Msg.Exit code when code = 0 ->
             Reply.Ok
+            |> Either.succeed
             |> chan.Reply
             { state with Status = ServiceStatus.Stopped }
 
           | Msg.Exit code ->
             Reply.Ok
+            |> Either.succeed
             |> chan.Reply
             let error =
               sprintf "Non-zero exit code: %d" code
@@ -233,19 +245,17 @@ module Git =
             { state with Status = ServiceStatus.Failed error }
 
           | Msg.Log msg ->
+            Reply.Ok
+            |> Either.succeed
+            |> chan.Reply
             match parseLog msg with
             | Right msg ->
               for subscription in subscriptions do
                 subscription.OnNext msg
               match msg with
-              | Started pid ->
-                { state with SubPid = pid }
-              | _ -> state
-            | Left error ->
-              error
-              |> string
-              |> Logger.err id tag
-              state
+              | Started pid -> { state with SubPid = pid }
+              | _           ->   state
+            | _ -> state
         return! act newstate
       }
     act initial
@@ -254,14 +264,14 @@ module Git =
 
   let private starting (agent: GitAgent) =
     match agent.PostAndReply(fun chan -> Msg.Status,chan) with
-    | Reply.Status status when status = ServiceStatus.Starting -> true
+    | Right (Reply.Status status) when status = ServiceStatus.Starting -> true
     | _ -> false
 
   // ** started
 
   let private running (agent: GitAgent) =
     match agent.PostAndReply(fun chan -> Msg.Status,chan) with
-    | Reply.Status status when status = ServiceStatus.Running -> true
+    | Right (Reply.Status status) when status = ServiceStatus.Running -> true
     | _ -> false
 
   // ** GitServer
@@ -302,7 +312,32 @@ module Git =
       Either.succeed
         { new IGitServer with
             member self.Status
-              with get () = implement "Status"
+              with get () =
+                match agent.PostAndReply(fun chan -> Msg.Status,chan) with
+                | Right (Reply.Status status) ->
+                  Either.succeed status
+                | Right other ->
+                  other
+                  |> sprintf "Unexpected reply from GitAgent: %A"
+                  |> GitError
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
+
+            member self.Pid
+              with get () =
+                match agent.PostAndReply(fun chan -> Msg.GetPid,chan) with
+                | Right (Reply.Pid pid) ->
+                  Either.succeed pid
+                | Right other ->
+                  other
+                  |> sprintf "Unexpected reply from GitAgent: %A"
+                  |> GitError
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
 
             member self.Subscribe(callback: GitEvent -> unit) =
               { new IObserver<GitEvent> with
@@ -314,19 +349,23 @@ module Git =
             member self.Start () =
               try
                 if proc.Start() then
+                  proc.BeginErrorReadLine()
+                  proc.BeginErrorReadLine()
+
                   agent.PostAndReply(fun chan -> Msg.Pid proc.Id, chan)
                   |> ignore
-                  proc.BeginErrorReadLine()
-                  proc.BeginErrorReadLine()
+
+                  // wait for a little while
                   let mutable n = 0
                   while starting agent && n < 1000 do
                     n <- n + 10
                     Thread.Sleep 10
+
                   if running agent then
                     Either.succeed ()
                   else
                     match agent.PostAndReply(fun chan -> Msg.Status,chan) with
-                    | Reply.Status status ->
+                    | Right (Reply.Status status) ->
                       status
                       |> string
                       |> GitError

@@ -27,47 +27,51 @@ module ZmqIntegrationTests =
 
   let test_proper_cleanup_of_request_sockets =
     testCase "validate Req sockets are cleaned up properly" <| fun _ ->
-      let srv = "tcp://127.0.0.1:8989"
+      either {
+        let srv = "tcp://127.0.0.1:8989"
 
-      let n = 12
-      let msgs = [ "hi"; "yep"; "bye" ]
-      let count = ref 0
+        let n = 12
+        let msgs = [ "hi"; "yep"; "bye" ]
+        let count = ref 0
 
-      let handler (msg: byte array) =
-        lock count <| fun _ ->
-          let next = !count + 1
-          count := next
-        msg
+        let handler (msg: byte array) =
+          lock count <| fun _ ->
+            let next = !count + 1
+            count := next
+          msg
 
-      use rep = new Zmq.Rep(srv, handler)
-      rep.Start()
+        use rep = new Zmq.Rep(srv, handler)
 
-      let socks =
-        [ for _ in 0 .. (n - 1) do
-            let sock = new Zmq.Req(Id.Create(), srv, 50)
-            sock.Start()
-            yield sock ]
+        do! rep.Start()
 
-      let request (str: string) (sck: Zmq.Req) =
-        async {
-          let result = str |> Encoding.UTF8.GetBytes |> sck.Request
-          return result
-        }
+        let socks =
+          [ for _ in 0 .. (n - 1) do
+              let sock = new Zmq.Req(Id.Create(), srv, 50)
+              sock.Start()
+              yield sock ]
 
-      msgs
-      |> List.fold (fun lst str ->
-                   List.fold
-                     (fun inner sock -> request str sock :: inner)
-                     lst
-                     socks)
-                  []
-      |> Async.Parallel
-      |> Async.RunSynchronously
-      |> Array.iter (expect "Should be a success" true Either.isSuccess)
+        let request (str: string) (sck: Zmq.Req) =
+          async {
+            let result = str |> Encoding.UTF8.GetBytes |> sck.Request
+            return result
+          }
 
-      expect "Should have correct number of requests" (n * List.length msgs) id !count
+        msgs
+        |> List.fold (fun lst str ->
+                    List.fold
+                      (fun inner sock -> request str sock :: inner)
+                      lst
+                      socks)
+                    []
+        |> Async.Parallel
+        |> Async.RunSynchronously
+        |> Array.iter (expect "Should be a success" true Either.isSuccess)
 
-      List.iter dispose socks
+        expect "Should have correct number of requests" (n * List.length msgs) id !count
+
+        List.iter dispose socks
+      }
+      |> noError
 
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
