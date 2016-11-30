@@ -97,6 +97,7 @@ type MockService(?project: IrisProject ref) =
       //   wsserver.Broadcast (LogMsg msg)
 
     wsserver.OnMessage <- fun id command ->
+      printfn "Command received %A" command
       match command with
       | AddSession session ->
         match wsserver.BuildSession(id, session) with

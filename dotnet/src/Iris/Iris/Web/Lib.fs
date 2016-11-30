@@ -31,3 +31,13 @@ let removeNode(info: StateInfo, nodeId: Id) =
     |> info.context.Post
   | None ->
     printfn "Couldn't find node with Id %O" nodeId
+
+let addNode(info: StateInfo, host: string, ip: string, port: string) =
+  try
+    let node = Id.Create() |> Iris.Raft.Node.create
+    { node with HostName = host; IpAddr = IPv4Address ip; Port = uint16 port }
+    |> AddNode
+    |> info.context.Post
+  with
+  | exn -> printfn "Couldn't create node: %s" exn.Message
+
