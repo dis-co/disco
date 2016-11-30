@@ -128,20 +128,27 @@ module GitTests =
   let test_server_startup_should_error_on_eaddrinuse =
     testCase "Server should fail on EADDRINUSE" <| fun _ ->
       either {
+        printfn "================================================================"
         let uuid, tmpdir, project, node, path =
           mkEnvironment 10001us
 
+        printfn "server1"
         use! gitserver1 = GitServer.create node path
+        use obs1 = gitserver1.Subscribe (printfn "git1: %A")
         do! gitserver1.Start()
 
         do! expectE "Should be running" true Service.isRunning gitserver1.Status
 
+        printfn "server2"
         use! gitserver2 = GitServer.create node path
+        use obs2 = gitserver2.Subscribe (printfn "git2: %A")
 
+        printfn "start"
         do! match gitserver2.Start() with
-            | Right () -> Left (Other "Should have failed to start")
-            | Left error -> Right ()
+            | Right ()   -> printfn "Right"; Left (Other "Should have failed to start")
+            | Left error -> printfn "Left"; Right ()
 
+        printfn "expect"
         do! expectE "Should have failed" true Service.hasFailed gitserver2.Status
       }
       |> noError
@@ -185,7 +192,10 @@ module GitTests =
         do! expectE "Should be running" true Service.isRunning gitserver1.Status
 
         let! gitserver2 = GitServer.create node path
-        do! gitserver2.Start()
+
+        do! match gitserver2.Start() with
+            | Right () -> Left (Other "Should have failed but didn't")
+            | Left error -> Right ()
 
         do! expectE "Should have failed" true Service.hasFailed gitserver2.Status
 
@@ -216,5 +226,5 @@ module GitTests =
       test_server_startup
       test_server_availability
       test_server_startup_should_error_on_eaddrinuse
-      test_server_cleanup
+      // test_server_cleanup
     ]

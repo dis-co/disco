@@ -112,6 +112,15 @@ type ServiceStatus =
   | Degraded of IrisError
   | Failed   of IrisError
 
+  override self.ToString() =
+    match self with
+    | Starting     -> "ServiceStatus.Starting"
+    | Running      -> "ServiceStatus.Running"
+    | Stopping     -> "ServiceStatus.Stopping"
+    | Stopped      -> "ServiceStatus.Stopped"
+    | Degraded err -> sprintf "ServiceStatus.Degraded %A" err
+    | Failed   err -> sprintf "ServiceStatus.Failed %A" err
+
 [<RequireQualifiedAccess>]
 module Service =
 
