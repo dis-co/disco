@@ -128,27 +128,17 @@ module GitTests =
   let test_server_startup_should_error_on_eaddrinuse =
     testCase "Server should fail on EADDRINUSE" <| fun _ ->
       either {
-        printfn "================================================================"
         let uuid, tmpdir, project, node, path =
           mkEnvironment 10001us
 
-        printfn "server1"
         use! gitserver1 = GitServer.create node path
-        use obs1 = gitserver1.Subscribe (printfn "git1: %A")
         do! gitserver1.Start()
-
         do! expectE "Should be running" true Service.isRunning gitserver1.Status
 
-        printfn "server2"
         use! gitserver2 = GitServer.create node path
-        use obs2 = gitserver2.Subscribe (printfn "git2: %A")
-
-        printfn "start"
         do! match gitserver2.Start() with
-            | Right ()   -> printfn "Right"; Left (Other "Should have failed to start")
-            | Left error -> printfn "Left"; Right ()
-
-        printfn "expect"
+            | Right ()   -> Left (Other "Should have failed to start")
+            | Left error -> Right ()
         do! expectE "Should have failed" true Service.hasFailed gitserver2.Status
       }
       |> noError
@@ -199,14 +189,17 @@ module GitTests =
 
         do! expectE "Should have failed" true Service.hasFailed gitserver2.Status
 
+        let! pid1 = gitserver1.Pid
+        let! pid2 = gitserver2.Pid
+
         dispose gitserver1
         dispose gitserver2
 
-        do! expectE "Should not be running" false Service.isRunning gitserver1.Status
-        do! expectE "Should not be running" false Service.isRunning gitserver2.Status
+        do! expectE "1 should be stopped" true Service.isStopped gitserver1.Status
+        do! expectE "2 should be stopped" true Service.isStopped gitserver2.Status
 
-        do! expectE "Should leave no dangling process 1/2" false Process.isRunning gitserver1.Pid
-        do! expectE "Should leave no dangling process 2/2" false Process.isRunning gitserver2.Pid
+        do! expectE "1 should leave no dangling process" false Process.isRunning (Right pid1)
+        do! expectE "2 should leave no dangling process" false Process.isRunning (Right pid2)
       }
       |> noError
 
@@ -226,5 +219,5 @@ module GitTests =
       test_server_startup
       test_server_availability
       test_server_startup_should_error_on_eaddrinuse
-      // test_server_cleanup
+      test_server_cleanup
     ]

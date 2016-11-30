@@ -103,17 +103,6 @@ module Git =
         | Running data -> dispose data
         | _ -> ()
 
-  // ** Msg
-
-  [<RequireQualifiedAccess>]
-  type private Msg =
-    | Start    of path:FilePath * addr:string * port:uint16
-    | Stop
-    | Status
-    | Pid
-    | Exit     of int
-    | Log      of string
-
   // ** Reply
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
@@ -126,13 +115,30 @@ module Git =
 
   type private ReplyChan = AsyncReplyChannel<Either<IrisError,Reply>>
 
-  // ** Message
+  // ** Msg
 
-  type private Message = Msg * ReplyChan
+  [<RequireQualifiedAccess;NoComparison;NoEquality>]
+  type private Msg =
+    | Start    of path:FilePath * addr:string * port:uint16 * chan:ReplyChan
+    | Stop     of chan:ReplyChan
+    | Status   of chan:ReplyChan
+    | Pid      of chan:ReplyChan
+    | Exit     of int                   // Event from Git, needs no reply
+    | Log      of string                // Event from Git, needs no reply either
+
+    override self.ToString () =
+      match self with
+      | Start  (path, addr, port, _) ->
+        sprintf "Start path:%s addr:%s port:%d" path addr port
+      | Stop   _ -> "Stop"
+      | Status _ -> "Status"
+      | Pid    _ -> "Pid"
+      | Exit   c -> sprintf "Exit: %d" c
+      | Log str  -> sprintf "Log: %s" str
 
   // ** GitAgent
 
-  type private GitAgent = MailboxProcessor<Message>
+  type private GitAgent = MailboxProcessor<Msg>
 
   // ** createProcess
 
@@ -180,14 +186,14 @@ module Git =
   ///
   /// Returns: unit
   let private exitHandler (proc: Process) (agent: GitAgent) _ =
-    agent.PostAndReply(fun chan -> Msg.Exit proc.ExitCode, chan)
-    |> ignore
+    agent.Post(Msg.Exit proc.ExitCode)
 
   // ** logHandler
 
   let private logHandler (agent: GitAgent) (data: DataReceivedEventArgs) =
-    agent.PostAndReply(fun chan -> Msg.Log data.Data, chan)
-    |> ignore
+    match data.Data with
+    | null -> ()
+    | _ -> agent.Post(Msg.Log data.Data)
 
   let private (|Ready|_|) (input: string) =
     let m = Regex.Match(input, "\[(?<pid>[0-9]*)\] Ready to rumble")
@@ -261,17 +267,12 @@ module Git =
 
     try
       if proc.Start() then
-        printfn "started"
         proc.BeginOutputReadLine()
         proc.BeginErrorReadLine()
-
-        printfn "replying"
 
         Reply.Ok
         |> Either.succeed
         |> chan.Reply
-
-        printfn "returning"
 
         Running {
             Status = ServiceStatus.Starting
@@ -283,7 +284,6 @@ module Git =
                             onExitEvent ]
           }
       else
-        printfn "not started"
         "Could not start git daemon process"
         |> GitError
         |> Either.fail
@@ -291,7 +291,6 @@ module Git =
         state
     with
       | exn ->
-        printfn "exn: %s" exn.Message
         exn.Message
         |> sprintf "Exception starting git daemon process %s"
         |> GitError
@@ -301,22 +300,10 @@ module Git =
 
   // ** handleLog
 
-  let private handleLog (state: GitState)
-                        (msg: string)
-                        (subscriptions: Subscriptions)
-                        (chan: ReplyChan) =
+  let private handleLog (state: GitState) (msg: string) (subscriptions: Subscriptions) =
     match state with
-    | Idle ->
-      "No GitDaemon started"
-      |> GitError
-      |> Either.fail
-      |> chan.Reply
-      Idle
+    | Idle -> state
     | Running data ->
-      Reply.Ok
-      |> Either.succeed
-      |> chan.Reply
-
       match parseLog msg with
       | Right msg ->
         // notify
@@ -334,37 +321,21 @@ module Git =
 
   // ** handleExit
 
-  let private handleExit (state: GitState)
-                         (code: int)
-                         (subscriptions: Subscriptions)
-                         (chan: ReplyChan) =
+  let private handleExit (state: GitState) (code: int) (subscriptions: Subscriptions) =
     match state with
-    | Idle ->
-      "No GitDaemon started"
-      |> GitError
-      |> Either.fail
-      |> chan.Reply
-      Idle
+    | Idle -> state
     | Running data ->
       // notify
       for subscription in subscriptions do
         subscription.OnNext (Exited code)
 
       match code with
-      | 0 ->
-        Reply.Ok
-        |> Either.succeed
-        |> chan.Reply
-        Running { data with Status = ServiceStatus.Stopped }
+      | 0 -> Running { data with Status = ServiceStatus.Stopped }
       | _ ->
-        Reply.Ok
-        |> Either.succeed
-        |> chan.Reply
         let error =
           sprintf "Non-zero exit code: %d" code
           |> GitError
         Running { data with Status = ServiceStatus.Failed error }
-
 
   // ** handleStatus
 
@@ -421,16 +392,27 @@ module Git =
   let private loop (initial: GitState) (subscriptions: Subscriptions) (inbox: GitAgent) =
     let rec act (state: GitState) =
       async {
-        let! (msg, chan) = inbox.Receive()
+        let! msg = inbox.Receive()
 
         let newstate =
           match msg with
-          | Msg.Start (path,addr,port) -> handleStart state path addr port chan inbox
-          | Msg.Pid       -> handlePid      state                    chan
-          | Msg.Status    -> handleStatus   state                    chan
-          | Msg.Exit code -> handleExit     state code subscriptions chan
-          | Msg.Log msg   -> handleLog      state msg  subscriptions chan
-          | Msg.Stop      -> handleStop     state      subscriptions chan
+          | Msg.Start (path,addr,port,chan) ->
+            handleStart state path addr port chan inbox
+
+          | Msg.Pid chan ->
+            handlePid state chan
+
+          | Msg.Status chan ->
+            handleStatus state chan
+
+          | Msg.Stop chan ->
+            handleStop state subscriptions chan
+
+          | Msg.Exit code ->
+            handleExit state code subscriptions
+
+          | Msg.Log msg ->
+            handleLog state msg subscriptions
 
         return! act newstate
       }
@@ -439,16 +421,18 @@ module Git =
   // ** starting
 
   let private starting (agent: GitAgent) =
-    match agent.PostAndReply(fun chan -> Msg.Status,chan) with
+    match agent.PostAndReply(fun chan -> Msg.Status chan) with
     | Right (Reply.Status status) when status = ServiceStatus.Starting -> true
     | _ -> false
 
   // ** started
 
   let private running (agent: GitAgent) =
-    match agent.PostAndReply(fun chan -> Msg.Status,chan) with
-    | Right (Reply.Status status) when status = ServiceStatus.Running -> true
-    | _ -> false
+    let result =
+      match agent.PostAndReply(fun chan -> Msg.Status chan) with
+      | Right (Reply.Status status) when status = ServiceStatus.Running -> true
+      | _ -> false
+    result
 
   // ** GitServer
 
@@ -465,7 +449,7 @@ module Git =
         { new IGitServer with
             member self.Status
               with get () =
-                match agent.PostAndReply(fun chan -> Msg.Status,chan) with
+                match agent.PostAndReply(fun chan -> Msg.Status chan) with
                 | Right (Reply.Status status) ->
                   Either.succeed status
                 | Right other ->
@@ -479,7 +463,7 @@ module Git =
 
             member self.Pid
               with get () =
-                match agent.PostAndReply(fun chan -> Msg.Pid,chan) with
+                match agent.PostAndReply(fun chan -> Msg.Pid chan) with
                 | Right (Reply.Pid pid) ->
                   Either.succeed pid
                 | Right other ->
@@ -499,9 +483,12 @@ module Git =
               |> listener.Subscribe
 
             member self.Start () =
-              let msg = Msg.Start(path, string node.IpAddr, node.GitPort)
-              match agent.PostAndReply(fun chan -> msg,chan) with
+              let callback (chan: ReplyChan) =
+                Msg.Start(path, string node.IpAddr, node.GitPort, chan)
+
+              match agent.PostAndReply(callback) with
               | Right Reply.Ok ->
+
                 // wait for a little while until it forked
                 let mutable n = 0
                 while starting agent && n < 1000 do
@@ -511,7 +498,7 @@ module Git =
                 if running agent then
                   Either.succeed ()
                 else
-                  match agent.PostAndReply(fun chan -> Msg.Status,chan) with
+                  match agent.PostAndReply(fun chan -> Msg.Status chan) with
                   | Right (Reply.Status status) ->
                     string status
                     |> GitError
@@ -533,7 +520,7 @@ module Git =
                 |> Either.fail
 
             member self.Dispose() =
-              agent.PostAndReply(fun chan -> Msg.Stop,chan)
+              agent.PostAndReply(fun chan -> Msg.Stop chan)
               |> ignore
               subscriptions.Clear()
           }
