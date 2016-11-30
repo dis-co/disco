@@ -14,6 +14,7 @@ module CommandLine =
   open System
   open System.IO
   open System.Linq
+  open System.Text.RegularExpressions
 
   // ** Command Line Argument Parser
 
@@ -109,6 +110,8 @@ module CommandLine =
     then Some ()
     else None
 
+  let private handleError (error: IrisError) =
+    printfn "Encountered error during ForceTimeout operation: %A" error
 
   let parseHostString (str: string) =
     let trimmed = str.Trim().Split(' ')
@@ -123,13 +126,16 @@ module CommandLine =
 
   // ** tryAppendEntry
 
-  let tryAppendEntry (ctx: IRaftServer) str =
+  let tryAppendEntry (ctx: IIrisServer) str =
     warn "CLI AppendEntry currently not supported"
 
   // ** timeoutRaft
 
-  let timeoutRaft (ctx: IRaftServer) =
-    ctx.ForceElection()
+  let tryForceElection (ctx: IIrisServer) =
+    either {
+      do! ctx.ForceElection()
+    }
+    |> Either.mapError handleError
     |> ignore
 
   // ** Command Parsers
@@ -165,63 +171,143 @@ module CommandLine =
       | [| "log"; "err" |]   -> Some "err"
       | _                  -> None
 
+  let (|JoinParams|_|) (str: string) =
+    let pattern = "(?<ip>[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}):(?<port>[0-9]{1,5})"
+    let m = Regex.Match(str, pattern)
+    if m.Success then
+      match IpAddress.TryParse m.Groups.[1].Value, UInt16.TryParse m.Groups.[2].Value with
+      | Right ip, (true, port) -> Some (ip, port)
+      | _ -> None
+    else None
+
+  let (|AddNodeParams|_|) (str: string) =
+    let pattern =
+      [| "id:(?<id>.*)"
+      ; "hn:(?<hn>.*)"
+      ; "ip:(?<ip>[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})"
+      ; "port:(?<port>[0-9]{1,5})"
+      ; "web:(?<web>[0-9]{1,5})"
+      ; "ws:(?<ws>[0-9]{1,5})"
+      ; "git:(?<git>[0-9]{1,5})" |]
+      |> String.join " "
+    let m = Regex.Match(str, pattern)
+    if m.Success then
+      let id = Id m.Groups.[1].Value
+      let hn =  m.Groups.[2].Value
+      let ip = IpAddress.TryParse m.Groups.[3].Value
+      let port = UInt16.TryParse m.Groups.[4].Value
+      let web = UInt16.TryParse m.Groups.[5].Value
+      let ws = UInt16.TryParse m.Groups.[6].Value
+      let git = UInt16.TryParse m.Groups.[7].Value
+      match ip, port, web, ws, git with
+      | Right ip, (true,port), (true,web), (true,ws), (true,git) ->
+        { Node.create id with
+            HostName = hn
+            IpAddr   = ip
+            Port     = port
+            WebPort  = web
+            WsPort   = ws
+            GitPort  = git }
+        |> Some
+      | _ -> None
+    else None
+
   // ** trySetLogLevel
 
-  let trySetLogLevel (str: string) (context: IRaftServer) =
-    let config =
-      { context.Options.RaftConfig with
-          LogLevel = LogLevel.Parse str }
-    context.Options <- Config.updateEngine config context.Options
+  let trySetLogLevel (context: IIrisServer) (str: string) =
+    either {
+      let! config = context.Config
+      let updated =
+        { config.RaftConfig with
+            LogLevel = LogLevel.Parse str }
+      do! context.SetConfig (Config.updateEngine updated config)
+    }
+    |> Either.mapError handleError
+    |> ignore
 
   // ** trySetInterval
 
-  let trySetInterval i (context: IRaftServer) =
-    let config = { context.Options.RaftConfig with PeriodicInterval = i }
-    context.Options <- Config.updateEngine config context.Options
+  let trySetInterval (context: IIrisServer) i =
+    either {
+      let! config = context.Config
+      let updated =
+        { config.RaftConfig with PeriodicInterval = i }
+      do! context.SetConfig (Config.updateEngine updated config)
+    }
+    |> Either.mapError handleError
+    |> ignore
 
   // ** tryJoinCluster
 
-  let tryJoinCluster (hst: string) (context: IRaftServer) =
-    let parsed =
-      match String.split [| ' ' |] hst with
-        | [| ip; port |] -> Some (ip, int port)
-        | _            -> None
-
-    match parsed with
-      | Some(ip, port) -> context.JoinCluster(ip, port)
-      | _ -> printfn "parameters %A could not be parsed" hst
+  let tryJoinCluster (context: IIrisServer) (hst: string) =
+    match hst with
+      | JoinParams (ip, port) ->
+        either {
+          do! context.JoinCluster ip port
+        }
+        |> Either.mapError handleError
+        |> ignore
+      | _ ->
+        sprintf "parameters %A could not be parsed" hst
+        |> Other
+        |> handleError
 
   // ** tryLeaveCluster
 
-  let tryLeaveCluster (context: IRaftServer) =
-    context.LeaveCluster()
+  let tryLeaveCluster (context: IIrisServer) =
+    either {
+      do! context.LeaveCluster()
+    }
+    |> Either.mapError handleError
+    |> ignore
 
   // ** tryAddNode
 
-  let tryAddNode (hst: string) (context: IRaftServer) =
-    let parsed =
-      match String.split [| ' ' |] hst with
-        | [| id; ip; port |] -> Some (id, ip, int port)
-        | _                -> None
-
-    match parsed with
-      | Some(id, ip, port) ->
-        match context.AddNode(id, ip, port) with
-          | Some appended ->
-            printfn "Added node: %A in entry %A" id (string appended.Id)
-          | _ ->
-            printfn "Could not add node %A" id
+  let tryAddNode (context: IIrisServer) (hst: string) =
+    match hst with
+      | AddNodeParams node ->
+        either {
+          let! appended = context.AddNode node
+          printfn "Added node: %A in entry %A" id (string appended.Id)
+          return ()
+        }
+        |> Either.mapError handleError
+        |> ignore
       | _ ->
-        printfn "parameters %A could not be parsed" hst
+        sprintf "parameters %A could not be parsed" hst
+        |> Other
+        |> handleError
 
   // ** tryRmNode
 
-  let tryRmNode (hst: string) (context: IRaftServer) =
-      match context.RmNode(String.trim hst) with
-        | Some appended ->
-          printfn "Removed node: %A in entry %A" hst (string appended.Id)
-        | _ ->
-          printfn "Could not removed node %A " hst
+  let tryRmNode (context: IIrisServer) (hst: string) =
+    either {
+      let! appended = context.RmNode (Id (String.trim hst))
+      printfn "Removed node: %A in entry %A" id (string appended.Id)
+      return ()
+    }
+    |> Either.mapError handleError
+    |> ignore
+
+  // ** tryPeriodic
+
+  let tryPeriodic (context: IIrisServer) =
+    either {
+      do! context.Periodic()
+    }
+    |> Either.mapError handleError
+    |> ignore
+
+  // ** tryGetStatus
+
+  let tryGetStatus (context: IIrisServer) =
+    either {
+      let! status = context.Status
+      printfn "IrisService Status: %A" status
+      return ()
+    }
+    |> Either.mapError handleError
+    |> ignore
 
   // ** consoleLoop
 
@@ -232,24 +318,24 @@ module CommandLine =
   // |_____\___/ \___/| .__/ s
   //                  |_|
 
-  let interactiveLoop (context: IIrisService) : unit =
+  let interactiveLoop (context: IIrisServer) : unit =
     printfn "Welcome to the Raft REPL. Type help to see all commands."
     let kont = ref true
     let rec proc kontinue =
       printf "λ "
       let input = Console.ReadLine()
       match input with
-        | LogLevel opt -> trySetLogLevel opt context.Raft
-        | Interval   i -> trySetInterval i context.Raft
-        | Exit         -> context.Stop(); kontinue := false
-        | Periodic     -> context.Raft.Periodic()
-        | Append ety   -> tryAppendEntry context.Raft ety
-        | Join hst     -> tryJoinCluster hst context.Raft
-        | Leave        -> tryLeaveCluster context.Raft
-        | AddNode hst  -> tryAddNode hst context.Raft
-        | RmNode hst   -> tryRmNode  hst context.Raft
-        | Timeout      -> timeoutRaft context.Raft
-        | Status       -> printfn "%s" <| context.Raft.ToString()
+        | LogLevel opt -> trySetLogLevel   context opt
+        | Interval   i -> trySetInterval   context i
+        | Exit         -> dispose          context; kontinue := false
+        | Periodic     -> tryPeriodic      context
+        | Append ety   -> tryAppendEntry   context ety
+        | Join hst     -> tryJoinCluster   context hst
+        | Leave        -> tryLeaveCluster  context
+        | AddNode hst  -> tryAddNode       context hst
+        | RmNode hst   -> tryRmNode        context hst
+        | Timeout      -> tryForceElection context
+        | Status       -> tryGetStatus     context
         | _            -> printfn "unknown command"
       if !kontinue then
         proc kontinue
@@ -295,16 +381,17 @@ module CommandLine =
       |> ProjectNotFound
       |> Either.fail
     else
-      use server = IrisService.create ()
+      either {
+        use! server = IrisService.create ()
 
-      server.Start(web)
+        do! server.Start()
+        do! server.Load projFile
 
-      if interactive then
-        interactiveLoop server
-        |> Either.succeed
-      else
-        silentLoop ()
-        |> Either.succeed
+        if interactive then
+          return interactiveLoop server
+        else
+          return silentLoop ()
+      }
 
   // ** createProject
 

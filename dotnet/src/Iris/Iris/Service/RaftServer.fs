@@ -44,7 +44,7 @@ module Raft =
   [<RequireQualifiedAccess>]
   type private Msg =
     | Initialize
-    | Join           of IpAddress * uint32
+    | Join           of IpAddress * uint16
     | Leave
     | Get
     | Status
@@ -101,6 +101,11 @@ module Raft =
     abstract Status        : Either<IrisError,ServiceStatus>
     abstract Subscribe     : (RaftEvent -> unit) -> IDisposable
     abstract Start         : unit -> Either<IrisError,unit>
+    abstract Periodic      : unit -> Either<IrisError,unit>
+    abstract JoinCluster   : IpAddress -> uint16 -> Either<IrisError,unit>
+    abstract LeaveCluster  : unit -> Either<IrisError,unit>
+    abstract AddNode       : RaftNode -> Either<IrisError,EntryResponse>
+    abstract RmNode        : Id -> Either<IrisError,EntryResponse>
 
   // ** periodicR
 
@@ -529,7 +534,7 @@ module Raft =
 
   // ** tryJoin
 
-  let private tryJoin (state: RaftAppContext) (ip: IpAddress) (port: uint32) =
+  let private tryJoin (state: RaftAppContext) (ip: IpAddress) (port: uint16) =
     let rec _tryJoin retry peer =
       either {
         if retry < int state.Options.RaftConfig.MaxRetries then
@@ -577,11 +582,11 @@ module Raft =
     // execute the join request with a newly created "fake" node
     _tryJoin 0 { Node.create (Id.Create()) with
                   IpAddr = ip
-                  Port = uint16 port }
+                  Port   = port }
 
   // ** tryJoinCluster
 
-  let private tryJoinCluster (state: RaftAppContext) (ip: IpAddress) (port: uint32) =
+  let private tryJoinCluster (state: RaftAppContext) (ip: IpAddress) (port: uint16) =
     raft {
       Logger.debug state.Raft.Node.Id tag "requesting to join"
 
@@ -1361,6 +1366,35 @@ module Raft =
 
               member self.ForceElection () =
                 withOk Msg.ForceElection agent
+
+              member self.Periodic () =
+                withOk Msg.Periodic agent
+
+              member self.JoinCluster ip port =
+                withOk (Msg.Join(ip, port)) agent
+
+              member self.LeaveCluster () =
+                withOk Msg.Leave agent
+
+              member self.AddNode node =
+                match agent.PostAndReply(fun chan -> Msg.AddNode node,chan) with
+                | Right (Reply.Entry entry) -> Right entry
+                | Right other ->
+                  sprintf "Unexpected reply by agent: %A" other
+                  |> Other
+                  |> Either.fail
+                | Left error ->
+                  Either.fail error
+
+              member self.RmNode id =
+                match agent.PostAndReply(fun chan -> Msg.RmNode id,chan) with
+                | Right (Reply.Entry entry) -> Right entry
+                | Right other ->
+                  sprintf "Unexpected reply by agent: %A" other
+                  |> Other
+                  |> Either.fail
+                | Left error ->
+                  Either.fail error
 
               member self.State
                 with get () =

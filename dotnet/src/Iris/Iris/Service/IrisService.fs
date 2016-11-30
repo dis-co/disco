@@ -38,11 +38,19 @@ module Iris =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Git    of GitEvent
-    | Socket of SocketEvent
-    | Raft   of RaftEvent
-    | Log    of LogEvent
-    | Load   of FilePath
+    | Git         of GitEvent
+    | Socket      of SocketEvent
+    | Raft        of RaftEvent
+    | Log         of LogEvent
+    | Load        of FilePath
+    | SetConfig   of IrisConfig
+    | AddNode     of RaftNode
+    | RmNode      of Id
+    | Join        of IpAddress * uint16
+    | Leave
+    | ForceElection
+    | Periodic
+    | Config
     | Status
     | Unload
 
@@ -53,6 +61,7 @@ module Iris =
     | Ok
     | Entry  of EntryResponse
     | Status of ServiceStatus
+    | Config of IrisConfig
 
   // ** ReplyChan
 
@@ -120,10 +129,17 @@ module Iris =
 
   type IIrisServer =
     inherit IDisposable
-    abstract Config : Either<IrisError,Config>
-    abstract Status : Either<IrisError,ServiceStatus>
-    abstract Start : unit -> Either<IrisError,unit>
-    abstract Load : FilePath -> Either<IrisError,unit>
+    abstract Config        : Either<IrisError,IrisConfig>
+    abstract Status        : Either<IrisError,ServiceStatus>
+    abstract SetConfig     : IrisConfig -> Either<IrisError,unit>
+    abstract Start         : unit       -> Either<IrisError,unit>
+    abstract Load          : FilePath   -> Either<IrisError,unit>
+    abstract Periodic      : unit       -> Either<IrisError,unit>
+    abstract ForceElection : unit       -> Either<IrisError,unit>
+    abstract LeaveCluster  : unit       -> Either<IrisError,unit>
+    abstract RmNode        : Id         -> Either<IrisError,EntryResponse>
+    abstract AddNode       : RaftNode   -> Either<IrisError,EntryResponse>
+    abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
 
   // ** broadcastMsg
 
@@ -647,6 +663,165 @@ module Iris =
     |> chan.Reply
     Idle
 
+  // ** handleConfig
+
+  let private handleConfig (state: IrisState) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No project loaded"
+      |> Other
+      |> Either.fail
+      |> chan.Reply
+      Idle
+    | Loaded data ->
+      data.Project.Config
+      |> Reply.Config
+      |> Either.succeed
+      |> chan.Reply
+      state
+
+  // ** handleSetConfig
+
+  let private handleSetConfig (state: IrisState) (config: IrisConfig) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No project loaded"
+      |> Other
+      |> Either.fail
+      |> chan.Reply
+      Idle
+    | Loaded data ->
+      Reply.Ok
+      |> Either.succeed
+      |> chan.Reply
+      Loaded { data with Project = Project.updateConfig config data.Project }
+
+  // ** handleForceElection
+
+  let private handleForceElection (state: IrisState) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No project loaded"
+      |> Other
+      |> Either.fail
+      |> chan.Reply
+    | Loaded data ->
+      match data.RaftServer.ForceElection () with
+      | Right () ->
+        Reply.Ok
+        |> Either.succeed
+        |> chan.Reply
+      | Left error ->
+        error
+        |> Either.fail
+        |> chan.Reply
+    state
+
+  // ** handlePeriodic
+
+  let private handlePeriodic (state: IrisState) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No project loaded"
+      |> Other
+      |> Either.fail
+      |> chan.Reply
+    | Loaded data ->
+      match data.RaftServer.Periodic() with
+      | Right () ->
+        Reply.Ok
+        |> Either.succeed
+        |> chan.Reply
+      | Left error ->
+        error
+        |> Either.fail
+        |> chan.Reply
+    state
+
+  // ** handleJoin
+
+  let private handleJoin (state: IrisState) (ip: IpAddress) (port: uint16) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No project loaded"
+      |> Other
+      |> Either.fail
+      |> chan.Reply
+    | Loaded data ->
+      match data.RaftServer.JoinCluster ip port with
+      | Right () ->
+        Reply.Ok
+        |> Either.succeed
+        |> chan.Reply
+      | Left error ->
+        error
+        |> Either.fail
+        |> chan.Reply
+    state
+
+  // ** handleLeave
+
+  let private handleLeave (state: IrisState) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No project loaded"
+      |> Other
+      |> Either.fail
+      |> chan.Reply
+    | Loaded data ->
+      match data.RaftServer.LeaveCluster () with
+      | Right () ->
+        Reply.Ok
+        |> Either.succeed
+        |> chan.Reply
+      | Left error ->
+        error
+        |> Either.fail
+        |> chan.Reply
+    state
+
+  // ** handleAddNode
+
+  let private handleAddNode (state: IrisState) (node: RaftNode) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No project loaded"
+      |> Other
+      |> Either.fail
+      |> chan.Reply
+    | Loaded data ->
+      match data.RaftServer.AddNode node with
+      | Right entry ->
+        Reply.Entry entry
+        |> Either.succeed
+        |> chan.Reply
+      | Left error ->
+        error
+        |> Either.fail
+        |> chan.Reply
+    state
+
+  // ** handleRmNode
+
+  let private handleRmNode (state: IrisState) (id: Id) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No project loaded"
+      |> Other
+      |> Either.fail
+      |> chan.Reply
+    | Loaded data ->
+      match data.RaftServer.RmNode id  with
+      | Right entry ->
+        Reply.Entry entry
+        |> Either.succeed
+        |> chan.Reply
+      | Left error ->
+        error
+        |> Either.fail
+        |> chan.Reply
+    state
+
   // ** loop
 
   let private loop (initial: IrisState) (inbox: IrisAgent) =
@@ -655,13 +830,21 @@ module Iris =
         let! (msg, chan) = inbox.Receive()
         let newstate =
           match msg with
-          | Msg.Load path -> handleLoad        state path chan inbox
-          | Msg.Status    -> handleStatus      state      chan
-          | Msg.Git    ev -> handleGitEvent    state ev   chan
-          | Msg.Socket ev -> handleSocketEvent state ev   chan
-          | Msg.Raft   ev -> handleRaftEvent   state ev   chan
-          | Msg.Log   log -> handleLogEvent    state log  chan
-          | Msg.Unload    -> handleUnload      state      chan
+          | Msg.Load path       -> handleLoad          state path    chan inbox
+          | Msg.Config          -> handleConfig        state         chan
+          | Msg.SetConfig cnf   -> handleSetConfig     state cnf     chan
+          | Msg.Status          -> handleStatus        state         chan
+          | Msg.Git    ev       -> handleGitEvent      state ev      chan
+          | Msg.Socket ev       -> handleSocketEvent   state ev      chan
+          | Msg.Raft   ev       -> handleRaftEvent     state ev      chan
+          | Msg.Log   log       -> handleLogEvent      state log     chan
+          | Msg.Unload          -> handleUnload        state         chan
+          | Msg.ForceElection   -> handleForceElection state         chan
+          | Msg.Periodic        -> handlePeriodic      state         chan
+          | Msg.Join (ip, port) -> handleJoin          state ip port chan
+          | Msg.Leave           -> handleLeave         state         chan
+          | Msg.AddNode node    -> handleAddNode       state node    chan
+          | Msg.RmNode id       -> handleRmNode        state id      chan
         return! act newstate
       }
 
@@ -687,18 +870,67 @@ module Iris =
                   |> Other
                   |> Either.fail
 
+            member self.Config
+              with get () =
+                match agent.PostAndReply(fun chan -> Msg.Config,chan) with
+                | Right (Reply.Config config) -> Right config
+                | Right  other                -> Left (Other "Unexpected response from IrisAgent")
+                | Left   error                -> Left error
+
+            member self.SetConfig (config: IrisConfig) =
+              match agent.PostAndReply(fun chan -> Msg.SetConfig config, chan) with
+              | Right Reply.Ok -> Right ()
+              | Right other    -> Left (Other "Unexpected response from IrisAgent")
+              | Left  error    -> Left error
+
             member self.Status
               with get () =
                 match agent.PostAndReply(fun chan -> Msg.Status,chan) with
                 | Right (Reply.Status status) -> Right status
-                | Right other -> Left (Other "Unexpected response")
-                | Left error -> Left error
+                | Right other                 -> Left (Other "Unexpected response from IrisAgent")
+                | Left error                  -> Left error
 
             member self.Load(path: FilePath) =
               match agent.PostAndReply(fun chan -> Msg.Load path,chan) with
               | Right Reply.Ok -> Right ()
-              | Right other -> Left (Other "Unexpectted response")
-              | Left error -> Left error
+              | Right other    -> Left (Other "Unexpectted response from IrisAgent")
+              | Left error     -> Left error
+
+            member self.ForceElection () =
+              match agent.PostAndReply(fun chan -> Msg.ForceElection, chan) with
+              | Right Reply.Ok -> Right ()
+              | Right other    -> Left (Other "Unexpectted response from IrisAgent")
+              | Left error     -> Left error
+
+            member self.Periodic () =
+              match agent.PostAndReply(fun chan -> Msg.Periodic, chan) with
+              | Right Reply.Ok -> Right ()
+              | Right other    -> Left (Other "Unexpectted response from IrisAgent")
+              | Left error     -> Left error
+
+            member self.LeaveCluster () =
+              match agent.PostAndReply(fun chan -> Msg.Leave, chan) with
+              | Right Reply.Ok -> Right ()
+              | Right other    -> Left (Other "Unexpectted response from IrisAgent")
+              | Left error     -> Left error
+
+            member self.JoinCluster ip port =
+              match agent.PostAndReply(fun chan -> Msg.Join(ip, port), chan) with
+              | Right Reply.Ok -> Right ()
+              | Right other    -> Left (Other "Unexpectted response from IrisAgent")
+              | Left error     -> Left error
+
+            member self.AddNode node =
+              match agent.PostAndReply(fun chan -> Msg.AddNode node, chan) with
+              | Right (Reply.Entry entry) -> Right entry
+              | Right other               -> Left (Other "Unexpectted response from IrisAgent")
+              | Left error                -> Left error
+
+            member self.RmNode id =
+              match agent.PostAndReply(fun chan -> Msg.RmNode id, chan) with
+              | Right (Reply.Entry entry) -> Right entry
+              | Right other               -> Left (Other "Unexpectted response from IrisAgent")
+              | Left error                -> Left error
 
             member self.Dispose() =
               agent.PostAndReply(fun chan -> Msg.Unload, chan)
