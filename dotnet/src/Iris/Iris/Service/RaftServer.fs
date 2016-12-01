@@ -101,6 +101,23 @@ module Raft =
     | RmNode         of id:Id               * chan:ReplyChan
     | IsCommitted    of entry:EntryResponse * chan:ReplyChan
 
+    override self.ToString() =
+      match self with
+      | Load       (config,_)    -> sprintf "Load: %A" config
+      | Unload             _     -> sprintf "Unload"
+      | Join       (ip,port,_)   -> sprintf "Join: %s %d" (string ip) port
+      | Leave               _    -> "Leave"
+      | Get                 _    -> "Get"
+      | Status              _    -> "Status"
+      | Periodic                 -> "Periodic"
+      | ForceElection            -> "ForceElection"
+      | AddCmd         (sm,_)    -> sprintf "AddCmd: %A" sm
+      | Request        (req,_)   -> sprintf "Request: %A" req
+      | Response       (resp,_)  -> sprintf "Response: %A" resp
+      | AddNode        (node,_)  -> sprintf "AddNode: %A" node
+      | RmNode         (id,_)    -> sprintf "RmNode: %A" id
+      | IsCommitted    (entry,_) -> sprintf "IsCommitted: %A" entry
+
   // ** Subscriptions
 
   type private Subscriptions = ResizeArray<IObserver<RaftEvent>>
@@ -438,13 +455,15 @@ module Raft =
           sendInstallSnapshot id connections peer request
 
         member self.PrepareSnapshot raft =
-          implement "PrepareSnapshot"
+          printfn "PrepareSnapshot"
+          None
 
         member self.RetrieveSnapshot () =
-          implement "RetrieveSnapshot"
+          printfn "PrepareSnapshot"
+          None
 
         member self.PersistSnapshot log =
-          implement "PersistSnapshot"
+          printfn "PersistSnapshot"
 
         member self.ApplyLog cmd =
           RaftEvent.ApplyLog cmd
@@ -471,7 +490,7 @@ module Raft =
           |> trigger subscriptions
 
         member self.PersistVote node =
-          implement "PersistVote"
+          printfn "PersistVote"
   //     try
   //       self.State
   //       |> RaftContext.getRaft
@@ -487,7 +506,7 @@ module Raft =
   //       | exn -> handleException "PersistTerm" exn
 
         member self.PersistTerm term =
-          implement "PersistTerm"
+          printfn "PersistTerm"
   //     try
   //       self.State
   //       |> RaftContext.getRaft
@@ -503,10 +522,10 @@ module Raft =
   //       | exn -> handleException "PersistTerm" exn
 
         member self.PersistLog log =
-          implement "PersistLog"
+          printfn "PersistLog"
 
         member self.DeleteLog log =
-          implement "DeleteLog"
+          printfn "DeleteLog"
 
         member self.LogMsg node callsite level msg =
           Logger.log level node.Id callsite msg
@@ -1115,22 +1134,18 @@ module Raft =
   /// - appState: current RaftServerState TVar
   ///
   /// Returns: CancellationTokenSource
-  let private startPeriodic (interval: int) (arbiter: StateArbiter) =
-    let rec action () =
-      async {
-        arbiter.Post(Msg.Periodic)
-        do! Async.Sleep(interval) // sleep for 100ms
-        return! action ()
-      }
-    try
-      let cts = new CancellationTokenSource()
-      Async.Start(action(), cts.Token)
-      Either.succeed cts
-    with
-      | exn ->
-        exn.Message
-        |> RaftError
-        |> Either.fail
+  let private startPeriodic (interval: int) (arbiter: StateArbiter) : IDisposable =
+    MailboxProcessor.Start(fun inbox ->
+      let rec loop n =
+        async {
+          inbox.Post()                  // kick the machine
+          let! msg = inbox.Receive()
+          arbiter.Post(Msg.Periodic)
+          do! Async.Sleep(interval) // sleep for inverval (ms)
+          return! loop (n + 1)
+        }
+      loop 0)
+    :> IDisposable
 
   // ** load
 
@@ -1162,7 +1177,7 @@ module Raft =
 
         // periodic function
         let interval = int config.RaftConfig.PeriodicInterval
-        let! periodic = startPeriodic interval agent
+        let periodic = startPeriodic interval agent
 
         match initializeRaft raftstate callbacks with
         | Right (_, newstate) ->
@@ -1174,11 +1189,13 @@ module Raft =
                      Periodic    = periodic
                      Server      = server
                      Connections = connections }
+
         | Left (err, _) ->
           dispose server
           disposeAll connections
           dispose periodic
           return! Either.fail err
+
       | Left error ->
         dispose server
         return! Either.fail error
@@ -1635,7 +1652,7 @@ module Raft =
   [<RequireQualifiedAccess>]
   module RaftServer =
 
-    let create (options: IrisConfig) =
+    let create () =
       either {
         let subscriptions = new Subscriptions()
 
@@ -1740,6 +1757,9 @@ module Raft =
                   | Left error -> error |> Either.fail
 
               member self.Dispose () =
+                match agent.PostAndReply(fun chan -> Msg.Unload chan) with
+                | Left error -> printfn "unable to dispose: %A" error
+                | Right _ -> ()
                 subscriptions.Clear()
                 dispose agent
             }

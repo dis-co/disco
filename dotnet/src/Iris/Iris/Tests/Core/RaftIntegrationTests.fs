@@ -55,41 +55,23 @@ module RaftIntegrationTests =
 
         setNodeId nid1
 
-        printfn "create leader"
-
-        let! leader = RaftServer.create leadercfg
-
-        do! expectE "Leader should have no connections" 0 count leader.Connections
-
-        printfn "start leader"
-
-        do! leader.Start()
-
-        printfn "start leader done"
-
+        let! leader = RaftServer.create ()
+        do! leader.Load(leadercfg)
         do! expectE "Leader should have one connection" 1 count leader.Connections
 
         setNodeId nid2
 
-        printfn "create follower"
-
-        let! follower = RaftServer.create followercfg
-
-        do! expectE "Follower should have no connections" 0 count follower.Connections
-
-        printfn "start follower"
-
-        do! follower.Start()
-
-        printfn "start follower done"
-
+        let! follower = RaftServer.create ()
+        do! follower.Load(followercfg)
         do! expectE "Follower should have one connection" 1 count follower.Connections
+
+        Thread.Sleep 2000
 
         dispose leader
         dispose follower
 
-        do! expectE "Leader should have no connections" 0 count leader.Connections
-        do! expectE "Follower should have no connections" 0 count follower.Connections
+        do! expectE "Leader should be stopped"   true Service.isStopped leader.Status
+        do! expectE "Follower should be stopped" true Service.isStopped follower.Status
       }
       |> noError
 
@@ -111,19 +93,18 @@ module RaftIntegrationTests =
 
           // |> Config.setLogLevel (LogLevel.Debug)
 
-        use! leader = RaftServer.create leadercfg
-
-        do! leader.Start()
+        use! leader = RaftServer.create ()
+        do! leader.Load leadercfg
 
         do! expectE "Should be running" true Service.isRunning leader.Status
 
-        use! follower = RaftServer.create leadercfg
+        use! follower = RaftServer.create ()
 
-        do! match follower.Start() with
+        do! match follower.Load leadercfg with
             | Right ()   -> Left (Other "Should have failed to start")
             | Left error -> Right ()
 
-        do! expectE "Should be failed" true Service.hasFailed follower.Status
+        do! expectE "Should be failed" true Service.isStopped follower.Status
       }
       |> noError
 
@@ -168,19 +149,19 @@ module RaftIntegrationTests =
 
         setNodeId nid1
 
-        use! leader = RaftServer.create leadercfg
+        use! leader = RaftServer.create ()
 
         use obs1 = leader.Subscribe setState
 
-        do! leader.Start()
+        do! leader.Load leadercfg
 
         setNodeId nid2
 
-        use! follower = RaftServer.create followercfg
+        use! follower = RaftServer.create ()
 
         use obs2 = follower.Subscribe setState
 
-        do! follower.Start()
+        do! follower.Load(followercfg)
 
         let! state1 = leader.State
         let! state2 = follower.State
@@ -221,8 +202,8 @@ module RaftIntegrationTests =
     testList "Raft Integration Tests" [
       // raft
       test_validate_correct_req_socket_tracking
-      // test_validate_raft_service_bind_correct_port
-      // test_validate_follower_joins_leader_after_startup
+      test_validate_raft_service_bind_correct_port
+      test_validate_follower_joins_leader_after_startup
 
       // db
       // test_log_snapshotting_should_clean_all_logs
