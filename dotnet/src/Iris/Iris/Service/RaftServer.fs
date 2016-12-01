@@ -39,24 +39,6 @@ module Raft =
     | StateChanged   of RaftState * RaftState
     | CreateSnapshot of string
 
-  // ** Msg
-
-  [<RequireQualifiedAccess>]
-  type private Msg =
-    | Initialize
-    | Join           of IpAddress * uint16
-    | Leave
-    | Get
-    | Status
-    | Periodic
-    | ForceElection
-    | AddCmd         of StateMachine
-    | Request        of RaftRequest
-    | Response       of RaftResponse
-    | AddNode        of RaftNode
-    | RmNode         of Id
-    | IsCommitted    of EntryResponse
-
   // ** Reply
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
@@ -68,6 +50,28 @@ module Raft =
     | Status         of ServiceStatus
     | IsCommitted    of bool
 
+  // ** ReplyChan
+
+  type private ReplyChan = AsyncReplyChannel<Either<IrisError,Reply>>
+
+  // ** Msg
+
+  [<RequireQualifiedAccess;NoComparison;NoEquality>]
+  type private Msg =
+    | Initialize     of chan:ReplyChan
+    | Join           of ip:IpAddress * port:uint16 * chan:ReplyChan
+    | Leave          of chan:ReplyChan
+    | Get            of chan:ReplyChan
+    | Status         of chan:ReplyChan
+    | Periodic
+    | ForceElection
+    | AddCmd         of sm:StateMachine * chan:ReplyChan
+    | Request        of req:RaftRequest * chan:ReplyChan
+    | Response       of resp:RaftResponse * chan:ReplyChan
+    | AddNode        of node:RaftNode * chan:ReplyChan
+    | RmNode         of id:Id * chan:ReplyChan
+    | IsCommitted    of entry:EntryResponse * chan:ReplyChan
+
   // ** Connections
 
   type private Connections = ConcurrentDictionary<Id,Req>
@@ -76,17 +80,9 @@ module Raft =
 
   type private Subscriptions = ResizeArray<IObserver<RaftEvent>>
 
-  // ** ReplyChan
-
-  type private ReplyChan = AsyncReplyChannel<Either<IrisError,Reply>>
-
-  // ** Message
-
-  type private Message = Msg * ReplyChan
-
   // ** StateArbiter
 
-  type private StateArbiter = MailboxProcessor<Message>
+  type private StateArbiter = MailboxProcessor<Msg>
 
   // ** RaftServer
 
@@ -110,11 +106,7 @@ module Raft =
 
   // ** periodicR
 
-  let private periodic (state: RaftAppContext) (channel: ReplyChan) =
-    Reply.Ok
-    |> Either.succeed
-    |> channel.Reply
-
+  let private periodic (state: RaftAppContext) =
     Raft.periodic (uint32 state.Options.RaftConfig.PeriodicInterval)
     |> evalRaft state.Raft state.Callbacks
     |> RaftContext.updateRaft state
@@ -184,7 +176,7 @@ module Raft =
 
   let private addNewNode (state: RaftAppContext) (id: Id) (ip: IpAddress) (port: uint32) =
     sprintf "attempting to add node with
-         %s %s:%d" (string id) (string ip) port
+         %A %A:%d" (string id) (string ip) port
     |> Logger.debug state.Raft.Node.Id tag
 
     [| { Node.create id with
@@ -220,7 +212,7 @@ module Raft =
     if Raft.isLeader state.Raft then
       string id
       |> sprintf "attempting to remove node with
-         %s"
+         %A"
       |> Logger.debug state.Raft.Node.Id tag
 
       let potentialChange =
@@ -231,7 +223,7 @@ module Raft =
 
       | Some node -> removeNodes state [| node |]
       | None ->
-        sprintf "Unable to remove node. Not found: %s" (string id)
+        sprintf "Unable to remove node. Not found: %A" (string id)
         |> Logger.err state.Raft.Node.Id tag
 
         (MissingNode (string id), state)
@@ -724,14 +716,14 @@ module Raft =
 
   // ** loop
 
-  let private loop (initial: RaftAppContext) (inbox: MailboxProcessor<Message>) =
+  let private loop (initial: RaftAppContext) (inbox: StateArbiter) =
     let rec act state =
       async {
-        let! (cmd, channel) = inbox.Receive()
+        let! cmd = inbox.Receive()
 
         let newstate =
           match cmd with
-          | Msg.Initialize ->
+          | Msg.Initialize channel ->
             match initializeState state with
             | Right (_, newstate) ->
               Reply.Ok
@@ -747,13 +739,13 @@ module Raft =
               { RaftContext.updateRaft state newstate with
                   Status = ServiceStatus.Failed error }
 
-          | Msg.Status ->
+          | Msg.Status channel ->
             Reply.Status state.Status
             |> Either.succeed
             |> channel.Reply
             state
 
-          | Msg.Join (ip, port) ->
+          | Msg.Join (ip, port, channel) ->
             match tryJoinCluster state ip port with
             | Right (_, newstate) ->
               Reply.Ok
@@ -767,7 +759,7 @@ module Raft =
               |> channel.Reply
               RaftContext.updateRaft state newstate
 
-          | Msg.Leave ->
+          | Msg.Leave channel ->
             match tryLeaveCluster state with
             | Right (_, newstate) ->
               Reply.Ok
@@ -781,24 +773,21 @@ module Raft =
               |> channel.Reply
               RaftContext.updateRaft state newstate
 
-          | Msg.Periodic -> periodic state channel
+          | Msg.Periodic -> periodic state
 
           | Msg.ForceElection ->
             match forceElection state with
             | Right (_, newstate) ->
-              Reply.Ok
-              |> Either.succeed
-              |> channel.Reply
               RaftContext.updateRaft state newstate
 
             | Left (err, newstate) ->
               err
-              |> Either.fail
-              |> channel.Reply
+              |> sprintf "Unable to force an election: %A"
+              |> Logger.err newstate.Node.Id tag
               RaftContext.updateRaft state newstate
 
           // Add a new StateMachine Command to the distributed log
-          | Msg.AddCmd cmd ->
+          | Msg.AddCmd (cmd, channel) ->
             match appendCommand state cmd with
             | Right (entry, newstate) ->
               Reply.Entry entry
@@ -813,20 +802,22 @@ module Raft =
               newstate
 
           // Process an server request
-          | Msg.Request request -> processRequest state channel request
+          | Msg.Request (request, channel) ->
+            processRequest state channel request
 
           // Process a server response
-          | Msg.Response response -> processResponse state channel response
+          | Msg.Response (response, channel) ->
+            processResponse state channel response
 
           // Get the current state
-          | Msg.Get ->
+          | Msg.Get channel ->
             Reply.State state
             |> Either.succeed
             |> channel.Reply
             state
 
           // Add a new node to the cluster
-          | Msg.AddNode node ->
+          | Msg.AddNode (node, channel) ->
             match addNodes state [| node |] with
             | Right (entry, newstate) ->
               Reply.Entry entry
@@ -841,7 +832,7 @@ module Raft =
               newstate
 
           // Remove a known node from the cluster
-          | Msg.RmNode id ->
+          | Msg.RmNode (id, channel) ->
             match removeNode state id with
             | Right (entry, newstate) ->
               Reply.Entry entry
@@ -855,7 +846,7 @@ module Raft =
               |> channel.Reply
               newstate
 
-          | Msg.IsCommitted entry ->
+          | Msg.IsCommitted (entry, channel) ->
             let result =
               Raft.responseCommitted entry
               |> runRaft state.Raft state.Callbacks
@@ -905,7 +896,7 @@ module Raft =
 
     // wait for the entry to be committed by everybody
     while !run && !iterations < timeout do
-      let response = arbiter.PostAndReply(fun chan -> Msg.IsCommitted appended, chan)
+      let response = arbiter.PostAndReply(fun chan -> Msg.IsCommitted(appended, chan))
 
       match response with
       | Right (Reply.IsCommitted result) ->
@@ -923,7 +914,7 @@ module Raft =
       match !ok with
       | Right true | Left _ -> run := false
       | _ ->
-        printfn "%s not yet committed" (string appended.Id)
+        printfn "%A not yet committed" (string appended.Id)
         iterations := !iterations + delta
         Thread.Sleep delta
 
@@ -934,7 +925,7 @@ module Raft =
   let private handleRequest (arbiter: StateArbiter) (msg: RaftRequest) : RaftResponse =
     let result =
       either {
-        let! reply = arbiter.PostAndReply(fun chan -> Msg.Request msg,chan)
+        let! reply = arbiter.PostAndReply(fun chan -> Msg.Request(msg,chan))
 
         match reply with
         | Reply.Response response ->       // the base case it, the response is ready
@@ -945,7 +936,7 @@ module Raft =
 
           match msg, committed with
           | HandShake _, true ->
-            let! reply = arbiter.PostAndReply(fun chan -> Msg.Get,chan)
+            let! reply = arbiter.PostAndReply(fun chan -> Msg.Get chan)
             match reply with
             | Reply.State state ->
               return Welcome state.Raft.Node
@@ -1026,7 +1017,7 @@ module Raft =
 
     | Left error ->
       nodeUri peer
-      |> sprintf "SendRequestVote: encountered error %A in request to %s" error
+      |> sprintf "SendRequestVote: encountered error %A in request to %A" error
       |> Logger.err self tag
       None
 
@@ -1050,7 +1041,7 @@ module Raft =
       None
     | Left error ->
       nodeUri peer
-      |> sprintf "SendAppendEntries: received error %A in request to %s" error
+      |> sprintf "SendAppendEntries: received error %A in request to %A" error
       |> Logger.err self tag
       None
 
@@ -1073,7 +1064,7 @@ module Raft =
       None
     | Left error ->
       nodeUri peer
-      |> sprintf "SendInstallSnapshot: received error %A in request to %s" error
+      |> sprintf "SendInstallSnapshot: received error %A in request to %A" error
       |> Logger.err self tag
       None
 
@@ -1092,17 +1083,17 @@ module Raft =
   let private startPeriodic (arbiter: StateArbiter) (cts: CancellationTokenSource) =
     let rec proc () =
       async {
-        let! result = arbiter.PostAndAsyncReply(fun chan -> Msg.Get,chan)
+        let! result = arbiter.PostAndAsyncReply(fun chan -> Msg.Get chan)
         match result with
         | Right (Reply.State state) ->
-          let! _ = arbiter.PostAndAsyncReply(fun chan -> Msg.Periodic, chan)
+          arbiter.Post(Msg.Periodic)
           do! Async.Sleep(int state.Options.RaftConfig.PeriodicInterval) // sleep for 100ms
 
         | Right reply ->
-          printfn "WARNING: received garbage reply in periodic function %A" reply
+          printfn "Unexpected reply in periodic function %A" reply
 
         | Left error ->
-          printfn "ERROR: %A" error
+          printfn "Error in periodic function: %A" error
         return! proc ()
       }
     try
@@ -1265,8 +1256,8 @@ module Raft =
 
   // ** withOk
 
-  let private withOk (msg: Msg) (agent: StateArbiter) : Either<IrisError,unit> =
-    match agent.PostAndReply(fun chan -> msg, chan) with
+  let private withOk (msgcb: ReplyChan -> Msg) (agent: StateArbiter) : Either<IrisError,unit> =
+    match agent.PostAndReply(msgcb) with
     | Right Reply.Ok -> Right ()
 
     | Right other ->
@@ -1282,7 +1273,7 @@ module Raft =
   let private addCmd (agent: StateArbiter)
                      (cmd: StateMachine) :
                      Either<IrisError, EntryResponse> =
-    match agent.PostAndReply(fun chan -> Msg.AddCmd cmd,chan) with
+    match agent.PostAndReply(fun chan -> Msg.AddCmd(cmd,chan)) with
     | Right (Reply.Entry entry) ->
       match waitForCommit agent entry with
       | Right true -> Either.succeed entry
@@ -1354,7 +1345,7 @@ module Raft =
 
               member self.Status
                 with get () =
-                  match agent.PostAndReply(fun chan -> Msg.Status,chan) with
+                  match agent.PostAndReply(fun chan -> Msg.Status chan) with
                   | Right (Reply.Status status) -> Right status
 
                   | Right other ->
@@ -1366,19 +1357,21 @@ module Raft =
                     Either.fail error
 
               member self.ForceElection () =
-                withOk Msg.ForceElection agent
+                agent.Post Msg.ForceElection
+                |> Either.succeed
 
               member self.Periodic () =
-                withOk Msg.Periodic agent
+                agent.Post Msg.Periodic
+                |> Either.succeed
 
               member self.JoinCluster ip port =
-                withOk (Msg.Join(ip, port)) agent
+                withOk (fun chan -> Msg.Join(ip, port, chan)) agent
 
               member self.LeaveCluster () =
-                withOk Msg.Leave agent
+                withOk (fun chan -> Msg.Leave chan) agent
 
               member self.AddNode node =
-                match agent.PostAndReply(fun chan -> Msg.AddNode node,chan) with
+                match agent.PostAndReply(fun chan -> Msg.AddNode(node,chan)) with
                 | Right (Reply.Entry entry) -> Right entry
                 | Right other ->
                   sprintf "Unexpected reply by agent: %A" other
@@ -1388,7 +1381,7 @@ module Raft =
                   Either.fail error
 
               member self.RmNode id =
-                match agent.PostAndReply(fun chan -> Msg.RmNode id,chan) with
+                match agent.PostAndReply(fun chan -> Msg.RmNode(id,chan)) with
                 | Right (Reply.Entry entry) -> Right entry
                 | Right other ->
                   sprintf "Unexpected reply by agent: %A" other
@@ -1399,7 +1392,7 @@ module Raft =
 
               member self.State
                 with get () =
-                  match agent.PostAndReply(fun chan -> Msg.Get,chan) with
+                  match agent.PostAndReply(fun chan -> Msg.Get chan) with
                   | Right (Reply.State state) -> Right state
 
                   | Right other ->
@@ -1421,7 +1414,7 @@ module Raft =
                 either {
                   agent.Start()
                   do! startPeriodic agent periodic
-                  do! withOk Msg.Initialize agent
+                  do! withOk (fun chan -> Msg.Initialize chan) agent
                   do! server.Start()
                 }
 
