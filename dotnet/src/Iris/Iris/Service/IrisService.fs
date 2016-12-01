@@ -629,7 +629,6 @@ module Iris =
   let private handleLogEvent (state: IrisState) (log: LogEvent) (chan: ReplyChan) =
     withState state <| fun data ->
       broadcastMsg data (LogMsg log)
-      Logger.stdout log
 
     Reply.Ok
     |> Either.succeed
