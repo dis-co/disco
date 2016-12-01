@@ -8,11 +8,11 @@ let all =
   testList "All tests" [
     // raftTests
     // zmqIntegrationTests
-    // raftIntegrationTests
+    raftIntegrationTests
     // serializationTests
     // projectTests
     // storeTests
-    gitTests
+    // gitTests
   ]
 
 [<EntryPoint>]

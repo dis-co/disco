@@ -1,6 +1,7 @@
 namespace Iris.Core
 
-// * imports
+// * Imports
+
 #if FABLE_COMPILER
 
 open Iris.Core.FlatBuffers
@@ -14,6 +15,7 @@ open Iris.Serialization.Raft
 #endif
 
 // * IrisError
+
 type IrisError =
   | OK
 
@@ -54,6 +56,7 @@ type IrisError =
   | Other                  of string
 
   // RAFT
+  | RaftError              of string
   | AlreadyVoted
   | AppendEntryFailed
   | CandidateUnknown
@@ -102,6 +105,7 @@ type IrisError =
     | x when x = ErrorTypeFB.AssetSaveErrorFB         -> Right (AssetSaveError fb.Message)
     | x when x = ErrorTypeFB.AssetDeleteErrorFB       -> Right (AssetDeleteError fb.Message)
     | x when x = ErrorTypeFB.OtherFB                  -> Right (Other fb.Message)
+    | x when x = ErrorTypeFB.RaftErrorFB              -> Right (RaftError fb.Message)
     | x when x = ErrorTypeFB.AlreadyVotedFB           -> Right AlreadyVoted
     | x when x = ErrorTypeFB.AppendEntryFailedFB      -> Right AppendEntryFailed
     | x when x = ErrorTypeFB.CandidateUnknownFB       -> Right CandidateUnknown
@@ -152,6 +156,7 @@ type IrisError =
     | ErrorTypeFB.AssetSaveErrorFB         -> Right (AssetSaveError fb.Message)
     | ErrorTypeFB.AssetDeleteErrorFB       -> Right (AssetDeleteError fb.Message)
     | ErrorTypeFB.OtherFB                  -> Right (Other fb.Message)
+    | ErrorTypeFB.RaftErrorFB              -> Right (RaftError fb.Message)
     | ErrorTypeFB.AlreadyVotedFB           -> Right AlreadyVoted
     | ErrorTypeFB.AppendEntryFailedFB      -> Right AppendEntryFailed
     | ErrorTypeFB.CandidateUnknownFB       -> Right CandidateUnknown
@@ -212,6 +217,7 @@ type IrisError =
       | IOError                _ -> ErrorTypeFB.IOErrorFB
       | Other                  _ -> ErrorTypeFB.OtherFB
 
+      | RaftError              _ -> ErrorTypeFB.RaftErrorFB
       | AlreadyVoted             -> ErrorTypeFB.AlreadyVotedFB
       | AppendEntryFailed        -> ErrorTypeFB.AppendEntryFailedFB
       | CandidateUnknown         -> ErrorTypeFB.CandidateUnknownFB
@@ -254,6 +260,7 @@ type IrisError =
       | SocketError            msg -> builder.CreateString msg |> Some
       | IOError                msg -> builder.CreateString msg |> Some
       | Other                  msg -> builder.CreateString msg |> Some
+      | RaftError              msg -> builder.CreateString msg |> Some
       | _                          -> None
 
     ErrorFB.StartErrorFB(builder)
@@ -326,6 +333,7 @@ module Error =
     | Other                 e -> sprintf "Other error occurred: %s" (string e)
 
     // RAFT
+    | RaftError             e -> sprintf "RaftError: %s" e
     | AlreadyVoted            -> "Already voted"
     | AppendEntryFailed       -> "AppendEntry request has failed"
     | CandidateUnknown        -> "Election candidate not known to Raft"
@@ -397,26 +405,27 @@ module Error =
     | Other                 _ -> 24
 
     // RAFT
-    | AlreadyVoted            -> 25
-    | AppendEntryFailed       -> 26
-    | CandidateUnknown        -> 27
-    | EntryInvalidated        -> 28
-    | InvalidCurrentIndex     -> 29
-    | InvalidLastLog          -> 30
-    | InvalidLastLogTerm      -> 31
-    | InvalidTerm             -> 32
-    | LogFormatError          -> 33
-    | LogIncomplete           -> 34
-    | NoError                 -> 35
-    | NoNode                  -> 36
-    | NotCandidate            -> 37
-    | NotLeader               -> 38
-    | NotVotingState          -> 39
-    | ResponseTimeout         -> 40
-    | SnapshotFormatError     -> 41
-    | StaleResponse           -> 42
-    | UnexpectedVotingChange  -> 43
-    | VoteTermMismatch        -> 44
+    | RaftError             _ -> 25
+    | AlreadyVoted            -> 26
+    | AppendEntryFailed       -> 27
+    | CandidateUnknown        -> 28
+    | EntryInvalidated        -> 29
+    | InvalidCurrentIndex     -> 30
+    | InvalidLastLog          -> 31
+    | InvalidLastLogTerm      -> 32
+    | InvalidTerm             -> 33
+    | LogFormatError          -> 34
+    | LogIncomplete           -> 35
+    | NoError                 -> 36
+    | NoNode                  -> 37
+    | NotCandidate            -> 38
+    | NotLeader               -> 39
+    | NotVotingState          -> 40
+    | ResponseTimeout         -> 41
+    | SnapshotFormatError     -> 42
+    | StaleResponse           -> 43
+    | UnexpectedVotingChange  -> 44
+    | VoteTermMismatch        -> 45
 
 
   // ** isOk

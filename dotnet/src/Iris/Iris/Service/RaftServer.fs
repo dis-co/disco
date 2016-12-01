@@ -4,6 +4,7 @@ namespace Iris.Service
 
 open System
 open System.Threading
+open System.Collections
 open System.Collections.Concurrent
 open Iris.Core
 open Iris.Core.Utils
@@ -39,6 +40,33 @@ module Raft =
     | StateChanged   of RaftState * RaftState
     | CreateSnapshot of string
 
+  // ** Connections
+
+  type private Connections = ConcurrentDictionary<Id,Req>
+
+  let private disposeAll (connections: Connections) =
+    for KeyValue(_,connection) in connections do
+      dispose connection
+
+  // ** RaftAppContext
+
+  [<NoComparison;NoEquality>]
+  type RaftAppContext =
+    { Status:      ServiceStatus
+      Raft:        RaftValue
+      Options:     IrisConfig
+      Callbacks:   IRaftCallbacks
+      Server:      Zmq.Rep
+      Periodic:    IDisposable
+      Connections: Connections }
+
+    interface IDisposable with
+      member self.Dispose() =
+        dispose self.Periodic
+        disposeAll self.Connections
+        self.Connections.Clear()
+        dispose self.Server
+
   // ** Reply
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
@@ -58,23 +86,20 @@ module Raft =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Initialize     of chan:ReplyChan
-    | Join           of ip:IpAddress * port:uint16 * chan:ReplyChan
+    | Load           of config:IrisConfig   * chan:ReplyChan
+    | Unload         of chan:ReplyChan
+    | Join           of ip:IpAddress        * port:uint16 * chan:ReplyChan
     | Leave          of chan:ReplyChan
     | Get            of chan:ReplyChan
     | Status         of chan:ReplyChan
     | Periodic
     | ForceElection
-    | AddCmd         of sm:StateMachine * chan:ReplyChan
-    | Request        of req:RaftRequest * chan:ReplyChan
-    | Response       of resp:RaftResponse * chan:ReplyChan
-    | AddNode        of node:RaftNode * chan:ReplyChan
-    | RmNode         of id:Id * chan:ReplyChan
+    | AddCmd         of sm:StateMachine     * chan:ReplyChan
+    | Request        of req:RaftRequest     * chan:ReplyChan
+    | Response       of resp:RaftResponse   * chan:ReplyChan
+    | AddNode        of node:RaftNode       * chan:ReplyChan
+    | RmNode         of id:Id               * chan:ReplyChan
     | IsCommitted    of entry:EntryResponse * chan:ReplyChan
-
-  // ** Connections
-
-  type private Connections = ConcurrentDictionary<Id,Req>
 
   // ** Subscriptions
 
@@ -84,790 +109,99 @@ module Raft =
 
   type private StateArbiter = MailboxProcessor<Msg>
 
+  // ** RaftServerState
+
+  [<NoComparison;NoEquality>]
+  type private RaftServerState =
+    | Idle
+    | Loaded of RaftAppContext
+
   // ** RaftServer
 
   type IRaftServer =
     inherit IDisposable
 
-    abstract Node          : RaftNode
-    abstract NodeId        : Id
+    abstract Node          : Either<IrisError,RaftNode>
+    abstract NodeId        : Either<IrisError,Id>
+    abstract Load          : IrisConfig -> Either<IrisError, unit>
+    abstract Unload        : unit -> Either<IrisError, unit>
     abstract Append        : StateMachine -> Either<IrisError, EntryResponse>
     abstract ForceElection : unit -> Either<IrisError, unit>
-    abstract State         : Either<IrisError,RaftAppContext>
-    abstract Status        : Either<IrisError,ServiceStatus>
+    abstract State         : Either<IrisError, RaftAppContext>
+    abstract Status        : Either<IrisError, ServiceStatus>
     abstract Subscribe     : (RaftEvent -> unit) -> IDisposable
-    abstract Start         : unit -> Either<IrisError,unit>
-    abstract Periodic      : unit -> Either<IrisError,unit>
-    abstract JoinCluster   : IpAddress -> uint16 -> Either<IrisError,unit>
-    abstract LeaveCluster  : unit -> Either<IrisError,unit>
-    abstract AddNode       : RaftNode -> Either<IrisError,EntryResponse>
-    abstract RmNode        : Id -> Either<IrisError,EntryResponse>
-    abstract Connections   : Either<IrisError,Connections>
+    abstract Start         : unit -> Either<IrisError, unit>
+    abstract Periodic      : unit -> Either<IrisError, unit>
+    abstract JoinCluster   : IpAddress -> uint16 -> Either<IrisError, unit>
+    abstract LeaveCluster  : unit -> Either<IrisError, unit>
+    abstract AddNode       : RaftNode -> Either<IrisError, EntryResponse>
+    abstract RmNode        : Id -> Either<IrisError, EntryResponse>
+    abstract Connections   : Either<IrisError, Connections>
 
-  // ** periodicR
+  //  _   _      _
+  // | | | | ___| |_ __   ___ _ __ ___
+  // | |_| |/ _ \ | '_ \ / _ \ '__/ __|
+  // |  _  |  __/ | |_) |  __/ |  \__ \
+  // |_| |_|\___|_| .__/ \___|_|  |___/
+  //              |_|
 
-  let private periodic (state: RaftAppContext) =
-    Raft.periodic (uint32 state.Options.RaftConfig.PeriodicInterval)
-    |> evalRaft state.Raft state.Callbacks
-    |> RaftContext.updateRaft state
+  // ** getRaft
 
-  // ** appendEntry
-
-  let private appendEntry (state: RaftAppContext)
-                          (entry: RaftLogEntry) :
-                          Either<IrisError * RaftAppContext, EntryResponse * RaftAppContext> =
-    let result =
-      entry
-      |> Raft.receiveEntry
-      |> runRaft state.Raft state.Callbacks
-
-    match result with
-
-    | Right (appended, raftState) ->
-      (appended, RaftContext.updateRaft state raftState)
-      |> Either.succeed
-
-    | Left (err, raftState) ->
-      (err, RaftContext.updateRaft state raftState)
-      |> Either.fail
-
-  // ** appendCommand
-
-  let private appendCommand (state: RaftAppContext) (cmd: StateMachine) =
-    cmd
-    |> Log.make state.Raft.CurrentTerm
-    |> appendEntry state
-
-  // ** onConfigDone
-
-  let private onConfigDone (state: RaftAppContext) =
-    "appending entry to exit joint-consensus into regular configuration"
-    |> Logger.debug state.Raft.Node.Id tag
-
-    state.Raft.Peers
-    |> Map.toArray
-    |> Array.map snd
-    |> Log.mkConfig state.Raft.CurrentTerm
-    |> appendEntry state
-
-  // ** addNodes
-
-  /// ## addNodes
+  /// ## pull Raft state value out of RaftAppContext value
   ///
-  /// Enter the Joint-Consensus by apppending a respective log entry.
+  /// Get Raft state value from RaftAppContext.
   ///
   /// ### Signature:
-  /// - state: current RaftAppContext to work against
-  /// - nodes: the changes to make to the current cluster configuration
+  /// - context: RaftAppContext
   ///
-  /// Returns: Either<RaftError * RaftValue, unit * Raft, EntryResponse * RaftValue>
-  let private addNodes (state: RaftAppContext) (nodes: RaftNode array) =
-    if Raft.isLeader state.Raft then
-      nodes
-      |> Array.map ConfigChange.NodeAdded
-      |> Log.mkConfigChange state.Raft.CurrentTerm
-      |> appendEntry state
-    else
-      Logger.err state.Raft.Node.Id tag "Unable to add node. Not leader."
-      (NotLeader, state)
-      |> Either.fail
+  /// Returns: Raft
+  let private getRaft (context: RaftAppContext) =
+    context.Raft
 
-  // ** addNewNode
+  // ** getNode
 
-  let private addNewNode (state: RaftAppContext) (id: Id) (ip: IpAddress) (port: uint32) =
-    sprintf "attempting to add node with
-         %A %A:%d" (string id) (string ip) port
-    |> Logger.debug state.Raft.Node.Id tag
-
-    [| { Node.create id with
-
-          IpAddr = ip
-          Port   = uint16 port } |]
-    |> addNodes state
-
-  // ** removeNodes
-
-  /// ## removeNodes
+  /// ## getNode
   ///
-  /// Function to execute a two-phase commit for adding/removing members from the cluster.
+  /// Return the current node.
   ///
   /// ### Signature:
-  /// - changes: configuration changes to make to the cluster
-  /// - success: RaftResponse to return when successful
-  /// - appState: transactional variable to work against
+  /// - context: RaftAppContext
   ///
-  /// Returns: RaftResponse
-  let private removeNodes (state: RaftAppContext) (nodes: RaftNode array) =
-    "appending entry to enter joint-consensus"
-    |> Logger.debug state.Raft.Node.Id tag
+  /// Returns: RaftNode
+  let private getNode (context: RaftAppContext) =
+    context
+    |> getRaft
+    |> Raft.getSelf
 
-    nodes
-    |> Array.map ConfigChange.NodeRemoved
-    |> Log.mkConfigChange state.Raft.CurrentTerm
-    |> appendEntry state
+  // ** getNodeId
 
-  // ** removeNode
-
-  let private removeNode (state: RaftAppContext) (id: Id) =
-    if Raft.isLeader state.Raft then
-      string id
-      |> sprintf "attempting to remove node with
-         %A"
-      |> Logger.debug state.Raft.Node.Id tag
-
-      let potentialChange =
-        state.Raft
-        |> Raft.getNode id
-
-      match potentialChange with
-
-      | Some node -> removeNodes state [| node |]
-      | None ->
-        sprintf "Unable to remove node. Not found: %A" (string id)
-        |> Logger.err state.Raft.Node.Id tag
-
-        (MissingNode (string id), state)
-        |> Either.fail
-    else
-      "Unable to remove node. Not leader."
-      |> Logger.err state.Raft.Node.Id tag
-
-      (NotLeader, state)
-      |> Either.fail
-
-  // ** processAppendEntries
-
-  let private processAppendEntries (state: RaftAppContext)
-                                   (channel: ReplyChan)
-                                   (sender: Id)
-                                   (ae: AppendEntries) =
-    let result =
-      Raft.receiveAppendEntries (Some sender) ae
-      |> runRaft state.Raft state.Callbacks
-
-    match result with
-    | Right (response, newstate) ->
-      AppendEntriesResponse(state.Raft.Node.Id, response)
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      RaftContext.updateRaft state newstate
-
-    | Left (err, newstate) ->
-      ErrorResponse err
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      RaftContext.updateRaft state newstate
-
-  // ** processVoteRequest
-
-  let private processVoteRequest (state: RaftAppContext)
-                                 (channel: ReplyChan)
-                                 (sender: Id)
-                                 (vr: VoteRequest) =
-    let result =
-      Raft.receiveVoteRequest sender vr
-      |> runRaft state.Raft state.Callbacks
-
-    match result with
-
-    | Right (response, newstate) ->
-      RequestVoteResponse(state.Raft.Node.Id, response)
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      RaftContext.updateRaft state newstate
-
-    | Left (err, newstate) ->
-      ErrorResponse err
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      RaftContext.updateRaft state newstate
-
-  // ** processInstallSnapshot
-
-  let private processInstallSnapshot (state: RaftAppContext)
-                                     (channel: ReplyChan)
-                                     (sender: Id)
-                                     (snapshot: InstallSnapshot) =
-    Logger.err state.Raft.Node.Id tag "INSTALLSNAPSHOT REQUEST NOT HANDLED YET"
-    // let snapshot = createSnapshot () |> runRaft raft'
-    let ar = { Term         = state.Raft.CurrentTerm
-             ; Success      = false
-             ; CurrentIndex = Raft.currentIndex state.Raft
-             ; FirstIndex   = match Raft.firstIndex state.Raft.CurrentTerm state.Raft with
-                              | Some idx -> idx
-                              | _        -> 0u }
-    InstallSnapshotResponse(state.Raft.Node.Id, ar)
-    |> Reply.Response
-    |> Either.succeed
-    |> channel.Reply
-    state
-
-  // ** doRedirect
-
-  /// ## Redirect to leader
+  /// ## getNodeId
   ///
-  /// Gets the current leader node from the Raft state and returns a corresponding RaftResponse.
+  /// Return the current node Id.
   ///
   /// ### Signature:
-  /// - state: RaftAppContext
+  /// - context: RaftAppContext
   ///
-  /// Returns: Either<IrisError,RaftResponse>
-  let private doRedirect (state: RaftAppContext) (channel: ReplyChan) =
-    match Raft.getLeader state.Raft with
-    | Some node ->
-      Redirect node
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      state
+  /// Returns: Id
+  let private getNodeId (context: RaftAppContext) =
+    context
+    |> getRaft
+    |> Raft.getSelf
+    |> Node.getId
 
-    | None ->
-      ErrorResponse (Other "No known leader")
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      state
+  // ** updateRaft
 
-  // ** processHandshake
-
-  /// ## Process a HandShake request by a certain Node.
+  /// ## Update Raft in RaftAppContext
   ///
-  /// Handle a request to join the cluster. Respond with Welcome if everything is OK. Redirect to
-  /// leader if we are currently not Leader.
+  /// Update the Raft field of a given RaftAppContext
   ///
   /// ### Signature:
-  /// - node: Node which wants to join the cluster
-  /// - appState: current TVar<RaftAppContext>
+  /// - raft: new Raft value to add to RaftAppContext
+  /// - state: RaftAppContext to update
   ///
-  /// Returns: RaftResponse
-  let private processHandshake (state: RaftAppContext)
-                               (channel: ReplyChan)
-                               (node: RaftNode) =
-    if Raft.isLeader state.Raft then
-      match addNodes state [| node |] with
-      | Right (entry, newstate) ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> channel.Reply
-        newstate
-
-      | Left (err, newstate) ->
-        ErrorResponse err
-        |> Reply.Response
-        |> Either.succeed
-        |> channel.Reply
-        newstate
-    else
-      doRedirect state channel
-
-  // ** processHandwaive
-
-  let private processHandwaive (state: RaftAppContext)
-                               (channel: ReplyChan)
-                               (node: RaftNode) =
-    if Raft.isLeader state.Raft then
-      match removeNode state node.Id with
-      | Right (entry, newstate) ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> channel.Reply
-        newstate
-
-      | Left (err, newstate) ->
-        ErrorResponse err
-        |> Reply.Response
-        |> Either.succeed
-        |> channel.Reply
-        newstate
-    else
-      doRedirect state channel
-
-  // ** processRequest
-
-  let private processRequest (state: RaftAppContext)
-                             (channel: ReplyChan)
-                             (request: RaftRequest) =
-    match request with
-    | AppendEntries (id, ae)   -> processAppendEntries   state channel id ae
-    | RequestVote (id, vr)     -> processVoteRequest     state channel id vr
-    | InstallSnapshot (id, is) -> processInstallSnapshot state channel id is
-    | HandShake node           -> processHandshake       state channel node
-    | HandWaive node           -> processHandwaive       state channel node
-
-  // ** processAppendResponse
-
-  let private processAppendResponse (state: RaftAppContext)
-                                    (channel: ReplyChan)
-                                    (sender: Id)
-                                    (ar: AppendResponse) =
-    let result =
-      Raft.receiveAppendEntriesResponse sender ar
-      |> runRaft state.Raft state.Callbacks
-
-    match result with
-    | Right (_, newstate) ->
-      Reply.Ok
-      |> Either.succeed
-      |> channel.Reply
-      RaftContext.updateRaft state newstate
-
-    | Left (err, newstate) ->
-      err
-      |> Either.fail
-      |> channel.Reply
-      RaftContext.updateRaft state newstate
-
-  // ** processVoteResponse
-
-  let private processVoteResponse (state: RaftAppContext)
-                                  (channel: ReplyChan)
-                                  (sender: Id)
-                                  (vr: VoteResponse) =
-    let result =
-      Raft.receiveVoteResponse sender vr
-      |> runRaft state.Raft state.Callbacks
-
-    match result with
-    | Right (_, newstate) ->
-      Reply.Ok
-      |> Either.succeed
-      |> channel.Reply
-      RaftContext.updateRaft state newstate
-
-    | Left (err, newstate) ->
-      err
-      |> Either.fail
-      |> channel.Reply
-      RaftContext.updateRaft state newstate
-
-  // ** processSnapshotResponse
-
-  let private processSnapshotResponse (state: RaftAppContext)
-                                      (channel: ReplyChan)
-                                      (sender: Id)
-                                      (ar: AppendResponse) =
-    "FIX RESPONSE PROCESSING FOR SNAPSHOT REQUESTS"
-    |> Logger.err state.Raft.Node.Id tag
-
-    Reply.Ok
-    |> Either.succeed
-    |> channel.Reply
-    state
-
-  // ** processRedirect
-
-  let private processRedirect (state: RaftAppContext)
-                              (channel: ReplyChan)
-                              (leader: RaftNode) =
-    "FIX REDIRECT RESPONSE PROCESSING"
-    |> Logger.err state.Raft.Node.Id tag
-
-    Reply.Ok
-    |> Either.succeed
-    |> channel.Reply
-    state
-
-  // ** processWelcome
-
-  let private processWelcome (state: RaftAppContext)
-                             (channel: ReplyChan)
-                             (leader: RaftNode) =
-
-    "FIX WELCOME RESPONSE PROCESSING"
-    |> Logger.err state.Raft.Node.Id tag
-
-    Reply.Ok
-    |> Either.succeed
-    |> channel.Reply
-    state
-
-  // ** processArrivederci
-
-  let private processArrivederci (state: RaftAppContext)
-                                 (channel: ReplyChan) =
-
-    "FIX ARRIVEDERCI RESPONSE PROCESSING"
-    |> Logger.err state.Raft.Node.Id tag
-
-    Reply.Ok
-    |> Either.succeed
-    |> channel.Reply
-    state
-
-  // ** processErrorResponse
-
-  let private processErrorResponse (state: RaftAppContext)
-                                   (channel: ReplyChan)
-                                   (error: IrisError) =
-
-    error
-    |> sprintf "received error response: %A"
-    |> Logger.err state.Raft.Node.Id tag
-
-    Reply.Ok
-    |> Either.succeed
-    |> channel.Reply
-    state
-
-  // ** processResponse
-
-  let private processResponse (state: RaftAppContext)
-                              (channel: ReplyChan)
-                              (response: RaftResponse) =
-    match response with
-    | RequestVoteResponse     (sender, vote) -> processVoteResponse     state channel sender vote
-    | AppendEntriesResponse   (sender, ar)   -> processAppendResponse   state channel sender ar
-    | InstallSnapshotResponse (sender, ar)   -> processSnapshotResponse state channel sender ar
-    | ErrorResponse            error         -> processErrorResponse    state channel error
-    | _                                      -> state
-
-  // ** tryJoin
-
-  let private tryJoin (state: RaftAppContext) (ip: IpAddress) (port: uint16) =
-    let rec _tryJoin retry peer =
-      either {
-        if retry < int state.Options.RaftConfig.MaxRetries then
-          use client = mkReqSocket peer
-
-          sprintf "Retry: %d" retry
-          |> Logger.debug state.Raft.Node.Id "tryJoin"
-
-          let request = HandShake(state.Raft.Node)
-          let! result = rawRequest request client
-
-          sprintf "Result: %A" result
-          |> Logger.debug state.Raft.Node.Id "tryJoin"
-
-          match result with
-          | Welcome node ->
-            sprintf "Received Welcome from %A" node.Id
-            |> Logger.debug state.Raft.Node.Id "tryJoin"
-            return node
-
-          | Redirect next ->
-            sprintf "Got redirected to %A" (nodeUri next)
-            |> Logger.info state.Raft.Node.Id "tryJoin"
-            return! _tryJoin (retry + 1) next
-
-          | ErrorResponse err ->
-            sprintf "Unexpected error occurred. %A" err
-            |> Logger.err state.Raft.Node.Id "tryJoin"
-            return! Either.fail err
-
-          | resp ->
-            sprintf "Unexpected response. %A" resp
-            |> Logger.err state.Raft.Node.Id "tryJoin"
-            return!
-              Other "Unexpected response"
-              |> Either.fail
-        else
-          "Too many unsuccesful connection attempts."
-          |> Logger.err state.Raft.Node.Id "tryJoin"
-          return!
-            Other "Too many unsuccesful connection attempts."
-            |> Either.fail
-      }
-
-    // execute the join request with a newly created "fake" node
-    _tryJoin 0 { Node.create (Id.Create()) with
-                  IpAddr = ip
-                  Port   = port }
-
-  // ** tryJoinCluster
-
-  let private tryJoinCluster (state: RaftAppContext) (ip: IpAddress) (port: uint16) =
-    raft {
-      Logger.debug state.Raft.Node.Id tag "requesting to join"
-
-      let leader = tryJoin state ip port
-
-      match leader with
-      | Right leader ->
-        sprintf "Reached leader: %A Adding to nodes." leader.Id
-        |> Logger.info state.Raft.Node.Id tag
-
-        do! Raft.addNodeM leader
-        do! Raft.becomeFollower ()
-
-      | Left err ->
-        sprintf "Joining cluster failed. %A" err
-        |> Logger.err state.Raft.Node.Id tag
-
-    }
-    |> runRaft state.Raft state.Callbacks
-
-  // ** tryLeave
-
-  /// ## Attempt to leave a Raft cluster
-  ///
-  /// Attempt to leave a Raft cluster by identifying the current cluster leader and sending an
-  /// AppendEntries request with a JointConsensus entry.
-  ///
-  /// ### Signature:
-  /// - appState: RaftAppContext TVar
-  ///
-  /// Returns: unit
-  let private tryLeave (state: RaftAppContext) : Either<IrisError,bool> =
-    let rec _tryLeave retry node =
-      either {
-        if retry < int state.Options.RaftConfig.MaxRetries then
-          use client = mkReqSocket node
-
-          let request = HandWaive(state.Raft.Node)
-          let! result = rawRequest request client
-
-          match result with
-
-          | Redirect other ->
-            if retry <= int state.Options.RaftConfig.MaxRetries then
-              return! _tryLeave (retry + 1) other
-            else
-              return!
-                Other "Too many retries, aborting."
-                |> Either.fail
-          | Arrivederci       -> return true
-          | ErrorResponse err -> return! Either.fail err
-          | resp              -> return! Either.fail (Other "Unexpected response")
-        else
-          return! Either.fail (Other "Too many unsuccesful connection attempts.")
-      }
-
-    match state.Raft.CurrentLeader with
-    | Some nid ->
-      match Map.tryFind nid state.Raft.Peers with
-
-      | Some node -> _tryLeave 0 node
-      | _         ->
-        Other "Node data for leader id not found"
-        |> Either.fail
-    | _ ->
-      Other "No known Leader"
-      |> Either.fail
-
-  // ** leaveCluster
-
-  let private tryLeaveCluster (state: RaftAppContext) =
-    raft {
-      do! Raft.setTimeoutElapsedM 0u
-
-      match tryLeave state with
-
-      | Right true  ->
-        "Successfully left cluster."
-        |> Logger.info state.Raft.Node.Id tag // FIXME: this might need more consequences than this
-
-      | Right false ->
-        "Could not leave cluster."
-        |> Logger.err state.Raft.Node.Id tag
-
-      | Left err ->
-        err
-        |> sprintf "Could not leave cluster. %A"
-        |> Logger.err state.Raft.Node.Id tag
-
-      do! Raft.becomeFollower ()
-
-      let! peers = Raft.getNodesM ()
-
-      for kv in peers do
-        do! Raft.removeNodeM kv.Value
-
-    }
-    |> runRaft state.Raft state.Callbacks
-
-  // ** forceElection
-
-  let private forceElection (state: RaftAppContext) =
-    raft {
-      let! timeout = Raft.electionTimeoutM ()
-      do! Raft.setTimeoutElapsedM timeout
-      do! Raft.periodic timeout
-    }
-    |> runRaft state.Raft state.Callbacks
-
-  // ** rand
-
-  let private rand = new System.Random()
-
-  // ** initializeState
-
-  let private initializeState (state: RaftAppContext) =
-    raft {
-      let term = 0u
-      do! Raft.setTermM term
-      let! num = Raft.numNodesM ()
-
-      if num = 1u then
-        do! Raft.setTimeoutElapsedM 0u
-        do! Raft.becomeLeader ()
-      else
-        // set the timeout to something random, to prevent split votes
-        let timeout : Long =
-          rand.Next(0, int state.Raft.ElectionTimeout)
-          |> uint32
-        do! Raft.setTimeoutElapsedM timeout
-        do! Raft.becomeFollower ()
-    }
-    |> runRaft state.Raft state.Callbacks
-
-  // ** loop
-
-  let private loop (initial: RaftAppContext) (inbox: StateArbiter) =
-    let rec act state =
-      async {
-        let! cmd = inbox.Receive()
-
-        let newstate =
-          match cmd with
-          | Msg.Initialize channel ->
-            match initializeState state with
-            | Right (_, newstate) ->
-              Reply.Ok
-              |> Either.succeed
-              |> channel.Reply
-              { RaftContext.updateRaft state newstate with
-                  Status = ServiceStatus.Running }
-
-            | Left (error, newstate) ->
-              error
-              |> Either.fail
-              |> channel.Reply
-              { RaftContext.updateRaft state newstate with
-                  Status = ServiceStatus.Failed error }
-
-          | Msg.Status channel ->
-            Reply.Status state.Status
-            |> Either.succeed
-            |> channel.Reply
-            state
-
-          | Msg.Join (ip, port, channel) ->
-            match tryJoinCluster state ip port with
-            | Right (_, newstate) ->
-              Reply.Ok
-              |> Either.succeed
-              |> channel.Reply
-              RaftContext.updateRaft state newstate
-
-            | Left (error, newstate) ->
-              error
-              |> Either.fail
-              |> channel.Reply
-              RaftContext.updateRaft state newstate
-
-          | Msg.Leave channel ->
-            match tryLeaveCluster state with
-            | Right (_, newstate) ->
-              Reply.Ok
-              |> Either.succeed
-              |> channel.Reply
-              RaftContext.updateRaft state newstate
-
-            | Left (error, newstate) ->
-              error
-              |> Either.fail
-              |> channel.Reply
-              RaftContext.updateRaft state newstate
-
-          | Msg.Periodic -> periodic state
-
-          | Msg.ForceElection ->
-            match forceElection state with
-            | Right (_, newstate) ->
-              RaftContext.updateRaft state newstate
-
-            | Left (err, newstate) ->
-              err
-              |> sprintf "Unable to force an election: %A"
-              |> Logger.err newstate.Node.Id tag
-              RaftContext.updateRaft state newstate
-
-          // Add a new StateMachine Command to the distributed log
-          | Msg.AddCmd (cmd, channel) ->
-            match appendCommand state cmd with
-            | Right (entry, newstate) ->
-              Reply.Entry entry
-              |> Either.succeed
-              |> channel.Reply
-              newstate
-
-            | Left (err, newstate) ->
-              err
-              |> Either.fail
-              |> channel.Reply
-              newstate
-
-          // Process an server request
-          | Msg.Request (request, channel) ->
-            processRequest state channel request
-
-          // Process a server response
-          | Msg.Response (response, channel) ->
-            processResponse state channel response
-
-          // Get the current state
-          | Msg.Get channel ->
-            Reply.State state
-            |> Either.succeed
-            |> channel.Reply
-            state
-
-          // Add a new node to the cluster
-          | Msg.AddNode (node, channel) ->
-            match addNodes state [| node |] with
-            | Right (entry, newstate) ->
-              Reply.Entry entry
-              |> Either.succeed
-              |> channel.Reply
-              newstate
-
-            | Left (err, newstate) ->
-              err
-              |> Either.fail
-              |> channel.Reply
-              newstate
-
-          // Remove a known node from the cluster
-          | Msg.RmNode (id, channel) ->
-            match removeNode state id with
-            | Right (entry, newstate) ->
-              Reply.Entry entry
-              |> Either.succeed
-              |> channel.Reply
-              newstate
-
-            | Left (err, newstate) ->
-              err
-              |> Either.fail
-              |> channel.Reply
-              newstate
-
-          | Msg.IsCommitted (entry, channel) ->
-            let result =
-              Raft.responseCommitted entry
-              |> runRaft state.Raft state.Callbacks
-
-            match result with
-            | Right (committed, _) ->
-              committed
-              |> Reply.IsCommitted
-              |> Either.succeed
-              |> channel.Reply
-              state
-
-            | Left  (err, _) ->
-              err
-              |> Either.fail
-              |> channel.Reply
-              state
-
-        do! act newstate
-      }
-    act initial
+  /// Returns: RaftAppContext
+  let private updateRaft (context: RaftAppContext) (raft: RaftValue) : RaftAppContext =
+    { context with Raft = raft }
 
   //  ____
   // / ___|  ___ _ ____   _____ _ __
@@ -883,7 +217,7 @@ module Raft =
   ///
   /// ### Signature:
   /// - appended: EntryResponse returned by receiveEntry
-  /// - state: RaftAppContext transactional state variable
+  /// - state: RaftServerState transactional state variable
   ///
   /// Returns: bool
   let private waitForCommit (arbiter: StateArbiter) (appended: EntryResponse) =
@@ -920,12 +254,13 @@ module Raft =
 
     !ok
 
-  // ** handleRequest
+  // ** requestHandler
 
-  let private handleRequest (arbiter: StateArbiter) (msg: RaftRequest) : RaftResponse =
-    let result =
+  let private requestHandler (arbiter: StateArbiter) (data: byte array) =
+    let handle request =
       either {
-        let! reply = arbiter.PostAndReply(fun chan -> Msg.Request(msg,chan))
+        let! message = Binary.decode<IrisError,RaftRequest> request
+        let! reply = arbiter.PostAndReply(fun chan -> Msg.Request(message,chan))
 
         match reply with
         | Reply.Response response ->       // the base case it, the response is ready
@@ -934,53 +269,48 @@ module Raft =
         | Reply.Entry entry ->
           let! committed = waitForCommit arbiter entry
 
-          match msg, committed with
+          match message, committed with
           | HandShake _, true ->
             let! reply = arbiter.PostAndReply(fun chan -> Msg.Get chan)
             match reply with
             | Reply.State state ->
               return Welcome state.Raft.Node
             | other ->
-              return
+              return!
                 sprintf "Unexpected reply from StateArbiter: %A" other
-                |> Other
-                |> ErrorResponse
+                |> RaftError
+                |> Either.fail
 
           | HandWaive _, true ->
             return Arrivederci
 
           | HandWaive _, false | HandShake _, false ->
-            return ErrorResponse ResponseTimeout
-
+            return!
+              ResponseTimeout
+              |> Either.fail
           | other ->
-            return
+            return!
               sprintf "Unexpected reply StateArbiter: %A" other
-              |> Other
-              |> ErrorResponse
+              |> RaftError
+              |> Either.fail
 
         | other ->
-          return
+          return!
             sprintf "Unexpected reply StateArbiter: %A" other
-            |> Other
-            |> ErrorResponse
+            |> RaftError
+            |> Either.fail
       }
 
-    match result with
-    | Right resp -> resp
-    | Left error -> ErrorResponse error
+    match handle data with
+    | Right response -> response
+    | Left error     -> ErrorResponse error
+    |> Binary.encode
 
-
-  // ** requestHandler
-
-  let private requestHandler (arbiter: StateArbiter) (request: byte array) =
-    let request = Binary.decode<IrisError,RaftRequest> request
-
-    let response =
-      match request with
-      | Right message -> handleRequest arbiter message
-      | Left error    -> ErrorResponse error
-
-    response |> Binary.encode
+  //   ____      _ _ _                _
+  //  / ___|__ _| | | |__   __ _  ___| | _____
+  // | |   / _` | | | '_ \ / _` |/ __| |/ / __|
+  // | |__| (_| | | | |_) | (_| | (__|   <\__ \
+  //  \____\__,_|_|_|_.__/ \__,_|\___|_|\_\___/
 
   // ** getConnection
 
@@ -1067,43 +397,6 @@ module Raft =
       |> sprintf "SendInstallSnapshot: received error %A in request to %A" error
       |> Logger.err self tag
       None
-
-  // ** startPeriodic
-
-  /// ## startPeriodic
-  ///
-  /// Starts an asynchronous loop to run Raft's `periodic` function. Returns a token, with which the
-  /// loop can be cancelled at a later time.
-  ///
-  /// ### Signature:
-  /// - timeoput: interval at which the loop runs
-  /// - appState: current RaftAppContext TVar
-  ///
-  /// Returns: CancellationTokenSource
-  let private startPeriodic (arbiter: StateArbiter) (cts: CancellationTokenSource) =
-    let rec proc () =
-      async {
-        let! result = arbiter.PostAndAsyncReply(fun chan -> Msg.Get chan)
-        match result with
-        | Right (Reply.State state) ->
-          arbiter.Post(Msg.Periodic)
-          do! Async.Sleep(int state.Options.RaftConfig.PeriodicInterval) // sleep for 100ms
-
-        | Right reply ->
-          printfn "Unexpected reply in periodic function %A" reply
-
-        | Left error ->
-          printfn "Error in periodic function: %A" error
-        return! proc ()
-      }
-    try
-      Async.Start(proc(), cts.Token)
-      |> Either.succeed
-    with
-      | exn ->
-        exn.Message
-        |> Other
-        |> Either.fail
 
   // ** prepareSnapshot
 
@@ -1220,39 +513,1021 @@ module Raft =
 
         }
 
-  // ** initConnections
 
-  let private initConnections (state: RaftValue) (connections: Connections) =
-    for KeyValue(_,node) in state.Peers do
-      if node.Id <> state.Node.Id then
-        getConnection state.Node.Id connections node
-        |> ignore
+  //  ____        __ _
+  // |  _ \ __ _ / _| |_
+  // | |_) / _` | |_| __|
+  // |  _ < (_| |  _| |_
+  // |_| \_\__,_|_|  \__|
 
-  // ** mkState
+  // ** appendEntry
 
-  /// ## Create an RaftAppState value
+  let private appendEntry (state: RaftAppContext) (entry: RaftLogEntry) =
+    let result =
+      entry
+      |> Raft.receiveEntry
+      |> runRaft state.Raft state.Callbacks
+
+    match result with
+
+    | Right (appended, raftState) ->
+      (appended, updateRaft state raftState)
+      |> Either.succeed
+
+    | Left (err, raftState) ->
+      (err, updateRaft state raftState)
+      |> Either.fail
+
+  // ** appendCommand
+
+  let private appendCommand (state: RaftAppContext) (cmd: StateMachine) =
+    cmd
+    |> Log.make state.Raft.CurrentTerm
+    |> appendEntry state
+
+  // ** onConfigDone
+
+  let private onConfigDone (state: RaftAppContext) =
+    "appending entry to exit joint-consensus into regular configuration"
+    |> Logger.debug state.Raft.Node.Id tag
+
+    state.Raft.Peers
+    |> Map.toArray
+    |> Array.map snd
+    |> Log.mkConfig state.Raft.CurrentTerm
+    |> appendEntry state
+
+  // ** addNodes
+
+  /// ## addNodes
   ///
-  /// Given the `RaftOptions`, create or load data and construct a new `RaftAppState` for the
-  /// `RaftServer`.
+  /// Enter the Joint-Consensus by apppending a respective log entry.
   ///
   /// ### Signature:
-  /// - context: `ZeroMQ` `Context`
-  /// - options: `RaftOptions`
+  /// - state: current RaftServerState to work against
+  /// - nodes: the changes to make to the current cluster configuration
   ///
-  /// Returns: RaftAppState
-  let private mkState (options: IrisConfig)
-                      (connections: Connections)
-                      (subscriptions: Subscriptions) =
-    either {
-      let! raft = getRaft options
+  /// Returns: Either<RaftError * RaftValue, unit * Raft, EntryResponse * RaftValue>
+  let private addNodes (state: RaftAppContext) (nodes: RaftNode array) =
+    if Raft.isLeader state.Raft then
+      nodes
+      |> Array.map ConfigChange.NodeAdded
+      |> Log.mkConfigChange state.Raft.CurrentTerm
+      |> appendEntry state
+    else
+      Logger.err state.Raft.Node.Id tag "Unable to add node. Not leader."
+      (NotLeader, state)
+      |> Either.fail
 
-      initConnections raft connections
+  // ** addNewNode
 
-      return { Status    = ServiceStatus.Starting
-               Raft      = raft
-               Callbacks = mkCallbacks raft.Node.Id connections subscriptions
-               Options   = options }
+  let private addNewNode (state: RaftAppContext) (id: Id) (ip: IpAddress) (port: uint32) =
+    sprintf "attempting to add node with
+         %A %A:%d" (string id) (string ip) port
+    |> Logger.debug state.Raft.Node.Id tag
+
+    [| { Node.create id with
+
+          IpAddr = ip
+          Port   = uint16 port } |]
+    |> addNodes state
+
+  // ** removeNodes
+
+  /// ## removeNodes
+  ///
+  /// Function to execute a two-phase commit for adding/removing members from the cluster.
+  ///
+  /// ### Signature:
+  /// - changes: configuration changes to make to the cluster
+  /// - success: RaftResponse to return when successful
+  /// - appState: transactional variable to work against
+  ///
+  /// Returns: RaftResponse
+  let private removeNodes (state: RaftAppContext) (nodes: RaftNode array) =
+    "appending entry to enter joint-consensus"
+    |> Logger.debug state.Raft.Node.Id tag
+
+    nodes
+    |> Array.map ConfigChange.NodeRemoved
+    |> Log.mkConfigChange state.Raft.CurrentTerm
+    |> appendEntry state
+
+  // ** removeNode
+
+  let private removeNode (state: RaftAppContext) (id: Id) =
+    if Raft.isLeader state.Raft then
+      string id
+      |> sprintf "attempting to remove node with
+         %A"
+      |> Logger.debug state.Raft.Node.Id tag
+
+      let potentialChange =
+        state.Raft
+        |> Raft.getNode id
+
+      match potentialChange with
+
+      | Some node -> removeNodes state [| node |]
+      | None ->
+        sprintf "Unable to remove node. Not found: %A" (string id)
+        |> Logger.err state.Raft.Node.Id tag
+
+        (MissingNode (string id), state)
+        |> Either.fail
+    else
+      "Unable to remove node. Not leader."
+      |> Logger.err state.Raft.Node.Id tag
+
+      (NotLeader, state)
+      |> Either.fail
+
+  // ** processAppendEntries
+
+  let private processAppendEntries (state: RaftAppContext)
+                                   (sender: Id)
+                                   (ae: AppendEntries)
+                                   (channel: ReplyChan) =
+    let result =
+      Raft.receiveAppendEntries (Some sender) ae
+      |> runRaft state.Raft state.Callbacks
+
+    match result with
+    | Right (response, newstate) ->
+      AppendEntriesResponse(state.Raft.Node.Id, response)
+      |> Reply.Response
+      |> Either.succeed
+      |> channel.Reply
+      updateRaft state newstate
+
+    | Left (err, newstate) ->
+      ErrorResponse err
+      |> Reply.Response
+      |> Either.succeed
+      |> channel.Reply
+      updateRaft state newstate
+
+  // ** processVoteRequest
+
+  let private processVoteRequest (state: RaftAppContext)
+                                 (sender: Id)
+                                 (vr: VoteRequest)
+                                 (channel: ReplyChan) =
+    let result =
+      Raft.receiveVoteRequest sender vr
+      |> runRaft state.Raft state.Callbacks
+
+    match result with
+    | Right (response, newstate) ->
+      RequestVoteResponse(state.Raft.Node.Id, response)
+      |> Reply.Response
+      |> Either.succeed
+      |> channel.Reply
+      updateRaft state newstate
+
+    | Left (err, newstate) ->
+      ErrorResponse err
+      |> Reply.Response
+      |> Either.succeed
+      |> channel.Reply
+      updateRaft state newstate
+
+  // ** processInstallSnapshot
+
+  let private processInstallSnapshot (state: RaftAppContext)
+                                     (sender: Id)
+                                     (snapshot: InstallSnapshot)
+                                     (channel: ReplyChan) =
+    Logger.err state.Raft.Node.Id tag "INSTALLSNAPSHOT REQUEST NOT HANDLED YET"
+    // let snapshot = createSnapshot () |> runRaft raft'
+    let ar = { Term         = state.Raft.CurrentTerm
+             ; Success      = false
+             ; CurrentIndex = Raft.currentIndex state.Raft
+             ; FirstIndex   = match Raft.firstIndex state.Raft.CurrentTerm state.Raft with
+                              | Some idx -> idx
+                              | _        -> 0u }
+    InstallSnapshotResponse(state.Raft.Node.Id, ar)
+    |> Reply.Response
+    |> Either.succeed
+    |> channel.Reply
+    state
+
+  // ** doRedirect
+
+  /// ## Redirect to leader
+  ///
+  /// Gets the current leader node from the Raft state and returns a corresponding RaftResponse.
+  ///
+  /// ### Signature:
+  /// - state: RaftServerState
+  ///
+  /// Returns: Either<IrisError,RaftResponse>
+  let private doRedirect (state: RaftAppContext) (channel: ReplyChan) =
+    match Raft.getLeader state.Raft with
+    | Some node ->
+      Redirect node
+      |> Reply.Response
+      |> Either.succeed
+      |> channel.Reply
+      state
+
+    | None ->
+      ErrorResponse (Other "No known leader")
+      |> Reply.Response
+      |> Either.succeed
+      |> channel.Reply
+      state
+
+  // ** processHandshake
+
+  /// ## Process a HandShake request by a certain Node.
+  ///
+  /// Handle a request to join the cluster. Respond with Welcome if everything is OK. Redirect to
+  /// leader if we are currently not Leader.
+  ///
+  /// ### Signature:
+  /// - node: Node which wants to join the cluster
+  /// - appState: current TVar<RaftServerState>
+  ///
+  /// Returns: RaftResponse
+  let private processHandshake (state: RaftAppContext)
+                               (node: RaftNode)
+                               (channel: ReplyChan) =
+    if Raft.isLeader state.Raft then
+      match addNodes state [| node |] with
+      | Right (entry, newstate) ->
+        Reply.Entry entry
+        |> Either.succeed
+        |> channel.Reply
+        newstate
+
+      | Left (err, newstate) ->
+        ErrorResponse err
+        |> Reply.Response
+        |> Either.succeed
+        |> channel.Reply
+        newstate
+    else
+      doRedirect state channel
+
+  // ** processHandwaive
+
+  let private processHandwaive (state: RaftAppContext)
+                               (node: RaftNode)
+                               (channel: ReplyChan) =
+    if Raft.isLeader state.Raft then
+      match removeNode state node.Id with
+      | Right (entry, newstate) ->
+        Reply.Entry entry
+        |> Either.succeed
+        |> channel.Reply
+        newstate
+
+      | Left (err, newstate) ->
+        ErrorResponse err
+        |> Reply.Response
+        |> Either.succeed
+        |> channel.Reply
+        newstate
+    else
+      doRedirect state channel
+
+  // ** processAppendResponse
+
+  let private processAppendResponse (state: RaftAppContext)
+                                    (sender: Id)
+                                    (ar: AppendResponse)
+                                    (channel: ReplyChan) =
+    let result =
+      Raft.receiveAppendEntriesResponse sender ar
+      |> runRaft state.Raft state.Callbacks
+
+    match result with
+    | Right (_, newstate) ->
+      Reply.Ok
+      |> Either.succeed
+      |> channel.Reply
+      updateRaft state newstate
+
+    | Left (err, newstate) ->
+      err
+      |> Either.fail
+      |> channel.Reply
+      updateRaft state newstate
+
+  // ** processVoteResponse
+
+  let private processVoteResponse (state: RaftAppContext)
+                                  (sender: Id)
+                                  (vr: VoteResponse)
+                                  (channel: ReplyChan) =
+    let result =
+      Raft.receiveVoteResponse sender vr
+      |> runRaft state.Raft state.Callbacks
+
+    match result with
+    | Right (_, newstate) ->
+      Reply.Ok
+      |> Either.succeed
+      |> channel.Reply
+      updateRaft state newstate
+
+    | Left (err, newstate) ->
+      err
+      |> Either.fail
+      |> channel.Reply
+      updateRaft state newstate
+
+  // ** processSnapshotResponse
+
+  let private processSnapshotResponse (state: RaftAppContext)
+                                      (sender: Id)
+                                      (ar: AppendResponse)
+                                      (channel: ReplyChan) =
+    "FIX RESPONSE PROCESSING FOR SNAPSHOT REQUESTS"
+    |> Logger.err state.Raft.Node.Id tag
+
+    Reply.Ok
+    |> Either.succeed
+    |> channel.Reply
+    state
+
+  // ** processRedirect
+
+  let private processRedirect (state: RaftAppContext)
+                              (leader: RaftNode)
+                              (channel: ReplyChan) =
+    "FIX REDIRECT RESPONSE PROCESSING"
+    |> Logger.err state.Raft.Node.Id tag
+
+    Reply.Ok
+    |> Either.succeed
+    |> channel.Reply
+    state
+
+  // ** processWelcome
+
+  let private processWelcome (state: RaftAppContext)
+                             (leader: RaftNode)
+                             (channel: ReplyChan) =
+
+    "FIX WELCOME RESPONSE PROCESSING"
+    |> Logger.err state.Raft.Node.Id tag
+
+    Reply.Ok
+    |> Either.succeed
+    |> channel.Reply
+    state
+
+  // ** processArrivederci
+
+  let private processArrivederci (state: RaftAppContext)
+                                 (channel: ReplyChan) =
+
+    "FIX ARRIVEDERCI RESPONSE PROCESSING"
+    |> Logger.err state.Raft.Node.Id tag
+
+    Reply.Ok
+    |> Either.succeed
+    |> channel.Reply
+    state
+
+  // ** processErrorResponse
+
+  let private processErrorResponse (state: RaftAppContext)
+                                   (error: IrisError)
+                                   (channel: ReplyChan) =
+
+    error
+    |> sprintf "received error response: %A"
+    |> Logger.err state.Raft.Node.Id tag
+
+    Reply.Ok
+    |> Either.succeed
+    |> channel.Reply
+    state
+
+  // ** tryJoin
+
+  let private tryJoin (state: RaftAppContext) (ip: IpAddress) (port: uint16) =
+    let rec _tryJoin retry peer =
+      either {
+        if retry < int state.Options.RaftConfig.MaxRetries then
+          use client = mkReqSocket peer
+
+          sprintf "Retry: %d" retry
+          |> Logger.debug state.Raft.Node.Id "tryJoin"
+
+          let request = HandShake(state.Raft.Node)
+          let! result = rawRequest request client
+
+          sprintf "Result: %A" result
+          |> Logger.debug state.Raft.Node.Id "tryJoin"
+
+          match result with
+          | Welcome node ->
+            sprintf "Received Welcome from %A" node.Id
+            |> Logger.debug state.Raft.Node.Id "tryJoin"
+            return node
+
+          | Redirect next ->
+            sprintf "Got redirected to %A" (nodeUri next)
+            |> Logger.info state.Raft.Node.Id "tryJoin"
+            return! _tryJoin (retry + 1) next
+
+          | ErrorResponse err ->
+            sprintf "Unexpected error occurred. %A" err
+            |> Logger.err state.Raft.Node.Id "tryJoin"
+            return! Either.fail err
+
+          | resp ->
+            sprintf "Unexpected response. %A" resp
+            |> Logger.err state.Raft.Node.Id "tryJoin"
+            return!
+              Other "Unexpected response"
+              |> Either.fail
+        else
+          "Too many unsuccesful connection attempts."
+          |> Logger.err state.Raft.Node.Id "tryJoin"
+          return!
+            Other "Too many unsuccesful connection attempts."
+            |> Either.fail
+      }
+
+    // execute the join request with a newly created "fake" node
+    _tryJoin 0 { Node.create (Id.Create()) with
+                  IpAddr = ip
+                  Port   = port }
+
+  // ** tryJoinCluster
+
+  let private tryJoinCluster (state: RaftAppContext) (ip: IpAddress) (port: uint16) =
+    raft {
+      Logger.debug state.Raft.Node.Id tag "requesting to join"
+
+      let leader = tryJoin state ip port
+
+      match leader with
+      | Right leader ->
+        sprintf "Reached leader: %A Adding to nodes." leader.Id
+        |> Logger.info state.Raft.Node.Id tag
+
+        do! Raft.addNodeM leader
+        do! Raft.becomeFollower ()
+
+      | Left err ->
+        sprintf "Joining cluster failed. %A" err
+        |> Logger.err state.Raft.Node.Id tag
+
     }
+    |> runRaft state.Raft state.Callbacks
+
+  // ** tryLeave
+
+  /// ## Attempt to leave a Raft cluster
+  ///
+  /// Attempt to leave a Raft cluster by identifying the current cluster leader and sending an
+  /// AppendEntries request with a JointConsensus entry.
+  ///
+  /// ### Signature:
+  /// - appState: RaftServerState TVar
+  ///
+  /// Returns: unit
+  let private tryLeave (state: RaftAppContext) : Either<IrisError,bool> =
+    let rec _tryLeave retry node =
+      either {
+        if retry < int state.Options.RaftConfig.MaxRetries then
+          use client = mkReqSocket node
+
+          let request = HandWaive(state.Raft.Node)
+          let! result = rawRequest request client
+
+          match result with
+
+          | Redirect other ->
+            if retry <= int state.Options.RaftConfig.MaxRetries then
+              return! _tryLeave (retry + 1) other
+            else
+              return!
+                Other "Too many retries, aborting."
+                |> Either.fail
+          | Arrivederci       -> return true
+          | ErrorResponse err -> return! Either.fail err
+          | resp              -> return! Either.fail (Other "Unexpected response")
+        else
+          return! Either.fail (Other "Too many unsuccesful connection attempts.")
+      }
+
+    match state.Raft.CurrentLeader with
+    | Some nid ->
+      match Map.tryFind nid state.Raft.Peers with
+
+      | Some node -> _tryLeave 0 node
+      | _         ->
+        Other "Node data for leader id not found"
+        |> Either.fail
+    | _ ->
+      Other "No known Leader"
+      |> Either.fail
+
+  // ** leaveCluster
+
+  let private tryLeaveCluster (state: RaftAppContext) =
+    raft {
+      do! Raft.setTimeoutElapsedM 0u
+
+      match tryLeave state with
+
+      | Right true  ->
+        "Successfully left cluster."
+        |> Logger.info state.Raft.Node.Id tag // FIXME: this might need more consequences than this
+
+      | Right false ->
+        "Could not leave cluster."
+        |> Logger.err state.Raft.Node.Id tag
+
+      | Left err ->
+        err
+        |> sprintf "Could not leave cluster. %A"
+        |> Logger.err state.Raft.Node.Id tag
+
+      do! Raft.becomeFollower ()
+
+      let! peers = Raft.getNodesM ()
+
+      for kv in peers do
+        do! Raft.removeNodeM kv.Value
+
+    }
+    |> runRaft state.Raft state.Callbacks
+
+  // ** forceElection
+
+  let private forceElection (state: RaftAppContext) =
+    raft {
+      let! timeout = Raft.electionTimeoutM ()
+      do! Raft.setTimeoutElapsedM timeout
+      do! Raft.periodic timeout
+    }
+    |> runRaft state.Raft state.Callbacks
+
+  //  _                    _ _
+  // | |    ___   __ _  __| (_)_ __   __ _
+  // | |   / _ \ / _` |/ _` | | '_ \ / _` |
+  // | |__| (_) | (_| | (_| | | | | | (_| |
+  // |_____\___/ \__,_|\__,_|_|_| |_|\__, |
+  //                                 |___/
+
+  // ** rand
+
+  let private rand = new System.Random()
+
+  // ** initializeRaft
+
+  let private initializeRaft (state: RaftValue) (callbacks: IRaftCallbacks) =
+    raft {
+      let term = 0u
+      do! Raft.setTermM term
+      let! num = Raft.numNodesM ()
+
+      if num = 1u then
+        do! Raft.setTimeoutElapsedM 0u
+        do! Raft.becomeLeader ()
+      else
+        // set the timeout to something random, to prevent split votes
+        let timeout : Long =
+          rand.Next(0, int state.ElectionTimeout)
+          |> uint32
+        do! Raft.setTimeoutElapsedM timeout
+        do! Raft.becomeFollower ()
+    }
+    |> runRaft state callbacks
+
+  // ** startPeriodic
+
+  /// ## startPeriodic
+  ///
+  /// Starts an asynchronous loop to run Raft's `periodic` function. Returns a token, with which the
+  /// loop can be cancelled at a later time.
+  ///
+  /// ### Signature:
+  /// - timeoput: interval at which the loop runs
+  /// - appState: current RaftServerState TVar
+  ///
+  /// Returns: CancellationTokenSource
+  let private startPeriodic (interval: int) (arbiter: StateArbiter) =
+    let rec action () =
+      async {
+        arbiter.Post(Msg.Periodic)
+        do! Async.Sleep(interval) // sleep for 100ms
+        return! action ()
+      }
+    try
+      let cts = new CancellationTokenSource()
+      Async.Start(action(), cts.Token)
+      Either.succeed cts
+    with
+      | exn ->
+        exn.Message
+        |> RaftError
+        |> Either.fail
+
+  // ** load
+
+  let private load (config: IrisConfig)
+                   (subscriptions: Subscriptions)
+                   (chan: ReplyChan)
+                   (agent: StateArbiter) =
+    either {
+      let connections = new Connections()
+
+      let! raftstate = Persistence.getRaft config
+      let addr = raftstate.Node |> nodeUri
+      let server = new Zmq.Rep(addr, requestHandler agent)
+
+      match server.Start() with
+      | Right _ ->
+        let callbacks =
+          mkCallbacks
+            raftstate.Node.Id
+            connections
+            subscriptions
+
+        Map.iter
+          (fun _ (peer: RaftNode) ->
+            if peer.Id <> raftstate.Node.Id then
+              getConnection raftstate.Node.Id connections peer
+              |> ignore)
+          raftstate.Peers
+
+        // periodic function
+        let interval = int config.RaftConfig.PeriodicInterval
+        let! periodic = startPeriodic interval agent
+
+        match initializeRaft raftstate callbacks with
+        | Right (_, newstate) ->
+          return
+            Loaded { Status      = ServiceStatus.Running
+                     Raft        = newstate
+                     Callbacks   = callbacks
+                     Options     = config
+                     Periodic    = periodic
+                     Server      = server
+                     Connections = connections }
+        | Left (err, _) ->
+          dispose server
+          disposeAll connections
+          dispose periodic
+          return! Either.fail err
+      | Left error ->
+        dispose server
+        return! Either.fail error
+    }
+
+  // ** handleLoad
+
+  let private handleLoad (state: RaftServerState)
+                         (config: IrisConfig)
+                         (subscriptions: Subscriptions)
+                         (chan: ReplyChan)
+                         (agent: StateArbiter) =
+    match state with
+    | Loaded data -> dispose data
+    | Idle -> ()
+
+    match load config subscriptions chan agent with
+    | Right state ->
+      Reply.Ok
+      |> Either.succeed
+      |> chan.Reply
+      state
+
+    | Left error ->
+      error
+      |> Either.fail
+      |> chan.Reply
+      Idle
+
+  // ** handleUnload
+
+  let private handleUnload (state: RaftServerState) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      Reply.Ok
+      |> Either.succeed
+      |> chan.Reply
+      state
+    | Loaded data ->
+      dispose data
+      Reply.Ok
+      |> Either.succeed
+      |> chan.Reply
+      Idle
+
+  // ** handleStatus
+
+  let private handleStatus (state: RaftServerState) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      ServiceStatus.Stopped
+      |> Reply.Status
+      |> Either.succeed
+      |> chan.Reply
+    | Loaded data ->
+      data.Status
+      |> Reply.Status
+      |> Either.succeed
+      |> chan.Reply
+    state
+
+  // ** handleJoin
+
+  let private handleJoin (state: RaftServerState) (ip: IpAddress) (port: UInt16) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No config loaded"
+      |> RaftError
+      |> Either.fail
+      |> chan.Reply
+      state
+
+    | Loaded data ->
+      match tryJoinCluster data ip port with
+      | Right (_, newstate) ->
+        Reply.Ok
+        |> Either.succeed
+        |> chan.Reply
+        newstate
+        |> updateRaft data
+        |> Loaded
+
+      | Left (error, newstate) ->
+        error
+        |> Either.fail
+        |> chan.Reply
+        newstate
+        |> updateRaft data
+        |> Loaded
+
+  // ** handleLeave
+
+  let private handleLeave (state: RaftServerState) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No config loaded"
+      |> RaftError
+      |> Either.fail
+      |> chan.Reply
+      state
+
+    | Loaded data ->
+      match tryLeaveCluster data with
+      | Right (_, newstate) ->
+        Reply.Ok
+        |> Either.succeed
+        |> chan.Reply
+        newstate
+        |> updateRaft data
+        |> Loaded
+
+      | Left (error, newstate) ->
+        error
+        |> Either.fail
+        |> chan.Reply
+        newstate
+        |> updateRaft data
+        |> Loaded
+
+  // ** handleForceElection
+
+  let private handleForceElection (state: RaftServerState) =
+    match state with
+    | Idle -> state
+    | Loaded data ->
+      match forceElection data with
+      | Right (_, newstate) ->
+        newstate
+        |> updateRaft data
+        |> Loaded
+
+      | Left (err, newstate) ->
+        err
+        |> sprintf "Unable to force an election: %A"
+        |> Logger.err newstate.Node.Id tag
+
+        newstate
+        |> updateRaft data
+        |> Loaded
+
+  // ** handleAddCmd
+
+  let private handleAddCmd (state: RaftServerState) (cmd: StateMachine) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No config loaded"
+      |> RaftError
+      |> Either.fail
+      |> chan.Reply
+      state
+
+    | Loaded data ->
+      match appendCommand data cmd with
+      | Right (entry, newstate) ->
+        Reply.Entry entry
+        |> Either.succeed
+        |> chan.Reply
+        newstate
+        |> Loaded
+
+      | Left (err, newstate) ->
+        err
+        |> Either.fail
+        |> chan.Reply
+        newstate
+        |> Loaded
+
+  // ** handleResponse
+
+  let private handleResponse (state: RaftServerState) (response: RaftResponse) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No config loaded"
+      |> RaftError
+      |> Either.fail
+      |> chan.Reply
+      state
+
+    | Loaded data ->
+      match response with
+      | RequestVoteResponse     (sender, vote) -> processVoteResponse     data sender vote chan
+      | AppendEntriesResponse   (sender, ar)   -> processAppendResponse   data sender ar   chan
+      | InstallSnapshotResponse (sender, ar)   -> processSnapshotResponse data sender ar   chan
+      | ErrorResponse            error         -> processErrorResponse    data error       chan
+      | _                                      -> data
+      |> Loaded
+
+
+  // ** handleRequest
+
+  let private handleRequest (state: RaftServerState) (req: RaftRequest) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No config loaded"
+      |> RaftError
+      |> Either.fail
+      |> chan.Reply
+      state
+
+    | Loaded data ->
+      match req with
+      | AppendEntries (id, ae)   -> processAppendEntries   data id ae chan
+      | RequestVote (id, vr)     -> processVoteRequest     data id vr chan
+      | InstallSnapshot (id, is) -> processInstallSnapshot data id is chan
+      | HandShake node           -> processHandshake       data node  chan
+      | HandWaive node           -> processHandwaive       data node  chan
+      |> Loaded
+
+  // ** handlePeriodic
+
+  let private handlePeriodic (state: RaftServerState) =
+    match state with
+    | Idle -> Idle
+    | Loaded data ->
+      uint32 data.Options.RaftConfig.PeriodicInterval
+      |> Raft.periodic
+      |> evalRaft data.Raft data.Callbacks
+      |> updateRaft data
+      |> Loaded
+
+  // ** handleGet
+
+  let private handleGet (state: RaftServerState) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No config loaded"
+      |> RaftError
+      |> Either.fail
+      |> chan.Reply
+      state
+
+    | Loaded data ->
+      Reply.State data
+      |> Either.succeed
+      |> chan.Reply
+      state
+
+
+  // ** handleAddNode
+
+  let private handleAddNode (state: RaftServerState) (node: RaftNode) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No config loaded"
+      |> RaftError
+      |> Either.fail
+      |> chan.Reply
+      state
+
+    | Loaded data ->
+      match addNodes data [| node |] with
+      | Right (entry, newstate) ->
+        Reply.Entry entry
+        |> Either.succeed
+        |> chan.Reply
+        newstate
+        |> Loaded
+
+      | Left (err, newstate) ->
+        err
+        |> Either.fail
+        |> chan.Reply
+        newstate
+        |> Loaded
+
+  // ** handleRemoveNode
+
+  let private handleRemoveNode (state: RaftServerState) (id: Id) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No config loaded"
+      |> RaftError
+      |> Either.fail
+      |> chan.Reply
+      state
+
+    | Loaded data ->
+      match removeNode data id with
+      | Right (entry, newstate) ->
+        Reply.Entry entry
+        |> Either.succeed
+        |> chan.Reply
+        newstate
+        |> Loaded
+
+      | Left (err, newstate) ->
+        err
+        |> Either.fail
+        |> chan.Reply
+        newstate
+        |> Loaded
+
+  // ** handleIsCommitted
+
+  let private handleIsCommitted (state: RaftServerState) (entry: EntryResponse) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No config loaded"
+      |> RaftError
+      |> Either.fail
+      |> chan.Reply
+      state
+
+    | Loaded data ->
+      let result =
+        Raft.responseCommitted entry
+        |> runRaft data.Raft data.Callbacks
+
+      match result with
+      | Right (committed, _) ->
+        committed
+        |> Reply.IsCommitted
+        |> Either.succeed
+        |> chan.Reply
+        state
+
+      | Left  (err, _) ->
+        err
+        |> Either.fail
+        |> chan.Reply
+        state
+
+  // ** loop
+
+  let private loop (subscriptions: Subscriptions) (inbox: StateArbiter) =
+    let rec act state =
+      async {
+        let! cmd = inbox.Receive()
+
+        let newstate =
+          match cmd with
+          | Msg.Load (config, chan)    -> handleLoad          state config subscriptions chan inbox
+          | Msg.Unload chan            -> handleUnload        state                      chan
+          | Msg.Status chan            -> handleStatus        state                      chan
+          | Msg.Join (ip, port, chan)  -> handleJoin          state ip port              chan
+          | Msg.Leave chan             -> handleLeave         state                      chan
+          | Msg.Periodic               -> handlePeriodic      state
+          | Msg.ForceElection          -> handleForceElection state
+          | Msg.AddCmd (cmd, chan)     -> handleAddCmd        state cmd                  chan
+          | Msg.Request (req, chan)    -> handleRequest       state req                  chan
+          | Msg.Response (resp, chan)  -> handleResponse      state resp                 chan
+          | Msg.Get chan               -> handleGet           state                      chan
+          | Msg.AddNode (node, chan)   -> handleAddNode       state node                 chan
+          | Msg.RmNode (id, chan)      -> handleRemoveNode    state id                   chan
+          | Msg.IsCommitted (ety,chan) -> handleIsCommitted   state ety                  chan
+
+        do! act newstate
+      }
+    act Idle
 
   // ** withOk
 
@@ -1294,19 +1569,74 @@ module Raft =
     | Left error ->
       Either.fail error
 
+  // ** getStatus
+
+  let private getStatus (agent: StateArbiter) =
+    match agent.PostAndReply(fun chan -> Msg.Status chan) with
+    | Right (Reply.Status status) -> Right status
+
+    | Right other ->
+      sprintf "Received garbage reply from agent: %A" other
+      |> Other
+      |> Either.fail
+
+    | Left error ->
+      Either.fail error
+
+  // ** addNode
+
+  let private addNode (agent: StateArbiter) (node: RaftNode) =
+    match agent.PostAndReply(fun chan -> Msg.AddNode(node,chan)) with
+    | Right (Reply.Entry entry) -> Right entry
+    | Right other ->
+      sprintf "Unexpected reply by agent: %A" other
+      |> Other
+      |> Either.fail
+    | Left error ->
+      Either.fail error
+
+  // ** rmNode
+
+  let private rmNode (agent: StateArbiter) (id: Id) =
+    match agent.PostAndReply(fun chan -> Msg.RmNode(id,chan)) with
+    | Right (Reply.Entry entry) -> Right entry
+    | Right other ->
+      sprintf "Unexpected reply by agent: %A" other
+      |> Other
+      |> Either.fail
+    | Left error ->
+      Either.fail error
+
+  // ** getState
+
+  let private getState (agent: StateArbiter) =
+    match agent.PostAndReply(fun chan -> Msg.Get chan) with
+    | Right (Reply.State state) -> Right state
+
+    | Right other ->
+      sprintf "Received garbage reply from agent: %A" other
+      |> Other
+      |> Either.fail
+
+    | Left error ->
+      Either.fail error
+
+  // ** startServer
+
+  let private startServer (agent: StateArbiter) =
+    Either.succeed ()
+
+  //  ____        _     _ _
+  // |  _ \ _   _| |__ | (_) ___
+  // | |_) | | | | '_ \| | |/ __|
+  // |  __/| |_| | |_) | | | (__
+  // |_|    \__,_|_.__/|_|_|\___|
 
   [<RequireQualifiedAccess>]
   module RaftServer =
 
-    //  ____        _     _ _
-    // |  _ \ _   _| |__ | (_) ___
-    // | |_) | | | | '_ \| | |/ __|
-    // |  __/| |_| | |_) | | | (__
-    // |_|    \__,_|_.__/|_|_|\___|
-
     let create (options: IrisConfig) =
       either {
-        let connections = new Connections()
         let subscriptions = new Subscriptions()
 
         let listener =
@@ -1321,40 +1651,57 @@ module Raft =
                         subscriptions.Remove obs
                         |> ignore } }
 
-        let! state = mkState options connections subscriptions
+        let agent = new StateArbiter(loop subscriptions)
 
-        let addr =
-          state
-          |> RaftContext.getNode
-          |> nodeUri
-
-        let agent = new StateArbiter(loop state)
-        let server = new Zmq.Rep(addr, requestHandler agent)
-        let periodic = new CancellationTokenSource()
+        agent.Start()
 
         return
           { new IRaftServer with
+              member self.Load (config: IrisConfig) =
+                match agent.PostAndReply(fun chan -> Msg.Load(config,chan)) with
+                | Right Reply.Ok -> Right ()
+                | Right other ->
+                  sprintf "Unexpected reply type from agent: %A" other
+                  |> RaftError
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
+
+              member self.Unload () =
+                match agent.PostAndReply(fun chan -> Msg.Unload chan) with
+                | Right Reply.Ok -> Right ()
+                | Right other ->
+                  sprintf "Unexpected reply type from agent: %A" other
+                  |> RaftError
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
+
               member self.Node
-                with get () = state.Raft.Node
+                with get () =
+                  match getState agent with
+                  | Right state ->
+                    state.Raft.Node
+                    |> Either.succeed
+                  | Left error ->
+                    Either.fail error
 
               member self.NodeId
-                with get () = state.Raft.Node.Id
+                with get () =
+                  match getState agent with
+                  | Right state ->
+                    state.Raft.Node.Id
+                    |> Either.succeed
+                  | Left error ->
+                    Either.fail error
 
               member self.Append cmd =
                 addCmd agent cmd
 
               member self.Status
-                with get () =
-                  match agent.PostAndReply(fun chan -> Msg.Status chan) with
-                  | Right (Reply.Status status) -> Right status
-
-                  | Right other ->
-                    sprintf "Received garbage reply from agent: %A" other
-                    |> Other
-                    |> Either.fail
-
-                  | Left error ->
-                    Either.fail error
+                with get () = getStatus agent
 
               member self.ForceElection () =
                 agent.Post Msg.ForceElection
@@ -1370,38 +1717,12 @@ module Raft =
               member self.LeaveCluster () =
                 withOk (fun chan -> Msg.Leave chan) agent
 
-              member self.AddNode node =
-                match agent.PostAndReply(fun chan -> Msg.AddNode(node,chan)) with
-                | Right (Reply.Entry entry) -> Right entry
-                | Right other ->
-                  sprintf "Unexpected reply by agent: %A" other
-                  |> Other
-                  |> Either.fail
-                | Left error ->
-                  Either.fail error
+              member self.AddNode node = addNode agent node
 
-              member self.RmNode id =
-                match agent.PostAndReply(fun chan -> Msg.RmNode(id,chan)) with
-                | Right (Reply.Entry entry) -> Right entry
-                | Right other ->
-                  sprintf "Unexpected reply by agent: %A" other
-                  |> Other
-                  |> Either.fail
-                | Left error ->
-                  Either.fail error
+              member self.RmNode id = rmNode agent id
 
               member self.State
-                with get () =
-                  match agent.PostAndReply(fun chan -> Msg.Get chan) with
-                  | Right (Reply.State state) -> Right state
-
-                  | Right other ->
-                    sprintf "Received garbage reply from agent: %A" other
-                    |> Other
-                    |> Either.fail
-
-                  | Left error ->
-                    Either.fail error
+                with get () = getState agent
 
               member self.Subscribe (callback: RaftEvent -> unit) =
                 { new IObserver<RaftEvent> with
@@ -1410,23 +1731,16 @@ module Raft =
                     member self.OnNext(value) = callback value }
                 |> listener.Subscribe
 
-              member self.Start () =
-                either {
-                  agent.Start()
-                  do! startPeriodic agent periodic
-                  do! withOk (fun chan -> Msg.Initialize chan) agent
-                  do! server.Start()
-                }
+              member self.Start () = startServer agent
 
               member self.Connections
-                with get () = Right connections
+                with get () =
+                  match getState agent with
+                  | Right ctx  -> ctx.Connections |> Either.succeed
+                  | Left error -> error |> Either.fail
 
               member self.Dispose () =
-                dispose periodic
-                for KeyValue(_, connection) in connections do
-                  dispose connection
                 subscriptions.Clear()
-                connections.Clear()
                 dispose agent
             }
       }

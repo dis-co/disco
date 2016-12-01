@@ -55,21 +55,33 @@ module RaftIntegrationTests =
 
         setNodeId nid1
 
+        printfn "create leader"
+
         let! leader = RaftServer.create leadercfg
 
         do! expectE "Leader should have no connections" 0 count leader.Connections
 
+        printfn "start leader"
+
         do! leader.Start()
+
+        printfn "start leader done"
 
         do! expectE "Leader should have one connection" 1 count leader.Connections
 
         setNodeId nid2
 
+        printfn "create follower"
+
         let! follower = RaftServer.create followercfg
 
         do! expectE "Follower should have no connections" 0 count follower.Connections
 
+        printfn "start follower"
+
         do! follower.Start()
+
+        printfn "start follower done"
 
         do! expectE "Follower should have one connection" 1 count follower.Connections
 
@@ -208,9 +220,9 @@ module RaftIntegrationTests =
   let raftIntegrationTests =
     testList "Raft Integration Tests" [
       // raft
-      test_validate_raft_service_bind_correct_port
       test_validate_correct_req_socket_tracking
-      test_validate_follower_joins_leader_after_startup
+      // test_validate_raft_service_bind_correct_port
+      // test_validate_follower_joins_leader_after_startup
 
       // db
       // test_log_snapshotting_should_clean_all_logs

@@ -45,4 +45,7 @@ module TestUtilities =
   let inline noError (input: Either<IrisError,'a>) =
     match input with
     | Right _ -> ()
-    | Left error -> failwithf "%A" error
+    | Left error ->
+      error
+      |> Error.toMessage
+      |> Tests.failtest
