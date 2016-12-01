@@ -1179,6 +1179,7 @@ type ErrorTypeFBConstructor =
   abstract SocketErrorFB: ErrorTypeFB
   abstract IOErrorFB: ErrorTypeFB
   abstract OtherFB: ErrorTypeFB
+  abstract RaftErrorFB: ErrorTypeFB
   abstract AlreadyVotedFB: ErrorTypeFB
   abstract AppendEntryFailedFB: ErrorTypeFB
   abstract CandidateUnknownFB: ErrorTypeFB
