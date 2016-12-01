@@ -400,6 +400,9 @@ module Log =
   let mkConfigChange term changes =
     LogEntry.mkConfigChange term changes
 
+  let calculateChanges oldnodes newnodes =
+    LogEntry.calculateChanges oldnodes newnodes
+
   // ** Log.entries
 
   let entries log = log.Data

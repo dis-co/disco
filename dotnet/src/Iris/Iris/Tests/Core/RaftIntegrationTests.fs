@@ -65,8 +65,6 @@ module RaftIntegrationTests =
         do! follower.Load(followercfg)
         do! expectE "Follower should have one connection" 1 count follower.Connections
 
-        Thread.Sleep 2000
-
         dispose leader
         dispose follower
 

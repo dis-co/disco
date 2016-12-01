@@ -1181,6 +1181,24 @@ module LogEntry =
   let mkConfigChange term changes =
     JointConsensus(Id.Create(), 0u, term, changes, None)
 
+  let calculateChanges oldnodes newnodes =
+    let changes =
+      let additions =
+        Array.fold
+          (fun lst (newnode: RaftNode) ->
+            match Array.tryFind (Node.getId >> (=) newnode.Id) oldnodes with
+            | Some _ -> lst
+            |      _ -> NodeAdded(newnode) :: lst) [] newnodes
+
+      Array.fold
+        (fun lst (oldnode: RaftNode) ->
+          match Array.tryFind (Node.getId >> (=) oldnode.Id) newnodes with
+          | Some _ -> lst
+          | _ -> NodeRemoved(oldnode) :: lst) additions oldnodes
+      |> List.toArray
+
+    changes
+
   // ** LogEntry.pop
 
   ///  _ __   ___  _ __
