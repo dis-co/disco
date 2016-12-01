@@ -474,14 +474,10 @@ module Iris =
 
       | Some path ->
         // FIXME: load the actual state from disk
+        let! node = Config.selfNode project.Config
 
         let  httpserver = new AssetServer(project.Config)
         let! raftserver = RaftServer.create ()
-
-        do! raftserver.Load project.Config
-
-        let! node = raftserver.Node
-
         let! wsserver   = SocketServer.create node
         let! gitserver  = GitServer.create node path
 
@@ -508,9 +504,9 @@ module Iris =
           forwardSocketEvents agent |> data.SocketServer.Subscribe
           forwardGitEvents    agent |> data.GitServer.Subscribe ]
 
-      let result1 = data.SocketServer.Start()
-      let result2 = data.GitServer.Start()
-      let result3 = data.RaftServer.Start()
+      let result1 = data.RaftServer.Load(data.Project.Config)
+      let result2 = data.SocketServer.Start()
+      let result3 = data.GitServer.Start()
       let result4 = data.HttpServer.Start()
 
       match result1, result2, result3, result4 with
