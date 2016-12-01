@@ -5,14 +5,12 @@ open System
 open System.Collections.Generic
 open Fable.Core
 open Fable.Import
-open Fable.Import.JS
-open Fable.Import.Browser
 open Fable.Core.JsInterop
 open Iris.Core
 
-let inline getHostname(): string = window.location.hostname
+let inline getHostname(): string = Browser.window.location.hostname
 
-let inline getHostPort(): int = int window.location.port
+let inline getHostPort(): int = int Browser.window.location.port
 
 //  ____  _                        ___        __         _
 // / ___|| |__   __ _ _ __ ___  __| \ \      / /__  _ __| | _____ _ __
@@ -43,7 +41,7 @@ type SharedWorker<'data>(url: string) =
 
 type ClientContext private (worker: SharedWorker<string>) =
   let mutable session : Id option = None
-  let ctrls = Dictionary<Guid, IObserver<ClientContext*State>>()
+  let ctrls = Dictionary<Guid, IObserver<ClientContext*Session*State>>()
 
   static member Start() =
     let host = getHostname ()
@@ -88,8 +86,12 @@ type ClientContext private (worker: SharedWorker<string>) =
 
     // Re-render the current view tree with a new state
     | ClientMessage.Render(state) ->
-      for ctrl in ctrls.Values do
-        ctrl.OnNext(self, state)
+      match Map.tryFind self.Session state.Sessions with
+      | Some session ->
+        for ctrl in ctrls.Values do
+          ctrl.OnNext(self, session, state)
+      | None ->
+        printfn "Cannot find current session"      
 
     | ClientMessage.Connected ->
       Session.Empty self.Session |> AddSession |> self.Post
@@ -114,7 +116,7 @@ type ClientContext private (worker: SharedWorker<string>) =
       |> toJson
       |> worker.Port.PostMessage
 
-  interface IObservable<ClientContext * State> with
+  interface IObservable<ClientContext * Session * State> with
     member __.Subscribe(obs) =
       let guid = Guid.NewGuid()
       ctrls.Add(guid, obs)

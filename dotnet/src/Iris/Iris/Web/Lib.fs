@@ -11,18 +11,12 @@ open Iris.Web.Core
 open Fable.Core
 
 type [<Pojo; NoComparison>] StateInfo =
-  { context: ClientContext; state: State }
-
-let getCurrentSession(info: StateInfo) =
-  info.state.Sessions
-  |> Map.tryFind info.context.Session
+  { context: ClientContext; session: Session; state: State }
 
 let login(info: StateInfo, username: string, password: string) =
-  getCurrentSession info
-  |> Option.iter (fun curSession ->
-    { curSession with Status = { StatusType=Login; Payload=username+"\n"+password}}
-    |> UpdateSession
-    |> info.context.Post)
+  { info.session with Status = { StatusType=Login; Payload=username+"\n"+password}}
+  |> UpdateSession
+  |> info.context.Post
 
 let removeNode(info: StateInfo, nodeId: Id) =
   match Map.tryFind nodeId info.state.Nodes with

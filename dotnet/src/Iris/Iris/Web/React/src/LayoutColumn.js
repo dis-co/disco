@@ -3,13 +3,12 @@ import PanelLeft from "./PanelLeft";
 import PanelCenter from "./PanelCenter";
 import PanelRight from "./PanelRight";
 import Draggable from 'react-draggable';
-import ModalLogin from "./ModalLogin";
 import { PANEL_DEFAULT_WIDTH, PANEL_MAX_WIDTH, SKIP_LOGIN } from "./Constants"
 
 const DragBar = (props) => (
   <Draggable
     axis="x"
-    onDrag={(ev, data) => props.onDrag(props.id, data.deltaX)}
+    onDrag={(ev, data) => props.onDrag(props.side, data.deltaX)}
   >
     <div className="dragbar" style={props.style} />
   </Draggable>
@@ -24,26 +23,25 @@ export default class LayoutColumn extends React.Component {
     }
   }
 
-  onDrag(id, deltaX) {
-    const x = id === "left"
-      ? this.state[id] + deltaX
-      : this.state[id] - deltaX;
-    this.setState({ [id]: x })
+  onDrag(side, deltaX) {
+    const x = side === "left"
+      ? this.state[side] + deltaX
+      : this.state[side] - deltaX;
+    this.setState({ [side]: x })
   }
 
   render() {
     return (
-      <div id="column-layout-wrapper">
-        {SKIP_LOGIN ? null : <ModalLogin info={this.props.info} />}
+      <div className="column-layout-wrapper">
         <DragBar
-          id="left"
+          side="left"
           style={{left:PANEL_DEFAULT_WIDTH}}
           onDrag={this.onDrag.bind(this)} />
         <DragBar
-          id="right"
+          side="right"
           style={{right:PANEL_DEFAULT_WIDTH}}
           onDrag={this.onDrag.bind(this)} />
-        <div id="column-layout">
+        <div className="column-layout">
           <PanelLeft width={this.state.left} />
           <PanelCenter info={this.props.info} />
           <PanelRight width={this.state.right} />

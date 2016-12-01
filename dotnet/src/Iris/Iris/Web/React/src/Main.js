@@ -1,23 +1,48 @@
 import * as React from "react";
 import * as ReactDom from "react-dom";
 import LayoutColumn from "./LayoutColumn";
+import ModalDialog from "./ModalDialog";
+import { getCurrentSession } from 'iris';
+import { STATUS, MODALS } from './Constants';
+
+let modal = null;
+let initInfo = null;
+
+export function showModal(content, onSubmit) {
+  modal.setState({ content, onSubmit });
+}
 
 class App extends React.Component {
   constructor(props) {
     super(props);
     props.subscribe(info => {
-      // console.log("Received state:",info.state);
-      this.setState(info);
+      const status = info.session.Status.StatusType.ToString();
+      switch (status) {
+        case STATUS.AUTHORIZED:
+          this.setState(info);
+          break;
+        case STATUS.UNAUTHORIZED:
+          this.setState(initInfo);
+          showModal(MODALS.LOGIN);
+          break;
+      }
     })
   }
 
   render() {
-    return <LayoutColumn info={this.state || this.props.info} />;
+    const info = this.state || this.props.info;
+    return (
+      <div className="column-layout-wrapper">
+        <ModalDialog info={info} ref={el => modal = (el || modal)} />
+        <LayoutColumn info={info} />;
+      </div>
+    )
   }
 }
 
 export default {
   mount(info, subscribe) {
+    initInfo = info;
     ReactDom.render(
       <App info={info} subscribe={subscribe} />,
       document.getElementById("app"))

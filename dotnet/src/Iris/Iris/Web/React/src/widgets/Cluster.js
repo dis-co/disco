@@ -1,7 +1,8 @@
 import * as React from "react";
 import Panel from 'muicss/lib/react/panel';
-import ModalAddNode from './ModalAddNode';
-import { addNode, removeNode } from "iris";
+import { showModal } from '../Main';
+import { removeNode } from "iris";
+import { MODALS } from "../Constants";
 
 function map(iterable, f) {
   let ar = [];
@@ -18,15 +19,15 @@ export default class WidgetCluster extends React.Component {
   }
 
   render() {
+        // <ModalAddNode
+        //   active={this.state.showDialog}
+        //   submit={(host, ip, port) => {
+        //     addNode(this.props.info, host, ip, port);
+        //     this.setState({showDialog: false})
+        //   }}
+        // />
     return (
       <Panel className="panel-cluster">
-        <ModalAddNode
-          active={this.state.showDialog}
-          submit={(host, ip, port) => {
-            addNode(this.props.info, host, ip, port);
-            this.setState({showDialog: false})
-          }}
-        />
         <table className="mui-table mui-table--bordered">
           <thead>
             <tr>
@@ -55,7 +56,7 @@ export default class WidgetCluster extends React.Component {
             })}
           </tbody>
         </table>
-        <a onClick={() => this.setState({showDialog: true})}>Add node</a>
+        <a onClick={() => showModal(MODALS.ADD_NODE)}>Add node</a>
       </Panel>
     )
   }

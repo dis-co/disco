@@ -3,7 +3,7 @@ import Tabs from 'muicss/lib/react/tabs';
 import Tab from 'muicss/lib/react/tab';
 import {Responsive, WidthProvider} from 'react-grid-layout';
 const ResponsiveReactGridLayout = WidthProvider(Responsive);
-import WidgetCluster from './WidgetCluster';
+import WidgetCluster from './widgets/Cluster';
 import widgetLayouts from './data/widgetLayouts';
 
 const rowHeight = 30;
