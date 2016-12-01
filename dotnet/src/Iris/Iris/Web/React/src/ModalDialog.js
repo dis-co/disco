@@ -4,7 +4,7 @@ import Login from './modals/Login';
 import AddNode from './modals/AddNode';
 import { MODALS } from './Constants';
 
-export default class ModalAddNode extends React.Component {
+export default class ModalDialog extends React.Component {
   constructor(props) {
       super(props);
   }

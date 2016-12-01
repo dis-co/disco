@@ -5,6 +5,13 @@ import PanelRight from "./PanelRight";
 import Draggable from 'react-draggable';
 import { PANEL_DEFAULT_WIDTH, PANEL_MAX_WIDTH, SKIP_LOGIN } from "./Constants"
 
+function calculateWidths(prev) {
+  const sideMax = window.innerWidth / 4;
+  const left = Math.min(prev ? prev.left : PANEL_DEFAULT_WIDTH, sideMax);
+  const right = Math.min(prev ? prev.right : PANEL_DEFAULT_WIDTH, sideMax);
+  return { left, right, sideMax, center: window.innerWidth - (left + right) };
+}
+
 const DragBar = (props) => (
   <Draggable
     axis="x"
@@ -17,17 +24,20 @@ const DragBar = (props) => (
 export default class LayoutColumn extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {
-      left: PANEL_DEFAULT_WIDTH,
-      right: PANEL_DEFAULT_WIDTH
-    }
+    this.state = calculateWidths();
   }
 
   onDrag(side, deltaX) {
-    const x = side === "left"
+    let x = side === "left"
       ? this.state[side] + deltaX
       : this.state[side] - deltaX;
-    this.setState({ [side]: x })
+    if (x >= this.state.sideMax) {
+      return false;
+    }
+    else {
+      const prev = Object.assign({}, this.state, { [side]: x });
+      this.setState(calculateWidths(prev))
+    }
   }
 
   render() {
@@ -43,7 +53,7 @@ export default class LayoutColumn extends React.Component {
           onDrag={this.onDrag.bind(this)} />
         <div className="column-layout">
           <PanelLeft width={this.state.left} />
-          <PanelCenter info={this.props.info} />
+          <PanelCenter width={this.state.center} info={this.props.info} />
           <PanelRight width={this.state.right} />
         </div>
       </div>

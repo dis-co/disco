@@ -1,3 +1,5 @@
+import { WIDGETS } from '../Constants'
+
 export default [
-    {i: 'cluster', x: 0, y: 0, w: 7, h: 12, minW: 7, maxW: 8 }
+    {i: WIDGETS.CLUSTER, x: 0, y: 0, w: 7, h: 12, minW: 7, maxW: 10, minH: 11, maxH: 15 }
 ];

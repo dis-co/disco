@@ -1,31 +1,31 @@
 import React from 'react';
 import Tabs from 'muicss/lib/react/tabs';
 import Tab from 'muicss/lib/react/tab';
-import {Responsive, WidthProvider} from 'react-grid-layout';
-const ResponsiveReactGridLayout = WidthProvider(Responsive);
+import ReactGridLayout from 'react-grid-layout';
+// import {Responsive, WidthProvider} from 'react-grid-layout';
+// const ResponsiveReactGridLayout = WidthProvider(Responsive);
 import WidgetCluster from './widgets/Cluster';
 import widgetLayouts from './data/widgetLayouts';
 
+const cols = w => ~~(w/50);
 const rowHeight = 30;
-const layouts = { lg: widgetLayouts, md: widgetLayouts, sm: widgetLayouts };
-const cols = { lg: 12, md: 12, sm: 12 };
 
 export default function PanelCenter(props) { return (
   <div id="panel-center">
     <Tabs>
       <Tab label="CLUSTER VIEW" >
-        {/* TODO: Width must be recalculated when side panels are resized */}
-        <ResponsiveReactGridLayout
+        <ReactGridLayout
           className="layout"
-          layouts={layouts}
-          cols={cols}
+          layout={widgetLayouts}
+          cols={12}
+          width={props.width}
           rowHeight={rowHeight}
           verticalCompact={false}
         >
           <div key={'cluster'}>
             <WidgetCluster info={props.info} />
           </div>
-        </ResponsiveReactGridLayout>
+        </ReactGridLayout>
       </Tab>
       <Tab label="GRAPH VIEW" >
         <div>

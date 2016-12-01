@@ -7,7 +7,7 @@ import { addNode } from "iris";
 export default function(props) {
   return (
     <Form>
-      <legend>Login</legend>
+      <legend>Node information</legend>
       <Input name="host" label="Host" floatingLabel={true} required={true} />
       <Input name="ip" label="IP" floatingLabel={true} required={true} />
       <Input name="port" label="Port" floatingLabel={true} required={true} />
