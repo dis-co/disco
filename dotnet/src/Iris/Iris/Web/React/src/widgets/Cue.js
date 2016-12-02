@@ -8,10 +8,12 @@ export default function WidgetCue(props) {
       {map(props.cue.IOBoxes, x =>
         <table className="mui-table mui-table--bordered">
           <tbody>
-            <tr>
-              <td>{x.Name}</td>
-              <td>{x.Value}</td>
-            </tr>
+            {map(x.Slices.Fields[0], (y,i) =>
+              <tr key={i}>
+                <td>{x.Name}</td>
+                <td>{y.Value}</td>
+              </tr>
+            )}
           </tbody>
         </table>
       )}

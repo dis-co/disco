@@ -17,6 +17,7 @@ class App extends React.Component {
     super(props);
     props.subscribe(info => {
       if (SKIP_LOGIN) {
+        console.log(info);
         this.setState(info);
         return;
       }

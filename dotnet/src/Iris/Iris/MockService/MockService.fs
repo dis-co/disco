@@ -46,8 +46,13 @@ type MockService(?project: IrisProject ref) =
       Config.create("mock-config")
       |> Config.updateCluster cluster
     let state =
+      let stringBox = IOBox.String(Id.Create(), "string", Id.Create(), [||], [|{ Index = 0u; Value = "one"   }|])
+      let cue = { Cue.Id=Id.Create(); Name="MyCue"; IOBoxes=[|stringBox|] }
       let nodes = nodes |> Seq.map (fun x -> x.Id, x) |> Map
-      { State.Empty with Nodes = nodes; Users = Util.users |> Seq.map (fun u -> u.Id, u) |> Map }
+      { State.Empty with
+          Cues = [cue.Id, cue] |> Map
+          Nodes = nodes
+          Users = Util.users |> Seq.map (fun u -> u.Id, u) |> Map }
     config, state
   let store : Store = new Store(state)
 

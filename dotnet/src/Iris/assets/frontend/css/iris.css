@@ -32,6 +32,11 @@ html, body, #app {
   height: 100%;
 }
 
+.panel-cue {
+  height: 100%;
+  background-color: white;
+}
+
 .dragbar {
   width: 3px;
   position: absolute;

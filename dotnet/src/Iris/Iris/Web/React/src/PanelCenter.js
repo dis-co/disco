@@ -4,8 +4,11 @@ import Tab from 'muicss/lib/react/tab';
 import ReactGridLayout from 'react-grid-layout';
 // import {Responsive, WidthProvider} from 'react-grid-layout';
 // const ResponsiveReactGridLayout = WidthProvider(Responsive);
-import WidgetCluster from './widgets/Cluster';
+import { WIDGETS } from './Constants'
 import widgetLayouts from './data/widgetLayouts';
+import WidgetCluster from './widgets/Cluster';
+import WidgetCue from './widgets/Cue';
+import { map } from './Util';
 
 const cols = w => ~~(w/50);
 const rowHeight = 30;
@@ -22,8 +25,13 @@ export default function PanelCenter(props) { return (
           rowHeight={rowHeight}
           verticalCompact={false}
         >
-          <div key={'cluster'}>
+          <div key={WIDGETS.CLUSTER}>
             <WidgetCluster info={props.info} />
+          </div>
+          <div key={WIDGETS.CUE}>
+            {map(props.info.state.Cues, (kv, i) =>
+              <WidgetCue cue={kv[1]} />
+            )}
           </div>
         </ReactGridLayout>
       </Tab>
