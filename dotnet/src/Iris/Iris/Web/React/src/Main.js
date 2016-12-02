@@ -3,7 +3,7 @@ import * as ReactDom from "react-dom";
 import LayoutColumn from "./LayoutColumn";
 import ModalDialog from "./ModalDialog";
 import { getCurrentSession } from 'iris';
-import { STATUS, MODALS } from './Constants';
+import { STATUS, MODALS, SKIP_LOGIN } from './Constants';
 
 let modal = null;
 let initInfo = null;
@@ -16,6 +16,11 @@ class App extends React.Component {
   constructor(props) {
     super(props);
     props.subscribe(info => {
+      if (SKIP_LOGIN) {
+        this.setState(info);
+        return;
+      }
+
       const status = info.session.Status.StatusType.ToString();
       switch (status) {
         case STATUS.AUTHORIZED:
