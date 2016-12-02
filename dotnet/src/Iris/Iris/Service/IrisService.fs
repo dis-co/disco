@@ -257,9 +257,16 @@ module Iris =
 
   // ** triggerOnNext
 
-  let private triggerOnNext (ev: IrisEvent) (state: IrisStateData)  =
-    for subscription in state.Subscriptions do
+  let private triggerOnNext (subscriptions: Subscriptions) (ev: IrisEvent) =
+    for subscription in subscriptions do
       subscription.OnNext ev
+
+  // ** triggerWithState
+
+  let private triggerWithState (state: IrisState) (ev: IrisEvent) =
+    match state with
+    | Loaded data -> triggerOnNext data.Subscriptions ev
+    | _ -> ()
 
   // ** broadcastMsg
 
@@ -640,6 +647,9 @@ module Iris =
     | Right nextstate ->
       match start nextstate inbox with
       | Right finalstate ->
+        ServiceStatus.Running
+        |> Status
+        |> triggerWithState state
         Reply.Ok
         |> Either.succeed
         |> chan.Reply
@@ -650,6 +660,9 @@ module Iris =
         |> chan.Reply
         Idle
     | Left error ->
+      ServiceStatus.Failed error
+      |> Status
+      |> triggerWithState state
       error
       |> Either.fail
       |> chan.Reply
@@ -688,8 +701,8 @@ module Iris =
   // ** handleUnload
 
   let private handleUnload (state: IrisState) (chan: ReplyChan) =
-    withState state (ServiceStatus.Stopped |> Status |> triggerOnNext)
     dispose state
+    triggerWithState state (Status ServiceStatus.Stopped)
     Reply.Ok
     |> Either.succeed
     |> chan.Reply
@@ -924,6 +937,7 @@ module Iris =
               |> listener.Subscribe
 
             member self.Dispose() =
+              triggerOnNext subscriptions (Status ServiceStatus.Stopping)
               agent.PostAndReply(fun chan -> Msg.Unload chan)
               |> ignore
               dispose agent
