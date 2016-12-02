@@ -36,6 +36,10 @@ module Iris =
 
   // ** Reply
 
+  /// ## Reply
+  ///
+  /// Type to model synchronous replies from the internal actor.
+  ///
   [<RequireQualifiedAccess>]
   type private Reply =
     | Ok
@@ -45,10 +49,19 @@ module Iris =
 
   // ** ReplyChan
 
+  /// ## ReplyChan
+  ///
+  /// Type alias over reply channel for computations on the internal actor that can fail.
+  ///
   type private ReplyChan = AsyncReplyChannel<Either<IrisError,Reply>>
 
   // ** Msg
 
+  /// ## Msg
+  ///
+  /// Model the actor-internal state machine. Some constructors include a `ReplyChan` for
+  /// synchronous request/response style computations.
+  ///
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
     | Git       of GitEvent
@@ -69,15 +82,42 @@ module Iris =
 
   // ** IrisAgent
 
+  /// ## IrisAgent
+  ///
+  /// Type alias for internal state mutation actor.
+  ///
   type private IrisAgent = MailboxProcessor<Msg>
 
   // ** disposeAll
 
+  /// ## disposeAll
+  ///
+  /// Dispose all resource in the passed `seq`.
+  ///
+  /// ### Signature:
+  /// - disposables: IDisposable seq
+  ///
+  /// Returns: unit
   let private disposeAll (disposables: IDisposable seq) =
     Seq.iter dispose disposables
 
   // ** IrisState
 
+  /// ## IrisStateData
+  ///
+  /// Encapsulate all service-internal state to hydrate an `IrisAgent` with. As the actor receives
+  /// messages, it uses (and updates) this record and passes it on. For ease of use it implements
+  /// the IDisposable interface.
+  ///
+  /// ### Fields:
+  /// - Status: ServiceStatus of currently loaded project
+  /// - Store: Store containing all state. This is sent to user via WebSockets on connection.
+  /// - Project: IrisProject currently loaded
+  /// - GitServer: IGitServer for current project
+  /// - RaftServer: IRaftServer for current project
+  /// - SocketServer: IWebSocketServer for current project
+  /// - Disposables: IDisposable list for Observables and the like
+  ///
   [<NoComparison;NoEquality>]
   type private IrisStateData =
     { Status       : ServiceStatus
@@ -96,6 +136,15 @@ module Iris =
         dispose self.RaftServer
         dispose self.SocketServer
 
+  /// ## IrisState
+  ///
+  /// Encodes the presence or absence of a loaded project. Implements IDisposable for
+  /// convenience. This is the type our inner loop function is fed with.
+  ///
+  /// ### Constructors:
+  /// - Idle: no IrisProject is currently loaded (implies ServiceStatus.Stopped)
+  /// - Loaded: IrisStateData for loaded IrisProject
+  ///
   [<NoComparison;NoEquality>]
   type private IrisState =
     | Idle
@@ -107,6 +156,15 @@ module Iris =
         | Idle -> ()
         | Loaded data -> dispose data
 
+  /// ## withState
+  ///
+  /// If the passed `IrisState` is a loaded project, execute the supplied function against it.
+  ///
+  /// ### Signature:
+  /// - state: IrisState value to check
+  /// - cb: IrisStateData -> unit workload
+  ///
+  /// Returns: unit
   let private withState (state: IrisState) (cb: IrisStateData -> unit) =
     match state with
     | Idle -> ()
@@ -114,6 +172,14 @@ module Iris =
 
   // ** resetState
 
+  /// ## resetState
+  ///
+  /// Dispose the passed `IrisState` and return `Idle`
+  ///
+  /// ### Signature:
+  /// - state: IrisState to dispose
+  ///
+  /// Returns: IrisState
   let private resetState (state: IrisState) =
     match state with
     | Idle -> Idle
@@ -123,6 +189,10 @@ module Iris =
 
   // ** IIrisServer
 
+  /// ## IIrisServer
+  ///
+  /// Interface type to close over internal actors and state.
+  ///
   type IIrisServer =
     inherit IDisposable
     abstract Config        : Either<IrisError,IrisConfig>
