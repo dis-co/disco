@@ -14,5 +14,6 @@ export const MODALS = {
 }
 
 export const WIDGETS = {
-    CLUSTER: "cluster"
+    CLUSTER: "cluster",
+    CUE: "cue"
 }

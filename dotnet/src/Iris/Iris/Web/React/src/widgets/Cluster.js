@@ -3,29 +3,14 @@ import Panel from 'muicss/lib/react/panel';
 import { showModal } from '../Main';
 import { removeNode } from "iris";
 import { MODALS } from "../Constants";
-
-function map(iterable, f) {
-  let ar = [];
-  if (iterable != null)
-    for (let x of iterable)
-      ar.push(f(x));
-  return ar;
-}
+import { map } from "../Util";
 
 export default class WidgetCluster extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {};
   }
 
   render() {
-        // <ModalAddNode
-        //   active={this.state.showDialog}
-        //   submit={(host, ip, port) => {
-        //     addNode(this.props.info, host, ip, port);
-        //     this.setState({showDialog: false})
-        //   }}
-        // />
     return (
       <Panel className="panel-cluster">
         <table className="mui-table mui-table--bordered">

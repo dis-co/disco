@@ -1,5 +1,9 @@
 {
     "compileOnSave": false,
+    "compilerOptions": {
+        "noImplicitAny": true,
+        "noImplicitReturns": true
+    },
     "files": [
         "src/"
     ]
