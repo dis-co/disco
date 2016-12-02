@@ -329,7 +329,9 @@ module Iris =
         match appendCmd data (RemoveSession session) with
         | Right _ -> ()
         | Left error  ->
-          printfn "error appending: %A" error
+          error
+          |> string
+          |> Logger.err data.NodeId tag
       | _ -> ()
 
   // ** onError
@@ -346,7 +348,8 @@ module Iris =
         | Right _ -> ()
         | Left error ->
           error
-          |> printfn "error appending %A"
+          |> string
+          |> Logger.err data.NodeId tag
       | _ -> ()
 
 
@@ -365,7 +368,8 @@ module Iris =
       | Right _ -> ()
       | Left error ->
         error
-        |> printfn "error appending %A"
+        |> string
+        |> Logger.err data.NodeId tag
 
   // ** handleSocketEvent
 
@@ -480,11 +484,13 @@ module Iris =
             | Right () -> ()
             | Left error ->
               error
-              |> printfn "could not update repo: %A"
+              |> string
+              |> Logger.err data.NodeId tag
           | None -> ()
         | Left error ->
           error
-          |> printfn "could not get state: %A"
+          |> string
+          |> Logger.err data.NodeId tag
         Loaded data
 
   // ** onStateChanged
