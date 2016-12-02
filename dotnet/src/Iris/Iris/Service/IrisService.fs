@@ -34,6 +34,16 @@ module Iris =
   let private signature =
     new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
 
+  // ** IrisEvent
+
+  [<NoComparison;NoEquality>]
+  type IrisEvent =
+    | Git    of GitEvent
+    | Socket of SocketEvent
+    | Raft   of RaftEvent
+    | Log    of LogEvent
+    | Status of ServiceStatus
+
   // ** Reply
 
   /// ## Reply
@@ -101,6 +111,14 @@ module Iris =
   let private disposeAll (disposables: IDisposable seq) =
     Seq.iter dispose disposables
 
+  // ** Subscriptions
+
+  /// ## Subscriptions
+  ///
+  /// Type alias for IObserver subscriptions.
+  ///
+  type Subscriptions = ResizeArray<IObserver<IrisEvent>>
+
   // ** IrisState
 
   /// ## IrisStateData
@@ -120,14 +138,16 @@ module Iris =
   ///
   [<NoComparison;NoEquality>]
   type private IrisStateData =
-    { Status       : ServiceStatus
-      Store        : Store
-      Project      : IrisProject
-      GitServer    : IGitServer
-      RaftServer   : IRaftServer
-      HttpServer   : AssetServer
-      SocketServer : IWebSocketServer
-      Disposables  : IDisposable list }
+    { NodeId        : Id
+      Status        : ServiceStatus
+      Store         : Store
+      Project       : IrisProject
+      GitServer     : IGitServer
+      RaftServer    : IRaftServer
+      HttpServer    : AssetServer
+      SocketServer  : IWebSocketServer
+      Subscriptions : Subscriptions
+      Disposables   : IDisposable list }
 
     interface IDisposable with
       member self.Dispose() =
@@ -156,6 +176,24 @@ module Iris =
         | Idle -> ()
         | Loaded data -> dispose data
 
+  /// ## withLoaded
+  ///
+  /// Reach into passed IrisState value and apply either one of the passed functions to the inner
+  /// value.
+  ///
+  /// ### Signature:
+  /// - state: IrisState value to reach into
+  /// - idle: (unit -> IrisState) function evaluated when the Idle case was hit
+  /// - arg: (IrisStateData -> IrisState) function evaluated when Loaded constructor was encoutered.
+  ///
+  /// Returns: IrisState
+  let inline private withLoaded (state: IrisState)
+                                (idle: unit -> 'a)
+                                (loaded: IrisStateData -> 'a) =
+    match state with
+    | Idle        -> idle ()
+    | Loaded data -> loaded data
+
   /// ## withState
   ///
   /// If the passed `IrisState` is a loaded project, execute the supplied function against it.
@@ -165,10 +203,23 @@ module Iris =
   /// - cb: IrisStateData -> unit workload
   ///
   /// Returns: unit
-  let private withState (state: IrisState) (cb: IrisStateData -> unit) =
-    match state with
-    | Idle -> ()
-    | Loaded data -> cb data
+  let private withState (state: IrisState) (loaded: IrisStateData -> unit) =
+    withLoaded state (konst state) (loaded >> konst state)
+    |> ignore
+
+  /// ## notLoaded
+  ///
+  /// Reply with the most common error.
+  ///
+  /// ### Signature:
+  /// - chan: ReplyChan to reply with
+  ///
+  /// Returns: unit
+  let private notLoaded (chan: ReplyChan) () =
+    "No project loaded"
+    |> Other
+    |> Either.fail
+    |> chan.Reply
 
   // ** resetState
 
@@ -181,11 +232,7 @@ module Iris =
   ///
   /// Returns: IrisState
   let private resetState (state: IrisState) =
-    match state with
-    | Idle -> Idle
-    | Loaded data ->
-      dispose data
-      Idle
+    withLoaded state (konst state) (dispose >> konst Idle)
 
   // ** IIrisServer
 
@@ -206,6 +253,13 @@ module Iris =
     abstract RmNode        : Id         -> Either<IrisError,EntryResponse>
     abstract AddNode       : RaftNode   -> Either<IrisError,EntryResponse>
     abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
+    abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
+
+  // ** triggerOnNext
+
+  let private triggerOnNext (ev: IrisEvent) (state: IrisStateData)  =
+    for subscription in state.Subscriptions do
+      subscription.OnNext ev
 
   // ** broadcastMsg
 
@@ -329,7 +383,7 @@ module Iris =
   /// Register a callback to run when a new cluster configuration has been committed, and the
   /// joint-consensus mode has been concluded.
   let private onConfigured (state: IrisState) (nodes: RaftNode array) =
-    withState state <| fun data ->
+    withLoaded state (konst state) <| fun data ->
       either {
         let! nodeid = data.RaftServer.NodeId
         nodes
@@ -337,8 +391,7 @@ module Iris =
         |> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
         |> Logger.debug nodeid tag
       }
-      |> ignore
-    state
+      |> konst state
 
   // ** onNodeAdded
 
@@ -349,11 +402,11 @@ module Iris =
   /// full member of the cluster.
 
   let private onNodeAdded (state: IrisState) (node: RaftNode) =
-    withState state <| fun data ->
+    withLoaded state (konst state) <| fun data ->
       let cmd = AddNode node
       data.Store.Dispatch cmd
       broadcastMsg data cmd
-    state
+      state
 
   // ** onNodeUpdated
 
@@ -363,11 +416,11 @@ module Iris =
   /// state.
 
   let private onNodeUpdated (state: IrisState) (node: RaftNode) =
-    withState state <| fun data ->
+    withLoaded state (konst state) <| fun data ->
       let cmd = UpdateNode node
       data.Store.Dispatch cmd
       broadcastMsg data cmd
-    state
+      state
 
   // ** onNodeRemoved
 
@@ -377,11 +430,11 @@ module Iris =
   /// the cluster entering into joint-consensus mode until the node was successfully removed.
 
   let private onNodeRemoved (state: IrisState) (node: RaftNode) =
-    withState state <| fun data ->
+    withLoaded state (konst state) <| fun data ->
       let cmd = RemoveNode node
       data.Store.Dispatch cmd
       broadcastMsg data cmd
-    state
+      state
 
   // ** onApplyLog
 
@@ -397,9 +450,7 @@ module Iris =
   ///   - the state machine command is persisted to disk (potentially recorded in a git commit)
 
   let private onApplyLog (state: IrisState) (sm: StateMachine) =
-    match state with
-    | Idle -> state
-    | Loaded data ->
+    withLoaded state (konst state) <| fun data ->
       data.Store.Dispatch sm
       broadcastMsg data sm
 
@@ -434,29 +485,17 @@ module Iris =
   let private onStateChanged (state: IrisState)
                              (oldstate: RaftState)
                              (newstate: RaftState) =
-    match state with
-    | Loaded data ->
-      either {
-        let! nodeid = data.RaftServer.NodeId
+    withState state <| fun data ->
         sprintf "Raft state changed from %A to %A" oldstate newstate
-        |> Logger.debug nodeid tag
-      }
-      |> ignore
-    | _ -> ()
+        |> Logger.debug data.NodeId tag
     state
 
   // ** onCreateSnapshot
 
   let private onCreateSnapshot (state: IrisState) =
-    match state with
-    | Loaded data ->
-      either {
-        let! nodeid = data.RaftServer.NodeId
-        "CreateSnapshot requested"
-        |> Logger.debug nodeid tag
-      }
-      |> ignore
-    | _ -> ()
+    withState state <| fun data ->
+      "CreateSnapshot requested"
+      |> Logger.debug data.NodeId tag
     state
 
   // ** handleRaftEvent
@@ -480,25 +519,19 @@ module Iris =
   // ** handleGitEvent
 
   let private handleGitEvent (state: IrisState) (ev: GitEvent) =
-    match state with
-    | Loaded data ->
-      either {
-        let! nodeid = data.RaftServer.NodeId
-        match ev with
-        | Started pid ->
-          "Git daemon started"
-          |> Logger.debug nodeid tag
+    withState state <| fun data ->
+      match ev with
+      | Started pid ->
+        "Git daemon started"
+        |> Logger.debug data.NodeId tag
 
-        | Exited pid ->
-          "Git daemon exited"
-          |> Logger.debug nodeid tag
+      | Exited pid ->
+        "Git daemon exited"
+        |> Logger.debug data.NodeId tag
 
-        | Pull (_, addr, port) ->
-          sprintf "Client %s:%d pulled updates from me" addr port
-          |> Logger.debug nodeid tag
-      }
-      |> ignore
-    | _ -> ()
+      | Pull (_, addr, port) ->
+        sprintf "Client %s:%d pulled updates from me" addr port
+        |> Logger.debug data.NodeId tag
     state
 
   //  _                    _
@@ -506,7 +539,6 @@ module Iris =
   // | |   / _ \ / _` |/ _` |
   // | |__| (_) | (_| | (_| |
   // |_____\___/ \__,_|\__,_|
-
 
   // ** forwardLogEvents
 
@@ -530,7 +562,7 @@ module Iris =
 
   // ** loadProject
 
-  let private loadProject (state: IrisState) (path: FilePath) =
+  let private loadProject (state: IrisState) (path: FilePath) (subscriptions: Subscriptions) =
     either {
       dispose state
 
@@ -552,69 +584,71 @@ module Iris =
         let! gitserver  = GitServer.create node path
 
         return
-          Loaded { Status       = ServiceStatus.Starting
+          Loaded { NodeId       = node.Id
+                   Status       = ServiceStatus.Starting
                    Store        = new Store(State.Empty)
                    Project      = project
                    GitServer    = gitserver
                    RaftServer   = raftserver
                    HttpServer   = httpserver
                    SocketServer = wsserver
+                   Subscriptions= subscriptions
                    Disposables  = [] }
     }
 
   // ** start
 
   let private start (state: IrisState) (agent: IrisAgent) =
-    match state with
-    | Idle -> Either.succeed Idle
-    | Loaded data ->
+    withLoaded state (konst (Right state)) <| fun data ->
       let disposables =
         [ forwardLogEvents    agent |> Logger.subscribe
           forwardRaftEvents   agent |> data.RaftServer.Subscribe
           forwardSocketEvents agent |> data.SocketServer.Subscribe
           forwardGitEvents    agent |> data.GitServer.Subscribe ]
 
-      let result1 = data.RaftServer.Load(data.Project.Config)
-      let result2 = data.SocketServer.Start()
-      let result3 = data.GitServer.Start()
-      let result4 = data.HttpServer.Start()
+      let result =
+        either {
+          do! data.RaftServer.Load(data.Project.Config)
+          do! data.SocketServer.Start()
+          do! data.GitServer.Start()
+          do! data.HttpServer.Start()
+        }
 
-      match result1, result2, result3, result4 with
-      | Right _, Right _, Right _, Right _ ->
+      match result with
+      | Right _ ->
         Loaded { data with
-                   Status = ServiceStatus.Running
-                   Disposables = disposables }
+                  Status = ServiceStatus.Running
+                  Disposables = disposables }
         |> Either.succeed
-      | other ->
+      | Left error ->
         disposeAll disposables
         dispose data.SocketServer
         dispose data.RaftServer
         dispose data.GitServer
-        Other "Could not start servers."
-        |> Either.fail
+        dispose data.HttpServer
+        Either.fail error
+
 
   // ** handleLoad
 
   let private handleLoad (state: IrisState)
                          (path: FilePath)
+                         (subscriptions: Subscriptions)
                          (chan: ReplyChan)
                          (inbox: IrisAgent) =
-    match loadProject state path with
+    match loadProject state path subscriptions with
     | Right nextstate ->
-
       match start nextstate inbox with
       | Right finalstate ->
         Reply.Ok
         |> Either.succeed
         |> chan.Reply
         finalstate
-
       | Left error ->
         error
         |> Either.fail
         |> chan.Reply
         Idle
-
     | Left error ->
       error
       |> Either.fail
@@ -644,9 +678,7 @@ module Iris =
   // ** handleStatus
 
   let private handleStatus (state: IrisState) (chan: ReplyChan) =
-    match state with
-    | Idle -> Idle
-    | Loaded data ->
+    withLoaded state (konst state) <| fun data ->
       data.Status
       |> Reply.Status
       |> Either.succeed
@@ -656,6 +688,7 @@ module Iris =
   // ** handleUnload
 
   let private handleUnload (state: IrisState) (chan: ReplyChan) =
+    withState state (ServiceStatus.Stopped |> Status |> triggerOnNext)
     dispose state
     Reply.Ok
     |> Either.succeed
@@ -665,14 +698,7 @@ module Iris =
   // ** handleConfig
 
   let private handleConfig (state: IrisState) (chan: ReplyChan) =
-    match state with
-    | Idle ->
-      "No project loaded"
-      |> Other
-      |> Either.fail
-      |> chan.Reply
-      Idle
-    | Loaded data ->
+    withLoaded state (notLoaded chan >> konst state) <| fun data ->
       data.Project.Config
       |> Reply.Config
       |> Either.succeed
@@ -682,14 +708,7 @@ module Iris =
   // ** handleSetConfig
 
   let private handleSetConfig (state: IrisState) (config: IrisConfig) (chan: ReplyChan) =
-    match state with
-    | Idle ->
-      "No project loaded"
-      |> Other
-      |> Either.fail
-      |> chan.Reply
-      Idle
-    | Loaded data ->
+    withLoaded state (notLoaded chan >> konst state) <| fun data ->
       Reply.Ok
       |> Either.succeed
       |> chan.Reply
@@ -698,39 +717,31 @@ module Iris =
   // ** handleForceElection
 
   let private handleForceElection (state: IrisState) =
-    match state with
-    | Idle -> state
-    | Loaded data ->
+    withLoaded state (konst state) <| fun data ->
       match data.RaftServer.ForceElection () with
-      | Right () -> ()
       | Left error ->
         error
-        |> printfn "error forcing the election: %A"
+        |> string
+        |> Logger.err data.NodeId tag
+      | other -> ignore other
       state
 
   // ** handlePeriodic
 
   let private handlePeriodic (state: IrisState) =
-    match state with
-    | Idle -> state
-    | Loaded data ->
+    withLoaded state (konst state) <| fun data ->
       match data.RaftServer.Periodic() with
-      | Right () -> ()
       | Left error ->
         error
-        |> printfn "error executing periodic function %A"
+        |> string
+        |> Logger.err data.NodeId tag
+      | other -> ignore other
       state
 
   // ** handleJoin
 
   let private handleJoin (state: IrisState) (ip: IpAddress) (port: uint16) (chan: ReplyChan) =
-    match state with
-    | Idle ->
-      "No project loaded"
-      |> Other
-      |> Either.fail
-      |> chan.Reply
-    | Loaded data ->
+    withLoaded state (notLoaded chan >> konst state) <| fun data ->
       match data.RaftServer.JoinCluster ip port with
       | Right () ->
         Reply.Ok
@@ -740,18 +751,12 @@ module Iris =
         error
         |> Either.fail
         |> chan.Reply
-    state
+      state
 
   // ** handleLeave
 
   let private handleLeave (state: IrisState) (chan: ReplyChan) =
-    match state with
-    | Idle ->
-      "No project loaded"
-      |> Other
-      |> Either.fail
-      |> chan.Reply
-    | Loaded data ->
+    withLoaded state (notLoaded chan >> konst state) <| fun data ->
       match data.RaftServer.LeaveCluster () with
       | Right () ->
         Reply.Ok
@@ -761,18 +766,12 @@ module Iris =
         error
         |> Either.fail
         |> chan.Reply
-    state
+      state
 
   // ** handleAddNode
 
   let private handleAddNode (state: IrisState) (node: RaftNode) (chan: ReplyChan) =
-    match state with
-    | Idle ->
-      "No project loaded"
-      |> Other
-      |> Either.fail
-      |> chan.Reply
-    | Loaded data ->
+    withLoaded state (notLoaded chan >> konst state) <| fun data ->
       match data.RaftServer.AddNode node with
       | Right entry ->
         Reply.Entry entry
@@ -782,18 +781,12 @@ module Iris =
         error
         |> Either.fail
         |> chan.Reply
-    state
+      state
 
   // ** handleRmNode
 
   let private handleRmNode (state: IrisState) (id: Id) (chan: ReplyChan) =
-    match state with
-    | Idle ->
-      "No project loaded"
-      |> Other
-      |> Either.fail
-      |> chan.Reply
-    | Loaded data ->
+    withLoaded state (notLoaded chan >> konst state) <| fun data ->
       match data.RaftServer.RmNode id  with
       | Right entry ->
         Reply.Entry entry
@@ -803,31 +796,31 @@ module Iris =
         error
         |> Either.fail
         |> chan.Reply
-    state
+      state
 
   // ** loop
 
-  let private loop (initial: IrisState) (inbox: IrisAgent) =
+  let private loop (initial: IrisState) (subscriptions: Subscriptions) (inbox: IrisAgent) =
     let rec act (state: IrisState) =
       async {
         let! msg = inbox.Receive()
         let newstate =
           match msg with
-          | Msg.Load (path,chan)     -> handleLoad          state path    chan inbox
-          | Msg.Unload chan          -> handleUnload        state         chan
-          | Msg.Config chan          -> handleConfig        state         chan
-          | Msg.SetConfig (cnf,chan) -> handleSetConfig     state cnf     chan
-          | Msg.Status chan          -> handleStatus        state         chan
+          | Msg.Load (path,chan)     -> handleLoad          state path subscriptions chan inbox
+          | Msg.Unload chan          -> handleUnload        state                    chan
+          | Msg.Config chan          -> handleConfig        state                    chan
+          | Msg.SetConfig (cnf,chan) -> handleSetConfig     state cnf                chan
+          | Msg.Status chan          -> handleStatus        state                    chan
           | Msg.Git    ev            -> handleGitEvent      state ev
           | Msg.Socket ev            -> handleSocketEvent   state ev
           | Msg.Raft   ev            -> handleRaftEvent     state ev
           | Msg.Log   log            -> handleLogEvent      state log
           | Msg.ForceElection        -> handleForceElection state
           | Msg.Periodic             -> handlePeriodic      state
-          | Msg.Join (ip,port,chan)  -> handleJoin          state ip port chan
-          | Msg.Leave  chan          -> handleLeave         state         chan
-          | Msg.AddNode (node,chan)  -> handleAddNode       state node    chan
-          | Msg.RmNode (id,chan)     -> handleRmNode        state id      chan
+          | Msg.Join (ip,port,chan)  -> handleJoin          state ip port            chan
+          | Msg.Leave  chan          -> handleLeave         state                    chan
+          | Msg.AddNode (node,chan)  -> handleAddNode       state node               chan
+          | Msg.RmNode (id,chan)     -> handleRmNode        state id                 chan
         return! act newstate
       }
 
@@ -839,7 +832,19 @@ module Iris =
   module IrisService =
 
     let create () =
-      let agent = new IrisAgent(loop Idle)
+      let subscriptions = new Subscriptions()
+      let agent = new IrisAgent(loop Idle subscriptions)
+
+      let listener =
+        { new IObservable<IrisEvent> with
+            member self. Subscribe(obs) =
+              lock subscriptions <| fun _ ->
+                subscriptions.Add obs
+              { new IDisposable with
+                  member self.Dispose () =
+                    lock subscriptions <| fun _ ->
+                      subscriptions.Remove obs
+                      |> ignore } }
 
       Either.succeed
         { new IIrisServer with
@@ -910,6 +915,13 @@ module Iris =
               | Right (Reply.Entry entry) -> Right entry
               | Right other               -> Left (Other "Unexpectted response from IrisAgent")
               | Left error                -> Left error
+
+            member self.Subscribe(callback: IrisEvent -> unit) =
+              { new IObserver<IrisEvent> with
+                  member self.OnCompleted() = ()
+                  member self.OnError(error) = ()
+                  member self.OnNext(value) = callback value }
+              |> listener.Subscribe
 
             member self.Dispose() =
               agent.PostAndReply(fun chan -> Msg.Unload chan)

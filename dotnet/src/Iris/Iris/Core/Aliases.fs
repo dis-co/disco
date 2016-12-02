@@ -97,6 +97,8 @@ and Property =
 
 #endif
 
+// * ServiceStatus
+
 //  ____                  _          ____  _        _
 // / ___|  ___ _ ____   _(_) ___ ___/ ___|| |_ __ _| |_ _   _ ___
 // \___ \ / _ \ '__\ \ / / |/ __/ _ \___ \| __/ _` | __| | | / __|
@@ -114,12 +116,14 @@ type ServiceStatus =
 
   override self.ToString() =
     match self with
-    | Starting     -> "ServiceStatus.Starting"
-    | Running      -> "ServiceStatus.Running"
-    | Stopping     -> "ServiceStatus.Stopping"
-    | Stopped      -> "ServiceStatus.Stopped"
-    | Degraded err -> sprintf "ServiceStatus.Degraded %A" err
-    | Failed   err -> sprintf "ServiceStatus.Failed %A" err
+    | Starting     -> "Starting"
+    | Running      -> "Running"
+    | Stopping     -> "Stopping"
+    | Stopped      -> "Stopped"
+    | Degraded err -> sprintf "Degraded %A" err
+    | Failed   err -> sprintf "Failed %A" err
+
+// * Service module
 
 [<RequireQualifiedAccess>]
 module Service =
