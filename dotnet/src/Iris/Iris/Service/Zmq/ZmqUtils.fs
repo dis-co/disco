@@ -9,10 +9,12 @@ open Iris.Raft
 open Iris.Core
 open Iris.Service
 
+// * ZmqUtils
+
 [<AutoOpen>]
 module ZmqUtils =
 
-  // * formatUri
+  // ** formatUri
 
   /// ## Format ZeroMQ URI
   ///
@@ -26,7 +28,7 @@ module ZmqUtils =
   let formatUri (ip: IpAddress) (port: int) =
     sprintf "tcp://%s:%d" (string ip) port
 
-  // * nodeUri
+  // ** nodeUri
 
   /// ## Format ZeroMQ URI for passed NodeInfo
   ///
@@ -39,7 +41,7 @@ module ZmqUtils =
   let nodeUri (data: RaftNode) =
     formatUri data.IpAddr (int data.Port)
 
-  // * request
+  // ** request
 
   /// ## execute a request and return response
   ///
@@ -53,7 +55,7 @@ module ZmqUtils =
   let request (sock: Req) (req: RaftRequest) : Either<IrisError,RaftResponse> =
     req |> Binary.encode |> sock.Request |> Either.bind Binary.decode
 
-  // * mkReqSocket
+  // ** mkReqSocket
 
   /// ## Make a new client socket with correct settings
   ///
@@ -71,7 +73,7 @@ module ZmqUtils =
     socket.Start()
     socket
 
-  // * getSocket
+  // ** getSocket
 
   /// ## getSocket for Member
   ///
@@ -85,7 +87,7 @@ module ZmqUtils =
   let getSocket (node: RaftNode) (connections: Map<Id,Zmq.Req>) : Req option =
     Map.tryFind node.Id connections
 
-  // * disposeSocket
+  // ** disposeSocket
 
   /// ## Dispose of a client socket
   ///
@@ -103,7 +105,7 @@ module ZmqUtils =
       Map.remove node.Id connections
     | _  -> connections
 
-  // * rawRequest
+  // ** rawRequest
 
   /// ## Perform a raw request cycle on a request socket
   ///
@@ -121,7 +123,7 @@ module ZmqUtils =
     |> client.Request
     |> Either.bind Binary.decode<IrisError,RaftResponse>
 
-  // * performRequest
+  // ** performRequest
 
   /// ## Send RaftRequest to node
   ///
@@ -134,7 +136,7 @@ module ZmqUtils =
   /// - client:     client socket to use
   ///
   /// Returns: Either<IrisError,RaftResponse>
-  let performRequest (request: RaftRequest) (client: Req) =
+  let performRequest (client: Req) (request: RaftRequest) =
     either {
       try
         let! response = rawRequest request client

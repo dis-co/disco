@@ -72,7 +72,6 @@
     "../../../Iris/Service/Zmq/ZmqUtils.fs"
     "../../../Iris/Service/Persistence.fs"
     "../../../Iris/Service/Utilities.fs"
-    "../../../Iris/Service/Stm.fs"
     "../../../Iris/Service/RaftServer.fs"
     "../../../Iris/Service/AssetServer.fs"
     "../../../Iris/Service/WebSocket.fs"

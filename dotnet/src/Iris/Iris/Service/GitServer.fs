@@ -2,6 +2,7 @@ namespace Iris.Service
 
 // * Imports
 
+open Iris.Raft
 open Iris.Core
 open Iris.Core.Utils
 open Iris.Service.Utilities
@@ -11,6 +12,7 @@ open System.IO
 open System.Threading
 open System.Diagnostics
 open System.Management
+open System.Text.RegularExpressions
 open Microsoft.FSharp.Control
 open FSharpx.Functional
 
@@ -22,149 +24,130 @@ open FSharpx.Functional
 // | |_| | | |_ ___) |  __/ |   \ V /  __/ |
 //  \____|_|\__|____/ \___|_|    \_/ \___|_|
 
-/// ## GitServer
-///
-/// GitServer to provide data sync services between Iris nodes.
-///
-/// ### Signature:
-/// - project: IrisProject to work on
-///
-/// Returns: GitServer
-type GitServer (project: IrisProject) =
-  let tag = "GitServer"
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+//
+// EXAMPLE CLONES
+//
+// [10422] Ready to rumble
+// [11331] Connection from 127.0.0.1:43218
+// [11331] Extended attributes (21 bytes) exist <host=localhost:6000>
+// [11331] Request upload-pack for '/gittest/.git'
+// [10422] [11331] Disconnected
+// [11921] Connection from 127.0.0.1:43224
+// [11921] Extended attributes (21 bytes) exist <host=localhost:6000>
+// [11921] Request upload-pack for '/gittest/.git'
+// [10422] [11921] Disconnected
+//
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
-  let loco : obj  = new obj()
+module Git =
 
-  let mutable pid = -1
+  [<Literal>]
+  let private tag = "GitServer"
 
-  let nodeid =
-    Config.getNodeId()
-    |> Either.get
+  // ** GitEvent
 
-  let mutable starter : AutoResetEvent = null
-  let mutable stopper : AutoResetEvent = null
-  let mutable status  : ServiceStatus = ServiceStatus.Stopped
-  let mutable thread  : Thread = null
-  let mutable running : bool = false
+  type GitEvent =
+    | Started of pid:int
+    | Exited  of code:int
+    | Pull    of pid:int * address:string * port:uint16
 
-  let mutable stdoutToken : CancellationTokenSource = null
-  let mutable stderrToken : CancellationTokenSource = null
+  // ** Listener
 
-  let mutable onExitEvent : IDisposable = null
+  type private Listener = IObservable<GitEvent>
 
-  // ** do
+  // ** IGitServer
 
-  /// ## constructor
-  ///
-  /// Creates two `AutoResetEvent`s to control the running thread and process.
-  ///
-  /// Returns: unit
-  do
-    starter <- new AutoResetEvent(false)
-    stopper <- new AutoResetEvent(false)
+  type IGitServer =
+    inherit IDisposable
 
-  // ** streamReader
+    abstract Status    : Either<IrisError,ServiceStatus>
+    abstract Pid       : Either<IrisError,int>
+    abstract Subscribe : (GitEvent -> unit) -> IDisposable
+    abstract Start     : unit -> Either<IrisError,unit>
 
-  /// ## streamReader
-  ///
-  /// Reads asynchronously from a StreamReader and uses `log` to notify the application of output
-  /// received from the `git` daemon. Since there is no realiable way to determine whether the `git
-  /// daemon` has in fact successfully started, we wait for string _Ready to rumble_ to appear
-  /// before control is passed back to the caller of the `Start()` method.
-  ///
-  /// ### Signature:
-  /// - tag: LogLevel to distinguish between Stdout and StdErr
-  /// - stream: StreamReader to monitor
-  ///
-  /// Returns: CancellationTokenSource
-  let streamReader (level: LogLevel) (stream: StreamReader) =
-    let cts = new CancellationTokenSource()
-    let action =
-      async {
-        while running do
-          let line = stream.ReadLine()    // blocks
+  // ** Subscriptions
 
-          if not (isNull line) then
-            if line.Contains "Ready to rumble" then
-              Logger.debug nodeid tag "setting starter to return to caller of .Start()"
-              starter.Set() |> ignore
-            Logger.log level nodeid tag line
-      }
-    Async.Start(action, cts.Token)
-    cts
+  type private Subscriptions = ResizeArray<IObserver<GitEvent>>
 
-  // ** exitHandler
+  // ** GitStateData
 
-  /// ## exitHandler
-  ///
-  /// Handler to monitor the sub-processes. If the `git daemon` process exits for whichever reason
-  /// (it might not have been able to start because of erroneous port settings for instance), then
-  /// this handler detects this, creates an error from this and ensures control is passed back to
-  /// the caller of `Start()`. It also ensures that all resources on the thread will get cleaned up
-  /// properly.
-  ///
-  /// ### Signature:
-  /// - proc: Process to monitor (mostly to get ExitCode from)
-  ///
-  /// Returns: unit
-  let exitHandler (proc: Process) _ =
-    if proc.ExitCode > 0 then
-      status <-
-        sprintf "Non-zero ExitCode: %d" proc.ExitCode
-        |> Other
-        |> ServiceStatus.Failed
+  [<NoComparison;NoEquality>]
+  type private GitStateData =
+    { Status      : ServiceStatus
+      Process     : Process
+      Pid         : int
+      SubPid      : int
+      Disposables : IDisposable seq }
 
-    lock loco <| fun _ ->
-      Monitor.Pulse(loco)
+    interface IDisposable with
+      member self.Dispose() =
+        for disposable in self.Disposables do
+          dispose disposable
 
-    starter.Set() |> ignore
+        try
+          Process.kill self.Pid
+        finally
+          dispose self.Process
 
-  // ** worker
+  // ** GitState
 
-  /// ## worker
-  ///
-  /// Action to execute on another Thread.
-  ///
-  /// The steps taken are:
-  ///
-  /// 1) setup of the Process
-  /// 2) hook up the `onExitEvent` Observable
-  /// 3) start the Process and check whether it was successful
-  /// 4a) if successful, run the following steps
-  ///     4.1) change status to "Running"
-  ///     4.2) wait for Monitor.Pulse to allow us to move on to clean up the resources and shut down
-  /// 4b) if unsuccessful, record the failure in the status and pass back control to the caller
-  /// 5) Clean up Resouces
-  ///     5.1) StdErr/StdOut StreamReader actions
-  ///     5.2) Kill the process
-  ///     5.3) dispose the Process
-  /// 6) If this is a regular `Stop()`, set the status to `Stopped`. Other leave as is, as it will
-  ///    contain the error
-  /// 7) Signal to caller that shutdown is complete
-  ///
-  /// ### Signature:
-  /// - path: FilePath to Project repository
-  /// - addr: IpAddr to bind the daemon to
-  /// - port: uint16 port to bind daemon to
-  ///
-  /// Returns: unit
-  let worker path addr port () =
-    /// 1) Set up the Process
+  [<NoComparison;NoEquality>]
+  type private GitState =
+    | Idle
+    | Running of GitStateData
 
+    interface IDisposable with
+      member self.Dispose () =
+        match self with
+        | Running data -> dispose data
+        | _ -> ()
+
+  // ** Reply
+
+  [<RequireQualifiedAccess;NoComparison;NoEquality>]
+  type private Reply =
+    | Ok
+    | Pid      of int
+    | Status   of ServiceStatus
+
+  // ** ReplyChan
+
+  type private ReplyChan = AsyncReplyChannel<Either<IrisError,Reply>>
+
+  // ** Msg
+
+  [<RequireQualifiedAccess;NoComparison;NoEquality>]
+  type private Msg =
+    | Start    of path:FilePath * addr:string * port:uint16 * chan:ReplyChan
+    | Stop     of chan:ReplyChan
+    | Status   of chan:ReplyChan
+    | Pid      of chan:ReplyChan
+    | Exit     of int                   // Event from Git, needs no reply
+    | Log      of string                // Event from Git, needs no reply either
+
+    override self.ToString () =
+      match self with
+      | Start  (path, addr, port, _) ->
+        sprintf "Start path:%s addr:%s port:%d" path addr port
+      | Stop   _ -> "Stop"
+      | Status _ -> "Status"
+      | Pid    _ -> "Pid"
+      | Exit   c -> sprintf "Exit: %d" c
+      | Log str  -> sprintf "Log: %s" str
+
+  // ** GitAgent
+
+  type private GitAgent = MailboxProcessor<Msg>
+
+  // ** createProcess
+
+  let private createProcess (path: FilePath) (addr: string) (port: uint16) =
     let basedir =
       Path.GetDirectoryName path
       |> String.replace '\\' '/'
 
-    let sanepath =
-      path
-      |> String.replace '\\' '/'
-
-    sprintf "starting on %s:%d in base path: %A with dir: %A"
-      (string addr)
-      port
-      basedir
-      path
-    |> Logger.debug nodeid tag
+    let sanepath = String.replace '\\' '/' path
 
     let args =
       [| "daemon"
@@ -186,186 +169,358 @@ type GitServer (project: IrisProject) =
     proc.StartInfo.RedirectStandardOutput <- true
     proc.StartInfo.RedirectStandardError <- true
 
-    /// 2) Hook up `onExitEvent` callback
-    onExitEvent <- Observable.subscribe (exitHandler proc) proc.Exited
+    proc
 
-    /// 3) Start the Process
-    if proc.Start() then
+  // ** exitHandler
 
-      /// 4.1) Setting the Status to Running
-      running <- true
-      pid <- proc.Id
+  /// ## exitHandler
+  ///
+  /// Handler to monitor the sub-processes. If the `git daemon` process exits for whichever reason
+  /// (it might not have been able to start because of erroneous port settings for instance), then
+  /// this handler detects this, creates an error from this and ensures control is passed back to
+  /// the caller of `Start()`. It also ensures that all resources on the thread will get cleaned up
+  /// properly.
+  ///
+  /// ### Signature:
+  /// - proc: Process to monitor (mostly to get ExitCode from)
+  ///
+  /// Returns: unit
+  let private exitHandler (proc: Process) (agent: GitAgent) _ =
+    agent.Post(Msg.Exit proc.ExitCode)
 
-      stdoutToken <- streamReader LogLevel.Info proc.StandardOutput
-      stderrToken <- streamReader LogLevel.Err  proc.StandardError
+  // ** logHandler
 
-      Logger.debug nodeid tag "setting status to running"
-      status <- ServiceStatus.Running
+  let private logHandler (agent: GitAgent) (data: DataReceivedEventArgs) =
+    match data.Data with
+    | null -> ()
+    | _ -> agent.Post(Msg.Log data.Data)
 
-      /// 4.2) Waiting for the Signal to shut down
-      Logger.debug nodeid tag "waiting for Stop signal"
-      lock loco <| fun _ ->
-        Monitor.Wait(loco) |> ignore
-
-      /// 5.1) Cleaing up Resources - StdErr/StdOut StreamReader actions
-      Logger.debug nodeid tag "stopping streamReaders"
-      cancelToken stdoutToken
-      cancelToken stderrToken
-
-      /// 5.2) Exit event handler
-      try
-        Logger.debug nodeid tag "disposing event handlers"
-        dispose onExitEvent
-      with
-        | exn ->
-          sprintf "could not dispose of event handler: %s" exn.Message
-          |> Logger.info nodeid tag
-
-      /// 5.3) Kill the process
-      try
-        Logger.debug nodeid tag "killing process"
-        Process.kill pid
-      with
-        | exn ->
-          sprintf "could not kill process: %s" exn.Message
-          |> Logger.info nodeid tag
-
-      /// 5.4) dispose the Process
-      try
-        Logger.debug nodeid tag "disposing process"
-        dispose proc
-      with
-        | exn ->
-          sprintf "could not dispose of process: %s" exn.Message
-          |> Logger.info nodeid tag
-
-      /// 6) Set status to Stopped
-      if Service.isStopping status then
-        Logger.debug nodeid tag "setting status to Stopped"
-        status <- ServiceStatus.Stopped
-
-      /// 7) Signal shutdown is complete
-      stopper.Set() |> ignore
-      Logger.debug nodeid tag "shutdown in thread complete"
+  let private (|Ready|_|) (input: string) =
+    let m = Regex.Match(input, "\[(?<pid>[0-9]*)\] Ready to rumble")
+    if m.Success then
+      match Int32.TryParse(m.Groups.[1].Value) with
+      | (true, pid) -> Some pid
+      | _ -> None
     else
-      /// 4.2) Signal startup is complete (but failed)
-      Logger.err nodeid tag "starting child process unsuccessful"
-      status <- ServiceStatus.Failed (Other "Git process could not be started")
-      starter.Set() |> ignore
+      None
 
-  // ** Status
-
-  /// ## Status
-  ///
-  /// Getter for current server status.g
-  ///
-  /// ### Signature:
-  /// - unit: unit
-  ///
-  /// Returns: ServiceStatus
-  member self.Status
-    with get () = status
-
-  // ** Start
-
-  /// ## Start
-  ///
-  /// Start the `GitServer` daemon. Returns when either the `git daemon` was successfully started
-  /// (i.e. when it output "Ready to rumble"), or if it could not be started for whatever reason.
-  ///
-  /// ### Signature:
-  /// - unit: unit
-  ///
-  /// Returns: unit
-  member self.Start() =
-    if Service.isStopped status then
-      match project.Path, Config.selfNode project.Config with
-      | Some path, Right node  ->
-        Logger.info nodeid tag "starting"
-        status <- ServiceStatus.Starting
-        thread <- new Thread(new ThreadStart(worker path node.IpAddr node.GitPort))
-        thread.Start()
-        starter.WaitOne() |> ignore
-        Logger.info nodeid tag "started sucessfully"
-
-      | None, _ ->
-        Logger.err nodeid tag "cannot start without a project path"
-
-      | _, Left error ->
-        sprintf "cannot start: %A" error
-        |> Logger.err nodeid tag
-
+  let private (|Connection|_|) (input: string) =
+    let pattern = "\[(?<pid>[0-9]*)\] Connection from (?<ip>[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:(?<port>[0-9]*)"
+    let m = Regex.Match(input, pattern)
+    if m.Success then
+      match Int32.TryParse(m.Groups.[1].Value), UInt16.TryParse(m.Groups.[3].Value) with
+      | (true,pid), (true,port) ->
+        Some(pid, m.Groups.[2].Value, port)
+      | _ -> None
     else
-      sprintf "cannot not start. wrong status: %A" status
-      |> Logger.err nodeid tag
+      None
 
-  // ** Stop
+  let private parseLog (line: string) =
+    match line with
+    | Ready pid ->
+      Started pid
+      |> Either.succeed
 
-  /// ## Stop
-  ///
-  /// Stop the `GitServer` daemon. Only takes effect if the server is currently running.
-  ///
-  /// ### Signature:
-  /// - unit: unit
-  ///
-  /// Returns: unit
-  member self.Stop() =
-    if Service.isRunning status then
-      Logger.debug nodeid tag "setting status to Stopping"
-      status <- ServiceStatus.Stopping
+    | Connection (pid, ip, port) ->
+      Pull(pid, ip, port)
+      |> Either.succeed
 
-      Logger.debug nodeid tag "waiting for stop signal"
-      lock loco <| fun _ ->
-        Monitor.Pulse(loco)
+    | _ -> Either.fail IrisError.OK      // we don't care about the rest
 
-      Logger.debug nodeid tag "waiting for final signal to shut down"
-      stopper.WaitOne() |> ignore
+  // ** createListener
 
-      Logger.debug nodeid tag "shutdown complete"
+  let private createListener (subscriptions: Subscriptions) =
+    { new Listener with
+        member self.Subscribe(obs) =
+          lock subscriptions <| fun _ ->
+            subscriptions.Add obs
 
-  // ** Running
+          { new IDisposable with
+              member self.Dispose () =
+                lock subscriptions <| fun _ ->
+                  subscriptions.Remove obs
+                  |> ignore } }
 
-  /// ## Running
-  ///
-  /// Check if the server is running.
-  ///
-  /// ### Signature:
-  /// - unit: unit
-  ///
-  /// Returns: bool
-  member self.Running() =
-    pid >= 0                  &&
-    Service.isRunning status &&
-    Process.isRunning pid    &&
-    thread.IsAlive
+  // ** handleStart
 
-  // ** Pid
+  let private handleStart (state: GitState)
+                          (path: FilePath)
+                          (addr: string)
+                          (port: uint16)
+                          (chan: ReplyChan)
+                          (agent: GitAgent) =
+    // dispose of previous server
+    match state with
+    | Running data -> dispose data
+    | _ -> ()
 
-  /// ## Pid
-  ///
-  /// Get the PID of the underlying `git daemon` process.
-  ///
-  /// ### Signature:
-  /// - unit: unit
-  /// - arg: arg
-  /// - arg: arg
-  ///
-  /// Returns: int
-  member self.Pid
-    with get () = pid
+    let proc = createProcess path addr port
 
-  // ** IDisposable
+    let stdoutReader =
+      Observable.subscribe (logHandler agent) proc.OutputDataReceived
 
-  /// ## IDisposable
-  ///
-  /// Dispose this `GitServer`.
-  ///
-  /// ### Signature:
-  /// - unit: unit
-  /// - arg: arg
-  /// - arg: arg
-  ///
-  /// Returns: unit
-  interface IDisposable with
-    member self.Dispose() =
-      self.Stop()
+    let stderrReader =
+      Observable.subscribe (logHandler agent) proc.ErrorDataReceived
+
+    let onExitEvent =
+      Observable.subscribe (exitHandler proc agent) proc.Exited
+
+    try
+      if proc.Start() then
+        proc.BeginOutputReadLine()
+        proc.BeginErrorReadLine()
+
+        Reply.Ok
+        |> Either.succeed
+        |> chan.Reply
+
+        Running {
+            Status = ServiceStatus.Starting
+            Process = proc
+            Pid = proc.Id
+            SubPid = 0
+            Disposables = [ stdoutReader
+                            stderrReader
+                            onExitEvent ]
+          }
+      else
+        "Could not start git daemon process"
+        |> GitError
+        |> Either.fail
+        |> chan.Reply
+        state
+    with
+      | exn ->
+        exn.Message
+        |> sprintf "Exception starting git daemon process %s"
+        |> GitError
+        |> Either.fail
+        |> chan.Reply
+        state
+
+  // ** handleLog
+
+  let private handleLog (state: GitState) (msg: string) (subscriptions: Subscriptions) =
+    match state with
+    | Idle -> state
+    | Running data ->
+      match parseLog msg with
+      | Right msg ->
+        // notify
+        for subscription in subscriptions do
+          subscription.OnNext msg
+
+        // handle
+        match msg with
+        | Started pid ->
+          Running { data with
+                      Status = ServiceStatus.Running
+                      SubPid = pid }
+        | _ -> state
+      | _ -> state
+
+  // ** handleExit
+
+  let private handleExit (state: GitState) (code: int) (subscriptions: Subscriptions) =
+    match state with
+    | Idle -> state
+    | Running data ->
+      // notify
+      for subscription in subscriptions do
+        subscription.OnNext (Exited code)
+
+      match code with
+      | 0 -> Running { data with Status = ServiceStatus.Stopped }
+      | _ ->
+        let error =
+          sprintf "Non-zero exit code: %d" code
+          |> GitError
+        Running { data with Status = ServiceStatus.Failed error }
+
+  // ** handleStatus
+
+  let private handleStatus (state: GitState) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      ServiceStatus.Stopped
+      |> Reply.Status
+      |> Either.succeed
+      |> chan.Reply
+    | Running data ->
+      data.Status
+      |> Reply.Status
+      |> Either.succeed
+      |> chan.Reply
+    state
+
+  // ** handlePid
+
+  let private handlePid (state: GitState) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No GitDaemon started"
+      |> GitError
+      |> Either.fail
+      |> chan.Reply
+    | Running data ->
+      Reply.Pid data.Pid
+      |> Either.succeed
+      |> chan.Reply
+    state
+
+  // ** handleStop
+
+  let private handleStop (state: GitState) (subscriptions: Subscriptions) (chan: ReplyChan) =
+    match state with
+    | Idle ->
+      "No GitDaemon started"
+      |> GitError
+      |> Either.fail
+      |> chan.Reply
+      state
+    | Running data ->
+      for subscription in subscriptions do
+        subscription.OnNext (Exited 0)
+      dispose data
+      Reply.Ok
+      |> Either.succeed
+      |> chan.Reply
+      Idle
+
+  // ** loop
+
+  let private loop (initial: GitState) (subscriptions: Subscriptions) (inbox: GitAgent) =
+    let rec act (state: GitState) =
+      async {
+        let! msg = inbox.Receive()
+
+        let newstate =
+          match msg with
+          | Msg.Start (path,addr,port,chan) ->
+            handleStart state path addr port chan inbox
+
+          | Msg.Pid chan ->
+            handlePid state chan
+
+          | Msg.Status chan ->
+            handleStatus state chan
+
+          | Msg.Stop chan ->
+            handleStop state subscriptions chan
+
+          | Msg.Exit code ->
+            handleExit state code subscriptions
+
+          | Msg.Log msg ->
+            handleLog state msg subscriptions
+
+        return! act newstate
+      }
+    act initial
+
+  // ** starting
+
+  let private starting (agent: GitAgent) =
+    match agent.PostAndReply(fun chan -> Msg.Status chan) with
+    | Right (Reply.Status status) when status = ServiceStatus.Starting -> true
+    | _ -> false
+
+  // ** started
+
+  let private running (agent: GitAgent) =
+    let result =
+      match agent.PostAndReply(fun chan -> Msg.Status chan) with
+      | Right (Reply.Status status) when status = ServiceStatus.Running -> true
+      | _ -> false
+    result
+
+  // ** GitServer
+
+  [<RequireQualifiedAccess>]
+  module GitServer =
+
+    let create (node: RaftNode) (path: FilePath) =
+      let subscriptions = new Subscriptions()
+      let listener = createListener subscriptions
+      let agent = new GitAgent(loop Idle subscriptions)
+      agent.Start()
+
+      Either.succeed
+        { new IGitServer with
+            member self.Status
+              with get () =
+                match agent.PostAndReply(fun chan -> Msg.Status chan) with
+                | Right (Reply.Status status) ->
+                  Either.succeed status
+                | Right other ->
+                  other
+                  |> sprintf "Unexpected reply from GitAgent: %A"
+                  |> GitError
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
+
+            member self.Pid
+              with get () =
+                match agent.PostAndReply(fun chan -> Msg.Pid chan) with
+                | Right (Reply.Pid pid) ->
+                  Either.succeed pid
+                | Right other ->
+                  other
+                  |> sprintf "Unexpected reply from GitAgent: %A"
+                  |> GitError
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
+
+            member self.Subscribe(callback: GitEvent -> unit) =
+              { new IObserver<GitEvent> with
+                  member self.OnCompleted() = ()
+                  member self.OnError(error) = ()
+                  member self.OnNext(value) = callback value }
+              |> listener.Subscribe
+
+            member self.Start () =
+              let callback (chan: ReplyChan) =
+                Msg.Start(path, string node.IpAddr, node.GitPort, chan)
+
+              match agent.PostAndReply(callback) with
+              | Right Reply.Ok ->
+
+                // wait for a little while until it forked
+                let mutable n = 0
+                while starting agent && n < 1000 do
+                  n <- n + 10
+                  Thread.Sleep 10
+
+                if running agent then
+                  Either.succeed ()
+                else
+                  match agent.PostAndReply(fun chan -> Msg.Status chan) with
+                  | Right (Reply.Status status) ->
+                    string status
+                    |> GitError
+                    |> Either.fail
+                  | Right other ->
+                    "Unexpected reply type from GitAgent"
+                    |> GitError
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
+
+              | Right other ->
+                "Unexpected reply type from GitAgent"
+                |> GitError
+                |> Either.fail
+              | Left error ->
+                error
+                |> Either.fail
+
+            member self.Dispose() =
+              agent.PostAndReply(fun chan -> Msg.Stop chan)
+              |> ignore
+              subscriptions.Clear()
+          }

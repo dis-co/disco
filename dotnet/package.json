@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "description": "Fable build stuff",
   "scripts": {
-    "babel": "babel src/Iris/Iris/Web/React --out-dir src/Iris/assets/frontend/react",
     "fable": "fable",
     "phantomjs": "phantomjs"
   },

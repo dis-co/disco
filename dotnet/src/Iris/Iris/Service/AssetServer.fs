@@ -130,8 +130,15 @@ type AssetServer(?config: IrisConfig) as self =
         sprintf "Asset server Exception: %s" ex.Message
         |> Logger.err nodeid tag ))
 
-  member this.Start() : unit =
-    thread.Start ()
+  member this.Start() : Either<IrisError,unit> =
+    try
+      thread.Start ()
+      |> Either.succeed
+    with
+      | exn ->
+        exn.Message
+        |> SocketError
+        |> Either.fail
 
   interface System.IDisposable with
     member this.Dispose() : unit =

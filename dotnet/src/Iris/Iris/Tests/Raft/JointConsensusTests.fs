@@ -213,7 +213,8 @@ module JointConsensus =
           nodes
           |> Array.take (int <| n / 2u)
           |> Array.map snd
-          |> Log.mkConfigChange 1u peers
+          |> Log.calculateChanges peers
+          |> Log.mkConfigChange 1u
 
         let! idx = Raft.currentIndexM ()
         ci := idx
@@ -347,7 +348,8 @@ module JointConsensus =
         let entry =
           nodes
           |> Array.map snd
-          |> Log.mkConfigChange 1u peers
+          |> Log.calculateChanges peers
+          |> Log.mkConfigChange 1u
 
         let! idx = Raft.currentIndexM ()
         ci := idx
@@ -466,7 +468,7 @@ module JointConsensus =
           } :> IRaftCallbacks
 
       raft {
-        let self = snd nodes.[0]
+        let self = snd nodes.[0]        //
         do! Raft.setSelfM self
 
         do! Raft.setPeersM (nodes |> Map.ofArray)
@@ -515,7 +517,8 @@ module JointConsensus =
           nodes
           |> Array.map snd
           |> Array.skip (int <| n / 2u)
-          |> Log.mkConfigChange !term peers
+          |> Log.calculateChanges peers
+          |> Log.mkConfigChange !term
 
         let! response = Raft.receiveEntry entry
 
@@ -603,7 +606,8 @@ module JointConsensus =
           Map.toArray nodes
           |> Array.map snd
           |> Array.append [| self |]
-          |> Log.mkConfigChange !term peers
+          |> Log.calculateChanges peers
+          |> Log.mkConfigChange !term
 
         let! response = Raft.receiveEntry entry
 
@@ -672,7 +676,8 @@ module JointConsensus =
           nodes
           |> Array.map snd
           |> Array.append [| self |]
-          |> Log.mkConfigChange 1u peers
+          |> Log.calculateChanges peers
+          |> Log.mkConfigChange 1u
 
         let! response = Raft.receiveEntry entry
 
@@ -746,7 +751,8 @@ module JointConsensus =
           nodes
           |> Array.map snd
           |> Array.take (int <| n / 2u)
-          |> Log.mkConfigChange !term peers
+          |> Log.calculateChanges peers
+          |> Log.mkConfigChange !term
 
         let! response = Raft.receiveEntry entry
 
@@ -800,7 +806,8 @@ module JointConsensus =
           nodes
           |> Array.map snd
           |> Array.append [| self |]
-          |> Log.mkConfigChange 1u peers
+          |> Log.calculateChanges peers
+          |> Log.mkConfigChange 1u
 
         let! response = Raft.receiveEntry entry
 

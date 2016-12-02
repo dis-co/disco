@@ -1178,7 +1178,10 @@ module LogEntry =
   ///
   /// ### Complexity: 0(1)
 
-  let mkConfigChange term oldnodes newnodes =
+  let mkConfigChange term changes =
+    JointConsensus(Id.Create(), 0u, term, changes, None)
+
+  let calculateChanges oldnodes newnodes =
     let changes =
       let additions =
         Array.fold
@@ -1194,7 +1197,7 @@ module LogEntry =
           | _ -> NodeRemoved(oldnode) :: lst) additions oldnodes
       |> List.toArray
 
-    JointConsensus(Id.Create(), 0u, term, changes, None)
+    changes
 
   // ** LogEntry.pop
 

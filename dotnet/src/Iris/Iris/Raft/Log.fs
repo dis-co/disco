@@ -397,8 +397,11 @@ module Log =
 
   // ** Log.mkConfigChange
 
-  let mkConfigChange term old newer =
-    LogEntry.mkConfigChange term old newer
+  let mkConfigChange term changes =
+    LogEntry.mkConfigChange term changes
+
+  let calculateChanges oldnodes newnodes =
+    LogEntry.calculateChanges oldnodes newnodes
 
   // ** Log.entries
 

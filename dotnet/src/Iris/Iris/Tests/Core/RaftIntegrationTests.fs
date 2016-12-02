@@ -10,14 +10,13 @@ open Iris.Service
 open Iris.Service.Utilities
 open Iris.Service.Persistence
 open Iris.Raft
-open Iris.Service
+open Iris.Service.Raft
 open FSharpx.Functional
 open Microsoft.FSharp.Control
 open ZeroMQ
 
 [<AutoOpen>]
 module RaftIntegrationTests =
-
   //  ____        __ _     _____         _
   // |  _ \ __ _ / _| |_  |_   _|__  ___| |_ ___
   // | |_) / _` | |_| __|   | |/ _ \/ __| __/ __|
@@ -26,143 +25,154 @@ module RaftIntegrationTests =
 
   let test_validate_correct_req_socket_tracking =
     testCase "validate correct req socket tracking" <| fun _ ->
-      let nid1 = mkUuid()
-      let nid2 = mkUuid()
+      either {
+        let nid1 = mkUuid()
+        let nid2 = mkUuid()
 
-      let node1 =
-        Id nid1
-        |> Node.create
-        |> Node.setPort 8000us
+        let node1 =
+          Id nid1
+          |> Node.create
+          |> Node.setPort 8000us
 
-      let node2 =
-        Id nid2
-        |> Node.create
-        |> Node.setPort 8001us
+        let node2 =
+          Id nid2
+          |> Node.create
+          |> Node.setPort 8001us
 
-      setNodeId nid1
+        setNodeId nid1
 
-      let leadercfg =
-        Config.create "leader"
-        |> Config.setNodes [| node1; node2 |]
-        |> Config.setLogLevel (LogLevel.Debug)
+        let leadercfg =
+          Config.create "leader"
+          |> Config.setNodes [| node1; node2 |]
+          |> Config.setLogLevel (LogLevel.Debug)
 
-      setNodeId nid2
+        setNodeId nid2
 
-      let followercfg =
-        Config.create "follower"
-        |> Config.setNodes [| node1; node2 |]
-        |> Config.setLogLevel (LogLevel.Debug)
+        let followercfg =
+          Config.create "follower"
+          |> Config.setNodes [| node1; node2 |]
+          |> Config.setLogLevel (LogLevel.Debug)
 
-      setNodeId nid1
+        setNodeId nid1
 
-      let leader = new RaftServer(leadercfg)
-      expect "Leader should have no connections" true ((=) 0) leader.State.Connections.Count
-      leader.Start()
-      expect "Leader should have one connection" true ((=) 1) leader.State.Connections.Count
+        let! leader = RaftServer.create ()
+        do! leader.Load(leadercfg)
+        do! expectE "Leader should have one connection" 1 count leader.Connections
 
-      setNodeId nid2
+        setNodeId nid2
 
-      let follower = new RaftServer(followercfg)
-      expect "Follower should have no connections" true ((=) 0) follower.State.Connections.Count
-      follower.Start()
-      expect "Follower should have one connection" true ((=) 1) follower.State.Connections.Count
+        let! follower = RaftServer.create ()
+        do! follower.Load(followercfg)
+        do! expectE "Follower should have one connection" 1 count follower.Connections
 
-      dispose leader
-      dispose follower
+        dispose leader
+        dispose follower
 
-      expect "Leader should have no connections" true ((=) 0) leader.State.Connections.Count
-      expect "Follower should have no connections" true ((=) 0) follower.State.Connections.Count
+        do! expectE "Leader should be stopped"   true Service.isStopped leader.Status
+        do! expectE "Follower should be stopped" true Service.isStopped follower.Status
+      }
+      |> noError
 
   let test_validate_raft_service_bind_correct_port =
     testCase "validate raft service bind correct port" <| fun _ ->
-      let port = 12000us
+      either {
+        let port = 12000us
 
-      let node =
-        Config.getNodeId()
-        |> Either.get
-        |> Node.create
-        |> Node.setPort port
+        let! nodeid = Config.getNodeId()
 
-      let leadercfg =
-        Config.create "leader"
-        |> Config.addNode node
+        let node =
+          nodeid
+          |> Node.create
+          |> Node.setPort port
 
-        // |> Config.setLogLevel (LogLevel.Debug)
+        let leadercfg =
+          Config.create "leader"
+          |> Config.addNode node
 
-      let leader = new RaftServer(leadercfg)
-      leader.Start()
+          // |> Config.setLogLevel (LogLevel.Debug)
 
-      expect "Should be running" true Service.isRunning leader.ServerState
+        use! leader = RaftServer.create ()
+        do! leader.Load leadercfg
 
-      let follower = new RaftServer(leadercfg)
-      follower.Start()
+        do! expectE "Should be running" true Service.isRunning leader.Status
 
-      expect "Should be failed" true Service.hasFailed follower.ServerState
+        use! follower = RaftServer.create ()
 
-      dispose follower
-      dispose leader
+        do! match follower.Load leadercfg with
+            | Right ()   -> Left (Other "Should have failed to start")
+            | Left error -> Right ()
+
+        do! expectE "Should be failed" true Service.isStopped follower.Status
+      }
+      |> noError
 
   let test_validate_follower_joins_leader_after_startup =
     testCase "validate follower joins leader after startup" <| fun _ ->
-      let state = ref None
+      either {
+        let state = ref None
 
-      let setState ost nst =
-        match !state, nst with
-        | None, Leader ->
-          lock state <| fun _ ->
-            state := Some Leader
-        | _ -> ()
+        let setState (ev: RaftEvent) =
+          match !state, ev with
+          | None, StateChanged (_,Leader) ->
+            lock state <| fun _ ->
+              state := Some Leader
+          | _ -> ()
 
-      let nid1 = mkUuid()
-      let nid2 = mkUuid()
+        let nid1 = mkUuid()
+        let nid2 = mkUuid()
 
-      let node1 =
-        Id nid1
-        |> Node.create
-        |> Node.setPort 8000us
+        let node1 =
+          Id nid1
+          |> Node.create
+          |> Node.setPort 8000us
 
-      let node2 =
-        Id nid2
-        |> Node.create
-        |> Node.setPort 8001us
+        let node2 =
+          Id nid2
+          |> Node.create
+          |> Node.setPort 8001us
 
-      setNodeId nid1
+        setNodeId nid1
 
-      let leadercfg =
-        Config.create "leader"
-        |> Config.setNodes [| node1; node2 |]
-        |> Config.setLogLevel (LogLevel.Debug)
+        let leadercfg =
+          Config.create "leader"
+          |> Config.setNodes [| node1; node2 |]
+          |> Config.setLogLevel (LogLevel.Debug)
 
-      setNodeId nid2
+        setNodeId nid2
 
-      let followercfg =
-        Config.create "follower"
-        |> Config.setNodes [| node1; node2 |]
-        |> Config.setLogLevel (LogLevel.Debug)
+        let followercfg =
+          Config.create "follower"
+          |> Config.setNodes [| node1; node2 |]
+          |> Config.setLogLevel (LogLevel.Debug)
 
-      setNodeId nid1
+        setNodeId nid1
 
-      let leader = new RaftServer(leadercfg)
-      leader.OnStateChanged <- setState
+        use! leader = RaftServer.create ()
 
-      leader.Start()
+        use obs1 = leader.Subscribe setState
 
-      setNodeId nid2
+        do! leader.Load leadercfg
 
-      let follower = new RaftServer(followercfg)
-      follower.OnStateChanged <- setState
-      follower.Start()
+        setNodeId nid2
 
-      max
-        leader.State.Raft.ElectionTimeout
-        follower.State.Raft.ElectionTimeout
-      |> (int >> ((+) 100))
-      |> Thread.Sleep
+        use! follower = RaftServer.create ()
 
-      expect "Should have elected a leader" (Some Leader) id !state
+        use obs2 = follower.Subscribe setState
 
-      dispose leader
-      dispose follower
+        do! follower.Load(followercfg)
+
+        let! state1 = leader.State
+        let! state2 = follower.State
+
+        max
+          state1.Raft.ElectionTimeout
+          state2.Raft.ElectionTimeout
+        |> (int >> ((+) 100))
+        |> Thread.Sleep
+
+        expect "Should have elected a leader" (Some Leader) id !state
+      }
+      |> noError
 
   //                       _ _
   //  _ __   ___ _ __   __| (_)_ __   __ _
@@ -189,8 +199,8 @@ module RaftIntegrationTests =
   let raftIntegrationTests =
     testList "Raft Integration Tests" [
       // raft
-      test_validate_raft_service_bind_correct_port
       test_validate_correct_req_socket_tracking
+      test_validate_raft_service_bind_correct_port
       test_validate_follower_joins_leader_after_startup
 
       // db

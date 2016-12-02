@@ -16,6 +16,8 @@ open Iris.Core
 ///
 /// Returns: instance of Rep
 type Rep (addr: string, handle: byte array -> byte array) =
+  let mutable status : ServiceStatus = ServiceStatus.Starting
+
   let mutable error : Exception option = None
   let mutable disposed = false
   let mutable run = true
@@ -125,11 +127,13 @@ type Rep (addr: string, handle: byte array -> byte array) =
         sock <- new ZSocket(ctx, ZSocketType.REP)
         setOption sock ZSocketOption.RCVTIMEO 50
         bind sock addr
+        status <- ServiceStatus.Running
         starter.Set() |> ignore
       with
         | exn ->
           run <- false
           error <- Some exn
+          status <- ServiceStatus.Failed (SocketError exn.Message)
           starter.Set() |> ignore
 
     /// ## Inner Loop
@@ -165,6 +169,7 @@ type Rep (addr: string, handle: byte array -> byte array) =
 
         | exn ->
           run <- false
+          status <- ServiceStatus.Failed (SocketError exn.Message)
           error <- Some exn
 
     /// ## Disposal of resources
@@ -187,22 +192,31 @@ type Rep (addr: string, handle: byte array -> byte array) =
     starter <- new AutoResetEvent(false)
     stopper <- new AutoResetEvent(false)
 
-  member self.Stop () =
+  member self.Status
+    with get () = status
+
+  member private self.Stop () =
     if not disposed then
       run <- false                                   // break loop by setting to false
       stopper.WaitOne() |> ignore                    // wait for signal that stopping is done
                                                     // and return to caller
 
-  member self.Start () =
+  member self.Start () : Either<IrisError,unit> =
     if not disposed then
       thread <- new Thread(new ThreadStart(worker))  // create worker thread
       thread.Start()                                // start worker thread
       starter.WaitOne() |> ignore                    // wait for startup-done signal
 
       match error with
-      | Some exn -> raise exn                        // re-raise the exception on the
-      | _ -> ()                                      // parents thread, so it can be
+      | Some exn ->                                  // if an exception happened on the thread
+        exn.Message                                 // format it as an error and return it
+        |> SocketError
+        |> Either.fail
+      | _ -> Right ()                                // parents thread, so it can be
                                                     // caught and handled synchronously
+    else
+      SocketError "already disposed"
+      |> Either.fail
 
   interface IDisposable with
     member self.Dispose() =

@@ -179,9 +179,6 @@
     <Compile Include="..\..\Iris\Service\Utilities.fs">
       <Link>Utilities.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\Stm.fs">
-      <Link>Stm.fs</Link>
-    </Compile>
     <Compile Include="..\..\Iris\Service\GitServer.fs">
       <Link>GitServer.fs</Link>
     </Compile>

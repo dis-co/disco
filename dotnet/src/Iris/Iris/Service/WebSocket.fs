@@ -4,215 +4,64 @@ namespace Iris.Service
 
 open System
 open System.Threading
+open System.Collections.Concurrent
+open Iris.Raft
 open Iris.Core
 open Iris.Service
 open FSharpx.Functional
 open Fleck
-open System.Collections.Concurrent
 
-#if MOCKSERVICE
-type RaftServer = class end
-#endif
+// * WebSockets
 
-// * WsServer
+module WebSockets =
 
-type WsServer(?config: IrisConfig, ?context: RaftServer) =
-  let [<Literal>] tag = "WsServer"
+  // ** tag
 
-  let nodeid =
-    Config.getNodeId()
-    |> Error.orExit id
+  [<Literal>]
+  let private tag = "WebSocket"
 
-  // ** uri
+  // ** SocketEvent
 
-  let mutable onOpenCb    : Option<Id -> unit> = None
-  let mutable onCloseCb   : Option<Id -> unit> = None
-  let mutable onErrorCb   : Option<Id -> unit> = None
-  let mutable onMessageCb : Option<Id -> StateMachine -> unit> = None
+  [<NoComparison;NoEquality>]
+  type SocketEvent =
+    | OnOpen    of Id
+    | OnClose   of Id
+    | OnMessage of Id * StateMachine
+    | OnError   of Id * Exception
 
-  let uri =
-    match config with
-    | Some config ->
-      Config.getNodeId ()
-      |> Either.bind (Config.findNode config)
-      |> Error.orExit (fun node -> sprintf "ws://%s:%d" (string node.IpAddr) node.WsPort)
-    | None ->
-      sprintf "ws://%s:%d" Constants.DEFAULT_IP
-        (Constants.WEB_SERVER_DEFAULT_PORT + Constants.SOCKET_SERVER_PORT_DIFF)
+  // ** Connections
 
+  type private Connections = ConcurrentDictionary<Id,IWebSocketConnection>
 
-  let server = new WebSocketServer(uri)
+  // ** Subscriptions
 
-  // ** sessions
+  type private Subscriptions = ResizeArray<IObserver<SocketEvent>>
 
-  let connections = ConcurrentDictionary<Id,IWebSocketConnection>()
+  // ** IWsServer
 
-  let getConnectionId (socket: IWebSocketConnection) : Id =
+  type IWebSocketServer =
+    inherit System.IDisposable
+    abstract Send         : Id -> StateMachine -> Either<IrisError,unit>
+    abstract Broadcast    : StateMachine -> Either<IrisError list,unit>
+    abstract BuildSession : Id -> Session -> Either<IrisError,Session>
+    abstract Subscribe    : (SocketEvent -> unit) -> System.IDisposable
+    abstract Start        : unit -> Either<IrisError, unit>
+
+  // ** SocketEventProcessor
+
+  type private SocketEventProcessor = MailboxProcessor<SocketEvent>
+
+  // ** getConnectionId
+
+  let private getConnectionId (socket: IWebSocketConnection) : Id =
     string socket.ConnectionInfo.Id |> Id
 
-  // ** onOpen
+  // ** buildSession
 
-  //   ___
-  //  / _ \ _ __   ___ _ __
-  // | | | | '_ \ / _ \ '_ \
-  // | |_| | |_) |  __/ | | |
-  //  \___/| .__/ \___|_| |_|
-  //       |_|
-
-  /// ## onOpen
-  ///
-  /// Callback which is run when a new connection was established to a browser client. The
-  /// connections session Id gets stored in the global sessions map for later use.
-  ///
-  /// ### Signature:
-  /// - socket: IWebSocketConnection that was newly established
-  ///
-  /// Returns: unit
-  let onOpen (socket: IWebSocketConnection) () =
-    let sid = getConnectionId socket
-    connections.AddOrUpdate(sid, socket, fun _ s -> s) |> ignore
-    Option.map (fun cb -> cb sid) onOpenCb |> ignore
-
-    sprintf "Connection added: %O" sid
-    |> Logger.debug nodeid tag
-
-
-  // ** onClose
-
-  //   ____ _
-  //  / ___| | ___  ___  ___
-  // | |   | |/ _ \/ __|/ _ \
-  // | |___| | (_) \__ \  __/
-  //  \____|_|\___/|___/\___|
-
-  /// ## onClose
-  ///
-  /// Callback to be run when a connection was gracefully closed by the peer. The connections
-  /// session Id will be removed from the global sessions map.
-  ///
-  /// ### Signature:
-  /// - socket: IWebSocketConnection which was closed
-  ///
-  /// Returns: unit
-  let onClose (socket: IWebSocketConnection) () =
-    let sid = getConnectionId socket
-    let success, _ = connections.TryRemove(sid)
-    Option.map (fun cb -> cb sid) onCloseCb |> ignore
-
-    sprintf "Removing connection: %O - Succeeded: %b" sid success
-    |> Logger.debug nodeid tag
-
-  // ** onMessage
-
-  //  __  __
-  // |  \/  | ___  ___ ___  __ _  __ _  ___
-  // | |\/| |/ _ \/ __/ __|/ _` |/ _` |/ _ \
-  // | |  | |  __/\__ \__ \ (_| | (_| |  __/
-  // |_|  |_|\___||___/___/\__,_|\__, |\___|
-  //                             |___/
-
-  /// ## onMessage
-  ///
-  /// Callback which responds to newly arriving messages on the WebSocket connections. If a handler
-  /// is registered with this server, it is invoked with the result of the decoding process of the
-  /// arrived byte buffer.
-  ///
-  /// ### Signature:
-  /// - socket: IWebSocketConnection which the new message arrived on
-  /// - msg: Binary.Buffer byte array that was received
-  ///
-  /// Returns: unit
-  let onMessage (socket: IWebSocketConnection) (msg: Binary.Buffer) =
-    let msgHandler cb =
-      /// get the Id for this connection
-      let sid = getConnectionId socket
-
-      /// decode the binary buffer as `StateMachine` command
-      let entry : Either<IrisError,StateMachine> = Binary.decode msg
-
-      /// Process the result of decoding the received message
-      match entry with
-      | Right command ->
-        /// handle the result
-        cb sid command
-
-        /// log some debugging messages
-        command
-        |> string
-        |> sprintf "command received from session %s and decoded as %s" (string sid)
-        |> Logger.debug nodeid tag
-
-
-      | Left  error   ->
-        /// log the error globally
-        error
-        |> string
-        |> sprintf "command received from session %s could not be decoded: %s" (string sid)
-        |> Logger.debug nodeid tag
-
-    /// Reach into the `onMessageCb` and apply `msgHandler` to the stored callback
-    onMessageCb
-    |> Option.map msgHandler
-    |> ignore
-
-  // ** onError
-
-  //  _____
-  // | ____|_ __ _ __ ___  _ __
-  // |  _| | '__| '__/ _ \| '__|
-  // | |___| |  | | | (_) | |
-  // |_____|_|  |_|  \___/|_|
-
-  /// ## onError
-  ///
-  /// Callback invoked when a connection was closed due to an error. Removes the corresponding
-  /// session from the global session map.
-  ///
-  /// ### Signature:
-  /// - socket: IWebSocketConnection that errored out
-  /// - exn: Exception thrown on the connection
-  ///
-  /// Returns: unit
-  let onError (socket: IWebSocketConnection) (exn: 'a when 'a :> Exception) =
-    let sid = getConnectionId socket
-    let success, _ = connections.TryRemove(sid)
-    Option.map (fun cb -> cb sid) onErrorCb |> ignore
-
-    sprintf "Removing session %O because fo error: %s - Succeeded %b" sid exn.Message success
-    |> Logger.err nodeid tag
-
-  // ** onNewSocket
-
-  /// ## onNewSocket
-  ///
-  /// Register all callbacks on a newly created socket connection.
-  ///
-  /// ### Signature:
-  /// - socket: IWebSocketConnection to add handlers to
-  ///
-  /// Returns: unit
-  let onNewSocket (socket: IWebSocketConnection) =
-    socket.OnOpen    <- new System.Action(onOpen socket)
-    socket.OnClose   <- new System.Action(onClose socket)
-    // socket.OnMessage <- new System.Action<string>(onMessage socket)
-    socket.OnBinary  <- new System.Action<Binary.Buffer>(onMessage socket)
-    socket.OnError   <- new System.Action<exn>(onError socket)
-
-  // ** closeConnection
-
-  let closeConnection (socket: IWebSocketConnection) =
-    let sid = getConnectionId socket
-
-    sprintf "Closing connection %O" sid
-    |> Logger.debug nodeid tag
-
-    socket.Close()
-    let success, _ = connections.TryRemove(sid)
-
-    sprintf "Connection %O closed. Removing succeeded: %b" sid success
-    |> Logger.debug nodeid tag
-
-  member self.BuildSession (socketId: Id, session: Session) : Either<IrisError,Session> =
+  let private buildSession (connections: Connections)
+                           (socketId: Id)
+                           (session: Session) :
+                           Either<IrisError,Session> =
     match connections.TryGetValue socketId with
     | true, socket ->
       let ua =
@@ -224,53 +73,46 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
           // TODO: Set the sessions as unauthorized?
           IpAddress = IpAddress.Parse socket.ConnectionInfo.ClientIpAddress
           UserAgent = ua }
-      |> Either.Right
+      |> Either.succeed
     | false, _ ->
       sprintf "No socket open with id %O" socketId
       |> SocketError
-      |> Either.Left
+      |> Either.fail
 
-  // ** Start
+  // ** send
 
-  /// ## Start
+  /// ## send
   ///
-  /// Start a WebSocketServer with the given action.
-  ///
-  /// ### Signature:
-  /// - unit: unit
-  ///
-  /// Returns: unit
-  member self.Start() =
-    uri
-    |> sprintf "Starting WebSocketServer on: %s"
-    |> Logger.debug nodeid tag
-
-    server.Start(new System.Action<IWebSocketConnection>(onNewSocket))
-
-    "WebSocketServer successfully started"
-    |> Logger.debug nodeid tag
-
-  // ** Stop
-
-  /// ## Stop
-  ///
-  /// Stop the WebSocketServer and close all open connections.
+  /// Send a `StateMachine` command to the requested session.
   ///
   /// ### Signature:
-  /// - unit: unit
-  /// - arg: arg
-  /// - arg: arg
+  /// - sessionid: Id of session to send the command to
+  /// - msg: StateMachine command to send
   ///
-  /// Returns: unit
-  member self.Stop() =
-    Logger.debug nodeid tag "Stopping WebSocketServer and closing all connections"
-    for cnn in connections.Values do
-      closeConnection cnn
+  /// Returns: Either<IrisError,unit>
+  let private send (connections: Connections) (sid: Id) (msg: StateMachine) =
+    match connections.TryGetValue(sid) with
+    | true, socket ->
+      try
+        msg
+        |> Binary.encode
+        |> socket.Send
+        |> ignore
+        |> Either.succeed
+      with
+        | exn ->
+          let _, _ = connections.TryRemove(sid)
+          exn.Message
+          |> SocketError
+          |> Either.fail
+    | false, _ ->
+      sid
+      |> string
+      |> sprintf "could not send message to session %s. not found."
+      |> SocketError
+      |> Either.fail
 
-    Logger.debug nodeid tag "Disposing WebSocketServer"
-    dispose server
-
-  // ** Broadcast
+  // ** broadcast
 
   /// ## Broadcast
   ///
@@ -280,49 +122,177 @@ type WsServer(?config: IrisConfig, ?context: RaftServer) =
   /// - msg: StateMachine command to send
   ///
   /// Returns: unit
-  member self.Broadcast(msg: StateMachine) =
-    let send (socket: IWebSocketConnection) =
-      msg |> Binary.encode |> socket.Send |> ignore
-    for cnn in connections.Values do
-      send cnn
+  let private broadcast (connections: Connections)
+                        (msg: StateMachine) :
+                        Either<IrisError list, unit> =
+    let sendAsync (id: Id) = async {
+        let result = send connections id msg
+        return result
+      }
 
-  // ** Send
+    let result : IrisError list =
+      connections.Keys
+      |> Seq.map sendAsync
+      |> Async.Parallel
+      |> Async.RunSynchronously
+      |> Array.fold
+        (fun lst (result: Either<IrisError,unit>) ->
+          match result with
+          | Right _ -> lst
+          | Left error -> error :: lst)
+        []
 
-  /// ## Send
+    match result with
+    | [ ] -> Right ()
+    | _   -> Left result
+
+  // ** onNewSocket
+
+  /// ## onNewSocket
   ///
-  /// Send a `StateMachine` command to the requested session.
+  /// Register all callbacks on a newly created socket connection.
   ///
   /// ### Signature:
-  /// - sessionid: Id of session to send the command to
-  /// - msg: StateMachine command to send
+  /// - socket: IWebSocketConnection to add handlers to
   ///
   /// Returns: unit
-  member self.Send (sid: Id) (msg: StateMachine) =
-    match connections.TryGetValue(sid) with
-    | true, socket ->
-      msg
-      |> Binary.encode
-      |> socket.Send
-      |> ignore
+  let private onNewSocket (id: Id)
+                          (connections: Connections)
+                          (agent: SocketEventProcessor)
+                          (socket: IWebSocketConnection) =
+    socket.OnOpen <- fun () ->
+      let sid = getConnectionId socket
+      connections.TryAdd(sid, socket) |> ignore
+      agent.Post(OnOpen sid)
 
-    | false, _ ->
       sid
       |> string
-      |> sprintf "could not send message to session %s. not found."
-      |> Logger.debug nodeid tag
+      |> sprintf "New connection opened: %s"
+      |> Logger.info id tag
 
-  member self.OnOpen
-    with set cb = onOpenCb <- Some cb
+    socket.OnClose <- fun () ->
+      let sid = getConnectionId socket
+      connections.TryRemove(sid) |> ignore
+      agent.Post(OnClose sid)
 
-  member self.OnClose
-    with set cb = onCloseCb <- Some cb
+      sid
+      |> string
+      |> sprintf "Connection closed: %s"
+      |> Logger.info id tag
 
-  member self.OnError
-    with set cb = onErrorCb <- Some cb
+    socket.OnBinary <- fun bytes ->
+      let sid = getConnectionId socket
+      match Binary.decode bytes with
+      | Right cmd -> agent.Post(OnMessage(sid, cmd))
+      | Left err  ->
+        err
+        |> string
+        |> sprintf "Could not decode message: %s"
+        |> Logger.err id tag
 
-  member self.OnMessage
-    with set cb = onMessageCb <- Some cb
+    socket.OnError <- fun exn ->
+      let sid = getConnectionId socket
+      connections.TryRemove(sid) |> ignore
+      agent.Post(OnError(sid, exn))
 
-  interface IDisposable with
-    member self.Dispose() =
-      self.Stop()
+      sid
+      |> string
+      |> sprintf "Error %A on websocket: %s" exn.Message
+      |> Logger.err id tag
+
+  // ** loop
+
+  let private loop (initial: Subscriptions)(inbox: SocketEventProcessor) =
+    let rec act (subscriptions: Subscriptions) = async {
+        let! msg = inbox.Receive()
+        for sub in subscriptions do
+          sub.OnNext msg
+        do! act subscriptions
+      }
+    act initial
+
+  // ** WsServer
+
+  //  ____        _     _ _
+  // |  _ \ _   _| |__ | (_) ___
+  // | |_) | | | | '_ \| | |/ __|
+  // |  __/| |_| | |_) | | | (__
+  // |_|    \__,_|_.__/|_|_|\___|
+
+  [<RequireQualifiedAccess>]
+  module SocketServer =
+
+    let create (node: RaftNode) =
+      either {
+        let connections = new Connections()
+        let subscriptions = new Subscriptions()
+
+        let listener =
+          { new IObservable<SocketEvent> with
+              member self.Subscribe(obs) =
+                lock subscriptions <| fun _ ->
+                  subscriptions.Add obs
+
+                { new IDisposable with
+                    member self.Dispose () =
+                      lock subscriptions <| fun _ ->
+                        subscriptions.Remove obs
+                        |> ignore } }
+
+        let agent = new SocketEventProcessor(loop subscriptions)
+
+        let uri = sprintf "ws://%s:%d" (string node.IpAddr) node.WsPort
+
+        let handler = onNewSocket node.Id connections agent
+        let server = new WebSocketServer(uri)
+
+        return
+          { new IWebSocketServer with
+              member self.Send (id: Id) (cmd: StateMachine) =
+                send connections id cmd
+
+              member self.Broadcast (cmd: StateMachine) =
+                broadcast connections cmd
+
+              member self.BuildSession (id: Id) (session: Session) =
+                buildSession connections id session
+
+              member self.Subscribe (callback: SocketEvent -> unit) =
+                { new IObserver<SocketEvent> with
+                    member self.OnCompleted() = ()
+                    member self.OnError(error) = ()
+                    member self.OnNext(value) = callback value
+                  }
+                |> listener.Subscribe
+
+              member self.Start () =
+                try
+                  uri
+                  |> sprintf "Starting WebSocketServer on: %s"
+                  |> Logger.debug node.Id tag
+
+                  agent.Start()
+                  server.Start(new Action<IWebSocketConnection>(handler))
+
+                  "WebSocketServer successfully started"
+                  |> Logger.debug node.Id tag
+                  |> Either.succeed
+                with
+                  | exn ->
+                    exn.Message
+                    |> SocketError
+                    |> Either.fail
+
+              member self.Dispose () =
+                for KeyValue(_, connection) in connections do
+                  connection.Close()
+                connections.Clear()
+                subscriptions.Clear()
+                dispose server }
+      }
+
+    let broadcast (cmd: StateMachine) (server: IWebSocketServer) =
+      server.Broadcast cmd
+
+    let send (id: Id) (cmd: StateMachine) (server: IWebSocketServer) =
+      server.Send id cmd
