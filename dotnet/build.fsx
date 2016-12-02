@@ -400,7 +400,8 @@ Target "WatchWebTests" (runFable webtestsdir "-t watch")
 Target "BuildWebTestsFsProj" (buildDebug "Projects/Web.Tests/Web.Tests.fsproj")
 
 Target "RunWebTests" (fun _ ->
-  runNpm "run phantomjs -- node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Iris/bin/Debug/Iris/assets/tests.html tap" __SOURCE_DIRECTORY__ ()
+  runNpm "install" (baseDir @@ "assets/frontend") ()
+  runNpm "run phantomjs -- node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Iris/assets/frontend/tests.html tap" __SOURCE_DIRECTORY__ ()
 )
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
