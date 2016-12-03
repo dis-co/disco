@@ -185,6 +185,18 @@
     <Compile Include="..\..\Iris\Service\RaftServer.fs">
       <Link>RaftServer.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Service\GitServer.fs">
+      <Link>GitServer.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\AssetServer.fs">
+      <Link>AssetServer.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\WebSocket.fs">
+      <Link>WebSocket.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\IrisService.fs">
+      <Link>IrisService.fs</Link>
+    </Compile>
     <!--  _____         _        -->
     <!-- |_   _|__  ___| |_ ___  -->
     <!--   | |/ _ \/ __| __/ __| -->
@@ -202,6 +214,9 @@
     </Compile>
     <Compile Include="..\..\Iris\Tests\Core\RaftIntegrationTests.fs">
       <Link>RaftIntegrationTests.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\IrisServiceTests.fs">
+      <Link>IrisServiceTests.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Tests\Core\ZmqTests.fs">
       <Link>ZmqIntegrationTests.fs</Link>

@@ -383,6 +383,7 @@ module CommandLine =
     else
       either {
         use! server = IrisService.create ()
+        use obs = Logger.subscribe Logger.stdout
 
         do! server.Start()
         do! server.Load projFile
@@ -434,7 +435,6 @@ module CommandLine =
       let! (commit, saved) = Project.save user.Signature "project created" project
 
       project.Path
-      |> Option.get
       |> printfn "project initialized in %A and committed @ %s" commit.Sha
     }
 

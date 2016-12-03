@@ -181,35 +181,31 @@ module Persistence =
                              ^t : (member CanonicalName : string)       and
                              ^t : (member DirName : string)>
                              (project: IrisProject) (thing: ^t) =
-    match project.Path with
-    | Some path ->
-      let name = (^t : (member CanonicalName : string) thing)
-      let relPath = (^t : (member DirName : string) thing) </> name + ASSET_EXTENSION
-      let destPath = path </> relPath
-      try
-        // FIXME: should later be the person who issued command (session + user)
-        let committer =
-          let hostname = Network.getHostName()
-          new Signature("Iris", "iris@" + hostname, new DateTimeOffset(DateTime.Now))
+    let name = (^t : (member CanonicalName : string) thing)
+    let relPath = (^t : (member DirName : string) thing) </> name + ASSET_EXTENSION
+    let destPath = project.Path </> relPath
+    try
+      // FIXME: should later be the person who issued command (session + user)
+      let committer =
+        let hostname = Network.getHostName()
+        new Signature("Iris", "iris@" + hostname, new DateTimeOffset(DateTime.Now))
 
-        let msg = sprintf "Saved %s " name
+      let msg = sprintf "Saved %s " name
 
-        let fileinfo =
-          thing
-          |> Yaml.encode
-          |> saveAsset destPath
+      let fileinfo =
+        thing
+        |> Yaml.encode
+        |> saveAsset destPath
 
-        match Project.saveFile committer msg relPath project with
-        | Right (commit, saved) -> Right(fileinfo, commit, saved)
-        | Left   error          -> Left error
+      match Project.saveFile committer msg relPath project with
+      | Right (commit, saved) -> Right(fileinfo, commit, saved)
+      | Left   error          -> Left error
 
-      with
-        | exn ->
-          exn.Message
-          |> AssetSaveError
-          |> Either.fail
-
-    | _ -> ProjectPathError |> Either.fail
+    with
+      | exn ->
+        exn.Message
+        |> AssetSaveError
+        |> Either.fail
 
   // ** deleteWithCommit
 
@@ -226,29 +222,26 @@ module Persistence =
                                ^t : (member CanonicalName : string) and
                                ^t : (member DirName : string)>
                                (project: IrisProject) (thing: ^t) =
-    match project.Path with
-    | Some path ->
-      let name = (^t : (member CanonicalName : string) thing)
-      let relPath = (^t : (member DirName : string) thing) </> (name + ASSET_EXTENSION)
-      let destPath = path </> relPath
-      try
-        let fileinfo = deleteAsset destPath
+    let name = (^t : (member CanonicalName : string) thing)
+    let relPath = (^t : (member DirName : string) thing) </> (name + ASSET_EXTENSION)
+    let destPath = project.Path </> relPath
+    try
+      let fileinfo = deleteAsset destPath
 
-        let committer =
-          let hostname = Network.getHostName()
-          new Signature("Iris", "iris@" + hostname, new DateTimeOffset(DateTime.Now))
+      let committer =
+        let hostname = Network.getHostName()
+        new Signature("Iris", "iris@" + hostname, new DateTimeOffset(DateTime.Now))
 
-        let msg = sprintf "Saved %s " name
+      let msg = sprintf "Saved %s " name
 
-        match Project.saveFile committer msg relPath project with
-        | Right (commit, saved) -> Right(fileinfo, commit, saved)
-        | Left error            -> Left error
-      with
-        | exn ->
-          exn.Message
-          |> AssetDeleteError
-          |> Either.fail
-    | _ -> Either.fail ProjectPathError
+      match Project.saveFile committer msg relPath project with
+      | Right (commit, saved) -> Right(fileinfo, commit, saved)
+      | Left error            -> Left error
+    with
+      | exn ->
+        exn.Message
+        |> AssetDeleteError
+        |> Either.fail
 
   // ** persistEntry
 

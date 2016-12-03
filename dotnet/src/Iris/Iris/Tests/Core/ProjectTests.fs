@@ -22,15 +22,20 @@ module ProjectTests =
   let loadSaveTest =
     testCase "Save/Load Project should render equal project values" <|
       fun _ ->
-        let name = "test1"
+        let name =
+          Path.GetTempFileName()
+          |> Path.GetFileName
+
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
         let (commit, project) =
-          { Project.create name with Path = Some(path) }
+          { Project.create name with Path = path }
           |> Project.save signature "Initial project save."
           |> Either.get
 
-        let result = Project.load (path </> PROJECT_FILENAME + ASSET_EXTENSION)
+        let result =
+          Project.filePath project
+          |> Project.load
 
         expect "Projects should be loaded" true Either.isSuccess result
 
@@ -46,7 +51,10 @@ module ProjectTests =
   //
   let testCustomizedCfg =
     testCase "Save/Load of Project with customized configs" <| fun _ ->
-        let name = "test2"
+        let name =
+          Path.GetTempFileName()
+          |> Path.GetFileName
+
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
         let engineCfg = RaftConfig.Default
@@ -253,14 +261,17 @@ module ProjectTests =
   let saveInitsGit =
     testCase "Saved Project should be a git repository with yaml file." <|
       fun _ ->
-        let name = "test3"
+        let name =
+          Path.GetTempFileName()
+          |> Path.GetFileName
+
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
         if Directory.Exists path then
             DirectoryInfo(path) |> deleteFileSystemInfo
 
         let project =
-          { Project.create name with Path = Some path }
+          { Project.create name with Path = path }
           |> Project.save signature "Initial commit."
 
         let loaded =
@@ -284,7 +295,10 @@ module ProjectTests =
   let savesMultipleCommits =
     testCase "Saving project should contain multiple commits" <|
       fun _ ->
-        let name = "test4"
+        let name =
+          Path.GetTempFileName()
+          |> Path.GetFileName
+
         let author1 = "karsten"
 
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
@@ -296,7 +310,7 @@ module ProjectTests =
 
         let (commit1, project) =
           { Project.create name with
-              Path = Some(path)
+              Path = path
               Author = Some(author1) }
           |> Project.save signature msg1
           |> Either.get
@@ -358,7 +372,10 @@ module ProjectTests =
 
   let upToDatePath =
     testCase "Saving project should always contain an up-to-date path" <| fun _ ->
-      let name = "test4"
+      let name =
+        Path.GetTempFileName()
+        |> Path.GetFileName
+
       let author1 = "karsten"
 
       let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
@@ -370,7 +387,7 @@ module ProjectTests =
 
       let (commit1, project) =
         { Project.create name with
-            Path = Some(path)
+            Path = path
             Author = Some(author1) }
         |> Project.save signature msg1
         |> Either.get
@@ -378,12 +395,7 @@ module ProjectTests =
       (path </> PROJECT_FILENAME + ASSET_EXTENSION)
       |> Project.load
       |> Either.get
-      |> fun p ->
-        expect
-          "Project should have commit message"
-          (Some path)
-          id
-          p.Path
+      |> fun p -> expect "Project should have commit message" path id p.Path
 
       let newpath = Path.dirName path </> (Path.GetTempFileName() |> Path.baseName)
 
@@ -392,12 +404,7 @@ module ProjectTests =
       (newpath </> PROJECT_FILENAME + ASSET_EXTENSION)
       |> Project.load
       |> Either.get
-      |> fun p ->
-        expect
-          "Project should have commit message"
-          (Some newpath)
-          id
-          p.Path
+      |> fun p -> expect "Project should have commit message" newpath id p.Path
 
   // For tests async stuff:
   //

@@ -103,5 +103,3 @@ Project:
 """
 
   type ConfigFile = YamlConfig<"",false,Config>
-
-  let IrisConfig = ConfigFile()

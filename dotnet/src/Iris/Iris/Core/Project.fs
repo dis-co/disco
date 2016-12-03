@@ -12,7 +12,7 @@ open Iris.Core.Utils
 open FSharpx.Functional
 open Iris.Raft
 
-// * IrisProject type
+// * IrisProject
 
 //  ____            _           _
 // |  _ \ _ __ ___ (_) ___  ___| |_
@@ -24,7 +24,7 @@ open Iris.Raft
 type IrisProject =
   { Id        : Id
   ; Name      : Name
-  ; Path      : FilePath  option        // Project path should always be the path containing '.git'
+  ; Path      : FilePath                // project path should always be the path containing '.git'
   ; CreatedOn : TimeStamp
   ; LastSaved : TimeStamp option
   ; Copyright : string    option
@@ -45,9 +45,7 @@ module Project =
   ///
   /// # Returns: Repository option
   let repository (project: IrisProject) =
-    match project.Path with
-      | Some path -> Git.Repo.repository path
-      | _         -> ProjectPathError |> Either.fail
+      Git.Repo.repository project.Path
 
   // ** currentBranch
 
@@ -71,7 +69,7 @@ module Project =
   let create (name : string) : IrisProject =
     { Id        = Id.Create()
     ; Name      = name
-    ; Path      = None
+    ; Path      = Path.GetFullPath(".") </> name
     ; CreatedOn = Time.createTimestamp()
     ; LastSaved = None
     ; Copyright = None
@@ -86,7 +84,7 @@ module Project =
   ///
   /// # Returns: DateTime option
   let parseLastSaved (config: ConfigFile) =
-    let meta = IrisConfig.Project.Metadata
+    let meta = config.Project.Metadata
     if meta.LastSaved.Length > 0
     then
       try
@@ -104,7 +102,7 @@ module Project =
   ///
   /// # Returns: DateTime
   let parseCreatedOn (config: ConfigFile) =
-    let meta = IrisConfig.Project.Metadata
+    let meta = config.Project.Metadata
     if meta.CreatedOn.Length > 0
     then
       try
@@ -128,9 +126,10 @@ module Project =
           |> Either.fail
       else
         try
-          IrisConfig.Load(path)
+          let config = ConfigFile()
+          config.Load(path)
 
-          let meta = IrisConfig.Project.Metadata
+          let meta = config.Project.Metadata
           let lastSaved =
             match meta.LastSaved with
               | null | "" -> None
@@ -141,11 +140,17 @@ module Project =
                 with
                   | _ -> None
 
-          let! config = Config.fromFile IrisConfig
+          let! config = Config.fromFile config
+
+          let normalizedPath =
+            if Path.IsPathRooted path then
+              path
+            else
+              Path.GetFullPath path
 
           return { Id        = Id meta.Id
                    Name      = meta.Name
-                   Path      = Some <| Path.GetDirectoryName(path)
+                   Path      = Path.GetDirectoryName(normalizedPath)
                    CreatedOn = meta.CreatedOn
                    LastSaved = lastSaved
                    Copyright = Config.parseStringProp meta.Copyright
@@ -203,14 +208,9 @@ module Project =
       createAssetDir repo "cuelists"
       createAssetDir repo "users"
       repo
-    match project.Path with
-    | Some path ->
-      path
-      |> Git.Repo.init
-      |> Either.map initRepoImpl
-    | _ ->
-      ProjectPathError
-      |> Either.fail
+    project.Path
+    |> Git.Repo.init
+    |> Either.map initRepoImpl
 
   // ** saveMetadata
 
@@ -291,30 +291,27 @@ module Project =
   // ** save
 
   let save (committer: Signature) (msg : string) (project: IrisProject) : Either<IrisError,(Commit * IrisProject)> =
-    match project.Path with
-    | Some path ->
-      if not (Directory.Exists path) then
-        Directory.CreateDirectory path |> ignore
+    if not (Directory.Exists project.Path) then
+      Directory.CreateDirectory project.Path |> ignore
 
-      let project =
-        IrisConfig
-        |> Config.toFile project.Config
-        |> saveMetadata project
+    let config = ConfigFile()
 
-      // save everything!
-      let destPath = path </> PROJECT_FILENAME + ASSET_EXTENSION
+    let project =
+      config
+      |> Config.toFile project.Config
+      |> saveMetadata project
 
-      try
-        IrisConfig.Save(destPath)
-        commitPath committer msg destPath project
-      with
-        | exn ->
-          exn.Message
-          |> ProjectSaveError
-          |> Either.fail
-    | _ ->
-      ProjectPathError
-      |> Either.fail
+    // save everything!
+    let destPath = project.Path </> PROJECT_FILENAME + ASSET_EXTENSION
+
+    try
+      config.Save(destPath)
+      commitPath committer msg destPath project
+    with
+      | exn ->
+        exn.Message
+        |> ProjectSaveError
+        |> Either.fail
 
   // ** clone
 
@@ -339,7 +336,12 @@ module Project =
   // ** updatePath
 
   let updatePath (path: FilePath) (project: IrisProject) : IrisProject =
-    { project with Path = Some path }
+    { project with Path = path }
+
+  // ** filePath
+
+  let filePath (project: IrisProject) : FilePath =
+    project.Path </> PROJECT_FILENAME + ASSET_EXTENSION
 
   // ** updateConfig
 
