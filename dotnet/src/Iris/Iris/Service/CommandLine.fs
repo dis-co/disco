@@ -385,7 +385,6 @@ module CommandLine =
         use! server = IrisService.create ()
         use obs = Logger.subscribe Logger.stdout
 
-        do! server.Start()
         do! server.Load projFile
 
         if interactive then
