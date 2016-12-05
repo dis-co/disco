@@ -380,6 +380,7 @@ Target "GenerateSerialization"
 let frontendDir = baseDir @@ "Projects" @@ "Frontend"
 
 Target "BuildFrontend" (fun () ->
+  runNpm "install" (baseDir @@ "../..") ()
   runFable frontendDir "" ()
 )
 
@@ -556,6 +557,9 @@ Target "Release" DoNothing
 
 "GenerateSerialization"
 ==> "BuildFrontend"
+
+"BuildFrontend"
+==> "BuildMockService"
 
 "GenerateSerialization"
 ==> "BuildReleaseService"

@@ -4,18 +4,20 @@ html, body, #app {
   padding: 0px;
 }
 
-#column-layout-wrapper {
+.column-layout-wrapper {
   height: 100%;
 }
 
-#column-layout {
+.column-layout {
   display: flex;
   height: 100%;
 }
 
 #panel-center {
   flex: 1;
-  background-color: lightgray
+  background-color: lightgray;
+  /* Margin for dragbar */
+  margin: 0 3px;
 }
 
 #panel-left {
@@ -24,6 +26,15 @@ html, body, #app {
 
 #panel-right {
   background-color: lightgoldenrodyellow
+}
+
+.panel-cluster {
+  height: 100%;
+}
+
+.panel-cue {
+  height: 100%;
+  background-color: white;
 }
 
 .dragbar {

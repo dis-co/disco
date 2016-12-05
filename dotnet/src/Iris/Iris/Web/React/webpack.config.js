@@ -52,7 +52,7 @@ module.exports = {
     externals: {
         // This is the only way I had to convince RequireJS
         // to load the lib file and its dependencies properly
-        lib: "js/Web/Lib",
+        iris: "js/Web/Lib",
         react: "react",
         "react-dom": "react-dom"
     },

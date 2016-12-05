@@ -1,13 +1,4 @@
-import React from 'react';
-import cx from 'classnames';
-import Tabs from 'muicss/lib/react/tabs';
-import Tab from 'muicss/lib/react/tab';
-
-import Tree from 'react-ui-tree';
-require("react-ui-tree/dist/react-ui-tree.css");
-require("./styles/tree.less");
-
-let tree = {module: 'Views', children: [
+export default {module: 'Views', children: [
 {
   module: 'View 1',
   children: [
@@ -120,57 +111,3 @@ let tree = {module: 'Views', children: [
   ]
 },
 ]};
-
-class TreeView extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { active: null, tree: tree };
-  }
-
-  renderNode(node) {
-    return (
-      <span className={cx('node', {
-        'is-active': node === this.state.active
-        })} onClick={this.onClickNode.bind(this, node)}>
-        {node.module}
-      </span>
-    );
-  }
-
-  handleChange(tree) {
-    this.setState({
-      tree: tree
-    });
-  }
-
-  onClickNode(node) {
-    this.setState({
-      active: node
-    });
-  }
-
-  render() {
-    return (
-      <Tree
-        paddingLeft={20}
-        tree={this.state.tree}
-        onChange={this.handleChange.bind(this)}
-        // isNodeCollapsed={this.isNodeCollapsed.bind(this)}
-        renderNode={this.renderNode.bind(this)}
-      />
-    )
-  }
-}
-
-export default function LeftPanel(props) { return (
-  <Tabs id="panel-left" style={{width: props.width}}>
-    <Tab label="VIEWS" >
-      <TreeView />
-    </Tab>
-    <Tab label="LIBRARY" >
-      <div>
-        <p>Id excepteur cupidatat proident fugiat.</p>
-      </div>
-    </Tab>
-  </Tabs>
-)}
