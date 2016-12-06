@@ -4,7 +4,104 @@ namespace Iris.Core
 
 open System
 open System.IO
+open System.Reflection
 open Iris.Raft
+open SharpYaml.Serialization
+
+// * IMachineConfig
+
+type IMachineConfig =
+  abstract MachineId : Id
+
+// * MachineConfig module
+
+[<RequireQualifiedAccess>]
+module MachineConfig =
+
+  // ** MachineConfigYaml (private)
+
+  type private MachineConfigYaml (id: Id) as self =
+    [<DefaultValue>] val mutable MachineId : string
+
+    do self.MachineId <- string id
+
+  // ** parse (private)
+
+  let private parse (yml: MachineConfigYaml) : Either<IrisError,IMachineConfig> =
+    { new IMachineConfig with
+        member self.MachineId
+          with get () = Id yml.MachineId }
+    |> Either.succeed
+
+  // ** ensureExists (private)
+
+  let private ensureExists (path: FilePath) =
+    try
+      if not (Directory.Exists path) then
+        Directory.CreateDirectory path
+        |> ignore
+    with
+      | _ -> ()
+
+  // ** create
+
+  let create () : IMachineConfig =
+    { new IMachineConfig with
+        member self.MachineId
+          with get () = Id.Create() }
+
+  // ** save
+
+  let save (path: FilePath option) (cfg: IMachineConfig) : Either<IrisError,unit> =
+    let serializer = new Serializer()
+    try
+      let location =
+        match path with
+        | Some location -> location
+        | None ->
+          let dir =
+            Assembly.GetExecutingAssembly().GetName().CodeBase
+            |> Path.GetDirectoryName
+          dir </> MACHINECONFIG_DEFAULT_PATH </> MACHINECONFIG_NAME + ASSET_EXTENSION
+
+      let payload=
+        new MachineConfigYaml(cfg.MachineId)
+        |> serializer.Serialize
+
+      location
+      |> Path.GetDirectoryName
+      |> ensureExists
+
+      File.WriteAllText(location, payload)
+      |> Either.succeed
+    with
+      | exn ->
+        exn.Message
+        |> IOError
+        |> Either.fail
+
+  // ** load
+
+  let load (path: FilePath option) : Either<IrisError,IMachineConfig> =
+    let serializer = new Serializer()
+    try
+      let location =
+        match path with
+        | Some location -> location
+        | None ->
+          let dir =
+            Assembly.GetExecutingAssembly().GetName().CodeBase
+            |> Path.GetDirectoryName
+          dir </> MACHINECONFIG_DEFAULT_PATH </> MACHINECONFIG_NAME + ASSET_EXTENSION
+
+      let raw = File.ReadAllText location
+      serializer.Deserialize<MachineConfigYaml>(raw)
+      |> parse
+    with
+      | exn ->
+        exn.Message
+        |> ParseError
+        |> Either.fail
 
 // * Aliases
 

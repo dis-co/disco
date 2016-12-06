@@ -59,3 +59,16 @@ module Constants =
 
   [<Literal>]
   let SOCKET_SERVER_PORT_DIFF = 1000
+
+  //  __  __            _     _             ____             __ _
+  // |  \/  | __ _  ___| |__ (_)_ __   ___ / ___|___  _ __  / _(_) __ _
+  // | |\/| |/ _` |/ __| '_ \| | '_ \ / _ \ |   / _ \| '_ \| |_| |/ _` |
+  // | |  | | (_| | (__| | | | | | | |  __/ |__| (_) | | | |  _| | (_| |
+  // |_|  |_|\__,_|\___|_| |_|_|_| |_|\___|\____\___/|_| |_|_| |_|\__, |
+  //                                                              |___/
+
+  [<Literal>]
+  let MACHINECONFIG_DEFAULT_PATH = "etc"
+
+  [<Literal>]
+  let MACHINECONFIG_NAME = "machinecfg"
