@@ -6,6 +6,7 @@ open Iris.Tests
 
 let all =
   testList "All tests" [
+    irisServiceTests
     raftTests
     zmqIntegrationTests
     raftIntegrationTests
@@ -17,4 +18,4 @@ let all =
 
 [<EntryPoint>]
 let main _ =
-  run defaultConfig.printer all
+  runTests { defaultConfig with ``parallel`` = false } all

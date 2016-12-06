@@ -63,11 +63,7 @@ module GitTests =
       |> Project.save user.Signature "Project Initialized"
       |> Either.get
 
-    let path =
-      project.Path
-      |> Option.get
-
-    uuid, tmpdir, project, node, path
+    uuid, tmpdir, project, node, project.Path
 
   //  ____                      _
   // |  _ \ ___ _ __ ___   ___ | |_ ___  ___
