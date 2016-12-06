@@ -28,16 +28,13 @@ let awaitOnce (observable: IObservable<'T>)=
   ))
 
 async {
-  let! (ctx, session, _) = awaitOnce context
+  let! initInfo = awaitOnce context.OnRender
     
   let initInfo =
-    { context = ctx
-    ; session = session
-    ; state = State.Empty } // Send empty state until session is authorized
+    { initInfo with state = State.Empty } // Send empty state until session is authorized
 
   reactApp.mount(initInfo, fun f ->
-    (context :> IObservable<_>).Subscribe(fun (ctx, session, state) ->
-      f { context = ctx; session = session; state = state })
+    context.OnRender.Subscribe(f)
     |> ignore
   )
 

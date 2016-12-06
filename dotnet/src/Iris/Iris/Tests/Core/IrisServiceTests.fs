@@ -58,7 +58,7 @@ module IrisServiceTests =
           Project.filePath project
           |> File.ReadAllText
 
-        use! service = IrisService.create machine
+        use! service = IrisService.create machine true
         use oobs =
           (fun ev ->
             match ev with

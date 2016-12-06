@@ -14,7 +14,6 @@ group Main
   nuget Gallio
   nuget FSharpx.Extras
   nuget FsControl
-  nuget Argu
   nuget Suave
   nuget Fleck
   nuget LibGit2Sharp >= 0.22.0-pre20151023210959 prerelease
@@ -32,7 +31,6 @@ group Build
   nuget FSharpx.Extras
   nuget FSharpPlus
   nuget FsControl
-  nuget Argu
 
   github fsharp/FAKE modules/Octokit/Octokit.fsx
 

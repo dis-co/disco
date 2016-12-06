@@ -410,13 +410,6 @@ Target "RunWebTests" (fun _ ->
 //  _| |\  | |___  | |
 // (_)_| \_|_____| |_|
 
-Target "BuildMockService" (fun () ->
-  buildDebug "Projects/MockService/MockService.fsproj" ()
-  let assetsTargetDir = (baseDir @@ "bin/Debug/Iris/assets")
-  FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
-  runNpm "install" (baseDir @@ "assets/frontend") ()
-)
-
 Target "BuildDebugCore" (buildDebug "Projects/Core/Core.fsproj")
 
 Target "BuildReleaseCore" (buildRelease "Projects/Core/Core.fsproj")
@@ -557,9 +550,6 @@ Target "Release" DoNothing
 
 "GenerateSerialization"
 ==> "BuildFrontend"
-
-"BuildFrontend"
-==> "BuildMockService"
 
 "GenerateSerialization"
 ==> "BuildReleaseService"
