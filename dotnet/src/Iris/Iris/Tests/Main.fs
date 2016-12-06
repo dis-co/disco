@@ -8,6 +8,7 @@ let all =
   testList "All tests" [
     irisServiceTests
     raftTests
+    configTests
     zmqIntegrationTests
     raftIntegrationTests
     serializationTests

@@ -6,12 +6,17 @@ open System
 open System.IO
 open System.Reflection
 open Iris.Raft
+open SharpYaml
 open SharpYaml.Serialization
 
 // * IMachineConfig
 
-type IMachineConfig =
-  abstract MachineId : Id
+type IrisMachine =
+  { MachineId : Id
+    HostName  : string }
+
+  override self.ToString() =
+    sprintf "MachineId: %s" (string self.MachineId)
 
 // * MachineConfig module
 
@@ -20,17 +25,20 @@ module MachineConfig =
 
   // ** MachineConfigYaml (private)
 
-  type private MachineConfigYaml (id: Id) as self =
+  type MachineConfigYaml () =
     [<DefaultValue>] val mutable MachineId : string
 
-    do self.MachineId <- string id
+    static member Create (id: Id) =
+      let yml = new MachineConfigYaml()
+      yml.MachineId <- string id
+      yml
 
   // ** parse (private)
 
-  let private parse (yml: MachineConfigYaml) : Either<IrisError,IMachineConfig> =
-    { new IMachineConfig with
-        member self.MachineId
-          with get () = Id yml.MachineId }
+  let private parse (yml: MachineConfigYaml) : Either<IrisError,IrisMachine> =
+    let hostname = Network.getHostName ()
+    { MachineId = Id yml.MachineId
+      HostName  = hostname }
     |> Either.succeed
 
   // ** ensureExists (private)
@@ -45,15 +53,16 @@ module MachineConfig =
 
   // ** create
 
-  let create () : IMachineConfig =
-    { new IMachineConfig with
-        member self.MachineId
-          with get () = Id.Create() }
+  let create () : IrisMachine =
+    let hostname = Network.getHostName()
+    { MachineId = Id.Create()
+      HostName  = hostname }
 
   // ** save
 
-  let save (path: FilePath option) (cfg: IMachineConfig) : Either<IrisError,unit> =
+  let save (path: FilePath option) (cfg: IrisMachine) : Either<IrisError,unit> =
     let serializer = new Serializer()
+
     try
       let location =
         match path with
@@ -65,7 +74,8 @@ module MachineConfig =
           dir </> MACHINECONFIG_DEFAULT_PATH </> MACHINECONFIG_NAME + ASSET_EXTENSION
 
       let payload=
-        new MachineConfigYaml(cfg.MachineId)
+        cfg.MachineId
+        |> MachineConfigYaml.Create
         |> serializer.Serialize
 
       location
@@ -82,7 +92,7 @@ module MachineConfig =
 
   // ** load
 
-  let load (path: FilePath option) : Either<IrisError,IMachineConfig> =
+  let load (path: FilePath option) : Either<IrisError,IrisMachine> =
     let serializer = new Serializer()
     try
       let location =
