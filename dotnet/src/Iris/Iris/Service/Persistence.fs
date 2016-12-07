@@ -115,8 +115,8 @@ module Persistence =
   /// Returns: Either<IrisError,Raft>
   let loadRaft (options: IrisConfig) : Either<IrisError,RaftValue> =
     either {
-      let! nodes = Config.getNodes options
       let! node = Config.selfNode options
+      let! nodes = Config.getNodes options
       let! data =
         options
         |> Config.metadataPath

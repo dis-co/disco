@@ -66,7 +66,7 @@ module Project =
   /// Create a new project with the given name. The default configuration will apply.
   ///
   /// # Returns: IrisProject
-  let create (name : string) : IrisProject =
+  let create (name : string) (machine: IrisMachine) : IrisProject =
     { Id        = Id.Create()
     ; Name      = name
     ; Path      = Environment.CurrentDirectory </> name
@@ -74,7 +74,7 @@ module Project =
     ; LastSaved = None
     ; Copyright = None
     ; Author    = None
-    ; Config    = Config.create(name) }
+    ; Config    = Config.create name machine  }
 
   // ** parseLastSaved
 
@@ -118,7 +118,7 @@ module Project =
   /// Attempts to load a serializad project file from the specified location.
   ///
   /// # Returns: IrisProject option
-  let load (path : FilePath) : Either<IrisError,IrisProject> =
+  let load (path : FilePath) (machine: IrisMachine) : Either<IrisError,IrisProject> =
     either {
       if not (File.Exists path) then
         return!
@@ -140,7 +140,7 @@ module Project =
                 with
                   | _ -> None
 
-          let! config = Config.fromFile config
+          let! config = Config.fromFile config machine
 
           let normalizedPath =
             if Path.IsPathRooted path then

@@ -104,6 +104,7 @@ module Iris =
       Status        : ServiceStatus
       Store         : Store
       Project       : IrisProject
+      Machine       : IrisMachine
       GitServer     : IGitServer
       RaftServer    : IRaftServer
       HttpServer    : AssetServer
@@ -648,11 +649,14 @@ module Iris =
 
   // ** loadProject
 
-  let private loadProject (state: IrisState) (path: FilePath) (subscriptions: Subscriptions) =
+  let private loadProject (state: IrisState)
+                          (machine: IrisMachine)
+                          (path: FilePath)
+                          (subscriptions: Subscriptions) =
     either {
       dispose state
 
-      let! project = Project.load path
+      let! project = Project.load path machine
 
       // FIXME: load the actual state from disk
       let! node = Config.selfNode project.Config
@@ -667,6 +671,7 @@ module Iris =
                  Status       = ServiceStatus.Starting
                  Store        = new Store(State.Empty)
                  Project      = project
+                 Machine      = machine
                  GitServer    = gitserver
                  RaftServer   = raftserver
                  HttpServer   = httpserver
@@ -680,10 +685,10 @@ module Iris =
   let private start (state: IrisState) (agent: IrisAgent) =
     withLoaded state (konst (Right state)) <| fun data ->
       let disposables =
-        [ (LOG_HANDLER, forwardLogEvents agent |> Logger.subscribe)
-          (RAFT_SERVER, forwardRaftEvents agent |> data.RaftServer.Subscribe)
-          (WS_SERVER, forwardSocketEvents agent |> data.SocketServer.Subscribe)
-          (GIT_SERVER, forwardGitEvents agent |> data.GitServer.Subscribe) ]
+        [ (LOG_HANDLER, forwardLogEvents agent    |> Logger.subscribe)
+          (RAFT_SERVER, forwardRaftEvents agent   |> data.RaftServer.Subscribe)
+          (WS_SERVER,   forwardSocketEvents agent |> data.SocketServer.Subscribe)
+          (GIT_SERVER,  forwardGitEvents agent    |> data.GitServer.Subscribe) ]
         |> Map.ofList
 
       let result =
@@ -714,9 +719,10 @@ module Iris =
   let private handleLoad (state: IrisState)
                          (chan: ReplyChan)
                          (path: FilePath)
+                         (config: IrisMachine)
                          (subscriptions: Subscriptions)
                          (inbox: IrisAgent) =
-    match loadProject state path subscriptions with
+    match loadProject state config path subscriptions with
     | Right nextstate ->
       match start nextstate inbox with
       | Right finalstate ->
@@ -886,13 +892,16 @@ module Iris =
 
   // ** loop
 
-  let private loop (initial: IrisState) (subscriptions: Subscriptions) (inbox: IrisAgent) =
+  let private loop (initial: IrisState)
+                   (config: IrisMachine)
+                   (subs: Subscriptions)
+                   (inbox: IrisAgent) =
     let rec act (state: IrisState) =
       async {
         let! msg = inbox.Receive()
         let newstate =
           match msg with
-          | Msg.Load (chan,path)     -> handleLoad          state chan  path subscriptions  inbox
+          | Msg.Load (chan,path)     -> handleLoad          state chan path config subs inbox
           | Msg.Unload chan          -> handleUnload        state chan
           | Msg.Config chan          -> handleConfig        state chan
           | Msg.SetConfig (chan,cnf) -> handleSetConfig     state chan  cnf
@@ -917,9 +926,9 @@ module Iris =
   [<RequireQualifiedAccess>]
   module IrisService =
 
-    let create () =
+    let create (config: IrisMachine) =
       let subscriptions = new Subscriptions()
-      let agent = new IrisAgent(loop Idle subscriptions)
+      let agent = new IrisAgent(loop Idle config subscriptions)
 
       let listener =
         { new IObservable<IrisEvent> with

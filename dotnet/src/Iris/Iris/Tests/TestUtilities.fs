@@ -22,10 +22,6 @@ module TestUtilities =
     let uuid = Guid.NewGuid()
     string uuid
 
-  let setNodeId uuid =
-    Environment.SetEnvironmentVariable(IRIS_NODE_ID, uuid)
-
-
   let inline expectE (msg: string) (exp: 'b) (f: 'a -> 'b) (input: Either<IrisError,'a>) =
     either {
       let! value = input

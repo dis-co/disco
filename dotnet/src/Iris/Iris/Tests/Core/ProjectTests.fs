@@ -8,6 +8,7 @@ open Expecto
 open Iris.Core
 open Iris.Raft
 open LibGit2Sharp
+open FSharpx.Functional
 
 [<AutoOpen>]
 module ProjectTests =
@@ -22,6 +23,8 @@ module ProjectTests =
   let loadSaveTest =
     testCase "Save/Load Project should render equal project values" <|
       fun _ ->
+        let machine = MachineConfig.create ()
+
         let name =
           Path.GetTempFileName()
           |> Path.GetFileName
@@ -29,13 +32,13 @@ module ProjectTests =
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
         let (commit, project) =
-          { Project.create name with Path = path }
+          { Project.create name machine with Path = path }
           |> Project.save signature "Initial project save."
           |> Either.get
 
         let result =
           Project.filePath project
-          |> Project.load
+          |> flip Project.load machine
 
         expect "Projects should be loaded" true Either.isSuccess result
 
@@ -51,6 +54,8 @@ module ProjectTests =
   //
   let testCustomizedCfg =
     testCase "Save/Load of Project with customized configs" <| fun _ ->
+        let machine = MachineConfig.create ()
+
         let name =
           Path.GetTempFileName()
           |> Path.GetFileName
@@ -204,7 +209,7 @@ module ProjectTests =
           }
 
         let project =
-          Project.create name
+          Project.create name machine
           |> Project.updatePath path
           |> fun project ->
             Project.updateConfig
@@ -223,7 +228,7 @@ module ProjectTests =
           |> Either.get
 
         let loaded =
-          Project.load (path </> PROJECT_FILENAME + ASSET_EXTENSION)
+          Project.load (path </> PROJECT_FILENAME + ASSET_EXTENSION) machine
           |> Either.get
 
         // the only difference will be the automatically assigned timestamp
@@ -261,6 +266,8 @@ module ProjectTests =
   let saveInitsGit =
     testCase "Saved Project should be a git repository with yaml file." <|
       fun _ ->
+        let machine = MachineConfig.create ()
+
         let name =
           Path.GetTempFileName()
           |> Path.GetFileName
@@ -271,12 +278,12 @@ module ProjectTests =
             DirectoryInfo(path) |> deleteFileSystemInfo
 
         let project =
-          { Project.create name with Path = path }
+          { Project.create name machine with Path = path }
           |> Project.save signature "Initial commit."
 
         let loaded =
           path </> PROJECT_FILENAME + ASSET_EXTENSION
-          |> Project.load
+          |> flip Project.load machine
           |> Either.get
 
         expect "Projects should be a folder"         true  Directory.Exists path
@@ -295,6 +302,8 @@ module ProjectTests =
   let savesMultipleCommits =
     testCase "Saving project should contain multiple commits" <|
       fun _ ->
+        let machine = MachineConfig.create ()
+
         let name =
           Path.GetTempFileName()
           |> Path.GetFileName
@@ -309,14 +318,14 @@ module ProjectTests =
         let msg1 = "Commit 1"
 
         let (commit1, project) =
-          { Project.create name with
+          { Project.create name machine with
               Path = path
               Author = Some(author1) }
           |> Project.save signature msg1
           |> Either.get
 
         (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-        |> Project.load
+        |> flip Project.load machine
         |> Either.get
         |> fun p ->
             let repo = Project.repository p |> Either.get
@@ -335,7 +344,7 @@ module ProjectTests =
 
 
         (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-        |> Project.load
+        |> flip Project.load machine
         |> Either.get
         |> fun p ->
             let repo = Project.repository p |> Either.get
@@ -356,7 +365,7 @@ module ProjectTests =
            |> Either.get
 
         (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-        |> Project.load
+        |> flip Project.load machine
         |> Either.get
         |> fun p ->
             let repo = Project.repository p |> Either.get
@@ -372,6 +381,8 @@ module ProjectTests =
 
   let upToDatePath =
     testCase "Saving project should always contain an up-to-date path" <| fun _ ->
+      let machine = MachineConfig.create()
+
       let name =
         Path.GetTempFileName()
         |> Path.GetFileName
@@ -386,14 +397,14 @@ module ProjectTests =
       let msg1 = "Commit 1"
 
       let (commit1, project) =
-        { Project.create name with
+        { Project.create name machine with
             Path = path
             Author = Some(author1) }
         |> Project.save signature msg1
         |> Either.get
 
       (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-      |> Project.load
+      |> flip Project.load machine
       |> Either.get
       |> fun p -> expect "Project should have commit message" path id p.Path
 
@@ -402,7 +413,7 @@ module ProjectTests =
       FileSystem.moveFile path newpath
 
       (newpath </> PROJECT_FILENAME + ASSET_EXTENSION)
-      |> Project.load
+      |> flip Project.load machine
       |> Either.get
       |> fun p -> expect "Project should have commit message" newpath id p.Path
 
