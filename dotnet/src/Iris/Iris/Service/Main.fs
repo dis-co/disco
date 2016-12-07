@@ -29,12 +29,15 @@ module Main =
     let web = not (parsed.Contains <@ NoHttp @>)
     let interactive = parsed.Contains <@ Interactive @>
 
-    match parsed.GetResult <@ Cmd @>, parsed.GetResult <@ Dir @> with
-    | Create,  _ -> createProject parsed
-    | Start, dir -> startService web interactive dir
-    | Reset, dir -> resetProject dir
-    | Dump,  dir -> dumpDataDir dir
+    let res =
+      match parsed.GetResult <@ Cmd @>, parsed.GetResult <@ Dir @> with
+      | Create,  _ -> createProject parsed
+      | Start, dir -> startService web interactive dir
+      | Reset, dir -> resetProject dir
+      | Dump,  dir -> dumpDataDir dir
+    res
     |> Error.orExit id
     |> ignore
 
+//    System.Console.ReadLine() |> ignore
     Error.exitWith OK

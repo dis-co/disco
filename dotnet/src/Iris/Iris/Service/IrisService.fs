@@ -108,7 +108,7 @@ module Iris =
       Machine       : IrisMachine
       GitServer     : IGitServer
       RaftServer    : IRaftServer
-      HttpServer    : IHttpServer
+      HttpServer    : IHttpServer option
       SocketServer  : IWebSocketServer
       Subscriptions : Subscriptions
       Disposables   : Map<string,IDisposable> }
@@ -119,7 +119,7 @@ module Iris =
         dispose self.GitServer
         dispose self.RaftServer
         dispose self.SocketServer
-        dispose self.HttpServer
+        self.HttpServer |> Option.iter dispose
 
   // ** Reply
 
@@ -196,6 +196,56 @@ module Iris =
         match self with
         | Idle -> ()
         | Loaded data -> dispose data
+
+  let private getInitState() =
+  #if FRONTEND_DEV
+    let users = [
+      { Id        = Id.Create()
+      ; UserName  = "alfonso"
+      ; FirstName = "Alfonso"
+      ; LastName  = "Garc�a-Caro"
+      ; Email     = "alfonso.garcia-caro@nsynk.de"
+      ; Password  = "1234"
+      ; Joined    = DateTime.Now
+      ; Created   = DateTime.Now }
+    ]
+    { State.Empty with Users = users |> Seq.map (fun x -> x.Id, x) |> Map }
+  #else
+    State.Empty
+  #endif
+
+  let private processMessage (state: IrisState) (id: Id) (cmd: StateMachine) =
+  #if FRONTEND_DEV
+    match state, cmd with
+    | Loaded state, AddSession session ->
+      match state.SocketServer.BuildSession id session with
+      | Left err -> Error.exitWith err
+      | Right session ->
+        printfn "Session added %O" session.Id
+        AddSession session
+
+    | Loaded state, UpdateSession session when session.Status.StatusType = Login ->
+      let username, password =
+        // TODO: Validate format
+        let info = session.Status.Payload.Split('\n')
+        info.[0], info.[1]
+      printfn "Login request: username %s - password %s" username password
+
+      state.Store.State.Users
+      |> Map.tryPick (fun _ u -> if u.UserName = username then Some u else None)
+      |> function
+        | Some user when user.Password = password ->
+          printfn "Login authorized"
+          { session with Status = { StatusType = Authorized; Payload = string user.Id } }
+
+        | _ ->
+          printfn "Login rejected"
+          { session with Status = { StatusType = Unauthorized; Payload = "" } }
+      |> UpdateSession
+    | _ -> cmd
+  #else
+    cmd
+  #endif
 
   /// ## withLoaded
   ///
@@ -281,7 +331,7 @@ module Iris =
     abstract GitServer     : Either<IrisError,IGitServer>
     abstract RaftServer    : Either<IrisError,IRaftServer>
     abstract SocketServer  : Either<IrisError,IWebSocketServer>
-    abstract HttpServer    : Either<IrisError,IHttpServer>
+    abstract HttpServer    : Either<IrisError,IHttpServer option>
     abstract SetConfig     : IrisConfig -> Either<IrisError,unit>
     abstract Load          : FilePath   -> Either<IrisError,unit>
     abstract Periodic      : unit       -> Either<IrisError,unit>
@@ -401,7 +451,7 @@ module Iris =
   /// be applied to all client-side global state atoms.
   let private onMessage (state: IrisState) (id: Id) (cmd: StateMachine) =
     withState state <| fun data ->
-      match appendCmd data cmd with
+      match processMessage state id cmd |> appendCmd data with
       | Right _ -> ()
       | Left error ->
         error
@@ -653,6 +703,7 @@ module Iris =
   let private loadProject (state: IrisState)
                           (machine: IrisMachine)
                           (path: FilePath)
+                          (web: bool)
                           (subscriptions: Subscriptions) =
     either {
       dispose state
@@ -662,7 +713,12 @@ module Iris =
       // FIXME: load the actual state from disk
       let! node = Config.selfNode project.Config
 
-      let! httpserver = HttpServer.create project.Config
+      let! httpserver =
+        if web then
+          HttpServer.create project.Config
+          |> Either.map Some
+        else
+          Right None
       let! raftserver = RaftServer.create ()
       let! wsserver   = SocketServer.create node
       let! gitserver  = GitServer.create node path
@@ -670,7 +726,7 @@ module Iris =
       return
         Loaded { NodeId       = node.Id
                  Status       = ServiceStatus.Starting
-                 Store        = new Store(State.Empty)
+                 Store        = new Store(getInitState())
                  Project      = project
                  Machine      = machine
                  GitServer    = gitserver
@@ -697,7 +753,9 @@ module Iris =
           do! data.RaftServer.Load(data.Project.Config)
           do! data.SocketServer.Start()
           do! data.GitServer.Start()
-          do! data.HttpServer.Start()
+          match data.HttpServer with
+          | Some server -> do! server.Start()
+          | None -> ()
         }
 
       match result with
@@ -711,7 +769,7 @@ module Iris =
         dispose data.SocketServer
         dispose data.RaftServer
         dispose data.GitServer
-        dispose data.HttpServer
+        data.HttpServer |> Option.iter dispose
         Either.fail error
 
 
@@ -721,9 +779,10 @@ module Iris =
                          (chan: ReplyChan)
                          (path: FilePath)
                          (config: IrisMachine)
+                         (web: bool)
                          (subscriptions: Subscriptions)
                          (inbox: IrisAgent) =
-    match loadProject state config path subscriptions with
+    match loadProject state config path web subscriptions with
     | Right nextstate ->
       match start nextstate inbox with
       | Right finalstate ->
@@ -895,6 +954,7 @@ module Iris =
 
   let private loop (initial: IrisState)
                    (config: IrisMachine)
+                   (web: bool)
                    (subs: Subscriptions)
                    (inbox: IrisAgent) =
     let rec act (state: IrisState) =
@@ -902,7 +962,7 @@ module Iris =
         let! msg = inbox.Receive()
         let newstate =
           match msg with
-          | Msg.Load (chan,path)     -> handleLoad          state chan path config subs inbox
+          | Msg.Load (chan,path)     -> handleLoad          state chan path config web subs inbox
           | Msg.Unload chan          -> handleUnload        state chan
           | Msg.Config chan          -> handleConfig        state chan
           | Msg.SetConfig (chan,cnf) -> handleSetConfig     state chan  cnf
@@ -927,9 +987,9 @@ module Iris =
   [<RequireQualifiedAccess>]
   module IrisService =
 
-    let create (config: IrisMachine) =
+    let create (config: IrisMachine) (web: bool) =
       let subscriptions = new Subscriptions()
-      let agent = new IrisAgent(loop Idle config subscriptions)
+      let agent = new IrisAgent(loop Idle config web subscriptions)
 
       let listener =
         { new IObservable<IrisEvent> with
@@ -968,7 +1028,7 @@ module Iris =
             member self.Load(path: FilePath) =
               match agent.PostAndReply(fun chan -> Msg.Load(chan,path)) with
               | Right Reply.Ok -> Right ()
-              | Right other    -> Left (Other "Unexpectted response from IrisAgent")
+              | Right other    -> Left (Other "Unexpected response from IrisAgent")
               | Left error     -> Left error
 
             member self.ForceElection () =
@@ -982,53 +1042,53 @@ module Iris =
             member self.LeaveCluster () =
               match agent.PostAndReply(fun chan -> Msg.Leave chan) with
               | Right Reply.Ok -> Right ()
-              | Right other    -> Left (Other "Unexpectted response from IrisAgent")
+              | Right other    -> Left (Other "Unexpected response from IrisAgent")
               | Left error     -> Left error
 
             member self.JoinCluster ip port =
               match agent.PostAndReply(fun chan -> Msg.Join(chan,ip, port)) with
               | Right Reply.Ok -> Right ()
-              | Right other    -> Left (Other "Unexpectted response from IrisAgent")
+              | Right other    -> Left (Other "Unexpected response from IrisAgent")
               | Left error     -> Left error
 
             member self.AddNode node =
               match agent.PostAndReply(fun chan -> Msg.AddNode(chan,node)) with
               | Right (Reply.Entry entry) -> Right entry
-              | Right other               -> Left (Other "Unexpectted response from IrisAgent")
+              | Right other               -> Left (Other "Unexpected response from IrisAgent")
               | Left error                -> Left error
 
             member self.RmNode id =
               match agent.PostAndReply(fun chan -> Msg.RmNode(chan,id)) with
               | Right (Reply.Entry entry) -> Right entry
-              | Right other               -> Left (Other "Unexpectted response from IrisAgent")
+              | Right other               -> Left (Other "Unexpected response from IrisAgent")
               | Left error                -> Left error
 
             member self.GitServer
               with get () =
                 match agent.PostAndReply(fun chan -> Msg.State chan) with
                 | Right (Reply.State state) -> Right state.GitServer
-                | Right other               -> Left (Other "Unexpectted response from IrisAgent")
+                | Right other               -> Left (Other "Unexpected response from IrisAgent")
                 | Left error                -> Left error
 
             member self.RaftServer
               with get () =
                 match agent.PostAndReply(fun chan -> Msg.State chan) with
                 | Right (Reply.State state) -> Right state.RaftServer
-                | Right other               -> Left (Other "Unexpectted response from IrisAgent")
+                | Right other               -> Left (Other "Unexpected response from IrisAgent")
                 | Left error                -> Left error
 
             member self.SocketServer
               with get () =
                 match agent.PostAndReply(fun chan -> Msg.State chan) with
                 | Right (Reply.State state) -> Right state.SocketServer
-                | Right other               -> Left (Other "Unexpectted response from IrisAgent")
+                | Right other               -> Left (Other "Unexpected response from IrisAgent")
                 | Left error                -> Left error
 
             member self.HttpServer
               with get () =
                 match agent.PostAndReply(fun chan -> Msg.State chan) with
                 | Right (Reply.State state) -> Right state.HttpServer
-                | Right other               -> Left (Other "Unexpectted response from IrisAgent")
+                | Right other               -> Left (Other "Unexpected response from IrisAgent")
                 | Left error                -> Left error
 
             member self.Subscribe(callback: IrisEvent -> unit) =

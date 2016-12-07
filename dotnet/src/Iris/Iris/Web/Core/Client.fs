@@ -12,6 +12,14 @@ let inline getHostname(): string = Browser.window.location.hostname
 
 let inline getHostPort(): int = int Browser.window.location.port
 
+let makeObservable (ctrls: Dictionary<Guid, 'T IObserver>) =
+  { new IObservable<'T> with
+    member __.Subscribe(obs) =
+      let guid = Guid.NewGuid()
+      ctrls.Add(guid, obs)
+      { new IDisposable with
+          member __.Dispose() = ctrls.Remove(guid) |> ignore } }
+
 //  ____  _                        ___        __         _
 // / ___|| |__   __ _ _ __ ___  __| \ \      / /__  _ __| | _____ _ __
 // \___ \| '_ \ / _` | '__/ _ \/ _` |\ \ /\ / / _ \| '__| |/ / _ \ '__|
@@ -38,10 +46,13 @@ type SharedWorker<'data>(url: string) =
 // | |   | | |/ _ \ '_ \| __|
 // | |___| | |  __/ | | | |_
 //  \____|_|_|\___|_| |_|\__|
+type [<Pojo; NoComparison>] StateInfo =
+  { context: ClientContext; session: Session; state: State }
 
-type ClientContext private (worker: SharedWorker<string>) =
+and ClientContext private (worker: SharedWorker<string>) =
   let mutable session : Id option = None
-  let ctrls = Dictionary<Guid, IObserver<ClientContext*Session*State>>()
+  let ctrls = Dictionary<Guid, IObserver<StateInfo>>()
+  let logCtrls = Dictionary<Guid, IObserver<ClientLog>>()
 
   static member Start() =
     let host = getHostname ()
@@ -89,9 +100,9 @@ type ClientContext private (worker: SharedWorker<string>) =
       match Map.tryFind self.Session state.Sessions with
       | Some session ->
         for ctrl in ctrls.Values do
-          ctrl.OnNext(self, session, state)
+          ctrl.OnNext {context = self; session = session; state = state}
       | None ->
-        printfn "Cannot find current session"      
+        printfn "Cannot find current session"
 
     | ClientMessage.Connected ->
       Session.Empty self.Session |> AddSession |> self.Post
@@ -101,7 +112,9 @@ type ClientContext private (worker: SharedWorker<string>) =
       printfn "DISCONNECTED!"
 
     | ClientMessage.ClientLog log ->
-      printfn "%s" log
+      //printfn "%s" log
+      for logCtrl in logCtrls.Values do
+        logCtrl.OnNext(log)
 
     // initialize this clients session variable
     | ClientMessage.Error(reason) ->
@@ -109,6 +122,9 @@ type ClientContext private (worker: SharedWorker<string>) =
 
     | _ -> printfn "Unknown Event: %A" msg.Data
 
+  member val OnRender = makeObservable ctrls
+
+  member val OnClientLog = makeObservable logCtrls
 
   interface IDisposable with
     member self.Dispose() =
@@ -116,9 +132,3 @@ type ClientContext private (worker: SharedWorker<string>) =
       |> toJson
       |> worker.Port.PostMessage
 
-  interface IObservable<ClientContext * Session * State> with
-    member __.Subscribe(obs) =
-      let guid = Guid.NewGuid()
-      ctrls.Add(guid, obs)
-      { new IDisposable with
-          member __.Dispose() = ctrls.Remove(guid) |> ignore }

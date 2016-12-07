@@ -41,7 +41,7 @@ module CommandLine =
     | [<EqualsAssignment>] Web          of uint16
     | [<EqualsAssignment>] Git          of uint16
     | [<EqualsAssignment>] Ws           of uint16
-    | [<EqualsAssignment>] Dir          of string
+    | Dir          of string
     | [<EqualsAssignment>] Name         of string
 
     interface IArgParserTemplate with
@@ -318,7 +318,10 @@ module CommandLine =
   //                  |_|
 
   let registerExitHandlers (context: IIrisServer) =
-    Console.CancelKeyPress.Add (fun _ -> dispose context)
+    Console.CancelKeyPress.Add (fun _ ->
+      printfn "Disposing context..."
+      dispose context
+      exit 0)
     System.AppDomain.CurrentDomain.ProcessExit.Add (fun _ -> dispose context)
     System.AppDomain.CurrentDomain.DomainUnload.Add (fun _ -> dispose context)
 
@@ -388,7 +391,7 @@ module CommandLine =
   let startService (web: bool) (interactive: bool) (projectdir: FilePath) : Either<IrisError, unit> =
     ensureMachineConfig ()
 
-    let projFile = projectdir </> PROJECT_FILENAME + ASSET_EXTENSION
+    let projFile = Path.GetFullPath(projectdir) </> PROJECT_FILENAME + ASSET_EXTENSION
 
     if File.Exists projFile |> not then
       projectdir
@@ -397,7 +400,10 @@ module CommandLine =
     else
       either {
         let! machine = MachineConfig.load None
-        let! server = IrisService.create machine
+        #if FRONTEND_DEV
+        let machine = { machine with MachineId = Id "TEST_MACHINE" }
+        #endif
+        let! server = IrisService.create machine web
         use obs = Logger.subscribe Logger.stdout
 
         registerExitHandlers server
