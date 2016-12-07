@@ -39,24 +39,3 @@ module Utilities =
       cancelToken token
       cts := None
     | _ -> ()
-
-  /// ## Print debug information and exit
-  ///
-  /// Print debug information and exit
-  ///
-  /// ### Signature:
-  /// - tag: string tag to attach for easier debugging
-  /// - exn: the Exception
-  ///
-  /// Returns: unit
-  let handleException (tag: string) (exn: 't when 't :> Exception) =
-    printfn "[%s]"          tag
-    printfn "Exception: %s" exn.Message
-    printfn "Source: %s"    exn.Source
-    printfn "StackTrace:"
-    printfn "%s"            exn.StackTrace
-    printfn "Aborting."
-
-    exn.Message
-    |> Other
-    |> Error.exitWith
