@@ -85,7 +85,7 @@
     <compile Include="..\..\Iris\Service\Persistence.fs" />
     <Compile Include="..\..\Iris\Service\Utilities.fs" />
     <Compile Include="..\..\Iris\Service\RaftServer.fs" />
-    <compile Include="..\..\Iris\Service\AssetServer.fs" />
+    <compile Include="..\..\Iris\Service\HttpServer.fs" />
     <Compile Include="..\..\Iris\Service\WebSocket.fs" />
     <Compile Include="..\..\Iris\Service\IrisService.fs" />
     <Compile Include="..\..\Iris\Service\CommandLine.fs" />

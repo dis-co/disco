@@ -188,8 +188,8 @@
     <Compile Include="..\..\Iris\Service\GitServer.fs">
       <Link>GitServer.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\AssetServer.fs">
-      <Link>AssetServer.fs</Link>
+    <Compile Include="..\..\Iris\Service\HttpServer.fs">
+      <Link>HttpServer.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Service\WebSocket.fs">
       <Link>WebSocket.fs</Link>

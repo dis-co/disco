@@ -29,6 +29,8 @@ type UserAgent  = string
 type ClientLog  = string
 type TimeStamp  = string
 type CallSite   = string
+type FileName   = string
+
 
 type Actor<'t> = MailboxProcessor<'t>
 

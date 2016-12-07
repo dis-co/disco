@@ -11,6 +11,7 @@ open Iris.Service.Persistence
 open Iris.Service.Git
 open Iris.Service.WebSockets
 open Iris.Service.Raft
+open Iris.Service.Http
 open Microsoft.FSharp.Control
 open FSharpx.Functional
 open LibGit2Sharp
@@ -107,7 +108,7 @@ module Iris =
       Machine       : IrisMachine
       GitServer     : IGitServer
       RaftServer    : IRaftServer
-      HttpServer    : AssetServer
+      HttpServer    : IHttpServer
       SocketServer  : IWebSocketServer
       Subscriptions : Subscriptions
       Disposables   : Map<string,IDisposable> }
@@ -280,7 +281,7 @@ module Iris =
     abstract GitServer     : Either<IrisError,IGitServer>
     abstract RaftServer    : Either<IrisError,IRaftServer>
     abstract SocketServer  : Either<IrisError,IWebSocketServer>
-    abstract HttpServer    : Either<IrisError,AssetServer>
+    abstract HttpServer    : Either<IrisError,IHttpServer>
     abstract SetConfig     : IrisConfig -> Either<IrisError,unit>
     abstract Load          : FilePath   -> Either<IrisError,unit>
     abstract Periodic      : unit       -> Either<IrisError,unit>
@@ -661,7 +662,7 @@ module Iris =
       // FIXME: load the actual state from disk
       let! node = Config.selfNode project.Config
 
-      let  httpserver = new AssetServer(project.Config)
+      let! httpserver = HttpServer.create project.Config
       let! raftserver = RaftServer.create ()
       let! wsserver   = SocketServer.create node
       let! gitserver  = GitServer.create node path
