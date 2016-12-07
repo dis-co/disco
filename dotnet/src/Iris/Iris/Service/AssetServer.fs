@@ -10,36 +10,34 @@ open Suave.Writers
 open Suave.Logging
 open Suave.Logging.Loggers
 open Suave.Web
-
 open System.Threading
 open System.IO
 open System.Net
 open System.Net.Sockets
 open System.Diagnostics
-
 open Iris.Core
 
-type FileName = string
+module Http =
 
+  [<Literal>]
+  let private tag = "AssetServer"
 
-type AssetServer(options: IrisConfig) as self =
-  let [<Literal>] tag = "AssetServer"
+  [<Literal>]
+  let private defaultIP = "127.0.0.1"
 
-  let [<Literal>] defaultIP = "127.0.0.1"
-  let [<Literal>] defaultPort = "7000"
+  [<Literal>]
+  let private defaultPort = "7000"
 
-  let cts = new CancellationTokenSource()
-
-  let noCache =
+  let private noCache =
     setHeader "Cache-Control" "no-cache, no-store, must-revalidate"
     >=> setHeader "Need-Help" "k@ioct.it"
     >=> setHeader "Pragma" "no-cache"
     >=> setHeader "Expires" "0"
 
-  let locate dir str =
+  let private locate dir str =
     noCache >=> file (dir </> str)
 
-  let basePath =
+  let private basePath =
   #if INTERACTIVE
     Path.GetFullPath(".") </> "assets" </> "frontend"
   #else
@@ -48,17 +46,17 @@ type AssetServer(options: IrisConfig) as self =
     dir </> "assets"
   #endif
 
-  let widgetPath = basePath </> "widgets"
+  let private widgetPath = basePath </> "widgets"
 
-  let listFiles (path: FilePath) : FileName list =
+  let private listFiles (path: FilePath) : FileName list =
     DirectoryInfo(widgetPath).EnumerateFiles()
     |> Seq.map (fun file -> file.Name)
     |> Seq.toList
 
-  let importStmt (name: FileName) =
+  let private importStmt (name: FileName) =
     sprintf """<link rel="import" href="widgets/%s" />""" name
 
-  let indexHtml () =
+  let private indexHtml () =
     listFiles widgetPath
     |> List.map importStmt
     |> List.fold (+) ""
@@ -66,11 +64,11 @@ type AssetServer(options: IrisConfig) as self =
 
   // Add more mime-types here if necessary
   // the following are for fonts, source maps etc.
-  let mimeTypes = defaultMimeTypesMap
+  let private mimeTypes = defaultMimeTypesMap
 
   // our application only needs to serve files off the disk
   // but we do need to specify what to do in the base case, i.e. "/"
-  let app =
+  let private app =
     choose [
       Filters.GET >=>
         (choose [
@@ -79,14 +77,23 @@ type AssetServer(options: IrisConfig) as self =
       RequestErrors.NOT_FOUND "Page not found."
     ]
 
-  let appConfig: SuaveConfig =
+  let private mkConfig (options: IrisConfig)
+                       (cts: CancellationTokenSource) :
+                       Either<IrisError,SuaveConfig> =
     either {
       try
-        let! addr, port =
-          either {
-            let! node = Config.selfNode options
-            return string node.IpAddr, string node.WebPort
-          }
+        let! node = Config.selfNode options
+
+        let logger =
+          { new Logger with
+              member self.Log level nextLine =
+                let line = nextLine ()
+                match line.level with
+                | Suave.Logging.LogLevel.Verbose -> ()
+                | _ ->
+                  Logger.debug options.MachineConfig.MachineId tag line.message }
+
+        let addr, port = string node.IpAddr, string node.WebPort
 
         let addr = IPAddress.Parse addr
         let port = Sockets.Port.Parse port
@@ -96,7 +103,7 @@ type AssetServer(options: IrisConfig) as self =
 
         return
           { defaultConfig with
-              logger            = self
+              logger            = logger
               cancellationToken = cts.Token
               homeFolder        = Some(basePath)
               bindings          = [ HttpBinding.mk HTTP addr port ]
@@ -108,38 +115,42 @@ type AssetServer(options: IrisConfig) as self =
             |> Other
             |> Error.exitWith
     }
-    |> Error.orExit id
 
-  let thread = new Thread(new ThreadStart(fun _ ->
-    try
-      Logger.info options.MachineConfig.MachineId tag "Starting HTTP server"
-      startWebServer appConfig app
-    with
-      | :? System.OperationCanceledException ->
-        Logger.debug options.MachineConfig.MachineId tag  "HTTP server shutting down"
-      | ex ->
-        sprintf "Asset server Exception: %s" ex.Message
-        |> Logger.err options.MachineConfig.MachineId tag ))
+  // ** IHttpServer
 
-  member this.Start() : Either<IrisError,unit> =
-    try
-      thread.Start ()
-      |> Either.succeed
-    with
-      | exn ->
-        exn.Message
-        |> SocketError
-        |> Either.fail
+  type IHttpServer =
+    inherit System.IDisposable
+    abstract Start: unit -> Either<IrisError,unit>
 
-  interface System.IDisposable with
-    member this.Dispose() : unit =
-      cts.Cancel ()
-      cts.Dispose ()
+  // ** HttpServer
 
-  interface Logger with
-    member self.Log level fLine =
-      let line = fLine ()
-      match line.level with
-      | Suave.Logging.LogLevel.Verbose -> ()
-      | _ ->
-        Logger.debug options.MachineConfig.MachineId tag line.message
+  [<RequireQualifiedAccess>]
+  module HttpServer =
+
+    // *** create
+
+    let create (options: IrisConfig) =
+      either {
+        let cts = new CancellationTokenSource()
+        let! config = mkConfig options cts
+
+        return
+          { new IHttpServer with
+              member self.Start () =
+                try
+                  let listening, server = startWebServerAsync config app
+                  Async.Start server
+                  |> Either.succeed
+                with
+                  | exn ->
+                    exn.Message
+                    |> SocketError
+                    |> Either.fail
+
+              member self.Dispose () =
+                try
+                  cts.Cancel ()
+                  cts.Dispose ()
+                with
+                  | _ -> () }
+      }
