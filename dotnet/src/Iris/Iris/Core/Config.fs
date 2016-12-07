@@ -59,7 +59,7 @@ module MachineConfig =
 
   let defaultPath =
     let dir =
-      Assembly.GetExecutingAssembly().GetName().CodeBase
+      Assembly.GetExecutingAssembly().Location
       |> Path.GetDirectoryName
     dir </> MACHINECONFIG_DEFAULT_PATH </> MACHINECONFIG_NAME + ASSET_EXTENSION
 
