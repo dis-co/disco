@@ -20,7 +20,7 @@ open Iris.Core
 module Http =
 
   [<Literal>]
-  let private tag = "AssetServer"
+  let private tag = "HttpServer"
 
   [<Literal>]
   let private defaultIP = "127.0.0.1"

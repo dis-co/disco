@@ -48,7 +48,7 @@
    "Iris/Service/Persistence.fs"
    "Iris/Service/Utilities.fs"
    "Iris/Service/RaftServer.fs"
-   "Iris/Service/AssetServer.fs"
+   "Iris/Service/HttpServer.fs"
    "Iris/Service/WebSocket.fs"
    "Iris/Service/IrisService.fs"
    "Iris/Service/CommandLine.fs"
