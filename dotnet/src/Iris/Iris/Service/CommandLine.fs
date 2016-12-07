@@ -5,7 +5,6 @@ module CommandLine =
 
   // ** Imports
   open Argu
-  open System
   open Iris.Core
   open Iris.Raft
   open Iris.Service.Persistence
@@ -318,6 +317,11 @@ module CommandLine =
   // |_____\___/ \___/| .__/ s
   //                  |_|
 
+  let registerExitHandlers (context: IIrisServer) =
+    Console.CancelKeyPress.Add (fun _ -> dispose context)
+    System.AppDomain.CurrentDomain.ProcessExit.Add (fun _ -> dispose context)
+    System.AppDomain.CurrentDomain.DomainUnload.Add (fun _ -> dispose context)
+
   let interactiveLoop (context: IIrisServer) : unit =
     printfn "Welcome to the Raft REPL. Type help to see all commands."
     let kont = ref true
@@ -393,15 +397,22 @@ module CommandLine =
     else
       either {
         let! machine = MachineConfig.load None
-        use! server = IrisService.create machine
+        let! server = IrisService.create machine
         use obs = Logger.subscribe Logger.stdout
+
+        registerExitHandlers server
 
         do! server.Load projFile
 
-        if interactive then
-          return interactiveLoop server
-        else
-          return silentLoop ()
+        let result =
+          if interactive then
+            interactiveLoop server
+          else
+            silentLoop ()
+
+        dispose server
+
+        return result
       }
 
   // ** createProject
