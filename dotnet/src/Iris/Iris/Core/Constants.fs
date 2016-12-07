@@ -37,18 +37,6 @@ module Constants =
   // |_____|_| |_|\_/      \_/ \__,_|_|  |___/
 
   [<Literal>]
-  let IRIS_WORKSPACE = "IRIS_WORKSPACE"
-
-  [<Literal>]
-  let IRIS_VERBOSE = "IRIS_VERBOSE"
-
-  [<Literal>]
-  let IRIS_LOGGING_OFFSET = "IRIS_LOGGING_OFFSET"
-
-  [<Literal>]
-  let IRIS_NODE_ID = "IRIS_NODE_ID"
-
-  [<Literal>]
   let WEB_WORKER_SCRIPT = "lib/worker.js"
 
   [<Literal>]

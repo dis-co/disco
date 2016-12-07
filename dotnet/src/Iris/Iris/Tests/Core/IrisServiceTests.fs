@@ -30,13 +30,11 @@ module IrisServiceTests =
       either {
         let signal = ref 0
 
-        let nid = mkUuid()
-        let node = Node.create (Id nid)
-
-        setNodeId nid
+        let machine = MachineConfig.create ()
+        let node = Node.create machine.MachineId
 
         let cfg =
-          Config.create "leader"
+          Config.create "leader" machine
           |> Config.setNodes [| node |]
           |> Config.setLogLevel (LogLevel.Debug)
 
@@ -48,7 +46,7 @@ module IrisServiceTests =
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
         let! (commit, project) =
-          { Project.create name with
+          { Project.create name machine with
               Path = path
               Author = Some(author1)
               Config = cfg }
@@ -60,7 +58,7 @@ module IrisServiceTests =
           Project.filePath project
           |> File.ReadAllText
 
-        use! service = IrisService.create ()
+        use! service = IrisService.create machine
         use oobs =
           (fun ev ->
             match ev with

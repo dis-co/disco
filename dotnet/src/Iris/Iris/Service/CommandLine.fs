@@ -349,6 +349,14 @@ module CommandLine =
         proc kontinue
     proc kont
 
+  // ** ensureMachineConfig
+
+  let ensureMachineConfig () =
+    if not (File.Exists MachineConfig.defaultPath) then
+      MachineConfig.create ()
+      |> MachineConfig.save None
+      |> Error.orExit id
+
   // ** buildNode
 
   //  _   _           _
@@ -374,6 +382,8 @@ module CommandLine =
   // |____/ \__\__,_|_|   \__|
 
   let startService (web: bool) (interactive: bool) (projectdir: FilePath) : Either<IrisError, unit> =
+    ensureMachineConfig ()
+
     let projFile = projectdir </> PROJECT_FILENAME + ASSET_EXTENSION
 
     if File.Exists projFile |> not then
@@ -382,7 +392,8 @@ module CommandLine =
       |> Either.fail
     else
       either {
-        use! server = IrisService.create ()
+        let! machine = MachineConfig.load None
+        use! server = IrisService.create machine
         use obs = Logger.subscribe Logger.stdout
 
         do! server.Load projFile
@@ -412,8 +423,8 @@ module CommandLine =
   /// - node: self Node (built from Node Id env var)
   ///
   /// Returns: IrisProject
-  let buildProject (name: string) (path: FilePath) (raftDir: FilePath) (node: RaftNode) =
-    Project.create name
+  let buildProject (machine: IrisMachine) (name: string) (path: FilePath) (raftDir: FilePath) (node: RaftNode) =
+    Project.create name machine
     |> Project.updatePath path
     |> Project.updateDataDir raftDir
     |> Project.addMember node
@@ -446,6 +457,10 @@ module CommandLine =
   ///
   /// Returns: unit
   let createProject (parsed: ParseResults<CLIArguments>) = either {
+      ensureMachineConfig ()
+
+      let! machine = MachineConfig.load None
+
       let me = User.Admin
       let baseDir = parsed.GetResult <@ Dir @>
       let name = parsed.GetResult <@ Name @>
@@ -467,10 +482,8 @@ module CommandLine =
       do! mkDir dir
       do! mkDir raftDir
 
-      let! id = Config.getNodeId ()
-
-      let node = buildNode parsed id
-      let project = buildProject dir name raftDir node
+      let node = buildNode parsed machine.MachineId
+      let project = buildProject machine dir name raftDir node
 
       do! initializeRaft me project
     }
@@ -495,7 +508,8 @@ module CommandLine =
       let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
       let raftDir = datadir </> RAFT_DIRECTORY
 
-      let! project = Project.load path
+      let! machine = MachineConfig.load None
+      let! project = Project.load path machine
 
       do! match Directory.Exists raftDir with
           | true  -> rmDir raftDir

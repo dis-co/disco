@@ -86,37 +86,37 @@ module Raft =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Load           of config:IrisConfig   * chan:ReplyChan
+    | Load           of chan:ReplyChan * config:IrisConfig
     | Unload         of chan:ReplyChan
-    | Join           of ip:IpAddress        * port:uint16 * chan:ReplyChan
+    | Join           of chan:ReplyChan * ip:IpAddress * port:uint16
     | Leave          of chan:ReplyChan
     | Get            of chan:ReplyChan
     | Status         of chan:ReplyChan
     | Periodic
     | ForceElection
-    | AddCmd         of sm:StateMachine     * chan:ReplyChan
-    | Request        of req:RaftRequest     * chan:ReplyChan
-    | Response       of resp:RaftResponse   * chan:ReplyChan
-    | AddNode        of node:RaftNode       * chan:ReplyChan
-    | RmNode         of id:Id               * chan:ReplyChan
-    | IsCommitted    of entry:EntryResponse * chan:ReplyChan
+    | AddCmd         of chan:ReplyChan * sm:StateMachine
+    | Request        of chan:ReplyChan * req:RaftRequest
+    | Response       of chan:ReplyChan * resp:RaftResponse
+    | AddNode        of chan:ReplyChan * node:RaftNode
+    | RmNode         of chan:ReplyChan * id:Id
+    | IsCommitted    of chan:ReplyChan * entry:EntryResponse
 
     override self.ToString() =
       match self with
-      | Load       (config,_)    -> sprintf "Load: %A" config
+      | Load       (_,config)    -> sprintf "Load: %A" config
       | Unload             _     -> sprintf "Unload"
-      | Join       (ip,port,_)   -> sprintf "Join: %s %d" (string ip) port
+      | Join       (_,ip,port)   -> sprintf "Join: %s %d" (string ip) port
       | Leave               _    -> "Leave"
       | Get                 _    -> "Get"
       | Status              _    -> "Status"
       | Periodic                 -> "Periodic"
       | ForceElection            -> "ForceElection"
-      | AddCmd         (sm,_)    -> sprintf "AddCmd: %A" sm
-      | Request        (req,_)   -> sprintf "Request: %A" req
-      | Response       (resp,_)  -> sprintf "Response: %A" resp
-      | AddNode        (node,_)  -> sprintf "AddNode: %A" node
-      | RmNode         (id,_)    -> sprintf "RmNode: %A" id
-      | IsCommitted    (entry,_) -> sprintf "IsCommitted: %A" entry
+      | AddCmd         (_,sm)    -> sprintf "AddCmd: %A" sm
+      | Request        (_,req)   -> sprintf "Request: %A" req
+      | Response       (_,resp)  -> sprintf "Response: %A" resp
+      | AddNode        (_,node)  -> sprintf "AddNode: %A" node
+      | RmNode         (_,id)    -> sprintf "RmNode: %A" id
+      | IsCommitted    (_,entry) -> sprintf "IsCommitted: %A" entry
 
   // ** Subscriptions
 
@@ -247,7 +247,7 @@ module Raft =
 
     // wait for the entry to be committed by everybody
     while !run && !iterations < timeout do
-      let response = arbiter.PostAndReply(fun chan -> Msg.IsCommitted(appended, chan))
+      let response = arbiter.PostAndReply(fun chan -> Msg.IsCommitted(chan,appended))
 
       match response with
       | Right (Reply.IsCommitted result) ->
@@ -277,7 +277,7 @@ module Raft =
     let handle request =
       either {
         let! message = Binary.decode<IrisError,RaftRequest> request
-        let! reply = arbiter.PostAndReply(fun chan -> Msg.Request(message,chan))
+        let! reply = arbiter.PostAndReply(fun chan -> Msg.Request(chan, message))
 
         match reply with
         | Reply.Response response ->       // the base case it, the response is ready
@@ -1204,9 +1204,9 @@ module Raft =
   // ** handleLoad
 
   let private handleLoad (state: RaftServerState)
+                         (chan: ReplyChan)
                          (config: IrisConfig)
                          (subscriptions: Subscriptions)
-                         (chan: ReplyChan)
                          (agent: StateArbiter) =
     match state with
     | Loaded data -> dispose data
@@ -1259,7 +1259,7 @@ module Raft =
 
   // ** handleJoin
 
-  let private handleJoin (state: RaftServerState) (ip: IpAddress) (port: UInt16) (chan: ReplyChan) =
+  let private handleJoin (state: RaftServerState) (chan: ReplyChan) (ip: IpAddress) (port: UInt16) =
     match state with
     | Idle ->
       "No config loaded"
@@ -1338,7 +1338,7 @@ module Raft =
 
   // ** handleAddCmd
 
-  let private handleAddCmd (state: RaftServerState) (cmd: StateMachine) (chan: ReplyChan) =
+  let private handleAddCmd (state: RaftServerState) (chan: ReplyChan) (cmd: StateMachine) =
     match state with
     | Idle ->
       "No config loaded"
@@ -1365,7 +1365,7 @@ module Raft =
 
   // ** handleResponse
 
-  let private handleResponse (state: RaftServerState) (response: RaftResponse) (chan: ReplyChan) =
+  let private handleResponse (state: RaftServerState) (chan: ReplyChan) (response: RaftResponse) =
     match state with
     | Idle ->
       "No config loaded"
@@ -1386,7 +1386,7 @@ module Raft =
 
   // ** handleRequest
 
-  let private handleRequest (state: RaftServerState) (req: RaftRequest) (chan: ReplyChan) =
+  let private handleRequest (state: RaftServerState) (chan: ReplyChan) (req: RaftRequest) =
     match state with
     | Idle ->
       "No config loaded"
@@ -1436,7 +1436,7 @@ module Raft =
 
   // ** handleAddNode
 
-  let private handleAddNode (state: RaftServerState) (node: RaftNode) (chan: ReplyChan) =
+  let private handleAddNode (state: RaftServerState) (chan: ReplyChan) (node: RaftNode) =
     match state with
     | Idle ->
       "No config loaded"
@@ -1463,7 +1463,7 @@ module Raft =
 
   // ** handleRemoveNode
 
-  let private handleRemoveNode (state: RaftServerState) (id: Id) (chan: ReplyChan) =
+  let private handleRemoveNode (state: RaftServerState) (chan: ReplyChan) (id: Id) =
     match state with
     | Idle ->
       "No config loaded"
@@ -1490,7 +1490,7 @@ module Raft =
 
   // ** handleIsCommitted
 
-  let private handleIsCommitted (state: RaftServerState) (entry: EntryResponse) (chan: ReplyChan) =
+  let private handleIsCommitted (state: RaftServerState) (chan: ReplyChan) (entry: EntryResponse) =
     match state with
     | Idle ->
       "No config loaded"
@@ -1520,27 +1520,27 @@ module Raft =
 
   // ** loop
 
-  let private loop (subscriptions: Subscriptions) (inbox: StateArbiter) =
+  let private loop (subs: Subscriptions) (inbox: StateArbiter) =
     let rec act state =
       async {
         let! cmd = inbox.Receive()
 
         let newstate =
           match cmd with
-          | Msg.Load (config, chan)    -> handleLoad          state config subscriptions chan inbox
-          | Msg.Unload chan            -> handleUnload        state                      chan
-          | Msg.Status chan            -> handleStatus        state                      chan
-          | Msg.Join (ip, port, chan)  -> handleJoin          state ip port              chan
-          | Msg.Leave chan             -> handleLeave         state                      chan
+          | Msg.Load (chan,config)     -> handleLoad          state chan config subs inbox
+          | Msg.Unload chan            -> handleUnload        state chan
+          | Msg.Status chan            -> handleStatus        state chan
+          | Msg.Join (chan, ip, port)  -> handleJoin          state chan ip port
+          | Msg.Leave chan             -> handleLeave         state chan
           | Msg.Periodic               -> handlePeriodic      state
           | Msg.ForceElection          -> handleForceElection state
-          | Msg.AddCmd (cmd, chan)     -> handleAddCmd        state cmd                  chan
-          | Msg.Request (req, chan)    -> handleRequest       state req                  chan
-          | Msg.Response (resp, chan)  -> handleResponse      state resp                 chan
-          | Msg.Get chan               -> handleGet           state                      chan
-          | Msg.AddNode (node, chan)   -> handleAddNode       state node                 chan
-          | Msg.RmNode (id, chan)      -> handleRemoveNode    state id                   chan
-          | Msg.IsCommitted (ety,chan) -> handleIsCommitted   state ety                  chan
+          | Msg.AddCmd (chan, cmd)     -> handleAddCmd        state chan cmd
+          | Msg.Request (chan, req)    -> handleRequest       state chan req
+          | Msg.Response (chan, resp)  -> handleResponse      state chan resp
+          | Msg.Get chan               -> handleGet           state chan
+          | Msg.AddNode (chan, node)   -> handleAddNode       state chan node
+          | Msg.RmNode (chan, id)      -> handleRemoveNode    state chan id
+          | Msg.IsCommitted (chan,ety) -> handleIsCommitted   state chan ety
 
         do! act newstate
       }
@@ -1565,7 +1565,7 @@ module Raft =
   let private addCmd (agent: StateArbiter)
                      (cmd: StateMachine) :
                      Either<IrisError, EntryResponse> =
-    match agent.PostAndReply(fun chan -> Msg.AddCmd(cmd,chan)) with
+    match agent.PostAndReply(fun chan -> Msg.AddCmd(chan,cmd)) with
     | Right (Reply.Entry entry) ->
       match waitForCommit agent entry with
       | Right true -> Either.succeed entry
@@ -1603,7 +1603,7 @@ module Raft =
   // ** addNode
 
   let private addNode (agent: StateArbiter) (node: RaftNode) =
-    match agent.PostAndReply(fun chan -> Msg.AddNode(node,chan)) with
+    match agent.PostAndReply(fun chan -> Msg.AddNode(chan,node)) with
     | Right (Reply.Entry entry) -> Right entry
     | Right other ->
       sprintf "Unexpected reply by agent: %A" other
@@ -1615,7 +1615,7 @@ module Raft =
   // ** rmNode
 
   let private rmNode (agent: StateArbiter) (id: Id) =
-    match agent.PostAndReply(fun chan -> Msg.RmNode(id,chan)) with
+    match agent.PostAndReply(fun chan -> Msg.RmNode(chan,id)) with
     | Right (Reply.Entry entry) -> Right entry
     | Right other ->
       sprintf "Unexpected reply by agent: %A" other
@@ -1675,7 +1675,7 @@ module Raft =
         return
           { new IRaftServer with
               member self.Load (config: IrisConfig) =
-                match agent.PostAndReply(fun chan -> Msg.Load(config,chan)) with
+                match agent.PostAndReply(fun chan -> Msg.Load(chan,config)) with
                 | Right Reply.Ok -> Right ()
                 | Right other ->
                   sprintf "Unexpected reply type from agent: %A" other
@@ -1729,7 +1729,7 @@ module Raft =
                 |> Either.succeed
 
               member self.JoinCluster ip port =
-                withOk (fun chan -> Msg.Join(ip, port, chan)) agent
+                withOk (fun chan -> Msg.Join(chan,ip,port)) agent
 
               member self.LeaveCluster () =
                 withOk (fun chan -> Msg.Leave chan) agent

@@ -22,17 +22,13 @@ open Iris.Core
 type FileName = string
 
 
-type AssetServer(?config: IrisConfig) as self =
+type AssetServer(options: IrisConfig) as self =
   let [<Literal>] tag = "AssetServer"
 
   let [<Literal>] defaultIP = "127.0.0.1"
   let [<Literal>] defaultPort = "7000"
 
   let cts = new CancellationTokenSource()
-
-  let nodeid =
-    Config.getNodeId()
-    |> Error.orExit id
 
   let noCache =
     setHeader "Cache-Control" "no-cache, no-store, must-revalidate"
@@ -87,21 +83,16 @@ type AssetServer(?config: IrisConfig) as self =
     either {
       try
         let! addr, port =
-          match config with
-          | Some config ->
-            either {
-              let! nid = Config.getNodeId ()
-              let! node = Config.findNode config nid
-              return string node.IpAddr, string node.WebPort
-            }
-          | None ->
-            either { return defaultIP, defaultPort }
+          either {
+            let! node = Config.selfNode options
+            return string node.IpAddr, string node.WebPort
+          }
 
         let addr = IPAddress.Parse addr
         let port = Sockets.Port.Parse port
 
         sprintf "Suave Web Server ready to start on: %A:%A" addr port
-        |> Logger.info nodeid tag
+        |> Logger.info options.MachineConfig.MachineId tag
 
         return
           { defaultConfig with
@@ -121,14 +112,14 @@ type AssetServer(?config: IrisConfig) as self =
 
   let thread = new Thread(new ThreadStart(fun _ ->
     try
-      Logger.info nodeid tag "Starting HTTP server"
+      Logger.info options.MachineConfig.MachineId tag "Starting HTTP server"
       startWebServer appConfig app
     with
       | :? System.OperationCanceledException ->
-        Logger.debug nodeid tag  "HTTP server shutting down"
+        Logger.debug options.MachineConfig.MachineId tag  "HTTP server shutting down"
       | ex ->
         sprintf "Asset server Exception: %s" ex.Message
-        |> Logger.err nodeid tag ))
+        |> Logger.err options.MachineConfig.MachineId tag ))
 
   member this.Start() : Either<IrisError,unit> =
     try
@@ -151,4 +142,4 @@ type AssetServer(?config: IrisConfig) as self =
       match line.level with
       | Suave.Logging.LogLevel.Verbose -> ()
       | _ ->
-        Logger.debug nodeid tag line.message
+        Logger.debug options.MachineConfig.MachineId tag line.message

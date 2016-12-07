@@ -272,10 +272,11 @@ module SerializationTests =
 
   let test_save_restore_raft_value_correctly =
     testCase "save/restore raft value correctly" <| fun _ ->
+      let machine = MachineConfig.create ()
+
       let self =
-        Config.getNodeId ()
-        |> Either.map Node.create
-        |> Either.get
+        machine.MachineId
+        |> Node.create
 
       let node1 =
         { Node.create (Id.Create()) with
@@ -301,7 +302,7 @@ module SerializationTests =
         |> Log.fromEntries
 
       let config =
-        Config.create "default"
+        Config.create "default" machine
         |> Config.addNode self
         |> Config.addNode node1
         |> Config.addNode node2

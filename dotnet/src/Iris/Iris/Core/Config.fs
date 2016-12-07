@@ -9,11 +9,12 @@ open Iris.Raft
 open SharpYaml
 open SharpYaml.Serialization
 
-// * IMachineConfig
+// * IrisMachine
 
 type IrisMachine =
   { MachineId : Id
-    HostName  : string }
+    HostName  : string
+    WorkSpace : FilePath }
 
   override self.ToString() =
     sprintf "MachineId: %s" (string self.MachineId)
@@ -27,10 +28,12 @@ module MachineConfig =
 
   type MachineConfigYaml () =
     [<DefaultValue>] val mutable MachineId : string
+    [<DefaultValue>] val mutable WorkSpace : string
 
-    static member Create (id: Id) =
+    static member Create (cfg: IrisMachine) =
       let yml = new MachineConfigYaml()
-      yml.MachineId <- string id
+      yml.MachineId <- string cfg.MachineId
+      yml.WorkSpace <- cfg.WorkSpace
       yml
 
   // ** parse (private)
@@ -38,7 +41,8 @@ module MachineConfig =
   let private parse (yml: MachineConfigYaml) : Either<IrisError,IrisMachine> =
     let hostname = Network.getHostName ()
     { MachineId = Id yml.MachineId
-      HostName  = hostname }
+      HostName  = hostname
+      WorkSpace = yml.WorkSpace }
     |> Either.succeed
 
   // ** ensureExists (private)
@@ -51,12 +55,28 @@ module MachineConfig =
     with
       | _ -> ()
 
+  // ** defaultPath
+
+  let defaultPath =
+    let dir =
+      Assembly.GetExecutingAssembly().GetName().CodeBase
+      |> Path.GetDirectoryName
+    dir </> MACHINECONFIG_DEFAULT_PATH </> MACHINECONFIG_NAME + ASSET_EXTENSION
+
   // ** create
 
   let create () : IrisMachine =
     let hostname = Network.getHostName()
+    let workspace =
+      if Platform.isUnix then
+        let home = Environment.GetEnvironmentVariable "HOME"
+        home </> "iris"
+      else
+        @"C:\Iris"
+
     { MachineId = Id.Create()
-      HostName  = hostname }
+      HostName  = hostname
+      WorkSpace = workspace }
 
   // ** save
 
@@ -67,14 +87,10 @@ module MachineConfig =
       let location =
         match path with
         | Some location -> location
-        | None ->
-          let dir =
-            Assembly.GetExecutingAssembly().GetName().CodeBase
-            |> Path.GetDirectoryName
-          dir </> MACHINECONFIG_DEFAULT_PATH </> MACHINECONFIG_NAME + ASSET_EXTENSION
+        | None -> defaultPath
 
       let payload=
-        cfg.MachineId
+        cfg
         |> MachineConfigYaml.Create
         |> serializer.Serialize
 
@@ -98,11 +114,7 @@ module MachineConfig =
       let location =
         match path with
         | Some location -> location
-        | None ->
-          let dir =
-            Assembly.GetExecutingAssembly().GetName().CodeBase
-            |> Path.GetDirectoryName
-          dir </> MACHINECONFIG_DEFAULT_PATH </> MACHINECONFIG_NAME + ASSET_EXTENSION
+        | None -> defaultPath
 
       let raw = File.ReadAllText location
       serializer.Deserialize<MachineConfigYaml>(raw)
@@ -295,7 +307,8 @@ type Cluster =
 //                                        |___/
 
 type IrisConfig =
-  { AudioConfig    : AudioConfig
+  { MachineConfig  : IrisMachine
+    AudioConfig    : AudioConfig
     VvvvConfig     : VvvvConfig
     RaftConfig     : RaftConfig
     TimingConfig   : TimingConfig
@@ -1182,7 +1195,7 @@ module Config =
 
   // ** fromFile
 
-  let fromFile (file: ConfigFile) : Either<IrisError, IrisConfig> =
+  let fromFile (file: ConfigFile) (machine: IrisMachine) : Either<IrisError, IrisConfig> =
     either {
       let! raftcfg   = parseRaft      file
       let! timing    = parseTiming    file
@@ -1194,7 +1207,8 @@ module Config =
       let! tasks     = parseTasks     file
       let! cluster   = parseCluster   file
 
-      return { VvvvConfig    = vvvv
+      return { MachineConfig = machine
+               VvvvConfig    = vvvv
                AudioConfig   = audio
                RaftConfig    = raftcfg
                TimingConfig  = timing
@@ -1222,8 +1236,9 @@ module Config =
 
   // ** create
 
-  let create (name: string) =
-    { VvvvConfig     = VvvvConfig.Default
+  let create (name: string) (machine: IrisMachine) =
+    { MachineConfig  = machine
+    ; VvvvConfig     = VvvvConfig.Default
     ; AudioConfig    = AudioConfig.Default
     ; RaftConfig     = RaftConfig.Default
     ; TimingConfig   = TimingConfig.Default
@@ -1307,20 +1322,10 @@ module Config =
           { config.ClusterConfig with
               Nodes = List.ofArray nodes } }
 
-  // ** getNodeId
-
-  let getNodeId () =
-    let id = Environment.GetEnvironmentVariable IRIS_NODE_ID
-    if isNull id then
-      MissingNodeId |> Either.fail
-    else
-      Id id |> Either.succeed
-
   // ** selfNode
 
   let selfNode (options: IrisConfig) =
-    getNodeId ()
-    |> Either.bind (findNode options)
+    findNode options options.MachineConfig.MachineId
 
   // ** addNode
 

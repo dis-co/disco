@@ -38,32 +38,30 @@ module GitTests =
       new Repository(path)
 
   let mkEnvironment port =
-    let uuid = mkUuid ()
-    setNodeId uuid
+    let machine = MachineConfig.create ()
 
     let user = User.Admin
 
     let tmpdir = mkTmpDir ()
 
     let node =
-      Id uuid
+      machine.MachineId
       |> Node.create
       |> Node.setGitPort port
 
     let config =
-      "cool project mate"
-      |> Config.create
+      Config.create "Test Project" machine
       |> Config.setNodes [| node |]
       |> Config.setLogLevel Debug
 
     let commit, project =
-      Project.create "cool-project"
+      Project.create "Test Project" machine
       |> Project.updatePath tmpdir.FullName
       |> Project.updateConfig config
       |> Project.save user.Signature "Project Initialized"
       |> Either.get
 
-    uuid, tmpdir, project, node, project.Path
+    machine, tmpdir, project, node, project.Path
 
   //  ____                      _
   // |  _ \ ___ _ __ ___   ___ | |_ ___  ___

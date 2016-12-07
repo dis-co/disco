@@ -26,40 +26,32 @@ module RaftIntegrationTests =
   let test_validate_correct_req_socket_tracking =
     testCase "validate correct req socket tracking" <| fun _ ->
       either {
-        let nid1 = mkUuid()
-        let nid2 = mkUuid()
+        let machine1 = MachineConfig.create ()
+        let machine2 = MachineConfig.create ()
 
         let node1 =
-          Id nid1
+          machine1.MachineId
           |> Node.create
           |> Node.setPort 8000us
 
         let node2 =
-          Id nid2
+          machine2.MachineId
           |> Node.create
           |> Node.setPort 8001us
 
-        setNodeId nid1
-
         let leadercfg =
-          Config.create "leader"
+          Config.create "leader" machine1
           |> Config.setNodes [| node1; node2 |]
           |> Config.setLogLevel (LogLevel.Debug)
-
-        setNodeId nid2
 
         let followercfg =
-          Config.create "follower"
+          Config.create "follower" machine2
           |> Config.setNodes [| node1; node2 |]
           |> Config.setLogLevel (LogLevel.Debug)
-
-        setNodeId nid1
 
         let! leader = RaftServer.create ()
         do! leader.Load(leadercfg)
         do! expectE "Leader should have one connection" 1 count leader.Connections
-
-        setNodeId nid2
 
         let! follower = RaftServer.create ()
         do! follower.Load(followercfg)
@@ -77,16 +69,15 @@ module RaftIntegrationTests =
     testCase "validate raft service bind correct port" <| fun _ ->
       either {
         let port = 12000us
-
-        let! nodeid = Config.getNodeId()
+        let machine = MachineConfig.create ()
 
         let node =
-          nodeid
+          machine.MachineId
           |> Node.create
           |> Node.setPort port
 
         let leadercfg =
-          Config.create "leader"
+          Config.create "leader" machine
           |> Config.addNode node
 
           // |> Config.setLogLevel (LogLevel.Debug)
@@ -118,42 +109,34 @@ module RaftIntegrationTests =
               state := Some Leader
           | _ -> ()
 
-        let nid1 = mkUuid()
-        let nid2 = mkUuid()
+        let machine1 = MachineConfig.create ()
+        let machine2 = MachineConfig.create ()
 
         let node1 =
-          Id nid1
+          machine1.MachineId
           |> Node.create
           |> Node.setPort 8000us
 
         let node2 =
-          Id nid2
+          machine2.MachineId
           |> Node.create
           |> Node.setPort 8001us
 
-        setNodeId nid1
-
         let leadercfg =
-          Config.create "leader"
+          Config.create "leader" machine1
           |> Config.setNodes [| node1; node2 |]
           |> Config.setLogLevel (LogLevel.Debug)
-
-        setNodeId nid2
 
         let followercfg =
-          Config.create "follower"
+          Config.create "follower" machine2
           |> Config.setNodes [| node1; node2 |]
           |> Config.setLogLevel (LogLevel.Debug)
-
-        setNodeId nid1
 
         use! leader = RaftServer.create ()
 
         use obs1 = leader.Subscribe setState
 
         do! leader.Load leadercfg
-
-        setNodeId nid2
 
         use! follower = RaftServer.create ()
 
