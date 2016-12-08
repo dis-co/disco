@@ -36,6 +36,7 @@ module Main =
       | User,  Some dir -> printfn "User: %s" dir |> Either.succeed
       | Setup, Some dir -> setup (Some dir)
       | Setup,        _ -> setup None
+      | Help,         _ -> help ()
       |  _ ->
         sprintf "Unexpected command line failure: %A" args
         |> ParseError

@@ -10,6 +10,7 @@ module CommandLine =
   open Iris.Service.Persistence
   open Iris.Service.Iris
   open Iris.Service.Raft
+  open FSharpx.Functional
   open System
   open System.IO
   open System.Linq
@@ -25,12 +26,108 @@ module CommandLine =
   //              |___/
 
   type SubCommand =
+    | Help
     | Setup
     | Create
     | Start
     | Reset
     | Dump
     | User
+
+    static member Doc
+      with get () =
+        @"
+ ____                                        _        _   _
+|  _ \  ___   ___ _   _ _ __ ___   ___ _ __ | |_ __ _| |_(_) ___  _ __
+| | | |/ _ \ / __| | | | '_ ` _ \ / _ \ '_ \| __/ _` | __| |/ _ \| '_ \
+| |_| | (_) | (__| |_| | | | | | |  __/ | | | || (_| | |_| | (_) | | | |
+|____/ \___/ \___|\__,_|_| |_| |_|\___|_| |_|\__\__,_|\__|_|\___/|_| |_|
+
+----------------------------------------------------------------------
+| create                                                             |
+----------------------------------------------------------------------
+
+  Create a new project in the directory specified by
+
+  --dir=/path/to/parent/dir
+
+  with Project Name
+
+  --name=mycool-project
+
+  You must also specify all ports with their respective flags:
+
+  --raft=<uint16> : Port of underlying Raft service
+  --git=<uint16>  : Port of `git daemon` service
+  --ws=<uint16>   : Port of WebSocket service
+  --web=<uint16>  : Port of Http service
+
+  Additionally, you also need to specify the address which all
+  services should bind to, using
+
+  --bind=192.168.2.x : Address to bind services to
+
+  Beware that service discovery will not work on loopback interfaces!
+
+----------------------------------------------------------------------
+| setup                                                              |
+----------------------------------------------------------------------
+
+  Create a new Machine-level configuration file. This sets the current
+  machine's global identifier and also specifies the workspace
+  directory used by Iris to scan for projects.
+
+  You can specify the parent directory to create configuration in by
+  using the dir flag:
+
+  --dir=/path/to/parent/dir : Base directory for the new config file
+
+----------------------------------------------------------------------
+| start                                                              |
+----------------------------------------------------------------------
+
+  Start the Iris daemon with the project specified. You must specify
+  the project to start with using
+
+  --dir=/path/to/myproject : Base directory containing `project.yml`
+
+  Additionally, you can use the following two flags to enter
+  interactive mode, and/or prevent the http server from being started.
+
+  -i        : Enter interactive mode
+  --no-http : Disable the Http server
+
+----------------------------------------------------------------------
+| reset                                                              |
+----------------------------------------------------------------------
+
+  Reset a project. This is an internal command and might disappear in
+  the future.
+
+----------------------------------------------------------------------
+| dump                                                               |
+----------------------------------------------------------------------
+
+  Dump the current state of the project. Requires you to specify the
+  project directory
+
+  --dir=/path/to/project : Base path containing `project.yml`
+
+----------------------------------------------------------------------
+| user                                                               |
+----------------------------------------------------------------------
+
+  Add a new user to the project. Requires you to specify the project
+  directory
+
+  --dir=/path/to/project : Base path containing `project.yml`
+
+----------------------------------------------------------------------
+| help                                                               |
+----------------------------------------------------------------------
+
+  Show this help message.
+"
 
   type CLIArguments =
     | [<Mandatory;MainCommand;CliPosition(CliPosition.First)>] Cmd of SubCommand
@@ -57,8 +154,8 @@ module CommandLine =
           | Web     _   -> "Http server port."
           | Git     _   -> "Git server port."
           | Ws      _   -> "WebSocket port."
-          | Raft    _   -> "Raft server port (internal)."
-          | Cmd     _   -> "Either one of setup, create, start, reset, user or dump"
+          | Raft    _   -> "Raft server port."
+          | Cmd     _   -> "Either one of setup, create, start, reset, user or dump."
 
   let parser = ArgumentParser.Create<CLIArguments>()
 
@@ -70,14 +167,9 @@ module CommandLine =
         Error.exitWith MissingStartupDir
       result
 
-    let valid =
-      match opts.GetResult <@ Cmd @> with
-      | Create -> true
-      | Setup  -> true
-      | Start  -> ensureDir true
-      | Reset  -> ensureDir true
-      | Dump   -> ensureDir true
-      | User   -> ensureDir true
+    match opts.GetResult <@ Cmd @> with
+    | Start | Reset | Dump | User -> ensureDir ()
+    | _ -> ()
 
     if opts.GetResult <@ Cmd @> = Create then
       let name = opts.Contains <@ Name @>
@@ -555,6 +647,7 @@ module CommandLine =
   let dumpDataDir (datadir: FilePath) =
     implement "dumpDataDir"
 
+  // ** setup
 
   let setup (location: FilePath option) =
     let create (path: FilePath) =
@@ -595,3 +688,20 @@ module CommandLine =
       |> create
     | None ->
       create MachineConfig.defaultPath
+
+  // ** help
+
+  [<Literal>]
+  let header = @"   *   .  *.  .
+ *  ___ ____.*___ ____  .     * .
+* .|_ _|  _ \|_ _/ ___|*    .
+  * | || |_) || |\___ \  .*  *
+    | ||  _ < | | ___) |     .
+.* |___|_| \_\___|____/. Automation Framework Daemon © Nsynk GmbH, 2016
+*        .*           .* .
+ "
+
+  let help () =
+    parser.PrintUsage(header, "iris.exe", true)
+    |> flip (printfn "%s\n%s") SubCommand.Doc
+    |> Either.succeed
