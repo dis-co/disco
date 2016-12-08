@@ -612,23 +612,22 @@ module Process =
 [<RequireQualifiedAccess>]
 module Crypto =
 
-  let sha1sum (buf: byte array) =
-    let sha256 = new SHA1Managed()
-    let hash = sha256.ComputeHash(buf)
+  let private toString (buf: byte array) =
     let hashedString = new StringBuilder ()
-    for byte in hash do
+    for byte in buf do
       hashedString.AppendFormat("{0:x2}", byte)
       |> ignore
     hashedString.ToString()
 
+  let sha1sum (buf: byte array) =
+    let sha256 = new SHA1Managed()
+    sha256.ComputeHash(buf)
+    |> toString
+
   let sha256sum (buf: byte array) =
     let sha256 = new SHA256Managed()
-    let hash = sha256.ComputeHash(buf)
-    let hashedString = new StringBuilder ()
-    for byte in hash do
-      hashedString.AppendFormat("{0:x2}", byte)
-      |> ignore
-    hashedString.ToString()
+    sha256.ComputeHash(buf)
+    |> toString
 
   let generateSalt (n: int) =
     let buf : byte array = Array.zeroCreate n
