@@ -8,12 +8,11 @@ open LibGit2Sharp
 open Iris.Core
 open Iris.Raft
 
-let name = "alfonso-test"
-let path = __SOURCE_DIRECTORY__ + "/../../../../iris-sample-project"
-let signature =
+let private name = "iris-sample-project"
+let private signature =
   new Signature("Karsten Gebbert", "karsten@nsynk.de", new DateTimeOffset(DateTime.Now))
 
-let createProject() =
+let create(path: string) =
   let leader = Id "TEST_MACHINE" |> Node.create
   // let followers = List.init 4 (fun _ -> Id.Create() |> Node.create)
   // let nodes = leader::followers
@@ -34,4 +33,5 @@ let createProject() =
     |> Either.get
   ()
 
-createProject()
+Environment.GetEnvironmentVariable "iris-sample-project"
+|> create

@@ -27,7 +27,7 @@ if (process.env.NODE_ENV !== "production") {
 else {
     console.log("Bundling for production...");
     entry = "./src/Main.js";
-    outDir = "../../../bin/Debug/Iris/assets/js";
+    outDir ="../../../assets/frontend/js";
     devtool = "source-map";
     loaders = [];
     plugins = [

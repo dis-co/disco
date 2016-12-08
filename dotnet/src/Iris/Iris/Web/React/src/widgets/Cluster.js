@@ -1,6 +1,6 @@
 import * as React from "react";
 import Panel from 'muicss/lib/react/panel';
-import { showModal } from '../Main';
+import { showModal } from '../App';
 import { removeNode } from "iris";
 import { MODALS } from "../Constants";
 import { map } from "../Util";

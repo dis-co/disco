@@ -34,9 +34,6 @@ NUGET
     LibGit2Sharp.NativeBinaries (1.0.160)
     Microsoft.NETCore.Platforms (1.1) - framework: dnxcore50
     Microsoft.NETCore.Targets (1.1) - framework: dnxcore50
-    Node.js (5.3)
-    Npm.js (2.13.1)
-      Node.js (>= 0.12.7)
     NUnit (3.5)
     PerfUtil (0.1.8)
     Suave (1.1.3)

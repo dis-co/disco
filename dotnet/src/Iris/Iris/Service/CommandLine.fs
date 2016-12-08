@@ -34,21 +34,21 @@ module CommandLine =
     | [<Mandatory;MainCommand;CliPosition(CliPosition.First)>] Cmd of SubCommand
 
     | [<AltCommandLine("-i")>]        Interactive
-    | [<AltCommandLine("--no-http")>] NoHttp
 
+    | [<EqualsAssignment>] Http         of string
     | [<EqualsAssignment>] Bind         of string
     | [<EqualsAssignment>] Raft         of uint16
     | [<EqualsAssignment>] Web          of uint16
     | [<EqualsAssignment>] Git          of uint16
     | [<EqualsAssignment>] Ws           of uint16
-    | Dir          of string
+    | [<EqualsAssignment>] Dir          of string
     | [<EqualsAssignment>] Name         of string
 
     interface IArgParserTemplate with
       member self.Usage =
         match self with
           | Interactive -> "Start daemon in interactive mode"
-          | NoHttp      -> "Do not start http server (default: http will be started)"
+          | Http    _   -> "Base path of http server (if `--http=false` http server won't be started)"
           | Dir     _   -> "Project directory to place the config & database in"
           | Name    _   -> "Project name when using <create>"
           | Bind    _   -> "Specify a valid IP address."
@@ -388,7 +388,7 @@ module CommandLine =
   //  ___) | || (_| | |  | |_
   // |____/ \__\__,_|_|   \__|
 
-  let startService (web: bool) (interactive: bool) (projectdir: FilePath) : Either<IrisError, unit> =
+  let startService (web: string option) (interactive: bool) (projectdir: FilePath) : Either<IrisError, unit> =
     ensureMachineConfig ()
 
     let projFile = Path.GetFullPath(projectdir) </> PROJECT_FILENAME + ASSET_EXTENSION

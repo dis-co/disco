@@ -153,19 +153,17 @@ let runExecAndReturn filepath args workdir =
   |> fun res -> res.Messages |> String.concat "\n"
 
 let runNpm cmd workdir _ =
-  let npm =
+  let npm, cmd =
     match Environment.OSVersion.Platform with
-      | PlatformID.Unix ->  "npm" // use the platform npm/node
-      | _               ->        // use the nuget/paket npm/node
-        __SOURCE_DIRECTORY__ @@  @"\packages\Npm.js\tools\npm.cmd"
+      | PlatformID.Unix ->  "npm", cmd
+      | _ -> "cmd", ("/C " + "npm" + " " + cmd)
   runExec npm cmd workdir false
 
 let runNode cmd workdir _ =
-  let node =
+  let node, cmd =
     match Environment.OSVersion.Platform with
-      | PlatformID.Unix ->  "node" // use the platform npm/node
-      | _               ->         // use the nuget/paket npm/node
-        __SOURCE_DIRECTORY__ @@  @"\packages\Node.js\node.exe"
+      | PlatformID.Unix ->  "npm", cmd
+      | _ -> "cmd", ("/C " + "node" + " " + cmd)
   runExec node cmd workdir false
 
 let runFable fableconfigdir extraArgs _ =
@@ -379,9 +377,32 @@ Target "GenerateSerialization"
 
 let frontendDir = baseDir @@ "Projects" @@ "Frontend"
 
-Target "BuildFrontend" (fun () ->
-  runNpm "install" (baseDir @@ "../..") ()
+Target "BuildDebugFrontend" (fun () ->
+  // Build Service with FrontendDev configuration
+  build (setParams "FrontendDev") (baseDir @@ "Projects/Service/Service.fsproj")
+
+  runNpm "install" __SOURCE_DIRECTORY__ ()
   runFable frontendDir "" ()
+
+  runNpm "install" (baseDir @@ "Iris/Web/React") ()
+  runNpm "run build" (baseDir @@ "Iris/Web/React") ()
+
+  runNpm "install" (baseDir @@ "assets/frontend") ()
+
+  let projectSamplePath =
+    Path.Combine(__SOURCE_DIRECTORY__,"..","..","iris-sample-project")
+    |> Path.GetFullPath
+  if directoryExists projectSamplePath |> not then
+    let script = Path.Combine(__SOURCE_DIRECTORY__,"src","Scripts","CreateProject.fsx")
+    FSIHelper.executeFSI "." script ["iris-sample-project", projectSamplePath] |> ignore
+    printfn "Project sample created at %s" projectSamplePath
+
+  printfn ""
+  printfn "---------------------------------------------------------------------------"
+  printfn "Type `npm run iris` to start the service (`npm run iris-mono` on Linux/OSX)"
+  printfn "Then navigate to `http://localhost:7000` with your browser"
+  printfn "---------------------------------------------------------------------------"
+  printfn ""
 )
 
 //  _____         _
@@ -549,7 +570,7 @@ Target "Release" DoNothing
 ==> "BuildWebTests"
 
 "GenerateSerialization"
-==> "BuildFrontend"
+==> "BuildDebugFrontend"
 
 "GenerateSerialization"
 ==> "BuildReleaseService"
@@ -641,7 +662,7 @@ Target "DockerRunTests" (fun () ->
 
 Target "DebugAll" DoNothing
 
-"BuildFrontend"
+"BuildDebugFrontend"
 ==> "DebugAll"
 
 "BuildDebugService"
