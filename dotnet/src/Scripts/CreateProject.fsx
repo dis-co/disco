@@ -9,7 +9,7 @@ open Iris.Core
 open Iris.Raft
 
 let name = "alfonso-test"
-let path = __SOURCE_DIRECTORY__ + "/../../../../iris_test"
+let path = __SOURCE_DIRECTORY__ + "/../../../../iris-sample-project"
 let signature =
   new Signature("Karsten Gebbert", "karsten@nsynk.de", new DateTimeOffset(DateTime.Now))
 
@@ -27,7 +27,8 @@ let createProject() =
   // let cue = { Cue.Id=Id.Create(); Name="MyCue"; IOBoxes=[|stringBox|] }
 
   let (commit, project) =
-    let p = { Project.create name with Path = path }
+    let m = { MachineConfig.create() with MachineId = Id "TEST_MACHINE" }
+    let p = { Project.create name m with Path = path }
     Project.updateConfig { p.Config with ClusterConfig = cluster } p
     |> Project.save signature "Initial project save."
     |> Either.get
