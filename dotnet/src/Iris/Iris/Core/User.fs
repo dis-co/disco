@@ -20,17 +20,18 @@ open SharpYaml.Serialization
 //   | | (_| | | | | | | |
 //   |_|\__,_|_| |_| |_|_|
 
-type UserYaml(i, u, f, l, e, p, j, c) =
+type UserYaml(i, u, f, l, e, p, s, j, c) =
   let mutable id        = i
   let mutable username  = u
   let mutable firstname = f
   let mutable lastname  = l
   let mutable email     = e
   let mutable password  = p
+  let mutable salt      = s
   let mutable joined    = j
   let mutable created   = c
 
-  new () = new UserYaml(null, null, null, null, null, null, null, null)
+  new () = new UserYaml(null, null, null, null, null, null, null, null, null)
 
   member self.Id
     with get ()  = id
@@ -55,6 +56,10 @@ type UserYaml(i, u, f, l, e, p, j, c) =
   member self.Password
     with get ()  = password
      and set str = password <- str
+
+  member self.Salt
+    with get ()  = salt
+     and set str = salt <- str
 
   member self.Joined
     with get ()  = joined
@@ -81,6 +86,7 @@ type User =
   ; LastName:  Name
   ; Email:     Email
   ; Password:  string
+  ; Salt:      string
 #if FABLE_COMPILER
   ; Joined:    string
   ; Created:   string }
@@ -99,6 +105,7 @@ type User =
     hash <- (hash * 7) + hashCode me.LastName
     hash <- (hash * 7) + hashCode me.Email
     hash <- (hash * 7) + hashCode me.Password
+    hash <- (hash * 7) + hashCode me.Salt
     hash <- (hash * 7) + hashCode (string me.Joined)
     hash <- (hash * 7) + hashCode (string me.Created)
 #else
@@ -108,6 +115,7 @@ type User =
     hash <- (hash * 7) + me.LastName.GetHashCode()
     hash <- (hash * 7) + me.Email.GetHashCode()
     hash <- (hash * 7) + me.Password.GetHashCode()
+    hash <- (hash * 7) + me.Salt.GetHashCode()
     hash <- (hash * 7) + (string me.Joined).GetHashCode()
     hash <- (hash * 7) + (string me.Created).GetHashCode()
 #endif
@@ -169,6 +177,7 @@ type User =
       ; LastName  = ""
       ; Email     = "info@nsynk.de"
       ; Password  = "1234"
+      ; Salt      = ""
       ; Joined    = DateTime.Now
       ; Created   = DateTime.Now }
 
@@ -188,6 +197,7 @@ type User =
     let lastname  = self.LastName  |> builder.CreateString
     let email     = self.Email     |> builder.CreateString
     let password  = self.Password  |> builder.CreateString
+    let salt      = self.Salt      |> builder.CreateString
     let joined    = self.Joined    |> string |> builder.CreateString
     let created   = self.Created   |> string |> builder.CreateString
     UserFB.StartUserFB(builder)
@@ -197,6 +207,7 @@ type User =
     UserFB.AddLastName(builder, lastname)
     UserFB.AddEmail(builder, email)
     UserFB.AddPassword(builder, password)
+    UserFB.AddSalt(builder, salt)
     UserFB.AddJoined(builder, joined)
     UserFB.AddCreated(builder, created)
     UserFB.EndUserFB(builder)
@@ -211,6 +222,7 @@ type User =
       ; LastName  = fb.LastName
       ; Email     = fb.Email
       ; Password  = fb.Password
+      ; Salt      = fb.Salt
 #if FABLE_COMPILER
       ; Joined    = fb.Joined
       ; Created   = fb.Created }
@@ -240,6 +252,7 @@ type User =
       self.LastName,
       self.Email,
       self.Password,
+      self.Salt,
       string self.Joined,
       string self.Created)
 
@@ -248,14 +261,15 @@ type User =
 
   static member FromYamlObject (yaml: UserYaml) =
     Either.tryWith ParseError "User" <| fun _ ->
-      { Id = Id yaml.Id
-        UserName = yaml.UserName
+      { Id        = Id yaml.Id
+        UserName  = yaml.UserName
         FirstName = yaml.FirstName
-        LastName = yaml.LastName
-        Email = yaml.Email
-        Password = yaml.Password
-        Joined = DateTime.Parse yaml.Joined
-        Created = DateTime.Parse yaml.Created }
+        LastName  = yaml.LastName
+        Email     = yaml.Email
+        Password  = yaml.Password
+        Salt      = yaml.Salt
+        Joined    = DateTime.Parse yaml.Joined
+        Created   = DateTime.Parse yaml.Created }
 
   static member FromYaml(str: string) =
     let serializer = new Serializer()

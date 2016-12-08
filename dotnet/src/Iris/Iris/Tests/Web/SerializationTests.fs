@@ -63,6 +63,7 @@ module SerializationTests =
     ; LastName = "Gebbert"
     ; Email = "k@ioctl.it"
     ; Password = "1234"
+    ; Salt = "090asd902"
     ; Joined = "1"
     ; Created = "2"
     }

@@ -285,6 +285,7 @@ module StoreTests =
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
           ; Password = "1234"
+          ; Salt = "901f121"
           ; Joined = DateTime.Now
           ; Created = DateTime.Now }
 
@@ -309,6 +310,7 @@ module StoreTests =
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
           ; Password = "1234"
+          ; Salt = "lsfa0s9df0"
           ; Joined  = DateTime.Now
           ; Created = DateTime.Now }
 
@@ -336,6 +338,7 @@ module StoreTests =
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
           ; Password = "1234"
+          ; Salt = "90av213"
           ; Joined  = DateTime.Now
           ; Created = DateTime.Now }
 
@@ -356,6 +359,7 @@ module StoreTests =
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
           ; Password = "1234"
+          ; Salt = "f0sad9fa2"
           ; Joined  = DateTime.Now
           ; Created = DateTime.Now }
 

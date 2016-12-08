@@ -16,6 +16,8 @@ open System.Net
 open System.Linq
 open System.Management
 open System.Diagnostics
+open System.Text
+open System.Security.Cryptography
 open System.Net.NetworkInformation
 open System.Runtime.CompilerServices
 
@@ -600,5 +602,46 @@ module Process =
     match tryFind pid with
     | Some _ -> true
     | _      -> false
+
+#endif
+
+// * Security
+
+#if !FABLE_COMPILER
+
+[<RequireQualifiedAccess>]
+module Crypto =
+
+  let sha1sum (buf: byte array) =
+    let sha256 = new SHA1Managed()
+    let hash = sha256.ComputeHash(buf)
+    let hashedString = new StringBuilder ()
+    for byte in hash do
+      hashedString.AppendFormat("{0:x2}", byte)
+      |> ignore
+    hashedString.ToString()
+
+  let sha256sum (buf: byte array) =
+    let sha256 = new SHA256Managed()
+    let hash = sha256.ComputeHash(buf)
+    let hashedString = new StringBuilder ()
+    for byte in hash do
+      hashedString.AppendFormat("{0:x2}", byte)
+      |> ignore
+    hashedString.ToString()
+
+  let generateSalt (n: int) =
+    let buf : byte array = Array.zeroCreate n
+    let random = new Random()
+    random.NextBytes(buf)
+    sha1sum buf
+
+  let hashPassword (pw: string) (salt: string) =
+    Encoding.UTF8.GetBytes(salt + pw)
+    |> sha256sum
+
+  let hash (pw: string) =
+    let salt = generateSalt 50
+    hashPassword pw salt, salt
 
 #endif

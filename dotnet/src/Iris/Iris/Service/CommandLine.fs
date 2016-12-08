@@ -16,7 +16,6 @@ module CommandLine =
   open System.Linq
   open System.Text
   open System.Text.RegularExpressions
-  open System.Security.Cryptography
 
   // ** Command Line Argument Parser
 
@@ -746,16 +745,6 @@ module CommandLine =
         email <- str
     email
 
-  let private sha256 (str: string) =
-    let bytes = Encoding.UTF8.GetBytes(str)
-    let sha256 = new SHA256Managed()
-    let hash = sha256.ComputeHash(bytes)
-    let hashedString = new StringBuilder ()
-    for byte in hash do
-      hashedString.AppendFormat("{0:x2}", byte)
-      |> ignore
-    hashedString.ToString()
-
   let addUser (path: FilePath) =
     let username  = readString "UserName"
     let firstname = readString "First Name"
@@ -765,15 +754,17 @@ module CommandLine =
     let password2 = readPass   "Re-Enter Password"
 
     if password1 = password2 then
+      let hash, salt = Crypto.hash password1
       let user =
-        { Id = Id.Create()
-          UserName = username
+        { Id        = Id.Create()
+          UserName  = username
           FirstName = firstname
-          LastName = lastname
-          Email = email
-          Password = sha256 password1
-          Joined = DateTime.Now
-          Created = DateTime.Now }
+          LastName  = lastname
+          Email     = email
+          Password  = hash
+          Salt      = salt
+          Joined    = DateTime.Now
+          Created   = DateTime.Now }
       printfn "user: %A" user
       Either.succeed ()
     else
