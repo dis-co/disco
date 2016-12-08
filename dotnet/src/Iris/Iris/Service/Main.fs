@@ -33,7 +33,7 @@ module Main =
       | Start, Some dir -> startService web interactive dir
       | Reset, Some dir -> resetProject dir
       | Dump,  Some dir -> dumpDataDir dir
-      | User,  Some dir -> printfn "User: %s" dir |> Either.succeed
+      | User,  Some dir -> addUser dir
       | Setup, Some dir -> setup (Some dir)
       | Setup,        _ -> setup None
       | Help,         _ -> help ()

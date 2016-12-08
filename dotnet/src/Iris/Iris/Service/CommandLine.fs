@@ -14,7 +14,9 @@ module CommandLine =
   open System
   open System.IO
   open System.Linq
+  open System.Text
   open System.Text.RegularExpressions
+  open System.Security.Cryptography
 
   // ** Command Line Argument Parser
 
@@ -692,7 +694,7 @@ module CommandLine =
   // ** help
 
   [<Literal>]
-  let header = @"   *   .  *.  .
+  let private header = @"   *   .  *.  .
  *  ___ ____.*___ ____  .     * .
 * .|_ _|  _ \|_ _/ ___|*    .
   * | || |_) || |\___ \  .*  *
@@ -705,3 +707,76 @@ module CommandLine =
     parser.PrintUsage(header, "iris.exe", true)
     |> flip (printfn "%s\n%s") SubCommand.Doc
     |> Either.succeed
+
+  // ** addUser
+
+  let private readPass (field: string) =
+    let mutable pass = ""
+    while String.length pass = 0 do
+      printf "%s: " field
+      let mutable last = Unchecked.defaultof<ConsoleKeyInfo>
+      while last.Key <> ConsoleKey.Enter do
+        last <- Console.ReadKey(true)
+        if last.Key <> ConsoleKey.Backspace && last.Key <> ConsoleKey.Enter then
+          pass <- sprintf "%s%c" pass last.KeyChar
+          Console.Write("*")
+        else
+          if last.Key = ConsoleKey.Backspace && String.length pass > 0 then
+            pass <- String.subString 0 (String.length pass - 1) pass
+            Console.Write("\b \b")
+      printf "%s" Environment.NewLine
+    pass
+
+  let private readString (field: string) =
+    let mutable str = ""
+    while String.length str = 0 do
+      printf "%s: " field
+      str <-
+        Console.ReadLine()
+        |> String.trim
+    str
+
+  let private readEmail (field: string) =
+    let pattern = "^.*@.*\..*"
+    let mutable email = ""
+    while String.length email = 0 do
+      let str = readString field
+      let m = Regex.Match(str, pattern)
+      if m.Success then
+        email <- str
+    email
+
+  let private sha256 (str: string) =
+    let bytes = Encoding.UTF8.GetBytes(str)
+    let sha256 = new SHA256Managed()
+    let hash = sha256.ComputeHash(bytes)
+    let hashedString = new StringBuilder ()
+    for byte in hash do
+      hashedString.AppendFormat("{0:x2}", byte)
+      |> ignore
+    hashedString.ToString()
+
+  let addUser (path: FilePath) =
+    let username  = readString "UserName"
+    let firstname = readString "First Name"
+    let lastname  = readString "Last Name"
+    let email     = readEmail  "Email"
+    let password1 = readPass   "Enter Password"
+    let password2 = readPass   "Re-Enter Password"
+
+    if password1 = password2 then
+      let user =
+        { Id = Id.Create()
+          UserName = username
+          FirstName = firstname
+          LastName = lastname
+          Email = email
+          Password = sha256 password1
+          Joined = DateTime.Now
+          Created = DateTime.Now }
+      printfn "user: %A" user
+      Either.succeed ()
+    else
+      "Passwords do not match. Try again Sam."
+      |> Other
+      |> Either.fail
