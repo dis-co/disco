@@ -20,9 +20,7 @@ module Main =
       try
         parser.ParseCommandLine args
       with
-        | exn ->
-          printfn "%s" <| parser.PrintUsage exn.Message
-          Error.exitWith CliParseError
+        | exn -> Error.exitWith CliParseError
 
     validateOptions parsed
 
@@ -30,14 +28,21 @@ module Main =
     let interactive = parsed.Contains <@ Interactive @>
 
     let res =
-      match parsed.GetResult <@ Cmd @>, parsed.GetResult <@ Dir @> with
-      | Create,  _ -> createProject parsed
-      | Start, dir -> startService web interactive dir
-      | Reset, dir -> resetProject dir
-      | Dump,  dir -> dumpDataDir dir
+      match parsed.GetResult <@ Cmd @>, parsed.TryGetResult <@ Dir @> with
+      | Create,       _ -> createProject parsed
+      | Start, Some dir -> startService web interactive dir
+      | Reset, Some dir -> resetProject dir
+      | Dump,  Some dir -> dumpDataDir dir
+      | User,  Some dir -> printfn "User: %s" dir |> Either.succeed
+      | Setup, Some dir -> setup (Some dir)
+      | Setup,        _ -> setup None
+      |  _ ->
+        sprintf "Unexpected command line failure: %A" args
+        |> ParseError
+        |> Either.fail
+
     res
     |> Error.orExit id
     |> ignore
 
-//    System.Console.ReadLine() |> ignore
     Error.exitWith OK

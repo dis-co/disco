@@ -25,10 +25,12 @@ module CommandLine =
   //              |___/
 
   type SubCommand =
+    | Setup
     | Create
     | Start
     | Reset
     | Dump
+    | User
 
   type CLIArguments =
     | [<Mandatory;MainCommand;CliPosition(CliPosition.First)>] Cmd of SubCommand
@@ -41,8 +43,8 @@ module CommandLine =
     | [<EqualsAssignment>] Web          of uint16
     | [<EqualsAssignment>] Git          of uint16
     | [<EqualsAssignment>] Ws           of uint16
-    | Dir          of string
     | [<EqualsAssignment>] Name         of string
+    | [<EqualsAssignment>] Dir          of string
 
     interface IArgParserTemplate with
       member self.Usage =
@@ -56,7 +58,7 @@ module CommandLine =
           | Git     _   -> "Git server port."
           | Ws      _   -> "WebSocket port."
           | Raft    _   -> "Raft server port (internal)."
-          | Cmd     _   -> "Either one of (--create, --start, --reset or --dump)"
+          | Cmd     _   -> "Either one of setup, create, start, reset, user or dump"
 
   let parser = ArgumentParser.Create<CLIArguments>()
 
@@ -71,9 +73,11 @@ module CommandLine =
     let valid =
       match opts.GetResult <@ Cmd @> with
       | Create -> true
+      | Setup  -> true
       | Start  -> ensureDir true
       | Reset  -> ensureDir true
       | Dump   -> ensureDir true
+      | User   -> ensureDir true
 
     if opts.GetResult <@ Cmd @> = Create then
       let name = opts.Contains <@ Name @>
@@ -550,3 +554,44 @@ module CommandLine =
 
   let dumpDataDir (datadir: FilePath) =
     implement "dumpDataDir"
+
+
+  let setup (location: FilePath option) =
+    let create (path: FilePath) =
+      try
+        if File.Exists path then
+          printfn "Machine configuration already present. Contents:"
+          File.ReadAllText path
+          |> String.indent 4
+          |> printfn "%s"
+          printf "Should I overwrite this? (y/n) "
+          let key = Console.ReadKey()
+          printfn "\nAnswer: %c" key.KeyChar
+          match key.KeyChar with
+          | 'y' | 'Y' ->
+            MachineConfig.create ()
+            |> MachineConfig.save (Some path)
+            |> Error.orExit id
+            printfn "Created Machine new config in %A" path
+            |> Either.succeed
+          | _ ->
+            printfn "Not making any changes. Bye."
+            |> Either.succeed
+        else
+          MachineConfig.create ()
+          |> MachineConfig.save (Some path)
+          |> Error.orExit id
+          printfn "Created Machine new config in %A:" path
+          |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> Other
+          |> Either.fail
+
+    match location with
+    | Some path ->
+      path </> MACHINECONFIG_NAME + ASSET_EXTENSION
+      |> create
+    | None ->
+      create MachineConfig.defaultPath
