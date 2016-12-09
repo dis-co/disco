@@ -30,7 +30,9 @@ type ClientLog  = string
 type TimeStamp  = string
 type CallSite   = string
 type FileName   = string
-
+type Hash       = string
+type Password   = string
+type Salt       = string
 
 type Actor<'t> = MailboxProcessor<'t>
 

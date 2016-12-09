@@ -40,8 +40,6 @@ module GitTests =
   let mkEnvironment port =
     let machine = MachineConfig.create ()
 
-    let user = User.Admin
-
     let tmpdir = mkTmpDir ()
 
     let node =
@@ -58,7 +56,7 @@ module GitTests =
       Project.create "Test Project" machine
       |> Project.updatePath tmpdir.FullName
       |> Project.updateConfig config
-      |> Project.save user.Signature "Project Initialized"
+      |> Project.saveProject User.Admin
       |> Either.get
 
     machine, tmpdir, project, node, project.Path

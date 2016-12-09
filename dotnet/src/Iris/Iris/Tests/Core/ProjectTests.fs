@@ -12,8 +12,7 @@ open FSharpx.Functional
 
 [<AutoOpen>]
 module ProjectTests =
-  let signature =
-    new Signature("Karsten Gebbert", "karsten@nsynk.de", new DateTimeOffset(DateTime.Now))
+
   //   _                    _    ______
   //  | |    ___   __ _  __| |  / / ___|  __ ___   _____
   //  | |   / _ \ / _` |/ _` | / /\___ \ / _` \ \ / / _ \
@@ -21,30 +20,27 @@ module ProjectTests =
   //  |_____\___/ \__,_|\__,_/_/  |____/ \__,_| \_/ \___|ed
   //
   let loadSaveTest =
-    testCase "Save/Load Project should render equal project values" <|
-      fun _ ->
+    testCase "Save/Load Project should render equal project values" <| fun _ ->
+      either {
         let machine = MachineConfig.create ()
 
         let name =
           Path.GetTempFileName()
           |> Path.GetFileName
 
-        let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
+        let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-        let (commit, project) =
+        let! (commit, project) =
           { Project.create name machine with Path = path }
-          |> Project.save signature "Initial project save."
-          |> Either.get
+          |> Project.saveProject User.Admin
 
         let result =
           Project.filePath project
           |> flip Project.load machine
 
-        expect "Projects should be loaded" true Either.isSuccess result
-
-        let loaded = Either.get result
-
-        expect "Projects should be equal" true ((=) project) loaded
+        do! expectE "Projects should be equal" true ((=) project) result
+      }
+      |> noError
 
   //    ____          _                  _             _
   //   / ___|   _ ___| |_ ___  _ __ ___ (_)_______  __| |
@@ -54,13 +50,14 @@ module ProjectTests =
   //
   let testCustomizedCfg =
     testCase "Save/Load of Project with customized configs" <| fun _ ->
+      either {
         let machine = MachineConfig.create ()
 
         let name =
           Path.GetTempFileName()
           |> Path.GetFileName
 
-        let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
+        let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
         let engineCfg = RaftConfig.Default
 
@@ -209,7 +206,8 @@ module ProjectTests =
           }
 
         let project =
-          Project.create name machine
+          machine
+          |> Project.create name
           |> Project.updatePath path
           |> fun project ->
             Project.updateConfig
@@ -223,13 +221,8 @@ module ProjectTests =
                   ClusterConfig = cluster }
               project
 
-        let (_,saved) =
-          Project.save signature "Initial project save." project
-          |> Either.get
-
-        let loaded =
-          Project.load (path </> PROJECT_FILENAME + ASSET_EXTENSION) machine
-          |> Either.get
+        let! (_,saved) = Project.saveProject User.Admin project
+        let! loaded = Project.load (path </> PROJECT_FILENAME + ASSET_EXTENSION) machine
 
         // the only difference will be the automatically assigned timestamp
         expect "CreatedOn should be structurally equal"  true ((=) loaded.CreatedOn) saved.CreatedOn
@@ -242,7 +235,8 @@ module ProjectTests =
         expect "Tasks should be structurally equal"      true ((=) loaded.Config.Tasks) saved.Config.Tasks
         expect "Cluster should be structurally equal"    true ((=) loaded.Config.ClusterConfig) saved.Config.ClusterConfig
         expect "Projects should be structurally equal"   true ((=) loaded) saved
-
+      }
+      |> noError
 
   // Adapted from http://stackoverflow.com/a/648055
   let rec deleteFileSystemInfo (fileSystemInfo: FileSystemInfo) =
@@ -264,34 +258,54 @@ module ProjectTests =
   //   \____|_|\__| initialzation
   //
   let saveInitsGit =
-    testCase "Saved Project should be a git repository with yaml file." <|
-      fun _ ->
+    testCase "Saved Project should be a git repository with yaml file." <| fun _ ->
+      either {
         let machine = MachineConfig.create ()
 
         let name =
           Path.GetTempFileName()
           |> Path.GetFileName
 
-        let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
+        let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-        if Directory.Exists path then
-            DirectoryInfo(path) |> deleteFileSystemInfo
-
-        let project =
+        let! _ =
           { Project.create name machine with Path = path }
-          |> Project.save signature "Initial commit."
+          |> Project.saveProject User.Admin
 
         let loaded =
           path </> PROJECT_FILENAME + ASSET_EXTENSION
           |> flip Project.load machine
+
+        expect "Projects should be a folder"   true  Directory.Exists path
+        expect "Projects should be a git repo" true  Directory.Exists (path </> ".git")
+
+        let projectFile = path </> PROJECT_FILENAME + ASSET_EXTENSION
+
+        expect "Projects should have project yml" true  File.Exists projectFile
+
+        let getRepo =
+          Project.repository
+          >> Either.isSuccess
+
+        do! expectE "Projects should have repo" true getRepo loaded
+
+        let checkDirty (project: IrisProject) =
+          project
+          |> Project.repository
+          |> Either.bind Git.Repo.isDirty
           |> Either.get
 
-        expect "Projects should be a folder"         true  Directory.Exists path
-        expect "Projects should be a git repo"       true  Directory.Exists (path </> ".git")
-        expect "Projects should have project yml"    true  File.Exists (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-        expect "Projects should have repo"           true  (Project.repository >> Either.isSuccess) loaded
-        expect "Projects should not be dirty"        false (Project.repository >> Either.get >> Git.Repo.isDirty) loaded
-        expect "Projects should have initial commit" 1     (Project.repository >> Either.get >> Git.Repo.commitCount) loaded
+        do! expectE "Projects should not be dirty" false checkDirty loaded
+
+        let commitCount (project: IrisProject) =
+          project
+          |> Project.repository
+          |> Either.map Git.Repo.commitCount
+          |> Either.get
+
+        do! expectE "Projects should have initial commit" 1  commitCount loaded
+      }
+      |> noError
 
   //    ____                          _ _
   //   / ___|___  _ __ ___  _ __ ___ (_) |_ ___
@@ -300,8 +314,8 @@ module ProjectTests =
   //   \____\___/|_| |_| |_|_| |_| |_|_|\__|___/ per save
   //
   let savesMultipleCommits =
-    testCase "Saving project should contain multiple commits" <|
-      fun _ ->
+    testCase "Saving project should contain multiple commits" <| fun _ ->
+      either {
         let machine = MachineConfig.create ()
 
         let name =
@@ -310,112 +324,148 @@ module ProjectTests =
 
         let author1 = "karsten"
 
-        let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
+        let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-        if Directory.Exists path then
-            DirectoryInfo(path) |> deleteFileSystemInfo
-
-        let msg1 = "Commit 1"
-
-        let (commit1, project) =
+        let! (commit1, project) =
           { Project.create name machine with
               Path = path
               Author = Some(author1) }
-          |> Project.save signature msg1
-          |> Either.get
+          |> Project.saveProject User.Admin
 
-        (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-        |> flip Project.load machine
-        |> Either.get
-        |> fun p ->
-            let repo = Project.repository p |> Either.get
-            let c =  Git.Repo.commits repo |> Git.Repo.elementAt 0
-            expect "Authors should be equal"                true ((Option.get >> (=)) p.Author) author1
-            expect "Project should have one initial commit" true ((=) (Git.Repo.commitCount repo)) 1
-            expect "Project should have commit message"     true ((=) c.MessageShort) msg1
+        let! loaded =
+          (path </> PROJECT_FILENAME + ASSET_EXTENSION)
+          |> flip Project.load machine
+
+        let! repo = Project.repository loaded
+
+        let checkAuthor = (Option.get >> (=)) loaded.Author
+        let checkCount = (=) (Git.Repo.commitCount repo)
+
+        expect "Authors should be equal"                true checkAuthor author1
+        expect "Project should have one initial commit" true checkCount 1
 
         let author2 = "ingolf"
-        let msg2 = "Commit 2"
 
-        let (commit2, project) =
+        let! (commit2, project) =
           { project with Author = Some author2 }
-          |> Project.save signature msg2
-          |> Either.get
+          |> Project.saveProject User.Admin
 
+        let! loaded =
+          (path </> PROJECT_FILENAME + ASSET_EXTENSION)
+          |> flip Project.load machine
 
-        (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-        |> flip Project.load machine
-        |> Either.get
-        |> fun p ->
-            let repo = Project.repository p |> Either.get
-            let cs = Git.Repo.commits repo
-            let c1 = Git.Repo.elementAt 0 cs
-            let c2 = Git.Repo.elementAt 1 cs
-            expect "Authors should be equal"                    true ((=) (Option.get p.Author)) author2
-            expect "Projects should two commits"                true ((=) (Git.Repo.commitCount repo)) 2
-            expect "Project should have current commit message" true ((=) c1.MessageShort) msg2
-            expect "Project should have old commit message"     true ((=) c2.MessageShort) msg1
+        expect "Authors should be equal"     true ((=) (Option.get loaded.Author)) author2
+        expect "Projects should two commits" true ((=) (Git.Repo.commitCount repo)) 2
 
-        let msg3 = "Commit 3"
         let author3 = "eno"
 
-        let (commit3, project) =
+        let! (commit3, project) =
            { project with Author = Some author3 }
-           |> Project.save signature msg3
-           |> Either.get
+           |> Project.saveProject User.Admin
 
-        (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-        |> flip Project.load machine
-        |> Either.get
-        |> fun p ->
-            let repo = Project.repository p |> Either.get
-            let cs = Git.Repo.commits repo
-            let c1 = Git.Repo.elementAt 0 cs
-            let c2 = Git.Repo.elementAt 1 cs
-            let c3 = Git.Repo.elementAt 2 cs
-            expect "Authors should be equal"                    true ((=) (Option.get p.Author)) author3
-            expect "Projects should have three commits"         true ((=) (Git.Repo.commitCount repo)) 3
-            expect "Project should have current commit message" true ((=) c1.MessageShort) msg3
-            expect "Project should have old commit message"     true ((=) c2.MessageShort) msg2
-            expect "Project should have oldest commit message"  true ((=) c3.MessageShort) msg1
+        let! loaded =
+          (path </> PROJECT_FILENAME + ASSET_EXTENSION)
+          |> flip Project.load machine
+
+        expect "Authors should be equal"                    true ((=) (Option.get loaded.Author)) author3
+        expect "Projects should have three commits"         true ((=) (Git.Repo.commitCount repo)) 3
+      }
+      |> noError
 
   let upToDatePath =
     testCase "Saving project should always contain an up-to-date path" <| fun _ ->
-      let machine = MachineConfig.create()
+      either {
+        let machine = MachineConfig.create()
 
-      let name =
-        Path.GetTempFileName()
-        |> Path.GetFileName
+        let name =
+          Path.GetTempFileName()
+          |> Path.GetFileName
 
-      let author1 = "karsten"
+        let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-      let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
+        let! (commit1, project) =
+          { Project.create name machine with
+              Path = path }
+          |> Project.saveProject User.Admin
 
-      if Directory.Exists path then
-          DirectoryInfo(path) |> deleteFileSystemInfo
+        let! loaded =
+          (path </> PROJECT_FILENAME + ASSET_EXTENSION)
+          |> flip Project.load machine
 
-      let msg1 = "Commit 1"
+        expect "Project should have commit message" path id loaded.Path
 
-      let (commit1, project) =
-        { Project.create name machine with
-            Path = path
-            Author = Some(author1) }
-        |> Project.save signature msg1
-        |> Either.get
+        let newpath = Path.dirName path </> (Path.GetTempFileName() |> Path.baseName)
 
-      (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-      |> flip Project.load machine
-      |> Either.get
-      |> fun p -> expect "Project should have commit message" path id p.Path
+        FileSystem.moveFile path newpath
 
-      let newpath = Path.dirName path </> (Path.GetTempFileName() |> Path.baseName)
+        let! loaded =
+          (newpath </> PROJECT_FILENAME + ASSET_EXTENSION)
+          |> flip Project.load machine
 
-      FileSystem.moveFile path newpath
+        expect "Project should have commit message" newpath id loaded.Path
+      }
+      |> noError
 
-      (newpath </> PROJECT_FILENAME + ASSET_EXTENSION)
-      |> flip Project.load machine
-      |> Either.get
-      |> fun p -> expect "Project should have commit message" newpath id p.Path
+  let saveAsset =
+    testCase "Should save an asset in new commit" <| fun _ ->
+      either {
+        let machine = MachineConfig.create ()
+
+        let name =
+          Path.GetTempFileName()
+          |> Path.GetFileName
+
+        let path = Directory.GetCurrentDirectory() </> "tmp" </> name
+
+        let! (commit1, project) =
+          { Project.create name machine with Path = path }
+          |> Project.saveProject User.Admin
+
+        let user =
+          { Id = Id.Create()
+            UserName = "krgn"
+            FirstName = "karsten"
+            LastName = "gebbert"
+            Email = "k@lazy.af"
+            Password = "1234"
+            Salt = "56789"
+            Joined = DateTime.Now
+            Created = DateTime.Now }
+
+        let! (commit, project) = Project.saveAsset user User.Admin project
+
+        let! (loaded: User) =
+          let userpath = project.Path </> Asset.path user
+          File.ReadAllText(userpath)
+          |> Yaml.decode
+
+        expect "Should be the same" true ((=) user) loaded
+      }
+      |> noError
+
+  let createDefaultUser =
+    testCase "Should create a default admin user" <| fun _ ->
+      either {
+        let machine = MachineConfig.create ()
+
+        let name =
+          Path.GetTempFileName()
+          |> Path.GetFileName
+
+        let path = Directory.GetCurrentDirectory() </> "tmp" </> name
+
+        let! (commit1, project) =
+          { Project.create name machine with Path = path }
+          |> Project.saveProject User.Admin
+
+        let! (admin: User) =
+          project.Path </> Asset.path User.Admin
+          |> File.ReadAllText
+          |> Yaml.decode
+
+        expect "Should have create the admin user" true ((=) User.Admin) admin
+      }
+      |> noError
 
   // For tests async stuff:
   //
@@ -433,4 +483,6 @@ module ProjectTests =
         saveInitsGit
         savesMultipleCommits
         upToDatePath
+        saveAsset
+        createDefaultUser
       ]

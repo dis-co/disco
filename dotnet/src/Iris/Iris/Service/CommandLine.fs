@@ -556,8 +556,7 @@ module CommandLine =
   let initializeRaft (user: User) (project: IrisProject) = either {
       let! raft = createRaft project.Config
       let! result = saveRaft project.Config raft
-      let! (commit, saved) = Project.save user.Signature "project created" project
-
+      let! (commit, saved) = Project.saveProject user project
       project.Path
       |> printfn "project initialized in %A and committed @ %s" commit.Sha
     }
@@ -745,29 +744,36 @@ module CommandLine =
         email <- str
     email
 
-  let addUser (path: FilePath) =
-    let username  = readString "UserName"
-    let firstname = readString "First Name"
-    let lastname  = readString "Last Name"
-    let email     = readEmail  "Email"
-    let password1 = readPass   "Enter Password"
-    let password2 = readPass   "Re-Enter Password"
+  let addUser (datadir: FilePath) =
+    either {
+      let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
+      let! machine = MachineConfig.load None
+      let! project = Project.load path machine
 
-    if password1 = password2 then
-      let hash, salt = Crypto.hash password1
-      let user =
-        { Id        = Id.Create()
-          UserName  = username
-          FirstName = firstname
-          LastName  = lastname
-          Email     = email
-          Password  = hash
-          Salt      = salt
-          Joined    = DateTime.Now
-          Created   = DateTime.Now }
-      printfn "user: %A" user
-      Either.succeed ()
-    else
-      "Passwords do not match. Try again Sam."
-      |> Other
-      |> Either.fail
+      let username  = readString "UserName"
+      let firstname = readString "First Name"
+      let lastname  = readString "Last Name"
+      let email     = readEmail  "Email"
+      let password1 = readPass   "Enter Password"
+      let password2 = readPass   "Re-Enter Password"
+
+      if password1 = password2 then
+        let hash, salt = Crypto.hash password1
+        let user =
+          { Id        = Id.Create()
+            UserName  = username
+            FirstName = firstname
+            LastName  = lastname
+            Email     = email
+            Password  = hash
+            Salt      = salt
+            Joined    = DateTime.Now
+            Created   = DateTime.Now }
+        let! _ = Project.saveAsset user User.Admin project
+        return ()
+      else
+        return!
+          "Passwords do not match. Try again Sam."
+          |> Other
+          |> Either.fail
+    }

@@ -50,7 +50,7 @@ module IrisServiceTests =
               Path = path
               Author = Some(author1)
               Config = cfg }
-          |> Project.save signature "Initial commit"
+          |> Project.saveProject User.Admin
 
         let path = Project.filePath project
 

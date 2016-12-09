@@ -17,67 +17,6 @@ open SharpYaml.Serialization
 // * Persistence
 module Persistence =
 
-  // ** saveAsset
-
-  /// ## saveAsset
-  ///
-  /// save a thing (string) to a file and returns its FileInfo. Might
-  /// crash, so catch it.
-  ///
-  /// ### Signature:
-  /// - location: FilePath to save payload to
-  /// - payload: string payload to save
-  ///
-  /// Returns: FileInfo
-  let saveAsset (location: FilePath) (payload: string) : FileInfo =
-   let info = IO.FileInfo location
-   if not (IO.Directory.Exists info.Directory.FullName) then
-     IO.Directory.CreateDirectory info.Directory.FullName
-     |> ignore
-   File.WriteAllText(location, payload)
-   info.Refresh()
-   info
-
-  // ** deleteAsset
-
-  /// ## deleteAsset
-  ///
-  /// Delete a file from disk
-  ///
-  /// ### Signature:
-  /// - location: path of file to delete
-  ///
-  /// Returns: bool
-  let deleteAsset (location: FilePath) : FileInfo =
-    if IO.File.Exists location then
-      try
-        IO.File.Delete location
-      with
-        | exn -> ()
-    IO.FileInfo location
-
-  // ** loadAsset
-
-  /// ## loadAsset
-  ///
-  /// Load a text file from disk. If the file could not be loaded,
-  /// return None.
-  ///
-  /// ### Signature:
-  /// - locationg: FilePath to asset
-  ///
-  /// Returns: string option
-  let loadAsset (location: FilePath) : Either<IrisError,string> =
-    if File.Exists location then
-      try
-        File.ReadAllText location
-        |> Either.succeed
-      with
-        | exn -> AssetLoadError exn.Message |> Either.fail
-    else
-      AssetNotFoundError location
-      |> Either.fail
-
   // ** createRaft
 
   /// ## Create a new Raft state
@@ -120,8 +59,7 @@ module Persistence =
       let! data =
         options
         |> Config.metadataPath
-        |> loadAsset
-      // printfn "yaml string: %s" data
+        |> Asset.load
       return! Yaml.decode data
     }
 
@@ -157,90 +95,11 @@ module Persistence =
     try
       raft
       |> Yaml.encode
-      |> saveAsset (Config.metadataPath config)
+      |> Asset.save (Config.metadataPath config)
       |> Either.succeed
     with
       | exn ->
         ProjectSaveError exn.Message
-        |> Either.fail
-
-  // ** saveWithCommit
-
-  /// ## saveWithCommit
-  ///
-  /// Attempt to save the passed thing, and, if succesful, return its
-  /// FileInfo object.
-  ///
-  /// ### Signature:
-  /// - project: Project to save file into
-  /// - thing: the thing to save. Must implement certain methods/getters
-  ///
-  /// Returns: FileInfo option
-  let inline saveWithCommit< ^t when
-                             ^t : (member ToYaml : Serializer -> string) and
-                             ^t : (member CanonicalName : string)       and
-                             ^t : (member DirName : string)>
-                             (project: IrisProject) (thing: ^t) =
-    let name = (^t : (member CanonicalName : string) thing)
-    let relPath = (^t : (member DirName : string) thing) </> name + ASSET_EXTENSION
-    let destPath = project.Path </> relPath
-    try
-      // FIXME: should later be the person who issued command (session + user)
-      let committer =
-        let hostname = Network.getHostName()
-        new Signature("Iris", "iris@" + hostname, new DateTimeOffset(DateTime.Now))
-
-      let msg = sprintf "Saved %s " name
-
-      let fileinfo =
-        thing
-        |> Yaml.encode
-        |> saveAsset destPath
-
-      match Project.saveFile committer msg relPath project with
-      | Right (commit, saved) -> Right(fileinfo, commit, saved)
-      | Left   error          -> Left error
-
-    with
-      | exn ->
-        exn.Message
-        |> AssetSaveError
-        |> Either.fail
-
-  // ** deleteWithCommit
-
-  /// ## deleteWithCommit
-  ///
-  /// Delete a file path from disk and commit the change to git.
-  ///
-  /// ### Signature:
-  /// - project: Project to work on
-  /// - thing: ^t thing to delete
-  ///
-  /// Returns: Either<IrisError, FileInfo * Commit * Project>
-  let inline deleteWithCommit< ^t when
-                               ^t : (member CanonicalName : string) and
-                               ^t : (member DirName : string)>
-                               (project: IrisProject) (thing: ^t) =
-    let name = (^t : (member CanonicalName : string) thing)
-    let relPath = (^t : (member DirName : string) thing) </> (name + ASSET_EXTENSION)
-    let destPath = project.Path </> relPath
-    try
-      let fileinfo = deleteAsset destPath
-
-      let committer =
-        let hostname = Network.getHostName()
-        new Signature("Iris", "iris@" + hostname, new DateTimeOffset(DateTime.Now))
-
-      let msg = sprintf "Saved %s " name
-
-      match Project.saveFile committer msg relPath project with
-      | Right (commit, saved) -> Right(fileinfo, commit, saved)
-      | Left error            -> Left error
-    with
-      | exn ->
-        exn.Message
-        |> AssetDeleteError
         |> Either.fail
 
   // ** persistEntry
@@ -256,15 +115,15 @@ module Persistence =
   /// Returns: Either<IrisError, FileInfo * Commit * IrisProject>
   let inline persistEntry (project: IrisProject) (sm: StateMachine) =
     match sm with
-    | AddCue        cue     -> saveWithCommit     project cue
-    | UpdateCue     cue     -> saveWithCommit     project cue
-    | RemoveCue     cue     -> deleteWithCommit project cue
-    | AddCueList    cuelist -> saveWithCommit     project cuelist
-    | UpdateCueList cuelist -> saveWithCommit     project cuelist
-    | RemoveCueList cuelist -> deleteWithCommit project cuelist
-    | AddUser       user    -> saveWithCommit     project user
-    | UpdateUser    user    -> saveWithCommit     project user
-    | RemoveUser    user    -> deleteWithCommit project user
+    | AddCue        cue     -> Project.saveAsset   cue     User.Admin project
+    | UpdateCue     cue     -> Project.saveAsset   cue     User.Admin project
+    | RemoveCue     cue     -> Project.deleteAsset cue     User.Admin project
+    | AddCueList    cuelist -> Project.saveAsset   cuelist User.Admin project
+    | UpdateCueList cuelist -> Project.saveAsset   cuelist User.Admin project
+    | RemoveCueList cuelist -> Project.deleteAsset cuelist User.Admin project
+    | AddUser       user    -> Project.saveAsset   user    User.Admin project
+    | UpdateUser    user    -> Project.saveAsset   user    User.Admin project
+    | RemoveUser    user    -> Project.deleteAsset user    User.Admin project
     | _                     -> Left (Other "this is ok. relax")
 
   // ** updateRepo

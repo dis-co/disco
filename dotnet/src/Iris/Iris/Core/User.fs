@@ -161,23 +161,31 @@ type User =
       | _ -> 0
 
 
-#if FABLE_COMPILER
-#else
+#if !FABLE_COMPILER
 
   member user.Signature
     with get () =
       let name = sprintf "%s %s" user.FirstName user.LastName
       new Signature(name, user.Email, new DateTimeOffset(user.Created))
 
+  member user.AssetPath
+    with get () =
+      let filename =
+        sprintf "%s_%s%s"
+          (String.sanitize user.UserName)
+          (string user.Id)
+          ASSET_EXTENSION
+      USER_DIR </> filename
+
   static member Admin
     with get () =
-      { Id        = Id.Create()
+      { Id        = Id "cb558968-bd42-4de0-a671-18e2ec7cf580"
       ; UserName  = "admin"
       ; FirstName = "Administrator"
       ; LastName  = ""
-      ; Email     = "info@nsynk.de"
-      ; Password  = "1234"
-      ; Salt      = ""
+      ; Email     = "admin@nsynk.de"
+      ; Password  = ADMIN_DEFAULT_PASSWORD
+      ; Salt      = ADMIN_DEFAULT_SALT
       ; Joined    = DateTime.Now
       ; Created   = DateTime.Now }
 
@@ -276,13 +284,4 @@ type User =
     serializer.Deserialize<UserYaml>(str)
     |> User.FromYamlObject
 
-  member self.DirName
-    with get () = "users"
-
-  member self.CanonicalName
-    with get () =
-      sprintf "%s_%s" self.FirstName self.LastName
-      |> String.toLower
-      |> sanitizeName
-      |> sprintf "%s-%s" (string self.Id)
 #endif

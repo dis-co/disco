@@ -30,11 +30,11 @@ module Constants =
   [<Literal>]
   let ASSET_EXTENSION = ".yaml"
 
-  //  _____             __     __
-  // | ____|_ ____   __ \ \   / /_ _ _ __ ___
-  // |  _| | '_ \ \ / /  \ \ / / _` | '__/ __|
-  // | |___| | | \ V /    \ V / (_| | |  \__ \
-  // |_____|_| |_|\_/      \_/ \__,_|_|  |___/
+  //  ____        __             _ _
+  // |  _ \  ___ / _| __ _ _   _| | |_ ___
+  // | | | |/ _ \ |_ / _` | | | | | __/ __|
+  // | |_| |  __/  _| (_| | |_| | | |_\__ \
+  // |____/ \___|_|  \__,_|\__,_|_|\__|___/
 
   [<Literal>]
   let WEB_WORKER_SCRIPT = "lib/worker.js"
@@ -48,6 +48,23 @@ module Constants =
   [<Literal>]
   let SOCKET_SERVER_PORT_DIFF = 1000
 
+  [<Literal>]
+  let ADMIN_DEFAULT_PASSWORD =
+    // "Nsynk"
+    "9305b34e6df2f0ee0a7aab083cb7c47761f4320cce0a0a6a35f6974c95483366"
+
+  [<Literal>]
+  let ADMIN_DEFAULT_SALT = "8d406594282be466e048de02505ebaec97943096"
+
+  [<Literal>]
+  let USER_DIR = "users"
+
+  [<Literal>]
+  let CUE_DIR = "cues"
+
+  [<Literal>]
+  let CUELIST_DIR = "cuelists"
+
   //  __  __            _     _             ____             __ _
   // |  \/  | __ _  ___| |__ (_)_ __   ___ / ___|___  _ __  / _(_) __ _
   // | |\/| |/ _` |/ __| '_ \| | '_ \ / _ \ |   / _ \| '_ \| |_| |/ _` |
@@ -60,3 +77,6 @@ module Constants =
 
   [<Literal>]
   let MACHINECONFIG_NAME = "machinecfg"
+
+  [<Literal>]
+  let GITIGNORE = @"/.raft"
