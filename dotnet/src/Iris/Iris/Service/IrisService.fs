@@ -703,7 +703,7 @@ module Iris =
   let private loadProject (state: IrisState)
                           (machine: IrisMachine)
                           (path: FilePath)
-                          (web: bool)
+                          (web: string option)
                           (subscriptions: Subscriptions) =
     either {
       dispose state
@@ -714,10 +714,11 @@ module Iris =
       let! node = Config.selfNode project.Config
 
       let! httpserver =
-        if web then
-          HttpServer.create project.Config
+        match web with
+        | Some basePath ->
+          HttpServer.create(project.Config, basePath)
           |> Either.map Some
-        else
+        | None ->
           Right None
       let! raftserver = RaftServer.create ()
       let! wsserver   = SocketServer.create node
@@ -779,7 +780,7 @@ module Iris =
                          (chan: ReplyChan)
                          (path: FilePath)
                          (config: IrisMachine)
-                         (web: bool)
+                         (web: string option)
                          (subscriptions: Subscriptions)
                          (inbox: IrisAgent) =
     match loadProject state config path web subscriptions with
@@ -954,7 +955,7 @@ module Iris =
 
   let private loop (initial: IrisState)
                    (config: IrisMachine)
-                   (web: bool)
+                   (web: string option)
                    (subs: Subscriptions)
                    (inbox: IrisAgent) =
     let rec act (state: IrisState) =
@@ -987,7 +988,7 @@ module Iris =
   [<RequireQualifiedAccess>]
   module IrisService =
 
-    let create (config: IrisMachine) (web: bool) =
+    let create (config: IrisMachine) (web: string option) =
       let subscriptions = new Subscriptions()
       let agent = new IrisAgent(loop Idle config web subscriptions)
 

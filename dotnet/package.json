@@ -5,7 +5,9 @@
   "description": "Fable build stuff",
   "scripts": {
     "fable": "fable",
-    "phantomjs": "phantomjs"
+    "phantomjs": "phantomjs",
+    "iris-mono": "mono src/Iris/bin/FrontendDev/Iris/iris.exe start --dir=../../iris-sample-project --http=src/Iris/assets/frontend",
+    "iris": "src\\Iris\\bin\\FrontendDev\\Iris\\iris.exe start --dir=../../iris-sample-project --http=src/Iris/assets/frontend"
   },
   "author": "Karsten Gebbert, 2016, Nsynk GmbH",
   "license": "ISC",
