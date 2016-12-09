@@ -37,7 +37,7 @@ module Http =
   let private locate dir str =
     noCache >=> file (dir </> str)
 
-  let private basePath =
+  let getDefaultBasePath() =
   #if INTERACTIVE
     Path.GetFullPath(".") </> "assets" </> "frontend"
   #else
@@ -46,21 +46,21 @@ module Http =
     dir </> "assets"
   #endif
 
-  let private widgetPath = basePath </> "widgets"
-
-  let private listFiles (path: FilePath) : FileName list =
-    DirectoryInfo(widgetPath).EnumerateFiles()
-    |> Seq.map (fun file -> file.Name)
-    |> Seq.toList
-
-  let private importStmt (name: FileName) =
-    sprintf """<link rel="import" href="widgets/%s" />""" name
-
-  let private indexHtml () =
-    listFiles widgetPath
-    |> List.map importStmt
-    |> List.fold (+) ""
-    |> sprintf "%s"
+//  let private widgetPath = basePath </> "widgets"
+//
+//  let private listFiles (path: FilePath) : FileName list =
+//    DirectoryInfo(widgetPath).EnumerateFiles()
+//    |> Seq.map (fun file -> file.Name)
+//    |> Seq.toList
+//
+//  let private importStmt (name: FileName) =
+//    sprintf """<link rel="import" href="widgets/%s" />""" name
+//
+//  let private indexHtml () =
+//    listFiles widgetPath
+//    |> List.map importStmt
+//    |> List.fold (+) ""
+//    |> sprintf "%s"
 
   // Add more mime-types here if necessary
   // the following are for fonts, source maps etc.
@@ -68,16 +68,17 @@ module Http =
 
   // our application only needs to serve files off the disk
   // but we do need to specify what to do in the base case, i.e. "/"
-  let private app =
+  let private app indexHtml =
     choose [
       Filters.GET >=>
         (choose [
-          Filters.path "/" >=> (Files.file <| Path.Combine(basePath, "index.html"))
+          Filters.path "/" >=> (Files.file indexHtml)
           Files.browseHome ])
       RequestErrors.NOT_FOUND "Page not found."
     ]
 
   let private mkConfig (options: IrisConfig)
+                       (basePath: string)
                        (cts: CancellationTokenSource) :
                        Either<IrisError,SuaveConfig> =
     either {
@@ -129,16 +130,17 @@ module Http =
 
     // *** create
 
-    let create (options: IrisConfig) =
+    let create (options: IrisConfig, basePath: string) =
       either {
         let cts = new CancellationTokenSource()
-        let! config = mkConfig options cts
+        let! config = mkConfig options basePath cts
 
         return
           { new IHttpServer with
               member self.Start () =
                 try
-                  let listening, server = startWebServerAsync config app
+                  let indexHtml = Path.Combine(basePath, "index.html")
+                  let listening, server = startWebServerAsync config (app indexHtml)
                   Async.Start server
                   |> Either.succeed
                 with

@@ -26,8 +26,20 @@ module Main =
 
     validateOptions parsed
 
-    let web = not (parsed.Contains <@ NoHttp @>)
     let interactive = parsed.Contains <@ Interactive @>
+    let web =
+      match parsed.TryGetResult <@ Http @> with
+      | Some basePath ->
+        match bool.TryParse basePath with
+        | true, false -> None
+        | true, true -> Http.getDefaultBasePath() |> Some
+        | false, _ -> System.IO.Path.GetFullPath basePath |> Some
+      | None -> Http.getDefaultBasePath() |> Some
+
+    #if FRONTEND_DEV
+    printfn "Starting service for Frontend development..."
+    Option.iter (printfn "HttpServer will serve from %s") web
+    #endif
 
     let res =
       match parsed.GetResult <@ Cmd @>, parsed.GetResult <@ Dir @> with

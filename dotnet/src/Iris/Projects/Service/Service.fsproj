@@ -238,8 +238,9 @@
     <Tailcalls>false</Tailcalls>
     <DefineConstants>TRACE;DEBUG;FRONTEND_DEV</DefineConstants>
     <WarningLevel>5</WarningLevel>
-    <OutputPath>bin\FrontendDev\</OutputPath>
-    <StartArguments>start --no-http --dir ../../../../../../../../iris_test</StartArguments>
+    <OutputPath>..\..\bin\FrontendDev\Iris</OutputPath>
+    <StartArguments>start --dir=../../iris-sample-project --http=src/Iris/assets/frontend</StartArguments>
+    <StartWorkingDirectory>C:\Users\Alfonso\Documents\GitHub\iris\dotnet\</StartWorkingDirectory>
   </PropertyGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">
