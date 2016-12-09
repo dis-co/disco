@@ -16,6 +16,8 @@ open System.Net
 open System.Linq
 open System.Management
 open System.Diagnostics
+open System.Text
+open System.Security.Cryptography
 open System.Net.NetworkInformation
 open System.Runtime.CompilerServices
 
@@ -104,25 +106,6 @@ module Utils =
   let implement (str: string) =
     failwithf "FIXME: implement %s" str
 
-  // ** santitizeName
-
-  #if !FABLE_COMPILER
-
-  /// ## sanitizeName
-  ///
-  /// Sanitize the given string by removing any punktuation or other special characters.
-  ///
-  /// ### Signature:
-  /// - name: string to sanitize
-  ///
-  /// Returns: string
-  let sanitizeName (name : string) =
-    let regex = new Regex("(\.|\ |\*|\^)")
-    if regex.IsMatch(name)
-    then regex.Replace(name, "_")
-    else name
-
-  #endif
 
   // ** toPair
 
@@ -360,6 +343,22 @@ module String =
       str.Substring(index, length)
     else
       ""
+  // *** santitize
+
+  /// ## sanitize
+  ///
+  /// Sanitize the given string by replacing any punktuation or other special characters with
+  /// undercores.
+  ///
+  /// ### Signature:
+  /// - payload: string to sanitize
+  ///
+  /// Returns: string
+  let sanitize (payload: string) =
+    let regex = new Regex("(\.|\ |\*|\^)")
+    if regex.IsMatch(payload)
+    then regex.Replace(payload, "_")
+    else payload
 
 // * FileSystem
 
@@ -379,7 +378,7 @@ module FileSystem =
   /// - path2: second path
   ///
   /// Returns: FilePath (string)
-  let (</>) p1 p2 = System.IO.Path.Combine(p1, p2)
+  let (</>) p1 p2 = Path.Combine(p1, p2)
 
   // *** moveFile
 
@@ -414,9 +413,9 @@ module FileSystem =
   /// Returns: Either<IrisError, unit>
   let rec rmDir path : Either<IrisError,unit>  =
     try
-      let attrs = IO.File.GetAttributes(path)
-      if (attrs &&& IO.FileAttributes.Directory) = IO.FileAttributes.Directory then
-        let children = IO.DirectoryInfo(path).EnumerateFileSystemInfos()
+      let attrs = File.GetAttributes(path)
+      if (attrs &&& FileAttributes.Directory) = FileAttributes.Directory then
+        let children = DirectoryInfo(path).EnumerateFileSystemInfos()
         if children.Count() > 0 then
           either {
             do! Seq.fold
@@ -425,18 +424,17 @@ module FileSystem =
                   })
                   (Right ())
                   children
-            return System.IO.Directory.Delete(path)
+            return Directory.Delete(path)
           }
         else
-          System.IO.Directory.Delete(path)
+          Directory.Delete(path)
           |> Either.succeed
       else
-        System.IO.File.Delete path
+        File.Delete path
         |> Either.succeed
     with
       | exn ->
         exn.Message
-        |> sprintf "rmDir: %s"
         |> IOError
         |> Either.fail
 
@@ -452,8 +450,9 @@ module FileSystem =
   /// Returns: Either<IrisError, unit>
   let mkDir path =
     try
-      if System.IO.Directory.Exists path |> not then
-        System.IO.Directory.CreateDirectory path
+      if not (Directory.Exists path) then
+        path
+        |> Directory.CreateDirectory
         |> ignore
         |> Either.succeed
       else
@@ -461,7 +460,6 @@ module FileSystem =
     with
       | exn ->
         exn.Message
-        |> sprintf "mkDir: %s"
         |> IOError
         |> Either.fail
 
@@ -600,5 +598,193 @@ module Process =
     match tryFind pid with
     | Some _ -> true
     | _      -> false
+
+#endif
+
+// * Security
+
+#if !FABLE_COMPILER
+
+[<RequireQualifiedAccess>]
+module Crypto =
+
+  /// ## toString
+  ///
+  /// Turn a byte array into a string.
+  ///
+  /// ### Signature:
+  /// - buf: byte array to turn into a string
+  ///
+  /// Returns: string
+  let private toString (buf: byte array) =
+    let hashedString = new StringBuilder ()
+    for byte in buf do
+      hashedString.AppendFormat("{0:x2}", byte)
+      |> ignore
+    hashedString.ToString()
+
+  /// ## sha1sum
+  ///
+  /// Compute the SHA1 checksum of the passed byte array.
+  ///
+  /// ### Signature:
+  /// - buf: byte array to checksum
+  ///
+  /// Returns: Hash
+  let sha1sum (buf: byte array) : Hash =
+    let sha256 = new SHA1Managed()
+    sha256.ComputeHash(buf)
+    |> toString
+
+  /// ## sha256sum
+  ///
+  /// Compute the SHA256 checksum of the passed byte array.
+  ///
+  /// ### Signature:
+  /// - buf: byte array to checksum
+  ///
+  /// Returns: Hash
+  let sha256sum (buf: byte array) : Hash =
+    let sha256 = new SHA256Managed()
+    sha256.ComputeHash(buf)
+    |> toString
+
+  /// ## generateSalt
+  ///
+  /// Generate a random salt value for securing passwords.
+  ///
+  /// ### Signature:
+  /// - n: int number of bytes to generate
+  ///
+  /// Returns: Salt
+  let generateSalt (n: int) : Salt =
+    let buf : byte array = Array.zeroCreate n
+    let random = new Random()
+    random.NextBytes(buf)
+    sha1sum buf
+
+  /// ## hashPassword
+  ///
+  /// Generate a salted and hashed checksum for the given password.
+  ///
+  /// ### Signature:
+  /// - pw: string password to salt and hash
+  /// - salt: string salt value to concatenate pw with
+  ///
+  /// Returns: string
+  let hashPassword (pw: Password) (salt: Salt) : Hash =
+    Encoding.UTF8.GetBytes(salt + pw)
+    |> sha256sum
+
+  /// ## hash
+  ///
+  /// Hashes the given password with a generated random salt value. Returns a tuple of the generated
+  /// hash and the salt used in the process.
+  ///
+  /// ### Signature:
+  /// - pw: Password to hash
+  ///
+  /// Returns: Hash * Salt
+  let hash (pw: Password) : Hash * Salt =
+    let salt = generateSalt 50
+    hashPassword pw salt, salt
+
+#endif
+
+// * Asset
+
+#if !FABLE_COMPILER
+
+[<RequireQualifiedAccess>]
+module Asset =
+
+  /// ## path
+  ///
+  /// Return the realive path the given asset should be saved under.
+  ///
+  /// ### Signature:
+  /// - thing: ^t
+  ///
+  /// Returns: FilePath
+  let inline path< ^t when ^t : (member AssetPath : FilePath)> (thing: ^t) =
+    (^t : (member AssetPath: FilePath) thing)
+
+  /// ## save
+  ///
+  /// Description
+  ///
+  /// ### Signature:
+  /// - location: FilePath to asset
+  /// - payload: string payload to save
+  ///
+  /// Returns: Either<IrisError,FileInfo>
+  let save (location: FilePath) (payload: string) =
+    either {
+      try
+        let info = FileInfo location
+        do! FileSystem.mkDir info.Directory.FullName
+        File.WriteAllText(location, payload, Encoding.UTF8)
+        info.Refresh()
+        return info
+      with
+        | exn ->
+          return!
+            exn.Message
+            |> IOError
+            |> Either.fail
+    }
+
+  /// ## delete
+  ///
+  /// Delete an asset from disk.
+  ///
+  /// ### Signature:
+  /// - location: FilePath to asset
+  ///
+  /// Returns: Either<IrisError,bool>
+  let delete (location: FilePath) =
+    either {
+      try
+        if File.Exists location then
+          File.Delete location
+          return true
+        else
+          return false
+      with
+        | exn ->
+          return!
+            exn.Message
+            |> IOError
+            |> Either.fail
+    }
+
+  // ** load
+
+  /// ## load
+  ///
+  /// Load a text file from disk. If the file could not be loaded,
+  /// return IOError.
+  ///
+  /// ### Signature:
+  /// - locationg: FilePath to asset
+  ///
+  /// Returns: Either<IrisError,string>
+  let inline load (location: FilePath) : Either<IrisError, string> =
+    either {
+      if File.Exists location then
+        try
+          return File.ReadAllText location
+        with
+          | exn ->
+            return!
+              exn.Message
+              |> IOError
+              |> Either.fail
+      else
+        return!
+          sprintf "File not found: %s" location
+          |> IOError
+          |> Either.fail
+    }
 
 #endif

@@ -153,16 +153,15 @@ and CueList =
     serializer.Deserialize<CueListYaml>(str)
     |> Yaml.fromYaml
 
-  // ** DirName
+  // ** AssetPath
 
-  member self.DirName
-    with get () = "cuelists"
-
-  // ** CanonicalName
-
-  member self.CanonicalName
+  member self.AssetPath
     with get () =
-      sanitizeName self.Name
-      |> sprintf "%s-%s" (string self.Id)
+      let filepath =
+        sprintf "%s_%s%s"
+          (String.sanitize self.Name)
+          (string self.Id)
+          ASSET_EXTENSION
+      CUELIST_DIR </> filepath
 
 #endif

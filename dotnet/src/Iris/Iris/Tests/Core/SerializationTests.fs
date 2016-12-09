@@ -375,6 +375,7 @@ module SerializationTests =
     ; LastName = "Gebbert"
     ; Email = "k@ioctl.it"
     ; Password = "1234"
+    ; Salt = "909090"
     ; Joined = System.DateTime.Now
     ; Created = System.DateTime.Now
     }

@@ -308,6 +308,7 @@ module Store =
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
           ; Password = "1234"
+          ; Salt = "090asd902"
           ; Joined = "today"
           ; Created = "yesterday" }
 
@@ -334,6 +335,7 @@ module Store =
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
           ; Password = "1234"
+          ; Salt = "090asd902"
           ; Joined = "today"
           ; Created = "yesterday" }
 
@@ -362,6 +364,7 @@ module Store =
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
           ; Password = "1234"
+          ; Salt = "090asd902"
           ; Joined = "today"
           ; Created = "yesterday" }
 
@@ -384,6 +387,7 @@ module Store =
           ; LastName = "Gebbert"
           ; Email = "k@ioctl.it"
           ; Password = "1234"
+          ; Salt = "090asd902"
           ; Joined = "today"
           ; Created = "yesterday" }
 

@@ -50,7 +50,7 @@ module IrisServiceTests =
               Path = path
               Author = Some(author1)
               Config = cfg }
-          |> Project.save signature "Initial commit"
+          |> Project.saveProject User.Admin
 
         let path = Project.filePath project
 
@@ -58,7 +58,7 @@ module IrisServiceTests =
           Project.filePath project
           |> File.ReadAllText
 
-        use! service = IrisService.create machine true
+        use! service = IrisService.create machine None
         use oobs =
           (fun ev ->
             match ev with

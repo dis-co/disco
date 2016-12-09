@@ -554,7 +554,7 @@ module Iris =
 
       if RaftServer.isLeader data.RaftServer then
         match persistEntry data.Project sm with
-        | Right (info, commit, updated) ->
+        | Right (commit, updated) ->
           Loaded { data with Project = updated }
         | Left error -> state
       else

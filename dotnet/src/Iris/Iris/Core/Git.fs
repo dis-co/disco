@@ -435,10 +435,10 @@ module Git =
         |> Either.succeed
       with
         | :? RepositoryNotFoundException as exn  ->
-          RepositoryNotFound path
+          sprintf "Repository not found: %s" path
+          |> GitError
           |> Either.fail
         | exn ->
-          printfn "type of git error: %A" (exn.GetType())
           exn.Message
           |> GitError
           |> Either.fail
@@ -462,14 +462,35 @@ module Git =
           |> Either.fail
 
     let add (repo: Repository) (filepath: FilePath) =
-      if File.Exists filepath then
-        repo.Index.Add filepath
+      try
+        if File.Exists filepath then
+          repo.Index.Add filepath
+        Either.succeed ()
+      with
+        | exn ->
+          exn.Message
+          |> GitError
+          |> Either.fail
 
     let stage (repo: Repository) (filepath: FilePath) =
-      Commands.Stage(repo, filepath)
+      try
+        Commands.Stage(repo, filepath)
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> GitError
+          |> Either.fail
 
     let commit (repo: Repository) (msg: string) (committer: Signature) =
-      repo.Commit(msg, committer, committer)
+      try
+        repo.Commit(msg, committer, committer)
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> GitError
+          |> Either.fail
 
     /// ## Retrieve current repository status object
     ///
@@ -479,8 +500,15 @@ module Git =
     /// - repo: Repository to fetch status for
     ///
     /// Returns: RepositoryStatus
-    let status (repo: Repository) : RepositoryStatus =
-      repo.RetrieveStatus()
+    let status (repo: Repository) : Either<IrisError,RepositoryStatus> =
+      try
+        repo.RetrieveStatus()
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> GitError
+          |> Either.fail
 
     /// ## Check if repository is currently dirty
     ///
@@ -490,8 +518,11 @@ module Git =
     /// - repo: Repository to check
     ///
     /// Returns: boolean
-    let isDirty (repo: Repository) : bool =
-      status repo |> fun status -> status.IsDirty
+    let isDirty (repo: Repository) : Either<IrisError, bool> =
+      either {
+        let! status = status repo
+        return status.IsDirty
+      }
 
     /// ## Shorthand to work with the commit log of a repository
     ///
@@ -514,9 +545,15 @@ module Git =
     /// - t: IQueryableCommitLog
     ///
     /// Returns: Commit
-    let elementAt (idx: int) (t: IQueryableCommitLog) : Commit =
-      t.ElementAt(idx)
-
+    let elementAt (idx: int) (t: IQueryableCommitLog) : Either<IrisError,Commit> =
+      try
+        t.ElementAt(idx)
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> GitError
+          |> Either.fail
 
     /// ## Count number of commits
     ///
@@ -527,7 +564,8 @@ module Git =
     ///
     /// Returns: int
     let commitCount (repo: Repository) =
-      commits repo |> fun lst -> lst.Count()
+      commits repo
+      |> fun lst -> lst.Count()
 
   //   ____             __ _
   //  / ___|___  _ __  / _(_) __ _

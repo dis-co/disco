@@ -17,6 +17,7 @@ type UserFB =
   abstract LastName: string
   abstract Email: string
   abstract Password: string
+  abstract Salt: string
   abstract Joined: string
   abstract Created: string
 
@@ -29,6 +30,7 @@ type UserFBConstructor =
   abstract AddLastName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddEmail: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPassword: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddSalt: builder: FlatBufferBuilder * salt: Offset<string> -> unit
   abstract AddJoined: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddCreated: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract EndUserFB: builder: FlatBufferBuilder -> Offset<'a>

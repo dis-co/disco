@@ -6,6 +6,7 @@ open System
 open System.IO
 open System.Linq
 open System.Net
+open System.Text
 open System.Collections.Generic
 open LibGit2Sharp
 open Iris.Core.Utils
@@ -45,19 +46,23 @@ module Project =
   ///
   /// # Returns: Repository option
   let repository (project: IrisProject) =
-      Git.Repo.repository project.Path
+    Git.Repo.repository project.Path
 
   // ** currentBranch
 
   let currentBranch (project: IrisProject) =
-    repository project
-    |> Either.map Git.Branch.current
+    either {
+      let! repo = repository project
+      return Git.Branch.current repo
+    }
 
   // ** checkoutBranch
 
   let checkoutBranch (name: string) (project: IrisProject) =
-    repository project
-    |> Either.bind (Git.Repo.checkout name)
+    either {
+      let! repo = repository project
+      return! Git.Repo.checkout name repo
+    }
 
   // ** create
 
@@ -76,14 +81,14 @@ module Project =
     ; Author    = None
     ; Config    = Config.create name machine  }
 
-  // ** parseLastSaved
+  // ** parseLastSaved (private)
 
   /// ### Parses the LastSaved property.
   ///
   /// Attempt to parse the LastSaved proptery from the passed `ConfigFile`.
   ///
   /// # Returns: DateTime option
-  let parseLastSaved (config: ConfigFile) =
+  let private parseLastSaved (config: ConfigFile) =
     let meta = config.Project.Metadata
     if meta.LastSaved.Length > 0
     then
@@ -93,7 +98,7 @@ module Project =
         | _ -> None
     else None
 
-  // ** parseCreatedOn
+  // ** parseCreatedOn (private)
 
   /// ### Parse the CreatedOn property
   ///
@@ -101,7 +106,7 @@ module Project =
   /// fails to read it, the date returned will be the begin of the epoch.
   ///
   /// # Returns: DateTime
-  let parseCreatedOn (config: ConfigFile) =
+  let private parseCreatedOn (config: ConfigFile) =
     let meta = config.Project.Metadata
     if meta.CreatedOn.Length > 0
     then
@@ -164,62 +169,70 @@ module Project =
               |> Either.fail
     }
 
-  // ** writeDaemonExportFile
+  //  ____       _   _
+  // |  _ \ __ _| |_| |__  ___
+  // | |_) / _` | __| '_ \/ __|
+  // |  __/ (_| | |_| | | \__ \
+  // |_|   \__,_|\__|_| |_|___/
 
-  let writeDaemonExportFile (repo: Repository) =
-    File.WriteAllText(repo.Info.Path </> "git-daemon-export-ok", "")
+  // ** filePath
 
-  // ** writeGitIgnoreFile
+  let filePath (project: IrisProject) : FilePath =
+    project.Path </> PROJECT_FILENAME + ASSET_EXTENSION
 
-  let writeGitIgnoreFile (repo: Repository) =
-    let gitignore = @"
-/.raft
-    "
-    let parent = Git.Repo.parentPath repo
-    let path = parent </> ".gitignore"
+  // ** userDir
 
-    File.WriteAllText(path, gitignore)
-    Git.Repo.stage repo path
+  let userDir (project: IrisProject) : FilePath =
+    project.Path </> USER_DIR
 
-  // ** createAssetDir
+  // ** cueDir
 
-  let createAssetDir (repo: Repository) (dir: FilePath) =
-    let parent = Git.Repo.parentPath repo
-    let target = parent </> dir
-    if not (Directory.Exists target) && not (File.Exists target) then
-      Directory.CreateDirectory target |> ignore
+  let cueDir (project: IrisProject) : FilePath =
+    project.Path </> CUE_DIR
+
+  // ** cuelistDir
+
+  let cuelistDir (project: IrisProject) : FilePath =
+    project.Path </> CUELIST_DIR
+
+  //   ____                _
+  //  / ___|_ __ ___  __ _| |_ ___
+  // | |   | '__/ _ \/ _` | __/ _ \
+  // | |___| | |  __/ (_| | ||  __/
+  //  \____|_|  \___|\__,_|\__\___|
+
+  // ** writeDaemonExportFile (private)
+
+  let private writeDaemonExportFile (repo: Repository) =
+    either {
+      let path = repo.Info.Path </> "git-daemon-export-ok"
+      let! _ = Asset.save path ""
+      return ()
+    }
+
+  // ** writeGitIgnoreFile (private)
+
+  let private writeGitIgnoreFile (repo: Repository) =
+    either {
+      let parent = Git.Repo.parentPath repo
+      let path = parent </> ".gitignore"
+      let! _ = Asset.save path GITIGNORE
+      do! Git.Repo.stage repo path
+    }
+
+  // ** createAssetDir (private)
+
+  let private createAssetDir (repo: Repository) (dir: FilePath) =
+    either {
+      let parent = Git.Repo.parentPath repo
+      let target = parent </> dir
+      do! FileSystem.mkDir target
       let gitkeep = target </> ".gitkeep"
-      File.WriteAllText(gitkeep, "")
-      Git.Repo.stage repo gitkeep
+      let! _ = Asset.save gitkeep ""
+      do! Git.Repo.stage repo gitkeep
+    }
 
-  // ** initRepo
-
-  /// ### Initialize the project git repository
-  ///
-  /// Given a project value, attempt to work out whether a git repository at that location already
-  /// exists, otherwise creating it.
-  ///
-  /// # Returns: Repository
-  let initRepo (project: IrisProject) : Either<IrisError,Repository> =
-    let initRepoImpl (repo: Repository) =
-      writeDaemonExportFile repo
-      writeGitIgnoreFile repo
-      createAssetDir repo "cues"
-      createAssetDir repo "cuelists"
-      createAssetDir repo "users"
-      repo
-    project.Path
-    |> Git.Repo.init
-    |> Either.map initRepoImpl
-
-  // ** saveMetadata
-
-  //   ____             __ _                       _   _
-  //  / ___|___  _ __  / _(_) __ _ _   _ _ __ __ _| |_(_) ___  _ __
-  // | |   / _ \| '_ \| |_| |/ _` | | | | '__/ _` | __| |/ _ \| '_ \
-  // | |__| (_) | | | |  _| | (_| | |_| | | | (_| | |_| | (_) | | | |
-  //  \____\___/|_| |_|_| |_|\__, |\__,_|_|  \__,_|\__|_|\___/|_| |_|
-  //                         |___/
+  // ** saveMetadata (private)
 
   /// ### Save metadata portion of project
   ///
@@ -228,7 +241,7 @@ module Project =
   /// the project value with the new time stamp.
   ///
   /// # Returns: IrisProject
-  let private saveMetadata (project: IrisProject) (config: ConfigFile)  =
+  let private toFile (project: IrisProject) (config: ConfigFile)  =
     // Project metadata
     config.Project.Metadata.Id   <- string project.Id
     config.Project.Metadata.Name <- project.Name
@@ -246,7 +259,7 @@ module Project =
 
     { project with LastSaved = Some ts }
 
-  // ** commitPath
+  // ** commitPath (private)
 
   /// ## commitPath
   ///
@@ -259,59 +272,159 @@ module Project =
   /// - project   : IrisProject
   ///
   /// Returns: (Commit * IrisProject) option
-  let commitPath (committer: Signature) (msg : string) (filepath: FilePath) (project: IrisProject) : Either<IrisError,(Commit * IrisProject)> =
-    let doCommit repo =
-      try
-        let parent = Git.Repo.parentPath repo
-        let abspath =  parent </> filepath
-
-        // FIXME: need to do some checks on repository before...
-        // create git commit
-        Git.Repo.stage repo abspath
-        Git.Repo.commit repo msg committer
-        |> fun commit -> Either.succeed (commit, project)
-      with
-        | exn ->
-          exn.Message
-          |> CommitError
-          |> Either.fail
-
-    match repository project with
-    | Left _ ->
-      match initRepo project with
-      | Right repo -> doCommit repo
-      | Left error -> Left error
-    | Right repo -> doCommit repo
+  let private commitPath (filepath: FilePath)
+                         (committer: Signature)
+                         (msg : string)
+                         (project: IrisProject) :
+                         Either<IrisError,(Commit * IrisProject)> =
+    either {
+      let! repo = repository project
+      let abspath =
+        if Path.IsPathRooted filepath then
+          filepath
+        else
+          project.Path </> filepath
+      do! Git.Repo.stage repo abspath
+      let! commit = Git.Repo.commit repo msg committer
+      return commit, project
+    }
 
   // ** saveFile
 
-  let saveFile (committer: Signature) (msg : string) (path: FilePath) (project: IrisProject) : Either<IrisError,(Commit * IrisProject)> =
-    commitPath committer msg path project
+  let saveFile (path: FilePath)
+               (contents: string)
+               (committer: Signature)
+               (msg : string)
+               (project: IrisProject) :
+               Either<IrisError,(Commit * IrisProject)> =
 
-  // ** save
+    either {
+      let info = FileInfo path
+      do! FileSystem.mkDir info.Directory.FullName
+      let! info = Asset.save path contents
+      return! commitPath path committer msg project
+    }
 
-  let save (committer: Signature) (msg : string) (project: IrisProject) : Either<IrisError,(Commit * IrisProject)> =
-    if not (Directory.Exists project.Path) then
-      Directory.CreateDirectory project.Path |> ignore
+  // ** deleteFile
 
-    let config = ConfigFile()
+  let deleteFile (path: FilePath)
+                 (committer: Signature)
+                 (msg : string)
+                 (project: IrisProject) :
+                 Either<IrisError,(Commit * IrisProject)> =
+    either {
+      let info = FileInfo path
+      let! result = Asset.delete path
+      return! commitPath path committer msg project
+    }
 
-    let project =
-      config
-      |> Config.toFile project.Config
-      |> saveMetadata project
+  // ** saveAsset
 
-    // save everything!
-    let destPath = project.Path </> PROJECT_FILENAME + ASSET_EXTENSION
+  /// ## saveAsset
+  ///
+  /// Attempt to save the passed thing, and, if succesful, return its
+  /// FileInfo object.
+  ///
+  /// ### Signature:
+  /// - thing: ^t the thing to save. Must implement certain methods/getters
+  /// - committer: User the thing to save. Must implement certain methods/getters
+  /// - project: Project to save file into
+  ///
+  /// Returns: Either<IrisError,Commit * Project>
+  let inline saveAsset (thing: ^t) (committer: User) (project: IrisProject) =
+    let payload = thing |> Yaml.encode
+    let filepath = project.Path </> Asset.path thing
+    let signature = committer.Signature
+    let msg = sprintf "%s save %A" committer.UserName filepath
+    saveFile filepath payload signature msg project
 
-    try
-      config.Save(destPath)
-      commitPath committer msg destPath project
-    with
-      | exn ->
-        exn.Message
-        |> ProjectSaveError
-        |> Either.fail
+  // ** deleteAsset
+
+  /// ## deleteAsset
+  ///
+  /// Delete a file path from disk and commit the change to git.
+  ///
+  /// ### Signature:
+  /// - thing: ^t thing to delete
+  /// - committer: User committing the change
+  /// - msg: User committing the change
+  /// - project: IrisProject to work on
+  ///
+  /// Returns: Either<IrisError, FileInfo * Commit * Project>
+  let inline deleteAsset (thing: ^t) (committer: User) (project: IrisProject) =
+    let filepath = project.Path </> Asset.path thing
+    let signature = committer.Signature
+    let msg = sprintf "%s deleted %A" committer.UserName filepath
+    deleteFile filepath signature msg project
+
+
+  let private needsInit (project: IrisProject) =
+    let projdir = Directory.Exists project.Path
+    let git = Directory.Exists (project.Path </> ".git")
+    let cues = Directory.Exists (project.Path </> CUE_DIR)
+    let cuelists = Directory.Exists (project.Path </> CUELIST_DIR)
+    let users = Directory.Exists (project.Path </> USER_DIR)
+
+    (not git)      ||
+    (not cues)     ||
+    (not cuelists) ||
+    (not users)    ||
+    (not projdir)
+
+  // ** initRepo (private)
+
+  /// ### Initialize the project git repository
+  ///
+  /// Given a project value, attempt to work out whether a git repository at that location already
+  /// exists, otherwise creating it.
+  ///
+  /// # Returns: Repository
+  let private initRepo (project: IrisProject) : Either<IrisError,unit> =
+    either {
+      let! repo = Git.Repo.init project.Path
+      do! writeDaemonExportFile repo
+      do! writeGitIgnoreFile repo
+      do! createAssetDir repo CUE_DIR
+      do! createAssetDir repo USER_DIR
+      do! createAssetDir repo CUELIST_DIR
+      let adminPath = project.Path </> Asset.path User.Admin
+      let! _ =
+        User.Admin
+        |> Yaml.encode
+        |> Asset.save adminPath
+      do! Git.Repo.stage repo adminPath
+      return ()
+    }
+  // ** saveProject
+
+  let saveProject (user: User) (project: IrisProject) : Either<IrisError,(Commit * IrisProject)> =
+    either {
+      do! if needsInit project then
+            initRepo project
+          else
+            Right ()
+
+      let msg = sprintf "%s saved the project" user.UserName
+      let config = ConfigFile()
+
+      let project =
+        config
+        |> Config.toFile project.Config
+        |> toFile project
+
+      // save everything!
+      let destPath = project.Path </> PROJECT_FILENAME + ASSET_EXTENSION
+
+      try
+        config.Save(destPath)
+        return! commitPath destPath user.Signature msg project
+      with
+        | exn ->
+          return!
+            exn.Message
+            |> ProjectSaveError
+            |> Either.fail
+    }
 
   // ** clone
 
@@ -337,11 +450,6 @@ module Project =
 
   let updatePath (path: FilePath) (project: IrisProject) : IrisProject =
     { project with Path = path }
-
-  // ** filePath
-
-  let filePath (project: IrisProject) : FilePath =
-    project.Path </> PROJECT_FILENAME + ASSET_EXTENSION
 
   // ** updateConfig
 

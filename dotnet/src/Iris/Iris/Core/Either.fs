@@ -269,6 +269,12 @@ module EitherUtils =
       else
         self.Zero()
 
+    // member self.For(sequence:seq<'a>, body: 'a -> Either<'err, unit>) =
+    //   let enumerator = sequence.GetEnumerator()
+    //   self.Using(enumerator,fun enum ->
+    //              self.While(enum.MoveNext,
+    //                         self.Delay(fun () -> body enum.Current)))
+
     member self.Combine(a, b) =
       match a with
       | Right _ -> a

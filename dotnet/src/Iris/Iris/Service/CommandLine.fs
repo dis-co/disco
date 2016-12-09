@@ -10,9 +10,11 @@ module CommandLine =
   open Iris.Service.Persistence
   open Iris.Service.Iris
   open Iris.Service.Raft
+  open FSharpx.Functional
   open System
   open System.IO
   open System.Linq
+  open System.Text
   open System.Text.RegularExpressions
 
   // ** Command Line Argument Parser
@@ -25,10 +27,108 @@ module CommandLine =
   //              |___/
 
   type SubCommand =
+    | Help
+    | Setup
     | Create
     | Start
     | Reset
     | Dump
+    | User
+
+    static member Doc
+      with get () =
+        @"
+ ____                                        _        _   _
+|  _ \  ___   ___ _   _ _ __ ___   ___ _ __ | |_ __ _| |_(_) ___  _ __
+| | | |/ _ \ / __| | | | '_ ` _ \ / _ \ '_ \| __/ _` | __| |/ _ \| '_ \
+| |_| | (_) | (__| |_| | | | | | |  __/ | | | || (_| | |_| | (_) | | | |
+|____/ \___/ \___|\__,_|_| |_| |_|\___|_| |_|\__\__,_|\__|_|\___/|_| |_|
+
+----------------------------------------------------------------------
+| create                                                             |
+----------------------------------------------------------------------
+
+  Create a new project in the directory specified by
+
+  --dir=/path/to/parent/dir
+
+  with Project Name
+
+  --name=mycool-project
+
+  You must also specify all ports with their respective flags:
+
+  --raft=<uint16> : Port of underlying Raft service
+  --git=<uint16>  : Port of `git daemon` service
+  --ws=<uint16>   : Port of WebSocket service
+  --web=<uint16>  : Port of Http service
+
+  Additionally, you also need to specify the address which all
+  services should bind to, using
+
+  --bind=192.168.2.x : Address to bind services to
+
+  Beware that service discovery will not work on loopback interfaces!
+
+----------------------------------------------------------------------
+| setup                                                              |
+----------------------------------------------------------------------
+
+  Create a new Machine-level configuration file. This sets the current
+  machine's global identifier and also specifies the workspace
+  directory used by Iris to scan for projects.
+
+  You can specify the parent directory to create configuration in by
+  using the dir flag:
+
+  --dir=/path/to/parent/dir : Base directory for the new config file
+
+----------------------------------------------------------------------
+| start                                                              |
+----------------------------------------------------------------------
+
+  Start the Iris daemon with the project specified. You must specify
+  the project to start with using
+
+  --dir=/path/to/myproject : Base directory containing `project.yml`
+
+  Additionally, you can use the following two flags to enter
+  interactive mode, and/or prevent the http server from being started.
+
+  -i        : Enter interactive mode
+  --no-http : Disable the Http server
+
+----------------------------------------------------------------------
+| reset                                                              |
+----------------------------------------------------------------------
+
+  Reset a project. This is an internal command and might disappear in
+  the future.
+
+----------------------------------------------------------------------
+| dump                                                               |
+----------------------------------------------------------------------
+
+  Dump the current state of the project. Requires you to specify the
+  project directory
+
+  --dir=/path/to/project : Base path containing `project.yml`
+
+----------------------------------------------------------------------
+| user                                                               |
+----------------------------------------------------------------------
+
+  Add a new user to the project. Requires you to specify the project
+  directory
+
+  --dir=/path/to/project : Base path containing `project.yml`
+
+----------------------------------------------------------------------
+| help                                                               |
+----------------------------------------------------------------------
+
+  Show this help message.
+"
 
   type CLIArguments =
     | [<Mandatory;MainCommand;CliPosition(CliPosition.First)>] Cmd of SubCommand
@@ -41,8 +141,8 @@ module CommandLine =
     | [<EqualsAssignment>] Web          of uint16
     | [<EqualsAssignment>] Git          of uint16
     | [<EqualsAssignment>] Ws           of uint16
-    | [<EqualsAssignment>] Dir          of string
     | [<EqualsAssignment>] Name         of string
+    | [<EqualsAssignment>] Dir          of string
 
     interface IArgParserTemplate with
       member self.Usage =
@@ -55,8 +155,8 @@ module CommandLine =
           | Web     _   -> "Http server port."
           | Git     _   -> "Git server port."
           | Ws      _   -> "WebSocket port."
-          | Raft    _   -> "Raft server port (internal)."
-          | Cmd     _   -> "Either one of (--create, --start, --reset or --dump)"
+          | Raft    _   -> "Raft server port."
+          | Cmd     _   -> "Either one of setup, create, start, reset, user or dump."
 
   let parser = ArgumentParser.Create<CLIArguments>()
 
@@ -68,12 +168,9 @@ module CommandLine =
         Error.exitWith MissingStartupDir
       result
 
-    let valid =
-      match opts.GetResult <@ Cmd @> with
-      | Create -> true
-      | Start  -> ensureDir true
-      | Reset  -> ensureDir true
-      | Dump   -> ensureDir true
+    match opts.GetResult <@ Cmd @> with
+    | Start | Reset | Dump | User -> ensureDir ()
+    | _ -> ()
 
     if opts.GetResult <@ Cmd @> = Create then
       let name = opts.Contains <@ Name @>
@@ -459,8 +556,7 @@ module CommandLine =
   let initializeRaft (user: User) (project: IrisProject) = either {
       let! raft = createRaft project.Config
       let! result = saveRaft project.Config raft
-      let! (commit, saved) = Project.save user.Signature "project created" project
-
+      let! (commit, saved) = Project.saveProject user project
       project.Path
       |> printfn "project initialized in %A and committed @ %s" commit.Sha
     }
@@ -550,3 +646,134 @@ module CommandLine =
 
   let dumpDataDir (datadir: FilePath) =
     implement "dumpDataDir"
+
+  // ** setup
+
+  let setup (location: FilePath option) =
+    let create (path: FilePath) =
+      try
+        if File.Exists path then
+          printfn "Machine configuration already present. Contents:"
+          File.ReadAllText path
+          |> String.indent 4
+          |> printfn "%s"
+          printf "Should I overwrite this? (y/n) "
+          let key = Console.ReadKey()
+          printfn "\nAnswer: %c" key.KeyChar
+          match key.KeyChar with
+          | 'y' | 'Y' ->
+            MachineConfig.create ()
+            |> MachineConfig.save (Some path)
+            |> Error.orExit id
+            printfn "Created Machine new config in %A" path
+            |> Either.succeed
+          | _ ->
+            printfn "Not making any changes. Bye."
+            |> Either.succeed
+        else
+          MachineConfig.create ()
+          |> MachineConfig.save (Some path)
+          |> Error.orExit id
+          printfn "Created Machine new config in %A:" path
+          |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> Other
+          |> Either.fail
+
+    match location with
+    | Some path ->
+      path </> MACHINECONFIG_NAME + ASSET_EXTENSION
+      |> create
+    | None ->
+      create MachineConfig.defaultPath
+
+  // ** help
+
+  [<Literal>]
+  let private header = @"   *   .  *.  .
+ *  ___ ____.*___ ____  .     * .
+* .|_ _|  _ \|_ _/ ___|*    .
+  * | || |_) || |\___ \  .*  *
+    | ||  _ < | | ___) |     .
+.* |___|_| \_\___|____/. Automation Framework Daemon © Nsynk GmbH, 2016
+*        .*           .* .
+ "
+
+  let help () =
+    parser.PrintUsage(header, "iris.exe", true)
+    |> flip (printfn "%s\n%s") SubCommand.Doc
+    |> Either.succeed
+
+  // ** addUser
+
+  let private readPass (field: string) =
+    let mutable pass = ""
+    while String.length pass = 0 do
+      printf "%s: " field
+      let mutable last = Unchecked.defaultof<ConsoleKeyInfo>
+      while last.Key <> ConsoleKey.Enter do
+        last <- Console.ReadKey(true)
+        if last.Key <> ConsoleKey.Backspace && last.Key <> ConsoleKey.Enter then
+          pass <- sprintf "%s%c" pass last.KeyChar
+          Console.Write("*")
+        else
+          if last.Key = ConsoleKey.Backspace && String.length pass > 0 then
+            pass <- String.subString 0 (String.length pass - 1) pass
+            Console.Write("\b \b")
+      printf "%s" Environment.NewLine
+    pass
+
+  let private readString (field: string) =
+    let mutable str = ""
+    while String.length str = 0 do
+      printf "%s: " field
+      str <-
+        Console.ReadLine()
+        |> String.trim
+    str
+
+  let private readEmail (field: string) =
+    let pattern = "^.*@.*\..*"
+    let mutable email = ""
+    while String.length email = 0 do
+      let str = readString field
+      let m = Regex.Match(str, pattern)
+      if m.Success then
+        email <- str
+    email
+
+  let addUser (datadir: FilePath) =
+    either {
+      let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
+      let! machine = MachineConfig.load None
+      let! project = Project.load path machine
+
+      let username  = readString "UserName"
+      let firstname = readString "First Name"
+      let lastname  = readString "Last Name"
+      let email     = readEmail  "Email"
+      let password1 = readPass   "Enter Password"
+      let password2 = readPass   "Re-Enter Password"
+
+      if password1 = password2 then
+        let hash, salt = Crypto.hash password1
+        let user =
+          { Id        = Id.Create()
+            UserName  = username
+            FirstName = firstname
+            LastName  = lastname
+            Email     = email
+            Password  = hash
+            Salt      = salt
+            Joined    = DateTime.Now
+            Created   = DateTime.Now }
+        let! _ = Project.saveAsset user User.Admin project
+        return ()
+      else
+        return!
+          "Passwords do not match. Try again Sam."
+          |> Other
+          |> Either.fail
+    }
