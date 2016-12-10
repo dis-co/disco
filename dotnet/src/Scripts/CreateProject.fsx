@@ -22,8 +22,8 @@ let create(path: string) =
     ; Nodes = nodes
     ; Groups = [] }
 
-  // let stringBox = IOBox.String(Id.Create(), "string", Id.Create(), [||], [|{ Index = 0u; Value = "one" }|])
-  // let cue = { Cue.Id=Id.Create(); Name="MyCue"; IOBoxes=[|stringBox|] }
+  // let stringBox = Pin.String(Id.Create(), "string", Id.Create(), [||], [|{ Index = 0u; Value = "one" }|])
+  // let cue = { Cue.Id=Id.Create(); Name="MyCue"; Pins=[|stringBox|] }
 
   let (commit, project) =
     let m = { MachineConfig.create() with MachineId = Id "TEST_MACHINE" }

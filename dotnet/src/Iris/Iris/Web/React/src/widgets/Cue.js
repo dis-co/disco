@@ -5,7 +5,7 @@ import { map } from "../Util";
 export default function WidgetCue(props) {
   return (
     <Panel className="panel-cue">
-      {map(props.cue.IOBoxes, x =>
+      {map(props.cue.Pins, x =>
         <table className="mui-table mui-table--bordered">
           <tbody>
             {map(x.Slices.Fields[0], (y,i) =>
