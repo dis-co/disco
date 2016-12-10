@@ -271,15 +271,15 @@ module Log =
         [ for i in 0 .. 3 do
             yield DataSnapshot State.Empty ]
 
-      let nodes =
+      let mems =
         [ for n in 0u .. 5u do
-            yield Node.create (Id.Create()) ]
+            yield Member.create (Id.Create()) ]
         |> Array.ofList
 
       let log =
         List.fold (fun l t -> Log.append (Log.make term t) l) Log.empty data
 
-      Log.snapshot nodes (DataSnapshot State.Empty) log
+      Log.snapshot mems (DataSnapshot State.Empty) log
       |> assume "Should have correct lastTerm" (Some term) Log.lastTerm
       |> expect "Should have correct lastIndex" (Some <| Log.index log) Log.lastIndex
 

@@ -48,7 +48,7 @@
     "../../../Iris/Core/CueList.fs"
     "../../../Iris/Raft/Validation.fs"
     "../../../Iris/Raft/Continue.fs"
-    "../../../Iris/Raft/Node.fs"
+    "../../../Iris/Raft/Member.fs"
     "../../../Iris/Core/StateMachine.fs"
     "../../../Iris/Raft/Logging.fs"
     "../../../Iris/Raft/Log.fs"

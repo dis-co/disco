@@ -439,7 +439,7 @@ module Git =
   [<RequireQualifiedAccess>]
   module GitServer =
 
-    let create (node: RaftNode) (path: FilePath) =
+    let create (mem: RaftMember) (path: FilePath) =
       let subscriptions = new Subscriptions()
       let listener = createListener subscriptions
       let agent = new GitAgent(loop Idle subscriptions)
@@ -484,7 +484,7 @@ module Git =
 
             member self.Start () =
               let callback (chan: ReplyChan) =
-                Msg.Start(path, string node.IpAddr, node.GitPort, chan)
+                Msg.Start(path, string mem.IpAddr, mem.GitPort, chan)
 
               match agent.PostAndReply(callback) with
               | Right Reply.Ok ->

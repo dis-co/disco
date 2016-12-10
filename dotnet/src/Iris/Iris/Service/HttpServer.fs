@@ -83,7 +83,7 @@ module Http =
                        Either<IrisError,SuaveConfig> =
     either {
       try
-        let! node = Config.selfNode options
+        let! mem = Config.selfMember options
 
         let logger =
           { new Logger with
@@ -94,7 +94,7 @@ module Http =
                 | _ ->
                   Logger.debug options.MachineConfig.MachineId tag line.message }
 
-        let addr, port = string node.IpAddr, string node.WebPort
+        let addr, port = string mem.IpAddr, string mem.WebPort
 
         let addr = IPAddress.Parse addr
         let port = Sockets.Port.Parse port

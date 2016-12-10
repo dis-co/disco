@@ -1,6 +1,6 @@
 namespace Iris.Raft
 
-// * imports
+// * Imports
 open System
 open System.Net
 open Iris.Core
@@ -14,9 +14,9 @@ open SharpYaml.Serialization
 ///
 /// ## States
 ///  - `None`     - hm
-///  - `Follower` - this Node is currently following a different Leader
-///  - `Candiate` - this Node currently seeks to become Leader
-///  - `Leader`   - this Node currently is Leader of the cluster
+///  - `Follower` - this Member is currently following a different Leader
+///  - `Candiate` - this Member currently seeks to become Leader
+///  - `Leader`   - this Member currently is Leader of the cluster
 type RaftState =
   | Follower
   | Candidate
@@ -80,23 +80,23 @@ module Entry =
 ///
 /// ## Vote:
 ///  - `Term`         -  the current term, to force any other leader/candidate to step down
-///  - `Candidate`    -  the unique node id of candidate for leadership
+///  - `Candidate`    -  the unique mem id of candidate for leadership
 ///  - `LastLogIndex` -  the index of the candidates last log entry
 ///  - `LastLogTerm`  -  the index of the candidates last log entry
 type VoteRequest =
   { Term         : Term
-    Candidate    : RaftNode
+    Candidate    : RaftMember
     LastLogIndex : Index
     LastLogTerm  : Term }
 
   // ** ToOffset
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let node = self.Candidate.ToOffset(builder)
+    let mem = self.Candidate.ToOffset(builder)
     VoteRequestFB.StartVoteRequestFB(builder)
     VoteRequestFB.AddTerm(builder, self.Term)
     VoteRequestFB.AddLastLogTerm(builder, self.LastLogTerm)
     VoteRequestFB.AddLastLogIndex(builder, self.LastLogIndex)
-    VoteRequestFB.AddCandidate(builder, node)
+    VoteRequestFB.AddCandidate(builder, mem)
     VoteRequestFB.EndVoteRequestFB(builder)
 
   // ** FromFB
@@ -104,14 +104,14 @@ type VoteRequest =
     either {
       let candidate = fb.Candidate
       if candidate.HasValue then
-        let! node = RaftNode.FromFB candidate.Value
+        let! mem = RaftMember.FromFB candidate.Value
         return { Term         = fb.Term
-                 Candidate    = node
+                 Candidate    = mem
                  LastLogIndex = fb.LastLogIndex
                  LastLogTerm  = fb.LastLogTerm }
       else
         return!
-          "Could not parse empty NodeFB"
+          "Could not parse empty MemberFB"
           |> ParseError
           |> Either.fail
     }
@@ -197,14 +197,14 @@ module Vote =
 
 /// AppendEntries message.
 ///
-/// This message is used to tell nodes if it's safe to apply entries to the
+/// This message is used to tell mems if it's safe to apply entries to the
 /// FSM. Can be sent without any entries as a keep alive message.  This
 /// message could force a leader/candidate to become a follower.
 ///
 /// ## Message:
 ///  - `Term`        - currentTerm, to force other leader/candidate to step down
-///  - `PrevLogIdx`  - the index of the log just before the newest entry for the node who receive this message
-///  - `PrevLogTerm` - the term of the log just before the newest entry for the node who receives this message
+///  - `PrevLogIdx`  - the index of the log just before the newest entry for the mem who receive this message
+///  - `PrevLogTerm` - the term of the log just before the newest entry for the mem who receives this message
 ///  - `LeaderCommit`- the index of the entry that has been appended to the majority of the cluster. Entries up to this index will be applied to the FSM
 type AppendEntries =
   { Term         : Term
@@ -338,7 +338,7 @@ module AppendRequest =
 
 type InstallSnapshot =
   { Term      : Term
-    LeaderId  : NodeId
+    LeaderId  : MemberId
     LastIndex : Index
     LastTerm  : Term
     Data      : RaftLogEntry }
@@ -406,13 +406,13 @@ type InstallSnapshot =
 type IRaftCallbacks =
 
   /// Request a vote from given Raft server
-  abstract member SendRequestVote:     RaftNode  -> VoteRequest            -> VoteResponse option
+  abstract member SendRequestVote:     RaftMember  -> VoteRequest            -> VoteResponse option
 
   /// Send AppendEntries message to given server
-  abstract member SendAppendEntries:   RaftNode  -> AppendEntries          -> AppendResponse option
+  abstract member SendAppendEntries:   RaftMember  -> AppendEntries          -> AppendResponse option
 
   /// Send InstallSnapshot command to given serve
-  abstract member SendInstallSnapshot: RaftNode  -> InstallSnapshot        -> AppendResponse option
+  abstract member SendInstallSnapshot: RaftMember  -> InstallSnapshot        -> AppendResponse option
 
   /// given the current state of Raft, prepare and return a snapshot value of
   /// current application state
@@ -429,23 +429,23 @@ type IRaftCallbacks =
   abstract member ApplyLog:            StateMachine    -> unit
 
   /// a new server was added to the configuration
-  abstract member NodeAdded:           RaftNode        -> unit
+  abstract member MemberAdded:           RaftMember        -> unit
 
   /// a new server was added to the configuration
-  abstract member NodeUpdated:         RaftNode        -> unit
+  abstract member MemberUpdated:         RaftMember        -> unit
 
   /// a server was removed from the configuration
-  abstract member NodeRemoved:         RaftNode        -> unit
+  abstract member MemberRemoved:         RaftMember        -> unit
 
   /// a cluster configuration transition was successfully applied
-  abstract member Configured:          RaftNode array  -> unit
+  abstract member Configured:          RaftMember array  -> unit
 
   /// the state of Raft itself has changed from old state to new given state
   abstract member StateChanged:        RaftState       -> RaftState              -> unit
 
   /// persist vote data to disk. For safety reasons this callback MUST flush
   /// the change to disk.
-  abstract member PersistVote:         RaftNode option -> unit
+  abstract member PersistVote:         RaftMember option -> unit
 
   /// persist term data to disk. For safety reasons this callback MUST flush
   /// the change to disk>
@@ -460,15 +460,15 @@ type IRaftCallbacks =
   abstract member DeleteLog:           RaftLogEntry        -> unit
 
   /// Callback for catching debug messsages
-  abstract member LogMsg: RaftNode -> CallSite -> LogLevel -> String -> unit
+  abstract member LogMsg: RaftMember -> CallSite -> LogLevel -> String -> unit
 
 // * RaftValueYaml
 
 and RaftValueYaml() =
-  [<DefaultValue>] val mutable Node            : string
+  [<DefaultValue>] val mutable Member            : string
   [<DefaultValue>] val mutable Term            : Term
   [<DefaultValue>] val mutable Leader          : string
-  [<DefaultValue>] val mutable Peers           : RaftNodeYaml array
+  [<DefaultValue>] val mutable Peers           : RaftMemberYaml array
   [<DefaultValue>] val mutable VotedFor        : string
   [<DefaultValue>] val mutable Log             : RaftLogYaml
   [<DefaultValue>] val mutable ElectionTimeout : Long
@@ -485,12 +485,12 @@ and RaftValueYaml() =
 // |_| \_\__,_|_|  \__|                                                                                                                  //
 //                                                                                                                                       //
 // ## Raft Server:                                                                                                                       //
-//  - `Node`                  - the server's own node information                                                                        //
+//  - `Member`                  - the server's own mem information                                                                        //
 //  - `RaftState`             - follower/leader/candidate indicator                                                                  //
 //  - `CurrentTerm`           - the server's best guess of what the current term is starts at zero                                       //
-//  - `CurrentLeader`         - what this node thinks is the node ID of the current leader, or -1 if there isn't a known current leader. //
-//  - `Peers`                 - list of all known nodes                                                                                  //
-//  - `NumNodes`              - number of currently known peers                                                                          //
+//  - `CurrentLeader`         - what this mem thinks is the mem ID of the current leader, or -1 if there isn't a known current leader. //
+//  - `Peers`                 - list of all known mems                                                                                  //
+//  - `NumMembers`              - number of currently known peers                                                                          //
 //  - `VotedFor`              - the candidate the server voted for in its current term or None if it hasn't voted for any yet            //
 //  - `Log`                   - the log which is replicated                                                                              //
 //  - `CommitIdx`             - idx of highest log entry known to be committed                                                           //
@@ -505,14 +505,14 @@ and RaftValueYaml() =
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 and RaftValue =
-  { Node              : RaftNode
+  { Member              : RaftMember
   ; State             : RaftState
   ; CurrentTerm       : Term
-  ; CurrentLeader     : NodeId option
-  ; Peers             : Map<NodeId,RaftNode>
-  ; OldPeers          : Map<NodeId,RaftNode> option
-  ; NumNodes          : Long
-  ; VotedFor          : NodeId option
+  ; CurrentLeader     : MemberId option
+  ; Peers             : Map<MemberId,RaftMember>
+  ; OldPeers          : Map<MemberId,RaftMember> option
+  ; NumMembers          : Long
+  ; VotedFor          : MemberId option
   ; Log               : RaftLog
   ; CommitIndex       : Index
   ; LastAppliedIdx    : Index
@@ -525,11 +525,11 @@ and RaftValue =
 
   // ** ToString
   override self.ToString() =
-    sprintf "Node              = %s
+    sprintf "Member              = %s
 State             = %A
 CurrentTerm       = %A
 CurrentLeader     = %A
-NumNodes          = %A
+NumMembers          = %A
 VotedFor          = %A
 MaxLogDepth       = %A
 CommitIndex       = %A
@@ -539,11 +539,11 @@ ElectionTimeout   = %A
 RequestTimeout    = %A
 ConfigChangeEntry = %s
 "
-      (self.Node.ToString())
+      (self.Member.ToString())
       self.State
       self.CurrentTerm
       self.CurrentLeader
-      self.NumNodes
+      self.NumMembers
       self.VotedFor
       self.MaxLogDepth
       self.CommitIndex
@@ -559,7 +559,7 @@ ConfigChangeEntry = %s
   member self.IsLeader
     with get () =
       match self.CurrentLeader with
-      | Some lid -> self.Node.Id = lid
+      | Some lid -> self.Member.Id = lid
       | _ -> false
 
   // ** Yaml
@@ -576,7 +576,7 @@ ConfigChangeEntry = %s
   // *** ToYamlObject
   member self.ToYamlObject() =
     let yaml = new RaftValueYaml()
-    yaml.Node <- string self.Node.Id
+    yaml.Member <- string self.Member.Id
     yaml.Term <- self.CurrentTerm
 
     Option.map
@@ -614,28 +614,28 @@ ConfigChangeEntry = %s
         else
           Some (Id yaml.VotedFor)
 
-      let! nodes =
+      let! mems =
         Array.fold
-          (fun (m: Either<IrisError, Map<Id, RaftNode>>) yml -> either {
-            let! nodes = m
-            let! (node : RaftNode) = Yaml.fromYaml yml
-            return (Map.add node.Id node nodes)
+          (fun (m: Either<IrisError, Map<Id, RaftMember>>) yml -> either {
+            let! mems = m
+            let! (mem : RaftMember) = Yaml.fromYaml yml
+            return (Map.add mem.Id mem mems)
           })
           (Right Map.empty)
           yaml.Peers
 
       let! log = Yaml.fromYaml yaml.Log
-      let node = Map.tryFind (Id yaml.Node) nodes
+      let mem = Map.tryFind (Id yaml.Member) mems
 
-      match node with
-      | Some node ->
-        return { Node              = node
+      match mem with
+      | Some mem ->
+        return { Member              = mem
                  State             = Follower
                  CurrentTerm       = yaml.Term
                  CurrentLeader     = leader
-                 Peers             = nodes
+                 Peers             = mems
                  OldPeers          = None
-                 NumNodes          = uint32 yaml.Peers.Length
+                 NumMembers          = uint32 yaml.Peers.Length
                  VotedFor          = votedfor
                  Log               = log
                  CommitIndex       = 0u
@@ -647,7 +647,7 @@ ConfigChangeEntry = %s
                  ConfigChangeEntry = None }
       | _ ->
         return!
-          "Could not current node in config"
+          "Could not current mem in config"
           |> ParseError
           |> Either.fail
     }

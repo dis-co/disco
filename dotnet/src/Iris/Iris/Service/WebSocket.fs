@@ -222,7 +222,7 @@ module WebSockets =
   [<RequireQualifiedAccess>]
   module SocketServer =
 
-    let create (node: RaftNode) =
+    let create (mem: RaftMember) =
       either {
         let connections = new Connections()
         let subscriptions = new Subscriptions()
@@ -241,9 +241,9 @@ module WebSockets =
 
         let agent = new SocketEventProcessor(loop subscriptions)
 
-        let uri = sprintf "ws://%s:%d" (string node.IpAddr) node.WsPort
+        let uri = sprintf "ws://%s:%d" (string mem.IpAddr) mem.WsPort
 
-        let handler = onNewSocket node.Id connections agent
+        let handler = onNewSocket mem.Id connections agent
         let server = new WebSocketServer(uri)
 
         return
@@ -269,13 +269,13 @@ module WebSockets =
                 try
                   uri
                   |> sprintf "Starting WebSocketServer on: %s"
-                  |> Logger.debug node.Id tag
+                  |> Logger.debug mem.Id tag
 
                   agent.Start()
                   server.Start(new Action<IWebSocketConnection>(handler))
 
                   "WebSocketServer successfully started"
-                  |> Logger.debug node.Id tag
+                  |> Logger.debug mem.Id tag
                   |> Either.succeed
                 with
                   | exn ->

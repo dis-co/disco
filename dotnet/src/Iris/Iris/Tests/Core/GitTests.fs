@@ -42,14 +42,14 @@ module GitTests =
 
     let tmpdir = mkTmpDir ()
 
-    let node =
+    let mem =
       machine.MachineId
-      |> Node.create
-      |> Node.setGitPort port
+      |> Member.create
+      |> Member.setGitPort port
 
     let config =
       Config.create "Test Project" machine
-      |> Config.setNodes [| node |]
+      |> Config.setMembers [| mem |]
       |> Config.setLogLevel Debug
 
     let commit, project =
@@ -59,7 +59,7 @@ module GitTests =
       |> Project.saveProject User.Admin
       |> Either.get
 
-    machine, tmpdir, project, node, project.Path
+    machine, tmpdir, project, mem, project.Path
 
   //  ____                      _
   // |  _ \ ___ _ __ ___   ___ | |_ ___  ___
@@ -107,10 +107,10 @@ module GitTests =
   let test_server_startup =
     testCase "Server startup" <| fun _ ->
       either {
-        let uuid, tmpdir, project, node, path =
+        let uuid, tmpdir, project, mem, path =
           mkEnvironment 10000us
 
-        use! gitserver = GitServer.create node path
+        use! gitserver = GitServer.create mem path
         do! gitserver.Start()
 
         do! expectE "Should be running" true Service.isRunning gitserver.Status
@@ -120,14 +120,14 @@ module GitTests =
   let test_server_startup_should_error_on_eaddrinuse =
     testCase "Server should fail on EADDRINUSE" <| fun _ ->
       either {
-        let uuid, tmpdir, project, node, path =
+        let uuid, tmpdir, project, mem, path =
           mkEnvironment 10001us
 
-        use! gitserver1 = GitServer.create node path
+        use! gitserver1 = GitServer.create mem path
         do! gitserver1.Start()
         do! expectE "Should be running" true Service.isRunning gitserver1.Status
 
-        use! gitserver2 = GitServer.create node path
+        use! gitserver2 = GitServer.create mem path
         do! match gitserver2.Start() with
             | Right ()   -> Left (Other "Should have failed to start")
             | Left error -> Right ()
@@ -140,10 +140,10 @@ module GitTests =
       either {
         let port = 10002us
 
-        let uuid, tmpdir, project, node, path =
+        let uuid, tmpdir, project, mem, path =
           mkEnvironment port
 
-        use! gitserver = GitServer.create node path
+        use! gitserver = GitServer.create mem path
         do! gitserver.Start()
 
         do! expectE "Should be running" true Service.isRunning gitserver.Status
@@ -165,15 +165,15 @@ module GitTests =
       either {
         let port = 10003us
 
-        let uuid, tmpdir, project, node, path =
+        let uuid, tmpdir, project, mem, path =
           mkEnvironment port
 
-        let! gitserver1 = GitServer.create node path
+        let! gitserver1 = GitServer.create mem path
         do! gitserver1.Start()
 
         do! expectE "Should be running" true Service.isRunning gitserver1.Status
 
-        let! gitserver2 = GitServer.create node path
+        let! gitserver2 = GitServer.create mem path
 
         do! match gitserver2.Start() with
             | Right () -> Left (Other "Should have failed but didn't")

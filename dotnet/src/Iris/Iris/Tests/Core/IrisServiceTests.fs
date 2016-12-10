@@ -31,11 +31,11 @@ module IrisServiceTests =
         let signal = ref 0
 
         let machine = MachineConfig.create ()
-        let node = Node.create machine.MachineId
+        let mem = Member.create machine.MachineId
 
         let cfg =
           Config.create "leader" machine
-          |> Config.setNodes [| node |]
+          |> Config.setMembers [| mem |]
           |> Config.setLogLevel (LogLevel.Debug)
 
         let name =

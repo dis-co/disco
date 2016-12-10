@@ -138,7 +138,7 @@ type ViewPortYaml   = ConfigFile.Project_Type.ViewPorts_Item_Type
 type TaskYaml       = ConfigFile.Project_Type.Tasks_Item_Type
 type ArgumentYaml   = TaskYaml.Arguments_Item_Type
 type ClusterYaml    = ConfigFile.Project_Type.Cluster_Type
-type NodeYaml       = ConfigFile.Project_Type.Cluster_Type.Nodes_Item_Type
+type MemberYaml     = ConfigFile.Project_Type.Cluster_Type.Members_Item_Type
 type GroupYaml      = ConfigFile.Project_Type.Cluster_Type.Groups_Item_Type
 type AudioYaml      = ConfigFile.Project_Type.Audio_Type
 type EngineYaml     = ConfigFile.Project_Type.Engine_Type
@@ -284,17 +284,17 @@ type HostGroup =
 //  \____|_|\__,_|___/\__\___|_|
 
 type Cluster =
-  { Name   : Name
-    Nodes  : RaftNode  list
-    Groups : HostGroup list }
+  { Name    : Name
+    Members : RaftMember list
+    Groups  : HostGroup  list }
 
   override self.ToString() =
     sprintf "Cluster:
               Name: %A
-              Nodes: %A
+              Members: %A
               Groups: %A"
             self.Name
-            self.Nodes
+            self.Members
             self.Groups
 
 // * IrisConfig
@@ -1037,7 +1037,7 @@ module Config =
       file.Project.Tasks.Add(t)
     (file, config)
 
-  // ** parseNode
+  // ** parseMember
 
   //    ____ _           _
   //   / ___| |_   _ ___| |_ ___ _ __
@@ -1046,27 +1046,27 @@ module Config =
   //   \____|_|\__,_|___/\__\___|_|
   //
 
-  /// ## Parse a single Node definition
+  /// ## Parse a single Member definition
   ///
-  /// Parse a single Node definition. Returns a ParseError on failiure.
+  /// Parse a single Member definition. Returns a ParseError on failiure.
   ///
   /// ### Signature:
-  /// - node: NodeYaml
+  /// - mem: MemberYaml
   ///
-  /// Returns: Either<IrisError, RaftNode>
-  let parseNode (node: NodeYaml) : Either<IrisError, RaftNode> =
+  /// Returns: Either<IrisError, RaftMember>
+  let parseMember (mem: MemberYaml) : Either<IrisError, RaftMember> =
     either {
-      let! ip = IpAddress.TryParse node.Ip
-      let! state = RaftNodeState.TryParse node.State
+      let! ip = IpAddress.TryParse mem.Ip
+      let! state = RaftMemberState.TryParse mem.State
 
       try
-        return { Id         = Id node.Id
-                 HostName   = node.HostName
+        return { Id         = Id mem.Id
+                 HostName   = mem.HostName
                  IpAddr     = ip
-                 Port       = uint16 node.Port
-                 WebPort    = uint16 node.WebPort
-                 WsPort     = uint16 node.WsPort
-                 GitPort    = uint16 node.GitPort
+                 Port       = uint16 mem.Port
+                 WebPort    = uint16 mem.WebPort
+                 WsPort     = uint16 mem.WsPort
+                 GitPort    = uint16 mem.GitPort
                  State      = state
                  Voting     = true
                  VotedForMe = false
@@ -1075,33 +1075,33 @@ module Config =
       with
         | exn ->
           return!
-            sprintf "Could not parse Node definition: %s" exn.Message
+            sprintf "Could not parse Member definition: %s" exn.Message
             |> ParseError
             |> Either.fail
     }
 
-  // ** parseNode
+  // ** parseMember
 
-  /// ## Parse a collectio of Node definitions
+  /// ## Parse a collectio of Member definitions
   ///
-  /// Parse a list of Node definitions. Returns a ParseError on failure.
+  /// Parse a list of Member definitions. Returns a ParseError on failure.
   ///
   /// ### Signature:
-  /// - nodes: NodeYaml collection
+  /// - mems: MemberYaml collection
   ///
-  /// Returns: Either<IrisError, RaftNode list>
-  let parseNodes nodes : Either<IrisError, RaftNode list> =
+  /// Returns: Either<IrisError, RaftMember list>
+  let parseMembers mems : Either<IrisError, RaftMember list> =
     either {
-      let! nodes =
+      let! mems =
         Seq.fold
-          (fun (m: Either<IrisError, RaftNode list>) node -> either {
-            let! nodes = m
-            let! node = parseNode node
-            return node :: nodes
+          (fun (m: Either<IrisError, RaftMember list>) mem -> either {
+            let! mems = m
+            let! mem = parseMember mem
+            return mem :: mems
           })
           (Right [])
-          nodes
-      return List.reverse nodes
+          mems
+      return List.reverse mems
     }
 
   // ** parseGroup
@@ -1150,10 +1150,10 @@ module Config =
       let cluster = config.Project.Cluster
 
       let! groups = parseGroups cluster.Groups
-      let! nodes = parseNodes cluster.Nodes
+      let! mems = parseMembers cluster.Members
 
       return { Name   = cluster.Name
-               Nodes  = nodes
+               Members  = mems
                Groups = groups }
     }
 
@@ -1165,21 +1165,21 @@ module Config =
   ///
   /// # Returns: ConfigFile
   let saveCluster (file: ConfigFile, config: IrisConfig) =
-    file.Project.Cluster.Nodes.Clear()
+    file.Project.Cluster.Members.Clear()
     file.Project.Cluster.Groups.Clear()
     file.Project.Cluster.Name <- config.ClusterConfig.Name
 
-    for node in config.ClusterConfig.Nodes do
-      let n = new NodeYaml()
-      n.Id       <- string node.Id
-      n.Ip       <- string node.IpAddr
-      n.HostName <- node.HostName
-      n.Port     <- int node.Port
-      n.WebPort  <- int node.WebPort
-      n.WsPort   <- int node.WsPort
-      n.GitPort  <- int node.GitPort
-      n.State    <- string node.State
-      file.Project.Cluster.Nodes.Add(n)
+    for mem in config.ClusterConfig.Members do
+      let n = new MemberYaml()
+      n.Id       <- string mem.Id
+      n.Ip       <- string mem.IpAddr
+      n.HostName <- mem.HostName
+      n.Port     <- int mem.Port
+      n.WebPort  <- int mem.WebPort
+      n.WsPort   <- int mem.WsPort
+      n.GitPort  <- int mem.GitPort
+      n.State    <- string mem.State
+      file.Project.Cluster.Members.Add(n)
 
     for group in config.ClusterConfig.Groups do
       let g = new GroupYaml()
@@ -1247,7 +1247,7 @@ module Config =
     ; Displays       = []
     ; Tasks          = []
     ; ClusterConfig  = { Name   = name + " cluster"
-                       ; Nodes  = []
+                       ; Members  = []
                        ; Groups = [] } }
 
   // ** updateVvvv
@@ -1295,55 +1295,55 @@ module Config =
   let updateCluster (cluster: Cluster) (config: IrisConfig) =
     { config with ClusterConfig = cluster }
 
-  // ** findNode
+  // ** findMember
 
-  let findNode (config: IrisConfig) (id: Id) =
+  let findMember (config: IrisConfig) (id: Id) =
     let result =
       List.tryFind
-        (fun (node: RaftNode) -> node.Id = id)
-        config.ClusterConfig.Nodes
+        (fun (mem: RaftMember) -> mem.Id = id)
+        config.ClusterConfig.Members
 
     match result with
-    | Some node -> Either.succeed node
+    | Some mem -> Either.succeed mem
     | _         -> MissingNode (string id) |> Either.fail
 
-  // ** getNodes
+  // ** getMembers
 
-  let getNodes (config: IrisConfig) : Either<IrisError,RaftNode array> =
-    config.ClusterConfig.Nodes
+  let getMembers (config: IrisConfig) : Either<IrisError,RaftMember array> =
+    config.ClusterConfig.Members
     |> Array.ofList
     |> Either.succeed
 
-  // ** setNodes
+  // ** setMembers
 
-  let setNodes (nodes: RaftNode array) (config: IrisConfig) =
+  let setMembers (mems: RaftMember array) (config: IrisConfig) =
     { config with
         ClusterConfig =
           { config.ClusterConfig with
-              Nodes = List.ofArray nodes } }
+              Members = List.ofArray mems } }
 
-  // ** selfNode
+  // ** selfMember
 
-  let selfNode (options: IrisConfig) =
-    findNode options options.MachineConfig.MachineId
+  let selfMember (options: IrisConfig) =
+    findMember options options.MachineConfig.MachineId
 
-  // ** addNode
+  // ** addMember
 
-  let addNode (node: RaftNode) (config: IrisConfig) =
+  let addMember (mem: RaftMember) (config: IrisConfig) =
     { config with
         ClusterConfig =
           { config.ClusterConfig with
-              Nodes = node :: config.ClusterConfig.Nodes } }
+              Members = mem :: config.ClusterConfig.Members } }
 
-  // ** removeNode
+  // ** removeMember
 
-  let removeNode (id: Id) (config: IrisConfig) =
+  let removeMember (id: Id) (config: IrisConfig) =
     { config with
         ClusterConfig =
           { config.ClusterConfig with
-              Nodes = List.filter
-                        (fun (node: RaftNode) -> node.Id = id)
-                        config.ClusterConfig.Nodes } }
+              Members = List.filter
+                          (fun (mem: RaftMember) -> mem.Id = id)
+                          config.ClusterConfig.Members } }
 
   // ** logLevel
 

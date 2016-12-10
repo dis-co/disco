@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -97,8 +97,8 @@
     <Compile Include="../../Iris/Core/Logging.fs">
       <Link>Logging.fs</Link>
     </Compile>
-    <Compile Include="../../Iris/Raft/Node.fs">
-      <Link>Node.fs</Link>
+    <Compile Include="../../Iris/Raft/Member.fs">
+      <Link>Member.fs</Link>
     </Compile>
     <Compile Include="../../Iris/Core/IOBox.fs">
       <Link>IOBox.fs</Link>

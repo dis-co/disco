@@ -29,24 +29,24 @@ module RaftIntegrationTests =
         let machine1 = MachineConfig.create ()
         let machine2 = MachineConfig.create ()
 
-        let node1 =
+        let mem1 =
           machine1.MachineId
-          |> Node.create
-          |> Node.setPort 8000us
+          |> Member.create
+          |> Member.setPort 8000us
 
-        let node2 =
+        let mem2 =
           machine2.MachineId
-          |> Node.create
-          |> Node.setPort 8001us
+          |> Member.create
+          |> Member.setPort 8001us
 
         let leadercfg =
           Config.create "leader" machine1
-          |> Config.setNodes [| node1; node2 |]
+          |> Config.setMembers [| mem1; mem2 |]
           |> Config.setLogLevel (LogLevel.Debug)
 
         let followercfg =
           Config.create "follower" machine2
-          |> Config.setNodes [| node1; node2 |]
+          |> Config.setMembers [| mem1; mem2 |]
           |> Config.setLogLevel (LogLevel.Debug)
 
         let! leader = RaftServer.create ()
@@ -71,14 +71,14 @@ module RaftIntegrationTests =
         let port = 12000us
         let machine = MachineConfig.create ()
 
-        let node =
+        let mem =
           machine.MachineId
-          |> Node.create
-          |> Node.setPort port
+          |> Member.create
+          |> Member.setPort port
 
         let leadercfg =
           Config.create "leader" machine
-          |> Config.addNode node
+          |> Config.addMember mem
 
           // |> Config.setLogLevel (LogLevel.Debug)
 
@@ -112,24 +112,24 @@ module RaftIntegrationTests =
         let machine1 = MachineConfig.create ()
         let machine2 = MachineConfig.create ()
 
-        let node1 =
+        let mem1 =
           machine1.MachineId
-          |> Node.create
-          |> Node.setPort 8000us
+          |> Member.create
+          |> Member.setPort 8000us
 
-        let node2 =
+        let mem2 =
           machine2.MachineId
-          |> Node.create
-          |> Node.setPort 8001us
+          |> Member.create
+          |> Member.setPort 8001us
 
         let leadercfg =
           Config.create "leader" machine1
-          |> Config.setNodes [| node1; node2 |]
+          |> Config.setMembers [| mem1; mem2 |]
           |> Config.setLogLevel (LogLevel.Debug)
 
         let followercfg =
           Config.create "follower" machine2
-          |> Config.setNodes [| node1; node2 |]
+          |> Config.setMembers [| mem1; mem2 |]
           |> Config.setLogLevel (LogLevel.Debug)
 
         use! leader = RaftServer.create ()

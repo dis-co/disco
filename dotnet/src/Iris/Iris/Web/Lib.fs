@@ -19,20 +19,19 @@ let login(info: StateInfo, username: string, password: string) =
 let subscribeToLogs(ctx: ClientContext, f:ClientLog->unit): IDisposable =
   ctx.OnClientLog.Subscribe(f)
 
-let removeNode(info: StateInfo, nodeId: Id) =
-  match Map.tryFind nodeId info.state.Nodes with
-  | Some node ->
-    RemoveNode node
+let removeMember(info: StateInfo, memId: Id) =
+  match Map.tryFind memId info.state.Members with
+  | Some mem ->
+    RemoveMember mem
     |> info.context.Post
   | None ->
-    printfn "Couldn't find node with Id %O" nodeId
+    printfn "Couldn't find mem with Id %O" memId
 
-let addNode(info: StateInfo, host: string, ip: string, port: string) =
+let addMember(info: StateInfo, host: string, ip: string, port: string) =
   try
-    let node = Id.Create() |> Iris.Raft.Node.create
-    { node with HostName = host; IpAddr = IPv4Address ip; Port = uint16 port }
-    |> AddNode
+    let mem = Id.Create() |> Member.create
+    { mem with HostName = host; IpAddr = IPv4Address ip; Port = uint16 port }
+    |> AddMember
     |> info.context.Post
   with
-  | exn -> printfn "Couldn't create node: %s" exn.Message
-
+  | exn -> printfn "Couldn't create mem: %s" exn.Message

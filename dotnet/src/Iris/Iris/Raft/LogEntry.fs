@@ -17,7 +17,7 @@ open FlatBuffers
 
 #endif
 
-// * RAftLogEntry Yaml
+// * RaftLogEntry Yaml
 
 type RaftLogEntryYaml() =
 
@@ -28,19 +28,19 @@ type RaftLogEntryYaml() =
   [<DefaultValue>] val mutable LastIndex : Index
   [<DefaultValue>] val mutable LastTerm  : Term
   [<DefaultValue>] val mutable Changes   : ConfigChangeYaml array
-  [<DefaultValue>] val mutable Nodes     : RaftNodeYaml array
+  [<DefaultValue>] val mutable Members   : RaftMemberYaml array
   [<DefaultValue>] val mutable Data      : StateMachineYaml
   [<DefaultValue>] val mutable Previous  : string
 
   // ** Configuration
 
-  static member Configuration (id, idx, term, nodes, prev) =
+  static member Configuration (id, idx, term, mems, prev) =
     let yaml = new RaftLogEntryYaml()
     yaml.LogType  <- "Configuration"
     yaml.Id       <- id
     yaml.Index    <- idx
     yaml.Term     <- term
-    yaml.Nodes    <- nodes
+    yaml.Members    <- mems
     yaml.Previous <- prev
     yaml
 
@@ -70,7 +70,7 @@ type RaftLogEntryYaml() =
 
   // ** Snapshot
 
-  static member Snapshot (id, idx, term, lidx, lterm, nodes, sm) =
+  static member Snapshot (id, idx, term, lidx, lterm, mems, sm) =
     let yaml = new RaftLogEntryYaml()
     yaml.LogType <- "Snapshot"
     yaml.Id <- id
@@ -78,7 +78,7 @@ type RaftLogEntryYaml() =
     yaml.Term <- term
     yaml.LastIndex <- lidx
     yaml.LastTerm <- lterm
-    yaml.Nodes <- nodes
+    yaml.Members <- mems
     yaml.Data <- sm
     yaml
 
@@ -100,7 +100,7 @@ type RaftLogEntryYaml() =
          ,self.LastIndex
          ,self.LastTerm
          ,self.Changes
-         ,self.Nodes
+         ,self.Members
          ,self.Data
          ,self.Previous)
 
@@ -115,7 +115,7 @@ type RaftLogEntryYaml() =
       self.LastIndex = other.LastIndex &&
       self.LastTerm  = other.LastTerm  &&
       self.Changes   = other.Changes   &&
-      self.Nodes     = other.Nodes     &&
+      self.Members     = other.Members     &&
       self.Data      = other.Data      &&
       self.Previous  = other.Previous
 
@@ -148,12 +148,12 @@ type RaftLogEntryYaml() =
 /// properties.
 ///
 /// type LogEntry =
-///   // Node Configuration Entry
+///   // Member Configuration Entry
 ///   | Configuration of
 ///     Id       : Id              *        // unique id of configuration entry
 ///     Index    : Index           *        // index in log
 ///     Term     : Term            *        // term when entry was added to log
-///     Nodes    : RaftNode array  *        // new node configuration
+///     Members    : RaftMember array  *        // new mem configuration
 ///     Previous : LogEntry option          // previous log entry, if applicable
 ///
 ///   // Entry type for configuration changes
@@ -161,7 +161,7 @@ type RaftLogEntryYaml() =
 ///     Id       : Id                 *     // unique identified of entry
 ///     Index    : Index              *     // index of entry in log
 ///     Term     : Term               *     // term when entry was added to log
-///     Changes  : ConfigChange array *     // changes to node configuration
+///     Changes  : ConfigChange array *     // changes to mem configuration
 ///     Previous : LogEntry option          // previous element, if any
 ///
 ///   // Regular Log Entries
@@ -178,18 +178,18 @@ type RaftLogEntryYaml() =
 ///     Term      : Term           *        // term when was added in to log
 ///     LastIndex : Index          *        // last included index
 ///     LastTerm  : Term           *        // last included term
-///     Nodes     : RaftNode array *        // node configuration
+///     Members     : RaftMember array *        // mem configuration
 ///     Data      : StateMachine            // state machine data
 ///
 
 and RaftLogEntry =
 
-  // Node Configuration Entry
+  // Member Configuration Entry
   | Configuration of
     Id       : Id              *
     Index    : Index           *
     Term     : Term            *
-    Nodes    : RaftNode array  *
+    Members  : RaftMember array  *
     Previous : RaftLogEntry option
 
   // Entry type for configuration changes
@@ -214,7 +214,7 @@ and RaftLogEntry =
     Term      : Term           *
     LastIndex : Index          *
     LastTerm  : Term           *
-    Nodes     : RaftNode array *
+    Members   : RaftMember array *
     Data      : StateMachine
 
 
@@ -228,20 +228,20 @@ and RaftLogEntry =
   //                                  |___/
   override self.ToString() =
     match self with
-      | Configuration(id,idx,term,nodes,Some prev) ->
-        sprintf "Configuration(id: %s idx: %A term: %A nodes: %s)\n%s"
+      | Configuration(id,idx,term,mems,Some prev) ->
+        sprintf "Configuration(id: %s idx: %A term: %A mems: %s)\n%s"
           (string id)
           idx
           term
-          (Array.fold (fun m (n: RaftNode) -> sprintf "%s, %s" m (string n.Id)) "" nodes)
+          (Array.fold (fun m (n: RaftMember) -> sprintf "%s, %s" m (string n.Id)) "" mems)
           (string prev)
 
-      | Configuration(id,idx,term,nodes,_) ->
-        sprintf "Configuration(id: %s idx: %A term: %A nodes: %s)"
+      | Configuration(id,idx,term,mems,_) ->
+        sprintf "Configuration(id: %s idx: %A term: %A mems: %s)"
           (string id)
           idx
           term
-          (Array.fold (fun m (n: RaftNode) -> sprintf "%s, %s" m (string n.Id)) "" nodes)
+          (Array.fold (fun m (n: RaftMember) -> sprintf "%s, %s" m (string n.Id)) "" mems)
 
       | JointConsensus(id,idx,term,changes,Some prev) ->
         sprintf "JointConsensus(id: %s idx: %A term: %A changes: %s)\n%s"
@@ -374,16 +374,16 @@ and RaftLogEntry =
       // | |__| (_) | | | |  _| | (_| | |_| | | | (_| | |_| | (_) | | | |
       //  \____\___/|_| |_|_| |_|\__, |\__,_|_|  \__,_|\__|_|\___/|_| |_|
       //                         |___/
-      | Configuration(id,index,term,nodes,_)          ->
+      | Configuration(id,index,term,mems,_)          ->
         let id = string id |> builder.CreateString
-        let nodes = Array.map (Binary.toOffset builder) nodes
-        let nvec = ConfigurationFB.CreateNodesVector(builder, nodes)
+        let mems = Array.map (Binary.toOffset builder) mems
+        let nvec = ConfigurationFB.CreateMembersVector(builder, mems)
 
         ConfigurationFB.StartConfigurationFB(builder)
         ConfigurationFB.AddId(builder, id)
         ConfigurationFB.AddIndex(builder, index)
         ConfigurationFB.AddTerm(builder, term)
-        ConfigurationFB.AddNodes(builder, nvec)
+        ConfigurationFB.AddMembers(builder, nvec)
 
         let entry = ConfigurationFB.EndConfigurationFB(builder)
 
@@ -435,10 +435,10 @@ and RaftLogEntry =
       //  ___) | | | | (_| | |_) \__ \ | | | (_) | |_
       // |____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
       //                   |_|
-      | Snapshot(id,index,term,lidx,lterm,nodes,data) ->
+      | Snapshot(id,index,term,lidx,lterm,mems,data) ->
         let id = string id |> builder.CreateString
-        let nodes = Array.map (Binary.toOffset builder) nodes
-        let nvec = SnapshotFB.CreateNodesVector(builder, nodes)
+        let mems = Array.map (Binary.toOffset builder) mems
+        let nvec = SnapshotFB.CreateMembersVector(builder, mems)
         let data = data.ToOffset(builder)
 
         SnapshotFB.StartSnapshotFB(builder)
@@ -447,7 +447,7 @@ and RaftLogEntry =
         SnapshotFB.AddTerm(builder, term)
         SnapshotFB.AddLastIndex(builder, lidx)
         SnapshotFB.AddLastTerm(builder, lterm)
-        SnapshotFB.AddNodes(builder, nvec)
+        SnapshotFB.AddMembers(builder, nvec)
         SnapshotFB.AddData(builder, data)
 
         let entry = SnapshotFB.EndSnapshotFB(builder)
@@ -460,14 +460,14 @@ and RaftLogEntry =
 
   // ** ParseLogFB
 
-  /// ## Parse a single log entry, adding its sibling node
+  /// ## Parse a single log entry, adding its sibling mem
   ///
-  /// Parses a single log entry, adding the passed sibling node, if any. If an error occurs, the
+  /// Parses a single log entry, adding the passed sibling mem, if any. If an error occurs, the
   /// entire parsing process fails. With the first error.
   ///
   /// ### Signature:
   /// - fb: LogFB FlatBuffer object
-  /// - sibling: an sibling (None also legal, for the first node), or the previous error
+  /// - sibling: an sibling (None also legal, for the first mem), or the previous error
   ///
   /// Returns: Either<IrisError, RaftLogEntry option>
   static member ParseLogFB (fb: LogFB)
@@ -483,23 +483,23 @@ and RaftLogEntry =
           if entry.HasValue then
             let logentry = entry.Value
 
-            // parse all nodes in this log entry. if this fails, the error will be propagated up the
+            // parse all mems in this log entry. if this fails, the error will be propagated up the
             // call chain
-            let! nodes =
-              let arr = Array.zeroCreate logentry.NodesLength
+            let! mems =
+              let arr = Array.zeroCreate logentry.MembersLength
               Array.fold
-                (fun (m: Either<IrisError,int * RaftNode array>) _ -> either {
+                (fun (m: Either<IrisError,int * RaftMember array>) _ -> either {
                   let! (i, arr) = m
-                  let! node =
-                    let value = logentry.Nodes(i)
+                  let! mem =
+                    let value = logentry.Members(i)
                     if value.HasValue then
                       value.Value
-                      |> RaftNode.FromFB
+                      |> RaftMember.FromFB
                     else
-                      "Could not parse empty NodeFB value"
+                      "Could not parse empty MemberFB value"
                       |> ParseError
                       |> Either.fail
-                  arr.[i] <- node
+                  arr.[i] <- mem
                   return (i + i, arr)
                 })
                 (Right (0, arr))
@@ -510,7 +510,7 @@ and RaftLogEntry =
             return Configuration(Id logentry.Id,
                                  logentry.Index,
                                  logentry.Term,
-                                 nodes,
+                                 mems,
                                  previous)
                    |> Some
           else
@@ -603,24 +603,24 @@ and RaftLogEntry =
               let id = Id logentry.Id
               let! state = StateMachine.FromFB data.Value
 
-              let! nodes =
-                let arr = Array.zeroCreate logentry.NodesLength
+              let! mems =
+                let arr = Array.zeroCreate logentry.MembersLength
                 Array.fold
-                  (fun (m: Either<IrisError, int * RaftNode array>) _ -> either {
-                    let! (i, nodes) = m
+                  (fun (m: Either<IrisError, int * RaftMember array>) _ -> either {
+                    let! (i, mems) = m
 
-                    let! node =
-                      let value = logentry.Nodes(i)
+                    let! mem =
+                      let value = logentry.Members(i)
                       if value.HasValue then
                         value.Value
-                        |> RaftNode.FromFB
+                        |> RaftMember.FromFB
                       else
-                        "Could not parse empty RaftNodeFB"
+                        "Could not parse empty RaftMemberFB"
                         |> ParseError
                         |> Either.fail
 
-                    nodes.[i] <- node
-                    return (i + 1, nodes)
+                    mems.[i] <- mem
+                    return (i + 1, mems)
                   })
                   (Right (0, arr))
                   arr
@@ -631,7 +631,7 @@ and RaftLogEntry =
                               logentry.Term,
                               logentry.LastIndex,
                               logentry.LastTerm,
-                              nodes,
+                              mems,
                               state)
                      |> Some
             else
@@ -686,16 +686,16 @@ and RaftLogEntry =
   /// Returns: RaftLogEntryYaml
   member self.ToYamlObject () =
     match self with
-    | Configuration(id, idx, term, nodes, Some prev) ->
+    | Configuration(id, idx, term, mems, Some prev) ->
       let lid = string id
       let previd = prev.Id |> string
-      let nids = Array.map Yaml.toYaml nodes
+      let nids = Array.map Yaml.toYaml mems
       RaftLogEntryYaml.Configuration(lid, idx, term, nids, previd)
 
-    | Configuration(id, idx, term, nodes, None) ->
+    | Configuration(id, idx, term, mems, None) ->
       let lid = string id
       let previd = null
-      let nids = Array.map Yaml.toYaml nodes
+      let nids = Array.map Yaml.toYaml mems
       RaftLogEntryYaml.Configuration(lid, idx, term, nids, previd)
 
     | JointConsensus(id, idx, term, changes, Some prev) ->
@@ -721,9 +721,9 @@ and RaftLogEntry =
       let previd = prev.Id |> string
       RaftLogEntryYaml.LogEntry(lid, idx, term, Yaml.toYaml smentry, previd)
 
-    | Snapshot(id, idx, term, lidx, lterm, nodes, smentry) ->
+    | Snapshot(id, idx, term, lidx, lterm, mems, smentry) ->
       let lid = string id
-      let nids = Array.map Yaml.toYaml nodes
+      let nids = Array.map Yaml.toYaml mems
       let yml = Yaml.toYaml smentry
       RaftLogEntryYaml.Snapshot(lid, idx, term, lidx, lterm, nids, yml)
 
@@ -746,18 +746,18 @@ and RaftLogEntry =
       }
     | "Configuration" -> either {
         let id = Id yaml.Id
-        let! nodes =
+        let! mems =
           Array.fold
-            (fun (m: Either<IrisError, int * RaftNode array>) (yml: RaftNodeYaml) -> either {
-              let! (i, nodes) = m
-              let! node = Yaml.fromYaml yml
-              nodes.[i] <- node
-              return (i + 1, nodes)
+            (fun (m: Either<IrisError, int * RaftMember array>) (yml: RaftMemberYaml) -> either {
+              let! (i, mems) = m
+              let! mem = Yaml.fromYaml yml
+              mems.[i] <- mem
+              return (i + 1, mems)
             })
-            (Right (0, Array.zeroCreate yaml.Nodes.Length))
-            yaml.Nodes
+            (Right (0, Array.zeroCreate yaml.Members.Length))
+            yaml.Members
           |> Either.map snd
-        return Configuration(id, yaml.Index, yaml.Term, nodes, None)
+        return Configuration(id, yaml.Index, yaml.Term, mems, None)
       }
     | "JointConsensus" -> either {
         let id = Id yaml.Id
@@ -781,18 +781,18 @@ and RaftLogEntry =
         let lidx = yaml.LastIndex
         let lterm = yaml.LastTerm
         let! data = Yaml.fromYaml yaml.Data
-        let! nodes =
+        let! mems =
           Array.fold
-            (fun (m: Either<IrisError, int * RaftNode array>) yml -> either {
-              let! (i, nodes) = m
-              let! node = Yaml.fromYaml yml
-              nodes.[i] <- node
-              return (i + 1, nodes)
+            (fun (m: Either<IrisError, int * RaftMember array>) yml -> either {
+              let! (i, mems) = m
+              let! mem = Yaml.fromYaml yml
+              mems.[i] <- mem
+              return (i + 1, mems)
             })
-            (Right (0, Array.zeroCreate yaml.Nodes.Length))
-            yaml.Nodes
+            (Right (0, Array.zeroCreate yaml.Members.Length))
+            yaml.Members
           |> Either.map snd
-        return Snapshot(id, idx, term, lidx, lterm, nodes, data)
+        return Snapshot(id, idx, term, lidx, lterm, mems, data)
       }
     | x ->
       sprintf "Could not parse unknow LogType: %s" x
@@ -964,7 +964,7 @@ module LogEntry =
     | Snapshot(_,_,_,_,_,_,d) -> Some d
     | _                       -> None
 
-  // ** LogEntry.nodes
+  // ** LogEntry.mems
 
   //                   _
   //   _ __   ___   __| | ___  ___
@@ -972,9 +972,9 @@ module LogEntry =
   //  | | | | (_) | (_| |  __/\__ \
   //  |_| |_|\___/ \__,_|\___||___/
   //
-  /// Return the current log entry's nodes property, should it have one
+  /// Return the current log entry's mems property, should it have one
 
-  let nodes = function
+  let mems = function
     | Configuration(_,_,_,d,_)  -> Some d
     | Snapshot(_,_,_,_,_,d,_)   -> Some d
     | _                         -> None
@@ -988,7 +988,7 @@ module LogEntry =
   //   \___|_| |_|\__,_|_| |_|\__, |\___||___/
   //                          |___/
   //
-  /// Return the old nodes property (or nothing) of the current JointConsensus
+  /// Return the old mems property (or nothing) of the current JointConsensus
   /// log entry.
 
   let changes = function
@@ -1044,14 +1044,14 @@ module LogEntry =
       | _ when idx = idx' -> Some curr
       | _                 -> None
 
-    | Configuration(id,index,term,nodes,Some prev) ->
+    | Configuration(id,index,term,mems,Some prev) ->
       match idx with
       | _ when idx = index ->
-        Configuration(id,index,term,nodes,None)
+        Configuration(id,index,term,mems,None)
         |> Some
 
       | _ when idx < index ->
-        Configuration(id,index,term,nodes,until idx prev)
+        Configuration(id,index,term,mems,until idx prev)
         |> Some
 
       | _ -> None
@@ -1103,11 +1103,11 @@ module LogEntry =
   let rec untilExcluding idx = function
     | Snapshot _ as curr -> Some curr
 
-    | Configuration(id,index,term,nodes,Some prev) ->
+    | Configuration(id,index,term,mems,Some prev) ->
       if idx >= index then
         None
       else
-        Configuration(id,index,term,nodes,untilExcluding idx prev)
+        Configuration(id,index,term,mems,untilExcluding idx prev)
         |> Some
 
     | JointConsensus(id,index,term,changes,Some prev) ->
@@ -1168,8 +1168,8 @@ module LogEntry =
   ///
   /// ### Complexity: 0(1)
 
-  let mkConfig term nodes =
-    Configuration(Id.Create(), 0u, term, nodes, None)
+  let mkConfig term mems =
+    Configuration(Id.Create(), 0u, term, mems, None)
 
   // ** LogEntry.mkConfigChange
 
@@ -1181,20 +1181,20 @@ module LogEntry =
   let mkConfigChange term changes =
     JointConsensus(Id.Create(), 0u, term, changes, None)
 
-  let calculateChanges oldnodes newnodes =
+  let calculateChanges oldmems newmems =
     let changes =
       let additions =
         Array.fold
-          (fun lst (newnode: RaftNode) ->
-            match Array.tryFind (Node.getId >> (=) newnode.Id) oldnodes with
+          (fun lst (newmem: RaftMember) ->
+            match Array.tryFind (Member.getId >> (=) newmem.Id) oldmems with
             | Some _ -> lst
-            |      _ -> NodeAdded(newnode) :: lst) [] newnodes
+            |      _ -> MemberAdded(newmem) :: lst) [] newmems
 
       Array.fold
-        (fun lst (oldnode: RaftNode) ->
-          match Array.tryFind (Node.getId >> (=) oldnode.Id) newnodes with
+        (fun lst (oldmem: RaftMember) ->
+          match Array.tryFind (Member.getId >> (=) oldmem.Id) newmems with
           | Some _ -> lst
-          | _ -> NodeRemoved(oldnode) :: lst) additions oldnodes
+          | _ -> MemberRemoved(oldmem) :: lst) additions oldmems
       |> List.toArray
 
     changes
@@ -1229,7 +1229,7 @@ module LogEntry =
   ///
   /// Compact the log database
 
-  let snapshot nodes data log =
+  let snapshot mems data log =
     let idx, term =
       match log with
       | LogEntry(_,idx,term,_,_)       -> idx,term
@@ -1237,7 +1237,7 @@ module LogEntry =
       | JointConsensus(_,idx,term,_,_) -> idx,term
       | Snapshot(_,idx,term,_,_,_,_)   -> idx,term
     in
-      Snapshot(Id.Create(),idx + 1u,term,idx,term,nodes,data)
+      Snapshot(Id.Create(),idx + 1u,term,idx,term,mems,data)
 
   // ** LogEntry.map
 
@@ -1400,8 +1400,8 @@ module LogEntry =
     | LogEntry(id,idx,term,data,Some _) ->
       LogEntry(id,idx,term,data,None)
 
-    | Configuration(id,idx,term,nodes,Some _) ->
-      Configuration(id,idx,term,nodes,None)
+    | Configuration(id,idx,term,mems,Some _) ->
+      Configuration(id,idx,term,mems,None)
 
     | JointConsensus(id,idx,term,changes,Some _) ->
       JointConsensus(id,idx,term,changes,None)
@@ -1418,12 +1418,12 @@ module LogEntry =
 
   let rec rewrite entry =
     match entry with
-    | Configuration(id, _, _, nodes, None) ->
-      Configuration(id, 1u, 1u, nodes, None)
+    | Configuration(id, _, _, mems, None) ->
+      Configuration(id, 1u, 1u, mems, None)
 
-    | Configuration(id, _, term, nodes, Some prev) ->
+    | Configuration(id, _, term, mems, Some prev) ->
       let previous = rewrite prev
-      Configuration(id, index previous + 1u, term, nodes, Some previous)
+      Configuration(id, index previous + 1u, term, mems, Some previous)
 
     | JointConsensus(id, _, term, changes, None) ->
       JointConsensus(id, 1u, term, changes, None)
@@ -1439,8 +1439,8 @@ module LogEntry =
       let previous = rewrite prev
       LogEntry(id, index previous + 1u, term, data, Some previous)
 
-    | Snapshot(id, _, term, _, pterm, nodes, data) ->
-      Snapshot(id, 2u, term, 1u, pterm, nodes, data)
+    | Snapshot(id, _, term, _, pterm, mems, data) ->
+      Snapshot(id, 2u, term, 1u, pterm, mems, data)
 
   // ** LogEntry.append
 
@@ -1460,8 +1460,8 @@ module LogEntry =
       else
         let nextIdx = index _log + 1u
         match _entry with
-        | Configuration(id, _, term, nodes, _) ->
-          Configuration(id, nextIdx, term, nodes, Some _log)
+        | Configuration(id, _, term, mems, _) ->
+          Configuration(id, nextIdx, term, mems, Some _log)
 
         | JointConsensus(id, _, term, changes, _) ->
           JointConsensus(id, nextIdx, term, changes, Some _log)
@@ -1469,8 +1469,8 @@ module LogEntry =
         | LogEntry(id, _, term, data, _)    ->
           LogEntry(id, nextIdx, term, data, Some _log)
 
-        | Snapshot(id, _, term, lidx, lterm, nodes, data) ->
-          Snapshot(id, nextIdx, term, lidx, lterm, nodes, data)
+        | Snapshot(id, _, term, lidx, lterm, mems, data) ->
+          Snapshot(id, nextIdx, term, lidx, lterm, mems, data)
 
     // find the last shared ancestor
     let last = last newer
@@ -1569,8 +1569,8 @@ module LogEntry =
       | LogEntry(_,_,_,_, None)      as curr -> Some curr
       | Snapshot _                   as curr -> Some curr
 
-      | Configuration(id,idx,term,nodes, Some prev) ->
-        Configuration(id,idx,term,nodes, getn newcnt prev)
+      | Configuration(id,idx,term,mems, Some prev) ->
+        Configuration(id,idx,term,mems, getn newcnt prev)
         |> Some
 
       | JointConsensus(id,idx,term,changes,Some prev) ->
@@ -1617,7 +1617,7 @@ module LogEntry =
 
   /// Make sure the current log entry is a singleton (followed by no entries).
   let sanitize term = function
-    | Configuration(id,_,term,nodes,_)    -> Configuration(id,0u,term,nodes,None)
+    | Configuration(id,_,term,mems,_)    -> Configuration(id,0u,term,mems,None)
     | JointConsensus(id,_,term,changes,_) -> JointConsensus(id,0u,term,changes,None)
     | LogEntry(id,_,_,data,_)             -> LogEntry(id,0u,term,data,None)
     | Snapshot _ as snapshot              -> snapshot

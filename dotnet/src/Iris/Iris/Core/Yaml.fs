@@ -86,7 +86,7 @@ Project:
 
   Cluster:
     Name:
-    Nodes:
+    Members:
       - Id:
         HostName:
         Ip:

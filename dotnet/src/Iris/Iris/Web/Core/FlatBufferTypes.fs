@@ -898,14 +898,14 @@ let CueListFB : CueListFBConstructor = failwith "JS only"
 // | |\  | (_) | (_| |  __/___) | || (_| | ||  __/  _| | |_) |
 // |_| \_|\___/ \__,_|\___|____/ \__\__,_|\__\___|_|   |____/
 
-type NodeStateFB = int
+type RaftMemberStateFB = int
 
-type NodeStateFBConstructor =
-  abstract JoiningFB: NodeStateFB
-  abstract RunningFB: NodeStateFB
-  abstract FailedFB: NodeStateFB
+type RaftMemberStateFBConstructor =
+  abstract JoiningFB: RaftMemberStateFB
+  abstract RunningFB: RaftMemberStateFB
+  abstract FailedFB: RaftMemberStateFB
 
-let NodeStateFB: NodeStateFBConstructor = failwith "JS only"
+let RaftMemberStateFB: RaftMemberStateFBConstructor = failwith "JS only"
 
 //  _   _           _
 // | \ | | ___   __| | ___
@@ -913,7 +913,7 @@ let NodeStateFB: NodeStateFBConstructor = failwith "JS only"
 // | |\  | (_) | (_| |  __/
 // |_| \_|\___/ \__,_|\___|
 
-type NodeFB =
+type RaftMemberFB =
   abstract Id: string
   abstract HostName: string
   abstract IpAddr: string
@@ -923,13 +923,13 @@ type NodeFB =
   abstract GitPort: uint16
   abstract Voting: bool
   abstract VotedForMe: bool
-  abstract State: NodeStateFB
+  abstract State: RaftMemberStateFB
   abstract NextIndex: uint32
   abstract MatchIndex: uint32
 
-type NodeFBConstructor =
-  abstract prototype: NodeFB with get, set
-  abstract StartNodeFB: builder: FlatBufferBuilder -> unit
+type RaftMemberFBConstructor =
+  abstract prototype: RaftMemberFB with get, set
+  abstract StartRaftMemberFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddHostName: builder: FlatBufferBuilder * hostname: Offset<string> -> unit
   abstract AddIpAddr: builder: FlatBufferBuilder * ip: Offset<string> -> unit
@@ -939,14 +939,14 @@ type NodeFBConstructor =
   abstract AddGitPort: builder: FlatBufferBuilder * port: int -> unit
   abstract AddVoting: builder: FlatBufferBuilder * voting: bool -> unit
   abstract AddVotedForMe: builder: FlatBufferBuilder * votedforme: bool -> unit
-  abstract AddState: builder: FlatBufferBuilder * state: NodeStateFB -> unit
+  abstract AddState: builder: FlatBufferBuilder * state: RaftMemberStateFB -> unit
   abstract AddNextIndex: builder: FlatBufferBuilder * idx: uint32 -> unit
   abstract AddMatchIndex: builder: FlatBufferBuilder * idx: uint32 -> unit
-  abstract EndNodeFB: builder: FlatBufferBuilder -> Offset<NodeFB>
-  abstract GetRootAsNodeFB: bytes: ByteBuffer -> NodeFB
-  abstract Create: unit -> NodeFB
+  abstract EndRaftMemberFB: builder: FlatBufferBuilder -> Offset<RaftMemberFB>
+  abstract GetRootAsRaftMemberFB: bytes: ByteBuffer -> RaftMemberFB
+  abstract Create: unit -> RaftMemberFB
 
-let NodeFB: NodeFBConstructor = failwith "JS only"
+let RaftMemberFB: RaftMemberFBConstructor = failwith "JS only"
 
 //   ____ _                           _____
 //  / ___| |__   __ _ _ __   __ _  __|_   _|   _ _ __   ___
@@ -958,8 +958,8 @@ let NodeFB: NodeFBConstructor = failwith "JS only"
 type ConfigChangeTypeFB = int
 
 type ConfigChangeTypeFBConstructor =
-  abstract NodeAdded: ConfigChangeTypeFB
-  abstract NodeRemoved: ConfigChangeTypeFB
+  abstract MemberAdded: ConfigChangeTypeFB
+  abstract MemberRemoved: ConfigChangeTypeFB
 
 let ConfigChangeTypeFB: ConfigChangeTypeFBConstructor = failwith "JS only"
 
@@ -972,13 +972,13 @@ let ConfigChangeTypeFB: ConfigChangeTypeFBConstructor = failwith "JS only"
 
 type ConfigChangeFB =
   abstract Type: ConfigChangeTypeFB
-  abstract Node: NodeFB
+  abstract Member: RaftMemberFB
 
 type ConfigChangeFBConstructor =
   abstract prototype: ConfigChangeFB with get, set
   abstract StartConfigChangeFB: builder: FlatBufferBuilder -> unit
   abstract AddType: builder: FlatBufferBuilder * tipe: ConfigChangeTypeFB -> unit
-  abstract AddNode: builder: FlatBufferBuilder * node: Offset<NodeFB> -> unit
+  abstract AddMember: builder: FlatBufferBuilder * mem: Offset<RaftMemberFB> -> unit
   abstract EndConfigChangeFB: builder: FlatBufferBuilder -> Offset<ConfigChangeFB>
   abstract GetRootAsConfigChangeFB: bytes: ByteBuffer -> ConfigChangeFB
   abstract Create: unit -> ConfigChangeFB
@@ -994,14 +994,12 @@ let ConfigChangeFB: ConfigChangeFBConstructor = failwith "JS only"
 type StateFB =
   abstract Patches: int -> PatchFB
   abstract PatchesLength: int
-  abstract IOBoxes: int -> IOBoxFB
-  abstract IOBoxesLength: int
   abstract Cues: int -> CueFB
   abstract CuesLength: int
   abstract CueLists: int -> CueListFB
   abstract CueListsLength: int
-  abstract Nodes: int -> NodeFB
-  abstract NodesLength: int
+  abstract Members: int -> RaftMemberFB
+  abstract MembersLength: int
   abstract Sessions: int -> SessionFB
   abstract SessionsLength: int
   abstract Users: int -> UserFB
@@ -1012,14 +1010,12 @@ type StateFBConstructor =
   abstract StartStateFB: builder: FlatBufferBuilder -> unit
   abstract CreatePatchesVector: builder: FlatBufferBuilder * patches: Offset<PatchFB> array -> Offset<'a>
   abstract AddPatches: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
-  abstract CreateIOBoxesVector: builder: FlatBufferBuilder * patches: Offset<IOBoxFB> array -> Offset<'a>
-  abstract AddIOBoxes: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
   abstract CreateCuesVector: builder: FlatBufferBuilder * patches: Offset<CueFB> array -> Offset<'a>
   abstract AddCues: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
   abstract CreateCueListsVector: builder: FlatBufferBuilder * patches: Offset<CueListFB> array -> Offset<'a>
   abstract AddCueLists: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
-  abstract CreateNodesVector: builder: FlatBufferBuilder * patches: Offset<NodeFB> array -> Offset<'a>
-  abstract AddNodes: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
+  abstract CreateMembersVector: builder: FlatBufferBuilder * patches: Offset<RaftMemberFB> array -> Offset<'a>
+  abstract AddMembers: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
   abstract CreateSessionsVector: builder: FlatBufferBuilder * patches: Offset<SessionFB> array -> Offset<'a>
   abstract AddSessions: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
   abstract CreateUsersVector: builder: FlatBufferBuilder * patches: Offset<UserFB> array -> Offset<'a>
@@ -1112,7 +1108,7 @@ type PayloadFBConstructor =
   abstract CueListFB: PayloadFB
   abstract IOBoxFB: PayloadFB
   abstract PatchFB: PayloadFB
-  abstract NodeFB: PayloadFB
+  abstract RaftMemberFB: PayloadFB
   abstract UserFB: PayloadFB
   abstract SessionFB: PayloadFB
   abstract LogEventFB: PayloadFB
@@ -1128,7 +1124,7 @@ type ApiActionFB =
   abstract CueListFB: CueListFB
   abstract IOBoxFB: IOBoxFB
   abstract PatchFB: PatchFB
-  abstract NodeFB: NodeFB
+  abstract RaftMemberFB: RaftMemberFB
   abstract UserFB: UserFB
   abstract SessionFB: SessionFB
   abstract LogEventFB: LogEventFB

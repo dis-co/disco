@@ -395,6 +395,7 @@ module Project =
       do! Git.Repo.stage repo adminPath
       return ()
     }
+
   // ** saveProject
 
   let saveProject (user: User) (project: IrisProject) : Either<IrisError,(Commit * IrisProject)> =
@@ -425,6 +426,18 @@ module Project =
             |> ProjectSaveError
             |> Either.fail
     }
+
+  // ** loadState
+
+  let loadState (project: IrisProject) : Either<IrisError,State> =
+
+    failwith "oh no"
+
+  // ** saveState
+
+  let saveState (project: IrisProject) (state: State) : Either<IrisError,unit> =
+
+    failwith "oh no"
 
   // ** clone
 
@@ -465,17 +478,17 @@ module Project =
 
   // ** addMember
 
-  let addMember (node: RaftNode) (project: IrisProject) : IrisProject =
+  let addMember (mem: RaftMember) (project: IrisProject) : IrisProject =
     project.Config
-    |> Config.addNode node
+    |> Config.addMember mem
     |> flip updateConfig project
 
   // ** addMembers
 
-  let addMembers (nodes: RaftNode list) (project: IrisProject) : IrisProject =
+  let addMembers (mems: RaftMember list) (project: IrisProject) : IrisProject =
     List.fold
-      (fun config (node: RaftNode) ->
-        Config.addNode node config)
+      (fun config (mem: RaftMember) ->
+        Config.addMember mem config)
       project.Config
-      nodes
+      mems
     |> flip updateConfig project

@@ -15,10 +15,10 @@ module Scenarios =
     }
 
   and Msg =
-    | RequestVote           of sender:NodeId * req:VoteRequest
-    | RequestVoteResponse   of sender:NodeId * vote:VoteResponse
-    | AppendEntries         of sender:NodeId * ae:AppendEntries
-    | AppendEntriesResponse of sender:NodeId * ar:AppendResponse
+    | RequestVote           of sender:MemberId * req:VoteRequest
+    | RequestVoteResponse   of sender:MemberId * vote:VoteResponse
+    | AppendEntries         of sender:MemberId * ae:AppendEntries
+    | AppendEntriesResponse of sender:MemberId * ar:AppendResponse
 
   let create =
     { Inbox = List.empty<Msg>
@@ -43,35 +43,35 @@ module Scenarios =
 
   let __logg str = ignore str // printfn "%s" str
 
-  let __append_msgs (peers: Map<NodeId,Sender ref>) (sid:NodeId) (rid:NodeId) msg =
+  let __append_msgs (peers: Map<MemberId,Sender ref>) (sid:MemberId) (rid:MemberId) msg =
     let sender = Map.find sid peers
     let receiver = Map.find rid peers
     sender   := { !sender   with Outbox = msg :: (!sender).Outbox  }
     receiver := { !receiver with Inbox  = msg :: (!receiver).Inbox }
 
-  let testRequestVote (peers: Map<NodeId,Sender ref>) (sender:RaftNode) (receiver:RaftNode) req =
+  let testRequestVote (peers: Map<MemberId,Sender ref>) (sender:RaftMember) (receiver:RaftMember) req =
     __logg <| sprintf "testRequestVote [sender: %A] [receiver: %A]" sender.Id receiver.Id
     RequestVote(sender.Id,req)
     |> __append_msgs peers sender.Id receiver.Id
     None
 
-  let testRequestVoteResponse (peers: Map<NodeId,Sender ref>) (sender:RaftNode) (receiver:RaftNode) resp =
+  let testRequestVoteResponse (peers: Map<MemberId,Sender ref>) (sender:RaftMember) (receiver:RaftMember) resp =
     __logg <| sprintf "testRequestVoteResponse [sender: %A] [receiver: %A]" sender.Id receiver.Id
     RequestVoteResponse(sender.Id,resp)
     |> __append_msgs peers sender.Id receiver.Id
 
-  let testAppendEntries (peers: Map<NodeId,Sender ref>) (sender:RaftNode) (receiver:RaftNode) ae =
+  let testAppendEntries (peers: Map<MemberId,Sender ref>) (sender:RaftMember) (receiver:RaftMember) ae =
     __logg <| sprintf "testAppendEntries"
     AppendEntries(sender.Id,ae)
     |> __append_msgs peers sender.Id receiver.Id
     None
 
-  let testAppendEntriesResponse (peers: Map<NodeId,Sender ref>) (sender:RaftNode) (receiver:RaftNode) resp =
+  let testAppendEntriesResponse (peers: Map<MemberId,Sender ref>) (sender:RaftMember) (receiver:RaftMember) resp =
     __logg <| sprintf "testAppendEntriesResponse"
     AppendEntriesResponse(sender.Id,resp)
     |> __append_msgs peers sender.Id receiver.Id
 
-  let testInstallSnapshot (peers: Map<NodeId,Sender ref>) (sender: RaftNode) (receiver: RaftNode) is =
+  let testInstallSnapshot (peers: Map<MemberId,Sender ref>) (sender: RaftMember) (receiver: RaftMember) is =
     __logg <| sprintf "testInstallSnapshot"
     None
 
@@ -80,7 +80,7 @@ module Scenarios =
       raft {
         match msg with
           | RequestVote(sid,req) ->
-            let! peer = Raft.getNodeM sid
+            let! peer = Raft.getMemberM sid
             if Option.isSome peer
             then
               let sender = Option.get peer
@@ -107,7 +107,7 @@ module Scenarios =
               __logg "(2) result was Fail"
             let! raft' = get
             let sender = Raft.self raft'
-            let! peer = Raft.getNodeM sid
+            let! peer = Raft.getMemberM sid
             match peer with
               | Some receiver ->
                 let msg = AppendEntriesResponse(sender.Id, response)
@@ -121,7 +121,7 @@ module Scenarios =
 
     raft {
       let! raft' = get
-      let receiver = Map.find raft'.Node.Id peers
+      let receiver = Map.find raft'.Member.Id peers
 
       let inbox = (!receiver).Inbox
       let outbox = (!receiver).Inbox
@@ -144,7 +144,7 @@ module Scenarios =
   let anyMsg result nid peer  =
     if result then result else numMsgs peer > 0
 
-  let anyMsgs (peers: Map<NodeId,Sender ref>) =
+  let anyMsgs (peers: Map<MemberId,Sender ref>) =
     Map.fold (anyMsg) false peers
 
   // Do 50 iterations maximum. If unsure, turn up value.
@@ -168,7 +168,7 @@ module Scenarios =
             let peers =
               [| for pid in 0UL .. (numPeers - 1UL) do
                   let nid = ids.[int pid]
-                  yield Node.create nid |]
+                  yield Member.create nid |]
 
             let callbacks =
               { SendRequestVote     = testRequestVote     senders peers.[int n]
@@ -178,9 +178,9 @@ module Scenarios =
               ; PrepareSnapshot     = konst None
               ; RetrieveSnapshot    = konst None
               ; ApplyLog            = ignore
-              ; NodeAdded           = ignore
-              ; NodeUpdated         = ignore
-              ; NodeRemoved         = ignore
+              ; MemberAdded         = ignore
+              ; MemberUpdated       = ignore
+              ; MemberRemoved       = ignore
               ; Configured          = ignore
               ; StateChanged        = fun _ -> ignore
               ; PersistVote         = ignore
@@ -193,11 +193,11 @@ module Scenarios =
             let raft =
               Raft.mkRaft peers.[int n]
               |> Raft.setElectionTimeout 500u
-              |> Raft.addNodes peers
+              |> Raft.addMembers peers
 
             yield (raft,callbacks) |]
 
-      // First node starts election.
+      // First member starts election.
       Raft.periodic 1000u
       |> evalRaft  (fst servers.[0]) (snd servers.[0])
       |> fun result ->

@@ -23,8 +23,8 @@ module SerializationTests =
 
   let test_validate_requestvote_serialization =
     testCase "Validate RequestVote Serialization" <| fun _ ->
-      let node =
-        { Node.create (Id.Create()) with
+      let mem =
+        { Member.create (Id.Create()) with
             HostName = "test-host"
             IpAddr   = IpAddress.Parse "192.168.2.10"
             Port     = 8080us }
@@ -33,7 +33,7 @@ module SerializationTests =
         { Term = 8u
         ; LastLogIndex = 128u
         ; LastLogTerm = 7u
-        ; Candidate = node }
+        ; Candidate = mem }
 
       let msg   = RequestVote(Id.Create(), vr)
       let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
@@ -68,18 +68,18 @@ module SerializationTests =
 
   let test_validate_appendentries_serialization =
     testCase "Validate RequestVote Response Serialization" <| fun _ ->
-      let node1 = Node.create (Id.Create())
-      let node2 = Node.create (Id.Create())
+      let mem1 = Member.create (Id.Create())
+      let mem2 = Member.create (Id.Create())
 
-      let changes = [| NodeRemoved node2 |]
-      let nodes = [| node1; node2 |]
+      let changes = [| MemberRemoved mem2 |]
+      let mems = [| mem1; mem2 |]
 
       let log =
         Some <| LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
           Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
-            Some <| Configuration(Id.Create(), 5u, 1u, [| node1 |],
+            Some <| Configuration(Id.Create(), 5u, 1u, [| mem1 |],
               Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
-                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, nodes, DataSnapshot State.Empty)))))
+                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mems, DataSnapshot State.Empty)))))
 
       let ae : AppendEntries =
         { Term = 8u
@@ -128,14 +128,14 @@ module SerializationTests =
 
   let test_validate_installsnapshot_serialization =
     testCase "Validate InstallSnapshot Serialization" <| fun _ ->
-      let node1 = [| Node.create (Id.Create()) |]
+      let mem1 = [| Member.create (Id.Create()) |]
 
       let is : InstallSnapshot =
         { Term = 2134u
         ; LeaderId = Id.Create()
         ; LastIndex = 242u
         ; LastTerm = 124242u
-        ; Data = Snapshot(Id.Create(), 12u, 3414u, 241u, 422u, node1, DataSnapshot State.Empty)
+        ; Data = Snapshot(Id.Create(), 12u, 3414u, 241u, 422u, mem1, DataSnapshot State.Empty)
         }
 
       let msg = InstallSnapshot(Id.Create(), is)
@@ -151,7 +151,7 @@ module SerializationTests =
 
   let test_validate_handshake_serialization =
     testCase "Validate HandShake Serialization" <| fun _ ->
-      let msg = HandShake(Node.create (Id.Create()))
+      let msg = HandShake(Member.create (Id.Create()))
       let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
       expect "Should be structurally the same" msg id remsg
@@ -164,7 +164,7 @@ module SerializationTests =
 
   let test_validate_handwaive_serialization =
     testCase "Validate HandWaive Serialization" <| fun _ ->
-      let msg = HandWaive(Node.create (Id.Create()))
+      let msg = HandWaive(Member.create (Id.Create()))
       let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
       expect "Should be structurally the same" msg id remsg
@@ -177,7 +177,7 @@ module SerializationTests =
 
   let test_validate_redirect_serialization =
     testCase "Validate Redirect Serialization" <| fun _ ->
-      let msg = Redirect(Node.create (Id.Create()))
+      let msg = Redirect(Member.create (Id.Create()))
       let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
       expect "Should be structurally the same" msg id remsg
@@ -190,7 +190,7 @@ module SerializationTests =
 
   let test_validate_welcome_serialization =
     testCase "Validate Welcome Serialization" <| fun _ ->
-      let msg = Welcome(Node.create (Id.Create()))
+      let msg = Welcome(Member.create (Id.Create()))
       let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
       expect "Should be structurally the same" msg id remsg
 
@@ -276,36 +276,36 @@ module SerializationTests =
 
       let self =
         machine.MachineId
-        |> Node.create
+        |> Member.create
 
-      let node1 =
-        { Node.create (Id.Create()) with
+      let mem1 =
+        { Member.create (Id.Create()) with
             HostName = "Hans"
             IpAddr = IpAddress.Parse "192.168.1.20"
             Port   = 8080us }
 
-      let node2 =
-        { Node.create (Id.Create()) with
+      let mem2 =
+        { Member.create (Id.Create()) with
             HostName = "Klaus"
             IpAddr = IpAddress.Parse "192.168.1.22"
             Port   = 8080us }
 
-      let changes = [| NodeRemoved node2 |]
-      let nodes = [| node1; node2 |]
+      let changes = [| MemberRemoved mem2 |]
+      let mems = [| mem1; mem2 |]
 
       let log =
         LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
           Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
-            Some <| Configuration(Id.Create(), 5u, 1u, [| node1 |],
+            Some <| Configuration(Id.Create(), 5u, 1u, [| mem1 |],
               Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
-                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, nodes, DataSnapshot State.Empty)))))
+                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mems, DataSnapshot State.Empty)))))
         |> Log.fromEntries
 
       let config =
         Config.create "default" machine
-        |> Config.addNode self
-        |> Config.addNode node1
-        |> Config.addNode node2
+        |> Config.addMember self
+        |> Config.addMember mem1
+        |> Config.addMember mem2
 
       let raft =
         createRaft config
@@ -380,12 +380,12 @@ module SerializationTests =
     ; Created = System.DateTime.Now
     }
 
-  let mkNode _ = Id.Create() |> Node.create
+  let mkMember _ = Id.Create() |> Member.create
 
-  let mkNodes _ =
+  let mkMembers _ =
     let n = rand.Next(1, 6)
     [| for _ in 0 .. n do
-        yield mkNode () |]
+        yield mkMember () |]
 
   let mkSession _ =
     { Id = Id.Create()
@@ -396,18 +396,17 @@ module SerializationTests =
 
   let mkState _ =
     { Patches  = mkPatch   () |> fun (patch: Patch) -> Map.ofList [ (patch.Id, patch) ]
-    ; IOBoxes  = ioboxes   () |> (fun (boxes: IOBox array) -> Array.map toPair boxes) |> Map.ofArray
     ; Cues     = mkCue     () |> fun (cue: Cue) -> Map.ofList [ (cue.Id, cue) ]
     ; CueLists = mkCueList () |> fun (cuelist: CueList) -> Map.ofList [ (cuelist.Id, cuelist) ]
-    ; Nodes    = mkNode    () |> fun (node: RaftNode) -> Map.ofList [ (node.Id, node) ]
+    ; Members  = mkMember  () |> fun (mem: RaftMember) -> Map.ofList [ (mem.Id, mem) ]
     ; Sessions = mkSession () |> fun (session: Session) -> Map.ofList [ (session.Id, session) ]
     ; Users    = mkUser    () |> fun (user: User) -> Map.ofList [ (user.Id, user) ]
     }
 
   let mkChange _ =
     match rand.Next(0,2) with
-    | n when n > 0 -> NodeAdded(mkNode ())
-    |          _   -> NodeRemoved(mkNode ())
+    | n when n > 0 -> MemberAdded(mkMember ())
+    |          _   -> MemberRemoved(mkMember ())
 
   let mkChanges _ =
     let n = rand.Next(1, 6)
@@ -417,9 +416,9 @@ module SerializationTests =
   let mkLog _ =
     LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
       Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
-        Some <| Configuration(Id.Create(), 5u, 1u, [| mkNode () |],
+        Some <| Configuration(Id.Create(), 5u, 1u, [| mkMember () |],
           Some <| JointConsensus(Id.Create(), 4u, 1u, mkChanges (),
-            Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mkNodes (), DataSnapshot State.Empty)))))
+            Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mkMembers (), DataSnapshot State.Empty)))))
     |> Log.fromEntries
 
   //  ____        __ _   _
@@ -663,9 +662,9 @@ module SerializationTests =
       ; AddIOBox      <| mkIOBox ()
       ; UpdateIOBox   <| mkIOBox ()
       ; RemoveIOBox   <| mkIOBox ()
-      ; AddNode       <| Node.create (Id.Create())
-      ; UpdateNode    <| Node.create (Id.Create())
-      ; RemoveNode    <| Node.create (Id.Create())
+      ; AddMember       <| Member.create (Id.Create())
+      ; UpdateMember    <| Member.create (Id.Create())
+      ; RemoveMember    <| Member.create (Id.Create())
       ; DataSnapshot  <| mkState ()
       ; Command AppCommand.Undo
       ; LogMsg(Logger.create Debug (Id.Create()) "bla" "oohhhh")
@@ -696,9 +695,9 @@ module SerializationTests =
       ; AddIOBox      <| mkIOBox ()
       ; UpdateIOBox   <| mkIOBox ()
       ; RemoveIOBox   <| mkIOBox ()
-      ; AddNode       <| Node.create (Id.Create())
-      ; UpdateNode    <| Node.create (Id.Create())
-      ; RemoveNode    <| Node.create (Id.Create())
+      ; AddMember     <| Member.create (Id.Create())
+      ; UpdateMember  <| Member.create (Id.Create())
+      ; RemoveMember  <| Member.create (Id.Create())
       ; DataSnapshot  <| mkState ()
       ; Command AppCommand.Undo
       ; LogMsg(Logger.create Debug (Id.Create()) "bla" "oohhhh")

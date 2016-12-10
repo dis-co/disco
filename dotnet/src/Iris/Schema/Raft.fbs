@@ -330,10 +330,9 @@ table SessionFB {
 
 table StateFB {
       Patches:  [PatchFB];
-      IOBoxes:  [IOBoxFB];
       Cues:     [CueFB];
       CueLists: [CueListFB];
-      Nodes:    [NodeFB];
+      Members:  [RaftMemberFB];
       Sessions: [SessionFB];
       Users:    [UserFB];
 }
@@ -350,7 +349,7 @@ union PayloadFB {
       CueListFB,
       IOBoxFB,
       PatchFB,
-      NodeFB,
+      RaftMemberFB,
       UserFB,
       SessionFB,
       LogEventFB,
@@ -445,13 +444,13 @@ table ErrorFB {
 // | |\  | (_) | (_| |  __/
 // |_| \_|\___/ \__,_|\___|
 
-enum NodeStateFB:ubyte {
+enum RaftMemberStateFB:ubyte {
      JoiningFB = 0,
      RunningFB = 1,
      FailedFB  = 2
 }
 
-table NodeFB {
+table RaftMemberFB {
       Id         : string;
       HostName   : string;
       IpAddr     : string;
@@ -461,7 +460,7 @@ table NodeFB {
       GitPort    : int;
       Voting     : bool;
       VotedForMe : bool;
-      State      : NodeStateFB;
+      State      : RaftMemberStateFB;
       NextIndex  : uint;
       MatchIndex : uint;
 }
@@ -474,13 +473,13 @@ table NodeFB {
 //                         |___/                         |___/
 
 enum ConfigChangeTypeFB: ushort {
-     NodeAdded = 0,
-     NodeRemoved = 1
+     MemberAdded = 0,
+     MemberRemoved = 1
 }
 
 table ConfigChangeFB {
       Type: ConfigChangeTypeFB;
-      Node: NodeFB;
+      Member: RaftMemberFB;
 }
 
 //  _
@@ -494,7 +493,7 @@ table ConfigurationFB {
       Id:    string;
       Index: uint;
       Term : uint;
-      Nodes: [ NodeFB ];
+      Members: [ RaftMemberFB ];
 }
 
 table JointConsensusFB {
@@ -517,7 +516,7 @@ table SnapshotFB {
       Term:       uint;
       LastIndex:  uint;
       LastTerm:   uint;
-      Nodes:      [ NodeFB ];
+      Members:    [ RaftMemberFB ];
       Data:       ApiActionFB;
 }
 
@@ -541,7 +540,7 @@ table LogFB {
 
 table VoteRequestFB {
       Term         : uint;
-      Candidate    : NodeFB;
+      Candidate    : RaftMemberFB;
       LastLogIndex : uint;
       LastLogTerm  : uint;
 }
@@ -598,49 +597,49 @@ table InstallSnapshotFB {
 //                                |___/
 
 table RequestVoteFB {
-      NodeId:  string;
+      MemberId:  string;
       Request: VoteRequestFB;
 }
 
 table RequestVoteResponseFB {
-      NodeId:   string;
+      MemberId:   string;
       Response: VoteResponseFB;
 }
 
 table RequestAppendEntriesFB {
-      NodeId:  string;
+      MemberId:  string;
       Request: AppendEntriesFB;
 }
 
 table RequestAppendResponseFB {
-      NodeId:   string;
+      MemberId:   string;
       Response: AppendResponseFB;
 }
 
 table RequestInstallSnapshotFB {
-      NodeId:  string;
+      MemberId:  string;
       Request: InstallSnapshotFB;
 }
 
 table RequestSnapshotResponseFB {
-      NodeId:   string;
+      MemberId:   string;
       Response: AppendResponseFB;
 }
 
 table HandShakeFB {
-      Node: NodeFB;
+      Member: RaftMemberFB;
 }
 
 table HandWaiveFB {
-      Node: NodeFB;
+      Member: RaftMemberFB;
 }
 
 table RedirectFB {
-      Node: NodeFB;
+      Member: RaftMemberFB;
 }
 
 table WelcomeFB {
-      Node: NodeFB;
+      Member: RaftMemberFB;
 }
 
 table ArrivederciFB {

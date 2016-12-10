@@ -30,12 +30,12 @@ module Persistence =
   /// Returns: Either<IrisError,Raft>
   let createRaft (options: IrisConfig) =
     either {
-      let! node = Config.selfNode options
-      let! nodes = Config.getNodes options
+      let! mem = Config.selfMember options
+      let! mems = Config.getMembers options
       let state =
-        node
+        mem
         |> Raft.mkRaft
-        |> Raft.addNodes nodes
+        |> Raft.addMembers mems
       return state
     }
 
@@ -44,7 +44,7 @@ module Persistence =
   /// ## Load a raft state from disk
   ///
   /// Load a Raft state value from disk. This includes parsing the
-  /// project file to set up the cluster nodes, as well as loading the
+  /// project file to set up the cluster mems, as well as loading the
   /// saved Raft metadata from the local (hidden) directory
   /// `RaftDataDir` value in the project configuration.
   ///
@@ -54,8 +54,8 @@ module Persistence =
   /// Returns: Either<IrisError,Raft>
   let loadRaft (options: IrisConfig) : Either<IrisError,RaftValue> =
     either {
-      let! node = Config.selfNode options
-      let! nodes = Config.getNodes options
+      let! mem = Config.selfMember options
+      let! mems = Config.getMembers options
       let! data =
         options
         |> Config.metadataPath
@@ -138,6 +138,6 @@ module Persistence =
   /// - arg: arg
   ///
   /// Returns: Either<IrisError, about:blank>
-  let updateRepo (project: IrisProject) (leader: RaftNode) : Either<IrisError,unit> =
+  let updateRepo (project: IrisProject) (leader: RaftMember) : Either<IrisError,unit> = //
     printfn "should pull shit now"
     |> Either.succeed

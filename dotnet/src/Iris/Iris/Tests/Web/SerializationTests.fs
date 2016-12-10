@@ -68,7 +68,7 @@ module SerializationTests =
     ; Created = "2"
     }
 
-  let mkNode _ = Id.Create() |> Node.create
+  let mkMember _ = Id.Create() |> Member.create
 
   let mkSession _ =
     { Id = Id.Create()
@@ -79,10 +79,9 @@ module SerializationTests =
 
   let mkState _ =
     { Patches  = Map.empty // mkPatch   () |> fun (patch: Patch) -> Map.ofList [ (patch.Id, patch) ]
-    ; IOBoxes  = Map.empty // ioboxes   () |> (fun (boxes: IOBox array) -> Array.map toPair boxes) |> Map.ofArray
     ; Cues     = Map.empty // mkCue     () |> fun (cue: Cue) -> Map.ofList [ (cue.Id, cue) ]
     ; CueLists = Map.empty // mkCueList () |> fun (cuelist: CueList) -> Map.ofList [ (cuelist.Id, cuelist) ]
-    ; Nodes    = Map.empty // mkNode    () |> fun (node: RaftNode) -> Map.ofList [ (node.Id, node) ]
+    ; Members  = Map.empty // mkMember    () |> fun (mem: RaftMember) -> Map.ofList [ (mem.Id, mem) ]
     ; Sessions = Map.empty // mkSession () |> fun (session: Session) -> Map.ofList [ (session.Id, session) ]
     ; Users    = mkUser    () |> fun (user: User) -> Map.ofList [ (user.Id, user) ]
     }
@@ -126,9 +125,9 @@ module SerializationTests =
       equals user reuser
       finish()
 
-    test "Validate Node Serialization" <| fun finish ->
-      let node = Id.Create() |> Node.create
-      check node
+    test "Validate Member Serialization" <| fun finish ->
+      let mem = Id.Create() |> Member.create
+      check mem
       finish ()
 
     test "Validate Slice Serialization" <| fun finish ->
@@ -185,9 +184,9 @@ module SerializationTests =
       ; AddIOBox      <| mkIOBox ()
       ; UpdateIOBox   <| mkIOBox ()
       ; RemoveIOBox   <| mkIOBox ()
-      ; AddNode       <| Node.create (Id.Create())
-      ; UpdateNode    <| Node.create (Id.Create())
-      ; RemoveNode    <| Node.create (Id.Create())
+      ; AddMember     <| Member.create (Id.Create())
+      ; UpdateMember  <| Member.create (Id.Create())
+      ; RemoveMember  <| Member.create (Id.Create())
       ; DataSnapshot  <| mkState ()
       ; Command AppCommand.Undo
       ; LogMsg(Logger.create Debug (Id.Create()) "bla" "ohai")

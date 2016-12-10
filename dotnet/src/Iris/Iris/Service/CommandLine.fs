@@ -245,8 +245,8 @@ module CommandLine =
 
   let (|Append|_|)  str = withTrim "append" str
   let (|Join|_|)    str = withTrim "join" str
-  let (|AddNode|_|) str = withTrim "addnode" str
-  let (|RmNode|_|)  str = withTrim "rmnode" str
+  let (|AddMember|_|) str = withTrim "addmem" str
+  let (|RmMember|_|)  str = withTrim "rmmem" str
 
   let (|Interval|_|) (str: string) =
     let trimmed = str.Trim()
@@ -276,7 +276,7 @@ module CommandLine =
       | _ -> None
     else None
 
-  let (|AddNodeParams|_|) (str: string) =
+  let (|AddMemberParams|_|) (str: string) =
     let pattern =
       [| "id:(?<id>.*)"
       ; "hn:(?<hn>.*)"
@@ -297,7 +297,7 @@ module CommandLine =
       let git = UInt16.TryParse m.Groups.[7].Value
       match ip, port, web, ws, git with
       | Right ip, (true,port), (true,web), (true,ws), (true,git) ->
-        { Node.create id with
+        { Member.create id with
             HostName = hn
             IpAddr   = ip
             Port     = port
@@ -357,14 +357,14 @@ module CommandLine =
     |> Either.mapError handleError
     |> ignore
 
-  // ** tryAddNode
+  // ** tryAddMember
 
-  let tryAddNode (context: IIrisServer) (hst: string) =
+  let tryAddMember (context: IIrisServer) (hst: string) =
     match hst with
-      | AddNodeParams node ->
+      | AddMemberParams mem ->
         either {
-          let! appended = context.AddNode node
-          printfn "Added node: %A in entry %A" id (string appended.Id)
+          let! appended = context.AddMember mem
+          printfn "Added mem: %A in entry %A" id (string appended.Id)
           return ()
         }
         |> Either.mapError handleError
@@ -374,12 +374,12 @@ module CommandLine =
         |> Other
         |> handleError
 
-  // ** tryRmNode
+  // ** tryRmMember
 
-  let tryRmNode (context: IIrisServer) (hst: string) =
+  let tryRmMember (context: IIrisServer) (hst: string) =
     either {
-      let! appended = context.RmNode (Id (String.trim hst))
-      printfn "Removed node: %A in entry %A" id (string appended.Id)
+      let! appended = context.RmMember (Id (String.trim hst))
+      printfn "Removed mem: %A in entry %A" id (string appended.Id)
       return ()
     }
     |> Either.mapError handleError
@@ -436,8 +436,8 @@ module CommandLine =
         | Append ety   -> tryAppendEntry   context ety
         | Join hst     -> tryJoinCluster   context hst
         | Leave        -> tryLeaveCluster  context
-        | AddNode hst  -> tryAddNode       context hst
-        | RmNode hst   -> tryRmNode        context hst
+        | AddMember hst  -> tryAddMember       context hst
+        | RmMember hst   -> tryRmMember        context hst
         | Timeout      -> tryForceElection context
         | Status       -> tryGetStatus     context
         | _            -> printfn "unknown command"
@@ -461,7 +461,7 @@ module CommandLine =
       |> MachineConfig.save None
       |> Error.orExit id
 
-  // ** buildNode
+  // ** buildMember
 
   //  _   _           _
   // | \ | | ___   __| | ___
@@ -469,8 +469,8 @@ module CommandLine =
   // | |\  | (_) | (_| |  __/
   // |_| \_|\___/ \__,_|\___|
 
-  let buildNode (parsed: ParseResults<CLIArguments>) (id: Id) =
-    { Node.create(id) with
+  let buildMember (parsed: ParseResults<CLIArguments>) (id: Id) =
+    { Member.create(id) with
         IpAddr  = parsed.GetResult <@ Bind @> |> IpAddress.Parse
         GitPort = parsed.GetResult <@ Git  @>
         WsPort  = parsed.GetResult <@ Ws   @>
@@ -534,14 +534,18 @@ module CommandLine =
   /// - name: Name of the Project
   /// - path: destination path of the Project
   /// - raftDir: Raft data directory
-  /// - node: self Node (built from Node Id env var)
+  /// - mem: self Member (built from Member Id env var)
   ///
   /// Returns: IrisProject
-  let buildProject (machine: IrisMachine) (name: string) (path: FilePath) (raftDir: FilePath) (node: RaftNode) =
+  let buildProject (machine: IrisMachine)
+                   (name: string)
+                   (path: FilePath)
+                   (raftDir: FilePath)
+                   (mem: RaftMember) =
     Project.create name machine
     |> Project.updatePath path
     |> Project.updateDataDir raftDir
-    |> Project.addMember node
+    |> Project.addMember mem
 
   /// ## initializeRaft
   ///
@@ -595,8 +599,8 @@ module CommandLine =
       do! mkDir dir
       do! mkDir raftDir
 
-      let node = buildNode parsed machine.MachineId
-      let project = buildProject machine dir name raftDir node
+      let mem = buildMember parsed machine.MachineId
+      let project = buildProject machine dir name raftDir mem
 
       do! initializeRaft me project
     }

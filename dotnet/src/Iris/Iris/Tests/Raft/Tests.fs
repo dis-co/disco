@@ -14,7 +14,7 @@ module RaftTests =
         validation_dsl_validation
 
         // Node
-        node_init_test
+        mem_init_test
 
         // Log
         log_new_log_is_empty
@@ -59,7 +59,7 @@ module RaftTests =
         follower_recv_appendentries_delete_entries_if_current_idx_greater_than_prev_log_idx
         follower_recv_appendentries_does_not_add_dupe_entries_already_in_log
         follower_recv_appendentries_does_not_log_if_no_entries_are_specified
-        follower_recv_appendentries_does_not_need_node
+        follower_recv_appendentries_does_not_need_mem
         follower_recv_appendentries_failure_includes_current_idx
         follower_recv_appendentries_increases_log
         follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev_log_idx_which_matches_prev_log_term
@@ -76,14 +76,14 @@ module RaftTests =
         leader_recv_appendentries_response_do_not_increase_commit_idx_because_of_old_terms_with_majority
         leader_recv_appendentries_response_drop_message_if_term_is_old
         leader_recv_appendentries_response_duplicate_does_not_decrement_match_idx
-        leader_recv_appendentries_response_failure_does_not_set_node_nextid_to_0
+        leader_recv_appendentries_response_failure_does_not_set_mem_nextid_to_0
         leader_recv_appendentries_response_increase_commit_idx_when_majority_have_entry_and_atleast_one_newer_entry
-        leader_recv_appendentries_response_increment_idx_of_node
+        leader_recv_appendentries_response_increment_idx_of_mem
         leader_recv_appendentries_response_jumps_to_lower_next_idx
         leader_recv_appendentries_response_retry_only_if_leader
         leader_recv_appendentries_steps_down_if_newer
         leader_recv_appendentries_steps_down_if_newer_term
-        leader_recv_entry_does_not_send_new_appendentries_to_slow_nodes
+        leader_recv_entry_does_not_send_new_appendentries_to_slow_mems
         leader_recv_entry_is_committed_returns_0_if_not_committed
         leader_recv_entry_is_committed_returns_neg_1_if_invalidated
         leader_recv_entry_resets_election_timeout
@@ -92,12 +92,12 @@ module RaftTests =
         leader_recv_requestvote_responds_without_granting
         leader_responds_to_entry_msg_when_entry_is_committed
         leader_retries_appendentries_with_decremented_NextIdx_log_inconsistency
-        leader_sends_appendentries_when_node_has_next_idx_of_0
+        leader_sends_appendentries_when_mem_has_next_idx_of_0
         leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx
         leader_sends_appendentries_with_leader_commit
         leader_sends_appendentries_with_prevLogIdx
         leader_sends_empty_appendentries_every_request_timeout
-        leader_when_becomes_leader_all_nodes_have_nextidx_equal_to_lastlog_idx_plus_1
+        leader_when_becomes_leader_all_mems_have_nextidx_equal_to_lastlog_idx_plus_1
         leader_when_it_becomes_a_leader_sends_empty_appendentries
 
         non_leader_recv_entry_msg_fails
@@ -113,13 +113,13 @@ module RaftTests =
         recv_requestvote_response_increase_votes_for_me
         recv_requestvote_response_must_be_candidate_to_receive
 
-        server_add_node_makes_non_voting_node_voting
+        server_add_mem_makes_non_voting_mem_voting
         server_append_entry_is_retrievable
         server_apply_entry_increments_last_applied_idx
-        server_cfg_sets_num_nodes
+        server_cfg_sets_num_mems
         server_currentterm_defaults_to_zero
         server_election_start_increments_term
-        server_election_timeout_does_no_promote_us_to_leader_if_there_is_only_1_node
+        server_election_timeout_does_no_promote_us_to_leader_if_there_is_only_1_mem
         server_idx_starts_at_one
         server_increment_lastApplied_when_lastApplied_lt_commitidx
 
@@ -129,20 +129,20 @@ module RaftTests =
 
         server_should_apply_each_log_when_receiving_a_snapshot
         server_should_merge_snaphot_and_existing_log_when_receiving_a_snapshot
-        server_should_fire_node_callbacks_on_config_change
+        server_should_fire_mem_callbacks_on_config_change
 
-        server_recv_entry_adds_missing_node_on_addnode
-        server_recv_entry_added_node_should_be_nonvoting
-        server_recv_entry_auto_commits_if_we_are_the_only_node
+        server_recv_entry_adds_missing_mem_on_addmem
+        server_recv_entry_added_mem_should_be_nonvoting
+        server_recv_entry_auto_commits_if_we_are_the_only_mem
         server_recv_entry_fails_if_there_is_already_a_voting_change
-        server_recv_entry_removes_node_on_removenode
-        server_added_node_should_become_voting_once_it_caught_up
-        server_remove_node
+        server_recv_entry_removes_mem_on_removemem
+        server_added_mem_should_become_voting_once_it_caught_up
+        server_remove_mem
         server_set_currentterm_sets_term
         server_set_state
 
-        server_should_not_request_vote_from_failed_nodes
-        server_should_not_consider_failed_nodes_when_deciding_vote_outcome
+        server_should_not_request_vote_from_failed_mems
+        server_should_not_consider_failed_mems_when_deciding_vote_outcome
         server_should_call_persist_callback_for_each_appended_log
         server_should_call_delete_callback_for_each_deleted_log
 
@@ -161,7 +161,7 @@ module RaftTests =
         server_should_send_requestvote_to_all_servers_in_joint_consensus
 
         should_call_state_changed_callback_on_state_change
-        should_call_node_updated_callback_on_node_udpated
+        should_call_mem_updated_callback_on_mem_udpated
 
         shouldgrantvote_alredy_voted
         shouldgrantvote_log_empty

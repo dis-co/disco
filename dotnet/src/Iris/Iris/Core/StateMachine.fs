@@ -121,23 +121,21 @@ type AppCommand =
 //  ___) | || (_| | ||  __/| | (_| | | | | | | |
 // |____/ \__\__,_|\__\___||_|\__,_|_| |_| |_|_|
 
-type StateYaml(ps, ioboxes, cues, cuelists, nodes, sessions, users) as self =
+type StateYaml(ps, cues, cuelists, members, sessions, users) as self =
   [<DefaultValue>] val mutable Patches  : PatchYaml array
-  [<DefaultValue>] val mutable IOBoxes  : IOBoxYaml array
   [<DefaultValue>] val mutable Cues     : CueYaml array
   [<DefaultValue>] val mutable CueLists : CueListYaml array
-  [<DefaultValue>] val mutable Nodes    : RaftNodeYaml array
+  [<DefaultValue>] val mutable Members  : RaftMemberYaml array
   [<DefaultValue>] val mutable Sessions : SessionYaml array
   [<DefaultValue>] val mutable Users    : UserYaml array
 
-  new () = new StateYaml(null, null, null, null, null, null, null)
+  new () = new StateYaml(null, null, null, null, null, null)
 
   do
     self.Patches  <- ps
-    self.IOBoxes  <- ioboxes
     self.Cues     <- cues
     self.CueLists <- cuelists
-    self.Nodes    <- nodes
+    self.Members  <- members
     self.Sessions <- sessions
     self.Users    <- users
 
@@ -157,24 +155,21 @@ type StateYaml(ps, ioboxes, cues, cuelists, nodes, sessions, users) as self =
 
 type State =
   { Patches  : Map<Id,Patch>
-  ; IOBoxes  : Map<Id,IOBox>
-  ; Cues     : Map<Id,Cue>
-  ; CueLists : Map<Id,CueList>
-  ; Nodes    : Map<Id,RaftNode>
-  ; Sessions : Map<Id,Session>
-  ; Users    : Map<Id,User>
-  }
+    Cues     : Map<Id,Cue>
+    CueLists : Map<Id,CueList>
+    Members  : Map<Id,RaftMember>
+    Sessions : Map<Id,Session>
+    Users    : Map<Id,User> }
 
   // ** Empty
 
   static member Empty =
     { Patches  = Map.empty
-    ; IOBoxes  = Map.empty
-    ; Cues     = Map.empty
-    ; Nodes    = Map.empty
-    ; CueLists = Map.empty
-    ; Users    = Map.empty
-    ; Sessions = Map.empty }
+      Cues     = Map.empty
+      Members  = Map.empty
+      CueLists = Map.empty
+      Users    = Map.empty
+      Sessions = Map.empty }
 
   // ** AddUser
 
@@ -356,7 +351,7 @@ type State =
   member state.RemoveCue (cue : Cue) =
     { state with Cues = Map.remove cue.Id state.Cues }
 
-  // ** AddNode
+  // ** AddMember
 
   //  _   _           _
   // | \ | | ___   __| | ___
@@ -364,24 +359,24 @@ type State =
   // | |\  | (_) | (_| |  __/
   // |_| \_|\___/ \__,_|\___|
 
-  member state.AddNode (node: RaftNode) =
-    if Map.containsKey node.Id state.Nodes then
+  member state.AddMember (mem: RaftMember) =
+    if Map.containsKey mem.Id state.Members then
       state
     else
-      { state with Nodes = Map.add node.Id node state.Nodes }
+      { state with Members = Map.add mem.Id mem state.Members }
 
-  // ** UpdateNode
+  // ** UpdateMember
 
-  member state.UpdateNode (node: RaftNode) =
-    if Map.containsKey node.Id state.Nodes then
-      { state with Nodes = Map.add node.Id node state.Nodes }
+  member state.UpdateMember (mem: RaftMember) =
+    if Map.containsKey mem.Id state.Members then
+      { state with Members = Map.add mem.Id mem state.Members }
     else
       state
 
-  // ** RemoveNode
+  // ** RemoveMember
 
-  member state.RemoveNode (node: RaftNode) =
-    { state with Nodes = Map.remove node.Id state.Nodes }
+  member state.RemoveMember (mem: RaftMember) =
+    { state with Members = Map.remove mem.Id state.Members }
 
   // ** ToYamlObject
 #if !FABLE_COMPILER
@@ -398,10 +393,9 @@ type State =
 
     let yaml = new StateYaml()
     yaml.Patches  <- encode self.Patches
-    yaml.IOBoxes  <- encode self.IOBoxes
     yaml.Cues     <- encode self.Cues
     yaml.CueLists <- encode self.CueLists
-    yaml.Nodes    <- encode self.Nodes
+    yaml.Members  <- encode self.Members
     yaml.Sessions <- encode self.Sessions
     yaml.Users    <- encode self.Users
 
@@ -417,18 +411,16 @@ type State =
   static member FromYamlObject (yml: StateYaml) =
     either {
       let! patches  = Yaml.arrayToMap yml.Patches
-      let! ioboxes  = Yaml.arrayToMap yml.IOBoxes
       let! cues     = Yaml.arrayToMap yml.Cues
       let! cuelists = Yaml.arrayToMap yml.CueLists
-      let! nodes    = Yaml.arrayToMap yml.Nodes
+      let! members  = Yaml.arrayToMap yml.Members
       let! sessions = Yaml.arrayToMap yml.Sessions
       let! users    = Yaml.arrayToMap yml.Users
 
       return { Patches  = patches
-               IOBoxes  = ioboxes
                Cues     = cues
                CueLists = cuelists
-               Nodes    = nodes
+               Members  = members
                Sessions = sessions
                Users    = users }
     }
@@ -458,12 +450,6 @@ type State =
 
     let patchesoffset = StateFB.CreatePatchesVector(builder, patches)
 
-    let ioboxes =
-      Map.toArray self.IOBoxes
-      |> Array.map (snd >> Binary.toOffset builder)
-
-    let ioboxesoffset = StateFB.CreateIOBoxesVector(builder, ioboxes)
-
     let cues =
       Map.toArray self.Cues
       |> Array.map (snd >> Binary.toOffset builder)
@@ -476,11 +462,11 @@ type State =
 
     let cuelistsoffset = StateFB.CreateCueListsVector(builder, cuelists)
 
-    let nodes =
-      Map.toArray self.Nodes
+    let members =
+      Map.toArray self.Members
       |> Array.map (snd >> Binary.toOffset builder)
 
-    let nodesoffset = StateFB.CreateNodesVector(builder, nodes)
+    let memberssoffset = StateFB.CreateMembersVector(builder, members)
 
     let users =
       Map.toArray self.Users
@@ -496,10 +482,9 @@ type State =
 
     StateFB.StartStateFB(builder)
     StateFB.AddPatches(builder, patchesoffset)
-    StateFB.AddIOBoxes(builder, ioboxesoffset)
     StateFB.AddCues(builder, cuesoffset)
     StateFB.AddCueLists(builder, cuelistsoffset)
-    StateFB.AddNodes(builder, nodesoffset)
+    StateFB.AddMembers(builder, memberssoffset)
     StateFB.AddSessions(builder, sessionsoffset)
     StateFB.AddUsers(builder, usersoffset)
     StateFB.EndStateFB(builder)
@@ -533,32 +518,6 @@ type State =
                 |> Either.fail
 #endif
             return (i + 1, Map.add patch.Id patch map)
-          })
-          (Right (0, Map.empty))
-          arr
-        |> Either.map snd
-
-      // IOBOXES
-
-      let! ioboxes =
-        let arr = Array.zeroCreate fb.IOBoxesLength
-        Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, IOBox>>) _ -> either {
-            let! (i, map) = m
-#if FABLE_COMPILER
-            let! iobox = fb.IOBoxes(i) |> IOBox.FromFB
-#else
-            let! iobox =
-              let value = fb.IOBoxes(i)
-              if value.HasValue then
-                value.Value
-                |> IOBox.FromFB
-              else
-                "Could not parse empty IOBox payload"
-                |> ParseError
-                |> Either.fail
-#endif
-            return (i + 1, Map.add iobox.Id iobox map)
           })
           (Right (0, Map.empty))
           arr
@@ -616,27 +575,27 @@ type State =
           arr
         |> Either.map snd
 
-      // NODES
+      // MEMBERS
 
-      let! nodes =
-        let arr = Array.zeroCreate fb.NodesLength
+      let! members =
+        let arr = Array.zeroCreate fb.MembersLength
         Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, RaftNode>>) _ -> either {
+          (fun (m: Either<IrisError,int * Map<Id, RaftMember>>) _ -> either {
             let! (i, map) = m
 #if FABLE_COMPILER
-            let! node = fb.Nodes(i) |> RaftNode.FromFB
+            let! mem = fb.Members(i) |> RaftMember.FromFB
 #else
-            let! node =
-              let value = fb.Nodes(i)
+            let! mem =
+              let value = fb.Members(i)
               if value.HasValue then
                 value.Value
-                |> RaftNode.FromFB
+                |> RaftMember.FromFB
               else
-                "Could not parse empty RaftNode payload"
+                "Could not parse empty RaftMember payload"
                 |> ParseError
                 |> Either.fail
 #endif
-            return (i + 1, Map.add node.Id node map)
+            return (i + 1, Map.add mem.Id mem map)
           })
           (Right (0, Map.empty))
           arr
@@ -695,10 +654,9 @@ type State =
         |> Either.map snd
 
       return { Patches  = patches
-               IOBoxes  = ioboxes
                Cues     = cues
                CueLists = cuelists
-               Nodes    = nodes
+               Members  = members
                Users    = users
                Sessions = sessions }
     }
@@ -940,9 +898,9 @@ and Store(state : State)=
     | UpdateIOBox         iobox -> state.UpdateIOBox   iobox   |> andRender
     | RemoveIOBox         iobox -> state.RemoveIOBox   iobox   |> andRender
 
-    | AddNode              node -> state.AddNode       node    |> andRender
-    | UpdateNode           node -> state.UpdateNode    node    |> andRender
-    | RemoveNode           node -> state.RemoveNode    node    |> andRender
+    | AddMember            mem -> state.AddMember     mem    |> andRender
+    | UpdateMember         mem -> state.UpdateMember  mem    |> andRender
+    | RemoveMember         mem -> state.RemoveMember  mem    |> andRender
 
     | AddSession        session -> addSession session state    |> andRender
     | UpdateSession     session -> state.UpdateSession session |> andRender
@@ -1067,20 +1025,20 @@ and StateMachineYaml(cmd: string, payload: obj) as self =
     self.Action  <- cmd
     self.Payload <- payload
 
-  // ** AddNode
+  // ** AddMember
 
-  static member AddNode (node: RaftNode) =
-    new StateMachineYaml("AddNode", Yaml.toYaml node)
+  static member AddMember (mem: RaftMember) =
+    new StateMachineYaml("AddMember", Yaml.toYaml mem)
 
-  // ** UpdateNode
+  // ** UpdateMember
 
-  static member UpdateNode (node: RaftNode) =
-    new StateMachineYaml("UpdateNode", Yaml.toYaml node)
+  static member UpdateMember (mem: RaftMember) =
+    new StateMachineYaml("UpdateMember", Yaml.toYaml mem)
 
-  // ** RemoveNode
+  // ** RemoveMember
 
-  static member RemoveNode (node: RaftNode) =
-    new StateMachineYaml("RemoveNode", Yaml.toYaml node)
+  static member RemoveMember (mem: RaftMember) =
+    new StateMachineYaml("RemoveMember", Yaml.toYaml mem)
 
   // ** AddPatch
 
@@ -1204,10 +1162,10 @@ and StateMachineYaml(cmd: string, payload: obj) as self =
 
 and StateMachine =
 
-  // NODE
-  | AddNode       of RaftNode
-  | UpdateNode    of RaftNode
-  | RemoveNode    of RaftNode
+  // Member
+  | AddMember     of RaftMember
+  | UpdateMember  of RaftMember
+  | RemoveMember  of RaftMember
 
   // PATCH
   | AddPatch      of Patch
@@ -1252,10 +1210,10 @@ and StateMachine =
   override self.ToString() : string =
     match self with
 
-    // NODE
-    | AddNode    node       -> sprintf "AddNode %s"    (string node)
-    | UpdateNode node       -> sprintf "UpdateNode %s" (string node)
-    | RemoveNode node       -> sprintf "RemoveNode %s" (string node)
+    // Member
+    | AddMember    mem     -> sprintf "AddMember %s"    (string mem)
+    | UpdateMember mem     -> sprintf "UpdateMember %s" (string mem)
+    | RemoveMember mem     -> sprintf "RemoveMember %s" (string mem)
 
     // PATCH
     | AddPatch    patch     -> sprintf "AddPatch %s"    (string patch)
@@ -1304,9 +1262,9 @@ and StateMachine =
 
   member self.ToYamlObject() : StateMachineYaml =
     match self with
-    | AddNode    node       -> StateMachineYaml.AddNode(node)
-    | UpdateNode node       -> StateMachineYaml.UpdateNode(node)
-    | RemoveNode node       -> StateMachineYaml.RemoveNode(node)
+    | AddMember    mem       -> StateMachineYaml.AddMember(mem)
+    | UpdateMember mem       -> StateMachineYaml.UpdateMember(mem)
+    | RemoveMember mem       -> StateMachineYaml.RemoveMember(mem)
 
     // PATCH
     | AddPatch    patch     -> StateMachineYaml.AddPatch(patch)
@@ -1353,17 +1311,17 @@ and StateMachine =
 
   static member FromYamlObject (yaml: StateMachineYaml) =
     match yaml.Action with
-    | "AddNode" -> either {
-        let! node = yaml.Payload :?> RaftNodeYaml |> Yaml.fromYaml
-        return AddNode(node)
+    | "AddMember" -> either {
+        let! mem = yaml.Payload :?> RaftMemberYaml |> Yaml.fromYaml
+        return AddMember(mem)
       }
-    | "UpdateNode" -> either {
-        let! node = yaml.Payload :?> RaftNodeYaml |> Yaml.fromYaml
-        return UpdateNode(node)
+    | "UpdateMember" -> either {
+        let! mem = yaml.Payload :?> RaftMemberYaml |> Yaml.fromYaml
+        return UpdateMember(mem)
       }
-    | "RemoveNode" -> either {
-        let! node = yaml.Payload :?> RaftNodeYaml |> Yaml.fromYaml
-        return RemoveNode(node)
+    | "RemoveMember" -> either {
+        let! mem = yaml.Payload :?> RaftMemberYaml |> Yaml.fromYaml
+        return RemoveMember(mem)
       }
     | "AddPatch" -> either {
         let! patch = yaml.Payload :?> PatchYaml |> Yaml.fromYaml
@@ -1479,15 +1437,15 @@ and StateMachine =
 #if FABLE_COMPILER
   static member FromFB (fb: ApiActionFB) =
     match fb.PayloadType with
-    | x when x = PayloadFB.NodeFB ->
-      let node = fb.NodeFB |> RaftNode.FromFB
+    | x when x = PayloadFB.RaftMemberFB ->
+      let mem = fb.RaftMemberFB |> RaftMember.FromFB
       match fb.Action with
       | x when x = ActionTypeFB.AddFB ->
-        Either.map AddNode node
+        Either.map AddMember mem
       | x when x = ActionTypeFB.UpdateFB ->
-        Either.map UpdateNode node
+        Either.map UpdateMember mem
       | x when x = ActionTypeFB.RemoveFB ->
-        Either.map RemoveNode node
+        Either.map RemoveMember mem
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
         |> ParseError
@@ -1730,22 +1688,22 @@ and StateMachine =
     // | |\  | (_) | (_| |  __/
     // |_| \_|\___/ \__,_|\___|
 
-    | PayloadFB.NodeFB ->
+    | PayloadFB.RaftMemberFB ->
       either {
-        let! node =
-          let nodeish = fb.Payload<NodeFB>()
-          if nodeish.HasValue then
-            nodeish.Value
-            |> RaftNode.FromFB
+        let! mem =
+          let memish = fb.Payload<RaftMemberFB>()
+          if memish.HasValue then
+            memish.Value
+            |> RaftMember.FromFB
           else
-            "Could not parse empty node payload"
+            "Could not parse empty mem payload"
             |> ParseError
             |> Either.fail
 
         match fb.Action with
-        | ActionTypeFB.AddFB    -> return (AddNode    node)
-        | ActionTypeFB.UpdateFB -> return (UpdateNode node)
-        | ActionTypeFB.RemoveFB -> return (RemoveNode node)
+        | ActionTypeFB.AddFB    -> return (AddMember    mem)
+        | ActionTypeFB.UpdateFB -> return (UpdateMember mem)
+        | ActionTypeFB.RemoveFB -> return (RemoveMember mem)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1867,39 +1825,39 @@ and StateMachine =
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<ApiActionFB> =
     match self with
-    | AddNode       node ->
-      let node = node.ToOffset(builder)
+    | AddMember       mem ->
+      let mem = mem.ToOffset(builder)
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.NodeFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.RaftMemberFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, node)
+      ApiActionFB.AddPayload(builder, mem)
 #else
-      ApiActionFB.AddPayload(builder, node.Value)
+      ApiActionFB.AddPayload(builder, mem.Value)
 #endif
       ApiActionFB.EndApiActionFB(builder)
 
-    | UpdateNode    node ->
-      let node = node.ToOffset(builder)
+    | UpdateMember    mem ->
+      let mem = mem.ToOffset(builder)
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.NodeFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.RaftMemberFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, node)
+      ApiActionFB.AddPayload(builder, mem)
 #else
-      ApiActionFB.AddPayload(builder, node.Value)
+      ApiActionFB.AddPayload(builder, mem.Value)
 #endif
       ApiActionFB.EndApiActionFB(builder)
 
-    | RemoveNode    node ->
-      let node = node.ToOffset(builder)
+    | RemoveMember    mem ->
+      let mem = mem.ToOffset(builder)
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.NodeFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.RaftMemberFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, node)
+      ApiActionFB.AddPayload(builder, mem)
 #else
-      ApiActionFB.AddPayload(builder, node.Value)
+      ApiActionFB.AddPayload(builder, mem.Value)
 #endif
       ApiActionFB.EndApiActionFB(builder)
 

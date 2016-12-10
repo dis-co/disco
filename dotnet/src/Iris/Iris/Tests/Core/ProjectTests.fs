@@ -175,33 +175,33 @@ module ProjectTests =
           ; Arguments      = [("mykey", "to my heart")]
           }
 
-        let nodeA =
-          { Node.create (Id.Create()) with
+        let memA =
+          { Member.create (Id.Create()) with
               HostName = "moomoo"
               IpAddr   = IpAddress.Parse "182.123.18.2"
               State    = Running
               Port     = 1234us }
 
-        let nodeB =
-          { Node.create (Id.Create()) with
+        let memB =
+          { Member.create (Id.Create()) with
               HostName = "taataaa"
               IpAddr   = IpAddress.Parse "118.223.8.12"
               State    = Joining
               Port     = 1234us }
 
-        let groupA =
+        let groupA: HostGroup =
           { Name    = "Group A"
           ; Members = [ Id.Create() ]
           }
 
-        let groupB =
+        let groupB: HostGroup =
           { Name    = "Group B"
           ; Members = [ Id.Create() ]
           }
 
         let cluster =
           { Name   = "A mighty cool cluster"
-          ; Nodes  = [ nodeA;  nodeB  ]
+          ; Members = [ memA;  memB  ]
           ; Groups = [ groupA; groupB ]
           }
 
