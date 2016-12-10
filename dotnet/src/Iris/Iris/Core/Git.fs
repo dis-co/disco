@@ -329,7 +329,6 @@ module Git =
     /// Returns: unit
     let clean (repo: Repository) = repo.RemoveUntrackedFiles()
 
-
     /// ## List all Refs in repository
     ///
     /// Lists all Reference objects in a repository.
@@ -344,7 +343,6 @@ module Git =
         refs := rev :: !refs
       !refs
 
-
     /// ## Get the object database for repository
     ///
     /// get all objects in repository
@@ -354,7 +352,6 @@ module Git =
     ///
     /// Returns: ObjectDatabase
     let database (repo: Repository) = repo.ObjectDatabase
-
 
     /// ### Signature:
     /// - repo: Repository
@@ -522,6 +519,20 @@ module Git =
       either {
         let! status = status repo
         return status.IsDirty
+      }
+
+    /// ## untracked
+    ///
+    /// List all untracked files in the repository
+    ///
+    /// ### Signature:
+    /// - repo: Repository
+    ///
+    /// Returns: seq<StatusEntry>
+    let untracked (repo: Repository) : Either<IrisError,seq<StatusEntry>> =
+      either {
+        let! status = status repo
+        return status.Untracked
       }
 
     /// ## Shorthand to work with the commit log of a repository
