@@ -387,6 +387,7 @@ module Project =
       do! createAssetDir repo CUE_DIR
       do! createAssetDir repo USER_DIR
       do! createAssetDir repo CUELIST_DIR
+      do! createAssetDir repo PATCHES_DIR
       let adminPath = project.Path </> Asset.path User.Admin
       let! _ =
         User.Admin
