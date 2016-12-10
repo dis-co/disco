@@ -17,17 +17,17 @@ open Iris.Serialization.Raft
 
 #if !FABLE_COMPILER
 
-type PatchYaml(id, name, ioboxes) as self =
-  [<DefaultValue>] val mutable Id      : string
-  [<DefaultValue>] val mutable Name    : string
-  [<DefaultValue>] val mutable IOBoxes : IOBoxYaml array
+type PatchYaml(id, name, pins) as self =
+  [<DefaultValue>] val mutable Id   : string
+  [<DefaultValue>] val mutable Name : string
+  [<DefaultValue>] val mutable Pins : PinYaml array
 
   new () = new PatchYaml(null, null, null)
 
   do
     self.Id <- id
     self.Name <- name
-    self.IOBoxes <- ioboxes
+    self.Pins <- pins
 
 #endif
 
@@ -36,77 +36,78 @@ type PatchYaml(id, name, ioboxes) as self =
 // [<CustomComparison>]
 // #endif
 type Patch =
-  { Id      : Id
-  ; Name    : Name
-  ; IOBoxes : Map<Id,IOBox> }
+  { Id   : Id
+    Name : Name
+    Pins : Map<Id,Pin> }
 
-  //  _   _           ___ ___  ____
-  // | | | | __ _ ___|_ _/ _ \| __ )  _____  __
-  // | |_| |/ _` / __|| | | | |  _ \ / _ \ \/ /
-  // |  _  | (_| \__ \| | |_| | |_) | (_) >  <
-  // |_| |_|\__,_|___/___\___/|____/ \___/_/\_\
+  //  _   _           ____  _
+  // | | | | __ _ ___|  _ \(_)_ __
+  // | |_| |/ _` / __| |_) | | '_ \
+  // |  _  | (_| \__ \  __/| | | | |
+  // |_| |_|\__,_|___/_|   |_|_| |_|
 
-  static member HasIOBox (patch : Patch) (id: Id) : bool =
-    Map.containsKey id patch.IOBoxes
+  static member HasPin (patch : Patch) (id: Id) : bool =
+    Map.containsKey id patch.Pins
 
-  //  _____ _           _ ___ ___  ____
-  // |  ___(_)_ __   __| |_ _/ _ \| __ )  _____  __
-  // | |_  | | '_ \ / _` || | | | |  _ \ / _ \ \/ /
-  // |  _| | | | | | (_| || | |_| | |_) | (_) >  <
-  // |_|   |_|_| |_|\__,_|___\___/|____/ \___/_/\_\
+  //  _____ _           _ ____  _
+  // |  ___(_)_ __   __| |  _ \(_)_ __
+  // | |_  | | '_ \ / _` | |_) | | '_ \
+  // |  _| | | | | | (_| |  __/| | | | |
+  // |_|   |_|_| |_|\__,_|_|   |_|_| |_|
 
-  static member FindIOBox (patches : Map<Id, Patch>) (id : Id) : IOBox option =
-    let folder (m : IOBox option) _ (patch: Patch) =
+  static member FindPin (patches : Map<Id, Patch>) (id : Id) : Pin option =
+    let folder (m : Pin option) _ (patch: Patch) =
       match m with
         | Some _ as res -> res
-        |      _        -> Map.tryFind id patch.IOBoxes
+        |      _        -> Map.tryFind id patch.Pins
     Map.fold folder None patches
 
-  //   ____            _        _           ___ ___  ____
-  //  / ___|___  _ __ | |_ __ _(_)_ __  ___|_ _/ _ \| __ )  _____  __
-  // | |   / _ \| '_ \| __/ _` | | '_ \/ __|| | | | |  _ \ / _ \ \/ /
-  // | |__| (_) | | | | || (_| | | | | \__ \| | |_| | |_) | (_) >  <
-  //  \____\___/|_| |_|\__\__,_|_|_| |_|___/___\___/|____/ \___/_/\_\
+  //   ____            _        _           ____  _
+  //  / ___|___  _ __ | |_ __ _(_)_ __  ___|  _ \(_)_ __
+  // | |   / _ \| '_ \| __/ _` | | '_ \/ __| |_) | | '_ \
+  // | |__| (_) | | | | || (_| | | | | \__ \  __/| | | | |
+  //  \____\___/|_| |_|\__\__,_|_|_| |_|___/_|   |_|_| |_|
 
-  static member ContainsIOBox (patches : Map<Id,Patch>) (id: Id) : bool =
+  static member ContainsPin (patches : Map<Id,Patch>) (id: Id) : bool =
     let folder m _ p =
-      if m then m else Patch.HasIOBox p id || m
+      if m then m else Patch.HasPin p id || m
     Map.fold folder false patches
 
-  //     _       _     _ ___ ___  ____
-  //    / \   __| | __| |_ _/ _ \| __ )  _____  __
-  //   / _ \ / _` |/ _` || | | | |  _ \ / _ \ \/ /
-  //  / ___ \ (_| | (_| || | |_| | |_) | (_) >  <
-  // /_/   \_\__,_|\__,_|___\___/|____/ \___/_/\_\
+  //     _       _     _ ____  _
+  //    / \   __| | __| |  _ \(_)_ __
+  //   / _ \ / _` |/ _` | |_) | | '_ \
+  //  / ___ \ (_| | (_| |  __/| | | | |
+  // /_/   \_\__,_|\__,_|_|   |_|_| |_|
 
-  static member AddIOBox (patch : Patch) (iobox : IOBox) : Patch=
-    if Patch.HasIOBox patch iobox.Id then
+  static member AddPin (patch : Patch) (pin : Pin) : Patch=
+    if Patch.HasPin patch pin.Id then
       patch
     else
-      { patch with IOBoxes = Map.add iobox.Id iobox patch.IOBoxes }
+      { patch with Pins = Map.add pin.Id pin patch.Pins }
 
-  //  _   _           _       _       ___ ___  ____
-  // | | | |_ __   __| | __ _| |_ ___|_ _/ _ \| __ )  _____  __
-  // | | | | '_ \ / _` |/ _` | __/ _ \| | | | |  _ \ / _ \ \/ /
-  // | |_| | |_) | (_| | (_| | ||  __/| | |_| | |_) | (_) >  <
-  //  \___/| .__/ \__,_|\__,_|\__\___|___\___/|____/ \___/_/\_\
+  //  _   _           _       _       ____  _
+  // | | | |_ __   __| | __ _| |_ ___|  _ \(_)_ __
+  // | | | | '_ \ / _` |/ _` | __/ _ \ |_) | | '_ \
+  // | |_| | |_) | (_| | (_| | ||  __/  __/| | | | |
+  //  \___/| .__/ \__,_|\__,_|\__\___|_|   |_|_| |_|
   //       |_|
-  static member UpdateIOBox (patch : Patch) (iobox : IOBox) : Patch =
-    if Patch.HasIOBox patch iobox.Id then
-      let mapper _ (other: IOBox) =
-        if other.Id = iobox.Id then iobox else other
-      { patch with IOBoxes = Map.map mapper patch.IOBoxes }
+
+  static member UpdatePin (patch : Patch) (pin : Pin) : Patch =
+    if Patch.HasPin patch pin.Id then
+      let mapper _ (other: Pin) =
+        if other.Id = pin.Id then pin else other
+      { patch with Pins = Map.map mapper patch.Pins }
     else
       patch
 
-  //  ____                               ___ ___  ____
-  // |  _ \ ___ _ __ ___   _____   _____|_ _/ _ \| __ )  _____  __
-  // | |_) / _ \ '_ ` _ \ / _ \ \ / / _ \| | | | |  _ \ / _ \ \/ /
-  // |  _ <  __/ | | | | | (_) \ V /  __/| | |_| | |_) | (_) >  <
-  // |_| \_\___|_| |_| |_|\___/ \_/ \___|___\___/|____/ \___/_/\_\
+  //  ____                               ____  _
+  // |  _ \ ___ _ __ ___   _____   _____|  _ \(_)_ __
+  // | |_) / _ \ '_ ` _ \ / _ \ \ / / _ \ |_) | | '_ \
+  // |  _ <  __/ | | | | | (_) \ V /  __/  __/| | | | |
+  // |_| \_\___|_| |_| |_|\___/ \_/ \___|_|   |_|_| |_|
 
-  static member RemoveIOBox (patch : Patch) (iobox : IOBox) : Patch =
-    { patch with IOBoxes = Map.remove iobox.Id patch.IOBoxes }
+  static member RemovePin (patch : Patch) (pin : Pin) : Patch =
+    { patch with Pins = Map.remove pin.Id patch.Pins }
 
 #if !FABLE_COMPILER
 
@@ -120,7 +121,7 @@ type Patch =
     let yaml = new PatchYaml()
     yaml.Id <- string self.Id
     yaml.Name <- self.Name
-    yaml.IOBoxes <- self.IOBoxes
+    yaml.Pins <- self.Pins
                    |> Map.toArray
                    |> Array.map (snd >> Yaml.toYaml)
     yaml
@@ -132,19 +133,19 @@ type Patch =
 
   static member FromYamlObject (yml: PatchYaml) =
     either {
-      let! ioboxes =
+      let! pins =
         Array.fold
-          (fun (m: Either<IrisError,Map<Id,IOBox>>) ioyml -> either {
-            let! ioboxes = m
-            let! (iobox : IOBox) = Yaml.fromYaml ioyml
-            return Map.add iobox.Id iobox ioboxes
+          (fun (m: Either<IrisError,Map<Id,Pin>>) pinyml -> either {
+            let! pins = m
+            let! (pin : Pin) = Yaml.fromYaml pinyml
+            return Map.add pin.Id pin pins
           })
           (Right Map.empty)
-          yml.IOBoxes
+          yml.Pins
 
       return { Id = Id yml.Id
                Name = yml.Name
-               IOBoxes = ioboxes }
+               Pins = pins }
     }
 
   static member FromYaml (str: string) : Either<IrisError,Patch> =
@@ -163,27 +164,27 @@ type Patch =
 
   static member FromFB (fb: PatchFB) =
     either {
-      let! ioboxes =
-        let arr = Array.zeroCreate fb.IOBoxesLength
+      let! pins =
+        let arr = Array.zeroCreate fb.PinsLength
         Array.fold
-          (fun (m: Either<IrisError,int * Map<Id,IOBox>>) _ -> either {
-              let! (i, ioboxes) = m
+          (fun (m: Either<IrisError,int * Map<Id,Pin>>) _ -> either {
+              let! (i, pins) = m
 
   #if FABLE_COMPILER
-              let! iobox = i |> fb.IOBoxes |> IOBox.FromFB
+              let! pin = i |> fb.Pins |> Pin.FromFB
   #else
-              let! iobox =
-                let nullable = fb.IOBoxes(i)
+              let! pin =
+                let nullable = fb.Pins(i)
                 if nullable.HasValue then
                   nullable.Value
-                  |> IOBox.FromFB
+                  |> Pin.FromFB
                 else
-                  "Could not parse empty IOBoxFB"
+                  "Could not parse empty PinFB"
                   |> ParseError
                   |> Either.fail
   #endif
 
-              return (i + 1, Map.add iobox.Id iobox ioboxes)
+              return (i + 1, Map.add pin.Id pin pins)
             })
           (Right (0, Map.empty))
           arr
@@ -191,22 +192,22 @@ type Patch =
 
       return { Id = Id fb.Id
                Name = fb.Name
-               IOBoxes = ioboxes }
+               Pins = pins }
     }
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<PatchFB> =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
-    let ioboxoffsets =
-      self.IOBoxes
+    let pinoffsets =
+      self.Pins
       |> Map.toArray
-      |> Array.map (fun (_,iobox: IOBox) -> iobox.ToOffset(builder))
+      |> Array.map (fun (_,pin: Pin) -> pin.ToOffset(builder))
 
-    let ioboxes = PatchFB.CreateIOBoxesVector(builder, ioboxoffsets)
+    let pins = PatchFB.CreatePinsVector(builder, pinoffsets)
     PatchFB.StartPatchFB(builder)
     PatchFB.AddId(builder, id)
     PatchFB.AddName(builder, name)
-    PatchFB.AddIOBoxes(builder, ioboxes)
+    PatchFB.AddPins(builder, pins)
     PatchFB.EndPatchFB(builder)
 
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self

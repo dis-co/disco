@@ -111,7 +111,7 @@ table ColorSliceFB {
 
 table CompoundSliceFB {
       Index: uint;
-      Value: [IOBoxFB];
+      Value: [PinFB];
 }
 
 union SliceTypeFB {
@@ -136,7 +136,7 @@ table SliceFB {
 //  | | |_| | |_) | (_) >  <
 // |___\___/|____/ \___/_/\_\
 
-table StringBoxFB {
+table StringPinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -147,7 +147,7 @@ table StringBoxFB {
       Slices     : [StringSliceFB];
 }
 
-table IntBoxFB {
+table IntPinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -159,7 +159,7 @@ table IntBoxFB {
       Slices     : [IntSliceFB];
 }
 
-table FloatBoxFB {
+table FloatPinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -172,7 +172,7 @@ table FloatBoxFB {
       Slices     : [FloatSliceFB];
 }
 
-table DoubleBoxFB {
+table DoublePinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -185,7 +185,7 @@ table DoubleBoxFB {
       Slices     : [DoubleSliceFB];
 }
 
-table BoolBoxFB {
+table BoolPinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -194,7 +194,7 @@ table BoolBoxFB {
       Slices     : [BoolSliceFB];
 }
 
-table ByteBoxFB {
+table BytePinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -202,7 +202,7 @@ table ByteBoxFB {
       Slices     : [ByteSliceFB];
 }
 
-table EnumBoxFB {
+table EnumPinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -211,7 +211,7 @@ table EnumBoxFB {
       Slices     : [EnumSliceFB];
 }
 
-table ColorBoxFB {
+table ColorPinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -219,7 +219,7 @@ table ColorBoxFB {
       Slices     : [ColorSliceFB];
 }
 
-table CompoundBoxFB {
+table CompoundPinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -227,20 +227,20 @@ table CompoundBoxFB {
       Slices     : [CompoundSliceFB];
 }
 
-union IOBoxTypeFB {
-      StringBoxFB,
-      IntBoxFB,
-      FloatBoxFB,
-      DoubleBoxFB,
-      BoolBoxFB,
-      ByteBoxFB,
-      EnumBoxFB,
-      ColorBoxFB,
-      CompoundBoxFB
+union PinTypeFB {
+      StringPinFB,
+      IntPinFB,
+      FloatPinFB,
+      DoublePinFB,
+      BoolPinFB,
+      BytePinFB,
+      EnumPinFB,
+      ColorPinFB,
+      CompoundPinFB
 }
 
-table IOBoxFB {
-      IOBox: IOBoxTypeFB;
+table PinFB {
+      Pin: PinTypeFB;
 }
 
 //  ____       _       _
@@ -252,7 +252,7 @@ table IOBoxFB {
 table PatchFB {
       Id:   string;
       Name: string;
-      IOBoxes: [IOBoxFB];
+      Pins: [PinFB];
 }
 
 //   ____
@@ -262,9 +262,9 @@ table PatchFB {
 //  \____\__,_|\___|
 
 table CueFB {
-      Id:      string;
-      Name:    string;
-      IOBoxes: [IOBoxFB];
+      Id:    string;
+      Name:  string;
+      Pins: [PinFB];
 }
 
 
@@ -275,9 +275,9 @@ table CueFB {
 //  \____\__,_|\___|_____|_|___/\__|
 
 table CueListFB {
-      Id:      string;
-      Name:    string;
-      Cues:    [CueFB];
+      Id:   string;
+      Name: string;
+      Cues: [CueFB];
 }
 
 //  _   _
@@ -347,7 +347,7 @@ table StateFB {
 union PayloadFB {
       CueFB,
       CueListFB,
-      IOBoxFB,
+      PinFB,
       PatchFB,
       RaftMemberFB,
       UserFB,

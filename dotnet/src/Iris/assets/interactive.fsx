@@ -42,7 +42,7 @@
     "../../../Iris/Core/Color.fs"
     "../../../Iris/Core/LogLevel.fs"
     "../../../Iris/Core/Git.fs"
-    "../../../Iris/Core/IOBox.fs"
+    "../../../Iris/Core/Pin.fs"
     "../../../Iris/Core/Patch.fs"
     "../../../Iris/Core/Cue.fs"
     "../../../Iris/Core/CueList.fs"

@@ -167,7 +167,7 @@ module AppendEntries =
 
         let data =
           [| "one"; "two"; "three"; |]
-          |> Array.map (fun name -> AddCue { Id = Id name; Name = name; IOBoxes = [| |] })
+          |> Array.map (fun name -> AddCue { Id = Id name; Name = name; Pins = [| |] })
 
         let peer = Member.create (Id.Create())
 
@@ -181,7 +181,7 @@ module AppendEntries =
           ; PrevLogIdx   = 1u
           ; PrevLogTerm  = 1u
           ; LeaderCommit = 5u
-          ; Entries      = Log.make 2u (AddCue { Id = Id "four"; Name = "four"; IOBoxes = [| |] }) |> Some
+          ; Entries      = Log.make 2u (AddCue { Id = Id "four"; Name = "four"; Pins = [| |] }) |> Some
           }
 
         let! response = Raft.receiveAppendEntries (Some peer.Id) newer
@@ -189,8 +189,8 @@ module AppendEntries =
 
         do! expectM "Should have 2 entries" 2u Raft.numLogs
 
-        do! expectM "First should have 'one' value" (AddCue { Id = Id "one"; Name = "one"; IOBoxes = [| |] }) (getNth 1u)
-        do! expectM "second should have 'four' value" (AddCue { Id = Id "four"; Name = "four"; IOBoxes = [| |] }) (getNth 2u)
+        do! expectM "First should have 'one' value" (AddCue { Id = Id "one"; Name = "one"; Pins = [| |] }) (getNth 1u)
+        do! expectM "second should have 'four' value" (AddCue { Id = Id "four"; Name = "four"; Pins = [| |] }) (getNth 2u)
       }
       |> runWithRaft raft' cbs
       |> ignore
@@ -205,7 +205,7 @@ module AppendEntries =
 
       let data =
         [| "one"; "two"; "three"; |]
-        |> Array.map (fun name -> AddCue { Id = Id name; Name = name; IOBoxes = [| |] })
+        |> Array.map (fun name -> AddCue { Id = Id name; Name = name; Pins = [| |] })
 
       let peer = Member.create (Id.Create())
       let raft' = defaultServer "string tango"
@@ -228,7 +228,7 @@ module AppendEntries =
         expect "Should have succeeded" true AppendRequest.succeeded response
         do! expectM "Should have 1 log entry" 1u Raft.numLogs
         let! entry = getNth 1u
-        expect "Should have correct value" (Some (AddCue { Id = Id "one"; Name = "one"; IOBoxes = [| |] })) id entry
+        expect "Should have correct value" (Some (AddCue { Id = Id "one"; Name = "one"; Pins = [| |] })) id entry
       }
       |> runWithRaft raft' cbs
       |> ignore

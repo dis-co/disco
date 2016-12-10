@@ -100,8 +100,8 @@
     <Compile Include="../../Iris/Raft/Member.fs">
       <Link>Member.fs</Link>
     </Compile>
-    <Compile Include="../../Iris/Core/IOBox.fs">
-      <Link>IOBox.fs</Link>
+    <Compile Include="../../Iris/Core/Pin.fs">
+      <Link>Pin.fs</Link>
     </Compile>
     <Compile Include="../../Iris/Core/Patch.fs">
       <Link>Patch.fs</Link>

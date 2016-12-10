@@ -98,8 +98,8 @@
     <Compile Include="..\..\Iris\Core\Logging.fs">
       <Link>Logging.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Core\IOBox.fs">
-      <Link>IOBox.fs</Link>
+    <Compile Include="..\..\Iris\Core\Pin.fs">
+      <Link>Pin.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Core\Patch.fs">
       <Link>Patch.fs</Link>
@@ -128,9 +128,6 @@
     <Compile Include="..\..\Iris\Web\Core\Html.fs">
       <Link>Html.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Web\Core\Plugin.fs">
-      <Link>Plugin.fs</Link>
-    </Compile>
     <Compile Include="..\..\Iris\Web\Core\ViewController.fs">
       <Link>ViewController.fs</Link>
     </Compile>
@@ -142,9 +139,6 @@
     </Compile>
     <Compile Include="..\..\Iris\Web\Core\Keyboard.fs">
       <Link>Keyboard.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Web\Views\Patches.fs">
-      <Link>Patches.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Tests\Web\TestUtilities.fs">
       <Link>TestUtilities.fs</Link>

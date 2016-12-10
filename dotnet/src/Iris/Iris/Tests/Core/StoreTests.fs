@@ -13,9 +13,9 @@ module StoreTests =
 
   let withStore (wrap : Patch -> Store -> unit) =
     let patch : Patch =
-      { Id = Id "0xb4d1d34"
+      { Id   = Id "0xb4d1d34"
       ; Name = "patch-1"
-      ; IOBoxes = Map.empty
+      ; Pins = Map.empty
       }
 
     let store : Store = new Store(State.Empty)
@@ -65,68 +65,68 @@ module StoreTests =
   //  | | |_| | |_) | (_) >  <
   // |___\___/|____/ \___/_/\_\
 
-  let test_should_add_an_iobox_to_the_store_if_patch_exists =
-    testCase "should add an iobox to the store if patch exists" <| fun _ ->
+  let test_should_add_an_pin_to_the_store_if_patch_exists =
+    testCase "should add an pin to the store if patch exists" <| fun _ ->
       withStore <| fun patch store ->
         store.Dispatch <| AddPatch(patch)
 
-        expect "Should be zero" 0 id store.State.Patches.[patch.Id].IOBoxes.Count
+        expect "Should be zero" 0 id store.State.Patches.[patch.Id].Pins.Count
 
         let slice : StringSliceD = { Index = 0u; Value = "Hey" }
-        let iobox : IOBox = IOBox.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
+        let pin : Pin = Pin.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
 
-        store.Dispatch <| AddIOBox(iobox)
+        store.Dispatch <| AddPin(pin)
 
-        expect "Should be one" 1 id store.State.Patches.[patch.Id].IOBoxes.Count
+        expect "Should be one" 1 id store.State.Patches.[patch.Id].Pins.Count
 
-  let test_should_not_add_an_iobox_to_the_store_if_patch_does_not_exists =
-    testCase "should not add an iobox to the store if patch does not exists" <| fun _ ->
+  let test_should_not_add_an_pin_to_the_store_if_patch_does_not_exists =
+    testCase "should not add an pin to the store if patch does not exists" <| fun _ ->
       withStore <| fun patch store ->
         let slice : StringSliceD = { Index = 0u; Value =  "Hey" }
-        let iobox = IOBox.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
-        store.Dispatch <| AddIOBox(iobox)
+        let pin = Pin.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
+        store.Dispatch <| AddPin(pin)
         expect "Should be zero" 0 id store.State.Patches.Count
 
-  let test_should_update_an_iobox_in_the_store_if_it_already_exists =
-    testCase "should update an iobox in the store if it already exists" <| fun _ ->
+  let test_should_update_an_pin_in_the_store_if_it_already_exists =
+    testCase "should update an pin in the store if it already exists" <| fun _ ->
       withStore <| fun patch store ->
         let name1 = "can a cat own a cat?"
         let name2 = "yes, cats are re-entrant."
 
         let slice : StringSliceD = { Index = 0u; Value = "swell" }
-        let iobox = IOBox.String(Id "0xb33f", name1, patch.Id, Array.empty, [| slice |])
+        let pin = Pin.String(Id "0xb33f", name1, patch.Id, Array.empty, [| slice |])
 
         store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| AddIOBox(iobox)
+        store.Dispatch <| AddPin(pin)
 
-        match Patch.FindIOBox store.State.Patches iobox.Id with
+        match Patch.FindPin store.State.Patches pin.Id with
           | Some(i) -> expect "Should be correct name" name1 id i.Name
-          | None    -> failwith "iobox is mysteriously missing"
+          | None    -> failwith "pin is mysteriously missing"
 
-        let updated = iobox.SetName name2
-        store.Dispatch <| UpdateIOBox(updated)
+        let updated = pin.SetName name2
+        store.Dispatch <| UpdatePin(updated)
 
-        match Patch.FindIOBox store.State.Patches iobox.Id with
+        match Patch.FindPin store.State.Patches pin.Id with
           | Some(i) -> expect "Should be correct name" name2 id i.Name
-          | None    -> failwith "iobox is mysteriously missing"
+          | None    -> failwith "pin is mysteriously missing"
 
-  let test_should_remove_an_iobox_from_the_store_if_it_exists =
-    testCase "should remove an iobox from the store if it exists" <| fun _ ->
+  let test_should_remove_an_pin_from_the_store_if_it_exists =
+    testCase "should remove an pin from the store if it exists" <| fun _ ->
       withStore <| fun patch store ->
         let slice : StringSliceD = { Index = 0u; Value = "swell" }
-        let iobox = IOBox.String(Id "0xb33f", "hi", Id "0xb4d1d34", Array.empty, [| slice |])
+        let pin = Pin.String(Id "0xb33f", "hi", Id "0xb4d1d34", Array.empty, [| slice |])
 
         store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| AddIOBox(iobox)
+        store.Dispatch <| AddPin(pin)
 
-        match Patch.FindIOBox store.State.Patches iobox.Id with
+        match Patch.FindPin store.State.Patches pin.Id with
           | Some(_) -> ()
-          | None    -> failwith "iobox is mysteriously missing"
+          | None    -> failwith "pin is mysteriously missing"
 
-        store.Dispatch <| RemoveIOBox(iobox)
+        store.Dispatch <| RemovePin(pin)
 
-        match Patch.FindIOBox store.State.Patches iobox.Id with
-          | Some(_) -> failwith "iobox should be missing by now but isn't"
+        match Patch.FindPin store.State.Patches pin.Id with
+          | Some(_) -> failwith "pin should be missing by now but isn't"
           | _       -> ()
 
   //   ____
@@ -139,7 +139,7 @@ module StoreTests =
     testCase "should add a cue to the store" <| fun _ ->
       withStore <| fun patch store ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; IOBoxes = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
 
         expect "Should be 0" 0 id store.State.Cues.Count
 
@@ -155,7 +155,7 @@ module StoreTests =
     testCase "should update a cue already in the store" <| fun _ ->
       withStore <| fun patch store ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; IOBoxes = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
 
         expect "Should be 0" 0 id store.State.Cues.Count
 
@@ -173,7 +173,7 @@ module StoreTests =
     testCase "should not add cue to the store on update when missing" <| fun _ ->
       withStore <| fun patch store ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; IOBoxes = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
 
         expect "Should be 0" 0 id store.State.Cues.Count
 
@@ -186,7 +186,7 @@ module StoreTests =
     testCase "should remove cue from the store" <| fun _ ->
       withStore <| fun patch store ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; IOBoxes = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
 
         expect "Should be 0" 0 id store.State.Cues.Count
 
@@ -639,10 +639,10 @@ module StoreTests =
       test_should_add_a_patch_to_the_store
       test_should_update_a_patch_already_in_the_store
       test_should_remove_a_patch_already_in_the_store
-      test_should_add_an_iobox_to_the_store_if_patch_exists
-      test_should_not_add_an_iobox_to_the_store_if_patch_does_not_exists
-      test_should_update_an_iobox_in_the_store_if_it_already_exists
-      test_should_remove_an_iobox_from_the_store_if_it_exists
+      test_should_add_an_pin_to_the_store_if_patch_exists
+      test_should_not_add_an_pin_to_the_store_if_patch_does_not_exists
+      test_should_update_an_pin_in_the_store_if_it_already_exists
+      test_should_remove_an_pin_from_the_store_if_it_exists
       test_should_add_a_cue_to_the_store
       test_should_update_a_cue_already_in_the_store
       test_should_not_add_cue_to_the_store_on_update_when_missing

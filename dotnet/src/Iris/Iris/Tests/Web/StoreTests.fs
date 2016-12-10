@@ -17,7 +17,7 @@ module Store =
     let patch : Patch =
       { Id = Id "0xb4d1d34"
       ; Name = "patch-1"
-      ; IOBoxes = Map.empty
+      ; Pins = Map.empty
       }
 
     let store : Store = new Store(State.Empty)
@@ -77,75 +77,75 @@ module Store =
         finish()
 
     (* ---------------------------------------------------------------------- *)
-    suite "Test.Units.Store - IOBox operations"
+    suite "Test.Units.Store - Pin operations"
     (* ---------------------------------------------------------------------- *)
 
     withStore <| fun patch store ->
-      test "should add an iobox to the store if patch exists" <| fun finish ->
+      test "should add an pin to the store if patch exists" <| fun finish ->
         store.Dispatch <| AddPatch(patch)
 
-        equals 0 store.State.Patches.[patch.Id].IOBoxes.Count
+        equals 0 store.State.Patches.[patch.Id].Pins.Count
 
         let slice : StringSliceD = { Index = 0u; Value = "Hey" }
-        let iobox : IOBox = IOBox.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
+        let pin : Pin = Pin.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
 
-        store.Dispatch <| AddIOBox(iobox)
+        store.Dispatch <| AddPin(pin)
 
-        equals 1 store.State.Patches.[patch.Id].IOBoxes.Count
+        equals 1 store.State.Patches.[patch.Id].Pins.Count
 
         finish ()
 
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->
-      test "should not add an iobox to the store if patch does not exists" <| fun finish ->
+      test "should not add an pin to the store if patch does not exists" <| fun finish ->
         let slice : StringSliceD = { Index = 0u; Value =  "Hey" }
-        let iobox = IOBox.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
-        store.Dispatch <| AddIOBox(iobox)
+        let pin = Pin.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
+        store.Dispatch <| AddPin(pin)
         equals 0 store.State.Patches.Count
         finish ()
 
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->
-      test "should update an iobox in the store if it already exists" <| fun finish ->
+      test "should update an pin in the store if it already exists" <| fun finish ->
         let name1 = "can a cat own a cat?"
         let name2 = "yes, cats are re-entrant."
 
         let slice : StringSliceD = { Index = 0u; Value = "swell" }
-        let iobox = IOBox.String(Id "0xb33f", name1, patch.Id, Array.empty, [| slice |])
+        let pin = Pin.String(Id "0xb33f", name1, patch.Id, Array.empty, [| slice |])
 
         store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| AddIOBox(iobox)
+        store.Dispatch <| AddPin(pin)
 
-        match Patch.FindIOBox store.State.Patches iobox.Id with
+        match Patch.FindPin store.State.Patches pin.Id with
           | Some(i) -> equals name1 i.Name
-          | None    -> failwith "iobox is mysteriously missing"
+          | None    -> failwith "pin is mysteriously missing"
 
-        let updated = iobox.SetName name2
-        store.Dispatch <| UpdateIOBox(updated)
+        let updated = pin.SetName name2
+        store.Dispatch <| UpdatePin(updated)
 
-        match Patch.FindIOBox store.State.Patches iobox.Id with
+        match Patch.FindPin store.State.Patches pin.Id with
           | Some(i) -> equals name2 i.Name
-          | None    -> failwith "iobox is mysteriously missing"
+          | None    -> failwith "pin is mysteriously missing"
 
         finish ()
 
     (* ---------------------------------------------------------------------- *)
     withStore <| fun patch store ->
-      test "should remove an iobox from the store if it exists" <| fun finish ->
+      test "should remove an pin from the store if it exists" <| fun finish ->
         let slice : StringSliceD = { Index = 0u; Value = "swell" }
-        let iobox = IOBox.String(Id "0xb33f", "hi", Id "0xb4d1d34", Array.empty, [| slice |])
+        let pin = Pin.String(Id "0xb33f", "hi", Id "0xb4d1d34", Array.empty, [| slice |])
 
         store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| AddIOBox(iobox)
+        store.Dispatch <| AddPin(pin)
 
-        match Patch.FindIOBox store.State.Patches iobox.Id with
+        match Patch.FindPin store.State.Patches pin.Id with
           | Some(_) -> ()
-          | None    -> failwith "iobox is mysteriously missing"
+          | None    -> failwith "pin is mysteriously missing"
 
-        store.Dispatch <| RemoveIOBox(iobox)
+        store.Dispatch <| RemovePin(pin)
 
-        match Patch.FindIOBox store.State.Patches iobox.Id with
-          | Some(_) -> failwith "iobox should be missing by now but isn't"
+        match Patch.FindPin store.State.Patches pin.Id with
+          | Some(_) -> failwith "pin should be missing by now but isn't"
           | None    -> finish()
 
     (* ---------------------------------------------------------------------- *)
@@ -155,7 +155,7 @@ module Store =
     withStore <| fun patch store ->
       test "should add a cue to the store" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; IOBoxes = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
 
         equals 0 store.State.Cues.Count
 
@@ -173,7 +173,7 @@ module Store =
     withStore <| fun patch store ->
       test "should update a cue already in the store" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; IOBoxes = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
 
         equals 0 store.State.Cues.Count
 
@@ -193,7 +193,7 @@ module Store =
     withStore <| fun patch store ->
       test "should not add cue to the store on update when missing" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; IOBoxes = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
 
         equals 0 store.State.Cues.Count
 
@@ -207,7 +207,7 @@ module Store =
     withStore <| fun patch store ->
       test "should remove cue from the store" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; IOBoxes = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
 
         equals 0 store.State.Cues.Count
 

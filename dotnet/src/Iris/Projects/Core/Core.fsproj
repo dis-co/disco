@@ -54,7 +54,7 @@
     <Compile Include="..\..\Iris\Core\Color.fs" />
     <Compile Include="..\..\Iris\Core\Logging.fs" />
     <Compile Include="..\..\Iris\Core\Git.fs" />
-    <Compile Include="..\..\Iris\Core\IOBox.fs" />
+    <Compile Include="..\..\Iris\Core\Pin.fs" />
     <Compile Include="..\..\Iris\Core\Patch.fs" />
     <Compile Include="..\..\Iris\Core\Cue.fs" />
     <Compile Include="..\..\Iris\Core\CueList.fs" />

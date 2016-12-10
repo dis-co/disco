@@ -14,17 +14,17 @@ open SharpYaml.Serialization
 open FlatBuffers
 open Iris.Serialization.Raft
 
-type CueYaml(id, name, ioboxes) as self =
+type CueYaml(id, name, pins) as self =
   [<DefaultValue>] val mutable Id   : string
   [<DefaultValue>] val mutable Name : string
-  [<DefaultValue>] val mutable IOBoxes : IOBoxYaml array
+  [<DefaultValue>] val mutable Pins : PinYaml array
 
   new () = new CueYaml(null, null, null)
 
   do
     self.Id <- id
     self.Name <- name
-    self.IOBoxes <- ioboxes
+    self.Pins <- pins
 
 #endif
 
@@ -33,9 +33,9 @@ type Cue =
 #else
 and Cue =
 #endif
-  { Id:      Id
-  ; Name:    string
-  ; IOBoxes: IOBox array }
+  { Id:   Id
+  ; Name: string
+  ; Pins: Pin array }
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -46,32 +46,32 @@ and Cue =
 
   static member FromFB(fb: CueFB) : Either<IrisError,Cue> =
     either {
-      let! ioboxes =
-        let arr = Array.zeroCreate fb.IOBoxesLength
+      let! pins =
+        let arr = Array.zeroCreate fb.PinsLength
         Array.fold
-          (fun (m: Either<IrisError,int * IOBox array>) _ -> either {
-              let! (i, ioboxes) = m
+          (fun (m: Either<IrisError,int * Pin array>) _ -> either {
+              let! (i, pins) = m
 
               #if FABLE_COMPILER
 
-              let! iobox = i |> fb.IOBoxes |> IOBox.FromFB
+              let! pin = i |> fb.Pins |> Pin.FromFB
 
               #else
 
-              let! iobox =
-                let nullable = fb.IOBoxes(i)
+              let! pin =
+                let nullable = fb.Pins(i)
                 if nullable.HasValue then
                   nullable.Value
-                  |> IOBox.FromFB
+                  |> Pin.FromFB
                 else
-                  "Could not parse empty IOBoxFB"
+                  "Could not parse empty PinFB"
                   |> ParseError
                   |> Either.fail
 
               #endif
 
-              ioboxes.[i] <- iobox
-              return (i + 1, ioboxes)
+              pins.[i] <- pin
+              return (i + 1, pins)
             })
           (Right (0, arr))
           arr
@@ -79,18 +79,18 @@ and Cue =
 
       return { Id = Id fb.Id
                Name = fb.Name
-               IOBoxes = ioboxes }
+               Pins = pins }
     }
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueFB> =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
-    let ioboxoffsets = Array.map (fun (iobox: IOBox) -> iobox.ToOffset(builder)) self.IOBoxes
-    let ioboxes = CueFB.CreateIOBoxesVector(builder, ioboxoffsets)
+    let pinoffsets = Array.map (fun (pin: Pin) -> pin.ToOffset(builder)) self.Pins
+    let pins = CueFB.CreatePinsVector(builder, pinoffsets)
     CueFB.StartCueFB(builder)
     CueFB.AddId(builder, id)
     CueFB.AddName(builder, name)
-    CueFB.AddIOBoxes(builder, ioboxes)
+    CueFB.AddPins(builder, pins)
     CueFB.EndCueFB(builder)
 
   static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,Cue> =
@@ -102,27 +102,27 @@ and Cue =
 #if FABLE_COMPILER
 #else
   member self.ToYamlObject() =
-    let ioboxes = Array.map Yaml.toYaml self.IOBoxes
-    new CueYaml(string self.Id, self.Name, ioboxes)
+    let pins = Array.map Yaml.toYaml self.Pins
+    new CueYaml(string self.Id, self.Name, pins)
 
   static member FromYamlObject(yaml: CueYaml) : Either<IrisError,Cue> =
     either {
-      let! ioboxes =
-        let arr = Array.zeroCreate yaml.IOBoxes.Length
+      let! pins =
+        let arr = Array.zeroCreate yaml.Pins.Length
         Array.fold
-          (fun (m: Either<IrisError,int * IOBox array>) box -> either {
+          (fun (m: Either<IrisError,int * Pin array>) box -> either {
             let! (i, arr) = m
-            let! (iobox : IOBox) = Yaml.fromYaml box
-            arr.[i] <- iobox
+            let! (pin : Pin) = Yaml.fromYaml box
+            arr.[i] <- pin
             return (i + 1, arr)
           })
           (Right (0, arr))
-          yaml.IOBoxes
+          yaml.Pins
         |> Either.map snd
 
       return { Id = Id yaml.Id
                Name = yaml.Name
-               IOBoxes = ioboxes }
+               Pins = pins }
     }
 
   member self.ToYaml(serializer: Serializer) =

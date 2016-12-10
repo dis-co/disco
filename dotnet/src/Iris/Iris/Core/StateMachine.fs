@@ -259,7 +259,7 @@ type State =
     { state with Patches = Map.remove patch.Id state.Patches }
 
 
-  // ** AddIOBox
+  // ** AddPin
 
   //  ___ ___  ____
   // |_ _/ _ \| __ )  _____  __
@@ -267,33 +267,33 @@ type State =
   //  | | |_| | |_) | (_) >  <
   // |___\___/|____/ \___/_/\_\
 
-  member state.AddIOBox (iobox : IOBox) =
-    if Map.containsKey iobox.Patch state.Patches then
+  member state.AddPin (pin : Pin) =
+    if Map.containsKey pin.Patch state.Patches then
       let update _ (patch: Patch) =
-        if patch.Id = iobox.Patch then
-          Patch.AddIOBox patch iobox
+        if patch.Id = pin.Patch then
+          Patch.AddPin patch pin
         else
           patch
       { state with Patches = Map.map update state.Patches }
     else
       state
 
-  // ** UpdateIOBox
+  // ** UpdatePin
 
-  member state.UpdateIOBox (iobox : IOBox) =
+  member state.UpdatePin (pin : Pin) =
     let mapper (_: Id) (patch : Patch) =
-      if patch.Id = iobox.Patch then
-        Patch.UpdateIOBox patch iobox
+      if patch.Id = pin.Patch then
+        Patch.UpdatePin patch pin
       else
         patch
     { state with Patches = Map.map mapper state.Patches }
 
-  // ** RemoveIOBox
+  // ** RemovePin
 
-  member state.RemoveIOBox (iobox : IOBox) =
+  member state.RemovePin (pin : Pin) =
     let updater _ (patch : Patch) =
-      if iobox.Patch = patch.Id
-      then Patch.RemoveIOBox patch iobox
+      if pin.Patch = patch.Id
+      then Patch.RemovePin patch pin
       else patch
     { state with Patches = Map.map updater state.Patches }
 
@@ -894,9 +894,9 @@ and Store(state : State)=
     | UpdatePatch         patch -> state.UpdatePatch   patch   |> andRender
     | RemovePatch         patch -> state.RemovePatch   patch   |> andRender
 
-    | AddIOBox            iobox -> state.AddIOBox      iobox   |> andRender
-    | UpdateIOBox         iobox -> state.UpdateIOBox   iobox   |> andRender
-    | RemoveIOBox         iobox -> state.RemoveIOBox   iobox   |> andRender
+    | AddPin            pin -> state.AddPin      pin   |> andRender
+    | UpdatePin         pin -> state.UpdatePin   pin   |> andRender
+    | RemovePin         pin -> state.RemovePin   pin   |> andRender
 
     | AddMember            mem -> state.AddMember     mem    |> andRender
     | UpdateMember         mem -> state.UpdateMember  mem    |> andRender
@@ -1055,20 +1055,20 @@ and StateMachineYaml(cmd: string, payload: obj) as self =
   static member RemovePatch (patch: Patch) =
     new StateMachineYaml("RemovePatch", Yaml.toYaml patch)
 
-  // ** AddIOBox
+  // ** AddPin
 
-  static member AddIOBox (iobox: IOBox) =
-    new StateMachineYaml("AddIOBox", Yaml.toYaml iobox)
+  static member AddPin (pin: Pin) =
+    new StateMachineYaml("AddPin", Yaml.toYaml pin)
 
-  // ** UpdateIOBox
+  // ** UpdatePin
 
-  static member UpdateIOBox (iobox: IOBox) =
-    new StateMachineYaml("UpdateIOBox", Yaml.toYaml iobox)
+  static member UpdatePin (pin: Pin) =
+    new StateMachineYaml("UpdatePin", Yaml.toYaml pin)
 
-  // ** RemoveIOBox
+  // ** RemovePin
 
-  static member RemoveIOBox (iobox: IOBox) =
-    new StateMachineYaml("RemoveIOBox", Yaml.toYaml iobox)
+  static member RemovePin (pin: Pin) =
+    new StateMachineYaml("RemovePin", Yaml.toYaml pin)
 
   // ** AddCue
 
@@ -1172,10 +1172,10 @@ and StateMachine =
   | UpdatePatch   of Patch
   | RemovePatch   of Patch
 
-  // IOBOX
-  | AddIOBox      of IOBox
-  | UpdateIOBox   of IOBox
-  | RemoveIOBox   of IOBox
+  // PIN
+  | AddPin      of Pin
+  | UpdatePin   of Pin
+  | RemovePin   of Pin
 
   // CUE
   | AddCue        of Cue
@@ -1220,10 +1220,10 @@ and StateMachine =
     | UpdatePatch patch     -> sprintf "UpdatePatch %s" (string patch)
     | RemovePatch patch     -> sprintf "RemovePatch %s" (string patch)
 
-    // IOBOX
-    | AddIOBox    iobox     -> sprintf "AddIOBox %s"    (string iobox)
-    | UpdateIOBox iobox     -> sprintf "UpdateIOBox %s" (string iobox)
-    | RemoveIOBox iobox     -> sprintf "RemoveIOBox %s" (string iobox)
+    // PIN
+    | AddPin    pin     -> sprintf "AddPin %s"    (string pin)
+    | UpdatePin pin     -> sprintf "UpdatePin %s" (string pin)
+    | RemovePin pin     -> sprintf "RemovePin %s" (string pin)
 
     // CUE
     | AddCue    cue         -> sprintf "AddCue %s"    (string cue)
@@ -1271,10 +1271,10 @@ and StateMachine =
     | UpdatePatch patch     -> StateMachineYaml.UpdatePatch(patch)
     | RemovePatch patch     -> StateMachineYaml.RemovePatch(patch)
 
-    // IOBOX
-    | AddIOBox    iobox     -> StateMachineYaml.AddIOBox(iobox)
-    | UpdateIOBox iobox     -> StateMachineYaml.UpdateIOBox(iobox)
-    | RemoveIOBox iobox     -> StateMachineYaml.RemoveIOBox(iobox)
+    // PIN
+    | AddPin    pin     -> StateMachineYaml.AddPin(pin)
+    | UpdatePin pin     -> StateMachineYaml.UpdatePin(pin)
+    | RemovePin pin     -> StateMachineYaml.RemovePin(pin)
 
     // CUE
     | AddCue    cue         -> StateMachineYaml.AddCue(cue)
@@ -1335,17 +1335,17 @@ and StateMachine =
         let! patch = yaml.Payload :?> PatchYaml |> Yaml.fromYaml
         return RemovePatch(patch)
       }
-    | "AddIOBox" -> either {
-        let! iobox = yaml.Payload :?> IOBoxYaml |> Yaml.fromYaml
-        return AddIOBox(iobox)
+    | "AddPin" -> either {
+        let! pin = yaml.Payload :?> PinYaml |> Yaml.fromYaml
+        return AddPin(pin)
       }
-    | "UpdateIOBox" -> either {
-        let! iobox = yaml.Payload :?> IOBoxYaml |> Yaml.fromYaml
-        return UpdateIOBox(iobox)
+    | "UpdatePin" -> either {
+        let! pin = yaml.Payload :?> PinYaml |> Yaml.fromYaml
+        return UpdatePin(pin)
       }
-    | "RemoveIOBox" -> either {
-        let! iobox = yaml.Payload :?> IOBoxYaml |> Yaml.fromYaml
-        return RemoveIOBox(iobox)
+    | "RemovePin" -> either {
+        let! pin = yaml.Payload :?> PinYaml |> Yaml.fromYaml
+        return RemovePin(pin)
       }
     | "AddCue" -> either {
         let! cue = yaml.Payload :?> CueYaml |> Yaml.fromYaml
@@ -1465,15 +1465,15 @@ and StateMachine =
         |> ParseError
         |> Either.fail
 
-    | x when x = PayloadFB.IOBoxFB ->
-      let iobox = fb.IOBoxFB |> IOBox.FromFB
+    | x when x = PayloadFB.PinFB ->
+      let pin = fb.PinFB |> Pin.FromFB
       match fb.Action with
       | x when x = ActionTypeFB.AddFB ->
-        Either.map AddIOBox iobox
+        Either.map AddPin pin
       | x when x = ActionTypeFB.UpdateFB ->
-        Either.map UpdateIOBox iobox
+        Either.map UpdatePin pin
       | x when x = ActionTypeFB.RemoveFB ->
-        Either.map RemoveIOBox iobox
+        Either.map RemovePin pin
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
         |> ParseError
@@ -1659,22 +1659,22 @@ and StateMachine =
     //  | | |_| | |_) | (_) >  <
     // |___\___/|____/ \___/_/\_\
 
-    | PayloadFB.IOBoxFB ->
+    | PayloadFB.PinFB ->
       either {
-        let! iobox =
-          let ioboxish = fb.Payload<IOBoxFB>()
-          if ioboxish.HasValue then
-            ioboxish.Value
-            |> IOBox.FromFB
+        let! pin =
+          let pinish = fb.Payload<PinFB>()
+          if pinish.HasValue then
+            pinish.Value
+            |> Pin.FromFB
           else
-            "Could not parse empty iobox payload"
+            "Could not parse empty pin payload"
             |> ParseError
             |> Either.fail
 
         match fb.Action with
-        | ActionTypeFB.AddFB    -> return (AddIOBox    iobox)
-        | ActionTypeFB.UpdateFB -> return (UpdateIOBox iobox)
-        | ActionTypeFB.RemoveFB -> return (RemoveIOBox iobox)
+        | ActionTypeFB.AddFB    -> return (AddPin    pin)
+        | ActionTypeFB.UpdateFB -> return (UpdatePin pin)
+        | ActionTypeFB.RemoveFB -> return (RemovePin pin)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1897,39 +1897,39 @@ and StateMachine =
 #endif
       ApiActionFB.EndApiActionFB(builder)
 
-    | AddIOBox       iobox ->
-      let iobox = iobox.ToOffset(builder)
+    | AddPin       pin ->
+      let pin = pin.ToOffset(builder)
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.IOBoxFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.PinFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, iobox)
+      ApiActionFB.AddPayload(builder, pin)
 #else
-      ApiActionFB.AddPayload(builder, iobox.Value)
+      ApiActionFB.AddPayload(builder, pin.Value)
 #endif
       ApiActionFB.EndApiActionFB(builder)
 
-    | UpdateIOBox    iobox ->
-      let iobox = iobox.ToOffset(builder)
+    | UpdatePin    pin ->
+      let pin = pin.ToOffset(builder)
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.IOBoxFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.PinFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, iobox)
+      ApiActionFB.AddPayload(builder, pin)
 #else
-      ApiActionFB.AddPayload(builder, iobox.Value)
+      ApiActionFB.AddPayload(builder, pin.Value)
 #endif
       ApiActionFB.EndApiActionFB(builder)
 
-    | RemoveIOBox    iobox ->
-      let iobox = iobox.ToOffset(builder)
+    | RemovePin    pin ->
+      let pin = pin.ToOffset(builder)
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.IOBoxFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.PinFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, iobox)
+      ApiActionFB.AddPayload(builder, pin)
 #else
-      ApiActionFB.AddPayload(builder, iobox.Value)
+      ApiActionFB.AddPayload(builder, pin.Value)
 #endif
       ApiActionFB.EndApiActionFB(builder)
 

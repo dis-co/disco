@@ -287,18 +287,18 @@ type SliceYaml(tipe, idx, value: obj) as self =
 
   member self.ToCompoundSliceD() : Either<IrisError,CompoundSliceD>  =
     Either.tryWith ParseError "CompoundSlice" <| fun _ ->
-      let n = (self.Value :?> IOBoxYaml array).Length
-      let ioboxes =
+      let n = (self.Value :?> PinYaml array).Length
+      let pins =
         Array.fold
-          (fun (m: Either<IrisError,int * IOBox array>) box -> either {
+          (fun (m: Either<IrisError,int * Pin array>) box -> either {
               let! inner = m
-              let! iobox = Yaml.fromYaml box
-              (snd inner).[fst inner] <- iobox
+              let! pin = Yaml.fromYaml box
+              (snd inner).[fst inner] <- pin
               return (fst inner + 1, snd inner)
             })
           (Right (0, Array.zeroCreate n))
-          (self.Value :?> IOBoxYaml array)
-      match ioboxes with
+          (self.Value :?> PinYaml array)
+      match pins with
       | Right (_, boxes) ->
         CompoundSliceD.Create self.Index boxes
       | Left (ParseError error) ->
@@ -306,10 +306,10 @@ type SliceYaml(tipe, idx, value: obj) as self =
       | error ->
         failwithf "Encountered unexpected error: %A" error
 
-// * IOBoxYaml
+// * PinYaml
 
-and IOBoxYaml() =
-  [<DefaultValue>] val mutable BoxType    : string
+and PinYaml() =
+  [<DefaultValue>] val mutable PinType    : string
   [<DefaultValue>] val mutable Id         : string
   [<DefaultValue>] val mutable Name       : string
   [<DefaultValue>] val mutable Patch      : string
@@ -326,98 +326,98 @@ and IOBoxYaml() =
   [<DefaultValue>] val mutable Properties : PropertyYaml array
   [<DefaultValue>] val mutable Slices     : SliceYaml array
 
-// * IOBox
+// * Pin
 
-and IOBox =
+and Pin =
 
 #else
 
-type IOBox =
+type Pin =
 
 #endif
-  | StringBox of StringBoxD
-  | IntBox    of IntBoxD
-  | FloatBox  of FloatBoxD
-  | DoubleBox of DoubleBoxD
-  | BoolBox   of BoolBoxD
-  | ByteBox   of ByteBoxD
-  | EnumBox   of EnumBoxD
-  | ColorBox  of ColorBoxD
-  | Compound  of CompoundBoxD
+  | StringPin   of StringPinD
+  | IntPin      of IntPinD
+  | FloatPin    of FloatPinD
+  | DoublePin   of DoublePinD
+  | BoolPin     of BoolPinD
+  | BytePin     of BytePinD
+  | EnumPin     of EnumPinD
+  | ColorPin    of ColorPinD
+  | CompoundPin of CompoundPinD
 
   // ** Id
 
   member self.Id
     with get () =
       match self with
-        | StringBox data -> data.Id
-        | IntBox    data -> data.Id
-        | FloatBox  data -> data.Id
-        | DoubleBox data -> data.Id
-        | BoolBox   data -> data.Id
-        | ByteBox   data -> data.Id
-        | EnumBox   data -> data.Id
-        | ColorBox  data -> data.Id
-        | Compound  data -> data.Id
+        | StringPin   data -> data.Id
+        | IntPin      data -> data.Id
+        | FloatPin    data -> data.Id
+        | DoublePin   data -> data.Id
+        | BoolPin     data -> data.Id
+        | BytePin     data -> data.Id
+        | EnumPin     data -> data.Id
+        | ColorPin    data -> data.Id
+        | CompoundPin data -> data.Id
 
   // ** Name
 
   member self.Name
     with get () =
       match self with
-        | StringBox data -> data.Name
-        | IntBox    data -> data.Name
-        | FloatBox  data -> data.Name
-        | DoubleBox data -> data.Name
-        | BoolBox   data -> data.Name
-        | ByteBox   data -> data.Name
-        | EnumBox   data -> data.Name
-        | ColorBox  data -> data.Name
-        | Compound  data -> data.Name
+        | StringPin   data -> data.Name
+        | IntPin      data -> data.Name
+        | FloatPin    data -> data.Name
+        | DoublePin   data -> data.Name
+        | BoolPin     data -> data.Name
+        | BytePin     data -> data.Name
+        | EnumPin     data -> data.Name
+        | ColorPin    data -> data.Name
+        | CompoundPin data -> data.Name
 
   // ** SetName
 
   member self.SetName name =
     match self with
-    | StringBox data -> StringBox { data with Name = name }
-    | IntBox    data -> IntBox    { data with Name = name }
-    | FloatBox  data -> FloatBox  { data with Name = name }
-    | DoubleBox data -> DoubleBox { data with Name = name }
-    | BoolBox   data -> BoolBox   { data with Name = name }
-    | ByteBox   data -> ByteBox   { data with Name = name }
-    | EnumBox   data -> EnumBox   { data with Name = name }
-    | ColorBox  data -> ColorBox  { data with Name = name }
-    | Compound  data -> Compound  { data with Name = name }
+    | StringPin   data -> StringPin   { data with Name = name }
+    | IntPin      data -> IntPin      { data with Name = name }
+    | FloatPin    data -> FloatPin    { data with Name = name }
+    | DoublePin   data -> DoublePin   { data with Name = name }
+    | BoolPin     data -> BoolPin     { data with Name = name }
+    | BytePin     data -> BytePin     { data with Name = name }
+    | EnumPin     data -> EnumPin     { data with Name = name }
+    | ColorPin    data -> ColorPin    { data with Name = name }
+    | CompoundPin data -> CompoundPin { data with Name = name }
 
   // ** Patch
 
   member self.Patch
     with get () =
       match self with
-        | StringBox data -> data.Patch
-        | IntBox    data -> data.Patch
-        | FloatBox  data -> data.Patch
-        | DoubleBox data -> data.Patch
-        | BoolBox   data -> data.Patch
-        | ByteBox   data -> data.Patch
-        | EnumBox   data -> data.Patch
-        | ColorBox  data -> data.Patch
-        | Compound  data -> data.Patch
+        | StringPin   data -> data.Patch
+        | IntPin      data -> data.Patch
+        | FloatPin    data -> data.Patch
+        | DoublePin   data -> data.Patch
+        | BoolPin     data -> data.Patch
+        | BytePin     data -> data.Patch
+        | EnumPin     data -> data.Patch
+        | ColorPin    data -> data.Patch
+        | CompoundPin data -> data.Patch
 
   // ** Slices
 
   member self.Slices
     with get () =
       match self with
-        | StringBox data -> StringSlices   data.Slices
-        | IntBox    data -> IntSlices      data.Slices
-        | FloatBox  data -> FloatSlices    data.Slices
-        | DoubleBox data -> DoubleSlices   data.Slices
-        | BoolBox   data -> BoolSlices     data.Slices
-        | ByteBox   data -> ByteSlices     data.Slices
-        | EnumBox   data -> EnumSlices     data.Slices
-        | ColorBox  data -> ColorSlices    data.Slices
-        | Compound  data -> CompoundSlices data.Slices
+        | StringPin   data -> StringSlices   data.Slices
+        | IntPin      data -> IntSlices      data.Slices
+        | FloatPin    data -> FloatSlices    data.Slices
+        | DoublePin   data -> DoubleSlices   data.Slices
+        | BoolPin     data -> BoolSlices     data.Slices
+        | BytePin     data -> ByteSlices     data.Slices
+        | EnumPin     data -> EnumSlices     data.Slices
+        | ColorPin    data -> ColorSlices    data.Slices
+        | CompoundPin data -> CompoundSlices data.Slices
 
   // ** SetSlice
 
@@ -454,257 +454,257 @@ type IOBox =
         Array.mapi (fun i d -> if i = int value.Index then data else d) arr
 
     match self with
-    | StringBox data as current ->
+    | StringPin data as current ->
       match value with
-        | StringSlice slice     -> StringBox { data with Slices = update data.Slices slice }
+        | StringSlice slice     -> StringPin { data with Slices = update data.Slices slice }
         | _                     -> current
 
-    | IntBox data as current    ->
+    | IntPin data as current    ->
       match value with
-        | IntSlice slice        -> IntBox { data with Slices = update data.Slices slice }
+        | IntSlice slice        -> IntPin { data with Slices = update data.Slices slice }
         | _                     -> current
 
-    | FloatBox data as current  ->
+    | FloatPin data as current  ->
       match value with
-        | FloatSlice slice      -> FloatBox { data with Slices = update data.Slices slice }
+        | FloatSlice slice      -> FloatPin { data with Slices = update data.Slices slice }
         | _                     -> current
 
-    | DoubleBox data as current ->
+    | DoublePin data as current ->
       match value with
-        | DoubleSlice slice     -> DoubleBox { data with Slices = update data.Slices slice }
+        | DoubleSlice slice     -> DoublePin { data with Slices = update data.Slices slice }
         | _                     -> current
 
-    | BoolBox data as current   ->
+    | BoolPin data as current   ->
       match value with
-        | BoolSlice slice       -> BoolBox { data with Slices = update data.Slices slice }
+        | BoolSlice slice       -> BoolPin { data with Slices = update data.Slices slice }
         | _                     -> current
 
-    | ByteBox data as current   ->
+    | BytePin data as current   ->
       match value with
-        | ByteSlice slice       -> ByteBox { data with Slices = update data.Slices slice }
+        | ByteSlice slice       -> BytePin { data with Slices = update data.Slices slice }
         | _                     -> current
 
-    | EnumBox data as current   ->
+    | EnumPin data as current   ->
       match value with
-        | EnumSlice slice       -> EnumBox { data with Slices = update data.Slices slice }
+        | EnumSlice slice       -> EnumPin { data with Slices = update data.Slices slice }
         | _                     -> current
 
-    | ColorBox data as current  ->
+    | ColorPin data as current  ->
       match value with
-        | ColorSlice slice      -> ColorBox { data with Slices = update data.Slices slice }
+        | ColorSlice slice      -> ColorPin { data with Slices = update data.Slices slice }
         | _                     -> current
 
-    | Compound data as current  ->
+    | CompoundPin data as current  ->
       match value with
-        | CompoundSlice slice   -> Compound { data with Slices = update data.Slices slice }
+        | CompoundSlice slice   -> CompoundPin { data with Slices = update data.Slices slice }
         | _                     -> current
 
   // ** SetSlices
 
   member self.SetSlices slices =
     match self with
-    | StringBox data as value ->
+    | StringPin data as value ->
       match slices with
-      | StringSlices arr -> StringBox { data with Slices = arr }
+      | StringSlices arr -> StringPin { data with Slices = arr }
       | _ -> value
 
-    | IntBox data as value ->
+    | IntPin data as value ->
       match slices with
-      | IntSlices arr -> IntBox { data with Slices = arr }
+      | IntSlices arr -> IntPin { data with Slices = arr }
       | _ -> value
 
-    | FloatBox data as value ->
+    | FloatPin data as value ->
       match slices with
-      | FloatSlices  arr -> FloatBox { data with Slices = arr }
+      | FloatSlices  arr -> FloatPin { data with Slices = arr }
       | _ -> value
 
-    | DoubleBox data as value ->
+    | DoublePin data as value ->
       match slices with
-      | DoubleSlices arr -> DoubleBox { data with Slices = arr }
+      | DoubleSlices arr -> DoublePin { data with Slices = arr }
       | _ -> value
 
-    | BoolBox data as value ->
+    | BoolPin data as value ->
       match slices with
-      | BoolSlices arr -> BoolBox { data with Slices = arr }
+      | BoolSlices arr -> BoolPin { data with Slices = arr }
       | _ -> value
 
-    | ByteBox data as value ->
+    | BytePin data as value ->
       match slices with
-      | ByteSlices arr -> ByteBox { data with Slices = arr }
+      | ByteSlices arr -> BytePin { data with Slices = arr }
       | _ -> value
 
-    | EnumBox data as value ->
+    | EnumPin data as value ->
       match slices with
-      | EnumSlices arr -> EnumBox { data with Slices = arr }
+      | EnumSlices arr -> EnumPin { data with Slices = arr }
       | _ -> value
 
-    | ColorBox data as value ->
+    | ColorPin data as value ->
       match slices with
-      | ColorSlices arr -> ColorBox { data with Slices = arr }
+      | ColorSlices arr -> ColorPin { data with Slices = arr }
       | _ -> value
 
-    | Compound data as value ->
+    | CompoundPin data as value ->
       match slices with
-      | CompoundSlices arr -> Compound { data with Slices = arr }
+      | CompoundSlices arr -> CompoundPin { data with Slices = arr }
       | _ -> value
 
 
   // ** static Toggle
 
   static member Toggle(id, name, patch, tags, values) =
-    BoolBox { Id         = id
-            ; Name       = name
-            ; Patch      = patch
-            ; Tags       = tags
-            ; Behavior   = Behavior.Toggle
-            ; Slices     = values }
+    BoolPin { Id         = id
+              Name       = name
+              Patch      = patch
+              Tags       = tags
+              Behavior   = Behavior.Toggle
+              Slices     = values }
 
   // ** static Bang
 
   static member Bang(id, name, patch, tags, values) =
-    BoolBox { Id         = id
-            ; Name       = name
-            ; Patch      = patch
-            ; Tags       = tags
-            ; Behavior   = Behavior.Bang
-            ; Slices     = values }
+    BoolPin { Id         = id
+              Name       = name
+              Patch      = patch
+              Tags       = tags
+              Behavior   = Behavior.Bang
+              Slices     = values }
 
   // ** static String
 
   static member String(id, name, patch, tags, values) =
-    StringBox { Id         = id
-              ; Name       = name
-              ; Patch      = patch
-              ; Tags       = tags
-              ; StringType = Simple
-              ; FileMask   = None
-              ; MaxChars   = sizeof<int>
-              ; Slices     = values }
+    StringPin { Id         = id
+                Name       = name
+                Patch      = patch
+                Tags       = tags
+                StringType = Simple
+                FileMask   = None
+                MaxChars   = sizeof<int>
+                Slices     = values }
 
   // ** static MultiLine
 
   static member MultiLine(id, name, patch, tags, values) =
-    StringBox { Id         = id
-              ; Name       = name
-              ; Patch      = patch
-              ; Tags       = tags
-              ; StringType = MultiLine
-              ; FileMask   = None
-              ; MaxChars   = sizeof<int>
-              ; Slices     = values }
+    StringPin { Id         = id
+                Name       = name
+                Patch      = patch
+                Tags       = tags
+                StringType = MultiLine
+                FileMask   = None
+                MaxChars   = sizeof<int>
+                Slices     = values }
 
   // ** static FileName
 
   static member FileName(id, name, patch, tags, filemask, values) =
-    StringBox { Id         = id
-              ; Name       = name
-              ; Patch      = patch
-              ; Tags       = tags
-              ; StringType = FileName
-              ; FileMask   = Some filemask
-              ; MaxChars   = sizeof<int>
-              ; Slices     = values }
+    StringPin { Id         = id
+                Name       = name
+                Patch      = patch
+                Tags       = tags
+                StringType = FileName
+                FileMask   = Some filemask
+                MaxChars   = sizeof<int>
+                Slices     = values }
 
   // ** static Directory
 
   static member Directory(id, name, patch, tags, filemask, values) =
-    StringBox { Id         = id
-              ; Name       = name
-              ; Patch      = patch
-              ; Tags       = tags
-              ; StringType = Directory
-              ; FileMask   = Some filemask
-              ; MaxChars   = sizeof<int>
-              ; Slices     = values }
+    StringPin { Id         = id
+                Name       = name
+                Patch      = patch
+                Tags       = tags
+                StringType = Directory
+                FileMask   = Some filemask
+                MaxChars   = sizeof<int>
+                Slices     = values }
 
   // ** static Url
 
   static member Url(id, name, patch, tags, values) =
-    StringBox { Id         = id
-              ; Name       = name
-              ; Patch      = patch
-              ; Tags       = tags
-              ; StringType = Url
-              ; FileMask   = None
-              ; MaxChars   = sizeof<int>
-              ; Slices     = values }
+    StringPin { Id         = id
+                Name       = name
+                Patch      = patch
+                Tags       = tags
+                StringType = Url
+                FileMask   = None
+                MaxChars   = sizeof<int>
+                Slices     = values }
 
   // ** static IP
 
   static member IP(id, name, patch, tags, values) =
-    StringBox { Id         = id
-              ; Name       = name
-              ; Patch      = patch
-              ; Tags       = tags
-              ; StringType = Url
-              ; FileMask   = None
-              ; MaxChars   = sizeof<int>
-              ; Slices     = values }
+    StringPin { Id         = id
+                Name       = name
+                Patch      = patch
+                Tags       = tags
+                StringType = Url
+                FileMask   = None
+                MaxChars   = sizeof<int>
+                Slices     = values }
 
   // ** static Float
 
   static member Float(id, name, patch, tags, values) =
-    FloatBox { Id         = id
-              ; Name       = name
-              ; Patch      = patch
-              ; Tags       = tags
-              ; VecSize    = 1u
-              ; Min        = 0
-              ; Max        = sizeof<float>
-              ; Unit       = ""
-              ; Precision  = 4u
-              ; Slices     = values }
+    FloatPin { Id         = id
+               Name       = name
+               Patch      = patch
+               Tags       = tags
+               VecSize    = 1u
+               Min        = 0
+               Max        = sizeof<float>
+               Unit       = ""
+               Precision  = 4u
+               Slices     = values }
 
   // ** static Double
 
   static member Double(id, name, patch, tags, values) =
-    DoubleBox { Id         = id
-              ; Name       = name
-              ; Patch      = patch
-              ; Tags       = tags
-              ; VecSize    = 1u
-              ; Min        = 0
-              ; Max        = sizeof<double>
-              ; Unit       = ""
-              ; Precision  = 4u
-              ; Slices     = values }
+    DoublePin { Id         = id
+                Name       = name
+                Patch      = patch
+                Tags       = tags
+                VecSize    = 1u
+                Min        = 0
+                Max        = sizeof<double>
+                Unit       = ""
+                Precision  = 4u
+                Slices     = values }
 
   // ** static Bytes
 
   static member Bytes(id, name, patch, tags, values) =
-    ByteBox { Id         = id
-            ; Name       = name
-            ; Patch      = patch
-            ; Tags       = tags
-            ; Slices     = values }
+    BytePin { Id         = id
+              Name       = name
+              Patch      = patch
+              Tags       = tags
+              Slices     = values }
 
   // ** static Color
 
   static member Color(id, name, patch, tags, values) =
-    ColorBox { Id         = id
-              ; Name       = name
-              ; Patch      = patch
-              ; Tags       = tags
-              ; Slices     = values }
+    ColorPin { Id         = id
+               Name       = name
+               Patch      = patch
+               Tags       = tags
+               Slices     = values }
 
   // ** static Enum
 
   static member Enum(id, name, patch, tags, properties, values) =
-    EnumBox { Id         = id
-            ; Name       = name
-            ; Patch      = patch
-            ; Tags       = tags
-            ; Properties = properties
-            ; Slices     = values }
+    EnumPin { Id         = id
+              Name       = name
+              Patch      = patch
+              Tags       = tags
+              Properties = properties
+              Slices     = values }
 
-  // ** static CompoundBox
+  // ** static CompoundPin
 
-  static member CompoundBox(id, name, patch, tags, values) =
-    Compound { Id         = id
-              ; Name       = name
-              ; Patch      = patch
-              ; Tags       = tags
-              ; Slices     = values }
+  static member Compound(id, name, patch, tags, values) =
+    CompoundPin { Id         = id
+                  Name       = name
+                  Patch      = patch
+                  Tags       = tags
+                  Slices     = values }
 
   // ** ToOffset
 
@@ -715,197 +715,197 @@ type IOBox =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
-  member self.ToOffset(builder: FlatBufferBuilder) : Offset<IOBoxFB> =
+  member self.ToOffset(builder: FlatBufferBuilder) : Offset<PinFB> =
     let inline build (data: ^t) tipe =
       let offset = Binary.toOffset builder data
-      IOBoxFB.StartIOBoxFB(builder)
+      PinFB.StartPinFB(builder)
 #if FABLE_COMPILER
-      IOBoxFB.AddIOBox(builder, offset)
+      PinFB.AddPin(builder, offset)
 #else
-      IOBoxFB.AddIOBox(builder, offset.Value)
+      PinFB.AddPin(builder, offset.Value)
 #endif
-      IOBoxFB.AddIOBoxType(builder, tipe)
-      IOBoxFB.EndIOBoxFB(builder)
+      PinFB.AddPinType(builder, tipe)
+      PinFB.EndPinFB(builder)
 
     match self with
-    | StringBox data -> build data IOBoxTypeFB.StringBoxFB
-    | IntBox    data -> build data IOBoxTypeFB.IntBoxFB
-    | FloatBox  data -> build data IOBoxTypeFB.FloatBoxFB
-    | DoubleBox data -> build data IOBoxTypeFB.DoubleBoxFB
-    | BoolBox   data -> build data IOBoxTypeFB.BoolBoxFB
-    | ByteBox   data -> build data IOBoxTypeFB.ByteBoxFB
-    | EnumBox   data -> build data IOBoxTypeFB.EnumBoxFB
-    | ColorBox  data -> build data IOBoxTypeFB.ColorBoxFB
-    | Compound  data -> build data IOBoxTypeFB.CompoundBoxFB
+    | StringPin   data -> build data PinTypeFB.StringPinFB
+    | IntPin      data -> build data PinTypeFB.IntPinFB
+    | FloatPin    data -> build data PinTypeFB.FloatPinFB
+    | DoublePin   data -> build data PinTypeFB.DoublePinFB
+    | BoolPin     data -> build data PinTypeFB.BoolPinFB
+    | BytePin     data -> build data PinTypeFB.BytePinFB
+    | EnumPin     data -> build data PinTypeFB.EnumPinFB
+    | ColorPin    data -> build data PinTypeFB.ColorPinFB
+    | CompoundPin data -> build data PinTypeFB.CompoundPinFB
 
   // ** FromFB
 
-  static member FromFB(fb: IOBoxFB) : Either<IrisError,IOBox> =
+  static member FromFB(fb: PinFB) : Either<IrisError,Pin> =
 #if FABLE_COMPILER
-    match fb.IOBoxType with
-    | x when x = IOBoxTypeFB.StringBoxFB ->
-      StringBoxFB.Create()
-      |> fb.IOBox
-      |> StringBoxD.FromFB
-      |> Either.map StringBox
+    match fb.PinType with
+    | x when x = PinTypeFB.StringPinFB ->
+      StringPinFB.Create()
+      |> fb.Pin
+      |> StringPinD.FromFB
+      |> Either.map StringPin
 
-    | x when x = IOBoxTypeFB.IntBoxFB ->
-      IntBoxFB.Create()
-      |> fb.IOBox
-      |> IntBoxD.FromFB
-      |> Either.map IntBox
+    | x when x = PinTypeFB.IntPinFB ->
+      IntPinFB.Create()
+      |> fb.Pin
+      |> IntPinD.FromFB
+      |> Either.map IntPin
 
-    | x when x = IOBoxTypeFB.FloatBoxFB ->
-      FloatBoxFB.Create()
-      |> fb.IOBox
-      |> FloatBoxD.FromFB
-      |> Either.map FloatBox
+    | x when x = PinTypeFB.FloatPinFB ->
+      FloatPinFB.Create()
+      |> fb.Pin
+      |> FloatPinD.FromFB
+      |> Either.map FloatPin
 
-    | x when x = IOBoxTypeFB.DoubleBoxFB ->
-      DoubleBoxFB.Create()
-      |> fb.IOBox
-      |> DoubleBoxD.FromFB
-      |> Either.map DoubleBox
+    | x when x = PinTypeFB.DoublePinFB ->
+      DoublePinFB.Create()
+      |> fb.Pin
+      |> DoublePinD.FromFB
+      |> Either.map DoublePin
 
-    | x when x = IOBoxTypeFB.BoolBoxFB ->
-      BoolBoxFB.Create()
-      |> fb.IOBox
-      |> BoolBoxD.FromFB
-      |> Either.map BoolBox
+    | x when x = PinTypeFB.BoolPinFB ->
+      BoolPinFB.Create()
+      |> fb.Pin
+      |> BoolPinD.FromFB
+      |> Either.map BoolPin
 
-    | x when x = IOBoxTypeFB.ByteBoxFB ->
-      ByteBoxFB.Create()
-      |> fb.IOBox
-      |> ByteBoxD.FromFB
-      |> Either.map ByteBox
+    | x when x = PinTypeFB.BytePinFB ->
+      BytePinFB.Create()
+      |> fb.Pin
+      |> BytePinD.FromFB
+      |> Either.map BytePin
 
-    | x when x = IOBoxTypeFB.EnumBoxFB ->
-      EnumBoxFB.Create()
-      |> fb.IOBox
-      |> EnumBoxD.FromFB
-      |> Either.map EnumBox
+    | x when x = PinTypeFB.EnumPinFB ->
+      EnumPinFB.Create()
+      |> fb.Pin
+      |> EnumPinD.FromFB
+      |> Either.map EnumPin
 
-    | x when x = IOBoxTypeFB.ColorBoxFB ->
-      ColorBoxFB.Create()
-      |> fb.IOBox
-      |> ColorBoxD.FromFB
-      |> Either.map ColorBox
+    | x when x = PinTypeFB.ColorPinFB ->
+      ColorPinFB.Create()
+      |> fb.Pin
+      |> ColorPinD.FromFB
+      |> Either.map ColorPin
 
-    | x when x = IOBoxTypeFB.CompoundBoxFB ->
-      CompoundBoxFB.Create()
-      |> fb.IOBox
-      |> CompoundBoxD.FromFB
-      |> Either.map Compound
+    | x when x = PinTypeFB.CompoundPinFB ->
+      CompoundPinFB.Create()
+      |> fb.Pin
+      |> CompoundPinD.FromFB
+      |> Either.map CompoundPin
 
     | x ->
-      sprintf "%A is not a valid IOBoxTypeFB" x
+      sprintf "%A is not a valid PinTypeFB" x
       |> ParseError
       |> Either.fail
 
 #else
 
-    match fb.IOBoxType with
-    | IOBoxTypeFB.StringBoxFB ->
-      let v = fb.IOBox<StringBoxFB>()
+    match fb.PinType with
+    | PinTypeFB.StringPinFB ->
+      let v = fb.Pin<StringPinFB>()
       if v.HasValue then
         v.Value
-        |> StringBoxD.FromFB
-        |> Either.map StringBox
+        |> StringPinD.FromFB
+        |> Either.map StringPin
       else
-        "IOBoxFB has no value"
+        "PinFB has no value"
         |> ParseError
         |> Either.fail
 
-    | IOBoxTypeFB.IntBoxFB ->
-      let v = fb.IOBox<IntBoxFB>()
+    | PinTypeFB.IntPinFB ->
+      let v = fb.Pin<IntPinFB>()
       if v.HasValue then
         v.Value
-        |> IntBoxD.FromFB
-        |> Either.map IntBox
+        |> IntPinD.FromFB
+        |> Either.map IntPin
       else
-        "IOBoxFB has no value"
+        "PinFB has no value"
         |> ParseError
         |> Either.fail
 
-    | IOBoxTypeFB.FloatBoxFB ->
-      let v = fb.IOBox<FloatBoxFB>()
+    | PinTypeFB.FloatPinFB ->
+      let v = fb.Pin<FloatPinFB>()
       if v.HasValue then
         v.Value
-        |> FloatBoxD.FromFB
-        |> Either.map FloatBox
+        |> FloatPinD.FromFB
+        |> Either.map FloatPin
       else
-        "IOBoxFB has no value"
+        "PinFB has no value"
         |> ParseError
         |> Either.fail
 
-    | IOBoxTypeFB.DoubleBoxFB ->
-      let v = fb.IOBox<DoubleBoxFB>()
+    | PinTypeFB.DoublePinFB ->
+      let v = fb.Pin<DoublePinFB>()
       if v.HasValue then
         v.Value
-        |> DoubleBoxD.FromFB
-        |> Either.map DoubleBox
+        |> DoublePinD.FromFB
+        |> Either.map DoublePin
       else
-        "IOBoxFB has no value"
+        "PinFB has no value"
         |> ParseError
         |> Either.fail
 
-    | IOBoxTypeFB.BoolBoxFB ->
-      let v = fb.IOBox<BoolBoxFB>()
+    | PinTypeFB.BoolPinFB ->
+      let v = fb.Pin<BoolPinFB>()
       if v.HasValue then
         v.Value
-        |> BoolBoxD.FromFB
-        |> Either.map BoolBox
+        |> BoolPinD.FromFB
+        |> Either.map BoolPin
       else
-        "IOBoxFB has no value"
+        "PinFB has no value"
         |> ParseError
         |> Either.fail
 
-    | IOBoxTypeFB.ByteBoxFB ->
-      let v = fb.IOBox<ByteBoxFB>()
+    | PinTypeFB.BytePinFB ->
+      let v = fb.Pin<BytePinFB>()
       if v.HasValue then
         v.Value
-        |> ByteBoxD.FromFB
-        |> Either.map ByteBox
+        |> BytePinD.FromFB
+        |> Either.map BytePin
       else
-        "IOBoxFB has no value"
+        "PinFB has no value"
         |> ParseError
         |> Either.fail
 
-    | IOBoxTypeFB.EnumBoxFB ->
-      let v = fb.IOBox<EnumBoxFB>()
+    | PinTypeFB.EnumPinFB ->
+      let v = fb.Pin<EnumPinFB>()
       if v.HasValue then
         v.Value
-        |> EnumBoxD.FromFB
-        |> Either.map EnumBox
+        |> EnumPinD.FromFB
+        |> Either.map EnumPin
       else
-        "IOBoxFB has no value"
+        "PinFB has no value"
         |> ParseError
         |> Either.fail
 
-    | IOBoxTypeFB.ColorBoxFB ->
-      let v = fb.IOBox<ColorBoxFB>()
+    | PinTypeFB.ColorPinFB ->
+      let v = fb.Pin<ColorPinFB>()
       if v.HasValue then
         v.Value
-        |> ColorBoxD.FromFB
-        |> Either.map ColorBox
+        |> ColorPinD.FromFB
+        |> Either.map ColorPin
       else
-        "IOBoxFB has no value"
+        "PinFB has no value"
         |> ParseError
         |> Either.fail
 
-    | IOBoxTypeFB.CompoundBoxFB ->
-      let v = fb.IOBox<CompoundBoxFB>()
+    | PinTypeFB.CompoundPinFB ->
+      let v = fb.Pin<CompoundPinFB>()
       if v.HasValue then
         v.Value
-        |> CompoundBoxD.FromFB
-        |> Either.map Compound
+        |> CompoundPinD.FromFB
+        |> Either.map CompoundPin
       else
-        "IOBoxFB has no value"
+        "PinFB has no value"
         |> ParseError
         |> Either.fail
 
     | x ->
-      sprintf "%A is not a valid IOBoxTypeFB" x
+      sprintf "%A is not a valid PinTypeFB" x
       |> ParseError
       |> Either.fail
 
@@ -917,10 +917,10 @@ type IOBox =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,IOBox> =
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,Pin> =
     Binary.createBuffer bytes
-    |> IOBoxFB.GetRootAsIOBoxFB
-    |> IOBox.FromFB
+    |> PinFB.GetRootAsPinFB
+    |> Pin.FromFB
 
   // ** ToYamlObject
 
@@ -933,15 +933,15 @@ type IOBox =
 #if !FABLE_COMPILER
 
   member self.ToYamlObject() =
-    let yaml = new IOBoxYaml()
+    let yaml = new PinYaml()
     match self with
-    | StringBox data ->
+    | StringPin data ->
       let mask =
         match data.FileMask with
         | Some mask -> mask
         | _ -> null
 
-      yaml.BoxType    <- "StringBox"
+      yaml.PinType    <- "StringPin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
       yaml.Patch      <- string data.Patch
@@ -951,8 +951,8 @@ type IOBox =
       yaml.StringType <- string data.StringType
       yaml.Slices     <- Array.map Yaml.toYaml data.Slices
 
-    | IntBox data ->
-      yaml.BoxType    <- "IntBox"
+    | IntPin data ->
+      yaml.PinType    <- "IntPin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
       yaml.Patch      <- string data.Patch
@@ -963,21 +963,8 @@ type IOBox =
       yaml.Unit       <- data.Unit
       yaml.Slices     <- Array.map Yaml.toYaml data.Slices
 
-    | FloatBox data ->
-      yaml.BoxType    <- "FloatBox"
-      yaml.Id         <- string data.Id
-      yaml.Name       <- data.Name
-      yaml.Patch      <- string data.Patch
-      yaml.Tags       <- data.Tags
-      yaml.VecSize    <- data.VecSize
-      yaml.Precision  <- data.Precision
-      yaml.Min        <- data.Min
-      yaml.Max        <- data.Max
-      yaml.Unit       <- data.Unit
-      yaml.Slices     <- Array.map Yaml.toYaml data.Slices
-
-    | DoubleBox data ->
-      yaml.BoxType    <- "DoubleBox"
+    | FloatPin data ->
+      yaml.PinType    <- "FloatPin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
       yaml.Patch      <- string data.Patch
@@ -989,8 +976,21 @@ type IOBox =
       yaml.Unit       <- data.Unit
       yaml.Slices     <- Array.map Yaml.toYaml data.Slices
 
-    | BoolBox data ->
-      yaml.BoxType    <- "BoolBox"
+    | DoublePin data ->
+      yaml.PinType    <- "DoublePin"
+      yaml.Id         <- string data.Id
+      yaml.Name       <- data.Name
+      yaml.Patch      <- string data.Patch
+      yaml.Tags       <- data.Tags
+      yaml.VecSize    <- data.VecSize
+      yaml.Precision  <- data.Precision
+      yaml.Min        <- data.Min
+      yaml.Max        <- data.Max
+      yaml.Unit       <- data.Unit
+      yaml.Slices     <- Array.map Yaml.toYaml data.Slices
+
+    | BoolPin data ->
+      yaml.PinType    <- "BoolPin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
       yaml.Patch      <- string data.Patch
@@ -998,16 +998,16 @@ type IOBox =
       yaml.Behavior   <- string data.Behavior
       yaml.Slices     <- Array.map Yaml.toYaml data.Slices
 
-    | ByteBox data ->
-      yaml.BoxType    <- "ByteBox"
+    | BytePin data ->
+      yaml.PinType    <- "BytePin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
       yaml.Patch      <- string data.Patch
       yaml.Tags       <- data.Tags
       yaml.Slices     <- Array.map Yaml.toYaml data.Slices
 
-    | EnumBox data ->
-      yaml.BoxType    <- "EnumBox"
+    | EnumPin data ->
+      yaml.PinType    <- "EnumPin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
       yaml.Patch      <- string data.Patch
@@ -1015,16 +1015,16 @@ type IOBox =
       yaml.Properties <- Array.map Yaml.toYaml data.Properties
       yaml.Slices     <- Array.map Yaml.toYaml data.Slices
 
-    | ColorBox  data ->
-      yaml.BoxType    <- "ColorBox"
+    | ColorPin  data ->
+      yaml.PinType    <- "ColorPin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
       yaml.Patch      <- string data.Patch
       yaml.Tags       <- data.Tags
       yaml.Slices     <- Array.map Yaml.toYaml data.Slices
 
-    | Compound data ->
-      yaml.BoxType    <- "Compound"
+    | CompoundPin data ->
+      yaml.PinType    <- "CompoundPin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
       yaml.Patch      <- string data.Patch
@@ -1035,7 +1035,7 @@ type IOBox =
 
   // ** ParseSliceYamls
 
-  /// ## Parse all SliceYamls for a given IOBox data type
+  /// ## Parse all SliceYamls for a given Pin data type
   ///
   /// Takes an array> of SliceYaml and folds over it, parsing the
   /// slices. If an error occurs, it will be returned in the left-hand
@@ -1065,10 +1065,10 @@ type IOBox =
 
   /// ## Parse all tags in a Flatbuffer-serialized type
   ///
-  /// Parses all tags in a given IOBox inner data type.
+  /// Parses all tags in a given Pin inner data type.
   ///
   /// ### Signature:
-  /// - fb: the inner IOBox data type (BoolBoxD, StringBoxD, etc.)
+  /// - fb: the inner Pin data type (BoolPinD, StringPinD, etc.)
   ///
   /// Returns: Either<IrisError, Tag array>
   static member inline ParseTagsFB< ^a when ^a : (member TagsLength : int)
@@ -1157,14 +1157,14 @@ type IOBox =
 
 #if !FABLE_COMPILER
 
-  static member FromYamlObject(yml: IOBoxYaml) =
+  static member FromYamlObject(yml: PinYaml) =
     try
-      match yml.BoxType with
-      | "StringBox" -> either {
+      match yml.PinType with
+      | "StringPin" -> either {
           let! strtype = StringType.TryParse yml.StringType
-          let! slices  = IOBox.ParseSliceYamls yml.Slices
+          let! slices  = Pin.ParseSliceYamls yml.Slices
 
-          return StringBox {
+          return StringPin {
             Id         = Id yml.Id
             Name       = yml.Name
             Patch      = Id yml.Patch
@@ -1176,10 +1176,10 @@ type IOBox =
           }
         }
 
-      | "IntBox" -> either {
-          let! slices = IOBox.ParseSliceYamls yml.Slices
+      | "IntPin" -> either {
+          let! slices = Pin.ParseSliceYamls yml.Slices
 
-          return IntBox {
+          return IntPin {
             Id       = Id yml.Id
             Name     = yml.Name
             Patch    = Id yml.Patch
@@ -1192,10 +1192,10 @@ type IOBox =
           }
         }
 
-      | "FloatBox" -> either {
-          let! slices = IOBox.ParseSliceYamls yml.Slices
+      | "FloatPin" -> either {
+          let! slices = Pin.ParseSliceYamls yml.Slices
 
-          return FloatBox {
+          return FloatPin {
             Id        = Id yml.Id
             Name      = yml.Name
             Patch     = Id yml.Patch
@@ -1209,9 +1209,9 @@ type IOBox =
           }
         }
 
-      | "DoubleBox" -> either {
-          let! slices = IOBox.ParseSliceYamls yml.Slices
-          return DoubleBox {
+      | "DoublePin" -> either {
+          let! slices = Pin.ParseSliceYamls yml.Slices
+          return DoublePin {
             Id        = Id yml.Id
             Name      = yml.Name
             Patch     = Id yml.Patch
@@ -1225,10 +1225,10 @@ type IOBox =
           }
         }
 
-      | "BoolBox" -> either {
+      | "BoolPin" -> either {
           let! behavior = Behavior.TryParse yml.Behavior
-          let! slices = IOBox.ParseSliceYamls yml.Slices
-          return BoolBox {
+          let! slices = Pin.ParseSliceYamls yml.Slices
+          return BoolPin {
             Id       = Id yml.Id
             Name     = yml.Name
             Patch    = Id yml.Patch
@@ -1238,9 +1238,9 @@ type IOBox =
           }
         }
 
-      | "ByteBox" -> either {
-          let! slices = IOBox.ParseSliceYamls yml.Slices
-          return ByteBox {
+      | "BytePin" -> either {
+          let! slices = Pin.ParseSliceYamls yml.Slices
+          return BytePin {
             Id     = Id yml.Id
             Name   = yml.Name
             Patch  = Id yml.Patch
@@ -1249,7 +1249,7 @@ type IOBox =
           }
         }
 
-      | "EnumBox" -> either {
+      | "EnumPin" -> either {
           let! properties =
             Array.fold
               (fun (m: Either<IrisError, int * Property array>) yml ->
@@ -1263,9 +1263,9 @@ type IOBox =
               yml.Properties
             |> Either.map snd
 
-          let! slices = IOBox.ParseSliceYamls yml.Slices
+          let! slices = Pin.ParseSliceYamls yml.Slices
 
-          return EnumBox {
+          return EnumPin {
             Id         = Id yml.Id
             Name       = yml.Name
             Patch      = Id yml.Patch
@@ -1275,9 +1275,9 @@ type IOBox =
           }
         }
 
-      | "ColorBox" -> either {
-          let! slices = IOBox.ParseSliceYamls yml.Slices
-          return ColorBox {
+      | "ColorPin" -> either {
+          let! slices = Pin.ParseSliceYamls yml.Slices
+          return ColorPin {
             Id     = Id yml.Id
             Name   = yml.Name
             Patch  = Id yml.Patch
@@ -1286,9 +1286,9 @@ type IOBox =
           }
         }
 
-      | "Compound" -> either {
-          let! slices = IOBox.ParseSliceYamls yml.Slices
-          return Compound {
+      | "CompoundPin" -> either {
+          let! slices = Pin.ParseSliceYamls yml.Slices
+          return CompoundPin {
             Id     = Id yml.Id
             Name   = yml.Name
             Patch  = Id yml.Patch
@@ -1298,13 +1298,13 @@ type IOBox =
         }
 
       | x ->
-        sprintf "Could not parse IOBoxYml type: %s" x
+        sprintf "Could not parse PinYml type: %s" x
         |> ParseError
         |> Either.fail
 
     with
       | exn ->
-        sprintf "Could not parse IOBoxYml: %s" exn.Message
+        sprintf "Could not parse PinYml: %s" exn.Message
         |> ParseError
         |> Either.fail
 
@@ -1319,12 +1319,12 @@ type IOBox =
 
   static member FromYaml(str: string) =
     let serializer = new Serializer()
-    serializer.Deserialize<IOBoxYaml>(str)
-    |> IOBox.FromYamlObject
+    serializer.Deserialize<PinYaml>(str)
+    |> Pin.FromYamlObject
 
 #endif
 
-// * BoolBoxD
+// * BoolPinD
 
 //  ____              _ ____
 // | __ )  ___   ___ | | __ )  _____  __
@@ -1332,7 +1332,7 @@ type IOBox =
 // | |_) | (_) | (_) | | |_) | (_) >  <
 // |____/ \___/ \___/|_|____/ \___/_/\_\
 
-and BoolBoxD =
+and BoolPinD =
   { Id         : Id
   ; Name       : string
   ; Patch      : Id
@@ -1356,23 +1356,23 @@ and BoolBoxD =
     let behavior = self.Behavior.ToOffset builder
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let tags = BoolBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = BoolBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    BoolBoxFB.StartBoolBoxFB(builder)
-    BoolBoxFB.AddId(builder, id)
-    BoolBoxFB.AddName(builder, name)
-    BoolBoxFB.AddPatch(builder, patch)
-    BoolBoxFB.AddBehavior(builder, behavior)
-    BoolBoxFB.AddTags(builder, tags)
-    BoolBoxFB.AddSlices(builder, slices)
-    BoolBoxFB.EndBoolBoxFB(builder)
+    let tags = BoolPinFB.CreateTagsVector(builder, tagoffsets)
+    let slices = BoolPinFB.CreateSlicesVector(builder, sliceoffsets)
+    BoolPinFB.StartBoolPinFB(builder)
+    BoolPinFB.AddId(builder, id)
+    BoolPinFB.AddName(builder, name)
+    BoolPinFB.AddPatch(builder, patch)
+    BoolPinFB.AddBehavior(builder, behavior)
+    BoolPinFB.AddTags(builder, tags)
+    BoolPinFB.AddSlices(builder, slices)
+    BoolPinFB.EndBoolPinFB(builder)
 
   // ** FromFB
 
-  static member FromFB(fb: BoolBoxFB) : Either<IrisError,BoolBoxD> =
+  static member FromFB(fb: BoolPinFB) : Either<IrisError,BoolPinD> =
     either {
-      let! tags = IOBox.ParseTagsFB fb
-      let! slices = IOBox.ParseSlicesFB fb
+      let! tags = Pin.ParseTagsFB fb
+      let! slices = Pin.ParseSlicesFB fb
       let! behavior = Behavior.FromFB fb.Behavior
 
       return { Id         = Id fb.Id
@@ -1389,10 +1389,10 @@ and BoolBoxD =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,BoolBoxD> =
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,BoolPinD> =
     Binary.createBuffer bytes
-    |> BoolBoxFB.GetRootAsBoolBoxFB
-    |> BoolBoxD.FromFB
+    |> BoolPinFB.GetRootAsBoolPinFB
+    |> BoolPinD.FromFB
 
 // * BoolSliceD
 
@@ -1469,7 +1469,7 @@ and BoolSliceD =
 
 #endif
 
-// * IntBoxD
+// * IntPinD
 
 //  ___       _   ____
 // |_ _|_ __ | |_| __ )  _____  __
@@ -1477,7 +1477,7 @@ and BoolSliceD =
 //  | || | | | |_| |_) | (_) >  <
 // |___|_| |_|\__|____/ \___/_/\_\
 
-and IntBoxD =
+and IntPinD =
   { Id         : Id
   ; Name       : string
   ; Patch      : Id
@@ -1504,27 +1504,27 @@ and IntBoxD =
     let unit = self.Unit |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let tags = IntBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = IntBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    IntBoxFB.StartIntBoxFB(builder)
-    IntBoxFB.AddId(builder, id)
-    IntBoxFB.AddName(builder, name)
-    IntBoxFB.AddPatch(builder, patch)
-    IntBoxFB.AddTags(builder, tags)
-    IntBoxFB.AddVecSize(builder, self.VecSize)
-    IntBoxFB.AddMin(builder, self.Min)
-    IntBoxFB.AddMax(builder, self.Max)
-    IntBoxFB.AddUnit(builder, unit)
-    IntBoxFB.AddSlices(builder, slices)
-    IntBoxFB.EndIntBoxFB(builder)
+    let tags = IntPinFB.CreateTagsVector(builder, tagoffsets)
+    let slices = IntPinFB.CreateSlicesVector(builder, sliceoffsets)
+    IntPinFB.StartIntPinFB(builder)
+    IntPinFB.AddId(builder, id)
+    IntPinFB.AddName(builder, name)
+    IntPinFB.AddPatch(builder, patch)
+    IntPinFB.AddTags(builder, tags)
+    IntPinFB.AddVecSize(builder, self.VecSize)
+    IntPinFB.AddMin(builder, self.Min)
+    IntPinFB.AddMax(builder, self.Max)
+    IntPinFB.AddUnit(builder, unit)
+    IntPinFB.AddSlices(builder, slices)
+    IntPinFB.EndIntPinFB(builder)
 
   // ** FromFB
 
-  static member FromFB(fb: IntBoxFB) : Either<IrisError,IntBoxD> =
+  static member FromFB(fb: IntPinFB) : Either<IrisError,IntPinD> =
     either {
       let unit = if isNull fb.Unit then "" else fb.Unit
-      let! tags = IOBox.ParseTagsFB fb
-      let! slices = IOBox.ParseSlicesFB fb
+      let! tags = Pin.ParseTagsFB fb
+      let! slices = Pin.ParseSlicesFB fb
 
       return { Id      = Id fb.Id
                Name    = fb.Name
@@ -1543,10 +1543,10 @@ and IntBoxD =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,IntBoxD> =
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,IntPinD> =
     Binary.createBuffer bytes
-    |> IntBoxFB.GetRootAsIntBoxFB
-    |> IntBoxD.FromFB
+    |> IntPinFB.GetRootAsIntPinFB
+    |> IntPinD.FromFB
 
 // * IntSliceD
 
@@ -1624,7 +1624,7 @@ and IntSliceD =
 
 #endif
 
-// * FloatBoxD
+// * FloatPinD
 
 //  _____ _             _   ____
 // |  ___| | ___   __ _| |_| __ )  _____  __
@@ -1632,7 +1632,7 @@ and IntSliceD =
 // |  _| | | (_) | (_| | |_| |_) | (_) >  <
 // |_|   |_|\___/ \__,_|\__|____/ \___/_/\_\
 
-and FloatBoxD =
+and FloatPinD =
   { Id         : Id
   ; Name       : string
   ; Patch      : Id
@@ -1660,27 +1660,27 @@ and FloatBoxD =
     let unit = self.Unit |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let tags = FloatBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = FloatBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    FloatBoxFB.StartFloatBoxFB(builder)
-    FloatBoxFB.AddId(builder, id)
-    FloatBoxFB.AddName(builder, name)
-    FloatBoxFB.AddPatch(builder, patch)
-    FloatBoxFB.AddTags(builder, tags)
-    FloatBoxFB.AddVecSize(builder, self.VecSize)
-    FloatBoxFB.AddMin(builder, self.Min)
-    FloatBoxFB.AddMax(builder, self.Max)
-    FloatBoxFB.AddUnit(builder, unit)
-    FloatBoxFB.AddPrecision(builder, self.Precision)
-    FloatBoxFB.AddSlices(builder, slices)
-    FloatBoxFB.EndFloatBoxFB(builder)
+    let tags = FloatPinFB.CreateTagsVector(builder, tagoffsets)
+    let slices = FloatPinFB.CreateSlicesVector(builder, sliceoffsets)
+    FloatPinFB.StartFloatPinFB(builder)
+    FloatPinFB.AddId(builder, id)
+    FloatPinFB.AddName(builder, name)
+    FloatPinFB.AddPatch(builder, patch)
+    FloatPinFB.AddTags(builder, tags)
+    FloatPinFB.AddVecSize(builder, self.VecSize)
+    FloatPinFB.AddMin(builder, self.Min)
+    FloatPinFB.AddMax(builder, self.Max)
+    FloatPinFB.AddUnit(builder, unit)
+    FloatPinFB.AddPrecision(builder, self.Precision)
+    FloatPinFB.AddSlices(builder, slices)
+    FloatPinFB.EndFloatPinFB(builder)
 
   // ** FromFB
 
-  static member FromFB(fb: FloatBoxFB) : Either<IrisError,FloatBoxD> =
+  static member FromFB(fb: FloatPinFB) : Either<IrisError,FloatPinD> =
     either {
-      let! tags = IOBox.ParseTagsFB fb
-      let! slices = IOBox.ParseSlicesFB fb
+      let! tags = Pin.ParseTagsFB fb
+      let! slices = Pin.ParseSlicesFB fb
       let unit = if isNull fb.Unit then "" else fb.Unit
 
       return { Id         = Id fb.Id
@@ -1702,10 +1702,10 @@ and FloatBoxD =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,FloatBoxD> =
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,FloatPinD> =
     Binary.createBuffer bytes
-    |> FloatBoxFB.GetRootAsFloatBoxFB
-    |> FloatBoxD.FromFB
+    |> FloatPinFB.GetRootAsFloatPinFB
+    |> FloatPinD.FromFB
 
 // * FloatSliceD
 
@@ -1783,7 +1783,7 @@ and FloatSliceD =
 
 #endif
 
-// * DoubleBoxD
+// * DoublePinD
 
 //  ____              _     _      ____
 // |  _ \  ___  _   _| |__ | | ___| __ )  _____  __
@@ -1791,7 +1791,7 @@ and FloatSliceD =
 // | |_| | (_) | |_| | |_) | |  __/ |_) | (_) >  <
 // |____/ \___/ \__,_|_.__/|_|\___|____/ \___/_/\_\
 
-and DoubleBoxD =
+and DoublePinD =
   { Id         : Id
   ; Name       : string
   ; Patch      : Id
@@ -1819,28 +1819,28 @@ and DoubleBoxD =
     let unit = self.Unit |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let tags = DoubleBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = DoubleBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    DoubleBoxFB.StartDoubleBoxFB(builder)
-    DoubleBoxFB.AddId(builder, id)
-    DoubleBoxFB.AddName(builder, name)
-    DoubleBoxFB.AddPatch(builder, patch)
-    DoubleBoxFB.AddTags(builder, tags)
-    DoubleBoxFB.AddVecSize(builder, self.VecSize)
-    DoubleBoxFB.AddMin(builder, self.Min)
-    DoubleBoxFB.AddMax(builder, self.Max)
-    DoubleBoxFB.AddUnit(builder, unit)
-    DoubleBoxFB.AddPrecision(builder, self.Precision)
-    DoubleBoxFB.AddSlices(builder, slices)
-    DoubleBoxFB.EndDoubleBoxFB(builder)
+    let tags = DoublePinFB.CreateTagsVector(builder, tagoffsets)
+    let slices = DoublePinFB.CreateSlicesVector(builder, sliceoffsets)
+    DoublePinFB.StartDoublePinFB(builder)
+    DoublePinFB.AddId(builder, id)
+    DoublePinFB.AddName(builder, name)
+    DoublePinFB.AddPatch(builder, patch)
+    DoublePinFB.AddTags(builder, tags)
+    DoublePinFB.AddVecSize(builder, self.VecSize)
+    DoublePinFB.AddMin(builder, self.Min)
+    DoublePinFB.AddMax(builder, self.Max)
+    DoublePinFB.AddUnit(builder, unit)
+    DoublePinFB.AddPrecision(builder, self.Precision)
+    DoublePinFB.AddSlices(builder, slices)
+    DoublePinFB.EndDoublePinFB(builder)
 
   // ** FromFB
 
-  static member FromFB(fb: DoubleBoxFB) : Either<IrisError,DoubleBoxD> =
+  static member FromFB(fb: DoublePinFB) : Either<IrisError,DoublePinD> =
     either {
       let unit = if isNull fb.Unit then "" else fb.Unit
-      let! tags = IOBox.ParseTagsFB fb
-      let! slices = IOBox.ParseSlicesFB fb
+      let! tags = Pin.ParseTagsFB fb
+      let! slices = Pin.ParseSlicesFB fb
 
       return { Id        = Id fb.Id
                Name      = fb.Name
@@ -1860,10 +1860,10 @@ and DoubleBoxD =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,DoubleBoxD> =
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,DoublePinD> =
     Binary.createBuffer bytes
-    |> DoubleBoxFB.GetRootAsDoubleBoxFB
-    |> DoubleBoxD.FromFB
+    |> DoublePinFB.GetRootAsDoublePinFB
+    |> DoublePinD.FromFB
 
 // * DoubleSliceD
 
@@ -1941,7 +1941,7 @@ and DoubleSliceD =
 
 #endif
 
-// * ByteBoxD
+// * BytePinD
 
 //  ____        _       ____
 // | __ ) _   _| |_ ___| __ )  _____  __
@@ -1950,7 +1950,7 @@ and DoubleSliceD =
 // |____/ \__, |\__\___|____/ \___/_/\_\
 //        |___/
 
-and ByteBoxD =
+and BytePinD =
   { Id         : Id
   ; Name       : string
   ; Patch      : Id
@@ -1972,22 +1972,22 @@ and ByteBoxD =
     let patch = string self.Patch |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let tags = ByteBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = ByteBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    ByteBoxFB.StartByteBoxFB(builder)
-    ByteBoxFB.AddId(builder, id)
-    ByteBoxFB.AddName(builder, name)
-    ByteBoxFB.AddPatch(builder, patch)
-    ByteBoxFB.AddTags(builder, tags)
-    ByteBoxFB.AddSlices(builder, slices)
-    ByteBoxFB.EndByteBoxFB(builder)
+    let tags = BytePinFB.CreateTagsVector(builder, tagoffsets)
+    let slices = BytePinFB.CreateSlicesVector(builder, sliceoffsets)
+    BytePinFB.StartBytePinFB(builder)
+    BytePinFB.AddId(builder, id)
+    BytePinFB.AddName(builder, name)
+    BytePinFB.AddPatch(builder, patch)
+    BytePinFB.AddTags(builder, tags)
+    BytePinFB.AddSlices(builder, slices)
+    BytePinFB.EndBytePinFB(builder)
 
   // ** FromFB
 
-  static member FromFB(fb: ByteBoxFB) : Either<IrisError,ByteBoxD> =
+  static member FromFB(fb: BytePinFB) : Either<IrisError,BytePinD> =
     either {
-      let! tags = IOBox.ParseTagsFB fb
-      let! slices = IOBox.ParseSlicesFB fb
+      let! tags = Pin.ParseTagsFB fb
+      let! slices = Pin.ParseSlicesFB fb
 
       return { Id         = Id fb.Id
                Name       = fb.Name
@@ -2002,10 +2002,10 @@ and ByteBoxD =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,ByteBoxD> =
+  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,BytePinD> =
     Binary.createBuffer bytes
-    |> ByteBoxFB.GetRootAsByteBoxFB
-    |> ByteBoxD.FromFB
+    |> BytePinFB.GetRootAsBytePinFB
+    |> BytePinD.FromFB
 
 // * ByteSliceD
 
@@ -2170,7 +2170,7 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
     |> ByteSliceFB.GetRootAsByteSliceFB
     |> ByteSliceD.FromFB
 
-// * EnumBoxD
+// * EnumPinD
 
 //  _____                       ____
 // | ____|_ __  _   _ _ __ ___ | __ )  _____  __
@@ -2178,7 +2178,7 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
 // | |___| | | | |_| | | | | | | |_) | (_) >  <
 // |_____|_| |_|\__,_|_| |_| |_|____/ \___/_/\_\
 
-and EnumBoxD =
+and EnumPinD =
   { Id         : Id
   ; Name       : string
   ; Patch      : Id
@@ -2210,24 +2210,24 @@ and EnumBoxD =
                 EnumPropertyFB.AddValue(builder, value)
                 EnumPropertyFB.EndEnumPropertyFB(builder))
         self.Properties
-    let tags = EnumBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = EnumBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    let properties = EnumBoxFB.CreatePropertiesVector(builder, propoffsets)
-    EnumBoxFB.StartEnumBoxFB(builder)
-    EnumBoxFB.AddId(builder, id)
-    EnumBoxFB.AddName(builder, name)
-    EnumBoxFB.AddPatch(builder, patch)
-    EnumBoxFB.AddTags(builder, tags)
-    EnumBoxFB.AddProperties(builder, properties)
-    EnumBoxFB.AddSlices(builder, slices)
-    EnumBoxFB.EndEnumBoxFB(builder)
+    let tags = EnumPinFB.CreateTagsVector(builder, tagoffsets)
+    let slices = EnumPinFB.CreateSlicesVector(builder, sliceoffsets)
+    let properties = EnumPinFB.CreatePropertiesVector(builder, propoffsets)
+    EnumPinFB.StartEnumPinFB(builder)
+    EnumPinFB.AddId(builder, id)
+    EnumPinFB.AddName(builder, name)
+    EnumPinFB.AddPatch(builder, patch)
+    EnumPinFB.AddTags(builder, tags)
+    EnumPinFB.AddProperties(builder, properties)
+    EnumPinFB.AddSlices(builder, slices)
+    EnumPinFB.EndEnumPinFB(builder)
 
   // ** FromFB
 
-  static member FromFB(fb: EnumBoxFB) : Either<IrisError,EnumBoxD> =
+  static member FromFB(fb: EnumPinFB) : Either<IrisError,EnumPinD> =
     either {
-      let! tags = IOBox.ParseTagsFB fb
-      let! slices = IOBox.ParseSlicesFB fb
+      let! tags = Pin.ParseTagsFB fb
+      let! slices = Pin.ParseSlicesFB fb
 
       let! properties =
         let properties = Array.zeroCreate fb.PropertiesLength
@@ -2267,10 +2267,10 @@ and EnumBoxD =
 
   // ** FromEnums
 
-  static member FromEnums(bytes: Binary.Buffer) : Either<IrisError,EnumBoxD> =
+  static member FromEnums(bytes: Binary.Buffer) : Either<IrisError,EnumPinD> =
     Binary.createBuffer bytes
-    |> EnumBoxFB.GetRootAsEnumBoxFB
-    |> EnumBoxD.FromFB
+    |> EnumPinFB.GetRootAsEnumPinFB
+    |> EnumPinD.FromFB
 
 // * EnumSlicdD
 
@@ -2368,7 +2368,7 @@ and EnumSliceD =
 
 #endif
 
-// ** ColorBoxD
+// ** ColorPinD
 
 //   ____      _            ____
 //  / ___|___ | | ___  _ __| __ )  _____  __
@@ -2376,7 +2376,7 @@ and EnumSliceD =
 // | |__| (_) | | (_) | |  | |_) | (_) >  <
 //  \____\___/|_|\___/|_|  |____/ \___/_/\_\
 
-and ColorBoxD =
+and ColorPinD =
   { Id     : Id
   ; Name   : string
   ; Patch  : Id
@@ -2398,22 +2398,22 @@ and ColorBoxD =
     let patch = string self.Patch |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let tags = ColorBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = ColorBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    ColorBoxFB.StartColorBoxFB(builder)
-    ColorBoxFB.AddId(builder, id)
-    ColorBoxFB.AddName(builder, name)
-    ColorBoxFB.AddPatch(builder, patch)
-    ColorBoxFB.AddTags(builder, tags)
-    ColorBoxFB.AddSlices(builder, slices)
-    ColorBoxFB.EndColorBoxFB(builder)
+    let tags = ColorPinFB.CreateTagsVector(builder, tagoffsets)
+    let slices = ColorPinFB.CreateSlicesVector(builder, sliceoffsets)
+    ColorPinFB.StartColorPinFB(builder)
+    ColorPinFB.AddId(builder, id)
+    ColorPinFB.AddName(builder, name)
+    ColorPinFB.AddPatch(builder, patch)
+    ColorPinFB.AddTags(builder, tags)
+    ColorPinFB.AddSlices(builder, slices)
+    ColorPinFB.EndColorPinFB(builder)
 
   // ** FromFB
 
-  static member FromFB(fb: ColorBoxFB) : Either<IrisError,ColorBoxD> =
+  static member FromFB(fb: ColorPinFB) : Either<IrisError,ColorPinD> =
     either {
-      let! tags = IOBox.ParseTagsFB fb
-      let! slices = IOBox.ParseSlicesFB fb
+      let! tags = Pin.ParseTagsFB fb
+      let! slices = Pin.ParseSlicesFB fb
       return { Id     = Id fb.Id
                Name   = fb.Name
                Patch  = Id fb.Patch
@@ -2427,10 +2427,10 @@ and ColorBoxD =
 
   // ** FromColors
 
-  static member FromColors(bytes: Binary.Buffer) : Either<IrisError,ColorBoxD> =
+  static member FromColors(bytes: Binary.Buffer) : Either<IrisError,ColorPinD> =
     Binary.createBuffer bytes
-    |> ColorBoxFB.GetRootAsColorBoxFB
-    |> ColorBoxD.FromFB
+    |> ColorPinFB.GetRootAsColorPinFB
+    |> ColorPinD.FromFB
 
 // * ColorSliceD
 
@@ -2524,7 +2524,7 @@ and ColorSliceD =
 
 #endif
 
-// * StringBoxD
+// * StringPinD
 
 //  ____  _        _             ____
 // / ___|| |_ _ __(_)_ __   __ _| __ )  _____  __
@@ -2533,7 +2533,7 @@ and ColorSliceD =
 // |____/ \__|_|  |_|_| |_|\__, |____/ \___/_/\_\
 //                         |___/
 
-and StringBoxD =
+and StringPinD =
   { Id         : Id
   ; Name       : string
   ; Patch      : Id
@@ -2560,29 +2560,29 @@ and StringBoxD =
     let mask = self.FileMask |> Option.map builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let tags = StringBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = StringBoxFB.CreateSlicesVector(builder, sliceoffsets)
+    let tags = StringPinFB.CreateTagsVector(builder, tagoffsets)
+    let slices = StringPinFB.CreateSlicesVector(builder, sliceoffsets)
 
-    StringBoxFB.StartStringBoxFB(builder)
-    StringBoxFB.AddId(builder, id)
-    StringBoxFB.AddName(builder, name)
-    StringBoxFB.AddPatch(builder, patch)
-    StringBoxFB.AddTags(builder, tags)
-    StringBoxFB.AddStringType(builder, tipe)
+    StringPinFB.StartStringPinFB(builder)
+    StringPinFB.AddId(builder, id)
+    StringPinFB.AddName(builder, name)
+    StringPinFB.AddPatch(builder, patch)
+    StringPinFB.AddTags(builder, tags)
+    StringPinFB.AddStringType(builder, tipe)
 
-    Option.map (fun mask -> StringBoxFB.AddFileMask(builder, mask)) mask |> ignore
+    Option.map (fun mask -> StringPinFB.AddFileMask(builder, mask)) mask |> ignore
 
-    StringBoxFB.AddMaxChars(builder, self.MaxChars)
-    StringBoxFB.AddSlices(builder, slices)
-    StringBoxFB.EndStringBoxFB(builder)
+    StringPinFB.AddMaxChars(builder, self.MaxChars)
+    StringPinFB.AddSlices(builder, slices)
+    StringPinFB.EndStringPinFB(builder)
 
   // ** FromFB
 
-  static member FromFB(fb: StringBoxFB) : Either<IrisError,StringBoxD> =
+  static member FromFB(fb: StringPinFB) : Either<IrisError,StringPinD> =
     either {
       let mask = if isNull fb.FileMask then None else Some fb.FileMask
-      let! tags = IOBox.ParseTagsFB fb
-      let! slices = IOBox.ParseSlicesFB fb
+      let! tags = Pin.ParseTagsFB fb
+      let! slices = Pin.ParseSlicesFB fb
       let! tipe = StringType.FromFB fb.StringType
 
       return { Id         = Id fb.Id
@@ -2601,10 +2601,10 @@ and StringBoxD =
 
   // ** FromStrings
 
-  static member FromStrings(bytes: Binary.Buffer) : Either<IrisError,StringBoxD> =
+  static member FromStrings(bytes: Binary.Buffer) : Either<IrisError,StringPinD> =
     Binary.createBuffer bytes
-    |> StringBoxFB.GetRootAsStringBoxFB
-    |> StringBoxD.FromFB
+    |> StringPinFB.GetRootAsStringPinFB
+    |> StringPinD.FromFB
 
 // * StringSliceD
 
@@ -2684,7 +2684,7 @@ and StringSliceD =
 
 #endif
 
-// ** CompoundBoxD
+// ** CompoundPinD
 
 //   ____                                            _ ____
 //  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| | __ )  _____  __
@@ -2693,7 +2693,7 @@ and StringSliceD =
 //  \____\___/|_| |_| |_| .__/ \___/ \__,_|_| |_|\__,_|____/ \___/_/\_\
 //                      |_|
 
-and CompoundBoxD =
+and CompoundPinD =
   { Id         : Id
   ; Name       : string
   ; Patch      : Id
@@ -2715,22 +2715,22 @@ and CompoundBoxD =
     let patch = string self.Patch |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
-    let tags = CompoundBoxFB.CreateTagsVector(builder, tagoffsets)
-    let slices = CompoundBoxFB.CreateSlicesVector(builder, sliceoffsets)
-    CompoundBoxFB.StartCompoundBoxFB(builder)
-    CompoundBoxFB.AddId(builder, id)
-    CompoundBoxFB.AddName(builder, name)
-    CompoundBoxFB.AddPatch(builder, patch)
-    CompoundBoxFB.AddTags(builder, tags)
-    CompoundBoxFB.AddSlices(builder, slices)
-    CompoundBoxFB.EndCompoundBoxFB(builder)
+    let tags = CompoundPinFB.CreateTagsVector(builder, tagoffsets)
+    let slices = CompoundPinFB.CreateSlicesVector(builder, sliceoffsets)
+    CompoundPinFB.StartCompoundPinFB(builder)
+    CompoundPinFB.AddId(builder, id)
+    CompoundPinFB.AddName(builder, name)
+    CompoundPinFB.AddPatch(builder, patch)
+    CompoundPinFB.AddTags(builder, tags)
+    CompoundPinFB.AddSlices(builder, slices)
+    CompoundPinFB.EndCompoundPinFB(builder)
 
   // ** FromFB
 
-  static member FromFB(fb: CompoundBoxFB) : Either<IrisError,CompoundBoxD> =
+  static member FromFB(fb: CompoundPinFB) : Either<IrisError,CompoundPinD> =
     either {
-      let! tags = IOBox.ParseTagsFB fb
-      let! slices = IOBox.ParseSlicesFB fb
+      let! tags = Pin.ParseTagsFB fb
+      let! slices = Pin.ParseSlicesFB fb
 
       return { Id     = Id fb.Id
                Name   = fb.Name
@@ -2745,10 +2745,10 @@ and CompoundBoxD =
 
   // ** FromCompounds
 
-  static member FromCompounds(bytes: Binary.Buffer) : Either<IrisError,CompoundBoxD> =
+  static member FromCompounds(bytes: Binary.Buffer) : Either<IrisError,CompoundPinD> =
     Binary.createBuffer bytes
-    |> CompoundBoxFB.GetRootAsCompoundBoxFB
-    |> CompoundBoxD.FromFB
+    |> CompoundPinFB.GetRootAsCompoundPinFB
+    |> CompoundPinD.FromFB
 
 // * CompoundSliceD
 
@@ -2761,11 +2761,11 @@ and CompoundBoxD =
 
 and CompoundSliceD =
   { Index      : Index
-  ; Value      : IOBox array }
+  ; Value      : Pin array }
 
   // ** Create
 
-  static member Create (idx: Index) (value: IOBox array) =
+  static member Create (idx: Index) (value: Pin array) =
     { Index = idx
       Value = value }
 
@@ -2779,38 +2779,38 @@ and CompoundSliceD =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let ioboxoffsets = Array.map (Binary.toOffset builder) self.Value
-    let ioboxes = CompoundSliceFB.CreateValueVector(builder, ioboxoffsets)
+    let pinoffsets = Array.map (Binary.toOffset builder) self.Value
+    let pins = CompoundSliceFB.CreateValueVector(builder, pinoffsets)
     CompoundSliceFB.StartCompoundSliceFB(builder)
     CompoundSliceFB.AddIndex(builder, self.Index)
-    CompoundSliceFB.AddValue(builder, ioboxes)
+    CompoundSliceFB.AddValue(builder, pins)
     CompoundSliceFB.EndCompoundSliceFB(builder)
 
   // ** FromFB
 
   static member FromFB(fb: CompoundSliceFB) : Either<IrisError,CompoundSliceD> =
     either {
-      let! ioboxes =
+      let! pins =
         let arr = Array.zeroCreate fb.ValueLength
         Array.fold
-          (fun (m: Either<IrisError,int * IOBox array>) _ -> either {
+          (fun (m: Either<IrisError,int * Pin array>) _ -> either {
               let! (i, arr) = m
 
 #if FABLE_COMPILER
-              let! iobox = i |> fb.Value |> IOBox.FromFB
+              let! pin = i |> fb.Value |> Pin.FromFB
   #else
-              let! iobox =
+              let! pin =
                 let nullable = fb.Value(i)
                 if nullable.HasValue then
                   nullable.Value
-                  |> IOBox.FromFB
+                  |> Pin.FromFB
                 else
-                  "Could not parse empty IOBoxFB"
+                  "Could not parse empty PinFB"
                   |> ParseError
                   |> Either.fail
 #endif
 
-              arr.[i] <- iobox
+              arr.[i] <- pin
               return (i + 1, arr)
             })
           (Right (0, arr))
@@ -2818,7 +2818,7 @@ and CompoundSliceD =
         |> Either.map snd
 
       return { Index = fb.Index
-               Value = ioboxes }
+               Value = pins }
     }
 
   // ** ToCompounds
@@ -3296,8 +3296,8 @@ and Slice =
         SliceYaml.ColorSlice(slice.Index, Yaml.toYaml slice.Value)
 
       | CompoundSlice slice ->
-        let ioboxes = Array.map Yaml.toYaml slice.Value
-        SliceYaml.CompoundSlice(self.Index, ioboxes)
+        let pins = Array.map Yaml.toYaml slice.Value
+        SliceYaml.CompoundSlice(self.Index, pins)
 
     serializer.Serialize yaml
 
@@ -3509,48 +3509,5 @@ and Slices =
 
   // ** CreateCompound
 
-  member __.CreateCompound (idx: Index) (value: IOBox array) =
+  member __.CreateCompound (idx: Index) (value: Pin array) =
     CompoundSlice { Index = idx; Value = value }
-
-// * PinType
-
-//  ____  _     _____
-// |  _ \(_)_ _|_   _|   _ _ __   ___
-// | |_) | | '_ \| || | | | '_ \ / _ \
-// |  __/| | | | | || |_| | |_) |  __/
-// |_|   |_|_| |_|_| \__, | .__/ \___| 4 IOBox Plugins
-//                   |___/|_|
-
-#if FABLE_COMPILER
-
-[<StringEnum>]
-type PinType =
-  | [<CompiledName("ValuePin")>]    ValuePin
-  | [<CompiledName("StringPin")>]   StringPin
-  | [<CompiledName("ColorPin")>]    ColorPin
-  | [<CompiledName("EnumPin")>]     EnumPin
-  | [<CompiledName("NodePin")>]     NodePin
-  | [<CompiledName("BytePin")>]     BytePin
-  | [<CompiledName("CompoundPin")>] CompoundPin
-
-
-// * IOBox Utils Module
-
-//  _   _ _   _ _
-// | | | | |_(_) |___
-// | | | | __| | / __|
-// | |_| | |_| | \__ \
-//  \___/ \__|_|_|___/
-
-[<AutoOpen>]
-module IOBoxUtils =
-
-  let getType = function
-    | IntBox _ | FloatBox  _ | DoubleBox _ | BoolBox _ -> ValuePin
-    | StringBox                                      _ -> StringPin
-    | ByteBox                                        _ -> BytePin
-    | EnumBox                                        _ -> EnumPin
-    | ColorBox                                       _ -> ColorPin
-    | Compound                                       _ -> CompoundPin
-
-#endif

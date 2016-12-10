@@ -10,7 +10,6 @@ module SerializationTests =
   open Iris.Core
   open Iris.Web.Core
   open Iris.Web.Tests
-  open Iris.Web.Views
 
   let rand = new System.Random()
 
@@ -25,33 +24,33 @@ module SerializationTests =
     [| for n in 0 .. rand.Next(2,8) do
         yield Id.Create() |> string |]
 
-  let ioboxes _ =
-    [| IOBox.Bang       (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 9u; Value = true            }|])
-    ; IOBox.Toggle     (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 8u; Value = true            }|])
-    ; IOBox.String     (Id.Create(), "string",    Id.Create(), mktags (), [|{ Index = 3u; Value = "one"           }|])
-    ; IOBox.MultiLine  (Id.Create(), "multiline", Id.Create(), mktags (), [|{ Index = 2u; Value = "two"           }|])
-    ; IOBox.FileName   (Id.Create(), "filename",  Id.Create(), mktags (), "haha", [|{ Index = 1u; Value = "three" }|])
-    ; IOBox.Directory  (Id.Create(), "directory", Id.Create(), mktags (), "hmmm", [|{ Index = 6u; Value = "four"  }|])
-    ; IOBox.Url        (Id.Create(), "url",       Id.Create(), mktags (), [|{ Index = 4u; Value = "five"          }|])
-    ; IOBox.IP         (Id.Create(), "ip",        Id.Create(), mktags (), [|{ Index = 5u; Value = "six"           }|])
-    ; IOBox.Float      (Id.Create(), "float",     Id.Create(), mktags (), [|{ Index = 0u; Value = 3.0             }|])
-    ; IOBox.Double     (Id.Create(), "double",    Id.Create(), mktags (), [|{ Index = 0u; Value = double 3.0      }|])
-    ; IOBox.Bytes      (Id.Create(), "bytes",     Id.Create(), mktags (), [|{ Index = 0u; Value = mkBytes ()      }|])
-    ; IOBox.Color      (Id.Create(), "rgba",      Id.Create(), mktags (), [|{ Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
-    ; IOBox.Color      (Id.Create(), "hsla",      Id.Create(), mktags (), [|{ Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
-    ; IOBox.Enum       (Id.Create(), "enum",      Id.Create(), mktags (), [|{ Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|] , [|{ Index = 0u; Value = { Key = "one"; Value = "two" }}|])
+  let pins _ =
+    [| Pin.Bang      (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 9u; Value = true            }|])
+    ; Pin.Toggle    (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 8u; Value = true            }|])
+    ; Pin.String    (Id.Create(), "string",    Id.Create(), mktags (), [|{ Index = 3u; Value = "one"           }|])
+    ; Pin.MultiLine (Id.Create(), "multiline", Id.Create(), mktags (), [|{ Index = 2u; Value = "two"           }|])
+    ; Pin.FileName  (Id.Create(), "filename",  Id.Create(), mktags (), "haha", [|{ Index = 1u; Value = "three" }|])
+    ; Pin.Directory (Id.Create(), "directory", Id.Create(), mktags (), "hmmm", [|{ Index = 6u; Value = "four"  }|])
+    ; Pin.Url       (Id.Create(), "url",       Id.Create(), mktags (), [|{ Index = 4u; Value = "five"          }|])
+    ; Pin.IP        (Id.Create(), "ip",        Id.Create(), mktags (), [|{ Index = 5u; Value = "six"           }|])
+    ; Pin.Float     (Id.Create(), "float",     Id.Create(), mktags (), [|{ Index = 0u; Value = 3.0             }|])
+    ; Pin.Double    (Id.Create(), "double",    Id.Create(), mktags (), [|{ Index = 0u; Value = double 3.0      }|])
+    ; Pin.Bytes     (Id.Create(), "bytes",     Id.Create(), mktags (), [|{ Index = 0u; Value = mkBytes ()      }|])
+    ; Pin.Color     (Id.Create(), "rgba",      Id.Create(), mktags (), [|{ Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
+    ; Pin.Color     (Id.Create(), "hsla",      Id.Create(), mktags (), [|{ Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
+    ; Pin.Enum      (Id.Create(), "enum",      Id.Create(), mktags (), [|{ Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|] , [|{ Index = 0u; Value = { Key = "one"; Value = "two" }}|])
     |]
 
-  let mkIOBox _ =
+  let mkPin _ =
     let slice : StringSliceD = { Index = 0u; Value = "hello" }
-    IOBox.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
+    Pin.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
 
   let mkCue _ : Cue =
-    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes () }
+    { Id = Id.Create(); Name = "Cue 1"; Pins = pins () }
 
   let mkPatch _ : Patch =
-    let ioboxes = ioboxes () |> Array.map toPair |> Map.ofArray
-    { Id = Id.Create(); Name = "Patch 3"; IOBoxes = ioboxes }
+    let pins = pins () |> Array.map toPair |> Map.ofArray
+    { Id = Id.Create(); Name = "Patch 3"; Pins = pins }
 
   let mkCueList _ : CueList =
     { Id = Id.Create(); Name = "Patch 3"; Cues = [| mkCue (); mkCue () |] }
@@ -140,21 +139,21 @@ module SerializationTests =
       ; EnumSlice     { Index = 0u; Value = { Key = "one"; Value = "two" }}
       ; ColorSlice    { Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }
       ; ColorSlice    { Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }
-      ; CompoundSlice { Index = 0u; Value = ioboxes () } |]
+      ; CompoundSlice { Index = 0u; Value = pins () } |]
       |> Array.iter
         (fun slice ->
           let reslice = slice |> Binary.encode |> Binary.decode |> Either.get
           equals slice reslice)
       finish()
 
-    test "Validate IOBox Serialization" <| fun finish ->
-      Array.iter check (ioboxes ())
+    test "Validate Pin Serialization" <| fun finish ->
+      Array.iter check (pins ())
 
-      let compound = IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = ioboxes () }|])
+      let compound = Pin.Compound(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = pins () }|])
       check compound
 
       // nested compound :P
-      let nested = IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = [| compound |] }|])
+      let nested = Pin.Compound(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = [| compound |] }|])
       check nested
 
       finish()
@@ -181,9 +180,9 @@ module SerializationTests =
       ; AddPatch      <| mkPatch ()
       ; UpdatePatch   <| mkPatch ()
       ; RemovePatch   <| mkPatch ()
-      ; AddIOBox      <| mkIOBox ()
-      ; UpdateIOBox   <| mkIOBox ()
-      ; RemoveIOBox   <| mkIOBox ()
+      ; AddPin      <| mkPin ()
+      ; UpdatePin   <| mkPin ()
+      ; RemovePin   <| mkPin ()
       ; AddMember     <| Member.create (Id.Create())
       ; UpdateMember  <| Member.create (Id.Create())
       ; RemoveMember  <| Member.create (Id.Create())
