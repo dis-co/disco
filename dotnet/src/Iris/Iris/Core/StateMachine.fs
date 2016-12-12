@@ -111,36 +111,6 @@ type AppCommand =
     | Reset       -> ActionTypeFB.ResetFB
     | SaveProject -> ActionTypeFB.SaveProjectFB
 
-#if !FABLE_COMPILER
-
-// * State Yaml
-
-//  ____  _        _     __   __              _
-// / ___|| |_ __ _| |_ __\ \ / /_ _ _ __ ___ | |
-// \___ \| __/ _` | __/ _ \ V / _` | '_ ` _ \| |
-//  ___) | || (_| | ||  __/| | (_| | | | | | | |
-// |____/ \__\__,_|\__\___||_|\__,_|_| |_| |_|_|
-
-type StateYaml(project, patches, cues, cuelists, sessions, users) as self =
-  [<DefaultValue>] val mutable Project  : ProjectYaml
-  [<DefaultValue>] val mutable Patches  : PatchYaml array
-  [<DefaultValue>] val mutable Cues     : CueYaml array
-  [<DefaultValue>] val mutable CueLists : CueListYaml array
-  [<DefaultValue>] val mutable Sessions : SessionYaml array
-  [<DefaultValue>] val mutable Users    : UserYaml array
-
-  new () = new StateYaml(null, null, null, null, null, null)
-
-  do
-    self.Project  <- project
-    self.Patches  <- patches
-    self.Cues     <- cues
-    self.CueLists <- cuelists
-    self.Sessions <- sessions
-    self.Users    <- users
-
-#endif
-
 // * State Type
 
 //   ____  _        _
@@ -426,10 +396,10 @@ type State =
       let! project = IrisProject.FromFB fb.Project
 #else
       let! project =
-        let projectish = fb.Project.HasValue
-        if projectish then
-          let projish = fb.Project.Value
-          IrisProject.FromFB projish
+        let pfb = fb.Project
+        if pfb.HasValue then
+          let projectish = pfb.Value
+          IrisProject.FromFB projectish
         else
           "Could not parse empty project payload"
           |> Error.asParseError "State.FromFB"
@@ -908,163 +878,6 @@ and Store(state : State)=
 and Listener = Store -> StateMachine -> unit
 
 
-// * StateMachine Yaml
-
-#if !FABLE_COMPILER
-
-// __   __              _    ___  _     _           _
-// \ \ / /_ _ _ __ ___ | |  / _ \| |__ (_) ___  ___| |_
-//  \ V / _` | '_ ` _ \| | | | | | '_ \| |/ _ \/ __| __|
-//   | | (_| | | | | | | | | |_| | |_) | |  __/ (__| |_
-//   |_|\__,_|_| |_| |_|_|  \___/|_.__// |\___|\___|\__|
-//                                   |__/
-
-/// ## StateMachineYaml
-///
-/// Intermediate POCO for serializing a `StateMachine` value to Yaml.
-///
-/// ### Signature:
-/// - cmd: string - stringified `StateMachine` constructor
-/// - payload: obj - payload to save (obj for allowing for different payload types)
-///
-/// Returns: StateMachineYaml
-and StateMachineYaml(cmd: string, payload: obj) as self =
-  [<DefaultValue>] val mutable Action : string
-  [<DefaultValue>] val mutable Payload : obj
-
-  new () = new StateMachineYaml(null, null)
-
-  do
-    self.Action  <- cmd
-    self.Payload <- payload
-
-  // ** AddMember
-
-  static member AddMember (mem: RaftMember) =
-    new StateMachineYaml("AddMember", Yaml.toYaml mem)
-
-  // ** UpdateMember
-
-  static member UpdateMember (mem: RaftMember) =
-    new StateMachineYaml("UpdateMember", Yaml.toYaml mem)
-
-  // ** RemoveMember
-
-  static member RemoveMember (mem: RaftMember) =
-    new StateMachineYaml("RemoveMember", Yaml.toYaml mem)
-
-  // ** AddPatch
-
-  static member AddPatch (patch: Patch) =
-    new StateMachineYaml("AddPatch", Yaml.toYaml patch)
-
-  // ** UpdatePatch
-
-  static member UpdatePatch (patch: Patch) =
-    new StateMachineYaml("UpdatePatch", Yaml.toYaml patch)
-
-  // ** RemovePatch
-
-  static member RemovePatch (patch: Patch) =
-    new StateMachineYaml("RemovePatch", Yaml.toYaml patch)
-
-  // ** AddPin
-
-  static member AddPin (pin: Pin) =
-    new StateMachineYaml("AddPin", Yaml.toYaml pin)
-
-  // ** UpdatePin
-
-  static member UpdatePin (pin: Pin) =
-    new StateMachineYaml("UpdatePin", Yaml.toYaml pin)
-
-  // ** RemovePin
-
-  static member RemovePin (pin: Pin) =
-    new StateMachineYaml("RemovePin", Yaml.toYaml pin)
-
-  // ** AddCue
-
-  static member AddCue (cue: Cue) =
-    new StateMachineYaml("AddCue", Yaml.toYaml cue)
-
-  // ** UpdateCue
-
-  static member UpdateCue (cue: Cue) =
-    new StateMachineYaml("UpdateCue", Yaml.toYaml cue)
-
-  // ** RemoveCue
-
-  static member RemoveCue (cue: Cue) =
-    new StateMachineYaml("RemoveCue", Yaml.toYaml cue)
-
-  // ** AddCueList
-
-  static member AddCueList (cuelist: CueList) =
-    new StateMachineYaml("AddCueList", Yaml.toYaml cuelist)
-
-  // ** UpdateCueList
-
-  static member UpdateCueList (cuelist: CueList) =
-    new StateMachineYaml("UpdateCueList", Yaml.toYaml cuelist)
-
-  // ** RemoveCueList
-
-  static member RemoveCueList (cuelist: CueList) =
-    new StateMachineYaml("RemoveCueList", Yaml.toYaml cuelist)
-
-  // ** AddUser
-
-  static member AddUser (user: User) =
-    new StateMachineYaml("AddUser", Yaml.toYaml user)
-
-  // ** UpdateUser
-
-  static member UpdateUser (user: User) =
-    new StateMachineYaml("UpdateUser", Yaml.toYaml user)
-
-  // ** RemoveUser
-
-  static member RemoveUser (user: User) =
-    new StateMachineYaml("RemoveUser", Yaml.toYaml user)
-
-  // ** AddSession
-
-  static member AddSession (session: Session) =
-    new StateMachineYaml("AddSession", Yaml.toYaml session)
-
-  // ** UpdateSession
-
-  static member UpdateSession (session: Session) =
-    new StateMachineYaml("UpdateSession", Yaml.toYaml session)
-
-  // ** RemoveSession
-
-  static member RemoveSession (session: Session) =
-    new StateMachineYaml("RemoveSession", Yaml.toYaml session)
-
-  // ** Command
-
-  static member Command (cmd: AppCommand) =
-    new StateMachineYaml("Command", string cmd)
-
-  // ** LogMsg
-
-  static member LogMsg (log: LogEvent) =
-    new StateMachineYaml("LogMsg", Yaml.toYaml log)
-
-  // ** LogMsg
-
-  static member SetLogLevel (level: LogLevel) =
-    new StateMachineYaml("SetLogLevel", string level)
-
-  // ** DataSnapshot
-
-  static member DataSnapshot (hash: Hash) =
-    new StateMachineYaml("DataSnapshot", hash)
-
-#endif
-
 // * StateMachine
 
 //  ____  _        _       __  __            _     _
@@ -1112,7 +925,7 @@ and StateMachine =
 
   | Command       of AppCommand
 
-  | DataSnapshot  of Hash
+  | DataSnapshot  of State
 
   | SetLogLevel   of LogLevel
 
@@ -1162,180 +975,6 @@ and StateMachine =
     | DataSnapshot state    -> sprintf "DataSnapshot: %A" state
     | SetLogLevel level     -> sprintf "SetLogLevel: %A" level
     | LogMsg log            -> sprintf "LogMsg: [%A] %s" log.LogLevel log.Message
-
-  // ** ToYamlObject
-
-#if !FABLE_COMPILER
-
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
-
-  member self.ToYamlObject() : StateMachineYaml =
-    match self with
-    | AddMember    mem       -> StateMachineYaml.AddMember(mem)
-    | UpdateMember mem       -> StateMachineYaml.UpdateMember(mem)
-    | RemoveMember mem       -> StateMachineYaml.RemoveMember(mem)
-
-    // PATCH
-    | AddPatch    patch     -> StateMachineYaml.AddPatch(patch)
-    | UpdatePatch patch     -> StateMachineYaml.UpdatePatch(patch)
-    | RemovePatch patch     -> StateMachineYaml.RemovePatch(patch)
-
-    // PIN
-    | AddPin    pin     -> StateMachineYaml.AddPin(pin)
-    | UpdatePin pin     -> StateMachineYaml.UpdatePin(pin)
-    | RemovePin pin     -> StateMachineYaml.RemovePin(pin)
-
-    // CUE
-    | AddCue    cue         -> StateMachineYaml.AddCue(cue)
-    | UpdateCue cue         -> StateMachineYaml.UpdateCue(cue)
-    | RemoveCue cue         -> StateMachineYaml.RemoveCue(cue)
-
-    // CUELIST
-    | AddCueList    cuelist -> StateMachineYaml.AddCueList(cuelist)
-    | UpdateCueList cuelist -> StateMachineYaml.UpdateCueList(cuelist)
-    | RemoveCueList cuelist -> StateMachineYaml.RemoveCueList(cuelist)
-
-    // User
-    | AddUser    user       -> StateMachineYaml.AddUser(user)
-    | UpdateUser user       -> StateMachineYaml.UpdateUser(user)
-    | RemoveUser user       -> StateMachineYaml.RemoveUser(user)
-
-    // Session
-    | AddSession    session -> StateMachineYaml.AddSession(session)
-    | UpdateSession session -> StateMachineYaml.UpdateSession(session)
-    | RemoveSession session -> StateMachineYaml.RemoveSession(session)
-
-    | Command         ev    -> StateMachineYaml.Command(ev)
-    | DataSnapshot state    -> StateMachineYaml.DataSnapshot(state)
-
-    | SetLogLevel level     -> StateMachineYaml.SetLogLevel(level)
-    | LogMsg log            -> StateMachineYaml.LogMsg(log)
-
-  // ** ToYaml
-
-  member self.ToYaml (serializer: Serializer) =
-    self |> Yaml.toYaml |> serializer.Serialize
-
-  // ** FromYamlObject
-
-  static member FromYamlObject (yaml: StateMachineYaml) =
-    match yaml.Action with
-    | "AddMember" -> either {
-        let! mem = yaml.Payload :?> RaftMemberYaml |> Yaml.fromYaml
-        return AddMember(mem)
-      }
-    | "UpdateMember" -> either {
-        let! mem = yaml.Payload :?> RaftMemberYaml |> Yaml.fromYaml
-        return UpdateMember(mem)
-      }
-    | "RemoveMember" -> either {
-        let! mem = yaml.Payload :?> RaftMemberYaml |> Yaml.fromYaml
-        return RemoveMember(mem)
-      }
-    | "AddPatch" -> either {
-        let! patch = yaml.Payload :?> PatchYaml |> Yaml.fromYaml
-        return AddPatch(patch)
-      }
-    | "UpdatePatch" -> either {
-        let! patch = yaml.Payload :?> PatchYaml |> Yaml.fromYaml
-        return UpdatePatch(patch)
-      }
-    | "RemovePatch" -> either {
-        let! patch = yaml.Payload :?> PatchYaml |> Yaml.fromYaml
-        return RemovePatch(patch)
-      }
-    | "AddPin" -> either {
-        let! pin = yaml.Payload :?> PinYaml |> Yaml.fromYaml
-        return AddPin(pin)
-      }
-    | "UpdatePin" -> either {
-        let! pin = yaml.Payload :?> PinYaml |> Yaml.fromYaml
-        return UpdatePin(pin)
-      }
-    | "RemovePin" -> either {
-        let! pin = yaml.Payload :?> PinYaml |> Yaml.fromYaml
-        return RemovePin(pin)
-      }
-    | "AddCue" -> either {
-        let! cue = yaml.Payload :?> CueYaml |> Yaml.fromYaml
-        return AddCue(cue)
-      }
-    | "UpdateCue" -> either {
-        let! cue = yaml.Payload :?> CueYaml |> Yaml.fromYaml
-        return UpdateCue(cue)
-      }
-    | "RemoveCue" -> either {
-        let! cue = yaml.Payload :?> CueYaml |> Yaml.fromYaml
-        return RemoveCue(cue)
-      }
-    | "AddCueList" -> either {
-        let! cuelist = yaml.Payload :?> CueListYaml |> Yaml.fromYaml
-        return AddCueList(cuelist)
-      }
-    | "UpdateCueList" -> either {
-        let! cuelist = yaml.Payload :?> CueListYaml |> Yaml.fromYaml
-        return UpdateCueList(cuelist)
-      }
-    | "RemoveCueList" -> either {
-        let! cuelist = yaml.Payload :?> CueListYaml |> Yaml.fromYaml
-        return RemoveCueList(cuelist)
-      }
-    | "AddUser" -> either {
-        let! user = yaml.Payload :?> UserYaml |> Yaml.fromYaml
-        return AddUser(user)
-      }
-    | "UpdateUser" -> either {
-        let! user = yaml.Payload :?> UserYaml |> Yaml.fromYaml
-        return UpdateUser(user)
-      }
-    | "RemoveUser" -> either {
-        let! user = yaml.Payload :?> UserYaml |> Yaml.fromYaml
-        return RemoveUser(user)
-      }
-    | "AddSession" -> either {
-        let! session = yaml.Payload :?> SessionYaml |> Yaml.fromYaml
-        return AddSession(session)
-      }
-    | "UpdateSession" -> either {
-        let! session = yaml.Payload :?> SessionYaml |> Yaml.fromYaml
-        return UpdateSession(session)
-      }
-    | "RemoveSession" -> either {
-        let! session = yaml.Payload :?> SessionYaml |> Yaml.fromYaml
-        return RemoveSession(session)
-      }
-    | "Command" -> either {
-        let! cmd = yaml.Payload :?> string |> AppCommand.TryParse
-        return Command(cmd)
-      }
-    | "DataSnapshot" -> either {
-        return DataSnapshot(yaml.Payload :?> string)
-      }
-    | "SetLogLevel" -> either {
-        let! level = yaml.Payload :?> string |> LogLevel.TryParse
-        return SetLogLevel level
-      }
-    | "LogMsg" -> either {
-        let! log = yaml.Payload :?> LogEventYaml |> Yaml.fromYaml
-        return LogMsg log
-      }
-    | x ->
-      sprintf "Could not parse %s as StateMachine command" x
-      |> Error.asParseError "StateMachine.FromYamlObject"
-      |> Either.fail
-
-  // ** FromYaml
-
-  static member FromYaml (str: string) : Either<IrisError,StateMachine> =
-    let serializer = new Serializer()
-    serializer.Deserialize<StateMachineYaml>(str)
-    |> Yaml.fromYaml
-
-#endif
 
   // ** FromFB (JavaScript)
 
@@ -1701,10 +1340,11 @@ and StateMachine =
 
     | PayloadFB.StateFB ->
       either {
-        let hashish = fb.Payload<StringFB>()
-        if hashish.HasValue then
-          let hash = hashish.Value
-          return (DataSnapshot hash)
+        let stateish = fb.Payload<StateFB>()
+        if stateish.HasValue then
+          let state = stateish.Value
+          let! parsed = State.FromFB state
+          return (DataSnapshot parsed)
         else
           return!
             "Could not parse empty state payload"
@@ -1994,14 +1634,11 @@ and StateMachine =
       ApiActionFB.AddAction(builder, cmd)
       ApiActionFB.EndApiActionFB(builder)
 
-    | DataSnapshot hash ->
-      let str = builder.CreateString hash
-      StringFB.StartStringFB(builder)
-      StringFB.AddValue(builder,str)
-      let offset = StringFB.EndStringFB(builder)
+    | DataSnapshot state ->
+      let offset = state.ToOffset(builder)
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.DataSnapshotFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.StringFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.StateFB)
 #if FABLE_COMPILER
       ApiActionFB.AddPayload(builder, offset)
 #else

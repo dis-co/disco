@@ -196,24 +196,6 @@ module Iris =
         | Idle -> ()
         | Loaded data -> dispose data
 
-  let private getInitState() =
-  #if FRONTEND_DEV
-    let users = [
-      { Id        = Id.Create()
-        UserName  = "alfonso"
-        FirstName = "Alfonso"
-        LastName  = "Garc�a-Caro"
-        Email     = "alfonso.garcia-caro@nsynk.de"
-        Password  = "1234"
-        Salt      = "1234"
-        Joined    = DateTime.Now
-        Created   = DateTime.Now }
-    ]
-    { State.Empty with Users = users |> Seq.map (fun x -> x.Id, x) |> Map }
-  #else
-    State.Empty
-  #endif
-
   let private processMessage (state: IrisState) (id: Id) (cmd: StateMachine) =
   #if FRONTEND_DEV
     match state, cmd with
@@ -710,6 +692,14 @@ module Iris =
 
       let! project = Project.load path machine
 
+      let state : State =
+        { Project = project
+          Patches = Map.empty
+          Cues = Map.empty
+          CueLists = Map.empty
+          Sessions = Map.empty
+          Users = Map.empty }
+
       // FIXME: load the actual state from disk
       let! mem = Config.selfMember project.Config
 
@@ -725,9 +715,9 @@ module Iris =
       let! gitserver  = GitServer.create mem path
 
       return
-        Loaded { MemberId       = mem.Id
+        Loaded { MemberId     = mem.Id
                  Status       = ServiceStatus.Starting
-                 Store        = new Store(getInitState())
+                 Store        = new Store(state)
                  Project      = project
                  Machine      = machine
                  GitServer    = gitserver

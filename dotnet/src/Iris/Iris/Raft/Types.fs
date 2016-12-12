@@ -465,12 +465,10 @@ type IRaftCallbacks =
 // * RaftValueYaml
 
 and RaftValueYaml() =
-  [<DefaultValue>] val mutable Member            : string
+  [<DefaultValue>] val mutable Member          : string
   [<DefaultValue>] val mutable Term            : Term
   [<DefaultValue>] val mutable Leader          : string
-  [<DefaultValue>] val mutable Peers           : RaftMemberYaml array
   [<DefaultValue>] val mutable VotedFor        : string
-  [<DefaultValue>] val mutable Log             : RaftLogYaml
   [<DefaultValue>] val mutable ElectionTimeout : Long
   [<DefaultValue>] val mutable RequestTimeout  : Long
   [<DefaultValue>] val mutable MaxLogDepth     : Long
@@ -584,16 +582,11 @@ ConfigChangeEntry = %s
       self.CurrentLeader
     |> ignore
 
-    yaml.Peers <- self.Peers
-                 |> Map.toArray
-                 |> Array.map (snd >> Yaml.toYaml)
-
     Option.map
       (fun voted -> yaml.VotedFor <- string voted)
       self.VotedFor
     |> ignore
 
-    yaml.Log <- Yaml.toYaml self.Log
     yaml.ElectionTimeout <- self.ElectionTimeout
     yaml.RequestTimeout <- self.RequestTimeout
     yaml.MaxLogDepth <- self.MaxLogDepth
@@ -614,42 +607,22 @@ ConfigChangeEntry = %s
         else
           Some (Id yaml.VotedFor)
 
-      let! mems =
-        Array.fold
-          (fun (m: Either<IrisError, Map<Id, RaftMember>>) yml -> either {
-            let! mems = m
-            let! (mem : RaftMember) = Yaml.fromYaml yml
-            return (Map.add mem.Id mem mems)
-          })
-          (Right Map.empty)
-          yaml.Peers
-
-      let! log = Yaml.fromYaml yaml.Log
-      let mem = Map.tryFind (Id yaml.Member) mems
-
-      match mem with
-      | Some mem ->
-        return { Member              = mem
-                 State             = Follower
-                 CurrentTerm       = yaml.Term
-                 CurrentLeader     = leader
-                 Peers             = mems
-                 OldPeers          = None
-                 NumMembers          = uint32 yaml.Peers.Length
-                 VotedFor          = votedfor
-                 Log               = log
-                 CommitIndex       = 0u
-                 LastAppliedIdx    = 0u
-                 TimeoutElapsed    = 0u
-                 ElectionTimeout   = yaml.ElectionTimeout
-                 RequestTimeout    = yaml.RequestTimeout
-                 MaxLogDepth       = yaml.MaxLogDepth
-                 ConfigChangeEntry = None }
-      | _ ->
-        return!
-          "Could not current mem in config"
-          |> Error.asParseError "RaftValue.FromYamlObject"
-          |> Either.fail
+      return { Member            = Member.create (Id yaml.Member)
+               State             = Follower
+               CurrentTerm       = yaml.Term
+               CurrentLeader     = leader
+               Peers             = Map.empty
+               OldPeers          = None
+               NumMembers        = 0u
+               VotedFor          = votedfor
+               Log               = Log.empty
+               CommitIndex       = 0u
+               LastAppliedIdx    = 0u
+               TimeoutElapsed    = 0u
+               ElectionTimeout   = yaml.ElectionTimeout
+               RequestTimeout    = yaml.RequestTimeout
+               MaxLogDepth       = yaml.MaxLogDepth
+               ConfigChangeEntry = None }
     }
 
   // *** FromYaml
