@@ -72,6 +72,9 @@ type IrisProject =
     ProjectFB.AddConfig(builder, config)
     ProjectFB.EndProjectFB(builder)
 
+  static member FromFB(fb: ProjectFB) =
+    failwith "Project.FromFB"
+
 // * Project module
 
 [<RequireQualifiedAccess>]

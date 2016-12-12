@@ -150,19 +150,19 @@ module Iris =
   ///
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Git       of GitEvent
-    | Socket    of SocketEvent
-    | Raft      of RaftEvent
-    | Log       of LogEvent
-    | Load      of ReplyChan * FilePath
-    | SetConfig of ReplyChan * IrisConfig
+    | Git         of GitEvent
+    | Socket      of SocketEvent
+    | Raft        of RaftEvent
+    | Log         of LogEvent
+    | Load        of ReplyChan * FilePath
+    | SetConfig   of ReplyChan * IrisConfig
     | AddMember   of ReplyChan * RaftMember
     | RmMember    of ReplyChan * Id
-    | Join      of ReplyChan * IpAddress  * uint16
-    | Leave     of ReplyChan
-    | Config    of ReplyChan
-    | Unload    of ReplyChan
-    | State     of ReplyChan
+    | Join        of ReplyChan * IpAddress  * uint16
+    | Leave       of ReplyChan
+    | Config      of ReplyChan
+    | Unload      of ReplyChan
+    | State       of ReplyChan
     | ForceElection
     | Periodic
 

@@ -422,7 +422,19 @@ type State =
     either {
       // PROJECT
 
-      let! project = Project.FromFB fb.Project
+#if FABLE_COMPILER
+      let! project = IrisProject.FromFB fb.Project
+#else
+      let! project =
+        let projectish = fb.Project.HasValue
+        if projectish then
+          let projish = fb.Project.Value
+          IrisProject.FromFB projish
+        else
+          "Could not parse empty project payload"
+          |> Error.asParseError "State.FromFB"
+          |> Either.fail
+#endif
 
       // PATCHES
 
@@ -1048,8 +1060,8 @@ and StateMachineYaml(cmd: string, payload: obj) as self =
 
   // ** DataSnapshot
 
-  static member DataSnapshot (state: State) =
-    new StateMachineYaml("DataSnapshot", Yaml.toYaml state)
+  static member DataSnapshot (hash: Hash) =
+    new StateMachineYaml("DataSnapshot", hash)
 
 #endif
 
@@ -1100,7 +1112,7 @@ and StateMachine =
 
   | Command       of AppCommand
 
-  | DataSnapshot  of State
+  | DataSnapshot  of Hash
 
   | SetLogLevel   of LogLevel
 
@@ -1301,8 +1313,7 @@ and StateMachine =
         return Command(cmd)
       }
     | "DataSnapshot" -> either {
-        let! data = yaml.Payload :?> StateYaml |> Yaml.fromYaml
-        return DataSnapshot(data)
+        return DataSnapshot(yaml.Payload :?> string)
       }
     | "SetLogLevel" -> either {
         let! level = yaml.Payload :?> string |> LogLevel.TryParse
@@ -1690,11 +1701,10 @@ and StateMachine =
 
     | PayloadFB.StateFB ->
       either {
-        let stateish = fb.Payload<StateFB>()
-        if stateish.HasValue then
-          let state = stateish.Value
-          let! parsed = state |> State.FromFB
-          return (DataSnapshot parsed)
+        let hashish = fb.Payload<StringFB>()
+        if hashish.HasValue then
+          let hash = hashish.Value
+          return (DataSnapshot hash)
         else
           return!
             "Could not parse empty state payload"
@@ -1984,15 +1994,18 @@ and StateMachine =
       ApiActionFB.AddAction(builder, cmd)
       ApiActionFB.EndApiActionFB(builder)
 
-    | DataSnapshot state ->
-      let data = state.ToOffset(builder)
+    | DataSnapshot hash ->
+      let str = builder.CreateString hash
+      StringFB.StartStringFB(builder)
+      StringFB.AddValue(builder,str)
+      let offset = StringFB.EndStringFB(builder)
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.DataSnapshotFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.StateFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.StringFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, data)
+      ApiActionFB.AddPayload(builder, offset)
 #else
-      ApiActionFB.AddPayload(builder, data.Value)
+      ApiActionFB.AddPayload(builder, offset.Value)
 #endif
       ApiActionFB.EndApiActionFB(builder)
 
