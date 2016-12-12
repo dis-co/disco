@@ -29,7 +29,7 @@ module TestUtilities =
       if result <> exp then
         return!
           sprintf "Expected %A but got %A" exp result
-          |> Other
+          |> Error.asOther "expectE"
           |> Either.fail
       else
         return ()

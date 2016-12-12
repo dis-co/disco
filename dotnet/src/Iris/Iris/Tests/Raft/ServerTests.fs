@@ -294,7 +294,7 @@ module ServerTests =
         return! Raft.receiveEntry (mklog term)
       }
       |> runWithDefaults
-      |> expectError UnexpectedVotingChange
+      |> expectError (RaftError ("Raft.receiveEntry","Unexpected Voting Change"))
 
   let server_recv_entry_adds_missing_mem_on_addmem =
     testCase "recv entry adds missing mem on addmem" <| fun _ ->
@@ -424,7 +424,7 @@ module ServerTests =
         do! expectM "Votes for me should be zero" 0u Raft.numVotesForMe
 
         let! term = Raft.currentTermM ()
-        let response = { Term = term; Granted = false; Reason = Some NoError }
+        let response = { Term = term; Granted = false; Reason = Some OK }
         let! result = Raft.receiveVoteResponse mem.Id response
         do! expectM "Votes for me should be zero" 0u Raft.numVotesForMe
       }
@@ -445,7 +445,7 @@ module ServerTests =
         return! Raft.receiveVoteResponse mem.Id response
       }
       |> runWithDefaults
-      |> expectError VoteTermMismatch
+      |> expectError (RaftError("Raft.receiveVoteResponse", "Vote Term Mismatch"))
 
   let recv_requestvote_response_increase_votes_for_me =
     testCase "Recv requestvote response increase votes for me" <| fun _ ->
@@ -469,6 +469,10 @@ module ServerTests =
     testCase "recv requestvote response must be candidate to receive" <| fun _ ->
       let mem = Member.create (Id.Create())
 
+      let err =
+        "Not Candidate"
+        |> Error.asRaftError "Raft.receiveVoteResponse"
+
       raft {
         do! Raft.addMemberM mem
         do! Raft.setTermM 1u
@@ -476,11 +480,15 @@ module ServerTests =
         do! Raft.receiveVoteResponse mem.Id response
       }
       |> runWithDefaults
-      |> expectError NotCandidate
+      |> expectError err
 
   let recv_requestvote_fails_if_term_less_than_current_term =
     testCase "recv requestvote fails if term less than current term" <| fun _ ->
       let mem = Member.create (Id.Create())
+
+      let err =
+        "Vote Term Mismatch"
+        |> Error.asRaftError "Raft.receiveVoteResponse"
 
       raft {
         do! Raft.addMemberM mem
@@ -490,7 +498,7 @@ module ServerTests =
         do! expectM "Should have term 4" 4u Raft.currentTerm
       }
       |> runWithDefaults
-      |> expectError VoteTermMismatch
+      |> expectError err
 
   ////////////////////////////////////////////////////////////////////////////////////
   //  ____  _                 _     _  ____                 _ __     __    _        //
@@ -1155,6 +1163,10 @@ module ServerTests =
       let peer = Member.create (Id.Create())
       let log = LogEntry(Id.Create(),0u,0u,DataSnapshot State.Empty,None)
 
+      let err =
+        "Not Leader"
+        |> Error.asRaftError "Raft.receiveEntry"
+
       raft {
         do! Raft.addMemberM peer
         do! Raft.setStateM Follower
@@ -1162,7 +1174,7 @@ module ServerTests =
         return "never reached"
       }
       |> runWithDefaults
-      |> expectError NotLeader
+      |> expectError err
 
   let leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx =
     testCase "leader sends appendentries with NextIdx when PrevIdx gt NextIdx" <| fun _ ->
@@ -1667,6 +1679,10 @@ module ServerTests =
         ; FirstIndex = 1u
         }
 
+      let err =
+        "Not Leader"
+        |> Error.asRaftError "Raft.receiveAppendEntriesResponse"
+
       raft {
         do! Raft.addMembersM [| peer1; peer2 |]
         do! Raft.setTermM 1u
@@ -1687,7 +1703,7 @@ module ServerTests =
         do! Raft.receiveAppendEntriesResponse peer1.Id response
       }
       |> runWithRaft raft' cbs
-      |> expectError NotLeader
+      |> expectError err
 
   let leader_recv_entry_resets_election_timeout =
     testCase "leader recv entry resets election timeout" <| fun _ ->
@@ -1737,6 +1753,10 @@ module ServerTests =
         ; Entries = Log.make 2u defSM |> Some
         }
 
+      let err =
+        "Entry Invalidated"
+        |> Error.asRaftError "Raft.responseCommitted"
+
       raft {
         do! Raft.addMemberM peer
         do! Raft.setStateM Leader
@@ -1765,7 +1785,7 @@ module ServerTests =
         return! Raft.responseCommitted response
       }
       |> runWithDefaults
-      |> expectError EntryInvalidated
+      |> expectError err
 
 
   let leader_recv_entry_does_not_send_new_appendentries_to_slow_mems =

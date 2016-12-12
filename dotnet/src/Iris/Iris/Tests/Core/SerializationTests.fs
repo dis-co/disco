@@ -52,7 +52,7 @@ module SerializationTests =
       let vr : VoteResponse =
         { Term = 8u
         ; Granted = false
-        ; Reason = Some VoteTermMismatch }
+        ; Reason = Some (RaftError("test","error")) }
 
       let msg   = RequestVoteResponse(Id.Create(), vr)
       let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
@@ -217,46 +217,14 @@ module SerializationTests =
 
       let errors = [
           OK
-          BranchNotFound        "bla"
-          BranchDetailsNotFound "haha"
-          RepositoryNotFound    "haha"
-          RepositoryInitFailed  "haha"
-          CommitError           "haha"
-          GitError              "haha"
-          ProjectNotFound       "aklsdfl"
-          ProjectPathError
-          ProjectSaveError      "lskdfj"
-          ProjectParseError     "lskdfj"
-          MissingNodeId
-          MissingNode           "lak"
-          ProjectInitError      "oiwe"
-          MetaDataNotFound
-          MissingStartupDir
-          ParseError            "lah"
-          CliParseError
-          AssetSaveError        "lskd"
-          AssetDeleteError      "lskd"
-          AlreadyVoted
-          AppendEntryFailed
-          CandidateUnknown
-          EntryInvalidated
-          InvalidCurrentIndex
-          InvalidLastLog
-          InvalidLastLogTerm
-          InvalidTerm
-          LogFormatError
-          LogIncomplete
-          NoError
-          NoNode
-          NotCandidate
-          NotLeader
-          NotVotingState
-          ResponseTimeout
-          SnapshotFormatError
-          StaleResponse
-          UnexpectedVotingChange
-          VoteTermMismatch
-          Other "whatever"
+          GitError ("one","two")
+          ProjectError ("one","two")
+          ParseError ("one","two")
+          SocketError ("one","two")
+          IOError ("one","two")
+          AssetError ("one","two")
+          RaftError ("one","two")
+          Other  ("one","two")
         ]
       List.iter (fun err ->
                   let msg = ErrorResponse(err)

@@ -1256,7 +1256,7 @@ module Raft =
               do! updateCommitIndex resp
           else
             return!
-              "No leader"
+              "Not Leader"
               |> Error.asRaftError (tag "receiveAppendEntriesResponse")
               |> failM
 
@@ -1347,7 +1347,7 @@ module Raft =
         | Some entry ->
           if resp.Term <> LogEntry.term entry then
             return!
-              "Entry invalidated"
+              "Entry Invalidated"
               |> Error.asRaftError (tag "responseCommitted")
               |> failM
           else

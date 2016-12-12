@@ -90,7 +90,7 @@ module RaftIntegrationTests =
         use! follower = RaftServer.create ()
 
         do! match follower.Load leadercfg with
-            | Right ()   -> Left (Other "Should have failed to start")
+            | Right ()   -> Left (Other("loco","Should have failed to start"))
             | Left error -> Right ()
 
         do! expectE "Should be failed" true Service.isStopped follower.Status

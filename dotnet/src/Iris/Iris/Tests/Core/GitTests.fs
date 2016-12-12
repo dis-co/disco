@@ -129,7 +129,7 @@ module GitTests =
 
         use! gitserver2 = GitServer.create mem path
         do! match gitserver2.Start() with
-            | Right ()   -> Left (Other "Should have failed to start")
+            | Right ()   -> Left (Other("loco","Should have failed to start"))
             | Left error -> Right ()
         do! expectE "Should have failed" true Service.hasFailed gitserver2.Status
       }
@@ -176,7 +176,7 @@ module GitTests =
         let! gitserver2 = GitServer.create mem path
 
         do! match gitserver2.Start() with
-            | Right () -> Left (Other "Should have failed but didn't")
+            | Right () -> Left (Other("loc","Should have failed but didn't"))
             | Left error -> Right ()
 
         do! expectE "Should have failed" true Service.hasFailed gitserver2.Status

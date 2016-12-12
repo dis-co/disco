@@ -232,8 +232,11 @@ module RaftTestUtils =
   let runWithRaft r c m = runRaft r c m
 
   let expectError e = function
-    | Left (e',_) -> if e <> e' then failwithf "Unexpected error: %A" e'
-    | _ as v -> failwithf "Expected error but got: %A" v
+    | Left (e',_) when e = e' -> ()
+    | Left (e',_) when e <> e' ->
+      Expecto.Tests.failtestf "Expected error: %A but got: %A" e e'
+    | _ as v ->
+      Expecto.Tests.failtestf "Expected error but got: %A" v
 
   let noError = function
     | Left (e,_) -> failwithf "ERROR: %A" e
