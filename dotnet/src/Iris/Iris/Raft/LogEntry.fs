@@ -497,7 +497,7 @@ and RaftLogEntry =
                       |> RaftMember.FromFB
                     else
                       "Could not parse empty MemberFB value"
-                      |> ParseError
+                      |> Error.asParseError "StateMachine.ParseLogFB"
                       |> Either.fail
                   arr.[i] <- mem
                   return (i + i, arr)
@@ -515,7 +515,7 @@ and RaftLogEntry =
                    |> Some
           else
             return! "Could not parse empty LogTypeFB.ConfigurationFB"
-                    |> ParseError
+                    |> Error.asParseError "StateMachine.ParseLogFB"
                     |> Either.fail
         }
 
@@ -541,7 +541,7 @@ and RaftLogEntry =
                       |> ConfigChange.FromFB
                     else
                       "Could not parse empty ConfigChangeFB value"
-                      |> ParseError
+                      |> Error.asParseError "StateMachine.FromFB"
                       |> Either.fail
                   changes.[i] <- change
                   return (i + 1, changes)
@@ -559,7 +559,7 @@ and RaftLogEntry =
           else
             return!
               "Could not parse empty LogTypeFB.JointConsensusFB"
-              |> ParseError
+              |> Error.asParseError "StateMachine.ParseLogFB"
               |> Either.fail
 
         }
@@ -583,12 +583,12 @@ and RaftLogEntry =
             else
               return!
                 "Could not parse empty StateMachineFB"
-                |> ParseError
+                |> Error.asParseError "StateMachine.ParseLogFB"
                 |> Either.fail
           else
             return!
               "Could not parse empty LogTypeFB.LogEntry"
-              |> ParseError
+              |> Error.asParseError "StateMachine.ParseLogFB"
               |> Either.fail
         }
 
@@ -616,7 +616,7 @@ and RaftLogEntry =
                         |> RaftMember.FromFB
                       else
                         "Could not parse empty RaftMemberFB"
-                        |> ParseError
+                        |> Error.asParseError "StateMachine.ParseLogFB"
                         |> Either.fail
 
                     mems.[i] <- mem
@@ -637,18 +637,18 @@ and RaftLogEntry =
             else
               return!
                 "Could not parse empty StateMachineFB"
-                |> ParseError
+                |> Error.asParseError "StateMachine.ParseLogFB"
                 |> Either.fail
           else
             return!
               "Could not parse empty LogTypeFB.SnapshotFB"
-              |> ParseError
+              |> Error.asParseError "StateMachine.ParseLogFB"
               |> Either.fail
         }
 
       | x ->
         sprintf "Could not parse unknown LogTypeFB; %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.ParseLogFB"
         |> Either.fail
 
   // ** FromFB
@@ -796,7 +796,7 @@ and RaftLogEntry =
       }
     | x ->
       sprintf "Could not parse unknow LogType: %s" x
-      |> ParseError
+      |> Error.asParseError "StateMachine.FromYamlObject"
       |> Either.fail
 
 

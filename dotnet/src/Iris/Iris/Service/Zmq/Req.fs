@@ -166,7 +166,7 @@ type Req (id: Id, addr: string, timeout: int) =
           Logger.err id tag e.Message
 
           sprintf "Exception thrown on socket thread: %s" e.Message
-          |> SocketError
+          |> Error.asSocketError "Req.Request"
           |> Either.fail
         | _  ->
           Logger.debug id tag "request successful"
@@ -175,13 +175,13 @@ type Req (id: Id, addr: string, timeout: int) =
       Logger.err id tag "refusing request. already disposed"
 
       "Socket disposed"
-      |> SocketError
+      |> Error.asSocketError "Req.Request"
       |> Either.fail
     else
       Logger.err id tag "refusing request. socket has not been started"
 
       "Socket not started"
-      |> SocketError
+      |> Error.asSocketError "Req.Request"
       |> Either.fail
 
   // ** Dispose

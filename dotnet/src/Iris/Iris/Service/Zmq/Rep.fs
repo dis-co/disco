@@ -133,7 +133,7 @@ type Rep (addr: string, handle: byte array -> byte array) =
         | exn ->
           run <- false
           error <- Some exn
-          status <- ServiceStatus.Failed (SocketError exn.Message)
+          status <- ServiceStatus.Failed (SocketError("Rep.worker", exn.Message))
           starter.Set() |> ignore
 
     /// ## Inner Loop
@@ -169,7 +169,7 @@ type Rep (addr: string, handle: byte array -> byte array) =
 
         | exn ->
           run <- false
-          status <- ServiceStatus.Failed (SocketError exn.Message)
+          status <- ServiceStatus.Failed (SocketError ("Rep.worker",exn.Message))
           error <- Some exn
 
     /// ## Disposal of resources
@@ -210,12 +210,13 @@ type Rep (addr: string, handle: byte array -> byte array) =
       match error with
       | Some exn ->                                  // if an exception happened on the thread
         exn.Message                                 // format it as an error and return it
-        |> SocketError
+        |> Error.asSocketError "Rep.Start"
         |> Either.fail
       | _ -> Right ()                                // parents thread, so it can be
                                                     // caught and handled synchronously
     else
-      SocketError "already disposed"
+      "already disposed"
+      |> Error.asSocketError "Rep.Start"
       |> Either.fail
 
   interface IDisposable with

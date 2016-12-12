@@ -112,7 +112,7 @@ type VoteRequest =
       else
         return!
           "Could not parse empty MemberFB"
-          |> ParseError
+          |> Error.asParseError "VoteRequest.FromFB"
           |> Either.fail
     }
 
@@ -369,7 +369,7 @@ type InstallSnapshot =
           RaftLogEntry.FromFB raw
         else
           "Invalid InstallSnapshot (no log data)"
-          |> ParseError
+          |> Error.asParseError "InstallSnapshot.FromFB"
           |> Either.fail
 
       match decoded with
@@ -383,7 +383,7 @@ type InstallSnapshot =
       | _ ->
         return!
           "Invalid InstallSnapshot (no log data)"
-          |> ParseError
+          |> Error.asParseError "InstallSnapshot.FromFB"
           |> Either.fail
     }
 
@@ -648,7 +648,7 @@ ConfigChangeEntry = %s
       | _ ->
         return!
           "Could not current mem in config"
-          |> ParseError
+          |> Error.asParseError "RaftValue.FromYamlObject"
           |> Either.fail
     }
 

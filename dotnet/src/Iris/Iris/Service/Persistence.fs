@@ -99,7 +99,8 @@ module Persistence =
       |> Either.succeed
     with
       | exn ->
-        ProjectSaveError exn.Message
+        sprintf "Project Save Error: %s" exn.Message
+        |> Error.asProjectError "Persistence.saveRaft"
         |> Either.fail
 
   // ** persistEntry
@@ -124,7 +125,7 @@ module Persistence =
     | AddUser       user    -> Project.saveAsset   user    User.Admin project
     | UpdateUser    user    -> Project.saveAsset   user    User.Admin project
     | RemoveUser    user    -> Project.deleteAsset user    User.Admin project
-    | _                     -> Left (Other "this is ok. relax")
+    | _                     -> Left OK
 
   // ** updateRepo
 

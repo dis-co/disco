@@ -20,7 +20,10 @@ module Main =
       try
         parser.ParseCommandLine args
       with
-        | exn -> Error.exitWith CliParseError
+        | exn ->
+          exn.Message
+          |> Error.asOther "Main"
+          |> Error.exitWith
 
     validateOptions parsed
 
@@ -51,7 +54,7 @@ module Main =
       | Help,         _ -> help ()
       |  _ ->
         sprintf "Unexpected command line failure: %A" args
-        |> ParseError
+        |> Error.asParseError "Main"
         |> Either.fail
 
     res

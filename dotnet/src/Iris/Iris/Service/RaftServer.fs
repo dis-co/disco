@@ -26,8 +26,7 @@ module Raft =
 
   // ** tag
 
-  [<Literal>]
-  let private tag = "RaftServer"
+  let private tag (str: string) = sprintf "RaftServer.%s" str
 
   // ** RaftEvent
 
@@ -103,7 +102,7 @@ module Raft =
 
     override self.ToString() =
       match self with
-      | Load       (_,config)    -> sprintf "Load: %A" config
+      | Load       (_,config)    -> sprintf "Load:  %A" config
       | Unload             _     -> sprintf "Unload"
       | Join       (_,ip,port)   -> sprintf "Join: %s %d" (string ip) port
       | Leave               _    -> "Leave"
@@ -111,12 +110,12 @@ module Raft =
       | Status              _    -> "Status"
       | Periodic                 -> "Periodic"
       | ForceElection            -> "ForceElection"
-      | AddCmd         (_,sm)    -> sprintf "AddCmd: %A" sm
-      | Request        (_,req)   -> sprintf "Request: %A" req
-      | Response       (_,resp)  -> sprintf "Response: %A" resp
-      | AddMember      (_,mem)  -> sprintf "AddMember: %A" mem
-      | RmMember       (_,id)    -> sprintf "RmMember: %A" id
-      | IsCommitted    (_,entry) -> sprintf "IsCommitted: %A" entry
+      | AddCmd         (_,sm)    -> sprintf "AddCmd:  %A" sm
+      | Request        (_,req)   -> sprintf "Request:  %A" req
+      | Response       (_,resp)  -> sprintf "Response:  %A" resp
+      | AddMember      (_,mem)  -> sprintf "AddMember:  %A" mem
+      | RmMember       (_,id)    -> sprintf "RmMember:  %A" id
+      | IsCommitted    (_,entry) -> sprintf "IsCommitted:  %A" entry
 
   // ** Subscriptions
 
@@ -253,8 +252,8 @@ module Raft =
       | Right (Reply.IsCommitted result) ->
         ok := Right result
 
-      | Right _ ->
-        let error = Other "Msg.IsCommitted always expects Reply.IsCommitted. Do your homework."
+      | Right reply ->
+        let error = RaftError(tag "waitForCommit", sprintf "Unxpeced reply:  %A" reply)
         ok := Left error
         run := false
 
@@ -265,7 +264,7 @@ module Raft =
       match !ok with
       | Right true | Left _ -> run := false
       | _ ->
-        printfn "%A not yet committed" (string appended.Id)
+        printfn " %A not yet committed" (string appended.Id)
         iterations := !iterations + delta
         Thread.Sleep delta
 
@@ -294,8 +293,8 @@ module Raft =
               return Welcome state.Raft.Member
             | other ->
               return!
-                sprintf "Unexpected reply from StateArbiter: %A" other
-                |> RaftError
+                sprintf "Unexpected reply from StateArbiter:  %A" other
+                |> Error.asRaftError (tag "requestHandler")
                 |> Either.fail
 
           | HandWaive _, true ->
@@ -303,18 +302,19 @@ module Raft =
 
           | HandWaive _, false | HandShake _, false ->
             return!
-              ResponseTimeout
+              "Response Timeout"
+              |> Error.asRaftError (tag "requestHandler")
               |> Either.fail
           | other ->
             return!
-              sprintf "Unexpected reply StateArbiter: %A" other
-              |> RaftError
+              sprintf "Unexpected reply StateArbiter:  %A" other
+              |> Error.asRaftError (tag "requestHandler")
               |> Either.fail
 
         | other ->
           return!
-            sprintf "Unexpected reply StateArbiter: %A" other
-            |> RaftError
+            sprintf "Unexpected reply StateArbiter:  %A" other
+            |> Error.asRaftError (tag "requestHandler")
             |> Either.fail
       }
 
@@ -338,7 +338,8 @@ module Raft =
       let addr = memUri peer
       let connection = mkReqSocket peer
       while not (connections.TryAdd(peer.Id, connection)) do
-        Logger.err self tag "Unable to add connection. Retrying."
+        "Unable to add connection. Retrying."
+        |> Logger.err self (tag "getConnection")
         Thread.Sleep 1
       connection
 
@@ -358,14 +359,14 @@ module Raft =
     | Right (RequestVoteResponse(sender, vote)) -> Some vote
     | Right other ->
       other
-      |> sprintf "SendRequestVote: Unexpected Response: %A"
-      |> Logger.err self tag
+      |> sprintf "Unexpected Response:  %A"
+      |> Logger.err self (tag "sendRequestVote")
       None
 
     | Left error ->
       memUri peer
-      |> sprintf "SendRequestVote: encountered error %A in request to %A" error
-      |> Logger.err self tag
+      |> sprintf "Encountered error %A in request to  %A" error
+      |> Logger.err self (tag "sendRequestVote")
       None
 
   // ** sendAppendEntries
@@ -383,13 +384,13 @@ module Raft =
     | Right (AppendEntriesResponse(sender, ar)) -> Some ar
     | Right response ->
       response
-      |> sprintf "SendAppendEntries: Unexpected Response:  %A"
-      |> Logger.err self tag
+      |> sprintf "Unexpected Response:   %A"
+      |> Logger.err self (tag "sendAppendEntries")
       None
     | Left error ->
       memUri peer
-      |> sprintf "SendAppendEntries: received error %A in request to %A" error
-      |> Logger.err self tag
+      |> sprintf "SendAppendEntries: received error  %A in request to  %A" error
+      |> Logger.err self (tag "sendAppendEntries")
       None
 
   // ** sendInstallSnapshot
@@ -406,13 +407,13 @@ module Raft =
     | Right (InstallSnapshotResponse(sender, ar)) -> Some ar
     | Right response ->
       response
-      |> sprintf "SendInstallSnapshot: Unexpected Response: %A"
-      |> Logger.err self tag
+      |> sprintf "Unexpected Response:  %A"
+      |> Logger.err self (tag "sendInstallSnapshot")
       None
     | Left error ->
       memUri peer
-      |> sprintf "SendInstallSnapshot: received error %A in request to %A" error
-      |> Logger.err self tag
+      |> sprintf "SendInstallSnapshot: received error  %A in request to  %A" error
+      |> Logger.err self (tag "sendInstallSnapshot")
       None
 
   // ** prepareSnapshot
@@ -497,7 +498,7 @@ module Raft =
   //       |> saveRaft options
   //       |> Either.mapError
   //         (fun err ->
-  //           printfn "Could not persit vote change. %A" err)
+  //           printfn "Could not persit vote change.  %A" err)
   //       |> ignore
 
   //       "PersistVote reset VotedFor" |> Logger.debug memid tag
@@ -513,10 +514,10 @@ module Raft =
   //       |> saveRaft options
   //       |> Either.mapError
   //         (fun err ->
-  //           printfn "Could not persit vote change. %A" err)
+  //           printfn "Could not persit vote change.  %A" err)
   //       |> ignore
 
-  //       sprintf "PersistTerm term: %A" term |> Logger.debug memid tag
+  //       sprintf "PersistTerm term:  %A" term |> Logger.debug memid tag
   //     with
 
   //       | exn -> handleException "PersistTerm" exn
@@ -568,7 +569,7 @@ module Raft =
 
   let private onConfigDone (state: RaftAppContext) =
     "appending entry to exit joint-consensus into regular configuration"
-    |> Logger.debug state.Raft.Member.Id tag
+    |> Logger.debug state.Raft.Member.Id (tag "onConfigDone")
 
     state.Raft.Peers
     |> Map.toArray
@@ -594,16 +595,17 @@ module Raft =
       |> Log.mkConfigChange state.Raft.CurrentTerm
       |> appendEntry state
     else
-      Logger.err state.Raft.Member.Id tag "Unable to add mem. Not leader."
-      (NotLeader, state)
+      "Unable to add new member. Not leader."
+      |> Logger.err state.Raft.Member.Id (tag "addMembers")
+      (RaftError(tag "addMembers", "Not Leader"), state)
       |> Either.fail
 
   // ** addNewMember
 
   let private addNewMember (state: RaftAppContext) (id: Id) (ip: IpAddress) (port: uint32) =
     sprintf "attempting to add mem with
-         %A %A:%d" (string id) (string ip) port
-    |> Logger.debug state.Raft.Member.Id tag
+          %A  %A:%d" (string id) (string ip) port
+    |> Logger.debug state.Raft.Member.Id (tag "addNewMember")
 
     [| { Member.create id with
           IpAddr = ip
@@ -624,7 +626,7 @@ module Raft =
   /// Returns: RaftResponse
   let private removeMembers (state: RaftAppContext) (mems: RaftMember array) =
     "appending entry to enter joint-consensus"
-    |> Logger.debug state.Raft.Member.Id tag
+    |> Logger.debug state.Raft.Member.Id (tag "removeMembers")
 
     mems
     |> Array.map ConfigChange.MemberRemoved
@@ -636,9 +638,8 @@ module Raft =
   let private removeMember (state: RaftAppContext) (id: Id) =
     if Raft.isLeader state.Raft then
       string id
-      |> sprintf "attempting to remove mem with
-         %A"
-      |> Logger.debug state.Raft.Member.Id tag
+      |> sprintf "attempting to remove members with id %A"
+      |> Logger.debug state.Raft.Member.Id (tag "removeMember")
 
       let potentialChange =
         state.Raft
@@ -648,16 +649,16 @@ module Raft =
 
       | Some mem -> removeMembers state [| mem |]
       | None ->
-        sprintf "Unable to remove mem. Not found: %A" (string id)
-        |> Logger.err state.Raft.Member.Id tag
+        sprintf "Unable to remove member. Not found:  %A" (string id)
+        |> Logger.err state.Raft.Member.Id (tag "removeMember")
 
-        (MissingNode (string id), state)
+        (RaftError(tag "removeMember", sprintf "Missing Member: %A" id), state)
         |> Either.fail
     else
       "Unable to remove mem. Not leader."
-      |> Logger.err state.Raft.Member.Id tag
+      |> Logger.err state.Raft.Member.Id (tag "removeMember")
 
-      (NotLeader, state)
+      (RaftError(tag "removeMember","Not Leader"), state)
       |> Either.fail
 
   // ** processAppendEntries
@@ -716,7 +717,9 @@ module Raft =
                                      (sender: Id)
                                      (snapshot: InstallSnapshot)
                                      (channel: ReplyChan) =
-    Logger.err state.Raft.Member.Id tag "INSTALLSNAPSHOT REQUEST NOT HANDLED YET"
+    "INSTALLSNAPSHOT REQUEST NOT HANDLED YET"
+    |> Logger.err state.Raft.Member.Id (tag "processInstallSnapshot")
+
     // let snapshot = createSnapshot () |> runRaft raft'
     let ar = { Term         = state.Raft.CurrentTerm
              ; Success      = false
@@ -724,6 +727,7 @@ module Raft =
              ; FirstIndex   = match Raft.firstIndex state.Raft.CurrentTerm state.Raft with
                               | Some idx -> idx
                               | _        -> 0u }
+
     InstallSnapshotResponse(state.Raft.Member.Id, ar)
     |> Reply.Response
     |> Either.succeed
@@ -750,7 +754,9 @@ module Raft =
       state
 
     | None ->
-      ErrorResponse (Other "No known leader")
+      "No known leader"
+      |> Error.asRaftError (tag "doRedirect")
+      |> ErrorResponse
       |> Reply.Response
       |> Either.succeed
       |> channel.Reply
@@ -863,7 +869,7 @@ module Raft =
                                       (ar: AppendResponse)
                                       (channel: ReplyChan) =
     "FIX RESPONSE PROCESSING FOR SNAPSHOT REQUESTS"
-    |> Logger.err state.Raft.Member.Id tag
+    |> Logger.err state.Raft.Member.Id (tag "processSnapshotResponse")
 
     Reply.Ok
     |> Either.succeed
@@ -876,7 +882,7 @@ module Raft =
                               (leader: RaftMember)
                               (channel: ReplyChan) =
     "FIX REDIRECT RESPONSE PROCESSING"
-    |> Logger.err state.Raft.Member.Id tag
+    |> Logger.err state.Raft.Member.Id (tag "processRedirect")
 
     Reply.Ok
     |> Either.succeed
@@ -890,7 +896,7 @@ module Raft =
                              (channel: ReplyChan) =
 
     "FIX WELCOME RESPONSE PROCESSING"
-    |> Logger.err state.Raft.Member.Id tag
+    |> Logger.err state.Raft.Member.Id (tag "processWelcome")
 
     Reply.Ok
     |> Either.succeed
@@ -903,7 +909,7 @@ module Raft =
                                  (channel: ReplyChan) =
 
     "FIX ARRIVEDERCI RESPONSE PROCESSING"
-    |> Logger.err state.Raft.Member.Id tag
+    |> Logger.err state.Raft.Member.Id (tag "processArrivederci")
 
     Reply.Ok
     |> Either.succeed
@@ -917,8 +923,8 @@ module Raft =
                                    (channel: ReplyChan) =
 
     error
-    |> sprintf "received error response: %A"
-    |> Logger.err state.Raft.Member.Id tag
+    |> sprintf "received error response:  %A"
+    |> Logger.err state.Raft.Member.Id (tag "processErrorResponse")
 
     Reply.Ok
     |> Either.succeed
@@ -939,36 +945,38 @@ module Raft =
           let request = HandShake(state.Raft.Member)
           let! result = rawRequest request client
 
-          sprintf "Result: %A" result
+          sprintf "Result:  %A" result
           |> Logger.debug state.Raft.Member.Id "tryJoin"
 
           match result with
           | Welcome mem ->
-            sprintf "Received Welcome from %A" mem.Id
+            sprintf "Received Welcome from  %A" mem.Id
             |> Logger.debug state.Raft.Member.Id "tryJoin"
             return mem
 
           | Redirect next ->
-            sprintf "Got redirected to %A" (memUri next)
+            sprintf "Got redirected to  %A" (memUri next)
             |> Logger.info state.Raft.Member.Id "tryJoin"
             return! _tryJoin (retry + 1) next
 
           | ErrorResponse err ->
-            sprintf "Unexpected error occurred. %A" err
+            sprintf "Unexpected error occurred.  %A" err
             |> Logger.err state.Raft.Member.Id "tryJoin"
             return! Either.fail err
 
           | resp ->
-            sprintf "Unexpected response. %A" resp
+            sprintf "Unexpected response.  %A" resp
             |> Logger.err state.Raft.Member.Id "tryJoin"
             return!
-              Other "Unexpected response"
+              "Unexpected response"
+              |> Error.asRaftError (tag "tryJoin")
               |> Either.fail
         else
           "Too many unsuccesful connection attempts."
           |> Logger.err state.Raft.Member.Id "tryJoin"
           return!
-            Other "Too many unsuccesful connection attempts."
+            "Too many unsuccesful connection attempts."
+            |> Error.asRaftError (tag "tryJoin")
             |> Either.fail
       }
 
@@ -981,21 +989,22 @@ module Raft =
 
   let private tryJoinCluster (state: RaftAppContext) (ip: IpAddress) (port: uint16) =
     raft {
-      Logger.debug state.Raft.Member.Id tag "requesting to join"
+      "requesting to join"
+      |> Logger.debug state.Raft.Member.Id (tag "tryJoinCluster")
 
       let leader = tryJoin state ip port
 
       match leader with
       | Right leader ->
-        sprintf "Reached leader: %A Adding to mems." leader.Id
-        |> Logger.info state.Raft.Member.Id tag
+        sprintf "Reached leader:  %A Adding to mems." leader.Id
+        |> Logger.info state.Raft.Member.Id (tag "tryJoinCluster")
 
         do! Raft.addMemberM leader
         do! Raft.becomeFollower ()
 
       | Left err ->
-        sprintf "Joining cluster failed. %A" err
-        |> Logger.err state.Raft.Member.Id tag
+        sprintf "Joining cluster failed.  %A" err
+        |> Logger.err state.Raft.Member.Id (tag "tryJoinCluster")
 
     }
     |> runRaft state.Raft state.Callbacks
@@ -1027,13 +1036,21 @@ module Raft =
               return! _tryLeave (retry + 1) other
             else
               return!
-                Other "Too many retries, aborting."
+                "Too many retries, aborting."
+                |> Error.asRaftError (tag "tryLeave")
                 |> Either.fail
           | Arrivederci       -> return true
           | ErrorResponse err -> return! Either.fail err
-          | resp              -> return! Either.fail (Other "Unexpected response")
+          | resp ->
+            return!
+              "Unexpected response"
+              |> Error.asRaftError (tag "tryLeave")
+              |> Either.fail
         else
-          return! Either.fail (Other "Too many unsuccesful connection attempts.")
+          return!
+            "Too many unsuccesful connection attempts."
+            |> Error.asRaftError (tag "tryLeave")
+            |> Either.fail
       }
 
     match state.Raft.CurrentLeader with
@@ -1042,10 +1059,12 @@ module Raft =
 
       | Some mem -> _tryLeave 0 mem
       | _         ->
-        Other "Member data for leader id not found"
+        "Member data for leader id not found"
+        |> Error.asRaftError (tag "tryLeave")
         |> Either.fail
     | _ ->
-      Other "No known Leader"
+      "No known Leader"
+      |> Error.asRaftError (tag "tryLeave")
       |> Either.fail
 
   // ** leaveCluster
@@ -1057,17 +1076,18 @@ module Raft =
       match tryLeave state with
 
       | Right true  ->
+        // FIXME: this might need more consequences than this
         "Successfully left cluster."
-        |> Logger.info state.Raft.Member.Id tag // FIXME: this might need more consequences than this
+        |> Logger.info state.Raft.Member.Id (tag "tryLeaveCluster")
 
       | Right false ->
         "Could not leave cluster."
-        |> Logger.err state.Raft.Member.Id tag
+        |> Logger.err state.Raft.Member.Id (tag "tryLeaveCluster")
 
       | Left err ->
         err
-        |> sprintf "Could not leave cluster. %A"
-        |> Logger.err state.Raft.Member.Id tag
+        |> sprintf "Could not leave cluster.  %A"
+        |> Logger.err state.Raft.Member.Id (tag "tryLeaveCluster")
 
       do! Raft.becomeFollower ()
 
@@ -1262,7 +1282,7 @@ module Raft =
     match state with
     | Idle ->
       "No config loaded"
-      |> RaftError
+      |> Error.asRaftError (tag "handleJoin")
       |> Either.fail
       |> chan.Reply
       state
@@ -1291,7 +1311,7 @@ module Raft =
     match state with
     | Idle ->
       "No config loaded"
-      |> RaftError
+      |> Error.asRaftError (tag "handleLeave")
       |> Either.fail
       |> chan.Reply
       state
@@ -1328,8 +1348,8 @@ module Raft =
 
       | Left (err, newstate) ->
         err
-        |> sprintf "Unable to force an election: %A"
-        |> Logger.err newstate.Member.Id tag
+        |> sprintf "Unable to force an election:  %A"
+        |> Logger.err newstate.Member.Id (tag "handleForceElection")
 
         newstate
         |> updateRaft data
@@ -1341,7 +1361,7 @@ module Raft =
     match state with
     | Idle ->
       "No config loaded"
-      |> RaftError
+      |> Error.asRaftError (tag "handleAddCmd")
       |> Either.fail
       |> chan.Reply
       state
@@ -1368,7 +1388,7 @@ module Raft =
     match state with
     | Idle ->
       "No config loaded"
-      |> RaftError
+      |> Error.asRaftError (tag "handleResponse")
       |> Either.fail
       |> chan.Reply
       state
@@ -1389,7 +1409,7 @@ module Raft =
     match state with
     | Idle ->
       "No config loaded"
-      |> RaftError
+      |> Error.asRaftError (tag "handleRequest")
       |> Either.fail
       |> chan.Reply
       state
@@ -1421,7 +1441,7 @@ module Raft =
     match state with
     | Idle ->
       "No config loaded"
-      |> RaftError
+      |> Error.asRaftError (tag "handleGet")
       |> Either.fail
       |> chan.Reply
       state
@@ -1439,7 +1459,7 @@ module Raft =
     match state with
     | Idle ->
       "No config loaded"
-      |> RaftError
+      |> Error.asRaftError (tag "handleAddMember")
       |> Either.fail
       |> chan.Reply
       state
@@ -1466,7 +1486,7 @@ module Raft =
     match state with
     | Idle ->
       "No config loaded"
-      |> RaftError
+      |> Error.asRaftError (tag "handleRemoveMember")
       |> Either.fail
       |> chan.Reply
       state
@@ -1493,7 +1513,7 @@ module Raft =
     match state with
     | Idle ->
       "No config loaded"
-      |> RaftError
+      |> Error.asRaftError (tag "handleIsCommitted")
       |> Either.fail
       |> chan.Reply
       state
@@ -1552,8 +1572,8 @@ module Raft =
     | Right Reply.Ok -> Right ()
 
     | Right other ->
-      sprintf "Received garbage reply from agent: %A" other
-      |> Other
+      sprintf "Received garbage reply from agent:  %A" other
+      |> Error.asRaftError (tag "withOk")
       |> Either.fail
 
     | Left error ->
@@ -1570,7 +1590,8 @@ module Raft =
       | Right true -> Either.succeed entry
 
       | Right false ->
-        ResponseTimeout
+        "Response Timeout"
+        |> Error.asRaftError (tag "addCmd")
         |> Either.fail
 
       | Left error ->
@@ -1578,8 +1599,8 @@ module Raft =
         |> Either.fail
 
     | Right other ->
-      sprintf "Received garbage reply from agent: %A" other
-      |> Other
+      sprintf "Received garbage reply from agent:  %A" other
+      |> Error.asRaftError (tag "addCmd")
       |> Either.fail
 
     | Left error ->
@@ -1592,8 +1613,8 @@ module Raft =
     | Right (Reply.Status status) -> Right status
 
     | Right other ->
-      sprintf "Received garbage reply from agent: %A" other
-      |> Other
+      sprintf "Received garbage reply from agent:  %A" other
+      |> Error.asRaftError (tag "getStatus")
       |> Either.fail
 
     | Left error ->
@@ -1605,8 +1626,8 @@ module Raft =
     match agent.PostAndReply(fun chan -> Msg.AddMember(chan,mem)) with
     | Right (Reply.Entry entry) -> Right entry
     | Right other ->
-      sprintf "Unexpected reply by agent: %A" other
-      |> Other
+      sprintf "Unexpected reply by agent:  %A" other
+      |> Error.asRaftError (tag "addMember")
       |> Either.fail
     | Left error ->
       Either.fail error
@@ -1617,8 +1638,8 @@ module Raft =
     match agent.PostAndReply(fun chan -> Msg.RmMember(chan,id)) with
     | Right (Reply.Entry entry) -> Right entry
     | Right other ->
-      sprintf "Unexpected reply by agent: %A" other
-      |> Other
+      sprintf "Unexpected reply by agent:  %A" other
+      |> Error.asRaftError (tag "rmMember")
       |> Either.fail
     | Left error ->
       Either.fail error
@@ -1630,8 +1651,8 @@ module Raft =
     | Right (Reply.State state) -> Right state
 
     | Right other ->
-      sprintf "Received garbage reply from agent: %A" other
-      |> Other
+      sprintf "Received garbage reply from agent:  %A" other
+      |> Error.asRaftError (tag "getState")
       |> Either.fail
 
     | Left error ->
@@ -1677,8 +1698,8 @@ module Raft =
                 match agent.PostAndReply(fun chan -> Msg.Load(chan,config)) with
                 | Right Reply.Ok -> Right ()
                 | Right other ->
-                  sprintf "Unexpected reply type from agent: %A" other
-                  |> RaftError
+                  sprintf "Unexpected reply type from agent:  %A" other
+                  |> Error.asRaftError (tag "create")
                   |> Either.fail
                 | Left error ->
                   error
@@ -1688,8 +1709,8 @@ module Raft =
                 match agent.PostAndReply(fun chan -> Msg.Unload chan) with
                 | Right Reply.Ok -> Right ()
                 | Right other ->
-                  sprintf "Unexpected reply type from agent: %A" other
-                  |> RaftError
+                  sprintf "Unexpected reply type from agent:  %A" other
+                  |> Error.asRaftError (tag "create")
                   |> Either.fail
                 | Left error ->
                   error
@@ -1757,7 +1778,7 @@ module Raft =
 
               member self.Dispose () =
                 match agent.PostAndReply(fun chan -> Msg.Unload chan) with
-                | Left error -> printfn "unable to dispose: %A" error
+                | Left error -> printfn "unable to dispose:  %A" error
                 | Right _ -> ()
                 subscriptions.Clear()
                 dispose agent

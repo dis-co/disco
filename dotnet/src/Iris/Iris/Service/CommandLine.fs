@@ -3,6 +3,8 @@ namespace Iris.Service
 // * CommandLine
 module CommandLine =
 
+  let private tag (str: string) = sprintf "CommandLine.%s" str
+
   // ** Imports
   open Argu
   open Iris.Core
@@ -165,7 +167,9 @@ module CommandLine =
   let validateOptions (opts: ParseResults<CLIArguments>) =
     let ensureDir result =
       if opts.Contains <@ Dir @> |> not then
-        Error.exitWith MissingStartupDir
+        "Missing Startup-Dir"
+        |> Error.asOther (tag "validateOptions")
+        |> Error.exitWith
       result
 
     match opts.GetResult <@ Cmd @> with
@@ -190,7 +194,9 @@ module CommandLine =
         if not git  then printfn "    --git=<git server port>"
         if not raft then printfn "    --raft=<raft port>"
         if not ws   then printfn "    --ws=<ws port>"
-        Error.exitWith CliParseError
+        "CLI options parse error"
+        |> Error.asOther (tag "validateOptions")
+        |> Error.exitWith
 
   // ** Utilities
 
@@ -345,7 +351,7 @@ module CommandLine =
         |> ignore
       | _ ->
         sprintf "parameters %A could not be parsed" hst
-        |> Other
+        |> Error.asOther (tag "tryJoinCluster")
         |> handleError
 
   // ** tryLeaveCluster
@@ -371,7 +377,7 @@ module CommandLine =
         |> ignore
       | _ ->
         sprintf "parameters %A could not be parsed" hst
-        |> Other
+        |> Error.asOther (tag "tryAddMember")
         |> handleError
 
   // ** tryRmMember
@@ -491,8 +497,8 @@ module CommandLine =
     let projFile = Path.GetFullPath(projectdir) </> PROJECT_FILENAME + ASSET_EXTENSION
 
     if File.Exists projFile |> not then
-      projectdir
-      |> ProjectNotFound
+      sprintf "Project Not Found: %s" projectdir
+      |> Error.asOther "startService"
       |> Either.fail
     else
       either {
@@ -683,7 +689,7 @@ module CommandLine =
       with
         | exn ->
           exn.Message
-          |> Other
+          |> Error.asOther (tag "setup")
           |> Either.fail
 
     match location with
@@ -778,6 +784,6 @@ module CommandLine =
       else
         return!
           "Passwords do not match. Try again Sam."
-          |> Other
+          |> Error.asOther (tag "addUser")
           |> Either.fail
     }

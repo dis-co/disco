@@ -114,12 +114,12 @@ type RaftRequest =
             else
               return!
                 "Could not parse empty VoteRequestFB body"
-                |> ParseError
+                |> Error.asParseError "RaftRequest.FromBytes"
                 |> Either.fail
           else
             return!
               "Could not parse empty RequestVoteFB body"
-              |> ParseError
+              |> Error.asParseError "RaftRequest.FromBytes"
               |> Either.fail
         }
 
@@ -134,12 +134,12 @@ type RaftRequest =
             else
               return!
                 "Could not parse empty AppendEntriesFB body"
-                |> ParseError
+                |> Error.asParseError "RaftRequest.FromBytes"
                 |> Either.fail
           else
             return!
               "Could not parse empty RequestAppendEntriesFB body"
-              |> ParseError
+              |> Error.asParseError "RaftRequest.FromBytes"
               |> Either.fail
         }
 
@@ -154,12 +154,12 @@ type RaftRequest =
             else
               return!
                 "Could not parse empty InstallSnapshotFB body"
-                |> ParseError
+                |> Error.asParseError "RaftRequest.FromBytes"
                 |> Either.fail
           else
             return!
               "Could not parse empty RequestInstallSnapshotFB body"
-              |> ParseError
+              |> Error.asParseError "RaftRequest.FromBytes"
               |> Either.fail
         }
 
@@ -174,12 +174,12 @@ type RaftRequest =
             else
               return!
                 "Could not parse empty RaftMemberFB body"
-                |> ParseError
+                |> Error.asParseError "RaftRequest.FromBytes"
                 |> Either.fail
           else
             return!
               "Could not parse empty HandShakeFB body"
-              |> ParseError
+              |> Error.asParseError "RaftRequest.FromBytes"
               |> Either.fail
         }
 
@@ -194,18 +194,18 @@ type RaftRequest =
             else
               return!
                 "Could not parse empty RaftMemberFB body"
-                |> ParseError
+                |> Error.asParseError "RaftRequest.FromBytes"
                 |> Either.fail
           else
             return!
               "Could not parse empty HandShakeFB body"
-              |> ParseError
+              |> Error.asParseError "RaftRequest.FromBytes"
               |> Either.fail
         }
 
       | x ->
         sprintf "Could not parse unknown RaftMsgTypeFB: %A" x
-        |> ParseError
+        |> Error.asParseError "RaftRequest.FromBytes"
         |> Either.fail
 
 //  ____        __ _     ____
@@ -280,12 +280,12 @@ type RaftResponse =
           else
             return!
               "Could not parse empty VoteResponseFB body"
-              |> ParseError
+              |> Error.asParseError "RaftResponse.FromFB"
               |> Either.fail
         else
           return!
             "Could not parse empty RequestVoteResponseFB body"
-            |> ParseError
+            |> Error.asParseError "RaftResponse.FromFB"
             |> Either.fail
       }
 
@@ -300,12 +300,12 @@ type RaftResponse =
           else
             return!
               "Could not parse empty AppendResponseFB body"
-              |> ParseError
+              |> Error.asParseError "RaftResponse.FromFB"
               |> Either.fail
         else
           return!
             "Could not parse empty RequestAppendResponseFB body"
-            |> ParseError
+            |> Error.asParseError "RaftResponse.FromFB"
             |> Either.fail
       }
 
@@ -320,12 +320,12 @@ type RaftResponse =
           else
             return!
               "Could not parse empty AppendResponseFB body"
-              |> ParseError
+              |> Error.asParseError "RaftResponse.FromFB"
               |> Either.fail
         else
           return!
             "Could not parse empty RequestSnapshotResponseFB body"
-            |> ParseError
+            |> Error.asParseError "RaftResponse.FromFB"
             |> Either.fail
       }
 
@@ -340,12 +340,12 @@ type RaftResponse =
           else
             return!
               "Could not parse empty RaftMemberFB body"
-              |> ParseError
+              |> Error.asParseError "RaftResponse.FromFB"
               |> Either.fail
         else
           return!
             "Could not parse empty RedirectFB body"
-            |> ParseError
+            |> Error.asParseError "RaftResponse.FromFB"
             |> Either.fail
       }
 
@@ -360,12 +360,12 @@ type RaftResponse =
           else
             return!
               "Could not parse empty RaftMemberFB body"
-              |> ParseError
+              |> Error.asParseError "RaftResponse.FromFB"
               |> Either.fail
         else
           return!
             "Could not parse empty WelcomeFB body"
-            |> ParseError
+            |> Error.asParseError "RaftResponse.FromFB"
             |> Either.fail
       }
 
@@ -383,18 +383,18 @@ type RaftResponse =
           else
             return!
               "Could not parse empty ErrorFB body"
-              |> ParseError
+              |> Error.asParseError "RaftResponse.FromFB"
               |> Either.fail
         else
           return!
             "Could not parse empty ErrorResponseFB body"
-            |> ParseError
+            |> Error.asParseError "RaftResponse.FromFB"
             |> Either.fail
       }
 
     | x ->
       sprintf "Could not parse unknown RaftMsgTypeFB: %A" x
-      |> ParseError
+      |> Error.asParseError "RaftResponse.FromFB"
       |> Either.fail
 
   //  _____     ____        _

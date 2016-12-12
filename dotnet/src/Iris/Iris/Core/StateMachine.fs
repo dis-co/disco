@@ -1581,7 +1581,7 @@ and StateMachine =
             |> Cue.FromFB
           else
             "Could not parse empty cue payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
 
         match fb.Action with
@@ -1591,7 +1591,7 @@ and StateMachine =
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1610,7 +1610,7 @@ and StateMachine =
             |> CueList.FromFB
           else
             "Could not parse empty cuelist payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
 
         match fb.Action with
@@ -1620,7 +1620,7 @@ and StateMachine =
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1639,7 +1639,7 @@ and StateMachine =
             |> Patch.FromFB
           else
             "Could not parse empty patche payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
 
         match fb.Action with
@@ -1649,7 +1649,7 @@ and StateMachine =
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1668,7 +1668,7 @@ and StateMachine =
             |> Pin.FromFB
           else
             "Could not parse empty pin payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
 
         match fb.Action with
@@ -1678,7 +1678,7 @@ and StateMachine =
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1697,7 +1697,7 @@ and StateMachine =
             |> RaftMember.FromFB
           else
             "Could not parse empty mem payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
 
         match fb.Action with
@@ -1707,7 +1707,7 @@ and StateMachine =
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1726,7 +1726,7 @@ and StateMachine =
             |> User.FromFB
           else
             "Could not parse empty user payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
 
         match fb.Action with
@@ -1736,7 +1736,7 @@ and StateMachine =
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1755,7 +1755,7 @@ and StateMachine =
             |> Session.FromFB
           else
             "Could not parse empty session payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
 
         match fb.Action with
@@ -1765,7 +1765,7 @@ and StateMachine =
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
     //  __  __ _
@@ -1783,7 +1783,7 @@ and StateMachine =
         else
           return!
             "Could not parse empty LogEvent payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1797,7 +1797,7 @@ and StateMachine =
         else
           return!
             "Could not parse empty state payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1811,7 +1811,7 @@ and StateMachine =
         else
           return!
             "Could not parse empty string payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 

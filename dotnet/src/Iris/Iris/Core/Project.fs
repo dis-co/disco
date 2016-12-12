@@ -127,7 +127,8 @@ module Project =
     either {
       if not (File.Exists path) then
         return!
-          ProjectNotFound path
+          sprintf "Project Not Found: %s" path
+          |> Error.asProjectError "Project.load"
           |> Either.fail
       else
         try
@@ -165,7 +166,7 @@ module Project =
           | exn ->
             return!
               sprintf "Could not load Project: %s" exn.Message
-              |> ProjectParseError
+              |> Error.asProjectError "Project.load"
               |> Either.fail
     }
 
@@ -424,7 +425,7 @@ module Project =
         | exn ->
           return!
             exn.Message
-            |> ProjectSaveError
+            |> Error.asProjectError "Project.saveProject"
             |> Either.fail
     }
 

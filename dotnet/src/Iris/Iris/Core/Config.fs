@@ -24,6 +24,8 @@ type IrisMachine =
 [<RequireQualifiedAccess>]
 module MachineConfig =
 
+  let private tag (str: string) = sprintf "MachineConfig.%s" str
+
   // ** MachineConfigYaml (private)
 
   type MachineConfigYaml () =
@@ -103,7 +105,7 @@ module MachineConfig =
     with
       | exn ->
         exn.Message
-        |> IOError
+        |> Error.asIOError (tag "save")
         |> Either.fail
 
   // ** load
@@ -122,7 +124,7 @@ module MachineConfig =
     with
       | exn ->
         exn.Message
-        |> ParseError
+        |> Error.asIOError (tag "load")
         |> Either.fail
 
 // * Aliases
@@ -342,12 +344,12 @@ module Config =
         | [| x; y |] -> Right (int x, int y)
         | _ ->
           sprintf "Cannot parse %A as (int * int) tuple" input
-          |> ParseError
+          |> Error.asParseError "Config.parseTuple"
           |> Either.fail
       with
         | exn ->
           sprintf "Cannot parse %A as (int * int) tuple: %s" input exn.Message
-          |> ParseError
+          |> Error.asParseError "Config.parseTuple"
           |> Either.fail
 
   // ** parseRect
@@ -381,7 +383,7 @@ module Config =
   ///
   /// # Returns: AudioConfig
   let private parseAudio (config: ConfigFile) : Either<IrisError, AudioConfig> =
-    Either.tryWith ParseError "AudioConfig" <| fun _ ->
+    Either.tryWith (Error.asParseError "Config.parseAudio") <| fun _ ->
       { SampleRate = uint32 config.Project.Audio.SampleRate }
 
   // ** saveAudio
@@ -522,7 +524,7 @@ module Config =
         | exn ->
           return!
             sprintf "Could not parse Engine config: %s" exn.Message
-            |> ParseError
+            |> Error.asParseError "Config.parseRaft"
             |> Either.fail
     }
 
@@ -581,7 +583,7 @@ module Config =
         | exn ->
           return!
             sprintf "Could not parse Timing config: %s" exn.Message
-            |> ParseError
+            |> Error.asParseError "Config.parseTiming"
             |> Either.fail
     }
 
@@ -619,7 +621,7 @@ module Config =
   ///
   /// # Returns: PortConfig
   let private parsePort (config: ConfigFile) : Either<IrisError, PortConfig> =
-    Either.tryWith ParseError "PortConfig" <| fun _ ->
+    Either.tryWith (Error.asParseError "Config.parsePort") <| fun _ ->
       { UDPCue = uint32 config.Project.Ports.UDPCues }
 
   // ** savePort
@@ -926,14 +928,14 @@ module Config =
   /// - argument: ArgumentYaml
   ///
   /// Returns: Either<IrisError, string * string>
-  let parseArgument (argument: ArgumentYaml) =
+  let private parseArgument (argument: ArgumentYaml) =
     either {
       if (argument.Key.Length > 0) && (argument.Value.Length > 0) then
         return (argument.Key, argument.Value)
       else
         return!
           sprintf "Could not parse Argument: %A" argument
-          |> ParseError
+          |> Error.asParseError "Config.parseArgument"
           |> Either.fail
     }
 
@@ -1054,7 +1056,7 @@ module Config =
   /// - mem: MemberYaml
   ///
   /// Returns: Either<IrisError, RaftMember>
-  let parseMember (mem: MemberYaml) : Either<IrisError, RaftMember> =
+  let private parseMember (mem: MemberYaml) : Either<IrisError, RaftMember> =
     either {
       let! ip = IpAddress.TryParse mem.Ip
       let! state = RaftMemberState.TryParse mem.State
@@ -1076,7 +1078,7 @@ module Config =
         | exn ->
           return!
             sprintf "Could not parse Member definition: %s" exn.Message
-            |> ParseError
+            |> Error.asParseError "Config.parseMember"
             |> Either.fail
     }
 
@@ -1106,7 +1108,7 @@ module Config =
 
   // ** parseGroup
 
-  let parseGroup (group: GroupYaml) : Either<IrisError, HostGroup> =
+  let private parseGroup (group: GroupYaml) : Either<IrisError, HostGroup> =
     either {
       if group.Name.Length > 0 then
         let ids = Seq.map Id group.Members |> Seq.toList
@@ -1116,7 +1118,7 @@ module Config =
       else
         return!
           "Invalid HostGroup setting (Name must be given)"
-          |> ParseError
+          |> Error.asParseError "Config.parseGroup"
           |> Either.fail
     }
 
@@ -1305,7 +1307,10 @@ module Config =
 
     match result with
     | Some mem -> Either.succeed mem
-    | _         -> MissingNode (string id) |> Either.fail
+    | _ ->
+      sprintf "Missing Node: %s" (string id)
+      |> Error.asProjectError "Config.findMember"
+      |> Either.fail
 
   // ** getMembers
 

@@ -6,6 +6,7 @@ open Iris.Core
 
 [<AutoOpen>]
 module RaftMonad =
+
   let warn str = printfn "[RAFT WARNING] %s" str
 
   /// get current Raft state
@@ -110,6 +111,8 @@ module RaftMonad =
 
 [<RequireQualifiedAccess>]
 module Raft =
+
+  let private tag (str: string) = sprintf "Raft.%s" str
 
   /////////////////////////////////////////////
   //  __  __                       _ _       //
@@ -1189,67 +1192,73 @@ module Raft =
     raft {
       let! mem = getMemberM nid
       match mem with
-        | None ->
-          do! debug "receiveAppendEntriesResponse" (sprintf "Failed: NoMember %s" (string nid))
-          return! failM NoNode
-        | Some peer ->
-          if resp.CurrentIndex <> 0u && resp.CurrentIndex < peer.MatchIndex then
-            let str = sprintf "Failed: peer not up to date yet (ci: %d) (match idx: %d)"
-                          resp.CurrentIndex
-                          peer.MatchIndex
-            do! debug "receiveAppendEntriesResponse" str
-            // set to current index at follower and try again
-            do! updateMemberM { peer with
-                                  NextIndex = resp.CurrentIndex + 1u
-                                  MatchIndex = resp.CurrentIndex }
-            return ()
-          else
-            let! state = get
+      | None ->
+        do! debug "receiveAppendEntriesResponse" (sprintf "Failed: NoMember %s" (string nid))
+        return!
+          sprintf "Node not found: %s" (string nid)
+          |> Error.asRaftError (tag "receiveAppendEntriesResponse")
+          |> failM
+      | Some peer ->
+        if resp.CurrentIndex <> 0u && resp.CurrentIndex < peer.MatchIndex then
+          let str = sprintf "Failed: peer not up to date yet (ci: %d) (match idx: %d)"
+                        resp.CurrentIndex
+                        peer.MatchIndex
+          do! debug "receiveAppendEntriesResponse" str
+          // set to current index at follower and try again
+          do! updateMemberM { peer with
+                                NextIndex = resp.CurrentIndex + 1u
+                                MatchIndex = resp.CurrentIndex }
+          return ()
+        else
+          let! state = get
 
-            // we only process this if we are indeed the leader of the pack
-            if isLeader state then
-              let term = currentTerm state
-              //  If response contains term T > currentTerm: set currentTerm = T
-              //  and convert to follower (§5.3)
-              if term < resp.Term then
-                let str = sprintf "Failed: (term: %d) < (resp.Term: %d)" term resp.Term
+          // we only process this if we are indeed the leader of the pack
+          if isLeader state then
+            let term = currentTerm state
+            //  If response contains term T > currentTerm: set currentTerm = T
+            //  and convert to follower (§5.3)
+            if term < resp.Term then
+              let str = sprintf "Failed: (term: %d) < (resp.Term: %d)" term resp.Term
+              do! debug "receiveAppendEntriesResponse" str
+              do! setTermM resp.Term
+              do! becomeFollower ()
+              return ()
+            elif term <> resp.Term then
+              let str = sprintf "Failed: (term: %d) != (resp.Term: %d)" term resp.Term
+              do! debug "receiveAppendEntriesResponse" str
+              return ()
+            elif not resp.Success then
+              // If AppendEntries fails because of log inconsistency:
+              // decrement nextIndex and retry (§5.3)
+              if resp.CurrentIndex < peer.NextIndex - 1u then
+                let! idx = currentIndexM ()
+                let nextIndex = min (resp.CurrentIndex + 1u) idx
+
+                let str = sprintf "Failed: cidx < nxtidx. setting nextIndex for %s to %d"
+                              (string peer.Id)
+                              nextIndex
                 do! debug "receiveAppendEntriesResponse" str
-                do! setTermM resp.Term
-                do! becomeFollower ()
-                return ()
-              elif term <> resp.Term then
-                let str = sprintf "Failed: (term: %d) != (resp.Term: %d)" term resp.Term
-                do! debug "receiveAppendEntriesResponse" str
-                return ()
-              elif not resp.Success then
-                // If AppendEntries fails because of log inconsistency:
-                // decrement nextIndex and retry (§5.3)
-                if resp.CurrentIndex < peer.NextIndex - 1u then
-                  let! idx = currentIndexM ()
-                  let nextIndex = min (resp.CurrentIndex + 1u) idx
 
-                  let str = sprintf "Failed: cidx < nxtidx. setting nextIndex for %s to %d"
-                                (string peer.Id)
-                                nextIndex
-                  do! debug "receiveAppendEntriesResponse" str
-
-                  do! setNextIndexM peer.Id nextIndex
-                  do! setMatchIndexM peer.Id (nextIndex - 1u)
-                else
-                  let nextIndex = peer.NextIndex - 1u
-
-                  let str = sprintf "Failed: cidx >= nxtidx. setting nextIndex for %s to %d"
-                                (string peer.Id)
-                                nextIndex
-                  do! debug "receiveAppendEntriesResponse" str
-
-                  do! setNextIndexM peer.Id nextIndex
-                  do! setMatchIndexM peer.Id (nextIndex - 1u)
+                do! setNextIndexM peer.Id nextIndex
+                do! setMatchIndexM peer.Id (nextIndex - 1u)
               else
-                do! updateMemberIndices resp peer
-                do! updateCommitIndex resp
+                let nextIndex = peer.NextIndex - 1u
+
+                let str = sprintf "Failed: cidx >= nxtidx. setting nextIndex for %s to %d"
+                              (string peer.Id)
+                              nextIndex
+                do! debug "receiveAppendEntriesResponse" str
+
+                do! setNextIndexM peer.Id nextIndex
+                do! setMatchIndexM peer.Id (nextIndex - 1u)
             else
-              return! failM NotLeader
+              do! updateMemberIndices resp peer
+              do! updateCommitIndex resp
+          else
+            return!
+              "No leader"
+              |> Error.asRaftError (tag "receiveAppendEntriesResponse")
+              |> failM
 
     }
 
@@ -1336,7 +1345,11 @@ module Raft =
       match entry with
         | None -> return false
         | Some entry ->
-          if resp.Term <> LogEntry.term entry then return! failM EntryInvalidated
+          if resp.Term <> LogEntry.term entry then
+            return!
+              "Entry invalidated"
+              |> Error.asRaftError (tag "responseCommitted")
+              |> failM
           else
             let! cidx = commitIndexM ()
             return resp.Index <= cidx
@@ -1355,62 +1368,65 @@ module Raft =
       let! result = appendEntryM entry
 
       match result with
-        | Some appended ->
-          let! state = get
-          let! peers = logicalPeersM ()
+      | Some appended ->
+        let! state = get
+        let! peers = logicalPeersM ()
 
-          let requests = ref [| |]
+        let requests = ref [| |]
 
-          // iterate through all peers and call sendAppendEntries to each
-          for peer in peers do
-            let mem = peer.Value
-            if mem.Id <> state.Member.Id then
-              let nxtidx = Member.getNextIndex mem
-              let! cidx = currentIndexM ()
+        // iterate through all peers and call sendAppendEntries to each
+        for peer in peers do
+          let mem = peer.Value
+          if mem.Id <> state.Member.Id then
+            let nxtidx = Member.getNextIndex mem
+            let! cidx = currentIndexM ()
 
-              // calculate whether we need to send a snapshot or not
-              // uint's wrap around, so normalize to int first (might cause trouble with big numbers)
-              let difference =
-                let d = int cidx - int nxtidx
-                if d < 0 then 0u else uint32 d
+            // calculate whether we need to send a snapshot or not
+            // uint's wrap around, so normalize to int first (might cause trouble with big numbers)
+            let difference =
+              let d = int cidx - int nxtidx
+              if d < 0 then 0u else uint32 d
 
-              if difference <= (state.MaxLogDepth + 1u) then
-                // Only send new entries. Don't send the entry to peers who are
-                // behind, to prevent them from becoming congested.
-                let! request = sendAppendEntry mem
-                requests := Array.append [| (mem,request) |] !requests
-              else
-                // because this mem is way behind in the cluster, get it up to speed
-                // with a snapshot
-                let! request = sendInstallSnapshot mem
-                requests := Array.append [| (mem,request) |] !requests
+            if difference <= (state.MaxLogDepth + 1u) then
+              // Only send new entries. Don't send the entry to peers who are
+              // behind, to prevent them from becoming congested.
+              let! request = sendAppendEntry mem
+              requests := Array.append [| (mem,request) |] !requests
+            else
+              // because this mem is way behind in the cluster, get it up to speed
+              // with a snapshot
+              let! request = sendInstallSnapshot mem
+              requests := Array.append [| (mem,request) |] !requests
 
-          let results =
-            Array.map snd !requests
-            |> Async.Parallel
-            |> Async.RunSynchronously
-            |> Array.zip (Array.map fst !requests)
+        let results =
+          Array.map snd !requests
+          |> Async.Parallel
+          |> Async.RunSynchronously
+          |> Array.zip (Array.map fst !requests)
 
-          for (mem, response) in results do
-            match response with
-            | Some resp ->
-              do! receiveAppendEntriesResponse mem.Id resp
-              let! peer = getMemberM mem.Id >>= (Option.get >> returnM)
-              if peer.State = Failed then
-                do! setMemberStateM mem.Id Running
-            | _ ->
-              do! setMemberStateM mem.Id Failed
+        for (mem, response) in results do
+          match response with
+          | Some resp ->
+            do! receiveAppendEntriesResponse mem.Id resp
+            let! peer = getMemberM mem.Id >>= (Option.get >> returnM)
+            if peer.State = Failed then
+              do! setMemberStateM mem.Id Running
+          | _ ->
+            do! setMemberStateM mem.Id Failed
 
-          do! updateCommitIdx |> modify
+        do! updateCommitIdx |> modify
 
-          return! currentTermM () >>= fun term ->
-                    returnM { resp with
-                                Id = LogEntry.getId appended
-                                Term = term
-                                Index = LogEntry.index appended }
-        | _ ->
-          return! failM AppendEntryFailed
-      }
+        return! currentTermM () >>= fun term ->
+                  returnM { resp with
+                              Id = LogEntry.getId appended
+                              Term = term
+                              Index = LogEntry.index appended }
+      | _ ->
+        return!
+          "Append Entry failed"
+          |> Error.asRaftError (tag "handleLog")
+          |> failM
+    }
 
   ///                    _           _____       _
   ///  _ __ ___  ___ ___(_)_   _____| ____|_ __ | |_ _ __ _   _
@@ -1426,7 +1442,10 @@ module Raft =
 
       if LogEntry.isConfigChange entry && Option.isSome state.ConfigChangeEntry then
         do! debug "receiveEntry" "Failed: UnexpectedVotingChange"
-        return! failM UnexpectedVotingChange
+        return!
+          "Unexpected Voting Change"
+          |> Error.asRaftError (tag "receiveEntry")
+          |> failM
       elif isLeader state then
         let str = sprintf "(id: %s) (idx: %d) (term: %d)"
                       ((LogEntry.getId entry).ToString() )
@@ -1450,9 +1469,15 @@ module Raft =
             return! handleLog log resp
 
           | _ ->
-            return! failM LogFormatError
+            return!
+              "Log Format Error"
+              |> Error.asRaftError (tag "receiveEntry")
+              |> failM
       else
-        return! failM NotLeader
+        return!
+          "Not Leader"
+          |> Error.asRaftError (tag "receiveEntry")
+          |> failM
     }
 
   ////////////////////////////////////////////////////////////////
@@ -1595,8 +1620,11 @@ module Raft =
       let! cbs = read
       let! currentTerm = currentTermM ()
 
-      if is.Term < currentTerm
-      then return! failM InvalidTerm
+      if is.Term < currentTerm then
+        return!
+          "Invalid Term"
+          |> Error.asRaftError (tag "receiveInstallSnapshot")
+          |> failM
 
       do! setTimeoutElapsedM 0u
 
@@ -1655,7 +1683,11 @@ module Raft =
                             | _      -> 0u }
 
         return ar
-      | _ -> return! failM SnapshotFormatError
+      | _ ->
+        return!
+          "Snapshot Format Error"
+          |> Error.asRaftError (tag "receiveInstallSnapshot")
+          |> failM
     }
 
   let maybeSnapshot _ =
@@ -1800,7 +1832,10 @@ module Raft =
                       vote.Term
                       state.CurrentTerm
           do! debug "receiveVoteResponse" str
-          return! failM VoteTermMismatch
+          return!
+            "Vote Term Mismatch"
+            |> Error.asRaftError (tag "receiveVoteResponse")
+            |> failM
 
         /// Process the vote if current state of our Raft must be candidate..
         elif state.State = Candidate then
@@ -1811,7 +1846,10 @@ module Raft =
               // Could not find the mem in current configuration(s)
               | None ->
                 do! debug "receiveVoteResponse" "Failed: vote granted but NoMember"
-                return! failM NoNode
+                return!
+                  "No Node"
+                  |> Error.asRaftError (tag "receiveVoteResponse")
+                  |> failM
               // found the mem
               | Some mem ->
                 do! setVotingM mem true
@@ -1863,7 +1901,10 @@ module Raft =
         /// ...otherwise we respond with the respective RaftError.
         else
           do! debug "receiveVoteResponse" "Failed: NotCandidate"
-          return! failM NotCandidate
+          return!
+            "Not Candidate"
+            |> Error.asRaftError (tag "receiveVoteResponse")
+            |> failM
       }
 
   /// Request a from a given peer
@@ -1938,28 +1979,35 @@ module Raft =
   /// if the vote's term is lower than this servers current term,
   /// decline the vote
   let private validateTerm (vote: VoteRequest) state =
-    (vote.Term < state.CurrentTerm, InvalidTerm)
+    let err = RaftError (tag "shouldGrantVote","Invalid Term")
+    (vote.Term < state.CurrentTerm, err)
 
   let private alreadyVoted (state: RaftValue) =
-    (Option.isSome state.VotedFor, AlreadyVoted)
+    let err = RaftError (tag "shouldGrantVote","Already Voted")
+    (Option.isSome state.VotedFor, err)
 
   let private validateLastLog vote state =
+    let err = RaftError (tag "shouldGrantVote","Invalid Last Log")
     let result =
-         vote.LastLogTerm = lastLogTerm state
-      && currentIndex state <= vote.LastLogIndex
-    (result,InvalidLastLog)
+         vote.LastLogTerm = lastLogTerm state &&
+         currentIndex state <= vote.LastLogIndex
+    (result,err)
 
   let private validateLastLogTerm vote state =
-    (lastLogTerm state < vote.LastLogTerm, InvalidLastLogTerm)
+    let err = RaftError (tag "shouldGrantVote","Invalid LastLogTerm")
+    (lastLogTerm state < vote.LastLogTerm, err)
 
   let private validateCurrentIdx state =
-    (currentIndex state = 0u, InvalidCurrentIndex)
+    let err = RaftError (tag "shouldGrantVote","Invalid Current Index")
+    (currentIndex state = 0u, err)
 
   let private validateCandidate (vote: VoteRequest) state =
-    (getMember vote.Candidate.Id state |> Option.isNone, CandidateUnknown)
+    let err = RaftError (tag "shouldGrantVote","Candidate Unknown")
+    (getMember vote.Candidate.Id state |> Option.isNone, err)
 
   let shouldGrantVote (vote : VoteRequest) =
     raft {
+      let err = RaftError(tag "shouldGrantVote","Log Incomplete")
       let! state = get
       let result =
         validation {       // predicate               result  input
@@ -1969,7 +2017,7 @@ module Raft =
           return! validate validateCurrentIdx         true    state
           return! validate (validateLastLogTerm vote) true    state
           return! validate (validateLastLog vote)     true    state
-          return (false, LogIncomplete)
+          return (false, err)
         }
         |> runValidation
 
@@ -2020,7 +2068,10 @@ module Raft =
                      Reason  = None }
           else
             do! debug "processVoteRequest" "vote request denied: NotVotingState"
-            return! failM NotVotingState
+            return!
+              "Not Voting State"
+              |> Error.asRaftError (tag "processVoteRequest")
+              |> failM
         | (false, err) ->
           let! term = currentTermM ()
           return { Term    = term
@@ -2046,9 +2097,10 @@ module Raft =
           do! info "receiveVoteRequest" <| sprintf "requested denied. NoMember %s" (string nid)
 
           let! term = currentTermM ()
+          let err = RaftError (tag "processVoteRequest", "Not Voting State")
           return { Term    = term
                    Granted = false
-                   Reason  = Some NoNode }
+                   Reason  = Some err }
     }
 
   //  ____

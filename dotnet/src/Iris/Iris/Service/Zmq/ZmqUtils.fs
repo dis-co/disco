@@ -145,12 +145,12 @@ module ZmqUtils =
         | :? TimeoutException ->
           return!
             "Operation timed out"
-            |> SocketError
+            |> Error.asSocketError "ZmqUtils.performRequest"
             |> Either.fail
         | exn ->
           return!
             exn.Message
             |> sprintf "performRequest encountered an exception: %s"
-            |> SocketError
+            |> Error.asSocketError "ZmqUtils.performRequest"
             |> Either.fail
     }
