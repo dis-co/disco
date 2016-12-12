@@ -41,7 +41,7 @@ type IrisError =
     | x when x = ErrorTypeFB.ParseErrorFB   -> Right (ParseError   (fb.Location,fb.Message))
     | x when x = ErrorTypeFB.SocketErrorFB  -> Right (SocketError  (fb.Location,fb.Message))
     | x when x = ErrorTypeFB.IOErrorFB      -> Right (IOError      (fb.Location,fb.Message))
-    | x -f
+    | x ->
       ("IrisError.FromFB", sprintf "Could not parse unknown ErrorTypeFB: %A" x)
       |> ParseError
       |> Either.fail

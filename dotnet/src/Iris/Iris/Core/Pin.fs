@@ -67,7 +67,7 @@ type Behavior =
     | x when x = BehaviorFB.BangFB   -> Right Bang
     | x ->
       sprintf "Could not parse Behavior: %A" x
-      |> ParseError
+      |> Error.asParseError "Behavior.FromFB"
       |> Either.fail
 
 #else
@@ -153,7 +153,7 @@ type StringType =
     | x when x = StringTypeFB.IPFB        -> Right IP
     | x ->
       sprintf "Cannot parse StringType. Unknown type: %A" x
-      |> ParseError
+      |> Error.asParseError "StringType.FromFB"
       |> Either.fail
 
 #else
@@ -800,7 +800,7 @@ type Pin =
 
     | x ->
       sprintf "%A is not a valid PinTypeFB" x
-      |> ParseError
+      |> Error.asParseError "PinFB.FromFB"
       |> Either.fail
 
 #else
@@ -2473,8 +2473,8 @@ and ColorSliceD =
     Either.tryWith (Error.asParseError "ColorSliceD.FromFB") <| fun _ ->
 #if FABLE_COMPILER
       match fb.Value |> ColorSpace.FromFB with
-      | Right color             -> { Index = fb.Index; Value = color }
-      | Left (ParseError error) -> failwith error
+      | Right color                 -> { Index = fb.Index; Value = color }
+      | Left (ParseError (_,error)) -> failwith error
       | Left error ->
         failwithf "Unexpected error: %A" error
 #else
@@ -3143,7 +3143,7 @@ and Slice =
 
     | x ->
       sprintf "Could not parse slice. Unknown slice type %A" x
-      |> ParseError
+      |> Error.asParseError "Slice.FromFB"
       |> Either.fail
 
 #else

@@ -88,7 +88,7 @@ type AppCommand =
     | x when x = ActionTypeFB.SaveProjectFB -> Right SaveProject
     | x ->
       sprintf "Could not parse %A as AppCommand" x
-      |> ParseError
+      |> Error.asParseError "AppCommand.FromFB"
       |> Either.fail
 #else
     match fb with
@@ -1448,7 +1448,7 @@ and StateMachine =
         Either.map RemoveMember mem
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
     | x when x = PayloadFB.PatchFB ->
@@ -1462,7 +1462,7 @@ and StateMachine =
         Either.map RemovePatch patch
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
     | x when x = PayloadFB.PinFB ->
@@ -1476,7 +1476,7 @@ and StateMachine =
         Either.map RemovePin pin
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
     | x when x = PayloadFB.CueFB ->
@@ -1490,7 +1490,7 @@ and StateMachine =
         Either.map RemoveCue cue
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
     | x when x = PayloadFB.CueListFB ->
@@ -1504,7 +1504,7 @@ and StateMachine =
         Either.map RemoveCueList cuelist
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
     | x when x = PayloadFB.UserFB ->
@@ -1518,7 +1518,7 @@ and StateMachine =
         Either.map RemoveUser user
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
     | x when x = PayloadFB.SessionFB ->
@@ -1532,7 +1532,7 @@ and StateMachine =
         Either.map RemoveSession session
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
     | x when x = PayloadFB.StateFB && fb.Action = ActionTypeFB.DataSnapshotFB ->
@@ -1553,7 +1553,7 @@ and StateMachine =
         |> Either.map SetLogLevel
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
     | _ ->
       fb.Action

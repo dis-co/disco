@@ -100,7 +100,7 @@ type SessionStatusType =
       | x when x = SessionStatusTypeFB.AuthorizedFB  -> Right Authorized
       | x ->
         sprintf "Could not parse SessionStatusType: %A" x
-        |> ParseError
+        |> Error.asParseError "SessionStatusType.FromFB"
         |> Either.fail
 #else
     match fb with

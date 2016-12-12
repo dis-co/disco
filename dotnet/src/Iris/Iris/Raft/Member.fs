@@ -70,7 +70,7 @@ type RaftMemberState =
       | x when x = RaftMemberStateFB.FailedFB  -> Right Failed
       | x ->
         sprintf "Could not parse RaftMemberState: %A" x
-        |> ParseError
+        |> Error.asParseError "RaftMemberState.FromFB"
         |> Either.fail
 #else
     match fb with
@@ -296,7 +296,7 @@ and ConfigChange =
       | x ->
         return!
           sprintf "Could not parse ConfigChangeTypeFB %A" x
-          |> ParseError
+          |> Error.asParseError "ConfigChange.FromFB"
           |> Either.fail
 #else
       let nullable = fb.Member
