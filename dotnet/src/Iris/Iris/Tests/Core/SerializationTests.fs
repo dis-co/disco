@@ -246,29 +246,6 @@ module SerializationTests =
         machine.MachineId
         |> Member.create
 
-      let mem1 =
-        { Member.create (Id.Create()) with
-            HostName = "Hans"
-            IpAddr = IpAddress.Parse "192.168.1.20"
-            Port   = 8080us }
-
-      let mem2 =
-        { Member.create (Id.Create()) with
-            HostName = "Klaus"
-            IpAddr = IpAddress.Parse "192.168.1.22"
-            Port   = 8080us }
-
-      let changes = [| MemberRemoved mem2 |]
-      let mems = [| mem1; mem2 |]
-
-      let log =
-        LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
-          Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
-            Some <| Configuration(Id.Create(), 5u, 1u, [| mem1 |],
-              Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
-                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mems, DataSnapshot State.Empty)))))
-        |> Log.fromEntries
-
       let config =
         Config.create "default" machine
         |> Config.addMember self
@@ -388,20 +365,6 @@ module SerializationTests =
           Some <| JointConsensus(Id.Create(), 4u, 1u, mkChanges (),
             Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mkMembers (), DataSnapshot State.Empty)))))
     |> Log.fromEntries
-
-  //  ____        __ _   _
-  // |  _ \ __ _ / _| |_| |    ___   __ _
-  // | |_) / _` | |_| __| |   / _ \ / _` |
-  // |  _ < (_| |  _| |_| |__| (_) | (_| |
-  // |_| \_\__,_|_|  \__|_____\___/ \__, |
-  //                                |___/
-
-  let test_validate_log_yaml_serialization =
-    testCase "Validate Log Yaml Serialization" <| fun _ ->
-      let log : RaftLog = mkLog ()
-
-      let relog = log |> Yaml.encode |> Yaml.decode |> Either.get
-      expect "should be same" log id relog
 
   //   ____
   //  / ___|   _  ___
@@ -597,13 +560,6 @@ module SerializationTests =
       state |> Binary.encode |> Binary.decode |> Either.get
       |> expect "Should be structurally equivalent" state id
 
-  let test_validate_state_yaml_serialization =
-    testCase "Validate State Yaml Serialization" <| fun _ ->
-      let state : State = mkState ()
-
-      state |> Yaml.encode |> Yaml.decode |> Either.get
-      |> expect "Should be structurally equivalent" state id
-
   //  ____  _        _       __  __            _     _
   // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
   // \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
@@ -643,39 +599,6 @@ module SerializationTests =
             let remsg = cmd |> Binary.encode |> Binary.decode |> Either.get
             expect "Should be structurally the same" cmd id remsg)
 
-  let test_validate_state_machine_yaml_serialization =
-    testCase "Validate StateMachine Yaml Serialization" <| fun _ ->
-      [ AddCue        <| mkCue ()
-      ; UpdateCue     <| mkCue ()
-      ; RemoveCue     <| mkCue ()
-      ; AddCueList    <| mkCueList ()
-      ; UpdateCueList <| mkCueList ()
-      ; RemoveCueList <| mkCueList ()
-      ; AddSession    <| mkSession ()
-      ; UpdateSession <| mkSession ()
-      ; RemoveSession <| mkSession ()
-      ; AddUser       <| mkUser ()
-      ; UpdateUser    <| mkUser ()
-      ; RemoveUser    <| mkUser ()
-      ; AddPatch      <| mkPatch ()
-      ; UpdatePatch   <| mkPatch ()
-      ; RemovePatch   <| mkPatch ()
-      ; AddPin      <| mkPin ()
-      ; UpdatePin   <| mkPin ()
-      ; RemovePin   <| mkPin ()
-      ; AddMember     <| Member.create (Id.Create())
-      ; UpdateMember  <| Member.create (Id.Create())
-      ; RemoveMember  <| Member.create (Id.Create())
-      ; DataSnapshot  <| mkState ()
-      ; Command AppCommand.Undo
-      ; LogMsg(Logger.create Debug (Id.Create()) "bla" "oohhhh")
-      ; SetLogLevel Err
-      ]
-      |> List.iter
-          (fun cmd ->
-            let remsg = cmd |> Yaml.encode |> Yaml.decode |> Either.get
-            expect "Should be structurally the same" cmd id remsg)
-
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
   //   / _ \ | | |   | |/ _ \/ __| __/ __|
@@ -696,7 +619,6 @@ module SerializationTests =
       test_validate_arrivederci_serialization
       test_validate_errorresponse_serialization
       test_save_restore_raft_value_correctly
-      test_validate_log_yaml_serialization
       test_validate_cue_binary_serialization
       test_validate_cue_yaml_serialization
       test_validate_cuelist_binary_serialization
@@ -712,7 +634,5 @@ module SerializationTests =
       test_validate_pin_binary_serialization
       test_validate_pin_yaml_serialization
       test_validate_state_binary_serialization
-      test_validate_state_yaml_serialization
       test_validate_state_machine_binary_serialization
-      test_validate_state_machine_yaml_serialization
     ]
