@@ -180,7 +180,7 @@ type Patch =
                   |> Pin.FromFB
                 else
                   "Could not parse empty PinFB"
-                  |> ParseError
+                  |> Error.asParseError "Patch.FromFB"
                   |> Either.fail
   #endif
 

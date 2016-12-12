@@ -76,8 +76,8 @@ type RGBAValue =
       } |> Right
     with
       | exn ->
-        sprintf "Could not parse RGBAValueFB: %s" exn.Message
-        |> ParseError
+        exn.Message
+        |> Error.asParseError "RGBAValue.FromFB"
         |> Either.fail
 
   // ** ToBytes
@@ -128,8 +128,8 @@ type HSLAValue =
       } |> Right
     with
       | exn ->
-        sprintf "Could not parse HSLAValueFB: %s" exn.Message
-        |> ParseError
+        exn.Message
+        |> Error.asParseError "HSLAValue.FromFB"
         |> Either.fail
 
   // ** ToBytes
@@ -196,8 +196,8 @@ type ColorSpace =
       |> Either.map HSLA
 
     | x ->
-      sprintf "Could not deserialize ColorSpaceTypeFB %A" x
-      |> ParseError
+      sprintf "Could not deserialize %A" x
+      |> Error.asParseError "ColorSpace.FromFB"
       |> Either.fail
 
 #else
@@ -210,8 +210,8 @@ type ColorSpace =
         |> RGBAValue.FromFB
         |> Either.map RGBA
       else
-        sprintf "Could not parse RGBAValue"
-        |> ParseError
+        "Could not parse RGBAValue"
+        |> Error.asParseError "ColorSpace.FromFB"
         |> Either.fail
 
     | ColorSpaceTypeFB.HSLAValueFB ->
@@ -221,13 +221,13 @@ type ColorSpace =
         |> HSLAValue.FromFB
         |> Either.map HSLA
       else
-        sprintf "Could not parse RGBAValue"
-        |> ParseError
+        "Could not parse RGBAValue"
+        |> Error.asParseError "ColorSpace.FromFB"
         |> Either.fail
 
     | x ->
       sprintf "Could not parse ColorSpaceFB. Unknown type: %A" x
-      |> ParseError
+      |> Error.asParseError "ColorSpace.FromFB"
       |> Either.fail
 
 #endif
@@ -287,7 +287,7 @@ type ColorSpace =
       } |> Right
     | x ->
       sprintf "Could not parse ColorYaml. Unknown type: %s" x
-      |> ParseError
+      |> Error.asParseError "ColorSpace.FromYamlObject"
       |> Either.fail
 
 #endif

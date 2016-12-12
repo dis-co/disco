@@ -67,7 +67,7 @@ type AppCommand =
   // ** TryParse
 
   static member TryParse (str: string) =
-    Either.tryWith ParseError "AppCommand" <| fun _ ->
+    Either.tryWith (Error.asParseError "AppCommand.TryParse") <| fun _ ->
       str |> AppCommand.Parse
 
   // ** FromFB
@@ -98,7 +98,7 @@ type AppCommand =
     | ActionTypeFB.SaveProjectFB -> Right SaveProject
     | x ->
       sprintf "Could not parse %A as AppCommand" x
-      |> ParseError
+      |> Error.asParseError "AppCommand.FromFB"
       |> Either.fail
 #endif
 
@@ -514,7 +514,7 @@ type State =
                 |> Patch.FromFB
               else
                 "Could not parse empty patch payload"
-                |> ParseError
+                |> Error.asParseError "State.FromFB"
                 |> Either.fail
 #endif
             return (i + 1, Map.add patch.Id patch map)
@@ -540,7 +540,7 @@ type State =
                 |> Cue.FromFB
               else
                 "Could not parse empty Cue payload"
-                |> ParseError
+                |> Error.asParseError "State.FromFB"
                 |> Either.fail
 #endif
             return (i + 1, Map.add cue.Id cue map)
@@ -566,7 +566,7 @@ type State =
                 |> CueList.FromFB
               else
                 "Could not parse empty CueList payload"
-                |> ParseError
+                |> Error.asParseError "State.FromFB"
                 |> Either.fail
 #endif
             return (i + 1, Map.add cuelist.Id cuelist map)
@@ -592,7 +592,7 @@ type State =
                 |> RaftMember.FromFB
               else
                 "Could not parse empty RaftMember payload"
-                |> ParseError
+                |> Error.asParseError "State.FromFB"
                 |> Either.fail
 #endif
             return (i + 1, Map.add mem.Id mem map)
@@ -618,7 +618,7 @@ type State =
                 |> User.FromFB
               else
                 "Could not parse empty User payload"
-                |> ParseError
+                |> Error.asParseError "State.FromFB"
                 |> Either.fail
 #endif
             return (i + 1, Map.add user.Id user map)
@@ -644,7 +644,7 @@ type State =
                 |> Session.FromFB
               else
                 "Could not parse empty Session payload"
-                |> ParseError
+                |> Error.asParseError "State.FromFB"
                 |> Either.fail
 #endif
             return (i + 1, Map.add session.Id session map)
@@ -1413,7 +1413,7 @@ and StateMachine =
       }
     | x ->
       sprintf "Could not parse %s as StateMachine command" x
-      |> ParseError
+      |> Error.asParseError "StateMachine.FromYamlObject"
       |> Either.fail
 
   // ** FromYaml

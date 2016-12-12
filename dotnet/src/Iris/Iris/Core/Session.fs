@@ -83,7 +83,7 @@ type SessionStatusType =
     with
       | exn ->
         sprintf "Could not parse SessionStatusType: %s" exn.Message
-        |> ParseError
+        |> Error.asParseError "SessionStatusType.TryParse"
         |> Either.fail
 
   member self.ToOffset () =
@@ -108,7 +108,7 @@ type SessionStatusType =
       | SessionStatusTypeFB.UnauthorizedFB -> Right Unauthorized
       | SessionStatusTypeFB.AuthorizedFB  -> Right Authorized
       | x ->
-        sprintf "Could not parse SessionStatusType: %A" x
+        ("SessionStatusType.FromFB",sprintf "Could not parse SessionStatusType: %A" x)
         |> ParseError
         |> Either.fail
 #endif
@@ -173,7 +173,7 @@ type Session =
   ; Status:    SessionStatus
   ; IpAddress: IpAddress
   ; UserAgent: UserAgent }
-  
+
   static member Empty(id: Id) =
     { Id = id
     ; Status = { StatusType = Unauthorized; Payload = "" }
@@ -188,7 +188,7 @@ type Session =
   //                           |___/
 
   static member FromFB(fb: SessionFB) : Either<IrisError, Session> =
-    Either.ofNullable fb.Status ParseError
+    Either.ofNullable fb.Status (Error.asParseError "Session.FromFB")
     |> Either.bind SessionStatus.FromFB
     |> Either.map (fun status ->
       { Id = Id fb.Id

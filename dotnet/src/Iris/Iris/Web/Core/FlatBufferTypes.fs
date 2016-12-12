@@ -1153,62 +1153,27 @@ type ErrorTypeFB = int
 
 type ErrorTypeFBConstructor =
   abstract OKFB: ErrorTypeFB
-  abstract BranchNotFoundFB: ErrorTypeFB
-  abstract BranchDetailsNotFoundFB: ErrorTypeFB
-  abstract RepositoryNotFoundFB: ErrorTypeFB
-  abstract RepositoryInitFailedFB: ErrorTypeFB
-  abstract CommitErrorFB: ErrorTypeFB
   abstract GitErrorFB: ErrorTypeFB
-  abstract ProjectNotFoundFB: ErrorTypeFB
-  abstract ProjectParseErrorFB: ErrorTypeFB
-  abstract ProjectPathErrorFB: ErrorTypeFB
-  abstract ProjectSaveErrorFB: ErrorTypeFB
-  abstract ProjectInitErrorFB: ErrorTypeFB
-  abstract MetaDataNotFoundFB: ErrorTypeFB
-  abstract MissingStartupDirFB: ErrorTypeFB
-  abstract CliParseErrorFB: ErrorTypeFB
-  abstract MissingNodeIdFB: ErrorTypeFB
-  abstract MissingNodeFB: ErrorTypeFB
-  abstract AssetSaveErrorFB: ErrorTypeFB
-  abstract AssetLoadErrorFB: ErrorTypeFB
-  abstract AssetNotFoundErrorFB: ErrorTypeFB
-  abstract AssetDeleteErrorFB: ErrorTypeFB
+  abstract ProjectErrorFB: ErrorTypeFB
+  abstract AssetErrorFB: ErrorTypeFB
   abstract ParseErrorFB: ErrorTypeFB
   abstract SocketErrorFB: ErrorTypeFB
   abstract IOErrorFB: ErrorTypeFB
   abstract OtherFB: ErrorTypeFB
   abstract RaftErrorFB: ErrorTypeFB
-  abstract AlreadyVotedFB: ErrorTypeFB
-  abstract AppendEntryFailedFB: ErrorTypeFB
-  abstract CandidateUnknownFB: ErrorTypeFB
-  abstract EntryInvalidatedFB: ErrorTypeFB
-  abstract InvalidCurrentIndexFB: ErrorTypeFB
-  abstract InvalidLastLogFB: ErrorTypeFB
-  abstract InvalidLastLogTermFB: ErrorTypeFB
-  abstract InvalidTermFB: ErrorTypeFB
-  abstract LogFormatErrorFB: ErrorTypeFB
-  abstract LogIncompleteFB: ErrorTypeFB
-  abstract NoErrorFB: ErrorTypeFB
-  abstract NoNodeFB: ErrorTypeFB
-  abstract NotCandidateFB: ErrorTypeFB
-  abstract NotLeaderFB: ErrorTypeFB
-  abstract NotVotingStateFB: ErrorTypeFB
-  abstract ResponseTimeoutFB: ErrorTypeFB
-  abstract SnapshotFormatErrorFB: ErrorTypeFB
-  abstract StaleResponseFB: ErrorTypeFB
-  abstract UnexpectedVotingChangeFB: ErrorTypeFB
-  abstract VoteTermMismatchFB: ErrorTypeFB
 
 let ErrorTypeFB: ErrorTypeFBConstructor = failwith "JS only"
 
 type ErrorFB =
   abstract Type: ErrorTypeFB
+  abstract Location: string
   abstract Message: string
 
 type ErrorFBConstructor =
   abstract prototype: ErrorFB with get, set
   abstract StartErrorFB: builder: FlatBufferBuilder -> unit
   abstract AddType: builder: FlatBufferBuilder * tipe: ErrorTypeFB -> unit
+  abstract AddLocation: builder: FlatBufferBuilder * location: Offset<string> -> unit
   abstract AddMessage: builder: FlatBufferBuilder * msg: Offset<string> -> unit
   abstract EndErrorFB: builder: FlatBufferBuilder -> Offset<ErrorFB>
   abstract GetRootAsErrorFB: bytes: ByteBuffer -> ErrorFB

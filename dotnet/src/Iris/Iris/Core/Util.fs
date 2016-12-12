@@ -434,7 +434,7 @@ module FileSystem =
         |> Either.succeed
     with
       | exn ->
-        exn.Message
+        ("FileSystem.rmDir", exn.Message)
         |> IOError
         |> Either.fail
 
@@ -459,7 +459,7 @@ module FileSystem =
         Either.succeed ()
     with
       | exn ->
-        exn.Message
+        ("FileSystem.mkDir", exn.Message)
         |> IOError
         |> Either.fail
 
@@ -729,8 +729,8 @@ module Asset =
       with
         | exn ->
           return!
-            exn.Message
-            |> IOError
+            ("Asset.save",exn.Message)
+            |> AssetError
             |> Either.fail
     }
 
@@ -753,8 +753,8 @@ module Asset =
       with
         | exn ->
           return!
-            exn.Message
-            |> IOError
+            ("Asset.delete",exn.Message)
+            |> AssetError
             |> Either.fail
     }
 
@@ -777,13 +777,13 @@ module Asset =
         with
           | exn ->
             return!
-              exn.Message
-              |> IOError
+              ("Asset.load",exn.Message)
+              |> AssetError
               |> Either.fail
       else
         return!
-          sprintf "File not found: %s" location
-          |> IOError
+          ("Asset.load",sprintf "File not found: %s" location)
+          |> AssetError
           |> Either.fail
     }
 

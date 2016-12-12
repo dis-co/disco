@@ -223,20 +223,20 @@ type User =
   member self.ToBytes() = Binary.buildBuffer self
 
   static member FromFB(fb: UserFB) : Either<IrisError, User> =
-    Either.tryWith ParseError "User" <| fun _ ->
+    Either.tryWith (Error.asParseError "User.FromFB") <| fun _ ->
       { Id        = Id fb.Id
-      ; UserName  = fb.UserName
-      ; FirstName = fb.FirstName
-      ; LastName  = fb.LastName
-      ; Email     = fb.Email
-      ; Password  = fb.Password
-      ; Salt      = fb.Salt
+        UserName  = fb.UserName
+        FirstName = fb.FirstName
+        LastName  = fb.LastName
+        Email     = fb.Email
+        Password  = fb.Password
+        Salt      = fb.Salt
 #if FABLE_COMPILER
-      ; Joined    = fb.Joined
-      ; Created   = fb.Created }
+        Joined    = fb.Joined
+        Created   = fb.Created }
 #else
-      ; Joined    = DateTime.Parse fb.Joined
-      ; Created   = DateTime.Parse fb.Created }
+        Joined    = DateTime.Parse fb.Joined
+        Created   = DateTime.Parse fb.Created }
 #endif
 
   static member FromBytes (bytes: Binary.Buffer) : Either<IrisError, User> =
@@ -268,7 +268,7 @@ type User =
     self |> Yaml.toYaml |> serializer.Serialize
 
   static member FromYamlObject (yaml: UserYaml) =
-    Either.tryWith ParseError "User" <| fun _ ->
+    Either.tryWith (Error.asParseError "User.FromYaml") <| fun _ ->
       { Id        = Id yaml.Id
         UserName  = yaml.UserName
         FirstName = yaml.FirstName

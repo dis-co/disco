@@ -39,7 +39,7 @@ type Behavior =
     | "bang"   -> Right Bang
     | _  ->
       sprintf "Invalid Behavior value: %s" str
-      |> ParseError
+      |> Error.asParseError "Behavior.TryParse"
       |> Either.fail
 
   // ** ToString
@@ -78,7 +78,7 @@ type Behavior =
     | BehaviorFB.BangFB   -> Right Bang
     | x  ->
       sprintf "Could not parse Behavior: %A" x
-      |> ParseError
+      |> Error.asParseError "Behavior.FromFB"
       |> Either.fail
 
 #endif
@@ -119,7 +119,7 @@ type StringType =
     | "ip"        -> Right IP
     | _ ->
       sprintf "Invalid StringType value: %s" str
-      |> ParseError
+      |> Error.asParseError "StringType.TryParse"
       |> Either.fail
 
   // ** ToString
@@ -167,7 +167,7 @@ type StringType =
     | StringTypeFB.IPFB        -> Right IP
     | x ->
       sprintf "Cannot parse StringType. Unknown type: %A" x
-      |> ParseError
+      |> Error.asParseError "StringType.FromFB"
       |> Either.fail
 
 #endif
@@ -234,59 +234,60 @@ type SliceYaml(tipe, idx, value: obj) as self =
     new SliceYaml("CompoundSlice", idx, value)
 
   member self.ToStringSliceD() : Either<IrisError,StringSliceD> =
-    Either.tryWith ParseError "StringSlice" <| fun _ ->
+    Either.tryWith (Error.asParseError "SliceYaml.ToStringSliceD") <| fun _ ->
       StringSliceD.Create
         self.Index
         (string self.Value)
 
   member self.ToIntSliceD() : Either<IrisError,IntSliceD> =
-    Either.tryWith ParseError "IntSlice" <| fun _ ->
+    Either.tryWith (Error.asParseError "SliceYaml.ToIntSliceD") <| fun _ ->
       IntSliceD.Create
         self.Index
         (Int32.Parse (string self.Value))
 
   member self.ToFloatSliceD() : Either<IrisError, FloatSliceD> =
-    Either.tryWith ParseError "FloatSlice" <| fun _ ->
+    Either.tryWith (Error.asParseError "SliceYaml.ToFloatSliceD") <| fun _ ->
       FloatSliceD.Create
         self.Index
         (Double.Parse (string self.Value))
 
   member self.ToDoubleSliceD() : Either<IrisError, DoubleSliceD> =
-    Either.tryWith ParseError "DoubleSlice" <| fun _ ->
+    Either.tryWith (Error.asParseError "SliceYaml.ToDoubleSliceD") <| fun _ ->
       DoubleSliceD.Create
         self.Index
         (Double.Parse (string self.Value))
 
   member self.ToBoolSliceD() : Either<IrisError, BoolSliceD> =
-    Either.tryWith ParseError "BoolSlice" <| fun _ ->
+    Either.tryWith (Error.asParseError "SliceYaml.ToBoolSliceD") <| fun _ ->
       BoolSliceD.Create
         self.Index
         (Boolean.Parse (string self.Value))
 
   member self.ToByteSliceD() : Either<IrisError, ByteSliceD> =
-    Either.tryWith ParseError "ByteSlice" <| fun _ ->
+    Either.tryWith (Error.asParseError "SliceYaml.ToByteSliceD") <| fun _ ->
       ByteSliceD.Create
         self.Index
         (Convert.FromBase64String(string self.Value))
 
   member self.ToEnumSliceD() : Either<IrisError,EnumSliceD> =
-    Either.tryWith ParseError "EnumSlice" <| fun _ ->
+    Either.tryWith (Error.asParseError "SliceYaml.ToEnumSliceD") <| fun _ ->
       let pyml = self.Value :?> PropertyYaml
       { Key = pyml.Key; Value = pyml.Value }
       |> EnumSliceD.Create self.Index
 
   member self.ToColorSliceD() : Either<IrisError,ColorSliceD> =
-    Either.tryWith ParseError "ColorSlice" <| fun _ ->
+    Either.tryWith (Error.asParseError "SliceYaml.ToColorSliceD") <| fun _ ->
       match Yaml.fromYaml(self.Value :?> ColorYaml) with
       | Right color ->
         ColorSliceD.Create self.Index color
-      | Left (ParseError error) ->
-        failwith error
+      | Left (ParseError (_,error)) ->
+        failwith error                  // this is safe (albeit quirky) because its being caught
+                                        // internally
       | other ->
-        failwithf "Encountered unexpected error: %A" other
+        failwithf "Encountered unexpected error: %A" other // same here.
 
   member self.ToCompoundSliceD() : Either<IrisError,CompoundSliceD>  =
-    Either.tryWith ParseError "CompoundSlice" <| fun _ ->
+    Either.tryWith (Error.asParseError "SliceYaml.ToCompoundSliceD") <| fun _ ->
       let n = (self.Value :?> PinYaml array).Length
       let pins =
         Array.fold
@@ -301,7 +302,7 @@ type SliceYaml(tipe, idx, value: obj) as self =
       match pins with
       | Right (_, boxes) ->
         CompoundSliceD.Create self.Index boxes
-      | Left (ParseError error) ->
+      | Left (ParseError (_,error)) ->
         failwith error
       | error ->
         failwithf "Encountered unexpected error: %A" error
@@ -812,8 +813,8 @@ type Pin =
         |> StringPinD.FromFB
         |> Either.map StringPin
       else
-        "PinFB has no value"
-        |> ParseError
+        "StringPinFB has no value"
+        |> Error.asParseError "PinFB.FromFB"
         |> Either.fail
 
     | PinTypeFB.IntPinFB ->
@@ -823,8 +824,8 @@ type Pin =
         |> IntPinD.FromFB
         |> Either.map IntPin
       else
-        "PinFB has no value"
-        |> ParseError
+        "IntPinFB has no value"
+        |> Error.asParseError "PinFB.FromFB"
         |> Either.fail
 
     | PinTypeFB.FloatPinFB ->
@@ -834,8 +835,8 @@ type Pin =
         |> FloatPinD.FromFB
         |> Either.map FloatPin
       else
-        "PinFB has no value"
-        |> ParseError
+        "FloatPinFB has no value"
+        |> Error.asParseError "PinFB.FromFB"
         |> Either.fail
 
     | PinTypeFB.DoublePinFB ->
@@ -845,8 +846,8 @@ type Pin =
         |> DoublePinD.FromFB
         |> Either.map DoublePin
       else
-        "PinFB has no value"
-        |> ParseError
+        "DoublePinFB has no value"
+        |> Error.asParseError "PinFB.FromFB"
         |> Either.fail
 
     | PinTypeFB.BoolPinFB ->
@@ -856,8 +857,8 @@ type Pin =
         |> BoolPinD.FromFB
         |> Either.map BoolPin
       else
-        "PinFB has no value"
-        |> ParseError
+        "BoolPinFB has no value"
+        |> Error.asParseError "PinFB.FromFB"
         |> Either.fail
 
     | PinTypeFB.BytePinFB ->
@@ -867,8 +868,8 @@ type Pin =
         |> BytePinD.FromFB
         |> Either.map BytePin
       else
-        "PinFB has no value"
-        |> ParseError
+        "BytePinFB has no value"
+        |> Error.asParseError "PinFB.FromFB"
         |> Either.fail
 
     | PinTypeFB.EnumPinFB ->
@@ -878,8 +879,8 @@ type Pin =
         |> EnumPinD.FromFB
         |> Either.map EnumPin
       else
-        "PinFB has no value"
-        |> ParseError
+        "EnumPinFB has no value"
+        |> Error.asParseError "PinFB.FromFB"
         |> Either.fail
 
     | PinTypeFB.ColorPinFB ->
@@ -889,8 +890,8 @@ type Pin =
         |> ColorPinD.FromFB
         |> Either.map ColorPin
       else
-        "PinFB has no value"
-        |> ParseError
+        "ColorPinFB has no value"
+        |> Error.asParseError "PinFB.FromFB"
         |> Either.fail
 
     | PinTypeFB.CompoundPinFB ->
@@ -900,13 +901,13 @@ type Pin =
         |> CompoundPinD.FromFB
         |> Either.map CompoundPin
       else
-        "PinFB has no value"
-        |> ParseError
+        "CompoundPinFB has no value"
+        |> Error.asParseError "PinFB.FromFB"
         |> Either.fail
 
     | x ->
-      sprintf "%A is not a valid PinTypeFB" x
-      |> ParseError
+      "CompoundPinFB has no value"
+      |> Error.asParseError "PinFB.FromFB"
       |> Either.fail
 
 #endif
@@ -1140,7 +1141,7 @@ type Pin =
               (^t : (static member FromFB : ^a -> Either<IrisError, ^t>) value.Value)
             else
               "Could not parse empty slice"
-              |> ParseError
+              |> Error.asParseError (sprintf "ParseSlices of %s" (typeof< ^t >).Name)
               |> Either.fail
 
           // add the slice to the array> at its correct position
@@ -1299,13 +1300,13 @@ type Pin =
 
       | x ->
         sprintf "Could not parse PinYml type: %s" x
-        |> ParseError
+        |> Error.asParseError "PynYml.FromYamlObject"
         |> Either.fail
 
     with
       | exn ->
         sprintf "Could not parse PinYml: %s" exn.Message
-        |> ParseError
+        |> Error.asParseError "PynYml.FromYamlObject"
         |> Either.fail
 
   // ** ToYaml
@@ -1430,7 +1431,7 @@ and BoolSliceD =
   // ** FromFB
 
   static member FromFB(fb: BoolSliceFB) : Either<IrisError,BoolSliceD> =
-    Either.tryWith ParseError "BoolSlice" <| fun _ ->
+    Either.tryWith (Error.asParseError "BoolSliceD.FromFB") <| fun _ ->
       { Index = fb.Index; Value = fb.Value }
 
   // ** ToBytes
@@ -1464,7 +1465,7 @@ and BoolSliceD =
     | "BoolSlice" -> yaml.ToBoolSliceD()
     | x ->
       sprintf "Could not parse SliceType: %s" x
-      |> ParseError
+      |> Error.asParseError "BooldSliceD.FromYamlObjec"
       |> Either.fail
 
 #endif
@@ -1584,7 +1585,7 @@ and IntSliceD =
   // ** FromFB
 
   static member FromFB(fb: IntSliceFB) : Either<IrisError,IntSliceD> =
-    Either.tryWith ParseError "IntSliceFB" <| fun _ ->
+    Either.tryWith (Error.asParseError "IntSliceD.FromFB") <| fun _ ->
       { Index = fb.Index
         Value = fb.Value }
 
@@ -1619,7 +1620,7 @@ and IntSliceD =
     | "IntSlice" -> yaml.ToIntSliceD()
     | x ->
       sprintf "Could not parse %s as InSlice" x
-      |> ParseError
+      |> Error.asParseError "IntSliceD.FromYamlObject"
       |> Either.fail
 
 #endif
@@ -1743,7 +1744,7 @@ and FloatSliceD =
   // ** FromFB
 
   static member FromFB(fb: FloatSliceFB) : Either<IrisError,FloatSliceD> =
-    Either.tryWith ParseError "FloatSliceFB" <| fun _ ->
+    Either.tryWith (Error.asParseError "FloatSliceD.FromFB") <| fun _ ->
       { Index = fb.Index
         Value = float fb.Value }
 
@@ -1778,7 +1779,7 @@ and FloatSliceD =
     | "FloatSlice" -> yaml.ToFloatSliceD()
     | x ->
       sprintf "Cannot parse %s as FloatSlice" x
-      |> ParseError
+      |> Error.asParseError "FloatSliceD.FromYamlObject"
       |> Either.fail
 
 #endif
@@ -1901,7 +1902,7 @@ and DoubleSliceD =
   // ** FromFB
 
   static member FromFB(fb: DoubleSliceFB) : Either<IrisError,DoubleSliceD> =
-    Either.tryWith ParseError "DoubleSliceD" <| fun _ ->
+    Either.tryWith (Error.asParseError "DoubleSliceD.FromFB") <| fun _ ->
       { Index = fb.Index
         Value = fb.Value }
 
@@ -1936,7 +1937,7 @@ and DoubleSliceD =
     | "DoubleSlice" -> yaml.ToDoubleSliceD()
     | x ->
       sprintf "Could not parse %s as DoubleSliceD" x
-      |> ParseError
+      |> Error.asParseError "DoubleSliceD.FromYamlObject"
       |> Either.fail
 
 #endif
@@ -2108,7 +2109,7 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
     | "ByteSlice" -> yaml.ToByteSliceD()
     | x ->
       sprintf "Cannot parse %s as ByteSliceD" x
-      |> ParseError
+      |> Error.asParseError "ByteSliceD.FromYamlObject"
       |> Either.fail
 
 #endif
@@ -2155,7 +2156,7 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
       Convert.FromBase64String(str)
 #endif
 
-    Either.tryWith ParseError "ByteSliceD" <| fun _ ->
+    Either.tryWith (Error.asParseError "ByteSliceD.FromFB") <| fun _ ->
       { Index = fb.Index
         Value = decode fb.Value }
 
@@ -2243,7 +2244,7 @@ and EnumPinD =
                 Either.succeed nullable.Value
               else
                 "Cannot parse empty property"
-                |> ParseError
+                |> Error.asParseError "EnumPin.FromFB"
                 |> Either.fail
 #endif
             arr.[i] <- { Key = prop.Key; Value = prop.Value }
@@ -2317,7 +2318,7 @@ and EnumSliceD =
   // ** FromFB
 
   static member FromFB(fb: EnumSliceFB) : Either<IrisError,EnumSliceD> =
-    Either.tryWith ParseError "EnumSliceD" <| fun _ ->
+    Either.tryWith (Error.asParseError "EnumSliceD.FromFB") <| fun _ ->
 #if FABLE_COMPILER
       let prop = fb.Value
       { Index = fb.Index
@@ -2363,7 +2364,7 @@ and EnumSliceD =
     | "EnumSlice" -> yaml.ToEnumSliceD()
     | x ->
       sprintf "Cannot parse %s as EnumSlice" x
-      |> ParseError
+      |> Error.asParseError "EnumSliceD.FromYamlObject"
       |> Either.fail
 
 #endif
@@ -2469,7 +2470,7 @@ and ColorSliceD =
   // ** FromFB
 
   static member FromFB(fb: ColorSliceFB) : Either<IrisError,ColorSliceD> =
-    Either.tryWith ParseError "ColorSliceD" <| fun _ ->
+    Either.tryWith (Error.asParseError "ColorSliceD.FromFB") <| fun _ ->
 #if FABLE_COMPILER
       match fb.Value |> ColorSpace.FromFB with
       | Right color             -> { Index = fb.Index; Value = color }
@@ -2480,8 +2481,8 @@ and ColorSliceD =
       let nullable = fb.Value
       if nullable.HasValue then
         match ColorSpace.FromFB nullable.Value with
-        | Right color             -> { Index = fb.Index; Value = color }
-        | Left (ParseError error) -> failwith error
+        | Right color                 -> { Index = fb.Index; Value = color }
+        | Left (ParseError (_,error)) -> failwith error
         | Left error ->
           failwithf "Unexpected error: %A" error
       else
@@ -2519,7 +2520,7 @@ and ColorSliceD =
     | "ColorSlice" -> yaml.ToColorSliceD()
     | x ->
       sprintf "Cannot parse %s as ColorSlice" x
-      |> ParseError
+      |> Error.asParseError "ColorSliceD.FromYamlObject"
       |> Either.fail
 
 #endif
@@ -2644,7 +2645,7 @@ and StringSliceD =
   // ** FromFB
 
   static member FromFB(fb: StringSliceFB) : Either<IrisError,StringSliceD> =
-    Either.tryWith ParseError "StringSliceD" <| fun _ ->
+    Either.tryWith (Error.asParseError "StringSliceD.FromFB") <| fun _ ->
       { Index = fb.Index
         Value = fb.Value }
 
@@ -2679,7 +2680,7 @@ and StringSliceD =
     | "StringSlice" -> yaml.ToStringSliceD()
     | x ->
       sprintf "Cannot parse %s as StringSlice" x
-      |> ParseError
+      |> Error.asParseError "StringSliceD.FromYamlObject"
       |> Either.fail
 
 #endif
@@ -2806,7 +2807,7 @@ and CompoundSliceD =
                   |> Pin.FromFB
                 else
                   "Could not parse empty PinFB"
-                  |> ParseError
+                  |> Error.asParseError "CompoundSliceD.FromFB"
                   |> Either.fail
 #endif
 
@@ -2852,7 +2853,7 @@ and CompoundSliceD =
     | "CompoundSlice" -> yaml.ToCompoundSliceD()
     | x ->
       sprintf "Could not parse %s as CompoundSlice" x
-      |> ParseError
+      |> Error.asParseError "CompoundSliceD.FromYamlObject"
       |> Either.fail
 
 #endif
@@ -3155,7 +3156,7 @@ and Slice =
         |> Either.map StringSlice
       else
         "Could not parse StringSlice"
-        |> ParseError
+        |> Error.asParseError "Slice.FromFB"
         |> Either.fail
 
     | SliceTypeFB.IntSliceFB      ->
@@ -3166,7 +3167,7 @@ and Slice =
         |> Either.map IntSlice
       else
         "Could not parse IntSlice"
-        |> ParseError
+        |> Error.asParseError "Slice.FromFB"
         |> Either.fail
 
     | SliceTypeFB.FloatSliceFB    ->
@@ -3177,7 +3178,7 @@ and Slice =
         |> Either.map FloatSlice
       else
         "Could not parse FloatSlice"
-        |> ParseError
+        |> Error.asParseError "Slice.FromFB"
         |> Either.fail
 
     | SliceTypeFB.DoubleSliceFB   ->
@@ -3188,7 +3189,7 @@ and Slice =
         |> Either.map DoubleSlice
       else
         "Could not parse DoubleSlice"
-        |> ParseError
+        |> Error.asParseError "Slice.FromFB"
         |> Either.fail
 
     | SliceTypeFB.BoolSliceFB     ->
@@ -3199,7 +3200,7 @@ and Slice =
         |> Either.map BoolSlice
       else
         "Could not parse BoolSlice"
-        |> ParseError
+        |> Error.asParseError "Slice.FromFB"
         |> Either.fail
 
     | SliceTypeFB.ByteSliceFB     ->
@@ -3210,7 +3211,7 @@ and Slice =
         |> Either.map ByteSlice
       else
         "Could not parse ByteSlice"
-        |> ParseError
+        |> Error.asParseError "Slice.FromFB"
         |> Either.fail
 
     | SliceTypeFB.EnumSliceFB     ->
@@ -3221,7 +3222,7 @@ and Slice =
         |> Either.map EnumSlice
       else
         "Could not parse EnumSlice"
-        |> ParseError
+        |> Error.asParseError "Slice.FromFB"
         |> Either.fail
 
     | SliceTypeFB.ColorSliceFB    ->
@@ -3232,7 +3233,7 @@ and Slice =
         |> Either.map ColorSlice
       else
         "Could not parse ColorSlice"
-        |> ParseError
+        |> Error.asParseError "Slice.FromFB"
         |> Either.fail
 
     | SliceTypeFB.CompoundSliceFB ->
@@ -3243,12 +3244,12 @@ and Slice =
         |> Either.map CompoundSlice
       else
         "Could not parse CompoundSlice"
-        |> ParseError
+        |> Error.asParseError "Slice.FromFB"
         |> Either.fail
 
     | x ->
       sprintf "Cannot parse slice. Unknown slice type: %A" x
-      |> ParseError
+      |> Error.asParseError "Slice.FromFB"
       |> Either.fail
 
 #endif
@@ -3319,7 +3320,7 @@ and Slice =
     | "CompoundSlice" -> yaml.ToCompoundSliceD() |> Either.map CompoundSlice
     | x ->
       sprintf "Cannot parse slice type: %s" x
-      |> ParseError
+      |> Error.asParseError "Slice.FromYaml"
       |> Either.fail
 
 #endif

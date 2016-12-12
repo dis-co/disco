@@ -52,13 +52,13 @@ type IpAddress =
       | Sockets.AddressFamily.InterNetwork   -> IPv4Address str |> Right
       | Sockets.AddressFamily.InterNetworkV6 -> IPv6Address str |> Right
       | fam ->
-        sprintf "Unable to parse IP: %s Unsupported AddressFamily: %A" str fam
+        ("IpAddress.Parse", sprintf "Unable to parse IP: %s Unsupported AddressFamily: %A" str fam)
         |> ParseError
         |> Either.fail
 
     with
       | exn ->
-        sprintf "Unable to parse IP: %s Cause: %s" str exn.Message
+        ("IpAddress.Parse", sprintf "Unable to parse IP: %s Cause: %s" str exn.Message)
         |> ParseError
         |> Either.fail
 #endif

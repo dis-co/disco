@@ -46,7 +46,7 @@ type RaftMemberState =
     with
       | exn ->
         sprintf "Could not parse RaftMemberState: %s" exn.Message
-        |> ParseError
+        |> Error.asParseError "RaftMemberState.TryParse"
         |> Either.fail
 
   //  ____  _
@@ -79,7 +79,7 @@ type RaftMemberState =
       | RaftMemberStateFB.FailedFB  -> Right Failed
       | x ->
         sprintf "Could not parse RaftMemberState: %A" x
-        |> ParseError
+        |> Error.asParseError "RaftMemberState.FromFB"
         |> Either.fail
 
 #endif
@@ -308,12 +308,12 @@ and ConfigChange =
         | x ->
           return!
             sprintf "Could not parse ConfigChangeTypeFB %A" x
-            |> ParseError
+            |> Error.asParseError "ConfigChange.FromFB"
             |> Either.fail
       else
         return!
           "Could not parse empty ConfigChangeFB payload"
-          |> ParseError
+          |> Error.asParseError "ConfigChange.FromFB"
           |> Either.fail
 #endif
     }
@@ -352,7 +352,7 @@ and ConfigChange =
       }
     | x ->
       sprintf "Could not parse %s as ConfigChange" x
-      |> ParseError
+      |> Error.asParseError "ConfigChange.FromYamlObject"
       |> Either.fail
 
 #endif

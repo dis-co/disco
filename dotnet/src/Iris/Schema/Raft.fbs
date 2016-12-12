@@ -382,59 +382,20 @@ table ApiActionFB {
 // |_| \_\__,_|_|  \__|_____|_|  |_|  \___/|_|
 
 enum ErrorTypeFB:ushort {
-     // Application
-     BranchNotFoundFB,
-     BranchDetailsNotFoundFB,
-     RepositoryNotFoundFB,
-     RepositoryInitFailedFB,
-     CommitErrorFB,
      GitErrorFB,
-     ProjectNotFoundFB,
-     ProjectParseErrorFB,
-     ProjectPathErrorFB,
-     ProjectSaveErrorFB,
-     ProjectInitErrorFB,
-     MetaDataNotFoundFB,
-     MissingStartupDirFB,
-     CliParseErrorFB,
-     MissingNodeIdFB,
-     MissingNodeFB,
-     AssetNotFoundErrorFB,
-     AssetLoadErrorFB,
-     AssetSaveErrorFB,
-     AssetDeleteErrorFB,
+     ProjectErrorFB,
+     AssetErrorFB,
      ParseErrorFB,
      SocketErrorFB,
      IOErrorFB,
-     OKFB,
-
-     // RAFT
      RaftErrorFB,
-     AlreadyVotedFB,
-     AppendEntryFailedFB,
-     CandidateUnknownFB,
-     EntryInvalidatedFB,
-     InvalidCurrentIndexFB,
-     InvalidLastLogFB,
-     InvalidLastLogTermFB,
-     InvalidTermFB,
-     LogFormatErrorFB,
-     LogIncompleteFB,
-     NoErrorFB,
-     NoNodeFB,
-     NotCandidateFB,
-     NotLeaderFB,
-     NotVotingStateFB,
-     ResponseTimeoutFB,
-     SnapshotFormatErrorFB,
-     StaleResponseFB,
-     UnexpectedVotingChangeFB,
-     VoteTermMismatchFB,
+     OKFB,
      OtherFB
 }
 
 table ErrorFB {
       Type: ErrorTypeFB;
+      Location: string;
       Message: string;
 }
 

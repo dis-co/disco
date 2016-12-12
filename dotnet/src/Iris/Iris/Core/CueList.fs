@@ -85,7 +85,7 @@ and CueList =
                 |> Cue.FromFB
               else
                 "Could not parse empty CueFB"
-                |> ParseError
+                |> Error.asParseError "CueList.FromFB"
                 |> Either.fail
 
             #endif

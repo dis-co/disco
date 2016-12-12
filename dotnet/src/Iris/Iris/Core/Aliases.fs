@@ -96,7 +96,7 @@ and Property =
       |> Either.succeed
     with
       | exn ->
-        sprintf "Could not parse PropteryYaml: %s" exn.Message
+        ("Property.FromYamlObject",sprintf "Could not parse PropteryYaml: %s" exn.Message)
         |> ParseError
         |> Either.fail
 

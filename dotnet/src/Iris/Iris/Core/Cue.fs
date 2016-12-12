@@ -65,7 +65,7 @@ and Cue =
                   |> Pin.FromFB
                 else
                   "Could not parse empty PinFB"
-                  |> ParseError
+                  |> Error.asParseError "Cue.FromFB"
                   |> Either.fail
 
               #endif

@@ -31,6 +31,8 @@ module Git =
   ///
   module Branch =
 
+    let private tag (str:string) = sprintf "Git.Branch.%s" str
+
     /// ## Create a new brnac
     ///
     /// Creates a new branch with the specified name with current HEAD branch as origin.
@@ -63,7 +65,10 @@ module Git =
     /// Returns: Either<string,Branch>
     let tracked (branch: Branch) : Either<IrisError,Branch> =
       match branch.TrackedBranch with
-        | null      -> BranchNotFound "No tracked branch" |> Either.fail
+        | null      ->
+          "No tracked branch"
+          |> Error.asGitError (tag "tracked")
+          |> Either.fail
         | branch -> Either.succeed branch
 
     /// ## Get details about the remote tracking branch
@@ -76,7 +81,10 @@ module Git =
     /// Returns: BranchTrackingDetails option
     let tracking (branch: Branch) : Either<IrisError,BranchTrackingDetails> =
       match branch.TrackingDetails with
-        | null       -> BranchDetailsNotFound "No tracked branch" |> Either.fail
+        | null       ->
+          "No tracked branch"
+          |> Error.asGitError (tag "tracking")
+          |> Either.fail
         | details -> Either.succeed details
 
     /// ## Get the lastest commit object.
@@ -197,6 +205,7 @@ module Git =
   /// Git repository management code.
   ///
   module Repo =
+    let private tag (str: string) = sprintf "Git.Repo.%s" str
 
     let path (repo: Repository) =
       repo.Info.Path
@@ -252,7 +261,7 @@ module Git =
         |> Either.succeed
       with
         | exn ->
-          Left (GitError exn.Message)
+          Left (Error.asGitError (tag "clone") exn.Message)
 
     /// ## Get all branches in repository.
     ///
@@ -415,7 +424,10 @@ module Git =
     /// Returns: Branch
     let checkout (spec: string) (repo: Repository) =
       match LibGit2Sharp.Commands.Checkout(repo, spec) with
-      | null      -> BranchNotFound spec |> Either.fail
+      | null      ->
+        sprintf "%s not found" spec
+        |> Error.asGitError (tag "checkout")
+        |> Either.fail
       | branch -> Either.succeed branch
 
     /// ## Find and return Repository object
@@ -433,11 +445,11 @@ module Git =
       with
         | :? RepositoryNotFoundException as exn  ->
           sprintf "Repository not found: %s" path
-          |> GitError
+          |> Error.asGitError (tag "repository")
           |> Either.fail
         | exn ->
           exn.Message
-          |> GitError
+          |> Error.asGitError (tag "repository")
           |> Either.fail
 
     /// ## Initialize a new repository
@@ -455,7 +467,7 @@ module Git =
       with
         | exn ->
           exn.Message
-          |> RepositoryInitFailed
+          |> Error.asGitError (tag "init")
           |> Either.fail
 
     let add (repo: Repository) (filepath: FilePath) =
@@ -466,7 +478,7 @@ module Git =
       with
         | exn ->
           exn.Message
-          |> GitError
+          |> Error.asGitError (tag "add")
           |> Either.fail
 
     let stage (repo: Repository) (filepath: FilePath) =
@@ -476,7 +488,7 @@ module Git =
       with
         | exn ->
           exn.Message
-          |> GitError
+          |> Error.asGitError (tag "stage")
           |> Either.fail
 
     let commit (repo: Repository) (msg: string) (committer: Signature) =
@@ -486,7 +498,7 @@ module Git =
       with
         | exn ->
           exn.Message
-          |> GitError
+          |> Error.asGitError (tag "commit")
           |> Either.fail
 
     /// ## Retrieve current repository status object
@@ -504,7 +516,7 @@ module Git =
       with
         | exn ->
           exn.Message
-          |> GitError
+          |> Error.asGitError (tag "status")
           |> Either.fail
 
     /// ## Check if repository is currently dirty
@@ -563,7 +575,7 @@ module Git =
       with
         | exn ->
           exn.Message
-          |> GitError
+          |> Error.asGitError (tag "elementAt")
           |> Either.fail
 
     /// ## Count number of commits

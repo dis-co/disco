@@ -39,7 +39,7 @@ type LogLevel =
     | _               -> failwithf "could not parse %s" str
 
   static member TryParse (str: string) =
-    Either.tryWith ParseError "LogLevel" <| fun _ ->
+    Either.tryWith (Error.asParseError "LogLevel.TryParse") <| fun _ ->
       str |> LogLevel.Parse
 
   override self.ToString() =
@@ -80,7 +80,7 @@ type Tier =
     | _           -> failwithf "could not parse %s" str
 
   static member TryParse (str: string) =
-    Either.tryWith ParseError "Tier" <| fun _ ->
+    Either.tryWith (Error.asParseError "Tier.TryParse") <| fun _ ->
       str |> Tier.Parse
 
 // * LogEventYaml
