@@ -14,6 +14,106 @@ open FSharpx.Functional
 [<AutoOpen>]
 module SerializationTests =
 
+  //   ____                 ____        _       _____
+  //  / ___|___  _ __ ___  |  _ \  __ _| |_ __ |_   _|   _ _ __   ___  ___
+  // | |   / _ \| '__/ _ \ | | | |/ _` | __/ _` || || | | | '_ \ / _ \/ __|
+  // | |__| (_) | | |  __/ | |_| | (_| | || (_| || || |_| | |_) |  __/\__ \
+  //  \____\___/|_|  \___| |____/ \__,_|\__\__,_||_| \__, | .__/ \___||___/
+  //                                                 |___/|_|
+
+  let rand = new System.Random()
+
+  let mktags _ =
+    [| for n in 0 .. rand.Next(2,8) do
+        yield Id.Create() |> string |]
+
+  let pins _ =
+    [| Pin.Bang       (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 0u; Value = true    }|])
+    ; Pin.Toggle     (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 0u; Value = true    }|])
+    ; Pin.String     (Id.Create(), "string",    Id.Create(), mktags (), [|{ Index = 0u; Value = "one"   }|])
+    ; Pin.MultiLine  (Id.Create(), "multiline", Id.Create(), mktags (), [|{ Index = 0u; Value = "two"   }|])
+    ; Pin.FileName   (Id.Create(), "filename",  Id.Create(), mktags (), "haha", [|{ Index = 0u; Value = "three" }|])
+    ; Pin.Directory  (Id.Create(), "directory", Id.Create(), mktags (), "hmmm", [|{ Index = 0u; Value = "four"  }|])
+    ; Pin.Url        (Id.Create(), "url",       Id.Create(), mktags (), [|{ Index = 0u; Value = "five"  }|])
+    ; Pin.IP         (Id.Create(), "ip",        Id.Create(), mktags (), [|{ Index = 0u; Value = "six"   }|])
+    ; Pin.Float      (Id.Create(), "float",     Id.Create(), mktags (), [|{ Index = 0u; Value = 3.0    }|])
+    ; Pin.Double     (Id.Create(), "double",    Id.Create(), mktags (), [|{ Index = 0u; Value = double 3.0 }|])
+    ; Pin.Bytes      (Id.Create(), "bytes",     Id.Create(), mktags (), [|{ Index = 0u; Value = [| 2uy; 9uy |] }|])
+    ; Pin.Color      (Id.Create(), "rgba",      Id.Create(), mktags (), [|{ Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
+    ; Pin.Color      (Id.Create(), "hsla",      Id.Create(), mktags (), [|{ Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
+    ; Pin.Enum       (Id.Create(), "enum",      Id.Create(), mktags (), [|{ Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|] , [|{ Index = 0u; Value = { Key = "one"; Value = "two" }}|])
+    |]
+
+  let mkPin _ =
+    let slice : StringSliceD = { Index = 0u; Value = "hello" }
+    Pin.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
+
+  let mkCue _ : Cue =
+    { Id = Id.Create(); Name = "Cue 1"; Pins = pins () }
+
+  let mkPatch _ : Patch =
+    let pins = pins () |> Array.map toPair |> Map.ofArray
+    { Id = Id.Create(); Name = "Patch 3"; Pins = pins }
+
+  let mkCueList _ : CueList =
+    { Id = Id.Create(); Name = "Patch 3"; Cues = [| mkCue (); mkCue () |] }
+
+  let mkUser _ =
+    { Id = Id.Create()
+    ; UserName = "krgn"
+    ; FirstName = "Karsten"
+    ; LastName = "Gebbert"
+    ; Email = "k@ioctl.it"
+    ; Password = "1234"
+    ; Salt = "909090"
+    ; Joined = System.DateTime.Now
+    ; Created = System.DateTime.Now
+    }
+
+  let mkMember _ = Id.Create() |> Member.create
+
+  let mkMembers _ =
+    let n = rand.Next(1, 6)
+    [| for _ in 0 .. n do
+        yield mkMember () |]
+
+  let mkSession _ =
+    { Id = Id.Create()
+    ; Status = { StatusType = Unauthorized; Payload = "" }
+    ; IpAddress = IPv4Address "127.0.0.1"
+    ; UserAgent = "Oh my goodness"
+    }
+
+  let mkProject _ =
+    failwith "mkProject"
+
+  let mkState _ =
+    { Project  = mkProject ()
+      Patches  = mkPatch   () |> fun (patch: Patch) -> Map.ofList [ (patch.Id, patch) ]
+      Cues     = mkCue     () |> fun (cue: Cue) -> Map.ofList [ (cue.Id, cue) ]
+      CueLists = mkCueList () |> fun (cuelist: CueList) -> Map.ofList [ (cuelist.Id, cuelist) ]
+      Sessions = mkSession () |> fun (session: Session) -> Map.ofList [ (session.Id, session) ]
+      Users    = mkUser    () |> fun (user: User) -> Map.ofList [ (user.Id, user) ] }
+
+  let mkChange _ =
+    match rand.Next(0,2) with
+    | n when n > 0 -> MemberAdded(mkMember ())
+    |          _   -> MemberRemoved(mkMember ())
+
+  let mkChanges _ =
+    let n = rand.Next(1, 6)
+    [| for _ in 0 .. n do
+        yield mkChange () |]
+
+  let mkLog _ =
+    LogEntry(Id.Create(), 7u, 1u, DataSnapshot(mkState()),
+      Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot(mkState()),
+        Some <| Configuration(Id.Create(), 5u, 1u, [| mkMember () |],
+          Some <| JointConsensus(Id.Create(), 4u, 1u, mkChanges (),
+            Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mkMembers (), DataSnapshot(mkState()))))))
+    |> Log.fromEntries
+
+
   //  ____                            _ __     __    _
   // |  _ \ ___  __ _ _   _  ___  ___| |\ \   / /__ | |_ ___
   // | |_) / _ \/ _` | | | |/ _ \/ __| __\ \ / / _ \| __/ _ \
@@ -75,11 +175,11 @@ module SerializationTests =
       let mems = [| mem1; mem2 |]
 
       let log =
-        Some <| LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
-          Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
+        Some <| LogEntry(Id.Create(), 7u, 1u, DataSnapshot(mkState()),
+          Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot(mkState()),
             Some <| Configuration(Id.Create(), 5u, 1u, [| mem1 |],
               Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
-                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mems, DataSnapshot State.Empty)))))
+                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mems, DataSnapshot(mkState()))))))
 
       let ae : AppendEntries =
         { Term = 8u
@@ -135,7 +235,7 @@ module SerializationTests =
         ; LeaderId = Id.Create()
         ; LastIndex = 242u
         ; LastTerm = 124242u
-        ; Data = Snapshot(Id.Create(), 12u, 3414u, 241u, 422u, mem1, DataSnapshot State.Empty)
+        ; Data = Snapshot(Id.Create(), 12u, 3414u, 241u, 422u, mem1, DataSnapshot(mkState()))
         }
 
       let msg = InstallSnapshot(Id.Create(), is)
@@ -268,103 +368,6 @@ module SerializationTests =
       let loaded = loadRaft config
 
       expect "Values should be equal" (Right raft) id loaded
-
-  //   ____                 ____        _       _____
-  //  / ___|___  _ __ ___  |  _ \  __ _| |_ __ |_   _|   _ _ __   ___  ___
-  // | |   / _ \| '__/ _ \ | | | |/ _` | __/ _` || || | | | '_ \ / _ \/ __|
-  // | |__| (_) | | |  __/ | |_| | (_| | || (_| || || |_| | |_) |  __/\__ \
-  //  \____\___/|_|  \___| |____/ \__,_|\__\__,_||_| \__, | .__/ \___||___/
-  //                                                 |___/|_|
-
-  let rand = new System.Random()
-
-  let mktags _ =
-    [| for n in 0 .. rand.Next(2,8) do
-        yield Id.Create() |> string |]
-
-  let pins _ =
-    [| Pin.Bang       (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 0u; Value = true    }|])
-    ; Pin.Toggle     (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 0u; Value = true    }|])
-    ; Pin.String     (Id.Create(), "string",    Id.Create(), mktags (), [|{ Index = 0u; Value = "one"   }|])
-    ; Pin.MultiLine  (Id.Create(), "multiline", Id.Create(), mktags (), [|{ Index = 0u; Value = "two"   }|])
-    ; Pin.FileName   (Id.Create(), "filename",  Id.Create(), mktags (), "haha", [|{ Index = 0u; Value = "three" }|])
-    ; Pin.Directory  (Id.Create(), "directory", Id.Create(), mktags (), "hmmm", [|{ Index = 0u; Value = "four"  }|])
-    ; Pin.Url        (Id.Create(), "url",       Id.Create(), mktags (), [|{ Index = 0u; Value = "five"  }|])
-    ; Pin.IP         (Id.Create(), "ip",        Id.Create(), mktags (), [|{ Index = 0u; Value = "six"   }|])
-    ; Pin.Float      (Id.Create(), "float",     Id.Create(), mktags (), [|{ Index = 0u; Value = 3.0    }|])
-    ; Pin.Double     (Id.Create(), "double",    Id.Create(), mktags (), [|{ Index = 0u; Value = double 3.0 }|])
-    ; Pin.Bytes      (Id.Create(), "bytes",     Id.Create(), mktags (), [|{ Index = 0u; Value = [| 2uy; 9uy |] }|])
-    ; Pin.Color      (Id.Create(), "rgba",      Id.Create(), mktags (), [|{ Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
-    ; Pin.Color      (Id.Create(), "hsla",      Id.Create(), mktags (), [|{ Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
-    ; Pin.Enum       (Id.Create(), "enum",      Id.Create(), mktags (), [|{ Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|] , [|{ Index = 0u; Value = { Key = "one"; Value = "two" }}|])
-    |]
-
-  let mkPin _ =
-    let slice : StringSliceD = { Index = 0u; Value = "hello" }
-    Pin.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
-
-  let mkCue _ : Cue =
-    { Id = Id.Create(); Name = "Cue 1"; Pins = pins () }
-
-  let mkPatch _ : Patch =
-    let pins = pins () |> Array.map toPair |> Map.ofArray
-    { Id = Id.Create(); Name = "Patch 3"; Pins = pins }
-
-  let mkCueList _ : CueList =
-    { Id = Id.Create(); Name = "Patch 3"; Cues = [| mkCue (); mkCue () |] }
-
-  let mkUser _ =
-    { Id = Id.Create()
-    ; UserName = "krgn"
-    ; FirstName = "Karsten"
-    ; LastName = "Gebbert"
-    ; Email = "k@ioctl.it"
-    ; Password = "1234"
-    ; Salt = "909090"
-    ; Joined = System.DateTime.Now
-    ; Created = System.DateTime.Now
-    }
-
-  let mkMember _ = Id.Create() |> Member.create
-
-  let mkMembers _ =
-    let n = rand.Next(1, 6)
-    [| for _ in 0 .. n do
-        yield mkMember () |]
-
-  let mkSession _ =
-    { Id = Id.Create()
-    ; Status = { StatusType = Unauthorized; Payload = "" }
-    ; IpAddress = IPv4Address "127.0.0.1"
-    ; UserAgent = "Oh my goodness"
-    }
-
-  let mkState _ =
-    { Patches  = mkPatch   () |> fun (patch: Patch) -> Map.ofList [ (patch.Id, patch) ]
-    ; Cues     = mkCue     () |> fun (cue: Cue) -> Map.ofList [ (cue.Id, cue) ]
-    ; CueLists = mkCueList () |> fun (cuelist: CueList) -> Map.ofList [ (cuelist.Id, cuelist) ]
-    ; Members  = mkMember  () |> fun (mem: RaftMember) -> Map.ofList [ (mem.Id, mem) ]
-    ; Sessions = mkSession () |> fun (session: Session) -> Map.ofList [ (session.Id, session) ]
-    ; Users    = mkUser    () |> fun (user: User) -> Map.ofList [ (user.Id, user) ]
-    }
-
-  let mkChange _ =
-    match rand.Next(0,2) with
-    | n when n > 0 -> MemberAdded(mkMember ())
-    |          _   -> MemberRemoved(mkMember ())
-
-  let mkChanges _ =
-    let n = rand.Next(1, 6)
-    [| for _ in 0 .. n do
-        yield mkChange () |]
-
-  let mkLog _ =
-    LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
-      Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
-        Some <| Configuration(Id.Create(), 5u, 1u, [| mkMember () |],
-          Some <| JointConsensus(Id.Create(), 4u, 1u, mkChanges (),
-            Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mkMembers (), DataSnapshot State.Empty)))))
-    |> Log.fromEntries
 
   //   ____
   //  / ___|   _  ___

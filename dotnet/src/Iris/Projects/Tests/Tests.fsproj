@@ -111,22 +111,6 @@
     <Compile Include="..\..\Iris\Raft\Member.fs">
       <Link>Member.fs</Link>
     </Compile>
-    <!-- FFS!!!! I hate F# -->
-    <Compile Include="..\..\Iris\Core\StateMachine.fs">
-      <Link>StateMachine.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Raft\LogEntry.fs">
-      <Link>LogEntry.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Raft\Log.fs">
-      <Link>Log.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Raft\Types.fs">
-      <Link>Types.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Raft\Raft.fs">
-      <Link>Raft.fs</Link>
-    </Compile>
     <!-- Config -->
     <Compile Include="..\..\Iris\Core\Region.fs">
       <Link>Region.fs</Link>
@@ -154,6 +138,21 @@
     </Compile>
     <Compile Include="..\..\Iris\Core\Project.fs">
       <Link>Project.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\StateMachine.fs">
+      <Link>StateMachine.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Raft\LogEntry.fs">
+      <Link>LogEntry.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Raft\Log.fs">
+      <Link>Log.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Raft\Types.fs">
+      <Link>Types.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Raft\Raft.fs">
+      <Link>Raft.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Core\Uri.fs">
       <Link>Uri.fs</Link>
