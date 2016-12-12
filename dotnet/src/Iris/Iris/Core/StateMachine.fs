@@ -121,21 +121,21 @@ type AppCommand =
 //  ___) | || (_| | ||  __/| | (_| | | | | | | |
 // |____/ \__\__,_|\__\___||_|\__,_|_| |_| |_|_|
 
-type StateYaml(ps, cues, cuelists, members, sessions, users) as self =
+type StateYaml(project, patches, cues, cuelists, sessions, users) as self =
+  [<DefaultValue>] val mutable Project  : ProjectYaml
   [<DefaultValue>] val mutable Patches  : PatchYaml array
   [<DefaultValue>] val mutable Cues     : CueYaml array
   [<DefaultValue>] val mutable CueLists : CueListYaml array
-  [<DefaultValue>] val mutable Members  : RaftMemberYaml array
   [<DefaultValue>] val mutable Sessions : SessionYaml array
   [<DefaultValue>] val mutable Users    : UserYaml array
 
   new () = new StateYaml(null, null, null, null, null, null)
 
   do
-    self.Patches  <- ps
+    self.Project  <- project
+    self.Patches  <- patches
     self.Cues     <- cues
     self.CueLists <- cuelists
-    self.Members  <- members
     self.Sessions <- sessions
     self.Users    <- users
 
@@ -154,22 +154,17 @@ type StateYaml(ps, cues, cuelists, members, sessions, users) as self =
 //
 
 type State =
-  { Patches  : Map<Id,Patch>
+  { Project  : IrisProject
+    Patches  : Map<Id,Patch>
     Cues     : Map<Id,Cue>
     CueLists : Map<Id,CueList>
-    Members  : Map<Id,RaftMember>
     Sessions : Map<Id,Session>
     Users    : Map<Id,User> }
 
-  // ** Empty
+  // ** UpdateProject
 
-  static member Empty =
-    { Patches  = Map.empty
-      Cues     = Map.empty
-      Members  = Map.empty
-      CueLists = Map.empty
-      Users    = Map.empty
-      Sessions = Map.empty }
+  member state.UpdateProject (project: IrisProject) =
+    { state with Project = project }
 
   // ** AddUser
 
@@ -353,86 +348,18 @@ type State =
 
   // ** AddMember
 
-  //  _   _           _
-  // | \ | | ___   __| | ___
-  // |  \| |/ _ \ / _` |/ _ \
-  // | |\  | (_) | (_| |  __/
-  // |_| \_|\___/ \__,_|\___|
-
   member state.AddMember (mem: RaftMember) =
-    if Map.containsKey mem.Id state.Members then
-      state
-    else
-      { state with Members = Map.add mem.Id mem state.Members }
+    { state with Project = Project.addMember mem state.Project }
 
   // ** UpdateMember
 
   member state.UpdateMember (mem: RaftMember) =
-    if Map.containsKey mem.Id state.Members then
-      { state with Members = Map.add mem.Id mem state.Members }
-    else
-      state
+    { state with Project = Project.updateMember mem state.Project }
 
   // ** RemoveMember
 
   member state.RemoveMember (mem: RaftMember) =
-    { state with Members = Map.remove mem.Id state.Members }
-
-  // ** ToYamlObject
-#if !FABLE_COMPILER
-
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
-
-  member self.ToYamlObject () =
-    let inline encode m =
-      m |> Map.toArray |> Array.map (snd >> Yaml.toYaml)
-
-    let yaml = new StateYaml()
-    yaml.Patches  <- encode self.Patches
-    yaml.Cues     <- encode self.Cues
-    yaml.CueLists <- encode self.CueLists
-    yaml.Members  <- encode self.Members
-    yaml.Sessions <- encode self.Sessions
-    yaml.Users    <- encode self.Users
-
-    yaml
-
-  // ** ToYaml
-
-  member self.ToYaml (serializer: Serializer) =
-    self |> Yaml.toYaml |> serializer.Serialize
-
-  // ** FromYamlObject
-
-  static member FromYamlObject (yml: StateYaml) =
-    either {
-      let! patches  = Yaml.arrayToMap yml.Patches
-      let! cues     = Yaml.arrayToMap yml.Cues
-      let! cuelists = Yaml.arrayToMap yml.CueLists
-      let! members  = Yaml.arrayToMap yml.Members
-      let! sessions = Yaml.arrayToMap yml.Sessions
-      let! users    = Yaml.arrayToMap yml.Users
-
-      return { Patches  = patches
-               Cues     = cues
-               CueLists = cuelists
-               Members  = members
-               Sessions = sessions
-               Users    = users }
-    }
-
-  // ** FromYaml
-
-  static member FromYaml (str: string) : Either<IrisError,State> =
-    let serializer = new Serializer()
-    serializer.Deserialize<StateYaml>(str)
-    |> Yaml.fromYaml
-
-#endif
+    { state with Project = Project.removeMember mem.Id state.Project }
 
   // ** ToOffset
 
@@ -444,6 +371,8 @@ type State =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateFB> =
+    let project = Binary.toOffset builder self.Project
+
     let patches =
       Map.toArray self.Patches
       |> Array.map (snd >> Binary.toOffset builder)
@@ -462,12 +391,6 @@ type State =
 
     let cuelistsoffset = StateFB.CreateCueListsVector(builder, cuelists)
 
-    let members =
-      Map.toArray self.Members
-      |> Array.map (snd >> Binary.toOffset builder)
-
-    let memberssoffset = StateFB.CreateMembersVector(builder, members)
-
     let users =
       Map.toArray self.Users
       |> Array.map (snd >> Binary.toOffset builder)
@@ -481,10 +404,10 @@ type State =
     let sessionsoffset = StateFB.CreateSessionsVector(builder, sessions)
 
     StateFB.StartStateFB(builder)
+    StateFB.AddProject(builder, project)
     StateFB.AddPatches(builder, patchesoffset)
     StateFB.AddCues(builder, cuesoffset)
     StateFB.AddCueLists(builder, cuelistsoffset)
-    StateFB.AddMembers(builder, memberssoffset)
     StateFB.AddSessions(builder, sessionsoffset)
     StateFB.AddUsers(builder, usersoffset)
     StateFB.EndStateFB(builder)
@@ -497,6 +420,10 @@ type State =
 
   static member FromFB(fb: StateFB) : Either<IrisError, State> =
     either {
+      // PROJECT
+
+      let! project = Project.FromFB fb.Project
+
       // PATCHES
 
       let! patches =
@@ -575,32 +502,6 @@ type State =
           arr
         |> Either.map snd
 
-      // MEMBERS
-
-      let! members =
-        let arr = Array.zeroCreate fb.MembersLength
-        Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, RaftMember>>) _ -> either {
-            let! (i, map) = m
-#if FABLE_COMPILER
-            let! mem = fb.Members(i) |> RaftMember.FromFB
-#else
-            let! mem =
-              let value = fb.Members(i)
-              if value.HasValue then
-                value.Value
-                |> RaftMember.FromFB
-              else
-                "Could not parse empty RaftMember payload"
-                |> Error.asParseError "State.FromFB"
-                |> Either.fail
-#endif
-            return (i + 1, Map.add mem.Id mem map)
-          })
-          (Right (0, Map.empty))
-          arr
-        |> Either.map snd
-
       // USERS
 
       let! users =
@@ -653,10 +554,10 @@ type State =
           arr
         |> Either.map snd
 
-      return { Patches  = patches
+      return { Project  = project
+               Patches  = patches
                Cues     = cues
                CueLists = cuelists
-               Members  = members
                Users    = users
                Sessions = sessions }
     }

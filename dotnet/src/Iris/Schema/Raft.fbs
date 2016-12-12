@@ -322,6 +322,156 @@ table SessionFB {
       UserAgent: string;
 }
 
+//   ____             __ _
+//  / ___|___  _ __  / _(_) __ _
+// | |   / _ \| '_ \| |_| |/ _` |
+// | |__| (_) | | | |  _| | (_| |
+//  \____\___/|_| |_|_| |_|\__, |
+//                         |___/
+
+table MachineConfigFB {
+      MachineId: string;
+      HostName: string;
+      WorkSpace: string;
+}
+
+table AudioConfigFB {
+      SampleRate: uint;
+}
+
+table VvvvExeFB {
+      Executable: string;
+      Version: string;
+      Required: bool;
+}
+
+table VvvvPluginFB {
+      Name: string;
+      Path: string;
+}
+
+table VvvvConfigFB {
+      Executables: [ VvvvExeFB ];
+      Plugins:     [ VvvvPluginFB ];
+}
+
+table RaftConfigFB {
+      RequestTimeout: uint;
+      ElectionTimeout: uint;
+      MaxLogDepth: uint;
+      LogLevel: string;
+      DataDir: string;
+      MaxRetries: ushort;
+      PeriodicInterval: ushort;
+}
+
+table TimingConfigFB {
+      Framebase: uint;
+      Input: string;
+      Servers: [ string ];
+      UDPPort: uint;
+      TCPPort: uint;
+}
+
+table HostGroupFB {
+      Name: string;
+      Members: [ string ];
+}
+
+table ClusterConfigFB {
+      Name: string;
+      Members: [ RaftMemberFB ];
+      Groups: [ HostGroupFB ];
+}
+
+table ViewPortFB {
+      Id: string;
+      Name: string;
+      PositionX: int;
+      PositionY: int;
+      SizeX: int;
+      SizeY: int;
+      OutputPositionX: int;
+      OutputPositionY: int;
+      OutputSizeX: int;
+      OutputSizeY: int;
+      OverlapX: int;
+      OverlapY: int;
+      Description: string;
+}
+
+table TaskFB {
+      Id: string;
+      Description: string;
+      DisplayId: string;
+      AudioStream: string;
+      Arguments: [ string ];
+}
+
+table SignalFB {
+      SizeX: int;
+      SizeY: int;
+      PositionX: int;
+      PositionY: int;
+} 
+
+table RegionFB {
+      Id: string;
+      Name: string;
+      SrcPositionX: int;
+      SrcPositionY: int;
+      SrcSizeX: int;
+      SrcSizeY: int;
+      OutputPositionX: int;
+      OutputPositionY: int;
+      OutputSizeX: int;
+      OutputSizeY: int;
+}
+
+table RegionMapFB {
+      SrcViewportId: string;
+      Regions: [ RegionFB ]; 
+}
+
+table DisplayFB {
+     Id: string;
+     Name: string;
+     SizeX: int;
+     SizeY: int;
+     Signals: [ SignalFB ];
+     RegionMap: RegionMapFB;
+}
+
+table ConfigFB {
+      MachineConfig:  MachineConfigFB;
+      AudioConfig:    AudioConfigFB;
+      VvvvConfig:     VvvvConfigFB;
+      RaftConfig:     RaftConfigFB;
+      TimingConfig:   TimingConfigFB;
+      ClusterConfig:  ClusterConfigFB;
+      ViewPorts:      [ ViewPortFB ];
+      Displays:       [ DisplayFB ];
+      Tasks:          [ TaskFB ];
+}
+
+//  ____            _           _
+// |  _ \ _ __ ___ (_) ___  ___| |_
+// | |_) | '__/ _ \| |/ _ \/ __| __|
+// |  __/| | | (_) | |  __/ (__| |_
+// |_|   |_|  \___// |\___|\___|\__|
+//               |__/
+
+table ProjectFB {
+      Id:        string;
+      Name:      string;
+      Path:      string;
+      CreatedOn: string;
+      LastSaved: string;
+      Copyright: string;
+      Author:    string;
+      Config:    ConfigFB;
+}
+
 //  ____  _        _
 // / ___|| |_ __ _| |_ ___
 // \___ \| __/ _` | __/ _ \
@@ -329,10 +479,10 @@ table SessionFB {
 // |____/ \__\__,_|\__\___|
 
 table StateFB {
+      Project:  ProjectFB;
       Patches:  [PatchFB];
       Cues:     [CueFB];
       CueLists: [CueListFB];
-      Members:  [RaftMemberFB];
       Sessions: [SessionFB];
       Users:    [UserFB];
 }

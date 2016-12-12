@@ -13,6 +13,15 @@ open Iris.Core.Utils
 open FSharpx.Functional
 open Iris.Raft
 
+#if FABLE_COMPILER
+
+#else
+
+open FlatBuffers
+open Iris.Serialization.Raft
+
+#endif
+
 // * IrisProject
 
 //  ____            _           _
@@ -31,6 +40,37 @@ type IrisProject =
   ; Copyright : string    option
   ; Author    : string    option
   ; Config    : IrisConfig }
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let id = builder.CreateString (string self.Id)
+    let name = builder.CreateString self.Name
+    let path = builder.CreateString self.Path
+    let created = builder.CreateString (string self.CreatedOn)
+    let lastsaved = Option.map builder.CreateString self.LastSaved
+    let copyright = Option.map builder.CreateString self.Copyright
+    let author = Option.map builder.CreateString self.Author
+    let config = Binary.toOffset builder self.Config
+
+    ProjectFB.StartProjectFB(builder)
+    ProjectFB.AddId(builder, id)
+    ProjectFB.AddName(builder, name)
+    ProjectFB.AddPath(builder, path)
+    ProjectFB.AddCreatedOn(builder, created)
+
+    match lastsaved with
+    | Some offset -> ProjectFB.AddLastSaved(builder,offset)
+    | _ -> ()
+
+    match copyright with
+    | Some offset -> ProjectFB.AddCopyright(builder,offset)
+    | _ -> ()
+
+    match author with
+    | Some offset -> ProjectFB.AddAuthor(builder,offset)
+    | _ -> ()
+
+    ProjectFB.AddConfig(builder, config)
+    ProjectFB.EndProjectFB(builder)
 
 // * Project module
 
@@ -88,7 +128,7 @@ module Project =
   /// Attempt to parse the LastSaved proptery from the passed `ConfigFile`.
   ///
   /// # Returns: DateTime option
-  let private parseLastSaved (config: ConfigFile) =
+  let private parseLastSaved (config: ProjectYaml) =
     let meta = config.Project.Metadata
     if meta.LastSaved.Length > 0
     then
@@ -106,7 +146,7 @@ module Project =
   /// fails to read it, the date returned will be the begin of the epoch.
   ///
   /// # Returns: DateTime
-  let private parseCreatedOn (config: ConfigFile) =
+  let private parseCreatedOn (config: ProjectYaml) =
     let meta = config.Project.Metadata
     if meta.CreatedOn.Length > 0
     then
@@ -132,7 +172,7 @@ module Project =
           |> Either.fail
       else
         try
-          let config = ConfigFile()
+          let config = ProjectYaml()
           config.Load(path)
 
           let meta = config.Project.Metadata
@@ -242,7 +282,7 @@ module Project =
   /// the project value with the new time stamp.
   ///
   /// # Returns: IrisProject
-  let private toFile (project: IrisProject) (config: ConfigFile)  =
+  let private toFile (project: IrisProject) (config: ProjectYaml)  =
     // Project metadata
     config.Project.Metadata.Id   <- string project.Id
     config.Project.Metadata.Name <- project.Name
@@ -408,7 +448,7 @@ module Project =
             Right ()
 
       let msg = sprintf "%s saved the project" user.UserName
-      let config = ConfigFile()
+      let config = ProjectYaml()
 
       let project =
         config
@@ -428,18 +468,6 @@ module Project =
             |> Error.asProjectError "Project.saveProject"
             |> Either.fail
     }
-
-  // ** loadState
-
-  let loadState (project: IrisProject) : Either<IrisError,State> =
-
-    failwith "oh no"
-
-  // ** saveState
-
-  let saveState (project: IrisProject) (state: State) : Either<IrisError,unit> =
-
-    failwith "oh no"
 
   // ** clone
 
@@ -483,6 +511,18 @@ module Project =
   let addMember (mem: RaftMember) (project: IrisProject) : IrisProject =
     project.Config
     |> Config.addMember mem
+    |> flip updateConfig project
+
+  // ** updateMember
+
+  let updateMember (mem: RaftMember) (project: IrisProject) : IrisProject =
+    addMember mem project
+
+  // ** removeMember
+
+  let removeMember (mem: MemberId) (project: IrisProject) : IrisProject =
+    project.Config
+    |> Config.removeMember mem
     |> flip updateConfig project
 
   // ** addMembers

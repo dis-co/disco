@@ -41,22 +41,41 @@ type Actor<'t> = MailboxProcessor<'t>
 ///
 /// Represents a point in Euclidian space
 ///
-type Coordinate = Coordinate of (int * int)
-  with
-    override self.ToString() =
+type Coordinate = Coordinate of (int * int) with
+
+  override self.ToString() =
+    match self with
+    | Coordinate (x, y) -> "(" + string x + ", " + string y + ")"
+
+  member self.X
+    with get () =
       match self with
-      | Coordinate (x, y) -> "(" + string x + ", " + string y + ")"
+      | Coordinate (x,_) -> x
+
+  member self.Y
+    with get () =
+      match self with
+      | Coordinate (_,y) -> y
 
 /// ## Rect
 ///
 /// Represents a rectangle in by width * height
 ///
-type Rect = Rect of (int * int)
-  with
-    override self.ToString() =
-      match self with
-      | Rect (x, y) -> "(" + string x + ", " + string y + ")"
+type Rect = Rect of (int * int) with
 
+  override self.ToString() =
+    match self with
+    | Rect (x, y) -> "(" + string x + ", " + string y + ")"
+
+  member self.X
+    with get () =
+      match self with
+      | Rect (x,_) -> x
+
+  member self.Y
+    with get () =
+      match self with
+      | Rect (_,y) -> y
 
 //  ____                            _
 // |  _ \ _ __ ___  _ __   ___ _ __| |_ _   _

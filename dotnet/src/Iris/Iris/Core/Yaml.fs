@@ -25,9 +25,6 @@ Project:
       - Name:
         Path:
 
-  Ports:
-    UDPCues:     -1
-
   Engine:
     LogLevel:
     DataDir:
@@ -102,4 +99,4 @@ Project:
           -
 """
 
-  type ConfigFile = YamlConfig<"",false,Config>
+  type ProjectYaml = YamlConfig<"",false,Config>

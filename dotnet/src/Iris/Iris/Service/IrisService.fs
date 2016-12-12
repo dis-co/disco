@@ -200,13 +200,14 @@ module Iris =
   #if FRONTEND_DEV
     let users = [
       { Id        = Id.Create()
-      ; UserName  = "alfonso"
-      ; FirstName = "Alfonso"
-      ; LastName  = "Garc�a-Caro"
-      ; Email     = "alfonso.garcia-caro@nsynk.de"
-      ; Password  = "1234"
-      ; Joined    = DateTime.Now
-      ; Created   = DateTime.Now }
+        UserName  = "alfonso"
+        FirstName = "Alfonso"
+        LastName  = "Garc�a-Caro"
+        Email     = "alfonso.garcia-caro@nsynk.de"
+        Password  = "1234"
+        Salt      = "1234"
+        Joined    = DateTime.Now
+        Created   = DateTime.Now }
     ]
     { State.Empty with Users = users |> Seq.map (fun x -> x.Id, x) |> Map }
   #else

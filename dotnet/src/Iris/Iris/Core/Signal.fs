@@ -1,5 +1,14 @@
 namespace Iris.Core
 
+#if FABLE_COMPILER
+
+#else
+
+open FlatBuffers
+open Iris.Serialization.Raft
+
+#endif
+
 //  ____  _                   _
 // / ___|(_) __ _ _ __   __ _| |
 // \___ \| |/ _` | '_ \ / _` | |
@@ -9,5 +18,12 @@ namespace Iris.Core
 
 type Signal =
   { Size     : Rect
-  ; Position : Coordinate
-  }
+    Position : Coordinate }
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    SignalFB.StartSignalFB(builder)
+    SignalFB.AddSizeX(builder, self.Size.X)
+    SignalFB.AddSizeY(builder, self.Size.Y)
+    SignalFB.AddPositionX(builder, self.Position.X)
+    SignalFB.AddPositionY(builder, self.Position.Y)
+    SignalFB.EndSignalFB(builder)
