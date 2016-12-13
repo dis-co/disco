@@ -392,19 +392,19 @@ type State =
     either {
       // PROJECT
 
-#if FABLE_COMPILER
-      let! project = IrisProject.FromFB fb.Project
-#else
       let! project =
+        #if FABLE_COMPILER
+        IrisProject.FromFB fb.Project
+        #else
         let pfb = fb.Project
         if pfb.HasValue then
           let projectish = pfb.Value
           IrisProject.FromFB projectish
         else
-          "Could not parse empty project payload"
+          "Could not parse empty ProjectFB"
           |> Error.asParseError "State.FromFB"
           |> Either.fail
-#endif
+        #endif
 
       // PATCHES
 
@@ -413,9 +413,10 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, Patch>>) _ -> either {
             let! (i, map) = m
-#if FABLE_COMPILER
+
+            #if FABLE_COMPILER
             let! patch = fb.Patches(i) |> Patch.FromFB
-#else
+            #else
             let! patch =
               let value = fb.Patches(i)
               if value.HasValue then
@@ -425,7 +426,8 @@ type State =
                 "Could not parse empty patch payload"
                 |> Error.asParseError "State.FromFB"
                 |> Either.fail
-#endif
+            #endif
+
             return (i + 1, Map.add patch.Id patch map)
           })
           (Right (0, Map.empty))
@@ -439,9 +441,10 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, Cue>>) _ -> either {
             let! (i, map) = m
-#if FABLE_COMPILER
+
+            #if FABLE_COMPILER
             let! cue = fb.Cues(i) |> Cue.FromFB
-#else
+            #else
             let! cue =
               let value = fb.Cues(i)
               if value.HasValue then
@@ -451,7 +454,8 @@ type State =
                 "Could not parse empty Cue payload"
                 |> Error.asParseError "State.FromFB"
                 |> Either.fail
-#endif
+            #endif
+
             return (i + 1, Map.add cue.Id cue map)
           })
           (Right (0, Map.empty))
@@ -465,9 +469,10 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, CueList>>) _ -> either {
             let! (i, map) = m
-#if FABLE_COMPILER
+
+            #if FABLE_COMPILER
             let! cuelist = fb.CueLists(i) |> CueList.FromFB
-#else
+            #else
             let! cuelist =
               let value = fb.CueLists(i)
               if value.HasValue then
@@ -477,7 +482,8 @@ type State =
                 "Could not parse empty CueList payload"
                 |> Error.asParseError "State.FromFB"
                 |> Either.fail
-#endif
+            #endif
+
             return (i + 1, Map.add cuelist.Id cuelist map)
           })
           (Right (0, Map.empty))
@@ -491,9 +497,10 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, User>>) _ -> either {
             let! (i, map) = m
-#if FABLE_COMPILER
+
+            #if FABLE_COMPILER
             let! user = fb.Users(i) |> User.FromFB
-#else
+            #else
             let! user =
               let value = fb.Users(i)
               if value.HasValue then
@@ -503,7 +510,8 @@ type State =
                 "Could not parse empty User payload"
                 |> Error.asParseError "State.FromFB"
                 |> Either.fail
-#endif
+            #endif
+
             return (i + 1, Map.add user.Id user map)
           })
           (Right (0, Map.empty))
@@ -517,9 +525,10 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, Session>>) _ -> either {
             let! (i, map) = m
-#if FABLE_COMPILER
+
+            #if FABLE_COMPILER
             let! session = fb.Sessions(i) |> Session.FromFB
-#else
+            #else
             let! session =
               let value = fb.Sessions(i)
               if value.HasValue then
@@ -529,7 +538,8 @@ type State =
                 "Could not parse empty Session payload"
                 |> Error.asParseError "State.FromFB"
                 |> Either.fail
-#endif
+            #endif
+
             return (i + 1, Map.add session.Id session map)
           })
           (Right (0, Map.empty))

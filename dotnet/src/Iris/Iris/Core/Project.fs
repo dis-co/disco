@@ -46,6 +46,123 @@ type IrisMachine =
     MachineConfigFB.AddWorkSpace(builder,wsp)
     MachineConfigFB.EndMachineConfigFB(builder)
 
+  static member FromFB(fb: MachineConfigFB) =
+    either {
+      return
+        { MachineId = Id fb.MachineId
+          HostName  = fb.HostName
+          WorkSpace = fb.WorkSpace }
+    }
+
+// * MachineConfig module
+
+[<RequireQualifiedAccess>]
+module MachineConfig =
+
+  let private tag (str: string) = sprintf "MachineConfig.%s" str
+
+  // ** MachineConfigYaml (private)
+
+  type MachineConfigYaml () =
+    [<DefaultValue>] val mutable MachineId : string
+    [<DefaultValue>] val mutable WorkSpace : string
+
+    static member Create (cfg: IrisMachine) =
+      let yml = new MachineConfigYaml()
+      yml.MachineId <- string cfg.MachineId
+      yml.WorkSpace <- cfg.WorkSpace
+      yml
+
+  // ** parse (private)
+
+  let private parse (yml: MachineConfigYaml) : Either<IrisError,IrisMachine> =
+    let hostname = Network.getHostName ()
+    { MachineId = Id yml.MachineId
+      HostName  = hostname
+      WorkSpace = yml.WorkSpace }
+    |> Either.succeed
+
+  // ** ensureExists (private)
+
+  let private ensureExists (path: FilePath) =
+    try
+      if not (Directory.Exists path) then
+        Directory.CreateDirectory path
+        |> ignore
+    with
+      | _ -> ()
+
+  // ** defaultPath
+
+  let defaultPath =
+    let dir =
+      Assembly.GetExecutingAssembly().Location
+      |> Path.GetDirectoryName
+    dir </> MACHINECONFIG_DEFAULT_PATH </> MACHINECONFIG_NAME + ASSET_EXTENSION
+
+  // ** create
+
+  let create () : IrisMachine =
+    let hostname = Network.getHostName()
+    let workspace =
+      if Platform.isUnix then
+        let home = Environment.GetEnvironmentVariable "HOME"
+        home </> "iris"
+      else
+        @"C:\Iris"
+
+    { MachineId = Id.Create()
+      HostName  = hostname
+      WorkSpace = workspace }
+
+  // ** save
+
+  let save (path: FilePath option) (cfg: IrisMachine) : Either<IrisError,unit> =
+    let serializer = new Serializer()
+
+    try
+      let location =
+        match path with
+        | Some location -> location
+        | None -> defaultPath
+
+      let payload=
+        cfg
+        |> MachineConfigYaml.Create
+        |> serializer.Serialize
+
+      location
+      |> Path.GetDirectoryName
+      |> ensureExists
+
+      File.WriteAllText(location, payload)
+      |> Either.succeed
+    with
+      | exn ->
+        exn.Message
+        |> Error.asIOError (tag "save")
+        |> Either.fail
+
+  // ** load
+
+  let load (path: FilePath option) : Either<IrisError,IrisMachine> =
+    let serializer = new Serializer()
+    try
+      let location =
+        match path with
+        | Some location -> location
+        | None -> defaultPath
+
+      let raw = File.ReadAllText location
+      serializer.Deserialize<MachineConfigYaml>(raw)
+      |> parse
+    with
+      | exn ->
+        exn.Message
+        |> Error.asIOError (tag "load")
+        |> Either.fail
+
+
 // * RaftConfig
 
 //  ____        __ _    ____             __ _
@@ -93,6 +210,19 @@ type RaftConfig =
     RaftConfigFB.AddPeriodicInterval(builder, uint16 self.PeriodicInterval)
     RaftConfigFB.EndRaftConfigFB(builder)
 
+  static member FromFB(fb: RaftConfigFB) =
+    either {
+      let! level = Iris.Core.LogLevel.TryParse fb.LogLevel
+      return
+        { RequestTimeout   = fb.RequestTimeout
+          ElectionTimeout  = fb.ElectionTimeout
+          MaxLogDepth      = fb.MaxLogDepth
+          LogLevel         = level
+          DataDir          = fb.DataDir
+          MaxRetries       = uint8 fb.MaxRetries
+          PeriodicInterval = uint8 fb.PeriodicInterval }
+    }
+
 // * VvvvConfig
 
 // __     __                     ____             __ _
@@ -123,6 +253,73 @@ type VvvvConfig =
     VvvvConfigFB.AddExecutables(builder, exes)
     VvvvConfigFB.AddPlugins(builder, plugins)
     VvvvConfigFB.EndVvvvConfigFB(builder)
+
+  static member FromFB(fb: VvvvConfigFB) =
+    either {
+      let! (_,exes) =
+        let arr =
+          fb.ExecutablesLength
+          |> Array.zeroCreate
+        Array.fold
+          (fun (m: Either<IrisError, int * VvvvExe array>) _ ->
+            either {
+              let! (idx, exes) = m
+
+              let! exe =
+                #if FABLE_COMPILER
+                fb.Executables(idx)
+                |> VvvvExe.FromFB
+                #else
+                let exeish = fb.Executables(idx)
+                if exeish.HasValue then
+                  let value = exeish.Value
+                  VvvvExe.FromFB value
+                else
+                  "Could not parse empty VvvvExeFB"
+                  |> Error.asParseError "VvvvConfig.FromFB"
+                  |> Either.fail
+                #endif
+
+              exes.[idx] <- exe
+              return (idx + 1, exes)
+            })
+          (Right(0, arr))
+          arr
+
+      let! (_,plugins) =
+        let arr =
+          fb.PluginsLength
+          |> Array.zeroCreate
+        Array.fold
+          (fun (m: Either<IrisError, int * VvvvPlugin array>) _ ->
+            either {
+              let! (idx, plugins) = m
+
+              let! plugin =
+                #if FABLE_COMPILER
+                fb.Plugins(idx)
+                |> VvvvPlugin.FromFB
+                #else
+                let plugish = fb.Plugins(idx)
+                if plugish.HasValue then
+                  let value = plugish.Value
+                  VvvvPlugin.FromFB value
+                else
+                  "Could not parse empty VvvvPluginFB"
+                  |> Error.asParseError "VvvvConfig.FromFB"
+                  |> Either.fail
+                #endif
+
+              plugins.[idx] <- plugin
+              return (idx + 1, plugins)
+            })
+          (Right(0, arr))
+          arr
+
+      return
+        { Executables = exes
+          Plugins = plugins }
+    }
 
 // * TimingConfig
 
@@ -161,6 +358,33 @@ type TimingConfig =
     TimingConfigFB.AddTCPPort(builder, self.TCPPort)
     TimingConfigFB.EndTimingConfigFB(builder)
 
+  static member FromFB(fb: TimingConfigFB) =
+    either {
+      let! (_,servers) =
+        let arr =
+          fb.ServersLength
+          |> Array.zeroCreate
+        Array.fold
+          (fun (m: Either<IrisError, int * IpAddress array>) _ ->
+            either {
+              let! (idx,servers) = m
+              let! server =
+                fb.Servers(idx)
+                |> IpAddress.TryParse
+              servers.[idx] <- server
+              return (idx + 1, servers)
+            })
+          (Right(0, arr))
+          arr
+
+      return
+        { Framebase = fb.Framebase
+          Input     = fb.Input
+          Servers   = servers
+          UDPPort   = fb.UDPPort
+          TCPPort   = fb.TCPPort }
+    }
+
 // * AudioConfig
 
 //     _             _ _        ____             __ _
@@ -178,6 +402,11 @@ type AudioConfig =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     AudioConfigFB.CreateAudioConfigFB(builder, self.SampleRate)
+
+  static member FromFB(fb: AudioConfigFB) =
+    either {
+      return { SampleRate = fb.SampleRate }
+    }
 
 // * HostGroup
 
@@ -211,6 +440,28 @@ type HostGroup =
     HostGroupFB.AddMembers(builder,members)
     HostGroupFB.EndHostGroupFB(builder)
 
+  static member FromFB(fb: HostGroupFB) =
+    either {
+      let! (_,members) =
+        let arr =
+          fb.MembersLength
+          |> Array.zeroCreate
+        Array.fold
+          (fun (m: Either<IrisError, int * Id array>) _ ->
+            either {
+              let! (idx, ids) = m
+              let id = Id (fb.Members(idx))
+              ids.[idx] <- id
+              return (idx + 1, ids)
+            })
+          (Right(0, arr))
+          arr
+
+      return
+        { Name    = fb.Name
+          Members = members }
+    }
+
 // * Cluster
 
 //   ____ _           _
@@ -219,7 +470,7 @@ type HostGroup =
 // | |___| | |_| \__ \ ||  __/ |
 //  \____|_|\__,_|___/\__\___|_|
 
-type Cluster =
+type ClusterConfig =
   { Name    : Name
     Members : RaftMember array
     Groups  : HostGroup  array }
@@ -250,6 +501,74 @@ type Cluster =
     ClusterConfigFB.AddGroups(builder, groups)
     ClusterConfigFB.EndClusterConfigFB(builder)
 
+  static member FromFB(fb: ClusterConfigFB) =
+    either {
+      let! (_,members) =
+        let arr =
+          fb.MembersLength
+          |> Array.zeroCreate
+        Array.fold
+          (fun (m: Either<IrisError, int * RaftMember array>) _ ->
+            either {
+              let! (idx,members) = m
+
+              let! mem =
+                #if FABLE_COMPILER
+                fb.Members(idx)
+                |> RaftMember.FromFB
+                #else
+                let memish = fb.Members(idx)
+                if memish.HasValue then
+                  let value = memish.Value
+                  RaftMember.FromFB value
+                else
+                  "Could not parse empty RaftMemberFB"
+                  |> Error.asParseError "Cluster.FromFB"
+                  |> Either.fail
+                #endif
+
+              members.[idx] <- mem
+              return (idx + 1, members)
+            })
+          (Right(0, arr))
+          arr
+
+      let! (_,groups) =
+        let arr =
+          fb.GroupsLength
+          |> Array.zeroCreate
+        Array.fold
+          (fun (m: Either<IrisError, int * HostGroup array>) _ ->
+            either {
+              let! (idx,groups) = m
+
+              let! group =
+                #if FABLE_COMPILER
+                fb.Groups(idx)
+                |> HostGroup.FromFB
+                #else
+                let groupish = fb.Groups(idx)
+                if groupish.HasValue then
+                  let value = groupish.Value
+                  HostGroup.FromFB value
+                else
+                  "Could not parse empty HostGroupFB"
+                  |> Error.asParseError "Cluster.FromFB"
+                  |> Either.fail
+                #endif
+
+              groups.[idx] <- group
+              return (idx + 1, groups)
+            })
+          (Right(0, arr))
+          arr
+
+      return
+        { Name    = fb.Name
+          Members = members
+          Groups  = groups }
+    }
+
 // * IrisConfig
 
 //  ___      _      ____             __ _
@@ -265,7 +584,7 @@ type IrisConfig =
     VvvvConfig     : VvvvConfig
     RaftConfig     : RaftConfig
     TimingConfig   : TimingConfig
-    ClusterConfig  : Cluster
+    ClusterConfig  : ClusterConfig
     ViewPorts      : ViewPort array
     Displays       : Display  array
     Tasks          : Task     array }
@@ -302,6 +621,187 @@ type IrisConfig =
     ConfigFB.AddTasks(builder, tasks)
     ConfigFB.EndConfigFB(builder)
 
+  static member FromFB(fb: ConfigFB) =
+    either {
+      let! machine =
+        #if FABLE_COMPILER
+        MachineConfig.FromFB fb.MachineConfig
+        #else
+        let machinish = fb.MachineConfig
+        if machinish.HasValue then
+          let value = machinish.Value
+          IrisMachine.FromFB value
+        else
+          "Could not parse empty MachineConfigFB"
+          |> Error.asParseError "IrisConfig.FromFB"
+          |> Either.fail
+        #endif
+
+      let! audio =
+        #if FABLE_COMPILER
+        AudioConfig.FromFB fb.AudioConfig
+        #else
+        let audioish = fb.AudioConfig
+        if audioish.HasValue then
+          let value = audioish.Value
+          AudioConfig.FromFB value
+        else
+          "Could not parse empty AudioConfigFB"
+          |> Error.asParseError "IrisConfig.FromFB"
+          |> Either.fail
+        #endif
+
+      let! vvvv =
+        #if FABLE_COMPILER
+        VvvvConfig.FromFB fb.VvvvConfig
+        #else
+        let vvvvish = fb.VvvvConfig
+        if vvvvish.HasValue then
+          let value = vvvvish.Value
+          VvvvConfig.FromFB value
+        else
+          "Could not parse empty VvvvConfigFB"
+          |> Error.asParseError "IrisConfig.FromFB"
+          |> Either.fail
+        #endif
+
+      let! raft =
+        #if FABLE_COMPILER
+        RaftConfig.FromFB fb.RaftConfig
+        #else
+        let raftish = fb.RaftConfig
+        if raftish.HasValue then
+          let value = raftish.Value
+          RaftConfig.FromFB value
+        else
+          "Could not parse empty RaftConfigFB"
+          |> Error.asParseError "IrisConfig.FromFB"
+          |> Either.fail
+        #endif
+
+      let! timing =
+        #if FABLE_COMPILER
+        TimingConfig.FromFB fb.TimingConfig
+        #else
+        let timingish = fb.TimingConfig
+        if timingish.HasValue then
+          let value = timingish.Value
+          TimingConfig.FromFB value
+        else
+          "Could not parse empty TimingConfigFB"
+          |> Error.asParseError "IrisConfig.FromFB"
+          |> Either.fail
+        #endif
+
+      let! cluster =
+        #if FABLE_COMPILER
+        ClusterConfig.FromFB fb.ClusterConfig
+        #else
+        let clusterish = fb.ClusterConfig
+        if clusterish.HasValue then
+          let value = clusterish.Value
+          ClusterConfig.FromFB value
+        else
+          "Could not parse empty ClusterConfigFB"
+          |> Error.asParseError "IrisConfig.FromFB"
+          |> Either.fail
+        #endif
+
+      let! (_,viewports) =
+        let arr =
+          fb.ViewPortsLength
+          |> Array.zeroCreate
+        Array.fold
+          (fun (m: Either<IrisError, int * ViewPort array>) _ ->
+            either {
+              let! (idx, viewports) = m
+              let! viewport =
+                #if FABLE_COMPILER
+                fb.ViewPorts(idx)
+                |> ViewPort.FromFB
+                #else
+                let vpish = fb.ViewPorts(idx)
+                if vpish.HasValue then
+                  let value = vpish.Value
+                  ViewPort.FromFB value
+                else
+                  "Could not parse empty ViewPortFB"
+                  |> Error.asParseError "IrisConfig.FromFB"
+                  |> Either.fail
+                #endif
+              viewports.[idx] <- viewport
+              return (idx + 1, viewports)
+            })
+          (Right(0, arr))
+          arr
+
+      let! (_,displays) =
+        let arr =
+          fb.DisplaysLength
+          |> Array.zeroCreate
+        Array.fold
+          (fun (m: Either<IrisError, int * Display array>) _ ->
+            either {
+              let! (idx, displays) = m
+              let! display =
+                #if FABLE_COMPILER
+                fb.Displays(idx)
+                |> Display.FromFB
+                #else
+                let dispish = fb.Displays(idx)
+                if dispish.HasValue then
+                  let value = dispish.Value
+                  Display.FromFB value
+                else
+                  "Could not parse empty DisplayFB"
+                  |> Error.asParseError "IrisConfig.FromFB"
+                  |> Either.fail
+                #endif
+              displays.[idx] <- display
+              return (idx + 1, displays)
+            })
+          (Right(0, arr))
+          arr
+
+      let! (_,tasks) =
+        let arr =
+          fb.TasksLength
+          |> Array.zeroCreate
+        Array.fold
+          (fun (m: Either<IrisError, int * Task array>) _ ->
+            either {
+              let! (idx, tasks) = m
+              let! task =
+                #if FABLE_COMPILER
+                fb.Tasks(idx)
+                |> Task.FromFB
+                #else
+                let taskish = fb.Tasks(idx)
+                if taskish.HasValue then
+                  let value = taskish.Value
+                  Task.FromFB value
+                else
+                  "Could not parse empty TaskFB"
+                  |> Error.asParseError "IrisConfig.FromFB"
+                  |> Either.fail
+                #endif
+              tasks.[idx] <- task
+              return (idx + 1, tasks)
+            })
+          (Right(0, arr))
+          arr
+
+      return
+        { MachineConfig = machine
+          AudioConfig   = audio
+          VvvvConfig    = vvvv
+          RaftConfig    = raft
+          TimingConfig  = timing
+          ClusterConfig = cluster
+          ViewPorts     = viewports
+          Displays      = displays
+          Tasks         = tasks }
+    }
 
 // * ProjectYaml
 
@@ -1265,7 +1765,7 @@ Project:
   ///
   /// # Returns: Cluster
 
-  let internal parseCluster (config: Config) : Either<IrisError, Cluster> =
+  let internal parseCluster (config: Config) : Either<IrisError, ClusterConfig> =
     either {
       let cluster = config.Project.Cluster
 
@@ -1311,172 +1811,8 @@ Project:
         g.Members.Add(string mem)
 
       file.Project.Cluster.Groups.Add(g)
+
     (file, config)
-
-// * IrisProject
-
-//  ____            _           _
-// |  _ \ _ __ ___ (_) ___  ___| |_
-// | |_) | '__/ _ \| |/ _ \/ __| __|
-// |  __/| | | (_) | |  __/ (__| |_
-// |_|   |_|  \___// |\___|\___|\__|
-//               |__/
-
-type IrisProject =
-  { Id        : Id
-  ; Name      : Name
-  ; Path      : FilePath                // project path should always be the path containing '.git'
-  ; CreatedOn : TimeStamp
-  ; LastSaved : TimeStamp option
-  ; Copyright : string    option
-  ; Author    : string    option
-  ; Config    : IrisConfig }
-
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = builder.CreateString (string self.Id)
-    let name = builder.CreateString self.Name
-    let path = builder.CreateString self.Path
-    let created = builder.CreateString (string self.CreatedOn)
-    let lastsaved = Option.map builder.CreateString self.LastSaved
-    let copyright = Option.map builder.CreateString self.Copyright
-    let author = Option.map builder.CreateString self.Author
-    let config = Binary.toOffset builder self.Config
-
-    ProjectFB.StartProjectFB(builder)
-    ProjectFB.AddId(builder, id)
-    ProjectFB.AddName(builder, name)
-    ProjectFB.AddPath(builder, path)
-    ProjectFB.AddCreatedOn(builder, created)
-
-    match lastsaved with
-    | Some offset -> ProjectFB.AddLastSaved(builder,offset)
-    | _ -> ()
-
-    match copyright with
-    | Some offset -> ProjectFB.AddCopyright(builder,offset)
-    | _ -> ()
-
-    match author with
-    | Some offset -> ProjectFB.AddAuthor(builder,offset)
-    | _ -> ()
-
-    ProjectFB.AddConfig(builder, config)
-    ProjectFB.EndProjectFB(builder)
-
-  member self.ToBytes () =
-    Binary.buildBuffer self
-
-  static member FromFB(fb: ProjectFB) =
-    failwith "Project.FromFB"
-
-// * MachineConfig module
-
-[<RequireQualifiedAccess>]
-module MachineConfig =
-
-  let private tag (str: string) = sprintf "MachineConfig.%s" str
-
-  // ** MachineConfigYaml (private)
-
-  type MachineConfigYaml () =
-    [<DefaultValue>] val mutable MachineId : string
-    [<DefaultValue>] val mutable WorkSpace : string
-
-    static member Create (cfg: IrisMachine) =
-      let yml = new MachineConfigYaml()
-      yml.MachineId <- string cfg.MachineId
-      yml.WorkSpace <- cfg.WorkSpace
-      yml
-
-  // ** parse (private)
-
-  let private parse (yml: MachineConfigYaml) : Either<IrisError,IrisMachine> =
-    let hostname = Network.getHostName ()
-    { MachineId = Id yml.MachineId
-      HostName  = hostname
-      WorkSpace = yml.WorkSpace }
-    |> Either.succeed
-
-  // ** ensureExists (private)
-
-  let private ensureExists (path: FilePath) =
-    try
-      if not (Directory.Exists path) then
-        Directory.CreateDirectory path
-        |> ignore
-    with
-      | _ -> ()
-
-  // ** defaultPath
-
-  let defaultPath =
-    let dir =
-      Assembly.GetExecutingAssembly().Location
-      |> Path.GetDirectoryName
-    dir </> MACHINECONFIG_DEFAULT_PATH </> MACHINECONFIG_NAME + ASSET_EXTENSION
-
-  // ** create
-
-  let create () : IrisMachine =
-    let hostname = Network.getHostName()
-    let workspace =
-      if Platform.isUnix then
-        let home = Environment.GetEnvironmentVariable "HOME"
-        home </> "iris"
-      else
-        @"C:\Iris"
-
-    { MachineId = Id.Create()
-      HostName  = hostname
-      WorkSpace = workspace }
-
-  // ** save
-
-  let save (path: FilePath option) (cfg: IrisMachine) : Either<IrisError,unit> =
-    let serializer = new Serializer()
-
-    try
-      let location =
-        match path with
-        | Some location -> location
-        | None -> defaultPath
-
-      let payload=
-        cfg
-        |> MachineConfigYaml.Create
-        |> serializer.Serialize
-
-      location
-      |> Path.GetDirectoryName
-      |> ensureExists
-
-      File.WriteAllText(location, payload)
-      |> Either.succeed
-    with
-      | exn ->
-        exn.Message
-        |> Error.asIOError (tag "save")
-        |> Either.fail
-
-  // ** load
-
-  let load (path: FilePath option) : Either<IrisError,IrisMachine> =
-    let serializer = new Serializer()
-    try
-      let location =
-        match path with
-        | Some location -> location
-        | None -> defaultPath
-
-      let raw = File.ReadAllText location
-      serializer.Deserialize<MachineConfigYaml>(raw)
-      |> parse
-    with
-      | exn ->
-        exn.Message
-        |> Error.asIOError (tag "load")
-        |> Either.fail
-
 
 // * Config Module
 
@@ -1489,7 +1825,6 @@ module MachineConfig =
 
 [<RequireQualifiedAccess>]
 module Config =
-
 
   // ** fromFile
 
@@ -1581,7 +1916,7 @@ module Config =
 
   // ** updateCluster
 
-  let updateCluster (cluster: Cluster) (config: IrisConfig) =
+  let updateCluster (cluster: ClusterConfig) (config: IrisConfig) =
     { config with ClusterConfig = cluster }
 
   // ** findMember
@@ -1658,6 +1993,125 @@ module Config =
 
   let logDataPath (config: IrisConfig) =
     config.RaftConfig.DataDir </> RAFT_LOGDATA_PATH
+
+// * IrisProject
+
+//  ____            _           _
+// |  _ \ _ __ ___ (_) ___  ___| |_
+// | |_) | '__/ _ \| |/ _ \/ __| __|
+// |  __/| | | (_) | |  __/ (__| |_
+// |_|   |_|  \___// |\___|\___|\__|
+//               |__/
+
+type IrisProject =
+  { Id        : Id
+  ; Name      : Name
+  ; Path      : FilePath                // project path should always be the path containing '.git'
+  ; CreatedOn : TimeStamp
+  ; LastSaved : TimeStamp option
+  ; Copyright : string    option
+  ; Author    : string    option
+  ; Config    : IrisConfig }
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let id = builder.CreateString (string self.Id)
+    let name = builder.CreateString self.Name
+    let path = builder.CreateString self.Path
+    let created = builder.CreateString (string self.CreatedOn)
+    let lastsaved = Option.map builder.CreateString self.LastSaved
+    let copyright = Option.map builder.CreateString self.Copyright
+    let author = Option.map builder.CreateString self.Author
+    let config = Binary.toOffset builder self.Config
+
+    ProjectFB.StartProjectFB(builder)
+    ProjectFB.AddId(builder, id)
+    ProjectFB.AddName(builder, name)
+    ProjectFB.AddPath(builder, path)
+    ProjectFB.AddCreatedOn(builder, created)
+
+    match lastsaved with
+    | Some offset -> ProjectFB.AddLastSaved(builder,offset)
+    | _ -> ()
+
+    match copyright with
+    | Some offset -> ProjectFB.AddCopyright(builder,offset)
+    | _ -> ()
+
+    match author with
+    | Some offset -> ProjectFB.AddAuthor(builder,offset)
+    | _ -> ()
+
+    ProjectFB.AddConfig(builder, config)
+    ProjectFB.EndProjectFB(builder)
+
+  member self.ToBytes () =
+    Binary.buildBuffer self
+
+  static member FromBytes(bytes: Binary.Buffer) =
+    Binary.createBuffer bytes
+    |> ProjectFB.GetRootAsProjectFB
+    |> IrisProject.FromFB
+
+  static member FromFB(fb: ProjectFB) =
+    either {
+      let! lastsaved =
+        match fb.LastSaved with
+        | null    -> Right None
+        | date -> Right (Some date)
+
+      let! copyright =
+        match fb.Copyright with
+        | null   -> Right None
+        | str -> Right (Some str)
+
+      let! author =
+        match fb.Author with
+        | null   -> Right None
+        | str -> Right (Some str)
+
+      let! config =
+        #if FABLE_COMPILer
+        IrisConfig.FromFB fb.Config
+        #else
+        let configish = fb.Config
+        if configish.HasValue then
+          let value = configish.Value
+          IrisConfig.FromFB value
+        else
+          "Could not parse empty ConfigFB"
+          |> Error.asParseError "IrisProject.FromFB"
+          |> Either.fail
+        #endif
+
+      return
+        { Id        = Id fb.Id
+          Name      = fb.Name
+          Path      = fb.Path
+          CreatedOn = fb.CreatedOn
+          LastSaved = lastsaved
+          Copyright = copyright
+          Author    = author
+          Config    = config }
+    }
+
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+  member self.ToYaml(serializer: Serializer) =
+    failwith "IrisProject.ToYaml"
+
+  static member FromYaml(str: string) =
+    failwith "IrisProject.FromYaml"
 
 // * Project module
 

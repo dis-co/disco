@@ -27,6 +27,14 @@ type Signal =
     SignalFB.AddPositionX(builder, self.Position.X)
     SignalFB.AddPositionY(builder, self.Position.Y)
     SignalFB.EndSignalFB(builder)
+
+  static member FromFB(fb: SignalFB) =
+    either {
+      return
+        { Size     = Rect(fb.SizeX, fb.SizeY)
+          Position = Coordinate(fb.PositionX, fb.PositionY) }
+    }
+
 //  ____            _
 // |  _ \ ___  __ _(_) ___  _ __
 // | |_) / _ \/ _` | |/ _ \| '_ \
@@ -59,6 +67,17 @@ type Region =
     RegionFB.AddOutputSizeY(builder, self.OutputSize.Y)
     RegionFB.EndRegionFB(builder)
 
+  static member FromFB(fb: RegionFB) =
+    either {
+      return
+        { Id             = Id fb.Id
+          Name           = fb.Name
+          SrcSize        = Rect(fb.SrcSizeX,fb.SrcSizeY)
+          SrcPosition    = Coordinate(fb.SrcPositionX,fb.SrcPositionY)
+          OutputSize     = Rect(fb.OutputSizeX,fb.OutputSizeY)
+          OutputPosition = Coordinate(fb.OutputPositionX,fb.OutputPositionY) }
+    }
+
 //  ____            _             __  __
 // |  _ \ ___  __ _(_) ___  _ __ |  \/  | __ _ _ __
 // | |_) / _ \/ _` | |/ _ \| '_ \| |\/| |/ _` | '_ \
@@ -81,6 +100,41 @@ type RegionMap =
     RegionMapFB.AddRegions(builder,regions)
     RegionMapFB.EndRegionMapFB(builder)
 
+  static member FromFB(fb: RegionMapFB) =
+    either {
+      let! (_,regions) =
+        let arr =
+          fb.RegionsLength
+          |> Array.zeroCreate
+        Array.fold
+          (fun (m: Either<IrisError, int * Region array>) _ ->
+            either {
+              let! (idx,regions) = m
+
+              let! region =
+                #if FABLE_COMPILER
+                fb.Regions(idx)
+                |> Region.FromFB
+                #else
+                let regionish = fb.Regions(idx)
+                if regionish.HasValue then
+                  let value = regionish.Value
+                  Region.FromFB value
+                else
+                  "Could not parse empty RegionFB"
+                  |> Error.asParseError "RegionMap.FromFB"
+                  |> Either.fail
+                #endif
+
+              regions.[idx] <- region
+              return (idx + 1, regions)
+            })
+          (Right(0, arr))
+          arr
+      return
+        { SrcViewportId = Id fb.SrcViewportId
+          Regions       = regions }
+    }
 
 //  ____  _           _
 // |  _ \(_)___ _ __ | | __ _ _   _
@@ -112,6 +166,60 @@ type Display =
     DisplayFB.AddSignals(builder,signals)
     DisplayFB.AddRegionMap(builder,map)
     DisplayFB.EndDisplayFB(builder)
+
+  static member FromFB(fb: DisplayFB) =
+    either {
+      let! (_,signals) =
+        let arr =
+          fb.SignalsLength
+          |> Array.zeroCreate
+        Array.fold
+          (fun (m: Either<IrisError, int * Signal array>) _ ->
+            either {
+              let! (idx, signals) = m
+
+              let! signal =
+                #if FABLE_COMPILER
+                fb.Signals(idx)
+                |> Signal.FromFB
+                #else
+                let signalish = fb.Signals(idx)
+                if signalish.HasValue then
+                  let value = signalish.Value
+                  Signal.FromFB value
+                else
+                  "Could not parse empty SignalFB"
+                  |> Error.asParseError "Display.FromFB"
+                  |> Either.fail
+                #endif
+
+              signals.[idx] <- signal
+              return (idx + 1, signals)
+            })
+          (Right(0, arr))
+          arr
+
+      let! regionmap =
+        #if FABLE_COMPILER
+        RegionMap.FromFB fb.RegionMap
+        #else
+        let mapish = fb.RegionMap
+        if mapish.HasValue then
+          let value = mapish.Value
+          RegionMap.FromFB value
+        else
+          "Could not parse empty RegionMap"
+          |> Error.asParseError "Display.FromFB"
+          |> Either.fail
+        #endif
+
+      return
+        { Id        = Id fb.Id
+          Name      = fb.Name
+          Size      = Rect(fb.SizeX, fb.SizeY)
+          Signals   = signals
+          RegionMap = regionmap }
+    }
 
 // __     ___               ____            _
 // \ \   / (_) _____      _|  _ \ ___  _ __| |_
@@ -150,6 +258,19 @@ type ViewPort =
     ViewPortFB.AddDescription(builder, desc)
     ViewPortFB.EndViewPortFB(builder)
 
+  static member FromFB(fb: ViewPortFB) =
+    either {
+      return
+        { Id = Id fb.Id
+          Name = fb.Name
+          Description = fb.Description
+          Size = Rect(fb.SizeX, fb.SizeY)
+          Position = Coordinate(fb.PositionX, fb.PositionY)
+          OutputSize = Rect(fb.OutputSizeX, fb.OutputSizeY)
+          OutputPosition = Coordinate(fb.OutputPositionX, fb.OutputPositionY)
+          Overlap = Rect(fb.OverlapX, fb.OverlapY) }
+    }
+
 //  _____         _
 // |_   _|_ _ ___| | __
 //   | |/ _` / __| |/ /
@@ -183,11 +304,43 @@ type Task =
     TaskFB.AddArguments(builder,args)
     TaskFB.EndTaskFB(builder)
 
-// __     __
-// \ \   / /_   ____   ____   __
-//  \ \ / /\ \ / /\ \ / /\ \ / /
-//   \ V /  \ V /  \ V /  \ V /
-//    \_/    \_/    \_/    \_/
+  static member FromFB(fb: TaskFB) =
+    either {
+      let! (_,arguments) =
+        let arr =
+          fb.ArgumentsLength
+          |> Array.zeroCreate
+        Array.fold
+          (fun (m: Either<IrisError, int * Argument array>) _ ->
+            either {
+              let! (idx,args) = m
+              let! arg =
+                let str = fb.Arguments(idx)
+                match String.split [| ';' |] str with
+                | [| x; y; |] -> Right (x, y)
+                | _ ->
+                  sprintf "Argument has wrong format: %s" str
+                  |> Error.asParseError "Task.FromFB"
+                  |> Either.fail
+              args.[idx] <- arg
+              return (idx + 1, args)
+            })
+          (Right(0,arr))
+          arr
+
+      return
+        { Id          = Id fb.Id
+          Description = fb.Description
+          DisplayId   = Id fb.DisplayId
+          AudioStream = fb.AudioStream
+          Arguments   = arguments }
+    }
+
+// __     __                    _____
+// \ \   / /_   ____   ____   _| ____|_  _____
+//  \ \ / /\ \ / /\ \ / /\ \ / /  _| \ \/ / _ \
+//   \ V /  \ V /  \ V /  \ V /| |___ >  <  __/
+//    \_/    \_/    \_/    \_/ |_____/_/\_\___|
 
 type VvvvExe =
   { Executable : FilePath
@@ -204,6 +357,21 @@ type VvvvExe =
     VvvvExeFB.AddRequired(builder, self.Required)
     VvvvExeFB.EndVvvvExeFB(builder)
 
+  static member FromFB(fb: VvvvExeFB) =
+    either {
+      return
+        { Executable = fb.Executable
+          Version    = fb.Version
+          Required   = fb.Required }
+    }
+
+// __     __                    ____  _             _
+// \ \   / /_   ____   ____   _|  _ \| |_   _  __ _(_)_ __
+//  \ \ / /\ \ / /\ \ / /\ \ / / |_) | | | | |/ _` | | '_ \
+//   \ V /  \ V /  \ V /  \ V /|  __/| | |_| | (_| | | | | |
+//    \_/    \_/    \_/    \_/ |_|   |_|\__,_|\__, |_|_| |_|
+//                                            |___/
+
 type VvvvPlugin =
   { Name : Name
     Path : FilePath }
@@ -216,3 +384,10 @@ type VvvvPlugin =
     VvvvPluginFB.AddName(builder,name)
     VvvvPluginFB.AddPath(builder,path)
     VvvvPluginFB.EndVvvvPluginFB(builder)
+
+  static member FromFB(fb: VvvvPluginFB) =
+    either {
+      return
+        { Name = fb.Name
+          Path = fb.Path }
+    }

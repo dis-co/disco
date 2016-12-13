@@ -515,6 +515,14 @@ module Time =
     let epoch = new DateTime(1970, 1, 1)
     (date.Ticks - epoch.Ticks) / TimeSpan.TicksPerMillisecond
 
+  let parse (str: string) =
+    match DateTime.TryParse(str) with
+    | (true, date) -> Either.succeed date
+    | _ ->
+      sprintf "Could not parse date string: %s" str
+      |> Error.asParseError "Time.parse"
+      |> Either.fail
+
 // * Process
 
 #if !FABLE_COMPILER
