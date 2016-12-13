@@ -1814,6 +1814,52 @@ Project:
 
     (file, config)
 
+  // ** parseLastSaved (private)
+
+  /// ### Parses the LastSaved property.
+  ///
+  /// Attempt to parse the LastSaved proptery from the passed `ConfigFile`.
+  ///
+  /// # Returns: DateTime option
+  let internal parseLastSaved (config: Config) =
+    let meta = config.Project.Metadata
+    if meta.LastSaved.Length > 0
+    then
+      try
+        Some(DateTime.Parse(meta.LastSaved))
+      with
+        | _ -> None
+    else None
+
+  // ** parseCreatedOn (private)
+
+  /// ### Parse the CreatedOn property
+  ///
+  /// Parse the CreatedOn property in a given ConfigFile. If the field is empty or DateTime.Parse
+  /// fails to read it, the date returned will be the begin of the epoch.
+  ///
+  /// # Returns: DateTime
+  let internal parseCreatedOn (config: Config) =
+    let meta = config.Project.Metadata
+    if meta.CreatedOn.Length > 0
+    then
+      try
+        DateTime.Parse(meta.CreatedOn)
+      with
+        | _ -> DateTime.FromFileTimeUtc(int64 0)
+    else DateTime.FromFileTimeUtc(int64 0)
+
+  let internal parse (str: string) =
+    try
+      let config = new Config()
+      config.LoadText str
+      Either.succeed config
+    with
+      | exn ->
+        exn.Message
+        |> Error.asParseError "ProjectYaml.parse"
+        |> Either.fail
+
 // * Config Module
 
 //   ____             __ _
@@ -1862,7 +1908,7 @@ module Config =
     |> ProjectYaml.saveDisplays
     |> ProjectYaml.saveTasks
     |> ProjectYaml.saveCluster
-    |> fst
+    |> ignore
 
   // ** create
 
@@ -1878,6 +1924,11 @@ module Config =
     ; ClusterConfig  = { Name   = name + " cluster"
                        ; Members = [| |]
                        ; Groups  = [| |] } }
+
+  // ** updateMachine
+
+  let updateMachine (machine: IrisMachine) (config: IrisConfig) =
+    { config with MachineConfig = machine }
 
   // ** updateVvvv
 
@@ -2107,11 +2158,58 @@ type IrisProject =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-  member self.ToYaml(serializer: Serializer) =
-    failwith "IrisProject.ToYaml"
+  member self.ToYaml(_: Serializer) =
+    let config = new ProjectYaml.Config()
+
+    Config.toFile self.Config config
+
+    // Project metadata
+    config.Project.Metadata.Id   <- string self.Id
+    config.Project.Metadata.Name <- self.Name
+
+    Option.map
+      (fun author -> config.Project.Metadata.Author <- author)
+      self.Author
+    |> ignore
+
+    Option.map
+      (fun copyright -> config.Project.Metadata.Copyright <- copyright)
+      self.Copyright
+    |> ignore
+
+    config.Project.Metadata.CreatedOn <- self.CreatedOn
+    config.Project.Metadata.LastSaved <- Time.createTimestamp()
+
+    config.ToString()
 
   static member FromYaml(str: string) =
-    failwith "IrisProject.FromYaml"
+    either {
+      let! config = ProjectYaml.parse str
+
+      let meta = config.Project.Metadata
+      let lastSaved =
+        match meta.LastSaved with
+          | null | "" -> None
+          | str ->
+            try
+              DateTime.Parse str |> ignore
+              Some str
+            with
+              | _ -> None
+
+      let dummy = MachineConfig.create ()
+
+      let! config = Config.fromFile config dummy
+
+      return { Id        = Id meta.Id
+               Name      = meta.Name
+               Path      = Path.GetFullPath(".")
+               CreatedOn = meta.CreatedOn
+               LastSaved = lastSaved
+               Copyright = ProjectYaml.parseStringProp meta.Copyright
+               Author    = ProjectYaml.parseStringProp meta.Author
+               Config    = config }
+    }
 
 // * Project module
 
@@ -2162,41 +2260,6 @@ module Project =
     ; Author    = None
     ; Config    = Config.create name machine  }
 
-  // ** parseLastSaved (private)
-
-  /// ### Parses the LastSaved property.
-  ///
-  /// Attempt to parse the LastSaved proptery from the passed `ConfigFile`.
-  ///
-  /// # Returns: DateTime option
-  let private parseLastSaved (config: ProjectYaml.Config) =
-    let meta = config.Project.Metadata
-    if meta.LastSaved.Length > 0
-    then
-      try
-        Some(DateTime.Parse(meta.LastSaved))
-      with
-        | _ -> None
-    else None
-
-  // ** parseCreatedOn (private)
-
-  /// ### Parse the CreatedOn property
-  ///
-  /// Parse the CreatedOn property in a given ConfigFile. If the field is empty or DateTime.Parse
-  /// fails to read it, the date returned will be the begin of the epoch.
-  ///
-  /// # Returns: DateTime
-  let private parseCreatedOn (config: ProjectYaml.Config) =
-    let meta = config.Project.Metadata
-    if meta.CreatedOn.Length > 0
-    then
-      try
-        DateTime.Parse(meta.CreatedOn)
-      with
-        | _ -> DateTime.FromFileTimeUtc(int64 0)
-    else DateTime.FromFileTimeUtc(int64 0)
-
   // ** load
 
   /// ### Load a project from disk
@@ -2213,21 +2276,7 @@ module Project =
           |> Either.fail
       else
         try
-          let config = ProjectYaml.Config()
-          config.Load(path)
-
-          let meta = config.Project.Metadata
-          let lastSaved =
-            match meta.LastSaved with
-              | null | "" -> None
-              | str ->
-                try
-                  DateTime.Parse str |> ignore
-                  Some str
-                with
-                  | _ -> None
-
-          let! config = Config.fromFile config machine
+          let str = File.ReadAllText(path)
 
           let normalizedPath =
             if Path.IsPathRooted path then
@@ -2235,14 +2284,12 @@ module Project =
             else
               Path.GetFullPath path
 
-          return { Id        = Id meta.Id
-                   Name      = meta.Name
-                   Path      = Path.GetDirectoryName(normalizedPath)
-                   CreatedOn = meta.CreatedOn
-                   LastSaved = lastSaved
-                   Copyright = ProjectYaml.parseStringProp meta.Copyright
-                   Author    = ProjectYaml.parseStringProp meta.Author
-                   Config    = config }
+          let! project = Yaml.decode str
+
+          return
+            { project with
+                Path   = normalizedPath
+                Config = Config.updateMachine machine project.Config }
         with
           | exn ->
             return!
@@ -2313,33 +2360,6 @@ module Project =
       let! _ = Asset.save gitkeep ""
       do! Git.Repo.stage repo gitkeep
     }
-
-  // ** saveMetadata (private)
-
-  /// ### Save metadata portion of project
-  ///
-  /// Save the metadata portion of the handed project value by *implicitly* mutating the handed
-  /// config file object. As we want to keep track of the last moment a project was saved, we update
-  /// the project value with the new time stamp.
-  ///
-  /// # Returns: IrisProject
-  let private toFile (project: IrisProject) (config: ProjectYaml.Config)  =
-    // Project metadata
-    config.Project.Metadata.Id   <- string project.Id
-    config.Project.Metadata.Name <- project.Name
-
-    if Option.isSome project.Author then
-      config.Project.Metadata.Author <- Option.get project.Author
-
-    if Option.isSome project.Copyright then
-      config.Project.Metadata.Copyright <- Option.get project.Copyright
-
-    config.Project.Metadata.CreatedOn <- project.CreatedOn
-
-    let ts = Time.createTimestamp()
-    config.Project.Metadata.LastSaved <- ts
-
-    { project with LastSaved = Some ts }
 
   // ** commitPath (private)
 
@@ -2489,18 +2509,11 @@ module Project =
             Right ()
 
       let msg = sprintf "%s saved the project" user.UserName
-      let config = ProjectYaml.Config()
-
-      let project =
-        config
-        |> Config.toFile project.Config
-        |> toFile project
-
       // save everything!
       let destPath = project.Path </> PROJECT_FILENAME + ASSET_EXTENSION
 
       try
-        config.Save(destPath)
+        failwith "saving project"
         return! commitPath destPath user.Signature msg project
       with
         | exn ->
