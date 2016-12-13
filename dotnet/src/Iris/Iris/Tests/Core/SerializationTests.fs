@@ -394,8 +394,13 @@ module SerializationTests =
   let test_validate_project_yaml_serialization =
     testCase "Validate IrisProject Yaml Serializaton" <| fun _ ->
       let project = mkProject()
-      let reproject = project |> Yaml.encode |> Yaml.decode |> Either.get
-      expect "Project should be the same" project id reproject
+      let reproject : IrisProject = project |> Yaml.encode |> Yaml.decode |> Either.get
+      let reconfig = { reproject.Config with MachineConfig = project.Config.MachineConfig }
+
+      // not all properties can be the same (timestampts for instance, so we check basics)
+      expect "Project Id should be the same" project.Id id reproject.Id
+      expect "Project Name should be the same" project.Name id reproject.Name
+      expect "Project Config should be the same" project.Config id reconfig
 
   //   ____
   //  / ___|   _  ___
