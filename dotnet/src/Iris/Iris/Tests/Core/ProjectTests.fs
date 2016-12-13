@@ -64,44 +64,41 @@ module ProjectTests =
         let vvvvCfg =
           { VvvvConfig.Default with
               Executables =
-                [{ Executable = "/pth/to/nowhere"
-                 ; Version    = "0.0.0.0.0.0.1"
-                 ; Required   = true }
-                 { Executable = "/antoher/path"
-                 ; Version    = "1.2.34.4"
-                 ; Required   = false }
-                ]
+                [| { Executable = "/pth/to/nowhere"
+                  ; Version    = "0.0.0.0.0.0.1"
+                  ; Required   = true };
+                  { Executable = "/antoher/path"
+                  ; Version    = "1.2.34.4"
+                  ; Required   = false } |]
             }
-
-        let portCfg = PortConfig.Default
 
         let display1 =
           { Id        = Id.Create()
           ; Name      = "Nice Display"
           ; Size      = Rect (1280,1080)
           ; Signals   =
-              [{ Size     = Rect       (500,500)
-               ; Position = Coordinate (0,0) }
-               { Size     = Rect       (800,800)
-               ; Position = Coordinate (29, 13) }]
+              [| { Size     = Rect       (500,500)
+                ; Position = Coordinate (0,0) };
+                { Size     = Rect       (800,800)
+                ; Position = Coordinate (29, 13) } |]
           ; RegionMap =
             {
               SrcViewportId = Id.Create()
               Regions =
-                [{ Id             = Id.Create()
-                 ; Name           = "A Cool Region"
-                 ; SrcPosition    = Coordinate (0,0)
-                 ; SrcSize        = Rect       (50,50)
-                 ; OutputPosition = Coordinate (50,50)
-                 ; OutputSize     = Rect       (100,100)
-                 };
-                 { Id             = Id.Create()
-                 ; Name           = "Another Cool Region"
-                 ; SrcPosition    = Coordinate (8,67)
-                 ; SrcSize        = Rect       (588,5130)
-                 ; OutputPosition = Coordinate (10,5300)
-                 ; OutputSize     = Rect       (800,900)
-                 }]
+                [| { Id             = Id.Create()
+                  ; Name           = "A Cool Region"
+                  ; SrcPosition    = Coordinate (0,0)
+                  ; SrcSize        = Rect       (50,50)
+                  ; OutputPosition = Coordinate (50,50)
+                  ; OutputSize     = Rect       (100,100)
+                  };
+                  { Id             = Id.Create()
+                  ; Name           = "Another Cool Region"
+                  ; SrcPosition    = Coordinate (8,67)
+                  ; SrcSize        = Rect       (588,5130)
+                  ; OutputPosition = Coordinate (10,5300)
+                  ; OutputSize     = Rect       (800,900)
+                  } |]
             }
           }
 
@@ -110,30 +107,27 @@ module ProjectTests =
           ; Name      = "Cool Display"
           ; Size      = Rect (180,12080)
           ; Signals   =
-              [{ Size     = Rect (800,200)
-               ; Position = Coordinate (3,8)
-               };
-               { Size     = Rect (1800,8800)
-               ; Position = Coordinate (2900, 130)
-               }]
+              [| { Size     = Rect (800,200)
+                ; Position = Coordinate (3,8) };
+                { Size     = Rect (1800,8800)
+                ; Position = Coordinate (2900, 130) } |]
           ; RegionMap =
-            {
-              SrcViewportId = Id.Create();
+            { SrcViewportId = Id.Create();
               Regions =
-                [{ Id             = Id.Create()
-                 ; Name           = "One Region"
-                 ; SrcPosition    = Coordinate (0,8)
-                 ; SrcSize        = Rect       (50,52)
-                 ; OutputPosition = Coordinate (53,50)
-                 ; OutputSize     = Rect       (103,800)
-                 };
-                 { Id             = Id.Create()
-                 ; Name           = "Premium Region"
-                 ; SrcPosition    = Coordinate (8333,897)
-                 ; SrcSize        = Rect       (83,510)
-                 ; OutputPosition = Coordinate (1580,50)
-                 ; OutputSize     = Rect       (1800,890)
-                 }]
+                [| { Id             = Id.Create()
+                  ; Name           = "One Region"
+                  ; SrcPosition    = Coordinate (0,8)
+                  ; SrcSize        = Rect       (50,52)
+                  ; OutputPosition = Coordinate (53,50)
+                  ; OutputSize     = Rect       (103,800)
+                  };
+                  { Id             = Id.Create()
+                  ; Name           = "Premium Region"
+                  ; SrcPosition    = Coordinate (8333,897)
+                  ; SrcSize        = Rect       (83,510)
+                  ; OutputPosition = Coordinate (1580,50)
+                  ; OutputSize     = Rect       (1800,890)
+                  } |]
             }
           }
 
@@ -164,7 +158,7 @@ module ProjectTests =
           ; Description    = "A very important task, indeed."
           ; DisplayId      = Id.Create()
           ; AudioStream    = "hm"
-          ; Arguments      = [("key", "to you heart")]
+          ; Arguments      = [| ("key", "to you heart") |]
           }
 
         let task2 =
@@ -172,7 +166,7 @@ module ProjectTests =
           ; Description    = "yay, its another task"
           ; DisplayId      = Id.Create()
           ; AudioStream    = "hoho"
-          ; Arguments      = [("mykey", "to my heart")]
+          ; Arguments      = [| ("mykey", "to my heart") |]
           }
 
         let memA =
@@ -191,18 +185,18 @@ module ProjectTests =
 
         let groupA: HostGroup =
           { Name    = "Group A"
-          ; Members = [ Id.Create() ]
+          ; Members = [| Id.Create() |]
           }
 
         let groupB: HostGroup =
           { Name    = "Group B"
-          ; Members = [ Id.Create() ]
+          ; Members = [| Id.Create() |]
           }
 
         let cluster =
           { Name   = "A mighty cool cluster"
-          ; Members = [ memA;  memB  ]
-          ; Groups = [ groupA; groupB ]
+          ; Members = [| memA;  memB  |]
+          ; Groups = [| groupA; groupB |]
           }
 
         let project =
@@ -213,11 +207,10 @@ module ProjectTests =
             Project.updateConfig
               { project.Config with
                   RaftConfig    = engineCfg
-                  PortConfig    = portCfg
                   VvvvConfig    = vvvvCfg
-                  ViewPorts     = [ viewPort1; viewPort2 ]
-                  Displays      = [ display1;  display2  ]
-                  Tasks         = [ task1;     task2     ]
+                  ViewPorts     = [| viewPort1; viewPort2 |]
+                  Displays      = [| display1;  display2  |]
+                  Tasks         = [| task1;     task2     |]
                   ClusterConfig = cluster }
               project
 

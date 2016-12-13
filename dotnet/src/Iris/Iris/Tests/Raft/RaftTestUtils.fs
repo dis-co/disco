@@ -180,7 +180,21 @@ module RaftTestUtils =
     let cbs = mkcbs data :> IRaftCallbacks
     runRaft raft cbs action
 
-  let defSM = StateMachine.DataSnapshot State.Empty
+  let mkState() =
+    let machine = MachineConfig.create ()
+
+    let project = Project.create "test-project" machine
+
+    { Project  = project
+      Patches  = Map.empty
+      Cues     = Map.empty
+      CueLists = Map.empty
+      Users    = Map.empty
+      Sessions = Map.empty }
+
+  let defSM =
+    mkState ()
+    |> StateMachine.DataSnapshot
 
   let runWithDefaults action =
     let orv _ _ = None

@@ -340,34 +340,43 @@ module SerializationTests =
 
   let test_save_restore_raft_value_correctly =
     testCase "save/restore raft value correctly" <| fun _ ->
-      let machine = MachineConfig.create ()
+      either {
+        let machine = MachineConfig.create ()
 
-      let self =
-        machine.MachineId
-        |> Member.create
+        let self =
+          machine.MachineId
+          |> Member.create
 
-      let config =
-        Config.create "default" machine
-        |> Config.addMember self
-        |> Config.addMember mem1
-        |> Config.addMember mem2
+        let mem1 =
+          Id.Create()
+          |> Member.create
 
-      let raft =
-        createRaft config
-        |> Either.map
-            (fun raft ->
-              { raft with
-                  Log = log
-                  CurrentTerm = 666u })
-        |> Either.get
+        let mem2 =
+          Id.Create()
+          |> Member.create
 
-      saveRaft config raft
-      |> Either.mapError Error.throw
-      |> ignore
+        let config =
+          Config.create "default" machine
+          |> Config.addMember self
+          |> Config.addMember mem1
+          |> Config.addMember mem2
 
-      let loaded = loadRaft config
+        let term = 666u
 
-      expect "Values should be equal" (Right raft) id loaded
+        let! raft =
+          createRaft config
+          |> Either.map (Raft.setTerm term)
+
+        saveRaft config raft
+        |> Either.mapError Error.throw
+        |> ignore
+
+        let! loaded = loadRaft config
+
+        expect "Member should be correct" self Raft.self loaded
+        expect "Term should be correct" term Raft.currentTerm loaded
+      }
+      |> noError
 
   //   ____
   //  / ___|   _  ___

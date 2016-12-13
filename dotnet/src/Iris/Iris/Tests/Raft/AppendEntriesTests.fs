@@ -9,6 +9,18 @@ open Iris.Core
 [<AutoOpen>]
 module AppendEntries =
 
+  let mkState () =
+    let machine = MachineConfig.create ()
+    let project = Project.create "test-project" machine
+
+    { Project  = project
+      Patches  = Map.empty
+      Cues     = Map.empty
+      CueLists = Map.empty
+      Sessions = Map.empty
+      Users    = Map.empty }
+
+
   ////////////////////////////////////////////////////////////////////////
   //     _                               _ _____       _   _            //
   //    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_(_) ___  ___  //
@@ -238,8 +250,8 @@ module AppendEntries =
       let peer = Member.create (Id.Create())
 
       let log =
-        LogEntry((Id.Create()), 2u, 1u, DataSnapshot State.Empty,
-            Some <| LogEntry((Id.Create()), 2u, 1u, DataSnapshot State.Empty, None))
+        LogEntry((Id.Create()), 2u, 1u, DataSnapshot (mkState ()),
+            Some <| LogEntry((Id.Create()), 2u, 1u, DataSnapshot (mkState ()), None))
 
       raft {
         do! Raft.addMemberM peer
@@ -264,7 +276,7 @@ module AppendEntries =
     testCase "follower recv appendentries does not add dupe entries already in log" <| fun _ ->
       let peer = Member.create (Id.Create())
 
-      let entry = LogEntry((Id.Create()), 2u, 1u, DataSnapshot State.Empty, None)
+      let entry = LogEntry((Id.Create()), 2u, 1u, DataSnapshot (mkState ()), None)
       let log = Log.fromEntries entry
 
       let next =
@@ -289,7 +301,7 @@ module AppendEntries =
         expect "Should still be a success" true AppendRequest.succeeded response
         do! expectM "Should have log count 1" 1u Raft.numLogs
 
-        let log'' = Log.append (Log.make 1u (DataSnapshot State.Empty)) log
+        let log'' = Log.append (Log.make 1u (DataSnapshot (mkState ()))) log
         let msg = { next with Entries = log''.Data }
 
         let! response = Raft.receiveAppendEntries (Some peer.Id) msg
@@ -304,10 +316,10 @@ module AppendEntries =
       let peer = Member.create (Id.Create())
 
       let log =
-        LogEntry((Id.Create()), 0u, 1u, DataSnapshot State.Empty,
-            Some <| LogEntry((Id.Create()), 0u, 1u, DataSnapshot State.Empty,
-                Some <| LogEntry((Id.Create()), 0u, 1u, DataSnapshot State.Empty,
-                    Some <| LogEntry((Id.Create()), 0u, 1u, DataSnapshot State.Empty, None))))
+        LogEntry((Id.Create()), 0u, 1u, DataSnapshot (mkState ()),
+            Some <| LogEntry((Id.Create()), 0u, 1u, DataSnapshot (mkState ()),
+                Some <| LogEntry((Id.Create()), 0u, 1u, DataSnapshot (mkState ()),
+                    Some <| LogEntry((Id.Create()), 0u, 1u, DataSnapshot (mkState ()), None))))
 
       let msg =
         { Term = 1u
@@ -332,10 +344,10 @@ module AppendEntries =
       let peer = Member.create (Id.Create())
 
       let log =
-        LogEntry((Id.Create()), 0u, 1u,  DataSnapshot State.Empty,
-          Some <| LogEntry((Id.Create()), 0u, 1u,  DataSnapshot State.Empty,
-              Some <| LogEntry((Id.Create()), 0u, 1u,  DataSnapshot State.Empty,
-                  Some <| LogEntry((Id.Create()), 0u, 1u,  DataSnapshot State.Empty, None))))
+        LogEntry((Id.Create()), 0u, 1u,  DataSnapshot (mkState ()),
+          Some <| LogEntry((Id.Create()), 0u, 1u,  DataSnapshot (mkState ()),
+              Some <| LogEntry((Id.Create()), 0u, 1u,  DataSnapshot (mkState ()),
+                  Some <| LogEntry((Id.Create()), 0u, 1u,  DataSnapshot (mkState ()), None))))
 
       let msg =
         { Term = 1u
@@ -360,7 +372,7 @@ module AppendEntries =
     testCase "follower recv appendentries failure includes current idx" <| fun _ ->
       let peer = Member.create (Id.Create())
 
-      let log id = LogEntry(id, 0u, 1u, DataSnapshot State.Empty, None)
+      let log id = LogEntry(id, 0u, 1u, DataSnapshot (mkState ()), None)
 
       let msg =
         { Term = 0u

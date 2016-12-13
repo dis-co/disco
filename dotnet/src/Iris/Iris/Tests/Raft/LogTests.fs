@@ -8,6 +8,17 @@ open Iris.Core
 [<AutoOpen>]
 module Log =
 
+  let mkState () =
+    let machine = MachineConfig.create ()
+    let project = Project.create "test-project" machine
+
+    { Project  = project
+      Patches  = Map.empty
+      Cues     = Map.empty
+      CueLists = Map.empty
+      Sessions = Map.empty
+      Users    = Map.empty }
+
   ////////////////////////////////////////
   //  _                                 //
   // | |    ___   __ _                  //
@@ -211,8 +222,8 @@ module Log =
       let idx2 = 2u
 
       let entries =
-        LogEntry(id2,idx2,term,DataSnapshot State.Empty,
-                 Some <| LogEntry(id1,idx1,term,DataSnapshot State.Empty,None))
+        LogEntry(id2,idx2,term,DataSnapshot (mkState ()),
+                 Some <| LogEntry(id1,idx1,term,DataSnapshot(mkState ()),None))
 
       let log = Log.fromEntries entries
 
@@ -229,8 +240,8 @@ module Log =
       let idx2 = 2u
 
       let entries =
-        LogEntry(id2,idx2,term,DataSnapshot State.Empty,
-                 Some <| LogEntry(id1,idx1,term,DataSnapshot State.Empty,None))
+        LogEntry(id2,idx2,term,DataSnapshot(mkState ()),
+                 Some <| LogEntry(id1,idx1,term,DataSnapshot(mkState ()),None))
 
       let log = Log.fromEntries entries
 
@@ -249,15 +260,15 @@ module Log =
       let idx3 = 3u
 
       let entires =
-        LogEntry(id2,idx2,term,DataSnapshot State.Empty,
-                 Some <| LogEntry(id1,idx1,term,DataSnapshot State.Empty,None))
+        LogEntry(id2,idx2,term,DataSnapshot(mkState ()),
+                 Some <| LogEntry(id1,idx1,term,DataSnapshot(mkState()),None))
 
       let log = Log.fromEntries entires
 
       let newer =
-        LogEntry(id3,idx3,term,DataSnapshot State.Empty,
-                 Some <| LogEntry(id2,idx2,term,DataSnapshot State.Empty,
-                                  Some <| LogEntry(id1,idx1,term,DataSnapshot State.Empty,None)))
+        LogEntry(id3,idx3,term,DataSnapshot(mkState ()),
+                 Some <| LogEntry(id2,idx2,term,DataSnapshot(mkState ()),
+                                  Some <| LogEntry(id1,idx1,term,DataSnapshot(mkState ()),None)))
 
       Log.append newer log
       |> assume "Should have length 3" 3u Log.length
@@ -269,7 +280,7 @@ module Log =
       let term = 8u
       let data =
         [ for i in 0 .. 3 do
-            yield DataSnapshot State.Empty ]
+            yield DataSnapshot(mkState ()) ]
 
       let mems =
         [ for n in 0u .. 5u do
@@ -279,7 +290,7 @@ module Log =
       let log =
         List.fold (fun l t -> Log.append (Log.make term t) l) Log.empty data
 
-      Log.snapshot mems (DataSnapshot State.Empty) log
+      Log.snapshot mems (DataSnapshot(mkState())) log
       |> assume "Should have correct lastTerm" (Some term) Log.lastTerm
       |> expect "Should have correct lastIndex" (Some <| Log.index log) Log.lastIndex
 
@@ -300,7 +311,7 @@ module Log =
     testCase "append should work with snapshots too" <| fun _ ->
       let log =
         Log.empty
-        |> Log.append (Snapshot(Id.Create(), 0u, 0u, 9u, 1u, Array.empty, DataSnapshot State.Empty))
+        |> Log.append (Snapshot(Id.Create(), 0u, 0u, 9u, 1u, Array.empty, DataSnapshot(mkState())))
 
       expect "Log should be size 1" 1u Log.length log
 
@@ -340,7 +351,7 @@ module Log =
 
       let log =
         [ for n in 0 .. (n - 1) do
-            yield DataSnapshot State.Empty ]
+            yield DataSnapshot(mkState()) ]
         |> List.fold (fun m n -> Log.append (Log.make 0u n) m) Log.empty
 
       expect "should have correct depth" (uint32 n) Log.length log

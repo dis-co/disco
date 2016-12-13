@@ -18,7 +18,19 @@ module StoreTests =
       ; Pins = Map.empty
       }
 
-    let store : Store = new Store(State.Empty)
+    let machine = MachineConfig.create ()
+
+    let project = Project.create "test-project" machine
+
+    let state =
+      { Project  = project
+        Patches  = Map.empty
+        Cues     = Map.empty
+        CueLists = Map.empty
+        Users    = Map.empty
+        Sessions = Map.empty }
+
+    let store : Store = new Store(state)
     wrap patch store
 
   //  ____       _       _
