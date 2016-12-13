@@ -55,9 +55,6 @@
     <Compile Include="..\..\AssemblyInfo\ServiceInfo.fs">
       <Link>ServiceInfo.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Core\Yaml.fs">
-      <Link>Yaml.fs</Link>
-    </Compile>
     <Compile Include="..\..\Iris\Core\Constants.fs">
       <Link>Constants.fs</Link>
     </Compile>
@@ -118,26 +115,8 @@
     <Compile Include="..\..\Iris\Raft\Member.fs">
       <Link>Member.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Core\Region.fs">
-      <Link>Region.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Signal.fs">
-      <Link>Signal.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Display.fs">
-      <Link>Display.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Task.fs">
-      <Link>Task.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\ViewPort.fs">
-      <Link>ViewPort.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Vvvv.fs">
-      <Link>Vvvv.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Config.fs">
-      <Link>Config.fs</Link>
+    <Compile Include="..\..\Iris\Core\Renderer.fs">
+      <Link>Renderer.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Core\Project.fs">
       <Link>Project.fs</Link>

@@ -85,7 +85,8 @@ module SerializationTests =
     }
 
   let mkProject _ =
-    failwith "mkProject"
+    let machine = MachineConfig.create ()
+    Project.create "test-project" machine
 
   let mkState _ =
     { Project  = mkProject ()
@@ -112,7 +113,6 @@ module SerializationTests =
           Some <| JointConsensus(Id.Create(), 4u, 1u, mkChanges (),
             Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mkMembers (), DataSnapshot(mkState()))))))
     |> Log.fromEntries
-
 
   //  ____                            _ __     __    _
   // |  _ \ ___  __ _ _   _  ___  ___| |\ \   / /__ | |_ ___
@@ -378,6 +378,25 @@ module SerializationTests =
       }
       |> noError
 
+  //  ____            _           _
+  // |  _ \ _ __ ___ (_) ___  ___| |_
+  // | |_) | '__/ _ \| |/ _ \/ __| __|
+  // |  __/| | | (_) | |  __/ (__| |_
+  // |_|   |_|  \___// |\___|\___|\__|
+  //               |__/
+
+  let test_validate_project_binary_serialization =
+    testCase "Validate IrisProject Binary Serializaton" <| fun _ ->
+      let project = mkProject()
+      let reproject = project |> Binary.encode |> Binary.decode |> Either.get
+      expect "Project should be the same" project id reproject
+
+  let test_validate_project_yaml_serialization =
+    testCase "Validate IrisProject Yaml Serializaton" <| fun _ ->
+      let project = mkProject()
+      let reproject = project |> Yaml.encode |> Yaml.decode |> Either.get
+      expect "Project should be the same" project id reproject
+
   //   ____
   //  / ___|   _  ___
   // | |  | | | |/ _ \
@@ -631,6 +650,8 @@ module SerializationTests =
       test_validate_arrivederci_serialization
       test_validate_errorresponse_serialization
       test_save_restore_raft_value_correctly
+      test_validate_project_binary_serialization
+      test_validate_project_yaml_serialization
       test_validate_cue_binary_serialization
       test_validate_cue_yaml_serialization
       test_validate_cuelist_binary_serialization
