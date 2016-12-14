@@ -9,17 +9,21 @@ open System.Net
 open System.Text
 open System.Reflection
 open System.Collections.Generic
-open LibGit2Sharp
 open Iris.Core.Utils
-open FSharpx.Functional
-open FSharp.Configuration
-open SharpYaml.Serialization
 open Iris.Raft
 
 #if FABLE_COMPILER
 
+open Fable.Core
+open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
+
 #else
 
+open LibGit2Sharp
+open FSharpx.Functional
+open FSharp.Configuration
+open SharpYaml.Serialization
 open FlatBuffers
 open Iris.Serialization.Raft
 
@@ -63,6 +67,8 @@ module MachineConfig =
 
   // ** MachineConfigYaml (private)
 
+  #if !FABLE_COMPILER
+
   type MachineConfigYaml () =
     [<DefaultValue>] val mutable MachineId : string
     [<DefaultValue>] val mutable WorkSpace : string
@@ -73,7 +79,11 @@ module MachineConfig =
       yml.WorkSpace <- cfg.WorkSpace
       yml
 
+  #endif
+
   // ** parse (private)
+
+  #if !FABLE_COMPILER
 
   let private parse (yml: MachineConfigYaml) : Either<IrisError,IrisMachine> =
     let hostname = Network.getHostName ()
@@ -82,7 +92,11 @@ module MachineConfig =
       WorkSpace = yml.WorkSpace }
     |> Either.succeed
 
+  #endif
+
   // ** ensureExists (private)
+
+  #if !FABLE_COMPILER
 
   let private ensureExists (path: FilePath) =
     try
@@ -92,7 +106,11 @@ module MachineConfig =
     with
       | _ -> ()
 
+  #endif
+
   // ** defaultPath
+
+  #if !FABLE_COMPILER
 
   let defaultPath =
     let dir =
@@ -100,22 +118,30 @@ module MachineConfig =
       |> Path.GetDirectoryName
     dir </> MACHINECONFIG_DEFAULT_PATH </> MACHINECONFIG_NAME + ASSET_EXTENSION
 
+  #endif
+
   // ** create
 
   let create () : IrisMachine =
     let hostname = Network.getHostName()
     let workspace =
+      #if FABLE_COMPILER
+        ""
+      #else
       if Platform.isUnix then
         let home = Environment.GetEnvironmentVariable "HOME"
         home </> "iris"
       else
         @"C:\Iris"
+      #endif
 
     { MachineId = Id.Create()
       HostName  = hostname
       WorkSpace = workspace }
 
   // ** save
+
+  #if !FABLE_COMPILER
 
   let save (path: FilePath option) (cfg: IrisMachine) : Either<IrisError,unit> =
     let serializer = new Serializer()
@@ -143,7 +169,11 @@ module MachineConfig =
         |> Error.asIOError (tag "save")
         |> Either.fail
 
+  #endif
+
   // ** load
+
+  #if !FABLE_COMPILER
 
   let load (path: FilePath option) : Either<IrisError,IrisMachine> =
     let serializer = new Serializer()
@@ -162,6 +192,7 @@ module MachineConfig =
         |> Error.asIOError (tag "load")
         |> Either.fail
 
+  #endif
 
 // * RaftConfig
 
@@ -187,7 +218,13 @@ type RaftConfig =
 
   static member Default =
     let guid = Guid.NewGuid()
+
+    #if FABLE_COMPILER
+    let path = ""
+    #else
     let path = Path.GetTempPath() </> guid.ToString() </> RAFT_DIRECTORY
+    #endif
+
     { RequestTimeout   = 500u
       ElectionTimeout  = 6000u
       MaxLogDepth      = 20u
@@ -401,7 +438,9 @@ type AudioConfig =
     { SampleRate = 48000u }
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    AudioConfigFB.CreateAudioConfigFB(builder, self.SampleRate)
+    AudioConfigFB.StartAudioConfigFB(builder)
+    AudioConfigFB.AddSampleRate(builder, self.SampleRate)
+    AudioConfigFB.EndAudioConfigFB(builder)
 
   static member FromFB(fb: AudioConfigFB) =
     either {
@@ -625,7 +664,7 @@ type IrisConfig =
     either {
       let! machine =
         #if FABLE_COMPILER
-        MachineConfig.FromFB fb.MachineConfig
+        IrisMachine.FromFB fb.MachineConfig
         #else
         let machinish = fb.MachineConfig
         if machinish.HasValue then
@@ -804,6 +843,8 @@ type IrisConfig =
     }
 
 // * ProjectYaml
+
+#if !FABLE_COMPILER
 
 [<RequireQualifiedAccess>]
 module ProjectYaml =
@@ -1860,6 +1901,8 @@ Project:
         |> Error.asParseError "ProjectYaml.parse"
         |> Either.fail
 
+#endif
+
 // * Config Module
 
 //   ____             __ _
@@ -1873,6 +1916,8 @@ Project:
 module Config =
 
   // ** fromFile
+
+  #if !FABLE_COMPILER
 
   let fromFile (file: ProjectYaml.Config) (machine: IrisMachine) : Either<IrisError, IrisConfig> =
     either {
@@ -1896,7 +1941,11 @@ module Config =
                ClusterConfig = cluster }
     }
 
+  #endif
+
   // ** toFile
+
+  #if !FABLE_COMPILER
 
   let toFile (config: IrisConfig) (file: ProjectYaml.Config) =
     (file, config)
@@ -1909,6 +1958,8 @@ module Config =
     |> ProjectYaml.saveTasks
     |> ProjectYaml.saveCluster
     |> ignore
+
+  #endif
 
   // ** create
 
@@ -2047,12 +2098,12 @@ module Config =
 
 // * IrisProject
 
-//  ____            _           _
-// |  _ \ _ __ ___ (_) ___  ___| |_
-// | |_) | '__/ _ \| |/ _ \/ __| __|
-// |  __/| | | (_) | |  __/ (__| |_
-// |_|   |_|  \___// |\___|\___|\__|
-//               |__/
+//  ___      _     ____            _           _
+// |_ _|_ __(_)___|  _ \ _ __ ___ (_) ___  ___| |_
+//  | || '__| / __| |_) | '__/ _ \| |/ _ \/ __| __|
+//  | || |  | \__ \  __/| | | (_) | |  __/ (__| |_
+// |___|_|  |_|___/_|   |_|  \___// |\___|\___|\__|
+//                              |__/
 
 type IrisProject =
   { Id        : Id
@@ -2063,6 +2114,26 @@ type IrisProject =
   ; Copyright : string    option
   ; Author    : string    option
   ; Config    : IrisConfig }
+
+  override project.ToString() =
+    sprintf @"
+Id:        %s
+Name:      %s
+Path:      %s
+Created:   %s
+LastSaved: %A
+Copyright: %A
+Author:    %A
+Config: %A
+"
+      (string project.Id)
+      project.Name
+      project.Path
+      project.CreatedOn
+      project.LastSaved
+      project.Copyright
+      project.Author
+      project.Config
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -2128,7 +2199,7 @@ type IrisProject =
         | str -> Right (Some str)
 
       let! config =
-        #if FABLE_COMPILer
+        #if FABLE_COMPILER
         IrisConfig.FromFB fb.Config
         #else
         let configish = fb.Config
@@ -2152,6 +2223,8 @@ type IrisProject =
           Config    = config }
     }
 
+  #if !FABLE_COMPILER
+
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
   //  \ V / _` | '_ ` _ \| |
@@ -2164,8 +2237,9 @@ type IrisProject =
     Config.toFile self.Config config
 
     // Project metadata
-    config.Project.Metadata.Id   <- string self.Id
-    config.Project.Metadata.Name <- self.Name
+    config.Project.Metadata.Id        <- string self.Id
+    config.Project.Metadata.Name      <- self.Name
+    config.Project.Metadata.CreatedOn <- self.CreatedOn
 
     Option.map
       (fun author -> config.Project.Metadata.Author <- author)
@@ -2177,8 +2251,10 @@ type IrisProject =
       self.Copyright
     |> ignore
 
-    config.Project.Metadata.CreatedOn <- self.CreatedOn
-    config.Project.Metadata.LastSaved <- Time.createTimestamp()
+    Option.map
+      (fun saved -> config.Project.Metadata.LastSaved <- saved)
+      self.LastSaved
+    |> ignore
 
     config.ToString()
 
@@ -2211,12 +2287,16 @@ type IrisProject =
                Config    = config }
     }
 
+  #endif
+
 // * Project module
 
 [<RequireQualifiedAccess>]
 module Project =
 
   // ** repository
+
+  #if !FABLE_COMPILER
 
   /// ### Retrieve git repository
   ///
@@ -2227,7 +2307,11 @@ module Project =
   let repository (project: IrisProject) =
     Git.Repo.repository project.Path
 
+  #endif
+
   // ** currentBranch
+
+  #if !FABLE_COMPILER
 
   let currentBranch (project: IrisProject) =
     either {
@@ -2235,13 +2319,19 @@ module Project =
       return Git.Branch.current repo
     }
 
+  #endif
+
   // ** checkoutBranch
+
+  #if !FABLE_COMPILER
 
   let checkoutBranch (name: string) (project: IrisProject) =
     either {
       let! repo = repository project
       return! Git.Repo.checkout name repo
     }
+
+  #endif
 
   // ** create
 
@@ -2251,9 +2341,16 @@ module Project =
   ///
   /// # Returns: IrisProject
   let create (name : string) (machine: IrisMachine) : IrisProject =
+    let path =
+      #if FABLE_COMPILER
+      ""
+      #else
+      Environment.CurrentDirectory </> name
+      #endif
+
     { Id        = Id.Create()
     ; Name      = name
-    ; Path      = Environment.CurrentDirectory </> name
+    ; Path      = path
     ; CreatedOn = Time.createTimestamp()
     ; LastSaved = None
     ; Copyright = None
@@ -2261,6 +2358,8 @@ module Project =
     ; Config    = Config.create name machine  }
 
   // ** load
+
+  #if !FABLE_COMPILER
 
   /// ### Load a project from disk
   ///
@@ -2275,28 +2374,22 @@ module Project =
           |> Error.asProjectError "Project.load"
           |> Either.fail
       else
-        try
-          let str = File.ReadAllText(path)
+        let! str = Asset.load path
+        let! project = Yaml.decode str
 
-          let normalizedPath =
-            if Path.IsPathRooted path then
-              path
-            else
-              Path.GetFullPath path
+        let normalizedPath =
+          if Path.IsPathRooted path then
+            path
+          else
+            Path.GetFullPath path
 
-          let! project = Yaml.decode str
-
-          return
-            { project with
-                Path   = normalizedPath
-                Config = Config.updateMachine machine project.Config }
-        with
-          | exn ->
-            return!
-              sprintf "Could not load Project: %s" exn.Message
-              |> Error.asProjectError "Project.load"
-              |> Either.fail
+        return
+          { project with
+              Path   = Path.GetDirectoryName normalizedPath
+              Config = Config.updateMachine machine project.Config }
     }
+
+  #endif
 
   //  ____       _   _
   // |  _ \ __ _| |_| |__  ___
@@ -2332,6 +2425,8 @@ module Project =
 
   // ** writeDaemonExportFile (private)
 
+  #if !FABLE_COMPILER
+
   let private writeDaemonExportFile (repo: Repository) =
     either {
       let path = repo.Info.Path </> "git-daemon-export-ok"
@@ -2339,7 +2434,11 @@ module Project =
       return ()
     }
 
+  #endif
+
   // ** writeGitIgnoreFile (private)
+
+  #if !FABLE_COMPILER
 
   let private writeGitIgnoreFile (repo: Repository) =
     either {
@@ -2349,7 +2448,11 @@ module Project =
       do! Git.Repo.stage repo path
     }
 
+  #endif
+
   // ** createAssetDir (private)
+
+  #if !FABLE_COMPILER
 
   let private createAssetDir (repo: Repository) (dir: FilePath) =
     either {
@@ -2361,7 +2464,11 @@ module Project =
       do! Git.Repo.stage repo gitkeep
     }
 
+  #endif
+
   // ** commitPath (private)
+
+  #if !FABLE_COMPILER
 
   /// ## commitPath
   ///
@@ -2391,7 +2498,11 @@ module Project =
       return commit, project
     }
 
+  #endif
+
   // ** saveFile
+
+  #if !FABLE_COMPILER
 
   let saveFile (path: FilePath)
                (contents: string)
@@ -2407,7 +2518,11 @@ module Project =
       return! commitPath path committer msg project
     }
 
+  #endif
+
   // ** deleteFile
+
+  #if !FABLE_COMPILER
 
   let deleteFile (path: FilePath)
                  (committer: Signature)
@@ -2420,7 +2535,11 @@ module Project =
       return! commitPath path committer msg project
     }
 
+  #endif
+
   // ** saveAsset
+
+  #if !FABLE_COMPILER
 
   /// ## saveAsset
   ///
@@ -2437,10 +2556,14 @@ module Project =
     let payload = thing |> Yaml.encode
     let filepath = project.Path </> Asset.path thing
     let signature = committer.Signature
-    let msg = sprintf "%s save %A" committer.UserName filepath
+    let msg = sprintf "%s save %A" committer.UserName (Path.GetFileName filepath)
     saveFile filepath payload signature msg project
 
+  #endif
+
   // ** deleteAsset
+
+  #if !FABLE_COMPILER
 
   /// ## deleteAsset
   ///
@@ -2459,7 +2582,6 @@ module Project =
     let msg = sprintf "%s deleted %A" committer.UserName filepath
     deleteFile filepath signature msg project
 
-
   let private needsInit (project: IrisProject) =
     let projdir = Directory.Exists project.Path
     let git = Directory.Exists (project.Path </> ".git")
@@ -2473,7 +2595,11 @@ module Project =
     (not users)    ||
     (not projdir)
 
+  #endif
+
   // ** initRepo (private)
+
+  #if !FABLE_COMPILER
 
   /// ### Initialize the project git repository
   ///
@@ -2490,31 +2616,39 @@ module Project =
       do! createAssetDir repo USER_DIR
       do! createAssetDir repo CUELIST_DIR
       do! createAssetDir repo PATCHES_DIR
-      let adminPath = project.Path </> Asset.path User.Admin
+      let relPath = Asset.path User.Admin
+      let absPath = project.Path </> relPath
       let! _ =
         User.Admin
         |> Yaml.encode
-        |> Asset.save adminPath
-      do! Git.Repo.stage repo adminPath
-      return ()
+        |> Asset.save absPath
+      do! Git.Repo.add repo relPath
+      do! Git.Repo.stage repo absPath
     }
+
+  #endif
 
   // ** saveProject
 
+  #if !FABLE_COMPILER
+
   let saveProject (user: User) (project: IrisProject) : Either<IrisError,(Commit * IrisProject)> =
     either {
-      do! if needsInit project then
+      let init = needsInit project
+
+      do! if init then
             initRepo project
           else
-            Right ()
+            Either.succeed ()
 
       let msg = sprintf "%s saved the project" user.UserName
-      // save everything!
       let destPath = project.Path </> PROJECT_FILENAME + ASSET_EXTENSION
 
       try
-        failwith "saving project"
-        return! commitPath destPath user.Signature msg project
+        let updated =  { project with LastSaved = Some (Time.createTimestamp ()) }
+        let data = Yaml.encode updated
+        let! info = Asset.save destPath data
+        return! commitPath destPath user.Signature msg updated
       with
         | exn ->
           return!
@@ -2523,14 +2657,12 @@ module Project =
             |> Either.fail
     }
 
+  #endif
+
   // ** clone
 
-  //   ____ _
-  //  / ___| | ___  _ __   ___
-  // | |   | |/ _ \| '_ \ / _ \
-  // | |___| | (_) | | | |  __/
-  //  \____|_|\___/|_| |_|\___|
-  // clone a project from a different host
+  #if !FABLE_COMPILER
+
   let clone (host : string) (name : string) (destination: FilePath) : FilePath option =
     let url = sprintf "git://%s/%s/.git" host name
     try
@@ -2538,6 +2670,8 @@ module Project =
       Some(destination </> name)
     with
       | _ -> None
+
+  #endif
 
   // ** config
 

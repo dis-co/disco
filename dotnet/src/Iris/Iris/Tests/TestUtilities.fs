@@ -28,7 +28,7 @@ module TestUtilities =
       let result = f value
       if result <> exp then
         return!
-          sprintf "Expected %A but got %A" exp result
+          sprintf "Expected %A but got %A in %A" exp result msg
           |> Error.asOther "expectE"
           |> Either.fail
       else

@@ -151,7 +151,7 @@ type PortMap = Map<Id,ClientMessagePort>
 
 type GlobalContext() =
   let mutable count = 0
-  let mutable store = new Store(State.Empty)
+  let mutable store = Unchecked.defaultof<Store> // hm...
   let mutable socket : (string * WebSocket) option = None
 
   let ports : PortMap = Map.Create<Id,ClientMessagePort>()

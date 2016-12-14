@@ -472,9 +472,14 @@ module Git =
 
     let add (repo: Repository) (filepath: FilePath) =
       try
-        if File.Exists filepath then
-          repo.Index.Add filepath
-        Either.succeed ()
+        if Path.IsPathRooted filepath then
+          sprintf "Path must be relative to the project root: %s" filepath
+          |> Error.asGitError (tag "add")
+          |> Either.fail
+        else
+          if File.Exists filepath then
+            repo.Index.Add filepath
+          Either.succeed ()
       with
         | exn ->
           exn.Message

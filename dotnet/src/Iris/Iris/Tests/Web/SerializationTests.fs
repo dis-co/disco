@@ -24,6 +24,10 @@ module SerializationTests =
     [| for n in 0 .. rand.Next(2,8) do
         yield Id.Create() |> string |]
 
+  let mkProject _ =
+    let machine = MachineConfig.create ()
+    Project.create "test-project" machine
+
   let pins _ =
     [| Pin.Bang      (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 9u; Value = true            }|])
     ; Pin.Toggle    (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 8u; Value = true            }|])
@@ -77,12 +81,12 @@ module SerializationTests =
     }
 
   let mkState _ =
-    { Patches  = Map.empty // mkPatch   () |> fun (patch: Patch) -> Map.ofList [ (patch.Id, patch) ]
-    ; Cues     = Map.empty // mkCue     () |> fun (cue: Cue) -> Map.ofList [ (cue.Id, cue) ]
-    ; CueLists = Map.empty // mkCueList () |> fun (cuelist: CueList) -> Map.ofList [ (cuelist.Id, cuelist) ]
-    ; Members  = Map.empty // mkMember    () |> fun (mem: RaftMember) -> Map.ofList [ (mem.Id, mem) ]
-    ; Sessions = Map.empty // mkSession () |> fun (session: Session) -> Map.ofList [ (session.Id, session) ]
-    ; Users    = mkUser    () |> fun (user: User) -> Map.ofList [ (user.Id, user) ]
+    { Project  = mkProject ()
+    ; Patches  = mkPatch   () |> fun (patch: Patch) -> Map.ofArray [| (patch.Id, patch) |]
+    ; Cues     = mkCue     () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
+    ; CueLists = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
+    ; Sessions = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
+    ; Users    = mkUser    () |> fun (user: User) -> Map.ofArray [| (user.Id, user) |]
     }
 
   let inline check thing =
@@ -162,6 +166,12 @@ module SerializationTests =
       let state : State = mkState ()
       let restate : State = state |> Binary.encode |> Binary.decode |> Either.get
       equals restate state
+      finish ()
+
+    test "Validate IrisProject Binary Serializaton" <| fun finish ->
+      let project = mkProject()
+      let reproject = project |> Binary.encode |> Binary.decode |> Either.get
+      equals project reproject
       finish ()
 
     test "Validate StateMachine Serialization" <| fun finish ->

@@ -8,6 +8,7 @@ open System.Text.RegularExpressions
 #if FABLE_COMPILER
 
 open Fable.Core
+open Fable.Import
 
 #else
 
@@ -122,12 +123,10 @@ module Utils =
 
 // * Network
 
-#if !FABLE_COMPILER
-
 [<RequireQualifiedAccess>]
 module Network =
-  // *** getHostName
 
+  // *** getHostName
 
   /// ## Get the current machine's host name
   ///
@@ -138,10 +137,16 @@ module Network =
   ///
   /// Returns: string
   let getHostName () =
+  #if FABLE_COMPILER
+    Browser.window.location.hostname
+  #else
     try
       System.Net.Dns.GetHostName()
     with
       | _ -> System.Environment.MachineName
+  #endif
+
+  #if !FABLE_COMPILER
 
   // *** getIpAddress
 
@@ -164,7 +169,7 @@ module Network =
           then outip <- Some(ip.Address)
     outip
 
-#endif
+  #endif
 
 // * Platform
 
@@ -288,8 +293,6 @@ module String =
 
   // *** split
 
-  #if !FABLE_COMPILER
-
   /// ## split
   ///
   /// Split a string into an array of strings by a series of characters in an array.
@@ -301,8 +304,6 @@ module String =
   /// Returns: string array
   let split (chars: char array) (str: string) =
     str.Split(chars)
-
-  #endif
 
   // *** indent
 
@@ -362,8 +363,6 @@ module String =
 
 // * FileSystem
 
-#if !FABLE_COMPILER
-
 [<AutoOpen>]
 module FileSystem =
 
@@ -378,9 +377,16 @@ module FileSystem =
   /// - path2: second path
   ///
   /// Returns: FilePath (string)
-  let (</>) p1 p2 = Path.Combine(p1, p2)
+  let (</>) p1 p2 =
+    #if FABLE_COMPILER
+    sprintf "%s/%s" p1 p2
+    #else
+    Path.Combine(p1, p2)
+    #endif
 
   // *** moveFile
+
+  #if !FABLE_COMPILER
 
   /// ## moveFile
   ///
@@ -401,7 +407,11 @@ module FileSystem =
         File.Move(source, dest)
     with | _ -> ()
 
+  #endif
+
   // *** rmDir
+
+  #if !FABLE_COMPILER
 
   /// ## delete a file or directory
   ///
@@ -438,7 +448,11 @@ module FileSystem =
         |> IOError
         |> Either.fail
 
+  #endif
+
   // *** mkDir
+
+  #if !FABLE_COMPILER
 
   /// ## create a new directory
   ///
@@ -463,8 +477,11 @@ module FileSystem =
         |> IOError
         |> Either.fail
 
+  #endif
 
 // * Path
+
+#if !FABLE_COMPILER
 
 [<RequireQualifiedAccess>]
 module Path =
@@ -794,5 +811,16 @@ module Asset =
           |> AssetError
           |> Either.fail
     }
+
+#endif
+
+// * Functional
+
+#if FABLE_COMPILER
+
+[<AutoOpen>]
+module Functional =
+
+  let flip (f: 'a -> 'b -> 'c) (b: 'b) (a: 'a) = f a b
 
 #endif

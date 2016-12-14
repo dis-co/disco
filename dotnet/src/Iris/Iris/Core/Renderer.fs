@@ -2,6 +2,10 @@ namespace Iris.Core
 
 #if FABLE_COMPILER
 
+open Fable.Core
+open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
+
 #else
 
 open FlatBuffers
