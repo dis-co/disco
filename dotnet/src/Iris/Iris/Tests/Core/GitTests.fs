@@ -16,27 +16,6 @@ open System.IO
 
 [<AutoOpen>]
 module GitTests =
-  //  _   _ _   _ _ _ _   _
-  // | | | | |_(_) (_) |_(_) ___  ___
-  // | | | | __| | | | __| |/ _ \/ __|
-  // | |_| | |_| | | | |_| |  __/\__ \
-  //  \___/ \__|_|_|_|\__|_|\___||___/
-
-  let mkTmpDir () =
-    let fn =
-      Path.GetTempFileName()
-      |> Path.GetFileName
-
-    Directory.GetCurrentDirectory() </> "tmp" </> fn
-    |> Directory.CreateDirectory
-
-  let testRepo () =
-    mkTmpDir ()
-    |> fun info -> info.FullName
-    |> fun path ->
-      Repository.Init path |> ignore
-      new Repository(path)
-
   let mkEnvironment port =
     let machine = MachineConfig.create ()
 
