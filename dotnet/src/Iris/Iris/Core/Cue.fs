@@ -9,6 +9,7 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
+open System.IO
 open SharpYaml
 open SharpYaml.Serialization
 open FlatBuffers
@@ -28,14 +29,10 @@ type CueYaml(id, name, pins) as self =
 
 #endif
 
-#if FABLE_COMPILER
 type Cue =
-#else
-and Cue =
-#endif
   { Id:   Id
-  ; Name: string
-  ; Pins: Pin array }
+    Name: string
+    Pins: Pin array }
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -99,8 +96,14 @@ and Cue =
 
   member self.ToBytes() = Binary.buildBuffer self
 
-#if FABLE_COMPILER
-#else
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+  #if !FABLE_COMPILER
+
   member self.ToYamlObject() =
     let pins = Array.map Yaml.toYaml self.Pins
     new CueYaml(string self.Id, self.Name, pins)
@@ -142,4 +145,52 @@ and Cue =
           ASSET_EXTENSION
       CUE_DIR </> filepath
 
-#endif
+  #endif
+
+  //  _                    _
+  // | |    ___   __ _  __| |
+  // | |   / _ \ / _` |/ _` |
+  // | |__| (_) | (_| | (_| |
+  // |_____\___/ \__,_|\__,_|
+
+  #if !FABLE_COMPILER
+
+  static member Load(path: FilePath) : Either<IrisError, Cue> =
+    either {
+      let! data = Asset.read path
+      let! cue = Yaml.decode data
+      return cue
+    }
+
+  static member LoadAll(basePath: FilePath) : Either<IrisError, Cue array> =
+    either {
+      try
+        let dir = basePath </> CUE_DIR
+        let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
+
+        let! (_,cues) =
+          let arr =
+            files
+            |> Array.length
+            |> Array.zeroCreate
+          Array.fold
+            (fun (m: Either<IrisError, int * Cue array>) path ->
+              either {
+                let! (idx,cues) = m
+                let! cue = Cue.Load path
+                cues.[idx] <- cue
+                return (idx + 1, cues)
+              })
+            (Right(0, arr))
+            files
+
+        return cues
+      with
+        | exn ->
+          return!
+            exn.Message
+            |> Error.asAssetError "Cue.LoadAll"
+            |> Either.fail
+    }
+
+  #endif

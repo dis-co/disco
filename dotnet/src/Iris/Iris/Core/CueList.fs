@@ -7,11 +7,11 @@ namespace Iris.Core
 open Iris.Core.FlatBuffers
 open Iris.Web.Core.FlatBufferTypes
 
-type CueList =
 #else
 
-open SharpYaml.Serialization
+open System.IO
 open FlatBuffers
+open SharpYaml.Serialization
 open Iris.Serialization.Raft
 
 // * CueList Yaml
@@ -28,11 +28,11 @@ type CueListYaml(id, name, cues) as self =
     self.Name <- name
     self.Cues <- cues
 
-// * CueList
-
-and CueList =
 #endif
 
+// * CueList
+
+type CueList =
   { Id   : Id
     Name : Name
     Cues : Cue array }
@@ -109,9 +109,15 @@ and CueList =
     |> CueListFB.GetRootAsCueListFB
     |> CueList.FromFB
 
-  // ** ToYamlObject
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
 
-#if !FABLE_COMPILER
+  #if !FABLE_COMPILER
+
+  // ** ToYamlObject
 
   member self.ToYamlObject() =
     new CueListYaml(
@@ -164,4 +170,52 @@ and CueList =
           ASSET_EXTENSION
       CUELIST_DIR </> filepath
 
-#endif
+  #endif
+
+  //  _                    _
+  // | |    ___   __ _  __| |
+  // | |   / _ \ / _` |/ _` |
+  // | |__| (_) | (_| | (_| |
+  // |_____\___/ \__,_|\__,_|
+
+  #if !FABLE_COMPILER
+
+  static member Load(path: FilePath) : Either<IrisError, CueList> =
+    either {
+      let! data = Asset.read path
+      let! cuelist = Yaml.decode data
+      return cuelist
+    }
+
+  static member LoadAll(basePath: FilePath) : Either<IrisError, CueList array> =
+    either {
+      try
+        let dir = basePath </> CUELIST_DIR
+        let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
+
+        let! (_,cuelists) =
+          let arr =
+            files
+            |> Array.length
+            |> Array.zeroCreate
+          Array.fold
+            (fun (m: Either<IrisError, int * CueList array>) path ->
+              either {
+                let! (idx,cuelists) = m
+                let! cuelist = CueList.Load path
+                cuelists.[idx] <- cuelist
+                return (idx + 1, cuelists)
+              })
+            (Right(0, arr))
+            files
+
+        return cuelists
+      with
+        | exn ->
+          return!
+            exn.Message
+            |> Error.asAssetError "CueList.LoadAll"
+            |> Either.fail
+    }
+
+  #endif

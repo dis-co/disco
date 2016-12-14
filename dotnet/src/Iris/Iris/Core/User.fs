@@ -6,9 +6,11 @@ open Fable.Core
 open Fable.Import
 open Iris.Core.FlatBuffers
 open Iris.Web.Core.FlatBufferTypes
+
 #else
 
 open System
+open System.IO
 open LibGit2Sharp
 open FlatBuffers
 open Iris.Serialization.Raft
@@ -77,8 +79,7 @@ type UserYaml(i, u, f, l, e, p, s, j, c) =
 // | |_| \__ \  __/ |
 //  \___/|___/\___|_|
 
-[<CustomEquality>]
-[<CustomComparison>]
+[<CustomEquality;CustomComparison>]
 type User =
   { Id:        Id
   ; UserName:  Name
@@ -87,18 +88,17 @@ type User =
   ; Email:     Email
   ; Password:  string
   ; Salt:      string
-#if FABLE_COMPILER
+  #if FABLE_COMPILER
   ; Joined:    string
   ; Created:   string }
-#else
+  #else
   ; Joined:    DateTime
   ; Created:   DateTime }
-#endif
-
+  #endif
 
   override me.GetHashCode() =
     let mutable hash = 42
-#if FABLE_COMPILER
+    #if FABLE_COMPILER
     hash <- (hash * 7) + hashCode (string me.Id)
     hash <- (hash * 7) + hashCode me.UserName
     hash <- (hash * 7) + hashCode me.FirstName
@@ -108,7 +108,7 @@ type User =
     hash <- (hash * 7) + hashCode me.Salt
     hash <- (hash * 7) + hashCode (string me.Joined)
     hash <- (hash * 7) + hashCode (string me.Created)
-#else
+    #else
     hash <- (hash * 7) + me.Id.GetHashCode()
     hash <- (hash * 7) + me.UserName.GetHashCode()
     hash <- (hash * 7) + me.FirstName.GetHashCode()
@@ -118,7 +118,7 @@ type User =
     hash <- (hash * 7) + me.Salt.GetHashCode()
     hash <- (hash * 7) + (string me.Joined).GetHashCode()
     hash <- (hash * 7) + (string me.Created).GetHashCode()
-#endif
+    #endif
     hash
 
   override self.Equals(other) =
@@ -143,20 +143,20 @@ type User =
       | :? User ->
         let other = o :?> User
 
-#if FABLE_COMPILER
+        #if FABLE_COMPILER
         if me.UserName > other.UserName then
           1
         elif me.UserName = other.UserName then
           0
         else
           -1
-#else
+        #else
         let arr = [| me.UserName; other.UserName |] |> Array.sort
         if Array.findIndex ((=) me.UserName) arr = 0 then
           -1
         else
           1
-#endif
+        #endif
 
       | _ -> 0
 
@@ -231,26 +231,25 @@ type User =
         Email     = fb.Email
         Password  = fb.Password
         Salt      = fb.Salt
-#if FABLE_COMPILER
+        #if FABLE_COMPILER
         Joined    = fb.Joined
         Created   = fb.Created }
-#else
+        #else
         Joined    = DateTime.Parse fb.Joined
         Created   = DateTime.Parse fb.Created }
-#endif
+        #endif
 
   static member FromBytes (bytes: Binary.Buffer) : Either<IrisError, User> =
     UserFB.GetRootAsUserFB(Binary.createBuffer bytes)
     |> User.FromFB
-
-#if FABLE_COMPILER
-#else
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
   //  \ V / _` | '_ ` _ \| |
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
+
+  #if !FABLE_COMPILER
 
   member self.ToYamlObject () =
     new UserYaml(
@@ -284,4 +283,53 @@ type User =
     serializer.Deserialize<UserYaml>(str)
     |> User.FromYamlObject
 
-#endif
+  #endif
+
+  //  _                    _
+  // | |    ___   __ _  __| |
+  // | |   / _ \ / _` |/ _` |
+  // | |__| (_) | (_| | (_| |
+  // |_____\___/ \__,_|\__,_|
+
+  #if !FABLE_COMPILER
+
+  static member Load(path: FilePath) : Either<IrisError, User> =
+    either {
+      let! data = Asset.read path
+      let! user = Yaml.decode data
+      return user
+    }
+
+  static member LoadAll(basePath: FilePath) : Either<IrisError, User array> =
+    either {
+      try
+        let dir = basePath </> USER_DIR
+        let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
+
+        let! (_,users) =
+          let arr =
+            files
+            |> Array.length
+            |> Array.zeroCreate
+
+          Array.fold
+            (fun (m: Either<IrisError, int * User array>) path ->
+              either {
+                let! (idx,users) = m
+                let! user = User.Load path
+                users.[idx] <- user
+                return (idx + 1, users)
+              })
+            (Right(0, arr))
+            files
+
+        return users
+      with
+        | exn ->
+          return!
+            exn.Message
+            |> Error.asAssetError "User.LoadAll"
+            |> Either.fail
+    }
+
+  #endif

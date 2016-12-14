@@ -9,13 +9,10 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
+open System.IO
 open FlatBuffers
 open SharpYaml.Serialization
 open Iris.Serialization.Raft
-
-#endif
-
-#if !FABLE_COMPILER
 
 type PatchYaml(id, name, pins) as self =
   [<DefaultValue>] val mutable Id   : string
@@ -31,10 +28,12 @@ type PatchYaml(id, name, pins) as self =
 
 #endif
 
-// #if FABLE_COMPILER
-// [<CustomEquality>]
-// [<CustomComparison>]
-// #endif
+//  ____       _       _
+// |  _ \ __ _| |_ ___| |__
+// | |_) / _` | __/ __| '_ \
+// |  __/ (_| | || (__| | | |
+// |_|   \__,_|\__\___|_| |_|
+
 type Patch =
   { Id   : Id
     Name : Name
@@ -109,13 +108,14 @@ type Patch =
   static member RemovePin (patch : Patch) (pin : Pin) : Patch =
     { patch with Pins = Map.remove pin.Id patch.Pins }
 
-#if !FABLE_COMPILER
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
   //  \ V / _` | '_ ` _ \| |
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
+
+  #if !FABLE_COMPILER
 
   member self.ToYamlObject () =
     let yaml = new PatchYaml()
@@ -153,7 +153,7 @@ type Patch =
     serializer.Deserialize<PatchYaml>(str)
     |> Yaml.fromYaml
 
-#endif
+  #endif
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -170,9 +170,9 @@ type Patch =
           (fun (m: Either<IrisError,int * Map<Id,Pin>>) _ -> either {
               let! (i, pins) = m
 
-  #if FABLE_COMPILER
+              #if FABLE_COMPILER
               let! pin = i |> fb.Pins |> Pin.FromFB
-  #else
+              #else
               let! pin =
                 let nullable = fb.Pins(i)
                 if nullable.HasValue then
@@ -182,7 +182,7 @@ type Patch =
                   "Could not parse empty PinFB"
                   |> Error.asParseError "Patch.FromFB"
                   |> Either.fail
-  #endif
+              #endif
 
               return (i + 1, Map.add pin.Id pin pins)
             })
@@ -216,3 +216,51 @@ type Patch =
     Binary.createBuffer bytes
     |> PatchFB.GetRootAsPatchFB
     |> Patch.FromFB
+
+  //  _                    _
+  // | |    ___   __ _  __| |
+  // | |   / _ \ / _` |/ _` |
+  // | |__| (_) | (_| | (_| |
+  // |_____\___/ \__,_|\__,_|
+
+  #if !FABLE_COMPILER
+
+  static member Load(path: FilePath) : Either<IrisError, Patch> =
+    either {
+      let! data = Asset.read path
+      let! patch = Yaml.decode data
+      return patch
+    }
+
+  static member LoadAll(basePath: FilePath) : Either<IrisError, Patch array> =
+    either {
+      try
+        let dir = basePath </> PATCH_DIR
+        let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
+
+        let! (_,patches) =
+          let arr =
+            files
+            |> Array.length
+            |> Array.zeroCreate
+          Array.fold
+            (fun (m: Either<IrisError, int * Patch array>) path ->
+              either {
+                let! (idx,patches) = m
+                let! patch = Patch.Load path
+                patches.[idx] <- patch
+                return (idx + 1, patches)
+              })
+            (Right(0, arr))
+            files
+
+        return patches
+      with
+        | exn ->
+          return!
+            exn.Message
+            |> Error.asAssetError "Patch.LoadAll"
+            |> Either.fail
+    }
+
+  #endif

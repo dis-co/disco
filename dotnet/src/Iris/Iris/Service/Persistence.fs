@@ -59,7 +59,7 @@ module Persistence =
       let! data =
         options
         |> Config.metadataPath
-        |> Asset.load
+        |> Asset.read
       return! Yaml.decode data
     }
 
@@ -95,7 +95,7 @@ module Persistence =
     try
       raft
       |> Yaml.encode
-      |> Asset.save (Config.metadataPath config)
+      |> Asset.write (Config.metadataPath config)
       |> Either.succeed
     with
       | exn ->

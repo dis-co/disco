@@ -131,6 +131,30 @@ type State =
     Sessions : Map<Id,Session>
     Users    : Map<Id,User> }
 
+  // ** Load
+
+  #if !FABLE_COMPILER
+
+  static member Load (path: FilePath) =
+    either {
+      let! machine  = MachineConfig.load None
+      let! project  = Project.load path machine
+      let! users    = Asset.loadAll project.Path
+      let! cues     = Asset.loadAll project.Path
+      let! cuelists = Asset.loadAll project.Path
+      let! patches  = Asset.loadAll project.Path
+
+      return
+        { Project  = project
+          Users    = Array.map toPair users    |> Map.ofArray
+          Cues     = Array.map toPair cues     |> Map.ofArray
+          CueLists = Array.map toPair cuelists |> Map.ofArray
+          Patches  = Array.map toPair patches  |> Map.ofArray
+          Sessions = Map.empty }
+    }
+
+  #endif
+
   // ** UpdateProject
 
   member state.UpdateProject (project: IrisProject) =

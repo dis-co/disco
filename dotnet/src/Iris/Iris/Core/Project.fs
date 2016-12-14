@@ -2374,7 +2374,7 @@ module Project =
           |> Error.asProjectError "Project.load"
           |> Either.fail
       else
-        let! str = Asset.load path
+        let! str = Asset.read path
         let! project = Yaml.decode str
 
         let normalizedPath =
@@ -2430,7 +2430,7 @@ module Project =
   let private writeDaemonExportFile (repo: Repository) =
     either {
       let path = repo.Info.Path </> "git-daemon-export-ok"
-      let! _ = Asset.save path ""
+      let! _ = Asset.write path ""
       return ()
     }
 
@@ -2444,7 +2444,7 @@ module Project =
     either {
       let parent = Git.Repo.parentPath repo
       let path = parent </> ".gitignore"
-      let! _ = Asset.save path GITIGNORE
+      let! _ = Asset.write path GITIGNORE
       do! Git.Repo.stage repo path
     }
 
@@ -2460,7 +2460,7 @@ module Project =
       let target = parent </> dir
       do! FileSystem.mkDir target
       let gitkeep = target </> ".gitkeep"
-      let! _ = Asset.save gitkeep ""
+      let! _ = Asset.write gitkeep ""
       do! Git.Repo.stage repo gitkeep
     }
 
@@ -2514,7 +2514,7 @@ module Project =
     either {
       let info = FileInfo path
       do! FileSystem.mkDir info.Directory.FullName
-      let! info = Asset.save path contents
+      let! info = Asset.write path contents
       return! commitPath path committer msg project
     }
 
@@ -2615,13 +2615,13 @@ module Project =
       do! createAssetDir repo CUE_DIR
       do! createAssetDir repo USER_DIR
       do! createAssetDir repo CUELIST_DIR
-      do! createAssetDir repo PATCHES_DIR
+      do! createAssetDir repo PATCH_DIR
       let relPath = Asset.path User.Admin
       let absPath = project.Path </> relPath
       let! _ =
         User.Admin
         |> Yaml.encode
-        |> Asset.save absPath
+        |> Asset.write absPath
       do! Git.Repo.add repo relPath
       do! Git.Repo.stage repo absPath
     }
@@ -2647,7 +2647,7 @@ module Project =
       try
         let updated =  { project with LastSaved = Some (Time.createTimestamp ()) }
         let data = Yaml.encode updated
-        let! info = Asset.save destPath data
+        let! info = Asset.write destPath data
         return! commitPath destPath user.Signature msg updated
       with
         | exn ->

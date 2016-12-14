@@ -718,10 +718,12 @@ module Crypto =
 
 // * Asset
 
-#if !FABLE_COMPILER
-
 [<RequireQualifiedAccess>]
 module Asset =
+
+  let private tag (site: string) = sprintf "Asset.%s" site
+
+  // ** path
 
   /// ## path
   ///
@@ -734,7 +736,12 @@ module Asset =
   let inline path< ^t when ^t : (member AssetPath : FilePath)> (thing: ^t) =
     (^t : (member AssetPath: FilePath) thing)
 
-  /// ## save
+
+  // ** write
+
+  #if !FABLE_COMPILER
+
+  /// ## write
   ///
   /// Description
   ///
@@ -743,7 +750,7 @@ module Asset =
   /// - payload: string payload to save
   ///
   /// Returns: Either<IrisError,FileInfo>
-  let save (location: FilePath) (payload: string) =
+  let write (location: FilePath) (payload: string) =
     either {
       try
         let info = FileInfo location
@@ -754,10 +761,16 @@ module Asset =
       with
         | exn ->
           return!
-            ("Asset.save",exn.Message)
-            |> AssetError
+            exn.Message
+            |> Error.asAssetError (tag "write")
             |> Either.fail
     }
+
+  #endif
+
+  // ** delete
+
+  #if !FABLE_COMPILER
 
   /// ## delete
   ///
@@ -778,14 +791,18 @@ module Asset =
       with
         | exn ->
           return!
-            ("Asset.delete",exn.Message)
-            |> AssetError
+            exn.Message
+            |> Error.asAssetError (tag "delete")
             |> Either.fail
     }
 
-  // ** load
+  #endif
 
-  /// ## load
+  // ** read
+
+  #if !FABLE_COMPILER
+
+  /// ## read
   ///
   /// Load a text file from disk. If the file could not be loaded,
   /// return IOError.
@@ -794,7 +811,7 @@ module Asset =
   /// - locationg: FilePath to asset
   ///
   /// Returns: Either<IrisError,string>
-  let inline load (location: FilePath) : Either<IrisError, string> =
+  let read (location: FilePath) : Either<IrisError, string> =
     either {
       if File.Exists location then
         try
@@ -802,17 +819,36 @@ module Asset =
         with
           | exn ->
             return!
-              ("Asset.load",exn.Message)
-              |> AssetError
+              exn.Message
+              |> Error.asAssetError (tag "read")
               |> Either.fail
       else
         return!
-          ("Asset.load",sprintf "File not found: %s" location)
-          |> AssetError
+          sprintf "File not found: %s" location
+          |> Error.asAssetError (tag "read")
           |> Either.fail
     }
+  #endif
 
-#endif
+  // ** load
+
+  #if !FABLE_COMPILER
+
+  let inline load< ^t when ^t : (static member Load: FilePath -> Either<IrisError, ^t>)>
+                 (path: FilePath) =
+    (^t : (static member Load: FilePath -> Either<IrisError, ^t>) path)
+
+  #endif
+
+  // ** loadAll
+
+  #if !FABLE_COMPILER
+
+  let inline loadAll< ^t when ^t : (static member LoadAll: FilePath -> Either<IrisError, ^t array>)>
+                    (basePath: FilePath) =
+    (^t : (static member LoadAll: FilePath -> Either<IrisError, ^t array>) basePath)
+
+  #endif
 
 // * Functional
 

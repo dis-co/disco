@@ -66,7 +66,7 @@ module Constants =
   let CUELIST_DIR = "cuelists"
 
   [<Literal>]
-  let PATCHES_DIR = "patches"
+  let PATCH_DIR = "patches"
 
   //  __  __            _     _             ____             __ _
   // |  \/  | __ _  ___| |__ (_)_ __   ___ / ___|___  _ __  / _(_) __ _
