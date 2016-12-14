@@ -830,6 +830,29 @@ module Asset =
     }
   #endif
 
+  // ** save
+
+  #if !FABLE_COMPILER
+
+  let inline save< ^t when ^t : (member Save: FilePath -> Either<IrisError, unit>)>
+                 (t: ^t)
+                 (path: FilePath) =
+    (^t : (member Save: FilePath -> Either<IrisError, unit>) (t, path))
+
+  #endif
+
+  // ** saveMap
+
+  #if !FABLE_COMPILER
+
+  let inline saveMap (basepath: FilePath) (guard: Either<IrisError,unit>) _ (t: ^t) =
+    either {
+      do! guard
+      do! save t basepath
+    }
+
+  #endif
+
   // ** load
 
   #if !FABLE_COMPILER

@@ -172,6 +172,8 @@ type CueList =
 
   #endif
 
+  // ** Load
+
   //  _                    _
   // | |    ___   __ _  __| |
   // | |   / _ \ / _` |/ _` |
@@ -216,6 +218,22 @@ type CueList =
             exn.Message
             |> Error.asAssetError "CueList.LoadAll"
             |> Either.fail
+    }
+
+  // ** Save
+
+  //  ____
+  // / ___|  __ ___   _____
+  // \___ \ / _` \ \ / / _ \
+  //  ___) | (_| |\ V /  __/
+  // |____/ \__,_| \_/ \___|
+
+  member cuelist.Save (basePath: FilePath) =
+    either {
+      let path = basePath </> Asset.path cuelist
+      let data = Yaml.encode cuelist
+      let! info = Asset.write path data
+      return ()
     }
 
   #endif

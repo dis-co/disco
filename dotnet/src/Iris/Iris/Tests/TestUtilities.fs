@@ -5,7 +5,6 @@ open System
 open System.IO
 open Iris.Raft
 open Iris.Core
-open LibGit2Sharp
 
 [<AutoOpen>]
 module TestUtilities =
@@ -65,8 +64,11 @@ module TestData =
 
   let mk() = Id.Create()
 
+  let mkPin() =
+    Pin.Toggle(mk(), rndstr(), mk(), mkTags(), [|{ Index = 0u; Value = true }|])
+
   let mkPins () =
-    let props = [|{ Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|]
+    let props = [| { Key = "one"; Value = "two" }; { Key = "three"; Value = "four"} |]
     let selected = props.[0]
     let rgba = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy }
     let hsla = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy }
@@ -152,7 +154,7 @@ module TestData =
 
   let mkProject () =
     let machine = MachineConfig.create ()
-    Project.create "test-project" machine
+    Project.create (rndstr()) machine
 
   let mkState () : State =
     { Project  = mkProject ()
@@ -172,7 +174,7 @@ module TestData =
     [| for _ in 0 .. n do
         yield mkChange () |]
 
-  let mkLog _ =
+  let mkLog _ : RaftLog =
     LogEntry(Id.Create(), 7u, 1u, DataSnapshot(mkState()),
       Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot(mkState()),
         Some <| Configuration(Id.Create(), 5u, 1u, [| mkMember () |],
@@ -192,5 +194,5 @@ module TestData =
     mkTmpDir ()
     |> fun info -> info.FullName
     |> fun path ->
-      Repository.Init path |> ignore
-      new Repository(path)
+      LibGit2Sharp.Repository.Init path |> ignore
+      new LibGit2Sharp.Repository(path)

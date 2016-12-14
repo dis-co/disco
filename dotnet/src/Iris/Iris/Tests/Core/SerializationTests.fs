@@ -419,7 +419,7 @@ module SerializationTests =
       ; EnumSlice     { Index = 0u; Value = { Key = "one"; Value = "two" }}
       ; ColorSlice    { Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }
       ; ColorSlice    { Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }
-      ; CompoundSlice { Index = 0u; Value = pins () } |]
+      ; CompoundSlice { Index = 0u; Value = mkPins () } |]
       |> Array.iter
         (fun slice ->
           let reslice = slice |> Binary.encode |> Binary.decode |> Either.get
@@ -437,7 +437,7 @@ module SerializationTests =
       ; EnumSlice     { Index = 0u; Value = { Key = "one"; Value = "two" }}
       ; ColorSlice    { Index = 0u; Value = RGBA { Red = 255uy; Blue = 2uy; Green = 255uy; Alpha = 33uy } }
       ; ColorSlice    { Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 25uy; Lightness = 255uy; Alpha = 55uy } }
-      ; CompoundSlice { Index = 0u; Value = pins () }
+      ; CompoundSlice { Index = 0u; Value = mkPins () }
       |]
       |> Array.iter
         (fun slice ->
@@ -456,14 +456,14 @@ module SerializationTests =
         pin |> Binary.encode |> Binary.decode |> Either.get
         |> expect "Should be structurally equivalent" pin id
 
-      Array.iter check (pins ())
+      Array.iter check (mkPins ())
 
       // compound
-      let compound = Pin.Compound(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = pins () }|])
+      let compound = Pin.Compound(mk(), "compound",  mk(), mkTags (), [|{ Index = 0u; Value = mkPins () }|])
       check compound
 
       // nested compound :)
-      Pin.Compound(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = [| compound |] }|])
+      Pin.Compound(Id.Create(), "compound",  Id.Create(), mkTags (), [|{ Index = 0u; Value = [| compound |] }|])
       |> check
 
   let test_validate_pin_yaml_serialization =
@@ -472,14 +472,14 @@ module SerializationTests =
         pin |> Yaml.encode |> Yaml.decode |> Either.get
         |> expect "Should be structurally equivalent" pin id
 
-      Array.iter check (pins ())
+      Array.iter check (mkPins ())
 
       // compound
-      let compound = Pin.Compound(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = pins () }|])
+      let compound = Pin.Compound(Id.Create(), "compound",  Id.Create(), mkTags (), [|{ Index = 0u; Value = mkPins () }|])
       check compound
 
       // nested compound :)
-      Pin.Compound(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = [| compound |] }|])
+      Pin.Compound(Id.Create(), "compound",  Id.Create(), mkTags (), [|{ Index = 0u; Value = [| compound |] }|])
       |> check
 
   //  ____  _        _
@@ -518,12 +518,12 @@ module SerializationTests =
       ; AddPatch      <| mkPatch ()
       ; UpdatePatch   <| mkPatch ()
       ; RemovePatch   <| mkPatch ()
-      ; AddPin      <| mkPin ()
-      ; UpdatePin   <| mkPin ()
-      ; RemovePin   <| mkPin ()
-      ; AddMember       <| Member.create (Id.Create())
-      ; UpdateMember    <| Member.create (Id.Create())
-      ; RemoveMember    <| Member.create (Id.Create())
+      ; AddPin        <| mkPin ()
+      ; UpdatePin     <| mkPin ()
+      ; RemovePin     <| mkPin ()
+      ; AddMember     <| Member.create (Id.Create())
+      ; UpdateMember  <| Member.create (Id.Create())
+      ; RemoveMember  <| Member.create (Id.Create())
       ; DataSnapshot  <| mkState ()
       ; Command AppCommand.Undo
       ; LogMsg(Logger.create Debug (Id.Create()) "bla" "oohhhh")

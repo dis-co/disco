@@ -168,6 +168,8 @@ type User =
       let name = sprintf "%s %s" user.FirstName user.LastName
       new Signature(name, user.Email, new DateTimeOffset(user.Created))
 
+  // ** AssetPath
+
   member user.AssetPath
     with get () =
       let filename =
@@ -330,6 +332,22 @@ type User =
             exn.Message
             |> Error.asAssetError "User.LoadAll"
             |> Either.fail
+    }
+
+  // ** Save
+
+  //  ____
+  // / ___|  __ ___   _____
+  // \___ \ / _` \ \ / / _ \
+  //  ___) | (_| |\ V /  __/
+  // |____/ \__,_| \_/ \___|
+
+  member user.Save (basePath: FilePath) =
+    either {
+      let path = basePath </> Asset.path user
+      let data = Yaml.encode user
+      let! info = Asset.write path data
+      return ()
     }
 
   #endif

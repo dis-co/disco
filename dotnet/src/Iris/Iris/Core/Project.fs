@@ -2135,6 +2135,35 @@ Config: %A
       project.Author
       project.Config
 
+  // ** AssetPath
+
+  //     _                 _   ____       _   _
+  //    / \   ___ ___  ___| |_|  _ \ __ _| |_| |__
+  //   / _ \ / __/ __|/ _ \ __| |_) / _` | __| '_ \
+  //  / ___ \\__ \__ \  __/ |_|  __/ (_| | |_| | | |
+  // /_/   \_\___/___/\___|\__|_|   \__,_|\__|_| |_|
+
+  member project.AssetPath
+    with get () = PROJECT_FILENAME + ASSET_EXTENSION
+
+  // ** Save
+
+  //  ____
+  // / ___|  __ ___   _____
+  // \___ \ / _` \ \ / / _ \
+  //  ___) | (_| |\ V /  __/
+  // |____/ \__,_| \_/ \___|
+
+  member project.Save (basepath: FilePath) =
+    either {
+      let path = basepath </> Asset.path project
+      let data = Yaml.encode project
+      let! info = Asset.write path data
+      return ()
+    }
+
+  // ** ToOffset
+
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -2368,20 +2397,25 @@ module Project =
   /// # Returns: IrisProject option
   let load (path : FilePath) (machine: IrisMachine) : Either<IrisError,IrisProject> =
     either {
-      if not (File.Exists path) then
-        return!
-          sprintf "Project Not Found: %s" path
-          |> Error.asProjectError "Project.load"
-          |> Either.fail
-      else
-        let! str = Asset.read path
-        let! project = Yaml.decode str
-
-        let normalizedPath =
+      let normalizedPath =
+        let withRoot =
           if Path.IsPathRooted path then
             path
           else
             Path.GetFullPath path
+        if withRoot.EndsWith (PROJECT_FILENAME + ASSET_EXTENSION) then
+          withRoot
+        else
+          withRoot </> PROJECT_FILENAME + ASSET_EXTENSION
+
+      if not (File.Exists normalizedPath) then
+        return!
+          sprintf "Project Not Found: %s" normalizedPath
+          |> Error.asProjectError "Project.load"
+          |> Either.fail
+      else
+        let! str = Asset.read normalizedPath
+        let! project = Yaml.decode str
 
         return
           { project with

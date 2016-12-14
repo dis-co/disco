@@ -136,6 +136,12 @@ type Cue =
     serializer.Deserialize<CueYaml>(str)
     |> Yaml.fromYaml
 
+  //     _                 _   ____       _   _
+  //    / \   ___ ___  ___| |_|  _ \ __ _| |_| |__
+  //   / _ \ / __/ __|/ _ \ __| |_) / _` | __| '_ \
+  //  / ___ \\__ \__ \  __/ |_|  __/ (_| | |_| | | |
+  // /_/   \_\___/___/\___|\__|_|   \__,_|\__|_| |_|
+
   member self.AssetPath
     with get () =
       let filepath =
@@ -191,6 +197,20 @@ type Cue =
             exn.Message
             |> Error.asAssetError "Cue.LoadAll"
             |> Either.fail
+    }
+
+  //  ____
+  // / ___|  __ ___   _____
+  // \___ \ / _` \ \ / / _ \
+  //  ___) | (_| |\ V /  __/
+  // |____/ \__,_| \_/ \___|
+
+  member cue.Save (basePath: FilePath) =
+    either {
+      let path = basePath </> Asset.path cue
+      let data = Yaml.encode cue
+      let! info = Asset.write path data
+      return ()
     }
 
   #endif

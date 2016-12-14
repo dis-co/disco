@@ -263,4 +263,33 @@ type Patch =
             |> Either.fail
     }
 
+  //     _                 _   ____       _   _
+  //    / \   ___ ___  ___| |_|  _ \ __ _| |_| |__
+  //   / _ \ / __/ __|/ _ \ __| |_) / _` | __| '_ \
+  //  / ___ \\__ \__ \  __/ |_|  __/ (_| | |_| | | |
+  // /_/   \_\___/___/\___|\__|_|   \__,_|\__|_| |_|
+
+  member self.AssetPath
+    with get () =
+      let filepath =
+        sprintf "%s_%s%s"
+          (String.sanitize self.Name)
+          (string self.Id)
+          ASSET_EXTENSION
+      PATCH_DIR </> filepath
+
+  //  ____
+  // / ___|  __ ___   _____
+  // \___ \ / _` \ \ / / _ \
+  //  ___) | (_| |\ V /  __/
+  // |____/ \__,_| \_/ \___|
+
+  member patch.Save (basePath: FilePath) =
+    either {
+      let path = basePath </> Asset.path patch
+      let data = Yaml.encode patch
+      let! info = Asset.write path data
+      return ()
+    }
+
   #endif

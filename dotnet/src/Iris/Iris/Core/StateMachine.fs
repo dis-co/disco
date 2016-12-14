@@ -155,6 +155,21 @@ type State =
 
   #endif
 
+  // ** Save
+
+  #if !FABLE_COMPILER
+
+  member state.Save (basePath: FilePath) =
+    either {
+      do! Map.fold (Asset.saveMap basePath) (Right ()) state.Patches
+      do! Map.fold (Asset.saveMap basePath) (Right ()) state.Cues
+      do! Map.fold (Asset.saveMap basePath) (Right ()) state.CueLists
+      do! Map.fold (Asset.saveMap basePath) (Right ()) state.Users
+      do! Asset.save state.Project basePath
+    }
+
+  #endif
+
   // ** UpdateProject
 
   member state.UpdateProject (project: IrisProject) =
