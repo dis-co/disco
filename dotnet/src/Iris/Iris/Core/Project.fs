@@ -2798,3 +2798,8 @@ module Project =
       project.Config
       mems
     |> flip updateConfig project
+
+  // ** updateMachine
+
+  let updateMachine (machine: IrisMachine) (project: IrisProject) : IrisProject =
+    { project with Config = Config.updateMachine machine project.Config }

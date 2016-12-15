@@ -100,11 +100,9 @@ module Iris =
   ///
   [<NoComparison;NoEquality>]
   type private IrisStateData =
-    { MemberId        : Id
+    { MemberId      : Id
       Status        : ServiceStatus
       Store         : Store
-      Project       : IrisProject
-      Machine       : IrisMachine
       GitServer     : IGitServer
       RaftServer    : IRaftServer
       HttpServer    : IHttpServer option
@@ -535,10 +533,12 @@ module Iris =
       broadcastMsg data sm
 
       if RaftServer.isLeader data.RaftServer then
-        match persistEntry data.Project sm with
+        match persistEntry data.Store.State.Project sm with
         | Right (commit, updated) ->
-          Loaded { data with Project = updated }
-        | Left error -> state
+          data.Store.Dispatch (UpdateProject updated)
+          state
+        | Left error ->
+          state
       else
         match data.RaftServer.State with
         | Right state ->
@@ -549,7 +549,7 @@ module Iris =
 
           match mem with
           | Some leader ->
-            match updateRepo data.Project leader with
+            match updateRepo data.Store.State.Project leader with
             | Right () -> ()
             | Left error ->
               error
@@ -631,7 +631,7 @@ module Iris =
     let result =
       either {
         let! mem = data.RaftServer.Member
-        let! gitserver = GitServer.create mem data.Project.Path
+        let! gitserver = GitServer.create mem data.Store.State.Project.Path
         let disposable =
           forwardGitEvents agent
           |> gitserver.Subscribe
@@ -690,23 +690,17 @@ module Iris =
     either {
       dispose state
 
-      let! project = Project.load path machine
-
-      let state : State =
-        { Project = project
-          Patches = Map.empty
-          Cues = Map.empty
-          CueLists = Map.empty
-          Sessions = Map.empty
-          Users = Map.empty }
+      let! (state: State) =
+        Asset.load path
+        |> Either.map (State.updateMachine machine)
 
       // FIXME: load the actual state from disk
-      let! mem = Config.selfMember project.Config
+      let! mem = Config.selfMember state.Project.Config
 
       let! httpserver =
         match web with
         | Some basePath ->
-          HttpServer.create(project.Config, basePath)
+          HttpServer.create(state.Project.Config, basePath)
           |> Either.map Some
         | None ->
           Right None
@@ -718,8 +712,6 @@ module Iris =
         Loaded { MemberId     = mem.Id
                  Status       = ServiceStatus.Starting
                  Store        = new Store(state)
-                 Project      = project
-                 Machine      = machine
                  GitServer    = gitserver
                  RaftServer   = raftserver
                  HttpServer   = httpserver
@@ -741,7 +733,7 @@ module Iris =
 
       let result =
         either {
-          do! data.RaftServer.Load(data.Project.Config)
+          do! data.RaftServer.Load(data.Store.State.Project.Config)
           do! data.SocketServer.Start()
           do! data.GitServer.Start()
           match data.HttpServer with
@@ -833,7 +825,7 @@ module Iris =
 
   let private handleConfig (state: IrisState) (chan: ReplyChan) =
     withDefaultReply state chan <| fun data ->
-      data.Project.Config
+      data.Store.State.Project.Config
       |> Reply.Config
       |> Either.succeed
       |> chan.Reply
@@ -846,7 +838,12 @@ module Iris =
       Reply.Ok
       |> Either.succeed
       |> chan.Reply
-      Loaded { data with Project = Project.updateConfig config data.Project }
+
+      Project.updateConfig config data.Store.State.Project
+      |> UpdateProject
+      |> data.Store.Dispatch
+
+      state
 
   // ** handleForceElection
 

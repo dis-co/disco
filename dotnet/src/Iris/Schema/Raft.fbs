@@ -504,7 +504,8 @@ union PayloadFB {
       SessionFB,
       LogEventFB,
       StringFB,
-      StateFB
+      StateFB,
+      ProjectFB
 }
 
 enum ActionTypeFB:ushort {

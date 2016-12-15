@@ -181,12 +181,7 @@ type State =
 
   #endif
 
-  // ** UpdateProject
-
-  member state.UpdateProject (project: IrisProject) =
-    { state with Project = project }
-
-  // ** AddUser
+  // ** addUser
 
   //  _   _
   // | | | |___  ___ _ __
@@ -194,16 +189,16 @@ type State =
   // | |_| \__ \  __/ |
   //  \___/|___/\___|_|
 
-  member state.AddUser (user: User) =
+  static member addUser (user: User) (state: State) =
     if Map.containsKey user.Id state.Users then
       state
     else
       let users = Map.add user.Id user state.Users
       { state with Users = users }
 
-  // ** UpdateUser
+  // ** updateUser
 
-  member state.UpdateUser (user: User) =
+  static member updateUser (user: User) (state: State) =
     if Map.containsKey user.Id state.Users then
       let users = Map.add user.Id user state.Users
       { state with Users = users }
@@ -212,10 +207,10 @@ type State =
 
   // ** RemoveUser
 
-  member state.RemoveUser (user: User) =
+  static member removeUser (user: User) (state: State) =
     { state with Users = Map.filter (fun k _ -> (k <> user.Id)) state.Users }
 
-  // ** AddSession
+  // ** addSession
 
   //  ____                _
   // / ___|  ___  ___ ___(_) ___  _ __
@@ -223,7 +218,7 @@ type State =
   //  ___) |  __/\__ \__ \ | (_) | | | |
   // |____/ \___||___/___/_|\___/|_| |_|
 
-  member state.AddSession (session: Session) =
+  static member addSession (session: Session) (state: State) =
     let sessions =
       if Map.containsKey session.Id state.Sessions then
         state.Sessions
@@ -231,9 +226,9 @@ type State =
         Map.add session.Id session state.Sessions
     { state with Sessions = sessions }
 
-  // ** UpdateSession
+  // ** updateSession
 
-  member state.UpdateSession (session: Session) =
+  static member updateSession (session: Session) (state: State) =
     let sessions =
       if Map.containsKey session.Id state.Sessions then
         Map.add session.Id session state.Sessions
@@ -241,12 +236,12 @@ type State =
         state.Sessions
     { state with Sessions = sessions }
 
-  // ** RemoveSession
+  // ** removeSession
 
-  member state.RemoveSession (session: Session) =
+  static member removeSession (session: Session) (state: State) =
     { state with Sessions = Map.filter (fun k _ -> (k <> session.Id)) state.Sessions }
 
-  // ** AddPatch
+  // ** addPatch
 
   //  ____       _       _
   // |  _ \ __ _| |_ ___| |__
@@ -254,27 +249,27 @@ type State =
   // |  __/ (_| | || (__| | | |
   // |_|   \__,_|\__\___|_| |_|
 
-  member state.AddPatch (patch : Patch) =
+  static member addPatch (patch : Patch) (state: State) =
     if Map.containsKey patch.Id state.Patches then
       state
     else
       { state with Patches = Map.add patch.Id patch state.Patches }
 
-  // ** UpdatePatch
+  // ** updatePatch
 
-  member state.UpdatePatch (patch : Patch) =
+  static member updatePatch (patch : Patch) (state: State) =
     if Map.containsKey patch.Id state.Patches then
       { state with Patches = Map.add patch.Id patch state.Patches }
     else
       state
 
-  // ** RemovePatch
+  // ** removePatch
 
-  member state.RemovePatch (patch : Patch) =
+  static member removePatch (patch : Patch) (state: State) =
     { state with Patches = Map.remove patch.Id state.Patches }
 
 
-  // ** AddPin
+  // ** addPin
 
   //  ___ ___  ____
   // |_ _/ _ \| __ )  _____  __
@@ -282,7 +277,7 @@ type State =
   //  | | |_| | |_) | (_) >  <
   // |___\___/|____/ \___/_/\_\
 
-  member state.AddPin (pin : Pin) =
+  static member addPin (pin : Pin) (state: State) =
     if Map.containsKey pin.Patch state.Patches then
       let update _ (patch: Patch) =
         if patch.Id = pin.Patch then
@@ -293,9 +288,9 @@ type State =
     else
       state
 
-  // ** UpdatePin
+  // ** updatePin
 
-  member state.UpdatePin (pin : Pin) =
+  static member updatePin (pin : Pin) (state: State) =
     let mapper (_: Id) (patch : Patch) =
       if patch.Id = pin.Patch then
         Patch.UpdatePin patch pin
@@ -303,16 +298,16 @@ type State =
         patch
     { state with Patches = Map.map mapper state.Patches }
 
-  // ** RemovePin
+  // ** removePin
 
-  member state.RemovePin (pin : Pin) =
+  static member removePin (pin : Pin) (state: State) =
     let updater _ (patch : Patch) =
       if pin.Patch = patch.Id
       then Patch.RemovePin patch pin
       else patch
     { state with Patches = Map.map updater state.Patches }
 
-  // ** AddCueList
+  // ** addCueList
 
   //   ____           _     _     _
   //  / ___|   _  ___| |   (_)___| |_ ___
@@ -320,23 +315,23 @@ type State =
   // | |__| |_| |  __/ |___| \__ \ |_\__ \
   //  \____\__,_|\___|_____|_|___/\__|___/
 
-  member state.AddCueList (cuelist : CueList) =
+  static member addCueList (cuelist : CueList) (state: State) =
     if Map.containsKey cuelist.Id state.CueLists then
       state
     else
       { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
 
-  // ** UpdateCueList
+  // ** updateCueList
 
-  member state.UpdateCueList (cuelist : CueList) =
+  static member updateCueList (cuelist : CueList) (state: State) =
     if Map.containsKey cuelist.Id state.CueLists then
       { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
     else
       state
 
-  // ** RemoveCueList
+  // ** removeCueList
 
-  member state.RemoveCueList (cuelist : CueList) =
+  static member removeCueList (cuelist : CueList) (state: State) =
     { state with CueLists = Map.remove cuelist.Id state.CueLists }
 
   // ** AddCue
@@ -347,39 +342,67 @@ type State =
   // | |__| |_| |  __/
   //  \____\__,_|\___|
 
-  member state.AddCue (cue : Cue) =
+  static member addCue (cue : Cue) (state: State) =
     if Map.containsKey cue.Id state.Cues then
       state
     else
       { state with Cues = Map.add cue.Id cue state.Cues }
 
-  // ** UpdateCue
+  // ** updateCue
 
-  member state.UpdateCue (cue : Cue) =
+  static member updateCue (cue : Cue) (state: State) =
     if Map.containsKey cue.Id state.Cues then
       { state with Cues = Map.add cue.Id cue state.Cues }
     else
       state
 
-  // ** RemoveCue
+  // ** removeCue
 
-  member state.RemoveCue (cue : Cue) =
+  static member removeCue (cue : Cue) (state: State) =
     { state with Cues = Map.remove cue.Id state.Cues }
 
-  // ** AddMember
+  //  __  __                _
+  // |  \/  | ___ _ __ ___ | |__   ___ _ __
+  // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+  // | |  | |  __/ | | | | | |_) |  __/ |
+  // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
 
-  member state.AddMember (mem: RaftMember) =
+  // ** addMember
+
+  static member addMember (mem: RaftMember) (state: State) =
     { state with Project = Project.addMember mem state.Project }
 
-  // ** UpdateMember
+  // ** updateMember
 
-  member state.UpdateMember (mem: RaftMember) =
+  static member updateMember (mem: RaftMember) (state: State) =
     { state with Project = Project.updateMember mem state.Project }
 
-  // ** RemoveMember
+  // ** removeMember
 
-  member state.RemoveMember (mem: RaftMember) =
+  static member removeMember (mem: RaftMember) (state: State) =
     { state with Project = Project.removeMember mem.Id state.Project }
+
+  //  ____            _           _
+  // |  _ \ _ __ ___ (_) ___  ___| |_
+  // | |_) | '__/ _ \| |/ _ \/ __| __|
+  // |  __/| | | (_) | |  __/ (__| |_
+  // |_|   |_|  \___// |\___|\___|\__|
+  //               |__/
+
+  // ** updateMachine
+
+  static member updateMachine (machine: IrisMachine) (state: State) =
+    { state with Project = Project.updateMachine machine state.Project }
+
+  // ** updateConfig
+
+  static member updateConfig (config: IrisConfig) (state: State) =
+    { state with Project = Project.updateConfig config state.Project }
+
+  // ** updateProject
+
+  static member updateProject (project: IrisProject) (state: State) =
+    { state with Project = project }
 
   // ** ToOffset
 
@@ -808,50 +831,44 @@ and Store(state : State)=
   member self.Dispatch (ev : StateMachine) : unit =
     let andRender (newstate: State) =
       state <- newstate                   // 1) create new state
-      self.Notify(ev)                    // 2) notify all listeners
+      self.Notify(ev)                    // 2) notify all
       history.Append({ Event = ev        // 3) store this action and new state
-                      ; State = state }) // 4) append to undo history
-
-    let addSession (session: Session) (state: State) =
-      let sessions =
-        if Map.containsKey session.Id state.Sessions then
-          state.Sessions
-        else
-          Map.add session.Id session state.Sessions
-      { state with Sessions = sessions }
+                       State = state })  // 4) append to undo history
 
     match ev with
     | Command (AppCommand.Redo)  -> self.Redo()
     | Command (AppCommand.Undo)  -> self.Undo()
     | Command (AppCommand.Reset) -> ()   // do nothing for now
 
-    | AddCue                cue -> state.AddCue        cue     |> andRender
-    | UpdateCue             cue -> state.UpdateCue     cue     |> andRender
-    | RemoveCue             cue -> state.RemoveCue     cue     |> andRender
+    | AddCue                cue -> State.addCue        cue     state |> andRender
+    | UpdateCue             cue -> State.updateCue     cue     state |> andRender
+    | RemoveCue             cue -> State.removeCue     cue     state |> andRender
 
-    | AddCueList        cuelist -> state.AddCueList    cuelist |> andRender
-    | UpdateCueList     cuelist -> state.UpdateCueList cuelist |> andRender
-    | RemoveCueList     cuelist -> state.RemoveCueList cuelist |> andRender
+    | AddCueList        cuelist -> State.addCueList    cuelist state |> andRender
+    | UpdateCueList     cuelist -> State.updateCueList cuelist state |> andRender
+    | RemoveCueList     cuelist -> State.removeCueList cuelist state |> andRender
 
-    | AddPatch            patch -> state.AddPatch      patch   |> andRender
-    | UpdatePatch         patch -> state.UpdatePatch   patch   |> andRender
-    | RemovePatch         patch -> state.RemovePatch   patch   |> andRender
+    | AddPatch            patch -> State.addPatch      patch   state |> andRender
+    | UpdatePatch         patch -> State.updatePatch   patch   state |> andRender
+    | RemovePatch         patch -> State.removePatch   patch   state |> andRender
 
-    | AddPin            pin -> state.AddPin      pin   |> andRender
-    | UpdatePin         pin -> state.UpdatePin   pin   |> andRender
-    | RemovePin         pin -> state.RemovePin   pin   |> andRender
+    | AddPin                pin -> State.addPin        pin     state |> andRender
+    | UpdatePin             pin -> State.updatePin     pin     state |> andRender
+    | RemovePin             pin -> State.removePin     pin     state |> andRender
 
-    | AddMember            mem -> state.AddMember     mem    |> andRender
-    | UpdateMember         mem -> state.UpdateMember  mem    |> andRender
-    | RemoveMember         mem -> state.RemoveMember  mem    |> andRender
+    | AddMember             mem -> State.addMember     mem     state |> andRender
+    | UpdateMember          mem -> State.updateMember  mem     state |> andRender
+    | RemoveMember          mem -> State.removeMember  mem     state |> andRender
 
-    | AddSession        session -> addSession session state    |> andRender
-    | UpdateSession     session -> state.UpdateSession session |> andRender
-    | RemoveSession     session -> state.RemoveSession session |> andRender
+    | AddSession        session -> State.addSession    session state |> andRender
+    | UpdateSession     session -> State.updateSession session state |> andRender
+    | RemoveSession     session -> State.removeSession session state |> andRender
 
-    | AddUser              user -> state.AddUser       user    |> andRender
-    | UpdateUser           user -> state.UpdateUser    user    |> andRender
-    | RemoveUser           user -> state.RemoveUser    user    |> andRender
+    | AddUser              user -> State.addUser       user    state |> andRender
+    | UpdateUser           user -> State.updateUser    user    state |> andRender
+    | RemoveUser           user -> State.removeUser    user    state |> andRender
+
+    | UpdateProject     project -> State.updateProject project state |> andRender
 
     | _ -> ()
 
@@ -947,6 +964,8 @@ and Listener = Store -> StateMachine -> unit
 // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
 and StateMachine =
+  // Project
+  | UpdateProject of IrisProject
 
   // Member
   | AddMember     of RaftMember
@@ -995,11 +1014,13 @@ and StateMachine =
 
   override self.ToString() : string =
     match self with
+    // Project
+    | UpdateProject project -> sprintf "UpdateProject %s" project.Name
 
     // Member
-    | AddMember    mem     -> sprintf "AddMember %s"    (string mem)
-    | UpdateMember mem     -> sprintf "UpdateMember %s" (string mem)
-    | RemoveMember mem     -> sprintf "RemoveMember %s" (string mem)
+    | AddMember    mem      -> sprintf "AddMember %s"    (string mem)
+    | UpdateMember mem      -> sprintf "UpdateMember %s" (string mem)
+    | RemoveMember mem      -> sprintf "RemoveMember %s" (string mem)
 
     // PATCH
     | AddPatch    patch     -> sprintf "AddPatch %s"    (string patch)
@@ -1007,9 +1028,9 @@ and StateMachine =
     | RemovePatch patch     -> sprintf "RemovePatch %s" (string patch)
 
     // PIN
-    | AddPin    pin     -> sprintf "AddPin %s"    (string pin)
-    | UpdatePin pin     -> sprintf "UpdatePin %s" (string pin)
-    | RemovePin pin     -> sprintf "RemovePin %s" (string pin)
+    | AddPin    pin         -> sprintf "AddPin %s"    (string pin)
+    | UpdatePin pin         -> sprintf "UpdatePin %s" (string pin)
+    | RemovePin pin         -> sprintf "RemovePin %s" (string pin)
 
     // CUE
     | AddCue    cue         -> sprintf "AddCue %s"    (string cue)
@@ -1048,6 +1069,16 @@ and StateMachine =
 #if FABLE_COMPILER
   static member FromFB (fb: ApiActionFB) =
     match fb.PayloadType with
+    | x when x = PayloadFB.ProjectFB ->
+      let project = fb.ProjectFB |> IrisProject.FromFB
+      match fb.Action with
+      | x when x = ActionTypeFB.UpdateFB ->
+        Either.map UpdateProject project
+      | x ->
+        sprintf "Could not parse unknown ActionTypeFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
     | x when x = PayloadFB.RaftMemberFB ->
       let mem = fb.RaftMemberFB |> RaftMember.FromFB
       match fb.Action with
@@ -1177,6 +1208,35 @@ and StateMachine =
 
   static member FromFB (fb: ApiActionFB) =
     match fb.PayloadType with
+
+    //  ____            _           _
+    // |  _ \ _ __ ___ (_) ___  ___| |_
+    // | |_) | '__/ _ \| |/ _ \/ __| __|
+    // |  __/| | | (_) | |  __/ (__| |_
+    // |_|   |_|  \___// |\___|\___|\__|
+    //               |__/
+
+    | PayloadFB.ProjectFB ->
+      either {
+        let! project =
+          let projectish = fb.Payload<ProjectFB>()
+          if projectish.HasValue then
+            projectish.Value
+            |> IrisProject.FromFB
+          else
+            "Could not parse empty project payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+
+        match fb.Action with
+        | ActionTypeFB.UpdateFB -> return (UpdateProject project)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
     //   ____
     //  / ___|   _  ___
     // | |  | | | |/ _ \
@@ -1436,6 +1496,18 @@ and StateMachine =
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<ApiActionFB> =
     match self with
+    | UpdateProject project ->
+      let offset = project.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.ProjectFB)
+#if FABLE_COMPILER
+      ApiActionFB.AddPayload(builder, offset)
+#else
+      ApiActionFB.AddPayload(builder, offset.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
+
     | AddMember       mem ->
       let mem = mem.ToOffset(builder)
       ApiActionFB.StartApiActionFB(builder)
