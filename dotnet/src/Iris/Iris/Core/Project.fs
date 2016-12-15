@@ -2500,6 +2500,8 @@ module Project =
 
   // ** create
 
+  #if !FABLE_COMPILER
+
   /// ### Create a new project with the given name
   ///
   /// Create a new project with the given name. The default configuration will apply.
@@ -2522,6 +2524,8 @@ module Project =
       let! commit = Asset.saveWithCommit project path User.Admin.Signature
       return project
     }
+
+  #endif
 
   // ** clone
 

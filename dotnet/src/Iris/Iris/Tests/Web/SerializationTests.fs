@@ -25,8 +25,7 @@ module SerializationTests =
         yield Id.Create() |> string |]
 
   let mkProject _ =
-    let machine = MachineConfig.create ()
-    Project.create "test-project" machine
+    IrisProject.Empty
 
   let pins _ =
     [| Pin.Bang      (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 9u; Value = true            }|])

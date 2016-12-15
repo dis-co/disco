@@ -545,10 +545,18 @@ module CommandLine =
                    (path: FilePath)
                    (raftDir: FilePath)
                    (mem: RaftMember) =
-    Project.create name machine
-    |> Project.updatePath path
-    |> Project.updateDataDir raftDir
-    |> Project.addMember mem
+    either {
+      let! project = Project.create path name machine
+
+      let updated =
+        project
+        |> Project.updateDataDir raftDir
+        |> Project.addMember mem
+
+      let! commit = Asset.saveWithCommit updated path User.Admin.Signature
+
+      return updated
+    }
 
   /// ## initializeRaft
   ///
@@ -563,7 +571,7 @@ module CommandLine =
   let initializeRaft (user: User) (project: IrisProject) = either {
       let! raft = createRaft project.Config
       let! result = saveRaft project.Config raft
-      let! (commit, saved) = Project.saveProject user project
+      let! commit = Asset.saveWithCommit project project.Path User.Admin.Signature
       project.Path
       |> printfn "project initialized in %A and committed @ %s" commit.Sha
     }
@@ -603,7 +611,7 @@ module CommandLine =
       do! mkDir raftDir
 
       let mem = buildMember parsed machine.MachineId
-      let project = buildProject machine dir name raftDir mem
+      let! project = buildProject machine dir name raftDir mem
 
       do! initializeRaft me project
     }
@@ -629,7 +637,7 @@ module CommandLine =
       let raftDir = datadir </> RAFT_DIRECTORY
 
       let! machine = MachineConfig.load None
-      let! project = Project.load path machine
+      let! project = Asset.loadWithMachine path machine
 
       do! match Directory.Exists raftDir with
           | true  -> rmDir raftDir
@@ -755,7 +763,7 @@ module CommandLine =
     either {
       let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
       let! machine = MachineConfig.load None
-      let! project = Project.load path machine
+      let! project = Asset.loadWithMachine path machine
 
       let username  = readString "UserName"
       let firstname = readString "First Name"
