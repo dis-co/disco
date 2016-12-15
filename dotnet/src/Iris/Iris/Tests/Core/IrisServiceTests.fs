@@ -45,12 +45,15 @@ module IrisServiceTests =
         let author1 = "karsten"
         let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
-        let! (commit, project) =
-          { Project.create name machine with
+        let! project = Project.create path name machine
+
+        let updated =
+          { project with
               Path = path
               Author = Some(author1)
               Config = cfg }
-          |> Project.saveProject User.Admin
+
+        let! commit = Asset.saveWithCommit updated path User.Admin.Signature
 
         let path = Project.filePath project
 

@@ -64,6 +64,15 @@ module TestData =
 
   let mk() = Id.Create()
 
+  let mkTmpDir () =
+    let fn =
+      Path.GetTempFileName()
+      |> Path.GetFileName
+
+    let path = Directory.GetCurrentDirectory() </> "tmp" </> fn
+    Directory.CreateDirectory path |> ignore
+    path
+
   let mkPin() =
     Pin.Toggle(mk(), rndstr(), mk(), mkTags(), [|{ Index = 0u; Value = true }|])
 
@@ -152,17 +161,21 @@ module TestData =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkSession() |]
 
-  let mkProject () =
+  let mkProject path =
     let machine = MachineConfig.create ()
-    Project.create (rndstr()) machine
+    Project.create path (rndstr()) machine
 
-  let mkState () : State =
-    { Project  = mkProject ()
-      Patches  = mkPatches () |> asMap
-      Cues     = mkCues    () |> asMap
-      CueLists = mkCueLists() |> asMap
-      Sessions = mkSessions() |> asMap
-      Users    = mkUsers   () |> asMap }
+  let mkState path : Either<IrisError,State> =
+    either {
+      let! project = mkProject path
+      return
+        { Project  = project
+          Patches  = mkPatches () |> asMap
+          Cues     = mkCues    () |> asMap
+          CueLists = mkCueLists() |> asMap
+          Sessions = mkSessions() |> asMap
+          Users    = mkUsers   () |> asMap }
+    }
 
   let mkChange _ =
     match rand.Next(0,2) with
@@ -174,25 +187,20 @@ module TestData =
     [| for _ in 0 .. n do
         yield mkChange () |]
 
-  let mkLog _ : RaftLog =
-    LogEntry(Id.Create(), 7u, 1u, DataSnapshot(mkState()),
-      Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot(mkState()),
-        Some <| Configuration(Id.Create(), 5u, 1u, [| mkMember () |],
-          Some <| JointConsensus(Id.Create(), 4u, 1u, mkChanges (),
-            Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mkMembers (), DataSnapshot(mkState()))))))
-    |> Log.fromEntries
-
-  let mkTmpDir () =
-    let fn =
-      Path.GetTempFileName()
-      |> Path.GetFileName
-
-    Directory.GetCurrentDirectory() </> "tmp" </> fn
-    |> Directory.CreateDirectory
+  let mkLog _ : Either<IrisError,RaftLog> =
+    either {
+      let! state = mkTmpDir() |> mkState
+      return
+        LogEntry(Id.Create(), 7u, 1u, DataSnapshot(state),
+          Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot(state),
+            Some <| Configuration(Id.Create(), 5u, 1u, [| mkMember () |],
+              Some <| JointConsensus(Id.Create(), 4u, 1u, mkChanges (),
+                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mkMembers (), DataSnapshot(state))))))
+        |> Log.fromEntries
+    }
 
   let testRepo () =
     mkTmpDir ()
-    |> fun info -> info.FullName
     |> fun path ->
       LibGit2Sharp.Repository.Init path |> ignore
       new LibGit2Sharp.Repository(path)

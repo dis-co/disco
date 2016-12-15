@@ -5,6 +5,7 @@ open System.Net
 open Expecto
 open Iris.Core
 open Iris.Raft
+open Iris.Tests
 
 
 [<AutoOpen>]
@@ -180,20 +181,10 @@ module RaftTestUtils =
     let cbs = mkcbs data :> IRaftCallbacks
     runRaft raft cbs action
 
-  let mkState() =
-    let machine = MachineConfig.create ()
-
-    let project = Project.create "test-project" machine
-
-    { Project  = project
-      Patches  = Map.empty
-      Cues     = Map.empty
-      CueLists = Map.empty
-      Users    = Map.empty
-      Sessions = Map.empty }
-
   let defSM =
-    mkState ()
+    mkTmpDir()
+    |> mkState
+    |> Either.get
     |> StateMachine.DataSnapshot
 
   let runWithDefaults action =

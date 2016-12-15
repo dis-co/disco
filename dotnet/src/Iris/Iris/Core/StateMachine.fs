@@ -146,10 +146,9 @@ type State =
 
   #if !FABLE_COMPILER
 
-  static member Load (path: FilePath) =
+  static member Load (path: FilePath, machine: IrisMachine) =
     either {
-      let! machine  = MachineConfig.load None
-      let! project  = Project.load path machine
+      let! project  = Asset.loadWithMachine path machine
       let! users    = Asset.loadAll project.Path
       let! cues     = Asset.loadAll project.Path
       let! cuelists = Asset.loadAll project.Path

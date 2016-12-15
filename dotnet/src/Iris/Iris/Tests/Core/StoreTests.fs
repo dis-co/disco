@@ -18,9 +18,7 @@ module StoreTests =
       ; Pins = Map.empty
       }
 
-    let machine = MachineConfig.create ()
-
-    let project = Project.create "test-project" machine
+    let project = IrisProject.Empty
 
     let state =
       { Project  = project

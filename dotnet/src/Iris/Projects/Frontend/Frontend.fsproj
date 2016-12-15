@@ -82,6 +82,18 @@
     <Compile Include="../../Iris/Core/Aliases.fs">
       <Link>Aliases.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\Platform.fs">
+      <Link>Platform.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\FileSystem.fs">
+      <Link>FileSystem.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Network.fs">
+      <Link>Network.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Machine.fs">
+      <Link>Machine.fs</Link>
+    </Compile>
     <Compile Include="../../Iris/Core/User.fs">
       <Link>User.fs</Link>
     </Compile>

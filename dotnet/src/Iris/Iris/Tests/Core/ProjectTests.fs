@@ -30,13 +30,9 @@ module ProjectTests =
 
         let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-        let! (commit, project) =
-          { Project.create name machine with Path = path }
-          |> Project.saveProject User.Admin
+        let! project = Project.create path name machine
 
-        let result =
-          Project.filePath project
-          |> flip Project.load machine
+        let result = Asset.loadWithMachine project.Path machine
 
         do! expectE "Projects should be equal" true ((=) project) result
       }
@@ -199,35 +195,31 @@ module ProjectTests =
           ; Groups = [| groupA; groupB |]
           }
 
-        let project =
-          machine
-          |> Project.create name
-          |> Project.updatePath path
-          |> fun project ->
-            Project.updateConfig
-              { project.Config with
-                  Raft      = engineCfg
-                  Vvvv      = vvvvCfg
-                  ViewPorts = [| viewPort1; viewPort2 |]
-                  Displays  = [| display1;  display2  |]
-                  Tasks     = [| task1;     task2     |]
-                  Cluster   = cluster }
-              project
+        let! project = Project.create path name machine
 
-        let! (_,saved) = Project.saveProject User.Admin project
-        let! loaded = Project.load (path </> PROJECT_FILENAME + ASSET_EXTENSION) machine
+        let updated =
+          Project.updateConfig
+            { project.Config with
+                Raft      = engineCfg
+                Vvvv      = vvvvCfg
+                ViewPorts = [| viewPort1; viewPort2 |]
+                Displays  = [| display1;  display2  |]
+                Tasks     = [| task1;     task2     |]
+                Cluster   = cluster }
+            project
+
+        let! commit = Asset.saveWithCommit updated path User.Admin.Signature
+        let! loaded = Asset.loadWithMachine path machine
 
         // the only difference will be the automatically assigned timestamp
-        expect "CreatedOn should be structurally equal"  true ((=) loaded.CreatedOn) saved.CreatedOn
-        expect "LastSaved should be structurally equal"  true ((=) loaded.LastSaved) saved.LastSaved
-        expect "VVVVConfig should be structurally equal" true ((=) loaded.Config.Vvvv) saved.Config.Vvvv
-        expect "RaftCofnig should be structurally equal" true ((=) loaded.Config.Raft) saved.Config.Raft
-        expect "ViewPorts should be structurally equal"  true ((=) loaded.Config.ViewPorts) saved.Config.ViewPorts
-        expect "Timing should be structurally equal"     true ((=) loaded.Config.Timing) saved.Config.Timing
-        expect "Displays should be structurally equal"   true ((=) loaded.Config.Displays) saved.Config.Displays
-        expect "Tasks should be structurally equal"      true ((=) loaded.Config.Tasks) saved.Config.Tasks
-        expect "Cluster should be structurally equal"    true ((=) loaded.Config.Cluster) saved.Config.Cluster
-        expect "Projects should be structurally equal"   true ((=) loaded) saved
+        expect "CreatedOn should be structurally equal"  true ((=) loaded.CreatedOn) updated.CreatedOn
+        expect "VVVVConfig should be structurally equal" true ((=) loaded.Config.Vvvv) updated.Config.Vvvv
+        expect "RaftCofnig should be structurally equal" true ((=) loaded.Config.Raft) updated.Config.Raft
+        expect "ViewPorts should be structurally equal"  true ((=) loaded.Config.ViewPorts) updated.Config.ViewPorts
+        expect "Timing should be structurally equal"     true ((=) loaded.Config.Timing) updated.Config.Timing
+        expect "Displays should be structurally equal"   true ((=) loaded.Config.Displays) updated.Config.Displays
+        expect "Tasks should be structurally equal"      true ((=) loaded.Config.Tasks) updated.Config.Tasks
+        expect "Cluster should be structurally equal"    true ((=) loaded.Config.Cluster) updated.Config.Cluster
       }
       |> noError
 
@@ -261,13 +253,9 @@ module ProjectTests =
 
         let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-        let! _ =
-          { Project.create name machine with Path = path }
-          |> Project.saveProject User.Admin
+        let! _ = Project.create path name machine
 
-        let loaded =
-          path </> PROJECT_FILENAME + ASSET_EXTENSION
-          |> flip Project.load machine
+        let loaded = Asset.loadWithMachine path machine
 
         expect "Projects should be a folder"   true  Directory.Exists path
         expect "Projects should be a git repo" true  Directory.Exists (path </> ".git")
@@ -319,49 +307,39 @@ module ProjectTests =
 
         let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-        let! (commit1, project) =
-          { Project.create name machine with
-              Path = path
-              Author = Some(author1) }
-          |> Project.saveProject User.Admin
+        let! project = Project.create path name machine
 
-        let! loaded =
-          (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-          |> flip Project.load machine
+        let updated = { project with Author = Some author1 }
+        let! commit = Asset.saveWithCommit updated path User.Admin.Signature
 
+        let! loaded = Asset.loadWithMachine path machine
         let! repo = Project.repository loaded
 
         let checkAuthor = (Option.get >> (=)) loaded.Author
         let checkCount = (=) (Git.Repo.commitCount repo)
 
         expect "Authors should be equal"                true checkAuthor author1
-        expect "Project should have one initial commit" true checkCount 1
+        expect "Project should have one initial commit" true checkCount 2
 
         let author2 = "ingolf"
 
-        let! (commit2, project) =
-          { project with Author = Some author2 }
-          |> Project.saveProject User.Admin
+        let updated = { updated with Author = Some author2 }
+        let! commit2 = Asset.saveWithCommit updated path User.Admin.Signature
 
-        let! loaded =
-          (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-          |> flip Project.load machine
+        let! loaded = Asset.loadWithMachine path machine
 
         expect "Authors should be equal"     true ((=) (Option.get loaded.Author)) author2
-        expect "Projects should two commits" true ((=) (Git.Repo.commitCount repo)) 2
+        expect "Projects should two commits" true ((=) (Git.Repo.commitCount repo)) 3
 
         let author3 = "eno"
 
-        let! (commit3, project) =
-           { project with Author = Some author3 }
-           |> Project.saveProject User.Admin
+        let updated = { updated with Author = Some author3 }
+        let! commit3 = Asset.saveWithCommit updated path User.Admin.Signature
 
-        let! loaded =
-          (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-          |> flip Project.load machine
+        let! loaded = Asset.loadWithMachine path machine
 
-        expect "Authors should be equal"                    true ((=) (Option.get loaded.Author)) author3
-        expect "Projects should have three commits"         true ((=) (Git.Repo.commitCount repo)) 3
+        expect "Authors should be equal"           true ((=) (Option.get loaded.Author))  author3
+        expect "Projects should have four commits" true ((=) (Git.Repo.commitCount repo)) 4
       }
       |> noError
 
@@ -376,26 +354,18 @@ module ProjectTests =
 
         let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-        let! (commit1, project) =
-          { Project.create name machine with
-              Path = path }
-          |> Project.saveProject User.Admin
+        let! project = Project.create path name machine
+        let! loaded = Asset.loadWithMachine path machine
 
-        let! loaded =
-          (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-          |> flip Project.load machine
-
-        expect "Project should have commit message" path id loaded.Path
+        expect "Project should have correct path" path id loaded.Path
 
         let newpath = Path.dirName path </> (Path.GetTempFileName() |> Path.baseName)
 
         FileSystem.moveFile path newpath
 
-        let! loaded =
-          (newpath </> PROJECT_FILENAME + ASSET_EXTENSION)
-          |> flip Project.load machine
+        let! loaded = Asset.loadWithMachine newpath machine
 
-        expect "Project should have commit message" newpath id loaded.Path
+        expect "Project should have correct path" newpath id loaded.Path
       }
       |> noError
 
@@ -410,9 +380,7 @@ module ProjectTests =
 
         let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-        let! (commit1, project) =
-          { Project.create name machine with Path = path }
-          |> Project.saveProject User.Admin
+        let! project = Project.create path name machine
 
         let user =
           { Id = Id.Create()
@@ -447,9 +415,7 @@ module ProjectTests =
 
         let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-        let! (commit1, project) =
-          { Project.create name machine with Path = path }
-          |> Project.saveProject User.Admin
+        let! project = Project.create path name machine
 
         let! (admin: User) =
           project.Path </> Asset.path User.Admin

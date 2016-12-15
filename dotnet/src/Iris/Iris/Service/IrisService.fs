@@ -693,9 +693,7 @@ module Iris =
     either {
       dispose state
 
-      let! (state: State) =
-        Asset.load path
-        |> Either.map (State.updateMachine machine)
+      let! (state: State) = Asset.loadWithMachine path machine
 
       // FIXME: load the actual state from disk
       let! mem = Config.selfMember state.Project.Config

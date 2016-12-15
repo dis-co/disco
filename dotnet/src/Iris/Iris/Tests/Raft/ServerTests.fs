@@ -9,18 +9,6 @@ open Iris.Core
 [<AutoOpen>]
 module ServerTests =
 
-  let mkState () =
-    let machine = MachineConfig.create ()
-    let project = Project.create "test-project" machine
-
-    { Project  = project
-      Patches  = Map.empty
-      Cues     = Map.empty
-      CueLists = Map.empty
-      Sessions = Map.empty
-      Users    = Map.empty }
-
-
   ////////////////////////////////////////
   //  ____                              //
   // / ___|  ___ _ ____   _____ _ __    //
@@ -49,11 +37,11 @@ module ServerTests =
     testCase "Raft server index should start at 1" <| fun _ ->
       raft {
          do! expectM "Should have default idx" 0u Raft.currentIndex
-         do! Raft.createEntryM (DataSnapshot (mkState ())) >>= ignoreM
+         do! Raft.createEntryM (DataSnapshot (State.Empty)) >>= ignoreM
          do! expectM "Should have current idx" 1u Raft.currentIndex
-         do! Raft.createEntryM (DataSnapshot (mkState ())) >>= ignoreM
+         do! Raft.createEntryM (DataSnapshot (State.Empty)) >>= ignoreM
          do! expectM "Should have current idx" 2u Raft.currentIndex
-         do! Raft.createEntryM (DataSnapshot (mkState ())) >>= ignoreM
+         do! Raft.createEntryM (DataSnapshot (State.Empty)) >>= ignoreM
          do! expectM "Should have current idx" 3u Raft.currentIndex
       }
       |> runWithDefaults
@@ -157,12 +145,12 @@ module ServerTests =
 
   let server_append_entry_is_retrievable =
     testCase "Raft should be able to retrieve entry and data by index" <| fun _ ->
-      let msg1 = DataSnapshot (mkState ())
-      let msg2 = DataSnapshot (mkState ())
-      let msg3 = DataSnapshot (mkState ())
+      let msg1 = DataSnapshot (State.Empty)
+      let msg2 = DataSnapshot (State.Empty)
+      let msg3 = DataSnapshot (State.Empty)
 
       let init = Raft.mkRaft (Member.create (Id.Create()))
-      let cbs = mkcbs (ref (DataSnapshot (mkState ()))) :> IRaftCallbacks
+      let cbs = mkcbs (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
 
       raft {
         do! Raft.setStateM Candidate
@@ -214,7 +202,7 @@ module ServerTests =
         do! Raft.applyEntries ()
         do! expectM "Should not have incremented last applied index" 0u Raft.lastAppliedIdx
         do! expectM "Should not have incremented commit index" 0u Raft.commitIndex
-        do! Raft.createEntryM (DataSnapshot (mkState ())) >>= ignoreM
+        do! Raft.createEntryM (DataSnapshot (State.Empty)) >>= ignoreM
         do! Raft.applyEntries () >>= ignoreM
         do! expectM "fhould not have incremented last applied index" 0u Raft.lastAppliedIdx
         do! expectM "Should not have incremented commit index" 0u Raft.commitIndex
@@ -229,7 +217,7 @@ module ServerTests =
         do! Raft.setStateM Follower
         do! Raft.setTermM 1u
         do! Raft.setLastAppliedIdxM 0u
-        do! Raft.createEntryM (DataSnapshot (mkState ())) >>= ignoreM
+        do! Raft.createEntryM (DataSnapshot (State.Empty)) >>= ignoreM
         do! Raft.setCommitIndexM 1u
         do! Raft.periodic 1u
         do! expectM "1) Last applied index should be one" 1u Raft.lastAppliedIdx
@@ -241,7 +229,7 @@ module ServerTests =
     testCase "Raft applyEntry increments LastAppliedIndex" <| fun _ ->
       raft {
         do! Raft.setLastAppliedIdxM 0u
-        do! Raft.createEntryM (DataSnapshot (mkState ())) >>= ignoreM
+        do! Raft.createEntryM (DataSnapshot (State.Empty)) >>= ignoreM
         do! Raft.setCommitIndexM 1u
         do! Raft.applyEntries ()
         do! expectM "2) Last applied index should be one" 1u Raft.lastAppliedIdx
@@ -275,7 +263,7 @@ module ServerTests =
 
   let server_recv_entry_auto_commits_if_we_are_the_only_mem =
     testCase "Receive entry auto-commits if we are the only mem" <| fun _ ->
-      let entry = LogEntry(Id.Create(),0u,0u,DataSnapshot (mkState ()),None)
+      let entry = LogEntry(Id.Create(),0u,0u,DataSnapshot (State.Empty),None)
       raft {
         do! Raft.setElectionTimeoutM 1000u
         do! Raft.becomeLeader ()
@@ -362,7 +350,7 @@ module ServerTests =
       let ci = ref 0u
 
       let cbs =
-        { mkcbs (ref (DataSnapshot (mkState ()))) with
+        { mkcbs (ref (DataSnapshot (State.Empty))) with
             SendAppendEntries = fun _ _ ->
               Some  { Term = !term; Success = true; CurrentIndex = !ci; FirstIndex = 1u } }
         :> IRaftCallbacks
@@ -468,7 +456,7 @@ module ServerTests =
     testCase "Recv requestvote response increase votes for me" <| fun _ ->
       let mem = Member.create (Id.Create())
       let cbs =
-        { mkcbs (ref (DataSnapshot (mkState ()))) with
+        { mkcbs (ref (DataSnapshot (State.Empty))) with
             SendRequestVote = fun _ _ -> Some { Term = 2u; Granted = true; Reason = None } }
         :> IRaftCallbacks
 
@@ -604,8 +592,8 @@ module ServerTests =
         do! Raft.setTermM 1u
         do! Raft.voteFor None
         do! expectM "Should have currentIndex zero" 0u Raft.currentIndex
-        do! Raft.createEntryM (DataSnapshot (mkState ())) >>= ignoreM
-        do! Raft.createEntryM (DataSnapshot (mkState ())) >>= ignoreM
+        do! Raft.createEntryM (DataSnapshot (State.Empty)) >>= ignoreM
+        do! Raft.createEntryM (DataSnapshot (State.Empty)) >>= ignoreM
         do! expectM "Should have currentIndex one" 2u Raft.currentIndex
         let! (res,_) = Raft.shouldGrantVote vote
         expect "Should grant vote" true id res
@@ -629,8 +617,8 @@ module ServerTests =
         do! Raft.setTermM 2u
         do! Raft.voteFor None
         do! expectM "Should have currentIndex zero" 0u Raft.currentIndex
-        do! Raft.createEntryM (DataSnapshot (mkState ())) >>= ignoreM
-        do! Raft.createEntryM (DataSnapshot (mkState ())) >>= ignoreM
+        do! Raft.createEntryM (DataSnapshot (State.Empty)) >>= ignoreM
+        do! Raft.createEntryM (DataSnapshot (State.Empty)) >>= ignoreM
         do! expectM "Should have currentIndex one" 2u Raft.currentIndex
         let! (res,_) = Raft.shouldGrantVote vote
         expect "Should grant vote" true id res
@@ -844,8 +832,8 @@ module ServerTests =
   let follower_dont_grant_vote_if_candidate_has_a_less_complete_log =
     testCase "follower dont grant vote if candidate has a less complete log" <| fun _ ->
       let peer = Member.create (Id.Create())
-      let log1 = LogEntry(Id.Create(), 0u, 1u, (DataSnapshot (mkState ())), None)
-      let log2 = LogEntry(Id.Create(), 0u, 2u, (DataSnapshot (mkState ())), None)
+      let log1 = LogEntry(Id.Create(), 0u, 1u, (DataSnapshot (State.Empty)), None)
+      let log2 = LogEntry(Id.Create(), 0u, 2u, (DataSnapshot (State.Empty)), None)
 
       raft {
         do! Raft.addPeerM peer
@@ -919,7 +907,7 @@ module ServerTests =
       let lokk = new System.Object()
       let i = ref 0
       let cbs =
-        { mkcbs (ref (DataSnapshot (mkState ()))) with
+        { mkcbs (ref (DataSnapshot (State.Empty))) with
             SendRequestVote = fun _ _ ->
               lock lokk <| fun _ ->
                 i := !i + 1
@@ -950,7 +938,7 @@ module ServerTests =
         |> Map.ofArray
 
       let cbs =
-        { mkcbs (ref (DataSnapshot (mkState ()))) with
+        { mkcbs (ref (DataSnapshot (State.Empty))) with
             SendRequestVote = fun n _ -> Some { Term = 1u; Granted = true; Reason = None } }
         :> IRaftCallbacks
 
@@ -989,7 +977,7 @@ module ServerTests =
       let sender = Sender.create
       let response = { Term = 5u; Granted = true; Reason = None }
       let cbs =
-        { mkcbs (ref (DataSnapshot (mkState ()))) with
+        { mkcbs (ref (DataSnapshot (State.Empty))) with
             SendRequestVote = senderRequestVote sender (Some response) }
         :> IRaftCallbacks
 
@@ -1003,9 +991,9 @@ module ServerTests =
           |> Map.ofArray
 
         let log =
-          LogEntry(Id.Create(),0u, 3u, DataSnapshot (mkState ()),
-            Some <| LogEntry(Id.Create(),0u, 1u, DataSnapshot (mkState ()),
-              Some <| LogEntry(Id.Create(),0u, 1u, DataSnapshot (mkState ()), None)))
+          LogEntry(Id.Create(),0u, 3u, DataSnapshot (State.Empty),
+            Some <| LogEntry(Id.Create(),0u, 1u, DataSnapshot (State.Empty),
+              Some <| LogEntry(Id.Create(),0u, 1u, DataSnapshot (State.Empty), None)))
 
         do! Raft.addPeersM peers
         do! Raft.setStateM Candidate
@@ -1148,7 +1136,7 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot (mkState ()))) with
+        { mkcbs (ref (DataSnapshot (State.Empty))) with
             SendAppendEntries = fun _ _ ->
               lock lokk <| fun _ -> count := !count + 1
               Some { Success = true; Term = 0u; CurrentIndex = 1u; FirstIndex = 1u } }
@@ -1167,7 +1155,7 @@ module ServerTests =
   let leader_responds_to_entry_msg_when_entry_is_committed =
     testCase "leader responds to entry msg when entry is committed" <| fun _ ->
       let peer = Member.create (Id.Create())
-      let log = LogEntry(Id.Create(),0u,0u,DataSnapshot (mkState ()),None)
+      let log = LogEntry(Id.Create(),0u,0u,DataSnapshot (State.Empty),None)
 
       raft {
         do! Raft.addPeerM peer
@@ -1188,7 +1176,7 @@ module ServerTests =
   let non_leader_recv_entry_msg_fails =
     testCase "non leader recv entry msg fails" <| fun _ ->
       let peer = Member.create (Id.Create())
-      let log = LogEntry(Id.Create(),0u,0u,DataSnapshot (mkState ()),None)
+      let log = LogEntry(Id.Create(),0u,0u,DataSnapshot (State.Empty),None)
 
       let err =
         "Not Leader"
@@ -1208,9 +1196,9 @@ module ServerTests =
       let peer = { Member.create (Id.Create()) with NextIndex = 4u }
       let raft' : RaftValue = defaultServer "localhost"
       let sender = Sender.create
-      let log = LogEntry(Id.Create(),0u, 1u, DataSnapshot (mkState ()), None)
+      let log = LogEntry(Id.Create(),0u, 1u, DataSnapshot (State.Empty), None)
       let cbs =
-        { mkcbs (ref (DataSnapshot (mkState ()))) with SendAppendEntries = senderAppendEntries sender None }
+        { mkcbs (ref (DataSnapshot (State.Empty))) with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       raft {
@@ -1229,7 +1217,7 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot (mkState ()))) with SendAppendEntries = senderAppendEntries sender None }
+        { mkcbs (ref (DataSnapshot (State.Empty))) with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       raft {
@@ -1237,7 +1225,7 @@ module ServerTests =
         do! Raft.setStateM Leader
 
         for n in 0 .. 9 do
-          let l = LogEntry(Id.Create(), 0u, 1u, DataSnapshot (mkState ()), None)
+          let l = LogEntry(Id.Create(), 0u, 1u, DataSnapshot (State.Empty), None)
           do! Raft.appendEntryM l >>= ignoreM
 
         do! Raft.setCommitIndexM 10u
@@ -1257,7 +1245,7 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot (mkState ()))) with SendAppendEntries = senderAppendEntries sender None }
+        { mkcbs (ref (DataSnapshot (State.Empty))) with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       raft {
@@ -1272,7 +1260,7 @@ module ServerTests =
         |> getAppendEntries
         |> expect "Should have PrevLogIndex 0" 0u (fun ae -> ae.PrevLogIdx)
 
-        let log = LogEntry(Id.Create(),0u,2u,DataSnapshot (mkState ()),None)
+        let log = LogEntry(Id.Create(),0u,2u,DataSnapshot (State.Empty),None)
 
         do! Raft.appendEntryM log >>= ignoreM
         do! Raft.setNextIndexM peer.Id 1u
@@ -1311,7 +1299,7 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot (mkState ()))) with SendAppendEntries = senderAppendEntries sender None }
+        { mkcbs (ref (DataSnapshot (State.Empty))) with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       raft {
@@ -1327,7 +1315,7 @@ module ServerTests =
 
         sender.Outbox := List.empty // reset outbox
 
-        let log = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()), None)
+        let log = LogEntry(Id.Create(),0u,1u,DataSnapshot (State.Empty), None)
 
         do! Raft.setNextIndexM peer.Id 1u
         do! Raft.appendEntryM log >>= ignoreM
@@ -1348,7 +1336,7 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot (mkState ()))) with SendAppendEntries = senderAppendEntries sender None }
+        { mkcbs (ref (DataSnapshot (State.Empty))) with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       raft {
@@ -1367,10 +1355,10 @@ module ServerTests =
   let leader_append_entry_to_log_increases_idxno =
     testCase "leader append entry to log increases idxno" <| fun _ ->
       let peer = Member.create (Id.Create())
-      let log = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()),None)
+      let log = LogEntry(Id.Create(),0u,1u,DataSnapshot (State.Empty),None)
       let raft' = defaultServer "local"
       let sender = Sender.create
-      let cbs = mkcbs (ref (DataSnapshot (mkState ()))) :> IRaftCallbacks
+      let cbs = mkcbs (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
 
       raft {
         do! Raft.addPeerM peer
@@ -1392,12 +1380,12 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot (mkState ()))) with SendAppendEntries = senderAppendEntries sender None }
+        { mkcbs (ref (DataSnapshot (State.Empty))) with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
-      let log1 = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()),None)
-      let log2 = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()),None)
-      let log3 = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()),None)
+      let log1 = LogEntry(Id.Create(),0u,1u,DataSnapshot (State.Empty),None)
+      let log2 = LogEntry(Id.Create(),0u,1u,DataSnapshot (State.Empty),None)
+      let log3 = LogEntry(Id.Create(),0u,1u,DataSnapshot (State.Empty),None)
 
       let response =
         { Term = 1u
@@ -1460,11 +1448,11 @@ module ServerTests =
 
       let raft' = defaultServer "localhost"
       let sender = Sender.create
-      let cbs = mkcbs (ref (DataSnapshot (mkState ()))) :> IRaftCallbacks
+      let cbs = mkcbs (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
 
-      let log1 = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()),None)
-      let log2 = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()),None)
-      let log3 = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()),None)
+      let log1 = LogEntry(Id.Create(),0u,1u,DataSnapshot (State.Empty),None)
+      let log2 = LogEntry(Id.Create(),0u,1u,DataSnapshot (State.Empty),None)
+      let log3 = LogEntry(Id.Create(),0u,1u,DataSnapshot (State.Empty),None)
 
       let peers =
         [| peer1; peer2; |]
@@ -1503,11 +1491,11 @@ module ServerTests =
         ; CurrentIndex = 1u
         ; FirstIndex   = 1u }
 
-      let cbs = mkcbs (ref (DataSnapshot (mkState ()))) :> IRaftCallbacks
+      let cbs = mkcbs (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
 
-      let log1 = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()),None)
-      let log2 = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()),None)
-      let log3 = LogEntry(Id.Create(),0u,2u,DataSnapshot (mkState ()),None)
+      let log1 = LogEntry(Id.Create(),0u,1u,DataSnapshot (State.Empty),None)
+      let log2 = LogEntry(Id.Create(),0u,1u,DataSnapshot (State.Empty),None)
+      let log3 = LogEntry(Id.Create(),0u,2u,DataSnapshot (State.Empty),None)
 
       let peers =
         [| peer1; peer2; peer3; peer4 |]
@@ -1581,17 +1569,17 @@ module ServerTests =
       let appendReq = ref None
 
       let cbs =
-        { mkcbs (ref (DataSnapshot (mkState ()))) with
+        { mkcbs (ref (DataSnapshot (State.Empty))) with
             SendAppendEntries = fun n ae ->
               lock lokk <| fun _ -> count := !count + 1
               appendReq := Some ae
               None }
         :> IRaftCallbacks
 
-      let log1 = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()),None)
-      let log2 = LogEntry(Id.Create(),0u,2u,DataSnapshot (mkState ()),None)
-      let log3 = LogEntry(Id.Create(),0u,3u,DataSnapshot (mkState ()),None)
-      let log4 = LogEntry(Id.Create(),0u,4u,DataSnapshot (mkState ()),None)
+      let log1 = LogEntry(Id.Create(),0u,1u,DataSnapshot (State.Empty),None)
+      let log2 = LogEntry(Id.Create(),0u,2u,DataSnapshot (State.Empty),None)
+      let log3 = LogEntry(Id.Create(),0u,3u,DataSnapshot (State.Empty),None)
+      let log4 = LogEntry(Id.Create(),0u,4u,DataSnapshot (State.Empty),None)
 
       let response =
         { Term = 1u
@@ -1650,7 +1638,7 @@ module ServerTests =
       let count = ref 0
 
       let cbs =
-        { mkcbs (ref (DataSnapshot (mkState ()))) with
+        { mkcbs (ref (DataSnapshot (State.Empty))) with
             SendAppendEntries = fun n ae ->
               lock lokk <| fun _ -> count := !count + 1
               Some { Term         = !term
@@ -1659,10 +1647,10 @@ module ServerTests =
                    ; FirstIndex   = 0u }
           } :> IRaftCallbacks
 
-      let log1 = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()),None)
-      let log2 = LogEntry(Id.Create(),0u,2u,DataSnapshot (mkState ()),None)
-      let log3 = LogEntry(Id.Create(),0u,3u,DataSnapshot (mkState ()),None)
-      let log4 = LogEntry(Id.Create(),0u,4u,DataSnapshot (mkState ()),None)
+      let log1 = LogEntry(Id.Create(),0u,1u,DataSnapshot (State.Empty),None)
+      let log2 = LogEntry(Id.Create(),0u,2u,DataSnapshot (State.Empty),None)
+      let log3 = LogEntry(Id.Create(),0u,3u,DataSnapshot (State.Empty),None)
+      let log4 = LogEntry(Id.Create(),0u,4u,DataSnapshot (State.Empty),None)
 
       raft {
         do! Raft.addMemberM peer
@@ -1709,10 +1697,10 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot (mkState ()))) with SendAppendEntries = senderAppendEntries sender None }
+        { mkcbs (ref (DataSnapshot (State.Empty))) with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
-      let log = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()),None)
+      let log = LogEntry(Id.Create(),0u,1u,DataSnapshot (State.Empty),None)
 
       let response =
         { Term = 1u
@@ -1754,7 +1742,7 @@ module ServerTests =
 
   let leader_recv_entry_resets_election_timeout =
     testCase "leader recv entry resets election timeout" <| fun _ ->
-      let log = LogEntry(Id.Create(), 0u, 1u, DataSnapshot (mkState ()), None)
+      let log = LogEntry(Id.Create(), 0u, 1u, DataSnapshot (State.Empty), None)
       raft {
         do! Raft.setElectionTimeoutM 1000u
         do! Raft.setStateM Leader
@@ -1768,7 +1756,7 @@ module ServerTests =
   let leader_recv_entry_is_committed_returns_0_if_not_committed =
     testCase "leader recv entry is committed returns 0 if not committed" <| fun _ ->
       let peer = Member.create (Id.Create())
-      let log = LogEntry(Id.Create(), 0u, 1u, DataSnapshot (mkState ()), None)
+      let log = LogEntry(Id.Create(), 0u, 1u, DataSnapshot (State.Empty), None)
 
       raft {
         do! Raft.addPeerM peer
@@ -1790,7 +1778,7 @@ module ServerTests =
   let leader_recv_entry_is_committed_returns_neg_1_if_invalidated =
     testCase "leader recv entry is committed returns neg 1 if invalidated" <| fun _ ->
       let peer = Member.create (Id.Create())
-      let log = Log.make 1u (DataSnapshot (mkState ()))
+      let log = Log.make 1u (DataSnapshot (State.Empty))
 
       let ae =
         { LeaderCommit = 1u
@@ -2260,7 +2248,7 @@ module ServerTests =
       raft {
         do! Raft.setTermM term
         for n in 0u .. (idx + num) do
-          do! Raft.appendEntryM (Log.make term (DataSnapshot (mkState ()))) >>= ignoreM
+          do! Raft.appendEntryM (Log.make term (DataSnapshot (State.Empty))) >>= ignoreM
 
         do! Raft.applyEntries ()
 

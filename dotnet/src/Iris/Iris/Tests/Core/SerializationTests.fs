@@ -67,35 +67,40 @@ module SerializationTests =
 
   let test_validate_appendentries_serialization =
     testCase "Validate RequestVote Response Serialization" <| fun _ ->
-      let mem1 = Member.create (Id.Create())
-      let mem2 = Member.create (Id.Create())
+      either {
+        let! state = mkTmpDir() |> mkState
 
-      let changes = [| MemberRemoved mem2 |]
-      let mems = [| mem1; mem2 |]
+        let mem1 = Member.create (Id.Create())
+        let mem2 = Member.create (Id.Create())
 
-      let log =
-        Some <| LogEntry(Id.Create(), 7u, 1u, DataSnapshot(mkState()),
-          Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot(mkState()),
-            Some <| Configuration(Id.Create(), 5u, 1u, [| mem1 |],
-              Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
-                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mems, DataSnapshot(mkState()))))))
+        let changes = [| MemberRemoved mem2 |]
+        let mems = [| mem1; mem2 |]
 
-      let ae : AppendEntries =
-        { Term = 8u
-        ; PrevLogIdx = 192u
-        ; PrevLogTerm = 87u
-        ; LeaderCommit = 182u
-        ; Entries = log }
+        let log =
+          Some <| LogEntry(Id.Create(), 7u, 1u, DataSnapshot(state),
+            Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot(state),
+              Some <| Configuration(Id.Create(), 5u, 1u, [| mem1 |],
+                Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
+                  Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mems, DataSnapshot(state))))))
 
-      let msg   = AppendEntries(Id.Create(), ae)
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+        let ae : AppendEntries =
+          { Term = 8u
+          ; PrevLogIdx = 192u
+          ; PrevLogTerm = 87u
+          ; LeaderCommit = 182u
+          ; Entries = log }
 
-      expect "Should be structurally the same" msg id remsg
+        let msg   = AppendEntries(Id.Create(), ae)
+        let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
-      let msg   = AppendEntries(Id.Create(), { ae with Entries = None })
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+        expect "Should be structurally the same" msg id remsg
 
-      expect "Should be structurally the same" msg id remsg
+        let msg   = AppendEntries(Id.Create(), { ae with Entries = None })
+        let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+
+        expect "Should be structurally the same" msg id remsg
+      }
+      |> noError
 
   //     _                               _ ____
   //    / \   _ __  _ __   ___ _ __   __| |  _ \ ___  ___ _ __   ___  _ __  ___  ___
@@ -127,20 +132,25 @@ module SerializationTests =
 
   let test_validate_installsnapshot_serialization =
     testCase "Validate InstallSnapshot Serialization" <| fun _ ->
-      let mem1 = [| Member.create (Id.Create()) |]
+      either {
+        let! state = mkTmpDir() |> mkState
 
-      let is : InstallSnapshot =
-        { Term = 2134u
-        ; LeaderId = Id.Create()
-        ; LastIndex = 242u
-        ; LastTerm = 124242u
-        ; Data = Snapshot(Id.Create(), 12u, 3414u, 241u, 422u, mem1, DataSnapshot(mkState()))
-        }
+        let mem1 = [| Member.create (Id.Create()) |]
 
-      let msg = InstallSnapshot(Id.Create(), is)
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+        let is : InstallSnapshot =
+          { Term = 2134u
+          ; LeaderId = Id.Create()
+          ; LastIndex = 242u
+          ; LastTerm = 124242u
+          ; Data = Snapshot(Id.Create(), 12u, 3414u, 241u, 422u, mem1, DataSnapshot(state))
+          }
 
-      expect "Should be structurally the same" msg id remsg
+        let msg = InstallSnapshot(Id.Create(), is)
+        let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+
+        expect "Should be structurally the same" msg id remsg
+      }
+      |> noError
 
   //  _   _                 _ ____  _           _
   // | | | | __ _ _ __   __| / ___|| |__   __ _| | _____
@@ -286,20 +296,26 @@ module SerializationTests =
 
   let test_validate_project_binary_serialization =
     testCase "Validate IrisProject Binary Serializaton" <| fun _ ->
-      let project = mkProject()
-      let reproject = project |> Binary.encode |> Binary.decode |> Either.get
-      expect "Project should be the same" project id reproject
+      either {
+        let! project = mkTmpDir () |>  mkProject
+        let! reproject = project |> Binary.encode |> Binary.decode
+        expect "Project should be the same" project id reproject
+      }
+      |> noError
 
   let test_validate_project_yaml_serialization =
     testCase "Validate IrisProject Yaml Serializaton" <| fun _ ->
-      let project = mkProject()
-      let reproject : IrisProject = project |> Yaml.encode |> Yaml.decode |> Either.get
-      let reconfig = { reproject.Config with Machine = project.Config.Machine }
+      either {
+        let! project = mkTmpDir () |>  mkProject
+        let reproject : IrisProject = project |> Yaml.encode |> Yaml.decode |> Either.get
+        let reconfig = { reproject.Config with Machine = project.Config.Machine }
 
-      // not all properties can be the same (timestampts for instance, so we check basics)
-      expect "Project Id should be the same" project.Id id reproject.Id
-      expect "Project Name should be the same" project.Name id reproject.Name
-      expect "Project Config should be the same" project.Config id reconfig
+        // not all properties can be the same (timestampts for instance, so we check basics)
+        expect "Project Id should be the same" project.Id id reproject.Id
+        expect "Project Name should be the same" project.Name id reproject.Name
+        expect "Project Config should be the same" project.Config id reconfig
+      }
+      |> noError
 
   //   ____
   //  / ___|   _  ___
@@ -490,10 +506,13 @@ module SerializationTests =
 
   let test_validate_state_binary_serialization =
     testCase "Validate State Binary Serialization" <| fun _ ->
-      let state : State = mkState ()
+      either {
+        let! state = mkTmpDir() |> mkState
 
-      state |> Binary.encode |> Binary.decode |> Either.get
-      |> expect "Should be structurally equivalent" state id
+        let! restate = state |> Binary.encode |> Binary.decode
+        expect "Should be structurally equivalent" state id restate
+      }
+      |> noError
 
   //  ____  _        _       __  __            _     _
   // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
@@ -503,37 +522,41 @@ module SerializationTests =
 
   let test_validate_state_machine_binary_serialization =
     testCase "Validate StateMachine Binary Serialization" <| fun _ ->
-      [ AddCue        <| mkCue ()
-      ; UpdateCue     <| mkCue ()
-      ; RemoveCue     <| mkCue ()
-      ; AddCueList    <| mkCueList ()
-      ; UpdateCueList <| mkCueList ()
-      ; RemoveCueList <| mkCueList ()
-      ; AddSession    <| mkSession ()
-      ; UpdateSession <| mkSession ()
-      ; RemoveSession <| mkSession ()
-      ; AddUser       <| mkUser ()
-      ; UpdateUser    <| mkUser ()
-      ; RemoveUser    <| mkUser ()
-      ; AddPatch      <| mkPatch ()
-      ; UpdatePatch   <| mkPatch ()
-      ; RemovePatch   <| mkPatch ()
-      ; AddPin        <| mkPin ()
-      ; UpdatePin     <| mkPin ()
-      ; RemovePin     <| mkPin ()
-      ; AddMember     <| Member.create (Id.Create())
-      ; UpdateMember  <| Member.create (Id.Create())
-      ; RemoveMember  <| Member.create (Id.Create())
-      ; DataSnapshot  <| mkState ()
-      ; Command AppCommand.Undo
-      ; LogMsg(Logger.create Debug (Id.Create()) "bla" "oohhhh")
-      ; SetLogLevel Warn
-      ]
-      |> List.iter
-          (fun cmd ->
-            let remsg = cmd |> Binary.encode |> Binary.decode |> Either.get
-            expect "Should be structurally the same" cmd id remsg)
+      either {
+        let! state = mkTmpDir() |> mkState
 
+        [ AddCue        <| mkCue ()
+        ; UpdateCue     <| mkCue ()
+        ; RemoveCue     <| mkCue ()
+        ; AddCueList    <| mkCueList ()
+        ; UpdateCueList <| mkCueList ()
+        ; RemoveCueList <| mkCueList ()
+        ; AddSession    <| mkSession ()
+        ; UpdateSession <| mkSession ()
+        ; RemoveSession <| mkSession ()
+        ; AddUser       <| mkUser ()
+        ; UpdateUser    <| mkUser ()
+        ; RemoveUser    <| mkUser ()
+        ; AddPatch      <| mkPatch ()
+        ; UpdatePatch   <| mkPatch ()
+        ; RemovePatch   <| mkPatch ()
+        ; AddPin        <| mkPin ()
+        ; UpdatePin     <| mkPin ()
+        ; RemovePin     <| mkPin ()
+        ; AddMember     <| Member.create (Id.Create())
+        ; UpdateMember  <| Member.create (Id.Create())
+        ; RemoveMember  <| Member.create (Id.Create())
+        ; DataSnapshot  <| state
+        ; Command AppCommand.Undo
+        ; LogMsg(Logger.create Debug (Id.Create()) "bla" "oohhhh")
+        ; SetLogLevel Warn
+        ]
+        |> List.iter
+            (fun cmd ->
+              let remsg = cmd |> Binary.encode |> Binary.decode |> Either.get
+              expect "Should be structurally the same" cmd id remsg)
+      }
+      |> noError
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
   //   / _ \ | | |   | |/ _ \/ __| __/ __|

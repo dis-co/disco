@@ -31,12 +31,11 @@ module GitTests =
       |> Config.setMembers (Map.ofArray [| (mem.Id,mem) |])
       |> Config.setLogLevel Debug
 
-    let commit, project =
-      Project.create "Test Project" machine
-      |> Project.updatePath tmpdir.FullName
-      |> Project.updateConfig config
-      |> Project.saveProject User.Admin
-      |> Either.get
+    let project =
+      let p =
+        Project.create tmpdir "Test Project" machine
+        |> Either.get
+      in { p with Config = config }
 
     machine, tmpdir, project, mem, project.Path
 
@@ -130,10 +129,10 @@ module GitTests =
         let target = mkTmpDir ()
 
         let repo =
-          tmpdir.FullName
+          tmpdir
           |> Path.baseName
           |> sprintf "git://localhost:%d/%s/.git" port
-          |> Git.Repo.clone target.FullName
+          |> Git.Repo.clone target
 
         expect "Should have successfully clone project" true Either.isSuccess repo
       }

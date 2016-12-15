@@ -19,7 +19,6 @@ open System.Management
 open System.Diagnostics
 open System.Text
 open System.Security.Cryptography
-open System.Net.NetworkInformation
 open System.Runtime.CompilerServices
 
 #endif
@@ -120,89 +119,6 @@ module Utils =
   /// Returns: Id * ^t
   let inline toPair< ^t, ^i when ^t : (member Id : ^i)> (a: ^t) : ^i * ^t =
     ((^t : (member Id : ^i) a), a)
-
-// * Network
-
-[<RequireQualifiedAccess>]
-module Network =
-
-  // *** getHostName
-
-  /// ## Get the current machine's host name
-  ///
-  /// Get the current machine's host name.
-  ///
-  /// ### Signature:
-  /// - unit: unit
-  ///
-  /// Returns: string
-  let getHostName () =
-  #if FABLE_COMPILER
-    Browser.window.location.hostname
-  #else
-    try
-      System.Net.Dns.GetHostName()
-    with
-      | _ -> System.Environment.MachineName
-  #endif
-
-  #if !FABLE_COMPILER
-
-  // *** getIpAddress
-
-  /// ## getIpAddress
-  ///
-  /// Find and return the IP address of the current machine.
-  ///
-  /// ### Signature:
-  /// - unit: unit
-  ///
-  /// Returns: IPAddress option
-  let getIpAddress (_ : unit) : IPAddress option =
-    let mutable outip : IPAddress option = None
-    for iface in NetworkInterface.GetAllNetworkInterfaces() do
-      if iface.NetworkInterfaceType = NetworkInterfaceType.Wireless80211 ||
-        iface.NetworkInterfaceType = NetworkInterfaceType.Ethernet
-      then
-        for ip in iface.GetIPProperties().UnicastAddresses do
-          if ip.Address.AddressFamily = Sockets.AddressFamily.InterNetwork
-          then outip <- Some(ip.Address)
-    outip
-
-  #endif
-
-// * Platform
-
-#if !FABLE_COMPILER
-
-[<RequireQualifiedAccess>]
-module Platform =
-
-  // ** isUnix
-
-  /// ## isUnix
-  ///
-  /// Returns true if currently run on MacOS or other Unices.
-  ///
-  let isUnix : bool =
-    int Environment.OSVersion.Platform
-    |> fun p ->
-      (p = 4) ||                         // Unix
-      (p = 6) ||                         // MacOS
-      (p = 128)                         // old Mono Unix
-
-
-  // ** isWindows
-
-  /// ## isWindows
-  ///
-  /// True if the current platform is not a unix.
-  ///
-  /// Returns: bool
-  let isWindows = not isUnix
-
-#endif
-
 
 // * String
 
@@ -360,124 +276,6 @@ module String =
     if regex.IsMatch(payload)
     then regex.Replace(payload, "_")
     else payload
-
-// * FileSystem
-
-[<AutoOpen>]
-module FileSystem =
-
-  // *** </>
-
-  /// ## </>
-  ///
-  /// Combine two FilePath (string) into one with the proper separator.
-  ///
-  /// ### Signature:
-  /// - path1: first path
-  /// - path2: second path
-  ///
-  /// Returns: FilePath (string)
-  let (</>) p1 p2 =
-    #if FABLE_COMPILER
-    sprintf "%s/%s" p1 p2
-    #else
-    Path.Combine(p1, p2)
-    #endif
-
-  // *** moveFile
-
-  #if !FABLE_COMPILER
-
-  /// ## moveFile
-  ///
-  /// Move a file or directory from source to dest.
-  ///
-  /// ### Signature:
-  /// - source: FilePath
-  /// - dest: FilePath
-  ///
-  /// Returns: unit
-  let moveFile (source: FilePath) (dest: FilePath) =
-    try
-      let info = new FileInfo(source)
-      let attrs = info.Attributes
-      if attrs.HasFlag(FileAttributes.Directory) then
-        Directory.Move(source,dest)
-      else
-        File.Move(source, dest)
-    with | _ -> ()
-
-  #endif
-
-  // *** rmDir
-
-  #if !FABLE_COMPILER
-
-  /// ## delete a file or directory
-  ///
-  /// recursively delete a directory or single File.
-  ///
-  /// ### Signature:
-  /// - path: FilePath to delete
-  ///
-  /// Returns: Either<IrisError, unit>
-  let rec rmDir path : Either<IrisError,unit>  =
-    try
-      let attrs = File.GetAttributes(path)
-      if (attrs &&& FileAttributes.Directory) = FileAttributes.Directory then
-        let children = DirectoryInfo(path).EnumerateFileSystemInfos()
-        if children.Count() > 0 then
-          either {
-            do! Seq.fold
-                  (fun (m: Either<IrisError, unit>) (child: FileSystemInfo) -> either {
-                    return! rmDir child.FullName
-                  })
-                  (Right ())
-                  children
-            return Directory.Delete(path)
-          }
-        else
-          Directory.Delete(path)
-          |> Either.succeed
-      else
-        File.Delete path
-        |> Either.succeed
-    with
-      | exn ->
-        ("FileSystem.rmDir", exn.Message)
-        |> IOError
-        |> Either.fail
-
-  #endif
-
-  // *** mkDir
-
-  #if !FABLE_COMPILER
-
-  /// ## create a new directory
-  ///
-  /// Create a directory at Path.
-  ///
-  /// ### Signature:
-  /// - path: FilePath
-  ///
-  /// Returns: Either<IrisError, unit>
-  let mkDir path =
-    try
-      if not (Directory.Exists path) then
-        path
-        |> Directory.CreateDirectory
-        |> ignore
-        |> Either.succeed
-      else
-        Either.succeed ()
-    with
-      | exn ->
-        ("FileSystem.mkDir", exn.Message)
-        |> IOError
-        |> Either.fail
-
-  #endif
 
 // * Path
 
@@ -1502,6 +1300,17 @@ module Asset =
   let inline load< ^t when ^t : (static member Load: FilePath -> Either<IrisError, ^t>)>
                  (path: FilePath) =
     (^t : (static member Load: FilePath -> Either<IrisError, ^t>) path)
+
+  #endif
+
+  // ** loadWithMachine
+
+  #if !FABLE_COMPILER
+
+  let inline loadWithMachine< ^t when ^t : (static member Load: FilePath * IrisMachine -> Either<IrisError, ^t>)>
+                 (path: FilePath)
+                 (machine: IrisMachine) =
+    (^t : (static member Load: FilePath * IrisMachine -> Either<IrisError, ^t>) (path,machine))
 
   #endif
 
