@@ -131,6 +131,17 @@ type State =
     Sessions : Map<Id,Session>
     Users    : Map<Id,User> }
 
+  // ** Empty
+
+  static member Empty
+    with get () =
+      { Project  = IrisProject.Empty
+        Patches  = Map.empty
+        Cues     = Map.empty
+        CueLists = Map.empty
+        Sessions = Map.empty
+        Users    = Map.empty }
+
   // ** Load
 
   #if !FABLE_COMPILER

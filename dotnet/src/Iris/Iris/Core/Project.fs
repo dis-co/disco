@@ -31,10 +31,24 @@ open Iris.Serialization.Raft
 
 // * IrisMachine
 
+//  ___      _     __  __            _     _
+// |_ _|_ __(_)___|  \/  | __ _  ___| |__ (_)_ __   ___
+//  | || '__| / __| |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
+//  | || |  | \__ \ |  | | (_| | (__| | | | | | | |  __/
+// |___|_|  |_|___/_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
+
 type IrisMachine =
   { MachineId : Id
     HostName  : string
     WorkSpace : FilePath }
+
+  // ** Default
+
+  static member Default
+    with get () =
+      { MachineId = Id "<empty>"
+        HostName  = ""
+        WorkSpace = "" }
 
   override self.ToString() =
     sprintf "MachineId: %s" (string self.MachineId)
@@ -217,21 +231,13 @@ type RaftConfig =
     PeriodicInterval: uint8 }
 
   static member Default =
-    let guid = Guid.NewGuid()
-
-    #if FABLE_COMPILER
-    let path = ""
-    #else
-    let path = Path.GetTempPath() </> guid.ToString() </> RAFT_DIRECTORY
-    #endif
-
     { RequestTimeout   = 500u
       ElectionTimeout  = 6000u
       MaxLogDepth      = 20u
       MaxRetries       = 10uy
       PeriodicInterval = 50uy
       LogLevel         = LogLevel.Err
-      DataDir          = path }
+      DataDir          = "" }
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let lvl = builder.CreateString (string self.LogLevel)
@@ -274,8 +280,8 @@ type VvvvConfig =
     Plugins     : VvvvPlugin array }
 
   static member Default =
-    { Executables = Array.empty
-      Plugins     = Array.empty }
+    { Executables = [| |]
+      Plugins     = [| |] }
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let exes =
@@ -377,7 +383,7 @@ type TimingConfig =
   static member Default =
     { Framebase = 50u
       Input     = "Iris Freerun"
-      Servers   = Array.empty
+      Servers   = [| |]
       UDPPort   = 8071u
       TCPPort   = 8072u }
 
@@ -514,6 +520,14 @@ type ClusterConfig =
     Members : Map<MemberId,RaftMember>
     Groups  : HostGroup  array }
 
+  // ** Default
+
+  static member Default
+    with get () =
+      { Name    = "<empty>"
+        Members = Map.empty
+        Groups  = [| |] }
+
   override self.ToString() =
     sprintf "Cluster:
               Name: %A
@@ -628,6 +642,26 @@ type IrisConfig =
     ViewPorts : ViewPort array
     Displays  : Display  array
     Tasks     : Task     array }
+
+  // ** Default
+  static member Default
+    with get () =
+      { Machine   = IrisMachine.Default
+        Audio     = AudioConfig.Default
+        Vvvv      = VvvvConfig.Default
+        Raft      = RaftConfig.Default
+        Timing    = TimingConfig.Default
+        Cluster   = ClusterConfig.Default
+        ViewPorts = [| |]
+        Displays  = [| |]
+        Tasks     = [| |] }
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let machine = Binary.toOffset builder self.Machine
@@ -2125,6 +2159,19 @@ Config: %A
       project.Copyright
       project.Author
       project.Config
+
+  // ** Empty
+
+  static member Empty
+    with get () =
+      { Id        = Id "<empty>"
+        Name      = "<empty>"
+        Path      = ""
+        CreatedOn = ""
+        LastSaved = None
+        Copyright = None
+        Author    = None
+        Config    = IrisConfig.Default }
 
   // ** AssetPath
 
