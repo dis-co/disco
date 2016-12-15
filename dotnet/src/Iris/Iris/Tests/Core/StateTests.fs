@@ -24,7 +24,7 @@ module StateTests =
         expect "Patches should be equal" state.Patches id loaded.Patches
         let config =
           { loaded.Project.Config with
-              MachineConfig = state.Project.Config.MachineConfig }
+              Machine = state.Project.Config.Machine }
         expect "Config should be equal" state.Project.Config id config
       }
       |> noError

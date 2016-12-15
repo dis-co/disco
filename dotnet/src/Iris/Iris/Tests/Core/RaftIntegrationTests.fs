@@ -41,12 +41,12 @@ module RaftIntegrationTests =
 
         let leadercfg =
           Config.create "leader" machine1
-          |> Config.setMembers [| mem1; mem2 |]
+          |> Config.setMembers (Map.ofArray [| (mem1.Id,mem1); (mem2.Id,mem2) |])
           |> Config.setLogLevel (LogLevel.Debug)
 
         let followercfg =
           Config.create "follower" machine2
-          |> Config.setMembers [| mem1; mem2 |]
+          |> Config.setMembers (Map.ofArray [| (mem1.Id,mem1); (mem2.Id,mem2) |])
           |> Config.setLogLevel (LogLevel.Debug)
 
         let! leader = RaftServer.create ()
@@ -124,12 +124,12 @@ module RaftIntegrationTests =
 
         let leadercfg =
           Config.create "leader" machine1
-          |> Config.setMembers [| mem1; mem2 |]
+          |> Config.setMembers (Map.ofArray [| (mem1.Id,mem1); (mem2.Id,mem2) |])
           |> Config.setLogLevel (LogLevel.Debug)
 
         let followercfg =
           Config.create "follower" machine2
-          |> Config.setMembers [| mem1; mem2 |]
+          |> Config.setMembers (Map.ofArray [| (mem1.Id,mem1); (mem2.Id,mem2) |])
           |> Config.setLogLevel (LogLevel.Debug)
 
         use! leader = RaftServer.create ()

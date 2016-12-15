@@ -112,6 +112,12 @@
     <Compile Include="../../Iris/Core/CueList.fs">
       <Link>CueList.fs</Link>
     </Compile>
+    <Compile Include="../../Iris/Core/Renderer.fs">
+      <Link>Renderer.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Project.fs">
+      <Link>Project.fs</Link>
+    </Compile>
     <Compile Include="../../Iris/Core/StateMachine.fs">
       <Link>StateMachine.fs</Link>
     </Compile>

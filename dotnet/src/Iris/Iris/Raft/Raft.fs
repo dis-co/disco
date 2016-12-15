@@ -377,10 +377,10 @@ module Raft =
     read >>= fun env ->
       get >>= (updateMember mem env >> put)
 
-  let addMembers (mems : RaftMember array) (state: RaftValue) =
-    Array.fold (fun m n -> addMember n m) state mems
+  let addMembers (mems : Map<MemberId,RaftMember>) (state: RaftValue) =
+    Map.fold (fun m _ n -> addMember n m) state mems
 
-  let addMembersM (mems: RaftMember array) =
+  let addMembersM (mems: Map<MemberId,RaftMember>) =
     get >>= (addMembers mems >> put)
 
   let addPeers = addMembers

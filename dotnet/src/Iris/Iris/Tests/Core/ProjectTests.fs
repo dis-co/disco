@@ -195,7 +195,7 @@ module ProjectTests =
 
         let cluster =
           { Name   = "A mighty cool cluster"
-          ; Members = [| memA;  memB  |]
+          ; Members = Map.ofArray [| (memA.Id,memA); (memB.Id,memB) |]
           ; Groups = [| groupA; groupB |]
           }
 
@@ -206,12 +206,12 @@ module ProjectTests =
           |> fun project ->
             Project.updateConfig
               { project.Config with
-                  RaftConfig    = engineCfg
-                  VvvvConfig    = vvvvCfg
-                  ViewPorts     = [| viewPort1; viewPort2 |]
-                  Displays      = [| display1;  display2  |]
-                  Tasks         = [| task1;     task2     |]
-                  ClusterConfig = cluster }
+                  Raft      = engineCfg
+                  Vvvv      = vvvvCfg
+                  ViewPorts = [| viewPort1; viewPort2 |]
+                  Displays  = [| display1;  display2  |]
+                  Tasks     = [| task1;     task2     |]
+                  Cluster   = cluster }
               project
 
         let! (_,saved) = Project.saveProject User.Admin project
@@ -220,13 +220,13 @@ module ProjectTests =
         // the only difference will be the automatically assigned timestamp
         expect "CreatedOn should be structurally equal"  true ((=) loaded.CreatedOn) saved.CreatedOn
         expect "LastSaved should be structurally equal"  true ((=) loaded.LastSaved) saved.LastSaved
-        expect "VVVVConfig should be structurally equal" true ((=) loaded.Config.VvvvConfig) saved.Config.VvvvConfig
-        expect "RaftCofnig should be structurally equal" true ((=) loaded.Config.RaftConfig) saved.Config.RaftConfig
+        expect "VVVVConfig should be structurally equal" true ((=) loaded.Config.Vvvv) saved.Config.Vvvv
+        expect "RaftCofnig should be structurally equal" true ((=) loaded.Config.Raft) saved.Config.Raft
         expect "ViewPorts should be structurally equal"  true ((=) loaded.Config.ViewPorts) saved.Config.ViewPorts
-        expect "Timing should be structurally equal"     true ((=) loaded.Config.TimingConfig) saved.Config.TimingConfig
+        expect "Timing should be structurally equal"     true ((=) loaded.Config.Timing) saved.Config.Timing
         expect "Displays should be structurally equal"   true ((=) loaded.Config.Displays) saved.Config.Displays
         expect "Tasks should be structurally equal"      true ((=) loaded.Config.Tasks) saved.Config.Tasks
-        expect "Cluster should be structurally equal"    true ((=) loaded.Config.ClusterConfig) saved.Config.ClusterConfig
+        expect "Cluster should be structurally equal"    true ((=) loaded.Config.Cluster) saved.Config.Cluster
         expect "Projects should be structurally equal"   true ((=) loaded) saved
       }
       |> noError

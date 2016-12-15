@@ -936,7 +936,7 @@ module Raft =
   let private tryJoin (state: RaftAppContext) (ip: IpAddress) (port: uint16) =
     let rec _tryJoin retry peer =
       either {
-        if retry < int state.Options.RaftConfig.MaxRetries then
+        if retry < int state.Options.Raft.MaxRetries then
           use client = mkReqSocket peer
 
           sprintf "Retry: %d" retry
@@ -1023,7 +1023,7 @@ module Raft =
   let private tryLeave (state: RaftAppContext) : Either<IrisError,bool> =
     let rec _tryLeave retry mem =
       either {
-        if retry < int state.Options.RaftConfig.MaxRetries then
+        if retry < int state.Options.Raft.MaxRetries then
           use client = mkReqSocket mem
 
           let request = HandWaive(state.Raft.Member)
@@ -1032,7 +1032,7 @@ module Raft =
           match result with
 
           | Redirect other ->
-            if retry <= int state.Options.RaftConfig.MaxRetries then
+            if retry <= int state.Options.Raft.MaxRetries then
               return! _tryLeave (retry + 1) other
             else
               return!
@@ -1195,7 +1195,7 @@ module Raft =
           raftstate.Peers
 
         // periodic function
-        let interval = int config.RaftConfig.PeriodicInterval
+        let interval = int config.Raft.PeriodicInterval
         let periodic = startPeriodic interval agent
 
         match initializeRaft raftstate callbacks with
@@ -1429,7 +1429,7 @@ module Raft =
     match state with
     | Idle -> Idle
     | Loaded data ->
-      uint32 data.Options.RaftConfig.PeriodicInterval
+      uint32 data.Options.Raft.PeriodicInterval
       |> Raft.periodic
       |> evalRaft data.Raft data.Callbacks
       |> updateRaft data

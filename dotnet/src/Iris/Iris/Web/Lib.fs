@@ -7,6 +7,7 @@ module Iris.Web.Lib
 // |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| |_|  |_|\__,_|_|_| |_|
 
 open System
+open Iris.Raft
 open Iris.Core
 open Iris.Web.Core
 open Fable.Core
@@ -20,7 +21,7 @@ let subscribeToLogs(ctx: ClientContext, f:ClientLog->unit): IDisposable =
   ctx.OnClientLog.Subscribe(f)
 
 let removeMember(info: StateInfo, memId: Id) =
-  match Map.tryFind memId info.state.Members with
+  match Map.tryFind memId info.state.Project.Config.Cluster.Members with
   | Some mem ->
     RemoveMember mem
     |> info.context.Post

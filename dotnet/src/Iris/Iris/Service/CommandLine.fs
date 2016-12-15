@@ -319,9 +319,7 @@ module CommandLine =
   let trySetLogLevel (context: IIrisServer) (str: string) =
     either {
       let! config = context.Config
-      let updated =
-        { config.RaftConfig with
-            LogLevel = LogLevel.Parse str }
+      let updated = { config.Raft with LogLevel = LogLevel.Parse str }
       do! context.SetConfig (Config.updateEngine updated config)
     }
     |> Either.mapError handleError
@@ -332,8 +330,7 @@ module CommandLine =
   let trySetInterval (context: IIrisServer) i =
     either {
       let! config = context.Config
-      let updated =
-        { config.RaftConfig with PeriodicInterval = i }
+      let updated = { config.Raft with PeriodicInterval = i }
       do! context.SetConfig (Config.updateEngine updated config)
     }
     |> Either.mapError handleError

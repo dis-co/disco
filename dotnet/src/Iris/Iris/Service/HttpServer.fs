@@ -92,7 +92,7 @@ module Http =
                 | Suave.Logging.LogLevel.Verbose -> ()
                 | _ ->
                   line.message
-                  |> Logger.debug options.MachineConfig.MachineId (tag "logger") }
+                  |> Logger.debug options.Machine.MachineId (tag "logger") }
 
         let addr, port = string mem.IpAddr, string mem.WebPort
 
@@ -100,7 +100,7 @@ module Http =
         let port = Sockets.Port.Parse port
 
         sprintf "Suave Web Server ready to start on: %A:%A" addr port
-        |> Logger.info options.MachineConfig.MachineId (tag "mkConfig")
+        |> Logger.info options.Machine.MachineId (tag "mkConfig")
 
         return
           { defaultConfig with

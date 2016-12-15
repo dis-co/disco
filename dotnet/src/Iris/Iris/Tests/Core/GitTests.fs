@@ -28,7 +28,7 @@ module GitTests =
 
     let config =
       Config.create "Test Project" machine
-      |> Config.setMembers [| mem |]
+      |> Config.setMembers (Map.ofArray [| (mem.Id,mem) |])
       |> Config.setLogLevel Debug
 
     let commit, project =

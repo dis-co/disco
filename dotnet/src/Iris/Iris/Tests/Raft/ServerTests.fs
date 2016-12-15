@@ -200,7 +200,12 @@ module ServerTests =
   let server_wont_apply_entry_if_there_isnt_a_majority =
     testCase "Raft won't apply a change if the is not a majority" <| fun _ ->
       let mems = // create 5 mems
-        Array.map (fun n -> Member.create (Id.Create())) [|1u..5u|]
+        Array.map
+          (fun _ ->
+            let id = Id.Create()
+            (id, Member.create id))
+          [| 1u .. 5u |]
+        |> Map.ofArray
 
       raft {
         do! Raft.setCommitIndexM 0u
@@ -756,7 +761,7 @@ module ServerTests =
         }
 
       raft {
-        do! Raft.addMembersM [| peer1; peer2 |]
+        do! Raft.addMembersM (Map.ofArray [| (peer1.Id, peer1); (peer2.Id, peer2) |])
         do! Raft.setTermM 1u
         do! Raft.voteForMyself ()
         do! Raft.setTermM 1u
@@ -939,13 +944,18 @@ module ServerTests =
       let peer3 = Member.create (Id.Create())
       let peer4 = Member.create (Id.Create())
 
+      let peers =
+        [| peer1; peer2; peer3; peer4 |]
+        |> Array.map (fun p -> (p.Id,p))
+        |> Map.ofArray
+
       let cbs =
         { mkcbs (ref (DataSnapshot (mkState ()))) with
             SendRequestVote = fun n _ -> Some { Term = 1u; Granted = true; Reason = None } }
         :> IRaftCallbacks
 
       raft {
-        do! Raft.addPeersM [| peer1; peer2; peer3; peer4 |]
+        do! Raft.addPeersM peers
         do! expectM "Should have 5 mems" 5u Raft.numMembers
         do! Raft.becomeCandidate ()
         do! expectM "Should be leader" true Raft.isLeader
@@ -987,12 +997,17 @@ module ServerTests =
         let peer1 = Member.create (Id.Create())
         let peer2 = Member.create (Id.Create())
 
+        let peers =
+          [| peer1; peer2 |]
+          |> Array.map (fun p -> (p.Id,p))
+          |> Map.ofArray
+
         let log =
           LogEntry(Id.Create(),0u, 3u, DataSnapshot (mkState ()),
             Some <| LogEntry(Id.Create(),0u, 1u, DataSnapshot (mkState ()),
               Some <| LogEntry(Id.Create(),0u, 1u, DataSnapshot (mkState ()), None)))
 
-        do! Raft.addPeersM [| peer1; peer2 |]
+        do! Raft.addPeersM peers
         do! Raft.setStateM Candidate
         do! Raft.setTermM 5u
         do! Raft.appendEntryM log >>= ignoreM
@@ -1391,8 +1406,13 @@ module ServerTests =
         ; FirstIndex = 1u
         }
 
+      let peers =
+        [| peer1; peer2; peer3; peer4; |]
+        |> Array.map toPair
+        |> Map.ofArray
+
       raft {
-        do! Raft.addMembersM [| peer1; peer2; peer3; peer4; |]
+        do! Raft.addMembersM peers
         do! Raft.setStateM Leader
         do! Raft.setTermM 1u
         do! Raft.setCommitIndexM 0u
@@ -1446,8 +1466,13 @@ module ServerTests =
       let log2 = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()),None)
       let log3 = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()),None)
 
+      let peers =
+        [| peer1; peer2; |]
+        |> Array.map toPair
+        |> Map.ofArray
+
       raft {
-        do! Raft.addMembersM [| peer1; peer2; |]
+        do! Raft.addMembersM peers
         do! Raft.setStateM Leader
         do! Raft.setTermM 1u
         do! Raft.setCommitIndexM 0u
@@ -1484,8 +1509,13 @@ module ServerTests =
       let log2 = LogEntry(Id.Create(),0u,1u,DataSnapshot (mkState ()),None)
       let log3 = LogEntry(Id.Create(),0u,2u,DataSnapshot (mkState ()),None)
 
+      let peers =
+        [| peer1; peer2; peer3; peer4 |]
+        |> Array.map toPair
+        |> Map.ofArray
+
       raft {
-        do! Raft.addMembersM [| peer1; peer2; peer3; peer4 |]
+        do! Raft.addMembersM peers
         do! Raft.setStateM Leader
         do! Raft.setTermM 2u
         do! Raft.setCommitIndexM 0u
@@ -1695,8 +1725,13 @@ module ServerTests =
         "Not Leader"
         |> Error.asRaftError "Raft.receiveAppendEntriesResponse"
 
+      let peers =
+        [| peer1; peer2 |]
+        |> Array.map toPair
+        |> Map.ofArray
+
       raft {
-        do! Raft.addMembersM [| peer1; peer2 |]
+        do! Raft.addMembersM peers
         do! Raft.setTermM 1u
         do! Raft.setCommitIndexM 0u
         do! Raft.setStateM Leader
@@ -1989,8 +2024,13 @@ module ServerTests =
             }
         :> IRaftCallbacks
 
+      let peers =
+        [| peer1; peer2 |]
+        |> Array.map toPair
+        |> Map.ofArray
+
       raft {
-        do! Raft.addMembersM [| peer1; peer2 |]
+        do! Raft.addMembersM peers
         do! Raft.setElectionTimeoutM 1000u
         do! Raft.setRequestTimeoutM 500u
         do! expectM "Should have timout elapsed 0" 0u Raft.timeoutElapsed
@@ -2026,8 +2066,13 @@ module ServerTests =
         ; LastLogIndex = 0u
         ; LastLogTerm = 0u }
 
+      let peers =
+        [| peer1; peer2 |]
+        |> Array.map toPair
+        |> Map.ofArray
+
       raft {
-        do! Raft.addMembersM [| peer1; peer2 |]
+        do! Raft.addMembersM peers
         do! Raft.setElectionTimeoutM 1000u
         do! Raft.setRequestTimeoutM 500u
         do! expectM "Should have timout elapsed 0" 0u Raft.timeoutElapsed
@@ -2055,8 +2100,13 @@ module ServerTests =
         ; LastLogIndex = 0u
         ; LastLogTerm = 0u }
 
+      let peers =
+        [| peer1; peer2 |]
+        |> Array.map toPair
+        |> Map.ofArray
+
       raft {
-        do! Raft.addMembersM [| peer1; peer2 |]
+        do! Raft.addMembersM peers
         do! Raft.setElectionTimeoutM 1000u
         do! Raft.setRequestTimeoutM 500u
         do! expectM "Should have timout elapsed 0" 0u Raft.timeoutElapsed
@@ -2085,8 +2135,13 @@ module ServerTests =
         { mkcbs (ref defSM) with SendRequestVote = fun _ _ -> i <- i + 1; None }
         :> IRaftCallbacks
 
+      let peers =
+        [| mem2; mem3; mem4 |]
+        |> Array.map toPair
+        |> Map.ofArray
+
       raft {
-        do! Raft.addPeersM [| mem2; mem3; mem4 |]
+        do! Raft.addPeersM peers
         do! Raft.setElectionTimeoutM 1000u
         do! Raft.periodic 1001u
         expect "Should have sent 2 requests" 2 id i
@@ -2106,8 +2161,13 @@ module ServerTests =
 
       let resp = { Term = 1u; Granted = true; Reason = None }
 
+      let peers =
+        [| mem1; mem2; mem3; mem4 |]
+        |> Array.map toPair
+        |> Map.ofArray
+
       raft {
-        do! Raft.addPeersM [| mem1; mem2; mem3; mem4 |]
+        do! Raft.addPeersM peers
         do! Raft.setElectionTimeoutM 1000u
         do! Raft.periodic 1001u
         do! Raft.receiveVoteResponse mem1.Id resp

@@ -511,7 +511,7 @@ type HostGroup =
 
 type ClusterConfig =
   { Name    : Name
-    Members : RaftMember array
+    Members : Map<MemberId,RaftMember>
     Groups  : HostGroup  array }
 
   override self.ToString() =
@@ -527,7 +527,9 @@ type ClusterConfig =
     let name = builder.CreateString self.Name
 
     let members =
-      Array.map (Binary.toOffset builder) self.Members
+      self.Members
+      |> Map.toArray
+      |> Array.map (snd >> Binary.toOffset builder)
       |> fun offsets -> ClusterConfigFB.CreateMembersVector(builder, offsets)
 
     let groups =
@@ -547,7 +549,7 @@ type ClusterConfig =
           fb.MembersLength
           |> Array.zeroCreate
         Array.fold
-          (fun (m: Either<IrisError, int * RaftMember array>) _ ->
+          (fun (m: Either<IrisError, int * Map<MemberId,RaftMember>>) _ ->
             either {
               let! (idx,members) = m
 
@@ -566,10 +568,9 @@ type ClusterConfig =
                   |> Either.fail
                 #endif
 
-              members.[idx] <- mem
-              return (idx + 1, members)
+              return (idx + 1, Map.add mem.Id mem members)
             })
-          (Right(0, arr))
+          (Right(0, Map.empty))
           arr
 
       let! (_,groups) =
@@ -618,23 +619,23 @@ type ClusterConfig =
 //                                        |___/
 
 type IrisConfig =
-  { MachineConfig  : IrisMachine
-    AudioConfig    : AudioConfig
-    VvvvConfig     : VvvvConfig
-    RaftConfig     : RaftConfig
-    TimingConfig   : TimingConfig
-    ClusterConfig  : ClusterConfig
-    ViewPorts      : ViewPort array
-    Displays       : Display  array
-    Tasks          : Task     array }
+  { Machine   : IrisMachine
+    Audio     : AudioConfig
+    Vvvv      : VvvvConfig
+    Raft      : RaftConfig
+    Timing    : TimingConfig
+    Cluster   : ClusterConfig
+    ViewPorts : ViewPort array
+    Displays  : Display  array
+    Tasks     : Task     array }
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let machine = Binary.toOffset builder self.MachineConfig
-    let audio = Binary.toOffset builder self.AudioConfig
-    let vvvv = Binary.toOffset builder self.VvvvConfig
-    let raft = Binary.toOffset builder self.RaftConfig
-    let timing = Binary.toOffset builder self.TimingConfig
-    let cluster = Binary.toOffset builder self.ClusterConfig
+    let machine = Binary.toOffset builder self.Machine
+    let audio = Binary.toOffset builder self.Audio
+    let vvvv = Binary.toOffset builder self.Vvvv
+    let raft = Binary.toOffset builder self.Raft
+    let timing = Binary.toOffset builder self.Timing
+    let cluster = Binary.toOffset builder self.Cluster
 
     let viewports =
       Array.map (Binary.toOffset builder) self.ViewPorts
@@ -831,15 +832,15 @@ type IrisConfig =
           arr
 
       return
-        { MachineConfig = machine
-          AudioConfig   = audio
-          VvvvConfig    = vvvv
-          RaftConfig    = raft
-          TimingConfig  = timing
-          ClusterConfig = cluster
-          ViewPorts     = viewports
-          Displays      = displays
-          Tasks         = tasks }
+        { Machine   = machine
+          Audio     = audio
+          Vvvv      = vvvv
+          Raft      = raft
+          Timing    = timing
+          Cluster   = cluster
+          ViewPorts = viewports
+          Displays  = displays
+          Tasks     = tasks }
     }
 
 // * ProjectYaml
@@ -1018,7 +1019,7 @@ Project:
   ///
   /// # Returns: ConfigFile
   let internal saveAudio (file: Config, config: IrisConfig) =
-    file.Project.Audio.SampleRate <- int (config.AudioConfig.SampleRate)
+    file.Project.Audio.SampleRate <- int (config.Audio.SampleRate)
     (file, config)
 
   // ** parseExe
@@ -1104,7 +1105,7 @@ Project:
   let internal saveVvvv (file: Config, config: IrisConfig) =
     file.Project.VVVV.Executables.Clear() //
 
-    for exe in config.VvvvConfig.Executables do
+    for exe in config.Vvvv.Executables do
       let entry = new ExeYaml()
       entry.Path <- exe.Executable;
       entry.Version <- exe.Version;
@@ -1113,7 +1114,7 @@ Project:
 
     file.Project.VVVV.Plugins.Clear()
 
-    for plug in config.VvvvConfig.Plugins do
+    for plug in config.Vvvv.Plugins do
       let entry = new PluginYaml()
       entry.Name <- plug.Name
       entry.Path <- plug.Path
@@ -1165,13 +1166,13 @@ Project:
   ///
   /// # Returns: ConfigFile
   let internal saveRaft (file: Config, config: IrisConfig) =
-    file.Project.Engine.RequestTimeout   <- int config.RaftConfig.RequestTimeout
-    file.Project.Engine.ElectionTimeout  <- int config.RaftConfig.ElectionTimeout
-    file.Project.Engine.MaxLogDepth      <- int config.RaftConfig.MaxLogDepth
-    file.Project.Engine.LogLevel         <- string config.RaftConfig.LogLevel
-    file.Project.Engine.DataDir          <- config.RaftConfig.DataDir
-    file.Project.Engine.MaxRetries       <- int config.RaftConfig.MaxRetries
-    file.Project.Engine.PeriodicInterval <- int config.RaftConfig.PeriodicInterval
+    file.Project.Engine.RequestTimeout   <- int config.Raft.RequestTimeout
+    file.Project.Engine.ElectionTimeout  <- int config.Raft.ElectionTimeout
+    file.Project.Engine.MaxLogDepth      <- int config.Raft.MaxLogDepth
+    file.Project.Engine.LogLevel         <- string config.Raft.LogLevel
+    file.Project.Engine.DataDir          <- config.Raft.DataDir
+    file.Project.Engine.MaxRetries       <- int config.Raft.MaxRetries
+    file.Project.Engine.PeriodicInterval <- int config.Raft.PeriodicInterval
     (file, config)
 
   // ** parseTiming
@@ -1230,15 +1231,15 @@ Project:
   ///
   /// # Returns: ConfigFile
   let internal saveTiming (file: Config, config: IrisConfig) =
-    file.Project.Timing.Framebase <- int (config.TimingConfig.Framebase)
-    file.Project.Timing.Input     <- config.TimingConfig.Input
+    file.Project.Timing.Framebase <- int (config.Timing.Framebase)
+    file.Project.Timing.Input     <- config.Timing.Input
 
     file.Project.Timing.Servers.Clear()
-    for srv in config.TimingConfig.Servers do
+    for srv in config.Timing.Servers do
       file.Project.Timing.Servers.Add(string srv)
 
-    file.Project.Timing.TCPPort <- int (config.TimingConfig.TCPPort)
-    file.Project.Timing.UDPPort <- int (config.TimingConfig.UDPPort)
+    file.Project.Timing.TCPPort <- int (config.Timing.TCPPort)
+    file.Project.Timing.UDPPort <- int (config.Timing.UDPPort)
 
     (file, config)
 
@@ -1738,7 +1739,7 @@ Project:
   /// - mems: MemberYaml collection
   ///
   /// Returns: Either<IrisError, RaftMember array>
-  let internal parseMembers mems : Either<IrisError, RaftMember array> =
+  let internal parseMembers mems : Either<IrisError, Map<MemberId,RaftMember>> =
     either {
       let arr =
         mems
@@ -1747,13 +1748,12 @@ Project:
 
       let! (_,mems) =
         Seq.fold
-          (fun (m: Either<IrisError, int * RaftMember array>) mem -> either {
+          (fun (m: Either<IrisError, int * Map<MemberId,RaftMember>>) mem -> either {
             let! (idx, mems) = m
             let! mem = parseMember mem
-            mems.[idx] <- mem
-            return (idx + 1, mems)
+            return (idx + 1, Map.add mem.Id mem mems)
           })
-          (Right(0, arr))
+          (Right(0, Map.empty))
           mems
 
       return mems
@@ -1828,11 +1828,11 @@ Project:
   let internal saveCluster (file: Config, config: IrisConfig) =
     file.Project.Cluster.Members.Clear()
     file.Project.Cluster.Groups.Clear()
-    file.Project.Cluster.Name <- config.ClusterConfig.Name
+    file.Project.Cluster.Name <- config.Cluster.Name
 
-    for mem in config.ClusterConfig.Members do
+    for KeyValue(memId,mem) in config.Cluster.Members do
       let n = new MemberYaml()
-      n.Id       <- string mem.Id
+      n.Id       <- string memId
       n.Ip       <- string mem.IpAddr
       n.HostName <- mem.HostName
       n.Port     <- int mem.Port
@@ -1842,7 +1842,7 @@ Project:
       n.State    <- string mem.State
       file.Project.Cluster.Members.Add(n)
 
-    for group in config.ClusterConfig.Groups do
+    for group in config.Cluster.Groups do
       let g = new GroupYaml()
       g.Name <- group.Name
 
@@ -1930,15 +1930,15 @@ module Config =
       let! tasks     = ProjectYaml.parseTasks     file
       let! cluster   = ProjectYaml.parseCluster   file
 
-      return { MachineConfig = machine
-               VvvvConfig    = vvvv
-               AudioConfig   = audio
-               RaftConfig    = raftcfg
-               TimingConfig  = timing
-               ViewPorts     = viewports
-               Displays      = displays
-               Tasks         = tasks
-               ClusterConfig = cluster }
+      return { Machine   = machine
+               Vvvv      = vvvv
+               Audio     = audio
+               Raft      = raftcfg
+               Timing    = timing
+               ViewPorts = viewports
+               Displays  = displays
+               Tasks     = tasks
+               Cluster   = cluster }
     }
 
   #endif
@@ -1964,42 +1964,42 @@ module Config =
   // ** create
 
   let create (name: string) (machine: IrisMachine) =
-    { MachineConfig  = machine
-    ; VvvvConfig     = VvvvConfig.Default
-    ; AudioConfig    = AudioConfig.Default
-    ; RaftConfig     = RaftConfig.Default
-    ; TimingConfig   = TimingConfig.Default
-    ; ViewPorts      = [| |]
-    ; Displays       = [| |]
-    ; Tasks          = [| |]
-    ; ClusterConfig  = { Name   = name + " cluster"
-                       ; Members = [| |]
-                       ; Groups  = [| |] } }
+    { Machine   = machine
+    ; Vvvv      = VvvvConfig.Default
+    ; Audio     = AudioConfig.Default
+    ; Raft      = RaftConfig.Default
+    ; Timing    = TimingConfig.Default
+    ; ViewPorts = [| |]
+    ; Displays  = [| |]
+    ; Tasks     = [| |]
+    ; Cluster   = { Name   = name + " cluster"
+                  ; Members = Map.empty
+                  ; Groups  = [| |] } }
 
   // ** updateMachine
 
   let updateMachine (machine: IrisMachine) (config: IrisConfig) =
-    { config with MachineConfig = machine }
+    { config with Machine = machine }
 
   // ** updateVvvv
 
   let updateVvvv (vvvv: VvvvConfig) (config: IrisConfig) =
-    { config with VvvvConfig = vvvv }
+    { config with Vvvv = vvvv }
 
   // ** updateAudio
 
   let updateAudio (audio: AudioConfig) (config: IrisConfig) =
-    { config with AudioConfig = audio }
+    { config with Audio = audio }
 
   // ** updateEngine
 
   let updateEngine (engine: RaftConfig) (config: IrisConfig) =
-    { config with RaftConfig = engine }
+    { config with Raft = engine }
 
   // ** updateTiming
 
   let updateTiming (timing: TimingConfig) (config: IrisConfig) =
-    { config with TimingConfig = timing }
+    { config with Timing = timing }
 
   // ** updateViewPorts
 
@@ -2019,15 +2019,12 @@ module Config =
   // ** updateCluster
 
   let updateCluster (cluster: ClusterConfig) (config: IrisConfig) =
-    { config with ClusterConfig = cluster }
+    { config with Cluster = cluster }
 
   // ** findMember
 
   let findMember (config: IrisConfig) (id: Id) =
-    let result =
-      Array.tryFind
-        (fun (mem: RaftMember) -> mem.Id = id)
-        config.ClusterConfig.Members
+    let result = Map.tryFind id config.Cluster.Members
 
     match result with
     | Some mem -> Either.succeed mem
@@ -2038,63 +2035,57 @@ module Config =
 
   // ** getMembers
 
-  let getMembers (config: IrisConfig) : Either<IrisError,RaftMember array> =
-    config.ClusterConfig.Members
+  let getMembers (config: IrisConfig) : Either<IrisError,Map<MemberId,RaftMember>> =
+    config.Cluster.Members
     |> Either.succeed
 
   // ** setMembers
 
-  let setMembers (mems: RaftMember array) (config: IrisConfig) =
-    { config with
-        ClusterConfig =
-          { config.ClusterConfig with Members = mems } }
+  let setMembers (mems: Map<MemberId,RaftMember>) (config: IrisConfig) =
+    { config with Cluster = { config.Cluster with Members = mems } }
 
   // ** selfMember
 
   let selfMember (options: IrisConfig) =
-    findMember options options.MachineConfig.MachineId
+    findMember options options.Machine.MachineId
 
   // ** addMember
 
   let addMember (mem: RaftMember) (config: IrisConfig) =
     { config with
-        ClusterConfig =
-          { config.ClusterConfig with
-              Members = Array.append [| mem |] config.ClusterConfig.Members
-            } }
+        Cluster =
+          { config.Cluster with
+              Members = Map.add mem.Id mem config.Cluster.Members} }
 
   // ** removeMember
 
   let removeMember (id: Id) (config: IrisConfig) =
     { config with
-        ClusterConfig =
-          { config.ClusterConfig with
-              Members = Array.filter
-                          (fun (mem: RaftMember) -> mem.Id = id)
-                          config.ClusterConfig.Members } }
+        Cluster =
+          { config.Cluster with
+              Members = Map.filter
+                          (fun (mem: MemberId) _ -> mem <> id)
+                          config.Cluster.Members } }
 
   // ** logLevel
 
   let logLevel (config: IrisConfig) =
-    config.RaftConfig.LogLevel
+    config.Raft.LogLevel
 
   // ** setLogLevel
 
   let setLogLevel (level: Iris.Core.LogLevel) (config: IrisConfig) =
-    { config with
-        RaftConfig =
-          { config.RaftConfig with
-              LogLevel = level } }
+    { config with Raft = { config.Raft with LogLevel = level } }
 
   // ** metadataPath
 
   let metadataPath (config: IrisConfig) =
-    config.RaftConfig.DataDir </> RAFT_METADATA_FILENAME + ASSET_EXTENSION
+    config.Raft.DataDir </> RAFT_METADATA_FILENAME + ASSET_EXTENSION
 
   // ** logDataPath
 
   let logDataPath (config: IrisConfig) =
-    config.RaftConfig.DataDir </> RAFT_LOGDATA_PATH
+    config.Raft.DataDir </> RAFT_LOGDATA_PATH
 
 // * IrisProject
 
@@ -2148,6 +2139,8 @@ Config: %A
 
   // ** Save
 
+  #if !FABLE_COMPILER
+
   //  ____
   // / ___|  __ ___   _____
   // \___ \ / _` \ \ / / _ \
@@ -2161,6 +2154,8 @@ Config: %A
       let! info = Asset.write path data
       return ()
     }
+
+  #endif
 
   // ** ToOffset
 
@@ -2724,7 +2719,7 @@ module Project =
   // ** updateDataDir
 
   let updateDataDir (raftDir: FilePath) (project: IrisProject) : IrisProject =
-    { project.Config.RaftConfig with DataDir = raftDir }
+    { project.Config.Raft with DataDir = raftDir }
     |> flip Config.updateEngine project.Config
     |> flip updateConfig project
 

@@ -35,7 +35,7 @@ module IrisServiceTests =
 
         let cfg =
           Config.create "leader" machine
-          |> Config.setMembers [| mem |]
+          |> Config.setMembers (Map.ofArray [| (mem.Id,mem) |])
           |> Config.setLogLevel (LogLevel.Debug)
 
         let name =

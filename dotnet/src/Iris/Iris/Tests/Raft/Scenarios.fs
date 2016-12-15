@@ -193,7 +193,7 @@ module Scenarios =
             let raft =
               Raft.mkRaft peers.[int n]
               |> Raft.setElectionTimeout 500u
-              |> Raft.addMembers peers
+              |> Raft.addMembers (Array.map toPair peers |> Map.ofArray)
 
             yield (raft,callbacks) |]
 
