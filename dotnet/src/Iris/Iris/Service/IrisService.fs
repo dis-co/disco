@@ -533,11 +533,14 @@ module Iris =
       broadcastMsg data sm
 
       if RaftServer.isLeader data.RaftServer then
-        match persistEntry data.Store.State.Project sm with
-        | Right (commit, updated) ->
-          data.Store.Dispatch (UpdateProject updated)
+        match persistEntry data.Store.State sm with
+        | Right commit ->
+          sprintf "Persisted command in commit: %s" commit.Sha
+          |> Logger.debug data.MemberId (tag "onApplyLog")
           state
         | Left error ->
+          sprintf "Error persisting command: %A" error
+          |> Logger.err data.MemberId (tag "onApplyLog")
           state
       else
         match data.RaftServer.State with

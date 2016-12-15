@@ -91,9 +91,6 @@
     <Compile Include="..\..\Iris\Core\Logging.fs">
       <Link>Logging.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Core\Git.fs">
-      <Link>Git.fs</Link>
-    </Compile>
     <Compile Include="..\..\Iris\Core\Pin.fs">
       <Link>Pin.fs</Link>
     </Compile>

@@ -114,17 +114,23 @@ module Persistence =
   /// - sm: StateMachine command
   ///
   /// Returns: Either<IrisError, FileInfo * Commit * IrisProject>
-  let inline persistEntry (project: IrisProject) (sm: StateMachine) =
+  let inline persistEntry (state: State) (sm: StateMachine) =
+    let signature = User.Admin.Signature
+    let basepath = state.Project.Path
     match sm with
-    | AddCue        cue     -> Project.saveAsset   cue     User.Admin project
-    | UpdateCue     cue     -> Project.saveAsset   cue     User.Admin project
-    | RemoveCue     cue     -> Project.deleteAsset cue     User.Admin project
-    | AddCueList    cuelist -> Project.saveAsset   cuelist User.Admin project
-    | UpdateCueList cuelist -> Project.saveAsset   cuelist User.Admin project
-    | RemoveCueList cuelist -> Project.deleteAsset cuelist User.Admin project
-    | AddUser       user    -> Project.saveAsset   user    User.Admin project
-    | UpdateUser    user    -> Project.saveAsset   user    User.Admin project
-    | RemoveUser    user    -> Project.deleteAsset user    User.Admin project
+    | AddCue        cue     -> Asset.saveWithCommit   cue           basepath signature
+    | UpdateCue     cue     -> Asset.saveWithCommit   cue           basepath signature
+    | RemoveCue     cue     -> Asset.deleteWithCommit cue           basepath signature
+    | AddCueList    cuelist -> Asset.saveWithCommit   cuelist       basepath signature
+    | UpdateCueList cuelist -> Asset.saveWithCommit   cuelist       basepath signature
+    | RemoveCueList cuelist -> Asset.deleteWithCommit cuelist       basepath signature
+    | AddUser       user    -> Asset.saveWithCommit   user          basepath signature
+    | UpdateUser    user    -> Asset.saveWithCommit   user          basepath signature
+    | RemoveUser    user    -> Asset.deleteWithCommit user          basepath signature
+    | AddMember     _       -> Asset.saveWithCommit   state.Project basepath signature
+    | UpdateMember  _       -> Asset.saveWithCommit   state.Project basepath signature
+    | RemoveMember  _       -> Asset.deleteWithCommit state.Project basepath signature
+    | UpdateProject project -> Asset.saveWithCommit   project       basepath signature
     | _                     -> Left OK
 
   // ** updateRepo
