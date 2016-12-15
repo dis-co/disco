@@ -54,13 +54,19 @@ module Persistence =
   /// Returns: Either<IrisError,Raft>
   let loadRaft (options: IrisConfig) : Either<IrisError,RaftValue> =
     either {
-      let! mem = Config.selfMember options
+      let! mem  = Config.selfMember options
       let! mems = Config.getMembers options
+      let count = Map.fold (fun m _ _ -> m + 1u) 0u mems
       let! data =
         options
         |> Config.metadataPath
         |> Asset.read
-      return! Yaml.decode data
+      let! state = Yaml.decode data
+      return
+        { state with
+            Member     = mem
+            NumMembers = count
+            Peers      = mems }
     }
 
   // ** getRaft

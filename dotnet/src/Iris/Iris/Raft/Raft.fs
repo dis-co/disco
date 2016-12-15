@@ -287,6 +287,9 @@ module Raft =
   let setNumPeers (state: RaftValue) =
     { state with NumMembers = countMembers state.Peers }
 
+  let recountPeers () =
+    get >>= (setNumPeers >> put)
+
   /// Set States Members to supplied Map of Mems. Also cache count of mems.
   let setPeers (peers : Map<MemberId,RaftMember>) (state: RaftValue) =
     { state with Peers = Map.add state.Member.Id state.Member peers }
@@ -2197,6 +2200,8 @@ module Raft =
           do! startElection ()
         elif timedout && num = 1u then
           do! becomeLeader ()
+        else
+          do! recountPeers ()
 
       let! coi = commitIndexM ()
       let! lai = lastAppliedIdxM ()

@@ -1537,6 +1537,7 @@ type PayloadFBConstructor =
   abstract LogEventFB: PayloadFB
   abstract StateFB: PayloadFB
   abstract StringFB: PayloadFB
+  abstract ProjectFB: PayloadFB
 
 let PayloadFB: PayloadFBConstructor = failwith "JS only"
 
@@ -1553,6 +1554,7 @@ type ApiActionFB =
   abstract LogEventFB: LogEventFB
   abstract StateFB: StateFB
   abstract StringFB: StringFB
+  abstract ProjectFB: ProjectFB
   abstract Payload: 'a -> 'a
 
 type ApiActionFBConstructor =

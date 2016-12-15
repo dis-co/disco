@@ -718,6 +718,8 @@ module Crypto =
 
 // * Git
 
+#if !FABLE_COMPILER
+
 //   ____ _ _
 //  / ___(_) |_
 // | |  _| | __|
@@ -1353,6 +1355,8 @@ module Git =
     let delRemote (repo: Repository) (name: string) =
       repo.Config.Unset(remoteUrl name)
       repo.Config.Unset(remoteFetch name)
+
+#endif
 
 // * Asset
 

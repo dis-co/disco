@@ -1176,6 +1176,7 @@ module Raft =
       let connections = new Connections()
 
       let! raftstate = Persistence.getRaft config
+
       let addr = raftstate.Member |> memUri
       let server = new Zmq.Rep(addr, requestHandler agent)
 
@@ -1419,8 +1420,8 @@ module Raft =
       | AppendEntries (id, ae)   -> processAppendEntries   data id ae chan
       | RequestVote (id, vr)     -> processVoteRequest     data id vr chan
       | InstallSnapshot (id, is) -> processInstallSnapshot data id is chan
-      | HandShake mem           -> processHandshake       data mem  chan
-      | HandWaive mem           -> processHandwaive       data mem  chan
+      | HandShake mem            -> processHandshake       data mem   chan
+      | HandWaive mem            -> processHandwaive       data mem   chan
       |> Loaded
 
   // ** handlePeriodic

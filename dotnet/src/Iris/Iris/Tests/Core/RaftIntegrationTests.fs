@@ -80,8 +80,6 @@ module RaftIntegrationTests =
           Config.create "leader" machine
           |> Config.addMember mem
 
-          // |> Config.setLogLevel (LogLevel.Debug)
-
         use! leader = RaftServer.create ()
         do! leader.Load leadercfg
 
