@@ -65,11 +65,7 @@ module TestData =
   let mk() = Id.Create()
 
   let mkTmpDir () =
-    let fn =
-      Path.GetTempFileName()
-      |> Path.GetFileName
-
-    let path = Directory.GetCurrentDirectory() </> "tmp" </> fn
+    let path = Path.GetTempPath() </> Path.GetRandomFileName()
     Directory.CreateDirectory path |> ignore
     path
 
