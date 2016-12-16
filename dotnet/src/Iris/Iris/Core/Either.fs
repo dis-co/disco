@@ -248,31 +248,29 @@ module EitherUtils =
 
   type EitherBuilder() =
 
-    member self.Return(v) = Right v
+    member self.Return(v: 'a): Either<'err, 'a> = Right v
 
-    member self.ReturnFrom(v) = v
+    member self.ReturnFrom(v: Either<'err, 'a>): Either<'err, 'a> = v
 
-    member inline self.Bind(m, f) = Either.bind f m
+    member self.Bind(m: Either<'err, 'a>, f: 'a->Either<'err, 'b>): Either<'err, 'b> =
+      match m with
+      | Right value -> f value
+      | Left err    -> Left err
 
-    member inline self.Zero() = Either.nothing
+    member self.Zero(): Either<'err, unit> = Right ()
 
-    member self.Delay(f) = fun () -> f()
+    member self.Delay(f: unit->Either<'err, 'a>) = f
 
-    member self.Run(f) = f()              // needed for lazyness to work
+    member self.Run(f: unit->Either<'err, 'a>) = f()
 
-    member self.While(guard, body) =
-      if guard () then
-        let cont () =
-          self.While(guard, body)
-        self.Bind(body(), cont)
-      else
-        self.Zero()
+    member self.While(guard: unit->bool, body: unit->Either<'err, unit>): Either<'err, unit> =
+      if guard ()
+      then self.Bind(body(), fun () -> self.While(guard, body))
+      else self.Zero()
 
-    // member self.For(sequence:seq<'a>, body: 'a -> Either<'err, unit>) =
-    //   let enumerator = sequence.GetEnumerator()
-    //   self.Using(enumerator,fun enum ->
-    //              self.While(enum.MoveNext,
-    //                         self.Delay(fun () -> body enum.Current)))
+    member self.For(sequence:seq<'a>, body: 'a -> Either<'err, unit>): Either<'err, unit> =
+      self.Using(sequence.GetEnumerator(), fun enum ->
+        self.While(enum.MoveNext, fun () -> body enum.Current))
 
     member self.Combine(a, b) =
       match a with
@@ -289,12 +287,51 @@ module EitherUtils =
       finally
         handler ()
 
-    member self.Using(disposable: #System.IDisposable, body) =
+    member self.Using<'a, 'err when 'a :> IDisposable>(disposable: 'a, body: 'a->Either<'err, unit>): Either<'err, unit> =
       let body' = fun () -> body disposable
       self.TryFinally(body', fun () ->
         disposable.Dispose())
 
   let either = new EitherBuilder()
+
+#if INTERACTIVE
+module Test =
+  open EitherUtils
+
+  let orFail x =
+    match x with
+    | Left err -> printfn "ERROR: %O" err
+    | Right v -> printfn "OK: %O" v
+
+  let riskyOp x =
+    printfn "Evaluating %O..." x
+    if x = 0 then Left "boom!" else Right ()
+
+  let test() =
+    let test = either {
+      printfn "This should be lazy but it's evaluated eagerly"
+      let ar = [|1;2;0;3|]
+      let mutable i = 0
+      while i < 3 do
+        do! riskyOp ar.[i]
+        i <- i + 1
+    }
+
+    printfn "The either expression is supposed to be evaluated here"
+    orFail test
+
+    // No problem here
+    either {
+      for x in [1;2;3] do
+        do! riskyOp x
+    } |> orFail
+
+    // Boom!
+    either {
+      for x in [|1;2;0;3|] do
+        do! riskyOp x
+    } |> orFail
+#endif
 
 // * Option Builder
 
