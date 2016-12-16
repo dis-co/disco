@@ -1009,8 +1009,13 @@ module Git =
 
     let stage (repo: Repository) (filepath: FilePath) =
       try
-        Commands.Stage(repo, filepath)
-        |> Either.succeed
+        if Path.IsPathRooted filepath then
+          Commands.Stage(repo, filepath)
+          |> Either.succeed
+        else
+          sprintf "Paths must be absolute: %s" filepath
+          |> Error.asGitError (tag "stage")
+          |> Either.fail
       with
         | exn ->
           exn.Message
@@ -1333,6 +1338,7 @@ module Asset =
     either {
       use! repo = Git.Repo.repository basepath
       let target = basepath </> path t
+      let! status = Git.Repo.status repo
       do! Git.Repo.stage repo target
       let! commit = Git.Repo.commit repo msg signature
       return commit

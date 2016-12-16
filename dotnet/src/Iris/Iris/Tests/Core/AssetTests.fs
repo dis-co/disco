@@ -12,6 +12,24 @@ open Iris.Core
 [<AutoOpen>]
 module AssetTests =
 
+  type TestAsset = { Data: string }
+    with
+      member self.AssetPath
+        with get () = "test-asset.txt"
+
+      member self.Save(basePath: FilePath) =
+        either {
+          let path = basePath </> Asset.path self
+          let! info = Asset.write path (Payload self.Data)
+          return ()
+        }
+
+      static member Load(path: FilePath) : Either<IrisError, TestAsset> =
+        either {
+          let! data = Asset.read path
+          return { Data = data }
+        }
+
   let test_write_read_asset_correctly =
     testCase "should write and read asset correctly" <| fun _ ->
       either {
@@ -28,11 +46,24 @@ module AssetTests =
       either {
         let path = tmpPath()
         Directory.CreateDirectory(path </> USER_DIR) |> ignore
-        let user = User.Admin
-        do! Asset.save path user
-        let admin = path </> Asset.path user
+        do! Asset.save path User.Admin
+        let admin = path </> Asset.path User.Admin
         let! reuser = Asset.load admin
-        expect "Loaded User should be the same" reuser id user
+        expect "Loaded User should be the same" reuser id User.Admin
+      }
+      |> noError
+
+  let test_save_with_commit_adds_and_commits_an_asset =
+    testCase "should save an asset with commit even if its new" <| fun _ ->
+      either {
+        let path = tmpPath()
+        let! repo = Git.Repo.init path
+        let signature = User.Admin.Signature
+        let asset = { Data = (string (Id.Create())) }
+        let! commit = Asset.saveWithCommit path signature asset
+        let path = path </> Asset.path asset
+        let! reasset = Asset.load path
+        expect "Loaded asset should be the same" reasset id asset
       }
       |> noError
 
@@ -40,4 +71,5 @@ module AssetTests =
     testList "Asset Tests" [
       test_write_read_asset_correctly
       test_save_load_asset_correctly
+      test_save_with_commit_adds_and_commits_an_asset
     ]

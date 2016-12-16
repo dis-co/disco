@@ -555,6 +555,9 @@ module CommandLine =
 
       let! commit = Asset.saveWithCommit path User.Admin.Signature updated
 
+      printfn "project: %A" project.Name
+      printfn "created in: %s" project.Path
+
       return updated
     }
 
@@ -571,9 +574,7 @@ module CommandLine =
   let initializeRaft (user: User) (project: IrisProject) = either {
       let! raft = createRaft project.Config
       let! result = saveRaft project.Config raft
-      let! commit = Asset.saveWithCommit project.Path User.Admin.Signature project
-      project.Path
-      |> printfn "project initialized in %A and committed @ %s" commit.Sha
+      return ()
     }
 
   /// ## createProject
@@ -593,6 +594,7 @@ module CommandLine =
       let baseDir = parsed.GetResult <@ Dir @>
       let name = parsed.GetResult <@ Name @>
       let dir = baseDir </> name
+
       let raftDir = Path.GetFullPath(dir) </> RAFT_DIRECTORY
 
       do! match Directory.Exists dir with
@@ -611,7 +613,8 @@ module CommandLine =
       do! mkDir raftDir
 
       let mem = buildMember parsed machine.MachineId
-      let! project = buildProject machine dir name raftDir mem
+
+      let! project = buildProject machine name dir raftDir mem
 
       do! initializeRaft me project
     }

@@ -38,12 +38,10 @@ module IrisServiceTests =
           |> Config.setMembers (Map.ofArray [| (mem.Id,mem) |])
           |> Config.setLogLevel (LogLevel.Debug)
 
-        let name =
-          Path.GetTempFileName()
-          |> Path.GetFileName
+        let path = tmpPath()
+        let name = Path.GetFileName path
 
         let author1 = "karsten"
-        let path = Path.Combine(Directory.GetCurrentDirectory(),"tmp", name)
 
         let! project = Project.create path name machine
 
