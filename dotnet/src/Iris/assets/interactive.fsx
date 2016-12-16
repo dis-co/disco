@@ -14,3 +14,8 @@
 #r "ZeroMQ.dll"
 #r "System.Management"
 #r "Iris.Core.dll"
+
+
+open System
+open System.IO
+open Iris.Core
