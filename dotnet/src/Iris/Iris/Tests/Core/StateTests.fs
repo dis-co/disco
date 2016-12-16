@@ -15,7 +15,7 @@ module StateTests =
     testCase "should load state correctly" <| fun _ ->
       either {
         let! state = mkTmpDir() |> mkState
-        do! Asset.save state state.Project.Path
+        do! Asset.save state.Project.Path state
         let! loaded = Asset.loadWithMachine state.Project.Path state.Project.Config.Machine
 
         expect "Cues should be equal" state.Cues id loaded.Cues

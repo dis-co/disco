@@ -53,7 +53,7 @@ module IrisServiceTests =
               Author = Some(author1)
               Config = cfg }
 
-        let! commit = Asset.saveWithCommit updated path User.Admin.Signature
+        let! commit = Asset.saveWithCommit path User.Admin.Signature updated
 
         let path = Project.filePath project
 

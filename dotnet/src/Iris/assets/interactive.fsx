@@ -15,7 +15,7 @@
 #r "System.Management"
 #r "Iris.Core.dll"
 
-
+open LibGit2Sharp
 open System
 open System.IO
 open Iris.Core

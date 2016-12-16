@@ -553,7 +553,7 @@ module CommandLine =
         |> Project.updateDataDir raftDir
         |> Project.addMember mem
 
-      let! commit = Asset.saveWithCommit updated path User.Admin.Signature
+      let! commit = Asset.saveWithCommit path User.Admin.Signature updated
 
       return updated
     }
@@ -571,7 +571,7 @@ module CommandLine =
   let initializeRaft (user: User) (project: IrisProject) = either {
       let! raft = createRaft project.Config
       let! result = saveRaft project.Config raft
-      let! commit = Asset.saveWithCommit project project.Path User.Admin.Signature
+      let! commit = Asset.saveWithCommit project.Path User.Admin.Signature project
       project.Path
       |> printfn "project initialized in %A and committed @ %s" commit.Sha
     }

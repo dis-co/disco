@@ -175,7 +175,7 @@ type State =
       do! Map.fold (Asset.saveMap basePath) (Right ()) state.Cues
       do! Map.fold (Asset.saveMap basePath) (Right ()) state.CueLists
       do! Map.fold (Asset.saveMap basePath) (Right ()) state.Users
-      do! Asset.save state.Project basePath
+      do! Asset.save basePath state.Project
     }
 
   #endif

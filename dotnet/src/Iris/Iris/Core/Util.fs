@@ -1190,12 +1190,13 @@ module Asset =
   /// - payload: string payload to save
   ///
   /// Returns: Either<IrisError,FileInfo>
-  let write (location: FilePath) (payload: string) =
+  let write (location: FilePath) (payload: StringPayload) =
     either {
       try
+        let data = match payload with | Payload data -> data
         let info = FileInfo location
         do! FileSystem.mkDir info.Directory.FullName
-        File.WriteAllText(location, payload, Encoding.UTF8)
+        File.WriteAllText(location, data, Encoding.UTF8)
         info.Refresh()
         return info
       with
@@ -1275,8 +1276,8 @@ module Asset =
   #if !FABLE_COMPILER
 
   let inline save< ^t when ^t : (member Save: FilePath -> Either<IrisError, unit>)>
-                 (t: ^t)
-                 (path: FilePath) =
+                 (path: FilePath)
+                 (t: ^t) =
     (^t : (member Save: FilePath -> Either<IrisError, unit>) (t, path))
 
   #endif
@@ -1288,7 +1289,7 @@ module Asset =
   let inline saveMap (basepath: FilePath) (guard: Either<IrisError,unit>) _ (t: ^t) =
     either {
       do! guard
-      do! save t basepath
+      do! save basepath t
     }
 
   #endif
@@ -1328,7 +1329,7 @@ module Asset =
 
   #if !FABLE_COMPILER
 
-  let inline commit (t: ^t) (basepath: FilePath) (msg: string) (signature: LibGit2Sharp.Signature) =
+  let inline commit (basepath: FilePath) (msg: string) (signature: LibGit2Sharp.Signature) (t: ^t) =
     either {
       use! repo = Git.Repo.repository basepath
       let target = basepath </> path t
@@ -1343,12 +1344,12 @@ module Asset =
 
   #if !FABLE_COMPILER
 
-  let inline saveWithCommit (t: ^t) (basepath: FilePath) (signature: LibGit2Sharp.Signature) =
+  let inline saveWithCommit (basepath: FilePath) (signature: LibGit2Sharp.Signature) (t: ^t) =
     either {
-      do! save t basepath
+      do! save basepath t
       let filename = path t |> Path.GetFileName
       let msg = sprintf "%s saved %A" signature.Name filename
-      return! commit t basepath msg signature
+      return! commit basepath msg signature t
     }
 
   #endif
@@ -1357,12 +1358,12 @@ module Asset =
 
   #if !FABLE_COMPILER
 
-  let inline deleteWithCommit (t: ^t) (basepath: FilePath) (signature: LibGit2Sharp.Signature) =
+  let inline deleteWithCommit (basepath: FilePath) (signature: LibGit2Sharp.Signature) (t: ^t) =
     either {
       let filepath = basepath </> path t
       let! ok = delete filepath
       let msg = sprintf "%s deleted %A" signature.Name (Path.GetFileName filepath)
-      return! commit t basepath msg signature
+      return! commit basepath msg signature t
     }
 
   #endif
