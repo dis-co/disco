@@ -157,7 +157,9 @@ let runNpm cmd workdir _ =
     match Environment.OSVersion.Platform with
       | PlatformID.Unix ->  "npm", cmd
       | _ -> "cmd", ("/C " + "npm" + " " + cmd)
-  runExec npm cmd workdir false
+  // npm warnings may cause AppVeyor build fail, so they must be swallowed
+  runExecAndReturn npm cmd workdir
+  |> printfn "%s"
 
 let runNode cmd workdir _ =
   let node, cmd =
