@@ -45,11 +45,11 @@ module AssetTests =
     testCase "should save and load asset correctly" <| fun _ ->
       either {
         let path = tmpPath()
-        Directory.CreateDirectory(path </> USER_DIR) |> ignore
-        do! Asset.save path User.Admin
-        let admin = path </> Asset.path User.Admin
-        let! reuser = Asset.load admin
-        expect "Loaded User should be the same" reuser id User.Admin
+        let asset = { Data = string (Id.Create()) }
+        do! Asset.save path asset
+        let path = path </> Asset.path asset
+        let! reasset = Asset.load path
+        expect "Loaded asset should be the same" reasset id asset
       }
       |> noError
 
