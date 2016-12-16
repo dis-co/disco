@@ -288,7 +288,7 @@ module EitherUtils =
       finally
         handler ()
 
-    member self.Using<'a, 'err when 'a :> IDisposable>(disposable: 'a, body: 'a->Either<'err, unit>): Either<'err, unit> =
+    member self.Using<'a, 'b, 'err when 'a :> IDisposable>(disposable: 'a, body: 'a->Either<'err, 'b>): Either<'err, 'b> =
       let body' = fun () -> body disposable
       self.TryFinally(body', fun () ->
         disposable.Dispose())
