@@ -36,6 +36,7 @@ type IpAddress =
 #endif
 
   static member TryParse (str: string) =
+    let str = if System.String.IsNullOrWhiteSpace(str) then "0.0.0.0" else str
 #if FABLE_COMPILER
     try
       IpAddress.Parse str
