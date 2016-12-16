@@ -20,7 +20,7 @@ open System.Linq
 [<AutoOpen>]
 module FileSystem =
 
-  // *** </>
+  // ** </>
 
   /// ## </>
   ///
@@ -38,7 +38,16 @@ module FileSystem =
     Path.Combine(p1, p2)
     #endif
 
-  // *** moveFile
+  // ** tmpDir
+
+  #if !FABLE_COMPILER
+
+  let tmpPath () =
+    Path.GetTempPath() </> Path.GetRandomFileName()
+
+  #endif
+
+  // ** moveFile
 
   #if !FABLE_COMPILER
 
@@ -63,7 +72,7 @@ module FileSystem =
 
   #endif
 
-  // *** rmDir
+  // ** rmDir
 
   #if !FABLE_COMPILER
 
@@ -104,7 +113,7 @@ module FileSystem =
 
   #endif
 
-  // *** mkDir
+  // ** mkDir
 
   #if !FABLE_COMPILER
 
