@@ -30,15 +30,15 @@ module ZmqUtils =
 
   // ** nodeUri
 
-  /// ## Format ZeroMQ URI for passed NodeInfo
+  /// ## Format ZeroMQ URI for passed RaftMember
   ///
-  /// Formates the given IrisNode's host metadata into a ZeroMQ compatible resource string.
+  /// Formates the given RaftMember's host metadata into a ZeroMQ compatible resource string.
   ///
   /// ### Signature:
-  /// - data: IrisNode
+  /// - data: RaftMember
   ///
   /// Returns: string
-  let nodeUri (data: RaftNode) =
+  let memUri (data: RaftMember) =
     formatUri data.IpAddr (int data.Port)
 
   // ** request
@@ -66,10 +66,10 @@ module ZmqUtils =
   /// - state: current app state
   ///
   /// Returns: fszmq.Socket
-  let mkReqSocket (node: RaftNode) =
+  let mkReqSocket (mem: RaftMember) =
     let timeout = 2000 // FIXME: this request timeout value should be settable
-    let addr = nodeUri node
-    let socket = new Req(node.Id, addr, timeout)
+    let addr = memUri mem
+    let socket = new Req(mem.Id, addr, timeout)
     socket.Start()
     socket
 
@@ -84,8 +84,8 @@ module ZmqUtils =
   /// - appState: current TVar<AppState>
   ///
   /// Returns: Req option
-  let getSocket (node: RaftNode) (connections: Map<Id,Zmq.Req>) : Req option =
-    Map.tryFind node.Id connections
+  let getSocket (mem: RaftMember) (connections: Map<Id,Zmq.Req>) : Req option =
+    Map.tryFind mem.Id connections
 
   // ** disposeSocket
 
@@ -94,15 +94,15 @@ module ZmqUtils =
   /// Dispose of a client socket that we don't need anymore.
   ///
   /// ### Signature:
-  /// - node: Node whose socket should be disposed of.
+  /// - mem: RaftMember whose socket should be disposed of.
   /// - appState: RaftAppContext TVar
   ///
   /// Returns: unit
-  let disposeSocket (node: RaftNode) (connections: Map<Id,Zmq.Req>) =
-    match Map.tryFind node.Id connections with
+  let disposeSocket (mem: RaftMember) (connections: Map<Id,Zmq.Req>) =
+    match Map.tryFind mem.Id connections with
     | Some client ->
       dispose client
-      Map.remove node.Id connections
+      Map.remove mem.Id connections
     | _  -> connections
 
   // ** rawRequest
@@ -125,9 +125,9 @@ module ZmqUtils =
 
   // ** performRequest
 
-  /// ## Send RaftRequest to node
+  /// ## Send RaftRequest to mem
   ///
-  /// Sends given RaftRequest to node. If the request times out, None is return to indicate
+  /// Sends given RaftRequest to mem. If the request times out, None is return to indicate
   /// failure. Otherwise the de-serialized RaftResponse is returned, wrapped in option to
   /// indicate whether de-serialization was successful.
   ///
@@ -145,12 +145,12 @@ module ZmqUtils =
         | :? TimeoutException ->
           return!
             "Operation timed out"
-            |> SocketError
+            |> Error.asSocketError "ZmqUtils.performRequest"
             |> Either.fail
         | exn ->
           return!
             exn.Message
             |> sprintf "performRequest encountered an exception: %s"
-            |> SocketError
+            |> Error.asSocketError "ZmqUtils.performRequest"
             |> Either.fail
     }

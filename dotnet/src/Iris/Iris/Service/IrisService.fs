@@ -29,8 +29,7 @@ module Iris =
 
   // ** tag
 
-  [<Literal>]
-  let private tag = "IrisServer"
+  let private tag (str: string) = sprintf "IrisServer.%s" str
 
   // ** keys
   [<Literal>]
@@ -101,11 +100,9 @@ module Iris =
   ///
   [<NoComparison;NoEquality>]
   type private IrisStateData =
-    { NodeId        : Id
+    { MemberId      : Id
       Status        : ServiceStatus
       Store         : Store
-      Project       : IrisProject
-      Machine       : IrisMachine
       GitServer     : IGitServer
       RaftServer    : IRaftServer
       HttpServer    : IHttpServer option
@@ -151,19 +148,19 @@ module Iris =
   ///
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Git       of GitEvent
-    | Socket    of SocketEvent
-    | Raft      of RaftEvent
-    | Log       of LogEvent
-    | Load      of ReplyChan * FilePath
-    | SetConfig of ReplyChan * IrisConfig
-    | AddNode   of ReplyChan * RaftNode
-    | RmNode    of ReplyChan * Id
-    | Join      of ReplyChan * IpAddress  * uint16
-    | Leave     of ReplyChan
-    | Config    of ReplyChan
-    | Unload    of ReplyChan
-    | State     of ReplyChan
+    | Git         of GitEvent
+    | Socket      of SocketEvent
+    | Raft        of RaftEvent
+    | Log         of LogEvent
+    | Load        of ReplyChan * FilePath
+    | SetConfig   of ReplyChan * IrisConfig
+    | AddMember   of ReplyChan * RaftMember
+    | RmMember    of ReplyChan * Id
+    | Join        of ReplyChan * IpAddress  * uint16
+    | Leave       of ReplyChan
+    | Config      of ReplyChan
+    | Unload      of ReplyChan
+    | State       of ReplyChan
     | ForceElection
     | Periodic
 
@@ -196,23 +193,6 @@ module Iris =
         match self with
         | Idle -> ()
         | Loaded data -> dispose data
-
-  let private getInitState() =
-  #if FRONTEND_DEV
-    let users = [
-      { Id        = Id.Create()
-      ; UserName  = "alfonso"
-      ; FirstName = "Alfonso"
-      ; LastName  = "Garc�a-Caro"
-      ; Email     = "alfonso.garcia-caro@nsynk.de"
-      ; Password  = "1234"
-      ; Joined    = DateTime.Now
-      ; Created   = DateTime.Now }
-    ]
-    { State.Empty with Users = users |> Seq.map (fun x -> x.Id, x) |> Map }
-  #else
-    State.Empty
-  #endif
 
   let private processMessage (state: IrisState) (id: Id) (cmd: StateMachine) =
   #if FRONTEND_DEV
@@ -288,7 +268,7 @@ module Iris =
   /// Returns: unit
   let private notLoaded (chan: ReplyChan) () =
     "No project loaded"
-    |> Other
+    |> Error.asProjectError (tag "notLoaded")
     |> Either.fail
     |> chan.Reply
 
@@ -337,8 +317,8 @@ module Iris =
     abstract Periodic      : unit       -> Either<IrisError,unit>
     abstract ForceElection : unit       -> Either<IrisError,unit>
     abstract LeaveCluster  : unit       -> Either<IrisError,unit>
-    abstract RmNode        : Id         -> Either<IrisError,EntryResponse>
-    abstract AddNode       : RaftNode   -> Either<IrisError,EntryResponse>
+    abstract RmMember        : Id         -> Either<IrisError,EntryResponse>
+    abstract AddMember       : RaftMember -> Either<IrisError,EntryResponse>
     abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
     abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
 
@@ -418,7 +398,7 @@ module Iris =
         | Left error  ->
           error
           |> string
-          |> Logger.err data.NodeId tag
+          |> Logger.err data.MemberId (tag "onClose")
       | _ -> ()
 
   // ** onError
@@ -436,7 +416,7 @@ module Iris =
         | Left error ->
           error
           |> string
-          |> Logger.err data.NodeId tag
+          |> Logger.err data.MemberId (tag "onError")
       | _ -> ()
 
 
@@ -456,7 +436,7 @@ module Iris =
       | Left error ->
         error
         |> string
-        |> Logger.err data.NodeId tag
+        |> Logger.err data.MemberId (tag "onMessage")
 
   // ** handleSocketEvent
 
@@ -480,56 +460,56 @@ module Iris =
   ///
   /// Register a callback to run when a new cluster configuration has been committed, and the
   /// joint-consensus mode has been concluded.
-  let private onConfigured (state: IrisState) (nodes: RaftNode array) =
+  let private onConfigured (state: IrisState) (mems: RaftMember array) =
     withoutReply state <| fun data ->
       either {
-        let! nodeid = data.RaftServer.NodeId
-        nodes
-        |> Array.map (Node.getId >> string)
+        let! memid = data.RaftServer.MemberId
+        mems
+        |> Array.map (Member.getId >> string)
         |> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
-        |> Logger.debug nodeid tag
+        |> Logger.debug memid (tag "onConfigured")
       }
       |> konst state
 
-  // ** onNodeAdded
+  // ** onMemberAdded
 
-  /// ## OnNodeAdded
+  /// ## OnMemberAdded
   ///
-  /// Register a callback to be run when the user has added a new node to the `Raft` cluster. This
-  /// commences the joint-consensus mode until the new node has been caught up and is ready be a
+  /// Register a callback to be run when the user has added a new mem to the `Raft` cluster. This
+  /// commences the joint-consensus mode until the new mem has been caught up and is ready be a
   /// full member of the cluster.
 
-  let private onNodeAdded (state: IrisState) (node: RaftNode) =
+  let private onMemberAdded (state: IrisState) (mem: RaftMember) =
     withoutReply state <| fun data ->
-      let cmd = AddNode node
+      let cmd = AddMember mem
       data.Store.Dispatch cmd
       broadcastMsg data cmd
       state
 
-  // ** onNodeUpdated
+  // ** onMemberUpdated
 
-  /// ## OnNodeUpdated
+  /// ## OnMemberUpdated
   ///
-  /// Register a callback to be called when a cluster node's properties such as e.g. its node
+  /// Register a callback to be called when a cluster mem's properties such as e.g. its mem
   /// state.
 
-  let private onNodeUpdated (state: IrisState) (node: RaftNode) =
+  let private onMemberUpdated (state: IrisState) (mem: RaftMember) =
     withoutReply state <| fun data ->
-      let cmd = UpdateNode node
+      let cmd = UpdateMember mem
       data.Store.Dispatch cmd
       broadcastMsg data cmd
       state
 
-  // ** onNodeRemoved
+  // ** onMemberRemoved
 
-  /// ## OnNodeRemoved
+  /// ## OnMemberRemoved
   ///
-  /// Register a callback to be run when a node was removed from the cluster, resulting into
-  /// the cluster entering into joint-consensus mode until the node was successfully removed.
+  /// Register a callback to be run when a mem was removed from the cluster, resulting into
+  /// the cluster entering into joint-consensus mode until the mem was successfully removed.
 
-  let private onNodeRemoved (state: IrisState) (node: RaftNode) =
+  let private onMemberRemoved (state: IrisState) (mem: RaftMember) =
     withoutReply state <| fun data ->
-      let cmd = RemoveNode node
+      let cmd = RemoveMember mem
       data.Store.Dispatch cmd
       broadcastMsg data cmd
       state
@@ -553,31 +533,36 @@ module Iris =
       broadcastMsg data sm
 
       if RaftServer.isLeader data.RaftServer then
-        match persistEntry data.Project sm with
-        | Right (commit, updated) ->
-          Loaded { data with Project = updated }
-        | Left error -> state
+        match persistEntry data.Store.State sm with
+        | Right commit ->
+          sprintf "Persisted command in commit: %s" commit.Sha
+          |> Logger.debug data.MemberId (tag "onApplyLog")
+          state
+        | Left error ->
+          sprintf "Error persisting command: %A" error
+          |> Logger.err data.MemberId (tag "onApplyLog")
+          state
       else
         match data.RaftServer.State with
         | Right state ->
-          let node =
+          let mem =
             state.Raft
             |> Raft.currentLeader
-            |> Option.bind (flip Raft.getNode state.Raft)
+            |> Option.bind (flip Raft.getMember state.Raft)
 
-          match node with
+          match mem with
           | Some leader ->
-            match updateRepo data.Project leader with
+            match updateRepo data.Store.State.Project leader with
             | Right () -> ()
             | Left error ->
               error
               |> string
-              |> Logger.err data.NodeId tag
+              |> Logger.err data.MemberId (tag "onApplyLog")
           | None -> ()
         | Left error ->
           error
           |> string
-          |> Logger.err data.NodeId tag
+          |> Logger.err data.MemberId (tag "onApplyLog")
         Loaded data
 
   // ** onStateChanged
@@ -587,7 +572,7 @@ module Iris =
                              (newstate: RaftState) =
     withState state <| fun data ->
       sprintf "Raft state changed from %A to %A" oldstate newstate
-      |> Logger.debug data.NodeId tag
+      |> Logger.debug data.MemberId (tag "onStateChanged")
     state
 
   // ** onCreateSnapshot
@@ -595,7 +580,7 @@ module Iris =
   let private onCreateSnapshot (state: IrisState) =
     withState state <| fun data ->
       "CreateSnapshot requested"
-      |> Logger.debug data.NodeId tag
+      |> Logger.debug data.MemberId (tag "onCreateSnapshot")
     state
 
   // ** handleRaftEvent
@@ -603,10 +588,10 @@ module Iris =
   let private handleRaftEvent (state: IrisState) (ev: RaftEvent) =
     match ev with
     | ApplyLog sm             -> onApplyLog       state sm
-    | NodeAdded node          -> onNodeAdded      state node
-    | NodeRemoved node        -> onNodeRemoved    state node
-    | NodeUpdated node        -> onNodeUpdated    state node
-    | Configured nodes        -> onConfigured     state nodes
+    | MemberAdded mem        -> onMemberAdded    state mem
+    | MemberRemoved mem      -> onMemberRemoved  state mem
+    | MemberUpdated mem      -> onMemberUpdated  state mem
+    | Configured mems        -> onConfigured     state mems
     | CreateSnapshot str      -> onCreateSnapshot state
     | StateChanged (ost, nst) -> onStateChanged   state ost nst
 
@@ -648,8 +633,8 @@ module Iris =
 
     let result =
       either {
-        let! node = data.RaftServer.Node
-        let! gitserver = GitServer.create node data.Project.Path
+        let! mem = data.RaftServer.Member
+        let! gitserver = GitServer.create mem data.Store.State.Project.Path
         let disposable =
           forwardGitEvents agent
           |> gitserver.Subscribe
@@ -669,7 +654,7 @@ module Iris =
     | Left error ->
       error
       |> string
-      |> Logger.err data.NodeId tag
+      |> Logger.err data.MemberId (tag "restartGitServer")
       Loaded data
 
   // ** handleGitEvent
@@ -680,17 +665,17 @@ module Iris =
       match ev with
       | Started pid ->
         "Git daemon started"
-        |> Logger.debug data.NodeId tag
+        |> Logger.debug data.MemberId (tag "handleGitEvent")
         state
 
       | Exited pid ->
         "Git daemon exited. Attempting to restart."
-        |> Logger.debug data.NodeId tag
+        |> Logger.debug data.MemberId (tag "handleGitEvent")
         restartGitServer data agent
 
       | Pull (_, addr, port) ->
         sprintf "Client %s:%d pulled updates from me" addr port
-        |> Logger.debug data.NodeId tag
+        |> Logger.debug data.MemberId (tag "handleGitEvent")
         state
   //  _                    _
   // | |    ___   __ _  __| |
@@ -708,28 +693,26 @@ module Iris =
     either {
       dispose state
 
-      let! project = Project.load path machine
+      let! (state: State) = Asset.loadWithMachine path machine
 
       // FIXME: load the actual state from disk
-      let! node = Config.selfNode project.Config
+      let! mem = Config.selfMember state.Project.Config
 
       let! httpserver =
         match web with
         | Some basePath ->
-          HttpServer.create(project.Config, basePath)
+          HttpServer.create(state.Project.Config, basePath)
           |> Either.map Some
         | None ->
           Right None
       let! raftserver = RaftServer.create ()
-      let! wsserver   = SocketServer.create node
-      let! gitserver  = GitServer.create node path
+      let! wsserver   = SocketServer.create mem
+      let! gitserver  = GitServer.create mem path
 
       return
-        Loaded { NodeId       = node.Id
+        Loaded { MemberId     = mem.Id
                  Status       = ServiceStatus.Starting
-                 Store        = new Store(getInitState())
-                 Project      = project
-                 Machine      = machine
+                 Store        = new Store(state)
                  GitServer    = gitserver
                  RaftServer   = raftserver
                  HttpServer   = httpserver
@@ -751,7 +734,7 @@ module Iris =
 
       let result =
         either {
-          do! data.RaftServer.Load(data.Project.Config)
+          do! data.RaftServer.Load(data.Store.State.Project.Config)
           do! data.SocketServer.Start()
           do! data.GitServer.Start()
           match data.HttpServer with
@@ -843,7 +826,7 @@ module Iris =
 
   let private handleConfig (state: IrisState) (chan: ReplyChan) =
     withDefaultReply state chan <| fun data ->
-      data.Project.Config
+      data.Store.State.Project.Config
       |> Reply.Config
       |> Either.succeed
       |> chan.Reply
@@ -856,7 +839,12 @@ module Iris =
       Reply.Ok
       |> Either.succeed
       |> chan.Reply
-      Loaded { data with Project = Project.updateConfig config data.Project }
+
+      Project.updateConfig config data.Store.State.Project
+      |> UpdateProject
+      |> data.Store.Dispatch
+
+      state
 
   // ** handleForceElection
 
@@ -866,7 +854,7 @@ module Iris =
       | Left error ->
         error
         |> string
-        |> Logger.err data.NodeId tag
+        |> Logger.err data.MemberId (tag "handleForceElection")
       | other -> ignore other
       state
 
@@ -878,7 +866,7 @@ module Iris =
       | Left error ->
         error
         |> string
-        |> Logger.err data.NodeId tag
+        |> Logger.err data.MemberId (tag "handlePeriodic")
       | other -> ignore other
       state
 
@@ -912,11 +900,11 @@ module Iris =
         |> chan.Reply
       state
 
-  // ** handleAddNode
+  // ** handleAddMember
 
-  let private handleAddNode (state: IrisState) (chan: ReplyChan) (node: RaftNode) =
+  let private handleAddMember (state: IrisState) (chan: ReplyChan) (mem: RaftMember) =
     withDefaultReply state chan <| fun data ->
-      match data.RaftServer.AddNode node with
+      match data.RaftServer.AddMember mem with
       | Right entry ->
         Reply.Entry entry
         |> Either.succeed
@@ -927,11 +915,11 @@ module Iris =
         |> chan.Reply
       state
 
-  // ** handleRmNode
+  // ** handleRmMember
 
-  let private handleRmNode (state: IrisState) (chan: ReplyChan) (id: Id) =
+  let private handleRmMember (state: IrisState) (chan: ReplyChan) (id: Id) =
     withDefaultReply state chan <| fun data ->
-      match data.RaftServer.RmNode id  with
+      match data.RaftServer.RmMember id  with
       | Right entry ->
         Reply.Entry entry
         |> Either.succeed
@@ -975,8 +963,8 @@ module Iris =
           | Msg.Periodic             -> handlePeriodic      state
           | Msg.Join (chan,ip,port)  -> handleJoin          state chan  ip port
           | Msg.Leave  chan          -> handleLeave         state chan
-          | Msg.AddNode (chan,node)  -> handleAddNode       state chan  node
-          | Msg.RmNode (chan,id)     -> handleRmNode        state chan  id
+          | Msg.AddMember (chan,mem)  -> handleAddMember       state chan  mem
+          | Msg.RmMember (chan,id)     -> handleRmMember        state chan  id
           | Msg.State chan           -> handleState         state chan
         return! act newstate
       }
@@ -1010,27 +998,39 @@ module Iris =
               with get () =
                 match agent.PostAndReply(fun chan -> Msg.Config chan) with
                 | Right (Reply.Config config) -> Right config
-                | Right  other                -> Left (Other "Unexpected response from IrisAgent")
-                | Left   error                -> Left error
+                | Left error -> Left error
+                | Right other ->
+                  sprintf "Unexpected response from IrisAgent: %A" other
+                  |> Error.asOther (tag "Config")
+                  |> Either.fail
 
             member self.SetConfig (config: IrisConfig) =
               match agent.PostAndReply(fun chan -> Msg.SetConfig(chan,config)) with
               | Right Reply.Ok -> Right ()
-              | Right other    -> Left (Other "Unexpected response from IrisAgent")
-              | Left  error    -> Left error
+              | Left error -> Left error
+              | Right other ->
+                sprintf "Unexpected response from IrisAgent: %A" other
+                |> Error.asOther (tag "SetConfig")
+                |> Either.fail
 
             member self.Status
               with get () =
                 match agent.PostAndReply(fun chan -> Msg.State chan) with
                 | Right (Reply.State state) -> Right state.Status
-                | Right other               -> Left (Other "Unexpected response from IrisAgent")
-                | Left error                -> Left error
+                | Left error -> Left error
+                | Right other ->
+                  sprintf "Unexpected response from IrisAgent: %A" other
+                  |> Error.asOther (tag "Status")
+                  |> Either.fail
 
             member self.Load(path: FilePath) =
               match agent.PostAndReply(fun chan -> Msg.Load(chan,path)) with
               | Right Reply.Ok -> Right ()
-              | Right other    -> Left (Other "Unexpected response from IrisAgent")
-              | Left error     -> Left error
+              | Left error -> Left error
+              | Right other ->
+                sprintf "Unexpected response from IrisAgent: %A" other
+                |> Error.asOther (tag "Load")
+                |> Either.fail
 
             member self.ForceElection () =
               agent.Post(Msg.ForceElection)
@@ -1043,54 +1043,78 @@ module Iris =
             member self.LeaveCluster () =
               match agent.PostAndReply(fun chan -> Msg.Leave chan) with
               | Right Reply.Ok -> Right ()
-              | Right other    -> Left (Other "Unexpected response from IrisAgent")
-              | Left error     -> Left error
+              | Left error -> Left error
+              | Right other ->
+                sprintf "Unexpected response from IrisAgent: %A" other
+                |> Error.asOther (tag "LeaveCluster")
+                |> Either.fail
 
             member self.JoinCluster ip port =
               match agent.PostAndReply(fun chan -> Msg.Join(chan,ip, port)) with
               | Right Reply.Ok -> Right ()
-              | Right other    -> Left (Other "Unexpected response from IrisAgent")
-              | Left error     -> Left error
+              | Left error  -> Left error
+              | Right other ->
+                sprintf "Unexpected response from IrisAgent: %A" other
+                |> Error.asOther (tag "JoinCluster")
+                |> Either.fail
 
-            member self.AddNode node =
-              match agent.PostAndReply(fun chan -> Msg.AddNode(chan,node)) with
+            member self.AddMember mem =
+              match agent.PostAndReply(fun chan -> Msg.AddMember(chan,mem)) with
               | Right (Reply.Entry entry) -> Right entry
-              | Right other               -> Left (Other "Unexpected response from IrisAgent")
-              | Left error                -> Left error
+              | Left error -> Left error
+              | Right other ->
+                sprintf "Unexpected response from IrisAgent: %A" other
+                |> Error.asOther (tag "AddMember")
+                |> Either.fail
 
-            member self.RmNode id =
-              match agent.PostAndReply(fun chan -> Msg.RmNode(chan,id)) with
+            member self.RmMember id =
+              match agent.PostAndReply(fun chan -> Msg.RmMember(chan,id)) with
               | Right (Reply.Entry entry) -> Right entry
-              | Right other               -> Left (Other "Unexpected response from IrisAgent")
-              | Left error                -> Left error
+              | Left error -> Left error
+              | Right other ->
+                sprintf "Unexpected response from IrisAgent: %A" other
+                |> Error.asOther (tag "RmMember")
+                |> Either.fail
 
             member self.GitServer
               with get () =
                 match agent.PostAndReply(fun chan -> Msg.State chan) with
                 | Right (Reply.State state) -> Right state.GitServer
-                | Right other               -> Left (Other "Unexpected response from IrisAgent")
-                | Left error                -> Left error
+                | Left error -> Left error
+                | Right other ->
+                  sprintf "Unexpected response from IrisAgent: %A" other
+                  |> Error.asOther (tag "GitServer")
+                  |> Either.fail
 
             member self.RaftServer
               with get () =
                 match agent.PostAndReply(fun chan -> Msg.State chan) with
                 | Right (Reply.State state) -> Right state.RaftServer
-                | Right other               -> Left (Other "Unexpected response from IrisAgent")
-                | Left error                -> Left error
+                | Left error -> Left error
+                | Right other ->
+                  sprintf "Unexpected response from IrisAgent: %A" other
+                  |> Error.asOther (tag "RaftServer")
+                  |> Either.fail
 
             member self.SocketServer
               with get () =
                 match agent.PostAndReply(fun chan -> Msg.State chan) with
                 | Right (Reply.State state) -> Right state.SocketServer
-                | Right other               -> Left (Other "Unexpected response from IrisAgent")
-                | Left error                -> Left error
+                | Left error -> Left error
+                | Right other ->
+                  sprintf "Unexpected response from IrisAgent: %A" other
+                  |> Error.asOther (tag "SocketServer")
+                  |> Either.fail
 
             member self.HttpServer
               with get () =
                 match agent.PostAndReply(fun chan -> Msg.State chan) with
                 | Right (Reply.State state) -> Right state.HttpServer
-                | Right other               -> Left (Other "Unexpected response from IrisAgent")
-                | Left error                -> Left error
+                | Left error -> Left error
+                | Right other ->
+                  sprintf "Unexpected response from IrisAgent: %A" other
+                  |> Error.asOther (tag "HttpServer")
+                  |> Either.fail
 
             member self.Subscribe(callback: IrisEvent -> unit) =
               { new IObserver<IrisEvent> with

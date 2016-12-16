@@ -13,7 +13,6 @@ open FSharpx.Functional
 
 [<AutoOpen>]
 module SerializationTests =
-
   //  ____                            _ __     __    _
   // |  _ \ ___  __ _ _   _  ___  ___| |\ \   / /__ | |_ ___
   // | |_) / _ \/ _` | | | |/ _ \/ __| __\ \ / / _ \| __/ _ \
@@ -23,8 +22,8 @@ module SerializationTests =
 
   let test_validate_requestvote_serialization =
     testCase "Validate RequestVote Serialization" <| fun _ ->
-      let node =
-        { Node.create (Id.Create()) with
+      let mem =
+        { Member.create (Id.Create()) with
             HostName = "test-host"
             IpAddr   = IpAddress.Parse "192.168.2.10"
             Port     = 8080us }
@@ -33,7 +32,7 @@ module SerializationTests =
         { Term = 8u
         ; LastLogIndex = 128u
         ; LastLogTerm = 7u
-        ; Candidate = node }
+        ; Candidate = mem }
 
       let msg   = RequestVote(Id.Create(), vr)
       let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
@@ -52,7 +51,7 @@ module SerializationTests =
       let vr : VoteResponse =
         { Term = 8u
         ; Granted = false
-        ; Reason = Some VoteTermMismatch }
+        ; Reason = Some (RaftError("test","error")) }
 
       let msg   = RequestVoteResponse(Id.Create(), vr)
       let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
@@ -68,35 +67,40 @@ module SerializationTests =
 
   let test_validate_appendentries_serialization =
     testCase "Validate RequestVote Response Serialization" <| fun _ ->
-      let node1 = Node.create (Id.Create())
-      let node2 = Node.create (Id.Create())
+      either {
+        let! state = mkTmpDir() |> mkState
 
-      let changes = [| NodeRemoved node2 |]
-      let nodes = [| node1; node2 |]
+        let mem1 = Member.create (Id.Create())
+        let mem2 = Member.create (Id.Create())
 
-      let log =
-        Some <| LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
-          Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
-            Some <| Configuration(Id.Create(), 5u, 1u, [| node1 |],
-              Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
-                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, nodes, DataSnapshot State.Empty)))))
+        let changes = [| MemberRemoved mem2 |]
+        let mems = [| mem1; mem2 |]
 
-      let ae : AppendEntries =
-        { Term = 8u
-        ; PrevLogIdx = 192u
-        ; PrevLogTerm = 87u
-        ; LeaderCommit = 182u
-        ; Entries = log }
+        let log =
+          Some <| LogEntry(Id.Create(), 7u, 1u, DataSnapshot(state),
+            Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot(state),
+              Some <| Configuration(Id.Create(), 5u, 1u, [| mem1 |],
+                Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
+                  Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mems, DataSnapshot(state))))))
 
-      let msg   = AppendEntries(Id.Create(), ae)
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+        let ae : AppendEntries =
+          { Term = 8u
+          ; PrevLogIdx = 192u
+          ; PrevLogTerm = 87u
+          ; LeaderCommit = 182u
+          ; Entries = log }
 
-      expect "Should be structurally the same" msg id remsg
+        let msg   = AppendEntries(Id.Create(), ae)
+        let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
-      let msg   = AppendEntries(Id.Create(), { ae with Entries = None })
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+        expect "Should be structurally the same" msg id remsg
 
-      expect "Should be structurally the same" msg id remsg
+        let msg   = AppendEntries(Id.Create(), { ae with Entries = None })
+        let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+
+        expect "Should be structurally the same" msg id remsg
+      }
+      |> noError
 
   //     _                               _ ____
   //    / \   _ __  _ __   ___ _ __   __| |  _ \ ___  ___ _ __   ___  _ __  ___  ___
@@ -128,20 +132,25 @@ module SerializationTests =
 
   let test_validate_installsnapshot_serialization =
     testCase "Validate InstallSnapshot Serialization" <| fun _ ->
-      let node1 = [| Node.create (Id.Create()) |]
+      either {
+        let! state = mkTmpDir() |> mkState
 
-      let is : InstallSnapshot =
-        { Term = 2134u
-        ; LeaderId = Id.Create()
-        ; LastIndex = 242u
-        ; LastTerm = 124242u
-        ; Data = Snapshot(Id.Create(), 12u, 3414u, 241u, 422u, node1, DataSnapshot State.Empty)
-        }
+        let mem1 = [| Member.create (Id.Create()) |]
 
-      let msg = InstallSnapshot(Id.Create(), is)
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+        let is : InstallSnapshot =
+          { Term = 2134u
+          ; LeaderId = Id.Create()
+          ; LastIndex = 242u
+          ; LastTerm = 124242u
+          ; Data = Snapshot(Id.Create(), 12u, 3414u, 241u, 422u, mem1, DataSnapshot(state))
+          }
 
-      expect "Should be structurally the same" msg id remsg
+        let msg = InstallSnapshot(Id.Create(), is)
+        let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+
+        expect "Should be structurally the same" msg id remsg
+      }
+      |> noError
 
   //  _   _                 _ ____  _           _
   // | | | | __ _ _ __   __| / ___|| |__   __ _| | _____
@@ -151,7 +160,7 @@ module SerializationTests =
 
   let test_validate_handshake_serialization =
     testCase "Validate HandShake Serialization" <| fun _ ->
-      let msg = HandShake(Node.create (Id.Create()))
+      let msg = HandShake(Member.create (Id.Create()))
       let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
       expect "Should be structurally the same" msg id remsg
@@ -164,7 +173,7 @@ module SerializationTests =
 
   let test_validate_handwaive_serialization =
     testCase "Validate HandWaive Serialization" <| fun _ ->
-      let msg = HandWaive(Node.create (Id.Create()))
+      let msg = HandWaive(Member.create (Id.Create()))
       let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
       expect "Should be structurally the same" msg id remsg
@@ -177,7 +186,7 @@ module SerializationTests =
 
   let test_validate_redirect_serialization =
     testCase "Validate Redirect Serialization" <| fun _ ->
-      let msg = Redirect(Node.create (Id.Create()))
+      let msg = Redirect(Member.create (Id.Create()))
       let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
 
       expect "Should be structurally the same" msg id remsg
@@ -190,7 +199,7 @@ module SerializationTests =
 
   let test_validate_welcome_serialization =
     testCase "Validate Welcome Serialization" <| fun _ ->
-      let msg = Welcome(Node.create (Id.Create()))
+      let msg = Welcome(Member.create (Id.Create()))
       let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
       expect "Should be structurally the same" msg id remsg
 
@@ -217,46 +226,14 @@ module SerializationTests =
 
       let errors = [
           OK
-          BranchNotFound        "bla"
-          BranchDetailsNotFound "haha"
-          RepositoryNotFound    "haha"
-          RepositoryInitFailed  "haha"
-          CommitError           "haha"
-          GitError              "haha"
-          ProjectNotFound       "aklsdfl"
-          ProjectPathError
-          ProjectSaveError      "lskdfj"
-          ProjectParseError     "lskdfj"
-          MissingNodeId
-          MissingNode           "lak"
-          ProjectInitError      "oiwe"
-          MetaDataNotFound
-          MissingStartupDir
-          ParseError            "lah"
-          CliParseError
-          AssetSaveError        "lskd"
-          AssetDeleteError      "lskd"
-          AlreadyVoted
-          AppendEntryFailed
-          CandidateUnknown
-          EntryInvalidated
-          InvalidCurrentIndex
-          InvalidLastLog
-          InvalidLastLogTerm
-          InvalidTerm
-          LogFormatError
-          LogIncomplete
-          NoError
-          NoNode
-          NotCandidate
-          NotLeader
-          NotVotingState
-          ResponseTimeout
-          SnapshotFormatError
-          StaleResponse
-          UnexpectedVotingChange
-          VoteTermMismatch
-          Other "whatever"
+          GitError ("one","two")
+          ProjectError ("one","two")
+          ParseError ("one","two")
+          SocketError ("one","two")
+          IOError ("one","two")
+          AssetError ("one","two")
+          RaftError ("one","two")
+          Other  ("one","two")
         ]
       List.iter (fun err ->
                   let msg = ErrorResponse(err)
@@ -272,169 +249,73 @@ module SerializationTests =
 
   let test_save_restore_raft_value_correctly =
     testCase "save/restore raft value correctly" <| fun _ ->
-      let machine = MachineConfig.create ()
+      either {
+        let machine = MachineConfig.create ()
 
-      let self =
-        machine.MachineId
-        |> Node.create
+        let self =
+          machine.MachineId
+          |> Member.create
 
-      let node1 =
-        { Node.create (Id.Create()) with
-            HostName = "Hans"
-            IpAddr = IpAddress.Parse "192.168.1.20"
-            Port   = 8080us }
+        let mem1 =
+          Id.Create()
+          |> Member.create
 
-      let node2 =
-        { Node.create (Id.Create()) with
-            HostName = "Klaus"
-            IpAddr = IpAddress.Parse "192.168.1.22"
-            Port   = 8080us }
+        let mem2 =
+          Id.Create()
+          |> Member.create
 
-      let changes = [| NodeRemoved node2 |]
-      let nodes = [| node1; node2 |]
+        let config =
+          Config.create "default" machine
+          |> Config.addMember self
+          |> Config.addMember mem1
+          |> Config.addMember mem2
 
-      let log =
-        LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
-          Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
-            Some <| Configuration(Id.Create(), 5u, 1u, [| node1 |],
-              Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
-                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, nodes, DataSnapshot State.Empty)))))
-        |> Log.fromEntries
+        let term = 666u
 
-      let config =
-        Config.create "default" machine
-        |> Config.addNode self
-        |> Config.addNode node1
-        |> Config.addNode node2
+        let! raft =
+          createRaft config
+          |> Either.map (Raft.setTerm term)
 
-      let raft =
-        createRaft config
-        |> Either.map
-            (fun raft ->
-              { raft with
-                  Log = log
-                  CurrentTerm = 666u })
-        |> Either.get
+        saveRaft config raft
+        |> Either.mapError Error.throw
+        |> ignore
 
-      saveRaft config raft
-      |> Either.mapError Error.throw
-      |> ignore
+        let! loaded = loadRaft config
 
-      let loaded = loadRaft config
+        expect "Member should be correct" self Raft.self loaded
+        expect "Term should be correct" term Raft.currentTerm loaded
+      }
+      |> noError
 
-      expect "Values should be equal" (Right raft) id loaded
+  //  ____            _           _
+  // |  _ \ _ __ ___ (_) ___  ___| |_
+  // | |_) | '__/ _ \| |/ _ \/ __| __|
+  // |  __/| | | (_) | |  __/ (__| |_
+  // |_|   |_|  \___// |\___|\___|\__|
+  //               |__/
 
-  //   ____                 ____        _       _____
-  //  / ___|___  _ __ ___  |  _ \  __ _| |_ __ |_   _|   _ _ __   ___  ___
-  // | |   / _ \| '__/ _ \ | | | |/ _` | __/ _` || || | | | '_ \ / _ \/ __|
-  // | |__| (_) | | |  __/ | |_| | (_| | || (_| || || |_| | |_) |  __/\__ \
-  //  \____\___/|_|  \___| |____/ \__,_|\__\__,_||_| \__, | .__/ \___||___/
-  //                                                 |___/|_|
+  let test_validate_project_binary_serialization =
+    testCase "Validate IrisProject Binary Serializaton" <| fun _ ->
+      either {
+        let! project = mkTmpDir () |>  mkProject
+        let! reproject = project |> Binary.encode |> Binary.decode
+        expect "Project should be the same" project id reproject
+      }
+      |> noError
 
-  let rand = new System.Random()
+  let test_validate_project_yaml_serialization =
+    testCase "Validate IrisProject Yaml Serializaton" <| fun _ ->
+      either {
+        let! project = mkTmpDir () |>  mkProject
+        let reproject : IrisProject = project |> Yaml.encode |> Yaml.decode |> Either.get
+        let reconfig = { reproject.Config with Machine = project.Config.Machine }
 
-  let mktags _ =
-    [| for n in 0 .. rand.Next(2,8) do
-        yield Id.Create() |> string |]
-
-  let ioboxes _ =
-    [| IOBox.Bang       (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 0u; Value = true    }|])
-    ; IOBox.Toggle     (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 0u; Value = true    }|])
-    ; IOBox.String     (Id.Create(), "string",    Id.Create(), mktags (), [|{ Index = 0u; Value = "one"   }|])
-    ; IOBox.MultiLine  (Id.Create(), "multiline", Id.Create(), mktags (), [|{ Index = 0u; Value = "two"   }|])
-    ; IOBox.FileName   (Id.Create(), "filename",  Id.Create(), mktags (), "haha", [|{ Index = 0u; Value = "three" }|])
-    ; IOBox.Directory  (Id.Create(), "directory", Id.Create(), mktags (), "hmmm", [|{ Index = 0u; Value = "four"  }|])
-    ; IOBox.Url        (Id.Create(), "url",       Id.Create(), mktags (), [|{ Index = 0u; Value = "five"  }|])
-    ; IOBox.IP         (Id.Create(), "ip",        Id.Create(), mktags (), [|{ Index = 0u; Value = "six"   }|])
-    ; IOBox.Float      (Id.Create(), "float",     Id.Create(), mktags (), [|{ Index = 0u; Value = 3.0    }|])
-    ; IOBox.Double     (Id.Create(), "double",    Id.Create(), mktags (), [|{ Index = 0u; Value = double 3.0 }|])
-    ; IOBox.Bytes      (Id.Create(), "bytes",     Id.Create(), mktags (), [|{ Index = 0u; Value = [| 2uy; 9uy |] }|])
-    ; IOBox.Color      (Id.Create(), "rgba",      Id.Create(), mktags (), [|{ Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
-    ; IOBox.Color      (Id.Create(), "hsla",      Id.Create(), mktags (), [|{ Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
-    ; IOBox.Enum       (Id.Create(), "enum",      Id.Create(), mktags (), [|{ Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|] , [|{ Index = 0u; Value = { Key = "one"; Value = "two" }}|])
-    |]
-
-  let mkIOBox _ =
-    let slice : StringSliceD = { Index = 0u; Value = "hello" }
-    IOBox.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
-
-  let mkCue _ : Cue =
-    { Id = Id.Create(); Name = "Cue 1"; IOBoxes = ioboxes () }
-
-  let mkPatch _ : Patch =
-    let ioboxes = ioboxes () |> Array.map toPair |> Map.ofArray
-    { Id = Id.Create(); Name = "Patch 3"; IOBoxes = ioboxes }
-
-  let mkCueList _ : CueList =
-    { Id = Id.Create(); Name = "Patch 3"; Cues = [| mkCue (); mkCue () |] }
-
-  let mkUser _ =
-    { Id = Id.Create()
-    ; UserName = "krgn"
-    ; FirstName = "Karsten"
-    ; LastName = "Gebbert"
-    ; Email = "k@ioctl.it"
-    ; Password = "1234"
-    ; Salt = "909090"
-    ; Joined = System.DateTime.Now
-    ; Created = System.DateTime.Now
-    }
-
-  let mkNode _ = Id.Create() |> Node.create
-
-  let mkNodes _ =
-    let n = rand.Next(1, 6)
-    [| for _ in 0 .. n do
-        yield mkNode () |]
-
-  let mkSession _ =
-    { Id = Id.Create()
-    ; Status = { StatusType = Unauthorized; Payload = "" }
-    ; IpAddress = IPv4Address "127.0.0.1"
-    ; UserAgent = "Oh my goodness"
-    }
-
-  let mkState _ =
-    { Patches  = mkPatch   () |> fun (patch: Patch) -> Map.ofList [ (patch.Id, patch) ]
-    ; IOBoxes  = ioboxes   () |> (fun (boxes: IOBox array) -> Array.map toPair boxes) |> Map.ofArray
-    ; Cues     = mkCue     () |> fun (cue: Cue) -> Map.ofList [ (cue.Id, cue) ]
-    ; CueLists = mkCueList () |> fun (cuelist: CueList) -> Map.ofList [ (cuelist.Id, cuelist) ]
-    ; Nodes    = mkNode    () |> fun (node: RaftNode) -> Map.ofList [ (node.Id, node) ]
-    ; Sessions = mkSession () |> fun (session: Session) -> Map.ofList [ (session.Id, session) ]
-    ; Users    = mkUser    () |> fun (user: User) -> Map.ofList [ (user.Id, user) ]
-    }
-
-  let mkChange _ =
-    match rand.Next(0,2) with
-    | n when n > 0 -> NodeAdded(mkNode ())
-    |          _   -> NodeRemoved(mkNode ())
-
-  let mkChanges _ =
-    let n = rand.Next(1, 6)
-    [| for _ in 0 .. n do
-        yield mkChange () |]
-
-  let mkLog _ =
-    LogEntry(Id.Create(), 7u, 1u, DataSnapshot State.Empty,
-      Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot State.Empty,
-        Some <| Configuration(Id.Create(), 5u, 1u, [| mkNode () |],
-          Some <| JointConsensus(Id.Create(), 4u, 1u, mkChanges (),
-            Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mkNodes (), DataSnapshot State.Empty)))))
-    |> Log.fromEntries
-
-  //  ____        __ _   _
-  // |  _ \ __ _ / _| |_| |    ___   __ _
-  // | |_) / _` | |_| __| |   / _ \ / _` |
-  // |  _ < (_| |  _| |_| |__| (_) | (_| |
-  // |_| \_\__,_|_|  \__|_____\___/ \__, |
-  //                                |___/
-
-  let test_validate_log_yaml_serialization =
-    testCase "Validate Log Yaml Serialization" <| fun _ ->
-      let log : RaftLog = mkLog ()
-
-      let relog = log |> Yaml.encode |> Yaml.decode |> Either.get
-      expect "should be same" log id relog
+        // not all properties can be the same (timestampts for instance, so we check basics)
+        expect "Project Id should be the same" project.Id id reproject.Id
+        expect "Project Name should be the same" project.Name id reproject.Name
+        expect "Project Config should be the same" project.Config id reconfig
+      }
+      |> noError
 
   //   ____
   //  / ___|   _  ___
@@ -554,7 +435,7 @@ module SerializationTests =
       ; EnumSlice     { Index = 0u; Value = { Key = "one"; Value = "two" }}
       ; ColorSlice    { Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }
       ; ColorSlice    { Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }
-      ; CompoundSlice { Index = 0u; Value = ioboxes () } |]
+      ; CompoundSlice { Index = 0u; Value = mkPins () } |]
       |> Array.iter
         (fun slice ->
           let reslice = slice |> Binary.encode |> Binary.decode |> Either.get
@@ -572,7 +453,7 @@ module SerializationTests =
       ; EnumSlice     { Index = 0u; Value = { Key = "one"; Value = "two" }}
       ; ColorSlice    { Index = 0u; Value = RGBA { Red = 255uy; Blue = 2uy; Green = 255uy; Alpha = 33uy } }
       ; ColorSlice    { Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 25uy; Lightness = 255uy; Alpha = 55uy } }
-      ; CompoundSlice { Index = 0u; Value = ioboxes () }
+      ; CompoundSlice { Index = 0u; Value = mkPins () }
       |]
       |> Array.iter
         (fun slice ->
@@ -585,36 +466,36 @@ module SerializationTests =
   //  | | |_| | |_) | (_) >  <
   // |___\___/|____/ \___/_/\_\
 
-  let test_validate_iobox_binary_serialization =
-    testCase "Validate IOBox Binary Serialization" <| fun _ ->
-      let check iobox =
-        iobox |> Binary.encode |> Binary.decode |> Either.get
-        |> expect "Should be structurally equivalent" iobox id
+  let test_validate_pin_binary_serialization =
+    testCase "Validate Pin Binary Serialization" <| fun _ ->
+      let check pin =
+        pin |> Binary.encode |> Binary.decode |> Either.get
+        |> expect "Should be structurally equivalent" pin id
 
-      Array.iter check (ioboxes ())
+      Array.iter check (mkPins ())
 
       // compound
-      let compound = IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = ioboxes () }|])
+      let compound = Pin.Compound(mk(), "compound",  mk(), mkTags (), [|{ Index = 0u; Value = mkPins () }|])
       check compound
 
       // nested compound :)
-      IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = [| compound |] }|])
+      Pin.Compound(Id.Create(), "compound",  Id.Create(), mkTags (), [|{ Index = 0u; Value = [| compound |] }|])
       |> check
 
-  let test_validate_iobox_yaml_serialization =
-    testCase "Validate IOBox Yaml Serialization" <| fun _ ->
-      let check iobox =
-        iobox |> Yaml.encode |> Yaml.decode |> Either.get
-        |> expect "Should be structurally equivalent" iobox id
+  let test_validate_pin_yaml_serialization =
+    testCase "Validate Pin Yaml Serialization" <| fun _ ->
+      let check pin =
+        pin |> Yaml.encode |> Yaml.decode |> Either.get
+        |> expect "Should be structurally equivalent" pin id
 
-      Array.iter check (ioboxes ())
+      Array.iter check (mkPins ())
 
       // compound
-      let compound = IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = ioboxes () }|])
+      let compound = Pin.Compound(Id.Create(), "compound",  Id.Create(), mkTags (), [|{ Index = 0u; Value = mkPins () }|])
       check compound
 
       // nested compound :)
-      IOBox.CompoundBox(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = [| compound |] }|])
+      Pin.Compound(Id.Create(), "compound",  Id.Create(), mkTags (), [|{ Index = 0u; Value = [| compound |] }|])
       |> check
 
   //  ____  _        _
@@ -625,17 +506,13 @@ module SerializationTests =
 
   let test_validate_state_binary_serialization =
     testCase "Validate State Binary Serialization" <| fun _ ->
-      let state : State = mkState ()
+      either {
+        let! state = mkTmpDir() |> mkState
 
-      state |> Binary.encode |> Binary.decode |> Either.get
-      |> expect "Should be structurally equivalent" state id
-
-  let test_validate_state_yaml_serialization =
-    testCase "Validate State Yaml Serialization" <| fun _ ->
-      let state : State = mkState ()
-
-      state |> Yaml.encode |> Yaml.decode |> Either.get
-      |> expect "Should be structurally equivalent" state id
+        let! restate = state |> Binary.encode |> Binary.decode
+        expect "Should be structurally equivalent" state id restate
+      }
+      |> noError
 
   //  ____  _        _       __  __            _     _
   // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
@@ -645,70 +522,41 @@ module SerializationTests =
 
   let test_validate_state_machine_binary_serialization =
     testCase "Validate StateMachine Binary Serialization" <| fun _ ->
-      [ AddCue        <| mkCue ()
-      ; UpdateCue     <| mkCue ()
-      ; RemoveCue     <| mkCue ()
-      ; AddCueList    <| mkCueList ()
-      ; UpdateCueList <| mkCueList ()
-      ; RemoveCueList <| mkCueList ()
-      ; AddSession    <| mkSession ()
-      ; UpdateSession <| mkSession ()
-      ; RemoveSession <| mkSession ()
-      ; AddUser       <| mkUser ()
-      ; UpdateUser    <| mkUser ()
-      ; RemoveUser    <| mkUser ()
-      ; AddPatch      <| mkPatch ()
-      ; UpdatePatch   <| mkPatch ()
-      ; RemovePatch   <| mkPatch ()
-      ; AddIOBox      <| mkIOBox ()
-      ; UpdateIOBox   <| mkIOBox ()
-      ; RemoveIOBox   <| mkIOBox ()
-      ; AddNode       <| Node.create (Id.Create())
-      ; UpdateNode    <| Node.create (Id.Create())
-      ; RemoveNode    <| Node.create (Id.Create())
-      ; DataSnapshot  <| mkState ()
-      ; Command AppCommand.Undo
-      ; LogMsg(Logger.create Debug (Id.Create()) "bla" "oohhhh")
-      ; SetLogLevel Warn
-      ]
-      |> List.iter
-          (fun cmd ->
-            let remsg = cmd |> Binary.encode |> Binary.decode |> Either.get
-            expect "Should be structurally the same" cmd id remsg)
+      either {
+        let! state = mkTmpDir() |> mkState
 
-  let test_validate_state_machine_yaml_serialization =
-    testCase "Validate StateMachine Yaml Serialization" <| fun _ ->
-      [ AddCue        <| mkCue ()
-      ; UpdateCue     <| mkCue ()
-      ; RemoveCue     <| mkCue ()
-      ; AddCueList    <| mkCueList ()
-      ; UpdateCueList <| mkCueList ()
-      ; RemoveCueList <| mkCueList ()
-      ; AddSession    <| mkSession ()
-      ; UpdateSession <| mkSession ()
-      ; RemoveSession <| mkSession ()
-      ; AddUser       <| mkUser ()
-      ; UpdateUser    <| mkUser ()
-      ; RemoveUser    <| mkUser ()
-      ; AddPatch      <| mkPatch ()
-      ; UpdatePatch   <| mkPatch ()
-      ; RemovePatch   <| mkPatch ()
-      ; AddIOBox      <| mkIOBox ()
-      ; UpdateIOBox   <| mkIOBox ()
-      ; RemoveIOBox   <| mkIOBox ()
-      ; AddNode       <| Node.create (Id.Create())
-      ; UpdateNode    <| Node.create (Id.Create())
-      ; RemoveNode    <| Node.create (Id.Create())
-      ; DataSnapshot  <| mkState ()
-      ; Command AppCommand.Undo
-      ; LogMsg(Logger.create Debug (Id.Create()) "bla" "oohhhh")
-      ; SetLogLevel Err
-      ]
-      |> List.iter
-          (fun cmd ->
-            let remsg = cmd |> Yaml.encode |> Yaml.decode |> Either.get
-            expect "Should be structurally the same" cmd id remsg)
-
+        [ AddCue        <| mkCue ()
+        ; UpdateCue     <| mkCue ()
+        ; RemoveCue     <| mkCue ()
+        ; AddCueList    <| mkCueList ()
+        ; UpdateCueList <| mkCueList ()
+        ; RemoveCueList <| mkCueList ()
+        ; AddSession    <| mkSession ()
+        ; UpdateSession <| mkSession ()
+        ; RemoveSession <| mkSession ()
+        ; AddUser       <| mkUser ()
+        ; UpdateUser    <| mkUser ()
+        ; RemoveUser    <| mkUser ()
+        ; AddPatch      <| mkPatch ()
+        ; UpdatePatch   <| mkPatch ()
+        ; RemovePatch   <| mkPatch ()
+        ; AddPin        <| mkPin ()
+        ; UpdatePin     <| mkPin ()
+        ; RemovePin     <| mkPin ()
+        ; AddMember     <| Member.create (Id.Create())
+        ; UpdateMember  <| Member.create (Id.Create())
+        ; RemoveMember  <| Member.create (Id.Create())
+        ; DataSnapshot  <| state
+        ; Command AppCommand.Undo
+        ; LogMsg(Logger.create Debug (Id.Create()) "bla" "oohhhh")
+        ; SetLogLevel Warn
+        ]
+        |> List.iter
+            (fun cmd ->
+              let remsg = cmd |> Binary.encode |> Binary.decode |> Either.get
+              expect "Should be structurally the same" cmd id remsg)
+      }
+      |> noError
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
   //   / _ \ | | |   | |/ _ \/ __| __/ __|
@@ -729,7 +577,8 @@ module SerializationTests =
       test_validate_arrivederci_serialization
       test_validate_errorresponse_serialization
       test_save_restore_raft_value_correctly
-      test_validate_log_yaml_serialization
+      test_validate_project_binary_serialization
+      test_validate_project_yaml_serialization
       test_validate_cue_binary_serialization
       test_validate_cue_yaml_serialization
       test_validate_cuelist_binary_serialization
@@ -742,10 +591,8 @@ module SerializationTests =
       test_validate_user_yaml_serialization
       test_validate_slice_binary_serialization
       test_validate_slice_yaml_serialization
-      test_validate_iobox_binary_serialization
-      test_validate_iobox_yaml_serialization
+      test_validate_pin_binary_serialization
+      test_validate_pin_yaml_serialization
       test_validate_state_binary_serialization
-      test_validate_state_yaml_serialization
       test_validate_state_machine_binary_serialization
-      test_validate_state_machine_yaml_serialization
     ]

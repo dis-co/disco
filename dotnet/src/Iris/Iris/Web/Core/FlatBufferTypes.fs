@@ -206,20 +206,20 @@ let StringTypeFB: StringTypeFBConstructor = failwith "JS only"
 // |___\___/|____/ \___/_/\_\ |_| \__, | .__/ \___|_|   |____/
 //                                |___/|_|
 
-type IOBoxTypeFB = int
+type PinTypeFB = int
 
-type IOBoxTypeFBConstructor =
-  abstract StringBoxFB: IOBoxTypeFB
-  abstract IntBoxFB: IOBoxTypeFB
-  abstract FloatBoxFB: IOBoxTypeFB
-  abstract DoubleBoxFB: IOBoxTypeFB
-  abstract BoolBoxFB: IOBoxTypeFB
-  abstract ByteBoxFB: IOBoxTypeFB
-  abstract EnumBoxFB: IOBoxTypeFB
-  abstract ColorBoxFB: IOBoxTypeFB
-  abstract CompoundBoxFB: IOBoxTypeFB
+type PinTypeFBConstructor =
+  abstract StringPinFB: PinTypeFB
+  abstract IntPinFB: PinTypeFB
+  abstract FloatPinFB: PinTypeFB
+  abstract DoublePinFB: PinTypeFB
+  abstract BoolPinFB: PinTypeFB
+  abstract BytePinFB: PinTypeFB
+  abstract EnumPinFB: PinTypeFB
+  abstract ColorPinFB: PinTypeFB
+  abstract CompoundPinFB: PinTypeFB
 
-let IOBoxTypeFB: IOBoxTypeFBConstructor = failwith "JS only"
+let PinTypeFB: PinTypeFBConstructor = failwith "JS only"
 
 //  ___ ___  ____            _____ ____
 // |_ _/ _ \| __ )  _____  _|  ___| __ )
@@ -227,18 +227,18 @@ let IOBoxTypeFB: IOBoxTypeFBConstructor = failwith "JS only"
 //  | | |_| | |_) | (_) >  <|  _| | |_) |
 // |___\___/|____/ \___/_/\_\_|   |____/
 
-type IOBoxFB =
-  abstract IOBox: 'a -> 'a
-  abstract IOBoxType: int
+type PinFB =
+  abstract Pin: 'a -> 'a
+  abstract PinType: int
 
-type IOBoxFBConstructor =
-  abstract StartIOBoxFB: builder: FlatBufferBuilder -> unit
-  abstract AddIOBox: builder: FlatBufferBuilder * iobox: Offset<'a> -> unit
-  abstract AddIOBoxType: builder: FlatBufferBuilder * tipe: IOBoxTypeFB -> unit
-  abstract EndIOBoxFB: builder: FlatBufferBuilder -> Offset<IOBoxFB>
-  abstract GetRootAsIOBoxFB: buffer: ByteBuffer -> IOBoxFB
+type PinFBConstructor =
+  abstract StartPinFB: builder: FlatBufferBuilder -> unit
+  abstract AddPin: builder: FlatBufferBuilder * pin: Offset<'a> -> unit
+  abstract AddPinType: builder: FlatBufferBuilder * tipe: PinTypeFB -> unit
+  abstract EndPinFB: builder: FlatBufferBuilder -> Offset<PinFB>
+  abstract GetRootAsPinFB: buffer: ByteBuffer -> PinFB
 
-let IOBoxFB: IOBoxFBConstructor = failwith "JS only"
+let PinFB: PinFBConstructor = failwith "JS only"
 
 //  ____              _ ____  _ _          _____ ____
 // | __ )  ___   ___ | / ___|| (_) ___ ___|  ___| __ )
@@ -266,7 +266,7 @@ let BoolSliceFB: BoolSliceFBConstructor = failwith "JS only"
 // | |_) | (_) | (_) | | |_) | (_) >  <|  _| | |_) |
 // |____/ \___/ \___/|_|____/ \___/_/\_\_|   |____/
 
-type BoolBoxFB =
+type BoolPinFB =
   abstract Id: string
   abstract Name: string
   abstract Patch: string
@@ -276,22 +276,22 @@ type BoolBoxFB =
   abstract Tags: int -> string
   abstract Slices: index: int -> BoolSliceFB
 
-type BoolBoxFBConstructor =
-  abstract prototype: BoolBoxFB with get, set
-  abstract StartBoolBoxFB: builder: FlatBufferBuilder -> unit
+type BoolPinFBConstructor =
+  abstract prototype: BoolPinFB with get, set
+  abstract StartBoolPinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddBehavior: builder: FlatBufferBuilder * behavior: BehaviorFB -> unit
   abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
-  abstract EndBoolBoxFB: builder: FlatBufferBuilder -> Offset<'a>
-  abstract GetRootAsBoolBoxFB: buffer: ByteBuffer -> BoolBoxFB
+  abstract EndBoolPinFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsBoolPinFB: buffer: ByteBuffer -> BoolPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateSlicesVector: builder: FlatBufferBuilder * slices: Offset<BoolSliceFB> array -> Offset<'a>
-  abstract Create: unit -> BoolBoxFB
+  abstract Create: unit -> BoolPinFB
 
-let BoolBoxFB : BoolBoxFBConstructor = failwith "JS only"
+let BoolPinFB : BoolPinFBConstructor = failwith "JS only"
 
 //  ___       _   ____  _ _          _____ ____
 // |_ _|_ __ | |_/ ___|| (_) ___ ___|  ___| __ )
@@ -319,7 +319,7 @@ let IntSliceFB: IntSliceFBConstructor = failwith "JS only"
 //  | || | | | |_| |_) | (_) >  <|  _| | |_) |
 // |___|_| |_|\__|____/ \___/_/\_\_|   |____/
 
-type IntBoxFB =
+type IntPinFB =
   abstract Id: string
   abstract Name: string
   abstract Patch: string
@@ -332,9 +332,9 @@ type IntBoxFB =
   abstract SlicesLength: int
   abstract Slices: int -> IntSliceFB
 
-type IntBoxFBConstructor =
-  abstract prototype: IntBoxFB with get, set
-  abstract StartIntBoxFB: builder: FlatBufferBuilder -> unit
+type IntPinFBConstructor =
+  abstract prototype: IntPinFB with get, set
+  abstract StartIntPinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
@@ -344,13 +344,13 @@ type IntBoxFBConstructor =
   abstract AddUnit: builder: FlatBufferBuilder * unit: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
-  abstract EndIntBoxFB: builder: FlatBufferBuilder -> Offset<'a>
-  abstract GetRootAsIntBoxFB: buffer: ByteBuffer -> IntBoxFB
+  abstract EndIntPinFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsIntPinFB: buffer: ByteBuffer -> IntPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
-  abstract Create: unit -> IntBoxFB
+  abstract Create: unit -> IntPinFB
 
-let IntBoxFB : IntBoxFBConstructor = failwith "JS only"
+let IntPinFB : IntPinFBConstructor = failwith "JS only"
 
 //  _____ _             _   ____  _ _          _____ ____
 // |  ___| | ___   __ _| |_/ ___|| (_) ___ ___|  ___| __ )
@@ -378,7 +378,7 @@ let FloatSliceFB: FloatSliceFBConstructor = failwith "JS only"
 // |  _| | | (_) | (_| | |_| |_) | (_) >  <|  _| | |_) |
 // |_|   |_|\___/ \__,_|\__|____/ \___/_/\_\_|   |____/
 
-type FloatBoxFB =
+type FloatPinFB =
   abstract Id: string
   abstract Name: string
   abstract Patch: string
@@ -393,9 +393,9 @@ type FloatBoxFB =
   abstract SlicesLength: int
   abstract Slices: int -> FloatSliceFB
 
-type FloatBoxFBConstructor =
-  abstract prototype: FloatBoxFB with get, set
-  abstract StartFloatBoxFB: builder: FlatBufferBuilder -> unit
+type FloatPinFBConstructor =
+  abstract prototype: FloatPinFB with get, set
+  abstract StartFloatPinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
@@ -406,13 +406,13 @@ type FloatBoxFBConstructor =
   abstract AddUnit: builder: FlatBufferBuilder * unit: Offset<string> -> unit
   abstract AddPrecision: builder: FlatBufferBuilder * precision: uint32 -> unit
   abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
-  abstract EndFloatBoxFB: builder: FlatBufferBuilder -> Offset<FloatBoxFB>
-  abstract GetRootAsFloatBoxFB: buffer: ByteBuffer -> FloatBoxFB
+  abstract EndFloatPinFB: builder: FlatBufferBuilder -> Offset<FloatPinFB>
+  abstract GetRootAsFloatPinFB: buffer: ByteBuffer -> FloatPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
-  abstract Create: unit -> FloatBoxFB
+  abstract Create: unit -> FloatPinFB
 
-let FloatBoxFB : FloatBoxFBConstructor = failwith "JS only"
+let FloatPinFB : FloatPinFBConstructor = failwith "JS only"
 
 //  ____              _     _      ____  _ _          _____ ____
 // |  _ \  ___  _   _| |__ | | ___/ ___|| (_) ___ ___|  ___| __ )
@@ -441,7 +441,7 @@ let DoubleSliceFB: DoubleSliceFBConstructor = failwith "JS only"
 // | |_| | (_) | |_| | |_) | |  __/ |_) | (_) >  <|  _| | |_) |
 // |____/ \___/ \__,_|_.__/|_|\___|____/ \___/_/\_\_|   |____/
 
-type DoubleBoxFB =
+type DoublePinFB =
   abstract Id: string
   abstract Name: string
   abstract Patch: string
@@ -455,9 +455,9 @@ type DoubleBoxFB =
   abstract Slices: int -> DoubleSliceFB
   abstract SlicesLength: int
 
-type DoubleBoxFBConstructor =
-  abstract prototype: DoubleBoxFB with get, set
-  abstract StartDoubleBoxFB: builder: FlatBufferBuilder -> unit
+type DoublePinFBConstructor =
+  abstract prototype: DoublePinFB with get, set
+  abstract StartDoublePinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
@@ -469,13 +469,13 @@ type DoubleBoxFBConstructor =
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddBehavior: builder: FlatBufferBuilder * behavior: BehaviorFB -> unit
   abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
-  abstract EndDoubleBoxFB: builder: FlatBufferBuilder -> Offset<'a>
-  abstract GetRootAsDoubleBoxFB: buffer: ByteBuffer -> DoubleBoxFB
+  abstract EndDoublePinFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsDoublePinFB: buffer: ByteBuffer -> DoublePinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
-  abstract Create: unit -> DoubleBoxFB
+  abstract Create: unit -> DoublePinFB
 
-let DoubleBoxFB : DoubleBoxFBConstructor = failwith "JS only"
+let DoublePinFB : DoublePinFBConstructor = failwith "JS only"
 
 //  ____        _       ____  _ _          _____ ____
 // | __ ) _   _| |_ ___/ ___|| (_) ___ ___|  ___| __ )
@@ -506,7 +506,7 @@ let ByteSliceFB: ByteSliceFBConstructor = failwith "JS only"
 // |____/ \__, |\__\___|____/ \___/_/\_\_|   |____/
 //        |___/
 
-type ByteBoxFB =
+type BytePinFB =
   abstract Id: string
   abstract Name: string
   abstract Patch: string
@@ -515,21 +515,21 @@ type ByteBoxFB =
   abstract SlicesLength: int
   abstract Slices: int -> ByteSliceFB
 
-type ByteBoxFBConstructor =
-  abstract prototype: ByteBoxFB with get, set
-  abstract StartByteBoxFB: builder: FlatBufferBuilder -> unit
+type BytePinFBConstructor =
+  abstract prototype: BytePinFB with get, set
+  abstract StartBytePinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
-  abstract EndByteBoxFB: builder: FlatBufferBuilder -> Offset<'a>
-  abstract GetRootAsByteBoxFB: buffer: ByteBuffer -> ByteBoxFB
+  abstract EndBytePinFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsBytePinFB: buffer: ByteBuffer -> BytePinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
-  abstract Create: unit -> ByteBoxFB
+  abstract Create: unit -> BytePinFB
 
-let ByteBoxFB : ByteBoxFBConstructor = failwith "JS only"
+let BytePinFB : BytePinFBConstructor = failwith "JS only"
 
 //  _____                       ____                  _____ ____
 // | ____|_ __  _   _ _ __ ___ |  _ \ _ __ ___  _ __ |  ___| __ )
@@ -580,7 +580,7 @@ let EnumSliceFB: EnumSliceFBConstructor = failwith "JS only"
 // | |___| | | | |_| | | | | | | |_) | (_) >  <|  _| | |_) |
 // |_____|_| |_|\__,_|_| |_| |_|____/ \___/_/\_\_|   |____/
 
-type EnumBoxFB =
+type EnumPinFB =
   abstract Id: string
   abstract Name: string
   abstract Patch: string
@@ -591,23 +591,23 @@ type EnumBoxFB =
   abstract Slices: int -> EnumSliceFB
   abstract SlicesLength: int
 
-type EnumBoxFBConstructor =
-  abstract prototype: EnumBoxFB with get, set
-  abstract StartEnumBoxFB: builder: FlatBufferBuilder -> unit
+type EnumPinFBConstructor =
+  abstract prototype: EnumPinFB with get, set
+  abstract StartEnumPinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddProperties: builder: FlatBufferBuilder * properties: Offset<'a> -> unit
   abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
-  abstract EndEnumBoxFB: builder: FlatBufferBuilder -> Offset<'a>
-  abstract GetRootAsEnumBoxFB: buffer: ByteBuffer -> EnumBoxFB
+  abstract EndEnumPinFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsEnumPinFB: buffer: ByteBuffer -> EnumPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreatePropertiesVector: builder: FlatBufferBuilder * Offset<EnumPropertyFB> array -> Offset<'a>
   abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
-  abstract Create: unit -> EnumBoxFB
+  abstract Create: unit -> EnumPinFB
 
-let EnumBoxFB : EnumBoxFBConstructor = failwith "JS only"
+let EnumPinFB : EnumPinFBConstructor = failwith "JS only"
 
 //   ____      _            ____  _ _          _____ ____
 //  / ___|___ | | ___  _ __/ ___|| (_) ___ ___|  ___| __ )
@@ -636,7 +636,7 @@ let ColorSliceFB: ColorSliceFBConstructor = failwith "JS only"
 // | |__| (_) | | (_) | |  | |_) | (_) >  <|  _| | |_) |
 //  \____\___/|_|\___/|_|  |____/ \___/_/\_\_|   |____/
 
-type ColorBoxFB =
+type ColorPinFB =
   abstract Id: string
   abstract Name: string
   abstract Patch: string
@@ -645,21 +645,21 @@ type ColorBoxFB =
   abstract Slices: int -> ColorSliceFB
   abstract SlicesLength: int
 
-type ColorBoxFBConstructor =
-  abstract prototype: ColorBoxFB with get, set
-  abstract StartColorBoxFB: builder: FlatBufferBuilder -> unit
+type ColorPinFBConstructor =
+  abstract prototype: ColorPinFB with get, set
+  abstract StartColorPinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
-  abstract EndColorBoxFB: builder: FlatBufferBuilder -> Offset<ColorBoxFB>
-  abstract GetRootAsColorBoxFB: buffer: ByteBuffer -> ColorBoxFB
+  abstract EndColorPinFB: builder: FlatBufferBuilder -> Offset<ColorPinFB>
+  abstract GetRootAsColorPinFB: buffer: ByteBuffer -> ColorPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
-  abstract Create: unit -> ColorBoxFB
+  abstract Create: unit -> ColorPinFB
 
-let ColorBoxFB : ColorBoxFBConstructor = failwith "JS only"
+let ColorPinFB : ColorPinFBConstructor = failwith "JS only"
 
 //  ____  _        _             ____  _ _          _____ ____
 // / ___|| |_ _ __(_)_ __   __ _/ ___|| (_) ___ ___|  ___| __ )
@@ -690,7 +690,7 @@ let StringSliceFB: StringSliceFBConstructor = failwith "JS only"
 // |____/ \__|_|  |_|_| |_|\__, |____/ \___/_/\_\_|   |____/
 //                         |___/
 
-type StringBoxFB =
+type StringPinFB =
   abstract Id: string
   abstract Name: string
   abstract Patch: string
@@ -702,9 +702,9 @@ type StringBoxFB =
   abstract Slices: int -> StringSliceFB
   abstract SlicesLength: int
 
-type StringBoxFBConstructor =
-  abstract prototype: StringBoxFB with get, set
-  abstract StartStringBoxFB: builder: FlatBufferBuilder -> unit
+type StringPinFBConstructor =
+  abstract prototype: StringPinFB with get, set
+  abstract StartStringPinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
@@ -714,13 +714,13 @@ type StringBoxFBConstructor =
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddBehavior: builder: FlatBufferBuilder * behavior: BehaviorFB -> unit
   abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
-  abstract EndStringBoxFB: builder: FlatBufferBuilder -> Offset<'a>
-  abstract GetRootAsStringBoxFB: buffer: ByteBuffer -> StringBoxFB
+  abstract EndStringPinFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsStringPinFB: buffer: ByteBuffer -> StringPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<StringSliceFB> array -> Offset<'a>
-  abstract Create: unit -> StringBoxFB
+  abstract Create: unit -> StringPinFB
 
-let StringBoxFB : StringBoxFBConstructor = failwith "JS only"
+let StringPinFB : StringPinFBConstructor = failwith "JS only"
 
 //   ____                                            _ ____  _ _          _____
 //  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| / ___|| (_) ___ ___|  ___|
@@ -731,7 +731,7 @@ let StringBoxFB : StringBoxFBConstructor = failwith "JS only"
 
 type CompoundSliceFB =
   abstract Index: uint32
-  abstract Value: int -> IOBoxFB
+  abstract Value: int -> PinFB
   abstract ValueLength: int
 
 type CompoundSliceFBConstructor =
@@ -739,7 +739,7 @@ type CompoundSliceFBConstructor =
   abstract StartCompoundSliceFB: builder: FlatBufferBuilder -> unit
   abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
   abstract AddValue: builder: FlatBufferBuilder * value: Offset<'a> -> unit
-  abstract CreateValueVector: builder: FlatBufferBuilder * value: Offset<IOBoxFB> array -> Offset<'a>
+  abstract CreateValueVector: builder: FlatBufferBuilder * value: Offset<PinFB> array -> Offset<'a>
   abstract EndCompoundSliceFB: builder: FlatBufferBuilder -> Offset<CompoundSliceFB>
   abstract GetRootAsCompoundSliceFB: buffer: ByteBuffer -> CompoundSliceFB
   abstract Create: unit -> CompoundSliceFB
@@ -753,7 +753,7 @@ let CompoundSliceFB: CompoundSliceFBConstructor = failwith "JS only"
 //  \____\___/|_| |_| |_| .__/ \___/ \__,_|_| |_|\__,_|____/ \___/_/\_\
 //                      |_|
 
-type CompoundBoxFB =
+type CompoundPinFB =
   abstract Id: string
   abstract Name: string
   abstract Patch: string
@@ -762,21 +762,21 @@ type CompoundBoxFB =
   abstract Slices: int -> CompoundSliceFB
   abstract SlicesLength: int
 
-type CompoundBoxFBConstructor =
-  abstract prototype: CompoundBoxFB with get, set
-  abstract StartCompoundBoxFB: builder: FlatBufferBuilder -> unit
+type CompoundPinFBConstructor =
+  abstract prototype: CompoundPinFB with get, set
+  abstract StartCompoundPinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
-  abstract EndCompoundBoxFB: builder: FlatBufferBuilder -> Offset<'a>
-  abstract GetRootAsCompoundBoxFB: buffer: ByteBuffer -> CompoundBoxFB
+  abstract EndCompoundPinFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsCompoundPinFB: buffer: ByteBuffer -> CompoundPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
-  abstract Create: unit -> CompoundBoxFB
+  abstract Create: unit -> CompoundPinFB
 
-let CompoundBoxFB : CompoundBoxFBConstructor = failwith "JS only"
+let CompoundPinFB : CompoundPinFBConstructor = failwith "JS only"
 
 //  ____  _ _         _____                 _____ ____
 // / ___|| (_) ___ __|_   _|   _ _ __   ___|  ___| __ )
@@ -828,18 +828,18 @@ let SliceFB: SliceFBConstructor = failwith "JS only"
 type CueFB =
   abstract Id: string
   abstract Name: string
-  abstract IOBoxesLength: int
-  abstract IOBoxes: int -> IOBoxFB
+  abstract PinsLength: int
+  abstract Pins: int -> PinFB
 
 type CueFBConstructor =
   abstract prototype: CueFB with get, set
   abstract StartCueFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddIOBoxes: builder: FlatBufferBuilder * ioboxes: Offset<'a> -> unit
+  abstract AddPins: builder: FlatBufferBuilder * pins: Offset<'a> -> unit
   abstract EndCueFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsCueFB: buffer: ByteBuffer -> CueFB
-  abstract CreateIOBoxesVector: builder: FlatBufferBuilder * Offset<IOBoxFB> array -> Offset<'a>
+  abstract CreatePinsVector: builder: FlatBufferBuilder * Offset<PinFB> array -> Offset<'a>
   abstract Create: unit -> CueFB
 
 let CueFB : CueFBConstructor = failwith "JS only"
@@ -853,18 +853,18 @@ let CueFB : CueFBConstructor = failwith "JS only"
 type PatchFB =
   abstract Id: string
   abstract Name: string
-  abstract IOBoxesLength: int
-  abstract IOBoxes: int -> IOBoxFB
+  abstract PinsLength: int
+  abstract Pins: int -> PinFB
 
 type PatchFBConstructor =
   abstract prototype: PatchFB with get, set
   abstract StartPatchFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddIOBoxes: builder: FlatBufferBuilder * ioboxes: Offset<'a> -> unit
+  abstract AddPins: builder: FlatBufferBuilder * pins: Offset<'a> -> unit
   abstract EndPatchFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsPatchFB: buffer: ByteBuffer -> PatchFB
-  abstract CreateIOBoxesVector: builder: FlatBufferBuilder * Offset<IOBoxFB> array -> Offset<'a>
+  abstract CreatePinsVector: builder: FlatBufferBuilder * Offset<PinFB> array -> Offset<'a>
 
 let PatchFB : PatchFBConstructor = failwith "JS only"
 
@@ -898,14 +898,14 @@ let CueListFB : CueListFBConstructor = failwith "JS only"
 // | |\  | (_) | (_| |  __/___) | || (_| | ||  __/  _| | |_) |
 // |_| \_|\___/ \__,_|\___|____/ \__\__,_|\__\___|_|   |____/
 
-type NodeStateFB = int
+type RaftMemberStateFB = int
 
-type NodeStateFBConstructor =
-  abstract JoiningFB: NodeStateFB
-  abstract RunningFB: NodeStateFB
-  abstract FailedFB: NodeStateFB
+type RaftMemberStateFBConstructor =
+  abstract JoiningFB: RaftMemberStateFB
+  abstract RunningFB: RaftMemberStateFB
+  abstract FailedFB: RaftMemberStateFB
 
-let NodeStateFB: NodeStateFBConstructor = failwith "JS only"
+let RaftMemberStateFB: RaftMemberStateFBConstructor = failwith "JS only"
 
 //  _   _           _
 // | \ | | ___   __| | ___
@@ -913,7 +913,7 @@ let NodeStateFB: NodeStateFBConstructor = failwith "JS only"
 // | |\  | (_) | (_| |  __/
 // |_| \_|\___/ \__,_|\___|
 
-type NodeFB =
+type RaftMemberFB =
   abstract Id: string
   abstract HostName: string
   abstract IpAddr: string
@@ -923,13 +923,13 @@ type NodeFB =
   abstract GitPort: uint16
   abstract Voting: bool
   abstract VotedForMe: bool
-  abstract State: NodeStateFB
+  abstract State: RaftMemberStateFB
   abstract NextIndex: uint32
   abstract MatchIndex: uint32
 
-type NodeFBConstructor =
-  abstract prototype: NodeFB with get, set
-  abstract StartNodeFB: builder: FlatBufferBuilder -> unit
+type RaftMemberFBConstructor =
+  abstract prototype: RaftMemberFB with get, set
+  abstract StartRaftMemberFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddHostName: builder: FlatBufferBuilder * hostname: Offset<string> -> unit
   abstract AddIpAddr: builder: FlatBufferBuilder * ip: Offset<string> -> unit
@@ -939,14 +939,14 @@ type NodeFBConstructor =
   abstract AddGitPort: builder: FlatBufferBuilder * port: int -> unit
   abstract AddVoting: builder: FlatBufferBuilder * voting: bool -> unit
   abstract AddVotedForMe: builder: FlatBufferBuilder * votedforme: bool -> unit
-  abstract AddState: builder: FlatBufferBuilder * state: NodeStateFB -> unit
+  abstract AddState: builder: FlatBufferBuilder * state: RaftMemberStateFB -> unit
   abstract AddNextIndex: builder: FlatBufferBuilder * idx: uint32 -> unit
   abstract AddMatchIndex: builder: FlatBufferBuilder * idx: uint32 -> unit
-  abstract EndNodeFB: builder: FlatBufferBuilder -> Offset<NodeFB>
-  abstract GetRootAsNodeFB: bytes: ByteBuffer -> NodeFB
-  abstract Create: unit -> NodeFB
+  abstract EndRaftMemberFB: builder: FlatBufferBuilder -> Offset<RaftMemberFB>
+  abstract GetRootAsRaftMemberFB: bytes: ByteBuffer -> RaftMemberFB
+  abstract Create: unit -> RaftMemberFB
 
-let NodeFB: NodeFBConstructor = failwith "JS only"
+let RaftMemberFB: RaftMemberFBConstructor = failwith "JS only"
 
 //   ____ _                           _____
 //  / ___| |__   __ _ _ __   __ _  __|_   _|   _ _ __   ___
@@ -958,8 +958,8 @@ let NodeFB: NodeFBConstructor = failwith "JS only"
 type ConfigChangeTypeFB = int
 
 type ConfigChangeTypeFBConstructor =
-  abstract NodeAdded: ConfigChangeTypeFB
-  abstract NodeRemoved: ConfigChangeTypeFB
+  abstract MemberAdded: ConfigChangeTypeFB
+  abstract MemberRemoved: ConfigChangeTypeFB
 
 let ConfigChangeTypeFB: ConfigChangeTypeFBConstructor = failwith "JS only"
 
@@ -972,18 +972,443 @@ let ConfigChangeTypeFB: ConfigChangeTypeFBConstructor = failwith "JS only"
 
 type ConfigChangeFB =
   abstract Type: ConfigChangeTypeFB
-  abstract Node: NodeFB
+  abstract Member: RaftMemberFB
 
 type ConfigChangeFBConstructor =
   abstract prototype: ConfigChangeFB with get, set
   abstract StartConfigChangeFB: builder: FlatBufferBuilder -> unit
   abstract AddType: builder: FlatBufferBuilder * tipe: ConfigChangeTypeFB -> unit
-  abstract AddNode: builder: FlatBufferBuilder * node: Offset<NodeFB> -> unit
+  abstract AddMember: builder: FlatBufferBuilder * mem: Offset<RaftMemberFB> -> unit
   abstract EndConfigChangeFB: builder: FlatBufferBuilder -> Offset<ConfigChangeFB>
   abstract GetRootAsConfigChangeFB: bytes: ByteBuffer -> ConfigChangeFB
   abstract Create: unit -> ConfigChangeFB
 
 let ConfigChangeFB: ConfigChangeFBConstructor = failwith "JS only"
+
+//   ____             __ _
+//  / ___|___  _ __  / _(_) __ _
+// | |   / _ \| '_ \| |_| |/ _` |
+// | |__| (_) | | | |  _| | (_| |
+//  \____\___/|_| |_|_| |_|\__, |
+//                         |___/
+
+// MACHINE
+
+type MachineConfigFB =
+  abstract MachineId: string
+  abstract HostName:  string
+  abstract WorkSpace: string
+
+type MachineConfigFBConstructor =
+  abstract prototype: MachineConfigFB with get, set
+  abstract StartMachineConfigFB: builder: FlatBufferBuilder -> unit
+  abstract AddMachineId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+  abstract AddHostName: builder: FlatBufferBuilder * hn: Offset<string> -> unit
+  abstract AddWorkSpace: builder: FlatBufferBuilder * wsp: Offset<string> -> unit
+  abstract EndMachineConfigFB: builder: FlatBufferBuilder -> Offset<MachineConfigFB>
+  abstract GetRootAsMachineConfigFB: bytes: ByteBuffer -> MachineConfigFB
+  abstract Create: unit -> MachineConfigFB
+
+let MachineConfigFB: MachineConfigFBConstructor = failwith "JS only"
+
+// AUDIO
+
+type AudioConfigFB =
+  abstract SampleRate: uint32
+
+type AudioConfigFBConstructor =
+  abstract prototype: AudioConfigFB with get, set
+  abstract StartAudioConfigFB: builder: FlatBufferBuilder -> unit
+  abstract AddSampleRate: builder: FlatBufferBuilder * sr: uint32 -> unit
+  abstract EndAudioConfigFB: builder: FlatBufferBuilder -> Offset<AudioConfigFB>
+  abstract GetRootAsAudioConfigFB: bytes: ByteBuffer -> AudioConfigFB
+  abstract Create: unit -> AudioConfigFB
+
+let AudioConfigFB: AudioConfigFBConstructor = failwith "JS only"
+
+// VVVV EXE
+
+type VvvvExeFB =
+  abstract Executable: string
+  abstract Version:  string
+  abstract Required: bool
+
+type VvvvExeFBConstructor =
+  abstract prototype: VvvvExeFB with get, set
+  abstract StartVvvvExeFB: builder: FlatBufferBuilder -> unit
+  abstract AddExecutable: builder: FlatBufferBuilder * exe:Offset<string> -> unit
+  abstract AddVersion: builder: FlatBufferBuilder * version:Offset<string> -> unit
+  abstract AddRequired: builder: FlatBufferBuilder * required:bool -> unit
+  abstract EndVvvvExeFB: builder: FlatBufferBuilder -> Offset<VvvvExeFB>
+  abstract GetRootAsVvvvExeFB: bytes: ByteBuffer -> VvvvExeFB
+  abstract Create: unit -> VvvvExeFB
+
+let VvvvExeFB: VvvvExeFBConstructor = failwith "JS only"
+
+// VVVV PLUGIN
+
+type VvvvPluginFB =
+  abstract Name: string
+  abstract Path: string
+
+type VvvvPluginFBConstructor =
+  abstract prototype: VvvvPluginFB with get, set
+  abstract StartVvvvPluginFB: builder: FlatBufferBuilder -> unit
+  abstract AddName: builder: FlatBufferBuilder * name:Offset<string> -> unit
+  abstract AddPath: builder: FlatBufferBuilder * path:Offset<string> -> unit
+  abstract EndVvvvPluginFB: builder: FlatBufferBuilder -> Offset<VvvvPluginFB>
+  abstract GetRootAsVvvvPluginFB: bytes: ByteBuffer -> VvvvPluginFB
+  abstract Create: unit -> VvvvPluginFB
+
+let VvvvPluginFB: VvvvPluginFBConstructor = failwith "JS only"
+
+// VVVV CONFIG
+
+type VvvvConfigFB =
+  abstract Executables: int -> VvvvExeFB
+  abstract ExecutablesLength: int
+  abstract Plugins: int -> VvvvPluginFB
+  abstract PluginsLength: int
+
+type VvvvConfigFBConstructor =
+  abstract prototype: VvvvConfigFB with get, set
+  abstract StartVvvvConfigFB: builder: FlatBufferBuilder -> unit
+  abstract AddExecutables: builder: FlatBufferBuilder * exes:Offset<'a> -> unit
+  abstract AddPlugins: builder: FlatBufferBuilder * path:Offset<'a> -> unit
+  abstract CreateExecutablesVector: FlatBufferBuilder * Offset<VvvvExeFB> array -> Offset<'a>
+  abstract CreatePluginsVector: FlatBufferBuilder * Offset<VvvvPluginFB> array -> Offset<'a>
+  abstract EndVvvvConfigFB: builder: FlatBufferBuilder -> Offset<VvvvConfigFB>
+  abstract GetRootAsVvvvConfigFB: bytes: ByteBuffer -> VvvvConfigFB
+  abstract Create: unit -> VvvvConfigFB
+
+let VvvvConfigFB: VvvvConfigFBConstructor = failwith "JS only"
+
+// RAFT CONFIG
+
+type RaftConfigFB =
+  abstract RequestTimeout:   uint32
+  abstract ElectionTimeout:  uint32
+  abstract MaxLogDepth:      uint32
+  abstract LogLevel:         string
+  abstract DataDir:          string
+  abstract MaxRetries:       uint16
+  abstract PeriodicInterval: uint16
+
+type RaftConfigFBConstructor =
+  abstract prototype: RaftConfigFB with get, set
+  abstract StartRaftConfigFB: builder: FlatBufferBuilder -> unit
+  abstract AddRequestTimeout: builder: FlatBufferBuilder * rto:uint32 -> unit
+  abstract AddElectionTimeout: builder: FlatBufferBuilder * eto:uint32 -> unit
+  abstract AddMaxLogDepth: builder: FlatBufferBuilder * eto:uint32 -> unit
+  abstract AddLogLevel: builder: FlatBufferBuilder * lvl:Offset<string> -> unit
+  abstract AddDataDir: builder: FlatBufferBuilder * dir:Offset<string> -> unit
+  abstract AddMaxRetries: builder: FlatBufferBuilder * rtr:uint16 -> unit
+  abstract AddPeriodicInterval: builder: FlatBufferBuilder * pi:uint16 -> unit
+  abstract EndRaftConfigFB: builder: FlatBufferBuilder -> Offset<RaftConfigFB>
+  abstract GetRootAsRaftConfigFB: bytes: ByteBuffer -> RaftConfigFB
+  abstract Create: unit -> RaftConfigFB
+
+let RaftConfigFB: RaftConfigFBConstructor = failwith "JS only"
+
+// TIMING CONFIG
+
+type TimingConfigFB =
+  abstract UDPPort:       uint32
+  abstract TCPPort:       uint32
+  abstract Framebase:     uint32
+  abstract Input:         string
+  abstract Servers:       int -> string
+  abstract ServersLength: int
+
+type TimingConfigFBConstructor =
+  abstract prototype: TimingConfigFB with get, set
+  abstract StartTimingConfigFB: builder: FlatBufferBuilder -> unit
+  abstract AddFramebase: builder: FlatBufferBuilder * b:uint32 -> unit
+  abstract AddUDPPort: builder: FlatBufferBuilder * port:uint32 -> unit
+  abstract AddTCPPort: builder: FlatBufferBuilder * port:uint32 -> unit
+  abstract AddInput: builder: FlatBufferBuilder * input:Offset<string> -> unit
+  abstract AddServers: builder: FlatBufferBuilder * srvs:Offset<'a> -> unit
+  abstract CreateServersVector: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract EndTimingConfigFB: builder: FlatBufferBuilder -> Offset<TimingConfigFB>
+  abstract GetRootAsTimingConfigFB: bytes: ByteBuffer -> TimingConfigFB
+  abstract Create: unit -> TimingConfigFB
+
+let TimingConfigFB: TimingConfigFBConstructor = failwith "JS only"
+
+// HOSTGROUP
+
+type HostGroupFB =
+  abstract Name:          string
+  abstract Members:       int -> string
+  abstract MembersLength: int
+
+type HostGroupFBConstructor =
+  abstract prototype: HostGroupFB with get, set
+  abstract StartHostGroupFB: builder: FlatBufferBuilder -> unit
+  abstract AddName: builder: FlatBufferBuilder * name:Offset<string> -> unit
+  abstract AddMembers: builder: FlatBufferBuilder * mems:Offset<'a> -> unit
+  abstract CreateMembersVector: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract EndHostGroupFB: builder: FlatBufferBuilder -> Offset<HostGroupFB>
+  abstract GetRootAsHostGroupFB: bytes: ByteBuffer -> HostGroupFB
+  abstract Create: unit -> HostGroupFB
+
+let HostGroupFB: HostGroupFBConstructor = failwith "JS only"
+
+// CLUSTER CONFIG
+
+type ClusterConfigFB =
+  abstract Name:          string
+  abstract Members:       int -> RaftMemberFB
+  abstract MembersLength: int
+  abstract Groups:        int -> HostGroupFB
+  abstract GroupsLength:  int
+
+type ClusterConfigFBConstructor =
+  abstract prototype: ClusterConfigFB with get, set
+  abstract StartClusterConfigFB: builder: FlatBufferBuilder -> unit
+  abstract AddName: builder: FlatBufferBuilder * name:Offset<string> -> unit
+  abstract AddMembers: builder: FlatBufferBuilder * mems:Offset<'a> -> unit
+  abstract CreateMembersVector: FlatBufferBuilder * Offset<RaftMemberFB> array -> Offset<'a>
+  abstract AddGroups: builder: FlatBufferBuilder * mems:Offset<'a> -> unit
+  abstract CreateGroupsVector: FlatBufferBuilder * Offset<HostGroupFB> array -> Offset<'a>
+  abstract EndClusterConfigFB: builder: FlatBufferBuilder -> Offset<ClusterConfigFB>
+  abstract GetRootAsClusterConfigFB: bytes: ByteBuffer -> ClusterConfigFB
+  abstract Create: unit -> ClusterConfigFB
+
+let ClusterConfigFB: ClusterConfigFBConstructor = failwith "JS only"
+
+// VIEWPORT CONFIG
+
+type ViewPortFB =
+  abstract Id:              string
+  abstract Name:            string
+  abstract Description:     string
+  abstract PositionX:       int
+  abstract PositionY:       int
+  abstract SizeX:           int
+  abstract SizeY:           int
+  abstract OutputPositionX: int
+  abstract OutputPositionY: int
+  abstract OutputSizeX:     int
+  abstract OutputSizeY:     int
+  abstract OverlapX:        int
+  abstract OverlapY:        int
+
+type ViewPortFBConstructor =
+  abstract prototype: ViewPortFB with get, set
+  abstract StartViewPortFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * id:Offset<string> -> unit
+  abstract AddName: builder: FlatBufferBuilder * name:Offset<string> -> unit
+  abstract AddDescription: builder: FlatBufferBuilder * desc:Offset<string> -> unit
+  abstract AddMembers: builder: FlatBufferBuilder * mems:Offset<'a> -> unit
+  abstract AddPositionX: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddPositionY: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddSizeX: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddSizeY: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddOutputPositionX: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddOutputPositionY: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddOutputSizeX: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddOutputSizeY: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddOverlapX: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddOverlapY: builder: FlatBufferBuilder * v:int -> unit
+  abstract EndViewPortFB: builder: FlatBufferBuilder -> Offset<ViewPortFB>
+  abstract GetRootAsViewPortFB: bytes: ByteBuffer -> ViewPortFB
+  abstract Create: unit -> ViewPortFB
+
+let ViewPortFB: ViewPortFBConstructor = failwith "JS only"
+
+// TASK
+
+type TaskFB =
+  abstract Id:              string
+  abstract DisplayId:       string
+  abstract Description:     string
+  abstract AudioStream:     string
+  abstract PositionX:       int
+  abstract Arguments:       int -> string
+  abstract ArgumentsLength: int
+
+type TaskFBConstructor =
+  abstract prototype: TaskFB with get, set
+  abstract StartTaskFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * id:Offset<string> -> unit
+  abstract AddDisplayId: builder: FlatBufferBuilder * id:Offset<string> -> unit
+  abstract AddDescription: builder: FlatBufferBuilder * desc:Offset<string> -> unit
+  abstract AddAudioStream: builder: FlatBufferBuilder * audio:Offset<string> -> unit
+  abstract AddArguments: builder: FlatBufferBuilder * audio:Offset<'a> -> unit
+  abstract CreateArgumentsVector: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract EndTaskFB: builder: FlatBufferBuilder -> Offset<TaskFB>
+  abstract GetRootAsTaskFB: bytes: ByteBuffer -> TaskFB
+  abstract Create: unit -> TaskFB
+
+let TaskFB: TaskFBConstructor = failwith "JS only"
+
+// SIGNAL
+
+type SignalFB =
+  abstract SizeX:     int
+  abstract SizeY:     int
+  abstract PositionX: int
+  abstract PositionY: int
+
+type SignalFBConstructor =
+  abstract prototype: SignalFB with get, set
+  abstract StartSignalFB: builder: FlatBufferBuilder -> unit
+  abstract AddSizeX: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddSizeY: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddPositionX: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddPositionY: builder: FlatBufferBuilder * v:int -> unit
+  abstract EndSignalFB: builder: FlatBufferBuilder -> Offset<SignalFB>
+  abstract GetRootAsSignalFB: bytes: ByteBuffer -> SignalFB
+  abstract Create: unit -> SignalFB
+
+let SignalFB: SignalFBConstructor = failwith "JS only"
+
+// REGION
+
+type RegionFB =
+  abstract Id:              string
+  abstract Name:            string
+  abstract SrcSizeX:        int
+  abstract SrcSizeY:        int
+  abstract SrcPositionX:    int
+  abstract SrcPositionY:    int
+  abstract OutputSizeX:     int
+  abstract OutputSizeY:     int
+  abstract OutputPositionX: int
+  abstract OutputPositionY: int
+
+type RegionFBConstructor =
+  abstract prototype: RegionFB with get, set
+  abstract StartRegionFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * v:Offset<string> -> unit
+  abstract AddName: builder: FlatBufferBuilder * v:Offset<string> -> unit
+  abstract AddSrcSizeX: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddSrcSizeY: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddSrcPositionX: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddSrcPositionY: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddOutputSizeX: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddOutputSizeY: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddOutputPositionX: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddOutputPositionY: builder: FlatBufferBuilder * v:int -> unit
+  abstract EndRegionFB: builder: FlatBufferBuilder -> Offset<RegionFB>
+  abstract GetRootAsRegionFB: bytes: ByteBuffer -> RegionFB
+  abstract Create: unit -> RegionFB
+
+let RegionFB: RegionFBConstructor = failwith "JS only"
+
+// REGION MAP
+
+type RegionMapFB =
+  abstract SrcViewportId: string
+  abstract Regions: int -> RegionFB
+  abstract RegionsLength: int
+
+type RegionMapFBConstructor =
+  abstract prototype: RegionMapFB with get, set
+  abstract StartRegionMapFB: builder: FlatBufferBuilder -> unit
+  abstract AddSrcViewportId: builder: FlatBufferBuilder * v:Offset<string> -> unit
+  abstract AddRegions: builder: FlatBufferBuilder * v:Offset<'a> -> unit
+  abstract CreateRegionsVector: builder: FlatBufferBuilder * v:Offset<RegionFB> array -> Offset<'a>
+  abstract EndRegionMapFB: builder: FlatBufferBuilder -> Offset<RegionMapFB>
+  abstract GetRootAsRegionMapFB: bytes: ByteBuffer -> RegionMapFB
+  abstract Create: unit -> RegionMapFB
+
+let RegionMapFB: RegionMapFBConstructor = failwith "JS only"
+
+// DISPLAY
+
+type DisplayFB =
+  abstract Id: string
+  abstract Name: string
+  abstract SizeX: int
+  abstract SizeY: int
+  abstract Signals: int -> SignalFB
+  abstract SignalsLength: int
+  abstract RegionMap: RegionMapFB
+
+type DisplayFBConstructor =
+  abstract prototype: DisplayFB with get, set
+  abstract StartDisplayFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * v:Offset<string> -> unit
+  abstract AddName: builder: FlatBufferBuilder * v:Offset<string> -> unit
+  abstract AddSizeX: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddSizeY: builder: FlatBufferBuilder * v:int -> unit
+  abstract AddSignals: builder: FlatBufferBuilder * v:Offset<'a> -> unit
+  abstract CreateSignalsVector: builder: FlatBufferBuilder * v:Offset<SignalFB> array -> Offset<'a>
+  abstract AddRegionMap: builder: FlatBufferBuilder * v:Offset<RegionMapFB> -> unit
+  abstract EndDisplayFB: builder: FlatBufferBuilder -> Offset<DisplayFB>
+  abstract GetRootAsDisplayFB: bytes: ByteBuffer -> DisplayFB
+  abstract Create: unit -> DisplayFB
+
+let DisplayFB: DisplayFBConstructor = failwith "JS only"
+
+// CONFIG
+
+type ConfigFB =
+  abstract MachineConfig: MachineConfigFB
+  abstract AudioConfig: AudioConfigFB
+  abstract VvvvConfig: VvvvConfigFB
+  abstract RaftConfig: RaftConfigFB
+  abstract TimingConfig: TimingConfigFB
+  abstract ClusterConfig: ClusterConfigFB
+  abstract ViewPorts: int -> ViewPortFB
+  abstract ViewPortsLength: int
+  abstract Displays: int -> DisplayFB
+  abstract DisplaysLength: int
+  abstract Tasks: int -> TaskFB
+  abstract TasksLength: int
+
+type ConfigFBConstructor =
+  abstract prototype: ConfigFB with get, set
+  abstract StartConfigFB: builder: FlatBufferBuilder -> unit
+  abstract AddMachineConfig: builder: FlatBufferBuilder * v:Offset<MachineConfigFB> -> unit
+  abstract AddAudioConfig: builder: FlatBufferBuilder * v:Offset<AudioConfigFB> -> unit
+  abstract AddVvvvConfig: builder: FlatBufferBuilder * v:Offset<VvvvConfigFB> -> unit
+  abstract AddRaftConfig: builder: FlatBufferBuilder * v:Offset<RaftConfigFB> -> unit
+  abstract AddTimingConfig: builder: FlatBufferBuilder * v:Offset<TimingConfigFB> -> unit
+  abstract AddClusterConfig: builder: FlatBufferBuilder * v:Offset<ClusterConfigFB> -> unit
+  abstract AddViewPorts: builder: FlatBufferBuilder * v:Offset<'a> -> unit
+  abstract CreateViewPortsVector: FlatBufferBuilder * Offset<ViewPortFB> array -> Offset<'a>
+  abstract AddDisplays: builder: FlatBufferBuilder * v:Offset<'a> -> unit
+  abstract CreateDisplaysVector: FlatBufferBuilder * Offset<DisplayFB> array -> Offset<'a>
+  abstract AddTasks: builder: FlatBufferBuilder * v:Offset<'a> -> unit
+  abstract CreateTasksVector: FlatBufferBuilder * Offset<TaskFB> array -> Offset<'a>
+  abstract EndConfigFB: builder: FlatBufferBuilder -> Offset<ConfigFB>
+  abstract GetRootAsConfigFB: bytes: ByteBuffer -> ConfigFB
+  abstract Create: unit -> ConfigFB
+
+let ConfigFB: ConfigFBConstructor = failwith "JS only"
+
+
+// PROJECT
+
+type ProjectFB =
+  abstract Id: string
+  abstract Name: string
+  abstract Path: string
+  abstract CreatedOn: string
+  abstract LastSaved: string
+  abstract Copyright: string
+  abstract Author: string
+  abstract Config: ConfigFB
+
+type ProjectFBConstructor =
+  abstract prototype: ProjectFB with get, set
+  abstract StartProjectFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * v:Offset<string> -> unit
+  abstract AddName: builder: FlatBufferBuilder * v:Offset<string> -> unit
+  abstract AddPath: builder: FlatBufferBuilder * v:Offset<string> -> unit
+  abstract AddCreatedOn: builder: FlatBufferBuilder * v:Offset<string> -> unit
+  abstract AddLastSaved: builder: FlatBufferBuilder * v:Offset<string> -> unit
+  abstract AddCopyright: builder: FlatBufferBuilder * v:Offset<string> -> unit
+  abstract AddAuthor: builder: FlatBufferBuilder * v:Offset<string> -> unit
+  abstract AddConfig: builder: FlatBufferBuilder * v:Offset<ConfigFB> -> unit
+  abstract EndProjectFB: builder: FlatBufferBuilder -> Offset<ProjectFB>
+  abstract GetRootAsProjectFB: bytes: ByteBuffer -> ProjectFB
+  abstract Create: unit -> ProjectFB
+
+let ProjectFB: ProjectFBConstructor = failwith "JS only"
 
 //  ____  _        _       _____ ____
 // / ___|| |_ __ _| |_ ___|  ___| __ )
@@ -992,16 +1417,13 @@ let ConfigChangeFB: ConfigChangeFBConstructor = failwith "JS only"
 // |____/ \__\__,_|\__\___|_|   |____/
 
 type StateFB =
+  abstract Project: ProjectFB
   abstract Patches: int -> PatchFB
   abstract PatchesLength: int
-  abstract IOBoxes: int -> IOBoxFB
-  abstract IOBoxesLength: int
   abstract Cues: int -> CueFB
   abstract CuesLength: int
   abstract CueLists: int -> CueListFB
   abstract CueListsLength: int
-  abstract Nodes: int -> NodeFB
-  abstract NodesLength: int
   abstract Sessions: int -> SessionFB
   abstract SessionsLength: int
   abstract Users: int -> UserFB
@@ -1010,16 +1432,13 @@ type StateFB =
 type StateFBConstructor =
   abstract prototype: StateFB with get, set
   abstract StartStateFB: builder: FlatBufferBuilder -> unit
+  abstract AddProject: builder: FlatBufferBuilder * patches: Offset<ProjectFB> -> unit
   abstract CreatePatchesVector: builder: FlatBufferBuilder * patches: Offset<PatchFB> array -> Offset<'a>
   abstract AddPatches: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
-  abstract CreateIOBoxesVector: builder: FlatBufferBuilder * patches: Offset<IOBoxFB> array -> Offset<'a>
-  abstract AddIOBoxes: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
   abstract CreateCuesVector: builder: FlatBufferBuilder * patches: Offset<CueFB> array -> Offset<'a>
   abstract AddCues: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
   abstract CreateCueListsVector: builder: FlatBufferBuilder * patches: Offset<CueListFB> array -> Offset<'a>
   abstract AddCueLists: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
-  abstract CreateNodesVector: builder: FlatBufferBuilder * patches: Offset<NodeFB> array -> Offset<'a>
-  abstract AddNodes: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
   abstract CreateSessionsVector: builder: FlatBufferBuilder * patches: Offset<SessionFB> array -> Offset<'a>
   abstract AddSessions: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
   abstract CreateUsersVector: builder: FlatBufferBuilder * patches: Offset<UserFB> array -> Offset<'a>
@@ -1110,14 +1529,15 @@ type PayloadFBConstructor =
   abstract NONE: PayloadFB
   abstract CueFB: PayloadFB
   abstract CueListFB: PayloadFB
-  abstract IOBoxFB: PayloadFB
+  abstract PinFB: PayloadFB
   abstract PatchFB: PayloadFB
-  abstract NodeFB: PayloadFB
+  abstract RaftMemberFB: PayloadFB
   abstract UserFB: PayloadFB
   abstract SessionFB: PayloadFB
   abstract LogEventFB: PayloadFB
   abstract StateFB: PayloadFB
   abstract StringFB: PayloadFB
+  abstract ProjectFB: PayloadFB
 
 let PayloadFB: PayloadFBConstructor = failwith "JS only"
 
@@ -1126,14 +1546,15 @@ type ApiActionFB =
   abstract PayloadType: PayloadFB
   abstract CueFB: CueFB
   abstract CueListFB: CueListFB
-  abstract IOBoxFB: IOBoxFB
+  abstract PinFB: PinFB
   abstract PatchFB: PatchFB
-  abstract NodeFB: NodeFB
+  abstract RaftMemberFB: RaftMemberFB
   abstract UserFB: UserFB
   abstract SessionFB: SessionFB
   abstract LogEventFB: LogEventFB
   abstract StateFB: StateFB
   abstract StringFB: StringFB
+  abstract ProjectFB: ProjectFB
   abstract Payload: 'a -> 'a
 
 type ApiActionFBConstructor =
@@ -1157,62 +1578,27 @@ type ErrorTypeFB = int
 
 type ErrorTypeFBConstructor =
   abstract OKFB: ErrorTypeFB
-  abstract BranchNotFoundFB: ErrorTypeFB
-  abstract BranchDetailsNotFoundFB: ErrorTypeFB
-  abstract RepositoryNotFoundFB: ErrorTypeFB
-  abstract RepositoryInitFailedFB: ErrorTypeFB
-  abstract CommitErrorFB: ErrorTypeFB
   abstract GitErrorFB: ErrorTypeFB
-  abstract ProjectNotFoundFB: ErrorTypeFB
-  abstract ProjectParseErrorFB: ErrorTypeFB
-  abstract ProjectPathErrorFB: ErrorTypeFB
-  abstract ProjectSaveErrorFB: ErrorTypeFB
-  abstract ProjectInitErrorFB: ErrorTypeFB
-  abstract MetaDataNotFoundFB: ErrorTypeFB
-  abstract MissingStartupDirFB: ErrorTypeFB
-  abstract CliParseErrorFB: ErrorTypeFB
-  abstract MissingNodeIdFB: ErrorTypeFB
-  abstract MissingNodeFB: ErrorTypeFB
-  abstract AssetSaveErrorFB: ErrorTypeFB
-  abstract AssetLoadErrorFB: ErrorTypeFB
-  abstract AssetNotFoundErrorFB: ErrorTypeFB
-  abstract AssetDeleteErrorFB: ErrorTypeFB
+  abstract ProjectErrorFB: ErrorTypeFB
+  abstract AssetErrorFB: ErrorTypeFB
   abstract ParseErrorFB: ErrorTypeFB
   abstract SocketErrorFB: ErrorTypeFB
   abstract IOErrorFB: ErrorTypeFB
   abstract OtherFB: ErrorTypeFB
   abstract RaftErrorFB: ErrorTypeFB
-  abstract AlreadyVotedFB: ErrorTypeFB
-  abstract AppendEntryFailedFB: ErrorTypeFB
-  abstract CandidateUnknownFB: ErrorTypeFB
-  abstract EntryInvalidatedFB: ErrorTypeFB
-  abstract InvalidCurrentIndexFB: ErrorTypeFB
-  abstract InvalidLastLogFB: ErrorTypeFB
-  abstract InvalidLastLogTermFB: ErrorTypeFB
-  abstract InvalidTermFB: ErrorTypeFB
-  abstract LogFormatErrorFB: ErrorTypeFB
-  abstract LogIncompleteFB: ErrorTypeFB
-  abstract NoErrorFB: ErrorTypeFB
-  abstract NoNodeFB: ErrorTypeFB
-  abstract NotCandidateFB: ErrorTypeFB
-  abstract NotLeaderFB: ErrorTypeFB
-  abstract NotVotingStateFB: ErrorTypeFB
-  abstract ResponseTimeoutFB: ErrorTypeFB
-  abstract SnapshotFormatErrorFB: ErrorTypeFB
-  abstract StaleResponseFB: ErrorTypeFB
-  abstract UnexpectedVotingChangeFB: ErrorTypeFB
-  abstract VoteTermMismatchFB: ErrorTypeFB
 
 let ErrorTypeFB: ErrorTypeFBConstructor = failwith "JS only"
 
 type ErrorFB =
   abstract Type: ErrorTypeFB
+  abstract Location: string
   abstract Message: string
 
 type ErrorFBConstructor =
   abstract prototype: ErrorFB with get, set
   abstract StartErrorFB: builder: FlatBufferBuilder -> unit
   abstract AddType: builder: FlatBufferBuilder * tipe: ErrorTypeFB -> unit
+  abstract AddLocation: builder: FlatBufferBuilder * location: Offset<string> -> unit
   abstract AddMessage: builder: FlatBufferBuilder * msg: Offset<string> -> unit
   abstract EndErrorFB: builder: FlatBufferBuilder -> Offset<ErrorFB>
   abstract GetRootAsErrorFB: bytes: ByteBuffer -> ErrorFB

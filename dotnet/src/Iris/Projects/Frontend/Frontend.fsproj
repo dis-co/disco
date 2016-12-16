@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -82,6 +82,18 @@
     <Compile Include="../../Iris/Core/Aliases.fs">
       <Link>Aliases.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\Platform.fs">
+      <Link>Platform.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\FileSystem.fs">
+      <Link>FileSystem.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Network.fs">
+      <Link>Network.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Machine.fs">
+      <Link>Machine.fs</Link>
+    </Compile>
     <Compile Include="../../Iris/Core/User.fs">
       <Link>User.fs</Link>
     </Compile>
@@ -97,11 +109,11 @@
     <Compile Include="../../Iris/Core/Logging.fs">
       <Link>Logging.fs</Link>
     </Compile>
-    <Compile Include="../../Iris/Raft/Node.fs">
-      <Link>Node.fs</Link>
+    <Compile Include="../../Iris/Raft/Member.fs">
+      <Link>Member.fs</Link>
     </Compile>
-    <Compile Include="../../Iris/Core/IOBox.fs">
-      <Link>IOBox.fs</Link>
+    <Compile Include="../../Iris/Core/Pin.fs">
+      <Link>Pin.fs</Link>
     </Compile>
     <Compile Include="../../Iris/Core/Patch.fs">
       <Link>Patch.fs</Link>
@@ -111,6 +123,12 @@
     </Compile>
     <Compile Include="../../Iris/Core/CueList.fs">
       <Link>CueList.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Renderer.fs">
+      <Link>Renderer.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Project.fs">
+      <Link>Project.fs</Link>
     </Compile>
     <Compile Include="../../Iris/Core/StateMachine.fs">
       <Link>StateMachine.fs</Link>

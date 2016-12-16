@@ -125,15 +125,15 @@ type WebSocket(_url: string)  =
     |              |  RemovePatch  |               |    Render    |                |
     |              | ------------> | update Store  | -----------> | re-render DOM  |
     |              |               |               |              |                |
-    |              |   AddIOBox    |               |    Render    |                |
+    |              |   AddPin      |               |    Render    |                |
     |              | ------------> | update Store  | -----------> | re-render DOM  |
-    |              |  UpdateIOBox  |               |    Render    |                |
+    |              |  UpdatePin    |               |    Render    |                |
     |              | ------------> | update Store  | -----------> | re-render DOM  |
-    |              |  RemoveIOBox  |               |    Render    |                |
+    |              |  RemovePin    |               |    Render    |                |
     |              | ------------> | update Store  | -----------> | re-render DOM  |
     |              |               |               |              |                |
-    |              |  UpdateIOBox  |               | UpdateIOBox  |                |
- <--|  relays msg  | <------------ | update Store  | <----------- |  edit IOBox    |
+    |              |  UpdatePin    |               | UpdatePin    |                |
+ <--|  relays msg  | <------------ | update Store  | <----------- |  edit Pin      |
     |              |               |               |              |                |
     |              |    AddCue     |               |    AddCue    |                |
  <--|  relays msg  | <------------ | update Store  | <----------- |  create Cue    |
@@ -151,7 +151,7 @@ type PortMap = Map<Id,ClientMessagePort>
 
 type GlobalContext() =
   let mutable count = 0
-  let mutable store = new Store(State.Empty)
+  let mutable store = Unchecked.defaultof<Store> // hm...
   let mutable socket : (string * WebSocket) option = None
 
   let ports : PortMap = Map.Create<Id,ClientMessagePort>()

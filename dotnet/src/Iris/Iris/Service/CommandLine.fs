@@ -3,6 +3,8 @@ namespace Iris.Service
 // * CommandLine
 module CommandLine =
 
+  let private tag (str: string) = sprintf "CommandLine.%s" str
+
   // ** Imports
   open Argu
   open Iris.Core
@@ -165,7 +167,9 @@ module CommandLine =
   let validateOptions (opts: ParseResults<CLIArguments>) =
     let ensureDir result =
       if opts.Contains <@ Dir @> |> not then
-        Error.exitWith MissingStartupDir
+        "Missing Startup-Dir"
+        |> Error.asOther (tag "validateOptions")
+        |> Error.exitWith
       result
 
     match opts.GetResult <@ Cmd @> with
@@ -190,7 +194,9 @@ module CommandLine =
         if not git  then printfn "    --git=<git server port>"
         if not raft then printfn "    --raft=<raft port>"
         if not ws   then printfn "    --ws=<ws port>"
-        Error.exitWith CliParseError
+        "CLI options parse error"
+        |> Error.asOther (tag "validateOptions")
+        |> Error.exitWith
 
   // ** Utilities
 
@@ -245,8 +251,8 @@ module CommandLine =
 
   let (|Append|_|)  str = withTrim "append" str
   let (|Join|_|)    str = withTrim "join" str
-  let (|AddNode|_|) str = withTrim "addnode" str
-  let (|RmNode|_|)  str = withTrim "rmnode" str
+  let (|AddMember|_|) str = withTrim "addmem" str
+  let (|RmMember|_|)  str = withTrim "rmmem" str
 
   let (|Interval|_|) (str: string) =
     let trimmed = str.Trim()
@@ -276,7 +282,7 @@ module CommandLine =
       | _ -> None
     else None
 
-  let (|AddNodeParams|_|) (str: string) =
+  let (|AddMemberParams|_|) (str: string) =
     let pattern =
       [| "id:(?<id>.*)"
       ; "hn:(?<hn>.*)"
@@ -297,7 +303,7 @@ module CommandLine =
       let git = UInt16.TryParse m.Groups.[7].Value
       match ip, port, web, ws, git with
       | Right ip, (true,port), (true,web), (true,ws), (true,git) ->
-        { Node.create id with
+        { Member.create id with
             HostName = hn
             IpAddr   = ip
             Port     = port
@@ -313,9 +319,7 @@ module CommandLine =
   let trySetLogLevel (context: IIrisServer) (str: string) =
     either {
       let! config = context.Config
-      let updated =
-        { config.RaftConfig with
-            LogLevel = LogLevel.Parse str }
+      let updated = { config.Raft with LogLevel = LogLevel.Parse str }
       do! context.SetConfig (Config.updateEngine updated config)
     }
     |> Either.mapError handleError
@@ -326,8 +330,7 @@ module CommandLine =
   let trySetInterval (context: IIrisServer) i =
     either {
       let! config = context.Config
-      let updated =
-        { config.RaftConfig with PeriodicInterval = i }
+      let updated = { config.Raft with PeriodicInterval = i }
       do! context.SetConfig (Config.updateEngine updated config)
     }
     |> Either.mapError handleError
@@ -345,7 +348,7 @@ module CommandLine =
         |> ignore
       | _ ->
         sprintf "parameters %A could not be parsed" hst
-        |> Other
+        |> Error.asOther (tag "tryJoinCluster")
         |> handleError
 
   // ** tryLeaveCluster
@@ -357,29 +360,29 @@ module CommandLine =
     |> Either.mapError handleError
     |> ignore
 
-  // ** tryAddNode
+  // ** tryAddMember
 
-  let tryAddNode (context: IIrisServer) (hst: string) =
+  let tryAddMember (context: IIrisServer) (hst: string) =
     match hst with
-      | AddNodeParams node ->
+      | AddMemberParams mem ->
         either {
-          let! appended = context.AddNode node
-          printfn "Added node: %A in entry %A" id (string appended.Id)
+          let! appended = context.AddMember mem
+          printfn "Added mem: %A in entry %A" id (string appended.Id)
           return ()
         }
         |> Either.mapError handleError
         |> ignore
       | _ ->
         sprintf "parameters %A could not be parsed" hst
-        |> Other
+        |> Error.asOther (tag "tryAddMember")
         |> handleError
 
-  // ** tryRmNode
+  // ** tryRmMember
 
-  let tryRmNode (context: IIrisServer) (hst: string) =
+  let tryRmMember (context: IIrisServer) (hst: string) =
     either {
-      let! appended = context.RmNode (Id (String.trim hst))
-      printfn "Removed node: %A in entry %A" id (string appended.Id)
+      let! appended = context.RmMember (Id (String.trim hst))
+      printfn "Removed mem: %A in entry %A" id (string appended.Id)
       return ()
     }
     |> Either.mapError handleError
@@ -436,8 +439,8 @@ module CommandLine =
         | Append ety   -> tryAppendEntry   context ety
         | Join hst     -> tryJoinCluster   context hst
         | Leave        -> tryLeaveCluster  context
-        | AddNode hst  -> tryAddNode       context hst
-        | RmNode hst   -> tryRmNode        context hst
+        | AddMember hst  -> tryAddMember       context hst
+        | RmMember hst   -> tryRmMember        context hst
         | Timeout      -> tryForceElection context
         | Status       -> tryGetStatus     context
         | _            -> printfn "unknown command"
@@ -461,7 +464,7 @@ module CommandLine =
       |> MachineConfig.save None
       |> Error.orExit id
 
-  // ** buildNode
+  // ** buildMember
 
   //  _   _           _
   // | \ | | ___   __| | ___
@@ -469,8 +472,8 @@ module CommandLine =
   // | |\  | (_) | (_| |  __/
   // |_| \_|\___/ \__,_|\___|
 
-  let buildNode (parsed: ParseResults<CLIArguments>) (id: Id) =
-    { Node.create(id) with
+  let buildMember (parsed: ParseResults<CLIArguments>) (id: Id) =
+    { Member.create(id) with
         IpAddr  = parsed.GetResult <@ Bind @> |> IpAddress.Parse
         GitPort = parsed.GetResult <@ Git  @>
         WsPort  = parsed.GetResult <@ Ws   @>
@@ -491,8 +494,8 @@ module CommandLine =
     let projFile = Path.GetFullPath(projectdir) </> PROJECT_FILENAME + ASSET_EXTENSION
 
     if File.Exists projFile |> not then
-      projectdir
-      |> ProjectNotFound
+      sprintf "Project Not Found: %s" projectdir
+      |> Error.asOther "startService"
       |> Either.fail
     else
       either {
@@ -534,14 +537,26 @@ module CommandLine =
   /// - name: Name of the Project
   /// - path: destination path of the Project
   /// - raftDir: Raft data directory
-  /// - node: self Node (built from Node Id env var)
+  /// - mem: self Member (built from Member Id env var)
   ///
   /// Returns: IrisProject
-  let buildProject (machine: IrisMachine) (name: string) (path: FilePath) (raftDir: FilePath) (node: RaftNode) =
-    Project.create name machine
-    |> Project.updatePath path
-    |> Project.updateDataDir raftDir
-    |> Project.addMember node
+  let buildProject (machine: IrisMachine)
+                   (name: string)
+                   (path: FilePath)
+                   (raftDir: FilePath)
+                   (mem: RaftMember) =
+    either {
+      let! project = Project.create path name machine
+
+      let updated =
+        project
+        |> Project.updateDataDir raftDir
+        |> Project.addMember mem
+
+      let! commit = Asset.saveWithCommit updated path User.Admin.Signature
+
+      return updated
+    }
 
   /// ## initializeRaft
   ///
@@ -556,7 +571,7 @@ module CommandLine =
   let initializeRaft (user: User) (project: IrisProject) = either {
       let! raft = createRaft project.Config
       let! result = saveRaft project.Config raft
-      let! (commit, saved) = Project.saveProject user project
+      let! commit = Asset.saveWithCommit project project.Path User.Admin.Signature
       project.Path
       |> printfn "project initialized in %A and committed @ %s" commit.Sha
     }
@@ -595,8 +610,8 @@ module CommandLine =
       do! mkDir dir
       do! mkDir raftDir
 
-      let node = buildNode parsed machine.MachineId
-      let project = buildProject machine dir name raftDir node
+      let mem = buildMember parsed machine.MachineId
+      let! project = buildProject machine dir name raftDir mem
 
       do! initializeRaft me project
     }
@@ -622,7 +637,7 @@ module CommandLine =
       let raftDir = datadir </> RAFT_DIRECTORY
 
       let! machine = MachineConfig.load None
-      let! project = Project.load path machine
+      let! project = Asset.loadWithMachine path machine
 
       do! match Directory.Exists raftDir with
           | true  -> rmDir raftDir
@@ -679,7 +694,7 @@ module CommandLine =
       with
         | exn ->
           exn.Message
-          |> Other
+          |> Error.asOther (tag "setup")
           |> Either.fail
 
     match location with
@@ -748,7 +763,7 @@ module CommandLine =
     either {
       let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
       let! machine = MachineConfig.load None
-      let! project = Project.load path machine
+      let! project = Asset.loadWithMachine path machine
 
       let username  = readString "UserName"
       let firstname = readString "First Name"
@@ -774,6 +789,6 @@ module CommandLine =
       else
         return!
           "Passwords do not match. Try again Sam."
-          |> Other
+          |> Error.asOther (tag "addUser")
           |> Either.fail
     }

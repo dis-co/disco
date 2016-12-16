@@ -17,8 +17,7 @@ module WebSockets =
 
   // ** tag
 
-  [<Literal>]
-  let private tag = "WebSocket"
+  let private tag (str: string) = sprintf "WebSocket.%s" str
 
   // ** SocketEvent
 
@@ -76,7 +75,7 @@ module WebSockets =
       |> Either.succeed
     | false, _ ->
       sprintf "No socket open with id %O" socketId
-      |> SocketError
+      |> Error.asSocketError (tag "buildSession")
       |> Either.fail
 
   // ** send
@@ -103,13 +102,13 @@ module WebSockets =
         | exn ->
           let _, _ = connections.TryRemove(sid)
           exn.Message
-          |> SocketError
+          |> Error.asSocketError (tag "send")
           |> Either.fail
     | false, _ ->
       sid
       |> string
       |> sprintf "could not send message to session %s. not found."
-      |> SocketError
+      |> Error.asSocketError (tag "send")
       |> Either.fail
 
   // ** broadcast
@@ -168,7 +167,7 @@ module WebSockets =
       sid
       |> string
       |> sprintf "New connection opened: %s"
-      |> Logger.info id tag
+      |> Logger.info id (tag "onNewSocket")
 
     socket.OnClose <- fun () ->
       let sid = getConnectionId socket
@@ -178,7 +177,7 @@ module WebSockets =
       sid
       |> string
       |> sprintf "Connection closed: %s"
-      |> Logger.info id tag
+      |> Logger.info id (tag "onNewSocket")
 
     socket.OnBinary <- fun bytes ->
       let sid = getConnectionId socket
@@ -188,7 +187,7 @@ module WebSockets =
         err
         |> string
         |> sprintf "Could not decode message: %s"
-        |> Logger.err id tag
+        |> Logger.err id (tag "onNewSocket")
 
     socket.OnError <- fun exn ->
       let sid = getConnectionId socket
@@ -198,7 +197,7 @@ module WebSockets =
       sid
       |> string
       |> sprintf "Error %A on websocket: %s" exn.Message
-      |> Logger.err id tag
+      |> Logger.err id (tag "onNewSocket")
 
   // ** loop
 
@@ -222,7 +221,7 @@ module WebSockets =
   [<RequireQualifiedAccess>]
   module SocketServer =
 
-    let create (node: RaftNode) =
+    let create (mem: RaftMember) =
       either {
         let connections = new Connections()
         let subscriptions = new Subscriptions()
@@ -241,9 +240,9 @@ module WebSockets =
 
         let agent = new SocketEventProcessor(loop subscriptions)
 
-        let uri = sprintf "ws://%s:%d" (string node.IpAddr) node.WsPort
+        let uri = sprintf "ws://%s:%d" (string mem.IpAddr) mem.WsPort
 
-        let handler = onNewSocket node.Id connections agent
+        let handler = onNewSocket mem.Id connections agent
         let server = new WebSocketServer(uri)
 
         return
@@ -269,18 +268,18 @@ module WebSockets =
                 try
                   uri
                   |> sprintf "Starting WebSocketServer on: %s"
-                  |> Logger.debug node.Id tag
+                  |> Logger.debug mem.Id (tag "Start")
 
                   agent.Start()
                   server.Start(new Action<IWebSocketConnection>(handler))
 
                   "WebSocketServer successfully started"
-                  |> Logger.debug node.Id tag
+                  |> Logger.debug mem.Id (tag "Start")
                   |> Either.succeed
                 with
                   | exn ->
                     exn.Message
-                    |> SocketError
+                    |> Error.asSocketError (tag "Start")
                     |> Either.fail
 
               member self.Dispose () =

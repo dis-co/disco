@@ -30,13 +30,9 @@ module ProjectTests =
 
         let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-        let! (commit, project) =
-          { Project.create name machine with Path = path }
-          |> Project.saveProject User.Admin
+        let! project = Project.create path name machine
 
-        let result =
-          Project.filePath project
-          |> flip Project.load machine
+        let result = Asset.loadWithMachine project.Path machine
 
         do! expectE "Projects should be equal" true ((=) project) result
       }
@@ -64,44 +60,41 @@ module ProjectTests =
         let vvvvCfg =
           { VvvvConfig.Default with
               Executables =
-                [{ Executable = "/pth/to/nowhere"
-                 ; Version    = "0.0.0.0.0.0.1"
-                 ; Required   = true }
-                 { Executable = "/antoher/path"
-                 ; Version    = "1.2.34.4"
-                 ; Required   = false }
-                ]
+                [| { Executable = "/pth/to/nowhere"
+                  ; Version    = "0.0.0.0.0.0.1"
+                  ; Required   = true };
+                  { Executable = "/antoher/path"
+                  ; Version    = "1.2.34.4"
+                  ; Required   = false } |]
             }
-
-        let portCfg = PortConfig.Default
 
         let display1 =
           { Id        = Id.Create()
           ; Name      = "Nice Display"
           ; Size      = Rect (1280,1080)
           ; Signals   =
-              [{ Size     = Rect       (500,500)
-               ; Position = Coordinate (0,0) }
-               { Size     = Rect       (800,800)
-               ; Position = Coordinate (29, 13) }]
+              [| { Size     = Rect       (500,500)
+                ; Position = Coordinate (0,0) };
+                { Size     = Rect       (800,800)
+                ; Position = Coordinate (29, 13) } |]
           ; RegionMap =
             {
               SrcViewportId = Id.Create()
               Regions =
-                [{ Id             = Id.Create()
-                 ; Name           = "A Cool Region"
-                 ; SrcPosition    = Coordinate (0,0)
-                 ; SrcSize        = Rect       (50,50)
-                 ; OutputPosition = Coordinate (50,50)
-                 ; OutputSize     = Rect       (100,100)
-                 };
-                 { Id             = Id.Create()
-                 ; Name           = "Another Cool Region"
-                 ; SrcPosition    = Coordinate (8,67)
-                 ; SrcSize        = Rect       (588,5130)
-                 ; OutputPosition = Coordinate (10,5300)
-                 ; OutputSize     = Rect       (800,900)
-                 }]
+                [| { Id             = Id.Create()
+                  ; Name           = "A Cool Region"
+                  ; SrcPosition    = Coordinate (0,0)
+                  ; SrcSize        = Rect       (50,50)
+                  ; OutputPosition = Coordinate (50,50)
+                  ; OutputSize     = Rect       (100,100)
+                  };
+                  { Id             = Id.Create()
+                  ; Name           = "Another Cool Region"
+                  ; SrcPosition    = Coordinate (8,67)
+                  ; SrcSize        = Rect       (588,5130)
+                  ; OutputPosition = Coordinate (10,5300)
+                  ; OutputSize     = Rect       (800,900)
+                  } |]
             }
           }
 
@@ -110,30 +103,27 @@ module ProjectTests =
           ; Name      = "Cool Display"
           ; Size      = Rect (180,12080)
           ; Signals   =
-              [{ Size     = Rect (800,200)
-               ; Position = Coordinate (3,8)
-               };
-               { Size     = Rect (1800,8800)
-               ; Position = Coordinate (2900, 130)
-               }]
+              [| { Size     = Rect (800,200)
+                ; Position = Coordinate (3,8) };
+                { Size     = Rect (1800,8800)
+                ; Position = Coordinate (2900, 130) } |]
           ; RegionMap =
-            {
-              SrcViewportId = Id.Create();
+            { SrcViewportId = Id.Create();
               Regions =
-                [{ Id             = Id.Create()
-                 ; Name           = "One Region"
-                 ; SrcPosition    = Coordinate (0,8)
-                 ; SrcSize        = Rect       (50,52)
-                 ; OutputPosition = Coordinate (53,50)
-                 ; OutputSize     = Rect       (103,800)
-                 };
-                 { Id             = Id.Create()
-                 ; Name           = "Premium Region"
-                 ; SrcPosition    = Coordinate (8333,897)
-                 ; SrcSize        = Rect       (83,510)
-                 ; OutputPosition = Coordinate (1580,50)
-                 ; OutputSize     = Rect       (1800,890)
-                 }]
+                [| { Id             = Id.Create()
+                  ; Name           = "One Region"
+                  ; SrcPosition    = Coordinate (0,8)
+                  ; SrcSize        = Rect       (50,52)
+                  ; OutputPosition = Coordinate (53,50)
+                  ; OutputSize     = Rect       (103,800)
+                  };
+                  { Id             = Id.Create()
+                  ; Name           = "Premium Region"
+                  ; SrcPosition    = Coordinate (8333,897)
+                  ; SrcSize        = Rect       (83,510)
+                  ; OutputPosition = Coordinate (1580,50)
+                  ; OutputSize     = Rect       (1800,890)
+                  } |]
             }
           }
 
@@ -164,7 +154,7 @@ module ProjectTests =
           ; Description    = "A very important task, indeed."
           ; DisplayId      = Id.Create()
           ; AudioStream    = "hm"
-          ; Arguments      = [("key", "to you heart")]
+          ; Arguments      = [| ("key", "to you heart") |]
           }
 
         let task2 =
@@ -172,69 +162,64 @@ module ProjectTests =
           ; Description    = "yay, its another task"
           ; DisplayId      = Id.Create()
           ; AudioStream    = "hoho"
-          ; Arguments      = [("mykey", "to my heart")]
+          ; Arguments      = [| ("mykey", "to my heart") |]
           }
 
-        let nodeA =
-          { Node.create (Id.Create()) with
+        let memA =
+          { Member.create (Id.Create()) with
               HostName = "moomoo"
               IpAddr   = IpAddress.Parse "182.123.18.2"
               State    = Running
               Port     = 1234us }
 
-        let nodeB =
-          { Node.create (Id.Create()) with
+        let memB =
+          { Member.create (Id.Create()) with
               HostName = "taataaa"
               IpAddr   = IpAddress.Parse "118.223.8.12"
               State    = Joining
               Port     = 1234us }
 
-        let groupA =
+        let groupA: HostGroup =
           { Name    = "Group A"
-          ; Members = [ Id.Create() ]
+          ; Members = [| Id.Create() |]
           }
 
-        let groupB =
+        let groupB: HostGroup =
           { Name    = "Group B"
-          ; Members = [ Id.Create() ]
+          ; Members = [| Id.Create() |]
           }
 
         let cluster =
           { Name   = "A mighty cool cluster"
-          ; Nodes  = [ nodeA;  nodeB  ]
-          ; Groups = [ groupA; groupB ]
+          ; Members = Map.ofArray [| (memA.Id,memA); (memB.Id,memB) |]
+          ; Groups = [| groupA; groupB |]
           }
 
-        let project =
-          machine
-          |> Project.create name
-          |> Project.updatePath path
-          |> fun project ->
-            Project.updateConfig
-              { project.Config with
-                  RaftConfig    = engineCfg
-                  PortConfig    = portCfg
-                  VvvvConfig    = vvvvCfg
-                  ViewPorts     = [ viewPort1; viewPort2 ]
-                  Displays      = [ display1;  display2  ]
-                  Tasks         = [ task1;     task2     ]
-                  ClusterConfig = cluster }
-              project
+        let! project = Project.create path name machine
 
-        let! (_,saved) = Project.saveProject User.Admin project
-        let! loaded = Project.load (path </> PROJECT_FILENAME + ASSET_EXTENSION) machine
+        let updated =
+          Project.updateConfig
+            { project.Config with
+                Raft      = engineCfg
+                Vvvv      = vvvvCfg
+                ViewPorts = [| viewPort1; viewPort2 |]
+                Displays  = [| display1;  display2  |]
+                Tasks     = [| task1;     task2     |]
+                Cluster   = cluster }
+            project
+
+        let! commit = Asset.saveWithCommit updated path User.Admin.Signature
+        let! loaded = Asset.loadWithMachine path machine
 
         // the only difference will be the automatically assigned timestamp
-        expect "CreatedOn should be structurally equal"  true ((=) loaded.CreatedOn) saved.CreatedOn
-        expect "LastSaved should be structurally equal"  true ((=) loaded.LastSaved) saved.LastSaved
-        expect "VVVVConfig should be structurally equal" true ((=) loaded.Config.VvvvConfig) saved.Config.VvvvConfig
-        expect "RaftCofnig should be structurally equal" true ((=) loaded.Config.RaftConfig) saved.Config.RaftConfig
-        expect "ViewPorts should be structurally equal"  true ((=) loaded.Config.ViewPorts) saved.Config.ViewPorts
-        expect "Timing should be structurally equal"     true ((=) loaded.Config.TimingConfig) saved.Config.TimingConfig
-        expect "Displays should be structurally equal"   true ((=) loaded.Config.Displays) saved.Config.Displays
-        expect "Tasks should be structurally equal"      true ((=) loaded.Config.Tasks) saved.Config.Tasks
-        expect "Cluster should be structurally equal"    true ((=) loaded.Config.ClusterConfig) saved.Config.ClusterConfig
-        expect "Projects should be structurally equal"   true ((=) loaded) saved
+        expect "CreatedOn should be structurally equal"  true ((=) loaded.CreatedOn) updated.CreatedOn
+        expect "VVVVConfig should be structurally equal" true ((=) loaded.Config.Vvvv) updated.Config.Vvvv
+        expect "RaftCofnig should be structurally equal" true ((=) loaded.Config.Raft) updated.Config.Raft
+        expect "ViewPorts should be structurally equal"  true ((=) loaded.Config.ViewPorts) updated.Config.ViewPorts
+        expect "Timing should be structurally equal"     true ((=) loaded.Config.Timing) updated.Config.Timing
+        expect "Displays should be structurally equal"   true ((=) loaded.Config.Displays) updated.Config.Displays
+        expect "Tasks should be structurally equal"      true ((=) loaded.Config.Tasks) updated.Config.Tasks
+        expect "Cluster should be structurally equal"    true ((=) loaded.Config.Cluster) updated.Config.Cluster
       }
       |> noError
 
@@ -268,13 +253,9 @@ module ProjectTests =
 
         let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-        let! _ =
-          { Project.create name machine with Path = path }
-          |> Project.saveProject User.Admin
+        let! _ = Project.create path name machine
 
-        let loaded =
-          path </> PROJECT_FILENAME + ASSET_EXTENSION
-          |> flip Project.load machine
+        let loaded = Asset.loadWithMachine path machine
 
         expect "Projects should be a folder"   true  Directory.Exists path
         expect "Projects should be a git repo" true  Directory.Exists (path </> ".git")
@@ -326,49 +307,39 @@ module ProjectTests =
 
         let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-        let! (commit1, project) =
-          { Project.create name machine with
-              Path = path
-              Author = Some(author1) }
-          |> Project.saveProject User.Admin
+        let! project = Project.create path name machine
 
-        let! loaded =
-          (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-          |> flip Project.load machine
+        let updated = { project with Author = Some author1 }
+        let! commit = Asset.saveWithCommit updated path User.Admin.Signature
 
+        let! loaded = Asset.loadWithMachine path machine
         let! repo = Project.repository loaded
 
         let checkAuthor = (Option.get >> (=)) loaded.Author
         let checkCount = (=) (Git.Repo.commitCount repo)
 
         expect "Authors should be equal"                true checkAuthor author1
-        expect "Project should have one initial commit" true checkCount 1
+        expect "Project should have one initial commit" true checkCount 2
 
         let author2 = "ingolf"
 
-        let! (commit2, project) =
-          { project with Author = Some author2 }
-          |> Project.saveProject User.Admin
+        let updated = { updated with Author = Some author2 }
+        let! commit2 = Asset.saveWithCommit updated path User.Admin.Signature
 
-        let! loaded =
-          (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-          |> flip Project.load machine
+        let! loaded = Asset.loadWithMachine path machine
 
         expect "Authors should be equal"     true ((=) (Option.get loaded.Author)) author2
-        expect "Projects should two commits" true ((=) (Git.Repo.commitCount repo)) 2
+        expect "Projects should two commits" true ((=) (Git.Repo.commitCount repo)) 3
 
         let author3 = "eno"
 
-        let! (commit3, project) =
-           { project with Author = Some author3 }
-           |> Project.saveProject User.Admin
+        let updated = { updated with Author = Some author3 }
+        let! commit3 = Asset.saveWithCommit updated path User.Admin.Signature
 
-        let! loaded =
-          (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-          |> flip Project.load machine
+        let! loaded = Asset.loadWithMachine path machine
 
-        expect "Authors should be equal"                    true ((=) (Option.get loaded.Author)) author3
-        expect "Projects should have three commits"         true ((=) (Git.Repo.commitCount repo)) 3
+        expect "Authors should be equal"           true ((=) (Option.get loaded.Author))  author3
+        expect "Projects should have four commits" true ((=) (Git.Repo.commitCount repo)) 4
       }
       |> noError
 
@@ -383,26 +354,18 @@ module ProjectTests =
 
         let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-        let! (commit1, project) =
-          { Project.create name machine with
-              Path = path }
-          |> Project.saveProject User.Admin
+        let! project = Project.create path name machine
+        let! loaded = Asset.loadWithMachine path machine
 
-        let! loaded =
-          (path </> PROJECT_FILENAME + ASSET_EXTENSION)
-          |> flip Project.load machine
-
-        expect "Project should have commit message" path id loaded.Path
+        expect "Project should have correct path" path id loaded.Path
 
         let newpath = Path.dirName path </> (Path.GetTempFileName() |> Path.baseName)
 
         FileSystem.moveFile path newpath
 
-        let! loaded =
-          (newpath </> PROJECT_FILENAME + ASSET_EXTENSION)
-          |> flip Project.load machine
+        let! loaded = Asset.loadWithMachine newpath machine
 
-        expect "Project should have commit message" newpath id loaded.Path
+        expect "Project should have correct path" newpath id loaded.Path
       }
       |> noError
 
@@ -417,9 +380,7 @@ module ProjectTests =
 
         let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-        let! (commit1, project) =
-          { Project.create name machine with Path = path }
-          |> Project.saveProject User.Admin
+        let! project = Project.create path name machine
 
         let user =
           { Id = Id.Create()
@@ -454,9 +415,7 @@ module ProjectTests =
 
         let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
-        let! (commit1, project) =
-          { Project.create name machine with Path = path }
-          |> Project.saveProject User.Admin
+        let! project = Project.create path name machine
 
         let! (admin: User) =
           project.Path </> Asset.path User.Admin

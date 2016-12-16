@@ -9,20 +9,6 @@ open Iris.Core
 open Iris.Serialization.Raft
 open SharpYaml.Serialization
 
-// * RaftLog Yaml
-
-// __   __              _    ___  _     _           _
-// \ \ / /_ _ _ __ ___ | |  / _ \| |__ (_) ___  ___| |_
-//  \ V / _` | '_ ` _ \| | | | | | '_ \| |/ _ \/ __| __|
-//   | | (_| | | | | | | | | |_| | |_) | |  __/ (__| |_
-//   |_|\__,_|_| |_| |_|_|  \___/|_.__// |\___|\___|\__|
-//                                   |__/
-
-type RaftLogYaml() =
-  [<DefaultValue>] val mutable Data  : RaftLogEntryYaml array
-  [<DefaultValue>] val mutable Depth : Long
-  [<DefaultValue>] val mutable Index : Index
-
 // * RaftLog
 
 //  ____        __ _   _
@@ -103,115 +89,6 @@ type RaftLog =
                  Depth = 0u
                  Index = 0u }
     }
-
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
-
-  // ** ToYamlObject
-
-  /// ## ToYamlObject
-  ///
-  /// Convert the current RaftLog into its Yaml POCO.
-  ///
-  /// ### Signature:
-  /// - unit: unit
-  ///
-  /// Returns: RaftLogYamlg
-  member self.ToYamlObject () =
-    let yaml = new RaftLogYaml()
-    let arr = Array.zeroCreate (int self.Depth)
-
-    Option.map
-      (fun logdata ->
-        LogEntry.iter
-         (fun i entry -> arr.[int i] <- Yaml.toYaml entry)
-         logdata)
-      self.Data
-    |> ignore
-
-    yaml.Data  <- arr
-    yaml.Depth <- self.Depth
-    yaml.Index <- self.Index
-    yaml
-
-  // ** ToYaml
-
-  /// ## ToYaml
-  ///
-  /// Serialize the current RaftLog value into a yaml string
-  ///
-  /// ### Signature:
-  /// - serializer: SharpYaml Serializer
-  ///
-  /// Returns: string
-  member self.ToYaml (serializer: Serializer) =
-    self
-    |> Yaml.toYaml
-    |> serializer.Serialize
-
-  // ** FromYamlObject
-
-  /// ## FromYamlObject
-  ///
-  /// Convert the yaml object representation into a RaftLog value.
-  ///
-  /// ### Signature:
-  /// - log: RaftLogYaml value to parse
-  ///
-  /// Returns: Etiher<IrisError,RaftLog>
-  static member FromYamlObject (log: RaftLogYaml) : Either<IrisError, RaftLog> =
-    let folder (yaml: RaftLogEntryYaml) (sibling: Either<IrisError,RaftLogEntry option>) =
-      either {
-        let! previous = sibling
-        let! parsed = Yaml.fromYaml yaml
-
-        return
-          match parsed with
-          | LogEntry(id, idx, term, data, _) ->
-            LogEntry(id, idx, term, data, previous)
-          | Configuration(id, idx, term, nodes, _)->
-            Configuration(id, idx, term, nodes, previous)
-          | JointConsensus(id, idx, term, changes, _) ->
-            JointConsensus(id, idx, term, changes, previous)
-          | Snapshot _ as value -> value
-          |> Some
-      }
-
-    either {
-      let! logs =
-        Array.foldBack
-          folder
-          (Array.sort log.Data)
-          (Right None)
-
-      return
-        match logs with
-        | Some entries as values ->
-          { Data = values
-            Depth = LogEntry.depth entries
-            Index = LogEntry.index entries }
-        | _ ->
-          { Data = None; Depth = 0u; Index = 0u }
-    }
-
-  // ** FromYaml
-
-  /// ## FromYaml
-  ///
-  /// Parse the passed string and construct a RaftLog value from it.
-  ///
-  /// ### Signature:
-  /// - str: string to parse
-  ///
-  /// Returns: Either<IrisError,RaftLog>
-  static member FromYaml (str: string) : Either<IrisError,RaftLog> =
-    let serializer = new Serializer()
-    serializer.Deserialize<RaftLogYaml>(str)
-    |> Yaml.fromYaml
-
 
 // * Log Module
 

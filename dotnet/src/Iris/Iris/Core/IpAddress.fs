@@ -43,7 +43,7 @@ type IpAddress =
     with
       | exn ->
         sprintf "Unable to parse IP: %s Cause: %s" str exn.Message
-        |> ParseError
+        |> Iris.Core.Error.asParseError "IpAddress.Parse"
         |> Either.fail
 #else
     try
@@ -53,12 +53,12 @@ type IpAddress =
       | Sockets.AddressFamily.InterNetworkV6 -> IPv6Address str |> Right
       | fam ->
         sprintf "Unable to parse IP: %s Unsupported AddressFamily: %A" str fam
-        |> ParseError
+        |> Error.asParseError "IpAddress.Parse"
         |> Either.fail
 
     with
       | exn ->
         sprintf "Unable to parse IP: %s Cause: %s" str exn.Message
-        |> ParseError
+        |> Error.asParseError "IpAddress.Parse"
         |> Either.fail
 #endif

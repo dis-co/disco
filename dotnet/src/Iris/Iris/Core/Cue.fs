@@ -9,33 +9,30 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
+open System.IO
 open SharpYaml
 open SharpYaml.Serialization
 open FlatBuffers
 open Iris.Serialization.Raft
 
-type CueYaml(id, name, ioboxes) as self =
+type CueYaml(id, name, pins) as self =
   [<DefaultValue>] val mutable Id   : string
   [<DefaultValue>] val mutable Name : string
-  [<DefaultValue>] val mutable IOBoxes : IOBoxYaml array
+  [<DefaultValue>] val mutable Pins : PinYaml array
 
   new () = new CueYaml(null, null, null)
 
   do
     self.Id <- id
     self.Name <- name
-    self.IOBoxes <- ioboxes
+    self.Pins <- pins
 
 #endif
 
-#if FABLE_COMPILER
 type Cue =
-#else
-and Cue =
-#endif
-  { Id:      Id
-  ; Name:    string
-  ; IOBoxes: IOBox array }
+  { Id:   Id
+    Name: string
+    Pins: Pin array }
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -46,32 +43,32 @@ and Cue =
 
   static member FromFB(fb: CueFB) : Either<IrisError,Cue> =
     either {
-      let! ioboxes =
-        let arr = Array.zeroCreate fb.IOBoxesLength
+      let! pins =
+        let arr = Array.zeroCreate fb.PinsLength
         Array.fold
-          (fun (m: Either<IrisError,int * IOBox array>) _ -> either {
-              let! (i, ioboxes) = m
+          (fun (m: Either<IrisError,int * Pin array>) _ -> either {
+              let! (i, pins) = m
 
               #if FABLE_COMPILER
 
-              let! iobox = i |> fb.IOBoxes |> IOBox.FromFB
+              let! pin = i |> fb.Pins |> Pin.FromFB
 
               #else
 
-              let! iobox =
-                let nullable = fb.IOBoxes(i)
+              let! pin =
+                let nullable = fb.Pins(i)
                 if nullable.HasValue then
                   nullable.Value
-                  |> IOBox.FromFB
+                  |> Pin.FromFB
                 else
-                  "Could not parse empty IOBoxFB"
-                  |> ParseError
+                  "Could not parse empty PinFB"
+                  |> Error.asParseError "Cue.FromFB"
                   |> Either.fail
 
               #endif
 
-              ioboxes.[i] <- iobox
-              return (i + 1, ioboxes)
+              pins.[i] <- pin
+              return (i + 1, pins)
             })
           (Right (0, arr))
           arr
@@ -79,18 +76,18 @@ and Cue =
 
       return { Id = Id fb.Id
                Name = fb.Name
-               IOBoxes = ioboxes }
+               Pins = pins }
     }
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueFB> =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
-    let ioboxoffsets = Array.map (fun (iobox: IOBox) -> iobox.ToOffset(builder)) self.IOBoxes
-    let ioboxes = CueFB.CreateIOBoxesVector(builder, ioboxoffsets)
+    let pinoffsets = Array.map (fun (pin: Pin) -> pin.ToOffset(builder)) self.Pins
+    let pins = CueFB.CreatePinsVector(builder, pinoffsets)
     CueFB.StartCueFB(builder)
     CueFB.AddId(builder, id)
     CueFB.AddName(builder, name)
-    CueFB.AddIOBoxes(builder, ioboxes)
+    CueFB.AddPins(builder, pins)
     CueFB.EndCueFB(builder)
 
   static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,Cue> =
@@ -99,30 +96,36 @@ and Cue =
 
   member self.ToBytes() = Binary.buildBuffer self
 
-#if FABLE_COMPILER
-#else
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+  #if !FABLE_COMPILER
+
   member self.ToYamlObject() =
-    let ioboxes = Array.map Yaml.toYaml self.IOBoxes
-    new CueYaml(string self.Id, self.Name, ioboxes)
+    let pins = Array.map Yaml.toYaml self.Pins
+    new CueYaml(string self.Id, self.Name, pins)
 
   static member FromYamlObject(yaml: CueYaml) : Either<IrisError,Cue> =
     either {
-      let! ioboxes =
-        let arr = Array.zeroCreate yaml.IOBoxes.Length
+      let! pins =
+        let arr = Array.zeroCreate yaml.Pins.Length
         Array.fold
-          (fun (m: Either<IrisError,int * IOBox array>) box -> either {
+          (fun (m: Either<IrisError,int * Pin array>) box -> either {
             let! (i, arr) = m
-            let! (iobox : IOBox) = Yaml.fromYaml box
-            arr.[i] <- iobox
+            let! (pin : Pin) = Yaml.fromYaml box
+            arr.[i] <- pin
             return (i + 1, arr)
           })
           (Right (0, arr))
-          yaml.IOBoxes
+          yaml.Pins
         |> Either.map snd
 
       return { Id = Id yaml.Id
                Name = yaml.Name
-               IOBoxes = ioboxes }
+               Pins = pins }
     }
 
   member self.ToYaml(serializer: Serializer) =
@@ -133,6 +136,12 @@ and Cue =
     serializer.Deserialize<CueYaml>(str)
     |> Yaml.fromYaml
 
+  //     _                 _   ____       _   _
+  //    / \   ___ ___  ___| |_|  _ \ __ _| |_| |__
+  //   / _ \ / __/ __|/ _ \ __| |_) / _` | __| '_ \
+  //  / ___ \\__ \__ \  __/ |_|  __/ (_| | |_| | | |
+  // /_/   \_\___/___/\___|\__|_|   \__,_|\__|_| |_|
+
   member self.AssetPath
     with get () =
       let filepath =
@@ -142,4 +151,66 @@ and Cue =
           ASSET_EXTENSION
       CUE_DIR </> filepath
 
-#endif
+  #endif
+
+  //  _                    _
+  // | |    ___   __ _  __| |
+  // | |   / _ \ / _` |/ _` |
+  // | |__| (_) | (_| | (_| |
+  // |_____\___/ \__,_|\__,_|
+
+  #if !FABLE_COMPILER
+
+  static member Load(path: FilePath) : Either<IrisError, Cue> =
+    either {
+      let! data = Asset.read path
+      let! cue = Yaml.decode data
+      return cue
+    }
+
+  static member LoadAll(basePath: FilePath) : Either<IrisError, Cue array> =
+    either {
+      try
+        let dir = basePath </> CUE_DIR
+        let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
+
+        let! (_,cues) =
+          let arr =
+            files
+            |> Array.length
+            |> Array.zeroCreate
+          Array.fold
+            (fun (m: Either<IrisError, int * Cue array>) path ->
+              either {
+                let! (idx,cues) = m
+                let! cue = Cue.Load path
+                cues.[idx] <- cue
+                return (idx + 1, cues)
+              })
+            (Right(0, arr))
+            files
+
+        return cues
+      with
+        | exn ->
+          return!
+            exn.Message
+            |> Error.asAssetError "Cue.LoadAll"
+            |> Either.fail
+    }
+
+  //  ____
+  // / ___|  __ ___   _____
+  // \___ \ / _` \ \ / / _ \
+  //  ___) | (_| |\ V /  __/
+  // |____/ \__,_| \_/ \___|
+
+  member cue.Save (basePath: FilePath) =
+    either {
+      let path = basePath </> Asset.path cue
+      let data = Yaml.encode cue
+      let! info = Asset.write path data
+      return ()
+    }
+
+  #endif

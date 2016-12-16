@@ -19,8 +19,7 @@ open Iris.Core
 
 module Http =
 
-  [<Literal>]
-  let private tag = "HttpServer"
+  let private tag (str: string) = sprintf "HttpServer.%s" str
 
   [<Literal>]
   let private defaultIP = "127.0.0.1"
@@ -83,7 +82,7 @@ module Http =
                        Either<IrisError,SuaveConfig> =
     either {
       try
-        let! node = Config.selfNode options
+        let! mem = Config.selfMember options
 
         let logger =
           { new Logger with
@@ -92,15 +91,16 @@ module Http =
                 match line.level with
                 | Suave.Logging.LogLevel.Verbose -> ()
                 | _ ->
-                  Logger.debug options.MachineConfig.MachineId tag line.message }
+                  line.message
+                  |> Logger.debug options.Machine.MachineId (tag "logger") }
 
-        let addr, port = string node.IpAddr, string node.WebPort
+        let addr, port = string mem.IpAddr, string mem.WebPort
 
         let addr = IPAddress.Parse addr
         let port = Sockets.Port.Parse port
 
         sprintf "Suave Web Server ready to start on: %A:%A" addr port
-        |> Logger.info options.MachineConfig.MachineId tag
+        |> Logger.info options.Machine.MachineId (tag "mkConfig")
 
         return
           { defaultConfig with
@@ -113,7 +113,7 @@ module Http =
         | exn ->
           return!
             exn.Message
-            |> Other
+            |> Error.asSocketError (tag "mkConfig")
             |> Error.exitWith
     }
 
@@ -146,7 +146,7 @@ module Http =
                 with
                   | exn ->
                     exn.Message
-                    |> SocketError
+                    |> Error.asSocketError (tag "create")
                     |> Either.fail
 
               member self.Dispose () =

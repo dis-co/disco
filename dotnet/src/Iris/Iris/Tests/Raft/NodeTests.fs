@@ -14,7 +14,7 @@ module NodeTests =
   // |_| \_|\___/ \__,_|\___|           //
   ////////////////////////////////////////
 
-  let node_init_test =
-    testCase "When created, Node should be in Voting state" <| fun _ ->
-      let node : RaftNode = Node.create (Id.Create())
-      Expect.equal (Node.isVoting node) true "Should be voting"
+  let mem_init_test =
+    testCase "When created, Mem should be in Voting state" <| fun _ ->
+      let mem : RaftMember = Member.create (Id.Create())
+      Expect.equal (Member.isVoting mem) true "Should be voting"

@@ -42,8 +42,7 @@ open FSharpx.Functional
 
 module Git =
 
-  [<Literal>]
-  let private tag = "GitServer"
+  let private tag (str: string) = sprintf "GitServer.%s" str
 
   // ** GitEvent
 
@@ -285,7 +284,7 @@ module Git =
           }
       else
         "Could not start git daemon process"
-        |> GitError
+        |> Error.asGitError (tag "handleStart")
         |> Either.fail
         |> chan.Reply
         state
@@ -293,7 +292,7 @@ module Git =
       | exn ->
         exn.Message
         |> sprintf "Exception starting git daemon process %s"
-        |> GitError
+        |> Error.asGitError (tag "handleStart")
         |> Either.fail
         |> chan.Reply
         state
@@ -334,7 +333,7 @@ module Git =
       | _ ->
         let error =
           sprintf "Non-zero exit code: %d" code
-          |> GitError
+          |> Error.asGitError (tag "handleExit")
         Running { data with Status = ServiceStatus.Failed error }
 
   // ** handleStatus
@@ -359,7 +358,7 @@ module Git =
     match state with
     | Idle ->
       "No GitDaemon started"
-      |> GitError
+      |> Error.asGitError (tag "handlePid")
       |> Either.fail
       |> chan.Reply
     | Running data ->
@@ -374,7 +373,7 @@ module Git =
     match state with
     | Idle ->
       "No GitDaemon started"
-      |> GitError
+      |> Error.asGitError (tag "handleStop")
       |> Either.fail
       |> chan.Reply
       state
@@ -439,7 +438,7 @@ module Git =
   [<RequireQualifiedAccess>]
   module GitServer =
 
-    let create (node: RaftNode) (path: FilePath) =
+    let create (mem: RaftMember) (path: FilePath) =
       let subscriptions = new Subscriptions()
       let listener = createListener subscriptions
       let agent = new GitAgent(loop Idle subscriptions)
@@ -455,7 +454,7 @@ module Git =
                 | Right other ->
                   other
                   |> sprintf "Unexpected reply from GitAgent: %A"
-                  |> GitError
+                  |> Error.asGitError (tag "create")
                   |> Either.fail
                 | Left error ->
                   error
@@ -469,7 +468,7 @@ module Git =
                 | Right other ->
                   other
                   |> sprintf "Unexpected reply from GitAgent: %A"
-                  |> GitError
+                  |> Error.asGitError (tag "create")
                   |> Either.fail
                 | Left error ->
                   error
@@ -484,7 +483,7 @@ module Git =
 
             member self.Start () =
               let callback (chan: ReplyChan) =
-                Msg.Start(path, string node.IpAddr, node.GitPort, chan)
+                Msg.Start(path, string mem.IpAddr, mem.GitPort, chan)
 
               match agent.PostAndReply(callback) with
               | Right Reply.Ok ->
@@ -501,11 +500,11 @@ module Git =
                   match agent.PostAndReply(fun chan -> Msg.Status chan) with
                   | Right (Reply.Status status) ->
                     string status
-                    |> GitError
+                    |> Error.asGitError (tag "create")
                     |> Either.fail
                   | Right other ->
                     "Unexpected reply type from GitAgent"
-                    |> GitError
+                    |> Error.asGitError (tag "create")
                     |> Either.fail
                   | Left error ->
                     error
@@ -513,7 +512,7 @@ module Git =
 
               | Right other ->
                 "Unexpected reply type from GitAgent"
-                |> GitError
+                |> Error.asGitError (tag "create")
                 |> Either.fail
               | Left error ->
                 error

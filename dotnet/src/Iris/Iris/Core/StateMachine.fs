@@ -67,7 +67,7 @@ type AppCommand =
   // ** TryParse
 
   static member TryParse (str: string) =
-    Either.tryWith ParseError "AppCommand" <| fun _ ->
+    Either.tryWith (Error.asParseError "AppCommand.TryParse") <| fun _ ->
       str |> AppCommand.Parse
 
   // ** FromFB
@@ -88,7 +88,7 @@ type AppCommand =
     | x when x = ActionTypeFB.SaveProjectFB -> Right SaveProject
     | x ->
       sprintf "Could not parse %A as AppCommand" x
-      |> ParseError
+      |> Error.asParseError "AppCommand.FromFB"
       |> Either.fail
 #else
     match fb with
@@ -98,7 +98,7 @@ type AppCommand =
     | ActionTypeFB.SaveProjectFB -> Right SaveProject
     | x ->
       sprintf "Could not parse %A as AppCommand" x
-      |> ParseError
+      |> Error.asParseError "AppCommand.FromFB"
       |> Either.fail
 #endif
 
@@ -110,38 +110,6 @@ type AppCommand =
     | Redo        -> ActionTypeFB.RedoFB
     | Reset       -> ActionTypeFB.ResetFB
     | SaveProject -> ActionTypeFB.SaveProjectFB
-
-#if !FABLE_COMPILER
-
-// * State Yaml
-
-//  ____  _        _     __   __              _
-// / ___|| |_ __ _| |_ __\ \ / /_ _ _ __ ___ | |
-// \___ \| __/ _` | __/ _ \ V / _` | '_ ` _ \| |
-//  ___) | || (_| | ||  __/| | (_| | | | | | | |
-// |____/ \__\__,_|\__\___||_|\__,_|_| |_| |_|_|
-
-type StateYaml(ps, ioboxes, cues, cuelists, nodes, sessions, users) as self =
-  [<DefaultValue>] val mutable Patches  : PatchYaml array
-  [<DefaultValue>] val mutable IOBoxes  : IOBoxYaml array
-  [<DefaultValue>] val mutable Cues     : CueYaml array
-  [<DefaultValue>] val mutable CueLists : CueListYaml array
-  [<DefaultValue>] val mutable Nodes    : RaftNodeYaml array
-  [<DefaultValue>] val mutable Sessions : SessionYaml array
-  [<DefaultValue>] val mutable Users    : UserYaml array
-
-  new () = new StateYaml(null, null, null, null, null, null, null)
-
-  do
-    self.Patches  <- ps
-    self.IOBoxes  <- ioboxes
-    self.Cues     <- cues
-    self.CueLists <- cuelists
-    self.Nodes    <- nodes
-    self.Sessions <- sessions
-    self.Users    <- users
-
-#endif
 
 // * State Type
 
@@ -156,27 +124,63 @@ type StateYaml(ps, ioboxes, cues, cuelists, nodes, sessions, users) as self =
 //
 
 type State =
-  { Patches  : Map<Id,Patch>
-  ; IOBoxes  : Map<Id,IOBox>
-  ; Cues     : Map<Id,Cue>
-  ; CueLists : Map<Id,CueList>
-  ; Nodes    : Map<Id,RaftNode>
-  ; Sessions : Map<Id,Session>
-  ; Users    : Map<Id,User>
-  }
+  { Project  : IrisProject
+    Patches  : Map<Id,Patch>
+    Cues     : Map<Id,Cue>
+    CueLists : Map<Id,CueList>
+    Sessions : Map<Id,Session>
+    Users    : Map<Id,User> }
 
   // ** Empty
 
-  static member Empty =
-    { Patches  = Map.empty
-    ; IOBoxes  = Map.empty
-    ; Cues     = Map.empty
-    ; Nodes    = Map.empty
-    ; CueLists = Map.empty
-    ; Users    = Map.empty
-    ; Sessions = Map.empty }
+  static member Empty
+    with get () =
+      { Project  = IrisProject.Empty
+        Patches  = Map.empty
+        Cues     = Map.empty
+        CueLists = Map.empty
+        Sessions = Map.empty
+        Users    = Map.empty }
 
-  // ** AddUser
+  // ** Load
+
+  #if !FABLE_COMPILER
+
+  static member Load (path: FilePath, machine: IrisMachine) =
+    either {
+      let! project  = Asset.loadWithMachine path machine
+      let! users    = Asset.loadAll project.Path
+      let! cues     = Asset.loadAll project.Path
+      let! cuelists = Asset.loadAll project.Path
+      let! patches  = Asset.loadAll project.Path
+
+      return
+        { Project  = project
+          Users    = Array.map toPair users    |> Map.ofArray
+          Cues     = Array.map toPair cues     |> Map.ofArray
+          CueLists = Array.map toPair cuelists |> Map.ofArray
+          Patches  = Array.map toPair patches  |> Map.ofArray
+          Sessions = Map.empty }
+    }
+
+  #endif
+
+  // ** Save
+
+  #if !FABLE_COMPILER
+
+  member state.Save (basePath: FilePath) =
+    either {
+      do! Map.fold (Asset.saveMap basePath) (Right ()) state.Patches
+      do! Map.fold (Asset.saveMap basePath) (Right ()) state.Cues
+      do! Map.fold (Asset.saveMap basePath) (Right ()) state.CueLists
+      do! Map.fold (Asset.saveMap basePath) (Right ()) state.Users
+      do! Asset.save state.Project basePath
+    }
+
+  #endif
+
+  // ** addUser
 
   //  _   _
   // | | | |___  ___ _ __
@@ -184,16 +188,16 @@ type State =
   // | |_| \__ \  __/ |
   //  \___/|___/\___|_|
 
-  member state.AddUser (user: User) =
+  static member addUser (user: User) (state: State) =
     if Map.containsKey user.Id state.Users then
       state
     else
       let users = Map.add user.Id user state.Users
       { state with Users = users }
 
-  // ** UpdateUser
+  // ** updateUser
 
-  member state.UpdateUser (user: User) =
+  static member updateUser (user: User) (state: State) =
     if Map.containsKey user.Id state.Users then
       let users = Map.add user.Id user state.Users
       { state with Users = users }
@@ -202,10 +206,10 @@ type State =
 
   // ** RemoveUser
 
-  member state.RemoveUser (user: User) =
+  static member removeUser (user: User) (state: State) =
     { state with Users = Map.filter (fun k _ -> (k <> user.Id)) state.Users }
 
-  // ** AddSession
+  // ** addSession
 
   //  ____                _
   // / ___|  ___  ___ ___(_) ___  _ __
@@ -213,7 +217,7 @@ type State =
   //  ___) |  __/\__ \__ \ | (_) | | | |
   // |____/ \___||___/___/_|\___/|_| |_|
 
-  member state.AddSession (session: Session) =
+  static member addSession (session: Session) (state: State) =
     let sessions =
       if Map.containsKey session.Id state.Sessions then
         state.Sessions
@@ -221,9 +225,9 @@ type State =
         Map.add session.Id session state.Sessions
     { state with Sessions = sessions }
 
-  // ** UpdateSession
+  // ** updateSession
 
-  member state.UpdateSession (session: Session) =
+  static member updateSession (session: Session) (state: State) =
     let sessions =
       if Map.containsKey session.Id state.Sessions then
         Map.add session.Id session state.Sessions
@@ -231,12 +235,12 @@ type State =
         state.Sessions
     { state with Sessions = sessions }
 
-  // ** RemoveSession
+  // ** removeSession
 
-  member state.RemoveSession (session: Session) =
+  static member removeSession (session: Session) (state: State) =
     { state with Sessions = Map.filter (fun k _ -> (k <> session.Id)) state.Sessions }
 
-  // ** AddPatch
+  // ** addPatch
 
   //  ____       _       _
   // |  _ \ __ _| |_ ___| |__
@@ -244,27 +248,27 @@ type State =
   // |  __/ (_| | || (__| | | |
   // |_|   \__,_|\__\___|_| |_|
 
-  member state.AddPatch (patch : Patch) =
+  static member addPatch (patch : Patch) (state: State) =
     if Map.containsKey patch.Id state.Patches then
       state
     else
       { state with Patches = Map.add patch.Id patch state.Patches }
 
-  // ** UpdatePatch
+  // ** updatePatch
 
-  member state.UpdatePatch (patch : Patch) =
+  static member updatePatch (patch : Patch) (state: State) =
     if Map.containsKey patch.Id state.Patches then
       { state with Patches = Map.add patch.Id patch state.Patches }
     else
       state
 
-  // ** RemovePatch
+  // ** removePatch
 
-  member state.RemovePatch (patch : Patch) =
+  static member removePatch (patch : Patch) (state: State) =
     { state with Patches = Map.remove patch.Id state.Patches }
 
 
-  // ** AddIOBox
+  // ** addPin
 
   //  ___ ___  ____
   // |_ _/ _ \| __ )  _____  __
@@ -272,37 +276,37 @@ type State =
   //  | | |_| | |_) | (_) >  <
   // |___\___/|____/ \___/_/\_\
 
-  member state.AddIOBox (iobox : IOBox) =
-    if Map.containsKey iobox.Patch state.Patches then
+  static member addPin (pin : Pin) (state: State) =
+    if Map.containsKey pin.Patch state.Patches then
       let update _ (patch: Patch) =
-        if patch.Id = iobox.Patch then
-          Patch.AddIOBox patch iobox
+        if patch.Id = pin.Patch then
+          Patch.AddPin patch pin
         else
           patch
       { state with Patches = Map.map update state.Patches }
     else
       state
 
-  // ** UpdateIOBox
+  // ** updatePin
 
-  member state.UpdateIOBox (iobox : IOBox) =
+  static member updatePin (pin : Pin) (state: State) =
     let mapper (_: Id) (patch : Patch) =
-      if patch.Id = iobox.Patch then
-        Patch.UpdateIOBox patch iobox
+      if patch.Id = pin.Patch then
+        Patch.UpdatePin patch pin
       else
         patch
     { state with Patches = Map.map mapper state.Patches }
 
-  // ** RemoveIOBox
+  // ** removePin
 
-  member state.RemoveIOBox (iobox : IOBox) =
+  static member removePin (pin : Pin) (state: State) =
     let updater _ (patch : Patch) =
-      if iobox.Patch = patch.Id
-      then Patch.RemoveIOBox patch iobox
+      if pin.Patch = patch.Id
+      then Patch.RemovePin patch pin
       else patch
     { state with Patches = Map.map updater state.Patches }
 
-  // ** AddCueList
+  // ** addCueList
 
   //   ____           _     _     _
   //  / ___|   _  ___| |   (_)___| |_ ___
@@ -310,23 +314,23 @@ type State =
   // | |__| |_| |  __/ |___| \__ \ |_\__ \
   //  \____\__,_|\___|_____|_|___/\__|___/
 
-  member state.AddCueList (cuelist : CueList) =
+  static member addCueList (cuelist : CueList) (state: State) =
     if Map.containsKey cuelist.Id state.CueLists then
       state
     else
       { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
 
-  // ** UpdateCueList
+  // ** updateCueList
 
-  member state.UpdateCueList (cuelist : CueList) =
+  static member updateCueList (cuelist : CueList) (state: State) =
     if Map.containsKey cuelist.Id state.CueLists then
       { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
     else
       state
 
-  // ** RemoveCueList
+  // ** removeCueList
 
-  member state.RemoveCueList (cuelist : CueList) =
+  static member removeCueList (cuelist : CueList) (state: State) =
     { state with CueLists = Map.remove cuelist.Id state.CueLists }
 
   // ** AddCue
@@ -337,110 +341,67 @@ type State =
   // | |__| |_| |  __/
   //  \____\__,_|\___|
 
-  member state.AddCue (cue : Cue) =
+  static member addCue (cue : Cue) (state: State) =
     if Map.containsKey cue.Id state.Cues then
       state
     else
       { state with Cues = Map.add cue.Id cue state.Cues }
 
-  // ** UpdateCue
+  // ** updateCue
 
-  member state.UpdateCue (cue : Cue) =
+  static member updateCue (cue : Cue) (state: State) =
     if Map.containsKey cue.Id state.Cues then
       { state with Cues = Map.add cue.Id cue state.Cues }
     else
       state
 
-  // ** RemoveCue
+  // ** removeCue
 
-  member state.RemoveCue (cue : Cue) =
+  static member removeCue (cue : Cue) (state: State) =
     { state with Cues = Map.remove cue.Id state.Cues }
 
-  // ** AddNode
+  //  __  __                _
+  // |  \/  | ___ _ __ ___ | |__   ___ _ __
+  // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+  // | |  | |  __/ | | | | | |_) |  __/ |
+  // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
 
-  //  _   _           _
-  // | \ | | ___   __| | ___
-  // |  \| |/ _ \ / _` |/ _ \
-  // | |\  | (_) | (_| |  __/
-  // |_| \_|\___/ \__,_|\___|
+  // ** addMember
 
-  member state.AddNode (node: RaftNode) =
-    if Map.containsKey node.Id state.Nodes then
-      state
-    else
-      { state with Nodes = Map.add node.Id node state.Nodes }
+  static member addMember (mem: RaftMember) (state: State) =
+    { state with Project = Project.addMember mem state.Project }
 
-  // ** UpdateNode
+  // ** updateMember
 
-  member state.UpdateNode (node: RaftNode) =
-    if Map.containsKey node.Id state.Nodes then
-      { state with Nodes = Map.add node.Id node state.Nodes }
-    else
-      state
+  static member updateMember (mem: RaftMember) (state: State) =
+    { state with Project = Project.updateMember mem state.Project }
 
-  // ** RemoveNode
+  // ** removeMember
 
-  member state.RemoveNode (node: RaftNode) =
-    { state with Nodes = Map.remove node.Id state.Nodes }
+  static member removeMember (mem: RaftMember) (state: State) =
+    { state with Project = Project.removeMember mem.Id state.Project }
 
-  // ** ToYamlObject
-#if !FABLE_COMPILER
+  //  ____            _           _
+  // |  _ \ _ __ ___ (_) ___  ___| |_
+  // | |_) | '__/ _ \| |/ _ \/ __| __|
+  // |  __/| | | (_) | |  __/ (__| |_
+  // |_|   |_|  \___// |\___|\___|\__|
+  //               |__/
 
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
+  // ** updateMachine
 
-  member self.ToYamlObject () =
-    let inline encode m =
-      m |> Map.toArray |> Array.map (snd >> Yaml.toYaml)
+  static member updateMachine (machine: IrisMachine) (state: State) =
+    { state with Project = Project.updateMachine machine state.Project }
 
-    let yaml = new StateYaml()
-    yaml.Patches  <- encode self.Patches
-    yaml.IOBoxes  <- encode self.IOBoxes
-    yaml.Cues     <- encode self.Cues
-    yaml.CueLists <- encode self.CueLists
-    yaml.Nodes    <- encode self.Nodes
-    yaml.Sessions <- encode self.Sessions
-    yaml.Users    <- encode self.Users
+  // ** updateConfig
 
-    yaml
+  static member updateConfig (config: IrisConfig) (state: State) =
+    { state with Project = Project.updateConfig config state.Project }
 
-  // ** ToYaml
+  // ** updateProject
 
-  member self.ToYaml (serializer: Serializer) =
-    self |> Yaml.toYaml |> serializer.Serialize
-
-  // ** FromYamlObject
-
-  static member FromYamlObject (yml: StateYaml) =
-    either {
-      let! patches  = Yaml.arrayToMap yml.Patches
-      let! ioboxes  = Yaml.arrayToMap yml.IOBoxes
-      let! cues     = Yaml.arrayToMap yml.Cues
-      let! cuelists = Yaml.arrayToMap yml.CueLists
-      let! nodes    = Yaml.arrayToMap yml.Nodes
-      let! sessions = Yaml.arrayToMap yml.Sessions
-      let! users    = Yaml.arrayToMap yml.Users
-
-      return { Patches  = patches
-               IOBoxes  = ioboxes
-               Cues     = cues
-               CueLists = cuelists
-               Nodes    = nodes
-               Sessions = sessions
-               Users    = users }
-    }
-
-  // ** FromYaml
-
-  static member FromYaml (str: string) : Either<IrisError,State> =
-    let serializer = new Serializer()
-    serializer.Deserialize<StateYaml>(str)
-    |> Yaml.fromYaml
-
-#endif
+  static member updateProject (project: IrisProject) (state: State) =
+    { state with Project = project }
 
   // ** ToOffset
 
@@ -452,17 +413,13 @@ type State =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateFB> =
+    let project = Binary.toOffset builder self.Project
+
     let patches =
       Map.toArray self.Patches
       |> Array.map (snd >> Binary.toOffset builder)
 
     let patchesoffset = StateFB.CreatePatchesVector(builder, patches)
-
-    let ioboxes =
-      Map.toArray self.IOBoxes
-      |> Array.map (snd >> Binary.toOffset builder)
-
-    let ioboxesoffset = StateFB.CreateIOBoxesVector(builder, ioboxes)
 
     let cues =
       Map.toArray self.Cues
@@ -475,12 +432,6 @@ type State =
       |> Array.map (snd >> Binary.toOffset builder)
 
     let cuelistsoffset = StateFB.CreateCueListsVector(builder, cuelists)
-
-    let nodes =
-      Map.toArray self.Nodes
-      |> Array.map (snd >> Binary.toOffset builder)
-
-    let nodesoffset = StateFB.CreateNodesVector(builder, nodes)
 
     let users =
       Map.toArray self.Users
@@ -495,11 +446,10 @@ type State =
     let sessionsoffset = StateFB.CreateSessionsVector(builder, sessions)
 
     StateFB.StartStateFB(builder)
+    StateFB.AddProject(builder, project)
     StateFB.AddPatches(builder, patchesoffset)
-    StateFB.AddIOBoxes(builder, ioboxesoffset)
     StateFB.AddCues(builder, cuesoffset)
     StateFB.AddCueLists(builder, cuelistsoffset)
-    StateFB.AddNodes(builder, nodesoffset)
     StateFB.AddSessions(builder, sessionsoffset)
     StateFB.AddUsers(builder, usersoffset)
     StateFB.EndStateFB(builder)
@@ -512,6 +462,22 @@ type State =
 
   static member FromFB(fb: StateFB) : Either<IrisError, State> =
     either {
+      // PROJECT
+
+      let! project =
+        #if FABLE_COMPILER
+        IrisProject.FromFB fb.Project
+        #else
+        let pfb = fb.Project
+        if pfb.HasValue then
+          let projectish = pfb.Value
+          IrisProject.FromFB projectish
+        else
+          "Could not parse empty ProjectFB"
+          |> Error.asParseError "State.FromFB"
+          |> Either.fail
+        #endif
+
       // PATCHES
 
       let! patches =
@@ -519,9 +485,10 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, Patch>>) _ -> either {
             let! (i, map) = m
-#if FABLE_COMPILER
+
+            #if FABLE_COMPILER
             let! patch = fb.Patches(i) |> Patch.FromFB
-#else
+            #else
             let! patch =
               let value = fb.Patches(i)
               if value.HasValue then
@@ -529,36 +496,11 @@ type State =
                 |> Patch.FromFB
               else
                 "Could not parse empty patch payload"
-                |> ParseError
+                |> Error.asParseError "State.FromFB"
                 |> Either.fail
-#endif
+            #endif
+
             return (i + 1, Map.add patch.Id patch map)
-          })
-          (Right (0, Map.empty))
-          arr
-        |> Either.map snd
-
-      // IOBOXES
-
-      let! ioboxes =
-        let arr = Array.zeroCreate fb.IOBoxesLength
-        Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, IOBox>>) _ -> either {
-            let! (i, map) = m
-#if FABLE_COMPILER
-            let! iobox = fb.IOBoxes(i) |> IOBox.FromFB
-#else
-            let! iobox =
-              let value = fb.IOBoxes(i)
-              if value.HasValue then
-                value.Value
-                |> IOBox.FromFB
-              else
-                "Could not parse empty IOBox payload"
-                |> ParseError
-                |> Either.fail
-#endif
-            return (i + 1, Map.add iobox.Id iobox map)
           })
           (Right (0, Map.empty))
           arr
@@ -571,9 +513,10 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, Cue>>) _ -> either {
             let! (i, map) = m
-#if FABLE_COMPILER
+
+            #if FABLE_COMPILER
             let! cue = fb.Cues(i) |> Cue.FromFB
-#else
+            #else
             let! cue =
               let value = fb.Cues(i)
               if value.HasValue then
@@ -581,9 +524,10 @@ type State =
                 |> Cue.FromFB
               else
                 "Could not parse empty Cue payload"
-                |> ParseError
+                |> Error.asParseError "State.FromFB"
                 |> Either.fail
-#endif
+            #endif
+
             return (i + 1, Map.add cue.Id cue map)
           })
           (Right (0, Map.empty))
@@ -597,9 +541,10 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, CueList>>) _ -> either {
             let! (i, map) = m
-#if FABLE_COMPILER
+
+            #if FABLE_COMPILER
             let! cuelist = fb.CueLists(i) |> CueList.FromFB
-#else
+            #else
             let! cuelist =
               let value = fb.CueLists(i)
               if value.HasValue then
@@ -607,36 +552,11 @@ type State =
                 |> CueList.FromFB
               else
                 "Could not parse empty CueList payload"
-                |> ParseError
+                |> Error.asParseError "State.FromFB"
                 |> Either.fail
-#endif
+            #endif
+
             return (i + 1, Map.add cuelist.Id cuelist map)
-          })
-          (Right (0, Map.empty))
-          arr
-        |> Either.map snd
-
-      // NODES
-
-      let! nodes =
-        let arr = Array.zeroCreate fb.NodesLength
-        Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, RaftNode>>) _ -> either {
-            let! (i, map) = m
-#if FABLE_COMPILER
-            let! node = fb.Nodes(i) |> RaftNode.FromFB
-#else
-            let! node =
-              let value = fb.Nodes(i)
-              if value.HasValue then
-                value.Value
-                |> RaftNode.FromFB
-              else
-                "Could not parse empty RaftNode payload"
-                |> ParseError
-                |> Either.fail
-#endif
-            return (i + 1, Map.add node.Id node map)
           })
           (Right (0, Map.empty))
           arr
@@ -649,9 +569,10 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, User>>) _ -> either {
             let! (i, map) = m
-#if FABLE_COMPILER
+
+            #if FABLE_COMPILER
             let! user = fb.Users(i) |> User.FromFB
-#else
+            #else
             let! user =
               let value = fb.Users(i)
               if value.HasValue then
@@ -659,9 +580,10 @@ type State =
                 |> User.FromFB
               else
                 "Could not parse empty User payload"
-                |> ParseError
+                |> Error.asParseError "State.FromFB"
                 |> Either.fail
-#endif
+            #endif
+
             return (i + 1, Map.add user.Id user map)
           })
           (Right (0, Map.empty))
@@ -675,9 +597,10 @@ type State =
         Array.fold
           (fun (m: Either<IrisError,int * Map<Id, Session>>) _ -> either {
             let! (i, map) = m
-#if FABLE_COMPILER
+
+            #if FABLE_COMPILER
             let! session = fb.Sessions(i) |> Session.FromFB
-#else
+            #else
             let! session =
               let value = fb.Sessions(i)
               if value.HasValue then
@@ -685,20 +608,20 @@ type State =
                 |> Session.FromFB
               else
                 "Could not parse empty Session payload"
-                |> ParseError
+                |> Error.asParseError "State.FromFB"
                 |> Either.fail
-#endif
+            #endif
+
             return (i + 1, Map.add session.Id session map)
           })
           (Right (0, Map.empty))
           arr
         |> Either.map snd
 
-      return { Patches  = patches
-               IOBoxes  = ioboxes
+      return { Project  = project
+               Patches  = patches
                Cues     = cues
                CueLists = cuelists
-               Nodes    = nodes
                Users    = users
                Sessions = sessions }
     }
@@ -907,50 +830,44 @@ and Store(state : State)=
   member self.Dispatch (ev : StateMachine) : unit =
     let andRender (newstate: State) =
       state <- newstate                   // 1) create new state
-      self.Notify(ev)                    // 2) notify all listeners
+      self.Notify(ev)                    // 2) notify all
       history.Append({ Event = ev        // 3) store this action and new state
-                      ; State = state }) // 4) append to undo history
-
-    let addSession (session: Session) (state: State) =
-      let sessions =
-        if Map.containsKey session.Id state.Sessions then
-          state.Sessions
-        else
-          Map.add session.Id session state.Sessions
-      { state with Sessions = sessions }
+                       State = state })  // 4) append to undo history
 
     match ev with
     | Command (AppCommand.Redo)  -> self.Redo()
     | Command (AppCommand.Undo)  -> self.Undo()
     | Command (AppCommand.Reset) -> ()   // do nothing for now
 
-    | AddCue                cue -> state.AddCue        cue     |> andRender
-    | UpdateCue             cue -> state.UpdateCue     cue     |> andRender
-    | RemoveCue             cue -> state.RemoveCue     cue     |> andRender
+    | AddCue                cue -> State.addCue        cue     state |> andRender
+    | UpdateCue             cue -> State.updateCue     cue     state |> andRender
+    | RemoveCue             cue -> State.removeCue     cue     state |> andRender
 
-    | AddCueList        cuelist -> state.AddCueList    cuelist |> andRender
-    | UpdateCueList     cuelist -> state.UpdateCueList cuelist |> andRender
-    | RemoveCueList     cuelist -> state.RemoveCueList cuelist |> andRender
+    | AddCueList        cuelist -> State.addCueList    cuelist state |> andRender
+    | UpdateCueList     cuelist -> State.updateCueList cuelist state |> andRender
+    | RemoveCueList     cuelist -> State.removeCueList cuelist state |> andRender
 
-    | AddPatch            patch -> state.AddPatch      patch   |> andRender
-    | UpdatePatch         patch -> state.UpdatePatch   patch   |> andRender
-    | RemovePatch         patch -> state.RemovePatch   patch   |> andRender
+    | AddPatch            patch -> State.addPatch      patch   state |> andRender
+    | UpdatePatch         patch -> State.updatePatch   patch   state |> andRender
+    | RemovePatch         patch -> State.removePatch   patch   state |> andRender
 
-    | AddIOBox            iobox -> state.AddIOBox      iobox   |> andRender
-    | UpdateIOBox         iobox -> state.UpdateIOBox   iobox   |> andRender
-    | RemoveIOBox         iobox -> state.RemoveIOBox   iobox   |> andRender
+    | AddPin                pin -> State.addPin        pin     state |> andRender
+    | UpdatePin             pin -> State.updatePin     pin     state |> andRender
+    | RemovePin             pin -> State.removePin     pin     state |> andRender
 
-    | AddNode              node -> state.AddNode       node    |> andRender
-    | UpdateNode           node -> state.UpdateNode    node    |> andRender
-    | RemoveNode           node -> state.RemoveNode    node    |> andRender
+    | AddMember             mem -> State.addMember     mem     state |> andRender
+    | UpdateMember          mem -> State.updateMember  mem     state |> andRender
+    | RemoveMember          mem -> State.removeMember  mem     state |> andRender
 
-    | AddSession        session -> addSession session state    |> andRender
-    | UpdateSession     session -> state.UpdateSession session |> andRender
-    | RemoveSession     session -> state.RemoveSession session |> andRender
+    | AddSession        session -> State.addSession    session state |> andRender
+    | UpdateSession     session -> State.updateSession session state |> andRender
+    | RemoveSession     session -> State.removeSession session state |> andRender
 
-    | AddUser              user -> state.AddUser       user    |> andRender
-    | UpdateUser           user -> state.UpdateUser    user    |> andRender
-    | RemoveUser           user -> state.RemoveUser    user    |> andRender
+    | AddUser              user -> State.addUser       user    state |> andRender
+    | UpdateUser           user -> State.updateUser    user    state |> andRender
+    | RemoveUser           user -> State.removeUser    user    state |> andRender
+
+    | UpdateProject     project -> State.updateProject project state |> andRender
 
     | _ -> ()
 
@@ -1037,163 +954,6 @@ and Store(state : State)=
 and Listener = Store -> StateMachine -> unit
 
 
-// * StateMachine Yaml
-
-#if !FABLE_COMPILER
-
-// __   __              _    ___  _     _           _
-// \ \ / /_ _ _ __ ___ | |  / _ \| |__ (_) ___  ___| |_
-//  \ V / _` | '_ ` _ \| | | | | | '_ \| |/ _ \/ __| __|
-//   | | (_| | | | | | | | | |_| | |_) | |  __/ (__| |_
-//   |_|\__,_|_| |_| |_|_|  \___/|_.__// |\___|\___|\__|
-//                                   |__/
-
-/// ## StateMachineYaml
-///
-/// Intermediate POCO for serializing a `StateMachine` value to Yaml.
-///
-/// ### Signature:
-/// - cmd: string - stringified `StateMachine` constructor
-/// - payload: obj - payload to save (obj for allowing for different payload types)
-///
-/// Returns: StateMachineYaml
-and StateMachineYaml(cmd: string, payload: obj) as self =
-  [<DefaultValue>] val mutable Action : string
-  [<DefaultValue>] val mutable Payload : obj
-
-  new () = new StateMachineYaml(null, null)
-
-  do
-    self.Action  <- cmd
-    self.Payload <- payload
-
-  // ** AddNode
-
-  static member AddNode (node: RaftNode) =
-    new StateMachineYaml("AddNode", Yaml.toYaml node)
-
-  // ** UpdateNode
-
-  static member UpdateNode (node: RaftNode) =
-    new StateMachineYaml("UpdateNode", Yaml.toYaml node)
-
-  // ** RemoveNode
-
-  static member RemoveNode (node: RaftNode) =
-    new StateMachineYaml("RemoveNode", Yaml.toYaml node)
-
-  // ** AddPatch
-
-  static member AddPatch (patch: Patch) =
-    new StateMachineYaml("AddPatch", Yaml.toYaml patch)
-
-  // ** UpdatePatch
-
-  static member UpdatePatch (patch: Patch) =
-    new StateMachineYaml("UpdatePatch", Yaml.toYaml patch)
-
-  // ** RemovePatch
-
-  static member RemovePatch (patch: Patch) =
-    new StateMachineYaml("RemovePatch", Yaml.toYaml patch)
-
-  // ** AddIOBox
-
-  static member AddIOBox (iobox: IOBox) =
-    new StateMachineYaml("AddIOBox", Yaml.toYaml iobox)
-
-  // ** UpdateIOBox
-
-  static member UpdateIOBox (iobox: IOBox) =
-    new StateMachineYaml("UpdateIOBox", Yaml.toYaml iobox)
-
-  // ** RemoveIOBox
-
-  static member RemoveIOBox (iobox: IOBox) =
-    new StateMachineYaml("RemoveIOBox", Yaml.toYaml iobox)
-
-  // ** AddCue
-
-  static member AddCue (cue: Cue) =
-    new StateMachineYaml("AddCue", Yaml.toYaml cue)
-
-  // ** UpdateCue
-
-  static member UpdateCue (cue: Cue) =
-    new StateMachineYaml("UpdateCue", Yaml.toYaml cue)
-
-  // ** RemoveCue
-
-  static member RemoveCue (cue: Cue) =
-    new StateMachineYaml("RemoveCue", Yaml.toYaml cue)
-
-  // ** AddCueList
-
-  static member AddCueList (cuelist: CueList) =
-    new StateMachineYaml("AddCueList", Yaml.toYaml cuelist)
-
-  // ** UpdateCueList
-
-  static member UpdateCueList (cuelist: CueList) =
-    new StateMachineYaml("UpdateCueList", Yaml.toYaml cuelist)
-
-  // ** RemoveCueList
-
-  static member RemoveCueList (cuelist: CueList) =
-    new StateMachineYaml("RemoveCueList", Yaml.toYaml cuelist)
-
-  // ** AddUser
-
-  static member AddUser (user: User) =
-    new StateMachineYaml("AddUser", Yaml.toYaml user)
-
-  // ** UpdateUser
-
-  static member UpdateUser (user: User) =
-    new StateMachineYaml("UpdateUser", Yaml.toYaml user)
-
-  // ** RemoveUser
-
-  static member RemoveUser (user: User) =
-    new StateMachineYaml("RemoveUser", Yaml.toYaml user)
-
-  // ** AddSession
-
-  static member AddSession (session: Session) =
-    new StateMachineYaml("AddSession", Yaml.toYaml session)
-
-  // ** UpdateSession
-
-  static member UpdateSession (session: Session) =
-    new StateMachineYaml("UpdateSession", Yaml.toYaml session)
-
-  // ** RemoveSession
-
-  static member RemoveSession (session: Session) =
-    new StateMachineYaml("RemoveSession", Yaml.toYaml session)
-
-  // ** Command
-
-  static member Command (cmd: AppCommand) =
-    new StateMachineYaml("Command", string cmd)
-
-  // ** LogMsg
-
-  static member LogMsg (log: LogEvent) =
-    new StateMachineYaml("LogMsg", Yaml.toYaml log)
-
-  // ** LogMsg
-
-  static member SetLogLevel (level: LogLevel) =
-    new StateMachineYaml("SetLogLevel", string level)
-
-  // ** DataSnapshot
-
-  static member DataSnapshot (state: State) =
-    new StateMachineYaml("DataSnapshot", Yaml.toYaml state)
-
-#endif
-
 // * StateMachine
 
 //  ____  _        _       __  __            _     _
@@ -1203,21 +963,23 @@ and StateMachineYaml(cmd: string, payload: obj) as self =
 // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
 and StateMachine =
+  // Project
+  | UpdateProject of IrisProject
 
-  // NODE
-  | AddNode       of RaftNode
-  | UpdateNode    of RaftNode
-  | RemoveNode    of RaftNode
+  // Member
+  | AddMember     of RaftMember
+  | UpdateMember  of RaftMember
+  | RemoveMember  of RaftMember
 
   // PATCH
   | AddPatch      of Patch
   | UpdatePatch   of Patch
   | RemovePatch   of Patch
 
-  // IOBOX
-  | AddIOBox      of IOBox
-  | UpdateIOBox   of IOBox
-  | RemoveIOBox   of IOBox
+  // PIN
+  | AddPin      of Pin
+  | UpdatePin   of Pin
+  | RemovePin   of Pin
 
   // CUE
   | AddCue        of Cue
@@ -1251,21 +1013,23 @@ and StateMachine =
 
   override self.ToString() : string =
     match self with
+    // Project
+    | UpdateProject project -> sprintf "UpdateProject %s" project.Name
 
-    // NODE
-    | AddNode    node       -> sprintf "AddNode %s"    (string node)
-    | UpdateNode node       -> sprintf "UpdateNode %s" (string node)
-    | RemoveNode node       -> sprintf "RemoveNode %s" (string node)
+    // Member
+    | AddMember    mem      -> sprintf "AddMember %s"    (string mem)
+    | UpdateMember mem      -> sprintf "UpdateMember %s" (string mem)
+    | RemoveMember mem      -> sprintf "RemoveMember %s" (string mem)
 
     // PATCH
     | AddPatch    patch     -> sprintf "AddPatch %s"    (string patch)
     | UpdatePatch patch     -> sprintf "UpdatePatch %s" (string patch)
     | RemovePatch patch     -> sprintf "RemovePatch %s" (string patch)
 
-    // IOBOX
-    | AddIOBox    iobox     -> sprintf "AddIOBox %s"    (string iobox)
-    | UpdateIOBox iobox     -> sprintf "UpdateIOBox %s" (string iobox)
-    | RemoveIOBox iobox     -> sprintf "RemoveIOBox %s" (string iobox)
+    // PIN
+    | AddPin    pin         -> sprintf "AddPin %s"    (string pin)
+    | UpdatePin pin         -> sprintf "UpdatePin %s" (string pin)
+    | RemovePin pin         -> sprintf "RemovePin %s" (string pin)
 
     // CUE
     | AddCue    cue         -> sprintf "AddCue %s"    (string cue)
@@ -1292,181 +1056,6 @@ and StateMachine =
     | SetLogLevel level     -> sprintf "SetLogLevel: %A" level
     | LogMsg log            -> sprintf "LogMsg: [%A] %s" log.LogLevel log.Message
 
-  // ** ToYamlObject
-
-#if !FABLE_COMPILER
-
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
-
-  member self.ToYamlObject() : StateMachineYaml =
-    match self with
-    | AddNode    node       -> StateMachineYaml.AddNode(node)
-    | UpdateNode node       -> StateMachineYaml.UpdateNode(node)
-    | RemoveNode node       -> StateMachineYaml.RemoveNode(node)
-
-    // PATCH
-    | AddPatch    patch     -> StateMachineYaml.AddPatch(patch)
-    | UpdatePatch patch     -> StateMachineYaml.UpdatePatch(patch)
-    | RemovePatch patch     -> StateMachineYaml.RemovePatch(patch)
-
-    // IOBOX
-    | AddIOBox    iobox     -> StateMachineYaml.AddIOBox(iobox)
-    | UpdateIOBox iobox     -> StateMachineYaml.UpdateIOBox(iobox)
-    | RemoveIOBox iobox     -> StateMachineYaml.RemoveIOBox(iobox)
-
-    // CUE
-    | AddCue    cue         -> StateMachineYaml.AddCue(cue)
-    | UpdateCue cue         -> StateMachineYaml.UpdateCue(cue)
-    | RemoveCue cue         -> StateMachineYaml.RemoveCue(cue)
-
-    // CUELIST
-    | AddCueList    cuelist -> StateMachineYaml.AddCueList(cuelist)
-    | UpdateCueList cuelist -> StateMachineYaml.UpdateCueList(cuelist)
-    | RemoveCueList cuelist -> StateMachineYaml.RemoveCueList(cuelist)
-
-    // User
-    | AddUser    user       -> StateMachineYaml.AddUser(user)
-    | UpdateUser user       -> StateMachineYaml.UpdateUser(user)
-    | RemoveUser user       -> StateMachineYaml.RemoveUser(user)
-
-    // Session
-    | AddSession    session -> StateMachineYaml.AddSession(session)
-    | UpdateSession session -> StateMachineYaml.UpdateSession(session)
-    | RemoveSession session -> StateMachineYaml.RemoveSession(session)
-
-    | Command         ev    -> StateMachineYaml.Command(ev)
-    | DataSnapshot state    -> StateMachineYaml.DataSnapshot(state)
-
-    | SetLogLevel level     -> StateMachineYaml.SetLogLevel(level)
-    | LogMsg log            -> StateMachineYaml.LogMsg(log)
-
-  // ** ToYaml
-
-  member self.ToYaml (serializer: Serializer) =
-    self |> Yaml.toYaml |> serializer.Serialize
-
-  // ** FromYamlObject
-
-  static member FromYamlObject (yaml: StateMachineYaml) =
-    match yaml.Action with
-    | "AddNode" -> either {
-        let! node = yaml.Payload :?> RaftNodeYaml |> Yaml.fromYaml
-        return AddNode(node)
-      }
-    | "UpdateNode" -> either {
-        let! node = yaml.Payload :?> RaftNodeYaml |> Yaml.fromYaml
-        return UpdateNode(node)
-      }
-    | "RemoveNode" -> either {
-        let! node = yaml.Payload :?> RaftNodeYaml |> Yaml.fromYaml
-        return RemoveNode(node)
-      }
-    | "AddPatch" -> either {
-        let! patch = yaml.Payload :?> PatchYaml |> Yaml.fromYaml
-        return AddPatch(patch)
-      }
-    | "UpdatePatch" -> either {
-        let! patch = yaml.Payload :?> PatchYaml |> Yaml.fromYaml
-        return UpdatePatch(patch)
-      }
-    | "RemovePatch" -> either {
-        let! patch = yaml.Payload :?> PatchYaml |> Yaml.fromYaml
-        return RemovePatch(patch)
-      }
-    | "AddIOBox" -> either {
-        let! iobox = yaml.Payload :?> IOBoxYaml |> Yaml.fromYaml
-        return AddIOBox(iobox)
-      }
-    | "UpdateIOBox" -> either {
-        let! iobox = yaml.Payload :?> IOBoxYaml |> Yaml.fromYaml
-        return UpdateIOBox(iobox)
-      }
-    | "RemoveIOBox" -> either {
-        let! iobox = yaml.Payload :?> IOBoxYaml |> Yaml.fromYaml
-        return RemoveIOBox(iobox)
-      }
-    | "AddCue" -> either {
-        let! cue = yaml.Payload :?> CueYaml |> Yaml.fromYaml
-        return AddCue(cue)
-      }
-    | "UpdateCue" -> either {
-        let! cue = yaml.Payload :?> CueYaml |> Yaml.fromYaml
-        return UpdateCue(cue)
-      }
-    | "RemoveCue" -> either {
-        let! cue = yaml.Payload :?> CueYaml |> Yaml.fromYaml
-        return RemoveCue(cue)
-      }
-    | "AddCueList" -> either {
-        let! cuelist = yaml.Payload :?> CueListYaml |> Yaml.fromYaml
-        return AddCueList(cuelist)
-      }
-    | "UpdateCueList" -> either {
-        let! cuelist = yaml.Payload :?> CueListYaml |> Yaml.fromYaml
-        return UpdateCueList(cuelist)
-      }
-    | "RemoveCueList" -> either {
-        let! cuelist = yaml.Payload :?> CueListYaml |> Yaml.fromYaml
-        return RemoveCueList(cuelist)
-      }
-    | "AddUser" -> either {
-        let! user = yaml.Payload :?> UserYaml |> Yaml.fromYaml
-        return AddUser(user)
-      }
-    | "UpdateUser" -> either {
-        let! user = yaml.Payload :?> UserYaml |> Yaml.fromYaml
-        return UpdateUser(user)
-      }
-    | "RemoveUser" -> either {
-        let! user = yaml.Payload :?> UserYaml |> Yaml.fromYaml
-        return RemoveUser(user)
-      }
-    | "AddSession" -> either {
-        let! session = yaml.Payload :?> SessionYaml |> Yaml.fromYaml
-        return AddSession(session)
-      }
-    | "UpdateSession" -> either {
-        let! session = yaml.Payload :?> SessionYaml |> Yaml.fromYaml
-        return UpdateSession(session)
-      }
-    | "RemoveSession" -> either {
-        let! session = yaml.Payload :?> SessionYaml |> Yaml.fromYaml
-        return RemoveSession(session)
-      }
-    | "Command" -> either {
-        let! cmd = yaml.Payload :?> string |> AppCommand.TryParse
-        return Command(cmd)
-      }
-    | "DataSnapshot" -> either {
-        let! data = yaml.Payload :?> StateYaml |> Yaml.fromYaml
-        return DataSnapshot(data)
-      }
-    | "SetLogLevel" -> either {
-        let! level = yaml.Payload :?> string |> LogLevel.TryParse
-        return SetLogLevel level
-      }
-    | "LogMsg" -> either {
-        let! log = yaml.Payload :?> LogEventYaml |> Yaml.fromYaml
-        return LogMsg log
-      }
-    | x ->
-      sprintf "Could not parse %s as StateMachine command" x
-      |> ParseError
-      |> Either.fail
-
-  // ** FromYaml
-
-  static member FromYaml (str: string) : Either<IrisError,StateMachine> =
-    let serializer = new Serializer()
-    serializer.Deserialize<StateMachineYaml>(str)
-    |> Yaml.fromYaml
-
-#endif
-
   // ** FromFB (JavaScript)
 
   //  ____  _
@@ -1479,18 +1068,28 @@ and StateMachine =
 #if FABLE_COMPILER
   static member FromFB (fb: ApiActionFB) =
     match fb.PayloadType with
-    | x when x = PayloadFB.NodeFB ->
-      let node = fb.NodeFB |> RaftNode.FromFB
+    | x when x = PayloadFB.ProjectFB ->
+      let project = fb.ProjectFB |> IrisProject.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
-        Either.map AddNode node
       | x when x = ActionTypeFB.UpdateFB ->
-        Either.map UpdateNode node
-      | x when x = ActionTypeFB.RemoveFB ->
-        Either.map RemoveNode node
+        Either.map UpdateProject project
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
+    | x when x = PayloadFB.RaftMemberFB ->
+      let mem = fb.RaftMemberFB |> RaftMember.FromFB
+      match fb.Action with
+      | x when x = ActionTypeFB.AddFB ->
+        Either.map AddMember mem
+      | x when x = ActionTypeFB.UpdateFB ->
+        Either.map UpdateMember mem
+      | x when x = ActionTypeFB.RemoveFB ->
+        Either.map RemoveMember mem
+      | x ->
+        sprintf "Could not parse unknown ActionTypeFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
     | x when x = PayloadFB.PatchFB ->
@@ -1504,21 +1103,21 @@ and StateMachine =
         Either.map RemovePatch patch
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.IOBoxFB ->
-      let iobox = fb.IOBoxFB |> IOBox.FromFB
+    | x when x = PayloadFB.PinFB ->
+      let pin = fb.PinFB |> Pin.FromFB
       match fb.Action with
       | x when x = ActionTypeFB.AddFB ->
-        Either.map AddIOBox iobox
+        Either.map AddPin pin
       | x when x = ActionTypeFB.UpdateFB ->
-        Either.map UpdateIOBox iobox
+        Either.map UpdatePin pin
       | x when x = ActionTypeFB.RemoveFB ->
-        Either.map RemoveIOBox iobox
+        Either.map RemovePin pin
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
     | x when x = PayloadFB.CueFB ->
@@ -1532,7 +1131,7 @@ and StateMachine =
         Either.map RemoveCue cue
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
     | x when x = PayloadFB.CueListFB ->
@@ -1546,7 +1145,7 @@ and StateMachine =
         Either.map RemoveCueList cuelist
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
     | x when x = PayloadFB.UserFB ->
@@ -1560,7 +1159,7 @@ and StateMachine =
         Either.map RemoveUser user
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
     | x when x = PayloadFB.SessionFB ->
@@ -1574,7 +1173,7 @@ and StateMachine =
         Either.map RemoveSession session
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
     | x when x = PayloadFB.StateFB && fb.Action = ActionTypeFB.DataSnapshotFB ->
@@ -1595,7 +1194,7 @@ and StateMachine =
         |> Either.map SetLogLevel
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
-        |> ParseError
+        |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
     | _ ->
       fb.Action
@@ -1608,6 +1207,35 @@ and StateMachine =
 
   static member FromFB (fb: ApiActionFB) =
     match fb.PayloadType with
+
+    //  ____            _           _
+    // |  _ \ _ __ ___ (_) ___  ___| |_
+    // | |_) | '__/ _ \| |/ _ \/ __| __|
+    // |  __/| | | (_) | |  __/ (__| |_
+    // |_|   |_|  \___// |\___|\___|\__|
+    //               |__/
+
+    | PayloadFB.ProjectFB ->
+      either {
+        let! project =
+          let projectish = fb.Payload<ProjectFB>()
+          if projectish.HasValue then
+            projectish.Value
+            |> IrisProject.FromFB
+          else
+            "Could not parse empty project payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+
+        match fb.Action with
+        | ActionTypeFB.UpdateFB -> return (UpdateProject project)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
     //   ____
     //  / ___|   _  ___
     // | |  | | | |/ _ \
@@ -1623,7 +1251,7 @@ and StateMachine =
             |> Cue.FromFB
           else
             "Could not parse empty cue payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
 
         match fb.Action with
@@ -1633,7 +1261,7 @@ and StateMachine =
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1652,7 +1280,7 @@ and StateMachine =
             |> CueList.FromFB
           else
             "Could not parse empty cuelist payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
 
         match fb.Action with
@@ -1662,7 +1290,7 @@ and StateMachine =
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1681,7 +1309,7 @@ and StateMachine =
             |> Patch.FromFB
           else
             "Could not parse empty patche payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
 
         match fb.Action with
@@ -1691,7 +1319,7 @@ and StateMachine =
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1701,26 +1329,26 @@ and StateMachine =
     //  | | |_| | |_) | (_) >  <
     // |___\___/|____/ \___/_/\_\
 
-    | PayloadFB.IOBoxFB ->
+    | PayloadFB.PinFB ->
       either {
-        let! iobox =
-          let ioboxish = fb.Payload<IOBoxFB>()
-          if ioboxish.HasValue then
-            ioboxish.Value
-            |> IOBox.FromFB
+        let! pin =
+          let pinish = fb.Payload<PinFB>()
+          if pinish.HasValue then
+            pinish.Value
+            |> Pin.FromFB
           else
-            "Could not parse empty iobox payload"
-            |> ParseError
+            "Could not parse empty pin payload"
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
 
         match fb.Action with
-        | ActionTypeFB.AddFB    -> return (AddIOBox    iobox)
-        | ActionTypeFB.UpdateFB -> return (UpdateIOBox iobox)
-        | ActionTypeFB.RemoveFB -> return (RemoveIOBox iobox)
+        | ActionTypeFB.AddFB    -> return (AddPin    pin)
+        | ActionTypeFB.UpdateFB -> return (UpdatePin pin)
+        | ActionTypeFB.RemoveFB -> return (RemovePin pin)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1730,26 +1358,26 @@ and StateMachine =
     // | |\  | (_) | (_| |  __/
     // |_| \_|\___/ \__,_|\___|
 
-    | PayloadFB.NodeFB ->
+    | PayloadFB.RaftMemberFB ->
       either {
-        let! node =
-          let nodeish = fb.Payload<NodeFB>()
-          if nodeish.HasValue then
-            nodeish.Value
-            |> RaftNode.FromFB
+        let! mem =
+          let memish = fb.Payload<RaftMemberFB>()
+          if memish.HasValue then
+            memish.Value
+            |> RaftMember.FromFB
           else
-            "Could not parse empty node payload"
-            |> ParseError
+            "Could not parse empty mem payload"
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
 
         match fb.Action with
-        | ActionTypeFB.AddFB    -> return (AddNode    node)
-        | ActionTypeFB.UpdateFB -> return (UpdateNode node)
-        | ActionTypeFB.RemoveFB -> return (RemoveNode node)
+        | ActionTypeFB.AddFB    -> return (AddMember    mem)
+        | ActionTypeFB.UpdateFB -> return (UpdateMember mem)
+        | ActionTypeFB.RemoveFB -> return (RemoveMember mem)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1768,7 +1396,7 @@ and StateMachine =
             |> User.FromFB
           else
             "Could not parse empty user payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
 
         match fb.Action with
@@ -1778,7 +1406,7 @@ and StateMachine =
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1797,7 +1425,7 @@ and StateMachine =
             |> Session.FromFB
           else
             "Could not parse empty session payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
 
         match fb.Action with
@@ -1807,7 +1435,7 @@ and StateMachine =
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
     //  __  __ _
@@ -1825,7 +1453,7 @@ and StateMachine =
         else
           return!
             "Could not parse empty LogEvent payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1834,12 +1462,12 @@ and StateMachine =
         let stateish = fb.Payload<StateFB>()
         if stateish.HasValue then
           let state = stateish.Value
-          let! parsed = state |> State.FromFB
+          let! parsed = State.FromFB state
           return (DataSnapshot parsed)
         else
           return!
             "Could not parse empty state payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1853,7 +1481,7 @@ and StateMachine =
         else
           return!
             "Could not parse empty string payload"
-            |> ParseError
+            |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
 
@@ -1867,39 +1495,51 @@ and StateMachine =
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<ApiActionFB> =
     match self with
-    | AddNode       node ->
-      let node = node.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.NodeFB)
-#if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, node)
-#else
-      ApiActionFB.AddPayload(builder, node.Value)
-#endif
-      ApiActionFB.EndApiActionFB(builder)
-
-    | UpdateNode    node ->
-      let node = node.ToOffset(builder)
+    | UpdateProject project ->
+      let offset = project.ToOffset(builder)
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.NodeFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.ProjectFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, node)
+      ApiActionFB.AddPayload(builder, offset)
 #else
-      ApiActionFB.AddPayload(builder, node.Value)
+      ApiActionFB.AddPayload(builder, offset.Value)
 #endif
       ApiActionFB.EndApiActionFB(builder)
 
-    | RemoveNode    node ->
-      let node = node.ToOffset(builder)
+    | AddMember       mem ->
+      let mem = mem.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.RaftMemberFB)
+#if FABLE_COMPILER
+      ApiActionFB.AddPayload(builder, mem)
+#else
+      ApiActionFB.AddPayload(builder, mem.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
+
+    | UpdateMember    mem ->
+      let mem = mem.ToOffset(builder)
+      ApiActionFB.StartApiActionFB(builder)
+      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.RaftMemberFB)
+#if FABLE_COMPILER
+      ApiActionFB.AddPayload(builder, mem)
+#else
+      ApiActionFB.AddPayload(builder, mem.Value)
+#endif
+      ApiActionFB.EndApiActionFB(builder)
+
+    | RemoveMember    mem ->
+      let mem = mem.ToOffset(builder)
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.NodeFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.RaftMemberFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, node)
+      ApiActionFB.AddPayload(builder, mem)
 #else
-      ApiActionFB.AddPayload(builder, node.Value)
+      ApiActionFB.AddPayload(builder, mem.Value)
 #endif
       ApiActionFB.EndApiActionFB(builder)
 
@@ -1939,39 +1579,39 @@ and StateMachine =
 #endif
       ApiActionFB.EndApiActionFB(builder)
 
-    | AddIOBox       iobox ->
-      let iobox = iobox.ToOffset(builder)
+    | AddPin       pin ->
+      let pin = pin.ToOffset(builder)
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.IOBoxFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.PinFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, iobox)
+      ApiActionFB.AddPayload(builder, pin)
 #else
-      ApiActionFB.AddPayload(builder, iobox.Value)
+      ApiActionFB.AddPayload(builder, pin.Value)
 #endif
       ApiActionFB.EndApiActionFB(builder)
 
-    | UpdateIOBox    iobox ->
-      let iobox = iobox.ToOffset(builder)
+    | UpdatePin    pin ->
+      let pin = pin.ToOffset(builder)
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.IOBoxFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.PinFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, iobox)
+      ApiActionFB.AddPayload(builder, pin)
 #else
-      ApiActionFB.AddPayload(builder, iobox.Value)
+      ApiActionFB.AddPayload(builder, pin.Value)
 #endif
       ApiActionFB.EndApiActionFB(builder)
 
-    | RemoveIOBox    iobox ->
-      let iobox = iobox.ToOffset(builder)
+    | RemovePin    pin ->
+      let pin = pin.ToOffset(builder)
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.IOBoxFB)
+      ApiActionFB.AddPayloadType(builder, PayloadFB.PinFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, iobox)
+      ApiActionFB.AddPayload(builder, pin)
 #else
-      ApiActionFB.AddPayload(builder, iobox.Value)
+      ApiActionFB.AddPayload(builder, pin.Value)
 #endif
       ApiActionFB.EndApiActionFB(builder)
 
@@ -2126,14 +1766,14 @@ and StateMachine =
       ApiActionFB.EndApiActionFB(builder)
 
     | DataSnapshot state ->
-      let data = state.ToOffset(builder)
+      let offset = state.ToOffset(builder)
       ApiActionFB.StartApiActionFB(builder)
       ApiActionFB.AddAction(builder, ActionTypeFB.DataSnapshotFB)
       ApiActionFB.AddPayloadType(builder, PayloadFB.StateFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, data)
+      ApiActionFB.AddPayload(builder, offset)
 #else
-      ApiActionFB.AddPayload(builder, data.Value)
+      ApiActionFB.AddPayload(builder, offset.Value)
 #endif
       ApiActionFB.EndApiActionFB(builder)
 

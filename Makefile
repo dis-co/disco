@@ -38,7 +38,7 @@ frontend.fsproj:
 	${BUILD} BuildFrontendFsProj
 
 frontend:
-	${BUILD} BuildFrontend
+	${BUILD} BuildDebugFrontend
 
 web.tests.watch:
 	${BUILD} WatchWebTests

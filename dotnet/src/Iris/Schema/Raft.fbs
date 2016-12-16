@@ -111,7 +111,7 @@ table ColorSliceFB {
 
 table CompoundSliceFB {
       Index: uint;
-      Value: [IOBoxFB];
+      Value: [PinFB];
 }
 
 union SliceTypeFB {
@@ -136,7 +136,7 @@ table SliceFB {
 //  | | |_| | |_) | (_) >  <
 // |___\___/|____/ \___/_/\_\
 
-table StringBoxFB {
+table StringPinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -147,7 +147,7 @@ table StringBoxFB {
       Slices     : [StringSliceFB];
 }
 
-table IntBoxFB {
+table IntPinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -159,7 +159,7 @@ table IntBoxFB {
       Slices     : [IntSliceFB];
 }
 
-table FloatBoxFB {
+table FloatPinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -172,7 +172,7 @@ table FloatBoxFB {
       Slices     : [FloatSliceFB];
 }
 
-table DoubleBoxFB {
+table DoublePinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -185,7 +185,7 @@ table DoubleBoxFB {
       Slices     : [DoubleSliceFB];
 }
 
-table BoolBoxFB {
+table BoolPinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -194,7 +194,7 @@ table BoolBoxFB {
       Slices     : [BoolSliceFB];
 }
 
-table ByteBoxFB {
+table BytePinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -202,7 +202,7 @@ table ByteBoxFB {
       Slices     : [ByteSliceFB];
 }
 
-table EnumBoxFB {
+table EnumPinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -211,7 +211,7 @@ table EnumBoxFB {
       Slices     : [EnumSliceFB];
 }
 
-table ColorBoxFB {
+table ColorPinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -219,7 +219,7 @@ table ColorBoxFB {
       Slices     : [ColorSliceFB];
 }
 
-table CompoundBoxFB {
+table CompoundPinFB {
       Id         : string;
       Name       : string;
       Patch      : string;
@@ -227,20 +227,20 @@ table CompoundBoxFB {
       Slices     : [CompoundSliceFB];
 }
 
-union IOBoxTypeFB {
-      StringBoxFB,
-      IntBoxFB,
-      FloatBoxFB,
-      DoubleBoxFB,
-      BoolBoxFB,
-      ByteBoxFB,
-      EnumBoxFB,
-      ColorBoxFB,
-      CompoundBoxFB
+union PinTypeFB {
+      StringPinFB,
+      IntPinFB,
+      FloatPinFB,
+      DoublePinFB,
+      BoolPinFB,
+      BytePinFB,
+      EnumPinFB,
+      ColorPinFB,
+      CompoundPinFB
 }
 
-table IOBoxFB {
-      IOBox: IOBoxTypeFB;
+table PinFB {
+      Pin: PinTypeFB;
 }
 
 //  ____       _       _
@@ -252,7 +252,7 @@ table IOBoxFB {
 table PatchFB {
       Id:   string;
       Name: string;
-      IOBoxes: [IOBoxFB];
+      Pins: [PinFB];
 }
 
 //   ____
@@ -262,9 +262,9 @@ table PatchFB {
 //  \____\__,_|\___|
 
 table CueFB {
-      Id:      string;
-      Name:    string;
-      IOBoxes: [IOBoxFB];
+      Id:    string;
+      Name:  string;
+      Pins: [PinFB];
 }
 
 
@@ -275,9 +275,9 @@ table CueFB {
 //  \____\__,_|\___|_____|_|___/\__|
 
 table CueListFB {
-      Id:      string;
-      Name:    string;
-      Cues:    [CueFB];
+      Id:   string;
+      Name: string;
+      Cues: [CueFB];
 }
 
 //  _   _
@@ -322,6 +322,156 @@ table SessionFB {
       UserAgent: string;
 }
 
+//   ____             __ _
+//  / ___|___  _ __  / _(_) __ _
+// | |   / _ \| '_ \| |_| |/ _` |
+// | |__| (_) | | | |  _| | (_| |
+//  \____\___/|_| |_|_| |_|\__, |
+//                         |___/
+
+table MachineConfigFB {
+      MachineId: string;
+      HostName: string;
+      WorkSpace: string;
+}
+
+table AudioConfigFB {
+      SampleRate: uint;
+}
+
+table VvvvExeFB {
+      Executable: string;
+      Version: string;
+      Required: bool;
+}
+
+table VvvvPluginFB {
+      Name: string;
+      Path: string;
+}
+
+table VvvvConfigFB {
+      Executables: [ VvvvExeFB ];
+      Plugins:     [ VvvvPluginFB ];
+}
+
+table RaftConfigFB {
+      RequestTimeout: uint;
+      ElectionTimeout: uint;
+      MaxLogDepth: uint;
+      LogLevel: string;
+      DataDir: string;
+      MaxRetries: ushort;
+      PeriodicInterval: ushort;
+}
+
+table TimingConfigFB {
+      Framebase: uint;
+      Input: string;
+      Servers: [ string ];
+      UDPPort: uint;
+      TCPPort: uint;
+}
+
+table HostGroupFB {
+      Name: string;
+      Members: [ string ];
+}
+
+table ClusterConfigFB {
+      Name: string;
+      Members: [ RaftMemberFB ];
+      Groups: [ HostGroupFB ];
+}
+
+table ViewPortFB {
+      Id: string;
+      Name: string;
+      PositionX: int;
+      PositionY: int;
+      SizeX: int;
+      SizeY: int;
+      OutputPositionX: int;
+      OutputPositionY: int;
+      OutputSizeX: int;
+      OutputSizeY: int;
+      OverlapX: int;
+      OverlapY: int;
+      Description: string;
+}
+
+table TaskFB {
+      Id: string;
+      Description: string;
+      DisplayId: string;
+      AudioStream: string;
+      Arguments: [ string ];
+}
+
+table SignalFB {
+      SizeX: int;
+      SizeY: int;
+      PositionX: int;
+      PositionY: int;
+} 
+
+table RegionFB {
+      Id: string;
+      Name: string;
+      SrcPositionX: int;
+      SrcPositionY: int;
+      SrcSizeX: int;
+      SrcSizeY: int;
+      OutputPositionX: int;
+      OutputPositionY: int;
+      OutputSizeX: int;
+      OutputSizeY: int;
+}
+
+table RegionMapFB {
+      SrcViewportId: string;
+      Regions: [ RegionFB ]; 
+}
+
+table DisplayFB {
+     Id: string;
+     Name: string;
+     SizeX: int;
+     SizeY: int;
+     Signals: [ SignalFB ];
+     RegionMap: RegionMapFB;
+}
+
+table ConfigFB {
+      MachineConfig:  MachineConfigFB;
+      AudioConfig:    AudioConfigFB;
+      VvvvConfig:     VvvvConfigFB;
+      RaftConfig:     RaftConfigFB;
+      TimingConfig:   TimingConfigFB;
+      ClusterConfig:  ClusterConfigFB;
+      ViewPorts:      [ ViewPortFB ];
+      Displays:       [ DisplayFB ];
+      Tasks:          [ TaskFB ];
+}
+
+//  ____            _           _
+// |  _ \ _ __ ___ (_) ___  ___| |_
+// | |_) | '__/ _ \| |/ _ \/ __| __|
+// |  __/| | | (_) | |  __/ (__| |_
+// |_|   |_|  \___// |\___|\___|\__|
+//               |__/
+
+table ProjectFB {
+      Id:        string;
+      Name:      string;
+      Path:      string;
+      CreatedOn: string;
+      LastSaved: string;
+      Copyright: string;
+      Author:    string;
+      Config:    ConfigFB;
+}
+
 //  ____  _        _
 // / ___|| |_ __ _| |_ ___
 // \___ \| __/ _` | __/ _ \
@@ -329,11 +479,10 @@ table SessionFB {
 // |____/ \__\__,_|\__\___|
 
 table StateFB {
+      Project:  ProjectFB;
       Patches:  [PatchFB];
-      IOBoxes:  [IOBoxFB];
       Cues:     [CueFB];
       CueLists: [CueListFB];
-      Nodes:    [NodeFB];
       Sessions: [SessionFB];
       Users:    [UserFB];
 }
@@ -348,14 +497,15 @@ table StateFB {
 union PayloadFB {
       CueFB,
       CueListFB,
-      IOBoxFB,
+      PinFB,
       PatchFB,
-      NodeFB,
+      RaftMemberFB,
       UserFB,
       SessionFB,
       LogEventFB,
       StringFB,
-      StateFB
+      StateFB,
+      ProjectFB
 }
 
 enum ActionTypeFB:ushort {
@@ -383,59 +533,20 @@ table ApiActionFB {
 // |_| \_\__,_|_|  \__|_____|_|  |_|  \___/|_|
 
 enum ErrorTypeFB:ushort {
-     // Application
-     BranchNotFoundFB,
-     BranchDetailsNotFoundFB,
-     RepositoryNotFoundFB,
-     RepositoryInitFailedFB,
-     CommitErrorFB,
      GitErrorFB,
-     ProjectNotFoundFB,
-     ProjectParseErrorFB,
-     ProjectPathErrorFB,
-     ProjectSaveErrorFB,
-     ProjectInitErrorFB,
-     MetaDataNotFoundFB,
-     MissingStartupDirFB,
-     CliParseErrorFB,
-     MissingNodeIdFB,
-     MissingNodeFB,
-     AssetNotFoundErrorFB,
-     AssetLoadErrorFB,
-     AssetSaveErrorFB,
-     AssetDeleteErrorFB,
+     ProjectErrorFB,
+     AssetErrorFB,
      ParseErrorFB,
      SocketErrorFB,
      IOErrorFB,
-     OKFB,
-
-     // RAFT
      RaftErrorFB,
-     AlreadyVotedFB,
-     AppendEntryFailedFB,
-     CandidateUnknownFB,
-     EntryInvalidatedFB,
-     InvalidCurrentIndexFB,
-     InvalidLastLogFB,
-     InvalidLastLogTermFB,
-     InvalidTermFB,
-     LogFormatErrorFB,
-     LogIncompleteFB,
-     NoErrorFB,
-     NoNodeFB,
-     NotCandidateFB,
-     NotLeaderFB,
-     NotVotingStateFB,
-     ResponseTimeoutFB,
-     SnapshotFormatErrorFB,
-     StaleResponseFB,
-     UnexpectedVotingChangeFB,
-     VoteTermMismatchFB,
+     OKFB,
      OtherFB
 }
 
 table ErrorFB {
       Type: ErrorTypeFB;
+      Location: string;
       Message: string;
 }
 
@@ -445,13 +556,13 @@ table ErrorFB {
 // | |\  | (_) | (_| |  __/
 // |_| \_|\___/ \__,_|\___|
 
-enum NodeStateFB:ubyte {
+enum RaftMemberStateFB:ubyte {
      JoiningFB = 0,
      RunningFB = 1,
      FailedFB  = 2
 }
 
-table NodeFB {
+table RaftMemberFB {
       Id         : string;
       HostName   : string;
       IpAddr     : string;
@@ -461,7 +572,7 @@ table NodeFB {
       GitPort    : int;
       Voting     : bool;
       VotedForMe : bool;
-      State      : NodeStateFB;
+      State      : RaftMemberStateFB;
       NextIndex  : uint;
       MatchIndex : uint;
 }
@@ -474,13 +585,13 @@ table NodeFB {
 //                         |___/                         |___/
 
 enum ConfigChangeTypeFB: ushort {
-     NodeAdded = 0,
-     NodeRemoved = 1
+     MemberAdded = 0,
+     MemberRemoved = 1
 }
 
 table ConfigChangeFB {
       Type: ConfigChangeTypeFB;
-      Node: NodeFB;
+      Member: RaftMemberFB;
 }
 
 //  _
@@ -494,7 +605,7 @@ table ConfigurationFB {
       Id:    string;
       Index: uint;
       Term : uint;
-      Nodes: [ NodeFB ];
+      Members: [ RaftMemberFB ];
 }
 
 table JointConsensusFB {
@@ -517,7 +628,7 @@ table SnapshotFB {
       Term:       uint;
       LastIndex:  uint;
       LastTerm:   uint;
-      Nodes:      [ NodeFB ];
+      Members:    [ RaftMemberFB ];
       Data:       ApiActionFB;
 }
 
@@ -541,7 +652,7 @@ table LogFB {
 
 table VoteRequestFB {
       Term         : uint;
-      Candidate    : NodeFB;
+      Candidate    : RaftMemberFB;
       LastLogIndex : uint;
       LastLogTerm  : uint;
 }
@@ -598,49 +709,49 @@ table InstallSnapshotFB {
 //                                |___/
 
 table RequestVoteFB {
-      NodeId:  string;
+      MemberId:  string;
       Request: VoteRequestFB;
 }
 
 table RequestVoteResponseFB {
-      NodeId:   string;
+      MemberId:   string;
       Response: VoteResponseFB;
 }
 
 table RequestAppendEntriesFB {
-      NodeId:  string;
+      MemberId:  string;
       Request: AppendEntriesFB;
 }
 
 table RequestAppendResponseFB {
-      NodeId:   string;
+      MemberId:   string;
       Response: AppendResponseFB;
 }
 
 table RequestInstallSnapshotFB {
-      NodeId:  string;
+      MemberId:  string;
       Request: InstallSnapshotFB;
 }
 
 table RequestSnapshotResponseFB {
-      NodeId:   string;
+      MemberId:   string;
       Response: AppendResponseFB;
 }
 
 table HandShakeFB {
-      Node: NodeFB;
+      Member: RaftMemberFB;
 }
 
 table HandWaiveFB {
-      Node: NodeFB;
+      Member: RaftMemberFB;
 }
 
 table RedirectFB {
-      Node: NodeFB;
+      Member: RaftMemberFB;
 }
 
 table WelcomeFB {
-      Node: NodeFB;
+      Member: RaftMemberFB;
 }
 
 table ArrivederciFB {

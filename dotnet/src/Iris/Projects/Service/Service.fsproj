@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <Import Project="..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
@@ -76,6 +76,18 @@
     <Compile Include="..\..\Iris\Core\Aliases.fs">
       <Link>Aliases.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\Platform.fs">
+      <Link>Platform.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\FileSystem.fs">
+      <Link>FileSystem.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Network.fs">
+      <Link>Network.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Machine.fs">
+      <Link>Machine.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\Util.fs">
       <Link>Util.fs</Link>
     </Compile>
@@ -91,11 +103,8 @@
     <Compile Include="..\..\Iris\Core\Logging.fs">
       <Link>Logging.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Core\Git.fs">
-      <Link>Git.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\IOBox.fs">
-      <Link>IOBox.fs</Link>
+    <Compile Include="..\..\Iris\Core\Pin.fs">
+      <Link>Pin.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Core\Patch.fs">
       <Link>Patch.fs</Link>
@@ -112,8 +121,14 @@
     <Compile Include="..\..\Iris\Raft\Continue.fs">
       <Link>Continue.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Raft\Node.fs">
-      <Link>Node.fs</Link>
+    <Compile Include="..\..\Iris\Raft\Member.fs">
+      <Link>Member.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Renderer.fs">
+      <Link>Renderer.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Project.fs">
+      <Link>Project.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Core\StateMachine.fs">
       <Link>StateMachine.fs</Link>
@@ -129,33 +144,6 @@
     </Compile>
     <Compile Include="..\..\Iris\Raft\Raft.fs">
       <Link>Raft.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Region.fs">
-      <Link>Region.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Signal.fs">
-      <Link>Signal.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Display.fs">
-      <Link>Display.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Task.fs">
-      <Link>Task.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\ViewPort.fs">
-      <Link>ViewPort.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Vvvv.fs">
-      <Link>Vvvv.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Yaml.fs">
-      <Link>Yaml.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Config.fs">
-      <Link>Config.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Project.fs">
-      <Link>Project.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Core\Uri.fs">
       <Link>Uri.fs</Link>

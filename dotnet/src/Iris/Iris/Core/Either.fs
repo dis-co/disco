@@ -224,14 +224,13 @@ module Either =
 
   let inline tryWith< ^a, ^err >
                     (err: (string -> ^err))
-                    (loc: string)
                     (f: unit -> ^a)
                     : Either< ^err, ^a > =
     try
       f() |> succeed
     with
       | exn ->
-        sprintf "Could not parse %s: %s" loc exn.Message
+        exn.Message
         |> err
         |> fail
 
