@@ -11,7 +11,7 @@ CURRENT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 # |_| |_|\__,_|\__|_| \_/ \___|
 
 run.tests:
-	@nix-shell shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunTests"
+	@env TMPDIR=$(shell mktemp -d) nix-shell shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunTests"
 
 service:
 	${BUILD} BuildDebugService
@@ -47,7 +47,7 @@ web.tests.fsproj:
 	${BUILD} BuildWebTestsFsProj
 
 run.web.tests:
-	@nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunWebTests"
+	@env TMPDIR=$(shell mktemp -d) nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunWebTests"
 
 web.tests:
 	${BUILD} BuildWebTests
@@ -93,10 +93,10 @@ release:
 # |___/_| |_|\___|_|_|
 
 shell:
-	@nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv
+	@env TMPDIR=$(shell mktemp -d) nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv
 
 nixfsi:
-	@nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv --run "fsi --use:dotnet/src/Iris/bin/Debug/Core/interactive.fsx"
+	@env TMPDIR=$(shell mktemp -d) nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv --run "fsi --use:dotnet/src/Iris/bin/Debug/Core/interactive.fsx"
 
 #  ____             _
 # |  _ \  ___   ___| | _____ _ __
