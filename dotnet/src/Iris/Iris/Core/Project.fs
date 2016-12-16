@@ -2055,7 +2055,7 @@ Config: %A
     either {
       let path = basepath </> Asset.path project
       let data = Yaml.encode project
-      let! info = Asset.write path data
+      let! info = Asset.write path (Payload data)
       return ()
     }
 
@@ -2300,7 +2300,7 @@ module Project =
   let private writeDaemonExportFile (repo: Repository) =
     either {
       let path = repo.Info.Path </> "git-daemon-export-ok"
-      let! _ = Asset.write path ""
+      let! _ = Asset.write path (Payload "")
       return ()
     }
 
@@ -2314,7 +2314,7 @@ module Project =
     either {
       let parent = Git.Repo.parentPath repo
       let path = parent </> ".gitignore"
-      let! _ = Asset.write path GITIGNORE
+      let! _ = Asset.write path (Payload GITIGNORE)
       do! Git.Repo.stage repo path
     }
 
@@ -2330,7 +2330,7 @@ module Project =
       let target = parent </> dir
       do! FileSystem.mkDir target
       let gitkeep = target </> ".gitkeep"
-      let! _ = Asset.write gitkeep ""
+      let! _ = Asset.write gitkeep (Payload "")
       do! Git.Repo.stage repo gitkeep
     }
 
@@ -2384,7 +2384,7 @@ module Project =
     either {
       let info = FileInfo path
       do! FileSystem.mkDir info.Directory.FullName
-      let! info = Asset.write path contents
+      let! info = Asset.write path (Payload contents)
       return! commitPath path committer msg project
     }
 
@@ -2491,6 +2491,7 @@ module Project =
       let! _ =
         User.Admin
         |> Yaml.encode
+        |> Payload
         |> Asset.write absPath
       do! Git.Repo.add repo relPath
       do! Git.Repo.stage repo absPath
@@ -2520,8 +2521,7 @@ module Project =
         ; Config    = Config.create name machine  }
 
       do! initRepo project
-      let data = Yaml.encode project
-      let! commit = Asset.saveWithCommit project path User.Admin.Signature
+      let! commit = Asset.saveWithCommit path User.Admin.Signature project
       return project
     }
 

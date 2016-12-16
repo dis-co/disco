@@ -24,17 +24,64 @@ module ProjectTests =
       either {
         let machine = MachineConfig.create ()
 
-        let name =
-          Path.GetTempFileName()
-          |> Path.GetFileName
-
-        let path = Directory.GetCurrentDirectory() </> "tmp" </> name
+        let path = tmpPath()
+        let name = Path.GetFileName path
 
         let! project = Project.create path name machine
 
         let result = Asset.loadWithMachine project.Path machine
 
         do! expectE "Projects should be equal" true ((=) project) result
+      }
+      |> noError
+
+  //  ____  _
+  // |  _ \(_)_ __ _   _
+  // | | | | | '__| | | |
+  // | |_| | | |  | |_| |
+  // |____/|_|_|   \__, |
+  //               |___/
+
+  let dirtyTest =
+    testCase "Project create should render clean repo" <| fun _ ->
+      either {
+        let machine = MachineConfig.create ()
+
+        let path = tmpPath()
+        let name = Path.GetFileName path
+
+        let! project = Project.create path name machine
+        let! repo = Project.repository project
+        let! status = Git.Repo.status repo
+        let untracked = status.Untracked.Count()
+
+        expect "Projects should not be dirty" false id status.IsDirty
+        expect "Projects should not have untracked files" 0 id untracked
+      }
+      |> noError
+
+  //  ____       _   _
+  // |  _ \ __ _| |_| |__
+  // | |_) / _` | __| '_ \
+  // |  __/ (_| | |_| | | |
+  // |_|   \__,_|\__|_| |_|
+
+  let relpathTest =
+    testCase "Project create should only work on absolute paths" <| fun _ ->
+      either {
+        let machine = MachineConfig.create ()
+
+        let path = Path.GetRandomFileName()
+
+        let result = Project.create path path machine
+
+        expect "Create should have failed" false Either.isSuccess result
+
+        return!
+          match result with
+          | Left (GitError("Git.Repo.stage",_)) -> Right ()
+          | Left other  -> Left other
+          | Right other -> Left (Other("relpathTest", sprintf "Should have failed: %A" other))
       }
       |> noError
 
@@ -49,11 +96,8 @@ module ProjectTests =
       either {
         let machine = MachineConfig.create ()
 
-        let name =
-          Path.GetTempFileName()
-          |> Path.GetFileName
-
-        let path = Directory.GetCurrentDirectory() </> "tmp" </> name
+        let path = tmpPath()
+        let name = Path.GetFileName path
 
         let engineCfg = RaftConfig.Default
 
@@ -208,7 +252,7 @@ module ProjectTests =
                 Cluster   = cluster }
             project
 
-        let! commit = Asset.saveWithCommit updated path User.Admin.Signature
+        let! commit = Asset.saveWithCommit path User.Admin.Signature updated
         let! loaded = Asset.loadWithMachine path machine
 
         // the only difference will be the automatically assigned timestamp
@@ -246,12 +290,8 @@ module ProjectTests =
     testCase "Saved Project should be a git repository with yaml file." <| fun _ ->
       either {
         let machine = MachineConfig.create ()
-
-        let name =
-          Path.GetTempFileName()
-          |> Path.GetFileName
-
-        let path = Directory.GetCurrentDirectory() </> "tmp" </> name
+        let path = tmpPath()
+        let name = Path.GetFileName path
 
         let! _ = Project.create path name machine
 
@@ -299,18 +339,15 @@ module ProjectTests =
       either {
         let machine = MachineConfig.create ()
 
-        let name =
-          Path.GetTempFileName()
-          |> Path.GetFileName
+        let path = tmpPath()
+        let name = Path.GetFileName path
 
         let author1 = "karsten"
-
-        let path = Directory.GetCurrentDirectory() </> "tmp" </> name
 
         let! project = Project.create path name machine
 
         let updated = { project with Author = Some author1 }
-        let! commit = Asset.saveWithCommit updated path User.Admin.Signature
+        let! commit = Asset.saveWithCommit path User.Admin.Signature updated
 
         let! loaded = Asset.loadWithMachine path machine
         let! repo = Project.repository loaded
@@ -324,7 +361,7 @@ module ProjectTests =
         let author2 = "ingolf"
 
         let updated = { updated with Author = Some author2 }
-        let! commit2 = Asset.saveWithCommit updated path User.Admin.Signature
+        let! commit2 = Asset.saveWithCommit path User.Admin.Signature updated
 
         let! loaded = Asset.loadWithMachine path machine
 
@@ -334,7 +371,7 @@ module ProjectTests =
         let author3 = "eno"
 
         let updated = { updated with Author = Some author3 }
-        let! commit3 = Asset.saveWithCommit updated path User.Admin.Signature
+        let! commit3 = Asset.saveWithCommit path User.Admin.Signature updated
 
         let! loaded = Asset.loadWithMachine path machine
 
@@ -347,19 +384,15 @@ module ProjectTests =
     testCase "Saving project should always contain an up-to-date path" <| fun _ ->
       either {
         let machine = MachineConfig.create()
-
-        let name =
-          Path.GetTempFileName()
-          |> Path.GetFileName
-
-        let path = Directory.GetCurrentDirectory() </> "tmp" </> name
+        let path = tmpPath()
+        let name = Path.GetFileName path
 
         let! project = Project.create path name machine
         let! loaded = Asset.loadWithMachine path machine
 
         expect "Project should have correct path" path id loaded.Path
 
-        let newpath = Path.dirName path </> (Path.GetTempFileName() |> Path.baseName)
+        let newpath = tmpPath()
 
         FileSystem.moveFile path newpath
 
@@ -374,11 +407,8 @@ module ProjectTests =
       either {
         let machine = MachineConfig.create ()
 
-        let name =
-          Path.GetTempFileName()
-          |> Path.GetFileName
-
-        let path = Directory.GetCurrentDirectory() </> "tmp" </> name
+        let path = tmpPath()
+        let name = Path.GetFileName path
 
         let! project = Project.create path name machine
 
@@ -408,12 +438,8 @@ module ProjectTests =
     testCase "Should create a default admin user" <| fun _ ->
       either {
         let machine = MachineConfig.create ()
-
-        let name =
-          Path.GetTempFileName()
-          |> Path.GetFileName
-
-        let path = Directory.GetCurrentDirectory() </> "tmp" </> name
+        let path = tmpPath()
+        let name = Path.GetFileName path
 
         let! project = Project.create path name machine
 
@@ -437,6 +463,8 @@ module ProjectTests =
   [<Tests>]
   let projectTests =
     testList "Load/Save tests" [
+        dirtyTest
+        relpathTest
         loadSaveTest
         testCustomizedCfg
         saveInitsGit

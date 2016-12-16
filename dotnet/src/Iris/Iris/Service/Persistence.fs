@@ -101,6 +101,7 @@ module Persistence =
     try
       raft
       |> Yaml.encode
+      |> Payload
       |> Asset.write (Config.metadataPath config)
       |> Either.succeed
     with
@@ -122,21 +123,21 @@ module Persistence =
   /// Returns: Either<IrisError, FileInfo * Commit * IrisProject>
   let inline persistEntry (state: State) (sm: StateMachine) =
     let signature = User.Admin.Signature
-    let basepath = state.Project.Path
+    let path = state.Project.Path
     match sm with
-    | AddCue        cue     -> Asset.saveWithCommit   cue           basepath signature
-    | UpdateCue     cue     -> Asset.saveWithCommit   cue           basepath signature
-    | RemoveCue     cue     -> Asset.deleteWithCommit cue           basepath signature
-    | AddCueList    cuelist -> Asset.saveWithCommit   cuelist       basepath signature
-    | UpdateCueList cuelist -> Asset.saveWithCommit   cuelist       basepath signature
-    | RemoveCueList cuelist -> Asset.deleteWithCommit cuelist       basepath signature
-    | AddUser       user    -> Asset.saveWithCommit   user          basepath signature
-    | UpdateUser    user    -> Asset.saveWithCommit   user          basepath signature
-    | RemoveUser    user    -> Asset.deleteWithCommit user          basepath signature
-    | AddMember     _       -> Asset.saveWithCommit   state.Project basepath signature
-    | UpdateMember  _       -> Asset.saveWithCommit   state.Project basepath signature
-    | RemoveMember  _       -> Asset.deleteWithCommit state.Project basepath signature
-    | UpdateProject project -> Asset.saveWithCommit   project       basepath signature
+    | AddCue        cue     -> Asset.saveWithCommit   path signature cue
+    | UpdateCue     cue     -> Asset.saveWithCommit   path signature cue
+    | RemoveCue     cue     -> Asset.deleteWithCommit path signature cue
+    | AddCueList    cuelist -> Asset.saveWithCommit   path signature cuelist
+    | UpdateCueList cuelist -> Asset.saveWithCommit   path signature cuelist
+    | RemoveCueList cuelist -> Asset.deleteWithCommit path signature cuelist
+    | AddUser       user    -> Asset.saveWithCommit   path signature user
+    | UpdateUser    user    -> Asset.saveWithCommit   path signature user
+    | RemoveUser    user    -> Asset.deleteWithCommit path signature user
+    | AddMember     _       -> Asset.saveWithCommit   path signature state.Project
+    | UpdateMember  _       -> Asset.saveWithCommit   path signature state.Project
+    | RemoveMember  _       -> Asset.deleteWithCommit path signature state.Project
+    | UpdateProject project -> Asset.saveWithCommit   path signature project
     | _                     -> Left OK
 
   // ** updateRepo

@@ -37,6 +37,8 @@ type Salt       = string
 
 type Actor<'t> = MailboxProcessor<'t>
 
+type StringPayload = Payload of string
+
 /// ## Coordinate
 ///
 /// Represents a point in Euclidian space

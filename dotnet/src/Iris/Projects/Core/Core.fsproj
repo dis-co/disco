@@ -48,12 +48,15 @@
     <Compile Include="..\..\Iris\Core\Id.fs" />
     <Compile Include="..\..\Iris\Core\IpAddress.fs" />
     <Compile Include="..\..\Iris\Core\Aliases.fs" />
-    <Compile Include="..\..\Iris\Core\Util.fs" />
+    <Compile Include="..\..\Iris\Core\Platform.fs" />
+    <Compile Include="..\..\Iris\Core\FileSystem.fs" />
+    <Compile Include="..\..\Iris\Core\Network.fs" />
+    <Compile Include="..\..\Iris\Core\Machine.fs" />
+    <Compile Include="..\..\Iris\Core\Util.fs"  />
     <Compile Include="..\..\Iris\Core\User.fs" />
     <Compile Include="..\..\Iris\Core\Session.fs" />
     <Compile Include="..\..\Iris\Core\Color.fs" />
     <Compile Include="..\..\Iris\Core\Logging.fs" />
-    <Compile Include="..\..\Iris\Core\Git.fs" />
     <Compile Include="..\..\Iris\Core\Pin.fs" />
     <Compile Include="..\..\Iris\Core\Patch.fs" />
     <Compile Include="..\..\Iris\Core\Cue.fs" />
@@ -61,22 +64,14 @@
     <Compile Include="..\..\Iris\Raft\Validation.fs" />
     <Compile Include="..\..\Iris\Raft\Continue.fs" />
     <Compile Include="..\..\Iris\Raft\Member.fs" />
+    <Compile Include="..\..\Iris\Core\Renderer.fs" />
+    <Compile Include="..\..\Iris\Core\Project.fs" />
     <Compile Include="..\..\Iris\Core\StateMachine.fs" />
     <Compile Include="..\..\Iris\Raft\LogEntry.fs" />
     <Compile Include="..\..\Iris\Raft\Log.fs" />
     <Compile Include="..\..\Iris\Raft\Types.fs" />
     <Compile Include="..\..\Iris\Raft\Raft.fs" />
-    <Compile Include="..\..\Iris\Core\Region.fs" />
-    <Compile Include="..\..\Iris\Core\Signal.fs" />
-    <Compile Include="..\..\Iris\Core\Display.fs" />
-    <Compile Include="..\..\Iris\Core\Task.fs" />
-    <Compile Include="..\..\Iris\Core\ViewPort.fs" />
-    <Compile Include="..\..\Iris\Core\Vvvv.fs" />
-    <Compile Include="..\..\Iris\Core\Yaml.fs" />
-    <Compile Include="..\..\Iris\Core\Config.fs" />
-    <Compile Include="..\..\Iris\Core\Project.fs" />
     <Compile Include="..\..\Iris\Core\Uri.fs" />
-    <Compile Include="..\..\Iris\Service\GitServer.fs" />
     <Compile Include="..\..\Iris\Service\Request.fs" />
     <Compile Include="..\..\Iris\Service\Zmq\Rep.fs" />
     <Compile Include="..\..\Iris\Service\Zmq\Req.fs" />
@@ -85,6 +80,9 @@
     <compile Include="..\..\Iris\Service\Persistence.fs" />
     <Compile Include="..\..\Iris\Service\Utilities.fs" />
     <Compile Include="..\..\Iris\Service\RaftServer.fs" />
+    <Compile Include="..\..\Iris\Service\GitServer.fs" />
+    <compile Include="..\..\Iris\Service\Persistence.fs" />
+    <Compile Include="..\..\Iris\Service\Utilities.fs" />
     <compile Include="..\..\Iris\Service\HttpServer.fs" />
     <Compile Include="..\..\Iris\Service\WebSocket.fs" />
     <Compile Include="..\..\Iris\Service\IrisService.fs" />
@@ -94,12 +92,8 @@
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Fable.Core">
-      <HintPath>..\..\node_modules\fable-core\Fable.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="Iris.Serialization">
-      <HintPath>.\bin\Release\Serialization\Iris.Serialization.dll</HintPath>
+      <HintPath>..\..\bin\Debug\Serialization\Iris.Serialization.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
@@ -124,9 +118,9 @@
     </When>
   </Choose>
   <Target Name="AfterBuild">
-    <Copy SourceFiles="assets/interactive.fsx" DestinationFolder="$(OutputPath)" />
-    <Copy SourceFiles="..\..\packages\FSharp.Core\lib\net40\FSharp.Core.sigdata" DestinationFolder="$(OutputPath)" />
-    <Copy SourceFiles="..\..\packages\FSharp.Core\lib\net40\FSharp.Core.optdata" DestinationFolder="$(OutputPath)" />
+    <Copy SourceFiles="../../assets/interactive.fsx" DestinationFolder="$(OutputPath)" />
+    <Copy SourceFiles="..\..\..\..\packages\FSharp.Core\lib\net40\FSharp.Core.sigdata" DestinationFolder="$(OutputPath)" />
+    <Copy SourceFiles="..\..\..\..\packages\FSharp.Core\lib\net40\FSharp.Core.optdata" DestinationFolder="$(OutputPath)" />
   </Target>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v3.5'">

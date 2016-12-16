@@ -30,7 +30,7 @@ module ConfigTests =
   let loadSaveCustomPathTest =
     testCase "Save/Load MachineConfig with default path should render equal values" <| fun _ ->
       either {
-        let path = Path.GetTempFileName()
+        let path = tmpPath()
 
         let config = MachineConfig.create ()
 

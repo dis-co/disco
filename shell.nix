@@ -9,8 +9,9 @@ let
   libpath="${curl.out}/lib:${openssl.out}/lib:";
 
   hook = ''
+    export TMPDIR=/tmp
+    export TMPDIR=$(mktemp -d)
     export LD_LIBRARY_PATH="$libpath":$LD_LIBRARY_PATH
-    export IRIS_NODE_ID=`uuidgen`
     export PHANTOMJS_PATH=${phantomjs2}/bin/phantomjs
   '';
 
@@ -28,7 +29,7 @@ let
       chmod -R +rwx .
       cd $src
       substituteInPlace ./build.sh \
-	--replace /usr/bin/env bash ${stdenv.shell}
+        --replace /usr/bin/env bash ${stdenv.shell}
     '';
 
     buildPhase = ''
@@ -57,11 +58,11 @@ let
     config = {
       Cmd = [ "${mono}/bin/mono" "${myApp}/bin/Main.exe"];
       ExposedPorts = {
-	"6379/tcp" = {};
+        "6379/tcp" = {};
       };
       WorkingDir = "/data";
       Volumes = {
-	"/data" = {};
+        "/data" = {};
       };
     };
   };

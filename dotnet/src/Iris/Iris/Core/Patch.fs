@@ -288,7 +288,7 @@ type Patch =
     either {
       let path = basePath </> Asset.path patch
       let data = Yaml.encode patch
-      let! info = Asset.write path data
+      let! info = Asset.write path (Payload data)
       return ()
     }
 
