@@ -195,7 +195,9 @@ module Iris =
         | Loaded data -> dispose data
 
   let private processMessage (state: IrisState) (id: Id) (cmd: StateMachine) =
-  #if FRONTEND_DEV
+    let isValidPassword (user: User) (password: string) =
+      let password = Crypto.hashPassword password user.Salt
+      password = user.Password
     match state, cmd with
     | Loaded state, AddSession session ->
       match state.SocketServer.BuildSession id session with
@@ -214,18 +216,14 @@ module Iris =
       state.Store.State.Users
       |> Map.tryPick (fun _ u -> if u.UserName = username then Some u else None)
       |> function
-        | Some user when user.Password = password ->
+        | Some user when isValidPassword user password ->
           printfn "Login authorized"
           { session with Status = { StatusType = Authorized; Payload = string user.Id } }
-
         | _ ->
           printfn "Login rejected"
           { session with Status = { StatusType = Unauthorized; Payload = "" } }
       |> UpdateSession
     | _ -> cmd
-  #else
-    cmd
-  #endif
 
   /// ## withLoaded
   ///

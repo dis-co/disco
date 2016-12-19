@@ -31,16 +31,6 @@
     <DefineConstants>TRACE;FABLE_COMPILER</DefineConstants>
     <WarningLevel>5</WarningLevel>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'FrontendDev|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <DefineConstants>DEBUG;TRACE;FABLE_COMPILER</DefineConstants>
-    <WarningLevel>5</WarningLevel>
-    <ErrorReport>prompt</ErrorReport>
-    <Externalconsole>true</Externalconsole>
-    <OutputPath>bin\FrontendDev\</OutputPath>
-  </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
     <Reference Include="System" />

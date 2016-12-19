@@ -1,0 +1,1 @@
+src\Iris\bin\Debug\Iris\iris.exe start --dir=../../iris-sample-project/hello --http=src/Iris/assets/frontend
