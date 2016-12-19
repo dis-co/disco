@@ -500,9 +500,6 @@ module CommandLine =
     else
       either {
         let! machine = MachineConfig.load None
-        #if FRONTEND_DEV
-        let machine = { machine with MachineId = Id "TEST_MACHINE" }
-        #endif
         let! server = IrisService.create machine web
         use obs = Logger.subscribe Logger.stdout
 
@@ -591,11 +588,11 @@ module CommandLine =
       let! machine = MachineConfig.load None
 
       let me = User.Admin
-      let baseDir = parsed.GetResult <@ Dir @>
+      let baseDir = parsed.GetResult <@ Dir @> |> Path.GetFullPath
       let name = parsed.GetResult <@ Name @>
       let dir = baseDir </> name
 
-      let raftDir = Path.GetFullPath(dir) </> RAFT_DIRECTORY
+      let raftDir = dir </> RAFT_DIRECTORY
 
       do! match Directory.Exists dir with
           | true  ->

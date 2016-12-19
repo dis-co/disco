@@ -219,17 +219,6 @@
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'FrontendDev|x64' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <Tailcalls>false</Tailcalls>
-    <DefineConstants>TRACE;DEBUG;FRONTEND_DEV</DefineConstants>
-    <WarningLevel>5</WarningLevel>
-    <OutputPath>..\..\bin\FrontendDev\Iris</OutputPath>
-    <StartArguments>start --dir=../../iris-sample-project --http=src/Iris/assets/frontend</StartArguments>
-    <StartWorkingDirectory>C:\Users\Alfonso\Documents\GitHub\iris\dotnet\</StartWorkingDirectory>
-  </PropertyGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">
       <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')">

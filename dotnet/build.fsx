@@ -152,6 +152,16 @@ let runExecAndReturn filepath args workdir =
     info.WorkingDirectory <- workdir) TimeSpan.MaxValue
   |> fun res -> res.Messages |> String.concat "\n"
 
+let runNet cmd workingDir _ =
+  match Environment.OSVersion.Platform with
+  | PlatformID.Unix -> runMono cmd workingDir
+  | _ ->
+    let filepath, args =
+      match cmd.IndexOf(' ') with
+      | -1 -> cmd, ""
+      | i -> cmd.Substring(0,i), cmd.Substring(i+1)
+    runExec filepath args workingDir false
+
 let runNpm cmd workdir _ =
   let npm, cmd =
     match Environment.OSVersion.Platform with
@@ -380,8 +390,7 @@ Target "GenerateSerialization"
 let frontendDir = baseDir @@ "Projects" @@ "Frontend"
 
 Target "BuildDebugFrontend" (fun () ->
-  // Build Service with FrontendDev configuration
-  build (setParams "FrontendDev") (baseDir @@ "Projects/Service/Service.fsproj")
+  buildDebug "Projects/Service/Service.fsproj" ()
 
   runNpm "install" __SOURCE_DIRECTORY__ ()
   runFable frontendDir "" ()
@@ -391,17 +400,27 @@ Target "BuildDebugFrontend" (fun () ->
 
   runNpm "install" (baseDir @@ "assets/frontend") ()
 
+  let irisExePath = baseDir @@ "bin/Debug/Iris/iris.exe"
+
+  // Create machine configuration
+  let machineConfigPath =
+    Path.GetDirectoryName irisExePath </> "etc"
+  if directoryExists machineConfigPath |> not then
+    runNet (irisExePath + " setup") __SOURCE_DIRECTORY__ ()
+    // printfn "Machine config created at %s" machineConfigPath
+
+  // Create project sample
   let projectSamplePath =
-    Path.Combine(__SOURCE_DIRECTORY__,"..","..","iris-sample-project")
+    Path.Combine(__SOURCE_DIRECTORY__,"..","..", "iris-sample-project")
     |> Path.GetFullPath
   if directoryExists projectSamplePath |> not then
-    let script = Path.Combine(__SOURCE_DIRECTORY__,"src","Scripts","CreateProject.fsx")
-    FSIHelper.executeFSI "." script ["iris-sample-project", projectSamplePath] |> ignore
+    let args = sprintf "create --name=hello --dir=%s --bind=0.0.0.0 --raft=6000 --git=5000 --web=7000 --ws=8000" projectSamplePath
+    runNet (irisExePath + " " + args) __SOURCE_DIRECTORY__ ()
     printfn "Project sample created at %s" projectSamplePath
 
   printfn ""
   printfn "---------------------------------------------------------------------------"
-  printfn "Type `npm run iris` to start the service (`npm run iris-mono` on Linux/OSX)"
+  printfn "Type `runiris` on Windows to start the service"
   printfn "Then navigate to `http://localhost:7000` with your browser"
   printfn "---------------------------------------------------------------------------"
   printfn ""

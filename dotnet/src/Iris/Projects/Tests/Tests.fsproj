@@ -262,15 +262,6 @@
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'FrontendDev|x64' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <Tailcalls>false</Tailcalls>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <WarningLevel>5</WarningLevel>
-    <OutputPath>bin\FrontendDev\</OutputPath>
-  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Iris.Serialization">
       <HintPath>..\..\bin\Release\Serialization\Iris.Serialization.dll</HintPath>
