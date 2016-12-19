@@ -1337,7 +1337,13 @@ module Asset =
   let inline commit (basepath: FilePath) (msg: string) (signature: LibGit2Sharp.Signature) (t: ^t) =
     either {
       use! repo = Git.Repo.repository basepath
-      let target = basepath </> path t
+
+      let target =
+        if Path.IsPathRooted basepath then
+          basepath </> path t
+        else
+          Path.GetFullPath basepath </> path t
+
       let! status = Git.Repo.status repo
       do! Git.Repo.stage repo target
       let! commit = Git.Repo.commit repo msg signature

@@ -35,7 +35,8 @@ module CommandLine =
     | Start
     | Reset
     | Dump
-    | User
+    | Add_User
+    | Add_Member
 
     static member Doc
       with get () =
@@ -101,6 +102,24 @@ module CommandLine =
   --no-http : Disable the Http server
 
 ----------------------------------------------------------------------
+| add-user                                                           |
+----------------------------------------------------------------------
+
+  Add a new user to the project. Requires you to specify the project
+  directory
+
+  --dir=/path/to/project : Base path containing `project.yml`
+
+----------------------------------------------------------------------
+| add-member                                                         |
+----------------------------------------------------------------------
+
+  Add a new cluster member to the project. Requires you to specify the
+  project directory
+
+  --dir=/path/to/project : Base path containing `project.yml`
+
+----------------------------------------------------------------------
 | reset                                                              |
 ----------------------------------------------------------------------
 
@@ -113,15 +132,6 @@ module CommandLine =
 
   Dump the current state of the project. Requires you to specify the
   project directory
-
-  --dir=/path/to/project : Base path containing `project.yml`
-
-----------------------------------------------------------------------
-| user                                                               |
-----------------------------------------------------------------------
-
-  Add a new user to the project. Requires you to specify the project
-  directory
 
   --dir=/path/to/project : Base path containing `project.yml`
 
@@ -173,7 +183,7 @@ module CommandLine =
       result
 
     match opts.GetResult <@ Cmd @> with
-    | Start | Reset | Dump | User -> ensureDir ()
+    | Start | Reset | Dump | Add_User | Add_Member -> ensureDir ()
     | _ -> ()
 
     if opts.GetResult <@ Cmd @> = Create then
@@ -752,6 +762,33 @@ module CommandLine =
         |> String.trim
     str
 
+  let private readPort (field: string) =
+    let mutable port = 0us
+    while port = 0us do
+      let str = readString field
+      match UInt16.TryParse(str) with
+      | (true, parsed) -> port <- parsed
+      | _ -> ()
+    port
+
+  let private readIP (field: string) =
+    let mutable ip = None
+    while Option.isNone ip do
+      let str = readString field
+      match IpAddress.TryParse str with
+      | Right parsed -> ip <- Some parsed
+      | Left error -> printfn "%A" error
+    Option.get ip
+
+  let private readID (field: string) =
+    let mutable id = None
+    while Option.isNone id do
+      let str = readString field
+      match Id.TryParse str with
+      | Some parsed -> id <- Some parsed
+      | None -> ()
+    Option.get id
+
   let private readEmail (field: string) =
     let pattern = "^.*@.*\..*"
     let mutable email = ""
@@ -794,4 +831,36 @@ module CommandLine =
           "Passwords do not match. Try again Sam."
           |> Error.asOther (tag "addUser")
           |> Either.fail
+    }
+
+  let addMember (datadir: FilePath) =
+    either {
+      let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
+      let! machine = MachineConfig.load None
+      let! project = Asset.loadWithMachine path machine
+
+      let id   = readID     "Member ID"
+      let hn   = readString "Host Name"
+      let ip   = readIP     "IP Address"
+      let raft = readPort   "Raft Port"
+      let web  = readPort   "Web Port"
+      let ws   = readPort   "Sockets Port"
+      let git  = readPort   "Git Port"
+
+      let mem =
+        { Member.create id with
+            HostName = hn
+            IpAddr   = ip
+            Port     = raft
+            WebPort  = web
+            WsPort   = ws
+            GitPort  = git }
+
+      let! commit =
+        Asset.saveWithCommit
+          datadir
+          User.Admin.Signature
+          (Project.addMember mem project)
+
+      printfn "successfully added new member %A" mem.HostName
     }
