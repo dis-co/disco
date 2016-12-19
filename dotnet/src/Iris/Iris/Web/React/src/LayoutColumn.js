@@ -3,7 +3,7 @@ import PanelLeft from "./PanelLeft";
 import PanelCenter from "./PanelCenter";
 import PanelRight from "./PanelRight";
 import Draggable from 'react-draggable';
-import { PANEL_DEFAULT_WIDTH, PANEL_MAX_WIDTH, SKIP_LOGIN } from "./Constants"
+import { PANEL_DEFAULT_WIDTH, PANEL_MAX_WIDTH } from "./Constants"
 
 function calculateWidths(prev) {
   const sideMax = window.innerWidth / 4;

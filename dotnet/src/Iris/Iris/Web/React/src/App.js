@@ -1,5 +1,6 @@
 import * as React from "react";
-import LayoutColumn from "./LayoutColumn";
+// import LayoutColumn from "./LayoutColumn";
+import LayoutPanels from "./LayoutPanel";
 import ModalDialog from "./ModalDialog";
 import { getCurrentSession } from 'iris';
 import { STATUS, MODALS, SKIP_LOGIN } from './Constants';
@@ -43,7 +44,7 @@ export default class App extends React.Component {
     return (
       <div className="column-layout-wrapper">
         <ModalDialog info={info} ref={el => modal = (el || modal)} />
-        <LayoutColumn info={info} />;
+        <LayoutPanels info={info} />;
       </div>
     )
   }

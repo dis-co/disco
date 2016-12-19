@@ -37,11 +37,6 @@ module Main =
         | false, _ -> System.IO.Path.GetFullPath basePath |> Some
       | None -> Http.getDefaultBasePath() |> Some
 
-    #if FRONTEND_DEV
-    printfn "Starting service for Frontend development..."
-    Option.iter (printfn "HttpServer will serve from %s") web
-    #endif
-
     let res =
       match parsed.GetResult <@ Cmd @>, parsed.TryGetResult <@ Dir @> with
       | Create,            _ -> createProject parsed
