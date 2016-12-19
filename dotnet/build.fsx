@@ -414,7 +414,7 @@ Target "BuildDebugFrontend" (fun () ->
     Path.Combine(__SOURCE_DIRECTORY__,"..","..", "iris-sample-project")
     |> Path.GetFullPath
   if directoryExists projectSamplePath |> not then
-    let args = sprintf "create --name=hello --dir=%s --bind=0.0.0.0 --raft=6000 --git=5000 --web=7000 --ws=8000" projectSamplePath
+    let args = sprintf "create --dir=%s --bind=0.0.0.0 --raft=6000 --git=5000 --web=7000 --ws=8000" projectSamplePath
     runNet (irisExePath + " " + args) __SOURCE_DIRECTORY__ ()
     printfn "Project sample created at %s" projectSamplePath
 
