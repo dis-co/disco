@@ -53,11 +53,9 @@ module CommandLine =
 
   Create a new project in the directory specified by
 
-  --dir=/path/to/parent/dir
+  --dir=/path/to/parent/dir/project-name
 
-  with Project Name
-
-  --name=mycool-project
+  The target directory name is initially used as the project name.
 
   You must also specify all ports with their respective flags:
 
@@ -153,7 +151,6 @@ module CommandLine =
     | [<EqualsAssignment>] Web          of uint16
     | [<EqualsAssignment>] Git          of uint16
     | [<EqualsAssignment>] Ws           of uint16
-    | [<EqualsAssignment>] Name         of string
     | [<EqualsAssignment>] Dir          of string
 
     interface IArgParserTemplate with
@@ -162,7 +159,6 @@ module CommandLine =
           | Interactive -> "Start daemon in interactive mode"
           | Http    _   -> "Base path of http server (if `--http=false` http server won't be started)"
           | Dir     _   -> "Project directory to place the config & database in"
-          | Name    _   -> "Project name when using <create>"
           | Bind    _   -> "Specify a valid IP address."
           | Web     _   -> "Http server port."
           | Git     _   -> "Git server port."
@@ -187,7 +183,6 @@ module CommandLine =
     | _ -> ()
 
     if opts.GetResult <@ Cmd @> = Create then
-      let name = opts.Contains <@ Name @>
       let dir  = opts.Contains <@ Dir @>
       let bind = opts.Contains <@ Bind @>
       let web  = opts.Contains <@ Web @>
@@ -195,9 +190,8 @@ module CommandLine =
       let git  = opts.Contains <@ Git @>
       let ws   = opts.Contains <@ Ws @>
 
-      if not (name && bind && web && raft && ws) then
+      if not (bind && web && raft && ws) then
         printfn "Error: when creating a new configuration you must specify the following options:"
-        if not name then printfn "    --name=<name>"
         if not dir  then printfn "    --dir=<directory>"
         if not bind then printfn "    --bind=<binding address>"
         if not web  then printfn "    --web=<web interface port>"
@@ -601,9 +595,15 @@ module CommandLine =
       let! machine = MachineConfig.load None
 
       let me = User.Admin
-      let baseDir = parsed.GetResult <@ Dir @>
-      let name = parsed.GetResult <@ Name @>
-      let dir = baseDir </> name
+
+      let dir =
+        let path = parsed.GetResult <@ Dir @>
+        if Path.IsPathRooted path then
+          path
+        else
+          Path.GetFullPath path
+
+      let name = Path.GetFileName dir
 
       let raftDir = Path.GetFullPath(dir) </> RAFT_DIRECTORY
 
