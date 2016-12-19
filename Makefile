@@ -68,7 +68,7 @@ worker:
 #  \__,_|_|_|
 
 tests.all:
-	${BUILD} AllTests
+	@nix-shell shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh AllTests"
 
 debug.all:
 	${BUILD} DebugAll

@@ -399,7 +399,9 @@ Target "BuildDebugFrontend" (fun () ->
   runNpm "run build" (baseDir @@ "Iris/Web/React") ()
 
   runNpm "install" (baseDir @@ "assets/frontend") ()
+)
 
+Target "BuildSampleProject" (fun () ->
   let irisExePath = baseDir @@ "bin/Debug/Iris/iris.exe"
 
   // Create machine configuration
@@ -709,6 +711,9 @@ Target "AllTests" DoNothing
 ==> "AllTests"
 
 "RunWebTests"
+==> "AllTests"
+
+"BuildSampleProject"
 ==> "AllTests"
 
 RunTargetOrDefault "Release"
