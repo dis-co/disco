@@ -35,7 +35,8 @@ module CommandLine =
     | Start
     | Reset
     | Dump
-    | User
+    | Add_User
+    | Add_Member
 
     static member Doc
       with get () =
@@ -52,11 +53,9 @@ module CommandLine =
 
   Create a new project in the directory specified by
 
-  --dir=/path/to/parent/dir
+  --dir=/path/to/parent/dir/project-name
 
-  with Project Name
-
-  --name=mycool-project
+  The target directory name is initially used as the project name.
 
   You must also specify all ports with their respective flags:
 
@@ -101,6 +100,24 @@ module CommandLine =
   --no-http : Disable the Http server
 
 ----------------------------------------------------------------------
+| add-user                                                           |
+----------------------------------------------------------------------
+
+  Add a new user to the project. Requires you to specify the project
+  directory
+
+  --dir=/path/to/project : Base path containing `project.yml`
+
+----------------------------------------------------------------------
+| add-member                                                         |
+----------------------------------------------------------------------
+
+  Add a new cluster member to the project. Requires you to specify the
+  project directory
+
+  --dir=/path/to/project : Base path containing `project.yml`
+
+----------------------------------------------------------------------
 | reset                                                              |
 ----------------------------------------------------------------------
 
@@ -113,15 +130,6 @@ module CommandLine =
 
   Dump the current state of the project. Requires you to specify the
   project directory
-
-  --dir=/path/to/project : Base path containing `project.yml`
-
-----------------------------------------------------------------------
-| user                                                               |
-----------------------------------------------------------------------
-
-  Add a new user to the project. Requires you to specify the project
-  directory
 
   --dir=/path/to/project : Base path containing `project.yml`
 
@@ -143,7 +151,6 @@ module CommandLine =
     | [<EqualsAssignment>] Web          of uint16
     | [<EqualsAssignment>] Git          of uint16
     | [<EqualsAssignment>] Ws           of uint16
-    | [<EqualsAssignment>] Name         of string
     | [<EqualsAssignment>] Dir          of string
 
     interface IArgParserTemplate with
@@ -152,7 +159,6 @@ module CommandLine =
           | Interactive -> "Start daemon in interactive mode"
           | Http    _   -> "Base path of http server (if `--http=false` http server won't be started)"
           | Dir     _   -> "Project directory to place the config & database in"
-          | Name    _   -> "Project name when using <create>"
           | Bind    _   -> "Specify a valid IP address."
           | Web     _   -> "Http server port."
           | Git     _   -> "Git server port."
@@ -173,11 +179,10 @@ module CommandLine =
       result
 
     match opts.GetResult <@ Cmd @> with
-    | Start | Reset | Dump | User -> ensureDir ()
+    | Start | Reset | Dump | Add_User | Add_Member -> ensureDir ()
     | _ -> ()
 
     if opts.GetResult <@ Cmd @> = Create then
-      let name = opts.Contains <@ Name @>
       let dir  = opts.Contains <@ Dir @>
       let bind = opts.Contains <@ Bind @>
       let web  = opts.Contains <@ Web @>
@@ -185,9 +190,8 @@ module CommandLine =
       let git  = opts.Contains <@ Git @>
       let ws   = opts.Contains <@ Ws @>
 
-      if not (name && bind && web && raft && ws) then
+      if not (bind && web && raft && ws) then
         printfn "Error: when creating a new configuration you must specify the following options:"
-        if not name then printfn "    --name=<name>"
         if not dir  then printfn "    --dir=<directory>"
         if not bind then printfn "    --bind=<binding address>"
         if not web  then printfn "    --web=<web interface port>"
@@ -218,7 +222,7 @@ module CommandLine =
   let parseHostString (str: string) =
     let trimmed = str.Trim().Split(' ')
     match trimmed with
-      | [| id; hostname; hostspec |] as arr ->
+      | [| id; hostname; hostspec |] ->
         if hostspec.StartsWith("tcp://") then
           match hostspec.Substring(6).Split(':') with
             | [| addr; port |] -> Some (uint32 id, hostname, addr, int port)
@@ -501,7 +505,7 @@ module CommandLine =
       either {
         let! machine = MachineConfig.load None
         let! server = IrisService.create machine web
-        use obs = Logger.subscribe Logger.stdout
+        use _ = Logger.subscribe Logger.stdout
 
         registerExitHandlers server
 
@@ -550,7 +554,7 @@ module CommandLine =
         |> Project.updateDataDir raftDir
         |> Project.addMember mem
 
-      let! commit = Asset.saveWithCommit path User.Admin.Signature updated
+      let! _ = Asset.saveWithCommit path User.Admin.Signature updated
 
       printfn "project: %A" project.Name
       printfn "created in: %s" project.Path
@@ -568,9 +572,9 @@ module CommandLine =
   /// - project: IrisProject to initialize
   ///
   /// Returns: unit
-  let initializeRaft (user: User) (project: IrisProject) = either {
+  let initializeRaft (project: IrisProject) = either {
       let! raft = createRaft project.Config
-      let! result = saveRaft project.Config raft
+      let! _ = saveRaft project.Config raft
       return ()
     }
 
@@ -587,10 +591,14 @@ module CommandLine =
 
       let! machine = MachineConfig.load None
 
-      let me = User.Admin
-      let baseDir = parsed.GetResult <@ Dir @> |> Path.GetFullPath
-      let name = parsed.GetResult <@ Name @>
-      let dir = baseDir </> name
+      let dir =
+        let path = parsed.GetResult <@ Dir @>
+        if Path.IsPathRooted path then
+          path
+        else
+          Path.GetFullPath path
+
+      let name = Path.GetFileName dir
 
       let raftDir = dir </> RAFT_DIRECTORY
 
@@ -613,7 +621,7 @@ module CommandLine =
 
       let! project = buildProject machine name dir raftDir mem
 
-      do! initializeRaft me project
+      do! initializeRaft project
     }
 
   // ** resetProject
@@ -646,7 +654,7 @@ module CommandLine =
       do! mkDir raftDir
 
       let! raft = createRaft project.Config
-      let! result = saveRaft project.Config raft
+      let! _ = saveRaft project.Config raft
       return ()
     }
 
@@ -749,6 +757,33 @@ module CommandLine =
         |> String.trim
     str
 
+  let private readPort (field: string) =
+    let mutable port = 0us
+    while port = 0us do
+      let str = readString field
+      match UInt16.TryParse(str) with
+      | (true, parsed) -> port <- parsed
+      | _ -> ()
+    port
+
+  let private readIP (field: string) =
+    let mutable ip = None
+    while Option.isNone ip do
+      let str = readString field
+      match IpAddress.TryParse str with
+      | Right parsed -> ip <- Some parsed
+      | Left error -> printfn "%A" error
+    Option.get ip
+
+  let private readID (field: string) =
+    let mutable id = None
+    while Option.isNone id do
+      let str = readString field
+      match Id.TryParse str with
+      | Some parsed -> id <- Some parsed
+      | None -> ()
+    Option.get id
+
   let private readEmail (field: string) =
     let pattern = "^.*@.*\..*"
     let mutable email = ""
@@ -791,4 +826,36 @@ module CommandLine =
           "Passwords do not match. Try again Sam."
           |> Error.asOther (tag "addUser")
           |> Either.fail
+    }
+
+  let addMember (datadir: FilePath) =
+    either {
+      let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
+      let! machine = MachineConfig.load None
+      let! project = Asset.loadWithMachine path machine
+
+      let id   = readID     "Member ID"
+      let hn   = readString "Host Name"
+      let ip   = readIP     "IP Address"
+      let raft = readPort   "Raft Port"
+      let web  = readPort   "Web Port"
+      let ws   = readPort   "Sockets Port"
+      let git  = readPort   "Git Port"
+
+      let mem =
+        { Member.create id with
+            HostName = hn
+            IpAddr   = ip
+            Port     = raft
+            WebPort  = web
+            WsPort   = ws
+            GitPort  = git }
+
+      let! _ =
+        Asset.saveWithCommit
+          datadir
+          User.Admin.Signature
+          (Project.addMember mem project)
+
+      printfn "successfully added new member %A" mem.HostName
     }

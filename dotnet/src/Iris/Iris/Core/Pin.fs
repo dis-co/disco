@@ -906,7 +906,7 @@ type Pin =
         |> Either.fail
 
     | x ->
-      "CompoundPinFB has no value"
+      sprintf "PinTypeFB not recognized: %A" x
       |> Error.asParseError "PinFB.FromFB"
       |> Either.fail
 

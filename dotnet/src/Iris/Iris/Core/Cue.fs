@@ -209,7 +209,7 @@ type Cue =
     either {
       let path = basePath </> Asset.path cue
       let data = Yaml.encode cue
-      let! info = Asset.write path (Payload data)
+      let! _ = Asset.write path (Payload data)
       return ()
     }
 

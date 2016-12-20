@@ -1,6 +1,6 @@
 import * as React from "react";
 // import LayoutColumn from "./LayoutColumn";
-import LayoutPanels from "./LayoutPanel";
+import LayoutPanels from "./LayoutPanels";
 import ModalDialog from "./ModalDialog";
 import { getCurrentSession } from 'iris';
 import { STATUS, MODALS, SKIP_LOGIN } from './Constants';

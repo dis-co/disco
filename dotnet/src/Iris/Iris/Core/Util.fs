@@ -965,7 +965,7 @@ module Git =
         |> Either.succeed
       with
         | :? RepositoryNotFoundException as exn  ->
-          sprintf "Repository not found: %s" path
+          sprintf "%s: %s" exn.Message path
           |> Error.asGitError (tag "repository")
           |> Either.fail
         | exn ->
@@ -1337,8 +1337,13 @@ module Asset =
   let inline commit (basepath: FilePath) (msg: string) (signature: LibGit2Sharp.Signature) (t: ^t) =
     either {
       use! repo = Git.Repo.repository basepath
-      let target = basepath </> path t
-      let! status = Git.Repo.status repo
+
+      let target =
+        if Path.IsPathRooted basepath then
+          basepath </> path t
+        else
+          Path.GetFullPath basepath </> path t
+
       do! Git.Repo.stage repo target
       let! commit = Git.Repo.commit repo msg signature
       return commit
@@ -1367,7 +1372,7 @@ module Asset =
   let inline deleteWithCommit (basepath: FilePath) (signature: LibGit2Sharp.Signature) (t: ^t) =
     either {
       let filepath = basepath </> path t
-      let! ok = delete filepath
+      let! _ = delete filepath
       let msg = sprintf "%s deleted %A" signature.Name (Path.GetFileName filepath)
       return! commit basepath msg signature t
     }

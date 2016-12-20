@@ -152,6 +152,6 @@ module Persistence =
   /// - arg: arg
   ///
   /// Returns: Either<IrisError, about:blank>
-  let updateRepo (project: IrisProject) (leader: RaftMember) : Either<IrisError,unit> = //
-    printfn "should pull shit now"
+  let updateRepo (project: IrisProject) (leader: RaftMember) : Either<IrisError,unit> =
+    printfn "should pull repository now"
     |> Either.succeed

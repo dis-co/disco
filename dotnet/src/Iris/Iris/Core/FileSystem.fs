@@ -92,7 +92,7 @@ module FileSystem =
         if children.Count() > 0 then
           either {
             do! Seq.fold
-                  (fun (m: Either<IrisError, unit>) (child: FileSystemInfo) -> either {
+                  (fun (_: Either<IrisError, unit>) (child: FileSystemInfo) -> either {
                       return! rmDir child.FullName
                     })
                   (Right ())

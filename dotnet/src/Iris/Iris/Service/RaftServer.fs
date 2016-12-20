@@ -335,7 +335,6 @@ module Raft =
     match connections.TryGetValue peer.Id with
     | true, connection -> connection
     | false, _ ->
-      let addr = memUri peer
       let connection = mkReqSocket peer
       while not (connections.TryAdd(peer.Id, connection)) do
         "Unable to add connection. Retrying."
@@ -356,7 +355,7 @@ module Raft =
     let result = performRequest client request
 
     match result with
-    | Right (RequestVoteResponse(sender, vote)) -> Some vote
+    | Right (RequestVoteResponse(_, vote)) -> Some vote
     | Right other ->
       other
       |> sprintf "Unexpected Response:  %A"
@@ -381,7 +380,7 @@ module Raft =
     let result = performRequest client request
 
     match result with
-    | Right (AppendEntriesResponse(sender, ar)) -> Some ar
+    | Right (AppendEntriesResponse(_, ar)) -> Some ar
     | Right response ->
       response
       |> sprintf "Unexpected Response:   %A"
@@ -404,7 +403,7 @@ module Raft =
     let result = performRequest client request
 
     match result with
-    | Right (InstallSnapshotResponse(sender, ar)) -> Some ar
+    | Right (InstallSnapshotResponse(_, ar)) -> Some ar
     | Right response ->
       response
       |> sprintf "Unexpected Response:  %A"
@@ -1158,7 +1157,7 @@ module Raft =
       let rec loop n =
         async {
           inbox.Post()                  // kick the machine
-          let! msg = inbox.Receive()
+          let! _ = inbox.Receive()
           arbiter.Post(Msg.Periodic)
           do! Async.Sleep(interval) // sleep for inverval (ms)
           return! loop (n + 1)
@@ -1168,10 +1167,7 @@ module Raft =
 
   // ** load
 
-  let private load (config: IrisConfig)
-                   (subscriptions: Subscriptions)
-                   (chan: ReplyChan)
-                   (agent: StateArbiter) =
+  let private load (config: IrisConfig) (subscriptions: Subscriptions) (agent: StateArbiter) =
     either {
       let connections = new Connections()
 
@@ -1232,7 +1228,7 @@ module Raft =
     | Loaded data -> dispose data
     | Idle -> ()
 
-    match load config subscriptions chan agent with
+    match load config subscriptions agent with
     | Right state ->
       Reply.Ok
       |> Either.succeed

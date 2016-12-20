@@ -39,16 +39,15 @@ module Main =
 
     let res =
       match parsed.GetResult <@ Cmd @>, parsed.TryGetResult <@ Dir @> with
-      | Create,       _ -> createProject parsed
-      | Start, Some dir ->
-        Option.iter (printfn "HttpServer will serve from %s") web
-        startService web interactive dir
-      | Reset, Some dir -> resetProject dir
-      | Dump,  Some dir -> dumpDataDir dir
-      | User,  Some dir -> addUser dir
-      | Setup, Some dir -> setup (Some dir)
-      | Setup,        _ -> setup None
-      | Help,         _ -> help ()
+      | Create,            _ -> createProject parsed
+      | Start,      Some dir -> startService web interactive dir
+      | Reset,      Some dir -> resetProject dir
+      | Dump,       Some dir -> dumpDataDir dir
+      | Add_User,   Some dir -> addUser dir
+      | Add_Member, Some dir -> addMember dir
+      | Setup,      Some dir -> setup (Some dir)
+      | Setup,             _ -> setup None
+      | Help,              _ -> help ()
       |  _ ->
         sprintf "Unexpected command line failure: %A" args
         |> Error.asParseError "Main"

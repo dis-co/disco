@@ -140,7 +140,7 @@ module Http =
               member self.Start () =
                 try
                   let indexHtml = Path.Combine(basePath, "index.html")
-                  let listening, server = startWebServerAsync config (app indexHtml)
+                  let _, server = startWebServerAsync config (app indexHtml)
                   Async.Start server
                   |> Either.succeed
                 with

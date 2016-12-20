@@ -503,7 +503,7 @@ module Git =
                     |> Error.asGitError (tag "create")
                     |> Either.fail
                   | Right other ->
-                    "Unexpected reply type from GitAgent"
+                    sprintf "Unexpected reply type from GitAgent: %A" other
                     |> Error.asGitError (tag "create")
                     |> Either.fail
                   | Left error ->
@@ -511,7 +511,7 @@ module Git =
                     |> Either.fail
 
               | Right other ->
-                "Unexpected reply type from GitAgent"
+                sprintf "Unexpected reply type from GitAgent: %A" other
                 |> Error.asGitError (tag "create")
                 |> Either.fail
               | Left error ->
