@@ -2,4 +2,4 @@
 subcommand=$1
 shift
 rest=$*
-mono src/Iris/bin/Debug/Iris/iris.exe $subcommand --http=src/Iris/assets/frontend $rest
+mono Iris/iris.exe $subcommand --http=Iris/assets $rest

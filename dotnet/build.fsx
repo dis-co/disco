@@ -326,7 +326,12 @@ Target "CreateArchive"
 
      CopyDir (target @@ "Iris")  "bin/Iris" (konst true)
      CopyDir (target @@ "Nodes") "bin/Nodes" (konst true)
-     CopyFile target "CHANGELOG.md"
+
+     [ "CHANGELOG.md"
+       "runiris.sh"
+       "runiris.cmd" ]
+     |> List.iter (CopyFile target)
+
      let files = !!(target @@ "**")
      CreateZip "temp" nameWithVersion comment 7 false files
      CopyFile genericName nameWithVersion
