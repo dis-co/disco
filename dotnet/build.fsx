@@ -713,7 +713,4 @@ Target "AllTests" DoNothing
 "RunWebTests"
 ==> "AllTests"
 
-"BuildSampleProject"
-==> "AllTests"
-
 RunTargetOrDefault "Release"
