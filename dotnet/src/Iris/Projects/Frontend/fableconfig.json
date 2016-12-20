@@ -2,7 +2,7 @@
     "projFile": "Frontend.fsproj",
     "outDir": "../../assets/frontend/js",
     "module": "amd",
-    "coreLib": "fable-core/umd",
+    "coreLib": "../../assets/frontend/js/fable-core",
     "sourceMaps": false,
     "plugins": ["../../../Fable/FlatBuffersPlugin.fsx"],
     "targets": {
