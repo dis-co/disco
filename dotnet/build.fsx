@@ -272,13 +272,14 @@ Target "CopyBinaries"
 
 Target "CopyAssets"
   (fun _ ->
-    SilentCopyDir "bin/Iris/assets" (baseDir @@ "assets/frontend") (konst true)
+    SilentCopyDir "bin/Iris/assets" (baseDir @@ "assets/frontend") (fun x -> x.Contains("node_modules") |> not)
 
-    !! (baseDir @@ "bin/*.js")
-    |> CopyFiles "bin/Iris/assets/js"
+    // !! (baseDir @@ "bin/*.js")
+    // |> CopyFiles "bin/Iris/assets/js"
 
-    !! (baseDir @@ "bin/*.map")
-    |> CopyFiles "bin/Iris/assets/js")
+    // !! (baseDir @@ "bin/*.map")
+    // |> CopyFiles "bin/Iris/assets/js"
+  )
 
 
 //     _             _     _
@@ -395,6 +396,8 @@ Target "BuildDebugFrontend" (fun () ->
   runNpm "install" __SOURCE_DIRECTORY__ ()
   runFable frontendDir "" ()
 
+  SilentCopyDir (baseDir @@ "assets/frontend/js/fable-core") "node_modules/fable-core/umd" (konst true)
+
   runNpm "install" (baseDir @@ "Iris/Web/React") ()
   runNpm "run build" (baseDir @@ "Iris/Web/React") ()
 
@@ -426,6 +429,16 @@ Target "BuildSampleProject" (fun () ->
   printfn "Then navigate to `http://localhost:7000` with your browser"
   printfn "---------------------------------------------------------------------------"
   printfn ""
+)
+
+Target "BuildReleaseFrontend" (fun () ->
+  runNpm "install" __SOURCE_DIRECTORY__ ()
+  runFable frontendDir "" ()
+
+  SilentCopyDir (baseDir @@ "assets/frontend/js/fable-core") "node_modules/fable-core/umd" (konst true)
+
+  runNpm "install" (baseDir @@ "Iris/Web/React") ()
+  runNpm "run build" (baseDir @@ "Iris/Web/React") ()
 )
 
 //  _____         _
@@ -613,6 +626,7 @@ Target "Release" DoNothing
 
 "BuildReleaseNodes"
 ==> "BuildReleaseService"
+==> "BuildReleaseFrontend"
 ==> "CopyBinaries"
 
 // "BuildWebTests"
