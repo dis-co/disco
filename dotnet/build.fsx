@@ -15,6 +15,7 @@ open Fake.UserInputHelper
 open System
 open System.IO
 open System.Diagnostics
+open System.Text
 
 let konst x _ = x
 
@@ -314,7 +315,8 @@ waiting for Godot to come --
 
 Target "CreateArchive"
   (fun _ ->
-     let nameWithVersion = "Iris-" + release.NugetVersion
+     let nameWithVersion = "Iris-" + release.NugetVersion + ".zip"
+     let genericName = "Iris-latest.zip"
      let target = "temp" @@ nameWithVersion
 
      if Directory.Exists target |> not then
@@ -324,8 +326,13 @@ Target "CreateArchive"
 
      CopyDir (target @@ "Iris")  "bin/Iris" (konst true)
      CopyDir (target @@ "Nodes") "bin/Nodes" (konst true)
+     CopyFile target "CHANGELOG.md"
      let files = !!(target @@ "**")
-     CreateZip "temp" (nameWithVersion + ".zip") comment 7 false files)
+     CreateZip "temp" nameWithVersion comment 7 false files
+     CopyFile genericName nameWithVersion
+     let checksum = Checksum.CalculateFileHash(nameWithVersion).ToLowerInvariant()
+     let contents = sprintf "%s  %s\n%s  %s" checksum nameWithVersion checksum genericName
+     File.WriteAllText("Iris.sha256sum",contents))
 
 
 //   ____ _

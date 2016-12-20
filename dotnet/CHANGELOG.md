@@ -1,2 +1,5 @@
-#### 0.3.1-alpha - November 21 2015
-* alpha version of new native project
+## New in 0.1.0 (Released 2016/12/20)
+
+* create and manage projects from the command line
+* build clusters to replicate state machine commands
+* display the current project and cluster in the web browser
