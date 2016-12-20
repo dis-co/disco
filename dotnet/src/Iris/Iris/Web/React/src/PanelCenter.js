@@ -10,36 +10,42 @@ import WidgetCluster from './widgets/Cluster';
 import WidgetCue from './widgets/Cue';
 import { map } from './Util';
 
-const cols = w => ~~(w/50);
 const rowHeight = 30;
+function calculateCols(width) {
+  return ~~(width/50);
+}
 
-export default function PanelCenter(props) { return (
-  <div id="panel-center">
-    <Tabs>
-      <Tab label="CLUSTER VIEW" >
-        <ReactGridLayout
-          className="layout"
-          layout={widgetLayouts}
-          cols={12}
-          width={props.width}
-          rowHeight={rowHeight}
-          verticalCompact={false}
-        >
-          <div key={WIDGETS.CLUSTER}>
-            <WidgetCluster info={props.info} />
+export default function PanelCenter(props) {
+  // console.log("Panel Center Columns:", calculateCols(props.width))
+  return (
+    <div id="panel-center">
+      <Tabs>
+        <Tab label="CLUSTER VIEW" >
+          <ReactGridLayout
+            className="layout"
+            layout={widgetLayouts}
+            cols={calculateCols(props.width)}
+            width={props.width}
+            rowHeight={rowHeight}
+            verticalCompact={false}
+          >
+            <div key={WIDGETS.CLUSTER}>
+              <WidgetCluster info={props.info} />
+            </div>
+          </ReactGridLayout>
+        </Tab>
+        <Tab label="GRAPH VIEW" >
+          <div>
+            <p>Laboris cillum ut cillum dolore velit excepteur qui ea non incididunt in officia sit magna.</p>
           </div>
-          <div key={WIDGETS.CUE}>
-            {map(props.info.state.Cues, (kv, i) =>
-              <WidgetCue cue={kv[1]} />
-            )}
-          </div>
-        </ReactGridLayout>
-      </Tab>
-      <Tab label="GRAPH VIEW" >
-        <div>
-          <p>Laboris cillum ut cillum dolore velit excepteur qui ea non incididunt in officia sit magna.</p>
-        </div>
-      </Tab>
-    </Tabs>
-  </div>
-)}
+        </Tab>
+      </Tabs>
+    </div>
+  )
+}
+
+          // <div key={WIDGETS.CUE}>
+          //   {map(props.info.state.Cues, (kv, i) =>
+          //     <WidgetCue cue={kv[1]} />
+          //   )}
+          // </div>

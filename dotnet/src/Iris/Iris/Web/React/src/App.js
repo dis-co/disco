@@ -1,12 +1,16 @@
 import * as React from "react";
-// import LayoutColumn from "./LayoutColumn";
-import LayoutPanels from "./LayoutPanels";
+import PanelLeft from "./PanelLeft";
+import PanelCenter from "./PanelCenter";
+import PanelRight from "./PanelRight";
 import ModalDialog from "./ModalDialog";
 import { getCurrentSession } from 'iris';
 import { STATUS, MODALS, SKIP_LOGIN } from './Constants';
 
 let modal = null;
 let initInfo = null;
+
+const sideInitWidth = 275;
+const centerInitWidth = window.innerWidth - (sideInitWidth * 2);
 
 export function showModal(content, onSubmit) {
   modal.setState({ content, onSubmit });
@@ -35,6 +39,16 @@ export default class App extends React.Component {
     })
   }
 
+  componentDidMount() {
+    $('#ui-layout-container').layout({
+      west__size: sideInitWidth,
+      east__size: sideInitWidth,
+      center__onresize: (name, el, state) => {
+        this.setState({centerWidth: state.innerWidth})
+      }
+    })
+  }
+
   render() {
     let info = this.state;
     if (info == null) {
@@ -42,9 +56,19 @@ export default class App extends React.Component {
       initInfo = info;
     }
     return (
-      <div className="column-layout-wrapper">
+      <div id="ui-layout-container">
         <ModalDialog info={info} ref={el => modal = (el || modal)} />
-        <LayoutPanels info={info} />;
+        <div className="ui-layout-west">
+          <PanelLeft style={{height: "100%"}} />
+        </div>
+        <div className="ui-layout-center">
+          <PanelCenter className="ui-layout-center"
+            width={this.state && this.state.centerWidth ? this.state.centerWidth : centerInitWidth}
+            info={this.props.info} />
+        </div>
+        <div className="ui-layout-east">
+          <PanelRight/>
+        </div>
       </div>
     )
   }

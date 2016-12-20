@@ -46,6 +46,7 @@ module.exports = {
     entry: entry,
     output: {
         path: path.join(__dirname, outDir),
+        publicPath: "/js/",
         filename: "ReactApp.js",
         libraryTarget: "amd",
     },
