@@ -346,7 +346,7 @@ type User =
     either {
       let path = basePath </> Asset.path user
       let data = Yaml.encode user
-      let! info = Asset.write path (Payload data)
+      let! _ = Asset.write path (Payload data)
       return ()
     }
 

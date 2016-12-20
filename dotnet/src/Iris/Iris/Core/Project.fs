@@ -893,7 +893,7 @@ Project:
         |> Seq.length
         |> Array.zeroCreate
 
-      let! exes =
+      let! (_,exes) =
         Seq.fold
           (fun (m: Either<IrisError,int * VvvvExe array>) exe -> either {
             let! (idx, exes) = m
@@ -903,7 +903,8 @@ Project:
           })
           (Right(0, arr))
           exes
-      return arr
+
+      return exes
     }
 
   // ** parsePlugin
@@ -921,7 +922,7 @@ Project:
         |> Seq.length
         |> Array.zeroCreate
 
-      let! plugins =
+      let! (_,plugins) =
         Seq.fold
           (fun (m: Either<IrisError,int * VvvvPlugin array>) plugin -> either {
             let! (idx, plugins) = m
@@ -931,7 +932,8 @@ Project:
           })
           (Right(0, arr))
           plugins
-      return arr
+
+      return plugins
     }
 
   // ** parseVvvv
@@ -1138,7 +1140,7 @@ Project:
         |> Seq.length
         |> Array.zeroCreate
 
-      let! viewports =
+      let! (_,viewports) =
         Seq.fold
           (fun (m: Either<IrisError, int * ViewPort array>) vp -> either {
             let! (idx, viewports) = m
@@ -1149,7 +1151,7 @@ Project:
           (Right(0, arr))
           config.Project.ViewPorts
 
-      return arr
+      return viewports
     }
 
   // ** saveViewPorts
@@ -1596,11 +1598,6 @@ Project:
   /// Returns: Either<IrisError, RaftMember array>
   let internal parseMembers mems : Either<IrisError, Map<MemberId,RaftMember>> =
     either {
-      let arr =
-        mems
-        |> Seq.length
-        |> Array.zeroCreate
-
       let! (_,mems) =
         Seq.fold
           (fun (m: Either<IrisError, int * Map<MemberId,RaftMember>>) mem -> either {
@@ -2055,7 +2052,7 @@ Config: %A
     either {
       let path = basepath </> Asset.path project
       let data = Yaml.encode project
-      let! info = Asset.write path (Payload data)
+      let! _ = Asset.write path (Payload data)
       return ()
     }
 
@@ -2384,7 +2381,7 @@ module Project =
     either {
       let info = FileInfo path
       do! FileSystem.mkDir info.Directory.FullName
-      let! info = Asset.write path (Payload contents)
+      let! _ = Asset.write path (Payload contents)
       return! commitPath path committer msg project
     }
 
@@ -2400,8 +2397,7 @@ module Project =
                  (project: IrisProject) :
                  Either<IrisError,(Commit * IrisProject)> =
     either {
-      let info = FileInfo path
-      let! result = Asset.delete path
+      let! _ = Asset.delete path
       return! commitPath path committer msg project
     }
 
@@ -2521,7 +2517,7 @@ module Project =
         ; Config    = Config.create name machine  }
 
       do! initRepo project
-      let! commit = Asset.saveWithCommit path User.Admin.Signature project
+      let! _ = Asset.saveWithCommit path User.Admin.Signature project
       return project
     }
 
@@ -2534,7 +2530,8 @@ module Project =
   let clone (host : string) (name : string) (destination: FilePath) : FilePath option =
     let url = sprintf "git://%s/%s/.git" host name
     try
-      let res = Repository.Clone(url, Path.Combine(destination, name))
+      Repository.Clone(url, Path.Combine(destination, name))
+      |> ignore
       Some(destination </> name)
     with
       | _ -> None

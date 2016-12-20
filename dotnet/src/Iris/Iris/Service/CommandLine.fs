@@ -222,7 +222,7 @@ module CommandLine =
   let parseHostString (str: string) =
     let trimmed = str.Trim().Split(' ')
     match trimmed with
-      | [| id; hostname; hostspec |] as arr ->
+      | [| id; hostname; hostspec |] ->
         if hostspec.StartsWith("tcp://") then
           match hostspec.Substring(6).Split(':') with
             | [| addr; port |] -> Some (uint32 id, hostname, addr, int port)
@@ -505,7 +505,7 @@ module CommandLine =
       either {
         let! machine = MachineConfig.load None
         let! server = IrisService.create machine web
-        use obs = Logger.subscribe Logger.stdout
+        use _ = Logger.subscribe Logger.stdout
 
         registerExitHandlers server
 
@@ -554,7 +554,7 @@ module CommandLine =
         |> Project.updateDataDir raftDir
         |> Project.addMember mem
 
-      let! commit = Asset.saveWithCommit path User.Admin.Signature updated
+      let! _ = Asset.saveWithCommit path User.Admin.Signature updated
 
       printfn "project: %A" project.Name
       printfn "created in: %s" project.Path
@@ -572,9 +572,9 @@ module CommandLine =
   /// - project: IrisProject to initialize
   ///
   /// Returns: unit
-  let initializeRaft (user: User) (project: IrisProject) = either {
+  let initializeRaft (project: IrisProject) = either {
       let! raft = createRaft project.Config
-      let! result = saveRaft project.Config raft
+      let! _ = saveRaft project.Config raft
       return ()
     }
 
@@ -590,8 +590,6 @@ module CommandLine =
       ensureMachineConfig ()
 
       let! machine = MachineConfig.load None
-
-      let me = User.Admin
 
       let dir =
         let path = parsed.GetResult <@ Dir @>
@@ -623,7 +621,7 @@ module CommandLine =
 
       let! project = buildProject machine name dir raftDir mem
 
-      do! initializeRaft me project
+      do! initializeRaft project
     }
 
   // ** resetProject
@@ -656,7 +654,7 @@ module CommandLine =
       do! mkDir raftDir
 
       let! raft = createRaft project.Config
-      let! result = saveRaft project.Config raft
+      let! _ = saveRaft project.Config raft
       return ()
     }
 
@@ -853,7 +851,7 @@ module CommandLine =
             WsPort   = ws
             GitPort  = git }
 
-      let! commit =
+      let! _ =
         Asset.saveWithCommit
           datadir
           User.Admin.Signature

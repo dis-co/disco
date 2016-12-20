@@ -410,7 +410,9 @@ module Iris =
       match Map.tryFind sessionid data.Store.State.Sessions with
       | Some session ->
         match appendCmd data (RemoveSession session) with
-        | Right _ -> ()
+        | Right _ ->
+          err.Message
+          |> Logger.debug data.MemberId (tag "onError")
         | Left error ->
           error
           |> string
@@ -586,11 +588,11 @@ module Iris =
   let private handleRaftEvent (state: IrisState) (ev: RaftEvent) =
     match ev with
     | ApplyLog sm             -> onApplyLog       state sm
-    | MemberAdded mem        -> onMemberAdded    state mem
-    | MemberRemoved mem      -> onMemberRemoved  state mem
-    | MemberUpdated mem      -> onMemberUpdated  state mem
-    | Configured mems        -> onConfigured     state mems
-    | CreateSnapshot str      -> onCreateSnapshot state
+    | MemberAdded mem         -> onMemberAdded    state mem
+    | MemberRemoved mem       -> onMemberRemoved  state mem
+    | MemberUpdated mem       -> onMemberUpdated  state mem
+    | Configured mems         -> onConfigured     state mems
+    | CreateSnapshot _        -> onCreateSnapshot state
     | StateChanged (ost, nst) -> onStateChanged   state ost nst
 
   // ** forwardLogEvents
@@ -662,12 +664,12 @@ module Iris =
       triggerOnNext data.Subscriptions (IrisEvent.Git ev)
       match ev with
       | Started pid ->
-        "Git daemon started"
+        sprintf "Git daemon started with PID: %d" pid
         |> Logger.debug data.MemberId (tag "handleGitEvent")
         state
 
-      | Exited pid ->
-        "Git daemon exited. Attempting to restart."
+      | Exited _ ->
+        sprintf "Git daemon exited. Attempting to restart."
         |> Logger.debug data.MemberId (tag "handleGitEvent")
         restartGitServer data agent
 
