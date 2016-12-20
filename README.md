@@ -1,9 +1,6 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/1ouixkub5yqwb1b5/branch/master?svg=true)](https://ci.appveyor.com/project/NSYNK/iris/branch/master)
 
-<button>
-  Hello
-
-</button>
+[![Download Lastest Release](https://ci.appveyor.com/api/projects/status/1ouixkub5yqwb1b5/branch/master?svg=true)](https://ci.appveyor.com/api/projects/nsynk/iris/artifacts/Iris-0.3.1-alpha.zip)
 
 # Iris
 
