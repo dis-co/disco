@@ -9,3 +9,5 @@ native/src/Iris.*/net40
 node_modules
 /npm-debug.log
 /dotnet/Iris.sha256sum
+/dotnet/docs/src/CHANGELOG.md
+/dotnet/docs/src/LICENSE.txt

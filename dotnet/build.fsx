@@ -66,6 +66,13 @@ let solutionFile  = "Iris.sln"
 // Project code base directory
 let baseDir =  __SOURCE_DIRECTORY__ @@ "src" @@ "Iris"
 
+// scripts
+let scriptsDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Scripts"
+let userScripts = scriptsDir @@ "User"
+let devScripts = scriptsDir @@ "Dev"
+
+let docsDir = __SOURCE_DIRECTORY__ @@ "docs" @@ "src"
+
 let useNix = Directory.Exists("/nix")
 
 let isUnix = Environment.OSVersion.Platform = PlatformID.Unix
@@ -266,22 +273,26 @@ Target "AssemblyInfo" (fun _ ->
 //  \____\___/| .__/ \__, |
 //            |_|    |___/
 
+let withoutNodeModules (path: string) =
+  path.Contains("node_modules") |> not
+
 Target "CopyBinaries"
   (fun _ ->
-    SilentCopyDir "bin/Iris"  (baseDir @@ "bin/Release/Iris")  (konst true)
-    SilentCopyDir "bin/Nodes" (baseDir @@ "bin/Release/Nodes") (konst true))
+    SilentCopyDir "bin/Core"  (baseDir @@ "bin/Release/Core")  withoutNodeModules
+    SilentCopyDir "bin/Iris"  (baseDir @@ "bin/Release/Iris")  withoutNodeModules
+    SilentCopyDir "bin/Nodes" (baseDir @@ "bin/Release/Nodes") withoutNodeModules)
 
 Target "CopyAssets"
   (fun _ ->
-    SilentCopyDir "bin/Iris/assets" (baseDir @@ "assets/frontend") (fun x -> x.Contains("node_modules") |> not)
+    [ "CHANGELOG.md"
+    ; userScripts @@ "runiris.sh"
+    ; userScripts @@ "runiris.cmd" ]
+    |> List.iter (CopyFile "bin/")
+    SilentCopyDir "bin/Iris/assets" (baseDir @@ "assets/frontend") withoutNodeModules)
 
-    // !! (baseDir @@ "bin/*.js")
-    // |> CopyFiles "bin/Iris/assets/js"
-
-    // !! (baseDir @@ "bin/*.map")
-    // |> CopyFiles "bin/Iris/assets/js"
-  )
-
+Target "CopyDocs"
+  (fun _ ->
+    SilentCopyDir "bin/Docs" docsDir (konst true))
 
 //     _             _     _
 //    / \   _ __ ___| |__ (_)_   _____
@@ -315,28 +326,22 @@ waiting for Godot to come --
 
 Target "CreateArchive"
   (fun _ ->
-     let nameWithVersion = "Iris-" + release.NugetVersion + ".zip"
+     let ext = ".zip"
+     let nameWithVersion = "Iris-" + release.NugetVersion
      let genericName = "Iris-latest.zip"
-     let target = "temp" @@ nameWithVersion
+     let filename = nameWithVersion + ext
+     let folder = "temp" @@ nameWithVersion
 
-     if Directory.Exists target |> not then
-       CreateDir target
-     else
-       CleanDir target
+     if Directory.Exists folder then
+       FileUtils.rm_rf folder
 
-     CopyDir (target @@ "Iris")  "bin/Iris" (konst true)
-     CopyDir (target @@ "Nodes") "bin/Nodes" (konst true)
+     CopyDir folder "bin/" (konst true)
 
-     [ "CHANGELOG.md"
-       "runiris.sh"
-       "runiris.cmd" ]
-     |> List.iter (CopyFile target)
-
-     let files = !!(target @@ "**")
-     CreateZip "temp" nameWithVersion comment 7 false files
-     CopyFile genericName nameWithVersion
-     let checksum = Checksum.CalculateFileHash(nameWithVersion).ToLowerInvariant()
-     let contents = sprintf "%s  %s\n%s  %s" checksum nameWithVersion checksum genericName
+     let files = !!(folder @@ "**")
+     CreateZip "temp" filename comment 7 false files
+     CopyFile genericName filename
+     let checksum = Checksum.CalculateFileHash(filename).ToLowerInvariant()
+     let contents = sprintf "%s  %s\n%s  %s" checksum filename checksum genericName
      File.WriteAllText("Iris.sha256sum",contents))
 
 
@@ -350,10 +355,9 @@ Target "Clean" (fun _ ->
     CleanDirs [
       "bin"
       "temp"
-      "docs/output"
       "src/Iris/bin"
       "src/Iris/obj"
-      ])
+    ])
 
 //  ____            _       _ _          _   _
 // / ___|  ___ _ __(_) __ _| (_)______ _| |_(_) ___  _ __
@@ -483,7 +487,7 @@ Target "BuildReleaseCore" (buildRelease "Projects/Core/Core.fsproj")
 
 Target "BuildDebugService" (fun () ->
   buildDebug "Projects/Service/Service.fsproj" ()
-  let assetsTargetDir = (baseDir @@ "bin/Debug/Iris/assets")
+  let assetsTargetDir = (baseDir @@ "bin" @@ "Debug" @@ "Iris" @@ "assets")
   FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
   runNpm "install" assetsTargetDir ()
 )
@@ -537,7 +541,7 @@ Target "RunTests"
 
 Target "DevServer"
   (fun _ ->
-    let info = new ProcessStartInfo("fsi", "DevServer.fsx")
+    let info = new ProcessStartInfo("fsi", devScripts @@ "DevServer.fsx")
     info.UseShellExecute <- false
     let proc = Process.Start(info)
     proc.WaitForExit()
@@ -548,6 +552,9 @@ Target "DevServer"
 // | | | |/ _ \ / __/ __|
 // | |_| | (_) | (__\__ \
 // |____/ \___/ \___|___/
+
+Target "CleanDocs" (fun _ ->
+    CleanDir ("docs" @@ "output"))
 
 Target "GenerateReferenceDocs"
   (fun _ ->
@@ -577,30 +584,46 @@ let generateHelp fail =
   generateHelp' fail false
 
 Target "GenerateHelp" (fun _ ->
-  DeleteFile "docs/content/release-notes.md"
-  CopyFile "docs/content/" "CHANGELOG.md"
-  Rename "docs/content/release-notes.md" "docs/content/RELEASE_NOTES.md"
-  DeleteFile "docs/content/license.md"
-  CopyFile "docs/content/" "LICENSE.txt"
-  Rename "docs/content/license.md" "docs/content/LICENSE.txt"
+  CopyFile "docs/src/" "CHANGELOG.md"
+  CopyFile "docs/src/" "LICENSE.txt"
   generateHelp true)
 
-Target "GenerateHelpDebug" (fun _ ->
-  DeleteFile "docs/content/release-notes.md"
-  CopyFile "docs/content/" "CHANGELOG.md"
-  Rename "docs/content/release-notes.md" "docs/content/RELEASE_NOTES.md"
-  DeleteFile "docs/content/license.md"
-  CopyFile "docs/content/" "LICENSE.txt"
-  Rename "docs/content/license.md" "docs/content/LICENSE.txt"
-  generateHelp' true true)
-
 Target "KeepRunning" (fun _ ->
-  use watcher = !! "docs/content/**/*.*" |> WatchChanges (fun changes -> generateHelp false)
+  use watcher = !! "docs/src/**/*.*" |> WatchChanges (fun changes -> generateHelp false)
   traceImportant "Waiting for help edits. Press any key to stop."
-  System.Console.ReadKey() |> ignore
-  watcher.Dispose())
+  System.Console.ReadKey() |> ignore)
 
 Target "GenerateDocs" DoNothing
+
+//  ____       _                 ____             _
+// |  _ \  ___| |__  _   _  __ _|  _ \  ___   ___| | _____ _ __
+// | | | |/ _ \ '_ \| | | |/ _` | | | |/ _ \ / __| |/ / _ \ '__|
+// | |_| |  __/ |_) | |_| | (_| | |_| | (_) | (__|   <  __/ |
+// |____/ \___|_.__/ \__,_|\__, |____/ \___/ \___|_|\_\___|_|
+//                         |___/
+
+let getCommitHash() =
+  let log = runExecAndReturn "git" "log -n1 --oneline" baseDir
+  log.Substring(0, log.IndexOf(" "))
+
+let dockerCreateImage hash workingDir =
+  let cmd = sprintf "build --label iris --tag iris:%s ." hash
+  runExec "docker" cmd workingDir false
+
+Target "DockerCreateBaseImage" (fun () ->
+  runExec "docker" "build --label iris --tag iris:base ../Docker/iris_base" baseDir false
+)
+
+Target "DockerRunTests" (fun () ->
+  let testsDir = "src/Iris/bin/Debug/Tests"
+  FileUtils.cp_r "src/Docker/iris/" testsDir
+  let hash = getCommitHash()
+  dockerCreateImage hash testsDir
+  let irisNodeId = Guid.NewGuid().ToString()
+  let img = runExecAndReturn "docker" ("images -q iris:" + hash) baseDir
+  let runCmd = sprintf "run -i --rm -e IRIS_NODE_ID=%s -e COMMAND=tests %s" irisNodeId img
+  runExec "docker" runCmd  baseDir false
+)
 
 // --------------------------------------------------------------------------------------
 // Run all targets by default. Invoke 'build <Target>' to override
@@ -637,6 +660,7 @@ Target "Release" DoNothing
 "BuildReleaseNodes"
 ==> "BuildReleaseService"
 ==> "BuildReleaseFrontend"
+==> "BuildReleaseCore"
 ==> "CopyBinaries"
 
 // "BuildWebTests"
@@ -644,6 +668,7 @@ Target "Release" DoNothing
 
 "CopyBinaries"
 ==> "CopyAssets"
+==> "CopyDocs"
 ==> "CreateArchive"
 
 "CreateArchive"
@@ -652,36 +677,6 @@ Target "Release" DoNothing
 "BuildDebugService"
 ==> "BuildWebTests"
 ==> "RunWebTests"
-
-//  ____       _                 ____             _
-// |  _ \  ___| |__  _   _  __ _|  _ \  ___   ___| | _____ _ __
-// | | | |/ _ \ '_ \| | | |/ _` | | | |/ _ \ / __| |/ / _ \ '__|
-// | |_| |  __/ |_) | |_| | (_| | |_| | (_) | (__|   <  __/ |
-// |____/ \___|_.__/ \__,_|\__, |____/ \___/ \___|_|\_\___|_|
-//                         |___/
-
-let getCommitHash() =
-  let log = runExecAndReturn "git" "log -n1 --oneline" baseDir
-  log.Substring(0, log.IndexOf(" "))
-
-let dockerCreateImage hash workingDir =
-  let cmd = sprintf "build --label iris --tag iris:%s ." hash
-  runExec "docker" cmd workingDir false
-
-Target "DockerCreateBaseImage" (fun () ->
-  runExec "docker" "build --label iris --tag iris:base ../Docker/iris_base" baseDir false
-)
-
-Target "DockerRunTests" (fun () ->
-  let testsDir = "src/Iris/bin/Debug/Tests"
-  FileUtils.cp_r "src/Docker/iris/" testsDir
-  let hash = getCommitHash()
-  dockerCreateImage hash testsDir
-  let irisNodeId = Guid.NewGuid().ToString()
-  let img = runExecAndReturn "docker" ("images -q iris:" + hash) baseDir
-  let runCmd = sprintf "run -i --rm -e IRIS_NODE_ID=%s -e COMMAND=tests %s" irisNodeId img
-  runExec "docker" runCmd  baseDir false
-)
 
 "BuildTests"
 ==> "DockerRunTests"
@@ -699,6 +694,11 @@ Target "DockerRunTests" (fun () ->
 // Target "StartDockerImage" (fun () ->
 //   runExec "docker" (startDockerCmd()) baseDir false
 // )
+
+Target "DebugDocs" DoNothing
+
+"GenerateDocs"
+==> "DebugDocs"
 
 //  ____       _                    _    _ _
 // |  _ \  ___| |__  _   _  __ _   / \  | | |
@@ -718,10 +718,6 @@ Target "DebugAll" DoNothing
 "BuildDebugNodes"
 ==> "DebugAll"
 
-// "CleanDocs"
-//   ==> "GenerateHelp"
-//   ==> "GenerateReferenceDocs"
-//   ==> "GenerateDocs"
 //
 // "CleanDocs"
 //   ==> "GenerateHelpDebug"
