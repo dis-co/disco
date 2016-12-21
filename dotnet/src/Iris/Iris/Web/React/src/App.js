@@ -59,15 +59,15 @@ export default class App extends React.Component {
       <div id="ui-layout-container">
         <ModalDialog info={info} ref={el => modal = (el || modal)} />
         <div className="ui-layout-west">
-          <PanelLeft info={this.props.info} />
+          <PanelLeft info={info} />
         </div>
         <div className="ui-layout-center">
           <PanelCenter className="ui-layout-center"
             width={this.state.centerWidth || centerInitWidth}
-            info={this.props.info} />
+            info={info} />
         </div>
         <div className="ui-layout-east">
-          <PanelRight info={this.props.info}/>
+          <PanelRight info={info}/>
         </div>
       </div>
     )
