@@ -64,7 +64,7 @@ module.exports = {
             { test: /\.less$/, loader: "style-loader!css-loader!less-loader" },
             { test: /\.css$/, loader: "style-loader!css-loader" },
             { test: /\.ts$/, loader: 'ts-loader' },
-            { test: /\.js$/, loader: 'babel', exclude: /node_modules/ }
+            { test: /\.js$/, loader: 'babel-loader', exclude: /node_modules/ }
         ].concat(loaders)
     },
     plugins: plugins
