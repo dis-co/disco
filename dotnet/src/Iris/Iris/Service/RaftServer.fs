@@ -333,7 +333,7 @@ module Raft =
 
   let private getConnection (self: Id) (connections: Connections) (peer: RaftMember) : Req =
     match connections.TryGetValue peer.Id with
-    | true, connection when connection.Running -> connection
+    | true, connection -> connection
     | _ ->
       let connection = mkReqSocket peer
       while not (connections.TryAdd(peer.Id, connection)) do
@@ -363,6 +363,8 @@ module Raft =
       None
 
     | Left error ->
+      dispose client
+      connections.TryRemove peer.Id |> ignore
       memUri peer
       |> sprintf "Encountered error %A in request to  %A" error
       |> Logger.err self (tag "sendRequestVote")
