@@ -329,19 +329,19 @@ Target "CreateArchive"
      let ext = ".zip"
      let nameWithVersion = "Iris-" + release.NugetVersion
      let genericName = "Iris-latest.zip"
-     let target = "temp" @@ nameWithVersion
-     let filename = target + ext
+     let filename = nameWithVersion + ext
+     let folder = "temp" @@ nameWithVersion
 
-     if Directory.Exists target then
-       FileUtils.rm_rf target
+     if Directory.Exists folder then
+       FileUtils.rm_rf folder
 
-     CopyDir target "bin/" (konst true)
+     CopyDir folder "bin/" (konst true)
 
-     let files = !!(target @@ "**")
+     let files = !!(folder @@ "**")
      CreateZip "temp" filename comment 7 false files
-     CopyFile genericName target
+     CopyFile genericName filename
      let checksum = Checksum.CalculateFileHash(filename).ToLowerInvariant()
-     let contents = sprintf "%s  %s\n%s  %s" checksum target checksum genericName
+     let contents = sprintf "%s  %s\n%s  %s" checksum filename checksum genericName
      File.WriteAllText("Iris.sha256sum",contents))
 
 
