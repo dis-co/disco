@@ -7,7 +7,7 @@ import ReactGridLayout from 'react-grid-layout';
 import { WIDGETS } from './Constants'
 import widgetLayouts from './data/widgetLayouts';
 import WidgetCluster from './widgets/Cluster';
-import WidgetCue from './widgets/Cue';
+import WidgetLog from './widgets/Log';
 import { map } from './Util';
 
 const rowHeight = 30;
@@ -32,6 +32,9 @@ export default function PanelCenter(props) {
             <div key={WIDGETS.CLUSTER}>
               <WidgetCluster info={props.info} />
             </div>
+            <div key={WIDGETS.LOG}>
+              <WidgetLog context={props.info.context} />
+            </div>
           </ReactGridLayout>
         </Tab>
         <Tab label="GRAPH VIEW" >
@@ -43,9 +46,3 @@ export default function PanelCenter(props) {
     </div>
   )
 }
-
-          // <div key={WIDGETS.CUE}>
-          //   {map(props.info.state.Cues, (kv, i) =>
-          //     <WidgetCue cue={kv[1]} />
-          //   )}
-          // </div>
