@@ -355,7 +355,6 @@ Target "Clean" (fun _ ->
     CleanDirs [
       "bin"
       "temp"
-      "docs/output"
       "src/Iris/bin"
       "src/Iris/obj"
       ])
@@ -554,6 +553,9 @@ Target "DevServer"
 // | |_| | (_) | (__\__ \
 // |____/ \___/ \___|___/
 
+Target "CleanDocs" (fun _ ->
+    CleanDir ("docs" @@ "output"))
+
 Target "GenerateReferenceDocs"
   (fun _ ->
     let result =
@@ -582,20 +584,14 @@ let generateHelp fail =
   generateHelp' fail false
 
 Target "GenerateHelp" (fun _ ->
-  CopyFile "docs/doc/" "CHANGELOG.md"
-  CopyFile "docs/doc/" "LICENSE.txt"
+  CopyFile "docs/src/" "CHANGELOG.md"
+  CopyFile "docs/src/" "LICENSE.txt"
   generateHelp true)
 
-Target "GenerateHelpDebug" (fun _ ->
-  CopyFile "docs/doc/" "CHANGELOG.md"
-  CopyFile "docs/content/" "LICENSE.txt"
-  generateHelp' true true)
-
 Target "KeepRunning" (fun _ ->
-  use watcher = !! "docs/content/**/*.*" |> WatchChanges (fun changes -> generateHelp false)
+  use watcher = !! "docs/src/**/*.*" |> WatchChanges (fun changes -> generateHelp false)
   traceImportant "Waiting for help edits. Press any key to stop."
-  System.Console.ReadKey() |> ignore
-  watcher.Dispose())
+  System.Console.ReadKey() |> ignore)
 
 Target "GenerateDocs" DoNothing
 
@@ -715,10 +711,11 @@ Target "DebugAll" DoNothing
 "BuildDebugNodes"
 ==> "DebugAll"
 
-// "CleanDocs"
-//   ==> "GenerateHelp"
-//   ==> "GenerateReferenceDocs"
-//   ==> "GenerateDocs"
+"CleanDocs"
+  ==> "GenerateHelp"
+  ==> "GenerateReferenceDocs"
+  ==> "GenerateDocs"
+
 //
 // "CleanDocs"
 //   ==> "GenerateHelpDebug"

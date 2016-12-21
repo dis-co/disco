@@ -61,6 +61,15 @@ worker.fsproj:
 worker:
 	${BUILD} BuildWorkerDebug
 
+#      _
+#   __| | ___   ___ ___
+#  / _` |/ _ \ / __/ __|
+# | (_| | (_) | (__\__ \
+#  \__,_|\___/ \___|___/
+
+docs:
+	${BUILD} GenerateDocs
+
 #        _ _
 #   __ _| | |
 #  / _` | | |
