@@ -403,8 +403,6 @@ Target "GenerateSerialization"
 let frontendDir = baseDir @@ "Projects" @@ "Frontend"
 
 Target "BuildDebugFrontend" (fun () ->
-  buildDebug "Projects/Service/Service.fsproj" ()
-
   runNpm "install" __SOURCE_DIRECTORY__ ()
   runFable frontendDir "" ()
 
@@ -437,7 +435,7 @@ Target "BuildSampleProject" (fun () ->
 
   printfn ""
   printfn "---------------------------------------------------------------------------"
-  printfn "Type `runiris` on Windows to start the service"
+  printfn "Type `runiris start --dir=..\..\iris-sample-project` on Windows to start the service"
   printfn "Then navigate to `http://localhost:7000` with your browser"
   printfn "---------------------------------------------------------------------------"
   printfn ""

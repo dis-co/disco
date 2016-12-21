@@ -4,27 +4,29 @@ html, body, #app {
   padding: 0px;
 }
 
-.column-layout-wrapper {
+/*.column-layout-wrapper {
   height: 100%;
 }
 
 .column-layout {
   display: flex;
   height: 100%;
-}
+}*/
 
 #panel-center {
-  flex: 1;
+  height: 100%;
   background-color: lightgray;
-  /* Margin for dragbar */
-  margin: 0 3px;
+  /*flex: 1;
+  margin: 0 3px;*/
 }
 
 #panel-left {
-  background-color: aliceblue
+  height: 100%;
+  background-color: aliceblue;
 }
 
 #panel-right {
+  height: 100%;
   background-color: lightgoldenrodyellow
 }
 
@@ -37,10 +39,10 @@ html, body, #app {
   background-color: white;
 }
 
-.dragbar {
+/*.dragbar {
   width: 3px;
   position: absolute;
   background-color: black;
   height: 100%;
   cursor: col-resize;
-}
+}*/
