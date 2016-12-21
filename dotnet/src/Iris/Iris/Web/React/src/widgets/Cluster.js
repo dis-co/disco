@@ -25,7 +25,7 @@ export default class WidgetCluster extends React.Component {
             </tr>
           </thead>
           <tbody>
-            {map(this.props.info.state.Nodes, kv => {
+            {map(this.props.info.state.Project.Config.Cluster.Members, kv => {
               const node = kv[1];
               return (
                 <tr key={kv[0].Fields[0]}>
