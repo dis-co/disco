@@ -19,6 +19,9 @@ service:
 core:
 	${BUILD} BuildDebugCore
 
+core.release:
+	${BUILD} BuildReleaseCore
+
 nodes:
 	${BUILD} BuildDebugNodes
 
@@ -68,7 +71,7 @@ worker:
 #  \__,_|\___/ \___|___/
 
 docs:
-	${BUILD} GenerateDocs
+	${BUILD} DebugDocs
 
 #        _ _
 #   __ _| | |

@@ -9,17 +9,19 @@
 // for binaries output to root bin folder please add the filename only to the
 // referenceBinaries list below in order to generate documentation for the binaries.
 // (This is the original behaviour of ProjectScaffold prior to multi project support)
-let referenceBinaries = []
+
+let referenceBinaries = [
+    "Iris.Core.dll"
+  ]
+
 // Web site location for the generated documentation
 let website = "/Iris"
 
-// Specify more information about your project
 let info =
-  [ "project-name",    "Iris.Core"
-    "project-author",  "Karsten Gebbert, Alfonso Garcia-Caro"
-    "project-summary", "Automation Infrastructure"
-    "project-nuget",   "http://gittit.org/packages/Iris" ]
-
+  [ "root", "root"
+    "project-description", "Iris.Core"
+    "project-author", "Karsten Gebbert, Alfonso Garcia-Caro"
+    "project-name", "Iris" ]
 // --------------------------------------------------------------------------------------
 // For typical project, no changes are needed below
 // --------------------------------------------------------------------------------------
@@ -44,13 +46,13 @@ let root = "file://" + (__SOURCE_DIRECTORY__ @@ "../output")
 #endif
 
 // Paths with template/source/output locations
-let bin        = __SOURCE_DIRECTORY__ @@ "../../bin"
+let bin        = __SOURCE_DIRECTORY__ @@ "../../bin/Core"
 let content    = __SOURCE_DIRECTORY__ @@ "../content"
 let output     = __SOURCE_DIRECTORY__ @@ "../output"
 let files      = __SOURCE_DIRECTORY__ @@ "../files"
 let templates  = __SOURCE_DIRECTORY__ @@ "templates"
 let formatting = __SOURCE_DIRECTORY__ @@ "../../packages/build/FSharp.Formatting/"
-let docTemplate = "docpage.cshtml"
+let docTemplate = "template.cshtml"
 
 // Where to look for *.csproj templates (in this order)
 let layoutRootsAll = new System.Collections.Generic.Dictionary<string, string list>()
@@ -83,7 +85,8 @@ let binaries =
         |> Array.map (fun d -> d.FullName @@ (sprintf "%s.dll" d.Name))
         |> List.ofArray
 
-    conventionBased @ manuallyAdded
+    // conventionBased @ manuallyAdded
+    manuallyAdded
 
 let libDirs =
     let conventionBasedbinDirs =
@@ -97,12 +100,17 @@ let libDirs =
 // Build API reference from XML comments
 let buildReference () =
   CleanDir (output @@ "reference")
-  MetadataFormat.Generate
-    ( binaries, output @@ "reference", layoutRootsAll.["en"],
-      parameters = ("root", root)::info,
-      sourceRepo = "",
-      sourceFolder = __SOURCE_DIRECTORY__ @@ ".." @@ "..",
-      publicOnly = true,libDirs = libDirs )
+  // MetadataFormat.Generate
+  //   ( binaries, output @@ "reference", layoutRootsAll.["en"],
+  //     parameters = ("root", root)::info,
+  //     sourceRepo = "",
+  //     sourceFolder = __SOURCE_DIRECTORY__ @@ ".." @@ "..",
+  //     publicOnly = true,libDirs = libDirs )
+  Literate.ProcessScriptFile
+    ("../../src/Iris/Iris/Core/Either.fs",
+     templates @@ docTemplate,
+     output @@ "reference" @@ "Either.html",
+     replacements = info)
 
 copyFiles()
 buildReference()
