@@ -200,7 +200,7 @@ type GlobalContext() =
 
   member self.OnSocketMessage(ev: StateMachine) : unit =
     match ev with
-    | LogMsg log -> self.Log (sprintf "[%A] %s" log.LogLevel log.Message)
+    | LogMsg log -> self.Log (sprintf "[%O] %s" log.LogLevel log.Message)
     | _ ->
       match ev with
       | DataSnapshot state ->
