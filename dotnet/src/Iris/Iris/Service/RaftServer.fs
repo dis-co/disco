@@ -333,8 +333,8 @@ module Raft =
 
   let private getConnection (self: Id) (connections: Connections) (peer: RaftMember) : Req =
     match connections.TryGetValue peer.Id with
-    | true, connection -> connection
-    | false, _ ->
+    | true, connection when connection.Running -> connection
+    | _ ->
       let connection = mkReqSocket peer
       while not (connections.TryAdd(peer.Id, connection)) do
         "Unable to add connection. Retrying."

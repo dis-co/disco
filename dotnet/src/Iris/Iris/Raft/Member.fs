@@ -381,7 +381,9 @@ module Member =
     }
 
   let isVoting (mem : RaftMember) : bool =
-    mem.State = Running && mem.Voting
+    match mem.State, mem.Voting with
+    | Running, true -> true
+    | _ -> false
 
   let setVoting mem voting =
     { mem with Voting = voting }
@@ -406,7 +408,7 @@ module Member =
   let port mem = mem.Port
 
   let canVote peer =
-    isVoting peer && hasVoteForMe peer && peer.State = Running
+    isVoting peer && hasVoteForMe peer
 
   let getId mem = mem.Id
   let getState mem = mem.State

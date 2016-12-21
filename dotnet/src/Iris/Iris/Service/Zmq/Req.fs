@@ -184,6 +184,9 @@ type Req (id: Id, addr: string, timeout: int) =
       |> Error.asSocketError "Req.Request"
       |> Either.fail
 
+  member self.Running
+    with get () = started && not disposed
+
   // ** Dispose
 
   interface IDisposable with

@@ -141,7 +141,7 @@ module RaftTests =
         server_set_currentterm_sets_term
         server_set_state
 
-        server_should_not_request_vote_from_failed_mems
+        server_should_also_request_vote_from_failed_mems
         server_should_not_consider_failed_mems_when_deciding_vote_outcome
         server_should_call_persist_callback_for_each_appended_log
         server_should_call_delete_callback_for_each_deleted_log
