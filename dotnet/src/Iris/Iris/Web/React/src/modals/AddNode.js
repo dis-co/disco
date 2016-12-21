@@ -2,7 +2,7 @@ import React from 'react';
 import Form from 'muicss/lib/react/form';
 import Input from 'muicss/lib/react/input';
 import Button from 'muicss/lib/react/button';
-import { addNode } from "iris";
+import { addMember } from "iris";
 
 export default function(props) {
   return (
@@ -15,7 +15,7 @@ export default function(props) {
         onClick={ev => {
           ev.preventDefault();
           var form = ev.target.parentNode;
-          addNode(props.info, form.host.value, form.ip.value, form.port.value);
+          addMember(props.info, form.host.value, form.ip.value, form.port.value);
           props.onSubmit();
         }}>
         Submit

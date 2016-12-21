@@ -1,7 +1,7 @@
 import * as React from "react";
 import Panel from 'muicss/lib/react/panel';
 import { showModal } from '../App';
-import { removeNode } from "iris";
+import { removeMember } from "iris";
 import { MODALS } from "../Constants";
 import { map } from "../Util";
 
@@ -35,7 +35,7 @@ export default class WidgetCluster extends React.Component {
                   <td>{node.State.ToString()}</td>
                   <td>left</td>
                   <td>Main, VideoPB, Show1</td>
-                  <td><a onClick={() => removeNode(this.props.info, kv[0])}>Remove</a></td>
+                  <td><a onClick={() => removeMember(this.props.info, kv[0])}>Remove</a></td>
                 </tr>
               );
             })}
