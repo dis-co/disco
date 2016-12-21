@@ -1915,7 +1915,7 @@ module Raft =
     get >>= fun state ->
       read >>= fun cbs ->
         async {
-          if Member.isVoting mem (*&& mem.State = Running *) then
+          if mem.State = Running || mem.State = Failed then
             let vote =
               { Term         = state.CurrentTerm
               ; Candidate    = state.Member

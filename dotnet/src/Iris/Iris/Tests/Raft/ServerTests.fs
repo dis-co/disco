@@ -2109,8 +2109,8 @@ module ServerTests =
       |> noError
 
 
-  let server_should_not_request_vote_from_failed_mems =
-    testCase "should not request vote from failed mems" <| fun _ ->
+  let server_should_also_request_vote_from_failed_mems =
+    testCase "should also request vote from failed mems" <| fun _ ->
       let mem1 =   Member.create (Id.Create())
       let mem2 =   Member.create (Id.Create())
       let mem3 =   Member.create (Id.Create())
@@ -2132,12 +2132,10 @@ module ServerTests =
         do! Raft.addPeersM peers
         do! Raft.setElectionTimeoutM 1000u
         do! Raft.periodic 1001u
-        expect "Should have sent 2 requests" 2 id i
+        expect "Should have sent 3 requests" 3 id i
       }
       |> runWithRaft raft' cbs
       |> noError
-
-
 
 
   let server_should_not_consider_failed_mems_when_deciding_vote_outcome =
