@@ -66,6 +66,11 @@ let solutionFile  = "Iris.sln"
 // Project code base directory
 let baseDir =  __SOURCE_DIRECTORY__ @@ "src" @@ "Iris"
 
+// scripts
+let scriptsDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Scripts"
+let userScripts = scriptsDir @@ "User"
+let devScripts = scriptsDir @@ "Dev"
+
 let useNix = Directory.Exists("/nix")
 
 let isUnix = Environment.OSVersion.Platform = PlatformID.Unix
@@ -328,8 +333,8 @@ Target "CreateArchive"
      CopyDir (target @@ "Nodes") "bin/Nodes" (konst true)
 
      [ "CHANGELOG.md"
-       "runiris.sh"
-       "runiris.cmd" ]
+     ; userScripts @@ "runiris.sh"
+     ; userScripts @@ "runiris.cmd" ]
      |> List.iter (CopyFile target)
 
      let files = !!(target @@ "**")
@@ -539,7 +544,7 @@ Target "RunTests"
 
 Target "DevServer"
   (fun _ ->
-    let info = new ProcessStartInfo("fsi", "DevServer.fsx")
+    let info = new ProcessStartInfo("fsi", devScripts @@ "DevServer.fsx")
     info.UseShellExecute <- false
     let proc = Process.Start(info)
     proc.WaitForExit()
@@ -579,21 +584,13 @@ let generateHelp fail =
   generateHelp' fail false
 
 Target "GenerateHelp" (fun _ ->
-  DeleteFile "docs/content/release-notes.md"
-  CopyFile "docs/content/" "CHANGELOG.md"
-  Rename "docs/content/release-notes.md" "docs/content/RELEASE_NOTES.md"
-  DeleteFile "docs/content/license.md"
-  CopyFile "docs/content/" "LICENSE.txt"
-  Rename "docs/content/license.md" "docs/content/LICENSE.txt"
+  CopyFile "docs/doc/" "CHANGELOG.md"
+  CopyFile "docs/doc/" "LICENSE.txt"
   generateHelp true)
 
 Target "GenerateHelpDebug" (fun _ ->
-  DeleteFile "docs/content/release-notes.md"
-  CopyFile "docs/content/" "CHANGELOG.md"
-  Rename "docs/content/release-notes.md" "docs/content/RELEASE_NOTES.md"
-  DeleteFile "docs/content/license.md"
+  CopyFile "docs/doc/" "CHANGELOG.md"
   CopyFile "docs/content/" "LICENSE.txt"
-  Rename "docs/content/license.md" "docs/content/LICENSE.txt"
   generateHelp' true true)
 
 Target "KeepRunning" (fun _ ->

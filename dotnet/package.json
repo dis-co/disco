@@ -9,7 +9,6 @@
   },
   "author": "Karsten Gebbert, 2016, Nsynk GmbH",
   "license": "ISC",
-  "readme": "README.org",
   "repository": "https://bitbucket.com/nsynk/iris.git",
   "devDependencies": {
     "babel-plugin-transform-runtime": "^6.15.0",
