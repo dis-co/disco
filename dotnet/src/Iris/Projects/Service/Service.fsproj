@@ -193,9 +193,6 @@
     <Compile Include="..\..\Iris\Service\Main.fs">
       <Link>Main.fs</Link>
     </Compile>
-    <Content Include="app.config">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <Content Include="Iris.exe.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
