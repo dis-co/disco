@@ -419,7 +419,7 @@ Target "BuildDebugFrontend" (fun () ->
 )
 
 Target "BuildSampleProject" (fun () ->
-  let irisExePath = baseDir @@ "bin/Debug/Iris/iris.exe"
+  let irisExePath = baseDir @@ "bin/Release/Iris/iris.exe"
 
   // Create machine configuration
   let machineConfigPath =
@@ -659,6 +659,7 @@ Target "Release" DoNothing
 
 "BuildReleaseNodes"
 ==> "BuildReleaseService"
+==> "BuildSampleProject"
 ==> "BuildReleaseFrontend"
 ==> "BuildReleaseCore"
 ==> "CopyBinaries"
