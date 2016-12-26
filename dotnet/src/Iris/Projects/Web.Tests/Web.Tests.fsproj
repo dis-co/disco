@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -40,6 +40,9 @@
   <ItemGroup>
     <Reference Include="Fable.Core">
       <HintPath>../../../../node_modules/fable-core/Fable.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Fable.PowerPack">
+      <HintPath>../../../../node_modules/fable-powerpack/Fable.PowerPack.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -135,9 +138,6 @@
     </Compile>
     <Compile Include="..\..\Iris\Web\Core\Html.fs">
       <Link>Html.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Web\Core\ViewController.fs">
-      <Link>ViewController.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Web\Core\Worker.fs">
       <Link>Worker.fs</Link>

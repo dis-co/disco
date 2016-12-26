@@ -17,7 +17,6 @@ type ReactApp =
   abstract mount: StateInfo*((StateInfo->unit)->unit)->unit
 
 let reactApp: ReactApp = importDefault "ReactApp"
-let context = ClientContext.Start()
 
 let awaitOnce (observable: IObservable<'T>)=
   let mutable disp = Unchecked.defaultof<IDisposable>
@@ -28,6 +27,7 @@ let awaitOnce (observable: IObservable<'T>)=
   ))
 
 async {
+  let! context = ClientContext.Start()
   let! initInfo = awaitOnce context.OnRender
     
   let initInfo =

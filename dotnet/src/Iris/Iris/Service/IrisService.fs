@@ -105,7 +105,7 @@ module Iris =
       Store         : Store
       GitServer     : IGitServer
       RaftServer    : IRaftServer
-      HttpServer    : IHttpServer option
+      HttpServer    : IHttpServer
       SocketServer  : IWebSocketServer
       Subscriptions : Subscriptions
       Disposables   : Map<string,IDisposable> }
@@ -116,7 +116,7 @@ module Iris =
         dispose self.GitServer
         dispose self.RaftServer
         dispose self.SocketServer
-        self.HttpServer |> Option.iter dispose
+        dispose self.HttpServer
 
   // ** Reply
 
@@ -309,7 +309,7 @@ module Iris =
     abstract GitServer     : Either<IrisError,IGitServer>
     abstract RaftServer    : Either<IrisError,IRaftServer>
     abstract SocketServer  : Either<IrisError,IWebSocketServer>
-    abstract HttpServer    : Either<IrisError,IHttpServer option>
+    abstract HttpServer    : Either<IrisError,IHttpServer>
     abstract SetConfig     : IrisConfig -> Either<IrisError,unit>
     abstract Load          : FilePath   -> Either<IrisError,unit>
     abstract Periodic      : unit       -> Either<IrisError,unit>
@@ -688,7 +688,7 @@ module Iris =
   let private loadProject (state: IrisState)
                           (machine: IrisMachine)
                           (path: FilePath)
-                          (web: string option)
+                          (web: string)
                           (subscriptions: Subscriptions) =
     either {
       dispose state
@@ -698,13 +698,7 @@ module Iris =
       // FIXME: load the actual state from disk
       let! mem = Config.selfMember state.Project.Config
 
-      let! httpserver =
-        match web with
-        | Some basePath ->
-          HttpServer.create(state.Project.Config, basePath)
-          |> Either.map Some
-        | None ->
-          Right None
+      let! httpserver = HttpServer.create(state.Project.Config, web, mem.WsPort)
       let! raftserver = RaftServer.create ()
       let! wsserver   = SocketServer.create mem
       let! gitserver  = GitServer.create mem path
@@ -737,9 +731,7 @@ module Iris =
           do! data.RaftServer.Load(data.Store.State.Project.Config)
           do! data.SocketServer.Start()
           do! data.GitServer.Start()
-          match data.HttpServer with
-          | Some server -> do! server.Start()
-          | None -> ()
+          do! data.HttpServer.Start()
         }
 
       match result with
@@ -753,7 +745,7 @@ module Iris =
         dispose data.SocketServer
         dispose data.RaftServer
         dispose data.GitServer
-        data.HttpServer |> Option.iter dispose
+        dispose data.HttpServer
         Either.fail error
 
 
@@ -763,7 +755,7 @@ module Iris =
                          (chan: ReplyChan)
                          (path: FilePath)
                          (config: IrisMachine)
-                         (web: string option)
+                         (web: string)
                          (subscriptions: Subscriptions)
                          (inbox: IrisAgent) =
     match loadProject state config path web subscriptions with
@@ -943,7 +935,7 @@ module Iris =
 
   let private loop (initial: IrisState)
                    (config: IrisMachine)
-                   (web: string option)
+                   (web: string)
                    (subs: Subscriptions)
                    (inbox: IrisAgent) =
     let rec act (state: IrisState) =
@@ -976,7 +968,7 @@ module Iris =
   [<RequireQualifiedAccess>]
   module IrisService =
 
-    let create (config: IrisMachine) (web: string option) =
+    let create (config: IrisMachine) (web: string) =
       let subscriptions = new Subscriptions()
       let agent = new IrisAgent(loop Idle config web subscriptions)
 

@@ -30,12 +30,8 @@ module Main =
     let interactive = parsed.Contains <@ Interactive @>
     let web =
       match parsed.TryGetResult <@ Http @> with
-      | Some basePath ->
-        match bool.TryParse basePath with
-        | true, false -> None
-        | true, true -> Http.getDefaultBasePath() |> Some
-        | false, _ -> System.IO.Path.GetFullPath basePath |> Some
-      | None -> Http.getDefaultBasePath() |> Some
+      | Some basePath -> System.IO.Path.GetFullPath basePath
+      | None -> Http.getDefaultBasePath()
 
     let res =
       match parsed.GetResult <@ Cmd @>, parsed.TryGetResult <@ Dir @> with

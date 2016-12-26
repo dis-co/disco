@@ -31,7 +31,7 @@ export default class WidgetLog extends React.Component {
   componentDidMount() {
     subscribeToLogs(this.props.context, log => {
       let logs = this.state.logs;
-      if (logs.length > maxLogs) {
+      if (logs.length > maxLogLength) {
         logs.splice(logs.length - logsToDeleteWhenMaxReached, logsToDeleteWhenMaxReached);
       }
       logs.splice(0, 0, [counter++, log]);
