@@ -313,8 +313,8 @@ module Time =
   ///
   /// Returns: string
   let createTimestamp () =
-    let now = DateTime.Now
-    now.ToString("u")
+    let now = DateTime.UtcNow
+    now.ToString("o")
 
   // *** unixTime
 
@@ -327,7 +327,8 @@ module Time =
   ///
   /// Returns: int64
   let unixTime (date: DateTime) =
-    let epoch = new DateTime(1970, 1, 1)
+    let date = if date.Kind = DateTimeKind.Local then date.ToUniversalTime() else date
+    let epoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
     (date.Ticks - epoch.Ticks) / TimeSpan.TicksPerMillisecond
 
   let parse (str: string) =

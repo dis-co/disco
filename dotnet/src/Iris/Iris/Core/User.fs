@@ -33,7 +33,7 @@ type UserYaml(i, u, f, l, e, p, s, j, c) =
   let mutable joined    = j
   let mutable created   = c
 
-  new () = new UserYaml(null, null, null, null, null, null, null, null, null)
+  new () = new UserYaml(null, null, null, null, null, null, null, DateTime.MinValue, DateTime.MinValue)
 
   member self.Id
     with get ()  = id
@@ -65,11 +65,11 @@ type UserYaml(i, u, f, l, e, p, s, j, c) =
 
   member self.Joined
     with get ()  = joined
-     and set str = joined <- str
+     and set dt = joined <- dt
 
   member self.Created
     with get ()  = created
-     and set str = created <- str
+     and set dt = created <- dt
 
 #endif
 
@@ -88,13 +88,8 @@ type User =
   ; Email:     Email
   ; Password:  string
   ; Salt:      string
-  #if FABLE_COMPILER
-  ; Joined:    string
-  ; Created:   string }
-  #else
   ; Joined:    DateTime
   ; Created:   DateTime }
-  #endif
 
   override me.GetHashCode() =
     let mutable hash = 42
@@ -134,8 +129,8 @@ type User =
       me.FirstName        = other.FirstName       &&
       me.LastName         = other.LastName        &&
       me.Email            = other.Email           &&
-      (string me.Joined)  = (string other.Joined) &&
-      (string me.Created) = (string other.Created)
+      me.Joined           = other.Joined          &&
+      me.Created          = other.Created
 
   interface System.IComparable with
     member me.CompareTo(o: obj) =
@@ -188,8 +183,8 @@ type User =
       ; Email     = "admin@nsynk.de"
       ; Password  = ADMIN_DEFAULT_PASSWORD
       ; Salt      = ADMIN_DEFAULT_SALT
-      ; Joined    = DateTime.Now
-      ; Created   = DateTime.Now }
+      ; Joined    = DateTime.UtcNow
+      ; Created   = DateTime.UtcNow }
 
 #endif
 
@@ -208,8 +203,8 @@ type User =
     let email     = self.Email     |> builder.CreateString
     let password  = self.Password  |> builder.CreateString
     let salt      = self.Salt      |> builder.CreateString
-    let joined    = self.Joined    |> string |> builder.CreateString
-    let created   = self.Created   |> string |> builder.CreateString
+    let joined    = self.Joined.ToString("o")  |> builder.CreateString
+    let created   = self.Created.ToString("o") |> builder.CreateString
     UserFB.StartUserFB(builder)
     UserFB.AddId(builder, id)
     UserFB.AddUserName(builder, username)
@@ -233,13 +228,8 @@ type User =
         Email     = fb.Email
         Password  = fb.Password
         Salt      = fb.Salt
-        #if FABLE_COMPILER
-        Joined    = fb.Joined
-        Created   = fb.Created }
-        #else
         Joined    = DateTime.Parse fb.Joined
         Created   = DateTime.Parse fb.Created }
-        #endif
 
   static member FromBytes (bytes: Binary.Buffer) : Either<IrisError, User> =
     UserFB.GetRootAsUserFB(Binary.createBuffer bytes)
@@ -262,8 +252,8 @@ type User =
       self.Email,
       self.Password,
       self.Salt,
-      string self.Joined,
-      string self.Created)
+      self.Joined,
+      self.Created)
 
   member self.ToYaml(serializer: Serializer) =
     self |> Yaml.toYaml |> serializer.Serialize
@@ -277,8 +267,8 @@ type User =
         Email     = yaml.Email
         Password  = yaml.Password
         Salt      = yaml.Salt
-        Joined    = DateTime.Parse yaml.Joined
-        Created   = DateTime.Parse yaml.Created }
+        Joined    = yaml.Joined
+        Created   = yaml.Created }
 
   static member FromYaml(str: string) =
     let serializer = new Serializer()

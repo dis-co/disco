@@ -817,8 +817,8 @@ module CommandLine =
             Email     = email
             Password  = hash
             Salt      = salt
-            Joined    = DateTime.Now
-            Created   = DateTime.Now }
+            Joined    = DateTime.UtcNow
+            Created   = DateTime.UtcNow }
         let! _ = Project.saveAsset user User.Admin project
         return ()
       else

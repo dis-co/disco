@@ -48,7 +48,7 @@ module Iris =
   let private WEB_SERVER = "web"
 
   let private signature =
-    new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.Now))
+    new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.UtcNow))
 
   // ** IrisEvent
 
