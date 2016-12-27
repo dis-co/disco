@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -39,7 +39,7 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="../../../../node_modules/fable-core/Fable.Core.dll" />
-    <!--<Reference Include="../../../../../../Fable/build/fable-core/Fable.Core.dll" />-->
+    <Reference Include="../../../../node_modules/fable-powerpack/Fable.PowerPack.dll" />
   </ItemGroup>
   <ItemGroup>
     <!--<Compile Include="../../AssemblyInfo/FrontendInfo.fs">

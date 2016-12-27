@@ -157,7 +157,7 @@ module CommandLine =
       member self.Usage =
         match self with
           | Interactive -> "Start daemon in interactive mode"
-          | Http    _   -> "Base path of http server (if `--http=false` http server won't be started)"
+          | Http    _   -> "Base path of http server (defaults to the assembly directory)"
           | Dir     _   -> "Project directory to place the config & database in"
           | Bind    _   -> "Specify a valid IP address."
           | Web     _   -> "Http server port."
@@ -492,7 +492,7 @@ module CommandLine =
   //  ___) | || (_| | |  | |_
   // |____/ \__\__,_|_|   \__|
 
-  let startService (web: string option) (interactive: bool) (projectdir: FilePath) : Either<IrisError, unit> =
+  let startService (web: string) (interactive: bool) (projectdir: FilePath) : Either<IrisError, unit> =
     ensureMachineConfig ()
 
     let projFile = Path.GetFullPath(projectdir) </> PROJECT_FILENAME + ASSET_EXTENSION

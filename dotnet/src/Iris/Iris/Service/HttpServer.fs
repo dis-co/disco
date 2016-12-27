@@ -21,12 +21,6 @@ module Http =
 
   let private tag (str: string) = sprintf "HttpServer.%s" str
 
-  [<Literal>]
-  let private defaultIP = "127.0.0.1"
-
-  [<Literal>]
-  let private defaultPort = "7000"
-
   let private noCache =
     setHeader "Cache-Control" "no-cache, no-store, must-revalidate"
     >=> setHeader "Need-Help" "k@ioct.it"
@@ -67,10 +61,11 @@ module Http =
 
   // our application only needs to serve files off the disk
   // but we do need to specify what to do in the base case, i.e. "/"
-  let private app indexHtml =
+  let private app indexHtml (wsPort: uint16) =
     choose [
       Filters.GET >=>
         (choose [
+          Filters.path WS_PORT_ENDPOINT >=> Successful.OK (string wsPort)
           Filters.path "/" >=> (Files.file indexHtml)
           Files.browseHome ])
       RequestErrors.NOT_FOUND "Page not found."
@@ -106,7 +101,7 @@ module Http =
           { defaultConfig with
               logger            = logger
               cancellationToken = cts.Token
-              homeFolder        = Some(basePath)
+              homeFolder        = Some basePath
               bindings          = [ HttpBinding.mk HTTP addr port ]
               mimeTypesMap      = mimeTypes }
       with
@@ -130,7 +125,9 @@ module Http =
 
     // *** create
 
-    let create (options: IrisConfig, basePath: string) =
+    /// - basePath: Directory from where static files will be served
+    /// - wsPort: The web socket port, will be served to client if necessary
+    let create (options: IrisConfig, basePath: string, wsPort: uint16) =
       either {
         let cts = new CancellationTokenSource()
         let! config = mkConfig options basePath cts
@@ -140,7 +137,7 @@ module Http =
               member self.Start () =
                 try
                   let indexHtml = Path.Combine(basePath, "index.html")
-                  let _, server = startWebServerAsync config (app indexHtml)
+                  let _, server = startWebServerAsync config (app indexHtml wsPort)
                   Async.Start server
                   |> Either.succeed
                 with

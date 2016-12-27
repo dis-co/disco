@@ -43,10 +43,7 @@ module Constants =
   let DEFAULT_IP = "127.0.0.1"
 
   [<Literal>]
-  let WEB_SERVER_DEFAULT_PORT = 7000
-
-  [<Literal>]
-  let SOCKET_SERVER_PORT_DIFF = 1000
+  let WS_PORT_ENDPOINT = "/api/web-socket-port"
 
   [<Literal>]
   let ADMIN_DEFAULT_PASSWORD =

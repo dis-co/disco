@@ -5,15 +5,20 @@ var entry, outDir, devtool, devServer, loaders, plugins;
 if (process.env.NODE_ENV !== "production") {
     console.log("Starting Webpack Dev Server...");
     entry = [
-        "webpack-dev-server/client?http://localhost:7000",
+        "webpack-dev-server/client?http://localhost:8080",
         'webpack/hot/only-dev-server',
         "./src/Main.js"
     ];
     outDir = "./js";
     devtool = "eval";
     devServer = {
-        port: 7000,
-        contentBase: "../../../assets/frontend"
+        port: 8080,
+        contentBase: "../../../assets/frontend",
+        proxy: {
+            '/api/*': {
+                target: 'http://localhost:7000'
+            }
+        }
     };
     loaders = [{
         test: /\.js$/,

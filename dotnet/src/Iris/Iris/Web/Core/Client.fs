@@ -6,6 +6,7 @@ open System.Collections.Generic
 open Fable.Core
 open Fable.Import
 open Fable.Core.JsInterop
+open Fable.PowerPack
 open Iris.Core
 
 let inline getHostname(): string = Browser.window.location.hostname
@@ -54,16 +55,20 @@ and ClientContext private (worker: SharedWorker<string>) =
   let ctrls = Dictionary<Guid, IObserver<StateInfo>>()
   let logCtrls = Dictionary<Guid, IObserver<ClientLog>>()
 
-  static member Start() =
+  static member Start() = async {
     let host = getHostname ()
-    let port = getHostPort ()
-    let address = sprintf "ws://%s:%d" host (port + Constants.SOCKET_SERVER_PORT_DIFF)
+    let! port =
+      Fetch.fetch Constants.WS_PORT_ENDPOINT []
+      |> Promise.bind (fun res -> res.text())
+      |> Async.AwaitPromise
+    let address = sprintf "ws://%s:%s" host port
     let me = new SharedWorker<string>(Constants.WEB_WORKER_SCRIPT)
     let client = new ClientContext(me)
     me.OnError <- fun e -> printfn "%A" e.Message
     me.Port.OnMessage <- client.MsgHandler
     me.Port.PostMessage (ClientMessage.Connect address |> toJson)
-    client
+    return client
+  }
 
   member self.Session =
     match session with
