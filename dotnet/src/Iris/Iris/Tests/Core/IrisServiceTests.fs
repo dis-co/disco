@@ -59,7 +59,7 @@ module IrisServiceTests =
           Project.filePath project
           |> File.ReadAllText
 
-        use! service = IrisService.create machine <| Http.getDefaultBasePath()
+        use! service = IrisService.create machine ignore <| Http.getDefaultBasePath()
         use oobs =
           (fun ev ->
             match ev with

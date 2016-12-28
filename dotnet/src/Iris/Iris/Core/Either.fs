@@ -111,6 +111,13 @@ module Either =
     | Right _    ->
       failwith "Either: cannot get error from regular result"
 
+  // ** iter
+
+  let inline iter< ^a, ^err >(f: ^a -> unit) (a: Either< ^err, ^a >) =
+    match a with
+    | Right value -> f value
+    | Left err    -> ()
+
   // ** bind
 
   /// ## Bind a function to the result of a computation

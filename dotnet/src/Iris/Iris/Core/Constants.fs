@@ -43,6 +43,9 @@ module Constants =
   let DEFAULT_IP = "127.0.0.1"
 
   [<Literal>]
+  let LOAD_PROJECT_ENDPOINT = "/api/load-project"
+
+  [<Literal>]
   let WS_PORT_ENDPOINT = "/api/web-socket-port"
 
   [<Literal>]

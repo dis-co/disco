@@ -321,8 +321,8 @@ module Store =
           ; Email = "k@ioctl.it"
           ; Password = "1234"
           ; Salt = "090asd902"
-          ; Joined = "today"
-          ; Created = "yesterday" }
+          ; Joined = DateTime.UtcNow.Date
+          ; Created = DateTime.UtcNow.Date.AddDays(-1.) }
 
         equals 0 store.State.Users.Count
 
@@ -348,8 +348,8 @@ module Store =
           ; Email = "k@ioctl.it"
           ; Password = "1234"
           ; Salt = "090asd902"
-          ; Joined = "today"
-          ; Created = "yesterday" }
+          ; Joined = DateTime.UtcNow.Date
+          ; Created = DateTime.UtcNow.Date.AddDays(-1.) }
 
         equals 0 store.State.Users.Count
 
@@ -377,8 +377,8 @@ module Store =
           ; Email = "k@ioctl.it"
           ; Password = "1234"
           ; Salt = "090asd902"
-          ; Joined = "today"
-          ; Created = "yesterday" }
+          ; Joined = DateTime.UtcNow.Date
+          ; Created = DateTime.UtcNow.Date.AddDays(-1.) }
 
         equals 0 store.State.Users.Count
 
@@ -400,8 +400,8 @@ module Store =
           ; Email = "k@ioctl.it"
           ; Password = "1234"
           ; Salt = "090asd902"
-          ; Joined = "today"
-          ; Created = "yesterday" }
+          ; Joined = DateTime.UtcNow.Date
+          ; Created = DateTime.UtcNow.Date.AddDays(-1.) }
 
         equals 0 store.State.Users.Count
 

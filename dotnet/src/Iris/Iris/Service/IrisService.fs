@@ -687,6 +687,7 @@ module Iris =
 
   let private loadProject (state: IrisState)
                           (machine: IrisMachine)
+                          (postCommand: string->unit)
                           (path: FilePath)
                           (web: string)
                           (subscriptions: Subscriptions) =
@@ -698,7 +699,7 @@ module Iris =
       // FIXME: load the actual state from disk
       let! mem = Config.selfMember state.Project.Config
 
-      let! httpserver = HttpServer.create(state.Project.Config, web, mem.WsPort)
+      let! httpserver = HttpServer.create state.Project.Config postCommand web
       let! raftserver = RaftServer.create ()
       let! wsserver   = SocketServer.create mem
       let! gitserver  = GitServer.create mem path
@@ -755,10 +756,11 @@ module Iris =
                          (chan: ReplyChan)
                          (path: FilePath)
                          (config: IrisMachine)
+                         (postCommand: string->unit)
                          (web: string)
                          (subscriptions: Subscriptions)
                          (inbox: IrisAgent) =
-    match loadProject state config path web subscriptions with
+    match loadProject state config postCommand path web subscriptions with
     | Right nextstate ->
       match start nextstate inbox with
       | Right finalstate ->
@@ -935,6 +937,7 @@ module Iris =
 
   let private loop (initial: IrisState)
                    (config: IrisMachine)
+                   (postCommand: string->unit)
                    (web: string)
                    (subs: Subscriptions)
                    (inbox: IrisAgent) =
@@ -943,7 +946,7 @@ module Iris =
         let! msg = inbox.Receive()
         let newstate =
           match msg with
-          | Msg.Load (chan,path)     -> handleLoad          state chan path config web subs inbox
+          | Msg.Load (chan,path)     -> handleLoad          state chan path config postCommand web subs inbox
           | Msg.Unload chan          -> handleUnload        state chan
           | Msg.Config chan          -> handleConfig        state chan
           | Msg.SetConfig (chan,cnf) -> handleSetConfig     state chan  cnf
@@ -968,9 +971,9 @@ module Iris =
   [<RequireQualifiedAccess>]
   module IrisService =
 
-    let create (config: IrisMachine) (web: string) =
+    let create (config: IrisMachine) (postCommand: string->unit) (web: string) =
       let subscriptions = new Subscriptions()
-      let agent = new IrisAgent(loop Idle config web subscriptions)
+      let agent = new IrisAgent(loop Idle config postCommand web subscriptions)
 
       let listener =
         { new IObservable<IrisEvent> with
