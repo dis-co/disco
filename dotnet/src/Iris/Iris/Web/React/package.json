@@ -5,6 +5,7 @@
     "build": "cross-env NODE_ENV=production webpack --progress"
   },
   "devDependencies": {
+    "@types/jquery": "^2.0.34",
     "@types/react": "^0.14.48",
     "babel-cli": "^6.18.0",
     "babel-loader": "^6.2.7",

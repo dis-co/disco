@@ -5,8 +5,8 @@
     "sourceMaps": false,
     "plugins": ["../../../Fable/FlatBuffersPlugin.fsx"],
     "refs": {
-        "Fable.Core": "../../assets/frontend/js/fable-core",
-        "Fable.PowerPack": "../../assets/frontend/js/fable-powerpack"
+        "Fable.Core": "fable-core/umd",
+        "Fable.PowerPack": "fable-powerpack/umd"
     },
     "targets": {
         "debug": {
