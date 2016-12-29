@@ -36,7 +36,7 @@ module Main =
     let res =
       match parsed.GetResult <@ Cmd @>, parsed.TryGetResult <@ Dir @> with
       | Create,            _ -> createProject parsed
-      | Start,      Some dir -> startService web interactive dir
+      | Start,           dir -> startService web interactive dir
       | Reset,      Some dir -> resetProject dir
       | Dump,       Some dir -> dumpDataDir dir
       | Add_User,   Some dir -> addUser dir

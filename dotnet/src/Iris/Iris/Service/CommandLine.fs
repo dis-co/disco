@@ -257,6 +257,7 @@ module CommandLine =
   let (|Join|_|)    str = withTrim "join" str
   let (|AddMember|_|) str = withTrim "addmem" str
   let (|RmMember|_|)  str = withTrim "rmmem" str
+  let (|Load|_|) str = withTrim "load" str
 
   let (|Interval|_|) (str: string) =
     let trimmed = str.Trim()
@@ -412,33 +413,26 @@ module CommandLine =
     |> Either.mapError handleError
     |> ignore
 
-  // ** consoleLoop
+  // ** tryLoadProject
 
-  //  _
-  // | |    ___   ___  _ __
-  // | |   / _ \ / _ \| '_ \
-  // | |__| (_) | (_) | |_) |
-  // |_____\___/ \___/| .__/ s
-  //                  |_|
+  let tryLoadProject (ctx: IIrisServer) projectdir =
+    let projFile = Path.GetFullPath(projectdir) </> PROJECT_FILENAME + ASSET_EXTENSION
+    if File.Exists projFile |> not then
+      sprintf "Project Not Found: %s" projectdir
+      |> Error.asOther "startService"
+      |> Either.fail
+    else
+      ctx.Load projFile
 
-  let registerExitHandlers (context: IIrisServer) =
-    Console.CancelKeyPress.Add (fun _ ->
-      printfn "Disposing context..."
-      dispose context
-      exit 0)
-    System.AppDomain.CurrentDomain.ProcessExit.Add (fun _ -> dispose context)
-    System.AppDomain.CurrentDomain.DomainUnload.Add (fun _ -> dispose context)
+  // ** agent
 
-  let interactiveLoop (context: IIrisServer) : unit =
-    printfn "Welcome to the Raft REPL. Type help to see all commands."
-    let kont = ref true
-    let rec proc kontinue =
-      printf "λ "
-      let input = Console.ReadLine()
-      match input with
+  let private startAgent (context: IIrisServer) = MailboxProcessor<string>.Start(fun agent ->
+      let rec loop() = async {
+        let! input = agent.Receive()
+        match input with
         | LogLevel opt -> trySetLogLevel   context opt
         | Interval   i -> trySetInterval   context i
-        | Exit         -> dispose          context; kontinue := false
+        | Exit         -> dispose          context
         | Periodic     -> tryPeriodic      context
         | Append ety   -> tryAppendEntry   context ety
         | Join hst     -> tryJoinCluster   context hst
@@ -447,7 +441,43 @@ module CommandLine =
         | RmMember hst   -> tryRmMember        context hst
         | Timeout      -> tryForceElection context
         | Status       -> tryGetStatus     context
+        | Load prDir   -> tryLoadProject context prDir |> Either.mapError handleError |> ignore
         | _            -> printfn "unknown command"
+        do! loop()
+      }
+      loop()
+    )
+
+  let postCommand (agent: (MailboxProcessor<string> option) ref) (cmd: string) =
+    match !agent with
+    | Some agent -> agent.Post cmd
+    | None -> printfn "Command agent hasn't been initialized yet"
+
+  // ** consoleLoop
+
+  //  _
+  // | |    ___   ___  _ __
+  // | |   / _ \ / _ \| '_ \
+  // | |__| (_) | (_) | |_) |
+  // |_____\___/ \___/| .__/ s
+  //                  |_|
+  let registerExitHandlers (context: IIrisServer) =
+    Console.CancelKeyPress.Add (fun _ ->
+      printfn "Disposing context..."
+      dispose context
+      exit 0)
+    System.AppDomain.CurrentDomain.ProcessExit.Add (fun _ -> dispose context)
+    System.AppDomain.CurrentDomain.DomainUnload.Add (fun _ -> dispose context)
+
+  let interactiveLoop (agent: MailboxProcessor<string>) (context: IIrisServer) : unit =
+    printfn "Welcome to the Raft REPL. Type help to see all commands."
+    let kont = ref true
+    let rec proc kontinue =
+      printf "λ "
+      let input = Console.ReadLine()
+      match input with
+      | Exit -> kontinue := false; agent.Post input
+      | input -> agent.Post input
       if !kontinue then
         proc kontinue
     proc kont
@@ -492,35 +522,41 @@ module CommandLine =
   //  ___) | || (_| | |  | |_
   // |____/ \__\__,_|_|   \__|
 
-  let startService (web: string) (interactive: bool) (projectdir: FilePath) : Either<IrisError, unit> =
+  let startService (web: string) (interactive: bool) (projectdir: FilePath option) : Either<IrisError, unit> =
     ensureMachineConfig ()
+    either {
+      let agentRef = ref None
+      let! machine = MachineConfig.load None
+      let! server = IrisService.create machine (postCommand agentRef) web
+      let agent = startAgent server
+      agentRef := Some agent
+      use _ = Logger.subscribe Logger.stdout
 
-    let projFile = Path.GetFullPath(projectdir) </> PROJECT_FILENAME + ASSET_EXTENSION
+      registerExitHandlers server
 
-    if File.Exists projFile |> not then
-      sprintf "Project Not Found: %s" projectdir
-      |> Error.asOther "startService"
-      |> Either.fail
-    else
-      either {
-        let! machine = MachineConfig.load None
-        let! server = IrisService.create machine web
-        use _ = Logger.subscribe Logger.stdout
-
-        registerExitHandlers server
-
-        do! server.Load projFile
-
-        let result =
-          if interactive then
-            interactiveLoop server
+      do!
+        match projectdir with
+        | Some projectdir ->
+          let projFile = Path.GetFullPath(projectdir) </> PROJECT_FILENAME + ASSET_EXTENSION
+          if File.Exists projFile |> not then
+            sprintf "Project Not Found: %s" projectdir
+            |> Error.asOther "startService"
+            |> Either.fail
           else
-            silentLoop ()
+            server.Load projFile
+        | None ->
+          Either.succeed ()
 
-        dispose server
+      let result =
+        if interactive then
+          interactiveLoop agent server
+        else
+          silentLoop ()
 
-        return result
-      }
+      dispose server
+
+      return result
+    }
 
   // ** createProject
 
@@ -817,8 +853,8 @@ module CommandLine =
             Email     = email
             Password  = hash
             Salt      = salt
-            Joined    = DateTime.Now
-            Created   = DateTime.Now }
+            Joined    = DateTime.UtcNow
+            Created   = DateTime.UtcNow }
         let! _ = Project.saveAsset user User.Admin project
         return ()
       else

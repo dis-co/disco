@@ -18,6 +18,24 @@ open System.Diagnostics
 open Iris.Core
 
 module Http =
+  module private Actions =
+    open System.Text
+
+    let private getString rawForm =
+      System.Text.Encoding.UTF8.GetString(rawForm)
+
+    let respond ctx status (txt: string) =
+      { ctx with response = { ctx.response with status = status; content = Encoding.UTF8.GetBytes txt |> Bytes }}
+      |> Some |> async.Return
+
+    let getWsport (options: IrisConfig) (ctx: HttpContext) =
+      match Config.selfMember options with
+      | Right mem -> respond ctx HTTP_200 (string mem.WsPort)
+      | Left err -> respond ctx HTTP_500 (string err)
+
+    let loadProject (postCommand: string->unit) (ctx: HttpContext) =
+      ctx.request.rawForm |> getString |> (+) "load " |> postCommand
+      respond ctx HTTP_200 ""
 
   let private tag (str: string) = sprintf "HttpServer.%s" str
 
@@ -61,11 +79,12 @@ module Http =
 
   // our application only needs to serve files off the disk
   // but we do need to specify what to do in the base case, i.e. "/"
-  let private app indexHtml (wsPort: uint16) =
+  let private app (options: IrisConfig) postCommand indexHtml =
     choose [
       Filters.GET >=>
         (choose [
-          Filters.path WS_PORT_ENDPOINT >=> Successful.OK (string wsPort)
+          Filters.path LOAD_PROJECT_ENDPOINT >=> Actions.loadProject postCommand
+          Filters.path WS_PORT_ENDPOINT >=> Actions.getWsport options
           Filters.path "/" >=> (Files.file indexHtml)
           Files.browseHome ])
       RequestErrors.NOT_FOUND "Page not found."
@@ -127,7 +146,7 @@ module Http =
 
     /// - basePath: Directory from where static files will be served
     /// - wsPort: The web socket port, will be served to client if necessary
-    let create (options: IrisConfig, basePath: string, wsPort: uint16) =
+    let create (options: IrisConfig) (postCommand: string->unit) (basePath: string) =
       either {
         let cts = new CancellationTokenSource()
         let! config = mkConfig options basePath cts
@@ -137,7 +156,7 @@ module Http =
               member self.Start () =
                 try
                   let indexHtml = Path.Combine(basePath, "index.html")
-                  let _, server = startWebServerAsync config (app indexHtml wsPort)
+                  let _, server = startWebServerAsync config (app options postCommand indexHtml)
                   Async.Start server
                   |> Either.succeed
                 with
