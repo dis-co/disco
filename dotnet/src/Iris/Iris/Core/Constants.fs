@@ -40,7 +40,10 @@ module Constants =
   let WEB_WORKER_SCRIPT = "lib/worker.js"
 
   [<Literal>]
-  let DEFAULT_IP = "127.0.0.1"
+  let DEFAULT_IP = "0.0.0.0"
+
+  [<Literal>]
+  let DEFAULT_WEB_PORT = 7000us
 
   [<Literal>]
   let LOAD_PROJECT_ENDPOINT = "/api/load-project"

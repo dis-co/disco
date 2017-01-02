@@ -12,6 +12,7 @@ module CommandLine =
   open Iris.Service.Persistence
   open Iris.Service.Iris
   open Iris.Service.Raft
+  open Iris.Service.Interfaces
   open FSharpx.Functional
   open System
   open System.IO
@@ -179,7 +180,7 @@ module CommandLine =
       result
 
     match opts.GetResult <@ Cmd @> with
-    | Start | Reset | Dump | Add_User | Add_Member -> ensureDir ()
+    | Reset | Dump | Add_User | Add_Member -> ensureDir ()
     | _ -> ()
 
     if opts.GetResult <@ Cmd @> = Create then

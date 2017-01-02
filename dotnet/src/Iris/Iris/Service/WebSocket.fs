@@ -10,6 +10,7 @@ open Iris.Core
 open Iris.Service
 open FSharpx.Functional
 open Fleck
+open Iris.Service.Interfaces
 
 // * WebSockets
 
@@ -19,15 +20,6 @@ module WebSockets =
 
   let private tag (str: string) = sprintf "WebSocket.%s" str
 
-  // ** SocketEvent
-
-  [<NoComparison;NoEquality>]
-  type SocketEvent =
-    | OnOpen    of Id
-    | OnClose   of Id
-    | OnMessage of Id * StateMachine
-    | OnError   of Id * Exception
-
   // ** Connections
 
   type private Connections = ConcurrentDictionary<Id,IWebSocketConnection>
@@ -35,16 +27,6 @@ module WebSockets =
   // ** Subscriptions
 
   type private Subscriptions = ResizeArray<IObserver<SocketEvent>>
-
-  // ** IWsServer
-
-  type IWebSocketServer =
-    inherit System.IDisposable
-    abstract Send         : Id -> StateMachine -> Either<IrisError,unit>
-    abstract Broadcast    : StateMachine -> Either<IrisError list,unit>
-    abstract BuildSession : Id -> Session -> Either<IrisError,Session>
-    abstract Subscribe    : (SocketEvent -> unit) -> System.IDisposable
-    abstract Start        : unit -> Either<IrisError, unit>
 
   // ** SocketEventProcessor
 

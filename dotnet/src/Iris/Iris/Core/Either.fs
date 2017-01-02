@@ -118,6 +118,14 @@ module Either =
     | Right value -> f value
     | Left err    -> ()
 
+  // ** unwrap
+
+  /// Gets the value if it's successful and runs the provided function otherwise
+  let inline unwrap< ^a, ^err > (fail: ^err -> ^a) (a: Either< ^err, ^a >) =
+    match a with
+    | Right value -> value
+    | Left err    -> fail err
+
   // ** bind
 
   /// ## Bind a function to the result of a computation
