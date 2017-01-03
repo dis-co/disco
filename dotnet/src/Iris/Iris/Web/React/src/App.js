@@ -4,7 +4,8 @@ import PanelCenter from "./PanelCenter";
 import PanelRight from "./PanelRight";
 import ModalDialog from "./ModalDialog";
 import { getCurrentSession } from 'iris';
-import { STATUS, MODALS, SKIP_LOGIN } from './Constants';
+import { STATUS, SKIP_LOGIN } from './Constants';
+import LOGIN from "./modals/Login";
 
 let modal = null;
 let initInfo = null;
@@ -32,7 +33,7 @@ export default class App extends React.Component {
           break;
         case STATUS.UNAUTHORIZED:
           this.setState({info: initInfo});
-          showModal(MODALS.LOGIN);
+          showModal(LOGIN);
           break;
       }
     })

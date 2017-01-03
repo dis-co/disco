@@ -88,10 +88,13 @@ module Http =
     choose [
       Filters.GET >=>
         (choose [
-          Filters.path LOAD_PROJECT_ENDPOINT >=> Actions.loadProject postCommand
           Filters.path WS_PORT_ENDPOINT >=> Actions.getWsport iris config
           Filters.path "/" >=> (Files.file indexHtml)
           Files.browseHome ])
+      Filters.POST >=>
+        (choose [
+          Filters.path LOAD_PROJECT_ENDPOINT >=> Actions.loadProject postCommand
+        ])
       RequestErrors.NOT_FOUND "Page not found."
     ]
 

@@ -2,8 +2,8 @@ import * as React from "react";
 import Panel from 'muicss/lib/react/panel';
 import { showModal } from '../App';
 import { removeMember } from "iris";
-import { MODALS } from "../Constants";
-import { map } from "../Util";
+import ADD_NODE from "../modals/AddNode";
+import { map } from "../Util.ts";
 
 export default class WidgetCluster extends React.Component {
   constructor(props) {
@@ -41,7 +41,7 @@ export default class WidgetCluster extends React.Component {
             })}
           </tbody>
         </table>
-        <a onClick={() => showModal(MODALS.ADD_NODE)}>Add node</a>
+        <a onClick={() => showModal(ADD_NODE)}>Add node</a>
       </Panel>
     )
   }

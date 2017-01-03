@@ -8,7 +8,6 @@ import { WIDGETS } from './Constants'
 import widgetLayouts from './data/widgetLayouts';
 import WidgetCluster from './widgets/Cluster';
 import WidgetLog from './widgets/Log';
-import { map } from './Util';
 
 const rowHeight = 30;
 function calculateCols(width) {
