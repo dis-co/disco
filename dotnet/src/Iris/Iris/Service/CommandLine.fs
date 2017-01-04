@@ -17,7 +17,7 @@ module CommandLine =
   open System
   open System.IO
   open System.Linq
-  open System.Text
+  open System.Collections.Generic
   open System.Text.RegularExpressions
 
   // ** Command Line Argument Parser
@@ -247,6 +247,18 @@ module CommandLine =
 
   // ** Command Parsers
 
+  let (|Params|) (str: string) =
+    Regex.Matches(str, "\w+\:[^\s]+|\w+\:\".*?\"")
+    |> Seq.cast<Match>
+    |> Seq.map (fun m ->
+      let i = m.Value.IndexOf(':')
+      let k = m.Value.Substring(0, i)
+      let v =
+        let v = m.Value.Substring(i+1)
+        if v.[0] = '"' then v.Substring(1, v.Length - 2) else v
+      k, v)
+    |> dict
+
   let (|Exit|_|)     str = withEmpty "exit" str
   let (|Quit|_|)     str = withEmpty "quit" str
   let (|Status|_|)   str = withEmpty "status" str
@@ -259,6 +271,11 @@ module CommandLine =
   let (|AddMember|_|) str = withTrim "addmem" str
   let (|RmMember|_|)  str = withTrim "rmmem" str
   let (|Load|_|) str = withTrim "load" str
+
+  let (|CreateInteractive|_|) str =
+    match withTrim "create" str with
+    | Some(Params pars) -> Some pars
+    | None -> None
 
   let (|Interval|_|) (str: string) =
     let trimmed = str.Trim()
@@ -425,6 +442,110 @@ module CommandLine =
     else
       ctx.Load projFile
 
+  //   ____                _
+  //  / ___|_ __ ___  __ _| |_ ___
+  // | |   | '__/ _ \/ _` | __/ _ \
+  // | |___| | |  __/ (_| | ||  __/
+  //  \____|_|  \___|\__,_|\__\___|
+
+  /// ## buildProject
+  ///
+  /// Create a new IrisProject data structure with given parameters.
+  ///
+  /// ### Signature:
+  /// - name: Name of the Project
+  /// - path: destination path of the Project
+  /// - raftDir: Raft data directory
+  /// - mem: self Member (built from Member Id env var)
+  ///
+  /// Returns: IrisProject
+  let buildProject (machine: IrisMachine)
+                   (name: string)
+                   (path: FilePath)
+                   (raftDir: FilePath)
+                   (mem: RaftMember) =
+    either {
+      let! project = Project.create path name machine
+
+      let updated =
+        project
+        |> Project.updateDataDir raftDir
+        |> Project.addMember mem
+
+      let! _ = Asset.saveWithCommit path User.Admin.Signature updated
+
+      printfn "project: %A" project.Name
+      printfn "created in: %s" project.Path
+
+      return updated
+    }
+
+  /// ## initializeRaft
+  ///
+  /// Given the user (usually the admin user) and Project value, initialize the Raft intermediate
+  /// state in the data directory and commit the result to git.
+  ///
+  /// ### Signature:
+  /// - user: User to commit as
+  /// - project: IrisProject to initialize
+  ///
+  /// Returns: unit
+  let initializeRaft (project: IrisProject) = either {
+      let! raft = createRaft project.Config
+      let! _ = saveRaft project.Config raft
+      return ()
+    }
+
+  // ** tryCreateProject
+
+  let tryCreateProject force (machine: Either<IrisError, IrisMachine>) (parameters: IDictionary<string, string>) =
+    let tryGet k map (dic: IDictionary<string, string>) =
+      match dic.TryGetValue k with
+      | true, v ->
+        try map v |> Right
+        with ex -> Other("tryCreateProject", ex.Message) |> Left
+      | false, _ -> Other("tryCreateProject", sprintf "Missing %s parameter" k) |> Left
+    
+    either {
+      let! machine = machine
+      let! dir = parameters |> tryGet "dir" id
+      let name = Path.GetFileName dir
+      let raftDir = dir </> RAFT_DIRECTORY
+
+      do! match Directory.Exists dir, force with
+          | true, false  ->
+            match Directory.EnumerateFileSystemEntries(dir).Count() = 0 with
+            | true  -> Either.nothing
+            | false ->
+              printf "%A not empty. I clean first? y/n" dir
+              let input = Console.ReadKey()
+              match input.Key with
+                | ConsoleKey.Y -> rmDir dir
+                | _            -> OK |> Either.fail
+          | _ -> Either.nothing
+
+      do! mkDir dir
+      do! mkDir raftDir
+
+      let! bind = parameters |> tryGet "bind" IpAddress.Parse
+      let! git  = parameters |> tryGet "git" uint16
+      let! ws   = parameters |> tryGet "ws" uint16
+      let! web  = parameters |> tryGet "web" uint16
+      let! raft = parameters |> tryGet "raft" uint16
+
+      let mem =
+        { Member.create(machine.MachineId) with
+            IpAddr  = bind
+            GitPort = git
+            WsPort  = ws
+            WebPort = web
+            Port    = raft }
+
+      let! project = buildProject machine name dir raftDir mem
+
+      do! initializeRaft project
+    }
+
   // ** agent
 
   let private startAgent (context: IIrisServer) = MailboxProcessor<string>.Start(fun agent ->
@@ -443,6 +564,9 @@ module CommandLine =
         | Timeout      -> tryForceElection context
         | Status       -> tryGetStatus     context
         | Load prDir   -> tryLoadProject context prDir |> Either.mapError handleError |> ignore
+        | CreateInteractive pars  ->
+          let machine = context.Config |> Either.map (fun cfg -> cfg.Machine)
+          tryCreateProject true machine pars |> Either.mapError handleError |> ignore
         | _            -> printfn "unknown command"
         do! loop()
       }
@@ -499,22 +623,6 @@ module CommandLine =
       |> MachineConfig.save None
       |> Error.orExit id
 
-  // ** buildMember
-
-  //  _   _           _
-  // | \ | | ___   __| | ___
-  // |  \| |/ _ \ / _` |/ _ \
-  // | |\  | (_) | (_| |  __/
-  // |_| \_|\___/ \__,_|\___|
-
-  let buildMember (parsed: ParseResults<CLIArguments>) (id: Id) =
-    { Member.create(id) with
-        IpAddr  = parsed.GetResult <@ Bind @> |> IpAddress.Parse
-        GitPort = parsed.GetResult <@ Git  @>
-        WsPort  = parsed.GetResult <@ Ws   @>
-        WebPort = parsed.GetResult <@ Web  @>
-        Port    = parsed.GetResult <@ Raft @> }
-
   // ** startService
 
   //  ____  _             _
@@ -561,60 +669,6 @@ module CommandLine =
 
   // ** createProject
 
-  //   ____                _
-  //  / ___|_ __ ___  __ _| |_ ___
-  // | |   | '__/ _ \/ _` | __/ _ \
-  // | |___| | |  __/ (_| | ||  __/
-  //  \____|_|  \___|\__,_|\__\___|
-
-  /// ## buildProject
-  ///
-  /// Create a new IrisProject data structure with given parameters.
-  ///
-  /// ### Signature:
-  /// - name: Name of the Project
-  /// - path: destination path of the Project
-  /// - raftDir: Raft data directory
-  /// - mem: self Member (built from Member Id env var)
-  ///
-  /// Returns: IrisProject
-  let buildProject (machine: IrisMachine)
-                   (name: string)
-                   (path: FilePath)
-                   (raftDir: FilePath)
-                   (mem: RaftMember) =
-    either {
-      let! project = Project.create path name machine
-
-      let updated =
-        project
-        |> Project.updateDataDir raftDir
-        |> Project.addMember mem
-
-      let! _ = Asset.saveWithCommit path User.Admin.Signature updated
-
-      printfn "project: %A" project.Name
-      printfn "created in: %s" project.Path
-
-      return updated
-    }
-
-  /// ## initializeRaft
-  ///
-  /// Given the user (usually the admin user) and Project value, initialize the Raft intermediate
-  /// state in the data directory and commit the result to git.
-  ///
-  /// ### Signature:
-  /// - user: User to commit as
-  /// - project: IrisProject to initialize
-  ///
-  /// Returns: unit
-  let initializeRaft (project: IrisProject) = either {
-      let! raft = createRaft project.Config
-      let! _ = saveRaft project.Config raft
-      return ()
-    }
-
   /// ## createProject
   ///
   /// Create a new project given the passed command line options.
@@ -626,39 +680,21 @@ module CommandLine =
   let createProject (parsed: ParseResults<CLIArguments>) = either {
       ensureMachineConfig ()
 
-      let! machine = MachineConfig.load None
+      let machine = MachineConfig.load None
 
-      let dir =
-        let path = parsed.GetResult <@ Dir @>
-        if Path.IsPathRooted path then
-          path
-        else
-          Path.GetFullPath path
+      let parameters =
+        [ let path = parsed.GetResult <@ Dir @>
+          if Path.IsPathRooted path
+          then yield "dir", path
+          else yield "dir", Path.GetFullPath path
+          yield "bind", parsed.GetResult <@ Bind @>
+          yield "git", parsed.GetResult <@ Git  @> |> string
+          yield "ws", parsed.GetResult <@ Ws  @> |> string
+          yield "web", parsed.GetResult <@ Web  @> |> string
+          yield "raft", parsed.GetResult <@ Raft  @> |> string ]
+        |> dict
 
-      let name = Path.GetFileName dir
-
-      let raftDir = dir </> RAFT_DIRECTORY
-
-      do! match Directory.Exists dir with
-          | true  ->
-            match Directory.EnumerateFileSystemEntries(dir).Count() = 0 with
-            | true  -> Either.nothing
-            | false ->
-              printf "%A not empty. I clean first? y/n" dir
-              let input = Console.ReadKey()
-              match input.Key with
-                | ConsoleKey.Y -> rmDir dir
-                | _            -> OK |> Either.fail
-          | false -> Either.nothing
-
-      do! mkDir dir
-      do! mkDir raftDir
-
-      let mem = buildMember parsed machine.MachineId
-
-      let! project = buildProject machine name dir raftDir mem
-
-      do! initializeRaft project
+      return! tryCreateProject false machine parameters
     }
 
   // ** resetProject
