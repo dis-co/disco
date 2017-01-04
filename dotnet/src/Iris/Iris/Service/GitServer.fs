@@ -6,6 +6,7 @@ open Iris.Raft
 open Iris.Core
 open Iris.Core.Utils
 open Iris.Service.Utilities
+open Iris.Service.Interfaces
 
 open System
 open System.IO
@@ -44,26 +45,9 @@ module Git =
 
   let private tag (str: string) = sprintf "GitServer.%s" str
 
-  // ** GitEvent
-
-  type GitEvent =
-    | Started of pid:int
-    | Exited  of code:int
-    | Pull    of pid:int * address:string * port:uint16
-
   // ** Listener
 
   type private Listener = IObservable<GitEvent>
-
-  // ** IGitServer
-
-  type IGitServer =
-    inherit IDisposable
-
-    abstract Status    : Either<IrisError,ServiceStatus>
-    abstract Pid       : Either<IrisError,int>
-    abstract Subscribe : (GitEvent -> unit) -> IDisposable
-    abstract Start     : unit -> Either<IrisError,unit>
 
   // ** Subscriptions
 

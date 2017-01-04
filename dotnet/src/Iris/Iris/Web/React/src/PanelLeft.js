@@ -3,7 +3,7 @@ import Tabs from 'muicss/lib/react/tabs';
 import Tab from 'muicss/lib/react/tab';
 import TreeView from './widgets/TreeView';
 import * as treeData from "./data/tree.js";
-import { map } from './Util';
+import { map } from './Util.ts';
 
 function projectDataFilter(k, v) {
   switch (v.constructor.name) {

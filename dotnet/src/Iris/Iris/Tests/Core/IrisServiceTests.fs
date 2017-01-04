@@ -10,6 +10,7 @@ open Iris.Core
 open Iris.Service
 open Iris.Service.Utilities
 open Iris.Service.Persistence
+open Iris.Service.Interfaces
 open Iris.Raft
 open Iris.Service.Git
 open Iris.Service.Iris

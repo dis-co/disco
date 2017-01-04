@@ -66,9 +66,10 @@ module.exports = {
     devServer: devServer,
     module: {
         loaders: [
+            { enforce: "pre", test: /\.js$/, loader: "source-map-loader" },
             { test: /\.less$/, loader: "style-loader!css-loader!less-loader" },
             { test: /\.css$/, loader: "style-loader!css-loader" },
-            { test: /\.ts$/, loader: 'ts-loader' },
+            { test: /\.tsx?$/, loader: "awesome-typescript-loader" },
             { test: /\.js$/, loader: 'babel-loader', exclude: /node_modules/ }
         ].concat(loaders)
     },

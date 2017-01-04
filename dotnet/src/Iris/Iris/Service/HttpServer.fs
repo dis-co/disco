@@ -16,8 +16,11 @@ open System.Net
 open System.Net.Sockets
 open System.Diagnostics
 open Iris.Core
+open Iris.Service.Interfaces
 
 module Http =
+  let private tag (str: string) = "HttpServer." + str
+
   module private Actions =
     open System.Text
 
@@ -28,16 +31,18 @@ module Http =
       { ctx with response = { ctx.response with status = status; content = Encoding.UTF8.GetBytes txt |> Bytes }}
       |> Some |> async.Return
 
-    let getWsport (options: IrisConfig) (ctx: HttpContext) =
-      match Config.selfMember options with
-      | Right mem -> respond ctx HTTP_200 (string mem.WsPort)
-      | Left err -> respond ctx HTTP_500 (string err)
+    let getWsport (iris: IIrisServer ref) (config: IrisMachine) (ctx: HttpContext) =
+      either {
+        let! cfg = iris.Value.Config
+        let! mem = Config.selfMember cfg
+        return mem.WsPort
+      }
+      |> Either.unwrap (fun err -> Logger.err config.MachineId (tag "getWsport") (string err); 0us)
+      |> string |> respond ctx HTTP_200 
 
-    let loadProject (postCommand: string->unit) (ctx: HttpContext) =
-      ctx.request.rawForm |> getString |> (+) "load " |> postCommand
+    let postIrisCommand (postCmd: string->unit) (ctx: HttpContext) =
+      ctx.request.rawForm |> getString |> postCmd
       respond ctx HTTP_200 ""
-
-  let private tag (str: string) = sprintf "HttpServer.%s" str
 
   let private noCache =
     setHeader "Cache-Control" "no-cache, no-store, must-revalidate"
@@ -79,25 +84,26 @@ module Http =
 
   // our application only needs to serve files off the disk
   // but we do need to specify what to do in the base case, i.e. "/"
-  let private app (options: IrisConfig) postCommand indexHtml =
+  let private app (iris: IIrisServer ref) (config: IrisMachine) postCommand indexHtml =
     choose [
       Filters.GET >=>
         (choose [
-          Filters.path LOAD_PROJECT_ENDPOINT >=> Actions.loadProject postCommand
-          Filters.path WS_PORT_ENDPOINT >=> Actions.getWsport options
+          Filters.path WS_PORT_ENDPOINT >=> Actions.getWsport iris config
           Filters.path "/" >=> (Files.file indexHtml)
           Files.browseHome ])
+      Filters.POST >=>
+        (choose [
+          Filters.path COMMAND_ENDPOINT >=> Actions.postIrisCommand postCommand
+        ])
       RequestErrors.NOT_FOUND "Page not found."
     ]
 
-  let private mkConfig (options: IrisConfig)
+  let private mkConfig (config: IrisMachine)
                        (basePath: string)
                        (cts: CancellationTokenSource) :
                        Either<IrisError,SuaveConfig> =
     either {
       try
-        let! mem = Config.selfMember options
-
         let logger =
           { new Logger with
               member self.Log level nextLine =
@@ -106,15 +112,13 @@ module Http =
                 | Suave.Logging.LogLevel.Verbose -> ()
                 | _ ->
                   line.message
-                  |> Logger.debug options.Machine.MachineId (tag "logger") }
+                  |> Logger.debug config.MachineId (tag "logger") }
 
-        let addr, port = string mem.IpAddr, string mem.WebPort
-
-        let addr = IPAddress.Parse addr
-        let port = Sockets.Port.Parse port
+        let addr = IPAddress.Parse Constants.DEFAULT_IP
+        let port = Sockets.Port.Parse (string Constants.DEFAULT_WEB_PORT)
 
         sprintf "Suave Web Server ready to start on: %A:%A" addr port
-        |> Logger.info options.Machine.MachineId (tag "mkConfig")
+        |> Logger.info config.MachineId (tag "mkConfig")
 
         return
           { defaultConfig with
@@ -131,12 +135,6 @@ module Http =
             |> Error.exitWith
     }
 
-  // ** IHttpServer
-
-  type IHttpServer =
-    inherit System.IDisposable
-    abstract Start: unit -> Either<IrisError,unit>
-
   // ** HttpServer
 
   [<RequireQualifiedAccess>]
@@ -145,18 +143,19 @@ module Http =
     // *** create
 
     /// - basePath: Directory from where static files will be served
-    /// - wsPort: The web socket port, will be served to client if necessary
-    let create (options: IrisConfig) (postCommand: string->unit) (basePath: string) =
+    let create (iris: IIrisServer ref) (config: IrisMachine) (postCommand: string->unit) (basePath: string) =
       either {
         let cts = new CancellationTokenSource()
-        let! config = mkConfig options basePath cts
+        let! webConfig = mkConfig config basePath cts
 
         return
           { new IHttpServer with
               member self.Start () =
                 try
-                  let indexHtml = Path.Combine(basePath, "index.html")
-                  let _, server = startWebServerAsync config (app options postCommand indexHtml)
+                  let _, server =
+                    Path.Combine(basePath, "index.html")
+                    |> app iris config postCommand
+                    |> startWebServerAsync webConfig
                   Async.Start server
                   |> Either.succeed
                 with

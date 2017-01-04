@@ -8,11 +8,6 @@ export const STATUS = {
   LOGIN: "Login",
 }
 
-export const MODALS = {
-    LOGIN: "login",
-    ADD_NODE: "add-node"
-}
-
 export const WIDGETS = {
     CLUSTER: "cluster",
     LOG: "log",

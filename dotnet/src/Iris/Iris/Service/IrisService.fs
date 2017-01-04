@@ -4,9 +4,11 @@ namespace Iris.Service
 
 open System
 open System.IO
+open System.Collections.Concurrent
 open Iris.Raft
 open Iris.Core
 open Iris.Core.Utils
+open Iris.Service.Interfaces
 open Iris.Service.Persistence
 open Iris.Service.Git
 open Iris.Service.WebSockets
@@ -50,23 +52,13 @@ module Iris =
   let private signature =
     new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.UtcNow))
 
-  // ** IrisEvent
-
-  [<NoComparison;NoEquality>]
-  type IrisEvent =
-    | Git    of GitEvent
-    | Socket of SocketEvent
-    | Raft   of RaftEvent
-    | Log    of LogEvent
-    | Status of ServiceStatus
-
   // ** Subscriptions
 
   /// ## Subscriptions
   ///
   /// Type alias for IObserver subscriptions.
   ///
-  type Subscriptions = ResizeArray<IObserver<IrisEvent>>
+  type Subscriptions = ConcurrentDictionary<Guid,IObserver<IrisEvent>>
 
   // ** disposeAll
 
@@ -105,7 +97,6 @@ module Iris =
       Store         : Store
       GitServer     : IGitServer
       RaftServer    : IRaftServer
-      HttpServer    : IHttpServer
       SocketServer  : IWebSocketServer
       Subscriptions : Subscriptions
       Disposables   : Map<string,IDisposable> }
@@ -116,7 +107,6 @@ module Iris =
         dispose self.GitServer
         dispose self.RaftServer
         dispose self.SocketServer
-        dispose self.HttpServer
 
   // ** Reply
 
@@ -298,32 +288,10 @@ module Iris =
 
   // ** IIrisServer
 
-  /// ## IIrisServer
-  ///
-  /// Interface type to close over internal actors and state.
-  ///
-  type IIrisServer =
-    inherit IDisposable
-    abstract Config        : Either<IrisError,IrisConfig>
-    abstract Status        : Either<IrisError,ServiceStatus>
-    abstract GitServer     : Either<IrisError,IGitServer>
-    abstract RaftServer    : Either<IrisError,IRaftServer>
-    abstract SocketServer  : Either<IrisError,IWebSocketServer>
-    abstract HttpServer    : Either<IrisError,IHttpServer>
-    abstract SetConfig     : IrisConfig -> Either<IrisError,unit>
-    abstract Load          : FilePath   -> Either<IrisError,unit>
-    abstract Periodic      : unit       -> Either<IrisError,unit>
-    abstract ForceElection : unit       -> Either<IrisError,unit>
-    abstract LeaveCluster  : unit       -> Either<IrisError,unit>
-    abstract RmMember        : Id         -> Either<IrisError,EntryResponse>
-    abstract AddMember       : RaftMember -> Either<IrisError,EntryResponse>
-    abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
-    abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
-
   // ** triggerOnNext
 
   let private triggerOnNext (subscriptions: Subscriptions) (ev: IrisEvent) =
-    for subscription in subscriptions do
+    for subscription in subscriptions.Values do
       subscription.OnNext ev
 
   // ** triggerWithState
@@ -687,9 +655,7 @@ module Iris =
 
   let private loadProject (state: IrisState)
                           (machine: IrisMachine)
-                          (postCommand: string->unit)
                           (path: FilePath)
-                          (web: string)
                           (subscriptions: Subscriptions) =
     either {
       dispose state
@@ -699,7 +665,6 @@ module Iris =
       // FIXME: load the actual state from disk
       let! mem = Config.selfMember state.Project.Config
 
-      let! httpserver = HttpServer.create state.Project.Config postCommand web
       let! raftserver = RaftServer.create ()
       let! wsserver   = SocketServer.create mem
       let! gitserver  = GitServer.create mem path
@@ -710,7 +675,6 @@ module Iris =
                  Store        = new Store(state)
                  GitServer    = gitserver
                  RaftServer   = raftserver
-                 HttpServer   = httpserver
                  SocketServer = wsserver
                  Subscriptions= subscriptions
                  Disposables  = Map.empty }
@@ -732,7 +696,6 @@ module Iris =
           do! data.RaftServer.Load(data.Store.State.Project.Config)
           do! data.SocketServer.Start()
           do! data.GitServer.Start()
-          do! data.HttpServer.Start()
         }
 
       match result with
@@ -746,7 +709,6 @@ module Iris =
         dispose data.SocketServer
         dispose data.RaftServer
         dispose data.GitServer
-        dispose data.HttpServer
         Either.fail error
 
 
@@ -756,11 +718,9 @@ module Iris =
                          (chan: ReplyChan)
                          (path: FilePath)
                          (config: IrisMachine)
-                         (postCommand: string->unit)
-                         (web: string)
                          (subscriptions: Subscriptions)
                          (inbox: IrisAgent) =
-    match loadProject state config postCommand path web subscriptions with
+    match loadProject state config path subscriptions with
     | Right nextstate ->
       match start nextstate inbox with
       | Right finalstate ->
@@ -937,8 +897,6 @@ module Iris =
 
   let private loop (initial: IrisState)
                    (config: IrisMachine)
-                   (postCommand: string->unit)
-                   (web: string)
                    (subs: Subscriptions)
                    (inbox: IrisAgent) =
     let rec act (state: IrisState) =
@@ -946,7 +904,7 @@ module Iris =
         let! msg = inbox.Receive()
         let newstate =
           match msg with
-          | Msg.Load (chan,path)     -> handleLoad          state chan path config postCommand web subs inbox
+          | Msg.Load (chan,path)     -> handleLoad          state chan path config subs inbox
           | Msg.Unload chan          -> handleUnload        state chan
           | Msg.Config chan          -> handleConfig        state chan
           | Msg.SetConfig (chan,cnf) -> handleSetConfig     state chan  cnf
@@ -971,156 +929,161 @@ module Iris =
   [<RequireQualifiedAccess>]
   module IrisService =
 
-    let create (config: IrisMachine) (postCommand: string->unit) (web: string) =
-      let subscriptions = new Subscriptions()
-      let agent = new IrisAgent(loop Idle config postCommand web subscriptions)
-
+    let private mkIris (subscriptions: Subscriptions) (agent: IrisAgent) (httpServer: IHttpServer) =
       let listener =
         { new IObservable<IrisEvent> with
-            member self. Subscribe(obs) =
-              lock subscriptions <| fun _ ->
-                subscriptions.Add obs
+            member self.Subscribe(obs) =
+              let guid = Guid.NewGuid()
+              do subscriptions.TryAdd(guid, obs) |> ignore
               { new IDisposable with
                   member self.Dispose () =
-                    lock subscriptions <| fun _ ->
-                      subscriptions.Remove obs
-                      |> ignore } }
-      agent.Start()
+                    do subscriptions.TryRemove(guid) |> ignore } }
 
-      Either.succeed
-        { new IIrisServer with
-            member self.Config
-              with get () =
-                match agent.PostAndReply(fun chan -> Msg.Config chan) with
-                | Right (Reply.Config config) -> Right config
-                | Left error -> Left error
-                | Right other ->
-                  sprintf "Unexpected response from IrisAgent: %A" other
-                  |> Error.asOther (tag "Config")
-                  |> Either.fail
+      { new IIrisServer with
+        member self.Config
+          with get () =
+            match agent.PostAndReply(fun chan -> Msg.Config chan) with
+            | Right (Reply.Config config) -> Right config
+            | Left error -> Left error
+            | Right other ->
+              sprintf "Unexpected response from IrisAgent: %A" other
+              |> Error.asOther (tag "Config")
+              |> Either.fail
 
-            member self.SetConfig (config: IrisConfig) =
-              match agent.PostAndReply(fun chan -> Msg.SetConfig(chan,config)) with
-              | Right Reply.Ok -> Right ()
-              | Left error -> Left error
-              | Right other ->
-                sprintf "Unexpected response from IrisAgent: %A" other
-                |> Error.asOther (tag "SetConfig")
-                |> Either.fail
+        member self.SetConfig (config: IrisConfig) =
+          match agent.PostAndReply(fun chan -> Msg.SetConfig(chan,config)) with
+          | Right Reply.Ok -> Right ()
+          | Left error -> Left error
+          | Right other ->
+            sprintf "Unexpected response from IrisAgent: %A" other
+            |> Error.asOther (tag "SetConfig")
+            |> Either.fail
 
-            member self.Status
-              with get () =
-                match agent.PostAndReply(fun chan -> Msg.State chan) with
-                | Right (Reply.State state) -> Right state.Status
-                | Left error -> Left error
-                | Right other ->
-                  sprintf "Unexpected response from IrisAgent: %A" other
-                  |> Error.asOther (tag "Status")
-                  |> Either.fail
+        member self.Status
+          with get () =
+            match agent.PostAndReply(fun chan -> Msg.State chan) with
+            | Right (Reply.State state) -> Right state.Status
+            | Left error -> Left error
+            | Right other ->
+              sprintf "Unexpected response from IrisAgent: %A" other
+              |> Error.asOther (tag "Status")
+              |> Either.fail
 
-            member self.Load(path: FilePath) =
-              match agent.PostAndReply(fun chan -> Msg.Load(chan,path)) with
-              | Right Reply.Ok -> Right ()
-              | Left error -> Left error
-              | Right other ->
-                sprintf "Unexpected response from IrisAgent: %A" other
-                |> Error.asOther (tag "Load")
-                |> Either.fail
+        member self.Load(path: FilePath) =
+          match agent.PostAndReply(fun chan -> Msg.Load(chan,path)) with
+          | Right Reply.Ok -> Right ()
+          | Left error -> Left error
+          | Right other ->
+            sprintf "Unexpected response from IrisAgent: %A" other
+            |> Error.asOther (tag "Load")
+            |> Either.fail
 
-            member self.ForceElection () =
-              agent.Post(Msg.ForceElection)
-              |> Either.succeed
+        member self.ForceElection () =
+          agent.Post(Msg.ForceElection)
+          |> Either.succeed
 
-            member self.Periodic () =
-              agent.Post(Msg.Periodic)
-              |> Either.succeed
+        member self.Periodic () =
+          agent.Post(Msg.Periodic)
+          |> Either.succeed
 
-            member self.LeaveCluster () =
-              match agent.PostAndReply(fun chan -> Msg.Leave chan) with
-              | Right Reply.Ok -> Right ()
-              | Left error -> Left error
-              | Right other ->
-                sprintf "Unexpected response from IrisAgent: %A" other
-                |> Error.asOther (tag "LeaveCluster")
-                |> Either.fail
+        member self.LeaveCluster () =
+          match agent.PostAndReply(fun chan -> Msg.Leave chan) with
+          | Right Reply.Ok -> Right ()
+          | Left error -> Left error
+          | Right other ->
+            sprintf "Unexpected response from IrisAgent: %A" other
+            |> Error.asOther (tag "LeaveCluster")
+            |> Either.fail
 
-            member self.JoinCluster ip port =
-              match agent.PostAndReply(fun chan -> Msg.Join(chan,ip, port)) with
-              | Right Reply.Ok -> Right ()
-              | Left error  -> Left error
-              | Right other ->
-                sprintf "Unexpected response from IrisAgent: %A" other
-                |> Error.asOther (tag "JoinCluster")
-                |> Either.fail
+        member self.JoinCluster ip port =
+          match agent.PostAndReply(fun chan -> Msg.Join(chan,ip, port)) with
+          | Right Reply.Ok -> Right ()
+          | Left error  -> Left error
+          | Right other ->
+            sprintf "Unexpected response from IrisAgent: %A" other
+            |> Error.asOther (tag "JoinCluster")
+            |> Either.fail
 
-            member self.AddMember mem =
-              match agent.PostAndReply(fun chan -> Msg.AddMember(chan,mem)) with
-              | Right (Reply.Entry entry) -> Right entry
-              | Left error -> Left error
-              | Right other ->
-                sprintf "Unexpected response from IrisAgent: %A" other
-                |> Error.asOther (tag "AddMember")
-                |> Either.fail
+        member self.AddMember mem =
+          match agent.PostAndReply(fun chan -> Msg.AddMember(chan,mem)) with
+          | Right (Reply.Entry entry) -> Right entry
+          | Left error -> Left error
+          | Right other ->
+            sprintf "Unexpected response from IrisAgent: %A" other
+            |> Error.asOther (tag "AddMember")
+            |> Either.fail
 
-            member self.RmMember id =
-              match agent.PostAndReply(fun chan -> Msg.RmMember(chan,id)) with
-              | Right (Reply.Entry entry) -> Right entry
-              | Left error -> Left error
-              | Right other ->
-                sprintf "Unexpected response from IrisAgent: %A" other
-                |> Error.asOther (tag "RmMember")
-                |> Either.fail
+        member self.RmMember id =
+          match agent.PostAndReply(fun chan -> Msg.RmMember(chan,id)) with
+          | Right (Reply.Entry entry) -> Right entry
+          | Left error -> Left error
+          | Right other ->
+            sprintf "Unexpected response from IrisAgent: %A" other
+            |> Error.asOther (tag "RmMember")
+            |> Either.fail
 
-            member self.GitServer
-              with get () =
-                match agent.PostAndReply(fun chan -> Msg.State chan) with
-                | Right (Reply.State state) -> Right state.GitServer
-                | Left error -> Left error
-                | Right other ->
-                  sprintf "Unexpected response from IrisAgent: %A" other
-                  |> Error.asOther (tag "GitServer")
-                  |> Either.fail
+        member self.GitServer
+          with get () =
+            match agent.PostAndReply(fun chan -> Msg.State chan) with
+            | Right (Reply.State state) -> Right state.GitServer
+            | Left error -> Left error
+            | Right other ->
+              sprintf "Unexpected response from IrisAgent: %A" other
+              |> Error.asOther (tag "GitServer")
+              |> Either.fail
 
-            member self.RaftServer
-              with get () =
-                match agent.PostAndReply(fun chan -> Msg.State chan) with
-                | Right (Reply.State state) -> Right state.RaftServer
-                | Left error -> Left error
-                | Right other ->
-                  sprintf "Unexpected response from IrisAgent: %A" other
-                  |> Error.asOther (tag "RaftServer")
-                  |> Either.fail
+        member self.RaftServer
+          with get () =
+            match agent.PostAndReply(fun chan -> Msg.State chan) with
+            | Right (Reply.State state) -> Right state.RaftServer
+            | Left error -> Left error
+            | Right other ->
+              sprintf "Unexpected response from IrisAgent: %A" other
+              |> Error.asOther (tag "RaftServer")
+              |> Either.fail
 
-            member self.SocketServer
-              with get () =
-                match agent.PostAndReply(fun chan -> Msg.State chan) with
-                | Right (Reply.State state) -> Right state.SocketServer
-                | Left error -> Left error
-                | Right other ->
-                  sprintf "Unexpected response from IrisAgent: %A" other
-                  |> Error.asOther (tag "SocketServer")
-                  |> Either.fail
+        member self.SocketServer
+          with get () =
+            match agent.PostAndReply(fun chan -> Msg.State chan) with
+            | Right (Reply.State state) -> Right state.SocketServer
+            | Left error -> Left error
+            | Right other ->
+              sprintf "Unexpected response from IrisAgent: %A" other
+              |> Error.asOther (tag "SocketServer")
+              |> Either.fail
 
-            member self.HttpServer
-              with get () =
-                match agent.PostAndReply(fun chan -> Msg.State chan) with
-                | Right (Reply.State state) -> Right state.HttpServer
-                | Left error -> Left error
-                | Right other ->
-                  sprintf "Unexpected response from IrisAgent: %A" other
-                  |> Error.asOther (tag "HttpServer")
-                  |> Either.fail
+        member self.HttpServer
+          with get () =
+            Either.succeed httpServer
 
-            member self.Subscribe(callback: IrisEvent -> unit) =
-              { new IObserver<IrisEvent> with
-                  member self.OnCompleted() = ()
-                  member self.OnError(error) = ()
-                  member self.OnNext(value) = callback value }
-              |> listener.Subscribe
+        member self.Subscribe(callback: IrisEvent -> unit) =
+          { new IObserver<IrisEvent> with
+              member self.OnCompleted() = ()
+              member self.OnError(error) = ()
+              member self.OnNext(value) = callback value }
+          |> listener.Subscribe
 
-            member self.Dispose() =
-              triggerOnNext subscriptions (Status ServiceStatus.Stopping)
-              agent.PostAndReply(fun chan -> Msg.Unload chan)
-              |> ignore
-              dispose agent
-          }
+        member self.Dispose() =
+          triggerOnNext subscriptions (Status ServiceStatus.Stopping)
+          agent.PostAndReply(fun chan -> Msg.Unload chan)
+          |> ignore
+          dispose agent
+          dispose httpServer
+      }
+
+
+    let create (config: IrisMachine) (postCommand: string->unit) (web: string) =
+      try
+        either {
+          let iris = ref Unchecked.defaultof<IIrisServer>
+          let subscriptions = new Subscriptions()
+          let agent = new IrisAgent(loop Idle config subscriptions)
+          agent.Start()
+          let! httpServer = HttpServer.create iris config postCommand web
+          iris := mkIris subscriptions agent httpServer
+          do! httpServer.Start()
+          return !iris
+        }
+      with
+      | ex -> IrisError.Other(tag "create", ex.Message) |> Either.fail
+
