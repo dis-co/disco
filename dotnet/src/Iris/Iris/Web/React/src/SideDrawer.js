@@ -1,6 +1,7 @@
 import * as React from "react";
 import { showModal } from './App';
 import LOAD_PROJECT from "./modals/LoadProject";
+import CREATE_PROJECT from "./modals/CreateProject";
 
 export default class SideDrawer extends React.Component {
   constructor(props) {
@@ -53,7 +54,7 @@ export default class SideDrawer extends React.Component {
         <li>
           <strong>Project</strong>
           <ul>
-            <li><a href="#">Create</a></li>
+            <li><a onClick={() => showModal(CREATE_PROJECT)}>Create</a></li>
             <li><a onClick={() => showModal(LOAD_PROJECT)}>Load</a></li>
           </ul>
         </li>

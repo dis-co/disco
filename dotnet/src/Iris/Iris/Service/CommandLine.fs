@@ -498,7 +498,7 @@ module CommandLine =
 
   // ** tryCreateProject
 
-  let tryCreateProject force (machine: Either<IrisError, IrisMachine>) (parameters: IDictionary<string, string>) =
+  let tryCreateProject force (parameters: IDictionary<string, string>) =
     let tryGet k map (dic: IDictionary<string, string>) =
       match dic.TryGetValue k with
       | true, v ->
@@ -507,7 +507,8 @@ module CommandLine =
       | false, _ -> Other("tryCreateProject", sprintf "Missing %s parameter" k) |> Left
     
     either {
-      let! machine = machine
+      let! machine = MachineConfig.load None
+
       let! dir = parameters |> tryGet "dir" id
       let name = Path.GetFileName dir
       let raftDir = dir </> RAFT_DIRECTORY
@@ -564,9 +565,7 @@ module CommandLine =
         | Timeout      -> tryForceElection context
         | Status       -> tryGetStatus     context
         | Load prDir   -> tryLoadProject context prDir |> Either.mapError handleError |> ignore
-        | CreateInteractive pars  ->
-          let machine = context.Config |> Either.map (fun cfg -> cfg.Machine)
-          tryCreateProject true machine pars |> Either.mapError handleError |> ignore
+        | CreateInteractive pars  -> tryCreateProject true pars |> Either.mapError handleError |> ignore
         | _            -> printfn "unknown command"
         do! loop()
       }
@@ -677,10 +676,8 @@ module CommandLine =
   /// - parsed: ParseResult<CLIArguments>
   ///
   /// Returns: unit
-  let createProject (parsed: ParseResults<CLIArguments>) = either {
+  let createProject (parsed: ParseResults<CLIArguments>) = either { 
       ensureMachineConfig ()
-
-      let machine = MachineConfig.load None
 
       let parameters =
         [ let path = parsed.GetResult <@ Dir @>
@@ -694,7 +691,7 @@ module CommandLine =
           yield "raft", parsed.GetResult <@ Raft  @> |> string ]
         |> dict
 
-      return! tryCreateProject false machine parameters
+      return! tryCreateProject false parameters
     }
 
   // ** resetProject

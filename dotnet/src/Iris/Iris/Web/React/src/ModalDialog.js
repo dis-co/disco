@@ -33,7 +33,7 @@ export default class ModalDialog extends React.Component {
 
   render() {
     return (
-      <SkyLight ref={el => this.self=(el||this.self)} >
+      <SkyLight dialogStyles={{height: "inherit"}} ref={el => this.self=(el||this.self)} >
         {this.renderInner()}
       </SkyLight>
     );

@@ -15,7 +15,6 @@ export default function(props) {
         onClick={ev => {
           ev.preventDefault();
           var form = ev.target.parentNode;
-          debugger;
           loadProject(props.info, form.dir.value);
           props.onSubmit();
         }}>

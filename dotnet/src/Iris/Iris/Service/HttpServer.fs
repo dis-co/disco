@@ -40,8 +40,8 @@ module Http =
       |> Either.unwrap (fun err -> Logger.err config.MachineId (tag "getWsport") (string err); 0us)
       |> string |> respond ctx HTTP_200 
 
-    let loadProject (postCommand: string->unit) (ctx: HttpContext) =
-      ctx.request.rawForm |> getString |> (+) "load " |> postCommand
+    let postIrisCommand (postCmd: string->unit) (ctx: HttpContext) =
+      ctx.request.rawForm |> getString |> postCmd
       respond ctx HTTP_200 ""
 
   let private noCache =
@@ -93,7 +93,7 @@ module Http =
           Files.browseHome ])
       Filters.POST >=>
         (choose [
-          Filters.path LOAD_PROJECT_ENDPOINT >=> Actions.loadProject postCommand
+          Filters.path COMMAND_ENDPOINT >=> Actions.postIrisCommand postCommand
         ])
       RequestErrors.NOT_FOUND "Page not found."
     ]

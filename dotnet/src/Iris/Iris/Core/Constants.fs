@@ -46,7 +46,7 @@ module Constants =
   let DEFAULT_WEB_PORT = 7000us
 
   [<Literal>]
-  let LOAD_PROJECT_ENDPOINT = "/api/load-project"
+  let COMMAND_ENDPOINT = "/api/command"
 
   [<Literal>]
   let WS_PORT_ENDPOINT = "/api/web-socket-port"
