@@ -398,6 +398,17 @@ Target "GenerateSerialization"
    buildDebug "Serialization.csproj" ()
    buildRelease "Serialization.csproj" ())
 
+//  _____                               __
+// |__  /___ _ __ ___   ___ ___  _ __  / _|
+//   / // _ \ '__/ _ \ / __/ _ \| '_ \| |_
+//  / /|  __/ | | (_) | (_| (_) | | | |  _|
+// /____\___|_|  \___/ \___\___/|_| |_|_|
+
+Target "BuildDebugZeroconf"
+  (fun _ ->
+    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj"
+    build (setParams "Release") "src/Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj")
+
 //  _____                _                 _
 // |  ___| __ ___  _ __ | |_ ___ _ __   __| |
 // | |_ | '__/ _ \| '_ \| __/ _ \ '_ \ / _` |
