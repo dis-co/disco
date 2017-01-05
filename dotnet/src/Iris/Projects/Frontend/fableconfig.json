@@ -2,9 +2,12 @@
     "projFile": "Frontend.fsproj",
     "outDir": "../../assets/frontend/js",
     "module": "amd",
-    "coreLib": "../../assets/frontend/js/fable-core",
     "sourceMaps": false,
     "plugins": ["../../../Fable/FlatBuffersPlugin.fsx"],
+    "refs": {
+        "Fable.Core": "fable-core/umd",
+        "Fable.PowerPack": "fable-powerpack/umd"
+    },
     "targets": {
         "debug": {
             "watch": "../../Iris/Web"

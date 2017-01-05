@@ -448,7 +448,15 @@ module ProjectTests =
           |> File.ReadAllText
           |> Yaml.decode
 
-        expect "Should have create the admin user" true ((=) User.Admin) admin
+        // Don't compare Joined and Created as they may differ a bit
+        let isUserAdmin (admin: User) =
+          User.Admin.Id               = admin.Id              &&
+          User.Admin.UserName         = admin.UserName        &&
+          User.Admin.FirstName        = admin.FirstName       &&
+          User.Admin.LastName         = admin.LastName        &&
+          User.Admin.Email            = admin.Email
+
+        expect "Should have create the admin user" true isUserAdmin admin
       }
       |> noError
 

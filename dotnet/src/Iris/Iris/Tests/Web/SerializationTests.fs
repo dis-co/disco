@@ -3,6 +3,7 @@ namespace Test.Units
 [<RequireQualifiedAccess>]
 module SerializationTests =
 
+  open System
   open Fable.Core
   open Fable.Import
 
@@ -66,8 +67,8 @@ module SerializationTests =
     ; Email = "k@ioctl.it"
     ; Password = "1234"
     ; Salt = "090asd902"
-    ; Joined = "1"
-    ; Created = "2"
+    ; Joined = DateTime.UtcNow
+    ; Created = DateTime.UtcNow
     }
 
   let mkMember _ = Id.Create() |> Member.create

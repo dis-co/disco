@@ -8,6 +8,7 @@ open System.Collections
 open System.Collections.Concurrent
 open Iris.Core
 open Iris.Core.Utils
+open Iris.Service.Interfaces
 open Iris.Service.Zmq
 open Iris.Raft
 open FSharpx.Functional
@@ -28,43 +29,9 @@ module Raft =
 
   let private tag (str: string) = sprintf "RaftServer.%s" str
 
-  // ** RaftEvent
-
-  type RaftEvent =
-    | ApplyLog       of StateMachine
-    | MemberAdded    of RaftMember
-    | MemberRemoved  of RaftMember
-    | MemberUpdated  of RaftMember
-    | Configured     of RaftMember array
-    | StateChanged   of RaftState * RaftState
-    | CreateSnapshot of string
-
   // ** Connections
 
   type private Connections = ConcurrentDictionary<Id,Req>
-
-  let private disposeAll (connections: Connections) =
-    for KeyValue(_,connection) in connections do
-      dispose connection
-
-  // ** RaftAppContext
-
-  [<NoComparison;NoEquality>]
-  type RaftAppContext =
-    { Status:      ServiceStatus
-      Raft:        RaftValue
-      Options:     IrisConfig
-      Callbacks:   IRaftCallbacks
-      Server:      Zmq.Rep
-      Periodic:    IDisposable
-      Connections: Connections }
-
-    interface IDisposable with
-      member self.Dispose() =
-        dispose self.Periodic
-        disposeAll self.Connections
-        self.Connections.Clear()
-        dispose self.Server
 
   // ** Reply
 
@@ -131,28 +98,6 @@ module Raft =
   type private RaftServerState =
     | Idle
     | Loaded of RaftAppContext
-
-  // ** RaftServer
-
-  type IRaftServer =
-    inherit IDisposable
-
-    abstract Member        : Either<IrisError,RaftMember>
-    abstract MemberId      : Either<IrisError,Id>
-    abstract Load          : IrisConfig -> Either<IrisError, unit>
-    abstract Unload        : unit -> Either<IrisError, unit>
-    abstract Append        : StateMachine -> Either<IrisError, EntryResponse>
-    abstract ForceElection : unit -> Either<IrisError, unit>
-    abstract State         : Either<IrisError, RaftAppContext>
-    abstract Status        : Either<IrisError, ServiceStatus>
-    abstract Subscribe     : (RaftEvent -> unit) -> IDisposable
-    abstract Start         : unit -> Either<IrisError, unit>
-    abstract Periodic      : unit -> Either<IrisError, unit>
-    abstract JoinCluster   : IpAddress -> uint16 -> Either<IrisError, unit>
-    abstract LeaveCluster  : unit -> Either<IrisError, unit>
-    abstract AddMember     : RaftMember -> Either<IrisError, EntryResponse>
-    abstract RmMember      : Id -> Either<IrisError, EntryResponse>
-    abstract Connections   : Either<IrisError, Connections>
 
   //  _   _      _
   // | | | | ___| |_ __   ___ _ __ ___
@@ -1210,7 +1155,8 @@ module Raft =
 
         | Left (err, _) ->
           dispose server
-          disposeAll connections
+          connections |> Seq.iter (fun (KeyValue(_,connection)) ->
+            dispose connection)
           dispose periodic
           return! Either.fail err
 

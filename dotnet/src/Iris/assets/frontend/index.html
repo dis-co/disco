@@ -30,9 +30,38 @@
     <script src="lib/flatbuffers.js"></script>
     <script src="js/Raft_generated.js"></script>
   </head>
-  <body>
-    <!-- PLACEHOLDER FOR APP COMPONENT -->
-    <div id="app"></div>
+  <body class="hide-sidedrawer">
+    <div id="sidedrawer" class="mui--no-user-select">
+      <div id="sidedrawer-brand" class="mui--appbar-line-height">
+        <span class="mui--text-title">Iris</span>
+      </div>
+      <div class="mui-divider"></div>
+      <div id="sidedrawer-menu">
+        <!-- PLACEHOLDER FOR SIDEDRAWER COMPONENT -->
+      </div>
+    </div>
+    <header id="header">
+      <div class="mui-appbar mui--appbar-line-height">
+        <div class="mui-container-fluid">
+          <a class="sidedrawer-toggle mui--visible-xs-inline-block mui--visible-sm-inline-block js-show-sidedrawer">☰</a>
+          <a class="sidedrawer-toggle mui--hidden-xs mui--hidden-sm js-hide-sidedrawer">☰</a>
+          <span class="mui--text-title mui--visible-xs-inline-block">Iris</span>
+        </div>
+      </div>
+    </header>
+    <div id="content-wrapper">
+      <!-- Adds paddin to the top of the main content window -->
+      <div class="mui--appbar-height"></div>
+      <div id="app" class="mui-container-fluid">
+        <!-- PLACEHOLDER FOR APP COMPONENT -->
+      </div>
+    </div>
+    <footer id="footer">
+      <div class="mui-container-fluid">
+        <br>
+        © 2016 - <a href="http://nsynk.de/">NSYNK Gesellschaft für Kunst und Technik mbH</a>
+      </div>
+    </footer>
 
     <!-- REQUIRE.JS -->
     <script src="lib/require.js"></script>
@@ -40,7 +69,8 @@
 		requirejs.config({
 			paths: {
         'ReactApp': 'js/ReactApp',
-        'fable-core/umd': 'node_modules/fable-core/umd',
+        'fable-core/umd': 'js/fable-core',
+        'fable-powerpack/umd': 'js/fable-powerpack',
         'react': 'lib/react/react',
         'react-dom': 'lib/react/react-dom'
 			}

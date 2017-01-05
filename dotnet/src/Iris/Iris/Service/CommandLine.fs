@@ -12,11 +12,12 @@ module CommandLine =
   open Iris.Service.Persistence
   open Iris.Service.Iris
   open Iris.Service.Raft
+  open Iris.Service.Interfaces
   open FSharpx.Functional
   open System
   open System.IO
   open System.Linq
-  open System.Text
+  open System.Collections.Generic
   open System.Text.RegularExpressions
 
   // ** Command Line Argument Parser
@@ -157,7 +158,7 @@ module CommandLine =
       member self.Usage =
         match self with
           | Interactive -> "Start daemon in interactive mode"
-          | Http    _   -> "Base path of http server (if `--http=false` http server won't be started)"
+          | Http    _   -> "Base path of http server (defaults to the assembly directory)"
           | Dir     _   -> "Project directory to place the config & database in"
           | Bind    _   -> "Specify a valid IP address."
           | Web     _   -> "Http server port."
@@ -179,7 +180,7 @@ module CommandLine =
       result
 
     match opts.GetResult <@ Cmd @> with
-    | Start | Reset | Dump | Add_User | Add_Member -> ensureDir ()
+    | Reset | Dump | Add_User | Add_Member -> ensureDir ()
     | _ -> ()
 
     if opts.GetResult <@ Cmd @> = Create then
@@ -246,6 +247,18 @@ module CommandLine =
 
   // ** Command Parsers
 
+  let (|Params|) (str: string) =
+    Regex.Matches(str, "\w+\:[^\s]+|\w+\:\".*?\"")
+    |> Seq.cast<Match>
+    |> Seq.map (fun m ->
+      let i = m.Value.IndexOf(':')
+      let k = m.Value.Substring(0, i)
+      let v =
+        let v = m.Value.Substring(i+1)
+        if v.[0] = '"' then v.Substring(1, v.Length - 2) else v
+      k, v)
+    |> dict
+
   let (|Exit|_|)     str = withEmpty "exit" str
   let (|Quit|_|)     str = withEmpty "quit" str
   let (|Status|_|)   str = withEmpty "status" str
@@ -257,6 +270,12 @@ module CommandLine =
   let (|Join|_|)    str = withTrim "join" str
   let (|AddMember|_|) str = withTrim "addmem" str
   let (|RmMember|_|)  str = withTrim "rmmem" str
+  let (|Load|_|) str = withTrim "load" str
+
+  let (|CreateInteractive|_|) str =
+    match withTrim "create" str with
+    | Some(Params pars) -> Some pars
+    | None -> None
 
   let (|Interval|_|) (str: string) =
     let trimmed = str.Trim()
@@ -412,117 +431,16 @@ module CommandLine =
     |> Either.mapError handleError
     |> ignore
 
-  // ** consoleLoop
+  // ** tryLoadProject
 
-  //  _
-  // | |    ___   ___  _ __
-  // | |   / _ \ / _ \| '_ \
-  // | |__| (_) | (_) | |_) |
-  // |_____\___/ \___/| .__/ s
-  //                  |_|
-
-  let registerExitHandlers (context: IIrisServer) =
-    Console.CancelKeyPress.Add (fun _ ->
-      printfn "Disposing context..."
-      dispose context
-      exit 0)
-    System.AppDomain.CurrentDomain.ProcessExit.Add (fun _ -> dispose context)
-    System.AppDomain.CurrentDomain.DomainUnload.Add (fun _ -> dispose context)
-
-  let interactiveLoop (context: IIrisServer) : unit =
-    printfn "Welcome to the Raft REPL. Type help to see all commands."
-    let kont = ref true
-    let rec proc kontinue =
-      printf "λ "
-      let input = Console.ReadLine()
-      match input with
-        | LogLevel opt -> trySetLogLevel   context opt
-        | Interval   i -> trySetInterval   context i
-        | Exit         -> dispose          context; kontinue := false
-        | Periodic     -> tryPeriodic      context
-        | Append ety   -> tryAppendEntry   context ety
-        | Join hst     -> tryJoinCluster   context hst
-        | Leave        -> tryLeaveCluster  context
-        | AddMember hst  -> tryAddMember       context hst
-        | RmMember hst   -> tryRmMember        context hst
-        | Timeout      -> tryForceElection context
-        | Status       -> tryGetStatus     context
-        | _            -> printfn "unknown command"
-      if !kontinue then
-        proc kontinue
-    proc kont
-
-  let silentLoop () =
-    let kont = ref true
-    let rec proc kontinue =
-      Console.ReadLine() |> ignore
-      if !kontinue then
-        proc kontinue
-    proc kont
-
-  // ** ensureMachineConfig
-
-  let ensureMachineConfig () =
-    if not (File.Exists MachineConfig.defaultPath) then
-      MachineConfig.create ()
-      |> MachineConfig.save None
-      |> Error.orExit id
-
-  // ** buildMember
-
-  //  _   _           _
-  // | \ | | ___   __| | ___
-  // |  \| |/ _ \ / _` |/ _ \
-  // | |\  | (_) | (_| |  __/
-  // |_| \_|\___/ \__,_|\___|
-
-  let buildMember (parsed: ParseResults<CLIArguments>) (id: Id) =
-    { Member.create(id) with
-        IpAddr  = parsed.GetResult <@ Bind @> |> IpAddress.Parse
-        GitPort = parsed.GetResult <@ Git  @>
-        WsPort  = parsed.GetResult <@ Ws   @>
-        WebPort = parsed.GetResult <@ Web  @>
-        Port    = parsed.GetResult <@ Raft @> }
-
-  // ** startService
-
-  //  ____  _             _
-  // / ___|| |_ __ _ _ __| |_
-  // \___ \| __/ _` | '__| __|
-  //  ___) | || (_| | |  | |_
-  // |____/ \__\__,_|_|   \__|
-
-  let startService (web: string option) (interactive: bool) (projectdir: FilePath) : Either<IrisError, unit> =
-    ensureMachineConfig ()
-
+  let tryLoadProject (ctx: IIrisServer) projectdir =
     let projFile = Path.GetFullPath(projectdir) </> PROJECT_FILENAME + ASSET_EXTENSION
-
     if File.Exists projFile |> not then
       sprintf "Project Not Found: %s" projectdir
       |> Error.asOther "startService"
       |> Either.fail
     else
-      either {
-        let! machine = MachineConfig.load None
-        let! server = IrisService.create machine web
-        use _ = Logger.subscribe Logger.stdout
-
-        registerExitHandlers server
-
-        do! server.Load projFile
-
-        let result =
-          if interactive then
-            interactiveLoop server
-          else
-            silentLoop ()
-
-        dispose server
-
-        return result
-      }
-
-  // ** createProject
+      ctx.Load projFile
 
   //   ____                _
   //  / ___|_ __ ___  __ _| |_ ___
@@ -578,32 +496,25 @@ module CommandLine =
       return ()
     }
 
-  /// ## createProject
-  ///
-  /// Create a new project given the passed command line options.
-  ///
-  /// ### Signature:
-  /// - parsed: ParseResult<CLIArguments>
-  ///
-  /// Returns: unit
-  let createProject (parsed: ParseResults<CLIArguments>) = either {
-      ensureMachineConfig ()
+  // ** tryCreateProject
 
+  let tryCreateProject force (parameters: IDictionary<string, string>) =
+    let tryGet k map (dic: IDictionary<string, string>) =
+      match dic.TryGetValue k with
+      | true, v ->
+        try map v |> Right
+        with ex -> Other("tryCreateProject", ex.Message) |> Left
+      | false, _ -> Other("tryCreateProject", sprintf "Missing %s parameter" k) |> Left
+    
+    either {
       let! machine = MachineConfig.load None
 
-      let dir =
-        let path = parsed.GetResult <@ Dir @>
-        if Path.IsPathRooted path then
-          path
-        else
-          Path.GetFullPath path
-
+      let! dir = parameters |> tryGet "dir" id
       let name = Path.GetFileName dir
-
       let raftDir = dir </> RAFT_DIRECTORY
 
-      do! match Directory.Exists dir with
-          | true  ->
+      do! match Directory.Exists dir, force with
+          | true, false  ->
             match Directory.EnumerateFileSystemEntries(dir).Count() = 0 with
             | true  -> Either.nothing
             | false ->
@@ -612,16 +523,175 @@ module CommandLine =
               match input.Key with
                 | ConsoleKey.Y -> rmDir dir
                 | _            -> OK |> Either.fail
-          | false -> Either.nothing
+          | _ -> Either.nothing
 
       do! mkDir dir
       do! mkDir raftDir
 
-      let mem = buildMember parsed machine.MachineId
+      let! bind = parameters |> tryGet "bind" IpAddress.Parse
+      let! git  = parameters |> tryGet "git" uint16
+      let! ws   = parameters |> tryGet "ws" uint16
+      let! web  = parameters |> tryGet "web" uint16
+      let! raft = parameters |> tryGet "raft" uint16
+
+      let mem =
+        { Member.create(machine.MachineId) with
+            IpAddr  = bind
+            GitPort = git
+            WsPort  = ws
+            WebPort = web
+            Port    = raft }
 
       let! project = buildProject machine name dir raftDir mem
 
       do! initializeRaft project
+    }
+
+  // ** agent
+
+  let private startAgent (context: IIrisServer) = MailboxProcessor<string>.Start(fun agent ->
+      let rec loop() = async {
+        let! input = agent.Receive()
+        match input with
+        | LogLevel opt -> trySetLogLevel   context opt
+        | Interval   i -> trySetInterval   context i
+        | Exit         -> dispose          context
+        | Periodic     -> tryPeriodic      context
+        | Append ety   -> tryAppendEntry   context ety
+        | Join hst     -> tryJoinCluster   context hst
+        | Leave        -> tryLeaveCluster  context
+        | AddMember hst  -> tryAddMember       context hst
+        | RmMember hst   -> tryRmMember        context hst
+        | Timeout      -> tryForceElection context
+        | Status       -> tryGetStatus     context
+        | Load prDir   -> tryLoadProject context prDir |> Either.mapError handleError |> ignore
+        | CreateInteractive pars  -> tryCreateProject true pars |> Either.mapError handleError |> ignore
+        | _            -> printfn "unknown command"
+        do! loop()
+      }
+      loop()
+    )
+
+  let postCommand (agent: (MailboxProcessor<string> option) ref) (cmd: string) =
+    match !agent with
+    | Some agent -> agent.Post cmd
+    | None -> printfn "Command agent hasn't been initialized yet"
+
+  // ** consoleLoop
+
+  //  _
+  // | |    ___   ___  _ __
+  // | |   / _ \ / _ \| '_ \
+  // | |__| (_) | (_) | |_) |
+  // |_____\___/ \___/| .__/ s
+  //                  |_|
+  let registerExitHandlers (context: IIrisServer) =
+    Console.CancelKeyPress.Add (fun _ ->
+      printfn "Disposing context..."
+      dispose context
+      exit 0)
+    System.AppDomain.CurrentDomain.ProcessExit.Add (fun _ -> dispose context)
+    System.AppDomain.CurrentDomain.DomainUnload.Add (fun _ -> dispose context)
+
+  let interactiveLoop (agent: MailboxProcessor<string>) (context: IIrisServer) : unit =
+    printfn "Welcome to the Raft REPL. Type help to see all commands."
+    let kont = ref true
+    let rec proc kontinue =
+      printf "λ "
+      let input = Console.ReadLine()
+      match input with
+      | Exit -> kontinue := false; agent.Post input
+      | input -> agent.Post input
+      if !kontinue then
+        proc kontinue
+    proc kont
+
+  let silentLoop () =
+    let kont = ref true
+    let rec proc kontinue =
+      Console.ReadLine() |> ignore
+      if !kontinue then
+        proc kontinue
+    proc kont
+
+  // ** ensureMachineConfig
+
+  let ensureMachineConfig () =
+    if not (File.Exists MachineConfig.defaultPath) then
+      MachineConfig.create ()
+      |> MachineConfig.save None
+      |> Error.orExit id
+
+  // ** startService
+
+  //  ____  _             _
+  // / ___|| |_ __ _ _ __| |_
+  // \___ \| __/ _` | '__| __|
+  //  ___) | || (_| | |  | |_
+  // |____/ \__\__,_|_|   \__|
+
+  let startService (web: string) (interactive: bool) (projectdir: FilePath option) : Either<IrisError, unit> =
+    ensureMachineConfig ()
+    either {
+      let agentRef = ref None
+      let! machine = MachineConfig.load None
+      let! server = IrisService.create machine (postCommand agentRef) web
+      let agent = startAgent server
+      agentRef := Some agent
+      use _ = Logger.subscribe Logger.stdout
+
+      registerExitHandlers server
+
+      do!
+        match projectdir with
+        | Some projectdir ->
+          let projFile = Path.GetFullPath(projectdir) </> PROJECT_FILENAME + ASSET_EXTENSION
+          if File.Exists projFile |> not then
+            sprintf "Project Not Found: %s" projectdir
+            |> Error.asOther "startService"
+            |> Either.fail
+          else
+            server.Load projFile
+        | None ->
+          Either.succeed ()
+
+      let result =
+        if interactive then
+          interactiveLoop agent server
+        else
+          silentLoop ()
+
+      dispose server
+
+      return result
+    }
+
+  // ** createProject
+
+  /// ## createProject
+  ///
+  /// Create a new project given the passed command line options.
+  ///
+  /// ### Signature:
+  /// - parsed: ParseResult<CLIArguments>
+  ///
+  /// Returns: unit
+  let createProject (parsed: ParseResults<CLIArguments>) = either { 
+      ensureMachineConfig ()
+
+      let parameters =
+        [ let path = parsed.GetResult <@ Dir @>
+          if Path.IsPathRooted path
+          then yield "dir", path
+          else yield "dir", Path.GetFullPath path
+          yield "bind", parsed.GetResult <@ Bind @>
+          yield "git", parsed.GetResult <@ Git  @> |> string
+          yield "ws", parsed.GetResult <@ Ws  @> |> string
+          yield "web", parsed.GetResult <@ Web  @> |> string
+          yield "raft", parsed.GetResult <@ Raft  @> |> string ]
+        |> dict
+
+      return! tryCreateProject false parameters
     }
 
   // ** resetProject
@@ -817,8 +887,8 @@ module CommandLine =
             Email     = email
             Password  = hash
             Salt      = salt
-            Joined    = DateTime.Now
-            Created   = DateTime.Now }
+            Joined    = DateTime.UtcNow
+            Created   = DateTime.UtcNow }
         let! _ = Project.saveAsset user User.Admin project
         return ()
       else

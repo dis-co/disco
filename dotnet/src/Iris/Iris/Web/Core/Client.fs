@@ -6,19 +6,8 @@ open System.Collections.Generic
 open Fable.Core
 open Fable.Import
 open Fable.Core.JsInterop
+open Fable.PowerPack
 open Iris.Core
-
-let inline getHostname(): string = Browser.window.location.hostname
-
-let inline getHostPort(): int = int Browser.window.location.port
-
-let makeObservable (ctrls: Dictionary<Guid, 'T IObserver>) =
-  { new IObservable<'T> with
-    member __.Subscribe(obs) =
-      let guid = Guid.NewGuid()
-      ctrls.Add(guid, obs)
-      { new IDisposable with
-          member __.Dispose() = ctrls.Remove(guid) |> ignore } }
 
 //  ____  _                        ___        __         _
 // / ___|| |__   __ _ _ __ ___  __| \ \      / /__  _ __| | _____ _ __
@@ -51,19 +40,28 @@ type [<Pojo; NoComparison>] StateInfo =
 
 and ClientContext private (worker: SharedWorker<string>) =
   let mutable session : Id option = None
-  let ctrls = Dictionary<Guid, IObserver<StateInfo>>()
-  let logCtrls = Dictionary<Guid, IObserver<ClientLog>>()
+  let ctrls = Dictionary<Guid, IObserver<ClientMessage<State>>>()
 
-  static member Start() =
-    let host = getHostname ()
-    let port = getHostPort ()
-    let address = sprintf "ws://%s:%d" host (port + Constants.SOCKET_SERVER_PORT_DIFF)
+  static member Start() = promise {
     let me = new SharedWorker<string>(Constants.WEB_WORKER_SCRIPT)
     let client = new ClientContext(me)
     me.OnError <- fun e -> printfn "%A" e.Message
     me.Port.OnMessage <- client.MsgHandler
-    me.Port.PostMessage (ClientMessage.Connect address |> toJson)
-    client
+    do! client.ConnectWithWebSocket()
+    return client
+  }
+
+  member __.ConnectWithWebSocket() =
+    Fetch.fetch Constants.WS_PORT_ENDPOINT []
+    |> Promise.bind (fun res -> res.text())
+    |> Promise.map (fun port ->
+      match Int32.TryParse(port) with
+      | false, _ | true, 0 -> ()
+      | true, port ->
+        sprintf "ws://%s:%i" Browser.window.location.hostname port
+        |> ClientMessage.Connect
+        |> toJson
+        |> worker.Port.PostMessage)
 
   member self.Session =
     match session with
@@ -80,13 +78,17 @@ and ClientContext private (worker: SharedWorker<string>) =
     |> worker.Port.PostMessage
 
   member self.MsgHandler (msg : MessageEvent<string>) : unit =
-    match ofJson<ClientMessage<State>> msg.Data with
+    let data = ofJson<ClientMessage<State>> msg.Data
+    for ctrl in ctrls.Values do
+      ctrl.OnNext data
+
+    match data with
     // initialize this clients session variable
     | ClientMessage.Initialized(Id id as token) ->
       session <- Some(token)
       printfn "Initialized with Session: %s" id
 
-    // initialize this clients session variable
+    // close this clients session variable
     | ClientMessage.Closed(token) ->
       printfn "A client closed its session: %A" token
 
@@ -96,13 +98,9 @@ and ClientContext private (worker: SharedWorker<string>) =
       //self.Start()
 
     // Re-render the current view tree with a new state
-    | ClientMessage.Render(state) ->
-      match Map.tryFind self.Session state.Sessions with
-      | Some session ->
-        for ctrl in ctrls.Values do
-          ctrl.OnNext {context = self; session = session; state = state}
-      | None ->
-        printfn "Cannot find current session"
+    | ClientMessage.Render _ ->
+      // Do nothing, delegate responsibility to controllers
+      ()
 
     | ClientMessage.Connected ->
       Session.Empty self.Session |> AddSession |> self.Post
@@ -112,9 +110,7 @@ and ClientContext private (worker: SharedWorker<string>) =
       printfn "DISCONNECTED!"
 
     | ClientMessage.ClientLog log ->
-      //printfn "%s" log
-      for logCtrl in logCtrls.Values do
-        logCtrl.OnNext(log)
+      printfn "%s" log
 
     // initialize this clients session variable
     | ClientMessage.Error(reason) ->
@@ -122,9 +118,13 @@ and ClientContext private (worker: SharedWorker<string>) =
 
     | _ -> printfn "Unknown Event: %A" msg.Data
 
-  member val OnRender = makeObservable ctrls
-
-  member val OnClientLog = makeObservable logCtrls
+  member __.OnMessage =
+    { new IObservable<_> with
+      member __.Subscribe(obs) =
+        let guid = Guid.NewGuid()
+        ctrls.Add(guid, obs)
+        { new IDisposable with
+            member __.Dispose() = ctrls.Remove(guid) |> ignore } }
 
   interface IDisposable with
     member self.Dispose() =

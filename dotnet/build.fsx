@@ -411,6 +411,7 @@ Target "BuildDebugFrontend" (fun () ->
   runFable frontendDir "" ()
 
   SilentCopyDir (baseDir @@ "assets/frontend/js/fable-core") "node_modules/fable-core/umd" (konst true)
+  SilentCopyDir (baseDir @@ "assets/frontend/js/fable-powerpack") "node_modules/fable-powerpack/umd" (konst true)
 
   runNpm "install" (baseDir @@ "Iris/Web/React") ()
   runNpm "run build" (baseDir @@ "Iris/Web/React") ()
@@ -450,6 +451,7 @@ Target "BuildReleaseFrontend" (fun () ->
   runFable frontendDir "" ()
 
   SilentCopyDir (baseDir @@ "assets/frontend/js/fable-core") "node_modules/fable-core/umd" (konst true)
+  SilentCopyDir (baseDir @@ "assets/frontend/js/fable-powerpack") "node_modules/fable-powerpack/umd" (konst true)
 
   runNpm "install" (baseDir @@ "Iris/Web/React") ()
   runNpm "run build" (baseDir @@ "Iris/Web/React") ()

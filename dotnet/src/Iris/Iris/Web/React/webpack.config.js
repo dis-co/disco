@@ -5,15 +5,20 @@ var entry, outDir, devtool, devServer, loaders, plugins;
 if (process.env.NODE_ENV !== "production") {
     console.log("Starting Webpack Dev Server...");
     entry = [
-        "webpack-dev-server/client?http://localhost:7000",
+        "webpack-dev-server/client?http://localhost:8080",
         'webpack/hot/only-dev-server',
         "./src/Main.js"
     ];
     outDir = "./js";
     devtool = "eval";
     devServer = {
-        port: 7000,
-        contentBase: "../../../assets/frontend"
+        port: 8080,
+        contentBase: "../../../assets/frontend",
+        proxy: {
+            '/api/*': {
+                target: 'http://localhost:7000'
+            }
+        }
     };
     loaders = [{
         test: /\.js$/,
@@ -61,9 +66,10 @@ module.exports = {
     devServer: devServer,
     module: {
         loaders: [
+            { enforce: "pre", test: /\.js$/, loader: "source-map-loader" },
             { test: /\.less$/, loader: "style-loader!css-loader!less-loader" },
             { test: /\.css$/, loader: "style-loader!css-loader" },
-            { test: /\.ts$/, loader: 'ts-loader' },
+            { test: /\.tsx?$/, loader: "awesome-typescript-loader" },
             { test: /\.js$/, loader: 'babel-loader', exclude: /node_modules/ }
         ].concat(loaders)
     },

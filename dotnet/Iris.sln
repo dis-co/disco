@@ -40,6 +40,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Tests", "src\Iris\Projects\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Serialization", "src\Iris\Serialization.csproj", "{28C00774-1E73-4A75-AD8F-844CD21A064D}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Core", "src\Iris\Projects\Core\Core.fsproj", "{7D6918E9-1494-41E9-9BEB-638616110A60}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -140,6 +142,20 @@ Global
 		{28C00774-1E73-4A75-AD8F-844CD21A064D}.Release-NET35|x64.Build.0 = Release|Any CPU
 		{28C00774-1E73-4A75-AD8F-844CD21A064D}.Release-NET35|x86.ActiveCfg = Release|Any CPU
 		{28C00774-1E73-4A75-AD8F-844CD21A064D}.Release-NET35|x86.Build.0 = Release|Any CPU
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Debug|x64.ActiveCfg = Debug|x64
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Debug|x64.Build.0 = Debug|x64
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Debug|x86.ActiveCfg = Debug|x64
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Release|Any CPU.ActiveCfg = Release|x64
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Release|x64.ActiveCfg = Release|x64
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Release|x64.Build.0 = Release|x64
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Release|x86.ActiveCfg = Release|x64
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Release-NET35|Any CPU.ActiveCfg = Release|x64
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Release-NET35|Any CPU.Build.0 = Release|x64
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Release-NET35|x64.ActiveCfg = Release|x64
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Release-NET35|x64.Build.0 = Release|x64
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Release-NET35|x86.ActiveCfg = Release|x64
+		{7D6918E9-1494-41E9-9BEB-638616110A60}.Release-NET35|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

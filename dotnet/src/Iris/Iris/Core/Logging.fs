@@ -341,7 +341,7 @@ module Logger =
       Tier.Service
       #endif
 
-    let now  = DateTime.Now |> Time.unixTime
+    let now  = DateTime.UtcNow |> Time.unixTime
 
     { Time     = uint32 now
       #if FABLE_COMPILER

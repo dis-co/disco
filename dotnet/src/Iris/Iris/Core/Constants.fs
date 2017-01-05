@@ -40,13 +40,16 @@ module Constants =
   let WEB_WORKER_SCRIPT = "lib/worker.js"
 
   [<Literal>]
-  let DEFAULT_IP = "127.0.0.1"
+  let DEFAULT_IP = "0.0.0.0"
 
   [<Literal>]
-  let WEB_SERVER_DEFAULT_PORT = 7000
+  let DEFAULT_WEB_PORT = 7000us
 
   [<Literal>]
-  let SOCKET_SERVER_PORT_DIFF = 1000
+  let COMMAND_ENDPOINT = "/api/command"
+
+  [<Literal>]
+  let WS_PORT_ENDPOINT = "/api/web-socket-port"
 
   [<Literal>]
   let ADMIN_DEFAULT_PASSWORD =

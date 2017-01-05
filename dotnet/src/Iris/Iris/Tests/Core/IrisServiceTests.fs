@@ -10,6 +10,7 @@ open Iris.Core
 open Iris.Service
 open Iris.Service.Utilities
 open Iris.Service.Persistence
+open Iris.Service.Interfaces
 open Iris.Raft
 open Iris.Service.Git
 open Iris.Service.Iris
@@ -59,7 +60,7 @@ module IrisServiceTests =
           Project.filePath project
           |> File.ReadAllText
 
-        use! service = IrisService.create machine None
+        use! service = IrisService.create machine ignore <| Http.getDefaultBasePath()
         use oobs =
           (fun ev ->
             match ev with
