@@ -36,60 +36,62 @@ namespace Mono.Zeroconf.Providers.AvahiDBus
     {
         private ushort port;
         private IAvahiEntryGroup entry_group;
-        
+
         public event RegisterServiceEventHandler Response;
-     
+
         public RegisterService ()
         {
         }
-     
+
         public RegisterService (string name, string regtype, string replyDomain, int @interface, Protocol aprotocol)
             : base (name, regtype, replyDomain, @interface, aprotocol)
         {
         }
-        
+
         public void Register ()
         {
             RegisterDBus ();
 
-            byte [][] txt_record = TxtRecord == null 
-                ? new byte[0][] 
+            byte [][] txt_record = TxtRecord == null
+                ? new byte[0][]
                 : Mono.Zeroconf.Providers.AvahiDBus.TxtRecord.Render (TxtRecord);
-            
-            entry_group.AddService (AvahiInterface, AvahiProtocol, PublishFlags.None, 
-                Name ?? String.Empty, RegType ?? String.Empty, ReplyDomain ?? String.Empty, 
+
+            entry_group.AddService (AvahiInterface, AvahiProtocol, PublishFlags.None,
+                Name ?? String.Empty, RegType ?? String.Empty, ReplyDomain ?? String.Empty,
                 String.Empty, port, txt_record);
 
             entry_group.Commit ();
         }
-        
+
         private void RegisterDBus ()
         {
             try {
                 Monitor.Enter (this);
                 DBusManager.Bus.TrapSignals ();
-                
+
                 if (entry_group != null) {
                     entry_group.Reset ();
                     return;
                 }
-                
+
                 if (DBusManager.Server.GetState () != AvahiServerState.Running) {
                     throw new ApplicationException ("Avahi Server is not in the Running state");
                 }
 
                 ObjectPath path = DBusManager.Server.EntryGroupNew ();
                 entry_group = DBusManager.GetObject<IAvahiEntryGroup> (path);
-                
+
                 Monitor.Exit (this);
-                
+
                 entry_group.StateChanged += OnEntryGroupStateChanged;
             } finally {
-                Monitor.Exit (this);
+                try {
+                    Monitor.Exit (this);
+                } catch (Exception ex) {}
                 DBusManager.Bus.UntrapSignals ();
             }
         }
-        
+
         private void OnEntryGroupStateChanged (EntryGroupState state, string error)
         {
             switch (state) {
@@ -108,28 +110,28 @@ namespace Mono.Zeroconf.Providers.AvahiDBus
                     break;
             }
         }
-        
+
         protected virtual bool OnResponse (ErrorCode errorCode)
         {
             RegisterServiceEventArgs args = new RegisterServiceEventArgs ();
-            
+
             args.Service = this;
             args.IsRegistered = false;
             args.ServiceError = AvahiUtils.ErrorCodeToServiceError (errorCode);
-            
+
             if (errorCode == ErrorCode.Ok) {
                 args.IsRegistered = true;
             }
-            
+
             RegisterServiceEventHandler handler = Response;
             if (handler != null) {
                 handler (this, args);
                 return true;
             }
-            
+
             return false;
         }
-        
+
         public void Dispose ()
         {
             lock (this) {
@@ -140,7 +142,7 @@ namespace Mono.Zeroconf.Providers.AvahiDBus
                 }
             }
         }
-        
+
         public short Port {
             get { return (short)UPort; }
             set { UPort = (ushort)value; }
