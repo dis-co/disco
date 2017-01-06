@@ -34,6 +34,7 @@ NUGET
     LibGit2Sharp.NativeBinaries (1.0.160)
     Microsoft.NETCore.Platforms (1.1) - framework: dnxcore50
     Microsoft.NETCore.Targets (1.1) - framework: dnxcore50
+    Mono.Posix (4.0)
     NUnit (3.5)
     PerfUtil (0.1.8)
     Suave (1.1.3)

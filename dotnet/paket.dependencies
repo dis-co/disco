@@ -19,6 +19,7 @@ group Main
   nuget LibGit2Sharp.NativeBinaries
   nuget FSharp.Configuration
   nuget ZeroMQ
+  nuget Mono.Posix
 
 group Build
   source https://nuget.org/api/v2
