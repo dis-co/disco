@@ -29,6 +29,8 @@
 using System;
 using System.Collections;
 
+[assembly:Mono.Zeroconf.Providers.ZeroconfProvider (typeof (Mono.Zeroconf.Providers.AvahiDBus.ZeroconfProvider))]
+
 namespace Mono.Zeroconf.Providers.AvahiDBus
 {
     public class ZeroconfProvider : IZeroconfProvider
@@ -37,15 +39,15 @@ namespace Mono.Zeroconf.Providers.AvahiDBus
         {
             DBusManager.Initialize ();
         }
-
-        public Type ServiceBrowser {
+        
+        public Type ServiceBrowser { 
             get { return typeof (Mono.Zeroconf.Providers.AvahiDBus.ServiceBrowser); }
         }
-
-        public Type RegisterService {
+        
+        public Type RegisterService { 
             get { return typeof (Mono.Zeroconf.Providers.AvahiDBus.RegisterService); }
         }
-
+        
         public Type TxtRecord {
             get { return typeof (Mono.Zeroconf.Providers.AvahiDBus.TxtRecord); }
         }

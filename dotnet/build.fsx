@@ -407,7 +407,9 @@ Target "GenerateSerialization"
 Target "BuildDebugZeroconf"
   (fun _ ->
     build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj"
-    build (setParams "Release") "src/Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj")
+    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj"
+    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj"
+    build (setParams "Debug") "src/Zeroconf/MZClient/MZClient.csproj")
 
 //  _____                _                 _
 // |  ___| __ ___  _ __ | |_ ___ _ __   __| |
