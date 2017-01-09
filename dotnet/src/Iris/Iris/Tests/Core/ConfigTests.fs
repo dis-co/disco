@@ -18,10 +18,10 @@ module ConfigTests =
     testCase "Save/Load MachineConfig with default path should render equal values" <| fun _ ->
       either {
         let config = MachineConfig.create ()
-
         do! MachineConfig.save None config
 
-        let! loaded = MachineConfig.load None
+        do! MachineConfig.init None
+        let loaded = MachineConfig.get()
 
         expect "MachineConfigs should be equal" config id loaded
       }
@@ -33,10 +33,10 @@ module ConfigTests =
         let path = tmpPath()
 
         let config = MachineConfig.create ()
-
         do! MachineConfig.save (Some path) config
 
-        let! loaded = MachineConfig.load (Some path)
+        do! MachineConfig.init (Some path)
+        let loaded = MachineConfig.get()
 
         expect "MachineConfigs should be equal" config id loaded
       }

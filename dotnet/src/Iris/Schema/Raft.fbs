@@ -329,12 +329,6 @@ table SessionFB {
 //  \____\___/|_| |_|_| |_|\__, |
 //                         |___/
 
-table MachineConfigFB {
-      MachineId: string;
-      HostName: string;
-      WorkSpace: string;
-}
-
 table AudioConfigFB {
       SampleRate: uint;
 }
@@ -443,7 +437,7 @@ table DisplayFB {
 }
 
 table ConfigFB {
-      MachineConfig:  MachineConfigFB;
+      MachineId:      string;
       AudioConfig:    AudioConfigFB;
       VvvvConfig:     VvvvConfigFB;
       RaftConfig:     RaftConfigFB;
@@ -567,7 +561,6 @@ table RaftMemberFB {
       HostName   : string;
       IpAddr     : string;
       Port       : int;
-      WebPort    : int;
       WsPort     : int;
       GitPort    : int;
       Voting     : bool;

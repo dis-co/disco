@@ -109,7 +109,6 @@ and RaftMember =
   ; HostName   : string
   ; IpAddr     : IpAddress
   ; Port       : uint16
-  ; WebPort    : uint16
   ; WsPort     : uint16
   ; GitPort    : uint16
   ; Voting     : bool
@@ -142,7 +141,6 @@ and RaftMember =
     yaml.HostName   <- self.HostName
     yaml.IpAddr     <- string self.IpAddr
     yaml.Port       <- self.Port
-    yaml.WebPort    <- self.WebPort
     yaml.WsPort     <- self.WsPort
     yaml.GitPort    <- self.GitPort
     yaml.State      <- string self.State
@@ -160,7 +158,6 @@ and RaftMember =
              ; HostName   = yaml.HostName
              ; IpAddr     = ip
              ; Port       = yaml.Port
-             ; WebPort    = yaml.WebPort
              ; WsPort     = yaml.WsPort
              ; GitPort    = yaml.GitPort
              ; Voting     = yaml.Voting
@@ -190,7 +187,6 @@ and RaftMember =
     RaftMemberFB.AddHostName(builder, hostname)
     RaftMemberFB.AddIpAddr(builder, ip)
     RaftMemberFB.AddPort(builder, int mem.Port)
-    RaftMemberFB.AddWebPort(builder, int mem.WebPort)
     RaftMemberFB.AddWsPort(builder, int mem.WsPort)
     RaftMemberFB.AddGitPort(builder, int mem.GitPort)
     RaftMemberFB.AddVoting(builder, mem.Voting)
@@ -208,7 +204,6 @@ and RaftMember =
                HostName   = fb.HostName
                IpAddr     = IpAddress.Parse fb.IpAddr
                Port       = uint16 fb.Port
-               WebPort    = uint16 fb.WebPort
                WsPort     = uint16 fb.WsPort
                GitPort    = uint16 fb.GitPort
                Voting     = fb.Voting
@@ -370,7 +365,6 @@ module Member =
     ; HostName   = hostname
     ; IpAddr     = IPv4Address "127.0.0.1"
     ; Port       = 6000us
-    ; WebPort    = 7000us
     ; WsPort     = 8000us
     ; GitPort    = 9000us
     ; State      = Running
@@ -443,6 +437,3 @@ module Member =
 
   let setWsPort (port: uint16) (mem: RaftMember) =
     { mem with WsPort = port }
-
-  let setWebPort (port: uint16) (mem: RaftMember) =
-    { mem with WebPort = port }
