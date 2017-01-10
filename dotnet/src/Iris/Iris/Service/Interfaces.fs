@@ -11,7 +11,7 @@ open Iris.Service.Zmq
 type GitEvent =
   | Started of pid:int
   | Exited  of code:int
-  | Pull    of pid:int * address:string * port:uint16
+  | Pull    of pid:int * address:string * port:Port
 
 // ** IGitServer
 

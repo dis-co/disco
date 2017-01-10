@@ -108,10 +108,10 @@ and RaftMember =
   { Id         : MemberId
   ; HostName   : string
   ; IpAddr     : IpAddress
-  ; Port       : uint16
-  ; WebPort    : uint16
-  ; WsPort     : uint16
-  ; GitPort    : uint16
+  ; Port       : Port
+  ; WebPort    : Port
+  ; WsPort     : Port
+  ; GitPort    : Port
   ; Voting     : bool
   ; VotedForMe : bool
   ; State      : RaftMemberState

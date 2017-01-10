@@ -34,6 +34,7 @@ type FileName   = string
 type Hash       = string
 type Password   = string
 type Salt       = string
+type Port       = uint16
 
 type Actor<'t> = MailboxProcessor<'t>
 
