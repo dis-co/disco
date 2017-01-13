@@ -63,3 +63,12 @@ type IpAddress =
         |> Error.asParseError "IpAddress.Parse"
         |> Either.fail
 #endif
+
+#if !FABLE_COMPILER
+  static member ofIPAddress (ip: IPAddress) =
+    match ip.AddressFamily with
+    | Sockets.AddressFamily.InterNetwork   -> IPv4Address (string ip)
+    | Sockets.AddressFamily.InterNetworkV6 -> IPv6Address (string ip)
+    | _ -> IPv4Address "0.0.0.0"
+
+#endif

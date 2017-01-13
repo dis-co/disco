@@ -36,6 +36,10 @@ type Password   = string
 type Salt       = string
 type Port       = uint16
 
+type IPProtocol =
+  | IPv4
+  | IPv6
+
 type Actor<'t> = MailboxProcessor<'t>
 
 type StringPayload = Payload of string
