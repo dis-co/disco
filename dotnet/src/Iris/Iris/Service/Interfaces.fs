@@ -187,7 +187,6 @@ type IIrisServer =
   abstract GitServer     : Either<IrisError,IGitServer>
   abstract RaftServer    : Either<IrisError,IRaftServer>
   abstract SocketServer  : Either<IrisError,IWebSocketServer>
-  abstract HttpServer    : Either<IrisError,IHttpServer>
   abstract SetConfig     : IrisConfig -> Either<IrisError,unit>
   abstract Load          : FilePath   -> Either<IrisError,unit>
   abstract Periodic      : unit       -> Either<IrisError,unit>
