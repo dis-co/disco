@@ -132,8 +132,11 @@ module Discovery =
     let m = Regex.Match(name, "^.*\[(.*)\]$")
     if m.Success then
       Id m.Groups.[1].Value
+      |> Either.succeed
     else
-      Id "<empty>"
+      "Missing Id in discovered service name."
+      |> Error.asOther (tag "parseServiceId")
+      |> Either.fail
 
   // ** parseServiceType
 
@@ -141,14 +144,23 @@ module Discovery =
     try
       let item = txt.["type"]
       match item.ValueString with
-      | "git"  -> ServiceType.Git
-      | "raft" -> ServiceType.Raft
-      | "http" -> ServiceType.Http
-      | "ws"   -> ServiceType.WebSocket
-      | null      -> ServiceType.Other "<null>"
-      | other  -> ServiceType.Other other
+      | "git"  -> Either.succeed ServiceType.Git
+      | "raft" -> Either.succeed ServiceType.Raft
+      | "http" -> Either.succeed ServiceType.Http
+      | "ws"   -> Either.succeed ServiceType.WebSocket
+      | null | "" ->
+        sprintf "'type' field was not set or null"
+        |> Error.asOther (tag "parseServiceType")
+        |> Either.fail
+      | other ->
+        other
+        |> ServiceType.Other
+        |> Either.succeed
     with
-      | _ -> ServiceType.Other "<field missing>"
+      | exn ->
+        exn.Message
+        |> Error.asOther (tag "parseServiceType")
+        |> Either.fail
 
   // ** parseMachine
 
@@ -156,42 +168,59 @@ module Discovery =
     try
       let item = txt.["machine"]
       match item.ValueString with
-      | null  -> Id "<field empty>"
-      | id -> Id id
+      | null  ->
+        sprintf "'machine' field was not set or null"
+        |> Error.asOther (tag "parseMachine")
+        |> Either.fail
+      | id ->
+        Id id
+        |> Either.succeed
     with
-      | _ -> Id "<field missing>"
+      | exn ->
+        exn.Message
+        |> Error.asOther (tag "parseMachine")
+        |> Either.fail
 
   // ** parseProtocol
 
   let private parseProtocol (proto: AddressProtocol) =
     match proto with
-    | AddressProtocol.IPv6 -> IPv6
-    |                    _ -> IPv4
+    | AddressProtocol.IPv4 -> Either.succeed IPv4
+    | AddressProtocol.IPv6 -> Either.succeed IPv6
+    | x ->
+      sprintf "AddressProtocol could not be parsed: %A" x
+      |> Error.asOther (tag "parseProtocol")
+      |> Either.fail
 
   // ** toDiscoveredService
 
   let private toDiscoveredService (service: IResolvableService) =
-    let entry = service.HostEntry
-    let proto = parseProtocol service.AddressProtocol
-    let addresses =
-      if isNull entry then
-        [| |]
-      else
-        Array.map IpAddress.ofIPAddress entry.AddressList
+    either {
+      let entry = service.HostEntry
+      let! proto = parseProtocol service.AddressProtocol
+      let addresses =
+        if isNull entry then
+          [| |]
+        else
+          Array.map IpAddress.ofIPAddress entry.AddressList
 
-    let id = parseServiceId service.Name
+      let! id = parseServiceId service.Name
+      let! machine = parseMachine service.TxtRecord
+      let! tipe = parseServiceType service.TxtRecord
 
-    { Id = id
-      Protocol = proto
-      Port = uint16 service.Port
-      Name = service.Name
-      FullName = service.FullName
-      Machine = parseMachine service.TxtRecord
-      Type = parseServiceType service.TxtRecord
-      HostName = if isNull entry then "" else entry.HostName
-      HostTarget = service.HostTarget
-      Aliases = if isNull entry then [| |] else entry.Aliases
-      AddressList = addresses }
+      return
+        { Id = id
+          Protocol = proto
+          Port = uint16 service.Port
+          Name = service.Name
+          FullName = service.FullName
+          Machine = machine
+          Type = tipe
+          HostName = if isNull entry then "" else entry.HostName
+          HostTarget = service.HostTarget
+          Aliases = if isNull entry then [| |] else entry.Aliases
+          AddressList = addresses }
+    }
 
   // ** mergeDiscovered
 
@@ -201,10 +230,16 @@ module Discovery =
   // ** addResolved
 
   let private addResolved (agent: DiscoveryAgent) (o: obj) (args: ServiceResolvedEventArgs) =
-    o :?> IResolvableService
-    |> toDiscoveredService
-    |> Msg.Discovered
-    |> agent.Post
+    let service =
+      o :?> IResolvableService
+      |> toDiscoveredService
+
+    match service with
+    | Right parsed ->
+      parsed
+      |> Msg.Discovered
+      |> agent.Post
+    | Left error -> ()
 
   // ** serviceAdded
 
@@ -215,9 +250,12 @@ module Discovery =
   // ** serviceRemoved
 
   let private serviceRemoved (agent: DiscoveryAgent) (obj: obj) (args: ServiceBrowseEventArgs) =
-    parseServiceId args.Service.Name
-    |> Msg.Vanished
-    |> agent.Post
+    match parseServiceId args.Service.Name with
+    | Right id ->
+      id
+      |> Msg.Vanished
+      |> agent.Post
+    | Left error -> ()
 
   // ** serviceRegistered
 
@@ -242,23 +280,29 @@ module Discovery =
                               (agent: DiscoveryAgent)
                               (config: IrisMachine)
                               (disco: DiscoverableService) =
-    let service = new RegisterService()
-    service.Name <- disco.Name
-    service.RegType <- ZEROCONF_TCP_SERVICE
-    service.ReplyDomain <- "local."
-    service.Port <- int16 disco.Port
+    try
+      let service = new RegisterService()
+      service.Name <- disco.Name
+      service.RegType <- ZEROCONF_TCP_SERVICE
+      service.ReplyDomain <- "local."
+      service.Port <- int16 disco.Port
 
-    let record = new TxtRecord()
+      let record = new TxtRecord()
 
-    record.Add("type", string disco.Type)
-    record.Add("machine", string config.MachineId)
+      record.Add("type", string disco.Type)
+      record.Add("machine", string config.MachineId)
 
-    service.TxtRecord <- record
-    let handler = new RegisterServiceEventHandler(serviceRegistered subs agent disco)
-    service.Response.AddHandler(handler)
+      service.TxtRecord <- record
+      let handler = new RegisterServiceEventHandler(serviceRegistered subs agent disco)
+      service.Response.AddHandler(handler)
 
-    service.Register()
-    service
+      service.Register()
+      Either.succeed service
+    with
+      | exn ->
+        exn.Message
+        |> Error.asOther (tag "registerService")
+        |> Either.fail
 
   // ** unregisterService
 
@@ -272,11 +316,17 @@ module Discovery =
   // ** startBrowser
 
   let private startBrowser (agent: DiscoveryAgent) =
-    let browser = new ServiceBrowser()
-    browser.ServiceAdded.AddHandler(new ServiceBrowseEventHandler(serviceAdded agent))
-    browser.ServiceRemoved.AddHandler(new ServiceBrowseEventHandler(serviceRemoved agent))
-    browser.Browse(0u, AddressProtocol.IPv4, ZEROCONF_TCP_SERVICE, "local")
-    browser
+    try
+      let browser = new ServiceBrowser()
+      browser.ServiceAdded.AddHandler(new ServiceBrowseEventHandler(serviceAdded agent))
+      browser.ServiceRemoved.AddHandler(new ServiceBrowseEventHandler(serviceRemoved agent))
+      browser.Browse(0u, AddressProtocol.IPv4, ZEROCONF_TCP_SERVICE, "local")
+      browser |> Either.succeed
+    with
+      | exn ->
+        exn.Message
+        |> Error.asOther (tag "startBrowser")
+        |> Either.fail
 
   // ** handleGetServices
 
@@ -286,7 +336,7 @@ module Discovery =
       chan.Reply (Right (Reply.Services (data.RegisteredServices, data.ResolvedServices)))
       state
     | Idle ->
-      chan.Reply (Left (Error.asGitError (tag "loop") "Not loaded"))
+      chan.Reply (Left (Error.asOther (tag "loop") "Not loaded"))
       state
 
   // ** handleStop
@@ -298,7 +348,7 @@ module Discovery =
       chan.Reply (Right (Reply.Ok))
       Idle
     | Idle ->
-      chan.Reply (Left (Error.asGitError (tag "loop") "Not loaded"))
+      chan.Reply (Left (Error.asOther (tag "loop") "Not loaded"))
       state
 
   // ** handleStart
@@ -309,15 +359,23 @@ module Discovery =
                           (agent: DiscoveryAgent) =
     match state with
     | Loaded data ->
-      dispose data.Browser
-      chan.Reply (Left (Error.asGitError (tag "loop") "Already running"))
+      "Already running"
+      |> Error.asOther (tag "loop")
+      |> Either.fail
+      |> chan.Reply
       state
     | Idle ->
-      let browser = startBrowser agent
-      chan.Reply (Right Reply.Ok)
-      Loaded { RegisteredServices = Map.empty
-               ResolvedServices = Map.empty
-               Browser = browser }
+      match startBrowser agent with
+      | Right browser ->
+        chan.Reply (Right Reply.Ok)
+        Loaded { RegisteredServices = Map.empty
+                 ResolvedServices = Map.empty
+                 Browser = browser }
+      | Left error ->
+        error
+        |> Either.fail
+        |> chan.Reply
+        state
 
   // ** handleRegister
 
@@ -333,15 +391,27 @@ module Discovery =
       | Some registered ->
         dispose registered
         notify subs (DiscoveryEvent.UnRegistered srvc)
-        let service = registerService subs agent config srvc
-        chan.Reply(Right Reply.Ok)
-        notify subs (DiscoveryEvent.Registering srvc)
-        Loaded { data with RegisteredServices = Map.add srvc.Id service data.RegisteredServices }
+        match registerService subs agent config srvc with
+        | Right service ->
+          chan.Reply(Right Reply.Ok)
+          notify subs (DiscoveryEvent.Registering srvc)
+          Loaded { data with RegisteredServices = Map.add srvc.Id service data.RegisteredServices }
+        | Left error ->
+          error
+          |> Either.fail
+          |> chan.Reply
+          state
       | None ->
-        let service = registerService subs agent config srvc
-        chan.Reply(Right Reply.Ok)
-        notify subs (DiscoveryEvent.Registering srvc)
-        Loaded { data with RegisteredServices = Map.add srvc.Id service data.RegisteredServices }
+        match registerService subs agent config srvc with
+        | Right service ->
+          chan.Reply(Right Reply.Ok)
+          notify subs (DiscoveryEvent.Registering srvc)
+          Loaded { data with RegisteredServices = Map.add srvc.Id service data.RegisteredServices }
+        | Left error ->
+          error
+          |> Either.fail
+          |> chan.Reply
+          state
     | Idle ->
       chan.Reply(Right Reply.Ok)
       state
@@ -459,7 +529,7 @@ module Discovery =
                 | Right Reply.Ok -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected reply type from DiscoveryAgent: %A" other
-                  |> Error.asGitError (tag "Start")
+                  |> Error.asOther (tag "Start")
                   |> Either.fail
                 | Left error ->
                   error
@@ -471,7 +541,7 @@ module Discovery =
                   | Right (Reply.Services (reg,res)) -> Either.succeed (reg,res)
                   | Right other ->
                     sprintf "Unexpected reply type from DiscoveryAgent: %A" other
-                    |> Error.asGitError (tag "Start")
+                    |> Error.asOther (tag "Start")
                     |> Either.fail
                   | Left error ->
                     error
@@ -503,7 +573,7 @@ module Discovery =
                   |> Either.succeed
                 | Right other ->
                   sprintf "Unexpected reply type from DiscoveryAgent: %A" other
-                  |> Error.asGitError (tag "Register")
+                  |> Error.asOther (tag "Register")
                   |> Either.fail
                 | Left error ->
                   error
@@ -520,5 +590,5 @@ module Discovery =
       with
         | exn ->
           sprintf "Exception starting the DiscoveryService: %s" exn.Message
-          |> Error.asGitError (tag "create")
+          |> Error.asOther (tag "create")
           |> Either.fail

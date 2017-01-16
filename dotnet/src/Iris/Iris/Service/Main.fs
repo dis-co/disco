@@ -17,66 +17,41 @@ module Main =
 
   [<EntryPoint>]
   let main args =
-    let config = MachineConfig.create ()
-    let result =
-      either {
-        use! srvc = DiscoveryService.create config
-        use evs = srvc.Subscribe (printfn "%A")
-        do! srvc.Start()
-        use! git = srvc.Register ServiceType.Git 8323us (IPv4Address "0.0.0.0")
-        let run = ref true
+    let parsed =
+      try
+        parser.ParseCommandLine args
+      with
+        | exn ->
+          exn.Message
+          |> Error.asOther "Main"
+          |> Error.exitWith
 
-        while !run do
-          let line = System.Console.ReadLine()
-          if line = "quit" then
-            run := false
-          else
-            match srvc.Services with
-            | Right (reg, res) ->
-              printfn "registered services:"
-              Map.iter (fun _ s -> printfn "%s" (s.ToString())) reg
-              printfn "resolved services:"
-              Map.iter (fun _ s -> printfn "%A" s) res
-            | other -> printfn "other: %A" other
-      }
+    validateOptions parsed
 
-    printfn "result: %A" result
+    let interactive = parsed.Contains <@ Interactive @>
+    let web =
+      match parsed.TryGetResult <@ Http @> with
+      | Some basePath -> System.IO.Path.GetFullPath basePath
+      | None -> Http.getDefaultBasePath()
 
-    // let parsed =
-    //   try
-    //     parser.ParseCommandLine args
-    //   with
-    //     | exn ->
-    //       exn.Message
-    //       |> Error.asOther "Main"
-    //       |> Error.exitWith
+    let res =
+      match parsed.GetResult <@ Cmd @>, parsed.TryGetResult <@ Dir @> with
+      | Create,            _ -> createProject parsed
+      | Start,           dir -> startService web interactive dir
+      | Reset,      Some dir -> resetProject dir
+      | Dump,       Some dir -> dumpDataDir dir
+      | Add_User,   Some dir -> addUser dir
+      | Add_Member, Some dir -> addMember dir
+      | Setup,      Some dir -> setup (Some dir)
+      | Setup,             _ -> setup None
+      | Help,              _ -> help ()
+      |  _ ->
+        sprintf "Unexpected command line failure: %A" args
+        |> Error.asParseError "Main"
+        |> Either.fail
 
-    // validateOptions parsed
-
-    // let interactive = parsed.Contains <@ Interactive @>
-    // let web =
-    //   match parsed.TryGetResult <@ Http @> with
-    //   | Some basePath -> System.IO.Path.GetFullPath basePath
-    //   | None -> Http.getDefaultBasePath()
-
-    // let res =
-    //   match parsed.GetResult <@ Cmd @>, parsed.TryGetResult <@ Dir @> with
-    //   | Create,            _ -> createProject parsed
-    //   | Start,           dir -> startService web interactive dir
-    //   | Reset,      Some dir -> resetProject dir
-    //   | Dump,       Some dir -> dumpDataDir dir
-    //   | Add_User,   Some dir -> addUser dir
-    //   | Add_Member, Some dir -> addMember dir
-    //   | Setup,      Some dir -> setup (Some dir)
-    //   | Setup,             _ -> setup None
-    //   | Help,              _ -> help ()
-    //   |  _ ->
-    //     sprintf "Unexpected command line failure: %A" args
-    //     |> Error.asParseError "Main"
-    //     |> Either.fail
-
-    // res
-    // |> Error.orExit id
-    // |> ignore
+    res
+    |> Error.orExit id
+    |> ignore
 
     Error.exitWith OK
