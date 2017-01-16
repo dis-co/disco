@@ -31,7 +31,8 @@ type ServiceType =
 // * DiscoverableService
 
 type DiscoverableService =
-  { Port: Port
+  { Id: Id
+    Port: Port
     Name: string
     Type: ServiceType
     IpAddress: IpAddress }
@@ -39,7 +40,7 @@ type DiscoverableService =
 // * DiscoveredService
 
 type DiscoveredService =
-  { Protocol: IPProtocol
+  { Id: Id
     Port: Port
     Name: string
     FullName: string
@@ -47,23 +48,27 @@ type DiscoveredService =
     HostName: string
     HostTarget: string
     Aliases: string array
+    Protocol: IPProtocol
     AddressList: IpAddress array }
 
 // * DiscoveryEvent
 
 type DiscoveryEvent =
-  | Registering of DiscoverableService
-  | Registered  of DiscoverableService
-  | Appeared    of DiscoverableService
-  | Vanished    of DiscoverableService
+  | Registering  of DiscoverableService
+  | UnRegistered of DiscoverableService
+  | Registered   of DiscoverableService
+  | Appeared     of DiscoveredService
+  | Updated      of DiscoveredService
+  | Vanished     of DiscoveredService
 
 // * IDiscoveryService
 
 type IDiscoveryService =
   inherit IDisposable
-  abstract Services: Either<IrisError,RegisterService list * DiscoveredService list>
+  abstract Services: Either<IrisError,Map<Id,RegisterService> * Map<Id,DiscoveredService>>
   abstract Subscribe: (DiscoveryEvent -> unit) -> IDisposable
   abstract Start: unit -> Either<IrisError,unit>
+  abstract Register: DiscoverableService -> Either<IrisError,IDisposable>
 
 // * GitEvent
 

@@ -49,8 +49,8 @@ module Discovery =
   [<NoEquality;NoComparison>]
   type private DiscoveryStateData =
     { Browser: ServiceBrowser
-      RegisteredServices: RegisterService list
-      ResolvedServices: DiscoveredService list }
+      RegisteredServices: Map<Id,RegisterService>
+      ResolvedServices: Map<Id,DiscoveredService> }
 
   // ** DiscoveryState
 
@@ -63,7 +63,7 @@ module Discovery =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Reply  =
-    | Services of RegisterService list * DiscoveredService list
+    | Services of Map<Id,RegisterService> * Map<Id,DiscoveredService>
     | Ok
 
   // ** ReplyChan
@@ -74,13 +74,14 @@ module Discovery =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | AddService    of srvc:DiscoverableService
-    | RemoveService of srvc:DiscoverableService
-    | Discovered    of srvc:DiscoveredService
-    | Vanished      of srvc:DiscoveredService
-    | Services      of chan:ReplyChan
-    | Start         of chan:ReplyChan
-    | Stop          of chan:ReplyChan
+    | Register    of chan:ReplyChan * srvc:DiscoverableService
+    | UnRegister  of chan:ReplyChan * srvc:DiscoverableService
+    | RegisterErr of err:string * srvc:DiscoverableService
+    | Services    of chan:ReplyChan
+    | Start       of chan:ReplyChan
+    | Stop        of chan:ReplyChan
+    | Discovered  of srvc:DiscoveredService
+    | Vanished    of srvc:DiscoveredService
 
   // ** DiscoveryAgent
 
@@ -99,6 +100,12 @@ module Discovery =
                 lock subscriptions <| fun _ ->
                   subscriptions.Remove obs
                   |> ignore } }
+
+  // ** notify
+
+  let private notify (subscriptions: Subscriptions) (ev: DiscoveryEvent) =
+    for subscription in subscriptions do
+      subscription.OnNext ev
 
   // ** parseServiceType
 
@@ -123,6 +130,11 @@ module Discovery =
     | AddressProtocol.IPv6 -> IPv6
     |                    _ -> IPv4
 
+  // ** parseName
+
+  let private parseName (name: string) =
+    (Id "<empty>", "<empty name>")
+
   // ** serviceDescription
 
   let private serviceDescription (tipe: ServiceType) =
@@ -144,15 +156,23 @@ module Discovery =
       else
         Array.map IpAddress.ofIPAddress entry.AddressList
 
-    { Protocol = proto
+    let id, name = parseName service.Name
+
+    { Id = id
+      Protocol = proto
       Port = uint16 service.Port
-      Name = service.Name
+      Name = name
       FullName = service.FullName
       Type = parseServiceType service.TxtRecord
       HostName = if isNull entry then "" else entry.HostName
       HostTarget = service.HostTarget
       Aliases = if isNull entry then [| |] else entry.Aliases
       AddressList = addresses }
+
+  // ** mergeDiscovered
+
+  let private mergeDiscovered (have: DiscoveredService) (got: DiscoveredService) =
+    { have with AddressList = Array.append have.AddressList got.AddressList }
 
   // ** addResolved
 
@@ -200,18 +220,25 @@ module Discovery =
 
   // ** serviceRegistered
 
-  let private serviceRegistered (agent: DiscoveryAgent) (o: obj) (args: RegisterServiceEventArgs) =
+  let private serviceRegistered (subs: Subscriptions)
+                                (agent: DiscoveryAgent)
+                                (disco: DiscoverableService)
+                                (o: obj)
+                                (args: RegisterServiceEventArgs) =
     match args.ServiceError with
+    | ServiceErrorCode.None ->
+      notify subs (DiscoveryEvent.Registered disco)
     | ServiceErrorCode.NameConflict ->
       printfn "Error: Name-Collision! '%s' is already registered" args.Service.Name
-    | ServiceErrorCode.None ->
-      printfn "Registerd name = '%s'" args.Service.Name
+
     | _ ->
       printfn "Error registering name = '%s'" args.Service.Name
 
   // ** registerService
 
-  let private registerService (agent: DiscoveryAgent) (disco: DiscoverableService) =
+  let private registerService (subs: Subscriptions)
+                              (agent: DiscoveryAgent)
+                              (disco: DiscoverableService) =
     let service = new RegisterService()
     service.Name <- disco.Name
     service.RegType <- ZEROCONF_TCP_SERVICE
@@ -223,7 +250,8 @@ module Discovery =
     record.Add("type", string disco.Type)
 
     service.TxtRecord <- record
-    service.Response.AddHandler(new RegisterServiceEventHandler(serviceRegistered agent))
+    let handler = new RegisterServiceEventHandler(serviceRegistered subs agent disco)
+    service.Response.AddHandler(handler)
 
     service.Register()
     service
@@ -281,41 +309,74 @@ module Discovery =
       chan.Reply (Left (Error.asGitError (tag "loop") "Already running"))
       state
     | Idle ->
-      let data = { RegisteredServices = []
-                   ResolvedServices = []
+      let data = { RegisteredServices = Map.empty
+                   ResolvedServices = Map.empty
                    Browser = startBrowser agent }
       chan.Reply (Right Reply.Ok)
       Loaded data
 
-  // ** handleAddService
+  // ** handleRegister
 
-  let private handleAddService (state: DiscoveryState)
+  let private handleRegister (chan: ReplyChan)
+                             (state: DiscoveryState)
+                             (subs: Subscriptions)
+                             (agent: DiscoveryAgent)
+                             (srvc: DiscoverableService) =
+    match state with
+    | Loaded data ->
+      match Map.tryFind srvc.Id data.RegisteredServices with
+      | Some registered ->
+        dispose registered
+        notify subs (DiscoveryEvent.UnRegistered srvc)
+        let service = registerService subs agent srvc
+        chan.Reply(Right Reply.Ok)
+        notify subs (DiscoveryEvent.Registering srvc)
+        Loaded { data with RegisteredServices = Map.add srvc.Id service data.RegisteredServices }
+      | None ->
+        let service = registerService subs agent srvc
+        chan.Reply(Right Reply.Ok)
+        notify subs (DiscoveryEvent.Registering srvc)
+        Loaded { data with RegisteredServices = Map.add srvc.Id service data.RegisteredServices }
+    | Idle ->
+      chan.Reply(Right Reply.Ok)
+      state
+
+  // ** handleUnRegister
+
+  let private handleUnRegister (chan: ReplyChan)
+                               (state: DiscoveryState)
                                (subs: Subscriptions)
-                               (agent: DiscoveryAgent)
                                (srvc: DiscoverableService) =
     match state with
     | Loaded data ->
-      let service = registerService agent srvc
-      Loaded { data with RegisteredServices = service :: data.RegisteredServices }
-    | Idle -> state
+      match Map.tryFind srvc.Id data.RegisteredServices with
+      | Some registered ->
+        dispose registered
+        notify subs (DiscoveryEvent.UnRegistered srvc)
+        chan.Reply(Right Reply.Ok)
+        Loaded { data with RegisteredServices = Map.remove srvc.Id data.RegisteredServices }
+      | None ->
+        chan.Reply(Right Reply.Ok)
+        state
+    | Idle ->
+      chan.Reply(Right Reply.Ok)
+      state
 
-  // ** handleRemoveService
+  // ** handleRegisterErr
 
-  let private handleRemoveService (state: DiscoveryState)
-                                  (subs: Subscriptions)
-                                  (srvc: DiscoverableService) =
-
-    let disposeAndRemove (service: RegisterService) =
-      if service.Name = srvc.Name then
-        dispose service
-        false
-      else true
+  let private handleRegisterErr (state: DiscoveryState)
+                                (subs: Subscriptions)
+                                (err: string)
+                                (srvc: DiscoverableService) =
     match state with
     | Loaded data ->
-      unregisterService data.RegisteredServices srvc subs
-      Loaded { data with
-                 RegisteredServices = List.filter disposeAndRemove data.RegisteredServices }
-    | Idle -> state
+      match Map.tryFind srvc.Id data.RegisteredServices with
+      | Some registered ->
+        dispose registered
+        notify subs (DiscoveryEvent.UnRegistered srvc)
+        Loaded { data with RegisteredServices = Map.remove srvc.Id data.RegisteredServices }
+      | None -> state
+    | Idle -> Idle
 
   // ** handleDiscovery
 
@@ -324,7 +385,14 @@ module Discovery =
                               (srvc: DiscoveredService) =
     match state with
     | Loaded data ->
-      Loaded { data with ResolvedServices = srvc :: data.ResolvedServices }
+      match Map.tryFind srvc.Id data.ResolvedServices with
+      | Some service ->
+        let updated = mergeDiscovered service srvc
+        notify subs (DiscoveryEvent.Updated updated)
+        Loaded { data with ResolvedServices = Map.add updated.Id updated data.ResolvedServices }
+      | None ->
+        notify subs (DiscoveryEvent.Appeared srvc)
+        Loaded { data with ResolvedServices = Map.add srvc.Id srvc data.ResolvedServices }
     | Idle -> state
 
   // ** handleVanishing
@@ -334,8 +402,11 @@ module Discovery =
                               (srvc: DiscoveredService) =
     match state with
     | Loaded data ->
-      Loaded { data with
-                 ResolvedServices = List.filter ((<>) srvc) data.ResolvedServices }
+      match Map.tryFind srvc.Id data.ResolvedServices with
+      | Some service ->
+        notify subs (DiscoveryEvent.Vanished srvc)
+        Loaded { data with ResolvedServices = Map.remove srvc.Id data.ResolvedServices }
+      | None -> state
     | Idle -> state
 
   // ** loop
@@ -349,13 +420,14 @@ module Discovery =
 
         let newstate =
           match msg with
-          | Msg.Services chan      -> handleGetServices chan state
-          | Msg.Stop chan          -> handleStop chan state subscriptions
-          | Msg.Start chan         -> handleStart chan state subscriptions inbox
-          | Msg.AddService srvc    -> handleAddService state subscriptions inbox srvc
-          | Msg.RemoveService srvc -> handleRemoveService state subscriptions srvc
-          | Msg.Discovered srvc    -> handleDiscovery state subscriptions srvc
-          | Msg.Vanished srvc      -> handleVanishing state subscriptions srvc
+          | Msg.Services chan          -> handleGetServices chan state
+          | Msg.Stop chan              -> handleStop chan state subscriptions
+          | Msg.Start chan             -> handleStart chan state subscriptions inbox
+          | Msg.Register (chan,srvc)   -> handleRegister chan state subscriptions inbox srvc
+          | Msg.UnRegister (chan,srvc) -> handleUnRegister chan state subscriptions srvc
+          | Msg.RegisterErr (err,srvc) -> handleRegisterErr state subscriptions err srvc
+          | Msg.Discovered srvc        -> handleDiscovery state subscriptions srvc
+          | Msg.Vanished srvc          -> handleVanishing state subscriptions srvc
 
         return! act newstate
       }
@@ -365,7 +437,7 @@ module Discovery =
   [<RequireQualifiedAccess>]
   module DiscoveryService =
 
-    let create () =
+    let create (config: IrisMachine) =
       try
         let source = new CancellationTokenSource()
         let subscriptions = new Subscriptions()
@@ -403,6 +475,22 @@ module Discovery =
                     member self.OnError(error) = ()
                     member self.OnNext(value) = callback value }
                 |> listener.Subscribe
+
+              member self.Register (service: DiscoverableService) =
+                match agent.PostAndReply(fun chan -> Msg.Register(chan, service)) with
+                | Right Reply.Ok ->
+                  { new IDisposable with
+                      member self.Dispose () =
+                        agent.PostAndReply(fun chan -> Msg.UnRegister(chan, service))
+                        |> ignore }
+                  |> Either.succeed
+                | Right other ->
+                  sprintf "Unexpected reply type from DiscoveryAgent: %A" other
+                  |> Error.asGitError (tag "Register")
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
 
               member self.Dispose() =
                 lock subscriptions <| fun _ ->

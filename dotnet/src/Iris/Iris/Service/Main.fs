@@ -16,7 +16,8 @@ module Main =
 
   [<EntryPoint>]
   let main args =
-    match DiscoveryService.create () with
+    let config = MachineConfig.create ()
+    match DiscoveryService.create (config) with
     | Right srvc ->
       srvc.Start()
       |> printfn "result: %A"
@@ -31,9 +32,9 @@ module Main =
           match srvc.Services with
           | Right (reg, res) ->
             printfn "registered services:"
-            List.iter (fun s -> printfn "%s" (s.ToString())) reg
+            Map.iter (fun _ s -> printfn "%s" (s.ToString())) reg
             printfn "resolved services:"
-            List.iter (printfn "%A") res
+            Map.iter (fun _ s -> printfn "%A" s) res
           | other -> printfn "other: %A" other
 
       printfn "disposing"
