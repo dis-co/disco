@@ -2,6 +2,7 @@
 
 open Argu
 open Iris.Core
+open Iris.Service.Interfaces
 open Iris.Service.CommandLine
 
 [<AutoOpen>]
@@ -17,30 +18,29 @@ module Main =
   [<EntryPoint>]
   let main args =
     let config = MachineConfig.create ()
-    match DiscoveryService.create (config) with
-    | Right srvc ->
-      srvc.Start()
-      |> printfn "result: %A"
+    let result =
+      either {
+        use! srvc = DiscoveryService.create config
+        use evs = srvc.Subscribe (printfn "%A")
+        do! srvc.Start()
+        use! git = srvc.Register ServiceType.Git 8323us (IPv4Address "0.0.0.0")
+        let run = ref true
 
-      let run = ref true
+        while !run do
+          let line = System.Console.ReadLine()
+          if line = "quit" then
+            run := false
+          else
+            match srvc.Services with
+            | Right (reg, res) ->
+              printfn "registered services:"
+              Map.iter (fun _ s -> printfn "%s" (s.ToString())) reg
+              printfn "resolved services:"
+              Map.iter (fun _ s -> printfn "%A" s) res
+            | other -> printfn "other: %A" other
+      }
 
-      while !run do
-        let line = System.Console.ReadLine()
-        if line = "quit" then
-          run := false
-        else
-          match srvc.Services with
-          | Right (reg, res) ->
-            printfn "registered services:"
-            Map.iter (fun _ s -> printfn "%s" (s.ToString())) reg
-            printfn "resolved services:"
-            Map.iter (fun _ s -> printfn "%A" s) res
-          | other -> printfn "other: %A" other
-
-      printfn "disposing"
-      dispose srvc
-    | Left error ->
-      printfn "ERROR: %A" error
+    printfn "result: %A" result
 
     // let parsed =
     //   try

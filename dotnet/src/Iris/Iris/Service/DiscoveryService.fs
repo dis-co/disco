@@ -10,6 +10,7 @@ open Iris.Service.Interfaces
 
 open System
 open System.IO
+open System.Text
 open System.Threading
 open System.Diagnostics
 open System.Management
@@ -81,7 +82,7 @@ module Discovery =
     | Start       of chan:ReplyChan
     | Stop        of chan:ReplyChan
     | Discovered  of srvc:DiscoveredService
-    | Vanished    of srvc:DiscoveredService
+    | Vanished    of id:Id
 
   // ** DiscoveryAgent
 
@@ -107,10 +108,36 @@ module Discovery =
     for subscription in subscriptions do
       subscription.OnNext ev
 
+  // ** createId
+
+  let private createId (id: Id) (port: Port) (tipe: ServiceType) (ip: IpAddress) =
+    sprintf "%s%s%s%d" (string id) (string tipe) (string ip) port
+    |> Encoding.ASCII.GetBytes
+    |> Crypto.sha1sum
+    |> Id
+
+  // ** serviceName
+
+  let private serviceName (id: Id) (tipe: ServiceType) =
+    match tipe with
+    | ServiceType.Git       -> sprintf "Git Service [%s]" (string id)
+    | ServiceType.Raft      -> sprintf "SRaft Service [%s]" (string id)
+    | ServiceType.Http      -> sprintf "Http Service [%s]" (string id)
+    | ServiceType.WebSocket -> sprintf "WebSocket Service [%s]" (string id)
+    | ServiceType.Other str -> sprintf "%s Service [%s]" str (string id)
+
+  // ** parseServiceId
+
+  let private parseServiceId (name: string) =
+    let m = Regex.Match(name, "^.*\[(.*)\]$")
+    if m.Success then
+      Id m.Groups.[1].Value
+    else
+      Id "<empty>"
+
   // ** parseServiceType
 
   let private parseServiceType (txt: ITxtRecord) =
-    printfn "parseServiceType: %A" txt
     try
       let item = txt.["type"]
       match item.ValueString with
@@ -123,27 +150,23 @@ module Discovery =
     with
       | _ -> ServiceType.Other "<field missing>"
 
+  // ** parseMachine
+
+  let private parseMachine (txt: ITxtRecord) =
+    try
+      let item = txt.["machine"]
+      match item.ValueString with
+      | null  -> Id "<field empty>"
+      | id -> Id id
+    with
+      | _ -> Id "<field missing>"
+
   // ** parseProtocol
 
   let private parseProtocol (proto: AddressProtocol) =
     match proto with
     | AddressProtocol.IPv6 -> IPv6
     |                    _ -> IPv4
-
-  // ** parseName
-
-  let private parseName (name: string) =
-    (Id "<empty>", "<empty name>")
-
-  // ** serviceDescription
-
-  let private serviceDescription (tipe: ServiceType) =
-    match tipe with
-    | ServiceType.Git       -> "Git Daemon"
-    | ServiceType.Raft      -> "Raft Service"
-    | ServiceType.Http      -> "Web Service"
-    | ServiceType.WebSocket -> "WebSocket Service"
-    | ServiceType.Other str -> sprintf "Unknown Service Type (%s)" str
 
   // ** toDiscoveredService
 
@@ -156,13 +179,14 @@ module Discovery =
       else
         Array.map IpAddress.ofIPAddress entry.AddressList
 
-    let id, name = parseName service.Name
+    let id = parseServiceId service.Name
 
     { Id = id
       Protocol = proto
       Port = uint16 service.Port
-      Name = name
+      Name = service.Name
       FullName = service.FullName
+      Machine = parseMachine service.TxtRecord
       Type = parseServiceType service.TxtRecord
       HostName = if isNull entry then "" else entry.HostName
       HostTarget = service.HostTarget
@@ -177,17 +201,7 @@ module Discovery =
   // ** addResolved
 
   let private addResolved (agent: DiscoveryAgent) (o: obj) (args: ServiceResolvedEventArgs) =
-    let service = o :?> IResolvableService
-    printfn "Resolved: name = '%s', host ip = '%A', hostname = '%s', port = '%d', iface = '%A', type = '%A', txt = '%s'"
-      service.FullName
-      (service.HostEntry.AddressList.[0])
-      service.HostEntry.HostName
-      service.Port
-      service.NetworkInterface
-      service.AddressProtocol
-      (service.TxtRecord.ToString())
-
-    service
+    o :?> IResolvableService
     |> toDiscoveredService
     |> Msg.Discovered
     |> agent.Post
@@ -195,28 +209,15 @@ module Discovery =
   // ** serviceAdded
 
   let private serviceAdded (agent: DiscoveryAgent) (obj: obj) (args: ServiceBrowseEventArgs) =
-    printfn "Found: name = '%s', type = '%s', domain = '%s', iface = '%A', proto = '%A', host = '%s'"
-      args.Service.Name
-      args.Service.RegType
-      args.Service.ReplyDomain
-      args.Service.NetworkInterface
-      args.Service.AddressProtocol
-      args.Service.HostTarget
-
     args.Service.Resolved.AddHandler(new ServiceResolvedEventHandler(addResolved agent))
     args.Service.Resolve()
 
   // ** serviceRemoved
 
   let private serviceRemoved (agent: DiscoveryAgent) (obj: obj) (args: ServiceBrowseEventArgs) =
-    printfn "Disappeared: name = '%s', type = '%s', domain = '%s', iface = '%A', proto = '%A', host = '%s', txt = '%A'"
-      args.Service.Name
-      args.Service.RegType
-      args.Service.ReplyDomain
-      args.Service.NetworkInterface
-      args.Service.AddressProtocol
-      args.Service.HostTarget
-      args.Service.TxtRecord
+    parseServiceId args.Service.Name
+    |> Msg.Vanished
+    |> agent.Post
 
   // ** serviceRegistered
 
@@ -229,15 +230,17 @@ module Discovery =
     | ServiceErrorCode.None ->
       notify subs (DiscoveryEvent.Registered disco)
     | ServiceErrorCode.NameConflict ->
-      printfn "Error: Name-Collision! '%s' is already registered" args.Service.Name
-
-    | _ ->
-      printfn "Error registering name = '%s'" args.Service.Name
+      let err = sprintf "Error: Name-Collision! '%s' is already registered" args.Service.Name
+      agent.Post(Msg.RegisterErr(err,disco))
+    | x ->
+      let err = sprintf "Error (%A) registering name = '%s'" x args.Service.Name
+      agent.Post(Msg.RegisterErr(err,disco))
 
   // ** registerService
 
   let private registerService (subs: Subscriptions)
                               (agent: DiscoveryAgent)
+                              (config: IrisMachine)
                               (disco: DiscoverableService) =
     let service = new RegisterService()
     service.Name <- disco.Name
@@ -248,6 +251,7 @@ module Discovery =
     let record = new TxtRecord()
 
     record.Add("type", string disco.Type)
+    record.Add("machine", string config.MachineId)
 
     service.TxtRecord <- record
     let handler = new RegisterServiceEventHandler(serviceRegistered subs agent disco)
@@ -321,6 +325,7 @@ module Discovery =
                              (state: DiscoveryState)
                              (subs: Subscriptions)
                              (agent: DiscoveryAgent)
+                             (config: IrisMachine)
                              (srvc: DiscoverableService) =
     match state with
     | Loaded data ->
@@ -328,12 +333,12 @@ module Discovery =
       | Some registered ->
         dispose registered
         notify subs (DiscoveryEvent.UnRegistered srvc)
-        let service = registerService subs agent srvc
+        let service = registerService subs agent config srvc
         chan.Reply(Right Reply.Ok)
         notify subs (DiscoveryEvent.Registering srvc)
         Loaded { data with RegisteredServices = Map.add srvc.Id service data.RegisteredServices }
       | None ->
-        let service = registerService subs agent srvc
+        let service = registerService subs agent config srvc
         chan.Reply(Right Reply.Ok)
         notify subs (DiscoveryEvent.Registering srvc)
         Loaded { data with RegisteredServices = Map.add srvc.Id service data.RegisteredServices }
@@ -397,15 +402,13 @@ module Discovery =
 
   // ** handleVanishing
 
-  let private handleVanishing (state: DiscoveryState)
-                              (subs: Subscriptions)
-                              (srvc: DiscoveredService) =
+  let private handleVanishing (state: DiscoveryState) (subs: Subscriptions) (id: Id) =
     match state with
     | Loaded data ->
-      match Map.tryFind srvc.Id data.ResolvedServices with
+      match Map.tryFind id data.ResolvedServices with
       | Some service ->
-        notify subs (DiscoveryEvent.Vanished srvc)
-        Loaded { data with ResolvedServices = Map.remove srvc.Id data.ResolvedServices }
+        notify subs (DiscoveryEvent.Vanished service)
+        Loaded { data with ResolvedServices = Map.remove id data.ResolvedServices }
       | None -> state
     | Idle -> state
 
@@ -413,6 +416,7 @@ module Discovery =
 
   let private loop (initial: DiscoveryState)
                    (subscriptions: Subscriptions)
+                   (config: IrisMachine)
                    (inbox: DiscoveryAgent) =
     let rec act (state: DiscoveryState) =
       async {
@@ -423,11 +427,11 @@ module Discovery =
           | Msg.Services chan          -> handleGetServices chan state
           | Msg.Stop chan              -> handleStop chan state subscriptions
           | Msg.Start chan             -> handleStart chan state subscriptions inbox
-          | Msg.Register (chan,srvc)   -> handleRegister chan state subscriptions inbox srvc
+          | Msg.Register (chan,srvc)   -> handleRegister chan state subscriptions inbox config srvc
           | Msg.UnRegister (chan,srvc) -> handleUnRegister chan state subscriptions srvc
           | Msg.RegisterErr (err,srvc) -> handleRegisterErr state subscriptions err srvc
           | Msg.Discovered srvc        -> handleDiscovery state subscriptions srvc
-          | Msg.Vanished srvc          -> handleVanishing state subscriptions srvc
+          | Msg.Vanished id            -> handleVanishing state subscriptions id
 
         return! act newstate
       }
@@ -442,7 +446,7 @@ module Discovery =
         let source = new CancellationTokenSource()
         let subscriptions = new Subscriptions()
         let listener = createListener subscriptions
-        let agent = DiscoveryAgent.Start(loop Idle subscriptions, source.Token)
+        let agent = DiscoveryAgent.Start(loop Idle subscriptions config, source.Token)
 
         Either.succeed
           { new IDiscoveryService with
@@ -476,7 +480,16 @@ module Discovery =
                     member self.OnNext(value) = callback value }
                 |> listener.Subscribe
 
-              member self.Register (service: DiscoverableService) =
+              member self.Register (tipe: ServiceType) (port: Port) (addr: IpAddress) =
+                let id = createId config.MachineId port tipe addr
+
+                let service =
+                  { Id = id
+                    Port = port
+                    Name = serviceName id tipe
+                    Type = tipe
+                    IpAddress = addr }
+
                 match agent.PostAndReply(fun chan -> Msg.Register(chan, service)) with
                 | Right Reply.Ok ->
                   { new IDisposable with
