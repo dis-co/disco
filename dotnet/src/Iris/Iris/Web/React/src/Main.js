@@ -6,7 +6,7 @@ import SideDrawer from "./SideDrawer";
 export default {
   mount(info, subscribe) {
     ReactDom.render(
-      <SideDrawer />,
+      <SideDrawer info={info} />,
       document.getElementById("sidedrawer-menu"))
 
     ReactDom.render(

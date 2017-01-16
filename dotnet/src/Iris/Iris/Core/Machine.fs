@@ -31,37 +31,20 @@ open System.Runtime.CompilerServices
 type IrisMachine =
   { MachineId : Id
     HostName  : string
-    WorkSpace : FilePath }
+    WorkSpace : FilePath
+    WebPort   : uint16 }
 
   // ** Default
 
   static member Default
     with get () =
-      { MachineId = Id "<empty>"
+      { MachineId = Id Constants.EMPTY
         HostName  = ""
-        WorkSpace = "" }
+        WorkSpace = ""
+        WebPort   = Constants.DEFAULT_WEB_PORT }
 
   override self.ToString() =
     sprintf "MachineId: %s" (string self.MachineId)
-
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = builder.CreateString (string self.MachineId)
-    let hn = builder.CreateString self.HostName
-    let wsp = builder.CreateString self.WorkSpace
-
-    MachineConfigFB.StartMachineConfigFB(builder)
-    MachineConfigFB.AddMachineId(builder,id)
-    MachineConfigFB.AddHostName(builder, hn)
-    MachineConfigFB.AddWorkSpace(builder,wsp)
-    MachineConfigFB.EndMachineConfigFB(builder)
-
-  static member FromFB(fb: MachineConfigFB) =
-    either {
-      return
-        { MachineId = Id fb.MachineId
-          HostName  = fb.HostName
-          WorkSpace = fb.WorkSpace }
-    }
 
 // * MachineConfig module
 
@@ -70,38 +53,49 @@ module MachineConfig =
 
   let private tag (str: string) = sprintf "MachineConfig.%s" str
 
-  // ** MachineConfigYaml (private)
+  let mutable private singleton = Unchecked.defaultof<IrisMachine>
+
+  let get() = singleton
 
   #if !FABLE_COMPILER
+
+  let getLocation (path: FilePath option) =
+    match path with
+    | Some location ->
+      if location.EndsWith(ASSET_EXTENSION)
+      then location
+      else location </> MACHINECONFIG_NAME + ASSET_EXTENSION
+    | None ->
+      let dir =
+        Assembly.GetExecutingAssembly().Location
+        |> Path.GetDirectoryName
+      dir </> MACHINECONFIG_DEFAULT_PATH </> MACHINECONFIG_NAME + ASSET_EXTENSION
+
+  // ** MachineConfigYaml (private)
 
   type MachineConfigYaml () =
     [<DefaultValue>] val mutable MachineId : string
     [<DefaultValue>] val mutable WorkSpace : string
+    [<DefaultValue>] val mutable WebPort   : uint16
 
     static member Create (cfg: IrisMachine) =
       let yml = new MachineConfigYaml()
       yml.MachineId <- string cfg.MachineId
       yml.WorkSpace <- cfg.WorkSpace
+      yml.WebPort   <- cfg.WebPort
       yml
 
-  #endif
-
   // ** parse (private)
-
-  #if !FABLE_COMPILER
 
   let private parse (yml: MachineConfigYaml) : Either<IrisError,IrisMachine> =
     let hostname = Network.getHostName ()
     { MachineId = Id yml.MachineId
       HostName  = hostname
-      WorkSpace = yml.WorkSpace }
+      WorkSpace = yml.WorkSpace
+      WebPort   = yml.WebPort }
     |> Either.succeed
 
-  #endif
-
   // ** ensureExists (private)
-
-  #if !FABLE_COMPILER
 
   let private ensureExists (path: FilePath) =
     try
@@ -111,53 +105,34 @@ module MachineConfig =
     with
       | _ -> ()
 
-  #endif
-
-  // ** defaultPath
-
-  #if !FABLE_COMPILER
-
-  let defaultPath =
-    let dir =
-      Assembly.GetExecutingAssembly().Location
-      |> Path.GetDirectoryName
-    dir </> MACHINECONFIG_DEFAULT_PATH </> MACHINECONFIG_NAME + ASSET_EXTENSION
-
-  #endif
-
   // ** create
 
   let create () : IrisMachine =
     let hostname = Network.getHostName()
     let workspace =
-      #if FABLE_COMPILER
-        ""
-      #else
       if Platform.isUnix then
         let home = Environment.GetEnvironmentVariable "HOME"
-        home </> "iris"
+        home </> MACHINECONFIG_DEFAULT_WORKSPACE_UNIX
       else
-        @"C:\Iris"
-      #endif
+        MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS
+
+    if Directory.Exists workspace |> not then
+      Directory.CreateDirectory workspace |> ignore
 
     { MachineId = Id.Create()
       HostName  = hostname
-      WorkSpace = workspace }
+      WorkSpace = workspace
+      WebPort   = Constants.DEFAULT_WEB_PORT }
 
   // ** save
-
-  #if !FABLE_COMPILER
 
   let save (path: FilePath option) (cfg: IrisMachine) : Either<IrisError,unit> =
     let serializer = new Serializer()
 
     try
-      let location =
-        match path with
-        | Some location -> location
-        | None -> defaultPath
+      let location = getLocation path
 
-      let payload=
+      let payload =
         cfg
         |> MachineConfigYaml.Create
         |> serializer.Serialize
@@ -174,23 +149,33 @@ module MachineConfig =
         |> Error.asIOError (tag "save")
         |> Either.fail
 
-  #endif
+  // ** init
 
-  // ** load
-
-  #if !FABLE_COMPILER
-
-  let load (path: FilePath option) : Either<IrisError,IrisMachine> =
+  /// Attention: this method must be called only when starting the main process
+  let init (path: FilePath option) : Either<IrisError,unit> =
     let serializer = new Serializer()
     try
-      let location =
-        match path with
-        | Some location -> location
-        | None -> defaultPath
+      let location = getLocation path
+      let cfg =
+        if File.Exists location
+        then
+          let raw = File.ReadAllText location
+          serializer.Deserialize<MachineConfigYaml>(raw)
+          |> parse
+        else
+          let cfg = create()
+          // TODO: Fail if we cannot save? It's not strictly necessary
+          // and in some environments writing to disk may not be possible
+          save path cfg |> ignore
+          Either.succeed cfg
 
-      let raw = File.ReadAllText location
-      serializer.Deserialize<MachineConfigYaml>(raw)
-      |> parse
+      match cfg with
+      | Left err -> Either.fail err
+      | Right cfg ->
+        if Path.IsPathRooted cfg.WorkSpace
+        then singleton <- cfg
+        else singleton <- { cfg with WorkSpace = Path.GetDirectoryName location </> cfg.WorkSpace }
+        Either.succeed()
     with
       | exn ->
         exn.Message

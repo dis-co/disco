@@ -1,14 +1,22 @@
 import * as React from "react";
 import { showModal } from './App';
-import LOAD_PROJECT from "./modals/LoadProject";
 import CREATE_PROJECT from "./modals/CreateProject";
+import { loadProject, listProjects } from "iris";
 
 export default class SideDrawer extends React.Component {
+
+  listProjects() {
+    listProjects().then(projects => this.setState({ projects }));
+  }
+
   constructor(props) {
     super(props);
+    this.state = { projects: [] };
   }
 
   componentDidMount() {
+    this.listProjects();
+
     // From: https://www.muicss.com/docs/v1/example-layouts/responsive-side-menu
     var $bodyEl = $('body'),
       $sidedrawerEl = $('#sidedrawer');
@@ -54,24 +62,15 @@ export default class SideDrawer extends React.Component {
         <li>
           <strong>Project</strong>
           <ul>
-            <li><a onClick={() => showModal(CREATE_PROJECT)}>Create</a></li>
-            <li><a onClick={() => showModal(LOAD_PROJECT)}>Load</a></li>
-          </ul>
-        </li>
-        <li>
-          <strong>Category 2</strong>
-          <ul>
-            <li><a href="#">Item 1</a></li>
-            <li><a href="#">Item 2</a></li>
-            <li><a href="#">Item 3</a></li>
-          </ul>
-        </li>
-        <li>
-          <strong>Category 3</strong>
-          <ul>
-            <li><a href="#">Item 1</a></li>
-            <li><a href="#">Item 2</a></li>
-            <li><a href="#">Item 3</a></li>
+            <li><a onClick={() => showModal(CREATE_PROJECT, () => this.listProjects())}>Create</a></li>
+            <li>
+              <p>Load</p>
+              <ul>
+                {this.state.projects.map(name =>
+                  <li key={name}><a onClick={() => loadProject(this.props.info, name)}>{name}</a></li>
+                )}
+              </ul>
+            </li>
           </ul>
         </li>
       </ul>

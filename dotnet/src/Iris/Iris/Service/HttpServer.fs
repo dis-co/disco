@@ -28,21 +28,30 @@ module Http =
       System.Text.Encoding.UTF8.GetString(rawForm)
 
     let respond ctx status (txt: string) =
-      { ctx with response = { ctx.response with status = status; content = Encoding.UTF8.GetBytes txt |> Bytes }}
-      |> Some |> async.Return
+      let res =
+        { ctx.response with
+            status = status
+            headers = ["Content-Type", "text/plain"]
+            content = Encoding.UTF8.GetBytes txt |> Bytes }
+      Some { ctx with response = res }
 
-    let getWsport (iris: IIrisServer ref) (config: IrisMachine) (ctx: HttpContext) =
+    let getWsport (iris: IIrisServer) (ctx: HttpContext) =
       either {
-        let! cfg = iris.Value.Config
+        let! cfg = iris.Config
         let! mem = Config.selfMember cfg
         return mem.WsPort
       }
-      |> Either.unwrap (fun err -> Logger.err config.MachineId (tag "getWsport") (string err); 0us)
-      |> string |> respond ctx HTTP_200 
+      |> Either.unwrap (fun err ->
+//        Logger.err config.MachineId (tag "getWsport") (string err)
+        0us)
+      |> string |> respond ctx HTTP_200 |> async.Return
 
-    let postIrisCommand (postCmd: string->unit) (ctx: HttpContext) =
-      ctx.request.rawForm |> getString |> postCmd
-      respond ctx HTTP_200 ""
+    let postIrisCommand (postCmd: CommandAgent) (ctx: HttpContext) = async {
+      let! res = ctx.request.rawForm |> getString |> postCmd
+      match res with
+      | Left err -> return respond ctx HTTP_500 (string err)
+      | Right msg -> return respond ctx HTTP_200 msg
+    }
 
   let private noCache =
     setHeader "Cache-Control" "no-cache, no-store, must-revalidate"
@@ -84,11 +93,11 @@ module Http =
 
   // our application only needs to serve files off the disk
   // but we do need to specify what to do in the base case, i.e. "/"
-  let private app (iris: IIrisServer ref) (config: IrisMachine) postCommand indexHtml =
+  let private app (iris: IIrisServer) postCommand indexHtml =
     choose [
       Filters.GET >=>
         (choose [
-          Filters.path WS_PORT_ENDPOINT >=> Actions.getWsport iris config
+          Filters.path WS_PORT_ENDPOINT >=> Actions.getWsport iris
           Filters.path "/" >=> (Files.file indexHtml)
           Files.browseHome ])
       Filters.POST >=>
@@ -142,9 +151,9 @@ module Http =
 
     // *** create
 
-    /// - basePath: Directory from where static files will be served
-    let create (iris: IIrisServer ref) (config: IrisMachine) (postCommand: string->unit) (basePath: string) =
+    let create (config: IrisMachine) (iris: IIrisServer) (postCommand: CommandAgent) =
       either {
+        let basePath = getDefaultBasePath()
         let cts = new CancellationTokenSource()
         let! webConfig = mkConfig config basePath cts
 
@@ -154,7 +163,7 @@ module Http =
                 try
                   let _, server =
                     Path.Combine(basePath, "index.html")
-                    |> app iris config postCommand
+                    |> app iris postCommand
                     |> startWebServerAsync webConfig
                   Async.Start server
                   |> Either.succeed

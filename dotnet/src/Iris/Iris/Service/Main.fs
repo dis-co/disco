@@ -27,30 +27,34 @@ module Main =
 
     validateOptions parsed
 
-    let interactive = parsed.Contains <@ Interactive @>
-    let web =
-      match parsed.TryGetResult <@ Http @> with
-      | Some basePath -> System.IO.Path.GetFullPath basePath
-      | None -> Http.getDefaultBasePath()
+    // Init machine config
+    parsed.TryGetResult <@ Machine @>
+    |> Option.map System.IO.Path.GetFullPath
+    |> MachineConfig.init
+    |> Error.orExit ignore
 
-    let res =
-      match parsed.GetResult <@ Cmd @>, parsed.TryGetResult <@ Dir @> with
+    let result =
+      let machine = MachineConfig.get()
+      let dir =
+        parsed.TryGetResult <@ Project @>
+        |> Option.map (fun projectName ->
+          machine.WorkSpace </> projectName)
+
+      let interactive = parsed.Contains <@ Interactive @>
+
+      match parsed.GetResult <@ Cmd @>, dir with
       | Create,            _ -> createProject parsed
-      | Start,           dir -> startService web interactive dir
+      | Start,           dir -> startService interactive dir
       | Reset,      Some dir -> resetProject dir
       | Dump,       Some dir -> dumpDataDir dir
       | Add_User,   Some dir -> addUser dir
       | Add_Member, Some dir -> addMember dir
-      | Setup,      Some dir -> setup (Some dir)
-      | Setup,             _ -> setup None
       | Help,              _ -> help ()
       |  _ ->
         sprintf "Unexpected command line failure: %A" args
         |> Error.asParseError "Main"
         |> Either.fail
 
-    res
-    |> Error.orExit id
-    |> ignore
+    result |> Error.orExit ignore
 
     Error.exitWith OK

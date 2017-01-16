@@ -1346,7 +1346,7 @@ let DisplayFB: DisplayFBConstructor = failwith "JS only"
 // CONFIG
 
 type ConfigFB =
-  abstract MachineConfig: MachineConfigFB
+  abstract MachineId: string
   abstract AudioConfig: AudioConfigFB
   abstract VvvvConfig: VvvvConfigFB
   abstract RaftConfig: RaftConfigFB
@@ -1362,7 +1362,7 @@ type ConfigFB =
 type ConfigFBConstructor =
   abstract prototype: ConfigFB with get, set
   abstract StartConfigFB: builder: FlatBufferBuilder -> unit
-  abstract AddMachineConfig: builder: FlatBufferBuilder * v:Offset<MachineConfigFB> -> unit
+  abstract AddMachineId: builder: FlatBufferBuilder * v:Offset<string> -> unit
   abstract AddAudioConfig: builder: FlatBufferBuilder * v:Offset<AudioConfigFB> -> unit
   abstract AddVvvvConfig: builder: FlatBufferBuilder * v:Offset<VvvvConfigFB> -> unit
   abstract AddRaftConfig: builder: FlatBufferBuilder * v:Offset<RaftConfigFB> -> unit
