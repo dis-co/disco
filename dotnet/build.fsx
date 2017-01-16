@@ -668,9 +668,11 @@ Target "Release" DoNothing
 ==> "BuildReleaseNodes"
 
 // Zeroconf
-
 "BuildReleaseZeroconf"
 ==> "BuildReleaseService"
+
+"BuildReleaseZeroconf"
+==> "BuildReleaseCore"
 
 // Tests
 
