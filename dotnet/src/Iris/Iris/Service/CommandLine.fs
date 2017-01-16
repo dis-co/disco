@@ -19,6 +19,7 @@ module CommandLine =
   open System.Linq
   open System.Collections.Generic
   open System.Text.RegularExpressions
+  open Http
 
   // ** Command Line Argument Parser
 
@@ -31,7 +32,6 @@ module CommandLine =
 
   type SubCommand =
     | Help
-    | Setup
     | Create
     | Start
     | Reset
@@ -52,18 +52,17 @@ module CommandLine =
 | create                                                             |
 ----------------------------------------------------------------------
 
-  Create a new project in the directory specified by
+  Create a new project in the machine workspace with the name specified by
 
-  --dir=/path/to/parent/dir/project-name
+  --project=project-name : Name of project directory in the workspace
 
-  The target directory name is initially used as the project name.
+  A folder will be created in the workspace with the project name.
 
   You must also specify all ports with their respective flags:
 
   --raft=<uint16> : Port of underlying Raft service
   --git=<uint16>  : Port of `git daemon` service
   --ws=<uint16>   : Port of WebSocket service
-  --web=<uint16>  : Port of Http service
 
   Additionally, you also need to specify the address which all
   services should bind to, using
@@ -83,7 +82,7 @@ module CommandLine =
   You can specify the parent directory to create configuration in by
   using the dir flag:
 
-  --dir=/path/to/parent/dir : Base directory for the new config file
+  --machine=/path/to/machine/config : Path to the machine config file
 
 ----------------------------------------------------------------------
 | start                                                              |
@@ -92,31 +91,29 @@ module CommandLine =
   Start the Iris daemon with the project specified. You must specify
   the project to start with using
 
-  --dir=/path/to/myproject : Base directory containing `project.yml`
+  --project=project-name : Name of project directory in the workspace
 
-  Additionally, you can use the following two flags to enter
-  interactive mode, and/or prevent the http server from being started.
+  Additionally, you can use the following flag to enter interactive mode.
 
   -i        : Enter interactive mode
-  --no-http : Disable the Http server
 
 ----------------------------------------------------------------------
 | add-user                                                           |
 ----------------------------------------------------------------------
 
   Add a new user to the project. Requires you to specify the project
-  directory
+  name
 
-  --dir=/path/to/project : Base path containing `project.yml`
+  --project=project-name : Name of project directory in the workspace
 
 ----------------------------------------------------------------------
 | add-member                                                         |
 ----------------------------------------------------------------------
 
   Add a new cluster member to the project. Requires you to specify the
-  project directory
+  project name
 
-  --dir=/path/to/project : Base path containing `project.yml`
+  --project=project-name : Name of project directory in the workspace
 
 ----------------------------------------------------------------------
 | reset                                                              |
@@ -130,9 +127,9 @@ module CommandLine =
 ----------------------------------------------------------------------
 
   Dump the current state of the project. Requires you to specify the
-  project directory
+  project name
 
-  --dir=/path/to/project : Base path containing `project.yml`
+  --project=project-name : Name of project directory in the workspace
 
 ----------------------------------------------------------------------
 | help                                                               |
@@ -146,22 +143,20 @@ module CommandLine =
 
     | [<AltCommandLine("-i")>]        Interactive
 
-    | [<EqualsAssignment>] Http         of string
     | [<EqualsAssignment>] Bind         of string
     | [<EqualsAssignment>] Raft         of uint16
-    | [<EqualsAssignment>] Web          of uint16
     | [<EqualsAssignment>] Git          of uint16
     | [<EqualsAssignment>] Ws           of uint16
-    | [<EqualsAssignment>] Dir          of string
+    | [<EqualsAssignment>] Project      of string
+    | [<EqualsAssignment>] Machine      of string
 
     interface IArgParserTemplate with
       member self.Usage =
         match self with
           | Interactive -> "Start daemon in interactive mode"
-          | Http    _   -> "Base path of http server (defaults to the assembly directory)"
-          | Dir     _   -> "Project directory to place the config & database in"
+          | Project _   -> "Name of project directory in the workspace"
+          | Machine _   -> "Path to the machine config file"
           | Bind    _   -> "Specify a valid IP address."
-          | Web     _   -> "Http server port."
           | Git     _   -> "Git server port."
           | Ws      _   -> "WebSocket port."
           | Raft    _   -> "Raft server port."
@@ -172,33 +167,31 @@ module CommandLine =
   // ** validateOptions
 
   let validateOptions (opts: ParseResults<CLIArguments>) =
-    let ensureDir result =
-      if opts.Contains <@ Dir @> |> not then
-        "Missing Startup-Dir"
+    let ensureProject result =
+      if opts.Contains <@ Project @> |> not then
+        "Missing Startup-Project"
         |> Error.asOther (tag "validateOptions")
         |> Error.exitWith
       result
 
     match opts.GetResult <@ Cmd @> with
-    | Reset | Dump | Add_User | Add_Member -> ensureDir ()
+    | Reset | Dump | Add_User | Add_Member -> ensureProject ()
     | _ -> ()
 
     if opts.GetResult <@ Cmd @> = Create then
-      let dir  = opts.Contains <@ Dir @>
+      let project  = opts.Contains <@ Project @>
       let bind = opts.Contains <@ Bind @>
-      let web  = opts.Contains <@ Web @>
       let raft = opts.Contains <@ Raft @>
       let git  = opts.Contains <@ Git @>
       let ws   = opts.Contains <@ Ws @>
 
-      if not (bind && web && raft && ws) then
+      if not (bind && raft && ws) then
         printfn "Error: when creating a new configuration you must specify the following options:"
-        if not dir  then printfn "    --dir=<directory>"
-        if not bind then printfn "    --bind=<binding address>"
-        if not web  then printfn "    --web=<web interface port>"
-        if not git  then printfn "    --git=<git server port>"
-        if not raft then printfn "    --raft=<raft port>"
-        if not ws   then printfn "    --ws=<ws port>"
+        if not project then printfn "    --project=<project name>"
+        if not bind    then printfn "    --bind=<binding address>"
+        if not git     then printfn "    --git=<git server port>"
+        if not raft    then printfn "    --raft=<raft port>"
+        if not ws      then printfn "    --ws=<ws port>"
         "CLI options parse error"
         |> Error.asOther (tag "validateOptions")
         |> Error.exitWith
@@ -234,7 +227,9 @@ module CommandLine =
   // ** tryAppendEntry
 
   let tryAppendEntry (ctx: IIrisServer) str =
-    warn "CLI AppendEntry currently not supported"
+    "CLI AppendEntry currently not supported"
+    |> Error.asOther (tag "tryAppendEntry")
+    |> Either.fail
 
   // ** timeoutRaft
 
@@ -242,8 +237,6 @@ module CommandLine =
     either {
       do! ctx.ForceElection()
     }
-    |> Either.mapError handleError
-    |> ignore
 
   // ** Command Parsers
 
@@ -265,6 +258,7 @@ module CommandLine =
   let (|Periodic|_|) str = withEmpty "step" str
   let (|Timeout|_|)  str = withEmpty "timeout" str
   let (|Leave|_|)    str = withEmpty "leave" str
+  let (|List|_|)     str = withEmpty "ls" str
 
   let (|Append|_|)  str = withTrim "append" str
   let (|Join|_|)    str = withTrim "join" str
@@ -330,7 +324,6 @@ module CommandLine =
             HostName = hn
             IpAddr   = ip
             Port     = port
-            WebPort  = web
             WsPort   = ws
             GitPort  = git }
         |> Some
@@ -345,8 +338,6 @@ module CommandLine =
       let updated = { config.Raft with LogLevel = LogLevel.Parse str }
       do! context.SetConfig (Config.updateEngine updated config)
     }
-    |> Either.mapError handleError
-    |> ignore
 
   // ** trySetInterval
 
@@ -356,8 +347,6 @@ module CommandLine =
       let updated = { config.Raft with PeriodicInterval = i }
       do! context.SetConfig (Config.updateEngine updated config)
     }
-    |> Either.mapError handleError
-    |> ignore
 
   // ** tryJoinCluster
 
@@ -367,12 +356,10 @@ module CommandLine =
         either {
           do! context.JoinCluster ip port
         }
-        |> Either.mapError handleError
-        |> ignore
       | _ ->
         sprintf "parameters %A could not be parsed" hst
         |> Error.asOther (tag "tryJoinCluster")
-        |> handleError
+        |> Either.fail
 
   // ** tryLeaveCluster
 
@@ -380,8 +367,6 @@ module CommandLine =
     either {
       do! context.LeaveCluster()
     }
-    |> Either.mapError handleError
-    |> ignore
 
   // ** tryAddMember
 
@@ -393,12 +378,10 @@ module CommandLine =
           printfn "Added mem: %A in entry %A" id (string appended.Id)
           return ()
         }
-        |> Either.mapError handleError
-        |> ignore
       | _ ->
         sprintf "parameters %A could not be parsed" hst
         |> Error.asOther (tag "tryAddMember")
-        |> handleError
+        |> Either.fail
 
   // ** tryRmMember
 
@@ -408,8 +391,6 @@ module CommandLine =
       printfn "Removed mem: %A in entry %A" id (string appended.Id)
       return ()
     }
-    |> Either.mapError handleError
-    |> ignore
 
   // ** tryPeriodic
 
@@ -417,8 +398,6 @@ module CommandLine =
     either {
       do! context.Periodic()
     }
-    |> Either.mapError handleError
-    |> ignore
 
   // ** tryGetStatus
 
@@ -428,19 +407,27 @@ module CommandLine =
       printfn "IrisService Status: %A" status
       return ()
     }
-    |> Either.mapError handleError
-    |> ignore
 
   // ** tryLoadProject
 
   let tryLoadProject (ctx: IIrisServer) projectdir =
-    let projFile = Path.GetFullPath(projectdir) </> PROJECT_FILENAME + ASSET_EXTENSION
+    let cfg = MachineConfig.get()
+    let projFile = cfg.WorkSpace </> projectdir </> PROJECT_FILENAME + ASSET_EXTENSION
     if File.Exists projFile |> not then
       sprintf "Project Not Found: %s" projectdir
       |> Error.asOther "startService"
       |> Either.fail
     else
       ctx.Load projFile
+
+  // ** listProjects
+
+  let listProjects () =
+    let cfg = MachineConfig.get()
+    Directory.GetDirectories(cfg.WorkSpace)
+    |> Array.map Path.GetFileName
+    |> String.concat ","
+
 
   //   ____                _
   //  / ___|_ __ ___  __ _| |_ ___
@@ -503,14 +490,13 @@ module CommandLine =
       match dic.TryGetValue k with
       | true, v ->
         try map v |> Right
-        with ex -> Other("tryCreateProject", ex.Message) |> Left
-      | false, _ -> Other("tryCreateProject", sprintf "Missing %s parameter" k) |> Left
+        with ex -> Other(tag "tryCreateProject", ex.Message) |> Left
+      | false, _ -> Other(tag "tryCreateProject", sprintf "Missing %s parameter" k) |> Left
     
     either {
-      let! machine = MachineConfig.load None
-
-      let! dir = parameters |> tryGet "dir" id
-      let name = Path.GetFileName dir
+      let machine = MachineConfig.get()
+      let! name = parameters |> tryGet "project" id
+      let dir = machine.WorkSpace </> name
       let raftDir = dir </> RAFT_DIRECTORY
 
       do! match Directory.Exists dir, force with
@@ -523,7 +509,9 @@ module CommandLine =
               match input.Key with
                 | ConsoleKey.Y -> rmDir dir
                 | _            -> OK |> Either.fail
-          | _ -> Either.nothing
+          | true, true ->
+            rmDir dir
+          | false, _ -> Either.nothing
 
       do! mkDir dir
       do! mkDir raftDir
@@ -531,7 +519,6 @@ module CommandLine =
       let! bind = parameters |> tryGet "bind" IpAddress.Parse
       let! git  = parameters |> tryGet "git" uint16
       let! ws   = parameters |> tryGet "ws" uint16
-      let! web  = parameters |> tryGet "web" uint16
       let! raft = parameters |> tryGet "raft" uint16
 
       let mem =
@@ -539,7 +526,6 @@ module CommandLine =
             IpAddr  = bind
             GitPort = git
             WsPort  = ws
-            WebPort = web
             Port    = raft }
 
       let! project = buildProject machine name dir raftDir mem
@@ -549,33 +535,64 @@ module CommandLine =
 
   // ** agent
 
-  let private startAgent (context: IIrisServer) = MailboxProcessor<string>.Start(fun agent ->
+  [<NoComparison>]
+  type CommandMsg =
+    | Tell of string
+    | Ask of string * AsyncReplyChannel<Either<IrisError,string>>
+
+  let private startAgent (context: IIrisServer) = MailboxProcessor<CommandMsg>.Start(fun agent ->
+      let orNone: Either<IrisError, unit> -> Either<IrisError, string option> =
+        Either.map (fun () -> None)
       let rec loop() = async {
         let! input = agent.Receive()
-        match input with
-        | LogLevel opt -> trySetLogLevel   context opt
-        | Interval   i -> trySetInterval   context i
-        | Exit         -> dispose          context
-        | Periodic     -> tryPeriodic      context
-        | Append ety   -> tryAppendEntry   context ety
-        | Join hst     -> tryJoinCluster   context hst
-        | Leave        -> tryLeaveCluster  context
-        | AddMember hst  -> tryAddMember       context hst
-        | RmMember hst   -> tryRmMember        context hst
-        | Timeout      -> tryForceElection context
-        | Status       -> tryGetStatus     context
-        | Load prDir   -> tryLoadProject context prDir |> Either.mapError handleError |> ignore
-        | CreateInteractive pars  -> tryCreateProject true pars |> Either.mapError handleError |> ignore
-        | _            -> printfn "unknown command"
+        let msg, replyChannel =
+          match input with
+          | Tell msg -> msg, None
+          | Ask (msg, replyChannel) -> msg, Some replyChannel
+        let res =
+          match msg with
+          | LogLevel opt -> trySetLogLevel   context opt |> orNone
+          | Interval   i -> trySetInterval   context i   |> orNone
+          | Periodic     -> tryPeriodic      context     |> orNone
+          | Append ety   -> tryAppendEntry   context ety |> orNone
+          | Join hst     -> tryJoinCluster   context hst |> orNone
+          | Leave        -> tryLeaveCluster  context     |> orNone
+          | AddMember hst  -> tryAddMember   context hst |> orNone
+          | RmMember hst   -> tryRmMember    context hst |> orNone
+          | Timeout      -> tryForceElection context     |> orNone
+          | Status       -> tryGetStatus     context     |> orNone
+          | Load prDir   -> tryLoadProject context prDir |> orNone
+          | CreateInteractive pars  -> tryCreateProject true pars |> orNone
+          | List -> listProjects() |> Some |> Either.succeed 
+          | Exit ->
+            Either.tryWith
+              (Error.asOther (tag "CommandAgent.Loop"))
+              (fun () -> dispose context; None)
+          | _            ->
+            "unknown command"
+            |> Error.asOther (tag "CommandAgent.Loop")
+            |> Either.fail
+        replyChannel |> Option.iter (fun ch ->
+          // TODO: For now, use "ok" as the reply. Later decide
+          // if we want to make all functions return a message
+          res |> Either.map (function Some s -> s | None -> "ok") |> ch.Reply)
         do! loop()
       }
       loop()
     )
 
-  let postCommand (agent: (MailboxProcessor<string> option) ref) (cmd: string) =
+  let postCommand (agent: (MailboxProcessor<CommandMsg> option) ref) (cmd: string) =
+    let err msg =
+      Error.asOther (tag "postCommand") msg |> Either.fail
     match !agent with
-    | Some agent -> agent.Post cmd
-    | None -> printfn "Command agent hasn't been initialized yet"
+    | Some agent ->
+      async {
+        let! res = agent.PostAndTryAsyncReply((fun ch -> Ask(cmd, ch)), Constants.REQUEST_TIMEOUT)
+        match res with
+        | Some res -> return res
+        | None -> return err "Request has timeout"
+      }
+    | None -> err "Command agent hasn't been initialized yet" |> async.Return
 
   // ** consoleLoop
 
@@ -585,23 +602,24 @@ module CommandLine =
   // | |__| (_) | (_) | |_) |
   // |_____\___/ \___/| .__/ s
   //                  |_|
-  let registerExitHandlers (context: IIrisServer) =
+  let registerExitHandlers (context: IIrisServer) (httpServer: IHttpServer) =
     Console.CancelKeyPress.Add (fun _ ->
       printfn "Disposing context..."
       dispose context
+      dispose httpServer
       exit 0)
     System.AppDomain.CurrentDomain.ProcessExit.Add (fun _ -> dispose context)
     System.AppDomain.CurrentDomain.DomainUnload.Add (fun _ -> dispose context)
 
-  let interactiveLoop (agent: MailboxProcessor<string>) (context: IIrisServer) : unit =
+  let interactiveLoop (agent: MailboxProcessor<CommandMsg>) (context: IIrisServer) : unit =
     printfn "Welcome to the Raft REPL. Type help to see all commands."
     let kont = ref true
     let rec proc kontinue =
       printf "λ "
       let input = Console.ReadLine()
       match input with
-      | Exit -> kontinue := false; agent.Post input
-      | input -> agent.Post input
+      | Exit -> kontinue := false; agent.Post(Tell input)
+      | input -> agent.Post(Tell input)
       if !kontinue then
         proc kontinue
     proc kont
@@ -614,14 +632,6 @@ module CommandLine =
         proc kontinue
     proc kont
 
-  // ** ensureMachineConfig
-
-  let ensureMachineConfig () =
-    if not (File.Exists MachineConfig.defaultPath) then
-      MachineConfig.create ()
-      |> MachineConfig.save None
-      |> Error.orExit id
-
   // ** startService
 
   //  ____  _             _
@@ -630,38 +640,39 @@ module CommandLine =
   //  ___) | || (_| | |  | |_
   // |____/ \__\__,_|_|   \__|
 
-  let startService (web: string) (interactive: bool) (projectdir: FilePath option) : Either<IrisError, unit> =
-    ensureMachineConfig ()
+  let startService (interactive: bool) (projectDir: FilePath option) : Either<IrisError, unit> =
     either {
       let agentRef = ref None
-      let! machine = MachineConfig.load None
-      let! server = IrisService.create machine (postCommand agentRef) web
-      let agent = startAgent server
+      let machine = MachineConfig.get()
+      let! irisService = IrisService.create machine
+      let! httpServer = HttpServer.create machine irisService (postCommand agentRef)
+      do! httpServer.Start()
+      let agent = startAgent irisService
       agentRef := Some agent
       use _ = Logger.subscribe Logger.stdout
 
-      registerExitHandlers server
+      registerExitHandlers irisService httpServer
 
       do!
-        match projectdir with
-        | Some projectdir ->
-          let projFile = Path.GetFullPath(projectdir) </> PROJECT_FILENAME + ASSET_EXTENSION
+        match projectDir with
+        | Some projectDir ->
+          let projFile = projectDir </> PROJECT_FILENAME + ASSET_EXTENSION
           if File.Exists projFile |> not then
-            sprintf "Project Not Found: %s" projectdir
+            sprintf "Project Not Found: %s" projectDir
             |> Error.asOther "startService"
             |> Either.fail
           else
-            server.Load projFile
+            irisService.Load projFile
         | None ->
           Either.succeed ()
 
       let result =
         if interactive then
-          interactiveLoop agent server
+          interactiveLoop agent irisService
         else
           silentLoop ()
 
-      dispose server
+      dispose irisService
 
       return result
     }
@@ -677,17 +688,11 @@ module CommandLine =
   ///
   /// Returns: unit
   let createProject (parsed: ParseResults<CLIArguments>) = either { 
-      ensureMachineConfig ()
-
       let parameters =
-        [ let path = parsed.GetResult <@ Dir @>
-          if Path.IsPathRooted path
-          then yield "dir", path
-          else yield "dir", Path.GetFullPath path
+        [ yield "project", parsed.GetResult <@ Project @>
           yield "bind", parsed.GetResult <@ Bind @>
           yield "git", parsed.GetResult <@ Git  @> |> string
           yield "ws", parsed.GetResult <@ Ws  @> |> string
-          yield "web", parsed.GetResult <@ Web  @> |> string
           yield "raft", parsed.GetResult <@ Raft  @> |> string ]
         |> dict
 
@@ -714,7 +719,7 @@ module CommandLine =
       let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
       let raftDir = datadir </> RAFT_DIRECTORY
 
-      let! machine = MachineConfig.load None
+      let machine = MachineConfig.get()
       let! project = Asset.loadWithMachine path machine
 
       do! match Directory.Exists raftDir with
@@ -739,48 +744,6 @@ module CommandLine =
 
   let dumpDataDir (datadir: FilePath) =
     implement "dumpDataDir"
-
-  // ** setup
-
-  let setup (location: FilePath option) =
-    let create (path: FilePath) =
-      try
-        if File.Exists path then
-          printfn "Machine configuration already present. Contents:"
-          File.ReadAllText path
-          |> String.indent 4
-          |> printfn "%s"
-          printf "Should I overwrite this? (y/n) "
-          let key = Console.ReadKey()
-          printfn "\nAnswer: %c" key.KeyChar
-          match key.KeyChar with
-          | 'y' | 'Y' ->
-            MachineConfig.create ()
-            |> MachineConfig.save (Some path)
-            |> Error.orExit id
-            printfn "Created Machine new config in %A" path
-            |> Either.succeed
-          | _ ->
-            printfn "Not making any changes. Bye."
-            |> Either.succeed
-        else
-          MachineConfig.create ()
-          |> MachineConfig.save (Some path)
-          |> Error.orExit id
-          printfn "Created Machine new config in %A:" path
-          |> Either.succeed
-      with
-        | exn ->
-          exn.Message
-          |> Error.asOther (tag "setup")
-          |> Either.fail
-
-    match location with
-    | Some path ->
-      path </> MACHINECONFIG_NAME + ASSET_EXTENSION
-      |> create
-    | None ->
-      create MachineConfig.defaultPath
 
   // ** help
 
@@ -867,7 +830,7 @@ module CommandLine =
   let addUser (datadir: FilePath) =
     either {
       let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
-      let! machine = MachineConfig.load None
+      let machine = MachineConfig.get()
       let! project = Asset.loadWithMachine path machine
 
       let username  = readString "UserName"
@@ -901,14 +864,13 @@ module CommandLine =
   let addMember (datadir: FilePath) =
     either {
       let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
-      let! machine = MachineConfig.load None
+      let machine = MachineConfig.get()
       let! project = Asset.loadWithMachine path machine
 
       let id   = readID     "Member ID"
       let hn   = readString "Host Name"
       let ip   = readIP     "IP Address"
       let raft = readPort   "Raft Port"
-      let web  = readPort   "Web Port"
       let ws   = readPort   "Sockets Port"
       let git  = readPort   "Git Port"
 
@@ -917,7 +879,6 @@ module CommandLine =
             HostName = hn
             IpAddr   = ip
             Port     = raft
-            WebPort  = web
             WsPort   = ws
             GitPort  = git }
 

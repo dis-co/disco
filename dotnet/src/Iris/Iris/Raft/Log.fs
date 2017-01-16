@@ -37,7 +37,7 @@ type RaftLog =
     let logstr =
       match self.Data with
       | Some data -> string data
-      | _ -> "<empty>"
+      | _ -> Constants.EMPTY
 
     sprintf "Index: %A Depth: %A\n%s"
       self.Index

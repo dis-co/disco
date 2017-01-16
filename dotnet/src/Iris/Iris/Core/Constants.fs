@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+open System
+
 [<AutoOpen>]
 module Constants =
 
@@ -41,6 +43,12 @@ module Constants =
   // | | | |/ _ \ |_ / _` | | | | | __/ __|
   // | |_| |  __/  _| (_| | |_| | | |_\__ \
   // |____/ \___|_|  \__,_|\__,_|_|\__|___/
+
+  [<Literal>]
+  let EMPTY = "<empty>"
+
+  [<Literal>]
+  let REQUEST_TIMEOUT = 5000
 
   [<Literal>]
   let WEB_WORKER_SCRIPT = "lib/worker.js"
@@ -92,3 +100,10 @@ module Constants =
 
   [<Literal>]
   let GITIGNORE = @"/.raft"
+
+  [<Literal>]
+  /// Intended to be a subdirectory of HOME
+  let MACHINECONFIG_DEFAULT_WORKSPACE_UNIX = "iris"
+
+  [<Literal>]
+  let MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS = "C:\Iris"

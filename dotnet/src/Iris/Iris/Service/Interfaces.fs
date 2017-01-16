@@ -7,8 +7,9 @@ open System.Collections.Concurrent
 open Iris.Core
 open Iris.Raft
 open Iris.Service.Zmq
-
 open Mono.Zeroconf
+
+type CommandAgent = string -> Async<Either<IrisError,string>>
 
 // * ServiceType
 

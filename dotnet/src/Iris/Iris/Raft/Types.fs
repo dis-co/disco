@@ -551,7 +551,7 @@ ConfigChangeEntry = %s
       self.RequestTimeout
       (if Option.isSome self.ConfigChangeEntry then
         Option.get self.ConfigChangeEntry |> string
-       else "<empty>")
+       else Constants.EMPTY)
 
   // ** IsLeader
   member self.IsLeader

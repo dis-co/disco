@@ -437,33 +437,6 @@ Target "BuildDebugFrontend" (fun () ->
   runNpm "install" (baseDir @@ "assets/frontend") ()
 )
 
-Target "BuildSampleProject" (fun () ->
-  let irisExePath = baseDir @@ "bin/Release/Iris/iris.exe"
-
-  // Create machine configuration
-  let machineConfigPath =
-    Path.GetDirectoryName irisExePath </> "etc"
-  if directoryExists machineConfigPath |> not then
-    runNet (irisExePath + " setup") __SOURCE_DIRECTORY__ ()
-    // printfn "Machine config created at %s" machineConfigPath
-
-  // Create project sample
-  let projectSamplePath =
-    Path.Combine(__SOURCE_DIRECTORY__,"..","..", "iris-sample-project")
-    |> Path.GetFullPath
-  if directoryExists projectSamplePath |> not then
-    let args = sprintf "create --dir=%s --bind=0.0.0.0 --raft=6000 --git=5000 --web=7000 --ws=8000" projectSamplePath
-    runNet (irisExePath + " " + args) __SOURCE_DIRECTORY__ ()
-    printfn "Project sample created at %s" projectSamplePath
-
-  printfn ""
-  printfn "---------------------------------------------------------------------------"
-  printfn "Type `runiris start --dir=..\..\iris-sample-project` on Windows to start the service"
-  printfn "Then navigate to `http://localhost:7000` with your browser"
-  printfn "---------------------------------------------------------------------------"
-  printfn ""
-)
-
 Target "BuildReleaseFrontend" (fun () ->
   runNpm "install" __SOURCE_DIRECTORY__ ()
   runFable frontendDir "" ()
@@ -686,7 +659,6 @@ Target "Release" DoNothing
 
 "BuildReleaseNodes"
 ==> "BuildReleaseService"
-==> "BuildSampleProject"
 ==> "BuildReleaseFrontend"
 ==> "BuildReleaseCore"
 ==> "CopyBinaries"

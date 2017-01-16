@@ -46,9 +46,6 @@ module Iris =
   [<Literal>]
   let private WS_SERVER = "ws"
 
-  [<Literal>]
-  let private WEB_SERVER = "web"
-
   let private signature =
     new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.UtcNow))
 
@@ -929,7 +926,7 @@ module Iris =
   [<RequireQualifiedAccess>]
   module IrisService =
 
-    let private mkIris (subscriptions: Subscriptions) (agent: IrisAgent) (httpServer: IHttpServer) =
+    let private mkIris (subscriptions: Subscriptions) (agent: IrisAgent) =
       let listener =
         { new IObservable<IrisEvent> with
             member self.Subscribe(obs) =
@@ -1052,10 +1049,6 @@ module Iris =
               |> Error.asOther (tag "SocketServer")
               |> Either.fail
 
-        member self.HttpServer
-          with get () =
-            Either.succeed httpServer
-
         member self.Subscribe(callback: IrisEvent -> unit) =
           { new IObserver<IrisEvent> with
               member self.OnCompleted() = ()
@@ -1068,21 +1061,16 @@ module Iris =
           agent.PostAndReply(fun chan -> Msg.Unload chan)
           |> ignore
           dispose agent
-          dispose httpServer
       }
 
 
-    let create (config: IrisMachine) (postCommand: string->unit) (web: string) =
+    let create (config: IrisMachine) =
       try
         either {
-          let iris = ref Unchecked.defaultof<IIrisServer>
           let subscriptions = new Subscriptions()
           let agent = new IrisAgent(loop Idle config subscriptions)
           agent.Start()
-          let! httpServer = HttpServer.create iris config postCommand web
-          iris := mkIris subscriptions agent httpServer
-          do! httpServer.Start()
-          return !iris
+          return mkIris subscriptions agent
         }
       with
       | ex -> IrisError.Other(tag "create", ex.Message) |> Either.fail

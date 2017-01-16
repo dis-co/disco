@@ -5,6 +5,7 @@ import ReactGridLayout from 'react-grid-layout';
 // import {Responsive, WidthProvider} from 'react-grid-layout';
 // const ResponsiveReactGridLayout = WidthProvider(Responsive);
 import { WIDGETS } from './Constants'
+import { EMPTY } from 'iris';
 import widgetLayouts from './data/widgetLayouts';
 import WidgetCluster from './widgets/Cluster';
 import WidgetLog from './widgets/Log';
@@ -14,8 +15,25 @@ function calculateCols(width) {
   return ~~(width/50);
 }
 
+function renderClusterWidget(info) {
+  if (info.state.Project != null && info.state.Project.Name !== EMPTY)
+    return (
+      <div key={WIDGETS.CLUSTER}>
+        <WidgetCluster info={info} />
+      </div>
+    )
+}
+
 export default function PanelCenter(props) {
   // console.log("Panel Center Columns:", calculateCols(props.width))
+  
+  let widgets = [
+    renderClusterWidget(props.info),
+    <div key={WIDGETS.LOG}>
+      <WidgetLog context={props.info.context} />
+    </div>
+  ].filter(x => x != null);
+  
   return (
     <div id="panel-center">
       <Tabs>
@@ -28,12 +46,7 @@ export default function PanelCenter(props) {
             rowHeight={rowHeight}
             verticalCompact={false}
           >
-            <div key={WIDGETS.CLUSTER}>
-              <WidgetCluster info={props.info} />
-            </div>
-            <div key={WIDGETS.LOG}>
-              <WidgetLog context={props.info.context} />
-            </div>
+            {widgets}
           </ReactGridLayout>
         </Tab>
         <Tab label="GRAPH VIEW" >

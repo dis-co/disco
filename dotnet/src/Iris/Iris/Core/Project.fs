@@ -345,7 +345,7 @@ type ClusterConfig =
 
   static member Default
     with get () =
-      { Name    = "<empty>"
+      { Name    = Constants.EMPTY
         Members = Map.empty
         Groups  = [| |] }
 
@@ -454,7 +454,7 @@ type ClusterConfig =
 //                                        |___/
 
 type IrisConfig =
-  { Machine   : IrisMachine
+  { MachineId : Id
     Audio     : AudioConfig
     Vvvv      : VvvvConfig
     Raft      : RaftConfig
@@ -467,7 +467,7 @@ type IrisConfig =
   // ** Default
   static member Default
     with get () =
-      { Machine   = IrisMachine.Default
+      { MachineId = Id Constants.EMPTY
         Audio     = AudioConfig.Default
         Vvvv      = VvvvConfig.Default
         Raft      = RaftConfig.Default
@@ -485,7 +485,7 @@ type IrisConfig =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let machine = Binary.toOffset builder self.Machine
+    let machine = builder.CreateString (string self.MachineId)
     let audio = Binary.toOffset builder self.Audio
     let vvvv = Binary.toOffset builder self.Vvvv
     let raft = Binary.toOffset builder self.Raft
@@ -505,7 +505,7 @@ type IrisConfig =
       |> fun tasks -> ConfigFB.CreateTasksVector(builder, tasks)
 
     ConfigFB.StartConfigFB(builder)
-    ConfigFB.AddMachineConfig(builder, machine)
+    ConfigFB.AddMachineId(builder, machine)
     ConfigFB.AddAudioConfig(builder, audio)
     ConfigFB.AddVvvvConfig(builder, vvvv)
     ConfigFB.AddRaftConfig(builder, raft)
@@ -518,19 +518,7 @@ type IrisConfig =
 
   static member FromFB(fb: ConfigFB) =
     either {
-      let! machine =
-        #if FABLE_COMPILER
-        IrisMachine.FromFB fb.MachineConfig
-        #else
-        let machinish = fb.MachineConfig
-        if machinish.HasValue then
-          let value = machinish.Value
-          IrisMachine.FromFB value
-        else
-          "Could not parse empty MachineConfigFB"
-          |> Error.asParseError "IrisConfig.FromFB"
-          |> Either.fail
-        #endif
+      let machineId = Id fb.MachineId
 
       let! audio =
         #if FABLE_COMPILER
@@ -687,7 +675,7 @@ type IrisConfig =
           arr
 
       return
-        { Machine   = machine
+        { MachineId = machineId
           Audio     = audio
           Vvvv      = vvvv
           Raft      = raft
@@ -788,7 +776,6 @@ Project:
         HostName:
         Ip:
         Port:    -1
-        WebPort: -1
         WsPort:  -1
         GitPort: -1
         State:
@@ -1570,7 +1557,6 @@ Project:
                  HostName   = mem.HostName
                  IpAddr     = ip
                  Port       = uint16 mem.Port
-                 WebPort    = uint16 mem.WebPort
                  WsPort     = uint16 mem.WsPort
                  GitPort    = uint16 mem.GitPort
                  State      = state
@@ -1688,7 +1674,6 @@ Project:
       n.Ip       <- string mem.IpAddr
       n.HostName <- mem.HostName
       n.Port     <- int mem.Port
-      n.WebPort  <- int mem.WebPort
       n.WsPort   <- int mem.WsPort
       n.GitPort  <- int mem.GitPort
       n.State    <- string mem.State
@@ -1782,7 +1767,7 @@ module Config =
       let! tasks     = ProjectYaml.parseTasks     file
       let! cluster   = ProjectYaml.parseCluster   file
 
-      return { Machine   = machine
+      return { MachineId = machine.MachineId
                Vvvv      = vvvv
                Audio     = audio
                Raft      = raftcfg
@@ -1816,7 +1801,7 @@ module Config =
   // ** create
 
   let create (name: string) (machine: IrisMachine) =
-    { Machine   = machine
+    { MachineId = machine.MachineId
     ; Vvvv      = VvvvConfig.Default
     ; Audio     = AudioConfig.Default
     ; Raft      = RaftConfig.Default
@@ -1831,7 +1816,7 @@ module Config =
   // ** updateMachine
 
   let updateMachine (machine: IrisMachine) (config: IrisConfig) =
-    { config with Machine = machine }
+    { config with MachineId = machine.MachineId }
 
   // ** updateVvvv
 
@@ -1899,7 +1884,7 @@ module Config =
   // ** selfMember
 
   let selfMember (options: IrisConfig) =
-    findMember options options.Machine.MachineId
+    findMember options options.MachineId
 
   // ** addMember
 
@@ -1982,8 +1967,8 @@ Config: %A
 
   static member Empty
     with get () =
-      { Id        = Id "<empty>"
-        Name      = "<empty>"
+      { Id        = Id Constants.EMPTY
+        Name      = Constants.EMPTY
         Path      = ""
         CreatedOn = ""
         LastSaved = None

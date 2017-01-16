@@ -8,17 +8,16 @@ export default function(props) {
   return (
     <Form>
       <legend>Node information</legend>
-      <Input name="dir" label="Project Directory" floatingLabel={true} required={true} />
+      <Input name="project" label="Project Name" floatingLabel={true} required={true} />
       <Input name="bind" label="IP Address" floatingLabel={true} required={true} />
       <Input name="git" label="Git Daemon Port" floatingLabel={true} required={true} />
       <Input name="ws" label="Web Socket Port" floatingLabel={true} required={true} />
-      <Input name="web" label="Web Port" floatingLabel={true} required={true} />
       <Input name="raft" label="Raft Port" floatingLabel={true} required={true} />
       <Button variant="raised"
         onClick={ev => {
           ev.preventDefault();
           var form = ev.target.parentNode;
-          createProject(props.info, form.dir.value, form.bind.value, form.git.value, form.ws.value, form.web.value, form.raft.value);
+          createProject(props.info, form.project.value, form.bind.value, form.git.value, form.ws.value, form.raft.value);
           props.onSubmit();
         }}>
         Submit
