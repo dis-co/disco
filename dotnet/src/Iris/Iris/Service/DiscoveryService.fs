@@ -313,11 +313,11 @@ module Discovery =
       chan.Reply (Left (Error.asGitError (tag "loop") "Already running"))
       state
     | Idle ->
-      let data = { RegisteredServices = Map.empty
-                   ResolvedServices = Map.empty
-                   Browser = startBrowser agent }
+      let browser = startBrowser agent
       chan.Reply (Right Reply.Ok)
-      Loaded data
+      Loaded { RegisteredServices = Map.empty
+               ResolvedServices = Map.empty
+               Browser = browser }
 
   // ** handleRegister
 
