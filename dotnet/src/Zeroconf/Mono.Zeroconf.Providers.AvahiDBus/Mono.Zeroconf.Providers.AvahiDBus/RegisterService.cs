@@ -87,7 +87,9 @@ namespace Mono.Zeroconf.Providers.AvahiDBus
             } finally {
                 try {
                     Monitor.Exit (this);
-                } catch (Exception ex) {}
+                } catch (Exception ex) {
+                    Console.WriteLine(ex.Message);
+                }
                 DBusManager.Bus.UntrapSignals ();
             }
         }
