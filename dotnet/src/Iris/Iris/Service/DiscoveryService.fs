@@ -387,18 +387,22 @@ module Discovery =
 
   let private handleDiscovery (state: DiscoveryState)
                               (subs: Subscriptions)
+                              (config: IrisMachine)
                               (srvc: DiscoveredService) =
-    match state with
-    | Loaded data ->
-      match Map.tryFind srvc.Id data.ResolvedServices with
-      | Some service ->
-        let updated = mergeDiscovered service srvc
-        notify subs (DiscoveryEvent.Updated updated)
-        Loaded { data with ResolvedServices = Map.add updated.Id updated data.ResolvedServices }
-      | None ->
-        notify subs (DiscoveryEvent.Appeared srvc)
-        Loaded { data with ResolvedServices = Map.add srvc.Id srvc data.ResolvedServices }
-    | Idle -> state
+    if srvc.Machine <> config.MachineId then
+      match state with
+      | Loaded data ->
+        match Map.tryFind srvc.Id data.ResolvedServices with
+        | Some service ->
+          let updated = mergeDiscovered service srvc
+          notify subs (DiscoveryEvent.Updated updated)
+          Loaded { data with ResolvedServices = Map.add updated.Id updated data.ResolvedServices }
+        | None ->
+          notify subs (DiscoveryEvent.Appeared srvc)
+          Loaded { data with ResolvedServices = Map.add srvc.Id srvc data.ResolvedServices }
+      | Idle -> state
+    else
+      state
 
   // ** handleVanishing
 
@@ -430,7 +434,7 @@ module Discovery =
           | Msg.Register (chan,srvc)   -> handleRegister chan state subscriptions inbox config srvc
           | Msg.UnRegister (chan,srvc) -> handleUnRegister chan state subscriptions srvc
           | Msg.RegisterErr (err,srvc) -> handleRegisterErr state subscriptions err srvc
-          | Msg.Discovered srvc        -> handleDiscovery state subscriptions srvc
+          | Msg.Discovered srvc        -> handleDiscovery state subscriptions config srvc
           | Msg.Vanished id            -> handleVanishing state subscriptions id
 
         return! act newstate
