@@ -32,16 +32,8 @@ type IrisMachine =
   { MachineId : Id
     HostName  : string
     WorkSpace : FilePath
+    WebIP     : string
     WebPort   : uint16 }
-
-  // ** Default
-
-  static member Default
-    with get () =
-      { MachineId = Id Constants.EMPTY
-        HostName  = ""
-        WorkSpace = ""
-        WebPort   = Constants.DEFAULT_WEB_PORT }
 
   override self.ToString() =
     sprintf "MachineId: %s" (string self.MachineId)
@@ -76,12 +68,14 @@ module MachineConfig =
   type MachineConfigYaml () =
     [<DefaultValue>] val mutable MachineId : string
     [<DefaultValue>] val mutable WorkSpace : string
+    [<DefaultValue>] val mutable WebIP     : string
     [<DefaultValue>] val mutable WebPort   : uint16
 
     static member Create (cfg: IrisMachine) =
       let yml = new MachineConfigYaml()
       yml.MachineId <- string cfg.MachineId
       yml.WorkSpace <- cfg.WorkSpace
+      yml.WebIP     <- cfg.WebIP
       yml.WebPort   <- cfg.WebPort
       yml
 
@@ -92,6 +86,7 @@ module MachineConfig =
     { MachineId = Id yml.MachineId
       HostName  = hostname
       WorkSpace = yml.WorkSpace
+      WebIP     = yml.WebIP
       WebPort   = yml.WebPort }
     |> Either.succeed
 
@@ -122,6 +117,7 @@ module MachineConfig =
     { MachineId = Id.Create()
       HostName  = hostname
       WorkSpace = workspace
+      WebIP     = Constants.DEFAULT_IP
       WebPort   = Constants.DEFAULT_WEB_PORT }
 
   // ** save
@@ -164,10 +160,8 @@ module MachineConfig =
           |> parse
         else
           let cfg = create()
-          // TODO: Fail if we cannot save? It's not strictly necessary
-          // and in some environments writing to disk may not be possible
-          save path cfg |> ignore
-          Either.succeed cfg
+          save path cfg
+          |> Either.map (fun _ -> cfg)
 
       match cfg with
       | Left err -> Either.fail err
