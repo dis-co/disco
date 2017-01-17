@@ -532,6 +532,7 @@ enum ErrorTypeFB:ushort {
      AssetErrorFB,
      ParseErrorFB,
      SocketErrorFB,
+     ClientErrorFB,
      IOErrorFB,
      RaftErrorFB,
      OKFB,

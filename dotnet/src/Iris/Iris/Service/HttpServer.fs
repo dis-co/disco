@@ -8,14 +8,13 @@ open Suave.Operators
 open Suave.Successful
 open Suave.Writers
 open Suave.Logging
-open Suave.Logging.Log
+open Suave.Logging.Loggers
 open Suave.Web
 open System.Threading
 open System.IO
 open System.Net
 open System.Net.Sockets
 open System.Diagnostics
-open System.Text.RegularExpressions
 open Iris.Core
 open Iris.Service.Interfaces
 
@@ -45,13 +44,13 @@ module Http =
       |> Either.unwrap (fun err ->
 //        Logger.err config.MachineId (tag "getWsport") (string err)
         0us)
-      |> string |> respond ctx HTTP_200.status |> async.Return
+      |> string |> respond ctx HTTP_200 |> async.Return
 
     let postIrisCommand (postCmd: CommandAgent) (ctx: HttpContext) = async {
       let! res = ctx.request.rawForm |> getString |> postCmd
       match res with
-      | Left err -> return respond ctx HTTP_500.status (string err)
-      | Right msg -> return respond ctx HTTP_200.status msg
+      | Left err -> return respond ctx HTTP_500 (string err)
+      | Right msg -> return respond ctx HTTP_200 msg
     }
 
   let private noCache =
@@ -115,32 +114,17 @@ module Http =
     either {
       try
         let logger =
-          let reg = Regex("\{(\w+)(?:\:(.*?))?\}")
           { new Logger with
-              member x.log(level: Suave.Logging.LogLevel) (nextLine: Suave.Logging.LogLevel -> Message): Async<unit> = 
-                match level with
+              member self.Log level nextLine =
+                let line = nextLine ()
+                match line.level with
                 | Suave.Logging.LogLevel.Verbose -> ()
-                | level ->
-                  let line = nextLine level
-                  match line.value with
-                  | Event template ->
-                    reg.Replace(template, fun m ->
-                      let value = line.fields.[m.Groups.[1].Value]
-                      if m.Groups.Count = 3
-                      then System.String.Format("{0:" + m.Groups.[2].Value + "}", value)
-                      else string value)
-                    |> Logger.debug config.MachineId (tag "logger")
-                  | Gauge _ -> ()
-                async.Return ()
-              member x.logWithAck(arg1: Suave.Logging.LogLevel) (arg2: Suave.Logging.LogLevel -> Message): Async<unit> = 
-//                failwith "Not implemented yet"
-                async.Return ()
-              member x.name: string [] = 
-                [|"iris"|] }
+                | _ ->
+                  line.message
+                  |> Logger.debug config.MachineId (tag "logger") }
 
-        let machine = MachineConfig.get()
-        let addr = IPAddress.Parse machine.WebIP
-        let port = Sockets.Port.Parse (string machine.WebPort)
+        let addr = IPAddress.Parse Constants.DEFAULT_IP
+        let port = Sockets.Port.Parse (string Constants.DEFAULT_WEB_PORT)
 
         sprintf "Suave Web Server ready to start on: %A:%A" addr port
         |> Logger.info config.MachineId (tag "mkConfig")
@@ -150,7 +134,7 @@ module Http =
               logger            = logger
               cancellationToken = cts.Token
               homeFolder        = Some basePath
-              bindings          = [ HttpBinding.create HTTP addr port ]
+              bindings          = [ HttpBinding.mk HTTP addr port ]
               mimeTypesMap      = mimeTypes }
       with
         | exn ->

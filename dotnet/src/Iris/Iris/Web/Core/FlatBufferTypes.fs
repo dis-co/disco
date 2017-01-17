@@ -1583,6 +1583,7 @@ type ErrorTypeFBConstructor =
   abstract AssetErrorFB: ErrorTypeFB
   abstract ParseErrorFB: ErrorTypeFB
   abstract SocketErrorFB: ErrorTypeFB
+  abstract ClientErrorFB: ErrorTypeFB
   abstract IOErrorFB: ErrorTypeFB
   abstract OtherFB: ErrorTypeFB
   abstract RaftErrorFB: ErrorTypeFB
