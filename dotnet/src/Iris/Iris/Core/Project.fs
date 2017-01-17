@@ -453,8 +453,10 @@ type ClusterConfig =
 // |___|_|  |_|___/\____\___/|_| |_|_| |_|\__, |
 //                                        |___/
 
+[<NoComparison>]
 type IrisConfig =
   { MachineId : Id
+    Version   : System.Version    
     Audio     : AudioConfig
     Vvvv      : VvvvConfig
     Raft      : RaftConfig
@@ -468,6 +470,7 @@ type IrisConfig =
   static member Default
     with get () =
       { MachineId = Id Constants.EMPTY
+        Version   = System.Version(0,0)
         Audio     = AudioConfig.Default
         Vvvv      = VvvvConfig.Default
         Raft      = RaftConfig.Default
@@ -485,6 +488,7 @@ type IrisConfig =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
+    let version = builder.CreateString (string self.Version)
     let machine = builder.CreateString (string self.MachineId)
     let audio = Binary.toOffset builder self.Audio
     let vvvv = Binary.toOffset builder self.Vvvv
@@ -505,6 +509,7 @@ type IrisConfig =
       |> fun tasks -> ConfigFB.CreateTasksVector(builder, tasks)
 
     ConfigFB.StartConfigFB(builder)
+    ConfigFB.AddVersion(builder, version)
     ConfigFB.AddMachineId(builder, machine)
     ConfigFB.AddAudioConfig(builder, audio)
     ConfigFB.AddVvvvConfig(builder, vvvv)
@@ -519,6 +524,7 @@ type IrisConfig =
   static member FromFB(fb: ConfigFB) =
     either {
       let machineId = Id fb.MachineId
+      let version = System.Version.Parse fb.Version
 
       let! audio =
         #if FABLE_COMPILER
@@ -676,6 +682,7 @@ type IrisConfig =
 
       return
         { MachineId = machineId
+          Version   = version
           Audio     = audio
           Vvvv      = vvvv
           Raft      = raft
@@ -696,6 +703,8 @@ module ProjectYaml =
   [<Literal>]
   let private template = """
 Project:
+  Version:
+
   Metadata:
     Id:
     CreatedOn:
@@ -1758,6 +1767,10 @@ module Config =
 
   let fromFile (file: ProjectYaml.Config) (machine: IrisMachine) : Either<IrisError, IrisConfig> =
     either {
+      let! version =
+        match System.Version.TryParse file.Project.Version with
+        | true, v -> Either.succeed v
+        | false, _ -> IrisError.ParseError("ProjectYaml.Config.fromFile", "Cannot parse project version") |> Either.fail
       let! raftcfg   = ProjectYaml.parseRaft      file
       let! timing    = ProjectYaml.parseTiming    file
       let! vvvv      = ProjectYaml.parseVvvv      file
@@ -1768,6 +1781,7 @@ module Config =
       let! cluster   = ProjectYaml.parseCluster   file
 
       return { MachineId = machine.MachineId
+               Version   = version
                Vvvv      = vvvv
                Audio     = audio
                Raft      = raftcfg
@@ -1785,6 +1799,7 @@ module Config =
   #if !FABLE_COMPILER
 
   let toFile (config: IrisConfig) (file: ProjectYaml.Config) =
+    file.Project.Version <- string config.Version
     (file, config)
     |> ProjectYaml.saveVvvv
     |> ProjectYaml.saveAudio
@@ -1802,6 +1817,7 @@ module Config =
 
   let create (name: string) (machine: IrisMachine) =
     { MachineId = machine.MachineId
+      Version   = Assembly.GetExecutingAssembly().GetName().Version
     ; Vvvv      = VvvvConfig.Default
     ; Audio     = AudioConfig.Default
     ; Raft      = RaftConfig.Default
