@@ -218,11 +218,10 @@
     <Compile Include="..\..\Iris\Service\Main.fs">
       <Link>Main.fs</Link>
     </Compile>
-    <Content Include="iris.exe.config" />
     <Content Include="App.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="Iris.exe.config">
+    <Content Include="iris.exe.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <None Include="../../i386/libzmq.dll">
