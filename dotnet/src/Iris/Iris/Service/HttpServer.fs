@@ -15,6 +15,7 @@ open System.IO
 open System.Net
 open System.Net.Sockets
 open System.Diagnostics
+open System.Text.RegularExpressions
 open Iris.Core
 open Iris.Service.Interfaces
 
@@ -114,6 +115,7 @@ module Http =
     either {
       try
         let logger =
+          let reg = Regex("\{(\w+)(?:\:(.*?))?\}")
           { new Logger with
               member x.log(level: Suave.Logging.LogLevel) (nextLine: Suave.Logging.LogLevel -> Message): Async<unit> = 
                 match level with
@@ -122,8 +124,12 @@ module Http =
                   let line = nextLine level
                   match line.value with
                   | Event template ->
-                    // TODO: The template must be filled with the values in `fields`
-                    Logger.debug config.MachineId (tag "logger") template
+                    reg.Replace(template, fun m ->
+                      let value = line.fields.[m.Groups.[1].Value]
+                      if m.Groups.Count = 3
+                      then System.String.Format("{0:" + m.Groups.[2].Value + "}", value)
+                      else string value)
+                    |> Logger.debug config.MachineId (tag "logger")
                   | Gauge _ -> ()
                 async.Return ()
               member x.logWithAck(arg1: Suave.Logging.LogLevel) (arg2: Suave.Logging.LogLevel -> Message): Async<unit> = 
@@ -132,8 +138,9 @@ module Http =
               member x.name: string [] = 
                 [|"iris"|] }
 
-        let addr = IPAddress.Parse Constants.DEFAULT_IP
-        let port = Sockets.Port.Parse (string Constants.DEFAULT_WEB_PORT)
+        let machine = MachineConfig.get()
+        let addr = IPAddress.Parse machine.WebIP
+        let port = Sockets.Port.Parse (string machine.WebPort)
 
         sprintf "Suave Web Server ready to start on: %A:%A" addr port
         |> Logger.info config.MachineId (tag "mkConfig")
