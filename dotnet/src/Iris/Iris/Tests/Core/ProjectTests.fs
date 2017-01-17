@@ -480,4 +480,4 @@ module ProjectTests =
         upToDatePath
         saveAsset
         createDefaultUser
-      ]
+      ] |> testSequenced

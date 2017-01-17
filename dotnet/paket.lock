@@ -2,11 +2,12 @@ REDIRECTS: ON
 NUGET
   remote: https://www.nuget.org/api/v2
     Argu (3.2)
-    Expecto (1.1.2)
+    Expecto (3.1)
       Argu (>= 3.2)
       FSharp.Core (>= 3.1.2.5)
-    Expecto.FsCheck (1.1.2)
-      Expecto (>= 1.1.2)
+      Mono.Cecil (>= 0.9.6.4)
+    Expecto.FsCheck (3.1)
+      Expecto (>= 3.1)
       FsCheck (>= 2.6.2)
       FSharp.Core (>= 3.1.2.5)
     Expecto.PerfUtil (1.0.12)
@@ -71,6 +72,7 @@ NUGET
       System.Runtime.Extensions (>= 4.3) - framework: >= netstandard13
       System.Runtime.Handles (>= 4.3) - framework: >= netstandard13
       System.Runtime.InteropServices (>= 4.3) - framework: >= netstandard13
+    Mono.Cecil (0.9.6.4)
     Mono.Posix (4.0)
     NETStandard.Library (1.6.1) - framework: >= net463, >= netstandard16
       Microsoft.NETCore.Platforms (>= 1.1) - framework: >= netstandard10
@@ -805,7 +807,7 @@ NUGET
 GROUP Build
 NUGET
   remote: https://www.nuget.org/api/v2
-    FAKE (4.48)
+    FAKE (4.50)
     FsControl (1.0.9)
     FSharp.Compiler.Service (2.0.0.6)
     FSharp.Control.AsyncSeq (2.0.10)
@@ -831,12 +833,12 @@ NUGET
     Microsoft.Net.Http (2.2.29) - framework: net10, net11, net20, net30, net35, net40, net40-full
       Microsoft.Bcl (>= 1.1.10)
       Microsoft.Bcl.Build (>= 1.0.14)
-    Octokit (0.23)
+    Octokit (0.24)
       Microsoft.Net.Http  - framework: net10, net11, net20, net30, net35, net40, net40-full
     SourceLink.Fake (1.1)
 GITHUB
   remote: fsharp/FAKE
-    modules/Octokit/Octokit.fsx (4eba8e70da347f09158a7940ee68614df37a7de7)
+    modules/Octokit/Octokit.fsx (82bf328cc145d8843e43ac2075c97a0990efc0ca)
       Octokit (>= 0.20)
 GROUP Test
 NUGET

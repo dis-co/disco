@@ -190,4 +190,4 @@ module GitTests =
       test_server_availability
       test_server_startup_should_error_on_eaddrinuse
       test_server_cleanup
-    ]
+    ] |> testSequenced
