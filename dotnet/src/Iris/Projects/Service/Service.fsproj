@@ -205,6 +205,7 @@
     </Compile>
     <Compile Include="..\..\Iris\Service\ClientApiServer.fs">
       <Link>ClientApiServer.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Service\DiscoveryService.fs">
       <Link>DiscoveryService.fs</Link>
     </Compile>
@@ -217,7 +218,7 @@
     <Compile Include="..\..\Iris\Service\Main.fs">
       <Link>Main.fs</Link>
     </Compile>
-    <Content Include="iris.exe.config">
+    <Content Include="iris.exe.config" />
     <Content Include="App.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
