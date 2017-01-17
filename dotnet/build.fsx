@@ -398,6 +398,24 @@ Target "GenerateSerialization"
    buildDebug "Serialization.csproj" ()
    buildRelease "Serialization.csproj" ())
 
+//  _____                               __
+// |__  /___ _ __ ___   ___ ___  _ __  / _|
+//   / // _ \ '__/ _ \ / __/ _ \| '_ \| |_
+//  / /|  __/ | | (_) | (_| (_) | | | |  _|
+// /____\___|_|  \___/ \___\___/|_| |_|_|
+
+Target "BuildDebugZeroconf"
+  (fun _ ->
+    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj"
+    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj"
+    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj")
+
+Target "BuildReleaseZeroconf"
+  (fun _ ->
+    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj"
+    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj"
+    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj")
+
 //  _____                _                 _
 // |  ___| __ ___  _ __ | |_ ___ _ __   __| |
 // | |_ | '__/ _ \| '_ \| __/ _ \ '_ \ / _` |
@@ -621,6 +639,13 @@ Target "Release" DoNothing
 
 "GenerateSerialization"
 ==> "BuildReleaseNodes"
+
+// Zeroconf
+"BuildReleaseZeroconf"
+==> "BuildReleaseService"
+
+"BuildReleaseZeroconf"
+==> "BuildReleaseCore"
 
 // Tests
 

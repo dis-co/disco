@@ -102,7 +102,7 @@ module Git =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Start    of path:FilePath * addr:string * port:uint16 * chan:ReplyChan
+    | Start    of path:FilePath * addr:string * port:Port * chan:ReplyChan
     | Stop     of chan:ReplyChan
     | Status   of chan:ReplyChan
     | Pid      of chan:ReplyChan
@@ -125,7 +125,7 @@ module Git =
 
   // ** createProcess
 
-  let private createProcess (path: FilePath) (addr: string) (port: uint16) =
+  let private createProcess (path: FilePath) (addr: string) (port: Port) =
     let basedir =
       Path.GetDirectoryName path
       |> String.replace '\\' '/'
@@ -229,7 +229,7 @@ module Git =
   let private handleStart (state: GitState)
                           (path: FilePath)
                           (addr: string)
-                          (port: uint16)
+                          (port: Port)
                           (chan: ReplyChan)
                           (agent: GitAgent) =
     // dispose of previous server

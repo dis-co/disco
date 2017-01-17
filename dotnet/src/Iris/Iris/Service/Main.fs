@@ -2,6 +2,7 @@
 
 open Argu
 open Iris.Core
+open Iris.Service.Interfaces
 open Iris.Service.CommandLine
 
 [<AutoOpen>]

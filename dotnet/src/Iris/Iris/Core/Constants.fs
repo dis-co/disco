@@ -32,6 +32,12 @@ module Constants =
   [<Literal>]
   let ASSET_EXTENSION = ".yaml"
 
+  [<Literal>]
+  let ZEROCONF_TCP_SERVICE = "_iris._tcp"
+
+  [<Literal>]
+  let ZEROCONF_UDP_SERVICE = "_iris._udp"
+
   //  ____        __             _ _
   // |  _ \  ___ / _| __ _ _   _| | |_ ___
   // | | | |/ _ \ |_ / _` | | | | | __/ __|
