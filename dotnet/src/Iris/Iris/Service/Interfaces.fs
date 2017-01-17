@@ -6,6 +6,7 @@ open System
 open System.Collections.Concurrent
 open Iris.Core
 open Iris.Raft
+open Iris.Client
 open Iris.Service.Zmq
 open Mono.Zeroconf
 
@@ -196,3 +197,17 @@ type IIrisServer =
   abstract AddMember       : RaftMember -> Either<IrisError,EntryResponse>
   abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
   abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
+
+// * IClientApiServer
+
+type IClientApiServer =
+  inherit IDisposable
+  abstract Start: unit -> Either<IrisError,unit>
+  abstract Clients: Either<IrisError,Map<Id,IrisClient>>
+  abstract UpdateClients: sm:StateMachine -> Either<IrisError,unit>
+
+// * IrisClientEvent
+
+type IrisClientEvent =
+  | AddClient    of IrisClient
+  | RemoveClient of IrisClient

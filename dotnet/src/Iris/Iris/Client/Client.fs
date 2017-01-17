@@ -2,6 +2,8 @@ namespace Iris.Client
 
 open Iris.Core
 
+// * IrisClient
+
 type IrisClient =
   { Id: Id
     Name: string }

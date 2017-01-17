@@ -7,23 +7,19 @@ open System.Threading
 open System.Collections.Concurrent
 open Iris.Core
 open Iris.Client
-
-// * IClientApiServer
-
-type IClientApiServer =
-  inherit IDisposable
-  abstract Start: unit -> Either<IrisError,unit>
-
-// * IrisClientEvent
-
-type IrisClientEvent =
-  | AddClient    of IrisClient
-  | RemoveClient of IrisClient
+open Iris.Service.Zmq
+open Iris.Service.Interfaces
 
 // * ClientApiServer module
 
 [<AutoOpen>]
 module ClientApiServer =
+
+  //  ____       _            _
+  // |  _ \ _ __(_)_   ____ _| |_ ___
+  // | |_) | '__| \ \ / / _` | __/ _ \
+  // |  __/| |  | |\ V / (_| | ||  __/
+  // |_|   |_|  |_| \_/ \__,_|\__\___|
 
   // ** tag
 
@@ -33,15 +29,29 @@ module ClientApiServer =
 
   type private Subscriptions = ConcurrentBag<IObserver<IrisClientEvent>>
 
+  // ** ClientStateData
+
+  [<NoComparison;NoEquality>]
+  type private ClientStateData =
+    { Server: Rep
+      Clients: Map<Id,IrisClient> }
+
+    interface IDisposable with
+      member self.Dispose() =
+        dispose self.Server
+
   // ** ClientState
 
+  [<NoComparison;NoEquality>]
   type private ClientState =
-    { Clients: Map<Id, IrisClient> }
+    | Loaded of ClientStateData
+    | Idle
 
   // ** Reply
 
   [<RequireQualifiedAccess>]
   type private Reply =
+    | Clients of Map<Id,IrisClient>
     | Ok
 
   // ** ReplyChan
@@ -52,19 +62,55 @@ module ClientApiServer =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Dispose      of chan:ReplyChan
-    | AddClient    of chan:ReplyChan * IrisClient
-    | RemoveClient of chan:ReplyChan * IrisClient
+    | Start         of chan:ReplyChan * IrisConfig
+    | Dispose       of chan:ReplyChan
+    | UpdateClients of chan:ReplyChan * StateMachine
+    | GetClients    of chan:ReplyChan
+    | AddClient     of chan:ReplyChan * IrisClient
+    | RemoveClient  of chan:ReplyChan * IrisClient
 
   // ** ApiAgent
 
   type private ApiAgent = MailboxProcessor<Msg>
 
+  // ** start
+
+  let private start (chan: ReplyChan) (config: IrisConfig) =
+    let addr = "heheheheh"
+    let handle (arr: byte array) =
+      printfn "received %d bytes." (Array.length arr)
+      arr
+    let server = new Rep(addr, handle)
+    match server.Start() with
+    | Right () ->
+      chan.Reply(Right Reply.Ok)
+      Loaded { Clients = Map.empty; Server = server }
+    | Left error ->
+      chan.Reply(Left error)
+      dispose server
+      Idle
+
+  // ** handleStart
+
+  let private handleStart (chan: ReplyChan) (state: ClientState) (config: IrisConfig) =
+    match state with
+    | Loaded data ->
+      dispose data
+      start chan config
+    | Idle ->
+      start chan config
+
   // ** handleDispose
 
   let private handleDispose (chan: ReplyChan) (state: ClientState) =
-    chan.Reply(Right Reply.Ok)
-    state
+    match state with
+    | Loaded data ->
+      dispose data.Server
+      chan.Reply(Right Reply.Ok)
+      Idle
+    | Idle ->
+      chan.Reply(Right Reply.Ok)
+      Idle
 
   // ** handleAddClient
 
@@ -72,8 +118,13 @@ module ClientApiServer =
                               (state: ClientState)
                               (subs: Subscriptions)
                               (client: IrisClient) =
-    chan.Reply(Right Reply.Ok)
-    { state with Clients = Map.add client.Id client state.Clients }
+    match state with
+    | Loaded data ->
+      chan.Reply(Right Reply.Ok)
+      Loaded { data with Clients = Map.add client.Id client data.Clients }
+    | Idle ->
+      chan.Reply(Right Reply.Ok)
+      Idle
 
   // ** handleRemoveClient
 
@@ -81,8 +132,54 @@ module ClientApiServer =
                                  (state: ClientState)
                                  (subs: Subscriptions)
                                  (client: IrisClient) =
-    chan.Reply(Right Reply.Ok)
-    { state with Clients = Map.remove client.Id state.Clients }
+    match state with
+    | Loaded data ->
+      chan.Reply(Right Reply.Ok)
+      Loaded { data with Clients = Map.remove client.Id data.Clients }
+    | Idle ->
+      chan.Reply(Right Reply.Ok)
+      Idle
+
+  // ** updateClient
+
+  let private updateClient (sm: StateMachine) (client: IrisClient) =
+    async {
+      printfn "updating client: %A" client.Id
+    }
+
+  // ** handleUpdateClients
+
+  let private handleUpdateClients (chan: ReplyChan) (state: ClientState) (sm: StateMachine) =
+    match state with
+    | Loaded data ->
+      data.Clients
+      |> Map.toArray
+      |> Array.map (snd >> updateClient sm)
+      |> Async.Parallel
+      |> Async.RunSynchronously
+      |> ignore
+      chan.Reply(Right Reply.Ok)
+      state
+    | Idle ->
+      "ClientApi not running"
+      |> Error.asClientError (tag "handleUpdateClients")
+      |> Either.fail
+      |> chan.Reply
+      state
+
+  // ** handleGetClients
+
+  let private handleGetClients (chan: ReplyChan) (state: ClientState) =
+    match state with
+    | Loaded data ->
+      chan.Reply(Right (Reply.Clients data.Clients))
+      state
+    | Idle ->
+      "ClientApi not running"
+      |> Error.asClientError (tag "handleGetClients")
+      |> Either.fail
+      |> chan.Reply
+      state
 
   // ** loop
 
@@ -93,13 +190,24 @@ module ClientApiServer =
 
         let newstate =
           match msg with
+          | Msg.Start(chan,config)        -> handleStart chan state config
           | Msg.Dispose chan              -> handleDispose chan state
           | Msg.AddClient(chan,client)    -> handleAddClient chan state subs client
           | Msg.RemoveClient(chan,client) -> handleRemoveClient chan state subs client
+          | Msg.UpdateClients(chan,sm)    -> handleUpdateClients chan state sm
+          | Msg.GetClients(chan)          -> handleGetClients chan state
 
         return! act newstate
       }
     act initial
+
+  //  ____        _     _ _
+  // |  _ \ _   _| |__ | (_) ___
+  // | |_) | | | | '_ \| | |/ __|
+  // |  __/| |_| | |_) | | | (__
+  // |_|    \__,_|_.__/|_|_|\___|
+
+  // ** ApiServer module
 
   [<RequireQualifiedAccess>]
   module ApiServer =
@@ -107,15 +215,46 @@ module ClientApiServer =
     let create (config: IrisConfig) =
       either {
         let cts = new CancellationTokenSource()
-        let initial = { Clients = Map.empty }
         let subs = new Subscriptions()
-        let agent = new ApiAgent(loop initial subs, cts.Token)
+        let agent = new ApiAgent(loop Idle subs, cts.Token)
+        agent.Start()
 
         return
           { new IClientApiServer with
+
               member self.Start () =
-                agent.Start()
-                |> Either.succeed
+                match agent.PostAndReply(fun chan -> Msg.Start(chan,config)) with
+                | Right (Reply.Ok) -> Either.succeed ()
+                | Right other ->
+                  sprintf "Unexpected Reply from ApiAgent: %A" other
+                  |> Error.asClientError (tag "Start")
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
+
+              member self.Clients
+                with get () =
+                  match agent.PostAndReply(fun chan -> Msg.GetClients(chan)) with
+                  | Right (Reply.Clients clients) -> Either.succeed clients
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "UpdateClients")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
+
+              member self.UpdateClients (sm: StateMachine) =
+                match agent.PostAndReply(fun chan -> Msg.UpdateClients(chan, sm)) with
+                | Right (Reply.Ok) -> Either.succeed ()
+                | Right other ->
+                  sprintf "Unexpected Reply from ApiAgent: %A" other
+                  |> Error.asClientError (tag "UpdateClients")
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
 
               member self.Dispose () =
                 agent.PostAndReply(fun chan -> Msg.Dispose chan)
