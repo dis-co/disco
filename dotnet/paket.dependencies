@@ -4,7 +4,7 @@ source https://nuget.org/api/v2
 group Main
   source https://nuget.org/api/v2
   nuget FSharp.Core redirects:force
-  nuget Expecto
+  nuget Expecto 1.1.2
   nuget Expecto.PerfUtil
   nuget Expecto.FsCheck
   nuget FsCheck
