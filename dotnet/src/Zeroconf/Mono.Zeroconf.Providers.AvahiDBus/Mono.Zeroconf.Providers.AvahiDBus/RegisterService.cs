@@ -81,7 +81,7 @@ namespace Mono.Zeroconf.Providers.AvahiDBus
                 ObjectPath path = DBusManager.Server.EntryGroupNew ();
                 entry_group = DBusManager.GetObject<IAvahiEntryGroup> (path);
 
-                Monitor.Exit (this);
+                // Monitor.Exit (this);
 
                 entry_group.StateChanged += OnEntryGroupStateChanged;
             } finally {

@@ -66,7 +66,6 @@ namespace Mono.Zeroconf.Providers
                     try {
                         provider.Initialize();
                         list.Add(provider);
-                        Console.WriteLine (list.Count);
                     } catch (Exception e) {
                         Console.WriteLine (e);
                     }
