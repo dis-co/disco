@@ -8,7 +8,7 @@ open Suave.Operators
 open Suave.Successful
 open Suave.Writers
 open Suave.Logging
-open Suave.Logging.Loggers
+open Suave.Logging.Log
 open Suave.Web
 open System.Threading
 open System.IO
@@ -44,13 +44,13 @@ module Http =
       |> Either.unwrap (fun err ->
 //        Logger.err config.MachineId (tag "getWsport") (string err)
         0us)
-      |> string |> respond ctx HTTP_200 |> async.Return
+      |> string |> respond ctx HTTP_200.status |> async.Return
 
     let postIrisCommand (postCmd: CommandAgent) (ctx: HttpContext) = async {
       let! res = ctx.request.rawForm |> getString |> postCmd
       match res with
-      | Left err -> return respond ctx HTTP_500 (string err)
-      | Right msg -> return respond ctx HTTP_200 msg
+      | Left err -> return respond ctx HTTP_500.status (string err)
+      | Right msg -> return respond ctx HTTP_200.status msg
     }
 
   let private noCache =
@@ -115,13 +115,22 @@ module Http =
       try
         let logger =
           { new Logger with
-              member self.Log level nextLine =
-                let line = nextLine ()
-                match line.level with
+              member x.log(level: Suave.Logging.LogLevel) (nextLine: Suave.Logging.LogLevel -> Message): Async<unit> = 
+                match level with
                 | Suave.Logging.LogLevel.Verbose -> ()
-                | _ ->
-                  line.message
-                  |> Logger.debug config.MachineId (tag "logger") }
+                | level ->
+                  let line = nextLine level
+                  match line.value with
+                  | Event template ->
+                    // TODO: The template must be filled with the values in `fields`
+                    Logger.debug config.MachineId (tag "logger") template
+                  | Gauge _ -> ()
+                async.Return ()
+              member x.logWithAck(arg1: Suave.Logging.LogLevel) (arg2: Suave.Logging.LogLevel -> Message): Async<unit> = 
+//                failwith "Not implemented yet"
+                async.Return ()
+              member x.name: string [] = 
+                [|"iris"|] }
 
         let addr = IPAddress.Parse Constants.DEFAULT_IP
         let port = Sockets.Port.Parse (string Constants.DEFAULT_WEB_PORT)
@@ -134,7 +143,7 @@ module Http =
               logger            = logger
               cancellationToken = cts.Token
               homeFolder        = Some basePath
-              bindings          = [ HttpBinding.mk HTTP addr port ]
+              bindings          = [ HttpBinding.create HTTP addr port ]
               mimeTypesMap      = mimeTypes }
       with
         | exn ->
