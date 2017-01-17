@@ -492,7 +492,7 @@ module CommandLine =
         try map v |> Right
         with ex -> Other(tag "tryCreateProject", ex.Message) |> Left
       | false, _ -> Other(tag "tryCreateProject", sprintf "Missing %s parameter" k) |> Left
-    
+
     either {
       let machine = MachineConfig.get()
       let! name = parameters |> tryGet "project" id
@@ -563,7 +563,7 @@ module CommandLine =
           | Status       -> tryGetStatus     context     |> orNone
           | Load prDir   -> tryLoadProject context prDir |> orNone
           | CreateInteractive pars  -> tryCreateProject true pars |> orNone
-          | List -> listProjects() |> Some |> Either.succeed 
+          | List -> listProjects() |> Some |> Either.succeed
           | Exit ->
             Either.tryWith
               (Error.asOther (tag "CommandAgent.Loop"))
@@ -632,6 +632,23 @@ module CommandLine =
         proc kontinue
     proc kont
 
+  // ** startDiscoveryService
+
+  let startDiscoveryService (machine: IrisMachine) (irisService: IIrisServer) =
+    match DiscoveryService.create machine with
+    | Right discovery ->
+      let _ = discovery.Subscribe(printfn "%A")
+      match discovery.Start() with
+      | Right () ->
+        discovery.Register ServiceType.Http machine.WebPort (IPv4Address "0.0.0.0")
+        |> ignore
+      | Left error ->
+        string error
+        |> Logger.err machine.MachineId "CommandLine.startService"
+    | Left error ->
+      string error
+      |> Logger.err machine.MachineId "CommandLine.startService"
+
   // ** startService
 
   //  ____  _             _
@@ -644,12 +661,18 @@ module CommandLine =
     either {
       let agentRef = ref None
       let machine = MachineConfig.get()
+
+      use _ = Logger.subscribe Logger.stdout
+
       let! irisService = IrisService.create machine
+
       let! httpServer = HttpServer.create machine irisService (postCommand agentRef)
       do! httpServer.Start()
+
+      startDiscoveryService machine irisService
+
       let agent = startAgent irisService
       agentRef := Some agent
-      use _ = Logger.subscribe Logger.stdout
 
       registerExitHandlers irisService httpServer
 
@@ -687,7 +710,7 @@ module CommandLine =
   /// - parsed: ParseResult<CLIArguments>
   ///
   /// Returns: unit
-  let createProject (parsed: ParseResults<CLIArguments>) = either { 
+  let createProject (parsed: ParseResults<CLIArguments>) = either {
       let parameters =
         [ yield "project", parsed.GetResult <@ Project @>
           yield "bind", parsed.GetResult <@ Bind @>
