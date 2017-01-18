@@ -27,14 +27,21 @@ module ClientApiServer =
 
   // ** Subscriptions
 
-  type private Subscriptions = ConcurrentBag<IObserver<IrisClientEvent>>
+  type private Subscriptions = ConcurrentDictionary<int, IObserver<IrisClientEvent>>
+
+  // ** Client
+
+  [<NoComparison;NoEquality>]
+  type private Client =
+    { Meta: IrisClient
+      Socket: Req }
 
   // ** ClientStateData
 
   [<NoComparison;NoEquality>]
   type private ClientStateData =
     { Server: Rep
-      Clients: Map<Id,IrisClient> }
+      Clients: Map<Id,Client> }
 
     interface IDisposable with
       member self.Dispose() =
@@ -72,6 +79,25 @@ module ClientApiServer =
   // ** ApiAgent
 
   type private ApiAgent = MailboxProcessor<Msg>
+
+  // ** Listener
+
+  type private Listener = IObservable<IrisClientEvent>
+
+  // ** createListener
+
+  let private createListener (subscriptions: Subscriptions) =
+    { new Listener with
+        member self.Subscribe(obs) =
+          while not (subscriptions.TryAdd(obs.GetHashCode(), obs)) do
+            Thread.Sleep(1)
+
+          { new IDisposable with
+              member self.Dispose() =
+                match subscriptions.TryRemove(obs.GetHashCode()) with
+                | true, _  -> ()
+                | _ -> subscriptions.TryRemove(obs.GetHashCode())
+                      |> ignore } }
 
   // ** start
 
@@ -117,11 +143,12 @@ module ClientApiServer =
   let private handleAddClient (chan: ReplyChan)
                               (state: ClientState)
                               (subs: Subscriptions)
-                              (client: IrisClient) =
+                              (meta: IrisClient) =
     match state with
     | Loaded data ->
       chan.Reply(Right Reply.Ok)
-      Loaded { data with Clients = Map.add client.Id client data.Clients }
+      let client = { Meta = meta; Socket = Unchecked.defaultof<Req> }
+      Loaded { data with Clients = Map.add meta.Id client data.Clients }
     | Idle ->
       chan.Reply(Right Reply.Ok)
       Idle
@@ -142,9 +169,9 @@ module ClientApiServer =
 
   // ** updateClient
 
-  let private updateClient (sm: StateMachine) (client: IrisClient) =
+  let private updateClient (sm: StateMachine) (client: Client) =
     async {
-      printfn "updating client: %A" client.Id
+      printfn "updating client: %A" client.Meta.Id
     }
 
   // ** handleUpdateClients
@@ -172,7 +199,11 @@ module ClientApiServer =
   let private handleGetClients (chan: ReplyChan) (state: ClientState) =
     match state with
     | Loaded data ->
-      chan.Reply(Right (Reply.Clients data.Clients))
+      data.Clients
+      |> Map.map (fun k v -> v.Meta)
+      |> Reply.Clients
+      |> Either.succeed
+      |> chan.Reply
       state
     | Idle ->
       "ClientApi not running"
@@ -217,11 +248,11 @@ module ClientApiServer =
         let cts = new CancellationTokenSource()
         let subs = new Subscriptions()
         let agent = new ApiAgent(loop Idle subs, cts.Token)
+        let listener = createListener subs
         agent.Start()
 
         return
           { new IClientApiServer with
-
               member self.Start () =
                 match agent.PostAndReply(fun chan -> Msg.Start(chan,config)) with
                 | Right (Reply.Ok) -> Either.succeed ()
@@ -255,6 +286,13 @@ module ClientApiServer =
                 | Left error ->
                   error
                   |> Either.fail
+
+              member self.Subscribe (callback: IrisClientEvent -> unit) =
+                { new IObserver<IrisClientEvent> with
+                    member self.OnCompleted() = ()
+                    member self.OnError(error) = ()
+                    member self.OnNext(value) = callback value }
+                |> listener.Subscribe
 
               member self.Dispose () =
                 agent.PostAndReply(fun chan -> Msg.Dispose chan)

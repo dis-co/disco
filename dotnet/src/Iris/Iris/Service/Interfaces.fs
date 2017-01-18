@@ -198,16 +198,16 @@ type IIrisServer =
   abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
   abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
 
+// * IrisClientEvent
+
+type IrisClientEvent =
+  | RegisterClient   of IrisClient
+  | UnRegisterClient of IrisClient
 // * IClientApiServer
 
 type IClientApiServer =
   inherit IDisposable
   abstract Start: unit -> Either<IrisError,unit>
+  abstract Subscribe: (IrisClientEvent -> unit) -> IDisposable
   abstract Clients: Either<IrisError,Map<Id,IrisClient>>
   abstract UpdateClients: sm:StateMachine -> Either<IrisError,unit>
-
-// * IrisClientEvent
-
-type IrisClientEvent =
-  | AddClient    of IrisClient
-  | RemoveClient of IrisClient
