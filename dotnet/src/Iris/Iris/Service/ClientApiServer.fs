@@ -103,21 +103,35 @@ module ClientApiServer =
 
   // ** requestHandler
 
-  let private requestHandler (raw: byte array) =
+  let private requestHandler (agent: ApiAgent) (raw: byte array) =
     match Client.parseRequest raw with
-    | Right  Ping               -> Client.serializeResponse Pong
-    | Right (Register client)   -> Client.serializeResponse OK
-    | Right (UnRegister client) -> Client.serializeResponse OK
-    | Left error -> Client.serializeResponse (NOK (string error))
+    | Right Ping -> Client.serializeResponse Pong
+    | Right (Register client) ->
+      match agent.PostAndReply(fun chan -> Msg.AddClient(chan, client)) with
+      | Right Reply.Ok -> Client.serializeResponse OK
+      | Right other -> Client.serializeResponse (NOK "internal error")
+      | Left error ->
+        error
+        |> (string >> NOK)
+        |> Client.serializeResponse
+    | Right (UnRegister client) ->
+      match agent.PostAndReply(fun chan -> Msg.RemoveClient(chan, client)) with
+      | Right Reply.Ok -> Client.serializeResponse OK
+      | Right other -> Client.serializeResponse (NOK "internal error")
+      | Left error ->
+        error
+        |> (string >> NOK)
+        |> Client.serializeResponse
+    | Left error ->
+      error
+      |> (string >> NOK)
+      |> Client.serializeResponse
 
   // ** start
 
-  let private start (chan: ReplyChan) (config: IrisConfig) =
+  let private start (chan: ReplyChan) (agent: ApiAgent) (config: IrisConfig) =
     let addr = "heheheheh"
-    let handle (arr: byte array) =
-      printfn "received %d bytes." (Array.length arr)
-      arr
-    let server = new Rep(addr, handle)
+    let server = new Rep(addr, requestHandler agent)
     match server.Start() with
     | Right () ->
       chan.Reply(Right Reply.Ok)
@@ -129,13 +143,16 @@ module ClientApiServer =
 
   // ** handleStart
 
-  let private handleStart (chan: ReplyChan) (state: ClientState) (config: IrisConfig) =
+  let private handleStart (chan: ReplyChan)
+                          (state: ClientState)
+                          (agent: ApiAgent)
+                          (config: IrisConfig) =
     match state with
     | Loaded data ->
       dispose data
-      start chan config
+      start chan agent config
     | Idle ->
-      start chan config
+      start chan agent config
 
   // ** handleDispose
 
@@ -232,7 +249,7 @@ module ClientApiServer =
 
         let newstate =
           match msg with
-          | Msg.Start(chan,config)        -> handleStart chan state config
+          | Msg.Start(chan,config)        -> handleStart chan state inbox config
           | Msg.Dispose chan              -> handleDispose chan state
           | Msg.AddClient(chan,client)    -> handleAddClient chan state subs client
           | Msg.RemoveClient(chan,client) -> handleRemoveClient chan state subs client
