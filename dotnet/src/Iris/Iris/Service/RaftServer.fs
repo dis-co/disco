@@ -6,10 +6,10 @@ open System
 open System.Threading
 open System.Collections
 open System.Collections.Concurrent
+open Iris.Zmq
 open Iris.Core
 open Iris.Core.Utils
 open Iris.Service.Interfaces
-open Iris.Service.Zmq
 open Iris.Raft
 open FSharpx.Functional
 open Utilities
@@ -1121,7 +1121,7 @@ module Raft =
       let! raftstate = Persistence.getRaft config
 
       let addr = raftstate.Member |> memUri
-      let server = new Zmq.Rep(addr, requestHandler agent)
+      let server = new Rep(addr, requestHandler agent)
 
       match server.Start() with
       | Right _ ->

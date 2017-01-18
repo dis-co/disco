@@ -1,4 +1,4 @@
-namespace Iris.Service.Zmq
+namespace Iris.Zmq
 
 open System
 open System.Threading

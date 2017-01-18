@@ -164,23 +164,32 @@
     <Compile Include="..\..\Iris\Core\Uri.fs">
       <Link>Uri.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Zmq\Rep.fs">
+      <Link>Rep.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Zmq\Req.fs">
+      <Link>Req.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Zmq\ZmqUtils.fs">
+      <Link>ZmqUtils.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Client\Interfaces.fs">
+      <Link>Interfaces.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Client\ApiRequest.fs">
+      <Link>ApiRequest.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Client\Client.fs">
       <Link>Client.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Service\Request.fs">
       <Link>Request.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\Zmq\Rep.fs">
-      <Link>Rep.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Service\Zmq\Req.fs">
-      <Link>Req.fs</Link>
-    </Compile>
     <Compile Include="..\..\Iris\Service\RaftAppState.fs">
       <Link>RaftAppState.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\Zmq\ZmqUtils.fs">
-      <Link>ZmqUtils.fs</Link>
+    <Compile Include="..\..\Iris\Service\Zmq.fs">
+      <Link>Zmq.fs</Link>
     </Compile>
     <compile Include="..\..\Iris\Service\Persistence.fs">
       <Link>Persistence.fs</Link>
@@ -203,8 +212,8 @@
     <Compile Include="..\..\Iris\Service\WebSocket.fs">
       <Link>WebSocket.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\ClientApiServer.fs">
-      <Link>ClientApiServer.fs</Link>
+    <Compile Include="..\..\Iris\Service\ApiServer.fs">
+      <Link>ApiServer.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Service\DiscoveryService.fs">
       <Link>DiscoveryService.fs</Link>

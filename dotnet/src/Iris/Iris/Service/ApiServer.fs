@@ -7,15 +7,15 @@ open System.Threading
 open System.Collections.Concurrent
 open Iris.Core
 open Iris.Client
-open Iris.Service.Zmq
+open Iris.Zmq
 open Iris.Service.Interfaces
 open Iris.Serialization.Api
 open Iris.Serialization.Raft
 
-// * ClientApiServer module
+// * ApiServer module
 
 [<AutoOpen>]
-module ClientApiServer =
+module ApiServer =
 
   //  ____       _            _
   // |  _ \ _ __(_)_   ____ _| |_ ___
@@ -25,11 +25,11 @@ module ClientApiServer =
 
   // ** tag
 
-  let private tag (str: string) = sprintf "IClientApiServer.%s" str
+  let private tag (str: string) = sprintf "IApiServer.%s" str
 
   // ** Subscriptions
 
-  type private Subscriptions = ConcurrentDictionary<int, IObserver<IrisClientEvent>>
+  type private Subscriptions = ConcurrentDictionary<int, IObserver<ApiEvent>>
 
   // ** Client
 
@@ -84,7 +84,7 @@ module ClientApiServer =
 
   // ** Listener
 
-  type private Listener = IObservable<IrisClientEvent>
+  type private Listener = IObservable<ApiEvent>
 
   // ** createListener
 
@@ -104,28 +104,28 @@ module ClientApiServer =
   // ** requestHandler
 
   let private requestHandler (agent: ApiAgent) (raw: byte array) =
-    match Client.parseRequest raw with
-    | Right Ping -> Client.serializeResponse Pong
+    match Binary.decode raw with
+    | Right Ping -> Binary.encode Pong
     | Right (Register client) ->
       match agent.PostAndReply(fun chan -> Msg.AddClient(chan, client)) with
-      | Right Reply.Ok -> Client.serializeResponse OK
-      | Right other -> Client.serializeResponse (NOK "internal error")
+      | Right Reply.Ok -> Binary.encode OK
+      | Right other -> Binary.encode (NOK "internal error")
       | Left error ->
         error
         |> (string >> NOK)
-        |> Client.serializeResponse
+        |> Binary.encode
     | Right (UnRegister client) ->
       match agent.PostAndReply(fun chan -> Msg.RemoveClient(chan, client)) with
-      | Right Reply.Ok -> Client.serializeResponse OK
-      | Right other -> Client.serializeResponse (NOK "internal error")
+      | Right Reply.Ok -> Binary.encode OK
+      | Right other -> Binary.encode (NOK "internal error")
       | Left error ->
         error
         |> (string >> NOK)
-        |> Client.serializeResponse
+        |> Binary.encode
     | Left error ->
       error
       |> (string >> NOK)
-      |> Client.serializeResponse
+      |> Binary.encode
 
   // ** start
 
@@ -280,7 +280,7 @@ module ClientApiServer =
         agent.Start()
 
         return
-          { new IClientApiServer with
+          { new IApiServer with
               member self.Start () =
                 match agent.PostAndReply(fun chan -> Msg.Start(chan,config)) with
                 | Right (Reply.Ok) -> Either.succeed ()
@@ -315,8 +315,8 @@ module ClientApiServer =
                   error
                   |> Either.fail
 
-              member self.Subscribe (callback: IrisClientEvent -> unit) =
-                { new IObserver<IrisClientEvent> with
+              member self.Subscribe (callback: ApiEvent -> unit) =
+                { new IObserver<ApiEvent> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()
                     member self.OnNext(value) = callback value }

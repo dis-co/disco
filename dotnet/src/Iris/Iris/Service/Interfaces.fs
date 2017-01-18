@@ -7,7 +7,7 @@ open System.Collections.Concurrent
 open Iris.Core
 open Iris.Raft
 open Iris.Client
-open Iris.Service.Zmq
+open Iris.Zmq
 open Mono.Zeroconf
 
 type CommandAgent = string -> Async<Either<IrisError,string>>
@@ -109,7 +109,7 @@ type RaftAppContext =
     Raft:        RaftValue
     Options:     IrisConfig
     Callbacks:   IRaftCallbacks
-    Server:      Zmq.Rep
+    Server:      Rep
     Periodic:    IDisposable
     Connections: ConcurrentDictionary<Id,Req> }
 
@@ -198,16 +198,18 @@ type IIrisServer =
   abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
   abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
 
-// * IrisClientEvent
+// * ApiEvent
 
-type IrisClientEvent =
-  | RegisterClient   of IrisClient
-  | UnRegisterClient of IrisClient
-// * IClientApiServer
+[<RequireQualifiedAccess>]
+type ApiEvent =
+  | Register   of IrisClient
+  | UnRegister of IrisClient
 
-type IClientApiServer =
+// * IApiServer
+
+type IApiServer =
   inherit IDisposable
   abstract Start: unit -> Either<IrisError,unit>
-  abstract Subscribe: (IrisClientEvent -> unit) -> IDisposable
+  abstract Subscribe: (ApiEvent -> unit) -> IDisposable
   abstract Clients: Either<IrisError,Map<Id,IrisClient>>
   abstract UpdateClients: sm:StateMachine -> Either<IrisError,unit>

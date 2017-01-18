@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <Import Project="..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
@@ -171,20 +171,32 @@
     <Compile Include="..\..\Iris\Core\Uri.fs">
       <Link>Uri.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\Request.fs">
-      <Link>Request.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Service\Zmq\Rep.fs">
+    <Compile Include="..\..\Iris\Zmq\Rep.fs">
       <Link>Rep.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\Zmq\Req.fs">
+    <Compile Include="..\..\Iris\Zmq\Req.fs">
       <Link>Req.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Zmq\ZmqUtils.fs">
+      <Link>ZmqUtils.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Client\Interfaces.fs">
+      <Link>Interfaces.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Client\ApiRequest.fs">
+      <Link>ApiRequest.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Client\Client.fs">
+      <Link>Client.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\Request.fs">
+      <Link>Request.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Service\RaftAppState.fs">
       <Link>RaftAppState.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\Zmq\ZmqUtils.fs">
-      <Link>ZmqUtils.fs</Link>
+    <Compile Include="..\..\Iris\Service\Zmq.fs">
+      <Link>Zmq.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Service\Persistence.fs">
       <Link>Persistence.fs</Link>
