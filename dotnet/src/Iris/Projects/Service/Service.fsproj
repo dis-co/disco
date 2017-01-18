@@ -221,9 +221,6 @@
     <Content Include="App.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="iris.exe.config">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <None Include="../../i386/libzmq.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <Link>libzmq.dll</Link>
