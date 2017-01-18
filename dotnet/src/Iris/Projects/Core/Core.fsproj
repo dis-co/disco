@@ -178,6 +178,9 @@
     <Compile Include="..\..\Iris\Service\WebSocket.fs">
       <Link>WebSocket.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Service\DiscoveryService.fs">
+      <Link>DiscoveryService.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Service\IrisService.fs">
       <Link>IrisService.fs</Link>
     </Compile>

@@ -46,4 +46,4 @@ module ConfigTests =
     testList "Load/Save MachineConfig" [
         loadSaveTest
         loadSaveCustomPathTest
-      ]
+      ] |> testSequenced
