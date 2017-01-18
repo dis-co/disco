@@ -9,6 +9,8 @@ open Iris.Core
 open Iris.Client
 open Iris.Service.Zmq
 open Iris.Service.Interfaces
+open Iris.Serialization.Api
+open Iris.Serialization.Raft
 
 // * ClientApiServer module
 
@@ -98,6 +100,14 @@ module ClientApiServer =
                 | true, _  -> ()
                 | _ -> subscriptions.TryRemove(obs.GetHashCode())
                       |> ignore } }
+
+  // ** requestHandler
+
+  let private requestHandler (raw: byte array) =
+    match Client.parseRequest raw with
+    | Ping              -> Client.serializeResponse Pong
+    | Register client   -> Client.serializeResponse OK
+    | UnRegister client -> Client.serializeResponse OK
 
   // ** start
 
