@@ -21,4 +21,4 @@ let all =
 
 [<EntryPoint>]
 let main _ =
-  runTests { defaultConfig with ``parallel`` = false } all
+  runTests defaultConfig all

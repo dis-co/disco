@@ -72,4 +72,4 @@ module AssetTests =
       test_write_read_asset_correctly
       test_save_load_asset_correctly
       test_save_with_commit_adds_and_commits_an_asset
-    ]
+    ] |> testSequenced

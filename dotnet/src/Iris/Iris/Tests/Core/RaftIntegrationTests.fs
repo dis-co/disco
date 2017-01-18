@@ -191,4 +191,4 @@ module RaftIntegrationTests =
 
       // test_follower_join_should_fail_on_duplicate_raftid
       // test_all_rafts_should_share_a_common_distributed_event_log
-    ]
+    ] |> testSequenced

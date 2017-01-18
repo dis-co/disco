@@ -33,7 +33,8 @@ type IrisMachine =
     HostName  : string
     WorkSpace : FilePath
     WebIP     : string
-    WebPort   : uint16 }
+    WebPort   : uint16
+    Version   : Version }
 
   override self.ToString() =
     sprintf "MachineId: %s" (string self.MachineId)
@@ -70,6 +71,7 @@ module MachineConfig =
     [<DefaultValue>] val mutable WorkSpace : string
     [<DefaultValue>] val mutable WebIP     : string
     [<DefaultValue>] val mutable WebPort   : uint16
+    [<DefaultValue>] val mutable Version   : string
 
     static member Create (cfg: IrisMachine) =
       let yml = new MachineConfigYaml()
@@ -77,6 +79,7 @@ module MachineConfig =
       yml.WorkSpace <- cfg.WorkSpace
       yml.WebIP     <- cfg.WebIP
       yml.WebPort   <- cfg.WebPort
+      yml.Version   <- cfg.Version.ToString()
       yml
 
   // ** parse (private)
@@ -87,7 +90,8 @@ module MachineConfig =
       HostName  = hostname
       WorkSpace = yml.WorkSpace
       WebIP     = yml.WebIP
-      WebPort   = yml.WebPort }
+      WebPort   = yml.WebPort
+      Version   = Version.Parse yml.Version }
     |> Either.succeed
 
   // ** ensureExists (private)
@@ -118,7 +122,8 @@ module MachineConfig =
       HostName  = hostname
       WorkSpace = workspace
       WebIP     = Constants.DEFAULT_IP
-      WebPort   = Constants.DEFAULT_WEB_PORT }
+      WebPort   = Constants.DEFAULT_WEB_PORT
+      Version   = Assembly.GetExecutingAssembly().GetName().Version }
 
   // ** save
 
