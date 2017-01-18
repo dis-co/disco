@@ -1,7 +1,36 @@
 namespace Iris.Serialization.Api;
 
 table IrisClientFB {
-      Id: string;
-      Name: string;
+     Id: string;
+     Name: string;
 }
 
+enum CommandFB:ushort {
+     RegisterFB = 0,
+     UnReqisterFB = 1,
+     PingFB = 2,
+}
+
+union ParameterFB {
+     IrisClientFB
+}
+
+table ClientApiRequest {
+     Command: CommandFB;
+     Parameter: ParameterFB;      
+}
+
+enum StatusFB:ushort {
+     Pong = 0,
+     OK = 1,
+     NOK = 2,
+}
+
+table ErrorFB {
+     Error: string;
+}
+
+table ClientApiResponse {
+     Status: StatusFB;
+     Data: ErrorFB;      
+}
