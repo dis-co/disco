@@ -15,7 +15,7 @@ union ParameterFB {
      IrisClientFB
 }
 
-table ClientApiRequest {
+table ClientApiRequestFB {
      Command: CommandFB;
      Parameter: ParameterFB;      
 }
@@ -30,7 +30,7 @@ table ErrorFB {
      Error: string;
 }
 
-table ClientApiResponse {
+table ClientApiResponseFB {
      Status: StatusFB;
      Data: ErrorFB;      
 }

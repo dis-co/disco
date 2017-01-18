@@ -456,7 +456,7 @@ type ClusterConfig =
 [<NoComparison>]
 type IrisConfig =
   { MachineId : Id
-    Version   : System.Version    
+    Version   : System.Version
     Audio     : AudioConfig
     Vvvv      : VvvvConfig
     Raft      : RaftConfig

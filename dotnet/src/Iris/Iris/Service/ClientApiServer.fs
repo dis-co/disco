@@ -105,9 +105,10 @@ module ClientApiServer =
 
   let private requestHandler (raw: byte array) =
     match Client.parseRequest raw with
-    | Ping              -> Client.serializeResponse Pong
-    | Register client   -> Client.serializeResponse OK
-    | UnRegister client -> Client.serializeResponse OK
+    | Right  Ping               -> Client.serializeResponse Pong
+    | Right (Register client)   -> Client.serializeResponse OK
+    | Right (UnRegister client) -> Client.serializeResponse OK
+    | Left error -> Client.serializeResponse (NOK (string error))
 
   // ** start
 
