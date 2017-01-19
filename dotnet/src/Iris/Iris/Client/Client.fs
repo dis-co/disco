@@ -116,6 +116,30 @@ module ApiClient =
       |> ApiResponse.NOK
       |> Binary.encode
 
+  // ** requestRegister
+
+  let private requestRegister (data: ClientStateData) (client: IrisClient) =
+    let response =
+      client
+      |> ServerApiRequest.Register
+      |> Binary.encode
+      |> data.Socket.Request
+      |> Either.bind Binary.decode
+
+    match response with
+    | Right OK -> Either.succeed ()
+    | Right (NOK error) ->
+      string error
+      |> Error.asClientError (tag "start")
+      |> Either.fail
+    | Right Pong ->
+      "Unexpected Resposne from server: Pong"
+      |> Error.asClientError (tag "start")
+      |> Either.fail
+    | Left error ->
+      error
+      |> Either.fail
+
   // ** start
 
   let private start (chan: ReplyChan)
@@ -129,11 +153,19 @@ module ApiClient =
     let store = new Store(State.Empty)
     match server.Start(), socket.Start() with
     | Right (), () ->
+      let data =
+        { Store = store
+          Socket = socket
+          Server = server }
 
-      chan.Reply(Right Reply.Ok)
-      Loaded { Store = store
-               Socket = socket
-               Server = server }
+      match requestRegister data client with
+      | Right () ->
+        chan.Reply(Right Reply.Ok)
+        Loaded data
+      | Left error ->
+        dispose data
+        chan.Reply(Left error)
+        Idle
     | Left error, _ ->
       chan.Reply(Left error)
       dispose server
