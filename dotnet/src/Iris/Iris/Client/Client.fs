@@ -103,6 +103,12 @@ module ApiClient =
                 | _ -> subscriptions.TryRemove(obs.GetHashCode())
                       |> ignore } }
 
+  // ** notify
+
+  let private notify (subs: Subscriptions) (ev: ClientEvent) =
+    for KeyValue(_,sub) in subs do
+      sub.OnNext ev
+
   // ** requestHandler
 
   let private requestHandler (agent: ApiAgent) (raw: byte array) =
@@ -145,6 +151,7 @@ module ApiClient =
   let private start (chan: ReplyChan)
                     (server: IrisServer)
                     (client: IrisClient)
+                    (subs: Subscriptions)
                     (agent: ApiAgent) =
     let clientAddr = formatUri client.IpAddress (int client.Port)
     let srvAddr = formatUri server.IpAddress (int server.Port)
@@ -161,6 +168,7 @@ module ApiClient =
       match requestRegister data client with
       | Right () ->
         chan.Reply(Right Reply.Ok)
+        notify subs ClientEvent.Registered
         Loaded data
       | Left error ->
         dispose data
@@ -178,13 +186,14 @@ module ApiClient =
                           (state: ClientState)
                           (server: IrisServer)
                           (client: IrisClient)
+                          (subs: Subscriptions)
                           (agent: ApiAgent) =
     match state with
     | Loaded data ->
       dispose data
-      start chan server client agent
+      start chan server client subs agent
     | Idle ->
-      start chan server client agent
+      start chan server client subs agent
 
   // ** handleDispose
 
@@ -220,7 +229,7 @@ module ApiClient =
 
         let newstate =
           match msg with
-          | Msg.Start chan    -> handleStart chan state server client inbox
+          | Msg.Start chan    -> handleStart chan state server client subs inbox
           | Msg.Dispose chan  -> handleDispose chan state
           | Msg.GetState chan -> handleGetState chan state
 
