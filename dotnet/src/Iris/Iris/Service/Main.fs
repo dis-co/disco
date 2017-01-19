@@ -40,6 +40,7 @@ module Main =
           { Id = Id.Create()
             Name = "client cool"
             Role = Role.Renderer
+            Status = ServiceStatus.Starting
             IpAddress = IPv4Address "127.0.0.1"
             Port = 9001us }
 

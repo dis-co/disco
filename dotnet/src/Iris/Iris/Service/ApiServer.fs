@@ -90,6 +90,7 @@ module ApiServer =
     | GetClients    of chan:ReplyChan
     | AddClient     of chan:ReplyChan * IrisClient
     | RemoveClient  of chan:ReplyChan * IrisClient
+    | SetStatus     of id:Id * status:ServiceStatus
 
   // ** ApiAgent
 
@@ -122,7 +123,7 @@ module ApiServer =
 
   // ** pingTimer
 
-  let private pingTimer (socket: Req) (timeout: int) =
+  let private pingTimer (socket: Req) (agent: ApiAgent) (timeout: int) =
     let cts = new CancellationTokenSource()
 
     let rec loop () =
@@ -136,11 +137,11 @@ module ApiServer =
           |> Either.bind Binary.decode
 
         match response with
-        | Right Pong -> ()
-        | Right other ->
-          printfn "Got some weird response %A"  other
+        | Right Pong ->
+          agent.Post(Msg.SetStatus(socket.Id,ServiceStatus.Running))
         | Left error ->
-          printfn "Error during Ping request: %A" error
+          agent.Post(Msg.SetStatus(socket.Id,ServiceStatus.Failed error))
+        | _ -> ()
 
         return! loop ()
       }
@@ -223,7 +224,8 @@ module ApiServer =
   let private handleAddClient (chan: ReplyChan)
                               (state: ClientState)
                               (subs: Subscriptions)
-                              (meta: IrisClient) =
+                              (meta: IrisClient)
+                              (agent: ApiAgent) =
     match state with
     | Loaded data ->
       let socket = new Req(meta.Id, formatUri meta.IpAddress (int meta.Port), 50)
@@ -232,7 +234,7 @@ module ApiServer =
       let client =
         { Meta = meta
           Socket = socket
-          Timer = pingTimer socket 1000 }
+          Timer = pingTimer socket agent 1000 }
 
       chan.Reply(Right Reply.Ok)
       notify subs (ApiEvent.Register meta)
@@ -301,6 +303,22 @@ module ApiServer =
       |> chan.Reply
       state
 
+  // ** handleSetStatus
+
+  let private handleSetStatus (id: Id)
+                              (status: ServiceStatus)
+                              (state: ClientState)
+                              (subs: Subscriptions) =
+    match state with
+    | Loaded data ->
+      match Map.tryFind id data.Clients with
+      | Some client ->
+        let updated = { client with Meta = { client.Meta with Status = status } }
+        notify subs (ApiEvent.Status updated.Meta)
+        Loaded { data with Clients = Map.add id updated data.Clients }
+      | None -> state
+    | Idle -> Idle
+
   // ** loop
 
   let private loop (initial: ClientState) (subs: Subscriptions) (inbox: ApiAgent) =
@@ -312,10 +330,11 @@ module ApiServer =
           match msg with
           | Msg.Start(chan,config)        -> handleStart chan state inbox config
           | Msg.Dispose chan              -> handleDispose chan state
-          | Msg.AddClient(chan,client)    -> handleAddClient chan state subs client
+          | Msg.AddClient(chan,client)    -> handleAddClient chan state subs client inbox
           | Msg.RemoveClient(chan,client) -> handleRemoveClient chan state subs client
           | Msg.UpdateClients(chan,sm)    -> handleUpdateClients chan state sm
           | Msg.GetClients(chan)          -> handleGetClients chan state
+          | Msg.SetStatus(id, status)     -> handleSetStatus id status state subs
 
         return! act newstate
       }

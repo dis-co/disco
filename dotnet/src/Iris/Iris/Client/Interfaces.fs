@@ -38,6 +38,7 @@ type IrisClient =
   { Id: Id
     Name: string
     Role: Role
+    Status: ServiceStatus
     IpAddress: IpAddress
     Port: Port }
 
@@ -61,6 +62,7 @@ type IrisClient =
       let! ip = IpAddress.TryParse fb.IpAddress
       return { Id = Id fb.Id
                Name = fb.Name
+               Status = ServiceStatus.Running
                IpAddress = ip
                Port = uint16 fb.Port
                Role = role }
@@ -93,7 +95,7 @@ type ClientEvent =
   | Registered
   | UnRegistered
   | Update
-
+  | Status of ServiceStatus
 
 // * IApiClient
 
@@ -108,4 +110,5 @@ type IApiClient =
   inherit IDisposable
   abstract Start: unit -> Either<IrisError,unit>
   abstract State: Either<IrisError,State>
+  abstract Status: ServiceStatus
   abstract Subscribe: (ClientEvent -> unit) -> IDisposable

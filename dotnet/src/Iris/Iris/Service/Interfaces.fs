@@ -202,6 +202,7 @@ type IIrisServer =
 
 [<RequireQualifiedAccess>]
 type ApiEvent =
+  | Status     of IrisClient
   | Register   of IrisClient
   | UnRegister of IrisClient
 

@@ -39,7 +39,8 @@ module ApiClient =
 
   [<NoComparison;NoEquality>]
   type private ClientStateData =
-    { Server: Rep
+    { Status: ServiceStatus
+      Server: Rep
       Socket: Req
       Store:  Store }
 
@@ -65,7 +66,8 @@ module ApiClient =
 
   [<RequireQualifiedAccess>]
   type private Reply =
-    | State of State
+    | State  of State
+    | Status of ServiceStatus
     | Ok
 
   // ** ReplyChan
@@ -76,9 +78,11 @@ module ApiClient =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Start    of chan:ReplyChan
-    | Dispose  of chan:ReplyChan
-    | GetState of chan:ReplyChan
+    | Start     of chan:ReplyChan
+    | GetStatus of chan:ReplyChan
+    | SetStatus of status:ServiceStatus
+    | Dispose   of chan:ReplyChan
+    | GetState  of chan:ReplyChan
 
   // ** ApiAgent
 
@@ -161,7 +165,8 @@ module ApiClient =
     match server.Start(), socket.Start() with
     | Right (), () ->
       let data =
-        { Store = store
+        { Status = ServiceStatus.Starting
+          Store = store
           Socket = socket
           Server = server }
 
@@ -216,6 +221,26 @@ module ApiClient =
       |> chan.Reply
       Idle
 
+  // ** handleGetStatus
+
+  let private handleGetStatus (chan: ReplyChan) (state: ClientState) =
+    match state with
+    | Loaded data ->
+      chan.Reply(Right (Reply.Status data.Status))
+      state
+    | Idle ->
+      chan.Reply(Right (Reply.Status ServiceStatus.Stopped))
+      state
+
+  // ** handleSetStatus
+
+  let private handleSetStatus (state: ClientState) (subs: Subscriptions) (status: ServiceStatus) =
+    match state with
+    | Loaded data ->
+      notify subs (ClientEvent.Status status)
+      Loaded { data with Status = status }
+    | Idle -> Idle
+
   // ** loop
 
   let private loop (initial: ClientState)
@@ -229,9 +254,11 @@ module ApiClient =
 
         let newstate =
           match msg with
-          | Msg.Start chan    -> handleStart chan state server client subs inbox
-          | Msg.Dispose chan  -> handleDispose chan state
-          | Msg.GetState chan -> handleGetState chan state
+          | Msg.Start chan       -> handleStart chan state server client subs inbox
+          | Msg.GetState chan    -> handleGetState chan state
+          | Msg.Dispose chan     -> handleDispose chan state
+          | Msg.GetStatus chan   -> handleGetStatus chan state
+          | Msg.SetStatus status -> handleSetStatus state subs status
 
         return! act newstate
       }
@@ -276,6 +303,13 @@ module ApiClient =
                   | Left error ->
                     error
                     |> Either.fail
+
+              member self.Status
+                with get () =
+                  match agent.PostAndReply(fun chan -> Msg.GetStatus chan) with
+                  | Right (Reply.Status status) -> status
+                  | Right _ -> ServiceStatus.Stopped
+                  | Left error -> ServiceStatus.Failed error
 
               member self.Subscribe (callback: ClientEvent -> unit) =
                 { new IObserver<ClientEvent> with
