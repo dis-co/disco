@@ -12,16 +12,24 @@ table IrisClientFB {
      IpAddress: string;
 }
 
+enum ApiErrorTypeFB:ushort {
+     InternalFB = 0,
+     UnknownCommandFB = 1,
+     MalformedRequestFB = 2
+}
+
+table ApiErrorFB {
+     Type: ApiErrorTypeFB;
+     Data: string;
+}
+
 enum ServerApiCommandFB:ushort {
      RegisterFB = 0,
      UnReqisterFB = 1,
-     PingFB = 2,
 }
 
 enum ClientApiCommandFB:ushort {
-     RegisterFB = 0,
-     UnReqisterFB = 1,
-     PingFB = 2,
+     PingFB = 0,
 }
 
 union ParameterFB {
@@ -39,16 +47,12 @@ table ClientApiRequestFB {
 }
 
 enum StatusFB:ushort {
-     Pong = 0,
-     OK = 1,
-     NOK = 2,
-}
-
-table ErrorFB {
-     Error: string;
+     PongFB = 0,
+     OKFB = 1,
+     NOKFB = 2,
 }
 
 table ApiResponseFB {
      Status: StatusFB;
-     Data: ErrorFB;      
+     Error: ApiErrorFB;      
 }

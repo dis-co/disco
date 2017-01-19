@@ -106,7 +106,15 @@ module ApiClient =
   // ** requestHandler
 
   let private requestHandler (agent: ApiAgent) (raw: byte array) =
-    implement "requestHandler"
+    match Binary.decode raw with
+    | Right ClientApiRequest.Ping ->
+      ApiResponse.Pong
+      |> Binary.encode
+    | Left error ->
+      string error
+      |> ApiError.MalformedRequest
+      |> ApiResponse.NOK
+      |> Binary.encode
 
   // ** start
 
@@ -121,6 +129,7 @@ module ApiClient =
     let store = new Store(State.Empty)
     match server.Start(), socket.Start() with
     | Right (), () ->
+
       chan.Reply(Right Reply.Ok)
       Loaded { Store = store
                Socket = socket
@@ -148,14 +157,9 @@ module ApiClient =
   // ** handleDispose
 
   let private handleDispose (chan: ReplyChan) (state: ClientState) =
-    match state with
-    | Loaded data ->
-      dispose data.Server
-      chan.Reply(Right Reply.Ok)
-      Idle
-    | Idle ->
-      chan.Reply(Right Reply.Ok)
-      Idle
+    dispose state
+    chan.Reply(Right Reply.Ok)
+    Idle
 
   // ** handleGetState
 

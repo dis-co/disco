@@ -105,26 +105,36 @@ module ApiServer =
 
   let private requestHandler (agent: ApiAgent) (raw: byte array) =
     match Binary.decode raw with
-    | Right Ping -> Binary.encode Pong
     | Right (Register client) ->
       match agent.PostAndReply(fun chan -> Msg.AddClient(chan, client)) with
       | Right Reply.Ok -> Binary.encode OK
-      | Right other -> Binary.encode (NOK "internal error")
+      | Right _ ->
+        "Received wrong Reply type from ApiAgent"
+        |> ApiError.Internal
+        |> NOK
+        |> Binary.encode
       | Left error ->
-        error
-        |> (string >> NOK)
+        string error
+        |> ApiError.Internal
+        |> NOK
         |> Binary.encode
     | Right (UnRegister client) ->
       match agent.PostAndReply(fun chan -> Msg.RemoveClient(chan, client)) with
       | Right Reply.Ok -> Binary.encode OK
-      | Right other -> Binary.encode (NOK "internal error")
+      | Right _ ->
+        "Received wrong Reply type from ApiAgent"
+        |> ApiError.Internal
+        |> NOK
+        |> Binary.encode
       | Left error ->
-        error
-        |> (string >> NOK)
+        string error
+        |> ApiError.Internal
+        |> NOK
         |> Binary.encode
     | Left error ->
-      error
-      |> (string >> NOK)
+      string error
+      |> ApiError.Internal
+      |> NOK
       |> Binary.encode
 
   // ** start
