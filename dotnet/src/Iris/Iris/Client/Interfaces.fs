@@ -76,7 +76,9 @@ type IrisClient =
 
 type IrisServer =
   { Id: Id
-    Name: string }
+    Port: Port
+    Name: string
+    IpAddress: IpAddress }
 
 // * ClientEvent
 

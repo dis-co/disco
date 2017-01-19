@@ -110,33 +110,40 @@ module ApiClient =
 
   // ** start
 
-  let private start (chan: ReplyChan) (agent: ApiAgent) =
-    let addr = "heheheheh"
-    let server = new Rep(addr, requestHandler agent)
-    let socket = new Req(Id.Create(), "mycool address", 50)
+  let private start (chan: ReplyChan)
+                    (server: IrisServer)
+                    (client: IrisClient)
+                    (agent: ApiAgent) =
+    let clientAddr = formatUri client.IpAddress (int client.Port)
+    let srvAddr = formatUri server.IpAddress (int server.Port)
+    let server = new Rep(clientAddr, requestHandler agent)
+    let socket = new Req(client.Id, srvAddr, 50)
     let store = new Store(State.Empty)
-    match server.Start() with
-    | Right () ->
+    match server.Start(), socket.Start() with
+    | Right (), () ->
       chan.Reply(Right Reply.Ok)
       Loaded { Store = store
                Socket = socket
                Server = server }
-    | Left error ->
+    | Left error, _ ->
       chan.Reply(Left error)
       dispose server
+      dispose socket
       Idle
 
   // ** handleStart
 
   let private handleStart (chan: ReplyChan)
                           (state: ClientState)
+                          (server: IrisServer)
+                          (client: IrisClient)
                           (agent: ApiAgent) =
     match state with
     | Loaded data ->
       dispose data
-      start chan agent
+      start chan server client agent
     | Idle ->
-      start chan agent
+      start chan server client agent
 
   // ** handleDispose
 
@@ -166,14 +173,18 @@ module ApiClient =
 
   // ** loop
 
-  let private loop (initial: ClientState) (subs: Subscriptions) (inbox: ApiAgent) =
+  let private loop (initial: ClientState)
+                   (server: IrisServer)
+                   (client: IrisClient)
+                   (subs: Subscriptions)
+                   (inbox: ApiAgent) =
     let rec act (state: ClientState) =
       async {
         let! msg = inbox.Receive()
 
         let newstate =
           match msg with
-          | Msg.Start chan    -> handleStart chan state inbox
+          | Msg.Start chan    -> handleStart chan state server client inbox
           | Msg.Dispose chan  -> handleDispose chan state
           | Msg.GetState chan -> handleGetState chan state
 
@@ -188,11 +199,11 @@ module ApiClient =
 
     // ** create
 
-    let create () =
+    let create (server: IrisServer) (client: IrisClient) =
       either {
         let cts = new CancellationTokenSource()
         let subs = new Subscriptions()
-        let agent = new ApiAgent(loop Idle subs, cts.Token)
+        let agent = new ApiAgent(loop Idle server client subs, cts.Token)
         let listener = createListener subs
         agent.Start()
 
