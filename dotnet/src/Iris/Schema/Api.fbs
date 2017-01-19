@@ -1,8 +1,15 @@
 namespace Iris.Serialization.Api;
 
+enum RoleFB:ushort {
+     RendererFB = 0
+}
+
 table IrisClientFB {
      Id: string;
      Name: string;
+     Role: RoleFB;
+     Port: uint;
+     IpAddress: string;
 }
 
 enum ServerApiCommandFB:ushort {
