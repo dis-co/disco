@@ -1,4 +1,4 @@
-namespace Iris.Serivce
+namespace Iris.Service
 
 // * Imports
 
@@ -101,6 +101,12 @@ module ApiServer =
                 | _ -> subscriptions.TryRemove(obs.GetHashCode())
                       |> ignore } }
 
+  // ** notify
+
+  let private notify (subs: Subscriptions) (ev: ApiEvent) =
+    for KeyValue(_,sub) in subs do
+      sub.OnNext ev
+
   // ** requestHandler
 
   let private requestHandler (agent: ApiAgent) (raw: byte array) =
@@ -140,7 +146,7 @@ module ApiServer =
   // ** start
 
   let private start (chan: ReplyChan) (agent: ApiAgent) (config: IrisConfig) =
-    let addr = "heheheheh"
+    let addr = "tcp://*:9000"
     let server = new Rep(addr, requestHandler agent)
     match server.Start() with
     | Right () ->
@@ -186,6 +192,7 @@ module ApiServer =
     | Loaded data ->
       chan.Reply(Right Reply.Ok)
       let client = { Meta = meta; Socket = Unchecked.defaultof<Req> }
+      notify subs (ApiEvent.Register meta)
       Loaded { data with Clients = Map.add meta.Id client data.Clients }
     | Idle ->
       chan.Reply(Right Reply.Ok)
@@ -200,6 +207,7 @@ module ApiServer =
     match state with
     | Loaded data ->
       chan.Reply(Right Reply.Ok)
+      notify subs (ApiEvent.UnRegister client)
       Loaded { data with Clients = Map.remove client.Id data.Clients }
     | Idle ->
       chan.Reply(Right Reply.Ok)
