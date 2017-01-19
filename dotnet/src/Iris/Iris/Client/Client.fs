@@ -138,8 +138,8 @@ module ApiClient =
       string error
       |> Error.asClientError (tag "start")
       |> Either.fail
-    | Right Pong ->
-      "Unexpected Resposne from server: Pong"
+    | Right other ->
+      sprintf "Unexpected Response from server: %A" other
       |> Error.asClientError (tag "start")
       |> Either.fail
     | Left error ->

@@ -36,7 +36,13 @@ module ApiServer =
   [<NoComparison;NoEquality>]
   type private Client =
     { Meta: IrisClient
-      Socket: Req }
+      Socket: Req
+      Timer: IDisposable }
+
+    interface IDisposable with
+      member client.Dispose() =
+        dispose client.Timer
+        dispose client.Socket
 
   // ** ClientStateData
 
@@ -46,8 +52,9 @@ module ApiServer =
       Clients: Map<Id,Client> }
 
     interface IDisposable with
-      member self.Dispose() =
-        dispose self.Server
+      member data.Dispose() =
+        dispose data.Server
+        Map.iter (fun _ v -> dispose v) data.Clients
 
   // ** ClientState
 
@@ -55,6 +62,12 @@ module ApiServer =
   type private ClientState =
     | Loaded of ClientStateData
     | Idle
+
+    interface IDisposable with
+      member state.Dispose() =
+        match state with
+        | Loaded data -> dispose data
+        | _ -> ()
 
   // ** Reply
 
@@ -106,6 +119,34 @@ module ApiServer =
   let private notify (subs: Subscriptions) (ev: ApiEvent) =
     for KeyValue(_,sub) in subs do
       sub.OnNext ev
+
+  // ** pingTimer
+
+  let private pingTimer (socket: Req) (timeout: int) =
+    let cts = new CancellationTokenSource()
+
+    let rec loop () =
+      async {
+        do! Async.Sleep(timeout)
+
+        let response : Either<IrisError,ApiResponse> =
+          ClientApiRequest.Ping
+          |> Binary.encode
+          |> socket.Request
+          |> Either.bind Binary.decode
+
+        match response with
+        | Right Pong -> ()
+        | Right other ->
+          printfn "Got some weird response %A"  other
+        | Left error ->
+          printfn "Error during Ping request: %A" error
+
+        return! loop ()
+      }
+
+    Async.Start(loop (), cts.Token)
+    cts :> IDisposable
 
   // ** requestHandler
 
@@ -173,14 +214,9 @@ module ApiServer =
   // ** handleDispose
 
   let private handleDispose (chan: ReplyChan) (state: ClientState) =
-    match state with
-    | Loaded data ->
-      dispose data.Server
-      chan.Reply(Right Reply.Ok)
-      Idle
-    | Idle ->
-      chan.Reply(Right Reply.Ok)
-      Idle
+    dispose state
+    chan.Reply(Right Reply.Ok)
+    Idle
 
   // ** handleAddClient
 
@@ -190,8 +226,15 @@ module ApiServer =
                               (meta: IrisClient) =
     match state with
     | Loaded data ->
+      let socket = new Req(meta.Id, formatUri meta.IpAddress (int meta.Port), 50)
+      socket.Start()
+
+      let client =
+        { Meta = meta
+          Socket = socket
+          Timer = pingTimer socket 1000 }
+
       chan.Reply(Right Reply.Ok)
-      let client = { Meta = meta; Socket = Unchecked.defaultof<Req> }
       notify subs (ApiEvent.Register meta)
       Loaded { data with Clients = Map.add meta.Id client data.Clients }
     | Idle ->
