@@ -453,10 +453,9 @@ type ClusterConfig =
 // |___|_|  |_|___/\____\___/|_| |_|_| |_|\__, |
 //                                        |___/
 
-[<NoComparison>]
 type IrisConfig =
   { MachineId : Id
-    Version   : System.Version
+    Version   : string
     Audio     : AudioConfig
     Vvvv      : VvvvConfig
     Raft      : RaftConfig
@@ -470,7 +469,7 @@ type IrisConfig =
   static member Default
     with get () =
       { MachineId = Id Constants.EMPTY
-        Version   = System.Version(0,0)
+        Version   = System.Version(0,0,0).ToString()
         Audio     = AudioConfig.Default
         Vvvv      = VvvvConfig.Default
         Raft      = RaftConfig.Default
@@ -524,7 +523,7 @@ type IrisConfig =
   static member FromFB(fb: ConfigFB) =
     either {
       let machineId = Id fb.MachineId
-      let version = System.Version.Parse fb.Version
+      let version = fb.Version
 
       let! audio =
         #if FABLE_COMPILER
@@ -1767,10 +1766,7 @@ module Config =
 
   let fromFile (file: ProjectYaml.Config) (machine: IrisMachine) : Either<IrisError, IrisConfig> =
     either {
-      let! version =
-        match System.Version.TryParse file.Project.Version with
-        | true, v -> Either.succeed v
-        | false, _ -> IrisError.ParseError("ProjectYaml.Config.fromFile", "Cannot parse project version") |> Either.fail
+      let  version   = file.Project.Version
       let! raftcfg   = ProjectYaml.parseRaft      file
       let! timing    = ProjectYaml.parseTiming    file
       let! vvvv      = ProjectYaml.parseVvvv      file
@@ -1817,15 +1813,15 @@ module Config =
 
   let create (name: string) (machine: IrisMachine) =
     { MachineId = machine.MachineId
-      Version   = Assembly.GetExecutingAssembly().GetName().Version
-    ; Vvvv      = VvvvConfig.Default
-    ; Audio     = AudioConfig.Default
-    ; Raft      = RaftConfig.Default
-    ; Timing    = TimingConfig.Default
-    ; ViewPorts = [| |]
-    ; Displays  = [| |]
-    ; Tasks     = [| |]
-    ; Cluster   = { Name   = name + " cluster"
+      Version   = Assembly.GetExecutingAssembly().GetName().Version.ToString()
+      Vvvv      = VvvvConfig.Default
+      Audio     = AudioConfig.Default
+      Raft      = RaftConfig.Default
+      Timing    = TimingConfig.Default
+      ViewPorts = [| |]
+      Displays  = [| |]
+      Tasks     = [| |]
+      Cluster   = { Name   = name + " cluster"
                   ; Members = Map.empty
                   ; Groups  = [| |] } }
 

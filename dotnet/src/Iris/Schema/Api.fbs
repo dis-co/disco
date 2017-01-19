@@ -5,7 +5,13 @@ table IrisClientFB {
      Name: string;
 }
 
-enum CommandFB:ushort {
+enum ServerApiCommandFB:ushort {
+     RegisterFB = 0,
+     UnReqisterFB = 1,
+     PingFB = 2,
+}
+
+enum ClientApiCommandFB:ushort {
      RegisterFB = 0,
      UnReqisterFB = 1,
      PingFB = 2,
@@ -15,8 +21,13 @@ union ParameterFB {
      IrisClientFB
 }
 
-table ApiRequestFB {
-     Command: CommandFB;
+table ServerApiRequestFB {
+     Command: ServerApiCommandFB;
+     Parameter: ParameterFB;      
+}
+
+table ClientApiRequestFB {
+     Command: ClientApiCommandFB;
      Parameter: ParameterFB;      
 }
 

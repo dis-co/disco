@@ -72,4 +72,5 @@ type ClientEvent =
 type IApiClient =
   inherit IDisposable
   abstract Start: unit -> Either<IrisError,unit>
+  abstract State: Either<IrisError,State>
   abstract Subscribe: (ClientEvent -> unit) -> IDisposable

@@ -7,16 +7,9 @@ open FlatBuffers
 open Iris.Serialization.Api
 
 
-// * ApiRequest
+// * ServerApiRequest
 
-//     _          _ ____                            _
-//    / \   _ __ (_)  _ \ ___  __ _ _   _  ___  ___| |_
-//   / _ \ | '_ \| | |_) / _ \/ _` | | | |/ _ \/ __| __|
-//  / ___ \| |_) | |  _ <  __/ (_| | |_| |  __/\__ \ |_
-// /_/   \_\ .__/|_|_| \_\___|\__, |\__,_|\___||___/\__|
-//         |_|                   |_|
-
-type ApiRequest =
+type ServerApiRequest =
   | Register   of IrisClient
   | UnRegister of IrisClient
   | Ping
@@ -25,27 +18,27 @@ type ApiRequest =
     match request with
     | Register client ->
       let offset = client.ToOffset builder
-      ApiRequestFB.StartApiRequestFB(builder)
-      ApiRequestFB.AddCommand(builder, CommandFB.RegisterFB)
-      ApiRequestFB.AddParameterType(builder, ParameterFB.IrisClientFB)
-      ApiRequestFB.AddParameter(builder, offset.Value)
-      ApiRequestFB.EndApiRequestFB(builder)
+      ServerApiRequestFB.StartServerApiRequestFB(builder)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.RegisterFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.IrisClientFB)
+      ServerApiRequestFB.AddParameter(builder, offset.Value)
+      ServerApiRequestFB.EndServerApiRequestFB(builder)
     | UnRegister client ->
       let offset = client.ToOffset builder
-      ApiRequestFB.StartApiRequestFB(builder)
-      ApiRequestFB.AddCommand(builder, CommandFB.UnReqisterFB)
-      ApiRequestFB.AddParameterType(builder, ParameterFB.IrisClientFB)
-      ApiRequestFB.AddParameter(builder, offset.Value)
-      ApiRequestFB.EndApiRequestFB(builder)
+      ServerApiRequestFB.StartServerApiRequestFB(builder)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.UnReqisterFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.IrisClientFB)
+      ServerApiRequestFB.AddParameter(builder, offset.Value)
+      ServerApiRequestFB.EndServerApiRequestFB(builder)
     | Ping ->
-      ApiRequestFB.StartApiRequestFB(builder)
-      ApiRequestFB.AddCommand(builder, CommandFB.PingFB)
-      ApiRequestFB.AddParameterType(builder, ParameterFB.NONE)
-      ApiRequestFB.EndApiRequestFB(builder)
+      ServerApiRequestFB.StartServerApiRequestFB(builder)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.PingFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.NONE)
+      ServerApiRequestFB.EndServerApiRequestFB(builder)
 
-  static member FromFB(fb: ApiRequestFB) =
+  static member FromFB(fb: ServerApiRequestFB) =
     match fb.Command with
-    | CommandFB.RegisterFB ->
+    | ServerApiCommandFB.RegisterFB ->
       match fb.ParameterType with
       | ParameterFB.IrisClientFB ->
         let clientish = fb.Parameter<IrisClientFB>()
@@ -63,7 +56,7 @@ type ApiRequest =
         sprintf "Wrong ParameterType in ApiRequest: %A" x
         |> Error.asClientError "ApiRequest.FromFB"
         |> Either.fail
-    | CommandFB.UnReqisterFB ->
+    | ServerApiCommandFB.UnReqisterFB ->
       match fb.ParameterType with
       | ParameterFB.IrisClientFB ->
         let clientish = fb.Parameter<IrisClientFB>()
@@ -81,7 +74,7 @@ type ApiRequest =
         sprintf "Wrong ParameterType in ApiRequest: %A" x
         |> Error.asClientError "ApiRequest.FromFB"
         |> Either.fail
-    | CommandFB.PingFB -> Either.succeed Ping
+    | ServerApiCommandFB.PingFB -> Either.succeed Ping
     | x ->
       sprintf "Unknown Command in ApiRequest: %A" x
       |> Error.asClientError "ApiRequest.FromFB"
@@ -91,8 +84,8 @@ type ApiRequest =
     Binary.buildBuffer request
 
   static member FromBytes(raw: byte array) =
-    ApiRequestFB.GetRootAsApiRequestFB(Binary.createBuffer raw)
-    |> ApiRequest.FromFB
+    ServerApiRequestFB.GetRootAsServerApiRequestFB(Binary.createBuffer raw)
+    |> ServerApiRequest.FromFB
 
 // * ApiResponse
 
