@@ -1,3 +1,5 @@
+include "Core.fbs";
+
 namespace Iris.Serialization;
 
 enum RoleFB:ushort {
@@ -30,10 +32,12 @@ enum ServerApiCommandFB:ushort {
 
 enum ClientApiCommandFB:ushort {
      PingFB = 0,
+     SnapshotFB = 1,
 }
 
 union ParameterFB {
-     IrisClientFB
+     IrisClientFB,
+     StateFB,     
 }
 
 table ServerApiRequestFB {

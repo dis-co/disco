@@ -98,6 +98,7 @@ module ApiClient =
     | SetStatus of status:ServiceStatus
     | Dispose   of chan:ReplyChan
     | GetState  of chan:ReplyChan
+    | SetState  of state:State
 
   // ** ApiAgent
 
@@ -152,6 +153,10 @@ module ApiClient =
     | Right ClientApiRequest.Ping ->
       agent.Post(Msg.Ping)
       ApiResponse.Pong
+      |> Binary.encode
+    | Right (ClientApiRequest.Snapshot state) ->
+      agent.Post(Msg.SetState state)
+      ApiResponse.OK
       |> Binary.encode
     | Left error ->
       string error
@@ -315,6 +320,14 @@ module ApiClient =
     | idle -> idle
 
 
+  // ** handleSetState
+
+  let private handleSetState (state: ClientState) (newstate: State) =
+    match state with
+    | Loaded data ->
+      Loaded { data with Store = new Store(newstate) }
+    | Idle -> state
+
   // ** loop
 
   let private loop (initial: ClientState)
@@ -328,13 +341,14 @@ module ApiClient =
 
         let newstate =
           match msg with
-          | Msg.Start chan       -> handleStart chan state server client subs inbox
-          | Msg.GetState chan    -> handleGetState chan state
-          | Msg.Dispose chan     -> handleDispose chan state
-          | Msg.GetStatus chan   -> handleGetStatus chan state
-          | Msg.SetStatus status -> handleSetStatus state subs status
-          | Msg.CheckStatus      -> handleCheckStatus state subs
-          | Msg.Ping             -> handlePing state
+          | Msg.Start chan        -> handleStart chan state server client subs inbox
+          | Msg.GetState chan     -> handleGetState chan state
+          | Msg.SetState newstate -> handleSetState state newstate
+          | Msg.Dispose chan      -> handleDispose chan state
+          | Msg.GetStatus chan    -> handleGetStatus chan state
+          | Msg.SetStatus status  -> handleSetStatus state subs status
+          | Msg.CheckStatus       -> handleCheckStatus state subs
+          | Msg.Ping              -> handlePing state
 
         return! act newstate
       }

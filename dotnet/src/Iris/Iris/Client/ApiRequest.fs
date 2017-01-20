@@ -56,6 +56,7 @@ type ApiError =
 // * ClientApiRequest
 
 type ClientApiRequest =
+  | Snapshot of State
   | Ping
 
   member request.ToOffset(builder: FlatBufferBuilder) =
@@ -65,10 +66,30 @@ type ClientApiRequest =
       ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.PingFB)
       ClientApiRequestFB.AddParameterType(builder, ParameterFB.NONE)
       ClientApiRequestFB.EndClientApiRequestFB(builder)
+    | Snapshot state ->
+      let offset = state.ToOffset(builder)
+      ClientApiRequestFB.StartClientApiRequestFB(builder)
+      ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.PingFB)
+      ClientApiRequestFB.AddParameterType(builder, ParameterFB.StateFB)
+      ClientApiRequestFB.AddParameter(builder, offset.Value)
+      ClientApiRequestFB.EndClientApiRequestFB(builder)
 
   static member FromFB(fb: ClientApiRequestFB) =
     match fb.Command with
     | ClientApiCommandFB.PingFB -> Either.succeed Ping
+    | ClientApiCommandFB.SnapshotFB ->
+      either {
+        let! state =
+          let statish = fb.Parameter<StateFB>()
+          if statish.HasValue then
+            let value = statish.Value
+            State.FromFB(value)
+          else
+            "Empty StateFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return Snapshot state
+      }
     | x ->
       sprintf "Unknown Command in ApiRequest: %A" x
       |> Error.asClientError "ClientApiRequest.FromFB"

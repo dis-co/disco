@@ -53,7 +53,8 @@ module ApiServer =
 
   [<NoComparison;NoEquality>]
   type private ClientStateData =
-    { Server: Rep
+    { Store: Store
+      Server: Rep
       Clients: Map<Id,Client> }
 
     interface IDisposable with
@@ -125,6 +126,40 @@ module ApiServer =
   let private notify (subs: Subscriptions) (ev: ApiEvent) =
     for KeyValue(_,sub) in subs do
       sub.OnNext ev
+
+  // ** requestSnapshot
+
+  let private requestSnapshot (data: ClientStateData) (client: Client) (agent: ApiAgent) =
+    let result : Either<IrisError,ApiResponse> =
+      data.Store.State
+      |> ClientApiRequest.Snapshot
+      |> Binary.encode
+      |> client.Socket.Request
+      |> Either.bind Binary.decode
+
+    match result with
+    | Right ApiResponse.OK -> ()
+    | Right (ApiResponse.NOK error) ->
+      let reason =
+        string error
+        |> Error.asClientError (tag "requestSnapshot")
+      (client.Meta.Id, ServiceStatus.Failed reason)
+      |> Msg.SetStatus
+      |> agent.Post
+    | Right other ->
+      let reason =
+        "Unexpected reply from Client"
+        |> Error.asClientError (tag "requestSnapshot")
+      (client.Meta.Id, ServiceStatus.Failed reason)
+      |> Msg.SetStatus
+      |> agent.Post
+    | Left error ->
+      let reason =
+        string error
+        |> Error.asClientError (tag "requestSnapshot")
+      (client.Meta.Id, ServiceStatus.Failed reason)
+      |> Msg.SetStatus
+      |> agent.Post
 
   // ** pingTimer
 
@@ -207,7 +242,9 @@ module ApiServer =
     match server.Start() with
     | Right () ->
       chan.Reply(Right Reply.Ok)
-      Loaded { Clients = Map.empty; Server = server }
+      Loaded { Store = new Store(State.Empty)
+               Clients = Map.empty
+               Server = server }
     | Left error ->
       chan.Reply(Left error)
       dispose server
