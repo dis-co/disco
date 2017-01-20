@@ -4,7 +4,7 @@ open Expecto
 open Iris.Core
 open Iris.Raft
 open Iris.Service
-open Iris.Serialization.Raft
+open Iris.Serialization
 open Iris.Service.Utilities
 open Iris.Service.Persistence
 open System.Net

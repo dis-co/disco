@@ -25,7 +25,7 @@ open FSharpx.Functional
 open FSharp.Configuration
 open SharpYaml.Serialization
 open FlatBuffers
-open Iris.Serialization.Raft
+open Iris.Serialization
 
 #endif
 

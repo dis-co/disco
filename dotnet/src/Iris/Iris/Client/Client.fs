@@ -8,7 +8,7 @@ open System.Collections.Concurrent
 open Iris.Core
 open Iris.Client
 open Iris.Zmq
-open Iris.Serialization.Api
+open Iris.Serialization
 
 // * ApiClient module
 

@@ -6,7 +6,7 @@ open Iris.Core
 open System
 open System.Collections.Concurrent
 open FlatBuffers
-open Iris.Serialization.Api
+open Iris.Serialization
 
 // * Role
 

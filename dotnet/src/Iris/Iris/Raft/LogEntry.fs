@@ -5,7 +5,7 @@ namespace Iris.Raft
 open System
 open System.Collections
 open Iris.Core
-open Iris.Serialization.Raft
+open Iris.Serialization
 
 #if FABLE_COMPILER
 

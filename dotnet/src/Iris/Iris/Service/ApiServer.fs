@@ -10,8 +10,7 @@ open Iris.Core
 open Iris.Client
 open Iris.Zmq
 open Iris.Service.Interfaces
-open Iris.Serialization.Api
-open Iris.Serialization.Raft
+open Iris.Serialization
 
 // * ApiServer module
 

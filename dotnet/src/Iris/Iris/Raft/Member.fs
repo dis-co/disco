@@ -12,7 +12,7 @@ open Iris.Web.Core.FlatBufferTypes
 open System
 open System.Net
 open FlatBuffers
-open Iris.Serialization.Raft
+open Iris.Serialization
 
 #endif
 

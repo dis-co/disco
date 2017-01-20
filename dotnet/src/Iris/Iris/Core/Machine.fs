@@ -14,7 +14,7 @@ open System
 open System.IO
 open SharpYaml.Serialization
 open FlatBuffers
-open Iris.Serialization.Raft
+open Iris.Serialization
 open System.Reflection
 open System.Runtime.CompilerServices
 

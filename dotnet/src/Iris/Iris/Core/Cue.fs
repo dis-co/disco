@@ -13,7 +13,7 @@ open System.IO
 open SharpYaml
 open SharpYaml.Serialization
 open FlatBuffers
-open Iris.Serialization.Raft
+open Iris.Serialization
 
 type CueYaml(id, name, pins) as self =
   [<DefaultValue>] val mutable Id   : string

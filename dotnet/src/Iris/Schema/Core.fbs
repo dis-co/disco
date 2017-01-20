@@ -1,0 +1,543 @@
+namespace Iris.Serialization;
+
+//  ____  _        _             _____ ____
+// / ___|| |_ _ __(_)_ __   __ _|  ___| __ )
+// \___ \| __| '__| | '_ \ / _` | |_  |  _ \
+//  ___) | |_| |  | | | | | (_| |  _| | |_) |
+// |____/ \__|_|  |_|_| |_|\__, |_|   |____/
+//                         |___/
+
+table StringFB {
+     Value: string;
+}
+
+//  _                _____                 _
+// | |    ___   __ _| ____|_   _____ _ __ | |_
+// | |   / _ \ / _` |  _| \ \ / / _ \ '_ \| __|
+// | |__| (_) | (_| | |___ \ V /  __/ | | | |_
+// |_____\___/ \__, |_____| \_/ \___|_| |_|\__|
+//             |___/
+
+table LogEventFB {
+     Time: uint;
+     Thread: int;
+     Tier: string;
+     Id: string;
+     Tag: string;
+     LogLevel: string;
+     Message: string;
+}
+
+//  ____  _ _
+// / ___|| (_) ___ ___
+// \___ \| | |/ __/ _ \
+//  ___) | | | (_|  __/
+// |____/|_|_|\___\___|
+
+enum BehaviorFB:ushort {
+     ToggleFB = 0,
+     BangFB = 1
+}
+
+enum StringTypeFB:ushort {
+     SimpleFB = 0,
+     MultiLineFB = 1,
+     FileNameFB = 2,
+     DirectoryFB = 3,
+     UrlFB = 4,
+     IPFB = 5
+}
+
+table StringSliceFB {
+      Index: uint;
+      Value: string;
+}
+
+table IntSliceFB {
+      Index: uint;
+      Value: int;
+}
+
+table FloatSliceFB {
+      Index: uint;
+      Value: float;
+}
+
+table DoubleSliceFB {
+      Index: uint;
+      Value: double;
+}
+
+table BoolSliceFB {
+      Index: uint;
+      Value: bool;
+}
+
+table ByteSliceFB {
+      Index: uint;
+      Value: string;
+}
+
+table EnumPropertyFB {
+      Key: string;
+      Value: string;
+}
+
+table EnumSliceFB {
+      Index: uint;
+      Value: EnumPropertyFB;
+}
+
+table RGBAValueFB {
+     Red:   ubyte;
+     Green: ubyte;
+     Blue:  ubyte;
+     Alpha: ubyte;
+}
+
+table HSLAValueFB {
+     Hue: ubyte;
+     Saturation: ubyte;
+     Lightness: ubyte;
+     Alpha: ubyte;
+}
+
+union ColorSpaceTypeFB {
+      RGBAValueFB,
+      HSLAValueFB
+}
+
+table ColorSpaceFB {
+      Value: ColorSpaceTypeFB;
+}
+
+table ColorSliceFB {
+      Index: uint;
+      Value: ColorSpaceFB;
+}
+
+table CompoundSliceFB {
+      Index: uint;
+      Value: [PinFB];
+}
+
+union SliceTypeFB {
+      StringSliceFB,
+      IntSliceFB,
+      FloatSliceFB,
+      DoubleSliceFB,
+      BoolSliceFB,
+      ByteSliceFB,
+      EnumSliceFB,
+      ColorSliceFB,
+      CompoundSliceFB
+}
+
+table SliceFB {
+      Slice: SliceTypeFB;
+}
+
+//  ____  _
+// |  _ \(_)_ __
+// | |_) | | '_ \
+// |  __/| | | | |
+// |_|   |_|_| |_|
+
+table StringPinFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      StringType : StringTypeFB;
+      FileMask   : string;
+      MaxChars   : int;
+      Slices     : [StringSliceFB];
+}
+
+table IntPinFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      VecSize    : uint;
+      Min        : int;
+      Max        : int;
+      Unit       : string;
+      Slices     : [IntSliceFB];
+}
+
+table FloatPinFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      VecSize    : uint;
+      Min        : int;
+      Max        : int;
+      Unit       : string;
+      Precision  : uint;
+      Slices     : [FloatSliceFB];
+}
+
+table DoublePinFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      VecSize    : uint;
+      Min        : int;
+      Max        : int;
+      Unit       : string;
+      Precision  : uint;
+      Slices     : [DoubleSliceFB];
+}
+
+table BoolPinFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      Behavior   : BehaviorFB;
+      Slices     : [BoolSliceFB];
+}
+
+table BytePinFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      Slices     : [ByteSliceFB];
+}
+
+table EnumPinFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      Properties : [EnumPropertyFB];
+      Slices     : [EnumSliceFB];
+}
+
+table ColorPinFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      Slices     : [ColorSliceFB];
+}
+
+table CompoundPinFB {
+      Id         : string;
+      Name       : string;
+      Patch      : string;
+      Tags       : [string];
+      Slices     : [CompoundSliceFB];
+}
+
+union PinTypeFB {
+      StringPinFB,
+      IntPinFB,
+      FloatPinFB,
+      DoublePinFB,
+      BoolPinFB,
+      BytePinFB,
+      EnumPinFB,
+      ColorPinFB,
+      CompoundPinFB
+}
+
+table PinFB {
+      Pin: PinTypeFB;
+}
+
+//  ____       _       _
+// |  _ \ __ _| |_ ___| |__
+// | |_) / _` | __/ __| '_ \
+// |  __/ (_| | || (__| | | |
+// |_|   \__,_|\__\___|_| |_|
+
+table PatchFB {
+      Id:   string;
+      Name: string;
+      Pins: [PinFB];
+}
+
+//   ____
+//  / ___|   _  ___
+// | |  | | | |/ _ \
+// | |__| |_| |  __/
+//  \____\__,_|\___|
+
+table CueFB {
+      Id:    string;
+      Name:  string;
+      Pins: [PinFB];
+}
+
+
+//   ____           _     _     _
+//  / ___|   _  ___| |   (_)___| |_
+// | |  | | | |/ _ \ |   | / __| __|
+// | |__| |_| |  __/ |___| \__ \ |_
+//  \____\__,_|\___|_____|_|___/\__|
+
+table CueListFB {
+      Id:   string;
+      Name: string;
+      Cues: [CueFB];
+}
+
+//  _   _
+// | | | |___  ___ _ __
+// | | | / __|/ _ \ '__|
+// | |_| \__ \  __/ |
+//  \___/|___/\___|_|
+
+table UserFB {
+      Id:        string;
+      UserName:  string;
+      FirstName: string;
+      LastName:  string;
+      Email:     string;
+      Password:  string;
+      Salt:      string;
+      Joined:    string;
+      Created:   string;
+}
+
+//  ____                _
+// / ___|  ___  ___ ___(_) ___  _ __
+// \___ \ / _ \/ __/ __| |/ _ \| '_ \
+//  ___) |  __/\__ \__ \ | (_) | | | |
+// |____/ \___||___/___/_|\___/|_| |_|
+
+enum SessionStatusTypeFB:ushort {
+     LoginFB = 0,
+     UnauthorizedFB = 1,
+     AuthorizedFB = 2,
+}
+
+table SessionStatusFB {
+    StatusType: SessionStatusTypeFB;
+    Payload: string;
+}
+
+table SessionFB {
+      Status:    SessionStatusFB;
+      Id:        string;
+      IpAddress: string;
+      UserAgent: string;
+}
+
+//  ____        __ _   __  __                _
+// |  _ \ __ _ / _| |_|  \/  | ___ _ __ ___ | |__   ___ _ __
+// | |_) / _` | |_| __| |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+// |  _ < (_| |  _| |_| |  | |  __/ | | | | | |_) |  __/ |
+// |_| \_\__,_|_|  \__|_|  |_|\___|_| |_| |_|_.__/ \___|_|
+
+enum RaftMemberStateFB:ubyte {
+     JoiningFB = 0,
+     RunningFB = 1,
+     FailedFB  = 2
+}
+
+table RaftMemberFB {
+      Id         : string;
+      HostName   : string;
+      IpAddr     : string;
+      Port       : int;
+      WsPort     : int;
+      GitPort    : int;
+      ApiPort    : int;
+      Voting     : bool;
+      VotedForMe : bool;
+      State      : RaftMemberStateFB;
+      NextIndex  : uint;
+      MatchIndex : uint;
+}
+
+//   ____             __ _
+//  / ___|___  _ __  / _(_) __ _
+// | |   / _ \| '_ \| |_| |/ _` |
+// | |__| (_) | | | |  _| | (_| |
+//  \____\___/|_| |_|_| |_|\__, |
+//                         |___/
+
+table AudioConfigFB {
+      SampleRate: uint;
+}
+
+table VvvvExeFB {
+      Executable: string;
+      Version: string;
+      Required: bool;
+}
+
+table VvvvPluginFB {
+      Name: string;
+      Path: string;
+}
+
+table VvvvConfigFB {
+      Executables: [ VvvvExeFB ];
+      Plugins:     [ VvvvPluginFB ];
+}
+
+table RaftConfigFB {
+      RequestTimeout: uint;
+      ElectionTimeout: uint;
+      MaxLogDepth: uint;
+      LogLevel: string;
+      DataDir: string;
+      MaxRetries: ushort;
+      PeriodicInterval: ushort;
+}
+
+table TimingConfigFB {
+      Framebase: uint;
+      Input: string;
+      Servers: [ string ];
+      UDPPort: uint;
+      TCPPort: uint;
+}
+
+table HostGroupFB {
+      Name: string;
+      Members: [ string ];
+}
+
+table ClusterConfigFB {
+      Name: string;
+      Members: [ RaftMemberFB ];
+      Groups: [ HostGroupFB ];
+}
+
+table ViewPortFB {
+      Id: string;
+      Name: string;
+      PositionX: int;
+      PositionY: int;
+      SizeX: int;
+      SizeY: int;
+      OutputPositionX: int;
+      OutputPositionY: int;
+      OutputSizeX: int;
+      OutputSizeY: int;
+      OverlapX: int;
+      OverlapY: int;
+      Description: string;
+}
+
+table TaskFB {
+      Id: string;
+      Description: string;
+      DisplayId: string;
+      AudioStream: string;
+      Arguments: [ string ];
+}
+
+table SignalFB {
+      SizeX: int;
+      SizeY: int;
+      PositionX: int;
+      PositionY: int;
+} 
+
+table RegionFB {
+      Id: string;
+      Name: string;
+      SrcPositionX: int;
+      SrcPositionY: int;
+      SrcSizeX: int;
+      SrcSizeY: int;
+      OutputPositionX: int;
+      OutputPositionY: int;
+      OutputSizeX: int;
+      OutputSizeY: int;
+}
+
+table RegionMapFB {
+      SrcViewportId: string;
+      Regions: [ RegionFB ]; 
+}
+
+table DisplayFB {
+     Id: string;
+     Name: string;
+     SizeX: int;
+     SizeY: int;
+     Signals: [ SignalFB ];
+     RegionMap: RegionMapFB;
+}
+
+table ConfigFB {
+      Version:        string;
+      MachineId:      string;
+      AudioConfig:    AudioConfigFB;
+      VvvvConfig:     VvvvConfigFB;
+      RaftConfig:     RaftConfigFB;
+      TimingConfig:   TimingConfigFB;
+      ClusterConfig:  ClusterConfigFB;
+      ViewPorts:      [ ViewPortFB ];
+      Displays:       [ DisplayFB ];
+      Tasks:          [ TaskFB ];
+}
+
+//  ____            _           _
+// |  _ \ _ __ ___ (_) ___  ___| |_
+// | |_) | '__/ _ \| |/ _ \/ __| __|
+// |  __/| | | (_) | |  __/ (__| |_
+// |_|   |_|  \___// |\___|\___|\__|
+//               |__/
+
+table ProjectFB {
+      Id:        string;
+      Name:      string;
+      Path:      string;
+      CreatedOn: string;
+      LastSaved: string;
+      Copyright: string;
+      Author:    string;
+      Config:    ConfigFB;
+}
+
+//  ____  _        _
+// / ___|| |_ __ _| |_ ___
+// \___ \| __/ _` | __/ _ \
+//  ___) | || (_| | ||  __/
+// |____/ \__\__,_|\__\___|
+
+table StateFB {
+      Project:  ProjectFB;
+      Patches:  [PatchFB];
+      Cues:     [CueFB];
+      CueLists: [CueListFB];
+      Sessions: [SessionFB];
+      Users:    [UserFB];
+}
+
+//  _____
+// | ____|_ __ _ __ ___  _ __
+// |  _| | '__| '__/ _ \| '__|
+// | |___| |  | | | (_) | |
+// |_____|_|  |_|  \___/|_|
+
+enum ErrorTypeFB:ushort {
+     GitErrorFB,
+     ProjectErrorFB,
+     AssetErrorFB,
+     ParseErrorFB,
+     SocketErrorFB,
+     ClientErrorFB,
+     IOErrorFB,
+     RaftErrorFB,
+     OKFB,
+     OtherFB
+}
+
+table ErrorFB {
+      Type: ErrorTypeFB;
+      Location: string;
+      Message: string;
+}
+

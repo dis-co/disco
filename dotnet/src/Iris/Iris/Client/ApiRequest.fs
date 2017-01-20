@@ -4,7 +4,7 @@ namespace Iris.Client
 
 open Iris.Core
 open FlatBuffers
-open Iris.Serialization.Api
+open Iris.Serialization
 
 // * ApiError
 

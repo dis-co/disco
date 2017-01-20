@@ -1,4 +1,4 @@
-namespace Iris.Serialization.Api;
+namespace Iris.Serialization;
 
 enum RoleFB:ushort {
      RendererFB = 0

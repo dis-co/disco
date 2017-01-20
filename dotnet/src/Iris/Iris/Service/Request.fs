@@ -3,7 +3,7 @@ namespace Iris.Service
 open Argu
 open FlatBuffers
 open Iris.Raft
-open Iris.Serialization.Raft
+open Iris.Serialization
 open Iris.Core
 open Iris.Raft
 
