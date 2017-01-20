@@ -97,6 +97,7 @@ module ApiServer =
     | AddClient     of chan:ReplyChan * client:IrisClient
     | RemoveClient  of chan:ReplyChan * client:IrisClient
     | SetStatus     of id:Id          * status:ServiceStatus
+    | SetState      of chan:ReplyChan * state:State
 
   // ** ApiAgent
 
@@ -325,17 +326,22 @@ module ApiServer =
       printfn "updating client: %A" client.Meta.Id
     }
 
+  // ** updateClients
+
+  let private updateClients (sm: StateMachine) (clients: Map<Id,Client>) =
+     clients
+     |> Map.toArray
+     |> Array.map (snd >> updateClient sm)
+     |> Async.Parallel
+     |> Async.RunSynchronously
+     |> ignore
+
   // ** handleUpdateClients
 
   let private handleUpdateClients (chan: ReplyChan) (state: ClientState) (sm: StateMachine) =
     match state with
     | Loaded data ->
-      data.Clients
-      |> Map.toArray
-      |> Array.map (snd >> updateClient sm)
-      |> Async.Parallel
-      |> Async.RunSynchronously
-      |> ignore
+      updateClients sm data.Clients
       chan.Reply(Right Reply.Ok)
       state
     | Idle ->
@@ -386,6 +392,17 @@ module ApiServer =
       | None -> state
     | idle -> idle
 
+  // ** handleSetState
+
+  let private handleSetState (chan: ReplyChan)
+                             (state: ClientState)
+                             (newstate: State) =
+    match state with
+    | Loaded data ->
+      updateClients (DataSnapshot newstate) data.Clients
+      Loaded { data with Store = new Store(newstate) }
+    | Idle -> state
+
   // ** loop
 
   let private loop (initial: ClientState) (subs: Subscriptions) (inbox: ApiAgent) =
@@ -402,6 +419,7 @@ module ApiServer =
           | Msg.UpdateClients(chan,sm)    -> handleUpdateClients chan state sm
           | Msg.GetClients(chan)          -> handleGetClients chan state
           | Msg.SetStatus(id, status)     -> handleSetStatus id status state subs
+          | Msg.SetState(chan, newstate)  -> handleSetState chan state newstate
 
         return! act newstate
       }
@@ -453,6 +471,17 @@ module ApiServer =
 
               member self.UpdateClients (sm: StateMachine) =
                 match agent.PostAndReply(fun chan -> Msg.UpdateClients(chan, sm)) with
+                | Right (Reply.Ok) -> Either.succeed ()
+                | Right other ->
+                  sprintf "Unexpected Reply from ApiAgent: %A" other
+                  |> Error.asClientError (tag "UpdateClients")
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
+
+              member self.SetState (state: State) =
+                match agent.PostAndReply(fun chan -> Msg.SetState(chan, state)) with
                 | Right (Reply.Ok) -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
