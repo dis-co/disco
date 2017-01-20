@@ -31,6 +31,16 @@ module ApiClient =
 
   let private tag (str: string) = sprintf "ApiClient.%s" str
 
+  // ** freq
+
+  [<Literal>]
+  let private freq = 500u
+
+  // ** timeout
+
+  [<Literal>]
+  let private timeout = 5000u
+
   // ** Subscriptions
 
   type private Subscriptions = ConcurrentDictionary<int, IObserver<ClientEvent>>
@@ -40,12 +50,15 @@ module ApiClient =
   [<NoComparison;NoEquality>]
   type private ClientStateData =
     { Status: ServiceStatus
+      Elapsed: uint32
       Server: Rep
       Socket: Req
-      Store:  Store }
+      Store:  Store
+      Timer:  IDisposable }
 
     interface IDisposable with
       member self.Dispose() =
+        dispose self.Timer
         dispose self.Server
         dispose self.Socket
 
@@ -78,6 +91,8 @@ module ApiClient =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
+    | Ping
+    | CheckStatus
     | Start     of chan:ReplyChan
     | GetStatus of chan:ReplyChan
     | SetStatus of status:ServiceStatus
@@ -107,6 +122,23 @@ module ApiClient =
                 | _ -> subscriptions.TryRemove(obs.GetHashCode())
                       |> ignore } }
 
+  // ** pingTimer
+
+  let private pingTimer (agent: ApiAgent) =
+    let cts = new CancellationTokenSource()
+
+    let rec loop () =
+      async {
+        do! Async.Sleep(int freq)
+        agent.Post(Msg.CheckStatus)
+        return! loop ()
+      }
+
+    Async.Start(loop (), cts.Token)
+    { new IDisposable with
+        member self.Dispose () =
+          cts.Cancel() }
+
   // ** notify
 
   let private notify (subs: Subscriptions) (ev: ClientEvent) =
@@ -118,6 +150,7 @@ module ApiClient =
   let private requestHandler (agent: ApiAgent) (raw: byte array) =
     match Binary.decode raw with
     | Right ClientApiRequest.Ping ->
+      agent.Post(Msg.Ping)
       ApiResponse.Pong
       |> Binary.encode
     | Left error ->
@@ -166,6 +199,8 @@ module ApiClient =
     | Right (), () ->
       let data =
         { Status = ServiceStatus.Starting
+          Timer = pingTimer agent
+          Elapsed = 0u
           Store = store
           Socket = socket
           Server = server }
@@ -241,6 +276,45 @@ module ApiClient =
       Loaded { data with Status = status }
     | Idle -> Idle
 
+  // ** handleCheckStatus
+
+  let private handleCheckStatus (state: ClientState) (subs: Subscriptions) =
+    match state with
+    | Loaded data ->
+      if not (Service.hasFailed data.Status) then
+        match data.Elapsed with
+        | x when x > timeout ->
+          let status =
+            "Server ping timed out"
+            |> Error.asClientError (tag "handlePing")
+            |> ServiceStatus.Failed
+          notify subs (ClientEvent.Status status)
+          Loaded { data with
+                    Status = status
+                    Elapsed = data.Elapsed + freq }
+        | x ->
+          let status =
+            match data.Status with
+            | ServiceStatus.Running -> data.Status
+            | _ ->
+              let newstatus = ServiceStatus.Running
+              notify subs (ClientEvent.Status newstatus)
+              newstatus
+          Loaded { data with
+                    Status = status
+                    Elapsed = data.Elapsed + freq }
+      else
+        state
+    | idle -> idle
+
+  // ** handlePing
+
+  let private handlePing (state: ClientState) =
+    match state with
+    | Loaded data -> Loaded { data with Elapsed = 0u }
+    | idle -> idle
+
+
   // ** loop
 
   let private loop (initial: ClientState)
@@ -259,6 +333,8 @@ module ApiClient =
           | Msg.Dispose chan     -> handleDispose chan state
           | Msg.GetStatus chan   -> handleGetStatus chan state
           | Msg.SetStatus status -> handleSetStatus state subs status
+          | Msg.CheckStatus      -> handleCheckStatus state subs
+          | Msg.Ping             -> handlePing state
 
         return! act newstate
       }

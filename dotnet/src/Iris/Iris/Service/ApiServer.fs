@@ -138,16 +138,22 @@ module ApiServer =
 
         match response with
         | Right Pong ->
-          agent.Post(Msg.SetStatus(socket.Id,ServiceStatus.Running))
+          (socket.Id, ServiceStatus.Running)
+          |> Msg.SetStatus
+          |> agent.Post
         | Left error ->
-          agent.Post(Msg.SetStatus(socket.Id,ServiceStatus.Failed error))
+          (socket.Id, ServiceStatus.Failed error)
+          |> Msg.SetStatus
+          |> agent.Post
         | _ -> ()
 
         return! loop ()
       }
 
     Async.Start(loop (), cts.Token)
-    cts :> IDisposable
+    { new IDisposable with
+        member self.Dispose () =
+          cts.Cancel() }
 
   // ** requestHandler
 
@@ -313,11 +319,18 @@ module ApiServer =
     | Loaded data ->
       match Map.tryFind id data.Clients with
       | Some client ->
-        let updated = { client with Meta = { client.Meta with Status = status } }
-        notify subs (ApiEvent.Status updated.Meta)
-        Loaded { data with Clients = Map.add id updated data.Clients }
+        match client.Meta.Status, status with
+        | ServiceStatus.Running, ServiceStatus.Running ->
+          state
+        | oldst, newst ->
+          if oldst <> newst then
+            let updated = { client with Meta = { client.Meta with Status = status } }
+            notify subs (ApiEvent.Status updated.Meta)
+            Loaded { data with Clients = Map.add id updated data.Clients }
+          else
+            state
       | None -> state
-    | Idle -> Idle
+    | idle -> idle
 
   // ** loop
 

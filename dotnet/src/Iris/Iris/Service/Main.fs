@@ -23,7 +23,6 @@ module Main =
   let main args =
     let result =
       either {
-        use log = Logger.subscribe Logger.stdout
         let machine = MachineConfig.create ()
         let config = Config.create "hello" machine
         use! srvr = ApiServer.create config
@@ -50,10 +49,12 @@ module Main =
         do! clnt.Start()
 
         while true do
-          Console.ReadLine()
-          |> ignore
-          let! clients = srvr.Clients
-          printfn "%A" clients
+          match Console.ReadLine() with
+          | "stop server" -> dispose srvr
+          | "stop client" -> dispose clnt
+          | _ ->
+            let! clients = srvr.Clients
+            printfn "%A" clients
       }
 
     printfn "%A" result
