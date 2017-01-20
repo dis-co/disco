@@ -786,6 +786,7 @@ Project:
         Port:    -1
         WsPort:  -1
         GitPort: -1
+        ApiPort: -1
         State:
 
     Groups:
@@ -1567,6 +1568,7 @@ Project:
                  Port       = uint16 mem.Port
                  WsPort     = uint16 mem.WsPort
                  GitPort    = uint16 mem.GitPort
+                 ApiPort    = uint16 mem.ApiPort
                  State      = state
                  Voting     = true
                  VotedForMe = false
@@ -1684,6 +1686,7 @@ Project:
       n.Port     <- int mem.Port
       n.WsPort   <- int mem.WsPort
       n.GitPort  <- int mem.GitPort
+      n.ApiPort  <- int mem.ApiPort
       n.State    <- string mem.State
       file.Project.Cluster.Members.Add(n)
 

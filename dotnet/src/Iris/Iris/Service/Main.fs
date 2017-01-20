@@ -4,6 +4,7 @@
 open Argu
 open Iris.Core
 open System
+open Iris.Raft
 open Iris.Client
 open Iris.Service
 open Iris.Service.Interfaces
@@ -19,21 +20,32 @@ module Main =
   // |_|  |_|\__,_|_|_| |_|             //
   ////////////////////////////////////////
 
+  let mkclient server client =
+    either {
+      let! clnt = ApiClient.create server client
+      let obs2 = clnt.Subscribe(printfn "clnt: %A")
+      do! clnt.Start()
+      return { new IDisposable with
+                 member self.Dispose() =
+                   dispose clnt
+                   dispose obs2 }
+    }
+
   [<EntryPoint>]
   let main args =
     let result =
       either {
-        let machine = MachineConfig.create ()
-        let config = Config.create "hello" machine
-        use! srvr = ApiServer.create config
+        // use logger = Logger.subscribe Logger.stdout
+        let mem = Member.create (Id.Create())
+        use! srvr = ApiServer.create mem
         use obs1 = srvr.Subscribe(printfn "srvr: %A")
         do! srvr.Start()
 
         let server : IrisServer =
           { Id = Id.Create()
             Name = "cool"
-            Port = 9000us
-            IpAddress = IPv4Address "127.0.0.1" }
+            Port = mem.ApiPort
+            IpAddress = mem.IpAddr }
 
         let client : IrisClient =
           { Id = Id.Create()
@@ -43,15 +55,17 @@ module Main =
             IpAddress = IPv4Address "127.0.0.1"
             Port = 9001us }
 
-        use! clnt = ApiClient.create server client
-        use obs2 = clnt.Subscribe(printfn "clnt: %A")
-
-        do! clnt.Start()
+        let aclient = ref (Unchecked.defaultof<IDisposable>)
+        let! c = mkclient server client
+        aclient := c
 
         while true do
           match Console.ReadLine() with
           | "stop server" -> dispose srvr
-          | "stop client" -> dispose clnt
+          | "stop client" -> dispose !aclient
+          | "start client" ->
+            let! c = mkclient server client
+            aclient := c
           | _ ->
             let! clients = srvr.Clients
             printfn "%A" clients

@@ -92,6 +92,7 @@ type RaftMemberYaml() =
   [<DefaultValue>] val mutable WebPort    : uint16
   [<DefaultValue>] val mutable WsPort     : uint16
   [<DefaultValue>] val mutable GitPort    : uint16
+  [<DefaultValue>] val mutable ApiPort    : uint16
   [<DefaultValue>] val mutable State      : string
   [<DefaultValue>] val mutable NextIndex  : Index
   [<DefaultValue>] val mutable MatchIndex : Index
@@ -111,6 +112,7 @@ and RaftMember =
   ; Port       : uint16
   ; WsPort     : uint16
   ; GitPort    : uint16
+  ; ApiPort    : uint16
   ; Voting     : bool
   ; VotedForMe : bool
   ; State      : RaftMemberState
@@ -143,6 +145,7 @@ and RaftMember =
     yaml.Port       <- self.Port
     yaml.WsPort     <- self.WsPort
     yaml.GitPort    <- self.GitPort
+    yaml.ApiPort    <- self.ApiPort
     yaml.State      <- string self.State
     yaml.NextIndex  <- self.NextIndex
     yaml.MatchIndex <- self.MatchIndex
@@ -160,6 +163,7 @@ and RaftMember =
              ; Port       = yaml.Port
              ; WsPort     = yaml.WsPort
              ; GitPort    = yaml.GitPort
+             ; ApiPort    = yaml.ApiPort
              ; Voting     = yaml.Voting
              ; VotedForMe = yaml.VotedForMe
              ; NextIndex  = yaml.NextIndex
@@ -189,6 +193,7 @@ and RaftMember =
     RaftMemberFB.AddPort(builder, int mem.Port)
     RaftMemberFB.AddWsPort(builder, int mem.WsPort)
     RaftMemberFB.AddGitPort(builder, int mem.GitPort)
+    RaftMemberFB.AddApiPort(builder, int mem.ApiPort)
     RaftMemberFB.AddVoting(builder, mem.Voting)
     RaftMemberFB.AddVotedForMe(builder, mem.VotedForMe)
     RaftMemberFB.AddState(builder, state)
@@ -206,6 +211,7 @@ and RaftMember =
                Port       = uint16 fb.Port
                WsPort     = uint16 fb.WsPort
                GitPort    = uint16 fb.GitPort
+               ApiPort    = uint16 fb.ApiPort
                Voting     = fb.Voting
                VotedForMe = fb.VotedForMe
                NextIndex  = fb.NextIndex
@@ -367,6 +373,7 @@ module Member =
     ; Port       = 6000us
     ; WsPort     = 8000us
     ; GitPort    = 9000us
+    ; ApiPort    = 5000us
     ; State      = Running
     ; Voting     = true
     ; VotedForMe = false

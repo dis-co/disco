@@ -5,6 +5,7 @@ namespace Iris.Service
 open System
 open System.Threading
 open System.Collections.Concurrent
+open Iris.Raft
 open Iris.Core
 open Iris.Client
 open Iris.Zmq
@@ -26,6 +27,11 @@ module ApiServer =
   // ** tag
 
   let private tag (str: string) = sprintf "IApiServer.%s" str
+
+  // ** timeout
+
+  [<Literal>]
+  let private timeout = 1000
 
   // ** Subscriptions
 
@@ -84,13 +90,13 @@ module ApiServer =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Start         of chan:ReplyChan * IrisConfig
+    | Start         of chan:ReplyChan * mem:RaftMember
     | Dispose       of chan:ReplyChan
-    | UpdateClients of chan:ReplyChan * StateMachine
+    | UpdateClients of chan:ReplyChan * sm:StateMachine
     | GetClients    of chan:ReplyChan
-    | AddClient     of chan:ReplyChan * IrisClient
-    | RemoveClient  of chan:ReplyChan * IrisClient
-    | SetStatus     of id:Id * status:ServiceStatus
+    | AddClient     of chan:ReplyChan * client:IrisClient
+    | RemoveClient  of chan:ReplyChan * client:IrisClient
+    | SetStatus     of id:Id          * status:ServiceStatus
 
   // ** ApiAgent
 
@@ -123,7 +129,7 @@ module ApiServer =
 
   // ** pingTimer
 
-  let private pingTimer (socket: Req) (agent: ApiAgent) (timeout: int) =
+  let private pingTimer (socket: Req) (agent: ApiAgent) =
     let cts = new CancellationTokenSource()
 
     let rec loop () =
@@ -196,8 +202,8 @@ module ApiServer =
 
   // ** start
 
-  let private start (chan: ReplyChan) (agent: ApiAgent) (config: IrisConfig) =
-    let addr = "tcp://*:9000"
+  let private start (chan: ReplyChan) (agent: ApiAgent) (mem: RaftMember) =
+    let addr = formatUri mem.IpAddr (int mem.ApiPort)
     let server = new Rep(addr, requestHandler agent)
     match server.Start() with
     | Right () ->
@@ -213,13 +219,13 @@ module ApiServer =
   let private handleStart (chan: ReplyChan)
                           (state: ClientState)
                           (agent: ApiAgent)
-                          (config: IrisConfig) =
+                          (mem: RaftMember) =
     match state with
     | Loaded data ->
       dispose data
-      start chan agent config
+      start chan agent mem
     | Idle ->
-      start chan agent config
+      start chan agent mem
 
   // ** handleDispose
 
@@ -252,7 +258,7 @@ module ApiServer =
       let client =
         { Meta = meta
           Socket = socket
-          Timer = pingTimer socket agent 1000 }
+          Timer = pingTimer socket agent }
 
       chan.Reply(Right Reply.Ok)
       notify subs (ApiEvent.Register meta)
@@ -353,7 +359,7 @@ module ApiServer =
 
         let newstate =
           match msg with
-          | Msg.Start(chan,config)        -> handleStart chan state inbox config
+          | Msg.Start(chan,mem)           -> handleStart chan state inbox mem
           | Msg.Dispose chan              -> handleDispose chan state
           | Msg.AddClient(chan,client)    -> handleAddClient chan state subs client inbox
           | Msg.RemoveClient(chan,client) -> handleRemoveClient chan state subs client
@@ -376,7 +382,7 @@ module ApiServer =
   [<RequireQualifiedAccess>]
   module ApiServer =
 
-    let create (config: IrisConfig) =
+    let create (mem: RaftMember) =
       either {
         let cts = new CancellationTokenSource()
         let subs = new Subscriptions()
@@ -387,7 +393,7 @@ module ApiServer =
         return
           { new IApiServer with
               member self.Start () =
-                match agent.PostAndReply(fun chan -> Msg.Start(chan,config)) with
+                match agent.PostAndReply(fun chan -> Msg.Start(chan,mem)) with
                 | Right (Reply.Ok) -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other

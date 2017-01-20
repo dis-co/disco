@@ -565,6 +565,7 @@ table RaftMemberFB {
       Port       : int;
       WsPort     : int;
       GitPort    : int;
+      ApiPort    : int;
       Voting     : bool;
       VotedForMe : bool;
       State      : RaftMemberStateFB;
