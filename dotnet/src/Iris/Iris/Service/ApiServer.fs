@@ -237,6 +237,15 @@ module ApiServer =
                               (agent: ApiAgent) =
     match state with
     | Loaded data ->
+
+      // first, dispose of the previous client
+      match Map.tryFind meta.Id data.Clients with
+      | Some client ->
+        dispose client
+        notify subs (ApiEvent.UnRegister client.Meta)
+      | None -> ()
+
+      // construct a new client value
       let socket = new Req(meta.Id, formatUri meta.IpAddress (int meta.Port), 50)
       socket.Start()
 
