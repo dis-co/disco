@@ -2,6 +2,14 @@ namespace Iris.Core
 
 open System
 
+module WebAPI =  
+  let [<Literal>] COMMAND_ENDPOINT = "/api/command"
+
+  [<Literal>]
+  let WS_PORT_ENDPOINT = "/api/web-socket-port"
+
+
+
 [<AutoOpen>]
 module Constants =
 
@@ -61,12 +69,6 @@ module Constants =
 
   [<Literal>]
   let DEFAULT_WEB_PORT = 7000us
-
-  [<Literal>]
-  let COMMAND_ENDPOINT = "/api/command"
-
-  [<Literal>]
-  let WS_PORT_ENDPOINT = "/api/web-socket-port"
 
   [<Literal>]
   let ADMIN_DEFAULT_PASSWORD =

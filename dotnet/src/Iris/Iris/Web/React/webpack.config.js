@@ -1,7 +1,7 @@
 var path = require("path");
 var webpack = require("webpack");
 
-var entry, outDir, devtool, devServer, loaders, plugins;
+var entry, outDir, devtool, devServer, plugins;
 if (process.env.NODE_ENV !== "production") {
     console.log("Starting Webpack Dev Server...");
     entry = [
@@ -12,6 +12,9 @@ if (process.env.NODE_ENV !== "production") {
     outDir = "./js";
     devtool = "eval";
     devServer = {
+        // publicPath: "/",
+        hot: true,
+        // historyApiFallback: true,
         port: 8080,
         contentBase: "../../../assets/frontend",
         proxy: {
@@ -20,11 +23,6 @@ if (process.env.NODE_ENV !== "production") {
             }
         }
     };
-    loaders = [{
-        test: /\.js$/,
-        loader: "react-hot-loader/webpack",
-        exclude: /node_modules/
-    }];
     plugins = [
         new webpack.HotModuleReplacementPlugin()
     ];
@@ -34,7 +32,6 @@ else {
     entry = "./src/Main.js";
     outDir ="../../../assets/frontend/js";
     devtool = "source-map";
-    loaders = [];
     plugins = [
         new webpack.DefinePlugin({
             'process.env': {
@@ -71,7 +68,7 @@ module.exports = {
             { test: /\.css$/, loader: "style-loader!css-loader" },
             { test: /\.tsx?$/, loader: "awesome-typescript-loader" },
             { test: /\.js$/, loader: 'babel-loader', exclude: /node_modules/ }
-        ].concat(loaders)
+        ]
     },
     plugins: plugins
 }

@@ -10,7 +10,11 @@ open Iris.Client
 open Iris.Zmq
 open Mono.Zeroconf
 
-type CommandAgent = string -> Async<Either<IrisError,string>>
+type Command =
+  | LoadProjects
+  | GetWebSocketPort
+
+type CommandAgent = Command -> Async<Either<IrisError,string>>
 
 // * ServiceType
 

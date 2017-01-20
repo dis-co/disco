@@ -26,15 +26,18 @@ function renderProject(project) {
   }
 }
 
-export default function PanelLeft(props) {
-  return (
-    <Tabs id="panel-left" style={{width: props.width}}>
-      <Tab label="PROJECT" >
-        {renderProject(props.info.state.Project)}
-      </Tab>
-      <Tab label="VIEWS" >
-        <TreeView data={treeData.sample} editable={true} />
-      </Tab>
-    </Tabs>
-  )
+export default class PanelLeft extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+
+  render() {
+    return (
+      <Tabs id="panel-left" style={{width: this.props.width}}>
+        <Tab label="PROJECT" >
+          {renderProject(this.props.info.state.Project)}
+        </Tab>
+      </Tabs>
+    )
+  }
 }
