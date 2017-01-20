@@ -130,6 +130,9 @@ module ApiServer =
       async {
         do! Async.Sleep(timeout)
 
+        if not socket.Running then
+          socket.Restart()
+
         let response : Either<IrisError,ApiResponse> =
           ClientApiRequest.Ping
           |> Binary.encode
