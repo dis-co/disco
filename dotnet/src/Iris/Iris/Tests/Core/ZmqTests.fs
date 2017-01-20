@@ -9,6 +9,7 @@ open Iris.Core
 open Iris.Service
 open Iris.Service.Utilities
 open Iris.Service.Persistence
+open Iris.Zmq
 open Iris.Raft
 open Iris.Service
 open FSharpx.Functional
@@ -40,17 +41,17 @@ module ZmqIntegrationTests =
             count := next
           msg
 
-        use rep = new Zmq.Rep(srv, handler)
+        use rep = new Rep(srv, handler)
 
         do! rep.Start()
 
         let socks =
           [ for _ in 0 .. (n - 1) do
-              let sock = new Zmq.Req(Id.Create(), srv, 50)
+              let sock = new Req(Id.Create(), srv, 50)
               sock.Start()
               yield sock ]
 
-        let request (str: string) (sck: Zmq.Req) =
+        let request (str: string) (sck: Req) =
           async {
             let result = str |> Encoding.UTF8.GetBytes |> sck.Request
             return result
