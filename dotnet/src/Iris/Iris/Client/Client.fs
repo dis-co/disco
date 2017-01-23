@@ -31,15 +31,15 @@ module ApiClient =
 
   let private tag (str: string) = sprintf "ApiClient.%s" str
 
-  // ** freq
+  // ** FREQ
 
   [<Literal>]
-  let private freq = 500u
+  let private FREQ = 500u
 
-  // ** timeout
+  // ** TIMEOUT
 
   [<Literal>]
-  let private timeout = 5000u
+  let private TIMEOUT = 5000u
 
   // ** Subscriptions
 
@@ -130,7 +130,7 @@ module ApiClient =
 
     let rec loop () =
       async {
-        do! Async.Sleep(int freq)
+        do! Async.Sleep(int FREQ)
         agent.Post(Msg.CheckStatus)
         return! loop ()
       }
@@ -288,7 +288,7 @@ module ApiClient =
     | Loaded data ->
       if not (Service.hasFailed data.Status) then
         match data.Elapsed with
-        | x when x > timeout ->
+        | x when x > TIMEOUT ->
           let status =
             "Server ping timed out"
             |> Error.asClientError (tag "handlePing")
@@ -296,7 +296,7 @@ module ApiClient =
           notify subs (ClientEvent.Status status)
           Loaded { data with
                     Status = status
-                    Elapsed = data.Elapsed + freq }
+                    Elapsed = data.Elapsed + FREQ }
         | x ->
           let status =
             match data.Status with
@@ -307,7 +307,7 @@ module ApiClient =
               newstatus
           Loaded { data with
                     Status = status
-                    Elapsed = data.Elapsed + freq }
+                    Elapsed = data.Elapsed + FREQ }
       else
         state
     | idle -> idle
