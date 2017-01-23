@@ -94,7 +94,7 @@ type IrisServer =
 type ClientEvent =
   | Registered
   | UnRegistered
-  | Update
+  | Update of StateMachine
   | Snapshot
   | Status of ServiceStatus
 

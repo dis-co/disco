@@ -80,6 +80,7 @@ module ApiServer =
   [<RequireQualifiedAccess>]
   type private Reply =
     | Clients of Map<Id,IrisClient>
+    | State of State
     | Ok
 
   // ** ReplyChan
@@ -92,12 +93,13 @@ module ApiServer =
   type private Msg =
     | Start           of chan:ReplyChan * mem:RaftMember
     | Dispose         of chan:ReplyChan
-    | UpdateClients   of chan:ReplyChan * sm:StateMachine
+    | Update          of chan:ReplyChan * sm:StateMachine
     | GetClients      of chan:ReplyChan
     | AddClient       of chan:ReplyChan * client:IrisClient
     | RemoveClient    of chan:ReplyChan * client:IrisClient
     | SetStatus       of id:Id          * status:ServiceStatus
     | SetState        of chan:ReplyChan * state:State
+    | GetState        of chan:ReplyChan
     | InstallSnapshot of id:Id
 
   // ** ApiAgent
@@ -326,15 +328,9 @@ module ApiServer =
 
   let private updateClient (sm: StateMachine) (client: Client) =
     async {
-      let request =
-        match sm with
-        | DataSnapshot state ->
-          ClientApiRequest.Snapshot state
-        | _ ->
-          ClientApiRequest.Ping
-
       let result : Either<IrisError,ApiResponse> =
-        request
+        sm
+        |> ClientApiRequest.Update
         |> Binary.encode
         |> client.Socket.Request
         |> Either.bind Binary.decode
@@ -358,17 +354,18 @@ module ApiServer =
     |> Async.RunSynchronously
     |> ignore
 
-  // ** handleUpdateClients
+  // ** handleUpdate
 
-  let private handleUpdateClients (chan: ReplyChan) (state: ClientState) (sm: StateMachine) =
+  let private handleUpdate (chan: ReplyChan) (state: ClientState) (sm: StateMachine) =
     match state with
     | Loaded data ->
+      data.Store.Dispatch sm
       updateClients sm data.Clients
       chan.Reply(Right Reply.Ok)
       state
     | Idle ->
       "ClientApi not running"
-      |> Error.asClientError (tag "handleUpdateClients")
+      |> Error.asClientError (tag "handleUpdate")
       |> Either.fail
       |> chan.Reply
       state
@@ -441,6 +438,23 @@ module ApiServer =
       | None -> state
     | Idle -> state
 
+  // ** handleGetState
+
+  let private handleGetState (chan: ReplyChan) (state: ClientState) =
+    match state with
+    | Loaded data ->
+      data.Store.State
+      |> Reply.State
+      |> Either.succeed
+      |> chan.Reply
+      state
+    | _ ->
+      "Not Loaded"
+      |> Error.asClientError (tag "handleGetState")
+      |> Either.fail
+      |> chan.Reply
+      state
+
   // ** loop
 
   let private loop (initial: ClientState) (subs: Subscriptions) (inbox: ApiAgent) =
@@ -454,10 +468,11 @@ module ApiServer =
           | Msg.Dispose chan              -> handleDispose chan state
           | Msg.AddClient(chan,client)    -> handleAddClient chan state subs client inbox
           | Msg.RemoveClient(chan,client) -> handleRemoveClient chan state subs client
-          | Msg.UpdateClients(chan,sm)    -> handleUpdateClients chan state sm
+          | Msg.Update(chan,sm)           -> handleUpdate chan state sm
           | Msg.GetClients(chan)          -> handleGetClients chan state
           | Msg.SetStatus(id, status)     -> handleSetStatus id status state subs
           | Msg.SetState(chan, newstate)  -> handleSetState chan state newstate inbox
+          | Msg.GetState(chan)            -> handleGetState chan state
           | Msg.InstallSnapshot(id)       -> handleInstallSnapshot state id inbox
 
         return! act newstate
@@ -502,18 +517,30 @@ module ApiServer =
                   | Right (Reply.Clients clients) -> Either.succeed clients
                   | Right other ->
                     sprintf "Unexpected Reply from ApiAgent: %A" other
-                    |> Error.asClientError (tag "UpdateClients")
+                    |> Error.asClientError (tag "Clients")
                     |> Either.fail
                   | Left error ->
                     error
                     |> Either.fail
 
-              member self.UpdateClients (sm: StateMachine) =
-                match agent.PostAndReply(fun chan -> Msg.UpdateClients(chan, sm)) with
+              member self.State
+                with get () =
+                  match agent.PostAndReply(fun chan -> Msg.GetState(chan)) with
+                  | Right (Reply.State state) -> Either.succeed state
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "State")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
+
+              member self.Update (sm: StateMachine) =
+                match agent.PostAndReply(fun chan -> Msg.Update(chan, sm)) with
                 | Right (Reply.Ok) -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "UpdateClients")
+                  |> Error.asClientError (tag "Update")
                   |> Either.fail
                 | Left error ->
                   error
@@ -524,7 +551,7 @@ module ApiServer =
                 | Right (Reply.Ok) -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "UpdateClients")
+                  |> Error.asClientError (tag "SetState")
                   |> Either.fail
                 | Left error ->
                   error

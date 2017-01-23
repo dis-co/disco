@@ -99,6 +99,7 @@ module ApiClient =
     | Dispose   of chan:ReplyChan
     | GetState  of chan:ReplyChan
     | SetState  of state:State
+    | Update    of sm:StateMachine
 
   // ** ApiAgent
 
@@ -156,6 +157,10 @@ module ApiClient =
       |> Binary.encode
     | Right (ClientApiRequest.Snapshot state) ->
       agent.Post(Msg.SetState state)
+      ApiResponse.OK
+      |> Binary.encode
+    | Right (ClientApiRequest.Update sm) ->
+      agent.Post(Msg.Update sm)
       ApiResponse.OK
       |> Binary.encode
     | Left error ->
@@ -321,11 +326,21 @@ module ApiClient =
 
   // ** handleSetState
 
-  let private handleSetState (state: ClientState) (subs:Subscriptions) (newstate: State) =
+  let private handleSetState (state: ClientState) (subs: Subscriptions) (newstate: State) =
     match state with
     | Loaded data ->
       notify subs ClientEvent.Snapshot
       Loaded { data with Store = new Store(newstate) }
+    | Idle -> state
+
+  // ** handleUpdate
+
+  let private handleUpdate (state: ClientState) (subs: Subscriptions) (sm: StateMachine) =
+    match state with
+    | Loaded data ->
+      data.Store.Dispatch sm
+      notify subs (ClientEvent.Update sm)
+      state
     | Idle -> state
 
   // ** loop
@@ -349,6 +364,7 @@ module ApiClient =
           | Msg.SetStatus status  -> handleSetStatus state subs status
           | Msg.CheckStatus       -> handleCheckStatus state subs
           | Msg.Ping              -> handlePing state
+          | Msg.Update sm         -> handleUpdate state subs sm
 
         return! act newstate
       }

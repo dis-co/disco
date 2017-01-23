@@ -104,6 +104,67 @@ module ApiTests =
       }
       |> noError
 
+  let test_should_replicate_state_machine_commands =
+    testCase "should replicate state machine commands" <| fun _ ->
+      either {
+        let state = mkState ()
+
+        let mem = Member.create (Id.Create())
+
+        use! server = ApiServer.create mem
+
+        do! server.Start()
+        do! server.SetState state
+
+        let srvr : IrisServer =
+          { Id = Id.Create()
+            Name = "cool"
+            Port = mem.ApiPort
+            IpAddress = mem.IpAddr }
+
+        let clnt : IrisClient =
+          { Id = Id.Create()
+            Name = "client cool"
+            Role = Role.Renderer
+            Status = ServiceStatus.Starting
+            IpAddress = mem.IpAddr
+            Port = mem.ApiPort + 1us }
+
+        use! client = ApiClient.create srvr clnt
+
+        let check = ref 0
+
+        let handler (ev: ClientEvent) =
+          match ev with
+          | ClientEvent.Update _ -> check := !check + 1
+          | _ -> ()
+
+        use obs = client.Subscribe(handler)
+
+        do! client.Start()
+
+        Thread.Sleep 100
+
+        let events = [
+          AddCue     (mkCue ())
+          AddUser    (mkUser ())
+          AddSession (mkSession ())
+          AddCue     (mkCue ())
+        ]
+
+        List.iter (server.Update >> ignore) events
+
+        Thread.Sleep 100
+
+        expect "Should have emitted correct number of events" (List.length events) id !check
+
+        let! serverState = server.State
+        let! clientState = client.State
+
+        expect "Should be equal" serverState id clientState
+      }
+      |> noError
+
   //     _    _ _
   //    / \  | | |
   //   / _ \ | | |
@@ -113,4 +174,5 @@ module ApiTests =
   let apiTests =
     testList "API Tests" [
       test_should_replicate_state_snapshot
+      test_should_replicate_state_machine_commands
     ] |> testSequenced

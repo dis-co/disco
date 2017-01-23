@@ -213,5 +213,6 @@ type IApiServer =
   abstract Start: unit -> Either<IrisError,unit>
   abstract Subscribe: (ApiEvent -> unit) -> IDisposable
   abstract Clients: Either<IrisError,Map<Id,IrisClient>>
-  abstract UpdateClients: sm:StateMachine -> Either<IrisError,unit>
+  abstract State: Either<IrisError,State>
+  abstract Update: sm:StateMachine -> Either<IrisError,unit>
   abstract SetState: state:State -> Either<IrisError,unit>

@@ -3,6 +3,7 @@ namespace Iris.Client
 // * Imports
 
 open Iris.Core
+open Iris.Raft
 open FlatBuffers
 open Iris.Serialization
 
@@ -57,6 +58,7 @@ type ApiError =
 
 type ClientApiRequest =
   | Snapshot of State
+  | Update   of StateMachine
   | Ping
 
   member request.ToOffset(builder: FlatBufferBuilder) =
@@ -73,6 +75,217 @@ type ClientApiRequest =
       ClientApiRequestFB.AddParameterType(builder, ParameterFB.StateFB)
       ClientApiRequestFB.AddParameter(builder, offset.Value)
       ClientApiRequestFB.EndClientApiRequestFB(builder)
+    | Update sm ->
+      match sm with
+      // Project
+      | UpdateProject project ->
+        let offset = project.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateProjectFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.ProjectFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      // Member
+      | AddMember    mem ->
+        let offset = mem.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddMemberFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.RaftMemberFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | UpdateMember mem ->
+        let offset = mem.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateMemberFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.RaftMemberFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | RemoveMember mem ->
+        let offset = mem.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemoveMemberFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.RaftMemberFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      // PATCH
+      | AddPatch    patch ->
+        let offset = patch.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddPatchFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PatchFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | UpdatePatch patch ->
+        let offset = patch.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdatePatchFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PatchFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | RemovePatch patch ->
+        let offset = patch.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemovePatchFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PatchFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      // PIN
+      | AddPin pin ->
+        let offset = pin.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddPinFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PinFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | UpdatePin pin ->
+        let offset = pin.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdatePinFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PinFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | RemovePin pin ->
+        let offset = pin.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemovePinFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PinFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      // CUE
+      | AddCue cue ->
+        let offset = cue.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddCueFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.CueFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | UpdateCue cue ->
+        let offset = cue.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateCueFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.CueFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | RemoveCue cue ->
+        let offset = cue.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemoveCueFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.CueFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      // CUE
+      | AddCueList cuelist ->
+        let offset = cuelist.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddCueListFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.CueListFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | UpdateCueList cuelist ->
+        let offset = cuelist.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateCueListFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.CueListFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | RemoveCueList cuelist ->
+        let offset = cuelist.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemoveCueListFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.CueListFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      // User
+      | AddUser user ->
+        let offset = user.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddUserFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.UserFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | UpdateUser user ->
+        let offset = user.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateUserFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.UserFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | RemoveUser user ->
+        let offset = user.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemoveUserFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.UserFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      // Session
+      | AddSession session ->
+        let offset = session.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddSessionFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.SessionFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | UpdateSession session ->
+        let offset = session.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateSessionFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.SessionFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | RemoveSession session ->
+        let offset = session.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemoveSessionFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.SessionFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | Command AppCommand.Undo ->
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UndoFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.NONE)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | Command AppCommand.Redo ->
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RedoFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.NONE)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | Command AppCommand.Reset ->
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.ResetFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.NONE)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | _ ->
+        // OK OK, this is not really good, but for now its better to have slightly more traffic than
+        // failures or more complex solution
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.PingFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.NONE)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
 
   static member FromFB(fb: ClientApiRequestFB) =
     match fb.Command with
@@ -90,6 +303,368 @@ type ClientApiRequest =
             |> Either.fail
         return Snapshot state
       }
+
+    //  ____            _           _
+    // |  _ \ _ __ ___ (_) ___  ___| |_
+    // | |_) | '__/ _ \| |/ _ \/ __| __|
+    // |  __/| | | (_) | |  __/ (__| |_
+    // |_|   |_|  \___// |\___|\___|\__|
+    //               |__/
+
+    | ClientApiCommandFB.UpdateProjectFB ->
+      either {
+        let! project =
+          let projectish = fb.Parameter<ProjectFB>()
+          if projectish.HasValue then
+            let value = projectish.Value
+            IrisProject.FromFB value
+          else
+            "Empty IrisProjectFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (UpdateProject project)
+      }
+
+    //  __  __                _
+    // |  \/  | ___ _ __ ___ | |__   ___ _ __
+    // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+    // | |  | |  __/ | | | | | |_) |  __/ |
+    // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
+
+    | ClientApiCommandFB.AddMemberFB ->
+      either {
+        let! mem =
+          let memish = fb.Parameter<RaftMemberFB>()
+          if memish.HasValue then
+            let value = memish.Value
+            RaftMember.FromFB value
+          else
+            "Empty RaftMemberFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (AddMember mem)
+      }
+    | ClientApiCommandFB.UpdateMemberFB ->
+      either {
+        let! mem =
+          let memish = fb.Parameter<RaftMemberFB>()
+          if memish.HasValue then
+            let value = memish.Value
+            RaftMember.FromFB value
+          else
+            "Empty RaftMemberFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (UpdateMember mem)
+      }
+    | ClientApiCommandFB.RemoveMemberFB ->
+      either {
+        let! mem =
+          let memish = fb.Parameter<RaftMemberFB>()
+          if memish.HasValue then
+            let value = memish.Value
+            RaftMember.FromFB value
+          else
+            "Empty RaftMemberFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (RemoveMember mem)
+      }
+
+    //  ____       _       _
+    // |  _ \ __ _| |_ ___| |__
+    // | |_) / _` | __/ __| '_ \
+    // |  __/ (_| | || (__| | | |
+    // |_|   \__,_|\__\___|_| |_|
+
+    | ClientApiCommandFB.AddPatchFB ->
+      either {
+        let! patch =
+          let patchish = fb.Parameter<PatchFB>()
+          if patchish.HasValue then
+            let value = patchish.Value
+            Patch.FromFB value
+          else
+            "Empty PatchFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (AddPatch patch)
+      }
+    | ClientApiCommandFB.UpdatePatchFB ->
+      either {
+        let! patch =
+          let patchish = fb.Parameter<PatchFB>()
+          if patchish.HasValue then
+            let value = patchish.Value
+            Patch.FromFB value
+          else
+            "Empty PatchFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (UpdatePatch patch)
+      }
+    | ClientApiCommandFB.RemovePatchFB ->
+      either {
+        let! patch =
+          let patchish = fb.Parameter<PatchFB>()
+          if patchish.HasValue then
+            let value = patchish.Value
+            Patch.FromFB value
+          else
+            "Empty PatchFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (RemovePatch patch)
+      }
+
+    //  ____  _
+    // |  _ \(_)_ __
+    // | |_) | | '_ \
+    // |  __/| | | | |
+    // |_|   |_|_| |_|
+
+    | ClientApiCommandFB.AddPinFB ->
+      either {
+        let! pin =
+          let pinish = fb.Parameter<PinFB>()
+          if pinish.HasValue then
+            let value = pinish.Value
+            Pin.FromFB value
+          else
+            "Empty PinFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (AddPin pin)
+      }
+    | ClientApiCommandFB.UpdatePinFB ->
+      either {
+        let! pin =
+          let pinish = fb.Parameter<PinFB>()
+          if pinish.HasValue then
+            let value = pinish.Value
+            Pin.FromFB value
+          else
+            "Empty PinFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (UpdatePin pin)
+      }
+    | ClientApiCommandFB.RemovePinFB ->
+      either {
+        let! pin =
+          let pinish = fb.Parameter<PinFB>()
+          if pinish.HasValue then
+            let value = pinish.Value
+            Pin.FromFB value
+          else
+            "Empty PinFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (RemovePin pin)
+      }
+
+    //   ____
+    //  / ___|   _  ___
+    // | |  | | | |/ _ \
+    // | |__| |_| |  __/
+    //  \____\__,_|\___|
+
+    | ClientApiCommandFB.AddCueFB ->
+      either {
+        let! cue =
+          let cueish = fb.Parameter<CueFB>()
+          if cueish.HasValue then
+            let value = cueish.Value
+            Cue.FromFB value
+          else
+            "Empty CueFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (AddCue cue)
+      }
+    | ClientApiCommandFB.UpdateCueFB ->
+      either {
+        let! cue =
+          let cueish = fb.Parameter<CueFB>()
+          if cueish.HasValue then
+            let value = cueish.Value
+            Cue.FromFB value
+          else
+            "Empty CueFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (UpdateCue cue)
+      }
+    | ClientApiCommandFB.RemoveCueFB ->
+      either {
+        let! cue =
+          let cueish = fb.Parameter<CueFB>()
+          if cueish.HasValue then
+            let value = cueish.Value
+            Cue.FromFB value
+          else
+            "Empty CueFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (RemoveCue cue)
+      }
+
+    //   ____           _     _     _
+    //  / ___|   _  ___| |   (_)___| |_
+    // | |  | | | |/ _ \ |   | / __| __|
+    // | |__| |_| |  __/ |___| \__ \ |_
+    //  \____\__,_|\___|_____|_|___/\__|
+
+    | ClientApiCommandFB.AddCueListFB ->
+      either {
+        let! cueList =
+          let cueListish = fb.Parameter<CueListFB>()
+          if cueListish.HasValue then
+            let value = cueListish.Value
+            CueList.FromFB value
+          else
+            "Empty CueListFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (AddCueList cueList)
+      }
+    | ClientApiCommandFB.UpdateCueListFB ->
+      either {
+        let! cueList =
+          let cueListish = fb.Parameter<CueListFB>()
+          if cueListish.HasValue then
+            let value = cueListish.Value
+            CueList.FromFB value
+          else
+            "Empty CueListFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (UpdateCueList cueList)
+      }
+    | ClientApiCommandFB.RemoveCueListFB ->
+      either {
+        let! cueList =
+          let cueListish = fb.Parameter<CueListFB>()
+          if cueListish.HasValue then
+            let value = cueListish.Value
+            CueList.FromFB value
+          else
+            "Empty CueListFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (RemoveCueList cueList)
+      }
+
+    //  _   _
+    // | | | |___  ___ _ __
+    // | | | / __|/ _ \ '__|
+    // | |_| \__ \  __/ |
+    //  \___/|___/\___|_|
+
+    | ClientApiCommandFB.AddUserFB ->
+      either {
+        let! user =
+          let userish = fb.Parameter<UserFB>()
+          if userish.HasValue then
+            let value = userish.Value
+            User.FromFB value
+          else
+            "Empty UserFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (AddUser user)
+      }
+    | ClientApiCommandFB.UpdateUserFB ->
+      either {
+        let! user =
+          let userish = fb.Parameter<UserFB>()
+          if userish.HasValue then
+            let value = userish.Value
+            User.FromFB value
+          else
+            "Empty UserFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (UpdateUser user)
+      }
+    | ClientApiCommandFB.RemoveUserFB ->
+      either {
+        let! user =
+          let userish = fb.Parameter<UserFB>()
+          if userish.HasValue then
+            let value = userish.Value
+            User.FromFB value
+          else
+            "Empty UserFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (RemoveUser user)
+      }
+
+    //  ____                _
+    // / ___|  ___  ___ ___(_) ___  _ __
+    // \___ \ / _ \/ __/ __| |/ _ \| '_ \
+    //  ___) |  __/\__ \__ \ | (_) | | | |
+    // |____/ \___||___/___/_|\___/|_| |_|
+
+    | ClientApiCommandFB.AddSessionFB ->
+      either {
+        let! session =
+          let sessionish = fb.Parameter<SessionFB>()
+          if sessionish.HasValue then
+            let value = sessionish.Value
+            Session.FromFB value
+          else
+            "Empty SessionFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (AddSession session)
+      }
+    | ClientApiCommandFB.UpdateSessionFB ->
+      either {
+        let! session =
+          let sessionish = fb.Parameter<SessionFB>()
+          if sessionish.HasValue then
+            let value = sessionish.Value
+            Session.FromFB value
+          else
+            "Empty SessionFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (UpdateSession session)
+      }
+    | ClientApiCommandFB.RemoveSessionFB ->
+      either {
+        let! session =
+          let sessionish = fb.Parameter<SessionFB>()
+          if sessionish.HasValue then
+            let value = sessionish.Value
+            Session.FromFB value
+          else
+            "Empty SessionFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (RemoveSession session)
+      }
+
+    | ClientApiCommandFB.UndoFB ->
+      AppCommand.Undo
+      |> Command
+      |> ClientApiRequest.Update
+      |> Either.succeed
+
+    | ClientApiCommandFB.RedoFB ->
+      AppCommand.Redo
+      |> Command
+      |> ClientApiRequest.Update
+      |> Either.succeed
+
+    | ClientApiCommandFB.ResetFB ->
+      AppCommand.Reset
+      |> Command
+      |> ClientApiRequest.Update
+      |> Either.succeed
+
     | x ->
       sprintf "Unknown Command in ApiRequest: %A" x
       |> Error.asClientError "ClientApiRequest.FromFB"
