@@ -20,6 +20,8 @@ group Main
   nuget FSharp.Configuration
   nuget ZeroMQ
   nuget Mono.Posix
+  nuget Newtonsoft.Json
+  nuget Fable.JsonConverter
 
 group Build
   source https://nuget.org/api/v2

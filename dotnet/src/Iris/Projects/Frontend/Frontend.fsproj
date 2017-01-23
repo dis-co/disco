@@ -126,6 +126,9 @@
     <Compile Include="../../Iris/Core/StateMachine.fs">
       <Link>StateMachine.fs</Link>
     </Compile>
+    <Compile Include="../../Iris/Core/Commands.fs">
+      <Link>Commands.fs</Link>
+    </Compile>
     <Compile Include="../../Iris/Core/ClientMessage.fs">
       <Link>ClientMessage.fs</Link>
     </Compile>

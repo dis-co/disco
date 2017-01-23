@@ -11,7 +11,7 @@ module CommandLine =
   open Iris.Raft
   open Iris.Service.Persistence
   open Iris.Service.Iris
-  open Iris.Service.Raft
+  open Iris.Service.CommandActions
   open Iris.Service.Interfaces
   open FSharpx.Functional
   open System
@@ -80,7 +80,7 @@ module CommandLine =
   directory used by Iris to scan for projects.
 
   You can specify the parent directory to create configuration in by
-  using the dir flag:
+  using the machine parameter:
 
   --machine=/path/to/machine/config : Path to the machine config file
 
@@ -88,14 +88,10 @@ module CommandLine =
 | start                                                              |
 ----------------------------------------------------------------------
 
-  Start the Iris daemon with the project specified. You must specify
+  Start the Iris daemon with the project specified. You can specify
   the project to start with using
 
   --project=project-name : Name of project directory in the workspace
-
-  Additionally, you can use the following flag to enter interactive mode.
-
-  -i        : Enter interactive mode
 
 ----------------------------------------------------------------------
 | add-user                                                           |
@@ -141,8 +137,6 @@ module CommandLine =
   type CLIArguments =
     | [<Mandatory;MainCommand;CliPosition(CliPosition.First)>] Cmd of SubCommand
 
-    | [<AltCommandLine("-i")>]        Interactive
-
     | [<EqualsAssignment>] Bind         of string
     | [<EqualsAssignment>] Raft         of uint16
     | [<EqualsAssignment>] Git          of uint16
@@ -153,7 +147,6 @@ module CommandLine =
     interface IArgParserTemplate with
       member self.Usage =
         match self with
-          | Interactive -> "Start daemon in interactive mode"
           | Project _   -> "Name of project directory in the workspace"
           | Machine _   -> "Path to the machine config file"
           | Bind    _   -> "Specify a valid IP address."
@@ -196,292 +189,11 @@ module CommandLine =
         |> Error.asOther (tag "validateOptions")
         |> Error.exitWith
 
-  // ** Utilities
-
-  let private withTrim (token: string) (str: string) =
-    let trimmed = String.trim str
-    if trimmed.StartsWith(token) then
-      let substr = trimmed.Substring(token.Length)
-      Some <| String.trim substr
-    else None
-
-  let private withEmpty (token: string) (str: string) =
-    if String.trim str = token
-    then Some ()
-    else None
-
-  let private handleError (error: IrisError) =
-    printfn "Encountered error during ForceTimeout operation: %A" error
-
-  let parseHostString (str: string) =
-    let trimmed = str.Trim().Split(' ')
-    match trimmed with
-      | [| id; hostname; hostspec |] ->
-        if hostspec.StartsWith("tcp://") then
-          match hostspec.Substring(6).Split(':') with
-            | [| addr; port |] -> Some (uint32 id, hostname, addr, int port)
-            | _ -> None
-        else None
-      | _ -> None
-
-  // ** tryAppendEntry
-
-  let tryAppendEntry (ctx: IIrisServer) str =
-    "CLI AppendEntry currently not supported"
-    |> Error.asOther (tag "tryAppendEntry")
-    |> Either.fail
-
-  // ** timeoutRaft
-
-  let tryForceElection (ctx: IIrisServer) =
-    either {
-      do! ctx.ForceElection()
-    }
-
-  // ** Command Parsers
-
-  let (|Params|) (str: string) =
-    Regex.Matches(str, "\w+\:[^\s]+|\w+\:\".*?\"")
-    |> Seq.cast<Match>
-    |> Seq.map (fun m ->
-      let i = m.Value.IndexOf(':')
-      let k = m.Value.Substring(0, i)
-      let v =
-        let v = m.Value.Substring(i+1)
-        if v.[0] = '"' then v.Substring(1, v.Length - 2) else v
-      k, v)
-    |> dict
-
-  let (|Exit|_|)     str = withEmpty "exit" str
-  let (|Quit|_|)     str = withEmpty "quit" str
-  let (|Status|_|)   str = withEmpty "status" str
-  let (|Periodic|_|) str = withEmpty "step" str
-  let (|Timeout|_|)  str = withEmpty "timeout" str
-  let (|Leave|_|)    str = withEmpty "leave" str
-  let (|List|_|)     str = withEmpty "ls" str
-
-  let (|Append|_|)  str = withTrim "append" str
-  let (|Join|_|)    str = withTrim "join" str
-  let (|AddMember|_|) str = withTrim "addmem" str
-  let (|RmMember|_|)  str = withTrim "rmmem" str
-  let (|Load|_|) str = withTrim "load" str
-
-  let (|CreateInteractive|_|) str =
-    match withTrim "create" str with
-    | Some(Params pars) -> Some pars
-    | None -> None
-
-  let (|Interval|_|) (str: string) =
-    let trimmed = str.Trim()
-    match trimmed.Split(' ') with
-    | [| "interval"; x |] ->
-      try
-        uint8 x |> Some
-      with
-        | _ -> None
-    | _ -> None
-
-  let (|LogLevel|_|) (str: string) =
-    let parsed = str.Trim().Split(' ')
-    match parsed with
-      | [| "log"; "debug" |] -> Some "debug"
-      | [| "log"; "info" |]  -> Some "info"
-      | [| "log"; "warn" |]  -> Some "warn"
-      | [| "log"; "err" |]   -> Some "err"
-      | _                  -> None
-
-  let (|JoinParams|_|) (str: string) =
-    let pattern = "(?<ip>[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}):(?<port>[0-9]{1,5})"
-    let m = Regex.Match(str, pattern)
-    if m.Success then
-      match IpAddress.TryParse m.Groups.[1].Value, UInt16.TryParse m.Groups.[2].Value with
-      | Right ip, (true, port) -> Some (ip, port)
-      | _ -> None
-    else None
-
-  let (|AddMemberParams|_|) (str: string) =
-    let pattern =
-      [| "id:(?<id>.*)"
-      ; "hn:(?<hn>.*)"
-      ; "ip:(?<ip>[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})"
-      ; "port:(?<port>[0-9]{1,5})"
-      ; "web:(?<web>[0-9]{1,5})"
-      ; "ws:(?<ws>[0-9]{1,5})"
-      ; "git:(?<git>[0-9]{1,5})" |]
-      |> String.join " "
-    let m = Regex.Match(str, pattern)
-    if m.Success then
-      let id = Id m.Groups.[1].Value
-      let hn =  m.Groups.[2].Value
-      let ip = IpAddress.TryParse m.Groups.[3].Value
-      let port = UInt16.TryParse m.Groups.[4].Value
-      let web = UInt16.TryParse m.Groups.[5].Value
-      let ws = UInt16.TryParse m.Groups.[6].Value
-      let git = UInt16.TryParse m.Groups.[7].Value
-      match ip, port, web, ws, git with
-      | Right ip, (true,port), (true,web), (true,ws), (true,git) ->
-        { Member.create id with
-            HostName = hn
-            IpAddr   = ip
-            Port     = port
-            WsPort   = ws
-            GitPort  = git }
-        |> Some
-      | _ -> None
-    else None
-
-  // ** trySetLogLevel
-
-  let trySetLogLevel (context: IIrisServer) (str: string) =
-    either {
-      let! config = context.Config
-      let updated = { config.Raft with LogLevel = LogLevel.Parse str }
-      do! context.SetConfig (Config.updateEngine updated config)
-    }
-
-  // ** trySetInterval
-
-  let trySetInterval (context: IIrisServer) i =
-    either {
-      let! config = context.Config
-      let updated = { config.Raft with PeriodicInterval = i }
-      do! context.SetConfig (Config.updateEngine updated config)
-    }
-
-  // ** tryJoinCluster
-
-  let tryJoinCluster (context: IIrisServer) (hst: string) =
-    match hst with
-      | JoinParams (ip, port) ->
-        either {
-          do! context.JoinCluster ip port
-        }
-      | _ ->
-        sprintf "parameters %A could not be parsed" hst
-        |> Error.asOther (tag "tryJoinCluster")
-        |> Either.fail
-
-  // ** tryLeaveCluster
-
-  let tryLeaveCluster (context: IIrisServer) =
-    either {
-      do! context.LeaveCluster()
-    }
-
-  // ** tryAddMember
-
-  let tryAddMember (context: IIrisServer) (hst: string) =
-    match hst with
-      | AddMemberParams mem ->
-        either {
-          let! appended = context.AddMember mem
-          printfn "Added mem: %A in entry %A" id (string appended.Id)
-          return ()
-        }
-      | _ ->
-        sprintf "parameters %A could not be parsed" hst
-        |> Error.asOther (tag "tryAddMember")
-        |> Either.fail
-
-  // ** tryRmMember
-
-  let tryRmMember (context: IIrisServer) (hst: string) =
-    either {
-      let! appended = context.RmMember (Id (String.trim hst))
-      printfn "Removed mem: %A in entry %A" id (string appended.Id)
-      return ()
-    }
-
-  // ** tryPeriodic
-
-  let tryPeriodic (context: IIrisServer) =
-    either {
-      do! context.Periodic()
-    }
-
-  // ** tryGetStatus
-
-  let tryGetStatus (context: IIrisServer) =
-    either {
-      let! status = context.Status
-      printfn "IrisService Status: %A" status
-      return ()
-    }
-
-  // ** tryLoadProject
-
-  let tryLoadProject (ctx: IIrisServer) projectdir =
-    let cfg = MachineConfig.get()
-    let projFile = cfg.WorkSpace </> projectdir </> PROJECT_FILENAME + ASSET_EXTENSION
-    if File.Exists projFile |> not then
-      sprintf "Project Not Found: %s" projectdir
-      |> Error.asOther "startService"
-      |> Either.fail
-    else
-      ctx.Load projFile
-
-  // ** listProjects
-
-  let listProjects () =
-    let cfg = MachineConfig.get()
-    Directory.GetDirectories(cfg.WorkSpace)
-    |> Array.map Path.GetFileName
-    |> String.concat ","
-
-
   //   ____                _
   //  / ___|_ __ ___  __ _| |_ ___
   // | |   | '__/ _ \/ _` | __/ _ \
   // | |___| | |  __/ (_| | ||  __/
   //  \____|_|  \___|\__,_|\__\___|
-
-  /// ## buildProject
-  ///
-  /// Create a new IrisProject data structure with given parameters.
-  ///
-  /// ### Signature:
-  /// - name: Name of the Project
-  /// - path: destination path of the Project
-  /// - raftDir: Raft data directory
-  /// - mem: self Member (built from Member Id env var)
-  ///
-  /// Returns: IrisProject
-  let buildProject (machine: IrisMachine)
-                   (name: string)
-                   (path: FilePath)
-                   (raftDir: FilePath)
-                   (mem: RaftMember) =
-    either {
-      let! project = Project.create path name machine
-
-      let updated =
-        project
-        |> Project.updateDataDir raftDir
-        |> Project.addMember mem
-
-      let! _ = Asset.saveWithCommit path User.Admin.Signature updated
-
-      printfn "project: %A" project.Name
-      printfn "created in: %s" project.Path
-
-      return updated
-    }
-
-  /// ## initializeRaft
-  ///
-  /// Given the user (usually the admin user) and Project value, initialize the Raft intermediate
-  /// state in the data directory and commit the result to git.
-  ///
-  /// ### Signature:
-  /// - user: User to commit as
-  /// - project: IrisProject to initialize
-  ///
-  /// Returns: unit
-  let initializeRaft (project: IrisProject) = either {
-      let! raft = createRaft project.Config
-      let! _ = saveRaft project.Config raft
-      return ()
-    }
 
   // ** tryCreateProject
 
@@ -533,67 +245,6 @@ module CommandLine =
       do! initializeRaft project
     }
 
-  // ** agent
-
-  [<NoComparison>]
-  type CommandMsg =
-    | Tell of string
-    | Ask of string * AsyncReplyChannel<Either<IrisError,string>>
-
-  let private startAgent (context: IIrisServer) = MailboxProcessor<CommandMsg>.Start(fun agent ->
-      let orNone: Either<IrisError, unit> -> Either<IrisError, string option> =
-        Either.map (fun () -> None)
-      let rec loop() = async {
-        let! input = agent.Receive()
-        let msg, replyChannel =
-          match input with
-          | Tell msg -> msg, None
-          | Ask (msg, replyChannel) -> msg, Some replyChannel
-        let res =
-          match msg with
-          | LogLevel opt -> trySetLogLevel   context opt |> orNone
-          | Interval   i -> trySetInterval   context i   |> orNone
-          | Periodic     -> tryPeriodic      context     |> orNone
-          | Append ety   -> tryAppendEntry   context ety |> orNone
-          | Join hst     -> tryJoinCluster   context hst |> orNone
-          | Leave        -> tryLeaveCluster  context     |> orNone
-          | AddMember hst  -> tryAddMember   context hst |> orNone
-          | RmMember hst   -> tryRmMember    context hst |> orNone
-          | Timeout      -> tryForceElection context     |> orNone
-          | Status       -> tryGetStatus     context     |> orNone
-          | Load prDir   -> tryLoadProject context prDir |> orNone
-          | CreateInteractive pars  -> tryCreateProject true pars |> orNone
-          | List -> listProjects() |> Some |> Either.succeed
-          | Exit ->
-            Either.tryWith
-              (Error.asOther (tag "CommandAgent.Loop"))
-              (fun () -> dispose context; None)
-          | _            ->
-            "unknown command"
-            |> Error.asOther (tag "CommandAgent.Loop")
-            |> Either.fail
-        replyChannel |> Option.iter (fun ch ->
-          // TODO: For now, use "ok" as the reply. Later decide
-          // if we want to make all functions return a message
-          res |> Either.map (function Some s -> s | None -> "ok") |> ch.Reply)
-        do! loop()
-      }
-      loop()
-    )
-
-  let postCommand (agent: (MailboxProcessor<CommandMsg> option) ref) (cmd: string) =
-    let err msg =
-      Error.asOther (tag "postCommand") msg |> Either.fail
-    match !agent with
-    | Some agent ->
-      async {
-        let! res = agent.PostAndTryAsyncReply((fun ch -> Ask(cmd, ch)), Constants.REQUEST_TIMEOUT)
-        match res with
-        | Some res -> return res
-        | None -> return err "Request has timeout"
-      }
-    | None -> err "Command agent hasn't been initialized yet" |> async.Return
-
   // ** consoleLoop
 
   //  _
@@ -610,27 +261,6 @@ module CommandLine =
       exit 0)
     System.AppDomain.CurrentDomain.ProcessExit.Add (fun _ -> dispose context)
     System.AppDomain.CurrentDomain.DomainUnload.Add (fun _ -> dispose context)
-
-  let interactiveLoop (agent: MailboxProcessor<CommandMsg>) (context: IIrisServer) : unit =
-    printfn "Welcome to the Raft REPL. Type help to see all commands."
-    let kont = ref true
-    let rec proc kontinue =
-      printf "λ "
-      let input = Console.ReadLine()
-      match input with
-      | Exit -> kontinue := false; agent.Post(Tell input)
-      | input -> agent.Post(Tell input)
-      if !kontinue then
-        proc kontinue
-    proc kont
-
-  let silentLoop () =
-    let kont = ref true
-    let rec proc kontinue =
-      Console.ReadLine() |> ignore
-      if !kontinue then
-        proc kontinue
-    proc kont
 
   // ** startDiscoveryService
 
@@ -657,7 +287,7 @@ module CommandLine =
   //  ___) | || (_| | |  | |_
   // |____/ \__\__,_|_|   \__|
 
-  let startService (interactive: bool) (projectDir: FilePath option) : Either<IrisError, unit> =
+  let startService (projectDir: FilePath option) : Either<IrisError, unit> =
     either {
       let agentRef = ref None
       let machine = MachineConfig.get()
@@ -666,13 +296,12 @@ module CommandLine =
 
       let! irisService = IrisService.create machine
 
-      let! httpServer = HttpServer.create machine irisService (postCommand agentRef)
+      let! httpServer = HttpServer.create machine (CommandActions.postCommand agentRef)
       do! httpServer.Start()
 
       startDiscoveryService machine irisService
 
-      let agent = startAgent irisService
-      agentRef := Some agent
+      agentRef := CommandActions.startAgent machine irisService |> Some
 
       registerExitHandlers irisService httpServer
 
@@ -690,10 +319,12 @@ module CommandLine =
           Either.succeed ()
 
       let result =
-        if interactive then
-          interactiveLoop agent irisService
-        else
-          silentLoop ()
+        let kont = ref true
+        let rec proc kontinue =
+          Console.ReadLine() |> ignore
+          if !kontinue then
+            proc kontinue
+        proc kont
 
       dispose irisService
 

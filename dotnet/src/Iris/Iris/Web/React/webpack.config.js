@@ -1,20 +1,12 @@
 var path = require("path");
 var webpack = require("webpack");
 
-var entry, outDir, devtool, devServer, plugins;
+var outDir, devtool, devServer = null, plugins = [];
 if (process.env.NODE_ENV !== "production") {
     console.log("Starting Webpack Dev Server...");
-    entry = [
-        "webpack-dev-server/client?http://localhost:8080",
-        'webpack/hot/only-dev-server',
-        "./src/Main.js"
-    ];
     outDir = "./js";
     devtool = "eval";
     devServer = {
-        // publicPath: "/",
-        hot: true,
-        // historyApiFallback: true,
         port: 8080,
         contentBase: "../../../assets/frontend",
         proxy: {
@@ -23,13 +15,9 @@ if (process.env.NODE_ENV !== "production") {
             }
         }
     };
-    plugins = [
-        new webpack.HotModuleReplacementPlugin()
-    ];
 }
 else {
     console.log("Bundling for production...");
-    entry = "./src/Main.js";
     outDir ="../../../assets/frontend/js";
     devtool = "source-map";
     plugins = [
@@ -45,7 +33,7 @@ else {
 }
 
 module.exports = {
-    entry: entry,
+    entry: "./src/Main.js",
     output: {
         path: path.join(__dirname, outDir),
         publicPath: "/js/",

@@ -11,14 +11,12 @@ open System.Collections.Generic
 open Iris.Raft
 open Iris.Core
 open Iris.Web.Core
+open Iris.Core.Commands
 open Fable.Core
 open Fable.PowerPack
 open Fable.PowerPack.Fetch.Fetch_types
 open Fable.Core.JsInterop
 open Fable.Import
-
-[<Emit("debugger")>]
-let debugger() = ()
 
 let EMPTY = Constants.EMPTY
 
@@ -49,38 +47,39 @@ let addMember(info: StateInfo, host: string, ip: string, port: string) =
   with
   | exn -> printfn "Couldn't create mem: %s" exn.Message
 
-let alert msg () =
+let alert msg (_: Exception) =
   Browser.window.alert("ERROR: " + msg)
 
-let (&) fst v =
-  fun () -> fst(); v
+/// Works like function composition but the second operand
+/// is a value, and the result of the first function is ignored
+let (&>) fst v =
+  fun x -> fst x; v
 
-let postCommand cmd success fail =
-  Fetch.fetch Constants.COMMAND_ENDPOINT
-    [ RequestProperties.Method HttpMethod.POST
-    ; RequestProperties.Body (BodyInit.Case3 cmd) ]
-  |> Promise.bind (fun res ->
-    if res.Status = 500
-    then Promise.lift "ERROR"
-    else res.text())
-  |> Promise.map (function
-    | "ERROR" -> fail()
-    | res -> success res)
+let postCommand success fail (cmd: Command) =
+  Fetch.postRecord Constants.WEP_API_COMMAND cmd []
+  |> Promise.bind (fun res -> res.text())
+  |> Promise.either success fail
 
 let listProjects() =
-  postCommand "ls" (String.split [|','|]) (alert "Cannot list projects" & [||])
+  ListProjects
+  |> postCommand
+    (String.split [|','|])
+    (alert "Cannot list projects" &> [||])
 
 let loadProject(info: StateInfo, projectName: string) =
-  postCommand
-    ("load " + projectName)
+  LoadProject projectName
+  |> postCommand
     (fun _ -> info.context.ConnectWithWebSocket())
     (alert "Cannot load project" >> Promise.lift)
 
-let createProject(_info: StateInfo, projectName: string, bind, git, ws, raft) =
-  let dir = if projectName.Contains(" ") then "\"" + projectName + "\"" else projectName
-  let cmd = sprintf "create project:%s bind:%s git:%s ws:%s raft:%s"
-                    dir bind git ws raft
-  postCommand cmd ignore (alert "Cannot create project")
+let createProject(_info: StateInfo, projectName: string, ipAddress, gitPort, webSocketPort, raftPort) =
+  { name = projectName
+  ; ipAddress = ipAddress
+  ; gitPort = gitPort
+  ; webSocketPort = webSocketPort
+  ; raftPort = raftPort }
+  |> CreateProject
+  |> postCommand ignore (alert "Cannot create project")
 
 type [<Pojo>] TreeNode =
   { ``module``: string; children: TreeNode[] option }

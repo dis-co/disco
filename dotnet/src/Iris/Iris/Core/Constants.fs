@@ -2,16 +2,11 @@ namespace Iris.Core
 
 open System
 
-module WebAPI =  
-  let [<Literal>] COMMAND_ENDPOINT = "/api/command"
-
-  [<Literal>]
-  let WS_PORT_ENDPOINT = "/api/web-socket-port"
-
-
-
 [<AutoOpen>]
 module Constants =
+
+  [<Literal>]
+  let WEP_API_COMMAND = "api/command"
 
   //  ____        __ _
   // |  _ \ __ _ / _| |_
@@ -54,9 +49,6 @@ module Constants =
 
   [<Literal>]
   let EMPTY = "<empty>"
-
-  [<Literal>]
-  let COMMAND_TIMEOUT = 5000
 
   [<Literal>]
   let REQUEST_TIMEOUT = 5000

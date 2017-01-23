@@ -1,7 +1,6 @@
 {
     "plugins": [
-        "transform-runtime",
-        "react-hot-loader/babel"
+        "transform-runtime"
     ],
     "presets": [
         "react",
