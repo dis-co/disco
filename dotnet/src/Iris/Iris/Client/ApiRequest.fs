@@ -69,7 +69,7 @@ type ClientApiRequest =
     | Snapshot state ->
       let offset = state.ToOffset(builder)
       ClientApiRequestFB.StartClientApiRequestFB(builder)
-      ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.PingFB)
+      ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.SnapshotFB)
       ClientApiRequestFB.AddParameterType(builder, ParameterFB.StateFB)
       ClientApiRequestFB.AddParameter(builder, offset.Value)
       ClientApiRequestFB.EndClientApiRequestFB(builder)

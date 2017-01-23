@@ -319,12 +319,12 @@ module ApiClient =
     | Loaded data -> Loaded { data with Elapsed = 0u }
     | idle -> idle
 
-
   // ** handleSetState
 
-  let private handleSetState (state: ClientState) (newstate: State) =
+  let private handleSetState (state: ClientState) (subs:Subscriptions) (newstate: State) =
     match state with
     | Loaded data ->
+      notify subs ClientEvent.Snapshot
       Loaded { data with Store = new Store(newstate) }
     | Idle -> state
 
@@ -343,7 +343,7 @@ module ApiClient =
           match msg with
           | Msg.Start chan        -> handleStart chan state server client subs inbox
           | Msg.GetState chan     -> handleGetState chan state
-          | Msg.SetState newstate -> handleSetState state newstate
+          | Msg.SetState newstate -> handleSetState state subs newstate
           | Msg.Dispose chan      -> handleDispose chan state
           | Msg.GetStatus chan    -> handleGetStatus chan state
           | Msg.SetStatus status  -> handleSetStatus state subs status

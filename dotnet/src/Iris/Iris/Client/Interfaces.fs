@@ -95,6 +95,7 @@ type ClientEvent =
   | Registered
   | UnRegistered
   | Update
+  | Snapshot
   | Status of ServiceStatus
 
 // * IApiClient

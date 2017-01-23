@@ -90,14 +90,15 @@ module ApiServer =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Start         of chan:ReplyChan * mem:RaftMember
-    | Dispose       of chan:ReplyChan
-    | UpdateClients of chan:ReplyChan * sm:StateMachine
-    | GetClients    of chan:ReplyChan
-    | AddClient     of chan:ReplyChan * client:IrisClient
-    | RemoveClient  of chan:ReplyChan * client:IrisClient
-    | SetStatus     of id:Id          * status:ServiceStatus
-    | SetState      of chan:ReplyChan * state:State
+    | Start           of chan:ReplyChan * mem:RaftMember
+    | Dispose         of chan:ReplyChan
+    | UpdateClients   of chan:ReplyChan * sm:StateMachine
+    | GetClients      of chan:ReplyChan
+    | AddClient       of chan:ReplyChan * client:IrisClient
+    | RemoveClient    of chan:ReplyChan * client:IrisClient
+    | SetStatus       of id:Id          * status:ServiceStatus
+    | SetState        of chan:ReplyChan * state:State
+    | InstallSnapshot of id:Id
 
   // ** ApiAgent
 
@@ -128,9 +129,9 @@ module ApiServer =
     for KeyValue(_,sub) in subs do
       sub.OnNext ev
 
-  // ** requestSnapshot
+  // ** requestInstallSnapshot
 
-  let private requestSnapshot (data: ClientStateData) (client: Client) (agent: ApiAgent) =
+  let private requestInstallSnapshot (data: ClientStateData) (client: Client) (agent: ApiAgent) =
     let result : Either<IrisError,ApiResponse> =
       data.Store.State
       |> ClientApiRequest.Snapshot
@@ -143,21 +144,21 @@ module ApiServer =
     | Right (ApiResponse.NOK error) ->
       let reason =
         string error
-        |> Error.asClientError (tag "requestSnapshot")
+        |> Error.asClientError (tag "requestInstallSnapshot")
       (client.Meta.Id, ServiceStatus.Failed reason)
       |> Msg.SetStatus
       |> agent.Post
     | Right other ->
       let reason =
         "Unexpected reply from Client"
-        |> Error.asClientError (tag "requestSnapshot")
+        |> Error.asClientError (tag "requestInstallSnapshot")
       (client.Meta.Id, ServiceStatus.Failed reason)
       |> Msg.SetStatus
       |> agent.Post
     | Left error ->
       let reason =
         string error
-        |> Error.asClientError (tag "requestSnapshot")
+        |> Error.asClientError (tag "requestInstallSnapshot")
       (client.Meta.Id, ServiceStatus.Failed reason)
       |> Msg.SetStatus
       |> agent.Post
@@ -297,6 +298,8 @@ module ApiServer =
           Socket = socket
           Timer = pingTimer socket agent }
 
+      agent.Post(Msg.InstallSnapshot meta.Id)
+
       chan.Reply(Right Reply.Ok)
       notify subs (ApiEvent.Register meta)
       Loaded { data with Clients = Map.add meta.Id client data.Clients }
@@ -323,18 +326,37 @@ module ApiServer =
 
   let private updateClient (sm: StateMachine) (client: Client) =
     async {
-      printfn "updating client: %A" client.Meta.Id
+      let request =
+        match sm with
+        | DataSnapshot state ->
+          ClientApiRequest.Snapshot state
+        | _ ->
+          ClientApiRequest.Ping
+
+      let result : Either<IrisError,ApiResponse> =
+        request
+        |> Binary.encode
+        |> client.Socket.Request
+        |> Either.bind Binary.decode
+
+      match result with
+      | Right ApiResponse.OK -> printfn "Request OK"
+      | Right ApiResponse.Pong -> printfn "PONG"
+      | Right (ApiResponse.NOK err) ->
+        printfn "Request NOK: %A" err
+      | Left error ->
+        printfn "Error in request to client: %A" error
     }
 
   // ** updateClients
 
   let private updateClients (sm: StateMachine) (clients: Map<Id,Client>) =
-     clients
-     |> Map.toArray
-     |> Array.map (snd >> updateClient sm)
-     |> Async.Parallel
-     |> Async.RunSynchronously
-     |> ignore
+    clients
+    |> Map.toArray
+    |> Array.map (snd >> updateClient sm)
+    |> Async.Parallel
+    |> Async.RunSynchronously
+    |> ignore
 
   // ** handleUpdateClients
 
@@ -396,11 +418,27 @@ module ApiServer =
 
   let private handleSetState (chan: ReplyChan)
                              (state: ClientState)
-                             (newstate: State) =
+                             (newstate: State)
+                             (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      updateClients (DataSnapshot newstate) data.Clients
+      Map.iter (fun id _ -> agent.Post(Msg.InstallSnapshot id)) data.Clients
+      chan.Reply (Right Reply.Ok)
       Loaded { data with Store = new Store(newstate) }
+    | Idle ->
+      chan.Reply (Right Reply.Ok)
+      state
+
+  // ** handleInstallSnapshot
+
+  let private handleInstallSnapshot (state: ClientState) (id: Id) (agent: ApiAgent) =
+    match state with
+    | Loaded data ->
+      match Map.tryFind id data.Clients with
+      | Some client ->
+        requestInstallSnapshot data client agent
+        state
+      | None -> state
     | Idle -> state
 
   // ** loop
@@ -419,7 +457,8 @@ module ApiServer =
           | Msg.UpdateClients(chan,sm)    -> handleUpdateClients chan state sm
           | Msg.GetClients(chan)          -> handleGetClients chan state
           | Msg.SetStatus(id, status)     -> handleSetStatus id status state subs
-          | Msg.SetState(chan, newstate)  -> handleSetState chan state newstate
+          | Msg.SetState(chan, newstate)  -> handleSetState chan state newstate inbox
+          | Msg.InstallSnapshot(id)       -> handleInstallSnapshot state id inbox
 
         return! act newstate
       }
