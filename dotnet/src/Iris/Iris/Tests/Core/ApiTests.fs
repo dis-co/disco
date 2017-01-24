@@ -150,6 +150,10 @@ module ApiTests =
           AddUser    (mkUser ())
           AddSession (mkSession ())
           AddCue     (mkCue ())
+          AddPin     (mkPin ())
+          AddCueList (mkCueList ())
+          AddMember  (mkMember ())
+          AddUser    (mkUser ())
         ]
 
         List.iter (server.Update >> ignore) events
