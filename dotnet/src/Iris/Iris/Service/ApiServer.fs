@@ -93,7 +93,7 @@ module ApiServer =
   type private Msg =
     | Start           of chan:ReplyChan * mem:RaftMember
     | Dispose         of chan:ReplyChan
-    | Update          of chan:ReplyChan * sm:StateMachine
+    | Update          of sm:StateMachine
     | GetClients      of chan:ReplyChan
     | AddClient       of chan:ReplyChan * client:IrisClient
     | RemoveClient    of chan:ReplyChan * client:IrisClient
@@ -101,6 +101,7 @@ module ApiServer =
     | SetState        of chan:ReplyChan * state:State
     | GetState        of chan:ReplyChan
     | InstallSnapshot of id:Id
+    | ClientUpdate    of sm:StateMachine
 
   // ** ApiAgent
 
@@ -232,6 +233,9 @@ module ApiServer =
         |> ApiError.Internal
         |> NOK
         |> Binary.encode
+    | Right (Update sm) ->
+      agent.Post(Msg.ClientUpdate sm)
+      Binary.encode OK
     | Left error ->
       string error
       |> ApiError.Internal
@@ -347,41 +351,31 @@ module ApiServer =
         return Either.fail (client.Meta.Id, error)
     }
 
-  // ** updateClients
-
-  let private updateClients (sm: StateMachine) (clients: Map<Id,Client>) (agent: ApiAgent) =
-    clients
-    |> Map.toArray
-    |> Array.map (snd >> updateClient sm)
-    |> Async.Parallel
-    |> Async.RunSynchronously
-    |> Array.iter
-      (fun result ->
-        match result with
-        | Left (id, error) ->
-          (id, ServiceStatus.Failed error)
-          |> Msg.SetStatus
-          |> agent.Post
-        | _ -> ())
-
   // ** handleUpdate
 
-  let private handleUpdate (chan: ReplyChan)
-                           (state: ClientState)
+  let private handleUpdate (state: ClientState)
                            (sm: StateMachine)
                            (agent: ApiAgent) =
     match state with
     | Loaded data ->
       data.Store.Dispatch sm
-      updateClients sm data.Clients agent
-      chan.Reply(Right Reply.Ok)
+
+      data.Clients
+      |> Map.toArray
+      |> Array.map (snd >> updateClient sm)
+      |> Async.Parallel
+      |> Async.RunSynchronously
+      |> Array.iter
+        (fun result ->
+          match result with
+          | Left (id, error) ->
+            (id, ServiceStatus.Failed error)
+            |> Msg.SetStatus
+            |> agent.Post
+          | _ -> ())
+
       state
-    | Idle ->
-      "ClientApi not running"
-      |> Error.asClientError (tag "handleUpdate")
-      |> Either.fail
-      |> chan.Reply
-      state
+    | Idle -> state
 
   // ** handleGetClients
 
@@ -468,6 +462,16 @@ module ApiServer =
       |> chan.Reply
       state
 
+  // ** handleClientUpdate
+
+  let private handleClientUpdate (state: ClientState) (subs: Subscriptions) (sm: StateMachine) =
+    match state with
+    | Loaded data ->
+      notify subs (ApiEvent.Update sm)
+      state
+    | Idle ->
+      state
+
   // ** loop
 
   let private loop (initial: ClientState) (subs: Subscriptions) (inbox: ApiAgent) =
@@ -481,12 +485,13 @@ module ApiServer =
           | Msg.Dispose chan              -> handleDispose chan state
           | Msg.AddClient(chan,client)    -> handleAddClient chan state subs client inbox
           | Msg.RemoveClient(chan,client) -> handleRemoveClient chan state subs client
-          | Msg.Update(chan,sm)           -> handleUpdate chan state sm inbox
+          | Msg.Update(sm)                -> handleUpdate state sm inbox
           | Msg.GetClients(chan)          -> handleGetClients chan state
           | Msg.SetStatus(id, status)     -> handleSetStatus id status state subs
           | Msg.SetState(chan, newstate)  -> handleSetState chan state newstate inbox
           | Msg.GetState(chan)            -> handleGetState chan state
           | Msg.InstallSnapshot(id)       -> handleInstallSnapshot state id inbox
+          | Msg.ClientUpdate(sm)          -> handleClientUpdate state subs sm
 
         return! act newstate
       }
@@ -549,15 +554,8 @@ module ApiServer =
                     |> Either.fail
 
               member self.Update (sm: StateMachine) =
-                match agent.PostAndReply(fun chan -> Msg.Update(chan, sm)) with
-                | Right (Reply.Ok) -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "Update")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                agent.Post(Msg.Update sm)
+                |> Either.succeed
 
               member self.SetState (state: State) =
                 match agent.PostAndReply(fun chan -> Msg.SetState(chan, state)) with

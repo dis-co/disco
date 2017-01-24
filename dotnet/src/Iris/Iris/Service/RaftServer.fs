@@ -17,6 +17,7 @@ open Persistence
 
 // * Raft
 
+[<AutoOpen>]
 module Raft =
 
   //  ____       _            _

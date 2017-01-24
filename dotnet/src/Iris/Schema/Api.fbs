@@ -28,7 +28,16 @@ table ApiErrorFB {
 
 enum ServerApiCommandFB:ushort {
      RegisterFB = 0,
-     UnReqisterFB = 1,
+     UnReqisterFB,
+     AddPinFB,
+     UpdatePinFB,
+     RemovePinFB,
+     AddCueFB,
+     UpdateCueFB,
+     RemoveCueFB,
+     AddCueListFB,
+     UpdateCueListFB,
+     RemoveCueListFB,
 }
 
 enum ClientApiCommandFB:ushort {

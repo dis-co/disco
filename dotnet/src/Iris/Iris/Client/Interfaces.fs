@@ -113,3 +113,12 @@ type IApiClient =
   abstract State: Either<IrisError,State>
   abstract Status: ServiceStatus
   abstract Subscribe: (ClientEvent -> unit) -> IDisposable
+  abstract AddCue: Cue -> Either<IrisError,unit>
+  abstract UpdateCue: Cue -> Either<IrisError,unit>
+  abstract RemoveCue: Cue -> Either<IrisError,unit>
+  abstract AddCueList: CueList -> Either<IrisError,unit>
+  abstract UpdateCueList: CueList -> Either<IrisError,unit>
+  abstract RemoveCueList: CueList -> Either<IrisError,unit>
+  abstract AddPin: Pin -> Either<IrisError,unit>
+  abstract UpdatePin: Pin -> Either<IrisError,unit>
+  abstract RemovePin: Pin -> Either<IrisError,unit>

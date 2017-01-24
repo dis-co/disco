@@ -682,6 +682,7 @@ type ClientApiRequest =
 type ServerApiRequest =
   | Register   of IrisClient
   | UnRegister of IrisClient
+  | Update     of StateMachine
 
   member request.ToOffset(builder: FlatBufferBuilder) =
     match request with
@@ -699,6 +700,71 @@ type ServerApiRequest =
       ServerApiRequestFB.AddParameterType(builder, ParameterFB.IrisClientFB)
       ServerApiRequestFB.AddParameter(builder, offset.Value)
       ServerApiRequestFB.EndServerApiRequestFB(builder)
+    | Update (AddCue cue) ->
+      let offset = cue.ToOffset(builder)
+      ServerApiRequestFB.StartServerApiRequestFB(builder)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.AddCueFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.CueFB)
+      ServerApiRequestFB.AddParameter(builder, offset.Value)
+      ServerApiRequestFB.EndServerApiRequestFB(builder)
+    | Update (UpdateCue cue) ->
+      let offset = cue.ToOffset(builder)
+      ServerApiRequestFB.StartServerApiRequestFB(builder)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.UpdateCueFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.CueFB)
+      ServerApiRequestFB.AddParameter(builder, offset.Value)
+      ServerApiRequestFB.EndServerApiRequestFB(builder)
+    | Update (RemoveCue cue) ->
+      let offset = cue.ToOffset(builder)
+      ServerApiRequestFB.StartServerApiRequestFB(builder)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.RemoveCueFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.CueFB)
+      ServerApiRequestFB.AddParameter(builder, offset.Value)
+      ServerApiRequestFB.EndServerApiRequestFB(builder)
+    | Update (AddCueList cueList) ->
+      let offset = cueList.ToOffset(builder)
+      ServerApiRequestFB.StartServerApiRequestFB(builder)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.AddCueListFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.CueListFB)
+      ServerApiRequestFB.AddParameter(builder, offset.Value)
+      ServerApiRequestFB.EndServerApiRequestFB(builder)
+    | Update (UpdateCueList cueList) ->
+      let offset = cueList.ToOffset(builder)
+      ServerApiRequestFB.StartServerApiRequestFB(builder)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.UpdateCueListFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.CueListFB)
+      ServerApiRequestFB.AddParameter(builder, offset.Value)
+      ServerApiRequestFB.EndServerApiRequestFB(builder)
+    | Update (RemoveCueList cueList) ->
+      let offset = cueList.ToOffset(builder)
+      ServerApiRequestFB.StartServerApiRequestFB(builder)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.RemoveCueListFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.CueListFB)
+      ServerApiRequestFB.AddParameter(builder, offset.Value)
+      ServerApiRequestFB.EndServerApiRequestFB(builder)
+    | Update (AddPin pin) ->
+      let offset = pin.ToOffset(builder)
+      ServerApiRequestFB.StartServerApiRequestFB(builder)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.AddPinFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.PinFB)
+      ServerApiRequestFB.AddParameter(builder, offset.Value)
+      ServerApiRequestFB.EndServerApiRequestFB(builder)
+    | Update (UpdatePin pin) ->
+      let offset = pin.ToOffset(builder)
+      ServerApiRequestFB.StartServerApiRequestFB(builder)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.UpdatePinFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.PinFB)
+      ServerApiRequestFB.AddParameter(builder, offset.Value)
+      ServerApiRequestFB.EndServerApiRequestFB(builder)
+    | Update (RemovePin pin) ->
+      let offset = pin.ToOffset(builder)
+      ServerApiRequestFB.StartServerApiRequestFB(builder)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.RemovePinFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.PinFB)
+      ServerApiRequestFB.AddParameter(builder, offset.Value)
+      ServerApiRequestFB.EndServerApiRequestFB(builder)
+    | Update x ->
+      failwithf "Server does not implement command: %A" x
 
   static member FromFB(fb: ServerApiRequestFB) =
     match fb.Command with
@@ -738,6 +804,190 @@ type ServerApiRequest =
         sprintf "Wrong ParameterType in ServerApiRequest: %A" x
         |> Error.asClientError "ServerApiRequest.FromFB"
         |> Either.fail
+
+    //   ____
+    //  / ___|   _  ___
+    // | |  | | | |/ _ \
+    // | |__| |_| |  __/
+    //  \____\__,_|\___|
+
+    | ServerApiCommandFB.AddCueFB ->
+      match fb.ParameterType with
+      | ParameterFB.CueFB ->
+        let cueish = fb.Parameter<CueFB>()
+        if cueish.HasValue then
+          either {
+            let value = cueish.Value
+            let! cue = Cue.FromFB(value)
+            return ServerApiRequest.Update(AddCue cue)
+          }
+        else
+          "Empty CueFB Parameter in ServerApiRequest"
+          |> Error.asClientError "ServerApiRequest.FromFB"
+          |> Either.fail
+      | x ->
+        sprintf "Wrong ParameterType in ServerApiRequest: %A" x
+        |> Error.asClientError "ServerApiRequest.FromFB"
+        |> Either.fail
+    | ServerApiCommandFB.UpdateCueFB ->
+      match fb.ParameterType with
+      | ParameterFB.CueFB ->
+        let cueish = fb.Parameter<CueFB>()
+        if cueish.HasValue then
+          either {
+            let value = cueish.Value
+            let! cue = Cue.FromFB(value)
+            return ServerApiRequest.Update(UpdateCue cue)
+          }
+        else
+          "Empty CueFB Parameter in ServerApiRequest"
+          |> Error.asClientError "ServerApiRequest.FromFB"
+          |> Either.fail
+      | x ->
+        sprintf "Wrong ParameterType in ServerApiRequest: %A" x
+        |> Error.asClientError "ServerApiRequest.FromFB"
+        |> Either.fail
+    | ServerApiCommandFB.RemoveCueFB ->
+      match fb.ParameterType with
+      | ParameterFB.CueFB ->
+        let cueish = fb.Parameter<CueFB>()
+        if cueish.HasValue then
+          either {
+            let value = cueish.Value
+            let! cue = Cue.FromFB(value)
+            return ServerApiRequest.Update(RemoveCue cue)
+          }
+        else
+          "Empty CueFB Parameter in ServerApiRequest"
+          |> Error.asClientError "ServerApiRequest.FromFB"
+          |> Either.fail
+      | x ->
+        sprintf "Wrong ParameterType in ServerApiRequest: %A" x
+        |> Error.asClientError "ServerApiRequest.FromFB"
+        |> Either.fail
+
+    //   ____           _     _     _
+    //  / ___|   _  ___| |   (_)___| |_
+    // | |  | | | |/ _ \ |   | / __| __|
+    // | |__| |_| |  __/ |___| \__ \ |_
+    //  \____\__,_|\___|_____|_|___/\__|
+
+    | ServerApiCommandFB.AddCueListFB ->
+      match fb.ParameterType with
+      | ParameterFB.CueListFB ->
+        let cueListish = fb.Parameter<CueListFB>()
+        if cueListish.HasValue then
+          either {
+            let value = cueListish.Value
+            let! cueList = CueList.FromFB(value)
+            return ServerApiRequest.Update(AddCueList cueList)
+          }
+        else
+          "Empty CueListFB Parameter in ServerApiRequest"
+          |> Error.asClientError "ServerApiRequest.FromFB"
+          |> Either.fail
+      | x ->
+        sprintf "Wrong ParameterType in ServerApiRequest: %A" x
+        |> Error.asClientError "ServerApiRequest.FromFB"
+        |> Either.fail
+    | ServerApiCommandFB.UpdateCueListFB ->
+      match fb.ParameterType with
+      | ParameterFB.CueListFB ->
+        let cueListish = fb.Parameter<CueListFB>()
+        if cueListish.HasValue then
+          either {
+            let value = cueListish.Value
+            let! cueList = CueList.FromFB(value)
+            return ServerApiRequest.Update(UpdateCueList cueList)
+          }
+        else
+          "Empty CueListFB Parameter in ServerApiRequest"
+          |> Error.asClientError "ServerApiRequest.FromFB"
+          |> Either.fail
+      | x ->
+        sprintf "Wrong ParameterType in ServerApiRequest: %A" x
+        |> Error.asClientError "ServerApiRequest.FromFB"
+        |> Either.fail
+    | ServerApiCommandFB.RemoveCueListFB ->
+      match fb.ParameterType with
+      | ParameterFB.CueListFB ->
+        let cueListish = fb.Parameter<CueListFB>()
+        if cueListish.HasValue then
+          either {
+            let value = cueListish.Value
+            let! cueList = CueList.FromFB(value)
+            return ServerApiRequest.Update(RemoveCueList cueList)
+          }
+        else
+          "Empty CueListFB Parameter in ServerApiRequest"
+          |> Error.asClientError "ServerApiRequest.FromFB"
+          |> Either.fail
+      | x ->
+        sprintf "Wrong ParameterType in ServerApiRequest: %A" x
+        |> Error.asClientError "ServerApiRequest.FromFB"
+        |> Either.fail
+
+    //  ____  _
+    // |  _ \(_)_ __
+    // | |_) | | '_ \
+    // |  __/| | | | |
+    // |_|   |_|_| |_|
+
+    | ServerApiCommandFB.AddPinFB ->
+      match fb.ParameterType with
+      | ParameterFB.PinFB ->
+        let pinish = fb.Parameter<PinFB>()
+        if pinish.HasValue then
+          either {
+            let value = pinish.Value
+            let! pin = Pin.FromFB(value)
+            return ServerApiRequest.Update(AddPin pin)
+          }
+        else
+          "Empty PinFB Parameter in ServerApiRequest"
+          |> Error.asClientError "ServerApiRequest.FromFB"
+          |> Either.fail
+      | x ->
+        sprintf "Wrong ParameterType in ServerApiRequest: %A" x
+        |> Error.asClientError "ServerApiRequest.FromFB"
+        |> Either.fail
+    | ServerApiCommandFB.UpdatePinFB ->
+      match fb.ParameterType with
+      | ParameterFB.PinFB ->
+        let pinish = fb.Parameter<PinFB>()
+        if pinish.HasValue then
+          either {
+            let value = pinish.Value
+            let! pin = Pin.FromFB(value)
+            return ServerApiRequest.Update(UpdatePin pin)
+          }
+        else
+          "Empty PinFB Parameter in ServerApiRequest"
+          |> Error.asClientError "ServerApiRequest.FromFB"
+          |> Either.fail
+      | x ->
+        sprintf "Wrong ParameterType in ServerApiRequest: %A" x
+        |> Error.asClientError "ServerApiRequest.FromFB"
+        |> Either.fail
+    | ServerApiCommandFB.RemovePinFB ->
+      match fb.ParameterType with
+      | ParameterFB.PinFB ->
+        let pinish = fb.Parameter<PinFB>()
+        if pinish.HasValue then
+          either {
+            let value = pinish.Value
+            let! pin = Pin.FromFB(value)
+            return ServerApiRequest.Update(RemovePin pin)
+          }
+        else
+          "Empty PinFB Parameter in ServerApiRequest"
+          |> Error.asClientError "ServerApiRequest.FromFB"
+          |> Either.fail
+      | x ->
+        sprintf "Wrong ParameterType in ServerApiRequest: %A" x
+        |> Error.asClientError "ServerApiRequest.FromFB"
+        |> Either.fail
+
     | x ->
       sprintf "Unknown Command in ServerApiRequest: %A" x
       |> Error.asClientError "ServerApiRequest.FromFB"
