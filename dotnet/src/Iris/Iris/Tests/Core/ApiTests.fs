@@ -34,7 +34,8 @@ module ApiTests =
       Cues     = Map.empty
       CueLists = Map.empty
       Sessions = Map.empty
-      Users    = Map.empty }
+      Users    = Map.empty
+      Clients  = Map.empty }
 
   //  ____
   // / ___|  ___ _ ____   _____ _ __
@@ -191,9 +192,7 @@ module ApiTests =
           match ev with
           | ApiEvent.Update sm ->
             check := !check + 1
-            match server.Update sm with
-            | Right () -> ()
-            | Left error -> printfn "error appending: %A" error
+            server.Update sm
           | _ -> ()
 
         use obs2 = server.Subscribe(apiHandler)

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <Import Project="..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
@@ -110,6 +110,9 @@
     <Compile Include="..\..\Iris\Core\User.fs">
       <Link>User.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\Client.fs">
+      <Link>Client.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\Session.fs">
       <Link>Session.fs</Link>
     </Compile>
@@ -179,8 +182,8 @@
     <Compile Include="..\..\Iris\Client\ApiRequest.fs">
       <Link>ApiRequest.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Client\Client.fs">
-      <Link>Client.fs</Link>
+    <Compile Include="..\..\Iris\Client\ApiClient.fs">
+      <Link>ApiClient.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Service\Request.fs">
       <Link>Request.fs</Link>

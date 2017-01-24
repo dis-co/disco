@@ -555,7 +555,6 @@ module ApiServer =
 
               member self.Update (sm: StateMachine) =
                 agent.Post(Msg.Update sm)
-                |> Either.succeed
 
               member self.SetState (state: State) =
                 match agent.PostAndReply(fun chan -> Msg.SetState(chan, state)) with

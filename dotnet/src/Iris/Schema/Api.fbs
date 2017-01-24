@@ -3,18 +3,6 @@ include "Raft.fbs";
 
 namespace Iris.Serialization;
 
-enum RoleFB:ushort {
-     RendererFB = 0
-}
-
-table IrisClientFB {
-     Id: string;
-     Name: string;
-     Role: RoleFB;
-     Port: uint;
-     IpAddress: string;
-}
-
 enum ApiErrorTypeFB:ushort {
      InternalFB = 0,
      UnknownCommandFB = 1,

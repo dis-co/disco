@@ -34,6 +34,10 @@ module Iris =
   let private tag (str: string) = sprintf "IrisServer.%s" str
 
   // ** keys
+
+  [<Literal>]
+  let private API_SERVER = "api"
+
   [<Literal>]
   let private GIT_SERVER = "git"
 
@@ -92,6 +96,7 @@ module Iris =
     { MemberId      : Id
       Status        : ServiceStatus
       Store         : Store
+      ApiServer     : IApiServer
       GitServer     : IGitServer
       RaftServer    : IRaftServer
       SocketServer  : IWebSocketServer
@@ -101,6 +106,7 @@ module Iris =
     interface IDisposable with
       member self.Dispose() =
         disposeAll self.Disposables
+        dispose self.ApiServer
         dispose self.GitServer
         dispose self.RaftServer
         dispose self.SocketServer
@@ -138,6 +144,7 @@ module Iris =
     | Git         of GitEvent
     | Socket      of SocketEvent
     | Raft        of RaftEvent
+    | Api         of ApiEvent
     | Log         of LogEvent
     | Load        of ReplyChan * FilePath
     | SetConfig   of ReplyChan * IrisConfig
@@ -496,6 +503,7 @@ module Iris =
     withoutReply state <| fun data ->
       data.Store.Dispatch sm
       broadcastMsg data sm
+      data.ApiServer.Update sm
 
       if RaftServer.isLeader data.RaftServer then
         match persistEntry data.Store.State sm with
@@ -560,6 +568,19 @@ module Iris =
     | CreateSnapshot _        -> onCreateSnapshot state
     | StateChanged (ost, nst) -> onStateChanged   state ost nst
 
+  // ** handleApiEvent
+
+  let private handleApiEvent (state: IrisState) (ev: ApiEvent) =
+    withState state <| fun data ->
+      match ev with
+      | ApiEvent.Update sm ->
+        data.RaftServer.Append sm
+        |> Either.mapError (string >> Logger.err data.MemberId (tag "handleApiEvent"))
+        |> ignore
+      | _ ->
+        triggerOnNext data.Subscriptions (IrisEvent.Api ev)
+    state
+
   // ** forwardLogEvents
 
   let private forwardLogEvents (agent: IrisAgent) (log: LogEvent) =
@@ -579,6 +600,11 @@ module Iris =
 
   let private forwardSocketEvents (agent: IrisAgent) (ev: SocketEvent) =
     agent.Post(Msg.Socket ev)
+
+  // ** forwardApiEvents
+
+  let private forwardApiEvents (agent: IrisAgent) (ev: ApiEvent) =
+    agent.Post(Msg.Api ev)
 
   //   ____ _ _
   //  / ___(_) |_
@@ -664,12 +690,14 @@ module Iris =
 
       let! raftserver = RaftServer.create ()
       let! wsserver   = SocketServer.create mem
+      let! apiserver  = ApiServer.create mem
       let! gitserver  = GitServer.create mem path
 
       return
         Loaded { MemberId     = mem.Id
                  Status       = ServiceStatus.Starting
                  Store        = new Store(state)
+                 ApiServer    = apiserver
                  GitServer    = gitserver
                  RaftServer   = raftserver
                  SocketServer = wsserver
@@ -682,15 +710,17 @@ module Iris =
   let private start (state: IrisState) (agent: IrisAgent) =
     withLoaded state (konst (Right state)) <| fun data ->
       let disposables =
-        [ (LOG_HANDLER, forwardLogEvents agent    |> Logger.subscribe)
-          (RAFT_SERVER, forwardRaftEvents agent   |> data.RaftServer.Subscribe)
+        [ (LOG_HANDLER, forwardLogEvents    agent |> Logger.subscribe)
+          (RAFT_SERVER, forwardRaftEvents   agent |> data.RaftServer.Subscribe)
           (WS_SERVER,   forwardSocketEvents agent |> data.SocketServer.Subscribe)
-          (GIT_SERVER,  forwardGitEvents agent    |> data.GitServer.Subscribe) ]
+          (API_SERVER,  forwardApiEvents    agent |> data.ApiServer.Subscribe)
+          (GIT_SERVER,  forwardGitEvents    agent |> data.GitServer.Subscribe) ]
         |> Map.ofList
 
       let result =
         either {
           do! data.RaftServer.Load(data.Store.State.Project.Config)
+          do! data.ApiServer.Start()
           do! data.SocketServer.Start()
           do! data.GitServer.Start()
         }
@@ -704,6 +734,7 @@ module Iris =
       | Left error ->
         disposeAll disposables
         dispose data.SocketServer
+        dispose data.ApiServer
         dispose data.RaftServer
         dispose data.GitServer
         Either.fail error
@@ -908,6 +939,7 @@ module Iris =
           | Msg.Git    ev            -> handleGitEvent      state inbox ev
           | Msg.Socket ev            -> handleSocketEvent   state       ev
           | Msg.Raft   ev            -> handleRaftEvent     state       ev
+          | Msg.Api    ev            -> handleApiEvent      state       ev
           | Msg.Log   log            -> handleLogEvent      state       log
           | Msg.ForceElection        -> handleForceElection state
           | Msg.Periodic             -> handlePeriodic      state
@@ -1074,4 +1106,3 @@ module Iris =
         }
       with
       | ex -> IrisError.Other(tag "create", ex.Message) |> Either.fail
-

@@ -116,6 +116,9 @@
     <Compile Include="..\..\Iris\Core\User.fs">
       <Link>User.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\Client.fs">
+      <Link>Client.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\Session.fs">
       <Link>Session.fs</Link>
     </Compile>
@@ -186,8 +189,8 @@
     <Compile Include="..\..\Iris\Client\ApiRequest.fs">
       <Link>ApiRequest.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Client\Client.fs">
-      <Link>Client.fs</Link>
+    <Compile Include="..\..\Iris\Client\ApiClient.fs">
+      <Link>ApiClient.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Service\Request.fs">
       <Link>Request.fs</Link>

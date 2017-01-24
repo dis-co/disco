@@ -168,6 +168,15 @@ type IHttpServer =
   inherit System.IDisposable
   abstract Start: unit -> Either<IrisError,unit>
 
+// * ApiEvent
+
+[<RequireQualifiedAccess>]
+type ApiEvent =
+  | Update     of StateMachine
+  | Status     of IrisClient
+  | Register   of IrisClient
+  | UnRegister of IrisClient
+
 // * IrisEvent
 
 [<NoComparison;NoEquality>]
@@ -176,6 +185,7 @@ type IrisEvent =
   | Socket of SocketEvent
   | Raft   of RaftEvent
   | Log    of LogEvent
+  | Api    of ApiEvent
   | Status of ServiceStatus
 
 // * IIrisServer
@@ -198,15 +208,6 @@ type IIrisServer =
   abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
   abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
 
-// * ApiEvent
-
-[<RequireQualifiedAccess>]
-type ApiEvent =
-  | Update     of StateMachine
-  | Status     of IrisClient
-  | Register   of IrisClient
-  | UnRegister of IrisClient
-
 // * IApiServer
 
 type IApiServer =
@@ -215,5 +216,5 @@ type IApiServer =
   abstract Subscribe: (ApiEvent -> unit) -> IDisposable
   abstract Clients: Either<IrisError,Map<Id,IrisClient>>
   abstract State: Either<IrisError,State>
-  abstract Update: sm:StateMachine -> Either<IrisError,unit>
+  abstract Update: sm:StateMachine -> unit
   abstract SetState: state:State -> Either<IrisError,unit>

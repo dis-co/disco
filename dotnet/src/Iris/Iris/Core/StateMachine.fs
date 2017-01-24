@@ -129,7 +129,8 @@ type State =
     Cues     : Map<Id,Cue>
     CueLists : Map<Id,CueList>
     Sessions : Map<Id,Session>
-    Users    : Map<Id,User> }
+    Users    : Map<Id,User>
+    Clients  : Map<Id,IrisClient>}
 
   // ** Empty
 
@@ -140,7 +141,8 @@ type State =
         Cues     = Map.empty
         CueLists = Map.empty
         Sessions = Map.empty
-        Users    = Map.empty }
+        Users    = Map.empty
+        Clients  = Map.empty }
 
   // ** Load
 
@@ -160,7 +162,8 @@ type State =
           Cues     = Array.map toPair cues     |> Map.ofArray
           CueLists = Array.map toPair cuelists |> Map.ofArray
           Patches  = Array.map toPair patches  |> Map.ofArray
-          Sessions = Map.empty }
+          Sessions = Map.empty
+          Clients  = Map.empty }
     }
 
   #endif
@@ -381,6 +384,33 @@ type State =
   static member removeMember (mem: RaftMember) (state: State) =
     { state with Project = Project.removeMember mem.Id state.Project }
 
+  //   ____ _ _            _
+  //  / ___| (_) ___ _ __ | |_
+  // | |   | | |/ _ \ '_ \| __|
+  // | |___| | |  __/ | | | |_
+  //  \____|_|_|\___|_| |_|\__|
+
+  // ** addClient
+
+  static member addClient (client: IrisClient) (state: State) =
+    if Map.containsKey client.Id state.Clients then
+      state
+    else
+      { state with Clients = Map.add client.Id client state.Clients }
+
+  // ** updateClient
+
+  static member updateClient (client: IrisClient) (state: State) =
+    if Map.containsKey client.Id state.Clients then
+      { state with Clients = Map.add client.Id client state.Clients }
+    else
+      state
+
+  // ** removeClient
+
+  static member removeClient (client: IrisClient) (state: State) =
+    { state with Clients = Map.remove client.Id state.Clients }
+
   //  ____            _           _
   // |  _ \ _ __ ___ (_) ___  ___| |_
   // | |_) | '__/ _ \| |/ _ \/ __| __|
@@ -445,12 +475,19 @@ type State =
 
     let sessionsoffset = StateFB.CreateSessionsVector(builder, sessions)
 
+    let clients =
+      Map.toArray self.Clients
+      |> Array.map (snd >> Binary.toOffset builder)
+
+    let clientsoffset = StateFB.CreateClientsVector(builder, clients)
+
     StateFB.StartStateFB(builder)
     StateFB.AddProject(builder, project)
     StateFB.AddPatches(builder, patchesoffset)
     StateFB.AddCues(builder, cuesoffset)
     StateFB.AddCueLists(builder, cuelistsoffset)
     StateFB.AddSessions(builder, sessionsoffset)
+    StateFB.AddClients(builder, clientsoffset)
     StateFB.AddUsers(builder, usersoffset)
     StateFB.EndStateFB(builder)
 
@@ -618,12 +655,41 @@ type State =
           arr
         |> Either.map snd
 
+      // CLIENTS
+
+      let! clients =
+        let arr = Array.zeroCreate fb.ClientsLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<Id, IrisClient>>) _ -> either {
+            let! (i, map) = m
+
+            #if FABLE_COMPILER
+            let! client = fb.Clients(i) |> IrisClient.FromFB
+            #else
+            let! client =
+              let value = fb.Clients(i)
+              if value.HasValue then
+                value.Value
+                |> IrisClient.FromFB
+              else
+                "Could not parse empty Client payload"
+                |> Error.asParseError "Client.FromFB"
+                |> Either.fail
+            #endif
+
+            return (i + 1, Map.add client.Id client map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
+
       return { Project  = project
                Patches  = patches
                Cues     = cues
                CueLists = cuelists
                Users    = users
-               Sessions = sessions }
+               Sessions = sessions
+               Clients  = clients }
     }
 
   // ** FromBytes
@@ -859,6 +925,10 @@ and Store(state : State)=
     | UpdateMember          mem -> State.updateMember  mem     state |> andRender
     | RemoveMember          mem -> State.removeMember  mem     state |> andRender
 
+    | AddClient          client -> State.addClient     client  state |> andRender
+    | UpdateClient       client -> State.updateClient  client  state |> andRender
+    | RemoveClient       client -> State.removeClient  client  state |> andRender
+
     | AddSession        session -> State.addSession    session state |> andRender
     | UpdateSession     session -> State.updateSession session state |> andRender
     | RemoveSession     session -> State.removeSession session state |> andRender
@@ -971,6 +1041,11 @@ and StateMachine =
   | UpdateMember  of RaftMember
   | RemoveMember  of RaftMember
 
+  // Client
+  | AddClient     of IrisClient
+  | UpdateClient  of IrisClient
+  | RemoveClient  of IrisClient
+
   // PATCH
   | AddPatch      of Patch
   | UpdatePatch   of Patch
@@ -1020,6 +1095,11 @@ and StateMachine =
     | AddMember    mem      -> sprintf "AddMember %s"    (string mem)
     | UpdateMember mem      -> sprintf "UpdateMember %s" (string mem)
     | RemoveMember mem      -> sprintf "RemoveMember %s" (string mem)
+
+    // Client
+    | AddClient    client  -> sprintf "AddClient %s"    (string client)
+    | UpdateClient client  -> sprintf "UpdateClient %s" (string client)
+    | RemoveClient client  -> sprintf "RemoveClient %s" (string client)
 
     // PATCH
     | AddPatch    patch     -> sprintf "AddPatch %s"    (string patch)
@@ -1087,6 +1167,20 @@ and StateMachine =
         Either.map UpdateMember mem
       | x when x = ActionTypeFB.RemoveFB ->
         Either.map RemoveMember mem
+      | x ->
+        sprintf "Could not parse unknown ActionTypeFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
+    | x when x = PayloadFB.IrisClientFB ->
+      let client = fb.IrisClientFB |> IrisClient.FromFB
+      match fb.Action with
+      | x when x = ActionTypeFB.AddFB ->
+        Either.map AddClient client
+      | x when x = ActionTypeFB.UpdateFB ->
+        Either.map UpdateClient client
+      | x when x = ActionTypeFB.RemoveFB ->
+        Either.map RemoveClient client
       | x ->
         sprintf "Could not parse unknown ActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
@@ -1258,6 +1352,35 @@ and StateMachine =
         | RaftActionTypeFB.AddFB    -> return (AddCue cue)
         | RaftActionTypeFB.UpdateFB -> return (UpdateCue cue)
         | RaftActionTypeFB.RemoveFB -> return (RemoveCue cue)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
+    //   ____ _ _            _
+    //  / ___| (_) ___ _ __ | |_
+    // | |   | | |/ _ \ '_ \| __|
+    // | |___| | |  __/ | | | |_
+    //  \____|_|_|\___|_| |_|\__|
+
+    | RaftPayloadFB.IrisClientFB ->
+      either {
+        let! client =
+          let clientish = fb.Payload<IrisClientFB>()
+          if clientish.HasValue then
+            clientish.Value
+            |> IrisClient.FromFB
+          else
+            "Could not parse empty client payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+
+        match fb.Action with
+        | RaftActionTypeFB.AddFB    -> return (AddClient client)
+        | RaftActionTypeFB.UpdateFB -> return (UpdateClient client)
+        | RaftActionTypeFB.RemoveFB -> return (RemoveClient client)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1540,6 +1663,42 @@ and StateMachine =
       RaftApiActionFB.AddPayload(builder, mem)
 #else
       RaftApiActionFB.AddPayload(builder, mem.Value)
+#endif
+      RaftApiActionFB.EndRaftApiActionFB(builder)
+
+    | AddClient       client ->
+      let client = client.ToOffset(builder)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.AddFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.IrisClientFB)
+#if FABLE_COMPILER
+      RaftApiActionFB.AddPayload(builder, client)
+#else
+      RaftApiActionFB.AddPayload(builder, client.Value)
+#endif
+      RaftApiActionFB.EndRaftApiActionFB(builder)
+
+    | UpdateClient    client ->
+      let client = client.ToOffset(builder)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.UpdateFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.IrisClientFB)
+#if FABLE_COMPILER
+      RaftApiActionFB.AddPayload(builder, client)
+#else
+      RaftApiActionFB.AddPayload(builder, client.Value)
+#endif
+      RaftApiActionFB.EndRaftApiActionFB(builder)
+
+    | RemoveClient    client ->
+      let client = client.ToOffset(builder)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.RemoveFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.IrisClientFB)
+#if FABLE_COMPILER
+      RaftApiActionFB.AddPayload(builder, client)
+#else
+      RaftApiActionFB.AddPayload(builder, client.Value)
 #endif
       RaftApiActionFB.EndRaftApiActionFB(builder)
 
