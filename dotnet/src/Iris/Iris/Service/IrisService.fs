@@ -577,7 +577,15 @@ module Iris =
         data.RaftServer.Append sm
         |> Either.mapError (string >> Logger.err data.MemberId (tag "handleApiEvent"))
         |> ignore
-      | _ ->
+      | ApiEvent.Register client ->
+        data.RaftServer.Append (AddClient client)
+        |> Either.mapError (string >> Logger.err data.MemberId (tag "handleApiEvent"))
+        |> ignore
+      | ApiEvent.UnRegister client ->
+        data.RaftServer.Append (RemoveClient client)
+        |> Either.mapError (string >> Logger.err data.MemberId (tag "handleApiEvent"))
+        |> ignore
+      | _ -> // Status events
         triggerOnNext data.Subscriptions (IrisEvent.Api ev)
     state
 
