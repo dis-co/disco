@@ -336,31 +336,44 @@ module ApiServer =
         |> Either.bind Binary.decode
 
       match result with
-      | Right ApiResponse.OK -> printfn "Request OK"
-      | Right ApiResponse.Pong -> printfn "PONG"
+      | Right ApiResponse.OK | Right ApiResponse.Pong ->
+        return Either.succeed ()
       | Right (ApiResponse.NOK err) ->
-        printfn "Request NOK: %A" err
+        let error =
+          string err
+          |> Error.asClientError (tag "updateClient")
+        return  Either.fail (client.Meta.Id, error)
       | Left error ->
-        printfn "Error in request to client: %A" error
+        return Either.fail (client.Meta.Id, error)
     }
 
   // ** updateClients
 
-  let private updateClients (sm: StateMachine) (clients: Map<Id,Client>) =
+  let private updateClients (sm: StateMachine) (clients: Map<Id,Client>) (agent: ApiAgent) =
     clients
     |> Map.toArray
     |> Array.map (snd >> updateClient sm)
     |> Async.Parallel
     |> Async.RunSynchronously
-    |> ignore
+    |> Array.iter
+      (fun result ->
+        match result with
+        | Left (id, error) ->
+          (id, ServiceStatus.Failed error)
+          |> Msg.SetStatus
+          |> agent.Post
+        | _ -> ())
 
   // ** handleUpdate
 
-  let private handleUpdate (chan: ReplyChan) (state: ClientState) (sm: StateMachine) =
+  let private handleUpdate (chan: ReplyChan)
+                           (state: ClientState)
+                           (sm: StateMachine)
+                           (agent: ApiAgent) =
     match state with
     | Loaded data ->
       data.Store.Dispatch sm
-      updateClients sm data.Clients
+      updateClients sm data.Clients agent
       chan.Reply(Right Reply.Ok)
       state
     | Idle ->
@@ -468,7 +481,7 @@ module ApiServer =
           | Msg.Dispose chan              -> handleDispose chan state
           | Msg.AddClient(chan,client)    -> handleAddClient chan state subs client inbox
           | Msg.RemoveClient(chan,client) -> handleRemoveClient chan state subs client
-          | Msg.Update(chan,sm)           -> handleUpdate chan state sm
+          | Msg.Update(chan,sm)           -> handleUpdate chan state sm inbox
           | Msg.GetClients(chan)          -> handleGetClients chan state
           | Msg.SetStatus(id, status)     -> handleSetStatus id status state subs
           | Msg.SetState(chan, newstate)  -> handleSetState chan state newstate inbox
