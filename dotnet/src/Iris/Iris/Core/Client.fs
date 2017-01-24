@@ -2,10 +2,22 @@ namespace Iris.Core
 
 // * Imports
 
+#if FABLE_COMPILER
+
+open System
+open Fable.Core
+open Fable.Import
+open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
+
+#else
+
 open Iris.Core
 open System
 open FlatBuffers
 open Iris.Serialization
+
+#endif
 
 // * Role
 

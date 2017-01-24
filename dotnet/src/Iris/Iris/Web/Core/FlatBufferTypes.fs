@@ -4,6 +4,45 @@ open Fable.Core
 open Fable.Import
 open Iris.Core.FlatBuffers
 
+//  ____       _
+// |  _ \ ___ | | ___
+// | |_) / _ \| |/ _ \
+// |  _ < (_) | |  __/
+// |_| \_\___/|_|\___|
+
+type RoleFB = int
+
+type RoleFBConstructor =
+  abstract RendererFB: RoleFB
+
+//   ____ _ _            _
+//  / ___| (_) ___ _ __ | |_
+// | |   | | |/ _ \ '_ \| __|
+// | |___| | |  __/ | | | |_
+//  \____|_|_|\___|_| |_|\__|
+
+type IrisClientFB =
+  abstract Id: string
+  abstract Name: string
+  abstract Role: RoleFB
+  abstract Status: string
+  abstract IpAddress: string
+  abstract Port: uint16
+
+type IrisClientFBConstructor =
+  abstract prototype: IrisClientFB with get, set
+  abstract StartIrisClientFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+  abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddRole: builder: FlatBufferBuilder * role: RoleFB -> unit
+  abstract AddStatus: builder: FlatBufferBuilder * status: Offset<string> -> unit
+  abstract AddIpAddress: builder: FlatBufferBuilder * ip: Offset<string> -> unit
+  abstract AddPort: builder: FlatBufferBuilder * port:uint16 -> unit
+  abstract EndIrisClientFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsIrisClientFB: buffer: ByteBuffer -> IrisClientFB
+
+let IrisClientFB : IrisClientFBConstructor = failwith "JS only"
+
 //  _   _               _____ ____
 // | | | |___  ___ _ __|  ___| __ )
 // | | | / __|/ _ \ '__| |_  |  _ \
