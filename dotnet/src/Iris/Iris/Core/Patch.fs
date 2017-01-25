@@ -11,8 +11,13 @@ open Iris.Web.Core.FlatBufferTypes
 
 open System.IO
 open FlatBuffers
-open SharpYaml.Serialization
 open Iris.Serialization
+
+#endif
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
+open SharpYaml.Serialization
 
 type PatchYaml(id, name, pins) as self =
   [<DefaultValue>] val mutable Id   : string
@@ -115,7 +120,7 @@ type Patch =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject () =
     let yaml = new PatchYaml()
@@ -223,7 +228,7 @@ type Patch =
   // | |__| (_) | (_| | (_| |
   // |_____\___/ \__,_|\__,_|
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   static member Load(path: FilePath) : Either<IrisError, Patch> =
     either {

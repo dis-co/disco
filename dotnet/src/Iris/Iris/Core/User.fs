@@ -12,10 +12,15 @@ open Iris.Web.Core.FlatBufferTypes
 
 open System
 open System.IO
-open LibGit2Sharp
 open FlatBuffers
 open Iris.Serialization
 open SharpYaml.Serialization
+
+#endif
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
+open LibGit2Sharp
 
 // __   __              _
 // \ \ / /_ _ _ __ ___ | |
@@ -157,7 +162,7 @@ type User =
       | _ -> 0
 
 
-#if !FABLE_COMPILER
+#if !FABLE_COMPILER && !IRIS_NODES
 
   member user.Signature
     with get () =
@@ -242,7 +247,7 @@ type User =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject () =
     new UserYaml(
@@ -284,7 +289,7 @@ type User =
   // | |__| (_) | (_| | (_| |
   // |_____\___/ \__,_|\__,_|
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   static member Load(path: FilePath) : Either<IrisError, User> =
     either {

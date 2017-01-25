@@ -165,6 +165,21 @@ module Raft =
   let private updateRaft (context: RaftAppContext) (raft: RaftValue) : RaftAppContext =
     { context with Raft = raft }
 
+  // ** postCommand
+
+  let inline private postCommand (arbiter: StateArbiter) (cb: ReplyChan -> Msg) =
+    async {
+      let! result = arbiter.PostAndTryAsyncReply(cb, Constants.COMMAND_TIMEOUT)
+      match result with
+      | Some response -> return response
+      | None ->
+        return
+          "Command Timeout"
+          |> Error.asOther (tag "postCommand")
+          |> Either.fail
+    }
+    |> Async.RunSynchronously
+
   //  ____
   // / ___|  ___ _ ____   _____ _ __
   // \___ \ / _ \ '__\ \ / / _ \ '__|
@@ -192,7 +207,7 @@ module Raft =
 
     // wait for the entry to be committed by everybody
     while !run && !iterations < timeout do
-      let response = arbiter.PostAndReply(fun chan -> Msg.IsCommitted(chan,appended))
+      let response = postCommand arbiter (fun chan -> Msg.IsCommitted(chan,appended))
 
       match response with
       | Right (Reply.IsCommitted result) ->
@@ -222,7 +237,7 @@ module Raft =
     let handle request =
       either {
         let! message = Binary.decode<IrisError,RaftRequest> request
-        let! reply = arbiter.PostAndReply(fun chan -> Msg.Request(chan, message))
+        let! reply = postCommand arbiter (fun chan -> Msg.Request(chan, message))
 
         match reply with
         | Reply.Response response ->       // the base case it, the response is ready
@@ -233,7 +248,7 @@ module Raft =
 
           match message, committed with
           | HandShake _, true ->
-            let! reply = arbiter.PostAndReply(fun chan -> Msg.Get chan)
+            let! reply = postCommand arbiter (fun chan -> Msg.Get chan)
             match reply with
             | Reply.State state ->
               return Welcome state.Raft.Member
@@ -1514,7 +1529,7 @@ module Raft =
   // ** withOk
 
   let private withOk (msgcb: ReplyChan -> Msg) (agent: StateArbiter) : Either<IrisError,unit> =
-    match agent.PostAndReply(msgcb) with
+    match postCommand agent msgcb with
     | Right Reply.Ok -> Right ()
 
     | Right other ->
@@ -1530,7 +1545,7 @@ module Raft =
   let private addCmd (agent: StateArbiter)
                      (cmd: StateMachine) :
                      Either<IrisError, EntryResponse> =
-    match agent.PostAndReply(fun chan -> Msg.AddCmd(chan,cmd)) with
+    match postCommand agent (fun chan -> Msg.AddCmd(chan,cmd)) with
     | Right (Reply.Entry entry) ->
       match waitForCommit agent entry with
       | Right true -> Either.succeed entry
@@ -1555,7 +1570,7 @@ module Raft =
   // ** getStatus
 
   let private getStatus (agent: StateArbiter) =
-    match agent.PostAndReply(fun chan -> Msg.Status chan) with
+    match postCommand agent (fun chan -> Msg.Status chan) with
     | Right (Reply.Status status) -> Right status
 
     | Right other ->
@@ -1569,7 +1584,7 @@ module Raft =
   // ** addMember
 
   let private addMember (agent: StateArbiter) (mem: RaftMember) =
-    match agent.PostAndReply(fun chan -> Msg.AddMember(chan,mem)) with
+    match postCommand agent (fun chan -> Msg.AddMember(chan,mem)) with
     | Right (Reply.Entry entry) -> Right entry
     | Right other ->
       sprintf "Unexpected reply by agent:  %A" other
@@ -1581,7 +1596,7 @@ module Raft =
   // ** rmMember
 
   let private rmMember (agent: StateArbiter) (id: Id) =
-    match agent.PostAndReply(fun chan -> Msg.RmMember(chan,id)) with
+    match postCommand agent (fun chan -> Msg.RmMember(chan,id)) with
     | Right (Reply.Entry entry) -> Right entry
     | Right other ->
       sprintf "Unexpected reply by agent:  %A" other
@@ -1593,7 +1608,7 @@ module Raft =
   // ** getState
 
   let private getState (agent: StateArbiter) =
-    match agent.PostAndReply(fun chan -> Msg.Get chan) with
+    match postCommand agent (fun chan -> Msg.Get chan) with
     | Right (Reply.State state) -> Right state
 
     | Right other ->
@@ -1641,7 +1656,7 @@ module Raft =
         return
           { new IRaftServer with
               member self.Load (config: IrisConfig) =
-                match agent.PostAndReply(fun chan -> Msg.Load(chan,config)) with
+                match postCommand agent (fun chan -> Msg.Load(chan,config)) with
                 | Right Reply.Ok -> Right ()
                 | Right other ->
                   sprintf "Unexpected reply type from agent:  %A" other
@@ -1652,7 +1667,7 @@ module Raft =
                   |> Either.fail
 
               member self.Unload () =
-                match agent.PostAndReply(fun chan -> Msg.Unload chan) with
+                match postCommand agent (fun chan -> Msg.Unload chan) with
                 | Right Reply.Ok -> Right ()
                 | Right other ->
                   sprintf "Unexpected reply type from agent:  %A" other
@@ -1723,7 +1738,7 @@ module Raft =
                   | Left error -> error |> Either.fail
 
               member self.Dispose () =
-                match agent.PostAndReply(fun chan -> Msg.Unload chan) with
+                match postCommand agent (fun chan -> Msg.Unload chan) with
                 | Left error -> printfn "unable to dispose:  %A" error
                 | Right _ -> ()
                 subscriptions.Clear()

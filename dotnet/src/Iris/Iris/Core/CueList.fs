@@ -11,9 +11,13 @@ open Iris.Web.Core.FlatBufferTypes
 
 open System.IO
 open FlatBuffers
-open SharpYaml.Serialization
 open Iris.Serialization
 
+#endif
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
+open SharpYaml.Serialization
 // * CueList Yaml
 
 type CueListYaml(id, name, cues) as self =
@@ -115,7 +119,7 @@ type CueList =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   // ** ToYamlObject
 
@@ -170,8 +174,6 @@ type CueList =
           ASSET_EXTENSION
       CUELIST_DIR </> filepath
 
-  #endif
-
   // ** Load
 
   //  _                    _
@@ -179,8 +181,6 @@ type CueList =
   // | |   / _ \ / _` |/ _` |
   // | |__| (_) | (_| | (_| |
   // |_____\___/ \__,_|\__,_|
-
-  #if !FABLE_COMPILER
 
   static member Load(path: FilePath) : Either<IrisError, CueList> =
     either {

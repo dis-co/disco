@@ -6,10 +6,8 @@ module Utilities =
   open System.IO
   open System.Threading
   open FSharpx.Functional
-  open Iris.Service
   open Iris.Raft
   open Iris.Core
-  open Iris.Service.Persistence
 
   /// ## cancelToken
   ///

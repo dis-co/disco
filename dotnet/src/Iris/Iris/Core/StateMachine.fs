@@ -146,7 +146,7 @@ type State =
 
   // ** Load
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   static member Load (path: FilePath, machine: IrisMachine) =
     either {
@@ -170,7 +170,7 @@ type State =
 
   // ** Save
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member state.Save (basePath: FilePath) =
     either {

@@ -303,7 +303,7 @@ module ApiClient =
           Loaded { data with
                     Status = status
                     Elapsed = data.Elapsed + FREQ }
-        | x ->
+        | _ ->
           let status =
             match data.Status with
             | ServiceStatus.Running -> data.Status
@@ -420,6 +420,21 @@ module ApiClient =
       }
     act initial
 
+  // ** postCommand
+
+  let inline private postCommand (agent: ApiAgent) (cb: ReplyChan -> Msg) =
+    async {
+      let! result = agent.PostAndTryAsyncReply(cb, Constants.COMMAND_TIMEOUT)
+      match result with
+      | Some response -> return response
+      | None ->
+        return
+          "Command Timeout"
+          |> Error.asOther (tag "postCommand")
+          |> Either.fail
+    }
+    |> Async.RunSynchronously
+
   // ** ApiClient module
 
   [<RequireQualifiedAccess>]
@@ -438,7 +453,7 @@ module ApiClient =
         return
           { new IApiClient with
               member self.Start () =
-                match agent.PostAndReply(fun chan -> Msg.Start chan) with
+                match postCommand agent (fun chan -> Msg.Start chan) with
                 | Right (Reply.Ok) -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
@@ -450,7 +465,7 @@ module ApiClient =
 
               member self.State
                 with get () =
-                  match agent.PostAndReply(fun chan -> Msg.GetState(chan)) with
+                  match postCommand agent (fun chan -> Msg.GetState(chan)) with
                   | Right (Reply.State state) -> Either.succeed state
                   | Right other ->
                     sprintf "Unexpected Reply from ApiAgent: %A" other
@@ -462,7 +477,7 @@ module ApiClient =
 
               member self.Status
                 with get () =
-                  match agent.PostAndReply(fun chan -> Msg.GetStatus chan) with
+                  match postCommand agent (fun chan -> Msg.GetStatus chan) with
                   | Right (Reply.Status status) -> status
                   | Right _ -> ServiceStatus.Stopped
                   | Left error -> ServiceStatus.Failed error
@@ -475,7 +490,7 @@ module ApiClient =
                 |> listener.Subscribe
 
               member self.AddCue (cue: Cue) =
-                match agent.PostAndReply(fun chan -> Msg.Request(chan, AddCue cue)) with
+                match postCommand agent (fun chan -> Msg.Request(chan, AddCue cue)) with
                 | Right Reply.Ok -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
@@ -486,7 +501,7 @@ module ApiClient =
                   |> Either.fail
 
               member self.UpdateCue (cue: Cue) =
-                match agent.PostAndReply(fun chan -> Msg.Request(chan, UpdateCue cue)) with
+                match postCommand agent (fun chan -> Msg.Request(chan, UpdateCue cue)) with
                 | Right Reply.Ok -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
@@ -497,7 +512,7 @@ module ApiClient =
                   |> Either.fail
 
               member self.RemoveCue (cue: Cue) =
-                match agent.PostAndReply(fun chan -> Msg.Request(chan, RemoveCue cue)) with
+                match postCommand agent (fun chan -> Msg.Request(chan, RemoveCue cue)) with
                 | Right Reply.Ok -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
@@ -508,7 +523,7 @@ module ApiClient =
                   |> Either.fail
 
               member self.AddCueList (cuelist: CueList) =
-                match agent.PostAndReply(fun chan -> Msg.Request(chan, AddCueList cuelist)) with
+                match postCommand agent (fun chan -> Msg.Request(chan, AddCueList cuelist)) with
                 | Right Reply.Ok -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
@@ -519,7 +534,7 @@ module ApiClient =
                   |> Either.fail
 
               member self.UpdateCueList (cuelist: CueList) =
-                match agent.PostAndReply(fun chan -> Msg.Request(chan, UpdateCueList cuelist)) with
+                match postCommand agent (fun chan -> Msg.Request(chan, UpdateCueList cuelist)) with
                 | Right Reply.Ok -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
@@ -530,7 +545,7 @@ module ApiClient =
                   |> Either.fail
 
               member self.RemoveCueList (cuelist: CueList) =
-                match agent.PostAndReply(fun chan -> Msg.Request(chan, RemoveCueList cuelist)) with
+                match postCommand agent (fun chan -> Msg.Request(chan, RemoveCueList cuelist)) with
                 | Right Reply.Ok -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
@@ -541,7 +556,7 @@ module ApiClient =
                   |> Either.fail
 
               member self.AddPin(pin: Pin) =
-                match agent.PostAndReply(fun chan -> Msg.Request(chan, AddPin pin)) with
+                match postCommand agent (fun chan -> Msg.Request(chan, AddPin pin)) with
                 | Right Reply.Ok -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
@@ -552,7 +567,7 @@ module ApiClient =
                   |> Either.fail
 
               member self.UpdatePin(pin: Pin) =
-                match agent.PostAndReply(fun chan -> Msg.Request(chan, UpdatePin pin)) with
+                match postCommand agent (fun chan -> Msg.Request(chan, UpdatePin pin)) with
                 | Right Reply.Ok -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
@@ -563,7 +578,7 @@ module ApiClient =
                   |> Either.fail
 
               member self.RemovePin(pin: Pin) =
-                match agent.PostAndReply(fun chan -> Msg.Request(chan, RemovePin pin)) with
+                match postCommand agent (fun chan -> Msg.Request(chan, RemovePin pin)) with
                 | Right Reply.Ok -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
@@ -574,7 +589,7 @@ module ApiClient =
                   |> Either.fail
 
               member self.Dispose () =
-                agent.PostAndReply(fun chan -> Msg.Dispose chan)
+                postCommand agent (fun chan -> Msg.Dispose chan)
                 |> ignore
                 dispose cts
             }

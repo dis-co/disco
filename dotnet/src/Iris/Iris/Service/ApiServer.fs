@@ -132,6 +132,21 @@ module ApiServer =
     for KeyValue(_,sub) in subs do
       sub.OnNext ev
 
+  // ** postCommand
+
+  let inline private postCommand (agent: ApiAgent) (cb: ReplyChan -> Msg) =
+    async {
+      let! result = agent.PostAndTryAsyncReply(cb, Constants.COMMAND_TIMEOUT)
+      match result with
+      | Some response -> return response
+      | None ->
+        return
+          "Command Timeout"
+          |> Error.asOther (tag "postCommand")
+          |> Either.fail
+    }
+    |> Async.RunSynchronously
+
   // ** requestInstallSnapshot
 
   let private requestInstallSnapshot (data: ClientStateData) (client: Client) (agent: ApiAgent) =
@@ -153,7 +168,7 @@ module ApiServer =
       |> agent.Post
     | Right other ->
       let reason =
-        "Unexpected reply from Client"
+        sprintf "Unexpected reply from Client %A" other
         |> Error.asClientError (tag "requestInstallSnapshot")
       (client.Meta.Id, ServiceStatus.Failed reason)
       |> Msg.SetStatus
@@ -208,7 +223,7 @@ module ApiServer =
   let private requestHandler (agent: ApiAgent) (raw: byte array) =
     match Binary.decode raw with
     | Right (Register client) ->
-      match agent.PostAndReply(fun chan -> Msg.AddClient(chan, client)) with
+      match postCommand agent (fun chan -> Msg.AddClient(chan, client)) with
       | Right Reply.Ok -> Binary.encode OK
       | Right _ ->
         "Received wrong Reply type from ApiAgent"
@@ -221,7 +236,7 @@ module ApiServer =
         |> NOK
         |> Binary.encode
     | Right (UnRegister client) ->
-      match agent.PostAndReply(fun chan -> Msg.RemoveClient(chan, client)) with
+      match postCommand agent (fun chan -> Msg.RemoveClient(chan, client)) with
       | Right Reply.Ok -> Binary.encode OK
       | Right _ ->
         "Received wrong Reply type from ApiAgent"
@@ -383,7 +398,7 @@ module ApiServer =
     match state with
     | Loaded data ->
       data.Clients
-      |> Map.map (fun k v -> v.Meta)
+      |> Map.map (fun _ v -> v.Meta)
       |> Reply.Clients
       |> Either.succeed
       |> chan.Reply
@@ -466,7 +481,7 @@ module ApiServer =
 
   let private handleClientUpdate (state: ClientState) (subs: Subscriptions) (sm: StateMachine) =
     match state with
-    | Loaded data ->
+    | Loaded _ ->
       notify subs (ApiEvent.Update sm)
       state
     | Idle ->
@@ -519,7 +534,7 @@ module ApiServer =
         return
           { new IApiServer with
               member self.Start () =
-                match agent.PostAndReply(fun chan -> Msg.Start(chan,mem)) with
+                match postCommand agent (fun chan -> Msg.Start(chan,mem)) with
                 | Right (Reply.Ok) -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
@@ -531,7 +546,7 @@ module ApiServer =
 
               member self.Clients
                 with get () =
-                  match agent.PostAndReply(fun chan -> Msg.GetClients(chan)) with
+                  match postCommand agent (fun chan -> Msg.GetClients(chan)) with
                   | Right (Reply.Clients clients) -> Either.succeed clients
                   | Right other ->
                     sprintf "Unexpected Reply from ApiAgent: %A" other
@@ -543,7 +558,7 @@ module ApiServer =
 
               member self.State
                 with get () =
-                  match agent.PostAndReply(fun chan -> Msg.GetState(chan)) with
+                  match postCommand agent (fun chan -> Msg.GetState(chan)) with
                   | Right (Reply.State state) -> Either.succeed state
                   | Right other ->
                     sprintf "Unexpected Reply from ApiAgent: %A" other
@@ -557,7 +572,7 @@ module ApiServer =
                 agent.Post(Msg.Update sm)
 
               member self.SetState (state: State) =
-                match agent.PostAndReply(fun chan -> Msg.SetState(chan, state)) with
+                match postCommand agent (fun chan -> Msg.SetState(chan, state)) with
                 | Right (Reply.Ok) -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
@@ -575,7 +590,7 @@ module ApiServer =
                 |> listener.Subscribe
 
               member self.Dispose () =
-                agent.PostAndReply(fun chan -> Msg.Dispose chan)
+                postCommand agent (fun chan -> Msg.Dispose chan)
                 |> ignore
                 dispose cts
             }
