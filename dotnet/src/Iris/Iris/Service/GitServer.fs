@@ -123,6 +123,21 @@ module Git =
 
   type private GitAgent = MailboxProcessor<Msg>
 
+  // ** postCommand
+
+  let inline private postCommand (agent: GitAgent) (cb: ReplyChan -> Msg) =
+    async {
+      let! result = agent.PostAndTryAsyncReply(cb, Constants.COMMAND_TIMEOUT)
+      match result with
+      | Some response -> return response
+      | None ->
+        return
+          "Command Timeout"
+          |> Error.asOther (tag "postCommand")
+          |> Either.fail
+    }
+    |> Async.RunSynchronously
+
   // ** createProcess
 
   let private createProcess (path: FilePath) (addr: string) (port: Port) =
@@ -404,7 +419,7 @@ module Git =
   // ** starting
 
   let private starting (agent: GitAgent) =
-    match agent.PostAndReply(fun chan -> Msg.Status chan) with
+    match postCommand agent (fun chan -> Msg.Status chan) with
     | Right (Reply.Status status) when status = ServiceStatus.Starting -> true
     | _ -> false
 
@@ -412,7 +427,7 @@ module Git =
 
   let private running (agent: GitAgent) =
     let result =
-      match agent.PostAndReply(fun chan -> Msg.Status chan) with
+      match postCommand agent (fun chan -> Msg.Status chan) with
       | Right (Reply.Status status) when status = ServiceStatus.Running -> true
       | _ -> false
     result
@@ -432,7 +447,7 @@ module Git =
         { new IGitServer with
             member self.Status
               with get () =
-                match agent.PostAndReply(fun chan -> Msg.Status chan) with
+                match postCommand agent (fun chan -> Msg.Status chan) with
                 | Right (Reply.Status status) ->
                   Either.succeed status
                 | Right other ->
@@ -446,7 +461,7 @@ module Git =
 
             member self.Pid
               with get () =
-                match agent.PostAndReply(fun chan -> Msg.Pid chan) with
+                match postCommand agent (fun chan -> Msg.Pid chan) with
                 | Right (Reply.Pid pid) ->
                   Either.succeed pid
                 | Right other ->
@@ -469,7 +484,7 @@ module Git =
               let callback (chan: ReplyChan) =
                 Msg.Start(path, string mem.IpAddr, mem.GitPort, chan)
 
-              match agent.PostAndReply(callback) with
+              match postCommand agent callback with
               | Right Reply.Ok ->
 
                 // wait for a little while until it forked
@@ -481,7 +496,7 @@ module Git =
                 if running agent then
                   Either.succeed ()
                 else
-                  match agent.PostAndReply(fun chan -> Msg.Status chan) with
+                  match postCommand agent (fun chan -> Msg.Status chan) with
                   | Right (Reply.Status status) ->
                     string status
                     |> Error.asGitError (tag "create")
@@ -503,7 +518,7 @@ module Git =
                 |> Either.fail
 
             member self.Dispose() =
-              agent.PostAndReply(fun chan -> Msg.Stop chan)
+              postCommand agent (fun chan -> Msg.Stop chan)
               |> ignore
               subscriptions.Clear()
           }

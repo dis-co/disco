@@ -108,6 +108,21 @@ module Discovery =
     for subscription in subscriptions do
       subscription.OnNext ev
 
+  // ** postCommand
+
+  let inline private postCommand (agent: DiscoveryAgent) (cb: ReplyChan -> Msg) =
+    async {
+      let! result = agent.PostAndTryAsyncReply(cb, Constants.COMMAND_TIMEOUT)
+      match result with
+      | Some response -> return response
+      | None ->
+        return
+          "Command Timeout"
+          |> Error.asOther (tag "postCommand")
+          |> Either.fail
+    }
+    |> Async.RunSynchronously
+
   // ** createId
 
   let private createId (id: Id) (port: Port) (tipe: ServiceType) (ip: IpAddress) =
@@ -525,7 +540,7 @@ module Discovery =
         Either.succeed
           { new IDiscoveryService with
               member self.Start() =
-                match agent.PostAndReply(fun chan -> Msg.Start chan) with
+                match postCommand agent (fun chan -> Msg.Start chan) with
                 | Right Reply.Ok -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected reply type from DiscoveryAgent: %A" other
@@ -537,7 +552,7 @@ module Discovery =
 
               member self.Services
                 with get () =
-                  match agent.PostAndReply(fun chan -> Msg.Services chan) with
+                  match postCommand agent (fun chan -> Msg.Services chan) with
                   | Right (Reply.Services (reg,res)) -> Either.succeed (reg,res)
                   | Right other ->
                     sprintf "Unexpected reply type from DiscoveryAgent: %A" other
@@ -564,11 +579,11 @@ module Discovery =
                     Type = tipe
                     IpAddress = addr }
 
-                match agent.PostAndReply(fun chan -> Msg.Register(chan, service)) with
+                match postCommand agent (fun chan -> Msg.Register(chan, service)) with
                 | Right Reply.Ok ->
                   { new IDisposable with
                       member self.Dispose () =
-                        agent.PostAndReply(fun chan -> Msg.UnRegister(chan, service))
+                        postCommand agent (fun chan -> Msg.UnRegister(chan, service))
                         |> ignore }
                   |> Either.succeed
                 | Right other ->
@@ -583,7 +598,8 @@ module Discovery =
                 lock subscriptions <| fun _ ->
                   subscriptions.Clear()
 
-                agent.PostAndReply(fun chan -> Msg.Stop chan) |> ignore
+                postCommand agent (fun chan -> Msg.Stop chan)
+                |> ignore
 
                 dispose agent
             }
