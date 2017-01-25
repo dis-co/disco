@@ -2,7 +2,7 @@
   "private": true,
   "scripts": {
     "start": "webpack-dev-server",
-    "build": "cross-env NODE_ENV=production webpack --progress"
+    "build": "cross-env NODE_ENV=production webpack"
   },
   "devDependencies": {
     "@types/jquery": "^2.0.34",

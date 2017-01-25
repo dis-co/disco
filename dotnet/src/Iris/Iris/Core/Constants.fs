@@ -6,7 +6,7 @@ open System
 module Constants =
 
   [<Literal>]
-  let WEP_API_COMMAND = "api/command"
+  let WEP_API_COMMAND = "/api/command"
 
   //  ____        __ _
   // |  _ \ __ _ / _| |_

@@ -441,8 +441,7 @@ Target "BuildDebugFrontend" (fun () ->
   SilentCopyDir (baseDir @@ "assets/frontend/js/fable-powerpack") "node_modules/fable-powerpack/umd" (konst true)
 
   runNpmNoErrors "install" (baseDir @@ "Iris/Web/React") ()
-  // Webpack output seems to hang AppVeyor
-  runNpmNoErrors "run build" (baseDir @@ "Iris/Web/React") ()
+  runNpm "run build" (baseDir @@ "Iris/Web/React") ()
 
   runNpmNoErrors "install" (baseDir @@ "assets/frontend") ()
 )
@@ -455,8 +454,7 @@ Target "BuildReleaseFrontend" (fun () ->
   SilentCopyDir (baseDir @@ "assets/frontend/js/fable-powerpack") "node_modules/fable-powerpack/umd" (konst true)
 
   runNpmNoErrors "install" (baseDir @@ "Iris/Web/React") ()
-  // Webpack output seems to hang AppVeyor
-  runNpmNoErrors "run build" (baseDir @@ "Iris/Web/React") ()
+  runNpm "run build" (baseDir @@ "Iris/Web/React") ()
 )
 
 //  _____         _

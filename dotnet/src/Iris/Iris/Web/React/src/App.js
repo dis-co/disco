@@ -27,6 +27,7 @@ export default class App extends React.Component {
         return;
       }
       const status = info.session.Status.StatusType.ToString();
+      debugger;
       switch (status) {
         case STATUS.AUTHORIZED:
           this.setState({info: info});

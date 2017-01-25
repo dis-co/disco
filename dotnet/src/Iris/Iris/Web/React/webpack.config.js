@@ -1,7 +1,7 @@
 var path = require("path");
 var webpack = require("webpack");
 
-var outDir, devtool, devServer = null, plugins = [];
+var outDir, devtool, devServer = {}, plugins = [];
 if (process.env.NODE_ENV !== "production") {
     console.log("Starting Webpack Dev Server...");
     outDir = "./js";

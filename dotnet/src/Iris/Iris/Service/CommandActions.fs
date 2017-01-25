@@ -14,12 +14,13 @@ type private Channel = AsyncReplyChannel<Either<IrisError,string>>
 let private tag s = "Iris.Service.Commands." + s
 
 let getWsport (iris: IIrisServer) =
-    either {
-      let! cfg = iris.Config
-      match Map.tryFind cfg.MachineId cfg.Cluster.Members with
-      | Some mem -> return mem.WsPort |> string
-      | None -> return "0"
-    }
+    match iris.Config with
+    | Left _ -> "0"
+    | Right cfg ->
+        match Map.tryFind cfg.MachineId cfg.Cluster.Members with
+        | Some mem -> mem.WsPort |> string
+        | None -> "0"
+    |> Either.succeed
 
 let listProjects (cfg: IrisMachine) =
   Directory.GetDirectories(cfg.WorkSpace)
