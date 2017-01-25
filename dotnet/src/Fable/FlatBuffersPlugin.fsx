@@ -10,7 +10,6 @@ type FlatBuffersPlugin() =
     let staticField name =
         Fable.Value(Fable.IdentValue(Fable.Ident("Iris")))
         |> get "Serialization"
-        |> get "Raft"
         |> get name
     interface IReplacePlugin with
         member x.TryReplace (com: Fable.ICompiler) (i: Fable.ApplyInfo) =
@@ -29,7 +28,7 @@ type FlatBuffersPlugin() =
                     | _ ->
                         get (Naming.lowerFirst i.methodName) callee
                         |> apply i.range i.returnType i.args
-                | Some callee when i.ownerFullName.EndsWith "ApiActionFB"
+                | Some callee when i.ownerFullName.EndsWith "RaftApiActionFB"
                                 && i.methodName.EndsWith "FB" ->
                     let cons =
                         Fable.Apply(staticField i.methodName, [], Fable.ApplyCons, Fable.Any, None)
