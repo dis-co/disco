@@ -229,7 +229,7 @@ module Discovery =
 
   // ** addResolved
 
-  let private addResolved (agent: DiscoveryAgent) (o: obj) (args: ServiceResolvedEventArgs) =
+  let private addResolved (agent: DiscoveryAgent) (o: obj) (_: ServiceResolvedEventArgs) =
     let service =
       o :?> IResolvableService
       |> toDiscoveredService
@@ -239,30 +239,30 @@ module Discovery =
       parsed
       |> Msg.Discovered
       |> agent.Post
-    | Left error -> ()
+    | Left _ -> ()
 
   // ** serviceAdded
 
-  let private serviceAdded (agent: DiscoveryAgent) (obj: obj) (args: ServiceBrowseEventArgs) =
+  let private serviceAdded (agent: DiscoveryAgent) (_: obj) (args: ServiceBrowseEventArgs) =
     args.Service.Resolved.AddHandler(new ServiceResolvedEventHandler(addResolved agent))
     args.Service.Resolve()
 
   // ** serviceRemoved
 
-  let private serviceRemoved (agent: DiscoveryAgent) (obj: obj) (args: ServiceBrowseEventArgs) =
+  let private serviceRemoved (agent: DiscoveryAgent) (_: obj) (args: ServiceBrowseEventArgs) =
     match parseServiceId args.Service.Name with
     | Right id ->
       id
       |> Msg.Vanished
       |> agent.Post
-    | Left error -> ()
+    | Left _ -> ()
 
   // ** serviceRegistered
 
   let private serviceRegistered (subs: Subscriptions)
                                 (agent: DiscoveryAgent)
                                 (disco: DiscoverableService)
-                                (o: obj)
+                                (_: obj)
                                 (args: RegisterServiceEventArgs) =
     match args.ServiceError with
     | ServiceErrorCode.None ->
@@ -358,7 +358,7 @@ module Discovery =
                           (subs: Subscriptions)
                           (agent: DiscoveryAgent) =
     match state with
-    | Loaded data ->
+    | Loaded _ ->
       "Already running"
       |> Error.asOther (tag "loop")
       |> Either.fail

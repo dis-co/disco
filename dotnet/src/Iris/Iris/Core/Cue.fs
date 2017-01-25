@@ -10,10 +10,15 @@ open Iris.Web.Core.FlatBufferTypes
 #else
 
 open System.IO
-open SharpYaml
-open SharpYaml.Serialization
 open FlatBuffers
 open Iris.Serialization
+
+#endif
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
+open SharpYaml
+open SharpYaml.Serialization
 
 type CueYaml(id, name, pins) as self =
   [<DefaultValue>] val mutable Id   : string
@@ -102,7 +107,7 @@ type Cue =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
     let pins = Array.map Yaml.toYaml self.Pins
@@ -151,15 +156,11 @@ type Cue =
           ASSET_EXTENSION
       CUE_DIR </> filepath
 
-  #endif
-
   //  _                    _
   // | |    ___   __ _  __| |
   // | |   / _ \ / _` |/ _` |
   // | |__| (_) | (_| | (_| |
   // |_____\___/ \__,_|\__,_|
-
-  #if !FABLE_COMPILER
 
   static member Load(path: FilePath) : Either<IrisError, Cue> =
     either {

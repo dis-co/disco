@@ -303,7 +303,7 @@ module ApiClient =
           Loaded { data with
                     Status = status
                     Elapsed = data.Elapsed + FREQ }
-        | x ->
+        | _ ->
           let status =
             match data.Status with
             | ServiceStatus.Running -> data.Status

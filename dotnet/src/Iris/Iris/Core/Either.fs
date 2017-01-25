@@ -116,7 +116,7 @@ module Either =
   let inline iter< ^a, ^err >(f: ^a -> unit) (a: Either< ^err, ^a >) =
     match a with
     | Right value -> f value
-    | Left err    -> ()
+    | Left _ -> ()
 
   // ** unwrap
 

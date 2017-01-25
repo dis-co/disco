@@ -517,7 +517,7 @@ module Crypto =
 
 // * Git
 
-#if !FABLE_COMPILER
+#if !FABLE_COMPILER && !IRIS_NODES
 
 //   ____ _ _
 //  / ___(_) |_
@@ -1185,7 +1185,7 @@ module Asset =
 
   // ** write
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   /// ## write
   ///
@@ -1217,7 +1217,7 @@ module Asset =
 
   // ** delete
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   /// ## delete
   ///
@@ -1247,7 +1247,7 @@ module Asset =
 
   // ** read
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   /// ## read
   ///
@@ -1279,7 +1279,7 @@ module Asset =
 
   // ** save
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let inline save< ^t when ^t : (member Save: FilePath -> Either<IrisError, unit>)>
                  (path: FilePath)
@@ -1290,7 +1290,7 @@ module Asset =
 
   // ** saveMap
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let inline saveMap (basepath: FilePath) (guard: Either<IrisError,unit>) _ (t: ^t) =
     either {
@@ -1302,7 +1302,7 @@ module Asset =
 
   // ** load
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let inline load< ^t when ^t : (static member Load: FilePath -> Either<IrisError, ^t>)>
                  (path: FilePath) =
@@ -1312,7 +1312,7 @@ module Asset =
 
   // ** loadWithMachine
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let inline loadWithMachine< ^t when ^t : (static member Load: FilePath * IrisMachine -> Either<IrisError, ^t>)>
                  (path: FilePath)
@@ -1323,7 +1323,7 @@ module Asset =
 
   // ** loadAll
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let inline loadAll< ^t when ^t : (static member LoadAll: FilePath -> Either<IrisError, ^t array>)>
                     (basePath: FilePath) =
@@ -1333,7 +1333,7 @@ module Asset =
 
   // ** commit
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let inline commit (basepath: FilePath) (msg: string) (signature: LibGit2Sharp.Signature) (t: ^t) =
     either {
@@ -1354,7 +1354,7 @@ module Asset =
 
   // ** saveWithCommit
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let inline saveWithCommit (basepath: FilePath) (signature: LibGit2Sharp.Signature) (t: ^t) =
     either {
@@ -1368,7 +1368,7 @@ module Asset =
 
   // ** deleteWithCommit
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let inline deleteWithCommit (basepath: FilePath) (signature: LibGit2Sharp.Signature) (t: ^t) =
     either {

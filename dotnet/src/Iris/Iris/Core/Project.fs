@@ -20,12 +20,17 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
-open LibGit2Sharp
 open FSharpx.Functional
-open FSharp.Configuration
-open SharpYaml.Serialization
 open FlatBuffers
 open Iris.Serialization
+
+#endif
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
+open FSharp.Configuration
+open LibGit2Sharp
+open SharpYaml.Serialization
 
 #endif
 
@@ -698,7 +703,7 @@ type IrisConfig =
 
 // * ProjectYaml
 
-#if !FABLE_COMPILER
+#if !FABLE_COMPILER && !IRIS_NODES
 
 [<RequireQualifiedAccess>]
 module ProjectYaml =
@@ -1769,7 +1774,7 @@ module Config =
 
   // ** fromFile
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let fromFile (file: ProjectYaml.Config) (machine: IrisMachine) : Either<IrisError, IrisConfig> =
     either {
@@ -1799,7 +1804,7 @@ module Config =
 
   // ** toFile
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let toFile (config: IrisConfig) (file: ProjectYaml.Config) =
     file.Project.Version <- string config.Version
@@ -2012,7 +2017,7 @@ Config: %A
 
   // ** Save
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   //  _                    _
   // | |    ___   __ _  __| |
@@ -2156,7 +2161,7 @@ Config: %A
           Config    = config }
     }
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -2229,7 +2234,7 @@ module Project =
 
   // ** repository
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   /// ### Retrieve git repository
   ///
@@ -2244,7 +2249,7 @@ module Project =
 
   // ** currentBranch
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let currentBranch (project: IrisProject) =
     either {
@@ -2256,7 +2261,7 @@ module Project =
 
   // ** checkoutBranch
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let checkoutBranch (name: string) (project: IrisProject) =
     either {
@@ -2300,7 +2305,7 @@ module Project =
 
   // ** writeDaemonExportFile (private)
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let private writeDaemonExportFile (repo: Repository) =
     either {
@@ -2313,7 +2318,7 @@ module Project =
 
   // ** writeGitIgnoreFile (private)
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let private writeGitIgnoreFile (repo: Repository) =
     either {
@@ -2327,7 +2332,7 @@ module Project =
 
   // ** createAssetDir (private)
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let private createAssetDir (repo: Repository) (dir: FilePath) =
     either {
@@ -2343,7 +2348,7 @@ module Project =
 
   // ** commitPath (private)
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   /// ## commitPath
   ///
@@ -2377,7 +2382,7 @@ module Project =
 
   // ** saveFile
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let saveFile (path: FilePath)
                (contents: string)
@@ -2397,7 +2402,7 @@ module Project =
 
   // ** deleteFile
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let deleteFile (path: FilePath)
                  (committer: Signature)
@@ -2413,7 +2418,7 @@ module Project =
 
   // ** saveAsset
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   /// ## saveAsset
   ///
@@ -2437,7 +2442,7 @@ module Project =
 
   // ** deleteAsset
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   /// ## deleteAsset
   ///
@@ -2473,7 +2478,7 @@ module Project =
 
   // ** initRepo (private)
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   /// ### Initialize the project git repository
   ///
@@ -2505,7 +2510,7 @@ module Project =
 
   // ** create
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   /// ### Create a new project with the given name
   ///
@@ -2533,7 +2538,7 @@ module Project =
 
   // ** clone
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   let clone (host : string) (name : string) (destination: FilePath) : FilePath option =
     let url = sprintf "git://%s/%s/.git" host name

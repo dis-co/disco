@@ -153,7 +153,7 @@ module ApiServer =
       |> agent.Post
     | Right other ->
       let reason =
-        "Unexpected reply from Client"
+        sprintf "Unexpected reply from Client %A" other
         |> Error.asClientError (tag "requestInstallSnapshot")
       (client.Meta.Id, ServiceStatus.Failed reason)
       |> Msg.SetStatus
@@ -383,7 +383,7 @@ module ApiServer =
     match state with
     | Loaded data ->
       data.Clients
-      |> Map.map (fun k v -> v.Meta)
+      |> Map.map (fun _ v -> v.Meta)
       |> Reply.Clients
       |> Either.succeed
       |> chan.Reply
@@ -466,7 +466,7 @@ module ApiServer =
 
   let private handleClientUpdate (state: ClientState) (subs: Subscriptions) (sm: StateMachine) =
     match state with
-    | Loaded data ->
+    | Loaded _ ->
       notify subs (ApiEvent.Update sm)
       state
     | Idle ->

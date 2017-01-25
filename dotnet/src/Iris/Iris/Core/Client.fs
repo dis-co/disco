@@ -25,7 +25,7 @@ open Iris.Serialization
 type Role =
   | Renderer
 
-  member role.ToOffset(builder: FlatBufferBuilder) =
+  member role.ToOffset(_: FlatBufferBuilder) =
     match role with
     | Renderer -> RoleFB.RendererFB
 
