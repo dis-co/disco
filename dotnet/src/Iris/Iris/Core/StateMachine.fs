@@ -130,7 +130,7 @@ type State =
     CueLists : Map<Id,CueList>
     Sessions : Map<Id,Session>
     Users    : Map<Id,User>
-    Clients  : Map<Id,IrisClient>}
+    Clients  : Map<Id,IrisClient> }
 
   // ** Empty
 
@@ -1146,148 +1146,162 @@ and StateMachine =
   //                           |___/
 
 #if FABLE_COMPILER
-  static member FromFB (fb: ApiActionFB) =
+  static member FromFB (fb: RaftApiActionFB) =
     match fb.PayloadType with
-    | x when x = PayloadFB.ProjectFB ->
+    | x when x = RaftPayloadFB.ProjectFB ->
       let project = fb.ProjectFB |> IrisProject.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdateProject project
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.RaftMemberFB ->
+    | x when x = RaftPayloadFB.RaftMemberFB ->
       let mem = fb.RaftMemberFB |> RaftMember.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
+      | x when x = RaftActionTypeFB.AddFB ->
         Either.map AddMember mem
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdateMember mem
-      | x when x = ActionTypeFB.RemoveFB ->
+      | x when x = RaftActionTypeFB.RemoveFB ->
         Either.map RemoveMember mem
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.IrisClientFB ->
+    | x when x = RaftPayloadFB.IrisClientFB ->
       let client = fb.IrisClientFB |> IrisClient.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
+      | x when x = RaftActionTypeFB.AddFB ->
         Either.map AddClient client
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdateClient client
-      | x when x = ActionTypeFB.RemoveFB ->
+      | x when x = RaftActionTypeFB.RemoveFB ->
         Either.map RemoveClient client
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.PatchFB ->
+    | x when x = RaftPayloadFB.PatchFB ->
       let patch = fb.PatchFB |> Patch.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
+      | x when x = RaftActionTypeFB.AddFB ->
         Either.map AddPatch patch
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdatePatch patch
-      | x when x = ActionTypeFB.RemoveFB ->
+      | x when x = RaftActionTypeFB.RemoveFB ->
         Either.map RemovePatch patch
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.PinFB ->
+    | x when x = RaftPayloadFB.PinFB ->
       let pin = fb.PinFB |> Pin.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
+      | x when x = RaftActionTypeFB.AddFB ->
         Either.map AddPin pin
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdatePin pin
-      | x when x = ActionTypeFB.RemoveFB ->
+      | x when x = RaftActionTypeFB.RemoveFB ->
         Either.map RemovePin pin
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.CueFB ->
+    | x when x = RaftPayloadFB.CueFB ->
       let cue = fb.CueFB |> Cue.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
+      | x when x = RaftActionTypeFB.AddFB ->
         Either.map AddCue cue
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdateCue cue
-      | x when x = ActionTypeFB.RemoveFB ->
+      | x when x = RaftActionTypeFB.RemoveFB ->
         Either.map RemoveCue cue
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.CueListFB ->
+    | x when x = RaftPayloadFB.CueListFB ->
       let cuelist = fb.CueListFB |> CueList.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
+      | x when x = RaftActionTypeFB.AddFB ->
         Either.map AddCueList cuelist
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdateCueList cuelist
-      | x when x = ActionTypeFB.RemoveFB ->
+      | x when x = RaftActionTypeFB.RemoveFB ->
         Either.map RemoveCueList cuelist
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.UserFB ->
+    | x when x = RaftPayloadFB.UserFB ->
       let user = fb.UserFB |> User.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
+      | x when x = RaftActionTypeFB.AddFB ->
         Either.map AddUser user
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdateUser user
-      | x when x = ActionTypeFB.RemoveFB ->
+      | x when x = RaftActionTypeFB.RemoveFB ->
         Either.map RemoveUser user
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.SessionFB ->
+    | x when x = RaftPayloadFB.IrisClientFB ->
+      let client = fb.IrisClientFB |> IrisClient.FromFB
+      match fb.Action with
+      | x when x = RaftActionTypeFB.AddFB ->
+        Either.map AddClient client
+      | x when x = RaftActionTypeFB.UpdateFB ->
+        Either.map UpdateClient client
+      | x when x = RaftActionTypeFB.RemoveFB ->
+        Either.map RemoveClient client
+      | x ->
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
+    | x when x = RaftPayloadFB.SessionFB ->
       let session = fb.SessionFB |> Session.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
+      | x when x = RaftActionTypeFB.AddFB ->
         Either.map AddSession session
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdateSession session
-      | x when x = ActionTypeFB.RemoveFB ->
+      | x when x = RaftActionTypeFB.RemoveFB ->
         Either.map RemoveSession session
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.StateFB && fb.Action = ActionTypeFB.DataSnapshotFB ->
+    | x when x = RaftPayloadFB.StateFB && fb.Action = RaftActionTypeFB.DataSnapshotFB ->
       fb.StateFB
       |> State.FromFB
       |> Either.map DataSnapshot
 
-    | x when x = PayloadFB.LogEventFB ->
+    | x when x = RaftPayloadFB.LogEventFB ->
       fb.LogEventFB
       |> LogEvent.FromFB
       |> Either.map LogMsg
 
-    | x when x = PayloadFB.StringFB ->
+    | x when x = RaftPayloadFB.StringFB ->
       match fb.Action with
-      | x when x = ActionTypeFB.SetLogLevelFB ->
+      | x when x = RaftActionTypeFB.SetLogLevelFB ->
         fb.StringFB.Value
         |> LogLevel.TryParse
         |> Either.map SetLogLevel
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
     | _ ->

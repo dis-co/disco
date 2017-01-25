@@ -190,10 +190,10 @@ and RaftMember =
     RaftMemberFB.AddId(builder, id)
     RaftMemberFB.AddHostName(builder, hostname)
     RaftMemberFB.AddIpAddr(builder, ip)
-    RaftMemberFB.AddPort(builder, int mem.Port)
-    RaftMemberFB.AddWsPort(builder, int mem.WsPort)
-    RaftMemberFB.AddGitPort(builder, int mem.GitPort)
-    RaftMemberFB.AddApiPort(builder, int mem.ApiPort)
+    RaftMemberFB.AddPort(builder, mem.Port)
+    RaftMemberFB.AddWsPort(builder, mem.WsPort)
+    RaftMemberFB.AddGitPort(builder, mem.GitPort)
+    RaftMemberFB.AddApiPort(builder, mem.ApiPort)
     RaftMemberFB.AddVoting(builder, mem.Voting)
     RaftMemberFB.AddVotedForMe(builder, mem.VotedForMe)
     RaftMemberFB.AddState(builder, state)
@@ -208,10 +208,10 @@ and RaftMember =
                State      = state
                HostName   = fb.HostName
                IpAddr     = IpAddress.Parse fb.IpAddr
-               Port       = uint16 fb.Port
-               WsPort     = uint16 fb.WsPort
-               GitPort    = uint16 fb.GitPort
-               ApiPort    = uint16 fb.ApiPort
+               Port       = fb.Port
+               WsPort     = fb.WsPort
+               GitPort    = fb.GitPort
+               ApiPort    = fb.ApiPort
                Voting     = fb.Voting
                VotedForMe = fb.VotedForMe
                NextIndex  = fb.NextIndex

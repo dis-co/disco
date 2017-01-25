@@ -71,6 +71,18 @@ module SerializationTests =
     ; Created = DateTime.UtcNow
     }
 
+  let mkClient () : IrisClient =
+    { Id = Id.Create ()
+      Name = "Nice client"
+      Role = Role.Renderer
+      Status = ServiceStatus.Running
+      IpAddress = IPv4Address "127.0.0.1"
+      Port = 8921us }
+
+  let mkClients () =
+    [| for n in 0 .. rand.Next(1,20) do
+        yield mkClient() |]
+
   let mkMember _ = Id.Create() |> Member.create
 
   let mkSession _ =
@@ -87,6 +99,7 @@ module SerializationTests =
     ; CueLists = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
     ; Sessions = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
     ; Users    = mkUser    () |> fun (user: User) -> Map.ofArray [| (user.Id, user) |]
+    ; Clients  = mkClient  () |> fun (client: IrisClient) -> Map.ofArray [| (client.Id, client) |]
     }
 
   let inline check thing =
@@ -190,9 +203,12 @@ module SerializationTests =
       ; AddPatch      <| mkPatch ()
       ; UpdatePatch   <| mkPatch ()
       ; RemovePatch   <| mkPatch ()
-      ; AddPin      <| mkPin ()
-      ; UpdatePin   <| mkPin ()
-      ; RemovePin   <| mkPin ()
+      ; AddClient     <| mkClient ()
+      ; UpdateClient  <| mkClient ()
+      ; RemoveClient  <| mkClient ()
+      ; AddPin        <| mkPin ()
+      ; UpdatePin     <| mkPin ()
+      ; RemovePin     <| mkPin ()
       ; AddMember     <| Member.create (Id.Create())
       ; UpdateMember  <| Member.create (Id.Create())
       ; RemoveMember  <| Member.create (Id.Create())
@@ -210,6 +226,7 @@ module SerializationTests =
         ProjectError ("one","two")
         ParseError ("one","two")
         SocketError ("one","two")
+        ClientError ("one","two")
         IOError ("one","two")
         AssetError ("one","two")
         RaftError ("one","two")

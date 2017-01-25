@@ -369,10 +369,10 @@ table RaftMemberFB {
       Id         : string;
       HostName   : string;
       IpAddr     : string;
-      Port       : int;
-      WsPort     : int;
-      GitPort    : int;
-      ApiPort    : int;
+      Port       : uint;
+      WsPort     : uint;
+      GitPort    : uint;
+      ApiPort    : uint;
       Voting     : bool;
       VotedForMe : bool;
       State      : RaftMemberStateFB;

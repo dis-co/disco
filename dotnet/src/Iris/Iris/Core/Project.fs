@@ -469,7 +469,11 @@ type IrisConfig =
   static member Default
     with get () =
       { MachineId = Id Constants.EMPTY
+        #if FABLE_COMPILER
+        Version   = "0.0.0"
+        #else
         Version   = System.Version(0,0,0).ToString()
+        #endif
         Audio     = AudioConfig.Default
         Vvvv      = VvvvConfig.Default
         Raft      = RaftConfig.Default
@@ -487,7 +491,7 @@ type IrisConfig =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let version = builder.CreateString (string self.Version)
+    let version = builder.CreateString self.Version
     let machine = builder.CreateString (string self.MachineId)
     let audio = Binary.toOffset builder self.Audio
     let vvvv = Binary.toOffset builder self.Vvvv
@@ -1816,7 +1820,11 @@ module Config =
 
   let create (name: string) (machine: IrisMachine) =
     { MachineId = machine.MachineId
+      #if FABLE_COMPILER
+      Version   = "0.0.0"
+      #else
       Version   = Assembly.GetExecutingAssembly().GetName().Version.ToString()
+      #endif
       Vvvv      = VvvvConfig.Default
       Audio     = AudioConfig.Default
       Raft      = RaftConfig.Default

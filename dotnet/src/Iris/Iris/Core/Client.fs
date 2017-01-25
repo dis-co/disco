@@ -30,12 +30,21 @@ type Role =
     | Renderer -> RoleFB.RendererFB
 
   static member FromFB(fb: RoleFB) =
+    #if FABLE_COMPILER
+    match fb with
+    | x when x = RoleFB.RendererFB -> Either.succeed Renderer
+    | x ->
+      sprintf "Unknown RoleFB value: %A" x
+      |> Error.asClientError "Role.FromFB"
+      |> Either.fail
+    #else
     match fb with
     | RoleFB.RendererFB -> Either.succeed Renderer
     | x ->
       sprintf "Unknown RoleFB value: %A" x
       |> Error.asClientError "Role.FromFB"
       |> Either.fail
+    #endif
 
 // * IrisClient
 
@@ -64,7 +73,7 @@ type IrisClient =
     IrisClientFB.AddName(builder, name)
     IrisClientFB.AddRole(builder, role)
     IrisClientFB.AddIpAddress(builder, ip)
-    IrisClientFB.AddPort(builder, uint32 client.Port)
+    IrisClientFB.AddPort(builder, client.Port)
     IrisClientFB.EndIrisClientFB(builder)
 
   static member FromFB(fb: IrisClientFB) =
@@ -82,6 +91,6 @@ type IrisClient =
   member request.ToBytes() =
     Binary.buildBuffer request
 
-  static member FromBytes(raw: byte array) =
+  static member FromBytes(raw: Binary.Buffer) =
     IrisClientFB.GetRootAsIrisClientFB(Binary.createBuffer raw)
     |> IrisClient.FromFB
