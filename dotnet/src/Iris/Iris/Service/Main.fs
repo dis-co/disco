@@ -1,7 +1,12 @@
 ﻿namespace Iris.Service
 
+
 open Argu
 open Iris.Core
+open System
+open Iris.Raft
+open Iris.Client
+open Iris.Service
 open Iris.Service.Interfaces
 open Iris.Service.CommandLine
 
@@ -58,4 +63,4 @@ module Main =
 
     result |> Error.orExit ignore
 
-    Error.exitWith OK
+    Error.exitWith IrisError.OK

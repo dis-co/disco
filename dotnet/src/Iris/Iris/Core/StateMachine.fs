@@ -21,7 +21,7 @@ open Iris.Web.Core.FlatBufferTypes
 #else
 
 open FlatBuffers
-open Iris.Serialization.Raft
+open Iris.Serialization
 open SharpYaml.Serialization
 
 #endif
@@ -79,23 +79,23 @@ type AppCommand =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
-  static member FromFB (fb: ActionTypeFB) =
+  static member FromFB (fb: RaftActionTypeFB) =
 #if FABLE_COMPILER
     match fb with
-    | x when x = ActionTypeFB.UndoFB        -> Right Undo
-    | x when x = ActionTypeFB.RedoFB        -> Right Redo
-    | x when x = ActionTypeFB.ResetFB       -> Right Reset
-    | x when x = ActionTypeFB.SaveProjectFB -> Right SaveProject
+    | x when x = RaftActionTypeFB.UndoFB        -> Right Undo
+    | x when x = RaftActionTypeFB.RedoFB        -> Right Redo
+    | x when x = RaftActionTypeFB.ResetFB       -> Right Reset
+    | x when x = RaftActionTypeFB.SaveProjectFB -> Right SaveProject
     | x ->
       sprintf "Could not parse %A as AppCommand" x
       |> Error.asParseError "AppCommand.FromFB"
       |> Either.fail
 #else
     match fb with
-    | ActionTypeFB.UndoFB        -> Right Undo
-    | ActionTypeFB.RedoFB        -> Right Redo
-    | ActionTypeFB.ResetFB       -> Right Reset
-    | ActionTypeFB.SaveProjectFB -> Right SaveProject
+    | RaftActionTypeFB.UndoFB        -> Right Undo
+    | RaftActionTypeFB.RedoFB        -> Right Redo
+    | RaftActionTypeFB.ResetFB       -> Right Reset
+    | RaftActionTypeFB.SaveProjectFB -> Right SaveProject
     | x ->
       sprintf "Could not parse %A as AppCommand" x
       |> Error.asParseError "AppCommand.FromFB"
@@ -104,12 +104,12 @@ type AppCommand =
 
   // ** ToOffset
 
-  member self.ToOffset(_: FlatBufferBuilder) : ActionTypeFB =
+  member self.ToOffset(_: FlatBufferBuilder) : RaftActionTypeFB =
     match self with
-    | Undo        -> ActionTypeFB.UndoFB
-    | Redo        -> ActionTypeFB.RedoFB
-    | Reset       -> ActionTypeFB.ResetFB
-    | SaveProject -> ActionTypeFB.SaveProjectFB
+    | Undo        -> RaftActionTypeFB.UndoFB
+    | Redo        -> RaftActionTypeFB.RedoFB
+    | Reset       -> RaftActionTypeFB.ResetFB
+    | SaveProject -> RaftActionTypeFB.SaveProjectFB
 
 // * State Type
 
@@ -129,7 +129,8 @@ type State =
     Cues     : Map<Id,Cue>
     CueLists : Map<Id,CueList>
     Sessions : Map<Id,Session>
-    Users    : Map<Id,User> }
+    Users    : Map<Id,User>
+    Clients  : Map<Id,IrisClient> }
 
   // ** Empty
 
@@ -140,7 +141,8 @@ type State =
         Cues     = Map.empty
         CueLists = Map.empty
         Sessions = Map.empty
-        Users    = Map.empty }
+        Users    = Map.empty
+        Clients  = Map.empty }
 
   // ** Load
 
@@ -160,7 +162,8 @@ type State =
           Cues     = Array.map toPair cues     |> Map.ofArray
           CueLists = Array.map toPair cuelists |> Map.ofArray
           Patches  = Array.map toPair patches  |> Map.ofArray
-          Sessions = Map.empty }
+          Sessions = Map.empty
+          Clients  = Map.empty }
     }
 
   #endif
@@ -381,6 +384,33 @@ type State =
   static member removeMember (mem: RaftMember) (state: State) =
     { state with Project = Project.removeMember mem.Id state.Project }
 
+  //   ____ _ _            _
+  //  / ___| (_) ___ _ __ | |_
+  // | |   | | |/ _ \ '_ \| __|
+  // | |___| | |  __/ | | | |_
+  //  \____|_|_|\___|_| |_|\__|
+
+  // ** addClient
+
+  static member addClient (client: IrisClient) (state: State) =
+    if Map.containsKey client.Id state.Clients then
+      state
+    else
+      { state with Clients = Map.add client.Id client state.Clients }
+
+  // ** updateClient
+
+  static member updateClient (client: IrisClient) (state: State) =
+    if Map.containsKey client.Id state.Clients then
+      { state with Clients = Map.add client.Id client state.Clients }
+    else
+      state
+
+  // ** removeClient
+
+  static member removeClient (client: IrisClient) (state: State) =
+    { state with Clients = Map.remove client.Id state.Clients }
+
   //  ____            _           _
   // |  _ \ _ __ ___ (_) ___  ___| |_
   // | |_) | '__/ _ \| |/ _ \/ __| __|
@@ -445,12 +475,19 @@ type State =
 
     let sessionsoffset = StateFB.CreateSessionsVector(builder, sessions)
 
+    let clients =
+      Map.toArray self.Clients
+      |> Array.map (snd >> Binary.toOffset builder)
+
+    let clientsoffset = StateFB.CreateClientsVector(builder, clients)
+
     StateFB.StartStateFB(builder)
     StateFB.AddProject(builder, project)
     StateFB.AddPatches(builder, patchesoffset)
     StateFB.AddCues(builder, cuesoffset)
     StateFB.AddCueLists(builder, cuelistsoffset)
     StateFB.AddSessions(builder, sessionsoffset)
+    StateFB.AddClients(builder, clientsoffset)
     StateFB.AddUsers(builder, usersoffset)
     StateFB.EndStateFB(builder)
 
@@ -618,12 +655,41 @@ type State =
           arr
         |> Either.map snd
 
+      // CLIENTS
+
+      let! clients =
+        let arr = Array.zeroCreate fb.ClientsLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<Id, IrisClient>>) _ -> either {
+            let! (i, map) = m
+
+            #if FABLE_COMPILER
+            let! client = fb.Clients(i) |> IrisClient.FromFB
+            #else
+            let! client =
+              let value = fb.Clients(i)
+              if value.HasValue then
+                value.Value
+                |> IrisClient.FromFB
+              else
+                "Could not parse empty Client payload"
+                |> Error.asParseError "Client.FromFB"
+                |> Either.fail
+            #endif
+
+            return (i + 1, Map.add client.Id client map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
+
       return { Project  = project
                Patches  = patches
                Cues     = cues
                CueLists = cuelists
                Users    = users
-               Sessions = sessions }
+               Sessions = sessions
+               Clients  = clients }
     }
 
   // ** FromBytes
@@ -859,6 +925,10 @@ and Store(state : State)=
     | UpdateMember          mem -> State.updateMember  mem     state |> andRender
     | RemoveMember          mem -> State.removeMember  mem     state |> andRender
 
+    | AddClient          client -> State.addClient     client  state |> andRender
+    | UpdateClient       client -> State.updateClient  client  state |> andRender
+    | RemoveClient       client -> State.removeClient  client  state |> andRender
+
     | AddSession        session -> State.addSession    session state |> andRender
     | UpdateSession     session -> State.updateSession session state |> andRender
     | RemoveSession     session -> State.removeSession session state |> andRender
@@ -971,6 +1041,11 @@ and StateMachine =
   | UpdateMember  of RaftMember
   | RemoveMember  of RaftMember
 
+  // Client
+  | AddClient     of IrisClient
+  | UpdateClient  of IrisClient
+  | RemoveClient  of IrisClient
+
   // PATCH
   | AddPatch      of Patch
   | UpdatePatch   of Patch
@@ -1021,6 +1096,11 @@ and StateMachine =
     | UpdateMember mem      -> sprintf "UpdateMember %s" (string mem)
     | RemoveMember mem      -> sprintf "RemoveMember %s" (string mem)
 
+    // Client
+    | AddClient    client  -> sprintf "AddClient %s"    (string client)
+    | UpdateClient client  -> sprintf "UpdateClient %s" (string client)
+    | RemoveClient client  -> sprintf "RemoveClient %s" (string client)
+
     // PATCH
     | AddPatch    patch     -> sprintf "AddPatch %s"    (string patch)
     | UpdatePatch patch     -> sprintf "UpdatePatch %s" (string patch)
@@ -1066,134 +1146,162 @@ and StateMachine =
   //                           |___/
 
 #if FABLE_COMPILER
-  static member FromFB (fb: ApiActionFB) =
+  static member FromFB (fb: RaftApiActionFB) =
     match fb.PayloadType with
-    | x when x = PayloadFB.ProjectFB ->
+    | x when x = RaftPayloadFB.ProjectFB ->
       let project = fb.ProjectFB |> IrisProject.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdateProject project
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.RaftMemberFB ->
+    | x when x = RaftPayloadFB.RaftMemberFB ->
       let mem = fb.RaftMemberFB |> RaftMember.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
+      | x when x = RaftActionTypeFB.AddFB ->
         Either.map AddMember mem
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdateMember mem
-      | x when x = ActionTypeFB.RemoveFB ->
+      | x when x = RaftActionTypeFB.RemoveFB ->
         Either.map RemoveMember mem
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.PatchFB ->
+    | x when x = RaftPayloadFB.IrisClientFB ->
+      let client = fb.IrisClientFB |> IrisClient.FromFB
+      match fb.Action with
+      | x when x = RaftActionTypeFB.AddFB ->
+        Either.map AddClient client
+      | x when x = RaftActionTypeFB.UpdateFB ->
+        Either.map UpdateClient client
+      | x when x = RaftActionTypeFB.RemoveFB ->
+        Either.map RemoveClient client
+      | x ->
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
+    | x when x = RaftPayloadFB.PatchFB ->
       let patch = fb.PatchFB |> Patch.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
+      | x when x = RaftActionTypeFB.AddFB ->
         Either.map AddPatch patch
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdatePatch patch
-      | x when x = ActionTypeFB.RemoveFB ->
+      | x when x = RaftActionTypeFB.RemoveFB ->
         Either.map RemovePatch patch
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.PinFB ->
+    | x when x = RaftPayloadFB.PinFB ->
       let pin = fb.PinFB |> Pin.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
+      | x when x = RaftActionTypeFB.AddFB ->
         Either.map AddPin pin
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdatePin pin
-      | x when x = ActionTypeFB.RemoveFB ->
+      | x when x = RaftActionTypeFB.RemoveFB ->
         Either.map RemovePin pin
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.CueFB ->
+    | x when x = RaftPayloadFB.CueFB ->
       let cue = fb.CueFB |> Cue.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
+      | x when x = RaftActionTypeFB.AddFB ->
         Either.map AddCue cue
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdateCue cue
-      | x when x = ActionTypeFB.RemoveFB ->
+      | x when x = RaftActionTypeFB.RemoveFB ->
         Either.map RemoveCue cue
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.CueListFB ->
+    | x when x = RaftPayloadFB.CueListFB ->
       let cuelist = fb.CueListFB |> CueList.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
+      | x when x = RaftActionTypeFB.AddFB ->
         Either.map AddCueList cuelist
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdateCueList cuelist
-      | x when x = ActionTypeFB.RemoveFB ->
+      | x when x = RaftActionTypeFB.RemoveFB ->
         Either.map RemoveCueList cuelist
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.UserFB ->
+    | x when x = RaftPayloadFB.UserFB ->
       let user = fb.UserFB |> User.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
+      | x when x = RaftActionTypeFB.AddFB ->
         Either.map AddUser user
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdateUser user
-      | x when x = ActionTypeFB.RemoveFB ->
+      | x when x = RaftActionTypeFB.RemoveFB ->
         Either.map RemoveUser user
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.SessionFB ->
+    | x when x = RaftPayloadFB.IrisClientFB ->
+      let client = fb.IrisClientFB |> IrisClient.FromFB
+      match fb.Action with
+      | x when x = RaftActionTypeFB.AddFB ->
+        Either.map AddClient client
+      | x when x = RaftActionTypeFB.UpdateFB ->
+        Either.map UpdateClient client
+      | x when x = RaftActionTypeFB.RemoveFB ->
+        Either.map RemoveClient client
+      | x ->
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
+    | x when x = RaftPayloadFB.SessionFB ->
       let session = fb.SessionFB |> Session.FromFB
       match fb.Action with
-      | x when x = ActionTypeFB.AddFB ->
+      | x when x = RaftActionTypeFB.AddFB ->
         Either.map AddSession session
-      | x when x = ActionTypeFB.UpdateFB ->
+      | x when x = RaftActionTypeFB.UpdateFB ->
         Either.map UpdateSession session
-      | x when x = ActionTypeFB.RemoveFB ->
+      | x when x = RaftActionTypeFB.RemoveFB ->
         Either.map RemoveSession session
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = PayloadFB.StateFB && fb.Action = ActionTypeFB.DataSnapshotFB ->
+    | x when x = RaftPayloadFB.StateFB && fb.Action = RaftActionTypeFB.DataSnapshotFB ->
       fb.StateFB
       |> State.FromFB
       |> Either.map DataSnapshot
 
-    | x when x = PayloadFB.LogEventFB ->
+    | x when x = RaftPayloadFB.LogEventFB ->
       fb.LogEventFB
       |> LogEvent.FromFB
       |> Either.map LogMsg
 
-    | x when x = PayloadFB.StringFB ->
+    | x when x = RaftPayloadFB.StringFB ->
       match fb.Action with
-      | x when x = ActionTypeFB.SetLogLevelFB ->
+      | x when x = RaftActionTypeFB.SetLogLevelFB ->
         fb.StringFB.Value
         |> LogLevel.TryParse
         |> Either.map SetLogLevel
       | x ->
-        sprintf "Could not parse unknown ActionTypeFB %A" x
+        sprintf "Could not parse unknown RaftActionTypeFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
     | _ ->
@@ -1205,7 +1313,7 @@ and StateMachine =
 
   // ** FromFB (.NET)
 
-  static member FromFB (fb: ApiActionFB) =
+  static member FromFB (fb: RaftApiActionFB) =
     match fb.PayloadType with
 
     //  ____            _           _
@@ -1215,7 +1323,7 @@ and StateMachine =
     // |_|   |_|  \___// |\___|\___|\__|
     //               |__/
 
-    | PayloadFB.ProjectFB ->
+    | RaftPayloadFB.ProjectFB ->
       either {
         let! project =
           let projectish = fb.Payload<ProjectFB>()
@@ -1228,7 +1336,7 @@ and StateMachine =
             |> Either.fail
 
         match fb.Action with
-        | ActionTypeFB.UpdateFB -> return (UpdateProject project)
+        | RaftActionTypeFB.UpdateFB -> return (UpdateProject project)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1242,7 +1350,7 @@ and StateMachine =
     // | |__| |_| |  __/
     //  \____\__,_|\___|
 
-    | PayloadFB.CueFB ->
+    | RaftPayloadFB.CueFB ->
       either {
         let! cue =
           let cueish = fb.Payload<CueFB>()
@@ -1255,9 +1363,38 @@ and StateMachine =
             |> Either.fail
 
         match fb.Action with
-        | ActionTypeFB.AddFB    -> return (AddCue cue)
-        | ActionTypeFB.UpdateFB -> return (UpdateCue cue)
-        | ActionTypeFB.RemoveFB -> return (RemoveCue cue)
+        | RaftActionTypeFB.AddFB    -> return (AddCue cue)
+        | RaftActionTypeFB.UpdateFB -> return (UpdateCue cue)
+        | RaftActionTypeFB.RemoveFB -> return (RemoveCue cue)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
+    //   ____ _ _            _
+    //  / ___| (_) ___ _ __ | |_
+    // | |   | | |/ _ \ '_ \| __|
+    // | |___| | |  __/ | | | |_
+    //  \____|_|_|\___|_| |_|\__|
+
+    | RaftPayloadFB.IrisClientFB ->
+      either {
+        let! client =
+          let clientish = fb.Payload<IrisClientFB>()
+          if clientish.HasValue then
+            clientish.Value
+            |> IrisClient.FromFB
+          else
+            "Could not parse empty client payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+
+        match fb.Action with
+        | RaftActionTypeFB.AddFB    -> return (AddClient client)
+        | RaftActionTypeFB.UpdateFB -> return (UpdateClient client)
+        | RaftActionTypeFB.RemoveFB -> return (RemoveClient client)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1271,7 +1408,7 @@ and StateMachine =
     // | |__| |_| |  __/ |___| \__ \ |_
     //  \____\__,_|\___|_____|_|___/\__|
 
-    | PayloadFB.CueListFB ->
+    | RaftPayloadFB.CueListFB ->
       either {
         let! cuelist =
           let cuelistish = fb.Payload<CueListFB>()
@@ -1284,9 +1421,9 @@ and StateMachine =
             |> Either.fail
 
         match fb.Action with
-        | ActionTypeFB.AddFB    -> return (AddCueList    cuelist)
-        | ActionTypeFB.UpdateFB -> return (UpdateCueList cuelist)
-        | ActionTypeFB.RemoveFB -> return (RemoveCueList cuelist)
+        | RaftActionTypeFB.AddFB    -> return (AddCueList    cuelist)
+        | RaftActionTypeFB.UpdateFB -> return (UpdateCueList cuelist)
+        | RaftActionTypeFB.RemoveFB -> return (RemoveCueList cuelist)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1300,7 +1437,7 @@ and StateMachine =
     // |  __/ (_| | || (__| | | |
     // |_|   \__,_|\__\___|_| |_|
 
-    | PayloadFB.PatchFB ->
+    | RaftPayloadFB.PatchFB ->
       either {
         let! patch =
           let patchish = fb.Payload<PatchFB>()
@@ -1313,9 +1450,9 @@ and StateMachine =
             |> Either.fail
 
         match fb.Action with
-        | ActionTypeFB.AddFB    -> return (AddPatch    patch)
-        | ActionTypeFB.UpdateFB -> return (UpdatePatch patch)
-        | ActionTypeFB.RemoveFB -> return (RemovePatch patch)
+        | RaftActionTypeFB.AddFB    -> return (AddPatch    patch)
+        | RaftActionTypeFB.UpdateFB -> return (UpdatePatch patch)
+        | RaftActionTypeFB.RemoveFB -> return (RemovePatch patch)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1329,7 +1466,7 @@ and StateMachine =
     //  | | |_| | |_) | (_) >  <
     // |___\___/|____/ \___/_/\_\
 
-    | PayloadFB.PinFB ->
+    | RaftPayloadFB.PinFB ->
       either {
         let! pin =
           let pinish = fb.Payload<PinFB>()
@@ -1342,9 +1479,9 @@ and StateMachine =
             |> Either.fail
 
         match fb.Action with
-        | ActionTypeFB.AddFB    -> return (AddPin    pin)
-        | ActionTypeFB.UpdateFB -> return (UpdatePin pin)
-        | ActionTypeFB.RemoveFB -> return (RemovePin pin)
+        | RaftActionTypeFB.AddFB    -> return (AddPin    pin)
+        | RaftActionTypeFB.UpdateFB -> return (UpdatePin pin)
+        | RaftActionTypeFB.RemoveFB -> return (RemovePin pin)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1358,7 +1495,7 @@ and StateMachine =
     // | |\  | (_) | (_| |  __/
     // |_| \_|\___/ \__,_|\___|
 
-    | PayloadFB.RaftMemberFB ->
+    | RaftPayloadFB.RaftMemberFB ->
       either {
         let! mem =
           let memish = fb.Payload<RaftMemberFB>()
@@ -1371,9 +1508,9 @@ and StateMachine =
             |> Either.fail
 
         match fb.Action with
-        | ActionTypeFB.AddFB    -> return (AddMember    mem)
-        | ActionTypeFB.UpdateFB -> return (UpdateMember mem)
-        | ActionTypeFB.RemoveFB -> return (RemoveMember mem)
+        | RaftActionTypeFB.AddFB    -> return (AddMember    mem)
+        | RaftActionTypeFB.UpdateFB -> return (UpdateMember mem)
+        | RaftActionTypeFB.RemoveFB -> return (RemoveMember mem)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1387,7 +1524,7 @@ and StateMachine =
     // | |_| \__ \  __/ |
     //  \___/|___/\___|_|
 
-    | PayloadFB.UserFB ->
+    | RaftPayloadFB.UserFB ->
       either {
         let! user =
           let userish = fb.Payload<UserFB>()
@@ -1400,9 +1537,9 @@ and StateMachine =
             |> Either.fail
 
         match fb.Action with
-        | ActionTypeFB.AddFB    -> return (AddUser    user)
-        | ActionTypeFB.UpdateFB -> return (UpdateUser user)
-        | ActionTypeFB.RemoveFB -> return (RemoveUser user)
+        | RaftActionTypeFB.AddFB    -> return (AddUser    user)
+        | RaftActionTypeFB.UpdateFB -> return (UpdateUser user)
+        | RaftActionTypeFB.RemoveFB -> return (RemoveUser user)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1416,7 +1553,7 @@ and StateMachine =
     //  ___) |  __/\__ \__ \ | (_) | | | |
     // |____/ \___||___/___/_|\___/|_| |_|
 
-    | PayloadFB.SessionFB ->
+    | RaftPayloadFB.SessionFB ->
       either {
         let! session =
           let sessionish = fb.Payload<SessionFB>()
@@ -1429,9 +1566,9 @@ and StateMachine =
             |> Either.fail
 
         match fb.Action with
-        | ActionTypeFB.AddFB    -> return (AddSession    session)
-        | ActionTypeFB.UpdateFB -> return (UpdateSession session)
-        | ActionTypeFB.RemoveFB -> return (RemoveSession session)
+        | RaftActionTypeFB.AddFB    -> return (AddSession    session)
+        | RaftActionTypeFB.UpdateFB -> return (UpdateSession session)
+        | RaftActionTypeFB.RemoveFB -> return (RemoveSession session)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1444,7 +1581,7 @@ and StateMachine =
     // | |  | | \__ \ (__
     // |_|  |_|_|___/\___|
 
-    | PayloadFB.LogEventFB ->
+    | RaftPayloadFB.LogEventFB ->
       either {
         let logish = fb.Payload<LogEventFB>()
         if logish.HasValue then
@@ -1457,7 +1594,7 @@ and StateMachine =
             |> Either.fail
       }
 
-    | PayloadFB.StateFB ->
+    | RaftPayloadFB.StateFB ->
       either {
         let stateish = fb.Payload<StateFB>()
         if stateish.HasValue then
@@ -1471,7 +1608,7 @@ and StateMachine =
             |> Either.fail
       }
 
-    | PayloadFB.StringFB ->
+    | RaftPayloadFB.StringFB ->
       either {
         let stringish = fb.Payload<StringFB> ()
         if stringish.HasValue then
@@ -1493,316 +1630,352 @@ and StateMachine =
 #endif
   // ** ToOffset
 
-  member self.ToOffset(builder: FlatBufferBuilder) : Offset<ApiActionFB> =
+  member self.ToOffset(builder: FlatBufferBuilder) : Offset<RaftApiActionFB> =
     match self with
     | UpdateProject project ->
       let offset = project.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.ProjectFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.UpdateFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.ProjectFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, offset)
+      RaftApiActionFB.AddPayload(builder, offset)
 #else
-      ApiActionFB.AddPayload(builder, offset.Value)
+      RaftApiActionFB.AddPayload(builder, offset.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | AddMember       mem ->
       let mem = mem.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.RaftMemberFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.AddFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.RaftMemberFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, mem)
+      RaftApiActionFB.AddPayload(builder, mem)
 #else
-      ApiActionFB.AddPayload(builder, mem.Value)
+      RaftApiActionFB.AddPayload(builder, mem.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | UpdateMember    mem ->
       let mem = mem.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.RaftMemberFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.UpdateFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.RaftMemberFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, mem)
+      RaftApiActionFB.AddPayload(builder, mem)
 #else
-      ApiActionFB.AddPayload(builder, mem.Value)
+      RaftApiActionFB.AddPayload(builder, mem.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | RemoveMember    mem ->
       let mem = mem.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.RaftMemberFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.RemoveFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.RaftMemberFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, mem)
+      RaftApiActionFB.AddPayload(builder, mem)
 #else
-      ApiActionFB.AddPayload(builder, mem.Value)
+      RaftApiActionFB.AddPayload(builder, mem.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
+
+    | AddClient       client ->
+      let client = client.ToOffset(builder)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.AddFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.IrisClientFB)
+#if FABLE_COMPILER
+      RaftApiActionFB.AddPayload(builder, client)
+#else
+      RaftApiActionFB.AddPayload(builder, client.Value)
+#endif
+      RaftApiActionFB.EndRaftApiActionFB(builder)
+
+    | UpdateClient    client ->
+      let client = client.ToOffset(builder)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.UpdateFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.IrisClientFB)
+#if FABLE_COMPILER
+      RaftApiActionFB.AddPayload(builder, client)
+#else
+      RaftApiActionFB.AddPayload(builder, client.Value)
+#endif
+      RaftApiActionFB.EndRaftApiActionFB(builder)
+
+    | RemoveClient    client ->
+      let client = client.ToOffset(builder)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.RemoveFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.IrisClientFB)
+#if FABLE_COMPILER
+      RaftApiActionFB.AddPayload(builder, client)
+#else
+      RaftApiActionFB.AddPayload(builder, client.Value)
+#endif
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | AddPatch       patch ->
       let patch = patch.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.PatchFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.AddFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.PatchFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, patch)
+      RaftApiActionFB.AddPayload(builder, patch)
 #else
-      ApiActionFB.AddPayload(builder, patch.Value)
+      RaftApiActionFB.AddPayload(builder, patch.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | UpdatePatch    patch ->
       let patch = patch.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.PatchFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.UpdateFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.PatchFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, patch)
+      RaftApiActionFB.AddPayload(builder, patch)
 #else
-      ApiActionFB.AddPayload(builder, patch.Value)
+      RaftApiActionFB.AddPayload(builder, patch.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | RemovePatch    patch ->
       let patch = patch.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.PatchFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.RemoveFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.PatchFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, patch)
+      RaftApiActionFB.AddPayload(builder, patch)
 #else
-      ApiActionFB.AddPayload(builder, patch.Value)
+      RaftApiActionFB.AddPayload(builder, patch.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | AddPin       pin ->
       let pin = pin.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.PinFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.AddFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.PinFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, pin)
+      RaftApiActionFB.AddPayload(builder, pin)
 #else
-      ApiActionFB.AddPayload(builder, pin.Value)
+      RaftApiActionFB.AddPayload(builder, pin.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | UpdatePin    pin ->
       let pin = pin.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.PinFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.UpdateFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.PinFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, pin)
+      RaftApiActionFB.AddPayload(builder, pin)
 #else
-      ApiActionFB.AddPayload(builder, pin.Value)
+      RaftApiActionFB.AddPayload(builder, pin.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | RemovePin    pin ->
       let pin = pin.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.PinFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.RemoveFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.PinFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, pin)
+      RaftApiActionFB.AddPayload(builder, pin)
 #else
-      ApiActionFB.AddPayload(builder, pin.Value)
+      RaftApiActionFB.AddPayload(builder, pin.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | AddCue cue ->
       let cue = cue.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.CueFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.AddFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.CueFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, cue)
+      RaftApiActionFB.AddPayload(builder, cue)
 #else
-      ApiActionFB.AddPayload(builder, cue.Value)
+      RaftApiActionFB.AddPayload(builder, cue.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | UpdateCue cue ->
       let cue = cue.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.CueFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.UpdateFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.CueFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, cue)
+      RaftApiActionFB.AddPayload(builder, cue)
 #else
-      ApiActionFB.AddPayload(builder, cue.Value)
+      RaftApiActionFB.AddPayload(builder, cue.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | RemoveCue cue ->
       let cue = cue.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.CueFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.RemoveFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.CueFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, cue)
+      RaftApiActionFB.AddPayload(builder, cue)
 #else
-      ApiActionFB.AddPayload(builder, cue.Value)
+      RaftApiActionFB.AddPayload(builder, cue.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | AddCueList cuelist ->
       let cuelist = cuelist.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.CueListFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.AddFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.CueListFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, cuelist)
+      RaftApiActionFB.AddPayload(builder, cuelist)
 #else
-      ApiActionFB.AddPayload(builder, cuelist.Value)
+      RaftApiActionFB.AddPayload(builder, cuelist.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | UpdateCueList cuelist ->
       let cuelist = cuelist.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.CueListFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.UpdateFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.CueListFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, cuelist)
+      RaftApiActionFB.AddPayload(builder, cuelist)
 #else
-      ApiActionFB.AddPayload(builder, cuelist.Value)
+      RaftApiActionFB.AddPayload(builder, cuelist.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | RemoveCueList cuelist ->
       let cuelist = cuelist.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.CueListFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.RemoveFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.CueListFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, cuelist)
+      RaftApiActionFB.AddPayload(builder, cuelist)
 #else
-      ApiActionFB.AddPayload(builder, cuelist.Value)
+      RaftApiActionFB.AddPayload(builder, cuelist.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | AddUser user ->
       let user = user.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.UserFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.AddFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.UserFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, user)
+      RaftApiActionFB.AddPayload(builder, user)
 #else
-      ApiActionFB.AddPayload(builder, user.Value)
+      RaftApiActionFB.AddPayload(builder, user.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | UpdateUser user ->
       let user = user.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.UserFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.UpdateFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.UserFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, user)
+      RaftApiActionFB.AddPayload(builder, user)
 #else
-      ApiActionFB.AddPayload(builder, user.Value)
+      RaftApiActionFB.AddPayload(builder, user.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | RemoveUser user ->
       let user = user.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.UserFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.RemoveFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.UserFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, user)
+      RaftApiActionFB.AddPayload(builder, user)
 #else
-      ApiActionFB.AddPayload(builder, user.Value)
+      RaftApiActionFB.AddPayload(builder, user.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | AddSession session ->
       let session = session.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.AddFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.SessionFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.AddFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.SessionFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, session)
+      RaftApiActionFB.AddPayload(builder, session)
 #else
-      ApiActionFB.AddPayload(builder, session.Value)
+      RaftApiActionFB.AddPayload(builder, session.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | UpdateSession session ->
       let session = session.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.UpdateFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.SessionFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.UpdateFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.SessionFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, session)
+      RaftApiActionFB.AddPayload(builder, session)
 #else
-      ApiActionFB.AddPayload(builder, session.Value)
+      RaftApiActionFB.AddPayload(builder, session.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | RemoveSession session ->
       let session = session.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.RemoveFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.SessionFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.RemoveFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.SessionFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, session)
+      RaftApiActionFB.AddPayload(builder, session)
 #else
-      ApiActionFB.AddPayload(builder, session.Value)
+      RaftApiActionFB.AddPayload(builder, session.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | Command appcommand ->
       let cmd = appcommand.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, cmd)
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, cmd)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | DataSnapshot state ->
       let offset = state.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.DataSnapshotFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.StateFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.DataSnapshotFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.StateFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, offset)
+      RaftApiActionFB.AddPayload(builder, offset)
 #else
-      ApiActionFB.AddPayload(builder, offset.Value)
+      RaftApiActionFB.AddPayload(builder, offset.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | LogMsg log ->
       let offset = log.ToOffset(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.LogEventFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.LogEventFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.LogEventFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.LogEventFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, offset)
+      RaftApiActionFB.AddPayload(builder, offset)
 #else
-      ApiActionFB.AddPayload(builder, offset.Value)
+      RaftApiActionFB.AddPayload(builder, offset.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
     | SetLogLevel level ->
       let str = builder.CreateString (string level)
       StringFB.StartStringFB(builder)
       StringFB.AddValue(builder,str)
       let offset = StringFB.EndStringFB(builder)
-      ApiActionFB.StartApiActionFB(builder)
-      ApiActionFB.AddAction(builder, ActionTypeFB.SetLogLevelFB)
-      ApiActionFB.AddPayloadType(builder, PayloadFB.StringFB)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.SetLogLevelFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.StringFB)
 #if FABLE_COMPILER
-      ApiActionFB.AddPayload(builder, offset)
+      RaftApiActionFB.AddPayload(builder, offset)
 #else
-      ApiActionFB.AddPayload(builder, offset.Value)
+      RaftApiActionFB.AddPayload(builder, offset.Value)
 #endif
-      ApiActionFB.EndApiActionFB(builder)
+      RaftApiActionFB.EndRaftApiActionFB(builder)
 
   // ** ToBytes
 
@@ -1812,5 +1985,5 @@ and StateMachine =
 
   static member FromBytes (bytes: Binary.Buffer) : Either<IrisError,StateMachine> =
     Binary.createBuffer bytes
-    |> ApiActionFB.GetRootAsApiActionFB
+    |> RaftApiActionFB.GetRootAsRaftApiActionFB
     |> StateMachine.FromFB

@@ -4,6 +4,47 @@ open Fable.Core
 open Fable.Import
 open Iris.Core.FlatBuffers
 
+//  ____       _
+// |  _ \ ___ | | ___
+// | |_) / _ \| |/ _ \
+// |  _ < (_) | |  __/
+// |_| \_\___/|_|\___|
+
+type RoleFB = int
+
+type RoleFBConstructor =
+  abstract RendererFB: RoleFB
+
+let RoleFB: RoleFBConstructor = failwith "JS only"
+
+//   ____ _ _            _
+//  / ___| (_) ___ _ __ | |_
+// | |   | | |/ _ \ '_ \| __|
+// | |___| | |  __/ | | | |_
+//  \____|_|_|\___|_| |_|\__|
+
+type IrisClientFB =
+  abstract Id: string
+  abstract Name: string
+  abstract Role: RoleFB
+  abstract Status: string
+  abstract IpAddress: string
+  abstract Port: uint16
+
+type IrisClientFBConstructor =
+  abstract prototype: IrisClientFB with get, set
+  abstract StartIrisClientFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+  abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddRole: builder: FlatBufferBuilder * role: RoleFB -> unit
+  abstract AddStatus: builder: FlatBufferBuilder * status: Offset<string> -> unit
+  abstract AddIpAddress: builder: FlatBufferBuilder * ip: Offset<string> -> unit
+  abstract AddPort: builder: FlatBufferBuilder * port:uint16 -> unit
+  abstract EndIrisClientFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsIrisClientFB: buffer: ByteBuffer -> IrisClientFB
+
+let IrisClientFB : IrisClientFBConstructor = failwith "JS only"
+
 //  _   _               _____ ____
 // | | | |___  ___ _ __|  ___| __ )
 // | | | / __|/ _ \ '__| |_  |  _ \
@@ -921,6 +962,7 @@ type RaftMemberFB =
   abstract WebPort: uint16
   abstract WsPort: uint16
   abstract GitPort: uint16
+  abstract ApiPort: uint16
   abstract Voting: bool
   abstract VotedForMe: bool
   abstract State: RaftMemberStateFB
@@ -933,10 +975,11 @@ type RaftMemberFBConstructor =
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddHostName: builder: FlatBufferBuilder * hostname: Offset<string> -> unit
   abstract AddIpAddr: builder: FlatBufferBuilder * ip: Offset<string> -> unit
-  abstract AddPort: builder: FlatBufferBuilder * port: int -> unit
-  abstract AddWebPort: builder: FlatBufferBuilder * port: int -> unit
-  abstract AddWsPort: builder: FlatBufferBuilder * port: int -> unit
-  abstract AddGitPort: builder: FlatBufferBuilder * port: int -> unit
+  abstract AddPort: builder: FlatBufferBuilder * port: uint16 -> unit
+  abstract AddWebPort: builder: FlatBufferBuilder * port: uint16 -> unit
+  abstract AddWsPort: builder: FlatBufferBuilder * port: uint16 -> unit
+  abstract AddGitPort: builder: FlatBufferBuilder * port: uint16 -> unit
+  abstract AddApiPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddVoting: builder: FlatBufferBuilder * voting: bool -> unit
   abstract AddVotedForMe: builder: FlatBufferBuilder * votedforme: bool -> unit
   abstract AddState: builder: FlatBufferBuilder * state: RaftMemberStateFB -> unit
@@ -1346,6 +1389,7 @@ let DisplayFB: DisplayFBConstructor = failwith "JS only"
 // CONFIG
 
 type ConfigFB =
+  abstract Version: string
   abstract MachineId: string
   abstract AudioConfig: AudioConfigFB
   abstract VvvvConfig: VvvvConfigFB
@@ -1362,6 +1406,7 @@ type ConfigFB =
 type ConfigFBConstructor =
   abstract prototype: ConfigFB with get, set
   abstract StartConfigFB: builder: FlatBufferBuilder -> unit
+  abstract AddVersion: builder: FlatBufferBuilder * v:Offset<string> -> unit
   abstract AddMachineId: builder: FlatBufferBuilder * v:Offset<string> -> unit
   abstract AddAudioConfig: builder: FlatBufferBuilder * v:Offset<AudioConfigFB> -> unit
   abstract AddVvvvConfig: builder: FlatBufferBuilder * v:Offset<VvvvConfigFB> -> unit
@@ -1428,6 +1473,8 @@ type StateFB =
   abstract SessionsLength: int
   abstract Users: int -> UserFB
   abstract UsersLength: int
+  abstract Clients: int -> IrisClientFB
+  abstract ClientsLength: int
 
 type StateFBConstructor =
   abstract prototype: StateFB with get, set
@@ -1443,6 +1490,8 @@ type StateFBConstructor =
   abstract AddSessions: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
   abstract CreateUsersVector: builder: FlatBufferBuilder * patches: Offset<UserFB> array -> Offset<'a>
   abstract AddUsers: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
+  abstract CreateClientsVector: builder: FlatBufferBuilder * patches: Offset<IrisClientFB> array -> Offset<'a>
+  abstract AddClients: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
   abstract EndStateFB: builder: FlatBufferBuilder -> Offset<StateFB>
   abstract GetRootAsStateFB: bytes: ByteBuffer -> StateFB
 
@@ -1507,43 +1556,44 @@ let StringFB: StringFBConstructor = failwith "JS only"
 // /_/   \_\ .__/|_/_/   \_\___|\__|_|\___/|_| |_|
 //         |_|
 
-type ActionTypeFB = int
+type RaftActionTypeFB = int
 
-type ActionTypeFBConstructor =
-  abstract AddFB: ActionTypeFB
-  abstract UpdateFB: ActionTypeFB
-  abstract RemoveFB: ActionTypeFB
-  abstract LogEventFB: ActionTypeFB
-  abstract UndoFB: ActionTypeFB
-  abstract RedoFB: ActionTypeFB
-  abstract ResetFB: ActionTypeFB
-  abstract SaveProjectFB: ActionTypeFB
-  abstract DataSnapshotFB: ActionTypeFB
-  abstract SetLogLevelFB: ActionTypeFB
+type RaftActionTypeFBConstructor =
+  abstract AddFB: RaftActionTypeFB
+  abstract UpdateFB: RaftActionTypeFB
+  abstract RemoveFB: RaftActionTypeFB
+  abstract LogEventFB: RaftActionTypeFB
+  abstract UndoFB: RaftActionTypeFB
+  abstract RedoFB: RaftActionTypeFB
+  abstract ResetFB: RaftActionTypeFB
+  abstract SaveProjectFB: RaftActionTypeFB
+  abstract DataSnapshotFB: RaftActionTypeFB
+  abstract SetLogLevelFB: RaftActionTypeFB
 
-let ActionTypeFB: ActionTypeFBConstructor = failwith "JS only"
+let RaftActionTypeFB: RaftActionTypeFBConstructor = failwith "JS only"
 
-type PayloadFB = int
+type RaftPayloadFB = int
 
-type PayloadFBConstructor =
-  abstract NONE: PayloadFB
-  abstract CueFB: PayloadFB
-  abstract CueListFB: PayloadFB
-  abstract PinFB: PayloadFB
-  abstract PatchFB: PayloadFB
-  abstract RaftMemberFB: PayloadFB
-  abstract UserFB: PayloadFB
-  abstract SessionFB: PayloadFB
-  abstract LogEventFB: PayloadFB
-  abstract StateFB: PayloadFB
-  abstract StringFB: PayloadFB
-  abstract ProjectFB: PayloadFB
+type RaftPayloadFBConstructor =
+  abstract NONE: RaftPayloadFB
+  abstract CueFB: RaftPayloadFB
+  abstract CueListFB: RaftPayloadFB
+  abstract PinFB: RaftPayloadFB
+  abstract PatchFB: RaftPayloadFB
+  abstract RaftMemberFB: RaftPayloadFB
+  abstract UserFB: RaftPayloadFB
+  abstract SessionFB: RaftPayloadFB
+  abstract LogEventFB: RaftPayloadFB
+  abstract StateFB: RaftPayloadFB
+  abstract StringFB: RaftPayloadFB
+  abstract ProjectFB: RaftPayloadFB
+  abstract IrisClientFB: RaftPayloadFB
 
-let PayloadFB: PayloadFBConstructor = failwith "JS only"
+let RaftPayloadFB: RaftPayloadFBConstructor = failwith "JS only"
 
-type ApiActionFB =
-  abstract Action: ActionTypeFB
-  abstract PayloadType: PayloadFB
+type RaftApiActionFB =
+  abstract Action: RaftActionTypeFB
+  abstract PayloadType: RaftPayloadFB
   abstract CueFB: CueFB
   abstract CueListFB: CueListFB
   abstract PinFB: PinFB
@@ -1555,18 +1605,19 @@ type ApiActionFB =
   abstract StateFB: StateFB
   abstract StringFB: StringFB
   abstract ProjectFB: ProjectFB
+  abstract IrisClientFB: IrisClientFB
   abstract Payload: 'a -> 'a
 
-type ApiActionFBConstructor =
-  abstract prototype: ApiActionFB with get, set
-  abstract StartApiActionFB: builder: FlatBufferBuilder -> unit
-  abstract AddAction: builder: FlatBufferBuilder * tipe: ActionTypeFB -> unit
-  abstract AddPayloadType: builder: FlatBufferBuilder * tipe: PayloadFB -> unit
+type RaftApiActionFBConstructor =
+  abstract prototype: RaftApiActionFB with get, set
+  abstract StartRaftApiActionFB: builder: FlatBufferBuilder -> unit
+  abstract AddAction: builder: FlatBufferBuilder * tipe: RaftActionTypeFB -> unit
+  abstract AddPayloadType: builder: FlatBufferBuilder * tipe: RaftPayloadFB -> unit
   abstract AddPayload: builder: FlatBufferBuilder * payload: Offset<'a> -> unit
-  abstract EndApiActionFB: builder: FlatBufferBuilder -> Offset<ApiActionFB>
-  abstract GetRootAsApiActionFB: bytes: ByteBuffer -> ApiActionFB
+  abstract EndRaftApiActionFB: builder: FlatBufferBuilder -> Offset<RaftApiActionFB>
+  abstract GetRootAsRaftApiActionFB: bytes: ByteBuffer -> RaftApiActionFB
 
-let ApiActionFB: ApiActionFBConstructor = failwith "JS only"
+let RaftApiActionFB: RaftApiActionFBConstructor = failwith "JS only"
 
 //  _____                     _____ ____
 // | ____|_ __ _ __ ___  _ __|  ___| __ )
@@ -1583,6 +1634,7 @@ type ErrorTypeFBConstructor =
   abstract AssetErrorFB: ErrorTypeFB
   abstract ParseErrorFB: ErrorTypeFB
   abstract SocketErrorFB: ErrorTypeFB
+  abstract ClientErrorFB: ErrorTypeFB
   abstract IOErrorFB: ErrorTypeFB
   abstract OtherFB: ErrorTypeFB
   abstract RaftErrorFB: ErrorTypeFB

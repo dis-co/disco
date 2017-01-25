@@ -20,7 +20,13 @@ module Store =
       ; Pins = Map.empty
       }
 
-    let machine = MachineConfig.create ()
+    let machine =
+      { MachineId = Id.Create ()
+        HostName  = "La la Land"
+        WorkSpace = "C:\Program Files\Yo Mama"
+        WebIP     = "127.0.0.1"
+        WebPort   = 80us
+        Version   = "1.0.0" }
 
     let project = IrisProject.Empty
 
@@ -30,7 +36,8 @@ module Store =
         Cues     = Map.empty
         CueLists = Map.empty
         Users    = Map.empty
-        Sessions = Map.empty }
+        Sessions = Map.empty
+        Clients  = Map.empty }
 
     let store : Store = new Store(state)
     wrap patch store

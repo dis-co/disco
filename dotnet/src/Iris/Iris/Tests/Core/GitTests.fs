@@ -6,7 +6,7 @@ open Iris.Core
 open Iris.Raft
 open Iris.Service
 open Iris.Service.Git
-open Iris.Serialization.Raft
+open Iris.Serialization
 open System.Net
 open System.Threading
 open FlatBuffers

@@ -1,0 +1,93 @@
+include "Core.fbs";
+include "Raft.fbs";
+
+namespace Iris.Serialization;
+
+enum ApiErrorTypeFB:ushort {
+     InternalFB = 0,
+     UnknownCommandFB = 1,
+     MalformedRequestFB = 2
+}
+
+table ApiErrorFB {
+     Type: ApiErrorTypeFB;
+     Data: string;
+}
+
+enum ServerApiCommandFB:ushort {
+     RegisterFB = 0,
+     UnReqisterFB,
+     AddPinFB,
+     UpdatePinFB,
+     RemovePinFB,
+     AddCueFB,
+     UpdateCueFB,
+     RemoveCueFB,
+     AddCueListFB,
+     UpdateCueListFB,
+     RemoveCueListFB,
+}
+
+enum ClientApiCommandFB:ushort {
+     PingFB = 0,
+     SnapshotFB,
+     UpdateProjectFB,
+     AddMemberFB,
+     UpdateMemberFB,
+     RemoveMemberFB,
+     AddPatchFB,
+     UpdatePatchFB,
+     RemovePatchFB,
+     AddPinFB,
+     UpdatePinFB,
+     RemovePinFB,
+     AddCueFB,
+     UpdateCueFB,
+     RemoveCueFB,
+     AddCueListFB,
+     UpdateCueListFB,
+     RemoveCueListFB,
+     AddUserFB,
+     UpdateUserFB,
+     RemoveUserFB,
+     AddSessionFB,
+     RemoveSessionFB,
+     UpdateSessionFB,
+     UndoFB,
+     RedoFB,
+     ResetFB,
+}
+
+union ParameterFB {
+     IrisClientFB,
+     StateFB,     
+     ProjectFB,
+     RaftMemberFB,
+     PatchFB,
+     PinFB,
+     CueFB,
+     CueListFB,
+     UserFB,
+     SessionFB,
+}
+
+table ServerApiRequestFB {
+     Command: ServerApiCommandFB;
+     Parameter: ParameterFB;      
+}
+
+table ClientApiRequestFB {
+     Command: ClientApiCommandFB;
+     Parameter: ParameterFB;      
+}
+
+enum StatusFB:ushort {
+     PongFB = 0,
+     OKFB = 1,
+     NOKFB = 2,
+}
+
+table ApiResponseFB {
+     Status: StatusFB;
+     Error: ApiErrorFB;      
+}

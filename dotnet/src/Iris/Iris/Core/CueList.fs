@@ -12,7 +12,7 @@ open Iris.Web.Core.FlatBufferTypes
 open System.IO
 open FlatBuffers
 open SharpYaml.Serialization
-open Iris.Serialization.Raft
+open Iris.Serialization
 
 // * CueList Yaml
 

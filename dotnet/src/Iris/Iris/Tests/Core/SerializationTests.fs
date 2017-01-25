@@ -4,7 +4,7 @@ open Expecto
 open Iris.Core
 open Iris.Raft
 open Iris.Service
-open Iris.Serialization.Raft
+open Iris.Serialization
 open Iris.Service.Utilities
 open Iris.Service.Persistence
 open System.Net
@@ -460,11 +460,11 @@ module SerializationTests =
           let reslice = slice |> Yaml.encode |> Yaml.decode |> Either.get
           expect "Should be structurally equivalent" slice id reslice)
 
-  //  ___ ___  ____
-  // |_ _/ _ \| __ )  _____  __
-  //  | | | | |  _ \ / _ \ \/ /
-  //  | | |_| | |_) | (_) >  <
-  // |___\___/|____/ \___/_/\_\
+  //  ____  _
+  // |  _ \(_)_ __
+  // | |_) | | '_ \
+  // |  __/| | | | |
+  // |_|   |_|_| |_|
 
   let test_validate_pin_binary_serialization =
     testCase "Validate Pin Binary Serialization" <| fun _ ->
@@ -498,6 +498,21 @@ module SerializationTests =
       Pin.Compound(Id.Create(), "compound",  Id.Create(), mkTags (), [|{ Index = 0u; Value = [| compound |] }|])
       |> check
 
+  //   ____ _ _            _
+  //  / ___| (_) ___ _ __ | |_
+  // | |   | | |/ _ \ '_ \| __|
+  // | |___| | |  __/ | | | |_
+  //  \____|_|_|\___|_| |_|\__|
+
+  let test_validate_client_binary_serialization =
+    testCase "Validate Client Binary Serialization" <| fun _ ->
+      either {
+        let client = mkClient ()
+        let! reclient = client |> Binary.encode |> Binary.decode
+        expect "Should be structurally equivalent" client id reclient
+      }
+      |> noError
+
   //  ____  _        _
   // / ___|| |_ __ _| |_ ___
   // \___ \| __/ _` | __/ _ \
@@ -508,7 +523,6 @@ module SerializationTests =
     testCase "Validate State Binary Serialization" <| fun _ ->
       either {
         let! state = mkTmpDir() |> mkState
-
         let! restate = state |> Binary.encode |> Binary.decode
         expect "Should be structurally equivalent" state id restate
       }
@@ -543,6 +557,9 @@ module SerializationTests =
         ; AddPin        <| mkPin ()
         ; UpdatePin     <| mkPin ()
         ; RemovePin     <| mkPin ()
+        ; AddClient     <| mkClient ()
+        ; UpdateClient  <| mkClient ()
+        ; RemoveClient  <| mkClient ()
         ; AddMember     <| Member.create (Id.Create())
         ; UpdateMember  <| Member.create (Id.Create())
         ; RemoveMember  <| Member.create (Id.Create())
@@ -593,6 +610,7 @@ module SerializationTests =
       test_validate_slice_yaml_serialization
       test_validate_pin_binary_serialization
       test_validate_pin_yaml_serialization
+      test_validate_client_binary_serialization
       test_validate_state_binary_serialization
       test_validate_state_machine_binary_serialization
     ]

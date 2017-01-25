@@ -161,6 +161,18 @@ module TestData =
     let machine = MachineConfig.create ()
     Project.create path (rndstr()) machine
 
+  let mkClient () : IrisClient =
+    { Id = Id.Create ()
+      Name = "Nice client"
+      Role = Role.Renderer
+      Status = ServiceStatus.Running
+      IpAddress = IPv4Address "127.0.0.1"
+      Port = 8921us }
+
+  let mkClients () =
+    [| for n in 0 .. rand.Next(1,20) do
+        yield mkClient() |]
+
   let mkState path : Either<IrisError,State> =
     either {
       let! project = mkProject path
@@ -170,7 +182,8 @@ module TestData =
           Cues     = mkCues    () |> asMap
           CueLists = mkCueLists() |> asMap
           Sessions = mkSessions() |> asMap
-          Users    = mkUsers   () |> asMap }
+          Users    = mkUsers   () |> asMap
+          Clients  = mkClients () |> asMap }
     }
 
   let mkChange _ =

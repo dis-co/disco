@@ -14,7 +14,7 @@ open System
 open System.IO
 open LibGit2Sharp
 open FlatBuffers
-open Iris.Serialization.Raft
+open Iris.Serialization
 open SharpYaml.Serialization
 
 // __   __              _

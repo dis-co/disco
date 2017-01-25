@@ -10,7 +10,7 @@ open Iris.Web.Core.FlatBufferTypes
 #else
 
 open FlatBuffers
-open Iris.Serialization.Raft
+open Iris.Serialization
 
 #endif
 
@@ -25,6 +25,7 @@ type IrisError =
   | IOError      of location:string * error:string
   | AssetError   of location:string * error:string
   | RaftError    of location:string * error:string
+  | ClientError  of location:string * error:string
   | Other        of location:string * error:string
 
   // ** FromFB
@@ -40,6 +41,7 @@ type IrisError =
     | x when x = ErrorTypeFB.RaftErrorFB    -> Right (RaftError    (fb.Location,fb.Message))
     | x when x = ErrorTypeFB.ParseErrorFB   -> Right (ParseError   (fb.Location,fb.Message))
     | x when x = ErrorTypeFB.SocketErrorFB  -> Right (SocketError  (fb.Location,fb.Message))
+    | x when x = ErrorTypeFB.ClientErrorFB  -> Right (ClientError  (fb.Location,fb.Message))
     | x when x = ErrorTypeFB.IOErrorFB      -> Right (IOError      (fb.Location,fb.Message))
     | x ->
       ("IrisError.FromFB", sprintf "Could not parse unknown ErrorTypeFB: %A" x)
@@ -54,6 +56,7 @@ type IrisError =
     | ErrorTypeFB.RaftErrorFB    -> Right (RaftError    (fb.Location,fb.Message))
     | ErrorTypeFB.ParseErrorFB   -> Right (ParseError   (fb.Location,fb.Message))
     | ErrorTypeFB.SocketErrorFB  -> Right (SocketError  (fb.Location,fb.Message))
+    | ErrorTypeFB.ClientErrorFB  -> Right (ClientError  (fb.Location,fb.Message))
     | ErrorTypeFB.IOErrorFB      -> Right (IOError      (fb.Location,fb.Message))
     | x ->
       ("IrisError.FromFB", sprintf "Could not parse unknown ErrotTypeFB: %A" x)
@@ -72,6 +75,7 @@ type IrisError =
       | AssetError   _ -> ErrorTypeFB.AssetErrorFB
       | ParseError   _ -> ErrorTypeFB.ParseErrorFB
       | SocketError  _ -> ErrorTypeFB.SocketErrorFB
+      | ClientError  _ -> ErrorTypeFB.ClientErrorFB
       | IOError      _ -> ErrorTypeFB.IOErrorFB
       | Other        _ -> ErrorTypeFB.OtherFB
       | RaftError    _ -> ErrorTypeFB.RaftErrorFB
@@ -83,6 +87,7 @@ type IrisError =
       | AssetError   (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
       | ParseError   (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
       | SocketError  (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
+      | ClientError  (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
       | IOError      (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
       | Other        (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
       | RaftError    (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
@@ -129,6 +134,7 @@ module Error =
     | ProjectError (loc,err) -> sprintf "Project error: %s in %s" err loc
     | ParseError   (loc,err) -> sprintf "Parse Error: %s in %s"   err loc
     | SocketError  (loc,err) -> sprintf "Socket Error: %s in %s"  err loc
+    | ClientError  (loc,err) -> sprintf "Client Error: %s in %s"  err loc
     | IOError      (loc,err) -> sprintf "IO Error: %s in %s"      err loc
     | AssetError   (loc,err) -> sprintf "Asset Error: %s in %s"   err loc
     | Other        (loc,err) -> sprintf "Other error: %s in %s"   err loc
@@ -153,9 +159,10 @@ module Error =
     | AssetError   _ -> 3
     | ParseError   _ -> 4
     | SocketError  _ -> 5
-    | IOError      _ -> 6
-    | Other        _ -> 7
-    | RaftError    _ -> 8
+    | ClientError  _ -> 6
+    | IOError      _ -> 7
+    | Other        _ -> 8
+    | RaftError    _ -> 9
 
   // ** isOk
 
@@ -223,6 +230,7 @@ module Error =
   let asProjectError loc err = ProjectError(loc,err)
   let asParseError   loc err = ParseError(loc,err)
   let asSocketError  loc err = SocketError(loc,err)
+  let asClientError  loc err = ClientError(loc,err)
   let asIOError      loc err = IOError(loc,err)
   let asAssetError   loc err = AssetError(loc,err)
   let asOther        loc err = Other(loc,err)

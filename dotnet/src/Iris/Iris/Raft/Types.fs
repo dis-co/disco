@@ -4,7 +4,7 @@ namespace Iris.Raft
 open System
 open System.Net
 open Iris.Core
-open Iris.Serialization.Raft
+open Iris.Serialization
 open FlatBuffers
 open SharpYaml.Serialization
 

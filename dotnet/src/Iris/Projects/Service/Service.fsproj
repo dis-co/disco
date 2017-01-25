@@ -110,6 +110,9 @@
     <Compile Include="..\..\Iris\Core\User.fs">
       <Link>User.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\Client.fs">
+      <Link>Client.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\Session.fs">
       <Link>Session.fs</Link>
     </Compile>
@@ -164,20 +167,32 @@
     <Compile Include="..\..\Iris\Core\Uri.fs">
       <Link>Uri.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\Request.fs">
-      <Link>Request.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Service\Zmq\Rep.fs">
+    <Compile Include="..\..\Iris\Zmq\Rep.fs">
       <Link>Rep.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\Zmq\Req.fs">
+    <Compile Include="..\..\Iris\Zmq\Req.fs">
       <Link>Req.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Zmq\ZmqUtils.fs">
+      <Link>ZmqUtils.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Client\Interfaces.fs">
+      <Link>Interfaces.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Client\ApiRequest.fs">
+      <Link>ApiRequest.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Client\ApiClient.fs">
+      <Link>ApiClient.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\Request.fs">
+      <Link>Request.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Service\RaftAppState.fs">
       <Link>RaftAppState.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\Zmq\ZmqUtils.fs">
-      <Link>ZmqUtils.fs</Link>
+    <Compile Include="..\..\Iris\Service\Zmq.fs">
+      <Link>Zmq.fs</Link>
     </Compile>
     <compile Include="..\..\Iris\Service\Persistence.fs">
       <Link>Persistence.fs</Link>
@@ -199,6 +214,9 @@
     </compile>
     <Compile Include="..\..\Iris\Service\WebSocket.fs">
       <Link>WebSocket.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Service\ApiServer.fs">
+      <Link>ApiServer.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Service\DiscoveryService.fs">
       <Link>DiscoveryService.fs</Link>
@@ -1093,15 +1111,6 @@
         <Reference Include="System.Runtime">
           <HintPath>..\..\..\..\packages\System.Runtime\lib\net462\System.Runtime.dll</HintPath>
           <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v1.6'">
-      <ItemGroup>
-        <Reference Include="System.Runtime">
-          <HintPath>..\..\..\..\packages\System.Runtime\ref\netstandard1.5\System.Runtime.dll</HintPath>
-          <Private>False</Private>
           <Paket>True</Paket>
         </Reference>
       </ItemGroup>

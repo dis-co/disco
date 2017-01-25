@@ -25,7 +25,7 @@ open FSharpx.Functional
 open FSharp.Configuration
 open SharpYaml.Serialization
 open FlatBuffers
-open Iris.Serialization.Raft
+open Iris.Serialization
 
 #endif
 
@@ -453,10 +453,9 @@ type ClusterConfig =
 // |___|_|  |_|___/\____\___/|_| |_|_| |_|\__, |
 //                                        |___/
 
-[<NoComparison>]
 type IrisConfig =
   { MachineId : Id
-    Version   : System.Version    
+    Version   : string
     Audio     : AudioConfig
     Vvvv      : VvvvConfig
     Raft      : RaftConfig
@@ -470,7 +469,11 @@ type IrisConfig =
   static member Default
     with get () =
       { MachineId = Id Constants.EMPTY
-        Version   = System.Version(0,0)
+        #if FABLE_COMPILER
+        Version   = "0.0.0"
+        #else
+        Version   = System.Version(0,0,0).ToString()
+        #endif
         Audio     = AudioConfig.Default
         Vvvv      = VvvvConfig.Default
         Raft      = RaftConfig.Default
@@ -488,7 +491,7 @@ type IrisConfig =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let version = builder.CreateString (string self.Version)
+    let version = builder.CreateString self.Version
     let machine = builder.CreateString (string self.MachineId)
     let audio = Binary.toOffset builder self.Audio
     let vvvv = Binary.toOffset builder self.Vvvv
@@ -524,7 +527,7 @@ type IrisConfig =
   static member FromFB(fb: ConfigFB) =
     either {
       let machineId = Id fb.MachineId
-      let version = System.Version.Parse fb.Version
+      let version = fb.Version
 
       let! audio =
         #if FABLE_COMPILER
@@ -787,6 +790,7 @@ Project:
         Port:    -1
         WsPort:  -1
         GitPort: -1
+        ApiPort: -1
         State:
 
     Groups:
@@ -1568,6 +1572,7 @@ Project:
                  Port       = uint16 mem.Port
                  WsPort     = uint16 mem.WsPort
                  GitPort    = uint16 mem.GitPort
+                 ApiPort    = uint16 mem.ApiPort
                  State      = state
                  Voting     = true
                  VotedForMe = false
@@ -1685,6 +1690,7 @@ Project:
       n.Port     <- int mem.Port
       n.WsPort   <- int mem.WsPort
       n.GitPort  <- int mem.GitPort
+      n.ApiPort  <- int mem.ApiPort
       n.State    <- string mem.State
       file.Project.Cluster.Members.Add(n)
 
@@ -1767,10 +1773,7 @@ module Config =
 
   let fromFile (file: ProjectYaml.Config) (machine: IrisMachine) : Either<IrisError, IrisConfig> =
     either {
-      let! version =
-        match System.Version.TryParse file.Project.Version with
-        | true, v -> Either.succeed v
-        | false, _ -> IrisError.ParseError("ProjectYaml.Config.fromFile", "Cannot parse project version") |> Either.fail
+      let  version   = file.Project.Version
       let! raftcfg   = ProjectYaml.parseRaft      file
       let! timing    = ProjectYaml.parseTiming    file
       let! vvvv      = ProjectYaml.parseVvvv      file
@@ -1817,15 +1820,19 @@ module Config =
 
   let create (name: string) (machine: IrisMachine) =
     { MachineId = machine.MachineId
-      Version   = Assembly.GetExecutingAssembly().GetName().Version
-    ; Vvvv      = VvvvConfig.Default
-    ; Audio     = AudioConfig.Default
-    ; Raft      = RaftConfig.Default
-    ; Timing    = TimingConfig.Default
-    ; ViewPorts = [| |]
-    ; Displays  = [| |]
-    ; Tasks     = [| |]
-    ; Cluster   = { Name   = name + " cluster"
+      #if FABLE_COMPILER
+      Version   = "0.0.0"
+      #else
+      Version   = Assembly.GetExecutingAssembly().GetName().Version.ToString()
+      #endif
+      Vvvv      = VvvvConfig.Default
+      Audio     = AudioConfig.Default
+      Raft      = RaftConfig.Default
+      Timing    = TimingConfig.Default
+      ViewPorts = [| |]
+      Displays  = [| |]
+      Tasks     = [| |]
+      Cluster   = { Name   = name + " cluster"
                   ; Members = Map.empty
                   ; Groups  = [| |] } }
 

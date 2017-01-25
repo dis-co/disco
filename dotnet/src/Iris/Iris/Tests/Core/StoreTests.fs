@@ -26,7 +26,8 @@ module StoreTests =
         Cues     = Map.empty
         CueLists = Map.empty
         Users    = Map.empty
-        Sessions = Map.empty }
+        Sessions = Map.empty
+        Clients  = Map.empty }
 
     let store : Store = new Store(state)
     wrap patch store
@@ -467,6 +468,74 @@ module StoreTests =
 
         expect "Should be 0" 0 id store.State.Sessions.Count
 
+  //   ____ _ _            _
+  //  / ___| (_) ___ _ __ | |_
+  // | |   | | |/ _ \ '_ \| __|
+  // | |___| | |  __/ | | | |_
+  //  \____|_|_|\___|_| |_|\__|
+
+  let test_should_add_a_client_to_the_store =
+    testCase "should add a client to the store" <| fun _ ->
+      withStore <| fun patch store ->
+
+        let client = mkClient ()
+
+        expect "Should be 0" 0 id store.State.Clients.Count
+
+        store.Dispatch <| AddClient client
+
+        expect "Should be 1" 1 id store.State.Clients.Count
+
+        store.Dispatch <| AddClient client
+
+        expect "Should be 1" 1 id store.State.Clients.Count
+
+  let test_should_update_a_client_already_in_the_store =
+    testCase "should update a client already in the store" <| fun _ ->
+      withStore <| fun patch store ->
+
+        let client = mkClient ()
+
+        expect "Should be 0" 0 id store.State.Clients.Count
+
+        store.Dispatch <| AddClient client
+
+        expect "Should be 1" 1 id store.State.Clients.Count
+
+        store.Dispatch <| UpdateClient { client with Status = ServiceStatus.Stopped }
+
+        expect "Should be 1" 1 id store.State.Clients.Count
+        expect "Should be correct status" ServiceStatus.Stopped id store.State.Clients.[client.Id].Status
+
+  let test_should_not_add_client_to_the_store_on_update_when_missing =
+    testCase "should not add client to the store on update when missing" <| fun _ ->
+      withStore <| fun patch store ->
+
+        let client = mkClient ()
+
+        expect "Should be 0" 0 id store.State.Clients.Count
+
+        store.Dispatch <| UpdateClient client
+
+        expect "Should be 0" 0 id store.State.Clients.Count
+
+  let test_should_remove_client_from_the_store =
+    testCase "should remove client from the store" <| fun _ ->
+      withStore <| fun patch store ->
+
+        let client = mkClient ()
+
+        expect "Should be 0" 0 id store.State.Clients.Count
+
+        store.Dispatch <| AddClient client
+
+        expect "Should be 1" 1 id store.State.Clients.Count
+
+        store.Dispatch <| RemoveClient client
+
+        expect "Should be 0" 0 id store.State.Clients.Count
+
+
   //  _   _           _         ______          _
   // | | | |_ __   __| | ___   / /  _ \ ___  __| | ___
   // | | | | '_ \ / _` |/ _ \ / /| |_) / _ \/ _` |/ _ \
@@ -669,6 +738,10 @@ module StoreTests =
       test_should_update_a_session_already_in_the_store
       test_should_not_add_session_to_the_store_on_update_when_missing
       test_should_remove_session_from_the_store
+      test_should_add_a_client_to_the_store
+      test_should_update_a_client_already_in_the_store
+      test_should_not_add_client_to_the_store_on_update_when_missing
+      test_should_remove_client_from_the_store
       test_store_should_trigger_listeners_on_undo
       test_store_should_dump_previous_states_for_inspection
       test_should_have_correct_number_of_historic_states_when_starting_fresh

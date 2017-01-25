@@ -170,14 +170,22 @@ let runNet cmd workingDir _ =
       | i -> cmd.Substring(0,i), cmd.Substring(i+1)
     runExec filepath args workingDir false
 
+/// npm warnings when installing may cause AppVeyor build fail, so they must be swallowed
+let runNpmNoErrors cmd workdir _ =
+  let npm, cmd =
+    match Environment.OSVersion.Platform with
+      | PlatformID.Unix ->  "npm", cmd
+      | _ -> "cmd", ("/C " + "npm" + " " + cmd)
+  runExecAndReturn npm cmd workdir
+  |> printfn "%s"
+
 let runNpm cmd workdir _ =
   let npm, cmd =
     match Environment.OSVersion.Platform with
       | PlatformID.Unix ->  "npm", cmd
       | _ -> "cmd", ("/C " + "npm" + " " + cmd)
   // npm warnings may cause AppVeyor build fail, so they must be swallowed
-  runExecAndReturn npm cmd workdir
-  |> printfn "%s"
+  runExec npm cmd workdir false
 
 let runNode cmd workdir _ =
   let node, cmd =
@@ -225,8 +233,8 @@ let buildRelease fsproj _ =
 
 Target "Bootstrap" (fun _ ->
   Restore(id)                              // restore Paket packages
-  runNpm "install" __SOURCE_DIRECTORY__ () // restore Npm packages
-  // runNpm "-g install fable-compiler mocha-phantomjs webpack" __SOURCE_DIRECTORY__ ()
+  runNpmNoErrors "install" __SOURCE_DIRECTORY__ () // restore Npm packages
+  // runNpmNoErrors "-g install fable-compiler mocha-phantomjs webpack" __SOURCE_DIRECTORY__ ()
 )
 
 //     _                           _     _       ___        __
@@ -425,27 +433,29 @@ Target "BuildReleaseZeroconf"
 let frontendDir = baseDir @@ "Projects" @@ "Frontend"
 
 Target "BuildDebugFrontend" (fun () ->
-  runNpm "install" __SOURCE_DIRECTORY__ ()
+  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
   runFable frontendDir "" ()
 
   SilentCopyDir (baseDir @@ "assets/frontend/js/fable-core") "node_modules/fable-core/umd" (konst true)
   SilentCopyDir (baseDir @@ "assets/frontend/js/fable-powerpack") "node_modules/fable-powerpack/umd" (konst true)
 
-  runNpm "install" (baseDir @@ "Iris/Web/React") ()
-  runNpm "run build" (baseDir @@ "Iris/Web/React") ()
+  runNpmNoErrors "install" (baseDir @@ "Iris/Web/React") ()
+  // Webpack output seems to hang AppVeyor
+  runNpmNoErrors "run build" (baseDir @@ "Iris/Web/React") ()
 
-  runNpm "install" (baseDir @@ "assets/frontend") ()
+  runNpmNoErrors "install" (baseDir @@ "assets/frontend") ()
 )
 
 Target "BuildReleaseFrontend" (fun () ->
-  runNpm "install" __SOURCE_DIRECTORY__ ()
+  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
   runFable frontendDir "" ()
 
   SilentCopyDir (baseDir @@ "assets/frontend/js/fable-core") "node_modules/fable-core/umd" (konst true)
   SilentCopyDir (baseDir @@ "assets/frontend/js/fable-powerpack") "node_modules/fable-powerpack/umd" (konst true)
 
-  runNpm "install" (baseDir @@ "Iris/Web/React") ()
-  runNpm "run build" (baseDir @@ "Iris/Web/React") ()
+  runNpmNoErrors "install" (baseDir @@ "Iris/Web/React") ()
+  // Webpack output seems to hang AppVeyor
+  runNpmNoErrors "run build" (baseDir @@ "Iris/Web/React") ()
 )
 
 //  _____         _
@@ -456,7 +466,7 @@ Target "BuildReleaseFrontend" (fun () ->
 let webtestsdir = baseDir @@ "Projects" @@ "Web.Tests"
 
 Target "BuildWebTests" (fun _ ->
-  runNpm "install" __SOURCE_DIRECTORY__ ()
+  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
   runFable webtestsdir "" ()
 )
 
@@ -465,8 +475,13 @@ Target "WatchWebTests" (runFable webtestsdir "-t watch")
 Target "BuildWebTestsFsProj" (buildDebug "Projects/Web.Tests/Web.Tests.fsproj")
 
 Target "RunWebTests" (fun _ ->
-  runNpm "install" (baseDir @@ "assets/frontend") ()
-  runNpm "run phantomjs -- node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Iris/assets/frontend/tests.html tap" __SOURCE_DIRECTORY__ ()
+  runNpmNoErrors "install" (baseDir @@ "assets/frontend") ()
+  // Please leave for Karsten's tests to keep working :)
+  if useNix then
+    let phantomJsPath = environVarOrDefault "PHANTOMJS_PATH" "phantomjs"
+    runExec phantomJsPath "node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Iris/assets/frontend/tests.html tap" __SOURCE_DIRECTORY__ false
+  else
+    runNpm "run phantomjs -- node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Iris/assets/frontend/tests.html tap" __SOURCE_DIRECTORY__ ()
 )
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
@@ -482,14 +497,14 @@ Target "BuildDebugService" (fun () ->
   buildDebug "Projects/Service/Service.fsproj" ()
   let assetsTargetDir = (baseDir @@ "bin" @@ "Debug" @@ "Iris" @@ "assets")
   FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
-  runNpm "install" assetsTargetDir ()
+  runNpmNoErrors "install" assetsTargetDir ()
 )
 
 Target "BuildReleaseService" (fun () ->
   let targetDir = (baseDir @@ "bin/Release/Iris/assets")
   buildRelease "Projects/Service/Service.fsproj" ()
   FileUtils.cp_r (baseDir @@ "assets/frontend") targetDir
-  runNpm "install" targetDir ()
+  runNpmNoErrors "install" targetDir ()
 )
 
 Target "BuildDebugNodes" (buildDebug "Projects/Nodes/Nodes.fsproj")

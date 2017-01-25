@@ -12,7 +12,7 @@ open Iris.Web.Core.FlatBufferTypes
 #else
 
 open SharpYaml.Serialization
-open Iris.Serialization.Raft
+open Iris.Serialization
 
 #endif
 

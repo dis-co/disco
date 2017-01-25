@@ -11,7 +11,7 @@ open Iris.Web.Core.FlatBufferTypes
 #else
 
 open FlatBuffers
-open Iris.Serialization.Raft
+open Iris.Serialization
 open SharpYaml.Serialization
 
 // * Color Yaml
