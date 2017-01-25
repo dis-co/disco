@@ -20,7 +20,7 @@ table IrisClientFB {
      Id: string;
      Name: string;
      Role: RoleFB;
-     Port: uint;
+     Port: ushort;
      IpAddress: string;
 }
 
@@ -369,10 +369,10 @@ table RaftMemberFB {
       Id         : string;
       HostName   : string;
       IpAddr     : string;
-      Port       : uint;
-      WsPort     : uint;
-      GitPort    : uint;
-      ApiPort    : uint;
+      Port       : ushort;
+      WsPort     : ushort;
+      GitPort    : ushort;
+      ApiPort    : ushort;
       Voting     : bool;
       VotedForMe : bool;
       State      : RaftMemberStateFB;
