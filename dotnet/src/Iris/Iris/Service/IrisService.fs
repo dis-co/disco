@@ -168,7 +168,7 @@ module Iris =
 
   // ** postCommand
 
-  let inline private postCommand (agent: IrisAgent) (cb: ReplyChan -> Msg) =
+  let inline private postCommand (agent: IrisAgent) (loc: string) (cb: ReplyChan -> Msg) =
     async {
       let! result = agent.PostAndTryAsyncReply(cb, Constants.COMMAND_TIMEOUT)
       match result with
@@ -176,7 +176,7 @@ module Iris =
       | None ->
         return
           "Command Timeout"
-          |> Error.asOther (tag "postCommand")
+          |> Error.asOther (loc |> sprintf "postCommand.%s" |> tag)
           |> Either.fail
     }
     |> Async.RunSynchronously
@@ -994,7 +994,7 @@ module Iris =
       { new IIrisServer with
         member self.Config
           with get () =
-            match postCommand agent (fun chan -> Msg.Config chan) with
+            match postCommand agent "Config" (fun chan -> Msg.Config chan) with
             | Right (Reply.Config config) -> Right config
             | Left error -> Left error
             | Right other ->
@@ -1003,7 +1003,7 @@ module Iris =
               |> Either.fail
 
         member self.SetConfig (config: IrisConfig) =
-          match postCommand agent (fun chan -> Msg.SetConfig(chan,config)) with
+          match postCommand agent "SetConfig" (fun chan -> Msg.SetConfig(chan,config)) with
           | Right Reply.Ok -> Right ()
           | Left error -> Left error
           | Right other ->
@@ -1013,7 +1013,7 @@ module Iris =
 
         member self.Status
           with get () =
-            match postCommand agent (fun chan -> Msg.State chan) with
+            match postCommand agent "Status" (fun chan -> Msg.State chan) with
             | Right (Reply.State state) -> Right state.Status
             | Left error -> Left error
             | Right other ->
@@ -1022,7 +1022,7 @@ module Iris =
               |> Either.fail
 
         member self.Load(path: FilePath) =
-          match postCommand agent (fun chan -> Msg.Load(chan,path)) with
+          match postCommand agent "Load" (fun chan -> Msg.Load(chan,path)) with
           | Right Reply.Ok -> Right ()
           | Left error -> Left error
           | Right other ->
@@ -1039,7 +1039,7 @@ module Iris =
           |> Either.succeed
 
         member self.LeaveCluster () =
-          match postCommand agent (fun chan -> Msg.Leave chan) with
+          match postCommand agent "LeaveCluster" (fun chan -> Msg.Leave chan) with
           | Right Reply.Ok -> Right ()
           | Left error -> Left error
           | Right other ->
@@ -1048,7 +1048,7 @@ module Iris =
             |> Either.fail
 
         member self.JoinCluster ip port =
-          match postCommand agent (fun chan -> Msg.Join(chan,ip, port)) with
+          match postCommand agent "JoinCluster" (fun chan -> Msg.Join(chan,ip, port)) with
           | Right Reply.Ok -> Right ()
           | Left error  -> Left error
           | Right other ->
@@ -1057,7 +1057,7 @@ module Iris =
             |> Either.fail
 
         member self.AddMember mem =
-          match postCommand agent (fun chan -> Msg.AddMember(chan,mem)) with
+          match postCommand agent "AddMember" (fun chan -> Msg.AddMember(chan,mem)) with
           | Right (Reply.Entry entry) -> Right entry
           | Left error -> Left error
           | Right other ->
@@ -1066,7 +1066,7 @@ module Iris =
             |> Either.fail
 
         member self.RmMember id =
-          match postCommand agent (fun chan -> Msg.RmMember(chan,id)) with
+          match postCommand agent "RmMember" (fun chan -> Msg.RmMember(chan,id)) with
           | Right (Reply.Entry entry) -> Right entry
           | Left error -> Left error
           | Right other ->
@@ -1076,7 +1076,7 @@ module Iris =
 
         member self.GitServer
           with get () =
-            match postCommand agent (fun chan -> Msg.State chan) with
+            match postCommand agent "GitServer" (fun chan -> Msg.State chan) with
             | Right (Reply.State state) -> Right state.GitServer
             | Left error -> Left error
             | Right other ->
@@ -1086,7 +1086,7 @@ module Iris =
 
         member self.RaftServer
           with get () =
-            match postCommand agent (fun chan -> Msg.State chan) with
+            match postCommand agent "RaftServer" (fun chan -> Msg.State chan) with
             | Right (Reply.State state) -> Right state.RaftServer
             | Left error -> Left error
             | Right other ->
@@ -1096,7 +1096,7 @@ module Iris =
 
         member self.SocketServer
           with get () =
-            match postCommand agent (fun chan -> Msg.State chan) with
+            match postCommand agent "SocketServer" (fun chan -> Msg.State chan) with
             | Right (Reply.State state) -> Right state.SocketServer
             | Left error -> Left error
             | Right other ->
@@ -1113,7 +1113,7 @@ module Iris =
 
         member self.Dispose() =
           triggerOnNext subscriptions (Status ServiceStatus.Stopping)
-          postCommand agent (fun chan -> Msg.Unload chan)
+          postCommand agent "Dispose" (fun chan -> Msg.Unload chan)
           |> ignore
           dispose agent
       }
