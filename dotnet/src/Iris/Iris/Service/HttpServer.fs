@@ -110,7 +110,7 @@ module Http =
         return
           match res with
           | Left err ->
-            err |> string |> Actions.respond ctx HTTP_500.status 
+            Error.toMessage err |> Actions.respond ctx HTTP_500.status 
           | Right msg ->
             msg |> Actions.respond ctx HTTP_200.status 
       }
@@ -121,7 +121,7 @@ module Http =
           Files.browseHome ])
       Filters.POST >=>
         (choose [
-          Filters.path Constants.WEP_API_COMMAND >=> postCommand
+          Filters.path Constants.WEP_API_COMMAND >=> postCommand          
         ])
       RequestErrors.NOT_FOUND "Page not found."
     ]

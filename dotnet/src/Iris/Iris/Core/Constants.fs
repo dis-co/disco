@@ -51,7 +51,7 @@ module Constants =
   let EMPTY = "<empty>"
 
   [<Literal>]
-  let REQUEST_TIMEOUT = 5000
+  let COMMAND_TIMEOUT = 5000
 
   [<Literal>]
   let WEB_WORKER_SCRIPT = "lib/worker.js"
