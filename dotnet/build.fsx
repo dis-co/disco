@@ -466,7 +466,12 @@ Target "BuildWebTestsFsProj" (buildDebug "Projects/Web.Tests/Web.Tests.fsproj")
 
 Target "RunWebTests" (fun _ ->
   runNpm "install" (baseDir @@ "assets/frontend") ()
-  runNpm "run phantomjs -- node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Iris/assets/frontend/tests.html tap" __SOURCE_DIRECTORY__ ()
+  // Please leave for Karsten's tests to keep working :)
+  if useNix then
+    let phantomJsPath = environVarOrDefault "PHANTOMJS_PATH" "phantomjs"
+    runExec phantomJsPath "node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Iris/assets/frontend/tests.html tap" __SOURCE_DIRECTORY__ false
+  else
+    runNpm "run phantomjs -- node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Iris/assets/frontend/tests.html tap" __SOURCE_DIRECTORY__ ()
 )
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
