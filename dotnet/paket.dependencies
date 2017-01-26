@@ -20,6 +20,14 @@ group Main
   nuget FSharp.Configuration
   nuget ZeroMQ
   nuget Mono.Posix
+  nuget VVVV.Core
+  nuget VVVV.Hosting
+  nuget VVVV.PluginInterfaces
+  nuget VVVV.SlimDX
+  nuget VVVV.System.ComponentModel.Composition.Codeplex
+  nuget VVVV.Utils
+  nuget VVVV.Utils3rdParty
+  nuget VVVV.UtilsIL
 
 group Build
   source https://nuget.org/api/v2
