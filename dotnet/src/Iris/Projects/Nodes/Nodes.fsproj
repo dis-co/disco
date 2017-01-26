@@ -39,6 +39,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Management" />
+    <Reference Include="System.ComponentModel.Composition" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../AssemblyInfo/NodesInfo.fs" />
@@ -183,6 +184,9 @@
     <Reference Include="Mono.Zeroconf.Providers.Bonjour">
       <HintPath>..\..\..\Zeroconf\bin\Mono.Zeroconf.Providers.Bonjour.dll</HintPath>
       <Private>True</Private>
+    </Reference>
+    <Reference Include="System.ComponentModel.Composition.CodePlex">
+      <HintPath>../../../../packages/VVVV.System.ComponentModel.Composition.Codeplex/lib/net40/System.ComponentModel.Composition.CodePlex.dll</HintPath>
     </Reference>
   </ItemGroup>
   <Choose>
