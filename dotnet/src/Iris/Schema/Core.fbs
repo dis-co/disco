@@ -335,19 +335,7 @@ table UserFB {
 //  ___) |  __/\__ \__ \ | (_) | | | |
 // |____/ \___||___/___/_|\___/|_| |_|
 
-enum SessionStatusTypeFB:ushort {
-     LoginFB = 0,
-     UnauthorizedFB = 1,
-     AuthorizedFB = 2,
-}
-
-table SessionStatusFB {
-    StatusType: SessionStatusTypeFB;
-    Payload: string;
-}
-
 table SessionFB {
-      Status:    SessionStatusFB;
       Id:        string;
       IpAddress: string;
       UserAgent: string;

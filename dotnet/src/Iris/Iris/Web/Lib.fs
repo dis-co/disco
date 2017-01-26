@@ -20,10 +20,21 @@ open Fable.Import
 
 let EMPTY = Constants.EMPTY
 
-let login(info: StateInfo, username: string, password: string) =
-  { info.session with Status = { StatusType=Login; Payload=username+"\n"+password}}
-  |> UpdateSession
-  |> info.context.Post
+let notify(msg: string) =
+  match box Browser.window?Notification with
+  // Check if the browser supports notifications
+  | null -> Browser.console.log msg
+
+  // Check whether notification permissions have already been granted
+  | notify when !!notify?permission = "granted" ->
+    !!createNew notify msg
+
+  // Ask the user for permission
+  | notify when !!notify?permission <> "denied" ->
+    !!notify?requestPermission(function
+        | "granted" -> !!createNew notify msg
+        | _ -> ())
+  | _ -> ()
 
 let subscribeToLogs(ctx: ClientContext, f:ClientLog->unit): IDisposable =
     ctx.OnMessage.Subscribe (function
@@ -55,22 +66,27 @@ let alert msg (_: Exception) =
 let (&>) fst v =
   fun x -> fst x; v
 
-let postCommand success fail (cmd: Command) =
-  Fetch.postRecord Constants.WEP_API_COMMAND cmd []
-  |> Promise.bind (fun res -> res.text())
-  |> Promise.either success fail
+let postCommand defValue success (cmd: Command) =
+  GlobalFetch.fetch(
+    RequestInfo.Url Constants.WEP_API_COMMAND,
+    !![ RequestProperties.Method HttpMethod.POST
+        RequestProperties.Headers [ContentType "application/json"]
+        RequestProperties.Body (toJson cmd |> U3.Case3) ])
+  |> Promise.bind (fun res ->
+    if not res.Ok
+    then res.text() |> Promise.map (fun msg -> notify msg; defValue)
+    else res.text() |> Promise.map success)
+
+let postCommandAndForget cmd =
+  postCommand () ignore cmd
 
 let listProjects() =
   ListProjects
-  |> postCommand
-    (String.split [|','|])
-    (alert "Cannot list projects" &> [||])
+  |> postCommand [||] (String.split [|','|])
 
-let loadProject(info: StateInfo, projectName: string) =
-  LoadProject projectName
-  |> postCommand
-    (fun _ -> info.context.ConnectWithWebSocket())
-    (alert "Cannot load project" >> Promise.lift)
+let loadProject(info: StateInfo, project, username, password) =
+  LoadProject(project, username, password)
+  |> postCommand () (fun _ -> info.context.ConnectWithWebSocket() |> ignore)
 
 let createProject(_info: StateInfo, projectName: string, ipAddress, gitPort, webSocketPort, raftPort) =
   { name = projectName
@@ -79,7 +95,7 @@ let createProject(_info: StateInfo, projectName: string, ipAddress, gitPort, web
   ; webSocketPort = webSocketPort
   ; raftPort = raftPort }
   |> CreateProject
-  |> postCommand ignore (alert "Cannot create project")
+  |> postCommandAndForget
 
 type [<Pojo>] TreeNode =
   { ``module``: string; children: TreeNode[] option }

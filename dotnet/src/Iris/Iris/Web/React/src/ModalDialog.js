@@ -13,21 +13,20 @@ export default class ModalDialog extends React.Component {
       }
   }
 
-  handleSubmit() {
-    //   this.setState({content:null})
-      this.self.hide();
-      if (this.state && typeof this.state.onSubmit == "function") {
-          this.state.onSubmit();
-      }
-  }
-
   renderInner() {
     if (this.state == null || this.state.content == null) {
         return null;
     }
     else {
-        const onSubmit = this.handleSubmit.bind(this);
-        return React.createElement(this.state.content, { info: this.props.info, onSubmit: onSubmit });
+        return React.createElement(this.state.content, {
+          info: this.props.info,
+          onSubmit: values => {
+            this.self.hide();
+            if (this.state && typeof this.state.onSubmit == "function") {
+                this.state.onSubmit(values);
+            }
+          }
+        });
     }
   }
 

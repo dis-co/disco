@@ -17,7 +17,7 @@ type CreateProjectOptions =
 type Command =
   | ListProjects
   | GetWebSocketPort
-  | LoadProject of name:string
   | CreateProject of CreateProjectOptions
+  | LoadProject of projectName:string * userName:string * password:string
 
 type CommandAgent = Command -> Async<Either<IrisError,string>>

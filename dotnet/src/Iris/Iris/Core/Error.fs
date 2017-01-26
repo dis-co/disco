@@ -28,6 +28,19 @@ type IrisError =
   | ClientError  of location:string * error:string
   | Other        of location:string * error:string
 
+  override error.ToString() =
+    match error with
+    | GitError     (loc,err) -> sprintf "Git error: %s in %s"     err loc
+    | ProjectError (loc,err) -> sprintf "Project error: %s in %s" err loc
+    | ParseError   (loc,err) -> sprintf "Parse Error: %s in %s"   err loc
+    | SocketError  (loc,err) -> sprintf "Socket Error: %s in %s"  err loc
+    | ClientError  (loc,err) -> sprintf "Client Error: %s in %s"  err loc
+    | IOError      (loc,err) -> sprintf "IO Error: %s in %s"      err loc
+    | AssetError   (loc,err) -> sprintf "Asset Error: %s in %s"   err loc
+    | Other        (loc,err) -> sprintf "Other error: %s in %s"   err loc
+    | RaftError    (loc,err) -> sprintf "Raft Error: %s in %s"    err loc
+    | OK                     -> "Ok. All good."
+
   // ** FromFB
 
   static member FromFB (fb: ErrorFB) =
@@ -128,18 +141,7 @@ module Error =
   /// - error: `IrisError` - error to convert into a human understable message
   ///
   /// Returns: string
-  let inline toMessage (error: IrisError) =
-    match error with
-    | GitError     (loc,err) -> sprintf "Git error: %s in %s"     err loc
-    | ProjectError (loc,err) -> sprintf "Project error: %s in %s" err loc
-    | ParseError   (loc,err) -> sprintf "Parse Error: %s in %s"   err loc
-    | SocketError  (loc,err) -> sprintf "Socket Error: %s in %s"  err loc
-    | ClientError  (loc,err) -> sprintf "Client Error: %s in %s"  err loc
-    | IOError      (loc,err) -> sprintf "IO Error: %s in %s"      err loc
-    | AssetError   (loc,err) -> sprintf "Asset Error: %s in %s"   err loc
-    | Other        (loc,err) -> sprintf "Other error: %s in %s"   err loc
-    | RaftError    (loc,err) -> sprintf "Raft Error: %s in %s"    err loc
-    | OK                     -> "Ok. All good."
+  let inline toMessage (error: IrisError) = error.ToString()
 
   // ** toExitCode
 

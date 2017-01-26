@@ -197,14 +197,14 @@ type IIrisServer =
   abstract RaftServer    : Either<IrisError,IRaftServer>
   abstract SocketServer  : Either<IrisError,IWebSocketServer>
   abstract SetConfig     : IrisConfig -> Either<IrisError,unit>
-  abstract Load          : FilePath   -> Either<IrisError,unit>
   abstract Periodic      : unit       -> Either<IrisError,unit>
   abstract ForceElection : unit       -> Either<IrisError,unit>
   abstract LeaveCluster  : unit       -> Either<IrisError,unit>
-  abstract RmMember        : Id         -> Either<IrisError,EntryResponse>
-  abstract AddMember       : RaftMember -> Either<IrisError,EntryResponse>
+  abstract RmMember      : Id         -> Either<IrisError,EntryResponse>
+  abstract AddMember     : RaftMember -> Either<IrisError,EntryResponse>
   abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
   abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
+  abstract LoadProject   : name:string * userName:string * password:string -> Either<IrisError,unit>
 
 // * IApiServer
 

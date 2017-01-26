@@ -305,18 +305,18 @@ module CommandLine =
 
       registerExitHandlers irisService httpServer
 
-      do!
-        match projectDir with
-        | Some projectDir ->
-          let projFile = projectDir </> PROJECT_FILENAME + ASSET_EXTENSION
-          if File.Exists projFile |> not then
-            sprintf "Project Not Found: %s" projectDir
-            |> Error.asOther "startService"
-            |> Either.fail
-          else
-            irisService.Load projFile
-        | None ->
-          Either.succeed ()
+//      do!
+//        match projectDir with
+//        | Some projectDir ->
+//          let projFile = projectDir </> PROJECT_FILENAME + ASSET_EXTENSION
+//          if File.Exists projFile |> not then
+//            sprintf "Project Not Found: %s" projectDir
+//            |> Error.asOther "startService"
+//            |> Either.fail
+//          else
+//            irisService.LoadProject(projFile, null, null)
+//        | None ->
+//          Either.succeed ()
 
       let result =
         let kont = ref true

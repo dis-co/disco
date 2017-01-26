@@ -13,7 +13,7 @@ type private Channel = AsyncReplyChannel<Either<IrisError,string>>
 
 let private tag s = "Iris.Service.Commands." + s
 
-let getWsport (iris: IIrisServer) =
+let getWsport (iris: IIrisServer): Either<IrisError,string> =
     match iris.Config with
     | Left _ -> "0"
     | Right cfg ->
@@ -22,22 +22,11 @@ let getWsport (iris: IIrisServer) =
         | None -> "0"
     |> Either.succeed
 
-let listProjects (cfg: IrisMachine) =
+let listProjects (cfg: IrisMachine): Either<IrisError,string> =
   Directory.GetDirectories(cfg.WorkSpace)
   |> Array.map Path.GetFileName
   |> String.concat ","
   |> Either.succeed
-
-let loadProject (iris: IIrisServer) name =
-  let cfg = MachineConfig.get()
-  let projFile = cfg.WorkSpace </> name </> PROJECT_FILENAME + ASSET_EXTENSION
-  if File.Exists projFile |> not then
-    sprintf "Project Not Found: %s" name
-    |> Error.asOther "startService"
-    |> Either.fail
-  else
-    iris.Load projFile
-    |> Either.map (fun () -> sprintf "Loaded project %s" name)
 
 /// ## buildProject
 ///
@@ -117,12 +106,15 @@ let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
 let startAgent (cfg: IrisMachine) (iris: IIrisServer) = MailboxProcessor<Command*Channel>.Start(fun agent ->
     let rec loop() = async {
       let! input, replyChannel = agent.Receive()
-      match input with
-      | ListProjects -> listProjects cfg
-      | GetWebSocketPort -> getWsport iris
-      | LoadProject name -> loadProject iris name
-      | CreateProject opts -> createProject cfg opts
-      |> replyChannel.Reply
+      let res =
+        match input with
+        | ListProjects -> listProjects cfg 
+        | GetWebSocketPort -> getWsport iris
+        | CreateProject opts -> createProject cfg opts
+        | LoadProject(projectName, userName, password) ->
+          iris.LoadProject(projectName, userName, password)
+          |> Either.map (fun _ -> "Loaded project " + projectName)
+      replyChannel.Reply res
       do! loop()
     }
     loop()
