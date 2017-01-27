@@ -63,6 +63,10 @@ type IrisVvvvClient() =
   [<Output("Connected", IsSingle = true, DefaultValue = 0.0)>]
   val mutable OutConnected: ISpread<bool>
 
+  [<DefaultValue>]
+  [<Output("Status", IsSingle = true)>]
+  val mutable OutStatus: ISpread<string>
+
   //  _                    _
   // | |    ___   ___ __ _| |
   // | |   / _ \ / __/ _` | |
@@ -84,7 +88,8 @@ type IrisVvvvClient() =
               InPort = self.InPort
               InDebug = self.InDebug
               OutState = self.OutState
-              OutConnected = self.OutConnected }
+              OutConnected = self.OutConnected
+              OutStatus = self.OutStatus }
         state <- state'
         initialized <- true
 
