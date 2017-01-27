@@ -163,7 +163,12 @@
     <Compile Include="..\..\Iris\Service\ApiServer.fs">
       <Link>ApiServer.fs</Link>
     </Compile>
-    <Compile Include="../../Iris/Nodes/GraphApi.fs" />
+    <Compile Include="../../Iris/Nodes/GraphApi.fs">
+      <Link>GraphApi.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes.fs">
+      <Link>Nodes.fs</Link>
+    </Compile>
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
