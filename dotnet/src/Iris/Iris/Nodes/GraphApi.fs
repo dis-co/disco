@@ -6,6 +6,7 @@ open System
 open System.Collections.Concurrent
 open VVVV.PluginInterfaces.V1
 open VVVV.PluginInterfaces.V2
+open VVVV.PluginInterfaces.V2.Graph
 open VVVV.Core.Logging
 open Iris.Core
 open Iris.Client
@@ -23,9 +24,11 @@ module GraphApi =
 
   [<RequireQualifiedAccess>]
   type Msg =
-    | UpdatePin of Pin
-    | CallCue   of Cue
-    | Status    of ServiceStatus
+    | PinAdded   of Pin                  // a new pin got added in the local VVVV instance
+    | PinRemoved of Pin                  // a pin got removed in the local VVVV instance
+    | PinUpdated of Pin                  // a remote pin got updated
+    | CallCue    of Cue
+    | Status     of ServiceStatus
     | Update
 
   // ** PluginState
@@ -118,68 +121,99 @@ module GraphApi =
     | ClientEvent.Snapshot | ClientEvent.Update _ ->
       state.Events.Enqueue Msg.Update
 
+  // ** startClient
+
+  let private startClient (state: PluginState) =
+    let logobs = Logger.subscribe (string >> debug state)
+    let me =
+      let ip =
+        match Network.getIpAddress () with
+        | Some ip -> IpAddress.ofIPAddress ip
+        | None -> IPv4Address "127.0.0.1"
+
+      { Id = Id.Create ()
+        Name = "Vvvv GraphApi Client"
+        Role = Role.Renderer
+        Status = ServiceStatus.Starting
+        IpAddress = IPv4Address "192.168.2.125"
+        Port = 10001us }
+
+    let server =
+      let ip =
+        match state.InServer.[0] with
+        | null ->  IPv4Address "127.0.0.1"
+        | ip -> IPv4Address ip
+
+      { Id = Id.Create ()
+        Port = 10000us
+        Name = "iris.exe"
+        IpAddress = IPv4Address "192.168.2.108" }
+
+    let result =
+      either {
+        let! client = ApiClient.create server me
+        do! client.Start()
+        return client
+      }
+
+    match result with
+    | Right client ->
+      let apiobs = client.Subscribe(enqueueEvent state)
+      debug state "successfully started ApiClient"
+      { state with
+          Initialized = true
+          Status = ServiceStatus.Running
+          ApiClient = client
+          Disposables = [ apiobs; logobs ] }
+    | Left error ->
+      debug state (sprintf "Error starting ApiClient: %A" error)
+      { state with
+          Initialized = true
+          Status = ServiceStatus.Failed error }
+    |> setStatus
+
+  // ** parseINode2
+
+  let private parseINode2 (node: INode2) : Either<IrisError,Pin> =
+    Pin.Toggle(Id.Create(),"Hello",Id.Create(), [| |], [| |])
+    |> Either.succeed
+
+  // ** onNodeExposed
+
+  let private onNodeExposed (state: PluginState) (node: INode2) =
+    for pin in node.Pins do
+      sprintf "Pin Name: %s Value: %A" pin.Name pin.[0]
+      |> debug state
+
+  // ** onNodeUnExposed
+
+  let private onNodeUnExposed (state: PluginState) (node: INode2) =
+    debug state "a node was un-exposed"
+
+  // ** setupVvvv
+
+  let private setupVvvv (state: PluginState) =
+    let onNodeAdded = new NodeEventHandler(onNodeExposed state)
+    let onNodeRemoved = new NodeEventHandler(onNodeUnExposed state)
+
+    state.V2Host.ExposedNodeService.add_NodeAdded(onNodeAdded)
+    state.V2Host.ExposedNodeService.add_NodeRemoved(onNodeRemoved)
+
+    let disposable =
+      { new IDisposable with
+          member self.Dispose () =
+            state.V2Host.ExposedNodeService.remove_NodeAdded(onNodeAdded)
+            state.V2Host.ExposedNodeService.remove_NodeRemoved(onNodeRemoved) }
+
+    { state with Disposables = disposable :: state.Disposables }
+
   // ** initialize
 
   let private initialize (state: PluginState) =
     if not state.Initialized then
-      let me =
-        let ip =
-          match Network.getIpAddress () with
-          | Some ip -> IpAddress.ofIPAddress ip
-          | None -> IPv4Address "127.0.0.1"
-
-        { Id = Id.Create ()
-          Name = "Vvvv GraphApi Client"
-          Role = Role.Renderer
-          Status = ServiceStatus.Starting
-          IpAddress = IPv4Address "192.168.2.125"
-          Port = 10001us }
-
-      let server =
-        let ip =
-          match state.InServer.[0] with
-          | null ->  IPv4Address "127.0.0.1"
-          | ip -> IPv4Address ip
-
-        { Id = Id.Create ()
-          Port = 10000us
-          Name = "iris.exe"
-          IpAddress = IPv4Address "192.168.2.108" }
-
-      try
-        let logobs = Logger.subscribe (string >> debug state)
-
-        let result =
-          either {
-            let! client = ApiClient.create server me
-            do! client.Start()
-            return client
-          }
-
-        match result with
-        | Right client ->
-          let apiobs = client.Subscribe(enqueueEvent state)
-          debug state "successfully started ApiClient"
-          { state with
-              Initialized = true
-              Status = ServiceStatus.Running
-              ApiClient = client
-              Disposables = [ apiobs; logobs ] } // order matters!
-        | Left error ->
-          debug state (sprintf "Error starting ApiClient: %A" error)
-          { state with
-              Initialized = true
-              Status = ServiceStatus.Failed error }
-        |> setStatus
-      with
-        | exn ->
-          debug state (sprintf "Error starting ApiClient: %A" exn.Message)
-          debug state exn.StackTrace
-          let error = exn.Message |> Error.asClientError (tag "initialize")
-          { state with
-              Initialized = true
-              Status = ServiceStatus.Failed error }
-          |> setStatus
+      state
+      |> startClient
+      |> setupVvvv
     else
       state
 
@@ -189,10 +223,22 @@ module GraphApi =
     debug state "CallCue"
     state
 
+  // ** addPin
+
+  let private addPin (state: PluginState) (pin: Pin) =
+    debug state "addPin"
+    state
+
+  // ** removePin
+
+  let private removePin (state: PluginState) (pin: Pin) =
+    debug state "removePin"
+    state
+
   // ** updatePin
 
   let private updatePin (state: PluginState) (pin: Pin) =
-    debug state "UpdatePin"
+    debug state "updatePin"
     state
 
   // ** setState
@@ -212,9 +258,11 @@ module GraphApi =
         | true, msg ->
           newstate <-
             match msg with
-            | Msg.CallCue cue   -> callCue   state cue
-            | Msg.UpdatePin pin -> updatePin state pin
-            | Msg.Update        -> setState  state
+            | Msg.CallCue cue    -> callCue   state cue
+            | Msg.PinAdded pin   -> addPin    state pin
+            | Msg.PinRemoved pin -> removePin state pin
+            | Msg.PinUpdated pin -> updatePin state pin
+            | Msg.Update         -> setState  state
             | Msg.Status status ->
               { newstate with Status = status}
               |> setStatus
