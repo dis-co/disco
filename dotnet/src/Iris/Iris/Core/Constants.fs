@@ -5,6 +5,9 @@ open System
 [<AutoOpen>]
 module Constants =
 
+  [<Literal>]
+  let WEP_API_COMMAND = "/api/command"
+
   //  ____        __ _
   // |  _ \ __ _ / _| |_
   // | |_) / _` | |_| __|
@@ -51,9 +54,6 @@ module Constants =
   let COMMAND_TIMEOUT = 5000
 
   [<Literal>]
-  let REQUEST_TIMEOUT = 5000
-
-  [<Literal>]
   let WEB_WORKER_SCRIPT = "lib/worker.js"
 
   [<Literal>]
@@ -61,12 +61,6 @@ module Constants =
 
   [<Literal>]
   let DEFAULT_WEB_PORT = 7000us
-
-  [<Literal>]
-  let COMMAND_ENDPOINT = "/api/command"
-
-  [<Literal>]
-  let WS_PORT_ENDPOINT = "/api/web-socket-port"
 
   [<Literal>]
   let ADMIN_DEFAULT_PASSWORD =

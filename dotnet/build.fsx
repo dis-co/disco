@@ -416,7 +416,8 @@ Target "BuildDebugZeroconf"
   (fun _ ->
     build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj"
     build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj"
-    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj")
+    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj"
+    build (setParams "Debug") "src/Zeroconf/MZClient/MZClient.csproj")
 
 Target "BuildReleaseZeroconf"
   (fun _ ->
@@ -440,8 +441,7 @@ Target "BuildDebugFrontend" (fun () ->
   SilentCopyDir (baseDir @@ "assets/frontend/js/fable-powerpack") "node_modules/fable-powerpack/umd" (konst true)
 
   runNpmNoErrors "install" (baseDir @@ "Iris/Web/React") ()
-  // Webpack output seems to hang AppVeyor
-  runNpmNoErrors "run build" (baseDir @@ "Iris/Web/React") ()
+  runNpm "run build" (baseDir @@ "Iris/Web/React") ()
 
   runNpmNoErrors "install" (baseDir @@ "assets/frontend") ()
 )
@@ -454,8 +454,7 @@ Target "BuildReleaseFrontend" (fun () ->
   SilentCopyDir (baseDir @@ "assets/frontend/js/fable-powerpack") "node_modules/fable-powerpack/umd" (konst true)
 
   runNpmNoErrors "install" (baseDir @@ "Iris/Web/React") ()
-  // Webpack output seems to hang AppVeyor
-  runNpmNoErrors "run build" (baseDir @@ "Iris/Web/React") ()
+  runNpm "run build" (baseDir @@ "Iris/Web/React") ()
 )
 
 //  _____         _

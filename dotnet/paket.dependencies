@@ -28,6 +28,8 @@ group Main
   nuget VVVV.Utils
   nuget VVVV.Utils3rdParty
   nuget VVVV.UtilsIL
+  nuget Newtonsoft.Json
+  nuget Fable.JsonConverter
 
 group Build
   source https://nuget.org/api/v2

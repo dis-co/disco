@@ -11,21 +11,30 @@ open System.Collections.Generic
 open Iris.Raft
 open Iris.Core
 open Iris.Web.Core
+open Iris.Core.Commands
 open Fable.Core
 open Fable.PowerPack
 open Fable.PowerPack.Fetch.Fetch_types
 open Fable.Core.JsInterop
 open Fable.Import
 
-[<Emit("debugger")>]
-let debugger() = ()
-
 let EMPTY = Constants.EMPTY
 
-let login(info: StateInfo, username: string, password: string) =
-  { info.session with Status = { StatusType=Login; Payload=username+"\n"+password}}
-  |> UpdateSession
-  |> info.context.Post
+let notify(msg: string) =
+  match box Browser.window?Notification with
+  // Check if the browser supports notifications
+  | null -> Browser.console.log msg
+
+  // Check whether notification permissions have already been granted
+  | notify when !!notify?permission = "granted" ->
+    !!createNew notify msg
+
+  // Ask the user for permission
+  | notify when !!notify?permission <> "denied" ->
+    !!notify?requestPermission(function
+        | "granted" -> !!createNew notify msg
+        | _ -> ())
+  | _ -> ()
 
 let subscribeToLogs(ctx: ClientContext, f:ClientLog->unit): IDisposable =
     ctx.OnMessage.Subscribe (function
@@ -49,38 +58,44 @@ let addMember(info: StateInfo, host: string, ip: string, port: string) =
   with
   | exn -> printfn "Couldn't create mem: %s" exn.Message
 
-let alert msg () =
+let alert msg (_: Exception) =
   Browser.window.alert("ERROR: " + msg)
 
-let (&) fst v =
-  fun () -> fst(); v
+/// Works like function composition but the second operand
+/// is a value, and the result of the first function is ignored
+let (&>) fst v =
+  fun x -> fst x; v
 
-let postCommand cmd success fail =
-  Fetch.fetch Constants.COMMAND_ENDPOINT
-    [ RequestProperties.Method HttpMethod.POST
-    ; RequestProperties.Body (BodyInit.Case3 cmd) ]
+let postCommand defValue success (cmd: Command) =
+  GlobalFetch.fetch(
+    RequestInfo.Url Constants.WEP_API_COMMAND,
+    !![ RequestProperties.Method HttpMethod.POST
+        RequestProperties.Headers [ContentType "application/json"]
+        RequestProperties.Body (toJson cmd |> U3.Case3) ])
   |> Promise.bind (fun res ->
-    if res.Status = 500
-    then Promise.lift "ERROR"
-    else res.text())
-  |> Promise.map (function
-    | "ERROR" -> fail()
-    | res -> success res)
+    if not res.Ok
+    then res.text() |> Promise.map (fun msg -> notify msg; defValue)
+    else res.text() |> Promise.map success)
+
+let postCommandAndForget cmd =
+  postCommand () ignore cmd
 
 let listProjects() =
-  postCommand "ls" (String.split [|','|]) (alert "Cannot list projects" & [||])
+  ListProjects
+  |> postCommand [||] (String.split [|','|])
 
-let loadProject(info: StateInfo, projectName: string) =
-  postCommand
-    ("load " + projectName)
-    (fun _ -> info.context.ConnectWithWebSocket())
-    (alert "Cannot load project" >> Promise.lift)
+let loadProject(info: StateInfo, project, username, password) =
+  LoadProject(project, username, password)
+  |> postCommand () (fun _ -> info.context.ConnectWithWebSocket() |> ignore)
 
-let createProject(_info: StateInfo, projectName: string, bind, git, ws, raft) =
-  let dir = if projectName.Contains(" ") then "\"" + projectName + "\"" else projectName
-  let cmd = sprintf "create project:%s bind:%s git:%s ws:%s raft:%s"
-                    dir bind git ws raft
-  postCommand cmd ignore (alert "Cannot create project")
+let createProject(_info: StateInfo, projectName: string, ipAddress, gitPort, webSocketPort, raftPort) =
+  { name = projectName
+  ; ipAddress = ipAddress
+  ; gitPort = gitPort
+  ; webSocketPort = webSocketPort
+  ; raftPort = raftPort }
+  |> CreateProject
+  |> postCommandAndForget
 
 type [<Pojo>] TreeNode =
   { ``module``: string; children: TreeNode[] option }

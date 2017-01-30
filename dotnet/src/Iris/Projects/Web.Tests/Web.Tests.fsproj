@@ -133,6 +133,9 @@
     <Compile Include="..\..\Iris\Core\ClientMessage.fs">
       <Link>ClientMessage.fs</Link>
     </Compile>
+    <Compile Include="../../Iris/Core/Commands.fs">
+      <Link>Commands.fs</Link>
+    </Compile>    
     <Compile Include="..\..\Iris\Web\Core\Browser.fs">
       <Link>Browser.fs</Link>
     </Compile>

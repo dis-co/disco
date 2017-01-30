@@ -15,18 +15,28 @@ open System.IO
 open System.Net
 open System.Net.Sockets
 open System.Diagnostics
+open System.Text
 open System.Text.RegularExpressions
 open Iris.Core
+open Iris.Core.Commands
 open Iris.Service.Interfaces
 
 module Http =
   let private tag (str: string) = "HttpServer." + str
 
   module private Actions =
-    open System.Text
+    let deserializeJson<'T> json =
+      Newtonsoft.Json.JsonConvert.DeserializeObject<'T>(json, Fable.JsonConverter())
 
-    let private getString rawForm =
+    let getString rawForm =
       System.Text.Encoding.UTF8.GetString(rawForm)
+
+    let mapJsonWith<'T> (f: 'T->string) =
+      request(fun r ->
+        f (r.rawForm |> getString |> deserializeJson<'T>)
+        |> Encoding.UTF8.GetBytes
+        |> Successful.ok
+        >=> Writers.setMimeType "text/plain")
 
     let respond ctx status (txt: string) =
       let res =
@@ -35,24 +45,6 @@ module Http =
             headers = ["Content-Type", "text/plain"]
             content = Encoding.UTF8.GetBytes txt |> Bytes }
       Some { ctx with response = res }
-
-    let getWsport (iris: IIrisServer) (ctx: HttpContext) =
-      either {
-        let! cfg = iris.Config
-        let! mem = Config.selfMember cfg
-        return mem.WsPort
-      }
-      |> Either.unwrap (fun err ->
-//        Logger.err config.MachineId (tag "getWsport") (string err)
-        0us)
-      |> string |> respond ctx HTTP_200.status |> async.Return
-
-    let postIrisCommand (postCmd: CommandAgent) (ctx: HttpContext) = async {
-      let! res = ctx.request.rawForm |> getString |> postCmd
-      match res with
-      | Left err -> return respond ctx HTTP_500.status (string err)
-      | Right msg -> return respond ctx HTTP_200.status msg
-    }
 
   let private noCache =
     setHeader "Cache-Control" "no-cache, no-store, must-revalidate"
@@ -71,6 +63,20 @@ module Http =
     let dir = Path.GetDirectoryName(asm.Location)
     dir </> "assets"
   #endif
+
+  let pathWithArgs (pattern: string) (f: Map<string,string>->WebPart) =
+    let prefix = pattern.Substring(0, pattern.IndexOf(":"))
+    let patternParts = pattern.Split('/')
+    Filters.pathStarts prefix >=> (fun ctx ->
+      let args =
+        ctx.request.path.Split('/')
+        |> Seq.zip patternParts
+        |> Seq.choose (fun (k,v) ->
+          if k.[0] = ':'
+          then Some(k.Substring(0), v)
+          else None)
+        |> Map
+      f args ctx)
 
 //  let private widgetPath = basePath </> "widgets"
 //
@@ -94,16 +100,28 @@ module Http =
 
   // our application only needs to serve files off the disk
   // but we do need to specify what to do in the base case, i.e. "/"
-  let private app (iris: IIrisServer) postCommand indexHtml =
+  let private app (postCommand: CommandAgent) indexHtml =
+    let postCommand (ctx: HttpContext) = async {
+        let! res =
+          ctx.request.rawForm
+          |> Actions.getString
+          |> Actions.deserializeJson
+          |> postCommand
+        return
+          match res with
+          | Left err ->
+            Error.toMessage err |> Actions.respond ctx HTTP_500.status 
+          | Right msg ->
+            msg |> Actions.respond ctx HTTP_200.status 
+      }
     choose [
       Filters.GET >=>
         (choose [
-          Filters.path WS_PORT_ENDPOINT >=> Actions.getWsport iris
           Filters.path "/" >=> (Files.file indexHtml)
           Files.browseHome ])
       Filters.POST >=>
         (choose [
-          Filters.path COMMAND_ENDPOINT >=> Actions.postIrisCommand postCommand
+          Filters.path Constants.WEP_API_COMMAND >=> postCommand          
         ])
       RequestErrors.NOT_FOUND "Page not found."
     ]
@@ -167,7 +185,7 @@ module Http =
 
     // *** create
 
-    let create (config: IrisMachine) (iris: IIrisServer) (postCommand: CommandAgent) =
+    let create (config: IrisMachine) (postCommand: CommandAgent) =
       either {
         let basePath = getDefaultBasePath()
         let cts = new CancellationTokenSource()
@@ -179,7 +197,7 @@ module Http =
                 try
                   let _, server =
                     Path.Combine(basePath, "index.html")
-                    |> app iris postCommand
+                    |> app postCommand
                     |> startWebServerAsync webConfig
                   Async.Start server
                   |> Either.succeed

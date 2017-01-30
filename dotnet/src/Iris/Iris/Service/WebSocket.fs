@@ -51,7 +51,6 @@ module WebSockets =
         else
           "<no user agent specified>"
       { session with
-          // TODO: Set the sessions as unauthorized?
           IpAddress = IpAddress.Parse socket.ConnectionInfo.ClientIpAddress
           UserAgent = ua }
       |> Either.succeed
