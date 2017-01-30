@@ -1,6 +1,7 @@
 import * as React from "react";
 import { showModal } from './App';
 import CREATE_PROJECT from "./modals/CreateProject";
+import LOGIN from "./modals/Login";
 import { loadProject, listProjects } from "iris";
 
 export default class SideDrawer extends React.Component {
@@ -62,12 +63,15 @@ export default class SideDrawer extends React.Component {
         <li>
           <strong>Project</strong>
           <ul>
-            <li><a onClick={() => showModal(CREATE_PROJECT, () => this.listProjects())}>Create</a></li>
+            <li><a onClick={() =>
+              showModal(CREATE_PROJECT, () => this.listProjects())}>Create</a></li>
             <li>
               <p>Load</p>
               <ul>
-                {this.state.projects.map(name =>
-                  <li key={name}><a onClick={() => loadProject(this.props.info, name)}>{name}</a></li>
+                {this.state.projects.map(project =>
+                  <li key={project}><a onClick={() =>
+                    showModal(LOGIN, ({ username, password }) =>
+                      loadProject(this.props.info, project, username, password))}>{project}</a></li>
                 )}
               </ul>
             </li>

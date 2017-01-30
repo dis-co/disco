@@ -24,17 +24,18 @@ export default class App extends React.Component {
       if (SKIP_LOGIN) {
         console.log(info);
         this.setState({info: info});
-        return;
       }
-      const status = info.session.Status.StatusType.ToString();
-      switch (status) {
-        case STATUS.AUTHORIZED:
-          this.setState({info: info});
-          break;
-        case STATUS.UNAUTHORIZED:
-          this.setState({info: initInfo});
-          showModal(LOGIN);
-          break;
+      else {
+        const status = info.session.Status.StatusType.ToString();
+        switch (status) {
+          case STATUS.AUTHORIZED:
+            this.setState({info: info});
+            break;
+          case STATUS.UNAUTHORIZED:
+            this.setState({info: initInfo});
+            showModal(LOGIN);
+            break;
+        }
       }
     })
   }

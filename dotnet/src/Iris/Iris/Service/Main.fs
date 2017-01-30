@@ -46,11 +46,9 @@ module Main =
         |> Option.map (fun projectName ->
           machine.WorkSpace </> projectName)
 
-      let interactive = parsed.Contains <@ Interactive @>
-
       match parsed.GetResult <@ Cmd @>, dir with
       | Create,            _ -> createProject parsed
-      | Start,           dir -> startService interactive dir
+      | Start,           dir -> startService dir
       | Reset,      Some dir -> resetProject dir
       | Dump,       Some dir -> dumpDataDir dir
       | Add_User,   Some dir -> addUser dir

@@ -15,8 +15,10 @@ export default function (props) {
         onClick={ev => {
           ev.preventDefault();
           var form = ev.target.parentNode;
-          login(props.info, form.username.value, form.password.value);
-          props.onSubmit();
+          props.onSubmit({
+            username: form.username.value,
+            password: form.password.value
+          });
         }}>
         Submit
       </Button>

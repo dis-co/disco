@@ -146,7 +146,7 @@ module Iris =
     | Raft        of RaftEvent
     | Api         of ApiEvent
     | Log         of LogEvent
-    | Load        of ReplyChan * FilePath
+    | Load        of ReplyChan * projectName:string * userName:string * password:string
     | SetConfig   of ReplyChan * IrisConfig
     | AddMember   of ReplyChan * RaftMember
     | RmMember    of ReplyChan * Id
@@ -202,37 +202,6 @@ module Iris =
         match self with
         | Idle -> ()
         | Loaded data -> dispose data
-
-  let private processMessage (state: IrisState) (id: Id) (cmd: StateMachine) =
-    let isValidPassword (user: User) (password: string) =
-      let password = Crypto.hashPassword password user.Salt
-      password = user.Password
-    match state, cmd with
-    | Loaded state, AddSession session ->
-      match state.SocketServer.BuildSession id session with
-      | Left err -> Error.exitWith err
-      | Right session ->
-        printfn "Session added %O" session.Id
-        AddSession session
-
-    | Loaded state, UpdateSession session when session.Status.StatusType = Login ->
-      let username, password =
-        // TODO: Validate format
-        let info = session.Status.Payload.Split('\n')
-        info.[0], info.[1]
-      printfn "Login request: username %s - password %s" username password
-
-      state.Store.State.Users
-      |> Map.tryPick (fun _ u -> if u.UserName = username then Some u else None)
-      |> function
-        | Some user when isValidPassword user password ->
-          printfn "Login authorized"
-          { session with Status = { StatusType = Authorized; Payload = string user.Id } }
-        | _ ->
-          printfn "Login rejected"
-          { session with Status = { StatusType = Unauthorized; Payload = "" } }
-      |> UpdateSession
-    | _ -> cmd
 
   /// ## withLoaded
   ///
@@ -418,12 +387,18 @@ module Iris =
   /// be applied to all client-side global state atoms.
   let private onMessage (state: IrisState) (id: Id) (cmd: StateMachine) =
     withState state <| fun data ->
-      match processMessage state id cmd |> appendCmd data with
-      | Right _ -> ()
-      | Left error ->
-        error
-        |> string
-        |> Logger.err data.MemberId (tag "onMessage")
+      match cmd with
+      | AddSession session ->
+        data.SocketServer.BuildSession id session
+        |> Either.map AddSession
+      | cmd -> Either.succeed cmd
+      |> Either.bind (appendCmd data)
+      |> function
+        | Right _ -> ()
+        | Left error ->
+          error
+          |> string
+          |> Logger.err data.MemberId (tag "onMessage")
 
   // ** handleSocketEvent
 
@@ -699,34 +674,55 @@ module Iris =
 
   // ** loadProject
 
-  let private loadProject (state: IrisState)
+  let private loadProject (oldState: IrisState)
                           (machine: IrisMachine)
-                          (path: FilePath)
+                          (projectName: string, userName: string, password: string)
                           (subscriptions: Subscriptions) =
-    either {
-      dispose state
+    let isValidPassword (user: User) (password: string) =
+      let password = Crypto.hashPassword password user.Salt
+      password = user.Password
 
-      let! (state: State) = Asset.loadWithMachine path machine
+    let path = machine.WorkSpace </> projectName </> PROJECT_FILENAME + ASSET_EXTENSION
+    if File.Exists path |> not then
+      sprintf "Project Not Found: %s" projectName
+      |> Error.asProjectError (tag "loadProject")
+      |> Either.fail
+    else
+      either {
+        let! (state: State) = Asset.loadWithMachine path machine
 
-      // FIXME: load the actual state from disk
-      let! mem = Config.selfMember state.Project.Config
+        let user =
+          state.Users
+          |> Map.tryPick (fun _ u -> if u.UserName = userName then Some u else None)
 
-      let! raftserver = RaftServer.create ()
-      let! wsserver   = SocketServer.create mem
-      let! apiserver  = ApiServer.create mem
-      let! gitserver  = GitServer.create mem path
+        match user with
+        | Some user when isValidPassword user password ->
+          dispose oldState
 
-      return
-        Loaded { MemberId     = mem.Id
-                 Status       = ServiceStatus.Starting
-                 Store        = new Store(state)
-                 ApiServer    = apiserver
-                 GitServer    = gitserver
-                 RaftServer   = raftserver
-                 SocketServer = wsserver
-                 Subscriptions= subscriptions
-                 Disposables  = Map.empty }
-    }
+          // FIXME: load the actual state from disk
+          let! mem = Config.selfMember state.Project.Config
+
+          let! raftserver = RaftServer.create ()
+          let! wsserver   = SocketServer.create mem
+          let! apiserver  = ApiServer.create mem
+          let! gitserver  = GitServer.create mem path
+
+          return
+            Loaded { MemberId      = mem.Id
+                   ; Status        = ServiceStatus.Starting
+                   ; Store         = new Store(state)
+                   ; ApiServer     = apiserver
+                   ; GitServer     = gitserver
+                   ; RaftServer    = raftserver
+                   ; SocketServer  = wsserver
+                   ; Subscriptions = subscriptions
+                   ; Disposables   = Map.empty }
+        | _ ->
+          return!
+            "Login rejected"
+            |> Error.asProjectError (tag "loadProject")
+            |> Either.fail
+      }
 
   // ** start
 
@@ -767,11 +763,11 @@ module Iris =
 
   let private handleLoad (state: IrisState)
                          (chan: ReplyChan)
-                         (path: FilePath)
+                         (projectName: string, userName: string, password: string)
                          (config: IrisMachine)
                          (subscriptions: Subscriptions)
                          (inbox: IrisAgent) =
-    match loadProject state config path subscriptions with
+    match loadProject state config (projectName, userName, password) subscriptions with
     | Right nextstate ->
       match start nextstate inbox with
       | Right finalstate ->
@@ -955,7 +951,7 @@ module Iris =
         let! msg = inbox.Receive()
         let newstate =
           match msg with
-          | Msg.Load (chan,path)     -> handleLoad          state chan path config subs inbox
+          | Msg.Load (chan,pname,uname,pass) -> handleLoad state chan (pname,uname,pass) config subs inbox
           | Msg.Unload chan          -> handleUnload        state chan
           | Msg.Config chan          -> handleConfig        state chan
           | Msg.SetConfig (chan,cnf) -> handleSetConfig     state chan  cnf
@@ -1021,8 +1017,8 @@ module Iris =
               |> Error.asOther (tag "Status")
               |> Either.fail
 
-        member self.Load(path: FilePath) =
-          match postCommand agent "Load" (fun chan -> Msg.Load(chan,path)) with
+        member self.LoadProject(name:string, username:string, password:string) =
+          match postCommand agent "Load" (fun chan -> Msg.Load(chan, name, username, password)) with
           | Right Reply.Ok -> Right ()
           | Left error -> Left error
           | Right other ->

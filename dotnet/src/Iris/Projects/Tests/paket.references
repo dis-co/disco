@@ -13,3 +13,5 @@ XUnit
 NUnit
 Gallio
 ZeroMQ
+Newtonsoft.Json
+Fable.JsonConverter

@@ -52,7 +52,8 @@ and ClientContext private (worker: SharedWorker<string>) =
   }
 
   member __.ConnectWithWebSocket() =
-    Fetch.fetch Constants.WS_PORT_ENDPOINT []
+    (Commands.GetWebSocketPort, [])
+    ||> Fetch.postRecord Constants.WEP_API_COMMAND
     |> Promise.bind (fun res -> res.text())
     |> Promise.map (fun port ->
       match Int32.TryParse(port) with

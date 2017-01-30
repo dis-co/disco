@@ -1,14 +1,9 @@
 var path = require("path");
 var webpack = require("webpack");
 
-var entry, outDir, devtool, devServer, loaders, plugins;
+var outDir, devtool, devServer = {}, plugins = [];
 if (process.env.NODE_ENV !== "production") {
     console.log("Starting Webpack Dev Server...");
-    entry = [
-        "webpack-dev-server/client?http://localhost:8080",
-        'webpack/hot/only-dev-server',
-        "./src/Main.js"
-    ];
     outDir = "./js";
     devtool = "eval";
     devServer = {
@@ -20,21 +15,11 @@ if (process.env.NODE_ENV !== "production") {
             }
         }
     };
-    loaders = [{
-        test: /\.js$/,
-        loader: "react-hot-loader/webpack",
-        exclude: /node_modules/
-    }];
-    plugins = [
-        new webpack.HotModuleReplacementPlugin()
-    ];
 }
 else {
     console.log("Bundling for production...");
-    entry = "./src/Main.js";
     outDir ="../../../assets/frontend/js";
     devtool = "source-map";
-    loaders = [];
     plugins = [
         new webpack.DefinePlugin({
             'process.env': {
@@ -48,7 +33,7 @@ else {
 }
 
 module.exports = {
-    entry: entry,
+    entry: "./src/Main.js",
     output: {
         path: path.join(__dirname, outDir),
         publicPath: "/js/",
@@ -71,7 +56,7 @@ module.exports = {
             { test: /\.css$/, loader: "style-loader!css-loader" },
             { test: /\.tsx?$/, loader: "awesome-typescript-loader" },
             { test: /\.js$/, loader: 'babel-loader', exclude: /node_modules/ }
-        ].concat(loaders)
+        ]
     },
     plugins: plugins
 }
