@@ -80,7 +80,8 @@ module GraphApi =
   // ** debug
 
   let debug (state: PluginState) (msg: string) =
-    log state LogType.Debug msg
+    if state.InDebug.[0] then
+      log state LogType.Debug msg
 
   // ** error
 

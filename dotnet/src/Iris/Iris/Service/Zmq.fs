@@ -41,9 +41,8 @@ module ZmqUtils =
   ///
   /// Returns: fszmq.Socket
   let mkReqSocket (mem: RaftMember) =
-    let timeout = 2000 // FIXME: this request timeout value should be settable
     let addr = memUri mem
-    let socket = new Req(mem.Id, addr, timeout)
+    let socket = new Req(mem.Id, addr, Constants.REQ_TIMEOUT)
     socket.Start()
     socket
 

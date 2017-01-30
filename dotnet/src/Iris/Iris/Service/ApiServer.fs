@@ -193,8 +193,6 @@ module ApiServer =
         if not socket.Running then
           socket.Restart()
 
-        printfn "ping request"
-
         let response : Either<IrisError,ApiResponse> =
           ClientApiRequest.Ping
           |> Binary.encode
@@ -203,12 +201,16 @@ module ApiServer =
 
         match response with
         | Right Pong ->
-          printfn "ping request success"
+          string socket.Id
+          |> sprintf "ping request to %s successful"
+          |> Logger.debug socket.Id (tag "pingTimer")
           (socket.Id, ServiceStatus.Running)
           |> Msg.SetStatus
           |> agent.Post
         | Left error ->
-          printfn "ping error: %A" error
+          string error
+          |> sprintf "error during ping request to %s: %s" (string socket.Id)
+          |> Logger.debug socket.Id (tag "pingTimer")
           (socket.Id, ServiceStatus.Failed error)
           |> Msg.SetStatus
           |> agent.Post
@@ -315,7 +317,7 @@ module ApiServer =
       | None -> ()
 
       // construct a new client value
-      let socket = new Req(meta.Id, formatUri meta.IpAddress (int meta.Port), 50)
+      let socket = new Req(meta.Id, formatUri meta.IpAddress (int meta.Port), Constants.REQ_TIMEOUT)
       socket.Start()
 
       let client =
@@ -337,15 +339,21 @@ module ApiServer =
   let private handleRemoveClient (chan: ReplyChan)
                                  (state: ClientState)
                                  (subs: Subscriptions)
-                                 (client: IrisClient) =
+                                 (peer: IrisClient) =
     match state with
     | Loaded data ->
-      chan.Reply(Right Reply.Ok)
-      notify subs (ApiEvent.UnRegister client)
-      Loaded { data with Clients = Map.remove client.Id data.Clients }
+      match Map.tryFind peer.Id data.Clients with
+      | Some client ->
+        dispose client
+        chan.Reply(Right Reply.Ok)
+        notify subs (ApiEvent.UnRegister peer)
+        Loaded { data with Clients = Map.remove peer.Id data.Clients }
+      | _ ->
+        chan.Reply(Right Reply.Ok)
+        state
     | Idle ->
       chan.Reply(Right Reply.Ok)
-      Idle
+      state
 
   // ** updateClient
 

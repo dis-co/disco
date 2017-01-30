@@ -49,7 +49,7 @@ module ApiClient =
 
   [<NoComparison;NoEquality>]
   type private ClientStateData =
-    { Status: ServiceStatus
+    { Client: IrisClient
       Elapsed: uint32
       Server: Rep
       Socket: Req
@@ -172,9 +172,9 @@ module ApiClient =
 
   // ** requestRegister
 
-  let private requestRegister (data: ClientStateData) (client: IrisClient) =
+  let private requestRegister (data: ClientStateData) =
     let response =
-      client
+      data.Client
       |> ServerApiRequest.Register
       |> Binary.encode
       |> data.Socket.Request
@@ -184,11 +184,35 @@ module ApiClient =
     | Right OK -> Either.succeed ()
     | Right (NOK error) ->
       string error
-      |> Error.asClientError (tag "start")
+      |> Error.asClientError (tag "requestRegister")
       |> Either.fail
     | Right other ->
       sprintf "Unexpected Response from server: %A" other
-      |> Error.asClientError (tag "start")
+      |> Error.asClientError (tag "requestRegister")
+      |> Either.fail
+    | Left error ->
+      error
+      |> Either.fail
+
+  // ** requestUnRegister
+
+  let private requestUnRegister (data: ClientStateData) =
+    let response =
+      data.Client
+      |> ServerApiRequest.UnRegister
+      |> Binary.encode
+      |> data.Socket.Request
+      |> Either.bind Binary.decode
+
+    match response with
+    | Right OK -> Either.succeed ()
+    | Right (NOK error) ->
+      string error
+      |> Error.asClientError (tag "requestUnRegister")
+      |> Either.fail
+    | Right other ->
+      sprintf "Unexpected Response from server: %A" other
+      |> Error.asClientError (tag "requestUnRegister")
       |> Either.fail
     | Left error ->
       error
@@ -203,29 +227,47 @@ module ApiClient =
                     (agent: ApiAgent) =
     let clientAddr = formatUri client.IpAddress (int client.Port)
     let srvAddr = formatUri server.IpAddress (int server.Port)
+
+    sprintf "Starting server on %s" clientAddr
+    |> Logger.debug client.Id (tag "start")
+
+    sprintf "Connecting to server on %s" srvAddr
+    |> Logger.debug client.Id (tag "start")
+
     let server = new Rep(clientAddr, requestHandler agent)
-    let socket = new Req(client.Id, srvAddr, 50)
-    let store = new Store(State.Empty)
-    match server.Start(), socket.Start() with
-    | Right (), () ->
+    let socket = new Req(client.Id, srvAddr, Constants.REQ_TIMEOUT)
+    socket.Start()
+
+    match server.Start() with
+    | Right () ->
       let data =
-        { Status = ServiceStatus.Starting
+        { Client = client
           Timer = pingTimer agent
           Elapsed = 0u
-          Store = store
+          Store = new Store(State.Empty)
           Socket = socket
           Server = server }
 
-      match requestRegister data client with
+      match requestRegister data with
       | Right () ->
+        sprintf "Registration with %s successful" srvAddr
+        |> Logger.debug client.Id (tag "start")
+
         chan.Reply(Right Reply.Ok)
         notify subs ClientEvent.Registered
         Loaded data
       | Left error ->
+        sprintf "Registration with %s encountered error: %s" srvAddr (string error)
+        |> Logger.debug client.Id (tag "start")
+
         dispose data
         chan.Reply(Left error)
         Idle
-    | Left error, _ ->
+
+    | Left error ->
+      sprintf "Error starting sockets: %s" (string error)
+      |> Logger.debug client.Id (tag "start")
+
       chan.Reply(Left error)
       dispose server
       dispose socket
@@ -249,6 +291,14 @@ module ApiClient =
   // ** handleDispose
 
   let private handleDispose (chan: ReplyChan) (state: ClientState) =
+    match state with
+    | Loaded data ->
+      match requestUnRegister data with
+      | Left error ->
+        string error
+        |> Logger.err data.Client.Id (tag "handleDispose")
+      | _ -> ()
+    | _ -> ()
     dispose state
     chan.Reply(Right Reply.Ok)
     Idle
@@ -272,7 +322,7 @@ module ApiClient =
   let private handleGetStatus (chan: ReplyChan) (state: ClientState) =
     match state with
     | Loaded data ->
-      chan.Reply(Right (Reply.Status data.Status))
+      chan.Reply(Right (Reply.Status data.Client.Status))
       state
     | Idle ->
       chan.Reply(Right (Reply.Status ServiceStatus.Stopped))
@@ -284,7 +334,7 @@ module ApiClient =
     match state with
     | Loaded data ->
       notify subs (ClientEvent.Status status)
-      Loaded { data with Status = status }
+      Loaded { data with Client = { data.Client with Status = status } }
     | Idle -> Idle
 
   // ** handleCheckStatus
@@ -292,7 +342,7 @@ module ApiClient =
   let private handleCheckStatus (state: ClientState) (subs: Subscriptions) =
     match state with
     | Loaded data ->
-      if not (Service.hasFailed data.Status) then
+      if not (Service.hasFailed data.Client.Status) then
         match data.Elapsed with
         | x when x > TIMEOUT ->
           let status =
@@ -301,18 +351,18 @@ module ApiClient =
             |> ServiceStatus.Failed
           notify subs (ClientEvent.Status status)
           Loaded { data with
-                    Status = status
+                    Client = { data.Client with Status = status}
                     Elapsed = data.Elapsed + FREQ }
         | _ ->
           let status =
-            match data.Status with
-            | ServiceStatus.Running -> data.Status
+            match data.Client.Status with
+            | ServiceStatus.Running -> data.Client.Status
             | _ ->
               let newstatus = ServiceStatus.Running
               notify subs (ClientEvent.Status newstatus)
               newstatus
           Loaded { data with
-                    Status = status
+                    Client = { data.Client with Status = status }
                     Elapsed = data.Elapsed + FREQ }
       else
         state
@@ -589,7 +639,7 @@ module ApiClient =
                   |> Either.fail
 
               member self.Dispose () =
-                postCommand agent (fun chan -> Msg.Dispose chan)
+                postCommand agent Msg.Dispose
                 |> ignore
                 dispose cts
             }

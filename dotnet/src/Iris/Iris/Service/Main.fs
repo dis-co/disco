@@ -24,6 +24,8 @@ module Main =
   let main args =
     let result =
       either {
+        let logobs = Logger.subscribe (string >> printfn "%s")
+
         let mem =
           { Member.create (Id.Create()) with
               IpAddr = IPv4Address "192.168.2.108"
@@ -37,8 +39,9 @@ module Main =
         return
           { new IDisposable with
               member self.Dispose() =
+                dispose obs
                 dispose server
-                dispose obs }
+                dispose logobs }
       }
 
     match result with
