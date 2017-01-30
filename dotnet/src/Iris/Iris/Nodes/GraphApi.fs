@@ -131,7 +131,7 @@ module GraphApi =
           Name = "Vvvv GraphApi Client"
           Role = Role.Renderer
           Status = ServiceStatus.Starting
-          IpAddress = IPv4Address "192.168.2.105"
+          IpAddress = IPv4Address "192.168.2.125"
           Port = 10001us }
 
       let server =

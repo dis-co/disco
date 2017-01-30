@@ -193,6 +193,8 @@ module ApiServer =
         if not socket.Running then
           socket.Restart()
 
+        printfn "ping request"
+
         let response : Either<IrisError,ApiResponse> =
           ClientApiRequest.Ping
           |> Binary.encode
@@ -201,10 +203,12 @@ module ApiServer =
 
         match response with
         | Right Pong ->
+          printfn "ping request success"
           (socket.Id, ServiceStatus.Running)
           |> Msg.SetStatus
           |> agent.Post
         | Left error ->
+          printfn "ping error: %A" error
           (socket.Id, ServiceStatus.Failed error)
           |> Msg.SetStatus
           |> agent.Post
