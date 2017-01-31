@@ -4,6 +4,8 @@ namespace Iris.Zmq
 
 open ZeroMQ
 
+// * Common
+
 [<AutoOpen>]
 module Common =
 
@@ -62,7 +64,7 @@ module Common =
     with
       | _ -> () // throws ENOENT on failure. We ignore that.
 
-  /// ## tryCloseb
+  /// ## tryClose
   ///
   /// Attempt to close a ZSocket safely.
   ///
@@ -73,5 +75,20 @@ module Common =
   let tryClose (sock: ZSocket) =
     try
       sock.Close()
+    with
+      | _ -> () // ....at least we tried!
+
+
+  /// ## tryDispose
+  ///
+  /// Attempt to dispose a ZSocket safely.
+  ///
+  /// ### Signature:
+  /// - sock: ZSocket to dispose
+  ///
+  /// Returns: unit
+  let tryDispose (sock: ZSocket) =
+    try
+      sock.Dispose()
     with
       | _ -> () // ....at least we tried!

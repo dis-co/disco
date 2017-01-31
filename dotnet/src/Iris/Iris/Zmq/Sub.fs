@@ -22,15 +22,13 @@ module Sub =
   let private createListener (subscriptions: Subscriptions) =
     { new Listener with
         member self.Subscribe(obs) =
-          lock subscriptions <| fun _ ->
-            subscriptions.TryAdd(obs.GetHashCode(), obs)
-            |> ignore
+          subscriptions.TryAdd(obs.GetHashCode(), obs)
+          |> ignore
 
           { new IDisposable with
               member self.Dispose() =
-                lock subscriptions <| fun _ ->
-                  subscriptions.TryRemove(obs.GetHashCode())
-                  |> ignore } }
+                subscriptions.TryRemove(obs.GetHashCode())
+                |> ignore } }
 
   // ** notify
 
@@ -63,8 +61,8 @@ module Sub =
     let mutable stopper: AutoResetEvent = null
     let mutable ctx : ZContext = null
 
-    let subscriptions = new Subscriptions()
-    let listener = createListener subscriptions
+    let mutable subscriptions = Unchecked.defaultof<Subscriptions>
+    let mutable listener = Unchecked.defaultof<Listener>
 
     /// ## worker
     ///
@@ -79,9 +77,9 @@ module Sub =
 
       /// ## Initialization
       ///
-      /// In the beginning, there was darkness, and no server responded. So God decided, its time for
-      /// some action and create the `ZContext` and a `SUB`-`ZSocket` such that the universe shall
-      /// respond to requests.
+      /// In the beginning, there was darkness, and no server responded. So God decided, its time
+      /// for some action and create the `ZContext` and a `SUB`-`ZSocket` such that the universe
+      /// shall respond to requests.
       ///
       /// God decided to set the `RCVTIMEO` timeout value to 50ms, in order to be able to shut the
       /// thing down in case she gets bored with it all, as calls to `ReceiveFrame` would block
@@ -144,6 +142,7 @@ module Sub =
       /// are done.
 
       setOption sock ZSocketOption.LINGER 0
+
       tryClose  sock
       tryDispose sock ignore
       tryDispose ctx ignore
@@ -153,6 +152,8 @@ module Sub =
       stopper.Set() |> ignore
 
     do
+      subscriptions <- new Subscriptions()
+      listener <- createListener subscriptions
       starter <- new AutoResetEvent(false)
       stopper <- new AutoResetEvent(false)
 
