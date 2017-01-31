@@ -9,6 +9,21 @@ open ZeroMQ
 [<AutoOpen>]
 module Common =
 
+  // ** ZmqTransport
+
+  type ZmqTransport =
+    | TCP
+    | UDP
+    | PGM
+    | EPGM
+
+    override transport.ToString() =
+      match transport with
+      | TCP  -> "tcp"
+      | UDP  -> "udp"
+      | PGM  -> "pgm"
+      | EPGM -> "epgm"
+
   /// ## setOption
   ///
   /// Set a ZSocketOption on a socket in a more functional style.

@@ -21,6 +21,7 @@ union RaftPayloadFB {
       LogEventFB,
       StringFB,
       StateFB,
+      SlicesFB,
       ProjectFB
 }
 
@@ -30,6 +31,7 @@ enum RaftActionTypeFB:ushort {
       RemoveFB,
       LogEventFB,
       DataSnapshotFB,
+      CallFB,
       UndoFB,
       RedoFB,
       ResetFB,

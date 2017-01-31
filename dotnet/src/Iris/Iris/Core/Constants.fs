@@ -18,6 +18,12 @@ module Constants =
   [<Literal>]
   let REQ_TIMEOUT = 1000                // ms
 
+  [<Literal>]
+  let MCAST_ADDRESS = "224.0.0.1"
+
+  [<Literal>]
+  let MCAST_PORT = 5555
+
   //  ____        __ _
   // |  _ \ __ _ / _| |_
   // | |_) / _` | |_| __|

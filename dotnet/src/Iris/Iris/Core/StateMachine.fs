@@ -1052,14 +1052,16 @@ and StateMachine =
   | RemovePatch   of Patch
 
   // PIN
-  | AddPin      of Pin
-  | UpdatePin   of Pin
-  | RemovePin   of Pin
+  | AddPin       of Pin
+  | UpdatePin    of Pin
+  | RemovePin    of Pin
+  | UpdateSlices of Slices
 
   // CUE
   | AddCue        of Cue
   | UpdateCue     of Cue
   | RemoveCue     of Cue
+  | CallCue       of Cue
 
   // CUE
   | AddCueList    of CueList
@@ -1107,14 +1109,16 @@ and StateMachine =
     | RemovePatch patch     -> sprintf "RemovePatch %s" (string patch)
 
     // PIN
-    | AddPin    pin         -> sprintf "AddPin %s"    (string pin)
-    | UpdatePin pin         -> sprintf "UpdatePin %s" (string pin)
-    | RemovePin pin         -> sprintf "RemovePin %s" (string pin)
+    | AddPin    pin         -> sprintf "AddPin %s"       (string pin)
+    | UpdatePin pin         -> sprintf "UpdatePin %s"    (string pin)
+    | RemovePin pin         -> sprintf "RemovePin %s"    (string pin)
+    | UpdateSlices slices   -> sprintf "UpdateSlices %s" (string slices)
 
     // CUE
     | AddCue    cue         -> sprintf "AddCue %s"    (string cue)
     | UpdateCue cue         -> sprintf "UpdateCue %s" (string cue)
     | RemoveCue cue         -> sprintf "RemoveCue %s" (string cue)
+    | CallCue   cue         -> sprintf "CallCue %s"   (string cue)
 
     // CUELIST
     | AddCueList    cuelist -> sprintf "AddCueList %s"    (string cuelist)
@@ -1366,6 +1370,7 @@ and StateMachine =
         | RaftActionTypeFB.AddFB    -> return (AddCue cue)
         | RaftActionTypeFB.UpdateFB -> return (UpdateCue cue)
         | RaftActionTypeFB.RemoveFB -> return (RemoveCue cue)
+        | RaftActionTypeFB.CallFB   -> return (CallCue cue)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1460,11 +1465,11 @@ and StateMachine =
             |> Either.fail
       }
 
-    //  ___ ___  ____
-    // |_ _/ _ \| __ )  _____  __
-    //  | | | | |  _ \ / _ \ \/ /
-    //  | | |_| | |_) | (_) >  <
-    // |___\___/|____/ \___/_/\_\
+    //  ____  _
+    // |  _ \(_)_ __
+    // | |_) | | '_ \
+    // |  __/| | | | |
+    // |_|   |_|_| |_|
 
     | RaftPayloadFB.PinFB ->
       either {
@@ -1482,6 +1487,33 @@ and StateMachine =
         | RaftActionTypeFB.AddFB    -> return (AddPin    pin)
         | RaftActionTypeFB.UpdateFB -> return (UpdatePin pin)
         | RaftActionTypeFB.RemoveFB -> return (RemovePin pin)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
+    //  ____  _ _
+    // / ___|| (_) ___ ___  ___
+    // \___ \| | |/ __/ _ \/ __|
+    //  ___) | | | (_|  __/\__ \
+    // |____/|_|_|\___\___||___/
+
+    | RaftPayloadFB.SlicesFB ->
+      either {
+        let! slices =
+          let slicish = fb.Payload<SlicesFB>()
+          if slicish.HasValue then
+            slicish.Value
+            |> Slices.FromFB
+          else
+            "Could not parse empty slices payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+
+        match fb.Action with
+        | RaftActionTypeFB.UpdateFB -> return (UpdateSlices slices)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1788,6 +1820,18 @@ and StateMachine =
 #endif
       RaftApiActionFB.EndRaftApiActionFB(builder)
 
+    | UpdateSlices slices ->
+      let slices = slices.ToOffset(builder)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.UpdateFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.SlicesFB)
+#if FABLE_COMPILER
+      RaftApiActionFB.AddPayload(builder, slices)
+#else
+      RaftApiActionFB.AddPayload(builder, slices.Value)
+#endif
+      RaftApiActionFB.EndRaftApiActionFB(builder)
+
     | AddCue cue ->
       let cue = cue.ToOffset(builder)
       RaftApiActionFB.StartRaftApiActionFB(builder)
@@ -1816,6 +1860,18 @@ and StateMachine =
       let cue = cue.ToOffset(builder)
       RaftApiActionFB.StartRaftApiActionFB(builder)
       RaftApiActionFB.AddAction(builder, RaftActionTypeFB.RemoveFB)
+      RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.CueFB)
+#if FABLE_COMPILER
+      RaftApiActionFB.AddPayload(builder, cue)
+#else
+      RaftApiActionFB.AddPayload(builder, cue.Value)
+#endif
+      RaftApiActionFB.EndRaftApiActionFB(builder)
+
+    | CallCue cue ->
+      let cue = cue.ToOffset(builder)
+      RaftApiActionFB.StartRaftApiActionFB(builder)
+      RaftApiActionFB.AddAction(builder, RaftActionTypeFB.CallFB)
       RaftApiActionFB.AddPayloadType(builder, RaftPayloadFB.CueFB)
 #if FABLE_COMPILER
       RaftApiActionFB.AddPayload(builder, cue)

@@ -55,10 +55,14 @@ module ApiServer =
   type private ClientStateData =
     { Store: Store
       Server: Rep
+      Publisher: Pub
+      Subscriber: Sub
       Clients: Map<Id,Client> }
 
     interface IDisposable with
       member data.Dispose() =
+        dispose data.Publisher
+        dispose data.Subscriber
         dispose data.Server
         Map.iter (fun _ v -> dispose v) data.Clients
 
@@ -91,7 +95,7 @@ module ApiServer =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Start           of chan:ReplyChan * mem:RaftMember
+    | Start           of chan:ReplyChan * mem:RaftMember * projectId:Id
     | Dispose         of chan:ReplyChan
     | Update          of sm:StateMachine
     | GetClients      of chan:ReplyChan
@@ -263,18 +267,38 @@ module ApiServer =
       |> NOK
       |> Binary.encode
 
+  // ** processSubscriptionEvent
+
+  let private processSubscriptionEvent (agent: ApiAgent) (bytes: byte array) =
+    printfn "processSubscriptionEvent"
+
   // ** start
 
-  let private start (chan: ReplyChan) (agent: ApiAgent) (mem: RaftMember) =
-    let addr = formatUri mem.IpAddr (int mem.ApiPort)
-    let server = new Rep(mem.Id, addr, requestHandler agent)
-    match server.Start() with
-    | Right () ->
+  let private start (chan: ReplyChan) (agent: ApiAgent) (mem: RaftMember) (id: Id) =
+    let srvAddr = formatTCPUri mem.IpAddr (int mem.ApiPort)
+    let server = new Rep(mem.Id, srvAddr, requestHandler agent)
+
+    let pubSubAddr =
+      formatEPGMUri
+        mem.IpAddr
+        (IPv4Address Constants.MCAST_ADDRESS)
+        Constants.MCAST_PORT
+
+    let publisher = new Pub(mem.Id, pubSubAddr, string id)
+    let subscriber = new Sub(mem.Id, pubSubAddr, string id)
+
+    subscriber.Subscribe(processSubscriptionEvent agent)
+    |> ignore                            // get cleaned up during Dispose
+
+    match server.Start(), publisher.Start(), subscriber.Start() with
+    | Right (), Right (), Right () ->
       chan.Reply(Right Reply.Ok)
       Loaded { Store = new Store(State.Empty)
+               Publisher = publisher
+               Subscriber = subscriber
                Clients = Map.empty
                Server = server }
-    | Left error ->
+    | Left error, _, _ | _, Left error, _ | _, _, Left error ->
       chan.Reply(Left error)
       dispose server
       Idle
@@ -284,13 +308,14 @@ module ApiServer =
   let private handleStart (chan: ReplyChan)
                           (state: ClientState)
                           (agent: ApiAgent)
-                          (mem: RaftMember) =
+                          (mem: RaftMember)
+                          (projectId: Id) =
     match state with
     | Loaded data ->
       dispose data
-      start chan agent mem
+      start chan agent mem projectId
     | Idle ->
-      start chan agent mem
+      start chan agent mem projectId
 
   // ** handleDispose
 
@@ -317,7 +342,8 @@ module ApiServer =
       | None -> ()
 
       // construct a new client value
-      let socket = new Req(meta.Id, formatUri meta.IpAddress (int meta.Port), Constants.REQ_TIMEOUT)
+      let addr = formatTCPUri meta.IpAddress (int meta.Port)
+      let socket = new Req(meta.Id, addr, Constants.REQ_TIMEOUT)
       socket.Start()
 
       let client =
@@ -508,7 +534,7 @@ module ApiServer =
 
         let newstate =
           match msg with
-          | Msg.Start(chan,mem)           -> handleStart chan state inbox mem
+          | Msg.Start(chan,mem,projectId) -> handleStart chan state inbox mem projectId
           | Msg.Dispose chan              -> handleDispose chan state
           | Msg.AddClient(chan,client)    -> handleAddClient chan state subs client inbox
           | Msg.RemoveClient(chan,client) -> handleRemoveClient chan state subs client
@@ -535,7 +561,7 @@ module ApiServer =
   [<RequireQualifiedAccess>]
   module ApiServer =
 
-    let create (mem: RaftMember) =
+    let create (mem: RaftMember) (projectId: Id) =
       either {
         let cts = new CancellationTokenSource()
         let subs = new Subscriptions()
@@ -546,7 +572,7 @@ module ApiServer =
         return
           { new IApiServer with
               member self.Start () =
-                match postCommand agent (fun chan -> Msg.Start(chan,mem)) with
+                match postCommand agent (fun chan -> Msg.Start(chan,mem,projectId)) with
                 | Right (Reply.Ok) -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other

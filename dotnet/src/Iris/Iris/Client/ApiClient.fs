@@ -225,8 +225,8 @@ module ApiClient =
                     (client: IrisClient)
                     (subs: Subscriptions)
                     (agent: ApiAgent) =
-    let clientAddr = formatUri client.IpAddress (int client.Port)
-    let srvAddr = formatUri server.IpAddress (int server.Port)
+    let clientAddr = formatTCPUri client.IpAddress (int client.Port)
+    let srvAddr = formatTCPUri server.IpAddress (int server.Port)
 
     sprintf "Starting server on %s" clientAddr
     |> Logger.debug client.Id (tag "start")

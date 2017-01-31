@@ -161,6 +161,11 @@ table SliceFB {
       Slice: SliceTypeFB;
 }
 
+table SlicesFB {
+      Id: string;
+      Slices: [SliceFB];
+}
+
 //  ____  _
 // |  _ \(_)_ __
 // | |_) | | '_ \

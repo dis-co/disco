@@ -704,7 +704,7 @@ module Iris =
 
           let! raftserver = RaftServer.create ()
           let! wsserver   = SocketServer.create mem
-          let! apiserver  = ApiServer.create mem
+          let! apiserver  = ApiServer.create mem state.Project.Id
           let! gitserver  = GitServer.create mem path
 
           return

@@ -351,30 +351,30 @@ type Pin =
   member self.Id
     with get () =
       match self with
-        | StringPin   data -> data.Id
-        | IntPin      data -> data.Id
-        | FloatPin    data -> data.Id
-        | DoublePin   data -> data.Id
-        | BoolPin     data -> data.Id
-        | BytePin     data -> data.Id
-        | EnumPin     data -> data.Id
-        | ColorPin    data -> data.Id
-        | CompoundPin data -> data.Id
+      | StringPin   data -> data.Id
+      | IntPin      data -> data.Id
+      | FloatPin    data -> data.Id
+      | DoublePin   data -> data.Id
+      | BoolPin     data -> data.Id
+      | BytePin     data -> data.Id
+      | EnumPin     data -> data.Id
+      | ColorPin    data -> data.Id
+      | CompoundPin data -> data.Id
 
   // ** Name
 
   member self.Name
     with get () =
       match self with
-        | StringPin   data -> data.Name
-        | IntPin      data -> data.Name
-        | FloatPin    data -> data.Name
-        | DoublePin   data -> data.Name
-        | BoolPin     data -> data.Name
-        | BytePin     data -> data.Name
-        | EnumPin     data -> data.Name
-        | ColorPin    data -> data.Name
-        | CompoundPin data -> data.Name
+      | StringPin   data -> data.Name
+      | IntPin      data -> data.Name
+      | FloatPin    data -> data.Name
+      | DoublePin   data -> data.Name
+      | BoolPin     data -> data.Name
+      | BytePin     data -> data.Name
+      | EnumPin     data -> data.Name
+      | ColorPin    data -> data.Name
+      | CompoundPin data -> data.Name
 
   // ** SetName
 
@@ -395,30 +395,30 @@ type Pin =
   member self.Patch
     with get () =
       match self with
-        | StringPin   data -> data.Patch
-        | IntPin      data -> data.Patch
-        | FloatPin    data -> data.Patch
-        | DoublePin   data -> data.Patch
-        | BoolPin     data -> data.Patch
-        | BytePin     data -> data.Patch
-        | EnumPin     data -> data.Patch
-        | ColorPin    data -> data.Patch
-        | CompoundPin data -> data.Patch
+      | StringPin   data -> data.Patch
+      | IntPin      data -> data.Patch
+      | FloatPin    data -> data.Patch
+      | DoublePin   data -> data.Patch
+      | BoolPin     data -> data.Patch
+      | BytePin     data -> data.Patch
+      | EnumPin     data -> data.Patch
+      | ColorPin    data -> data.Patch
+      | CompoundPin data -> data.Patch
 
   // ** Slices
 
-  member self.Slices
+  member pin.Slices
     with get () =
-      match self with
-        | StringPin   data -> StringSlices   data.Slices
-        | IntPin      data -> IntSlices      data.Slices
-        | FloatPin    data -> FloatSlices    data.Slices
-        | DoublePin   data -> DoubleSlices   data.Slices
-        | BoolPin     data -> BoolSlices     data.Slices
-        | BytePin     data -> ByteSlices     data.Slices
-        | EnumPin     data -> EnumSlices     data.Slices
-        | ColorPin    data -> ColorSlices    data.Slices
-        | CompoundPin data -> CompoundSlices data.Slices
+      match pin with
+      | StringPin   data -> StringSlices   (pin.Id, data.Slices)
+      | IntPin      data -> IntSlices      (pin.Id, data.Slices)
+      | FloatPin    data -> FloatSlices    (pin.Id, data.Slices)
+      | DoublePin   data -> DoubleSlices   (pin.Id, data.Slices)
+      | BoolPin     data -> BoolSlices     (pin.Id, data.Slices)
+      | BytePin     data -> ByteSlices     (pin.Id, data.Slices)
+      | EnumPin     data -> EnumSlices     (pin.Id, data.Slices)
+      | ColorPin    data -> ColorSlices    (pin.Id, data.Slices)
+      | CompoundPin data -> CompoundSlices (pin.Id, data.Slices)
 
   // ** SetSlice
 
@@ -502,51 +502,60 @@ type Pin =
 
   // ** SetSlices
 
-  member self.SetSlices slices =
-    match self with
+  member pin.SetSlices slices =
+    match pin with
     | StringPin data as value ->
       match slices with
-      | StringSlices arr -> StringPin { data with Slices = arr }
+      | StringSlices (id,arr) when id = data.Id ->
+        StringPin { data with Slices = arr }
       | _ -> value
 
     | IntPin data as value ->
       match slices with
-      | IntSlices arr -> IntPin { data with Slices = arr }
+      | IntSlices (id,arr) when id = data.Id ->
+        IntPin { data with Slices = arr }
       | _ -> value
 
     | FloatPin data as value ->
       match slices with
-      | FloatSlices  arr -> FloatPin { data with Slices = arr }
+      | FloatSlices (id,arr) when id = data.Id ->
+        FloatPin { data with Slices = arr }
       | _ -> value
 
     | DoublePin data as value ->
       match slices with
-      | DoubleSlices arr -> DoublePin { data with Slices = arr }
+      | DoubleSlices (id,arr) when id = data.Id ->
+        DoublePin { data with Slices = arr }
       | _ -> value
 
     | BoolPin data as value ->
       match slices with
-      | BoolSlices arr -> BoolPin { data with Slices = arr }
+      | BoolSlices (id, arr) when id = data.Id ->
+        BoolPin { data with Slices = arr }
       | _ -> value
 
     | BytePin data as value ->
       match slices with
-      | ByteSlices arr -> BytePin { data with Slices = arr }
+      | ByteSlices (id, arr) when id = data.Id ->
+        BytePin { data with Slices = arr }
       | _ -> value
 
     | EnumPin data as value ->
       match slices with
-      | EnumSlices arr -> EnumPin { data with Slices = arr }
+      | EnumSlices (id, arr) when id = data.Id ->
+        EnumPin { data with Slices = arr }
       | _ -> value
 
     | ColorPin data as value ->
       match slices with
-      | ColorSlices arr -> ColorPin { data with Slices = arr }
+      | ColorSlices (id,arr) when id = data.Id ->
+        ColorPin { data with Slices = arr }
       | _ -> value
 
     | CompoundPin data as value ->
       match slices with
-      | CompoundSlices arr -> CompoundPin { data with Slices = arr }
+      | CompoundSlices (id, arr) when id = data.Id ->
+        CompoundPin { data with Slices = arr }
       | _ -> value
 
 
@@ -3334,15 +3343,15 @@ and Slice =
 // |____/|_|_|\___\___||___/
 
 and Slices =
-  | StringSlices   of StringSliceD   array
-  | IntSlices      of IntSliceD      array
-  | FloatSlices    of FloatSliceD    array
-  | DoubleSlices   of DoubleSliceD   array
-  | BoolSlices     of BoolSliceD     array
-  | ByteSlices     of ByteSliceD     array
-  | EnumSlices     of EnumSliceD     array
-  | ColorSlices    of ColorSliceD    array
-  | CompoundSlices of CompoundSliceD array
+  | StringSlices   of Id * StringSliceD   array
+  | IntSlices      of Id * IntSliceD      array
+  | FloatSlices    of Id * FloatSliceD    array
+  | DoubleSlices   of Id * DoubleSliceD   array
+  | BoolSlices     of Id * BoolSliceD     array
+  | ByteSlices     of Id * ByteSliceD     array
+  | EnumSlices     of Id * EnumSliceD     array
+  | ColorSlices    of Id * ColorSliceD    array
+  | CompoundSlices of Id * CompoundSliceD array
 
   // ** IsString
 
@@ -3426,15 +3435,15 @@ and Slices =
 
   member self.Item (idx: int) =
     match self with
-    | StringSlices    arr -> StringSlice   arr.[idx]
-    | IntSlices       arr -> IntSlice      arr.[idx]
-    | FloatSlices     arr -> FloatSlice    arr.[idx]
-    | DoubleSlices    arr -> DoubleSlice   arr.[idx]
-    | BoolSlices      arr -> BoolSlice     arr.[idx]
-    | ByteSlices      arr -> ByteSlice     arr.[idx]
-    | EnumSlices      arr -> EnumSlice     arr.[idx]
-    | ColorSlices     arr -> ColorSlice    arr.[idx]
-    | CompoundSlices  arr -> CompoundSlice arr.[idx]
+    | StringSlices   (_,arr) -> StringSlice   arr.[idx]
+    | IntSlices      (_,arr) -> IntSlice      arr.[idx]
+    | FloatSlices    (_,arr) -> FloatSlice    arr.[idx]
+    | DoubleSlices   (_,arr) -> DoubleSlice   arr.[idx]
+    | BoolSlices     (_,arr) -> BoolSlice     arr.[idx]
+    | ByteSlices     (_,arr) -> ByteSlice     arr.[idx]
+    | EnumSlices     (_,arr) -> EnumSlice     arr.[idx]
+    | ColorSlices    (_,arr) -> ColorSlice    arr.[idx]
+    | CompoundSlices (_,arr) -> CompoundSlice arr.[idx]
 
   // ** At
 
@@ -3451,15 +3460,15 @@ and Slices =
 
   member self.Map (f: Slice -> 'a) : 'a array =
     match self with
-    | StringSlices    arr -> Array.map (StringSlice   >> f) arr
-    | IntSlices       arr -> Array.map (IntSlice      >> f) arr
-    | FloatSlices     arr -> Array.map (FloatSlice    >> f) arr
-    | DoubleSlices    arr -> Array.map (DoubleSlice   >> f) arr
-    | BoolSlices      arr -> Array.map (BoolSlice     >> f) arr
-    | ByteSlices      arr -> Array.map (ByteSlice     >> f) arr
-    | EnumSlices      arr -> Array.map (EnumSlice     >> f) arr
-    | ColorSlices     arr -> Array.map (ColorSlice    >> f) arr
-    | CompoundSlices  arr -> Array.map (CompoundSlice >> f) arr
+    | StringSlices   (_,arr) -> Array.map (StringSlice   >> f) arr
+    | IntSlices      (_,arr) -> Array.map (IntSlice      >> f) arr
+    | FloatSlices    (_,arr) -> Array.map (FloatSlice    >> f) arr
+    | DoubleSlices   (_,arr) -> Array.map (DoubleSlice   >> f) arr
+    | BoolSlices     (_,arr) -> Array.map (BoolSlice     >> f) arr
+    | ByteSlices     (_,arr) -> Array.map (ByteSlice     >> f) arr
+    | EnumSlices     (_,arr) -> Array.map (EnumSlice     >> f) arr
+    | ColorSlices    (_,arr) -> Array.map (ColorSlice    >> f) arr
+    | CompoundSlices (_,arr) -> Array.map (CompoundSlice >> f) arr
 
   //  _   _      _
   // | | | | ___| |_ __   ___ _ __ ___
@@ -3512,3 +3521,172 @@ and Slices =
 
   member __.CreateCompound (idx: Index) (value: Pin array) =
     CompoundSlice { Index = idx; Value = value }
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  member slices.ToOffset(builder: FlatBufferBuilder) =
+    match slices with
+    | StringSlices (id,arr) ->
+      let id = id |> string |> builder.CreateString
+      let offsets =
+        let converted = Array.map (StringSlice >> Binary.toOffset builder) arr
+        SlicesFB.CreateSlicesVector(builder, converted)
+      SlicesFB.StartSlicesFB(builder)
+      SlicesFB.AddId(builder,id)
+      SlicesFB.AddSlices(builder,offsets)
+      SlicesFB.EndSlicesFB(builder)
+
+    | IntSlices (id,arr) ->
+      let id = id |> string |> builder.CreateString
+      let offsets =
+        let converted = Array.map (IntSlice >> Binary.toOffset builder) arr
+        SlicesFB.CreateSlicesVector(builder, converted)
+      SlicesFB.StartSlicesFB(builder)
+      SlicesFB.AddId(builder,id)
+      SlicesFB.AddSlices(builder,offsets)
+      SlicesFB.EndSlicesFB(builder)
+
+    | FloatSlices (id,arr) ->
+      let id = id |> string |> builder.CreateString
+      let offsets =
+        let converted = Array.map (FloatSlice >> Binary.toOffset builder) arr
+        SlicesFB.CreateSlicesVector(builder, converted)
+      SlicesFB.StartSlicesFB(builder)
+      SlicesFB.AddId(builder,id)
+      SlicesFB.AddSlices(builder,offsets)
+      SlicesFB.EndSlicesFB(builder)
+
+    | DoubleSlices (id,arr) ->
+      let id = id |> string |> builder.CreateString
+      let offsets =
+        let converted = Array.map (DoubleSlice >> Binary.toOffset builder) arr
+        SlicesFB.CreateSlicesVector(builder, converted)
+      SlicesFB.StartSlicesFB(builder)
+      SlicesFB.AddId(builder,id)
+      SlicesFB.AddSlices(builder,offsets)
+      SlicesFB.EndSlicesFB(builder)
+
+    | BoolSlices (id,arr) ->
+      let id = id |> string |> builder.CreateString
+      let offsets =
+        let converted = Array.map (BoolSlice >> Binary.toOffset builder) arr
+        SlicesFB.CreateSlicesVector(builder, converted)
+      SlicesFB.StartSlicesFB(builder)
+      SlicesFB.AddId(builder,id)
+      SlicesFB.AddSlices(builder,offsets)
+      SlicesFB.EndSlicesFB(builder)
+
+    | ByteSlices (id,arr) ->
+      let id = id |> string |> builder.CreateString
+      let offsets =
+        let converted = Array.map (ByteSlice >> Binary.toOffset builder) arr
+        SlicesFB.CreateSlicesVector(builder, converted)
+      SlicesFB.StartSlicesFB(builder)
+      SlicesFB.AddId(builder,id)
+      SlicesFB.AddSlices(builder,offsets)
+      SlicesFB.EndSlicesFB(builder)
+
+    | EnumSlices (id,arr) ->
+      let id = id |> string |> builder.CreateString
+      let offsets =
+        let converted = Array.map (EnumSlice >> Binary.toOffset builder) arr
+        SlicesFB.CreateSlicesVector(builder, converted)
+      SlicesFB.StartSlicesFB(builder)
+      SlicesFB.AddId(builder,id)
+      SlicesFB.AddSlices(builder,offsets)
+      SlicesFB.EndSlicesFB(builder)
+
+    | ColorSlices (id,arr) ->
+      let id = id |> string |> builder.CreateString
+      let offsets =
+        let converted = Array.map (ColorSlice >> Binary.toOffset builder) arr
+        SlicesFB.CreateSlicesVector(builder, converted)
+      SlicesFB.StartSlicesFB(builder)
+      SlicesFB.AddId(builder,id)
+      SlicesFB.AddSlices(builder,offsets)
+      SlicesFB.EndSlicesFB(builder)
+
+    | CompoundSlices (id,arr) ->
+      let id = id |> string |> builder.CreateString
+      let offsets =
+        let converted = Array.map (CompoundSlice >> Binary.toOffset builder) arr
+        SlicesFB.CreateSlicesVector(builder, converted)
+      SlicesFB.StartSlicesFB(builder)
+      SlicesFB.AddId(builder,id)
+      SlicesFB.AddSlices(builder,offsets)
+      SlicesFB.EndSlicesFB(builder)
+
+  static member inline FromFB(fb: SlicesFB) : Either<IrisError,Slices> =
+    #if FABLE_COMPILER
+    #else
+    either {
+      let! (slices,_) =
+        let arr = Array.zeroCreate fb.SlicesLength
+        Array.fold
+          (fun (m: Either<IrisError,Slice array * int>) _ -> either {
+              let! (parsed,idx) = m
+              let slicish = fb.Slices(idx)
+              if slicish.HasValue then
+                let value = slicish.Value
+                let! slice = Slice.FromFB value
+                parsed.[idx] <- slice
+                return parsed, idx + 1
+              else
+                return!
+                  "Empty slice value"
+                  |> Error.asParseError "Slices.FromFB"
+                  |> Either.fail
+            })
+          (Right (arr, 0))
+          arr
+
+      if Array.length slices > 0 then
+        let first = slices.[0]
+        try
+          return
+            match first with
+            | StringSlice   _ ->
+              let stringslices = Array.map (fun (sl: Slice) -> sl.Value :?> StringSliceD) slices
+              StringSlices(Id fb.Id, stringslices)
+            | IntSlice      _ ->
+              let intslices = Array.map (fun (sl: Slice) -> sl.Value :?> IntSliceD) slices
+              IntSlices(Id fb.Id, intslices)
+            | FloatSlice    _ ->
+              let floatslices = Array.map (fun (sl: Slice) -> sl.Value :?> FloatSliceD) slices
+              FloatSlices(Id fb.Id, floatslices)
+            | DoubleSlice   _ ->
+              let doubleslices = Array.map (fun (sl: Slice) -> sl.Value :?> DoubleSliceD) slices
+              DoubleSlices(Id fb.Id, doubleslices)
+            | BoolSlice     _ ->
+              let boolslices = Array.map (fun (sl: Slice) -> sl.Value :?> BoolSliceD) slices
+              BoolSlices(Id fb.Id, boolslices)
+            | ByteSlice     _ ->
+              let byteslices = Array.map (fun (sl: Slice) -> sl.Value :?> ByteSliceD) slices
+              ByteSlices(Id fb.Id, byteslices)
+            | EnumSlice     _ ->
+              let enumslices = Array.map (fun (sl: Slice) -> sl.Value :?> EnumSliceD) slices
+              EnumSlices(Id fb.Id, enumslices)
+            | ColorSlice    _ ->
+              let colorslices = Array.map (fun (sl: Slice) -> sl.Value :?> ColorSliceD) slices
+              ColorSlices(Id fb.Id, colorslices)
+            | CompoundSlice _ ->
+              let compoundslices = Array.map (fun (sl: Slice) -> sl.Value :?> CompoundSliceD) slices
+              CompoundSlices(Id fb.Id, compoundslices)
+        with
+          | exn ->
+            return!
+              exn.Message
+              |> Error.asParseError "Slices.FromFB"
+              |> Either.fail
+      else
+        return!
+          "Empty slices makes no sense brotha"
+          |> Error.asParseError "Slices.FromFB"
+          |> Either.fail
+    }
+    #endif
