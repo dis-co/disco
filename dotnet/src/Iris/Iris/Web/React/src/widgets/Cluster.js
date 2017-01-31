@@ -6,6 +6,10 @@ import ADD_NODE from "../modals/AddNode";
 import { map } from "../Util.ts";
 
 export default class WidgetCluster extends React.Component {
+  static get layout() {
+    return { x: 0, y: 0, w: 12, h: 12, minW: 7, maxW: 15, minH: 11, maxH: 15 };
+  }
+
   constructor(props) {
     super(props);
   }

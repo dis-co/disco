@@ -18,10 +18,38 @@ open Fable.PowerPack.Fetch.Fetch_types
 open Fable.Core.JsInterop
 open Fable.Import
 
+type GenericObservable<'T>() =
+    let listeners = Dictionary<Guid,IObserver<'T>>()
+    member x.Trigger v =
+      for lis in listeners.Values do
+        lis.OnNext v
+    interface IObservable<'T> with
+      member x.Subscribe w =
+        let guid = Guid.NewGuid()
+        listeners.Add(guid, w)
+        { new IDisposable with
+          member x.Dispose() = listeners.Remove(guid) |> ignore }
+
+type DragEvent = {
+  ``type``: string; value: obj; x: int; y: int; 
+}
+
+let private dragObservable =
+    GenericObservable<DragEvent>()
+
+let subscribeToDrags (f: DragEvent->unit) =
+  Observable.subscribe f dragObservable
+
+let triggerDragEvent(typ: string, value: obj, x: int, y: int) =
+  { ``type`` = typ; value = value; x = x; y = y}
+  |> dragObservable.Trigger
+
 let EMPTY = Constants.EMPTY
 
 let notify(msg: string) =
-  match box Browser.window?Notification with
+  Browser.console.log(msg)
+
+  match !!Browser.window?Notification with
   // Check if the browser supports notifications
   | null -> Browser.console.log msg
 
