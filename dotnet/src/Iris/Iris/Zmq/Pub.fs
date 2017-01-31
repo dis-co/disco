@@ -17,7 +17,7 @@ open Iris.Core
 /// - addr: Address to connect to
 ///
 /// Returns: instance of Pub
-type Pub (id: Id, addr: string) =
+type Pub (id: Id, addr: string, prefix: string) =
 
   let tag = "Pub"
 
@@ -69,11 +69,12 @@ type Pub (id: Id, addr: string) =
 
         // `run` is usually true, but shutdown first sets this to false to exit the loop
         if run then
-          let frame = new ZFrame(request)                     // create a new ZFrame to send
-          sock.Send(frame)                                    // and send it via sock
-
+          let msg = new ZMessage()
+          msg.Add(new ZFrame(prefix))
+          msg.Add(new ZFrame(request))                        // create a new ZFrame to send
+          sock.Send(msg)                                      // and send it via sock
           responder.Set() |> ignore                            // signal that response is ready
-          frame.Dispose()                                     // dispose of frame
+          dispose msg
         else
           responder.Set() |> ignore
       with

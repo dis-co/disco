@@ -153,17 +153,18 @@ module Sub =
       /// Inner Loop
       while run do
         try
-          let frame = sock.ReceiveFrame()
-          let bytes = frame.Read()
+          let msg = sock.ReceiveMessage()
+          let addr = msg.[0].ReadString()
+          let bytes = msg.[1].Read()
 
           bytes
           |> Array.length
-          |> sprintf "Got %d bytes long message"
+          |> sprintf "[%s] Got %d bytes long message on " addr
           |> Logger.debug id (tag "worker")
 
           notify subscriptions bytes
 
-          dispose frame
+          dispose msg
 
         with
           /// ignore timeouts, since they are our way to ensure we can
