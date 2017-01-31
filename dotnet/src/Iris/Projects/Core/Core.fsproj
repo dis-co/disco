@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <Import Project="..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
@@ -147,6 +147,12 @@
     </Compile>
     <Compile Include="..\..\Iris\Core\Uri.fs">
       <Link>Uri.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Zmq\Pub.fs">
+      <Link>Pub.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Zmq\Sub.fs">
+      <Link>Sub.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Zmq\Rep.fs">
       <Link>Rep.fs</Link>

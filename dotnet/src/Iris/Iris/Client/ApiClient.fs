@@ -234,7 +234,7 @@ module ApiClient =
     sprintf "Connecting to server on %s" srvAddr
     |> Logger.debug client.Id (tag "start")
 
-    let server = new Rep(clientAddr, requestHandler agent)
+    let server = new Rep(client.Id, clientAddr, requestHandler agent)
     let socket = new Req(client.Id, srvAddr, Constants.REQ_TIMEOUT)
     socket.Start()
 

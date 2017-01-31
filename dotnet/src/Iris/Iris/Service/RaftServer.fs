@@ -1137,7 +1137,7 @@ module Raft =
       let! raftstate = Persistence.getRaft config
 
       let addr = raftstate.Member |> memUri
-      let server = new Rep(addr, requestHandler agent)
+      let server = new Rep(raftstate.Member.Id, addr, requestHandler agent)
 
       match server.Start() with
       | Right _ ->

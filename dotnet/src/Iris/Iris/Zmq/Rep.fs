@@ -15,7 +15,7 @@ open Iris.Core
 /// - handler: request handler
 ///
 /// Returns: instance of Rep
-type Rep (addr: string, handle: byte array -> byte array) =
+type Rep (id: Id, addr: string, handle: byte array -> byte array) =
   let mutable status : ServiceStatus = ServiceStatus.Starting
 
   let mutable error : Exception option = None

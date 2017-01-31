@@ -267,7 +267,7 @@ module ApiServer =
 
   let private start (chan: ReplyChan) (agent: ApiAgent) (mem: RaftMember) =
     let addr = formatUri mem.IpAddr (int mem.ApiPort)
-    let server = new Rep(addr, requestHandler agent)
+    let server = new Rep(mem.Id, addr, requestHandler agent)
     match server.Start() with
     | Right () ->
       chan.Reply(Right Reply.Ok)
