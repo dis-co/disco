@@ -66,48 +66,6 @@ module Sub =
     let subscriptions = new Subscriptions()
     let listener = createListener subscriptions
 
-    /// ## ignoreErr
-    ///
-    /// Determine if the error number passed is worth ignoring or not.
-    ///
-    /// ### Signature:
-    /// - errno: int error number to check
-    ///
-    /// Returns: bool
-    let ignoreErr (errno: int) =
-      match errno with
-      | x when x = ZError.ETIMEDOUT.Number -> true
-      | x when x = ZError.EAGAIN.Number    -> true
-      | _ -> false
-
-    /// ## setOption
-    ///
-    /// Set a ZSocketOption on a socket in a more functional style.
-    ///
-    /// ### Signature:
-    /// - sock: ZSocket to set option onb
-    /// - option: ZSocketOption to set
-    /// - value: int value to set on the socket
-    ///
-    /// Returns: unit
-    let setOption (sock: ZSocket) (option: ZSocketOption) (value: int) =
-      sock.SetOption(option, value)
-      |> ignore                            // FIXME: maybe I should do something with this result
-
-    /// ## tryClose
-    ///
-    /// Attempt to close a ZSocket safely.
-    ///
-    /// ### Signature:
-    /// - sock: ZSocket to close
-    ///
-    /// Returns: unit
-    let tryClose (sock: ZSocket) =
-      try
-        sock.Close()
-      with
-        | _ -> () // ....at least we tried!
-
     /// ## worker
     ///
     /// Worker function to wrap the ZSocket and ZContext. This provides a thread-safe means to run
@@ -139,6 +97,7 @@ module Sub =
           sock <- new ZSocket(ctx, ZSocketType.SUB)
           sock.Connect(addr)
           sock.Subscribe(prefix)
+          setOption sock ZSocketOption.RATE 100000
           setOption sock ZSocketOption.RCVTIMEO 50
           status <- ServiceStatus.Running
           starter.Set() |> ignore

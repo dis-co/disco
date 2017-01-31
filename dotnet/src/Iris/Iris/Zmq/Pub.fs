@@ -50,6 +50,7 @@ type Pub (id: Id, addr: string, prefix: string) =
         sprintf "connecting to %A" addr
         |> Logger.debug id tag
 
+        setOption sock ZSocketOption.RATE 100000
         sock.Bind(addr)                                         // connect to server
         started <- true
         starter.Set() |> ignore                                  // signal that startup is done

@@ -133,6 +133,15 @@
     <Compile Include="..\..\Iris\Raft\Types.fs">
       <Link>Types.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Zmq\Common.fs">
+      <Link>Common.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Zmq\Pub.fs">
+      <Link>Pub.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Zmq\Sub.fs">
+      <Link>Sub.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Zmq\Rep.fs">
       <Link>Rep.fs</Link>
     </Compile>

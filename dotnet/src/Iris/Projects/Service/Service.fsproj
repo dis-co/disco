@@ -170,6 +170,9 @@
     <Compile Include="..\..\Iris\Core\Uri.fs">
       <Link>Uri.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Zmq\Common.fs">
+      <Link>Common.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Zmq\Pub.fs">
       <Link>Pub.fs</Link>
     </Compile>
