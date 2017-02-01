@@ -396,7 +396,6 @@ module StoreTests =
 
         let session : Session =
           { Id = Id.Create()
-          ; Status = { StatusType = Unauthorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
@@ -416,7 +415,6 @@ module StoreTests =
 
         let session : Session =
           { Id = Id.Create()
-          ; Status = { StatusType = Unauthorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
@@ -427,10 +425,10 @@ module StoreTests =
         expect "Should be 1" 1 id store.State.Sessions.Count
 
         let newStatus = "kurt mix master"
-        store.Dispatch <| UpdateSession { session with Status = { StatusType = Authorized; Payload = "" } }
+        store.Dispatch <| UpdateSession { session with UserAgent = "Hoogle Magenta" }
 
         expect "Should be 1" 1 id store.State.Sessions.Count
-        expect "Should be correct name" Authorized id store.State.Sessions.[session.Id].Status.StatusType
+        expect "Should be correct name" "Hoogle Magenta" id store.State.Sessions.[session.Id].UserAgent
 
   let test_should_not_add_session_to_the_store_on_update_when_missing =
     testCase "should not add session to the store on update when missing" <| fun _ ->
@@ -438,7 +436,6 @@ module StoreTests =
 
         let session : Session =
           { Id = Id.Create()
-          ; Status = { StatusType = Unauthorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
@@ -454,7 +451,6 @@ module StoreTests =
 
         let session : Session =
           { Id = Id.Create()
-          ; Status = { StatusType = Unauthorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 

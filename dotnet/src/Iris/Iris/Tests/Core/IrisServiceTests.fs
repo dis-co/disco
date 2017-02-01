@@ -31,7 +31,9 @@ module IrisServiceTests =
       either {
         let signal = ref 0
 
-        let machine = MachineConfig.create ()
+        let path = tmpPath()
+
+        let machine = { MachineConfig.create() with WorkSpace = Path.GetDirectoryName path }
         let mem = Member.create machine.MachineId
 
         let cfg =
@@ -39,7 +41,6 @@ module IrisServiceTests =
           |> Config.setMembers (Map.ofArray [| (mem.Id,mem) |])
           |> Config.setLogLevel (LogLevel.Debug)
 
-        let path = tmpPath()
         let name = Path.GetFileName path
 
         let author1 = "karsten"
@@ -54,8 +55,6 @@ module IrisServiceTests =
 
         let! commit = Asset.saveWithCommit path User.Admin.Signature updated
 
-        let path = Project.filePath project
-
         let raw =
           Project.filePath project
           |> File.ReadAllText
@@ -68,7 +67,7 @@ module IrisServiceTests =
             | _ -> ())
           |> service.Subscribe
 
-        do! service.Load(path)
+        do! service.LoadProject(name, "admin", "Nsynk")
 
         let! gitserver = service.GitServer
         let! pid = gitserver.Pid

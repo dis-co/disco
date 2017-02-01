@@ -431,7 +431,6 @@ module Store =
 
         let session : Session =
           { Id = Id.Create()
-          ; Status = { StatusType = Unauthorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
@@ -453,7 +452,6 @@ module Store =
 
         let session : Session =
           { Id = Id.Create()
-          ; Status = { StatusType = Unauthorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
@@ -463,11 +461,11 @@ module Store =
 
         equals 1 store.State.Sessions.Count
 
-        let newStatus = Authorized
-        store.Dispatch <| UpdateSession { session with Status = { StatusType = Authorized; Payload = "" } }
+        let newUserAgent = "Hoogle Magenta"
+        store.Dispatch <| UpdateSession { session with UserAgent = newUserAgent }
 
         equals 1 store.State.Sessions.Count
-        equals Authorized store.State.Sessions.[session.Id].Status.StatusType
+        equals newUserAgent store.State.Sessions.[session.Id].UserAgent
 
         finish ()
 
@@ -477,7 +475,6 @@ module Store =
 
         let session : Session =
           { Id = Id.Create()
-          ; Status = { StatusType = Unauthorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
@@ -495,7 +492,6 @@ module Store =
 
         let session : Session =
           { Id = Id.Create()
-          ; Status = { StatusType = Unauthorized; Payload = "" }
           ; IpAddress = IPv4Address "126.0.0.1"
           ; UserAgent = "Firefuckingfox" }
 
