@@ -3653,31 +3653,31 @@ and Slices =
           return
             match first with
             | StringSlice   _ ->
-              let stringslices = Array.map (fun (sl: Slice) -> sl.Value :?> StringSliceD) slices
+              let stringslices = Array.map (fun (sl: Slice) ->  sl.StringData |> Option.get) slices
               StringSlices(Id fb.Id, stringslices)
             | IntSlice      _ ->
-              let intslices = Array.map (fun (sl: Slice) -> sl.Value :?> IntSliceD) slices
+              let intslices = Array.map (fun (sl: Slice) -> sl.IntData |> Option.get) slices
               IntSlices(Id fb.Id, intslices)
             | FloatSlice    _ ->
-              let floatslices = Array.map (fun (sl: Slice) -> sl.Value :?> FloatSliceD) slices
+              let floatslices = Array.map (fun (sl: Slice) -> sl.FloatData |> Option.get) slices
               FloatSlices(Id fb.Id, floatslices)
             | DoubleSlice   _ ->
-              let doubleslices = Array.map (fun (sl: Slice) -> sl.Value :?> DoubleSliceD) slices
+              let doubleslices = Array.map (fun (sl: Slice) -> sl.DoubleData |> Option.get) slices
               DoubleSlices(Id fb.Id, doubleslices)
             | BoolSlice     _ ->
-              let boolslices = Array.map (fun (sl: Slice) -> sl.Value :?> BoolSliceD) slices
+              let boolslices = Array.map (fun (sl: Slice) -> sl.BoolData |> Option.get) slices
               BoolSlices(Id fb.Id, boolslices)
             | ByteSlice     _ ->
-              let byteslices = Array.map (fun (sl: Slice) -> sl.Value :?> ByteSliceD) slices
+              let byteslices = Array.map (fun (sl: Slice) -> sl.ByteData |> Option.get) slices
               ByteSlices(Id fb.Id, byteslices)
             | EnumSlice     _ ->
-              let enumslices = Array.map (fun (sl: Slice) -> sl.Value :?> EnumSliceD) slices
+              let enumslices = Array.map (fun (sl: Slice) -> sl.EnumData |> Option.get) slices
               EnumSlices(Id fb.Id, enumslices)
             | ColorSlice    _ ->
-              let colorslices = Array.map (fun (sl: Slice) -> sl.Value :?> ColorSliceD) slices
+              let colorslices = Array.map (fun (sl: Slice) -> sl.ColorData |> Option.get) slices
               ColorSlices(Id fb.Id, colorslices)
             | CompoundSlice _ ->
-              let compoundslices = Array.map (fun (sl: Slice) -> sl.Value :?> CompoundSliceD) slices
+              let compoundslices = Array.map (fun (sl: Slice) -> sl.CompoundData |> Option.get) slices
               CompoundSlices(Id fb.Id, compoundslices)
         with
           | exn ->
@@ -3691,3 +3691,11 @@ and Slices =
           |> Error.asParseError "Slices.FromFB"
           |> Either.fail
     }
+
+  member slices.ToBytes() : Binary.Buffer =
+    Binary.buildBuffer slices
+
+  static member FromBytes(raw: Binary.Buffer) : Either<IrisError,Slices> =
+    Binary.createBuffer raw
+    |> SlicesFB.GetRootAsSlicesFB
+    |> Slices.FromFB
