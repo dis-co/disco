@@ -559,3 +559,43 @@ table ErrorFB {
       Message: string;
 }
 
+//  ____  _        _       __  __            _     _
+// / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
+// \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
+//  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
+// |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
+
+union StateMachinePayloadFB {
+      CueFB,
+      CueListFB,
+      PinFB,
+      PatchFB,
+      IrisClientFB,
+      RaftMemberFB,
+      UserFB,
+      SessionFB,
+      LogEventFB,
+      StringFB,
+      StateFB,
+      SlicesFB,
+      ProjectFB
+}
+
+enum StateMachineActionFB:ushort {
+      AddFB,
+      UpdateFB,
+      RemoveFB,
+      LogEventFB,
+      DataSnapshotFB,
+      CallFB,
+      UndoFB,
+      RedoFB,
+      ResetFB,
+      SaveProjectFB,
+      SetLogLevelFB,
+}
+
+table StateMachineFB {
+      Action: StateMachineActionFB;
+      Payload: StateMachinePayloadFB;
+}

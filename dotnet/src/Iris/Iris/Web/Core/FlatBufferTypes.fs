@@ -1556,44 +1556,44 @@ let StringFB: StringFBConstructor = failwith "JS only"
 // /_/   \_\ .__/|_/_/   \_\___|\__|_|\___/|_| |_|
 //         |_|
 
-type RaftActionTypeFB = int
+type StateMachineActionFB = int
 
-type RaftActionTypeFBConstructor =
-  abstract AddFB: RaftActionTypeFB
-  abstract UpdateFB: RaftActionTypeFB
-  abstract RemoveFB: RaftActionTypeFB
-  abstract LogEventFB: RaftActionTypeFB
-  abstract UndoFB: RaftActionTypeFB
-  abstract RedoFB: RaftActionTypeFB
-  abstract ResetFB: RaftActionTypeFB
-  abstract SaveProjectFB: RaftActionTypeFB
-  abstract DataSnapshotFB: RaftActionTypeFB
-  abstract SetLogLevelFB: RaftActionTypeFB
+type StateMachineActionFBConstructor =
+  abstract AddFB: StateMachineActionFB
+  abstract UpdateFB: StateMachineActionFB
+  abstract RemoveFB: StateMachineActionFB
+  abstract LogEventFB: StateMachineActionFB
+  abstract UndoFB: StateMachineActionFB
+  abstract RedoFB: StateMachineActionFB
+  abstract ResetFB: StateMachineActionFB
+  abstract SaveProjectFB: StateMachineActionFB
+  abstract DataSnapshotFB: StateMachineActionFB
+  abstract SetLogLevelFB: StateMachineActionFB
 
-let RaftActionTypeFB: RaftActionTypeFBConstructor = failwith "JS only"
+let StateMachineActionFB: StateMachineActionFBConstructor = failwith "JS only"
 
-type RaftPayloadFB = int
+type StateMachinePayloadFB = int
 
-type RaftPayloadFBConstructor =
-  abstract NONE: RaftPayloadFB
-  abstract CueFB: RaftPayloadFB
-  abstract CueListFB: RaftPayloadFB
-  abstract PinFB: RaftPayloadFB
-  abstract PatchFB: RaftPayloadFB
-  abstract RaftMemberFB: RaftPayloadFB
-  abstract UserFB: RaftPayloadFB
-  abstract SessionFB: RaftPayloadFB
-  abstract LogEventFB: RaftPayloadFB
-  abstract StateFB: RaftPayloadFB
-  abstract StringFB: RaftPayloadFB
-  abstract ProjectFB: RaftPayloadFB
-  abstract IrisClientFB: RaftPayloadFB
+type StateMachinePayloadFBConstructor =
+  abstract NONE: StateMachinePayloadFB
+  abstract CueFB: StateMachinePayloadFB
+  abstract CueListFB: StateMachinePayloadFB
+  abstract PinFB: StateMachinePayloadFB
+  abstract PatchFB: StateMachinePayloadFB
+  abstract RaftMemberFB: StateMachinePayloadFB
+  abstract UserFB: StateMachinePayloadFB
+  abstract SessionFB: StateMachinePayloadFB
+  abstract LogEventFB: StateMachinePayloadFB
+  abstract StateFB: StateMachinePayloadFB
+  abstract StringFB: StateMachinePayloadFB
+  abstract ProjectFB: StateMachinePayloadFB
+  abstract IrisClientFB: StateMachinePayloadFB
 
-let RaftPayloadFB: RaftPayloadFBConstructor = failwith "JS only"
+let StateMachinePayloadFB: StateMachinePayloadFBConstructor = failwith "JS only"
 
-type RaftApiActionFB =
-  abstract Action: RaftActionTypeFB
-  abstract PayloadType: RaftPayloadFB
+type StateMachineFB =
+  abstract Action: StateMachineActionFB
+  abstract PayloadType: StateMachinePayloadFB
   abstract CueFB: CueFB
   abstract CueListFB: CueListFB
   abstract PinFB: PinFB
@@ -1608,16 +1608,16 @@ type RaftApiActionFB =
   abstract IrisClientFB: IrisClientFB
   abstract Payload: 'a -> 'a
 
-type RaftApiActionFBConstructor =
-  abstract prototype: RaftApiActionFB with get, set
-  abstract StartRaftApiActionFB: builder: FlatBufferBuilder -> unit
-  abstract AddAction: builder: FlatBufferBuilder * tipe: RaftActionTypeFB -> unit
-  abstract AddPayloadType: builder: FlatBufferBuilder * tipe: RaftPayloadFB -> unit
+type StateMachineFBConstructor =
+  abstract prototype: StateMachineFB with get, set
+  abstract StartStateMachineFB: builder: FlatBufferBuilder -> unit
+  abstract AddAction: builder: FlatBufferBuilder * tipe: StateMachineActionFB -> unit
+  abstract AddPayloadType: builder: FlatBufferBuilder * tipe: StateMachinePayloadFB -> unit
   abstract AddPayload: builder: FlatBufferBuilder * payload: Offset<'a> -> unit
-  abstract EndRaftApiActionFB: builder: FlatBufferBuilder -> Offset<RaftApiActionFB>
-  abstract GetRootAsRaftApiActionFB: bytes: ByteBuffer -> RaftApiActionFB
+  abstract EndStateMachineFB: builder: FlatBufferBuilder -> Offset<StateMachineFB>
+  abstract GetRootAsStateMachineFB: bytes: ByteBuffer -> StateMachineFB
 
-let RaftApiActionFB: RaftApiActionFBConstructor = failwith "JS only"
+let StateMachineFB: StateMachineFBConstructor = failwith "JS only"
 
 //  _____                     _____ ____
 // | ____|_ __ _ __ ___  _ __|  ___| __ )
