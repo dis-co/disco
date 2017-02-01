@@ -860,6 +860,29 @@ type SliceFBConstructor =
 
 let SliceFB: SliceFBConstructor = failwith "JS only"
 
+//  ____  _ _               _____ ____
+// / ___|| (_) ___ ___  ___|  ___| __ )
+// \___ \| | |/ __/ _ \/ __| |_  |  _ \
+//  ___) | | | (_|  __/\__ \  _| | |_) |
+// |____/|_|_|\___\___||___/_|   |____/
+
+type SlicesFB =
+  abstract Id: string
+  abstract Slices: int -> SliceFB
+  abstract SlicesLength: int
+
+type SlicesFBConstructor =
+  abstract prototype: SlicesFB with get, set
+  abstract StartSlicesFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+  abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
+  abstract EndSlicesFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsSlicesFB: buffer: ByteBuffer -> SlicesFB
+  abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<SliceFB> array -> Offset<'a>
+  abstract Create: unit -> SlicesFB
+
+let SlicesFB : SlicesFBConstructor = failwith "JS only"
+
 //   ____           _____ ____
 //  / ___|   _  ___|  ___| __ )
 // | |  | | | |/ _ \ |_  |  _ \
@@ -1566,6 +1589,7 @@ type StateMachineActionFBConstructor =
   abstract UndoFB: StateMachineActionFB
   abstract RedoFB: StateMachineActionFB
   abstract ResetFB: StateMachineActionFB
+  abstract CallFB: StateMachineActionFB
   abstract SaveProjectFB: StateMachineActionFB
   abstract DataSnapshotFB: StateMachineActionFB
   abstract SetLogLevelFB: StateMachineActionFB
@@ -1587,6 +1611,7 @@ type StateMachinePayloadFBConstructor =
   abstract StateFB: StateMachinePayloadFB
   abstract StringFB: StateMachinePayloadFB
   abstract ProjectFB: StateMachinePayloadFB
+  abstract SlicesFB: StateMachinePayloadFB
   abstract IrisClientFB: StateMachinePayloadFB
 
 let StateMachinePayloadFB: StateMachinePayloadFBConstructor = failwith "JS only"

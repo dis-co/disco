@@ -28,7 +28,7 @@ type FlatBuffersPlugin() =
                     | _ ->
                         get (Naming.lowerFirst i.methodName) callee
                         |> apply i.range i.returnType i.args
-                | Some callee when i.ownerFullName.EndsWith "RaftApiActionFB"
+                | Some callee when i.ownerFullName.EndsWith "StateMachineFB"
                                 && i.methodName.EndsWith "FB" ->
                     let cons =
                         Fable.Apply(staticField i.methodName, [], Fable.ApplyCons, Fable.Any, None)

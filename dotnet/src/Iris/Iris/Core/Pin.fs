@@ -3628,7 +3628,9 @@ and Slices =
               let! (parsed,idx) = m
               let slicish = fb.Slices(idx)
               #if FABLE_COMPILER
-              let! lisc
+              let! slice = Slice.FromFB slicish
+              parsed.[idx] <- slice
+              return parsed, idx + 1
               #else
               if slicish.HasValue then
                 let value = slicish.Value
