@@ -53,7 +53,8 @@ module ApiServer =
 
   [<NoComparison;NoEquality>]
   type private ClientStateData =
-    { Store: Store
+    { Status: ServiceStatus
+      Store: Store
       Server: Rep
       Publisher: Pub
       Subscriber: Sub
@@ -97,14 +98,16 @@ module ApiServer =
   type private Msg =
     | Start           of chan:ReplyChan * mem:RaftMember * projectId:Id
     | Dispose         of chan:ReplyChan
-    | Update          of sm:StateMachine
     | GetClients      of chan:ReplyChan
+    | SetStatus       of status:ServiceStatus
     | AddClient       of chan:ReplyChan * client:IrisClient
     | RemoveClient    of chan:ReplyChan * client:IrisClient
-    | SetStatus       of id:Id          * status:ServiceStatus
+    | SetClientStatus of id:Id          * status:ServiceStatus
     | SetState        of chan:ReplyChan * state:State
     | GetState        of chan:ReplyChan
     | InstallSnapshot of id:Id
+    | LocalUpdate     of sm:StateMachine
+    | RemoteUpdate    of sm:StateMachine
     | ClientUpdate    of sm:StateMachine
 
   // ** ApiAgent
@@ -168,21 +171,21 @@ module ApiServer =
         string error
         |> Error.asClientError (tag "requestInstallSnapshot")
       (client.Meta.Id, ServiceStatus.Failed reason)
-      |> Msg.SetStatus
+      |> Msg.SetClientStatus
       |> agent.Post
     | Right other ->
       let reason =
         sprintf "Unexpected reply from Client %A" other
         |> Error.asClientError (tag "requestInstallSnapshot")
       (client.Meta.Id, ServiceStatus.Failed reason)
-      |> Msg.SetStatus
+      |> Msg.SetClientStatus
       |> agent.Post
     | Left error ->
       let reason =
         string error
         |> Error.asClientError (tag "requestInstallSnapshot")
       (client.Meta.Id, ServiceStatus.Failed reason)
-      |> Msg.SetStatus
+      |> Msg.SetClientStatus
       |> agent.Post
 
   // ** pingTimer
@@ -209,14 +212,14 @@ module ApiServer =
           |> sprintf "ping request to %s successful"
           |> Logger.debug socket.Id (tag "pingTimer")
           (socket.Id, ServiceStatus.Running)
-          |> Msg.SetStatus
+          |> Msg.SetClientStatus
           |> agent.Post
         | Left error ->
           string error
           |> sprintf "error during ping request to %s: %s" (string socket.Id)
           |> Logger.debug socket.Id (tag "pingTimer")
           (socket.Id, ServiceStatus.Failed error)
-          |> Msg.SetStatus
+          |> Msg.SetClientStatus
           |> agent.Post
         | _ -> ()
 
@@ -270,7 +273,15 @@ module ApiServer =
   // ** processSubscriptionEvent
 
   let private processSubscriptionEvent (agent: ApiAgent) (bytes: byte array) =
-    printfn "processSubscriptionEvent"
+    match Binary.decode bytes with
+    | Right command ->
+      match command with
+      | UpdateSlices _ | CallCue _ ->
+        command
+        |> Msg.RemoteUpdate
+        |> agent.Post
+      | _ -> ()
+    | _ -> ()
 
   // ** start
 
@@ -293,7 +304,8 @@ module ApiServer =
     match server.Start(), publisher.Start(), subscriber.Start() with
     | Right (), Right (), Right () ->
       chan.Reply(Right Reply.Ok)
-      Loaded { Store = new Store(State.Empty)
+      Loaded { Status = ServiceStatus.Running
+               Store = new Store(State.Empty)
                Publisher = publisher
                Subscriber = subscriber
                Clients = Map.empty
@@ -404,31 +416,41 @@ module ApiServer =
         return Either.fail (client.Meta.Id, error)
     }
 
-  // ** handleUpdate
+  // ** updateClients
 
-  let private handleUpdate (state: ClientState)
-                           (sm: StateMachine)
-                           (agent: ApiAgent) =
-    match state with
-    | Loaded data ->
-      data.Store.Dispatch sm
+  let private updateClients (data: ClientStateData) (sm: StateMachine) (agent: ApiAgent) =
+    data.Clients
+    |> Map.toArray
+    |> Array.map (snd >> updateClient sm)
+    |> Async.Parallel
+    |> Async.RunSynchronously
+    |> Array.iter
+      (fun result ->
+        match result with
+        | Left (id, error) ->
+          (id, ServiceStatus.Failed error)
+          |> Msg.SetClientStatus
+          |> agent.Post
+        | _ -> ())
 
-      data.Clients
-      |> Map.toArray
-      |> Array.map (snd >> updateClient sm)
-      |> Async.Parallel
-      |> Async.RunSynchronously
-      |> Array.iter
-        (fun result ->
-          match result with
-          | Left (id, error) ->
-            (id, ServiceStatus.Failed error)
-            |> Msg.SetStatus
-            |> agent.Post
-          | _ -> ())
+  // ** maybePublish
 
-      state
-    | Idle -> state
+  let private maybePublish (data: ClientStateData) (sm: StateMachine) (agent: ApiAgent) =
+    match sm with
+    | UpdateSlices _ | CallCue _ ->
+      sm
+      |> Binary.encode
+      |> data.Publisher.Publish
+      |> Either.mapError (ServiceStatus.Failed >> Msg.SetStatus >> agent.Post)
+      |> ignore
+    | _ -> ()
+
+  // ** maybeDispatch
+
+  let private maybeDispatch (data: ClientStateData) (sm: StateMachine) =
+    match sm with
+    | UpdateSlices _ | CallCue _ -> data.Store.Dispatch sm
+    | _ -> ()
 
   // ** handleGetClients
 
@@ -450,10 +472,21 @@ module ApiServer =
 
   // ** handleSetStatus
 
-  let private handleSetStatus (id: Id)
-                              (status: ServiceStatus)
-                              (state: ClientState)
-                              (subs: Subscriptions) =
+  let private handleSetStatus (state: ClientState)
+                              (subs: Subscriptions)
+                              (status: ServiceStatus) =
+    match state with
+    | Loaded data ->
+      notify subs (ApiEvent.ServiceStatus status)
+      Loaded { data with Status = status }
+    | idle -> idle
+
+  // ** handleSetClientStatus
+
+  let private handleSetClientStatus (state: ClientState)
+                                    (subs: Subscriptions)
+                                    (id: Id)
+                                    (status: ServiceStatus) =
     match state with
     | Loaded data ->
       match Map.tryFind id data.Clients with
@@ -464,7 +497,7 @@ module ApiServer =
         | oldst, newst ->
           if oldst <> newst then
             let updated = { client with Meta = { client.Meta with Status = status } }
-            notify subs (ApiEvent.Status updated.Meta)
+            notify subs (ApiEvent.ClientStatus updated.Meta)
             Loaded { data with Clients = Map.add id updated data.Clients }
           else
             state
@@ -517,13 +550,46 @@ module ApiServer =
 
   // ** handleClientUpdate
 
-  let private handleClientUpdate (state: ClientState) (subs: Subscriptions) (sm: StateMachine) =
+  let private handleClientUpdate (state: ClientState)
+                                 (subs: Subscriptions)
+                                 (sm: StateMachine)
+                                 (agent: ApiAgent) =
     match state with
-    | Loaded _ ->
+    | Loaded data ->
+      maybeDispatch data sm
+      maybePublish data sm agent
       notify subs (ApiEvent.Update sm)
       state
     | Idle ->
       state
+
+  // ** handleRemoteUpdate
+
+  let private handleRemoteUpdate (state: ClientState)
+                                 (subs: Subscriptions)
+                                 (sm: StateMachine)
+                                 (agent: ApiAgent) =
+    match state with
+    | Loaded data ->
+      maybeDispatch data sm
+      updateClients data sm agent
+      notify subs (ApiEvent.Update sm)
+      state
+    | Idle ->
+      state
+
+  // ** handleLocalUpdate
+
+  let private handleLocalUpdate (state: ClientState)
+                                (sm: StateMachine)
+                                (agent: ApiAgent) =
+    match state with
+    | Loaded data ->
+      data.Store.Dispatch sm
+      maybePublish data sm agent
+      updateClients data sm agent
+      state
+    | Idle -> state
 
   // ** loop
 
@@ -534,17 +600,19 @@ module ApiServer =
 
         let newstate =
           match msg with
-          | Msg.Start(chan,mem,projectId) -> handleStart chan state inbox mem projectId
-          | Msg.Dispose chan              -> handleDispose chan state
-          | Msg.AddClient(chan,client)    -> handleAddClient chan state subs client inbox
-          | Msg.RemoveClient(chan,client) -> handleRemoveClient chan state subs client
-          | Msg.Update(sm)                -> handleUpdate state sm inbox
-          | Msg.GetClients(chan)          -> handleGetClients chan state
-          | Msg.SetStatus(id, status)     -> handleSetStatus id status state subs
-          | Msg.SetState(chan, newstate)  -> handleSetState chan state newstate inbox
-          | Msg.GetState(chan)            -> handleGetState chan state
-          | Msg.InstallSnapshot(id)       -> handleInstallSnapshot state id inbox
-          | Msg.ClientUpdate(sm)          -> handleClientUpdate state subs sm
+          | Msg.Start(chan,mem,projectId)   -> handleStart chan state inbox mem projectId
+          | Msg.Dispose chan                -> handleDispose chan state
+          | Msg.AddClient(chan,client)      -> handleAddClient chan state subs client inbox
+          | Msg.RemoveClient(chan,client)   -> handleRemoveClient chan state subs client
+          | Msg.GetClients(chan)            -> handleGetClients chan state
+          | Msg.SetStatus(status)           -> handleSetStatus state subs status
+          | Msg.SetClientStatus(id, status) -> handleSetClientStatus state subs id status
+          | Msg.SetState(chan, newstate)    -> handleSetState chan state newstate inbox
+          | Msg.GetState(chan)              -> handleGetState chan state
+          | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id inbox
+          | Msg.LocalUpdate(sm)             -> handleLocalUpdate state sm inbox
+          | Msg.ClientUpdate(sm)            -> handleClientUpdate state subs sm inbox
+          | Msg.RemoteUpdate(sm)            -> handleRemoteUpdate state subs sm inbox
 
         return! act newstate
       }
@@ -607,7 +675,7 @@ module ApiServer =
                     |> Either.fail
 
               member self.Update (sm: StateMachine) =
-                agent.Post(Msg.Update sm)
+                agent.Post(Msg.LocalUpdate sm)
 
               member self.SetState (state: State) =
                 match postCommand agent (fun chan -> Msg.SetState(chan, state)) with

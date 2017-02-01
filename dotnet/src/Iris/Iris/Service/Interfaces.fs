@@ -170,10 +170,11 @@ type IHttpServer =
 
 [<RequireQualifiedAccess>]
 type ApiEvent =
-  | Update     of StateMachine
-  | Status     of IrisClient
-  | Register   of IrisClient
-  | UnRegister of IrisClient
+  | Update        of StateMachine
+  | ServiceStatus of ServiceStatus
+  | ClientStatus  of IrisClient
+  | Register      of IrisClient
+  | UnRegister    of IrisClient
 
 // * IrisEvent
 
