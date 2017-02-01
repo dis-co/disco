@@ -87,10 +87,8 @@ module SerializationTests =
 
   let mkSession _ =
     { Id = Id.Create()
-    ; Status = { StatusType = Unauthorized; Payload = "" }
     ; IpAddress = IPv4Address "127.0.0.1"
-    ; UserAgent = "Oh my goodness"
-    }
+    ; UserAgent = "Oh my goodness" }
 
   let mkState _ =
     { Project  = mkProject ()
