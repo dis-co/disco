@@ -49,10 +49,10 @@ module ApiServer =
         dispose client.Timer
         dispose client.Socket
 
-  // ** ClientStateData
+  // ** ServerStateData
 
   [<NoComparison;NoEquality>]
-  type private ClientStateData =
+  type private ServerStateData =
     { Status: ServiceStatus
       Store: Store
       Server: Rep
@@ -67,11 +67,11 @@ module ApiServer =
         dispose data.Server
         Map.iter (fun _ v -> dispose v) data.Clients
 
-  // ** ClientState
+  // ** ServerState
 
   [<NoComparison;NoEquality>]
-  type private ClientState =
-    | Loaded of ClientStateData
+  type private ServerState =
+    | Loaded of ServerStateData
     | Idle
 
     interface IDisposable with
@@ -156,7 +156,7 @@ module ApiServer =
 
   // ** requestInstallSnapshot
 
-  let private requestInstallSnapshot (data: ClientStateData) (client: Client) (agent: ApiAgent) =
+  let private requestInstallSnapshot (data: ServerStateData) (client: Client) (agent: ApiAgent) =
     let result : Either<IrisError,ApiResponse> =
       data.Store.State
       |> ClientApiRequest.Snapshot
@@ -318,7 +318,7 @@ module ApiServer =
   // ** handleStart
 
   let private handleStart (chan: ReplyChan)
-                          (state: ClientState)
+                          (state: ServerState)
                           (agent: ApiAgent)
                           (mem: RaftMember)
                           (projectId: Id) =
@@ -331,7 +331,7 @@ module ApiServer =
 
   // ** handleDispose
 
-  let private handleDispose (chan: ReplyChan) (state: ClientState) =
+  let private handleDispose (chan: ReplyChan) (state: ServerState) =
     dispose state
     chan.Reply(Right Reply.Ok)
     Idle
@@ -339,7 +339,7 @@ module ApiServer =
   // ** handleAddClient
 
   let private handleAddClient (chan: ReplyChan)
-                              (state: ClientState)
+                              (state: ServerState)
                               (subs: Subscriptions)
                               (meta: IrisClient)
                               (agent: ApiAgent) =
@@ -375,7 +375,7 @@ module ApiServer =
   // ** handleRemoveClient
 
   let private handleRemoveClient (chan: ReplyChan)
-                                 (state: ClientState)
+                                 (state: ServerState)
                                  (subs: Subscriptions)
                                  (peer: IrisClient) =
     match state with
@@ -418,7 +418,7 @@ module ApiServer =
 
   // ** updateClients
 
-  let private updateClients (data: ClientStateData) (sm: StateMachine) (agent: ApiAgent) =
+  let private updateClients (data: ServerStateData) (sm: StateMachine) (agent: ApiAgent) =
     data.Clients
     |> Map.toArray
     |> Array.map (snd >> updateClient sm)
@@ -435,7 +435,7 @@ module ApiServer =
 
   // ** maybePublish
 
-  let private maybePublish (data: ClientStateData) (sm: StateMachine) (agent: ApiAgent) =
+  let private maybePublish (data: ServerStateData) (sm: StateMachine) (agent: ApiAgent) =
     match sm with
     | UpdateSlices _ | CallCue _ ->
       sm
@@ -447,14 +447,14 @@ module ApiServer =
 
   // ** maybeDispatch
 
-  let private maybeDispatch (data: ClientStateData) (sm: StateMachine) =
+  let private maybeDispatch (data: ServerStateData) (sm: StateMachine) =
     match sm with
     | UpdateSlices _ | CallCue _ -> data.Store.Dispatch sm
     | _ -> ()
 
   // ** handleGetClients
 
-  let private handleGetClients (chan: ReplyChan) (state: ClientState) =
+  let private handleGetClients (chan: ReplyChan) (state: ServerState) =
     match state with
     | Loaded data ->
       data.Clients
@@ -472,7 +472,7 @@ module ApiServer =
 
   // ** handleSetStatus
 
-  let private handleSetStatus (state: ClientState)
+  let private handleSetStatus (state: ServerState)
                               (subs: Subscriptions)
                               (status: ServiceStatus) =
     match state with
@@ -483,7 +483,7 @@ module ApiServer =
 
   // ** handleSetClientStatus
 
-  let private handleSetClientStatus (state: ClientState)
+  let private handleSetClientStatus (state: ServerState)
                                     (subs: Subscriptions)
                                     (id: Id)
                                     (status: ServiceStatus) =
@@ -507,7 +507,7 @@ module ApiServer =
   // ** handleSetState
 
   let private handleSetState (chan: ReplyChan)
-                             (state: ClientState)
+                             (state: ServerState)
                              (newstate: State)
                              (agent: ApiAgent) =
     match state with
@@ -521,7 +521,7 @@ module ApiServer =
 
   // ** handleInstallSnapshot
 
-  let private handleInstallSnapshot (state: ClientState) (id: Id) (agent: ApiAgent) =
+  let private handleInstallSnapshot (state: ServerState) (id: Id) (agent: ApiAgent) =
     match state with
     | Loaded data ->
       match Map.tryFind id data.Clients with
@@ -533,7 +533,7 @@ module ApiServer =
 
   // ** handleGetState
 
-  let private handleGetState (chan: ReplyChan) (state: ClientState) =
+  let private handleGetState (chan: ReplyChan) (state: ServerState) =
     match state with
     | Loaded data ->
       data.Store.State
@@ -550,7 +550,7 @@ module ApiServer =
 
   // ** handleClientUpdate
 
-  let private handleClientUpdate (state: ClientState)
+  let private handleClientUpdate (state: ServerState)
                                  (subs: Subscriptions)
                                  (sm: StateMachine)
                                  (agent: ApiAgent) =
@@ -565,7 +565,7 @@ module ApiServer =
 
   // ** handleRemoteUpdate
 
-  let private handleRemoteUpdate (state: ClientState)
+  let private handleRemoteUpdate (state: ServerState)
                                  (subs: Subscriptions)
                                  (sm: StateMachine)
                                  (agent: ApiAgent) =
@@ -580,7 +580,7 @@ module ApiServer =
 
   // ** handleLocalUpdate
 
-  let private handleLocalUpdate (state: ClientState)
+  let private handleLocalUpdate (state: ServerState)
                                 (sm: StateMachine)
                                 (agent: ApiAgent) =
     match state with
@@ -593,8 +593,8 @@ module ApiServer =
 
   // ** loop
 
-  let private loop (initial: ClientState) (subs: Subscriptions) (inbox: ApiAgent) =
-    let rec act (state: ClientState) =
+  let private loop (initial: ServerState) (subs: Subscriptions) (inbox: ApiAgent) =
+    let rec act (state: ServerState) =
       async {
         let! msg = inbox.Receive()
 
