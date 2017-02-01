@@ -630,6 +630,17 @@ module ApiClient =
                   error
                   |> Either.fail
 
+              member self.UpdateSlices(slices: Slices) =
+                match postCommand agent (fun chan -> Msg.Request(chan, UpdateSlices slices)) with
+                | Right Reply.Ok -> Either.succeed ()
+                | Right other ->
+                  sprintf "Unexpected Reply from ApiAgent: %A" other
+                  |> Error.asClientError (tag "UpdatePin")
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
+
               member self.RemovePin(pin: Pin) =
                 match postCommand agent (fun chan -> Msg.Request(chan, RemovePin pin)) with
                 | Right Reply.Ok -> Either.succeed ()
