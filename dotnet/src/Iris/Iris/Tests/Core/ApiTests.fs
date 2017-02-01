@@ -50,7 +50,7 @@ module ApiTests =
 
         let mem = Member.create (Id.Create())
 
-        use! server = ApiServer.create mem
+        use! server = ApiServer.create mem state.Project.Id
 
         do! server.Start()
         do! server.SetState state
@@ -113,7 +113,7 @@ module ApiTests =
 
         let mem = Member.create (Id.Create())
 
-        use! server = ApiServer.create mem
+        use! server = ApiServer.create mem state.Project.Id
 
         do! server.Start()
         do! server.SetState state
@@ -184,7 +184,7 @@ module ApiTests =
 
         let mem = Member.create (Id.Create())
 
-        use! server = ApiServer.create mem
+        use! server = ApiServer.create mem state.Project.Id
 
         let check = ref 0
 

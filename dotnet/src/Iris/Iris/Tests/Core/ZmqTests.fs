@@ -41,7 +41,7 @@ module ZmqIntegrationTests =
             count := next
           msg
 
-        use rep = new Rep(srv, handler)
+        use rep = new Rep(Id.Create(), srv, handler)
 
         do! rep.Start()
 
