@@ -149,7 +149,6 @@ module TestData =
 
   let mkSession () =
     { Id = Id.Create()
-      Status = { StatusType = Unauthorized; Payload = "" }
       IpAddress = IPv4Address "127.0.0.1"
       UserAgent = "Oh my goodness" }
 
