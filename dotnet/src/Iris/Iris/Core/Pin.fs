@@ -59,7 +59,7 @@ type Behavior =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
-#if FABLE_COMPILER
+  #if FABLE_COMPILER
 
   static member FromFB (fb: BehaviorFB) =
     match fb with
@@ -70,7 +70,7 @@ type Behavior =
       |> Error.asParseError "Behavior.FromFB"
       |> Either.fail
 
-#else
+  #else
 
   static member FromFB (fb: BehaviorFB) =
     match fb with
@@ -81,7 +81,7 @@ type Behavior =
       |> Error.asParseError "Behavior.FromFB"
       |> Either.fail
 
-#endif
+  #endif
 
   // ** ToOffset
 
@@ -143,7 +143,7 @@ type StringType =
   //                           |___/
 
   static member FromFB (fb: StringTypeFB) =
-#if FABLE_COMPILER
+    #if FABLE_COMPILER
     match fb with
     | x when x = StringTypeFB.SimpleFB    -> Right Simple
     | x when x = StringTypeFB.MultiLineFB -> Right MultiLine
@@ -156,7 +156,7 @@ type StringType =
       |> Error.asParseError "StringType.FromFB"
       |> Either.fail
 
-#else
+    #else
 
     match fb with
     | StringTypeFB.SimpleFB    -> Right Simple
@@ -170,7 +170,7 @@ type StringType =
       |> Error.asParseError "StringType.FromFB"
       |> Either.fail
 
-#endif
+    #endif
 
   // ** ToOffset
 
@@ -432,7 +432,7 @@ type Pin =
     let update (arr : 'a array) (data: 'a) =
 
       if int value.Index > Array.length arr then
-#if FABLE_COMPILER
+        #if FABLE_COMPILER
         /// Rationale:
         ///
         /// in JavaScript an array> will re-allocate automatically under the hood
@@ -440,7 +440,7 @@ type Pin =
         let newarr = Array.copy arr
         newarr.[int value.Index] <- data
         newarr
-#else
+        #else
         /// Rationale:
         ///
         /// in .NET, we need to worry about out-of-bounds errors, and we
@@ -450,7 +450,7 @@ type Pin =
         arr.CopyTo(newarr, 0)
         newarr.[int value.Index] <- data
         newarr
-#endif
+        #endif
       else
         Array.mapi (fun i d -> if i = int value.Index then data else d) arr
 
@@ -729,11 +729,11 @@ type Pin =
     let inline build (data: ^t) tipe =
       let offset = Binary.toOffset builder data
       PinFB.StartPinFB(builder)
-#if FABLE_COMPILER
+      #if FABLE_COMPILER
       PinFB.AddPin(builder, offset)
-#else
+      #else
       PinFB.AddPin(builder, offset.Value)
-#endif
+      #endif
       PinFB.AddPinType(builder, tipe)
       PinFB.EndPinFB(builder)
 
@@ -751,7 +751,7 @@ type Pin =
   // ** FromFB
 
   static member FromFB(fb: PinFB) : Either<IrisError,Pin> =
-#if FABLE_COMPILER
+    #if FABLE_COMPILER
     match fb.PinType with
     | x when x = PinTypeFB.StringPinFB ->
       StringPinFB.Create()
@@ -812,7 +812,7 @@ type Pin =
       |> Error.asParseError "PinFB.FromFB"
       |> Either.fail
 
-#else
+    #else
 
     match fb.PinType with
     | PinTypeFB.StringPinFB ->
@@ -919,7 +919,7 @@ type Pin =
       |> Error.asParseError "PinFB.FromFB"
       |> Either.fail
 
-#endif
+    #endif
 
   // ** ToBytes
 
@@ -940,7 +940,7 @@ type Pin =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if !FABLE_COMPILER
+  #if !FABLE_COMPILER
 
   member self.ToYamlObject() =
     let yaml = new PinYaml()
@@ -1069,7 +1069,7 @@ type Pin =
       slices
     |> Either.map snd
 
-#endif
+  #endif
 
   // ** ParseTags
 
@@ -1098,9 +1098,8 @@ type Pin =
     |> Either.map snd
 
   // ** ParseSlicesFB
-  // *** JS
 
-#if FABLE_COMPILER
+  #if FABLE_COMPILER
 
   static member inline ParseSlicesFB< ^a, ^b, ^t when ^t : (static member FromFB : ^a -> Either<IrisError, ^t>)
                                                  and ^b : (member SlicesLength : int)
@@ -1128,8 +1127,7 @@ type Pin =
       arr
     |> Either.map snd
 
-#else
-  // *** .NET
+  #else
 
   static member inline ParseSlicesFB< ^a, ^b, ^t when ^t : (static member FromFB : ^a -> Either<IrisError, ^t>)
                                                  and ^b : (member SlicesLength : int)
@@ -1161,11 +1159,11 @@ type Pin =
       arr
     |> Either.map snd
 
-#endif
+  #endif
 
   // ** FromYamlObject
 
-#if !FABLE_COMPILER
+  #if !FABLE_COMPILER
 
   static member FromYamlObject(yml: PinYaml) =
     try
@@ -1332,7 +1330,7 @@ type Pin =
     serializer.Deserialize<PinYaml>(str)
     |> Pin.FromYamlObject
 
-#endif
+  #endif
 
 // * BoolPinD
 
@@ -1462,7 +1460,7 @@ and BoolSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if !FABLE_COMPILER
+  #if !FABLE_COMPILER
 
   member self.ToYamlObject() =
     SliceYaml.BoolSlice(self.Index, self.Value)
@@ -1477,7 +1475,7 @@ and BoolSliceD =
       |> Error.asParseError "BooldSliceD.FromYamlObjec"
       |> Either.fail
 
-#endif
+  #endif
 
 // * IntPinD
 
@@ -1617,7 +1615,7 @@ and IntSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if !FABLE_COMPILER
+  #if !FABLE_COMPILER
 
   member self.ToYamlObject() =
     SliceYaml.IntSlice(self.Index, self.Value)
@@ -1632,7 +1630,7 @@ and IntSliceD =
       |> Error.asParseError "IntSliceD.FromYamlObject"
       |> Either.fail
 
-#endif
+  #endif
 
 // * FloatPinD
 
@@ -1776,7 +1774,7 @@ and FloatSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if !FABLE_COMPILER
+  #if !FABLE_COMPILER
 
   member self.ToYamlObject() =
     SliceYaml.FloatSlice(self.Index, self.Value)
@@ -1791,7 +1789,7 @@ and FloatSliceD =
       |> Error.asParseError "FloatSliceD.FromYamlObject"
       |> Either.fail
 
-#endif
+  #endif
 
 // * DoublePinD
 
@@ -1934,7 +1932,7 @@ and DoubleSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if !FABLE_COMPILER
+  #if !FABLE_COMPILER
 
   member self.ToYamlObject() =
     SliceYaml.DoubleSlice(self.Index, self.Value)
@@ -1949,7 +1947,7 @@ and DoubleSliceD =
       |> Error.asParseError "DoubleSliceD.FromYamlObject"
       |> Either.fail
 
-#endif
+  #endif
 
 // * BytePinD
 
@@ -2048,13 +2046,13 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
 
   override self.GetHashCode() =
     let mutable hash = 42
-#if FABLE_COMPILER
+    #if FABLE_COMPILER
     hash <- (hash * 7) + hashCode (string self.Index)
     hash <- (hash * 7) + hashCode (string self.Value.byteLength)
-#else
+    #else
     hash <- (hash * 7) + self.Index.GetHashCode()
     hash <- (hash * 7) + self.Value.GetHashCode()
-#endif
+    #endif
     hash
 
   // ** CompareTo
@@ -2071,7 +2069,7 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
     member self.Equals(slice: ByteSliceD) =
       let mutable contentsEqual = false
       let lengthEqual =
-#if FABLE_COMPILER
+        #if FABLE_COMPILER
         let result = self.Value.byteLength = slice.Value.byteLength
         if result then
           let me = Fable.Import.JS.Uint8Array.Create(self.Value)
@@ -2084,7 +2082,7 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
             i <- i + 1
           contentsEqual <- contents
         result
-#else
+        #else
         let result = Array.length self.Value = Array.length slice.Value
         if result then
           let mutable contents = true
@@ -2093,7 +2091,7 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
               contents <- self.Value.[i] = slice.Value.[i]
           contentsEqual <- contents
         result
-#endif
+        #endif
       slice.Index = self.Index &&
       lengthEqual &&
       contentsEqual
@@ -2106,7 +2104,7 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if !FABLE_COMPILER
+  #if !FABLE_COMPILER
 
   member self.ToYamlObject() =
     SliceYaml.ByteSlice(self.Index,  Convert.ToBase64String self.Value)
@@ -2121,7 +2119,7 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
       |> Error.asParseError "ByteSliceD.FromYamlObject"
       |> Either.fail
 
-#endif
+  #endif
 
   // ** ToOffset
 
@@ -2134,15 +2132,15 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let encode (bytes: Binary.Buffer) =
-#if FABLE_COMPILER
+      #if FABLE_COMPILER
       let mutable str = ""
       let arr = Fable.Import.JS.Uint8Array.Create(bytes)
       for i in 0 .. (int arr.length - 1) do
         str <- str + Fable.Import.JS.String.fromCharCode arr.[i]
       Fable.Import.Browser.window.btoa str
-#else
+      #else
       Convert.ToBase64String(bytes)
-#endif
+      #endif
 
     let encoded = encode self.Value
     let bytes = builder.CreateString encoded
@@ -2155,15 +2153,15 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
 
   static member FromFB(fb: ByteSliceFB) : Either<IrisError,ByteSliceD> =
     let decode str =
-#if FABLE_COMPILER
+      #if FABLE_COMPILER
       let binary = Fable.Import.Browser.window.atob str
       let bytes = Fable.Import.JS.Uint8Array.Create(float binary.Length)
       for i in 0 .. (binary.Length - 1) do
         bytes.[i] <- charCodeAt binary i
       bytes.buffer
-#else
+      #else
       Convert.FromBase64String(str)
-#endif
+      #endif
 
     Either.tryWith (Error.asParseError "ByteSliceD.FromFB") <| fun _ ->
       { Index = fb.Index
@@ -2244,9 +2242,9 @@ and EnumPinD =
         Array.fold
           (fun (m: Either<IrisError, int * Property array>) _ -> either {
             let! (i, arr) = m
-#if FABLE_COMPILER
+            #if FABLE_COMPILER
             let prop = fb.Properties(i)
-#else
+            #else
             let! prop =
               let nullable = fb.Properties(i)
               if nullable.HasValue then
@@ -2255,7 +2253,7 @@ and EnumPinD =
                 "Cannot parse empty property"
                 |> Error.asParseError "EnumPin.FromFB"
                 |> Either.fail
-#endif
+            #endif
             arr.[i] <- { Key = prop.Key; Value = prop.Value }
             return (i + 1, arr)
           })
@@ -2328,11 +2326,11 @@ and EnumSliceD =
 
   static member FromFB(fb: EnumSliceFB) : Either<IrisError,EnumSliceD> =
     Either.tryWith (Error.asParseError "EnumSliceD.FromFB") <| fun _ ->
-#if FABLE_COMPILER
+      #if FABLE_COMPILER
       let prop = fb.Value
       { Index = fb.Index
         Value = { Key = prop.Key; Value = prop.Value } }
-#else
+      #else
       let nullable = fb.Value
       if nullable.HasValue then
         let prop = nullable.Value
@@ -2340,7 +2338,7 @@ and EnumSliceD =
           Value = { Key = prop.Key; Value = prop.Value } }
       else
         failwith "Cannot parse empty property value"
-#endif
+      #endif
 
   // ** ToBytes
 
@@ -2361,7 +2359,7 @@ and EnumSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if !FABLE_COMPILER
+  #if !FABLE_COMPILER
 
   member self.ToYamlObject() =
     SliceYaml.EnumSlice(self.Index, Yaml.toYaml self.Value)
@@ -2376,7 +2374,7 @@ and EnumSliceD =
       |> Error.asParseError "EnumSliceD.FromYamlObject"
       |> Either.fail
 
-#endif
+  #endif
 
 // ** ColorPinD
 
@@ -2480,13 +2478,13 @@ and ColorSliceD =
 
   static member FromFB(fb: ColorSliceFB) : Either<IrisError,ColorSliceD> =
     Either.tryWith (Error.asParseError "ColorSliceD.FromFB") <| fun _ ->
-#if FABLE_COMPILER
+      #if FABLE_COMPILER
       match fb.Value |> ColorSpace.FromFB with
       | Right color                 -> { Index = fb.Index; Value = color }
       | Left (ParseError (_,error)) -> failwith error
       | Left error ->
         failwithf "Unexpected error: %A" error
-#else
+      #else
       let nullable = fb.Value
       if nullable.HasValue then
         match ColorSpace.FromFB nullable.Value with
@@ -2496,7 +2494,7 @@ and ColorSliceD =
           failwithf "Unexpected error: %A" error
       else
         failwith "Cannot parse empty ColorSpaceFB"
-#endif
+      #endif
 
   // ** ToColors
 
@@ -2517,7 +2515,7 @@ and ColorSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if !FABLE_COMPILER
+  #if !FABLE_COMPILER
 
   member self.ToYamlObject() =
     SliceYaml.ColorSlice(self.Index, Yaml.toYaml self.Value)
@@ -2532,7 +2530,7 @@ and ColorSliceD =
       |> Error.asParseError "ColorSliceD.FromYamlObject"
       |> Either.fail
 
-#endif
+  #endif
 
 // * StringPinD
 
@@ -2677,7 +2675,7 @@ and StringSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if !FABLE_COMPILER
+  #if !FABLE_COMPILER
 
   member self.ToYamlObject() =
     SliceYaml.StringSlice(self.Index, self.Value)
@@ -2692,7 +2690,7 @@ and StringSliceD =
       |> Error.asParseError "StringSliceD.FromYamlObject"
       |> Either.fail
 
-#endif
+  #endif
 
 // ** CompoundPinD
 
@@ -2806,9 +2804,9 @@ and CompoundSliceD =
           (fun (m: Either<IrisError,int * Pin array>) _ -> either {
               let! (i, arr) = m
 
-#if FABLE_COMPILER
+              #if FABLE_COMPILER
               let! pin = i |> fb.Value |> Pin.FromFB
-  #else
+              #else
               let! pin =
                 let nullable = fb.Value(i)
                 if nullable.HasValue then
@@ -2818,7 +2816,7 @@ and CompoundSliceD =
                   "Could not parse empty PinFB"
                   |> Error.asParseError "CompoundSliceD.FromFB"
                   |> Either.fail
-#endif
+              #endif
 
               arr.[i] <- pin
               return (i + 1, arr)
@@ -2850,7 +2848,7 @@ and CompoundSliceD =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-#if !FABLE_COMPILER
+  #if !FABLE_COMPILER
 
   member self.ToYamlObject() =
     SliceYaml.CompoundSlice(self.Index, Array.map Yaml.toYaml self.Value)
@@ -2865,7 +2863,7 @@ and CompoundSliceD =
       |> Error.asParseError "CompoundSliceD.FromYamlObject"
       |> Either.fail
 
-#endif
+  #endif
 
 // * Slice
 
@@ -3073,11 +3071,11 @@ and Slice =
     let build tipe (offset: Offset<_>) =
       SliceFB.StartSliceFB(builder)
       SliceFB.AddSliceType(builder, tipe)
-#if FABLE_COMPILER
+      #if FABLE_COMPILER
       SliceFB.AddSlice(builder, offset)
-#else
+      #else
       SliceFB.AddSlice(builder, offset.Value)
-#endif
+      #endif
       SliceFB.EndSliceFB(builder)
 
     match self with
@@ -3095,7 +3093,7 @@ and Slice =
 
   static member FromFB(fb: SliceFB) : Either<IrisError,Slice>  =
     match fb.SliceType with
-#if FABLE_COMPILER
+    #if FABLE_COMPILER
     | x when x = SliceTypeFB.StringSliceFB ->
       StringSliceFB.Create()
       |> fb.Slice
@@ -3155,7 +3153,7 @@ and Slice =
       |> Error.asParseError "Slice.FromFB"
       |> Either.fail
 
-#else
+    #else
 
     | SliceTypeFB.StringSliceFB   ->
       let slice = fb.Slice<StringSliceFB>()
@@ -3261,7 +3259,7 @@ and Slice =
       |> Error.asParseError "Slice.FromFB"
       |> Either.fail
 
-#endif
+    #endif
 
   // ** ToBytes
 
@@ -3276,7 +3274,7 @@ and Slice =
 
   // ** ToYaml
 
-#if !FABLE_COMPILER
+  #if !FABLE_COMPILER
 
   member self.ToYaml(serializer: Serializer) =
     let yaml =
@@ -3332,7 +3330,7 @@ and Slice =
       |> Error.asParseError "Slice.FromYaml"
       |> Either.fail
 
-#endif
+  #endif
 
 // * Slices
 
@@ -3622,8 +3620,6 @@ and Slices =
       SlicesFB.EndSlicesFB(builder)
 
   static member inline FromFB(fb: SlicesFB) : Either<IrisError,Slices> =
-    #if FABLE_COMPILER
-    #else
     either {
       let! (slices,_) =
         let arr = Array.zeroCreate fb.SlicesLength
@@ -3631,6 +3627,9 @@ and Slices =
           (fun (m: Either<IrisError,Slice array * int>) _ -> either {
               let! (parsed,idx) = m
               let slicish = fb.Slices(idx)
+              #if FABLE_COMPILER
+              let! lisc
+              #else
               if slicish.HasValue then
                 let value = slicish.Value
                 let! slice = Slice.FromFB value
@@ -3641,6 +3640,7 @@ and Slices =
                   "Empty slice value"
                   |> Error.asParseError "Slices.FromFB"
                   |> Either.fail
+              #endif
             })
           (Right (arr, 0))
           arr
@@ -3689,4 +3689,3 @@ and Slices =
           |> Error.asParseError "Slices.FromFB"
           |> Either.fail
     }
-    #endif
