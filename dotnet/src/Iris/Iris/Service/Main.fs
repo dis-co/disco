@@ -72,7 +72,7 @@ module Main =
 
     let result =
       either {
-        let logobs = Logger.subscribe (string >> printfn "%s")
+        // let logobs = Logger.subscribe (string >> printfn "%s")
 
         let pid = Id.Create()
 
@@ -91,7 +91,7 @@ module Main =
               member self.Dispose() =
                 dispose obs
                 dispose server
-                dispose logobs }
+                (* dispose logobs *) }
       }
 
     match result with

@@ -400,22 +400,28 @@ module ApiClient =
   // ** requestUpdate
 
   let private requestUpdate (socket: Req) (sm: StateMachine) =
-    let result : Either<IrisError,ApiResponse> =
-      ServerApiRequest.Update sm
-      |> Binary.encode
-      |> socket.Request
-      |> Either.bind Binary.decode
+    try
+      let result : Either<IrisError,ApiResponse> =
+        ServerApiRequest.Update sm
+        |> Binary.encode
+        |> socket.Request
+        |> Either.bind Binary.decode
 
-    match result with
-    | Right ApiResponse.OK ->
-      Either.succeed ()
-    | Right other ->
-      sprintf "Unexpected reply from Server: %A" other
-      |> Error.asClientError (tag "requestUpdate")
-      |> Either.fail
-    | Left error ->
-      error
-      |> Either.fail
+      match result with
+      | Right ApiResponse.OK ->
+        Either.succeed ()
+      | Right other ->
+        sprintf "Unexpected reply from Server: %A" other
+        |> Error.asClientError (tag "requestUpdate")
+        |> Either.fail
+      | Left error ->
+        error
+        |> Either.fail
+    with
+      | exn ->
+        exn.Message
+        |> Error.asClientError (tag "requestUpdate")
+        |> Either.fail
 
   // ** handleRequest
 
