@@ -74,11 +74,11 @@ module Main =
       either {
         // let logobs = Logger.subscribe (string >> printfn "%s")
 
-        let pid = Id.Create()
+        let pid = Id "hello-project-id"
 
         let mem =
           { Member.create (Id.Create()) with
-              IpAddr = IPv4Address "192.168.2.108"
+              IpAddr = IPv4Address args.[0]
               ApiPort = 10000us }
 
         let! server = ApiServer.create mem pid
