@@ -233,8 +233,8 @@ module Raft =
 
   // ** requestHandler
 
-  let private requestHandler (arbiter: StateArbiter) (data: byte array) =
-    let handle request =
+  let private requestHandler (mem: RaftMember) (arbiter: StateArbiter) (data: byte array) =
+    let handleRequest request =
       either {
         let! message = Binary.decode<IrisError,RaftRequest> request
         let! reply = postCommand arbiter (fun chan -> Msg.Request(chan, message))
@@ -251,15 +251,7 @@ module Raft =
             return AppendEntryResponse entry
 
           | HandShake _, true ->
-            let! reply = postCommand arbiter (fun chan -> Msg.Get chan)
-            match reply with
-            | Reply.State state ->
-              return Welcome state.Raft.Member
-            | other ->
-              return!
-                sprintf "Unexpected reply from StateArbiter:  %A" other
-                |> Error.asRaftError (tag "requestHandler")
-                |> Either.fail
+            return Welcome mem
 
           | HandWaive _, true ->
             return Arrivederci
@@ -269,6 +261,7 @@ module Raft =
               "Response Timeout"
               |> Error.asRaftError (tag "requestHandler")
               |> Either.fail
+
           | other ->
             return!
               sprintf "Unexpected reply StateArbiter:  %A" other
@@ -282,10 +275,14 @@ module Raft =
             |> Either.fail
       }
 
-    match handle data with
-    | Right response -> response
-    | Left error     -> ErrorResponse error
-    |> Binary.encode
+    match handleRequest data with
+    | Right response ->
+      response
+      |> Binary.encode
+    | Left error ->
+      error
+      |> ErrorResponse
+      |> Binary.encode
 
   //   ____      _ _ _                _
   //  / ___|__ _| | | |__   __ _  ___| | _____
@@ -1173,7 +1170,7 @@ module Raft =
       let! raftstate = Persistence.getRaft config
 
       let addr = raftstate.Member |> memUri
-      let server = new Rep(raftstate.Member.Id, addr, requestHandler agent)
+      let server = new Rep(raftstate.Member.Id, addr, requestHandler raftstate.Member agent)
 
       match server.Start() with
       | Right _ ->
