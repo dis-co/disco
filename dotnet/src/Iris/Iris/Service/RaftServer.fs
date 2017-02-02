@@ -198,8 +198,8 @@ module Raft =
   ///
   /// Returns: bool
   let private waitForCommit (arbiter: StateArbiter) (appended: EntryResponse) =
-    let timeout = Constants.REQ_TIMEOUT
-    let delta = 2 // ms!
+    let timeout = 200                   // ms!
+    let delta = 2                       // ms!
 
     let ok = ref (Right true)
     let run = ref true
