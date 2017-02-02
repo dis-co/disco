@@ -30,6 +30,7 @@ type GenericObservable<'T>() =
         { new IDisposable with
           member x.Dispose() = listeners.Remove(guid) |> ignore }
 
+[<NoComparison>]
 type DragEvent = {
   ``type``: string; value: obj; x: int; y: int; 
 }
@@ -77,10 +78,19 @@ let removeMember(info: StateInfo, memId: Id) =
   | None ->
     printfn "Couldn't find mem with Id %O" memId
 
-let addMember(info: StateInfo, host: string, ip: string, port: string) =
+let createMemberInfo() =
+  let m = Id.Create() |> Member.create
+  string m.Id, m.HostName, string m.IpAddr, string m.Port, string m.WsPort, string m.GitPort, string m.ApiPort
+
+let addMember(info: StateInfo, id, host, ip, port: string, wsPort: string, gitPort: string, apiPort: string) =
   try
-    let mem = Id.Create() |> Member.create
-    { mem with HostName = host; IpAddr = IPv4Address ip; Port = uint16 port }
+    { Member.create (Id id) with
+        HostName = host
+        IpAddr = IPv4Address ip
+        Port = uint16 port
+        WsPort = uint16 wsPort
+        GitPort = uint16 gitPort
+        ApiPort = uint16 apiPort }
     |> AddMember
     |> info.context.Post
   with
@@ -111,6 +121,12 @@ let postCommandAndForget cmd =
 let listProjects() =
   ListProjects
   |> postCommand [||] (String.split [|','|])
+
+let shutdown() =
+  Shutdown |> postCommandAndForget
+
+let unloadProject() =
+  UnloadProject |> postCommandAndForget
 
 let loadProject(info: StateInfo, project, username, password) =
   LoadProject(project, username, password)

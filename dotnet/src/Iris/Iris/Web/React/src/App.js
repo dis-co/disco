@@ -4,8 +4,6 @@ import PanelCenter from "./PanelCenter";
 import PanelRight from "./PanelRight";
 import ModalDialog from "./ModalDialog";
 import { getCurrentSession } from 'iris';
-import { SKIP_LOGIN } from './Constants';
-import LOGIN from "./modals/Login";
 
 let modal = null;
 let initInfo = null;

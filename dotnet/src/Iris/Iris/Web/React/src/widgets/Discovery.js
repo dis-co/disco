@@ -1,6 +1,6 @@
 import * as React from "react";
 import Panel from 'muicss/lib/react/panel';
-import { triggerDragEvent } from "iris";
+import { triggerDragEvent, createMemberInfo } from "iris";
 import Draggable from 'react-draggable';
 
 export default class WidgetDiscovery extends React.Component {
@@ -14,6 +14,17 @@ export default class WidgetDiscovery extends React.Component {
   }
 
   renderRow(i) {
+    var _info = createMemberInfo()
+    var info = {
+      tag: "service",
+      id: _info[0],
+      host: _info[1],
+      ip: _info[2],
+      port: _info[3],
+      wsPort: _info[4],
+      gitPort: _info[5],
+      apiPort: _info[6]
+    }
     var props = {}, pos = this.controlledPositions.get(i);
     if (pos != null && pos.pending) {
       props = {position: {x: pos.x, y: pos.y}}
@@ -28,11 +39,10 @@ export default class WidgetDiscovery extends React.Component {
             this.controlledPositions.set(i,{x, y, pending: false});
           }}
           onDrag={(e,pos) => {
-            triggerDragEvent("move", {id: "service" + i}, e.clientX, e.clientY);
+            triggerDragEvent("move", info, e.clientX, e.clientY);
           }}
           onStop={(e,{x,y}) => {
-            // TODO: Check if we've fallen on the cluster widget
-            triggerDragEvent("stop", {id: "service" + i}, e.clientX, e.clientY);
+            triggerDragEvent("stop", info, e.clientX, e.clientY);
             var pos = this.controlledPositions.get(i);
             pos.pending = true;
             this.forceUpdate();
@@ -47,7 +57,7 @@ export default class WidgetDiscovery extends React.Component {
 
   render() {
     return (
-      <Panel className="panel-cluster">
+      <Panel className="panel-cluster" >
         <table className="mui-table mui-table--bordered">
           <thead className="draggable-handle draggable-cursor">
             <tr><td>Services</td></tr>

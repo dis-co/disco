@@ -1,7 +1,6 @@
 import * as React from "react";
 import Panel from 'muicss/lib/react/panel';
-import { subscribeToLogs, subscribeToDrags } from "iris";
-import { touchesElement } from "../Util.ts"
+import { subscribeToLogs } from "iris";
 
 // If we need a table that loads cells on demand we can use fixed-data-table-2
 // Check http://schrodinger.github.io/fixed-data-table-2/ for details
@@ -30,7 +29,6 @@ export default class WidgetLog extends React.Component {
 
   constructor(props) {
     super(props);
-    this.el = null;
     this.state = { logs: initLogs };
   }
 
@@ -43,17 +41,6 @@ export default class WidgetLog extends React.Component {
       logs.splice(0, 0, [counter++, log]);
       this.setState({logs: logs});
     });
-
-    subscribeToDrags(ev => {
-      if (this.el != null) {
-        if (touchesElement(this.el, ev.x, ev.y) && ev.type === "move") {
-          this.el.parentNode.classList.add("highlight-blue");
-        }
-        else {
-          this.el.parentNode.classList.remove("highlight-blue")
-        }
-      }
-    });
   }
 
   render() {
@@ -62,12 +49,10 @@ export default class WidgetLog extends React.Component {
       <Panel className="panel-cluster">
         <table
           className="mui-table mui-table--bordered"
-          style={{ height: "100%" }}
-          ref={el => this.el = el}
-        >
-          <thead>
+          style={{ height: "100%" }} >
+          <thead className="draggable-handle draggable-cursor">
             <tr>
-              <th className="draggable-handle draggable-cursor">Log Viewer</th>
+              <th>Log Viewer</th>
             </tr>
           </thead>
           <tbody style={{
