@@ -272,7 +272,7 @@ type RaftResponse =
 
     | AppendEntriesResponse(nid, ar) ->
       createAppendResponseFB builder nid ar
-      |> build builder RaftMsgTypeFB.RespondAppendEntryFB
+      |> build builder RaftMsgTypeFB.RespondAppendEntriesFB
 
     | InstallSnapshotResponse(nid, ir) ->
       createSnapshotResponseFB builder nid ir
