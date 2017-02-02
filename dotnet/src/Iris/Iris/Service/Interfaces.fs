@@ -119,7 +119,7 @@ type RaftAppContext =
       self.Connections.Clear()
       dispose self.Server
 
-// * RaftServer
+// * IRaftServer
 
 type IRaftServer =
   inherit IDisposable
@@ -140,6 +140,8 @@ type IRaftServer =
   abstract AddMember     : RaftMember -> Either<IrisError, EntryResponse>
   abstract RmMember      : Id -> Either<IrisError, EntryResponse>
   abstract Connections   : Either<IrisError, ConcurrentDictionary<Id,Req>>
+  abstract Leader        : Either<IrisError, RaftMember option>
+  abstract IsLeader      : bool
 
 // * SocketEvent
 

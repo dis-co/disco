@@ -126,6 +126,19 @@ table InstallSnapshotFB {
       Data      : [ LogFB ];
 }
 
+//  _____       _              ____
+// | ____|_ __ | |_ _ __ _   _|  _ \ ___  ___ _ __   ___  _ __  ___  ___
+// |  _| | '_ \| __| '__| | | | |_) / _ \/ __| '_ \ / _ \| '_ \/ __|/ _ \
+// | |___| | | | |_| |  | |_| |  _ <  __/\__ \ |_) | (_) | | | \__ \  __/
+// |_____|_| |_|\__|_|   \__, |_| \_\___||___/ .__/ \___/|_| |_|___/\___|
+//                       |___/               |_|
+
+table EntryResponseFB {
+      Id: string;
+      Term: uint;
+      Index: uint;
+}
+
 //  ____        __ _   __  __
 // |  _ \ __ _ / _| |_|  \/  |___  __ _
 // | |_) / _` | |_| __| |\/| / __|/ _` |
@@ -138,7 +151,7 @@ table RequestVoteFB {
       Request: VoteRequestFB;
 }
 
-table RequestVoteResponseFB {
+table RespondVoteFB {
       MemberId:   string;
       Response: VoteResponseFB;
 }
@@ -148,7 +161,7 @@ table RequestAppendEntriesFB {
       Request: AppendEntriesFB;
 }
 
-table RequestAppendResponseFB {
+table RespondAppendEntriesFB {
       MemberId:   string;
       Response: AppendResponseFB;
 }
@@ -158,9 +171,17 @@ table RequestInstallSnapshotFB {
       Request: InstallSnapshotFB;
 }
 
-table RequestSnapshotResponseFB {
+table RespondInstallSnapshotFB {
       MemberId:   string;
       Response: AppendResponseFB;
+}
+
+table RequestAppendEntryFB {
+      Request: StateMachineFB;
+}
+
+table RespondAppendEntryFB {
+      Response: EntryResponseFB;
 }
 
 table HandShakeFB {
@@ -191,11 +212,13 @@ table EmptyResponseFB {
 
 union RaftMsgTypeFB {
       RequestVoteFB,
-      RequestVoteResponseFB,
+      RespondVoteFB,
       RequestAppendEntriesFB,
-      RequestAppendResponseFB,
+      RespondAppendEntriesFB,
       RequestInstallSnapshotFB,
-      RequestSnapshotResponseFB,
+      RespondInstallSnapshotFB,
+      RequestAppendEntryFB,
+      RespondAppendEntryFB,
       HandShakeFB,
       HandWaiveFB,
       RedirectFB,

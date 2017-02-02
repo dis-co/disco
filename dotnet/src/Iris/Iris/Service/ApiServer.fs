@@ -299,7 +299,7 @@ module ApiServer =
     let subscriber = new Sub(mem.Id, pubSubAddr, string id)
 
     subscriber.Subscribe(processSubscriptionEvent agent)
-    |> ignore                            // get cleaned up during Dispose
+    |> ignore                            // gets cleaned up during Dispose
 
     match server.Start(), publisher.Start(), subscriber.Start() with
     | Right (), Right (), Right () ->

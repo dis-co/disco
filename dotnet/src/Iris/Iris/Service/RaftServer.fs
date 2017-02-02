@@ -198,7 +198,7 @@ module Raft =
   ///
   /// Returns: bool
   let private waitForCommit (arbiter: StateArbiter) (appended: EntryResponse) =
-    let timeout = 50 // ms!
+    let timeout = Constants.REQ_TIMEOUT
     let delta = 2 // ms!
 
     let ok = ref (Right true)
@@ -240,13 +240,16 @@ module Raft =
         let! reply = postCommand arbiter (fun chan -> Msg.Request(chan, message))
 
         match reply with
-        | Reply.Response response ->       // the base case it, the response is ready
+        | Reply.Response response ->       // the base case: the response is ready
           return response
 
         | Reply.Entry entry ->
           let! committed = waitForCommit arbiter entry
 
           match message, committed with
+          | AppendEntry _, true ->
+            return AppendEntryResponse entry
+
           | HandShake _, true ->
             let! reply = postCommand arbiter (fun chan -> Msg.Get chan)
             match reply with
@@ -261,7 +264,7 @@ module Raft =
           | HandWaive _, true ->
             return Arrivederci
 
-          | HandWaive _, false | HandShake _, false ->
+          | HandWaive _, false | HandShake _, false | AppendEntry _, false ->
             return!
               "Response Timeout"
               |> Error.asRaftError (tag "requestHandler")
@@ -648,6 +651,39 @@ module Raft =
       |> channel.Reply
       updateRaft state newstate
 
+  // ** processAppendEntry
+
+  let private processAppendEntry (state: RaftAppContext)
+                                 (cmd: StateMachine)
+                                 (chan: ReplyChan) =
+    if Raft.isLeader state.Raft then    // I'm leader, so I try to append command
+      match appendCommand state cmd with
+      | Right (entry, newstate) ->
+        Reply.Entry entry
+        |> Either.succeed
+        |> chan.Reply
+        newstate
+      | Left (err, newstate) ->
+        err
+        |> Either.fail
+        |> chan.Reply
+        newstate
+    else
+      match Raft.getLeader state.Raft with // redirect to known ledader or fail
+      | Some mem ->
+        Redirect mem
+        |> Reply.Response
+        |> Either.succeed
+        |> chan.Reply
+        state
+      | None ->
+        "Not leader and no known leader."
+        |> Error.asRaftError (tag "processAppendEntry")
+        |> Either.fail
+        |> chan.Reply
+        state
+
+
   // ** processVoteRequest
 
   let private processVoteRequest (state: RaftAppContext)
@@ -778,12 +814,12 @@ module Raft =
     else
       doRedirect state channel
 
-  // ** processAppendResponse
+  // ** processAppendEntriesResponse
 
-  let private processAppendResponse (state: RaftAppContext)
-                                    (sender: Id)
-                                    (ar: AppendResponse)
-                                    (channel: ReplyChan) =
+  let private processAppendEntriesResponse (state: RaftAppContext)
+                                           (sender: Id)
+                                           (ar: AppendResponse)
+                                           (channel: ReplyChan) =
     let result =
       Raft.receiveAppendEntriesResponse sender ar
       |> runRaft state.Raft state.Callbacks
@@ -1356,13 +1392,12 @@ module Raft =
 
     | Loaded data ->
       match response with
-      | RequestVoteResponse     (sender, vote) -> processVoteResponse     data sender vote chan
-      | AppendEntriesResponse   (sender, ar)   -> processAppendResponse   data sender ar   chan
-      | InstallSnapshotResponse (sender, ar)   -> processSnapshotResponse data sender ar   chan
-      | ErrorResponse            error         -> processErrorResponse    data error       chan
+      | RequestVoteResponse     (sender, vote) -> processVoteResponse          data sender vote chan
+      | AppendEntriesResponse   (sender, ar)   -> processAppendEntriesResponse data sender ar   chan
+      | InstallSnapshotResponse (sender, ar)   -> processSnapshotResponse      data sender ar   chan
+      | ErrorResponse            error         -> processErrorResponse         data error       chan
       | _                                      -> data
       |> Loaded
-
 
   // ** handleRequest
 
@@ -1378,6 +1413,7 @@ module Raft =
     | Loaded data ->
       match req with
       | AppendEntries (id, ae)   -> processAppendEntries   data id ae chan
+      | AppendEntry  sm          -> processAppendEntry     data sm    chan
       | RequestVote (id, vr)     -> processVoteRequest     data id vr chan
       | InstallSnapshot (id, is) -> processInstallSnapshot data id is chan
       | HandShake mem            -> processHandshake       data mem   chan
@@ -1737,16 +1773,24 @@ module Raft =
                   | Right ctx  -> ctx.Connections |> Either.succeed
                   | Left error -> error |> Either.fail
 
+              member self.IsLeader
+                with get () =
+                  match getState agent with
+                  | Right state -> Raft.isLeader state.Raft
+                  | _ -> false
+
+              member self.Leader
+                with get () =
+                  match getState agent with
+                  | Right state -> Raft.getLeader state.Raft |> Either.succeed
+                  | Left error -> Either.fail error
+
               member self.Dispose () =
                 match postCommand agent (fun chan -> Msg.Unload chan) with
                 | Left error -> printfn "unable to dispose:  %A" error
                 | Right _ -> ()
                 subscriptions.Clear()
                 dispose agent
+
             }
       }
-
-    let isLeader (server: IRaftServer) : bool =
-      match server.State with
-      | Right state -> Raft.isLeader state.Raft
-      | _ -> false
