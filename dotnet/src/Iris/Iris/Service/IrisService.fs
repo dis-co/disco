@@ -543,6 +543,14 @@ module Iris =
           |> Logger.err data.MemberId (tag "onApplyLog")
         Loaded data
 
+  // ** mkLeader
+
+  let private mkLeader (self: Id) (leader: RaftMember) =
+    let addr = memUri leader
+    let req = new Req(self, addr, Constants.REQ_TIMEOUT)
+    req.Start()
+    { Member = leader; Socket = req }
+
   // ** onStateChanged
 
   let private onStateChanged (state: IrisState)
@@ -557,10 +565,7 @@ module Iris =
         Option.iter dispose data.Leader
         match data.RaftServer.Leader with
         | Right (Some leader) ->
-          let addr = memUri leader
-          let req = new Req(data.MemberId,addr,Constants.REQ_TIMEOUT)
-          req.Start()
-          Loaded { data with Leader = Some { Member = leader; Socket = req } }
+          Loaded { data with Leader = Some (mkLeader data.MemberId leader) }
         | Right None ->
           "Could not start re-direct socket: no leader"
           |> Logger.debug data.MemberId (tag "onStateChanged")
@@ -582,23 +587,64 @@ module Iris =
       |> Logger.debug data.MemberId (tag "onCreateSnapshot")
     state
 
+  // ** requestAppend
+
+  let private requestAppend (self: MemberId) (leader: Leader) (sm: StateMachine) =
+    let max = 5
+
+    let rec impl (current: Leader) (count: int) =
+      let result : Either<IrisError,RaftResponse> =
+        AppendEntry sm
+        |> Binary.encode
+        |> current.Socket.Request
+        |> Either.bind Binary.decode
+
+      match result with
+      | Right (AppendEntryResponse _) ->
+        Either.succeed leader
+      | Right (Redirect mem) ->
+        if count < max then
+          dispose leader
+          let newleader = mkLeader self mem
+          impl newleader (count + 1)
+        else
+          max
+          |> sprintf "Maximum re-direct count reached (%d). Appending failed"
+          |> Error.asRaftError (tag "requestAppend")
+          |> Either.fail
+      | Right other ->
+        other
+        |> sprintf "Received unexpected response from server: %A"
+        |> Error.asRaftError (tag "requestAppend")
+        |> Either.fail
+      | Left error ->
+        Either.fail error
+
+    impl leader 0
+
   // ** forwardCommand
 
   let private forwardCommand (data: IrisStateData) (sm: StateMachine) =
     match data.Leader with
     | Some leader ->
-      // Append request
-      // ledaer.Socket.Request
-      Loaded data
+      match requestAppend data.MemberId leader sm with
+      | Right newleader ->
+        Loaded { data with Leader = Some newleader }
+      | Left error ->
+        dispose leader
+        Loaded { data with Leader = None }
     | None ->
       match data.RaftServer.Leader with
-      | Right (Some leader) ->
-        let addr = memUri leader
-        let req = new Req(data.MemberId,addr,Constants.REQ_TIMEOUT)
-        req.Start()
-        Loaded { data with Leader = Some { Member = leader; Socket = req } }
+      | Right (Some mem) ->
+        let leader = mkLeader data.MemberId mem
+        match requestAppend data.MemberId leader sm with
+        | Right newleader ->
+          Loaded { data with Leader = Some newleader }
+        | Left error ->
+          dispose leader
+          Loaded { data with Leader = None }
       | Right None ->
-        "Could not start re-direct socket: no leader"
+        "Could not start re-direct socket: No Known Leader"
         |> Logger.debug data.MemberId (tag "onStateChanged")
         Loaded data
       | Left error ->

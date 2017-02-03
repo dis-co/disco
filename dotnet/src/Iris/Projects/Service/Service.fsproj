@@ -197,8 +197,8 @@
     <Compile Include="..\..\Iris\Client\ApiClient.fs">
       <Link>ApiClient.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\Request.fs">
-      <Link>Request.fs</Link>
+    <Compile Include="..\..\Iris\Service\RaftRequest.fs">
+      <Link>RaftRequest.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Service\RaftAppState.fs">
       <Link>RaftAppState.fs</Link>

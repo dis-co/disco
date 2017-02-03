@@ -7,18 +7,15 @@ open Iris.Serialization
 open Iris.Core
 open Iris.Raft
 
-//  _____ ____    _   _      _
-// |  ___| __ )  | | | | ___| |_ __   ___ _ __ ___
-// | |_  |  _ \  | |_| |/ _ \ | '_ \ / _ \ '__/ __|
-// |  _| | |_) | |  _  |  __/ | |_) |  __/ |  \__ \
-// |_|   |____/  |_| |_|\___|_| .__/ \___|_|  |___/
-//                            |_|
-[<AutoOpen>]
-module RaftMsgFB =
+[<RequireQualifiedAccess>]
+module RaftMsg =
 
   let getValue (t : Offset<'a>) : int = t.Value
 
-  let inline build< ^t when ^t : struct and ^t :> System.ValueType and ^t : (new : unit -> ^t) > builder tipe (offset: Offset< ^t >) =
+  let inline build< ^t when ^t : struct and ^t :> System.ValueType and ^t : (new : unit -> ^t) >
+                builder
+                tipe
+                (offset: Offset< ^t >) =
     RaftMsgFB.StartRaftMsgFB(builder)
     RaftMsgFB.AddMsgType(builder, tipe)
     RaftMsgFB.AddMsg(builder, offset.Value)
@@ -74,28 +71,28 @@ type RaftRequest =
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<RaftMsgFB> =
     match self with
     | RequestVote(nid, req) ->
-      createRequestVoteFB builder nid req
-      |> build builder RaftMsgTypeFB.RequestVoteFB
+      RaftMsg.createRequestVoteFB builder nid req
+      |> RaftMsg.build builder RaftMsgTypeFB.RequestVoteFB
 
     | AppendEntries(nid, ae) ->
-      createAppendEntriesFB builder nid ae
-      |> build builder RaftMsgTypeFB.RequestAppendEntriesFB
+      RaftMsg.createAppendEntriesFB builder nid ae
+      |> RaftMsg.build builder RaftMsgTypeFB.RequestAppendEntriesFB
 
     | InstallSnapshot(nid, is) ->
-      createInstallSnapshotFB builder nid is
-      |> build builder RaftMsgTypeFB.RequestInstallSnapshotFB
+      RaftMsg.createInstallSnapshotFB builder nid is
+      |> RaftMsg.build builder RaftMsgTypeFB.RequestInstallSnapshotFB
 
     | HandShake mem ->
       HandShakeFB.CreateHandShakeFB(builder, mem.ToOffset builder)
-      |> build builder RaftMsgTypeFB.HandShakeFB
+      |> RaftMsg.build builder RaftMsgTypeFB.HandShakeFB
 
     | HandWaive mem ->
       HandWaiveFB.CreateHandWaiveFB(builder, mem.ToOffset builder)
-      |> build builder RaftMsgTypeFB.HandWaiveFB
+      |> RaftMsg.build builder RaftMsgTypeFB.HandWaiveFB
 
     | AppendEntry sm ->
-      createAppendEntryFB builder sm
-      |> build builder RaftMsgTypeFB.RequestAppendEntryFB
+      RaftMsg.createAppendEntryFB builder sm
+      |> RaftMsg.build builder RaftMsgTypeFB.RequestAppendEntryFB
 
   //  _____     ____        _
   // |_   _|__ | __ ) _   _| |_ ___  ___
@@ -267,37 +264,37 @@ type RaftResponse =
   member self.ToOffset(builder: FlatBufferBuilder) =
     match self with
     | RequestVoteResponse(nid, resp) ->
-      createRequestVoteResponseFB builder nid resp
-      |> build builder RaftMsgTypeFB.RespondVoteFB
+      RaftMsg.createRequestVoteResponseFB builder nid resp
+      |> RaftMsg.build builder RaftMsgTypeFB.RespondVoteFB
 
     | AppendEntriesResponse(nid, ar) ->
-      createAppendResponseFB builder nid ar
-      |> build builder RaftMsgTypeFB.RespondAppendEntriesFB
+      RaftMsg.createAppendResponseFB builder nid ar
+      |> RaftMsg.build builder RaftMsgTypeFB.RespondAppendEntriesFB
 
     | InstallSnapshotResponse(nid, ir) ->
-      createSnapshotResponseFB builder nid ir
-      |> build builder RaftMsgTypeFB.RespondInstallSnapshotFB
+      RaftMsg.createSnapshotResponseFB builder nid ir
+      |> RaftMsg.build builder RaftMsgTypeFB.RespondInstallSnapshotFB
 
     | AppendEntryResponse(entry) ->
-      createAppendEntryResponseFB builder entry
-      |> build builder RaftMsgTypeFB.RespondAppendEntryFB
+      RaftMsg.createAppendEntryResponseFB builder entry
+      |> RaftMsg.build builder RaftMsgTypeFB.RespondAppendEntryFB
 
     | Redirect mem ->
       RedirectFB.CreateRedirectFB(builder, mem.ToOffset builder)
-      |> build builder RaftMsgTypeFB.RedirectFB
+      |> RaftMsg.build builder RaftMsgTypeFB.RedirectFB
 
     | Welcome mem ->
       WelcomeFB.CreateWelcomeFB(builder, mem.ToOffset builder)
-      |> build builder RaftMsgTypeFB.WelcomeFB
+      |> RaftMsg.build builder RaftMsgTypeFB.WelcomeFB
 
     | Arrivederci ->
       ArrivederciFB.StartArrivederciFB(builder)
       ArrivederciFB.EndArrivederciFB(builder)
-      |> build builder RaftMsgTypeFB.ArrivederciFB
+      |> RaftMsg.build builder RaftMsgTypeFB.ArrivederciFB
 
     | ErrorResponse err ->
       ErrorResponseFB.CreateErrorResponseFB(builder, err.ToOffset builder)
-      |> build builder RaftMsgTypeFB.ErrorResponseFB
+      |> RaftMsg.build builder RaftMsgTypeFB.ErrorResponseFB
 
   //  _____                    _____ ____
   // |  ___| __ ___  _ __ ___ |  ___| __ )
