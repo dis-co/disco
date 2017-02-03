@@ -1149,6 +1149,18 @@ module Iris =
             |> Error.asOther (tag "Load")
             |> Either.fail
 
+        member self.UnloadProject() =
+          match postCommand agent "Unload" (fun chan -> Msg.Unload chan) with
+          | Right Reply.Ok ->
+            // Notify subscriptor of the change of state
+            triggerOnNext subscriptions (Status ServiceStatus.Running)
+            Right ()
+          | Left error -> Left error
+          | Right other ->
+            sprintf "Unexpected response from IrisAgent: %A" other
+            |> Error.asOther (tag "Unload")
+            |> Either.fail
+
         member self.ForceElection () =
           agent.Post(Msg.ForceElection)
           |> Either.succeed

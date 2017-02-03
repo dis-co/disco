@@ -18,10 +18,39 @@ open Fable.PowerPack.Fetch.Fetch_types
 open Fable.Core.JsInterop
 open Fable.Import
 
+type GenericObservable<'T>() =
+    let listeners = Dictionary<Guid,IObserver<'T>>()
+    member x.Trigger v =
+      for lis in listeners.Values do
+        lis.OnNext v
+    interface IObservable<'T> with
+      member x.Subscribe w =
+        let guid = Guid.NewGuid()
+        listeners.Add(guid, w)
+        { new IDisposable with
+          member x.Dispose() = listeners.Remove(guid) |> ignore }
+
+[<NoComparison>]
+type DragEvent = {
+  ``type``: string; value: obj; x: int; y: int; 
+}
+
+let private dragObservable =
+    GenericObservable<DragEvent>()
+
+let subscribeToDrags (f: DragEvent->unit) =
+  Observable.subscribe f dragObservable
+
+let triggerDragEvent(typ: string, value: obj, x: int, y: int) =
+  { ``type`` = typ; value = value; x = x; y = y}
+  |> dragObservable.Trigger
+
 let EMPTY = Constants.EMPTY
 
 let notify(msg: string) =
-  match box Browser.window?Notification with
+  Browser.console.log(msg)
+
+  match !!Browser.window?Notification with
   // Check if the browser supports notifications
   | null -> Browser.console.log msg
 
@@ -49,10 +78,19 @@ let removeMember(info: StateInfo, memId: Id) =
   | None ->
     printfn "Couldn't find mem with Id %O" memId
 
-let addMember(info: StateInfo, host: string, ip: string, port: string) =
+let createMemberInfo() =
+  let m = Id.Create() |> Member.create
+  string m.Id, m.HostName, string m.IpAddr, string m.Port, string m.WsPort, string m.GitPort, string m.ApiPort
+
+let addMember(info: StateInfo, id, host, ip, port: string, wsPort: string, gitPort: string, apiPort: string) =
   try
-    let mem = Id.Create() |> Member.create
-    { mem with HostName = host; IpAddr = IPv4Address ip; Port = uint16 port }
+    { Member.create (Id id) with
+        HostName = host
+        IpAddr = IPv4Address ip
+        Port = uint16 port
+        WsPort = uint16 wsPort
+        GitPort = uint16 gitPort
+        ApiPort = uint16 apiPort }
     |> AddMember
     |> info.context.Post
   with
@@ -83,6 +121,12 @@ let postCommandAndForget cmd =
 let listProjects() =
   ListProjects
   |> postCommand [||] (String.split [|','|])
+
+let shutdown() =
+  Shutdown |> postCommandAndForget
+
+let unloadProject() =
+  UnloadProject |> postCommandAndForget
 
 let loadProject(info: StateInfo, project, username, password) =
   LoadProject(project, username, password)

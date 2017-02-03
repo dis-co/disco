@@ -3,7 +3,6 @@ import Form from 'muicss/lib/react/form';
 import Input from 'muicss/lib/react/input';
 import Button from 'muicss/lib/react/button';
 import { login } from 'iris';
-import { STATUS } from '../Constants';
 
 export default function (props) {
   return (

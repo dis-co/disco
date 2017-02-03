@@ -4,49 +4,53 @@ import Tab from 'muicss/lib/react/tab';
 import ReactGridLayout from 'react-grid-layout';
 // import {Responsive, WidthProvider} from 'react-grid-layout';
 // const ResponsiveReactGridLayout = WidthProvider(Responsive);
-import { WIDGETS } from './Constants'
 import { EMPTY } from 'iris';
-import widgetLayouts from './data/widgetLayouts';
 import WidgetCluster from './widgets/Cluster';
 import WidgetLog from './widgets/Log';
+import WidgetDiscovery from './widgets/Discovery';
 
 const rowHeight = 30;
 function calculateCols(width) {
   return ~~(width/50);
 }
 
-function renderClusterWidget(info) {
-  if (info.state.Project != null && info.state.Project.Name !== EMPTY)
-    return (
-      <div key={WIDGETS.CLUSTER}>
+function renderWidgets(info) {
+  var widgets = [];
+
+  if (info.state.Project != null && info.state.Project.Name !== EMPTY) {
+      widgets.push(<div key={WidgetCluster.name} data-grid={WidgetCluster.layout}>
         <WidgetCluster info={info} />
-      </div>
-    )
+      </div>);
+  }
+
+  widgets.push(
+    <div key={WidgetLog.name} data-grid={WidgetLog.layout}>
+      <WidgetLog context={info.context} />
+    </div>,
+    <div key={WidgetDiscovery.name} data-grid={WidgetDiscovery.layout}>
+      <WidgetDiscovery />
+    </div>
+  );
+
+  return widgets;
 }
 
 export default function PanelCenter(props) {
   // console.log("Panel Center Columns:", calculateCols(props.width))
-  
-  let widgets = [
-    renderClusterWidget(props.info),
-    <div key={WIDGETS.LOG}>
-      <WidgetLog context={props.info.context} />
-    </div>
-  ].filter(x => x != null);
-  
+
   return (
     <div id="panel-center">
       <Tabs>
         <Tab label="CLUSTER VIEW" >
           <ReactGridLayout
             className="layout"
-            layout={widgetLayouts}
             cols={calculateCols(props.width)}
             width={props.width}
             rowHeight={rowHeight}
             verticalCompact={false}
+            draggableHandle=".draggable-handle"
           >
-            {widgets}
+            {renderWidgets(props.info)}
           </ReactGridLayout>
         </Tab>
         <Tab label="GRAPH VIEW" >

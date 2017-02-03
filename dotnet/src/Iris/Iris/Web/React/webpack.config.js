@@ -22,9 +22,8 @@ else {
     devtool = "source-map";
     plugins = [
         new webpack.DefinePlugin({
-            'process.env': {
-                'NODE_ENV': JSON.stringify('production')
-        }}),
+            'process.env.NODE_ENV': JSON.stringify('production')
+        }),
         new webpack.optimize.UglifyJsPlugin({
             compress: {
                 warnings: false
@@ -44,8 +43,6 @@ module.exports = {
         // This is the only way I had to convince RequireJS
         // to load the lib file and its dependencies properly
         iris: "js/Web/Lib",
-        react: "react",
-        "react-dom": "react-dom"
     },
     devtool: devtool,
     devServer: devServer,
