@@ -23,6 +23,10 @@ const maxLogLength = 100;
 const logsToDeleteWhenMaxReached = 20;
 
 export default class WidgetLog extends React.Component {
+  static get layout() {
+    return { x: 12, y: 0, w: 10, h: 8, minW: 7, maxW: 15, minH: 5, maxH: 20 };
+  }
+
   constructor(props) {
     super(props);
     this.state = { logs: initLogs };
@@ -45,11 +49,8 @@ export default class WidgetLog extends React.Component {
       <Panel className="panel-cluster">
         <table
           className="mui-table mui-table--bordered"
-          style={{
-            height: "100%",
-          }}
-        >
-          <thead>
+          style={{ height: "100%" }} >
+          <thead className="draggable-handle draggable-cursor">
             <tr>
               <th>Log Viewer</th>
             </tr>

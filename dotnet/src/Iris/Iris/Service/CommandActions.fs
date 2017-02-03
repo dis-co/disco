@@ -108,7 +108,21 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) = MailboxProcessor<Command
       let! input, replyChannel = agent.Receive()
       let res =
         match input with
-        | ListProjects -> listProjects cfg 
+        | Shutdown ->
+          let msg = "Disposing service..."
+          // TODO: Grab a reference of the http server to dispose it too?
+          Async.Start <| async {
+            do! Async.Sleep 1000
+            printfn "%s" msg
+            dispose iris
+            exit 0
+          }
+          Right msg
+        | UnloadProject ->
+          // TODO: Check if a project is actually loaded
+          iris.UnloadProject()
+          |> Either.map (fun () -> "Project unloaded")
+        | ListProjects -> listProjects cfg
         | GetWebSocketPort -> getWsport iris
         | CreateProject opts -> createProject cfg opts
         | LoadProject(projectName, userName, password) ->

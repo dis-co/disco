@@ -2,7 +2,7 @@ import * as React from "react";
 import { showModal } from './App';
 import CREATE_PROJECT from "./modals/CreateProject";
 import LOGIN from "./modals/Login";
-import { loadProject, listProjects } from "iris";
+import { loadProject, listProjects, unloadProject, shutdown } from "iris";
 
 export default class SideDrawer extends React.Component {
 
@@ -75,7 +75,11 @@ export default class SideDrawer extends React.Component {
                 )}
               </ul>
             </li>
+            <li><a onClick={() => unloadProject()}>Unload</a></li>
           </ul>
+        </li>
+        <li>
+          <strong><a onClick={() => shutdown()}>Shutdown</a></strong>
         </li>
       </ul>
     )

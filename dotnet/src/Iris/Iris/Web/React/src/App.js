@@ -4,8 +4,6 @@ import PanelCenter from "./PanelCenter";
 import PanelRight from "./PanelRight";
 import ModalDialog from "./ModalDialog";
 import { getCurrentSession } from 'iris';
-import { STATUS, SKIP_LOGIN } from './Constants';
-import LOGIN from "./modals/Login";
 
 let modal = null;
 let initInfo = null;
@@ -21,22 +19,7 @@ export default class App extends React.Component {
     super(props);
     this.state = {};
     props.subscribe(info => {
-      if (SKIP_LOGIN) {
-        console.log(info);
-        this.setState({info: info});
-      }
-      else {
-        const status = info.session.Status.StatusType.ToString();
-        switch (status) {
-          case STATUS.AUTHORIZED:
-            this.setState({info: info});
-            break;
-          case STATUS.UNAUTHORIZED:
-            this.setState({info: initInfo});
-            showModal(LOGIN);
-            break;
-        }
-      }
+      this.setState({info: info});
     })
   }
 

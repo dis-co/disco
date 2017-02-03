@@ -15,6 +15,8 @@ type CreateProjectOptions =
   ; raftPort: uint16 }
 
 type Command =
+  | Shutdown
+  | UnloadProject
   | ListProjects
   | GetWebSocketPort
   | CreateProject of CreateProjectOptions

@@ -23,7 +23,8 @@ export default class ModalDialog extends React.Component {
           onSubmit: values => {
             this.self.hide();
             if (this.state && typeof this.state.onSubmit == "function") {
-                this.state.onSubmit(values);
+              this.state.content = null;
+              this.state.onSubmit(values);
             }
           }
         });

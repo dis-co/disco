@@ -50,6 +50,14 @@ buttons {
   background-color: white;
 }
 
+.draggable-cursor {
+  cursor: -webkit-grab
+}
+
+.highlight-blue {
+  border: blue solid 2px
+}
+
 /*.dragbar {
   width: 3px;
   position: absolute;
