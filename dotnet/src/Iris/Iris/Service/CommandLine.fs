@@ -20,6 +20,7 @@ module CommandLine =
   open System.Collections.Generic
   open System.Text.RegularExpressions
   open Http
+  open Iris.Core.Discovery
 
   // ** Command Line Argument Parser
 
@@ -265,19 +266,25 @@ module CommandLine =
   // ** startDiscoveryService
 
   let startDiscoveryService (machine: IrisMachine) (irisService: IIrisServer) =
-    match DiscoveryService.create machine with
-    | Right discovery ->
-      let _ = discovery.Subscribe(printfn "%A")
-      match discovery.Start() with
-      | Right () ->
-        discovery.Register ServiceType.Http machine.WebPort (IPv4Address "0.0.0.0")
-        |> ignore
-      | Left error ->
-        string error
-        |> Logger.err machine.MachineId "CommandLine.startService"
-    | Left error ->
-      string error
-      |> Logger.err machine.MachineId "CommandLine.startService"
+    either {
+        let! config = irisService.Config
+        let! mem = Config.selfMember config
+        let! discovery = DiscoveryService.create machine
+        let _ = discovery.Subscribe(printfn "%A")
+        do! discovery.Start()
+        let! _ =
+            [ "Id", string mem.Id
+              "HostName", mem.HostName
+              "IpAddr", string mem.IpAddr
+              "Port", string mem.Port
+              "WsPort", string mem.WsPort
+              "GitPort", string mem.GitPort
+              "ApiPort", string mem.ApiPort ]
+            |> Map
+            |> discovery.Register ServiceType.Iris machine.WebPort (IPv4Address "0.0.0.0")
+
+        return discovery
+    }
 
   // ** startService
 
@@ -299,9 +306,14 @@ module CommandLine =
       let! httpServer = HttpServer.create machine (CommandActions.postCommand agentRef)
       do! httpServer.Start()
 
-      startDiscoveryService machine irisService
+      let discoveryService =
+        match startDiscoveryService machine irisService with
+        | Right discovery -> Some discovery
+        | Left error ->
+            Logger.err machine.MachineId "CommandLine.startService" (string error)
+            None
 
-      agentRef := CommandActions.startAgent machine irisService |> Some
+      agentRef := CommandActions.startAgent machine irisService discoveryService |> Some
 
       registerExitHandlers irisService httpServer
 

@@ -1,6 +1,6 @@
 import * as React from "react";
 import Panel from 'muicss/lib/react/panel';
-import { triggerDragEvent, createMemberInfo } from "iris";
+import { triggerDragEvent, getDiscoveredServices, toString } from "iris";
 import Draggable from 'react-draggable';
 
 export default class WidgetDiscovery extends React.Component {
@@ -10,45 +10,51 @@ export default class WidgetDiscovery extends React.Component {
 
   constructor(props) {
     super(props);
+    this.state = { services: [] };
     this.controlledPositions = new Map();
   }
 
-  renderRow(i) {
-    var _info = createMemberInfo()
+  componentDidMount() {
+    getDiscoveredServices()
+      .then(services => this.setState({ services }))
+  }
+
+  renderService(service) {
+    var id = toString(service.Id)
     var info = {
       tag: "service",
-      id: _info[0],
-      host: _info[1],
-      ip: _info[2],
-      port: _info[3],
-      wsPort: _info[4],
-      gitPort: _info[5],
-      apiPort: _info[6]
+      id: id,
+      host: service.Hostname,
+      ip: toString(service.IpAddr),
+      port: toString(service.Port),
+      wsPort: toString(service.WsPort),
+      gitPort: toString(service.GitPort),
+      apiPort: toString(service.ApiPort)
     }
-    var props = {}, pos = this.controlledPositions.get(i);
+    var props = {}, pos = this.controlledPositions.get(id);
     if (pos != null && pos.pending) {
       props = {position: {x: pos.x, y: pos.y}}
       pos.pending = false;
     }
 
-    return (<tr key={i}>
+    return (<tr key={id}>
       <td className="draggable-cursor">
         <Draggable {...props}
           onThisDragOver={() => {debugger;}}
           onStart={(e,{x,y}) => {
-            this.controlledPositions.set(i,{x, y, pending: false});
+            this.controlledPositions.set(id, {x, y, pending: false});
           }}
           onDrag={(e,pos) => {
             triggerDragEvent("move", info, e.clientX, e.clientY);
           }}
           onStop={(e,{x,y}) => {
             triggerDragEvent("stop", info, e.clientX, e.clientY);
-            var pos = this.controlledPositions.get(i);
+            var pos = this.controlledPositions.get(id);
             pos.pending = true;
             this.forceUpdate();
           }}
         >
-          <div style={{background:"red"}} >Service {i}</div>
+          <div style={{background:"red"}} >{id.substr(0, 4) + "..."}</div>
         </Draggable>
       </td>
     </tr>)
@@ -63,7 +69,7 @@ export default class WidgetDiscovery extends React.Component {
             <tr><td>Services</td></tr>
           </thead>
           <tbody>
-            {[1,2,3,4,5].map(x => this.renderRow(x))}
+            {this.state.services.map(x => this.renderService(x))}
           </tbody>
         </table>
       </Panel>

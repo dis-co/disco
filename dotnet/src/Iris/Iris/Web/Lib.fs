@@ -17,6 +17,11 @@ open Fable.PowerPack
 open Fable.PowerPack.Fetch.Fetch_types
 open Fable.Core.JsInterop
 open Fable.Import
+open Iris.Core.Discovery
+
+let EMPTY = Constants.EMPTY
+
+let toString (x: obj) = string x
 
 type GenericObservable<'T>() =
     let listeners = Dictionary<Guid,IObserver<'T>>()
@@ -44,8 +49,6 @@ let subscribeToDrags (f: DragEvent->unit) =
 let triggerDragEvent(typ: string, value: obj, x: int, y: int) =
   { ``type`` = typ; value = value; x = x; y = y}
   |> dragObservable.Trigger
-
-let EMPTY = Constants.EMPTY
 
 let notify(msg: string) =
   Browser.console.log(msg)
@@ -121,6 +124,10 @@ let postCommandAndForget cmd =
 let listProjects() =
   ListProjects
   |> postCommand [||] (String.split [|','|])
+
+let getDiscoveredServices() =
+  GetDiscoveredServices
+  |> postCommand [||] (ofJson<DiscoveredService[]> >> Array.filter (fun srv -> srv.Type = ServiceType.Iris))
 
 let shutdown() =
   Shutdown |> postCommandAndForget

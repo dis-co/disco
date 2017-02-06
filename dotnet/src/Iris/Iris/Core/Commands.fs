@@ -19,6 +19,7 @@ type Command =
   | UnloadProject
   | ListProjects
   | GetWebSocketPort
+  | GetDiscoveredServices
   | CreateProject of CreateProjectOptions
   | LoadProject of projectName:string * userName:string * password:string
 

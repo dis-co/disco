@@ -13,6 +13,10 @@ type private Channel = AsyncReplyChannel<Either<IrisError,string>>
 
 let private tag s = "Iris.Service.Commands." + s
 
+let private serializeJson =
+    let converter = Fable.JsonConverter()
+    fun o -> Newtonsoft.Json.JsonConvert.SerializeObject(o, converter)
+
 let getWsport (iris: IIrisServer): Either<IrisError,string> =
     match iris.Config with
     | Left _ -> "0"
@@ -103,7 +107,8 @@ let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
     return "ok"
   }
 
-let startAgent (cfg: IrisMachine) (iris: IIrisServer) = MailboxProcessor<Command*Channel>.Start(fun agent ->
+let startAgent (cfg: IrisMachine) (iris: IIrisServer) (discovery: IDiscoveryService option) =
+  MailboxProcessor<Command*Channel>.Start(fun agent ->
     let rec loop() = async {
       let! input, replyChannel = agent.Receive()
       let res =
@@ -122,6 +127,14 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) = MailboxProcessor<Command
           // TODO: Check if a project is actually loaded
           iris.UnloadProject()
           |> Either.map (fun () -> "Project unloaded")
+        | GetDiscoveredServices ->
+            match discovery with
+            | Some disc ->
+                disc.Services
+                |> Either.map (snd >> (Seq.map (fun kv -> kv.Value)) >> Seq.toArray)
+            | None ->
+                Either.succeed [||]
+            |> Either.map serializeJson
         | ListProjects -> listProjects cfg
         | GetWebSocketPort -> getWsport iris
         | CreateProject opts -> createProject cfg opts

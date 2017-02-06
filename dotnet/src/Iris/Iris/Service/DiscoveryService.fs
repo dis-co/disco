@@ -32,6 +32,7 @@ open Mono.Zeroconf
 
 [<AutoOpen>]
 module Discovery =
+  open Iris.Core.Discovery
 
   // ** tag
 
@@ -135,6 +136,7 @@ module Discovery =
 
   let private serviceName (id: Id) (tipe: ServiceType) =
     match tipe with
+    | ServiceType.Iris      -> sprintf "Iris Service [%s]" (string id)
     | ServiceType.Git       -> sprintf "Git Service [%s]" (string id)
     | ServiceType.Raft      -> sprintf "SRaft Service [%s]" (string id)
     | ServiceType.Http      -> sprintf "Http Service [%s]" (string id)
@@ -223,6 +225,10 @@ module Discovery =
       let! machine = parseMachine service.TxtRecord
       let! tipe = parseServiceType service.TxtRecord
 
+      let metadata =
+        seq { for i = 0 to service.TxtRecord.Count do
+                yield let kv = service.TxtRecord.GetItemAt(i) in kv.Key, kv.ValueString }
+
       return
         { Id = id
           Protocol = proto
@@ -234,7 +240,8 @@ module Discovery =
           HostName = if isNull entry then "" else entry.HostName
           HostTarget = service.HostTarget
           Aliases = if isNull entry then [| |] else entry.Aliases
-          AddressList = addresses }
+          AddressList = addresses
+          Metadata = Map metadata }
     }
 
   // ** mergeDiscovered
@@ -306,6 +313,8 @@ module Discovery =
 
       record.Add("type", string disco.Type)
       record.Add("machine", string config.MachineId)
+      for KeyValue(k, v) in disco.Metadata do
+        record.Add(k, v)
 
       service.TxtRecord <- record
       let handler = new RegisterServiceEventHandler(serviceRegistered subs agent disco)
@@ -569,7 +578,7 @@ module Discovery =
                     member self.OnNext(value) = callback value }
                 |> listener.Subscribe
 
-              member self.Register (tipe: ServiceType) (port: Port) (addr: IpAddress) =
+              member self.Register (tipe: ServiceType) (port: Port) (addr: IpAddress) (metadata: Map<string, string>) =
                 let id = createId config.MachineId port tipe addr
 
                 let service =
@@ -577,7 +586,8 @@ module Discovery =
                     Port = port
                     Name = serviceName id tipe
                     Type = tipe
-                    IpAddress = addr }
+                    IpAddress = addr
+                    Metadata = metadata }
 
                 match postCommand agent (fun chan -> Msg.Register(chan, service)) with
                 | Right Reply.Ok ->
