@@ -60,6 +60,7 @@ type Rep (id: Id, addr: string, handle: byte array -> byte array) =
         bind sock addr
         status <- ServiceStatus.Running
         starter.Set() |> ignore
+        Logger.debug id "Rep.worker" "initialized"
       with
         | exn ->
           run <- false
