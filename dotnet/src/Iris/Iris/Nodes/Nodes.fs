@@ -359,8 +359,6 @@ type Project() =
   [<Output("Config", IsSingle = true)>]
   val mutable OutConfig: ISpread<IrisConfig>
 
-  let mutable initialized = false
-
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] && not (Util.isNull self.InProject.[0]) then
@@ -369,9 +367,499 @@ type Project() =
           match project.LastSaved with
           | Some str -> str
           | None -> ""
+
         self.OutId.[0] <- string project.Id
         self.OutName.[0] <- project.Name
         self.OutPath.[0] <- project.Path
         self.OutCreatedOn.[0] <- sprintf "%A" project.CreatedOn
         self.OutLastSaved.[0] <- lastSaved
         self.OutConfig.[0] <- project.Config
+
+//   ____             __ _
+//  / ___|___  _ __  / _(_) __ _
+// | |   / _ \| '_ \| |_| |/ _` |
+// | |__| (_) | | | |  _| | (_| |
+//  \____\___/|_| |_|_| |_|\__, |
+//                         |___/
+
+[<PluginInfo(Name="Config", Category="Iris", AutoEvaluate=true)>]
+type Config() =
+
+  [<Import();DefaultValue>]
+  val mutable Logger: ILogger
+
+  [<DefaultValue>]
+  [<Input("Config", IsSingle = true)>]
+  val mutable InConfig: ISpread<IrisConfig>
+
+  [<DefaultValue>]
+  [<Input("Update", IsSingle = true, IsBang = true)>]
+  val mutable InUpdate: ISpread<bool>
+
+  [<DefaultValue>]
+  [<Output("MachineId", IsSingle = true)>]
+  val mutable OutMachineId: ISpread<string>
+
+  [<DefaultValue>]
+  [<Output("Audio", IsSingle = true)>]
+  val mutable OutAudio: ISpread<AudioConfig>
+
+  [<DefaultValue>]
+  [<Output("Vvvv", IsSingle = true)>]
+  val mutable OutVvvv: ISpread<VvvvConfig>
+
+  [<DefaultValue>]
+  [<Output("Raft", IsSingle = true)>]
+  val mutable OutRaft: ISpread<RaftConfig>
+
+  [<DefaultValue>]
+  [<Output("Timing", IsSingle = true)>]
+  val mutable OutTiming: ISpread<TimingConfig>
+
+  [<DefaultValue>]
+  [<Output("Cluster", IsSingle = true)>]
+  val mutable OutCluster: ISpread<ClusterConfig>
+
+  [<DefaultValue>]
+  [<Output("Viewports")>]
+  val mutable OutViewports: ISpread<ViewPort>
+
+  [<DefaultValue>]
+  [<Output("Displays")>]
+  val mutable OutDisplays: ISpread<Display>
+
+  [<DefaultValue>]
+  [<Output("Tasks")>]
+  val mutable OutTasks: ISpread<Task>
+
+  [<DefaultValue>]
+  [<Output("Version", IsSingle = true)>]
+  val mutable OutVersion: ISpread<string>
+
+  interface IPluginEvaluate with
+    member self.Evaluate (spreadMax: int) : unit =
+      if self.InUpdate.[0] && not (Util.isNull self.InConfig.[0]) then
+        let config = self.InConfig.[0]
+
+        self.OutMachineId.[0] <- string config.MachineId
+        self.OutAudio.[0] <- config.Audio
+        self.OutVvvv.[0] <- config.Vvvv
+        self.OutRaft.[0] <- config.Raft
+        self.OutTiming.[0] <- config.Timing
+        self.OutCluster.[0] <- config.Cluster
+        self.OutViewports.AssignFrom config.ViewPorts
+        self.OutDisplays.AssignFrom config.Displays
+        self.OutTasks.AssignFrom config.Tasks
+        self.OutVersion.[0] <- string config.Version
+
+//     _             _ _
+//    / \  _   _  __| (_) ___
+//   / _ \| | | |/ _` | |/ _ \
+//  / ___ \ |_| | (_| | | (_) |
+// /_/   \_\__,_|\__,_|_|\___/
+
+
+[<PluginInfo(Name="AudioConfig", Category="Iris", AutoEvaluate=true)>]
+type Audio() =
+
+  [<Import();DefaultValue>]
+  val mutable Logger: ILogger
+
+  [<DefaultValue>]
+  [<Input("Audio", IsSingle = true)>]
+  val mutable InAudio: ISpread<AudioConfig>
+
+  [<DefaultValue>]
+  [<Input("Update", IsSingle = true, IsBang = true)>]
+  val mutable InUpdate: ISpread<bool>
+
+  [<DefaultValue>]
+  [<Output("SampleRate", IsSingle = true)>]
+  val mutable OutSampleRate: ISpread<int>
+
+  interface IPluginEvaluate with
+    member self.Evaluate (spreadMax: int) : unit =
+      if self.InUpdate.[0] && not (Util.isNull self.InAudio.[0]) then
+        let config = self.InAudio.[0]
+        self.OutSampleRate.[0] <- int config.SampleRate
+
+// __     __
+// \ \   / /_   ____   ____   __
+//  \ \ / /\ \ / /\ \ / /\ \ / /
+//   \ V /  \ V /  \ V /  \ V /
+//    \_/    \_/    \_/    \_/
+
+[<PluginInfo(Name="VvvvConfig", Category="Iris", AutoEvaluate=true)>]
+type Vvvv() =
+
+  [<Import();DefaultValue>]
+  val mutable Logger: ILogger
+
+  [<DefaultValue>]
+  [<Input("Vvvv", IsSingle = true)>]
+  val mutable InVvvv: ISpread<VvvvConfig>
+
+  [<DefaultValue>]
+  [<Input("Update", IsSingle = true, IsBang = true)>]
+  val mutable InUpdate: ISpread<bool>
+
+  [<DefaultValue>]
+  [<Output("Executables")>]
+  val mutable OutExecutables: ISpread<VvvvExe>
+
+  [<DefaultValue>]
+  [<Output("Plugins")>]
+  val mutable OutPlugins: ISpread<VvvvPlugin>
+
+  interface IPluginEvaluate with
+    member self.Evaluate (spreadMax: int) : unit =
+      if self.InUpdate.[0] && not (Util.isNull self.InVvvv.[0]) then
+        let config = self.InVvvv.[0]
+        self.OutExecutables.AssignFrom config.Executables
+        self.OutExecutables.AssignFrom config.Executables
+
+//  _____                     _        _     _
+// | ____|_  _____  ___ _   _| |_ __ _| |__ | | ___
+// |  _| \ \/ / _ \/ __| | | | __/ _` | '_ \| |/ _ \
+// | |___ >  <  __/ (__| |_| | || (_| | |_) | |  __/
+// |_____/_/\_\___|\___|\__,_|\__\__,_|_.__/|_|\___|
+
+[<PluginInfo(Name="VvvvExecutable", Category="Iris", AutoEvaluate=true)>]
+type VvvvExecutable() =
+
+  [<Import();DefaultValue>]
+  val mutable Logger: ILogger
+
+  [<DefaultValue>]
+  [<Input("VvvvExe")>]
+  val mutable InExe: ISpread<VvvvExe>
+
+  [<DefaultValue>]
+  [<Input("Update", IsSingle = true, IsBang = true)>]
+  val mutable InUpdate: ISpread<bool>
+
+  [<DefaultValue>]
+  [<Output("Executable")>]
+  val mutable OutExecutable: ISpread<string>
+
+  [<DefaultValue>]
+  [<Output("Version")>]
+  val mutable OutVersion: ISpread<string>
+
+  [<DefaultValue>]
+  [<Output("Required")>]
+  val mutable OutRequired: ISpread<bool>
+
+  interface IPluginEvaluate with
+    member self.Evaluate (spreadMax: int) : unit =
+      if self.InUpdate.[0] then
+        for n in 0 .. (spreadMax - 1) do
+          if not (Util.isNull self.InExe.[0]) then
+            let config = self.InExe.[n]
+            self.OutExecutable.[n] <- config.Executable
+            self.OutVersion.[n] <- config.Version
+            self.OutRequired.[n] <- config.Required
+
+//  ____  _             _
+// |  _ \| |_   _  __ _(_)_ __
+// | |_) | | | | |/ _` | | '_ \
+// |  __/| | |_| | (_| | | | | |
+// |_|   |_|\__,_|\__, |_|_| |_|
+//                |___/
+
+[<PluginInfo(Name="VvvvPlugin", Category="Iris", AutoEvaluate=true)>]
+type VvvvPlug() =
+
+  [<Import();DefaultValue>]
+  val mutable Logger: ILogger
+
+  [<DefaultValue>]
+  [<Input("VvvvPlugin")>]
+  val mutable InPlugin: ISpread<VvvvPlugin>
+
+  [<DefaultValue>]
+  [<Input("Update", IsSingle = true, IsBang = true)>]
+  val mutable InUpdate: ISpread<bool>
+
+  [<DefaultValue>]
+  [<Output("Name")>]
+  val mutable OutName: ISpread<string>
+
+  [<DefaultValue>]
+  [<Output("Path")>]
+  val mutable OutPath: ISpread<string>
+
+  interface IPluginEvaluate with
+    member self.Evaluate (spreadMax: int) : unit =
+      if self.InUpdate.[0] then
+        for n in 0 .. (spreadMax - 1) do
+          if not (Util.isNull self.InPlugin.[0])  then
+            let config = self.InPlugin.[n]
+            self.OutName.[n] <- config.Name
+            self.OutPath.[n] <- config.Path
+
+//  ____  _                   _
+// / ___|(_) __ _ _ __   __ _| |
+// \___ \| |/ _` | '_ \ / _` | |
+//  ___) | | (_| | | | | (_| | |
+// |____/|_|\__, |_| |_|\__,_|_|
+//          |___/
+
+[<PluginInfo(Name="Signal", Category="Iris", AutoEvaluate=true)>]
+type SignalNode() =
+
+  [<Import();DefaultValue>]
+  val mutable Logger: ILogger
+
+  [<DefaultValue>]
+  [<Input("Signal")>]
+  val mutable InSignal: ISpread<Signal>
+
+  [<DefaultValue>]
+  [<Input("Update", IsSingle = true, IsBang = true)>]
+  val mutable InUpdate: ISpread<bool>
+
+  [<DefaultValue>]
+  [<Output("Size")>]
+  val mutable OutSize: ISpread<ISpread<int>>
+
+  [<DefaultValue>]
+  [<Output("Coordinate")>]
+  val mutable OutCoordinate: ISpread<ISpread<int>>
+
+  interface IPluginEvaluate with
+    member self.Evaluate (spreadMax: int) : unit =
+      if self.InUpdate.[0] then
+        for n in 0 .. (spreadMax - 1) do
+          if not (Util.isNull self.InSignal.[0]) then
+            let config = self.InSignal.[n]
+            self.OutSize.[n].[0] <- config.Size.X
+            self.OutSize.[n].[1] <- config.Size.Y
+            self.OutCoordinate.[n].[0] <- config.Position.X
+            self.OutCoordinate.[n].[1] <- config.Position.Y
+
+//  ____            _
+// |  _ \ ___  __ _(_) ___  _ __
+// | |_) / _ \/ _` | |/ _ \| '_ \
+// |  _ <  __/ (_| | | (_) | | | |
+// |_| \_\___|\__, |_|\___/|_| |_|
+//            |___/
+
+[<PluginInfo(Name="Region", Category="Iris", AutoEvaluate=true)>]
+type RegionNode() =
+
+  [<Import();DefaultValue>]
+  val mutable Logger: ILogger
+
+  [<DefaultValue>]
+  [<Input("Region")>]
+  val mutable InRegion: ISpread<Region>
+
+  [<DefaultValue>]
+  [<Input("Update", IsSingle = true, IsBang = true)>]
+  val mutable InUpdate: ISpread<bool>
+
+  [<DefaultValue>]
+  [<Output("Id")>]
+  val mutable OutId: ISpread<string>
+
+  [<DefaultValue>]
+  [<Output("Name")>]
+  val mutable OutName: ISpread<string>
+
+  [<DefaultValue>]
+  [<Output("Source Position")>]
+  val mutable OutSrcPos: ISpread<ISpread<int>>
+
+  [<DefaultValue>]
+  [<Output("Source Size")>]
+  val mutable OutSrcSize: ISpread<ISpread<int>>
+
+  [<DefaultValue>]
+  [<Output("Output Size")>]
+  val mutable OutOutSize: ISpread<ISpread<int>>
+
+  [<DefaultValue>]
+  [<Output("Output Position")>]
+  val mutable OutOutPos: ISpread<ISpread<int>>
+
+  interface IPluginEvaluate with
+    member self.Evaluate (spreadMax: int) : unit =
+      if self.InUpdate.[0] then
+        for n in 0 .. (spreadMax - 1) do
+          if not (Util.isNull self.InRegion.[n]) then
+            let config = self.InRegion.[n]
+            self.OutId.[n] <- string config.Id
+            self.OutName.[n] <- config.Name
+            self.OutSrcSize.[n].[0] <- config.SrcSize.X
+            self.OutSrcSize.[n].[1] <- config.SrcSize.Y
+            self.OutSrcPos.[n].[0] <- config.SrcPosition.X
+            self.OutSrcPos.[n].[1] <- config.SrcPosition.Y
+            self.OutOutSize.[n].[0] <- config.OutputSize.X
+            self.OutOutSize.[n].[1] <- config.OutputSize.Y
+            self.OutOutPos.[n].[0] <- config.OutputPosition.X
+            self.OutOutPos.[n].[1] <- config.OutputPosition.Y
+
+//  ____            _             __  __
+// |  _ \ ___  __ _(_) ___  _ __ |  \/  | __ _ _ __
+// | |_) / _ \/ _` | |/ _ \| '_ \| |\/| |/ _` | '_ \
+// |  _ <  __/ (_| | | (_) | | | | |  | | (_| | |_) |
+// |_| \_\___|\__, |_|\___/|_| |_|_|  |_|\__,_| .__/
+//            |___/                           |_|
+
+[<PluginInfo(Name="RegionMap", Category="Iris", AutoEvaluate=true)>]
+type RegionMapNode() =
+
+  [<Import();DefaultValue>]
+  val mutable Logger: ILogger
+
+  [<DefaultValue>]
+  [<Input("Region")>]
+  val mutable InRegionMap: ISpread<RegionMap>
+
+  [<DefaultValue>]
+  [<Input("Update", IsSingle = true, IsBang = true)>]
+  val mutable InUpdate: ISpread<bool>
+
+  [<DefaultValue>]
+  [<Output("Source Viewport Id")>]
+  val mutable OutSrcId: ISpread<string>
+
+  [<DefaultValue>]
+  [<Output("Regions")>]
+  val mutable OutRegions: ISpread<ISpread<Region>>
+
+  interface IPluginEvaluate with
+    member self.Evaluate (spreadMax: int) : unit =
+      if self.InUpdate.[0] then
+        for n in 0 .. (spreadMax - 1) do
+          if not (Util.isNull self.InRegionMap.[n]) then
+            let config = self.InRegionMap.[n]
+            self.OutSrcId.[n] <- string config.SrcViewportId
+            self.OutRegions.[n].AssignFrom config.Regions
+
+//  ____  _           _
+// |  _ \(_)___ _ __ | | __ _ _   _
+// | | | | / __| '_ \| |/ _` | | | |
+// | |_| | \__ \ |_) | | (_| | |_| |
+// |____/|_|___/ .__/|_|\__,_|\__, |
+//             |_|            |___/
+
+[<PluginInfo(Name="Display", Category="Iris", AutoEvaluate=true)>]
+type DisplayNode() =
+
+  [<Import();DefaultValue>]
+  val mutable Logger: ILogger
+
+  [<DefaultValue>]
+  [<Input("Display")>]
+  val mutable InDisplay: ISpread<Display>
+
+  [<DefaultValue>]
+  [<Input("Update", IsSingle = true, IsBang = true)>]
+  val mutable InUpdate: ISpread<bool>
+
+  [<DefaultValue>]
+  [<Output("Id")>]
+  val mutable OutId: ISpread<string>
+
+  [<DefaultValue>]
+  [<Output("Name")>]
+  val mutable OutName: ISpread<string>
+
+  [<DefaultValue>]
+  [<Output("Size")>]
+  val mutable OutSize: ISpread<ISpread<int>>
+
+  [<DefaultValue>]
+  [<Output("Signals")>]
+  val mutable OutSignals: ISpread<ISpread<Signal>>
+
+  [<DefaultValue>]
+  [<Output("RegionMap")>]
+  val mutable OutRegionMap: ISpread<RegionMap>
+
+  interface IPluginEvaluate with
+    member self.Evaluate (spreadMax: int) : unit =
+      if self.InUpdate.[0] then
+        for n in 0 .. (spreadMax - 1) do
+          if not (Util.isNull self.InDisplay.[n]) then
+            let config = self.InDisplay.[n]
+            self.OutId.[n] <- string config.Id
+            self.OutName.[n] <- config.Name
+            self.OutSize.[n].[0] <- config.Size.X
+            self.OutSize.[n].[1] <- config.Size.Y
+            self.OutSignals.[n].AssignFrom config.Signals
+            self.OutRegionMap.[n] <- config.RegionMap
+
+// __     ___               ____            _
+// \ \   / (_) _____      _|  _ \ ___  _ __| |_
+//  \ \ / /| |/ _ \ \ /\ / / |_) / _ \| '__| __|
+//   \ V / | |  __/\ V  V /|  __/ (_) | |  | |_
+//    \_/  |_|\___| \_/\_/ |_|   \___/|_|   \__|
+
+[<PluginInfo(Name="ViewPort", Category="Iris", AutoEvaluate=true)>]
+type ViewPortNode() =
+
+  [<Import();DefaultValue>]
+  val mutable Logger: ILogger
+
+  [<DefaultValue>]
+  [<Input("ViewPort")>]
+  val mutable InViewPort: ISpread<ViewPort>
+
+  [<DefaultValue>]
+  [<Input("Update", IsSingle = true, IsBang = true)>]
+  val mutable InUpdate: ISpread<bool>
+
+  [<DefaultValue>]
+  [<Output("Id")>]
+  val mutable OutId: ISpread<string>
+
+  [<DefaultValue>]
+  [<Output("Name")>]
+  val mutable OutName: ISpread<string>
+
+  [<DefaultValue>]
+  [<Output("Position")>]
+  val mutable OutPosition: ISpread<ISpread<int>>
+
+  [<DefaultValue>]
+  [<Output("Size")>]
+  val mutable OutSize: ISpread<ISpread<int>>
+
+  [<DefaultValue>]
+  [<Output("Output Position")>]
+  val mutable OutOutPosition: ISpread<ISpread<int>>
+
+  [<DefaultValue>]
+  [<Output("Output Size")>]
+  val mutable OutOutSize: ISpread<ISpread<int>>
+
+  [<DefaultValue>]
+  [<Output("Overlap")>]
+  val mutable OutOverlap: ISpread<ISpread<int>>
+
+  [<DefaultValue>]
+  [<Output("Description")>]
+  val mutable OutDescription: ISpread<string>
+
+  interface IPluginEvaluate with
+    member self.Evaluate (spreadMax: int) : unit =
+      if self.InUpdate.[0] then
+        for n in 0 .. (spreadMax - 1) do
+          if not (Util.isNull self.InViewPort.[n]) then
+            let config = self.InViewPort.[n]
+            self.OutId.[n] <- string config.Id
+            self.OutName.[n] <- config.Name
+            self.OutPosition.[n].[0] <- config.Position.X
+            self.OutPosition.[n].[1] <- config.Position.Y
+            self.OutSize.[n].[0] <- config.Size.X
+            self.OutSize.[n].[1] <- config.Size.Y
+            self.OutOutPosition.[n].[0] <- config.OutputPosition.X
+            self.OutOutPosition.[n].[1] <- config.OutputPosition.Y
+            self.OutOutSize.[n].[0] <- config.OutputSize.X
+            self.OutOutSize.[n].[1] <- config.OutputSize.Y
+            self.OutOverlap.[n].[0] <- config.Overlap.X
+            self.OutOverlap.[n].[1] <- config.Overlap.Y
+            self.OutDescription.[n] <- config.Description
