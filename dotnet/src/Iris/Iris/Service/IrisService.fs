@@ -83,7 +83,8 @@ module Iris =
   /// Services that keep running also in idle state.
   ///
   [<NoComparison;NoEquality>]
-  type private IrisIdleStateData() =
+  type private IrisIdleStateData =
+    { DiscoveryService : IDiscoveryService }
 
     interface IDisposable with
       member self.Dispose() =
@@ -161,6 +162,7 @@ module Iris =
     | Raft        of RaftEvent
     | Api         of ApiEvent
     | Log         of LogEvent
+    | Discovery   of Discovery.DiscoveryEvent
     | Load        of ReplyChan * projectName:string * userName:string * password:string
     | SetConfig   of ReplyChan * IrisConfig
     | AddMember   of ReplyChan * RaftMember
@@ -596,6 +598,16 @@ module Iris =
         triggerOnNext data.Subscriptions (IrisEvent.Api ev)
     state
 
+  let private handleDiscoveryEvent (state: IrisState) (ev: Discovery.DiscoveryEvent) =
+    withState state <| fun data ->
+      match ev with
+      | Discovery.Appeared service ->
+        failwith "TODO"
+      | Discovery.Updated  service -> failwith "TODO"
+      | Discovery.Vanished service -> failwith "TODO"
+      | _ -> ()
+      state
+
   // ** forwardLogEvents
 
   let private forwardLogEvents (agent: IrisAgent) (log: LogEvent) =
@@ -993,6 +1005,7 @@ module Iris =
           | Msg.Socket ev            -> handleSocketEvent   state       ev
           | Msg.Raft   ev            -> handleRaftEvent     state       ev
           | Msg.Api    ev            -> handleApiEvent      state       ev
+          | Msg.Discovery ev         -> handleDiscoveryEvent state      ev
           | Msg.Log   log            -> handleLogEvent      state       log
           | Msg.ForceElection        -> handleForceElection state
           | Msg.Periodic             -> handlePeriodic      state
@@ -1161,13 +1174,32 @@ module Iris =
       }
 
 
+    let private initIdleState (agent: (IrisAgent option) ref) (config: IrisMachine) =
+      let discovery = DiscoveryService.create config
+      match discovery.Start() with
+      | Right _ ->
+        discovery.Subscribe(fun ev ->
+          match !agent with
+          | Some agent -> Msg.Discovery ev |> agent.Post
+          | None -> ())
+        |> ignore
+      | Left error ->
+        error
+        |> string
+        |> Logger.err config.MachineId (tag "startDiscoveryService")
+      { DiscoveryService = discovery }
+      |> Idle
+
     let create (config: IrisMachine) (post: CommandAgent) =
       try
         either {
           let subscriptions = new Subscriptions()
           let agent =
-            let initState = new IrisIdleStateData() |> Idle
-            new IrisAgent(loop initState config post subscriptions)
+            let agentRef = ref None
+            let initState = initIdleState agentRef config
+            let agent = new IrisAgent(loop initState config post subscriptions)
+            agentRef := Some agent
+            agent
           agent.Start()
           return mkIris subscriptions agent
         }

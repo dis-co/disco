@@ -1076,6 +1076,11 @@ and StateMachine =
   | UpdateSession of Session
   | RemoveSession of Session
 
+  // Discovery
+  | AddResolvedService    of Discovery.DiscoveredService
+  | UpdateResolvedService of Discovery.DiscoveredService
+  | RemoveResolvedService of Discovery.DiscoveredService
+
   | Command       of AppCommand
 
   | DataSnapshot  of State

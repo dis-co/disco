@@ -263,27 +263,6 @@ module CommandLine =
     System.AppDomain.CurrentDomain.ProcessExit.Add (fun _ -> dispose context)
     System.AppDomain.CurrentDomain.DomainUnload.Add (fun _ -> dispose context)
 
-  // ** startDiscoveryService
-
-  let startDiscoveryService (machine: IrisMachine) (irisService: IIrisServer) =
-    either {
-      let! discovery = DiscoveryService.create machine
-      let _ = discovery.Subscribe(printfn "%A")
-      do! discovery.Start()
-      let! _ =
-          [ "Id", string machine.MachineId
-            "HostName", Network.getHostName ()
-            "IpAddr", machine.WebIP
-            "Port", string machine.RaftPort
-            "WsPort", string machine.WsPort
-            "GitPort", string machine.GitPort
-            "ApiPort", string machine.ApiPort ]
-          |> Map
-          |> discovery.Register ServiceType.Iris machine.WebPort (IPv4Address machine.WebIP)
-
-      return discovery
-    }
-
   // ** startService
 
   //  ____  _             _
@@ -305,14 +284,7 @@ module CommandLine =
       let! httpServer = HttpServer.create machine post
       do! httpServer.Start()
 
-      let discoveryService =
-        match startDiscoveryService machine irisService with
-        | Right discovery -> Some discovery
-        | Left error ->
-            Logger.err machine.MachineId "CommandLine.startService" (string error)
-            None
-
-      agentRef := CommandActions.startAgent machine irisService discoveryService |> Some
+      agentRef := CommandActions.startAgent machine irisService |> Some
 
       registerExitHandlers irisService httpServer
 

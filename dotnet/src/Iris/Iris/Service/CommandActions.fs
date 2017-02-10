@@ -16,7 +16,7 @@ let private tag s = "Iris.Service.Commands." + s
 
 let private serializeJson =
     let converter = Fable.JsonConverter()
-    fun o -> Newtonsoft.Json.JsonConvert.SerializeObject(o, converter)
+    fun (o: obj) -> Newtonsoft.Json.JsonConvert.SerializeObject(o, converter)
 
 let getWsport (iris: IIrisServer): Either<IrisError,string> =
     match iris.Config with
@@ -110,7 +110,7 @@ let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
 
 let registeredServices = ConcurrentDictionary<string, IDisposable>()
 
-let startAgent (cfg: IrisMachine) (iris: IIrisServer) (discovery: IDiscoveryService option) =
+let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
   let fail cmd msg =
     IrisError.Other (tag cmd, msg) |> Either.fail
   MailboxProcessor<Command*Channel>.Start(fun agent ->
@@ -132,40 +132,12 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) (discovery: IDiscoveryServ
           // TODO: Check if a project is actually loaded
           iris.UnloadProject()
           |> Either.map (fun () -> "Project unloaded")
-        | GetDiscoveredServices ->
-            match discovery with
-            | Some disc ->
-                disc.Services
-                |> Either.map (snd >> (Seq.map (fun kv -> kv.Value)) >> Seq.toArray)
-            | None ->
-                Either.succeed [||]
-            |> Either.map serializeJson
         | ListProjects -> listProjects cfg
         | GetWebSocketPort -> getWsport iris
         | CreateProject opts -> createProject cfg opts
         | LoadProject(projectName, userName, password) ->
           iris.LoadProject(projectName, userName, password)
           |> Either.map (fun _ -> "Loaded project " + projectName)
-        | RegisterService (tipe, port, addr, metadata) ->
-          Either.succeed "ok"
-//          match discovery with
-//          | Some disc ->
-//            disc.Register tipe port addr metadata
-//            |> Either.bind (fun disp ->
-//              let id =
-//                match Map.tryFind "Id" metadata with
-//                | Some id -> id
-//                | None -> Guid.NewGuid() |> string
-//              if registeredServices.TryAdd(id, disp)
-//              then Right id
-//              else fail "RegisterService" "Cannot add to registeredServices")
-//          | None ->
-//            IrisError.Other (tag "RegisterService", "No discovery service") |> Left
-        | DeregisterService id ->
-          Either.succeed "ok"
-//          match registeredServices.TryGetValue id with
-//          | true, disp -> disp.Dispose(); Right "Disposed"
-//          | false, _ -> fail "RegisterService" "No discovery service"
       replyChannel.Reply res
       do! loop()
     }

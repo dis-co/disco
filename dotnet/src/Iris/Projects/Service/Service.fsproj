@@ -149,11 +149,11 @@
     <Compile Include="..\..\Iris\Core\Project.fs">
       <Link>Project.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Core\StateMachine.fs">
-      <Link>StateMachine.fs</Link>
-    </Compile>
     <Compile Include="..\..\Iris\Core\Discovery.fs">
       <Link>Discovery.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\StateMachine.fs">
+      <Link>StateMachine.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Core\Commands.fs">
       <Link>Commands.fs</Link>
