@@ -182,6 +182,9 @@
     <Compile Include="../../Iris/Nodes/Nodes/AudioConfigNode.fs">
       <Link>AudioConfigNode.fs</Link>
     </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/RaftConfigNode.fs">
+      <Link>RaftConfigNode.fs</Link>
+    </Compile>
     <Compile Include="../../Iris/Nodes/Nodes/TimingConfigNode.fs">
       <Link>TimingConfigNode.fs</Link>
     </Compile>
