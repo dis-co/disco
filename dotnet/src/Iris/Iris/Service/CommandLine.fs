@@ -267,23 +267,21 @@ module CommandLine =
 
   let startDiscoveryService (machine: IrisMachine) (irisService: IIrisServer) =
     either {
-        let! config = irisService.Config
-        let! mem = Config.selfMember config
-        let! discovery = DiscoveryService.create machine
-        let _ = discovery.Subscribe(printfn "%A")
-        do! discovery.Start()
-        let! _ =
-            [ "Id", string mem.Id
-              "HostName", mem.HostName
-              "IpAddr", string mem.IpAddr
-              "Port", string mem.Port
-              "WsPort", string mem.WsPort
-              "GitPort", string mem.GitPort
-              "ApiPort", string mem.ApiPort ]
-            |> Map
-            |> discovery.Register ServiceType.Iris machine.WebPort (IPv4Address "0.0.0.0")
+      let! discovery = DiscoveryService.create machine
+      let _ = discovery.Subscribe(printfn "%A")
+      do! discovery.Start()
+      let! _ =
+          [ "Id", string machine.MachineId
+            "HostName", Network.getHostName ()
+            "IpAddr", machine.WebIP
+            "Port", string machine.RaftPort
+            "WsPort", string machine.WsPort
+            "GitPort", string machine.GitPort
+            "ApiPort", string machine.ApiPort ]
+          |> Map
+          |> discovery.Register ServiceType.Iris machine.WebPort (IPv4Address machine.WebIP)
 
-        return discovery
+      return discovery
     }
 
   // ** startService
@@ -297,13 +295,14 @@ module CommandLine =
   let startService (projectDir: FilePath option) : Either<IrisError, unit> =
     either {
       let agentRef = ref None
+      let post = CommandActions.postCommand agentRef
       let machine = MachineConfig.get()
 
       use _ = Logger.subscribe Logger.stdout
 
-      let! irisService = IrisService.create machine
+      let! irisService = IrisService.create machine post
 
-      let! httpServer = HttpServer.create machine (CommandActions.postCommand agentRef)
+      let! httpServer = HttpServer.create machine post
       do! httpServer.Start()
 
       let discoveryService =

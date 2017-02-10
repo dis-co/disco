@@ -60,7 +60,19 @@ module Constants =
   let DEFAULT_IP = "0.0.0.0"
 
   [<Literal>]
+  let DEFAULT_API_PORT = 5000us
+
+  [<Literal>]
+  let DEFAULT_RAFT_PORT = 6000us
+
+  [<Literal>]
   let DEFAULT_WEB_PORT = 7000us
+
+  [<Literal>]
+  let DEFAULT_WEB_SOCKET_PORT = 8000us
+
+  [<Literal>]
+  let DEFAULT_GIT_PORT = 9000us
 
   [<Literal>]
   let ADMIN_DEFAULT_PASSWORD =

@@ -8,6 +8,7 @@ open Iris.Core.Commands
 open Iris.Core.FileSystem
 open Iris.Service.Interfaces
 open Iris.Service.Persistence
+open System.Collections.Concurrent
 
 type private Channel = AsyncReplyChannel<Either<IrisError,string>>
 
@@ -107,7 +108,11 @@ let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
     return "ok"
   }
 
+let registeredServices = ConcurrentDictionary<string, IDisposable>()
+
 let startAgent (cfg: IrisMachine) (iris: IIrisServer) (discovery: IDiscoveryService option) =
+  let fail cmd msg =
+    IrisError.Other (tag cmd, msg) |> Either.fail
   MailboxProcessor<Command*Channel>.Start(fun agent ->
     let rec loop() = async {
       let! input, replyChannel = agent.Receive()
@@ -141,6 +146,26 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) (discovery: IDiscoveryServ
         | LoadProject(projectName, userName, password) ->
           iris.LoadProject(projectName, userName, password)
           |> Either.map (fun _ -> "Loaded project " + projectName)
+        | RegisterService (tipe, port, addr, metadata) ->
+          Either.succeed "ok"
+//          match discovery with
+//          | Some disc ->
+//            disc.Register tipe port addr metadata
+//            |> Either.bind (fun disp ->
+//              let id =
+//                match Map.tryFind "Id" metadata with
+//                | Some id -> id
+//                | None -> Guid.NewGuid() |> string
+//              if registeredServices.TryAdd(id, disp)
+//              then Right id
+//              else fail "RegisterService" "Cannot add to registeredServices")
+//          | None ->
+//            IrisError.Other (tag "RegisterService", "No discovery service") |> Left
+        | DeregisterService id ->
+          Either.succeed "ok"
+//          match registeredServices.TryGetValue id with
+//          | true, disp -> disp.Dispose(); Right "Disposed"
+//          | false, _ -> fail "RegisterService" "No discovery service"
       replyChannel.Reply res
       do! loop()
     }

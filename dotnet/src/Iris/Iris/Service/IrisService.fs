@@ -8,6 +8,7 @@ open System.Collections.Concurrent
 open Iris.Raft
 open Iris.Core
 open Iris.Core.Utils
+open Iris.Core.Commands
 open Iris.Service.Interfaces
 open Iris.Service.Persistence
 open Iris.Service.Git
@@ -765,12 +766,34 @@ module Iris =
                          (chan: ReplyChan)
                          (projectName: string, userName: string, password: string)
                          (config: IrisMachine)
+                         (post: CommandAgent)
                          (subscriptions: Subscriptions)
                          (inbox: IrisAgent) =
     match loadProject state config (projectName, userName, password) subscriptions with
     | Right nextstate ->
       match start nextstate inbox with
       | Right finalstate ->
+        // register
+        withLoaded finalstate ignore <| fun data ->
+          Config.selfMember data.Store.State.Project.Config
+          |> Either.iter (fun mem ->
+            let metadata =
+              [ "Id", string mem.Id
+                "HostName", mem.HostName
+                "IpAddr", string mem.IpAddr
+                "Port", string mem.Port
+                "WsPort", string mem.WsPort
+                "GitPort", string mem.GitPort
+                "ApiPort", string mem.ApiPort ] |> Map
+            Async.Start <| async {
+              let! res =
+                post <| RegisterService(Discovery.ServiceType.Iris, mem.Port, mem.IpAddr, metadata)
+              match res with
+              | Right _ -> ()
+              | Left err ->
+                string err
+                |> Logger.err data.MemberId (tag "loadProject.registerService")
+            })
         // notify
         ServiceStatus.Running
         |> Status
@@ -944,6 +967,7 @@ module Iris =
 
   let private loop (initial: IrisState)
                    (config: IrisMachine)
+                   (post: CommandAgent)
                    (subs: Subscriptions)
                    (inbox: IrisAgent) =
     let rec act (state: IrisState) =
@@ -951,7 +975,7 @@ module Iris =
         let! msg = inbox.Receive()
         let newstate =
           match msg with
-          | Msg.Load (chan,pname,uname,pass) -> handleLoad state chan (pname,uname,pass) config subs inbox
+          | Msg.Load (chan,pname,uname,pass) -> handleLoad state chan (pname,uname,pass) config post subs inbox
           | Msg.Unload chan          -> handleUnload        state chan
           | Msg.Config chan          -> handleConfig        state chan
           | Msg.SetConfig (chan,cnf) -> handleSetConfig     state chan  cnf
@@ -1127,11 +1151,11 @@ module Iris =
       }
 
 
-    let create (config: IrisMachine) =
+    let create (config: IrisMachine) (post: CommandAgent) =
       try
         either {
           let subscriptions = new Subscriptions()
-          let agent = new IrisAgent(loop Idle config subscriptions)
+          let agent = new IrisAgent(loop Idle config post subscriptions)
           agent.Start()
           return mkIris subscriptions agent
         }

@@ -4,6 +4,7 @@ module Iris.Core.Commands
 
 open System
 open Iris.Core
+open Iris.Core.Discovery
 
 // * Commands
 
@@ -22,5 +23,8 @@ type Command =
   | GetDiscoveredServices
   | CreateProject of CreateProjectOptions
   | LoadProject of projectName:string * userName:string * password:string
+  // Internal commands. TODO: Put them in a different type?
+  | RegisterService of tipe:ServiceType * port:Port * addr:IpAddress * metadata:Map<string, string>
+  | DeregisterService of id:string
 
 type CommandAgent = Command -> Async<Either<IrisError,string>>

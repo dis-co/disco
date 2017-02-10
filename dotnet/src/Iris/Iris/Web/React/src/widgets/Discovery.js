@@ -16,7 +16,10 @@ export default class WidgetDiscovery extends React.Component {
 
   componentDidMount() {
     getDiscoveredServices()
-      .then(services => this.setState({ services }))
+      .then(services => {
+        debugger;
+        this.setState({ services })
+      })
   }
 
   renderService(service) {

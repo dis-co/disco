@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -126,11 +126,11 @@
     <Compile Include="../../Iris/Core/StateMachine.fs">
       <Link>StateMachine.fs</Link>
     </Compile>
-    <Compile Include="../../Iris/Core/Commands.fs">
-      <Link>Commands.fs</Link>
-    </Compile>
     <Compile Include="../../Iris/Core/Discovery.fs">
       <Link>Discovery.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Core/Commands.fs">
+      <Link>Commands.fs</Link>
     </Compile>
     <Compile Include="../../Iris/Core/ClientMessage.fs">
       <Link>ClientMessage.fs</Link>

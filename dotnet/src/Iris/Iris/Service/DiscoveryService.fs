@@ -226,8 +226,10 @@ module Discovery =
       let! tipe = parseServiceType service.TxtRecord
 
       let metadata =
-        seq { for i = 0 to service.TxtRecord.Count do
-                yield let kv = service.TxtRecord.GetItemAt(i) in kv.Key, kv.ValueString }
+        service.TxtRecord
+        |> Seq.cast<TxtRecordItem>
+        |> Seq.map (fun i -> i.Key, i.ValueString)
+        |> Map
 
       return
         { Id = id
@@ -241,7 +243,7 @@ module Discovery =
           HostTarget = service.HostTarget
           Aliases = if isNull entry then [| |] else entry.Aliases
           AddressList = addresses
-          Metadata = Map metadata }
+          Metadata = metadata }
     }
 
   // ** mergeDiscovered
