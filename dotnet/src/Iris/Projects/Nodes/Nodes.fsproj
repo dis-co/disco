@@ -239,6 +239,9 @@
     <Compile Include="../../Iris/Nodes/Nodes/CueNode.fs">
       <Link>CueNode.fs</Link>
     </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/CueListNode.fs">
+      <Link>CueListNode.fs</Link>
+    </Compile>
     <!-- END NODES -->
   </ItemGroup>
   <PropertyGroup>
