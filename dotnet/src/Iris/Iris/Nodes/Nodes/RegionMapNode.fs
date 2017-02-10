@@ -30,7 +30,7 @@ type RegionMapNode() =
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: ISpread<bool>
+  val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
   [<Output("Source Viewport Id")>]
@@ -40,6 +40,10 @@ type RegionMapNode() =
   [<Output("Regions")>]
   val mutable OutRegions: ISpread<ISpread<Region>>
 
+  [<DefaultValue>]
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
+
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
@@ -48,3 +52,6 @@ type RegionMapNode() =
             let config = self.InRegionMap.[n]
             self.OutSrcId.[n] <- string config.SrcViewportId
             self.OutRegions.[n].AssignFrom config.Regions
+
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]

@@ -30,7 +30,7 @@ type RegionNode() =
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: ISpread<bool>
+  val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
   [<Output("Id")>]
@@ -56,6 +56,10 @@ type RegionNode() =
   [<Output("Output Position")>]
   val mutable OutOutPos: ISpread<ISpread<int>>
 
+  [<DefaultValue>]
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
+
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
@@ -72,3 +76,6 @@ type RegionNode() =
             self.OutOutSize.[n].[1] <- config.OutputSize.Y
             self.OutOutPos.[n].[0] <- config.OutputPosition.X
             self.OutOutPos.[n].[1] <- config.OutputPosition.Y
+
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]

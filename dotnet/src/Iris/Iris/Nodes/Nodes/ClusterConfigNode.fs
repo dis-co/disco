@@ -29,7 +29,7 @@ type ClusterConfigNode() =
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: ISpread<bool>
+  val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
   [<Output("Name")>]
@@ -43,6 +43,10 @@ type ClusterConfigNode() =
   [<Output("Groups")>]
   val mutable OutGroups: ISpread<ISpread<HostGroup>>
 
+  [<DefaultValue>]
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
+
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
@@ -52,3 +56,6 @@ type ClusterConfigNode() =
             self.OutName.[n] <- config.Name
             self.OutMembers.[n].AssignFrom (config.Members |> Map.toArray |> Array.map snd)
             self.OutGroups.[n].AssignFrom config.Groups
+
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]

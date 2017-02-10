@@ -29,7 +29,7 @@ type MemberNode() =
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: ISpread<bool>
+  val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
   [<Output("Id")>]
@@ -63,6 +63,10 @@ type MemberNode() =
   [<Output("Status")>]
   val mutable OutStatus: ISpread<string>
 
+  [<DefaultValue>]
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
+
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
@@ -77,3 +81,6 @@ type MemberNode() =
             self.OutWsPort.[n] <- int config.WsPort
             self.OutGitPort.[n] <- int config.GitPort
             self.OutApiPort.[n] <- int config.ApiPort
+
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]

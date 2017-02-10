@@ -30,7 +30,7 @@ type HostGroupNode() =
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: ISpread<bool>
+  val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
   [<Output("Name")>]
@@ -40,6 +40,10 @@ type HostGroupNode() =
   [<Output("Members")>]
   val mutable OutMembers: ISpread<ISpread<string>>
 
+  [<DefaultValue>]
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
+
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
@@ -48,3 +52,6 @@ type HostGroupNode() =
             let config = self.InHostGroup.[n]
             self.OutName.[n] <- config.Name
             self.OutMembers.[n].AssignFrom (Array.map string config.Members)
+
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]

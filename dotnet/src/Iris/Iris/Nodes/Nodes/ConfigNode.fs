@@ -30,7 +30,7 @@ type ConfigNode() =
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: ISpread<bool>
+  val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
   [<Output("MachineId", IsSingle = true)>]
@@ -72,6 +72,10 @@ type ConfigNode() =
   [<Output("Version", IsSingle = true)>]
   val mutable OutVersion: ISpread<string>
 
+  [<DefaultValue>]
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
+
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] && not (Util.isNull self.InConfig.[0]) then
@@ -87,3 +91,6 @@ type ConfigNode() =
         self.OutDisplays.AssignFrom config.Displays
         self.OutTasks.AssignFrom config.Tasks
         self.OutVersion.[0] <- string config.Version
+
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]

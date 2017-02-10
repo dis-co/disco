@@ -30,7 +30,7 @@ type SignalNode() =
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: ISpread<bool>
+  val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
   [<Output("Size")>]
@@ -39,6 +39,10 @@ type SignalNode() =
   [<DefaultValue>]
   [<Output("Coordinate")>]
   val mutable OutCoordinate: ISpread<ISpread<int>>
+
+  [<DefaultValue>]
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
 
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
@@ -50,3 +54,6 @@ type SignalNode() =
             self.OutSize.[n].[1] <- config.Size.Y
             self.OutCoordinate.[n].[0] <- config.Position.X
             self.OutCoordinate.[n].[1] <- config.Position.Y
+
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]

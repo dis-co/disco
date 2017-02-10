@@ -29,7 +29,7 @@ type VvvvConfigNode() =
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: ISpread<bool>
+  val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
   [<Output("Executables")>]
@@ -39,9 +39,16 @@ type VvvvConfigNode() =
   [<Output("Plugins")>]
   val mutable OutPlugins: ISpread<VvvvPlugin>
 
+  [<DefaultValue>]
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
+
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] && not (Util.isNull self.InVvvv.[0]) then
         let config = self.InVvvv.[0]
         self.OutExecutables.AssignFrom config.Executables
         self.OutExecutables.AssignFrom config.Executables
+
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]

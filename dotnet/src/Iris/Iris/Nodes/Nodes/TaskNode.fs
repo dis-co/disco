@@ -29,7 +29,7 @@ type TaskNode() =
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: ISpread<bool>
+  val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
   [<Output("Id")>]
@@ -51,6 +51,10 @@ type TaskNode() =
   [<Output("Arguments")>]
   val mutable OutArguments: ISpread<ISpread<string>>
 
+  [<DefaultValue>]
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
+
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
@@ -64,3 +68,6 @@ type TaskNode() =
             self.OutDescription.[n] <- config.Description
             self.OutAudioStream.[n] <- config.AudioStream
             self.OutArguments.[n].AssignFrom keys
+
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]

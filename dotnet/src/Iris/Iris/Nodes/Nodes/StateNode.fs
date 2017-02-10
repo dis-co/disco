@@ -29,7 +29,7 @@ type StateNode() =
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: ISpread<bool>
+  val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
   [<Output("Project", IsSingle = true)>]
@@ -54,6 +54,10 @@ type StateNode() =
   [<DefaultValue>]
   [<Output("Clients")>]
   val mutable OutClients: ISpread<IrisClient>
+
+  [<DefaultValue>]
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
 
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
@@ -91,3 +95,6 @@ type StateNode() =
         self.OutSessions.AssignFrom sessions
         self.OutUsers.AssignFrom users
         self.OutClients.AssignFrom clients
+
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]

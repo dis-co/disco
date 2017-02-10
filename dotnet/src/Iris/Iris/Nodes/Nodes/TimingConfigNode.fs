@@ -30,7 +30,7 @@ type TimingConfigNode() =
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: ISpread<bool>
+  val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
   [<Output("Framebase")>]
@@ -52,6 +52,10 @@ type TimingConfigNode() =
   [<Output("TCPPort")>]
   val mutable OutTCPPort: ISpread<int>
 
+  [<DefaultValue>]
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
+
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
@@ -63,3 +67,6 @@ type TimingConfigNode() =
             self.OutServers.[n].AssignFrom (Array.map string config.Servers)
             self.OutUDPPort.[n] <- int config.UDPPort
             self.OutTCPPort.[n] <- int config.TCPPort
+
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]

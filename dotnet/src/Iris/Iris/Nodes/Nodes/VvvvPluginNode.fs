@@ -30,7 +30,7 @@ type VvvvPluginNode() =
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: ISpread<bool>
+  val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
   [<Output("Name")>]
@@ -40,6 +40,10 @@ type VvvvPluginNode() =
   [<Output("Path")>]
   val mutable OutPath: ISpread<string>
 
+  [<DefaultValue>]
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
+
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
@@ -48,3 +52,6 @@ type VvvvPluginNode() =
             let config = self.InPlugin.[n]
             self.OutName.[n] <- config.Name
             self.OutPath.[n] <- config.Path
+
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]

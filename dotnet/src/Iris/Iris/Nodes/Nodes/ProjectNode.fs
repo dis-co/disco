@@ -30,7 +30,7 @@ type ProjectNode() =
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: ISpread<bool>
+  val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
   [<Output("Id", IsSingle = true)>]
@@ -56,6 +56,10 @@ type ProjectNode() =
   [<Output("Config", IsSingle = true)>]
   val mutable OutConfig: ISpread<IrisConfig>
 
+  [<DefaultValue>]
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
+
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] && not (Util.isNull self.InProject.[0]) then
@@ -71,3 +75,6 @@ type ProjectNode() =
         self.OutCreatedOn.[0] <- sprintf "%A" project.CreatedOn
         self.OutLastSaved.[0] <- lastSaved
         self.OutConfig.[0] <- project.Config
+
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]

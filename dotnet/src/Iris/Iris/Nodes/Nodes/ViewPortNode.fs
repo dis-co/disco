@@ -29,7 +29,7 @@ type ViewPortNode() =
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: ISpread<bool>
+  val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
   [<Output("Id")>]
@@ -63,6 +63,10 @@ type ViewPortNode() =
   [<Output("Description")>]
   val mutable OutDescription: ISpread<string>
 
+  [<DefaultValue>]
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
+
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
@@ -82,3 +86,6 @@ type ViewPortNode() =
             self.OutOverlap.[n].[0] <- config.Overlap.X
             self.OutOverlap.[n].[1] <- config.Overlap.Y
             self.OutDescription.[n] <- config.Description
+
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]

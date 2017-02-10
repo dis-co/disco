@@ -29,14 +29,22 @@ type AudioConfigNode() =
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: ISpread<bool>
+  val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
   [<Output("SampleRate", IsSingle = true)>]
   val mutable OutSampleRate: ISpread<int>
 
+  [<DefaultValue>]
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
+
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
-      if self.InUpdate.[0] && not (Util.isNull self.InAudio.[0]) then
-        let config = self.InAudio.[0]
-        self.OutSampleRate.[0] <- int config.SampleRate
+      if self.InUpdate.[0] then
+        for n in 0 .. (spreadMax - 1) do
+          if not (Util.isNull self.InAudio.[n]) then
+            let config = self.InAudio.[n]
+            self.OutSampleRate.[n] <- int config.SampleRate
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]
