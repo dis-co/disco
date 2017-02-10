@@ -178,9 +178,62 @@
     <Compile Include="../../Iris/Nodes/GraphApi.fs">
       <Link>GraphApi.fs</Link>
     </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes.fs">
-      <Link>Nodes.fs</Link>
+    <!-- NODES -->
+    <Compile Include="../../Iris/Nodes/Nodes/AudioConfigNode.fs">
+      <Link>AudioConfigNode.fs</Link>
     </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/TimingConfigNode.fs">
+      <Link>TimingConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/ClusterConfigNode.fs">
+      <Link>ClusterConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/VvvvConfigNode.fs">
+      <Link>VvvvConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/ConfigNode.fs">
+      <Link>ConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/DisplayNode.fs">
+      <Link>DisplayNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/HostGroupNode.fs">
+      <Link>HostGroupNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/IrisNode.fs">
+      <Link>IrisNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/MemberNode.fs">
+      <Link>MemberNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/ProjectNode.fs">
+      <Link>ProjectNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/RegionMapNode.fs">
+      <Link>RegionMapNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/RegionNode.fs">
+      <Link>RegionNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/SignalNode.fs">
+      <Link>SignalNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/StateNode.fs">
+      <Link>StateNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/TaskNode.fs">
+      <Link>TaskNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/ViewPortNode.fs">
+      <Link>ViewPortNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/VvvvExeNode.fs">
+      <Link>VvvvExeNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/VvvvPluginNode.fs">
+      <Link>VvvvPluginNode.fs</Link>
+    </Compile>
+    <!-- END NODES -->
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
