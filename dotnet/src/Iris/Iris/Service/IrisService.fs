@@ -75,13 +75,27 @@ module Iris =
   let private disposeAll (disposables: Map<string,IDisposable>) =
     Map.iter (konst dispose) disposables
 
-  // ** IrisStateData
 
-  /// ## IrisStateData
+  // ** IrisIdleStateData
+
+  /// ## IrisIdleStateData
   ///
-  /// Encapsulate all service-internal state to hydrate an `IrisAgent` with. As the actor receives
-  /// messages, it uses (and updates) this record and passes it on. For ease of use it implements
-  /// the IDisposable interface.
+  /// Services that keep running also in idle state.
+  ///
+  [<NoComparison;NoEquality>]
+  type private IrisIdleStateData() =
+
+    interface IDisposable with
+      member self.Dispose() =
+        ()
+
+  // ** IrisLoadedStateData
+
+  /// ## IrisLoadedStateData
+  ///
+  /// Encapsulate all service-internal state to hydrate an `IrisAgent` with a project loaded.
+  /// As the actor receives messages, it uses (and updates) this record and passes it on.
+  /// For ease of use it implements the IDisposable interface.
   ///
   /// ### Fields:
   /// - Status: ServiceStatus of currently loaded project
@@ -93,7 +107,7 @@ module Iris =
   /// - Disposables: IDisposable list for Observables and the like
   ///
   [<NoComparison;NoEquality>]
-  type private IrisStateData =
+  type private IrisLoadedStateData =
     { MemberId      : Id
       Status        : ServiceStatus
       Store         : Store
@@ -121,7 +135,7 @@ module Iris =
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Reply =
     | Ok
-    | State  of IrisStateData
+    | State  of IrisLoadedStateData
     | Entry  of EntryResponse
     | Config of IrisConfig
 
@@ -195,14 +209,14 @@ module Iris =
   ///
   [<NoComparison;NoEquality>]
   type private IrisState =
-    | Idle
-    | Loaded of IrisStateData
+    | Idle of IrisIdleStateData
+    | Loaded of IrisIdleStateData * IrisLoadedStateData
 
     interface IDisposable with
       member self.Dispose() =
         match self with
-        | Idle -> ()
-        | Loaded data -> dispose data
+        | Idle data -> dispose data
+        | Loaded (data1,data2) -> dispose data1; dispose data2
 
   /// ## withLoaded
   ///
@@ -217,10 +231,10 @@ module Iris =
   /// Returns: IrisState
   let inline private withLoaded (state: IrisState)
                                 (idle: unit -> 'a)
-                                (loaded: IrisStateData -> 'a) =
+                                (loaded: IrisLoadedStateData -> 'a) =
     match state with
-    | Idle        -> idle ()
-    | Loaded data -> loaded data
+    | Idle _ -> idle ()
+    | Loaded (_,data2) -> loaded data2
 
   /// ## withState
   ///
@@ -231,7 +245,7 @@ module Iris =
   /// - cb: IrisStateData -> unit workload
   ///
   /// Returns: unit
-  let private withState (state: IrisState) (loaded: IrisStateData -> unit) =
+  let private withState (state: IrisState) (loaded: IrisLoadedStateData -> unit) =
     withLoaded state (konst state) (loaded >> konst state)
     |> ignore
 
@@ -253,27 +267,29 @@ module Iris =
 
   let private withDefaultReply (state: IrisState)
                                (chan: ReplyChan)
-                               (loaded: IrisStateData -> IrisState) =
+                               (loaded: IrisLoadedStateData -> IrisState) =
     withLoaded state (notLoaded chan >> konst state) loaded
 
   // ** withoutReply
 
   let private withoutReply (state: IrisState)
-                           (loaded: IrisStateData -> IrisState) =
+                           (loaded: IrisLoadedStateData -> IrisState) =
     withLoaded state (konst state) loaded
 
-  // ** resetState
+  // ** resetLoaded
 
-  /// ## resetState
+  /// ## resetLoaded
   ///
-  /// Dispose the passed `IrisState` and return `Idle`
+  /// Dispose the passed `IrisLoadedState` and return `Idle`
   ///
   /// ### Signature:
   /// - state: IrisState to dispose
   ///
   /// Returns: IrisState
-  let private resetState (state: IrisState) =
-    withLoaded state (konst state) (dispose >> konst Idle)
+  let private resetLoaded (state: IrisState) =
+    match state with
+    | Idle _ -> state
+    | Loaded (data1,data2) -> dispose data2; Idle data1
 
   // ** IIrisServer
 
@@ -283,28 +299,28 @@ module Iris =
     for subscription in subscriptions.Values do
       subscription.OnNext ev
 
-  // ** triggerWithState
+  // ** triggerWithLoaded
 
-  let private triggerWithState (state: IrisState) (ev: IrisEvent) =
+  let private triggerWithLoaded (state: IrisState) (ev: IrisEvent) =
     match state with
-    | Loaded data -> triggerOnNext data.Subscriptions ev
+    | Loaded(_,data) -> triggerOnNext data.Subscriptions ev
     | _ -> ()
 
   // ** broadcastMsg
 
-  let private broadcastMsg (state: IrisStateData) (cmd: StateMachine) =
+  let private broadcastMsg (state: IrisLoadedStateData) (cmd: StateMachine) =
     state.SocketServer.Broadcast cmd
     |> ignore
 
   // ** sendMsg
 
-  let private sendMsg (state: IrisStateData) (id: Id) (cmd: StateMachine) =
+  let private sendMsg (state: IrisLoadedStateData) (id: Id) (cmd: StateMachine) =
     state.SocketServer.Send id cmd
     |> ignore
 
   // ** appendCmd
 
-  let private appendCmd (state: IrisStateData) (cmd: StateMachine) =
+  let private appendCmd (state: IrisLoadedStateData) (cmd: StateMachine) =
     state.RaftServer.Append(cmd)
 
   // ** onOpen
@@ -527,7 +543,7 @@ module Iris =
           error
           |> string
           |> Logger.err data.MemberId (tag "onApplyLog")
-        Loaded data
+        state
 
   // ** onStateChanged
 
@@ -613,7 +629,7 @@ module Iris =
 
   // ** restartGitServer
 
-  let private restartGitServer (data: IrisStateData) (agent: IrisAgent) =
+  let private restartGitServer (data: IrisLoadedStateData) (agent: IrisAgent) =
     data.Disposables
     |> Map.tryFind GIT_SERVER
     |> Option.map dispose
@@ -640,17 +656,19 @@ module Iris =
       }
 
     match result with
-    | Right newdata -> Loaded newdata
+    | Right newdata -> newdata
     | Left error ->
       error
       |> string
       |> Logger.err data.MemberId (tag "restartGitServer")
-      Loaded data
+      data
 
   // ** handleGitEvent
 
   let private handleGitEvent (state: IrisState) (agent: IrisAgent) (ev: GitEvent) =
-    withoutReply state <| fun data ->
+    match state with
+    | Idle _ -> state
+    | Loaded (idleData, data) ->
       triggerOnNext data.Subscriptions (IrisEvent.Git ev)
       match ev with
       | Started pid ->
@@ -661,7 +679,8 @@ module Iris =
       | Exited _ ->
         sprintf "Git daemon exited. Attempting to restart."
         |> Logger.debug data.MemberId (tag "handleGitEvent")
-        restartGitServer data agent
+        let newData = restartGitServer data agent
+        Loaded (idleData, newData)
 
       | Pull (_, addr, port) ->
         sprintf "Client %s:%d pulled updates from me" addr port
@@ -698,7 +717,10 @@ module Iris =
 
         match user with
         | Some user when isValidPassword user password ->
-          dispose oldState
+          let idleData =
+            match oldState with
+            | Idle idleData -> idleData
+            | Loaded (idleData, loadedData) -> dispose loadedData; idleData
 
           // FIXME: load the actual state from disk
           let! mem = Config.selfMember state.Project.Config
@@ -708,16 +730,18 @@ module Iris =
           let! apiserver  = ApiServer.create mem
           let! gitserver  = GitServer.create mem path
 
-          return
-            Loaded { MemberId      = mem.Id
-                   ; Status        = ServiceStatus.Starting
-                   ; Store         = new Store(state)
-                   ; ApiServer     = apiserver
-                   ; GitServer     = gitserver
-                   ; RaftServer    = raftserver
-                   ; SocketServer  = wsserver
-                   ; Subscriptions = subscriptions
-                   ; Disposables   = Map.empty }
+          let loadedData =
+            { MemberId      = mem.Id
+            ; Status        = ServiceStatus.Starting
+            ; Store         = new Store(state)
+            ; ApiServer     = apiserver
+            ; GitServer     = gitserver
+            ; RaftServer    = raftserver
+            ; SocketServer  = wsserver
+            ; Subscriptions = subscriptions
+            ; Disposables   = Map.empty }
+
+          return Loaded(idleData, loadedData)
         | _ ->
           return!
             "Login rejected"
@@ -728,7 +752,9 @@ module Iris =
   // ** start
 
   let private start (state: IrisState) (agent: IrisAgent) =
-    withLoaded state (konst (Right state)) <| fun data ->
+    match state with
+    | Idle _ -> Right state
+    | Loaded(idleData, data) ->
       let disposables =
         [ (LOG_HANDLER, forwardLogEvents    agent |> Logger.subscribe)
           (RAFT_SERVER, forwardRaftEvents   agent |> data.RaftServer.Subscribe)
@@ -747,9 +773,11 @@ module Iris =
 
       match result with
       | Right _ ->
-        Loaded { data with
+        let loadedData =
+          { data with
                   Status = ServiceStatus.Running
                   Disposables = disposables }
+        Loaded(idleData, loadedData)
         |> Either.succeed
       | Left error ->
         disposeAll disposables
@@ -773,27 +801,6 @@ module Iris =
     | Right nextstate ->
       match start nextstate inbox with
       | Right finalstate ->
-        // register
-        withLoaded finalstate ignore <| fun data ->
-          Config.selfMember data.Store.State.Project.Config
-          |> Either.iter (fun mem ->
-            let metadata =
-              [ "Id", string mem.Id
-                "HostName", mem.HostName
-                "IpAddr", string mem.IpAddr
-                "Port", string mem.Port
-                "WsPort", string mem.WsPort
-                "GitPort", string mem.GitPort
-                "ApiPort", string mem.ApiPort ] |> Map
-            Async.Start <| async {
-              let! res =
-                post <| RegisterService(Discovery.ServiceType.Iris, mem.Port, mem.IpAddr, metadata)
-              match res with
-              | Right _ -> ()
-              | Left err ->
-                string err
-                |> Logger.err data.MemberId (tag "loadProject.registerService")
-            })
         // notify
         ServiceStatus.Running
         |> Status
@@ -812,15 +819,15 @@ module Iris =
         error
         |> Either.fail
         |> chan.Reply
-        Idle
+        resetLoaded nextstate
     | Left error ->
       ServiceStatus.Failed error
       |> Status
-      |> triggerWithState state
+      |> triggerWithLoaded state
       error
       |> Either.fail
       |> chan.Reply
-      Idle
+      resetLoaded state
 
   //  _
   // | |    ___   __ _
@@ -839,12 +846,15 @@ module Iris =
   // ** handleUnload
 
   let private handleUnload (state: IrisState) (chan: ReplyChan) =
-    triggerWithState state (Status ServiceStatus.Stopped)
-    dispose state
+    triggerWithLoaded state (Status ServiceStatus.Stopped)
+    let idleData =
+      match state with
+      | Idle idleData -> idleData
+      | Loaded (idleData, loadedData) -> dispose loadedData; idleData
     Reply.Ok
     |> Either.succeed
     |> chan.Reply
-    Idle
+    Idle idleData
 
   // ** handleConfig
 
@@ -1155,7 +1165,9 @@ module Iris =
       try
         either {
           let subscriptions = new Subscriptions()
-          let agent = new IrisAgent(loop Idle config post subscriptions)
+          let agent =
+            let initState = new IrisIdleStateData() |> Idle
+            new IrisAgent(loop initState config post subscriptions)
           agent.Start()
           return mkIris subscriptions agent
         }
