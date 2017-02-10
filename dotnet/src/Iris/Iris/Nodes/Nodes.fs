@@ -917,3 +917,41 @@ type TaskNode() =
             self.OutDescription.[n] <- config.Description
             self.OutAudioStream.[n] <- config.AudioStream
             self.OutArguments.[n].AssignFrom keys
+
+//  _   _           _    ____
+// | | | | ___  ___| |_ / ___|_ __ ___  _   _ _ __
+// | |_| |/ _ \/ __| __| |  _| '__/ _ \| | | | '_ \
+// |  _  | (_) \__ \ |_| |_| | | | (_) | |_| | |_) |
+// |_| |_|\___/|___/\__|\____|_|  \___/ \__,_| .__/
+//                                           |_|
+
+[<PluginInfo(Name="HostGroup", Category="Iris", AutoEvaluate=true)>]
+type HostGroupNode() =
+
+  [<Import();DefaultValue>]
+  val mutable Logger: ILogger
+
+  [<DefaultValue>]
+  [<Input("HostGroup")>]
+  val mutable InHostGroup: ISpread<HostGroup>
+
+  [<DefaultValue>]
+  [<Input("Update", IsSingle = true, IsBang = true)>]
+  val mutable InUpdate: ISpread<bool>
+
+  [<DefaultValue>]
+  [<Output("Name")>]
+  val mutable OutName: ISpread<string>
+
+  [<DefaultValue>]
+  [<Output("Members")>]
+  val mutable OutMembers: ISpread<ISpread<string>>
+
+  interface IPluginEvaluate with
+    member self.Evaluate (spreadMax: int) : unit =
+      if self.InUpdate.[0] then
+        for n in 0 .. (spreadMax - 1) do
+          if not (Util.isNull self.InHostGroup.[n]) then
+            let config = self.InHostGroup.[n]
+            self.OutName.[n] <- config.Name
+            self.OutMembers.[n].AssignFrom (Array.map string config.Members)
