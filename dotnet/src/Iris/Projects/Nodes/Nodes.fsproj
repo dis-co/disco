@@ -242,6 +242,15 @@
     <Compile Include="../../Iris/Nodes/Nodes/CueListNode.fs">
       <Link>CueListNode.fs</Link>
     </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/SessionNode.fs">
+      <Link>SessionNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/UserNode.fs">
+      <Link>UserNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/ClientNode.fs">
+      <Link>ClientNode.fs</Link>
+    </Compile>
     <!-- END NODES -->
   </ItemGroup>
   <PropertyGroup>
