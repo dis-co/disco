@@ -11,11 +11,11 @@ open Iris.Raft
 open Iris.Core
 open Iris.Nodes
 
-//   ____ _           _
-//  / ___| |_   _ ___| |_ ___ _ __
-// | |   | | | | / __| __/ _ \ '__|
-// | |___| | |_| \__ \ ||  __/ |
-//  \____|_|\__,_|___/\__\___|_|
+//   ____
+//  / ___|   _  ___
+// | |  | | | |/ _ \
+// | |__| |_| |  __/
+//  \____\__,_|\___|
 
 [<PluginInfo(Name="Cue", Category="Iris", AutoEvaluate=true)>]
 type CueNode() =

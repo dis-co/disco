@@ -17,7 +17,6 @@ open Iris.Nodes
 // |  __/ (_| | || (__| | | |
 // |_|   \__,_|\__\___|_| |_|
 
-
 [<PluginInfo(Name="Patch", Category="Iris", AutoEvaluate=true)>]
 type PatchNode() =
 
