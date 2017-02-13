@@ -75,14 +75,19 @@ type ViewPortNode() =
             let config = self.InViewPort.[n]
             self.OutId.[n] <- string config.Id
             self.OutName.[n] <- config.Name
+            self.OutPosition.[n].SliceCount <- 2
             self.OutPosition.[n].[0] <- config.Position.X
             self.OutPosition.[n].[1] <- config.Position.Y
+            self.OutSize.[n].SliceCount <- 2
             self.OutSize.[n].[0] <- config.Size.X
             self.OutSize.[n].[1] <- config.Size.Y
+            self.OutOutPosition.[n].SliceCount <- 2
             self.OutOutPosition.[n].[0] <- config.OutputPosition.X
             self.OutOutPosition.[n].[1] <- config.OutputPosition.Y
+            self.OutOutSize.[n].SliceCount <- 2
             self.OutOutSize.[n].[0] <- config.OutputSize.X
             self.OutOutSize.[n].[1] <- config.OutputSize.Y
+            self.OutOverlap.[n].SliceCount <- 2
             self.OutOverlap.[n].[0] <- config.Overlap.X
             self.OutOverlap.[n].[1] <- config.Overlap.Y
             self.OutDescription.[n] <- config.Description

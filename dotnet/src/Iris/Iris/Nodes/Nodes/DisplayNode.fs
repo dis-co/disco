@@ -64,6 +64,7 @@ type DisplayNode() =
             let config = self.InDisplay.[n]
             self.OutId.[n] <- string config.Id
             self.OutName.[n] <- config.Name
+            self.OutSize.[n].SliceCount <- 2
             self.OutSize.[n].[0] <- config.Size.X
             self.OutSize.[n].[1] <- config.Size.Y
             self.OutSignals.[n].AssignFrom config.Signals

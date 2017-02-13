@@ -68,12 +68,16 @@ type RegionNode() =
             let config = self.InRegion.[n]
             self.OutId.[n] <- string config.Id
             self.OutName.[n] <- config.Name
+            self.OutSrcSize.[n].SliceCount <- 2
             self.OutSrcSize.[n].[0] <- config.SrcSize.X
             self.OutSrcSize.[n].[1] <- config.SrcSize.Y
+            self.OutSrcPos.[n].SliceCount <- 2
             self.OutSrcPos.[n].[0] <- config.SrcPosition.X
             self.OutSrcPos.[n].[1] <- config.SrcPosition.Y
+            self.OutOutSize.[n].SliceCount <- 2
             self.OutOutSize.[n].[0] <- config.OutputSize.X
             self.OutOutSize.[n].[1] <- config.OutputSize.Y
+            self.OutOutPos.[n].SliceCount <- 2
             self.OutOutPos.[n].[0] <- config.OutputPosition.X
             self.OutOutPos.[n].[1] <- config.OutputPosition.Y
 

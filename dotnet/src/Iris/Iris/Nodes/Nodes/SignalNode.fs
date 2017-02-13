@@ -50,8 +50,10 @@ type SignalNode() =
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InSignal.[0]) then
             let config = self.InSignal.[n]
+            self.OutSize.[n].SliceCount <- 2
             self.OutSize.[n].[0] <- config.Size.X
             self.OutSize.[n].[1] <- config.Size.Y
+            self.OutCoordinate.[n].SliceCount <- 2
             self.OutCoordinate.[n].[0] <- config.Position.X
             self.OutCoordinate.[n].[1] <- config.Position.Y
 
