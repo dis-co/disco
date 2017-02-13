@@ -62,15 +62,23 @@ type ClientNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+
+        self.OutId.SliceCount <- self.InClient.SliceCount
+        self.OutName.SliceCount <- self.InClient.SliceCount
+        self.OutRole.SliceCount <- self.InClient.SliceCount
+        self.OutStatus.SliceCount <- self.InClient.SliceCount
+        self.OutIpAddress.SliceCount <- self.InClient.SliceCount
+        self.OutPort.SliceCount <- self.InClient.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InClient.[n]) then
-            let config = self.InClient.[n]
-            self.OutId.[n] <- string config.Id
-            self.OutName.[n] <- config.Name
-            self.OutRole.[n] <- string config.Role
-            self.OutStatus.[n] <- string config.Status
-            self.OutIpAddress.[n] <- string config.IpAddress
-            self.OutPort.[n] <- int config.Port
+            let client = self.InClient.[n]
+            self.OutId.[n] <- string client.Id
+            self.OutName.[n] <- client.Name
+            self.OutRole.[n] <- string client.Role
+            self.OutStatus.[n] <- string client.Status
+            self.OutIpAddress.[n] <- string client.IpAddress
+            self.OutPort.[n] <- int client.Port
 
       if self.InUpdate.IsChanged then
         self.OutUpdate.[0] <- self.InUpdate.[0]

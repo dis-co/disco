@@ -47,8 +47,10 @@ type VvvvConfigNode() =
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] && not (Util.isNull self.InVvvv.[0]) then
         let config = self.InVvvv.[0]
+        self.OutExecutables.SliceCount <- (Array.length config.Executables)
+        self.OutPlugins.SliceCount <- (Array.length config.Executables)
         self.OutExecutables.AssignFrom config.Executables
-        self.OutExecutables.AssignFrom config.Executables
+        self.OutPlugins.AssignFrom config.Plugins
 
       if self.InUpdate.IsChanged then
         self.OutUpdate.[0] <- self.InUpdate.[0]

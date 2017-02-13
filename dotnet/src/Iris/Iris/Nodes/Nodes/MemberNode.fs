@@ -70,17 +70,28 @@ type MemberNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+
+        self.OutId.SliceCount        <- self.InMember.SliceCount
+        self.OutHostName.SliceCount  <- self.InMember.SliceCount
+        self.OutIpAddress.SliceCount <- self.InMember.SliceCount
+        self.OutStatus.SliceCount    <- self.InMember.SliceCount
+        self.OutRaftPort.SliceCount  <- self.InMember.SliceCount
+        self.OutWsPort.SliceCount    <- self.InMember.SliceCount
+        self.OutGitPort.SliceCount   <- self.InMember.SliceCount
+        self.OutApiPort.SliceCount   <- self.InMember.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InMember.[n]) then
-            let config = self.InMember.[n]
-            self.OutId.[n] <- string config.Id
-            self.OutHostName.[n] <- config.HostName
-            self.OutIpAddress.[n] <- string config.IpAddr
-            self.OutStatus.[n] <- string config.State
-            self.OutRaftPort.[n] <- int config.Port
-            self.OutWsPort.[n] <- int config.WsPort
-            self.OutGitPort.[n] <- int config.GitPort
-            self.OutApiPort.[n] <- int config.ApiPort
+            let mem = self.InMember.[n]
+
+            self.OutId.[n] <- string mem.Id
+            self.OutHostName.[n] <- mem.HostName
+            self.OutIpAddress.[n] <- string mem.IpAddr
+            self.OutStatus.[n] <- string mem.State
+            self.OutRaftPort.[n] <- int mem.Port
+            self.OutWsPort.[n] <- int mem.WsPort
+            self.OutGitPort.[n] <- int mem.GitPort
+            self.OutApiPort.[n] <- int mem.ApiPort
 
       if self.InUpdate.IsChanged then
         self.OutUpdate.[0] <- self.InUpdate.[0]

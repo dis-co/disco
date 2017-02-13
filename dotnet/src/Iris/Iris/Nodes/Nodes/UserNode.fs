@@ -66,15 +66,24 @@ type UserNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+        self.OutId.SliceCount <- self.InUser.SliceCount
+        self.OutUserName.SliceCount <- self.InUser.SliceCount
+        self.OutFirstName.SliceCount <- self.InUser.SliceCount
+        self.OutLastName.SliceCount <- self.InUser.SliceCount
+        self.OutEmail.SliceCount <- self.InUser.SliceCount
+        self.OutJoined.SliceCount <- self.InUser.SliceCount
+        self.OutCreated.SliceCount <- self.InUser.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InUser.[n]) then
-            let config = self.InUser.[n]
-            self.OutId.[n] <- string config.Id
-            self.OutUserName.[n] <- string config.UserName
-            self.OutFirstName.[n] <- config.FirstName
-            self.OutLastName.[n] <- config.LastName
-            self.OutEmail.[n] <- config.Email
-            self.OutJoined.[n] <- string config.Joined
-            self.OutCreated.[n] <- string config.Created
+            let user = self.InUser.[n]
+            self.OutId.[n] <- string user.Id
+            self.OutUserName.[n] <- string user.UserName
+            self.OutFirstName.[n] <- user.FirstName
+            self.OutLastName.[n] <- user.LastName
+            self.OutEmail.[n] <- user.Email
+            self.OutJoined.[n] <- string user.Joined
+            self.OutCreated.[n] <- string user.Created
 
-      if self.InUpdate.IsChanged then self.OutUpdate.[0] <- self.InUpdate.[0]
+      if self.InUpdate.IsChanged then
+        self.OutUpdate.[0] <- self.InUpdate.[0]

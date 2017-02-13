@@ -87,8 +87,11 @@ type ConfigNode() =
         self.OutRaft.[0] <- config.Raft
         self.OutTiming.[0] <- config.Timing
         self.OutCluster.[0] <- config.Cluster
+        self.OutViewports.SliceCount <- Array.length config.ViewPorts
         self.OutViewports.AssignFrom config.ViewPorts
+        self.OutDisplays.SliceCount <- Array.length config.Displays
         self.OutDisplays.AssignFrom config.Displays
+        self.OutTasks.SliceCount <- Array.length config.Tasks
         self.OutTasks.AssignFrom config.Tasks
         self.OutVersion.[0] <- string config.Version
 

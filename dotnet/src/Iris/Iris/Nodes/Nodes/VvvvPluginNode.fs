@@ -47,6 +47,10 @@ type VvvvPluginNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+
+        self.OutName.SliceCount <- self.InPlugin.SliceCount
+        self.OutPath.SliceCount <- self.InPlugin.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InPlugin.[0])  then
             let config = self.InPlugin.[n]

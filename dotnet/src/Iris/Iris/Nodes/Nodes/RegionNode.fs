@@ -63,23 +63,31 @@ type RegionNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+
+        self.OutId.SliceCount <- self.InRegion.SliceCount
+        self.OutName.SliceCount <- self.InRegion.SliceCount
+        self.OutSrcSize.SliceCount <- self.InRegion.SliceCount
+        self.OutSrcPos.SliceCount <- self.InRegion.SliceCount
+        self.OutOutSize.SliceCount <- self.InRegion.SliceCount
+        self.OutOutPos.SliceCount <- self.InRegion.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InRegion.[n]) then
-            let config = self.InRegion.[n]
-            self.OutId.[n] <- string config.Id
-            self.OutName.[n] <- config.Name
+            let region = self.InRegion.[n]
+            self.OutId.[n] <- string region.Id
+            self.OutName.[n] <- region.Name
             self.OutSrcSize.[n].SliceCount <- 2
-            self.OutSrcSize.[n].[0] <- config.SrcSize.X
-            self.OutSrcSize.[n].[1] <- config.SrcSize.Y
+            self.OutSrcSize.[n].[0] <- region.SrcSize.X
+            self.OutSrcSize.[n].[1] <- region.SrcSize.Y
             self.OutSrcPos.[n].SliceCount <- 2
-            self.OutSrcPos.[n].[0] <- config.SrcPosition.X
-            self.OutSrcPos.[n].[1] <- config.SrcPosition.Y
+            self.OutSrcPos.[n].[0] <- region.SrcPosition.X
+            self.OutSrcPos.[n].[1] <- region.SrcPosition.Y
             self.OutOutSize.[n].SliceCount <- 2
-            self.OutOutSize.[n].[0] <- config.OutputSize.X
-            self.OutOutSize.[n].[1] <- config.OutputSize.Y
+            self.OutOutSize.[n].[0] <- region.OutputSize.X
+            self.OutOutSize.[n].[1] <- region.OutputSize.Y
             self.OutOutPos.[n].SliceCount <- 2
-            self.OutOutPos.[n].[0] <- config.OutputPosition.X
-            self.OutOutPos.[n].[1] <- config.OutputPosition.Y
+            self.OutOutPos.[n].[0] <- region.OutputPosition.X
+            self.OutOutPos.[n].[1] <- region.OutputPosition.Y
 
       if self.InUpdate.IsChanged then
         self.OutUpdate.[0] <- self.InUpdate.[0]

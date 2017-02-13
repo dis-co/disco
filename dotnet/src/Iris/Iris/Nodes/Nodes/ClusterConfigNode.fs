@@ -50,11 +50,20 @@ type ClusterConfigNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+
+        self.OutName.SliceCount <- self.InCluster.SliceCount
+        self.OutMembers.SliceCount <- self.InCluster.SliceCount
+        self.OutGroups.SliceCount <- self.InCluster.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InCluster.[n]) then
             let config = self.InCluster.[n]
+            let members = config.Members |> Map.toArray |> Array.map snd
+
             self.OutName.[n] <- config.Name
-            self.OutMembers.[n].AssignFrom (config.Members |> Map.toArray |> Array.map snd)
+            self.OutMembers.[n].SliceCount <- Array.length members
+            self.OutMembers.[n].AssignFrom members
+            self.OutGroups.[n].SliceCount <- Array.length config.Groups
             self.OutGroups.[n].AssignFrom config.Groups
 
       if self.InUpdate.IsChanged then

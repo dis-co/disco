@@ -47,15 +47,18 @@ type SignalNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+        self.OutSize.SliceCount <- self.InSignal.SliceCount
+        self.OutCoordinate.SliceCount <- self.InSignal.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InSignal.[0]) then
-            let config = self.InSignal.[n]
+            let signal = self.InSignal.[n]
             self.OutSize.[n].SliceCount <- 2
-            self.OutSize.[n].[0] <- config.Size.X
-            self.OutSize.[n].[1] <- config.Size.Y
+            self.OutSize.[n].[0] <- signal.Size.X
+            self.OutSize.[n].[1] <- signal.Size.Y
             self.OutCoordinate.[n].SliceCount <- 2
-            self.OutCoordinate.[n].[0] <- config.Position.X
-            self.OutCoordinate.[n].[1] <- config.Position.Y
+            self.OutCoordinate.[n].[0] <- signal.Position.X
+            self.OutCoordinate.[n].[1] <- signal.Position.Y
 
       if self.InUpdate.IsChanged then
         self.OutUpdate.[0] <- self.InUpdate.[0]

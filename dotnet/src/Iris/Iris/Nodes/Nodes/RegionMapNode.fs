@@ -47,10 +47,15 @@ type RegionMapNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+
+        self.OutSrcId.SliceCount <- self.InRegionMap.SliceCount
+        self.OutRegions.SliceCount <- self.InRegionMap.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InRegionMap.[n]) then
             let config = self.InRegionMap.[n]
             self.OutSrcId.[n] <- string config.SrcViewportId
+            self.OutRegions.[n].SliceCount <- Array.length config.Regions
             self.OutRegions.[n].AssignFrom config.Regions
 
       if self.InUpdate.IsChanged then

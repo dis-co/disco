@@ -70,6 +70,16 @@ type ViewPortNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+
+        self.OutId.SliceCount <- self.InViewPort.SliceCount
+        self.OutName.SliceCount <- self.InViewPort.SliceCount
+        self.OutPosition.SliceCount <- self.InViewPort.SliceCount
+        self.OutSize.SliceCount <- self.InViewPort.SliceCount
+        self.OutOutPosition.SliceCount <- self.InViewPort.SliceCount
+        self.OutOutSize.SliceCount <- self.InViewPort.SliceCount
+        self.OutOverlap.SliceCount <- self.InViewPort.SliceCount
+        self.OutDescription.SliceCount <- self.InViewPort.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InViewPort.[n]) then
             let config = self.InViewPort.[n]

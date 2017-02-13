@@ -41,7 +41,7 @@ type CueNode() =
 
   [<DefaultValue>]
   [<Output("Pins")>]
-  val mutable OutPins: ISpread<Pin>
+  val mutable OutPins: ISpread<ISpread<Pin>>
 
   [<DefaultValue>]
   [<Output("Update", IsSingle = true, IsBang = true)>]
@@ -50,12 +50,18 @@ type CueNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+
+        self.OutId.SliceCount <- self.InCue.SliceCount
+        self.OutName.SliceCount <- self.InCue.SliceCount
+        self.OutPins.SliceCount <- self.InCue.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InCue.[n]) then
-            let config = self.InCue.[n]
-            self.OutId.[n] <- string config.Id
-            self.OutName.[n] <- config.Name
-            self.OutPins.AssignFrom config.Pins
+            let cue = self.InCue.[n]
+            self.OutId.[n] <- string cue.Id
+            self.OutName.[n] <- cue.Name
+            self.OutPins.[n].SliceCount <- Array.length cue.Pins
+            self.OutPins.[n].AssignFrom cue.Pins
 
       if self.InUpdate.IsChanged then
         self.OutUpdate.[0] <- self.InUpdate.[0]

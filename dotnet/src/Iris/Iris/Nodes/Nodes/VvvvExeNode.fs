@@ -50,8 +50,13 @@ type VvvvExeNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+
+        self.OutExecutable.SliceCount <- self.InExe.SliceCount
+        self.OutVersion.SliceCount <- self.InExe.SliceCount
+        self.OutRequired.SliceCount <- self.InExe.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InExe.[0]) then
+          if not (Util.isNull self.InExe.[n]) then
             let config = self.InExe.[n]
             self.OutExecutable.[n] <- config.Executable
             self.OutVersion.[n] <- config.Version

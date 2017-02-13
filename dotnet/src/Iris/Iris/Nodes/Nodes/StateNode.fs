@@ -349,6 +349,12 @@ type StateNode() =
           |> Map.toArray
           |> Array.map snd
 
+        self.OutCues.SliceCount <- Array.length cues
+        self.OutCueLists.SliceCount <- Array.length cuelists
+        self.OutSessions.SliceCount <- Array.length sessions
+        self.OutUsers.SliceCount <- Array.length users
+        self.OutClients.SliceCount <- Array.length clients
+
         self.OutCues.AssignFrom cues
         self.OutCueLists.AssignFrom cuelists
         self.OutSessions.AssignFrom sessions

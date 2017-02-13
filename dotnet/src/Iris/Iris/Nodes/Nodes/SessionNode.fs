@@ -50,12 +50,17 @@ type SessionNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+
+        self.OutId.SliceCount <- self.InSession.SliceCount
+        self.OutIpAddress.SliceCount <- self.InSession.SliceCount
+        self.OutUserAgent.SliceCount <- self.InSession.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InSession.[n]) then
-            let config = self.InSession.[n]
-            self.OutId.[n] <- string config.Id
-            self.OutIpAddress.[n] <- string config.IpAddress
-            self.OutUserAgent.[n] <- config.UserAgent
+            let session = self.InSession.[n]
+            self.OutId.[n] <- string session.Id
+            self.OutIpAddress.[n] <- string session.IpAddress
+            self.OutUserAgent.[n] <- session.UserAgent
 
       if self.InUpdate.IsChanged then
         self.OutUpdate.[0] <- self.InUpdate.[0]

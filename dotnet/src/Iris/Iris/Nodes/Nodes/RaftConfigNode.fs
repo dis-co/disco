@@ -67,6 +67,15 @@ type RaftConfigNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+
+        self.OutRequestTimeout.SliceCount <- self.InRaft.SliceCount
+        self.OutElectionTimeout.SliceCount <- self.InRaft.SliceCount
+        self.OutMaxLogDepth.SliceCount <- self.InRaft.SliceCount
+        self.OutLogLevel.SliceCount <- self.InRaft.SliceCount
+        self.OutDataDir.SliceCount <- self.InRaft.SliceCount
+        self.OutMaxRetries.SliceCount <- self.InRaft.SliceCount
+        self.OutPeriodicInterval.SliceCount <- self.InRaft.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InRaft.[n]) then
             let config = self.InRaft.[n]

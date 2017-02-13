@@ -59,16 +59,24 @@ type DisplayNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+
+        self.OutId.SliceCount <- self.InDisplay.SliceCount
+        self.OutName.SliceCount <- self.InDisplay.SliceCount
+        self.OutSize.SliceCount <- self.InDisplay.SliceCount
+        self.OutSignals.SliceCount <- self.InDisplay.SliceCount
+        self.OutRegionMap.SliceCount <- self.InDisplay.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InDisplay.[n]) then
-            let config = self.InDisplay.[n]
-            self.OutId.[n] <- string config.Id
-            self.OutName.[n] <- config.Name
+            let display = self.InDisplay.[n]
+            self.OutId.[n] <- string display.Id
+            self.OutName.[n] <- display.Name
             self.OutSize.[n].SliceCount <- 2
-            self.OutSize.[n].[0] <- config.Size.X
-            self.OutSize.[n].[1] <- config.Size.Y
-            self.OutSignals.[n].AssignFrom config.Signals
-            self.OutRegionMap.[n] <- config.RegionMap
+            self.OutSize.[n].[0] <- display.Size.X
+            self.OutSize.[n].[1] <- display.Size.Y
+            self.OutSignals.[n].SliceCount <- Array.length display.Signals
+            self.OutSignals.[n].AssignFrom display.Signals
+            self.OutRegionMap.[n] <- display.RegionMap
 
       if self.InUpdate.IsChanged then
         self.OutUpdate.[0] <- self.InUpdate.[0]

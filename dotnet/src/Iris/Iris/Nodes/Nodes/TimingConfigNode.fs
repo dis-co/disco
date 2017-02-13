@@ -59,12 +59,21 @@ type TimingConfigNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+
+        self.OutFramebase.SliceCount <- self.InTiming.SliceCount
+        self.OutInput.SliceCount <- self.InTiming.SliceCount
+        self.OutServers.SliceCount <- self.InTiming.SliceCount
+        self.OutUDPPort.SliceCount <- self.InTiming.SliceCount
+        self.OutTCPPort.SliceCount <- self.InTiming.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InTiming.[n]) then
             let config = self.InTiming.[n]
+            let servers = Array.map string config.Servers
             self.OutFramebase.[n] <- int config.Framebase
             self.OutInput.[n] <- config.Input
-            self.OutServers.[n].AssignFrom (Array.map string config.Servers)
+            self.OutServers.[n].SliceCount <- (Array.length servers)
+            self.OutServers.[n].AssignFrom servers
             self.OutUDPPort.[n] <- int config.UDPPort
             self.OutTCPPort.[n] <- int config.TCPPort
 

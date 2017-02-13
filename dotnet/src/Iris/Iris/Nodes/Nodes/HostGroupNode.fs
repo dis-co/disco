@@ -47,11 +47,16 @@ type HostGroupNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
+
+        self.OutName.SliceCount <- self.InHostGroup.SliceCount
+        self.OutMembers.SliceCount <- self.InHostGroup.SliceCount
+
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNull self.InHostGroup.[n]) then
-            let config = self.InHostGroup.[n]
-            self.OutName.[n] <- config.Name
-            self.OutMembers.[n].AssignFrom (Array.map string config.Members)
+            let group = self.InHostGroup.[n]
+            self.OutName.[n] <- group.Name
+            self.OutMembers.[n].SliceCount <- (Array.length group.Members)
+            self.OutMembers.[n].AssignFrom (Array.map string group.Members)
 
       if self.InUpdate.IsChanged then
         self.OutUpdate.[0] <- self.InUpdate.[0]
