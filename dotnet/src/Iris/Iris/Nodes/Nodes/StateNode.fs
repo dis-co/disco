@@ -20,7 +20,7 @@ module MockData =
     |> string
 
   let mkTags () =
-    [| for n in 0 .. rand.Next(1,20) do
+    [| for _ in 0 .. rand.Next(1,20) do
         let guid = Guid.NewGuid()
         yield guid.ToString() |]
 
@@ -62,14 +62,14 @@ module MockData =
       Created = System.DateTime.Now }
 
   let mkUsers () =
-    [| for n in 0 .. rand.Next(1,20) do
+    [| for _ in 0 .. rand.Next(1,20) do
         yield mkUser() |]
 
   let mkCue () : Cue =
     { Id = Id.Create(); Name = rndstr(); Pins = mkPins() }
 
   let mkCues () =
-    [| for n in 0 .. rand.Next(1,20) do
+    [| for _ in 0 .. rand.Next(1,20) do
         yield mkCue() |]
 
   let mkPatch () : Iris.Core.Patch =
@@ -83,14 +83,14 @@ module MockData =
       Pins = pins }
 
   let mkPatches () : Iris.Core.Patch array =
-    [| for n in 0 .. rand.Next(1,20) do
+    [| for _ in 0 .. rand.Next(1,20) do
         yield mkPatch() |]
 
   let mkCueList () : CueList =
     { Id = Id.Create(); Name = "Patch 3"; Cues = mkCues() }
 
   let mkCueLists () =
-    [| for n in 0 .. rand.Next(1,20) do
+    [| for _ in 0 .. rand.Next(1,20) do
         yield mkCueList() |]
 
   let mkMember () = Id.Create() |> Member.create
@@ -105,7 +105,7 @@ module MockData =
       UserAgent = "Oh my goodness" }
 
   let mkSessions () =
-    [| for n in 0 .. rand.Next(1,20) do
+    [| for _ in 0 .. rand.Next(1,20) do
         yield mkSession() |]
 
   let mkMachine () =
@@ -124,7 +124,7 @@ module MockData =
                   Required = (n % 2) = 0 } |]
 
     let plugins : VvvvPlugin array =
-      [| for n in 0 .. (rand.Next(2,8)) do
+      [| for _ in 0 .. (rand.Next(2,8)) do
           yield { Name = rndstr()
                   Path = rndstr() } |]
 
@@ -133,7 +133,7 @@ module MockData =
 
   let mkHostGroup () : HostGroup =
     let members =
-      [| for n in 0 .. (rand.Next(2,8)) do
+      [| for _ in 0 .. (rand.Next(2,8)) do
           yield Id.Create() |]
     { Name = rndstr()
       Members = members }
@@ -145,7 +145,7 @@ module MockData =
       |> Map.ofArray
 
     let groups =
-      [| for n in 0 .. (rand.Next(2,8)) do
+      [| for _ in 0 .. (rand.Next(2,8)) do
           yield mkHostGroup () |]
 
     { Name = rndstr()
@@ -163,7 +163,7 @@ module MockData =
       Description = rndstr() }
 
   let mkViewPorts () =
-    [| for n in 0 .. (rand.Next(1,8)) do
+    [| for _ in 0 .. (rand.Next(1,8)) do
         yield mkViewPort() |]
 
   let mkSignal () : Signal =
@@ -171,7 +171,7 @@ module MockData =
       Size = Rect(rand.Next(0,1280),rand.Next(0,1920))}
 
   let mkSignals () =
-    [| for n in 0 .. (rand.Next(2,8)) do
+    [| for _ in 0 .. (rand.Next(2,8)) do
         yield mkSignal() |]
 
   let mkRegion () =
@@ -184,7 +184,7 @@ module MockData =
       }
 
   let mkRegions () =
-    [| for n in 0 .. (rand.Next(2,8)) do
+    [| for _ in 0 .. (rand.Next(2,8)) do
         yield mkRegion() |]
 
   let mkRegionMap () =
@@ -199,11 +199,11 @@ module MockData =
       RegionMap = mkRegionMap() }
 
   let mkDisplays () =
-    [| for n in 0 .. (rand.Next(2,9)) do
+    [| for _ in 0 .. (rand.Next(2,9)) do
         yield mkDisplay() |]
 
   let mkArguments () =
-    [| for n in 0 .. (rand.Next(2,8)) do
+    [| for _ in 0 .. (rand.Next(2,8)) do
         yield (rndstr(), rndstr()) |]
 
   let mkTask () =
@@ -214,7 +214,7 @@ module MockData =
       Arguments = mkArguments() }
 
   let mkTasks () =
-    [| for n in 0 .. (rand.Next(2,8)) do
+    [| for _ in 0 .. (rand.Next(2,8)) do
         yield mkTask() |]
 
   let mkConfig () =
@@ -244,7 +244,7 @@ module MockData =
       Port = 8921us }
 
   let mkClients () =
-    [| for n in 0 .. rand.Next(1,20) do
+    [| for _ in 0 .. rand.Next(1,20) do
         yield mkClient() |]
 
   let inline asMap arr =
@@ -252,7 +252,7 @@ module MockData =
     |> Array.map toPair
     |> Map.ofArray
 
-  let mkState path : State =
+  let mkState _ : State =
     { Project  = mkProject ()
       Patches  = mkPatches () |> asMap
       Cues     = mkCues    () |> asMap
@@ -314,18 +314,10 @@ type StateNode() =
   [<Output("Update", IsSingle = true, IsBang = true)>]
   val mutable OutUpdate: ISpread<bool>
 
-  let mutable init = false
-  let mutable state = Unchecked.defaultof<State>
-
   interface IPluginEvaluate with
-    member self.Evaluate (spreadMax: int) : unit =
-      if not init then
-        state <- mkState()
-        init <- true
-
+    member self.Evaluate (_: int) : unit =
       if self.InUpdate.[0] (* && not (Util.isNull self.InState.[0]) *) then
-        // let state = self.InState.[0]
-        state <- mkState()
+        let state = self.InState.[0]
         self.OutProject.[0] <- state.Project
 
         let patches =

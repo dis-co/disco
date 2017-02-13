@@ -52,7 +52,7 @@ type PinNode() =
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
 
-        self.OutId.SliceCount <- self.InPin.SliceCount
+        self.OutId.SliceCount   <- self.InPin.SliceCount
         self.OutName.SliceCount <- self.InPin.SliceCount
         self.OutType.SliceCount <- self.InPin.SliceCount
 

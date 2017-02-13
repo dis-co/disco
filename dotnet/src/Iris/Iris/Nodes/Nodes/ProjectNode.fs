@@ -61,7 +61,7 @@ type ProjectNode() =
   val mutable OutUpdate: ISpread<bool>
 
   interface IPluginEvaluate with
-    member self.Evaluate (spreadMax: int) : unit =
+    member self.Evaluate (_: int) : unit =
       if self.InUpdate.[0] && not (Util.isNull self.InProject.[0]) then
         let project = self.InProject.[0]
         let lastSaved =

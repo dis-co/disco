@@ -44,7 +44,7 @@ type VvvvConfigNode() =
   val mutable OutUpdate: ISpread<bool>
 
   interface IPluginEvaluate with
-    member self.Evaluate (spreadMax: int) : unit =
+    member self.Evaluate (_: int) : unit =
       if self.InUpdate.[0] && not (Util.isNull self.InVvvv.[0]) then
         let config = self.InVvvv.[0]
         self.OutExecutables.SliceCount <- (Array.length config.Executables)

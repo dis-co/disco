@@ -310,7 +310,7 @@ module GraphApi =
 
   // ** evaluate
 
-  let evaluate (state: PluginState) (spreadMax: int) =
+  let evaluate (state: PluginState) (_: int) =
     state
     |> initialize
     |> processor
