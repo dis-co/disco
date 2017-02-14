@@ -57,7 +57,7 @@ type PinNode() =
         self.OutType.SliceCount <- self.InPin.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InPin.[0]) then
+          if not (Util.isNullReference self.InPin.[0]) then
             let pin = self.InPin.[n]
             let name =
               let case, _ = FSharpValue.GetUnionFields(pin, pin.GetType())

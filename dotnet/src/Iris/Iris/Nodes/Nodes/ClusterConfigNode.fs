@@ -56,7 +56,7 @@ type ClusterConfigNode() =
         self.OutGroups.SliceCount <- self.InCluster.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InCluster.[n]) then
+          if not (Util.isNullReference self.InCluster.[n]) then
             let config = self.InCluster.[n]
             let members = config.Members |> Map.toArray |> Array.map snd
 

@@ -81,7 +81,7 @@ type ViewPortNode() =
         self.OutDescription.SliceCount <- self.InViewPort.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InViewPort.[n]) then
+          if not (Util.isNullReference self.InViewPort.[n]) then
             let config = self.InViewPort.[n]
             self.OutId.[n] <- string config.Id
             self.OutName.[n] <- config.Name

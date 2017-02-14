@@ -56,7 +56,7 @@ type SessionNode() =
         self.OutUserAgent.SliceCount <- self.InSession.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InSession.[n]) then
+          if not (Util.isNullReference self.InSession.[n]) then
             let session = self.InSession.[n]
             self.OutId.[n] <- string session.Id
             self.OutIpAddress.[n] <- string session.IpAddress

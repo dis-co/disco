@@ -45,7 +45,7 @@ type VvvvConfigNode() =
 
   interface IPluginEvaluate with
     member self.Evaluate (_: int) : unit =
-      if self.InUpdate.[0] && not (Util.isNull self.InVvvv.[0]) then
+      if self.InUpdate.[0] && not (Util.isNullReference self.InVvvv.[0]) then
         let config = self.InVvvv.[0]
         self.OutExecutables.SliceCount <- (Array.length config.Executables)
         self.OutPlugins.SliceCount <- (Array.length config.Executables)

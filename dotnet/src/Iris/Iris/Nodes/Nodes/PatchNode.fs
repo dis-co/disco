@@ -56,7 +56,7 @@ type PatchNode() =
         self.OutPins.SliceCount <- self.InPatch.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InPatch.[0]) then
+          if not (Util.isNullReference self.InPatch.[0]) then
             let patch = self.InPatch.[n]
             let pins =
               patch.Pins

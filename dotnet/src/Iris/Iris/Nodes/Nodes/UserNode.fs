@@ -75,7 +75,7 @@ type UserNode() =
         self.OutCreated.SliceCount <- self.InUser.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InUser.[n]) then
+          if not (Util.isNullReference self.InUser.[n]) then
             let user = self.InUser.[n]
             self.OutId.[n] <- string user.Id
             self.OutUserName.[n] <- string user.UserName

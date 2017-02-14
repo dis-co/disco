@@ -52,7 +52,7 @@ type VvvvPluginNode() =
         self.OutPath.SliceCount <- self.InPlugin.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InPlugin.[0])  then
+          if not (Util.isNullReference self.InPlugin.[0])  then
             let config = self.InPlugin.[n]
             self.OutName.[n] <- config.Name
             self.OutPath.[n] <- config.Path

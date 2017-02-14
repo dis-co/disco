@@ -78,7 +78,7 @@ type ConfigNode() =
 
   interface IPluginEvaluate with
     member self.Evaluate (_: int) : unit =
-      if self.InUpdate.[0] && not (Util.isNull self.InConfig.[0]) then
+      if self.InUpdate.[0] && not (Util.isNullReference self.InConfig.[0]) then
         let config = self.InConfig.[0]
 
         self.OutMachineId.[0] <- string config.MachineId

@@ -52,7 +52,7 @@ type RegionMapNode() =
         self.OutRegions.SliceCount <- self.InRegionMap.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InRegionMap.[n]) then
+          if not (Util.isNullReference self.InRegionMap.[n]) then
             let config = self.InRegionMap.[n]
             self.OutSrcId.[n] <- string config.SrcViewportId
             self.OutRegions.[n].SliceCount <- Array.length config.Regions

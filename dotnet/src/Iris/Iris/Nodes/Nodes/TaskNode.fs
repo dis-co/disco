@@ -71,7 +71,7 @@ type TaskNode() =
         self.OutArgumentValues.SliceCount <- self.InTask.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InTask.[n]) then
+          if not (Util.isNullReference self.InTask.[n]) then
             let task = self.InTask.[n]
             let keys = Array.map fst task.Arguments
             let len = Array.length keys

@@ -56,7 +56,7 @@ type CueNode() =
         self.OutPins.SliceCount <- self.InCue.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InCue.[n]) then
+          if not (Util.isNullReference self.InCue.[n]) then
             let cue = self.InCue.[n]
             self.OutId.[n] <- string cue.Id
             self.OutName.[n] <- cue.Name

@@ -62,7 +62,7 @@ type ProjectNode() =
 
   interface IPluginEvaluate with
     member self.Evaluate (_: int) : unit =
-      if self.InUpdate.[0] && not (Util.isNull self.InProject.[0]) then
+      if self.InUpdate.[0] && not (Util.isNullReference self.InProject.[0]) then
         let project = self.InProject.[0]
         let lastSaved =
           match project.LastSaved with

@@ -77,7 +77,7 @@ type RaftConfigNode() =
         self.OutPeriodicInterval.SliceCount <- self.InRaft.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InRaft.[n]) then
+          if not (Util.isNullReference self.InRaft.[n]) then
             let config = self.InRaft.[n]
             self.OutRequestTimeout.[n] <- int config.RequestTimeout
             self.OutElectionTimeout.[n] <- int config.ElectionTimeout

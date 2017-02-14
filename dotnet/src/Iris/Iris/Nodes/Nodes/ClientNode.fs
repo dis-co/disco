@@ -71,7 +71,7 @@ type ClientNode() =
         self.OutPort.SliceCount <- self.InClient.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InClient.[n]) then
+          if not (Util.isNullReference self.InClient.[n]) then
             let client = self.InClient.[n]
             self.OutId.[n] <- string client.Id
             self.OutName.[n] <- client.Name

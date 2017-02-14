@@ -52,7 +52,7 @@ type HostGroupNode() =
         self.OutMembers.SliceCount <- self.InHostGroup.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InHostGroup.[n]) then
+          if not (Util.isNullReference self.InHostGroup.[n]) then
             let group = self.InHostGroup.[n]
             self.OutName.[n] <- group.Name
             self.OutMembers.[n].SliceCount <- (Array.length group.Members)

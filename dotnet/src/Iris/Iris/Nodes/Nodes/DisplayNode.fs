@@ -67,7 +67,7 @@ type DisplayNode() =
         self.OutRegionMap.SliceCount <- self.InDisplay.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InDisplay.[n]) then
+          if not (Util.isNullReference self.InDisplay.[n]) then
             let display = self.InDisplay.[n]
             self.OutId.[n] <- string display.Id
             self.OutName.[n] <- display.Name

@@ -67,7 +67,7 @@ type TimingConfigNode() =
         self.OutTCPPort.SliceCount <- self.InTiming.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InTiming.[n]) then
+          if not (Util.isNullReference self.InTiming.[n]) then
             let config = self.InTiming.[n]
             let servers = Array.map string config.Servers
             self.OutFramebase.[n] <- int config.Framebase

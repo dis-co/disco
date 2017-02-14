@@ -81,7 +81,7 @@ type MemberNode() =
         self.OutApiPort.SliceCount   <- self.InMember.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InMember.[n]) then
+          if not (Util.isNullReference self.InMember.[n]) then
             let mem = self.InMember.[n]
 
             self.OutId.[n] <- string mem.Id

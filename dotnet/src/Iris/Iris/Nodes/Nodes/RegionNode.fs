@@ -72,7 +72,7 @@ type RegionNode() =
         self.OutOutPos.SliceCount <- self.InRegion.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InRegion.[n]) then
+          if not (Util.isNullReference self.InRegion.[n]) then
             let region = self.InRegion.[n]
             self.OutId.[n] <- string region.Id
             self.OutName.[n] <- region.Name

@@ -43,7 +43,7 @@ type AudioConfigNode() =
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InAudio.[n]) then
+          if not (Util.isNullReference self.InAudio.[n]) then
             let config = self.InAudio.[n]
             self.OutSampleRate.SliceCount <- self.InAudio.SliceCount
             self.OutSampleRate.[n] <- int config.SampleRate

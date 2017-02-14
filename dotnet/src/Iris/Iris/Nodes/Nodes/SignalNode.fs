@@ -51,7 +51,7 @@ type SignalNode() =
         self.OutCoordinate.SliceCount <- self.InSignal.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNull self.InSignal.[0]) then
+          if not (Util.isNullReference self.InSignal.[0]) then
             let signal = self.InSignal.[n]
             self.OutSize.[n].SliceCount <- 2
             self.OutSize.[n].[0] <- signal.Size.X
