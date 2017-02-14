@@ -56,15 +56,15 @@ module GraphApi =
         Status = ServiceStatus.Starting
         ApiClient = Unchecked.defaultof<IApiClient>
         Events = new ConcurrentQueue<Msg>()
-        V1Host = Unchecked.defaultof<IPluginHost>
-        V2Host = Unchecked.defaultof<IHDEHost>
-        Logger = Unchecked.defaultof<ILogger>
-        InServer = Unchecked.defaultof<IDiffSpread<string>>
-        InPort = Unchecked.defaultof<IDiffSpread<uint16>>
-        InDebug = Unchecked.defaultof<IDiffSpread<bool>>
-        OutState = Unchecked.defaultof<ISpread<State>>
-        OutConnected = Unchecked.defaultof<ISpread<bool>>
-        OutStatus = Unchecked.defaultof<ISpread<string>>
+        V1Host = null
+        V2Host = null
+        Logger = null
+        InServer = null
+        InPort = null
+        InDebug = null
+        OutState = null
+        OutConnected = null
+        OutStatus = null
         Disposables = List.empty }
 
     interface IDisposable with
