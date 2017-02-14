@@ -308,6 +308,12 @@ module Iris =
     | Idle _ -> state
     | Loaded (data1,data2) -> dispose data2; Idle data1
 
+  let private updateLoaded (state: IrisState) (data: IrisLoadedStateData) =
+    match state with
+    | Idle _ -> state
+    | Loaded (idleData,_) -> Loaded (idleData, data)
+
+
   // ** IIrisServer
 
   // ** triggerOnNext
@@ -584,7 +590,8 @@ module Iris =
         Option.iter dispose data.Leader
         match data.RaftServer.Leader with
         | Right (Some leader) ->
-          Loaded { data with Leader = Some (mkLeader data.MemberId leader) }
+          { data with Leader = Some (mkLeader data.MemberId leader) }
+          |> updateLoaded state
         | Right None ->
           "Could not start re-direct socket: no leader"
           |> Logger.debug data.MemberId (tag "onStateChanged")
@@ -595,7 +602,8 @@ module Iris =
           state
       | _, Leader ->
         Option.iter dispose data.Leader
-        Loaded { data with Leader = None }
+        { data with Leader = None }
+        |> updateLoaded state
       | _ -> state
 
   // ** onCreateSnapshot
@@ -643,33 +651,33 @@ module Iris =
 
   // ** forwardCommand
 
-  let private forwardCommand (data: IrisStateData) (sm: StateMachine) =
+  let private forwardCommand (data: IrisLoadedStateData) (sm: StateMachine) =
     match data.Leader with
     | Some leader ->
       match requestAppend data.MemberId leader sm with
       | Right newleader ->
-        Loaded { data with Leader = Some newleader }
+        { data with Leader = Some newleader }
       | Left error ->
         dispose leader
-        Loaded { data with Leader = None }
+        { data with Leader = None }
     | None ->
       match data.RaftServer.Leader with
       | Right (Some mem) ->
         let leader = mkLeader data.MemberId mem
         match requestAppend data.MemberId leader sm with
         | Right newleader ->
-          Loaded { data with Leader = Some newleader }
+          { data with Leader = Some newleader }
         | Left error ->
           dispose leader
-          Loaded { data with Leader = None }
+          { data with Leader = None }
       | Right None ->
         "Could not start re-direct socket: No Known Leader"
         |> Logger.debug data.MemberId (tag "onStateChanged")
-        Loaded data
+        data
       | Left error ->
         string error
         |> Logger.err data.MemberId (tag "onStateChanged")
-        Loaded data
+        data
 
   // ** handleRaftEvent
 
@@ -705,7 +713,9 @@ module Iris =
             |> Either.mapError (string >> Logger.err data.MemberId (tag "handleApiEvent"))
             |> ignore
             state
-          else forwardCommand data other
+          else
+            forwardCommand data other
+            |> updateLoaded state
       | ApiEvent.Register client ->
         data.RaftServer.Append (AddClient client)
         |> Either.mapError (string >> Logger.err data.MemberId (tag "handleApiEvent"))
@@ -721,7 +731,7 @@ module Iris =
         state
 
   let private handleDiscoveryEvent (state: IrisState) (ev: Discovery.DiscoveryEvent) =
-    withState state <| fun data ->
+    withoutReply state <| fun data ->
       match ev with
       | Discovery.Appeared service ->
         failwith "TODO"
