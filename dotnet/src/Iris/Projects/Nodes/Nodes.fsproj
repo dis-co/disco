@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Iris</RootNamespace>
     <AssemblyName>Iris.Nodes</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <Name>Iris.Nodes</Name>
     <TargetFrameworkProfile />
@@ -39,6 +39,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Management" />
+    <Reference Include="System.ComponentModel.Composition" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../AssemblyInfo/NodesInfo.fs" />
@@ -132,6 +133,15 @@
     <Compile Include="..\..\Iris\Raft\Types.fs">
       <Link>Types.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Zmq\Common.fs">
+      <Link>Common.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Zmq\Pub.fs">
+      <Link>Pub.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Zmq\Sub.fs">
+      <Link>Sub.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Zmq\Rep.fs">
       <Link>Rep.fs</Link>
     </Compile>
@@ -162,7 +172,92 @@
     <Compile Include="..\..\Iris\Service\ApiServer.fs">
       <Link>ApiServer.fs</Link>
     </Compile>
-    <Compile Include="../../Iris/Nodes/GraphApi.fs" />
+    <Compile Include="../../Iris/Nodes/NodeUtils.fs">
+      <Link>NodeUtils.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/GraphApi.fs">
+      <Link>GraphApi.fs</Link>
+    </Compile>
+    <!-- NODES -->
+    <Compile Include="../../Iris/Nodes/Nodes/AudioConfigNode.fs">
+      <Link>AudioConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/RaftConfigNode.fs">
+      <Link>RaftConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/TimingConfigNode.fs">
+      <Link>TimingConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/ClusterConfigNode.fs">
+      <Link>ClusterConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/VvvvConfigNode.fs">
+      <Link>VvvvConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/ConfigNode.fs">
+      <Link>ConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/DisplayNode.fs">
+      <Link>DisplayNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/HostGroupNode.fs">
+      <Link>HostGroupNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/IrisNode.fs">
+      <Link>IrisNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/MemberNode.fs">
+      <Link>MemberNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/ProjectNode.fs">
+      <Link>ProjectNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/RegionMapNode.fs">
+      <Link>RegionMapNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/RegionNode.fs">
+      <Link>RegionNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/SignalNode.fs">
+      <Link>SignalNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/StateNode.fs">
+      <Link>StateNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/TaskNode.fs">
+      <Link>TaskNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/ViewPortNode.fs">
+      <Link>ViewPortNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/VvvvExeNode.fs">
+      <Link>VvvvExeNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/VvvvPluginNode.fs">
+      <Link>VvvvPluginNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/CueNode.fs">
+      <Link>CueNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/CueListNode.fs">
+      <Link>CueListNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/SessionNode.fs">
+      <Link>SessionNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/UserNode.fs">
+      <Link>UserNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/ClientNode.fs">
+      <Link>ClientNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/PatchNode.fs">
+      <Link>PatchNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/PinNode.fs">
+      <Link>PinNode.fs</Link>
+    </Compile>
+    <!-- END NODES -->
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
@@ -184,6 +279,9 @@
       <HintPath>..\..\..\Zeroconf\bin\Mono.Zeroconf.Providers.Bonjour.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="System.ComponentModel.Composition.CodePlex">
+      <HintPath>../../../../packages/VVVV.System.ComponentModel.Composition.Codeplex/lib/net40/System.ComponentModel.Composition.CodePlex.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">
@@ -202,6 +300,42 @@
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
       <PropertyGroup>
         <__paket__ZeroMQ_targets>net40\ZeroMQ</__paket__ZeroMQ_targets>
+      </PropertyGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
+      <PropertyGroup>
+        <__paket__VVVV_Utils3rdParty_targets>net46\VVVV.Utils3rdParty</__paket__VVVV_Utils3rdParty_targets>
+      </PropertyGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v2.0' Or $(TargetFrameworkVersion) == 'v3.0' Or $(TargetFrameworkVersion) == 'v3.5')">
+      <PropertyGroup>
+        <__paket__VVVV_SlimDX_props>net20\VVVV.SlimDX</__paket__VVVV_SlimDX_props>
+        <__paket__VVVV_SlimDX_targets>net20\VVVV.SlimDX</__paket__VVVV_SlimDX_targets>
+      </PropertyGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
+      <PropertyGroup>
+        <__paket__VVVV_SlimDX_props>net40\VVVV.SlimDX</__paket__VVVV_SlimDX_props>
+        <__paket__VVVV_SlimDX_targets>net40\VVVV.SlimDX</__paket__VVVV_SlimDX_targets>
+      </PropertyGroup>
+    </When>
+  </Choose>
+  <Import Project="..\..\..\..\packages\VVVV.SlimDX\build\$(__paket__VVVV_SlimDX_props).props" Condition="Exists('..\..\..\..\packages\VVVV.SlimDX\build\$(__paket__VVVV_SlimDX_props).props')" Label="Paket" />
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
+      <PropertyGroup>
+        <__paket__VVVV_PluginInterfaces_targets>net46\VVVV.PluginInterfaces</__paket__VVVV_PluginInterfaces_targets>
+      </PropertyGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
+      <PropertyGroup>
+        <__paket__VVVV_Hosting_targets>net46\VVVV.Hosting</__paket__VVVV_Hosting_targets>
       </PropertyGroup>
     </When>
   </Choose>
@@ -347,6 +481,39 @@
     </When>
   </Choose>
   <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
+      <ItemGroup>
+        <Reference Include="VVVV.Core">
+          <HintPath>..\..\..\..\packages\VVVV.Core\lib\net46\VVVV.Core.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
+      <ItemGroup>
+        <Reference Include="VVVV.Utils">
+          <HintPath>..\..\..\..\packages\VVVV.Utils\lib\net46\VVVV.Utils.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
+      <ItemGroup>
+        <Reference Include="VVVV.UtilsIL">
+          <HintPath>..\..\..\..\packages\VVVV.UtilsIL\lib\net46\VVVV.UtilsIL.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
       <ItemGroup>
         <Reference Include="ZeroMQ">
@@ -357,5 +524,9 @@
       </ItemGroup>
     </When>
   </Choose>
+  <Import Project="..\..\..\..\packages\VVVV.Hosting\build\$(__paket__VVVV_Hosting_targets).targets" Condition="Exists('..\..\..\..\packages\VVVV.Hosting\build\$(__paket__VVVV_Hosting_targets).targets')" Label="Paket" />
+  <Import Project="..\..\..\..\packages\VVVV.PluginInterfaces\build\$(__paket__VVVV_PluginInterfaces_targets).targets" Condition="Exists('..\..\..\..\packages\VVVV.PluginInterfaces\build\$(__paket__VVVV_PluginInterfaces_targets).targets')" Label="Paket" />
+  <Import Project="..\..\..\..\packages\VVVV.SlimDX\build\$(__paket__VVVV_SlimDX_targets).targets" Condition="Exists('..\..\..\..\packages\VVVV.SlimDX\build\$(__paket__VVVV_SlimDX_targets).targets')" Label="Paket" />
+  <Import Project="..\..\..\..\packages\VVVV.Utils3rdParty\build\$(__paket__VVVV_Utils3rdParty_targets).targets" Condition="Exists('..\..\..\..\packages\VVVV.Utils3rdParty\build\$(__paket__VVVV_Utils3rdParty_targets).targets')" Label="Paket" />
   <Import Project="..\..\..\..\packages\ZeroMQ\build\$(__paket__ZeroMQ_targets).targets" Condition="Exists('..\..\..\..\packages\ZeroMQ\build\$(__paket__ZeroMQ_targets).targets')" Label="Paket" />
 </Project>

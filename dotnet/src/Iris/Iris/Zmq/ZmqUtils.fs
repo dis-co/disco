@@ -13,9 +13,42 @@ open Iris.Core
 [<AutoOpen>]
 module ZmqUtils =
 
-  // ** formatUri
+  let private toUri (proto: ZmqTransport) (prefix: IpAddress option) (ip: IpAddress) (port: int) =
+    match prefix with
+    | Some prefix -> sprintf "%s://%s;%s:%d" (string proto) (string prefix) (string ip) port
+    | _ -> sprintf "%s://%s:%d" (string proto) (string ip) port
 
-  /// ## Format ZeroMQ URI
+  // ** formatPGMUri
+
+  /// ## Format ZeroMQ PGM URI
+  ///
+  /// Formates the given IP and port into a ZeroMQ compatible PGM resource string.
+  ///
+  /// ### Signature:
+  /// - ip: IpAddress
+  /// - port: Port
+  ///
+  /// Returns: string
+  let formatPGMUri (ip: IpAddress) (mcast: IpAddress) (port: int) =
+    toUri PGM (Some ip) mcast port
+
+  // ** formatEPGMUri
+
+  /// ## Format ZeroMQ EPGM URI
+  ///
+  /// Formates the given IP and port into a ZeroMQ compatible PGM resource string.
+  ///
+  /// ### Signature:
+  /// - ip: IpAddress
+  /// - port: Port
+  ///
+  /// Returns: string
+  let formatEPGMUri (ip: IpAddress) (mcast: IpAddress) (port: int) =
+    toUri EPGM (Some ip) mcast port
+
+  // ** formatTCPUri
+
+  /// ## Format ZeroMQ TCO URI
   ///
   /// Formates the given IP and port into a ZeroMQ compatible resource string.
   ///
@@ -24,8 +57,8 @@ module ZmqUtils =
   /// - port: Port
   ///
   /// Returns: string
-  let formatUri (ip: IpAddress) (port: int) =
-    sprintf "tcp://%s:%d" (string ip) port
+  let formatTCPUri (ip: IpAddress) (port: int) =
+    toUri TCP None ip port
 
   // ** nodeUri
 
@@ -38,4 +71,4 @@ module ZmqUtils =
   ///
   /// Returns: string
   let memUri (data: RaftMember) =
-    formatUri data.IpAddr (int data.Port)
+    formatTCPUri data.IpAddr (int data.Port)

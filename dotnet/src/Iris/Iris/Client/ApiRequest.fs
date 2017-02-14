@@ -261,6 +261,22 @@ type ClientApiRequest =
         ClientApiRequestFB.AddParameter(builder, offset.Value)
         ClientApiRequestFB.EndClientApiRequestFB(builder)
 
+      | UpdateSlices slices ->
+        let offset = slices.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateSlicesFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.SlicesFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | CallCue cue ->
+        let offset = cue.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.CallCueFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.CueFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
       | Command AppCommand.Undo ->
         ClientApiRequestFB.StartClientApiRequestFB(builder)
         ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UndoFB)
@@ -462,6 +478,19 @@ type ClientApiRequest =
             |> Either.fail
         return ClientApiRequest.Update (RemovePin pin)
       }
+    | ClientApiCommandFB.UpdateSlicesFB ->
+      either {
+        let! slices =
+          let slicish = fb.Parameter<SlicesFB>()
+          if slicish.HasValue then
+            let value = slicish.Value
+            Slices.FromFB value
+          else
+            "Empty SlicesFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (UpdateSlices slices)
+      }
 
     //   ____
     //  / ___|   _  ___
@@ -507,6 +536,19 @@ type ClientApiRequest =
             |> Error.asParseError "ClientApiRequest.FromFB"
             |> Either.fail
         return ClientApiRequest.Update (RemoveCue cue)
+      }
+    | ClientApiCommandFB.CallCueFB ->
+      either {
+        let! cue =
+          let cueish = fb.Parameter<CueFB>()
+          if cueish.HasValue then
+            let value = cueish.Value
+            Cue.FromFB value
+          else
+            "Empty CueFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (CallCue cue)
       }
 
     //   ____           _     _     _
@@ -763,8 +805,22 @@ type ServerApiRequest =
       ServerApiRequestFB.AddParameterType(builder, ParameterFB.PinFB)
       ServerApiRequestFB.AddParameter(builder, offset.Value)
       ServerApiRequestFB.EndServerApiRequestFB(builder)
+    | Update (UpdateSlices slices) ->
+      let offset = slices.ToOffset(builder)
+      ServerApiRequestFB.StartServerApiRequestFB(builder)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.UpdateSlicesFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.SlicesFB)
+      ServerApiRequestFB.AddParameter(builder, offset.Value)
+      ServerApiRequestFB.EndServerApiRequestFB(builder)
+    | Update (CallCue cue) ->
+      let offset = cue.ToOffset(builder)
+      ServerApiRequestFB.StartServerApiRequestFB(builder)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.CallCueFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.CueFB)
+      ServerApiRequestFB.AddParameter(builder, offset.Value)
+      ServerApiRequestFB.EndServerApiRequestFB(builder)
     | Update x ->
-      failwithf "Server does not implement command: %A" x
+      failwithf "ServerApiRequest.ToOffset currently does not support command: %A" x
 
   static member FromFB(fb: ServerApiRequestFB) =
     match fb.Command with
@@ -856,6 +912,24 @@ type ServerApiRequest =
             let value = cueish.Value
             let! cue = Cue.FromFB(value)
             return ServerApiRequest.Update(RemoveCue cue)
+          }
+        else
+          "Empty CueFB Parameter in ServerApiRequest"
+          |> Error.asClientError "ServerApiRequest.FromFB"
+          |> Either.fail
+      | x ->
+        sprintf "Wrong ParameterType in ServerApiRequest: %A" x
+        |> Error.asClientError "ServerApiRequest.FromFB"
+        |> Either.fail
+    | ServerApiCommandFB.CallCueFB ->
+      match fb.ParameterType with
+      | ParameterFB.CueFB ->
+        let cueish = fb.Parameter<CueFB>()
+        if cueish.HasValue then
+          either {
+            let value = cueish.Value
+            let! cue = Cue.FromFB(value)
+            return ServerApiRequest.Update(CallCue cue)
           }
         else
           "Empty CueFB Parameter in ServerApiRequest"
@@ -981,6 +1055,24 @@ type ServerApiRequest =
           }
         else
           "Empty PinFB Parameter in ServerApiRequest"
+          |> Error.asClientError "ServerApiRequest.FromFB"
+          |> Either.fail
+      | x ->
+        sprintf "Wrong ParameterType in ServerApiRequest: %A" x
+        |> Error.asClientError "ServerApiRequest.FromFB"
+        |> Either.fail
+    | ServerApiCommandFB.UpdateSlicesFB ->
+      match fb.ParameterType with
+      | ParameterFB.SlicesFB ->
+        let slicish = fb.Parameter<SlicesFB>()
+        if slicish.HasValue then
+          either {
+            let value = slicish.Value
+            let! slices = Slices.FromFB(value)
+            return ServerApiRequest.Update(UpdateSlices slices)
+          }
+        else
+          "Empty SlicesFB Parameter in ServerApiRequest"
           |> Error.asClientError "ServerApiRequest.FromFB"
           |> Either.fail
       | x ->

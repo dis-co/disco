@@ -6,6 +6,7 @@ open System
 open System.IO
 open System.Collections.Concurrent
 open Iris.Raft
+open Iris.Zmq
 open Iris.Core
 open Iris.Core.Utils
 open Iris.Core.Commands
@@ -75,6 +76,18 @@ module Iris =
   let private disposeAll (disposables: Map<string,IDisposable>) =
     Map.iter (konst dispose) disposables
 
+  // ** Leader
+
+  [<NoComparison;NoEquality>]
+  type private Leader =
+    { Member: RaftMember
+      Socket: Req }
+
+    interface IDisposable with
+      member self.Dispose() =
+        dispose self.Socket
+
+  // ** IrisStateData
 
   // ** IrisIdleStateData
 
@@ -99,6 +112,7 @@ module Iris =
   /// For ease of use it implements the IDisposable interface.
   ///
   /// ### Fields:
+  /// - MemberId: ServiceStatus of currently loaded project
   /// - Status: ServiceStatus of currently loaded project
   /// - Store: Store containing all state. This is sent to user via WebSockets on connection.
   /// - Project: IrisProject currently loaded
@@ -112,6 +126,7 @@ module Iris =
     { MemberId      : Id
       Status        : ServiceStatus
       Store         : Store
+      Leader        : Leader option
       ApiServer     : IApiServer
       GitServer     : IGitServer
       RaftServer    : IRaftServer
@@ -514,7 +529,7 @@ module Iris =
       broadcastMsg data sm
       data.ApiServer.Update sm
 
-      if RaftServer.isLeader data.RaftServer then
+      if data.RaftServer.IsLeader then
         match persistEntry data.Store.State sm with
         | Right commit ->
           sprintf "Persisted command in commit: %s" commit.Sha
@@ -547,15 +562,41 @@ module Iris =
           |> Logger.err data.MemberId (tag "onApplyLog")
         state
 
+  // ** mkLeader
+
+  let private mkLeader (self: Id) (leader: RaftMember) =
+    let addr = memUri leader
+    let req = new Req(self, addr, Constants.REQ_TIMEOUT)
+    req.Start()
+    { Member = leader; Socket = req }
+
   // ** onStateChanged
 
   let private onStateChanged (state: IrisState)
                              (oldstate: RaftState)
                              (newstate: RaftState) =
-    withState state <| fun data ->
+    withoutReply state <| fun data ->
       sprintf "Raft state changed from %A to %A" oldstate newstate
       |> Logger.debug data.MemberId (tag "onStateChanged")
-    state
+      // create redirect socket
+      match oldstate, newstate with
+      | _, Follower ->
+        Option.iter dispose data.Leader
+        match data.RaftServer.Leader with
+        | Right (Some leader) ->
+          Loaded { data with Leader = Some (mkLeader data.MemberId leader) }
+        | Right None ->
+          "Could not start re-direct socket: no leader"
+          |> Logger.debug data.MemberId (tag "onStateChanged")
+          state
+        | Left error ->
+          string error
+          |> Logger.err data.MemberId (tag "onStateChanged")
+          state
+      | _, Leader ->
+        Option.iter dispose data.Leader
+        Loaded { data with Leader = None }
+      | _ -> state
 
   // ** onCreateSnapshot
 
@@ -564,6 +605,71 @@ module Iris =
       "CreateSnapshot requested"
       |> Logger.debug data.MemberId (tag "onCreateSnapshot")
     state
+
+  // ** requestAppend
+
+  let private requestAppend (self: MemberId) (leader: Leader) (sm: StateMachine) =
+    let max = 5
+
+    let rec impl (current: Leader) (count: int) =
+      let result : Either<IrisError,RaftResponse> =
+        AppendEntry sm
+        |> Binary.encode
+        |> current.Socket.Request
+        |> Either.bind Binary.decode
+
+      match result with
+      | Right (AppendEntryResponse _) ->
+        Either.succeed leader
+      | Right (Redirect mem) ->
+        if count < max then
+          dispose leader
+          let newleader = mkLeader self mem
+          impl newleader (count + 1)
+        else
+          max
+          |> sprintf "Maximum re-direct count reached (%d). Appending failed"
+          |> Error.asRaftError (tag "requestAppend")
+          |> Either.fail
+      | Right other ->
+        other
+        |> sprintf "Received unexpected response from server: %A"
+        |> Error.asRaftError (tag "requestAppend")
+        |> Either.fail
+      | Left error ->
+        Either.fail error
+
+    impl leader 0
+
+  // ** forwardCommand
+
+  let private forwardCommand (data: IrisStateData) (sm: StateMachine) =
+    match data.Leader with
+    | Some leader ->
+      match requestAppend data.MemberId leader sm with
+      | Right newleader ->
+        Loaded { data with Leader = Some newleader }
+      | Left error ->
+        dispose leader
+        Loaded { data with Leader = None }
+    | None ->
+      match data.RaftServer.Leader with
+      | Right (Some mem) ->
+        let leader = mkLeader data.MemberId mem
+        match requestAppend data.MemberId leader sm with
+        | Right newleader ->
+          Loaded { data with Leader = Some newleader }
+        | Left error ->
+          dispose leader
+          Loaded { data with Leader = None }
+      | Right None ->
+        "Could not start re-direct socket: No Known Leader"
+        |> Logger.debug data.MemberId (tag "onStateChanged")
+        Loaded data
+      | Left error ->
+        string error
+        |> Logger.err data.MemberId (tag "onStateChanged")
+        Loaded data
 
   // ** handleRaftEvent
 
@@ -580,23 +686,39 @@ module Iris =
   // ** handleApiEvent
 
   let private handleApiEvent (state: IrisState) (ev: ApiEvent) =
-    withState state <| fun data ->
+    withoutReply state <| fun data ->
       match ev with
       | ApiEvent.Update sm ->
-        data.RaftServer.Append sm
-        |> Either.mapError (string >> Logger.err data.MemberId (tag "handleApiEvent"))
-        |> ignore
+        // ApiEvents:
+        // If its something that appeared via the fast-lane, dispatch it on the Store and via the
+        // WebSockets right away. Evertything else needs to be logged via raft.
+        match sm with
+        | UpdateSlices _ | CallCue _ ->
+          data.Store.Dispatch sm
+          data.SocketServer.Broadcast sm
+          |> Either.mapError (string >> Logger.err data.MemberId (tag "handleApiEvent"))
+          |> ignore
+          state
+        | other ->
+          if data.RaftServer.IsLeader then
+            data.RaftServer.Append other
+            |> Either.mapError (string >> Logger.err data.MemberId (tag "handleApiEvent"))
+            |> ignore
+            state
+          else forwardCommand data other
       | ApiEvent.Register client ->
         data.RaftServer.Append (AddClient client)
         |> Either.mapError (string >> Logger.err data.MemberId (tag "handleApiEvent"))
         |> ignore
+        state
       | ApiEvent.UnRegister client ->
         data.RaftServer.Append (RemoveClient client)
         |> Either.mapError (string >> Logger.err data.MemberId (tag "handleApiEvent"))
         |> ignore
+        state
       | _ -> // Status events
         triggerOnNext data.Subscriptions (IrisEvent.Api ev)
-    state
+        state
 
   let private handleDiscoveryEvent (state: IrisState) (ev: Discovery.DiscoveryEvent) =
     withState state <| fun data ->
@@ -739,11 +861,12 @@ module Iris =
 
           let! raftserver = RaftServer.create ()
           let! wsserver   = SocketServer.create mem
-          let! apiserver  = ApiServer.create mem
+          let! apiserver  = ApiServer.create mem state.Project.Id
           let! gitserver  = GitServer.create mem path
 
           let loadedData =
             { MemberId      = mem.Id
+            ; Leader        = None
             ; Status        = ServiceStatus.Starting
             ; Store         = new Store(state)
             ; ApiServer     = apiserver

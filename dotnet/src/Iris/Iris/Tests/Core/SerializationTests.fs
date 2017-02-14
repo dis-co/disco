@@ -460,6 +460,30 @@ module SerializationTests =
           let reslice = slice |> Yaml.encode |> Yaml.decode |> Either.get
           expect "Should be structurally equivalent" slice id reslice)
 
+  //  ____  _ _
+  // / ___|| (_) ___ ___  ___
+  // \___ \| | |/ __/ _ \/ __|
+  //  ___) | | | (_|  __/\__ \
+  // |____/|_|_|\___\___||___/
+
+  let test_validate_slices_binary_serialization =
+    testCase "Validate Slices Binary Serialization" <| fun _ ->
+
+      [| BoolSlices     (Id.Create(), [|{ Index = 0u; Value = true    }|])
+      ; StringSlices   (Id.Create(), [|{ Index = 0u; Value = "hello" }|])
+      ; IntSlices      (Id.Create(), [|{ Index = 0u; Value = 1234    }|])
+      ; FloatSlices    (Id.Create(), [|{ Index = 0u; Value = 1234.0  }|])
+      ; DoubleSlices   (Id.Create(), [|{ Index = 0u; Value = 1234.0  }|])
+      ; ByteSlices     (Id.Create(), [|{ Index = 0u; Value = [| 0uy |] }|])
+      ; EnumSlices     (Id.Create(), [|{ Index = 0u; Value = { Key = "one"; Value = "two" }}|])
+      ; ColorSlices    (Id.Create(), [|{ Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
+      ; ColorSlices    (Id.Create(), [|{ Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
+      ; CompoundSlices (Id.Create(), [|{ Index = 0u; Value = mkPins () }|]) |]
+      |> Array.iter
+        (fun slices ->
+          let reslices = slices |> Binary.encode |> Binary.decode |> Either.get
+          expect "Should be structurally equivalent" slices id reslices)
+
   //  ____  _
   // |  _ \(_)_ __
   // | |_) | | '_ \
@@ -607,7 +631,7 @@ module SerializationTests =
       test_validate_user_binary_serialization
       test_validate_user_yaml_serialization
       test_validate_slice_binary_serialization
-      test_validate_slice_yaml_serialization
+      test_validate_slices_binary_serialization
       test_validate_pin_binary_serialization
       test_validate_pin_yaml_serialization
       test_validate_client_binary_serialization

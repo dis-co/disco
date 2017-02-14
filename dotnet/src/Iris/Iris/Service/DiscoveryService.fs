@@ -334,7 +334,7 @@ module Discovery =
 
   let private unregisterService (services: RegisterService list)
                                 (srvc: DiscoverableService)
-                                (subs: Subscriptions) =
+                                (_: Subscriptions) =
     for service in services do
       if service.Name = srvc.Name then
         dispose service
@@ -367,7 +367,7 @@ module Discovery =
 
   // ** handleStop
 
-  let private handleStop (chan: ReplyChan) (state: DiscoveryState) (subs: Subscriptions) =
+  let private handleStop (chan: ReplyChan) (state: DiscoveryState) (_: Subscriptions) =
     match state with
     | Loaded data ->
       dispose data.Browser
@@ -381,7 +381,7 @@ module Discovery =
 
   let private handleStart (chan: ReplyChan)
                           (state: DiscoveryState)
-                          (subs: Subscriptions)
+                          (_: Subscriptions)
                           (agent: DiscoveryAgent) =
     match state with
     | Loaded _ ->
@@ -467,7 +467,7 @@ module Discovery =
 
   let private handleRegisterErr (state: DiscoveryState)
                                 (subs: Subscriptions)
-                                (err: string)
+                                (_: string)
                                 (srvc: DiscoverableService) =
     match state with
     | Loaded data ->

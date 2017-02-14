@@ -13,7 +13,6 @@ open SharpYaml.Serialization
 /// The Raft state machine
 ///
 /// ## States
-///  - `None`     - hm
 ///  - `Follower` - this Member is currently following a different Leader
 ///  - `Candiate` - this Member currently seeks to become Leader
 ///  - `Leader`   - this Member currently is Leader of the cluster
@@ -53,6 +52,20 @@ type EntryResponse =
       (string self.Id)
       self.Term
       self.Index
+
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let id = self.Id |> string |> builder.CreateString
+    EntryResponseFB.StartEntryResponseFB(builder)
+    EntryResponseFB.AddId(builder, id)
+    EntryResponseFB.AddTerm(builder, self.Term)
+    EntryResponseFB.AddIndex(builder, self.Index)
+    EntryResponseFB.EndEntryResponseFB(builder)
+
+  static member FromFB(fb: EntryResponseFB) =
+    { Id = Id fb.Id
+      Term = fb.Term
+      Index = fb.Index }
+    |> Either.succeed
 
 // * Entry
 

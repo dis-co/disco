@@ -62,4 +62,5 @@ type IApiClient =
   abstract RemoveCueList: CueList -> Either<IrisError,unit>
   abstract AddPin: Pin -> Either<IrisError,unit>
   abstract UpdatePin: Pin -> Either<IrisError,unit>
+  abstract UpdateSlices: Slices -> Either<IrisError,unit>
   abstract RemovePin: Pin -> Either<IrisError,unit>
