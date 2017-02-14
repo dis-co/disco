@@ -26,6 +26,8 @@ enum ServerApiCommandFB:ushort {
      AddCueListFB,
      UpdateCueListFB,
      RemoveCueListFB,
+     UpdateSlicesFB,
+     CallCueFB,
 }
 
 enum ClientApiCommandFB:ushort {
@@ -56,6 +58,8 @@ enum ClientApiCommandFB:ushort {
      UndoFB,
      RedoFB,
      ResetFB,
+     UpdateSlicesFB,
+     CallCueFB,
 }
 
 union ParameterFB {
@@ -69,6 +73,7 @@ union ParameterFB {
      CueListFB,
      UserFB,
      SessionFB,
+     SlicesFB,
 }
 
 table ServerApiRequestFB {

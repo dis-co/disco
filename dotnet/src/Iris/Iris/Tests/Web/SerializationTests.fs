@@ -161,6 +161,23 @@ module SerializationTests =
           equals slice reslice)
       finish()
 
+    test "Validate Slices Serialization" <| fun finish ->
+      [| BoolSlices     (Id.Create(), [|{ Index = 0u; Value = true    }|])
+      ; StringSlices   (Id.Create(), [|{ Index = 0u; Value = "hello" }|])
+      ; IntSlices      (Id.Create(), [|{ Index = 0u; Value = 1234    }|])
+      ; FloatSlices    (Id.Create(), [|{ Index = 0u; Value = 1234.0  }|])
+      ; DoubleSlices   (Id.Create(), [|{ Index = 0u; Value = 1234.0  }|])
+      ; ByteSlices     (Id.Create(), [|{ Index = 0u; Value = mkBytes () }|])
+      ; EnumSlices     (Id.Create(), [|{ Index = 0u; Value = { Key = "one"; Value = "two" }}|])
+      ; ColorSlices    (Id.Create(), [|{ Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
+      ; ColorSlices    (Id.Create(), [|{ Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
+      ; CompoundSlices (Id.Create(), [|{ Index = 0u; Value = pins () }|]) |]
+      |> Array.iter
+        (fun slices ->
+          let reslices = slices |> Binary.encode |> Binary.decode |> Either.get
+          equals slices reslices)
+      finish()
+
     test "Validate Pin Serialization" <| fun finish ->
       Array.iter check (pins ())
 

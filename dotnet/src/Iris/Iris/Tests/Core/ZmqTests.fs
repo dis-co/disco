@@ -41,13 +41,13 @@ module ZmqIntegrationTests =
             count := next
           msg
 
-        use rep = new Rep(srv, handler)
+        use rep = new Rep(Id.Create(), srv, handler)
 
         do! rep.Start()
 
         let socks =
           [ for _ in 0 .. (n - 1) do
-              let sock = new Req(Id.Create(), srv, 50)
+              let sock = new Req(Id.Create(), srv, Constants.REQ_TIMEOUT)
               sock.Start()
               yield sock ]
 

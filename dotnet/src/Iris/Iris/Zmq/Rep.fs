@@ -15,7 +15,7 @@ open Iris.Core
 /// - handler: request handler
 ///
 /// Returns: instance of Rep
-type Rep (addr: string, handle: byte array -> byte array) =
+type Rep (id: Id, addr: string, handle: byte array -> byte array) =
   let mutable status : ServiceStatus = ServiceStatus.Starting
 
   let mutable error : Exception option = None
@@ -26,75 +26,6 @@ type Rep (addr: string, handle: byte array -> byte array) =
   let mutable starter: AutoResetEvent = null
   let mutable stopper: AutoResetEvent = null
   let mutable ctx : ZContext = null
-
-  /// ## ignoreErr
-  ///
-  /// Determine if the error number passed is worth ignoring or not.
-  ///
-  /// ### Signature:
-  /// - errno: int error number to check
-  ///
-  /// Returns: bool
-  let ignoreErr (errno: int) =
-    match errno with
-    | x when x = ZError.ETIMEDOUT.Number -> true
-    | x when x = ZError.EAGAIN.Number    -> true
-    | _ -> false
-
-  /// ## setOption
-  ///
-  /// Set a ZSocketOption on a socket in a more functional style.
-  ///
-  /// ### Signature:
-  /// - sock: ZSocket to set option onb
-  /// - option: ZSocketOption to set
-  /// - value: int value to set on the socket
-  ///
-  /// Returns: unit
-  let setOption (sock: ZSocket) (option: ZSocketOption) (value: int) =
-    sock.SetOption(option, value)
-    |> ignore                            // FIXME: maybe I should do something with this result
-
-  /// ## bind
-  ///
-  /// Bind a ZSocket to an address.
-  ///
-  /// ### Signature:
-  /// - sock: ZSocket to bind
-  /// - addr: string address to bind to
-  ///
-  /// Returns: unit
-  let bind (sock: ZSocket) (addr: string) =
-    sock.Bind(addr)
-
-  /// ## tryUnbind
-  ///
-  /// Attempt to unbind a ZSocket from a given address safely.
-  ///
-  /// ### Signature:
-  /// - sock: ZSocket to unbind
-  /// - addr: string address to unbind from
-  ///
-  /// Returns: unit
-  let tryUnbind (sock: ZSocket) (addr: string) =
-    try
-      sock.Unbind(addr)
-    with
-      | _ -> () // throws ENOENT on failure. We ignore that.
-
-  /// ## tryCloseb
-  ///
-  /// Attempt to close a ZSocket safely.
-  ///
-  /// ### Signature:
-  /// - sock: ZSocket to close
-  ///
-  /// Returns: unit
-  let tryClose (sock: ZSocket) =
-    try
-      sock.Close()
-    with
-      | _ -> () // ....at least we tried!
 
   /// ## worker
   ///
@@ -129,6 +60,7 @@ type Rep (addr: string, handle: byte array -> byte array) =
         bind sock addr
         status <- ServiceStatus.Running
         starter.Set() |> ignore
+        Logger.debug id "Rep.worker" "initialized"
       with
         | exn ->
           run <- false

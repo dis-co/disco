@@ -119,7 +119,7 @@ type RaftAppContext =
       self.Connections.Clear()
       dispose self.Server
 
-// * RaftServer
+// * IRaftServer
 
 type IRaftServer =
   inherit IDisposable
@@ -140,6 +140,8 @@ type IRaftServer =
   abstract AddMember     : RaftMember -> Either<IrisError, EntryResponse>
   abstract RmMember      : Id -> Either<IrisError, EntryResponse>
   abstract Connections   : Either<IrisError, ConcurrentDictionary<Id,Req>>
+  abstract Leader        : Either<IrisError, RaftMember option>
+  abstract IsLeader      : bool
 
 // * SocketEvent
 
@@ -170,10 +172,11 @@ type IHttpServer =
 
 [<RequireQualifiedAccess>]
 type ApiEvent =
-  | Update     of StateMachine
-  | Status     of IrisClient
-  | Register   of IrisClient
-  | UnRegister of IrisClient
+  | Update        of StateMachine
+  | ServiceStatus of ServiceStatus
+  | ClientStatus  of IrisClient
+  | Register      of IrisClient
+  | UnRegister    of IrisClient
 
 // * IrisEvent
 
