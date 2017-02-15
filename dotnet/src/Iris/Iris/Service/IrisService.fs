@@ -731,12 +731,19 @@ module Iris =
         state
 
   let private handleDiscoveryEvent (state: IrisState) (ev: Discovery.DiscoveryEvent) =
+    let appendCommand data cmd =
+      match appendCmd data cmd with
+      | Right _ -> ()
+      | Left error  ->
+        error |> string |> Logger.err data.MemberId (tag "handleDiscoveryEvent")
     withoutReply state <| fun data ->
       match ev with
       | Discovery.Appeared service ->
-        failwith "TODO"
-      | Discovery.Updated  service -> failwith "TODO"
-      | Discovery.Vanished service -> failwith "TODO"
+        AddResolvedService service |> appendCommand data
+      | Discovery.Updated  service ->
+        UpdateResolvedService service |> appendCommand data
+      | Discovery.Vanished service ->
+        RemoveResolvedService service |> appendCommand data
       | _ -> ()
       state
 
@@ -873,6 +880,14 @@ module Iris =
           let! wsserver   = SocketServer.create mem
           let! apiserver  = ApiServer.create mem state.Project.Id
           let! gitserver  = GitServer.create mem path
+
+          // Try to put discovered services into the state
+          let state =
+            match idleData.DiscoveryService.Services with
+            | Right (_, resolvedServices) -> { state with DiscoveredServices = resolvedServices }
+            | Left err ->
+              string err |> Logger.err mem.Id (tag "loadProject.getDiscoveredServices")
+              state
 
           let loadedData =
             { MemberId      = mem.Id

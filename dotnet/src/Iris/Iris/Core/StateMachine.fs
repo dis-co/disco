@@ -130,7 +130,8 @@ type State =
     CueLists : Map<Id,CueList>
     Sessions : Map<Id,Session>
     Users    : Map<Id,User>
-    Clients  : Map<Id,IrisClient> }
+    Clients  : Map<Id,IrisClient>
+    DiscoveredServices : Map<Id,Discovery.DiscoveredService> }
 
   // ** Empty
 
@@ -142,7 +143,8 @@ type State =
         CueLists = Map.empty
         Sessions = Map.empty
         Users    = Map.empty
-        Clients  = Map.empty }
+        Clients  = Map.empty
+        DiscoveredServices = Map.empty }
 
   // ** Load
 
@@ -162,8 +164,9 @@ type State =
           Cues     = Array.map toPair cues     |> Map.ofArray
           CueLists = Array.map toPair cuelists |> Map.ofArray
           Patches  = Array.map toPair patches  |> Map.ofArray
-          Sessions = Map.empty
-          Clients  = Map.empty }
+          Sessions           = Map.empty
+          Clients            = Map.empty
+          DiscoveredServices = Map.empty }
     }
 
   #endif
@@ -211,6 +214,16 @@ type State =
 
   static member removeUser (user: User) (state: State) =
     { state with Users = Map.filter (fun k _ -> (k <> user.Id)) state.Users }
+
+  // ** addOrUpdateService
+
+  static member addOrUpdateService (service: Discovery.DiscoveredService) (state: State) =
+    { state with DiscoveredServices = Map.add service.Id service state.DiscoveredServices }
+
+  // ** removeService
+
+  static member removeService (service: Discovery.DiscoveredService) (state: State) =
+    { state with DiscoveredServices = Map.remove service.Id state.DiscoveredServices }
 
   // ** addSession
 
@@ -683,13 +696,42 @@ type State =
           arr
         |> Either.map snd
 
+      // DISCOVERED SERVICES
+
+      let! discoveredServices =
+        let arr = Array.zeroCreate fb.DiscoveredServicesLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<Id, Discovery.DiscoveredService>>) _ -> either {
+            let! (i, map) = m
+
+            #if FABLE_COMPILER
+            let! service = DiscoveredServices(i) |> Discovery.DiscoveredService
+            #else
+            let! service =
+              let value = fb.DiscoveredServices(i)
+              if value.HasValue then
+                value.Value
+                |> Discovery.DiscoveredService.FromFB
+              else
+                "Could not parse empty DiscoveredService payload"
+                |> Error.asParseError "DiscoveredService.FromFB"
+                |> Either.fail
+            #endif
+
+            return (i + 1, Map.add service.Id service map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
+
       return { Project  = project
                Patches  = patches
                Cues     = cues
                CueLists = cuelists
                Users    = users
                Sessions = sessions
-               Clients  = clients }
+               Clients  = clients
+               DiscoveredServices = discoveredServices }
     }
 
   // ** FromBytes
@@ -938,6 +980,12 @@ and Store(state : State)=
     | RemoveUser           user -> State.removeUser    user    state |> andRender
 
     | UpdateProject     project -> State.updateProject project state |> andRender
+
+    // It may happen that a service didn't make it into the state and an update service
+    // event is received. For those cases just add/update the service into the state.
+    | AddResolvedService    service
+    | UpdateResolvedService service -> State.addOrUpdateService    service state |> andRender
+    | RemoveResolvedService service -> State.removeService service state |> andRender
 
     | _ -> ()
 
