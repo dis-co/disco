@@ -1,5 +1,5 @@
 import * as React from "react";
-import css from "./Log.css";
+import css from "./Log.less";
 
 const initLogs = [
   "[14:12:11] Do laboris fugiat cillum excepteur Lorem officia.",
