@@ -1,6 +1,4 @@
 import React, { Component } from 'react';
-import Layout from './Layout';
-import Counter from './Counter';
 import Spread from './widgets/Spread';
 import Form from './Form';
 
