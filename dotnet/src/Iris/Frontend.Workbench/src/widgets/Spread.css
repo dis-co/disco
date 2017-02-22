@@ -1,0 +1,93 @@
+.iris-spread {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  float: left;
+  justify-content: flex-start;
+  align-content: stretch;
+  align-items: stretch;
+  margin-left: 5px;
+  margin-bottom: 5px;
+  width: 250px;
+}
+
+.iris-spread-child {
+  padding: 0px;
+  height: 25px; /* Or whatever */
+  background: #555;
+  color:#fff;
+  line-height: 25px;
+  border-left: 1px solid #fff;
+  /* width: 35px; */
+  overflow: hidden;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  height: calc(145px - 120px);
+  transition: 0.1s;
+}
+
+.iris-spread-child:nth-child(1) {
+  border-top-left-radius: 13px;
+  border-bottom-left-radius: 13px;
+  border: none;
+}
+
+/*.iris-spread-child:nth-child(2):hover{
+  cursor: move;
+}*/
+
+.iris-spread-child:last-child {
+  border-top-right-radius: 13px;
+  border-bottom-right-radius: 13px;
+}
+
+.iris-spread-child span {
+  display: block;
+  background-color: #6E6E6E;
+  margin-top: 1px;
+  line-height: 16px;
+  padding:0px 5px 0px 10px;
+
+}
+
+.iris-spread-child span:hover {
+  background-color: #7F7F7F;
+  /*cursor: text;*/
+  transition: 0.1s;
+}
+
+/*.iris-spread-child:first-child span {
+  text-align: right;
+}*/
+
+.iris-spread-child span:first-child {
+  line-height: 25px;
+  margin: 0px;
+  background: none;
+}
+
+.iris-spread-end {
+  padding: 0px;
+  background: none;
+  border: 1px #555 solid;
+  border-top-right-radius: 13px;
+  border-bottom-right-radius: 13px;
+  border-left: none;
+  width: 14px;
+  height: 25px;
+  background-color: #fff;
+  height: calc(143px - 120px);
+  transition: 0.1s;
+}
+
+.iris-spread-end img {
+  /* position: absolute; */
+  /* left: 4px; */
+  /* top: 8px; */
+  transition: 0.1s;
+  margin-left: 4px;
+}
+
+.iris-spread-end img:hover {
+  cursor: pointer;
+}

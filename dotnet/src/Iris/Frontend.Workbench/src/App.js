@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import Layout from './Layout';
 import Counter from './Counter';
-import Spread from './Spread';
+import Spread from './widgets/Spread';
 import Form from './Form';
 
 // If you use React Router, make this component
