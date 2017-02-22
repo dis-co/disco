@@ -1,0 +1,8 @@
+.iris-log .iris-close {
+  cursor: pointer;
+}
+
+.iris-log p {
+  margin-top: 3px;
+  margin-left: 5px;
+}
