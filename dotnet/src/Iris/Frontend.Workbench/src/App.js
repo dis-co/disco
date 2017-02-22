@@ -2,24 +2,33 @@ import React, { Component } from 'react';
 import Spread from './widgets/Spread';
 import Form from './Form';
 
-// If you use React Router, make this component
-// render <Router> with your routes. Currently,
-// only synchronous routes are hot reloaded, and
-// you will see a warning from <Router> on every reload.
-// You can ignore this warning. For details, see:
-// https://github.com/reactjs/react-router/issues/2182
+const sideInitWidth = 150;
+
 export default class App extends Component {
   constructor(props) {
     super(props);
     this.state = { rows: [1,2,3,4,5], value: "W: 1920, H: 1080" };
   }
 
+  componentDidMount() {
+    $('#ui-layout-container')
+      .layout({
+        west__size: sideInitWidth,
+        // center__onresize: (name, el, state) => {
+        //   this.setState({centerWidth: state.innerWidth})
+        // }
+    })
+  }
+
   render() {
     return (
-      <div>
-        <h1>IRIS</h1>
-        <Form globalState={this.state} setGlobalState={x => this.setState(x) } />
-        <Spread rows={this.state.rows} value={this.state.value} />
+      <div id="ui-layout-container" style={{height: "100%"}}>
+        <div className="ui-layout-west" style={{height: "100%"}}>
+          <h1>Hello World!</h1>
+        </div>
+        <div className="ui-layout-center" style={{height: "100%"}}>
+          <h1>Hello World!</h1>
+        </div>
       </div>
     );
   }

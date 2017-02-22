@@ -8,6 +8,28 @@ html, body {
   font-size: 11px;
 }
 
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  background: #EBEBEB;
+  height: 50px;
+  padding-left: 10px;
+}
+
+footer {
+  background: #EBEBEB;
+  padding: 10px;
+}
+
+#app {
+  background:white;
+  flex-grow: 1;
+  height: 100%;
+}
+
 h3 {
     margin: 30px 0 0 0;
 }
