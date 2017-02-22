@@ -1,8 +1,9 @@
-import React, { Component } from 'react';
-import ReactGridLayout from 'react-grid-layout';
-import Spread from './widgets/Spread';
-import Form from './Form';
-import Log from './widgets/Log';
+import css from "../css/main.less"
+import React, { Component } from 'react'
+import ReactGridLayout from 'react-grid-layout'
+import Spread from './widgets/Spread'
+import Form from './Form'
+import Log from './widgets/Log'
 
 export default class App extends Component {
   constructor(props) {
@@ -23,18 +24,11 @@ export default class App extends Component {
 
   render() {
     return (
-      <div id="ui-layout-container" style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column"
-      }}>
-        <div className="ui-layout-west" style={{flex: 1}}>
+      <div id="ui-layout-container">
+        <div className="ui-layout-west">
           <h1>Hello World!</h1>
         </div>
-        <div className="ui-layout-center" style={{
-          flex: 1,
-          background: "#595959"
-        }}>
+        <div className="ui-layout-center">
           <ReactGridLayout
             cols={12}
             rowHeight={30}

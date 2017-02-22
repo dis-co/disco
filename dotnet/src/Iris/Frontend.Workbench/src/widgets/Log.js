@@ -31,30 +31,13 @@ export default class Log extends React.Component {
   render() {
     const logs = this.state.logs;
     return (
-      <div className="iris-log" style={{
-        height: "100%",
-        background: "white",
-        display: "flex",
-        flexDirection: "column"
-      }}>
-        <div className="iris-draggable-handle iris-draggable-cursor"
-            style={{
-              margin: 0,
-              padding: 10,
-              background: "#EBEBEB",
-              display: "flex"
-            }}>
+      <div className="iris-log">
+        <div className="iris-draggable-handle">
           <span>LOG</span>
-          <span style={{flex: 1}}></span>
           <span className="iris-close">x</span>
         </div>
-        <div style={{
-          overflowX: "auto",
-          flex: 1
-        }}>
-          {this.state.logs.map((log,i) => <p style={{
-            whiteSpace: "nowrap"
-          }} key={i}>{log}</p>)}
+        <div>
+          {this.state.logs.map((log,i) => <p key={i}>{log}</p>)}
         </div>
       </div>
     )
