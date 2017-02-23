@@ -4,8 +4,7 @@ import css2 from "react-grid-layout/css/styles.css"
 import values from "./values.js"
 import React, { Component } from 'react'
 import ReactGridLayout from 'react-grid-layout'
-import Spread from './widgets/Spread'
-import Form from './Form'
+import PanelLeft from './PanelLeft'
 import Log from './widgets/Log'
 
 export default class App extends Component {
@@ -28,7 +27,7 @@ export default class App extends Component {
     return (
       <div id="ui-layout-container">
         <div className="ui-layout-west">
-          <h1>Hello World!</h1>
+          <PanelLeft />
         </div>
         <div className="ui-layout-center">
           <ReactGridLayout

@@ -1,33 +1,27 @@
 import * as React from "react";
-import css from "./Log.less";
+import css from "../css/PanelLeft.less";
 
+const Square = props => (
+  <div className="iris-panel-left-child">
+    <div>P</div>
+    <div>
+      <p><strong>Project Overview (Big)</strong></p>
+      <p>Cluster Settings</p>
+    </div>
+  </div>
+);
 
-export default class Log extends React.Component {
-  static get layout() {
-    return {
-      x: 0, y: 0,
-      w: 3, h: 6,
-      minW: 1, maxW: 10,
-      minH: 1, maxH: 10
-    };
-  }
-
+export default class PanelLeft extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { logs: initLogs };
   }
 
   render() {
-    const logs = this.state.logs;
     return (
-      <div className="iris-log">
-        <div className="iris-draggable-handle">
-          <span>LOG</span>
-          <span className="iris-close">x</span>
-        </div>
-        <div>
-          {this.state.logs.map((log,i) => <p key={i}>{log}</p>)}
-        </div>
+      <div className="iris-panel-left">
+        <Square />
+        <Square />
+        <Square />
       </div>
     )
   }
