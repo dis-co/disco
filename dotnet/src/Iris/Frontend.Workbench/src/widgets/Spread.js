@@ -1,5 +1,5 @@
 import * as React from "react";
-import css from "./Spread.css"
+import css from "../../css/Spread.css";
 
 const BASE_HEIGHT = 25;
 const ROW_HEIGHT = 17;
@@ -49,7 +49,7 @@ export default class Spread extends React.Component {
         </div>
         <div className="iris-spread-child iris-spread-end" style={{flex: 1, height: height - DIFF_HEIGHT}}>
           <img src="/img/more.png" height="7px"
-            style={{transform: `rotate(${clicked ? "90" : "0"}deg)`}}          
+            style={{transform: `rotate(${clicked ? "90" : "0"}deg)`}}
             onClick={() => {
               this.setState({ clicked: !clicked })
             }} />

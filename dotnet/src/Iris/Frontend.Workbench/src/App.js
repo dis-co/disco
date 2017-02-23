@@ -1,4 +1,7 @@
 import css from "../css/main.less"
+import css2 from "react-grid-layout/css/styles.css"
+
+import values from "./values.js"
 import React, { Component } from 'react'
 import ReactGridLayout from 'react-grid-layout'
 import Spread from './widgets/Spread'
@@ -8,14 +11,13 @@ import Log from './widgets/Log'
 export default class App extends Component {
   constructor(props) {
     super(props);
-    // this.state = { rows: [1,2,3,4,5], value: "W: 1920, H: 1080" };
     this.state = {};
   }
 
   componentDidMount() {
     $('#ui-layout-container')
       .layout({
-        west__size: 150,
+        west__size: values.jqueryLayoutWestSize,
         center__onresize: (name, el, state) => {
           this.setState({centerWidth: state.innerWidth})
         }
@@ -30,9 +32,9 @@ export default class App extends Component {
         </div>
         <div className="ui-layout-center">
           <ReactGridLayout
-            cols={12}
-            rowHeight={30}
-            width={1200}
+            cols={values.gridLayoutColumns}
+            rowHeight={values.gridLayoutRowHeight}
+            width={values.gridLayoutWidth}
             verticalCompact={false}
             draggableHandle=".iris-draggable-handle"
           >
