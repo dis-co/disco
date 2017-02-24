@@ -2,6 +2,7 @@ import React, { Component } from 'react'
 import css from "../css/PanelLeft.less";
 import Log from "./widgets/Log";
 import Manager from "./widgets/Manager";
+import Compound from "./widgets/Compound";
 
 function cardClicked(title, model) {
   switch (title.toUpperCase()) {
@@ -10,6 +11,9 @@ function cardClicked(title, model) {
       break;
     case "MANAGER":
       model.addWidget(Manager);
+      break;
+    case "COMPOUND":
+      model.addWidget(Compound);
       break;
     default:
       alert("Widget " + title + " is not currently supported")
@@ -35,8 +39,8 @@ export default class PanelLeft extends Component {
     return (
       <div className="iris-panel-left">
         <Card key={0} model={this.props.model} letter="L" title="LOG" text="Cluster Settings" />
-        <Card key={1} model={this.props.model} letter="M" title="Manager" text="Cluster Settings" />
-        <Card key={2} model={this.props.model} letter="P" title="Project Overview (Big)" text="Cluster Settings" />
+        <Card key={1} model={this.props.model} letter="C" title="Compound" text="Cluster Settings" />
+        <Card key={2} model={this.props.model} letter="M" title="Manager" text="Cluster Settings" />
         <Card key={3} model={this.props.model} letter="P" title="Project Overview (Small)" text="Cluster Settings" />
         <Card key={4} model={this.props.model} letter="B" title="Branches" text="Cluster Settings" />
         <Card key={5} model={this.props.model} letter="U" title="User Management" text="Cluster Settings" />
@@ -44,6 +48,7 @@ export default class PanelLeft extends Component {
         <Card key={7} model={this.props.model} letter="R" title="Remotter" text="Cluster Settings" />
         <Card key={8} model={this.props.model} letter="S" title="Project Settings" text="Cluster Settings" />
         <Card key={9} model={this.props.model} letter="L" title="Library" text="Graph View" />
+        <Card key={10} model={this.props.model} letter="P" title="Project Overview (Big)" text="Cluster Settings" />
       </div>
     )
   }

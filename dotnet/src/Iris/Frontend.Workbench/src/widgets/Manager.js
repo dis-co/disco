@@ -13,7 +13,7 @@ export default class Manager extends Component {
 
   constructor(props) {
     super(props);
-    this.state = {};
+    this.state = {log: ""};
   }
 
   render() {
@@ -23,7 +23,6 @@ export default class Manager extends Component {
         <div className="iris-draggable-handle">
           <span>MANAGER</span>
           <span className="iris-close" onClick={() => {
-            debugger;
             this.props.model.removeWidget(this.props.id);
           }}>x</span>
         </div>

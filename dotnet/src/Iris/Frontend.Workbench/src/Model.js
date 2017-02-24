@@ -23,14 +23,15 @@ export default class Model {
   }
 
   subscribe(key, subscriber) {
-    if (!this.subscribers.has(key)) {
-      this.subscribers.set(key, new Map());
+    let id = counter++, subscribers = this.subscribers;
+    if (!subscribers.has(key)) {
+      subscribers.set(key, new Map());
     }
-    let id = counter++;
-    this.subscribers.get(key).set(id, subscriber);
+    subscribers.get(key).set(id, subscriber);
+    // `subscribers` must be captured so the closure below works
     return {
       dispose() {
-        this.subscribers.get(key).delete(id);
+        subscribers.get(key).delete(id);
       }
     }
   }

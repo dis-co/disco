@@ -20,6 +20,7 @@ export default class Log extends Component {
   componentDidMount() {
     this.disposable =
       this.props.model.subscribe("logs", logs => {
+        console.log("Updating log ", this.props.id);
         this.setState({ logs });
       });
   }
@@ -37,7 +38,6 @@ export default class Log extends Component {
         <div className="iris-draggable-handle">
           <span>LOG</span>
           <span className="iris-close" onClick={() => {
-            debugger;
             this.props.model.removeWidget(this.props.id);
           }}>x</span>
         </div>

@@ -26,6 +26,14 @@
   transition: 0.1s;
 }
 
+.iris-spread-child.iris-flex-9 {
+  flex: 8
+}
+
+.iris-spread-child.iris-flex-5 {
+  flex: 5
+}
+
 .iris-spread-child:nth-child(1) {
   border-top-left-radius: 13px;
   border-bottom-left-radius: 13px;
