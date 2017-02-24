@@ -1,17 +1,6 @@
 import React, { Component } from 'react'
-import css from "../../css/Log.less";
-
-const initLogs = [
-  "[14:12:11] Do laboris fugiat cillum excepteur Lorem officia.",
-  "[14:12:11] Ullamco voluptate proident veniam adipisicing nisi esse dolore anim eiusmod.",
-  "[14:12:11] Aute nostrud consequat nulla commodo non.",
-  "[14:12:11] Non ad incididunt pariatur ullamco sit labore cupidatat aliqua ex consectetur ad dolore.",
-  "[14:12:11] Duis consectetur deserunt sint minim culpa aliquip.",
-  "[14:12:11] Aute excepteur excepteur quis sint officia incididunt aliquip cillum.",
-  "[14:12:11] Officia officia ad adipisicing non.",
-  "[14:12:11] Sit qui ullamco cillum Lorem sunt minim sit tempor.",
-  "[14:12:11] Laborum officia cillum enim ea sint adipisicing laborum nostrud velit Lorem non commodo dolore.",
-]
+import css from "../../css/Log.less"
+import { map } from "../Util.ts"
 
 export default class Log extends Component {
   static get layout() {
@@ -25,11 +14,24 @@ export default class Log extends Component {
 
   constructor(props) {
     super(props);
-    this.state = { logs: initLogs };
+    this.state = { };
+  }
+
+  componentDidMount() {
+    this.disposable =
+      this.props.model.subscribe("logs", logs => {
+        this.setState({ logs });
+      });
+  }
+
+  componentWillUnmount() {
+    if (this.disposable) {
+      this.disposable.dispose();
+    }
   }
 
   render() {
-    const logs = this.state.logs;
+    const logs = this.state.logs || this.props.model.state.logs;
     return (
       <div className="iris-log">
         <div className="iris-draggable-handle">
@@ -40,7 +42,7 @@ export default class Log extends Component {
           }}>x</span>
         </div>
         <div>
-          {this.state.logs.map((log,i) => <p key={i}>{log}</p>)}
+          {map(logs, kv => <p key={kv[0]}>{kv[1]}</p>)}
         </div>
       </div>
     )

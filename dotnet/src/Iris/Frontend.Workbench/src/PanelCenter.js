@@ -11,9 +11,16 @@ export default class PanelCenter extends Component {
   }
 
   componentDidMount() {
-    this.props.model.subscribe("widgets", widgets => {
-      this.setState({ widgets });
-    })
+    this.disposable =
+      this.props.model.subscribe("widgets", widgets => {
+        this.setState({ widgets });
+      });
+  }
+
+  componentWillUnmount() {
+    if (this.disposable) {
+      this.disposable.dispose();
+    }
   }
 
   renderWidgets() {
