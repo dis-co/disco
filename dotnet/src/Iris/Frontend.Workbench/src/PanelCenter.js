@@ -19,9 +19,9 @@ export default class PanelCenter extends Component {
   renderWidgets() {
     const widgets = this.state.widgets || this.props.model.state.widgets;
     return map(widgets, kv => {
-      const key = kv[0], Widget = kv[1];
-      return (<div key={key} data-grid={Widget.layout}>
-        <Widget key={key} model={this.props.model} />
+      const id = kv[0], Widget = kv[1];
+      return (<div key={id} data-grid={Widget.layout}>
+        <Widget id={id} model={this.props.model} />
       </div>)
     });
   }

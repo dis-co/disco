@@ -22,7 +22,7 @@ export default class Model {
     }
   }
 
-  __notify(key, value) {
+  __notify(key, value = this.state[key]) {
     if (this.subscribers.has(key)) {
       this.subscribers.get(key).forEach(subscriber => subscriber(value));
     }
@@ -34,7 +34,13 @@ export default class Model {
   }
 
   addWidget(widget) {
-    this.__setState("widgets", this.state.widgets.set(counter++, widget));
+    this.state.widgets.set(counter++, widget);
+    this.__notify("widgets");
+  }
+
+  removeWidget(id) {
+    this.state.widgets.delete(id);
+    this.__notify("widgets");
   }
 
   addLog(log) {

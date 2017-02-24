@@ -34,7 +34,10 @@ export default class Log extends Component {
       <div className="iris-log">
         <div className="iris-draggable-handle">
           <span>LOG</span>
-          <span className="iris-close">x</span>
+          <span className="iris-close" onClick={() => {
+            debugger;
+            this.props.model.removeWidget(this.props.id);
+          }}>x</span>
         </div>
         <div>
           {this.state.logs.map((log,i) => <p key={i}>{log}</p>)}
