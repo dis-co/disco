@@ -11,18 +11,18 @@ import PanelCenter from './PanelCenter'
 export default class App extends Component {
   constructor(props) {
     super(props);
-    this.model = new Model((diff, cb) => this.setState(diff, () => cb(this.state)));
-    this.state = this.model.state;
+    this.model = new Model();
   }
 
   componentDidMount() {
-    $('#ui-layout-container')
-      .layout({
-        west__size: values.jqueryLayoutWestSize,
-        center__onresize: (name, el, state) => {
-          this.setState({centerWidth: state.innerWidth})
-        }
-    })
+    this.layout =
+      $('#ui-layout-container')
+        .layout({
+          west__size: values.jqueryLayoutWestSize,
+          center__onresize: (name, el, state) => {
+            this.setState({centerWidth: state.innerWidth})
+          }
+      });
   }
 
   render() {
