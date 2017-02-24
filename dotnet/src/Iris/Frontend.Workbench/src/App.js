@@ -1,16 +1,18 @@
 import css from "../css/main.less"
 import css2 from "react-grid-layout/css/styles.css"
 
-import values from "./values.js"
+import values from "./values"
+import Model from "./Model"
+
 import React, { Component } from 'react'
-import ReactGridLayout from 'react-grid-layout'
 import PanelLeft from './PanelLeft'
-import Log from './widgets/Log'
+import PanelCenter from './PanelCenter'
 
 export default class App extends Component {
   constructor(props) {
     super(props);
-    this.state = {};
+    this.model = new Model((diff, cb) => this.setState(diff, () => cb(this.state)));
+    this.state = this.model.state;
   }
 
   componentDidMount() {
@@ -27,20 +29,10 @@ export default class App extends Component {
     return (
       <div id="ui-layout-container">
         <div className="ui-layout-west">
-          <PanelLeft />
+          <PanelLeft model={this.model} />
         </div>
         <div className="ui-layout-center">
-          <ReactGridLayout
-            cols={values.gridLayoutColumns}
-            rowHeight={values.gridLayoutRowHeight}
-            width={values.gridLayoutWidth}
-            verticalCompact={false}
-            draggableHandle=".iris-draggable-handle"
-          >
-            <div key={0} data-grid={Log.layout}>
-              <Log />
-            </div>
-          </ReactGridLayout>
+          <PanelCenter model={this.model} />
         </div>
       </div>
     );

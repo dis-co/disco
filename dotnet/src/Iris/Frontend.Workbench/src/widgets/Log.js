@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { Component } from 'react'
 import css from "../../css/Log.less";
 
 const initLogs = [
@@ -13,7 +13,7 @@ const initLogs = [
   "[14:12:11] Laborum officia cillum enim ea sint adipisicing laborum nostrud velit Lorem non commodo dolore.",
 ]
 
-export default class Log extends React.Component {
+export default class Log extends Component {
   static get layout() {
     return {
       x: 0, y: 0,
