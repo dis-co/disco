@@ -9,7 +9,7 @@ export default class Tabs extends Component {
 
   componentDidMount() {
     this.disposable =
-      this.props.model.subscribe("tabs", tabs => {
+      this.props.global.subscribe("tabs", tabs => {
         this.setState({ tabs });
       });
   }
@@ -20,36 +20,48 @@ export default class Tabs extends Component {
     }
   }
 
-  renderTabs(tabs) {
+  renderTabs(tabs, selected) {
+    const selectedId = selected != null ? selected[0] : -1;
     return map(tabs, kv => {
-      const id = kv[0], Tab = kv[1];
+      const id = kv[0], tab = kv[1];
+      const className = id === selectedId
+        ? "iris-tab-name iris-selected"
+        : "iris-tab-name";
       return (
-        <div key={id} className="iris-tab-name" onClick={() => {
+        <div key={id} className={className} onClick={() => {
           console.log("tab " + id + " clicked");
-          this.setState({ selectedTab: Tab })
+          this.setState({ selected: kv })
         }}>
-          <span>{Tab.name}</span>
-          {!Tab.isFixed ?
+          <span>{tab.name}</span>
+          {!tab.isFixed ?
             <span className="ui-icon ui-icon-close" onClick={ev => {
               ev.stopPropagation();
-              this.setState({ selectedTab: null });
-              this.props.model.removeTab(id);
+              this.setState({ selected: null });
+              this.props.global.removeTab(id);
             }}></span> : null }
         </div>
       )
     });
   }
 
+  renderBody(selected) {
+    if (selected != null) {
+      const Body = selected[1].view;
+      return <Body global={this.props.global} model={selected[1]} />
+    }
+    return null;
+  }
+
   render() {
-    const tabs = this.state.tabs || this.props.model.state.tabs;
-    const Tab = this.state.selectedTab || head(tabs, kv => kv[1]);
+    const tabs = this.state.tabs || this.props.global.state.tabs;
+    const selected = this.state.selected || head(tabs);
     return (
       <div className="iris-tab-container">
         <div className="iris-tab-name-container">
-          {this.renderTabs(tabs)}
+          {this.renderTabs(tabs, selected)}
         </div>
         <div className="iris-tab-body">
-          {Tab != null ? <Tab model={this.props.model} /> : null}
+          {this.renderBody(selected)}
         </div>
       </div>
     )

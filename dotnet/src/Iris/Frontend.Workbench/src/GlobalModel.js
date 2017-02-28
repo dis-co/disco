@@ -13,7 +13,7 @@ const initLogs = [
 
 let counter = initLogs.length;
 
-export default class Model {
+export default class GlobalModel {
   constructor(dispatch) {
     this.subscribers = new Map();
     this.state = {
@@ -49,8 +49,10 @@ export default class Model {
   }
 
   addWidget(widget) {
-    this.state.widgets.set(counter++, widget);
+    var id = counter++;
+    this.state.widgets.set(id, widget);
     this.__notify("widgets");
+    return id;
   }
 
   removeWidget(id) {
@@ -58,9 +60,14 @@ export default class Model {
     this.__notify("widgets");
   }
 
-  addTab(tab) {
-    this.state.tabs.set(counter++, tab);
+  addTab(id, tab) {
+    if (arguments.length < 2) {
+      tab = id;
+      id = counter++;
+    }
+    this.state.tabs.set(id, tab);
     this.__notify("tabs");
+    return id;
   }
 
   removeTab(id) {

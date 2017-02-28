@@ -20,7 +20,7 @@ export default class Workspace extends Component {
 
   componentDidMount() {
     this.disposable =
-      this.props.model.subscribe("widgets", widgets => {
+      this.props.global.subscribe("widgets", widgets => {
         this.setState({ widgets });
       });
   }
@@ -32,11 +32,13 @@ export default class Workspace extends Component {
   }
 
   renderWidgets() {
-    const widgets = this.state.widgets || this.props.model.state.widgets;
+    const widgets = this.state.widgets || this.props.global.state.widgets;
     return map(widgets, kv => {
-      const id = kv[0], Body = kv[1];
-      return (<div key={id} data-grid={Body.layout}>
-        <Widget id={id} model={this.props.model} body={Body} />
+      const id = kv[0], model = kv[1], View = model.view
+      return (<div key={id} data-grid={model.layout}>
+        <Widget id={id} global={this.props.global} model={model}>
+          <View global={this.props.global} model={model} />
+        </Widget>
       </div>)
     });
   }

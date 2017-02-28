@@ -6,16 +6,19 @@ export default class Widget extends Component {
   }
 
   render() {
-    const Body = this.props.body;
     return (
       <div className="iris-widget">
         <div className="iris-draggable-handle">
-          <span>{Body.name}</span>
+          <span>{this.props.model.name}</span>
+          <span className="ui-icon ui-icon-copy" onClick={() => {
+            this.props.global.addTab(this.props.id, this.props.model);
+            this.props.global.removeWidget(this.props.id);
+          }}></span>
           <span className="ui-icon ui-icon-close" onClick={() => {
-            this.props.model.removeWidget(this.props.id);
+            this.props.global.removeWidget(this.props.id);
           }}></span>
         </div>
-        <Body model={this.props.model} />
+        {this.props.children}
       </div>
     )
   }

@@ -2,7 +2,7 @@ import css from "../css/main.less"
 import css2 from "react-grid-layout/css/styles.css"
 
 import values from "./values"
-import Model from "./Model"
+import GlobalModel from "./GlobalModel"
 
 import React, { Component } from 'react'
 import PanelLeft from './PanelLeft'
@@ -12,8 +12,12 @@ import Workspace from './Workspace'
 export default class App extends Component {
   constructor(props) {
     super(props);
-    this.model = new Model();
-    this.model.addTab(Workspace);
+    this.global = new GlobalModel();
+    this.global.addTab({
+      name: "Workspace",
+      view: Workspace,
+      isFixed: true
+    });
   }
 
   componentDidMount() {
@@ -31,10 +35,10 @@ export default class App extends Component {
     return (
       <div id="ui-layout-container">
         <div className="ui-layout-west">
-          <PanelLeft model={this.model} />
+          <PanelLeft global={this.global} />
         </div>
         <div className="ui-layout-center">
-          <Tabs model={this.model} />
+          <Tabs global={this.global} />
         </div>
       </div>
     );

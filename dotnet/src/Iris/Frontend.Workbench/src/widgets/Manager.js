@@ -1,5 +1,6 @@
 import React, { Component } from 'react'
 import css from "../../css/Manager.less"
+import { getRandomInt } from "../Util.ts"
 
 export default class Manager extends Component {
   static get layout() {
@@ -13,7 +14,7 @@ export default class Manager extends Component {
 
   constructor(props) {
     super(props);
-    this.state = {log: ""};
+    this.state = {log: "", value: getRandomInt(0, 10)};
   }
 
   render() {
@@ -25,6 +26,7 @@ export default class Manager extends Component {
           <input className="iris-button" type="button" value="Add Log" onClick={() => model.addLog(this.state.log)} />
           <input className="iris-button" type="button" value="Remove Log" onClick={() => model.removeLastLog()} />
         </div>
+        <div>{this.state.value}</div>
         {/*<input type="text" name="value" value={this.props.globalState.value}
             onChange={ev => this.props.setGlobalState({value: ev.target.value})} />
         <input type="button" value="Add Row"

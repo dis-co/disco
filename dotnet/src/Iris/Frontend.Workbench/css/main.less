@@ -44,7 +44,6 @@ footer {
   flex: 1;
 
   .ui-layout-center {
-    background: @background-grey;
     padding: 0;
     display: flex !important;
     flex-direction: column;
@@ -62,27 +61,46 @@ footer {
   margin: 0;
   padding: 0;
 
-  .iris-tab-name {
-    height: 15px;
-    display: inline-block;
-    padding: 10px;
-    margin: 0;
-    background: @iris-grey;
-    cursor: pointer;
+  .iris-tab-name-container {
+    background:#989898;
+
+    .iris-tab-name {
+      height: 15px;
+      display: inline-block;
+      border: 1px solid black;
+      padding: 8px 10px;
+      margin: 1px;
+      background: @iris-grey;
+      cursor: pointer;
+
+      &:hover {
+        border: 2px solid blue;
+        padding: 7px 9px;
+        margin: 0;
+      }
+
+      &.iris-selected {
+        border: 2px solid green;
+        padding: 7px 9px;
+        margin: 0;
+      }
+    }
   }
 
   .iris-tab-body {
     flex: 1;
     display: flex;
     flex-direction: column;
+    background: white;
   }
 }
 
 .iris-workspace {
   flex: 1;
+  background: @background-grey;
 }
 
-.ui-icon-close {
+.ui-icon-close, .ui-icon-copy {
   cursor: pointer;
 }
 
