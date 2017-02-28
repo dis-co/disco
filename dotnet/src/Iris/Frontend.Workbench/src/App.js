@@ -6,12 +6,14 @@ import Model from "./Model"
 
 import React, { Component } from 'react'
 import PanelLeft from './PanelLeft'
-import PanelCenter from './PanelCenter'
+import Tabs from './Tabs'
+import Workspace from './Workspace'
 
 export default class App extends Component {
   constructor(props) {
     super(props);
     this.model = new Model();
+    this.model.addTab(Workspace);
   }
 
   componentDidMount() {
@@ -32,7 +34,7 @@ export default class App extends Component {
           <PanelLeft model={this.model} />
         </div>
         <div className="ui-layout-center">
-          <PanelCenter model={this.model} />
+          <Tabs model={this.model} />
         </div>
       </div>
     );

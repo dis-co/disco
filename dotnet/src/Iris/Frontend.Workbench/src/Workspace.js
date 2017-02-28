@@ -2,10 +2,17 @@ import values from "./values.js"
 import { map } from "./Util.ts"
 import React, { Component } from 'react'
 import ReactGridLayout from 'react-grid-layout'
-// import css from "../css/PanelCenter.less";
 import Widget from "./widgets/Widget"
 
-export default class PanelCenter extends Component {
+export default class Workspace extends Component {
+  static get isFixed() {
+    return true;
+  }
+
+  static get name() {
+    return "Workspace";
+  }
+
   constructor(props) {
     super(props);
     this.state = {};
@@ -36,7 +43,7 @@ export default class PanelCenter extends Component {
 
   render() {
     return (
-      <ReactGridLayout
+      <ReactGridLayout className="iris-workspace"
         cols={values.gridLayoutColumns}
         rowHeight={values.gridLayoutRowHeight}
         width={values.gridLayoutWidth}

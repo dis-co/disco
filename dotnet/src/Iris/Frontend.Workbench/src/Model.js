@@ -17,6 +17,7 @@ export default class Model {
   constructor(dispatch) {
     this.subscribers = new Map();
     this.state = {
+      tabs: new Map(),
       widgets: new Map(),
       logs: initLogs
     };
@@ -55,6 +56,16 @@ export default class Model {
   removeWidget(id) {
     this.state.widgets.delete(id);
     this.__notify("widgets");
+  }
+
+  addTab(tab) {
+    this.state.tabs.set(counter++, tab);
+    this.__notify("tabs");
+  }
+
+  removeTab(id) {
+    this.state.tabs.delete(id);
+    this.__notify("tabs");
   }
 
   addLog(log) {

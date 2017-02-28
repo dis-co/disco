@@ -11,7 +11,7 @@ export default class Widget extends Component {
       <div className="iris-widget">
         <div className="iris-draggable-handle">
           <span>{Body.name}</span>
-          <span className="iris-close ui-icon ui-icon-close" onClick={() => {
+          <span className="ui-icon ui-icon-close" onClick={() => {
             this.props.model.removeWidget(this.props.id);
           }}></span>
         </div>
