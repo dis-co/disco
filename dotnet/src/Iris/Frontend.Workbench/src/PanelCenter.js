@@ -3,6 +3,7 @@ import { map } from "./Util.ts"
 import React, { Component } from 'react'
 import ReactGridLayout from 'react-grid-layout'
 // import css from "../css/PanelCenter.less";
+import Widget from "./widgets/Widget"
 
 export default class PanelCenter extends Component {
   constructor(props) {
@@ -26,9 +27,9 @@ export default class PanelCenter extends Component {
   renderWidgets() {
     const widgets = this.state.widgets || this.props.model.state.widgets;
     return map(widgets, kv => {
-      const id = kv[0], Widget = kv[1];
-      return (<div key={id} data-grid={Widget.layout}>
-        <Widget id={id} model={this.props.model} />
+      const id = kv[0], Body = kv[1];
+      return (<div key={id} data-grid={Body.layout}>
+        <Widget id={id} model={this.props.model} body={Body} />
       </div>)
     });
   }

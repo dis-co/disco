@@ -1,33 +1,6 @@
 @import "values";
 
 .iris-log {
-  height: 100%;
-  background: white;
-  display: flex;
-  flex-direction: column;
-
-  & > :first-child {
-    margin: 0;
-    padding: 10px;
-    background: @iris-grey;
-    display: flex;
-
-    // Expand the first child to push
-    // the close icon to the side
-    & > :first-child {
-      flex: 1;
-    }
-
-    .iris-close {
-      cursor: pointer;
-    }
-  }
-
-  & > :last-child {
-    overflow-x: auto;
-    flex: 1;
-  }
-
   p {
     white-space: nowrap;
     margin-top: 3px;

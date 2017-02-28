@@ -1,8 +1,11 @@
 import React, { Component } from 'react'
-import css from "../../css/Compound.less"
 import Spread from "./Spread"
 
 export default class Compound extends Component {
+  static get name() {
+    return "COMPOUND";
+  }
+
   static get layout() {
     return {
       x: 0, y: 0,
@@ -19,16 +22,8 @@ export default class Compound extends Component {
   render() {
     return (
       <div className="iris-compound">
-        <div className="iris-draggable-handle">
-          <span>COMPOUND</span>
-          <span className="iris-close" onClick={() => {
-            this.props.model.removeWidget(this.props.id);
-          }}>x</span>
-        </div>
-        <div>
-          <Spread model={this.props.model} />
-          <Spread model={this.props.model} />
-        </div>
+        <Spread model={this.props.model} />
+        <Spread model={this.props.model} />
       </div>
     )
   }

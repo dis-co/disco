@@ -3,6 +3,10 @@ import css from "../../css/Log.less"
 import { map } from "../Util.ts"
 
 export default class Log extends Component {
+  static get name() {
+    return "LOG";
+  }
+
   static get layout() {
     return {
       x: 0, y: 0,
@@ -28,6 +32,7 @@ export default class Log extends Component {
   componentWillUnmount() {
     if (this.disposable) {
       this.disposable.dispose();
+      console.log("Log disposed");
     }
   }
 
@@ -35,15 +40,7 @@ export default class Log extends Component {
     const logs = this.state.logs || this.props.model.state.logs;
     return (
       <div className="iris-log">
-        <div className="iris-draggable-handle">
-          <span>LOG</span>
-          <span className="iris-close" onClick={() => {
-            this.props.model.removeWidget(this.props.id);
-          }}>x</span>
-        </div>
-        <div>
-          {map(logs, kv => <p key={kv[0]}>{kv[1]}</p>)}
-        </div>
+        {map(logs, kv => <p key={kv[0]}>{kv[1]}</p>)}
       </div>
     )
   }

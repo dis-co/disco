@@ -10,7 +10,7 @@ html, body {
   font-family:'ArialMT', 'Arial';
   font-weight:400;
   font-style: normal;
-  font-size:9px;
+  font-size:11px;
 }
 
 header {
@@ -52,14 +52,41 @@ footer {
   }
 }
 
+.iris-widget {
+  height: 100%;
+  background: white;
+  display: flex;
+  flex-direction: column;
+
+  .iris-draggable-handle {
+    cursor: move;
+    margin: 0;
+    padding: 10px;
+    background: @iris-grey;
+    display: flex;
+
+    // Expand the first child to push
+    // the icons to the side
+    & > :first-child {
+      flex: 1;
+    }
+
+    .iris-close {
+      cursor: pointer;
+    }
+  }
+
+  & > :nth-child(2) {
+    overflow-x: auto;
+    flex: 1;
+  }
+
+}
+
 // .selected {
 //   border: 1px solid #f0f;
 //   border-radius: 14px;
 // }
-
-.iris-draggable-handle {
-  cursor: move;
-}
 
 .iris-tooltip {
   height: 100px;
