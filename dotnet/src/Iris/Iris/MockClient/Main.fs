@@ -70,7 +70,10 @@ addpin := ""addpin"" type attr
     | _ -> None
 
   let private restOf (attr: string) (str: string) =
-    str.Substring(attr.Length + 1, str.Length - attr.Length - 1)
+    if attr = str then
+      ""
+    else
+      str.Substring(attr.Length + 1, str.Length - attr.Length - 1)
 
   let private parseAttr (attr: string) (str: string) =
     match str.StartsWith(attr) with
@@ -269,14 +272,39 @@ addpin := ""addpin"" type attr
     while run do
       Console.Write(PS1)
       match Console.ReadLine() with
+      //  _____      _ _
+      // | ____|_  _(_) |_
+      // |  _| \ \/ / | __|
+      // | |___ >  <| | |_
+      // |_____/_/\_\_|\__|
+
       | Exit _ ->
         printfn "Bye."
         run <- false
 
+      //  _   _      _
+      // | | | | ___| |_ __
+      // | |_| |/ _ \ | '_ \
+      // |  _  |  __/ | |_) |
+      // |_| |_|\___|_| .__/
+      //              |_|
+
       | Help txt -> printfn "%s" txt
+
+      //     _       _     _
+      //    / \   __| | __| |
+      //   / _ \ / _` |/ _` |
+      //  / ___ \ (_| | (_| |
+      // /_/   \_\__,_|\__,_|
 
       | AddPin pin ->
         pins <- Map.add pin.Id pin pins
+
+      //   ____      _
+      //  / ___| ___| |_
+      // | |  _ / _ \ __|
+      // | |_| |  __/ |_
+      //  \____|\___|\__|
 
       | Get id ->
         Map.iter
@@ -285,10 +313,23 @@ addpin := ""addpin"" type attr
               printfn "%A" pin)
           pins
 
+      //  _   _           _       _
+      // | | | |_ __   __| | __ _| |_ ___
+      // | | | | '_ \ / _` |/ _` | __/ _ \
+      // | |_| | |_) | (_| | (_| | ||  __/
+      //  \___/| .__/ \__,_|\__,_|\__\___|
+      //       |_|
+
       | Update rest ->
         let id, rest = parseUpdate rest
 
         match rest with
+        // __     __    _
+        // \ \   / /_ _| |_   _  ___
+        //  \ \ / / _` | | | | |/ _ \
+        //   \ V / (_| | | |_| |  __/
+        //    \_/ \__,_|_|\__,_|\___|
+
         | Value value ->
           match Map.tryFind (Id (id.Trim())) pins with
           | Some (StringPin data) ->
@@ -344,6 +385,13 @@ addpin := ""addpin"" type attr
 
           | _ -> printfn "could not find pin with id %A" id
 
+        //  ____                            _
+        // |  _ \ _ __ ___  _ __   ___ _ __| |_ _   _
+        // | |_) | '__/ _ \| '_ \ / _ \ '__| __| | | |
+        // |  __/| | | (_) | |_) |  __/ |  | |_| |_| |
+        // |_|   |_|  \___/| .__/ \___|_|   \__|\__, |
+        //                 |_|                  |___/
+
         | Properties value ->
           match Map.tryFind (Id (id.Trim())) pins with
           | Some (EnumPin data) ->
@@ -352,6 +400,21 @@ addpin := ""addpin"" type attr
             pins <- Map.add updated.Id updated pins
           | _ -> ()
         | other -> printfn "error: unknown subcommand %A" other
+
+      //  ____
+      // |  _ \ ___ _ __ ___   _____   _____
+      // | |_) / _ \ '_ ` _ \ / _ \ \ / / _ \
+      // |  _ <  __/ | | | | | (_) \ V /  __/
+      // |_| \_\___|_| |_| |_|\___/ \_/ \___|
+
+      | Remove id ->
+        pins <- Map.remove (Id (id.Trim())) pins
+
+      //  _     _     _
+      // | |   (_)___| |_
+      // | |   | / __| __|
+      // | |___| \__ \ |_
+      // |_____|_|___/\__|
 
       | ListPins -> listPins pins
 
