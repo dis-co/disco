@@ -31,6 +31,12 @@ serialization:
 zeroconf:
 	${BUILD} BuildDebugZeroconf
 
+client:
+	${BUILD} BuildMockClient
+
+run.client:
+	@nix-shell shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunMockClient"
+
 #   __                 _                 _
 #  / _|_ __ ___  _ __ | |_ ___ _ __   __| |
 # | |_| '__/ _ \| '_ \| __/ _ \ '_ \ / _` |

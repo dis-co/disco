@@ -510,6 +510,17 @@ Target "BuildDebugNodes" (buildDebug "Projects/Nodes/Nodes.fsproj")
 
 Target "BuildReleaseNodes" (buildRelease "Projects/Nodes/Nodes.fsproj")
 
+Target "BuildMockClient" (buildDebug "Projects/MockClient/MockClient.fsproj")
+
+Target "RunMockClient"
+  (fun _ ->
+    let testsDir = baseDir @@ "bin" @@ "Debug" @@ "MockClient"
+    if isUnix then
+      runMono "client.exe" testsDir
+    else
+      runTestsOnWindows "client.exe" testsDir)
+
+
 //  _____         _
 // |_   _|__  ___| |_ ___
 //   | |/ _ \/ __| __/ __|
@@ -654,12 +665,19 @@ Target "Release" DoNothing
 "GenerateSerialization"
 ==> "BuildReleaseNodes"
 
+"GenerateSerialization"
+==> "BuildMockClient"
+
 // Zeroconf
+
 "BuildReleaseZeroconf"
 ==> "BuildReleaseService"
 
 "BuildReleaseZeroconf"
 ==> "BuildReleaseCore"
+
+"BuildReleaseZeroconf"
+==> "BuildMockClient"
 
 // Tests
 
