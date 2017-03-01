@@ -48,8 +48,11 @@ export default class GlobalModel {
     this.__notify(key, value);
   }
 
-  addWidget(widget) {
-    var id = counter++;
+  addWidget(id, widget) {
+    if (widget === void 0) {
+      widget = id;
+      id = counter++;
+    }
     this.state.widgets.set(id, widget);
     this.__notify("widgets");
     return id;
@@ -61,7 +64,7 @@ export default class GlobalModel {
   }
 
   addTab(id, tab) {
-    if (arguments.length < 2) {
+    if (tab === void 0) {
       tab = id;
       id = counter++;
     }

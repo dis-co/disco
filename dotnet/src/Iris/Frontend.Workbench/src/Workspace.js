@@ -21,7 +21,7 @@ export default class Workspace extends Component {
   componentDidMount() {
     this.disposable =
       this.props.global.subscribe("widgets", widgets => {
-        this.setState({ widgets });
+        this.setState({ widgets: new Map(widgets) });
       });
   }
 

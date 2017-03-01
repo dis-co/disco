@@ -20,6 +20,18 @@ export function head<T,U>(iterable: Iterable<T>, projection?: (x:T)=>U) {
   return null;
 }
 
+export function last<T,U>(iterable: Iterable<T>, projection?: (x:T)=>U) {
+  if (iterable != null) {
+    let iter = iterable[Symbol.iterator](), cur = iter.next(), last = null;
+    while (!cur.done) {
+      last = cur.value;
+      cur = iter.next();
+    }
+    return  projection ? projection(last) : last;
+  }
+  return null;
+}
+
 export function getRandomInt(min: number, max: number) {
   min = Math.ceil(min);
   max = Math.floor(max);

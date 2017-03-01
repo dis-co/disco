@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { map, head } from "./Util.ts"
+import { map, head, last } from "./Util.ts"
 
 export default class Tabs extends Component {
   constructor(props) {
@@ -10,7 +10,13 @@ export default class Tabs extends Component {
   componentDidMount() {
     this.disposable =
       this.props.global.subscribe("tabs", tabs => {
-        this.setState({ tabs });
+        debugger;
+        let selected = null;
+        // Tab added, select it
+        if (this.state.tabs == null || this.state.tabs.size < tabs.size) {
+          selected = last(tabs);
+        }
+        this.setState({ tabs: new Map(tabs), selected });
       });
   }
 
@@ -27,18 +33,28 @@ export default class Tabs extends Component {
       const className = id === selectedId
         ? "iris-tab-name iris-selected"
         : "iris-tab-name";
+
+      let spans = [<span key={0}>{tab.name}</span>];
+      if (!tab.isFixed) {
+        spans.push(
+          <span key={1} className="ui-icon ui-icon-copy" onClick={ev => {
+            ev.stopPropagation();
+            this.props.global.addWidget(id, tab);
+            this.props.global.removeTab(id);
+          }}></span>,
+          <span key={2} className="ui-icon ui-icon-close" onClick={ev => {
+            ev.stopPropagation();
+            this.props.global.removeTab(id);
+          }}></span>
+        )
+      }
+
       return (
         <div key={id} className={className} onClick={() => {
           console.log("tab " + id + " clicked");
           this.setState({ selected: kv })
         }}>
-          <span>{tab.name}</span>
-          {!tab.isFixed ?
-            <span className="ui-icon ui-icon-close" onClick={ev => {
-              ev.stopPropagation();
-              this.setState({ selected: null });
-              this.props.global.removeTab(id);
-            }}></span> : null }
+          {spans}
         </div>
       )
     });
