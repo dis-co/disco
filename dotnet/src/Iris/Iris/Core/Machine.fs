@@ -34,6 +34,10 @@ type IrisMachine =
     WorkSpace : FilePath
     WebIP     : string
     WebPort   : uint16
+    RaftPort  : uint16
+    WsPort    : uint16
+    GitPort   : uint16
+    ApiPort   : uint16
     Version   : Version }
 
   override self.ToString() =
@@ -71,6 +75,10 @@ module MachineConfig =
     [<DefaultValue>] val mutable WorkSpace : string
     [<DefaultValue>] val mutable WebIP     : string
     [<DefaultValue>] val mutable WebPort   : uint16
+    [<DefaultValue>] val mutable RaftPort  : uint16
+    [<DefaultValue>] val mutable WsPort    : uint16
+    [<DefaultValue>] val mutable GitPort   : uint16
+    [<DefaultValue>] val mutable ApiPort   : uint16
     [<DefaultValue>] val mutable Version   : string
 
     static member Create (cfg: IrisMachine) =
@@ -79,6 +87,10 @@ module MachineConfig =
       yml.WorkSpace <- cfg.WorkSpace
       yml.WebIP     <- cfg.WebIP
       yml.WebPort   <- cfg.WebPort
+      yml.RaftPort  <- cfg.RaftPort
+      yml.WsPort    <- cfg.WsPort  
+      yml.GitPort   <- cfg.GitPort 
+      yml.ApiPort   <- cfg.ApiPort 
       yml.Version   <- cfg.Version.ToString()
       yml
 
@@ -91,6 +103,10 @@ module MachineConfig =
       WorkSpace = yml.WorkSpace
       WebIP     = yml.WebIP
       WebPort   = yml.WebPort
+      RaftPort  = yml.RaftPort
+      WsPort    = yml.WsPort  
+      GitPort   = yml.GitPort 
+      ApiPort   = yml.ApiPort 
       Version   = Version.Parse yml.Version }
     |> Either.succeed
 
@@ -123,6 +139,10 @@ module MachineConfig =
       WorkSpace = workspace
       WebIP     = Constants.DEFAULT_IP
       WebPort   = Constants.DEFAULT_WEB_PORT
+      RaftPort  = Constants.DEFAULT_RAFT_PORT
+      WsPort    = Constants.DEFAULT_WEB_SOCKET_PORT
+      GitPort   = Constants.DEFAULT_GIT_PORT
+      ApiPort   = Constants.DEFAULT_API_PORT
       Version   = Assembly.GetExecutingAssembly().GetName().Version }
 
   // ** save

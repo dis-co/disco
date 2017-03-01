@@ -20,6 +20,7 @@ module CommandLine =
   open System.Collections.Generic
   open System.Text.RegularExpressions
   open Http
+  open Iris.Core.Discovery
 
   // ** Command Line Argument Parser
 
@@ -262,23 +263,6 @@ module CommandLine =
     System.AppDomain.CurrentDomain.ProcessExit.Add (fun _ -> dispose context)
     System.AppDomain.CurrentDomain.DomainUnload.Add (fun _ -> dispose context)
 
-  // ** startDiscoveryService
-
-  let startDiscoveryService (machine: IrisMachine) (irisService: IIrisServer) =
-    match DiscoveryService.create machine with
-    | Right discovery ->
-      let _ = discovery.Subscribe(printfn "%A")
-      match discovery.Start() with
-      | Right () ->
-        discovery.Register ServiceType.Http machine.WebPort (IPv4Address "0.0.0.0")
-        |> ignore
-      | Left error ->
-        string error
-        |> Logger.err machine.MachineId "CommandLine.startService"
-    | Left error ->
-      string error
-      |> Logger.err machine.MachineId "CommandLine.startService"
-
   // ** startService
 
   //  ____  _             _
@@ -290,16 +274,15 @@ module CommandLine =
   let startService (projectDir: FilePath option) : Either<IrisError, unit> =
     either {
       let agentRef = ref None
+      let post = CommandActions.postCommand agentRef
       let machine = MachineConfig.get()
 
       use _ = Logger.subscribe Logger.stdout
 
-      let! irisService = IrisService.create machine
+      let! irisService = IrisService.create machine post
 
-      let! httpServer = HttpServer.create machine (CommandActions.postCommand agentRef)
+      let! httpServer = HttpServer.create machine post
       do! httpServer.Start()
-
-      startDiscoveryService machine irisService
 
       agentRef := CommandActions.startAgent machine irisService |> Some
 

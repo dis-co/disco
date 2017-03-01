@@ -8,10 +8,15 @@ open Iris.Core.Commands
 open Iris.Core.FileSystem
 open Iris.Service.Interfaces
 open Iris.Service.Persistence
+open System.Collections.Concurrent
 
 type private Channel = AsyncReplyChannel<Either<IrisError,string>>
 
 let private tag s = "Iris.Service.Commands." + s
+
+let private serializeJson =
+    let converter = Fable.JsonConverter()
+    fun (o: obj) -> Newtonsoft.Json.JsonConvert.SerializeObject(o, converter)
 
 let getWsport (iris: IIrisServer): Either<IrisError,string> =
     match iris.Config with
@@ -103,7 +108,12 @@ let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
     return "ok"
   }
 
-let startAgent (cfg: IrisMachine) (iris: IIrisServer) = MailboxProcessor<Command*Channel>.Start(fun agent ->
+let registeredServices = ConcurrentDictionary<string, IDisposable>()
+
+let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
+  let fail cmd msg =
+    IrisError.Other (tag cmd, msg) |> Either.fail
+  MailboxProcessor<Command*Channel>.Start(fun agent ->
     let rec loop() = async {
       let! input, replyChannel = agent.Receive()
       let res =

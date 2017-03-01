@@ -32,6 +32,7 @@ open Mono.Zeroconf
 
 [<AutoOpen>]
 module Discovery =
+  open Iris.Core.Discovery
 
   // ** tag
 
@@ -135,6 +136,7 @@ module Discovery =
 
   let private serviceName (id: Id) (tipe: ServiceType) =
     match tipe with
+    | ServiceType.Iris      -> sprintf "Iris Service [%s]" (string id)
     | ServiceType.Git       -> sprintf "Git Service [%s]" (string id)
     | ServiceType.Raft      -> sprintf "SRaft Service [%s]" (string id)
     | ServiceType.Http      -> sprintf "Http Service [%s]" (string id)
@@ -223,6 +225,12 @@ module Discovery =
       let! machine = parseMachine service.TxtRecord
       let! tipe = parseServiceType service.TxtRecord
 
+      let metadata =
+        service.TxtRecord
+        |> Seq.cast<TxtRecordItem>
+        |> Seq.map (fun i -> i.Key, i.ValueString)
+        |> Map
+
       return
         { Id = id
           Protocol = proto
@@ -234,7 +242,8 @@ module Discovery =
           HostName = if isNull entry then "" else entry.HostName
           HostTarget = service.HostTarget
           Aliases = if isNull entry then [| |] else entry.Aliases
-          AddressList = addresses }
+          AddressList = addresses
+          Metadata = metadata }
     }
 
   // ** mergeDiscovered
@@ -306,6 +315,8 @@ module Discovery =
 
       record.Add("type", string disco.Type)
       record.Add("machine", string config.MachineId)
+      for KeyValue(k, v) in disco.Metadata do
+        record.Add(k, v)
 
       service.TxtRecord <- record
       let handler = new RegisterServiceEventHandler(serviceRegistered subs agent disco)
@@ -531,80 +542,74 @@ module Discovery =
   module DiscoveryService =
 
     let create (config: IrisMachine) =
-      try
-        let source = new CancellationTokenSource()
-        let subscriptions = new Subscriptions()
-        let listener = createListener subscriptions
-        let agent = DiscoveryAgent.Start(loop Idle subscriptions config, source.Token)
+      let source = new CancellationTokenSource()
+      let subscriptions = new Subscriptions()
+      let listener = createListener subscriptions
+      let agent = DiscoveryAgent.Start(loop Idle subscriptions config, source.Token)
 
-        Either.succeed
-          { new IDiscoveryService with
-              member self.Start() =
-                match postCommand agent (fun chan -> Msg.Start chan) with
-                | Right Reply.Ok -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected reply type from DiscoveryAgent: %A" other
-                  |> Error.asOther (tag "Start")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+      { new IDiscoveryService with
+          member self.Start() =
+            match postCommand agent (fun chan -> Msg.Start chan) with
+            | Right Reply.Ok -> Either.succeed ()
+            | Right other ->
+              sprintf "Unexpected reply type from DiscoveryAgent: %A" other
+              |> Error.asOther (tag "Start")
+              |> Either.fail
+            | Left error ->
+              error
+              |> Either.fail
 
-              member self.Services
-                with get () =
-                  match postCommand agent (fun chan -> Msg.Services chan) with
-                  | Right (Reply.Services (reg,res)) -> Either.succeed (reg,res)
-                  | Right other ->
-                    sprintf "Unexpected reply type from DiscoveryAgent: %A" other
-                    |> Error.asOther (tag "Start")
-                    |> Either.fail
-                  | Left error ->
-                    error
-                    |> Either.fail
+          member self.Services
+            with get () =
+              match postCommand agent (fun chan -> Msg.Services chan) with
+              | Right (Reply.Services (reg,res)) -> Either.succeed (reg,res)
+              | Right other ->
+                sprintf "Unexpected reply type from DiscoveryAgent: %A" other
+                |> Error.asOther (tag "Start")
+                |> Either.fail
+              | Left error ->
+                error
+                |> Either.fail
 
-              member self.Subscribe (callback: DiscoveryEvent -> unit) =
-                { new IObserver<DiscoveryEvent> with
-                    member self.OnCompleted() = ()
-                    member self.OnError(error) = ()
-                    member self.OnNext(value) = callback value }
-                |> listener.Subscribe
+          member self.Subscribe (callback: DiscoveryEvent -> unit) =
+            { new IObserver<DiscoveryEvent> with
+                member self.OnCompleted() = ()
+                member self.OnError(error) = ()
+                member self.OnNext(value) = callback value }
+            |> listener.Subscribe
 
-              member self.Register (tipe: ServiceType) (port: Port) (addr: IpAddress) =
-                let id = createId config.MachineId port tipe addr
+          member self.Register (tipe: ServiceType) (port: Port) (addr: IpAddress) (metadata: Map<string, string>) =
+            let id = createId config.MachineId port tipe addr
 
-                let service =
-                  { Id = id
-                    Port = port
-                    Name = serviceName id tipe
-                    Type = tipe
-                    IpAddress = addr }
+            let service =
+              { Id = id
+                Port = port
+                Name = serviceName id tipe
+                Type = tipe
+                IpAddress = addr
+                Metadata = metadata }
 
-                match postCommand agent (fun chan -> Msg.Register(chan, service)) with
-                | Right Reply.Ok ->
-                  { new IDisposable with
-                      member self.Dispose () =
-                        postCommand agent (fun chan -> Msg.UnRegister(chan, service))
-                        |> ignore }
-                  |> Either.succeed
-                | Right other ->
-                  sprintf "Unexpected reply type from DiscoveryAgent: %A" other
-                  |> Error.asOther (tag "Register")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+            match postCommand agent (fun chan -> Msg.Register(chan, service)) with
+            | Right Reply.Ok ->
+              { new IDisposable with
+                  member self.Dispose () =
+                    postCommand agent (fun chan -> Msg.UnRegister(chan, service))
+                    |> ignore }
+              |> Either.succeed
+            | Right other ->
+              sprintf "Unexpected reply type from DiscoveryAgent: %A" other
+              |> Error.asOther (tag "Register")
+              |> Either.fail
+            | Left error ->
+              error
+              |> Either.fail
 
-              member self.Dispose() =
-                lock subscriptions <| fun _ ->
-                  subscriptions.Clear()
+          member self.Dispose() =
+            lock subscriptions <| fun _ ->
+              subscriptions.Clear()
 
-                postCommand agent (fun chan -> Msg.Stop chan)
-                |> ignore
+            postCommand agent (fun chan -> Msg.Stop chan)
+            |> ignore
 
-                dispose agent
-            }
-      with
-        | exn ->
-          sprintf "Exception starting the DiscoveryService: %s" exn.Message
-          |> Error.asOther (tag "create")
-          |> Either.fail
+            dispose agent
+        }

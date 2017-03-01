@@ -5,62 +5,11 @@ module Iris.Service.Interfaces
 open System
 open System.Collections.Concurrent
 open Iris.Core
+open Iris.Core.Discovery
 open Iris.Raft
 open Iris.Client
 open Iris.Zmq
 open Mono.Zeroconf
-
-// * ServiceType
-
-[<RequireQualifiedAccess>]
-type ServiceType =
-  | Git
-  | Raft
-  | Http
-  | WebSocket
-  | Other of string
-
-  override self.ToString() =
-    match self with
-    | Git       -> "git"
-    | Raft      -> "raft"
-    | Http      -> "http"
-    | WebSocket -> "ws"
-    | Other str -> str
-
-// * DiscoverableService
-
-type DiscoverableService =
-  { Id: Id
-    Port: Port
-    Name: string
-    Type: ServiceType
-    IpAddress: IpAddress }
-
-// * DiscoveredService
-
-type DiscoveredService =
-  { Id: Id
-    Machine: Id
-    Port: Port
-    Name: string
-    FullName: string
-    Type: ServiceType
-    HostName: string
-    HostTarget: string
-    Aliases: string array
-    Protocol: IPProtocol
-    AddressList: IpAddress array }
-
-// * DiscoveryEvent
-
-type DiscoveryEvent =
-  | Registering  of DiscoverableService
-  | UnRegistered of DiscoverableService
-  | Registered   of DiscoverableService
-  | Appeared     of DiscoveredService
-  | Updated      of DiscoveredService
-  | Vanished     of DiscoveredService
 
 // * IDiscoveryService
 
@@ -69,7 +18,7 @@ type IDiscoveryService =
   abstract Services: Either<IrisError,Map<Id,RegisterService> * Map<Id,DiscoveredService>>
   abstract Subscribe: (DiscoveryEvent -> unit) -> IDisposable
   abstract Start: unit -> Either<IrisError,unit>
-  abstract Register: tipe:ServiceType -> port:Port -> addr:IpAddress -> Either<IrisError,IDisposable>
+  abstract Register: tipe:ServiceType -> port:Port -> addr:IpAddress -> metadata:Map<string,string> -> Either<IrisError,IDisposable>
 
 // * GitEvent
 

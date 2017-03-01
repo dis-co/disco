@@ -24,6 +24,21 @@ table IrisClientFB {
      IpAddress: string;
 }
 
+table DiscoveredServiceFB {
+     Id: string;
+     Machine: string;
+     Port: ushort;
+     Name: string;
+     FullName: string;
+     Type: string;
+     HostName: string;
+     HostTarget: string;
+     Aliases: [string];
+     Protocol: string;
+     AddressList: [string];
+     Metadata: [string];
+}
+
 //  ____  _        _             _____ ____
 // / ___|| |_ _ __(_)_ __   __ _|  ___| __ )
 // \___ \| __| '__| | '_ \ / _` | |_  |  _ \
@@ -532,6 +547,7 @@ table StateFB {
       Sessions: [SessionFB];
       Users:    [UserFB];
       Clients:  [IrisClientFB];
+      DiscoveredServices: [DiscoveredServiceFB];
 }
 
 //  _____
@@ -578,7 +594,8 @@ union StateMachinePayloadFB {
       StringFB,
       StateFB,
       SlicesFB,
-      ProjectFB
+      ProjectFB,
+      DiscoveredServiceFB
 }
 
 enum StateMachineActionFB:ushort {

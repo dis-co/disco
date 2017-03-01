@@ -4,6 +4,7 @@ module Iris.Core.Commands
 
 open System
 open Iris.Core
+open Iris.Core.Discovery
 
 // * Commands
 

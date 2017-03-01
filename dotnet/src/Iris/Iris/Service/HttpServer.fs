@@ -25,8 +25,9 @@ module Http =
   let private tag (str: string) = "HttpServer." + str
 
   module private Actions =
-    let deserializeJson<'T> json =
-      Newtonsoft.Json.JsonConvert.DeserializeObject<'T>(json, Fable.JsonConverter())
+    let deserializeJson<'T> =
+      let converter = Fable.JsonConverter()
+      fun json -> Newtonsoft.Json.JsonConvert.DeserializeObject<'T>(json, converter)
 
     let getString rawForm =
       System.Text.Encoding.UTF8.GetString(rawForm)
