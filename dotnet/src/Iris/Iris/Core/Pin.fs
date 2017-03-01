@@ -376,6 +376,21 @@ type Pin =
       | ColorPin    data -> data.Name
       | CompoundPin data -> data.Name
 
+  // ** Type
+
+  member self.Type
+    with get () =
+      match self with
+      | StringPin   _ -> "StringPin"
+      | IntPin      _ -> "IntPin"
+      | FloatPin    _ -> "FloatPin"
+      | DoublePin   _ -> "DoublePin"
+      | BoolPin     _ -> "BoolPin"
+      | BytePin     _ -> "BytePin"
+      | EnumPin     _ -> "EnumPin"
+      | ColorPin    _ -> "ColorPin"
+      | CompoundPin _ -> "CompoundPin"
+
   // ** SetName
 
   member self.SetName name =
