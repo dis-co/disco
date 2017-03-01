@@ -2,19 +2,10 @@ import React, { Component } from 'react'
 import css from "../../css/Manager.less"
 import { getRandomInt } from "../Util.ts"
 
-export default class Manager extends Component {
-  static get layout() {
-    return {
-      x: 5, y: 0,
-      w: 5, h: 3,
-      minW: 2, maxW: 10,
-      minH: 2, maxH: 10
-    };
-  }
-
+class View extends Component {
   constructor(props) {
     super(props);
-    this.state = {log: "", value: getRandomInt(0, 10)};
+    this.state = {log: ""};
   }
 
   render() {
@@ -26,8 +17,8 @@ export default class Manager extends Component {
           <input className="iris-button" type="button" value="Add Log" onClick={() => model.addLog(this.state.log)} />
           <input className="iris-button" type="button" value="Remove Log" onClick={() => model.removeLastLog()} />
         </div>
-        <div>{this.state.value}</div>
-        {/*<input type="text" name="value" value={this.props.globalState.value}
+        {/*<div>{this.props.model.value}</div>
+        <input type="text" name="value" value={this.props.globalState.value}
             onChange={ev => this.props.setGlobalState({value: ev.target.value})} />
         <input type="button" value="Add Row"
           onClick={() => {
@@ -42,5 +33,19 @@ export default class Manager extends Component {
           }} />*/}
       </form>
     )
+  }
+}
+
+export default class Manager {
+  constructor() {
+    this.view = View;
+    this.name = "MANAGER";
+    // this.value = getRandomInt(0, 10);
+    this.layout = {
+      x: 5, y: 0,
+      w: 5, h: 3,
+      minW: 2, maxW: 10,
+      minH: 2, maxH: 10
+    };
   }
 }

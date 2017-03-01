@@ -10,7 +10,6 @@ export default class Tabs extends Component {
   componentDidMount() {
     this.disposable =
       this.props.global.subscribe("tabs", tabs => {
-        debugger;
         let selected = null;
         // Tab added, select it
         if (this.state.tabs == null || this.state.tabs.size < tabs.size) {

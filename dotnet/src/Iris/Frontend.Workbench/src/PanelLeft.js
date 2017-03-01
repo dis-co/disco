@@ -10,10 +10,10 @@ function cardClicked(title, global) {
       global.addWidget(new Log());
       break;
     case "MANAGER":
-      global.addWidget(Manager);
+      global.addWidget(new Manager());
       break;
     case "COMPOUND":
-      global.addWidget(Compound);
+      global.addWidget(new Compound());
       break;
     default:
       alert("Widget " + title + " is not currently supported")

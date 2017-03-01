@@ -1,20 +1,7 @@
 import React, { Component } from 'react'
 import Spread from "./Spread"
 
-export default class Compound extends Component {
-  static get name() {
-    return "COMPOUND";
-  }
-
-  static get layout() {
-    return {
-      x: 0, y: 0,
-      w: 5, h: 3,
-      minW: 2, maxW: 10,
-      minH: 1, maxH: 10
-    };
-  }
-
+class View extends Component {
   constructor(props) {
     super(props);
   }
@@ -26,5 +13,18 @@ export default class Compound extends Component {
         <Spread model={this.props.model} />
       </div>
     )
+  }
+}
+
+export default class Manager {
+  constructor() {
+    this.view = View;
+    this.name = "COMPOUND";
+    this.layout = {
+      x: 0, y: 0,
+      w: 5, h: 3,
+      minW: 2, maxW: 10,
+      minH: 1, maxH: 10
+    };
   }
 }
