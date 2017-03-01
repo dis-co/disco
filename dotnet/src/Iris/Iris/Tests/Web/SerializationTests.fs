@@ -98,6 +98,8 @@ module SerializationTests =
     ; Sessions = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
     ; Users    = mkUser    () |> fun (user: User) -> Map.ofArray [| (user.Id, user) |]
     ; Clients  = mkClient  () |> fun (client: IrisClient) -> Map.ofArray [| (client.Id, client) |]
+    // TODO: Test DiscoveredServices
+    ; DiscoveredServices = Map.empty
     }
 
   let inline check thing =

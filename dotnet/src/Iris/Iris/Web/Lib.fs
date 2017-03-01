@@ -125,10 +125,6 @@ let listProjects() =
   ListProjects
   |> postCommand [||] (String.split [|','|])
 
-let getDiscoveredServices() =
-  GetDiscoveredServices
-  |> postCommand [||] (ofJson<DiscoveredService[]> >> Array.filter (fun srv -> srv.Type = ServiceType.Iris))
-
 let shutdown() =
   Shutdown |> postCommandAndForget
 

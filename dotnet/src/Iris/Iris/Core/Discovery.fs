@@ -1,8 +1,16 @@
 module Iris.Core.Discovery
 
-open Iris.Core
+#if FABLE_COMPILER
+
+open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
+
+#else
+
 open FlatBuffers
 open Iris.Serialization
+
+#endif
 
 // * ServiceType
 

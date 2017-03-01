@@ -27,7 +27,8 @@ module StoreTests =
         CueLists = Map.empty
         Users    = Map.empty
         Sessions = Map.empty
-        Clients  = Map.empty }
+        Clients  = Map.empty
+        DiscoveredServices = Map.empty }
 
     let store : Store = new Store(state)
     wrap patch store

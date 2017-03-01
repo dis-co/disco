@@ -1478,6 +1478,46 @@ type ProjectFBConstructor =
 
 let ProjectFB: ProjectFBConstructor = failwith "JS only"
 
+type DiscoveredServiceFB =
+  abstract Id: string
+  abstract Machine: string
+  abstract Port: uint16
+  abstract Name: string
+  abstract FullName: string
+  abstract Type: string
+  abstract HostName: string
+  abstract HostTarget: string
+  abstract AliasesLength: int
+  abstract Aliases: int -> string
+  abstract Protocol: string
+  abstract AddressListLength: int
+  abstract AddressList: int -> string
+  abstract MetadataLength: int
+  abstract Metadata: int -> string
+
+type DiscoveredServiceFBConstructor =
+  abstract prototype: DiscoveredServiceFB with get, set
+  abstract StartDiscoveredServiceFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * Offset<string> -> unit
+  abstract AddMachine: builder: FlatBufferBuilder * Offset<string> -> unit
+  abstract AddPort: builder: FlatBufferBuilder * uint16 -> unit
+  abstract AddName: builder: FlatBufferBuilder * Offset<string> -> unit
+  abstract AddFullName: builder: FlatBufferBuilder * Offset<string> -> unit
+  abstract AddType: builder: FlatBufferBuilder * Offset<string> -> unit
+  abstract AddHostName: builder: FlatBufferBuilder * Offset<string> -> unit
+  abstract AddHostTarget: builder: FlatBufferBuilder * Offset<string> -> unit
+  abstract AddAliases: builder: FlatBufferBuilder * Offset<'a> -> unit
+  abstract AddProtocol: builder: FlatBufferBuilder * Offset<string> -> unit
+  abstract AddAddressList: builder: FlatBufferBuilder * Offset<'a> -> unit
+  abstract AddMetadata: builder: FlatBufferBuilder * Offset<'a> -> unit
+  abstract EndDiscoveredServiceFB: builder: FlatBufferBuilder -> Offset<DiscoveredServiceFB>
+  abstract GetRootAsDiscoveredServiceFB: bytes: ByteBuffer -> DiscoveredServiceFB  
+  abstract CreateAliasesVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateAddressListVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateMetadataVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+
+let DiscoveredServiceFB: DiscoveredServiceFBConstructor = failwith "JS only"
+
 //  ____  _        _       _____ ____
 // / ___|| |_ __ _| |_ ___|  ___| __ )
 // \___ \| __/ _` | __/ _ \ |_  |  _ \
@@ -1498,6 +1538,8 @@ type StateFB =
   abstract UsersLength: int
   abstract Clients: int -> IrisClientFB
   abstract ClientsLength: int
+  abstract DiscoveredServices: int -> DiscoveredServiceFB
+  abstract DiscoveredServicesLength: int
 
 type StateFBConstructor =
   abstract prototype: StateFB with get, set
@@ -1613,6 +1655,7 @@ type StateMachinePayloadFBConstructor =
   abstract ProjectFB: StateMachinePayloadFB
   abstract SlicesFB: StateMachinePayloadFB
   abstract IrisClientFB: StateMachinePayloadFB
+  abstract DiscoveredServiceFB: StateMachinePayloadFB
 
 let StateMachinePayloadFB: StateMachinePayloadFBConstructor = failwith "JS only"
 

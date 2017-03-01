@@ -594,7 +594,8 @@ union StateMachinePayloadFB {
       StringFB,
       StateFB,
       SlicesFB,
-      ProjectFB
+      ProjectFB,
+      DiscoveredServiceFB
 }
 
 enum StateMachineActionFB:ushort {

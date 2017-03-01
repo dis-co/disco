@@ -13,8 +13,6 @@ open Iris.Raft
 
 #if FABLE_COMPILER
 
-open Fable.Core
-open Fable.Import
 open Iris.Core.FlatBuffers
 open Iris.Web.Core.FlatBufferTypes
 
@@ -705,7 +703,7 @@ type State =
             let! (i, map) = m
 
             #if FABLE_COMPILER
-            let! service = DiscoveredServices(i) |> Discovery.DiscoveredService
+            let! service = fb.DiscoveredServices(i) |> Discovery.DiscoveredService.FromFB
             #else
             let! service =
               let value = fb.DiscoveredServices(i)
@@ -1187,6 +1185,11 @@ and StateMachine =
     | AddSession    session -> sprintf "AddSession %s"    (string session)
     | UpdateSession session -> sprintf "UpdateSession %s" (string session)
     | RemoveSession session -> sprintf "RemoveSession %s" (string session)
+
+    // Discovery
+    | AddResolvedService    service -> sprintf "AddResolvedService %s"    (string service)
+    | UpdateResolvedService service -> sprintf "UpdateResolvedService %s" (string service)
+    | RemoveResolvedService service -> sprintf "RemoveResolvedService %s" (string service)
 
     | Command    ev         -> sprintf "Command: %s"  (string ev)
     | DataSnapshot state    -> sprintf "DataSnapshot: %A" state
@@ -1716,6 +1719,18 @@ and StateMachine =
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateMachineFB> =
+    let inline addDiscoveredServicePayload (service: Discovery.DiscoveredService) action =
+      let offset = service.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, action)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.DiscoveredServiceFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, offset)
+#else
+      StateMachineFB.AddPayload(builder, offset.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
     match self with
     | UpdateProject project ->
       let offset = project.ToOffset(builder)
@@ -2085,6 +2100,16 @@ and StateMachine =
       StateMachineFB.AddPayload(builder, offset.Value)
 #endif
       StateMachineFB.EndStateMachineFB(builder)
+
+    | AddResolvedService    service ->
+      addDiscoveredServicePayload service StateMachineActionFB.AddFB
+
+    | UpdateResolvedService    service ->
+      addDiscoveredServicePayload service StateMachineActionFB.UpdateFB
+
+    | RemoveResolvedService    service ->
+      addDiscoveredServicePayload service StateMachineActionFB.RemoveFB
+
 
   // ** ToBytes
 
