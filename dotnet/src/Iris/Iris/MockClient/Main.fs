@@ -4,6 +4,8 @@ open Argu
 open Iris.Core
 open System
 open System.IO
+open System.Text
+open System.Text.RegularExpressions
 open Iris.Raft
 open Iris.Client
 open Iris.Service
@@ -83,6 +85,9 @@ addpin := ""addpin"" type attr
 
   let private (|Remove|_|) (str: string) =
     parseAttr "remove" str
+
+  let private (|Get|_|) (str: string) =
+    parseAttr "get" str
 
   let private (|Toggle|_|) (str: string) =
     parseAttr "toggle" str
@@ -172,7 +177,7 @@ addpin := ""addpin"" type attr
         |> Some
 
       | Color name ->
-        let color = RGBA { Red = 255uy; Green = 0uy; Blue = 0uy; Alpha = 255uy }
+        let color = RGBA { Red = 0uy; Green = 0uy; Blue = 0uy; Alpha = 0uy }
         Pin.Color(Id.Create(),name,Id.Create(), [| |], [| { Index = 0u; Value = color } |])
         |> Some
 
@@ -180,10 +185,14 @@ addpin := ""addpin"" type attr
         let prop = { Key = ""; Value = "" }
         Pin.Enum(Id.Create(),name,Id.Create(), [| |], [| prop |], [| { Index = 0u; Value = prop } |])
         |> Some
-
       | _ -> None
-
     | _ -> None
+
+  let private (|Value|_|) (str: string) =
+    parseAttr "value" str
+
+  let private (|Properties|_|) (str: string) =
+    parseAttr "properties" str
 
   let private (|ListPins|_|) (str: string) =
     match str with
@@ -205,7 +214,6 @@ addpin := ""addpin"" type attr
 
   let private tryLoad (path: FilePath) =
     let lines = try File.ReadAllLines(path) with | _ -> [| |]
-
     Array.fold
       (fun (pins: Map<Id,Pin>) line ->
         match parseLine line with
@@ -213,6 +221,36 @@ addpin := ""addpin"" type attr
         | _ -> pins)
       Map.empty
       lines
+
+  let private parseUpdate (str: string) =
+    let spc = str.IndexOf(' ')
+    let id = str.Substring(0, spc)
+    let rest = str.Substring(spc + 1, str.Length - spc - 1)
+    id, rest
+
+  let private parseColor (str: string) =
+    match str.Split(' ') with
+    | [| r; g; b; a; |] ->
+      try
+        RGBA { Red = uint8 r; Green = uint8 g; Blue = uint8 b; Alpha = uint8 a }
+        |> Some
+      with
+        | _ -> None
+    | _ -> None
+
+  let private parseProperties (str: string) =
+    let pattern = @"(\w+)=(\w+)"
+    let matches = Regex.Matches(str, pattern)
+
+    if matches.Count > 0 then
+      let out = Array.zeroCreate matches.Count
+      let mutable i = 0
+      for m in matches do
+        out.[i] <- { Key = m.Groups.[1].Value; Value = m.Groups.[2].Value }
+        i <- i + 1
+      out
+    else
+      [| { Key = ""; Value = "" } |]
 
   [<Literal>]
   let private PS1 = "λ: "
@@ -234,10 +272,89 @@ addpin := ""addpin"" type attr
       | Exit _ ->
         printfn "Bye."
         run <- false
+
       | Help txt -> printfn "%s" txt
+
       | AddPin pin ->
         pins <- Map.add pin.Id pin pins
+
+      | Get id ->
+        Map.iter
+          (fun _ (pin: Pin) ->
+            if pin.Id = Id (id.Trim()) then
+              printfn "%A" pin)
+          pins
+
+      | Update rest ->
+        let id, rest = parseUpdate rest
+
+        match rest with
+        | Value value ->
+          match Map.tryFind (Id (id.Trim())) pins with
+          | Some (StringPin data) ->
+            let updated = StringPin { data with Slices = [| { Index = 1u; Value = value } |] }
+            pins <- Map.add updated.Id updated pins
+
+          | Some (IntPin data) ->
+            try
+              let intval = int value
+              let updated = IntPin { data with Slices = [| { Index = 1u; Value = intval } |] }
+              pins <- Map.add updated.Id updated pins
+            with | exn -> printfn "error: %s" exn.Message
+
+          | Some (FloatPin data) ->
+            try
+              let floatval = float value
+              let updated = FloatPin { data with Slices = [| { Index = 1u; Value = floatval } |] }
+              pins <- Map.add updated.Id updated pins
+            with | exn -> printfn "error: %s" exn.Message
+
+          | Some (DoublePin data) ->
+            try
+              let doubleval = double value
+              let updated = DoublePin { data with Slices = [| { Index = 1u; Value = doubleval } |] }
+              pins <- Map.add updated.Id updated pins
+            with | exn -> printfn "error: %s" exn.Message
+
+          | Some (BoolPin data) ->
+            try
+              let boolval = Boolean.Parse value
+              let updated = BoolPin { data with Slices = [| { Index = 1u; Value = boolval } |] }
+              pins <- Map.add updated.Id updated pins
+            with | exn -> printfn "error: %s" exn.Message
+
+          | Some (BytePin data) ->
+            let byteval = Encoding.UTF8.GetBytes value
+            let updated = BytePin { data with Slices = [| { Index = 1u; Value = byteval } |] }
+            pins <- Map.add updated.Id updated pins
+
+          | Some (EnumPin data) ->
+            match Array.tryFind (fun (prop:Property) -> prop.Value = value) data.Properties with
+            | Some property ->
+              let updated = EnumPin { data with Slices = [| { Index = 1u; Value = property } |] }
+              pins <- Map.add updated.Id updated pins
+            | _ -> printfn "no property found with value: %s" value
+
+          | Some (ColorPin data) ->
+            match parseColor value with
+            | Some color ->
+              let updated = ColorPin { data with Slices = [| { Index = 1u; Value = color } |] }
+              pins <- Map.add updated.Id updated pins
+            | _ -> printfn "error: could not parse color"
+
+          | _ -> printfn "could not find pin with id %A" id
+
+        | Properties value ->
+          match Map.tryFind (Id (id.Trim())) pins with
+          | Some (EnumPin data) ->
+            let properties = parseProperties value
+            let updated = EnumPin { data with Properties = properties }
+            pins <- Map.add updated.Id updated pins
+          | _ -> ()
+        | other -> printfn "error: unknown subcommand %A" other
+
       | ListPins -> listPins pins
+
       | str ->
         printfn "unknown command: %A" str
 
