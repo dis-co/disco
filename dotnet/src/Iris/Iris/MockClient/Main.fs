@@ -462,11 +462,11 @@ Usage:
 
   [<EntryPoint>]
   let main args =
+    let parser = ArgumentParser.Create<CliOptions>(helpTextMessage = help)
+    let parsed = parser.Parse args
+
     let result =
       either {
-        let parser = ArgumentParser.Create<CliOptions>(helpTextMessage = help)
-        let parsed = parser.Parse args
-
         let server =
           { Id = Id.Create()
             Name = "<empty>"
@@ -505,7 +505,14 @@ Usage:
           Name = "MockClient Patch"
           Pins = Map.empty }
 
-      loop client Map.empty patch
+      let loaded =
+        if parsed.Contains <@ File @> then
+          parsed.GetResult <@ File @>
+          |> tryLoad
+        else
+          Map.empty
+
+      loop client loaded patch
       dispose client
       exit 0
     | Left error ->
