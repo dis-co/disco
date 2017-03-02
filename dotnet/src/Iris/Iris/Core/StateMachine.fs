@@ -284,11 +284,11 @@ type State =
 
   // ** addPin
 
-  //  ___ ___  ____
-  // |_ _/ _ \| __ )  _____  __
-  //  | | | | |  _ \ / _ \ \/ /
-  //  | | |_| | |_) | (_) >  <
-  // |___\___/|____/ \___/_/\_\
+  //  ____  _
+  // |  _ \(_)_ __
+  // | |_) | | '_ \
+  // |  __/| | | | |
+  // |_|   |_|_| |_|
 
   static member addPin (pin : Pin) (state: State) =
     if Map.containsKey pin.Patch state.Patches then
@@ -319,6 +319,17 @@ type State =
       then Patch.RemovePin patch pin
       else patch
     { state with Patches = Map.map updater state.Patches }
+
+  // ** findPin
+
+  static member findPin (id: Id) (state: State) =
+    Map.fold
+      (fun (m: Pin option) _ (patch: Patch) ->
+        match m with
+        | Some pin -> m
+        | _ -> Map.tryFind id patch.Pins)
+      None
+      state.Patches
 
   // ** addCueList
 

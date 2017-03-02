@@ -5,6 +5,8 @@ open Iris.Core
 open System
 open System.IO
 open System.Text
+open System.Net
+open System.Net.Sockets
 open System.Text.RegularExpressions
 open Iris.Raft
 open Iris.Client
@@ -14,20 +16,28 @@ open Iris.Service.Interfaces
 [<AutoOpen>]
 module Main =
 
-  type OptionBuilder() =
-    member this.Return x = Some x
-    member this.Bind(m, f) = Option.bind f m
+  //   ____ _ _  ___        _   _
+  //  / ___| (_)/ _ \ _ __ | |_(_) ___  _ __  ___
+  // | |   | | | | | | '_ \| __| |/ _ \| '_ \/ __|
+  // | |___| | | |_| | |_) | |_| | (_) | | | \__ \
+  //  \____|_|_|\___/| .__/ \__|_|\___/|_| |_|___/
+  //                 |_|
 
-  let maybe = OptionBuilder()
+  type CliOptions =
+    | [<AltCommandLine("-v")>] Verbose
+    | [<AltCommandLine("-f")>] File of string
+    | [<AltCommandLine("-n")>] Name of string
+    | [<AltCommandLine("-h")>] Host of string
+    | [<AltCommandLine("-p")>] Port of uint16
 
-  // * TODO
-  // - add, update, remove, list commands
-  // - exit/quit
-
-  let private (|Exit|_|) str =
-    match str with
-    | "exit" | "quit" -> Some ()
-    | _ -> None
+    interface IArgParserTemplate with
+      member self.Usage =
+        match self with
+        | Verbose -> "be more verbose"
+        | File _  -> "specify a commands file to read on startup (optional)"
+        | Name _  -> "specify the iris clients' name (optional)"
+        | Host _  -> "specify the iris services' host to connect to (optional)"
+        | Port _  -> "specify the iris services' port to connect on (optional)"
 
   [<Literal>]
   let private help = @"
@@ -37,32 +47,22 @@ module Main =
  | || |  | \__ \ |___| | |  __/ | | | |_
 |___|_|  |_|___/\____|_|_|\___|_| |_|\__| © Nsynk, 2017
 
-type :=
-  ""string"" /
-  ""int""    /
-  ""float""  /
-  ""double"" /
-  ""bool""   /
-  ""byte""   /
-  ""enum""   /
-  ""color""
+Usage:
 
-attr :=
-  ""name""       /
-  ""patch""      /
-  ""tags""       /
-  ""type""       /
-  ""max""        /
-  ""min""        /
-  ""behavior""   /
-  ""unit""       /
-  ""vecsize""    /
-  ""precision""  /
-  ""properties"" /
-  ""values""
 
-addpin := ""addpin"" type attr
   "
+
+  let private nextPort () =
+    let l = new TcpListener(IPAddress.Loopback, 0)
+    l.Start()
+    let port = (l.LocalEndpoint :?> IPEndPoint).Port
+    l.Stop()
+    port
+
+  let private (|Exit|_|) str =
+    match str with
+    | "exit" | "quit" -> Some ()
+    | _ -> None
 
   let private (|Help|_|) str =
     match str with
@@ -202,13 +202,21 @@ addpin := ""addpin"" type attr
     | "listpins" | "lp" -> Some ()
     | _ -> None
 
-  let private listPins (pins: Map<Id,Pin>) =
-    printfn ""
-    Map.iter
-      (fun _ (pin: Pin) ->
-        printfn "    id: %s name: %s type: %s" (string pin.Id) pin.Name pin.Type)
-      pins
-    printfn ""
+  let private listPins (client: IApiClient) =
+    match client.State with
+    | Right state ->
+      printfn ""
+      Map.iter
+        (fun _ (patch: Patch) ->
+          printfn "Patch: %A" (string patch.Id)
+          Map.iter
+            (fun _ (pin: Pin) ->
+              printfn "    id: %s name: %s type: %s" (string pin.Id) pin.Name pin.Type)
+            patch.Pins)
+        state.Patches
+      printfn ""
+    | Left error ->
+      Console.Error.WriteLine("error getting state in listPins: {}", string error)
 
   let private parseLine (line: string) : Pin option =
     match line with
@@ -258,16 +266,38 @@ addpin := ""addpin"" type attr
   [<Literal>]
   let private PS1 = "λ: "
 
-  [<EntryPoint>]
-  let main args =
-    let patch = Id.Create()
+  let private addPin (client: IApiClient) (pin: Pin) =
+    match client.AddPin pin with
+    | Right () -> printfn "successfully added %A" pin.Name
+    | Left error ->
+      Console.Error.WriteLine("Could not add \"{}\": {}", pin.Name, string error)
 
+  let private updatePin (client: IApiClient) (pin: Pin) =
+    match client.UpdatePin pin with
+    | Right () -> ()
+    | Left error ->
+      Console.Error.WriteLine("Could not update \"{}\": {}", pin.Name, string error)
+
+  let private removePin (client: IApiClient) (pin: Pin) =
+    match client.RemovePin pin with
+    | Right () -> ()
+    | Left error ->
+      Console.Error.WriteLine("Could not remove \"{}\": {}", pin.Name, string error)
+
+  let private getPin (client: IApiClient) (id: string)  =
+    match client.State with
+    | Right state -> State.findPin (Id (id.Trim())) state
+    | Left error -> None
+
+  let private showPin (pin: Pin)  =
+    printfn ""
+    printfn "%A" pin
+    printfn ""
+
+  let private loop (client: IApiClient) (initial: Map<Id,Pin>) =
     let mutable run = true
-    let mutable pins =
-      if Array.length args = 0 then
-        Map.empty
-      else
-        tryLoad args.[0]
+
+    Map.iter (fun _ (pin: Pin) -> addPin client pin) initial
 
     while run do
       Console.Write(PS1)
@@ -297,8 +327,7 @@ addpin := ""addpin"" type attr
       //  / ___ \ (_| | (_| |
       // /_/   \_\__,_|\__,_|
 
-      | AddPin pin ->
-        pins <- Map.add pin.Id pin pins
+      | AddPin pin -> addPin client pin
 
       //   ____      _
       //  / ___| ___| |_
@@ -307,11 +336,9 @@ addpin := ""addpin"" type attr
       //  \____|\___|\__|
 
       | Get id ->
-        Map.iter
-          (fun _ (pin: Pin) ->
-            if pin.Id = Id (id.Trim()) then
-              printfn "%A" pin)
-          pins
+        getPin client id
+        |> Option.map showPin
+        |> ignore
 
       //  _   _           _       _
       // | | | |_ __   __| | __ _| |_ ___
@@ -331,56 +358,56 @@ addpin := ""addpin"" type attr
         //    \_/ \__,_|_|\__,_|\___|
 
         | Value value ->
-          match Map.tryFind (Id (id.Trim())) pins with
+          match getPin client id with
           | Some (StringPin data) ->
             let updated = StringPin { data with Slices = [| { Index = 1u; Value = value } |] }
-            pins <- Map.add updated.Id updated pins
+            updatePin client updated
 
           | Some (IntPin data) ->
             try
               let intval = int value
               let updated = IntPin { data with Slices = [| { Index = 1u; Value = intval } |] }
-              pins <- Map.add updated.Id updated pins
+              updatePin client updated
             with | exn -> printfn "error: %s" exn.Message
 
           | Some (FloatPin data) ->
             try
               let floatval = float value
               let updated = FloatPin { data with Slices = [| { Index = 1u; Value = floatval } |] }
-              pins <- Map.add updated.Id updated pins
+              updatePin client updated
             with | exn -> printfn "error: %s" exn.Message
 
           | Some (DoublePin data) ->
             try
               let doubleval = double value
               let updated = DoublePin { data with Slices = [| { Index = 1u; Value = doubleval } |] }
-              pins <- Map.add updated.Id updated pins
+              updatePin client updated
             with | exn -> printfn "error: %s" exn.Message
 
           | Some (BoolPin data) ->
             try
               let boolval = Boolean.Parse value
               let updated = BoolPin { data with Slices = [| { Index = 1u; Value = boolval } |] }
-              pins <- Map.add updated.Id updated pins
+              updatePin client updated
             with | exn -> printfn "error: %s" exn.Message
 
           | Some (BytePin data) ->
             let byteval = Encoding.UTF8.GetBytes value
             let updated = BytePin { data with Slices = [| { Index = 1u; Value = byteval } |] }
-            pins <- Map.add updated.Id updated pins
+            updatePin client updated
 
           | Some (EnumPin data) ->
             match Array.tryFind (fun (prop:Property) -> prop.Value = value) data.Properties with
             | Some property ->
               let updated = EnumPin { data with Slices = [| { Index = 1u; Value = property } |] }
-              pins <- Map.add updated.Id updated pins
+              updatePin client updated
             | _ -> printfn "no property found with value: %s" value
 
           | Some (ColorPin data) ->
             match parseColor value with
             | Some color ->
               let updated = ColorPin { data with Slices = [| { Index = 1u; Value = color } |] }
-              pins <- Map.add updated.Id updated pins
+              updatePin client updated
             | _ -> printfn "error: could not parse color"
 
           | _ -> printfn "could not find pin with id %A" id
@@ -393,11 +420,11 @@ addpin := ""addpin"" type attr
         //                 |_|                  |___/
 
         | Properties value ->
-          match Map.tryFind (Id (id.Trim())) pins with
+          match getPin client id with
           | Some (EnumPin data) ->
             let properties = parseProperties value
             let updated = EnumPin { data with Properties = properties }
-            pins <- Map.add updated.Id updated pins
+            updatePin client updated
           | _ -> ()
         | other -> printfn "error: unknown subcommand %A" other
 
@@ -408,7 +435,9 @@ addpin := ""addpin"" type attr
       // |_| \_\___|_| |_| |_|\___/ \_/ \___|
 
       | Remove id ->
-        pins <- Map.remove (Id (id.Trim())) pins
+        getPin client id
+        |> Option.map (removePin client)
+        |> ignore
 
       //  _     _     _
       // | |   (_)___| |_
@@ -416,9 +445,59 @@ addpin := ""addpin"" type attr
       // | |___| \__ \ |_
       // |_____|_|___/\__|
 
-      | ListPins -> listPins pins
+      | ListPins ->
+        listPins client
 
       | str ->
         printfn "unknown command: %A" str
 
-    exit 0
+  [<EntryPoint>]
+  let main args =
+    let result =
+      either {
+        let parser = ArgumentParser.Create<CliOptions>(helpTextMessage = help)
+        let parsed = parser.Parse args
+
+        let server =
+          { Id = Id.Create()
+            Name = "<empty>"
+            Port =
+              if parsed.Contains <@ Port @>
+              then parsed.GetResult <@ Port @>
+              else Constants.DEFAULT_API_PORT
+            IpAddress =
+              if parsed.Contains <@ Host @>
+              then IPv4Address (parsed.GetResult <@ Host @>)
+              else IPv4Address "127.0.0.1" }
+
+        let client =
+          { Id = Id.Create()
+            Name =
+              if parsed.Contains <@ Name @>
+              then parsed.GetResult <@ Name @>
+              else "<empty>"
+            Role = Role.Renderer
+            Status = ServiceStatus.Starting
+            IpAddress =
+              match Network.getIpAddress () with
+              | Some ip -> IPv4Address (string ip)
+              | None ->  IPv4Address "127.0.0.1"
+            Port = uint16 (nextPort())
+            }
+
+        let! client = ApiClient.create server client
+        do! client.Start()
+        return client
+      }
+
+    match result with
+    | Right client ->
+      loop client Map.empty
+      dispose client
+      exit 0
+    | Left error ->
+      Console.Error.WriteLine("Encountered error starting client: {}", Error.toMessage error)
+      Console.Error.WriteLine("Aborting.")
+      error
+      |> Error.toExitCode
+      |> exit
