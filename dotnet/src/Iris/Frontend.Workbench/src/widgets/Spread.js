@@ -9,9 +9,6 @@ const DIFF_HEIGHT = 2;
 class View extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {
-      clicked: false
-    };
   }
 
   recalculateHeight(rows) {
@@ -22,23 +19,25 @@ class View extends React.Component {
     if (el == null)
       return;
 
-    $(el).resizable({
-      minWidth: 150,
-      handles: "e",
-      resize: function(event, ui) {
-          ui.size.height = ui.originalSize.height;
-      }
-    });
+    // $(el).resizable({
+    //   minWidth: 150,
+    //   handles: "e",
+    //   resize: function(event, ui) {
+    //       ui.size.height = ui.originalSize.height;
+    //   }
+    // });
   }
 
   render() {
-    var clicked = this.state.clicked;
-    var rows = this.props.model.rows, value = this.props.model.value;
-    var height = clicked ? this.recalculateHeight(rows) : BASE_HEIGHT;
+    var { open, rows, value }  = this.props.model;
+    var height = open ? this.recalculateHeight(rows) : BASE_HEIGHT;
 
     return (
-      <div className="iris-spread" ref={el => this.onMounted(el)}>
-        <div className="iris-spread-child iris-flex-5" style={{ height: height}}>
+      <div style={{backgroundColor: "red", height: 50, width: 100}} />
+      /*<div className="iris-spread" ref={el => this.onMounted(el)}>
+        <div className="iris-spread-child iris-flex-5"
+          style={{ height: height}}
+          >
           {[<span key="0">Size</span>].concat(rows.map((x,i) => <span key={i+1}>{x}</span>))}
         </div>
         <div className="iris-spread-child iris-flex-9" style={{ height: height}}>
@@ -47,12 +46,13 @@ class View extends React.Component {
         </div>
         <div className="iris-spread-child iris-spread-end" style={{ height: height - DIFF_HEIGHT}}>
           <img src="/img/more.png" height="7px"
-            style={{transform: `rotate(${clicked ? "90" : "0"}deg)`}}
+            style={{transform: `rotate(${open ? "90" : "0"}deg)`}}
             onClick={() => {
-              this.setState({ clicked: !clicked })
+              this.props.model.open = !this.props.model.open;
+              this.forceUpdate();
             }} />
         </div>
-      </div>
+      </div>*/
     )
   }
 }
@@ -60,6 +60,7 @@ class View extends React.Component {
 export default class Spread {
   constructor() {
     this.view = View;
+    this.open = false;
     this.rows = [1,2,3,4,5];
     this.value = "W: 1920, H: 1080";
   }

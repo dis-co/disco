@@ -16,6 +16,7 @@ let counter = initLogs.length;
 export default class GlobalModel {
   constructor(dispatch) {
     this.subscribers = new Map();
+    this.eventSubscribers = new Map();
     this.state = {
       tabs: new Map(),
       widgets: new Map(),
@@ -33,6 +34,20 @@ export default class GlobalModel {
     return {
       dispose() {
         subscribers.get(key).delete(id);
+      }
+    }
+  }
+
+  subscribeToEvent(event, subscriber) {
+    let id = counter++, subscribers = this.eventSubscribers;
+    if (!subscribers.has(event)) {
+      subscribers.set(event, new Map());
+    }
+    subscribers.get(event).set(id, subscriber);
+    // `subscribers` must be captured so the closure below works
+    return {
+      dispose() {
+        subscribers.get(event).delete(id);
       }
     }
   }
@@ -86,5 +101,11 @@ export default class GlobalModel {
   removeLastLog() {
     this.state.logs.splice(0, 1);
     this.__notify("logs", this.state.logs);
+  }
+
+  triggerEvent(event, data) {
+    if (this.eventSubscribers.has(event)) {
+      this.eventSubscribers.get(event).forEach(subscriber => subscriber(event, data));
+    }
   }
 }
