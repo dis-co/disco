@@ -69,7 +69,7 @@ export default class WidgetCluster extends React.Component {
             })}
           </tbody>
           <tfoot>
-            <a onClick={() => showModal(ADD_NODE)}>Add node</a>
+            <tr><td><a onClick={() => showModal(ADD_NODE)}>Add node</a></td></tr>
           </tfoot>
         </table>
       </Panel>

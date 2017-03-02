@@ -35,7 +35,8 @@ module ApiTests =
       CueLists = Map.empty
       Sessions = Map.empty
       Users    = Map.empty
-      Clients  = Map.empty }
+      Clients  = Map.empty
+      DiscoveredServices = Map.empty }
 
   //  ____
   // / ___|  ___ _ ____   _____ _ __

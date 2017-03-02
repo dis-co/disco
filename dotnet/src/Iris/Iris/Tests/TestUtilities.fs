@@ -182,7 +182,9 @@ module TestData =
           CueLists = mkCueLists() |> asMap
           Sessions = mkSessions() |> asMap
           Users    = mkUsers   () |> asMap
-          Clients  = mkClients () |> asMap }
+          Clients  = mkClients () |> asMap
+          // TODO: Test DiscoveredServices
+          DiscoveredServices = Map.empty }
     }
 
   let mkChange _ =
