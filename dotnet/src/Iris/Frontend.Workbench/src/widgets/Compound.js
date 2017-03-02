@@ -9,8 +9,10 @@ class View extends Component {
   render() {
     return (
       <div className="iris-compound">
-        <Spread model={this.props.model} />
-        <Spread model={this.props.model} />
+        {this.props.model.elements.map(el => {
+            const View = el.view;
+            return <View model={el} />
+        })}
       </div>
     )
   }
@@ -26,5 +28,9 @@ export default class Manager {
       minW: 2, maxW: 10,
       minH: 1, maxH: 10
     };
+    this.elements = [
+      new Spread(),
+      new Spread()
+    ]
   }
 }

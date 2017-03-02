@@ -6,13 +6,11 @@ const ROW_HEIGHT = 17;
 // The arrow must be a bit shorter
 const DIFF_HEIGHT = 2;
 
-export default class Spread extends React.Component {
+class View extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      clicked: false,
-      rows: [1,2,3,4,5],
-      value: "W: 1920, H: 1080"
+      clicked: false
     };
   }
 
@@ -35,7 +33,7 @@ export default class Spread extends React.Component {
 
   render() {
     var clicked = this.state.clicked;
-    var rows = this.state.rows, value = this.state.value;
+    var rows = this.props.model.rows, value = this.props.model.value;
     var height = clicked ? this.recalculateHeight(rows) : BASE_HEIGHT;
 
     return (
@@ -56,5 +54,13 @@ export default class Spread extends React.Component {
         </div>
       </div>
     )
+  }
+}
+
+export default class Spread {
+  constructor() {
+    this.view = View;
+    this.rows = [1,2,3,4,5];
+    this.value = "W: 1920, H: 1080";
   }
 }
