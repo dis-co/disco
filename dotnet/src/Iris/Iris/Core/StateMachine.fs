@@ -956,39 +956,39 @@ and Store(state : State)=
     | Command (AppCommand.Undo)  -> self.Undo()
     | Command (AppCommand.Reset) -> ()   // do nothing for now
 
-    | AddCue                cue -> State.addCue        cue     state |> andRender
-    | UpdateCue             cue -> State.updateCue     cue     state |> andRender
-    | RemoveCue             cue -> State.removeCue     cue     state |> andRender
+    | AddCue            cue -> State.addCue        cue     state |> andRender
+    | UpdateCue         cue -> State.updateCue     cue     state |> andRender
+    | RemoveCue         cue -> State.removeCue     cue     state |> andRender
 
-    | AddCueList        cuelist -> State.addCueList    cuelist state |> andRender
-    | UpdateCueList     cuelist -> State.updateCueList cuelist state |> andRender
-    | RemoveCueList     cuelist -> State.removeCueList cuelist state |> andRender
+    | AddCueList    cuelist -> State.addCueList    cuelist state |> andRender
+    | UpdateCueList cuelist -> State.updateCueList cuelist state |> andRender
+    | RemoveCueList cuelist -> State.removeCueList cuelist state |> andRender
 
-    | AddPatch            patch -> State.addPatch      patch   state |> andRender
-    | UpdatePatch         patch -> State.updatePatch   patch   state |> andRender
-    | RemovePatch         patch -> State.removePatch   patch   state |> andRender
+    | AddPatch        patch -> State.addPatch      patch   state |> andRender
+    | UpdatePatch     patch -> State.updatePatch   patch   state |> andRender
+    | RemovePatch     patch -> State.removePatch   patch   state |> andRender
 
-    | AddPin                pin -> State.addPin        pin     state |> andRender
-    | UpdatePin             pin -> State.updatePin     pin     state |> andRender
-    | RemovePin             pin -> State.removePin     pin     state |> andRender
+    | AddPin            pin -> State.addPin        pin     state |> andRender
+    | UpdatePin         pin -> State.updatePin     pin     state |> andRender
+    | RemovePin         pin -> State.removePin     pin     state |> andRender
 
-    | AddMember             mem -> State.addMember     mem     state |> andRender
-    | UpdateMember          mem -> State.updateMember  mem     state |> andRender
-    | RemoveMember          mem -> State.removeMember  mem     state |> andRender
+    | AddMember         mem -> State.addMember     mem     state |> andRender
+    | UpdateMember      mem -> State.updateMember  mem     state |> andRender
+    | RemoveMember      mem -> State.removeMember  mem     state |> andRender
 
-    | AddClient          client -> State.addClient     client  state |> andRender
-    | UpdateClient       client -> State.updateClient  client  state |> andRender
-    | RemoveClient       client -> State.removeClient  client  state |> andRender
+    | AddClient      client -> State.addClient     client  state |> andRender
+    | UpdateClient   client -> State.updateClient  client  state |> andRender
+    | RemoveClient   client -> State.removeClient  client  state |> andRender
 
-    | AddSession        session -> State.addSession    session state |> andRender
-    | UpdateSession     session -> State.updateSession session state |> andRender
-    | RemoveSession     session -> State.removeSession session state |> andRender
+    | AddSession    session -> State.addSession    session state |> andRender
+    | UpdateSession session -> State.updateSession session state |> andRender
+    | RemoveSession session -> State.removeSession session state |> andRender
 
-    | AddUser              user -> State.addUser       user    state |> andRender
-    | UpdateUser           user -> State.updateUser    user    state |> andRender
-    | RemoveUser           user -> State.removeUser    user    state |> andRender
+    | AddUser          user -> State.addUser       user    state |> andRender
+    | UpdateUser       user -> State.updateUser    user    state |> andRender
+    | RemoveUser       user -> State.removeUser    user    state |> andRender
 
-    | UpdateProject     project -> State.updateProject project state |> andRender
+    | UpdateProject project -> State.updateProject project state |> andRender
 
     // It may happen that a service didn't make it into the state and an update service
     // event is received. For those cases just add/update the service into the state.

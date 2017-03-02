@@ -548,6 +548,12 @@ module ApiClient =
                     member self.OnNext(value) = callback value }
                 |> listener.Subscribe
 
+              //   ____
+              //  / ___|   _  ___
+              // | |  | | | |/ _ \
+              // | |__| |_| |  __/
+              //  \____\__,_|\___|
+
               member self.AddCue (cue: Cue) =
                 match postCommand agent (fun chan -> Msg.Request(chan, AddCue cue)) with
                 | Right Reply.Ok -> Either.succeed ()
@@ -581,6 +587,51 @@ module ApiClient =
                   error
                   |> Either.fail
 
+              //  ____       _       _
+              // |  _ \ __ _| |_ ___| |__
+              // | |_) / _` | __/ __| '_ \
+              // |  __/ (_| | || (__| | | |
+              // |_|   \__,_|\__\___|_| |_|
+
+              member self.AddPatch (patch: Patch) =
+                match postCommand agent (fun chan -> Msg.Request(chan, AddPatch patch)) with
+                | Right Reply.Ok -> Either.succeed ()
+                | Right other ->
+                  sprintf "Unexpected Reply from ApiAgent: %A" other
+                  |> Error.asClientError (tag "AddPatch")
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
+
+              member self.UpdatePatch (patch: Patch) =
+                match postCommand agent (fun chan -> Msg.Request(chan, UpdatePatch patch)) with
+                | Right Reply.Ok -> Either.succeed ()
+                | Right other ->
+                  sprintf "Unexpected Reply from ApiAgent: %A" other
+                  |> Error.asClientError (tag "UpdatePatch")
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
+
+              member self.RemovePatch (patch: Patch) =
+                match postCommand agent (fun chan -> Msg.Request(chan, RemovePatch patch)) with
+                | Right Reply.Ok -> Either.succeed ()
+                | Right other ->
+                  sprintf "Unexpected Reply from ApiAgent: %A" other
+                  |> Error.asClientError (tag "RemovePatch")
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
+
+              //   ____           _     _     _
+              //  / ___|   _  ___| |   (_)___| |_
+              // | |  | | | |/ _ \ |   | / __| __|
+              // | |__| |_| |  __/ |___| \__ \ |_
+              //  \____\__,_|\___|_____|_|___/\__|
+
               member self.AddCueList (cuelist: CueList) =
                 match postCommand agent (fun chan -> Msg.Request(chan, AddCueList cuelist)) with
                 | Right Reply.Ok -> Either.succeed ()
@@ -613,6 +664,12 @@ module ApiClient =
                 | Left error ->
                   error
                   |> Either.fail
+
+              //  ____  _
+              // |  _ \(_)_ __
+              // | |_) | | '_ \
+              // |  __/| | | | |
+              // |_|   |_|_| |_|
 
               member self.AddPin(pin: Pin) =
                 match postCommand agent (fun chan -> Msg.Request(chan, AddPin pin)) with
@@ -657,6 +714,13 @@ module ApiClient =
                 | Left error ->
                   error
                   |> Either.fail
+
+              //  ____  _
+              // |  _ \(_)___ _ __   ___  ___  ___
+              // | | | | / __| '_ \ / _ \/ __|/ _ \
+              // | |_| | \__ \ |_) | (_) \__ \  __/
+              // |____/|_|___/ .__/ \___/|___/\___|
+              //             |_|
 
               member self.Dispose () =
                 postCommand agent Msg.Dispose

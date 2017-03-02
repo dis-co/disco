@@ -16,6 +16,7 @@ open Iris.Service.Interfaces
 [<AutoOpen>]
 module Main =
 
+
   //   ____ _ _  ___        _   _
   //  / ___| (_)/ _ \ _ __ | |_(_) ___  _ __  ___
   // | |   | | | | | | '_ \| __| |/ _ \| '_ \/ __|
@@ -51,6 +52,8 @@ Usage:
 
 
   "
+
+  let private patchid = Id.Create()
 
   let private nextPort () =
     let l = new TcpListener(IPAddress.Loopback, 0)
@@ -136,57 +139,57 @@ Usage:
     | Add rest ->
       match rest with
       | Toggle name ->
-        Pin.Toggle(Id.Create(),name,Id.Create(), [| |], [| { Index = 0u; Value = false } |])
+        Pin.Toggle(Id name,name,patchid, [| |], [| { Index = 0u; Value = false } |])
         |> Some
 
       | Bang name ->
-        Pin.Bang(Id.Create(),name,Id.Create(), [| |], [| { Index = 0u; Value = false } |])
+        Pin.Bang(Id name,name,patchid, [| |], [| { Index = 0u; Value = false } |])
         |> Some
 
       | String name ->
-        Pin.String(Id.Create(),name,Id.Create(), [| |], [| { Index = 0u; Value = "" } |])
+        Pin.String(Id name,name,patchid, [| |], [| { Index = 0u; Value = "" } |])
         |> Some
 
       | Multiline name ->
-        Pin.MultiLine(Id.Create(),name,Id.Create(), [| |], [| { Index = 0u; Value = "" } |])
+        Pin.MultiLine(Id name,name,patchid, [| |], [| { Index = 0u; Value = "" } |])
         |> Some
 
       | File name ->
-        Pin.FileName(Id.Create(),name,Id.Create(), [| |], "", [| { Index = 0u; Value = "" } |])
+        Pin.FileName(Id name,name,patchid, [| |], "", [| { Index = 0u; Value = "" } |])
         |> Some
 
       | Dir name ->
-        Pin.Directory(Id.Create(),name,Id.Create(), [| |], "", [| { Index = 0u; Value = "" } |])
+        Pin.Directory(Id name,name,patchid, [| |], "", [| { Index = 0u; Value = "" } |])
         |> Some
 
       | Url name ->
-        Pin.Url(Id.Create(),name,Id.Create(), [| |], [| { Index = 0u; Value = "" } |])
+        Pin.Url(Id name,name,patchid, [| |], [| { Index = 0u; Value = "" } |])
         |> Some
 
       | IP name ->
-        Pin.IP(Id.Create(),name,Id.Create(), [| |], [| { Index = 0u; Value = "" } |])
+        Pin.IP(Id name,name,patchid, [| |], [| { Index = 0u; Value = "" } |])
         |> Some
 
       | Float name ->
-        Pin.Float(Id.Create(),name,Id.Create(), [| |], [| { Index = 0u; Value = 0.0 } |])
+        Pin.Float(Id name,name,patchid, [| |], [| { Index = 0u; Value = 0.0 } |])
         |> Some
 
       | Double name ->
-        Pin.Double(Id.Create(),name,Id.Create(), [| |], [| { Index = 0u; Value = 0.0 } |])
+        Pin.Double(Id name,name,patchid, [| |], [| { Index = 0u; Value = 0.0 } |])
         |> Some
 
       | Bytes name ->
-        Pin.Bytes(Id.Create(),name,Id.Create(), [| |], [| { Index = 0u; Value = [| |] } |])
+        Pin.Bytes(Id name,name,patchid, [| |], [| { Index = 0u; Value = [| |] } |])
         |> Some
 
       | Color name ->
         let color = RGBA { Red = 0uy; Green = 0uy; Blue = 0uy; Alpha = 0uy }
-        Pin.Color(Id.Create(),name,Id.Create(), [| |], [| { Index = 0u; Value = color } |])
+        Pin.Color(Id name,name,patchid, [| |], [| { Index = 0u; Value = color } |])
         |> Some
 
       | Enum name ->
         let prop = { Key = ""; Value = "" }
-        Pin.Enum(Id.Create(),name,Id.Create(), [| |], [| prop |], [| { Index = 0u; Value = prop } |])
+        Pin.Enum(Id name,name,patchid, [| |], [| prop |], [| { Index = 0u; Value = prop } |])
         |> Some
       | _ -> None
     | _ -> None
@@ -216,7 +219,7 @@ Usage:
         state.Patches
       printfn ""
     | Left error ->
-      Console.Error.WriteLine("error getting state in listPins: {}", string error)
+      Console.Error.WriteLine("error getting state in listPins: {0}", string error)
 
   let private parseLine (line: string) : Pin option =
     match line with
@@ -270,19 +273,19 @@ Usage:
     match client.AddPin pin with
     | Right () -> printfn "successfully added %A" pin.Name
     | Left error ->
-      Console.Error.WriteLine("Could not add \"{}\": {}", pin.Name, string error)
+      Console.Error.WriteLine("Could not add \"{0}\": {1}", pin.Name, string error)
 
   let private updatePin (client: IApiClient) (pin: Pin) =
     match client.UpdatePin pin with
     | Right () -> ()
     | Left error ->
-      Console.Error.WriteLine("Could not update \"{}\": {}", pin.Name, string error)
+      Console.Error.WriteLine("Could not update \"{0}\": {1}", pin.Name, string error)
 
   let private removePin (client: IApiClient) (pin: Pin) =
     match client.RemovePin pin with
     | Right () -> ()
     | Left error ->
-      Console.Error.WriteLine("Could not remove \"{}\": {}", pin.Name, string error)
+      Console.Error.WriteLine("Could not remove \"{0}\": {1}", pin.Name, string error)
 
   let private getPin (client: IApiClient) (id: string)  =
     match client.State with
@@ -294,8 +297,14 @@ Usage:
     printfn "%A" pin
     printfn ""
 
-  let private loop (client: IApiClient) (initial: Map<Id,Pin>) =
+  let private loop (client: IApiClient) (initial: Map<Id,Pin>) (patch:Patch) =
     let mutable run = true
+
+    match client.AddPatch patch with
+    | Right () -> ()
+    | Left err ->
+      Console.Error.WriteLine("Unable to add mock client patch: {0}",err)
+      exit 128
 
     Map.iter (fun _ (pin: Pin) -> addPin client pin) initial
 
@@ -482,8 +491,7 @@ Usage:
               match Network.getIpAddress () with
               | Some ip -> IPv4Address (string ip)
               | None ->  IPv4Address "127.0.0.1"
-            Port = uint16 (nextPort())
-            }
+            Port = uint16 (nextPort()) }
 
         let! client = ApiClient.create server client
         do! client.Start()
@@ -492,11 +500,16 @@ Usage:
 
     match result with
     | Right client ->
-      loop client Map.empty
+      let patch : Patch =
+        { Id = patchid
+          Name = "MockClient Patch"
+          Pins = Map.empty }
+
+      loop client Map.empty patch
       dispose client
       exit 0
     | Left error ->
-      Console.Error.WriteLine("Encountered error starting client: {}", Error.toMessage error)
+      Console.Error.WriteLine("Encountered error starting client: {0}", Error.toMessage error)
       Console.Error.WriteLine("Aborting.")
       error
       |> Error.toExitCode
