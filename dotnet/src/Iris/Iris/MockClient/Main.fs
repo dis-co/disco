@@ -103,7 +103,7 @@ Usage:
 
   <bool> := ""true"" / ""false""
 
-  <string> := 1*CHAR
+  <string> := DQUOTE 1*CHAR DQUOTE
 
   <frac> := 1*DIGIT ""."" 1*DIGIT
 
@@ -112,11 +112,11 @@ Usage:
   <color> := 1*3DIGIT SP 1*3DIGIT SP 1*3DIGIT
 
   <value> :=
-    <bool>   /
-    <string> /
-    <frac>   /
-    <bytes>  /
-    <color>
+    1*<bool>   /
+    1*<string> /
+    1*<frac>   /
+    1*<bytes>  /
+    1*<color>
 
   <property> := 1*ALPHA ""="" 1*ALPHA
 
@@ -128,9 +128,9 @@ Usage:
 
   add toggle my-toggle
 
-  // update its value
+  // update its slices
 
-  update my-toggle value true
+  update my-toggle value true false
 
   // remove the pin
 
@@ -144,22 +144,22 @@ Usage:
 
   update my-enum properties one=eins two=zwei three=drei
 
-  // set its value to the second key/value pair (""two=zwei"")
+  // set its slices
 
-  update my-enum value zwei
+  update my-enum value zwei eins drei
 
   // add a color pin
 
   add color my-color
 
-  // set its color to white and full alpha
+  // set its first slice to white, and the second to black with full alpha
 
-  update my-color value 255 255 255 255
+  update my-color value ""255 255 255 255"" ""255 255 255 255""
 
   // add and set a string pin
 
   add string my-string
-  update my-string value yo this is a string with spaces
+  update my-string value ""yo this is a string with spaces"" ""ok, this is cool""
 
   ----------------------------------------
   | Links                                |
@@ -362,10 +362,13 @@ Usage:
     | [| r; g; b; a; |] ->
       try
         RGBA { Red = uint8 r; Green = uint8 g; Blue = uint8 b; Alpha = uint8 a }
-        |> Some
       with
-        | _ -> None
-    | _ -> None
+        | _ ->
+          Console.Error.WriteLine("Wrong format {0}. See help", str)
+          RGBA { Red = 0uy; Green = 0uy; Blue = 0uy; Alpha = 0uy }
+    | _ ->
+      Console.Error.WriteLine("Wrong format {0}. See help", str)
+      RGBA { Red = 0uy; Green = 0uy; Blue = 0uy; Alpha = 0uy }
 
   let private parseProperties (str: string) =
     let pattern = @"(\w+)=(\w+)"
@@ -381,6 +384,77 @@ Usage:
     else
       [| { Key = ""; Value = "" } |]
 
+  let private parseStringValues (str: string) =
+    let pat = @"""(\\""|\\\\|[^""\\])*"""
+    let matches = Regex.Matches(str, pat)
+
+    let out : StringSliceD array =
+      Array.zeroCreate matches.Count
+
+    Seq.iteri
+      (fun i _ ->
+        let m = matches.[i]
+        out.[i] <- { Index = uint32 i; Value = m.Value })
+      out
+
+    out
+
+  let inline private parseSimple (f: string -> ^a) (str: string) : ^a array =
+    let split = str.Split(' ')
+    let out : ^a array = Array.zeroCreate (Array.length split)
+
+    Array.iteri
+      (fun i input ->
+        let value = f input
+        out.[i] <- value)
+      split
+
+    out
+
+  let private parseBoolValues (str: string) : BoolSliceD array =
+    let parse input = try Boolean.Parse input with | _ -> false
+    parseSimple parse str
+    |> Array.mapi (fun i bool -> { Index = uint32 i; Value = bool })
+
+  let private parseIntValues (str: string) : IntSliceD array =
+    let parse input = try int input with | _ -> 0
+    parseSimple parse str
+    |> Array.mapi (fun i num -> { Index = uint32 i; Value = num })
+
+  let private parseFloatValues (str: string) : FloatSliceD array =
+    let parse input = try float input with | _ -> 0.0
+    parseSimple parse str
+    |> Array.mapi (fun i num -> { Index = uint32 i; Value = num })
+
+  let private parseDoubleValues (str: string) : DoubleSliceD array =
+    let parse input = try double input with | _ -> 0.0
+    parseSimple parse str
+    |> Array.mapi (fun i num -> { Index = uint32 i; Value = num })
+
+  let private parseByteValues (str: string) : ByteSliceD array =
+    parseStringValues str
+    |> Array.map
+      (fun thing ->
+        { Index = thing.Index
+          Value = Encoding.UTF8.GetBytes thing.Value })
+
+  let private parseColorValues (str: string) : ColorSliceD array =
+    parseStringValues str
+    |> Array.map
+      (fun thing ->
+        { Index = thing.Index
+          Value = parseColor thing.Value })
+
+  let private parseEnumValues (props: Property array) (str: string) : EnumSliceD array =
+    str.Split(' ')
+    |> Array.mapi
+      (fun i input ->
+        let prop =
+          match Array.tryFind (fun (prop:Property) -> prop.Value = input) props with
+          | Some property -> property
+          | _ -> { Key = ""; Value = "" }
+        { Index = uint32 i; Value = prop })
+
   [<Literal>]
   let private PS1 = "λ: "
 
@@ -390,11 +464,17 @@ Usage:
     | Left error ->
       Console.Error.WriteLine("Could not add \"{0}\": {1}", pin.Name, string error)
 
+  let private updateSlices (client: IApiClient) (slices: Slices) =
+    match client.UpdateSlices slices with
+    | Right () -> ()
+    | Left error ->
+      Console.Error.WriteLine("Could not update slices {0}", string error)
+
   let private updatePin (client: IApiClient) (pin: Pin) =
     match client.UpdatePin pin with
     | Right () -> ()
     | Left error ->
-      Console.Error.WriteLine("Could not update \"{0}\": {1}", pin.Name, string error)
+      Console.Error.WriteLine("Could not update pin \"{0}\": {1}", pin.Name, string error)
 
   let private removePin (client: IApiClient) (pin: Pin) =
     match client.RemovePin pin with
@@ -484,55 +564,36 @@ Usage:
         | Value value ->
           match getPin client id with
           | Some (StringPin data) ->
-            let updated = StringPin { data with Slices = [| { Index = 1u; Value = value } |] }
-            updatePin client updated
+            let slices = StringSlices(data.Id, parseStringValues rest)
+            updateSlices client slices
 
           | Some (IntPin data) ->
-            try
-              let intval = int value
-              let updated = IntPin { data with Slices = [| { Index = 1u; Value = intval } |] }
-              updatePin client updated
-            with | exn -> printfn "error: %s" exn.Message
+            let slices = IntSlices(data.Id, parseIntValues rest)
+            updateSlices client slices
 
           | Some (FloatPin data) ->
-            try
-              let floatval = float value
-              let updated = FloatPin { data with Slices = [| { Index = 1u; Value = floatval } |] }
-              updatePin client updated
-            with | exn -> printfn "error: %s" exn.Message
+            let slices = FloatSlices(data.Id, parseFloatValues rest)
+            updateSlices client slices
 
           | Some (DoublePin data) ->
-            try
-              let doubleval = double value
-              let updated = DoublePin { data with Slices = [| { Index = 1u; Value = doubleval } |] }
-              updatePin client updated
-            with | exn -> printfn "error: %s" exn.Message
+            let slices = DoubleSlices(data.Id, parseDoubleValues rest)
+            updateSlices client slices
 
           | Some (BoolPin data) ->
-            try
-              let boolval = Boolean.Parse value
-              let updated = BoolPin { data with Slices = [| { Index = 1u; Value = boolval } |] }
-              updatePin client updated
-            with | exn -> printfn "error: %s" exn.Message
+            let slices = BoolSlices(data.Id, parseBoolValues rest)
+            updateSlices client slices
 
           | Some (BytePin data) ->
-            let byteval = Encoding.UTF8.GetBytes value
-            let updated = BytePin { data with Slices = [| { Index = 1u; Value = byteval } |] }
-            updatePin client updated
+            let slices = ByteSlices(data.Id, parseByteValues rest)
+            updateSlices client slices
 
           | Some (EnumPin data) ->
-            match Array.tryFind (fun (prop:Property) -> prop.Value = value) data.Properties with
-            | Some property ->
-              let updated = EnumPin { data with Slices = [| { Index = 1u; Value = property } |] }
-              updatePin client updated
-            | _ -> printfn "no property found with value: %s" value
+            let slices = EnumSlices(data.Id, parseEnumValues data.Properties rest)
+            updateSlices client slices
 
           | Some (ColorPin data) ->
-            match parseColor value with
-            | Some color ->
-              let updated = ColorPin { data with Slices = [| { Index = 1u; Value = color } |] }
-              updatePin client updated
-            | _ -> printfn "error: could not parse color"
+            let slices = ColorSlices(data.Id, parseColorValues rest)
+            updateSlices client slices
 
           | _ -> printfn "could not find pin with id %A" id
 
