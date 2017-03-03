@@ -37,7 +37,7 @@ export default class Workspace extends Component {
       const id = kv[0], model = kv[1], View = model.view
       return (<div key={id} data-grid={model.layout}>
         <Widget id={id} global={this.props.global} model={model}>
-          <View global={this.props.global} model={model} />
+          <View id={id} global={this.props.global} model={model} />
         </Widget>
       </div>)
     });

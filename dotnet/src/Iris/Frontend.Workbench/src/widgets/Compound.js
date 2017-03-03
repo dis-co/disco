@@ -1,9 +1,9 @@
 import React, { Component } from 'react'
 import Spread from "./Spread"
 import domtoimage from "dom-to-image"
+import { touchesElement } from "../Util.ts"
 
-
-function startDragging(node, parentId, global) {
+function startDragging(node, model, parentId, global) {
   if (node == null) {
     return;
   }
@@ -17,6 +17,7 @@ function startDragging(node, parentId, global) {
           $(img).css({left:e.pageX, top:e.pageY});
           global.triggerEvent("drag", {
             type: "move",
+            model: model,
             origin: parentId,
             x: e.clientX,
             y: e.clientY
@@ -27,6 +28,7 @@ function startDragging(node, parentId, global) {
           img.css({display: "none"});
           global.triggerEvent("drag", {
             type: "stop",
+            model: model,
             origin: parentId,
             x: e.clientX,
             y: e.clientY
@@ -45,16 +47,32 @@ class View extends Component {
     this.childNodes = new Map();
   }
 
+  componentDidMount() {
+    this.props.global.subscribeToEvent("drag", ev => {
+      if (this.el != null && ev.origin !== this.props.id) {
+        if (touchesElement(this.el, ev.x, ev.y)) {
+          switch (ev.type) {
+            case "move":
+              this.el.classList.add("iris-highlight-blue");
+              return;
+            case "stop":
+              console.log("Add model");
+          }
+        }
+        this.el.classList.remove("iris-highlight-blue")
+      }
+    });
+  }
+
   render() {
     return (
-      <div className="iris-compound">
-        {this.props.model.elements.map((el,i) => {
-          // TODO: Check if the element is fixed
-          const View = el.view;
+      <div className="iris-compound" ref={el => this.el = el}>
+        {this.props.model.elements.map((model,i) => {
+          const View = model.view;
           return (
             <div key={i}
               ref={el => { if (el != null) this.childNodes.set(i, el.childNodes[0]) }}>
-              <View model={el} onDragStart={() => startDragging(this.childNodes.get(i), this.props.id, this.props.global)} />
+              <View model={model} onDragStart={() => startDragging(this.childNodes.get(i), model, this.props.id, this.props.global)} />
             </div>
         )})}
       </div>

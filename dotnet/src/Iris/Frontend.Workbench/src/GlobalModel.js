@@ -105,7 +105,7 @@ export default class GlobalModel {
 
   triggerEvent(event, data) {
     if (this.eventSubscribers.has(event)) {
-      this.eventSubscribers.get(event).forEach(subscriber => subscriber(event, data));
+      this.eventSubscribers.get(event).forEach(subscriber => subscriber(data));
     }
   }
 }
