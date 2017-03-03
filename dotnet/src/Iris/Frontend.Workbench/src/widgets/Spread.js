@@ -19,13 +19,13 @@ class View extends React.Component {
     if (el == null)
       return;
 
-    // $(el).resizable({
-    //   minWidth: 150,
-    //   handles: "e",
-    //   resize: function(event, ui) {
-    //       ui.size.height = ui.originalSize.height;
-    //   }
-    // });
+    $(el).resizable({
+      minWidth: 150,
+      handles: "e",
+      resize: function(event, ui) {
+          ui.size.height = ui.originalSize.height;
+      }
+    });
   }
 
   render() {
@@ -33,12 +33,11 @@ class View extends React.Component {
     var height = open ? this.recalculateHeight(rows) : BASE_HEIGHT;
 
     return (
-      <div style={{backgroundColor: "red", height: 50, width: 100}} />
-      /*<div className="iris-spread" ref={el => this.onMounted(el)}>
+      <div className="iris-spread" ref={el => this.onMounted(el)}>
         <div className="iris-spread-child iris-flex-5"
-          style={{ height: height}}
-          >
-          {[<span key="0">Size</span>].concat(rows.map((x,i) => <span key={i+1}>{x}</span>))}
+          style={{ height: height }}>
+          {[<span key="0" style={{cursor: "move"}} onMouseDown={() => this.props.onDragStart()}>Size</span>]
+            .concat(rows.map((x,i) => <span key={i+1}>{x}</span>))}
         </div>
         <div className="iris-spread-child iris-flex-9" style={{ height: height}}>
           {[<span key="0">{value}</span>]
@@ -47,12 +46,13 @@ class View extends React.Component {
         <div className="iris-spread-child iris-spread-end" style={{ height: height - DIFF_HEIGHT}}>
           <img src="/img/more.png" height="7px"
             style={{transform: `rotate(${open ? "90" : "0"}deg)`}}
-            onClick={() => {
+            onClick={ev => {
+              ev.stopPropagation();
               this.props.model.open = !this.props.model.open;
               this.forceUpdate();
             }} />
         </div>
-      </div>*/
+      </div>
     )
   }
 }

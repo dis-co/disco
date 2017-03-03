@@ -1,11 +1,48 @@
 import React, { Component } from 'react'
 import Spread from "./Spread"
-import Draggable from "react-draggable"
+import domtoimage from "dom-to-image"
+
+
+function startDragging(node, parentId, global) {
+  if (node == null) {
+    return;
+  }
+
+  domtoimage.toPng(node)
+    .then(function (dataUrl) {
+      console.log("drag start")
+      const img = $("#iris-drag-image").attr("src", dataUrl).css({display: "block"});
+      $(document)
+        .on("mousemove.drag", e => {
+          $(img).css({left:e.pageX, top:e.pageY});
+          global.triggerEvent("drag", {
+            type: "move",
+            origin: parentId,
+            x: e.clientX,
+            y: e.clientY
+          });
+        })
+        .on("mouseup.drag", e => {
+          console.log("drag stop")
+          img.css({display: "none"});
+          global.triggerEvent("drag", {
+            type: "stop",
+            origin: parentId,
+            x: e.clientX,
+            y: e.clientY
+          });
+          $(document).off("mousemove.drag mouseup.drag");
+        })
+    })
+    .catch(function (error) {
+        console.error('Error when generating image:', error);
+    });
+}
 
 class View extends Component {
   constructor(props) {
     super(props);
-    this.state = {};
+    this.childNodes = new Map();
   }
 
   render() {
@@ -14,34 +51,11 @@ class View extends Component {
         {this.props.model.elements.map((el,i) => {
           // TODO: Check if the element is fixed
           const View = el.view;
-          let draggableProps = {}, cssPosition = "absolute";
-          if (!this.state.dragging) {
-            draggableProps = { position: null };
-            cssPosition = "static";
-          }
           return (
-            <Draggable key={i}
-              {...draggableProps}
-              onStart={ev => {
-                this.setState({dragging: true})
-              }}
-              onDrag={(e,pos) => {
-                this.props.global.triggerEvent("drag", {
-                  type: "move",
-                  x: e.clientX,
-                  y: e.clientY
-                });
-              }}
-              onStop={e => {
-                this.props.global.triggerEvent("drag", {
-                  type: "stop",
-                  x: e.clientX,
-                  y: e.clientY
-                });
-                this.setState({dragging: false})
-              }}>
-              <div style={{backgroundColor: "red", position: cssPosition, height: 50, width: 100}} />
-            </Draggable>
+            <div key={i}
+              ref={el => { if (el != null) this.childNodes.set(i, el.childNodes[0]) }}>
+              <View model={el} onDragStart={() => startDragging(this.childNodes.get(i), this.props.id, this.props.global)} />
+            </div>
         )})}
       </div>
     )
