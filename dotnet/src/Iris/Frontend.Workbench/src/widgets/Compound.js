@@ -3,49 +3,56 @@ import Spread from "./Spread"
 import domtoimage from "dom-to-image"
 import { touchesElement } from "../Util.ts"
 
-function startDragging(node, model, parentId, global) {
-  if (node == null) {
-    return;
-  }
-
-  domtoimage.toPng(node)
-    .then(function (dataUrl) {
-      console.log("drag start")
-      const img = $("#iris-drag-image").attr("src", dataUrl).css({display: "block"});
-      $(document)
-        .on("mousemove.drag", e => {
-          $(img).css({left:e.pageX, top:e.pageY});
-          global.triggerEvent("drag", {
-            type: "move",
-            model: model,
-            origin: parentId,
-            x: e.clientX,
-            y: e.clientY
-          });
-        })
-        .on("mouseup.drag", e => {
-          console.log("drag stop")
-          img.css({display: "none"});
-          global.triggerEvent("drag", {
-            type: "stop",
-            model: model,
-            origin: parentId,
-            x: e.clientX,
-            y: e.clientY
-          });
-          $(document).off("mousemove.drag mouseup.drag");
-        })
-    })
-    .catch(function (error) {
-        console.error('Error when generating image:', error);
-    });
-}
-
 class View extends Component {
   constructor(props) {
     super(props);
     this.childNodes = new Map();
   }
+
+  startDragging(model, index) {
+    const _this = this;
+    const node = _this.childNodes.get(index);
+    if (node == null) { return; }
+
+    domtoimage.toPng(node)
+      .then(dataUrl => {
+        console.log("drag start")
+        const img = $("#iris-drag-image").attr("src", dataUrl).css({display: "block"});
+        $(document)
+          .on("mousemove.drag", e => {
+            $(img).css({left:e.pageX, top:e.pageY});
+            _this.props.global.triggerEvent("drag", {
+              type: "move",
+              model: model,
+              origin: _this.props.id,
+              x: e.clientX,
+              y: e.clientY
+            });
+          })
+          .on("mouseup.drag", e => {
+            console.log("drag stop")
+            img.css({display: "none"});
+            _this.props.global.triggerEvent("drag", {
+              type: "stop",
+              model: model,
+              origin: _this.props.id,
+              x: e.clientX,
+              y: e.clientY,
+              removeModelFromOrigin() {
+                _this.props.model.elements.splice(index, 1);
+                _this.forceUpdate();
+              }
+            });
+            $(document).off("mousemove.drag mouseup.drag");
+          })
+      })
+      .catch(error => {
+          console.error('Error when generating image:', error);
+      });
+  }
+
+
+
 
   componentDidMount() {
     this.props.global.subscribeToEvent("drag", ev => {
@@ -56,7 +63,9 @@ class View extends Component {
               this.el.classList.add("iris-highlight-blue");
               return;
             case "stop":
-              console.log("Add model");
+              ev.removeModelFromOrigin();
+              this.props.model.elements.push(ev.model);
+              this.forceUpdate();
           }
         }
         this.el.classList.remove("iris-highlight-blue")
@@ -72,7 +81,7 @@ class View extends Component {
           return (
             <div key={i}
               ref={el => { if (el != null) this.childNodes.set(i, el.childNodes[0]) }}>
-              <View model={model} onDragStart={() => startDragging(this.childNodes.get(i), model, this.props.id, this.props.global)} />
+              <View model={model} onDragStart={() => this.startDragging(model, i)} />
             </div>
         )})}
       </div>
