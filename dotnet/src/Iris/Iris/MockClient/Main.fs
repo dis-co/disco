@@ -30,6 +30,7 @@ module Main =
     | [<AltCommandLine("-n")>] Name of string
     | [<AltCommandLine("-h")>] Host of string
     | [<AltCommandLine("-p")>] Port of uint16
+    | [<AltCommandLine("-b")>] Bind of string
 
     interface IArgParserTemplate with
       member self.Usage =
@@ -39,6 +40,7 @@ module Main =
         | Name _  -> "specify the iris clients' name (optional)"
         | Host _  -> "specify the iris services' host to connect to (optional)"
         | Port _  -> "specify the iris services' port to connect on (optional)"
+        | Bind _  -> "specify the iris clients' address to bind to"
 
   [<Literal>]
   let private help = @"
@@ -665,9 +667,9 @@ Usage:
             Role = Role.Renderer
             Status = ServiceStatus.Starting
             IpAddress =
-              match Network.getIpAddress () with
-              | Some ip -> IPv4Address (string ip)
-              | None ->  IPv4Address "127.0.0.1"
+              match parsed.Contains <@ Bind @> with
+              | true  -> IPv4Address (parsed.GetResult <@ Bind @>)
+              | false -> IPv4Address "127.0.0.1"
             Port = uint16 (nextPort()) }
 
         let! client = ApiClient.create server client
