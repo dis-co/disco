@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <Import Project="..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
-    <ProjectGuid>{2704F49C-2E66-4923-A4C6-9E07B05FC017}</ProjectGuid>
+    <ProjectGuid>{46d46127-2623-465e-b51b-fc4bd1888a95}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>Iris</RootNamespace>
     <AssemblyName>client</AssemblyName>
@@ -23,7 +23,7 @@
     <OutputPath>..\..\bin\Debug\MockClient</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
-    <StartArguments>start</StartArguments>
+    <StartArguments>-b 127.0.0.1 -h 192.168.8.11 -p 5000</StartArguments>
     <!-- <OtherFlags>-\-standalone</OtherFlags> -->
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
@@ -253,6 +253,7 @@
     </Content>
     <Content Include="../../assets/mockdata.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <Link>mockdata.txt</Link>
     </Content>
     <None Include="../../i386/libzmq.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
