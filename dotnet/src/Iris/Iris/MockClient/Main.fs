@@ -50,7 +50,122 @@ module Main =
 
 Usage:
 
+  ----------------------------------------
+  | Quick Start:                         |
+  ----------------------------------------
 
+  // add a pin of <type> with <name> (where <name> will also serve the pin's Id)
+
+  add <type> <name>
+
+  // update a pin's value or properties (enum)
+
+  update <name> <attr> (<value> / 1*<property>)
+
+  // remove a pin from the built-in patch
+
+  remove <name>
+
+  // show a pins value and attributes
+
+  show <name>
+
+  // list all patches and their pins
+
+  listPins|lp
+
+  // help
+
+  help|h
+
+  ----------------------------------------
+  | Grammar (see [1] for info):          |
+  ----------------------------------------
+
+  <type> :=
+    ""toggle""    /
+    ""bang""      /
+    ""string""    /
+    ""multiline"" /
+    ""file""      /
+    ""dir""       /
+    ""url""       /
+    ""ip""        /
+    ""float""     /
+    ""double""    /
+    ""bytes""     /
+    ""color""     /
+    ""enum""
+
+  <name> := 1*ALPHA
+
+  <attr> := ""value"" / ""properties""
+
+  <bool> := ""true"" / ""false""
+
+  <string> := 1*CHAR
+
+  <frac> := 1*DIGIT ""."" 1*DIGIT
+
+  <bytes> := 1*CHAR
+
+  <color> := 1*3DIGIT SP 1*3DIGIT SP 1*3DIGIT
+
+  <value> :=
+    <bool>   /
+    <string> /
+    <frac>   /
+    <bytes>  /
+    <color>
+
+  <property> := 1*ALPHA ""="" 1*ALPHA
+
+  ----------------------------------------
+  | Examples                             |
+  ----------------------------------------
+
+  // add a new toggle with name and id ""my-toggle""
+
+  add toggle my-toggle
+
+  // update its value
+
+  update my-toggle value true
+
+  // remove the pin
+
+  remove my-toggle
+
+  // add a new enum pin
+
+  add enum my-enum
+
+  // add some properties
+
+  update my-enum properties one=eins two=zwei three=drei
+
+  // set its value to the second key/value pair (""two=zwei"")
+
+  update my-enum value zwei
+
+  // add a color pin
+
+  add color my-color
+
+  // set its color to white and full alpha
+
+  update my-color value 255 255 255 255
+
+  // add and set a string pin
+
+  add string my-string
+  update my-string value yo this is a string with spaces
+
+  ----------------------------------------
+  | Links                                |
+  ----------------------------------------
+
+  [1] https://en.wikipedia.org/wiki/Augmented_Backus%E2%80%93Naur_form
   "
 
   let private patchid = Id.Create()
@@ -92,8 +207,8 @@ Usage:
   let private (|Remove|_|) (str: string) =
     parseAttr "remove" str
 
-  let private (|Get|_|) (str: string) =
-    parseAttr "get" str
+  let private (|Show|_|) (str: string) =
+    parseAttr "show" str
 
   let private (|Toggle|_|) (str: string) =
     parseAttr "toggle" str
@@ -344,7 +459,7 @@ Usage:
       // | |_| |  __/ |_
       //  \____|\___|\__|
 
-      | Get id ->
+      | Show id ->
         getPin client id
         |> Option.map showPin
         |> ignore
