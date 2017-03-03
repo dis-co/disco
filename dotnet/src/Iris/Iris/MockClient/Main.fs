@@ -512,6 +512,14 @@ Usage:
         else
           Map.empty
 
+      let level =
+        if parsed.Contains <@ Verbose @> then
+          LogLevel.Debug
+        else
+          LogLevel.Info
+
+      use obs = Logger.subscribe (Logger.stdoutWith level)
+
       loop client loaded patch
       dispose client
       exit 0
