@@ -246,6 +246,19 @@ module Logger =
   let stdout (log: LogEvent) =
     log |> string |> printfn "%s"
 
+  // ** stdoutWith
+
+  let stdoutWith (level: LogLevel) (log: LogEvent) =
+    match level, log.LogLevel with
+    | Debug, _ -> stdout log
+    | Info, Info | Info, Warn | Info, Err ->
+      stdout log
+    | Warn, Warn | Warn, Err ->
+      stdout log
+    | Err, Err ->
+      stdout log
+    | _ -> ()
+
   let private subscriptions = new ResizeArray<IObserver<LogEvent>>()
 
   let listener =

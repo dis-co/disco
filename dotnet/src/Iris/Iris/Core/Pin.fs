@@ -376,6 +376,21 @@ type Pin =
       | ColorPin    data -> data.Name
       | CompoundPin data -> data.Name
 
+  // ** Type
+
+  member self.Type
+    with get () =
+      match self with
+      | StringPin   _ -> "StringPin"
+      | IntPin      _ -> "IntPin"
+      | FloatPin    _ -> "FloatPin"
+      | DoublePin   _ -> "DoublePin"
+      | BoolPin     _ -> "BoolPin"
+      | BytePin     _ -> "BytePin"
+      | EnumPin     _ -> "EnumPin"
+      | ColorPin    _ -> "ColorPin"
+      | CompoundPin _ -> "CompoundPin"
+
   // ** SetName
 
   member self.SetName name =
@@ -3350,6 +3365,21 @@ and Slices =
   | EnumSlices     of Id * EnumSliceD     array
   | ColorSlices    of Id * ColorSliceD    array
   | CompoundSlices of Id * CompoundSliceD array
+
+  // ** Id
+
+  member self.Id
+    with get () =
+      match self with
+      | StringSlices   (id,_) -> id
+      | IntSlices      (id,_) -> id
+      | FloatSlices    (id,_) -> id
+      | DoubleSlices   (id,_) -> id
+      | BoolSlices     (id,_) -> id
+      | ByteSlices     (id,_) -> id
+      | EnumSlices     (id,_) -> id
+      | ColorSlices    (id,_) -> id
+      | CompoundSlices (id,_) -> id
 
   // ** IsString
 
