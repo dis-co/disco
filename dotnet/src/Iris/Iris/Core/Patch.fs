@@ -104,6 +104,23 @@ type Patch =
     else
       patch
 
+  //  _   _           _       _       ____  _ _
+  // | | | |_ __   __| | __ _| |_ ___/ ___|| (_) ___ ___  ___
+  // | | | | '_ \ / _` |/ _` | __/ _ \___ \| | |/ __/ _ \/ __|
+  // | |_| | |_) | (_| | (_| | ||  __/___) | | | (_|  __/\__ \
+  //  \___/| .__/ \__,_|\__,_|\__\___|____/|_|_|\___\___||___/
+  //       |_|
+
+  static member UpdateSlices (patch : Patch) (slices: Slices) : Patch =
+    if Patch.HasPin patch slices.Id then
+      let mapper _ (pin: Pin) =
+        if pin.Id = slices.Id then
+          pin.SetSlices slices
+        else pin
+      { patch with Pins = Map.map mapper patch.Pins }
+    else
+      patch
+
   //  ____                               ____  _
   // |  _ \ ___ _ __ ___   _____   _____|  _ \(_)_ __
   // | |_) / _ \ '_ ` _ \ / _ \ \ / / _ \ |_) | | '_ \

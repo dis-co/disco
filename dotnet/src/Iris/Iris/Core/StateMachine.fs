@@ -311,6 +311,13 @@ type State =
         patch
     { state with Patches = Map.map mapper state.Patches }
 
+  // ** updateSlices
+
+  static member updateSlices (slices: Slices) (state: State) =
+    let mapper (_: Id) (patch : Patch) =
+      Patch.UpdateSlices patch slices
+    { state with Patches = Map.map mapper state.Patches }
+
   // ** removePin
 
   static member removePin (pin : Pin) (state: State) =
@@ -971,6 +978,7 @@ and Store(state : State)=
     | AddPin            pin -> State.addPin        pin     state |> andRender
     | UpdatePin         pin -> State.updatePin     pin     state |> andRender
     | RemovePin         pin -> State.removePin     pin     state |> andRender
+    | UpdateSlices   slices -> State.updateSlices  slices  state |> andRender
 
     | AddMember         mem -> State.addMember     mem     state |> andRender
     | UpdateMember      mem -> State.updateMember  mem     state |> andRender

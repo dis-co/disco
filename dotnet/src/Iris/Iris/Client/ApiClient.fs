@@ -423,6 +423,13 @@ module ApiClient =
         |> Error.asClientError (tag "requestUpdate")
         |> Either.fail
 
+  // ** maybeDispatch
+
+  let private maybeDispatch (data: ClientStateData) (sm: StateMachine) =
+    match sm with
+    | UpdateSlices slices -> data.Store.Dispatch sm
+    | _ -> ()
+
   // ** handleRequest
 
   let private handleRequest (chan: ReplyChan)
@@ -431,6 +438,7 @@ module ApiClient =
                             (agent: ApiAgent) =
     match state with
     | Loaded data ->
+      maybeDispatch data sm
       match requestUpdate data.Socket sm with
       | Right () ->
         Reply.Ok

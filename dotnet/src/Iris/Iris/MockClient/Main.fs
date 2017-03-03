@@ -351,7 +351,7 @@ Usage:
       Map.empty
       lines
 
-  let private parseUpdate (str: string) =
+  let private popWord (str: string) =
     let spc = str.IndexOf(' ')
     let id = str.Substring(0, spc)
     let rest = str.Substring(spc + 1, str.Length - spc - 1)
@@ -385,7 +385,7 @@ Usage:
       [| { Key = ""; Value = "" } |]
 
   let private parseStringValues (str: string) =
-    let pat = @"""(\\""|\\\\|[^""\\])*"""
+    let pat = @"\""(.*?)\"""
     let matches = Regex.Matches(str, pat)
 
     let out : StringSliceD array =
@@ -394,13 +394,14 @@ Usage:
     Seq.iteri
       (fun i _ ->
         let m = matches.[i]
-        out.[i] <- { Index = uint32 i; Value = m.Value })
+        out.[i] <- { Index = uint32 i; Value = m.Groups.[1].Value })
       out
 
     out
 
   let inline private parseSimple (f: string -> ^a) (str: string) : ^a array =
-    let split = str.Split(' ')
+    let cmd, rest = popWord str
+    let split = rest.Trim().Split(' ')
     let out : ^a array = Array.zeroCreate (Array.length split)
 
     Array.iteri
@@ -552,7 +553,7 @@ Usage:
       //       |_|
 
       | Update rest ->
-        let id, rest = parseUpdate rest
+        let id, rest = popWord rest
 
         match rest with
         // __     __    _

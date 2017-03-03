@@ -3366,6 +3366,21 @@ and Slices =
   | ColorSlices    of Id * ColorSliceD    array
   | CompoundSlices of Id * CompoundSliceD array
 
+  // ** Id
+
+  member self.Id
+    with get () =
+      match self with
+      | StringSlices   (id,_) -> id
+      | IntSlices      (id,_) -> id
+      | FloatSlices    (id,_) -> id
+      | DoubleSlices   (id,_) -> id
+      | BoolSlices     (id,_) -> id
+      | ByteSlices     (id,_) -> id
+      | EnumSlices     (id,_) -> id
+      | ColorSlices    (id,_) -> id
+      | CompoundSlices (id,_) -> id
+
   // ** IsString
 
   member self.IsString
