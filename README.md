@@ -8,19 +8,148 @@
 
 ## Data Definition
 
-### RAFT
+     ____  _ 
+    |  _ \(_)_ __ 
+    | |_) | | '_ \ 
+    |  __/| | | | |
+    |_|   |_|_| |_|
+
+### VecSize
+
+`VecSize` is either **_dynamic_**, i.e. user can add/update/delete
+values to a `Pin` in any way (with the exception that there **has** to
+be at least one value per `Pin`), or it is **_fixed_** by a number of
+values a `Pin` always **needs** to have at the very least. On a
+**_fixed_** `Pin`, values always need to be a multiple of the provided
+value. The corresponding `FSharp` type is:
+
+```
+type VecSize =
+  | Dynamic
+  | Fixed of uint32
+```
+
+### Number 
+
+Fields:
+
+| Name      |       Type                                   |  Description                      |
+|----------:|:--------------------------------------------:|----------------------------------:|
+| Id        | string                                       | per-client unique identifier      |
+| Name      | string                                       | descriptive name                  |
+| Tags      | string array                                 | metadata for grouping and search  |
+| Unit      | string                                       | unit of measure                   |
+| VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
+| Precision | integer                                      | number of post-comma positions    |
+| Min       | integer                                      | minimum allowed value             |
+| Max       | integer                                      | maximum allowed value             |
+| Values    | array                                        | actual number values              |
+
+----
+
+### String
+
+Behavior:
+
+String `Pin` behavior is either one of the following values to
+indicate validation requirements to the front-end:
+
+- `Simple`
+- `MultiLine`
+- `FileName`
+- `Directory`
+- `Url`
+- `IP`
+
+The corresponding `FSharp` discriminated union:
+
+``` 
+type StringBehavior =
+  | Simple
+  | MultiLine
+  | FileName
+  | Directory
+  | Url
+  | IP
+``` 
+
+Fields:
+
+
+| Name      |       Type                                   |  Description                      |
+|----------:|:--------------------------------------------:|----------------------------------:|
+| Id        | string                                       | per-client unique identifier      |
+| Name      | string                                       | descriptive name                  |
+| Tags      | string array                                 | metadata for grouping and search  |
+| Behavior  | Behavior                                     | indicate validation constraints   |
+| MaxChars  | integer                                      | maximum number of allowed chars   |
+| VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
+| Values    | string array                                 | actual values of this pin         |
+
+### Bool
+
+Fields:
+
+| Name      |       Type                                   |  Description                      |
+|----------:|:--------------------------------------------:|----------------------------------:|
+| Id        | string                                       | per-client unique identifier      |
+| Name      | string                                       | descriptive name                  |
+| Tags      | string array                                 | metadata for grouping and search  |
+| IsTrigger | boolean                                      | should the value be reset         |
+| VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
+| Values    | string array                                 | actual values of this pin         |
+
+### Byte
+
+Fields:
+
+| Name      |       Type                                   |  Description                      |
+|----------:|:--------------------------------------------:|----------------------------------:|
+| Id        | string                                       | per-client unique identifier      |
+| Name      | string                                       | descriptive name                  |
+| Tags      | string array                                 | metadata for grouping and search  |
+| VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
+| Values    | byte array array                             | actual values of this pin         |
+
+### Enum
+
+Fields:
+
+| Name      |       Type                                   |  Description                      |
+|----------:|:--------------------------------------------:|----------------------------------:|
+| Id        | string                                       | per-client unique identifier      |
+| Name      | string                                       | descriptive name                  |
+| Tags      | string array                                 | metadata for grouping and search  |
+| VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
+| Properties| key/value pairs (string * string)            | properties                        |
+| Values    | byte array array                             | actual values of this pin         |
+
+### Color
+
+Fields:
+
+| Name      |       Type                                   |  Description                      |
+|----------:|:--------------------------------------------:|----------------------------------:|
+| Id        | string                                       | per-client unique identifier      |
+| Name      | string                                       | descriptive name                  |
+| Tags      | string array                                 | metadata for grouping and search  |
+| VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
+| Values    | byte array array                             | actual values of this pin         |
+
+----
+
+     ____        __ _ 
+    |  _ \ __ _ / _| |_ 
+    | |_) / _` | |_| __| 
+    |  _ < (_| |  _| |_ 
+    |_| \_\__,_|_|  \__| 
+
 
 ### IRIS Service
-
 
 ### Client-API
 The Iris Client-API ensures the communication between the Iris-Service and a Iris-Client.
 
-#### Data-Types
-This is the value without visual representation.
-##### Number [double, float, int, bool]
-###### Subtypes [min, max,...]
-##### String [url, ip, filename, folder]
 
 ### IRIS Project
 

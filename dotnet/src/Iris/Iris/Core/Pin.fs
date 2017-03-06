@@ -2391,7 +2391,7 @@ and EnumSliceD =
 
   #endif
 
-// ** ColorPinD
+// * ColorPinD
 
 //   ____      _            ____
 //  / ___|___ | | ___  _ __| __ )  _____  __
