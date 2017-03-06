@@ -24,7 +24,6 @@ The Iris Client-API ensures the communication between the Iris-Service and a Iri
 This is the value without visual representation.
 ##### Value
 
-
 #### Subtypes
 The Subtypes which were previuosly set by the client are now set by the iris-front end and will stored inside the project.
 
