@@ -14,13 +14,22 @@
 
 
 ### Client-API
-The Iris Client 
+The Iris Client-API ensures the communication between the Iris-Service and a Iris-Client.
 
-#### Function
+#### Functions
+
+#### Values
+
+##### Types
 
 #### Subtypes
+The Subtypes which were previuosly set by the client are now set by the iris-front end and will stored inside the project.
 
-### IRIS Client
+##### Value
+##### String
+##### Enum
+##### Color
+##### Raw
 
 
 ### IRIS Project
