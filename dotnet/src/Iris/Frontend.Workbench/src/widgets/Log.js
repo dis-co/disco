@@ -1,45 +1,44 @@
-import * as React from "react";
-import css from "../../css/Log.less";
+import React, { Component } from 'react'
+import css from "../../css/Log.less"
+import { map } from "../Util.ts"
 
-const initLogs = [
-  "[14:12:11] Do laboris fugiat cillum excepteur Lorem officia.",
-  "[14:12:11] Ullamco voluptate proident veniam adipisicing nisi esse dolore anim eiusmod.",
-  "[14:12:11] Aute nostrud consequat nulla commodo non.",
-  "[14:12:11] Non ad incididunt pariatur ullamco sit labore cupidatat aliqua ex consectetur ad dolore.",
-  "[14:12:11] Duis consectetur deserunt sint minim culpa aliquip.",
-  "[14:12:11] Aute excepteur excepteur quis sint officia incididunt aliquip cillum.",
-  "[14:12:11] Officia officia ad adipisicing non.",
-  "[14:12:11] Sit qui ullamco cillum Lorem sunt minim sit tempor.",
-  "[14:12:11] Laborum officia cillum enim ea sint adipisicing laborum nostrud velit Lorem non commodo dolore.",
-]
+class View extends Component {
+  constructor(props) {
+    super(props);
+  }
 
-export default class Log extends React.Component {
-  static get layout() {
-    return {
+  componentDidMount() {
+    this.disposable =
+      this.props.global.subscribe("logs", () => {
+        this.forceUpdate();
+      });
+  }
+
+  componentWillUnmount() {
+    if (this.disposable) {
+      this.disposable.dispose();
+    }
+  }
+
+  render() {
+    const logs = this.props.global.state.logs;
+    return (
+      <div className="iris-log">
+        {map(logs, kv => <p key={kv[0]}>{kv[1]}</p>)}
+      </div>
+    )
+  }
+}
+
+export default class Log {
+  constructor() {
+    this.view = View;
+    this.name = "LOG";
+    this.layout = {
       x: 0, y: 0,
       w: 3, h: 6,
       minW: 1, maxW: 10,
       minH: 1, maxH: 10
-    };
-  }
-
-  constructor(props) {
-    super(props);
-    this.state = { logs: initLogs };
-  }
-
-  render() {
-    const logs = this.state.logs;
-    return (
-      <div className="iris-log">
-        <div className="iris-draggable-handle">
-          <span>LOG</span>
-          <span className="iris-close">x</span>
-        </div>
-        <div>
-          {this.state.logs.map((log,i) => <p key={i}>{log}</p>)}
-        </div>
-      </div>
-    )
+    }
   }
 }
