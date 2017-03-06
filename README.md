@@ -17,6 +17,8 @@
 The Iris Client-API ensures the communication between the Iris-Service and a Iris-Client.
 
 #### Functions
+##### GET
+##### UPDATE
 
 #### Value-Types
 This is the value without visual representation.
