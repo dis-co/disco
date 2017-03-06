@@ -19,13 +19,9 @@ module.exports = {
   ],
 
   output: {
-    filename: 'bundle.js',
-    // the output bundle
-
-    path: path.resolve(__dirname, 'dist'),
-
-    publicPath: '/static/'
-    // necessary for HMR to know where to load the hot update chunks
+    filename: 'bundle.js', // the output bundle
+    path: path.resolve(__dirname, 'js'),
+    publicPath: '/js/' // necessary for HMR to know where to load the hot update chunks
   },
 
   devtool: 'inline-source-map',
@@ -70,11 +66,12 @@ module.exports = {
   devServer: {
     host: 'localhost',
     port: 3000,
-
-    historyApiFallback: true,
-    // respond to 404s with index.html
-
-    hot: true,
-    // enable HMR on the server
+    historyApiFallback: true, // respond to 404s with index.html
+    hot: true, // enable HMR on the server
+    proxy: {
+      '/api/*': {
+        target: 'http://localhost:7000'
+      }
+    }    
   },
 };
