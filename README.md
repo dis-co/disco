@@ -15,6 +15,10 @@
 
 ### Client-API
 
+#### Function
+
+#### Subtypes
+
 ### IRIS Client
 
 
