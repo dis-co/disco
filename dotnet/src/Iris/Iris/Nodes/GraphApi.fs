@@ -3,6 +3,8 @@ namespace Iris.Nodes
 // * Imports
 
 open System
+open System.Text
+open System.Collections.Generic
 open System.Collections.Concurrent
 open VVVV.PluginInterfaces.V1
 open VVVV.PluginInterfaces.V2
@@ -10,6 +12,7 @@ open VVVV.PluginInterfaces.V2.Graph
 open VVVV.Core.Logging
 open Iris.Core
 open Iris.Client
+open Newtonsoft.Json
 
 // * GraphApi
 
@@ -20,6 +23,47 @@ module GraphApi =
 
   let private tag (str: string) = sprintf "Iris.%s" str
 
+  //   ____                 _     ____       _       _
+  //  / ___|_ __ __ _ _ __ | |__ |  _ \ __ _| |_ ___| |__
+  // | |  _| '__/ _` | '_ \| '_ \| |_) / _` | __/ __| '_ \
+  // | |_| | | | (_| | |_) | | | |  __/ (_| | || (__| | | |
+  //  \____|_|  \__,_| .__/|_| |_|_|   \__,_|\__\___|_| |_|
+  //                 |_|
+
+  // ** PinAttributes
+
+  type PinAttributes =
+    { Id: string }
+
+  // ** NodeAttributes
+
+  type NodeAttributes =
+    { Pins: Dictionary<string,PinAttributes> }
+
+    member attrs.ToJson() : string =
+      JsonConvert.SerializeObject attrs
+
+  // ** GraphPatch
+
+  type GraphPatch =
+    { Frame: uint64
+      ParentId: int
+      ParentFileName: string
+      XmlSnippet: string }
+
+    override patch.ToString() =
+      sprintf "frame=%d parentid=%d parentfile=%s xml=%s"
+        patch.Frame
+        patch.ParentId
+        patch.ParentFileName
+        patch.XmlSnippet
+
+  // ** NodePatch
+
+  type NodePatch =
+    { FilePath: string
+      Payload: string }
+
   // ** Msg
 
   [<RequireQualifiedAccess>]
@@ -29,6 +73,7 @@ module GraphApi =
     | PinUpdated of Pin                  // a remote pin got updated
     | CallCue    of Cue
     | Status     of ServiceStatus
+    | GraphPatch of GraphPatch
     | Update
 
   // ** PluginState
@@ -138,7 +183,7 @@ module GraphApi =
         IpAddress = IPv4Address "192.168.2.125"
         Port = 10001us }
 
-    let server =
+    let server : IrisServer =
       let ip =
         match state.InServer.[0] with
         | null ->  IPv4Address "127.0.0.1"
@@ -172,6 +217,54 @@ module GraphApi =
           Status = ServiceStatus.Failed error }
     |> setStatus
 
+  let private encodeSpaces (raw: string) =
+    raw.Replace(" ", "&nbsp;")
+
+  //   ____            _   _
+  //  / ___|__ _ _   _| |_(_) ___  _ __
+  // | |   / _` | | | | __| |/ _ \| '_ \
+  // | |__| (_| | |_| | |_| | (_) | | | |
+  //  \____\__,_|\__,_|\__|_|\___/|_| |_|
+  //
+  // we need to base64 encode this stuff because XML does not handle spaces in attributes and its
+  // not possible to encode the data via html entities (&nbsp; not recognized)
+
+  let private htmlEncodePayload (raw: string) =
+    raw
+    |> Encoding.UTF8.GetBytes
+    |> Convert.ToBase64String
+
+  let private htmlDecodePayload (raw: string) =
+    Convert.FromBase64String raw
+
+  let private formatNodeTagSnippet (node: INode2) (raw: string) =
+    let tmpl =
+      @"<NODE id=""{0}"">
+         <PIN pinname=""Tag"" slicecount=""1"" values=""{1}""/>
+        </NODE>"
+    String.Format(tmpl, node.ID, htmlEncodePayload raw)
+
+  let private formatPatchTagSnippet (id: int) (tags: string) =
+    let tmpl = @"<PATCH id=""{0}"">{1}</PATCH>";
+    String.Format(tmpl, id, tags);
+
+  // ** createAttributes
+
+  let private createAttributes (state: PluginState) (node: INode2) =
+    let attrs:NodeAttributes =
+      let dict = new Dictionary<string,PinAttributes>()
+      dict.Add("hiho", { Id = "here we  go" })
+      { Pins = dict }
+
+    { Frame = state.Frame
+      ParentId = node.Parent.ID
+      ParentFileName = node.Parent.NodeInfo.Filename
+      XmlSnippet = formatNodeTagSnippet node (attrs.ToJson()) }
+    |> Msg.GraphPatch
+    |> state.Events.Enqueue
+
+    attrs
+
   // ** parseINode2
 
   let private parseINode2 (node: INode2) : Either<IrisError,Pin> =
@@ -181,6 +274,8 @@ module GraphApi =
   // ** onNodeExposed
 
   let private onNodeExposed (state: PluginState) (node: INode2) =
+    createAttributes state node
+    |> ignore
     for pin in node.Pins do
       sprintf "Pin Name: %s Value: %A" pin.Name pin.[0]
       |> debug state
@@ -188,7 +283,11 @@ module GraphApi =
   // ** onNodeUnExposed
 
   let private onNodeUnExposed (state: PluginState) (node: INode2) =
-    debug state "a node was un-exposed"
+    debug state "----------------------------------------> a node was un-exposed"
+    for pin in node.Pins do
+      sprintf "Pin Name: %s Value: %A" pin.Name pin.[0]
+      |> debug state
+    debug state "----------------------------------------"
 
   // ** setupVvvv
 
@@ -247,6 +346,28 @@ module GraphApi =
     debug state "setState"
     state
 
+  // ** patchGraph
+
+  let private patchGraph (state: PluginState) (patch: GraphPatch) =
+    debug state (string patch)
+
+    let patches = new Dictionary<int,NodePatch>()
+
+    if patch.Frame < state.Frame then
+      if patches.ContainsKey(patch.ParentId) then
+        let tmp = patches.[patch.ParentId].Payload + patch.XmlSnippet
+        patches.[patch.ParentId] <- { FilePath = patch.ParentFileName; Payload = tmp }
+      else
+        patches.[patch.ParentId] <- { FilePath = patch.ParentFileName; Payload = patch.XmlSnippet }
+
+      if patches.Count > 0 then
+        for KeyValue(key,value) in patches do
+          let ptc = formatPatchTagSnippet key value.Payload
+          debug state (string ptc)
+          state.V2Host.SendXMLSnippet(value.FilePath, ptc, false)
+
+    state
+
   // ** processMsgs
 
   let private processMsgs (state: PluginState) =
@@ -258,11 +379,12 @@ module GraphApi =
         | true, msg ->
           newstate <-
             match msg with
-            | Msg.CallCue cue    -> callCue   state cue
-            | Msg.PinAdded pin   -> addPin    state pin
-            | Msg.PinRemoved pin -> removePin state pin
-            | Msg.PinUpdated pin -> updatePin state pin
-            | Msg.Update         -> setState  state
+            | Msg.CallCue cue    -> callCue    state cue
+            | Msg.PinAdded pin   -> addPin     state pin
+            | Msg.PinRemoved pin -> removePin  state pin
+            | Msg.PinUpdated pin -> updatePin  state pin
+            | Msg.Update         -> setState   state
+            | Msg.GraphPatch ptc -> patchGraph state ptc
             | Msg.Status status ->
               { newstate with Status = status}
               |> setStatus
@@ -306,7 +428,6 @@ module GraphApi =
   //    |         MkQueueJob value (Reset with current frame + 1)
   //    |
   //    Cleanup
-  //
 
   // ** evaluate
 
