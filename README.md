@@ -37,6 +37,7 @@ Fields:
 |----------:|:--------------------------------------------:|----------------------------------:|
 | Id        | string                                       | per-client unique identifier      |
 | Name      | string                                       | descriptive name                  |
+| Direction | **_input_** or **_output_**                  | read or write to this pin         |
 | Tags      | string array                                 | metadata for grouping and search  |
 | Unit      | string                                       | unit of measure                   |
 | VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
@@ -81,6 +82,7 @@ Fields:
 | Id        | string                                       | per-client unique identifier      |
 | Name      | string                                       | descriptive name                  |
 | Tags      | string array                                 | metadata for grouping and search  |
+| Direction | **_input_** or **_output_**                  | read or write to this pin         |
 | Behavior  | Behavior                                     | indicate validation constraints   |
 | MaxChars  | integer                                      | maximum number of allowed chars   |
 | VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
@@ -95,6 +97,7 @@ Fields:
 | Id        | string                                       | per-client unique identifier      |
 | Name      | string                                       | descriptive name                  |
 | Tags      | string array                                 | metadata for grouping and search  |
+| Direction | **_input_** or **_output_**                  | read or write to this pin         |
 | IsTrigger | boolean                                      | should the value be reset         |
 | VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
 | Values    | string array                                 | actual values of this pin         |
@@ -108,6 +111,7 @@ Fields:
 | Id        | string                                       | per-client unique identifier      |
 | Name      | string                                       | descriptive name                  |
 | Tags      | string array                                 | metadata for grouping and search  |
+| Direction | **_input_** or **_output_**                  | read or write to this pin         |
 | VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
 | Values    | byte array array                             | actual values of this pin         |
 
@@ -121,6 +125,7 @@ Fields:
 | Name      | string                                       | descriptive name                  |
 | Tags      | string array                                 | metadata for grouping and search  |
 | VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
+| Direction | **_input_** or **_output_**                  | read or write to this pin         |
 | Properties| key/value pairs (string * string)            | properties                        |
 | Values    | byte array array                             | actual values of this pin         |
 
@@ -133,6 +138,7 @@ Fields:
 | Id        | string                                       | per-client unique identifier      |
 | Name      | string                                       | descriptive name                  |
 | Tags      | string array                                 | metadata for grouping and search  |
+| Direction | **_input_** or **_output_**                  | read or write to this pin         |
 | VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
 | Values    | byte array array                             | actual values of this pin         |
 
