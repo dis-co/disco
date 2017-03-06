@@ -11,6 +11,7 @@ html, body {
   font-weight:400;
   font-style: normal;
   font-size:11px;
+  user-select: none;
 }
 
 header {
@@ -24,6 +25,7 @@ header {
 footer {
   background: @iris-grey;
   height: @footer-height;
+  padding-left: 5px;
 }
 
 #app-container {
@@ -43,7 +45,9 @@ footer {
   flex: 1;
 
   .ui-layout-center {
-    background: @background-grey;
+    padding: 0;
+    display: flex !important;
+    flex-direction: column;
   }
 
   .ui-layout-west {
@@ -51,14 +55,102 @@ footer {
   }
 }
 
+#iris-drag-image {
+  position: absolute;
+  opacity: 1;
+  display: none;
+}
+
+.iris-highlight-blue {
+  border: 2px solid blue;
+}
+
+.iris-tab-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+
+  .iris-tab-name-container {
+    background:#989898;
+
+    .iris-tab-name {
+      height: 15px;
+      display: inline-block;
+      border: 1px solid black;
+      padding: 8px 10px;
+      margin: 1px;
+      background: @iris-grey;
+      cursor: pointer;
+
+      .ui-icon-copy {
+        margin-left: 5px;
+        margin-right: 3px;
+      }
+
+      &:hover {
+        border: 2px solid blue;
+        padding: 7px 9px;
+        margin: 0;
+      }
+
+      &.iris-selected {
+        border: 2px solid green;
+        padding: 7px 9px;
+        margin: 0;
+      }
+    }
+  }
+
+  .iris-tab-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: white;
+  }
+}
+
+.iris-workspace {
+  flex: 1;
+  background: @background-grey;
+}
+
+.ui-icon-close, .ui-icon-copy {
+  cursor: pointer;
+}
+
+.iris-widget {
+  height: 100%;
+  background: white;
+  display: flex;
+  flex-direction: column;
+
+  .iris-draggable-handle {
+    cursor: move;
+    margin: 0;
+    padding: 10px;
+    background: @iris-grey;
+    display: flex;
+
+    // Expand the first child to push
+    // the icons to the side
+    & > :first-child {
+      flex: 1;
+    }
+  }
+
+  & > :nth-child(2) {
+    overflow-x: auto;
+    flex: 1;
+  }
+
+}
+
 // .selected {
 //   border: 1px solid #f0f;
 //   border-radius: 14px;
 // }
-
-.iris-draggable-handle {
-  cursor: move;
-}
 
 .iris-tooltip {
   height: 100px;

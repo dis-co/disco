@@ -13,7 +13,7 @@
 
 .iris-spread-child {
   padding: 0px;
-  height: 25px; /* Or whatever */
+  /*height: 25px;*/
   background: #555;
   color:#fff;
   line-height: 25px;
@@ -22,8 +22,15 @@
   overflow: hidden;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
-  height: calc(145px - 120px);
   transition: 0.1s;
+}
+
+.iris-spread-child.iris-flex-9 {
+  flex: 8
+}
+
+.iris-spread-child.iris-flex-5 {
+  flex: 5
 }
 
 .iris-spread-child:nth-child(1) {
@@ -74,9 +81,8 @@
   border-bottom-right-radius: 13px;
   border-left: none;
   width: 14px;
-  height: 25px;
+  /*height: 23px;*/
   background-color: #fff;
-  height: calc(143px - 120px);
   transition: 0.1s;
 }
 

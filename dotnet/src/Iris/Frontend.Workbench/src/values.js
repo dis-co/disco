@@ -1,6 +1,6 @@
 export default {
   gridLayoutColumns: 20,
-  gridLayoutWidth: 1200,
+  gridLayoutWidth: 1600,
   gridLayoutRowHeight: 30,
-  jqueryLayoutWestSize: 150
+  jqueryLayoutWestSize: 200
 }
