@@ -16,23 +16,11 @@
 ### Client-API
 The Iris Client-API ensures the communication between the Iris-Service and a Iris-Client.
 
-#### Functions
-##### GET
-##### UPDATE
-
-#### Value-Types
+#### Data-Types
 This is the value without visual representation.
-##### Value
-
-#### Subtypes
-The Subtypes which were previuosly set by the client are now set by the iris-front end and will stored inside the project.
-
-##### Value
-##### String
-##### Enum
-##### Color
-##### Raw
-
+##### Number [double, float, int, bool]
+###### Subtypes [min, max,...]
+##### String [url, ip, filename, folder]
 
 ### IRIS Project
 
