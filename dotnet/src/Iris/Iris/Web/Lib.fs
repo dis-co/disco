@@ -198,3 +198,6 @@ let startContext f =
         | None -> ()
       | _ -> ())
   )
+
+let startWorkerContext() =
+  GlobalContext()
