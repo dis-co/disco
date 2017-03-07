@@ -581,6 +581,7 @@ module SerializationTests =
         ; AddPin        <| mkPin ()
         ; UpdatePin     <| mkPin ()
         ; RemovePin     <| mkPin ()
+        ; UpdateSlices  <| mkSlices ()
         ; AddClient     <| mkClient ()
         ; UpdateClient  <| mkClient ()
         ; RemoveClient  <| mkClient ()
