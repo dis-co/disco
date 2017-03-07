@@ -49,6 +49,9 @@ module SerializationTests =
     let slice : StringSliceD = { Index = 0u; Value = "hello" }
     Pin.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
 
+  let mkSlices() =
+    BoolSlices(Id.Create(), [|{Index=1u; Value=true}|])
+
   let mkCue _ : Cue =
     { Id = Id.Create(); Name = "Cue 1"; Pins = pins () }
 
@@ -221,6 +224,7 @@ module SerializationTests =
       ; UpdatePatch   <| mkPatch ()
       ; RemovePatch   <| mkPatch ()
       ; AddClient     <| mkClient ()
+      ; UpdateSlices  <| mkSlices ()      
       ; UpdateClient  <| mkClient ()
       ; RemoveClient  <| mkClient ()
       ; AddPin        <| mkPin ()
