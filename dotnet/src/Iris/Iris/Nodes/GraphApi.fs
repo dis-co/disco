@@ -3,7 +3,7 @@ namespace Iris.Nodes
 // * Imports
 
 open System
-open System.Text
+open System.Web
 open System.Collections.Generic
 open System.Collections.Concurrent
 open VVVV.PluginInterfaces.V1
@@ -220,22 +220,13 @@ module GraphApi =
   let private encodeSpaces (raw: string) =
     raw.Replace(" ", "&nbsp;")
 
-  //   ____            _   _
-  //  / ___|__ _ _   _| |_(_) ___  _ __
-  // | |   / _` | | | | __| |/ _ \| '_ \
-  // | |__| (_| | |_| | |_| | (_) | | | |
-  //  \____\__,_|\__,_|\__|_|\___/|_| |_|
-  //
-  // we need to base64 encode this stuff because XML does not handle spaces in attributes and its
-  // not possible to encode the data via html entities (&nbsp; not recognized)
-
   let private htmlEncodePayload (raw: string) =
-    raw
-    |> Encoding.UTF8.GetBytes
-    |> Convert.ToBase64String
+    "|" + raw + "|"
+    |> HttpUtility.HtmlEncode
 
   let private htmlDecodePayload (raw: string) =
-    Convert.FromBase64String raw
+    raw.Substring(1, raw.Length - 1).Substring(0, raw.Length - 2)
+    |> HttpUtility.HtmlDecode
 
   let private formatNodeTagSnippet (node: INode2) (raw: string) =
     let tmpl =
