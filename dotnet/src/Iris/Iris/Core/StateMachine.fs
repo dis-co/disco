@@ -123,7 +123,7 @@ type AppCommand =
 
 type State =
   { Project  : IrisProject
-    Patches  : Map<Id,Patch>
+    PinGroups  : Map<Id,PinGroup>
     Cues     : Map<Id,Cue>
     CueLists : Map<Id,CueList>
     Sessions : Map<Id,Session>
@@ -136,7 +136,7 @@ type State =
   static member Empty
     with get () =
       { Project  = IrisProject.Empty
-        Patches  = Map.empty
+        PinGroups  = Map.empty
         Cues     = Map.empty
         CueLists = Map.empty
         Sessions = Map.empty
@@ -154,14 +154,14 @@ type State =
       let! users    = Asset.loadAll project.Path
       let! cues     = Asset.loadAll project.Path
       let! cuelists = Asset.loadAll project.Path
-      let! patches  = Asset.loadAll project.Path
+      let! groups  = Asset.loadAll project.Path
 
       return
         { Project  = project
           Users    = Array.map toPair users    |> Map.ofArray
           Cues     = Array.map toPair cues     |> Map.ofArray
           CueLists = Array.map toPair cuelists |> Map.ofArray
-          Patches  = Array.map toPair patches  |> Map.ofArray
+          PinGroups  = Array.map toPair groups  |> Map.ofArray
           Sessions           = Map.empty
           Clients            = Map.empty
           DiscoveredServices = Map.empty }
@@ -175,7 +175,7 @@ type State =
 
   member state.Save (basePath: FilePath) =
     either {
-      do! Map.fold (Asset.saveMap basePath) (Right ()) state.Patches
+      do! Map.fold (Asset.saveMap basePath) (Right ()) state.PinGroups
       do! Map.fold (Asset.saveMap basePath) (Right ()) state.Cues
       do! Map.fold (Asset.saveMap basePath) (Right ()) state.CueLists
       do! Map.fold (Asset.saveMap basePath) (Right ()) state.Users
@@ -254,7 +254,7 @@ type State =
   static member removeSession (session: Session) (state: State) =
     { state with Sessions = Map.filter (fun k _ -> (k <> session.Id)) state.Sessions }
 
-  // ** addPatch
+  // ** addPinGroup
 
   //  ____       _       _
   // |  _ \ __ _| |_ ___| |__
@@ -262,24 +262,24 @@ type State =
   // |  __/ (_| | || (__| | | |
   // |_|   \__,_|\__\___|_| |_|
 
-  static member addPatch (patch : Patch) (state: State) =
-    if Map.containsKey patch.Id state.Patches then
+  static member addPinGroup (group : PinGroup) (state: State) =
+    if Map.containsKey group.Id state.PinGroups then
       state
     else
-      { state with Patches = Map.add patch.Id patch state.Patches }
+      { state with PinGroups = Map.add group.Id group state.PinGroups }
 
-  // ** updatePatch
+  // ** updatePinGroup
 
-  static member updatePatch (patch : Patch) (state: State) =
-    if Map.containsKey patch.Id state.Patches then
-      { state with Patches = Map.add patch.Id patch state.Patches }
+  static member updatePinGroup (group : PinGroup) (state: State) =
+    if Map.containsKey group.Id state.PinGroups then
+      { state with PinGroups = Map.add group.Id group state.PinGroups }
     else
       state
 
-  // ** removePatch
+  // ** removePinGroup
 
-  static member removePatch (patch : Patch) (state: State) =
-    { state with Patches = Map.remove patch.Id state.Patches }
+  static member removePinGroup (group : PinGroup) (state: State) =
+    { state with PinGroups = Map.remove group.Id state.PinGroups }
 
 
   // ** addPin
@@ -291,52 +291,52 @@ type State =
   // |_|   |_|_| |_|
 
   static member addPin (pin : Pin) (state: State) =
-    if Map.containsKey pin.Patch state.Patches then
-      let update _ (patch: Patch) =
-        if patch.Id = pin.Patch then
-          Patch.AddPin patch pin
+    if Map.containsKey pin.PinGroup state.PinGroups then
+      let update _ (group: PinGroup) =
+        if group.Id = pin.PinGroup then
+          PinGroup.AddPin group pin
         else
-          patch
-      { state with Patches = Map.map update state.Patches }
+          group
+      { state with PinGroups = Map.map update state.PinGroups }
     else
       state
 
   // ** updatePin
 
   static member updatePin (pin : Pin) (state: State) =
-    let mapper (_: Id) (patch : Patch) =
-      if patch.Id = pin.Patch then
-        Patch.UpdatePin patch pin
+    let mapper (_: Id) (group : PinGroup) =
+      if group.Id = pin.PinGroup then
+        PinGroup.UpdatePin group pin
       else
-        patch
-    { state with Patches = Map.map mapper state.Patches }
+        group
+    { state with PinGroups = Map.map mapper state.PinGroups }
 
   // ** updateSlices
 
   static member updateSlices (slices: Slices) (state: State) =
-    let mapper (_: Id) (patch : Patch) =
-      Patch.UpdateSlices patch slices
-    { state with Patches = Map.map mapper state.Patches }
+    let mapper (_: Id) (group : PinGroup) =
+      PinGroup.UpdateSlices group slices
+    { state with PinGroups = Map.map mapper state.PinGroups }
 
   // ** removePin
 
   static member removePin (pin : Pin) (state: State) =
-    let updater _ (patch : Patch) =
-      if pin.Patch = patch.Id
-      then Patch.RemovePin patch pin
-      else patch
-    { state with Patches = Map.map updater state.Patches }
+    let updater _ (group : PinGroup) =
+      if pin.PinGroup = group.Id
+      then PinGroup.RemovePin group pin
+      else group
+    { state with PinGroups = Map.map updater state.PinGroups }
 
   // ** findPin
 
   static member findPin (id: Id) (state: State) =
     Map.fold
-      (fun (m: Pin option) _ (patch: Patch) ->
+      (fun (m: Pin option) _ (group: PinGroup) ->
         match m with
-        | Some pin -> m
-        | _ -> Map.tryFind id patch.Pins)
+        | Some _ -> m
+        | _ -> Map.tryFind id group.Pins)
       None
-      state.Patches
+      state.PinGroups
 
   // ** addCueList
 
@@ -474,11 +474,11 @@ type State =
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateFB> =
     let project = Binary.toOffset builder self.Project
 
-    let patches =
-      Map.toArray self.Patches
+    let groups =
+      Map.toArray self.PinGroups
       |> Array.map (snd >> Binary.toOffset builder)
 
-    let patchesoffset = StateFB.CreatePatchesVector(builder, patches)
+    let groupsoffset = StateFB.CreatePinGroupsVector(builder, groups)
 
     let cues =
       Map.toArray self.Cues
@@ -512,7 +512,7 @@ type State =
 
     StateFB.StartStateFB(builder)
     StateFB.AddProject(builder, project)
-    StateFB.AddPatches(builder, patchesoffset)
+    StateFB.AddPinGroups(builder, groupsoffset)
     StateFB.AddCues(builder, cuesoffset)
     StateFB.AddCueLists(builder, cuelistsoffset)
     StateFB.AddSessions(builder, sessionsoffset)
@@ -544,29 +544,29 @@ type State =
           |> Either.fail
         #endif
 
-      // PATCHES
+      // GROUPS
 
-      let! patches =
-        let arr = Array.zeroCreate fb.PatchesLength
+      let! groups =
+        let arr = Array.zeroCreate fb.PinGroupsLength
         Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, Patch>>) _ -> either {
+          (fun (m: Either<IrisError,int * Map<Id, PinGroup>>) _ -> either {
             let! (i, map) = m
 
             #if FABLE_COMPILER
-            let! patch = fb.Patches(i) |> Patch.FromFB
+            let! group = fb.PinGroups(i) |> PinGroup.FromFB
             #else
-            let! patch =
-              let value = fb.Patches(i)
+            let! group =
+              let value = fb.PinGroups(i)
               if value.HasValue then
                 value.Value
-                |> Patch.FromFB
+                |> PinGroup.FromFB
               else
-                "Could not parse empty patch payload"
+                "Could not parse empty group payload"
                 |> Error.asParseError "State.FromFB"
                 |> Either.fail
             #endif
 
-            return (i + 1, Map.add patch.Id patch map)
+            return (i + 1, Map.add group.Id group map)
           })
           (Right (0, Map.empty))
           arr
@@ -741,7 +741,7 @@ type State =
         |> Either.map snd
 
       return { Project  = project
-               Patches  = patches
+               PinGroups  = groups
                Cues     = cues
                CueLists = cuelists
                Users    = users
@@ -938,11 +938,11 @@ and Store(state : State)=
     with get () = history.Depth
       and set n  = history.Depth <- n
 
-  // ** Dispatch
+  // ** Disgroup
 
-  /// ## Dispatch
+  /// ## Disgroup
   ///
-  /// Dispatch an action (StateMachine command) to be executed against the current version of the
+  /// Disgroup an action (StateMachine command) to be executed against the current version of the
   /// `State` to produce the next `State`.
   ///
   /// Then notify all listeners of the change, and record a history item for this change.
@@ -971,9 +971,9 @@ and Store(state : State)=
     | UpdateCueList cuelist -> State.updateCueList cuelist state |> andRender
     | RemoveCueList cuelist -> State.removeCueList cuelist state |> andRender
 
-    | AddPatch        patch -> State.addPatch      patch   state |> andRender
-    | UpdatePatch     patch -> State.updatePatch   patch   state |> andRender
-    | RemovePatch     patch -> State.removePatch   patch   state |> andRender
+    | AddPinGroup        group -> State.addPinGroup      group   state |> andRender
+    | UpdatePinGroup     group -> State.updatePinGroup   group   state |> andRender
+    | RemovePinGroup     group -> State.removePinGroup   group   state |> andRender
 
     | AddPin            pin -> State.addPin        pin     state |> andRender
     | UpdatePin         pin -> State.updatePin     pin     state |> andRender
@@ -1111,10 +1111,10 @@ and StateMachine =
   | UpdateClient  of IrisClient
   | RemoveClient  of IrisClient
 
-  // PATCH
-  | AddPatch      of Patch
-  | UpdatePatch   of Patch
-  | RemovePatch   of Patch
+  // GROUP
+  | AddPinGroup      of PinGroup
+  | UpdatePinGroup   of PinGroup
+  | RemovePinGroup   of PinGroup
 
   // PIN
   | AddPin       of Pin
@@ -1173,10 +1173,10 @@ and StateMachine =
     | UpdateClient client  -> sprintf "UpdateClient %s" (string client)
     | RemoveClient client  -> sprintf "RemoveClient %s" (string client)
 
-    // PATCH
-    | AddPatch    patch     -> sprintf "AddPatch %s"    (string patch)
-    | UpdatePatch patch     -> sprintf "UpdatePatch %s" (string patch)
-    | RemovePatch patch     -> sprintf "RemovePatch %s" (string patch)
+    // GROUP
+    | AddPinGroup    group     -> sprintf "AddPinGroup %s"    (string group)
+    | UpdatePinGroup group     -> sprintf "UpdatePinGroup %s" (string group)
+    | RemovePinGroup group     -> sprintf "RemovePinGroup %s" (string group)
 
     // PIN
     | AddPin    pin         -> sprintf "AddPin %s"       (string pin)
@@ -1265,15 +1265,15 @@ and StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = StateMachinePayloadFB.PatchFB ->
-      let patch = fb.PatchFB |> Patch.FromFB
+    | x when x = StateMachinePayloadFB.PinGroupFB ->
+      let group = fb.PinGroupFB |> PinGroup.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        Either.map AddPatch patch
+        Either.map AddPinGroup group
       | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdatePatch patch
+        Either.map UpdatePinGroup group
       | x when x = StateMachineActionFB.RemoveFB ->
-        Either.map RemovePatch patch
+        Either.map RemovePinGroup group
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
@@ -1517,22 +1517,22 @@ and StateMachine =
     // |  __/ (_| | || (__| | | |
     // |_|   \__,_|\__\___|_| |_|
 
-    | StateMachinePayloadFB.PatchFB ->
+    | StateMachinePayloadFB.PinGroupFB ->
       either {
-        let! patch =
-          let patchish = fb.Payload<PatchFB>()
-          if patchish.HasValue then
-            patchish.Value
-            |> Patch.FromFB
+        let! group =
+          let groupish = fb.Payload<PinGroupFB>()
+          if groupish.HasValue then
+            groupish.Value
+            |> PinGroup.FromFB
           else
-            "Could not parse empty patche payload"
+            "Could not parse empty groupe payload"
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
 
         match fb.Action with
-        | StateMachineActionFB.AddFB    -> return (AddPatch    patch)
-        | StateMachineActionFB.UpdateFB -> return (UpdatePatch patch)
-        | StateMachineActionFB.RemoveFB -> return (RemovePatch patch)
+        | StateMachineActionFB.AddFB    -> return (AddPinGroup    group)
+        | StateMachineActionFB.UpdateFB -> return (UpdatePinGroup group)
+        | StateMachineActionFB.RemoveFB -> return (RemovePinGroup group)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1835,39 +1835,39 @@ and StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
-    | AddPatch       patch ->
-      let patch = patch.ToOffset(builder)
+    | AddPinGroup       group ->
+      let group = group.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
       StateMachineFB.AddAction(builder, StateMachineActionFB.AddFB)
-      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.PatchFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.PinGroupFB)
 #if FABLE_COMPILER
-      StateMachineFB.AddPayload(builder, patch)
+      StateMachineFB.AddPayload(builder, group)
 #else
-      StateMachineFB.AddPayload(builder, patch.Value)
+      StateMachineFB.AddPayload(builder, group.Value)
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
-    | UpdatePatch    patch ->
-      let patch = patch.ToOffset(builder)
+    | UpdatePinGroup    group ->
+      let group = group.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
       StateMachineFB.AddAction(builder, StateMachineActionFB.UpdateFB)
-      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.PatchFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.PinGroupFB)
 #if FABLE_COMPILER
-      StateMachineFB.AddPayload(builder, patch)
+      StateMachineFB.AddPayload(builder, group)
 #else
-      StateMachineFB.AddPayload(builder, patch.Value)
+      StateMachineFB.AddPayload(builder, group.Value)
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
-    | RemovePatch    patch ->
-      let patch = patch.ToOffset(builder)
+    | RemovePinGroup    group ->
+      let group = group.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
       StateMachineFB.AddAction(builder, StateMachineActionFB.RemoveFB)
-      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.PatchFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.PinGroupFB)
 #if FABLE_COMPILER
-      StateMachineFB.AddPayload(builder, patch)
+      StateMachineFB.AddPayload(builder, group)
 #else
-      StateMachineFB.AddPayload(builder, patch.Value)
+      StateMachineFB.AddPayload(builder, group.Value)
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 

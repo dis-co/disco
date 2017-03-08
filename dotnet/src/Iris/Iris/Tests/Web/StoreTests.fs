@@ -13,10 +13,10 @@ module Store =
   open Iris.Web.Core
   open Iris.Web.Tests
 
-  let withStore (wrap : Patch -> Store -> unit) =
-    let patch : Patch =
+  let withStore (wrap : PinGroup -> Store -> unit) =
+    let group : PinGroup =
       { Id = Id "0xb4d1d34"
-      ; Name = "patch-1"
+      ; Name = "group-1"
       ; Pins = Map.empty
       }
 
@@ -36,7 +36,7 @@ module Store =
 
     let state =
       { Project  = project
-        Patches  = Map.empty
+        PinGroups  = Map.empty
         Cues     = Map.empty
         CueLists = Map.empty
         Users    = Map.empty
@@ -45,58 +45,58 @@ module Store =
         DiscoveredServices = Map.empty }
 
     let store : Store = new Store(state)
-    wrap patch store
+    wrap group store
 
   let main () =
     (* ----------------------------------------------------------------------- *)
     suite "Test.Units.Store - Immutability:"
     (* ----------------------------------------------------------------------- *)
 
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "store should be immutable" <| fun finish ->
         let state = store.State
-        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddPinGroup(group)
         let newstate = store.State
         equals false (Object.ReferenceEquals(state, newstate))
         finish()
 
     (* ---------------------------------------------------------------------- *)
-    suite "Test.Units.Store - Patch operations"
+    suite "Test.Units.Store - PinGroup operations"
     (* ---------------------------------------------------------------------- *)
 
-    withStore <| fun patch store ->
-      test "should add a patch to the store" <| fun finish ->
-        equals 0 store.State.Patches.Count
-        store.Dispatch <| AddPatch(patch)
-        equals 1 store.State.Patches.Count
+    withStore <| fun group store ->
+      test "should add a group to the store" <| fun finish ->
+        equals 0 store.State.PinGroups.Count
+        store.Dispatch <| AddPinGroup(group)
+        equals 1 store.State.PinGroups.Count
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
-      test "should update a patch already in the store" <| fun finish ->
-        let name1 = patch.Name
-        let name2 = "patch-2"
+    withStore <| fun group store ->
+      test "should update a group already in the store" <| fun finish ->
+        let name1 = group.Name
+        let name2 = "group-2"
 
-        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddPinGroup(group)
 
-        equals true (store.State.Patches.ContainsKey patch.Id)
-        equals true (store.State.Patches.[patch.Id].Name = name1)
+        equals true (store.State.PinGroups.ContainsKey group.Id)
+        equals true (store.State.PinGroups.[group.Id].Name = name1)
 
-        let updated = { patch with Name = name2 }
-        store.Dispatch <| UpdatePatch(updated)
+        let updated = { group with Name = name2 }
+        store.Dispatch <| UpdatePinGroup(updated)
 
-        equals true (store.State.Patches.[patch.Id].Name = name2)
+        equals true (store.State.PinGroups.[group.Id].Name = name2)
 
         finish()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
-      test "should remove a patch already in the store" <| fun finish ->
-        store.Dispatch <| AddPatch(patch)
-        equals true (store.State.Patches.ContainsKey patch.Id)
+    withStore <| fun group store ->
+      test "should remove a group already in the store" <| fun finish ->
+        store.Dispatch <| AddPinGroup(group)
+        equals true (store.State.PinGroups.ContainsKey group.Id)
 
-        store.Dispatch <| RemovePatch(patch)
-        equals false (store.State.Patches.ContainsKey patch.Id)
+        store.Dispatch <| RemovePinGroup(group)
+        equals false (store.State.PinGroups.ContainsKey group.Id)
 
         finish()
 
@@ -104,71 +104,71 @@ module Store =
     suite "Test.Units.Store - Pin operations"
     (* ---------------------------------------------------------------------- *)
 
-    withStore <| fun patch store ->
-      test "should add an pin to the store if patch exists" <| fun finish ->
-        store.Dispatch <| AddPatch(patch)
+    withStore <| fun group store ->
+      test "should add an pin to the store if group exists" <| fun finish ->
+        store.Dispatch <| AddPinGroup(group)
 
-        equals 0 store.State.Patches.[patch.Id].Pins.Count
+        equals 0 store.State.PinGroups.[group.Id].Pins.Count
 
         let slice : StringSliceD = { Index = 0u; Value = "Hey" }
-        let pin : Pin = Pin.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
+        let pin : Pin = Pin.String(Id "0xb33f","url input", group.Id, Array.empty, [| slice |])
 
         store.Dispatch <| AddPin(pin)
 
-        equals 1 store.State.Patches.[patch.Id].Pins.Count
+        equals 1 store.State.PinGroups.[group.Id].Pins.Count
 
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
-      test "should not add an pin to the store if patch does not exists" <| fun finish ->
+    withStore <| fun group store ->
+      test "should not add an pin to the store if group does not exists" <| fun finish ->
         let slice : StringSliceD = { Index = 0u; Value =  "Hey" }
-        let pin = Pin.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
+        let pin = Pin.String(Id "0xb33f","url input", group.Id, Array.empty, [| slice |])
         store.Dispatch <| AddPin(pin)
-        equals 0 store.State.Patches.Count
+        equals 0 store.State.PinGroups.Count
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should update an pin in the store if it already exists" <| fun finish ->
         let name1 = "can a cat own a cat?"
         let name2 = "yes, cats are re-entrant."
 
         let slice : StringSliceD = { Index = 0u; Value = "swell" }
-        let pin = Pin.String(Id "0xb33f", name1, patch.Id, Array.empty, [| slice |])
+        let pin = Pin.String(Id "0xb33f", name1, group.Id, Array.empty, [| slice |])
 
-        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)
 
-        match Patch.FindPin store.State.Patches pin.Id with
+        match PinGroup.FindPin store.State.PinGroups pin.Id with
           | Some(i) -> equals name1 i.Name
           | None    -> failwith "pin is mysteriously missing"
 
         let updated = pin.SetName name2
         store.Dispatch <| UpdatePin(updated)
 
-        match Patch.FindPin store.State.Patches pin.Id with
+        match PinGroup.FindPin store.State.PinGroups pin.Id with
           | Some(i) -> equals name2 i.Name
           | None    -> failwith "pin is mysteriously missing"
 
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should remove an pin from the store if it exists" <| fun finish ->
         let slice : StringSliceD = { Index = 0u; Value = "swell" }
         let pin = Pin.String(Id "0xb33f", "hi", Id "0xb4d1d34", Array.empty, [| slice |])
 
-        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)
 
-        match Patch.FindPin store.State.Patches pin.Id with
+        match PinGroup.FindPin store.State.PinGroups pin.Id with
           | Some(_) -> ()
           | None    -> failwith "pin is mysteriously missing"
 
         store.Dispatch <| RemovePin(pin)
 
-        match Patch.FindPin store.State.Patches pin.Id with
+        match PinGroup.FindPin store.State.PinGroups pin.Id with
           | Some(_) -> failwith "pin should be missing by now but isn't"
           | None    -> finish()
 
@@ -176,7 +176,7 @@ module Store =
     suite "Test.Units.Store - Cue operations"
     (* ---------------------------------------------------------------------- *)
 
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should add a cue to the store" <| fun finish ->
 
         let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
@@ -194,7 +194,7 @@ module Store =
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should update a cue already in the store" <| fun finish ->
 
         let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
@@ -214,7 +214,7 @@ module Store =
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should not add cue to the store on update when missing" <| fun finish ->
 
         let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
@@ -228,7 +228,7 @@ module Store =
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should remove cue from the store" <| fun finish ->
 
         let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
@@ -249,7 +249,7 @@ module Store =
     suite "Test.Units.Store - CueList operations"
     (* ---------------------------------------------------------------------- *)
 
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should add a cuelist to the store" <| fun finish ->
 
         let cuelist : CueList = { Id = Id.Create(); Name = "My CueList"; Cues = [| |] }
@@ -267,7 +267,7 @@ module Store =
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should update a cuelist already in the store" <| fun finish ->
 
         let cuelist : CueList = { Id = Id.Create(); Name = "My CueList"; Cues = [| |] }
@@ -287,7 +287,7 @@ module Store =
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should not add cuelist to the store on update when missing" <| fun finish ->
 
         let cuelist : CueList = { Id = Id.Create(); Name = "My CueList"; Cues = [| |] }
@@ -301,7 +301,7 @@ module Store =
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should remove cuelist from the store" <| fun finish ->
 
         let cuelist : CueList = { Id = Id.Create(); Name = "My CueList"; Cues = [| |] }
@@ -322,7 +322,7 @@ module Store =
     suite "Test.Units.Store - User operations"
     (* ---------------------------------------------------------------------- *)
 
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should add a user to the store" <| fun finish ->
 
         let user : User =
@@ -349,7 +349,7 @@ module Store =
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should update a user already in the store" <| fun finish ->
 
         let user : User =
@@ -378,7 +378,7 @@ module Store =
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should not add user to the store on update when missing" <| fun finish ->
 
         let user : User =
@@ -401,7 +401,7 @@ module Store =
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should remove user from the store" <| fun finish ->
 
         let user : User =
@@ -431,7 +431,7 @@ module Store =
     suite "Test.Units.Store - Session operations"
     (* ---------------------------------------------------------------------- *)
 
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should add a session to the store" <| fun finish ->
 
         let session : Session =
@@ -452,7 +452,7 @@ module Store =
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should update a Session already in the store" <| fun finish ->
 
         let session : Session =
@@ -475,7 +475,7 @@ module Store =
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should not add Session to the store on update when missing" <| fun finish ->
 
         let session : Session =
@@ -492,7 +492,7 @@ module Store =
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should remove Session from the store" <| fun finish ->
 
         let session : Session =
@@ -516,184 +516,184 @@ module Store =
     suite "Test.Units.Store - Undo/Redo"
     (* ---------------------------------------------------------------------- *)
 
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "store should trigger listeners on undo" <| fun finish ->
-        store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| UpdatePatch( { patch with Name = "patch-2" })
+        store.Dispatch <| AddPinGroup(group)
+        store.Dispatch <| UpdatePinGroup( { group with Name = "group-2" })
 
         // subscribe now, so as to not fire too early ;)
         store.Subscribe(fun st ev ->
           match ev with
-            | AddPatch(p) -> if p.Name = patch.Name then finish ()
+            | AddPinGroup(p) -> if p.Name = group.Name then finish ()
             | _ -> ())
 
         equals 3 store.History.Length
         store.Undo()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "store should dump previous states for inspection" <| fun finish ->
         equals 1 store.History.Length
-        store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| UpdatePatch( { patch with Name = "patch-2" })
-        store.Dispatch <| UpdatePatch( { patch with Name = "patch-3" })
-        store.Dispatch <| UpdatePatch( { patch with Name = "patch-4" })
+        store.Dispatch <| AddPinGroup(group)
+        store.Dispatch <| UpdatePinGroup( { group with Name = "group-2" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "group-3" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "group-4" })
         equals 5 store.History.Length
         finish()
 
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should have correct number of historic states when starting fresh" <| fun finish ->
-        let patch2 : Patch = { patch with Name = "patch-2" }
-        let patch3 : Patch = { patch2 with Name = "patch-3" }
-        let patch4 : Patch = { patch3 with Name = "patch-4" }
+        let group2 : PinGroup = { group with Name = "group-2" }
+        let group3 : PinGroup = { group2 with Name = "group-3" }
+        let group4 : PinGroup = { group3 with Name = "group-4" }
 
-        store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| UpdatePatch( patch2)
-        store.Dispatch <| UpdatePatch( patch3)
-        store.Dispatch <| UpdatePatch( patch4)
+        store.Dispatch <| AddPinGroup(group)
+        store.Dispatch <| UpdatePinGroup( group2)
+        store.Dispatch <| UpdatePinGroup( group3)
+        store.Dispatch <| UpdatePinGroup( group4)
 
         equals 5 store.History.Length
         finish()
 
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should undo a single change" <| fun finish ->
-        store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| UpdatePatch( { patch with Name = "cats" })
+        store.Dispatch <| AddPinGroup(group)
+        store.Dispatch <| UpdatePinGroup( { group with Name = "cats" })
         store.Undo()
-        equals patch.Name store.State.Patches.[patch.Id].Name
+        equals group.Name store.State.PinGroups.[group.Id].Name
         finish()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should undo two changes" <| fun finish ->
-        store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| UpdatePatch( { patch with Name = "cats" })
-        store.Dispatch <| UpdatePatch( { patch with Name = "dogs" })
+        store.Dispatch <| AddPinGroup(group)
+        store.Dispatch <| UpdatePinGroup( { group with Name = "cats" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "dogs" })
         store.Undo()
         store.Undo()
-        equals patch.Name store.State.Patches.[patch.Id].Name
+        equals group.Name store.State.PinGroups.[group.Id].Name
         finish()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should redo an undone change" <| fun finish ->
-        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddPinGroup(group)
         store.Undo()
-        equals 0 store.State.Patches.Count
+        equals 0 store.State.PinGroups.Count
         store.Redo()
-        equals 1 store.State.Patches.Count
+        equals 1 store.State.PinGroups.Count
         finish()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should redo multiple undone changes" <| fun finish ->
-        store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| UpdatePatch( { patch with Name = "cats" })
-        store.Dispatch <| UpdatePatch( { patch with Name = "dogs" })
-        store.Dispatch <| UpdatePatch( { patch with Name = "mice" })
-        store.Dispatch <| UpdatePatch( { patch with Name = "men"  })
+        store.Dispatch <| AddPinGroup(group)
+        store.Dispatch <| UpdatePinGroup( { group with Name = "cats" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "dogs" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "mice" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "men"  })
         store.Undo()
         store.Undo()
 
-        equals "dogs" store.State.Patches.[patch.Id].Name
+        equals "dogs" store.State.PinGroups.[group.Id].Name
         store.Redo()
 
-        equals "mice" store.State.Patches.[patch.Id].Name
+        equals "mice" store.State.PinGroups.[group.Id].Name
         store.Redo()
 
-        equals "men" store.State.Patches.[patch.Id].Name
+        equals "men" store.State.PinGroups.[group.Id].Name
         store.Redo()
 
-        equals "men" store.State.Patches.[patch.Id].Name
+        equals "men" store.State.PinGroups.[group.Id].Name
         finish()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should undo/redo interleaved changes" <| fun finish ->
-        store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| UpdatePatch( { patch with Name = "cats" })
-        store.Dispatch <| UpdatePatch( { patch with Name = "dogs" })
+        store.Dispatch <| AddPinGroup(group)
+        store.Dispatch <| UpdatePinGroup( { group with Name = "cats" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "dogs" })
 
         store.Undo()
-        equals "cats" store.State.Patches.[patch.Id].Name
+        equals "cats" store.State.PinGroups.[group.Id].Name
 
         store.Redo()
-        equals "dogs" store.State.Patches.[patch.Id].Name
+        equals "dogs" store.State.PinGroups.[group.Id].Name
 
         store.Undo()
-        equals "cats" store.State.Patches.[patch.Id].Name
+        equals "cats" store.State.PinGroups.[group.Id].Name
 
-        store.Dispatch <| UpdatePatch( { patch with Name = "mice" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "mice" })
 
         store.Undo()
-        equals "dogs" store.State.Patches.[patch.Id].Name
+        equals "dogs" store.State.PinGroups.[group.Id].Name
 
         store.Redo()
-        equals "mice" store.State.Patches.[patch.Id].Name
+        equals "mice" store.State.PinGroups.[group.Id].Name
 
         store.Undo()
         store.Undo()
 
-        equals "cats" store.State.Patches.[patch.Id].Name
+        equals "cats" store.State.PinGroups.[group.Id].Name
 
-        store.Dispatch <| UpdatePatch( { patch with Name = "men"  })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "men"  })
 
         store.Undo()
-        equals "mice" store.State.Patches.[patch.Id].Name
+        equals "mice" store.State.PinGroups.[group.Id].Name
 
         store.Redo()
-        equals "men" store.State.Patches.[patch.Id].Name
+        equals "men" store.State.PinGroups.[group.Id].Name
 
         equals 6 store.History.Length
         finish ()
 
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should only keep specified number of undo-steps" <| fun finish ->
         store.UndoSteps <- 4
-        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddPinGroup(group)
 
         ["dogs"; "cats"; "mice"; "men"; "worms"; "hens"]
         |> List.map (fun n ->
-             store.Dispatch <| UpdatePatch( { patch with Name = n }))
+             store.Dispatch <| UpdatePinGroup( { group with Name = n }))
         |> List.iter (fun _ -> store.Undo())
 
         equals 4      store.History.Length
-        equals "mice" store.State.Patches.[patch.Id].Name
+        equals "mice" store.State.PinGroups.[group.Id].Name
         finish()
 
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should keep all state in history in debug mode" <| fun finish ->
         store.UndoSteps <- 2
         store.Debug <- true
 
-        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddPinGroup(group)
 
         ["dogs"; "cats"; "mice"; "men"; "worms"; "hens"]
         |> List.iter (fun n ->
-            store.Dispatch <| UpdatePatch( { patch with Name = n }))
+            store.Dispatch <| UpdatePinGroup( { group with Name = n }))
 
         equals 8 store.History.Length
         finish ()
 
     (* ---------------------------------------------------------------------- *)
-    withStore <| fun patch store ->
+    withStore <| fun group store ->
       test "should shrink history to UndoSteps after leaving debug mode" <| fun finish ->
         store.UndoSteps <- 3
         store.Debug <- true
 
-        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddPinGroup(group)
 
         ["dogs"; "cats"; "mice"; "men"; "worms"; "hens"]
         |> List.iter (fun n ->
-            store.Dispatch <| UpdatePatch( { patch with Name = n }))
+            store.Dispatch <| UpdatePinGroup( { group with Name = n }))
 
         equals 8 store.History.Length
         store.Debug <- false

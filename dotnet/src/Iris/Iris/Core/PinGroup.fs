@@ -19,12 +19,12 @@ open Iris.Serialization
 
 open SharpYaml.Serialization
 
-type PatchYaml(id, name, pins) as self =
+type PinGroupYaml(id, name, pins) as self =
   [<DefaultValue>] val mutable Id   : string
   [<DefaultValue>] val mutable Name : string
   [<DefaultValue>] val mutable Pins : PinYaml array
 
-  new () = new PatchYaml(null, null, null)
+  new () = new PinGroupYaml(null, null, null)
 
   do
     self.Id <- id
@@ -39,7 +39,7 @@ type PatchYaml(id, name, pins) as self =
 // |  __/ (_| | || (__| | | |
 // |_|   \__,_|\__\___|_| |_|
 
-type Patch =
+type PinGroup =
   { Id   : Id
     Name : Name
     Pins : Map<Id,Pin> }
@@ -50,8 +50,8 @@ type Patch =
   // |  _  | (_| \__ \  __/| | | | |
   // |_| |_|\__,_|___/_|   |_|_| |_|
 
-  static member HasPin (patch : Patch) (id: Id) : bool =
-    Map.containsKey id patch.Pins
+  static member HasPin (group : PinGroup) (id: Id) : bool =
+    Map.containsKey id group.Pins
 
   //  _____ _           _ ____  _
   // |  ___(_)_ __   __| |  _ \(_)_ __
@@ -59,12 +59,12 @@ type Patch =
   // |  _| | | | | | (_| |  __/| | | | |
   // |_|   |_|_| |_|\__,_|_|   |_|_| |_|
 
-  static member FindPin (patches : Map<Id, Patch>) (id : Id) : Pin option =
-    let folder (m : Pin option) _ (patch: Patch) =
+  static member FindPin (groups : Map<Id, PinGroup>) (id : Id) : Pin option =
+    let folder (m : Pin option) _ (group: PinGroup) =
       match m with
         | Some _ as res -> res
-        |      _        -> Map.tryFind id patch.Pins
-    Map.fold folder None patches
+        |      _        -> Map.tryFind id group.Pins
+    Map.fold folder None groups
 
   //   ____            _        _           ____  _
   //  / ___|___  _ __ | |_ __ _(_)_ __  ___|  _ \(_)_ __
@@ -72,10 +72,10 @@ type Patch =
   // | |__| (_) | | | | || (_| | | | | \__ \  __/| | | | |
   //  \____\___/|_| |_|\__\__,_|_|_| |_|___/_|   |_|_| |_|
 
-  static member ContainsPin (patches : Map<Id,Patch>) (id: Id) : bool =
+  static member ContainsPin (groups : Map<Id,PinGroup>) (id: Id) : bool =
     let folder m _ p =
-      if m then m else Patch.HasPin p id || m
-    Map.fold folder false patches
+      if m then m else PinGroup.HasPin p id || m
+    Map.fold folder false groups
 
   //     _       _     _ ____  _
   //    / \   __| | __| |  _ \(_)_ __
@@ -83,11 +83,11 @@ type Patch =
   //  / ___ \ (_| | (_| |  __/| | | | |
   // /_/   \_\__,_|\__,_|_|   |_|_| |_|
 
-  static member AddPin (patch : Patch) (pin : Pin) : Patch=
-    if Patch.HasPin patch pin.Id then
-      patch
+  static member AddPin (group : PinGroup) (pin : Pin) : PinGroup=
+    if PinGroup.HasPin group pin.Id then
+      group
     else
-      { patch with Pins = Map.add pin.Id pin patch.Pins }
+      { group with Pins = Map.add pin.Id pin group.Pins }
 
   //  _   _           _       _       ____  _
   // | | | |_ __   __| | __ _| |_ ___|  _ \(_)_ __
@@ -96,13 +96,13 @@ type Patch =
   //  \___/| .__/ \__,_|\__,_|\__\___|_|   |_|_| |_|
   //       |_|
 
-  static member UpdatePin (patch : Patch) (pin : Pin) : Patch =
-    if Patch.HasPin patch pin.Id then
+  static member UpdatePin (group : PinGroup) (pin : Pin) : PinGroup =
+    if PinGroup.HasPin group pin.Id then
       let mapper _ (other: Pin) =
         if other.Id = pin.Id then pin else other
-      { patch with Pins = Map.map mapper patch.Pins }
+      { group with Pins = Map.map mapper group.Pins }
     else
-      patch
+      group
 
   //  _   _           _       _       ____  _ _
   // | | | |_ __   __| | __ _| |_ ___/ ___|| (_) ___ ___  ___
@@ -111,15 +111,15 @@ type Patch =
   //  \___/| .__/ \__,_|\__,_|\__\___|____/|_|_|\___\___||___/
   //       |_|
 
-  static member UpdateSlices (patch : Patch) (slices: Slices) : Patch =
-    if Patch.HasPin patch slices.Id then
+  static member UpdateSlices (group : PinGroup) (slices: Slices) : PinGroup =
+    if PinGroup.HasPin group slices.Id then
       let mapper _ (pin: Pin) =
         if pin.Id = slices.Id then
           pin.SetSlices slices
         else pin
-      { patch with Pins = Map.map mapper patch.Pins }
+      { group with Pins = Map.map mapper group.Pins }
     else
-      patch
+      group
 
   //  ____                               ____  _
   // |  _ \ ___ _ __ ___   _____   _____|  _ \(_)_ __
@@ -127,8 +127,8 @@ type Patch =
   // |  _ <  __/ | | | | | (_) \ V /  __/  __/| | | | |
   // |_| \_\___|_| |_| |_|\___/ \_/ \___|_|   |_|_| |_|
 
-  static member RemovePin (patch : Patch) (pin : Pin) : Patch =
-    { patch with Pins = Map.remove pin.Id patch.Pins }
+  static member RemovePin (group : PinGroup) (pin : Pin) : PinGroup =
+    { group with Pins = Map.remove pin.Id group.Pins }
 
 
   // __   __              _
@@ -140,7 +140,7 @@ type Patch =
   #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject () =
-    let yaml = new PatchYaml()
+    let yaml = new PinGroupYaml()
     yaml.Id <- string self.Id
     yaml.Name <- self.Name
     yaml.Pins <- self.Pins
@@ -153,7 +153,7 @@ type Patch =
     |> Yaml.toYaml
     |> serializer.Serialize
 
-  static member FromYamlObject (yml: PatchYaml) =
+  static member FromYamlObject (yml: PinGroupYaml) =
     either {
       let! pins =
         Array.fold
@@ -170,9 +170,9 @@ type Patch =
                Pins = pins }
     }
 
-  static member FromYaml (str: string) : Either<IrisError,Patch> =
+  static member FromYaml (str: string) : Either<IrisError,PinGroup> =
     let serializer = new Serializer()
-    serializer.Deserialize<PatchYaml>(str)
+    serializer.Deserialize<PinGroupYaml>(str)
     |> Yaml.fromYaml
 
   #endif
@@ -184,7 +184,7 @@ type Patch =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
-  static member FromFB (fb: PatchFB) =
+  static member FromFB (fb: PinGroupFB) =
     either {
       let! pins =
         let arr = Array.zeroCreate fb.PinsLength
@@ -202,7 +202,7 @@ type Patch =
                   |> Pin.FromFB
                 else
                   "Could not parse empty PinFB"
-                  |> Error.asParseError "Patch.FromFB"
+                  |> Error.asParseError "PinGroup.FromFB"
                   |> Either.fail
               #endif
 
@@ -217,7 +217,7 @@ type Patch =
                Pins = pins }
     }
 
-  member self.ToOffset(builder: FlatBufferBuilder) : Offset<PatchFB> =
+  member self.ToOffset(builder: FlatBufferBuilder) : Offset<PinGroupFB> =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let pinoffsets =
@@ -225,19 +225,19 @@ type Patch =
       |> Map.toArray
       |> Array.map (fun (_,pin: Pin) -> pin.ToOffset(builder))
 
-    let pins = PatchFB.CreatePinsVector(builder, pinoffsets)
-    PatchFB.StartPatchFB(builder)
-    PatchFB.AddId(builder, id)
-    PatchFB.AddName(builder, name)
-    PatchFB.AddPins(builder, pins)
-    PatchFB.EndPatchFB(builder)
+    let pins = PinGroupFB.CreatePinsVector(builder, pinoffsets)
+    PinGroupFB.StartPinGroupFB(builder)
+    PinGroupFB.AddId(builder, id)
+    PinGroupFB.AddName(builder, name)
+    PinGroupFB.AddPins(builder, pins)
+    PinGroupFB.EndPinGroupFB(builder)
 
   member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
 
-  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError,Patch> =
+  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError,PinGroup> =
     Binary.createBuffer bytes
-    |> PatchFB.GetRootAsPatchFB
-    |> Patch.FromFB
+    |> PinGroupFB.GetRootAsPinGroupFB
+    |> PinGroup.FromFB
 
   //  _                    _
   // | |    ___   __ _  __| |
@@ -247,41 +247,41 @@ type Patch =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  static member Load(path: FilePath) : Either<IrisError, Patch> =
+  static member Load(path: FilePath) : Either<IrisError, PinGroup> =
     either {
       let! data = Asset.read path
-      let! patch = Yaml.decode data
-      return patch
+      let! group = Yaml.decode data
+      return group
     }
 
-  static member LoadAll(basePath: FilePath) : Either<IrisError, Patch array> =
+  static member LoadAll(basePath: FilePath) : Either<IrisError, PinGroup array> =
     either {
       try
-        let dir = basePath </> PATCH_DIR
+        let dir = basePath </> PINGROUP_DIR
         let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
 
-        let! (_,patches) =
+        let! (_,groups) =
           let arr =
             files
             |> Array.length
             |> Array.zeroCreate
           Array.fold
-            (fun (m: Either<IrisError, int * Patch array>) path ->
+            (fun (m: Either<IrisError, int * PinGroup array>) path ->
               either {
-                let! (idx,patches) = m
-                let! patch = Patch.Load path
-                patches.[idx] <- patch
-                return (idx + 1, patches)
+                let! (idx,groups) = m
+                let! group = PinGroup.Load path
+                groups.[idx] <- group
+                return (idx + 1, groups)
               })
             (Right(0, arr))
             files
 
-        return patches
+        return groups
       with
         | exn ->
           return!
             exn.Message
-            |> Error.asAssetError "Patch.LoadAll"
+            |> Error.asAssetError "PinGroup.LoadAll"
             |> Either.fail
     }
 
@@ -298,7 +298,7 @@ type Patch =
           (String.sanitize self.Name)
           (string self.Id)
           ASSET_EXTENSION
-      PATCH_DIR </> filepath
+      PINGROUP_DIR </> filepath
 
   //  ____
   // / ___|  __ ___   _____
@@ -306,10 +306,10 @@ type Patch =
   //  ___) | (_| |\ V /  __/
   // |____/ \__,_| \_/ \___|
 
-  member patch.Save (basePath: FilePath) =
+  member group.Save (basePath: FilePath) =
     either {
-      let path = basePath </> Asset.path patch
-      let data = Yaml.encode patch
+      let path = basePath </> Asset.path group
+      let data = Yaml.encode group
       let! _ = Asset.write path (Payload data)
       return ()
     }

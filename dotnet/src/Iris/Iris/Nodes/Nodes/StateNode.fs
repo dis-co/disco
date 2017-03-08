@@ -36,8 +36,8 @@ type StateNode() =
   val mutable OutProject: ISpread<IrisProject>
 
   [<DefaultValue>]
-  [<Output("Patches")>]
-  val mutable OutPatches: ISpread<Patch>
+  [<Output("PinGroups")>]
+  val mutable OutPinGroups: ISpread<PinGroup>
 
   [<DefaultValue>]
   [<Output("Cues")>]
@@ -69,8 +69,8 @@ type StateNode() =
         let state = self.InState.[0]
         self.OutProject.[0] <- state.Project
 
-        let patches =
-          state.Patches
+        let groups =
+          state.PinGroups
           |> Map.toArray
           |> Array.map snd
 
@@ -99,14 +99,14 @@ type StateNode() =
           |> Map.toArray
           |> Array.map snd
 
-        self.OutPatches.SliceCount <- Array.length patches
+        self.OutPinGroups.SliceCount <- Array.length groups
         self.OutCues.SliceCount <- Array.length cues
         self.OutCueLists.SliceCount <- Array.length cuelists
         self.OutSessions.SliceCount <- Array.length sessions
         self.OutUsers.SliceCount <- Array.length users
         self.OutClients.SliceCount <- Array.length clients
 
-        self.OutPatches.AssignFrom patches
+        self.OutPinGroups.AssignFrom groups
         self.OutCues.AssignFrom cues
         self.OutCueLists.AssignFrom cuelists
         self.OutSessions.AssignFrom sessions

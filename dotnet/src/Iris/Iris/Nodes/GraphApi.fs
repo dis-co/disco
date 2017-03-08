@@ -171,10 +171,10 @@ module GraphApi =
   let private startClient (state: PluginState) =
     let logobs = Logger.subscribe (string >> debug state)
     let me =
-      let ip =
-        match Network.getIpAddress () with
-        | Some ip -> IpAddress.ofIPAddress ip
-        | None -> IPv4Address "127.0.0.1"
+      // let ip =
+      //   match Network.getIpAddress () with
+      //   | Some ip -> IpAddress.ofIPAddress ip
+      //   | None -> IPv4Address "127.0.0.1"
 
       { Id = Id.Create ()
         Name = "Vvvv GraphApi Client"
@@ -184,10 +184,10 @@ module GraphApi =
         Port = 10001us }
 
     let server : IrisServer =
-      let ip =
-        match state.InServer.[0] with
-        | null ->  IPv4Address "127.0.0.1"
-        | ip -> IPv4Address ip
+      // let ip =
+      //   match state.InServer.[0] with
+      //   | null ->  IPv4Address "127.0.0.1"
+      //   | ip -> IPv4Address ip
 
       { Id = Id.Create ()
         Port = 10000us
@@ -217,9 +217,6 @@ module GraphApi =
           Status = ServiceStatus.Failed error }
     |> setStatus
 
-  let private encodeSpaces (raw: string) =
-    raw.Replace(" ", "&nbsp;")
-
   let private htmlEncodePayload (raw: string) =
     "|" + raw + "|"
     |> HttpUtility.HtmlEncode
@@ -239,12 +236,83 @@ module GraphApi =
     let tmpl = @"<PATCH id=""{0}"">{1}</PATCH>";
     String.Format(tmpl, id, tags);
 
+  // ** pin
+
+  let private getPinByName (node: INode2) (name: string) =
+    Seq.fold
+      (fun (m: IPin2 option) (pin: IPin2) ->
+        match m with
+        | Some _ -> m
+        | None ->
+          if pin.Name = name then
+            Some pin
+          else
+            None)
+      None
+      node.Pins
+
+  [<Literal>]
+  let private DESCRIPTIVE_NAME_PIN = "Descriptive Name"
+
+  [<Literal>]
+  let private TAG_PIN = "Tag"
+
+  [<Literal>]
+  let private IRIS_NODE_NAME = "Iris (Iris)"
+
+  let private getIrisNode (state: PluginState) : INode2 option =
+    let mutable result = None
+    let root = state.V2Host.RootNode
+
+    let rec getImpl (node: INode2) =
+      for child in node do
+        if child.Name = IRIS_NODE_NAME then
+          result <- Some child
+        else
+          getImpl child
+
+    getImpl root
+    result
+
   // ** createAttributes
 
   let private createAttributes (state: PluginState) (node: INode2) =
-    let attrs:NodeAttributes =
+    match getIrisNode state with
+    | Some iris ->
+      let attrs: NodeAttributes =
+        let dict = new Dictionary<string,PinAttributes>()
+        let path = node.GetNodePath(false)
+        dict.Add("Pins", { Id = path })
+        { Pins = dict }
+
+      { Frame = state.Frame
+        ParentId = iris.Parent.ID
+        ParentFileName = iris.Parent.NodeInfo.Filename
+        XmlSnippet = formatNodeTagSnippet iris (attrs.ToJson()) }
+      |> Msg.GraphPatch
+      |> state.Events.Enqueue
+    | None -> ()
+
+    match getPinByName node TAG_PIN with
+    | Some pin ->
+      debug state "-------------------- root tag field --------------------"
+      debug state pin.[0]
+      debug state "---------------------------------------------------"
+    | _ -> ()
+
+    let attrs: NodeAttributes =
       let dict = new Dictionary<string,PinAttributes>()
-      dict.Add("hiho", { Id = "here we  go" })
+
+      match getPinByName node DESCRIPTIVE_NAME_PIN with
+      | Some _ ->
+        // let name =
+        //   sprintf "%s -- %s"
+        //     node.Parent.Name
+        //     pin.[0]
+        let path = node.GetNodePath(false)
+        dict.Add("dn", { Id = path })
+      | None -> ()
+
       { Pins = dict }
 
     { Frame = state.Frame
@@ -258,15 +326,13 @@ module GraphApi =
 
   // ** parseINode2
 
-  let private parseINode2 (node: INode2) : Either<IrisError,Pin> =
+  let private parseINode2 (_: INode2) : Either<IrisError,Pin> =
     Pin.Toggle(Id.Create(),"Hello",Id.Create(), [| |], [| |])
     |> Either.succeed
 
   // ** onNodeExposed
 
   let private onNodeExposed (state: PluginState) (node: INode2) =
-    createAttributes state node
-    |> ignore
     for pin in node.Pins do
       sprintf "Pin Name: %s Value: %A" pin.Name pin.[0]
       |> debug state
@@ -309,25 +375,25 @@ module GraphApi =
 
   // ** callCue
 
-  let private callCue (state: PluginState) (cue: Cue) =
+  let private callCue (state: PluginState) (_: Cue) =
     debug state "CallCue"
     state
 
   // ** addPin
 
-  let private addPin (state: PluginState) (pin: Pin) =
+  let private addPin (state: PluginState) (_: Pin) =
     debug state "addPin"
     state
 
   // ** removePin
 
-  let private removePin (state: PluginState) (pin: Pin) =
+  let private removePin (state: PluginState) (_: Pin) =
     debug state "removePin"
     state
 
   // ** updatePin
 
-  let private updatePin (state: PluginState) (pin: Pin) =
+  let private updatePin (state: PluginState) (_: Pin) =
     debug state "updatePin"
     state
 

@@ -313,7 +313,7 @@ and PinYaml() =
   [<DefaultValue>] val mutable PinType    : string
   [<DefaultValue>] val mutable Id         : string
   [<DefaultValue>] val mutable Name       : string
-  [<DefaultValue>] val mutable Patch      : string
+  [<DefaultValue>] val mutable PinGroup      : string
   [<DefaultValue>] val mutable Tags       : string array
   [<DefaultValue>] val mutable Behavior   : string
   [<DefaultValue>] val mutable StringType : string
@@ -405,20 +405,20 @@ type Pin =
     | ColorPin    data -> ColorPin    { data with Name = name }
     | CompoundPin data -> CompoundPin { data with Name = name }
 
-  // ** Patch
+  // ** PinGroup
 
-  member self.Patch
+  member self.PinGroup
     with get () =
       match self with
-      | StringPin   data -> data.Patch
-      | IntPin      data -> data.Patch
-      | FloatPin    data -> data.Patch
-      | DoublePin   data -> data.Patch
-      | BoolPin     data -> data.Patch
-      | BytePin     data -> data.Patch
-      | EnumPin     data -> data.Patch
-      | ColorPin    data -> data.Patch
-      | CompoundPin data -> data.Patch
+      | StringPin   data -> data.PinGroup
+      | IntPin      data -> data.PinGroup
+      | FloatPin    data -> data.PinGroup
+      | DoublePin   data -> data.PinGroup
+      | BoolPin     data -> data.PinGroup
+      | BytePin     data -> data.PinGroup
+      | EnumPin     data -> data.PinGroup
+      | ColorPin    data -> data.PinGroup
+      | CompoundPin data -> data.PinGroup
 
   // ** Slices
 
@@ -576,30 +576,30 @@ type Pin =
 
   // ** static Toggle
 
-  static member Toggle(id, name, patch, tags, values) =
+  static member Toggle(id, name, group, tags, values) =
     BoolPin { Id         = id
               Name       = name
-              Patch      = patch
+              PinGroup      = group
               Tags       = tags
               Behavior   = Behavior.Toggle
               Slices     = values }
 
   // ** static Bang
 
-  static member Bang(id, name, patch, tags, values) =
+  static member Bang(id, name, group, tags, values) =
     BoolPin { Id         = id
               Name       = name
-              Patch      = patch
+              PinGroup      = group
               Tags       = tags
               Behavior   = Behavior.Bang
               Slices     = values }
 
   // ** static String
 
-  static member String(id, name, patch, tags, values) =
+  static member String(id, name, group, tags, values) =
     StringPin { Id         = id
                 Name       = name
-                Patch      = patch
+                PinGroup      = group
                 Tags       = tags
                 StringType = Simple
                 FileMask   = None
@@ -608,10 +608,10 @@ type Pin =
 
   // ** static MultiLine
 
-  static member MultiLine(id, name, patch, tags, values) =
+  static member MultiLine(id, name, group, tags, values) =
     StringPin { Id         = id
                 Name       = name
-                Patch      = patch
+                PinGroup      = group
                 Tags       = tags
                 StringType = MultiLine
                 FileMask   = None
@@ -620,10 +620,10 @@ type Pin =
 
   // ** static FileName
 
-  static member FileName(id, name, patch, tags, filemask, values) =
+  static member FileName(id, name, group, tags, filemask, values) =
     StringPin { Id         = id
                 Name       = name
-                Patch      = patch
+                PinGroup      = group
                 Tags       = tags
                 StringType = FileName
                 FileMask   = Some filemask
@@ -632,10 +632,10 @@ type Pin =
 
   // ** static Directory
 
-  static member Directory(id, name, patch, tags, filemask, values) =
+  static member Directory(id, name, group, tags, filemask, values) =
     StringPin { Id         = id
                 Name       = name
-                Patch      = patch
+                PinGroup      = group
                 Tags       = tags
                 StringType = Directory
                 FileMask   = Some filemask
@@ -644,10 +644,10 @@ type Pin =
 
   // ** static Url
 
-  static member Url(id, name, patch, tags, values) =
+  static member Url(id, name, group, tags, values) =
     StringPin { Id         = id
                 Name       = name
-                Patch      = patch
+                PinGroup      = group
                 Tags       = tags
                 StringType = Url
                 FileMask   = None
@@ -656,10 +656,10 @@ type Pin =
 
   // ** static IP
 
-  static member IP(id, name, patch, tags, values) =
+  static member IP(id, name, group, tags, values) =
     StringPin { Id         = id
                 Name       = name
-                Patch      = patch
+                PinGroup      = group
                 Tags       = tags
                 StringType = Url
                 FileMask   = None
@@ -668,10 +668,10 @@ type Pin =
 
   // ** static Float
 
-  static member Float(id, name, patch, tags, values) =
+  static member Float(id, name, group, tags, values) =
     FloatPin { Id         = id
                Name       = name
-               Patch      = patch
+               PinGroup      = group
                Tags       = tags
                VecSize    = 1u
                Min        = 0
@@ -682,10 +682,10 @@ type Pin =
 
   // ** static Double
 
-  static member Double(id, name, patch, tags, values) =
+  static member Double(id, name, group, tags, values) =
     DoublePin { Id         = id
                 Name       = name
-                Patch      = patch
+                PinGroup      = group
                 Tags       = tags
                 VecSize    = 1u
                 Min        = 0
@@ -696,38 +696,38 @@ type Pin =
 
   // ** static Bytes
 
-  static member Bytes(id, name, patch, tags, values) =
+  static member Bytes(id, name, group, tags, values) =
     BytePin { Id         = id
               Name       = name
-              Patch      = patch
+              PinGroup      = group
               Tags       = tags
               Slices     = values }
 
   // ** static Color
 
-  static member Color(id, name, patch, tags, values) =
+  static member Color(id, name, group, tags, values) =
     ColorPin { Id         = id
                Name       = name
-               Patch      = patch
+               PinGroup      = group
                Tags       = tags
                Slices     = values }
 
   // ** static Enum
 
-  static member Enum(id, name, patch, tags, properties, values) =
+  static member Enum(id, name, group, tags, properties, values) =
     EnumPin { Id         = id
               Name       = name
-              Patch      = patch
+              PinGroup      = group
               Tags       = tags
               Properties = properties
               Slices     = values }
 
   // ** static CompoundPin
 
-  static member Compound(id, name, patch, tags, values) =
+  static member Compound(id, name, group, tags, values) =
     CompoundPin { Id         = id
                   Name       = name
-                  Patch      = patch
+                  PinGroup      = group
                   Tags       = tags
                   Slices     = values }
 
@@ -969,7 +969,7 @@ type Pin =
       yaml.PinType    <- "StringPin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
-      yaml.Patch      <- string data.Patch
+      yaml.PinGroup      <- string data.PinGroup
       yaml.Tags       <- data.Tags
       yaml.FileMask   <- mask
       yaml.MaxChars   <- data.MaxChars
@@ -980,7 +980,7 @@ type Pin =
       yaml.PinType    <- "IntPin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
-      yaml.Patch      <- string data.Patch
+      yaml.PinGroup      <- string data.PinGroup
       yaml.Tags       <- data.Tags
       yaml.VecSize    <- data.VecSize
       yaml.Min        <- data.Min
@@ -992,7 +992,7 @@ type Pin =
       yaml.PinType    <- "FloatPin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
-      yaml.Patch      <- string data.Patch
+      yaml.PinGroup      <- string data.PinGroup
       yaml.Tags       <- data.Tags
       yaml.VecSize    <- data.VecSize
       yaml.Precision  <- data.Precision
@@ -1005,7 +1005,7 @@ type Pin =
       yaml.PinType    <- "DoublePin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
-      yaml.Patch      <- string data.Patch
+      yaml.PinGroup      <- string data.PinGroup
       yaml.Tags       <- data.Tags
       yaml.VecSize    <- data.VecSize
       yaml.Precision  <- data.Precision
@@ -1018,7 +1018,7 @@ type Pin =
       yaml.PinType    <- "BoolPin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
-      yaml.Patch      <- string data.Patch
+      yaml.PinGroup      <- string data.PinGroup
       yaml.Tags       <- data.Tags
       yaml.Behavior   <- string data.Behavior
       yaml.Slices     <- Array.map Yaml.toYaml data.Slices
@@ -1027,7 +1027,7 @@ type Pin =
       yaml.PinType    <- "BytePin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
-      yaml.Patch      <- string data.Patch
+      yaml.PinGroup      <- string data.PinGroup
       yaml.Tags       <- data.Tags
       yaml.Slices     <- Array.map Yaml.toYaml data.Slices
 
@@ -1035,7 +1035,7 @@ type Pin =
       yaml.PinType    <- "EnumPin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
-      yaml.Patch      <- string data.Patch
+      yaml.PinGroup      <- string data.PinGroup
       yaml.Tags       <- data.Tags
       yaml.Properties <- Array.map Yaml.toYaml data.Properties
       yaml.Slices     <- Array.map Yaml.toYaml data.Slices
@@ -1044,7 +1044,7 @@ type Pin =
       yaml.PinType    <- "ColorPin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
-      yaml.Patch      <- string data.Patch
+      yaml.PinGroup      <- string data.PinGroup
       yaml.Tags       <- data.Tags
       yaml.Slices     <- Array.map Yaml.toYaml data.Slices
 
@@ -1052,7 +1052,7 @@ type Pin =
       yaml.PinType    <- "CompoundPin"
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
-      yaml.Patch      <- string data.Patch
+      yaml.PinGroup      <- string data.PinGroup
       yaml.Tags       <- data.Tags
       yaml.Slices     <- Array.map Yaml.toYaml data.Slices
 
@@ -1190,7 +1190,7 @@ type Pin =
           return StringPin {
             Id         = Id yml.Id
             Name       = yml.Name
-            Patch      = Id yml.Patch
+            PinGroup      = Id yml.PinGroup
             Tags       = yml.Tags
             FileMask   = if isNull yml.FileMask then None else Some yml.FileMask
             MaxChars   = yml.MaxChars
@@ -1205,7 +1205,7 @@ type Pin =
           return IntPin {
             Id       = Id yml.Id
             Name     = yml.Name
-            Patch    = Id yml.Patch
+            PinGroup    = Id yml.PinGroup
             Tags     = yml.Tags
             VecSize  = yml.VecSize
             Min      = yml.Min
@@ -1221,7 +1221,7 @@ type Pin =
           return FloatPin {
             Id        = Id yml.Id
             Name      = yml.Name
-            Patch     = Id yml.Patch
+            PinGroup     = Id yml.PinGroup
             Tags      = yml.Tags
             VecSize   = yml.VecSize
             Min       = yml.Min
@@ -1237,7 +1237,7 @@ type Pin =
           return DoublePin {
             Id        = Id yml.Id
             Name      = yml.Name
-            Patch     = Id yml.Patch
+            PinGroup     = Id yml.PinGroup
             Tags      = yml.Tags
             VecSize   = yml.VecSize
             Min       = yml.Min
@@ -1254,7 +1254,7 @@ type Pin =
           return BoolPin {
             Id       = Id yml.Id
             Name     = yml.Name
-            Patch    = Id yml.Patch
+            PinGroup    = Id yml.PinGroup
             Tags     = yml.Tags
             Behavior = behavior
             Slices   = slices
@@ -1266,7 +1266,7 @@ type Pin =
           return BytePin {
             Id     = Id yml.Id
             Name   = yml.Name
-            Patch  = Id yml.Patch
+            PinGroup  = Id yml.PinGroup
             Tags   = yml.Tags
             Slices = slices
           }
@@ -1291,7 +1291,7 @@ type Pin =
           return EnumPin {
             Id         = Id yml.Id
             Name       = yml.Name
-            Patch      = Id yml.Patch
+            PinGroup      = Id yml.PinGroup
             Tags       = yml.Tags
             Properties = properties
             Slices     = slices
@@ -1303,7 +1303,7 @@ type Pin =
           return ColorPin {
             Id     = Id yml.Id
             Name   = yml.Name
-            Patch  = Id yml.Patch
+            PinGroup  = Id yml.PinGroup
             Tags   = yml.Tags
             Slices = slices
           }
@@ -1314,7 +1314,7 @@ type Pin =
           return CompoundPin {
             Id     = Id yml.Id
             Name   = yml.Name
-            Patch  = Id yml.Patch
+            PinGroup  = Id yml.PinGroup
             Tags   = yml.Tags
             Slices = slices
           }
@@ -1358,7 +1358,7 @@ type Pin =
 and BoolPinD =
   { Id         : Id
   ; Name       : string
-  ; Patch      : Id
+  ; PinGroup      : Id
   ; Tags       : Tag array
   ; Behavior   : Behavior
   ; Slices     : BoolSliceD array }
@@ -1375,7 +1375,7 @@ and BoolPinD =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
+    let group = string self.PinGroup |> builder.CreateString
     let behavior = self.Behavior.ToOffset builder
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
@@ -1384,7 +1384,7 @@ and BoolPinD =
     BoolPinFB.StartBoolPinFB(builder)
     BoolPinFB.AddId(builder, id)
     BoolPinFB.AddName(builder, name)
-    BoolPinFB.AddPatch(builder, patch)
+    BoolPinFB.AddPinGroup(builder, group)
     BoolPinFB.AddBehavior(builder, behavior)
     BoolPinFB.AddTags(builder, tags)
     BoolPinFB.AddSlices(builder, slices)
@@ -1400,7 +1400,7 @@ and BoolPinD =
 
       return { Id         = Id fb.Id
                Name       = fb.Name
-               Patch      = Id fb.Patch
+               PinGroup      = Id fb.PinGroup
                Tags       = tags
                Behavior   = behavior
                Slices     = slices }
@@ -1503,7 +1503,7 @@ and BoolSliceD =
 and IntPinD =
   { Id         : Id
   ; Name       : string
-  ; Patch      : Id
+  ; PinGroup      : Id
   ; Tags       : Tag array
   ; VecSize    : uint32
   ; Min        : int
@@ -1523,7 +1523,7 @@ and IntPinD =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
+    let group = string self.PinGroup |> builder.CreateString
     let unit = self.Unit |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
@@ -1532,7 +1532,7 @@ and IntPinD =
     IntPinFB.StartIntPinFB(builder)
     IntPinFB.AddId(builder, id)
     IntPinFB.AddName(builder, name)
-    IntPinFB.AddPatch(builder, patch)
+    IntPinFB.AddPinGroup(builder, group)
     IntPinFB.AddTags(builder, tags)
     IntPinFB.AddVecSize(builder, self.VecSize)
     IntPinFB.AddMin(builder, self.Min)
@@ -1551,7 +1551,7 @@ and IntPinD =
 
       return { Id      = Id fb.Id
                Name    = fb.Name
-               Patch   = Id fb.Patch
+               PinGroup   = Id fb.PinGroup
                Tags    = tags
                VecSize = fb.VecSize
                Min     = fb.Min
@@ -1658,7 +1658,7 @@ and IntSliceD =
 and FloatPinD =
   { Id         : Id
   ; Name       : string
-  ; Patch      : Id
+  ; PinGroup      : Id
   ; Tags       : Tag array
   ; VecSize    : uint32
   ; Min        : int
@@ -1679,7 +1679,7 @@ and FloatPinD =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
+    let group = string self.PinGroup |> builder.CreateString
     let unit = self.Unit |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
@@ -1688,7 +1688,7 @@ and FloatPinD =
     FloatPinFB.StartFloatPinFB(builder)
     FloatPinFB.AddId(builder, id)
     FloatPinFB.AddName(builder, name)
-    FloatPinFB.AddPatch(builder, patch)
+    FloatPinFB.AddPinGroup(builder, group)
     FloatPinFB.AddTags(builder, tags)
     FloatPinFB.AddVecSize(builder, self.VecSize)
     FloatPinFB.AddMin(builder, self.Min)
@@ -1708,7 +1708,7 @@ and FloatPinD =
 
       return { Id         = Id fb.Id
                Name       = fb.Name
-               Patch      = Id fb.Patch
+               PinGroup      = Id fb.PinGroup
                Tags       = tags
                VecSize    = fb.VecSize
                Min        = fb.Min
@@ -1817,7 +1817,7 @@ and FloatSliceD =
 and DoublePinD =
   { Id         : Id
   ; Name       : string
-  ; Patch      : Id
+  ; PinGroup      : Id
   ; Tags       : Tag array
   ; VecSize    : uint32
   ; Min        : int
@@ -1838,7 +1838,7 @@ and DoublePinD =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
+    let group = string self.PinGroup |> builder.CreateString
     let unit = self.Unit |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
@@ -1847,7 +1847,7 @@ and DoublePinD =
     DoublePinFB.StartDoublePinFB(builder)
     DoublePinFB.AddId(builder, id)
     DoublePinFB.AddName(builder, name)
-    DoublePinFB.AddPatch(builder, patch)
+    DoublePinFB.AddPinGroup(builder, group)
     DoublePinFB.AddTags(builder, tags)
     DoublePinFB.AddVecSize(builder, self.VecSize)
     DoublePinFB.AddMin(builder, self.Min)
@@ -1867,7 +1867,7 @@ and DoublePinD =
 
       return { Id        = Id fb.Id
                Name      = fb.Name
-               Patch     = Id fb.Patch
+               PinGroup     = Id fb.PinGroup
                Tags      = tags
                VecSize   = fb.VecSize
                Min       = fb.Min
@@ -1976,7 +1976,7 @@ and DoubleSliceD =
 and BytePinD =
   { Id         : Id
   ; Name       : string
-  ; Patch      : Id
+  ; PinGroup      : Id
   ; Tags       : Tag        array
   ; Slices     : ByteSliceD array }
 
@@ -1992,7 +1992,7 @@ and BytePinD =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
+    let group = string self.PinGroup |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let tags = BytePinFB.CreateTagsVector(builder, tagoffsets)
@@ -2000,7 +2000,7 @@ and BytePinD =
     BytePinFB.StartBytePinFB(builder)
     BytePinFB.AddId(builder, id)
     BytePinFB.AddName(builder, name)
-    BytePinFB.AddPatch(builder, patch)
+    BytePinFB.AddPinGroup(builder, group)
     BytePinFB.AddTags(builder, tags)
     BytePinFB.AddSlices(builder, slices)
     BytePinFB.EndBytePinFB(builder)
@@ -2014,7 +2014,7 @@ and BytePinD =
 
       return { Id         = Id fb.Id
                Name       = fb.Name
-               Patch      = Id fb.Patch
+               PinGroup      = Id fb.PinGroup
                Tags       = tags
                Slices     = slices }
     }
@@ -2204,7 +2204,7 @@ and [<CustomEquality;CustomComparison>] ByteSliceD =
 and EnumPinD =
   { Id         : Id
   ; Name       : string
-  ; Patch      : Id
+  ; PinGroup      : Id
   ; Tags       : Tag        array
   ; Properties : Property   array
   ; Slices     : EnumSliceD array }
@@ -2221,7 +2221,7 @@ and EnumPinD =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
+    let group = string self.PinGroup |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let propoffsets =
@@ -2239,7 +2239,7 @@ and EnumPinD =
     EnumPinFB.StartEnumPinFB(builder)
     EnumPinFB.AddId(builder, id)
     EnumPinFB.AddName(builder, name)
-    EnumPinFB.AddPatch(builder, patch)
+    EnumPinFB.AddPinGroup(builder, group)
     EnumPinFB.AddTags(builder, tags)
     EnumPinFB.AddProperties(builder, properties)
     EnumPinFB.AddSlices(builder, slices)
@@ -2278,7 +2278,7 @@ and EnumPinD =
 
       return { Id         = Id fb.Id
                Name       = fb.Name
-               Patch      = Id fb.Patch
+               PinGroup      = Id fb.PinGroup
                Tags       = tags
                Properties = properties
                Slices     = slices }
@@ -2402,7 +2402,7 @@ and EnumSliceD =
 and ColorPinD =
   { Id     : Id
   ; Name   : string
-  ; Patch  : Id
+  ; PinGroup  : Id
   ; Tags   : Tag         array
   ; Slices : ColorSliceD array }
 
@@ -2418,7 +2418,7 @@ and ColorPinD =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
+    let group = string self.PinGroup |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let tags = ColorPinFB.CreateTagsVector(builder, tagoffsets)
@@ -2426,7 +2426,7 @@ and ColorPinD =
     ColorPinFB.StartColorPinFB(builder)
     ColorPinFB.AddId(builder, id)
     ColorPinFB.AddName(builder, name)
-    ColorPinFB.AddPatch(builder, patch)
+    ColorPinFB.AddPinGroup(builder, group)
     ColorPinFB.AddTags(builder, tags)
     ColorPinFB.AddSlices(builder, slices)
     ColorPinFB.EndColorPinFB(builder)
@@ -2439,7 +2439,7 @@ and ColorPinD =
       let! slices = Pin.ParseSlicesFB fb
       return { Id     = Id fb.Id
                Name   = fb.Name
-               Patch  = Id fb.Patch
+               PinGroup  = Id fb.PinGroup
                Tags   = tags
                Slices = slices }
     }
@@ -2559,7 +2559,7 @@ and ColorSliceD =
 and StringPinD =
   { Id         : Id
   ; Name       : string
-  ; Patch      : Id
+  ; PinGroup      : Id
   ; Tags       : Tag array
   ; StringType : StringType
   ; FileMask   : FileMask
@@ -2578,7 +2578,7 @@ and StringPinD =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
+    let group = string self.PinGroup |> builder.CreateString
     let tipe = self.StringType.ToOffset(builder)
     let mask = self.FileMask |> Option.map builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
@@ -2589,7 +2589,7 @@ and StringPinD =
     StringPinFB.StartStringPinFB(builder)
     StringPinFB.AddId(builder, id)
     StringPinFB.AddName(builder, name)
-    StringPinFB.AddPatch(builder, patch)
+    StringPinFB.AddPinGroup(builder, group)
     StringPinFB.AddTags(builder, tags)
     StringPinFB.AddStringType(builder, tipe)
 
@@ -2610,7 +2610,7 @@ and StringPinD =
 
       return { Id         = Id fb.Id
                Name       = fb.Name
-               Patch      = Id fb.Patch
+               PinGroup      = Id fb.PinGroup
                Tags       = tags
                StringType = tipe
                FileMask   = mask
@@ -2719,7 +2719,7 @@ and StringSliceD =
 and CompoundPinD =
   { Id         : Id
   ; Name       : string
-  ; Patch      : Id
+  ; PinGroup      : Id
   ; Tags       : Tag   array
   ; Slices     : CompoundSliceD array }
 
@@ -2735,7 +2735,7 @@ and CompoundPinD =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
-    let patch = string self.Patch |> builder.CreateString
+    let group = string self.PinGroup |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let tags = CompoundPinFB.CreateTagsVector(builder, tagoffsets)
@@ -2743,7 +2743,7 @@ and CompoundPinD =
     CompoundPinFB.StartCompoundPinFB(builder)
     CompoundPinFB.AddId(builder, id)
     CompoundPinFB.AddName(builder, name)
-    CompoundPinFB.AddPatch(builder, patch)
+    CompoundPinFB.AddPinGroup(builder, group)
     CompoundPinFB.AddTags(builder, tags)
     CompoundPinFB.AddSlices(builder, slices)
     CompoundPinFB.EndCompoundPinFB(builder)
@@ -2757,7 +2757,7 @@ and CompoundPinD =
 
       return { Id     = Id fb.Id
                Name   = fb.Name
-               Patch  = Id fb.Patch
+               PinGroup  = Id fb.PinGroup
                Tags   = tags
                Slices = slices }
     }

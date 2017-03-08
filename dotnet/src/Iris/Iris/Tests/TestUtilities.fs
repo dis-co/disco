@@ -120,7 +120,7 @@ module TestData =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkCue() |]
 
-  let mkPatch () : Iris.Core.Patch =
+  let mkPinGroup () : Iris.Core.PinGroup =
     let pins =
       mkPins ()
       |> Array.map toPair
@@ -130,12 +130,12 @@ module TestData =
       Name = rndstr()
       Pins = pins }
 
-  let mkPatches () : Iris.Core.Patch array =
+  let mkPinGroups () : Iris.Core.PinGroup array =
     [| for n in 0 .. rand.Next(1,20) do
-        yield mkPatch() |]
+        yield mkPinGroup() |]
 
   let mkCueList () : CueList =
-    { Id = Id.Create(); Name = "Patch 3"; Cues = mkCues() }
+    { Id = Id.Create(); Name = "PinGroup 3"; Cues = mkCues() }
 
   let mkCueLists () =
     [| for n in 0 .. rand.Next(1,20) do
@@ -177,7 +177,7 @@ module TestData =
       let! project = mkProject path
       return
         { Project  = project
-          Patches  = mkPatches () |> asMap
+          PinGroups  = mkPinGroups () |> asMap
           Cues     = mkCues    () |> asMap
           CueLists = mkCueLists() |> asMap
           Sessions = mkSessions() |> asMap

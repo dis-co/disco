@@ -363,19 +363,19 @@ module SerializationTests =
   // |  __/ (_| | || (__| | | |
   // |_|   \__,_|\__\___|_| |_|
 
-  let test_validate_patch_binary_serialization =
-    testCase "Validate Patch Binary Serialization" <| fun _ ->
-      let patch : Patch = mkPatch ()
+  let test_validate_group_binary_serialization =
+    testCase "Validate PinGroup Binary Serialization" <| fun _ ->
+      let group : PinGroup = mkPinGroup ()
 
-      let repatch = patch |> Binary.encode |> Binary.decode |> Either.get
-      expect "Should be structurally equivalent" patch id repatch
+      let regroup = group |> Binary.encode |> Binary.decode |> Either.get
+      expect "Should be structurally equivalent" group id regroup
 
-  let test_validate_patch_yaml_serialization =
-    testCase "Validate Patch Yaml Serialization" <| fun _ ->
-      let patch : Patch = mkPatch ()
+  let test_validate_group_yaml_serialization =
+    testCase "Validate PinGroup Yaml Serialization" <| fun _ ->
+      let group : PinGroup = mkPinGroup ()
 
-      let repatch = patch |> Yaml.encode |> Yaml.decode |> Either.get
-      expect "Should be structurally equivalent" patch id repatch
+      let regroup = group |> Yaml.encode |> Yaml.decode |> Either.get
+      expect "Should be structurally equivalent" group id regroup
 
   //  ____                _
   // / ___|  ___  ___ ___(_) ___  _ __
@@ -575,9 +575,9 @@ module SerializationTests =
         ; AddUser       <| mkUser ()
         ; UpdateUser    <| mkUser ()
         ; RemoveUser    <| mkUser ()
-        ; AddPatch      <| mkPatch ()
-        ; UpdatePatch   <| mkPatch ()
-        ; RemovePatch   <| mkPatch ()
+        ; AddPinGroup      <| mkPinGroup ()
+        ; UpdatePinGroup   <| mkPinGroup ()
+        ; RemovePinGroup   <| mkPinGroup ()
         ; AddPin        <| mkPin ()
         ; UpdatePin     <| mkPin ()
         ; RemovePin     <| mkPin ()
@@ -624,8 +624,8 @@ module SerializationTests =
       test_validate_cue_yaml_serialization
       test_validate_cuelist_binary_serialization
       test_validate_cuelist_yaml_serialization
-      test_validate_patch_binary_serialization
-      test_validate_patch_yaml_serialization
+      test_validate_group_binary_serialization
+      test_validate_group_yaml_serialization
       test_validate_session_binary_serialization
       test_validate_session_yaml_serialization
       test_validate_user_binary_serialization

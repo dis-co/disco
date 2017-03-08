@@ -18,7 +18,7 @@
    "Iris/Core/LogLevel.fs"
    "Iris/Core/Git.fs"
    "Iris/Core/Pin.fs"
-   "Iris/Core/Patch.fs"
+   "Iris/Core/PinGroup.fs"
    "Iris/Core/Cue.fs"
    "Iris/Core/CueList.fs"
    "Iris/Raft/Validation.fs"

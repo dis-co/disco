@@ -17,15 +17,15 @@ open Iris.Nodes
 // |  __/ (_| | || (__| | | |
 // |_|   \__,_|\__\___|_| |_|
 
-[<PluginInfo(Name="Patch", Category="Iris", AutoEvaluate=true)>]
-type PatchNode() =
+[<PluginInfo(Name="PinGroup", Category="Iris", AutoEvaluate=true)>]
+type PinGroupNode() =
 
   [<Import();DefaultValue>]
   val mutable Logger: ILogger
 
   [<DefaultValue>]
-  [<Input("Patch")>]
-  val mutable InPatch: ISpread<Patch>
+  [<Input("PinGroup")>]
+  val mutable InPinGroup: ISpread<PinGroup>
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
@@ -51,19 +51,19 @@ type PatchNode() =
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
 
-        self.OutId.SliceCount <- self.InPatch.SliceCount
-        self.OutName.SliceCount <- self.InPatch.SliceCount
-        self.OutPins.SliceCount <- self.InPatch.SliceCount
+        self.OutId.SliceCount <- self.InPinGroup.SliceCount
+        self.OutName.SliceCount <- self.InPinGroup.SliceCount
+        self.OutPins.SliceCount <- self.InPinGroup.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
-          if not (Util.isNullReference self.InPatch.[0]) then
-            let patch = self.InPatch.[n]
+          if not (Util.isNullReference self.InPinGroup.[0]) then
+            let group = self.InPinGroup.[n]
             let pins =
-              patch.Pins
+              group.Pins
               |> Map.toArray
               |> Array.map snd
-            self.OutId.[n] <- string patch.Id
-            self.OutName.[n] <- patch.Name
+            self.OutId.[n] <- string group.Id
+            self.OutName.[n] <- group.Name
             self.OutPins.[n].SliceCount <- Array.length pins
             self.OutPins.[n].AssignFrom pins
 

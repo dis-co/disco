@@ -423,11 +423,11 @@ module ApiClient =
         |> Error.asClientError (tag "requestUpdate")
         |> Either.fail
 
-  // ** maybeDispatch
+  // ** maybeDisgroup
 
-  let private maybeDispatch (data: ClientStateData) (sm: StateMachine) =
+  let private maybeDisgroup (data: ClientStateData) (sm: StateMachine) =
     match sm with
-    | UpdateSlices slices -> data.Store.Dispatch sm
+    | UpdateSlices _ -> data.Store.Dispatch sm
     | _ -> ()
 
   // ** handleRequest
@@ -438,7 +438,7 @@ module ApiClient =
                             (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      maybeDispatch data sm
+      maybeDisgroup data sm
       match requestUpdate data.Socket sm with
       | Right () ->
         Reply.Ok
@@ -601,34 +601,34 @@ module ApiClient =
               // |  __/ (_| | || (__| | | |
               // |_|   \__,_|\__\___|_| |_|
 
-              member self.AddPatch (patch: Patch) =
-                match postCommand agent (fun chan -> Msg.Request(chan, AddPatch patch)) with
+              member self.AddPinGroup (group: PinGroup) =
+                match postCommand agent (fun chan -> Msg.Request(chan, AddPinGroup group)) with
                 | Right Reply.Ok -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "AddPatch")
+                  |> Error.asClientError (tag "AddPinGroup")
                   |> Either.fail
                 | Left error ->
                   error
                   |> Either.fail
 
-              member self.UpdatePatch (patch: Patch) =
-                match postCommand agent (fun chan -> Msg.Request(chan, UpdatePatch patch)) with
+              member self.UpdatePinGroup (group: PinGroup) =
+                match postCommand agent (fun chan -> Msg.Request(chan, UpdatePinGroup group)) with
                 | Right Reply.Ok -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "UpdatePatch")
+                  |> Error.asClientError (tag "UpdatePinGroup")
                   |> Either.fail
                 | Left error ->
                   error
                   |> Either.fail
 
-              member self.RemovePatch (patch: Patch) =
-                match postCommand agent (fun chan -> Msg.Request(chan, RemovePatch patch)) with
+              member self.RemovePinGroup (group: PinGroup) =
+                match postCommand agent (fun chan -> Msg.Request(chan, RemovePinGroup group)) with
                 | Right Reply.Ok -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "RemovePatch")
+                  |> Error.asClientError (tag "RemovePinGroup")
                   |> Either.fail
                 | Left error ->
                   error

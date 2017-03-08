@@ -190,7 +190,7 @@ table SlicesFB {
 table StringPinFB {
       Id         : string;
       Name       : string;
-      Patch      : string;
+      PinGroup   : string;
       Tags       : [string];
       StringType : StringTypeFB;
       FileMask   : string;
@@ -201,7 +201,7 @@ table StringPinFB {
 table IntPinFB {
       Id         : string;
       Name       : string;
-      Patch      : string;
+      PinGroup   : string;
       Tags       : [string];
       VecSize    : uint;
       Min        : int;
@@ -213,7 +213,7 @@ table IntPinFB {
 table FloatPinFB {
       Id         : string;
       Name       : string;
-      Patch      : string;
+      PinGroup   : string;
       Tags       : [string];
       VecSize    : uint;
       Min        : int;
@@ -226,7 +226,7 @@ table FloatPinFB {
 table DoublePinFB {
       Id         : string;
       Name       : string;
-      Patch      : string;
+      PinGroup   : string;
       Tags       : [string];
       VecSize    : uint;
       Min        : int;
@@ -239,7 +239,7 @@ table DoublePinFB {
 table BoolPinFB {
       Id         : string;
       Name       : string;
-      Patch      : string;
+      PinGroup   : string;
       Tags       : [string];
       Behavior   : BehaviorFB;
       Slices     : [BoolSliceFB];
@@ -248,7 +248,7 @@ table BoolPinFB {
 table BytePinFB {
       Id         : string;
       Name       : string;
-      Patch      : string;
+      PinGroup   : string;
       Tags       : [string];
       Slices     : [ByteSliceFB];
 }
@@ -256,7 +256,7 @@ table BytePinFB {
 table EnumPinFB {
       Id         : string;
       Name       : string;
-      Patch      : string;
+      PinGroup   : string;
       Tags       : [string];
       Properties : [EnumPropertyFB];
       Slices     : [EnumSliceFB];
@@ -265,7 +265,7 @@ table EnumPinFB {
 table ColorPinFB {
       Id         : string;
       Name       : string;
-      Patch      : string;
+      PinGroup   : string;
       Tags       : [string];
       Slices     : [ColorSliceFB];
 }
@@ -273,7 +273,7 @@ table ColorPinFB {
 table CompoundPinFB {
       Id         : string;
       Name       : string;
-      Patch      : string;
+      PinGroup   : string;
       Tags       : [string];
       Slices     : [CompoundSliceFB];
 }
@@ -300,7 +300,7 @@ table PinFB {
 // |  __/ (_| | || (__| | | |
 // |_|   \__,_|\__\___|_| |_|
 
-table PatchFB {
+table PinGroupFB {
       Id:   string;
       Name: string;
       Pins: [PinFB];
@@ -541,7 +541,7 @@ table ProjectFB {
 
 table StateFB {
       Project:  ProjectFB;
-      Patches:  [PatchFB];
+      PinGroups:  [PinGroupFB];
       Cues:     [CueFB];
       CueLists: [CueListFB];
       Sessions: [SessionFB];
@@ -585,7 +585,7 @@ union StateMachinePayloadFB {
       CueFB,
       CueListFB,
       PinFB,
-      PatchFB,
+      PinGroupFB,
       IrisClientFB,
       RaftMemberFB,
       UserFB,

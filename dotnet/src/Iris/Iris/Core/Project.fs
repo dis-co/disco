@@ -2494,7 +2494,7 @@ module Project =
       do! createAssetDir repo CUE_DIR
       do! createAssetDir repo USER_DIR
       do! createAssetDir repo CUELIST_DIR
-      do! createAssetDir repo PATCH_DIR
+      do! createAssetDir repo PINGROUP_DIR
       let relPath = Asset.path User.Admin
       let absPath = project.Path </> relPath
       let! _ =

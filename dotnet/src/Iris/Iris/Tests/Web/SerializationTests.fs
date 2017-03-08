@@ -52,12 +52,12 @@ module SerializationTests =
   let mkCue _ : Cue =
     { Id = Id.Create(); Name = "Cue 1"; Pins = pins () }
 
-  let mkPatch _ : Patch =
+  let mkPinGroup _ : PinGroup =
     let pins = pins () |> Array.map toPair |> Map.ofArray
-    { Id = Id.Create(); Name = "Patch 3"; Pins = pins }
+    { Id = Id.Create(); Name = "PinGroup 3"; Pins = pins }
 
   let mkCueList _ : CueList =
-    { Id = Id.Create(); Name = "Patch 3"; Cues = [| mkCue (); mkCue () |] }
+    { Id = Id.Create(); Name = "PinGroup 3"; Cues = [| mkCue (); mkCue () |] }
 
   let mkUser _ =
     { Id = Id.Create()
@@ -92,7 +92,7 @@ module SerializationTests =
 
   let mkState _ =
     { Project  = mkProject ()
-    ; Patches  = mkPatch   () |> fun (patch: Patch) -> Map.ofArray [| (patch.Id, patch) |]
+    ; PinGroups  = mkPinGroup   () |> fun (group: PinGroup) -> Map.ofArray [| (group.Id, group) |]
     ; Cues     = mkCue     () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
     ; CueLists = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
     ; Sessions = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
@@ -123,10 +123,10 @@ module SerializationTests =
       equals cuelist recuelist
       finish()
 
-    test "Validate Patch Serialization" <| fun finish ->
-      let patch : Patch = mkPatch ()
-      let repatch = patch |> Binary.encode |> Binary.decode |> Either.get
-      equals patch repatch
+    test "Validate PinGroup Serialization" <| fun finish ->
+      let group : PinGroup = mkPinGroup ()
+      let regroup = group |> Binary.encode |> Binary.decode |> Either.get
+      equals group regroup
       finish()
 
     test "Validate Session Serialization" <| fun finish ->
@@ -217,9 +217,9 @@ module SerializationTests =
       ; AddUser       <| mkUser ()
       ; UpdateUser    <| mkUser ()
       ; RemoveUser    <| mkUser ()
-      ; AddPatch      <| mkPatch ()
-      ; UpdatePatch   <| mkPatch ()
-      ; RemovePatch   <| mkPatch ()
+      ; AddPinGroup      <| mkPinGroup ()
+      ; UpdatePinGroup   <| mkPinGroup ()
+      ; RemovePinGroup   <| mkPinGroup ()
       ; AddClient     <| mkClient ()
       ; UpdateClient  <| mkClient ()
       ; RemoveClient  <| mkClient ()
