@@ -1293,6 +1293,17 @@ and StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
+    | x when x = StateMachinePayloadFB.SlicesFB ->
+      
+      let slices = SlicesFB.Create() |> fb.Payload |> Slices.FromFB
+      match fb.Action with
+      | x when x = StateMachineActionFB.UpdateFB ->
+        Either.map UpdateSlices slices
+      | x ->
+        sprintf "Could not parse unknown StateMachineActionFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
     | x when x = StateMachinePayloadFB.CueFB ->
       let cue = fb.CueFB |> Cue.FromFB
       match fb.Action with
