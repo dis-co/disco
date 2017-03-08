@@ -93,6 +93,9 @@ module TestData =
     ; Pin.Enum      (mk(), rndstr(), mk(), mkTags(), props, [|{ Index = 0u; Value = selected }|])
     |]
 
+  let mkSlices() =
+    BoolSlices(mk(), [|{Index=1u; Value=true}|])
+
   let inline asMap arr =
     arr
     |> Array.map toPair
