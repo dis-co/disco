@@ -2,6 +2,6 @@
     "projFile": "Web.Tests.fsproj",
     "plugins": ["../../../Fable/FlatBuffersPlugin.fsx"],
     "rollup": {
-        "dest": "../../assets/frontend/js/iris.tests.js"
+        "dest": "../../../Frontend/js/iris.tests.js"
     }
  }

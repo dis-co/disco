@@ -296,7 +296,8 @@ Target "CopyAssets"
     ; userScripts @@ "runiris.sh"
     ; userScripts @@ "runiris.cmd" ]
     |> List.iter (CopyFile "bin/")
-    SilentCopyDir "bin/Iris/assets" (baseDir @@ "assets/frontend") withoutNodeModules)
+    // SilentCopyDir "bin/Iris/assets" (baseDir @@ "assets/frontend") withoutNodeModules
+  )
 
 Target "CopyDocs"
   (fun _ ->
@@ -458,13 +459,13 @@ Target "WatchWebTests" (runFable webtestsdir "-t watch")
 Target "BuildWebTestsFsProj" (buildDebug "Projects/Web.Tests/Web.Tests.fsproj")
 
 Target "RunWebTests" (fun _ ->
-  runNpmNoErrors "install" (baseDir @@ "assets/frontend") ()
+  runNpmNoErrors "install" (baseDir @@ "../Frontend") ()
   // Please leave for Karsten's tests to keep working :)
   if useNix then
     let phantomJsPath = environVarOrDefault "PHANTOMJS_PATH" "phantomjs"
-    runExec phantomJsPath "node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Iris/assets/frontend/tests.html tap" __SOURCE_DIRECTORY__ false
+    runExec phantomJsPath "node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Frontend/tests.html tap" __SOURCE_DIRECTORY__ false
   else
-    runNpm "run phantomjs -- node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Iris/assets/frontend/tests.html tap" __SOURCE_DIRECTORY__ ()
+    runNpm "run phantomjs -- node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Frontend/tests.html tap" __SOURCE_DIRECTORY__ ()
 )
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
@@ -478,16 +479,16 @@ Target "BuildReleaseCore" (buildRelease "Projects/Core/Core.fsproj")
 
 Target "BuildDebugService" (fun () ->
   buildDebug "Projects/Service/Service.fsproj" ()
-  let assetsTargetDir = (baseDir @@ "bin" @@ "Debug" @@ "Iris" @@ "assets")
-  FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
-  runNpmNoErrors "install" assetsTargetDir ()
+  // let assetsTargetDir = (baseDir @@ "bin" @@ "Debug" @@ "Iris" @@ "assets")
+  // FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
+  // runNpmNoErrors "install" assetsTargetDir ()
 )
 
 Target "BuildReleaseService" (fun () ->
-  let targetDir = (baseDir @@ "bin/Release/Iris/assets")
   buildRelease "Projects/Service/Service.fsproj" ()
-  FileUtils.cp_r (baseDir @@ "assets/frontend") targetDir
-  runNpmNoErrors "install" targetDir ()
+  // let targetDir = (baseDir @@ "bin/Release/Iris/assets")
+  // FileUtils.cp_r (baseDir @@ "assets/frontend") targetDir
+  // runNpmNoErrors "install" targetDir ()
 )
 
 Target "BuildDebugNodes" (buildDebug "Projects/Nodes/Nodes.fsproj")
