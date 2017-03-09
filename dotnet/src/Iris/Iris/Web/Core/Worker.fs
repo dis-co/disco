@@ -151,7 +151,7 @@ type PortMap = Map<Id,ClientMessagePort>
 
 type GlobalContext() =
   let mutable count = 0
-  let mutable store = Unchecked.defaultof<Store> // hm...
+  let mutable store: Store option = None
   let mutable socket : (string * WebSocket) option = None
 
   let ports : PortMap = Map.Create<Id,ClientMessagePort>()
@@ -202,16 +202,18 @@ type GlobalContext() =
     match ev with
     | LogMsg log -> self.Log (sprintf "[%O] %s" log.LogLevel log.Message)
     | _ ->
-      match ev with
-      | DataSnapshot state ->
-        store <- new Store(state)
-        self.Broadcast <| ClientMessage.Render(store.State)
-      | _ ->
+      match ev, store with
+      | DataSnapshot state, _ ->
+        let s = new Store(state)
+        store <- Some s
+        self.Broadcast <| ClientMessage.Render(s.State)
+      | _, Some store ->
         try
           store.Dispatch ev
         with
           | exn -> self.Log (sprintf "Crash: %s" exn.Message)
         self.Broadcast <| ClientMessage.Render(store.State)
+      | _ -> ()
 
   (*-------------------------------------------------------------------------*
        ____ _ _            _
@@ -249,8 +251,9 @@ type GlobalContext() =
     ClientMessage.Initialized(session)    // tell client all is good
     |> self.SendClient port
 
-    ClientMessage.Render(store.State)     // ask client to render
-    |> self.SendClient port
+    store |> Option.iter (fun store ->
+      ClientMessage.Render(store.State)     // ask client to render
+      |> self.SendClient port)
 
   member self.UnRegister (session: Id) =
     count <- count - 1

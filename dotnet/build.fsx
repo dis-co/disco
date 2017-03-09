@@ -296,7 +296,8 @@ Target "CopyAssets"
     ; userScripts @@ "runiris.sh"
     ; userScripts @@ "runiris.cmd" ]
     |> List.iter (CopyFile "bin/")
-    SilentCopyDir "bin/Iris/assets" (baseDir @@ "assets/frontend") withoutNodeModules)
+    // SilentCopyDir "bin/Iris/assets" (baseDir @@ "assets/frontend") withoutNodeModules
+  )
 
 Target "CopyDocs"
   (fun _ ->
@@ -390,7 +391,7 @@ Target "GenerateSerialization"
    runExec flatcPath args baseDir false
 
    // JAVASCRIPT
-   let args = "-I " + (baseDir @@ "Schema") + " -o " + (baseDir @@ "assets/frontend/js") + " --js " + fbs
+   let args = "-I " + (baseDir @@ "Schema") + " -o " + (baseDir @@ "../Frontend/js") + " --js " + fbs
    runExec flatcPath args baseDir false
 
    let files =
@@ -433,28 +434,12 @@ Target "BuildReleaseZeroconf"
 
 let frontendDir = baseDir @@ "Projects" @@ "Frontend"
 
-Target "BuildDebugFrontend" (fun () ->
+Target "BuildFrontend" (fun () ->
   runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
   runFable frontendDir "" ()
 
-  SilentCopyDir (baseDir @@ "assets/frontend/js/fable-core") "node_modules/fable-core/umd" (konst true)
-  SilentCopyDir (baseDir @@ "assets/frontend/js/fable-powerpack") "node_modules/fable-powerpack/umd" (konst true)
-
-  runNpmNoErrors "install" (baseDir @@ "Iris/Web/React") ()
-  runNpm "run build" (baseDir @@ "Iris/Web/React") ()
-
-  runNpmNoErrors "install" (baseDir @@ "assets/frontend") ()
-)
-
-Target "BuildReleaseFrontend" (fun () ->
-  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
-  runFable frontendDir "" ()
-
-  SilentCopyDir (baseDir @@ "assets/frontend/js/fable-core") "node_modules/fable-core/umd" (konst true)
-  SilentCopyDir (baseDir @@ "assets/frontend/js/fable-powerpack") "node_modules/fable-powerpack/umd" (konst true)
-
-  runNpmNoErrors "install" (baseDir @@ "Iris/Web/React") ()
-  runNpm "run build" (baseDir @@ "Iris/Web/React") ()
+  // runNpmNoErrors "install" (baseDir @@ "Iris/Web/React") ()
+  // runNpm "run build" (baseDir @@ "Iris/Web/React") ()
 )
 
 //  _____         _
@@ -474,13 +459,13 @@ Target "WatchWebTests" (runFable webtestsdir "-t watch")
 Target "BuildWebTestsFsProj" (buildDebug "Projects/Web.Tests/Web.Tests.fsproj")
 
 Target "RunWebTests" (fun _ ->
-  runNpmNoErrors "install" (baseDir @@ "assets/frontend") ()
+  runNpmNoErrors "install" (baseDir @@ "../Frontend") ()
   // Please leave for Karsten's tests to keep working :)
   if useNix then
     let phantomJsPath = environVarOrDefault "PHANTOMJS_PATH" "phantomjs"
-    runExec phantomJsPath "node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Iris/assets/frontend/tests.html tap" __SOURCE_DIRECTORY__ false
+    runExec phantomJsPath "node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Frontend/tests.html tap" __SOURCE_DIRECTORY__ false
   else
-    runNpm "run phantomjs -- node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Iris/assets/frontend/tests.html tap" __SOURCE_DIRECTORY__ ()
+    runNpm "run phantomjs -- node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Frontend/tests.html tap" __SOURCE_DIRECTORY__ ()
 )
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
@@ -494,16 +479,16 @@ Target "BuildReleaseCore" (buildRelease "Projects/Core/Core.fsproj")
 
 Target "BuildDebugService" (fun () ->
   buildDebug "Projects/Service/Service.fsproj" ()
-  let assetsTargetDir = (baseDir @@ "bin" @@ "Debug" @@ "Iris" @@ "assets")
-  FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
-  runNpmNoErrors "install" assetsTargetDir ()
+  // let assetsTargetDir = (baseDir @@ "bin" @@ "Debug" @@ "Iris" @@ "assets")
+  // FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
+  // runNpmNoErrors "install" assetsTargetDir ()
 )
 
 Target "BuildReleaseService" (fun () ->
-  let targetDir = (baseDir @@ "bin/Release/Iris/assets")
   buildRelease "Projects/Service/Service.fsproj" ()
-  FileUtils.cp_r (baseDir @@ "assets/frontend") targetDir
-  runNpmNoErrors "install" targetDir ()
+  // let targetDir = (baseDir @@ "bin/Release/Iris/assets")
+  // FileUtils.cp_r (baseDir @@ "assets/frontend") targetDir
+  // runNpmNoErrors "install" targetDir ()
 )
 
 Target "BuildDebugNodes" (buildDebug "Projects/Nodes/Nodes.fsproj")
@@ -648,7 +633,7 @@ Target "Release" DoNothing
 ==> "BuildWebTests"
 
 "GenerateSerialization"
-==> "BuildDebugFrontend"
+==> "BuildFrontend"
 
 "GenerateSerialization"
 ==> "BuildReleaseService"
@@ -682,7 +667,7 @@ Target "Release" DoNothing
 
 "BuildReleaseNodes"
 ==> "BuildReleaseService"
-==> "BuildReleaseFrontend"
+==> "BuildFrontend"
 ==> "BuildReleaseCore"
 ==> "CopyBinaries"
 
@@ -732,7 +717,7 @@ Target "DebugDocs" DoNothing
 
 Target "DebugAll" DoNothing
 
-"BuildDebugFrontend"
+"BuildFrontend"
 ==> "DebugAll"
 
 "BuildDebugService"

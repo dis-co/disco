@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <Import Project="..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
@@ -23,7 +23,7 @@
     <OutputPath>..\..\bin\Debug\Iris</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
-    <StartArguments>start</StartArguments>
+    <StartArguments>start --project=wonderful</StartArguments>
     <!-- <OtherFlags>-\-standalone</OtherFlags> -->
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">

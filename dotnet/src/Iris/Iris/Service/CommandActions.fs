@@ -18,12 +18,12 @@ let private serializeJson =
     let converter = Fable.JsonConverter()
     fun (o: obj) -> Newtonsoft.Json.JsonConvert.SerializeObject(o, converter)
 
-let getWsport (iris: IIrisServer): Either<IrisError,string> =
+let getWsAddress (iris: IIrisServer): Either<IrisError,string> =
     match iris.Config with
     | Left _ -> "0"
     | Right cfg ->
         match Map.tryFind cfg.MachineId cfg.Cluster.Members with
-        | Some mem -> mem.WsPort |> string
+        | Some mem -> sprintf "ws://%O:%i" mem.IpAddr mem.WsPort
         | None -> "0"
     |> Either.succeed
 
@@ -133,7 +133,7 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
           iris.UnloadProject()
           |> Either.map (fun () -> "Project unloaded")
         | ListProjects -> listProjects cfg
-        | GetWebSocketPort -> getWsport iris
+        | GetWebSocketAddress -> getWsAddress iris
         | CreateProject opts -> createProject cfg opts
         | LoadProject(projectName, userName, password) ->
           iris.LoadProject(projectName, userName, password)
