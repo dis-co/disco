@@ -1,13 +1,12 @@
 {
     "projFile": "Frontend.fsproj",
-    "outDir": "../../assets/frontend/js",
-    "module": "amd",
     "sourceMaps": false,
     "plugins": ["../../../Fable/FlatBuffersPlugin.fsx"],
-    "refs": {
-        "Fable.Core": "fable-core/umd",
-        "Fable.PowerPack": "fable-powerpack/umd"
-    },
+    "rollup": {
+        "dest": "../../../Frontend/js/iris.js",
+        "format": "iife",
+        "moduleName": "Iris"
+    },    
     "targets": {
         "debug": {
             "watch": "../../Iris/Web"

@@ -29,3 +29,6 @@ notifications:
   on_build_status_changed: true
 on_finish:
 - ps: Get-ChildItem .\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+cache:
+  - dotnet\packages -> dotnet\paket.lock
+  - dotnet\node_modules -> dotnet\package.json

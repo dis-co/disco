@@ -52,17 +52,12 @@ and ClientContext private (worker: SharedWorker<string>) =
   }
 
   member __.ConnectWithWebSocket() =
-    (Commands.GetWebSocketPort, [])
+    (Commands.GetWebSocketAddress, [])
     ||> Fetch.postRecord Constants.WEP_API_COMMAND
     |> Promise.bind (fun res -> res.text())
-    |> Promise.map (fun port ->
-      match Int32.TryParse(port) with
-      | false, _ | true, 0 -> ()
-      | true, port ->
-        sprintf "ws://%s:%i" Browser.window.location.hostname port
-        |> ClientMessage.Connect
-        |> toJson
-        |> worker.Port.PostMessage)
+    |> Promise.map (fun address ->
+        ClientMessage.Connect address
+        |> toJson |> worker.Port.PostMessage)
 
   member self.Session =
     match session with

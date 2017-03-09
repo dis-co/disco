@@ -185,3 +185,19 @@ let project2tree (p: IrisProject) =
   ;  leaf ("Author: " + defaultArg p.Author "unknown")
   ;  cfg2tree p.Config
   |] |> node "Project"
+
+let startContext f =
+  ClientContext.Start()
+  |> Promise.map (fun context ->
+    context.OnMessage
+    |> Observable.add (function
+      | ClientMessage.Render state ->
+        match Map.tryFind context.Session state.Sessions with
+        | Some session ->
+          f { context = context; session = session; state = state }
+        | None -> ()
+      | _ -> ())
+  )
+
+let startWorkerContext() =
+  GlobalContext()

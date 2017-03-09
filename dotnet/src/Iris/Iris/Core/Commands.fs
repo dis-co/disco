@@ -19,7 +19,7 @@ type Command =
   | Shutdown
   | UnloadProject
   | ListProjects
-  | GetWebSocketPort
+  | GetWebSocketAddress
   | CreateProject of CreateProjectOptions
   | LoadProject of projectName:string * userName:string * password:string
 

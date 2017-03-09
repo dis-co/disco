@@ -153,9 +153,6 @@
     <Compile Include="../../Iris/Web/Lib.fs">
       <Link>Lib.fs</Link>
     </Compile>
-    <Compile Include="../../Iris/Web/Frontend.fs">
-      <Link>Frontend.fs</Link>
-    </Compile>
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">
