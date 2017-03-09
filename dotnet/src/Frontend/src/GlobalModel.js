@@ -14,13 +14,26 @@ const initLogs = [
 let counter = initLogs.length;
 
 export default class GlobalModel {
-  constructor(dispatch) {
+  constructor() {
+    Iris.startContext(info => {
+      var patches = Array.from(info.state.Patches);
+      var pins = patches.length > 0 ? Array.from(patches[0][1].Pins) : [];
+      var boolPins = pins
+        .filter(pin => pin[1].Case === "BoolPin")
+        .map(pin => ({
+          name: pin[1].Fields[0].Name,
+          value: pin[1].Fields[0].Slices[0].Value
+        }));
+      this.__setState("boolPins", boolPins)
+    })
+
     this.subscribers = new Map();
     this.eventSubscribers = new Map();
     this.state = {
       tabs: new Map(),
       widgets: new Map(),
-      logs: initLogs
+      logs: initLogs,
+      boolPins: []
     };
   }
 

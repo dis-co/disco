@@ -11,7 +11,7 @@
   "license": "ISC",
   "repository": "https://bitbucket.com/nsynk/iris.git",
   "devDependencies": {
-    "fable-compiler": "^0.7.48",
+    "fable-compiler": "^0.7.49",
     "fable-core": "^0.7.28",
     "fable-powerpack": "^0.0.20",
     "mocha-phantomjs-core": "^2.1.1",

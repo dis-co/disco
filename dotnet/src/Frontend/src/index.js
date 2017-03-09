@@ -12,10 +12,5 @@ const render = Component =>
     rootEl
   );
 
-Iris.startContext(info => {
-  debugger;
-  console.log(info);
-})
-
 render(App);
 if (module.hot) module.hot.accept('./App', () => render(App));

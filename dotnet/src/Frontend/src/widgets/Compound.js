@@ -1,5 +1,6 @@
 import React, { Component } from 'react'
 import Spread from "./Spread"
+import IOBox from "./IOBox"
 import domtoimage from "dom-to-image"
 import { touchesElement } from "../Util.ts"
 
@@ -51,9 +52,6 @@ class View extends Component {
       });
   }
 
-
-
-
   componentDidMount() {
     this.props.global.subscribeToEvent("drag", ev => {
       if (this.el != null && ev.origin !== this.props.id) {
@@ -71,12 +69,26 @@ class View extends Component {
         this.el.classList.remove("iris-highlight-blue")
       }
     });
+
+    this.disposable =
+      this.props.global.subscribe("boolPins", () => {
+        debugger; 
+        this.forceUpdate();
+      });
   }
 
+  componentWillUnmount() {
+    if (this.disposable) {
+      this.disposable.dispose();
+    }
+  }  
+
   render() {
+    // var elements = this.props.model.elements;
+    var elements = this.props.global.state.boolPins.map(pin => new IOBox(pin.name, pin.value))
     return (
       <div className="iris-compound" ref={el => this.el = el}>
-        {this.props.model.elements.map((model,i) => {
+        {elements.map((model,i) => {
           const View = model.view;
           return (
             <div key={i}
@@ -99,9 +111,5 @@ export default class Manager {
       minW: 2, maxW: 10,
       minH: 1, maxH: 10
     };
-    this.elements = [
-      new Spread(),
-      new Spread()
-    ]
   }
 }

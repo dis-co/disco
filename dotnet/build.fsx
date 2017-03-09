@@ -390,7 +390,7 @@ Target "GenerateSerialization"
    runExec flatcPath args baseDir false
 
    // JAVASCRIPT
-   let args = "-I " + (baseDir @@ "Schema") + " -o " + (baseDir @@ "assets/frontend/js") + " --js " + fbs
+   let args = "-I " + (baseDir @@ "Schema") + " -o " + (baseDir @@ "../Frontend/js") + " --js " + fbs
    runExec flatcPath args baseDir false
 
    let files =
@@ -433,28 +433,12 @@ Target "BuildReleaseZeroconf"
 
 let frontendDir = baseDir @@ "Projects" @@ "Frontend"
 
-Target "BuildDebugFrontend" (fun () ->
+Target "BuildFrontend" (fun () ->
   runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
   runFable frontendDir "" ()
 
-  SilentCopyDir (baseDir @@ "assets/frontend/js/fable-core") "node_modules/fable-core/umd" (konst true)
-  SilentCopyDir (baseDir @@ "assets/frontend/js/fable-powerpack") "node_modules/fable-powerpack/umd" (konst true)
-
-  runNpmNoErrors "install" (baseDir @@ "Iris/Web/React") ()
-  runNpm "run build" (baseDir @@ "Iris/Web/React") ()
-
-  runNpmNoErrors "install" (baseDir @@ "assets/frontend") ()
-)
-
-Target "BuildReleaseFrontend" (fun () ->
-  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
-  runFable frontendDir "" ()
-
-  SilentCopyDir (baseDir @@ "assets/frontend/js/fable-core") "node_modules/fable-core/umd" (konst true)
-  SilentCopyDir (baseDir @@ "assets/frontend/js/fable-powerpack") "node_modules/fable-powerpack/umd" (konst true)
-
-  runNpmNoErrors "install" (baseDir @@ "Iris/Web/React") ()
-  runNpm "run build" (baseDir @@ "Iris/Web/React") ()
+  // runNpmNoErrors "install" (baseDir @@ "Iris/Web/React") ()
+  // runNpm "run build" (baseDir @@ "Iris/Web/React") ()
 )
 
 //  _____         _
@@ -648,7 +632,7 @@ Target "Release" DoNothing
 ==> "BuildWebTests"
 
 "GenerateSerialization"
-==> "BuildDebugFrontend"
+==> "BuildFrontend"
 
 "GenerateSerialization"
 ==> "BuildReleaseService"
@@ -682,7 +666,7 @@ Target "Release" DoNothing
 
 "BuildReleaseNodes"
 ==> "BuildReleaseService"
-==> "BuildReleaseFrontend"
+==> "BuildFrontend"
 ==> "BuildReleaseCore"
 ==> "CopyBinaries"
 
@@ -732,7 +716,7 @@ Target "DebugDocs" DoNothing
 
 Target "DebugAll" DoNothing
 
-"BuildDebugFrontend"
+"BuildFrontend"
 ==> "DebugAll"
 
 "BuildDebugService"
