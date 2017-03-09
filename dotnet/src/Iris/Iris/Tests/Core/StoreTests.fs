@@ -84,8 +84,7 @@ module StoreTests =
 
         expect "Should be zero" 0 id store.State.PinGroups.[group.Id].Pins.Count
 
-        let slice : StringSliceD = { Index = 0u; Value = "Hey" }
-        let pin : Pin = Pin.String(Id "0xb33f","url input", group.Id, Array.empty, [| slice |])
+        let pin : Pin = Pin.String(Id "0xb33f","url input", group.Id, Array.empty, [| "hey" |])
 
         store.Dispatch <| AddPin(pin)
 
@@ -94,8 +93,7 @@ module StoreTests =
   let test_should_not_add_an_pin_to_the_store_if_group_does_not_exists =
     testCase "should not add an pin to the store if group does not exists" <| fun _ ->
       withStore <| fun group store ->
-        let slice : StringSliceD = { Index = 0u; Value =  "Hey" }
-        let pin = Pin.String(Id "0xb33f","url input", group.Id, Array.empty, [| slice |])
+        let pin = Pin.String(Id "0xb33f","url input", group.Id, Array.empty, [| "ho" |])
         store.Dispatch <| AddPin(pin)
         expect "Should be zero" 0 id store.State.PinGroups.Count
 
@@ -105,8 +103,7 @@ module StoreTests =
         let name1 = "can a cat own a cat?"
         let name2 = "yes, cats are re-entrant."
 
-        let slice : StringSliceD = { Index = 0u; Value = "swell" }
-        let pin = Pin.String(Id "0xb33f", name1, group.Id, Array.empty, [| slice |])
+        let pin = Pin.String(Id "0xb33f", name1, group.Id, Array.empty, [| "swell" |])
 
         store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)
@@ -125,8 +122,7 @@ module StoreTests =
   let test_should_remove_an_pin_from_the_store_if_it_exists =
     testCase "should remove an pin from the store if it exists" <| fun _ ->
       withStore <| fun group store ->
-        let slice : StringSliceD = { Index = 0u; Value = "swell" }
-        let pin = Pin.String(Id "0xb33f", "hi", Id "0xb4d1d34", Array.empty, [| slice |])
+        let pin = Pin.String(Id "0xb33f", "hi", Id "0xb4d1d34", Array.empty, [| "swell" |])
 
         store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)

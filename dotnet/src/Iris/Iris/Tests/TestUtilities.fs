@@ -70,31 +70,30 @@ module TestData =
     path
 
   let mkPin() =
-    Pin.Toggle(mk(), rndstr(), mk(), mkTags(), [|{ Index = 0u; Value = true }|])
+    Pin.Toggle(mk(), rndstr(), mk(), mkTags(), [| true |])
 
   let mkPins () =
     let props = [| { Key = "one"; Value = "two" }; { Key = "three"; Value = "four"} |]
     let selected = props.[0]
     let rgba = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy }
     let hsla = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy }
-    [| Pin.Bang      (mk(), rndstr(), mk(), mkTags(), [|{ Index = 0u; Value = true    }|])
-    ; Pin.Toggle    (mk(), rndstr(), mk(), mkTags(), [|{ Index = 0u; Value = true    }|])
-    ; Pin.String    (mk(), rndstr(), mk(), mkTags(), [|{ Index = 0u; Value = rndstr()   }|])
-    ; Pin.MultiLine (mk(), rndstr(), mk(), mkTags(), [|{ Index = 0u; Value = rndstr()   }|])
-    ; Pin.FileName  (mk(), rndstr(), mk(), mkTags(), rndstr(), [|{ Index = 0u; Value = rndstr() }|])
-    ; Pin.Directory (mk(), rndstr(), mk(), mkTags(), rndstr(), [|{ Index = 0u; Value = rndstr() }|])
-    ; Pin.Url       (mk(), rndstr(), mk(), mkTags(), [|{ Index = 0u; Value = rndstr()  }|])
-    ; Pin.IP        (mk(), rndstr(), mk(), mkTags(), [|{ Index = 0u; Value = rndstr()  }|])
-    ; Pin.Float     (mk(), rndstr(), mk(), mkTags(), [|{ Index = 0u; Value = 3.0    }|])
-    ; Pin.Double    (mk(), rndstr(), mk(), mkTags(), [|{ Index = 0u; Value = double 3.0 }|])
-    ; Pin.Bytes     (mk(), rndstr(), mk(), mkTags(), [|{ Index = 0u; Value = [| 2uy; 9uy |] }|])
-    ; Pin.Color     (mk(), rndstr(), mk(), mkTags(), [|{ Index = 0u; Value = rgba }|])
-    ; Pin.Color     (mk(), rndstr(), mk(), mkTags(), [|{ Index = 0u; Value = hsla }|])
-    ; Pin.Enum      (mk(), rndstr(), mk(), mkTags(), props, [|{ Index = 0u; Value = selected }|])
+    [| Pin.Bang      (mk(), rndstr(), mk(), mkTags(), [| true |])
+    ;  Pin.Toggle    (mk(), rndstr(), mk(), mkTags(), [| true |])
+    ;  Pin.String    (mk(), rndstr(), mk(), mkTags(), [| rndstr() |])
+    ;  Pin.MultiLine (mk(), rndstr(), mk(), mkTags(), [| rndstr() |])
+    ;  Pin.FileName  (mk(), rndstr(), mk(), mkTags(), rndstr(), [| rndstr() |])
+    ;  Pin.Directory (mk(), rndstr(), mk(), mkTags(), rndstr(), [| rndstr() |])
+    ;  Pin.Url       (mk(), rndstr(), mk(), mkTags(), [| rndstr() |])
+    ;  Pin.IP        (mk(), rndstr(), mk(), mkTags(), [| rndstr() |])
+    ;  Pin.Number    (mk(), rndstr(), mk(), mkTags(), [| double 3.0 |])
+    ;  Pin.Bytes     (mk(), rndstr(), mk(), mkTags(), [| [| 2uy; 9uy |] |])
+    ;  Pin.Color     (mk(), rndstr(), mk(), mkTags(), [| rgba |])
+    ;  Pin.Color     (mk(), rndstr(), mk(), mkTags(), [| hsla |])
+    ;  Pin.Enum      (mk(), rndstr(), mk(), mkTags(), props, [| selected |])
     |]
 
   let mkSlices() =
-    BoolSlices(mk(), [|{Index=1u; Value=true}|])
+    BoolSlices(mk(), [| true |])
 
   let inline asMap arr =
     arr

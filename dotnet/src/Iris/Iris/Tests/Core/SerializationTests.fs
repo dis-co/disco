@@ -426,16 +426,14 @@ module SerializationTests =
   let test_validate_slice_binary_serialization =
     testCase "Validate Slice Binary Serialization" <| fun _ ->
 
-      [| BoolSlice     { Index = 0u; Value = true    }
-      ; StringSlice   { Index = 0u; Value = "hello" }
-      ; IntSlice      { Index = 0u; Value = 1234    }
-      ; FloatSlice    { Index = 0u; Value = 1234.0  }
-      ; DoubleSlice   { Index = 0u; Value = 1234.0  }
-      ; ByteSlice     { Index = 0u; Value = [| 0uy |] }
-      ; EnumSlice     { Index = 0u; Value = { Key = "one"; Value = "two" }}
-      ; ColorSlice    { Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }
-      ; ColorSlice    { Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }
-      ; CompoundSlice { Index = 0u; Value = mkPins () } |]
+      [| BoolSlice    ( 0u, true    )
+      ;  StringSlice   ( 0u, "hello" )
+      ;  NumberSlice   ( 0u, 1234.0  )
+      ;  ByteSlice     ( 0u, [| 0uy |] )
+      ;  EnumSlice     ( 0u, { Key = "one"; Value = "two" })
+      ;  ColorSlice    ( 0u, RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } )
+      ;  ColorSlice    ( 0u, HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } )
+      |]
       |> Array.iter
         (fun slice ->
           let reslice = slice |> Binary.encode |> Binary.decode |> Either.get
@@ -444,16 +442,13 @@ module SerializationTests =
   let test_validate_slice_yaml_serialization =
     testCase "Validate Slice Yaml Serialization" <| fun _ ->
 
-      [| BoolSlice     { Index = 0u; Value = true    }
-      ; StringSlice   { Index = 0u; Value = "hello" }
-      ; IntSlice      { Index = 0u; Value = 1234    }
-      ; FloatSlice    { Index = 0u; Value = 1234.0  }
-      ; DoubleSlice   { Index = 0u; Value = 1234.0  }
-      ; ByteSlice     { Index = 0u; Value = [| 0uy; 4uy; 9uy; 233uy |] }
-      ; EnumSlice     { Index = 0u; Value = { Key = "one"; Value = "two" }}
-      ; ColorSlice    { Index = 0u; Value = RGBA { Red = 255uy; Blue = 2uy; Green = 255uy; Alpha = 33uy } }
-      ; ColorSlice    { Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 25uy; Lightness = 255uy; Alpha = 55uy } }
-      ; CompoundSlice { Index = 0u; Value = mkPins () }
+      [| BoolSlice    (0u, true    )
+      ;  StringSlice   (0u, "hello" )
+      ;  NumberSlice   (0u, 1234.0  )
+      ;  ByteSlice     (0u, [| 0uy; 4uy; 9uy; 233uy |] )
+      ;  EnumSlice     (0u, { Key = "one"; Value = "two" })
+      ;  ColorSlice    (0u, RGBA { Red = 255uy; Blue = 2uy; Green = 255uy; Alpha = 33uy } )
+      ;  ColorSlice    (0u, HSLA { Hue = 255uy; Saturation = 25uy; Lightness = 255uy; Alpha = 55uy } )
       |]
       |> Array.iter
         (fun slice ->
@@ -469,16 +464,14 @@ module SerializationTests =
   let test_validate_slices_binary_serialization =
     testCase "Validate Slices Binary Serialization" <| fun _ ->
 
-      [| BoolSlices     (Id.Create(), [|{ Index = 0u; Value = true    }|])
-      ; StringSlices   (Id.Create(), [|{ Index = 0u; Value = "hello" }|])
-      ; IntSlices      (Id.Create(), [|{ Index = 0u; Value = 1234    }|])
-      ; FloatSlices    (Id.Create(), [|{ Index = 0u; Value = 1234.0  }|])
-      ; DoubleSlices   (Id.Create(), [|{ Index = 0u; Value = 1234.0  }|])
-      ; ByteSlices     (Id.Create(), [|{ Index = 0u; Value = [| 0uy |] }|])
-      ; EnumSlices     (Id.Create(), [|{ Index = 0u; Value = { Key = "one"; Value = "two" }}|])
-      ; ColorSlices    (Id.Create(), [|{ Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
-      ; ColorSlices    (Id.Create(), [|{ Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
-      ; CompoundSlices (Id.Create(), [|{ Index = 0u; Value = mkPins () }|]) |]
+      [| BoolSlices     (Id.Create(),[| true    |])
+      ;  StringSlices   (Id.Create(), [| "hello" |])
+      ;  NumberSlices   (Id.Create(), [| 1234.0  |])
+      ;  ByteSlices     (Id.Create(), [| [| 0uy |] |])
+      ;  EnumSlices     (Id.Create(), [| { Key = "one"; Value = "two" }|])
+      ;  ColorSlices    (Id.Create(), [| RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } |])
+      ;  ColorSlices    (Id.Create(), [| HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy }|])
+      |]
       |> Array.iter
         (fun slices ->
           let reslices = slices |> Binary.encode |> Binary.decode |> Either.get
@@ -498,14 +491,6 @@ module SerializationTests =
 
       Array.iter check (mkPins ())
 
-      // compound
-      let compound = Pin.Compound(mk(), "compound",  mk(), mkTags (), [|{ Index = 0u; Value = mkPins () }|])
-      check compound
-
-      // nested compound :)
-      Pin.Compound(Id.Create(), "compound",  Id.Create(), mkTags (), [|{ Index = 0u; Value = [| compound |] }|])
-      |> check
-
   let test_validate_pin_yaml_serialization =
     testCase "Validate Pin Yaml Serialization" <| fun _ ->
       let check pin =
@@ -513,14 +498,6 @@ module SerializationTests =
         |> expect "Should be structurally equivalent" pin id
 
       Array.iter check (mkPins ())
-
-      // compound
-      let compound = Pin.Compound(Id.Create(), "compound",  Id.Create(), mkTags (), [|{ Index = 0u; Value = mkPins () }|])
-      check compound
-
-      // nested compound :)
-      Pin.Compound(Id.Create(), "compound",  Id.Create(), mkTags (), [|{ Index = 0u; Value = [| compound |] }|])
-      |> check
 
   //   ____ _ _            _
   //  / ___| (_) ___ _ __ | |_

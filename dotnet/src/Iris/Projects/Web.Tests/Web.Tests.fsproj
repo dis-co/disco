@@ -70,6 +70,9 @@
     <Compile Include="..\..\Iris\Core\Id.fs">
       <Link>Id.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\Property.fs">
+      <Link>Property.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\IpAddress.fs">
       <Link>IpAddress.fs</Link>
     </Compile>

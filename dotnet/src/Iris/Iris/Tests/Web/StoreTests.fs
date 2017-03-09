@@ -36,7 +36,7 @@ module Store =
 
     let state =
       { Project  = project
-        PinGroups  = Map.empty
+        PinGroups = Map.empty
         Cues     = Map.empty
         CueLists = Map.empty
         Users    = Map.empty

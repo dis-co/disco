@@ -290,7 +290,7 @@ type State =
   // |  __/| | | | |
   // |_|   |_|_| |_|
 
-  static member addPin (pin : Pin) (state: State) =
+  static member addPin (pin: Pin) (state: State) =
     if Map.containsKey pin.PinGroup state.PinGroups then
       let update _ (group: PinGroup) =
         if group.Id = pin.PinGroup then
@@ -1294,7 +1294,7 @@ and StateMachine =
         |> Either.fail
 
     | x when x = StateMachinePayloadFB.SlicesFB ->
-      
+
       let slices = SlicesFB.Create() |> fb.Payload |> Slices.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.UpdateFB ->
