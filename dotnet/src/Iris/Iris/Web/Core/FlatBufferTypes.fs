@@ -319,6 +319,8 @@ type BoolPinFB =
   abstract Direction: ConnectionDirectionFB
   abstract Tags: int -> string
   abstract TagsLength: int
+  abstract Labels: index: int -> string
+  abstract LabelsLength: int
   abstract Values: index: int -> bool
   abstract ValuesLength: int
 
@@ -332,10 +334,12 @@ type BoolPinFBConstructor =
   abstract AddIsTrigger: builder: FlatBufferBuilder * trigger: bool -> unit
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
+  abstract AddLabels: builder: FlatBufferBuilder * labels: Offset<'a> -> unit
   abstract AddValues: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
   abstract EndBoolPinFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsBoolPinFB: buffer: ByteBuffer -> BoolPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateValuesVector: builder: FlatBufferBuilder * slices: bool array -> Offset<'a>
   abstract Create: unit -> BoolPinFB
 
@@ -359,6 +363,8 @@ type NumberPinFB =
   abstract Direction: ConnectionDirectionFB
   abstract Tags: int -> string
   abstract TagsLength: int
+  abstract Labels: int -> string
+  abstract LabelsLength: int
   abstract Values: int -> double
   abstract ValuesLength: int
 
@@ -376,10 +382,12 @@ type NumberPinFBConstructor =
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
+  abstract AddLabels: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract AddValues: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract EndNumberPinFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsNumberPinFB: buffer: ByteBuffer -> NumberPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateValuesVector: builder: FlatBufferBuilder * double array -> Offset<'a>
   abstract Create: unit -> NumberPinFB
 
@@ -400,8 +408,10 @@ type BytePinFB =
   abstract Direction: ConnectionDirectionFB
   abstract TagsLength: int
   abstract Tags: int -> string
-  abstract ValuesLength: int
+  abstract Labels: int -> string
+  abstract LabelsLength: int
   abstract Values: int -> string
+  abstract ValuesLength: int
 
 type BytePinFBConstructor =
   abstract prototype: BytePinFB with get, set
@@ -412,10 +422,12 @@ type BytePinFBConstructor =
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
+  abstract AddLabels: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract AddValues: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract EndBytePinFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsBytePinFB: buffer: ByteBuffer -> BytePinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract Create: unit -> BytePinFB
 
@@ -459,6 +471,8 @@ type EnumPinFB =
   abstract TagsLength: int
   abstract Properties: int -> EnumPropertyFB
   abstract PropertiesLength: int
+  abstract Labels: int -> string
+  abstract LabelsLength: int
   abstract Values: int -> EnumPropertyFB
   abstract ValuesLength: int
 
@@ -472,11 +486,13 @@ type EnumPinFBConstructor =
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddProperties: builder: FlatBufferBuilder * properties: Offset<'a> -> unit
+  abstract AddLabels: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract AddValues: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract EndEnumPinFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsEnumPinFB: buffer: ByteBuffer -> EnumPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreatePropertiesVector: builder: FlatBufferBuilder * Offset<EnumPropertyFB> array -> Offset<'a>
+  abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract Create: unit -> EnumPinFB
 
@@ -496,6 +512,8 @@ type ColorPinFB =
   abstract Direction: ConnectionDirectionFB
   abstract TagsLength: int
   abstract Tags: int -> string
+  abstract Labels: int -> string
+  abstract LabelsLength: int
   abstract Values: int -> ColorSpaceFB
   abstract ValuesLength: int
 
@@ -508,10 +526,12 @@ type ColorPinFBConstructor =
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
+  abstract AddLabels: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract AddValues: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract EndColorPinFB: builder: FlatBufferBuilder -> Offset<ColorPinFB>
   abstract GetRootAsColorPinFB: buffer: ByteBuffer -> ColorPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract Create: unit -> ColorPinFB
 
@@ -532,8 +552,10 @@ type StringPinFB =
   abstract VecSize: VecSizeFB
   abstract Direction: ConnectionDirectionFB
   abstract MaxChars: int
-  abstract TagsLength: int
   abstract Tags: int -> string
+  abstract TagsLength: int
+  abstract Labels: int -> string
+  abstract LabelsLength: int
   abstract Values: int -> string
   abstract ValuesLength: int
 
@@ -548,10 +570,12 @@ type StringPinFBConstructor =
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
+  abstract AddLabels: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract AddValues: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract EndStringPinFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsStringPinFB: buffer: ByteBuffer -> StringPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract Create: unit -> StringPinFB
 

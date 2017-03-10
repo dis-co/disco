@@ -171,6 +171,7 @@ table StringPinFB {
       VecSize    : VecSizeFB;
       Behavior   : BehaviorFB;
       MaxChars   : int;
+      Labels     : [string];
       Values     : [string];
 }
 
@@ -185,6 +186,7 @@ table NumberPinFB {
       Precision  : uint;
       Direction  : ConnectionDirectionFB;
       VecSize    : VecSizeFB;
+      Labels     : [string];
       Values     : [double];
 }
 
@@ -196,6 +198,7 @@ table BoolPinFB {
       IsTrigger  : bool;
       Direction  : ConnectionDirectionFB;
       VecSize    : VecSizeFB;
+      Labels     : [string];
       Values     : [bool];
 }
 
@@ -206,6 +209,7 @@ table BytePinFB {
       Tags       : [string];
       Direction  : ConnectionDirectionFB;
       VecSize    : VecSizeFB;
+      Labels     : [string];
       Values     : [string];
 }
 
@@ -217,6 +221,7 @@ table EnumPinFB {
       Properties : [EnumPropertyFB];
       Direction  : ConnectionDirectionFB;
       VecSize    : VecSizeFB;
+      Labels     : [string];
       Values     : [EnumPropertyFB];
 }
 
@@ -227,6 +232,7 @@ table ColorPinFB {
       Tags       : [string];
       VecSize    : VecSizeFB;
       Direction  : ConnectionDirectionFB;
+      Labels     : [string];
       Values     : [ColorSpaceFB];
 }
 

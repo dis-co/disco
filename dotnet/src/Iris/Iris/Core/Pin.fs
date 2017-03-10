@@ -319,6 +319,7 @@ and PinYaml() =
   [<DefaultValue>] val mutable Max        : int
   [<DefaultValue>] val mutable Unit       : string
   [<DefaultValue>] val mutable Properties : PropertyYaml array
+  [<DefaultValue>] val mutable Labels     : string array
   [<DefaultValue>] val mutable Values     : SliceYaml array
 
 // * Pin
@@ -407,6 +408,18 @@ type Pin =
       | BytePin     data -> ByteSlices     (pin.Id, data.Values)
       | EnumPin     data -> EnumSlices     (pin.Id, data.Values)
       | ColorPin    data -> ColorSlices    (pin.Id, data.Values)
+
+  // ** Labels
+
+  member pin.Labels
+    with get () =
+      match pin with
+      | StringPin data -> data.Labels
+      | NumberPin data -> data.Labels
+      | BoolPin   data -> data.Labels
+      | BytePin   data -> data.Labels
+      | EnumPin   data -> data.Labels
+      | ColorPin  data -> data.Labels
 
   // ** SetSlice
 
@@ -514,6 +527,11 @@ type Pin =
       | _ -> value
 
 
+  static member private EmptyLabels(count: int) =
+    let arr = Array.zeroCreate count
+    Array.fill arr 0 count ""
+    arr
+
   // ** static Toggle
 
   static member Toggle(id, name, group, tags, values) =
@@ -524,6 +542,7 @@ type Pin =
               IsTrigger  = false
               Direction  = ConnectionDirection.Input
               VecSize    = VecSize.Dynamic
+              Labels     = Pin.EmptyLabels(Array.length values)
               Values     = values }
 
   // ** static Bang
@@ -536,6 +555,7 @@ type Pin =
               IsTrigger  = true
               Direction  = ConnectionDirection.Input
               VecSize    = VecSize.Dynamic
+              Labels     = Pin.EmptyLabels(Array.length values)
               Values     = values }
 
   // ** static String
@@ -549,6 +569,7 @@ type Pin =
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
                 MaxChars   = sizeof<int>
+                Labels     = Pin.EmptyLabels(Array.length values)
                 Values     = values }
 
   // ** static MultiLine
@@ -562,6 +583,7 @@ type Pin =
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
                 MaxChars   = sizeof<int>
+                Labels     = Pin.EmptyLabels(Array.length values)
                 Values     = values }
 
   // ** static FileName
@@ -575,6 +597,7 @@ type Pin =
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
                 MaxChars   = sizeof<int>
+                Labels     = Pin.EmptyLabels(Array.length values)
                 Values     = values }
 
   // ** static Directory
@@ -588,6 +611,7 @@ type Pin =
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
                 MaxChars   = sizeof<int>
+                Labels     = Pin.EmptyLabels(Array.length values)
                 Values     = values }
 
   // ** static Url
@@ -601,6 +625,7 @@ type Pin =
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
                 MaxChars   = sizeof<int>
+                Labels     = Pin.EmptyLabels(Array.length values)
                 Values     = values }
 
   // ** static IP
@@ -614,6 +639,7 @@ type Pin =
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
                 MaxChars   = sizeof<int>
+                Labels     = Pin.EmptyLabels(Array.length values)
                 Values     = values }
 
   // ** static Number
@@ -629,6 +655,7 @@ type Pin =
                 Precision  = 4u
                 VecSize    = VecSize.Dynamic
                 Direction  = ConnectionDirection.Input
+                Labels     = Pin.EmptyLabels(Array.length values)
                 Values     = values }
 
   // ** static Bytes
@@ -640,6 +667,7 @@ type Pin =
               Tags       = tags
               VecSize    = VecSize.Dynamic
               Direction  = ConnectionDirection.Input
+              Labels     = Pin.EmptyLabels(Array.length values)
               Values     = values }
 
   // ** static Color
@@ -651,6 +679,7 @@ type Pin =
                Tags       = tags
                VecSize    = VecSize.Dynamic
                Direction  = ConnectionDirection.Input
+               Labels     = Pin.EmptyLabels(Array.length values)
                Values     = values }
 
   // ** static Enum
@@ -663,6 +692,7 @@ type Pin =
               Properties = properties
               Direction  = ConnectionDirection.Input
               VecSize    = VecSize.Dynamic
+              Labels     = Pin.EmptyLabels(Array.length values)
               Values     = values }
 
   // ** ToOffset
@@ -850,6 +880,7 @@ type Pin =
       yaml.Behavior   <- string data.Behavior
       yaml.Direction  <- string data.Direction
       yaml.VecSize    <- string data.VecSize
+      yaml.Labels     <- data.Labels
       yaml.Values     <- Array.mapi SliceYaml.StringSlice data.Values
 
     | NumberPin data ->
@@ -864,6 +895,7 @@ type Pin =
       yaml.Unit       <- data.Unit
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
+      yaml.Labels     <- data.Labels
       yaml.Values     <- Array.mapi SliceYaml.NumberSlice data.Values
 
     | BoolPin data ->
@@ -875,6 +907,7 @@ type Pin =
       yaml.IsTrigger  <- data.IsTrigger
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
+      yaml.Labels     <- data.Labels
       yaml.Values     <- Array.mapi SliceYaml.BoolSlice data.Values
 
     | BytePin data ->
@@ -885,6 +918,7 @@ type Pin =
       yaml.Tags       <- data.Tags
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
+      yaml.Labels     <- data.Labels
       yaml.Values     <- Array.mapi SliceYaml.ByteSlice data.Values
 
     | EnumPin data ->
@@ -896,6 +930,7 @@ type Pin =
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
       yaml.Properties <- Array.map Yaml.toYaml data.Properties
+      yaml.Labels     <- data.Labels
       yaml.Values     <- Array.mapi SliceYaml.EnumSlice data.Values
 
     | ColorPin  data ->
@@ -906,6 +941,7 @@ type Pin =
       yaml.Tags       <- data.Tags
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
+      yaml.Labels     <- data.Labels
       yaml.Values     <- Array.mapi SliceYaml.ColorSlice data.Values
 
     yaml
@@ -959,6 +995,32 @@ type Pin =
           let! (i, tags) = result
           tags.[i] <- (^a : (member Tags : int -> Tag) (fb, i))
           return (i + 1, tags)
+        })
+      (Right (0, arr))
+      arr
+    |> Either.map snd
+
+  // ** ParseLabels
+
+  /// ## Parse all labels in a Flatbuffer-serialized type
+  ///
+  /// Parses all labels in a given Pin inner data type.
+  ///
+  /// ### Signature:
+  /// - fb: the inner Pin data type (BoolPinD, StringPinD, etc.)
+  ///
+  /// Returns: Either<IrisError, Label array>
+  static member inline ParseLabelsFB< ^a when ^a : (member LabelsLength : int)
+                                         and  ^a : (member Labels : int -> string)>
+                                         (fb: ^a)
+                                         : Either<IrisError, string array> =
+    let len = (^a : (member LabelsLength : int) fb)
+    let arr = Array.zeroCreate len
+    Array.fold
+      (fun (result: Either<IrisError,int * string array>) _ -> either {
+          let! (i, labels) = result
+          labels.[i] <- (^a : (member Labels : int -> string) (fb, i))
+          return (i + 1, labels)
         })
       (Right (0, arr))
       arr
@@ -1132,6 +1194,7 @@ type Pin =
             Behavior   = strtype
             VecSize    = vecsize
             Direction  = dir
+            Labels     = yml.Labels
             Values     = slices
           }
         }
@@ -1169,6 +1232,7 @@ type Pin =
             Max       = yml.Max
             Unit      = yml.Unit
             Precision = yml.Precision
+            Labels    = yml.Labels
             Values    = slices
           }
         }
@@ -1207,6 +1271,7 @@ type Pin =
             IsTrigger = yml.IsTrigger
             VecSize   = vecsize
             Direction = dir
+            Labels    = yml.Labels
             Values    = slices
           }
         }
@@ -1244,6 +1309,7 @@ type Pin =
             Tags      = yml.Tags
             VecSize   = vecsize
             Direction = dir
+            Labels    = yml.Labels
             Values    = slices
           }
         }
@@ -1296,6 +1362,7 @@ type Pin =
             Properties = properties
             VecSize    = vecsize
             Direction  = dir
+            Labels     = yml.Labels
             Values     = slices
           }
         }
@@ -1334,6 +1401,7 @@ type Pin =
             Tags       = yml.Tags
             VecSize    = vecsize
             Direction  = dir
+            Labels     = yml.Labels
             Values     = slices
           }
         }
@@ -1384,6 +1452,7 @@ and NumberPinD =
     Max        : int
     Unit       : string
     Precision  : uint32
+    Labels     : string array
     Values     : double array }
 
   // ** ToOffset
@@ -1402,6 +1471,8 @@ and NumberPinD =
     let unit = self.Unit |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let tags = NumberPinFB.CreateTagsVector(builder, tagoffsets)
+    let labeloffsets = Array.map builder.CreateString self.Labels
+    let labels = NumberPinFB.CreateLabelsVector(builder, labeloffsets)
     let values = NumberPinFB.CreateValuesVector(builder, self.Values)
     let vecsize = self.VecSize.ToOffset(builder)
     let direction = self.Direction.ToOffset(builder)
@@ -1417,6 +1488,7 @@ and NumberPinD =
     NumberPinFB.AddPrecision(builder, self.Precision)
     NumberPinFB.AddVecSize(builder, vecsize)
     NumberPinFB.AddDirection(builder, direction)
+    NumberPinFB.AddLabels(builder, labels)
     NumberPinFB.AddValues(builder, values)
     NumberPinFB.EndNumberPinFB(builder)
 
@@ -1426,6 +1498,7 @@ and NumberPinD =
     either {
       let unit = if isNull fb.Unit then "" else fb.Unit
       let! tags = Pin.ParseTagsFB fb
+      let! labels = Pin.ParseLabelsFB fb
       let! vecsize = Pin.ParseVecSize fb
       let! direction = ConnectionDirection.FromFB fb.Direction
 
@@ -1443,6 +1516,7 @@ and NumberPinD =
                Precision = fb.Precision
                VecSize   = vecsize
                Direction = direction
+               Labels    = labels
                Values    = slices }
     }
 
@@ -1475,6 +1549,7 @@ and StringPinD =
     Behavior   : Behavior
     MaxChars   : MaxChars
     VecSize    : VecSize
+    Labels     : string array
     Values     : string array }
 
   // ** ToOffset
@@ -1492,8 +1567,10 @@ and StringPinD =
     let group = self.PinGroup |> string |> builder.CreateString
     let tipe = self.Behavior.ToOffset(builder)
     let tagoffsets = Array.map builder.CreateString self.Tags
+    let labeloffsets = Array.map builder.CreateString self.Labels
     let sliceoffsets = Array.map builder.CreateString self.Values
     let tags = StringPinFB.CreateTagsVector(builder, tagoffsets)
+    let labels = StringPinFB.CreateLabelsVector(builder, labeloffsets)
     let slices = StringPinFB.CreateValuesVector(builder, sliceoffsets)
     let vecsize = self.VecSize.ToOffset(builder)
     let direction = self.Direction.ToOffset(builder)
@@ -1507,6 +1584,7 @@ and StringPinD =
     StringPinFB.AddMaxChars(builder, self.MaxChars)
     StringPinFB.AddVecSize(builder, vecsize)
     StringPinFB.AddDirection(builder, direction)
+    StringPinFB.AddLabels(builder, labels)
     StringPinFB.AddValues(builder, slices)
     StringPinFB.EndStringPinFB(builder)
 
@@ -1515,6 +1593,7 @@ and StringPinD =
   static member FromFB(fb: StringPinFB) : Either<IrisError,StringPinD> =
     either {
       let! tags = Pin.ParseTagsFB fb
+      let! labels = Pin.ParseLabelsFB fb
       let! slices = Pin.ParseSimpleValuesFB fb
       let! tipe = Behavior.FromFB fb.Behavior
       let! vecsize = Pin.ParseVecSize fb
@@ -1528,6 +1607,7 @@ and StringPinD =
                MaxChars  = fb.MaxChars
                VecSize   = vecsize
                Direction = direction
+               Labels    = labels
                Values    = slices }
     }
 
@@ -1558,6 +1638,7 @@ and BoolPinD =
     Direction  : ConnectionDirection
     IsTrigger  : bool
     VecSize    : VecSize
+    Labels     : string array
     Values     : bool array }
 
   // ** ToOffset
@@ -1575,6 +1656,8 @@ and BoolPinD =
     let group = self.PinGroup |> string |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let tags = BoolPinFB.CreateTagsVector(builder, tagoffsets)
+    let labeloffsets = Array.map builder.CreateString self.Labels
+    let labels = BoolPinFB.CreateLabelsVector(builder, labeloffsets)
     let slices = BoolPinFB.CreateValuesVector(builder, self.Values)
     let direction = self.Direction.ToOffset(builder)
     let vecsize = self.VecSize.ToOffset(builder)
@@ -1586,6 +1669,7 @@ and BoolPinD =
     BoolPinFB.AddTags(builder, tags)
     BoolPinFB.AddDirection(builder, direction)
     BoolPinFB.AddVecSize(builder, vecsize)
+    BoolPinFB.AddLabels(builder, labels)
     BoolPinFB.AddValues(builder, slices)
     BoolPinFB.EndBoolPinFB(builder)
 
@@ -1594,6 +1678,7 @@ and BoolPinD =
   static member FromFB(fb: BoolPinFB) : Either<IrisError,BoolPinD> =
     either {
       let! tags = Pin.ParseTagsFB fb
+      let! labels = Pin.ParseLabelsFB fb
       let! slices = Pin.ParseSimpleValuesFB fb
       let! vecsize = Pin.ParseVecSize fb
       let! direction = ConnectionDirection.FromFB fb.Direction
@@ -1605,6 +1690,7 @@ and BoolPinD =
                IsTrigger  = fb.IsTrigger
                VecSize    = vecsize
                Direction  = direction
+               Labels     = labels
                Values     = slices }
     }
 
@@ -1628,13 +1714,15 @@ and BoolPinD =
 // |____/ \__, |\__\___|____/ \___/_/\_\
 //        |___/
 
-and BytePinD =
+and [<CustomEquality;CustomComparison>] BytePinD =
+
   { Id         : Id
     Name       : string
     PinGroup   : Id
     Tags       : Tag array
     Direction  : ConnectionDirection
     VecSize    : VecSize
+    Labels     : string array
     Values     : Binary.Buffer array }
 
   // ** Equals
@@ -1654,6 +1742,7 @@ and BytePinD =
     hash <- (hash * 7) + hashCode self.Name
     hash <- (hash * 7) + hashCode (string self.PinGroup)
     hash <- (hash * 7) + (Array.fold (fun m t -> m + hashCode t) 0 self.Tags)
+    hash <- (hash * 7) + (Array.fold (fun m t -> m + hashCode t) 0 self.Labels)
     hash <- (hash * 7) + hashCode (string self.Direction)
     hash <- (hash * 7) + hashCode (string self.VecSize)
     hash <- (hash * 7) + (Array.fold (fun m t -> m + t.byteLength) 0 self.Values)
@@ -1662,6 +1751,7 @@ and BytePinD =
     hash <- (hash * 7) + self.Name.GetHashCode()
     hash <- (hash * 7) + self.PinGroup.GetHashCode()
     hash <- (hash * 7) + self.Tags.GetHashCode()
+    hash <- (hash * 7) + self.Labels.GetHashCode()
     hash <- (hash * 7) + self.Direction.GetHashCode()
     hash <- (hash * 7) + self.VecSize.GetHashCode()
     hash <- (hash * 7) + self.Values.GetHashCode()
@@ -1673,7 +1763,7 @@ and BytePinD =
   interface System.IComparable with
     member self.CompareTo other =
       match other with
-      | :? BytePinD as pin -> compare self.Name slice.Name
+      | :? BytePinD as pin -> compare self.Name pin.Name
       | _ -> invalidArg "other" "cannot compare value of different types"
 
   // ** Equals<ByteSliceD>
@@ -1683,31 +1773,37 @@ and BytePinD =
       let mutable contentsEqual = false
       let lengthEqual =
         #if FABLE_COMPILER
-        let mylen = Array.fold (fun m t -> m + t.byteLength) 0 self.Values
-        let itlen = Array.fold (fun m t -> m + t.byteLength) 0 pin.Values
+        let mylen = Array.fold (fun m t -> m + t.byteLength) (Array.length self.Values) self.Values
+        let itlen = Array.fold (fun m t -> m + t.byteLength) (Array.length pin.Values) pin.Values
         let result = mylen = itlen
         if result then
-          let me = Fable.Import.JS.Uint8Array.Create(self.Value)
-          let it = Fable.Import.JS.Uint8Array.Create(slice.Value)
           let mutable contents = true
-          let mutable i = 0
-          while i < int self.Value.byteLength do
-            if contents then
-              contents <- me.[i] = it.[i]
-            i <- i + 1
+          let mutable n = 0
+
+          while n < Array.length self.Values do
+            let me = Fable.Import.JS.Uint8Array.Create(self.Values.[n])
+            let it = Fable.Import.JS.Uint8Array.Create(pin.Values.[n])
+            let mutable i = 0
+            while i < int self.Values.[n].byteLength do
+              if contents then
+                contents <- me.[i] = it.[i]
+              i <- i + 1
+            n <- n + 1
+
           contentsEqual <- contents
         result
         #else
-        let result = Array.length self.Value = Array.length slice.Value
-        if result then
-          let mutable contents = true
-          for i in 0 .. (Array.length self.Value - 1) do
-            if contents then
-              contents <- self.Value.[i] = slice.Value.[i]
-          contentsEqual <- contents
+        let result = self.Values = pin.Values
+        contentsEqual <- result
         result
         #endif
-      slice.Index = self.Index &&
+      pin.Id = self.Id &&
+      pin.Name = self.Name &&
+      pin.PinGroup = self.PinGroup &&
+      pin.Tags = self.Tags &&
+      pin.VecSize = self.VecSize &&
+      pin.Direction = self.Direction &&
+      pin.Labels = self.Labels &&
       lengthEqual &&
       contentsEqual
 
@@ -1736,7 +1832,9 @@ and BytePinD =
     let name = self.Name |> builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
+    let labeloffsets = Array.map builder.CreateString self.Labels
     let sliceoffsets = Array.map (encode >> builder.CreateString) self.Values
+    let labels = BytePinFB.CreateLabelsVector(builder, labeloffsets)
     let tags = BytePinFB.CreateTagsVector(builder, tagoffsets)
     let slices = BytePinFB.CreateValuesVector(builder, sliceoffsets)
     let vecsize = self.VecSize.ToOffset(builder)
@@ -1748,6 +1846,7 @@ and BytePinD =
     BytePinFB.AddTags(builder, tags)
     BytePinFB.AddVecSize(builder, vecsize)
     BytePinFB.AddDirection(builder, direction)
+    BytePinFB.AddLabels(builder, labels)
     BytePinFB.AddValues(builder, slices)
     BytePinFB.EndBytePinFB(builder)
 
@@ -1762,11 +1861,12 @@ and BytePinD =
         bytes.[i] <- charCodeAt binary i
       bytes.buffer
       #else
-      Convert.FromBase64String(str)
+      Convert.FromBase64String(buffer)
       #endif
 
     either {
       let! tags = Pin.ParseTagsFB fb
+      let! labels = Pin.ParseLabelsFB fb
       let! vecsize = Pin.ParseVecSize fb
       let! direction = ConnectionDirection.FromFB fb.Direction
       let! slices =
@@ -1779,6 +1879,7 @@ and BytePinD =
                Tags      = tags
                VecSize   = vecsize
                Direction = direction
+               Labels    = labels
                Values    = slices }
     }
 
@@ -1809,6 +1910,7 @@ and EnumPinD =
     Direction  : ConnectionDirection
     VecSize    : VecSize
     Properties : Property array
+    Labels     : string array
     Values     : Property array }
 
   // ** ToOffset
@@ -1825,9 +1927,11 @@ and EnumPinD =
     let name = self.Name |> builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
+    let labeloffsets = Array.map builder.CreateString self.Labels
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Values
     let propoffsets = Array.map (Binary.toOffset builder) self.Properties
     let tags = EnumPinFB.CreateTagsVector(builder, tagoffsets)
+    let labels = EnumPinFB.CreateLabelsVector(builder, labeloffsets)
     let slices = EnumPinFB.CreateValuesVector(builder, sliceoffsets)
     let properties = EnumPinFB.CreatePropertiesVector(builder, propoffsets)
     let direction = self.Direction.ToOffset(builder)
@@ -1840,6 +1944,7 @@ and EnumPinD =
     EnumPinFB.AddProperties(builder, properties)
     EnumPinFB.AddDirection(builder, direction)
     EnumPinFB.AddVecSize(builder, vecsize)
+    EnumPinFB.AddLabels(builder, labels)
     EnumPinFB.AddValues(builder, slices)
     EnumPinFB.EndEnumPinFB(builder)
 
@@ -1847,6 +1952,7 @@ and EnumPinD =
 
   static member FromFB(fb: EnumPinFB) : Either<IrisError,EnumPinD> =
     either {
+      let! labels = Pin.ParseLabelsFB fb
       let! tags = Pin.ParseTagsFB fb
       let! slices = Pin.ParseComplexValuesFB fb
       let! vecsize = Pin.ParseVecSize fb
@@ -1883,6 +1989,7 @@ and EnumPinD =
                Properties = properties
                Direction  = direction
                VecSize    = vecsize
+               Labels     = labels
                Values     = slices }
     }
 
@@ -1912,6 +2019,7 @@ and ColorPinD =
     Tags:      Tag array
     Direction: ConnectionDirection
     VecSize:   VecSize
+    Labels:    string array
     Values:    ColorSpace array }
 
   // ** ToOffset
@@ -1928,8 +2036,10 @@ and ColorPinD =
     let name = self.Name |> builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
+    let labeloffsets = Array.map builder.CreateString self.Labels
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Values
     let tags = ColorPinFB.CreateTagsVector(builder, tagoffsets)
+    let labels = ColorPinFB.CreateLabelsVector(builder, labeloffsets)
     let slices = ColorPinFB.CreateValuesVector(builder, sliceoffsets)
     let direction = self.Direction.ToOffset(builder)
     let vecsize = self.VecSize.ToOffset(builder)
@@ -1940,6 +2050,7 @@ and ColorPinD =
     ColorPinFB.AddTags(builder, tags)
     ColorPinFB.AddVecSize(builder, vecsize)
     ColorPinFB.AddDirection(builder, direction)
+    ColorPinFB.AddLabels(builder, labels)
     ColorPinFB.AddValues(builder, slices)
     ColorPinFB.EndColorPinFB(builder)
 
@@ -1948,6 +2059,7 @@ and ColorPinD =
   static member FromFB(fb: ColorPinFB) : Either<IrisError,ColorPinD> =
     either {
       let! tags = Pin.ParseTagsFB fb
+      let! labels = Pin.ParseLabelsFB fb
       let! slices = Pin.ParseComplexValuesFB fb
       let! vecsize = Pin.ParseVecSize fb
       let! direction = ConnectionDirection.FromFB fb.Direction
@@ -1958,6 +2070,7 @@ and ColorPinD =
                Tags      = tags
                VecSize   = vecsize
                Direction = direction
+               Labels    = labels
                Values    = slices }
     }
 
