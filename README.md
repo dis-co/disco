@@ -44,6 +44,7 @@ Fields:
 | Precision | integer                                      | number of post-comma positions    |
 | Min       | integer                                      | minimum allowed value             |
 | Max       | integer                                      | maximum allowed value             |
+| Labels    | string array                                 | labels for each slice             |
 | Values    | array                                        | actual number values              |
 
 ----
@@ -86,6 +87,7 @@ Fields:
 | Behavior  | Behavior                                     | indicate validation constraints   |
 | MaxChars  | integer                                      | maximum number of allowed chars   |
 | VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
+| Labels    | string array                                 | labels for each slice             |
 | Values    | string array                                 | actual values of this pin         |
 
 ### Bool
@@ -100,6 +102,7 @@ Fields:
 | Direction | **_input_** or **_output_**                  | read or write to this pin         |
 | IsTrigger | boolean                                      | should the value be reset         |
 | VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
+| Labels    | string array                                 | labels for each slice             |
 | Values    | string array                                 | actual values of this pin         |
 
 ### Byte
@@ -113,6 +116,7 @@ Fields:
 | Tags      | string array                                 | metadata for grouping and search  |
 | Direction | **_input_** or **_output_**                  | read or write to this pin         |
 | VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
+| Labels    | string array                                 | labels for each slice             |
 | Values    | byte array array                             | actual values of this pin         |
 
 ### Enum
@@ -127,6 +131,7 @@ Fields:
 | VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
 | Direction | **_input_** or **_output_**                  | read or write to this pin         |
 | Properties| key/value pairs (string * string)            | properties                        |
+| Labels    | string array                                 | labels for each slice             |
 | Values    | byte array array                             | actual values of this pin         |
 
 ### Color
@@ -140,6 +145,7 @@ Fields:
 | Tags      | string array                                 | metadata for grouping and search  |
 | Direction | **_input_** or **_output_**                  | read or write to this pin         |
 | VecSize   | **_dynamic_** or **_fixed_** with int count  | slice behavior                    |
+| Labels    | string array                                 | labels for each slice             |
 | Values    | byte array array                             | actual values of this pin         |
 
 ----
