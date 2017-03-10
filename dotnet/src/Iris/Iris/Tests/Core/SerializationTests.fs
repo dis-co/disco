@@ -426,13 +426,13 @@ module SerializationTests =
   let test_validate_slice_binary_serialization =
     testCase "Validate Slice Binary Serialization" <| fun _ ->
 
-      [| BoolSlice    ( 0u, true    )
-      ;  StringSlice   ( 0u, "hello" )
-      ;  NumberSlice   ( 0u, 1234.0  )
-      ;  ByteSlice     ( 0u, [| 0uy |] )
-      ;  EnumSlice     ( 0u, { Key = "one"; Value = "two" })
-      ;  ColorSlice    ( 0u, RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } )
-      ;  ColorSlice    ( 0u, HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } )
+      [| BoolSlice   (0u, true)
+      ;  StringSlice (0u, "hello")
+      ;  NumberSlice (0u, 1234.0)
+      ;  ByteSlice   (0u, [| 0uy; 4uy; 9uy; 233uy |])
+      ;  EnumSlice   (0u, { Key = "one"; Value = "two" })
+      ;  ColorSlice  (0u, RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy })
+      ;  ColorSlice  (0u, HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy })
       |]
       |> Array.iter
         (fun slice ->
@@ -467,7 +467,7 @@ module SerializationTests =
       [| BoolSlices     (Id.Create(),[| true    |])
       ;  StringSlices   (Id.Create(), [| "hello" |])
       ;  NumberSlices   (Id.Create(), [| 1234.0  |])
-      ;  ByteSlices     (Id.Create(), [| [| 0uy |] |])
+      ;  ByteSlices     (Id.Create(), [| [| 0uy; 4uy; 9uy; 233uy |] |])
       ;  EnumSlices     (Id.Create(), [| { Key = "one"; Value = "two" }|])
       ;  ColorSlices    (Id.Create(), [| RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } |])
       ;  ColorSlices    (Id.Create(), [| HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy }|])

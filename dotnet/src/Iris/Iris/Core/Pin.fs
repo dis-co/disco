@@ -2164,7 +2164,9 @@ and Slice =
     match self with
     | StringSlice   (_,data) ->
       let str = builder.CreateString data
-      let offset = StringFB.CreateStringFB(builder,str)
+      StringFB.StartStringFB(builder)
+      StringFB.AddValue(builder, str)
+      let offset = StringFB.EndStringFB(builder)
       SliceFB.StartSliceFB(builder)
       SliceFB.AddSliceType(builder, SliceTypeFB.StringFB)
       #if FABLE_COMPILER
@@ -2175,7 +2177,9 @@ and Slice =
       SliceFB.EndSliceFB(builder)
 
     | NumberSlice   (_,data) ->
-      let offset = DoubleFB.CreateDoubleFB(builder, data)
+      DoubleFB.StartDoubleFB(builder)
+      DoubleFB.AddValue(builder, data)
+      let offset = DoubleFB.EndDoubleFB(builder)
       SliceFB.StartSliceFB(builder)
       SliceFB.AddSliceType(builder, SliceTypeFB.DoubleFB)
       #if FABLE_COMPILER
@@ -2185,8 +2189,10 @@ and Slice =
       #endif
       SliceFB.EndSliceFB(builder)
 
-    | BoolSlice     (_,data) ->
-      let offset = BoolFB.CreateBoolFB(builder, data)
+    | BoolSlice (_,data) ->
+      BoolFB.StartBoolFB(builder)
+      BoolFB.AddValue(builder,data)
+      let offset = BoolFB.EndBoolFB(builder)
       SliceFB.StartSliceFB(builder)
       SliceFB.AddSliceType(builder, SliceTypeFB.BoolFB)
       #if FABLE_COMPILER
@@ -2198,7 +2204,9 @@ and Slice =
 
     | ByteSlice     (_,data) ->
       let str = data |> String.encodeBase64 |> builder.CreateString
-      let offset = StringFB.CreateStringFB(builder, str)
+      StringFB.StartStringFB(builder)
+      StringFB.AddValue(builder,str)
+      let offset = StringFB.EndStringFB(builder)
       SliceFB.StartSliceFB(builder)
       SliceFB.AddSliceType(builder, SliceTypeFB.ByteFB)
       #if FABLE_COMPILER
