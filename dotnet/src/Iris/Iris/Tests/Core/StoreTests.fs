@@ -11,10 +11,10 @@ open Iris.Core
 [<AutoOpen>]
 module StoreTests =
 
-  let withStore (wrap : Patch -> Store -> unit) =
-    let patch : Patch =
+  let withStore (wrap : PinGroup -> Store -> unit) =
+    let group : PinGroup =
       { Id   = Id "0xb4d1d34"
-      ; Name = "patch-1"
+      ; Name = "group-1"
       ; Pins = Map.empty
       }
 
@@ -22,7 +22,7 @@ module StoreTests =
 
     let state =
       { Project  = project
-        Patches  = Map.empty
+        PinGroups  = Map.empty
         Cues     = Map.empty
         CueLists = Map.empty
         Users    = Map.empty
@@ -31,7 +31,7 @@ module StoreTests =
         DiscoveredServices = Map.empty }
 
     let store : Store = new Store(state)
-    wrap patch store
+    wrap group store
 
   //  ____       _       _
   // |  _ \ __ _| |_ ___| |__
@@ -39,37 +39,37 @@ module StoreTests =
   // |  __/ (_| | || (__| | | |
   // |_|   \__,_|\__\___|_| |_|
 
-  let test_should_add_a_patch_to_the_store =
-    testCase "should add a patch to the store" <| fun _ ->
-      withStore <| fun patch store ->
-        expect "Should be zero" 0 id store.State.Patches.Count
-        store.Dispatch <| AddPatch(patch)
-        expect "Should be one" 1 id store.State.Patches.Count
+  let test_should_add_a_group_to_the_store =
+    testCase "should add a group to the store" <| fun _ ->
+      withStore <| fun group store ->
+        expect "Should be zero" 0 id store.State.PinGroups.Count
+        store.Dispatch <| AddPinGroup(group)
+        expect "Should be one" 1 id store.State.PinGroups.Count
 
-  let test_should_update_a_patch_already_in_the_store =
-    testCase "should update a patch already in the store" <| fun _ ->
-      withStore <| fun patch store ->
-        let name1 = patch.Name
-        let name2 = "patch-2"
+  let test_should_update_a_group_already_in_the_store =
+    testCase "should update a group already in the store" <| fun _ ->
+      withStore <| fun group store ->
+        let name1 = group.Name
+        let name2 = "group-2"
 
-        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddPinGroup(group)
 
-        expect "Should be true" true id (store.State.Patches.ContainsKey patch.Id)
-        expect "Should be true" true id (store.State.Patches.[patch.Id].Name = name1)
+        expect "Should be true" true id (store.State.PinGroups.ContainsKey group.Id)
+        expect "Should be true" true id (store.State.PinGroups.[group.Id].Name = name1)
 
-        let updated = { patch with Name = name2 }
-        store.Dispatch <| UpdatePatch(updated)
+        let updated = { group with Name = name2 }
+        store.Dispatch <| UpdatePinGroup(updated)
 
-        expect "Should be true" true id (store.State.Patches.[patch.Id].Name = name2)
+        expect "Should be true" true id (store.State.PinGroups.[group.Id].Name = name2)
 
-  let test_should_remove_a_patch_already_in_the_store =
-    testCase "should remove a patch already in the store" <| fun _ ->
-      withStore <| fun patch store ->
-        store.Dispatch <| AddPatch(patch)
-        expect "Should be true" true id (store.State.Patches.ContainsKey patch.Id)
+  let test_should_remove_a_group_already_in_the_store =
+    testCase "should remove a group already in the store" <| fun _ ->
+      withStore <| fun group store ->
+        store.Dispatch <| AddPinGroup(group)
+        expect "Should be true" true id (store.State.PinGroups.ContainsKey group.Id)
 
-        store.Dispatch <| RemovePatch(patch)
-        expect "Should be false" false id (store.State.Patches.ContainsKey patch.Id)
+        store.Dispatch <| RemovePinGroup(group)
+        expect "Should be false" false id (store.State.PinGroups.ContainsKey group.Id)
 
   //  ___ ___  ____
   // |_ _/ _ \| __ )  _____  __
@@ -77,67 +77,63 @@ module StoreTests =
   //  | | |_| | |_) | (_) >  <
   // |___\___/|____/ \___/_/\_\
 
-  let test_should_add_an_pin_to_the_store_if_patch_exists =
-    testCase "should add an pin to the store if patch exists" <| fun _ ->
-      withStore <| fun patch store ->
-        store.Dispatch <| AddPatch(patch)
+  let test_should_add_an_pin_to_the_store_if_group_exists =
+    testCase "should add an pin to the store if group exists" <| fun _ ->
+      withStore <| fun group store ->
+        store.Dispatch <| AddPinGroup(group)
 
-        expect "Should be zero" 0 id store.State.Patches.[patch.Id].Pins.Count
+        expect "Should be zero" 0 id store.State.PinGroups.[group.Id].Pins.Count
 
-        let slice : StringSliceD = { Index = 0u; Value = "Hey" }
-        let pin : Pin = Pin.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
+        let pin : Pin = Pin.String(Id "0xb33f","url input", group.Id, Array.empty, [| "hey" |])
 
         store.Dispatch <| AddPin(pin)
 
-        expect "Should be one" 1 id store.State.Patches.[patch.Id].Pins.Count
+        expect "Should be one" 1 id store.State.PinGroups.[group.Id].Pins.Count
 
-  let test_should_not_add_an_pin_to_the_store_if_patch_does_not_exists =
-    testCase "should not add an pin to the store if patch does not exists" <| fun _ ->
-      withStore <| fun patch store ->
-        let slice : StringSliceD = { Index = 0u; Value =  "Hey" }
-        let pin = Pin.String(Id "0xb33f","url input", patch.Id, Array.empty, [| slice |])
+  let test_should_not_add_an_pin_to_the_store_if_group_does_not_exists =
+    testCase "should not add an pin to the store if group does not exists" <| fun _ ->
+      withStore <| fun group store ->
+        let pin = Pin.String(Id "0xb33f","url input", group.Id, Array.empty, [| "ho" |])
         store.Dispatch <| AddPin(pin)
-        expect "Should be zero" 0 id store.State.Patches.Count
+        expect "Should be zero" 0 id store.State.PinGroups.Count
 
   let test_should_update_an_pin_in_the_store_if_it_already_exists =
     testCase "should update an pin in the store if it already exists" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
         let name1 = "can a cat own a cat?"
         let name2 = "yes, cats are re-entrant."
 
-        let slice : StringSliceD = { Index = 0u; Value = "swell" }
-        let pin = Pin.String(Id "0xb33f", name1, patch.Id, Array.empty, [| slice |])
+        let pin = Pin.String(Id "0xb33f", name1, group.Id, Array.empty, [| "swell" |])
 
-        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)
 
-        match Patch.FindPin store.State.Patches pin.Id with
+        match PinGroup.FindPin store.State.PinGroups pin.Id with
           | Some(i) -> expect "Should be correct name" name1 id i.Name
           | None    -> failwith "pin is mysteriously missing"
 
         let updated = pin.SetName name2
         store.Dispatch <| UpdatePin(updated)
 
-        match Patch.FindPin store.State.Patches pin.Id with
+        match PinGroup.FindPin store.State.PinGroups pin.Id with
           | Some(i) -> expect "Should be correct name" name2 id i.Name
           | None    -> failwith "pin is mysteriously missing"
 
   let test_should_remove_an_pin_from_the_store_if_it_exists =
     testCase "should remove an pin from the store if it exists" <| fun _ ->
-      withStore <| fun patch store ->
-        let slice : StringSliceD = { Index = 0u; Value = "swell" }
-        let pin = Pin.String(Id "0xb33f", "hi", Id "0xb4d1d34", Array.empty, [| slice |])
+      withStore <| fun group store ->
+        let pin = Pin.String(Id "0xb33f", "hi", Id "0xb4d1d34", Array.empty, [| "swell" |])
 
-        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)
 
-        match Patch.FindPin store.State.Patches pin.Id with
+        match PinGroup.FindPin store.State.PinGroups pin.Id with
           | Some(_) -> ()
           | None    -> failwith "pin is mysteriously missing"
 
         store.Dispatch <| RemovePin(pin)
 
-        match Patch.FindPin store.State.Patches pin.Id with
+        match PinGroup.FindPin store.State.PinGroups pin.Id with
           | Some(_) -> failwith "pin should be missing by now but isn't"
           | _       -> ()
 
@@ -149,7 +145,7 @@ module StoreTests =
 
   let test_should_add_a_cue_to_the_store =
     testCase "should add a cue to the store" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
 
@@ -165,7 +161,7 @@ module StoreTests =
 
   let test_should_update_a_cue_already_in_the_store =
     testCase "should update a cue already in the store" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
 
@@ -183,7 +179,7 @@ module StoreTests =
 
   let test_should_not_add_cue_to_the_store_on_update_when_missing =
     testCase "should not add cue to the store on update when missing" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
 
@@ -196,7 +192,7 @@ module StoreTests =
 
   let test_should_remove_cue_from_the_store =
     testCase "should remove cue from the store" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
 
@@ -218,7 +214,7 @@ module StoreTests =
 
   let test_should_add_a_cuelist_to_the_store =
     testCase "should add a cuelist to the store" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let cuelist : CueList = { Id = Id.Create(); Name = "My CueList"; Cues = [| |] }
 
@@ -235,7 +231,7 @@ module StoreTests =
 
   let test_should_update_a_cuelist_already_in_the_store =
     testCase "should update a cuelist already in the store" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let cuelist : CueList = { Id = Id.Create(); Name = "My CueList"; Cues = [| |] }
 
@@ -254,7 +250,7 @@ module StoreTests =
 
   let test_should_not_add_cuelist_to_the_store_on_update_when_missing =
     testCase "should not add cuelist to the store on update when missing" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let cuelist : CueList = { Id = Id.Create(); Name = "My CueList"; Cues = [| |] }
 
@@ -266,7 +262,7 @@ module StoreTests =
 
   let test_should_remove_cuelist_from_the_store =
     testCase "should remove cuelist from the store" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let cuelist : CueList = { Id = Id.Create(); Name = "My CueList"; Cues = [| |] }
 
@@ -288,7 +284,7 @@ module StoreTests =
 
   let test_should_add_a_user_to_the_store =
     testCase "should add a user to the store" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let user : User =
           { Id = Id.Create()
@@ -313,7 +309,7 @@ module StoreTests =
 
   let test_should_update_a_user_already_in_the_store =
     testCase "should update a user already in the store" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let user : User =
           { Id = Id.Create()
@@ -341,7 +337,7 @@ module StoreTests =
 
   let test_should_not_add_user_to_the_store_on_update_when_missing =
     testCase "should not add user to the store on update when missing" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let user : User =
           { Id = Id.Create()
@@ -362,7 +358,7 @@ module StoreTests =
 
   let test_should_remove_user_from_the_store =
     testCase "should remove user from the store" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let user : User =
           { Id = Id.Create()
@@ -393,7 +389,7 @@ module StoreTests =
 
   let test_should_add_a_session_to_the_store =
     testCase "should add a session to the store" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let session : Session =
           { Id = Id.Create()
@@ -412,7 +408,7 @@ module StoreTests =
 
   let test_should_update_a_session_already_in_the_store =
     testCase "should update a session already in the store" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let session : Session =
           { Id = Id.Create()
@@ -433,7 +429,7 @@ module StoreTests =
 
   let test_should_not_add_session_to_the_store_on_update_when_missing =
     testCase "should not add session to the store on update when missing" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let session : Session =
           { Id = Id.Create()
@@ -448,7 +444,7 @@ module StoreTests =
 
   let test_should_remove_session_from_the_store =
     testCase "should remove session from the store" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let session : Session =
           { Id = Id.Create()
@@ -473,7 +469,7 @@ module StoreTests =
 
   let test_should_add_a_client_to_the_store =
     testCase "should add a client to the store" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let client = mkClient ()
 
@@ -489,7 +485,7 @@ module StoreTests =
 
   let test_should_update_a_client_already_in_the_store =
     testCase "should update a client already in the store" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let client = mkClient ()
 
@@ -506,7 +502,7 @@ module StoreTests =
 
   let test_should_not_add_client_to_the_store_on_update_when_missing =
     testCase "should not add client to the store on update when missing" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let client = mkClient ()
 
@@ -518,7 +514,7 @@ module StoreTests =
 
   let test_should_remove_client_from_the_store =
     testCase "should remove client from the store" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
 
         let client = mkClient ()
 
@@ -541,14 +537,14 @@ module StoreTests =
 
   let test_store_should_trigger_listeners_on_undo =
     testCase "store should trigger listeners on undo" <| fun _ ->
-      withStore <| fun patch store ->
-        store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| UpdatePatch( { patch with Name = "patch-2" })
+      withStore <| fun group store ->
+        store.Dispatch <| AddPinGroup(group)
+        store.Dispatch <| UpdatePinGroup( { group with Name = "group-2" })
 
         // subscribe now, so as to not fire too early ;)
         store.Subscribe(fun st ev ->
           match ev with
-            | AddPatch(p) -> if p.Name <> patch.Name then failwith "Oh no!"
+            | AddPinGroup(p) -> if p.Name <> group.Name then failwith "Oh no!"
             | _ -> ())
 
         expect "Should be 3" 3 id store.History.Length
@@ -556,155 +552,155 @@ module StoreTests =
 
   let test_store_should_dump_previous_states_for_inspection =
     testCase "store should dump previous states for inspection" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
         expect "Should be 1" 1 id store.History.Length
-        store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| UpdatePatch( { patch with Name = "patch-2" })
-        store.Dispatch <| UpdatePatch( { patch with Name = "patch-3" })
-        store.Dispatch <| UpdatePatch( { patch with Name = "patch-4" })
+        store.Dispatch <| AddPinGroup(group)
+        store.Dispatch <| UpdatePinGroup( { group with Name = "group-2" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "group-3" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "group-4" })
         expect "Should be 5" 5 id store.History.Length
 
 
   let test_should_have_correct_number_of_historic_states_when_starting_fresh =
     testCase "should have correct number of historic states when starting fresh" <| fun _ ->
-      withStore <| fun patch store ->
-        let patch2 : Patch = { patch with Name = "patch-2" }
-        let patch3 : Patch = { patch2 with Name = "patch-3" }
-        let patch4 : Patch = { patch3 with Name = "patch-4" }
+      withStore <| fun group store ->
+        let group2 : PinGroup = { group with Name = "group-2" }
+        let group3 : PinGroup = { group2 with Name = "group-3" }
+        let group4 : PinGroup = { group3 with Name = "group-4" }
 
-        store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| UpdatePatch( patch2)
-        store.Dispatch <| UpdatePatch( patch3)
-        store.Dispatch <| UpdatePatch( patch4)
+        store.Dispatch <| AddPinGroup(group)
+        store.Dispatch <| UpdatePinGroup( group2)
+        store.Dispatch <| UpdatePinGroup( group3)
+        store.Dispatch <| UpdatePinGroup( group4)
 
         expect "Should be 5" 5 id store.History.Length
 
   let test_should_undo_a_single_change =
     testCase "should undo a single change" <| fun _ ->
-      withStore <| fun patch store ->
-        store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| UpdatePatch( { patch with Name = "cats" })
+      withStore <| fun group store ->
+        store.Dispatch <| AddPinGroup(group)
+        store.Dispatch <| UpdatePinGroup( { group with Name = "cats" })
         store.Undo()
-        expect "Should be shoudl corrent name" patch.Name id store.State.Patches.[patch.Id].Name
+        expect "Should be shoudl corrent name" group.Name id store.State.PinGroups.[group.Id].Name
 
   let test_should_undo_two_changes =
     testCase "should undo two changes" <| fun _ ->
-      withStore <| fun patch store ->
-        store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| UpdatePatch( { patch with Name = "cats" })
-        store.Dispatch <| UpdatePatch( { patch with Name = "dogs" })
+      withStore <| fun group store ->
+        store.Dispatch <| AddPinGroup(group)
+        store.Dispatch <| UpdatePinGroup( { group with Name = "cats" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "dogs" })
         store.Undo()
         store.Undo()
-        expect "Should be shoudl corrent name" patch.Name id store.State.Patches.[patch.Id].Name
+        expect "Should be shoudl corrent name" group.Name id store.State.PinGroups.[group.Id].Name
 
   let test_should_redo_an_undone_change =
     testCase "should redo an undone change" <| fun _ ->
-      withStore <| fun patch store ->
-        store.Dispatch <| AddPatch(patch)
+      withStore <| fun group store ->
+        store.Dispatch <| AddPinGroup(group)
         store.Undo()
-        expect "Should be 0" 0 id store.State.Patches.Count
+        expect "Should be 0" 0 id store.State.PinGroups.Count
         store.Redo()
-        expect "Should be 1" 1 id store.State.Patches.Count
+        expect "Should be 1" 1 id store.State.PinGroups.Count
 
   let test_should_redo_multiple_undone_changes =
     testCase "should redo multiple undone changes" <| fun _ ->
-      withStore <| fun patch store ->
-        store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| UpdatePatch( { patch with Name = "cats" })
-        store.Dispatch <| UpdatePatch( { patch with Name = "dogs" })
-        store.Dispatch <| UpdatePatch( { patch with Name = "mice" })
-        store.Dispatch <| UpdatePatch( { patch with Name = "men"  })
+      withStore <| fun group store ->
+        store.Dispatch <| AddPinGroup(group)
+        store.Dispatch <| UpdatePinGroup( { group with Name = "cats" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "dogs" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "mice" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "men"  })
         store.Undo()
         store.Undo()
 
-        expect "Should be dogs" "dogs" id store.State.Patches.[patch.Id].Name
+        expect "Should be dogs" "dogs" id store.State.PinGroups.[group.Id].Name
         store.Redo()
 
-        expect "Should be mice" "mice" id store.State.Patches.[patch.Id].Name
+        expect "Should be mice" "mice" id store.State.PinGroups.[group.Id].Name
         store.Redo()
 
-        expect "Should be men" "men" id store.State.Patches.[patch.Id].Name
+        expect "Should be men" "men" id store.State.PinGroups.[group.Id].Name
         store.Redo()
 
-        expect "Should be men" "men" id store.State.Patches.[patch.Id].Name
+        expect "Should be men" "men" id store.State.PinGroups.[group.Id].Name
 
   let test_should_undo_redo_interleaved_changes =
     testCase "should undo/redo interleaved changes" <| fun _ ->
-      withStore <| fun patch store ->
-        store.Dispatch <| AddPatch(patch)
-        store.Dispatch <| UpdatePatch( { patch with Name = "cats" })
-        store.Dispatch <| UpdatePatch( { patch with Name = "dogs" })
+      withStore <| fun group store ->
+        store.Dispatch <| AddPinGroup(group)
+        store.Dispatch <| UpdatePinGroup( { group with Name = "cats" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "dogs" })
 
         store.Undo()
-        expect "Should be cats" "cats" id store.State.Patches.[patch.Id].Name
+        expect "Should be cats" "cats" id store.State.PinGroups.[group.Id].Name
 
         store.Redo()
-        expect "Should be dogs" "dogs" id store.State.Patches.[patch.Id].Name
+        expect "Should be dogs" "dogs" id store.State.PinGroups.[group.Id].Name
 
         store.Undo()
-        expect "Should be cats" "cats" id store.State.Patches.[patch.Id].Name
+        expect "Should be cats" "cats" id store.State.PinGroups.[group.Id].Name
 
-        store.Dispatch <| UpdatePatch( { patch with Name = "mice" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "mice" })
 
         store.Undo()
-        expect "Should be dogs" "dogs" id store.State.Patches.[patch.Id].Name
+        expect "Should be dogs" "dogs" id store.State.PinGroups.[group.Id].Name
 
         store.Redo()
-        expect "Should be mice" "mice" id store.State.Patches.[patch.Id].Name
+        expect "Should be mice" "mice" id store.State.PinGroups.[group.Id].Name
 
         store.Undo()
         store.Undo()
 
-        expect "Should be cats" "cats" id store.State.Patches.[patch.Id].Name
+        expect "Should be cats" "cats" id store.State.PinGroups.[group.Id].Name
 
-        store.Dispatch <| UpdatePatch( { patch with Name = "men"  })
+        store.Dispatch <| UpdatePinGroup( { group with Name = "men"  })
 
         store.Undo()
-        expect "Should be mice" "mice" id store.State.Patches.[patch.Id].Name
+        expect "Should be mice" "mice" id store.State.PinGroups.[group.Id].Name
 
         store.Redo()
-        expect "Should be men" "men" id store.State.Patches.[patch.Id].Name
+        expect "Should be men" "men" id store.State.PinGroups.[group.Id].Name
 
         expect "Should be 6" 6 id store.History.Length
 
   let test_should_only_keep_specified_number_of_undo_steps =
     testCase "should only keep specified number of undo-steps" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
         store.UndoSteps <- 4
-        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddPinGroup(group)
 
         ["dogs"; "cats"; "mice"; "men"; "worms"; "hens"]
-        |> List.map (fun n -> store.Dispatch <| UpdatePatch( { patch with Name = n }))
+        |> List.map (fun n -> store.Dispatch <| UpdatePinGroup( { group with Name = n }))
         |> List.iter (fun _ -> store.Undo())
 
         expect "Should be 4" 4 id store.History.Length
-        expect "Should be mice" "mice" id store.State.Patches.[patch.Id].Name
+        expect "Should be mice" "mice" id store.State.PinGroups.[group.Id].Name
 
   let test_should_keep_all_state_in_history_in_debug_mode =
     testCase "should keep all state in history in debug mode" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
         store.UndoSteps <- 2
         store.Debug <- true
 
-        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddPinGroup(group)
 
         ["dogs"; "cats"; "mice"; "men"; "worms"; "hens"]
         |> List.iter (fun n ->
-            store.Dispatch <| UpdatePatch( { patch with Name = n }))
+            store.Dispatch <| UpdatePinGroup( { group with Name = n }))
 
         expect "Should be 8" 8 id store.History.Length
 
   let test_should_shrink_history_to_UndoSteps_after_leaving_debug_mode =
     testCase "should shrink history to UndoSteps after leaving debug mode" <| fun _ ->
-      withStore <| fun patch store ->
+      withStore <| fun group store ->
         store.UndoSteps <- 3
         store.Debug <- true
 
-        store.Dispatch <| AddPatch(patch)
+        store.Dispatch <| AddPinGroup(group)
 
         ["dogs"; "cats"; "mice"; "men"; "worms"; "hens"]
         |> List.iter (fun n ->
-            store.Dispatch <| UpdatePatch( { patch with Name = n }))
+            store.Dispatch <| UpdatePinGroup( { group with Name = n }))
 
         expect "Should be 8" 8 id store.History.Length
         store.Debug <- false
@@ -712,11 +708,11 @@ module StoreTests =
 
   let storeTests =
     testList "Store Tests" [
-      test_should_add_a_patch_to_the_store
-      test_should_update_a_patch_already_in_the_store
-      test_should_remove_a_patch_already_in_the_store
-      test_should_add_an_pin_to_the_store_if_patch_exists
-      test_should_not_add_an_pin_to_the_store_if_patch_does_not_exists
+      test_should_add_a_group_to_the_store
+      test_should_update_a_group_already_in_the_store
+      test_should_remove_a_group_already_in_the_store
+      test_should_add_an_pin_to_the_store_if_group_exists
+      test_should_not_add_an_pin_to_the_store_if_group_does_not_exists
       test_should_update_an_pin_in_the_store_if_it_already_exists
       test_should_remove_an_pin_from_the_store_if_it_exists
       test_should_add_a_cue_to_the_store

@@ -29,13 +29,13 @@ module ApiTests =
         Author    = None
         Config    = Config.create "Hello" machine  }
 
-    { Project  = project
-      Patches  = Map.empty
-      Cues     = Map.empty
-      CueLists = Map.empty
-      Sessions = Map.empty
-      Users    = Map.empty
-      Clients  = Map.empty
+    { Project   = project
+      PinGroups = Map.empty
+      Cues      = Map.empty
+      CueLists  = Map.empty
+      Sessions  = Map.empty
+      Users     = Map.empty
+      Clients   = Map.empty
       DiscoveredServices = Map.empty }
 
   //  ____
@@ -241,7 +241,7 @@ module ApiTests =
         expect "Server should have one cuelist" 1 len serverState.CueLists
         expect "Client should have one cuelist" 1 len clientState.CueLists
 
-        do! client.UpdatePin (pin.SetSlice (BoolSlice { Index = 0u; Value = false }))
+        do! client.UpdatePin (pin.SetSlice (BoolSlice(0u, false)))
         do! client.UpdateCue { cue with Pins = [| mkPin() |] }
         do! client.UpdateCueList { cuelist with Cues = [| mkCue() |] }
 

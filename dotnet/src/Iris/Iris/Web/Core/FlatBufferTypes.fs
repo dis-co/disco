@@ -201,6 +201,7 @@ type ColorSpaceFBConstructor =
   abstract AddValueType: builder: FlatBufferBuilder * tipe: int -> unit
   abstract EndColorSpaceFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsColorSpaceFB: buffer: ByteBuffer -> ColorSpaceFB
+  abstract Create: unit -> ColorSpaceFB
 
 let HSLAValueFB : HSLAValueFBConstructor = failwith "JS only"
 let RGBAValueFB : RGBAValueFBConstructor = failwith "JS only"
@@ -216,57 +217,39 @@ let ColorSpaceTypeFB : ColorSpaceTypeEnumFB = failwith "JS only"
 type BehaviorFB = int
 
 type BehaviorFBConstructor =
-  abstract ToggleFB: int
-  abstract BangFB: int
+  abstract SimpleFB: BehaviorFB
+  abstract MultiLineFB: BehaviorFB
+  abstract FileNameFB: BehaviorFB
+  abstract DirectoryFB: BehaviorFB
+  abstract UrlFB: BehaviorFB
+  abstract IPFB: BehaviorFB
 
 let BehaviorFB: BehaviorFBConstructor = failwith "JS only"
 
-//  ____  _        _            _____                 _____ ____
-// / ___|| |_ _ __(_)_ __   __ |_   _|   _ _ __   ___|  ___| __ )
-// \___ \| __| '__| | '_ \ / _` || || | | | '_ \ / _ \ |_  |  _ \
-//  ___) | |_| |  | | | | | (_| || || |_| | |_) |  __/  _| | |_) |
-// |____/ \__|_|  |_|_| |_|\__, ||_| \__, | .__/ \___|_|   |____/
-//                         |___/     |___/|_|
-
-type StringTypeFB = int
-
-type StringTypeFBConstructor =
-  abstract SimpleFB: StringTypeFB
-  abstract MultiLineFB: StringTypeFB
-  abstract FileNameFB: StringTypeFB
-  abstract DirectoryFB: StringTypeFB
-  abstract UrlFB: StringTypeFB
-  abstract IPFB: StringTypeFB
-
-let StringTypeFB: StringTypeFBConstructor = failwith "JS only"
-
-//  ___ ___  ____            _____                 _____ ____
-// |_ _/ _ \| __ )  _____  _|_   _|   _ _ __   ___|  ___| __ )
-//  | | | | |  _ \ / _ \ \/ / | || | | | '_ \ / _ \ |_  |  _ \
-//  | | |_| | |_) | (_) >  <  | || |_| | |_) |  __/  _| | |_) |
-// |___\___/|____/ \___/_/\_\ |_| \__, | .__/ \___|_|   |____/
-//                                |___/|_|
+//  ____  _     _____                 _____ ____
+// |  _ \(_)_ _|_   _|   _ _ __   ___|  ___| __ )
+// | |_) | | '_ \| || | | | '_ \ / _ \ |_  |  _ \
+// |  __/| | | | | || |_| | |_) |  __/  _| | |_) |
+// |_|   |_|_| |_|_| \__, | .__/ \___|_|   |____/
+//                   |___/|_|
 
 type PinTypeFB = int
 
 type PinTypeFBConstructor =
   abstract StringPinFB: PinTypeFB
-  abstract IntPinFB: PinTypeFB
-  abstract FloatPinFB: PinTypeFB
-  abstract DoublePinFB: PinTypeFB
+  abstract NumberPinFB: PinTypeFB
   abstract BoolPinFB: PinTypeFB
   abstract BytePinFB: PinTypeFB
   abstract EnumPinFB: PinTypeFB
   abstract ColorPinFB: PinTypeFB
-  abstract CompoundPinFB: PinTypeFB
 
 let PinTypeFB: PinTypeFBConstructor = failwith "JS only"
 
-//  ___ ___  ____            _____ ____
-// |_ _/ _ \| __ )  _____  _|  ___| __ )
-//  | | | | |  _ \ / _ \ \/ / |_  |  _ \
-//  | | |_| | |_) | (_) >  <|  _| | |_) |
-// |___\___/|____/ \___/_/\_\_|   |____/
+//  ____  _       _____ ____
+// |  _ \(_)_ __ |  ___| __ )
+// | |_) | | '_ \| |_  |  _ \
+// |  __/| | | | |  _| | |_) |
+// |_|   |_|_| |_|_|   |____/
 
 type PinFB =
   abstract Pin: 'a -> 'a
@@ -281,293 +264,172 @@ type PinFBConstructor =
 
 let PinFB: PinFBConstructor = failwith "JS only"
 
-//  ____              _ ____  _ _          _____ ____
-// | __ )  ___   ___ | / ___|| (_) ___ ___|  ___| __ )
-// |  _ \ / _ \ / _ \| \___ \| | |/ __/ _ \ |_  |  _ \
-// | |_) | (_) | (_) | |___) | | | (_|  __/  _| | |_) |
-// |____/ \___/ \___/|_|____/|_|_|\___\___|_|   |____/
+// __     __        ____  _         _____ ____
+// \ \   / /__  ___/ ___|(_)_______|  ___| __ )
+//  \ \ / / _ \/ __\___ \| |_  / _ \ |_  |  _ \
+//   \ V /  __/ (__ ___) | |/ /  __/  _| | |_) |
+//    \_/ \___|\___|____/|_/___\___|_|   |____/
 
-type BoolSliceFB =
-  abstract Index: uint32
-  abstract Value: bool
+type VecSizeTypeFB = int
 
-type BoolSliceFBConstructor =
-  abstract StartBoolSliceFB: builder: FlatBufferBuilder -> unit
-  abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
-  abstract AddValue: builder: FlatBufferBuilder * value: bool -> unit
-  abstract EndBoolSliceFB: builder: FlatBufferBuilder -> Offset<BoolSliceFB>
-  abstract GetRootAsBoolSliceFB: buffer: ByteBuffer -> BoolSliceFB
-  abstract Create: unit -> BoolSliceFB
+type VecSizeTypeFBConstructor =
+  abstract DynamicFB: VecSizeTypeFB
+  abstract FixedFB: VecSizeTypeFB
 
-let BoolSliceFB: BoolSliceFBConstructor = failwith "JS only"
+let VecSizeTypeFB: VecSizeTypeFBConstructor = failwith "JS only"
 
-//  ____              _ ____            _____ ____
-// | __ )  ___   ___ | | __ )  _____  _|  ___| __ )
-// |  _ \ / _ \ / _ \| |  _ \ / _ \ \/ / |_  |  _ \
-// | |_) | (_) | (_) | | |_) | (_) >  <|  _| | |_) |
-// |____/ \___/ \___/|_|____/ \___/_/\_\_|   |____/
+type VecSizeFB =
+  abstract Type: int
+  abstract Size: uint16
+
+type VecSizeFBConstructor =
+  abstract StartVecSizeFB: builder: FlatBufferBuilder -> unit
+  abstract AddType: builder:FlatBufferBuilder * tipe:VecSizeTypeFB -> unit
+  abstract AddSize: builder:FlatBufferBuilder * size:uint16 -> unit
+  abstract EndVecSizeFB: builder:FlatBufferBuilder -> Offset<VecSizeFB>
+  abstract GetRootAsVecSizeFB: buffer: ByteBuffer -> VecSizeFB
+
+let VecSizeFB: VecSizeFBConstructor = failwith "JS only"
+
+//  ____  _               _   _             _____ ____
+// |  _ \(_)_ __ ___  ___| |_(_) ___  _ __ |  ___| __ )
+// | | | | | '__/ _ \/ __| __| |/ _ \| '_ \| |_  |  _ \
+// | |_| | | | |  __/ (__| |_| | (_) | | | |  _| | |_) |
+// |____/|_|_|  \___|\___|\__|_|\___/|_| |_|_|   |____/
+
+type ConnectionDirectionFB = int
+
+type ConnectionDirectionFBConstructor =
+  abstract InputFB: ConnectionDirectionFB
+  abstract OutputFB: ConnectionDirectionFB
+
+let ConnectionDirectionFB: ConnectionDirectionFBConstructor = failwith "JS only"
+
+//  ____              _ ____  _       _____ ____
+// | __ )  ___   ___ | |  _ \(_)_ __ |  ___| __ )
+// |  _ \ / _ \ / _ \| | |_) | | '_ \| |_  |  _ \
+// | |_) | (_) | (_) | |  __/| | | | |  _| | |_) |
+// |____/ \___/ \___/|_|_|   |_|_| |_|_|   |____/
 
 type BoolPinFB =
   abstract Id: string
   abstract Name: string
-  abstract Patch: string
-  abstract Behavior: BehaviorFB
-  abstract TagsLength: int
-  abstract SlicesLength: int
+  abstract PinGroup: string
+  abstract IsTrigger: bool
+  abstract VecSize: VecSizeFB
+  abstract Direction: ConnectionDirectionFB
   abstract Tags: int -> string
-  abstract Slices: index: int -> BoolSliceFB
+  abstract TagsLength: int
+  abstract Labels: index: int -> string
+  abstract LabelsLength: int
+  abstract Values: index: int -> bool
+  abstract ValuesLength: int
 
 type BoolPinFBConstructor =
   abstract prototype: BoolPinFB with get, set
   abstract StartBoolPinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
-  abstract AddBehavior: builder: FlatBufferBuilder * behavior: BehaviorFB -> unit
-  abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
+  abstract AddIsTrigger: builder: FlatBufferBuilder * trigger: bool -> unit
+  abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
+  abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
+  abstract AddLabels: builder: FlatBufferBuilder * labels: Offset<'a> -> unit
+  abstract AddValues: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
   abstract EndBoolPinFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsBoolPinFB: buffer: ByteBuffer -> BoolPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
-  abstract CreateSlicesVector: builder: FlatBufferBuilder * slices: Offset<BoolSliceFB> array -> Offset<'a>
+  abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateValuesVector: builder: FlatBufferBuilder * slices: bool array -> Offset<'a>
   abstract Create: unit -> BoolPinFB
 
 let BoolPinFB : BoolPinFBConstructor = failwith "JS only"
 
-//  ___       _   ____  _ _          _____ ____
-// |_ _|_ __ | |_/ ___|| (_) ___ ___|  ___| __ )
-//  | || '_ \| __\___ \| | |/ __/ _ \ |_  |  _ \
-//  | || | | | |_ ___) | | | (_|  __/  _| | |_) |
-// |___|_| |_|\__|____/|_|_|\___\___|_|   |____/
+//  _   _                 _               ____  _       _____ ____
+// | \ | |_   _ _ __ ___ | |__   ___ _ __|  _ \(_)_ __ |  ___| __ )
+// |  \| | | | | '_ ` _ \| '_ \ / _ \ '__| |_) | | '_ \| |_  |  _ \
+// | |\  | |_| | | | | | | |_) |  __/ |  |  __/| | | | |  _| | |_) |
+// |_| \_|\__,_|_| |_| |_|_.__/ \___|_|  |_|   |_|_| |_|_|   |____/
 
-type IntSliceFB =
-  abstract Index: uint32
-  abstract Value: int
-
-type IntSliceFBConstructor =
-  abstract StartIntSliceFB: builder: FlatBufferBuilder -> unit
-  abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
-  abstract AddValue: builder: FlatBufferBuilder * value: int -> unit
-  abstract EndIntSliceFB: builder: FlatBufferBuilder -> Offset<IntSliceFB>
-  abstract GetRootAsIntSliceFB: buffer: ByteBuffer -> IntSliceFB
-  abstract Create: unit -> IntSliceFB
-
-let IntSliceFB: IntSliceFBConstructor = failwith "JS only"
-
-//  ___       _   ____            _____ ____
-// |_ _|_ __ | |_| __ )  _____  _|  ___| __ )
-//  | || '_ \| __|  _ \ / _ \ \/ / |_  |  _ \
-//  | || | | | |_| |_) | (_) >  <|  _| | |_) |
-// |___|_| |_|\__|____/ \___/_/\_\_|   |____/
-
-type IntPinFB =
+type NumberPinFB =
   abstract Id: string
   abstract Name: string
-  abstract Patch: string
-  abstract VecSize: uint32
-  abstract Min: int
-  abstract Max: int
-  abstract Unit: string
-  abstract TagsLength: int
-  abstract Tags: int -> string
-  abstract SlicesLength: int
-  abstract Slices: int -> IntSliceFB
-
-type IntPinFBConstructor =
-  abstract prototype: IntPinFB with get, set
-  abstract StartIntPinFB: builder: FlatBufferBuilder -> unit
-  abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
-  abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddVecSize: builder: FlatBufferBuilder * vecsize: uint32 -> unit
-  abstract AddMin: builder: FlatBufferBuilder * min: int -> unit
-  abstract AddMax: builder: FlatBufferBuilder * max: int -> unit
-  abstract AddUnit: builder: FlatBufferBuilder * unit: Offset<string> -> unit
-  abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
-  abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
-  abstract EndIntPinFB: builder: FlatBufferBuilder -> Offset<'a>
-  abstract GetRootAsIntPinFB: buffer: ByteBuffer -> IntPinFB
-  abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
-  abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
-  abstract Create: unit -> IntPinFB
-
-let IntPinFB : IntPinFBConstructor = failwith "JS only"
-
-//  _____ _             _   ____  _ _          _____ ____
-// |  ___| | ___   __ _| |_/ ___|| (_) ___ ___|  ___| __ )
-// | |_  | |/ _ \ / _` | __\___ \| | |/ __/ _ \ |_  |  _ \
-// |  _| | | (_) | (_| | |_ ___) | | | (_|  __/  _| | |_) |
-// |_|   |_|\___/ \__,_|\__|____/|_|_|\___\___|_|   |____/
-
-type FloatSliceFB =
-  abstract Index: uint32
-  abstract Value: float
-
-type FloatSliceFBConstructor =
-  abstract StartFloatSliceFB: builder: FlatBufferBuilder -> unit
-  abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
-  abstract AddValue: builder: FlatBufferBuilder * value: float32 -> unit
-  abstract EndFloatSliceFB: builder: FlatBufferBuilder -> Offset<FloatSliceFB>
-  abstract GetRootAsFloatSliceFB: buffer: ByteBuffer -> FloatSliceFB
-  abstract Create: unit -> FloatSliceFB
-
-let FloatSliceFB: FloatSliceFBConstructor = failwith "JS only"
-
-//  _____ _             _   ____            _____ ____
-// |  ___| | ___   __ _| |_| __ )  _____  _|  ___| __ )
-// | |_  | |/ _ \ / _` | __|  _ \ / _ \ \/ / |_  |  _ \
-// |  _| | | (_) | (_| | |_| |_) | (_) >  <|  _| | |_) |
-// |_|   |_|\___/ \__,_|\__|____/ \___/_/\_\_|   |____/
-
-type FloatPinFB =
-  abstract Id: string
-  abstract Name: string
-  abstract Patch: string
-  abstract VecSize: uint32
+  abstract PinGroup: string
   abstract Min: int
   abstract Max: int
   abstract Unit: string
   abstract Precision: uint32
-  abstract TagsLength: int
-  abstract Tags: int -> string
-  abstract Behavior: BehaviorFB
-  abstract SlicesLength: int
-  abstract Slices: int -> FloatSliceFB
-
-type FloatPinFBConstructor =
-  abstract prototype: FloatPinFB with get, set
-  abstract StartFloatPinFB: builder: FlatBufferBuilder -> unit
-  abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
-  abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
-  abstract AddVecSize: builder: FlatBufferBuilder * vecsize: uint32 -> unit
-  abstract AddMin: builder: FlatBufferBuilder * min: int -> unit
-  abstract AddMax: builder: FlatBufferBuilder * max: int -> unit
-  abstract AddUnit: builder: FlatBufferBuilder * unit: Offset<string> -> unit
-  abstract AddPrecision: builder: FlatBufferBuilder * precision: uint32 -> unit
-  abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
-  abstract EndFloatPinFB: builder: FlatBufferBuilder -> Offset<FloatPinFB>
-  abstract GetRootAsFloatPinFB: buffer: ByteBuffer -> FloatPinFB
-  abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
-  abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
-  abstract Create: unit -> FloatPinFB
-
-let FloatPinFB : FloatPinFBConstructor = failwith "JS only"
-
-//  ____              _     _      ____  _ _          _____ ____
-// |  _ \  ___  _   _| |__ | | ___/ ___|| (_) ___ ___|  ___| __ )
-// | | | |/ _ \| | | | '_ \| |/ _ \___ \| | |/ __/ _ \ |_  |  _ \
-// | |_| | (_) | |_| | |_) | |  __/___) | | | (_|  __/  _| | |_) |
-// |____/ \___/ \__,_|_.__/|_|\___|____/|_|_|\___\___|_|   |____/
-
-type DoubleSliceFB =
-  abstract Index: uint32
-  abstract Value: double
-
-type DoubleSliceFBConstructor =
-  abstract prototype: DoubleSliceFB with get, set
-  abstract StartDoubleSliceFB: builder: FlatBufferBuilder -> unit
-  abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
-  abstract AddValue: builder: FlatBufferBuilder * value: double -> unit
-  abstract EndDoubleSliceFB: builder: FlatBufferBuilder -> Offset<DoubleSliceFB>
-  abstract GetRootAsDoubleSliceFB: buffer: ByteBuffer -> DoubleSliceFB
-  abstract Create: unit -> DoubleSliceFB
-
-let DoubleSliceFB: DoubleSliceFBConstructor = failwith "JS only"
-
-//  ____              _     _      ____            _____ ____
-// |  _ \  ___  _   _| |__ | | ___| __ )  _____  _|  ___| __ )
-// | | | |/ _ \| | | | '_ \| |/ _ \  _ \ / _ \ \/ / |_  |  _ \
-// | |_| | (_) | |_| | |_) | |  __/ |_) | (_) >  <|  _| | |_) |
-// |____/ \___/ \__,_|_.__/|_|\___|____/ \___/_/\_\_|   |____/
-
-type DoublePinFB =
-  abstract Id: string
-  abstract Name: string
-  abstract Patch: string
-  abstract VecSize: uint32
-  abstract Min: int
-  abstract Max: int
-  abstract Unit: string
-  abstract Precision: uint32
+  abstract VecSize: VecSizeFB
+  abstract Direction: ConnectionDirectionFB
   abstract Tags: int -> string
   abstract TagsLength: int
-  abstract Slices: int -> DoubleSliceFB
-  abstract SlicesLength: int
+  abstract Labels: int -> string
+  abstract LabelsLength: int
+  abstract Values: int -> double
+  abstract ValuesLength: int
 
-type DoublePinFBConstructor =
-  abstract prototype: DoublePinFB with get, set
-  abstract StartDoublePinFB: builder: FlatBufferBuilder -> unit
+type NumberPinFBConstructor =
+  abstract prototype: NumberPinFB with get, set
+  abstract StartNumberPinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * vecsize: uint32 -> unit
   abstract AddMin: builder: FlatBufferBuilder * min: int -> unit
   abstract AddMax: builder: FlatBufferBuilder * max: int -> unit
   abstract AddUnit: builder: FlatBufferBuilder * unit: Offset<string> -> unit
   abstract AddPrecision: builder: FlatBufferBuilder * precision: uint32 -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
-  abstract AddBehavior: builder: FlatBufferBuilder * behavior: BehaviorFB -> unit
-  abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
-  abstract EndDoublePinFB: builder: FlatBufferBuilder -> Offset<'a>
-  abstract GetRootAsDoublePinFB: buffer: ByteBuffer -> DoublePinFB
+  abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
+  abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
+  abstract AddLabels: builder: FlatBufferBuilder * values: Offset<'a> -> unit
+  abstract AddValues: builder: FlatBufferBuilder * values: Offset<'a> -> unit
+  abstract EndNumberPinFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsNumberPinFB: buffer: ByteBuffer -> NumberPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
-  abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
-  abstract Create: unit -> DoublePinFB
+  abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateValuesVector: builder: FlatBufferBuilder * double array -> Offset<'a>
+  abstract Create: unit -> NumberPinFB
 
-let DoublePinFB : DoublePinFBConstructor = failwith "JS only"
+let NumberPinFB : NumberPinFBConstructor = failwith "JS only"
 
-//  ____        _       ____  _ _          _____ ____
-// | __ ) _   _| |_ ___/ ___|| (_) ___ ___|  ___| __ )
-// |  _ \| | | | __/ _ \___ \| | |/ __/ _ \ |_  |  _ \
-// | |_) | |_| | ||  __/___) | | | (_|  __/  _| | |_) |
-// |____/ \__, |\__\___|____/|_|_|\___\___|_|   |____/
-//        |___/
-
-type ByteSliceFB =
-  abstract Index: uint32
-  abstract Value: string
-
-type ByteSliceFBConstructor =
-  abstract prototype: ByteSliceFB with get, set
-  abstract StartByteSliceFB: builder: FlatBufferBuilder -> unit
-  abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
-  abstract AddValue: builder: FlatBufferBuilder * value: Offset<string> -> unit
-  abstract EndByteSliceFB: builder: FlatBufferBuilder -> Offset<ByteSliceFB>
-  abstract GetRootAsByteSliceFB: buffer: ByteBuffer -> ByteSliceFB
-  abstract Create: unit -> ByteSliceFB
-
-let ByteSliceFB: ByteSliceFBConstructor = failwith "JS only"
-
-//  ____        _       ____            _____ ____
-// | __ ) _   _| |_ ___| __ )  _____  _|  ___| __ )
-// |  _ \| | | | __/ _ \  _ \ / _ \ \/ / |_  |  _ \
-// | |_) | |_| | ||  __/ |_) | (_) >  <|  _| | |_) |
-// |____/ \__, |\__\___|____/ \___/_/\_\_|   |____/
+//  ____        _       ____  _       _____ ____
+// | __ ) _   _| |_ ___|  _ \(_)_ __ |  ___| __ )
+// |  _ \| | | | __/ _ \ |_) | | '_ \| |_  |  _ \
+// | |_) | |_| | ||  __/  __/| | | | |  _| | |_) |
+// |____/ \__, |\__\___|_|   |_|_| |_|_|   |____/
 //        |___/
 
 type BytePinFB =
   abstract Id: string
   abstract Name: string
-  abstract Patch: string
+  abstract PinGroup: string
+  abstract VecSize: VecSizeFB
+  abstract Direction: ConnectionDirectionFB
   abstract TagsLength: int
   abstract Tags: int -> string
-  abstract SlicesLength: int
-  abstract Slices: int -> ByteSliceFB
+  abstract Labels: int -> string
+  abstract LabelsLength: int
+  abstract Values: int -> string
+  abstract ValuesLength: int
 
 type BytePinFBConstructor =
   abstract prototype: BytePinFB with get, set
   abstract StartBytePinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
+  abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
-  abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
+  abstract AddLabels: builder: FlatBufferBuilder * values: Offset<'a> -> unit
+  abstract AddValues: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract EndBytePinFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsBytePinFB: buffer: ByteBuffer -> BytePinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
-  abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
+  abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
+  abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract Create: unit -> BytePinFB
 
 let BytePinFB : BytePinFBConstructor = failwith "JS only"
@@ -594,27 +456,6 @@ type EnumPropertyFBConstructor =
 
 let EnumPropertyFB: EnumPropertyFBConstructor = failwith "JS only"
 
-//  _____                       ____  _ _          _____ ____
-// | ____|_ __  _   _ _ __ ___ / ___|| (_) ___ ___|  ___| __ )
-// |  _| | '_ \| | | | '_ ` _ \\___ \| | |/ __/ _ \ |_  |  _ \
-// | |___| | | | |_| | | | | | |___) | | | (_|  __/  _| | |_) |
-// |_____|_| |_|\__,_|_| |_| |_|____/|_|_|\___\___|_|   |____/
-
-type EnumSliceFB =
-  abstract Index: uint32
-  abstract Value: EnumPropertyFB
-
-type EnumSliceFBConstructor =
-  abstract prototype: EnumSliceFB with get, set
-  abstract StartEnumSliceFB: builder: FlatBufferBuilder -> unit
-  abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
-  abstract AddValue: builder: FlatBufferBuilder * value: Offset<EnumPropertyFB> -> unit
-  abstract EndEnumSliceFB: builder: FlatBufferBuilder -> Offset<EnumSliceFB>
-  abstract GetRootAsEnumSliceFB: buffer: ByteBuffer -> EnumSliceFB
-  abstract Create: unit -> EnumSliceFB
-
-let EnumSliceFB: EnumSliceFBConstructor = failwith "JS only"
-
 //  _____                       ____            _____ ____
 // | ____|_ __  _   _ _ __ ___ | __ )  _____  _|  ___| __ )
 // |  _| | '_ \| | | | '_ ` _ \|  _ \ / _ \ \/ / |_  |  _ \
@@ -624,52 +465,39 @@ let EnumSliceFB: EnumSliceFBConstructor = failwith "JS only"
 type EnumPinFB =
   abstract Id: string
   abstract Name: string
-  abstract Patch: string
+  abstract PinGroup: string
+  abstract VecSize: VecSizeFB
+  abstract Direction: ConnectionDirectionFB
   abstract Tags: int -> string
   abstract TagsLength: int
   abstract Properties: int -> EnumPropertyFB
   abstract PropertiesLength: int
-  abstract Slices: int -> EnumSliceFB
-  abstract SlicesLength: int
+  abstract Labels: int -> string
+  abstract LabelsLength: int
+  abstract Values: int -> EnumPropertyFB
+  abstract ValuesLength: int
 
 type EnumPinFBConstructor =
   abstract prototype: EnumPinFB with get, set
   abstract StartEnumPinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
+  abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
+  abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddProperties: builder: FlatBufferBuilder * properties: Offset<'a> -> unit
-  abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
+  abstract AddLabels: builder: FlatBufferBuilder * values: Offset<'a> -> unit
+  abstract AddValues: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract EndEnumPinFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsEnumPinFB: buffer: ByteBuffer -> EnumPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreatePropertiesVector: builder: FlatBufferBuilder * Offset<EnumPropertyFB> array -> Offset<'a>
-  abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
+  abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
+  abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract Create: unit -> EnumPinFB
 
 let EnumPinFB : EnumPinFBConstructor = failwith "JS only"
-
-//   ____      _            ____  _ _          _____ ____
-//  / ___|___ | | ___  _ __/ ___|| (_) ___ ___|  ___| __ )
-// | |   / _ \| |/ _ \| '__\___ \| | |/ __/ _ \ |_  |  _ \
-// | |__| (_) | | (_) | |   ___) | | | (_|  __/  _| | |_) |
-//  \____\___/|_|\___/|_|  |____/|_|_|\___\___|_|   |____/
-
-type ColorSliceFB =
-  abstract Index: uint32
-  abstract Value: ColorSpaceFB
-
-type ColorSliceFBConstructor =
-  abstract prototype: ColorSliceFB with get, set
-  abstract StartColorSliceFB: builder: FlatBufferBuilder -> unit
-  abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
-  abstract AddValue: builder: FlatBufferBuilder * value: Offset<ColorSpaceFB> -> unit
-  abstract EndColorSliceFB: builder: FlatBufferBuilder -> Offset<ColorSliceFB>
-  abstract GetRootAsColorSliceFB: buffer: ByteBuffer -> ColorSliceFB
-  abstract Create: unit -> ColorSliceFB
-
-let ColorSliceFB: ColorSliceFBConstructor = failwith "JS only"
 
 //   ____      _            ____            _____ ____
 //  / ___|___ | | ___  _ __| __ )  _____  _|  ___| __ )
@@ -680,49 +508,35 @@ let ColorSliceFB: ColorSliceFBConstructor = failwith "JS only"
 type ColorPinFB =
   abstract Id: string
   abstract Name: string
-  abstract Patch: string
+  abstract PinGroup: string
+  abstract VecSize: VecSizeFB
+  abstract Direction: ConnectionDirectionFB
   abstract TagsLength: int
   abstract Tags: int -> string
-  abstract Slices: int -> ColorSliceFB
-  abstract SlicesLength: int
+  abstract Labels: int -> string
+  abstract LabelsLength: int
+  abstract Values: int -> ColorSpaceFB
+  abstract ValuesLength: int
 
 type ColorPinFBConstructor =
   abstract prototype: ColorPinFB with get, set
   abstract StartColorPinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
-  abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
+  abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
+  abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
+  abstract AddLabels: builder: FlatBufferBuilder * values: Offset<'a> -> unit
+  abstract AddValues: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract EndColorPinFB: builder: FlatBufferBuilder -> Offset<ColorPinFB>
   abstract GetRootAsColorPinFB: buffer: ByteBuffer -> ColorPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
-  abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
+  abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
+  abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract Create: unit -> ColorPinFB
 
 let ColorPinFB : ColorPinFBConstructor = failwith "JS only"
-
-//  ____  _        _             ____  _ _          _____ ____
-// / ___|| |_ _ __(_)_ __   __ _/ ___|| (_) ___ ___|  ___| __ )
-// \___ \| __| '__| | '_ \ / _` \___ \| | |/ __/ _ \ |_  |  _ \
-//  ___) | |_| |  | | | | | (_| |___) | | | (_|  __/  _| | |_) |
-// |____/ \__|_|  |_|_| |_|\__, |____/|_|_|\___\___|_|   |____/
-//                         |___/
-
-type StringSliceFB =
-  abstract Index: uint32
-  abstract Value: string
-
-type StringSliceFBConstructor =
-  abstract prototype: StringSliceFB with get, set
-  abstract StartStringSliceFB: builder: FlatBufferBuilder -> unit
-  abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
-  abstract AddValue: builder: FlatBufferBuilder * value: Offset<string> -> unit
-  abstract EndStringSliceFB: builder: FlatBufferBuilder -> Offset<StringSliceFB>
-  abstract GetRootAsStringSliceFB: buffer: ByteBuffer -> StringSliceFB
-  abstract Create: unit -> StringSliceFB
-
-let StringSliceFB: StringSliceFBConstructor = failwith "JS only"
 
 //  ____  _        _             ____            _____ ____
 // / ___|| |_ _ __(_)_ __   __ _| __ )  _____  _|  ___| __ )
@@ -734,90 +548,39 @@ let StringSliceFB: StringSliceFBConstructor = failwith "JS only"
 type StringPinFB =
   abstract Id: string
   abstract Name: string
-  abstract Patch: string
-  abstract StringType: StringTypeFB
-  abstract FileMask: string
+  abstract PinGroup: string
+  abstract Behavior: BehaviorFB
+  abstract VecSize: VecSizeFB
+  abstract Direction: ConnectionDirectionFB
   abstract MaxChars: int
-  abstract TagsLength: int
   abstract Tags: int -> string
-  abstract Slices: int -> StringSliceFB
-  abstract SlicesLength: int
+  abstract TagsLength: int
+  abstract Labels: int -> string
+  abstract LabelsLength: int
+  abstract Values: int -> string
+  abstract ValuesLength: int
 
 type StringPinFBConstructor =
   abstract prototype: StringPinFB with get, set
   abstract StartStringPinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddStringType: builder: FlatBufferBuilder * tipe: StringTypeFB -> unit
-  abstract AddFileMask: builder: FlatBufferBuilder * mask: Offset<string> -> unit
+  abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddBehavior: builder: FlatBufferBuilder * tipe: BehaviorFB -> unit
   abstract AddMaxChars: builder: FlatBufferBuilder * max: int -> unit
+  abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
+  abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
-  abstract AddBehavior: builder: FlatBufferBuilder * behavior: BehaviorFB -> unit
-  abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
+  abstract AddLabels: builder: FlatBufferBuilder * values: Offset<'a> -> unit
+  abstract AddValues: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract EndStringPinFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsStringPinFB: buffer: ByteBuffer -> StringPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
-  abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<StringSliceFB> array -> Offset<'a>
+  abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract Create: unit -> StringPinFB
 
 let StringPinFB : StringPinFBConstructor = failwith "JS only"
-
-//   ____                                            _ ____  _ _          _____
-//  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| / ___|| (_) ___ ___|  ___|
-// | |   / _ \| '_ ` _ \| '_ \ / _ \| | | | '_ \ / _` \___ \| | |/ __/ _ \ |_
-// | |__| (_) | | | | | | |_) | (_) | |_| | | | | (_| |___) | | | (_|  __/  _|
-//  \____\___/|_| |_| |_| .__/ \___/ \__,_|_| |_|\__,_|____/|_|_|\___\___|_| B
-//                      |_|
-
-type CompoundSliceFB =
-  abstract Index: uint32
-  abstract Value: int -> PinFB
-  abstract ValueLength: int
-
-type CompoundSliceFBConstructor =
-  abstract prototype: CompoundSliceFB with get, set
-  abstract StartCompoundSliceFB: builder: FlatBufferBuilder -> unit
-  abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
-  abstract AddValue: builder: FlatBufferBuilder * value: Offset<'a> -> unit
-  abstract CreateValueVector: builder: FlatBufferBuilder * value: Offset<PinFB> array -> Offset<'a>
-  abstract EndCompoundSliceFB: builder: FlatBufferBuilder -> Offset<CompoundSliceFB>
-  abstract GetRootAsCompoundSliceFB: buffer: ByteBuffer -> CompoundSliceFB
-  abstract Create: unit -> CompoundSliceFB
-
-let CompoundSliceFB: CompoundSliceFBConstructor = failwith "JS only"
-
-//   ____                                            _ ____
-//  / ___|___  _ __ ___  _ __   ___  _   _ _ __   __| | __ )  _____  __
-// | |   / _ \| '_ ` _ \| '_ \ / _ \| | | | '_ \ / _` |  _ \ / _ \ \/ /
-// | |__| (_) | | | | | | |_) | (_) | |_| | | | | (_| | |_) | (_) >  <
-//  \____\___/|_| |_| |_| .__/ \___/ \__,_|_| |_|\__,_|____/ \___/_/\_\
-//                      |_|
-
-type CompoundPinFB =
-  abstract Id: string
-  abstract Name: string
-  abstract Patch: string
-  abstract Tags: int -> string
-  abstract TagsLength: int
-  abstract Slices: int -> CompoundSliceFB
-  abstract SlicesLength: int
-
-type CompoundPinFBConstructor =
-  abstract prototype: CompoundPinFB with get, set
-  abstract StartCompoundPinFB: builder: FlatBufferBuilder -> unit
-  abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
-  abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddPatch: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
-  abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
-  abstract EndCompoundPinFB: builder: FlatBufferBuilder -> Offset<'a>
-  abstract GetRootAsCompoundPinFB: buffer: ByteBuffer -> CompoundPinFB
-  abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
-  abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
-  abstract Create: unit -> CompoundPinFB
-
-let CompoundPinFB : CompoundPinFBConstructor = failwith "JS only"
 
 //  ____  _ _         _____                 _____ ____
 // / ___|| (_) ___ __|_   _|   _ _ __   ___|  ___| __ )
@@ -829,15 +592,12 @@ let CompoundPinFB : CompoundPinFBConstructor = failwith "JS only"
 type SliceTypeFB = int
 
 type SliceTypeFBConstructor =
-  abstract StringSliceFB : SliceTypeFB
-  abstract IntSliceFB : SliceTypeFB
-  abstract FloatSliceFB : SliceTypeFB
-  abstract DoubleSliceFB : SliceTypeFB
-  abstract BoolSliceFB : SliceTypeFB
-  abstract ByteSliceFB : SliceTypeFB
-  abstract EnumSliceFB : SliceTypeFB
-  abstract ColorSliceFB : SliceTypeFB
-  abstract CompoundSliceFB : SliceTypeFB
+  abstract StringFB : SliceTypeFB
+  abstract DoubleFB : SliceTypeFB
+  abstract BoolFB : SliceTypeFB
+  abstract ByteFB : SliceTypeFB
+  abstract EnumPropertyFB : SliceTypeFB
+  abstract ColorSpaceFB : SliceTypeFB
 
 let SliceTypeFB: SliceTypeFBConstructor = failwith "JS only"
 
@@ -848,11 +608,13 @@ let SliceTypeFB: SliceTypeFBConstructor = failwith "JS only"
 // |____/|_|_|\___\___|_|   |____/
 
 type SliceFB =
+  abstract Index: uint32
   abstract Slice: 'a -> 'a
   abstract SliceType: int
 
 type SliceFBConstructor =
   abstract StartSliceFB: builder: FlatBufferBuilder -> unit
+  abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
   abstract AddSlice: builder: FlatBufferBuilder * offset: Offset<'a> -> unit
   abstract AddSliceType: builder: FlatBufferBuilder * tipe: SliceTypeFB -> unit
   abstract EndSliceFB: builder: FlatBufferBuilder -> Offset<SliceFB>
@@ -914,23 +676,23 @@ let CueFB : CueFBConstructor = failwith "JS only"
 // |  __/ (_| | || (__| | | |  _| | |_) |
 // |_|   \__,_|\__\___|_| |_|_|   |____/
 
-type PatchFB =
+type PinGroupFB =
   abstract Id: string
   abstract Name: string
   abstract PinsLength: int
   abstract Pins: int -> PinFB
 
-type PatchFBConstructor =
-  abstract prototype: PatchFB with get, set
-  abstract StartPatchFB: builder: FlatBufferBuilder -> unit
+type PinGroupFBConstructor =
+  abstract prototype: PinGroupFB with get, set
+  abstract StartPinGroupFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPins: builder: FlatBufferBuilder * pins: Offset<'a> -> unit
-  abstract EndPatchFB: builder: FlatBufferBuilder -> Offset<'a>
-  abstract GetRootAsPatchFB: buffer: ByteBuffer -> PatchFB
+  abstract EndPinGroupFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsPinGroupFB: buffer: ByteBuffer -> PinGroupFB
   abstract CreatePinsVector: builder: FlatBufferBuilder * Offset<PinFB> array -> Offset<'a>
 
-let PatchFB : PatchFBConstructor = failwith "JS only"
+let PinGroupFB : PinGroupFBConstructor = failwith "JS only"
 
 //   ____           _     _     _   _____ ____
 //  / ___|   _  ___| |   (_)___| |_|  ___| __ )
@@ -1511,7 +1273,7 @@ type DiscoveredServiceFBConstructor =
   abstract AddAddressList: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddMetadata: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract EndDiscoveredServiceFB: builder: FlatBufferBuilder -> Offset<DiscoveredServiceFB>
-  abstract GetRootAsDiscoveredServiceFB: bytes: ByteBuffer -> DiscoveredServiceFB  
+  abstract GetRootAsDiscoveredServiceFB: bytes: ByteBuffer -> DiscoveredServiceFB
   abstract CreateAliasesVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateAddressListVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateMetadataVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
@@ -1526,8 +1288,8 @@ let DiscoveredServiceFB: DiscoveredServiceFBConstructor = failwith "JS only"
 
 type StateFB =
   abstract Project: ProjectFB
-  abstract Patches: int -> PatchFB
-  abstract PatchesLength: int
+  abstract PinGroups: int -> PinGroupFB
+  abstract PinGroupsLength: int
   abstract Cues: int -> CueFB
   abstract CuesLength: int
   abstract CueLists: int -> CueListFB
@@ -1544,19 +1306,19 @@ type StateFB =
 type StateFBConstructor =
   abstract prototype: StateFB with get, set
   abstract StartStateFB: builder: FlatBufferBuilder -> unit
-  abstract AddProject: builder: FlatBufferBuilder * patches: Offset<ProjectFB> -> unit
-  abstract CreatePatchesVector: builder: FlatBufferBuilder * patches: Offset<PatchFB> array -> Offset<'a>
-  abstract AddPatches: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
-  abstract CreateCuesVector: builder: FlatBufferBuilder * patches: Offset<CueFB> array -> Offset<'a>
-  abstract AddCues: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
-  abstract CreateCueListsVector: builder: FlatBufferBuilder * patches: Offset<CueListFB> array -> Offset<'a>
-  abstract AddCueLists: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
-  abstract CreateSessionsVector: builder: FlatBufferBuilder * patches: Offset<SessionFB> array -> Offset<'a>
-  abstract AddSessions: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
-  abstract CreateUsersVector: builder: FlatBufferBuilder * patches: Offset<UserFB> array -> Offset<'a>
-  abstract AddUsers: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
-  abstract CreateClientsVector: builder: FlatBufferBuilder * patches: Offset<IrisClientFB> array -> Offset<'a>
-  abstract AddClients: builder: FlatBufferBuilder * patches: Offset<'a> -> unit
+  abstract AddProject: builder: FlatBufferBuilder * project: Offset<ProjectFB> -> unit
+  abstract CreatePinGroupsVector: builder: FlatBufferBuilder * groups: Offset<PinGroupFB> array -> Offset<'a>
+  abstract AddPinGroups: builder: FlatBufferBuilder * groups: Offset<'a> -> unit
+  abstract CreateCuesVector: builder: FlatBufferBuilder * cues: Offset<CueFB> array -> Offset<'a>
+  abstract AddCues: builder: FlatBufferBuilder * cues: Offset<'a> -> unit
+  abstract CreateCueListsVector: builder: FlatBufferBuilder * groups: Offset<CueListFB> array -> Offset<'a>
+  abstract AddCueLists: builder: FlatBufferBuilder * cuelists: Offset<'a> -> unit
+  abstract CreateSessionsVector: builder: FlatBufferBuilder * groups: Offset<SessionFB> array -> Offset<'a>
+  abstract AddSessions: builder: FlatBufferBuilder * sessions: Offset<'a> -> unit
+  abstract CreateUsersVector: builder: FlatBufferBuilder * groups: Offset<UserFB> array -> Offset<'a>
+  abstract AddUsers: builder: FlatBufferBuilder * users: Offset<'a> -> unit
+  abstract CreateClientsVector: builder: FlatBufferBuilder * groups: Offset<IrisClientFB> array -> Offset<'a>
+  abstract AddClients: builder: FlatBufferBuilder * clients: Offset<'a> -> unit
   abstract EndStateFB: builder: FlatBufferBuilder -> Offset<StateFB>
   abstract GetRootAsStateFB: bytes: ByteBuffer -> StateFB
 
@@ -1610,9 +1372,71 @@ type StringFBConstructor =
   abstract AddValue: builder: FlatBufferBuilder * value: Offset<string> -> unit
   abstract EndStringFB: builder: FlatBufferBuilder -> Offset<string>
   abstract GetRootAsStringFB: bytes: ByteBuffer -> StringFB
+  abstract CreateStringFB: builder:FlatBufferBuilder * Offset<string> -> Offset<StringFB>
   abstract Create: unit -> StringFB
 
 let StringFB: StringFBConstructor = failwith "JS only"
+
+//  ____              _     _      _____ ____
+// |  _ \  ___  _   _| |__ | | ___|  ___| __ )
+// | | | |/ _ \| | | | '_ \| |/ _ \ |_  |  _ \
+// | |_| | (_) | |_| | |_) | |  __/  _| | |_) |
+// |____/ \___/ \__,_|_.__/|_|\___|_|   |____/
+
+type DoubleFB =
+  abstract Value: double
+
+type DoubleFBConstructor =
+  abstract prototype: DoubleFB with get, set
+  abstract StartDoubleFB: builder: FlatBufferBuilder -> unit
+  abstract AddValue: builder: FlatBufferBuilder * value: double -> unit
+  abstract EndDoubleFB: builder: FlatBufferBuilder -> Offset<DoubleFB>
+  abstract GetRootAsDoubleFB: bytes: ByteBuffer -> DoubleFB
+  abstract CreateDoubleFB: builder:FlatBufferBuilder * double -> Offset<DoubleFB>
+  abstract Create: unit -> DoubleFB
+
+let DoubleFB: DoubleFBConstructor = failwith "JS only"
+
+//  ____              _ _____ ____
+// | __ )  ___   ___ | |  ___| __ )
+// |  _ \ / _ \ / _ \| | |_  |  _ \
+// | |_) | (_) | (_) | |  _| | |_) |
+// |____/ \___/ \___/|_|_|   |____/
+
+type BoolFB =
+  abstract Value: bool
+
+type BoolFBConstructor =
+  abstract prototype: BoolFB with get, set
+  abstract StartBoolFB: builder: FlatBufferBuilder -> unit
+  abstract AddValue: builder: FlatBufferBuilder * value: bool -> unit
+  abstract EndBoolFB: builder: FlatBufferBuilder -> Offset<BoolFB>
+  abstract GetRootAsBoolFB: bytes: ByteBuffer -> BoolFB
+  abstract CreateBoolFB: builder:FlatBufferBuilder * bool -> Offset<BoolFB>
+  abstract Create: unit -> BoolFB
+
+let BoolFB: BoolFBConstructor = failwith "JS only"
+
+//  ____        _       _____ ____
+// | __ ) _   _| |_ ___|  ___| __ )
+// |  _ \| | | | __/ _ \ |_  |  _ \
+// | |_) | |_| | ||  __/  _| | |_) |
+// |____/ \__, |\__\___|_|   |____/
+//        |___/
+
+type ByteFB =
+  abstract Value: string
+
+type ByteFBConstructor =
+  abstract prototype: ByteFB with get, set
+  abstract StartByteFB: builder: FlatBufferBuilder -> unit
+  abstract AddValue: builder: FlatBufferBuilder * value: Offset<string> -> unit
+  abstract EndByteFB: builder: FlatBufferBuilder -> Offset<ByteFB>
+  abstract GetRootAsByteFB: bytes: ByteBuffer -> ByteFB
+  abstract CreateByteFB: builder:FlatBufferBuilder * Offset<string> -> Offset<ByteFB>
+  abstract Create: unit -> ByteFB
+
+let ByteFB: ByteFBConstructor = failwith "JS only"
 
 //     _          _    _        _   _
 //    / \   _ __ (_)  / \   ___| |_(_) ___  _ __
@@ -1645,7 +1469,7 @@ type StateMachinePayloadFBConstructor =
   abstract CueFB: StateMachinePayloadFB
   abstract CueListFB: StateMachinePayloadFB
   abstract PinFB: StateMachinePayloadFB
-  abstract PatchFB: StateMachinePayloadFB
+  abstract PinGroupFB: StateMachinePayloadFB
   abstract RaftMemberFB: StateMachinePayloadFB
   abstract UserFB: StateMachinePayloadFB
   abstract SessionFB: StateMachinePayloadFB
@@ -1665,7 +1489,7 @@ type StateMachineFB =
   abstract CueFB: CueFB
   abstract CueListFB: CueListFB
   abstract PinFB: PinFB
-  abstract PatchFB: PatchFB
+  abstract PinGroupFB: PinGroupFB
   abstract RaftMemberFB: RaftMemberFB
   abstract UserFB: UserFB
   abstract SessionFB: SessionFB

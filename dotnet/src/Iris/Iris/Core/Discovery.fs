@@ -73,7 +73,7 @@ type DiscoveredService =
       | ServiceType.Raft -> "Raft"
       | ServiceType.Http -> "Http"
       | ServiceType.WebSocket -> "WebSocket"
-      | ServiceType.Other name -> name 
+      | ServiceType.Other name -> name
       |> builder.CreateString
 
     let protocol =
@@ -110,12 +110,12 @@ type DiscoveredService =
     DiscoveredServiceFB.EndDiscoveredServiceFB(builder)
 
   static member FromFB(fb: DiscoveredServiceFB) =
-    either {      
+    either {
       let! protocol =
         match fb.Type with
         | "IPv4" -> IPProtocol.IPv4 |> Right
         | "IPv6" -> IPProtocol.IPv6 |> Right
-        | other  -> Other("Unknown protocol: " + other, "Discovery.fromFB") |> Left 
+        | other  -> Other("Unknown protocol: " + other, "Discovery.fromFB") |> Left
 
       let! metadata =
         try
@@ -130,7 +130,6 @@ type DiscoveredService =
         for i = 0 to fb.AddressListLength do
           match ls with
           | Right addresses ->
-            let address = fb.AddressList(i)
             match fb.AddressList(i) |> IpAddress.TryParse with
             | Right address -> ls <- Right <| address::addresses
             | Left err -> ls <- Left err

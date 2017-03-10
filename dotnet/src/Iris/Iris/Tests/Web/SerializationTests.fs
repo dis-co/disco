@@ -14,6 +14,8 @@ module SerializationTests =
 
   let rand = new System.Random()
 
+  let mk() = Id.Create()
+
   let mkBytes _ =
     let num = rand.Next(3, 10)
     let bytes = JS.Uint8Array.Create(JS.ArrayBuffer.Create(float num))
@@ -29,38 +31,36 @@ module SerializationTests =
     IrisProject.Empty
 
   let pins _ =
-    [| Pin.Bang      (Id.Create(), "Bang",      Id.Create(), mktags (), [|{ Index = 9u; Value = true            }|])
-    ; Pin.Toggle    (Id.Create(), "Toggle",    Id.Create(), mktags (), [|{ Index = 8u; Value = true            }|])
-    ; Pin.String    (Id.Create(), "string",    Id.Create(), mktags (), [|{ Index = 3u; Value = "one"           }|])
-    ; Pin.MultiLine (Id.Create(), "multiline", Id.Create(), mktags (), [|{ Index = 2u; Value = "two"           }|])
-    ; Pin.FileName  (Id.Create(), "filename",  Id.Create(), mktags (), "haha", [|{ Index = 1u; Value = "three" }|])
-    ; Pin.Directory (Id.Create(), "directory", Id.Create(), mktags (), "hmmm", [|{ Index = 6u; Value = "four"  }|])
-    ; Pin.Url       (Id.Create(), "url",       Id.Create(), mktags (), [|{ Index = 4u; Value = "five"          }|])
-    ; Pin.IP        (Id.Create(), "ip",        Id.Create(), mktags (), [|{ Index = 5u; Value = "six"           }|])
-    ; Pin.Float     (Id.Create(), "float",     Id.Create(), mktags (), [|{ Index = 0u; Value = 3.0             }|])
-    ; Pin.Double    (Id.Create(), "double",    Id.Create(), mktags (), [|{ Index = 0u; Value = double 3.0      }|])
-    ; Pin.Bytes     (Id.Create(), "bytes",     Id.Create(), mktags (), [|{ Index = 0u; Value = mkBytes ()      }|])
-    ; Pin.Color     (Id.Create(), "rgba",      Id.Create(), mktags (), [|{ Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
-    ; Pin.Color     (Id.Create(), "hsla",      Id.Create(), mktags (), [|{ Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
-    ; Pin.Enum      (Id.Create(), "enum",      Id.Create(), mktags (), [|{ Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|] , [|{ Index = 0u; Value = { Key = "one"; Value = "two" }}|])
+    [| Pin.Bang      (mk(), "Bang",      mk(), mktags (), [| true  |])
+    ;  Pin.Toggle    (mk(), "Toggle",    mk(), mktags (), [| true  |])
+    ;  Pin.String    (mk(), "string",    mk(), mktags (), [| "one" |])
+    ;  Pin.MultiLine (mk(), "multiline", mk(), mktags (), [| "two" |])
+    ;  Pin.FileName  (mk(), "filename",  mk(), mktags (), "haha", [| "three" |])
+    ;  Pin.Directory (mk(), "directory", mk(), mktags (), "hmmm", [| "four"  |])
+    ;  Pin.Url       (mk(), "url",       mk(), mktags (), [| "five" |])
+    ;  Pin.IP        (mk(), "ip",        mk(), mktags (), [| "six"  |])
+    ;  Pin.Number    (mk(), "number",    mk(), mktags (), [| double 3.0 |])
+    ;  Pin.Bytes     (mk(), "bytes",     mk(), mktags (), [| mkBytes () |])
+    ;  Pin.Color     (mk(), "rgba",      mk(), mktags (), [| RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } |])
+    ;  Pin.Color     (mk(), "hsla",      mk(), mktags (), [| HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } |])
+    ;  Pin.Enum      (mk(), "enum",      mk(), mktags (), [| { Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|] , [| { Key = "one"; Value = "two" } |])
     |]
 
   let mkPin _ =
-    let slice : StringSliceD = { Index = 0u; Value = "hello" }
-    Pin.String(Id.Create(), "url input", Id.Create(), [| |], [| slice |])
+    Pin.String(Id.Create(), "url input", Id.Create(), [| |], [| "hello" |])
 
   let mkSlices() =
-    BoolSlices(Id.Create(), [|{Index=1u; Value=true}|])
+    BoolSlices(Id.Create(), [| true; false; true; true; false |])
 
   let mkCue _ : Cue =
     { Id = Id.Create(); Name = "Cue 1"; Pins = pins () }
 
-  let mkPatch _ : Patch =
+  let mkPinGroup _ : PinGroup =
     let pins = pins () |> Array.map toPair |> Map.ofArray
-    { Id = Id.Create(); Name = "Patch 3"; Pins = pins }
+    { Id = Id.Create(); Name = "PinGroup 3"; Pins = pins }
 
   let mkCueList _ : CueList =
-    { Id = Id.Create(); Name = "Patch 3"; Cues = [| mkCue (); mkCue () |] }
+    { Id = Id.Create(); Name = "PinGroup 3"; Cues = [| mkCue (); mkCue () |] }
 
   let mkUser _ =
     { Id = Id.Create()
@@ -95,7 +95,7 @@ module SerializationTests =
 
   let mkState _ =
     { Project  = mkProject ()
-    ; Patches  = mkPatch   () |> fun (patch: Patch) -> Map.ofArray [| (patch.Id, patch) |]
+    ; PinGroups  = mkPinGroup   () |> fun (group: PinGroup) -> Map.ofArray [| (group.Id, group) |]
     ; Cues     = mkCue     () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
     ; CueLists = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
     ; Sessions = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
@@ -126,10 +126,10 @@ module SerializationTests =
       equals cuelist recuelist
       finish()
 
-    test "Validate Patch Serialization" <| fun finish ->
-      let patch : Patch = mkPatch ()
-      let repatch = patch |> Binary.encode |> Binary.decode |> Either.get
-      equals patch repatch
+    test "Validate PinGroup Serialization" <| fun finish ->
+      let group : PinGroup = mkPinGroup ()
+      let regroup = group |> Binary.encode |> Binary.decode |> Either.get
+      equals group regroup
       finish()
 
     test "Validate Session Serialization" <| fun finish ->
@@ -150,16 +150,14 @@ module SerializationTests =
       finish ()
 
     test "Validate Slice Serialization" <| fun finish ->
-      [| BoolSlice     { Index = 0u; Value = true    }
-      ; StringSlice   { Index = 0u; Value = "hello" }
-      ; IntSlice      { Index = 0u; Value = 1234    }
-      ; FloatSlice    { Index = 0u; Value = 1234.0  }
-      ; DoubleSlice   { Index = 0u; Value = 1234.0  }
-      ; ByteSlice     { Index = 0u; Value = mkBytes () }
-      ; EnumSlice     { Index = 0u; Value = { Key = "one"; Value = "two" }}
-      ; ColorSlice    { Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }
-      ; ColorSlice    { Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }
-      ; CompoundSlice { Index = 0u; Value = pins () } |]
+      [| BoolSlice    (0u, true    )
+      ; StringSlice   (0u, "hello" )
+      ; NumberSlice   (0u, 1234.0  )
+      ; ByteSlice     (0u, mkBytes ())
+      ; EnumSlice     (0u, { Key = "one"; Value = "two" })
+      ; ColorSlice    (0u, RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy })
+      ; ColorSlice    (0u, HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy })
+      |]
       |> Array.iter
         (fun slice ->
           let reslice = slice |> Binary.encode |> Binary.decode |> Either.get
@@ -167,16 +165,14 @@ module SerializationTests =
       finish()
 
     test "Validate Slices Serialization" <| fun finish ->
-      [| BoolSlices     (Id.Create(), [|{ Index = 0u; Value = true    }|])
-      ; StringSlices   (Id.Create(), [|{ Index = 0u; Value = "hello" }|])
-      ; IntSlices      (Id.Create(), [|{ Index = 0u; Value = 1234    }|])
-      ; FloatSlices    (Id.Create(), [|{ Index = 0u; Value = 1234.0  }|])
-      ; DoubleSlices   (Id.Create(), [|{ Index = 0u; Value = 1234.0  }|])
-      ; ByteSlices     (Id.Create(), [|{ Index = 0u; Value = mkBytes () }|])
-      ; EnumSlices     (Id.Create(), [|{ Index = 0u; Value = { Key = "one"; Value = "two" }}|])
-      ; ColorSlices    (Id.Create(), [|{ Index = 0u; Value = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } }|])
-      ; ColorSlices    (Id.Create(), [|{ Index = 0u; Value = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } }|])
-      ; CompoundSlices (Id.Create(), [|{ Index = 0u; Value = pins () }|]) |]
+      [| BoolSlices    (mk(), [| true    |])
+      ; StringSlices   (mk(), [| "hello" |])
+      ; NumberSlices   (mk(), [| 1234.0  |])
+      ; ByteSlices     (mk(), [| mkBytes () |])
+      ; EnumSlices     (mk(), [| { Key = "one"; Value = "two" } |])
+      ; ColorSlices    (mk(), [| RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } |])
+      ; ColorSlices    (mk(), [| HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } |])
+      |]
       |> Array.iter
         (fun slices ->
           let reslices = slices |> Binary.encode |> Binary.decode |> Either.get
@@ -185,14 +181,6 @@ module SerializationTests =
 
     test "Validate Pin Serialization" <| fun finish ->
       Array.iter check (pins ())
-
-      let compound = Pin.Compound(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = pins () }|])
-      check compound
-
-      // nested compound :P
-      let nested = Pin.Compound(Id.Create(), "compound",  Id.Create(), mktags (), [|{ Index = 0u; Value = [| compound |] }|])
-      check nested
-
       finish()
 
     test "Validate State Serialization" <| fun finish ->
@@ -220,11 +208,11 @@ module SerializationTests =
       ; AddUser       <| mkUser ()
       ; UpdateUser    <| mkUser ()
       ; RemoveUser    <| mkUser ()
-      ; AddPatch      <| mkPatch ()
-      ; UpdatePatch   <| mkPatch ()
-      ; RemovePatch   <| mkPatch ()
+      ; AddPinGroup      <| mkPinGroup ()
+      ; UpdatePinGroup   <| mkPinGroup ()
+      ; RemovePinGroup   <| mkPinGroup ()
       ; AddClient     <| mkClient ()
-      ; UpdateSlices  <| mkSlices ()      
+      ; UpdateSlices  <| mkSlices ()
       ; UpdateClient  <| mkClient ()
       ; RemoveClient  <| mkClient ()
       ; AddPin        <| mkPin ()

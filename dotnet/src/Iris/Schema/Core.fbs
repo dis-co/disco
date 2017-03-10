@@ -50,6 +50,18 @@ table StringFB {
      Value: string;
 }
 
+table DoubleFB {
+     Value: double;
+}
+
+table BoolFB {
+     Value: bool;
+}
+
+table ByteFB {
+     Value: string;
+}
+
 //  _                _____                 _
 // | |    ___   __ _| ____|_   _____ _ __ | |_
 // | |   / _ \ / _` |  _| \ \ / / _ \ '_ \| __|
@@ -74,11 +86,6 @@ table LogEventFB {
 // |____/|_|_|\___\___|
 
 enum BehaviorFB:ushort {
-     ToggleFB = 0,
-     BangFB = 1
-}
-
-enum StringTypeFB:ushort {
      SimpleFB = 0,
      MultiLineFB = 1,
      FileNameFB = 2,
@@ -87,44 +94,9 @@ enum StringTypeFB:ushort {
      IPFB = 5
 }
 
-table StringSliceFB {
-      Index: uint;
-      Value: string;
-}
-
-table IntSliceFB {
-      Index: uint;
-      Value: int;
-}
-
-table FloatSliceFB {
-      Index: uint;
-      Value: float;
-}
-
-table DoubleSliceFB {
-      Index: uint;
-      Value: double;
-}
-
-table BoolSliceFB {
-      Index: uint;
-      Value: bool;
-}
-
-table ByteSliceFB {
-      Index: uint;
-      Value: string;
-}
-
 table EnumPropertyFB {
       Key: string;
       Value: string;
-}
-
-table EnumSliceFB {
-      Index: uint;
-      Value: EnumPropertyFB;
 }
 
 table RGBAValueFB {
@@ -150,35 +122,38 @@ table ColorSpaceFB {
       Value: ColorSpaceTypeFB;
 }
 
-table ColorSliceFB {
-      Index: uint;
-      Value: ColorSpaceFB;
-}
-
-table CompoundSliceFB {
-      Index: uint;
-      Value: [PinFB];
-}
-
 union SliceTypeFB {
-      StringSliceFB,
-      IntSliceFB,
-      FloatSliceFB,
-      DoubleSliceFB,
-      BoolSliceFB,
-      ByteSliceFB,
-      EnumSliceFB,
-      ColorSliceFB,
-      CompoundSliceFB
+      StringFB,
+      DoubleFB,
+      BoolFB,
+      ByteFB,
+      EnumPropertyFB,
+      ColorSpaceFB,
 }
 
 table SliceFB {
+      Index: uint;
       Slice: SliceTypeFB;
 }
 
 table SlicesFB {
       Id: string;
       Slices: [SliceFB];
+}
+
+enum ConnectionDirectionFB:ushort {
+      InputFB = 0,
+      OutputFB = 1,
+}
+
+enum VecSizeTypeFB:ushort {
+      DynamicFB = 0,
+      FixedFB = 1,
+}
+
+table VecSizeFB {
+      Type: VecSizeTypeFB;
+      Size: ushort;
 }
 
 //  ____  _
@@ -190,104 +165,84 @@ table SlicesFB {
 table StringPinFB {
       Id         : string;
       Name       : string;
-      Patch      : string;
+      PinGroup   : string;
       Tags       : [string];
-      StringType : StringTypeFB;
-      FileMask   : string;
+      Direction  : ConnectionDirectionFB;
+      VecSize    : VecSizeFB;
+      Behavior   : BehaviorFB;
       MaxChars   : int;
-      Slices     : [StringSliceFB];
+      Labels     : [string];
+      Values     : [string];
 }
 
-table IntPinFB {
+table NumberPinFB {
       Id         : string;
       Name       : string;
-      Patch      : string;
+      PinGroup   : string;
       Tags       : [string];
-      VecSize    : uint;
-      Min        : int;
-      Max        : int;
-      Unit       : string;
-      Slices     : [IntSliceFB];
-}
-
-table FloatPinFB {
-      Id         : string;
-      Name       : string;
-      Patch      : string;
-      Tags       : [string];
-      VecSize    : uint;
       Min        : int;
       Max        : int;
       Unit       : string;
       Precision  : uint;
-      Slices     : [FloatSliceFB];
-}
-
-table DoublePinFB {
-      Id         : string;
-      Name       : string;
-      Patch      : string;
-      Tags       : [string];
-      VecSize    : uint;
-      Min        : int;
-      Max        : int;
-      Unit       : string;
-      Precision  : uint;
-      Slices     : [DoubleSliceFB];
+      Direction  : ConnectionDirectionFB;
+      VecSize    : VecSizeFB;
+      Labels     : [string];
+      Values     : [double];
 }
 
 table BoolPinFB {
       Id         : string;
       Name       : string;
-      Patch      : string;
+      PinGroup   : string;
       Tags       : [string];
-      Behavior   : BehaviorFB;
-      Slices     : [BoolSliceFB];
+      IsTrigger  : bool;
+      Direction  : ConnectionDirectionFB;
+      VecSize    : VecSizeFB;
+      Labels     : [string];
+      Values     : [bool];
 }
 
 table BytePinFB {
       Id         : string;
       Name       : string;
-      Patch      : string;
+      PinGroup   : string;
       Tags       : [string];
-      Slices     : [ByteSliceFB];
+      Direction  : ConnectionDirectionFB;
+      VecSize    : VecSizeFB;
+      Labels     : [string];
+      Values     : [string];
 }
 
 table EnumPinFB {
       Id         : string;
       Name       : string;
-      Patch      : string;
+      PinGroup   : string;
       Tags       : [string];
       Properties : [EnumPropertyFB];
-      Slices     : [EnumSliceFB];
+      Direction  : ConnectionDirectionFB;
+      VecSize    : VecSizeFB;
+      Labels     : [string];
+      Values     : [EnumPropertyFB];
 }
 
 table ColorPinFB {
       Id         : string;
       Name       : string;
-      Patch      : string;
+      PinGroup   : string;
       Tags       : [string];
-      Slices     : [ColorSliceFB];
-}
-
-table CompoundPinFB {
-      Id         : string;
-      Name       : string;
-      Patch      : string;
-      Tags       : [string];
-      Slices     : [CompoundSliceFB];
+      VecSize    : VecSizeFB;
+      Direction  : ConnectionDirectionFB;
+      Labels     : [string];
+      Values     : [ColorSpaceFB];
 }
 
 union PinTypeFB {
       StringPinFB,
-      IntPinFB,
-      FloatPinFB,
-      DoublePinFB,
+      NumberPinFB,
       BoolPinFB,
       BytePinFB,
       EnumPinFB,
       ColorPinFB,
-      CompoundPinFB
 }
 
 table PinFB {
@@ -300,7 +255,7 @@ table PinFB {
 // |  __/ (_| | || (__| | | |
 // |_|   \__,_|\__\___|_| |_|
 
-table PatchFB {
+table PinGroupFB {
       Id:   string;
       Name: string;
       Pins: [PinFB];
@@ -541,7 +496,7 @@ table ProjectFB {
 
 table StateFB {
       Project:  ProjectFB;
-      Patches:  [PatchFB];
+      PinGroups:  [PinGroupFB];
       Cues:     [CueFB];
       CueLists: [CueListFB];
       Sessions: [SessionFB];
@@ -585,7 +540,7 @@ union StateMachinePayloadFB {
       CueFB,
       CueListFB,
       PinFB,
-      PatchFB,
+      PinGroupFB,
       IrisClientFB,
       RaftMemberFB,
       UserFB,

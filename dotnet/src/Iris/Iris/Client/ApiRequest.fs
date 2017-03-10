@@ -111,28 +111,28 @@ type ClientApiRequest =
         ClientApiRequestFB.AddParameter(builder, offset.Value)
         ClientApiRequestFB.EndClientApiRequestFB(builder)
 
-      // PATCH
-      | AddPatch    patch ->
-        let offset = patch.ToOffset(builder)
+      // GROUP
+      | AddPinGroup    group ->
+        let offset = group.ToOffset(builder)
         ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddPatchFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PatchFB)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddPinGroupFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PinGroupFB)
         ClientApiRequestFB.AddParameter(builder, offset.Value)
         ClientApiRequestFB.EndClientApiRequestFB(builder)
 
-      | UpdatePatch patch ->
-        let offset = patch.ToOffset(builder)
+      | UpdatePinGroup group ->
+        let offset = group.ToOffset(builder)
         ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdatePatchFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PatchFB)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdatePinGroupFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PinGroupFB)
         ClientApiRequestFB.AddParameter(builder, offset.Value)
         ClientApiRequestFB.EndClientApiRequestFB(builder)
 
-      | RemovePatch patch ->
-        let offset = patch.ToOffset(builder)
+      | RemovePinGroup group ->
+        let offset = group.ToOffset(builder)
         ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemovePatchFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PatchFB)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemovePinGroupFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PinGroupFB)
         ClientApiRequestFB.AddParameter(builder, offset.Value)
         ClientApiRequestFB.EndClientApiRequestFB(builder)
 
@@ -393,44 +393,44 @@ type ClientApiRequest =
     // |  __/ (_| | || (__| | | |
     // |_|   \__,_|\__\___|_| |_|
 
-    | ClientApiCommandFB.AddPatchFB ->
+    | ClientApiCommandFB.AddPinGroupFB ->
       either {
-        let! patch =
-          let patchish = fb.Parameter<PatchFB>()
-          if patchish.HasValue then
-            let value = patchish.Value
-            Patch.FromFB value
+        let! group =
+          let groupish = fb.Parameter<PinGroupFB>()
+          if groupish.HasValue then
+            let value = groupish.Value
+            PinGroup.FromFB value
           else
-            "Empty PatchFB payload"
+            "Empty PinGroupFB payload"
             |> Error.asParseError "ClientApiRequest.FromFB"
             |> Either.fail
-        return ClientApiRequest.Update (AddPatch patch)
+        return ClientApiRequest.Update (AddPinGroup group)
       }
-    | ClientApiCommandFB.UpdatePatchFB ->
+    | ClientApiCommandFB.UpdatePinGroupFB ->
       either {
-        let! patch =
-          let patchish = fb.Parameter<PatchFB>()
-          if patchish.HasValue then
-            let value = patchish.Value
-            Patch.FromFB value
+        let! group =
+          let groupish = fb.Parameter<PinGroupFB>()
+          if groupish.HasValue then
+            let value = groupish.Value
+            PinGroup.FromFB value
           else
-            "Empty PatchFB payload"
+            "Empty PinGroupFB payload"
             |> Error.asParseError "ClientApiRequest.FromFB"
             |> Either.fail
-        return ClientApiRequest.Update (UpdatePatch patch)
+        return ClientApiRequest.Update (UpdatePinGroup group)
       }
-    | ClientApiCommandFB.RemovePatchFB ->
+    | ClientApiCommandFB.RemovePinGroupFB ->
       either {
-        let! patch =
-          let patchish = fb.Parameter<PatchFB>()
-          if patchish.HasValue then
-            let value = patchish.Value
-            Patch.FromFB value
+        let! group =
+          let groupish = fb.Parameter<PinGroupFB>()
+          if groupish.HasValue then
+            let value = groupish.Value
+            PinGroup.FromFB value
           else
-            "Empty PatchFB payload"
+            "Empty PinGroupFB payload"
             |> Error.asParseError "ClientApiRequest.FromFB"
             |> Either.fail
-        return ClientApiRequest.Update (RemovePatch patch)
+        return ClientApiRequest.Update (RemovePinGroup group)
       }
 
     //  ____  _
@@ -811,25 +811,25 @@ type ServerApiRequest =
     // |  __/ (_| | || (__| | | |
     // |_|   \__,_|\__\___|_| |_|
 
-    | Update (AddPatch patch) ->
-      let offset = patch.ToOffset(builder)
+    | Update (AddPinGroup group) ->
+      let offset = group.ToOffset(builder)
       ServerApiRequestFB.StartServerApiRequestFB(builder)
-      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.AddPatchFB)
-      ServerApiRequestFB.AddParameterType(builder, ParameterFB.PatchFB)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.AddPinGroupFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.PinGroupFB)
       ServerApiRequestFB.AddParameter(builder, offset.Value)
       ServerApiRequestFB.EndServerApiRequestFB(builder)
-    | Update (UpdatePatch patch) ->
-      let offset = patch.ToOffset(builder)
+    | Update (UpdatePinGroup group) ->
+      let offset = group.ToOffset(builder)
       ServerApiRequestFB.StartServerApiRequestFB(builder)
-      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.UpdatePatchFB)
-      ServerApiRequestFB.AddParameterType(builder, ParameterFB.PatchFB)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.UpdatePinGroupFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.PinGroupFB)
       ServerApiRequestFB.AddParameter(builder, offset.Value)
       ServerApiRequestFB.EndServerApiRequestFB(builder)
-    | Update (RemovePatch patch) ->
-      let offset = patch.ToOffset(builder)
+    | Update (RemovePinGroup group) ->
+      let offset = group.ToOffset(builder)
       ServerApiRequestFB.StartServerApiRequestFB(builder)
-      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.RemovePatchFB)
-      ServerApiRequestFB.AddParameterType(builder, ParameterFB.PatchFB)
+      ServerApiRequestFB.AddCommand(builder, ServerApiCommandFB.RemovePinGroupFB)
+      ServerApiRequestFB.AddParameterType(builder, ParameterFB.PinGroupFB)
       ServerApiRequestFB.AddParameter(builder, offset.Value)
       ServerApiRequestFB.EndServerApiRequestFB(builder)
 
@@ -1007,54 +1007,54 @@ type ServerApiRequest =
     // |  __/ (_| | || (__| | | |
     // |_|   \__,_|\__\___|_| |_|
 
-    | ServerApiCommandFB.AddPatchFB ->
+    | ServerApiCommandFB.AddPinGroupFB ->
       match fb.ParameterType with
-      | ParameterFB.PatchFB ->
-        let patchish = fb.Parameter<PatchFB>()
-        if patchish.HasValue then
+      | ParameterFB.PinGroupFB ->
+        let groupish = fb.Parameter<PinGroupFB>()
+        if groupish.HasValue then
           either {
-            let value = patchish.Value
-            let! patch = Patch.FromFB(value)
-            return ServerApiRequest.Update(AddPatch patch)
+            let value = groupish.Value
+            let! group = PinGroup.FromFB(value)
+            return ServerApiRequest.Update(AddPinGroup group)
           }
         else
-          "Empty PatchFB Parameter in ServerApiRequest"
+          "Empty PinGroupFB Parameter in ServerApiRequest"
           |> Error.asClientError "ServerApiRequest.FromFB"
           |> Either.fail
       | x ->
         sprintf "Wrong ParameterType in ServerApiRequest: %A" x
         |> Error.asClientError "ServerApiRequest.FromFB"
         |> Either.fail
-    | ServerApiCommandFB.UpdatePatchFB ->
+    | ServerApiCommandFB.UpdatePinGroupFB ->
       match fb.ParameterType with
-      | ParameterFB.PatchFB ->
-        let patchish = fb.Parameter<PatchFB>()
-        if patchish.HasValue then
+      | ParameterFB.PinGroupFB ->
+        let groupish = fb.Parameter<PinGroupFB>()
+        if groupish.HasValue then
           either {
-            let value = patchish.Value
-            let! patch = Patch.FromFB(value)
-            return ServerApiRequest.Update(UpdatePatch patch)
+            let value = groupish.Value
+            let! group = PinGroup.FromFB(value)
+            return ServerApiRequest.Update(UpdatePinGroup group)
           }
         else
-          "Empty PatchFB Parameter in ServerApiRequest"
+          "Empty PinGroupFB Parameter in ServerApiRequest"
           |> Error.asClientError "ServerApiRequest.FromFB"
           |> Either.fail
       | x ->
         sprintf "Wrong ParameterType in ServerApiRequest: %A" x
         |> Error.asClientError "ServerApiRequest.FromFB"
         |> Either.fail
-    | ServerApiCommandFB.RemovePatchFB ->
+    | ServerApiCommandFB.RemovePinGroupFB ->
       match fb.ParameterType with
-      | ParameterFB.PatchFB ->
-        let patchish = fb.Parameter<PatchFB>()
-        if patchish.HasValue then
+      | ParameterFB.PinGroupFB ->
+        let groupish = fb.Parameter<PinGroupFB>()
+        if groupish.HasValue then
           either {
-            let value = patchish.Value
-            let! patch = Patch.FromFB(value)
-            return ServerApiRequest.Update(RemovePatch patch)
+            let value = groupish.Value
+            let! group = PinGroup.FromFB(value)
+            return ServerApiRequest.Update(RemovePinGroup group)
           }
         else
-          "Empty PatchFB Parameter in ServerApiRequest"
+          "Empty PinGroupFB Parameter in ServerApiRequest"
           |> Error.asClientError "ServerApiRequest.FromFB"
           |> Either.fail
       | x ->
