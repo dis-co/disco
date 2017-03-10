@@ -2313,7 +2313,7 @@ and Slice =
       let slice = fb.Slice<ByteFB>()
       if slice.HasValue then
         let value = slice.Value
-        ByteSlice(fb.Index, Encoding.ASCII.GetBytes value.Value)
+        ByteSlice(fb.Index, String.decodeBase64 value.Value)
         |> Either.succeed
       else
         "Could not parse ByteSlice"
