@@ -201,6 +201,7 @@ type ColorSpaceFBConstructor =
   abstract AddValueType: builder: FlatBufferBuilder * tipe: int -> unit
   abstract EndColorSpaceFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsColorSpaceFB: buffer: ByteBuffer -> ColorSpaceFB
+  abstract Create: unit -> ColorSpaceFB
 
 let HSLAValueFB : HSLAValueFBConstructor = failwith "JS only"
 let RGBAValueFB : RGBAValueFBConstructor = failwith "JS only"
@@ -1371,6 +1372,7 @@ type StringFBConstructor =
   abstract AddValue: builder: FlatBufferBuilder * value: Offset<string> -> unit
   abstract EndStringFB: builder: FlatBufferBuilder -> Offset<string>
   abstract GetRootAsStringFB: bytes: ByteBuffer -> StringFB
+  abstract CreateStringFB: builder:FlatBufferBuilder * Offset<string> -> Offset<StringFB>
   abstract Create: unit -> StringFB
 
 let StringFB: StringFBConstructor = failwith "JS only"
@@ -1390,6 +1392,7 @@ type DoubleFBConstructor =
   abstract AddValue: builder: FlatBufferBuilder * value: double -> unit
   abstract EndDoubleFB: builder: FlatBufferBuilder -> Offset<DoubleFB>
   abstract GetRootAsDoubleFB: bytes: ByteBuffer -> DoubleFB
+  abstract CreateDoubleFB: builder:FlatBufferBuilder * double -> Offset<DoubleFB>
   abstract Create: unit -> DoubleFB
 
 let DoubleFB: DoubleFBConstructor = failwith "JS only"
@@ -1409,6 +1412,7 @@ type BoolFBConstructor =
   abstract AddValue: builder: FlatBufferBuilder * value: bool -> unit
   abstract EndBoolFB: builder: FlatBufferBuilder -> Offset<BoolFB>
   abstract GetRootAsBoolFB: bytes: ByteBuffer -> BoolFB
+  abstract CreateBoolFB: builder:FlatBufferBuilder * bool -> Offset<BoolFB>
   abstract Create: unit -> BoolFB
 
 let BoolFB: BoolFBConstructor = failwith "JS only"
@@ -1429,6 +1433,7 @@ type ByteFBConstructor =
   abstract AddValue: builder: FlatBufferBuilder * value: Offset<string> -> unit
   abstract EndByteFB: builder: FlatBufferBuilder -> Offset<ByteFB>
   abstract GetRootAsByteFB: bytes: ByteBuffer -> ByteFB
+  abstract CreateByteFB: builder:FlatBufferBuilder * Offset<string> -> Offset<ByteFB>
   abstract Create: unit -> ByteFB
 
 let ByteFB: ByteFBConstructor = failwith "JS only"

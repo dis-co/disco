@@ -184,7 +184,7 @@ type VecSize =
       match other.Split(' ') with
       | [| "fixed"; n |] ->
         try
-          let num = UInt16.Parse n
+          let num = System.Convert.ToUInt16 n
           Fixed num
         with
           | _ -> failwithf "Unable to parse %A in VecSize string %A" n str
@@ -1745,7 +1745,7 @@ and [<CustomEquality;CustomComparison>] BytePinD =
     hash <- (hash * 7) + (Array.fold (fun m t -> m + hashCode t) 0 self.Labels)
     hash <- (hash * 7) + hashCode (string self.Direction)
     hash <- (hash * 7) + hashCode (string self.VecSize)
-    hash <- (hash * 7) + (Array.fold (fun m t -> m + t.byteLength) 0 self.Values)
+    hash <- (hash * 7) + (Array.fold (fun m (t: Binary.Buffer) -> m + int t.byteLength) 0 self.Values)
     #else
     hash <- (hash * 7) + self.Id.GetHashCode()
     hash <- (hash * 7) + self.Name.GetHashCode()
@@ -1773,8 +1773,8 @@ and [<CustomEquality;CustomComparison>] BytePinD =
       let mutable contentsEqual = false
       let lengthEqual =
         #if FABLE_COMPILER
-        let mylen = Array.fold (fun m t -> m + t.byteLength) (Array.length self.Values) self.Values
-        let itlen = Array.fold (fun m t -> m + t.byteLength) (Array.length pin.Values) pin.Values
+        let mylen = Array.fold (fun m (t: Binary.Buffer) -> m + int t.byteLength) (Array.length self.Values) self.Values
+        let itlen = Array.fold (fun m (t: Binary.Buffer) -> m + int t.byteLength) (Array.length pin.Values) pin.Values
         let result = mylen = itlen
         if result then
           let mutable contents = true
@@ -1817,23 +1817,12 @@ and [<CustomEquality;CustomComparison>] BytePinD =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let encode (bytes: Binary.Buffer) =
-      #if FABLE_COMPILER
-      let mutable str = ""
-      let arr = Fable.Import.JS.Uint8Array.Create(bytes)
-      for i in 0 .. (int arr.length - 1) do
-        str <- str + Fable.Import.JS.String.fromCharCode arr.[i]
-      Fable.Import.Browser.window.btoa str
-      #else
-      Convert.ToBase64String(bytes)
-      #endif
-
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tagoffsets = Array.map builder.CreateString self.Tags
     let labeloffsets = Array.map builder.CreateString self.Labels
-    let sliceoffsets = Array.map (encode >> builder.CreateString) self.Values
+    let sliceoffsets = Array.map (String.encodeBase64 >> builder.CreateString) self.Values
     let labels = BytePinFB.CreateLabelsVector(builder, labeloffsets)
     let tags = BytePinFB.CreateTagsVector(builder, tagoffsets)
     let slices = BytePinFB.CreateValuesVector(builder, sliceoffsets)
@@ -1853,17 +1842,6 @@ and [<CustomEquality;CustomComparison>] BytePinD =
   // ** FromFB
 
   static member FromFB(fb: BytePinFB) : Either<IrisError,BytePinD> =
-    let decode (buffer: string) : Binary.Buffer =
-      #if FABLE_COMPILER
-      let binary = Fable.Import.Browser.window.atob str
-      let bytes = Fable.Import.JS.Uint8Array.Create(float binary.Length)
-      for i in 0 .. (binary.Length - 1) do
-        bytes.[i] <- charCodeAt binary i
-      bytes.buffer
-      #else
-      Convert.FromBase64String(buffer)
-      #endif
-
     either {
       let! tags = Pin.ParseTagsFB fb
       let! labels = Pin.ParseLabelsFB fb
@@ -1871,7 +1849,7 @@ and [<CustomEquality;CustomComparison>] BytePinD =
       let! direction = ConnectionDirection.FromFB fb.Direction
       let! slices =
         Pin.ParseSimpleValuesFB fb
-        |> Either.map (Array.map decode)
+        |> Either.map (Array.map String.decodeBase64)
 
       return { Id        = Id fb.Id
                Name      = fb.Name
@@ -2219,7 +2197,7 @@ and Slice =
       SliceFB.EndSliceFB(builder)
 
     | ByteSlice     (_,data) ->
-      let str = data |> Encoding.ASCII.GetString |> builder.CreateString
+      let str = data |> String.encodeBase64 |> builder.CreateString
       let offset = StringFB.CreateStringFB(builder, str)
       SliceFB.StartSliceFB(builder)
       SliceFB.AddSliceType(builder, SliceTypeFB.ByteFB)
@@ -2274,7 +2252,7 @@ and Slice =
 
     | x when x = SliceTypeFB.ByteFB ->
       let slice = ByteFB.Create() |> fb.Slice
-      ByteSlice(fb.Index,Encoding.ASCII.GetBytes slice.Value)
+      ByteSlice(fb.Index,String.decodeBase64 slice.Value)
       |> Either.succeed
 
     | x when x = SliceTypeFB.EnumPropertyFB ->
@@ -2284,7 +2262,7 @@ and Slice =
         return EnumSlice(fb.Index,prop)
       }
 
-    | x when x = SliceTypeFB.ColorSliceFB ->
+    | x when x = SliceTypeFB.ColorSpaceFB ->
       either {
         let slice = ColorSpaceFB.Create() |> fb.Slice
         let! color = ColorSpace.FromFB slice

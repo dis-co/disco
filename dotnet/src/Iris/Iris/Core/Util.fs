@@ -277,6 +277,33 @@ module String =
     then regex.Replace(payload, "_")
     else payload
 
+
+  /// *** encodeBase64
+
+  let encodeBase64 (bytes: Binary.Buffer) =
+    #if FABLE_COMPILER
+    let mutable str = ""
+    let arr = Fable.Import.JS.Uint8Array.Create(bytes)
+    for i in 0 .. (int arr.length - 1) do
+      str <- str + Fable.Import.JS.String.fromCharCode arr.[i]
+    Fable.Import.Browser.window.btoa str
+    #else
+    Convert.ToBase64String(bytes)
+    #endif
+
+  /// *** decodeBase64
+
+  let decodeBase64 (buffer: string) : Binary.Buffer =
+    #if FABLE_COMPILER
+    let binary = Fable.Import.Browser.window.atob buffer
+    let bytes = Fable.Import.JS.Uint8Array.Create(float binary.Length)
+    for i in 0 .. (binary.Length - 1) do
+      bytes.[i] <- charCodeAt binary i
+    bytes.buffer
+    #else
+    Convert.FromBase64String(buffer)
+    #endif
+
 // * Path
 
 #if !FABLE_COMPILER
