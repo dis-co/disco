@@ -256,57 +256,53 @@ Usage:
     | Add rest ->
       match rest with
       | Toggle name ->
-        Pin.Toggle(Id name,name,patchid, [| |], [| { Index = 0u; Value = false } |])
+        Pin.Toggle(Id name,name,patchid, [| |], [| false |])
         |> Some
 
       | Bang name ->
-        Pin.Bang(Id name,name,patchid, [| |], [| { Index = 0u; Value = false } |])
+        Pin.Bang(Id name,name,patchid, [| |], [| false |])
         |> Some
 
       | String name ->
-        Pin.String(Id name,name,patchid, [| |], [| { Index = 0u; Value = "" } |])
+        Pin.String(Id name,name,patchid, [| |], [| "" |])
         |> Some
 
       | Multiline name ->
-        Pin.MultiLine(Id name,name,patchid, [| |], [| { Index = 0u; Value = "" } |])
+        Pin.MultiLine(Id name,name,patchid, [| |], [| "" |])
         |> Some
 
       | File name ->
-        Pin.FileName(Id name,name,patchid, [| |], "", [| { Index = 0u; Value = "" } |])
+        Pin.FileName(Id name,name,patchid, [| |], "", [| "" |])
         |> Some
 
       | Dir name ->
-        Pin.Directory(Id name,name,patchid, [| |], "", [| { Index = 0u; Value = "" } |])
+        Pin.Directory(Id name,name,patchid, [| |], "", [| "" |])
         |> Some
 
       | Url name ->
-        Pin.Url(Id name,name,patchid, [| |], [| { Index = 0u; Value = "" } |])
+        Pin.Url(Id name,name,patchid, [| |], [| "" |])
         |> Some
 
       | IP name ->
-        Pin.IP(Id name,name,patchid, [| |], [| { Index = 0u; Value = "" } |])
+        Pin.IP(Id name,name,patchid, [| |], [| "" |])
         |> Some
 
       | Float name ->
-        Pin.Float(Id name,name,patchid, [| |], [| { Index = 0u; Value = 0.0 } |])
-        |> Some
-
-      | Double name ->
-        Pin.Double(Id name,name,patchid, [| |], [| { Index = 0u; Value = 0.0 } |])
+        Pin.Number(Id name,name,patchid, [| |], [| 0.0 |])
         |> Some
 
       | Bytes name ->
-        Pin.Bytes(Id name,name,patchid, [| |], [| { Index = 0u; Value = [| |] } |])
+        Pin.Bytes(Id name,name,patchid, [| |], [| [| |] |])
         |> Some
 
       | Color name ->
         let color = RGBA { Red = 0uy; Green = 0uy; Blue = 0uy; Alpha = 0uy }
-        Pin.Color(Id name,name,patchid, [| |], [| { Index = 0u; Value = color } |])
+        Pin.Color(Id name,name,patchid, [| |], [| color |])
         |> Some
 
       | Enum name ->
         let prop = { Key = ""; Value = "" }
-        Pin.Enum(Id name,name,patchid, [| |], [| prop |], [| { Index = 0u; Value = prop } |])
+        Pin.Enum(Id name,name,patchid, [| |], [| prop |], [| prop |])
         |> Some
       | _ -> None
     | _ -> None
@@ -327,13 +323,13 @@ Usage:
     | Right state ->
       printfn ""
       Map.iter
-        (fun _ (patch: Patch) ->
+        (fun _ (patch: PinGroup) ->
           printfn "Patch: %A" (string patch.Id)
           Map.iter
             (fun _ (pin: Pin) ->
               printfn "    id: %s name: %s type: %s" (string pin.Id) pin.Name pin.Type)
             patch.Pins)
-        state.Patches
+        state.PinGroups
       printfn ""
     | Left error ->
       Console.Error.WriteLine("error getting state in listPins: {0}", string error)
@@ -390,13 +386,13 @@ Usage:
     let pat = @"\""(.*?)\"""
     let matches = Regex.Matches(str, pat)
 
-    let out : StringSliceD array =
+    let out : string array =
       Array.zeroCreate matches.Count
 
     Seq.iteri
       (fun i _ ->
         let m = matches.[i]
-        out.[i] <- { Index = uint32 i; Value = m.Groups.[1].Value })
+        out.[i] <- m.Groups.[1].Value)
       out
 
     out
@@ -414,41 +410,37 @@ Usage:
 
     out
 
-  let private parseBoolValues (str: string) : BoolSliceD array =
+  let private parseBoolValues (str: string) : bool array =
     let parse input = try Boolean.Parse input with | _ -> false
     parseSimple parse str
-    |> Array.mapi (fun i bool -> { Index = uint32 i; Value = bool })
+    |> Array.mapi (fun i bool -> bool)
 
-  let private parseIntValues (str: string) : IntSliceD array =
-    let parse input = try int input with | _ -> 0
-    parseSimple parse str
-    |> Array.mapi (fun i num -> { Index = uint32 i; Value = num })
+//  let private parseIntValues (str: string) : IntPinD array =
+//    let parse input = try int input with | _ -> 0
+//    parseSimple parse str
+//    |> Array.mapi (fun i num -> { Index = uint32 i; Value = num })
+//
+//  let private parseFloatValues (str: string) : FloatSliceD array =
+//    let parse input = try float input with | _ -> 0.0
+//    parseSimple parse str
+//    |> Array.mapi (fun i num -> { Index = uint32 i; Value = num })
 
-  let private parseFloatValues (str: string) : FloatSliceD array =
-    let parse input = try float input with | _ -> 0.0
-    parseSimple parse str
-    |> Array.mapi (fun i num -> { Index = uint32 i; Value = num })
-
-  let private parseDoubleValues (str: string) : DoubleSliceD array =
+  let private parseDoubleValues (str: string) : double array =
     let parse input = try double input with | _ -> 0.0
     parseSimple parse str
-    |> Array.mapi (fun i num -> { Index = uint32 i; Value = num })
+    |> Array.mapi (fun i num -> num)
 
-  let private parseByteValues (str: string) : ByteSliceD array =
+  let private parseByteValues (str: string) : Binary.Buffer array =
     parseStringValues str
     |> Array.map
-      (fun thing ->
-        { Index = thing.Index
-          Value = Encoding.UTF8.GetBytes thing.Value })
+      (fun thing -> Encoding.UTF8.GetBytes thing)
 
-  let private parseColorValues (str: string) : ColorSliceD array =
+  let private parseColorValues (str: string) : ColorSpace array =
     parseStringValues str
     |> Array.map
-      (fun thing ->
-        { Index = thing.Index
-          Value = parseColor thing.Value })
+      (fun thing -> parseColor thing)
 
-  let private parseEnumValues (props: Property array) (str: string) : EnumSliceD array =
+  let private parseEnumValues (props: Property array) (str: string) : Property array =
     str.Split(' ')
     |> Array.mapi
       (fun i input ->
@@ -456,7 +448,7 @@ Usage:
           match Array.tryFind (fun (prop:Property) -> prop.Value = input) props with
           | Some property -> property
           | _ -> { Key = ""; Value = "" }
-        { Index = uint32 i; Value = prop })
+        prop)
 
   [<Literal>]
   let private PS1 = "λ: "
@@ -495,10 +487,10 @@ Usage:
     printfn "%A" pin
     printfn ""
 
-  let private loop (client: IApiClient) (initial: Map<Id,Pin>) (patch:Patch) =
+  let private loop (client: IApiClient) (initial: Map<Id,Pin>) (patch:PinGroup) =
     let mutable run = true
 
-    match client.AddPatch patch with
+    match client.AddPinGroup patch with
     | Right () -> ()
     | Left err ->
       Console.Error.WriteLine("Unable to add mock client patch: {0}",err)
@@ -570,16 +562,16 @@ Usage:
             let slices = StringSlices(data.Id, parseStringValues rest)
             updateSlices client slices
 
-          | Some (IntPin data) ->
-            let slices = IntSlices(data.Id, parseIntValues rest)
-            updateSlices client slices
+//          | Some (IntPin data) ->
+//            let slices = IntSlices(data.Id, parseIntValues rest)
+//            updateSlices client slices
 
-          | Some (FloatPin data) ->
-            let slices = FloatSlices(data.Id, parseFloatValues rest)
-            updateSlices client slices
+//          | Some (FloatPin data) ->
+//            let slices = FloatSlices(data.Id, parseFloatValues rest)
+//            updateSlices client slices
 
-          | Some (DoublePin data) ->
-            let slices = DoubleSlices(data.Id, parseDoubleValues rest)
+          | Some (NumberPin data) ->
+            let slices = NumberSlices(data.Id, parseDoubleValues rest)
             updateSlices client slices
 
           | Some (BoolPin data) ->
@@ -679,7 +671,7 @@ Usage:
 
     match result with
     | Right client ->
-      let patch : Patch =
+      let patch : PinGroup =
         { Id = patchid
           Name = "MockClient Patch"
           Pins = Map.empty }
