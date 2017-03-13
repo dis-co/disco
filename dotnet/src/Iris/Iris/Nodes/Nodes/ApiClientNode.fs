@@ -16,10 +16,10 @@ open Iris.Core
 open Iris.Client
 open Iris.Nodes
 
-// * GraphApi
+// * Api
 
 [<RequireQualifiedAccess>]
-module GraphApi =
+module Api =
 
   // ** tag
 
@@ -248,7 +248,7 @@ module GraphApi =
 // * IrisClientNode
 
 [<PluginInfo(Name="Api Client", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
-type IrisClientNode() =
+type ApiClientNode() =
 
   [<Import();DefaultValue>]
   val mutable Logger: ILogger
@@ -290,13 +290,13 @@ type IrisClientNode() =
   val mutable OutStatus: ISpread<string>
 
   let mutable initialized = false
-  let mutable state = Unchecked.defaultof<GraphApi.PluginState>
+  let mutable state = Unchecked.defaultof<Api.PluginState>
 
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if not initialized then
         let state' =
-          { GraphApi.PluginState.Create() with
+          { Api.PluginState.Create() with
               Logger = self.Logger
               InCommands = self.InCommands
               InServer = self.InServer
@@ -309,7 +309,7 @@ type IrisClientNode() =
         state <- state'
         initialized <- true
 
-      state <- GraphApi.evaluate state spreadMax
+      state <- Api.evaluate state spreadMax
 
   interface IDisposable with
     member self.Dispose() =

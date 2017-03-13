@@ -3,90 +3,65 @@ namespace VVVV.Nodes
 // * Imports
 
 open System
+open System.Web
 open System.ComponentModel.Composition
+open System.Collections.Generic
+open System.Collections.Concurrent
 open VVVV.PluginInterfaces.V1
 open VVVV.PluginInterfaces.V2
+open VVVV.PluginInterfaces.V2.Graph
 open VVVV.Utils.VColor
 open VVVV.Utils.VMath
 open VVVV.Core.Logging
 open Iris.Raft
 open Iris.Core
 open Iris.Nodes
+open Newtonsoft.Json
+open FSharpx.Functional
+
+// * Graph
 
 [<RequireQualifiedAccess>]
-module internal Graph =
-
-  //   ____                 _     ____       _       _
-  //  / ___|_ __ __ _ _ __ | |__ |  _ \ __ _| |_ ___| |__
-  // | |  _| '__/ _` | '_ \| '_ \| |_) / _` | __/ __| '_ \
-  // | |_| | | | (_| | |_) | | | |  __/ (_| | || (__| | | |
-  //  \____|_|  \__,_| .__/|_| |_|_|   \__,_|\__\___|_| |_|
-  //                 |_|
-
-  // ** PinAttributes
-
-  type PinAttributes =
-    { Id: string }
-
-  // ** NodeAttributes
-
-  type NodeAttributes =
-    { Pins: Dictionary<string,PinAttributes> }
-
-    member attrs.ToJson() : string =
-      JsonConvert.SerializeObject attrs
-
-  // ** GraphPatch
-
-  type GraphPatch =
-    { Frame: uint64
-      ParentId: int
-      ParentFileName: string
-      XmlSnippet: string }
-
-    override patch.ToString() =
-      sprintf "frame=%d parentid=%d parentfile=%s xml=%s"
-        patch.Frame
-        patch.ParentId
-        patch.ParentFileName
-        patch.XmlSnippet
-
-  // ** NodePatch
-
-  type NodePatch =
-    { FilePath: string
-      Payload: string }
+module Graph =
 
   // ** Msg
 
   [<RequireQualifiedAccess>]
   type Msg =
-    | PinAdded   of Pin                  // a new pin got added in the local VVVV instance
-    | PinRemoved of Pin                  // a pin got removed in the local VVVV instance
-    | PinUpdated of Pin                  // a remote pin got updated
-    | CallCue    of Cue
-    | Status     of ServiceStatus
-    | GraphPatch of GraphPatch
-    | Update
+    | AddPin of Pin
+    | RemovePin of Pin
 
-  let private htmlEncodePayload (raw: string) =
-    "|" + raw + "|"
-    |> HttpUtility.HtmlEncode
+  // ** PluginState
 
-  let private htmlDecodePayload (raw: string) =
-    raw.Substring(1, raw.Length - 1).Substring(0, raw.Length - 2)
-    |> HttpUtility.HtmlDecode
+  type PluginState =
+    { Frame: uint64
+      Initialized: bool
+      Events: ConcurrentQueue<obj>
+      Logger: ILogger
+      V1Host: IPluginHost
+      V2Host: IHDEHost
+      InCommands: IDiffSpread<StateMachine>
+      InDebug: ISpread<bool>
+      OutState: ISpread<State>
+      OutCommands: ISpread<StateMachine>
+      Disposables: Map<Id,IDisposable> }
 
-  let private formatNodeTagSnippet (node: INode2) (raw: string) =
-    let tmpl =
-      @"<NODE id=""{0}"">
-         <PIN pinname=""Tag"" slicecount=""1"" values=""{1}""/>
-        </NODE>"
-    String.Format(tmpl, node.ID, htmlEncodePayload raw)
+    static member Create () =
+      { Frame = 0UL
+        Initialized = false
+        Events = new ConcurrentQueue<obj>()
+        Logger = null
+        V1Host = null
+        V2Host = null
+        InCommands = null
+        InDebug = null
+        OutState = null
+        OutCommands = null
+        Disposables = Map.empty }
 
-  let private formatPatchTagSnippet (id: int) (tags: string) =
-    let tmpl = @"<PATCH id=""{0}"">{1}</PATCH>";
-    String.Format(tmpl, id, tags);
+    interface IDisposable with
+      member self.Dispose() =
+        Map.iter (konst dispose) self.Disposables
 
   // ** pin
 
@@ -103,79 +78,6 @@ module internal Graph =
       None
       node.Pins
 
-  [<Literal>]
-  let private DESCRIPTIVE_NAME_PIN = "Descriptive Name"
-
-  [<Literal>]
-  let private TAG_PIN = "Tag"
-
-  [<Literal>]
-  let private IRIS_NODE_NAME = "Iris (Iris)"
-
-  let private getIrisNode (state: PluginState) : INode2 option =
-    let mutable result = None
-    let root = state.V2Host.RootNode
-
-    let rec getImpl (node: INode2) =
-      for child in node do
-        if child.Name = IRIS_NODE_NAME then
-          result <- Some child
-        else
-          getImpl child
-
-    getImpl root
-    result
-
-  // ** createAttributes
-
-  let private createAttributes (state: PluginState) (node: INode2) =
-    match getIrisNode state with
-    | Some iris ->
-      let attrs: NodeAttributes =
-        let dict = new Dictionary<string,PinAttributes>()
-        let path = node.GetNodePath(false)
-        dict.Add("Pins", { Id = path })
-        { Pins = dict }
-
-      { Frame = state.Frame
-        ParentId = iris.Parent.ID
-        ParentFileName = iris.Parent.NodeInfo.Filename
-        XmlSnippet = formatNodeTagSnippet iris (attrs.ToJson()) }
-      |> Msg.GraphPatch
-      |> state.Events.Enqueue
-    | None -> ()
-
-    match getPinByName node TAG_PIN with
-    | Some pin ->
-      debug state "-------------------- root tag field --------------------"
-      debug state pin.[0]
-      debug state "---------------------------------------------------"
-    | _ -> ()
-
-    let attrs: NodeAttributes =
-      let dict = new Dictionary<string,PinAttributes>()
-
-      match getPinByName node DESCRIPTIVE_NAME_PIN with
-      | Some _ ->
-        // let name =
-        //   sprintf "%s -- %s"
-        //     node.Parent.Name
-        //     pin.[0]
-        let path = node.GetNodePath(false)
-        dict.Add("dn", { Id = path })
-      | None -> ()
-
-      { Pins = dict }
-
-    { Frame = state.Frame
-      ParentId = node.Parent.ID
-      ParentFileName = node.Parent.NodeInfo.Filename
-      XmlSnippet = formatNodeTagSnippet node (attrs.ToJson()) }
-    |> Msg.GraphPatch
-    |> state.Events.Enqueue
-
-    attrs
-
   // ** parseINode2
 
   let private parseINode2 (_: INode2) : Either<IrisError,Pin> =
@@ -185,57 +87,57 @@ module internal Graph =
   // ** onNodeExposed
 
   let private onNodeExposed (state: PluginState) (node: INode2) =
-    for pin in node.Pins do
-      sprintf "Pin Name: %s Value: %A" pin.Name pin.[0]
-      |> debug state
+    match parseINode2 node with
+    | Right pin -> state.Events.Enqueue (Msg.AddPin pin)
+    | Left error -> error |> string |> Util.error state
 
   // ** onNodeUnExposed
 
   let private onNodeUnExposed (state: PluginState) (node: INode2) =
-    debug state "----------------------------------------> a node was un-exposed"
-    for pin in node.Pins do
-      sprintf "Pin Name: %s Value: %A" pin.Name pin.[0]
-      |> debug state
-    debug state "----------------------------------------"
+    match parseINode2 node with
+    | Right pin -> state.Events.Enqueue (Msg.RemovePin pin)
+    | Left error ->
+      error
+      |> string
+      |> Util.error state
 
   // ** setupVvvv
 
   let private setupVvvv (state: PluginState) =
-    let onNodeAdded = new NodeEventHandler(onNodeExposed state)
-    let onNodeRemoved = new NodeEventHandler(onNodeUnExposed state)
+    let globals = Id "globals"
+    if not (Map.containsKey globals state.Disposables) then
+      let onNodeAdded = new NodeEventHandler(onNodeExposed state)
+      let onNodeRemoved = new NodeEventHandler(onNodeUnExposed state)
+      state.V2Host.ExposedNodeService.add_NodeAdded(onNodeAdded)
+      state.V2Host.ExposedNodeService.add_NodeRemoved(onNodeRemoved)
+      let disposable =
+        { new IDisposable with
+            member self.Dispose () =
+              state.V2Host.ExposedNodeService.remove_NodeAdded(onNodeAdded)
+              state.V2Host.ExposedNodeService.remove_NodeRemoved(onNodeRemoved) }
+      { state with
+          Initialized = true
+          Disposables = Map.add globals disposable state.Disposables }
+    else
+      state
 
-    state.V2Host.ExposedNodeService.add_NodeAdded(onNodeAdded)
-    state.V2Host.ExposedNodeService.add_NodeRemoved(onNodeRemoved)
+  // ** initialize
 
-    let disposable =
-      { new IDisposable with
-          member self.Dispose () =
-            state.V2Host.ExposedNodeService.remove_NodeAdded(onNodeAdded)
-            state.V2Host.ExposedNodeService.remove_NodeRemoved(onNodeRemoved) }
+  let private initialize (state: PluginState) =
+    if not state.Initialized then
+      setupVvvv state
+    else
+      state
 
-    { state with Disposables = disposable :: state.Disposables }
+  // ** processing
 
-  // ** patchGraph
-
-  let private patchGraph (state: PluginState) (patch: GraphPatch) =
-    debug state (string patch)
-
-    let patches = new Dictionary<int,NodePatch>()
-
-    if patch.Frame < state.Frame then
-      if patches.ContainsKey(patch.ParentId) then
-        let tmp = patches.[patch.ParentId].Payload + patch.XmlSnippet
-        patches.[patch.ParentId] <- { FilePath = patch.ParentFileName; Payload = tmp }
-      else
-        patches.[patch.ParentId] <- { FilePath = patch.ParentFileName; Payload = patch.XmlSnippet }
-
-      if patches.Count > 0 then
-        for KeyValue(key,value) in patches do
-          let ptc = formatPatchTagSnippet key value.Payload
-          debug state (string ptc)
-          state.V2Host.SendXMLSnippet(value.FilePath, ptc, false)
-
+  let private processing (state: PluginState) =
     state
+
+  let evaluate (state: PluginState) (_: int) =
+    state
+    |> initialize
+    |> processing
 
   // ------------  Call Graph -------------------
   //
@@ -260,6 +162,8 @@ module internal Graph =
   //    |         MkQueueJob value (Reset with current frame + 1)
   //    |
   //    Cleanup
+
+// * GraphNode
 
 [<PluginInfo(Name="Graph", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type GraphNode() =
@@ -294,22 +198,22 @@ type GraphNode() =
   val mutable OutUpdate: ISpread<bool>
 
   let mutable initialized = false
-  let mutable state = Unchecked.defaultof<GraphApi.PluginState>
+  let mutable state = Unchecked.defaultof<Graph.PluginState>
 
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if not initialized then
         let state' =
-          { GraphApi.PluginState.Create() with
+          { Graph.PluginState.Create() with
+              V1Host = self.V1Host
               V2Host = self.V2Host
               Logger = self.Logger
               InDebug = self.InDebug
-              OutState = self.OutState
-              OutStatus = self.OutStatus }
+              OutState = self.OutState }
         state <- state'
         initialized <- true
 
-      state <- GraphApi.evaluate state spreadMax
+      state <- Graph.evaluate state spreadMax
 
   interface IDisposable with
     member self.Dispose() =

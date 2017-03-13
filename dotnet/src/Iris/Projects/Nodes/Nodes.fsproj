@@ -209,8 +209,8 @@
     <Compile Include="../../Iris/Nodes/Nodes/HostGroupNode.fs">
       <Link>HostGroupNode.fs</Link>
     </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/IrisClientNode.fs">
-      <Link>IrisClientNode.fs</Link>
+    <Compile Include="../../Iris/Nodes/Nodes/ApiClientNode.fs">
+      <Link>ApiClientNode.fs</Link>
     </Compile>
     <Compile Include="../../Iris/Nodes/Nodes/MemberNode.fs">
       <Link>MemberNode.fs</Link>
@@ -262,6 +262,9 @@
     </Compile>
     <Compile Include="../../Iris/Nodes/Nodes/PinNode.fs">
       <Link>PinNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/GraphNode.fs">
+      <Link>GraphNode.fs</Link>
     </Compile>
     <!-- END NODES -->
   </ItemGroup>
