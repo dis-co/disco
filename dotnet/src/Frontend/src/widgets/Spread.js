@@ -29,19 +29,20 @@ class View extends React.Component {
   }
 
   render() {
-    var { open, rows, value }  = this.props.model;
+    var { open, name, rows, value }  = this.props.model;
     var height = open ? this.recalculateHeight(rows) : BASE_HEIGHT;
 
     return (
       <div className="iris-spread" ref={el => this.onMounted(el)}>
         <div className="iris-spread-child iris-flex-5"
           style={{ height: height }}>
-          {[<span key="0" style={{cursor: "move"}} onMouseDown={() => this.props.onDragStart()}>Size</span>]
-            .concat(rows.map((x,i) => <span key={i+1}>{x}</span>))}
+          {/*style={{cursor: "move"}} onMouseDown={() => this.props.onDragStart()*/}
+          {[<span key="0">{name}</span>]
+            .concat(rows.map((kv,i) => <span key={i+1}>{kv[0] || "Label"}</span>))}      
         </div>
-        <div className="iris-spread-child iris-flex-9" style={{ height: height}}>
-          {[<span key="0">{value}</span>]
-            .concat(rows.map((x,i) => <span key={i+1}>{value}</span>))}
+        <div className="iris-spread-child iris-flex-5" style={{ height: height}}>
+          {[<span key="0">{`${rows[0][1]} (${rows.length})`}</span>]
+            .concat(rows.map((kv,i) => <span key={i+1}>{String(kv[1])}</span>))}
         </div>
         <div className="iris-spread-child iris-spread-end" style={{ height: height - DIFF_HEIGHT}}>
           <img src="/img/more.png" height="7px"
@@ -58,10 +59,10 @@ class View extends React.Component {
 }
 
 export default class Spread {
-  constructor() {
+  constructor(info) {
     this.view = View;
     this.open = false;
-    this.rows = [1,2,3,4,5];
-    this.value = "W: 1920, H: 1080";
+    this.name = info.name;
+    this.rows = info.rows;
   }
 }

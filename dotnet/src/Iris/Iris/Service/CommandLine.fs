@@ -139,6 +139,7 @@ module CommandLine =
     | [<Mandatory;MainCommand;CliPosition(CliPosition.First)>] Cmd of SubCommand
 
     | [<EqualsAssignment>] Bind         of string
+    | [<EqualsAssignment>] Api          of uint16
     | [<EqualsAssignment>] Raft         of uint16
     | [<EqualsAssignment>] Git          of uint16
     | [<EqualsAssignment>] Ws           of uint16
@@ -154,6 +155,7 @@ module CommandLine =
           | Git     _   -> "Git server port."
           | Ws      _   -> "WebSocket port."
           | Raft    _   -> "Raft server port."
+          | Api     _   -> "Api server port."
           | Cmd     _   -> "Either one of setup, create, start, reset, user or dump."
 
   let parser = ArgumentParser.Create<CLIArguments>()
@@ -233,13 +235,15 @@ module CommandLine =
       let! git  = parameters |> tryGet "git" uint16
       let! ws   = parameters |> tryGet "ws" uint16
       let! raft = parameters |> tryGet "raft" uint16
+      let! api = parameters  |> tryGet "api" uint16
 
       let mem =
         { Member.create(machine.MachineId) with
             IpAddr  = bind
             GitPort = git
             WsPort  = ws
-            Port    = raft }
+            Port    = raft
+            ApiPort = api }
 
       let! project = buildProject machine name dir raftDir mem
 
@@ -327,6 +331,7 @@ module CommandLine =
           yield "bind", parsed.GetResult <@ Bind @>
           yield "git", parsed.GetResult <@ Git  @> |> string
           yield "ws", parsed.GetResult <@ Ws  @> |> string
+          yield "api", parsed.GetResult <@ Api  @> |> string
           yield "raft", parsed.GetResult <@ Raft  @> |> string ]
         |> dict
 

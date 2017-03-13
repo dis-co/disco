@@ -2,7 +2,7 @@ import React, { Component } from 'react'
 import Spread from "./Spread"
 import IOBox from "./IOBox"
 import domtoimage from "dom-to-image"
-import { touchesElement } from "../Util.ts"
+import { touchesElement, map } from "../Util.ts"
 
 class View extends Component {
   constructor(props) {
@@ -71,8 +71,7 @@ class View extends Component {
     });
 
     this.disposable =
-      this.props.global.subscribe("boolPins", () => {
-        debugger; 
+      this.props.global.subscribe("pinGroups", () => {
         this.forceUpdate();
       });
   }
@@ -84,19 +83,23 @@ class View extends Component {
   }  
 
   render() {
-    // var elements = this.props.model.elements;
-    var elements = this.props.global.state.boolPins.map(pin => new IOBox(pin.name, pin.value))
     return (
-      <div className="iris-compound" ref={el => this.el = el}>
-        {elements.map((model,i) => {
-          const View = model.view;
-          return (
-            <div key={i}
-              ref={el => { if (el != null) this.childNodes.set(i, el.childNodes[0]) }}>
-              <View model={model} onDragStart={() => this.startDragging(model, i)} />
-            </div>
-        )})}
-      </div>
+      <div className="iris-grapview" ref={el => this.el = el}>
+        {map(this.props.global.state.pinGroups, pinGroup => (
+          <div className="iris-pingroup">
+            <p>{pinGroup[1].Name}</p>
+            {map(pinGroup[1].Pins, (pin,i) => {
+              var model = new Spread(Iris.pinToKeyValuePairs(pin[1]));
+              const View = model.view;
+              return (
+                <div key={i}
+                  ref={el => { if (el != null) this.childNodes.set(i, el.childNodes[0]) }}>
+                  <View model={model} onDragStart={() => this.startDragging(model, i)} />
+                </div>
+              )})}
+          </div>
+        ))}
+      </div>          
     )
   }
 }
@@ -104,7 +107,7 @@ class View extends Component {
 export default class Manager {
   constructor() {
     this.view = View;
-    this.name = "COMPOUND";
+    this.name = "Graph View";
     this.layout = {
       x: 0, y: 0,
       w: 5, h: 3,
