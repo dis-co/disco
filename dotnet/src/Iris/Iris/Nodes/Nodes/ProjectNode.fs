@@ -18,7 +18,7 @@ open Iris.Nodes
 // |_|   |_|  \___// |\___|\___|\__|
 //               |__/
 
-[<PluginInfo(Name="Project", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="Project", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type ProjectNode() =
 
   [<Import();DefaultValue>]

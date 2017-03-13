@@ -18,7 +18,7 @@ open Iris.Nodes
 // |_|   |_|\__,_|\__, |_|_| |_|
 //                |___/
 
-[<PluginInfo(Name="VvvvPlugin", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="VvvvPlugin", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type VvvvPluginNode() =
 
   [<Import();DefaultValue>]

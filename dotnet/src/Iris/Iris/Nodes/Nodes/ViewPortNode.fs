@@ -17,7 +17,7 @@ open Iris.Nodes
 //   \ V / | |  __/\ V  V /|  __/ (_) | |  | |_
 //    \_/  |_|\___| \_/\_/ |_|   \___/|_|   \__|
 
-[<PluginInfo(Name="ViewPort", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="ViewPort", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type ViewPortNode() =
 
   [<Import();DefaultValue>]

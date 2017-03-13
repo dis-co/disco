@@ -181,13 +181,10 @@
     <Compile Include="..\..\Iris\Service\ApiServer.fs">
       <Link>ApiServer.fs</Link>
     </Compile>
+    <!-- NODES -->
     <Compile Include="../../Iris/Nodes/NodeUtils.fs">
       <Link>NodeUtils.fs</Link>
     </Compile>
-    <Compile Include="../../Iris/Nodes/GraphApi.fs">
-      <Link>GraphApi.fs</Link>
-    </Compile>
-    <!-- NODES -->
     <Compile Include="../../Iris/Nodes/Nodes/AudioConfigNode.fs">
       <Link>AudioConfigNode.fs</Link>
     </Compile>
@@ -212,8 +209,8 @@
     <Compile Include="../../Iris/Nodes/Nodes/HostGroupNode.fs">
       <Link>HostGroupNode.fs</Link>
     </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/IrisNode.fs">
-      <Link>IrisNode.fs</Link>
+    <Compile Include="../../Iris/Nodes/Nodes/IrisClientNode.fs">
+      <Link>IrisClientNode.fs</Link>
     </Compile>
     <Compile Include="../../Iris/Nodes/Nodes/MemberNode.fs">
       <Link>MemberNode.fs</Link>

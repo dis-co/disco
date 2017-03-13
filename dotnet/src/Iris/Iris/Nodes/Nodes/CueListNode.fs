@@ -17,7 +17,7 @@ open Iris.Nodes
 // | |__| |_| |  __/ |___| \__ \ |_
 //  \____\__,_|\___|_____|_|___/\__|
 
-[<PluginInfo(Name="CueList", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="CueList", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type CueListNode() =
 
   [<Import();DefaultValue>]

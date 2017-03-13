@@ -723,6 +723,17 @@ module ApiClient =
                   error
                   |> Either.fail
 
+              member self.Append(cmd: StateMachine) =
+                match postCommand agent (fun chan -> Msg.Request(chan, cmd)) with
+                | Right Reply.Ok -> Either.succeed ()
+                | Right other ->
+                  sprintf "Unexpected Reply from ApiAgent: %A" other
+                  |> Error.asClientError (tag "RemovePin")
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
+
               //  ____  _
               // |  _ \(_)___ _ __   ___  ___  ___
               // | | | | / __| '_ \ / _ \/ __|/ _ \

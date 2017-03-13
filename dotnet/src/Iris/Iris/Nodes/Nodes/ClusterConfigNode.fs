@@ -17,7 +17,7 @@ open Iris.Nodes
 // | |___| | |_| \__ \ ||  __/ |
 //  \____|_|\__,_|___/\__\___|_|
 
-[<PluginInfo(Name="ClusterConfig", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="ClusterConfig", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type ClusterConfigNode() =
 
   [<Import();DefaultValue>]

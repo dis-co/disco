@@ -18,7 +18,7 @@ open Iris.Nodes
 // |____/|_|___/ .__/|_|\__,_|\__, |
 //             |_|            |___/
 
-[<PluginInfo(Name="Display", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="Display", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type DisplayNode() =
 
   [<Import();DefaultValue>]

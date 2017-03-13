@@ -18,7 +18,7 @@ open Iris.Nodes
 //  \____\___/|_| |_|_| |_|\__, |
 //                         |___/
 
-[<PluginInfo(Name="Config", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="Config", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type ConfigNode() =
 
   [<Import();DefaultValue>]

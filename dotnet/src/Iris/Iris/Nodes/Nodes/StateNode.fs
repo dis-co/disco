@@ -17,7 +17,7 @@ open Iris.Nodes
 //  ___) | || (_| | ||  __/
 // |____/ \__\__,_|\__\___|
 
-[<PluginInfo(Name="State", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="State", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type StateNode() =
 
   [<Import();DefaultValue>]

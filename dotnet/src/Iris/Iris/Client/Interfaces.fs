@@ -67,3 +67,4 @@ type IApiClient =
   abstract UpdatePin: Pin -> Either<IrisError,unit>
   abstract UpdateSlices: Slices -> Either<IrisError,unit>
   abstract RemovePin: Pin -> Either<IrisError,unit>
+  abstract Append: StateMachine -> Either<IrisError,unit>

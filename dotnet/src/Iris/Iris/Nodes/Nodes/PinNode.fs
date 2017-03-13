@@ -18,7 +18,7 @@ open FSharp.Reflection
 // |  __/| | | | |
 // |_|   |_|_| |_|
 
-[<PluginInfo(Name="Pin", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="Pin", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type PinNode() =
 
   [<Import();DefaultValue>]

@@ -17,7 +17,7 @@ open Iris.Nodes
 // | |___ >  <  __/ (__| |_| | || (_| | |_) | |  __/
 // |_____/_/\_\___|\___|\__,_|\__\__,_|_.__/|_|\___|
 
-[<PluginInfo(Name="VvvvExe", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="VvvvExe", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type VvvvExeNode() =
 
   [<Import();DefaultValue>]

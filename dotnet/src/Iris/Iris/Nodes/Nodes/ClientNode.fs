@@ -17,7 +17,7 @@ open Iris.Nodes
 // | |___| | |  __/ | | | |_
 //  \____|_|_|\___|_| |_|\__|
 
-[<PluginInfo(Name="Client", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="Client", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type ClientNode() =
 
   [<Import();DefaultValue>]

@@ -141,7 +141,7 @@ type ConnectionDirection =
         |> Error.asParseError "ConnectionDirection.TryParse"
         |> Either.fail
 
-  member direction.ToOffset(builder: FlatBufferBuilder) =
+  member direction.ToOffset(_: FlatBufferBuilder) =
     match direction with
     | Input -> ConnectionDirectionFB.InputFB
     | Output -> ConnectionDirectionFB.OutputFB
@@ -588,7 +588,7 @@ type Pin =
 
   // ** static FileName
 
-  static member FileName(id, name, group, tags, filemask, values) =
+  static member FileName(id, name, group, tags, values) =
     StringPin { Id         = id
                 Name       = name
                 PinGroup   = group
@@ -602,7 +602,7 @@ type Pin =
 
   // ** static Directory
 
-  static member Directory(id, name, group, tags, filemask, values) =
+  static member Directory(id, name, group, tags, values) =
     StringPin { Id         = id
                 Name       = name
                 PinGroup   = group
