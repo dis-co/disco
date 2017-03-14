@@ -44,6 +44,12 @@ module Settings =
   [<Literal>]
   let PRECISION_PIN = "Precision"
 
+  [<Literal>]
+  let STRING_TYPE_PIN = "String Type"
+
+  [<Literal>]
+  let MAXCHAR_PIN = "Maximum Characters"
+
 // * Util
 
 [<RequireQualifiedAccess>]

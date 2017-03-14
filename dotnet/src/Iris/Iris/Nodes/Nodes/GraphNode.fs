@@ -293,6 +293,12 @@ module Graph =
     |> String.split [| ',' |]
     |> Array.map (fun v -> try Double.Parse v with | _ -> 0.0)
 
+  // ** parseStringValues
+
+  let private parseStringValues (pin: IPin2) =
+    pin.Spread
+    |> String.split [| ',' |]
+
   // ** parseMin
 
   let private parseMin (pin: IPin2) =
@@ -412,16 +418,21 @@ module Graph =
         }
     }
 
-  // ** parseValuesPins
+  // ** parseSeqWith
 
-  let private parseValuePins (pins: IPin2 seq) =
+  let private parseSeqWith (parse: IPin2 -> Either<IrisError,Pin>) (pins: IPin2 seq) =
     Seq.fold
       (fun lst pin ->
-        match parseValuePin pin with
+        match parse pin with
         | Right parsed -> parsed :: lst
         | _ -> lst)
       []
       pins
+
+  // ** parseValuesPins
+
+  let private parseValuePins (pins: IPin2 seq) =
+    parseSeqWith parseValuePin pins
 
   // ** parseValueBox
 
@@ -430,23 +441,87 @@ module Graph =
     |> visibleOutputPins
     |> parseValuePins
 
+  // ** parseStringType
+
+  let private parseStringType (pin: IPin2) =
+    either {
+      let! st = findPin Settings.STRING_TYPE_PIN pin.ParentNode.Pins
+      return! Iris.Core.Behavior.TryParse st.[0]
+    }
+
+  // ** parseMaxChars
+
+  let private parseMaxChars (pin: IPin2) =
+    either {
+      let! mc = findPin Settings.MAXCHAR_PIN pin.ParentNode.Pins
+      let! value =
+        try
+          mc.[0]
+          |> Int32.Parse
+          |> Either.succeed
+        with
+          | _ -> Either.succeed -1
+      return value
+    }
+
+  // ** parseStringPin
+
+  let private parseStringPin (pin: IPin2) =
+    either {
+      let id = parseNodePath pin
+      let dir = parseDirection pin
+      let grp = parsePinGroupId pin
+      let! st = parseStringType pin
+      let! name = parseName pin
+      let! vc = parseVecSize pin
+      let! maxchars = parseMaxChars pin
+
+      return StringPin {
+        Id = Id id
+        Name = name
+        PinGroup = grp
+        Tags = [| |]
+        Direction = dir
+        Behavior = st
+        MaxChars = maxchars
+        VecSize = vc
+        Labels = [| |]
+        Values = parseStringValues pin
+      }
+    }
+
+  // ** parseStringPins
+
+  let private parseStringPins (pins: IPin2 seq) =
+    parseSeqWith parseStringPin pins
+
+  // ** parseStringBox
+
+  let private parseStringBox (node: INode2) =
+    node.Pins
+    |> visibleOutputPins
+    |> parseStringPins
+
   // ** parseINode2
 
-  let private parseINode2 (state: PluginState) (node: INode2) : Either<IrisError,Pin list> =
-    for pin in node.Pins do
-      sprintf "name: %s direction: %A visible: %A type: %s subtype: %s value: %A"
-        pin.Name
-        pin.Direction
-        pin.Visibility
-        pin.Type
-        pin.SubType
-        pin.[0]
-      |> Util.debug state
+  let private parseINode2 (_: PluginState) (node: INode2) : Either<IrisError,Pin list> =
+    // for pin in node.Pins do
+    //   sprintf "name: %s direction: %A visible: %A type: %s subtype: %s value: %A"
+    //      pin.Name
+    //      pin.Direction
+    //      pin.Visibility
+    //      pin.Type
+    //      pin.SubType
+    //      pin.[0]
+    //    |> Util.debug state
 
     either {
       let! boxtype = IOBoxType.TryParse node.Name
       match boxtype with
-      | IOBoxType.Value -> return parseValueBox node
+      | IOBoxType.Value ->
+        return parseValueBox node
+      | IOBoxType.String ->
+        return parseStringBox node
       | _ -> return (failwith "never")
     }
 
@@ -459,7 +534,7 @@ module Graph =
       []
       pins
 
-  let private parseINode2Ids (state: PluginState) (node: INode2)  =
+  let private parseINode2Ids (_: PluginState) (node: INode2)  =
     node.Pins
     |> visibleOutputPins
     |> parsePinIds
@@ -617,32 +692,6 @@ module Graph =
   //    Cleanup
 
 // * GraphNode
-
-[<PluginInfo(Name="PinGroupTest", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
-type PinGroupTstNode() =
-
-  let groups =
-    let arr = new ResizeArray<PinGroup>()
-    arr.Add { Id = Id.Create(); Name = "Group 1"; Pins = Map.empty }
-    arr.Add { Id = Id.Create(); Name = "Group 2"; Pins = Map.empty }
-    arr
-
-  [<DefaultValue>]
-  [<Output("PinGroups")>]
-  val mutable OutPinGroups: ISpread<PinGroup>
-
-  [<DefaultValue>]
-  [<Input("On", IsSingle = true)>]
-  val mutable InOn: ISpread<bool>
-
-  interface IPluginEvaluate with
-    member self.Evaluate (spreadMax: int) : unit =
-      if self.InOn.[0] then
-        self.OutPinGroups.SliceCount <- 2
-        self.OutPinGroups.AssignFrom groups
-      else
-        self.OutPinGroups.SliceCount <- 1
-        self.OutPinGroups.AssignFrom(new ResizeArray<PinGroup>())
 
 [<PluginInfo(Name="Graph", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type GraphNode() =

@@ -39,7 +39,7 @@ type Behavior =
 
   static member TryParse (str: string) =
     match String.toLower str with
-    | "simple"    -> Right Simple
+    | "string" | "simple" -> Right Simple
     | "multiline" -> Right MultiLine
     | "filename"  -> Right FileName
     | "directory" -> Right Directory
