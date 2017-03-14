@@ -286,6 +286,68 @@ module Graph =
     |> String.split [| ',' |]
     |> Array.map (fun v -> try Boolean.Parse v with | _ -> false)
 
+  // ** parseDoubleValues
+
+  let private parseDoubleValues (pin: IPin2) : double array =
+    pin.Spread
+    |> String.split [| ',' |]
+    |> Array.map (fun v -> try Double.Parse v with | _ -> 0.0)
+
+  // ** parseMin
+
+  let private parseMin (pin: IPin2) =
+    either {
+      let! min = findPin Settings.MIN_PIN pin.ParentNode.Pins
+      let! value =
+        try
+          min.[0]
+          |> Int32.Parse
+          |> Either.succeed
+        with
+          | _ ->
+            Either.succeed -99999999
+      return value
+    }
+
+  // ** parseMax
+
+  let private parseMax (pin: IPin2) =
+    either {
+      let! max = findPin Settings.MAX_PIN pin.ParentNode.Pins
+      let! value =
+        try
+          max.[0]
+          |> Int32.Parse
+          |> Either.succeed
+        with
+          | _ ->
+            Either.succeed 99999999
+      return value
+    }
+
+  // ** parseUnits
+
+  let private parseUnits (pin: IPin2) =
+    either {
+      let! units = findPin Settings.UNITS_PIN pin.ParentNode.Pins
+      return if isNull units.[0] then "" else units.[0]
+    }
+
+  // ** parsePrecision
+
+  let private parsePrecision (pin: IPin2) =
+    either {
+      let! precision = findPin Settings.PRECISION_PIN pin.ParentNode.Pins
+      let! value =
+        try
+          precision.[0]
+          |> UInt32.Parse
+          |> Either.succeed
+        with
+          | _ -> Either.succeed 4ul
+      return value
+    }
+
   // ** parseValuePin
 
   let private parseValuePin (pin: IPin2) =
@@ -311,8 +373,43 @@ module Graph =
           Labels = [| |]
           Values = parseBoolValues pin
         }
-      | _ ->
-        return! (Left (Other("parseValuePin","no parse")))
+      | ValueType.Integer ->
+        let! min = parseMin pin
+        let! max = parseMax pin
+        let! unit = parseUnits pin
+        return NumberPin {
+          Id = Id id
+          Name = name
+          PinGroup = grp
+          Tags = [| |]
+          Min = min
+          Max = max
+          Unit = unit
+          Precision = 0ul
+          Direction = dir
+          VecSize = vc
+          Labels = [| |]
+          Values = parseDoubleValues pin
+        }
+      | ValueType.Real ->
+        let! min = parseMin pin
+        let! max = parseMax pin
+        let! unit = parseUnits pin
+        let! prec = parsePrecision pin
+        return NumberPin {
+          Id = Id id
+          Name = name
+          PinGroup = grp
+          Tags = [| |]
+          Min = min
+          Max = max
+          Unit = unit
+          Precision = prec
+          Direction = dir
+          VecSize = vc
+          Labels = [| |]
+          Values = parseDoubleValues pin
+        }
     }
 
   // ** parseValuesPins
@@ -336,17 +433,15 @@ module Graph =
   // ** parseINode2
 
   let private parseINode2 (state: PluginState) (node: INode2) : Either<IrisError,Pin list> =
-    // let pins = node.Pins
-    // for pin in pins do
-      // sprintf "name: %s direction: %A visible: %A type: %s subtype: %s value: %A"
-      //   pin.Name
-      //   pin.Direction
-      //   pin.Visibility
-      //   pin.Type
-      //   pin.SubType
-      //   pin.[0]
-      // pin.Spread
-      // |> Util.debug state
+    for pin in node.Pins do
+      sprintf "name: %s direction: %A visible: %A type: %s subtype: %s value: %A"
+        pin.Name
+        pin.Direction
+        pin.Visibility
+        pin.Type
+        pin.SubType
+        pin.[0]
+      |> Util.debug state
 
     either {
       let! boxtype = IOBoxType.TryParse node.Name

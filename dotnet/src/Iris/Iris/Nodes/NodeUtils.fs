@@ -32,6 +32,18 @@ module Settings =
   [<Literal>]
   let VECSIZE_PIN = "Vector Size"
 
+  [<Literal>]
+  let MIN_PIN = "Minimum"
+
+  [<Literal>]
+  let MAX_PIN = "Maximum"
+
+  [<Literal>]
+  let UNITS_PIN = "Units"
+
+  [<Literal>]
+  let PRECISION_PIN = "Precision"
+
 // * Util
 
 [<RequireQualifiedAccess>]
