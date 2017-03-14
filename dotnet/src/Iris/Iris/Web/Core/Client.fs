@@ -105,8 +105,10 @@ and ClientContext private (worker: SharedWorker<string>) =
     | ClientMessage.Disconnected ->
       printfn "DISCONNECTED!"
 
-    | ClientMessage.ClientLog log ->
-      printfn "%s" log
+    | ClientMessage.ClientLog _log ->
+      // Logs are polluting the browser console, disable printing temporally
+//      printfn "%s" log
+      ()
 
     // initialize this clients session variable
     | ClientMessage.Error(reason) ->

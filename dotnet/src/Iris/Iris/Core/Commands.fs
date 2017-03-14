@@ -12,6 +12,7 @@ type CreateProjectOptions =
   { name: string
   ; ipAddress: string
   ; gitPort: uint16
+  ; apiPort: uint16
   ; webSocketPort: uint16 
   ; raftPort: uint16 }
 

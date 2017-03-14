@@ -135,11 +135,12 @@ let loadProject(info: StateInfo, project, username, password) =
   LoadProject(project, username, password)
   |> postCommand () (fun _ -> info.context.ConnectWithWebSocket() |> ignore)
 
-let createProject(_info: StateInfo, projectName: string, ipAddress, gitPort, webSocketPort, raftPort) =
+let createProject(_info: StateInfo, projectName: string, ipAddress, gitPort, webSocketPort, apiPort, raftPort) =
   { name = projectName
   ; ipAddress = ipAddress
   ; gitPort = gitPort
   ; webSocketPort = webSocketPort
+  ; apiPort = apiPort
   ; raftPort = raftPort }
   |> CreateProject
   |> postCommandAndForget
@@ -201,3 +202,21 @@ let startContext f =
 
 let startWorkerContext() =
   GlobalContext()
+
+let pinToKeyValuePairs (pin: Pin) =
+  let zip labels values =
+    let labels =
+      if Array.length labels = Array.length values
+      then labels
+      else Array.replicate values.Length ""
+    Array.zip labels values
+  let name, rows =
+    match pin with
+    | StringPin pin -> pin.Name, Array.map box pin.Values |> zip pin.Labels
+    | NumberPin pin -> pin.Name, Array.map box pin.Values |> zip pin.Labels
+    | BoolPin   pin -> pin.Name, Array.map box pin.Values |> zip pin.Labels
+    // TODO: Apply transformations to the value of this pins?
+    | BytePin   pin -> pin.Name, Array.map box pin.Values |> zip pin.Labels  
+    | EnumPin   pin -> pin.Name, Array.map box pin.Values |> zip pin.Labels  
+    | ColorPin  pin -> pin.Name, Array.map box pin.Values |> zip pin.Labels  
+  createObj [ "name" ==> name; "rows" ==> rows ]

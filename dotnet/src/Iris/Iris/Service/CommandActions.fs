@@ -99,6 +99,7 @@ let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
           IpAddr  = IpAddress.Parse opts.ipAddress
           GitPort = opts.gitPort
           WsPort  = opts.webSocketPort
+          ApiPort = opts.apiPort
           Port    = opts.raftPort }
 
     let! project = buildProject machine opts.name dir raftDir mem
