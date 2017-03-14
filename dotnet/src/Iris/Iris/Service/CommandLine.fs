@@ -145,12 +145,14 @@ module CommandLine =
     | [<EqualsAssignment>] Ws           of uint16
     | [<EqualsAssignment>] Project      of string
     | [<EqualsAssignment>] Machine      of string
+    | [<EqualsAssignment>] Frontend     of string
 
     interface IArgParserTemplate with
       member self.Usage =
         match self with
           | Project _   -> "Name of project directory in the workspace"
           | Machine _   -> "Path to the machine config file"
+          | Frontend _  -> "Path to the frontend files"
           | Bind    _   -> "Specify a valid IP address."
           | Git     _   -> "Git server port."
           | Ws      _   -> "WebSocket port."
@@ -275,7 +277,7 @@ module CommandLine =
   //  ___) | || (_| | |  | |_
   // |____/ \__\__,_|_|   \__|
 
-  let startService (projectDir: FilePath option) : Either<IrisError, unit> =
+  let startService (projectDir: FilePath option) (frontend: string option) : Either<IrisError, unit> =
     either {
       let agentRef = ref None
       let post = CommandActions.postCommand agentRef
@@ -285,7 +287,7 @@ module CommandLine =
 
       let! irisService = IrisService.create machine post
 
-      let! httpServer = HttpServer.create machine post
+      let! httpServer = HttpServer.create machine frontend post
       do! httpServer.Start()
 
       agentRef := CommandActions.startAgent machine irisService |> Some
