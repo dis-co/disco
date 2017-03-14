@@ -4,6 +4,7 @@ namespace VVVV.Nodes
 
 open System
 open System.Web
+open System.Threading
 open System.ComponentModel.Composition
 open System.Collections.Generic
 open System.Collections.Concurrent
@@ -28,84 +29,419 @@ module Graph =
 
   [<RequireQualifiedAccess>]
   type Msg =
-    | AddPin of Pin
-    | RemovePin of Pin
+    | GraphUpdate
 
   // ** PluginState
 
   type PluginState =
     { Frame: uint64
       Initialized: bool
-      Events: ConcurrentQueue<obj>
+      Pins: ConcurrentDictionary<Id,PinGroup>
+      Events: ConcurrentQueue<Msg>
       Logger: ILogger
       V1Host: IPluginHost
       V2Host: IHDEHost
       InCommands: IDiffSpread<StateMachine>
       InDebug: ISpread<bool>
-      OutState: ISpread<State>
+      OutPinGroups: ISpread<PinGroup>
       OutCommands: ISpread<StateMachine>
-      Disposables: Map<Id,IDisposable> }
+      OutUpdate: ISpread<bool>
+      Disposables: ConcurrentDictionary<Id,IDisposable> }
 
     static member Create () =
       { Frame = 0UL
         Initialized = false
-        Events = new ConcurrentQueue<obj>()
+        Pins = new ConcurrentDictionary<Id,PinGroup>()
+        Events = new ConcurrentQueue<Msg>()
         Logger = null
         V1Host = null
         V2Host = null
         InCommands = null
         InDebug = null
-        OutState = null
+        OutPinGroups = null
         OutCommands = null
-        Disposables = Map.empty }
+        OutUpdate = null
+        Disposables = new ConcurrentDictionary<Id,IDisposable>() }
 
     interface IDisposable with
       member self.Dispose() =
-        Map.iter (konst dispose) self.Disposables
+        Seq.iter (fun (kv: KeyValuePair<Id,IDisposable>) -> dispose kv.Value) self.Disposables
+        self.Disposables.Clear()
 
-  // ** pin
 
-  let private getPinByName (node: INode2) (name: string) =
+  // ** IOBoxType
+
+  [<RequireQualifiedAccess>]
+  type private IOBoxType =
+    | Value
+    | String
+    | Node
+    | Enum
+    | Color
+
+    override tipe.ToString() =
+      match tipe with
+      | Value -> "IOBox (Value Advanced)"
+      | String -> "IOBox (String)"
+      | Node -> "IOBox (Node)"
+      | Color -> "IOBox (Color)"
+      | Enum -> "IOBox (Enumerations)"
+
+    static member Parse (str: string) =
+      match str with
+      | "IOBox (Value Advanced)" -> Value
+      | "IOBox (String)" -> String
+      | "IOBox (Node)" -> Node
+      | "IOBox (Color)" -> Color
+      | "IOBox (Enumerations)" -> Enum
+      | _ -> failwithf "unknown type: %s" str
+
+    static member TryParse (str: string) =
+      try
+        str
+        |> IOBoxType.Parse
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> Error.asParseError "IOBoxType"
+          |> Either.fail
+
+  // ** PinType
+
+  [<RequireQualifiedAccess>]
+  type private PinType =
+    | Value
+    | String
+
+  // ** ValueType
+
+  [<RequireQualifiedAccess>]
+  type private ValueType =
+    | Boolean
+    | Integer
+    | Real
+
+    override tipe.ToString() =
+      match tipe with
+      | Boolean -> "Boolean"
+      | Integer -> "Integer"
+      | Real -> "Real"
+
+    static member Parse (str: string) =
+      match str with
+      | "Boolean" -> Boolean
+      | "Integer" -> Integer
+      | "Real" -> Real
+      | _ -> failwithf "unknown type: %s" str
+
+    static member TryParse (str: string) =
+      try
+        str
+        |> ValueType.Parse
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> Error.asParseError "ValueType.TryParse"
+          |> Either.fail
+
+    static member IsBool (vt: ValueType) =
+      match vt with
+      | Boolean -> true
+      | _ -> false
+
+  // ** Behavior
+
+  type private Behavior =
+    | Toggle
+    | Press
+    | Bang
+
+    override behavior.ToString() =
+      match behavior with
+      | Toggle -> "Toggle"
+      | Press -> "Press"
+      | Bang -> "Bang"
+
+    static member Parse (str: string) =
+      match str with
+      | "Toggle" -> Toggle
+      | "Press" -> Press
+      | "Bang" -> Bang
+      | _ -> failwithf "unknown behavior %s" str
+
+    static member TryParse (str: string) =
+      try
+        str
+        |> Behavior.Parse
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> Error.asParseError "Behavior.TryParse"
+          |> Either.fail
+
+    static member IsTrigger (bh: Behavior) =
+      match bh with
+      | Bang -> true
+      | _ -> false
+
+  // ** findPin
+
+  let private findPin (name: string) (pins: IPin2 seq) =
     Seq.fold
-      (fun (m: IPin2 option) (pin: IPin2) ->
+      (fun (m: Either<IrisError,IPin2>) (pin: IPin2) ->
         match m with
-        | Some _ -> m
-        | None ->
+        | Right _ -> m
+        | Left error ->
           if pin.Name = name then
-            Some pin
+            Right pin
           else
-            None)
-      None
-      node.Pins
+            Left error)
+      (Left (Other("findPin", (sprintf "could not find pin %A" name))))
+      pins
+
+  // ** visibleOutputPins
+
+  let private visibleOutputPins (pins: IPin2 seq) =
+    pins
+    |> Seq.filter (fun pin -> pin.Direction = PinDirection.Output)
+    |> Seq.filter (fun pin -> pin.Visibility = PinVisibility.True)
+
+  // ** parseNodePath
+
+  let private parseNodePath (pin: IPin2) =
+    sprintf "%s/%s"
+      (pin.ParentNode.GetNodePath(false))
+      pin.Name
+
+  // ** parseDescriptivePath
+
+  let private parseDescriptivePath (pin: IPin2) =
+    sprintf "%s/%s"
+      (pin.ParentNode.GetNodePath(true))
+      pin.Name
+
+  // ** parseValueType
+
+  let private parseValueType (pin: IPin2) =
+    either {
+      let! vtp = findPin Settings.VALUE_TYPE_PIN pin.ParentNode.Pins
+      return! ValueType.TryParse vtp.[0]
+    }
+
+  // ** parseBehavior
+
+  let private parseBehavior (pin: IPin2) =
+    either {
+      let! bhp = findPin Settings.BEHAVIOR_PIN pin.ParentNode.Pins
+      return! Behavior.TryParse bhp.[0]
+    }
+
+  // ** parseName
+
+  let private parseName (pin: IPin2) =
+    either {
+      let! np = findPin Settings.DESCRIPTIVE_NAME_PIN pin.ParentNode.Pins
+      return np.[0]
+    }
+
+  // ** parsePinGroupId
+
+  let private parsePinGroupId (pin: IPin2) =
+    let id = pin.ParentNode.Parent.GetNodePath(false)
+    Id id
+
+  // ** parseDirection
+
+  let private parseDirection (pin: IPin2) =
+    match pin.Direction with
+    | PinDirection.Input -> ConnectionDirection.Input
+    | PinDirection.Output -> ConnectionDirection.Output
+    | _ -> ConnectionDirection.Input
+
+  // ** parseVecSize
+
+  let private parseVecSize (pin: IPin2) =
+    either {
+      let! mp = findPin Settings.SLICECOUNT_MODE_PIN pin.ParentNode.Pins
+      match mp.[0] with
+      | "Input" ->
+        return VecSize.Dynamic
+      | _ ->
+        let! vsp = findPin Settings.VECSIZE_PIN pin.ParentNode.Pins
+        let! value =
+          try
+            UInt16.Parse vsp.[0]
+            |> Either.succeed
+          with | _ -> Right 1us
+        return VecSize.Fixed value
+    }
+
+  // ** parseBoolValues
+
+  let private parseBoolValues (pin: IPin2) =
+    pin.Spread
+    |> String.split [| ',' |]
+    |> Array.map (fun v -> try Boolean.Parse v with | _ -> false)
+
+  // ** parseValuePin
+
+  let private parseValuePin (pin: IPin2) =
+    either {
+      let id = parseNodePath pin
+      let dir = parseDirection pin
+      let grp = parsePinGroupId pin
+      let! vt = parseValueType pin
+      let! bh = parseBehavior pin
+      let! name = parseName pin
+      let! vc = parseVecSize pin
+
+      match vt with
+      | ValueType.Boolean ->
+        return BoolPin {
+          Id = Id id
+          Name = name
+          PinGroup = grp
+          Tags = [| |]
+          Direction = dir
+          IsTrigger = Behavior.IsTrigger bh
+          VecSize = vc
+          Labels = [| |]
+          Values = parseBoolValues pin
+        }
+      | _ ->
+        return! (Left (Other("parseValuePin","no parse")))
+    }
+
+  // ** parseValuesPins
+
+  let private parseValuePins (pins: IPin2 seq) =
+    Seq.fold
+      (fun lst pin ->
+        match parseValuePin pin with
+        | Right parsed -> parsed :: lst
+        | _ -> lst)
+      []
+      pins
+
+  // ** parseValueBox
+
+  let private parseValueBox (node: INode2) =
+    node.Pins
+    |> visibleOutputPins
+    |> parseValuePins
 
   // ** parseINode2
 
-  let private parseINode2 (_: INode2) : Either<IrisError,Pin> =
-    Pin.Toggle(Id.Create(),"Hello",Id.Create(), [| |], [| |])
-    |> Either.succeed
+  let private parseINode2 (state: PluginState) (node: INode2) : Either<IrisError,Pin list> =
+    // let pins = node.Pins
+    // for pin in pins do
+      // sprintf "name: %s direction: %A visible: %A type: %s subtype: %s value: %A"
+      //   pin.Name
+      //   pin.Direction
+      //   pin.Visibility
+      //   pin.Type
+      //   pin.SubType
+      //   pin.[0]
+      // pin.Spread
+      // |> Util.debug state
+
+    either {
+      let! boxtype = IOBoxType.TryParse node.Name
+      match boxtype with
+      | IOBoxType.Value -> return parseValueBox node
+      | _ -> return (failwith "never")
+    }
+
+  let private parsePinIds (pins: IPin2 seq) =
+    Seq.fold
+      (fun lst pin ->
+        let pinid = Id (parseNodePath pin)
+        let grpid = parsePinGroupId pin
+        (grpid,pinid) :: lst)
+      []
+      pins
+
+  let private parseINode2Ids (state: PluginState) (node: INode2)  =
+    node.Pins
+    |> visibleOutputPins
+    |> parsePinIds
+
+  // ** addPin
+
+  let private addPin (state: PluginState) (pin: Pin) =
+    let group =
+      if state.Pins.ContainsKey pin.PinGroup then
+        pin.PinGroup
+        |> string
+        |> sprintf "Group already exists, adding pin to group: %s"
+        |> Util.debug state
+        let group = state.Pins.[pin.PinGroup]
+        { group with Pins = Map.add pin.Id pin group.Pins }
+      else
+        pin.PinGroup
+        |> string
+        |> sprintf "Group not found, creating: %s"
+        |> Util.debug state
+        let node = state.V2Host.GetNodeFromPath(string pin.PinGroup)
+        { Id = pin.PinGroup
+          Name = node.GetNodePath(true)
+          Pins = Map.ofList [ (pin.Id,pin) ] }
+    state.Pins.AddOrUpdate(group.Id, group, group |> konst >> konst)
+    |> ignore
+
+  // ** removePin
+
+  let private removePin (state: PluginState) (groupid, pinid) =
+    match state.Pins.TryGetValue(groupid) with
+    | true, group ->
+      if Map.containsKey pinid group.Pins then
+        let updated = Map.remove pinid group.Pins
+        let length = Map.fold (fun count _ _ -> count + 1) 0 updated
+        if length = 0 then
+          while not (state.Pins.TryRemove(groupid) |> fst) do
+            Thread.Sleep(TimeSpan.FromTicks(1L))
+          groupid
+          |> string
+          |> sprintf "Group empty, removed: %s"
+          |> Util.debug state
+        else
+          let group = { group with Pins = updated }
+          state.Pins.AddOrUpdate(groupid, group, group |> konst >> konst)
+          |> ignore
+          pinid
+          |> string
+          |> sprintf "Group updated, removed: %s"
+          |> Util.debug state
+        state.Events.Enqueue Msg.GraphUpdate
+    | _ -> ()
 
   // ** onNodeExposed
 
   let private onNodeExposed (state: PluginState) (node: INode2) =
-    match parseINode2 node with
-    | Right pin -> state.Events.Enqueue (Msg.AddPin pin)
-    | Left error -> error |> string |> Util.error state
-
-  // ** onNodeUnExposed
-
-  let private onNodeUnExposed (state: PluginState) (node: INode2) =
-    match parseINode2 node with
-    | Right pin -> state.Events.Enqueue (Msg.RemovePin pin)
+    match parseINode2 state node with
+    | Right [] -> ()
+    | Right pins ->
+      List.iter (addPin state) pins
+      state.Events.Enqueue Msg.GraphUpdate
     | Left error ->
       error
       |> string
       |> Util.error state
 
+  // ** onNodeUnExposed
+
+  let private onNodeUnExposed (state: PluginState) (node: INode2) =
+    parseINode2Ids state node
+    |> List.iter (removePin state)
+
   // ** setupVvvv
 
   let private setupVvvv (state: PluginState) =
     let globals = Id "globals"
-    if not (Map.containsKey globals state.Disposables) then
+    if not (state.Disposables.ContainsKey globals) then
       let onNodeAdded = new NodeEventHandler(onNodeExposed state)
       let onNodeRemoved = new NodeEventHandler(onNodeUnExposed state)
       state.V2Host.ExposedNodeService.add_NodeAdded(onNodeAdded)
@@ -115,9 +451,9 @@ module Graph =
             member self.Dispose () =
               state.V2Host.ExposedNodeService.remove_NodeAdded(onNodeAdded)
               state.V2Host.ExposedNodeService.remove_NodeRemoved(onNodeRemoved) }
-      { state with
-          Initialized = true
-          Disposables = Map.add globals disposable state.Disposables }
+      while not (state.Disposables.TryAdd(globals,disposable)) do
+        Thread.Sleep(TimeSpan.FromTicks(1L))
+      { state with Initialized = true }
     else
       state
 
@@ -132,6 +468,28 @@ module Graph =
   // ** processing
 
   let private processing (state: PluginState) =
+    let update = state.Events.Count > 0
+    while state.Events.Count > 0 do
+      match state.Events.TryDequeue() with
+      | true, msg ->
+        match msg with
+        | Msg.GraphUpdate ->
+          let values = new ResizeArray<PinGroup>()
+          for KeyValue(_,value) in state.Pins.ToArray() do
+            values.Add value
+          if values.Count > 0 then
+            state.OutPinGroups.SliceCount <- values.Count
+            state.OutPinGroups.AssignFrom values
+          else
+            state.OutPinGroups.SliceCount <- 1
+            state.OutPinGroups.AssignFrom(new ResizeArray<PinGroup>())
+      | _ -> ()
+
+    if update then
+      state.OutUpdate.[0] <- true
+    else
+      state.OutUpdate.[0] <- false
+
     state
 
   let evaluate (state: PluginState) (_: int) =
@@ -165,6 +523,32 @@ module Graph =
 
 // * GraphNode
 
+[<PluginInfo(Name="PinGroupTest", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
+type PinGroupTstNode() =
+
+  let groups =
+    let arr = new ResizeArray<PinGroup>()
+    arr.Add { Id = Id.Create(); Name = "Group 1"; Pins = Map.empty }
+    arr.Add { Id = Id.Create(); Name = "Group 2"; Pins = Map.empty }
+    arr
+
+  [<DefaultValue>]
+  [<Output("PinGroups")>]
+  val mutable OutPinGroups: ISpread<PinGroup>
+
+  [<DefaultValue>]
+  [<Input("On", IsSingle = true)>]
+  val mutable InOn: ISpread<bool>
+
+  interface IPluginEvaluate with
+    member self.Evaluate (spreadMax: int) : unit =
+      if self.InOn.[0] then
+        self.OutPinGroups.SliceCount <- 2
+        self.OutPinGroups.AssignFrom groups
+      else
+        self.OutPinGroups.SliceCount <- 1
+        self.OutPinGroups.AssignFrom(new ResizeArray<PinGroup>())
+
 [<PluginInfo(Name="Graph", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type GraphNode() =
 
@@ -190,8 +574,8 @@ type GraphNode() =
   val mutable OutCommands: ISpread<StateMachine>
 
   [<DefaultValue>]
-  [<Output("State", IsSingle = true)>]
-  val mutable OutState: ISpread<Iris.Core.State>
+  [<Output("PinGroups")>]
+  val mutable OutPinGroups: ISpread<PinGroup>
 
   [<DefaultValue>]
   [<Output("Update", IsSingle = true, IsBang = true)>]
@@ -209,7 +593,9 @@ type GraphNode() =
               V2Host = self.V2Host
               Logger = self.Logger
               InDebug = self.InDebug
-              OutState = self.OutState }
+              OutUpdate = self.OutUpdate
+              OutCommands = self.OutCommands
+              OutPinGroups = self.OutPinGroups }
         state <- state'
         initialized <- true
 

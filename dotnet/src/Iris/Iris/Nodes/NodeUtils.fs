@@ -20,6 +20,18 @@ module Settings =
   [<Literal>]
   let TAG_PIN = "Tag"
 
+  [<Literal>]
+  let VALUE_TYPE_PIN = "Value Type"
+
+  [<Literal>]
+  let BEHAVIOR_PIN = "Behavior"
+
+  [<Literal>]
+  let SLICECOUNT_MODE_PIN = "SliceCount Mode"
+
+  [<Literal>]
+  let VECSIZE_PIN = "Vector Size"
+
 // * Util
 
 [<RequireQualifiedAccess>]
