@@ -89,7 +89,7 @@ class View extends Component {
           <div className="iris-pingroup">
             <p>{pinGroup[1].Name}</p>
             {map(pinGroup[1].Pins, (pin,i) => {
-              var model = new Spread(Iris.pinToKeyValuePairs(pin[1]));
+              var model = new Spread(pin[1]);
               const View = model.view;
               return (
                 <div key={i}
@@ -110,7 +110,7 @@ export default class Manager {
     this.name = "Graph View";
     this.layout = {
       x: 0, y: 0,
-      w: 5, h: 3,
+      w: 8, h: 5,
       minW: 2, maxW: 10,
       minH: 1, maxH: 10
     };
