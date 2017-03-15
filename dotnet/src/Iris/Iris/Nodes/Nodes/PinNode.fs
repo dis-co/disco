@@ -45,6 +45,10 @@ type PinNode() =
   val mutable OutName: ISpread<string>
 
   [<DefaultValue>]
+  [<Output("Values")>]
+  val mutable OutValues: ISpread<string>
+
+  [<DefaultValue>]
   [<Output("Update", IsSingle = true, IsBang = true)>]
   val mutable OutUpdate: ISpread<bool>
 
@@ -55,6 +59,7 @@ type PinNode() =
         self.OutId.SliceCount   <- self.InPin.SliceCount
         self.OutName.SliceCount <- self.InPin.SliceCount
         self.OutType.SliceCount <- self.InPin.SliceCount
+        self.OutValues.SliceCount <- self.InPin.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNullReference self.InPin.[0]) then
@@ -62,10 +67,10 @@ type PinNode() =
             let name =
               let case, _ = FSharpValue.GetUnionFields(pin, pin.GetType())
               case.Name
-
             self.OutId.[n] <- string pin.Id
             self.OutName.[n] <- pin.Name
             self.OutType.[n] <- name
+            self.OutValues.[n] <- pin.ToSpread()
 
       if self.InUpdate.IsChanged then
         self.OutUpdate.[0] <- self.InUpdate.[0]

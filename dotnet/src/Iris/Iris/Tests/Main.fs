@@ -6,6 +6,7 @@ open Iris.Tests
 
 let all =
   testList "All tests" [
+      pinTests
       assetTests
       stateTests
       irisServiceTests

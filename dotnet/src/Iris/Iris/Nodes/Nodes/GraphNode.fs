@@ -202,6 +202,13 @@ module Graph =
       (Left (Other("findPin", (sprintf "could not find pin %A" name))))
       pins
 
+  // ** visibleInputPins
+
+  let private visibleInputPins (pins: IPin2 seq) =
+    pins
+    |> Seq.filter (fun pin -> pin.Direction = PinDirection.Input)
+    |> Seq.filter (fun pin -> pin.Visibility = PinVisibility.True)
+
   // ** visibleOutputPins
 
   let private visibleOutputPins (pins: IPin2 seq) =
@@ -270,10 +277,9 @@ module Graph =
       | "Input" ->
         return VecSize.Dynamic
       | _ ->
-        let! vsp = findPin Settings.VECSIZE_PIN pin.ParentNode.Pins
         let! value =
           try
-            UInt16.Parse vsp.[0]
+            uint16 pin.SliceCount
             |> Either.succeed
           with | _ -> Right 1us
         return VecSize.Fixed value
@@ -282,22 +288,31 @@ module Graph =
   // ** parseBoolValues
 
   let private parseBoolValues (pin: IPin2) =
-    pin.Spread
-    |> String.split [| ',' |]
-    |> Array.map (fun v -> try Boolean.Parse v with | _ -> false)
+    let result = new ResizeArray<bool>()
+    for i in 0 .. pin.SliceCount - 1 do
+      match pin.[i] with
+      | "1" -> result.Add true
+      | _   -> result.Add false
+    result.ToArray()
 
   // ** parseDoubleValues
 
   let private parseDoubleValues (pin: IPin2) : double array =
-    pin.Spread
-    |> String.split [| ',' |]
-    |> Array.map (fun v -> try Double.Parse v with | _ -> 0.0)
+    let result = new ResizeArray<double>()
+    for i in 0 .. pin.SliceCount - 1 do
+      try double pin.[i]
+      with | _ -> 0.0
+      |> result.Add
+    result.ToArray()
 
   // ** parseStringValues
 
   let private parseStringValues (pin: IPin2) =
-    pin.Spread
-    |> String.split [| ',' |]
+    let result = new ResizeArray<string>()
+    for i in 0 .. pin.SliceCount - 1 do
+      let value = if isNull pin.[i] then "" else pin.[i]
+      result.Add value
+    result.ToArray()
 
   // ** parseMin
 
@@ -420,26 +435,30 @@ module Graph =
 
   // ** parseSeqWith
 
-  let private parseSeqWith (parse: IPin2 -> Either<IrisError,Pin>) (pins: IPin2 seq) =
+  let private parseSeqWith (parse: IPin2 -> Either<IrisError,Pin>) (state: PluginState) (pins: IPin2 seq) =
     Seq.fold
       (fun lst pin ->
         match parse pin with
         | Right parsed -> parsed :: lst
-        | _ -> lst)
+        | Left error ->
+          error
+          |> string
+          |> Util.error state
+          lst)
       []
       pins
 
   // ** parseValuesPins
 
-  let private parseValuePins (pins: IPin2 seq) =
-    parseSeqWith parseValuePin pins
+  let private parseValuePins (state: PluginState) (pins: IPin2 seq) =
+    parseSeqWith parseValuePin state pins
 
   // ** parseValueBox
 
-  let private parseValueBox (node: INode2) =
+  let private parseValueBox (state: PluginState) (node: INode2) =
     node.Pins
-    |> visibleOutputPins
-    |> parseValuePins
+    |> visibleInputPins
+    |> parseValuePins state
 
   // ** parseStringType
 
@@ -492,15 +511,15 @@ module Graph =
 
   // ** parseStringPins
 
-  let private parseStringPins (pins: IPin2 seq) =
-    parseSeqWith parseStringPin pins
+  let private parseStringPins (state: PluginState) (pins: IPin2 seq) =
+    parseSeqWith parseStringPin state pins
 
   // ** parseStringBox
 
-  let private parseStringBox (node: INode2) =
+  let private parseStringBox (state: PluginState) (node: INode2) =
     node.Pins
-    |> visibleOutputPins
-    |> parseStringPins
+    |> visibleInputPins
+    |> parseStringPins state
 
   // ** parseEnumProperties
 
@@ -570,39 +589,102 @@ module Graph =
 
   // ** parseEnumPins
 
-  let private parseEnumPins (pins: IPin2 seq) =
-    parseSeqWith parseEnumPin pins
+  let private parseEnumPins (state: PluginState) (pins: IPin2 seq) =
+    parseSeqWith parseEnumPin state pins
 
   // ** parseEnumBox
 
-  let private parseEnumBox (node: INode2) =
+  let private parseEnumBox (state: PluginState) (node: INode2) =
     node.Pins
-    |> visibleOutputPins
-    |> parseEnumPins
+    |> visibleInputPins
+    |> parseEnumPins state
+
+  // ** parseColorValues
+
+  let private parseColorValues (pin: IPin2) =
+    let result = new ResizeArray<ColorSpace>()
+    for i in 0 .. pin.SliceCount - 1 do
+      match String.split [| ',' |] pin.[i] with
+      | [| red; green; blue; alpha |] ->
+        try
+          { Red = uint8 (float red * 255.0)
+            Green = uint8 (float green * 255.0)
+            Blue = uint8 (float blue * 255.0)
+            Alpha = uint8 (float alpha * 255.0) }
+          |> RGBA
+          |> result.Add
+        with
+          | _ -> result.Add ColorSpace.Black
+      | _ -> result.Add ColorSpace.Black
+
+    result.ToArray()
+
+  // ** parseColorPin
+
+  let private parseColorPin (pin: IPin2) =
+    either {
+      let id = parseNodePath pin
+      let dir = parseDirection pin
+      let grp = parsePinGroupId pin
+      let! name = parseName pin
+      let! vc = parseVecSize pin
+
+      return ColorPin {
+        Id = Id id
+        Name = name
+        PinGroup = grp
+        Direction = dir
+        VecSize = vc
+        Tags = [| |]
+        Labels = [| |]
+        Values = parseColorValues pin
+      }
+    }
+
+  // ** parseColorPins
+
+  let private parseColorPins (state: PluginState) (pins: IPin2 seq) =
+    parseSeqWith parseColorPin state pins
+
+  // ** parseColorBox
+
+  let private parseColorBox (state: PluginState) (node: INode2) =
+    node.Pins
+    |> visibleInputPins
+    |> parseColorPins state
 
   // ** parseINode2
 
-  let private parseINode2 (_: PluginState) (node: INode2) : Either<IrisError,Pin list> =
-    // for pin in node.Pins do
-    //   sprintf "name: %s direction: %A visible: %A type: %s subtype: %s value: %A"
-    //      pin.Name
-    //      pin.Direction
-    //      pin.Visibility
-    //      pin.Type
-    //      pin.SubType
-    //      pin.[0]
-    //    |> Util.debug state
+  let private parseINode2 (state: PluginState) (node: INode2) : Either<IrisError,Pin list> =
+    for pin in visibleInputPins node.Pins do
+      // sprintf "name: %s direction: %A visible: %A type: %s subtype: %s value: %A"
+      //    pin.Name
+      //    pin.Direction
+      //    pin.Visibility
+      //    pin.Type
+      //    pin.SubType
+      //    pin.[0]
+      Util.debug state (sprintf "%s <==> %A" pin.Name pin.Spread)
+      for n in 0 .. pin.SliceCount - 1 do
+        sprintf "  [%d] %A" n pin.[n]
+        |> Util.debug state
 
     either {
       let! boxtype = IOBoxType.TryParse node.Name
       match boxtype with
       | IOBoxType.Value ->
-        return parseValueBox node
+        return parseValueBox state node
       | IOBoxType.String ->
-        return parseStringBox node
+        return parseStringBox state node
       | IOBoxType.Enum ->
-        return parseEnumBox node
-      | _ -> return (failwith "never")
+        return parseEnumBox state node
+      | IOBoxType.Color ->
+        return parseColorBox state node
+      | x ->
+        return!
+          sprintf "unsupported type %A" x
+          |> Error.asParseError "parseINode2"
+          |> Either.fail
     }
 
   let private parsePinIds (pins: IPin2 seq) =
@@ -616,7 +698,7 @@ module Graph =
 
   let private parseINode2Ids (_: PluginState) (node: INode2)  =
     node.Pins
-    |> visibleOutputPins
+    |> visibleInputPins
     |> parsePinIds
 
   // ** addPin

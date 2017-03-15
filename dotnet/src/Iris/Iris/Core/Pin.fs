@@ -421,6 +421,23 @@ type Pin =
       | EnumPin   data -> data.Labels
       | ColorPin  data -> data.Labels
 
+  // ** Values
+
+  member pin.Values
+    with get () =
+      match pin with
+      | StringPin data -> StringSlices(data.Id,data.Values)
+      | NumberPin data -> NumberSlices(data.Id,data.Values)
+      | BoolPin   data -> BoolSlices(data.Id,data.Values)
+      | BytePin   data -> ByteSlices(data.Id,data.Values)
+      | EnumPin   data -> EnumSlices(data.Id,data.Values)
+      | ColorPin  data -> ColorSlices(data.Id,data.Values)
+
+  // ** ToSpread
+
+  member pin.ToSpread() =
+    pin.Values.ToSpread()
+
   // ** SetSlice
 
   //  ____       _   ____  _ _
@@ -2522,6 +2539,79 @@ and Slices =
     | ByteSlices     (_,arr) -> Array.mapi (fun i el -> ByteSlice   (uint32 i, el) |> f) arr
     | EnumSlices     (_,arr) -> Array.mapi (fun i el -> EnumSlice   (uint32 i, el) |> f) arr
     | ColorSlices    (_,arr) -> Array.mapi (fun i el -> ColorSlice  (uint32 i, el) |> f) arr
+
+  // ** ToSpread
+
+  member self.ToSpread() =
+    let sb = new StringBuilder()
+    match self with
+    | StringSlices(_,arr) ->
+      Array.iteri
+        (fun i (str: string) ->
+          let escape =
+            if isNull str then false
+            else str.IndexOf ' ' > -1
+          let value =
+            if isNull str || str.IndexOf '|' = -1 then
+              str
+            else
+              str.Replace("|","||")
+          if i > 0  then sb.Append ',' |> ignore
+          if escape then sb.Append '|' |> ignore
+          sb.Append value |> ignore
+          if escape then sb.Append '|' |> ignore)
+        arr
+    | NumberSlices(_,arr) ->
+      Array.iteri
+        (fun i (num: double) ->
+          if i > 0 then sb.Append ',' |> ignore
+          num |> string |> sb.Append |> ignore)
+        arr
+    | BoolSlices(_,arr) ->
+      Array.iteri
+        (fun i (value: bool) ->
+          if i > 0 then sb.Append ',' |> ignore
+          match value with
+          | true  -> "1" |> string |> sb.Append |> ignore
+          | false -> "0" |> string |> sb.Append |> ignore)
+        arr
+    | ByteSlices(_,arr) ->
+      Array.iteri
+        (fun i (value: Binary.Buffer) ->
+          if i > 0 then sb.Append ',' |> ignore
+          sb.Append '|' |> ignore
+          value |> String.encodeBase64 |> sb.Append |> ignore
+          sb.Append '|' |> ignore)
+        arr
+    | EnumSlices(_,arr) ->
+      Array.iteri
+        (fun i (prop: Property) ->
+          let escape = prop.Value.IndexOf ' ' > -1
+          if i > 0  then sb.Append ',' |> ignore
+          if escape then sb.Append '|' |> ignore
+          prop.Value |> sb.Append |> ignore
+          if escape then sb.Append '|' |> ignore)
+        arr
+    | ColorSlices(_,arr) ->
+      Array.iteri
+        (fun i (color: ColorSpace) ->
+          if i > 0 then sb.Append ',' |> ignore
+          sb.Append '|' |> ignore
+          let rgba =
+            match color with
+            | RGBA rgba -> rgba
+            | HSLA hsla -> hsla.ToRGBA()
+          sb.Append(float rgba.Red / 255.0)
+            .Append(',')
+            .Append(float rgba.Green / 255.0)
+            .Append(',')
+            .Append(float rgba.Blue / 255.0)
+            .Append(',')
+            .Append(float rgba.Alpha / 255.0)
+          |> ignore
+          sb.Append '|' |> ignore)
+        arr
+    string sb
 
   //  _   _      _
   // | | | | ___| |_ __   ___ _ __ ___
