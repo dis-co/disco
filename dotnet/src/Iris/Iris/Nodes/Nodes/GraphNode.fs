@@ -502,6 +502,84 @@ module Graph =
     |> visibleOutputPins
     |> parseStringPins
 
+  // ** parseEnumProperties
+
+  let private parseEnumProperties (pin: IPin2) =
+    let properties = new ResizeArray<Property>()
+    match pin.ParentNode.FindPin Settings.INPUT_ENUM_PIN with
+    | null -> properties.ToArray()
+    | pin ->
+      let name =
+        let start = pin.SubType.IndexOf(',') + 2
+        let len = pin.SubType.LastIndexOf(',') - pin.SubType.IndexOf(',') - 1
+        pin.SubType.Substring(start, len)
+      let mutable count = EnumManager.GetEnumEntryCount name
+      while count > 0 do
+        count <- count - 1
+        (name, count)
+        |> EnumManager.GetEnumEntry
+        |> (fun (ety: EnumEntry) -> { Key = string ety.Index; Value = ety.Name })
+        |> properties.Add
+      properties.ToArray()
+
+  // ** parseEnumValues
+
+  let private parseEnumValues (props: Property array) (pin: IPin2) =
+    let valueToProp (str: string) =
+      Array.fold
+        (fun m prop ->
+          match m with
+          | Some _ -> m
+          | None ->
+            if prop.Value = str then
+              Some prop
+            else None)
+        None
+        props
+    let result = new ResizeArray<Property>()
+    let values = parseStringValues pin
+    for value in values do
+      match valueToProp value with
+      | Some prop -> result.Add prop
+      | None -> ()
+    result.ToArray()
+
+  // ** parseEnumPin
+
+  let private parseEnumPin (pin: IPin2) =
+    either {
+      let id = parseNodePath pin
+      let dir = parseDirection pin
+      let grp = parsePinGroupId pin
+      let! name = parseName pin
+      let! vc = parseVecSize pin
+      let props = parseEnumProperties pin
+
+      return EnumPin {
+        Id = Id id
+        Name = name
+        PinGroup = grp
+        Direction = dir
+        VecSize = vc
+        Properties = props
+        Tags = [| |]
+        Labels = [| |]
+        Values = parseEnumValues props pin
+      }
+    }
+
+  // ** parseEnumPins
+
+  let private parseEnumPins (pins: IPin2 seq) =
+    parseSeqWith parseEnumPin pins
+
+  // ** parseEnumBox
+
+  let private parseEnumBox (node: INode2) =
+    node.Pins
+    |> visibleOutputPins
+    |> parseEnumPins
+
   // ** parseINode2
 
   let private parseINode2 (_: PluginState) (node: INode2) : Either<IrisError,Pin list> =
@@ -522,6 +600,8 @@ module Graph =
         return parseValueBox node
       | IOBoxType.String ->
         return parseStringBox node
+      | IOBoxType.Enum ->
+        return parseEnumBox node
       | _ -> return (failwith "never")
     }
 

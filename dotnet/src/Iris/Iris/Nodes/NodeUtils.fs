@@ -50,6 +50,9 @@ module Settings =
   [<Literal>]
   let MAXCHAR_PIN = "Maximum Characters"
 
+  [<Literal>]
+  let INPUT_ENUM_PIN = "Input Enum"
+
 // * Util
 
 [<RequireQualifiedAccess>]
