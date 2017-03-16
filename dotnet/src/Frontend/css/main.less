@@ -1,5 +1,5 @@
 @import "values";
-@import "flex";
+@import "classes";
 
 html, body {
   /*width: 100%;
@@ -15,27 +15,32 @@ html, body {
   user-select: none;
 }
 
-header {
-  background: @iris-grey;
-  height: @header-height;
-  h1 {
-    margin: 5px 10px;
-  }
-}
-
-footer {
-  background: @iris-grey;
-  height: @footer-height;
-  padding-left: 5px;
-}
-
 #app-container {
+  min-height: 100vh;
+}
+
+#app {
   display: flex;
   min-height: 100vh;
   flex-direction: column;
 }
 
-#app {
+#app-header {
+  background: @iris-grey;
+  height: @header-height;
+  h1 {
+    margin: 5px 10px;
+    display: inline-block;
+  }
+}
+
+#app-footer {
+  background: @iris-grey;
+  height: @footer-height;
+  padding-left: 5px;
+}
+
+#app-content {
   background:white;
   flex: 1;
   display: flex;
@@ -60,10 +65,6 @@ footer {
   position: absolute;
   opacity: 1;
   display: none;
-}
-
-.iris-highlight-blue {
-  border: 2px solid blue;
 }
 
 .iris-tab-container {
@@ -115,95 +116,4 @@ footer {
 .iris-workspace {
   flex: 1;
   background: @background-grey;
-}
-
-.ui-icon-close, .ui-icon-copy {
-  cursor: pointer;
-}
-
-.iris-widget {
-  height: 100%;
-  background: white;
-  display: flex;
-  flex-direction: column;
-
-  .iris-draggable-handle {
-    cursor: move;
-    margin: 0;
-    padding: 10px;
-    background: @iris-grey;
-    display: flex;
-
-    // Expand the first child to push
-    // the icons to the side
-    & > :first-child {
-      flex: 1;
-    }
-  }
-
-  & > :nth-child(2) {
-    overflow-x: auto;
-    flex: 1;
-  }
-
-}
-
-.iris-pingroup {
-  margin: 5px;
-  & > p {
-    margin-left: 10px;
-    margin-bottom: 5px;
-    font-weight: bold;
-    border-bottom: 1px solid black;
-  }
-}
-
-// .selected {
-//   border: 1px solid #f0f;
-//   border-radius: 14px;
-// }
-
-.iris-tooltip {
-  height: 100px;
-  background-color: #EBEBEB;
-  position: absolute;
-  bottom: 35px;
-  right: 10px;
-  padding: 10px;
-  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-  display: none;
-  transition: 0.8s;
-  z-index: 100000000;
-}
-
-.shadow {
-  height: 20px;
-  width: 13px;
-  background-color: #fff;
-  position: absolute;
-  right: 0;
-  top: 0;
-  // background: url(shadow.png)
-}
-
-.horiz-shadow {
-  height: 7px;
-  width: 100%;;
-  background-color: #F0F;
-  position: absolute;
-  bottom: 0px;
-  // background: url(horiz-shadow.png)
-}
-
-.scroller {
-  width: 4px;
-  height: 60%;
-  background: #555;
-  margin: 25px auto 30px auto;
-  transition: 0.1s;
-  opacity: 0;
-}
-
-.scroller:hover {
-  opacity: 1;
 }

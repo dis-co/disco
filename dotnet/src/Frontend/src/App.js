@@ -8,6 +8,7 @@ import React, { Component } from 'react'
 import PanelLeft from './PanelLeft'
 import Tabs from './Tabs'
 import Workspace from './Workspace'
+import DropdownMenu from './widgets/DropdownMenu'
 
 export default class App extends Component {
   constructor(props) {
@@ -33,14 +34,28 @@ export default class App extends Component {
 
   render() {
     return (
-      <div id="ui-layout-container">
-        <div className="ui-layout-west">
-          <PanelLeft global={this.global} />
+      <div id="app">
+        <header id="app-header">
+          <h1>Iris</h1>
+          <DropdownMenu options={{
+            "Project": () => console.log("Project"),
+            "Shutdown": () => console.log("Shutdown"),
+          }} />
+        </header>
+        <div id="app-content">
+          <div id="ui-layout-container">
+            <div className="ui-layout-west">
+              <PanelLeft global={this.global} />
+            </div>
+            <div className="ui-layout-center">
+              <Tabs global={this.global} />
+            </div>
+          </div>
         </div>
-        <div className="ui-layout-center">
-          <Tabs global={this.global} />
-        </div>
-      </div>
+        <footer id="app-footer">
+          <p>© 2017 - <a href="http://nsynk.de/">NSYNK Gesellschaft für Kunst und Technik mbH</a></p>
+        </footer>
+      </div>      
     );
   }
 }
