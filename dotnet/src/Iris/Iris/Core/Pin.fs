@@ -362,6 +362,18 @@ type Pin =
       | EnumPin     data -> data.Name
       | ColorPin    data -> data.Name
 
+  // ** Direction
+
+  member self.Direction
+    with get () =
+      match self with
+      | StringPin   data -> data.Direction
+      | NumberPin   data -> data.Direction
+      | BoolPin     data -> data.Direction
+      | BytePin     data -> data.Direction
+      | EnumPin     data -> data.Direction
+      | ColorPin    data -> data.Direction
+
   // ** PinGroup
 
   member self.PinGroup
@@ -386,6 +398,28 @@ type Pin =
       | EnumPin     _ -> "EnumPin"
       | ColorPin    _ -> "ColorPin"
 
+  // ** SetVecSize
+
+  member self.SetVecSize vecSize =
+    match self with
+    | StringPin   data -> StringPin   { data with VecSize = vecSize }
+    | NumberPin   data -> NumberPin   { data with VecSize = vecSize }
+    | BoolPin     data -> BoolPin     { data with VecSize = vecSize }
+    | BytePin     data -> BytePin     { data with VecSize = vecSize }
+    | EnumPin     data -> EnumPin     { data with VecSize = vecSize }
+    | ColorPin    data -> ColorPin    { data with VecSize = vecSize }
+
+  // ** SetDirection
+
+  member self.SetDirection direction =
+    match self with
+    | StringPin   data -> StringPin   { data with Direction = direction }
+    | NumberPin   data -> NumberPin   { data with Direction = direction }
+    | BoolPin     data -> BoolPin     { data with Direction = direction }
+    | BytePin     data -> BytePin     { data with Direction = direction }
+    | EnumPin     data -> EnumPin     { data with Direction = direction }
+    | ColorPin    data -> ColorPin    { data with Direction = direction }
+
   // ** SetName
 
   member self.SetName name =
@@ -396,6 +430,17 @@ type Pin =
     | BytePin     data -> BytePin     { data with Name = name }
     | EnumPin     data -> EnumPin     { data with Name = name }
     | ColorPin    data -> ColorPin    { data with Name = name }
+
+  // ** SetTags
+
+  member self.SetTags tags =
+    match self with
+    | StringPin   data -> StringPin   { data with Tags = tags }
+    | NumberPin   data -> NumberPin   { data with Tags = tags }
+    | BoolPin     data -> BoolPin     { data with Tags = tags }
+    | BytePin     data -> BytePin     { data with Tags = tags }
+    | EnumPin     data -> EnumPin     { data with Tags = tags }
+    | ColorPin    data -> ColorPin    { data with Tags = tags }
 
   // ** Slices
 

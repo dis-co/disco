@@ -18,6 +18,18 @@ module Settings =
   let DESCRIPTIVE_NAME_PIN = "Descriptive Name"
 
   [<Literal>]
+  let PAGES_PIN = "Pages"
+
+  [<Literal>]
+  let ROWS_PIN = "Rows"
+
+  [<Literal>]
+  let COLUMNS_PIN = "Columns"
+
+  [<Literal>]
+  let CHANGED_PIN = "Changed"
+
+  [<Literal>]
   let TAG_PIN = "Tag"
 
   [<Literal>]
