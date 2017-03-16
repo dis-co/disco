@@ -37,13 +37,32 @@ module Graph =
     | PinTagChange       of group:Id * pin:Id * Tag array
     | PinDirectionChange of group:Id * pin:Id * ConnectionDirection
 
+  // ** PinType
+
+  [<RequireQualifiedAccess>]
+  type PinType =
+    | Boolean
+    | Number
+    | Enum
+    | Color
+    | String
+
+  // ** NodeMapping
+
+  type NodeMapping =
+    { GroupId: Id
+      Pin: IPin2
+      Type: PinType
+      Properties: Property array option
+      ChangedNode: IPin2 }
+
   // ** PluginState
 
   type PluginState =
     { Frame: uint64
       Initialized: bool
       Pins: Dictionary<Id,PinGroup>
-      ChangedPins: Dictionary<Id,IPin2>
+      ChangedPins: Dictionary<Id,NodeMapping>
       Events: ConcurrentQueue<Msg>
       Logger: ILogger
       V1Host: IPluginHost
@@ -59,7 +78,7 @@ module Graph =
       { Frame = 0UL
         Initialized = false
         Pins = new Dictionary<Id,PinGroup>()
-        ChangedPins = new Dictionary<Id,IPin2>()
+        ChangedPins = new Dictionary<Id,NodeMapping>()
         Events = new ConcurrentQueue<Msg>()
         Logger = null
         V1Host = null
@@ -493,6 +512,16 @@ module Graph =
           |> Either.fail
     }
 
+  // ** parsePinValueWith
+
+  let private parsePinValueWith (tipe: PinType) (pid: Id) (props: Property array) (pin: IPin2) =
+    match tipe with
+    | PinType.Boolean -> BoolSlices(pid, parseBoolValues pin)
+    | PinType.Number -> NumberSlices(pid, parseDoubleValues pin)
+    | PinType.String -> StringSlices(pid, parseStringValues pin)
+    | PinType.Color -> ColorSlices(pid, parseColorValues pin)
+    | PinType.Enum -> EnumSlices(pid, parseEnumValues props pin)
+
   // ** registerHandlers
 
   let private registerHandlers (state: PluginState) (pin: IPin2) =
@@ -831,6 +860,28 @@ module Graph =
       []
       pins
 
+  let private parsePinType (pin: IPin2) =
+    either {
+      let node = pin.ParentNode
+      let! boxtype = IOBoxType.TryParse (node.NodeInfo.ToString())
+      match boxtype with
+      | IOBoxType.Value ->
+        let! vt = parseValueType pin
+        match vt with
+        | ValueType.Boolean ->
+          return PinType.Boolean
+        | ValueType.Integer | ValueType.Real ->
+          return PinType.Number
+      | IOBoxType.String -> return PinType.String
+      | IOBoxType.Enum -> return PinType.Enum
+      | IOBoxType.Color -> return PinType.Color
+      | x ->
+        return!
+          sprintf "unsupported type %A" x
+          |> Error.asParseError "parseINode2"
+          |> Either.fail
+    }
+
   let private parseINode2Ids (_: PluginState) (node: INode2)  =
     node.Pins
     |> visibleInputPins
@@ -932,14 +983,42 @@ module Graph =
     with
       | _ -> ()
 
+  // ** makeNodeMapping
+
+  let private makeNodeMapping (pin: IPin2) =
+    let id = parseNodePath pin
+    let gid = parsePinGroupId pin
+    let cp = pin.ParentNode.FindPin Settings.CHANGED_PIN
+    let tipe, props =
+      match parsePinType pin with
+      | Right PinType.Enum ->
+        PinType.Enum, Some (parseEnumProperties pin)
+      | Right tipe -> tipe, None
+      | Left error -> failwith (string error)
+    let nm =
+      { GroupId = gid
+        Pin = pin
+        Type = tipe
+        Properties = props
+        ChangedNode = cp }
+    (id, nm)
+
   // ** addChangedPin
 
   let private addChangedPin (state: PluginState) (pin: IPin2) =
-    let id = parseNodePath pin
-    let cp = pin.ParentNode.FindPin Settings.CHANGED_PIN
+    let id, nm = makeNodeMapping pin
     if not (state.ChangedPins.ContainsKey id) then
-      state.ChangedPins.Add(id, cp)
+      state.ChangedPins.Add(id, nm)
       |> ignore
+
+  // ** updateChangedPin
+
+  let private updateChangedPin (state: PluginState) (pin: IPin2) =
+    let id, nm = makeNodeMapping pin
+    if state.ChangedPins.ContainsKey id then
+      state.ChangedPins.[id] <- nm
+    else
+      state.ChangedPins.Add(id, nm) |> ignore
 
   // ** removeChangedPin
 
@@ -1049,28 +1128,27 @@ module Graph =
           if not (isNull node) then
             match parseINode2 state node with
             | Right []     -> ()
-            | Right parsed -> List.iter (fun (_,parsed) -> updatePin state parsed) parsed
             | Left error   -> error |> string |> Util.error state
+            | Right parsed ->
+              List.iter
+                (fun (pin,parsed) ->
+                  updateChangedPin state pin
+                  updatePin state parsed)
+                parsed
 
         updateOutputs state
         reset <- false
       | _ -> ()
 
-    for KeyValue(id,cp) in state.ChangedPins do
-      if cp.[0] = "1" then
-        let name = id |> parsePinId |> snd
-        let pin = cp.ParentNode.FindPin name
-        if not (isNull pin) then
-          match parsePinValues pin with
-          | Right slices ->
-            let gid = parsePinGroupId pin
-            updatePinValues state gid slices
-            updateOutputs state
-            reset <- false
-          | Left error ->
-            error
-            |> string
-            |> Util.error state
+    for KeyValue(id,nm) in state.ChangedPins do
+      if nm.ChangedNode.[0] = "1" then
+        let slices =
+          match nm.Properties with
+          | Some props -> parsePinValueWith nm.Type id props nm.Pin
+          | _ ->  parsePinValueWith nm.Type id [| |] nm.Pin
+        updatePinValues state nm.GroupId slices
+        updateOutputs state
+        reset <- false
 
     if reset then state.OutUpdate.[0] <- false
     state
