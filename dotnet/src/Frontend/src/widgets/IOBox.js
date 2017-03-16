@@ -1,5 +1,5 @@
 import * as React from "react";
-import css from "../../css/Spread.css";
+import css from "../../css/Spread.less";
 
 class View extends React.Component {
   constructor(props) {

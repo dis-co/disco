@@ -19,10 +19,7 @@ open Fable.Core.JsInterop
 open Fable.Import
 open Iris.Core.Discovery
 
-let EMPTY = Constants.EMPTY
-
-let toString (x: obj) = string x
-
+// TYPES -----------------------------------------------------
 type GenericObservable<'T>() =
     let listeners = Dictionary<Guid,IObserver<'T>>()
     member x.Trigger v =
@@ -39,6 +36,20 @@ type GenericObservable<'T>() =
 type DragEvent = {
   ``type``: string; value: obj; x: int; y: int; 
 }
+
+type [<Pojo>] TreeNode =
+  { ``module``: string; children: TreeNode[] option }
+
+
+// VALUES ----------------------------------------------------
+let EMPTY = Constants.EMPTY
+
+// Leaving a global reference to the ClientContext for simplicity,
+// we can think later of a better pattern
+let mutable Context = Unchecked.defaultof<ClientContext>
+
+// HELPERS ----------------------------------------------------
+let toString (x: obj) = string x
 
 let private dragObservable =
     GenericObservable<DragEvent>()
@@ -145,9 +156,6 @@ let createProject(_info: StateInfo, projectName: string, ipAddress, gitPort, web
   |> CreateProject
   |> postCommandAndForget
 
-type [<Pojo>] TreeNode =
-  { ``module``: string; children: TreeNode[] option }
-
 let project2tree (p: IrisProject) =
   let leaf m = { ``module``=m; children=None }
   let node m c = { ``module``=m; children=Some c }
@@ -190,6 +198,7 @@ let project2tree (p: IrisProject) =
 let startContext f =
   ClientContext.Start()
   |> Promise.map (fun context ->
+    Context <- context
     context.OnMessage
     |> Observable.add (function
       | ClientMessage.Render state ->
@@ -210,13 +219,26 @@ let pinToKeyValuePairs (pin: Pin) =
       then labels
       else Array.replicate values.Length ""
     Array.zip labels values
-  let name, rows =
+  match pin with
+  | StringPin pin -> Array.map box pin.Values |> zip pin.Labels
+  | NumberPin pin -> Array.map box pin.Values |> zip pin.Labels
+  | BoolPin   pin -> Array.map box pin.Values |> zip pin.Labels
+  // TODO: Apply transformations to the value of this pins?
+  | BytePin   pin -> Array.map box pin.Values |> zip pin.Labels  
+  | EnumPin   pin -> Array.map box pin.Values |> zip pin.Labels  
+  | ColorPin  pin -> Array.map box pin.Values |> zip pin.Labels  
+
+let updatePin(pin: Pin, rowIndex, newValue: obj) =
+  let updateArray (i: int) (v: obj) (ar: 'T[]) =
+    let newArray = Array.copy ar
+    newArray.[i] <- unbox v
+    newArray
+  let pin =
     match pin with
-    | StringPin pin -> pin.Name, Array.map box pin.Values |> zip pin.Labels
-    | NumberPin pin -> pin.Name, Array.map box pin.Values |> zip pin.Labels
-    | BoolPin   pin -> pin.Name, Array.map box pin.Values |> zip pin.Labels
-    // TODO: Apply transformations to the value of this pins?
-    | BytePin   pin -> pin.Name, Array.map box pin.Values |> zip pin.Labels  
-    | EnumPin   pin -> pin.Name, Array.map box pin.Values |> zip pin.Labels  
-    | ColorPin  pin -> pin.Name, Array.map box pin.Values |> zip pin.Labels  
-  createObj [ "name" ==> name; "rows" ==> rows ]
+    | StringPin pin -> StringPin { pin with Values = updateArray rowIndex newValue pin.Values }
+    | NumberPin pin -> failwith "TO BE IMPLEMENTED"
+    | BoolPin   pin -> failwith "TO BE IMPLEMENTED"
+    | BytePin   pin -> failwith "TO BE IMPLEMENTED" 
+    | EnumPin   pin -> failwith "TO BE IMPLEMENTED" 
+    | ColorPin  pin -> failwith "TO BE IMPLEMENTED"
+  Context.Post(UpdatePin pin)

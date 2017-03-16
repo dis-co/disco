@@ -208,15 +208,16 @@ module ApiServer =
 
         match response with
         | Right Pong ->
-          string socket.Id
-          |> sprintf "ping request to %s successful"
-          |> Logger.debug socket.Id (tag "pingTimer")
+//          string socket.Id
+//          |> sprintf "ping request to %s successful"
+//          |> Logger.debug socket.Id (tag "pingTimer")
           (socket.Id, ServiceStatus.Running)
           |> Msg.SetClientStatus
           |> agent.Post
         | Left error ->
           string error
-          |> sprintf "error during ping request to %s: %s" (string socket.Id)
+          |> sprintf "error during 
+           to %s: %s" (string socket.Id)
           |> Logger.debug socket.Id (tag "pingTimer")
           (socket.Id, ServiceStatus.Failed error)
           |> Msg.SetClientStatus
