@@ -1017,11 +1017,19 @@ module Graph =
     else
       state
 
+  // ** parseExposedNodes
+
+  let private parseExposedNodes (state: PluginState) =
+    for node in state.V2Host.ExposedNodeService.Nodes do
+      onNodeExposed state node
+    state
+
   // ** initialize
 
   let private initialize (state: PluginState) =
     if not state.Initialized then
       setupVvvv state
+      |> parseExposedNodes
     else
       state
 
