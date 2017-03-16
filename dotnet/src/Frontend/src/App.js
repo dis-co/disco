@@ -8,7 +8,15 @@ import React, { Component } from 'react'
 import PanelLeft from './PanelLeft'
 import Tabs from './Tabs'
 import Workspace from './Workspace'
-import DropdownMenu from './widgets/DropdownMenu'
+import DropdownMenu from './DropdownMenu'
+import ModalDialog from './modals/ModalDialog'
+import CreateProject from './modals/CreateProject'
+
+let modal = null;
+
+export function showModal(content, onSubmit) {
+  modal.setState({ content, onSubmit });
+}
 
 export default class App extends Component {
   constructor(props) {
@@ -35,10 +43,13 @@ export default class App extends Component {
   render() {
     return (
       <div id="app">
+        <ModalDialog ref={el => modal = (el || modal)} />        
         <header id="app-header">
           <h1>Iris</h1>
           <DropdownMenu options={{
-            "Project": () => console.log("Project"),
+            "Create project": () => showModal(CreateProject),
+            "Load project": () => console.log("Load Project"),
+            "Unload project": () => console.log("Unload Project"),
             "Shutdown": () => console.log("Shutdown"),
           }} />
         </header>
