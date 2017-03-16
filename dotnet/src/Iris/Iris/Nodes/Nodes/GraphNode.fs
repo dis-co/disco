@@ -530,7 +530,7 @@ module Graph =
     | pin ->
       let name =
         let start = pin.SubType.IndexOf(',') + 2
-        let len = pin.SubType.LastIndexOf(',') - pin.SubType.IndexOf(',') - 1
+        let len = pin.SubType.LastIndexOf(',') - pin.SubType.IndexOf(',') - 2
         pin.SubType.Substring(start, len)
       let mutable count = EnumManager.GetEnumEntryCount name
       while count > 0 do
