@@ -1,39 +1,22 @@
-
-const initLogs = [
-  [0, "[14:12:11] Do laboris fugiat cillum excepteur Lorem officia."],
-  [1, "[14:12:11] Ullamco voluptate proident veniam adipisicing nisi esse dolore anim eiusmod."],
-  [2, "[14:12:11] Aute nostrud consequat nulla commodo non."],
-  [3, "[14:12:11] Non ad incididunt pariatur ullamco sit labore cupidatat aliqua ex consectetur ad dolore."],
-  [4, "[14:12:11] Duis consectetur deserunt sint minim culpa aliquip."],
-  [5, "[14:12:11] Aute excepteur excepteur quis sint officia incididunt aliquip cillum."],
-  [6, "[14:12:11] Officia officia ad adipisicing non."],
-  [7, "[14:12:11] Sit qui ullamco cillum Lorem sunt minim sit tempor."],
-  [8, "[14:12:11] Laborum officia cillum enim ea sint adipisicing laborum nostrud velit Lorem non commodo dolore."],
-]
-
-let counter = initLogs.length;
+let counter = 0;
+const LOG_MAX = 100;
 
 export default class GlobalModel {
   constructor() {
     Iris.startContext(info => {
-      var patches = Array.from(info.state.Patches);
-      var pins = patches.length > 0 ? Array.from(patches[0][1].Pins) : [];
-      var boolPins = pins
-        .filter(pin => pin[1].Case === "BoolPin")
-        .map(pin => ({
-          name: pin[1].Fields[0].Name,
-          value: pin[1].Fields[0].Slices[0].Value
-        }));
-      this.__setState("boolPins", boolPins)
-    })
+      if (this.logSubscription == null) {
+        this.logSubscription = Iris.subscribeToLogs(info.context, log => {
+          this.addLog(log);
+        })
+      }
+      this.__setState("pinGroups", info.state.PinGroups);
+    });
 
     this.subscribers = new Map();
     this.eventSubscribers = new Map();
     this.state = {
       tabs: new Map(),
-      widgets: new Map(),
-      logs: initLogs,
-      boolPins: []
+      widgets: new Map()
     };
   }
 
@@ -107,13 +90,15 @@ export default class GlobalModel {
   }
 
   addLog(log) {
-    this.state.logs.splice(0, 0, [counter++, log]);
-    this.__notify("logs", this.state.logs);
-  }
-
-  removeLastLog() {
-    this.state.logs.splice(0, 1);
-    this.__notify("logs", this.state.logs);
+    var logs = this.state.logs;
+    if (Array.isArray(logs)) {
+      if (logs.length > LOG_MAX) {
+        var diff = Math.floor(LOG_MAX / 100);
+        logs.splice(logs.length - diff, diff);
+      }
+      logs.splice(0, 0, [counter++, log]);
+      this.__notify("logs", logs);
+    }
   }
 
   triggerEvent(event, data) {

@@ -60,24 +60,24 @@ type Req (id: Id, addr: string, timeout: int) =
     while run do
       try
         // wait for the signal that a new request is ready *or* that shutdown is reuqested
-        Logger.debug id tag "waiting for a request"
+//        Logger.debug id tag "waiting for a request"
         requester.WaitOne() |> ignore
 
         // `run` is usually true, but shutdown first sets this to false to exit the loop
         if run then
-          Array.length request
-          |> sprintf "sending containing %d bytes"
-          |> Logger.debug id tag
+//          Array.length request
+//          |> sprintf "sending containing %d bytes"
+//          |> Logger.debug id tag
 
           let frame = new ZFrame(request)                     // create a new ZFrame to send
           sock.Send(frame)                                    // and send it via sock
 
-          Logger.debug id tag "waiting for response"
+//          Logger.debug id tag "waiting for response"
           response <- sock.ReceiveFrame().Read()               // block and wait for reply frame
 
-          Array.length response
-          |> sprintf "server responded with %d bytes"
-          |> Logger.debug id tag
+//          Array.length response
+//          |> sprintf "server responded with %d bytes"
+//          |> Logger.debug id tag
 
           responder.Set() |> ignore                            // signal that response is ready
           frame.Dispose()                                     // dispose of frame
@@ -156,7 +156,7 @@ type Req (id: Id, addr: string, timeout: int) =
 
   member self.Request(req: byte array) : Either<IrisError,byte array> =
     if started && not disposed then        // synchronously request the square of `req-`
-      Logger.debug id tag "requesting"
+//      Logger.debug id tag "requesting"
       lock lokk <| fun _ ->                 // lock while executing transaction
         request <- req                   // first set the requets
         requester.Set() |> ignore        // then signal a request is ready for execution
@@ -169,7 +169,7 @@ type Req (id: Id, addr: string, timeout: int) =
           |> Error.asSocketError "Req.Request"
           |> Either.fail
         | _  ->
-          Logger.debug id tag "request successful"
+//          Logger.debug id tag "request successful"
           Either.succeed response       // return the response
     elif disposed then                  // disposed sockets need to be re-initialized
       Logger.err id tag "refusing request. already disposed"

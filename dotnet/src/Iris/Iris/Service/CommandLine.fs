@@ -139,21 +139,25 @@ module CommandLine =
     | [<Mandatory;MainCommand;CliPosition(CliPosition.First)>] Cmd of SubCommand
 
     | [<EqualsAssignment>] Bind         of string
+    | [<EqualsAssignment>] Api          of uint16
     | [<EqualsAssignment>] Raft         of uint16
     | [<EqualsAssignment>] Git          of uint16
     | [<EqualsAssignment>] Ws           of uint16
     | [<EqualsAssignment>] Project      of string
     | [<EqualsAssignment>] Machine      of string
+    | [<EqualsAssignment>] Frontend     of string
 
     interface IArgParserTemplate with
       member self.Usage =
         match self with
           | Project _   -> "Name of project directory in the workspace"
           | Machine _   -> "Path to the machine config file"
+          | Frontend _  -> "Path to the frontend files"
           | Bind    _   -> "Specify a valid IP address."
           | Git     _   -> "Git server port."
           | Ws      _   -> "WebSocket port."
           | Raft    _   -> "Raft server port."
+          | Api     _   -> "Api server port."
           | Cmd     _   -> "Either one of setup, create, start, reset, user or dump."
 
   let parser = ArgumentParser.Create<CLIArguments>()
@@ -233,13 +237,15 @@ module CommandLine =
       let! git  = parameters |> tryGet "git" uint16
       let! ws   = parameters |> tryGet "ws" uint16
       let! raft = parameters |> tryGet "raft" uint16
+      let! api = parameters  |> tryGet "api" uint16
 
       let mem =
         { Member.create(machine.MachineId) with
             IpAddr  = bind
             GitPort = git
             WsPort  = ws
-            Port    = raft }
+            Port    = raft
+            ApiPort = api }
 
       let! project = buildProject machine name dir raftDir mem
 
@@ -271,7 +277,7 @@ module CommandLine =
   //  ___) | || (_| | |  | |_
   // |____/ \__\__,_|_|   \__|
 
-  let startService (projectDir: FilePath option) : Either<IrisError, unit> =
+  let startService (projectDir: FilePath option) (frontend: string option) : Either<IrisError, unit> =
     either {
       let agentRef = ref None
       let post = CommandActions.postCommand agentRef
@@ -281,7 +287,7 @@ module CommandLine =
 
       let! irisService = IrisService.create machine post
 
-      let! httpServer = HttpServer.create machine post
+      let! httpServer = HttpServer.create machine frontend post
       do! httpServer.Start()
 
       agentRef := CommandActions.startAgent machine irisService |> Some
@@ -327,6 +333,7 @@ module CommandLine =
           yield "bind", parsed.GetResult <@ Bind @>
           yield "git", parsed.GetResult <@ Git  @> |> string
           yield "ws", parsed.GetResult <@ Ws  @> |> string
+          yield "api", parsed.GetResult <@ Api  @> |> string
           yield "raft", parsed.GetResult <@ Raft  @> |> string ]
         |> dict
 

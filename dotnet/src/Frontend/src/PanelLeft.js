@@ -2,7 +2,7 @@ import React, { Component } from 'react'
 import css from "../css/PanelLeft.less";
 import Log from "./widgets/Log";
 import Manager from "./widgets/Manager";
-import Compound from "./widgets/Compound";
+import GraphView from "./widgets/GraphView";
 
 function cardClicked(title, global) {
   switch (title.toUpperCase()) {
@@ -12,8 +12,8 @@ function cardClicked(title, global) {
     case "MANAGER":
       global.addWidget(new Manager());
       break;
-    case "COMPOUND":
-      global.addWidget(new Compound());
+    case "GRAPH VIEW":
+      global.addWidget(new GraphView());
       break;
     default:
       alert("Widget " + title + " is not currently supported")
@@ -39,7 +39,7 @@ export default class PanelLeft extends Component {
     return (
       <div className="iris-panel-left">
         <Card key={0} global={this.props.global} letter="L" title="LOG" text="Cluster Settings" />
-        <Card key={1} global={this.props.global} letter="C" title="Compound" text="Cluster Settings" />
+        <Card key={1} global={this.props.global} letter="G" title="Graph View" text="Cluster Settings" />
         <Card key={2} global={this.props.global} letter="M" title="Manager" text="Cluster Settings" />
         <Card key={3} global={this.props.global} letter="P" title="Project Overview (Small)" text="Cluster Settings" />
         <Card key={4} global={this.props.global} letter="B" title="Branches" text="Cluster Settings" />

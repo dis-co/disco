@@ -161,7 +161,7 @@ module Http =
         let addr = IPAddress.Parse machine.WebIP
         let port = Sockets.Port.Parse (string machine.WebPort)
 
-        sprintf "Suave Web Server ready to start on: %A:%A" addr port
+        sprintf "Suave Web Server ready to start on: %A:%A\nSuave will serve static files from %s" addr port basePath
         |> Logger.info config.MachineId (tag "mkConfig")
 
         return
@@ -186,9 +186,9 @@ module Http =
 
     // *** create
 
-    let create (config: IrisMachine) (postCommand: CommandAgent) =
+    let create (config: IrisMachine) (frontend: string option) (postCommand: CommandAgent) =
       either {
-        let basePath = getDefaultBasePath()
+        let basePath = defaultArg frontend <| getDefaultBasePath() |> Path.GetFullPath
         let cts = new CancellationTokenSource()
         let! webConfig = mkConfig config basePath cts
 

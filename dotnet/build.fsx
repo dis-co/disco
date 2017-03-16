@@ -286,17 +286,28 @@ let withoutNodeModules (path: string) =
 
 Target "CopyBinaries"
   (fun _ ->
-    SilentCopyDir "bin/Core"  (baseDir @@ "bin/Release/Core")  withoutNodeModules
+    // SilentCopyDir "bin/Core"  (baseDir @@ "bin/Release/Core")  withoutNodeModules
     SilentCopyDir "bin/Iris"  (baseDir @@ "bin/Release/Iris")  withoutNodeModules
-    SilentCopyDir "bin/Nodes" (baseDir @@ "bin/Release/Nodes") withoutNodeModules)
+    SilentCopyDir "bin/Nodes" (baseDir @@ "bin/Release/Nodes") withoutNodeModules
+    SilentCopyDir "bin/MockClient" (baseDir @@ "bin/Release/MockClient") withoutNodeModules
+  )
 
 Target "CopyAssets"
   (fun _ ->
     [ "CHANGELOG.md"
-    ; userScripts @@ "runiris.sh"
-    ; userScripts @@ "runiris.cmd" ]
+    // ; userScripts @@ "runiris.sh"
+    ; userScripts @@ "README.md" 
+    ; userScripts @@ "createproject.cmd" 
+    ; userScripts @@ "runiris.cmd" 
+    ; userScripts @@ "mockclient.cmd" 
+    ]
     |> List.iter (CopyFile "bin/")
-    // SilentCopyDir "bin/Iris/assets" (baseDir @@ "assets/frontend") withoutNodeModules
+    // Frontend
+    SilentCopyDir "bin/Frontend/img" (baseDir @@ "../Frontend/img") withoutNodeModules
+    SilentCopyDir "bin/Frontend/js"  (baseDir @@ "../Frontend/js") withoutNodeModules
+    SilentCopyDir "bin/Frontend/lib" (baseDir @@ "../Frontend/lib") withoutNodeModules
+    FileUtils.cp (baseDir @@ "../Frontend/index.html") "bin/Frontend/"
+    FileUtils.cp (baseDir @@ "../Frontend/favicon.ico") "bin/Frontend/"
   )
 
 Target "CopyDocs"
@@ -438,8 +449,8 @@ Target "BuildFrontend" (fun () ->
   runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
   runFable frontendDir "" ()
 
-  // runNpmNoErrors "install" (baseDir @@ "Iris/Web/React") ()
-  // runNpm "run build" (baseDir @@ "Iris/Web/React") ()
+  runNpmNoErrors "install" (baseDir @@ "../Frontend") ()
+  runNpm "run build"       (baseDir @@ "../Frontend") ()
 )
 
 //  _____         _
@@ -495,7 +506,9 @@ Target "BuildDebugNodes" (buildDebug "Projects/Nodes/Nodes.fsproj")
 
 Target "BuildReleaseNodes" (buildRelease "Projects/Nodes/Nodes.fsproj")
 
-Target "BuildMockClient" (buildDebug "Projects/MockClient/MockClient.fsproj")
+Target "BuildDebugMockClient" (buildDebug "Projects/MockClient/MockClient.fsproj")
+
+Target "BuildReleaseMockClient" (buildRelease "Projects/MockClient/MockClient.fsproj")
 
 //  _____         _
 // |_   _|__  ___| |_ ___
@@ -642,7 +655,7 @@ Target "Release" DoNothing
 ==> "BuildReleaseNodes"
 
 "GenerateSerialization"
-==> "BuildMockClient"
+==> "BuildDebugMockClient"
 
 // Zeroconf
 
@@ -653,7 +666,7 @@ Target "Release" DoNothing
 ==> "BuildReleaseCore"
 
 "BuildReleaseZeroconf"
-==> "BuildMockClient"
+==> "BuildDebugMockClient"
 
 // Tests
 
@@ -668,7 +681,8 @@ Target "Release" DoNothing
 "BuildReleaseNodes"
 ==> "BuildReleaseService"
 ==> "BuildFrontend"
-==> "BuildReleaseCore"
+// ==> "BuildReleaseCore"
+==> "BuildReleaseMockClient"
 ==> "CopyBinaries"
 
 // "BuildWebTests"
