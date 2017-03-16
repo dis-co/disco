@@ -1,1 +1,0 @@
-..\..\Iris\bin\Debug\MockClient\client.exe -b 127.0.0.1 -h %1 -p 5000

@@ -46,9 +46,12 @@ module Main =
         |> Option.map (fun projectName ->
           machine.WorkSpace </> projectName)
 
+      let frontend =
+        parsed.TryGetResult <@ Frontend @>
+
       match parsed.GetResult <@ Cmd @>, dir with
       | Create,            _ -> createProject parsed
-      | Start,           dir -> startService dir
+      | Start,           dir -> startService dir frontend
       | Reset,      Some dir -> resetProject dir
       | Dump,       Some dir -> dumpDataDir dir
       | Add_User,   Some dir -> addUser dir

@@ -3,7 +3,7 @@ var webpack = require('webpack');
 
 module.exports = {
   entry: [
-    './src/index.js',
+    path.resolve(__dirname, './src/index.js'),
   ],
 
   output: {

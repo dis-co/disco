@@ -1,0 +1,1 @@
+Iris\iris.exe create --project=iris_sample --bind=%1 --api=5000 --raft=6000 --ws=8000 --git=9000
