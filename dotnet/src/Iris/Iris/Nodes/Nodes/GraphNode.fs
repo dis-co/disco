@@ -29,7 +29,8 @@ module Graph =
 
   [<RequireQualifiedAccess>]
   type Msg =
-    | GraphUpdate
+    | PinAdded           of pin:IPin2 * parsed:Pin
+    | PinRemoved         of group:Id * pin:Id
     | PinSubTypeChange   of string       // node id
     | PinVecSizeChange   of group:Id * pin:Id * VecSize
     | PinNameChange      of group:Id * pin:Id * string
@@ -41,8 +42,8 @@ module Graph =
   type PluginState =
     { Frame: uint64
       Initialized: bool
-      Pins: ConcurrentDictionary<Id,PinGroup>
-      ChangedPins: ConcurrentDictionary<Id,IPin2>
+      Pins: Dictionary<Id,PinGroup>
+      ChangedPins: Dictionary<Id,IPin2>
       Events: ConcurrentQueue<Msg>
       Logger: ILogger
       V1Host: IPluginHost
@@ -52,13 +53,13 @@ module Graph =
       OutPinGroups: ISpread<PinGroup>
       OutCommands: ISpread<StateMachine>
       OutUpdate: ISpread<bool>
-      Disposables: ConcurrentDictionary<Id,IDisposable> }
+      Disposables: Dictionary<Id,IDisposable> }
 
     static member Create () =
       { Frame = 0UL
         Initialized = false
-        Pins = new ConcurrentDictionary<Id,PinGroup>()
-        ChangedPins = new ConcurrentDictionary<Id,IPin2>()
+        Pins = new Dictionary<Id,PinGroup>()
+        ChangedPins = new Dictionary<Id,IPin2>()
         Events = new ConcurrentQueue<Msg>()
         Logger = null
         V1Host = null
@@ -68,7 +69,7 @@ module Graph =
         OutPinGroups = null
         OutCommands = null
         OutUpdate = null
-        Disposables = new ConcurrentDictionary<Id,IDisposable>() }
+        Disposables = new Dictionary<Id,IDisposable>() }
 
     interface IDisposable with
       member self.Dispose() =
@@ -838,25 +839,16 @@ module Graph =
   // ** addPin
 
   let private addPin (state: PluginState) (pin: Pin) =
-    let group =
-      if state.Pins.ContainsKey pin.PinGroup then
-        pin.PinGroup
-        |> string
-        |> sprintf "Group already exists, adding pin to group: %s"
-        |> Util.debug state
-        let group = state.Pins.[pin.PinGroup]
-        { group with Pins = Map.add pin.Id pin group.Pins }
-      else
-        pin.PinGroup
-        |> string
-        |> sprintf "Group not found, creating: %s"
-        |> Util.debug state
-        let node = state.V2Host.GetNodeFromPath(string pin.PinGroup)
+    if state.Pins.ContainsKey pin.PinGroup then
+      let group = state.Pins.[pin.PinGroup]
+      state.Pins.[group.Id] <- { group with Pins = Map.add pin.Id pin group.Pins }
+    else
+      let node = state.V2Host.GetNodeFromPath(string pin.PinGroup)
+      let group: PinGroup =
         { Id = pin.PinGroup
           Name = node.GetNodePath(true)
-          Pins = Map.ofList [ (pin.Id,pin) ] }
-    state.Pins.AddOrUpdate(group.Id, group, group |> konst >> konst)
-    |> ignore
+          Pins = Map.ofList [ (pin.Id, pin) ] }
+      state.Pins.Add(group.Id, group) |> ignore
 
   // ** updatePinWith
 
@@ -867,10 +859,8 @@ module Graph =
     | true, group ->
       match Map.tryFind pinid group.Pins with
       | Some pin ->
-        let updated = { group with Pins = Map.add pinid (updater pin) group.Pins }
-        while not (state.Pins.TryUpdate(groupid, updated, group)) do
-          Thread.Sleep(TimeSpan.FromTicks 1L)
-      | None -> ()
+        state.Pins.[groupid] <- { group with Pins = Map.add pinid (updater pin) group.Pins }
+      | _ -> ()
     | _ -> ()
 
   // ** updatePinValues
@@ -917,20 +907,9 @@ module Graph =
         let updated = Map.remove pinid group.Pins
         let length = Map.fold (fun count _ _ -> count + 1) 0 updated
         if length = 0 then
-          while not (state.Pins.TryRemove(groupid) |> fst) do
-            Thread.Sleep(TimeSpan.FromTicks(1L))
-          groupid
-          |> string
-          |> sprintf "Group empty, removed: %s"
-          |> Util.debug state
+          state.Pins.Remove(groupid) |> ignore
         else
-          let group = { group with Pins = updated }
-          state.Pins.AddOrUpdate(groupid, group, group |> konst >> konst)
-          |> ignore
-          pinid
-          |> string
-          |> sprintf "Group updated, removed: %s"
-          |> Util.debug state
+          state.Pins.[groupid] <- { group with Pins = updated }
     | _ -> ()
 
   // ** addDisposable
@@ -938,64 +917,52 @@ module Graph =
   let private addDisposable (state: PluginState) (pin: IPin2) =
     let id = parseNodePath pin
     let disposable = registerHandlers state pin
-    while not (state.Disposables.TryAdd(id, disposable)) do
-      Thread.Sleep(TimeSpan.FromTicks 1L)
+    if state.Disposables.ContainsKey id then
+      dispose disposable                // should not happen, and if it does prevent it from working
+    else
+      state.Disposables.Add(id, disposable)
+      |> ignore
 
   // ** removeDisposable
 
   let private removeDisposable (state: PluginState) (id: Id) =
-    match state.Disposables.TryRemove(id) with
-    | true, disposable ->
-      id
-      |> string
-      |> sprintf "disposing for pin: %s"
-      |> Util.debug state
-      dispose disposable
-    | _ -> ()
+    try
+      state.Disposables.Remove(id)
+      |> ignore
+    with
+      | _ -> ()
 
   // ** addChangedPin
 
   let private addChangedPin (state: PluginState) (pin: IPin2) =
     let id = parseNodePath pin
     let cp = pin.ParentNode.FindPin Settings.CHANGED_PIN
-    while not (state.ChangedPins.TryAdd(id, cp)) do
-      Thread.Sleep(TimeSpan.FromTicks 1L)
+    if not (state.ChangedPins.ContainsKey id) then
+      state.ChangedPins.Add(id, cp)
+      |> ignore
 
   // ** removeChangedPin
 
   let private removeChangedPin (state: PluginState) (id: Id) =
-    match state.ChangedPins.TryRemove(id) with
-    | true, _ -> ()
-    | _ -> ()
+    try
+      state.ChangedPins.Remove(id)
+      |> ignore
+    with
+      | _ -> ()
 
   // ** onNodeExposed
 
   let private onNodeExposed (state: PluginState) (node: INode2) =
     match parseINode2 state node with
     | Right [] -> ()
-    | Right pins ->
-      List.iter
-        (fun (pin, parsed) ->
-          addDisposable state pin
-          addChangedPin state pin
-          addPin state parsed)
-        pins
-      state.Events.Enqueue Msg.GraphUpdate
-    | Left error ->
-      error
-      |> string
-      |> Util.error state
+    | Right pins -> List.iter (Msg.PinAdded >> state.Events.Enqueue) pins
+    | Left error -> error |> string |> Util.error state
 
   // ** onNodeUnExposed
 
   let private onNodeUnExposed (state: PluginState) (node: INode2) =
     parseINode2Ids state node
-    |> List.iter
-       (fun (gid,pid) ->
-         removeChangedPin state pid
-         removeDisposable state pid
-         removePin state gid pid
-         state.Events.Enqueue Msg.GraphUpdate)
+    |> List.iter (Msg.PinRemoved >> state.Events.Enqueue)
 
   // ** setupVvvv
 
@@ -1011,8 +978,7 @@ module Graph =
             member self.Dispose () =
               state.V2Host.ExposedNodeService.remove_NodeAdded(onNodeAdded)
               state.V2Host.ExposedNodeService.remove_NodeRemoved(onNodeRemoved) }
-      while not (state.Disposables.TryAdd(globals,disposable)) do
-        Thread.Sleep(TimeSpan.FromTicks(1L))
+      state.Disposables.Add(globals,disposable) |> ignore
       { state with Initialized = true }
     else
       state
@@ -1037,7 +1003,7 @@ module Graph =
 
   let private updateOutputs (state: PluginState) =
     let values = new ResizeArray<PinGroup>()
-    for KeyValue(_,value) in state.Pins.ToArray() do
+    for KeyValue(_,value) in state.Pins do
       values.Add value
     if values.Count > 0 then
       state.OutPinGroups.SliceCount <- values.Count
@@ -1056,15 +1022,28 @@ module Graph =
       match state.Events.TryDequeue() with
       | true, msg ->
         match msg with
-        | Msg.GraphUpdate -> ()
+        | Msg.PinAdded (pin, parsed) ->
+          addDisposable state pin
+          addChangedPin state pin
+          addPin state parsed
+
+        | Msg.PinRemoved (group, pin) ->
+          removeDisposable state pin
+          removeChangedPin state pin
+          removePin state group pin
+
         | Msg.PinTagChange (group, id, tags) ->
           updatePinTags state group id tags
+
         | Msg.PinNameChange (group, id, name) ->
           updatePinName state group id name
+
         | Msg.PinDirectionChange (group, id, dir) ->
           updatePinDirection state group id dir
+
         | Msg.PinVecSizeChange (group, id, vecsize) ->
           updatePinVecSize state group id vecsize
+
         | Msg.PinSubTypeChange nodeid ->
           let node = state.V2Host.GetNodeFromPath(nodeid)
           if not (isNull node) then
@@ -1072,6 +1051,7 @@ module Graph =
             | Right []     -> ()
             | Right parsed -> List.iter (fun (_,parsed) -> updatePin state parsed) parsed
             | Left error   -> error |> string |> Util.error state
+
         updateOutputs state
         reset <- false
       | _ -> ()
