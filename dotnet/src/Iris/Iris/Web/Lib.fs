@@ -92,7 +92,7 @@ let createMemberInfo() =
   let m = Id.Create() |> Member.create
   string m.Id, m.HostName, string m.IpAddr, string m.Port, string m.WsPort, string m.GitPort, string m.ApiPort
 
-let addMember(info: StateInfo, id, host, ip, port: string, wsPort: string, gitPort: string, apiPort: string) =
+let addMember(id, host, ip, port: string, wsPort: string, gitPort: string, apiPort: string) =
   try
     { Member.create (Id id) with
         HostName = host
@@ -138,17 +138,17 @@ let shutdown() =
 let unloadProject() =
   UnloadProject |> postCommandAndForget
 
-let loadProject(info: StateInfo, project, username, password) =
+let loadProject(project, username, password) =
   LoadProject(project, username, password)
   |> postCommand () (fun _ -> ClientContext.Singleton.ConnectWithWebSocket() |> ignore)
 
-let createProject(_info: StateInfo, projectName: string, ipAddress, gitPort, webSocketPort, apiPort, raftPort) =
-  { name = projectName
-  ; ipAddress = ipAddress
-  ; gitPort = gitPort
-  ; webSocketPort = webSocketPort
-  ; apiPort = apiPort
-  ; raftPort = raftPort }
+let createProject(info: obj) =
+  { name          = !!info?name
+  ; ipAddress     = !!info?ipAddress
+  ; apiPort       = !!info?apiPort
+  ; raftPort      = !!info?raftPort
+  ; webSocketPort = !!info?webSocketPort
+  ; gitPort       = !!info?gitPort }
   |> CreateProject
   |> postCommandAndForget
 
@@ -232,9 +232,9 @@ let updatePin(pin: Pin, rowIndex, newValue: obj) =
   let pin =
     match pin with
     | StringPin pin -> StringPin { pin with Values = updateArray rowIndex newValue pin.Values }
-    | NumberPin pin -> failwith "TO BE IMPLEMENTED"
-    | BoolPin   pin -> failwith "TO BE IMPLEMENTED"
-    | BytePin   pin -> failwith "TO BE IMPLEMENTED" 
-    | EnumPin   pin -> failwith "TO BE IMPLEMENTED" 
-    | ColorPin  pin -> failwith "TO BE IMPLEMENTED"
+    | NumberPin _pin -> failwith "TO BE IMPLEMENTED"
+    | BoolPin   _pin -> failwith "TO BE IMPLEMENTED"
+    | BytePin   _pin -> failwith "TO BE IMPLEMENTED" 
+    | EnumPin   _pin -> failwith "TO BE IMPLEMENTED" 
+    | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
   ClientContext.Singleton.Post(UpdatePin pin)

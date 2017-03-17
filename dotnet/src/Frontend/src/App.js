@@ -11,6 +11,7 @@ import Workspace from './Workspace'
 import DropdownMenu from './DropdownMenu'
 import ModalDialog from './modals/ModalDialog'
 import CreateProject from './modals/CreateProject'
+import LoadProject from './modals/LoadProject'
 
 let modal = null;
 
@@ -48,9 +49,9 @@ export default class App extends Component {
           <h1>Iris</h1>
           <DropdownMenu options={{
             "Create project": () => showModal(CreateProject),
-            "Load project": () => console.log("Load Project"),
-            "Unload project": () => console.log("Unload Project"),
-            "Shutdown": () => console.log("Shutdown"),
+            "Load project": () => showModal(LoadProject),
+            "Unload project": () => Iris.unloadProject(),
+            "Shutdown": () => Iris.shutdown(),
           }} />
         </header>
         <div id="app-content">
