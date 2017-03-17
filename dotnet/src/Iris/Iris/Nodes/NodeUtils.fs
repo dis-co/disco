@@ -2,9 +2,30 @@ namespace Iris.Nodes
 
 // * Imports
 
+open Iris.Core
 open VVVV.PluginInterfaces.V1
 open VVVV.PluginInterfaces.V2
+open VVVV.PluginInterfaces.V2.Graph
 open VVVV.Core.Logging
+
+// ** PinType
+
+[<RequireQualifiedAccess>]
+type PinType =
+  | Boolean
+  | Number
+  | Enum
+  | Color
+  | String
+
+// ** NodeMapping
+
+type NodeMapping =
+  { GroupId: Id
+    Pin: IPin2
+    Type: PinType
+    Properties: Property array option
+    ChangedNode: IPin2 }
 
 // * Settings
 

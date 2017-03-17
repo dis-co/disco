@@ -37,25 +37,6 @@ module Graph =
     | PinTagChange       of group:Id * pin:Id * Tag array
     | PinDirectionChange of group:Id * pin:Id * ConnectionDirection
 
-  // ** PinType
-
-  [<RequireQualifiedAccess>]
-  type PinType =
-    | Boolean
-    | Number
-    | Enum
-    | Color
-    | String
-
-  // ** NodeMapping
-
-  type NodeMapping =
-    { GroupId: Id
-      Pin: IPin2
-      Type: PinType
-      Properties: Property array option
-      ChangedNode: IPin2 }
-
   // ** PluginState
 
   type PluginState =

@@ -398,6 +398,30 @@ type Pin =
       | EnumPin     _ -> "EnumPin"
       | ColorPin    _ -> "ColorPin"
 
+  // ** GetTags
+
+  member self.GetTags
+    with get () =
+      match self with
+      | StringPin data -> data.Tags
+      | NumberPin data -> data.Tags
+      | BoolPin   data -> data.Tags
+      | BytePin   data -> data.Tags
+      | EnumPin   data -> data.Tags
+      | ColorPin  data -> data.Tags
+
+  // ** VecSize
+
+  member self.VecSize
+    with get () =
+      match self with
+      | StringPin data -> data.VecSize
+      | NumberPin data -> data.VecSize
+      | BoolPin   data -> data.VecSize
+      | BytePin   data -> data.VecSize
+      | EnumPin   data -> data.VecSize
+      | ColorPin  data -> data.VecSize
+
   // ** SetVecSize
 
   member self.SetVecSize vecSize =

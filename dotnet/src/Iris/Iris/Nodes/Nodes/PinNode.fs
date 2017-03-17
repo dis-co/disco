@@ -45,6 +45,18 @@ type PinNode() =
   val mutable OutName: ISpread<string>
 
   [<DefaultValue>]
+  [<Output("Tags")>]
+  val mutable OutTags: ISpread<string>
+
+  [<DefaultValue>]
+  [<Output("Direction")>]
+  val mutable OutDirection: ISpread<string>
+
+  [<DefaultValue>]
+  [<Output("VecSize")>]
+  val mutable OutVecSize: ISpread<string>
+
+  [<DefaultValue>]
   [<Output("Values")>]
   val mutable OutValues: ISpread<string>
 
@@ -59,17 +71,23 @@ type PinNode() =
         self.OutId.SliceCount   <- self.InPin.SliceCount
         self.OutName.SliceCount <- self.InPin.SliceCount
         self.OutType.SliceCount <- self.InPin.SliceCount
+        self.OutTags.SliceCount <- self.InPin.SliceCount
+        self.OutDirection.SliceCount <- self.InPin.SliceCount
+        self.OutVecSize.SliceCount <- self.InPin.SliceCount
         self.OutValues.SliceCount <- self.InPin.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNullReference self.InPin.[0]) then
             let pin = self.InPin.[n]
-            let name =
+            let tipe =
               let case, _ = FSharpValue.GetUnionFields(pin, pin.GetType())
               case.Name
             self.OutId.[n] <- string pin.Id
             self.OutName.[n] <- pin.Name
-            self.OutType.[n] <- name
+            self.OutType.[n] <- tipe
+            self.OutTags.[n] <- String.Join(",", pin.GetTags)
+            self.OutDirection.[n] <- string pin.Direction
+            self.OutVecSize.[n] <- string pin.VecSize
             self.OutValues.[n] <- pin.ToSpread()
 
       if self.InUpdate.IsChanged then
