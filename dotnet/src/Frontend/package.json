@@ -53,8 +53,10 @@
     "dom-to-image": "^2.5.2",
     "eslint": "^3.14.1",
     "eslint-plugin-react": "^6.9.0",
+    "muicss": "^0.9.10",
     "react": "^15.4.2",
     "react-dom": "^15.4.2",
-    "react-grid-layout": "^0.14.1"
+    "react-grid-layout": "^0.14.1",
+    "react-skylight": "^0.4.1"
   }
 }
