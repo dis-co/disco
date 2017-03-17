@@ -34,14 +34,16 @@ module Api =
       ApiClient: IApiClient
       Events: ConcurrentQueue<ClientEvent>
       Logger: ILogger
-      InCommands: IDiffSpread<StateMachine>
+      InCommands: ISpread<StateMachine>
       InServer: IDiffSpread<string>
       InPort: IDiffSpread<uint16>
       InDebug: ISpread<bool>
+      InUpdate: ISpread<bool>
       OutState: ISpread<State>
       OutCommands: ISpread<StateMachine>
       OutConnected: ISpread<bool>
       OutStatus: ISpread<string>
+      OutUpdate: ISpread<bool>
       Disposables: IDisposable list }
 
     static member Create () =
@@ -55,10 +57,12 @@ module Api =
         InServer = null
         InPort = null
         InDebug = null
+        InUpdate = null
         OutState = null
         OutConnected = null
         OutCommands = null
         OutStatus = null
+        OutUpdate = null
         Disposables = List.empty }
 
     interface IDisposable with
@@ -165,7 +169,7 @@ module Api =
   // ** processInputs
 
   let private processInputs (state: PluginState) =
-    if state.InCommands.IsChanged then
+    if state.InUpdate.[0] then
       for slice in 0 .. state.InCommands.SliceCount - 1 do
         let cmd: StateMachine = state.InCommands.[slice]
         if not (Util.isNullReference cmd) then
@@ -218,12 +222,15 @@ module Api =
               state
         | false, _ -> run <- false
       if stateUpdates > 0 || cmdUpdates.Count > 0 then
+        state.OutUpdate.[0] <- true
         cmdUpdates.ToArray()
         |> updateCommands newstate
         |> updateState
       else
+        state.OutUpdate.[0] <- false
         newstate
     else
+      state.OutUpdate.[0] <- false
       state
 
   // ** updateFrame
@@ -245,7 +252,7 @@ module Api =
     |> initialize
     |> processor
 
-// * IrisClientNode
+// * ApiClientNode
 
 [<PluginInfo(Name="Api Client", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type ApiClientNode() =
@@ -255,7 +262,7 @@ type ApiClientNode() =
 
   [<DefaultValue>]
   [<Input("Commands")>]
-  val mutable InCommands: IDiffSpread<StateMachine>
+  val mutable InCommands: ISpread<StateMachine>
 
   [<DefaultValue>]
   [<Input("Server", IsSingle = true)>]
@@ -270,6 +277,10 @@ type ApiClientNode() =
   val mutable InDebug: IDiffSpread<bool>
 
   [<DefaultValue>]
+  [<Input("Update", IsSingle = true, IsBang = true)>]
+  val mutable InUpdate: IDiffSpread<bool>
+
+  [<DefaultValue>]
   [<Output("Commands")>]
   val mutable OutCommands: ISpread<StateMachine>
 
@@ -278,16 +289,16 @@ type ApiClientNode() =
   val mutable OutState: ISpread<Iris.Core.State>
 
   [<DefaultValue>]
-  [<Output("Update", IsSingle = true, IsBang = true)>]
-  val mutable OutUpdate: ISpread<bool>
+  [<Output("Status", IsSingle = true)>]
+  val mutable OutStatus: ISpread<string>
 
   [<DefaultValue>]
   [<Output("Connected", IsSingle = true, DefaultValue = 0.0)>]
   val mutable OutConnected: ISpread<bool>
 
   [<DefaultValue>]
-  [<Output("Status", IsSingle = true)>]
-  val mutable OutStatus: ISpread<string>
+  [<Output("Update", IsSingle = true, IsBang = true)>]
+  val mutable OutUpdate: ISpread<bool>
 
   let mutable initialized = false
   let mutable state = Unchecked.defaultof<Api.PluginState>
@@ -302,10 +313,12 @@ type ApiClientNode() =
               InServer = self.InServer
               InPort = self.InPort
               InDebug = self.InDebug
+              InUpdate = self.InUpdate
               OutState = self.OutState
               OutCommands = self.OutCommands
               OutConnected = self.OutConnected
-              OutStatus = self.OutStatus }
+              OutStatus = self.OutStatus
+              OutUpdate = self.OutUpdate }
         state <- state'
         initialized <- true
 

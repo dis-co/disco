@@ -21,11 +21,16 @@ type PinType =
 // ** NodeMapping
 
 type NodeMapping =
-  { GroupId: Id
+  { PinId: Id
+    GroupId: Id
     Pin: IPin2
     Type: PinType
+    Direction: ConnectionDirection
     Properties: Property array option
     ChangedNode: IPin2 }
+
+  member nm.IsOutput
+    with get () = nm.Direction = ConnectionDirection.Output
 
 // * Settings
 

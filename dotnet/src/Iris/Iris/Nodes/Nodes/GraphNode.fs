@@ -31,6 +31,7 @@ module Graph =
   type Msg =
     | PinAdded           of pin:IPin2 * parsed:Pin
     | PinRemoved         of group:Id * pin:Id
+    | PinValueChange     of group:Id * slices:Slices
     | PinSubTypeChange   of string       // node id
     | PinVecSizeChange   of group:Id * pin:Id * VecSize
     | PinNameChange      of group:Id * pin:Id * string
@@ -469,6 +470,16 @@ module Graph =
       (String.Join("/", nodepath), name)
     | _ -> failwithf "wrong format: %s" (string id)
 
+  // ** findPinById
+
+  let private findPinById (state: PluginState) (id: Id) =
+    let path, name = parsePinId id
+    let node = state.V2Host.GetNodeFromPath(path)
+    if not (isNull node) then
+      let pin = node.FindPin name
+      if not (isNull pin) then Some pin else None
+    else None
+
   // ** parsePinValues
 
   let private parsePinValues (pin: IPin2) =
@@ -509,6 +520,48 @@ module Graph =
     | PinType.Color -> ColorSlices(pid, parseColorValues pin)
     | PinType.Enum -> EnumSlices(pid, parseEnumValues props pin)
 
+  // ** parsePinIds
+
+  let private parsePinIds (pins: IPin2 seq) =
+    Seq.fold
+      (fun lst pin ->
+        let pinid = parseNodePath pin
+        let grpid = parsePinGroupId pin
+        (grpid,pinid) :: lst)
+      []
+      pins
+
+  // ** parsePintype
+
+  let private parsePinType (pin: IPin2) =
+    either {
+      let node = pin.ParentNode
+      let! boxtype = IOBoxType.TryParse (node.NodeInfo.ToString())
+      match boxtype with
+      | IOBoxType.Value ->
+        let! vt = parseValueType pin
+        match vt with
+        | ValueType.Boolean ->
+          return PinType.Boolean
+        | ValueType.Integer | ValueType.Real ->
+          return PinType.Number
+      | IOBoxType.String -> return PinType.String
+      | IOBoxType.Enum -> return PinType.Enum
+      | IOBoxType.Color -> return PinType.Color
+      | x ->
+        return!
+          sprintf "unsupported type %A" x
+          |> Error.asParseError "parseINode2"
+          |> Either.fail
+    }
+
+  // ** parseINode2Ids
+
+  let private parseINode2Ids (_: PluginState) (node: INode2)  =
+    node.Pins
+    |> visibleInputPins
+    |> parsePinIds
+
   // ** registerHandlers
 
   let private registerHandlers (state: PluginState) (pin: IPin2) =
@@ -520,6 +573,8 @@ module Graph =
     let cp = pin.ParentNode.FindPin Settings.COLUMNS_PIN
     let rp = pin.ParentNode.FindPin Settings.ROWS_PIN
     let pp = pin.ParentNode.FindPin Settings.PAGES_PIN
+    let tipe = parsePinType pin |> Either.get // !!!
+    let props = parseEnumProperties pin
 
     let vecsizeUpdate _ _ =
       match parseVecSize pin with
@@ -545,6 +600,12 @@ module Graph =
       |> Msg.PinTagChange
       |> state.Events.Enqueue)
 
+    let changedHandler = new EventHandler(fun _ _ ->
+      let slices = parsePinValueWith tipe id props pin
+      (group,slices)
+      |> Msg.PinValueChange
+      |> state.Events.Enqueue)
+
     let directionUpdate _ _ =
       (group, id, parseDirection pin)
       |> Msg.PinDirectionChange
@@ -565,6 +626,7 @@ module Graph =
     rp.Changed.AddHandler(rowsHandler)
     pp.Changed.AddHandler(pagesHandler)
 
+    pin.Changed.AddHandler(changedHandler)
     pin.Connected.AddHandler(connectedHandler)
     pin.Disconnected.AddHandler(disconnectedHandler)
     pin.SubtypeChanged.AddHandler(subtypeHandler)
@@ -578,9 +640,10 @@ module Graph =
           pp.Changed.RemoveHandler(pagesHandler)
           scmp.Changed.RemoveHandler(vecsizeHandler)
 
-          pin.Connected.RemoveHandler connectedHandler
-          pin.Disconnected.RemoveHandler disconnectedHandler
-          pin.SubtypeChanged.RemoveHandler subtypeHandler
+          pin.Changed.RemoveHandler(changedHandler)
+          pin.Connected.RemoveHandler(connectedHandler)
+          pin.Disconnected.RemoveHandler(disconnectedHandler)
+          pin.SubtypeChanged.RemoveHandler(subtypeHandler)
       }
 
   // ** parseValuePin
@@ -838,42 +901,6 @@ module Graph =
           |> Either.fail
     }
 
-  let private parsePinIds (pins: IPin2 seq) =
-    Seq.fold
-      (fun lst pin ->
-        let pinid = parseNodePath pin
-        let grpid = parsePinGroupId pin
-        (grpid,pinid) :: lst)
-      []
-      pins
-
-  let private parsePinType (pin: IPin2) =
-    either {
-      let node = pin.ParentNode
-      let! boxtype = IOBoxType.TryParse (node.NodeInfo.ToString())
-      match boxtype with
-      | IOBoxType.Value ->
-        let! vt = parseValueType pin
-        match vt with
-        | ValueType.Boolean ->
-          return PinType.Boolean
-        | ValueType.Integer | ValueType.Real ->
-          return PinType.Number
-      | IOBoxType.String -> return PinType.String
-      | IOBoxType.Enum -> return PinType.Enum
-      | IOBoxType.Color -> return PinType.Color
-      | x ->
-        return!
-          sprintf "unsupported type %A" x
-          |> Error.asParseError "parseINode2"
-          |> Either.fail
-    }
-
-  let private parseINode2Ids (_: PluginState) (node: INode2)  =
-    node.Pins
-    |> visibleInputPins
-    |> parsePinIds
-
   // ** addPin
 
   let private addPin (state: PluginState) (pin: Pin) =
@@ -992,6 +1019,7 @@ module Graph =
     let id = parseNodePath pin
     let gid = parsePinGroupId pin
     let cp = pin.ParentNode.FindPin Settings.CHANGED_PIN
+    let dir = parseDirection pin
     let tipe, props =
       match parsePinType pin with
       | Right PinType.Enum ->
@@ -999,9 +1027,11 @@ module Graph =
       | Right tipe -> tipe, None
       | Left error -> failwith (string error)
     let nm =
-      { GroupId = gid
+      { PinId = id
+        GroupId = gid
         Pin = pin
         Type = tipe
+        Direction = dir
         Properties = props
         ChangedNode = cp }
     (id, nm)
@@ -1119,11 +1149,11 @@ module Graph =
     state.OutCommands.AssignFrom state.Commands
 
     if state.NodeMappings.Count > 0 then
-      let mappings =
-        let arr = Array.zeroCreate state.NodeMappings.Count
-        state.NodeMappings.Values.CopyTo(arr, 0)
-        arr
-      state.OutNodeMappings.SliceCount <- state.NodeMappings.Count
+      let mappings = new ResizeArray<NodeMapping>()
+      for KeyValue(_,nm) in state.NodeMappings do
+        if not nm.IsOutput then
+          mappings.Add nm
+      state.OutNodeMappings.SliceCount <- mappings.Count
       state.OutNodeMappings.AssignFrom mappings
     else
       state.OutNodeMappings.SliceCount <- 1
@@ -1148,6 +1178,9 @@ module Graph =
           removeChangedPin state pin
           removePin state group pin
 
+        | Msg.PinValueChange (group, slices) ->
+          updatePinValues state group slices
+
         | Msg.PinTagChange (group, id, tags) ->
           updatePinTags state group id tags
 
@@ -1156,6 +1189,9 @@ module Graph =
 
         | Msg.PinDirectionChange (group, id, dir) ->
           updatePinDirection state group id dir
+          id
+          |> findPinById state
+          |> Option.iter (updateChangedPin state)
 
         | Msg.PinVecSizeChange (group, id, vecsize) ->
           updatePinVecSize state group id vecsize
@@ -1177,7 +1213,7 @@ module Graph =
       | _ -> ()
 
     for KeyValue(id,nm) in state.NodeMappings do
-      if nm.ChangedNode.[0] = "1" then
+      if nm.IsOutput && nm.ChangedNode.[0] = "1" then
         let slices =
           match nm.Properties with
           | Some props -> parsePinValueWith nm.Type id props nm.Pin
@@ -1199,30 +1235,6 @@ module Graph =
     state
     |> initialize
     |> processing
-
-  // ------------  Call Graph -------------------
-  //
-  // Evaluate
-  //    |
-  //    Process (update our world)
-  //    |  |
-  //    |  CallCue &&  UpdatePin
-  //    |      |
-  //    |      pin.Update (either values, or entire pin)
-  //    |      |
-  //    |      MkQueueJob value
-  //    |
-  //    Tick  (now flush it to vvvv)
-  //    |  |
-  //    |  VVVVGraph.FrameCount <= CurrentFrame
-  //    |  |
-  //    |  ProcessGraphWrites
-  //    |         |
-  //    |         IPin2.Spread = "|val|"
-  //    |         |
-  //    |         MkQueueJob value (Reset with current frame + 1)
-  //    |
-  //    Cleanup
 
 // * GraphNode
 

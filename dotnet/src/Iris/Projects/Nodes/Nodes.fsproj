@@ -263,6 +263,9 @@
     <Compile Include="../../Iris/Nodes/Nodes/PinNode.fs">
       <Link>PinNode.fs</Link>
     </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/PinWriteNode.fs">
+      <Link>PinWriteNode.fs</Link>
+    </Compile>
     <Compile Include="../../Iris/Nodes/Nodes/GraphNode.fs">
       <Link>GraphNode.fs</Link>
     </Compile>
