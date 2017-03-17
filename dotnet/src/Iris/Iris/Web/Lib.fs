@@ -44,10 +44,6 @@ type [<Pojo>] TreeNode =
 // VALUES ----------------------------------------------------
 let EMPTY = Constants.EMPTY
 
-// Leaving a global reference to the ClientContext for simplicity,
-// we can think later of a better pattern
-let mutable Context = Unchecked.defaultof<ClientContext>
-
 // HELPERS ----------------------------------------------------
 let toString (x: obj) = string x
 
@@ -88,7 +84,7 @@ let removeMember(info: StateInfo, memId: Id) =
   match Map.tryFind memId info.state.Project.Config.Cluster.Members with
   | Some mem ->
     RemoveMember mem
-    |> info.context.Post
+    |> ClientContext.Singleton.Post
   | None ->
     printfn "Couldn't find mem with Id %O" memId
 
@@ -106,7 +102,7 @@ let addMember(info: StateInfo, id, host, ip, port: string, wsPort: string, gitPo
         GitPort = uint16 gitPort
         ApiPort = uint16 apiPort }
     |> AddMember
-    |> info.context.Post
+    |> ClientContext.Singleton.Post
   with
   | exn -> printfn "Couldn't create mem: %s" exn.Message
 
@@ -144,7 +140,7 @@ let unloadProject() =
 
 let loadProject(info: StateInfo, project, username, password) =
   LoadProject(project, username, password)
-  |> postCommand () (fun _ -> info.context.ConnectWithWebSocket() |> ignore)
+  |> postCommand () (fun _ -> ClientContext.Singleton.ConnectWithWebSocket() |> ignore)
 
 let createProject(_info: StateInfo, projectName: string, ipAddress, gitPort, webSocketPort, apiPort, raftPort) =
   { name = projectName
@@ -196,15 +192,15 @@ let project2tree (p: IrisProject) =
   |] |> node "Project"
 
 let startContext f =
-  ClientContext.Start()
-  |> Promise.map (fun context ->
-    Context <- context
+  let context = ClientContext.Singleton
+  context.Start()
+  |> Promise.map (fun () ->
     context.OnMessage
     |> Observable.add (function
       | ClientMessage.Render state ->
         match Map.tryFind context.Session state.Sessions with
         | Some session ->
-          f { context = context; session = session; state = state }
+          f { session = session; state = state }
         | None -> ()
       | _ -> ())
   )
@@ -241,4 +237,4 @@ let updatePin(pin: Pin, rowIndex, newValue: obj) =
     | BytePin   pin -> failwith "TO BE IMPLEMENTED" 
     | EnumPin   pin -> failwith "TO BE IMPLEMENTED" 
     | ColorPin  pin -> failwith "TO BE IMPLEMENTED"
-  Context.Post(UpdatePin pin)
+  ClientContext.Singleton.Post(UpdatePin pin)
