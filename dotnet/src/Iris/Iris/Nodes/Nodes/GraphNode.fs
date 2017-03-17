@@ -42,8 +42,10 @@ module Graph =
   type PluginState =
     { Frame: uint64
       Initialized: bool
+      Update: bool ref
       Pins: Dictionary<Id,PinGroup>
-      ChangedPins: Dictionary<Id,NodeMapping>
+      Commands: ResizeArray<StateMachine>
+      NodeMappings: Dictionary<Id,NodeMapping>
       Events: ConcurrentQueue<Msg>
       Logger: ILogger
       V1Host: IPluginHost
@@ -52,14 +54,17 @@ module Graph =
       InDebug: ISpread<bool>
       OutPinGroups: ISpread<PinGroup>
       OutCommands: ISpread<StateMachine>
+      OutNodeMappings: ISpread<NodeMapping>
       OutUpdate: ISpread<bool>
       Disposables: Dictionary<Id,IDisposable> }
 
     static member Create () =
       { Frame = 0UL
         Initialized = false
+        Update = ref false
         Pins = new Dictionary<Id,PinGroup>()
-        ChangedPins = new Dictionary<Id,NodeMapping>()
+        Commands = new ResizeArray<StateMachine>()
+        NodeMappings = new Dictionary<Id,NodeMapping>()
         Events = new ConcurrentQueue<Msg>()
         Logger = null
         V1Host = null
@@ -69,13 +74,14 @@ module Graph =
         OutPinGroups = null
         OutCommands = null
         OutUpdate = null
+        OutNodeMappings = null
         Disposables = new Dictionary<Id,IDisposable>() }
 
     interface IDisposable with
       member self.Dispose() =
         Seq.iter (fun (kv: KeyValuePair<Id,IDisposable>) -> dispose kv.Value) self.Disposables
         self.Disposables.Clear()
-        self.ChangedPins.Clear()
+        self.NodeMappings.Clear()
 
   // ** IOBoxType
 
@@ -874,12 +880,15 @@ module Graph =
     if state.Pins.ContainsKey pin.PinGroup then
       let group = state.Pins.[pin.PinGroup]
       state.Pins.[group.Id] <- { group with Pins = Map.add pin.Id pin group.Pins }
+      state.Commands.Add (AddPin pin)
     else
       let node = state.V2Host.GetNodeFromPath(string pin.PinGroup)
       let group: PinGroup =
         { Id = pin.PinGroup
           Name = node.GetNodePath(true)
           Pins = Map.ofList [ (pin.Id, pin) ] }
+      state.Commands.Add (AddPinGroup group)
+      state.Commands.Add (AddPin pin)
       state.Pins.Add(group.Id, group) |> ignore
 
   // ** updatePinWith
@@ -900,30 +909,39 @@ module Graph =
   let private updatePinValues (state: PluginState) (group: Id) (slices: Slices) =
     updatePinWith state group slices.Id <| fun oldpin ->
       oldpin.SetSlices slices
+    state.Commands.Add (UpdateSlices slices)
 
   // ** updatePinName
 
   let private updatePinName (state: PluginState) (group: Id) (pin: Id) (name: string) =
     updatePinWith state group pin <| fun oldpin ->
-      oldpin.SetName name
+      let updated = oldpin.SetName name
+      state.Commands.Add (UpdatePin updated)
+      updated
 
   // ** updatePinTags
 
   let private updatePinTags (state: PluginState) (group: Id) (pin: Id) (tags: Tag array) =
     updatePinWith state group pin <| fun oldpin ->
-      oldpin.SetTags tags
+      let updated = oldpin.SetTags tags
+      state.Commands.Add (UpdatePin updated)
+      updated
 
   // ** updatePinDirection
 
   let private updatePinDirection (state: PluginState) (group: Id) (pin: Id) dir =
     updatePinWith state group pin <| fun oldpin ->
-      oldpin.SetDirection dir
+      let updated = oldpin.SetDirection dir
+      state.Commands.Add (UpdatePin updated)
+      updated
 
   // ** updatePinVecSize
 
   let private updatePinVecSize (state: PluginState) (group: Id) (pin: Id) vecsize =
     updatePinWith state group pin <| fun oldpin ->
-      oldpin.SetVecSize vecsize
+      let updated = oldpin.SetVecSize vecsize
+      state.Commands.Add (UpdatePin updated)
+      updated
 
   // ** updatePin
 
@@ -935,13 +953,17 @@ module Graph =
   let private removePin (state: PluginState) (groupid: Id) (pinid: Id) =
     match state.Pins.TryGetValue(groupid) with
     | true, group ->
-      if Map.containsKey pinid group.Pins then
+      match Map.tryFind pinid group.Pins with
+      | Some pin ->
         let updated = Map.remove pinid group.Pins
         let length = Map.fold (fun count _ _ -> count + 1) 0 updated
+        state.Commands.Add (RemovePin pin)
         if length = 0 then
+          state.Commands.Add (RemovePinGroup group)
           state.Pins.Remove(groupid) |> ignore
         else
           state.Pins.[groupid] <- { group with Pins = updated }
+      | _ -> ()
     | _ -> ()
 
   // ** addDisposable
@@ -988,24 +1010,24 @@ module Graph =
 
   let private addChangedPin (state: PluginState) (pin: IPin2) =
     let id, nm = makeNodeMapping pin
-    if not (state.ChangedPins.ContainsKey id) then
-      state.ChangedPins.Add(id, nm)
+    if not (state.NodeMappings.ContainsKey id) then
+      state.NodeMappings.Add(id, nm)
       |> ignore
 
   // ** updateChangedPin
 
   let private updateChangedPin (state: PluginState) (pin: IPin2) =
     let id, nm = makeNodeMapping pin
-    if state.ChangedPins.ContainsKey id then
-      state.ChangedPins.[id] <- nm
+    if state.NodeMappings.ContainsKey id then
+      state.NodeMappings.[id] <- nm
     else
-      state.ChangedPins.Add(id, nm) |> ignore
+      state.NodeMappings.Add(id, nm) |> ignore
 
   // ** removeChangedPin
 
   let private removeChangedPin (state: PluginState) (id: Id) =
     try
-      state.ChangedPins.Remove(id)
+      state.NodeMappings.Remove(id)
       |> ignore
     with
       | _ -> ()
@@ -1050,12 +1072,31 @@ module Graph =
       onNodeExposed state node
     state
 
+  // ** requestUpdate
+
+  let private requestUpdate (state: PluginState) =
+    state.Update := true
+    state
+
+  // ** updateRequested
+
+  let private updateRequested (state: PluginState) =
+    !state.Update
+
+
+  // ** resetState
+
+  let private resetState (state: PluginState) =
+    state.Update := false
+    state.Commands.Clear()
+
   // ** initialize
 
   let private initialize (state: PluginState) =
     if not state.Initialized then
       setupVvvv state
       |> parseExposedNodes
+      |> requestUpdate
     else
       state
 
@@ -1063,21 +1104,36 @@ module Graph =
 
   let private updateOutputs (state: PluginState) =
     let values = new ResizeArray<PinGroup>()
+
     for KeyValue(_,value) in state.Pins do
       values.Add value
+
     if values.Count > 0 then
       state.OutPinGroups.SliceCount <- values.Count
       state.OutPinGroups.AssignFrom values
     else
       state.OutPinGroups.SliceCount <- 1
       state.OutPinGroups.AssignFrom(new ResizeArray<PinGroup>())
+
+    state.OutCommands.SliceCount <- state.Commands.Count
+    state.OutCommands.AssignFrom state.Commands
+
+    if state.NodeMappings.Count > 0 then
+      let mappings =
+        let arr = Array.zeroCreate state.NodeMappings.Count
+        state.NodeMappings.Values.CopyTo(arr, 0)
+        arr
+      state.OutNodeMappings.SliceCount <- state.NodeMappings.Count
+      state.OutNodeMappings.AssignFrom mappings
+    else
+      state.OutNodeMappings.SliceCount <- 1
+      state.OutNodeMappings.AssignFrom [| |]
+
     state.OutUpdate.[0] <- true
 
   // ** processing
 
   let private processing (state: PluginState) =
-    let mutable reset = true
-
     while state.Events.Count > 0 do
       match state.Events.TryDequeue() with
       | true, msg ->
@@ -1117,21 +1173,26 @@ module Graph =
                   updatePin state parsed)
                 parsed
 
-        updateOutputs state
-        reset <- false
+        requestUpdate state |> ignore
       | _ -> ()
 
-    for KeyValue(id,nm) in state.ChangedPins do
+    for KeyValue(id,nm) in state.NodeMappings do
       if nm.ChangedNode.[0] = "1" then
         let slices =
           match nm.Properties with
           | Some props -> parsePinValueWith nm.Type id props nm.Pin
           | _ ->  parsePinValueWith nm.Type id [| |] nm.Pin
         updatePinValues state nm.GroupId slices
-        updateOutputs state
-        reset <- false
+        requestUpdate state |> ignore
 
-    if reset then state.OutUpdate.[0] <- false
+    if updateRequested state then
+      updateOutputs state
+      resetState state
+    else
+      state.OutCommands.SliceCount <- 1
+      state.OutCommands.AssignFrom [| |]
+      state.OutUpdate.[0] <- false
+
     state
 
   let evaluate (state: PluginState) (_: int) =
@@ -1178,10 +1239,6 @@ type GraphNode() =
   val mutable Logger: ILogger
 
   [<DefaultValue>]
-  [<Input("Commands")>]
-  val mutable InCommands: IDiffSpread<StateMachine>
-
-  [<DefaultValue>]
   [<Input("Debug", IsSingle = true, DefaultValue = 0.0)>]
   val mutable InDebug: IDiffSpread<bool>
 
@@ -1192,6 +1249,10 @@ type GraphNode() =
   [<DefaultValue>]
   [<Output("PinGroups")>]
   val mutable OutPinGroups: ISpread<PinGroup>
+
+  [<DefaultValue>]
+  [<Output("NodeMappings")>]
+  val mutable OutNodeMappings: ISpread<NodeMapping>
 
   [<DefaultValue>]
   [<Output("Update", IsSingle = true, IsBang = true)>]
@@ -1211,6 +1272,7 @@ type GraphNode() =
               InDebug = self.InDebug
               OutUpdate = self.OutUpdate
               OutCommands = self.OutCommands
+              OutNodeMappings = self.OutNodeMappings
               OutPinGroups = self.OutPinGroups }
         state <- state'
         initialized <- true
